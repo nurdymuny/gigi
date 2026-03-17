@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIGI × NASA POWER — Geometric Climate Intelligence</title>
+<script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a1a;--card:rgba(255,255,255,0.035);--border:rgba(255,255,255,0.07);--text:#e2e8f0;--muted:#94a3b8;--primary:#818cf8;--accent:#c084fc;--cyan:#22d3ee;--green:#34d399;--amber:#fbbf24;--red:#f87171}
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(99,102,241,0.08) 0%,transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(192,132,252,0.06) 0%,transparent 50%);pointer-events:none;z-index:0}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* Navigation */
+.nav{position:sticky;top:0;z-index:100;display:flex;gap:1.5rem;justify-content:center;padding:.75rem 2rem;background:rgba(10,10,26,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav a{color:var(--muted);text-decoration:none;font-size:.85rem;font-weight:500;letter-spacing:.03em;text-transform:uppercase;transition:color .2s}
+.nav a:hover{color:var(--primary)}
+
+/* Hero */
+.hero{position:relative;text-align:center;padding:5rem 2rem 3rem;z-index:1}
+.hero-title{font-size:clamp(2.5rem,6vw,4.5rem);font-weight:900;letter-spacing:-.03em;background:linear-gradient(135deg,var(--primary),var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero .accent{-webkit-text-fill-color:var(--accent)}
+.hero-sub{font-size:1.15rem;color:var(--muted);margin-top:.5rem;font-weight:300;letter-spacing:.05em}
+.hero-sub2{font-size:.85rem;color:rgba(148,163,184,0.5);margin-top:.25rem;font-weight:400}
+.stats-row{display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap;margin-top:2.5rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem 2rem;min-width:140px;backdrop-filter:blur(12px);transition:transform .2s,border-color .2s}
+.stat-card:hover{transform:translateY(-2px);border-color:var(--primary)}
+.stat-number{display:block;font-size:2.2rem;font-weight:800;font-feature-settings:'tnum';background:linear-gradient(135deg,var(--cyan),var(--primary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat-label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.25rem}
+
+/* Sections */
+.section{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:3rem 2rem}
+.section-title{font-size:1.8rem;font-weight:700;margin-bottom:.5rem;background:linear-gradient(90deg,var(--text),var(--muted));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.section-desc{color:var(--muted);font-size:.95rem;margin-bottom:1.5rem}
+
+/* Cards & Grid */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;backdrop-filter:blur(12px)}
+.card h3{font-size:1.1rem;font-weight:600;margin-bottom:.75rem;color:var(--text)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+
+/* Chart containers */
+.chart-full{width:100%;height:420px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.chart-container{width:100%;height:380px}
+.chart-container-sm{width:100%;height:280px}
+.chart-wide{width:100%;height:500px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+
+/* Insight callout */
+.insight{display:inline-block;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);border-radius:8px;padding:.4rem .8rem;font-size:.85rem;color:var(--primary);font-weight:500;margin-bottom:.75rem}
+.insight-lg{text-align:center;font-size:1.1rem;padding:.6rem 1.2rem;margin:0 auto 1.5rem}
+
+/* Accuracy badge */
+.accuracy-badge{text-align:center;margin:1rem 0}
+.accuracy-value{font-size:3.5rem;font-weight:900;background:linear-gradient(135deg,var(--green),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.accuracy-label{font-size:1rem;color:var(--muted);display:block;margin-top:-.25rem}
+
+/* Comparison table */
+.cmp-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:.5rem}
+.cmp-table th{text-align:left;color:var(--muted);font-weight:500;padding:.5rem .75rem;border-bottom:1px solid var(--border);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+.cmp-table td{padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,0.03)}
+.cmp-table .feature{color:var(--text);font-weight:500}
+.cmp-table .yes{color:var(--green);font-weight:600}
+.cmp-table .no{color:var(--red);opacity:.6}
+.cmp-table .gigi-col{color:var(--primary)}
+
+/* Performance cards */
+.perf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:1rem}
+.perf-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;text-align:center;transition:transform .2s}
+.perf-card:hover{transform:translateY(-2px)}
+.perf-value{display:block;font-size:1.8rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--cyan)}
+.perf-unit{font-size:.8rem;color:var(--muted);font-weight:400}
+.perf-label{display:block;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.5rem}
+
+/* DHOOM sample */
+.dhoom-sample{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:1rem;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--green);line-height:1.5;overflow-x:auto;margin-top:.75rem;white-space:pre}
+
+/* Footer */
+footer{text-align:center;padding:3rem 2rem;color:rgba(148,163,184,0.4);font-size:.8rem;border-top:1px solid var(--border);margin-top:2rem}
+footer p+p{margin-top:.25rem}
+
+/* Reveal animation */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <h1 class="hero-title">GIGI <span class="accent">×</span> NASA POWER</h1>
+    <p class="hero-sub">Geometric Climate Intelligence Dashboard</p>
+    <p class="hero-sub2">Fiber-bundle database engine — anomaly detection through differential geometry</p>
+    <div class="stats-row">
+        <div class="stat-card"><span class="stat-number" id="s-records">0</span><span class="stat-label">Records</span></div>
+        <div class="stat-card"><span class="stat-number" id="s-cities">0</span><span class="stat-label">Cities</span></div>
+        <div class="stat-card"><span class="stat-number" id="s-days">366</span><span class="stat-label">Days</span></div>
+        <div class="stat-card"><span class="stat-number" id="s-params">7</span><span class="stat-label">Parameters</span></div>
+    </div>
+</header>
+
+<nav class="nav">
+    <a href="#sec-map">Map</a>
+    <a href="#sec-curvature">Curvature</a>
+    <a href="#sec-correlation">Correlation</a>
+    <a href="#sec-timeseries">Time Series</a>
+    <a href="#sec-prediction">Prediction</a>
+    <a href="#sec-compare">Comparison</a>
+    <a href="#sec-perf">Performance</a>
+</nav>
+
+<!-- World Map -->
+<section id="sec-map" class="section reveal">
+    <h2 class="section-title">Global Curvature Map</h2>
+    <p class="section-desc">20 cities across 4 continents. Marker size reflects extreme event count. Color encodes curvature K(temp) — the geometric signature of weather volatility.</p>
+    <div id="map-chart" class="chart-wide"></div>
+</section>
+
+<!-- Curvature + Correlation -->
+<section id="sec-curvature" class="section reveal">
+    <div class="grid-2">
+        <div class="card">
+            <h3>Curvature K(temp) by City</h3>
+            <p style="color:var(--muted);font-size:.8rem;margin-bottom:.5rem">Sorted by volatility. K = variance / range² — the fiber bundle's intrinsic measure of data spread.</p>
+            <div id="curvature-chart" class="chart-container"></div>
+        </div>
+        <div class="card" id="sec-correlation">
+            <h3>The Geometry Knew</h3>
+            <div class="insight" id="pearson-badge"></div>
+            <p style="color:var(--muted);font-size:.8rem;margin-bottom:.5rem">Higher curvature → more extreme events. The database predicted anomaly-prone cities without scanning a single record.</p>
+            <div id="correlation-chart" class="chart-container"></div>
+        </div>
+    </div>
+</section>
+
+<!-- Temperature Time Series -->
+<section id="sec-timeseries" class="section reveal">
+    <h2 class="section-title">Temperature Journeys — Top 5 Most Volatile Cities</h2>
+    <p class="section-desc">Daily temperatures across 2024. The cities with highest curvature show the most dramatic swings — exactly what the geometry predicted.</p>
+    <div id="timeseries-chart" class="chart-wide"></div>
+</section>
+
+<!-- Prediction -->
+<section id="sec-prediction" class="section reveal">
+    <h2 class="section-title">Can Geometry Forecast the Future?</h2>
+    <p class="section-desc">Trained on Jan–Sep curvature. Predicted which cities would have Oct–Dec extreme weather events — using geometry alone, no ML, no rules.</p>
+    <div class="accuracy-badge">
+        <span class="accuracy-value" id="accuracy-val">0</span>
+        <span class="accuracy-label">prediction accuracy from curvature alone</span>
+    </div>
+    <div id="prediction-chart" class="chart-full"></div>
+</section>
+
+<!-- Comparison -->
+<section id="sec-compare" class="section reveal">
+    <div class="grid-2">
+        <div class="card">
+            <h3>GIGI vs PostgreSQL</h3>
+            <p style="color:var(--muted);font-size:.8rem;margin-bottom:.75rem">GIGI doesn't just answer faster — it answers questions PostgreSQL cannot even ask.</p>
+            <table class="cmp-table">
+                <thead><tr><th>Capability</th><th class="gigi-col">GIGI</th><th>Postgres</th></tr></thead>
+                <tbody>
+                <tr><td class="feature">Anomaly detection</td><td class="yes">K(temp) built-in</td><td class="no">GROUP BY + UDF</td></tr>
+                <tr><td class="feature">Confidence score</td><td class="yes">1/(1+K) native</td><td class="no">Not available</td></tr>
+                <tr><td class="feature">Predict future anomaly</td><td class="yes">K(train)→test</td><td class="no">External ML</td></tr>
+                <tr><td class="feature">Spectral connectivity</td><td class="yes">λ₁ in 1ms</td><td class="no">Graph DB needed</td></tr>
+                <tr><td class="feature">Wire compression</td><td class="yes">DHOOM ~54%</td><td class="no">JSON standard</td></tr>
+                <tr><td class="feature">RG flow / C-theorem</td><td class="yes">Built-in</td><td class="no">Not available</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h3>DHOOM Wire Compression</h3>
+            <p style="color:var(--muted);font-size:.8rem;margin-bottom:.5rem">Same data, fewer bytes. Silence means agreement.</p>
+            <div id="dhoom-chart" class="chart-container-sm"></div>
+            <div class="dhoom-sample" id="dhoom-sample"></div>
+        </div>
+    </div>
+</section>
+
+<!-- Performance -->
+<section id="sec-perf" class="section reveal">
+    <h2 class="section-title">Performance — O(1) on Real Data</h2>
+    <p class="section-desc">Constant-time operations backed by fiber-bundle hash geometry. Measured on 7,320 NASA records.</p>
+    <div class="perf-grid">
+        <div class="perf-card">
+            <span class="perf-value" id="pv-pq"></span>
+            <span class="perf-label">Point Query</span>
+        </div>
+        <div class="perf-card">
+            <span class="perf-value" id="pv-insert"></span>
+            <span class="perf-label">Insert</span>
+        </div>
+        <div class="perf-card">
+            <span class="perf-value" id="pv-rate"></span>
+            <span class="perf-label">Insert Rate</span>
+        </div>
+        <div class="perf-card">
+            <span class="perf-value" id="pv-spectral"></span>
+            <span class="perf-label">Spectral Analysis</span>
+        </div>
+        <div class="perf-card">
+            <span class="perf-value" id="pv-curv"></span>
+            <span class="perf-label">Curvature</span>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <p style="font-size:1rem;color:var(--muted)">Built with <strong style="color:var(--primary)">GIGI</strong> — the world's first geometric database engine</p>
+    <p>Davis Geometric · 2026 · Data from NASA POWER API</p>
+    <p style="margin-top:.5rem;font-style:italic;color:rgba(148,163,184,0.3)">"The geometry found the anomalies. No rules. No training. Just math."</p>
+</footer>
+
+<script>
+const DATA = __GIGI_DATA__;
+
+// Date helper
+function nasaDate(d) {
+    const s = String(Math.floor(d));
+    return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+}
+
+// Plotly dark defaults
+const DK = {
+    paper_bgcolor:'transparent', plot_bgcolor:'rgba(255,255,255,0.015)',
+    font:{family:'Inter, sans-serif',color:'#e2e8f0',size:12},
+    margin:{t:30,b:50,l:60,r:20},
+    xaxis:{gridcolor:'rgba(255,255,255,0.05)',zerolinecolor:'rgba(255,255,255,0.05)'},
+    yaxis:{gridcolor:'rgba(255,255,255,0.05)',zerolinecolor:'rgba(255,255,255,0.05)'}
+};
+const CFG = {displayModeBar:false,responsive:true};
+
+// Animated counter
+function animateCount(el,target,suffix='',duration=1500){
+    const start=performance.now();
+    const isFloat=String(target).includes('.');
+    function step(now){
+        const p=Math.min((now-start)/duration,1);
+        const ease=1-Math.pow(1-p,3);
+        const v=target*ease;
+        el.textContent=(isFloat?v.toFixed(1):Math.floor(v).toLocaleString())+(suffix||'');
+        if(p<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
+
+// Init hero stats
+animateCount(document.getElementById('s-records'),DATA.totalRecords);
+animateCount(document.getElementById('s-cities'),DATA.numCities);
+
+// Color helpers
+function kColor(k){
+    if(k>0.05)return'#f87171';
+    if(k>0.02)return'#fbbf24';
+    return'#34d399';
+}
+const regionColor={NA:'#3b82f6',EU:'#a855f7',AS:'#f59e0b',SH:'#10b981'};
+
+// 1. World Map
+(function(){
+    const c=DATA.cities;
+    Plotly.newPlot('map-chart',[{
+        type:'scattergeo',mode:'markers+text',
+        lat:c.map(x=>x.lat),lon:c.map(x=>x.lon),
+        text:c.map(x=>x.name.replace(/_/g,' ')),
+        textposition:'top center',textfont:{size:10,color:'#e2e8f0'},
+        marker:{
+            size:c.map(x=>8+x.extremeCount*4),
+            color:c.map(x=>x.k_temp),
+            colorscale:[[0,'#10b981'],[0.4,'#fbbf24'],[1,'#ef4444']],
+            colorbar:{title:{text:'K(temp)',font:{size:11}},thickness:12,len:0.6,tickfont:{size:10}},
+            line:{width:1,color:'rgba(255,255,255,0.3)'},
+            opacity:0.9
+        },
+        hovertemplate:'<b>%{text}</b><br>K(temp): %{marker.color:.4f}<br>Extremes: %{marker.size}<extra></extra>'
+    }],{
+        ...DK, margin:{t:10,b:10,l:10,r:10},
+        geo:{
+            projection:{type:'natural earth',rotation:{lon:20}},
+            showland:true,landcolor:'#151530',
+            showocean:true,oceancolor:'#0a0a1a',
+            showcoastlines:true,coastlinecolor:'#2a2a4a',coastlinewidth:0.5,
+            showcountries:true,countrycolor:'#1e1e3a',countrywidth:0.3,
+            showlakes:false,bgcolor:'transparent',
+            lataxis:{gridcolor:'rgba(255,255,255,0.03)'},
+            lonaxis:{gridcolor:'rgba(255,255,255,0.03)'}
+        }
+    },CFG);
+})();
+
+// 2. Curvature Bar Chart
+(function(){
+    const c=[...DATA.cities].sort((a,b)=>a.k_temp-b.k_temp);
+    Plotly.newPlot('curvature-chart',[{
+        type:'bar',orientation:'h',
+        y:c.map(x=>x.name.replace(/_/g,' ')),
+        x:c.map(x=>x.k_temp),
+        marker:{color:c.map(x=>kColor(x.k_temp)),opacity:0.85},
+        text:c.map(x=>'K='+x.k_temp.toFixed(4)),
+        textposition:'outside',textfont:{size:10,color:'#94a3b8'},
+        hovertemplate:'<b>%{y}</b><br>K(temp): %{x:.6f}<br>Confidence: %{customdata:.3f}<extra></extra>',
+        customdata:c.map(x=>x.confidence)
+    }],{
+        ...DK,margin:{t:10,b:40,l:110,r:70},
+        xaxis:{...DK.xaxis,title:{text:'K(temp)',font:{size:11}}},
+        yaxis:{...DK.yaxis,automargin:true,tickfont:{size:10}}
+    },CFG);
+})();
+
+// 3. Curvature × Extremes Scatter
+(function(){
+    const c=DATA.cities;
+    document.getElementById('pearson-badge').textContent='Pearson r(K, extremes) = '+DATA.metrics.pearsonR.toFixed(4);
+
+    // Regression line
+    const xs=c.map(x=>x.k_temp),ys=c.map(x=>x.extremeCount);
+    const mx=xs.reduce((a,b)=>a+b,0)/xs.length,my=ys.reduce((a,b)=>a+b,0)/ys.length;
+    const num=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0);
+    const den=xs.reduce((s,x)=>s+(x-mx)**2,0);
+    const slope=den?num/den:0,intercept=my-slope*mx;
+    const xMin=Math.min(...xs),xMax=Math.max(...xs);
+
+    Plotly.newPlot('correlation-chart',[
+        {type:'scatter',mode:'markers+text',
+         x:xs,y:ys,
+         text:c.map(x=>x.name.replace(/_/g,' ')),
+         textposition:c.map(x=>x.extremeCount>2?'top center':'bottom center'),
+         textfont:{size:9,color:'#94a3b8'},
+         marker:{size:14,color:c.map(x=>x.k_temp),
+           colorscale:[[0,'#10b981'],[0.4,'#fbbf24'],[1,'#ef4444']],
+           line:{width:1.5,color:'rgba(255,255,255,0.25)'}},
+         hovertemplate:'<b>%{text}</b><br>K=%{x:.4f}<br>Extremes: %{y}<extra></extra>'},
+        {type:'scatter',mode:'lines',
+         x:[xMin,xMax],y:[slope*xMin+intercept,slope*xMax+intercept],
+         line:{color:'rgba(129,140,248,0.4)',width:2,dash:'dot'},
+         showlegend:false,hoverinfo:'skip'}
+    ],{
+        ...DK,margin:{t:10,b:50,l:50,r:20},showlegend:false,
+        xaxis:{...DK.xaxis,title:{text:'Curvature K(temp)',font:{size:11}}},
+        yaxis:{...DK.yaxis,title:{text:'Extreme Events (top 15)',font:{size:11}},dtick:1}
+    },CFG);
+})();
+
+// 4. Temperature Time Series
+(function(){
+    const c=[...DATA.cities].sort((a,b)=>b.k_temp-a.k_temp).slice(0,5);
+    const palette=['#818cf8','#f87171','#fbbf24','#34d399','#22d3ee'];
+    const traces=c.map((city,i)=>{
+        const daily=DATA.dailyTemps[city.name]||[];
+        daily.sort((a,b)=>a[0]-b[0]);
+        return{
+            type:'scatter',mode:'lines',name:city.name.replace(/_/g,' '),
+            x:daily.map(d=>nasaDate(d[0])),y:daily.map(d=>d[1]),
+            line:{width:1.5,color:palette[i]},
+            hovertemplate:'%{x}<br>%{y:.1f}°C<extra>'+city.name.replace(/_/g,' ')+'</extra>'
+        };
+    });
+    Plotly.newPlot('timeseries-chart',traces,{
+        ...DK,margin:{t:20,b:50,l:50,r:20},
+        xaxis:{...DK.xaxis,title:{text:'Date',font:{size:11}},type:'date'},
+        yaxis:{...DK.yaxis,title:{text:'Temperature (°C)',font:{size:11}}},
+        legend:{orientation:'h',y:1.02,x:0.5,xanchor:'center',font:{size:11}}
+    },CFG);
+})();
+
+// 5. Prediction
+(function(){
+    const p=DATA.predictions;
+    const acc=DATA.metrics.predictionAccuracy;
+    animateCount(document.getElementById('accuracy-val'),acc,'%',2000);
+
+    const sorted=[...p].sort((a,b)=>b.k-a.k);
+    Plotly.newPlot('prediction-chart',[
+        {type:'bar',name:'Training K(temp)',
+         x:sorted.map(x=>x.city.replace(/_/g,' ')),
+         y:sorted.map(x=>x.k),
+         marker:{color:sorted.map(x=>x.correct?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.7)'),
+           line:{width:1,color:sorted.map(x=>x.correct?'#34d399':'#f87171')}},
+         yaxis:'y',
+         hovertemplate:'<b>%{x}</b><br>K=%{y:.4f}<br>'
+            +sorted.map(x=>x.correct?'✓ Correct':'✗ Miss').join('|||').split('|||').map(x=>'<extra>'+x+'</extra>').join('')
+        },
+        {type:'scatter',mode:'markers',name:'Oct–Dec Extreme Events',
+         x:sorted.map(x=>x.city.replace(/_/g,' ')),
+         y:sorted.map(x=>x.events),
+         marker:{size:10,color:'#22d3ee',symbol:'diamond',line:{width:1,color:'white'}},
+         yaxis:'y2',
+         hovertemplate:'<b>%{x}</b><br>Events: %{y}<extra></extra>'
+        }
+    ],{
+        ...DK,margin:{t:20,b:100,l:50,r:50},
+        xaxis:{...DK.xaxis,tickangle:-45,tickfont:{size:10}},
+        yaxis:{...DK.yaxis,title:{text:'K(temp) — curvature',font:{size:11}},side:'left'},
+        yaxis2:{...DK.yaxis,title:{text:'Extreme Events',font:{size:11}},side:'right',overlaying:'y',showgrid:false},
+        legend:{orientation:'h',y:1.08,x:0.5,xanchor:'center',font:{size:11}},
+        barmode:'group'
+    },CFG);
+})();
+
+// 6. DHOOM chart
+(function(){
+    const d=DATA.dhoom;
+    Plotly.newPlot('dhoom-chart',[{
+        type:'bar',
+        x:['JSON','DHOOM'],
+        y:[d.jsonSize,d.dhoomSize],
+        text:[d.jsonSize+' chars',d.dhoomSize+' chars'],
+        textposition:'outside',textfont:{color:'#e2e8f0',size:12},
+        marker:{color:['#475569','#818cf8'],
+          line:{width:1,color:['#64748b','#a5b4fc']}},
+        width:0.5,
+        hovertemplate:'%{x}: %{y} characters<extra></extra>'
+    }],{
+        ...DK,margin:{t:20,b:40,l:50,r:20},
+        yaxis:{...DK.yaxis,title:{text:'Characters',font:{size:11}}},
+        annotations:[{
+            x:1,y:d.dhoomSize,xref:'x',yref:'y',
+            text:d.savingsPct.toFixed(0)+'% smaller',
+            showarrow:true,arrowhead:0,arrowcolor:'#818cf8',
+            ax:50,ay:-30,font:{color:'#818cf8',size:13,weight:700}
+        }]
+    },CFG);
+
+    // DHOOM sample
+    const el=document.getElementById('dhoom-sample');
+    if(d.sample){el.textContent=d.sample;}
+    else{el.textContent='atmosphere{date,temp,...,city|Moscow,region|EU}:\n20240115, -31.9, -28.5, -33.2, 78.5, 101.4, 2.3, 0.8\n...';}
+})();
+
+// 7. Performance values
+(function(){
+    const m=DATA.metrics;
+    function fmt(ns){
+        if(ns<1000)return ns.toFixed(0)+'<span class="perf-unit">ns</span>';
+        if(ns<1e6)return(ns/1000).toFixed(1)+'<span class="perf-unit">μs</span>';
+        return(ns/1e6).toFixed(1)+'<span class="perf-unit">ms</span>';
+    }
+    document.getElementById('pv-pq').innerHTML=fmt(m.pointQueryNs);
+    document.getElementById('pv-insert').innerHTML=fmt(m.insertNs);
+    document.getElementById('pv-rate').innerHTML=Math.floor(m.insertRate).toLocaleString()+'<span class="perf-unit">/sec</span>';
+    document.getElementById('pv-spectral').innerHTML=m.spectralTimeMs.toFixed(2)+'<span class="perf-unit">ms</span>';
+    document.getElementById('pv-curv').innerHTML=fmt(m.curvatureNs);
+})();
+
+// Reveal on scroll
+const obs=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});
+},{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+</script>
+</body>
+</html>

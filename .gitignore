@@ -1,0 +1,47 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test output
+test_output*.txt
+
+# Deployment configs (may contain secrets)
+fly.toml
+fly.*.toml
+.env
+.env.*
+
+# Patent / internal docs — never commit
+DHOOM_*
+GIGI_COMPETITIVE_ANALYSIS.md
+GIGI_PRODUCT_SPECS.md
+GIGI_DEPLOY_*.md
+GIGI_PRISM_INTEGRATION_SPEC.md
+GIGI_GEOMETRIC_ENCRYPTION_SPEC.md
+GIGI_CRUD_ROADMAP.md
+GIGI_AUTOMATIC_ANALYTICS_API.md
+
+# Non-engine assets
+site/
+playground/
+docs/
+sdk/
+theory/
+bracket*
+*.pdf
+*.tex
+*.aux
+*.log
+*.out
+*.jpg
+.vite/

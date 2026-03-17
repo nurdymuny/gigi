@@ -1,0 +1,50 @@
+GIGI Source-Available License v1.0
+
+Copyright (c) 2026 Bee Rosa Davis / Davis Geometric
+All rights reserved.
+
+PATENT NOTICE
+=============
+Portions of this software are covered by U.S. Provisional Patent Application
+No. 64/008,940 ("Fiber Bundle Data Serialization"), filed March 18, 2026.
+Additional patent applications may be pending.
+
+GRANT OF RIGHTS
+===============
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, and distribute the Software for NON-COMMERCIAL purposes only,
+subject to the following conditions:
+
+1. The above copyright notice, this permission notice, and the patent notice
+   shall be included in all copies or substantial portions of the Software.
+
+2. Non-commercial use includes personal projects, academic research, education,
+   and evaluation.
+
+COMMERCIAL USE
+==============
+Any commercial use of the Software — including but not limited to use in
+production systems, offering the Software as a service, incorporating the
+Software into commercial products, or any use intended to generate revenue —
+requires a separate commercial license from Davis Geometric.
+
+For commercial licensing inquiries, contact:
+  bee_davis@alumni.brown.edu
+  https://davisgeometric.com
+
+PATENT RIGHTS
+=============
+This license does not grant any rights under the patent claims referenced above.
+A separate patent license is required for any use that would otherwise infringe
+the patent claims, whether commercial or non-commercial.
+
+DISCLAIMER
+==========
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

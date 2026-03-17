@@ -1,0 +1,645 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GIGI — Geometric Intelligence Database",
+    "version": "0.4.0",
+    "description": "REST API for GIGI, a geometry-aware database engine with fiber bundles, curvature analytics, and O(1) operations."
+  },
+  "servers": [
+    { "url": "http://localhost:3142", "description": "Local GIGI Stream" }
+  ],
+  "security": [{ "ApiKeyAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Set via GIGI_API_KEY env var. Omit if auth is disabled."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } },
+        "required": ["error"]
+      },
+      "ConditionSpec": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string" },
+          "op": { "type": "string", "enum": ["eq","neq","gt","gte","lt","lte","contains","starts_with","ends_with","regex","in","not_in","is_null","is_not_null"] },
+          "value": {}
+        },
+        "required": ["field", "op", "value"]
+      },
+      "SortSpec": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string" },
+          "desc": { "type": "boolean" }
+        },
+        "required": ["field"]
+      },
+      "Record": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "MetaInfo": {
+        "type": "object",
+        "properties": {
+          "confidence": { "type": "number", "nullable": true },
+          "curvature": { "type": "number", "nullable": true },
+          "capacity": { "type": "number", "nullable": true },
+          "count": { "type": "integer", "nullable": true }
+        }
+      },
+      "BundleStats": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "record_count": { "type": "integer" },
+          "base_fields": { "type": "integer" },
+          "fiber_fields": { "type": "integer" },
+          "indexed_fields": { "type": "array", "items": { "type": "string" } },
+          "storage_mode": { "type": "string" },
+          "index_sizes": { "type": "object", "additionalProperties": { "type": "integer" } },
+          "field_cardinalities": { "type": "object", "additionalProperties": { "type": "integer" } },
+          "field_stats": { "type": "object" },
+          "curvature": { "type": "number" }
+        }
+      },
+      "QueryPlan": {
+        "type": "object",
+        "properties": {
+          "scan_type": { "type": "string" },
+          "total_records": { "type": "integer" },
+          "index_scans": { "type": "array", "items": { "type": "string" } },
+          "full_scan_conditions": { "type": "array", "items": { "type": "string" } },
+          "or_group_count": { "type": "integer" },
+          "has_sort": { "type": "boolean" },
+          "has_limit": { "type": "boolean" },
+          "has_offset": { "type": "boolean" },
+          "storage_mode": { "type": "string" }
+        }
+      },
+      "TransactionOp": {
+        "type": "object",
+        "properties": {
+          "op": { "type": "string", "enum": ["insert","update","delete","increment"] },
+          "record": { "$ref": "#/components/schemas/Record" },
+          "key": { "type": "object", "additionalProperties": true },
+          "fields": { "type": "object", "additionalProperties": true },
+          "field": { "type": "string" },
+          "amount": { "type": "number" }
+        },
+        "required": ["op"]
+      }
+    }
+  },
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "summary": "Health check",
+        "tags": ["Health"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Server status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "engine": { "type": "string" },
+                    "version": { "type": "string" },
+                    "bundles": { "type": "integer" },
+                    "total_records": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bundles": {
+      "get": {
+        "summary": "List all bundles",
+        "tags": ["Bundles"],
+        "responses": {
+          "200": {
+            "description": "Array of bundle info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" },
+                          "records": { "type": "integer" },
+                          "fields": { "type": "integer" }
+                        }
+                      }
+                    },
+                    "meta": { "$ref": "#/components/schemas/MetaInfo" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new bundle",
+        "tags": ["Bundles"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "schema"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "schema": {
+                    "type": "object",
+                    "required": ["fields"],
+                    "properties": {
+                      "fields": { "type": "object", "additionalProperties": { "type": "string", "enum": ["integer","float","text","boolean","timestamp"] } },
+                      "keys": { "type": "array", "items": { "type": "string" } },
+                      "defaults": { "type": "object", "additionalProperties": true },
+                      "indexed": { "type": "array", "items": { "type": "string" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Bundle created", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "bundle": { "type": "string" } } } } } },
+          "409": { "description": "Bundle already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/v1/bundles/{name}": {
+      "delete": {
+        "summary": "Drop a bundle",
+        "tags": ["Bundles"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Bundle dropped" },
+          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/v1/bundles/{name}/insert": {
+      "post": {
+        "summary": "Insert records",
+        "tags": ["Data"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["records"], "properties": { "records": { "type": "array", "items": { "$ref": "#/components/schemas/Record" } } } } } }
+        },
+        "responses": {
+          "200": { "description": "Records inserted", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "inserted": { "type": "integer" }, "total": { "type": "integer" }, "curvature": { "type": "number" }, "confidence": { "type": "number" } } } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/update": {
+      "post": {
+        "summary": "Update a record (with optional RETURNING and optimistic concurrency)",
+        "tags": ["Data"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["key", "fields"],
+                "properties": {
+                  "key": { "type": "object", "additionalProperties": true },
+                  "fields": { "type": "object", "additionalProperties": true },
+                  "returning": { "type": "boolean", "default": false },
+                  "expected_version": { "type": "integer", "description": "Optimistic concurrency — if set, update only succeeds when record's _version matches this value" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Record updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "total": { "type": "integer" }, "curvature": { "type": "number" }, "confidence": { "type": "number" }, "version": { "type": "integer" }, "data": { "$ref": "#/components/schemas/Record" } } } } } },
+          "404": { "description": "Record or bundle not found" },
+          "409": { "description": "Version conflict (optimistic concurrency)", "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" }, "current_version": { "type": "integer" } } } } } }
+        }
+      }
+    },
+    "/v1/bundles/{name}/delete": {
+      "post": {
+        "summary": "Delete a record (with optional RETURNING)",
+        "tags": ["Data"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["key"], "properties": { "key": { "type": "object", "additionalProperties": true }, "returning": { "type": "boolean", "default": false } } } } }
+        },
+        "responses": {
+          "200": { "description": "Record deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "total": { "type": "integer" }, "curvature": { "type": "number" }, "confidence": { "type": "number" }, "data": { "$ref": "#/components/schemas/Record" } } } } } },
+          "404": { "description": "Record or bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/query": {
+      "post": {
+        "summary": "Filtered query with conditions, sorting, pagination, OR logic",
+        "tags": ["Query"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conditions": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } },
+                  "or_conditions": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } } },
+                  "sort": { "type": "array", "items": { "$ref": "#/components/schemas/SortSpec" } },
+                  "sort_by": { "type": "string" },
+                  "sort_desc": { "type": "boolean" },
+                  "limit": { "type": "integer" },
+                  "offset": { "type": "integer" },
+                  "fields": { "type": "array", "items": { "type": "string" } },
+                  "search": { "type": "string" },
+                  "search_fields": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Query results", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Record" } }, "meta": { "$ref": "#/components/schemas/MetaInfo" } } } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/get": {
+      "get": {
+        "summary": "Point query by key fields",
+        "tags": ["Query"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "key_field", "in": "query", "description": "Key field=value pairs as query params", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Record found", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Record" }, "meta": { "$ref": "#/components/schemas/MetaInfo" } } } } } },
+          "404": { "description": "Record or bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/range": {
+      "get": {
+        "summary": "Range query on a field",
+        "tags": ["Query"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "field", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "min", "in": "query", "required": true, "schema": { "type": "number" } },
+          { "name": "max", "in": "query", "required": true, "schema": { "type": "number" } }
+        ],
+        "responses": {
+          "200": { "description": "Records in range", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Record" } }, "meta": { "$ref": "#/components/schemas/MetaInfo" } } } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/stream": {
+      "post": {
+        "summary": "Stream ingest (batch insert via newline-delimited JSON)",
+        "tags": ["Data"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "text/plain": { "schema": { "type": "string", "description": "Newline-delimited JSON records" } } }
+        },
+        "responses": {
+          "200": { "description": "Batch ingested" },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/join": {
+      "post": {
+        "summary": "Pullback join between two bundles",
+        "tags": ["Joins"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["right_bundle","left_field","right_field"], "properties": { "right_bundle": { "type": "string" }, "left_field": { "type": "string" }, "right_field": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Joined records", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Record" } }, "meta": { "$ref": "#/components/schemas/MetaInfo" } } } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/aggregate": {
+      "post": {
+        "summary": "GROUP BY aggregation (count, sum, avg, min, max)",
+        "tags": ["Analytics"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["group_by","field"], "properties": { "group_by": { "type": "string" }, "field": { "type": "string" }, "conditions": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } } } } } }
+        },
+        "responses": {
+          "200": { "description": "Aggregation results", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object", "properties": { "groups": { "type": "object", "additionalProperties": { "type": "object", "properties": { "count": { "type": "integer" }, "sum": { "type": "number" }, "avg": { "type": "number" }, "min": { "type": "number" }, "max": { "type": "number" } } } } } }, "meta": { "$ref": "#/components/schemas/MetaInfo" } } } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/points": {
+      "get": {
+        "summary": "List all records (PRISM-compatible)",
+        "tags": ["PRISM"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer" } },
+          { "name": "order_by", "in": "query", "schema": { "type": "string" } },
+          { "name": "order", "in": "query", "schema": { "type": "string", "enum": ["asc","desc"] } }
+        ],
+        "responses": {
+          "200": { "description": "All records", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Record" } }, "meta": { "$ref": "#/components/schemas/MetaInfo" } } } } } }
+        }
+      },
+      "post": {
+        "summary": "Insert records (PRISM-compatible)",
+        "tags": ["PRISM"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "records": { "type": "array", "items": { "$ref": "#/components/schemas/Record" } } } } } } },
+        "responses": { "200": { "description": "Records inserted" } }
+      },
+      "patch": {
+        "summary": "Bulk update records by filter (PRISM-compatible)",
+        "tags": ["PRISM"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "filter": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } }, "fields": { "type": "object", "additionalProperties": true } } } } } },
+        "responses": { "200": { "description": "Records updated" } }
+      }
+    },
+    "/v1/bundles/{name}/points/{field}/{value}": {
+      "get": {
+        "summary": "Get record by path",
+        "tags": ["PRISM"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "field", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "value", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Record found" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "patch": {
+        "summary": "Patch record by path",
+        "tags": ["PRISM"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "field", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "value", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "fields": { "type": "object", "additionalProperties": true } } } } } },
+        "responses": { "200": { "description": "Record patched" }, "404": { "description": "Not found" } }
+      },
+      "delete": {
+        "summary": "Delete record by path",
+        "tags": ["PRISM"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "field", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "value", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Record deleted" }, "404": { "description": "Not found" } }
+      }
+    },
+    "/v1/bundles/{name}/upsert": {
+      "post": {
+        "summary": "Insert or update a record",
+        "tags": ["Data"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["record"], "properties": { "record": { "$ref": "#/components/schemas/Record" } } } } } },
+        "responses": {
+          "200": { "description": "Record upserted", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "enum": ["inserted","updated"] }, "total": { "type": "integer" }, "curvature": { "type": "number" } } } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/count": {
+      "post": {
+        "summary": "Count records matching conditions",
+        "tags": ["Query"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "conditions": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } }, "or_conditions": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } } } } } } } },
+        "responses": { "200": { "description": "Count result", "content": { "application/json": { "schema": { "type": "object", "properties": { "count": { "type": "integer" } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/exists": {
+      "post": {
+        "summary": "Check if any records match conditions",
+        "tags": ["Query"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "conditions": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } }, "or_conditions": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } } } } } } } },
+        "responses": { "200": { "description": "Existence check", "content": { "application/json": { "schema": { "type": "object", "properties": { "exists": { "type": "boolean" } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/distinct/{field}": {
+      "get": {
+        "summary": "Get distinct values for a field",
+        "tags": ["Query"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "field", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Distinct values", "content": { "application/json": { "schema": { "type": "object", "properties": { "field": { "type": "string" }, "values": { "type": "array", "items": {} }, "count": { "type": "integer" } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/bulk-delete": {
+      "post": {
+        "summary": "Delete records matching filter conditions",
+        "tags": ["Data"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "conditions": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } } } } } } },
+        "responses": { "200": { "description": "Bulk delete result", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "deleted": { "type": "integer" }, "total": { "type": "integer" }, "curvature": { "type": "number" } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/truncate": {
+      "post": {
+        "summary": "Remove all records from a bundle",
+        "tags": ["Data"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Bundle truncated", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "removed": { "type": "integer" } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/schema": {
+      "get": {
+        "summary": "Get bundle schema",
+        "tags": ["Bundles"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Schema definition", "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "base_fields": { "type": "array", "items": { "type": "object" } }, "fiber_fields": { "type": "array", "items": { "type": "object" } } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/increment": {
+      "post": {
+        "summary": "Atomically increment a numeric field",
+        "tags": ["Data"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["key","field"], "properties": { "key": { "type": "object", "additionalProperties": true }, "field": { "type": "string" }, "amount": { "type": "number", "default": 1 } } } } } },
+        "responses": {
+          "200": { "description": "Field incremented", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "new_value": { "type": "number" }, "total": { "type": "integer" }, "curvature": { "type": "number" } } } } } },
+          "404": { "description": "Record not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/add-field": {
+      "post": {
+        "summary": "Add a new field to the schema",
+        "tags": ["Schema"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "type": { "type": "string", "default": "text" }, "default": {} } } } } },
+        "responses": { "200": { "description": "Field added" }, "404": { "description": "Bundle not found" } }
+      }
+    },
+    "/v1/bundles/{name}/add-index": {
+      "post": {
+        "summary": "Add an index on a field",
+        "tags": ["Schema"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["field"], "properties": { "field": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Index added" }, "404": { "description": "Bundle not found" } }
+      }
+    },
+    "/v1/bundles/{name}/export": {
+      "get": {
+        "summary": "Export all records as JSON array",
+        "tags": ["Import/Export"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "All records", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Record" } }, "meta": { "$ref": "#/components/schemas/MetaInfo" } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/import": {
+      "post": {
+        "summary": "Import records from JSON array",
+        "tags": ["Import/Export"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["records"], "properties": { "records": { "type": "array", "items": { "$ref": "#/components/schemas/Record" } } } } } } },
+        "responses": { "200": { "description": "Records imported" } }
+      }
+    },
+    "/v1/bundles/{name}/stats": {
+      "get": {
+        "summary": "Get bundle statistics, field stats, and curvature",
+        "tags": ["Analytics"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Bundle statistics", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BundleStats" } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/explain": {
+      "post": {
+        "summary": "Get query execution plan without running the query",
+        "tags": ["Analytics"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "conditions": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } }, "or_conditions": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/components/schemas/ConditionSpec" } } }, "sort": { "type": "array", "items": { "$ref": "#/components/schemas/SortSpec" } }, "limit": { "type": "integer" }, "offset": { "type": "integer" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Query plan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/QueryPlan" } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/transaction": {
+      "post": {
+        "summary": "Execute multiple operations atomically (all-or-nothing)",
+        "tags": ["Transactions"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ops"],
+                "properties": {
+                  "ops": { "type": "array", "items": { "$ref": "#/components/schemas/TransactionOp" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Transaction succeeded", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "results": { "type": "array", "items": { "type": "string" } }, "total": { "type": "integer" }, "curvature": { "type": "number" } } } } } },
+          "400": { "description": "Transaction failed — rolled back", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Bundle not found" }
+        }
+      }
+    },
+    "/v1/bundles/{name}/curvature": {
+      "get": {
+        "summary": "Curvature analysis report",
+        "tags": ["Analytics"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Curvature report", "content": { "application/json": { "schema": { "type": "object", "properties": { "K": { "type": "number" }, "confidence": { "type": "number" }, "capacity": { "type": "number" }, "per_field": { "type": "array", "items": { "type": "object", "properties": { "field": { "type": "string" }, "variance": { "type": "number" }, "range": { "type": "number" }, "k": { "type": "number" } } } } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/spectral": {
+      "get": {
+        "summary": "Spectral analysis report",
+        "tags": ["Analytics"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Spectral report", "content": { "application/json": { "schema": { "type": "object", "properties": { "lambda1": { "type": "number" }, "diameter": { "type": "integer" }, "spectral_capacity": { "type": "number" } } } } } } }
+      }
+    },
+    "/v1/bundles/{name}/consistency": {
+      "get": {
+        "summary": "Consistency check (section gluing verification)",
+        "tags": ["Analytics"],
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Consistency result", "content": { "application/json": { "schema": { "type": "object", "properties": { "consistent": { "type": "boolean" }, "total_sections": { "type": "integer" }, "violations": { "type": "integer" } } } } } } }
+      }
+    },
+    "/v1/openapi.json": {
+      "get": {
+        "summary": "OpenAPI specification",
+        "tags": ["Health"],
+        "security": [],
+        "responses": { "200": { "description": "This OpenAPI spec", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Health", "description": "Health check and metadata" },
+    { "name": "Bundles", "description": "Bundle lifecycle management" },
+    { "name": "Data", "description": "Insert, update, delete, upsert operations" },
+    { "name": "Query", "description": "Point queries, filtered queries, counting" },
+    { "name": "PRISM", "description": "PRISM-compatible REST endpoints" },
+    { "name": "Joins", "description": "Pullback joins between bundles" },
+    { "name": "Analytics", "description": "Curvature, spectral, stats, explain" },
+    { "name": "Schema", "description": "Schema evolution (add fields, indexes)" },
+    { "name": "Import/Export", "description": "Bulk data import/export" },
+    { "name": "Transactions", "description": "Atomic multi-operation transactions" }
+  ]
+}

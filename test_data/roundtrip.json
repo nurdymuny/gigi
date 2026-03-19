@@ -1,0 +1,182 @@
+[
+  {
+    "humidity": 48.3,
+    "pressure": 1013.2,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 22.4,
+    "timestamp": 1710000000,
+    "unit": "metric"
+  },
+  {
+    "humidity": 48.1,
+    "pressure": 1013.3,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 22.5,
+    "timestamp": 1710000060,
+    "unit": "metric"
+  },
+  {
+    "humidity": 48.5,
+    "pressure": 1013.1,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 22.3,
+    "timestamp": 1710000120,
+    "unit": "metric"
+  },
+  {
+    "humidity": 47.9,
+    "pressure": 1013.4,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 22.6,
+    "timestamp": 1710000180,
+    "unit": "metric"
+  },
+  {
+    "humidity": 47.5,
+    "pressure": 1013.6,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 22.8,
+    "timestamp": 1710000240,
+    "unit": "metric"
+  },
+  {
+    "humidity": 47.2,
+    "pressure": 1013.8,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 23.1,
+    "timestamp": 1710000300,
+    "unit": "metric"
+  },
+  {
+    "humidity": 46.8,
+    "pressure": 1014,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 23.4,
+    "timestamp": 1710000360,
+    "unit": "metric"
+  },
+  {
+    "humidity": 46.5,
+    "pressure": 1014.2,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 23.7,
+    "timestamp": 1710000420,
+    "unit": "metric"
+  },
+  {
+    "humidity": 46.1,
+    "pressure": 1014.5,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 24,
+    "timestamp": 1710000480,
+    "unit": "metric"
+  },
+  {
+    "humidity": 45.8,
+    "pressure": 1014.7,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 24.2,
+    "timestamp": 1710000540,
+    "unit": "metric"
+  },
+  {
+    "humidity": 45.4,
+    "pressure": 1014.9,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 24.5,
+    "timestamp": 1710000600,
+    "unit": "metric"
+  },
+  {
+    "humidity": 45,
+    "pressure": 1015.1,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 24.8,
+    "timestamp": 1710000660,
+    "unit": "metric"
+  },
+  {
+    "humidity": 44.7,
+    "pressure": 1015.3,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 25.1,
+    "timestamp": 1710000720,
+    "unit": "metric"
+  },
+  {
+    "humidity": 44.3,
+    "pressure": 1015.5,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 25.3,
+    "timestamp": 1710000780,
+    "unit": "metric"
+  },
+  {
+    "humidity": 44,
+    "pressure": 1015.7,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 25.5,
+    "timestamp": 1710000840,
+    "unit": "metric"
+  },
+  {
+    "humidity": 43.6,
+    "pressure": 1015.9,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 25.8,
+    "timestamp": 1710000900,
+    "unit": "metric"
+  },
+  {
+    "humidity": 43.3,
+    "pressure": 1016.1,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 26,
+    "timestamp": 1710000960,
+    "unit": "metric"
+  },
+  {
+    "humidity": 43,
+    "pressure": 1016.3,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 26.2,
+    "timestamp": 1710001020,
+    "unit": "metric"
+  },
+  {
+    "humidity": 18.2,
+    "pressure": 1010.1,
+    "sensor_id": "S-001",
+    "status": "alert",
+    "temperature": 45.8,
+    "timestamp": 1710001080,
+    "unit": "metric"
+  },
+  {
+    "humidity": 42.4,
+    "pressure": 1016.7,
+    "sensor_id": "S-001",
+    "status": "normal",
+    "temperature": 26.5,
+    "timestamp": 1710001140,
+    "unit": "metric"
+  }
+]

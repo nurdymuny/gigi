@@ -1,0 +1,25 @@
+/target
+
+# Build artifacts
+*.aux
+*.log
+*.out
+*.pdf
+*.tex
+
+# Test output
+test_output*.txt
+
+# Local images / scratch
+*.jpg
+*.png
+
+# Python test scripts
+gigi_math_tests*.py
+
+# Vite cache
+.vite/
+
+# Node modules
+node_modules/
+

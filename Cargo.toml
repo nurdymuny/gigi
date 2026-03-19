@@ -1,0 +1,58 @@
+[package]
+name = "gigi"
+version = "0.1.0"
+edition = "2021"
+description = "Geometric Intrinsic Global Index — fiber-bundle database engine"
+authors = ["Bee Rosa Davis <davis@davisgeometric.com>"]
+license = "MIT"
+default-run = "gigi"
+autoexamples = false
+autobenches = false
+
+[dependencies]
+roaring = "0.10"
+regex = "1"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+clap = { version = "4", features = ["derive"] }
+getrandom = "0.2"
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors"] }
+
+[[bin]]
+name = "gigi-convert"
+path = "src/bin/gigi_convert.rs"
+
+[[bin]]
+name = "gigi-server"
+path = "src/bin/gigi_server.rs"
+
+[[bin]]
+name = "gigi-stream"
+path = "src/bin/gigi_stream.rs"
+
+[[bin]]
+name = "gigi-edge"
+path = "src/bin/gigi_edge.rs"
+
+[[bin]]
+name = "gigi-stress"
+path = "src/bin/gigi_stress.rs"
+
+[[bin]]
+name = "bench_o1"
+path = "benches/o1_proof.rs"
+
+[[bin]]
+name = "bench_ingest"
+path = "benches/ingest_bench.rs"
+
+[[bin]]
+name = "nasa_atmo"
+path = "examples/nasa_atmosphere.rs"
+
+[dev-dependencies]
+rand = "0.8"

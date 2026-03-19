@@ -1,0 +1,28 @@
+app = "gigi-playground"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3142"
+  GIGI_DATA_DIR = "/data"
+
+[http_service]
+  internal_port = 3142
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[checks]
+  [checks.health]
+    type = "http"
+    port = 3142
+    path = "/v1/health"
+    interval = "30s"
+    timeout = "5s"
+
+[mounts]
+  source = "gigi_pg_data"
+  destination = "/data"

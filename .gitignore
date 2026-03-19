@@ -22,4 +22,7 @@ gigi_math_tests*.py
 
 # Node modules
 node_modules/
+docs/node_modules/
+playground/node_modules/
+site/node_modules/
 

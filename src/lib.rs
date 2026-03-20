@@ -22,7 +22,7 @@ pub mod convert;
 pub mod edge;
 pub mod crypto;
 
-pub use bundle::{BundleStore, BaseGeometry, detect_base_geometry, QueryCondition, BundleStats, QueryPlan, TransactionOp, TransactionResult};
+pub use bundle::{BundleStore, BaseGeometry, detect_base_geometry, QueryCondition, VectorMetric, BundleStats, QueryPlan, TransactionOp, TransactionResult};
 pub use types::{BundleSchema, FieldDef, FieldType, Value};
 pub use query::QueryResult;
 pub use metric::FiberMetric;

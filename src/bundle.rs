@@ -37,6 +37,8 @@ pub enum QueryCondition {
     EndsWith(String, String),
     /// Regex match: `field MATCHES "^CAS-\\d+"`
     Regex(String, String),
+    /// Inclusive range: `low <= field <= high`
+    Between(String, Value, Value),
 }
 
 impl QueryCondition {
@@ -125,6 +127,9 @@ impl QueryCondition {
                     }
                 })
             }
+            QueryCondition::Between(field, low, high) => {
+                record.get(field).map_or(false, |v| v >= low && v <= high)
+            }
         }
     }
 }
@@ -144,6 +149,47 @@ fn matches_or_filter(record: &Record, or_conditions: Option<&[Vec<QueryCondition
             groups.iter().any(|group| group.iter().all(|c| c.matches(record)))
         }
         _ => true,
+    }
+}
+
+// ── Vector Similarity Metric ──────────────────────────────────
+
+/// Metric for kNN vector search.
+///
+/// All metrics are unified to "higher score = better match" so callers
+/// always sort descending and slice top_k.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VectorMetric {
+    /// Cosine similarity ∈ [-1, 1]. Best for normalized embeddings.
+    /// Geometric meaning: angle between fiber vectors (inner product on S^{d-1}).
+    Cosine,
+    /// Negative L2 (Euclidean) distance. Best for un-normalized embeddings.
+    /// Stored as -||a-b||₂ so higher = closer.
+    Euclidean,
+    /// Raw dot product. Best when vector magnitude encodes relevance.
+    Dot,
+}
+
+impl VectorMetric {
+    /// Compute the score between query vector `q` and candidate vector `v`.
+    /// Higher score always means better match.
+    pub fn score(self, q: &[f64], v: &[f64]) -> f64 {
+        debug_assert_eq!(q.len(), v.len());
+        match self {
+            VectorMetric::Cosine => {
+                let dot: f64 = q.iter().zip(v).map(|(a, b)| a * b).sum();
+                let norm_q: f64 = q.iter().map(|x| x * x).sum::<f64>().sqrt();
+                let norm_v: f64 = v.iter().map(|x| x * x).sum::<f64>().sqrt();
+                if norm_q < 1e-12 || norm_v < 1e-12 { 0.0 } else { dot / (norm_q * norm_v) }
+            }
+            VectorMetric::Euclidean => {
+                let dist: f64 = q.iter().zip(v).map(|(a, b)| (a - b).powi(2)).sum::<f64>().sqrt();
+                -dist  // negate so higher = closer
+            }
+            VectorMetric::Dot => {
+                q.iter().zip(v).map(|(a, b)| a * b).sum()
+            }
+        }
     }
 }
 
@@ -1869,6 +1915,64 @@ impl BundleStore {
         }
 
         (results, total)
+    }
+
+    // ── Vector Similarity Search ───────────────────────────────
+
+    /// Exact k-Nearest Neighbors search in a vector field.
+    ///
+    /// Geometric interpretation: the `field` is a fiber of a vector bundle
+    /// V = B × ℝᵈ. The query vector q ∈ ℝᵈ defines a point in the fiber,
+    /// and kNN finds the d nearest sections in the product metric on V.
+    ///
+    /// Complexity: O(N · d) — brute-force exact search.
+    /// For N < 100K this is perfectly fast. For larger datasets, an HNSW
+    /// index can be layered on top without changing this interface.
+    ///
+    /// Args:
+    ///   field:     Name of the vector fiber field.
+    ///   query:     Query vector (must match stored dimensions).
+    ///   top_k:     Number of results to return.
+    ///   metric:    Distance/similarity metric (see `VectorMetric`).
+    ///   pre_filter: Optional AND conditions applied before scoring.
+    ///
+    /// Returns: Vec of (score, record), sorted by score (descending for
+    /// similarity metrics, ascending for distance metrics).
+    pub fn vector_search(
+        &self,
+        field: &str,
+        query: &[f64],
+        top_k: usize,
+        metric: VectorMetric,
+        pre_filter: &[QueryCondition],
+    ) -> Vec<(f64, Record)> {
+        if top_k == 0 || query.is_empty() {
+            return Vec::new();
+        }
+
+        // Brute-force scan
+        let mut candidates: Vec<(f64, Record)> = self
+            .records()
+            .filter(|rec| pre_filter.iter().all(|c| c.matches(rec)))
+            .filter_map(|rec| {
+                let vec = match rec.get(field)? {
+                    Value::Vector(v) => v,
+                    _ => return None,
+                };
+                if vec.len() != query.len() {
+                    return None;
+                }
+                let score = metric.score(query, vec);
+                Some((score, rec))
+            })
+            .collect();
+
+        // Sort: higher score = better for similarity, lower = better for distance.
+        // We unify: always higher-first so callers can slice top_k uniformly.
+        // Distance metrics return negative distances → higher is closer.
+        candidates.sort_by(|a, b| b.0.total_cmp(&a.0));
+        candidates.truncate(top_k);
+        candidates
     }
 
     // ── Sprint 2: New Methods ──────────────────────────────────
@@ -4135,5 +4239,207 @@ mod tests {
                 "Plaintext store should store raw values, got {f}"),
             _ => {}
         }
+    }
+
+    // ── BETWEEN operator tests ──────────────────────────────────────────────
+
+    #[test]
+    fn test_between_numeric_inclusive_bounds() {
+        let schema = BundleSchema::new("t")
+            .base(FieldDef::numeric("x"));
+        let mut store = BundleStore::new(schema);
+        for i in 0i64..=10 {
+            let mut r = Record::new();
+            r.insert("x".into(), Value::Integer(i));
+            store.insert(&r);
+        }
+        let cond = QueryCondition::Between(
+            "x".into(), Value::Integer(3), Value::Integer(7),
+        );
+        let results = store.filtered_query(&[cond], None, false, None, None);
+        // Should return 3,4,5,6,7 → 5 records
+        assert_eq!(results.len(), 5);
+        for r in &results {
+            let v = match r.get("x").unwrap() {
+                Value::Integer(i) => *i,
+                _ => panic!("unexpected type"),
+            };
+            assert!((3..=7).contains(&v), "x={v} not in [3,7]");
+        }
+    }
+
+    #[test]
+    fn test_between_boundary_values_included() {
+        let schema = BundleSchema::new("t")
+            .base(FieldDef::numeric("score"));
+        let mut store = BundleStore::new(schema);
+        for v in [0.0f64, 5.0, 10.0, 15.0] {
+            let mut r = Record::new();
+            r.insert("score".into(), Value::Float(v));
+            store.insert(&r);
+        }
+        let cond = QueryCondition::Between(
+            "score".into(), Value::Float(5.0), Value::Float(10.0),
+        );
+        let results = store.filtered_query(&[cond], None, false, None, None);
+        // 5.0 and 10.0 are both included (inclusive)
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_between_no_matches() {
+        let schema = BundleSchema::new("t")
+            .base(FieldDef::numeric("n"));
+        let mut store = BundleStore::new(schema);
+        for i in [1i64, 2, 3] {
+            let mut r = Record::new();
+            r.insert("n".into(), Value::Integer(i));
+            store.insert(&r);
+        }
+        let cond = QueryCondition::Between(
+            "n".into(), Value::Integer(10), Value::Integer(20),
+        );
+        let results = store.filtered_query(&[cond], None, false, None, None);
+        assert!(results.is_empty());
+    }
+
+    // ── VectorMetric tests ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_cosine_identical_unit_vectors() {
+        let v = vec![1.0f64, 0.0, 0.0];
+        let score = VectorMetric::Cosine.score(&v, &v);
+        assert!((score - 1.0).abs() < 1e-10, "cosine of identical vectors = 1, got {score}");
+    }
+
+    #[test]
+    fn test_cosine_orthogonal_vectors() {
+        let a = vec![1.0f64, 0.0];
+        let b = vec![0.0f64, 1.0];
+        let score = VectorMetric::Cosine.score(&a, &b);
+        assert!(score.abs() < 1e-10, "cosine of orthogonal vectors = 0, got {score}");
+    }
+
+    #[test]
+    fn test_cosine_opposite_vectors() {
+        let a = vec![1.0f64, 0.0];
+        let b = vec![-1.0f64, 0.0];
+        let score = VectorMetric::Cosine.score(&a, &b);
+        assert!((score - (-1.0)).abs() < 1e-10, "cosine of opposite vectors = -1, got {score}");
+    }
+
+    #[test]
+    fn test_euclidean_same_point() {
+        let v = vec![3.0f64, 4.0];
+        // Same point → distance 0 → score 0
+        let score = VectorMetric::Euclidean.score(&v, &v);
+        assert!(score.abs() < 1e-10, "euclidean same point = 0, got {score}");
+    }
+
+    #[test]
+    fn test_euclidean_known_distance() {
+        let a = vec![0.0f64, 0.0];
+        let b = vec![3.0f64, 4.0];
+        // distance = 5 → score = -5
+        let score = VectorMetric::Euclidean.score(&a, &b);
+        assert!((score - (-5.0)).abs() < 1e-10, "euclidean score = -5, got {score}");
+    }
+
+    #[test]
+    fn test_dot_product() {
+        let a = vec![1.0f64, 2.0, 3.0];
+        let b = vec![4.0f64, 5.0, 6.0];
+        // dot = 1*4+2*5+3*6 = 4+10+18 = 32
+        let score = VectorMetric::Dot.score(&a, &b);
+        assert!((score - 32.0).abs() < 1e-10, "dot product = 32, got {score}");
+    }
+
+    // ── vector_search tests ─────────────────────────────────────────────────
+
+    fn make_vector_store() -> BundleStore {
+        use crate::types::FieldType;
+        let schema = BundleSchema::new("vecs")
+            .base(FieldDef { name: "id".into(), field_type: FieldType::Numeric, default: Value::Null, range: None, weight: 1.0 })
+            .fiber(FieldDef { name: "emb".into(), field_type: FieldType::Vector { dims: 2 }, default: Value::Null, range: None, weight: 1.0 })
+            .fiber(FieldDef { name: "cat".into(), field_type: FieldType::Categorical, default: Value::Null, range: None, weight: 1.0 });
+        let mut store = BundleStore::new(schema);
+        // Insert 5 vectors at known positions in 2D
+        let vecs: &[(i64, [f64; 2], &str)] = &[
+            (1, [1.0, 0.0], "A"),
+            (2, [0.0, 1.0], "B"),
+            (3, [-1.0, 0.0], "A"),
+            (4, [0.0, -1.0], "B"),
+            (5, [0.707, 0.707], "A"),
+        ];
+        for (id, emb, cat) in vecs {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(*id));
+            r.insert("emb".into(), Value::Vector(emb.to_vec()));
+            r.insert("cat".into(), Value::Text(cat.to_string()));
+            store.insert(&r);
+        }
+        store
+    }
+
+    #[test]
+    fn test_vector_search_top1_cosine() {
+        let store = make_vector_store();
+        // Query [1,0] → closest by cosine is itself (id=1)
+        let results = store.vector_search("emb", &[1.0, 0.0], 1, VectorMetric::Cosine, &[]);
+        assert_eq!(results.len(), 1);
+        let (score, rec) = &results[0];
+        assert!((score - 1.0).abs() < 1e-6, "top cosine score = 1.0, got {score}");
+        assert_eq!(rec.get("id"), Some(&Value::Integer(1)));
+    }
+
+    #[test]
+    fn test_vector_search_top3_cosine() {
+        let store = make_vector_store();
+        // Query [1,0] → top-3 by cosine: id=1 (1.0), id=5 (~0.707), id=2 or 4 (0.0)
+        let results = store.vector_search("emb", &[1.0, 0.0], 3, VectorMetric::Cosine, &[]);
+        assert_eq!(results.len(), 3);
+        // Scores are descending
+        for i in 0..results.len() - 1 {
+            assert!(results[i].0 >= results[i + 1].0, "scores not sorted descending");
+        }
+        // id=1 must be first
+        assert_eq!(results[0].1.get("id"), Some(&Value::Integer(1)));
+    }
+
+    #[test]
+    fn test_vector_search_top_k_clamped_to_n() {
+        let store = make_vector_store();
+        // Requesting more than N → returns all N
+        let results = store.vector_search("emb", &[1.0, 0.0], 100, VectorMetric::Cosine, &[]);
+        assert_eq!(results.len(), 5);
+    }
+
+    #[test]
+    fn test_vector_search_with_prefilter() {
+        let store = make_vector_store();
+        // Only look at cat="A" records: ids 1, 3, 5
+        let pre_filter = vec![QueryCondition::Eq("cat".into(), Value::Text("A".into()))];
+        let results = store.vector_search("emb", &[1.0, 0.0], 10, VectorMetric::Cosine, &pre_filter);
+        assert_eq!(results.len(), 3, "pre-filter should restrict to cat=A");
+        for (_, rec) in &results {
+            assert_eq!(rec.get("cat"), Some(&Value::Text("A".into())));
+        }
+    }
+
+    #[test]
+    fn test_vector_search_dimension_mismatch_skips() {
+        let store = make_vector_store();
+        // Wrong dims → all vectors skipped → empty results
+        let results = store.vector_search("emb", &[1.0, 0.0, 0.0], 10, VectorMetric::Cosine, &[]);
+        assert!(results.is_empty(), "dimension mismatch should return empty");
+    }
+
+    #[test]
+    fn test_vector_search_euclidean_ranking() {
+        let store = make_vector_store();
+        // Query [1,0] by euclidean → id=1 is closest (distance 0)
+        let results = store.vector_search("emb", &[1.0, 0.0], 1, VectorMetric::Euclidean, &[]);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].1.get("id"), Some(&Value::Integer(1)));
     }
 }

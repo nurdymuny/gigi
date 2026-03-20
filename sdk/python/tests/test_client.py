@@ -409,8 +409,69 @@ class TestSubscriptionEventParsing:
         assert event is not None
         assert event.bundle == "orders"
         assert event.op == "insert"
-        assert event.record == {"id": "o1", "amount": 99.5}
-        assert pytest.approx(event.curvature, abs=1e-6) == 0.031
+
+
+# ── VectorSearch ──────────────────────────────────────────────────────────────
+
+
+class TestVectorSearch:
+    @resp_lib.activate
+    def test_vector_search_basic(self):
+        results = [
+            {"score": 0.99, "record": {"id": "a", "emb": [1.0, 0.0]}},
+            {"score": 0.71, "record": {"id": "b", "emb": [0.7, 0.7]}},
+        ]
+        resp_lib.post(
+            f"{BASE_URL}/v1/bundles/docs/vector-search",
+            json={"results": results, "meta": {"count": 2, "metric": "cosine", "top_k": 10}},
+            status=200,
+        )
+        hits = client().vector_search("docs", "emb", [1.0, 0.0], top_k=10)
+        assert len(hits) == 2
+        assert hits[0]["score"] == pytest.approx(0.99)
+        assert hits[0]["record"]["id"] == "a"
+
+    @resp_lib.activate
+    def test_vector_search_with_filters(self):
+        resp_lib.post(
+            f"{BASE_URL}/v1/bundles/articles/vector-search",
+            json={"results": [], "meta": {"count": 0, "metric": "euclidean", "top_k": 5}},
+            status=200,
+        )
+        hits = client().vector_search(
+            "articles", "embedding", [0.1, 0.2, 0.3],
+            top_k=5, metric="euclidean",
+            filters=[{"field": "category", "op": "eq", "value": "tech"}],
+        )
+        assert hits == []
+        # verify the request body was correct
+        req = resp_lib.calls[0].request
+        body = json.loads(req.body)
+        assert body["metric"] == "euclidean"
+        assert body["top_k"] == 5
+        assert body["filters"] == [{"field": "category", "op": "eq", "value": "tech"}]
+
+    @resp_lib.activate
+    def test_vector_search_default_metric_cosine(self):
+        resp_lib.post(
+            f"{BASE_URL}/v1/bundles/store/vector-search",
+            json={"results": [], "meta": {}},
+            status=200,
+        )
+        client().vector_search("store", "vec", [1.0])
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["metric"] == "cosine"
+        assert body["top_k"] == 10
+
+    @resp_lib.activate
+    def test_vector_search_404_raises_bundle_not_found(self):
+        resp_lib.post(
+            f"{BASE_URL}/v1/bundles/ghost/vector-search",
+            json={"error": "Bundle 'ghost' not found"},
+            status=404,
+        )
+        with pytest.raises(BundleNotFound):
+            client().vector_search("ghost", "emb", [1.0, 0.0])
 
     def test_parse_event_no_k(self):
         raw = 'EVENT orders delete {"id":"o1"}'

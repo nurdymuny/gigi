@@ -254,6 +254,13 @@ fn encode_value(v: &Value) -> Vec<u8> {
         Value::Bool(b) => { buf.push(0x04); buf.push(*b as u8); }
         Value::Timestamp(t) => { buf.push(0x05); buf.extend_from_slice(&t.to_le_bytes()); }
         Value::Null => { buf.push(0x00); }
+        Value::Vector(v) => {
+            buf.push(0x06);
+            buf.extend_from_slice(&(v.len() as u32).to_le_bytes());
+            for &x in v {
+                buf.extend_from_slice(&x.to_le_bytes());
+            }
+        }
     }
     buf
 }
@@ -290,6 +297,17 @@ fn decode_value(data: &[u8], offset: &mut usize) -> io::Result<Value> {
             *offset += 8;
             Ok(Value::Timestamp(v))
         }
+        0x06 => {
+            let len = u32::from_le_bytes(data[*offset..*offset + 4].try_into().unwrap()) as usize;
+            *offset += 4;
+            let mut v = Vec::with_capacity(len);
+            for _ in 0..len {
+                let x = f64::from_le_bytes(data[*offset..*offset + 8].try_into().unwrap());
+                *offset += 8;
+                v.push(x);
+            }
+            Ok(Value::Vector(v))
+        }
         _ => Err(io::Error::new(io::ErrorKind::InvalidData, format!("unknown value tag: {tag:#x}"))),
     }
 }
@@ -308,6 +326,10 @@ fn encode_field_type(ft: &FieldType) -> Vec<u8> {
         }
         FieldType::Timestamp => buf.push(0x04),
         FieldType::Binary => buf.push(0x05),
+        FieldType::Vector { dims } => {
+            buf.push(0x06);
+            buf.extend_from_slice(&(*dims as u32).to_le_bytes());
+        }
     }
     buf
 }
@@ -329,6 +351,11 @@ fn decode_field_type(data: &[u8], offset: &mut usize) -> io::Result<FieldType> {
         }
         0x04 => Ok(FieldType::Timestamp),
         0x05 => Ok(FieldType::Binary),
+        0x06 => {
+            let dims = u32::from_le_bytes(data[*offset..*offset + 4].try_into().unwrap()) as usize;
+            *offset += 4;
+            Ok(FieldType::Vector { dims })
+        }
         _ => Err(io::Error::new(io::ErrorKind::InvalidData, format!("unknown field type tag: {tag:#x}"))),
     }
 }

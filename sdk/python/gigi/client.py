@@ -291,6 +291,52 @@ class GigiClient:
         """Get all distinct values for a field."""
         return self._get(f"/v1/bundles/{bundle}/distinct/{field}")["values"]
 
+    def vector_search(
+        self,
+        bundle: str,
+        field: str,
+        vector: List[float],
+        *,
+        top_k: int = 10,
+        metric: str = "cosine",
+        filters: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        k-Nearest Neighbor vector similarity search.
+
+        Args:
+            bundle: Bundle name.
+            field:  Name of the vector field to search in.
+            vector: Query embedding as a list of floats.
+            top_k:  Number of nearest neighbors to return (default 10).
+            metric: Distance metric — "cosine" (default), "euclidean", or "dot".
+            filters: Optional pre-filter conditions applied before scoring.
+                     Same format as ``query()`` filters.
+
+        Returns:
+            List of dicts, each with "score" (float) and "record" (dict).
+            Sorted by score descending (higher = more similar for cosine/dot;
+            lower distance = higher score for euclidean).
+
+        Example::
+
+            results = db.vector_search(
+                "articles", "embedding", query_vec,
+                top_k=5, metric="cosine",
+                filters=[{"field": "category", "op": "eq", "value": "tech"}],
+            )
+            for hit in results:
+                print(hit["score"], hit["record"]["title"])
+        """
+        body: Dict[str, Any] = {
+            "field": field,
+            "vector": vector,
+            "top_k": top_k,
+            "metric": metric,
+            "filters": filters or [],
+        }
+        return self._post(f"/v1/bundles/{bundle}/vector-search", body)["results"]
+
     def all(
         self,
         bundle: str,

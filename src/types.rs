@@ -11,6 +11,9 @@ pub enum FieldType {
     OrderedCat { order: Vec<String> },
     Timestamp,
     Binary,
+    /// Dense float vector of fixed dimensionality (embedding field).
+    /// Geometric meaning: a section into a vector bundle V = B × ℝᵈ.
+    Vector { dims: usize },
 }
 
 /// A dynamically-typed value stored in a fiber.
@@ -21,6 +24,8 @@ pub enum Value {
     Text(String),
     Bool(bool),
     Timestamp(i64),
+    /// Dense float vector — embedding / feature vector.
+    Vector(Vec<f64>),
     Null,
 }
 
@@ -43,6 +48,7 @@ impl Ord for Value {
                 Value::Float(_) => 3,
                 Value::Text(_) => 4,
                 Value::Timestamp(_) => 5,
+                Value::Vector(_) => 6,
             }
         }
         match (self, other) {
@@ -56,6 +62,15 @@ impl Ord for Value {
             (Value::Float(a), Value::Integer(b)) => a.total_cmp(&(*b as f64)),
             (Value::Text(a), Value::Text(b)) => a.cmp(b),
             (Value::Timestamp(a), Value::Timestamp(b)) => a.cmp(b),
+            (Value::Vector(a), Value::Vector(b)) => {
+                // Lexicographic on bit patterns (for Ord consistency; semantic
+                // similarity is handled by vector_search, not ordering).
+                for (x, y) in a.iter().zip(b.iter()) {
+                    let cmp = x.total_cmp(y);
+                    if cmp != Ordering::Equal { return cmp; }
+                }
+                a.len().cmp(&b.len())
+            }
             _ => type_order(self).cmp(&type_order(other)),
         }
     }
@@ -70,6 +85,10 @@ impl std::hash::Hash for Value {
             Value::Text(v) => v.hash(state),
             Value::Bool(v) => v.hash(state),
             Value::Timestamp(v) => v.hash(state),
+            Value::Vector(v) => {
+                v.len().hash(state);
+                for x in v { x.to_bits().hash(state); }
+            }
             Value::Null => {}
         }
     }
@@ -83,6 +102,14 @@ impl fmt::Display for Value {
             Value::Text(v) => write!(f, "{v}"),
             Value::Bool(v) => write!(f, "{v}"),
             Value::Timestamp(v) => write!(f, "T{v}"),
+            Value::Vector(v) => {
+                write!(f, "[")?;
+                for (i, x) in v.iter().enumerate() {
+                    if i > 0 { write!(f, ",")?; }
+                    write!(f, "{x}")?;
+                }
+                write!(f, "]")
+            }
             Value::Null => write!(f, "NULL"),
         }
     }

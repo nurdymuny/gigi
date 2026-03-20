@@ -460,6 +460,7 @@ fn field_type_str(ft: &crate::types::FieldType) -> String {
         crate::types::FieldType::OrderedCat { .. } => "categorical".to_string(),
         crate::types::FieldType::Timestamp => "timestamp".to_string(),
         crate::types::FieldType::Binary => "categorical".to_string(),
+        crate::types::FieldType::Vector { dims } => format!("vector({})", dims),
     }
 }
 
@@ -471,6 +472,7 @@ fn value_to_json(v: &Value) -> serde_json::Value {
         Value::Bool(b) => serde_json::json!(b),
         Value::Timestamp(t) => serde_json::json!(t),
         Value::Null => serde_json::Value::Null,
+        Value::Vector(v) => serde_json::Value::Array(v.iter().map(|x| serde_json::json!(x)).collect()),
     }
 }
 

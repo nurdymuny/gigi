@@ -36,7 +36,7 @@ use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use tokio::sync::broadcast;
 
-use gigi::bundle::QueryCondition;
+use gigi::bundle::{QueryCondition, VectorMetric};
 use gigi::bundle::TransactionOp;
 use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 use gigi::curvature;
@@ -434,6 +434,17 @@ fn json_to_value(v: &serde_json::Value) -> Value {
         }
         serde_json::Value::String(s) => Value::Text(s.clone()),
         serde_json::Value::Bool(b) => Value::Bool(*b),
+        serde_json::Value::Array(arr) => {
+            // Numeric arrays → Value::Vector (embedding/feature vector)
+            let floats: Vec<f64> = arr.iter()
+                .filter_map(|x| x.as_f64())
+                .collect();
+            if floats.len() == arr.len() && !arr.is_empty() {
+                Value::Vector(floats)
+            } else {
+                Value::Null
+            }
+        }
         _ => Value::Null,
     }
 }
@@ -445,6 +456,9 @@ fn value_to_json(v: &Value) -> serde_json::Value {
         Value::Text(s) => serde_json::json!(s),
         Value::Bool(b) => serde_json::json!(b),
         Value::Timestamp(t) => serde_json::json!(t),
+        Value::Vector(v) => serde_json::Value::Array(
+            v.iter().map(|x| serde_json::json!(x)).collect()
+        ),
         Value::Null => serde_json::Value::Null,
     }
 }
@@ -458,7 +472,17 @@ fn record_to_json(record: &Record) -> serde_json::Value {
 }
 
 fn str_to_field_type(s: &str) -> FieldType {
-    match s.to_lowercase().as_str() {
+    let lower = s.to_lowercase();
+    // Support "vector(768)" or "vector" syntax
+    if lower.starts_with("vector") {
+        let dims = lower
+            .trim_start_matches("vector")
+            .trim_matches(|c: char| c == '(' || c == ')' || c.is_whitespace())
+            .parse::<usize>()
+            .unwrap_or(0);
+        return FieldType::Vector { dims };
+    }
+    match lower.as_str() {
         "numeric" | "number" | "float" | "int" | "integer" => FieldType::Numeric,
         "timestamp" | "time" | "date" => FieldType::Timestamp,
         _ => FieldType::Categorical,
@@ -1176,6 +1200,17 @@ fn condition_spec_to_query_condition(spec: &ConditionSpec) -> QueryCondition {
         }
         "is_null" | "isnull" => QueryCondition::IsNull(spec.field.clone()),
         "is_not_null" | "isnotnull" | "not_null" => QueryCondition::IsNotNull(spec.field.clone()),
+        "between" => {
+            // value must be a 2-element array [low, high]
+            if let serde_json::Value::Array(arr) = &spec.value {
+                if arr.len() == 2 {
+                    let low = json_to_value(&arr[0]);
+                    let high = json_to_value(&arr[1]);
+                    return QueryCondition::Between(spec.field.clone(), low, high);
+                }
+            }
+            QueryCondition::Eq(spec.field.clone(), value) // fallback
+        }
         _ => QueryCondition::Eq(spec.field.clone(), value), // default to eq
     }
 }
@@ -3067,6 +3102,74 @@ fn exec_result_to_response(result: gigi::parser::ExecResult) -> (StatusCode, Jso
     }
 }
 
+// ── Vector Search ──
+
+#[derive(Deserialize)]
+struct VectorSearchRequest {
+    /// Name of the vector field to search in.
+    field: String,
+    /// Query vector (must match stored dimensionality).
+    vector: Vec<f64>,
+    /// Number of nearest neighbors to return (default 10).
+    #[serde(default)]
+    top_k: Option<usize>,
+    /// Metric: "cosine" (default), "euclidean", "dot"
+    #[serde(default)]
+    metric: Option<String>,
+    /// Optional pre-filter: only score records matching these conditions.
+    #[serde(default)]
+    filters: Vec<ConditionSpec>,
+}
+
+async fn vector_search_handler(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<VectorSearchRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+    ))?;
+
+    let top_k = req.top_k.unwrap_or(10).max(1);
+
+    let metric = match req.metric.as_deref().unwrap_or("cosine") {
+        "euclidean" | "l2" => VectorMetric::Euclidean,
+        "dot" | "dot_product" | "inner_product" => VectorMetric::Dot,
+        _ => VectorMetric::Cosine,
+    };
+
+    let pre_filter: Vec<QueryCondition> = req.filters.iter()
+        .map(condition_spec_to_query_condition)
+        .collect();
+
+    let results = store.vector_search(&req.field, &req.vector, top_k, metric, &pre_filter);
+
+    let json_results: Vec<serde_json::Value> = results.into_iter().map(|(score, record)| {
+        serde_json::json!({
+            "score": score,
+            "record": record_to_json(&record)
+        })
+    }).collect();
+
+    let metric_name = match metric {
+        VectorMetric::Cosine => "cosine",
+        VectorMetric::Euclidean => "euclidean",
+        VectorMetric::Dot => "dot",
+    };
+
+    Ok(Json(serde_json::json!({
+        "results": json_results,
+        "meta": {
+            "count": json_results.len(),
+            "metric": metric_name,
+            "query_dims": req.vector.len(),
+            "top_k": top_k
+        }
+    })))
+}
+
 // ── Main ──
 
 #[tokio::main]
@@ -3115,6 +3218,7 @@ async fn main() {
         .route("/v1/bundles/{name}/stats", get(bundle_stats))
         .route("/v1/bundles/{name}/explain", post(explain_query))
         .route("/v1/bundles/{name}/transaction", post(execute_transaction))
+        .route("/v1/bundles/{name}/vector-search", post(vector_search_handler))
         // OpenAPI spec
         .route("/v1/openapi.json", get(openapi_spec))
         // GQL endpoint

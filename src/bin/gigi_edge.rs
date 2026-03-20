@@ -145,6 +145,7 @@ fn value_to_json(v: &Value) -> serde_json::Value {
         Value::Bool(b) => serde_json::json!(b),
         Value::Timestamp(t) => serde_json::json!(t),
         Value::Null => serde_json::Value::Null,
+        Value::Vector(v) => serde_json::Value::Array(v.iter().map(|x| serde_json::json!(x)).collect()),
     }
 }
 

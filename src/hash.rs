@@ -112,6 +112,16 @@ fn encode_value(val: &Value) -> Vec<u8> {
             bits.to_be_bytes().to_vec()
         }
         Value::Null => vec![0xFF], // sentinel
+        Value::Vector(v) => {
+            // Encode as concatenated big-endian f64 bytes (for total-order hashing)
+            let mut bytes = Vec::with_capacity(v.len() * 8);
+            for &x in v {
+                let mut bits = x.to_bits();
+                if x >= 0.0 { bits ^= 1u64 << 63; } else { bits = !bits; }
+                bytes.extend_from_slice(&bits.to_be_bytes());
+            }
+            bytes
+        }
     }
 }
 

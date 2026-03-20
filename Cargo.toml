@@ -21,6 +21,7 @@ getrandom = "0.2"
 tokio = { version = "1", features = ["full"] }
 axum = { version = "0.8", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors"] }
+futures-util = "0.3"
 
 [[bin]]
 name = "gigi-convert"

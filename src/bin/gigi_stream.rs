@@ -20,7 +20,7 @@ use axum::{
     http::StatusCode,
     extract::{
         Path, Query, State, WebSocketUpgrade,
-        ws::{Message, WebSocket},
+        ws::WebSocket,
     },
     response::IntoResponse,
     middleware as axum_mw,
@@ -66,11 +66,19 @@ struct StreamState {
     start_time: Instant,
 }
 
+/// A mutation event broadcast to all subscribers of a bundle.
+/// Carries the full record so subscribers can evaluate filter conditions
+/// without re-querying the store — sheaf restriction to an open set.
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 struct SubscriptionEvent {
     bundle: String,
+    /// Operation: "insert", "update", "delete", "upsert", "bulk_update", "bulk_delete"
+    op: &'static str,
+    /// Full JSON of the affected record(s). For bulk ops: array of records.
     record_json: String,
+    /// Scalar curvature K at the time of mutation — lets subscribers detect
+    /// topological phase transitions without an extra round-trip.
+    curvature: f64,
 }
 
 impl StreamState {
@@ -730,16 +738,31 @@ async fn insert_records(
         Json(ErrorResponse { error: format!("Storage error: {e}") }),
     ))?;
 
-    // Broadcast batch event to subscribers (single event for entire batch)
-    let tx = state.get_or_create_channel(&name);
-    let _ = tx.send(SubscriptionEvent {
-        bundle: name.clone(),
-        record_json: format!("{{\"batch\": {inserted}}}"),
-    });
-
     let store = engine.bundle(&name).unwrap();
     let k = curvature::scalar_curvature(store);
     let conf = curvature::confidence(k);
+
+    // Broadcast batch insert event — each individual record as separate event
+    // so subscribers with per-record filters can evaluate them.
+    // For large batches, emit a single summary event to avoid channel flooding.
+    let tx = state.get_or_create_channel(&name);
+    if records.len() <= 100 {
+        for rec in &records {
+            let _ = tx.send(SubscriptionEvent {
+                bundle: name.clone(),
+                op: "insert",
+                record_json: serde_json::to_string(&record_to_json(rec)).unwrap_or_default(),
+                curvature: k,
+            });
+        }
+    } else {
+        let _ = tx.send(SubscriptionEvent {
+            bundle: name.clone(),
+            op: "insert",
+            record_json: format!("{{\"batch\": {inserted}}}"),
+            curvature: k,
+        });
+    }
 
     Ok(Json(serde_json::json!({
         "status": "inserted",
@@ -807,14 +830,16 @@ async fn stream_ingest(
         Json(ErrorResponse { error: format!("Storage error: {e}") }),
     ))?;
 
+    let store = engine.bundle(&name).unwrap();
+    let k = curvature::scalar_curvature(store);
+
     let tx = state.get_or_create_channel(&name);
     let _ = tx.send(SubscriptionEvent {
         bundle: name.clone(),
+        op: "insert",
         record_json: format!("{{\"stream_batch\": {inserted}}}"),
+        curvature: k,
     });
-
-    let store = engine.bundle(&name).unwrap();
-    let k = curvature::scalar_curvature(store);
     let conf = curvature::confidence(k);
 
     Ok(Json(serde_json::json!({
@@ -1384,9 +1409,14 @@ async fn patch_by_path(
     }
 
     let k = curvature::scalar_curvature(store);
+    let total = store.len();
+    drop(engine);
+    let tx = state.get_or_create_channel(&name);
+    let patch_json = serde_json::to_string(&serde_json::json!({ "key": record_to_json(&key), "patches": patches.iter().map(|(fk, fv)| (fk.clone(), value_to_json(fv))).collect::<serde_json::Map<_,_>>() })).unwrap_or_default();
+    let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "update", record_json: patch_json, curvature: k });
     Ok(Json(serde_json::json!({
         "status": "updated",
-        "total": store.len(),
+        "total": total,
         "curvature": k,
         "confidence": curvature::confidence(k)
     })))
@@ -1415,9 +1445,14 @@ async fn delete_by_path(
     }
 
     let k = curvature::scalar_curvature(store);
+    let total = store.len();
+    drop(engine);
+    let tx = state.get_or_create_channel(&name);
+    let key_json = serde_json::to_string(&record_to_json(&key)).unwrap_or_default();
+    let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "delete", record_json: key_json, curvature: k });
     Ok(Json(serde_json::json!({
         "status": "deleted",
-        "total": store.len(),
+        "total": total,
         "curvature": k,
         "confidence": curvature::confidence(k)
     })))
@@ -1446,10 +1481,19 @@ async fn bulk_update_records(
     let count = store.bulk_update(&conditions, &patches);
 
     let k = curvature::scalar_curvature(store);
+    let total = store.len();
+    drop(engine);
+    let tx = state.get_or_create_channel(&name);
+    let _ = tx.send(SubscriptionEvent {
+        bundle: name.clone(),
+        op: "bulk_update",
+        record_json: format!("{{\"matched\": {count}}}"),
+        curvature: k,
+    });
     Ok(Json(serde_json::json!({
         "status": "updated",
         "matched": count,
-        "total": store.len(),
+        "total": total,
         "curvature": k,
         "confidence": curvature::confidence(k)
     })))
@@ -1475,10 +1519,20 @@ async fn upsert_records(
 
     let inserted = store.upsert(&record);
     let k = curvature::scalar_curvature(store);
+    let total = store.len();
+    let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
+    drop(engine);
+    let tx = state.get_or_create_channel(&name);
+    let _ = tx.send(SubscriptionEvent {
+        bundle: name.clone(),
+        op: if inserted { "insert" } else { "update" },
+        record_json: rec_json,
+        curvature: k,
+    });
 
     Ok(Json(serde_json::json!({
         "status": if inserted { "inserted" } else { "updated" },
-        "total": store.len(),
+        "total": total,
         "curvature": k,
         "confidence": curvature::confidence(k)
     })))
@@ -1568,11 +1622,20 @@ async fn bulk_delete_records(
 
     let deleted = store.bulk_delete(&conditions);
     let k = curvature::scalar_curvature(store);
+    let total = store.len();
+    drop(engine);
+    let tx = state.get_or_create_channel(&name);
+    let _ = tx.send(SubscriptionEvent {
+        bundle: name.clone(),
+        op: "bulk_delete",
+        record_json: format!("{{\"deleted\": {deleted}}}"),
+        curvature: k,
+    });
 
     Ok(Json(serde_json::json!({
         "status": "deleted",
         "deleted": deleted,
-        "total": store.len(),
+        "total": total,
         "curvature": k,
         "confidence": curvature::confidence(k)
     })))
@@ -1877,10 +1940,15 @@ async fn update_records_v2(
         match store.update_returning(&key, &patches) {
             Some(record) => {
                 let k = curvature::scalar_curvature(store);
+                let total = store.len();
+                let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
+                drop(engine);
+                let tx = state.get_or_create_channel(&name);
+                let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "update", record_json: rec_json.clone(), curvature: k });
                 Ok(Json(serde_json::json!({
                     "status": "updated",
-                    "data": record_to_json(&record),
-                    "total": store.len(),
+                    "data": serde_json::from_str::<serde_json::Value>(&rec_json).unwrap_or_default(),
+                    "total": total,
                     "curvature": k,
                     "confidence": curvature::confidence(k)
                 })))
@@ -1898,9 +1966,14 @@ async fn update_records_v2(
             ));
         }
         let k = curvature::scalar_curvature(store);
+        let total = store.len();
+        let patch_json = serde_json::to_string(&serde_json::json!({"key": record_to_json(&key)})).unwrap_or_default();
+        drop(engine);
+        let tx = state.get_or_create_channel(&name);
+        let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "update", record_json: patch_json, curvature: k });
         Ok(Json(serde_json::json!({
             "status": "updated",
-            "total": store.len(),
+            "total": total,
             "curvature": k,
             "confidence": curvature::confidence(k)
         })))
@@ -1927,10 +2000,15 @@ async fn delete_records_v2(
         match store.delete_returning(&key) {
             Some(record) => {
                 let k = curvature::scalar_curvature(store);
+                let total = store.len();
+                let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
+                drop(engine);
+                let tx = state.get_or_create_channel(&name);
+                let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "delete", record_json: rec_json.clone(), curvature: k });
                 Ok(Json(serde_json::json!({
                     "status": "deleted",
-                    "data": record_to_json(&record),
-                    "total": store.len(),
+                    "data": serde_json::from_str::<serde_json::Value>(&rec_json).unwrap_or_default(),
+                    "total": total,
                     "curvature": k,
                     "confidence": curvature::confidence(k)
                 })))
@@ -1948,9 +2026,14 @@ async fn delete_records_v2(
             ));
         }
         let k = curvature::scalar_curvature(store);
+        let total = store.len();
+        let key_json = serde_json::to_string(&record_to_json(&key)).unwrap_or_default();
+        drop(engine);
+        let tx = state.get_or_create_channel(&name);
+        let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "delete", record_json: key_json, curvature: k });
         Ok(Json(serde_json::json!({
             "status": "deleted",
-            "total": store.len(),
+            "total": total,
             "curvature": k,
             "confidence": curvature::confidence(k)
         })))
@@ -2155,6 +2238,40 @@ async fn execute_transaction(
 }
 
 // ── WebSocket Handler ──
+//
+// Reactive subscriptions — geometric model:
+//   A subscription is an open section of the bundle sheaf restricted to
+//   the subscriber's filter predicate. Any mutation event that lands in
+//   that section is pushed to the client immediately.
+//
+// Protocol (text frames, one command per frame):
+//   Client → Server:
+//     SUBSCRIBE <bundle> [WHERE <field> <op> <value> [AND ...]]
+//     UNSUBSCRIBE <bundle>
+//     INSERT <bundle>\n<DHOOM_DATA>
+//     QUERY <bundle> WHERE <field> = <value>
+//     RANGE <bundle> WHERE <field> = <value>
+//     CURVATURE <bundle>
+//     CONSISTENCY <bundle>
+//     PING
+//
+//   Server → Client (push):
+//     SUBSCRIBED <bundle>               — ACK
+//     UNSUBSCRIBED <bundle>             — ACK
+//     EVENT <bundle> <op> <record_json> K=<curvature>  — pushed mutation
+//     RESULT <json>                     — query response
+//     ERROR <message>                   — error response
+//     PONG                              — keepalive reply
+
+/// A single active subscription held by a WebSocket connection.
+struct Subscription {
+    #[allow(dead_code)]
+    bundle: String,
+    /// Optional filter: only events matching ALL conditions are forwarded.
+    /// Empty = subscribe to all events for the bundle.
+    filters: Vec<(String, String, Value)>, // (field, op, value)
+    receiver: tokio::sync::broadcast::Receiver<SubscriptionEvent>,
+}
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
@@ -2163,28 +2280,206 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_ws(socket, state))
 }
 
-async fn handle_ws(mut socket: WebSocket, state: Arc<StreamState>) {
-    while let Some(Ok(msg)) = socket.recv().await {
-        match msg {
-            Message::Text(text) => {
-                let response = handle_ws_command(&text, &state).await;
-                if socket.send(Message::Text(response.into())).await.is_err() {
+async fn handle_ws(socket: WebSocket, state: Arc<StreamState>) {
+    use futures_util::{SinkExt, StreamExt};
+    use axum::extract::ws::Message as WsMessage;
+
+    let (mut sender, mut receiver) = socket.split();
+
+    // Active subscriptions for this connection: bundle_name → Subscription
+    let mut subscriptions: HashMap<String, Subscription> = HashMap::new();
+
+    // Channel for the event-push task to send text frames back upstream
+    let (push_tx, mut push_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+
+    loop {
+        tokio::select! {
+            // ── Outbound: forward queued event frames to the socket ──
+            Some(frame) = push_rx.recv() => {
+                if sender.send(WsMessage::Text(frame.into())).await.is_err() {
                     break;
                 }
             }
-            Message::Close(_) => break,
-            _ => {}
+
+            // ── Inbound: handle commands from the client ──
+            msg = receiver.next() => {
+                match msg {
+                    Some(Ok(WsMessage::Text(text))) => {
+                        let response = handle_ws_command(
+                            &text, &state, &mut subscriptions
+                        ).await;
+                        if !response.is_empty() {
+                            if sender.send(WsMessage::Text(response.into())).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
+                    Some(Ok(WsMessage::Close(_))) | None => break,
+                    Some(Err(_)) => break,
+                    _ => {}
+                }
+            }
+
+            // ── Subscription pump: drain all active broadcast receivers ──
+            // We poll each subscription receiver in a round-robin using
+            // try_recv (non-blocking) so we stay entirely within tokio::select!.
+            // Events that don't match the filter are silently discarded —
+            // this is the sheaf restriction: only sections over the open set.
+            _ = tokio::time::sleep(tokio::time::Duration::from_millis(1)) => {
+                let mut to_remove = Vec::new();
+                for (bundle_name, sub) in subscriptions.iter_mut() {
+                    loop {
+                        match sub.receiver.try_recv() {
+                            Ok(event) => {
+                                // Apply filter predicate (sheaf restriction)
+                                if !sub.filters.is_empty() {
+                                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&event.record_json) {
+                                        let passes = sub.filters.iter().all(|(field, op, expected)| {
+                                            eval_ws_filter(&parsed, field, op, expected)
+                                        });
+                                        if !passes { continue; }
+                                    }
+                                }
+                                let frame = format!(
+                                    "EVENT {} {} {} K={:.6}",
+                                    event.bundle, event.op, event.record_json, event.curvature
+                                );
+                                if push_tx.send(frame).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(tokio::sync::broadcast::error::TryRecvError::Empty) => break,
+                            Err(tokio::sync::broadcast::error::TryRecvError::Lagged(n)) => {
+                                // Receiver fell too far behind (high-throughput ingestion).
+                                // Send a lag notice so the client knows it missed events.
+                                let notice = format!("NOTICE {} lagged={}", bundle_name, n);
+                                let _ = push_tx.send(notice);
+                            }
+                            Err(tokio::sync::broadcast::error::TryRecvError::Closed) => {
+                                to_remove.push(bundle_name.clone());
+                                break;
+                            }
+                        }
+                    }
+                }
+                for name in to_remove {
+                    subscriptions.remove(&name);
+                }
+            }
         }
     }
 }
 
-async fn handle_ws_command(cmd: &str, state: &Arc<StreamState>) -> String {
+/// Evaluate a single filter condition against a JSON record value.
+/// Used by the subscription pump to restrict events to the subscriber's open set.
+fn eval_ws_filter(record: &serde_json::Value, field: &str, op: &str, expected: &Value) -> bool {
+    let field_val = match record.get(field) {
+        Some(v) => v,
+        None => return false,
+    };
+    let expected_json = value_to_json(expected);
+
+    match op {
+        "=" | "eq" => field_val == &expected_json,
+        "!=" | "neq" => field_val != &expected_json,
+        ">" | "gt" => numeric_cmp(field_val, &expected_json) > 0,
+        ">=" | "gte" => numeric_cmp(field_val, &expected_json) >= 0,
+        "<" | "lt" => numeric_cmp(field_val, &expected_json) < 0,
+        "<=" | "lte" => numeric_cmp(field_val, &expected_json) <= 0,
+        "contains" => field_val.as_str().and_then(|s| expected_json.as_str().map(|e| s.contains(e))).unwrap_or(false),
+        _ => false,
+    }
+}
+
+fn numeric_cmp(a: &serde_json::Value, b: &serde_json::Value) -> i8 {
+    let av = a.as_f64().unwrap_or(0.0);
+    let bv = b.as_f64().unwrap_or(0.0);
+    if av < bv { -1 } else if av > bv { 1 } else { 0 }
+}
+
+/// Parse "field op value [AND field op value ...]" into filter triples.
+fn parse_ws_filters(condition: &str) -> Vec<(String, String, Value)> {
+    let mut filters = Vec::new();
+    for clause in condition.split(" AND ") {
+        let clause = clause.trim();
+        // Try operators longest-first to avoid mis-matching ">" in ">="
+        let ops = [">=", "<=", "!=", ">", "<", "=", "eq", "neq", "contains"];
+        for op in &ops {
+            if let Some(op_pos) = clause.find(op) {
+                let field = clause[..op_pos].trim().to_string();
+                let val_raw = clause[op_pos + op.len()..].trim().trim_matches('"').trim_matches('\'');
+                let val = parse_ws_value(val_raw);
+                filters.push((field, op.to_string(), val));
+                break;
+            }
+        }
+    }
+    filters
+}
+
+async fn handle_ws_command(
+    cmd: &str,
+    state: &Arc<StreamState>,
+    subscriptions: &mut HashMap<String, Subscription>,
+) -> String {
     let parts: Vec<&str> = cmd.splitn(2, ' ').collect();
     if parts.is_empty() {
         return "ERROR: empty command".to_string();
     }
 
     match parts[0].to_uppercase().as_str() {
+        "PING" => "PONG".to_string(),
+
+        "SUBSCRIBE" => {
+            // SUBSCRIBE <bundle> [WHERE <field> <op> <value> [AND ...]]
+            if parts.len() < 2 {
+                return "ERROR: SUBSCRIBE requires a bundle name".to_string();
+            }
+            let rest = parts[1];
+            let where_pos = rest.to_uppercase().find(" WHERE ");
+            let bundle_name = if let Some(pos) = where_pos {
+                rest[..pos].trim().to_string()
+            } else {
+                rest.trim().to_string()
+            };
+
+            let filters = if let Some(pos) = where_pos {
+                parse_ws_filters(&rest[pos + 7..])
+            } else {
+                vec![]
+            };
+
+            // Verify bundle exists
+            {
+                let engine = state.engine.read().unwrap();
+                if engine.bundle(&bundle_name).is_none() {
+                    return format!("ERROR: Bundle '{}' not found", bundle_name);
+                }
+            }
+
+            let tx = state.get_or_create_channel(&bundle_name);
+            let receiver = tx.subscribe();
+            subscriptions.insert(bundle_name.clone(), Subscription {
+                bundle: bundle_name.clone(),
+                filters,
+                receiver,
+            });
+            let filter_count = subscriptions[&bundle_name].filters.len();
+            format!("SUBSCRIBED {} filters={}", bundle_name, filter_count)
+        }
+
+        "UNSUBSCRIBE" => {
+            if parts.len() < 2 {
+                return "ERROR: UNSUBSCRIBE requires a bundle name".to_string();
+            }
+            let bundle_name = parts[1].trim();
+            if subscriptions.remove(bundle_name).is_some() {
+                format!("UNSUBSCRIBED {}", bundle_name)
+            } else {
+                format!("ERROR: Not subscribed to '{}'", bundle_name)
+            }
+        }
+
         "INSERT" => {
             // INSERT bundle_name\nDHOOM_DATA
             if parts.len() < 2 {
@@ -2199,22 +2494,34 @@ async fn handle_ws_command(cmd: &str, state: &Arc<StreamState>) -> String {
                 return format!("ERROR: No DHOOM data provided for '{}'", bundle_name);
             }
 
-            // Parse DHOOM and insert
             match dhoom::decode_legacy(dhoom_data) {
                 Ok(parsed) => {
                     let mut engine = state.engine.write().unwrap();
                     if let Some(store) = engine.bundle_mut(bundle_name) {
-                        let mut count = 0;
+                        let mut inserted_records = Vec::new();
                         for dhoom_record in &parsed.records {
                             let record: Record = dhoom_record.iter()
                                 .map(|(k, v)| (k.clone(), dhoom_value_to_value(v)))
                                 .collect();
                             store.insert(&record);
-                            count += 1;
+                            inserted_records.push(record_to_json(&record));
                         }
+                        let count = inserted_records.len();
                         let k = curvature::scalar_curvature(store);
+                        let total = store.len();
+                        drop(engine);
+                        // Broadcast each inserted record
+                        let tx = state.get_or_create_channel(bundle_name);
+                        for rec_json_val in &inserted_records {
+                            let _ = tx.send(SubscriptionEvent {
+                                bundle: bundle_name.to_string(),
+                                op: "insert",
+                                record_json: rec_json_val.to_string(),
+                                curvature: k,
+                            });
+                        }
                         format!("OK inserted={} total={} K={:.6} confidence={:.4}",
-                            count, store.len(), k, curvature::confidence(k))
+                            count, total, k, curvature::confidence(k))
                     } else {
                         format!("ERROR: Bundle '{}' not found", bundle_name)
                     }
@@ -2229,7 +2536,7 @@ async fn handle_ws_command(cmd: &str, state: &Arc<StreamState>) -> String {
                 return "ERROR: QUERY requires bundle and WHERE clause".to_string();
             }
             let rest = parts[1];
-            let where_pos = rest.to_uppercase().find("WHERE");
+            let where_pos = rest.to_uppercase().find(" WHERE ");
             let bundle_name = if let Some(pos) = where_pos {
                 rest[..pos].trim()
             } else {
@@ -2239,28 +2546,26 @@ async fn handle_ws_command(cmd: &str, state: &Arc<StreamState>) -> String {
             let engine = state.engine.read().unwrap();
             if let Some(store) = engine.bundle(bundle_name) {
                 if let Some(pos) = where_pos {
-                    let condition = &rest[pos + 5..].trim();
-                    // Parse "field = value AND field = value"
+                    let condition = &rest[pos + 7..].trim();
                     let mut key: Record = HashMap::new();
-                    for clause in condition.split("AND") {
+                    for clause in condition.split(" AND ") {
                         let clause = clause.trim();
                         if let Some(eq_pos) = clause.find('=') {
                             let field = clause[..eq_pos].trim();
-                            let val = clause[eq_pos + 1..].trim().trim_matches('"');
+                            let val = clause[eq_pos + 1..].trim().trim_matches('"').trim_matches('\'');
                             key.insert(field.to_string(), parse_ws_value(val));
                         }
                     }
                     match store.point_query(&key) {
                         Some(record) => {
-                            let json = record_to_json(&record);
                             let k = curvature::scalar_curvature(store);
                             format!("RESULT {}\nMETA confidence={:.4} curvature={:.6}",
-                                json, curvature::confidence(k), k)
+                                record_to_json(&record), curvature::confidence(k), k)
                         }
                         None => "RESULT null".to_string(),
                     }
                 } else {
-                    format!("ERROR: QUERY requires WHERE clause")
+                    "ERROR: QUERY requires WHERE clause".to_string()
                 }
             } else {
                 format!("ERROR: Bundle '{}' not found", bundle_name)
@@ -2268,12 +2573,12 @@ async fn handle_ws_command(cmd: &str, state: &Arc<StreamState>) -> String {
         }
 
         "RANGE" => {
-            // RANGE bundle WHERE field = "value"
+            // RANGE bundle WHERE field = value
             if parts.len() < 2 {
                 return "ERROR: RANGE requires bundle and WHERE clause".to_string();
             }
             let rest = parts[1];
-            let where_pos = rest.to_uppercase().find("WHERE");
+            let where_pos = rest.to_uppercase().find(" WHERE ");
             let bundle_name = if let Some(pos) = where_pos {
                 rest[..pos].trim()
             } else {
@@ -2283,13 +2588,12 @@ async fn handle_ws_command(cmd: &str, state: &Arc<StreamState>) -> String {
             let engine = state.engine.read().unwrap();
             if let Some(store) = engine.bundle(bundle_name) {
                 if let Some(pos) = where_pos {
-                    let condition = &rest[pos + 5..].trim();
+                    let condition = &rest[pos + 7..].trim();
                     if let Some(eq_pos) = condition.find('=') {
                         let field = condition[..eq_pos].trim();
-                        let val = condition[eq_pos + 1..].trim().trim_matches('"');
+                        let val = condition[eq_pos + 1..].trim().trim_matches('"').trim_matches('\'');
                         let results = store.range_query(field, &[parse_ws_value(val)]);
-                        let json_arr: Vec<serde_json::Value> = results.iter()
-                            .map(record_to_json).collect();
+                        let json_arr: Vec<serde_json::Value> = results.iter().map(record_to_json).collect();
                         let k = curvature::scalar_curvature(store);
                         format!("RESULT {}\nMETA count={} confidence={:.4} curvature={:.6}",
                             serde_json::to_string(&json_arr).unwrap_or_default(),
@@ -2305,34 +2609,17 @@ async fn handle_ws_command(cmd: &str, state: &Arc<StreamState>) -> String {
             }
         }
 
-        "SUBSCRIBE" => {
-            // SUBSCRIBE bundle WHERE field = "value"
-            // This returns an initial ACK; real subscriptions use the broadcast channel
-            if parts.len() < 2 {
-                return "ERROR: SUBSCRIBE requires bundle and WHERE clause".to_string();
-            }
-            format!("SUBSCRIBED {}", parts[1])
-        }
-
         "CURVATURE" => {
             if parts.len() < 2 {
-                return "ERROR: CURVATURE requires bundle.field".to_string();
+                return "ERROR: CURVATURE requires bundle name".to_string();
             }
             let target = parts[1].trim();
-            let dot_pos = target.find('.');
-            let bundle_name = if let Some(pos) = dot_pos {
-                &target[..pos]
-            } else {
-                target
-            };
-
+            let bundle_name = target.split('.').next().unwrap_or(target);
             let engine = state.engine.read().unwrap();
             if let Some(store) = engine.bundle(bundle_name) {
                 let k = curvature::scalar_curvature(store);
-                let conf = curvature::confidence(k);
-                let cap = curvature::capacity(1.0, k);
                 format!("CURVATURE K={:.6} confidence={:.4} capacity={:.2}",
-                    k, conf, cap)
+                    k, curvature::confidence(k), curvature::capacity(1.0, k))
             } else {
                 format!("ERROR: Bundle '{}' not found", bundle_name)
             }
@@ -2342,7 +2629,13 @@ async fn handle_ws_command(cmd: &str, state: &Arc<StreamState>) -> String {
             if parts.len() < 2 {
                 return "ERROR: CONSISTENCY requires bundle name".to_string();
             }
-            format!("CONSISTENCY h1=0 cocycles=0")
+            let bundle_name = parts[1].trim();
+            let engine = state.engine.read().unwrap();
+            if engine.bundle(bundle_name).is_some() {
+                "CONSISTENCY h1=0 cocycles=0".to_string()
+            } else {
+                format!("ERROR: Bundle '{}' not found", bundle_name)
+            }
         }
 
         _ => format!("ERROR: Unknown command '{}'", parts[0]),

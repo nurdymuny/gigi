@@ -1,0 +1,17 @@
+{
+  "name": "gigi-e2e",
+  "version": "1.0.0",
+  "description": "Playwright integration tests for GIGI Live Dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "diagnose": "node diagnose.mjs",
+    "diagnose:verbose": "node diagnose.mjs 2>&1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0"
+  }
+}

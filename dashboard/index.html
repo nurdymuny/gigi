@@ -20,14 +20,31 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 13px; }
-  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
-  header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.05em; color: var(--blue); }
-  #status-pill { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #2d3748; color: var(--muted); }
+
+  /* ── Header ── */
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
+  header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.05em; color: var(--blue); white-space: nowrap; }
+  #status-pill { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #2d3748; color: var(--muted); white-space: nowrap; }
   #status-pill.connected { background: #1c3a2b; color: var(--green); }
   #status-pill.error { background: #3a1c1c; color: var(--red); }
-  #bundle-input { margin-left: auto; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: 12px; width: 180px; }
-  #connect-btn { background: var(--blue); color: #0a0e1a; border: none; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 12px; }
+
+  /* ── Quick connect toolbar ── */
+  .toolbar { background: #13161f; border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .toolbar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); white-space: nowrap; }
+  #bundle-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .chip { padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; transition: all 0.15s; }
+  .chip:hover { border-color: var(--blue); color: var(--blue); }
+  .chip.active { background: #1a2f40; border-color: var(--blue); color: var(--blue); }
+  #empty-hint { font-size: 11px; color: var(--muted); font-style: italic; }
+  .sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+  #bundle-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: 12px; width: 140px; }
+  #bundle-input:focus { outline: none; border-color: var(--blue); }
+  #connect-btn { background: var(--blue); color: #0a0e1a; border: none; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 12px; white-space: nowrap; }
   #connect-btn:hover { opacity: 0.85; }
+  #demo-btn { background: var(--purple); color: #0a0e1a; border: none; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 12px; white-space: nowrap; }
+  #demo-btn:hover { opacity: 0.85; }
+  #demo-btn:disabled { opacity: 0.5; cursor: default; }
+  #demo-status { font-size: 11px; color: var(--purple); min-width: 120px; }
 
   .main { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; padding: 16px 20px; }
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
@@ -60,6 +77,81 @@
 
   scrollbar-width: thin;
   ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Drill-down modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 860px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.6); position: relative; }
+  .modal-header { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .modal-title { font-size: 14px; font-weight: 700; color: var(--text); flex: 1; }
+  .modal-subtitle { font-size: 11px; color: var(--muted); }
+  .modal-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 6px; z-index: 1; }
+  .modal-close:hover { background: var(--border); color: var(--text); }
+  .modal-body { overflow-y: auto; padding: 20px; flex: 1; }
+  .modal-tabs { display: flex; gap: 4px; padding: 12px 20px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .modal-tab { padding: 6px 14px; border-radius: 6px 6px 0 0; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid transparent; border-bottom: none; color: var(--muted); background: none; margin-bottom: -1px; }
+  .modal-tab.active { background: var(--surface); border-color: var(--border); color: var(--text); }
+  .modal-tab:hover:not(.active) { color: var(--text); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Drill-down table */
+  .drill-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .drill-table th { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--surface); }
+  .drill-table td { padding: 7px 10px; border-bottom: 1px solid rgba(42,45,58,0.6); vertical-align: top; word-break: break-all; max-width: 260px; }
+  .drill-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .drill-table tr.anomaly-row td { background: rgba(252,129,129,0.06); }
+  .drill-table tr.anomaly-row td:first-child { border-left: 2px solid var(--red); }
+
+  /* Mini stat row */
+  .mini-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .mini-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; min-width: 100px; }
+  .mini-stat .ms-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px; }
+  .mini-stat .ms-value { font-size: 20px; font-weight: 700; }
+
+  /* Field bar in modal is clickable */
+  .field-bar { cursor: pointer; border-radius: 4px; padding: 2px 4px; transition: background 0.12s; }
+  .field-bar:hover { background: rgba(99,179,237,0.08); }
+
+  /* Stat card clickable */
+  .stat-card { cursor: pointer; transition: border-color 0.15s; }
+  .stat-card:hover { border-color: var(--blue); }
+
+  /* Feed item clickable */
+  .feed-item { cursor: pointer; transition: background 0.12s; border-radius: 4px; padding: 8px 4px; }
+  .feed-item:hover { background: rgba(255,255,255,0.04); }
+  .feed-item { border-bottom: 1px solid var(--border); }
+
+  /* Pagination */
+  .pagination { display: flex; gap: 6px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .page-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 6px; font-family: inherit; font-size: 11px; cursor: pointer; }
+  .page-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .page-btn:disabled { opacity: 0.4; cursor: default; }
+  .page-info { font-size: 11px; color: var(--muted); }
+
+  /* Search bar */
+  .modal-search { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 8px; font-family: inherit; font-size: 12px; width: 100%; margin-bottom: 12px; }
+  .modal-search:focus { outline: none; border-color: var(--blue); }
+
+  /* Badge */
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+  .badge-red { background: rgba(252,129,129,0.15); color: var(--red); }
+  .badge-green { background: rgba(72,187,120,0.15); color: var(--green); }
+  .badge-blue { background: rgba(99,179,237,0.15); color: var(--blue); }
+  .badge-yellow { background: rgba(236,201,75,0.15); color: var(--yellow); }
+
+  /* Mini bar for field distribution */
+  .mini-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .mini-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+  .section-heading { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 16px 0 8px; font-weight: 600; }
+
+  /* Loading spinner */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error text */
+  .error-text { color: var(--red); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -67,28 +159,53 @@
 <header>
   <h1>⬡ GIGI Live Dashboard</h1>
   <span id="status-pill">DISCONNECTED</span>
-  <input id="bundle-input" placeholder="bundle name (blank = all)" value="">
-  <button id="connect-btn" onclick="connect()">Connect</button>
+  <span id="ws-debug" style="font-size:10px;color:var(--muted);margin-left:8px"></span>
 </header>
+
+<div class="toolbar">
+  <span class="toolbar-label">Bundles</span>
+  <div id="bundle-chips"><span id="empty-hint">no bundles yet</span></div>
+  <div class="sep"></div>
+  <input id="bundle-input" placeholder="name or blank = all" value="">
+  <button id="connect-btn" onclick="connectTo(document.getElementById('bundle-input').value.trim())">Connect</button>
+  <div class="sep"></div>
+  <button id="demo-btn" onclick="createAndRunDemo()">⚡ Create Demo</button>
+  <span id="demo-status"></span>
+</div>
+
+<!-- ── Drill-down modal ── -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModal()" title="Close (Esc)">✕</button>
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title">Detail</div>
+        <div class="modal-subtitle" id="modal-subtitle"></div>
+      </div>
+    </div>
+    <div class="modal-tabs" id="modal-tabs"></div>
+    <div class="modal-body" id="modal-body">Loading…</div>
+  </div>
+</div>
 
 <!-- stat cards -->
 <div class="main">
-  <div class="stat-card">
+  <div class="stat-card" onclick="openBundleModal('overview')" title="Click to explore bundle">
     <div class="label">Records</div>
     <div class="value" id="s-records">—</div>
-    <div class="sub">total in bundle</div>
+    <div class="sub">total in bundle ↗</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" onclick="openBundleModal('anomalies')" title="Click to see all anomalies">
     <div class="label">Anomalies (2σ)</div>
     <div class="value" id="s-anomalies" style="color:var(--orange)">—</div>
-    <div class="sub">this session</div>
+    <div class="sub">this session ↗</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" onclick="openBundleModal('stats')" title="Click to see field stats">
     <div class="label">Confidence</div>
     <div class="value" id="s-conf">—</div>
-    <div class="sub">1 / (1 + K_global)</div>
+    <div class="sub">1 / (1 + K_global) ↗</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" onclick="openBundleModal('records')" title="Click to browse records">
     <div class="label">K mean</div>
     <div class="value" id="s-kmean">—</div>
     <div class="sub" id="s-kstd">σ —</div>
@@ -124,7 +241,14 @@
 let ws = null;
 let kHistory = [];          // [{ts, k_mean, k_threshold}]
 let anomalyCount = 0;
+let wsMessageCount = 0;
 const MAX_HISTORY = 200;
+
+function updateWsDebug() {
+  const states = ['CONNECTING','OPEN','CLOSING','CLOSED'];
+  const state = ws ? (states[ws.readyState] || ws.readyState) : 'null';
+  document.getElementById('ws-debug').textContent = `ws:${state} msgs:${wsMessageCount}`;
+}
 
 // ── Colour scale K → CSS colour (green 0 → red 1+) ──────────────────────────
 function kColour(k) {
@@ -136,26 +260,184 @@ function kColour(k) {
 }
 
 // ── Connect / disconnect ───────────────────────────────────────────────────────
-function connect() {
+let activeBundle = '';
+
+function connectTo(bundle) {
+  activeBundle = bundle;
+  document.getElementById('bundle-input').value = bundle;
+  // Update chip highlight
+  document.querySelectorAll('.chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.bundle === bundle);
+  });
+
   if (ws) { ws.close(); ws = null; }
-  const bundle = document.getElementById('bundle-input').value.trim();
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const path = bundle ? `/v1/ws/${encodeURIComponent(bundle)}/dashboard` : '/v1/ws/dashboard';
   const url = `${proto}://${location.host}${path}`;
 
+  // Reset session anomaly count when switching bundles
+  anomalyCount = 0;
+  document.getElementById('s-anomalies').textContent = '—';
+
   setPill('connecting…', '');
   ws = new WebSocket(url);
 
-  ws.onopen = () => setPill('CONNECTED', 'connected');
-  ws.onclose = () => setPill('DISCONNECTED', '');
-  ws.onerror = () => setPill('ERROR', 'error');
-  ws.onmessage = e => handleEvent(JSON.parse(e.data));
+  ws.onopen  = () => { setPill(bundle ? `LIVE · ${bundle}` : 'LIVE · all bundles', 'connected'); updateWsDebug(); };
+  ws.onclose = () => { setPill('DISCONNECTED', ''); updateWsDebug(); };
+  ws.onerror = () => { setPill('ERROR', 'error'); updateWsDebug(); };
+  ws.onmessage = e => { wsMessageCount++; updateWsDebug(); handleEvent(JSON.parse(e.data)); };
 }
 
 function setPill(text, cls) {
   const p = document.getElementById('status-pill');
   p.textContent = text;
   p.className = cls;
+}
+
+// ── Bundle chip list ──────────────────────────────────────────────────────────
+async function refreshBundleChips() {
+  try {
+    const res = await fetch('/v1/bundles');
+    if (!res.ok) return;
+    const bundles = await res.json(); // array of {name, ...} or array of strings
+    const container = document.getElementById('bundle-chips');
+    const hint = document.getElementById('empty-hint');
+    if (!bundles || bundles.length === 0) {
+      container.innerHTML = '';
+      container.appendChild(hint);
+      hint.style.display = '';
+      return;
+    }
+    hint.style.display = 'none';
+    // Keep existing chips, add missing ones
+    const existing = new Set([...container.querySelectorAll('.chip')].map(c => c.dataset.bundle));
+    for (const b of bundles) {
+      const name = typeof b === 'string' ? b : b.name;
+      if (!name || existing.has(name)) continue;
+      const chip = document.createElement('button');
+      chip.className = 'chip' + (name === activeBundle ? ' active' : '');
+      chip.dataset.bundle = name;
+      chip.textContent = name;
+      chip.onclick = () => connectTo(name);
+      container.appendChild(chip);
+    }
+    // Add "all" chip if not present (data-bundle="" so check for empty string)
+    if (!existing.has('')) {
+      const allChip = document.createElement('button');
+      allChip.className = 'chip' + (activeBundle === '' ? ' active' : '');
+      allChip.dataset.bundle = '';
+      allChip.textContent = '(all)';
+      allChip.onclick = () => connectTo('');
+      container.prepend(allChip);
+    }
+  } catch {}
+}
+setInterval(refreshBundleChips, 3000);
+
+// ── Demo bundle creator & data pump ──────────────────────────────────────────
+let demoRunning = false;
+
+async function createAndRunDemo() {
+  if (demoRunning) return;
+  demoRunning = true;
+  const btn = document.getElementById('demo-btn');
+  const status = document.getElementById('demo-status');
+  btn.disabled = true;
+
+  const BUNDLE = 'demo';
+  const setStatus = t => { status.textContent = t; };
+
+  try {
+    // 1. Drop any existing demo bundle so we always start fresh
+    setStatus('resetting bundle…');
+    await fetch(`/v1/bundles/${BUNDLE}`, { method: 'DELETE' });
+
+    // 2. Create bundle fresh
+    setStatus('creating bundle…');
+    const createRes = await fetch('/v1/bundles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: BUNDLE,
+        schema: {
+          fields: {
+            id:       'numeric',
+            sensor:   'categorical',
+            temp_c:   'numeric',
+            humidity: 'numeric',
+            pressure: 'numeric',
+            co2_ppm:  'numeric',
+          },
+          keys:    ['id'],
+          indexed: ['sensor'],
+        }
+      })
+    });
+    if (!createRes.ok) {
+      const err = await createRes.json().catch(() => ({}));
+      throw new Error('Bundle create failed: ' + (err.error || createRes.status));
+    }
+
+    // 2. Connect the WS first so we see inserts live
+    setStatus('connecting…');
+    await refreshBundleChips();
+    connectTo(BUNDLE);
+    await new Promise(r => setTimeout(r, 400));
+
+    // 3. Pump 200 normal records in batches of 20, then 5 anomalies
+    const SENSORS = ['alpha','beta','gamma','delta','epsilon'];
+    let id = 1;
+    const rand = (lo, hi) => lo + Math.random() * (hi - lo);
+
+    for (let batch = 0; batch < 10; batch++) {
+      setStatus(`inserting records ${id}–${id+19}…`);
+      const records = [];
+      for (let i = 0; i < 20; i++, id++) {
+        records.push({
+          id,
+          sensor:   SENSORS[id % SENSORS.length],
+          temp_c:    +rand(18, 26).toFixed(2),
+          humidity:  +rand(40, 65).toFixed(2),
+          pressure:  +rand(1005, 1020).toFixed(2),
+          co2_ppm:   +rand(400, 600).toFixed(1),
+        });
+      }
+      const ir = await fetch(`/v1/bundles/${BUNDLE}/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records }),
+      });
+      if (!ir.ok) { const e = await ir.json().catch(()=>({})); throw new Error(e.error || ir.status); }
+      await new Promise(r => setTimeout(r, 150));
+    }
+
+    // 4. Inject 5 extreme anomalies
+    setStatus('injecting anomalies…');
+    const anomalies = [
+      { id: id++, sensor:'alpha',   temp_c: -62.0,  humidity: 42.0,  pressure: 1012.0, co2_ppm: 510 },
+      { id: id++, sensor:'beta',    temp_c: 24.0,   humidity: 1.2,   pressure: 1010.0, co2_ppm: 490 },
+      { id: id++, sensor:'gamma',   temp_c: 22.0,   humidity: 55.0,  pressure: 860.0,  co2_ppm: 505 },
+      { id: id++, sensor:'delta',   temp_c: 21.5,   humidity: 48.0,  pressure: 1008.0, co2_ppm: 4800 },
+      { id: id++, sensor:'epsilon', temp_c: 95.0,   humidity: 50.0,  pressure: 1011.0, co2_ppm: 520 },
+    ];
+    for (const rec of anomalies) {
+      const ar = await fetch(`/v1/bundles/${BUNDLE}/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records: [rec] }),
+      });
+      if (!ar.ok) { const e = await ar.json().catch(()=>({})); throw new Error(e.error || ar.status); }
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    setStatus('✓ done — 205 records, 5 anomalies');
+    await refreshBundleChips();
+  } catch(e) {
+    setStatus('✗ ' + e.message);
+  } finally {
+    demoRunning = false;
+    btn.disabled = false;
+  }
 }
 
 // ── Handle incoming event ──────────────────────────────────────────────────────
@@ -249,6 +531,8 @@ function addAnomalyFeedItem(ev) {
   if (feed.children[0] && feed.children[0].style.color) feed.innerHTML = '';
   const item = document.createElement('div');
   item.className = 'feed-item';
+  item.title = 'Click for full anomaly detail';
+  item.onclick = () => openAnomalyDetailModal(ev);
   const t = new Date(ev.ts_ms).toISOString().slice(11, 23);
   const z = (ev.z_score != null) ? ev.z_score.toFixed(2) : '?';
   const k = (ev.local_curvature != null) ? ev.local_curvature.toFixed(5) : (ev.k_mean||0).toFixed(5);
@@ -264,12 +548,13 @@ function addAnomalyFeedItem(ev) {
   feed.insertBefore(item, feed.firstChild);
   if (feed.children.length > 50) feed.removeChild(feed.lastChild);
 }
-
 // ── Raw log ────────────────────────────────────────────────────────────────────
 function addLogItem(ev) {
   const log = document.getElementById('event-log');
   const item = document.createElement('div');
   item.className = 'feed-item';
+  item.title = 'Click to browse records';
+  item.onclick = () => openBundleModal('records');
   const t = new Date(ev.ts_ms||Date.now()).toISOString().slice(11, 23);
   const typeColour = ev.is_anomaly ? 'var(--red)' : ev.type === 'insert' ? 'var(--green)' : 'var(--muted)';
   item.innerHTML = `<span class="feed-time">${t}</span>
@@ -280,14 +565,25 @@ function addLogItem(ev) {
   if (log.children.length > 50) log.removeChild(log.lastChild);
 }
 
-// ── Field bars (polled separately if a bundle is selected) ────────────────────
+// ── Field bars + stat card polling (REST fallback) ──────────────────────────
 async function refreshFieldBars() {
-  const bundle = document.getElementById('bundle-input').value.trim();
+  const bundle = activeBundle;
   if (!bundle) return;
   try {
     const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/health`);
     if (!res.ok) return;
     const data = await res.json();
+
+    // Update stat cards from REST (works even if WS is down)
+    if (data.record_count !== undefined) document.getElementById('s-records').textContent = data.record_count.toLocaleString();
+    if (data.confidence  !== undefined) document.getElementById('s-conf').textContent = data.confidence.toFixed(4);
+    if (data.k_mean      !== undefined) {
+      const el = document.getElementById('s-kmean');
+      el.textContent = data.k_mean.toFixed(5);
+      el.style.color = kColour(data.k_mean);
+      document.getElementById('s-kstd').textContent = `σ ${(data.k_std||0).toFixed(5)}`;
+    }
+
     const fields = (data.per_field || []).sort((a,b) => b.k - a.k).slice(0, 12);
     const maxK = Math.max(...fields.map(f => f.k), 0.001);
     const container = document.getElementById('field-bars');
@@ -295,26 +591,518 @@ async function refreshFieldBars() {
     for (const f of fields) {
       const pct = Math.min(f.k / maxK * 100, 100).toFixed(1);
       const col = kColour(f.k);
-      container.innerHTML += `
-        <div class="field-bar">
+      const div = document.createElement('div');
+      div.className = 'field-bar';
+      div.title = `Click to drill into field: ${f.field}`;
+      div.onclick = () => openFieldModal(f.field);
+      div.innerHTML = `
           <span class="name" title="${f.field}">${f.field}</span>
           <div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div>
-          <span class="val">${f.k.toFixed(3)}</span>
-        </div>`;
+          <span class="val">${f.k.toFixed(3)}</span>`;
+      container.appendChild(div);
     }
   } catch {}
 }
-setInterval(refreshFieldBars, 5000);
+setInterval(refreshFieldBars, 2000);
 
-// Auto-connect on load if bundle is pre-filled
-window.addEventListener('DOMContentLoaded', () => {
+// Auto-connect on load
+window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const b = params.get('bundle') || '';
-  if (b) document.getElementById('bundle-input').value = b;
-  connect();
+  // populate chips first, then connect
+  await refreshBundleChips();
+  connectTo(b);
+  // allow Enter key in input
+  document.getElementById('bundle-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') connectTo(e.target.value.trim());
+  });
 });
 
 window.addEventListener('resize', renderChart);
+
+// ── Drill-down data store (avoids embedding JSON in HTML) ─────────────────────
+const _drillData = {};
+let _drillIdx = 0;
+function storeForClick(obj) {
+  const key = `d${++_drillIdx}`;
+  _drillData[key] = obj;
+  return key;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ────────────────────────────────────────────────────────────────────────────
+// DRILL-DOWN MODAL SYSTEM
+// ────────────────────────────────────────────────────────────────────────────
+
+function openModal(title, subtitle, tabDefs, firstTab) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-subtitle').textContent = subtitle || '';
+  const tabsEl = document.getElementById('modal-tabs');
+  tabsEl.innerHTML = '';
+  tabDefs.forEach(({id, label}) => {
+    const btn = document.createElement('button');
+    btn.className = 'modal-tab' + (id === firstTab ? ' active' : '');
+    btn.textContent = label;
+    btn.dataset.tab = id;
+    btn.onclick = () => switchTab(id, tabDefs);
+    tabsEl.appendChild(btn);
+  });
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function switchTab(id, tabDefs) {
+  document.querySelectorAll('.modal-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  // Let each tab render itself; tab content swaps via modal-body rerender
+  const tabDef = tabDefs.find(t => t.id === id);
+  if (tabDef && tabDef.render) tabDef.render();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  document.getElementById('modal-body').innerHTML = '';
+  document.getElementById('modal-tabs').innerHTML = '';
+}
+
+function setModalBody(html) {
+  document.getElementById('modal-body').innerHTML = html;
+}
+
+function fmt(v) {
+  if (v === null || v === undefined) return '<span style="color:var(--muted)">null</span>';
+  if (typeof v === 'number') return v % 1 === 0 ? v.toLocaleString() : v.toFixed(5);
+  return String(v);
+}
+
+// ── 1. Bundle Overview Modal (stat cards click) ────────────────────────────────
+async function openBundleModal(startTab = 'overview') {
+  const bundle = activeBundle;
+  if (!bundle) {
+    setModalBody('<div class="error-text">No bundle selected — click a bundle chip first.</div>');
+    openModal('Bundle Detail', '', [], 'overview');
+    return;
+  }
+  const tabDefs = [
+    { id: 'overview',  label: 'Overview',   render: () => renderBundleOverview(bundle) },
+    { id: 'records',   label: 'Records',    render: () => renderRecordsTable(bundle) },
+    { id: 'anomalies', label: 'Anomalies',  render: () => renderBundleAnomalies(bundle) },
+    { id: 'stats',     label: 'Field Stats', render: () => renderFieldStats(bundle) },
+    { id: 'schema',    label: 'Schema',     render: () => renderSchema(bundle) },
+  ];
+  openModal(`Bundle: ${bundle}`, '', tabDefs, startTab);
+  // initial render
+  const active = tabDefs.find(t => t.id === startTab);
+  if (active) active.render();
+}
+
+async function renderBundleOverview(bundle) {
+  setModalBody('<div class="spinner"></div> Loading…');
+  try {
+    const [health, stats] = await Promise.all([
+      fetch(`/v1/bundles/${encodeURIComponent(bundle)}/health`).then(r => r.json()),
+      fetch(`/v1/bundles/${encodeURIComponent(bundle)}/stats`).then(r => r.json()),
+    ]);
+    const anomRate = ((health.anomaly_rate_2s || 0) * 100).toFixed(2);
+    const per = (health.per_field || []).sort((a,b) => b.k - a.k);
+    const maxK = Math.max(...per.map(f => f.k), 0.001);
+    const fieldRows = per.map(f => {
+      const pct = Math.min(f.k / maxK * 100, 100).toFixed(1);
+      const col = kColour(f.k);
+      return `<tr>
+        <td style="cursor:pointer;color:var(--blue)" onclick="openFieldModal('${f.field}')">${f.field}</td>
+        <td>${f.k.toFixed(5)}</td>
+        <td>${(f.variance||0).toFixed(5)}</td>
+        <td>${(f.range||0).toFixed(3)}</td>
+        <td style="min-width:80px"><div class="mini-bar"><div class="mini-bar-fill" style="width:${pct}%;background:${col}"></div></div></td>
+      </tr>`;
+    }).join('');
+    setModalBody(`
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="ms-label">Records</div><div class="ms-value">${(health.record_count||0).toLocaleString()}</div></div>
+        <div class="mini-stat"><div class="ms-label">K global</div><div class="ms-value" style="color:${kColour(health.k_global||0)}">${(health.k_global||0).toFixed(5)}</div></div>
+        <div class="mini-stat"><div class="ms-label">K mean</div><div class="ms-value">${(health.k_mean||0).toFixed(5)}</div></div>
+        <div class="mini-stat"><div class="ms-label">K σ</div><div class="ms-value">${(health.k_std||0).toFixed(5)}</div></div>
+        <div class="mini-stat"><div class="ms-label">Confidence</div><div class="ms-value" style="color:var(--green)">${(health.confidence||0).toFixed(4)}</div></div>
+        <div class="mini-stat"><div class="ms-label">Anomaly rate</div><div class="ms-value" style="color:var(--orange)">${anomRate}%</div></div>
+        <div class="mini-stat"><div class="ms-label">Storage</div><div class="ms-value" style="font-size:14px">${stats.storage_mode||'—'}</div></div>
+      </div>
+      <div class="section-heading">Thresholds</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        2σ = <span style="color:var(--yellow)">${(health.k_threshold_2s||0).toFixed(5)}</span> &nbsp;·&nbsp;
+        3σ = <span style="color:var(--red)">${(health.k_threshold_3s||0).toFixed(5)}</span>
+      </div>
+      <div class="section-heading">Per-field curvature <span style="font-weight:400;color:var(--blue)">(click field to drill in)</span></div>
+      <table class="drill-table">
+        <thead><tr><th>Field</th><th>K</th><th>Variance</th><th>Range</th><th>Bar</th></tr></thead>
+        <tbody>${fieldRows}</tbody>
+      </table>`);
+  } catch(e) {
+    setModalBody(`<div class="error-text">Failed to load: ${e.message}</div>`);
+  }
+}
+
+// ── 2. Records Table ─────────────────────────────────────────────────────────
+let recPage = 0;
+const REC_PAGE_SIZE = 25;
+
+async function renderRecordsTable(bundle, page = 0, search = '') {
+  recPage = page;
+  setModalBody('<div class="spinner"></div> Loading records…');
+  try {
+    // First fetch a page; use filtered_query for search, list_all_records for plain
+    let data, meta, total;
+    if (search.trim()) {
+      const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/query`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ conditions: [], search: search.trim(), limit: REC_PAGE_SIZE, offset: page * REC_PAGE_SIZE }),
+      });
+      const j = await res.json();
+      data = j.data || [];
+      meta = j.meta || {};
+      total = meta.total ?? data.length;
+    } else {
+      const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/points?limit=${REC_PAGE_SIZE}&offset=${page * REC_PAGE_SIZE}`);
+      const j = await res.json();
+      data = j.data || [];
+      meta = j.meta || {};
+      total = meta.count ?? data.length;   // list_all_records doesn't return total; approximate
+    }
+    if (!data.length) {
+      setModalBody(`<div style="color:var(--muted)">No records found${search ? ` matching "${search}"` : ''}.</div>`);
+      return;
+    }
+    const cols = Object.keys(data[0]);
+    const rows = data.map(r => {
+      const cells = cols.map(c => `<td>${fmt(r[c])}</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    const totalPages = Math.ceil((total || REC_PAGE_SIZE) / REC_PAGE_SIZE);
+    const currentBundle = bundle; // capture for callbacks
+    setModalBody(`
+      <input class="modal-search" id="rec-search" placeholder="Search across all fields…" value="${search.replace(/"/g,'&quot;')}" />
+      <table class="drill-table">
+        <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="pagination">
+        <button class="page-btn" id="pg-prev" ${page===0?'disabled':''}>← Prev</button>
+        <span class="page-info">Page ${page+1} · ${data.length} records shown${total ? ` of ${total.toLocaleString()} total` : ''}</span>
+        <button class="page-btn" id="pg-next" ${data.length < REC_PAGE_SIZE?'disabled':''}>Next →</button>
+      </div>`);
+    document.getElementById('pg-prev').onclick = () => renderRecordsTable(currentBundle, page - 1, search);
+    document.getElementById('pg-next').onclick = () => renderRecordsTable(currentBundle, page + 1, search);
+    const searchEl = document.getElementById('rec-search');
+    let debounce;
+    searchEl.addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => renderRecordsTable(currentBundle, 0, searchEl.value), 350);
+    });
+  } catch(e) {
+    setModalBody(`<div class="error-text">Failed to load records: ${e.message}</div>`);
+  }
+}
+
+// ── 3. Bundle Anomalies ───────────────────────────────────────────────────────
+async function renderBundleAnomalies(bundle) {
+  setModalBody('<div class="spinner"></div> Computing anomalies…');
+  try {
+    const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/anomalies`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ threshold_sigma: 2.0, include_scores: true, limit: 100, filters: [], fields: [] }),
+    });
+    const data = await res.json();
+    const anomalies = data.anomalies || [];
+    if (!anomalies.length) {
+      setModalBody(`<div style="color:var(--muted)">No anomalies found at 2σ. Try lowering the threshold.</div>`);
+      return;
+    }
+    const allFields = anomalies.length ? Object.keys(anomalies[0].record || {}) : [];
+    const rows = anomalies.map(a => {
+      const rec = a.record || {};
+      const cells = allFields.map(f => `<td>${fmt(rec[f])}</td>`).join('');
+      const z = a.z_score != null ? a.z_score.toFixed(2) : '?';
+      const k = a.k_record != null ? a.k_record.toFixed(5) : '?';
+      const fields = (a.contributing_fields||[]).join(', ');
+      const key = storeForClick(a);
+      return `<tr class="anomaly-row" style="cursor:pointer" onclick="openAnomalyDetailModal(_drillData['${key}'])">
+        <td><span class="badge badge-red">z=${z}</span></td>
+        <td>${k}</td>
+        <td style="color:var(--yellow);font-size:11px">${fields}</td>
+        ${cells}
+      </tr>`;
+    }).join('');
+    setModalBody(`
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="ms-label">Anomaly count</div><div class="ms-value" style="color:var(--red)">${data.anomaly_count || 0}</div></div>
+        <div class="mini-stat"><div class="ms-label">Total records</div><div class="ms-value">${(data.total_records||0).toLocaleString()}</div></div>
+        <div class="mini-stat"><div class="ms-label">K mean</div><div class="ms-value">${(data.k_mean||0).toFixed(5)}</div></div>
+        <div class="mini-stat"><div class="ms-label">K σ</div><div class="ms-value">${(data.k_std||0).toFixed(5)}</div></div>
+        <div class="mini-stat"><div class="ms-label">Threshold (2σ)</div><div class="ms-value" style="color:var(--red)">${(data.k_threshold||0).toFixed(5)}</div></div>
+      </div>
+      <div class="section-heading">Anomalous records (click to expand)</div>
+      <table class="drill-table">
+        <thead><tr><th>z-score</th><th>K record</th><th>Contributing fields</th>${allFields.map(f=>`<th>${f}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`);
+  } catch(e) {
+    setModalBody(`<div class="error-text">Failed: ${e.message}</div>`);
+  }
+}
+
+// ── 4. Field Stats ────────────────────────────────────────────────────────────
+async function renderFieldStats(bundle) {
+  setModalBody('<div class="spinner"></div> Loading…');
+  try {
+    const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/stats`);
+    const data = await res.json();
+    const fs = data.field_stats || {};
+    const rows = Object.entries(fs).map(([f, s]) => {
+      const mean = s.count > 0 ? s.sum / s.count : 0;
+      return `<tr>
+        <td style="cursor:pointer;color:var(--blue)" onclick="openFieldModal('${f}')">${f}</td>
+        <td>${(s.count||0).toLocaleString()}</td>
+        <td>${mean.toFixed(5)}</td>
+        <td>${(s.min||0).toFixed(3)}</td>
+        <td>${(s.max||0).toFixed(3)}</td>
+        <td>${((s.max||0)-(s.min||0)).toFixed(3)}</td>
+        <td>${(s.variance||0).toFixed(5)}</td>
+      </tr>`;
+    }).join('');
+    const cards = data.field_cardinalities || {};
+    const cardRows = Object.entries(cards).map(([f, c]) =>
+      `<tr><td style="cursor:pointer;color:var(--blue)" onclick="openFieldModal('${f}')">${f}</td><td>${c}</td></tr>`
+    ).join('');
+    setModalBody(`
+      <div class="section-heading">Numeric field statistics <span style="font-weight:400;color:var(--blue)">(click field to drill in)</span></div>
+      <table class="drill-table">
+        <thead><tr><th>Field</th><th>Count</th><th>Mean</th><th>Min</th><th>Max</th><th>Range</th><th>Variance</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="section-heading" style="margin-top:20px">Cardinalities</div>
+      <table class="drill-table">
+        <thead><tr><th>Field</th><th>Distinct values</th></tr></thead>
+        <tbody>${cardRows}</tbody>
+      </table>`);
+  } catch(e) {
+    setModalBody(`<div class="error-text">Failed: ${e.message}</div>`);
+  }
+}
+
+// ── 5. Schema ─────────────────────────────────────────────────────────────────
+async function renderSchema(bundle) {
+  setModalBody('<div class="spinner"></div> Loading…');
+  try {
+    const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/schema`);
+    const data = await res.json();
+    const base = (data.base_fields||[]).map(f =>
+      `<tr><td>${f.name}</td><td><span class="badge badge-blue">base / key</span></td><td>${f.type}</td><td>${f.weight}</td></tr>`
+    ).join('');
+    const fiber = (data.fiber_fields||[]).map(f => {
+      const isIndexed = (data.indexed_fields||[]).includes(f.name);
+      return `<tr><td>${f.name}</td><td>${isIndexed ? '<span class="badge badge-yellow">indexed</span>' : '<span class="badge badge-green">fiber</span>'}</td><td>${f.type}</td><td>${f.weight}</td></tr>`;
+    }).join('');
+    setModalBody(`
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="ms-label">Storage mode</div><div class="ms-value" style="font-size:14px">${data.storage_mode||'—'}</div></div>
+        <div class="mini-stat"><div class="ms-label">Records</div><div class="ms-value">${(data.records||0).toLocaleString()}</div></div>
+        <div class="mini-stat"><div class="ms-label">Base fields</div><div class="ms-value">${(data.base_fields||[]).length}</div></div>
+        <div class="mini-stat"><div class="ms-label">Fiber fields</div><div class="ms-value">${(data.fiber_fields||[]).length}</div></div>
+        <div class="mini-stat"><div class="ms-label">Indexes</div><div class="ms-value">${(data.indexed_fields||[]).length}</div></div>
+      </div>
+      <table class="drill-table">
+        <thead><tr><th>Field</th><th>Role</th><th>Type</th><th>Weight</th></tr></thead>
+        <tbody>${base}${fiber}</tbody>
+      </table>`);
+  } catch(e) {
+    setModalBody(`<div class="error-text">Failed: ${e.message}</div>`);
+  }
+}
+
+// ── 6. Field Drill-Down Modal ─────────────────────────────────────────────────
+async function openFieldModal(field) {
+  const bundle = activeBundle;
+  if (!bundle) return;
+  const tabDefs = [
+    { id: 'dist',       label: 'Distribution', render: () => renderFieldDistribution(bundle, field) },
+    { id: 'anomalies',  label: 'Anomalies',    render: () => renderFieldAnomalies(bundle, field) },
+    { id: 'volatility', label: 'Volatility',   render: () => renderFieldVolatility(bundle, field) },
+  ];
+  openModal(`Field: ${field}`, `bundle: ${bundle}`, tabDefs, 'dist');
+  renderFieldDistribution(bundle, field);
+}
+
+async function renderFieldDistribution(bundle, field) {
+  setModalBody('<div class="spinner"></div>');
+  try {
+    const [distRes, statsRes] = await Promise.all([
+      fetch(`/v1/bundles/${encodeURIComponent(bundle)}/distinct/${encodeURIComponent(field)}`).then(r => r.json()),
+      fetch(`/v1/bundles/${encodeURIComponent(bundle)}/stats`).then(r => r.json()),
+    ]);
+    const values = distRes.values || [];
+    const fs = (statsRes.field_stats||{})[field] || {};
+    const mean = fs.count > 0 ? fs.sum / fs.count : 0;
+    const health = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/health`).then(r=>r.json());
+    const perField = (health.per_field||[]).find(f=>f.field===field)||{};
+
+    // If categorical (many strings or few distinct values), show value table
+    const isCategorical = values.some(v => isNaN(Number(v)));
+    let distHtml = '';
+    if (isCategorical || values.length <= 50) {
+      // Count per value via filtered query
+      const countPromises = values.slice(0, 20).map(async v => {
+        const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/count`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ conditions: [{ field, op: 'eq', value: v }] }),
+        });
+        const j = await res.json();
+        return { value: v, count: j.count || 0 };
+      });
+      const counts = await Promise.all(countPromises);
+      const maxCount = Math.max(...counts.map(c => c.count), 1);
+      counts.sort((a,b) => b.count - a.count);
+      distHtml = `<table class="drill-table">
+        <thead><tr><th>Value</th><th>Count</th><th>Distribution</th></tr></thead>
+        <tbody>${counts.map(c => {
+          const pct = (c.count / maxCount * 100).toFixed(1);
+          return `<tr><td>${c.value}</td><td>${c.count.toLocaleString()}</td>
+          <td><div class="mini-bar" style="width:160px"><div class="mini-bar-fill" style="width:${pct}%;background:var(--blue)"></div></div></td></tr>`;
+        }).join('')}</tbody>
+      </table>${values.length > 20 ? `<div style="color:var(--muted);font-size:11px;margin-top:8px">Showing top 20 of ${values.length} distinct values</div>` : ''}`;
+    } else {
+      distHtml = `<div style="color:var(--muted);font-size:12px">${values.length} distinct numeric values — see stats below.</div>`;
+    }
+
+    setModalBody(`
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="ms-label">Distinct values</div><div class="ms-value">${distRes.count||0}</div></div>
+        <div class="mini-stat"><div class="ms-label">Mean</div><div class="ms-value" style="font-size:16px">${mean.toFixed(4)}</div></div>
+        <div class="mini-stat"><div class="ms-label">Min</div><div class="ms-value" style="font-size:16px">${(fs.min||0).toFixed(3)}</div></div>
+        <div class="mini-stat"><div class="ms-label">Max</div><div class="ms-value" style="font-size:16px">${(fs.max||0).toFixed(3)}</div></div>
+        <div class="mini-stat"><div class="ms-label">K curvature</div><div class="ms-value" style="color:${kColour(perField.k||0)};font-size:16px">${(perField.k||0).toFixed(5)}</div></div>
+        <div class="mini-stat"><div class="ms-label">Variance</div><div class="ms-value" style="font-size:16px">${(fs.variance||0).toFixed(5)}</div></div>
+      </div>
+      <div class="section-heading">Value distribution</div>
+      ${distHtml}`);
+  } catch(e) {
+    setModalBody(`<div class="error-text">Failed: ${e.message}</div>`);
+  }
+}
+
+async function renderFieldAnomalies(bundle, field) {
+  setModalBody('<div class="spinner"></div>');
+  try {
+    const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/anomalies/field`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ field, threshold_sigma: 2.0, limit: 50 }),
+    });
+    const data = await res.json();
+    const anomalies = data.anomalies || [];
+    if (!anomalies.length) {
+      setModalBody(`<div style="color:var(--muted)">No anomalies involving field <strong>${field}</strong> at 2σ.</div>`);
+      return;
+    }
+    const allFields = Object.keys(anomalies[0].record || {});
+    const rows = anomalies.map(a => {
+      const rec = a.record || {};
+      const cells = allFields.map(f => {
+        const isContrib = (a.contributing_fields||[]).includes(f);
+        return `<td style="${isContrib ? 'color:var(--yellow);font-weight:700' : ''}">${fmt(rec[f])}</td>`;
+      }).join('');
+      return `<tr class="anomaly-row">
+        <td><span class="badge badge-red">z=${(a.z_score||0).toFixed(2)}</span></td>
+        <td>${(a.k_record||0).toFixed(5)}</td>
+        ${cells}
+      </tr>`;
+    }).join('');
+    setModalBody(`
+      <div style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        ${data.anomaly_count} anomalies involve <strong style="color:var(--blue)">${field}</strong> (highlighted in yellow).
+      </div>
+      <table class="drill-table">
+        <thead><tr><th>z-score</th><th>K</th>${allFields.map(f=>`<th${f===field?' style="color:var(--yellow)"':''}>${f}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`);
+  } catch(e) {
+    setModalBody(`<div class="error-text">Failed: ${e.message}</div>`);
+  }
+}
+
+async function renderFieldVolatility(bundle, field) {
+  setModalBody('<div class="spinner"></div>');
+  // Try to find a categorical field to group by
+  try {
+    const schemaRes = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/schema`).then(r=>r.json());
+    const indexed = schemaRes.indexed_fields || [];
+    const groupBy = indexed[0] || (schemaRes.base_fields||[{name:'id'}])[0].name;
+
+    const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/predict`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ field, group_by: groupBy }),
+    });
+    const data = await res.json();
+    const preds = (data.predictions||[]).sort((a,b) => b.volatility_index - a.volatility_index);
+    const maxVol = Math.max(...preds.map(p=>p.volatility_index), 0.001);
+    const rows = preds.map(p => {
+      const pct = Math.min(p.volatility_index / maxVol * 100, 100).toFixed(1);
+      const col = p.volatility_index > 0.3 ? 'var(--red)' : p.volatility_index > 0.1 ? 'var(--yellow)' : 'var(--green)';
+      return `<tr>
+        <td>${p.group}</td>
+        <td>${(p.count||0).toLocaleString()}</td>
+        <td>${(p.mean||0).toFixed(4)}</td>
+        <td>${(p.std_dev||0).toFixed(4)}</td>
+        <td style="color:${col};font-weight:700">${(p.volatility_index||0).toFixed(4)}</td>
+        <td><div class="mini-bar" style="width:120px"><div class="mini-bar-fill" style="width:${pct}%;background:${col}"></div></div></td>
+      </tr>`;
+    }).join('');
+    setModalBody(`
+      <div style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Volatility index = σ / |μ| grouped by <strong style="color:var(--blue)">${groupBy}</strong>
+      </div>
+      <table class="drill-table">
+        <thead><tr><th>${groupBy}</th><th>Count</th><th>Mean</th><th>Std dev</th><th>Volatility</th><th>Bar</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`);
+  } catch(e) {
+    setModalBody(`<div class="error-text">Failed: ${e.message}</div>`);
+  }
+}
+
+// ── 7. Anomaly Detail Modal (anomaly feed click) ───────────────────────────────
+function openAnomalyDetailModal(ev) {
+  // ev may be a WS event object or an anomaly record from the REST API
+  // Normalise it
+  const rec = ev.record || ev;
+  const z = ev.z_score != null ? ev.z_score.toFixed(4) : '?';
+  const k = ev.k_record ?? ev.local_curvature ?? ev.k_mean;
+  const fields = ev.contributing_fields || [];
+  const bundle = ev.bundle || activeBundle || '—';
+  const t = ev.ts_ms ? new Date(ev.ts_ms).toISOString() : '—';
+
+  openModal('Anomaly Detail', `bundle: ${bundle} · ${t}`, [], 'detail');
+  document.getElementById('modal-tabs').innerHTML = '';
+
+  const fieldRows = Object.entries(rec).map(([f, v]) => {
+    const isContrib = fields.includes(f);
+    return `<tr ${isContrib ? 'class="anomaly-row"' : ''}>
+      <td>${isContrib ? `<strong>${f}</strong> <span class="badge badge-red">contributing</span>` : f}</td>
+      <td>${fmt(v)}</td>
+    </tr>`;
+  }).join('');
+
+  setModalBody(`
+    <div class="mini-stats">
+      <div class="mini-stat"><div class="ms-label">z-score</div><div class="ms-value" style="color:var(--red)">${z}</div></div>
+      <div class="mini-stat"><div class="ms-label">K record</div><div class="ms-value" style="color:var(--orange)">${k != null ? Number(k).toFixed(5) : '?'}</div></div>
+      <div class="mini-stat"><div class="ms-label">Threshold</div><div class="ms-value" style="font-size:16px">${(ev.k_threshold_2s||0).toFixed(5)}</div></div>
+      <div class="mini-stat"><div class="ms-label">Bundle</div><div class="ms-value" style="font-size:14px;color:var(--blue)">${bundle}</div></div>
+    </div>
+    <div class="section-heading">Contributing fields <span style="color:var(--yellow)">${fields.join(', ')||'none'}</span></div>
+    <table class="drill-table" style="margin-top:8px">
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody>${fieldRows}</tbody>
+    </table>`);
+}
 </script>
 </body>
 </html>

@@ -875,6 +875,10 @@ impl BundleStore {
                 }
             }
 
+            // Compute per-record K BEFORE updating field_stats (matches BundleStore::insert).
+            let k_record = compute_record_k(&self.field_stats, &fiber_vals, &self.schema.fiber_fields);
+            self.curvature_stats.update(k_record);
+
             for (i, field_def) in self.schema.fiber_fields.iter().enumerate() {
                 if let Some(v) = fiber_vals[i].as_f64() {
                     self.field_stats
@@ -1625,6 +1629,11 @@ impl BundleStore {
     /// Number of stored sections.
     pub fn len(&self) -> usize {
         self.storage.len()
+    }
+
+    /// Read-only access to field statistics (for per-record curvature computation).
+    pub fn get_field_stats(&self) -> &HashMap<String, FieldStats> {
+        &self.field_stats
     }
 
     pub fn is_empty(&self) -> bool {

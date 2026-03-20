@@ -7,6 +7,7 @@ COPY openapi.json ./
 COPY src/ ./src/
 COPY benches/ ./benches/
 COPY examples/ ./examples/
+COPY dashboard/ ./dashboard/
 RUN cargo build --release --bin gigi-stream
 
 # Stage 2: Runtime

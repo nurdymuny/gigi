@@ -37,7 +37,7 @@ use std::time::Instant;
 use tokio::sync::broadcast;
 
 use gigi::bundle::{QueryCondition, VectorMetric, AnomalyRecord};
-use gigi::bundle::TransactionOp;
+use gigi::bundle::{TransactionOp, compute_record_k};
 use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 use gigi::curvature;
 use gigi::spectral;
@@ -613,8 +613,14 @@ fn build_cors_layer() -> CorsLayer {
                 ])
         }
         Err(_) => {
-            // No CORS origin set → restrictive, same-origin only
+            // No CORS origin set → allow same-origin (permissive for local dev)
             CorsLayer::new()
+                .allow_origin(AllowOrigin::any())
+                .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE, Method::OPTIONS])
+                .allow_headers([
+                    HeaderName::from_static("content-type"),
+                    HeaderName::from_static("x-api-key"),
+                ])
         }
     }
 }
@@ -785,10 +791,8 @@ async fn drop_bundle(
     let mut engine = state.engine.write().unwrap();
     match engine.drop_bundle(&name) {
         Ok(true) => Ok(Json(serde_json::json!({"status": "dropped", "bundle": name}))),
-        Ok(false) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-        )),
+        // Idempotent: deleting a non-existent bundle is not an error
+        Ok(false) => Ok(Json(serde_json::json!({"status": "not_found", "bundle": name}))),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse { error: format!("Storage error: {e}") }),
@@ -853,6 +857,35 @@ async fn insert_records(
     }
 
     // WAL-logged batch insert
+    // For single-record batches: compute anomaly check PRE-INSERT so the record
+    // doesn't inflate its own curvature stats (which would mask detection).
+    let pre_anomaly: Option<(f64, f64, Vec<String>)> = if records.len() == 1 {
+        let store = engine.bundle(&name).unwrap();
+        let stats = &store.curvature_stats;
+        if stats.k_count >= 10 {
+            let fiber_vals: Vec<Value> = store.schema.fiber_fields.iter()
+                .map(|f| records[0].get(&f.name).cloned().unwrap_or(Value::Null))
+                .collect();
+            let k_rec = compute_record_k(store.get_field_stats(), &fiber_vals, &store.schema.fiber_fields);
+            if stats.is_anomaly(k_rec, 2.0) {
+                let z = stats.z_score(k_rec);
+                let contributing: Vec<String> = store.schema.fiber_fields.iter()
+                    .zip(fiber_vals.iter())
+                    .filter_map(|(fd, v)| {
+                        let v_f = v.as_f64()?;
+                        let fs = store.get_field_stats().get(&fd.name)?;
+                        if fs.count < 2 { return None; }
+                        let mean = fs.sum / fs.count as f64;
+                        let range = fs.range().max(f64::EPSILON);
+                        let field_k = (v_f - mean).abs() / range;
+                        if field_k > 0.5 { Some(fd.name.clone()) } else { None }
+                    })
+                    .collect();
+                Some((k_rec, z, contributing))
+            } else { None }
+        } else { None }
+    } else { None };
+
     let inserted = engine.batch_insert(&name, &records).map_err(|e| (
         StatusCode::INTERNAL_SERVER_ERROR,
         Json(ErrorResponse { error: format!("Storage error: {e}") }),
@@ -886,6 +919,13 @@ async fn insert_records(
 
     // Emit dashboard event with current bundle health snapshot
     let _ = state.dashboard_tx.send(build_dashboard_event("insert", &name, store, k, None, None, vec![]));
+
+    // Emit anomaly event when pre-insert detection flagged this record
+    if let Some((k_rec, z, contributing)) = pre_anomaly {
+        let _ = state.dashboard_tx.send(build_dashboard_event(
+            "anomaly", &name, store, k, Some(k_rec), Some(z), contributing,
+        ));
+    }
 
     Ok(Json(serde_json::json!({
         "status": "inserted",

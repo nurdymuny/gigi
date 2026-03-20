@@ -473,6 +473,95 @@ class TestVectorSearch:
         with pytest.raises(BundleNotFound):
             client().vector_search("ghost", "emb", [1.0, 0.0])
 
+
+# ── DropField ─────────────────────────────────────────────────────────────────
+
+
+class TestDropField:
+    @resp_lib.activate
+    def test_drop_field_success(self):
+        resp_lib.post(
+            f"{BASE_URL}/v1/bundles/users/drop-field",
+            json={"status": "field_dropped", "field": "temp", "records": 42},
+            status=200,
+        )
+        resp = client().drop_field("users", "temp")
+        assert resp["status"] == "field_dropped"
+        assert resp["field"] == "temp"
+        req_body = json.loads(resp_lib.calls[0].request.body)
+        assert req_body == {"field": "temp"}
+
+    @resp_lib.activate
+    def test_drop_field_not_found_raises(self):
+        resp_lib.post(
+            f"{BASE_URL}/v1/bundles/users/drop-field",
+            json={"error": "Field 'ghost' not found in bundle 'users'"},
+            status=404,
+        )
+        with pytest.raises(GigiError):
+            client().drop_field("users", "ghost")
+
+    @resp_lib.activate
+    def test_drop_field_bundle_not_found_raises(self):
+        resp_lib.post(
+            f"{BASE_URL}/v1/bundles/none/drop-field",
+            json={"error": "Bundle 'none' not found"},
+            status=404,
+        )
+        with pytest.raises(BundleNotFound):
+            client().drop_field("none", "score")
+
+
+# ── Aggregate ─────────────────────────────────────────────────────────────────
+
+
+class TestAggregate:
+    @resp_lib.activate
+    def test_aggregate_basic(self):
+        payload = {"groups": {"Eng": {"count": 20, "sum": 1000.0, "avg": 50.0, "min": 40.0, "max": 60.0}}}
+        resp_lib.post(f"{BASE_URL}/v1/bundles/employees/aggregate", json=payload, status=200)
+        result = client().aggregate("employees", "dept", "salary")
+        assert "Eng" in result["groups"]
+        assert result["groups"]["Eng"]["count"] == 20
+
+    @resp_lib.activate
+    def test_aggregate_sends_having(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/employees/aggregate",
+                      json={"groups": {}}, status=200)
+        client().aggregate("employees", "dept", "salary",
+                           having=[{"field": "count", "op": "gt", "value": 10}])
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["having"] == [{"field": "count", "op": "gt", "value": 10}]
+
+    @resp_lib.activate
+    def test_aggregate_sends_filters(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/employees/aggregate",
+                      json={"groups": {}}, status=200)
+        client().aggregate("employees", "dept", "salary",
+                           filters=[{"field": "active", "op": "eq", "value": True}])
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["conditions"] == [{"field": "active", "op": "eq", "value": True}]
+        assert body["having"] == []
+
+    @resp_lib.activate
+    def test_aggregate_defaults_empty_having(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/employees/aggregate",
+                      json={"groups": {}}, status=200)
+        client().aggregate("employees", "dept", "salary")
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["having"] == []
+        assert body["conditions"] == []
+
+    @resp_lib.activate
+    def test_vector_search_404_raises_bundle_not_found(self):
+        resp_lib.post(
+            f"{BASE_URL}/v1/bundles/ghost/vector-search",
+            json={"error": "Bundle 'ghost' not found"},
+            status=404,
+        )
+        with pytest.raises(BundleNotFound):
+            client().vector_search("ghost", "emb", [1.0, 0.0])
+
     def test_parse_event_no_k(self):
         raw = 'EVENT orders delete {"id":"o1"}'
         event = GigiSubscriber._parse_event(raw)

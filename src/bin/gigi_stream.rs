@@ -171,6 +171,16 @@ struct AggregateRequest {
     field: String,
     #[serde(default)]
     conditions: Vec<ConditionSpec>,
+    /// HAVING — post-aggregation filter on computed stats.
+    /// Each entry: { "field": "count"|"sum"|"avg"|"min"|"max", "op": "gt"|"gte"|"lt"|"lte"|"eq"|"neq", "value": <number> }
+    #[serde(default)]
+    having: Vec<ConditionSpec>,
+}
+
+/// Body for POST .../drop-field
+#[derive(Deserialize)]
+struct DropFieldRequest {
+    field: String,
 }
 
 
@@ -1035,6 +1045,32 @@ async fn aggregate(
         });
     }
 
+    // HAVING — filter groups on aggregated values
+    if !req.having.is_empty() {
+        result_groups.retain(|_, agg| {
+            req.having.iter().all(|h| {
+                let agg_val = match h.field.as_str() {
+                    "count" => agg.count as f64,
+                    "sum" => agg.sum,
+                    "avg" => agg.avg,
+                    "min" => agg.min,
+                    "max" => agg.max,
+                    _ => return true,
+                };
+                let threshold = h.value.as_f64().unwrap_or(0.0);
+                match h.op.as_str() {
+                    "gt" | ">" => agg_val > threshold,
+                    "gte" | ">=" => agg_val >= threshold,
+                    "lt" | "<" => agg_val < threshold,
+                    "lte" | "<=" => agg_val <= threshold,
+                    "eq" | "=" | "==" => (agg_val - threshold).abs() < f64::EPSILON,
+                    "neq" | "!=" | "<>" => (agg_val - threshold).abs() >= f64::EPSILON,
+                    _ => true,
+                }
+            })
+        });
+    }
+
     Ok(Json(AggResult { groups: result_groups }))
 }
 
@@ -1767,6 +1803,32 @@ async fn increment_field(
         "amount": req.amount,
         "curvature": k,
         "confidence": curvature::confidence(k)
+    })))
+}
+
+/// POST /v1/bundles/{name}/drop-field — remove a fiber field from the schema
+async fn drop_field(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<DropFieldRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let mut engine = state.engine.write().unwrap();
+    let store = engine.bundle_mut(&name).ok_or_else(|| (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+    ))?;
+
+    if !store.drop_field(&req.field) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse { error: format!("Field '{}' not found in bundle '{}'", req.field, name) }),
+        ));
+    }
+
+    Ok(Json(serde_json::json!({
+        "status": "field_dropped",
+        "field": req.field,
+        "records": store.len()
     })))
 }
 
@@ -3209,6 +3271,7 @@ async fn main() {
         .route("/v1/bundles/{name}/schema", get(get_schema))
         // Sprint 2: New operations
         .route("/v1/bundles/{name}/increment", post(increment_field))
+        .route("/v1/bundles/{name}/drop-field", post(drop_field))
         .route("/v1/bundles/{name}/add-field", post(add_field))
         .route("/v1/bundles/{name}/add-index", post(add_index))
         .route("/v1/bundles/{name}/export", get(export_bundle))

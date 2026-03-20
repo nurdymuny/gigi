@@ -501,6 +501,48 @@ class GigiClient:
 
     # ── Analytics ─────────────────────────────────────────────────────────
 
+    def aggregate(
+        self,
+        bundle: str,
+        group_by: str,
+        field: str,
+        *,
+        filters: Optional[List[Dict[str, Any]]] = None,
+        having: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """
+        GROUP BY aggregation with optional pre-filter and HAVING clause.
+
+        Args:
+            bundle:   Bundle name.
+            group_by: Field to group by (e.g. "dept").
+            field:    Numeric field to aggregate (e.g. "salary").
+            filters:  Pre-filter conditions (same format as query filters).
+            having:   Post-aggregation filter on computed stats.
+                      Each entry: {"field": "count"|"sum"|"avg"|"min"|"max",
+                                   "op": "gt"|"gte"|"lt"|"lte"|"eq"|"neq",
+                                   "value": <number>}
+
+        Returns:
+            Dict with "groups" key mapping group value → {count, sum, avg, min, max}.
+
+        Example::
+
+            # Departments with more than 10 employees and avg salary > 60000
+            result = db.aggregate("employees", "dept", "salary",
+                having=[{"field": "count", "op": "gt", "value": 10},
+                        {"field": "avg",   "op": "gt", "value": 60000}])
+            for dept, stats in result["groups"].items():
+                print(dept, stats["avg"])
+        """
+        body: Dict[str, Any] = {
+            "group_by": group_by,
+            "field": field,
+            "conditions": filters or [],
+            "having": having or [],
+        }
+        return self._post(f"/v1/bundles/{bundle}/aggregate", body)
+
     def curvature(self, bundle: str) -> Dict[str, Any]:
         """
         Get scalar curvature K for the bundle.
@@ -575,6 +617,19 @@ class GigiClient:
         if default is not None:
             body["default"] = default
         return self._post(f"/v1/bundles/{bundle}/add-field", body)
+
+    def drop_field(self, bundle: str, field: str) -> Dict[str, Any]:
+        """
+        Remove a fiber field from an existing bundle.
+
+        Drops the column from the schema and all stored records.
+        Base fields (keys) cannot be dropped.
+
+        Raises:
+            BundleNotFound: If the bundle does not exist.
+            GigiError(404): If the field does not exist in the bundle.
+        """
+        return self._post(f"/v1/bundles/{bundle}/drop-field", {"field": field})
 
     def add_index(self, bundle: str, field: str) -> Dict[str, Any]:
         """Add an index on a field for faster range queries."""

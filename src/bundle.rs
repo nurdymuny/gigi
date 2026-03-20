@@ -2038,6 +2038,45 @@ impl BundleStore {
         }
     }
 
+    /// Remove a fiber field from the schema and all existing records.
+    /// Returns `true` if the field was found and removed, `false` if it does not exist.
+    /// Base fields (keys) cannot be dropped — only fiber fields.
+    pub fn drop_field(&mut self, field_name: &str) -> bool {
+        let pos = self.schema.fiber_fields.iter().position(|f| f.name == field_name);
+        let pos = match pos {
+            Some(p) => p,
+            None => return false,
+        };
+
+        // Remove from schema and indexes
+        self.schema.fiber_fields.remove(pos);
+        self.schema.indexed_fields.retain(|f| f != field_name);
+        self.field_index.remove(field_name);
+
+        // Remove the value at position `pos` from every fiber vector
+        match &mut self.storage {
+            BaseStorage::Hashed { sections, .. } => {
+                for fiber in sections.values_mut() {
+                    if pos < fiber.len() { fiber.remove(pos); }
+                }
+            }
+            BaseStorage::Sequential { sections, .. } => {
+                for fiber in sections.iter_mut() {
+                    if pos < fiber.len() { fiber.remove(pos); }
+                }
+            }
+            BaseStorage::Hybrid { sections, overflow_sections, .. } => {
+                for fiber in sections.iter_mut() {
+                    if pos < fiber.len() { fiber.remove(pos); }
+                }
+                for fiber in overflow_sections.values_mut() {
+                    if pos < fiber.len() { fiber.remove(pos); }
+                }
+            }
+        }
+        true
+    }
+
     /// Add an index on a field and build it from existing records.
     pub fn add_index(&mut self, field_name: &str) {
         if self.schema.indexed_fields.contains(&field_name.to_string()) {
@@ -4441,5 +4480,84 @@ mod tests {
         let results = store.vector_search("emb", &[1.0, 0.0], 1, VectorMetric::Euclidean, &[]);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].1.get("id"), Some(&Value::Integer(1)));
+    }
+
+    // ── drop_field tests ────────────────────────────────────────────────────
+
+    fn make_drop_store() -> BundleStore {
+        let schema = BundleSchema::new("t")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("name"))
+            .fiber(FieldDef::numeric("score").with_range(100.0))
+            .fiber(FieldDef::categorical("dept"))
+            .index("dept");
+        let mut store = BundleStore::new(schema);
+        for i in 0i64..5 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("name".into(), Value::Text(format!("user_{i}")));
+            r.insert("score".into(), Value::Float(i as f64 * 10.0));
+            r.insert("dept".into(), Value::Text("eng".into()));
+            store.insert(&r);
+        }
+        store
+    }
+
+    #[test]
+    fn test_drop_field_removes_from_schema() {
+        let mut store = make_drop_store();
+        assert!(store.schema.fiber_fields.iter().any(|f| f.name == "score"));
+        let ok = store.drop_field("score");
+        assert!(ok, "drop_field should return true for existing field");
+        assert!(!store.schema.fiber_fields.iter().any(|f| f.name == "score"),
+            "score should be gone from schema");
+    }
+
+    #[test]
+    fn test_drop_field_records_no_longer_have_field() {
+        let mut store = make_drop_store();
+        store.drop_field("score");
+        for rec in store.records() {
+            assert!(!rec.contains_key("score"), "dropped field should not appear in records");
+        }
+    }
+
+    #[test]
+    fn test_drop_field_returns_false_for_unknown() {
+        let mut store = make_drop_store();
+        let ok = store.drop_field("nonexistent_field");
+        assert!(!ok);
+    }
+
+    #[test]
+    fn test_drop_field_does_not_affect_other_fields() {
+        let mut store = make_drop_store();
+        store.drop_field("score");
+        for rec in store.records() {
+            assert!(rec.contains_key("name"), "name should still be present");
+            assert!(rec.contains_key("dept"), "dept should still be present");
+        }
+    }
+
+    #[test]
+    fn test_drop_indexed_field_removes_index() {
+        let mut store = make_drop_store();
+        assert!(store.field_index.contains_key("dept"));
+        store.drop_field("dept");
+        assert!(!store.field_index.contains_key("dept"), "index should be removed");
+        assert!(!store.schema.indexed_fields.contains(&"dept".to_string()),
+            "indexed_fields should be updated");
+    }
+
+    #[test]
+    fn test_drop_field_store_still_queryable() {
+        let mut store = make_drop_store();
+        store.drop_field("score");
+        // Should still be able to query on remaining fields
+        let results = store.filtered_query(
+            &[QueryCondition::Eq("dept".into(), Value::Text("eng".into()))],
+            None, false, None, None,
+        );
+        assert_eq!(results.len(), 5);
     }
 }

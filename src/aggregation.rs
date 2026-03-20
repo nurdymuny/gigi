@@ -189,4 +189,53 @@ mod tests {
         assert!((eng.min - 40000.0).abs() < 0.01); // id=0
         assert!((eng.max - (40000.0 + 95.0 * 500.0)).abs() < 0.01); // id=95
     }
+
+    /// HAVING: filtered_group_by + manual post-filter (same logic as REST handler).
+    #[test]
+    fn test_having_count_gt() {
+        let store = make_store();
+        // All depts have exactly 20 records each (100 / 5)
+        let groups = group_by(&store, "dept", "salary");
+        // HAVING count > 25 → no groups should survive (all have 20)
+        let filtered: HashMap<_, _> = groups.iter()
+            .filter(|(_, agg)| agg.count > 25)
+            .collect();
+        assert!(filtered.is_empty(), "all depts have 20 records, none > 25");
+
+        // HAVING count >= 20 → all 5 depts
+        let all_groups = group_by(&store, "dept", "salary");
+        let filtered_all: HashMap<_, _> = all_groups.iter()
+            .filter(|(_, agg)| agg.count >= 20)
+            .collect();
+        assert_eq!(filtered_all.len(), 5, "all 5 depts have at least 20 records");
+    }
+
+    #[test]
+    fn test_having_avg_gt() {
+        let store = make_store();
+        // Eng dept: ids 0,5,10,...,95 → avg salary = 40000 + 47.5 * 500 = 63750
+        // All depts should have avg > 50000 since min salary is 40000 and there are 100 records
+        let groups = group_by(&store, "dept", "salary");
+        let above_50k: HashMap<_, _> = groups.iter()
+            .filter(|(_, agg)| agg.avg() > 50000.0)
+            .collect();
+        // With 100 records and salaries 40000–89500, avg per group will be ~64750
+        assert_eq!(above_50k.len(), 5, "all dept avgs should exceed 50000");
+    }
+
+    #[test]
+    fn test_filtered_group_by_with_condition() {
+        let store = make_store();
+        // Only include Eng and Sales departments
+        let conditions = vec![
+            crate::bundle::QueryCondition::In(
+                "dept".into(),
+                vec![Value::Text("Eng".into()), Value::Text("Sales".into())],
+            ),
+        ];
+        let groups = filtered_group_by(&store, "dept", "salary", &conditions);
+        assert_eq!(groups.len(), 2, "only Eng and Sales should be grouped");
+        assert!(groups.contains_key(&Value::Text("Eng".into())));
+        assert!(groups.contains_key(&Value::Text("Sales".into())));
+    }
 }

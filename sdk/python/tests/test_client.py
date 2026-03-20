@@ -673,3 +673,128 @@ class TestGigiSubscriber:
 
         assert connect_called
         assert disconnect_called
+
+
+# ── Anomaly Detection v0.8.0 ──────────────────────────────────────────────────
+
+
+ANOMALY_RESPONSE = {
+    "bundle": "weather",
+    "threshold_sigma": 2.0,
+    "k_mean": 0.12,
+    "k_std": 0.04,
+    "k_threshold": 0.20,
+    "total_records": 7320,
+    "anomaly_count": 4,
+    "anomalies": [
+        {"record": {"id": 14, "city": "Moscow", "temp_c": -65.0},
+         "local_curvature": 0.51, "z_score": 9.75, "confidence": 0.66,
+         "deviation_norm": 1, "deviation_distance": 1.23, "neighbourhood_size": 366,
+         "contributing_fields": ["temp_c"]},
+        {"record": {"id": 545, "city": "Dubai", "humidity_pct": 1.5},
+         "local_curvature": 0.48, "z_score": 9.0, "confidence": 0.68,
+         "deviation_norm": 1, "deviation_distance": 1.18, "neighbourhood_size": 366,
+         "contributing_fields": ["humidity_pct"]},
+    ],
+}
+
+
+class TestAnomalyDetection:
+    @resp_lib.activate
+    def test_anomalies_returns_dict(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/anomalies",
+                      json=ANOMALY_RESPONSE, status=200)
+        result = client().anomalies("weather")
+        assert result["bundle"] == "weather"
+        assert isinstance(result["anomalies"], list)
+        assert result["anomaly_count"] == 4
+
+    @resp_lib.activate
+    def test_anomalies_default_sigma(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/anomalies",
+                      json=ANOMALY_RESPONSE, status=200)
+        client().anomalies("weather")
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["threshold_sigma"] == 2.0
+
+    @resp_lib.activate
+    def test_anomalies_custom_sigma(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/anomalies",
+                      json=ANOMALY_RESPONSE, status=200)
+        client().anomalies("weather", threshold_sigma=3.0)
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["threshold_sigma"] == 3.0
+
+    @resp_lib.activate
+    def test_anomalies_with_filters(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/anomalies",
+                      json=ANOMALY_RESPONSE, status=200)
+        f = [{"field": "city", "op": "eq", "value": "Moscow"}]
+        client().anomalies("weather", filters=f)
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["filters"] == f
+
+    @resp_lib.activate
+    def test_anomalies_limit_sent(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/anomalies",
+                      json=ANOMALY_RESPONSE, status=200)
+        client().anomalies("weather", limit=50)
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["limit"] == 50
+
+    @resp_lib.activate
+    def test_bundle_health_returns_dict(self):
+        health = {
+            "bundle": "weather", "record_count": 7320,
+            "k_global": 0.14, "k_mean": 0.12, "k_std": 0.04,
+            "k_threshold_2s": 0.20, "k_threshold_3s": 0.24,
+            "confidence": 0.88, "anomaly_rate_2s": 0.0005,
+            "per_field": [{"field": "temp_c", "k": 0.18, "variance": 110.0, "range": 65.0}],
+        }
+        resp_lib.add(resp_lib.GET, f"{BASE_URL}/v1/bundles/weather/health", json=health)
+        result = client().bundle_health("weather")
+        assert result["record_count"] == 7320
+        assert isinstance(result["per_field"], list)
+
+    @resp_lib.activate
+    def test_predict_returns_predictions(self):
+        resp = {
+            "bundle": "weather", "group_by": "city", "field": "temp_c",
+            "predictions": [{"group": "Moscow", "count": 366, "mean": -5.0, "std_dev": 6.5, "volatility_index": 1.3}],
+        }
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/predict", json=resp, status=200)
+        result = client().predict("weather", "city", "temp_c")
+        assert result["group_by"] == "city"
+        assert len(result["predictions"]) >= 1
+
+    @resp_lib.activate
+    def test_predict_sends_correct_body(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/predict",
+                      json={"bundle": "weather", "group_by": "city", "field": "temp_c", "predictions": []},
+                      status=200)
+        client().predict("weather", "city", "temp_c")
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body == {"group_by": "city", "field": "temp_c"}
+
+    @resp_lib.activate
+    def test_field_anomalies_returns_dict(self):
+        resp = {
+            "bundle": "weather", "field": "temp_c",
+            "threshold_sigma": 2.0, "anomaly_count": 1,
+            "anomalies": [ANOMALY_RESPONSE["anomalies"][0]],
+        }
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/anomalies/field", json=resp, status=200)
+        result = client().field_anomalies("weather", "temp_c")
+        assert result["field"] == "temp_c"
+        assert result["anomaly_count"] == 1
+
+    @resp_lib.activate
+    def test_field_anomalies_sends_correct_body(self):
+        resp_lib.post(f"{BASE_URL}/v1/bundles/weather/anomalies/field",
+                      json={"bundle": "weather", "field": "temp_c", "threshold_sigma": 2.0, "anomaly_count": 0, "anomalies": []},
+                      status=200)
+        client().field_anomalies("weather", "temp_c", threshold_sigma=3.0, limit=25)
+        body = json.loads(resp_lib.calls[0].request.body)
+        assert body["field"] == "temp_c"
+        assert body["threshold_sigma"] == 3.0
+        assert body["limit"] == 25

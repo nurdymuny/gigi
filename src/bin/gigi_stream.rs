@@ -36,7 +36,7 @@ use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use tokio::sync::broadcast;
 
-use gigi::bundle::{QueryCondition, VectorMetric};
+use gigi::bundle::{QueryCondition, VectorMetric, AnomalyRecord};
 use gigi::bundle::TransactionOp;
 use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 use gigi::curvature;
@@ -54,6 +54,8 @@ struct StreamState {
     engine: RwLock<Engine>,
     /// Per-bundle broadcast channels for subscriptions
     channels: RwLock<HashMap<String, broadcast::Sender<SubscriptionEvent>>>,
+    /// Global dashboard broadcast — anomaly + curvature update events for all bundles
+    dashboard_tx: broadcast::Sender<DashboardEvent>,
     /// API key for authentication (None = no auth required)
     api_key: Option<String>,
     /// Rate limit: max requests per window (0 = unlimited)
@@ -79,6 +81,36 @@ struct SubscriptionEvent {
     /// Scalar curvature K at the time of mutation — lets subscribers detect
     /// topological phase transitions without an extra round-trip.
     curvature: f64,
+}
+
+/// Live dashboard event broadcast on every mutation and anomaly detection.
+/// Subscribers receive a real-time stream of bundle health and anomaly signals.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+struct DashboardEvent {
+    /// Event type: "insert", "anomaly", "curvature_update", "delete".
+    #[serde(rename = "type")]
+    event_type: &'static str,
+    bundle: String,
+    /// Wall-clock milliseconds since Unix epoch.
+    ts_ms: u64,
+    record_count: usize,
+    k_global: f64,
+    k_mean: f64,
+    k_std: f64,
+    k_threshold_2s: f64,
+    global_confidence: f64,
+    /// True when the triggering record is above the 2σ anomaly threshold.
+    is_anomaly: bool,
+    /// K of the record that triggered this event (0 for aggregate events).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    local_curvature: Option<f64>,
+    /// z-score for anomaly events.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    z_score: Option<f64>,
+    /// Contributing fields for anomaly events.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    contributing_fields: Vec<String>,
 }
 
 impl StreamState {
@@ -110,6 +142,7 @@ impl StreamState {
         StreamState {
             engine: RwLock::new(engine),
             channels: RwLock::new(HashMap::new()),
+            dashboard_tx: broadcast::channel(4096).0,
             api_key,
             rate_limit,
             rate_window_secs,
@@ -392,6 +425,59 @@ struct BundleInfo {
     records: usize,
     fields: usize,
 }
+
+// ── Anomaly Detection ─────────────────────────────────────────────────────────
+
+fn default_anomaly_sigma() -> f64 { 2.0 }
+fn default_anomaly_limit() -> usize { 100 }
+fn default_include_scores() -> bool { true }
+
+#[derive(Deserialize)]
+struct AnomalyRequest {
+    #[serde(default = "default_anomaly_sigma")]
+    threshold_sigma: f64,
+    #[serde(default)]
+    filters: Vec<ConditionSpec>,
+    #[serde(default)]
+    fields: Vec<String>,
+    #[serde(default = "default_anomaly_limit")]
+    limit: usize,
+    #[serde(default = "default_include_scores")]
+    include_scores: bool,
+}
+
+#[derive(Deserialize)]
+struct FieldAnomalyRequest {
+    field: String,
+    #[serde(default = "default_anomaly_sigma")]
+    threshold_sigma: f64,
+    #[serde(default = "default_anomaly_limit")]
+    limit: usize,
+}
+
+#[derive(Deserialize)]
+struct PredictRequest {
+    group_by: String,
+    field: String,
+}
+
+fn anomaly_to_json(a: &AnomalyRecord, include_scores: bool) -> serde_json::Value {
+    let mut obj = serde_json::Map::new();
+    obj.insert("record".into(), record_to_json(&a.record));
+    if include_scores {
+        obj.insert("local_curvature".into(), a.local_curvature.into());
+        obj.insert("z_score".into(), a.z_score.into());
+        obj.insert("confidence".into(), a.confidence.into());
+        obj.insert("deviation_norm".into(), (a.deviation_norm as u64).into());
+        obj.insert("deviation_distance".into(), a.deviation_distance.into());
+        obj.insert("neighbourhood_size".into(), (a.neighbourhood_size as u64).into());
+        obj.insert("contributing_fields".into(),
+            serde_json::Value::Array(a.contributing_fields.iter().map(|f| f.clone().into()).collect()));
+    }
+    serde_json::Value::Object(obj)
+}
+
+// ── Curvature ──────────────────────────────────────────────────────────────────
 
 #[derive(Serialize)]
 struct CurvatureReport {
@@ -798,6 +884,9 @@ async fn insert_records(
         });
     }
 
+    // Emit dashboard event with current bundle health snapshot
+    let _ = state.dashboard_tx.send(build_dashboard_event("insert", &name, store, k, None, None, vec![]));
+
     Ok(Json(serde_json::json!({
         "status": "inserted",
         "count": inserted,
@@ -1190,6 +1279,188 @@ async fn consistency_check(
         "cocycles": cocycles,
         "status": if h1 == 0 { "consistent" } else { "conflicts_detected" },
         "curvature": k
+    })))
+}
+
+// ── Anomaly Detection REST Handlers ───────────────────────────────────────────
+
+/// POST /v1/bundles/{name}/anomalies
+/// Detect anomalies using K-score threshold (μ_K + n·σ_K).
+async fn bundle_anomalies(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<AnomalyRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+    ))?;
+
+    let conditions: Vec<QueryCondition> = req.filters.iter()
+        .map(condition_spec_to_query_condition)
+        .collect();
+    let pre_filter = if conditions.is_empty() { None } else { Some(conditions.as_slice()) };
+
+    let anomalies = store.compute_anomalies(req.threshold_sigma, pre_filter, req.limit);
+    let include = req.include_scores;
+
+    // Optionally project to requested fields only
+    let results: Vec<serde_json::Value> = anomalies.iter().map(|a| {
+        let mut j = anomaly_to_json(a, include);
+        if !req.fields.is_empty() {
+            if let serde_json::Value::Object(ref mut obj) = j {
+                if let Some(serde_json::Value::Object(ref mut rec)) = obj.get_mut("record") {
+                    rec.retain(|k, _| req.fields.contains(k));
+                }
+            }
+        }
+        j
+    }).collect();
+
+    let stats = &store.curvature_stats;
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "threshold_sigma": req.threshold_sigma,
+        "k_mean": stats.mean(),
+        "k_std": stats.std_dev(),
+        "k_threshold": stats.threshold(req.threshold_sigma),
+        "total_records": store.len(),
+        "anomaly_count": results.len(),
+        "anomalies": results,
+    })))
+}
+
+/// GET /v1/bundles/{name}/health
+/// Bundle health snapshot: record count, curvature stats, confidence.
+async fn bundle_health(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+    ))?;
+
+    let k_global = curvature::scalar_curvature(store);
+    let stats = &store.curvature_stats;
+    let k_mean = stats.mean();
+    let k_std  = stats.std_dev();
+    let record_count = store.len();
+
+    // Per-field curvature
+    let per_field: Vec<serde_json::Value> = store.field_stats().iter().map(|(field, fs)| {
+        let range = fs.range();
+        let field_k = if range > 0.0 { fs.variance() / (range * range) } else { 0.0 };
+        serde_json::json!({
+            "field": field,
+            "k": field_k,
+            "variance": fs.variance(),
+            "range": range,
+        })
+    }).collect();
+
+    // derive anomaly_rate from 2-sigma count over curvature_stats
+    let anomaly_rate = store.compute_anomalies(2.0, None, usize::MAX).len() as f64
+        / record_count.max(1) as f64;
+
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "record_count": record_count,
+        "k_global": k_global,
+        "k_mean": k_mean,
+        "k_std": k_std,
+        "k_threshold_2s": stats.threshold(2.0),
+        "k_threshold_3s": stats.threshold(3.0),
+        "confidence": curvature::confidence(k_global),
+        "anomaly_rate_2s": anomaly_rate,
+        "per_field": per_field,
+    })))
+}
+
+/// POST /v1/bundles/{name}/predict
+/// Predict field volatility by group: returns σ per group as a volatility proxy.
+async fn predict_volatility(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<PredictRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+    ))?;
+
+    // Group records by group_by field value, accumulate sum/sum_sq/count for `field`
+    let mut groups: HashMap<String, (f64, f64, usize)> = HashMap::new(); // key → (sum, sum_sq, n)
+    for record in store.records() {
+        let group_key = record.get(&req.group_by)
+            .map(|v| format!("{:?}", v))
+            .unwrap_or_else(|| "null".into());
+        if let Some(v) = record.get(&req.field).and_then(|v| v.as_f64()) {
+            let e = groups.entry(group_key).or_default();
+            e.0 += v;
+            e.1 += v * v;
+            e.2 += 1;
+        }
+    }
+
+    let predictions: Vec<serde_json::Value> = groups.into_iter().map(|(group, (sum, sum_sq, n))| {
+        let mean = sum / n as f64;
+        let variance = (sum_sq / n as f64) - mean * mean;
+        let std_dev = variance.max(0.0).sqrt();
+        // volatility index: σ / max(|μ|, 1) — relative dispersion
+        let volatility = std_dev / mean.abs().max(1.0);
+        serde_json::json!({
+            "group": group,
+            "count": n,
+            "mean": mean,
+            "std_dev": std_dev,
+            "volatility_index": volatility,
+        })
+    }).collect();
+
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "group_by": req.group_by,
+        "field": req.field,
+        "predictions": predictions,
+    })))
+}
+
+/// POST /v1/bundles/{name}/anomalies/field
+/// Anomalies ranked by a specific field's normalised deviation.
+async fn field_anomalies(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<FieldAnomalyRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+    ))?;
+
+    // Run full anomaly scan, then keep only those where the requested field
+    // appears in contributing_fields.
+    let all = store.compute_anomalies(req.threshold_sigma, None, usize::MAX);
+    let mut field_anomalies: Vec<&AnomalyRecord> = all.iter()
+        .filter(|a| a.contributing_fields.contains(&req.field))
+        .collect();
+    field_anomalies.sort_by(|a, b| b.z_score.partial_cmp(&a.z_score).unwrap_or(std::cmp::Ordering::Equal));
+    field_anomalies.truncate(req.limit);
+
+    let results: Vec<serde_json::Value> = field_anomalies.iter()
+        .map(|a| anomaly_to_json(a, true))
+        .collect();
+
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "field": req.field,
+        "threshold_sigma": req.threshold_sigma,
+        "anomaly_count": results.len(),
+        "anomalies": results,
     })))
 }
 
@@ -2370,6 +2641,104 @@ struct Subscription {
     receiver: tokio::sync::broadcast::Receiver<SubscriptionEvent>,
 }
 
+// ── Dashboard Event Helpers ──────────────────────────────────────────────────
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
+fn build_dashboard_event(
+    event_type: &'static str,
+    bundle: &str,
+    store: &gigi::bundle::BundleStore,
+    k_global: f64,
+    local_curvature: Option<f64>,
+    z_score: Option<f64>,
+    contributing_fields: Vec<String>,
+) -> DashboardEvent {
+    let stats = &store.curvature_stats;
+    let is_anomaly = local_curvature
+        .map(|k| stats.is_anomaly(k, 2.0))
+        .unwrap_or(false);
+    DashboardEvent {
+        event_type,
+        bundle: bundle.to_string(),
+        ts_ms: now_ms(),
+        record_count: store.len(),
+        k_global,
+        k_mean: stats.mean(),
+        k_std: stats.std_dev(),
+        k_threshold_2s: stats.threshold(2.0),
+        global_confidence: curvature::confidence(k_global),
+        is_anomaly,
+        local_curvature,
+        z_score,
+        contributing_fields,
+    }
+}
+
+// ── Dashboard WebSocket Handlers ──────────────────────────────────────────────
+
+/// GET /v1/ws/dashboard — stream DashboardEvents for ALL bundles.
+async fn ws_dashboard_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<StreamState>>,
+) -> impl IntoResponse {
+    let rx = state.dashboard_tx.subscribe();
+    ws.on_upgrade(move |socket| stream_dashboard_events(socket, rx, None))
+}
+
+/// GET /v1/ws/{bundle}/dashboard — stream DashboardEvents for ONE bundle.
+async fn ws_bundle_dashboard_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    let rx = state.dashboard_tx.subscribe();
+    ws.on_upgrade(move |socket| stream_dashboard_events(socket, rx, Some(name)))
+}
+
+async fn stream_dashboard_events(
+    socket: WebSocket,
+    mut rx: tokio::sync::broadcast::Receiver<DashboardEvent>,
+    filter_bundle: Option<String>,
+) {
+    use futures_util::{SinkExt, StreamExt};
+    use axum::extract::ws::Message as WsMessage;
+    let (mut sender, mut client_rx) = socket.split();
+
+    loop {
+        tokio::select! {
+            result = rx.recv() => {
+                match result {
+                    Ok(event) => {
+                        // Apply bundle filter if set
+                        if let Some(ref b) = filter_bundle {
+                            if &event.bundle != b { continue; }
+                        }
+                        let Ok(json) = serde_json::to_string(&event) else { continue };
+                        if sender.send(WsMessage::Text(json.into())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(_) => break,
+                }
+            }
+            msg = client_rx.next() => {
+                match msg {
+                    Some(Ok(WsMessage::Close(_))) | None => break,
+                    Some(Err(_)) => break,
+                    _ => {} // ignore pings etc.
+                }
+            }
+        }
+    }
+}
+
 async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<StreamState>>,
@@ -2773,6 +3142,18 @@ async fn openapi_spec() -> impl IntoResponse {
         StatusCode::OK,
         [("content-type", "application/json")],
         spec,
+    )
+}
+
+// ── Live Dashboard ──
+
+const DASHBOARD_HTML: &str = include_str!("../../dashboard/index.html");
+
+async fn serve_dashboard() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [("content-type", "text/html; charset=utf-8")],
+        DASHBOARD_HTML,
     )
 }
 
@@ -3290,8 +3671,17 @@ async fn main() {
         .route("/v1/bundles/{name}/curvature", get(curvature_report))
         .route("/v1/bundles/{name}/spectral", get(spectral_report))
         .route("/v1/bundles/{name}/consistency", get(consistency_check))
-        // WebSocket
+        // Anomaly Detection + Health
+        .route("/v1/bundles/{name}/anomalies", post(bundle_anomalies))
+        .route("/v1/bundles/{name}/health", get(bundle_health))
+        .route("/v1/bundles/{name}/predict", post(predict_volatility))
+        .route("/v1/bundles/{name}/anomalies/field", post(field_anomalies))
+        // WebSocket — per-bundle subscriptions + global dashboard
         .route("/ws", get(ws_handler))
+        .route("/v1/ws/dashboard", get(ws_dashboard_handler))
+        .route("/v1/ws/{bundle}/dashboard", get(ws_bundle_dashboard_handler))
+        // Dashboard UI
+        .route("/dashboard", get(serve_dashboard))
         // Middleware: auth + rate limiting
         .layer(axum_mw::from_fn_with_state(state.clone(), auth_middleware))
         .layer(axum_mw::from_fn_with_state(state.clone(), rate_limit_middleware))

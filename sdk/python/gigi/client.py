@@ -635,5 +635,100 @@ class GigiClient:
         """Add an index on a field for faster range queries."""
         return self._post(f"/v1/bundles/{bundle}/add-index", {"field": field})
 
+    # ── Anomaly Detection ─────────────────────────────────────────────────────
+
+    def anomalies(
+        self,
+        bundle: str,
+        *,
+        threshold_sigma: float = 2.0,
+        filters: Optional[List[Dict[str, Any]]] = None,
+        fields: Optional[List[str]] = None,
+        limit: int = 100,
+        include_scores: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Detect anomalous records using the K-score geometric threshold.
+
+        Records whose per-record curvature K(p) exceeds μ_K + threshold_sigma·σ_K
+        are classified as anomalies (fiber-metric outliers).
+
+        Args:
+            bundle:           Bundle name.
+            threshold_sigma:  Detection threshold in units of σ_K (default 2.0).
+            filters:          Optional pre-filter conditions (same format as query).
+            fields:           Restrict record projection to these fields.
+            limit:            Max anomalies to return (default 100).
+            include_scores:   Include z_score, confidence, contributing_fields.
+
+        Returns dict with: bundle, threshold_sigma, k_mean, k_std, k_threshold,
+            total_records, anomaly_count, anomalies (list).
+        """
+        body: Dict[str, Any] = {
+            "threshold_sigma": threshold_sigma,
+            "filters": filters or [],
+            "fields": fields or [],
+            "limit": limit,
+            "include_scores": include_scores,
+        }
+        return self._post(f"/v1/bundles/{bundle}/anomalies", body)
+
+    def bundle_health(self, bundle: str) -> Dict[str, Any]:
+        """
+        Bundle health snapshot.
+
+        Returns: record_count, k_global, k_mean, k_std, k_threshold_2s,
+            k_threshold_3s, confidence, anomaly_rate_2s, per_field curvature list.
+        """
+        return self._get(f"/v1/bundles/{bundle}/health")
+
+    def predict(
+        self,
+        bundle: str,
+        group_by: str,
+        field: str,
+    ) -> Dict[str, Any]:
+        """
+        Predict field volatility grouped by a categorical field.
+
+        For each group the method returns mean, std_dev, and a volatility_index
+        (σ / |μ|) — a relative dispersion proxy for future variance.
+
+        Args:
+            bundle:   Bundle name.
+            group_by: Field to group records by (e.g. "city", "sensor_id").
+            field:    Numeric field whose volatility is measured (e.g. "temp_c").
+
+        Returns dict with: bundle, group_by, field, predictions list.
+        """
+        return self._post(f"/v1/bundles/{bundle}/predict", {"group_by": group_by, "field": field})
+
+    def field_anomalies(
+        self,
+        bundle: str,
+        field: str,
+        *,
+        threshold_sigma: float = 2.0,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """
+        Anomalies ranked by a specific field's normalised deviation.
+
+        Only records where ``field`` appears in ``contributing_fields`` are
+        returned, sorted by z-score descending.
+
+        Args:
+            bundle:          Bundle name.
+            field:           Fiber field to focus on (e.g. "temp_c").
+            threshold_sigma: Detection threshold in σ units (default 2.0).
+            limit:           Max results (default 100).
+
+        Returns dict with: bundle, field, threshold_sigma, anomaly_count, anomalies.
+        """
+        return self._post(
+            f"/v1/bundles/{bundle}/anomalies/field",
+            {"field": field, "threshold_sigma": threshold_sigma, "limit": limit},
+        )
+
     def __repr__(self) -> str:
         return f"GigiClient({self._base!r})"

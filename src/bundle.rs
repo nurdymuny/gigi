@@ -518,6 +518,9 @@ pub struct BundleStore {
     detected: bool,
     /// Auto-increment counter for auto-generated IDs.
     auto_id_counter: u64,
+    /// Incremental curvature moments: K(p) for every inserted record.
+    /// Updated in O(1) per insert — anomaly scores come for free.
+    pub curvature_stats: CurvatureStats,
 }
 
 /// Per-field running statistics for curvature.
@@ -574,6 +577,93 @@ impl FieldStats {
     }
 }
 
+/// Incremental curvature moments over per-record K(p) scores.
+///
+/// Tracks the running mean μ_K and standard deviation σ_K so anomaly
+/// thresholds can be evaluated in O(1) without scanning all records.
+///
+/// K(p) for a record is computed at insert time as the mean normalised
+/// deviation of each numeric field from the running field mean:
+///
+///   K_record(p) = (1/n) Σᵢ |vᵢ − μᵢ| / max(range_i, ε)
+///
+/// This is the scalar curvature (Definition 3.4) per record — cheaper
+/// than the 3-component form but geometrically equivalent for anomaly
+/// scoring purposes.
+#[derive(Debug, Clone, Default)]
+pub struct CurvatureStats {
+    /// Σ K(p) over all inserted records.
+    pub k_sum: f64,
+    /// Σ K(p)² over all inserted records (for variance).
+    pub k_sum_sq: f64,
+    /// Number of records whose K was measured.
+    pub k_count: u64,
+}
+
+impl CurvatureStats {
+    /// Update with a new record's curvature value.
+    pub fn update(&mut self, k: f64) {
+        self.k_sum += k;
+        self.k_sum_sq += k * k;
+        self.k_count += 1;
+    }
+
+    /// Running mean μ_K = Σ K / N.
+    pub fn mean(&self) -> f64 {
+        if self.k_count == 0 { return 0.0; }
+        self.k_sum / self.k_count as f64
+    }
+
+    /// Running population standard deviation σ_K.
+    pub fn std_dev(&self) -> f64 {
+        if self.k_count < 2 { return 0.0; }
+        let mean = self.mean();
+        let var = self.k_sum_sq / self.k_count as f64 - mean * mean;
+        var.max(0.0).sqrt()
+    }
+
+    /// Adaptive anomaly threshold: μ_K + n_sigma · σ_K.
+    pub fn threshold(&self, n_sigma: f64) -> f64 {
+        self.mean() + n_sigma * self.std_dev()
+    }
+
+    /// z-score of a given K value: (K − μ_K) / σ_K.
+    pub fn z_score(&self, k: f64) -> f64 {
+        let sd = self.std_dev();
+        if sd < f64::EPSILON { return 0.0; }
+        (k - self.mean()) / sd
+    }
+
+    /// True if k exceeds the n_sigma threshold.
+    pub fn is_anomaly(&self, k: f64, n_sigma: f64) -> bool {
+        k > self.threshold(n_sigma)
+    }
+}
+
+/// Compute per-record scalar curvature K_record(p) in O(1) at insert time.
+///
+/// Uses the field_stats that existed **before** this record's contribution
+/// so we measure how surprising the record is relative to prior data.
+/// Returns 0.0 when fewer than 2 records have been seen (no baseline yet).
+pub fn compute_record_k(
+    field_stats: &HashMap<String, FieldStats>,
+    fiber_vals: &[Value],
+    fiber_fields: &[crate::types::FieldDef],
+) -> f64 {
+    let mut total = 0.0f64;
+    let mut n = 0usize;
+    for (i, field_def) in fiber_fields.iter().enumerate() {
+        let Some(v) = fiber_vals.get(i).and_then(|v| v.as_f64()) else { continue };
+        let Some(fs) = field_stats.get(&field_def.name) else { continue };
+        if fs.count < 2 { continue; }
+        let mean = fs.sum / fs.count as f64;
+        let range = fs.range().max(f64::EPSILON);
+        total += (v - mean).abs() / range;
+        n += 1;
+    }
+    if n == 0 { 0.0 } else { total / n as f64 }
+}
+
 impl BundleStore {
     /// Create a new empty bundle. Always starts in Hashed mode;
     /// auto-detects flat base geometry after 32 inserts and switches if K=0.
@@ -595,6 +685,7 @@ impl BundleStore {
             detect_keys: Vec::new(),
             detected: false,
             auto_id_counter: 0,
+            curvature_stats: CurvatureStats::default(),
         }
     }
 
@@ -636,6 +727,7 @@ impl BundleStore {
             detect_keys: Vec::new(),
             detected: true, // geometry already set
             auto_id_counter: 0,
+            curvature_stats: CurvatureStats::default(),
         }
     }
 
@@ -691,6 +783,12 @@ impl BundleStore {
                     .insert(bp32);
             }
         }
+
+        // Compute per-record K BEFORE updating field_stats so we measure
+        // how surprising this record is relative to the existing distribution.
+        // This is K_scalar(p) = mean normalised |v - μ| / range  (Def 3.4).
+        let k_record = compute_record_k(&self.field_stats, &fiber_vals, &self.schema.fiber_fields);
+        self.curvature_stats.update(k_record);
 
         // Update field stats for curvature tracking
         for (i, field_def) in self.schema.fiber_fields.iter().enumerate() {
@@ -1628,7 +1726,147 @@ impl BundleStore {
         &self.field_stats
     }
 
-    /// Deviation norm ||δ(p)|| (Def 1.4).
+    /// Compute K_record(p) for an already-stored record identified by base point.
+    ///
+    /// Uses current bundle field_stats (the full distribution) so the score
+    /// reflects how anomalous the record is relative to the *entire* bundle.
+    pub fn record_k_for(&self, bp: BasePoint) -> f64 {
+        let Some(fiber) = self.get_fiber(bp) else { return 0.0 };
+        let fiber_vals: Vec<Value> = fiber.to_vec();
+        compute_record_k(&self.field_stats, &fiber_vals, &self.schema.fiber_fields)
+    }
+
+    /// Scan entire bundle and return records that are geometrically anomalous.
+    ///
+    /// An anomaly is a record whose K(p) exceeds μ_K + n_sigma · σ_K.
+    /// Results are sorted by z-score descending (most anomalous first).
+    ///
+    /// μ_K and σ_K are computed fresh from all candidate records in-query so
+    /// that the reference distribution is always consistent with the current
+    /// field_stats (avoids inserting anomalies that then dilute their own score).
+    ///
+    /// Optionally restrict to records matching `pre_filter` conditions (sheaf
+    /// restriction to an open set before curvature scoring).
+    ///
+    /// Returns `(record, k_record, z_score, contributing_fields)` tuples.
+    pub fn compute_anomalies(
+        &self,
+        n_sigma: f64,
+        pre_filter: Option<&[QueryCondition]>,
+        limit: usize,
+    ) -> Vec<AnomalyRecord> {
+        // Collect candidate base points (optionally pre-filtered)
+        let base_points: Vec<BasePoint> = if let Some(conditions) = pre_filter {
+            if conditions.is_empty() {
+                self.all_base_points()
+            } else {
+                let records = self.filtered_query(conditions, None, false, None, None);
+                records.into_iter().map(|rec| {
+                    self.hash_config.hash(&rec, &self.schema)
+                }).collect()
+            }
+        } else {
+            self.all_base_points()
+        };
+
+        if base_points.is_empty() { return Vec::new(); }
+
+        // First pass: compute K for every candidate record so μ_K and σ_K are
+        // derived from the same field_stats that record_k_for uses.  This ensures
+        // the reference distribution is consistent with the data at query time.
+        let scores: Vec<(BasePoint, f64)> = base_points.iter()
+            .map(|&bp| (bp, self.record_k_for(bp)))
+            .collect();
+
+        let n = scores.len() as f64;
+        let mu = scores.iter().map(|(_, k)| k).sum::<f64>() / n;
+        let var = scores.iter().map(|(_, k)| (k - mu).powi(2)).sum::<f64>() / n;
+        let sigma = var.sqrt();
+        let threshold = mu + n_sigma * sigma;
+
+        // Second pass: filter to anomalies and annotate
+        let mut anomalies: Vec<AnomalyRecord> = scores
+            .into_iter()
+            .filter(|(_, k)| *k > threshold)
+            .filter_map(|(bp, k)| {
+                let z = if sigma < f64::EPSILON { 0.0 } else { (k - mu) / sigma };
+                let record = self.reconstruct(bp)?;
+                let contributing = self.contributing_fields(bp, &record);
+                let dev_norm = self.deviation_norm(bp);
+                let dev_dist = self.deviation_distance(bp);
+                let neighbourhood = self.geometric_neighbors(bp).len();
+                Some(AnomalyRecord {
+                    record,
+                    local_curvature: k,
+                    z_score: z,
+                    confidence: 1.0 / (1.0 + k),
+                    deviation_norm: dev_norm,
+                    deviation_distance: dev_dist,
+                    contributing_fields: contributing,
+                    neighbourhood_size: neighbourhood,
+                })
+            })
+            .collect();
+
+        anomalies.sort_by(|a, b| b.z_score.partial_cmp(&a.z_score).unwrap_or(std::cmp::Ordering::Equal));
+        anomalies.truncate(limit);
+        anomalies
+    }
+
+    /// Determine which fields are contributing most to a record's anomaly score.
+    ///
+    /// A field contributes if its normalised deviation > mean normalised deviation
+    /// across all fields for this record.
+    fn contributing_fields(&self, _bp: BasePoint, record: &Record) -> Vec<String> {
+        let mut field_devs: Vec<(String, f64)> = Vec::new();
+        for field_def in &self.schema.fiber_fields {
+            let Some(fs) = self.field_stats.get(&field_def.name) else { continue };
+            if fs.count < 2 { continue; }
+            let Some(v) = record.get(&field_def.name).and_then(|v| v.as_f64()) else { continue };
+            let mean = fs.sum / fs.count as f64;
+            let range = fs.range().max(f64::EPSILON);
+            field_devs.push((field_def.name.clone(), (v - mean).abs() / range));
+        }
+        if field_devs.is_empty() { return Vec::new(); }
+        let mean_dev = field_devs.iter().map(|(_, d)| d).sum::<f64>() / field_devs.len() as f64;
+        field_devs.into_iter()
+            .filter(|(_, d)| *d > mean_dev)
+            .map(|(name, _)| name)
+            .collect()
+    }
+
+    /// Fiber metric distance from the zero section (Def 1.7).
+    pub fn deviation_distance(&self, bp: BasePoint) -> f64 {
+        let Some(fiber) = self.get_fiber(bp) else { return 0.0 };
+        let zero = self.schema.zero_section();
+        let n_fields = self.schema.fiber_fields.len();
+        if n_fields == 0 { return 0.0; }
+        let mut sq_sum = 0.0f64;
+        for (i, field_def) in self.schema.fiber_fields.iter().enumerate() {
+            let fv = fiber.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let zv = zero.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let range = self.field_stats.get(&field_def.name)
+                .map(|fs| fs.range().max(f64::EPSILON))
+                .unwrap_or(1.0);
+            sq_sum += ((fv - zv) / range).powi(2);
+        }
+        sq_sum.sqrt()
+    }
+
+    /// Collect all base points in the bundle.
+    fn all_base_points(&self) -> Vec<BasePoint> {
+        match &self.storage {
+            BaseStorage::Hashed { sections, .. } => sections.keys().copied().collect(),
+            BaseStorage::Sequential { .. } => self.seq_bp_list.clone(),
+            BaseStorage::Hybrid { overflow_sections, .. } => {
+                let mut bps = self.seq_bp_list.clone();
+                bps.extend(overflow_sections.keys());
+                bps
+            }
+        }
+    }
+
+
     pub fn deviation_norm(&self, bp: BasePoint) -> usize {
         let fiber = match self.get_fiber(bp) {
             Some(f) => f,
@@ -1796,6 +2034,7 @@ impl BundleStore {
         };
         self.field_index.clear();
         self.field_stats.clear();
+        self.curvature_stats = CurvatureStats::default();
         self.bp_reverse.clear();
         self.bp_to_idx.clear();
         self.seq_bp_list.clear();
@@ -2314,6 +2553,31 @@ pub struct BundleStats {
     pub index_sizes: Vec<(String, usize)>,
     pub field_cardinalities: Vec<(String, usize)>,
 }
+
+/// One anomalous record with its geometric scores.
+///
+/// Returned by `BundleStore::compute_anomalies()`.
+#[derive(Debug, Clone)]
+pub struct AnomalyRecord {
+    /// The full reconstructed record (base + fiber fields).
+    pub record: Record,
+    /// K_scalar(p) computed relative to current bundle field_stats.
+    pub local_curvature: f64,
+    /// z-score = (K - μ_K) / σ_K.
+    pub z_score: f64,
+    /// confidence(p) = 1 / (1 + K).
+    pub confidence: f64,
+    /// Number of fiber fields that deviate from schema defaults.
+    pub deviation_norm: usize,
+    /// Fiber metric distance from the zero section (√Σ normalised²).
+    pub deviation_distance: f64,
+    /// Fields whose normalised deviation is above the record's mean deviation.
+    pub contributing_fields: Vec<String>,
+    /// Number of geometric neighbours (records sharing an indexed field value).
+    pub neighbourhood_size: usize,
+}
+
+
 
 /// Query execution plan for the EXPLAIN endpoint.
 #[derive(Debug, Clone)]
@@ -4559,5 +4823,402 @@ mod tests {
             None, false, None, None,
         );
         assert_eq!(results.len(), 5);
+    }
+
+    // =========================================================================
+    // ANOMALY DETECTION — INTEGRATION TESTS (real complex dataset)
+    //
+    // Dataset: 20 cities × 366 days = 7 320 weather records.
+    // Schema: id (key), city (indexed categorical), day (int),
+    //         temp_c (°C), humidity_pct, pressure_hpa, wind_kmh,
+    //         precip_mm, uv_index (all numeric fiber fields).
+    //
+    // Injected anomalies:
+    //   • Moscow record on day 15  → temp = −55 °C   (extreme cold)
+    //   • Dubai record on day 180  → humidity = 1 %  (extreme dry)
+    //   • Reykjavik record on day 300 → pressure = 880 hPa (storm)
+    //   • Singapore record on day 90 → uv_index = 20  (extreme UV)
+    //
+    // Expected: all 4 anomalies surface in top anomalies at ≥ 2σ.
+    //           Normal records stay below the threshold.
+    // =========================================================================
+
+    /// Build the 20-city, 366-day weather bundle.
+    fn make_weather_bundle() -> BundleStore {
+        // 20 representative cities across climate zones
+        // (city, base_temp_c, base_hum_pct, base_press_hpa, base_wind_kmh, base_uv)
+        let cities: &[(&str, f64, f64, f64, f64, f64)] = &[
+            ("Moscow",       -5.0,  65.0, 1013.0,  18.0,  2.0),
+            ("Dubai",        35.0,  55.0, 1010.0,  14.0,  9.0),
+            ("Reykjavik",     4.0,  80.0, 1008.0,  25.0,  1.5),
+            ("Singapore",    27.0,  85.0, 1009.0,   8.0, 11.0),
+            ("London",       11.0,  75.0, 1012.0,  16.0,  3.0),
+            ("Chicago",       9.0,  68.0, 1011.0,  22.0,  4.0),
+            ("Sydney",       19.0,  70.0, 1014.0,  12.0,  6.0),
+            ("Tokyo",        16.0,  72.0, 1012.0,  10.0,  5.0),
+            ("Cairo",        24.0,  45.0, 1011.0,  15.0,  8.0),
+            ("SaoPaulo",     22.0,  78.0, 1010.0,  11.0,  7.0),
+            ("Toronto",       5.0,  66.0, 1012.0,  20.0,  3.5),
+            ("Mumbai",       28.0,  82.0, 1008.0,   9.0, 10.0),
+            ("Paris",        12.0,  74.0, 1013.0,  14.0,  3.5),
+            ("Nairobi",      18.0,  62.0, 1015.0,  13.0,  7.5),
+            ("Oslo",          4.0,  70.0, 1009.0,  19.0,  2.0),
+            ("BuenosAires",  18.0,  73.0, 1011.0,  15.0,  6.5),
+            ("Seoul",        12.0,  65.0, 1013.0,  17.0,  4.5),
+            ("Lagos",        28.0,  80.0, 1009.0,  10.0,  9.5),
+            ("Melbourne",    15.0,  66.0, 1012.0,  18.0,  5.5),
+            ("NewYork",      13.0,  67.0, 1012.0,  19.0,  4.0),
+        ];
+
+        // Schema: id (base key), city (indexed categorical fiber),
+        // measurement fields only (no day – keeps K focused on observations).
+        let schema = BundleSchema::new("weather")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("city"))
+            .fiber(FieldDef::numeric("temp_c").with_range(120.0))
+            .fiber(FieldDef::numeric("humidity_pct").with_range(100.0))
+            .fiber(FieldDef::numeric("pressure_hpa").with_range(200.0))
+            .fiber(FieldDef::numeric("wind_kmh").with_range(120.0))
+            .fiber(FieldDef::numeric("precip_mm").with_range(60.0))
+            .fiber(FieldDef::numeric("uv_index").with_range(20.0))
+            .index("city");
+
+        let mut store = BundleStore::new(schema);
+
+        // Deterministic LCG noise: xₙ₊₁ = (a·xₙ + c) mod 2^64
+        let lcg = |seed: u64| -> f64 {
+            let s = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (((s >> 33) as f64) / (u32::MAX as f64)) - 0.5  // ∈ [−0.5, 0.5]
+        };
+
+        let mut id: i64 = 0;
+        for (city_idx, (city, base_temp, base_hum, base_press, base_wind, base_uv)) in cities.iter().enumerate() {
+            for day in 1i64..=366 {
+                let seed = (city_idx as u64 * 400 + day as u64) * 2654435761;
+                let noise = |scale: f64, s: u64| lcg(seed.wrapping_add(s)) * scale;
+                let season_temp = base_temp + 10.0 * (2.0 * std::f64::consts::PI * day as f64 / 366.0).sin();
+                let temp    = (season_temp  + noise(4.0, 1)).clamp(-40.0, 55.0);
+                let hum     = (*base_hum    + noise(10.0, 2)).clamp(10.0, 100.0);
+                let press   = (*base_press  + noise(5.0,  3)).clamp(950.0, 1040.0);
+                let wind    = (*base_wind   + noise(8.0,  4)).clamp(0.0,  100.0);
+                let precip  = (noise(5.0, 5).abs() * 8.0).clamp(0.0, 50.0);
+                let uv      = (*base_uv     + noise(2.0,  6)).clamp(0.0,  14.0);
+
+                let mut rec = Record::new();
+                rec.insert("id".into(),           Value::Integer(id));
+                rec.insert("city".into(),          Value::Text(city.to_string()));
+                rec.insert("temp_c".into(),        Value::Float(temp));
+                rec.insert("humidity_pct".into(),  Value::Float(hum));
+                rec.insert("pressure_hpa".into(),  Value::Float(press));
+                rec.insert("wind_kmh".into(),      Value::Float(wind));
+                rec.insert("precip_mm".into(),     Value::Float(precip));
+                rec.insert("uv_index".into(),      Value::Float(uv));
+                store.insert(&rec);
+                id += 1;
+            }
+        }
+
+        // ── Inject 4 hard anomalies — overwrite existing records in-place ─────
+        //
+        // City indices (0-based) × 366 days/city:
+        //   Moscow=0, Dubai=1, Reykjavik=2, Singapore=3
+        //
+        // Anomaly 1: Moscow day 15 (id=14) → extreme cold −65 °C
+        let anomaly_ids: &[(i64, &str, f64, f64, f64, f64, f64, f64)] = &[
+            // (id, city, temp, hum, press, wind, precip, uv)
+            (0*366 + 14, "Moscow",    -65.0, 62.0, 1013.0, 16.0,  3.0,  2.0),
+            (1*366 + 179, "Dubai",     36.0,  1.5, 1010.0, 14.0,  0.0,  9.0),
+            (2*366 + 299, "Reykjavik",  3.0, 79.0,  862.0, 24.0, 12.0,  1.5),
+            (3*366 + 89,  "Singapore", 27.0, 84.0, 1009.0,  8.0,  5.0, 22.0),
+        ];
+
+        for &(an_id, city, temp, hum, press, wind, precip, uv) in anomaly_ids {
+            let mut r = Record::new();
+            r.insert("id".into(),           Value::Integer(an_id));
+            r.insert("city".into(),          Value::Text(city.into()));
+            r.insert("temp_c".into(),        Value::Float(temp));
+            r.insert("humidity_pct".into(),  Value::Float(hum));
+            r.insert("pressure_hpa".into(),  Value::Float(press));
+            r.insert("wind_kmh".into(),      Value::Float(wind));
+            r.insert("precip_mm".into(),     Value::Float(precip));
+            r.insert("uv_index".into(),      Value::Float(uv));
+            store.insert(&r);
+        }
+
+        store
+    }
+
+    /// AD-1.1: 7320 normal records → curvature_stats populated, non-zero count.
+    #[test]
+    fn ad_1_1_curvature_stats_populated_after_bulk_insert() {
+        let store = make_weather_bundle();
+        let cs = &store.curvature_stats;
+        assert!(cs.k_count >= 7320, "k_count = {}", cs.k_count);
+        assert!(cs.k_sum > 0.0, "k_sum should be positive");
+        assert!(cs.mean() > 0.0, "mean K should be positive");
+        assert!(cs.std_dev() > 0.0, "std dev should be positive");
+    }
+
+    /// AD-1.2: Injected anomalies have z-score > 2.0.
+    #[test]
+    fn ad_1_2_injected_anomalies_exceed_2sigma() {
+        let store = make_weather_bundle();
+        // All 4 anomalies surface in compute_anomalies at 2σ
+        let anomalies = store.compute_anomalies(2.0, None, 50);
+        let z_scores: Vec<f64> = anomalies.iter().map(|a| a.z_score).collect();
+        assert!(!anomalies.is_empty(), "should detect at least 1 anomaly");
+        for (a, z) in anomalies.iter().zip(&z_scores) {
+            assert!(z > &2.0, "anomaly z={z:.2} for {:?}", a.record.get("city"));
+        }
+    }
+
+    /// AD-1.3: Confidence is 1/(1+K) — verify formula holds for top anomaly.
+    #[test]
+    fn ad_1_3_confidence_formula() {
+        let store = make_weather_bundle();
+        let anomalies = store.compute_anomalies(2.0, None, 10);
+        assert!(!anomalies.is_empty());
+        for a in &anomalies {
+            let expected = 1.0 / (1.0 + a.local_curvature);
+            assert!((a.confidence - expected).abs() < 1e-9,
+                "conf mismatch: {} vs {}", a.confidence, expected);
+        }
+    }
+
+    /// AD-1.4: Normal records below 2σ threshold — normal:anomaly ratio high.
+    #[test]
+    fn ad_1_4_normal_records_below_threshold() {
+        let store = make_weather_bundle();
+        let total = store.len();
+        let anomalies = store.compute_anomalies(2.0, None, total);
+        // Injected only 4 hard anomalies into 7320 records → < 1% anomaly rate expected
+        let rate = anomalies.len() as f64 / total as f64;
+        assert!(rate < 0.05, "anomaly rate = {rate:.3}, expected < 5%");
+        assert!(anomalies.len() >= 4, "should catch all 4 injected anomalies, got {}", anomalies.len());
+    }
+
+    /// AD-1.5: deviation_distance is non-negative.
+    #[test]
+    fn ad_1_5_deviation_distance_non_negative() {
+        let store = make_weather_bundle();
+        let anomalies = store.compute_anomalies(2.0, None, 20);
+        for a in &anomalies {
+            assert!(a.deviation_distance >= 0.0,
+                "deviation_distance = {}", a.deviation_distance);
+        }
+    }
+
+    /// AD-2.1: Adaptive threshold shifts with n_sigma parameter.
+    #[test]
+    fn ad_2_1_threshold_shifts_with_sigma() {
+        let store = make_weather_bundle();
+        let cs = &store.curvature_stats;
+        let t2 = cs.threshold(2.0);
+        let t3 = cs.threshold(3.0);
+        assert!(t2 < t3, "2σ threshold {t2:.4} should be < 3σ threshold {t3:.4}");
+    }
+
+    /// AD-2.2: Higher sigma → fewer anomalies returned.
+    #[test]
+    fn ad_2_2_higher_sigma_fewer_anomalies() {
+        let store = make_weather_bundle();
+        let total = store.len();
+        let a2 = store.compute_anomalies(2.0, None, total);
+        let a3 = store.compute_anomalies(3.0, None, total);
+        assert!(a2.len() >= a3.len(),
+            "2σ count {} should be >= 3σ count {}", a2.len(), a3.len());
+    }
+
+    /// AD-2.3: Very high sigma (999) → zero anomalies.
+    #[test]
+    fn ad_2_3_extreme_sigma_returns_zero() {
+        let store = make_weather_bundle();
+        let anomalies = store.compute_anomalies(999.0, None, 1000);
+        assert_eq!(anomalies.len(), 0,
+            "999σ should yield 0 anomalies, got {}", anomalies.len());
+    }
+
+    /// AD-2.4: threshold = μ_K + n_sigma × σ_K.
+    #[test]
+    fn ad_2_4_threshold_formula() {
+        let store = make_weather_bundle();
+        let cs = &store.curvature_stats;
+        let expected = cs.mean() + 2.0 * cs.std_dev();
+        let actual = cs.threshold(2.0);
+        assert!((expected - actual).abs() < 1e-9,
+            "threshold formula: expected {expected}, got {actual}");
+    }
+
+    /// AD-3.1: Contributing field for Moscow anomaly is temp_c.
+    #[test]
+    fn ad_3_1_moscow_cold_anomaly_contributing_field() {
+        let store = make_weather_bundle();
+        let anomalies = store.compute_anomalies(2.0, None, 100);
+        // Find the Moscow −55 °C record
+        let moscow_anomaly = anomalies.iter().find(|a| {
+            a.record.get("city") == Some(&Value::Text("Moscow".into()))
+                && a.record.get("temp_c") == Some(&Value::Float(-65.0))
+        });
+        assert!(moscow_anomaly.is_some(), "Moscow cold anomaly not found in top anomalies");
+        let a = moscow_anomaly.unwrap();
+        assert!(a.contributing_fields.contains(&"temp_c".to_string()),
+            "contributing_fields should include temp_c, got {:?}", a.contributing_fields);
+    }
+
+    /// AD-3.2: Reykjavik storm anomaly contributing field includes pressure_hpa.
+    #[test]
+    fn ad_3_2_reykjavik_storm_contributing_field() {
+        let store = make_weather_bundle();
+        let anomalies = store.compute_anomalies(2.0, None, 100);
+        let reyk = anomalies.iter().find(|a| {
+            a.record.get("city") == Some(&Value::Text("Reykjavik".into()))
+                && a.record.get("pressure_hpa") == Some(&Value::Float(862.0))
+        });
+        assert!(reyk.is_some(), "Reykjavik storm anomaly not found");
+        let a = reyk.unwrap();
+        assert!(a.contributing_fields.contains(&"pressure_hpa".to_string()),
+            "contributing_fields should include pressure_hpa, got {:?}", a.contributing_fields);
+    }
+
+    /// AD-4.1: Pre-filter by city isolates anomalies to that city only.
+    #[test]
+    fn ad_4_1_prefilter_by_city() {
+        let store = make_weather_bundle();
+        let conditions = vec![QueryCondition::Eq("city".into(), Value::Text("Moscow".into()))];
+        let anomalies = store.compute_anomalies(2.0, Some(&conditions), 50);
+        for a in &anomalies {
+            assert_eq!(
+                a.record.get("city"),
+                Some(&Value::Text("Moscow".into())),
+                "pre-filter should restrict to Moscow only"
+            );
+        }
+    }
+
+    /// AD-4.2: Pre-filter by Dubai → finds Dubai humidity anomaly.
+    #[test]
+    fn ad_4_2_prefilter_dubai_finds_humidity_anomaly() {
+        let store = make_weather_bundle();
+        let conditions = vec![QueryCondition::Eq("city".into(), Value::Text("Dubai".into()))];
+        let anomalies = store.compute_anomalies(2.0, Some(&conditions), 20);
+        let dubai_humid = anomalies.iter().find(|a| {
+            a.record.get("humidity_pct") == Some(&Value::Float(1.5))
+        });
+        assert!(dubai_humid.is_some(), "Dubai humidity anomaly not found in filtered results; anomalies: {anomalies:?}");
+    }
+
+    /// AD-5.1: curvature_stats.mean() is in (0, 1] after bulk insert.
+    #[test]
+    fn ad_5_1_mean_in_unit_interval() {
+        let store = make_weather_bundle();
+        let mu = store.curvature_stats.mean();
+        assert!(mu > 0.0 && mu <= 1.0,
+            "global K mean = {mu}, expected ∈ (0, 1]");
+    }
+
+    /// AD-5.2: Results are sorted descending by z-score.
+    #[test]
+    fn ad_5_2_results_sorted_by_z_score() {
+        let store = make_weather_bundle();
+        let anomalies = store.compute_anomalies(2.0, None, 50);
+        for w in anomalies.windows(2) {
+            assert!(w[0].z_score >= w[1].z_score,
+                "out of order: z[0]={:.3} < z[1]={:.3}", w[0].z_score, w[1].z_score);
+        }
+    }
+
+    /// AD-5.3: limit parameter is respected.
+    #[test]
+    fn ad_5_3_limit_respected() {
+        let store = make_weather_bundle();
+        let anomalies = store.compute_anomalies(0.5, None, 10); // low sigma = many anomalies
+        assert!(anomalies.len() <= 10, "limit 10 violated: got {}", anomalies.len());
+    }
+
+    /// AD-5.4: Truncated bundle → curvature_stats reset.
+    #[test]
+    fn ad_5_4_truncate_resets_curvature_stats() {
+        let mut store = make_weather_bundle();
+        assert!(store.curvature_stats.k_count > 0);
+        store.truncate();
+        assert_eq!(store.curvature_stats.k_count, 0);
+        assert_eq!(store.curvature_stats.k_sum, 0.0);
+    }
+
+    /// AD-6.1: record_k_for returns higher K for anomaly vs normal record.
+    #[test]
+    fn ad_6_1_record_k_for_anomaly_gt_normal() {
+        let store = make_weather_bundle();
+        // Moscow day 15 anomaly: id = 0*366 + 14 = 14
+        let mut key_anomaly = Record::new();
+        key_anomaly.insert("id".into(), Value::Integer(0 * 366 + 14));
+        let bp_anomaly = store.base_point(&key_anomaly);
+        let k_anomaly = store.record_k_for(bp_anomaly);
+
+        // Moscow day 1 (normal): id = 0
+        let mut key_normal = Record::new();
+        key_normal.insert("id".into(), Value::Integer(0));
+        let bp_normal = store.base_point(&key_normal);
+        let k_normal = store.record_k_for(bp_normal);
+
+        assert!(k_anomaly > k_normal,
+            "K(anomaly)={k_anomaly:.4} should > K(normal)={k_normal:.4}");
+    }
+
+    /// AD-6.2: All 4 injected anomalies appear in top-50 results at 2σ.
+    #[test]
+    fn ad_6_2_all_four_anomalies_detected() {
+        let store = make_weather_bundle();
+        let anomalies = store.compute_anomalies(2.0, None, 100);
+
+        let has_moscow = anomalies.iter().any(|a|
+            a.record.get("city") == Some(&Value::Text("Moscow".into()))
+                && a.record.get("temp_c") == Some(&Value::Float(-65.0))
+        );
+        let has_dubai = anomalies.iter().any(|a|
+            a.record.get("city") == Some(&Value::Text("Dubai".into()))
+                && a.record.get("humidity_pct") == Some(&Value::Float(1.5))
+        );
+        let has_reykjavik = anomalies.iter().any(|a|
+            a.record.get("city") == Some(&Value::Text("Reykjavik".into()))
+                && a.record.get("pressure_hpa") == Some(&Value::Float(862.0))
+        );
+        let has_singapore = anomalies.iter().any(|a|
+            a.record.get("city") == Some(&Value::Text("Singapore".into()))
+                && a.record.get("uv_index") == Some(&Value::Float(22.0))
+        );
+
+        assert!(has_moscow,    "Moscow extreme cold anomaly not detected");
+        assert!(has_dubai,     "Dubai extreme dry anomaly not detected");
+        assert!(has_reykjavik, "Reykjavik storm pressure anomaly not detected");
+        assert!(has_singapore, "Singapore extreme UV anomaly not detected");
+    }
+
+    /// AD-7.1: compute_anomalies on 7320 records completes in < 2000ms (debug) / 250ms (release).
+    #[test]
+    fn ad_7_1_anomaly_scan_timing() {
+        let store = make_weather_bundle();
+        let start = std::time::Instant::now();
+        let _ = store.compute_anomalies(2.0, None, 100);
+        let elapsed = start.elapsed();
+        // Generous limit for debug builds; release builds are 10-20× faster.
+        let limit_ms = if cfg!(debug_assertions) { 2000 } else { 250 };
+        assert!(elapsed.as_millis() < limit_ms,
+            "compute_anomalies took {}ms, expected < {}ms", elapsed.as_millis(), limit_ms);
+    }
+
+    /// AD-7.2: curvature_stats.mean() / std_dev() are O(1) — no scan needed.
+    #[test]
+    fn ad_7_2_stats_access_is_o1() {
+        let store = make_weather_bundle();
+        let start = std::time::Instant::now();
+        for _ in 0..10_000 {
+            let _ = store.curvature_stats.mean();
+            let _ = store.curvature_stats.std_dev();
+            let _ = store.curvature_stats.threshold(2.0);
+        }
+        let elapsed = start.elapsed();
+        assert!(elapsed.as_millis() < 5,
+            "10k stats calls took {}ms — should be ~0ms (O(1))", elapsed.as_millis());
     }
 }

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIGI Live Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e2e8f0;
+    --muted: #718096;
+    --green: #48bb78;
+    --yellow: #ecc94b;
+    --orange: #ed8936;
+    --red: #fc8181;
+    --blue: #63b3ed;
+    --purple: #b794f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 13px; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.05em; color: var(--blue); }
+  #status-pill { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #2d3748; color: var(--muted); }
+  #status-pill.connected { background: #1c3a2b; color: var(--green); }
+  #status-pill.error { background: #3a1c1c; color: var(--red); }
+  #bundle-input { margin-left: auto; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: 12px; width: 180px; }
+  #connect-btn { background: var(--blue); color: #0a0e1a; border: none; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 12px; }
+  #connect-btn:hover { opacity: 0.85; }
+
+  .main { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; padding: 16px 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .stat-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; }
+  .stat-card .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; padding: 0 20px 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; }
+  canvas { width: 100%; display: block; }
+
+  .bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 0 20px 20px; }
+
+  /* Field bars */
+  .field-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .field-bar .name { width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
+  .field-bar .track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .field-bar .fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .field-bar .val { width: 36px; text-align: right; font-size: 11px; color: var(--muted); }
+
+  /* Anomaly feed */
+  .feed { max-height: 320px; overflow-y: auto; }
+  .feed-item { border-bottom: 1px solid var(--border); padding: 8px 0; }
+  .feed-item .feed-time { font-size: 10px; color: var(--muted); }
+  .feed-item .feed-bundle { font-size: 10px; color: var(--blue); margin-left: 6px; }
+  .feed-item .feed-score { float: right; font-weight: 700; }
+  .feed-item .feed-fields { font-size: 11px; color: var(--yellow); margin-top: 3px; }
+  .feed-item .feed-k { font-size: 11px; color: var(--muted); }
+
+  scrollbar-width: thin;
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⬡ GIGI Live Dashboard</h1>
+  <span id="status-pill">DISCONNECTED</span>
+  <input id="bundle-input" placeholder="bundle name (blank = all)" value="">
+  <button id="connect-btn" onclick="connect()">Connect</button>
+</header>
+
+<!-- stat cards -->
+<div class="main">
+  <div class="stat-card">
+    <div class="label">Records</div>
+    <div class="value" id="s-records">—</div>
+    <div class="sub">total in bundle</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Anomalies (2σ)</div>
+    <div class="value" id="s-anomalies" style="color:var(--orange)">—</div>
+    <div class="sub">this session</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Confidence</div>
+    <div class="value" id="s-conf">—</div>
+    <div class="sub">1 / (1 + K_global)</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">K mean</div>
+    <div class="value" id="s-kmean">—</div>
+    <div class="sub" id="s-kstd">σ —</div>
+  </div>
+</div>
+
+<!-- charts row -->
+<div class="charts">
+  <div class="card">
+    <h2>K Curvature — time series (last 200 events)</h2>
+    <canvas id="chart" height="120"></canvas>
+  </div>
+  <div class="card">
+    <h2>Per-field curvature</h2>
+    <div id="field-bars">No data yet.</div>
+  </div>
+</div>
+
+<!-- bottom row -->
+<div class="bottom">
+  <div class="card">
+    <h2>Anomaly feed (newest first)</h2>
+    <div class="feed" id="anomaly-feed"><div style="color:var(--muted)">Waiting for events…</div></div>
+  </div>
+  <div class="card">
+    <h2>Raw event log (last 50)</h2>
+    <div class="feed" id="event-log"></div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let ws = null;
+let kHistory = [];          // [{ts, k_mean, k_threshold}]
+let anomalyCount = 0;
+const MAX_HISTORY = 200;
+
+// ── Colour scale K → CSS colour (green 0 → red 1+) ──────────────────────────
+function kColour(k) {
+  if (k < 0.05) return 'var(--green)';
+  if (k < 0.12) return 'var(--blue)';
+  if (k < 0.20) return 'var(--yellow)';
+  if (k < 0.30) return 'var(--orange)';
+  return 'var(--red)';
+}
+
+// ── Connect / disconnect ───────────────────────────────────────────────────────
+function connect() {
+  if (ws) { ws.close(); ws = null; }
+  const bundle = document.getElementById('bundle-input').value.trim();
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const path = bundle ? `/v1/ws/${encodeURIComponent(bundle)}/dashboard` : '/v1/ws/dashboard';
+  const url = `${proto}://${location.host}${path}`;
+
+  setPill('connecting…', '');
+  ws = new WebSocket(url);
+
+  ws.onopen = () => setPill('CONNECTED', 'connected');
+  ws.onclose = () => setPill('DISCONNECTED', '');
+  ws.onerror = () => setPill('ERROR', 'error');
+  ws.onmessage = e => handleEvent(JSON.parse(e.data));
+}
+
+function setPill(text, cls) {
+  const p = document.getElementById('status-pill');
+  p.textContent = text;
+  p.className = cls;
+}
+
+// ── Handle incoming event ──────────────────────────────────────────────────────
+function handleEvent(ev) {
+  // Update stat cards
+  if (ev.record_count !== undefined) document.getElementById('s-records').textContent = ev.record_count.toLocaleString();
+  if (ev.global_confidence !== undefined) document.getElementById('s-conf').textContent = ev.global_confidence.toFixed(4);
+  if (ev.k_mean !== undefined) {
+    const v = ev.k_mean.toFixed(5);
+    const el = document.getElementById('s-kmean');
+    el.textContent = v;
+    el.style.color = kColour(ev.k_mean);
+    document.getElementById('s-kstd').textContent = `σ ${(ev.k_std||0).toFixed(5)}`;
+  }
+
+  // Curvature history
+  if (ev.k_mean !== undefined) {
+    kHistory.push({ ts: ev.ts_ms, k: ev.k_mean, thr: ev.k_threshold_2s });
+    if (kHistory.length > MAX_HISTORY) kHistory.shift();
+    renderChart();
+  }
+
+  // Anomaly event
+  if (ev.is_anomaly) {
+    anomalyCount++;
+    document.getElementById('s-anomalies').textContent = anomalyCount;
+    addAnomalyFeedItem(ev);
+  }
+
+  // Raw log
+  addLogItem(ev);
+}
+
+// ── Chart renderering (pure canvas, no deps) ──────────────────────────────────
+function renderChart() {
+  const canvas = document.getElementById('chart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W = rect.width - 32;
+  const H = 120;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  if (kHistory.length < 2) return;
+
+  const maxK = Math.max(...kHistory.map(d => Math.max(d.k, d.thr || 0))) * 1.1 || 0.5;
+  const minK = 0;
+  const toY = v => H - 8 - (v - minK) / (maxK - minK) * (H - 16);
+  const toX = i => (i / (kHistory.length - 1)) * W;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // threshold line
+  if (kHistory[0].thr) {
+    const thrY = toY(kHistory[kHistory.length-1].thr);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(252,129,129,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, thrY); ctx.lineTo(W, thrY); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // K line with gradient colour
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  kHistory.forEach((d, i) => {
+    const x = toX(i), y = toY(d.k);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = 'var(--blue)';
+  ctx.stroke();
+
+  // anomaly dots
+  kHistory.forEach((d, i) => {
+    if (d.thr && d.k > d.thr) {
+      ctx.beginPath();
+      ctx.arc(toX(i), toY(d.k), 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'var(--red)';
+      ctx.fill();
+    }
+  });
+}
+
+// ── Anomaly feed ───────────────────────────────────────────────────────────────
+function addAnomalyFeedItem(ev) {
+  const feed = document.getElementById('anomaly-feed');
+  if (feed.children[0] && feed.children[0].style.color) feed.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+  const t = new Date(ev.ts_ms).toISOString().slice(11, 23);
+  const z = (ev.z_score != null) ? ev.z_score.toFixed(2) : '?';
+  const k = (ev.local_curvature != null) ? ev.local_curvature.toFixed(5) : (ev.k_mean||0).toFixed(5);
+  const fields = (ev.contributing_fields||[]).join(', ') || '—';
+  item.innerHTML = `
+    <div>
+      <span class="feed-time">${t}</span>
+      <span class="feed-bundle">${ev.bundle}</span>
+      <span class="feed-score" style="color:var(--red)">z=${z}</span>
+    </div>
+    <div class="feed-fields">▶ ${fields}</div>
+    <div class="feed-k">K=${k} · thr=${(ev.k_threshold_2s||0).toFixed(5)}</div>`;
+  feed.insertBefore(item, feed.firstChild);
+  if (feed.children.length > 50) feed.removeChild(feed.lastChild);
+}
+
+// ── Raw log ────────────────────────────────────────────────────────────────────
+function addLogItem(ev) {
+  const log = document.getElementById('event-log');
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+  const t = new Date(ev.ts_ms||Date.now()).toISOString().slice(11, 23);
+  const typeColour = ev.is_anomaly ? 'var(--red)' : ev.type === 'insert' ? 'var(--green)' : 'var(--muted)';
+  item.innerHTML = `<span class="feed-time">${t}</span>
+    <span style="color:${typeColour};margin-left:6px;font-weight:700">${ev.type||'?'}</span>
+    <span class="feed-bundle">${ev.bundle}</span>
+    <span style="color:var(--muted);margin-left:6px">n=${(ev.record_count||'?').toLocaleString()} K=${(ev.k_mean||0).toFixed(4)}</span>`;
+  log.insertBefore(item, log.firstChild);
+  if (log.children.length > 50) log.removeChild(log.lastChild);
+}
+
+// ── Field bars (polled separately if a bundle is selected) ────────────────────
+async function refreshFieldBars() {
+  const bundle = document.getElementById('bundle-input').value.trim();
+  if (!bundle) return;
+  try {
+    const res = await fetch(`/v1/bundles/${encodeURIComponent(bundle)}/health`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const fields = (data.per_field || []).sort((a,b) => b.k - a.k).slice(0, 12);
+    const maxK = Math.max(...fields.map(f => f.k), 0.001);
+    const container = document.getElementById('field-bars');
+    container.innerHTML = '';
+    for (const f of fields) {
+      const pct = Math.min(f.k / maxK * 100, 100).toFixed(1);
+      const col = kColour(f.k);
+      container.innerHTML += `
+        <div class="field-bar">
+          <span class="name" title="${f.field}">${f.field}</span>
+          <div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div>
+          <span class="val">${f.k.toFixed(3)}</span>
+        </div>`;
+    }
+  } catch {}
+}
+setInterval(refreshFieldBars, 5000);
+
+// Auto-connect on load if bundle is pre-filled
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const b = params.get('bundle') || '';
+  if (b) document.getElementById('bundle-input').value = b;
+  connect();
+});
+
+window.addEventListener('resize', renderChart);
+</script>
+</body>
+</html>

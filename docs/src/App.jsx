@@ -1276,6 +1276,36 @@ REPAIR sensors;  -- auto-fix detected issues`}</Code>
       <H3>STORAGE</H3>
       <Code>{`STORAGE sensors;  -- storage usage report`}</Code>
 
+      <H3>Persistence &amp; WAL</H3>
+      <P>GIGI uses a <strong style={{ color: "#D0D8E4" }}>write-ahead log (WAL)</strong> for crash safety. Every write (insert, update, delete) is appended to the WAL and fsynced periodically (every 10,000 ops). On restart, the WAL is replayed to reconstruct all bundles.</P>
+      <P>For large datasets (millions of records), WAL replay can be slow. GIGI solves this with <strong style={{ color: "#D0D8E4" }}>DHOOM snapshots</strong> — compact binary snapshots of each bundle that load in seconds.</P>
+
+      <H3>DHOOM Snapshots</H3>
+      <P>A snapshot encodes all bundles as DHOOM files (GIGI's native binary format, ~2x more compact than NDJSON), then compacts the WAL to schema-only headers. After a snapshot, restarts load the DHOOM files directly instead of replaying the full WAL.</P>
+      <Code title="Trigger a snapshot">{`-- Via REST API:
+curl -X POST https://your-server/v1/admin/snapshot \\
+  -H "X-API-Key: YOUR_KEY"
+
+-- Response:
+{
+  "status": "ok",
+  "total_records_snapshotted": 27000000,
+  "message": "DHOOM snapshots written; WAL compacted to schema-only."
+}`}</Code>
+      <Note type="info">Call <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>POST /v1/admin/snapshot</code> after any large ingestion to make data permanent. Without this, data survives crashes (WAL) but restarts are slow.</Note>
+
+      <H3>Startup Sequence</H3>
+      <P>On startup, GIGI loads data in three phases:</P>
+      <Table
+        headers={["Phase", "Source", "Description"]}
+        rows={[
+          ["1. Schemas", "WAL", "Bundle schemas (field definitions, indexes, adjacencies)"],
+          ["2. Bulk data", "DHOOM snapshots", "All records up to the last snapshot — loaded in seconds"],
+          ["3. Incrementals", "WAL", "Records inserted after the last snapshot"],
+        ]}
+      />
+      <P>This means <strong style={{ color: "#D0D8E4" }}>deploys, crashes, and machine migrations</strong> never lose data. The WAL guarantees crash safety; snapshots guarantee fast restart.</P>
+
       <H3>Session Settings</H3>
       <Code>{`SET TOLERANCE 0.01;     -- curvature tolerance threshold
 SET EMIT DHOOM;         -- output format
@@ -1316,6 +1346,17 @@ RESTORE sensors FROM 'sensors.gigi' AS sensors_restored;`}</Code>
       <H3>VERIFY</H3>
       <Code>{`VERIFY BACKUP 'sensors.gigi';
 SHOW BACKUPS;`}</Code>
+
+      <H3>DHOOM Snapshots (Production)</H3>
+      <P>For production deployments, DHOOM snapshots are the recommended persistence strategy. Unlike file-level backups, snapshots are managed by the engine and integrate with the WAL for zero-downtime operation.</P>
+      <Code>{`-- Snapshot all bundles (via REST):
+POST /v1/admin/snapshot
+
+-- Snapshots are stored at /data/snapshots/{bundle}.dhoom
+-- on the server's persistent volume.
+-- After snapshot, WAL is compacted to schema-only headers.
+-- Restart loads: schemas → DHOOM bulk → WAL incrementals.`}</Code>
+      <Note type="info">See the <strong style={{ color: "#D0D8E4" }}>Maintenance → DHOOM Snapshots</strong> section for the full persistence model.</Note>
     </Section>
   );
 }
@@ -1429,8 +1470,17 @@ curl -H "X-API-Key: YOUR_KEY" https://your-server/v1/health`}</Code>
         rows={[
           ["GET", "/v1/health", "Health check — uptime, bundle count, record count"],
           ["GET", "/v1/openapi.json", "OpenAPI 3.0 specification"],
+          ["POST", "/v1/admin/snapshot", "DHOOM snapshot — persist all bundles, compact WAL"],
         ]}
       />
+      <Code title="POST /v1/admin/snapshot">{`# Persist all bundles as DHOOM snapshots and compact the WAL.
+# Call after large ingestions to ensure fast restarts.
+curl -X POST https://your-server/v1/admin/snapshot \\
+  -H "X-API-Key: YOUR_KEY"
+
+# Response:
+# { "status": "ok", "total_records_snapshotted": 27000000,
+#   "message": "DHOOM snapshots written; WAL compacted to schema-only." }`}</Code>
 
       <H3>Bundle Management</H3>
       <Table

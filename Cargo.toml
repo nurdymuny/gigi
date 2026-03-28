@@ -22,6 +22,7 @@ tokio = { version = "1", features = ["full"] }
 axum = { version = "0.8", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors"] }
 futures-util = "0.3"
+nalgebra = "0.33"
 
 [[bin]]
 name = "gigi-convert"

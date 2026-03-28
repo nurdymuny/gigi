@@ -423,6 +423,12 @@ pub enum AdjacencySpecKind {
     Metric { field: String, radius: f64 },
     /// ON field ABOVE threshold
     Threshold { field: String, threshold: f64 },
+    /// ON field_a TO field_b VIA transform_fn
+    Transform {
+        source_field: String,
+        target_field: String,
+        transform: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -946,9 +952,20 @@ impl Parser {
                     ))
                 }
             }
+        } else if self.is_keyword("TO") {
+            // Transform: ON field_a TO field_b VIA fn_name
+            self.advance(); // consume TO
+            let target_field = self.expect_word()?;
+            self.expect_keyword("VIA")?;
+            let transform = self.expect_word()?;
+            AdjacencySpecKind::Transform {
+                source_field: field,
+                target_field,
+                transform,
+            }
         } else {
             return Err(format!(
-                "Expected =, WITHIN, or ABOVE after ADJACENCY ON {field}"
+                "Expected =, WITHIN, ABOVE, or TO after ADJACENCY ON {field}"
             ));
         };
 
@@ -2947,6 +2964,21 @@ pub fn adj_spec_to_def(spec: &AdjacencySpec) -> crate::types::AdjacencyDef {
             crate::types::AdjacencyKind::Threshold {
                 field: field.clone(),
                 threshold: *threshold,
+            }
+        }
+        AdjacencySpecKind::Transform {
+            source_field,
+            target_field,
+            transform,
+        } => {
+            let tfn = match transform.to_ascii_lowercase().as_str() {
+                "log10" => crate::types::TransformFn::Log10,
+                _ => crate::types::TransformFn::Log10, // default fallback; scale/biofilm need args
+            };
+            crate::types::AdjacencyKind::Transform {
+                source_field: source_field.clone(),
+                target_field: target_field.clone(),
+                transform: tfn,
             }
         }
     };

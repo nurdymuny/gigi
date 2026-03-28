@@ -315,6 +315,43 @@ pub enum AdjacencyKind {
     Metric { field: String, radius: f64 },
     /// ON field ABOVE threshold — neighbor if |field_value| > threshold.
     Threshold { field: String, threshold: f64 },
+    /// ON field_a TO field_b VIA fn — non-identity restriction map.
+    Transform {
+        source_field: String,
+        target_field: String,
+        transform: TransformFn,
+    },
+}
+
+/// Built-in transform functions for non-identity restriction maps.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TransformFn {
+    /// f(x) = log10(x)
+    Log10,
+    /// f(x) = a*x + b
+    Scale { a: f64, b: f64 },
+    /// f(x) = x * β, β ∈ [lo, hi] — returns the midpoint, uncertainty = (hi-lo)/2
+    Biofilm { lo: f64, hi: f64 },
+}
+
+impl TransformFn {
+    /// Apply the forward transform.
+    pub fn apply(&self, x: f64) -> f64 {
+        match self {
+            TransformFn::Log10 => x.log10(),
+            TransformFn::Scale { a, b } => a * x + b,
+            TransformFn::Biofilm { lo, hi } => x * (lo + hi) / 2.0,
+        }
+    }
+
+    /// Apply the inverse transform (for reverse mapping).
+    pub fn inverse(&self, y: f64) -> f64 {
+        match self {
+            TransformFn::Log10 => 10.0_f64.powf(y),
+            TransformFn::Scale { a, b } => (y - b) / a,
+            TransformFn::Biofilm { lo, hi } => y * 2.0 / (lo + hi),
+        }
+    }
 }
 
 /// A named, weighted adjacency function declared in a bundle schema.

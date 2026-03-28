@@ -26,6 +26,7 @@ const NAV = [
   { id: "joins", label: "Joins (Pullback)", icon: "🔗" },
   { id: "transactions", label: "Transactions", icon: "🔒" },
   { id: "geometric", label: "Geometric Analytics", icon: "📐" },
+  { id: "sheaf", label: "Sheaf Completion", icon: "🧩" },
   { id: "sql", label: "SQL Compatibility", icon: "🗄️" },
   { id: "access", label: "Access Control", icon: "🛡️" },
   { id: "constraints", label: "Constraints", icon: "📏" },
@@ -870,6 +871,133 @@ CONSISTENCY sensors REPAIR;
           ["CAPACITY()", "Integer", "Estimated remaining safe capacity C = τ/K"],
         ]}
       />
+    </Section>
+  );
+}
+
+function SheafSection() {
+  return (
+    <Section id="sheaf" title="Sheaf Completion">
+      <P>Sheaf completion is GIGI's data imputation engine. Given a fiber bundle with missing (NULL) values, GIGI uses the geometric neighborhood structure to predict missing values, quantify confidence, and propagate the impact of new measurements — all from first principles of sheaf cohomology.</P>
+
+      <Note type="info">Sheaf completion requires <strong style={{ color: "#D0D8E4" }}>adjacency functions</strong> declared in the bundle schema. These tell GIGI how records are neighbors of each other.</Note>
+
+      <H3>ADJACENCY Clause</H3>
+      <P>Adjacency functions are declared inside CREATE BUNDLE, after the field definitions. They define the topology — which records can "see" each other for completion.</P>
+      <Code title="Syntax">{`BUNDLE <name>
+  BASE (...) FIBER (...)
+  ADJACENCY <name> ON <field> = <field> WEIGHT <w>
+  ADJACENCY <name> ON <field> WITHIN <radius> WEIGHT <w>
+  ADJACENCY <name> ON <field> ABOVE <threshold> WEIGHT <w>;`}</Code>
+      <Table
+        headers={["Kind", "Syntax", "Meaning", "Example"]}
+        rows={[
+          ["Equality", "ON field = field", "Records sharing the same value are neighbors", "ON city = city — same city"],
+          ["Metric", "ON field WITHIN r", "Records within distance r are neighbors", "ON timestamp WITHIN 3600 — within 1 hour"],
+          ["Threshold", "ON field ABOVE t", "Records where field exceeds t are neighbors", "ON correlation ABOVE 0.8"],
+        ]}
+      />
+      <Code title="Full example">{`BUNDLE sensors
+  BASE (id NUMERIC)
+  FIBER (
+    city     CATEGORICAL INDEX,
+    region   CATEGORICAL INDEX,
+    temp     NUMERIC RANGE 80,
+    humidity NUMERIC RANGE 100,
+    pressure NUMERIC RANGE 50
+  )
+  ADJACENCY same_city ON city = city WEIGHT 1.0
+  ADJACENCY same_region ON region = region WEIGHT 0.5
+  ADJACENCY time_window ON id WITHIN 10 WEIGHT 0.3;`}</Code>
+      <P>The <strong style={{ color: "#D0D8E4" }}>WEIGHT</strong> controls how much each adjacency contributes to the weighted prediction. Higher weight = more influence.</P>
+
+      <H3>COMPLETE</H3>
+      <P>Scans a bundle for NULL fiber values and predicts them from geometric neighbors. Returns one result row per NULL cell with the predicted value, confidence, and optional provenance chain.</P>
+      <Code title="Syntax">{`COMPLETE ON <bundle>
+  [WHERE <conditions>]
+  [METHOD <weighted_mean | median>]
+  [MIN_CONFIDENCE <threshold>]
+  [WITH PROVENANCE]
+  [WITH CONSTRAINT_GRAPH];`}</Code>
+      <Code title="Examples">{`-- Complete all missing values with default settings
+COMPLETE ON sensors;
+
+-- Complete only Moscow sensors, require 50% confidence
+COMPLETE ON sensors WHERE city = 'Moscow' MIN_CONFIDENCE 0.5;
+
+-- Full debug output: provenance + constraint graph
+COMPLETE ON sensors
+  METHOD weighted_mean
+  MIN_CONFIDENCE 0.3
+  WITH PROVENANCE
+  WITH CONSTRAINT_GRAPH;`}</Code>
+      <P>Returns per completed cell:</P>
+      <Table
+        headers={["Field", "Description"]}
+        rows={[
+          ["_field", "Name of the completed fiber field"],
+          ["_completed_value", "Predicted value (weighted mean or median of neighbors)"],
+          ["_confidence", "1 / (1 + CoV²) — 0 to 1, higher is more certain"],
+          ["_uncertainty", "Weighted standard deviation of neighbor values"],
+          ["_method", "weighted_mean or median"],
+          ["_neighbor_count", "Number of neighbors used"],
+          ["_origin", "Source: completed, skipped, or already_measured"],
+          ["_status", "completed or skipped (with reason)"],
+          ["_provenance", "(WITH PROVENANCE) — pipe-delimited neighbor identifiers"],
+          ["_constraint_graph", "(WITH CONSTRAINT_GRAPH) — JSON array of neighbor contributions"],
+        ]}
+      />
+      <Note>Cells with confidence below MIN_CONFIDENCE are returned with _status = \"skipped\" and _reason = \"low_confidence\". They are never silently dropped.</Note>
+
+      <H3>Confidence Formula</H3>
+      <P>Confidence is derived from the coefficient of variation (CoV) of the neighbor values used for prediction:</P>
+      <Code title="Formula">{`confidence = 1 / (1 + CoV²)
+
+where CoV = weighted_std / |weighted_mean|
+
+• All neighbors agree perfectly → CoV = 0 → confidence = 1.0
+• High disagreement → CoV large → confidence → 0
+• Consistent with CURVATURE confidence: 1/(1+K)`}</Code>
+
+      <H3>H¹ Cohomology Detection</H3>
+      <P>Before completing a cell, GIGI checks whether the local neighborhood is <strong style={{ color: "#D0D8E4" }}>sheaf-consistent</strong> (H¹ = 0). If neighbors disagree on a field beyond the threshold, the outlier values are soft-excluded from the prediction rather than corrupting it.</P>
+      <P>Detection uses <strong style={{ color: "#D0D8E4" }}>median + MAD</strong> (median absolute deviation) — a robust method that tolerates up to 50% contamination, unlike mean+stddev which breaks at ~15%.</P>
+      <Code>{`-- The H¹ threshold is configurable per bundle:
+BUNDLE sensors
+  BASE (id NUMERIC)
+  FIBER (temp NUMERIC RANGE 80)
+  ADJACENCY same_city ON city = city WEIGHT 1.0
+  H1_THRESHOLD 3.0;  -- z_MAD cutoff (default: 3.0)`}</Code>
+
+      <H3>PROPAGATE</H3>
+      <P>Simulates the impact of a new measurement. Given an assumption ("if I measure field X at record Y"), PROPAGATE identifies all NULL cells that become newly completable — cells that had no prediction before but now have enough neighbor data.</P>
+      <Code title="Syntax">{`PROPAGATE ON <bundle>
+  ASSUMING <field> = <value> [, ...]
+  SHOW NEWLY_DETERMINED;`}</Code>
+      <Code title="Example">{`-- "If I measure temp=22.5 at sensor 42, what else can I infer?"
+PROPAGATE ON sensors
+  ASSUMING id = 42, temp = 22.5
+  SHOW NEWLY_DETERMINED;
+
+-- Returns: list of cells that become completable
+-- Each row has _field, _completed_value, _confidence`}</Code>
+      <P>PROPAGATE is the headline feature for experiment planning: instead of measuring everything, measure the one thing that unlocks the most inferences.</P>
+
+      <H3>CONSISTENCY (Sheaf Mode)</H3>
+      <P>The existing CONSISTENCY verb gains sheaf-aware contradiction detection when adjacencies are declared. It scans every section and reports fields where H¹ ≠ 0 — meaning neighbors disagree beyond the threshold.</P>
+      <Code>{`CONSISTENCY sensors;
+-- With adjacencies: returns per-contradiction rows
+-- Each row: _field, _h1, _outlier_count, _severity
+-- _severity = outlier_count / neighbor_count`}</Code>
+
+      <H3>Constraint Graph</H3>
+      <P>When WITH CONSTRAINT_GRAPH is specified, each completed cell includes a JSON array showing exactly which neighbors contributed to the prediction and how much each one influenced the result.</P>
+      <Code title="Example output">{`_constraint_graph: [
+  { "adjacency": "same_city", "bp": 7, "value": 22.1, "weight": 1.0 },
+  { "adjacency": "same_city", "bp": 12, "value": 22.8, "weight": 1.0 },
+  { "adjacency": "same_region", "bp": 3, "value": 21.5, "weight": 0.5 }
+]`}</Code>
+      <P>This is the full provenance chain — when a prediction is wrong, the constraint graph tells you exactly which neighbors pulled it in the wrong direction.</P>
     </Section>
   );
 }
@@ -2227,6 +2355,7 @@ export default function GQLDocs() {
         <JoinsSection />
         <TransactionsSection />
         <GeometricSection />
+        <SheafSection />
         <SQLSection />
         <AccessControlSection />
         <ConstraintsSection />

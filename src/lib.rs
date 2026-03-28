@@ -3,27 +3,31 @@
 //! A fiber-bundle-based database engine.
 //! Davis Geometric · 2026
 
-pub mod types;
-pub mod hash;
-pub mod bundle;
-pub mod metric;
-pub mod query;
-pub mod curvature;
-pub mod join;
 pub mod aggregation;
-pub mod wal;
+pub mod bundle;
+pub mod concurrent;
+pub mod convert;
+pub mod crypto;
+pub mod curvature;
+pub mod dhoom;
+pub mod edge;
 pub mod engine;
 pub mod gauge;
-pub mod spectral;
+pub mod hash;
+pub mod join;
+pub mod metric;
 pub mod parser;
-pub mod concurrent;
-pub mod dhoom;
-pub mod convert;
-pub mod edge;
-pub mod crypto;
+pub mod query;
+pub mod sheaf;
+pub mod spectral;
+pub mod types;
+pub mod wal;
 
-pub use bundle::{BundleStore, BaseGeometry, detect_base_geometry, QueryCondition, VectorMetric, BundleStats, QueryPlan, TransactionOp, TransactionResult};
-pub use types::{BundleSchema, FieldDef, FieldType, Value};
-pub use query::QueryResult;
-pub use metric::FiberMetric;
+pub use bundle::{
+    detect_base_geometry, BaseGeometry, BundleStats, BundleStore, QueryCondition, QueryPlan,
+    TransactionOp, TransactionResult, VectorMetric,
+};
 pub use engine::Engine;
+pub use metric::FiberMetric;
+pub use query::QueryResult;
+pub use types::{AdjacencyDef, AdjacencyKind, BundleSchema, FieldDef, FieldType, Value};

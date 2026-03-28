@@ -10,11 +10,11 @@
 //! Methodology: measure at N = 1K, 10K, 100K, 1M.
 //! If O(1), the ratio t(10N)/t(N) should stay near 1.0 (< 1.5).
 
-use std::time::Instant;
-use gigi::*;
+use gigi::aggregation::fiber_integral;
 use gigi::bundle::BundleStore;
 use gigi::join::pullback_join;
-use gigi::aggregation::fiber_integral;
+use gigi::*;
+use std::time::Instant;
 
 fn make_schema() -> BundleSchema {
     BundleSchema::new("bench")
@@ -29,8 +29,14 @@ fn make_record(i: i64) -> std::collections::HashMap<String, Value> {
     let depts = ["Eng", "Sales", "HR", "Mkt", "Ops", "Legal", "Fin", "R&D"];
     let mut r = std::collections::HashMap::new();
     r.insert("id".into(), Value::Integer(i));
-    r.insert("dept".into(), Value::Text(depts[(i as usize) % depts.len()].into()));
-    r.insert("salary".into(), Value::Float(40_000.0 + (i % 500) as f64 * 100.0));
+    r.insert(
+        "dept".into(),
+        Value::Text(depts[(i as usize) % depts.len()].into()),
+    );
+    r.insert(
+        "salary".into(),
+        Value::Float(40_000.0 + (i % 500) as f64 * 100.0),
+    );
     r.insert("name".into(), Value::Text(format!("User_{i}")));
     r
 }
@@ -73,7 +79,9 @@ fn bench_point_query(store: &BundleStore, n: usize, count: usize) -> f64 {
 
 /// Measure range query latency normalized per result element.
 fn bench_range_query(store: &BundleStore, count: usize) -> (f64, usize) {
-    let result_size = store.range_query("dept", &[Value::Text("Eng".into())]).len();
+    let result_size = store
+        .range_query("dept", &[Value::Text("Eng".into())])
+        .len();
     let start = Instant::now();
     for _ in 0..count {
         let _ = store.range_query("dept", &[Value::Text("Eng".into())]);
@@ -96,13 +104,20 @@ fn main() {
     println!("║                                                                ║");
     println!("║  TDD-1.8: INSERT O(1)  —  {insert_batch} inserts per size            ║");
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║  {:>10} │ {:>12} │ {:>8}                          ║", "N", "ns/insert", "ratio");
+    println!(
+        "║  {:>10} │ {:>12} │ {:>8}                          ║",
+        "N", "ns/insert", "ratio"
+    );
     println!("╟────────────┼──────────────┼──────────────────────────────╢");
     let mut prev_t = 0.0f64;
     for &n in &sizes {
         let t = bench_insert(n, insert_batch);
         let ratio = if prev_t > 0.0 { t / prev_t } else { 1.0 };
-        let mark = if ratio < 3.0 || prev_t == 0.0 { "✓" } else { "✗ CACHE" };
+        let mark = if ratio < 3.0 || prev_t == 0.0 {
+            "✓"
+        } else {
+            "✗ CACHE"
+        };
         println!("║  {:>10} │ {:>12.1} │ {:>6.2}x  {mark:<20} ║", n, t, ratio);
         prev_t = t;
     }
@@ -111,15 +126,25 @@ fn main() {
     println!("╠══════════════════════════════════════════════════════════════════╣");
     println!("║  TDD-1.9: POINT QUERY O(1)  —  {query_iters} queries per size       ║");
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║  {:>10} │ {:>12} │ {:>8}                          ║", "N", "ns/query", "ratio");
+    println!(
+        "║  {:>10} │ {:>12} │ {:>8}                          ║",
+        "N", "ns/query", "ratio"
+    );
     println!("╟────────────┼──────────────┼──────────────────────────────╢");
     prev_t = 0.0;
     for &n in &sizes {
         let store = build_store(n);
         let t = bench_point_query(&store, n, query_iters);
         let ratio = if prev_t > 0.0 { t / prev_t } else { 1.0 };
-        let mark = if ratio < 1.5 || prev_t == 0.0 { "✓" } else { "✗" };
-        println!("║  {:>10} │ {:>12.1} │ {:>6.2}x  {mark}                       ║", n, t, ratio);
+        let mark = if ratio < 1.5 || prev_t == 0.0 {
+            "✓"
+        } else {
+            "✗"
+        };
+        println!(
+            "║  {:>10} │ {:>12.1} │ {:>6.2}x  {mark}                       ║",
+            n, t, ratio
+        );
         prev_t = t;
     }
 
@@ -127,17 +152,35 @@ fn main() {
     println!("╠══════════════════════════════════════════════════════════════════╣");
     println!("║  TDD-2.7: RANGE QUERY O(|result|)  —  fixed dept filter       ║");
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║  {:>10} │ {:>12} │ {:>12} │ {:>8}            ║", "N", "|result|", "ns/element", "ratio");
+    println!(
+        "║  {:>10} │ {:>12} │ {:>12} │ {:>8}            ║",
+        "N", "|result|", "ns/element", "ratio"
+    );
     println!("╟────────────┼──────────────┼──────────────┼──────────────╢");
     prev_t = 0.0;
     for &n in &sizes {
         let store = build_store(n);
         let range_iters = 100.max(query_iters / n.max(1) * 100);
         let (total_ns, result_size) = bench_range_query(&store, range_iters);
-        let ns_per_elem = if result_size > 0 { total_ns / result_size as f64 } else { total_ns };
-        let ratio = if prev_t > 0.0 { ns_per_elem / prev_t } else { 1.0 };
-        let mark = if ratio < 2.0 || prev_t == 0.0 { "✓" } else { "✗" };
-        println!("║  {:>10} │ {:>12} │ {:>12.1} │ {:>6.2}x  {mark}    ║", n, result_size, ns_per_elem, ratio);
+        let ns_per_elem = if result_size > 0 {
+            total_ns / result_size as f64
+        } else {
+            total_ns
+        };
+        let ratio = if prev_t > 0.0 {
+            ns_per_elem / prev_t
+        } else {
+            1.0
+        };
+        let mark = if ratio < 2.0 || prev_t == 0.0 {
+            "✓"
+        } else {
+            "✗"
+        };
+        println!(
+            "║  {:>10} │ {:>12} │ {:>12.1} │ {:>6.2}x  {mark}    ║",
+            n, result_size, ns_per_elem, ratio
+        );
         prev_t = ns_per_elem;
     }
 
@@ -145,7 +188,10 @@ fn main() {
     println!("╠══════════════════════════════════════════════════════════════════╣");
     println!("║  TDD-4.4: PULLBACK JOIN O(|left|)  —  fixed left, vary right  ║");
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║  {:>10} │ {:>12} │ {:>8}                          ║", "|right|", "ns/join", "ratio");
+    println!(
+        "║  {:>10} │ {:>12} │ {:>8}                          ║",
+        "|right|", "ns/join", "ratio"
+    );
     println!("╟────────────┼──────────────┼──────────────────────────────╢");
 
     let left_schema = BundleSchema::new("orders")
@@ -183,8 +229,15 @@ fn main() {
         let t = elapsed.as_nanos() as f64 / join_iters as f64;
 
         let ratio = if prev_t > 0.0 { t / prev_t } else { 1.0 };
-        let mark = if ratio < 1.5 || prev_t == 0.0 { "✓" } else { "✗" };
-        println!("║  {:>10} │ {:>12.1} │ {:>6.2}x  {mark}                       ║", right_n, t, ratio);
+        let mark = if ratio < 1.5 || prev_t == 0.0 {
+            "✓"
+        } else {
+            "✗"
+        };
+        println!(
+            "║  {:>10} │ {:>12.1} │ {:>6.2}x  {mark}                       ║",
+            right_n, t, ratio
+        );
         prev_t = t;
     }
 
@@ -192,7 +245,10 @@ fn main() {
     println!("╠══════════════════════════════════════════════════════════════════╣");
     println!("║  TDD-5.1: AGGREGATION O(N)  —  fiber integral over all        ║");
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║  {:>10} │ {:>12} │ {:>8}                          ║", "N", "µs/agg", "ratio");
+    println!(
+        "║  {:>10} │ {:>12} │ {:>8}                          ║",
+        "N", "µs/agg", "ratio"
+    );
     println!("╟────────────┼──────────────┼──────────────────────────────╢");
     prev_t = 0.0;
     for &n in &sizes {
@@ -212,8 +268,15 @@ fn main() {
             1.0
         };
         // For O(N), ratio should track 10x per 10x size increase
-        let mark = if ratio < expected_ratio * 1.5 || prev_t == 0.0 { "✓" } else { "✗" };
-        println!("║  {:>10} │ {:>12.1} │ {:>6.1}x  {mark}  (expect ~{:.0}x)       ║", n, t, ratio, expected_ratio);
+        let mark = if ratio < expected_ratio * 1.5 || prev_t == 0.0 {
+            "✓"
+        } else {
+            "✗"
+        };
+        println!(
+            "║  {:>10} │ {:>12.1} │ {:>6.1}x  {mark}  (expect ~{:.0}x)       ║",
+            n, t, ratio, expected_ratio
+        );
         prev_t = t;
     }
 

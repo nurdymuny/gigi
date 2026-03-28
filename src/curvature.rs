@@ -25,7 +25,11 @@ pub fn scalar_curvature(store: &BundleStore) -> f64 {
         total_k += var / (range * range);
         count += 1;
     }
-    if count == 0 { 0.0 } else { total_k / count as f64 }
+    if count == 0 {
+        0.0
+    } else {
+        total_k / count as f64
+    }
 }
 
 /// Confidence score (Cor 3.3): confidence(p) = 1 / (1 + K).
@@ -106,8 +110,8 @@ pub fn holonomy(store: &BundleStore, loop_keys: &[crate::types::Record]) -> f64 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::*;
     use crate::bundle::BundleStore;
+    use crate::types::*;
 
     fn make_store_with_data() -> BundleStore {
         let schema = BundleSchema::new("test")
@@ -195,11 +199,18 @@ mod tests {
         let store = make_store_with_data();
         let mut k0 = Record::new();
         k0.insert("id".into(), Value::Integer(0));
-        let hol = holonomy(&store, &[k0.clone(), {
-            let mut k = Record::new();
-            k.insert("id".into(), Value::Integer(5));
-            k
-        }, k0]);
+        let hol = holonomy(
+            &store,
+            &[
+                k0.clone(),
+                {
+                    let mut k = Record::new();
+                    k.insert("id".into(), Value::Integer(5));
+                    k
+                },
+                k0,
+            ],
+        );
         assert!((hol).abs() < 1e-10, "Hol = {hol}");
     }
 

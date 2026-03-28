@@ -6,10 +6,9 @@
 //! GET  /v1/health    — health check
 
 use axum::{
-    Router,
-    routing::{get, post},
-    Json,
     http::StatusCode,
+    routing::{get, post},
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 
@@ -31,8 +30,12 @@ struct ConvertOptions {
     format: String,
 }
 
-fn default_name() -> String { "data".to_string() }
-fn default_format() -> String { "dhoom".to_string() }
+fn default_name() -> String {
+    "data".to_string()
+}
+fn default_format() -> String {
+    "dhoom".to_string()
+}
 
 #[derive(Serialize)]
 struct ConvertResponse {
@@ -93,7 +96,9 @@ async fn convert(
     if req.input.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: "Input array is empty".to_string() }),
+            Json(ErrorResponse {
+                error: "Input array is empty".to_string(),
+            }),
         ));
     }
 
@@ -103,7 +108,13 @@ async fn convert(
         let p = gigi::convert::profile(&req.input, &req.name);
         let mut curv_map = std::collections::HashMap::new();
         for (field, k, conf) in &p.curvature {
-            curv_map.insert(field.clone(), CurvatureEntry { k: *k, confidence: *conf });
+            curv_map.insert(
+                field.clone(),
+                CurvatureEntry {
+                    k: *k,
+                    confidence: *conf,
+                },
+            );
         }
         Some(ProfileResponse {
             records: p.records,
@@ -126,14 +137,14 @@ async fn convert(
     }))
 }
 
-async fn decode(
-    body: String,
-) -> Result<Json<DecodeResponse>, (StatusCode, Json<ErrorResponse>)> {
+async fn decode(body: String) -> Result<Json<DecodeResponse>, (StatusCode, Json<ErrorResponse>)> {
     let body = body.trim().to_string();
     if body.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: "Empty DHOOM input".to_string() }),
+            Json(ErrorResponse {
+                error: "Empty DHOOM input".to_string(),
+            }),
         ));
     }
 
@@ -149,7 +160,9 @@ async fn decode(
         }
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: format!("DHOOM parse error: {}", e) }),
+            Json(ErrorResponse {
+                error: format!("DHOOM parse error: {}", e),
+            }),
         )),
     }
 }
@@ -160,14 +173,22 @@ async fn profile_endpoint(
     if req.input.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: "Input array is empty".to_string() }),
+            Json(ErrorResponse {
+                error: "Input array is empty".to_string(),
+            }),
         ));
     }
 
     let p = gigi::convert::profile(&req.input, &req.name);
     let mut curv_map = std::collections::HashMap::new();
     for (field, k, conf) in &p.curvature {
-        curv_map.insert(field.clone(), CurvatureEntry { k: *k, confidence: *conf });
+        curv_map.insert(
+            field.clone(),
+            CurvatureEntry {
+                k: *k,
+                confidence: *conf,
+            },
+        );
     }
     Ok(Json(ProfileResponse {
         records: p.records,

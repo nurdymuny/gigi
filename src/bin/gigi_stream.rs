@@ -13,38 +13,34 @@
 //!   L2: Sheaf Query (composition with gluing)
 //!   L3: Connection (curvature, spectral, holonomy)
 
-use axum::{
-    Router,
-    routing::{get, post, delete},
-    Json,
-    http::StatusCode,
-    extract::{
-        Path, Query, State, WebSocketUpgrade,
-        ws::WebSocket,
-    },
-    response::IntoResponse,
-    middleware as axum_mw,
-};
 use axum::http::Request;
+use axum::http::{HeaderName, HeaderValue, Method};
 use axum::middleware::Next;
 use axum::response::Response;
-use tower_http::cors::{CorsLayer, AllowOrigin};
-use axum::http::{HeaderName, HeaderValue, Method};
+use axum::{
+    extract::{ws::WebSocket, Path, Query, State, WebSocketUpgrade},
+    http::StatusCode,
+    middleware as axum_mw,
+    response::IntoResponse,
+    routing::{delete, get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use tokio::sync::broadcast;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use gigi::bundle::{QueryCondition, VectorMetric, AnomalyRecord};
-use gigi::bundle::{TransactionOp, compute_record_k};
-use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
-use gigi::curvature;
-use gigi::spectral;
 use gigi::aggregation;
-use gigi::join;
+use gigi::bundle::{compute_record_k, TransactionOp};
+use gigi::bundle::{AnomalyRecord, QueryCondition, VectorMetric};
+use gigi::curvature;
 use gigi::dhoom;
 use gigi::engine::Engine;
+use gigi::join;
+use gigi::spectral;
+use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 
 // ── Shared State ──
 
@@ -125,14 +121,16 @@ impl StreamState {
             .and_then(|v| v.parse().ok())
             .unwrap_or(60u64);
 
-        let data_dir = std::env::var("GIGI_DATA_DIR")
-            .unwrap_or_else(|_| "./gigi_data".to_string());
+        let data_dir = std::env::var("GIGI_DATA_DIR").unwrap_or_else(|_| "./gigi_data".to_string());
         let data_path = std::path::PathBuf::from(&data_dir);
 
         let engine = match Engine::open(&data_path) {
             Ok(e) => e,
             Err(e) => {
-                eprintln!("FATAL: Failed to open database at {}: {e}", data_path.display());
+                eprintln!(
+                    "FATAL: Failed to open database at {}: {e}",
+                    data_path.display()
+                );
                 std::process::exit(1);
             }
         };
@@ -216,8 +214,6 @@ struct DropFieldRequest {
     field: String,
 }
 
-
-
 #[derive(Deserialize)]
 struct FilteredQueryRequest {
     #[serde(default, alias = "filters")]
@@ -300,7 +296,9 @@ struct IncrementRequest {
     amount: f64,
 }
 
-fn default_increment() -> f64 { 1.0 }
+fn default_increment() -> f64 {
+    1.0
+}
 
 /// Body for POST .../add-field
 #[derive(Deserialize)]
@@ -312,7 +310,9 @@ struct AddFieldRequest {
     default: Option<serde_json::Value>,
 }
 
-fn default_field_type() -> String { "categorical".to_string() }
+fn default_field_type() -> String {
+    "categorical".to_string()
+}
 
 /// Body for POST .../add-index
 #[derive(Deserialize)]
@@ -383,8 +383,6 @@ struct TransactionRequest {
     ops: Vec<TransactionOpSpec>,
 }
 
-
-
 #[derive(Serialize)]
 struct ApiResponse<T: Serialize> {
     data: T,
@@ -428,9 +426,15 @@ struct BundleInfo {
 
 // ── Anomaly Detection ─────────────────────────────────────────────────────────
 
-fn default_anomaly_sigma() -> f64 { 2.0 }
-fn default_anomaly_limit() -> usize { 100 }
-fn default_include_scores() -> bool { true }
+fn default_anomaly_sigma() -> f64 {
+    2.0
+}
+fn default_anomaly_limit() -> usize {
+    100
+}
+fn default_include_scores() -> bool {
+    true
+}
 
 #[derive(Deserialize)]
 struct AnomalyRequest {
@@ -470,9 +474,19 @@ fn anomaly_to_json(a: &AnomalyRecord, include_scores: bool) -> serde_json::Value
         obj.insert("confidence".into(), a.confidence.into());
         obj.insert("deviation_norm".into(), (a.deviation_norm as u64).into());
         obj.insert("deviation_distance".into(), a.deviation_distance.into());
-        obj.insert("neighbourhood_size".into(), (a.neighbourhood_size as u64).into());
-        obj.insert("contributing_fields".into(),
-            serde_json::Value::Array(a.contributing_fields.iter().map(|f| f.clone().into()).collect()));
+        obj.insert(
+            "neighbourhood_size".into(),
+            (a.neighbourhood_size as u64).into(),
+        );
+        obj.insert(
+            "contributing_fields".into(),
+            serde_json::Value::Array(
+                a.contributing_fields
+                    .iter()
+                    .map(|f| f.clone().into())
+                    .collect(),
+            ),
+        );
     }
     serde_json::Value::Object(obj)
 }
@@ -532,9 +546,7 @@ fn json_to_value(v: &serde_json::Value) -> Value {
         serde_json::Value::Bool(b) => Value::Bool(*b),
         serde_json::Value::Array(arr) => {
             // Numeric arrays → Value::Vector (embedding/feature vector)
-            let floats: Vec<f64> = arr.iter()
-                .filter_map(|x| x.as_f64())
-                .collect();
+            let floats: Vec<f64> = arr.iter().filter_map(|x| x.as_f64()).collect();
             if floats.len() == arr.len() && !arr.is_empty() {
                 Value::Vector(floats)
             } else {
@@ -552,9 +564,9 @@ fn value_to_json(v: &Value) -> serde_json::Value {
         Value::Text(s) => serde_json::json!(s),
         Value::Bool(b) => serde_json::json!(b),
         Value::Timestamp(t) => serde_json::json!(t),
-        Value::Vector(v) => serde_json::Value::Array(
-            v.iter().map(|x| serde_json::json!(x)).collect()
-        ),
+        Value::Vector(v) => {
+            serde_json::Value::Array(v.iter().map(|x| serde_json::json!(x)).collect())
+        }
         Value::Null => serde_json::Value::Null,
     }
 }
@@ -593,20 +605,30 @@ fn str_to_field_type(s: &str) -> FieldType {
 /// - unset                    → restrictive (same-origin only, no CORS headers)
 fn build_cors_layer() -> CorsLayer {
     match std::env::var("GIGI_CORS_ORIGIN") {
-        Ok(origin) if origin == "*" => {
-            CorsLayer::new()
-                .allow_origin(AllowOrigin::any())
-                .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE, Method::OPTIONS])
-                .allow_headers([
-                    HeaderName::from_static("content-type"),
-                    HeaderName::from_static("x-api-key"),
-                ])
-        }
+        Ok(origin) if origin == "*" => CorsLayer::new()
+            .allow_origin(AllowOrigin::any())
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PATCH,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
+            .allow_headers([
+                HeaderName::from_static("content-type"),
+                HeaderName::from_static("x-api-key"),
+            ]),
         Ok(origin) => {
             let origin_val: HeaderValue = origin.parse().unwrap_or_else(|_| "".parse().unwrap());
             CorsLayer::new()
                 .allow_origin(AllowOrigin::exact(origin_val))
-                .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE, Method::OPTIONS])
+                .allow_methods([
+                    Method::GET,
+                    Method::POST,
+                    Method::PATCH,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                ])
                 .allow_headers([
                     HeaderName::from_static("content-type"),
                     HeaderName::from_static("x-api-key"),
@@ -616,7 +638,13 @@ fn build_cors_layer() -> CorsLayer {
             // No CORS origin set → allow same-origin (permissive for local dev)
             CorsLayer::new()
                 .allow_origin(AllowOrigin::any())
-                .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE, Method::OPTIONS])
+                .allow_methods([
+                    Method::GET,
+                    Method::POST,
+                    Method::PATCH,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                ])
                 .allow_headers([
                     HeaderName::from_static("content-type"),
                     HeaderName::from_static("x-api-key"),
@@ -646,7 +674,9 @@ async fn auth_middleware(
             _ => {
                 return Err((
                     StatusCode::UNAUTHORIZED,
-                    Json(ErrorResponse { error: "Invalid or missing API key".to_string() }),
+                    Json(ErrorResponse {
+                        error: "Invalid or missing API key".to_string(),
+                    }),
                 ));
             }
         }
@@ -696,7 +726,9 @@ async fn rate_limit_middleware(
         if entries.len() >= state.rate_limit as usize {
             return Err((
                 StatusCode::TOO_MANY_REQUESTS,
-                Json(ErrorResponse { error: "Rate limit exceeded".to_string() }),
+                Json(ErrorResponse {
+                    error: "Rate limit exceeded".to_string(),
+                }),
             ));
         }
 
@@ -720,14 +752,18 @@ async fn health(State(state): State<Arc<StreamState>>) -> Json<HealthResponse> {
 
 async fn list_bundles(State(state): State<Arc<StreamState>>) -> Json<Vec<BundleInfo>> {
     let engine = state.engine.read().unwrap();
-    let infos: Vec<BundleInfo> = engine.bundle_names().iter().map(|name| {
-        let store = engine.bundle(name).unwrap();
-        BundleInfo {
-            name: name.to_string(),
-            records: store.len(),
-            fields: store.schema.base_fields.len() + store.schema.fiber_fields.len(),
-        }
-    }).collect();
+    let infos: Vec<BundleInfo> = engine
+        .bundle_names()
+        .iter()
+        .map(|name| {
+            let store = engine.bundle(name).unwrap();
+            BundleInfo {
+                name: name.to_string(),
+                records: store.len(),
+                fields: store.schema.base_fields.len() + store.schema.fiber_fields.len(),
+            }
+        })
+        .collect();
     Json(infos)
 }
 
@@ -740,7 +776,10 @@ async fn create_bundle(
     // Keys become base fields, rest become fiber fields
     for (field_name, field_type_str) in &req.schema.fields {
         let ft = str_to_field_type(field_type_str);
-        let default_val = req.schema.defaults.get(field_name)
+        let default_val = req
+            .schema
+            .defaults
+            .get(field_name)
             .map(json_to_value)
             .unwrap_or(Value::Null);
         let fd = FieldDef {
@@ -773,15 +812,22 @@ async fn create_bundle(
     }
 
     let mut engine = state.engine.write().unwrap();
-    engine.create_bundle(schema).map_err(|e| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: format!("Storage error: {e}") }),
-    ))?;
+    engine.create_bundle(schema).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Storage error: {e}"),
+            }),
+        )
+    })?;
 
-    Ok((StatusCode::CREATED, Json(serde_json::json!({
-        "status": "created",
-        "bundle": req.name
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "status": "created",
+            "bundle": req.name
+        })),
+    ))
 }
 
 async fn drop_bundle(
@@ -790,12 +836,18 @@ async fn drop_bundle(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
     match engine.drop_bundle(&name) {
-        Ok(true) => Ok(Json(serde_json::json!({"status": "dropped", "bundle": name}))),
+        Ok(true) => Ok(Json(
+            serde_json::json!({"status": "dropped", "bundle": name}),
+        )),
         // Idempotent: deleting a non-existent bundle is not an error
-        Ok(false) => Ok(Json(serde_json::json!({"status": "not_found", "bundle": name}))),
+        Ok(false) => Ok(Json(
+            serde_json::json!({"status": "not_found", "bundle": name}),
+        )),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse { error: format!("Storage error: {e}") }),
+            Json(ErrorResponse {
+                error: format!("Storage error: {e}"),
+            }),
         )),
     }
 }
@@ -809,17 +861,29 @@ async fn insert_records(
 
     // Get schema info (borrow released after block)
     let (key_name_opt, has_created_at, has_updated_at) = {
-        let store = engine.bundle(&name).ok_or_else(|| (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-        ))?;
+        let store = engine.bundle(&name).ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!("Bundle '{}' not found", name),
+                }),
+            )
+        })?;
         let key = if store.schema.base_fields.len() == 1 {
             Some(store.schema.base_fields[0].name.clone())
         } else {
             None
         };
-        let ca = store.schema.fiber_fields.iter().any(|f| f.name == "created_at");
-        let ua = store.schema.fiber_fields.iter().any(|f| f.name == "updated_at");
+        let ca = store
+            .schema
+            .fiber_fields
+            .iter()
+            .any(|f| f.name == "created_at");
+        let ua = store
+            .schema
+            .fiber_fields
+            .iter()
+            .any(|f| f.name == "updated_at");
         (key, ca, ua)
     };
 
@@ -829,10 +893,15 @@ async fn insert_records(
         .unwrap_or_default()
         .as_millis() as i64;
 
-    let mut records: Vec<Record> = req.records.iter()
+    let mut records: Vec<Record> = req
+        .records
+        .iter()
         .filter_map(|item| {
             if let serde_json::Value::Object(map) = item {
-                let mut rec: Record = map.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect();
+                let mut rec: Record = map
+                    .iter()
+                    .map(|(k, v)| (k.clone(), json_to_value(v)))
+                    .collect();
                 if has_created_at && !rec.contains_key("created_at") {
                     rec.insert("created_at".into(), Value::Timestamp(now_ms));
                 }
@@ -863,33 +932,59 @@ async fn insert_records(
         let store = engine.bundle(&name).unwrap();
         let stats = &store.curvature_stats;
         if stats.k_count >= 10 {
-            let fiber_vals: Vec<Value> = store.schema.fiber_fields.iter()
+            let fiber_vals: Vec<Value> = store
+                .schema
+                .fiber_fields
+                .iter()
                 .map(|f| records[0].get(&f.name).cloned().unwrap_or(Value::Null))
                 .collect();
-            let k_rec = compute_record_k(store.get_field_stats(), &fiber_vals, &store.schema.fiber_fields);
+            let k_rec = compute_record_k(
+                store.get_field_stats(),
+                &fiber_vals,
+                &store.schema.fiber_fields,
+            );
             if stats.is_anomaly(k_rec, 2.0) {
                 let z = stats.z_score(k_rec);
-                let contributing: Vec<String> = store.schema.fiber_fields.iter()
+                let contributing: Vec<String> = store
+                    .schema
+                    .fiber_fields
+                    .iter()
                     .zip(fiber_vals.iter())
                     .filter_map(|(fd, v)| {
                         let v_f = v.as_f64()?;
                         let fs = store.get_field_stats().get(&fd.name)?;
-                        if fs.count < 2 { return None; }
+                        if fs.count < 2 {
+                            return None;
+                        }
                         let mean = fs.sum / fs.count as f64;
                         let range = fs.range().max(f64::EPSILON);
                         let field_k = (v_f - mean).abs() / range;
-                        if field_k > 0.5 { Some(fd.name.clone()) } else { None }
+                        if field_k > 0.5 {
+                            Some(fd.name.clone())
+                        } else {
+                            None
+                        }
                     })
                     .collect();
                 Some((k_rec, z, contributing))
-            } else { None }
-        } else { None }
-    } else { None };
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
-    let inserted = engine.batch_insert(&name, &records).map_err(|e| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: format!("Storage error: {e}") }),
-    ))?;
+    let inserted = engine.batch_insert(&name, &records).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Storage error: {e}"),
+            }),
+        )
+    })?;
 
     let store = engine.bundle(&name).unwrap();
     let k = curvature::scalar_curvature(store);
@@ -918,12 +1013,26 @@ async fn insert_records(
     }
 
     // Emit dashboard event with current bundle health snapshot
-    let _ = state.dashboard_tx.send(build_dashboard_event("insert", &name, store, k, None, None, vec![]));
+    let _ = state.dashboard_tx.send(build_dashboard_event(
+        "insert",
+        &name,
+        store,
+        k,
+        None,
+        None,
+        vec![],
+    ));
 
     // Emit anomaly event when pre-insert detection flagged this record
     if let Some((k_rec, z, contributing)) = pre_anomaly {
         let _ = state.dashboard_tx.send(build_dashboard_event(
-            "anomaly", &name, store, k, Some(k_rec), Some(z), contributing,
+            "anomaly",
+            &name,
+            store,
+            k,
+            Some(k_rec),
+            Some(z),
+            contributing,
         ));
     }
 
@@ -955,16 +1064,22 @@ async fn stream_ingest(
         if engine.bundle(&name).is_none() {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+                Json(ErrorResponse {
+                    error: format!("Bundle '{}' not found", name),
+                }),
             ));
         }
     }
 
     // Read body (cap at 256MB to prevent abuse)
-    let bytes = to_bytes(body, 256 * 1024 * 1024).await.map_err(|e| (
-        StatusCode::BAD_REQUEST,
-        Json(ErrorResponse { error: format!("Failed to read body: {e}") }),
-    ))?;
+    let bytes = to_bytes(body, 256 * 1024 * 1024).await.map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("Failed to read body: {e}"),
+            }),
+        )
+    })?;
 
     let text = String::from_utf8_lossy(&bytes);
 
@@ -974,24 +1089,33 @@ async fn stream_ingest(
 
     for line in text.lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
         match serde_json::from_str::<serde_json::Value>(line) {
             Ok(serde_json::Value::Object(map)) => {
-                let record: Record = map.iter()
+                let record: Record = map
+                    .iter()
                     .map(|(k, v)| (k.clone(), json_to_value(v)))
                     .collect();
                 records.push(record);
             }
-            _ => { parse_errors += 1; }
+            _ => {
+                parse_errors += 1;
+            }
         }
     }
 
     // WAL-logged batch insert
     let mut engine = state.engine.write().unwrap();
-    let inserted = engine.batch_insert(&name, &records).map_err(|e| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: format!("Storage error: {e}") }),
-    ))?;
+    let inserted = engine.batch_insert(&name, &records).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Storage error: {e}"),
+            }),
+        )
+    })?;
 
     let store = engine.bundle(&name).unwrap();
     let k = curvature::scalar_curvature(store);
@@ -1022,13 +1146,18 @@ async fn point_query(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     // Build key record from query params
-    let key: Record = params.iter()
+    let key: Record = params
+        .iter()
         .map(|(k, v)| {
             let val = if let Ok(n) = v.parse::<i64>() {
                 Value::Integer(n)
@@ -1056,8 +1185,10 @@ async fn point_query(
         }
         None => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: "Record not found".to_string() }),
-        ))
+            Json(ErrorResponse {
+                error: "Record not found".to_string(),
+            }),
+        )),
     }
 }
 
@@ -1067,10 +1198,14 @@ async fn range_query(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<Vec<serde_json::Value>>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     // Use first param as range query field
     if let Some((field, value)) = params.iter().next() {
@@ -1083,9 +1218,7 @@ async fn range_query(
         };
 
         let records = store.range_query(field, &[val]);
-        let json_records: Vec<serde_json::Value> = records.iter()
-            .map(record_to_json)
-            .collect();
+        let json_records: Vec<serde_json::Value> = records.iter().map(record_to_json).collect();
         let k = curvature::scalar_curvature(store);
         let count = json_records.len();
         Ok(Json(ApiResponse {
@@ -1100,7 +1233,9 @@ async fn range_query(
     } else {
         Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error: "Provide at least one field=value query parameter".to_string() }),
+            Json(ErrorResponse {
+                error: "Provide at least one field=value query parameter".to_string(),
+            }),
         ))
     }
 }
@@ -1111,22 +1246,36 @@ async fn pullback_join(
     Json(req): Json<JoinRequest>,
 ) -> Result<Json<ApiResponse<Vec<serde_json::Value>>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let left = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
-    let right = engine.bundle(&req.right_bundle).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", req.right_bundle) }),
-    ))?;
+    let left = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    let right = engine.bundle(&req.right_bundle).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", req.right_bundle),
+            }),
+        )
+    })?;
 
     let results = join::pullback_join(left, right, &req.left_field, &req.right_field);
-    let json_results: Vec<serde_json::Value> = results.iter()
+    let json_results: Vec<serde_json::Value> = results
+        .iter()
         .map(|(left_rec, right_rec)| {
             let mut combined = serde_json::Map::new();
             combined.insert("left".to_string(), record_to_json(left_rec));
-            combined.insert("right".to_string(),
-                right_rec.as_ref().map(record_to_json).unwrap_or(serde_json::Value::Null));
+            combined.insert(
+                "right".to_string(),
+                right_rec
+                    .as_ref()
+                    .map(record_to_json)
+                    .unwrap_or(serde_json::Value::Null),
+            );
             serde_json::Value::Object(combined)
         })
         .collect();
@@ -1149,15 +1298,21 @@ async fn aggregate(
     Json(req): Json<AggregateRequest>,
 ) -> Result<Json<AggResult>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let groups = if req.conditions.is_empty() {
         aggregation::group_by(store, &req.group_by, &req.field)
     } else {
-        let conditions: Vec<QueryCondition> = req.conditions.iter()
+        let conditions: Vec<QueryCondition> = req
+            .conditions
+            .iter()
             .map(condition_spec_to_query_condition)
             .collect();
         aggregation::filtered_group_by(store, &req.group_by, &req.field, &conditions)
@@ -1165,13 +1320,16 @@ async fn aggregate(
     let mut result_groups = HashMap::new();
     for (key, agg) in groups {
         let key_str = key.to_string();
-        result_groups.insert(key_str, AggValues {
-            count: agg.count,
-            sum: agg.sum,
-            avg: agg.avg(),
-            min: agg.min,
-            max: agg.max,
-        });
+        result_groups.insert(
+            key_str,
+            AggValues {
+                count: agg.count,
+                sum: agg.sum,
+                avg: agg.avg(),
+                min: agg.min,
+                max: agg.max,
+            },
+        );
     }
 
     // HAVING — filter groups on aggregated values
@@ -1200,7 +1358,9 @@ async fn aggregate(
         });
     }
 
-    Ok(Json(AggResult { groups: result_groups }))
+    Ok(Json(AggResult {
+        groups: result_groups,
+    }))
 }
 
 async fn curvature_report(
@@ -1208,10 +1368,14 @@ async fn curvature_report(
     Path(name): Path<String>,
 ) -> Result<Json<CurvatureReport>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let k = curvature::scalar_curvature(store);
     let conf = curvature::confidence(k);
@@ -1223,7 +1387,11 @@ async fn curvature_report(
     for (field_name, fs) in stats {
         let variance = fs.variance();
         let range = fs.range();
-        let field_k = if range > 0.0 { variance / (range * range) } else { 0.0 };
+        let field_k = if range > 0.0 {
+            variance / (range * range)
+        } else {
+            0.0
+        };
         per_field.push(FieldCurvature {
             field: field_name.clone(),
             variance,
@@ -1245,10 +1413,14 @@ async fn spectral_report(
     Path(name): Path<String>,
 ) -> Result<Json<SpectralReport>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let lambda1 = spectral::spectral_gap(store);
     let diameter = spectral::graph_diameter(store);
@@ -1266,10 +1438,14 @@ async fn consistency_check(
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     // Čech cohomology H¹ — measure holonomy to detect inconsistencies
     // H¹ = 0 means fully consistent (flat connection, path-independent)
@@ -1284,8 +1460,8 @@ async fn consistency_check(
         // Check holonomy around triangles formed by record triples
         let n = records.len().min(20); // sample up to 20 records for triangles
         for i in 0..n {
-            for j in (i+1)..n.min(i+5) {
-                for m in (j+1)..n.min(j+3) {
+            for j in (i + 1)..n.min(i + 5) {
+                for m in (j + 1)..n.min(j + 3) {
                     // Build key records for the loop: i → j → m → i
                     let keys: Vec<Record> = [&records[i], &records[j], &records[m], &records[i]]
                         .iter()
@@ -1332,31 +1508,44 @@ async fn bundle_anomalies(
     Json(req): Json<AnomalyRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
-    let conditions: Vec<QueryCondition> = req.filters.iter()
+    let conditions: Vec<QueryCondition> = req
+        .filters
+        .iter()
         .map(condition_spec_to_query_condition)
         .collect();
-    let pre_filter = if conditions.is_empty() { None } else { Some(conditions.as_slice()) };
+    let pre_filter = if conditions.is_empty() {
+        None
+    } else {
+        Some(conditions.as_slice())
+    };
 
     let anomalies = store.compute_anomalies(req.threshold_sigma, pre_filter, req.limit);
     let include = req.include_scores;
 
     // Optionally project to requested fields only
-    let results: Vec<serde_json::Value> = anomalies.iter().map(|a| {
-        let mut j = anomaly_to_json(a, include);
-        if !req.fields.is_empty() {
-            if let serde_json::Value::Object(ref mut obj) = j {
-                if let Some(serde_json::Value::Object(ref mut rec)) = obj.get_mut("record") {
-                    rec.retain(|k, _| req.fields.contains(k));
+    let results: Vec<serde_json::Value> = anomalies
+        .iter()
+        .map(|a| {
+            let mut j = anomaly_to_json(a, include);
+            if !req.fields.is_empty() {
+                if let serde_json::Value::Object(ref mut obj) = j {
+                    if let Some(serde_json::Value::Object(ref mut rec)) = obj.get_mut("record") {
+                        rec.retain(|k, _| req.fields.contains(k));
+                    }
                 }
             }
-        }
-        j
-    }).collect();
+            j
+        })
+        .collect();
 
     let stats = &store.curvature_stats;
     Ok(Json(serde_json::json!({
@@ -1378,32 +1567,44 @@ async fn bundle_health(
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let k_global = curvature::scalar_curvature(store);
     let stats = &store.curvature_stats;
     let k_mean = stats.mean();
-    let k_std  = stats.std_dev();
+    let k_std = stats.std_dev();
     let record_count = store.len();
 
     // Per-field curvature
-    let per_field: Vec<serde_json::Value> = store.field_stats().iter().map(|(field, fs)| {
-        let range = fs.range();
-        let field_k = if range > 0.0 { fs.variance() / (range * range) } else { 0.0 };
-        serde_json::json!({
-            "field": field,
-            "k": field_k,
-            "variance": fs.variance(),
-            "range": range,
+    let per_field: Vec<serde_json::Value> = store
+        .field_stats()
+        .iter()
+        .map(|(field, fs)| {
+            let range = fs.range();
+            let field_k = if range > 0.0 {
+                fs.variance() / (range * range)
+            } else {
+                0.0
+            };
+            serde_json::json!({
+                "field": field,
+                "k": field_k,
+                "variance": fs.variance(),
+                "range": range,
+            })
         })
-    }).collect();
+        .collect();
 
     // derive anomaly_rate from 2-sigma count over curvature_stats
-    let anomaly_rate = store.compute_anomalies(2.0, None, usize::MAX).len() as f64
-        / record_count.max(1) as f64;
+    let anomaly_rate =
+        store.compute_anomalies(2.0, None, usize::MAX).len() as f64 / record_count.max(1) as f64;
 
     Ok(Json(serde_json::json!({
         "bundle": name,
@@ -1427,15 +1628,20 @@ async fn predict_volatility(
     Json(req): Json<PredictRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     // Group records by group_by field value, accumulate sum/sum_sq/count for `field`
     let mut groups: HashMap<String, (f64, f64, usize)> = HashMap::new(); // key → (sum, sum_sq, n)
     for record in store.records() {
-        let group_key = record.get(&req.group_by)
+        let group_key = record
+            .get(&req.group_by)
             .map(|v| format!("{:?}", v))
             .unwrap_or_else(|| "null".into());
         if let Some(v) = record.get(&req.field).and_then(|v| v.as_f64()) {
@@ -1446,20 +1652,23 @@ async fn predict_volatility(
         }
     }
 
-    let predictions: Vec<serde_json::Value> = groups.into_iter().map(|(group, (sum, sum_sq, n))| {
-        let mean = sum / n as f64;
-        let variance = (sum_sq / n as f64) - mean * mean;
-        let std_dev = variance.max(0.0).sqrt();
-        // volatility index: σ / max(|μ|, 1) — relative dispersion
-        let volatility = std_dev / mean.abs().max(1.0);
-        serde_json::json!({
-            "group": group,
-            "count": n,
-            "mean": mean,
-            "std_dev": std_dev,
-            "volatility_index": volatility,
+    let predictions: Vec<serde_json::Value> = groups
+        .into_iter()
+        .map(|(group, (sum, sum_sq, n))| {
+            let mean = sum / n as f64;
+            let variance = (sum_sq / n as f64) - mean * mean;
+            let std_dev = variance.max(0.0).sqrt();
+            // volatility index: σ / max(|μ|, 1) — relative dispersion
+            let volatility = std_dev / mean.abs().max(1.0);
+            serde_json::json!({
+                "group": group,
+                "count": n,
+                "mean": mean,
+                "std_dev": std_dev,
+                "volatility_index": volatility,
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(Json(serde_json::json!({
         "bundle": name,
@@ -1477,21 +1686,31 @@ async fn field_anomalies(
     Json(req): Json<FieldAnomalyRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     // Run full anomaly scan, then keep only those where the requested field
     // appears in contributing_fields.
     let all = store.compute_anomalies(req.threshold_sigma, None, usize::MAX);
-    let mut field_anomalies: Vec<&AnomalyRecord> = all.iter()
+    let mut field_anomalies: Vec<&AnomalyRecord> = all
+        .iter()
         .filter(|a| a.contributing_fields.contains(&req.field))
         .collect();
-    field_anomalies.sort_by(|a, b| b.z_score.partial_cmp(&a.z_score).unwrap_or(std::cmp::Ordering::Equal));
+    field_anomalies.sort_by(|a, b| {
+        b.z_score
+            .partial_cmp(&a.z_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     field_anomalies.truncate(req.limit);
 
-    let results: Vec<serde_json::Value> = field_anomalies.iter()
+    let results: Vec<serde_json::Value> = field_anomalies
+        .iter()
         .map(|a| anomaly_to_json(a, true))
         .collect();
 
@@ -1568,12 +1787,18 @@ async fn filtered_query(
     Json(req): Json<FilteredQueryRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
-    let conditions: Vec<QueryCondition> = req.conditions.iter()
+    let conditions: Vec<QueryCondition> = req
+        .conditions
+        .iter()
         .map(condition_spec_to_query_condition)
         .collect();
 
@@ -1585,25 +1810,34 @@ async fn filtered_query(
     };
 
     // Build field projection
-    let field_refs: Option<Vec<&str>> = req.fields.as_ref()
+    let field_refs: Option<Vec<&str>> = req
+        .fields
+        .as_ref()
         .map(|f| f.iter().map(|s| s.as_str()).collect());
 
     // Build multi-field sort
     let sort_fields_vec: Option<Vec<(String, bool)>> = if let Some(ref sort) = req.sort {
-        Some(sort.iter().map(|s| (s.field.clone(), s.desc.unwrap_or(false))).collect())
+        Some(
+            sort.iter()
+                .map(|s| (s.field.clone(), s.desc.unwrap_or(false)))
+                .collect(),
+        )
     } else if let Some(ref field) = req.sort_by {
         Some(vec![(field.clone(), sort_desc)])
     } else {
         None
     };
-    let sort_fields_refs: Option<Vec<(&str, bool)>> = sort_fields_vec.as_ref()
+    let sort_fields_refs: Option<Vec<(&str, bool)>> = sort_fields_vec
+        .as_ref()
         .map(|v| v.iter().map(|(s, d)| (s.as_str(), *d)).collect());
 
     // Build OR conditions
-    let or_conds_vec: Option<Vec<Vec<QueryCondition>>> = req.or_conditions.as_ref()
-        .map(|groups| groups.iter()
+    let or_conds_vec: Option<Vec<Vec<QueryCondition>>> = req.or_conditions.as_ref().map(|groups| {
+        groups
+            .iter()
             .map(|g| g.iter().map(condition_spec_to_query_condition).collect())
-            .collect());
+            .collect()
+    });
 
     let (results, total) = store.filtered_query_projected_ex(
         &conditions,
@@ -1617,30 +1851,25 @@ async fn filtered_query(
     // Apply multi-field text search (OR across search_fields)
     let json_records: Vec<serde_json::Value> = if let Some(ref search_term) = req.search {
         let term_lower = search_term.to_lowercase();
-        results.iter()
-            .filter(|record| {
-                match &req.search_fields {
-                    Some(fields) => {
-                        fields.iter().any(|f| {
-                            record.get(f).map_or(false, |v| {
-                                if let Value::Text(s) = v {
-                                    s.to_lowercase().contains(&term_lower)
-                                } else {
-                                    v.to_string().to_lowercase().contains(&term_lower)
-                                }
-                            })
-                        })
+        results
+            .iter()
+            .filter(|record| match &req.search_fields {
+                Some(fields) => fields.iter().any(|f| {
+                    record.get(f).map_or(false, |v| {
+                        if let Value::Text(s) = v {
+                            s.to_lowercase().contains(&term_lower)
+                        } else {
+                            v.to_string().to_lowercase().contains(&term_lower)
+                        }
+                    })
+                }),
+                None => record.values().any(|v| {
+                    if let Value::Text(s) = v {
+                        s.to_lowercase().contains(&term_lower)
+                    } else {
+                        false
                     }
-                    None => {
-                        record.values().any(|v| {
-                            if let Value::Text(s) = v {
-                                s.to_lowercase().contains(&term_lower)
-                            } else {
-                                false
-                            }
-                        })
-                    }
-                }
+                }),
             })
             .map(record_to_json)
             .collect()
@@ -1681,10 +1910,14 @@ async fn list_all_records(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<Vec<serde_json::Value>>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let limit: Option<usize> = params.get("limit").and_then(|v| v.parse().ok());
     let offset: Option<usize> = params.get("offset").and_then(|v| v.parse().ok());
@@ -1719,10 +1952,14 @@ async fn get_by_path(
     Path((name, field, value)): Path<(String, String, String)>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let val = parse_path_value(&value);
     let mut key = Record::new();
@@ -1759,7 +1996,9 @@ async fn get_by_path(
 
     Err((
         StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: "Record not found".to_string() }),
+        Json(ErrorResponse {
+            error: "Record not found".to_string(),
+        }),
     ))
 }
 
@@ -1773,20 +2012,28 @@ async fn patch_by_path(
     let mut key = Record::new();
     key.insert(field, val);
 
-    let patches: Record = body.fields.iter()
+    let patches: Record = body
+        .fields
+        .iter()
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     if !store.update(&key, &patches) {
         return Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: "Record not found".to_string() }),
+            Json(ErrorResponse {
+                error: "Record not found".to_string(),
+            }),
         ));
     }
 
@@ -1795,7 +2042,12 @@ async fn patch_by_path(
     drop(engine);
     let tx = state.get_or_create_channel(&name);
     let patch_json = serde_json::to_string(&serde_json::json!({ "key": record_to_json(&key), "patches": patches.iter().map(|(fk, fv)| (fk.clone(), value_to_json(fv))).collect::<serde_json::Map<_,_>>() })).unwrap_or_default();
-    let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "update", record_json: patch_json, curvature: k });
+    let _ = tx.send(SubscriptionEvent {
+        bundle: name.clone(),
+        op: "update",
+        record_json: patch_json,
+        curvature: k,
+    });
     Ok(Json(serde_json::json!({
         "status": "updated",
         "total": total,
@@ -1814,15 +2066,21 @@ async fn delete_by_path(
     key.insert(field, val);
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     if !store.delete(&key) {
         return Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: "Record not found".to_string() }),
+            Json(ErrorResponse {
+                error: "Record not found".to_string(),
+            }),
         ));
     }
 
@@ -1831,7 +2089,12 @@ async fn delete_by_path(
     drop(engine);
     let tx = state.get_or_create_channel(&name);
     let key_json = serde_json::to_string(&record_to_json(&key)).unwrap_or_default();
-    let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "delete", record_json: key_json, curvature: k });
+    let _ = tx.send(SubscriptionEvent {
+        bundle: name.clone(),
+        op: "delete",
+        record_json: key_json,
+        curvature: k,
+    });
     Ok(Json(serde_json::json!({
         "status": "deleted",
         "total": total,
@@ -1846,19 +2109,27 @@ async fn bulk_update_records(
     Path(name): Path<String>,
     Json(req): Json<BulkUpdateRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let conditions: Vec<QueryCondition> = req.filter.iter()
+    let conditions: Vec<QueryCondition> = req
+        .filter
+        .iter()
         .map(condition_spec_to_query_condition)
         .collect();
 
-    let patches: Record = req.fields.iter()
+    let patches: Record = req
+        .fields
+        .iter()
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let count = store.bulk_update(&conditions, &patches);
 
@@ -1889,15 +2160,21 @@ async fn upsert_records(
     Path(name): Path<String>,
     Json(req): Json<UpsertRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let record: Record = req.record.iter()
+    let record: Record = req
+        .record
+        .iter()
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let inserted = store.upsert(&record);
     let k = curvature::scalar_curvature(store);
@@ -1927,12 +2204,18 @@ async fn count_records(
     Json(req): Json<FilteredQueryRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
-    let conditions: Vec<QueryCondition> = req.conditions.iter()
+    let conditions: Vec<QueryCondition> = req
+        .conditions
+        .iter()
         .map(condition_spec_to_query_condition)
         .collect();
 
@@ -1950,12 +2233,18 @@ async fn exists_records(
     Json(req): Json<FilteredQueryRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
-    let conditions: Vec<QueryCondition> = req.conditions.iter()
+    let conditions: Vec<QueryCondition> = req
+        .conditions
+        .iter()
         .map(condition_spec_to_query_condition)
         .collect();
 
@@ -1971,10 +2260,14 @@ async fn distinct_values(
     Path((name, field)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let vals = store.distinct(&field);
     let json_vals: Vec<serde_json::Value> = vals.iter().map(value_to_json).collect();
@@ -1992,15 +2285,21 @@ async fn bulk_delete_records(
     Path(name): Path<String>,
     Json(req): Json<BulkDeleteRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let conditions: Vec<QueryCondition> = req.conditions.iter()
+    let conditions: Vec<QueryCondition> = req
+        .conditions
+        .iter()
         .map(condition_spec_to_query_condition)
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let deleted = store.bulk_delete(&conditions);
     let k = curvature::scalar_curvature(store);
@@ -2029,10 +2328,14 @@ async fn truncate_bundle(
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let removed = store.truncate();
 
@@ -2049,26 +2352,40 @@ async fn get_schema(
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
-    let base_fields: Vec<serde_json::Value> = store.schema.base_fields.iter().map(|f| {
-        serde_json::json!({
-            "name": f.name,
-            "type": format!("{:?}", f.field_type),
-            "weight": f.weight,
+    let base_fields: Vec<serde_json::Value> = store
+        .schema
+        .base_fields
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "name": f.name,
+                "type": format!("{:?}", f.field_type),
+                "weight": f.weight,
+            })
         })
-    }).collect();
+        .collect();
 
-    let fiber_fields: Vec<serde_json::Value> = store.schema.fiber_fields.iter().map(|f| {
-        serde_json::json!({
-            "name": f.name,
-            "type": format!("{:?}", f.field_type),
-            "weight": f.weight,
+    let fiber_fields: Vec<serde_json::Value> = store
+        .schema
+        .fiber_fields
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "name": f.name,
+                "type": format!("{:?}", f.field_type),
+                "weight": f.weight,
+            })
         })
-    }).collect();
+        .collect();
 
     let indexed: Vec<String> = store.schema.indexed_fields.clone();
 
@@ -2090,20 +2407,28 @@ async fn increment_field(
     Path(name): Path<String>,
     Json(req): Json<IncrementRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let key: Record = req.key.iter()
+    let key: Record = req
+        .key
+        .iter()
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     if !store.increment(&key, &req.field, req.amount) {
         return Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: "Record not found".to_string() }),
+            Json(ErrorResponse {
+                error: "Record not found".to_string(),
+            }),
         ));
     }
 
@@ -2124,15 +2449,21 @@ async fn drop_field(
     Json(req): Json<DropFieldRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     if !store.drop_field(&req.field) {
         return Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse { error: format!("Field '{}' not found in bundle '{}'", req.field, name) }),
+            Json(ErrorResponse {
+                error: format!("Field '{}' not found in bundle '{}'", req.field, name),
+            }),
         ));
     }
 
@@ -2150,7 +2481,11 @@ async fn add_field(
     Json(req): Json<AddFieldRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let ft = str_to_field_type(&req.field_type);
-    let default_val = req.default.as_ref().map(json_to_value).unwrap_or(Value::Null);
+    let default_val = req
+        .default
+        .as_ref()
+        .map(json_to_value)
+        .unwrap_or(Value::Null);
     let fd = FieldDef {
         name: req.name.clone(),
         field_type: ft,
@@ -2160,10 +2495,14 @@ async fn add_field(
     };
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     store.add_field(fd);
 
@@ -2181,10 +2520,14 @@ async fn add_index(
     Json(req): Json<AddIndexRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     store.add_index(&req.field);
 
@@ -2201,14 +2544,16 @@ async fn export_bundle(
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
-    let records: Vec<serde_json::Value> = store.records()
-        .map(|r| record_to_json(&r))
-        .collect();
+    let records: Vec<serde_json::Value> = store.records().map(|r| record_to_json(&r)).collect();
 
     Ok(Json(serde_json::json!({
         "bundle": name,
@@ -2223,14 +2568,17 @@ async fn export_dhoom(
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
-    let json_records: Vec<serde_json::Value> = store.records()
-        .map(|r| record_to_json(&r))
-        .collect();
+    let json_records: Vec<serde_json::Value> =
+        store.records().map(|r| record_to_json(&r)).collect();
 
     let result = dhoom::encode_json(&json_records, &name);
 
@@ -2244,29 +2592,41 @@ async fn export_dhoom(
     })))
 }
 
-/// POST /v1/bundles/{name}/import — import records from JSON
+/// POST /v1/bundles/{name}/import — import records from JSON (WAL-logged)
 async fn import_bundle(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<ImportRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
-
-    let records: Vec<Record> = req.records.iter()
+    let records: Vec<Record> = req
+        .records
+        .iter()
         .filter_map(|item| {
             if let serde_json::Value::Object(map) = item {
-                Some(map.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect())
+                Some(
+                    map.iter()
+                        .map(|(k, v)| (k.clone(), json_to_value(v)))
+                        .collect(),
+                )
             } else {
                 None
             }
         })
         .collect();
 
-    let inserted = store.batch_insert(&records);
+    let mut engine = state.engine.write().unwrap();
+    // Route through engine.batch_insert() so every record is WAL-logged before
+    // the response is sent.  The previous direct store.batch_insert() bypassed
+    // the WAL entirely, causing data loss on server restart.
+    let inserted = engine.batch_insert(&name, &records).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Storage error: {e}"),
+            }),
+        )
+    })?;
+    let store = engine.bundle(&name).unwrap();
     let k = curvature::scalar_curvature(store);
 
     Ok(Json(serde_json::json!({
@@ -2286,21 +2646,35 @@ async fn update_records_v2(
     Path(name): Path<String>,
     Json(req): Json<UpdateReturningRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let key: Record = req.key.iter()
+    let key: Record = req
+        .key
+        .iter()
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
-    let mut patches: Record = req.fields.iter()
+    let mut patches: Record = req
+        .fields
+        .iter()
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     // Auto-set updated_at
-    if store.schema.fiber_fields.iter().any(|f| f.name == "updated_at") && !patches.contains_key("updated_at") {
+    if store
+        .schema
+        .fiber_fields
+        .iter()
+        .any(|f| f.name == "updated_at")
+        && !patches.contains_key("updated_at")
+    {
         let now_ms = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -2331,13 +2705,18 @@ async fn update_records_v2(
             Err("version_conflict") => {
                 return Err((
                     StatusCode::CONFLICT,
-                    Json(ErrorResponse { error: "Version conflict — record was modified by another client".to_string() }),
+                    Json(ErrorResponse {
+                        error: "Version conflict — record was modified by another client"
+                            .to_string(),
+                    }),
                 ));
             }
             Err(_) => {
                 return Err((
                     StatusCode::NOT_FOUND,
-                    Json(ErrorResponse { error: "Record not found".to_string() }),
+                    Json(ErrorResponse {
+                        error: "Record not found".to_string(),
+                    }),
                 ));
             }
         }
@@ -2352,7 +2731,12 @@ async fn update_records_v2(
                 let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
                 drop(engine);
                 let tx = state.get_or_create_channel(&name);
-                let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "update", record_json: rec_json.clone(), curvature: k });
+                let _ = tx.send(SubscriptionEvent {
+                    bundle: name.clone(),
+                    op: "update",
+                    record_json: rec_json.clone(),
+                    curvature: k,
+                });
                 Ok(Json(serde_json::json!({
                     "status": "updated",
                     "data": serde_json::from_str::<serde_json::Value>(&rec_json).unwrap_or_default(),
@@ -2363,22 +2747,32 @@ async fn update_records_v2(
             }
             None => Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse { error: "Record not found".to_string() }),
+                Json(ErrorResponse {
+                    error: "Record not found".to_string(),
+                }),
             )),
         }
     } else {
         if !store.update(&key, &patches) {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse { error: "Record not found".to_string() }),
+                Json(ErrorResponse {
+                    error: "Record not found".to_string(),
+                }),
             ));
         }
         let k = curvature::scalar_curvature(store);
         let total = store.len();
-        let patch_json = serde_json::to_string(&serde_json::json!({"key": record_to_json(&key)})).unwrap_or_default();
+        let patch_json = serde_json::to_string(&serde_json::json!({"key": record_to_json(&key)}))
+            .unwrap_or_default();
         drop(engine);
         let tx = state.get_or_create_channel(&name);
-        let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "update", record_json: patch_json, curvature: k });
+        let _ = tx.send(SubscriptionEvent {
+            bundle: name.clone(),
+            op: "update",
+            record_json: patch_json,
+            curvature: k,
+        });
         Ok(Json(serde_json::json!({
             "status": "updated",
             "total": total,
@@ -2394,15 +2788,21 @@ async fn delete_records_v2(
     Path(name): Path<String>,
     Json(req): Json<DeleteReturningRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let key: Record = req.key.iter()
+    let key: Record = req
+        .key
+        .iter()
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     if req.returning {
         match store.delete_returning(&key) {
@@ -2412,7 +2812,12 @@ async fn delete_records_v2(
                 let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
                 drop(engine);
                 let tx = state.get_or_create_channel(&name);
-                let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "delete", record_json: rec_json.clone(), curvature: k });
+                let _ = tx.send(SubscriptionEvent {
+                    bundle: name.clone(),
+                    op: "delete",
+                    record_json: rec_json.clone(),
+                    curvature: k,
+                });
                 Ok(Json(serde_json::json!({
                     "status": "deleted",
                     "data": serde_json::from_str::<serde_json::Value>(&rec_json).unwrap_or_default(),
@@ -2423,14 +2828,18 @@ async fn delete_records_v2(
             }
             None => Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse { error: "Record not found".to_string() }),
+                Json(ErrorResponse {
+                    error: "Record not found".to_string(),
+                }),
             )),
         }
     } else {
         if !store.delete(&key) {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse { error: "Record not found".to_string() }),
+                Json(ErrorResponse {
+                    error: "Record not found".to_string(),
+                }),
             ));
         }
         let k = curvature::scalar_curvature(store);
@@ -2438,7 +2847,12 @@ async fn delete_records_v2(
         let key_json = serde_json::to_string(&record_to_json(&key)).unwrap_or_default();
         drop(engine);
         let tx = state.get_or_create_channel(&name);
-        let _ = tx.send(SubscriptionEvent { bundle: name.clone(), op: "delete", record_json: key_json, curvature: k });
+        let _ = tx.send(SubscriptionEvent {
+            bundle: name.clone(),
+            op: "delete",
+            record_json: key_json,
+            curvature: k,
+        });
         Ok(Json(serde_json::json!({
             "status": "deleted",
             "total": total,
@@ -2454,35 +2868,49 @@ async fn bundle_stats(
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let stats = store.stats();
     let k = curvature::scalar_curvature(store);
 
-    let index_sizes: serde_json::Value = stats.index_sizes.iter()
+    let index_sizes: serde_json::Value = stats
+        .index_sizes
+        .iter()
         .map(|(f, s)| (f.clone(), serde_json::json!(s)))
         .collect::<serde_json::Map<String, serde_json::Value>>()
         .into();
 
-    let cardinalities: serde_json::Value = stats.field_cardinalities.iter()
+    let cardinalities: serde_json::Value = stats
+        .field_cardinalities
+        .iter()
         .map(|(f, c)| (f.clone(), serde_json::json!(c)))
         .collect::<serde_json::Map<String, serde_json::Value>>()
         .into();
 
     // Per-field stats
     let field_stats_raw = store.field_stats();
-    let field_stats_json: serde_json::Value = field_stats_raw.iter()
-        .map(|(f, fs)| (f.clone(), serde_json::json!({
-            "count": fs.count,
-            "sum": fs.sum,
-            "min": fs.min,
-            "max": fs.max,
-            "variance": fs.variance(),
-            "range": fs.range(),
-        })))
+    let field_stats_json: serde_json::Value = field_stats_raw
+        .iter()
+        .map(|(f, fs)| {
+            (
+                f.clone(),
+                serde_json::json!({
+                    "count": fs.count,
+                    "sum": fs.sum,
+                    "min": fs.min,
+                    "max": fs.max,
+                    "variance": fs.variance(),
+                    "range": fs.range(),
+                }),
+            )
+        })
         .collect::<serde_json::Map<String, serde_json::Value>>()
         .into();
 
@@ -2508,23 +2936,35 @@ async fn explain_query(
     Json(req): Json<ExplainRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
-    let conditions: Vec<QueryCondition> = req.conditions.iter()
+    let conditions: Vec<QueryCondition> = req
+        .conditions
+        .iter()
         .map(condition_spec_to_query_condition)
         .collect();
 
-    let or_conds_vec: Option<Vec<Vec<QueryCondition>>> = req.or_conditions.as_ref()
-        .map(|groups| groups.iter()
+    let or_conds_vec: Option<Vec<Vec<QueryCondition>>> = req.or_conditions.as_ref().map(|groups| {
+        groups
+            .iter()
             .map(|g| g.iter().map(condition_spec_to_query_condition).collect())
-            .collect());
+            .collect()
+    });
 
-    let sort_fields_vec: Option<Vec<(String, bool)>> = req.sort.as_ref()
-        .map(|v| v.iter().map(|s| (s.field.clone(), s.desc.unwrap_or(false))).collect());
-    let sort_fields_refs: Option<Vec<(&str, bool)>> = sort_fields_vec.as_ref()
+    let sort_fields_vec: Option<Vec<(String, bool)>> = req.sort.as_ref().map(|v| {
+        v.iter()
+            .map(|s| (s.field.clone(), s.desc.unwrap_or(false)))
+            .collect()
+    });
+    let sort_fields_refs: Option<Vec<(&str, bool)>> = sort_fields_vec
+        .as_ref()
         .map(|v| v.iter().map(|(s, d)| (s.as_str(), *d)).collect());
 
     let plan = store.explain(
@@ -2555,70 +2995,119 @@ async fn execute_transaction(
     Json(req): Json<TransactionRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle_mut(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let mut ops: Vec<TransactionOp> = Vec::with_capacity(req.ops.len());
 
     for (i, op_spec) in req.ops.iter().enumerate() {
         let op = match op_spec.op.as_str() {
             "insert" => {
-                let record_json = op_spec.record.as_ref().ok_or_else(|| (
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse { error: format!("op[{}]: insert requires 'record'", i) }),
-                ))?;
+                let record_json = op_spec.record.as_ref().ok_or_else(|| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse {
+                            error: format!("op[{}]: insert requires 'record'", i),
+                        }),
+                    )
+                })?;
                 if let serde_json::Value::Object(map) = record_json {
-                    let record: Record = map.iter()
+                    let record: Record = map
+                        .iter()
                         .map(|(k, v)| (k.clone(), json_to_value(v)))
                         .collect();
                     TransactionOp::Insert(record)
                 } else {
                     return Err((
                         StatusCode::BAD_REQUEST,
-                        Json(ErrorResponse { error: format!("op[{}]: record must be an object", i) }),
+                        Json(ErrorResponse {
+                            error: format!("op[{}]: record must be an object", i),
+                        }),
                     ));
                 }
             }
             "update" => {
-                let key_json = op_spec.key.as_ref().ok_or_else(|| (
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse { error: format!("op[{}]: update requires 'key'", i) }),
-                ))?;
-                let fields_json = op_spec.fields.as_ref().ok_or_else(|| (
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse { error: format!("op[{}]: update requires 'fields'", i) }),
-                ))?;
-                let key: Record = key_json.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect();
-                let patches: Record = fields_json.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect();
+                let key_json = op_spec.key.as_ref().ok_or_else(|| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse {
+                            error: format!("op[{}]: update requires 'key'", i),
+                        }),
+                    )
+                })?;
+                let fields_json = op_spec.fields.as_ref().ok_or_else(|| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse {
+                            error: format!("op[{}]: update requires 'fields'", i),
+                        }),
+                    )
+                })?;
+                let key: Record = key_json
+                    .iter()
+                    .map(|(k, v)| (k.clone(), json_to_value(v)))
+                    .collect();
+                let patches: Record = fields_json
+                    .iter()
+                    .map(|(k, v)| (k.clone(), json_to_value(v)))
+                    .collect();
                 TransactionOp::Update { key, patches }
             }
             "delete" => {
-                let key_json = op_spec.key.as_ref().ok_or_else(|| (
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse { error: format!("op[{}]: delete requires 'key'", i) }),
-                ))?;
-                let key: Record = key_json.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect();
+                let key_json = op_spec.key.as_ref().ok_or_else(|| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse {
+                            error: format!("op[{}]: delete requires 'key'", i),
+                        }),
+                    )
+                })?;
+                let key: Record = key_json
+                    .iter()
+                    .map(|(k, v)| (k.clone(), json_to_value(v)))
+                    .collect();
                 TransactionOp::Delete(key)
             }
             "increment" => {
-                let key_json = op_spec.key.as_ref().ok_or_else(|| (
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse { error: format!("op[{}]: increment requires 'key'", i) }),
-                ))?;
-                let field = op_spec.field.as_ref().ok_or_else(|| (
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse { error: format!("op[{}]: increment requires 'field'", i) }),
-                ))?;
-                let key: Record = key_json.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect();
+                let key_json = op_spec.key.as_ref().ok_or_else(|| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse {
+                            error: format!("op[{}]: increment requires 'key'", i),
+                        }),
+                    )
+                })?;
+                let field = op_spec.field.as_ref().ok_or_else(|| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse {
+                            error: format!("op[{}]: increment requires 'field'", i),
+                        }),
+                    )
+                })?;
+                let key: Record = key_json
+                    .iter()
+                    .map(|(k, v)| (k.clone(), json_to_value(v)))
+                    .collect();
                 let amount = op_spec.amount.unwrap_or(1.0);
-                TransactionOp::Increment { key, field: field.clone(), amount }
+                TransactionOp::Increment {
+                    key,
+                    field: field.clone(),
+                    amount,
+                }
             }
             other => {
                 return Err((
                     StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse { error: format!("op[{}]: unknown operation '{}'", i, other) }),
+                    Json(ErrorResponse {
+                        error: format!("op[{}]: unknown operation '{}'", i, other),
+                    }),
                 ));
             }
         };
@@ -2636,12 +3125,12 @@ async fn execute_transaction(
                 "confidence": curvature::confidence(k)
             })))
         }
-        Err(msg) => {
-            Err((
-                StatusCode::CONFLICT,
-                Json(ErrorResponse { error: format!("Transaction rolled back: {}", msg) }),
-            ))
-        }
+        Err(msg) => Err((
+            StatusCode::CONFLICT,
+            Json(ErrorResponse {
+                error: format!("Transaction rolled back: {}", msg),
+            }),
+        )),
     }
 }
 
@@ -2746,8 +3235,8 @@ async fn stream_dashboard_events(
     mut rx: tokio::sync::broadcast::Receiver<DashboardEvent>,
     filter_bundle: Option<String>,
 ) {
-    use futures_util::{SinkExt, StreamExt};
     use axum::extract::ws::Message as WsMessage;
+    use futures_util::{SinkExt, StreamExt};
     let (mut sender, mut client_rx) = socket.split();
 
     loop {
@@ -2787,8 +3276,8 @@ async fn ws_handler(
 }
 
 async fn handle_ws(socket: WebSocket, state: Arc<StreamState>) {
-    use futures_util::{SinkExt, StreamExt};
     use axum::extract::ws::Message as WsMessage;
+    use futures_util::{SinkExt, StreamExt};
 
     let (mut sender, mut receiver) = socket.split();
 
@@ -2892,7 +3381,10 @@ fn eval_ws_filter(record: &serde_json::Value, field: &str, op: &str, expected: &
         ">=" | "gte" => numeric_cmp(field_val, &expected_json) >= 0,
         "<" | "lt" => numeric_cmp(field_val, &expected_json) < 0,
         "<=" | "lte" => numeric_cmp(field_val, &expected_json) <= 0,
-        "contains" => field_val.as_str().and_then(|s| expected_json.as_str().map(|e| s.contains(e))).unwrap_or(false),
+        "contains" => field_val
+            .as_str()
+            .and_then(|s| expected_json.as_str().map(|e| s.contains(e)))
+            .unwrap_or(false),
         _ => false,
     }
 }
@@ -2900,7 +3392,13 @@ fn eval_ws_filter(record: &serde_json::Value, field: &str, op: &str, expected: &
 fn numeric_cmp(a: &serde_json::Value, b: &serde_json::Value) -> i8 {
     let av = a.as_f64().unwrap_or(0.0);
     let bv = b.as_f64().unwrap_or(0.0);
-    if av < bv { -1 } else if av > bv { 1 } else { 0 }
+    if av < bv {
+        -1
+    } else if av > bv {
+        1
+    } else {
+        0
+    }
 }
 
 /// Parse "field op value [AND field op value ...]" into filter triples.
@@ -2913,7 +3411,10 @@ fn parse_ws_filters(condition: &str) -> Vec<(String, String, Value)> {
         for op in &ops {
             if let Some(op_pos) = clause.find(op) {
                 let field = clause[..op_pos].trim().to_string();
-                let val_raw = clause[op_pos + op.len()..].trim().trim_matches('"').trim_matches('\'');
+                let val_raw = clause[op_pos + op.len()..]
+                    .trim()
+                    .trim_matches('"')
+                    .trim_matches('\'');
                 let val = parse_ws_value(val_raw);
                 filters.push((field, op.to_string(), val));
                 break;
@@ -2965,11 +3466,14 @@ async fn handle_ws_command(
 
             let tx = state.get_or_create_channel(&bundle_name);
             let receiver = tx.subscribe();
-            subscriptions.insert(bundle_name.clone(), Subscription {
-                bundle: bundle_name.clone(),
-                filters,
-                receiver,
-            });
+            subscriptions.insert(
+                bundle_name.clone(),
+                Subscription {
+                    bundle: bundle_name.clone(),
+                    filters,
+                    receiver,
+                },
+            );
             let filter_count = subscriptions[&bundle_name].filters.len();
             format!("SUBSCRIBED {} filters={}", bundle_name, filter_count)
         }
@@ -3006,7 +3510,8 @@ async fn handle_ws_command(
                     if let Some(store) = engine.bundle_mut(bundle_name) {
                         let mut inserted_records = Vec::new();
                         for dhoom_record in &parsed.records {
-                            let record: Record = dhoom_record.iter()
+                            let record: Record = dhoom_record
+                                .iter()
                                 .map(|(k, v)| (k.clone(), dhoom_value_to_value(v)))
                                 .collect();
                             store.insert(&record);
@@ -3026,8 +3531,13 @@ async fn handle_ws_command(
                                 curvature: k,
                             });
                         }
-                        format!("OK inserted={} total={} K={:.6} confidence={:.4}",
-                            count, total, k, curvature::confidence(k))
+                        format!(
+                            "OK inserted={} total={} K={:.6} confidence={:.4}",
+                            count,
+                            total,
+                            k,
+                            curvature::confidence(k)
+                        )
                     } else {
                         format!("ERROR: Bundle '{}' not found", bundle_name)
                     }
@@ -3058,15 +3568,22 @@ async fn handle_ws_command(
                         let clause = clause.trim();
                         if let Some(eq_pos) = clause.find('=') {
                             let field = clause[..eq_pos].trim();
-                            let val = clause[eq_pos + 1..].trim().trim_matches('"').trim_matches('\'');
+                            let val = clause[eq_pos + 1..]
+                                .trim()
+                                .trim_matches('"')
+                                .trim_matches('\'');
                             key.insert(field.to_string(), parse_ws_value(val));
                         }
                     }
                     match store.point_query(&key) {
                         Some(record) => {
                             let k = curvature::scalar_curvature(store);
-                            format!("RESULT {}\nMETA confidence={:.4} curvature={:.6}",
-                                record_to_json(&record), curvature::confidence(k), k)
+                            format!(
+                                "RESULT {}\nMETA confidence={:.4} curvature={:.6}",
+                                record_to_json(&record),
+                                curvature::confidence(k),
+                                k
+                            )
                         }
                         None => "RESULT null".to_string(),
                     }
@@ -3097,13 +3614,21 @@ async fn handle_ws_command(
                     let condition = &rest[pos + 7..].trim();
                     if let Some(eq_pos) = condition.find('=') {
                         let field = condition[..eq_pos].trim();
-                        let val = condition[eq_pos + 1..].trim().trim_matches('"').trim_matches('\'');
+                        let val = condition[eq_pos + 1..]
+                            .trim()
+                            .trim_matches('"')
+                            .trim_matches('\'');
                         let results = store.range_query(field, &[parse_ws_value(val)]);
-                        let json_arr: Vec<serde_json::Value> = results.iter().map(record_to_json).collect();
+                        let json_arr: Vec<serde_json::Value> =
+                            results.iter().map(record_to_json).collect();
                         let k = curvature::scalar_curvature(store);
-                        format!("RESULT {}\nMETA count={} confidence={:.4} curvature={:.6}",
+                        format!(
+                            "RESULT {}\nMETA count={} confidence={:.4} curvature={:.6}",
                             serde_json::to_string(&json_arr).unwrap_or_default(),
-                            json_arr.len(), curvature::confidence(k), k)
+                            json_arr.len(),
+                            curvature::confidence(k),
+                            k
+                        )
                     } else {
                         "ERROR: invalid WHERE clause".to_string()
                     }
@@ -3124,8 +3649,12 @@ async fn handle_ws_command(
             let engine = state.engine.read().unwrap();
             if let Some(store) = engine.bundle(bundle_name) {
                 let k = curvature::scalar_curvature(store);
-                format!("CURVATURE K={:.6} confidence={:.4} capacity={:.2}",
-                    k, curvature::confidence(k), curvature::capacity(1.0, k))
+                format!(
+                    "CURVATURE K={:.6} confidence={:.4} capacity={:.2}",
+                    k,
+                    curvature::confidence(k),
+                    curvature::capacity(1.0, k)
+                )
             } else {
                 format!("ERROR: Bundle '{}' not found", bundle_name)
             }
@@ -3178,11 +3707,7 @@ fn parse_ws_value(s: &str) -> Value {
 
 async fn openapi_spec() -> impl IntoResponse {
     let spec = include_str!("../../openapi.json");
-    (
-        StatusCode::OK,
-        [("content-type", "application/json")],
-        spec,
-    )
+    (StatusCode::OK, [("content-type", "application/json")], spec)
 }
 
 // ── Live Dashboard ──
@@ -3197,6 +3722,33 @@ async fn serve_dashboard() -> impl IntoResponse {
     )
 }
 
+// ── Admin: snapshot ───────────────────────────────────────────────────────────
+
+/// POST /v1/admin/snapshot — write DHOOM snapshots for all bundles and compact the WAL.
+///
+/// After this call the WAL contains only CreateBundle headers.  On the next
+/// server restart each bundle is loaded from its DHOOM snapshot (fast, compact)
+/// instead of replaying millions of WAL insert entries.
+///
+/// Safe to call while the server is running.  Takes a write lock for the duration.
+async fn admin_snapshot(State(state): State<Arc<StreamState>>) -> impl IntoResponse {
+    let mut engine = state.engine.write().unwrap();
+    match engine.snapshot() {
+        Ok(total) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "ok",
+                "total_records_snapshotted": total,
+                "message": "DHOOM snapshots written; WAL compacted to schema-only."
+            })),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": format!("Snapshot failed: {e}") })),
+        ),
+    }
+}
+
 // ── GQL endpoint ──
 
 async fn gql_query(
@@ -3205,17 +3757,34 @@ async fn gql_query(
 ) -> impl IntoResponse {
     let query = match body.get("query").and_then(|v| v.as_str()) {
         Some(q) => q,
-        None => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Missing 'query' field"}))),
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Missing 'query' field"})),
+            )
+        }
     };
 
     let stmt = match gigi::parser::parse(query) {
         Ok(s) => s,
-        Err(e) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": format!("Parse error: {e}")}))),
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": format!("Parse error: {e}")})),
+            )
+        }
     };
 
     // Handle statements that don't need an existing bundle
     match &stmt {
-        gigi::parser::Statement::CreateBundle { name, base_fields, fiber_fields, indexed, encrypted } => {
+        gigi::parser::Statement::CreateBundle {
+            name,
+            base_fields,
+            fiber_fields,
+            indexed,
+            encrypted,
+            adjacencies,
+        } => {
             let mut schema = gigi::types::BundleSchema::new(name);
             for f in base_fields {
                 schema = schema.base(gigi::parser::spec_to_field_def(f));
@@ -3225,6 +3794,9 @@ async fn gql_query(
             }
             for idx in indexed {
                 schema = schema.index(idx);
+            }
+            for adj in adjacencies {
+                schema = schema.adjacency(gigi::parser::adj_spec_to_def(adj));
             }
             if *encrypted {
                 let seed = gigi::crypto::GaugeKey::random_seed();
@@ -3237,7 +3809,9 @@ async fn gql_query(
         }
         gigi::parser::Statement::ShowBundles => {
             let engine = state.engine.read().unwrap();
-            let list: Vec<serde_json::Value> = engine.bundle_names().iter()
+            let list: Vec<serde_json::Value> = engine
+                .bundle_names()
+                .iter()
                 .map(|name| {
                     let store = engine.bundle(name).unwrap();
                     serde_json::json!({
@@ -3254,26 +3828,42 @@ async fn gql_query(
             if engine.drop_bundle(bundle).unwrap_or(false) {
                 return (StatusCode::OK, Json(serde_json::json!({"status": "ok"})));
             } else {
-                return (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": format!("No bundle: {bundle}")})));
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": format!("No bundle: {bundle}")})),
+                );
             }
         }
-        gigi::parser::Statement::AtlasBegin | gigi::parser::Statement::AtlasCommit | gigi::parser::Statement::AtlasRollback => {
+        gigi::parser::Statement::AtlasBegin
+        | gigi::parser::Statement::AtlasCommit
+        | gigi::parser::Statement::AtlasRollback => {
             return (StatusCode::OK, Json(serde_json::json!({"status": "ok"})));
         }
         // v2.1: statements parsed but not yet implemented — return 501
-        gigi::parser::Statement::ShowRoles | gigi::parser::Statement::ShowPrepared
-        | gigi::parser::Statement::ShowBackups | gigi::parser::Statement::ShowSettings
-        | gigi::parser::Statement::ShowSession | gigi::parser::Statement::ShowCurrentRole
-        | gigi::parser::Statement::WeaveRole { .. } | gigi::parser::Statement::UnweaveRole { .. }
-        | gigi::parser::Statement::Grant { .. } | gigi::parser::Statement::Revoke { .. }
+        gigi::parser::Statement::ShowRoles
+        | gigi::parser::Statement::ShowPrepared
+        | gigi::parser::Statement::ShowBackups
+        | gigi::parser::Statement::ShowSettings
+        | gigi::parser::Statement::ShowSession
+        | gigi::parser::Statement::ShowCurrentRole
+        | gigi::parser::Statement::WeaveRole { .. }
+        | gigi::parser::Statement::UnweaveRole { .. }
+        | gigi::parser::Statement::Grant { .. }
+        | gigi::parser::Statement::Revoke { .. }
         | gigi::parser::Statement::CreatePolicy { .. }
-        | gigi::parser::Statement::Set { .. } | gigi::parser::Statement::Reset { .. }
-        | gigi::parser::Statement::Prepare { .. } | gigi::parser::Statement::Execute { .. }
+        | gigi::parser::Statement::Set { .. }
+        | gigi::parser::Statement::Reset { .. }
+        | gigi::parser::Statement::Prepare { .. }
+        | gigi::parser::Statement::Execute { .. }
         | gigi::parser::Statement::Deallocate { .. }
-        | gigi::parser::Statement::Backup { .. } | gigi::parser::Statement::Restore { .. }
+        | gigi::parser::Statement::Backup { .. }
+        | gigi::parser::Statement::Restore { .. }
         | gigi::parser::Statement::VerifyBackup { .. }
         | gigi::parser::Statement::CommentOn { .. } => {
-            return (StatusCode::NOT_IMPLEMENTED, Json(serde_json::json!({"error": "This GQL v2.1 command is not yet implemented"})));
+            return (
+                StatusCode::NOT_IMPLEMENTED,
+                Json(serde_json::json!({"error": "This GQL v2.1 command is not yet implemented"})),
+            );
         }
         _ => {}
     }
@@ -3284,48 +3874,70 @@ async fn gql_query(
     };
 
     // Check if bundle needs write access
-    let needs_write = matches!(&stmt,
-        gigi::parser::Statement::Insert { .. } |
-        gigi::parser::Statement::BatchInsert { .. } |
-        gigi::parser::Statement::SectionUpsert { .. } |
-        gigi::parser::Statement::Redefine { .. } |
-        gigi::parser::Statement::BulkRedefine { .. } |
-        gigi::parser::Statement::Retract { .. } |
-        gigi::parser::Statement::BulkRetract { .. }
+    let needs_write = matches!(
+        &stmt,
+        gigi::parser::Statement::Insert { .. }
+            | gigi::parser::Statement::BatchInsert { .. }
+            | gigi::parser::Statement::SectionUpsert { .. }
+            | gigi::parser::Statement::Redefine { .. }
+            | gigi::parser::Statement::BulkRedefine { .. }
+            | gigi::parser::Statement::Retract { .. }
+            | gigi::parser::Statement::BulkRetract { .. }
     );
 
     if needs_write {
         let mut engine = state.engine.write().unwrap();
         let store = match engine.bundle_mut(&bundle_name) {
             Some(s) => s,
-            None => return (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")}))),
+            None => {
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")})),
+                )
+            }
         };
         let result = execute_gql_on_store(store, &stmt);
         match result {
             Ok(r) => exec_result_to_response(r),
-            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e}))),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": e})),
+            ),
         }
     } else {
         let engine = state.engine.read().unwrap();
         let store = match engine.bundle(&bundle_name) {
             Some(s) => s,
-            None => return (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")}))),
+            None => {
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")})),
+                )
+            }
         };
         let result = execute_gql_on_store_read(store, &stmt);
         match result {
             Ok(r) => exec_result_to_response(r),
-            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e}))),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": e})),
+            ),
         }
     }
 }
 
 /// Execute a GQL statement that needs mutable access to a BundleStore.
-fn execute_gql_on_store(store: &mut gigi::bundle::BundleStore, stmt: &gigi::parser::Statement) -> Result<gigi::parser::ExecResult, String> {
-    use gigi::parser::{Statement, ExecResult, literal_to_value};
+fn execute_gql_on_store(
+    store: &mut gigi::bundle::BundleStore,
+    stmt: &gigi::parser::Statement,
+) -> Result<gigi::parser::ExecResult, String> {
     use gigi::bundle::QueryCondition as QC;
+    use gigi::parser::{literal_to_value, ExecResult, Statement};
 
     match stmt {
-        Statement::Insert { columns, values, .. } => {
+        Statement::Insert {
+            columns, values, ..
+        } => {
             let mut record = std::collections::HashMap::new();
             for (c, v) in columns.iter().zip(values.iter()) {
                 record.insert(c.clone(), literal_to_value(v));
@@ -3333,7 +3945,9 @@ fn execute_gql_on_store(store: &mut gigi::bundle::BundleStore, stmt: &gigi::pars
             store.insert(&record);
             Ok(ExecResult::Ok)
         }
-        Statement::SectionUpsert { columns, values, .. } => {
+        Statement::SectionUpsert {
+            columns, values, ..
+        } => {
             let mut record = std::collections::HashMap::new();
             for (c, v) in columns.iter().zip(values.iter()) {
                 record.insert(c.clone(), literal_to_value(v));
@@ -3342,28 +3956,55 @@ fn execute_gql_on_store(store: &mut gigi::bundle::BundleStore, stmt: &gigi::pars
             Ok(ExecResult::Ok)
         }
         Statement::BatchInsert { columns, rows, .. } => {
-            let records: Vec<gigi::types::Record> = rows.iter().map(|row| {
-                columns.iter().zip(row.iter())
-                    .map(|(c, v)| (c.clone(), literal_to_value(v)))
-                    .collect()
-            }).collect();
+            let records: Vec<gigi::types::Record> = rows
+                .iter()
+                .map(|row| {
+                    columns
+                        .iter()
+                        .zip(row.iter())
+                        .map(|(c, v)| (c.clone(), literal_to_value(v)))
+                        .collect()
+                })
+                .collect();
             store.batch_insert(&records);
             Ok(ExecResult::Ok)
         }
         Statement::Redefine { key, sets, .. } => {
-            let key_rec: gigi::types::Record = key.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
-            let patches: gigi::types::Record = sets.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
-            if store.update(&key_rec, &patches) { Ok(ExecResult::Ok) } else { Err("Record not found".into()) }
+            let key_rec: gigi::types::Record = key
+                .iter()
+                .map(|(k, v)| (k.clone(), literal_to_value(v)))
+                .collect();
+            let patches: gigi::types::Record = sets
+                .iter()
+                .map(|(k, v)| (k.clone(), literal_to_value(v)))
+                .collect();
+            if store.update(&key_rec, &patches) {
+                Ok(ExecResult::Ok)
+            } else {
+                Err("Record not found".into())
+            }
         }
-        Statement::BulkRedefine { conditions, sets, .. } => {
+        Statement::BulkRedefine {
+            conditions, sets, ..
+        } => {
             let qcs: Vec<QC> = conditions.iter().flat_map(|fc| filter_to_qcs(fc)).collect();
-            let patches: gigi::types::Record = sets.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
+            let patches: gigi::types::Record = sets
+                .iter()
+                .map(|(k, v)| (k.clone(), literal_to_value(v)))
+                .collect();
             let n = store.bulk_update(&qcs, &patches);
             Ok(ExecResult::Count(n))
         }
         Statement::Retract { key, .. } => {
-            let key_rec: gigi::types::Record = key.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
-            if store.delete(&key_rec) { Ok(ExecResult::Ok) } else { Err("Record not found".into()) }
+            let key_rec: gigi::types::Record = key
+                .iter()
+                .map(|(k, v)| (k.clone(), literal_to_value(v)))
+                .collect();
+            if store.delete(&key_rec) {
+                Ok(ExecResult::Ok)
+            } else {
+                Err("Record not found".into())
+            }
         }
         Statement::BulkRetract { conditions, .. } => {
             let qcs: Vec<QC> = conditions.iter().flat_map(|fc| filter_to_qcs(fc)).collect();
@@ -3376,17 +4017,26 @@ fn execute_gql_on_store(store: &mut gigi::bundle::BundleStore, stmt: &gigi::pars
 }
 
 /// Execute a GQL statement that only needs read access.
-fn execute_gql_on_store_read(store: &gigi::bundle::BundleStore, stmt: &gigi::parser::Statement) -> Result<gigi::parser::ExecResult, String> {
-    use gigi::parser::{Statement, ExecResult, GqlStats, literal_to_value};
+fn execute_gql_on_store_read(
+    store: &gigi::bundle::BundleStore,
+    stmt: &gigi::parser::Statement,
+) -> Result<gigi::parser::ExecResult, String> {
     use gigi::bundle::QueryCondition as QC;
+    use gigi::parser::{literal_to_value, ExecResult, GqlStats, Statement};
 
     match stmt {
         Statement::PointQuery { key, project, .. } => {
-            let key_rec: gigi::types::Record = key.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
+            let key_rec: gigi::types::Record = key
+                .iter()
+                .map(|(k, v)| (k.clone(), literal_to_value(v)))
+                .collect();
             match store.point_query(&key_rec) {
                 Some(mut rec) => {
                     if let Some(fields) = project {
-                        rec = rec.into_iter().filter(|(k, _)| fields.contains(k)).collect();
+                        rec = rec
+                            .into_iter()
+                            .filter(|(k, _)| fields.contains(k))
+                            .collect();
                     }
                     Ok(ExecResult::Rows(vec![rec]))
                 }
@@ -3394,40 +4044,72 @@ fn execute_gql_on_store_read(store: &gigi::bundle::BundleStore, stmt: &gigi::par
             }
         }
         Statement::ExistsSection { key, .. } => {
-            let key_rec: gigi::types::Record = key.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
+            let key_rec: gigi::types::Record = key
+                .iter()
+                .map(|(k, v)| (k.clone(), literal_to_value(v)))
+                .collect();
             Ok(ExecResult::Bool(store.point_query(&key_rec).is_some()))
         }
-        Statement::Cover { on_conditions, where_conditions, or_groups,
-                           distinct_field, project, rank_by, first, skip, .. } => {
+        Statement::Cover {
+            on_conditions,
+            where_conditions,
+            or_groups,
+            distinct_field,
+            project,
+            rank_by,
+            first,
+            skip,
+            ..
+        } => {
             if let Some(field) = distinct_field {
                 let vals = store.distinct(field);
-                let rows: Vec<gigi::types::Record> = vals.into_iter().map(|v| {
-                    let mut r = std::collections::HashMap::new();
-                    r.insert(field.clone(), v);
-                    r
-                }).collect();
+                let rows: Vec<gigi::types::Record> = vals
+                    .into_iter()
+                    .map(|v| {
+                        let mut r = std::collections::HashMap::new();
+                        r.insert(field.clone(), v);
+                        r
+                    })
+                    .collect();
                 return Ok(ExecResult::Rows(rows));
             }
             let mut conditions: Vec<QC> = Vec::new();
             for fc in on_conditions.iter().chain(where_conditions.iter()) {
                 conditions.extend(filter_to_qcs(fc));
             }
-            let or_qcs: Vec<Vec<QC>> = or_groups.iter()
+            let or_qcs: Vec<Vec<QC>> = or_groups
+                .iter()
                 .map(|g| g.iter().flat_map(filter_to_qcs).collect())
                 .collect();
-            let or_ref = if or_qcs.is_empty() { None } else { Some(or_qcs.as_slice()) };
+            let or_ref = if or_qcs.is_empty() {
+                None
+            } else {
+                Some(or_qcs.as_slice())
+            };
 
             let results = if let Some(fields) = project {
-                let sort_refs: Vec<(&str, bool)> = rank_by.as_ref()
+                let sort_refs: Vec<(&str, bool)> = rank_by
+                    .as_ref()
                     .map(|specs| specs.iter().map(|s| (s.field.as_str(), s.desc)).collect())
                     .unwrap_or_default();
-                let sort_opt = if sort_refs.is_empty() { None } else { Some(sort_refs.as_slice()) };
+                let sort_opt = if sort_refs.is_empty() {
+                    None
+                } else {
+                    Some(sort_refs.as_slice())
+                };
                 let field_refs: Vec<&str> = fields.iter().map(|s| s.as_str()).collect();
                 let (rows, _) = store.filtered_query_projected_ex(
-                    &conditions, or_ref, sort_opt, *first, *skip, Some(&field_refs));
+                    &conditions,
+                    or_ref,
+                    sort_opt,
+                    *first,
+                    *skip,
+                    Some(&field_refs),
+                );
                 rows
             } else {
-                let (sort_by, sort_desc) = rank_by.as_ref()
+                let (sort_by, sort_desc) = rank_by
+                    .as_ref()
                     .and_then(|specs| specs.first())
                     .map(|s| (Some(s.field.as_str()), s.desc))
                     .unwrap_or((None, false));
@@ -3451,8 +4133,12 @@ fn execute_gql_on_store_read(store: &gigi::bundle::BundleStore, stmt: &gigi::par
                             gigi::parser::AggFunc::Min => agg_result.min,
                             gigi::parser::AggFunc::Max => agg_result.max,
                         };
-                        row.insert(m.alias.clone().unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field)),
-                            gigi::types::Value::Float(val));
+                        row.insert(
+                            m.alias
+                                .clone()
+                                .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field)),
+                            gigi::types::Value::Float(val),
+                        );
                     }
                     rows.push(row);
                 }
@@ -3500,8 +4186,8 @@ fn execute_gql_on_store_read(store: &gigi::bundle::BundleStore, stmt: &gigi::par
 }
 
 fn filter_to_qcs(fc: &gigi::parser::FilterCondition) -> Vec<gigi::bundle::QueryCondition> {
-    use gigi::parser::{FilterCondition, literal_to_value};
     use gigi::bundle::QueryCondition as QC;
+    use gigi::parser::{literal_to_value, FilterCondition};
     match fc {
         FilterCondition::Eq(f, v) => vec![QC::Eq(f.clone(), literal_to_value(v))],
         FilterCondition::Neq(f, v) => vec![QC::Neq(f.clone(), literal_to_value(v))],
@@ -3509,8 +4195,13 @@ fn filter_to_qcs(fc: &gigi::parser::FilterCondition) -> Vec<gigi::bundle::QueryC
         FilterCondition::Gte(f, v) => vec![QC::Gte(f.clone(), literal_to_value(v))],
         FilterCondition::Lt(f, v) => vec![QC::Lt(f.clone(), literal_to_value(v))],
         FilterCondition::Lte(f, v) => vec![QC::Lte(f.clone(), literal_to_value(v))],
-        FilterCondition::In(f, vs) => vec![QC::In(f.clone(), vs.iter().map(literal_to_value).collect())],
-        FilterCondition::NotIn(f, vs) => vec![QC::NotIn(f.clone(), vs.iter().map(literal_to_value).collect())],
+        FilterCondition::In(f, vs) => {
+            vec![QC::In(f.clone(), vs.iter().map(literal_to_value).collect())]
+        }
+        FilterCondition::NotIn(f, vs) => vec![QC::NotIn(
+            f.clone(),
+            vs.iter().map(literal_to_value).collect(),
+        )],
         FilterCondition::Contains(f, s) => vec![QC::Contains(f.clone(), s.clone())],
         FilterCondition::StartsWith(f, s) => vec![QC::StartsWith(f.clone(), s.clone())],
         FilterCondition::EndsWith(f, s) => vec![QC::EndsWith(f.clone(), s.clone())],
@@ -3560,22 +4251,31 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
     }
 }
 
-fn exec_result_to_response(result: gigi::parser::ExecResult) -> (StatusCode, Json<serde_json::Value>) {
+fn exec_result_to_response(
+    result: gigi::parser::ExecResult,
+) -> (StatusCode, Json<serde_json::Value>) {
     use gigi::parser::ExecResult::*;
     match result {
         Ok => (StatusCode::OK, Json(serde_json::json!({"status": "ok"}))),
         Rows(rows) => {
-            let json_rows: Vec<serde_json::Value> = rows.iter().map(|r| record_to_json(r)).collect();
-            (StatusCode::OK, Json(serde_json::json!({"rows": json_rows, "count": json_rows.len()})))
+            let json_rows: Vec<serde_json::Value> =
+                rows.iter().map(|r| record_to_json(r)).collect();
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"rows": json_rows, "count": json_rows.len()})),
+            )
         }
         Scalar(v) => (StatusCode::OK, Json(serde_json::json!({"value": v}))),
         Bool(v) => (StatusCode::OK, Json(serde_json::json!({"value": v}))),
         Count(n) => (StatusCode::OK, Json(serde_json::json!({"affected": n}))),
-        Stats(stats) => (StatusCode::OK, Json(serde_json::json!({
-            "curvature": stats.curvature, "confidence": stats.confidence,
-            "record_count": stats.record_count, "storage_mode": stats.storage_mode,
-            "base_fields": stats.base_fields, "fiber_fields": stats.fiber_fields,
-        }))),
+        Stats(stats) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "curvature": stats.curvature, "confidence": stats.confidence,
+                "record_count": stats.record_count, "storage_mode": stats.storage_mode,
+                "base_fields": stats.base_fields, "fiber_fields": stats.fiber_fields,
+            })),
+        ),
         Bundles(infos) => {
             let list: Vec<serde_json::Value> = infos.iter()
                 .map(|i| serde_json::json!({"name": i.name, "records": i.records, "fields": i.fields}))
@@ -3610,10 +4310,14 @@ async fn vector_search_handler(
     Json(req): Json<VectorSearchRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
 
     let top_k = req.top_k.unwrap_or(10).max(1);
 
@@ -3623,18 +4327,23 @@ async fn vector_search_handler(
         _ => VectorMetric::Cosine,
     };
 
-    let pre_filter: Vec<QueryCondition> = req.filters.iter()
+    let pre_filter: Vec<QueryCondition> = req
+        .filters
+        .iter()
         .map(condition_spec_to_query_condition)
         .collect();
 
     let results = store.vector_search(&req.field, &req.vector, top_k, metric, &pre_filter);
 
-    let json_results: Vec<serde_json::Value> = results.into_iter().map(|(score, record)| {
-        serde_json::json!({
-            "score": score,
-            "record": record_to_json(&record)
+    let json_results: Vec<serde_json::Value> = results
+        .into_iter()
+        .map(|(score, record)| {
+            serde_json::json!({
+                "score": score,
+                "record": record_to_json(&record)
+            })
         })
-    }).collect();
+        .collect();
 
     let metric_name = match metric {
         VectorMetric::Cosine => "cosine",
@@ -3680,8 +4389,16 @@ async fn main() {
         .route("/v1/bundles/{name}/join", post(pullback_join))
         .route("/v1/bundles/{name}/aggregate", post(aggregate))
         // PRISM-friendly REST endpoints
-        .route("/v1/bundles/{name}/points", get(list_all_records).post(insert_records).patch(bulk_update_records))
-        .route("/v1/bundles/{name}/points/{field}/{value}", get(get_by_path).patch(patch_by_path).delete(delete_by_path))
+        .route(
+            "/v1/bundles/{name}/points",
+            get(list_all_records)
+                .post(insert_records)
+                .patch(bulk_update_records),
+        )
+        .route(
+            "/v1/bundles/{name}/points/{field}/{value}",
+            get(get_by_path).patch(patch_by_path).delete(delete_by_path),
+        )
         // Sprint 1: CRUD operations
         .route("/v1/bundles/{name}/upsert", post(upsert_records))
         .route("/v1/bundles/{name}/count", post(count_records))
@@ -3702,7 +4419,12 @@ async fn main() {
         .route("/v1/bundles/{name}/stats", get(bundle_stats))
         .route("/v1/bundles/{name}/explain", post(explain_query))
         .route("/v1/bundles/{name}/transaction", post(execute_transaction))
-        .route("/v1/bundles/{name}/vector-search", post(vector_search_handler))
+        .route(
+            "/v1/bundles/{name}/vector-search",
+            post(vector_search_handler),
+        )
+        // Admin: DHOOM snapshot + WAL compaction
+        .route("/v1/admin/snapshot", post(admin_snapshot))
         // OpenAPI spec
         .route("/v1/openapi.json", get(openapi_spec))
         // GQL endpoint
@@ -3719,12 +4441,18 @@ async fn main() {
         // WebSocket — per-bundle subscriptions + global dashboard
         .route("/ws", get(ws_handler))
         .route("/v1/ws/dashboard", get(ws_dashboard_handler))
-        .route("/v1/ws/{bundle}/dashboard", get(ws_bundle_dashboard_handler))
+        .route(
+            "/v1/ws/{bundle}/dashboard",
+            get(ws_bundle_dashboard_handler),
+        )
         // Dashboard UI
         .route("/dashboard", get(serve_dashboard))
         // Middleware: auth + rate limiting
         .layer(axum_mw::from_fn_with_state(state.clone(), auth_middleware))
-        .layer(axum_mw::from_fn_with_state(state.clone(), rate_limit_middleware))
+        .layer(axum_mw::from_fn_with_state(
+            state.clone(),
+            rate_limit_middleware,
+        ))
         // CORS — configurable via GIGI_CORS_ORIGIN env var
         // Default: restrictive (no cross-origin). Set GIGI_CORS_ORIGIN=* for permissive.
         .layer(build_cors_layer())
@@ -3759,5 +4487,7 @@ async fn main() {
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-    ).await.unwrap();
+    )
+    .await
+    .unwrap();
 }

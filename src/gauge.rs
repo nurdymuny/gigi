@@ -24,7 +24,10 @@ pub enum GaugeTransform {
     Rescale { field_name: String, factor: f64 },
 
     /// RETYPE: change field type (type coercion gauge).
-    Retype { field_name: String, new_type: FieldType },
+    Retype {
+        field_name: String,
+        new_type: FieldType,
+    },
 }
 
 /// Apply a gauge transformation to a BundleStore, returning a new store.
@@ -40,12 +43,11 @@ pub fn apply_gauge(store: &BundleStore, transform: &GaugeTransform) -> BundleSto
         GaugeTransform::RenameColumn { old_name, new_name } => {
             gauge_rename_column(store, old_name, new_name)
         }
-        GaugeTransform::Rescale { field_name, factor } => {
-            gauge_rescale(store, field_name, *factor)
-        }
-        GaugeTransform::Retype { field_name, new_type } => {
-            gauge_retype(store, field_name, new_type)
-        }
+        GaugeTransform::Rescale { field_name, factor } => gauge_rescale(store, field_name, *factor),
+        GaugeTransform::Retype {
+            field_name,
+            new_type,
+        } => gauge_retype(store, field_name, new_type),
     }
 }
 
@@ -105,7 +107,11 @@ fn gauge_rename_column(store: &BundleStore, old_name: &str, new_name: &str) -> B
     for rec in store.records() {
         let mut new_rec = Record::new();
         for (k, v) in rec {
-            let key = if k == old_name { new_name.to_string() } else { k };
+            let key = if k == old_name {
+                new_name.to_string()
+            } else {
+                k
+            };
             new_rec.insert(key, v);
         }
         new_store.insert(&new_rec);
@@ -155,9 +161,7 @@ fn gauge_retype(store: &BundleStore, field_name: &str, new_type: &FieldType) -> 
                 FieldType::Numeric => match val {
                     Value::Integer(_) | Value::Float(_) => val,
                     Value::Timestamp(t) => Value::Integer(t),
-                    Value::Text(s) => s.parse::<f64>()
-                        .map(Value::Float)
-                        .unwrap_or(Value::Null),
+                    Value::Text(s) => s.parse::<f64>().map(Value::Float).unwrap_or(Value::Null),
                     Value::Bool(b) => Value::Integer(b as i64),
                     Value::Null => Value::Null,
                     Value::Vector(_) => Value::Null,
@@ -194,7 +198,10 @@ mod tests {
             let mut r = Record::new();
             r.insert("id".into(), Value::Integer(i));
             r.insert("name".into(), Value::Text(format!("User_{i}")));
-            r.insert("salary".into(), Value::Float(40_000.0 + (i as f64) * 1200.0));
+            r.insert(
+                "salary".into(),
+                Value::Float(40_000.0 + (i as f64) * 1200.0),
+            );
             r.insert("dept".into(), Value::Text(depts[i as usize % 5].into()));
             store.insert(&r);
         }
@@ -218,8 +225,10 @@ mod tests {
         // But let's check that salary's own curvature component is the same
         let k_after = scalar_curvature(&new_store);
         // With 2 numeric fields, K = (K_salary + K_bonus) / 2 = K_before / 2
-        assert!((k_after - k_before / 2.0).abs() < 1e-6,
-            "K_before={k_before}, K_after={k_after}, expected K_before/2");
+        assert!(
+            (k_after - k_before / 2.0).abs() < 1e-6,
+            "K_before={k_before}, K_after={k_after}, expected K_before/2"
+        );
         assert_eq!(new_store.len(), 50);
     }
 
@@ -229,14 +238,19 @@ mod tests {
         let store = make_store();
         let k_before = scalar_curvature(&store);
 
-        let new_store = apply_gauge(&store, &GaugeTransform::DropColumn {
-            field_name: "name".into(),
-        });
+        let new_store = apply_gauge(
+            &store,
+            &GaugeTransform::DropColumn {
+                field_name: "name".into(),
+            },
+        );
 
         let k_after = scalar_curvature(&new_store);
         // Dropping "name" (categorical, no variance tracking) shouldn't change K
-        assert!((k_after - k_before).abs() < 1e-10,
-            "K_before={k_before}, K_after={k_after}");
+        assert!(
+            (k_after - k_before).abs() < 1e-10,
+            "K_before={k_before}, K_after={k_after}"
+        );
         assert_eq!(new_store.len(), 50);
     }
 
@@ -245,10 +259,13 @@ mod tests {
     fn tdd_5a3_rename_column() {
         let store = make_store();
 
-        let new_store = apply_gauge(&store, &GaugeTransform::RenameColumn {
-            old_name: "salary".into(),
-            new_name: "compensation".into(),
-        });
+        let new_store = apply_gauge(
+            &store,
+            &GaugeTransform::RenameColumn {
+                old_name: "salary".into(),
+                new_name: "compensation".into(),
+            },
+        );
 
         assert_eq!(new_store.len(), 50);
 
@@ -260,10 +277,7 @@ mod tests {
         let result = new_store.point_query(&key).unwrap();
         // Old field name gone, new one present with same value
         assert!(result.get("salary").is_none());
-        assert_eq!(
-            result.get("compensation"),
-            orig.get("salary"),
-        );
+        assert_eq!(result.get("compensation"), orig.get("salary"),);
     }
 
     /// TDD-5a.4: RESCALE → Fisher-metric K unchanged (isometric gauge).
@@ -273,15 +287,20 @@ mod tests {
         let k_before = scalar_curvature(&store);
 
         // Convert salary from dollars to cents (×100)
-        let new_store = apply_gauge(&store, &GaugeTransform::Rescale {
-            field_name: "salary".into(),
-            factor: 100.0,
-        });
+        let new_store = apply_gauge(
+            &store,
+            &GaugeTransform::Rescale {
+                field_name: "salary".into(),
+                factor: 100.0,
+            },
+        );
 
         let k_after = scalar_curvature(&new_store);
         // Isometric gauge: values × 100, range × 100 → normalized distance unchanged
-        assert!((k_after - k_before).abs() / k_before.max(1e-15) < 1e-6,
-            "K_before={k_before}, K_after={k_after}");
+        assert!(
+            (k_after - k_before).abs() / k_before.max(1e-15) < 1e-6,
+            "K_before={k_before}, K_after={k_after}"
+        );
 
         // Verify values are scaled
         let mut key = Record::new();
@@ -295,7 +314,11 @@ mod tests {
     fn gauge_rename_preserves_deviation() {
         let schema = BundleSchema::new("test")
             .base(FieldDef::numeric("id"))
-            .fiber(FieldDef::numeric("val").with_default(Value::Float(0.0)).with_range(100.0));
+            .fiber(
+                FieldDef::numeric("val")
+                    .with_default(Value::Float(0.0))
+                    .with_range(100.0),
+            );
         let mut store = BundleStore::new(schema);
         let mut r = Record::new();
         r.insert("id".into(), Value::Integer(1));
@@ -305,10 +328,13 @@ mod tests {
         let bp = store.base_point(&r);
         let dev_before = store.deviation_norm(bp);
 
-        let new_store = apply_gauge(&store, &GaugeTransform::RenameColumn {
-            old_name: "val".into(),
-            new_name: "value".into(),
-        });
+        let new_store = apply_gauge(
+            &store,
+            &GaugeTransform::RenameColumn {
+                old_name: "val".into(),
+                new_name: "value".into(),
+            },
+        );
 
         let bp2 = new_store.base_point(&{
             let mut k = Record::new();

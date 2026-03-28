@@ -21,7 +21,11 @@ impl FiberMetric {
             }
             // Categorical: 0 if equal, 1 otherwise
             (FieldType::Categorical, _, _) => {
-                if a == b { 0.0 } else { 1.0 }
+                if a == b {
+                    0.0
+                } else {
+                    1.0
+                }
             }
             // Ordered categorical: |rank(a) - rank(b)| / (|order| - 1)
             (FieldType::OrderedCat { order }, Value::Text(sa), Value::Text(sb)) => {
@@ -32,7 +36,13 @@ impl FiberMetric {
                         let n = (order.len() - 1).max(1) as f64;
                         (a as f64 - b as f64).abs() / n
                     }
-                    _ => if a == b { 0.0 } else { 1.0 },
+                    _ => {
+                        if a == b {
+                            0.0
+                        } else {
+                            1.0
+                        }
+                    }
                 }
             }
             // Timestamp: |a-b| / time_scale
@@ -44,7 +54,11 @@ impl FiberMetric {
             }
             // Binary / fallback: discrete
             _ => {
-                if a == b { 0.0 } else { 1.0 }
+                if a == b {
+                    0.0
+                } else {
+                    1.0
+                }
             }
         }
     }
@@ -79,11 +93,19 @@ mod tests {
     fn tdd_1_13_categorical_metric() {
         let f = FieldDef::categorical("color");
         assert_eq!(
-            FiberMetric::component_distance(&f, &Value::Text("red".into()), &Value::Text("red".into())),
+            FiberMetric::component_distance(
+                &f,
+                &Value::Text("red".into()),
+                &Value::Text("red".into())
+            ),
             0.0
         );
         assert_eq!(
-            FiberMetric::component_distance(&f, &Value::Text("red".into()), &Value::Text("blue".into())),
+            FiberMetric::component_distance(
+                &f,
+                &Value::Text("red".into()),
+                &Value::Text("blue".into())
+            ),
             1.0
         );
     }
@@ -127,8 +149,16 @@ mod tests {
             range: None,
             weight: 1.0,
         };
-        let d_full = FiberMetric::component_distance(&f, &Value::Text("XS".into()), &Value::Text("XL".into()));
-        let d_one = FiberMetric::component_distance(&f, &Value::Text("XS".into()), &Value::Text("S".into()));
+        let d_full = FiberMetric::component_distance(
+            &f,
+            &Value::Text("XS".into()),
+            &Value::Text("XL".into()),
+        );
+        let d_one = FiberMetric::component_distance(
+            &f,
+            &Value::Text("XS".into()),
+            &Value::Text("S".into()),
+        );
         assert!((d_full - 1.0).abs() < 1e-10);
         assert!((d_one - 0.25).abs() < 1e-10);
     }

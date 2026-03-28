@@ -12,7 +12,7 @@
 //!   0xFF = CHECKPOINT (marks that all prior entries are flushed to data file)
 
 use std::fs::{File, OpenOptions};
-use std::io::{self, BufWriter, Read, Write, Seek, SeekFrom};
+use std::io::{self, BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use crate::types::{BundleSchema, FieldDef, FieldType, Record, Value};
@@ -49,10 +49,7 @@ pub struct WalWriter {
 impl WalWriter {
     /// Open (or create) a WAL file at the given path.
     pub fn open(path: &Path) -> io::Result<Self> {
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)?;
+        let file = OpenOptions::new().create(true).append(true).open(path)?;
         let entry_count = 0;
         Ok(Self {
             writer: BufWriter::new(file),
@@ -73,7 +70,12 @@ impl WalWriter {
     }
 
     /// Log an UPDATE operation (partial field update).
-    pub fn log_update(&mut self, bundle_name: &str, key: &Record, patches: &Record) -> io::Result<()> {
+    pub fn log_update(
+        &mut self,
+        bundle_name: &str,
+        key: &Record,
+        patches: &Record,
+    ) -> io::Result<()> {
         let payload = encode_update(bundle_name, key, patches);
         self.write_entry(OP_UPDATE, &payload)
     }
@@ -133,9 +135,19 @@ pub struct WalReader {
 #[derive(Debug)]
 pub enum WalEntry {
     CreateBundle(BundleSchema),
-    Insert { bundle_name: String, record: Record },
-    Update { bundle_name: String, key: Record, patches: Record },
-    Delete { bundle_name: String, key: Record },
+    Insert {
+        bundle_name: String,
+        record: Record,
+    },
+    Update {
+        bundle_name: String,
+        key: Record,
+        patches: Record,
+    },
+    Delete {
+        bundle_name: String,
+        key: Record,
+    },
     DropBundle(String),
     Checkpoint,
 }
@@ -160,6 +172,25 @@ impl WalReader {
             }
         }
         Ok(entries)
+    }
+
+    /// Streaming replay — calls `f` for each entry without buffering the entire WAL.
+    /// Stops at EOF or an UnexpectedEof error (truncated final entry is silently ignored).
+    /// Returns Err on CRC failures or other I/O errors.
+    pub fn replay<F>(&mut self, mut f: F) -> io::Result<()>
+    where
+        F: FnMut(WalEntry) -> io::Result<()>,
+    {
+        self.file.seek(SeekFrom::Start(0))?;
+        loop {
+            match self.read_one() {
+                Ok(Some(entry)) => f(entry)?,
+                Ok(None) => break,
+                Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
     }
 
     fn read_one(&mut self) -> io::Result<Option<WalEntry>> {
@@ -199,11 +230,18 @@ impl WalReader {
             }
             OP_INSERT => {
                 let (bundle_name, record) = decode_insert(payload)?;
-                Ok(Some(WalEntry::Insert { bundle_name, record }))
+                Ok(Some(WalEntry::Insert {
+                    bundle_name,
+                    record,
+                }))
             }
             OP_UPDATE => {
                 let (bundle_name, key, patches) = decode_update(payload)?;
-                Ok(Some(WalEntry::Update { bundle_name, key, patches }))
+                Ok(Some(WalEntry::Update {
+                    bundle_name,
+                    key,
+                    patches,
+                }))
             }
             OP_DELETE => {
                 let (bundle_name, key) = decode_insert(payload)?;
@@ -232,7 +270,10 @@ fn write_string(buf: &mut Vec<u8>, s: &str) {
 
 fn read_string(data: &[u8], offset: &mut usize) -> io::Result<String> {
     if *offset + 4 > data.len() {
-        return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "string length"));
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "string length",
+        ));
     }
     let len = u32::from_le_bytes(data[*offset..*offset + 4].try_into().unwrap()) as usize;
     *offset += 4;
@@ -248,12 +289,29 @@ fn read_string(data: &[u8], offset: &mut usize) -> io::Result<String> {
 fn encode_value(v: &Value) -> Vec<u8> {
     let mut buf = Vec::new();
     match v {
-        Value::Integer(i) => { buf.push(0x01); buf.extend_from_slice(&i.to_le_bytes()); }
-        Value::Float(f) => { buf.push(0x02); buf.extend_from_slice(&f.to_le_bytes()); }
-        Value::Text(s) => { buf.push(0x03); write_string(&mut buf, s); }
-        Value::Bool(b) => { buf.push(0x04); buf.push(*b as u8); }
-        Value::Timestamp(t) => { buf.push(0x05); buf.extend_from_slice(&t.to_le_bytes()); }
-        Value::Null => { buf.push(0x00); }
+        Value::Integer(i) => {
+            buf.push(0x01);
+            buf.extend_from_slice(&i.to_le_bytes());
+        }
+        Value::Float(f) => {
+            buf.push(0x02);
+            buf.extend_from_slice(&f.to_le_bytes());
+        }
+        Value::Text(s) => {
+            buf.push(0x03);
+            write_string(&mut buf, s);
+        }
+        Value::Bool(b) => {
+            buf.push(0x04);
+            buf.push(*b as u8);
+        }
+        Value::Timestamp(t) => {
+            buf.push(0x05);
+            buf.extend_from_slice(&t.to_le_bytes());
+        }
+        Value::Null => {
+            buf.push(0x00);
+        }
         Value::Vector(v) => {
             buf.push(0x06);
             buf.extend_from_slice(&(v.len() as u32).to_le_bytes());
@@ -308,7 +366,10 @@ fn decode_value(data: &[u8], offset: &mut usize) -> io::Result<Value> {
             }
             Ok(Value::Vector(v))
         }
-        _ => Err(io::Error::new(io::ErrorKind::InvalidData, format!("unknown value tag: {tag:#x}"))),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("unknown value tag: {tag:#x}"),
+        )),
     }
 }
 
@@ -356,7 +417,10 @@ fn decode_field_type(data: &[u8], offset: &mut usize) -> io::Result<FieldType> {
             *offset += 4;
             Ok(FieldType::Vector { dims })
         }
-        _ => Err(io::Error::new(io::ErrorKind::InvalidData, format!("unknown field type tag: {tag:#x}"))),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("unknown field type tag: {tag:#x}"),
+        )),
     }
 }
 
@@ -367,8 +431,13 @@ fn encode_field_def(fd: &FieldDef) -> Vec<u8> {
     buf.extend_from_slice(&encode_value(&fd.default));
     // range: Option<f64> as tag + f64
     match fd.range {
-        Some(r) => { buf.push(0x01); buf.extend_from_slice(&r.to_le_bytes()); }
-        None => { buf.push(0x00); }
+        Some(r) => {
+            buf.push(0x01);
+            buf.extend_from_slice(&r.to_le_bytes());
+        }
+        None => {
+            buf.push(0x00);
+        }
     }
     buf.extend_from_slice(&fd.weight.to_le_bytes());
     buf
@@ -389,7 +458,13 @@ fn decode_field_def(data: &[u8], offset: &mut usize) -> io::Result<FieldDef> {
     };
     let weight = f64::from_le_bytes(data[*offset..*offset + 8].try_into().unwrap());
     *offset += 8;
-    Ok(FieldDef { name, field_type, default, range, weight })
+    Ok(FieldDef {
+        name,
+        field_type,
+        default,
+        range,
+        weight,
+    })
 }
 
 fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
@@ -418,13 +493,17 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     let base_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
     offset += 4;
     for _ in 0..base_count {
-        schema.base_fields.push(decode_field_def(data, &mut offset)?);
+        schema
+            .base_fields
+            .push(decode_field_def(data, &mut offset)?);
     }
 
     let fiber_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
     offset += 4;
     for _ in 0..fiber_count {
-        schema.fiber_fields.push(decode_field_def(data, &mut offset)?);
+        schema
+            .fiber_fields
+            .push(decode_field_def(data, &mut offset)?);
     }
 
     let idx_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
@@ -605,7 +684,10 @@ mod tests {
                 _ => panic!("Expected CreateBundle"),
             }
             match &entries[1] {
-                WalEntry::Insert { bundle_name, record } => {
+                WalEntry::Insert {
+                    bundle_name,
+                    record,
+                } => {
                     assert_eq!(bundle_name, "users");
                     assert_eq!(record.get("id"), Some(&Value::Integer(42)));
                 }
@@ -692,7 +774,11 @@ mod tests {
             assert_eq!(entries.len(), 5);
 
             match &entries[2] {
-                WalEntry::Update { bundle_name, key: k, patches: p } => {
+                WalEntry::Update {
+                    bundle_name,
+                    key: k,
+                    patches: p,
+                } => {
                     assert_eq!(bundle_name, "users");
                     assert_eq!(k, &key);
                     assert_eq!(p, &patches);
@@ -700,7 +786,10 @@ mod tests {
                 _ => panic!("Expected Update"),
             }
             match &entries[3] {
-                WalEntry::Delete { bundle_name, key: k } => {
+                WalEntry::Delete {
+                    bundle_name,
+                    key: k,
+                } => {
                     assert_eq!(bundle_name, "users");
                     assert_eq!(k, &key);
                 }

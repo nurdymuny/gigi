@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 
 use crate::engine::Engine;
-use crate::types::{Record, BundleSchema, Value};
+use crate::types::{BundleSchema, Record, Value};
 
 /// Thread-safe concurrent engine.
 ///
@@ -33,25 +33,28 @@ impl ConcurrentEngine {
 
     /// Create a new bundle (write lock).
     pub fn create_bundle(&self, schema: BundleSchema) -> std::io::Result<()> {
-        let mut engine = self.inner.write().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned")
-        })?;
+        let mut engine = self
+            .inner
+            .write()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned"))?;
         engine.create_bundle(schema)
     }
 
     /// Insert a record (write lock).
     pub fn insert(&self, bundle_name: &str, record: &Record) -> std::io::Result<()> {
-        let mut engine = self.inner.write().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned")
-        })?;
+        let mut engine = self
+            .inner
+            .write()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned"))?;
         engine.insert(bundle_name, record)
     }
 
     /// Point query (read lock).
     pub fn point_query(&self, bundle_name: &str, key: &Record) -> std::io::Result<Option<Record>> {
-        let engine = self.inner.read().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned")
-        })?;
+        let engine = self
+            .inner
+            .read()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned"))?;
         engine.point_query(bundle_name, key)
     }
 
@@ -62,9 +65,10 @@ impl ConcurrentEngine {
         field: &str,
         values: &[Value],
     ) -> std::io::Result<Vec<Record>> {
-        let engine = self.inner.read().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned")
-        })?;
+        let engine = self
+            .inner
+            .read()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned"))?;
         engine.range_query(bundle_name, field, values)
     }
 
@@ -73,9 +77,10 @@ impl ConcurrentEngine {
     where
         F: FnOnce(&Engine) -> R,
     {
-        let engine = self.inner.read().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned")
-        })?;
+        let engine = self
+            .inner
+            .read()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned"))?;
         Ok(f(&engine))
     }
 
@@ -84,17 +89,19 @@ impl ConcurrentEngine {
     where
         F: FnOnce(&mut Engine) -> R,
     {
-        let mut engine = self.inner.write().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned")
-        })?;
+        let mut engine = self
+            .inner
+            .write()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned"))?;
         Ok(f(&mut engine))
     }
 
     /// Checkpoint (write lock).
     pub fn checkpoint(&self) -> std::io::Result<()> {
-        let mut engine = self.inner.write().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned")
-        })?;
+        let mut engine = self
+            .inner
+            .write()
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Lock poisoned"))?;
         engine.checkpoint()
     }
 }

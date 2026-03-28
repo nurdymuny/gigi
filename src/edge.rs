@@ -29,8 +29,8 @@ pub enum SyncOp {
 #[derive(Debug)]
 pub struct SyncQueue {
     ops: Vec<(u64, SyncOp)>, // (timestamp_ms, operation)
-    last_sync: u64,           // timestamp of last successful sync
-    max_queue_size: usize,    // cap to prevent unbounded memory growth
+    last_sync: u64,          // timestamp of last successful sync
+    max_queue_size: usize,   // cap to prevent unbounded memory growth
 }
 
 impl SyncQueue {
@@ -54,8 +54,10 @@ impl SyncQueue {
         if self.ops.len() >= self.max_queue_size {
             let drain_count = self.max_queue_size / 10; // drop oldest 10%
             self.ops.drain(..drain_count);
-            eprintln!("Warning: sync queue at capacity ({}), evicted {} oldest ops",
-                self.max_queue_size, drain_count);
+            eprintln!(
+                "Warning: sync queue at capacity ({}), evicted {} oldest ops",
+                self.max_queue_size, drain_count
+            );
         }
         self.ops.push((Self::now_ms(), op));
     }
@@ -152,8 +154,7 @@ impl EdgeEngine {
 
     /// Create a bundle locally (queued for sync).
     pub fn create_bundle(&mut self, schema: BundleSchema) -> io::Result<()> {
-        self.sync_queue
-            .push(SyncOp::CreateBundle(schema.clone()));
+        self.sync_queue.push(SyncOp::CreateBundle(schema.clone()));
         self.engine.create_bundle(schema)
     }
 
@@ -172,12 +173,7 @@ impl EdgeEngine {
     }
 
     /// Range query — always local.
-    pub fn range(
-        &self,
-        bundle: &str,
-        field: &str,
-        values: &[Value],
-    ) -> io::Result<Vec<Record>> {
+    pub fn range(&self, bundle: &str, field: &str, values: &[Value]) -> io::Result<Vec<Record>> {
         self.engine.range_query(bundle, field, values)
     }
 
@@ -289,7 +285,9 @@ impl EdgeEngine {
                         .send();
 
                     match resp {
-                        Ok(r) if r.status().is_success() => { pushed_ok += 1; }
+                        Ok(r) if r.status().is_success() => {
+                            pushed_ok += 1;
+                        }
                         Ok(r) => {
                             // Bundle may already exist on server — not an error for sync
                             let status = r.status();
@@ -324,7 +322,9 @@ impl EdgeEngine {
                         .send();
 
                     match resp {
-                        Ok(r) if r.status().is_success() => { pushed_ok += 1; }
+                        Ok(r) if r.status().is_success() => {
+                            pushed_ok += 1;
+                        }
                         Ok(r) => {
                             let text = r.text().unwrap_or_default();
                             eprintln!("Sync insert failed after {} ops: {}", pushed_ok, text);
@@ -393,9 +393,7 @@ impl EdgeEngine {
         // Fetch all records from each bundle and merge locally.
         // Only pull bundles that exist on the server.
         let mut pulled = 0;
-        let resp = client
-            .get(format!("{}/v1/bundles", remote))
-            .send();
+        let resp = client.get(format!("{}/v1/bundles", remote)).send();
 
         if let Ok(r) = resp {
             if r.status().is_success() {
@@ -408,14 +406,12 @@ impl EdgeEngine {
 
                         // For bundles we have locally, pull any records we're missing.
                         // For simplicity, we use range query on indexed fields to
-                        // discover records. In production, a server-side "since" 
+                        // discover records. In production, a server-side "since"
                         // cursor would be used.
                         if let Some(store) = self.engine.bundle(name) {
                             let local_count = store.len();
-                            let remote_count = rb
-                                .get("records")
-                                .and_then(|v| v.as_u64())
-                                .unwrap_or(0) as usize;
+                            let remote_count =
+                                rb.get("records").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
 
                             if remote_count > local_count {
                                 // Server has more records — need to fetch them
@@ -472,7 +468,9 @@ fn value_to_json(v: &Value) -> serde_json::Value {
         Value::Bool(b) => serde_json::json!(b),
         Value::Timestamp(t) => serde_json::json!(t),
         Value::Null => serde_json::Value::Null,
-        Value::Vector(v) => serde_json::Value::Array(v.iter().map(|x| serde_json::json!(x)).collect()),
+        Value::Vector(v) => {
+            serde_json::Value::Array(v.iter().map(|x| serde_json::json!(x)).collect())
+        }
     }
 }
 
@@ -508,10 +506,7 @@ mod tests {
         let schema = BundleSchema::new("tasks")
             .base(FieldDef::categorical("id"))
             .fiber(FieldDef::categorical("title"))
-            .fiber(
-                FieldDef::categorical("done")
-                    .with_default(Value::Bool(false)),
-            )
+            .fiber(FieldDef::categorical("done").with_default(Value::Bool(false)))
             .index("id")
             .index("done");
 

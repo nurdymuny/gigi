@@ -45,69 +45,47 @@ impl QueryCondition {
     /// Check whether a record matches this condition.
     pub fn matches(&self, record: &Record) -> bool {
         match self {
-            QueryCondition::Eq(field, value) => {
-                record.get(field).map_or(false, |v| v == value)
-            }
-            QueryCondition::Neq(field, value) => {
-                record.get(field).map_or(true, |v| v != value)
-            }
-            QueryCondition::Gt(field, value) => {
-                record.get(field).map_or(false, |v| v > value)
-            }
-            QueryCondition::Gte(field, value) => {
-                record.get(field).map_or(false, |v| v >= value)
-            }
-            QueryCondition::Lt(field, value) => {
-                record.get(field).map_or(false, |v| v < value)
-            }
-            QueryCondition::Lte(field, value) => {
-                record.get(field).map_or(false, |v| v <= value)
-            }
-            QueryCondition::Contains(field, substr) => {
-                record.get(field).map_or(false, |v| {
-                    if let Value::Text(s) = v {
-                        s.to_lowercase().contains(&substr.to_lowercase())
-                    } else {
-                        false
-                    }
-                })
-            }
-            QueryCondition::StartsWith(field, prefix) => {
-                record.get(field).map_or(false, |v| {
-                    if let Value::Text(s) = v {
-                        s.to_lowercase().starts_with(&prefix.to_lowercase())
-                    } else {
-                        false
-                    }
-                })
-            }
+            QueryCondition::Eq(field, value) => record.get(field).map_or(false, |v| v == value),
+            QueryCondition::Neq(field, value) => record.get(field).map_or(true, |v| v != value),
+            QueryCondition::Gt(field, value) => record.get(field).map_or(false, |v| v > value),
+            QueryCondition::Gte(field, value) => record.get(field).map_or(false, |v| v >= value),
+            QueryCondition::Lt(field, value) => record.get(field).map_or(false, |v| v < value),
+            QueryCondition::Lte(field, value) => record.get(field).map_or(false, |v| v <= value),
+            QueryCondition::Contains(field, substr) => record.get(field).map_or(false, |v| {
+                if let Value::Text(s) = v {
+                    s.to_lowercase().contains(&substr.to_lowercase())
+                } else {
+                    false
+                }
+            }),
+            QueryCondition::StartsWith(field, prefix) => record.get(field).map_or(false, |v| {
+                if let Value::Text(s) = v {
+                    s.to_lowercase().starts_with(&prefix.to_lowercase())
+                } else {
+                    false
+                }
+            }),
             QueryCondition::In(field, values) => {
                 record.get(field).map_or(false, |v| values.contains(v))
             }
             QueryCondition::NotIn(field, values) => {
                 record.get(field).map_or(true, |v| !values.contains(v))
             }
-            QueryCondition::IsNull(field) => {
-                match record.get(field) {
-                    None | Some(Value::Null) => true,
-                    _ => false,
+            QueryCondition::IsNull(field) => match record.get(field) {
+                None | Some(Value::Null) => true,
+                _ => false,
+            },
+            QueryCondition::IsNotNull(field) => match record.get(field) {
+                None | Some(Value::Null) => false,
+                _ => true,
+            },
+            QueryCondition::EndsWith(field, suffix) => record.get(field).map_or(false, |v| {
+                if let Value::Text(s) = v {
+                    s.to_lowercase().ends_with(&suffix.to_lowercase())
+                } else {
+                    false
                 }
-            }
-            QueryCondition::IsNotNull(field) => {
-                match record.get(field) {
-                    None | Some(Value::Null) => false,
-                    _ => true,
-                }
-            }
-            QueryCondition::EndsWith(field, suffix) => {
-                record.get(field).map_or(false, |v| {
-                    if let Value::Text(s) = v {
-                        s.to_lowercase().ends_with(&suffix.to_lowercase())
-                    } else {
-                        false
-                    }
-                })
-            }
+            }),
             QueryCondition::Regex(field, pattern) => {
                 record.get(field).map_or(false, |v| {
                     if let Value::Text(s) = v {
@@ -118,7 +96,8 @@ impl QueryCondition {
                         }
                         REGEX_CACHE.with(|cache| {
                             let mut cache = cache.borrow_mut();
-                            let compiled = cache.entry(pattern.clone())
+                            let compiled = cache
+                                .entry(pattern.clone())
                                 .or_insert_with(|| Regex::new(pattern).ok());
                             compiled.as_ref().map_or(false, |re| re.is_match(s))
                         })
@@ -135,7 +114,11 @@ impl QueryCondition {
 }
 
 /// Helper: check if record matches AND conditions plus optional OR groups.
-fn matches_filter(record: &Record, conditions: &[QueryCondition], or_conditions: Option<&[Vec<QueryCondition>]>) -> bool {
+fn matches_filter(
+    record: &Record,
+    conditions: &[QueryCondition],
+    or_conditions: Option<&[Vec<QueryCondition>]>,
+) -> bool {
     if !conditions.iter().all(|c| c.matches(record)) {
         return false;
     }
@@ -145,9 +128,9 @@ fn matches_filter(record: &Record, conditions: &[QueryCondition], or_conditions:
 /// Helper: check if record matches optional OR groups.
 fn matches_or_filter(record: &Record, or_conditions: Option<&[Vec<QueryCondition>]>) -> bool {
     match or_conditions {
-        Some(groups) if !groups.is_empty() => {
-            groups.iter().any(|group| group.iter().all(|c| c.matches(record)))
-        }
+        Some(groups) if !groups.is_empty() => groups
+            .iter()
+            .any(|group| group.iter().all(|c| c.matches(record))),
         _ => true,
     }
 }
@@ -180,15 +163,22 @@ impl VectorMetric {
                 let dot: f64 = q.iter().zip(v).map(|(a, b)| a * b).sum();
                 let norm_q: f64 = q.iter().map(|x| x * x).sum::<f64>().sqrt();
                 let norm_v: f64 = v.iter().map(|x| x * x).sum::<f64>().sqrt();
-                if norm_q < 1e-12 || norm_v < 1e-12 { 0.0 } else { dot / (norm_q * norm_v) }
+                if norm_q < 1e-12 || norm_v < 1e-12 {
+                    0.0
+                } else {
+                    dot / (norm_q * norm_v)
+                }
             }
             VectorMetric::Euclidean => {
-                let dist: f64 = q.iter().zip(v).map(|(a, b)| (a - b).powi(2)).sum::<f64>().sqrt();
-                -dist  // negate so higher = closer
+                let dist: f64 = q
+                    .iter()
+                    .zip(v)
+                    .map(|(a, b)| (a - b).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                -dist // negate so higher = closer
             }
-            VectorMetric::Dot => {
-                q.iter().zip(v).map(|(a, b)| a * b).sum()
-            }
+            VectorMetric::Dot => q.iter().zip(v).map(|(a, b)| a * b).sum(),
         }
     }
 }
@@ -237,11 +227,20 @@ impl BaseStorage {
 
     fn insert_hashed(&mut self, bp: BasePoint, fiber: Vec<Value>, base: Vec<Value>) {
         match self {
-            BaseStorage::Hashed { sections, base_values } => {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => {
                 sections.insert(bp, fiber);
                 base_values.insert(bp, base);
             }
-            BaseStorage::Sequential { sections, base_values, start, step, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                start,
+                step,
+                ..
+            } => {
                 // Sequential: push to end. Caller must ensure key matches expected.
                 let expected = *start + (*step * sections.len() as i64);
                 // If this is the first record, we might need to set start
@@ -253,9 +252,13 @@ impl BaseStorage {
                 base_values.push(base);
             }
             BaseStorage::Hybrid {
-                sections, base_values,
-                overflow_sections, overflow_base,
-                start, step, ..
+                sections,
+                base_values,
+                overflow_sections,
+                overflow_base,
+                start,
+                step,
+                ..
             } => {
                 // Try sequential slot first; caller provides key_value via separate method
                 // Default: push to overflow (the typed insert_hybrid handles key_value)
@@ -267,13 +270,28 @@ impl BaseStorage {
     }
 
     /// Insert into sequential or hybrid storage with the raw key value.
-    fn insert_with_key(&mut self, bp: BasePoint, key_value: i64, fiber: Vec<Value>, base: Vec<Value>) {
+    fn insert_with_key(
+        &mut self,
+        bp: BasePoint,
+        key_value: i64,
+        fiber: Vec<Value>,
+        base: Vec<Value>,
+    ) {
         match self {
-            BaseStorage::Hashed { sections, base_values } => {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => {
                 sections.insert(bp, fiber);
                 base_values.insert(bp, base);
             }
-            BaseStorage::Sequential { sections, base_values, start, step, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                start,
+                step,
+                ..
+            } => {
                 let expected = *start + (*step * sections.len() as i64);
                 if key_value == expected {
                     sections.push(fiber);
@@ -286,13 +304,17 @@ impl BaseStorage {
                 }
             }
             BaseStorage::Hybrid {
-                sections, base_values,
-                overflow_sections, overflow_base,
-                start, step, ..
+                sections,
+                base_values,
+                overflow_sections,
+                overflow_base,
+                start,
+                step,
+                ..
             } => {
                 let expected = *start + (*step * sections.len() as i64);
                 if key_value == expected {
-                    sections.push(fiber);   // hot path: memcpy
+                    sections.push(fiber); // hot path: memcpy
                     base_values.push(base);
                 } else {
                     overflow_sections.insert(bp, fiber);
@@ -306,7 +328,12 @@ impl BaseStorage {
     fn get_fiber(&self, bp: BasePoint) -> Option<&[Value]> {
         match self {
             BaseStorage::Hashed { sections, .. } => sections.get(&bp).map(|v| v.as_slice()),
-            BaseStorage::Sequential { sections, start, step, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                start,
+                step,
+                ..
+            } => {
                 // Reverse: bp was computed from the key, but we need the index.
                 // For sequential mode, we use the bp_to_idx map maintained externally.
                 // Fallback: linear scan (shouldn't be hit — caller uses get_fiber_by_idx).
@@ -320,7 +347,11 @@ impl BaseStorage {
                 })
             }
             BaseStorage::Hybrid {
-                sections, overflow_sections, start, step, ..
+                sections,
+                overflow_sections,
+                start,
+                step,
+                ..
             } => {
                 let _ = (start, step, sections);
                 overflow_sections.get(&bp).map(|v| v.as_slice())
@@ -331,7 +362,10 @@ impl BaseStorage {
     #[allow(dead_code)]
     fn get_section_and_base(&self, bp: BasePoint) -> Option<(&[Value], &[Value])> {
         match self {
-            BaseStorage::Hashed { sections, base_values } => {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => {
                 let s = sections.get(&bp)?;
                 let b = base_values.get(&bp)?;
                 Some((s.as_slice(), b.as_slice()))
@@ -346,12 +380,20 @@ impl BaseStorage {
     fn get_by_index(&self, idx: usize) -> Option<(&[Value], &[Value])> {
         match self {
             BaseStorage::Hashed { .. } => None,
-            BaseStorage::Sequential { sections, base_values, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                ..
+            } => {
                 let s = sections.get(idx)?;
                 let b = base_values.get(idx)?;
                 Some((s.as_slice(), b.as_slice()))
             }
-            BaseStorage::Hybrid { sections, base_values, .. } => {
+            BaseStorage::Hybrid {
+                sections,
+                base_values,
+                ..
+            } => {
                 let s = sections.get(idx)?;
                 let b = base_values.get(idx)?;
                 Some((s.as_slice(), b.as_slice()))
@@ -363,9 +405,11 @@ impl BaseStorage {
         match self {
             BaseStorage::Hashed { sections, .. } => sections.len(),
             BaseStorage::Sequential { sections, .. } => sections.len(),
-            BaseStorage::Hybrid { sections, overflow_sections, .. } => {
-                sections.len() + overflow_sections.len()
-            }
+            BaseStorage::Hybrid {
+                sections,
+                overflow_sections,
+                ..
+            } => sections.len() + overflow_sections.len(),
         }
     }
 
@@ -384,8 +428,14 @@ impl BaseStorage {
 
     fn overflow_ratio(&self) -> f64 {
         match self {
-            BaseStorage::Hybrid { sections, overflow_sections, .. } => {
-                if sections.is_empty() { return 0.0; }
+            BaseStorage::Hybrid {
+                sections,
+                overflow_sections,
+                ..
+            } => {
+                if sections.is_empty() {
+                    return 0.0;
+                }
                 overflow_sections.len() as f64 / sections.len() as f64
             }
             _ => 0.0,
@@ -394,9 +444,17 @@ impl BaseStorage {
 
     /// Promote to Hashed storage. Returns the new Hashed variant populated
     /// with all records. Caller must also rebuild bp mappings.
-    fn promote_to_hashed(self, bp_list: &[(BasePoint, usize)], _overflow_bps: &HashMap<BasePoint, ()>) -> BaseStorage {
+    fn promote_to_hashed(
+        self,
+        bp_list: &[(BasePoint, usize)],
+        _overflow_bps: &HashMap<BasePoint, ()>,
+    ) -> BaseStorage {
         match self {
-            BaseStorage::Sequential { sections, base_values, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                ..
+            } => {
                 let mut h_sec = HashMap::with_capacity(sections.len());
                 let mut h_base = HashMap::with_capacity(base_values.len());
                 for &(bp, idx) in bp_list {
@@ -405,11 +463,17 @@ impl BaseStorage {
                         h_base.insert(bp, base_values[idx].clone());
                     }
                 }
-                BaseStorage::Hashed { sections: h_sec, base_values: h_base }
+                BaseStorage::Hashed {
+                    sections: h_sec,
+                    base_values: h_base,
+                }
             }
             BaseStorage::Hybrid {
-                sections, base_values,
-                overflow_sections, overflow_base, ..
+                sections,
+                base_values,
+                overflow_sections,
+                overflow_base,
+                ..
             } => {
                 let mut h_sec = HashMap::with_capacity(sections.len() + overflow_sections.len());
                 let mut h_base = HashMap::with_capacity(base_values.len() + overflow_base.len());
@@ -425,7 +489,10 @@ impl BaseStorage {
                 for (bp, base) in overflow_base {
                     h_base.insert(bp, base);
                 }
-                BaseStorage::Hashed { sections: h_sec, base_values: h_base }
+                BaseStorage::Hashed {
+                    sections: h_sec,
+                    base_values: h_base,
+                }
             }
             h @ BaseStorage::Hashed { .. } => h,
         }
@@ -440,9 +507,17 @@ pub enum BaseGeometry {
     /// K > 0: curved base, use HashMap.
     Curved,
     /// K = 0: flat base (arithmetic keys), use Vec.
-    Flat { start: i64, step: i64, key_field: String },
+    Flat {
+        start: i64,
+        step: i64,
+        key_field: String,
+    },
     /// K ≈ 0: mostly flat, use Vec + overflow HashMap.
-    NearlyFlat { start: i64, step: i64, key_field: String },
+    NearlyFlat {
+        start: i64,
+        step: i64,
+        key_field: String,
+    },
 }
 
 /// Detect the base geometry from initial records.
@@ -460,7 +535,8 @@ pub fn detect_base_geometry(schema: &BundleSchema, records: &[Record]) -> BaseGe
     let key_field = &schema.base_fields[0].name;
 
     // Extract integer key values
-    let keys: Vec<i64> = records.iter()
+    let keys: Vec<i64> = records
+        .iter()
         .filter_map(|r| r.get(key_field)?.as_i64())
         .collect();
 
@@ -475,15 +551,21 @@ pub fn detect_base_geometry(schema: &BundleSchema, records: &[Record]) -> BaseGe
         return BaseGeometry::Curved;
     }
 
-    let arithmetic_count = keys.windows(2)
-        .filter(|w| w[1] - w[0] == step)
-        .count();
+    let arithmetic_count = keys.windows(2).filter(|w| w[1] - w[0] == step).count();
     let total = keys.len() - 1;
 
     if arithmetic_count == total {
-        BaseGeometry::Flat { start, step, key_field: key_field.clone() }
+        BaseGeometry::Flat {
+            start,
+            step,
+            key_field: key_field.clone(),
+        }
     } else if (arithmetic_count as f64 / total as f64) > 0.95 {
-        BaseGeometry::NearlyFlat { start, step, key_field: key_field.clone() }
+        BaseGeometry::NearlyFlat {
+            start,
+            step,
+            key_field: key_field.clone(),
+        }
     } else {
         BaseGeometry::Curved
     }
@@ -564,7 +646,9 @@ impl FieldStats {
 
     /// Merge another FieldStats into this one (for batch insert).
     fn merge(&mut self, other: &FieldStats) {
-        if other.count == 0 { return; }
+        if other.count == 0 {
+            return;
+        }
         if self.count == 0 {
             *self = other.clone();
             return;
@@ -610,13 +694,17 @@ impl CurvatureStats {
 
     /// Running mean μ_K = Σ K / N.
     pub fn mean(&self) -> f64 {
-        if self.k_count == 0 { return 0.0; }
+        if self.k_count == 0 {
+            return 0.0;
+        }
         self.k_sum / self.k_count as f64
     }
 
     /// Running population standard deviation σ_K.
     pub fn std_dev(&self) -> f64 {
-        if self.k_count < 2 { return 0.0; }
+        if self.k_count < 2 {
+            return 0.0;
+        }
         let mean = self.mean();
         let var = self.k_sum_sq / self.k_count as f64 - mean * mean;
         var.max(0.0).sqrt()
@@ -630,7 +718,9 @@ impl CurvatureStats {
     /// z-score of a given K value: (K − μ_K) / σ_K.
     pub fn z_score(&self, k: f64) -> f64 {
         let sd = self.std_dev();
-        if sd < f64::EPSILON { return 0.0; }
+        if sd < f64::EPSILON {
+            return 0.0;
+        }
         (k - self.mean()) / sd
     }
 
@@ -653,15 +743,25 @@ pub fn compute_record_k(
     let mut total = 0.0f64;
     let mut n = 0usize;
     for (i, field_def) in fiber_fields.iter().enumerate() {
-        let Some(v) = fiber_vals.get(i).and_then(|v| v.as_f64()) else { continue };
-        let Some(fs) = field_stats.get(&field_def.name) else { continue };
-        if fs.count < 2 { continue; }
+        let Some(v) = fiber_vals.get(i).and_then(|v| v.as_f64()) else {
+            continue;
+        };
+        let Some(fs) = field_stats.get(&field_def.name) else {
+            continue;
+        };
+        if fs.count < 2 {
+            continue;
+        }
         let mean = fs.sum / fs.count as f64;
         let range = fs.range().max(f64::EPSILON);
         total += (v - mean).abs() / range;
         n += 1;
     }
-    if n == 0 { 0.0 } else { total / n as f64 }
+    if n == 0 {
+        0.0
+    } else {
+        total / n as f64
+    }
 }
 
 impl BundleStore {
@@ -698,14 +798,22 @@ impl BundleStore {
         }
         let storage = match &geometry {
             BaseGeometry::Curved => BaseStorage::new_hashed(),
-            BaseGeometry::Flat { start, step, key_field } => BaseStorage::Sequential {
+            BaseGeometry::Flat {
+                start,
+                step,
+                key_field,
+            } => BaseStorage::Sequential {
                 sections: Vec::new(),
                 base_values: Vec::new(),
                 start: *start,
                 step: *step,
                 key_field: key_field.clone(),
             },
-            BaseGeometry::NearlyFlat { start, step, key_field } => BaseStorage::Hybrid {
+            BaseGeometry::NearlyFlat {
+                start,
+                step,
+                key_field,
+            } => BaseStorage::Hybrid {
                 sections: Vec::new(),
                 base_values: Vec::new(),
                 overflow_sections: HashMap::new(),
@@ -838,7 +946,9 @@ impl BundleStore {
     ///
     /// Returns the number of records actually inserted.
     pub fn batch_insert(&mut self, records: &[Record]) -> usize {
-        if records.is_empty() { return 0; }
+        if records.is_empty() {
+            return 0;
+        }
 
         // Check if the turbo fast path is available
         let single_int_base = self.schema.base_fields.len() == 1
@@ -855,10 +965,16 @@ impl BundleStore {
         for record in records {
             let bp = self.hash_config.hash(record, &self.schema);
 
-            let base_vals: Vec<Value> = self.schema.base_fields.iter()
+            let base_vals: Vec<Value> = self
+                .schema
+                .base_fields
+                .iter()
                 .map(|f| record.get(&f.name).cloned().unwrap_or(Value::Null))
                 .collect();
-            let fiber_vals: Vec<Value> = self.schema.fiber_fields.iter()
+            let fiber_vals: Vec<Value> = self
+                .schema
+                .fiber_fields
+                .iter()
                 .map(|f| record.get(&f.name).cloned().unwrap_or(f.default.clone()))
                 .collect();
 
@@ -876,7 +992,8 @@ impl BundleStore {
             }
 
             // Compute per-record K BEFORE updating field_stats (matches BundleStore::insert).
-            let k_record = compute_record_k(&self.field_stats, &fiber_vals, &self.schema.fiber_fields);
+            let k_record =
+                compute_record_k(&self.field_stats, &fiber_vals, &self.schema.fiber_fields);
             self.curvature_stats.update(k_record);
 
             for (i, field_def) in self.schema.fiber_fields.iter().enumerate() {
@@ -919,10 +1036,18 @@ impl BundleStore {
     fn batch_insert_fast(&mut self, records: &[Record]) -> usize {
         let key_field = self.schema.base_fields[0].name.clone();
         let n_fiber = self.schema.fiber_fields.len();
-        let fiber_names: Vec<String> = self.schema.fiber_fields.iter()
-            .map(|f| f.name.clone()).collect();
-        let fiber_defaults: Vec<Value> = self.schema.fiber_fields.iter()
-            .map(|f| f.default.clone()).collect();
+        let fiber_names: Vec<String> = self
+            .schema
+            .fiber_fields
+            .iter()
+            .map(|f| f.name.clone())
+            .collect();
+        let fiber_defaults: Vec<Value> = self
+            .schema
+            .fiber_fields
+            .iter()
+            .map(|f| f.default.clone())
+            .collect();
         let gauge_key = self.schema.gauge_key.clone();
         let is_seq = matches!(self.storage, BaseStorage::Sequential { .. });
         let track_detect = !self.detected;
@@ -930,11 +1055,18 @@ impl BundleStore {
         // Pre-reserve storage capacity
         let n = records.len();
         match &mut self.storage {
-            BaseStorage::Sequential { sections, base_values, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                ..
+            } => {
                 sections.reserve(n);
                 base_values.reserve(n);
             }
-            BaseStorage::Hashed { sections, base_values } => {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => {
                 sections.reserve(n);
                 base_values.reserve(n);
             }
@@ -955,7 +1087,9 @@ impl BundleStore {
 
                 let mut fiber_vals = Vec::with_capacity(n_fiber);
                 for (i, name) in fiber_names.iter().enumerate() {
-                    let val = record.get(name).cloned()
+                    let val = record
+                        .get(name)
+                        .cloned()
                         .unwrap_or_else(|| fiber_defaults[i].clone());
                     if let Some(v) = val.as_f64() {
                         local_stats[i].update(v);
@@ -971,7 +1105,11 @@ impl BundleStore {
                 };
 
                 match &mut self.storage {
-                    BaseStorage::Sequential { sections, base_values, .. } => {
+                    BaseStorage::Sequential {
+                        sections,
+                        base_values,
+                        ..
+                    } => {
                         sections.push(fiber_vals);
                         base_values.push(vec![Value::Integer(key_val)]);
                     }
@@ -982,7 +1120,13 @@ impl BundleStore {
 
             // Rebuild maps (bp_reverse, bp_to_idx, seq_bp_list) for sequential turbo path
             // so that update/delete/range_query work correctly after batch insert.
-            if let BaseStorage::Sequential { sections, start, step, .. } = &self.storage {
+            if let BaseStorage::Sequential {
+                sections,
+                start,
+                step,
+                ..
+            } = &self.storage
+            {
                 self.seq_bp_list.clear();
                 self.bp_to_idx.clear();
                 for i in 0..sections.len() {
@@ -1005,7 +1149,9 @@ impl BundleStore {
 
                 let mut fiber_vals = Vec::with_capacity(n_fiber);
                 for (i, name) in fiber_names.iter().enumerate() {
-                    let val = record.get(name).cloned()
+                    let val = record
+                        .get(name)
+                        .cloned()
                         .unwrap_or_else(|| fiber_defaults[i].clone());
                     if let Some(v) = val.as_f64() {
                         local_stats[i].update(v);
@@ -1023,7 +1169,10 @@ impl BundleStore {
                 let base_vals = vec![Value::Integer(key_val)];
 
                 match &mut self.storage {
-                    BaseStorage::Hashed { sections, base_values } => {
+                    BaseStorage::Hashed {
+                        sections,
+                        base_values,
+                    } => {
                         sections.insert(bp, fiber_vals);
                         base_values.insert(bp, base_vals);
                     }
@@ -1044,7 +1193,10 @@ impl BundleStore {
 
         // Merge local stats into global
         for (i, name) in fiber_names.iter().enumerate() {
-            self.field_stats.entry(name.clone()).or_default().merge(&local_stats[i]);
+            self.field_stats
+                .entry(name.clone())
+                .or_default()
+                .merge(&local_stats[i]);
         }
 
         // Deferred auto-detection
@@ -1091,10 +1243,16 @@ impl BundleStore {
         }
 
         // Extract new fiber values
-        let fiber_vals: Vec<Value> = self.schema.fiber_fields.iter()
+        let fiber_vals: Vec<Value> = self
+            .schema
+            .fiber_fields
+            .iter()
             .map(|f| merged.get(&f.name).cloned().unwrap_or(f.default.clone()))
             .collect();
-        let base_vals: Vec<Value> = self.schema.base_fields.iter()
+        let base_vals: Vec<Value> = self
+            .schema
+            .base_fields
+            .iter()
             .map(|f| merged.get(&f.name).cloned().unwrap_or(Value::Null))
             .collect();
 
@@ -1129,7 +1287,8 @@ impl BundleStore {
     /// Returns number of records updated.
     pub fn bulk_update(&mut self, conditions: &[QueryCondition], patches: &Record) -> usize {
         // Collect matching keys first (can't iterate and mutate simultaneously)
-        let matching_keys: Vec<Record> = self.records()
+        let matching_keys: Vec<Record> = self
+            .records()
             .filter(|record| conditions.iter().all(|c| c.matches(record)))
             .map(|record| {
                 let mut key = Record::new();
@@ -1180,18 +1339,34 @@ impl BundleStore {
     /// Overwrite fiber+base at an existing base point.
     fn overwrite_storage(&mut self, bp: BasePoint, fiber_vals: Vec<Value>, base_vals: Vec<Value>) {
         match &mut self.storage {
-            BaseStorage::Hashed { sections, base_values } => {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => {
                 sections.insert(bp, fiber_vals);
                 base_values.insert(bp, base_vals);
             }
-            BaseStorage::Sequential { sections, base_values, .. }
-            | BaseStorage::Hybrid { sections, base_values, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                ..
+            }
+            | BaseStorage::Hybrid {
+                sections,
+                base_values,
+                ..
+            } => {
                 if let Some(&idx) = self.bp_to_idx.get(&bp) {
                     if idx < sections.len() {
                         sections[idx] = fiber_vals;
                         base_values[idx] = base_vals;
                     }
-                } else if let BaseStorage::Hybrid { overflow_sections, overflow_base, .. } = &mut self.storage {
+                } else if let BaseStorage::Hybrid {
+                    overflow_sections,
+                    overflow_base,
+                    ..
+                } = &mut self.storage
+                {
                     overflow_sections.insert(bp, fiber_vals);
                     overflow_base.insert(bp, base_vals);
                 }
@@ -1202,11 +1377,18 @@ impl BundleStore {
     /// Remove a record from storage by base point.
     fn remove_from_storage(&mut self, bp: BasePoint) {
         match &mut self.storage {
-            BaseStorage::Hashed { sections, base_values } => {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => {
                 sections.remove(&bp);
                 base_values.remove(&bp);
             }
-            BaseStorage::Sequential { sections, base_values, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                ..
+            } => {
                 // For Sequential, we can't easily remove without shifting.
                 // Mark as tombstone (Null values) — reconstruct will skip.
                 if let Some(&idx) = self.bp_to_idx.get(&bp) {
@@ -1220,8 +1402,11 @@ impl BundleStore {
                 }
             }
             BaseStorage::Hybrid {
-                sections, base_values,
-                overflow_sections, overflow_base, ..
+                sections,
+                base_values,
+                overflow_sections,
+                overflow_base,
+                ..
             } => {
                 if let Some(&idx) = self.bp_to_idx.get(&bp) {
                     if idx < sections.len() {
@@ -1238,7 +1423,13 @@ impl BundleStore {
     }
 
     /// Insert fiber+base values into the current storage variant.
-    fn insert_into_storage(&mut self, bp: BasePoint, record: &Record, fiber_vals: Vec<Value>, base_vals: Vec<Value>) {
+    fn insert_into_storage(
+        &mut self,
+        bp: BasePoint,
+        record: &Record,
+        fiber_vals: Vec<Value>,
+        base_vals: Vec<Value>,
+    ) {
         match &self.storage {
             BaseStorage::Hashed { .. } => {
                 self.storage.insert_hashed(bp, fiber_vals, base_vals);
@@ -1251,11 +1442,19 @@ impl BundleStore {
                         if let Some(&existing_idx) = self.bp_to_idx.get(&bp) {
                             // Overwrite in-place — faster than HashMap update
                             match &mut self.storage {
-                                BaseStorage::Sequential { sections, base_values, .. } => {
+                                BaseStorage::Sequential {
+                                    sections,
+                                    base_values,
+                                    ..
+                                } => {
                                     sections[existing_idx] = fiber_vals;
                                     base_values[existing_idx] = base_vals;
                                 }
-                                BaseStorage::Hybrid { sections, base_values, .. } => {
+                                BaseStorage::Hybrid {
+                                    sections,
+                                    base_values,
+                                    ..
+                                } => {
                                     if existing_idx < sections.len() {
                                         sections[existing_idx] = fiber_vals;
                                         base_values[existing_idx] = base_vals;
@@ -1272,7 +1471,8 @@ impl BundleStore {
                         };
                         self.seq_bp_list.push(bp);
                         self.bp_to_idx.insert(bp, idx);
-                        self.storage.insert_with_key(bp, key_val, fiber_vals, base_vals);
+                        self.storage
+                            .insert_with_key(bp, key_val, fiber_vals, base_vals);
                         return;
                     }
                 }
@@ -1299,7 +1499,9 @@ impl BundleStore {
         }
 
         let total = self.detect_keys.len() - 1;
-        let arithmetic_count = self.detect_keys.windows(2)
+        let arithmetic_count = self
+            .detect_keys
+            .windows(2)
             .filter(|w| w[1] - w[0] == step)
             .count();
 
@@ -1312,13 +1514,18 @@ impl BundleStore {
         let key_field = self.schema.base_fields[0].name.clone();
 
         // Drain current Hashed storage, sort by key, rebuild as Sequential/Hybrid
-        let (old_sections, old_base) = match std::mem::replace(&mut self.storage, BaseStorage::new_hashed()) {
-            BaseStorage::Hashed { sections, base_values } => (sections, base_values),
-            _ => return, // shouldn't happen
-        };
+        let (old_sections, old_base) =
+            match std::mem::replace(&mut self.storage, BaseStorage::new_hashed()) {
+                BaseStorage::Hashed {
+                    sections,
+                    base_values,
+                } => (sections, base_values),
+                _ => return, // shouldn't happen
+            };
 
         // Collect all (key_value, bp, fiber, base)
-        let mut entries: Vec<(i64, BasePoint, Vec<Value>, Vec<Value>)> = Vec::with_capacity(old_sections.len());
+        let mut entries: Vec<(i64, BasePoint, Vec<Value>, Vec<Value>)> =
+            Vec::with_capacity(old_sections.len());
         for (bp, fiber) in &old_sections {
             if let Some(base) = old_base.get(bp) {
                 // Extract key value from base values
@@ -1382,7 +1589,13 @@ impl BundleStore {
 
     /// Promote from Sequential/Hybrid to Hashed (curvature increased).
     fn promote_storage(&mut self) {
-        let bp_list: Vec<(BasePoint, usize)> = self.seq_bp_list.iter().copied().enumerate().map(|(i, bp)| (bp, i)).collect();
+        let bp_list: Vec<(BasePoint, usize)> = self
+            .seq_bp_list
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(i, bp)| (bp, i))
+            .collect();
         let overflow_bps = HashMap::new();
         let old = std::mem::replace(&mut self.storage, BaseStorage::new_hashed());
         self.storage = old.promote_to_hashed(&bp_list, &overflow_bps);
@@ -1394,10 +1607,18 @@ impl BundleStore {
     /// Sequential mode: arithmetic index (k-start)/step — no hash needed. ~2ns.
     pub fn point_query(&self, key: &Record) -> Option<Record> {
         // Fast path for Sequential: arithmetic indexing, no hashing needed
-        if let BaseStorage::Sequential { start, step, key_field, .. } = &self.storage {
+        if let BaseStorage::Sequential {
+            start,
+            step,
+            key_field,
+            ..
+        } = &self.storage
+        {
             if let Some(key_val) = key.get(key_field).and_then(|v| v.as_i64()) {
                 let diff = key_val - start;
-                if diff < 0 || *step == 0 || diff % step != 0 { return None; }
+                if diff < 0 || *step == 0 || diff % step != 0 {
+                    return None;
+                }
                 let idx = (diff / step) as usize;
                 if let Some((fiber, base)) = self.storage.get_by_index(idx) {
                     let mut record = Record::new();
@@ -1480,7 +1701,12 @@ impl BundleStore {
         offset: Option<usize>,
     ) -> Vec<Record> {
         // Try to accelerate via bitmap indexes: extract Eq/In conditions on indexed fields
-        let indexed_fields: std::collections::HashSet<&str> = self.schema.indexed_fields.iter().map(|s| s.as_str()).collect();
+        let indexed_fields: std::collections::HashSet<&str> = self
+            .schema
+            .indexed_fields
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
         let mut index_bits: Option<RoaringBitmap> = None;
         let mut remaining_conditions: Vec<&QueryCondition> = Vec::new();
 
@@ -1532,9 +1758,7 @@ impl BundleStore {
                 .collect()
         } else {
             self.records()
-                .filter(|record| {
-                    matches_filter(record, conditions, or_conditions)
-                })
+                .filter(|record| matches_filter(record, conditions, or_conditions))
                 .collect()
         };
 
@@ -1544,7 +1768,11 @@ impl BundleStore {
             results.sort_by(|a, b| {
                 let va = a.get(&field).unwrap_or(&Value::Null);
                 let vb = b.get(&field).unwrap_or(&Value::Null);
-                if sort_desc { vb.cmp(va) } else { va.cmp(vb) }
+                if sort_desc {
+                    vb.cmp(va)
+                } else {
+                    va.cmp(vb)
+                }
             });
         }
 
@@ -1561,9 +1789,12 @@ impl BundleStore {
     }
 
     /// Reconstruct a full record from base point.
-    fn reconstruct(&self, bp: BasePoint) -> Option<Record> {
+    pub(crate) fn reconstruct(&self, bp: BasePoint) -> Option<Record> {
         let (fiber, base) = match &self.storage {
-            BaseStorage::Hashed { sections, base_values } => {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => {
                 let f = sections.get(&bp)?;
                 let b = base_values.get(&bp)?;
                 (f.as_slice(), b.as_slice())
@@ -1573,7 +1804,11 @@ impl BundleStore {
                     self.storage.get_by_index(idx)?
                 } else {
                     match &self.storage {
-                        BaseStorage::Hybrid { overflow_sections, overflow_base, .. } => {
+                        BaseStorage::Hybrid {
+                            overflow_sections,
+                            overflow_base,
+                            ..
+                        } => {
                             let f = overflow_sections.get(&bp)?;
                             let b = overflow_base.get(&bp)?;
                             (f.as_slice(), b.as_slice())
@@ -1611,9 +1846,9 @@ impl BundleStore {
                     self.storage.get_by_index(idx).map(|(f, _)| f)
                 } else {
                     match &self.storage {
-                        BaseStorage::Hybrid { overflow_sections, .. } => {
-                            overflow_sections.get(&bp).map(|v| v.as_slice())
-                        }
+                        BaseStorage::Hybrid {
+                            overflow_sections, ..
+                        } => overflow_sections.get(&bp).map(|v| v.as_slice()),
                         _ => None,
                     }
                 }
@@ -1646,13 +1881,20 @@ impl BundleStore {
             BaseStorage::Hashed { sections, .. } => {
                 Box::new(sections.iter().map(|(&bp, v)| (bp, v.as_slice())))
             }
-            BaseStorage::Sequential { sections, start, step, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                start,
+                step,
+                ..
+            } => {
                 if self.seq_bp_list.len() == sections.len() {
                     // Maps are populated — use them directly
                     Box::new(
-                        self.seq_bp_list.iter().copied()
+                        self.seq_bp_list
+                            .iter()
+                            .copied()
                             .zip(sections.iter())
-                            .map(|(bp, v)| (bp, v.as_slice()))
+                            .map(|(bp, v)| (bp, v.as_slice())),
                     )
                 } else {
                     // Maps stale (after fast batch) — compute bp on-the-fly
@@ -1661,11 +1903,22 @@ impl BundleStore {
                     let bps: Vec<BasePoint> = (0..sections.len())
                         .map(|i| self.hash_config.hash_int_fast(start + step * i as i64))
                         .collect();
-                    Box::new(bps.into_iter().zip(sections.iter()).map(|(bp, v)| (bp, v.as_slice())))
+                    Box::new(
+                        bps.into_iter()
+                            .zip(sections.iter())
+                            .map(|(bp, v)| (bp, v.as_slice())),
+                    )
                 }
             }
-            BaseStorage::Hybrid { sections, overflow_sections, .. } => {
-                let seq_iter = self.seq_bp_list.iter().copied()
+            BaseStorage::Hybrid {
+                sections,
+                overflow_sections,
+                ..
+            } => {
+                let seq_iter = self
+                    .seq_bp_list
+                    .iter()
+                    .copied()
                     .zip(sections.iter())
                     .map(|(bp, v)| (bp, v.as_slice()));
                 let overflow_iter = overflow_sections.iter().map(|(&bp, v)| (bp, v.as_slice()));
@@ -1680,16 +1933,28 @@ impl BundleStore {
             BaseStorage::Hashed { sections, .. } => {
                 Box::new(sections.keys().filter_map(move |&bp| self.reconstruct(bp)))
             }
-            BaseStorage::Sequential { sections, base_values, .. } => {
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                ..
+            } => {
                 if self.seq_bp_list.len() == sections.len() {
                     let bps: Vec<BasePoint> = self.seq_bp_list.clone();
                     Box::new(bps.into_iter().filter_map(move |bp| self.reconstruct(bp)))
                 } else {
                     // Maps stale — reconstruct directly from storage arrays
-                    let base_names: Vec<String> = self.schema.base_fields.iter()
-                        .map(|f| f.name.clone()).collect();
-                    let fiber_names: Vec<String> = self.schema.fiber_fields.iter()
-                        .map(|f| f.name.clone()).collect();
+                    let base_names: Vec<String> = self
+                        .schema
+                        .base_fields
+                        .iter()
+                        .map(|f| f.name.clone())
+                        .collect();
+                    let fiber_names: Vec<String> = self
+                        .schema
+                        .fiber_fields
+                        .iter()
+                        .map(|f| f.name.clone())
+                        .collect();
                     let gauge_key = self.schema.gauge_key.clone();
                     let secs = sections.as_slice();
                     let bases = base_values.as_slice();
@@ -1722,7 +1987,9 @@ impl BundleStore {
                     }))
                 }
             }
-            BaseStorage::Hybrid { overflow_sections, .. } => {
+            BaseStorage::Hybrid {
+                overflow_sections, ..
+            } => {
                 let mut bps: Vec<BasePoint> = self.seq_bp_list.clone();
                 bps.extend(overflow_sections.keys());
                 Box::new(bps.into_iter().filter_map(move |bp| self.reconstruct(bp)))
@@ -1740,7 +2007,9 @@ impl BundleStore {
     /// Uses current bundle field_stats (the full distribution) so the score
     /// reflects how anomalous the record is relative to the *entire* bundle.
     pub fn record_k_for(&self, bp: BasePoint) -> f64 {
-        let Some(fiber) = self.get_fiber(bp) else { return 0.0 };
+        let Some(fiber) = self.get_fiber(bp) else {
+            return 0.0;
+        };
         let fiber_vals: Vec<Value> = fiber.to_vec();
         compute_record_k(&self.field_stats, &fiber_vals, &self.schema.fiber_fields)
     }
@@ -1770,20 +2039,24 @@ impl BundleStore {
                 self.all_base_points()
             } else {
                 let records = self.filtered_query(conditions, None, false, None, None);
-                records.into_iter().map(|rec| {
-                    self.hash_config.hash(&rec, &self.schema)
-                }).collect()
+                records
+                    .into_iter()
+                    .map(|rec| self.hash_config.hash(&rec, &self.schema))
+                    .collect()
             }
         } else {
             self.all_base_points()
         };
 
-        if base_points.is_empty() { return Vec::new(); }
+        if base_points.is_empty() {
+            return Vec::new();
+        }
 
         // First pass: compute K for every candidate record so μ_K and σ_K are
         // derived from the same field_stats that record_k_for uses.  This ensures
         // the reference distribution is consistent with the data at query time.
-        let scores: Vec<(BasePoint, f64)> = base_points.iter()
+        let scores: Vec<(BasePoint, f64)> = base_points
+            .iter()
             .map(|&bp| (bp, self.record_k_for(bp)))
             .collect();
 
@@ -1798,7 +2071,11 @@ impl BundleStore {
             .into_iter()
             .filter(|(_, k)| *k > threshold)
             .filter_map(|(bp, k)| {
-                let z = if sigma < f64::EPSILON { 0.0 } else { (k - mu) / sigma };
+                let z = if sigma < f64::EPSILON {
+                    0.0
+                } else {
+                    (k - mu) / sigma
+                };
                 let record = self.reconstruct(bp)?;
                 let contributing = self.contributing_fields(bp, &record);
                 let dev_norm = self.deviation_norm(bp);
@@ -1817,7 +2094,11 @@ impl BundleStore {
             })
             .collect();
 
-        anomalies.sort_by(|a, b| b.z_score.partial_cmp(&a.z_score).unwrap_or(std::cmp::Ordering::Equal));
+        anomalies.sort_by(|a, b| {
+            b.z_score
+                .partial_cmp(&a.z_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         anomalies.truncate(limit);
         anomalies
     }
@@ -1829,16 +2110,25 @@ impl BundleStore {
     fn contributing_fields(&self, _bp: BasePoint, record: &Record) -> Vec<String> {
         let mut field_devs: Vec<(String, f64)> = Vec::new();
         for field_def in &self.schema.fiber_fields {
-            let Some(fs) = self.field_stats.get(&field_def.name) else { continue };
-            if fs.count < 2 { continue; }
-            let Some(v) = record.get(&field_def.name).and_then(|v| v.as_f64()) else { continue };
+            let Some(fs) = self.field_stats.get(&field_def.name) else {
+                continue;
+            };
+            if fs.count < 2 {
+                continue;
+            }
+            let Some(v) = record.get(&field_def.name).and_then(|v| v.as_f64()) else {
+                continue;
+            };
             let mean = fs.sum / fs.count as f64;
             let range = fs.range().max(f64::EPSILON);
             field_devs.push((field_def.name.clone(), (v - mean).abs() / range));
         }
-        if field_devs.is_empty() { return Vec::new(); }
+        if field_devs.is_empty() {
+            return Vec::new();
+        }
         let mean_dev = field_devs.iter().map(|(_, d)| d).sum::<f64>() / field_devs.len() as f64;
-        field_devs.into_iter()
+        field_devs
+            .into_iter()
             .filter(|(_, d)| *d > mean_dev)
             .map(|(name, _)| name)
             .collect()
@@ -1846,15 +2136,21 @@ impl BundleStore {
 
     /// Fiber metric distance from the zero section (Def 1.7).
     pub fn deviation_distance(&self, bp: BasePoint) -> f64 {
-        let Some(fiber) = self.get_fiber(bp) else { return 0.0 };
+        let Some(fiber) = self.get_fiber(bp) else {
+            return 0.0;
+        };
         let zero = self.schema.zero_section();
         let n_fields = self.schema.fiber_fields.len();
-        if n_fields == 0 { return 0.0; }
+        if n_fields == 0 {
+            return 0.0;
+        }
         let mut sq_sum = 0.0f64;
         for (i, field_def) in self.schema.fiber_fields.iter().enumerate() {
             let fv = fiber.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0);
             let zv = zero.get(i).and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let range = self.field_stats.get(&field_def.name)
+            let range = self
+                .field_stats
+                .get(&field_def.name)
                 .map(|fs| fs.range().max(f64::EPSILON))
                 .unwrap_or(1.0);
             sq_sum += ((fv - zv) / range).powi(2);
@@ -1867,14 +2163,15 @@ impl BundleStore {
         match &self.storage {
             BaseStorage::Hashed { sections, .. } => sections.keys().copied().collect(),
             BaseStorage::Sequential { .. } => self.seq_bp_list.clone(),
-            BaseStorage::Hybrid { overflow_sections, .. } => {
+            BaseStorage::Hybrid {
+                overflow_sections, ..
+            } => {
                 let mut bps = self.seq_bp_list.clone();
                 bps.extend(overflow_sections.keys());
                 bps
             }
         }
     }
-
 
     pub fn deviation_norm(&self, bp: BasePoint) -> usize {
         let fiber = match self.get_fiber(bp) {
@@ -1951,23 +2248,38 @@ impl BundleStore {
     /// Returns the number of records removed.
     pub fn expire_ttl(&mut self, now_epoch_ms: i64) -> usize {
         // Collect base points of expired records
-        let expired: Vec<BasePoint> = self.records()
-            .filter_map(|record| {
-                match record.get("_ttl") {
-                    Some(Value::Timestamp(t)) if *t <= now_epoch_ms => {
-                        let key: Record = self.schema.base_fields.iter()
-                            .map(|f| (f.name.clone(), record.get(&f.name).cloned().unwrap_or(Value::Null)))
-                            .collect();
-                        Some(self.hash_config.hash(&key, &self.schema))
-                    }
-                    Some(Value::Integer(t)) if *t <= now_epoch_ms => {
-                        let key: Record = self.schema.base_fields.iter()
-                            .map(|f| (f.name.clone(), record.get(&f.name).cloned().unwrap_or(Value::Null)))
-                            .collect();
-                        Some(self.hash_config.hash(&key, &self.schema))
-                    }
-                    _ => None,
+        let expired: Vec<BasePoint> = self
+            .records()
+            .filter_map(|record| match record.get("_ttl") {
+                Some(Value::Timestamp(t)) if *t <= now_epoch_ms => {
+                    let key: Record = self
+                        .schema
+                        .base_fields
+                        .iter()
+                        .map(|f| {
+                            (
+                                f.name.clone(),
+                                record.get(&f.name).cloned().unwrap_or(Value::Null),
+                            )
+                        })
+                        .collect();
+                    Some(self.hash_config.hash(&key, &self.schema))
                 }
+                Some(Value::Integer(t)) if *t <= now_epoch_ms => {
+                    let key: Record = self
+                        .schema
+                        .base_fields
+                        .iter()
+                        .map(|f| {
+                            (
+                                f.name.clone(),
+                                record.get(&f.name).cloned().unwrap_or(Value::Null),
+                            )
+                        })
+                        .collect();
+                    Some(self.hash_config.hash(&key, &self.schema))
+                }
+                _ => None,
             })
             .collect();
 
@@ -1995,13 +2307,22 @@ impl BundleStore {
     /// Upsert — insert if not exists, update if exists. Returns `(inserted: bool)`.
     /// `true` = new record inserted, `false` = existing record updated.
     pub fn upsert(&mut self, record: &Record) -> bool {
-        let key: Record = self.schema.base_fields.iter()
-            .map(|f| (f.name.clone(), record.get(&f.name).cloned().unwrap_or(Value::Null)))
+        let key: Record = self
+            .schema
+            .base_fields
+            .iter()
+            .map(|f| {
+                (
+                    f.name.clone(),
+                    record.get(&f.name).cloned().unwrap_or(Value::Null),
+                )
+            })
             .collect();
         let bp = self.hash_config.hash(&key, &self.schema);
         if self.reconstruct(bp).is_some() {
             // Exists — update with all non-key fields as patches
-            let patches: Record = record.iter()
+            let patches: Record = record
+                .iter()
                 .filter(|(k, _)| !self.schema.base_fields.iter().any(|f| &f.name == *k))
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
@@ -2016,11 +2337,19 @@ impl BundleStore {
     /// Bulk delete — remove all records matching conditions.
     /// Returns number of records deleted.
     pub fn bulk_delete(&mut self, conditions: &[QueryCondition]) -> usize {
-        let matching_keys: Vec<Record> = self.records()
+        let matching_keys: Vec<Record> = self
+            .records()
             .filter(|record| conditions.iter().all(|c| c.matches(record)))
             .map(|record| {
-                self.schema.base_fields.iter()
-                    .map(|f| (f.name.clone(), record.get(&f.name).cloned().unwrap_or(Value::Null)))
+                self.schema
+                    .base_fields
+                    .iter()
+                    .map(|f| {
+                        (
+                            f.name.clone(),
+                            record.get(&f.name).cloned().unwrap_or(Value::Null),
+                        )
+                    })
                     .collect()
             })
             .collect();
@@ -2056,7 +2385,11 @@ impl BundleStore {
     }
 
     /// Extended count with OR condition support.
-    pub fn count_where_ex(&self, conditions: &[QueryCondition], or_conditions: Option<&[Vec<QueryCondition>]>) -> usize {
+    pub fn count_where_ex(
+        &self,
+        conditions: &[QueryCondition],
+        or_conditions: Option<&[Vec<QueryCondition>]>,
+    ) -> usize {
         self.records()
             .filter(|record| matches_filter(record, conditions, or_conditions))
             .count()
@@ -2068,7 +2401,11 @@ impl BundleStore {
     }
 
     /// Extended exists with OR condition support.
-    pub fn exists_ex(&self, conditions: &[QueryCondition], or_conditions: Option<&[Vec<QueryCondition>]>) -> bool {
+    pub fn exists_ex(
+        &self,
+        conditions: &[QueryCondition],
+        or_conditions: Option<&[Vec<QueryCondition>]>,
+    ) -> bool {
         self.records()
             .any(|record| matches_filter(&record, conditions, or_conditions))
     }
@@ -2077,7 +2414,8 @@ impl BundleStore {
     pub fn distinct(&self, field: &str) -> Vec<Value> {
         // Fast path: if the field is indexed, read from field_index
         if let Some(field_map) = self.field_index.get(field) {
-            return field_map.keys()
+            return field_map
+                .keys()
                 .filter(|v| !matches!(v, Value::Null))
                 .cloned()
                 .collect();
@@ -2105,7 +2443,14 @@ impl BundleStore {
         fields: Option<&[&str]>,
     ) -> (Vec<Record>, usize) {
         let sort_fields = sort_by.map(|f| vec![(f, sort_desc)]);
-        self.filtered_query_projected_ex(conditions, None, sort_fields.as_deref(), limit, offset, fields)
+        self.filtered_query_projected_ex(
+            conditions,
+            None,
+            sort_fields.as_deref(),
+            limit,
+            offset,
+            fields,
+        )
     }
 
     /// Extended filtered query with OR conditions and multi-field sort.
@@ -2118,7 +2463,8 @@ impl BundleStore {
         offset: Option<usize>,
         fields: Option<&[&str]>,
     ) -> (Vec<Record>, usize) {
-        let all_matching: Vec<Record> = self.records()
+        let all_matching: Vec<Record> = self
+            .records()
             .filter(|record| matches_filter(record, conditions, or_conditions))
             .collect();
         let total = all_matching.len();
@@ -2151,15 +2497,18 @@ impl BundleStore {
 
         // Project fields
         if let Some(fields) = fields {
-            results = results.into_iter().map(|record| {
-                let mut proj = Record::new();
-                for &f in fields {
-                    if let Some(v) = record.get(f) {
-                        proj.insert(f.to_string(), v.clone());
+            results = results
+                .into_iter()
+                .map(|record| {
+                    let mut proj = Record::new();
+                    for &f in fields {
+                        if let Some(v) = record.get(f) {
+                            proj.insert(f.to_string(), v.clone());
+                        }
                     }
-                }
-                proj
-            }).collect();
+                    proj
+                })
+                .collect();
         }
 
         (results, total)
@@ -2275,7 +2624,11 @@ impl BundleStore {
                     fiber.push(field_def.default.clone());
                 }
             }
-            BaseStorage::Hybrid { sections, overflow_sections, .. } => {
+            BaseStorage::Hybrid {
+                sections,
+                overflow_sections,
+                ..
+            } => {
                 for fiber in sections.iter_mut() {
                     fiber.push(field_def.default.clone());
                 }
@@ -2290,7 +2643,11 @@ impl BundleStore {
     /// Returns `true` if the field was found and removed, `false` if it does not exist.
     /// Base fields (keys) cannot be dropped — only fiber fields.
     pub fn drop_field(&mut self, field_name: &str) -> bool {
-        let pos = self.schema.fiber_fields.iter().position(|f| f.name == field_name);
+        let pos = self
+            .schema
+            .fiber_fields
+            .iter()
+            .position(|f| f.name == field_name);
         let pos = match pos {
             Some(p) => p,
             None => return false,
@@ -2305,20 +2662,32 @@ impl BundleStore {
         match &mut self.storage {
             BaseStorage::Hashed { sections, .. } => {
                 for fiber in sections.values_mut() {
-                    if pos < fiber.len() { fiber.remove(pos); }
+                    if pos < fiber.len() {
+                        fiber.remove(pos);
+                    }
                 }
             }
             BaseStorage::Sequential { sections, .. } => {
                 for fiber in sections.iter_mut() {
-                    if pos < fiber.len() { fiber.remove(pos); }
+                    if pos < fiber.len() {
+                        fiber.remove(pos);
+                    }
                 }
             }
-            BaseStorage::Hybrid { sections, overflow_sections, .. } => {
+            BaseStorage::Hybrid {
+                sections,
+                overflow_sections,
+                ..
+            } => {
                 for fiber in sections.iter_mut() {
-                    if pos < fiber.len() { fiber.remove(pos); }
+                    if pos < fiber.len() {
+                        fiber.remove(pos);
+                    }
                 }
                 for fiber in overflow_sections.values_mut() {
-                    if pos < fiber.len() { fiber.remove(pos); }
+                    if pos < fiber.len() {
+                        fiber.remove(pos);
+                    }
                 }
             }
         }
@@ -2336,9 +2705,19 @@ impl BundleStore {
         let mut new_index: HashMap<Value, RoaringBitmap> = HashMap::new();
         for record in self.records() {
             if let Some(val) = record.get(field_name) {
-                if matches!(val, Value::Null) { continue; }
-                let key: Record = self.schema.base_fields.iter()
-                    .map(|f| (f.name.clone(), record.get(&f.name).cloned().unwrap_or(Value::Null)))
+                if matches!(val, Value::Null) {
+                    continue;
+                }
+                let key: Record = self
+                    .schema
+                    .base_fields
+                    .iter()
+                    .map(|f| {
+                        (
+                            f.name.clone(),
+                            record.get(&f.name).cloned().unwrap_or(Value::Null),
+                        )
+                    })
                     .collect();
                 let bp = self.hash_config.hash(&key, &self.schema);
                 let bp32 = bp as u32;
@@ -2361,7 +2740,12 @@ impl BundleStore {
         expected_version: i64,
     ) -> Result<i64, &'static str> {
         // Ensure _version field exists in schema
-        if !self.schema.fiber_fields.iter().any(|f| f.name == "_version") {
+        if !self
+            .schema
+            .fiber_fields
+            .iter()
+            .any(|f| f.name == "_version")
+        {
             self.add_field(FieldDef::numeric("_version").with_default(Value::Integer(0)));
         }
 
@@ -2415,7 +2799,10 @@ impl BundleStore {
             index_sizes.push((field.clone(), total_bits));
         }
 
-        let field_cardinalities: Vec<(String, usize)> = self.schema.fiber_fields.iter()
+        let field_cardinalities: Vec<(String, usize)> = self
+            .schema
+            .fiber_fields
+            .iter()
             .map(|f| {
                 let card = self.distinct(&f.name).len();
                 (f.name.clone(), card)
@@ -2493,14 +2880,28 @@ impl BundleStore {
 
     /// Execute a batch of operations atomically (all-or-nothing).
     /// Returns (successes, results_per_op). If any op fails, all are rolled back.
-    pub fn execute_transaction(&mut self, ops: &[TransactionOp]) -> Result<Vec<TransactionResult>, String> {
+    pub fn execute_transaction(
+        &mut self,
+        ops: &[TransactionOp],
+    ) -> Result<Vec<TransactionResult>, String> {
         // Snapshot: collect all records for rollback
-        let snapshot: Vec<(Record, Record)> = self.records().map(|rec| {
-            let key: Record = self.schema.base_fields.iter()
-                .map(|f| (f.name.clone(), rec.get(&f.name).cloned().unwrap_or(Value::Null)))
-                .collect();
-            (key, rec)
-        }).collect();
+        let snapshot: Vec<(Record, Record)> = self
+            .records()
+            .map(|rec| {
+                let key: Record = self
+                    .schema
+                    .base_fields
+                    .iter()
+                    .map(|f| {
+                        (
+                            f.name.clone(),
+                            rec.get(&f.name).cloned().unwrap_or(Value::Null),
+                        )
+                    })
+                    .collect();
+                (key, rec)
+            })
+            .collect();
         let _snapshot_len = self.len();
 
         let mut results = Vec::with_capacity(ops.len());
@@ -2586,8 +2987,6 @@ pub struct AnomalyRecord {
     pub neighbourhood_size: usize,
 }
 
-
-
 /// Query execution plan for the EXPLAIN endpoint.
 #[derive(Debug, Clone)]
 pub struct QueryPlan {
@@ -2606,9 +3005,16 @@ pub struct QueryPlan {
 #[derive(Debug, Clone)]
 pub enum TransactionOp {
     Insert(Record),
-    Update { key: Record, patches: Record },
+    Update {
+        key: Record,
+        patches: Record,
+    },
     Delete(Record),
-    Increment { key: Record, field: String, amount: f64 },
+    Increment {
+        key: Record,
+        field: String,
+        amount: f64,
+    },
 }
 
 /// Result of a single transaction operation.
@@ -2748,10 +3154,10 @@ mod tests {
             let dept = ["Eng", "Sales", "HR"][i % 3];
             store.insert(&rec(i as i64, &format!("U{i}"), 50000.0, dept));
         }
-        let wide = store.range_query("dept", &[
-            Value::Text("Eng".into()),
-            Value::Text("Sales".into()),
-        ]);
+        let wide = store.range_query(
+            "dept",
+            &[Value::Text("Eng".into()), Value::Text("Sales".into())],
+        );
         let narrow = store.range_query("dept", &[Value::Text("Eng".into())]);
 
         // Every record in narrow must appear in wide
@@ -2770,10 +3176,10 @@ mod tests {
         }
         let fa = store.range_query("dept", &[Value::Text("Eng".into())]);
         let fb = store.range_query("dept", &[Value::Text("Sales".into())]);
-        let fab = store.range_query("dept", &[
-            Value::Text("Eng".into()),
-            Value::Text("Sales".into()),
-        ]);
+        let fab = store.range_query(
+            "dept",
+            &[Value::Text("Eng".into()), Value::Text("Sales".into())],
+        );
 
         let mut union: Vec<Record> = fa.into_iter().chain(fb).collect();
         union.sort_by_key(|r| match r.get("id") {
@@ -2881,7 +3287,11 @@ mod tests {
             .fiber(FieldDef::numeric("temp").with_range(100.0));
         let mut store = BundleStore::with_geometry(
             schema,
-            BaseGeometry::Flat { start: 1000, step: 10, key_field: "ts".into() },
+            BaseGeometry::Flat {
+                start: 1000,
+                step: 10,
+                key_field: "ts".into(),
+            },
         );
 
         assert_eq!(store.storage_mode(), "sequential");
@@ -2907,9 +3317,10 @@ mod tests {
         let mut store = make_store();
 
         // Random IDs — not arithmetic
-        for i in [3, 7, 11, 19, 23, 29, 31, 37, 41, 43, 47, 53,
-                  59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103,
-                  107, 109, 113, 127, 131, 137, 139, 149, 151] {
+        for i in [
+            3, 7, 11, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101,
+            103, 107, 109, 113, 127, 131, 137, 139, 149, 151,
+        ] {
             store.insert(&rec(i, &format!("U{i}"), 50000.0, "Eng"));
         }
 
@@ -2960,13 +3371,14 @@ mod tests {
     /// detect_base_geometry function directly.
     #[test]
     fn detect_geometry_arithmetic() {
-        let schema = BundleSchema::new("ts")
-            .base(FieldDef::numeric("t"));
-        let records: Vec<Record> = (0..10).map(|i| {
-            let mut r = Record::new();
-            r.insert("t".into(), Value::Integer(100 + i * 5));
-            r
-        }).collect();
+        let schema = BundleSchema::new("ts").base(FieldDef::numeric("t"));
+        let records: Vec<Record> = (0..10)
+            .map(|i| {
+                let mut r = Record::new();
+                r.insert("t".into(), Value::Integer(100 + i * 5));
+                r
+            })
+            .collect();
 
         match detect_base_geometry(&schema, &records) {
             BaseGeometry::Flat { start, step, .. } => {
@@ -2980,15 +3392,20 @@ mod tests {
     /// detect_base_geometry with non-arithmetic keys.
     #[test]
     fn detect_geometry_curved() {
-        let schema = BundleSchema::new("random")
-            .base(FieldDef::numeric("id"));
-        let records: Vec<Record> = [3, 7, 15, 22, 30, 41, 55, 70, 88, 99].iter().map(|&i| {
-            let mut r = Record::new();
-            r.insert("id".into(), Value::Integer(i));
-            r
-        }).collect();
+        let schema = BundleSchema::new("random").base(FieldDef::numeric("id"));
+        let records: Vec<Record> = [3, 7, 15, 22, 30, 41, 55, 70, 88, 99]
+            .iter()
+            .map(|&i| {
+                let mut r = Record::new();
+                r.insert("id".into(), Value::Integer(i));
+                r
+            })
+            .collect();
 
-        assert!(matches!(detect_base_geometry(&schema, &records), BaseGeometry::Curved));
+        assert!(matches!(
+            detect_base_geometry(&schema, &records),
+            BaseGeometry::Curved
+        ));
     }
 
     // ── Batch Insert Tests ──
@@ -3000,12 +3417,14 @@ mod tests {
             .fiber(FieldDef::numeric("val").with_range(100.0));
 
         let mut store = BundleStore::new(schema);
-        let records: Vec<Record> = (0..100).map(|i| {
-            let mut r = Record::new();
-            r.insert("id".into(), Value::Integer(i));
-            r.insert("val".into(), Value::Float(i as f64 * 1.5));
-            r
-        }).collect();
+        let records: Vec<Record> = (0..100)
+            .map(|i| {
+                let mut r = Record::new();
+                r.insert("id".into(), Value::Integer(i));
+                r.insert("val".into(), Value::Float(i as f64 * 1.5));
+                r
+            })
+            .collect();
 
         let count = store.batch_insert(&records);
         assert_eq!(count, 100);
@@ -3028,12 +3447,14 @@ mod tests {
         assert_eq!(store.storage_mode(), "hashed");
 
         // Batch of 50 arithmetic records (step=10) → should auto-detect flat
-        let records: Vec<Record> = (0..50).map(|i| {
-            let mut r = Record::new();
-            r.insert("ts".into(), Value::Integer(i * 10));
-            r.insert("cpu".into(), Value::Float(50.0));
-            r
-        }).collect();
+        let records: Vec<Record> = (0..50)
+            .map(|i| {
+                let mut r = Record::new();
+                r.insert("ts".into(), Value::Integer(i * 10));
+                r.insert("cpu".into(), Value::Float(50.0));
+                r
+            })
+            .collect();
 
         let count = store.batch_insert(&records);
         assert_eq!(count, 50);
@@ -3048,13 +3469,15 @@ mod tests {
             .fiber(FieldDef::numeric("score").with_range(100.0))
             .index("name");
 
-        let records: Vec<Record> = (0..200).map(|i| {
-            let mut r = Record::new();
-            r.insert("id".into(), Value::Integer(i));
-            r.insert("name".into(), Value::Text(format!("user_{}", i % 5)));
-            r.insert("score".into(), Value::Float((i % 100) as f64));
-            r
-        }).collect();
+        let records: Vec<Record> = (0..200)
+            .map(|i| {
+                let mut r = Record::new();
+                r.insert("id".into(), Value::Integer(i));
+                r.insert("name".into(), Value::Text(format!("user_{}", i % 5)));
+                r.insert("score".into(), Value::Float((i % 100) as f64));
+                r
+            })
+            .collect();
 
         // Single insert
         let mut store_single = BundleStore::new(schema.clone());
@@ -3172,7 +3595,12 @@ mod tests {
         let mut store = make_store();
         for i in 0..10 {
             let dept = ["Eng", "Sales"][i % 2];
-            store.insert(&rec(i as i64, &format!("U{i}"), 50000.0 + i as f64 * 1000.0, dept));
+            store.insert(&rec(
+                i as i64,
+                &format!("U{i}"),
+                50000.0 + i as f64 * 1000.0,
+                dept,
+            ));
         }
 
         let conds = vec![QueryCondition::Eq("dept".into(), Value::Text("Eng".into()))];
@@ -3187,7 +3615,12 @@ mod tests {
     fn filtered_query_gt_sorted_limited() {
         let mut store = make_store();
         for i in 0..20 {
-            store.insert(&rec(i, &format!("U{i}"), 50000.0 + i as f64 * 1000.0, "Eng"));
+            store.insert(&rec(
+                i,
+                &format!("U{i}"),
+                50000.0 + i as f64 * 1000.0,
+                "Eng",
+            ));
         }
 
         let conds = vec![QueryCondition::Gt("salary".into(), Value::Float(60000.0))];
@@ -3294,7 +3727,10 @@ mod tests {
         store.insert(&r6);
 
         // Bulk update: mark all system notifications as read
-        let conditions = vec![QueryCondition::Eq("module".into(), Value::Text("system".into()))];
+        let conditions = vec![QueryCondition::Eq(
+            "module".into(),
+            Value::Text("system".into()),
+        )];
         let mut patches = Record::new();
         patches.insert("read".into(), Value::Bool(true));
 
@@ -3326,7 +3762,10 @@ mod tests {
         r.insert("status".into(), Value::Text("open".into()));
         store.insert(&r);
 
-        let conditions = vec![QueryCondition::Eq("status".into(), Value::Text("closed".into()))];
+        let conditions = vec![QueryCondition::Eq(
+            "status".into(),
+            Value::Text("closed".into()),
+        )];
         let mut patches = Record::new();
         patches.insert("status".into(), Value::Text("archived".into()));
 
@@ -3346,10 +3785,10 @@ mod tests {
         let mut store = BundleStore::new(schema);
 
         let data = vec![
-            (1, "apple",  1.50, "fruit"),
+            (1, "apple", 1.50, "fruit"),
             (2, "banana", 0.75, "fruit"),
             (3, "carrot", 2.00, "vegetable"),
-            (4, "donut",  3.50, "pastry"),
+            (4, "donut", 3.50, "pastry"),
         ];
 
         for (id, name, price, cat) in data {
@@ -3487,14 +3926,20 @@ mod tests {
     #[test]
     fn count_where_basic() {
         let store = sprint1_store();
-        let cond = vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))];
+        let cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("fruit".into()),
+        )];
         assert_eq!(store.count_where(&cond), 2);
     }
 
     #[test]
     fn count_where_no_match() {
         let store = sprint1_store();
-        let cond = vec![QueryCondition::Eq("category".into(), Value::Text("candy".into()))];
+        let cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("candy".into()),
+        )];
         assert_eq!(store.count_where(&cond), 0);
     }
 
@@ -3509,14 +3954,20 @@ mod tests {
     #[test]
     fn exists_true() {
         let store = sprint1_store();
-        let cond = vec![QueryCondition::Eq("name".into(), Value::Text("donut".into()))];
+        let cond = vec![QueryCondition::Eq(
+            "name".into(),
+            Value::Text("donut".into()),
+        )];
         assert!(store.exists(&cond));
     }
 
     #[test]
     fn exists_false() {
         let store = sprint1_store();
-        let cond = vec![QueryCondition::Eq("name".into(), Value::Text("pizza".into()))];
+        let cond = vec![QueryCondition::Eq(
+            "name".into(),
+            Value::Text("pizza".into()),
+        )];
         assert!(!store.exists(&cond));
     }
 
@@ -3547,7 +3998,10 @@ mod tests {
         let mut store = sprint1_store();
         assert_eq!(store.len(), 5);
 
-        let cond = vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))];
+        let cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("fruit".into()),
+        )];
         let deleted = store.bulk_delete(&cond);
         assert_eq!(deleted, 2); // apple, banana
         assert_eq!(store.len(), 3);
@@ -3561,7 +4015,10 @@ mod tests {
     #[test]
     fn bulk_delete_no_match() {
         let mut store = sprint1_store();
-        let cond = vec![QueryCondition::Eq("category".into(), Value::Text("candy".into()))];
+        let cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("candy".into()),
+        )];
         let deleted = store.bulk_delete(&cond);
         assert_eq!(deleted, 0);
         assert_eq!(store.len(), 5);
@@ -3602,8 +4059,18 @@ mod tests {
     #[test]
     fn filtered_query_projected_fields() {
         let store = sprint1_store();
-        let cond = vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))];
-        let (results, total) = store.filtered_query_projected(&cond, None, false, None, None, Some(&["name", "price"]));
+        let cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("fruit".into()),
+        )];
+        let (results, total) = store.filtered_query_projected(
+            &cond,
+            None,
+            false,
+            None,
+            None,
+            Some(&["name", "price"]),
+        );
 
         assert_eq!(total, 2);
         assert_eq!(results.len(), 2);
@@ -3620,7 +4087,8 @@ mod tests {
     fn filtered_query_projected_total_count_with_pagination() {
         let store = sprint1_store();
         // Get all records but limit to 2
-        let (results, total) = store.filtered_query_projected(&[], None, false, Some(2), None, None);
+        let (results, total) =
+            store.filtered_query_projected(&[], None, false, Some(2), None, None);
         assert_eq!(results.len(), 2);
         assert_eq!(total, 5); // total matching is 5, but only 2 returned
     }
@@ -3628,9 +4096,8 @@ mod tests {
     #[test]
     fn filtered_query_projected_offset() {
         let store = sprint1_store();
-        let (results, total) = store.filtered_query_projected(
-            &[], Some("id"), false, Some(2), Some(2), None
-        );
+        let (results, total) =
+            store.filtered_query_projected(&[], Some("id"), false, Some(2), Some(2), None);
         assert_eq!(total, 5);
         assert_eq!(results.len(), 2);
         // Sorted by id asc, offset 2 → ids 3,4
@@ -3645,7 +4112,10 @@ mod tests {
         let store = sprint1_store();
         // fruit OR pastry, AND price > 1.00
         let cond = vec![
-            QueryCondition::In("category".into(), vec![Value::Text("fruit".into()), Value::Text("pastry".into())]),
+            QueryCondition::In(
+                "category".into(),
+                vec![Value::Text("fruit".into()), Value::Text("pastry".into())],
+            ),
             QueryCondition::Gt("price".into(), Value::Float(1.00)),
         ];
         let results = store.filtered_query(&cond, None, false, None, None);
@@ -3668,7 +4138,10 @@ mod tests {
     fn math_bulk_delete_count_consistency() {
         let mut store = sprint1_store();
         let initial = store.len();
-        let cond = vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))];
+        let cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("fruit".into()),
+        )];
         let count_before = store.count_where(&cond);
         let deleted = store.bulk_delete(&cond);
         assert_eq!(deleted, count_before); // deleted count == pre-counted
@@ -3691,8 +4164,14 @@ mod tests {
         let store = sprint1_store();
         // (category = fruit) OR (category = pastry)
         let or_groups = vec![
-            vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))],
-            vec![QueryCondition::Eq("category".into(), Value::Text("pastry".into()))],
+            vec![QueryCondition::Eq(
+                "category".into(),
+                Value::Text("fruit".into()),
+            )],
+            vec![QueryCondition::Eq(
+                "category".into(),
+                Value::Text("pastry".into()),
+            )],
         ];
         let results = store.filtered_query_ex(&[], Some(&or_groups), None, false, None, None);
         assert_eq!(results.len(), 3); // apple, banana, donut
@@ -3704,10 +4183,17 @@ mod tests {
         // price > 2.00 AND ((category = fruit) OR (category = pastry))
         let conditions = vec![QueryCondition::Gt("price".into(), Value::Float(2.00))];
         let or_groups = vec![
-            vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))],
-            vec![QueryCondition::Eq("category".into(), Value::Text("pastry".into()))],
+            vec![QueryCondition::Eq(
+                "category".into(),
+                Value::Text("fruit".into()),
+            )],
+            vec![QueryCondition::Eq(
+                "category".into(),
+                Value::Text("pastry".into()),
+            )],
         ];
-        let results = store.filtered_query_ex(&conditions, Some(&or_groups), None, false, None, None);
+        let results =
+            store.filtered_query_ex(&conditions, Some(&or_groups), None, false, None, None);
         assert_eq!(results.len(), 1); // only donut (3.50)
         assert_eq!(results[0].get("name"), Some(&Value::Text("donut".into())));
     }
@@ -3716,8 +4202,14 @@ mod tests {
     fn or_conditions_count_where() {
         let store = sprint1_store();
         let or_groups = vec![
-            vec![QueryCondition::Eq("name".into(), Value::Text("apple".into()))],
-            vec![QueryCondition::Eq("name".into(), Value::Text("banana".into()))],
+            vec![QueryCondition::Eq(
+                "name".into(),
+                Value::Text("apple".into()),
+            )],
+            vec![QueryCondition::Eq(
+                "name".into(),
+                Value::Text("banana".into()),
+            )],
         ];
         let count = store.count_where_ex(&[], Some(&or_groups));
         assert_eq!(count, 2);
@@ -3727,14 +4219,26 @@ mod tests {
     fn or_conditions_exists() {
         let store = sprint1_store();
         let or_groups = vec![
-            vec![QueryCondition::Eq("name".into(), Value::Text("pizza".into()))],
-            vec![QueryCondition::Eq("name".into(), Value::Text("sushi".into()))],
+            vec![QueryCondition::Eq(
+                "name".into(),
+                Value::Text("pizza".into()),
+            )],
+            vec![QueryCondition::Eq(
+                "name".into(),
+                Value::Text("sushi".into()),
+            )],
         ];
         assert!(!store.exists_ex(&[], Some(&or_groups)));
 
         let or_groups2 = vec![
-            vec![QueryCondition::Eq("name".into(), Value::Text("pizza".into()))],
-            vec![QueryCondition::Eq("name".into(), Value::Text("apple".into()))],
+            vec![QueryCondition::Eq(
+                "name".into(),
+                Value::Text("pizza".into()),
+            )],
+            vec![QueryCondition::Eq(
+                "name".into(),
+                Value::Text("apple".into()),
+            )],
         ];
         assert!(store.exists_ex(&[], Some(&or_groups2)));
     }
@@ -3743,11 +4247,22 @@ mod tests {
     fn or_conditions_projected() {
         let store = sprint1_store();
         let or_groups = vec![
-            vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))],
-            vec![QueryCondition::Eq("category".into(), Value::Text("vegetable".into()))],
+            vec![QueryCondition::Eq(
+                "category".into(),
+                Value::Text("fruit".into()),
+            )],
+            vec![QueryCondition::Eq(
+                "category".into(),
+                Value::Text("vegetable".into()),
+            )],
         ];
         let (results, total) = store.filtered_query_projected_ex(
-            &[], Some(&or_groups), None, None, None, Some(&["name"]),
+            &[],
+            Some(&or_groups),
+            None,
+            None,
+            None,
+            Some(&["name"]),
         );
         assert_eq!(total, 3); // apple, banana, carrot
         assert_eq!(results.len(), 3);
@@ -3784,9 +4299,8 @@ mod tests {
 
         // Sort by dept ASC, then salary DESC
         let sort_fields = vec![("dept", false), ("salary", true)];
-        let (results, total) = store.filtered_query_projected_ex(
-            &[], None, Some(&sort_fields), None, None, None,
-        );
+        let (results, total) =
+            store.filtered_query_projected_ex(&[], None, Some(&sort_fields), None, None, None);
         assert_eq!(total, 5);
         // Eng group should come first (ASC), salary DESC within
         assert_eq!(results[0].get("dept"), Some(&Value::Text("Eng".into())));
@@ -3920,7 +4434,10 @@ mod tests {
         for i in 0..10 {
             let mut r = Record::new();
             r.insert("id".into(), Value::Integer(i));
-            r.insert("brand".into(), Value::Text(["Nike", "Adidas"][i as usize % 2].into()));
+            r.insert(
+                "brand".into(),
+                Value::Text(["Nike", "Adidas"][i as usize % 2].into()),
+            );
             r.insert("price".into(), Value::Float(50.0 + i as f64 * 10.0));
             store.insert(&r);
         }
@@ -3956,9 +4473,18 @@ mod tests {
     fn math_or_conditions_partition() {
         // OR conditions should produce the union of each group's matches
         let store = sprint1_store();
-        let fruit_cond = vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))];
-        let pastry_cond = vec![QueryCondition::Eq("category".into(), Value::Text("pastry".into()))];
-        let veg_cond = vec![QueryCondition::Eq("category".into(), Value::Text("vegetable".into()))];
+        let fruit_cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("fruit".into()),
+        )];
+        let pastry_cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("pastry".into()),
+        )];
+        let veg_cond = vec![QueryCondition::Eq(
+            "category".into(),
+            Value::Text("vegetable".into()),
+        )];
 
         let fruit_count = store.count_where(&fruit_cond);
         let pastry_count = store.count_where(&pastry_cond);
@@ -3971,7 +4497,10 @@ mod tests {
 
         // OR(fruit, pastry, vegetable) should equal fruit+pastry+veg
         let or_all = vec![
-            vec![QueryCondition::Eq("category".into(), Value::Text("fruit".into()))],
+            vec![QueryCondition::Eq(
+                "category".into(),
+                Value::Text("fruit".into()),
+            )],
             pastry_cond,
             veg_cond,
         ];
@@ -4212,7 +4741,9 @@ mod tests {
     fn make_encrypted_store() -> BundleStore {
         let seed: [u8; 32] = {
             let mut s = [0u8; 32];
-            for i in 0..32 { s[i] = (i as u8).wrapping_mul(7).wrapping_add(13); }
+            for i in 0..32 {
+                s[i] = (i as u8).wrapping_mul(7).wrapping_add(13);
+            }
             s
         };
         let mut schema = BundleSchema::new("enc_weather")
@@ -4276,8 +4807,10 @@ mod tests {
         })) {
             // The stored value for temp should NOT be -31.9
             match &fiber[0] {
-                Value::Float(f) => assert!((*f - (-31.9)).abs() > 0.01,
-                    "Stored value should be encrypted, got {f}"),
+                Value::Float(f) => assert!(
+                    (*f - (-31.9)).abs() > 0.01,
+                    "Stored value should be encrypted, got {f}"
+                ),
                 _ => {} // Integer passthrough is fine
             }
         }
@@ -4294,8 +4827,10 @@ mod tests {
         let k_enc = crate::curvature::scalar_curvature(&enc_store);
         let k_plain = crate::curvature::scalar_curvature(&plain_store);
 
-        assert!((k_enc - k_plain).abs() < 1e-10,
-            "K must be gauge-invariant: encrypted={k_enc}, plain={k_plain}");
+        assert!(
+            (k_enc - k_plain).abs() < 1e-10,
+            "K must be gauge-invariant: encrypted={k_enc}, plain={k_plain}"
+        );
     }
 
     /// GEO-ENC-3: Confidence(encrypted) ≡ Confidence(plaintext)
@@ -4311,8 +4846,10 @@ mod tests {
         let c_enc = crate::curvature::confidence(k_enc);
         let c_plain = crate::curvature::confidence(k_plain);
 
-        assert!((c_enc - c_plain).abs() < 1e-10,
-            "Confidence must be invariant: encrypted={c_enc}, plain={c_plain}");
+        assert!(
+            (c_enc - c_plain).abs() < 1e-10,
+            "Confidence must be invariant: encrypted={c_enc}, plain={c_plain}"
+        );
     }
 
     /// GEO-ENC-4: Spectral gap λ₁(encrypted) ≡ λ₁(plaintext)
@@ -4328,8 +4865,10 @@ mod tests {
         let spectrum_enc = crate::spectral::spectral_gap(&enc_store);
         let spectrum_plain = crate::spectral::spectral_gap(&plain_store);
 
-        assert!((spectrum_enc - spectrum_plain).abs() < 1e-10,
-            "Spectral gap must be invariant: encrypted={spectrum_enc}, plain={spectrum_plain}");
+        assert!(
+            (spectrum_enc - spectrum_plain).abs() < 1e-10,
+            "Spectral gap must be invariant: encrypted={spectrum_enc}, plain={spectrum_plain}"
+        );
     }
 
     /// GEO-ENC-5: Point query with correct key → exact plaintext values
@@ -4347,8 +4886,10 @@ mod tests {
         assert!(result.is_some(), "Point query should find the record");
         let rec = result.unwrap();
         match rec.get("temp") {
-            Some(Value::Float(f)) => assert!((*f - (-31.9)).abs() < 1e-6,
-                "Decrypted temp should be -31.9, got {f}"),
+            Some(Value::Float(f)) => assert!(
+                (*f - (-31.9)).abs() < 1e-6,
+                "Decrypted temp should be -31.9, got {f}"
+            ),
             other => panic!("Expected Float for temp, got {:?}", other),
         }
     }
@@ -4368,8 +4909,10 @@ mod tests {
         let raw = store.get_fiber(bp).expect("Should have fiber data");
         // temp was 35.1 — raw should be different
         match &raw[0] {
-            Value::Float(f) => assert!((*f - 35.1).abs() > 0.01,
-                "Raw stored value should be encrypted, not 35.1, got {f}"),
+            Value::Float(f) => assert!(
+                (*f - 35.1).abs() > 0.01,
+                "Raw stored value should be encrypted, not 35.1, got {f}"
+            ),
             _ => {}
         }
     }
@@ -4388,8 +4931,10 @@ mod tests {
         let rec2 = all.iter().find(|r| r.get("id") == Some(&Value::Integer(2)));
         assert!(rec2.is_some());
         match rec2.unwrap().get("temp") {
-            Some(Value::Float(f)) => assert!((*f - 22.5).abs() < 1e-6,
-                "Decrypted temp should be 22.5, got {f}"),
+            Some(Value::Float(f)) => assert!(
+                (*f - 22.5).abs() < 1e-6,
+                "Decrypted temp should be 22.5, got {f}"
+            ),
             other => panic!("Expected Float for temp, got {:?}", other),
         }
     }
@@ -4417,8 +4962,10 @@ mod tests {
             for field in &["temp", "humidity", "pressure"] {
                 match (plain_rec.get(*field), enc_rec.get(*field)) {
                     (Some(Value::Float(a)), Some(Value::Float(b))) => {
-                        assert!((*a - *b).abs() < 1e-6,
-                            "Field {field}: plain={a}, decrypted={b}");
+                        assert!(
+                            (*a - *b).abs() < 1e-6,
+                            "Field {field}: plain={a}, decrypted={b}"
+                        );
                     }
                     _ => {}
                 }
@@ -4430,9 +4977,16 @@ mod tests {
     #[test]
     fn geo_enc_10_batch_insert() {
         let mut store = make_encrypted_store();
-        let records: Vec<Record> = (1..=100).map(|i| {
-            weather_rec(i, -30.0 + i as f64 * 0.7, 20.0 + i as f64 * 0.5, 990.0 + i as f64 * 0.3)
-        }).collect();
+        let records: Vec<Record> = (1..=100)
+            .map(|i| {
+                weather_rec(
+                    i,
+                    -30.0 + i as f64 * 0.7,
+                    20.0 + i as f64 * 0.5,
+                    990.0 + i as f64 * 0.3,
+                )
+            })
+            .collect();
         let count = store.batch_insert(&records);
         assert_eq!(count, 100);
         assert_eq!(store.len(), 100);
@@ -4445,8 +4999,10 @@ mod tests {
         });
         assert!(rec1.is_some());
         match rec1.unwrap().get("temp") {
-            Some(Value::Float(f)) => assert!((*f - (-29.3)).abs() < 1e-6,
-                "Batch-inserted record should decrypt correctly, got {f}"),
+            Some(Value::Float(f)) => assert!(
+                (*f - (-29.3)).abs() < 1e-6,
+                "Batch-inserted record should decrypt correctly, got {f}"
+            ),
             other => panic!("Expected Float, got {:?}", other),
         }
     }
@@ -4457,17 +5013,26 @@ mod tests {
         let mut enc_store = make_encrypted_store();
         let mut plain_store = make_plain_store();
 
-        let records: Vec<Record> = (1..=100).map(|i| {
-            weather_rec(i, -30.0 + i as f64 * 0.7, 20.0 + i as f64 * 0.5, 990.0 + i as f64 * 0.3)
-        }).collect();
+        let records: Vec<Record> = (1..=100)
+            .map(|i| {
+                weather_rec(
+                    i,
+                    -30.0 + i as f64 * 0.7,
+                    20.0 + i as f64 * 0.5,
+                    990.0 + i as f64 * 0.3,
+                )
+            })
+            .collect();
         enc_store.batch_insert(&records);
         plain_store.batch_insert(&records);
 
         let k_enc = crate::curvature::scalar_curvature(&enc_store);
         let k_plain = crate::curvature::scalar_curvature(&plain_store);
 
-        assert!((k_enc - k_plain).abs() < 1e-10,
-            "K must be gauge-invariant for batch: enc={k_enc}, plain={k_plain}");
+        assert!(
+            (k_enc - k_plain).abs() < 1e-10,
+            "K must be gauge-invariant for batch: enc={k_enc}, plain={k_plain}"
+        );
     }
 
     /// GEO-ENC-12: Different seeds produce different encrypted values
@@ -4475,12 +5040,16 @@ mod tests {
     fn geo_enc_12_different_seeds() {
         let seed1: [u8; 32] = {
             let mut s = [0u8; 32];
-            for i in 0..32 { s[i] = i as u8; }
+            for i in 0..32 {
+                s[i] = i as u8;
+            }
             s
         };
         let seed2: [u8; 32] = {
             let mut s = [0u8; 32];
-            for i in 0..32 { s[i] = (i as u8).wrapping_add(100); }
+            for i in 0..32 {
+                s[i] = (i as u8).wrapping_add(100);
+            }
             s
         };
 
@@ -4497,7 +5066,9 @@ mod tests {
     fn geo_enc_13_known_plaintext_resistance() {
         let seed: [u8; 32] = {
             let mut s = [0u8; 32];
-            for i in 0..32 { s[i] = (i as u8).wrapping_mul(7).wrapping_add(13); }
+            for i in 0..32 {
+                s[i] = (i as u8).wrapping_mul(7).wrapping_add(13);
+            }
             s
         };
         let fields = vec![
@@ -4522,8 +5093,9 @@ mod tests {
     #[test]
     fn geo_enc_14_gql_encrypted_syntax() {
         let stmt = crate::parser::parse(
-            "BUNDLE enc_test BASE (id NUMERIC) FIBER (val NUMERIC RANGE 100) ENCRYPTED"
-        ).unwrap();
+            "BUNDLE enc_test BASE (id NUMERIC) FIBER (val NUMERIC RANGE 100) ENCRYPTED",
+        )
+        .unwrap();
         match stmt {
             crate::parser::Statement::CreateBundle { encrypted, .. } => {
                 assert!(encrypted, "ENCRYPTED keyword should set encrypted=true");
@@ -4547,8 +5119,10 @@ mod tests {
         });
         let raw = store.get_fiber(bp).expect("Should have fiber data");
         match &raw[0] {
-            Value::Float(f) => assert!((*f - (-31.9)).abs() < 1e-10,
-                "Plaintext store should store raw values, got {f}"),
+            Value::Float(f) => assert!(
+                (*f - (-31.9)).abs() < 1e-10,
+                "Plaintext store should store raw values, got {f}"
+            ),
             _ => {}
         }
     }
@@ -4557,17 +5131,14 @@ mod tests {
 
     #[test]
     fn test_between_numeric_inclusive_bounds() {
-        let schema = BundleSchema::new("t")
-            .base(FieldDef::numeric("x"));
+        let schema = BundleSchema::new("t").base(FieldDef::numeric("x"));
         let mut store = BundleStore::new(schema);
         for i in 0i64..=10 {
             let mut r = Record::new();
             r.insert("x".into(), Value::Integer(i));
             store.insert(&r);
         }
-        let cond = QueryCondition::Between(
-            "x".into(), Value::Integer(3), Value::Integer(7),
-        );
+        let cond = QueryCondition::Between("x".into(), Value::Integer(3), Value::Integer(7));
         let results = store.filtered_query(&[cond], None, false, None, None);
         // Should return 3,4,5,6,7 → 5 records
         assert_eq!(results.len(), 5);
@@ -4582,17 +5153,14 @@ mod tests {
 
     #[test]
     fn test_between_boundary_values_included() {
-        let schema = BundleSchema::new("t")
-            .base(FieldDef::numeric("score"));
+        let schema = BundleSchema::new("t").base(FieldDef::numeric("score"));
         let mut store = BundleStore::new(schema);
         for v in [0.0f64, 5.0, 10.0, 15.0] {
             let mut r = Record::new();
             r.insert("score".into(), Value::Float(v));
             store.insert(&r);
         }
-        let cond = QueryCondition::Between(
-            "score".into(), Value::Float(5.0), Value::Float(10.0),
-        );
+        let cond = QueryCondition::Between("score".into(), Value::Float(5.0), Value::Float(10.0));
         let results = store.filtered_query(&[cond], None, false, None, None);
         // 5.0 and 10.0 are both included (inclusive)
         assert_eq!(results.len(), 2);
@@ -4600,17 +5168,14 @@ mod tests {
 
     #[test]
     fn test_between_no_matches() {
-        let schema = BundleSchema::new("t")
-            .base(FieldDef::numeric("n"));
+        let schema = BundleSchema::new("t").base(FieldDef::numeric("n"));
         let mut store = BundleStore::new(schema);
         for i in [1i64, 2, 3] {
             let mut r = Record::new();
             r.insert("n".into(), Value::Integer(i));
             store.insert(&r);
         }
-        let cond = QueryCondition::Between(
-            "n".into(), Value::Integer(10), Value::Integer(20),
-        );
+        let cond = QueryCondition::Between("n".into(), Value::Integer(10), Value::Integer(20));
         let results = store.filtered_query(&[cond], None, false, None, None);
         assert!(results.is_empty());
     }
@@ -4621,7 +5186,10 @@ mod tests {
     fn test_cosine_identical_unit_vectors() {
         let v = vec![1.0f64, 0.0, 0.0];
         let score = VectorMetric::Cosine.score(&v, &v);
-        assert!((score - 1.0).abs() < 1e-10, "cosine of identical vectors = 1, got {score}");
+        assert!(
+            (score - 1.0).abs() < 1e-10,
+            "cosine of identical vectors = 1, got {score}"
+        );
     }
 
     #[test]
@@ -4629,7 +5197,10 @@ mod tests {
         let a = vec![1.0f64, 0.0];
         let b = vec![0.0f64, 1.0];
         let score = VectorMetric::Cosine.score(&a, &b);
-        assert!(score.abs() < 1e-10, "cosine of orthogonal vectors = 0, got {score}");
+        assert!(
+            score.abs() < 1e-10,
+            "cosine of orthogonal vectors = 0, got {score}"
+        );
     }
 
     #[test]
@@ -4637,7 +5208,10 @@ mod tests {
         let a = vec![1.0f64, 0.0];
         let b = vec![-1.0f64, 0.0];
         let score = VectorMetric::Cosine.score(&a, &b);
-        assert!((score - (-1.0)).abs() < 1e-10, "cosine of opposite vectors = -1, got {score}");
+        assert!(
+            (score - (-1.0)).abs() < 1e-10,
+            "cosine of opposite vectors = -1, got {score}"
+        );
     }
 
     #[test]
@@ -4654,7 +5228,10 @@ mod tests {
         let b = vec![3.0f64, 4.0];
         // distance = 5 → score = -5
         let score = VectorMetric::Euclidean.score(&a, &b);
-        assert!((score - (-5.0)).abs() < 1e-10, "euclidean score = -5, got {score}");
+        assert!(
+            (score - (-5.0)).abs() < 1e-10,
+            "euclidean score = -5, got {score}"
+        );
     }
 
     #[test]
@@ -4663,7 +5240,10 @@ mod tests {
         let b = vec![4.0f64, 5.0, 6.0];
         // dot = 1*4+2*5+3*6 = 4+10+18 = 32
         let score = VectorMetric::Dot.score(&a, &b);
-        assert!((score - 32.0).abs() < 1e-10, "dot product = 32, got {score}");
+        assert!(
+            (score - 32.0).abs() < 1e-10,
+            "dot product = 32, got {score}"
+        );
     }
 
     // ── vector_search tests ─────────────────────────────────────────────────
@@ -4671,9 +5251,27 @@ mod tests {
     fn make_vector_store() -> BundleStore {
         use crate::types::FieldType;
         let schema = BundleSchema::new("vecs")
-            .base(FieldDef { name: "id".into(), field_type: FieldType::Numeric, default: Value::Null, range: None, weight: 1.0 })
-            .fiber(FieldDef { name: "emb".into(), field_type: FieldType::Vector { dims: 2 }, default: Value::Null, range: None, weight: 1.0 })
-            .fiber(FieldDef { name: "cat".into(), field_type: FieldType::Categorical, default: Value::Null, range: None, weight: 1.0 });
+            .base(FieldDef {
+                name: "id".into(),
+                field_type: FieldType::Numeric,
+                default: Value::Null,
+                range: None,
+                weight: 1.0,
+            })
+            .fiber(FieldDef {
+                name: "emb".into(),
+                field_type: FieldType::Vector { dims: 2 },
+                default: Value::Null,
+                range: None,
+                weight: 1.0,
+            })
+            .fiber(FieldDef {
+                name: "cat".into(),
+                field_type: FieldType::Categorical,
+                default: Value::Null,
+                range: None,
+                weight: 1.0,
+            });
         let mut store = BundleStore::new(schema);
         // Insert 5 vectors at known positions in 2D
         let vecs: &[(i64, [f64; 2], &str)] = &[
@@ -4700,7 +5298,10 @@ mod tests {
         let results = store.vector_search("emb", &[1.0, 0.0], 1, VectorMetric::Cosine, &[]);
         assert_eq!(results.len(), 1);
         let (score, rec) = &results[0];
-        assert!((score - 1.0).abs() < 1e-6, "top cosine score = 1.0, got {score}");
+        assert!(
+            (score - 1.0).abs() < 1e-6,
+            "top cosine score = 1.0, got {score}"
+        );
         assert_eq!(rec.get("id"), Some(&Value::Integer(1)));
     }
 
@@ -4712,7 +5313,10 @@ mod tests {
         assert_eq!(results.len(), 3);
         // Scores are descending
         for i in 0..results.len() - 1 {
-            assert!(results[i].0 >= results[i + 1].0, "scores not sorted descending");
+            assert!(
+                results[i].0 >= results[i + 1].0,
+                "scores not sorted descending"
+            );
         }
         // id=1 must be first
         assert_eq!(results[0].1.get("id"), Some(&Value::Integer(1)));
@@ -4731,7 +5335,8 @@ mod tests {
         let store = make_vector_store();
         // Only look at cat="A" records: ids 1, 3, 5
         let pre_filter = vec![QueryCondition::Eq("cat".into(), Value::Text("A".into()))];
-        let results = store.vector_search("emb", &[1.0, 0.0], 10, VectorMetric::Cosine, &pre_filter);
+        let results =
+            store.vector_search("emb", &[1.0, 0.0], 10, VectorMetric::Cosine, &pre_filter);
         assert_eq!(results.len(), 3, "pre-filter should restrict to cat=A");
         for (_, rec) in &results {
             assert_eq!(rec.get("cat"), Some(&Value::Text("A".into())));
@@ -4782,8 +5387,10 @@ mod tests {
         assert!(store.schema.fiber_fields.iter().any(|f| f.name == "score"));
         let ok = store.drop_field("score");
         assert!(ok, "drop_field should return true for existing field");
-        assert!(!store.schema.fiber_fields.iter().any(|f| f.name == "score"),
-            "score should be gone from schema");
+        assert!(
+            !store.schema.fiber_fields.iter().any(|f| f.name == "score"),
+            "score should be gone from schema"
+        );
     }
 
     #[test]
@@ -4791,7 +5398,10 @@ mod tests {
         let mut store = make_drop_store();
         store.drop_field("score");
         for rec in store.records() {
-            assert!(!rec.contains_key("score"), "dropped field should not appear in records");
+            assert!(
+                !rec.contains_key("score"),
+                "dropped field should not appear in records"
+            );
         }
     }
 
@@ -4817,9 +5427,14 @@ mod tests {
         let mut store = make_drop_store();
         assert!(store.field_index.contains_key("dept"));
         store.drop_field("dept");
-        assert!(!store.field_index.contains_key("dept"), "index should be removed");
-        assert!(!store.schema.indexed_fields.contains(&"dept".to_string()),
-            "indexed_fields should be updated");
+        assert!(
+            !store.field_index.contains_key("dept"),
+            "index should be removed"
+        );
+        assert!(
+            !store.schema.indexed_fields.contains(&"dept".to_string()),
+            "indexed_fields should be updated"
+        );
     }
 
     #[test]
@@ -4829,7 +5444,10 @@ mod tests {
         // Should still be able to query on remaining fields
         let results = store.filtered_query(
             &[QueryCondition::Eq("dept".into(), Value::Text("eng".into()))],
-            None, false, None, None,
+            None,
+            false,
+            None,
+            None,
         );
         assert_eq!(results.len(), 5);
     }
@@ -4857,26 +5475,26 @@ mod tests {
         // 20 representative cities across climate zones
         // (city, base_temp_c, base_hum_pct, base_press_hpa, base_wind_kmh, base_uv)
         let cities: &[(&str, f64, f64, f64, f64, f64)] = &[
-            ("Moscow",       -5.0,  65.0, 1013.0,  18.0,  2.0),
-            ("Dubai",        35.0,  55.0, 1010.0,  14.0,  9.0),
-            ("Reykjavik",     4.0,  80.0, 1008.0,  25.0,  1.5),
-            ("Singapore",    27.0,  85.0, 1009.0,   8.0, 11.0),
-            ("London",       11.0,  75.0, 1012.0,  16.0,  3.0),
-            ("Chicago",       9.0,  68.0, 1011.0,  22.0,  4.0),
-            ("Sydney",       19.0,  70.0, 1014.0,  12.0,  6.0),
-            ("Tokyo",        16.0,  72.0, 1012.0,  10.0,  5.0),
-            ("Cairo",        24.0,  45.0, 1011.0,  15.0,  8.0),
-            ("SaoPaulo",     22.0,  78.0, 1010.0,  11.0,  7.0),
-            ("Toronto",       5.0,  66.0, 1012.0,  20.0,  3.5),
-            ("Mumbai",       28.0,  82.0, 1008.0,   9.0, 10.0),
-            ("Paris",        12.0,  74.0, 1013.0,  14.0,  3.5),
-            ("Nairobi",      18.0,  62.0, 1015.0,  13.0,  7.5),
-            ("Oslo",          4.0,  70.0, 1009.0,  19.0,  2.0),
-            ("BuenosAires",  18.0,  73.0, 1011.0,  15.0,  6.5),
-            ("Seoul",        12.0,  65.0, 1013.0,  17.0,  4.5),
-            ("Lagos",        28.0,  80.0, 1009.0,  10.0,  9.5),
-            ("Melbourne",    15.0,  66.0, 1012.0,  18.0,  5.5),
-            ("NewYork",      13.0,  67.0, 1012.0,  19.0,  4.0),
+            ("Moscow", -5.0, 65.0, 1013.0, 18.0, 2.0),
+            ("Dubai", 35.0, 55.0, 1010.0, 14.0, 9.0),
+            ("Reykjavik", 4.0, 80.0, 1008.0, 25.0, 1.5),
+            ("Singapore", 27.0, 85.0, 1009.0, 8.0, 11.0),
+            ("London", 11.0, 75.0, 1012.0, 16.0, 3.0),
+            ("Chicago", 9.0, 68.0, 1011.0, 22.0, 4.0),
+            ("Sydney", 19.0, 70.0, 1014.0, 12.0, 6.0),
+            ("Tokyo", 16.0, 72.0, 1012.0, 10.0, 5.0),
+            ("Cairo", 24.0, 45.0, 1011.0, 15.0, 8.0),
+            ("SaoPaulo", 22.0, 78.0, 1010.0, 11.0, 7.0),
+            ("Toronto", 5.0, 66.0, 1012.0, 20.0, 3.5),
+            ("Mumbai", 28.0, 82.0, 1008.0, 9.0, 10.0),
+            ("Paris", 12.0, 74.0, 1013.0, 14.0, 3.5),
+            ("Nairobi", 18.0, 62.0, 1015.0, 13.0, 7.5),
+            ("Oslo", 4.0, 70.0, 1009.0, 19.0, 2.0),
+            ("BuenosAires", 18.0, 73.0, 1011.0, 15.0, 6.5),
+            ("Seoul", 12.0, 65.0, 1013.0, 17.0, 4.5),
+            ("Lagos", 28.0, 80.0, 1009.0, 10.0, 9.5),
+            ("Melbourne", 15.0, 66.0, 1012.0, 18.0, 5.5),
+            ("NewYork", 13.0, 67.0, 1012.0, 19.0, 4.0),
         ];
 
         // Schema: id (base key), city (indexed categorical fiber),
@@ -4896,32 +5514,37 @@ mod tests {
 
         // Deterministic LCG noise: xₙ₊₁ = (a·xₙ + c) mod 2^64
         let lcg = |seed: u64| -> f64 {
-            let s = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-            (((s >> 33) as f64) / (u32::MAX as f64)) - 0.5  // ∈ [−0.5, 0.5]
+            let s = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (((s >> 33) as f64) / (u32::MAX as f64)) - 0.5 // ∈ [−0.5, 0.5]
         };
 
         let mut id: i64 = 0;
-        for (city_idx, (city, base_temp, base_hum, base_press, base_wind, base_uv)) in cities.iter().enumerate() {
+        for (city_idx, (city, base_temp, base_hum, base_press, base_wind, base_uv)) in
+            cities.iter().enumerate()
+        {
             for day in 1i64..=366 {
                 let seed = (city_idx as u64 * 400 + day as u64) * 2654435761;
                 let noise = |scale: f64, s: u64| lcg(seed.wrapping_add(s)) * scale;
-                let season_temp = base_temp + 10.0 * (2.0 * std::f64::consts::PI * day as f64 / 366.0).sin();
-                let temp    = (season_temp  + noise(4.0, 1)).clamp(-40.0, 55.0);
-                let hum     = (*base_hum    + noise(10.0, 2)).clamp(10.0, 100.0);
-                let press   = (*base_press  + noise(5.0,  3)).clamp(950.0, 1040.0);
-                let wind    = (*base_wind   + noise(8.0,  4)).clamp(0.0,  100.0);
-                let precip  = (noise(5.0, 5).abs() * 8.0).clamp(0.0, 50.0);
-                let uv      = (*base_uv     + noise(2.0,  6)).clamp(0.0,  14.0);
+                let season_temp =
+                    base_temp + 10.0 * (2.0 * std::f64::consts::PI * day as f64 / 366.0).sin();
+                let temp = (season_temp + noise(4.0, 1)).clamp(-40.0, 55.0);
+                let hum = (*base_hum + noise(10.0, 2)).clamp(10.0, 100.0);
+                let press = (*base_press + noise(5.0, 3)).clamp(950.0, 1040.0);
+                let wind = (*base_wind + noise(8.0, 4)).clamp(0.0, 100.0);
+                let precip = (noise(5.0, 5).abs() * 8.0).clamp(0.0, 50.0);
+                let uv = (*base_uv + noise(2.0, 6)).clamp(0.0, 14.0);
 
                 let mut rec = Record::new();
-                rec.insert("id".into(),           Value::Integer(id));
-                rec.insert("city".into(),          Value::Text(city.to_string()));
-                rec.insert("temp_c".into(),        Value::Float(temp));
-                rec.insert("humidity_pct".into(),  Value::Float(hum));
-                rec.insert("pressure_hpa".into(),  Value::Float(press));
-                rec.insert("wind_kmh".into(),      Value::Float(wind));
-                rec.insert("precip_mm".into(),     Value::Float(precip));
-                rec.insert("uv_index".into(),      Value::Float(uv));
+                rec.insert("id".into(), Value::Integer(id));
+                rec.insert("city".into(), Value::Text(city.to_string()));
+                rec.insert("temp_c".into(), Value::Float(temp));
+                rec.insert("humidity_pct".into(), Value::Float(hum));
+                rec.insert("pressure_hpa".into(), Value::Float(press));
+                rec.insert("wind_kmh".into(), Value::Float(wind));
+                rec.insert("precip_mm".into(), Value::Float(precip));
+                rec.insert("uv_index".into(), Value::Float(uv));
                 store.insert(&rec);
                 id += 1;
             }
@@ -4935,22 +5558,40 @@ mod tests {
         // Anomaly 1: Moscow day 15 (id=14) → extreme cold −65 °C
         let anomaly_ids: &[(i64, &str, f64, f64, f64, f64, f64, f64)] = &[
             // (id, city, temp, hum, press, wind, precip, uv)
-            (0*366 + 14, "Moscow",    -65.0, 62.0, 1013.0, 16.0,  3.0,  2.0),
-            (1*366 + 179, "Dubai",     36.0,  1.5, 1010.0, 14.0,  0.0,  9.0),
-            (2*366 + 299, "Reykjavik",  3.0, 79.0,  862.0, 24.0, 12.0,  1.5),
-            (3*366 + 89,  "Singapore", 27.0, 84.0, 1009.0,  8.0,  5.0, 22.0),
+            (0 * 366 + 14, "Moscow", -65.0, 62.0, 1013.0, 16.0, 3.0, 2.0),
+            (1 * 366 + 179, "Dubai", 36.0, 1.5, 1010.0, 14.0, 0.0, 9.0),
+            (
+                2 * 366 + 299,
+                "Reykjavik",
+                3.0,
+                79.0,
+                862.0,
+                24.0,
+                12.0,
+                1.5,
+            ),
+            (
+                3 * 366 + 89,
+                "Singapore",
+                27.0,
+                84.0,
+                1009.0,
+                8.0,
+                5.0,
+                22.0,
+            ),
         ];
 
         for &(an_id, city, temp, hum, press, wind, precip, uv) in anomaly_ids {
             let mut r = Record::new();
-            r.insert("id".into(),           Value::Integer(an_id));
-            r.insert("city".into(),          Value::Text(city.into()));
-            r.insert("temp_c".into(),        Value::Float(temp));
-            r.insert("humidity_pct".into(),  Value::Float(hum));
-            r.insert("pressure_hpa".into(),  Value::Float(press));
-            r.insert("wind_kmh".into(),      Value::Float(wind));
-            r.insert("precip_mm".into(),     Value::Float(precip));
-            r.insert("uv_index".into(),      Value::Float(uv));
+            r.insert("id".into(), Value::Integer(an_id));
+            r.insert("city".into(), Value::Text(city.into()));
+            r.insert("temp_c".into(), Value::Float(temp));
+            r.insert("humidity_pct".into(), Value::Float(hum));
+            r.insert("pressure_hpa".into(), Value::Float(press));
+            r.insert("wind_kmh".into(), Value::Float(wind));
+            r.insert("precip_mm".into(), Value::Float(precip));
+            r.insert("uv_index".into(), Value::Float(uv));
             store.insert(&r);
         }
 
@@ -4989,8 +5630,12 @@ mod tests {
         assert!(!anomalies.is_empty());
         for a in &anomalies {
             let expected = 1.0 / (1.0 + a.local_curvature);
-            assert!((a.confidence - expected).abs() < 1e-9,
-                "conf mismatch: {} vs {}", a.confidence, expected);
+            assert!(
+                (a.confidence - expected).abs() < 1e-9,
+                "conf mismatch: {} vs {}",
+                a.confidence,
+                expected
+            );
         }
     }
 
@@ -5003,7 +5648,11 @@ mod tests {
         // Injected only 4 hard anomalies into 7320 records → < 1% anomaly rate expected
         let rate = anomalies.len() as f64 / total as f64;
         assert!(rate < 0.05, "anomaly rate = {rate:.3}, expected < 5%");
-        assert!(anomalies.len() >= 4, "should catch all 4 injected anomalies, got {}", anomalies.len());
+        assert!(
+            anomalies.len() >= 4,
+            "should catch all 4 injected anomalies, got {}",
+            anomalies.len()
+        );
     }
 
     /// AD-1.5: deviation_distance is non-negative.
@@ -5012,8 +5661,11 @@ mod tests {
         let store = make_weather_bundle();
         let anomalies = store.compute_anomalies(2.0, None, 20);
         for a in &anomalies {
-            assert!(a.deviation_distance >= 0.0,
-                "deviation_distance = {}", a.deviation_distance);
+            assert!(
+                a.deviation_distance >= 0.0,
+                "deviation_distance = {}",
+                a.deviation_distance
+            );
         }
     }
 
@@ -5024,7 +5676,10 @@ mod tests {
         let cs = &store.curvature_stats;
         let t2 = cs.threshold(2.0);
         let t3 = cs.threshold(3.0);
-        assert!(t2 < t3, "2σ threshold {t2:.4} should be < 3σ threshold {t3:.4}");
+        assert!(
+            t2 < t3,
+            "2σ threshold {t2:.4} should be < 3σ threshold {t3:.4}"
+        );
     }
 
     /// AD-2.2: Higher sigma → fewer anomalies returned.
@@ -5034,8 +5689,12 @@ mod tests {
         let total = store.len();
         let a2 = store.compute_anomalies(2.0, None, total);
         let a3 = store.compute_anomalies(3.0, None, total);
-        assert!(a2.len() >= a3.len(),
-            "2σ count {} should be >= 3σ count {}", a2.len(), a3.len());
+        assert!(
+            a2.len() >= a3.len(),
+            "2σ count {} should be >= 3σ count {}",
+            a2.len(),
+            a3.len()
+        );
     }
 
     /// AD-2.3: Very high sigma (999) → zero anomalies.
@@ -5043,8 +5702,12 @@ mod tests {
     fn ad_2_3_extreme_sigma_returns_zero() {
         let store = make_weather_bundle();
         let anomalies = store.compute_anomalies(999.0, None, 1000);
-        assert_eq!(anomalies.len(), 0,
-            "999σ should yield 0 anomalies, got {}", anomalies.len());
+        assert_eq!(
+            anomalies.len(),
+            0,
+            "999σ should yield 0 anomalies, got {}",
+            anomalies.len()
+        );
     }
 
     /// AD-2.4: threshold = μ_K + n_sigma × σ_K.
@@ -5054,8 +5717,10 @@ mod tests {
         let cs = &store.curvature_stats;
         let expected = cs.mean() + 2.0 * cs.std_dev();
         let actual = cs.threshold(2.0);
-        assert!((expected - actual).abs() < 1e-9,
-            "threshold formula: expected {expected}, got {actual}");
+        assert!(
+            (expected - actual).abs() < 1e-9,
+            "threshold formula: expected {expected}, got {actual}"
+        );
     }
 
     /// AD-3.1: Contributing field for Moscow anomaly is temp_c.
@@ -5068,10 +5733,16 @@ mod tests {
             a.record.get("city") == Some(&Value::Text("Moscow".into()))
                 && a.record.get("temp_c") == Some(&Value::Float(-65.0))
         });
-        assert!(moscow_anomaly.is_some(), "Moscow cold anomaly not found in top anomalies");
+        assert!(
+            moscow_anomaly.is_some(),
+            "Moscow cold anomaly not found in top anomalies"
+        );
         let a = moscow_anomaly.unwrap();
-        assert!(a.contributing_fields.contains(&"temp_c".to_string()),
-            "contributing_fields should include temp_c, got {:?}", a.contributing_fields);
+        assert!(
+            a.contributing_fields.contains(&"temp_c".to_string()),
+            "contributing_fields should include temp_c, got {:?}",
+            a.contributing_fields
+        );
     }
 
     /// AD-3.2: Reykjavik storm anomaly contributing field includes pressure_hpa.
@@ -5085,15 +5756,21 @@ mod tests {
         });
         assert!(reyk.is_some(), "Reykjavik storm anomaly not found");
         let a = reyk.unwrap();
-        assert!(a.contributing_fields.contains(&"pressure_hpa".to_string()),
-            "contributing_fields should include pressure_hpa, got {:?}", a.contributing_fields);
+        assert!(
+            a.contributing_fields.contains(&"pressure_hpa".to_string()),
+            "contributing_fields should include pressure_hpa, got {:?}",
+            a.contributing_fields
+        );
     }
 
     /// AD-4.1: Pre-filter by city isolates anomalies to that city only.
     #[test]
     fn ad_4_1_prefilter_by_city() {
         let store = make_weather_bundle();
-        let conditions = vec![QueryCondition::Eq("city".into(), Value::Text("Moscow".into()))];
+        let conditions = vec![QueryCondition::Eq(
+            "city".into(),
+            Value::Text("Moscow".into()),
+        )];
         let anomalies = store.compute_anomalies(2.0, Some(&conditions), 50);
         for a in &anomalies {
             assert_eq!(
@@ -5108,12 +5785,18 @@ mod tests {
     #[test]
     fn ad_4_2_prefilter_dubai_finds_humidity_anomaly() {
         let store = make_weather_bundle();
-        let conditions = vec![QueryCondition::Eq("city".into(), Value::Text("Dubai".into()))];
+        let conditions = vec![QueryCondition::Eq(
+            "city".into(),
+            Value::Text("Dubai".into()),
+        )];
         let anomalies = store.compute_anomalies(2.0, Some(&conditions), 20);
-        let dubai_humid = anomalies.iter().find(|a| {
-            a.record.get("humidity_pct") == Some(&Value::Float(1.5))
-        });
-        assert!(dubai_humid.is_some(), "Dubai humidity anomaly not found in filtered results; anomalies: {anomalies:?}");
+        let dubai_humid = anomalies
+            .iter()
+            .find(|a| a.record.get("humidity_pct") == Some(&Value::Float(1.5)));
+        assert!(
+            dubai_humid.is_some(),
+            "Dubai humidity anomaly not found in filtered results; anomalies: {anomalies:?}"
+        );
     }
 
     /// AD-5.1: curvature_stats.mean() is in (0, 1] after bulk insert.
@@ -5121,8 +5804,10 @@ mod tests {
     fn ad_5_1_mean_in_unit_interval() {
         let store = make_weather_bundle();
         let mu = store.curvature_stats.mean();
-        assert!(mu > 0.0 && mu <= 1.0,
-            "global K mean = {mu}, expected ∈ (0, 1]");
+        assert!(
+            mu > 0.0 && mu <= 1.0,
+            "global K mean = {mu}, expected ∈ (0, 1]"
+        );
     }
 
     /// AD-5.2: Results are sorted descending by z-score.
@@ -5131,8 +5816,12 @@ mod tests {
         let store = make_weather_bundle();
         let anomalies = store.compute_anomalies(2.0, None, 50);
         for w in anomalies.windows(2) {
-            assert!(w[0].z_score >= w[1].z_score,
-                "out of order: z[0]={:.3} < z[1]={:.3}", w[0].z_score, w[1].z_score);
+            assert!(
+                w[0].z_score >= w[1].z_score,
+                "out of order: z[0]={:.3} < z[1]={:.3}",
+                w[0].z_score,
+                w[1].z_score
+            );
         }
     }
 
@@ -5141,7 +5830,11 @@ mod tests {
     fn ad_5_3_limit_respected() {
         let store = make_weather_bundle();
         let anomalies = store.compute_anomalies(0.5, None, 10); // low sigma = many anomalies
-        assert!(anomalies.len() <= 10, "limit 10 violated: got {}", anomalies.len());
+        assert!(
+            anomalies.len() <= 10,
+            "limit 10 violated: got {}",
+            anomalies.len()
+        );
     }
 
     /// AD-5.4: Truncated bundle → curvature_stats reset.
@@ -5170,8 +5863,10 @@ mod tests {
         let bp_normal = store.base_point(&key_normal);
         let k_normal = store.record_k_for(bp_normal);
 
-        assert!(k_anomaly > k_normal,
-            "K(anomaly)={k_anomaly:.4} should > K(normal)={k_normal:.4}");
+        assert!(
+            k_anomaly > k_normal,
+            "K(anomaly)={k_anomaly:.4} should > K(normal)={k_normal:.4}"
+        );
     }
 
     /// AD-6.2: All 4 injected anomalies appear in top-50 results at 2σ.
@@ -5180,26 +5875,29 @@ mod tests {
         let store = make_weather_bundle();
         let anomalies = store.compute_anomalies(2.0, None, 100);
 
-        let has_moscow = anomalies.iter().any(|a|
+        let has_moscow = anomalies.iter().any(|a| {
             a.record.get("city") == Some(&Value::Text("Moscow".into()))
                 && a.record.get("temp_c") == Some(&Value::Float(-65.0))
-        );
-        let has_dubai = anomalies.iter().any(|a|
+        });
+        let has_dubai = anomalies.iter().any(|a| {
             a.record.get("city") == Some(&Value::Text("Dubai".into()))
                 && a.record.get("humidity_pct") == Some(&Value::Float(1.5))
-        );
-        let has_reykjavik = anomalies.iter().any(|a|
+        });
+        let has_reykjavik = anomalies.iter().any(|a| {
             a.record.get("city") == Some(&Value::Text("Reykjavik".into()))
                 && a.record.get("pressure_hpa") == Some(&Value::Float(862.0))
-        );
-        let has_singapore = anomalies.iter().any(|a|
+        });
+        let has_singapore = anomalies.iter().any(|a| {
             a.record.get("city") == Some(&Value::Text("Singapore".into()))
                 && a.record.get("uv_index") == Some(&Value::Float(22.0))
-        );
+        });
 
-        assert!(has_moscow,    "Moscow extreme cold anomaly not detected");
-        assert!(has_dubai,     "Dubai extreme dry anomaly not detected");
-        assert!(has_reykjavik, "Reykjavik storm pressure anomaly not detected");
+        assert!(has_moscow, "Moscow extreme cold anomaly not detected");
+        assert!(has_dubai, "Dubai extreme dry anomaly not detected");
+        assert!(
+            has_reykjavik,
+            "Reykjavik storm pressure anomaly not detected"
+        );
         assert!(has_singapore, "Singapore extreme UV anomaly not detected");
     }
 
@@ -5212,8 +5910,12 @@ mod tests {
         let elapsed = start.elapsed();
         // Generous limit for debug builds; release builds are 10-20× faster.
         let limit_ms = if cfg!(debug_assertions) { 2000 } else { 250 };
-        assert!(elapsed.as_millis() < limit_ms,
-            "compute_anomalies took {}ms, expected < {}ms", elapsed.as_millis(), limit_ms);
+        assert!(
+            elapsed.as_millis() < limit_ms,
+            "compute_anomalies took {}ms, expected < {}ms",
+            elapsed.as_millis(),
+            limit_ms
+        );
     }
 
     /// AD-7.2: curvature_stats.mean() / std_dev() are O(1) — no scan needed.
@@ -5227,7 +5929,10 @@ mod tests {
             let _ = store.curvature_stats.threshold(2.0);
         }
         let elapsed = start.elapsed();
-        assert!(elapsed.as_millis() < 5,
-            "10k stats calls took {}ms — should be ~0ms (O(1))", elapsed.as_millis());
+        assert!(
+            elapsed.as_millis() < 5,
+            "10k stats calls took {}ms — should be ~0ms (O(1))",
+            elapsed.as_millis()
+        );
     }
 }

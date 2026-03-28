@@ -10,30 +10,32 @@
 //!   gigi-edge sync                      # One-shot sync to remote
 
 use axum::{
-    Router,
-    routing::{get, post, delete},
-    Json,
-    http::StatusCode,
     extract::{Path, Query, State},
+    http::StatusCode,
     response::IntoResponse,
+    routing::{delete, get, post},
+    Json, Router,
 };
-use tower_http::cors::CorsLayer;
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use tower_http::cors::CorsLayer;
 
-use gigi::edge::EdgeEngine;
-use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
-use gigi::curvature;
-use gigi::spectral;
 use gigi::aggregation;
+use gigi::curvature;
+use gigi::edge::EdgeEngine;
 use gigi::join;
+use gigi::spectral;
+use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 
 // ── CLI ──
 
 #[derive(Parser)]
-#[command(name = "gigi-edge", about = "GIGI Edge — Local-first geometric database")]
+#[command(
+    name = "gigi-edge",
+    about = "GIGI Edge — Local-first geometric database"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -145,7 +147,9 @@ fn value_to_json(v: &Value) -> serde_json::Value {
         Value::Bool(b) => serde_json::json!(b),
         Value::Timestamp(t) => serde_json::json!(t),
         Value::Null => serde_json::Value::Null,
-        Value::Vector(v) => serde_json::Value::Array(v.iter().map(|x| serde_json::json!(x)).collect()),
+        Value::Vector(v) => {
+            serde_json::Value::Array(v.iter().map(|x| serde_json::json!(x)).collect())
+        }
     }
 }
 
@@ -189,7 +193,10 @@ async fn create_bundle(
 
     for (field_name, field_type_str) in &req.schema.fields {
         let ft = str_to_field_type(field_type_str);
-        let default_val = req.schema.defaults.get(field_name)
+        let default_val = req
+            .schema
+            .defaults
+            .get(field_name)
             .map(json_to_value)
             .unwrap_or(Value::Null);
         let fd = FieldDef {
@@ -300,7 +307,11 @@ async fn point_query(
     match engine.get(&name, &key) {
         Ok(Some(record)) => {
             let (k_val, conf) = engine.curvature(&name).unwrap_or((0.0, 1.0));
-            let capacity = if k_val > 0.0 { 1.0 / k_val } else { f64::INFINITY };
+            let capacity = if k_val > 0.0 {
+                1.0 / k_val
+            } else {
+                f64::INFINITY
+            };
 
             Ok(Json(serde_json::json!({
                 "data": record_to_json(&record),
@@ -393,7 +404,11 @@ async fn curvature_report(
     for (field_name, stats) in store.field_stats() {
         let range = stats.range();
         let var = stats.variance();
-        let fk = if range > 0.0 { var / (range * range) } else { 0.0 };
+        let fk = if range > 0.0 {
+            var / (range * range)
+        } else {
+            0.0
+        };
         per_field.push(serde_json::json!({
             "field": field_name,
             "variance": (var * 1000.0).round() / 1000.0,
@@ -471,14 +486,23 @@ async fn consistency_check(
                         let recs_i = store.range_query(field_name, &[values[i].clone()]);
                         let recs_j = store.range_query(field_name, &[values[j].clone()]);
                         // If same base point has different fiber values → cocycle
-                        let map_i: HashMap<_, _> = recs_i.iter().map(|r| {
-                            let key: Vec<_> = store.schema.base_fields.iter()
-                                .map(|f| r.get(&f.name).cloned().unwrap_or(Value::Null))
-                                .collect();
-                            (key, r)
-                        }).collect();
+                        let map_i: HashMap<_, _> = recs_i
+                            .iter()
+                            .map(|r| {
+                                let key: Vec<_> = store
+                                    .schema
+                                    .base_fields
+                                    .iter()
+                                    .map(|f| r.get(&f.name).cloned().unwrap_or(Value::Null))
+                                    .collect();
+                                (key, r)
+                            })
+                            .collect();
                         for r_j in &recs_j {
-                            let key: Vec<_> = store.schema.base_fields.iter()
+                            let key: Vec<_> = store
+                                .schema
+                                .base_fields
+                                .iter()
                                 .map(|f| r_j.get(&f.name).cloned().unwrap_or(Value::Null))
                                 .collect();
                             if let Some(r_i) = map_i.get(&key) {
@@ -566,7 +590,9 @@ async fn pullback_join(
         None => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(serde_json::json!({"error": format!("Bundle '{}' not found", req.right_bundle)})),
+                Json(
+                    serde_json::json!({"error": format!("Bundle '{}' not found", req.right_bundle)}),
+                ),
             ));
         }
     };
@@ -613,9 +639,7 @@ async fn sync_handler(
     }
 }
 
-async fn status_handler(
-    State(state): State<Arc<EdgeState>>,
-) -> Json<serde_json::Value> {
+async fn status_handler(State(state): State<Arc<EdgeState>>) -> Json<serde_json::Value> {
     let engine = state.engine.read().unwrap();
 
     let bundles: Vec<serde_json::Value> = engine
@@ -670,13 +694,22 @@ async fn main() {
                 Ok(report) => {
                     println!("  Pushed: {} operations", report.pushed);
                     println!("  Pulled: {} records", report.pulled);
-                    println!("  H1: {} ({})", report.h1,
-                        if report.h1 == 0 { "clean merge" } else { "CONFLICTS" });
+                    println!(
+                        "  H1: {} ({})",
+                        report.h1,
+                        if report.h1 == 0 {
+                            "clean merge"
+                        } else {
+                            "CONFLICTS"
+                        }
+                    );
                     if !report.conflicts.is_empty() {
                         println!("  Conflicts:");
                         for c in &report.conflicts {
-                            println!("    - {}.{}: local={}, remote={}",
-                                c.bundle, c.field, c.local_value, c.remote_value);
+                            println!(
+                                "    - {}.{}: local={}, remote={}",
+                                c.bundle, c.field, c.local_value, c.remote_value
+                            );
                         }
                     }
                 }
@@ -695,11 +728,14 @@ async fn main() {
             println!("  Bundles:      {}", engine.bundle_names().len());
             println!("  Total records: {}", engine.total_records());
             println!("  Pending sync: {} ops", engine.pending_ops());
-            println!("  Last sync:    {}", if engine.last_sync_time() == 0 {
-                "never".to_string()
-            } else {
-                format!("{} ms", engine.last_sync_time())
-            });
+            println!(
+                "  Last sync:    {}",
+                if engine.last_sync_time() == 0 {
+                    "never".to_string()
+                } else {
+                    format!("{} ms", engine.last_sync_time())
+                }
+            );
 
             for name in engine.bundle_names() {
                 if let Some(store) = engine.bundle(name) {
@@ -707,8 +743,10 @@ async fn main() {
                     println!("\n  Bundle: {}", name);
                     println!("    Records:    {}", store.len());
                     println!("    Curvature:  K={:.4}, confidence={:.4}", k, conf);
-                    println!("    Fields:     {}",
-                        store.schema.all_field_names().join(", "));
+                    println!(
+                        "    Fields:     {}",
+                        store.schema.all_field_names().join(", ")
+                    );
                 }
             }
             return;
@@ -742,29 +780,26 @@ async fn main() {
         .route("/v1/health", get(health))
         .route("/v1/status", get(status_handler))
         .route("/v1/sync", post(sync_handler))
-
         // Bundle CRUD
         .route("/v1/bundles", post(create_bundle))
         .route("/v1/bundles/{name}", delete(drop_bundle))
-
         // Data operations (same API as GIGI Stream)
         .route("/v1/bundles/{name}/insert", post(insert_records))
         .route("/v1/bundles/{name}/get", get(point_query))
         .route("/v1/bundles/{name}/range", get(range_query))
         .route("/v1/bundles/{name}/join", post(pullback_join))
         .route("/v1/bundles/{name}/aggregate", post(aggregate))
-
         // Geometric analysis
         .route("/v1/bundles/{name}/curvature", get(curvature_report))
         .route("/v1/bundles/{name}/spectral", get(spectral_report))
         .route("/v1/bundles/{name}/consistency", get(consistency_check))
-
         .layer(CorsLayer::permissive())
         .with_state(state);
 
     let addr = format!("0.0.0.0:{}", cli.port);
 
-    println!(r#"
+    println!(
+        r#"
 ╔═══════════════════════════════════════════════════╗
 ║           GIGI Edge — Local-First Engine          ║
 ╠═══════════════════════════════════════════════════╣
@@ -789,9 +824,11 @@ async fn main() {
 ║    GET    /v1/health             Health check      ║
 ║                                                   ║
 ╚═══════════════════════════════════════════════════╝
-"#, cli.port,
+"#,
+        cli.port,
         data_dir.display(),
-        cli.remote.as_deref().unwrap_or("(not configured)"));
+        cli.remote.as_deref().unwrap_or("(not configured)")
+    );
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();

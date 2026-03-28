@@ -6,7 +6,7 @@
 //! spectral gap, anomaly detection, prediction) work on encrypted data at native
 //! speed.  Only SELECT (human-readable output) requires the inverse transform.
 
-use crate::types::{Value, FieldDef, FieldType};
+use crate::types::{FieldDef, FieldType, Value};
 
 /// Per-field affine transform: v_enc = scale * v + offset
 #[derive(Debug, Clone)]
@@ -68,7 +68,11 @@ impl GaugeKey {
     }
 
     /// Derive transform for a single field from seed + field name.
-    fn derive_field_transform(seed: &[u8; 32], field_name: &str, field_type: &FieldType) -> FieldTransform {
+    fn derive_field_transform(
+        seed: &[u8; 32],
+        field_name: &str,
+        field_type: &FieldType,
+    ) -> FieldTransform {
         match field_type {
             FieldType::Numeric | FieldType::Timestamp => {
                 // Hash seed || field_name to get deterministic (scale, offset)
@@ -97,7 +101,10 @@ impl GaugeKey {
             // encryption. Only numeric fields receive affine gauge transforms.
             // If sensitive data exists in categorical fields, use application-level
             // encryption before inserting.
-            _ => FieldTransform { scale: 1.0, offset: 0.0 },
+            _ => FieldTransform {
+                scale: 1.0,
+                offset: 0.0,
+            },
         }
     }
 
@@ -157,8 +164,7 @@ impl GaugeKey {
     /// Generate a random 32-byte seed using OS CSPRNG.
     pub fn random_seed() -> [u8; 32] {
         let mut seed = [0u8; 32];
-        getrandom::getrandom(&mut seed)
-            .expect("Failed to generate random seed from OS CSPRNG");
+        getrandom::getrandom(&mut seed).expect("Failed to generate random seed from OS CSPRNG");
         seed
     }
 }
@@ -167,7 +173,10 @@ impl GaugeKey {
 pub fn seed_from_hex(hex: &str) -> Result<[u8; 32], String> {
     let hex = hex.trim();
     if hex.len() != 64 {
-        return Err(format!("Encryption seed must be 64 hex characters (32 bytes), got {}", hex.len()));
+        return Err(format!(
+            "Encryption seed must be 64 hex characters (32 bytes), got {}",
+            hex.len()
+        ));
     }
     let mut seed = [0u8; 32];
     for i in 0..32 {
@@ -184,7 +193,9 @@ mod tests {
 
     fn test_seed() -> [u8; 32] {
         let mut s = [0u8; 32];
-        for i in 0..32 { s[i] = (i as u8).wrapping_mul(7).wrapping_add(13); }
+        for i in 0..32 {
+            s[i] = (i as u8).wrapping_mul(7).wrapping_add(13);
+        }
         s
     }
 
@@ -248,7 +259,11 @@ mod tests {
         let fields = numeric_fields();
         let key = GaugeKey::derive(&seed, &fields);
 
-        let plain = vec![Value::Float(22.5), Value::Float(65.0), Value::Float(1013.25)];
+        let plain = vec![
+            Value::Float(22.5),
+            Value::Float(65.0),
+            Value::Float(1013.25),
+        ];
         let encrypted = key.encrypt_fiber(&plain);
 
         for (p, e) in plain.iter().zip(encrypted.iter()) {
@@ -294,7 +309,10 @@ mod tests {
 
     #[test]
     fn test_integer_encryption() {
-        let t = FieldTransform { scale: 3.0, offset: 100.0 };
+        let t = FieldTransform {
+            scale: 3.0,
+            offset: 100.0,
+        };
         let v = Value::Integer(42);
         let enc = t.encrypt_value(&v);
         match enc {
@@ -317,7 +335,11 @@ mod tests {
 
         // If we encrypt -25.0 and compare to an encrypted fiber value of -25.0,
         // they should match
-        let fiber = vec![Value::Float(-25.0), Value::Float(50.0), Value::Float(1000.0)];
+        let fiber = vec![
+            Value::Float(-25.0),
+            Value::Float(50.0),
+            Value::Float(1000.0),
+        ];
         let enc_fiber = key.encrypt_fiber(&fiber);
         assert_eq!(enc_lit, enc_fiber[0]);
     }

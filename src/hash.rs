@@ -117,7 +117,11 @@ fn encode_value(val: &Value) -> Vec<u8> {
             let mut bytes = Vec::with_capacity(v.len() * 8);
             for &x in v {
                 let mut bits = x.to_bits();
-                if x >= 0.0 { bits ^= 1u64 << 63; } else { bits = !bits; }
+                if x >= 0.0 {
+                    bits ^= 1u64 << 63;
+                } else {
+                    bits = !bits;
+                }
                 bytes.extend_from_slice(&bits.to_be_bytes());
             }
             bytes

@@ -15,11 +15,11 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
+use gigi::aggregation;
 use gigi::bundle::BundleStore;
 use gigi::curvature;
 use gigi::spectral;
 use gigi::types::*;
-use gigi::aggregation;
 
 // ── City definitions ──
 
@@ -32,29 +32,129 @@ struct City {
 
 const CITIES: &[City] = &[
     // North America
-    City { name: "New_York",    lat: 40.71,  lon: -74.01,  region: "NA"  },
-    City { name: "Los_Angeles", lat: 34.05,  lon: -118.24, region: "NA"  },
-    City { name: "Chicago",     lat: 41.88,  lon: -87.63,  region: "NA"  },
-    City { name: "Houston",     lat: 29.76,  lon: -95.37,  region: "NA"  },
-    City { name: "Toronto",     lat: 43.65,  lon: -79.38,  region: "NA"  },
+    City {
+        name: "New_York",
+        lat: 40.71,
+        lon: -74.01,
+        region: "NA",
+    },
+    City {
+        name: "Los_Angeles",
+        lat: 34.05,
+        lon: -118.24,
+        region: "NA",
+    },
+    City {
+        name: "Chicago",
+        lat: 41.88,
+        lon: -87.63,
+        region: "NA",
+    },
+    City {
+        name: "Houston",
+        lat: 29.76,
+        lon: -95.37,
+        region: "NA",
+    },
+    City {
+        name: "Toronto",
+        lat: 43.65,
+        lon: -79.38,
+        region: "NA",
+    },
     // Europe
-    City { name: "London",      lat: 51.51,  lon: -0.13,   region: "EU"  },
-    City { name: "Paris",       lat: 48.86,  lon: 2.35,    region: "EU"  },
-    City { name: "Berlin",      lat: 52.52,  lon: 13.41,   region: "EU"  },
-    City { name: "Moscow",      lat: 55.76,  lon: 37.62,   region: "EU"  },
-    City { name: "Rome",        lat: 41.90,  lon: 12.50,   region: "EU"  },
+    City {
+        name: "London",
+        lat: 51.51,
+        lon: -0.13,
+        region: "EU",
+    },
+    City {
+        name: "Paris",
+        lat: 48.86,
+        lon: 2.35,
+        region: "EU",
+    },
+    City {
+        name: "Berlin",
+        lat: 52.52,
+        lon: 13.41,
+        region: "EU",
+    },
+    City {
+        name: "Moscow",
+        lat: 55.76,
+        lon: 37.62,
+        region: "EU",
+    },
+    City {
+        name: "Rome",
+        lat: 41.90,
+        lon: 12.50,
+        region: "EU",
+    },
     // Asia
-    City { name: "Tokyo",       lat: 35.68,  lon: 139.69,  region: "AS"  },
-    City { name: "Beijing",     lat: 39.90,  lon: 116.40,  region: "AS"  },
-    City { name: "Mumbai",      lat: 19.08,  lon: 72.88,   region: "AS"  },
-    City { name: "Singapore",   lat: 1.35,   lon: 103.82,  region: "AS"  },
-    City { name: "Dubai",       lat: 25.20,  lon: 55.27,   region: "AS"  },
+    City {
+        name: "Tokyo",
+        lat: 35.68,
+        lon: 139.69,
+        region: "AS",
+    },
+    City {
+        name: "Beijing",
+        lat: 39.90,
+        lon: 116.40,
+        region: "AS",
+    },
+    City {
+        name: "Mumbai",
+        lat: 19.08,
+        lon: 72.88,
+        region: "AS",
+    },
+    City {
+        name: "Singapore",
+        lat: 1.35,
+        lon: 103.82,
+        region: "AS",
+    },
+    City {
+        name: "Dubai",
+        lat: 25.20,
+        lon: 55.27,
+        region: "AS",
+    },
     // Southern hemisphere
-    City { name: "Sydney",      lat: -33.87, lon: 151.21,  region: "SH"  },
-    City { name: "Sao_Paulo",   lat: -23.55, lon: -46.63,  region: "SH"  },
-    City { name: "Cape_Town",   lat: -33.93, lon: 18.42,   region: "SH"  },
-    City { name: "Buenos_Aires",lat: -34.60, lon: -58.38,  region: "SH"  },
-    City { name: "Auckland",    lat: -36.85, lon: 174.76,  region: "SH"  },
+    City {
+        name: "Sydney",
+        lat: -33.87,
+        lon: 151.21,
+        region: "SH",
+    },
+    City {
+        name: "Sao_Paulo",
+        lat: -23.55,
+        lon: -46.63,
+        region: "SH",
+    },
+    City {
+        name: "Cape_Town",
+        lat: -33.93,
+        lon: 18.42,
+        region: "SH",
+    },
+    City {
+        name: "Buenos_Aires",
+        lat: -34.60,
+        lon: -58.38,
+        region: "SH",
+    },
+    City {
+        name: "Auckland",
+        lat: -36.85,
+        lon: 174.76,
+        region: "SH",
+    },
 ];
 
 // ── NASA POWER API ──
@@ -112,7 +212,9 @@ fn fetch_city_data(
         .ok_or_else(|| format!("Missing parameter data for {}", city.name))?;
 
     // Collect all dates
-    let t2m = params.get("T2M").and_then(|v| v.as_object())
+    let t2m = params
+        .get("T2M")
+        .and_then(|v| v.as_object())
         .ok_or_else(|| format!("Missing T2M for {}", city.name))?;
 
     let mut records = Vec::new();
@@ -121,7 +223,15 @@ fn fetch_city_data(
         rec.insert("date".to_string(), date_str.parse::<f64>().unwrap_or(0.0));
 
         // Extract each parameter for this date
-        for param_name in ["T2M", "T2M_MAX", "T2M_MIN", "RH2M", "PS", "WS2M", "ALLSKY_SFC_SW_DWN"] {
+        for param_name in [
+            "T2M",
+            "T2M_MAX",
+            "T2M_MIN",
+            "RH2M",
+            "PS",
+            "WS2M",
+            "ALLSKY_SFC_SW_DWN",
+        ] {
             let val = params
                 .get(param_name)
                 .and_then(|p| p.get(date_str))
@@ -149,13 +259,13 @@ fn build_atmosphere_bundle() -> BundleSchema {
         .fiber(FieldDef::categorical("city"))
         .fiber(FieldDef::categorical("region"))
         .fiber(FieldDef::numeric("date"))
-        .fiber(FieldDef::numeric("temp").with_range(80.0))       // -40 to +50 °C
+        .fiber(FieldDef::numeric("temp").with_range(80.0)) // -40 to +50 °C
         .fiber(FieldDef::numeric("temp_max").with_range(80.0))
         .fiber(FieldDef::numeric("temp_min").with_range(80.0))
-        .fiber(FieldDef::numeric("humidity").with_range(100.0))   // 0-100%
-        .fiber(FieldDef::numeric("pressure").with_range(20.0))    // ~90-110 kPa
-        .fiber(FieldDef::numeric("wind").with_range(30.0))        // 0-30 m/s
-        .fiber(FieldDef::numeric("solar").with_range(12.0))       // 0-12 kWh/m²/day
+        .fiber(FieldDef::numeric("humidity").with_range(100.0)) // 0-100%
+        .fiber(FieldDef::numeric("pressure").with_range(20.0)) // ~90-110 kPa
+        .fiber(FieldDef::numeric("wind").with_range(30.0)) // 0-30 m/s
+        .fiber(FieldDef::numeric("solar").with_range(12.0)) // 0-12 kWh/m²/day
         .index("city")
         .index("region")
 }
@@ -208,10 +318,12 @@ fn analyze_curvature_by_city(store: &BundleStore) {
         let records = &city_data[city_name];
 
         // Compute variance / range² for temperature
-        let temps: Vec<f64> = records.iter()
+        let temps: Vec<f64> = records
+            .iter()
             .filter_map(|r| r.get("temp").and_then(|v| v.as_f64()))
             .collect();
-        let winds: Vec<f64> = records.iter()
+        let winds: Vec<f64> = records
+            .iter()
             .filter_map(|r| r.get("wind").and_then(|v| v.as_f64()))
             .collect();
 
@@ -219,10 +331,18 @@ fn analyze_curvature_by_city(store: &BundleStore) {
         let k_wind = field_curvature(&winds, 30.0);
         let conf = 1.0 / (1.0 + k_temp);
 
-        let flag = if k_temp > 0.05 { "HIGH" } else if k_temp > 0.02 { " MED" } else { " LOW" };
+        let flag = if k_temp > 0.05 {
+            "HIGH"
+        } else if k_temp > 0.02 {
+            " MED"
+        } else {
+            " LOW"
+        };
 
-        println!("║  {:<16} │ {:>10.6} │ {:>10.6} │ {:>10.4} │ {:<4} ║",
-            city_name, k_temp, k_wind, conf, flag);
+        println!(
+            "║  {:<16} │ {:>10.6} │ {:>10.6} │ {:>10.4} │ {:<4} ║",
+            city_name, k_temp, k_wind, conf, flag
+        );
     }
     println!("╚══════════════════════════════════════════════════════════════════╝");
     println!("  HIGH curvature = high variability = weather anomalies likely");
@@ -247,10 +367,22 @@ fn analyze_global_curvature(store: &BundleStore) {
     let conf = curvature::confidence(k);
     let cap = curvature::capacity(0.1, k);
 
-    println!("║  Records:           {:>8}                                    ║", store.len());
-    println!("║  Scalar Curvature:  {:>10.6}                                 ║", k);
-    println!("║  Confidence:        {:>10.6}                                 ║", conf);
-    println!("║  Capacity (τ=0.1):  {:>10.4}                                 ║", cap);
+    println!(
+        "║  Records:           {:>8}                                    ║",
+        store.len()
+    );
+    println!(
+        "║  Scalar Curvature:  {:>10.6}                                 ║",
+        k
+    );
+    println!(
+        "║  Confidence:        {:>10.6}                                 ║",
+        conf
+    );
+    println!(
+        "║  Capacity (τ=0.1):  {:>10.4}                                 ║",
+        cap
+    );
     println!("║                                                                ║");
 
     // Partition function at different temperatures
@@ -259,7 +391,10 @@ fn analyze_global_curvature(store: &BundleStore) {
         // Sample a base point
         if let Some((bp, _)) = store.sections().next() {
             let z = curvature::partition_function(store, bp, tau);
-            println!("║    τ = {:>6.3}  →  Z = {:>12.4}                              ║", tau, z);
+            println!(
+                "║    τ = {:>6.3}  →  Z = {:>12.4}                              ║",
+                tau, z
+            );
         }
     }
     println!("╚══════════════════════════════════════════════════════════════════╝");
@@ -273,21 +408,50 @@ fn analyze_spectral(store: &BundleStore) {
     let t0 = Instant::now();
     let lambda1 = spectral::spectral_gap(store);
     // Skip expensive diameter computation when disconnected (λ₁ = 0)
-    let diam = if lambda1 < f64::EPSILON { 1 } else { spectral::graph_diameter(store) };
-    let c_sp = if lambda1 < f64::EPSILON { 0.0 } else { spectral::spectral_capacity(store) };
+    let diam = if lambda1 < f64::EPSILON {
+        1
+    } else {
+        spectral::graph_diameter(store)
+    };
+    let c_sp = if lambda1 < f64::EPSILON {
+        0.0
+    } else {
+        spectral::spectral_capacity(store)
+    };
     let elapsed = t0.elapsed();
 
-    println!("║  Spectral gap λ₁:     {:>10.6}                               ║", lambda1);
-    println!("║  Graph diameter D:    {:>10}                               ║", diam);
-    println!("║  Spectral capacity:   {:>10.4}                               ║", c_sp);
-    println!("║  Mixing time O(1/λ₁): {:>10.2}                               ║",
-        if lambda1 > 1e-10 { 1.0 / lambda1 } else { f64::INFINITY });
-    println!("║  Computed in:         {:>10.2?}                            ║", elapsed);
+    println!(
+        "║  Spectral gap λ₁:     {:>10.6}                               ║",
+        lambda1
+    );
+    println!(
+        "║  Graph diameter D:    {:>10}                               ║",
+        diam
+    );
+    println!(
+        "║  Spectral capacity:   {:>10.4}                               ║",
+        c_sp
+    );
+    println!(
+        "║  Mixing time O(1/λ₁): {:>10.2}                               ║",
+        if lambda1 > 1e-10 {
+            1.0 / lambda1
+        } else {
+            f64::INFINITY
+        }
+    );
+    println!(
+        "║  Computed in:         {:>10.2?}                            ║",
+        elapsed
+    );
     println!("║                                                                ║");
 
     if lambda1 > 0.5 {
         println!("║  ✓ Large spectral gap → well-connected index graph            ║");
-        println!("║    All cities reachable within {} hops via shared fields      ║", diam);
+        println!(
+            "║    All cities reachable within {} hops via shared fields      ║",
+            diam
+        );
     } else if lambda1 > 0.01 {
         println!("║  ◐ Moderate spectral gap → partial connectivity              ║");
         println!("║    Some geographic clusters weakly linked                     ║");
@@ -310,9 +474,18 @@ fn analyze_rg_flow(store: &BundleStore) {
 
     for scale in 1..=max_scale {
         let (groups, entropy) = spectral::coarse_grain(store, scale);
-        let monotone = if entropy <= prev_entropy + 1e-10 { "✓ monotone" } else { "✗ VIOLATION" };
-        println!("║  ℓ = {} │ {:>6} │ {:>10.6} │ {}                   ║",
-            scale, groups.len(), entropy, monotone);
+        let monotone = if entropy <= prev_entropy + 1e-10 {
+            "✓ monotone"
+        } else {
+            "✗ VIOLATION"
+        };
+        println!(
+            "║  ℓ = {} │ {:>6} │ {:>10.6} │ {}                   ║",
+            scale,
+            groups.len(),
+            entropy,
+            monotone
+        );
         prev_entropy = entropy;
     }
     println!("╠══════════════════════════════════════════════════════════════════╣");
@@ -335,10 +508,18 @@ fn analyze_regions(store: &BundleStore) {
     for rec in store.records() {
         if let Some(Value::Text(region)) = rec.get("region") {
             let entry = region_data.entry(region.clone()).or_default();
-            if let Some(v) = rec.get("temp").and_then(|v| v.as_f64()) { entry.0.push(v); }
-            if let Some(v) = rec.get("wind").and_then(|v| v.as_f64()) { entry.1.push(v); }
-            if let Some(v) = rec.get("humidity").and_then(|v| v.as_f64()) { entry.2.push(v); }
-            if let Some(v) = rec.get("solar").and_then(|v| v.as_f64()) { entry.3.push(v); }
+            if let Some(v) = rec.get("temp").and_then(|v| v.as_f64()) {
+                entry.0.push(v);
+            }
+            if let Some(v) = rec.get("wind").and_then(|v| v.as_f64()) {
+                entry.1.push(v);
+            }
+            if let Some(v) = rec.get("humidity").and_then(|v| v.as_f64()) {
+                entry.2.push(v);
+            }
+            if let Some(v) = rec.get("solar").and_then(|v| v.as_f64()) {
+                entry.3.push(v);
+            }
         }
     }
 
@@ -348,10 +529,23 @@ fn analyze_regions(store: &BundleStore) {
     for region in &regions {
         let (temps, winds, humids, solars) = &region_data[region];
         let n = temps.len();
-        let avg = |v: &[f64]| if v.is_empty() { 0.0 } else { v.iter().sum::<f64>() / v.len() as f64 };
+        let avg = |v: &[f64]| {
+            if v.is_empty() {
+                0.0
+            } else {
+                v.iter().sum::<f64>() / v.len() as f64
+            }
+        };
 
-        println!("║  {:<7} │ {:>7} │ {:>8.2}°C │ {:>8.2}m/s│ {:>8.1}% │ {:>5.2}kW ║",
-            region, n, avg(temps), avg(winds), avg(humids), avg(solars));
+        println!(
+            "║  {:<7} │ {:>7} │ {:>8.2}°C │ {:>8.2}m/s│ {:>8.1}% │ {:>5.2}kW ║",
+            region,
+            n,
+            avg(temps),
+            avg(winds),
+            avg(humids),
+            avg(solars)
+        );
     }
     println!("╚══════════════════════════════════════════════════════════════════╝");
 }
@@ -368,13 +562,27 @@ fn analyze_extremes(store: &BundleStore) {
     let mut all_temps: Vec<f64> = Vec::new();
     let mut all_winds: Vec<f64> = Vec::new();
     for rec in store.records() {
-        if let Some(t) = rec.get("temp").and_then(|v| v.as_f64()) { all_temps.push(t); }
-        if let Some(w) = rec.get("wind").and_then(|v| v.as_f64()) { all_winds.push(w); }
+        if let Some(t) = rec.get("temp").and_then(|v| v.as_f64()) {
+            all_temps.push(t);
+        }
+        if let Some(w) = rec.get("wind").and_then(|v| v.as_f64()) {
+            all_winds.push(w);
+        }
     }
     let temp_mean = all_temps.iter().sum::<f64>() / all_temps.len() as f64;
-    let temp_std = (all_temps.iter().map(|x| (x - temp_mean).powi(2)).sum::<f64>() / all_temps.len() as f64).sqrt();
+    let temp_std = (all_temps
+        .iter()
+        .map(|x| (x - temp_mean).powi(2))
+        .sum::<f64>()
+        / all_temps.len() as f64)
+        .sqrt();
     let wind_mean = all_winds.iter().sum::<f64>() / all_winds.len() as f64;
-    let wind_std = (all_winds.iter().map(|x| (x - wind_mean).powi(2)).sum::<f64>() / all_winds.len() as f64).sqrt();
+    let wind_std = (all_winds
+        .iter()
+        .map(|x| (x - wind_mean).powi(2))
+        .sum::<f64>()
+        / all_winds.len() as f64)
+        .sqrt();
 
     for rec in store.records() {
         let city = rec.get("city").map(|v| v.to_string()).unwrap_or_default();
@@ -396,9 +604,17 @@ fn analyze_extremes(store: &BundleStore) {
     println!("║  City            │   Date     │  Temp(°C) │ Wind(m/s)│ Z-score ║");
     println!("╟──────────────────┼────────────┼───────────┼──────────┼─────────╢");
     for (city, date, temp, wind, z) in top {
-        let flag = if *z > 4.0 { "!!!" } else if *z > 3.0 { " !!" } else { "  !" };
-        println!("║  {:<16} │ {:>10.0} │ {:>8.1}  │ {:>7.1}  │ {:>5.2} {} ║",
-            city, date, temp, wind, z, flag);
+        let flag = if *z > 4.0 {
+            "!!!"
+        } else if *z > 3.0 {
+            " !!"
+        } else {
+            "  !"
+        };
+        println!(
+            "║  {:<16} │ {:>10.0} │ {:>8.1}  │ {:>7.1}  │ {:>5.2} {} ║",
+            city, date, temp, wind, z, flag
+        );
     }
     println!("╠══════════════════════════════════════════════════════════════════╣");
     println!("║  Z > 3.0 = extreme event (> 3σ from global mean)              ║");
@@ -454,10 +670,22 @@ fn timing_report(store: &BundleStore) {
     }
     let ins_ns = t0.elapsed().as_nanos() as f64 / insert_iters as f64;
 
-    println!("║  Dataset:      {:>8} records × 11 fields                    ║", n);
-    println!("║  Point query:  {:>8.0} ns   (O(1) — constant)                ║", pq_ns);
-    println!("║  Range query:  {:>8.0} ns   (O(|result|))                     ║", rq_ns);
-    println!("║  Insert:       {:>8.0} ns   (O(1) amortized)                  ║", ins_ns);
+    println!(
+        "║  Dataset:      {:>8} records × 11 fields                    ║",
+        n
+    );
+    println!(
+        "║  Point query:  {:>8.0} ns   (O(1) — constant)                ║",
+        pq_ns
+    );
+    println!(
+        "║  Range query:  {:>8.0} ns   (O(|result|))                     ║",
+        rq_ns
+    );
+    println!(
+        "║  Insert:       {:>8.0} ns   (O(1) amortized)                  ║",
+        ins_ns
+    );
     println!("╚══════════════════════════════════════════════════════════════════╝");
 }
 
@@ -465,13 +693,23 @@ fn timing_report(store: &BundleStore) {
 
 fn pearson_correlation(x: &[f64], y: &[f64]) -> f64 {
     let n = x.len() as f64;
-    if n < 2.0 { return 0.0; }
+    if n < 2.0 {
+        return 0.0;
+    }
     let mx = x.iter().sum::<f64>() / n;
     let my = y.iter().sum::<f64>() / n;
-    let cov: f64 = x.iter().zip(y.iter()).map(|(a, b)| (a - mx) * (b - my)).sum();
+    let cov: f64 = x
+        .iter()
+        .zip(y.iter())
+        .map(|(a, b)| (a - mx) * (b - my))
+        .sum();
     let sx = x.iter().map(|a| (a - mx).powi(2)).sum::<f64>().sqrt();
     let sy = y.iter().map(|a| (a - my).powi(2)).sum::<f64>().sqrt();
-    if sx < 1e-12 || sy < 1e-12 { 0.0 } else { cov / (sx * sy) }
+    if sx < 1e-12 || sy < 1e-12 {
+        0.0
+    } else {
+        cov / (sx * sy)
+    }
 }
 
 fn analyze_curvature_predicts_extremes(store: &BundleStore) {
@@ -493,15 +731,21 @@ fn analyze_curvature_predicts_extremes(store: &BundleStore) {
     let mut all_temps = Vec::new();
     let mut all_winds = Vec::new();
     for rec in store.records() {
-        if let Some(t) = rec.get("temp").and_then(|v| v.as_f64()) { all_temps.push(t); }
-        if let Some(w) = rec.get("wind").and_then(|v| v.as_f64()) { all_winds.push(w); }
+        if let Some(t) = rec.get("temp").and_then(|v| v.as_f64()) {
+            all_temps.push(t);
+        }
+        if let Some(w) = rec.get("wind").and_then(|v| v.as_f64()) {
+            all_winds.push(w);
+        }
     }
     let t_mean = all_temps.iter().sum::<f64>() / all_temps.len() as f64;
     let t_std = (all_temps.iter().map(|x| (x - t_mean).powi(2)).sum::<f64>()
-        / all_temps.len() as f64).sqrt();
+        / all_temps.len() as f64)
+        .sqrt();
     let w_mean = all_winds.iter().sum::<f64>() / all_winds.len() as f64;
     let w_std = (all_winds.iter().map(|x| (x - w_mean).powi(2)).sum::<f64>()
-        / all_winds.len() as f64).sqrt();
+        / all_winds.len() as f64)
+        .sqrt();
 
     // Find top 15 extreme events and count per city
     let mut events: Vec<(String, f64)> = Vec::new();
@@ -509,8 +753,7 @@ fn analyze_curvature_predicts_extremes(store: &BundleStore) {
         if let Some(Value::Text(city)) = rec.get("city") {
             let temp = rec.get("temp").and_then(|v| v.as_f64()).unwrap_or(0.0);
             let wind = rec.get("wind").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let z = ((temp - t_mean).abs() / t_std)
-                .max((wind - w_mean).abs() / w_std);
+            let z = ((temp - t_mean).abs() / t_std).max((wind - w_mean).abs() / w_std);
             if z > 2.5 {
                 events.push((city.clone(), z));
             }
@@ -524,19 +767,26 @@ fn analyze_curvature_predicts_extremes(store: &BundleStore) {
     for (city, z) in &top15 {
         *top15_count.entry(city.clone()).or_insert(0) += 1;
         let e = top15_peak.entry(city.clone()).or_insert(0.0);
-        if *z > *e { *e = *z; }
+        if *z > *e {
+            *e = *z;
+        }
     }
 
     // Sort cities by K(temp) descending
-    let mut ranked: Vec<(String, f64)> = city_temps.iter()
+    let mut ranked: Vec<(String, f64)> = city_temps
+        .iter()
         .map(|(city, temps)| (city.clone(), field_curvature(temps, 80.0)))
         .collect();
     ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
     for (city, k) in &ranked {
-        let flag = if *k > 0.05 { "HIGH" }
-            else if *k > 0.02 { " MED" }
-            else { " LOW" };
+        let flag = if *k > 0.05 {
+            "HIGH"
+        } else if *k > 0.02 {
+            " MED"
+        } else {
+            " LOW"
+        };
         let count = top15_count.get(city).copied().unwrap_or(0);
         let peak = top15_peak.get(city).copied().unwrap_or(0.0);
         let detail = if count > 0 {
@@ -544,25 +794,34 @@ fn analyze_curvature_predicts_extremes(store: &BundleStore) {
         } else {
             "0 extremes".to_string()
         };
-        println!("║{:<64}║",
-            format!("  {:<14} K={:.4}  {} → {}", city, k, flag, detail));
+        println!(
+            "║{:<64}║",
+            format!("  {:<14} K={:.4}  {} → {}", city, k, flag, detail)
+        );
     }
 
     let k_vals: Vec<f64> = ranked.iter().map(|r| r.1).collect();
-    let ext_vals: Vec<f64> = ranked.iter()
-        .map(|r| top15_count.get(&r.0).copied().unwrap_or(0) as f64).collect();
+    let ext_vals: Vec<f64> = ranked
+        .iter()
+        .map(|r| top15_count.get(&r.0).copied().unwrap_or(0) as f64)
+        .collect();
     let corr = pearson_correlation(&k_vals, &ext_vals);
 
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║{:<64}║",
-        format!("  Pearson r(K, extremes) = {:.4}", corr));
+    println!(
+        "║{:<64}║",
+        format!("  Pearson r(K, extremes) = {:.4}", corr)
+    );
     println!("║{:<64}║", "");
-    println!("║{:<64}║",
-        "  High curvature = high variability = more extreme events.");
-    println!("║{:<64}║",
-        "  The geometry knew where to look BEFORE scanning records.");
-    println!("║{:<64}║",
-        "  No other database does this.");
+    println!(
+        "║{:<64}║",
+        "  High curvature = high variability = more extreme events."
+    );
+    println!(
+        "║{:<64}║",
+        "  The geometry knew where to look BEFORE scanning records."
+    );
+    println!("║{:<64}║", "  No other database does this.");
     println!("╚══════════════════════════════════════════════════════════════════╝");
 }
 
@@ -570,9 +829,18 @@ fn analyze_prediction(store: &BundleStore) {
     println!("\n╔══════════════════════════════════════════════════════════════════╗");
     println!("║   CURVATURE PREDICTION — Train on Past, Predict Future         ║");
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║{:<64}║", "  Trained on: Jan\u{2013}Sep 2024 (9 months per city)");
-    println!("║{:<64}║", "  Testing on: Oct\u{2013}Dec 2024 (unseen future data)");
-    println!("║{:<64}║", "  Method: K(temp) above median \u{2192} predict extremes");
+    println!(
+        "║{:<64}║",
+        "  Trained on: Jan\u{2013}Sep 2024 (9 months per city)"
+    );
+    println!(
+        "║{:<64}║",
+        "  Testing on: Oct\u{2013}Dec 2024 (unseen future data)"
+    );
+    println!(
+        "║{:<64}║",
+        "  Method: K(temp) above median \u{2192} predict extremes"
+    );
     println!("╟──────────────────────────────────────────────────────────────────╢");
 
     // Split by date
@@ -606,14 +874,23 @@ fn analyze_prediction(store: &BundleStore) {
 
     // Training global stats
     let t_mean = train_all_temps.iter().sum::<f64>() / train_all_temps.len() as f64;
-    let t_std = (train_all_temps.iter().map(|x| (x - t_mean).powi(2)).sum::<f64>()
-        / train_all_temps.len() as f64).sqrt();
+    let t_std = (train_all_temps
+        .iter()
+        .map(|x| (x - t_mean).powi(2))
+        .sum::<f64>()
+        / train_all_temps.len() as f64)
+        .sqrt();
     let w_mean = train_all_winds.iter().sum::<f64>() / train_all_winds.len() as f64;
-    let w_std = (train_all_winds.iter().map(|x| (x - w_mean).powi(2)).sum::<f64>()
-        / train_all_winds.len() as f64).sqrt();
+    let w_std = (train_all_winds
+        .iter()
+        .map(|x| (x - w_mean).powi(2))
+        .sum::<f64>()
+        / train_all_winds.len() as f64)
+        .sqrt();
 
     // Training K(temp) per city
-    let mut train_k: Vec<(String, f64)> = train_city_temps.iter()
+    let mut train_k: Vec<(String, f64)> = train_city_temps
+        .iter()
         .map(|(city, temps)| (city.clone(), field_curvature(temps, 80.0)))
         .collect();
     train_k.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
@@ -627,8 +904,7 @@ fn analyze_prediction(store: &BundleStore) {
     // Test extremes per city (Z > 2.0 using training stats)
     let mut test_ext: HashMap<String, usize> = HashMap::new();
     for (city, temp, wind) in &test_data {
-        let z = ((temp - t_mean).abs() / t_std)
-            .max((wind - w_mean).abs() / w_std);
+        let z = ((temp - t_mean).abs() / t_std).max((wind - w_mean).abs() / w_std);
         if z > 2.0 {
             *test_ext.entry(city.clone()).or_insert(0) += 1;
         }
@@ -642,27 +918,43 @@ fn analyze_prediction(store: &BundleStore) {
         let predicted = *k > median_k;
         let actual = ext > 0;
         let hit = predicted == actual;
-        if hit { correct += 1; }
-        let mark = if hit { "\u{2713} CORRECT" } else { "\u{2717} miss" };
+        if hit {
+            correct += 1;
+        }
+        let mark = if hit {
+            "\u{2713} CORRECT"
+        } else {
+            "\u{2717} miss"
+        };
         let ext_str = if ext > 0 {
             format!("{:>2} events", ext)
         } else {
             "       0".to_string()
         };
-        println!("║{:<64}║",
-            format!("  {:<14} K={:.4}  {} | {}",
-                city, k, ext_str, mark));
+        println!(
+            "║{:<64}║",
+            format!("  {:<14} K={:.4}  {} | {}", city, k, ext_str, mark)
+        );
     }
 
     let acc = 100.0 * correct as f64 / total as f64;
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║{:<64}║",
-        format!("  Prediction accuracy: {}/{} cities ({:.0}%)", correct, total, acc));
+    println!(
+        "║{:<64}║",
+        format!(
+            "  Prediction accuracy: {}/{} cities ({:.0}%)",
+            correct, total, acc
+        )
+    );
     println!("║{:<64}║", "");
-    println!("║{:<64}║",
-        "  Curvature from Jan\u{2013}Sep PREDICTED which cities would have");
-    println!("║{:<64}║",
-        "  extreme weather in Oct\u{2013}Dec. The geometry forecasts.");
+    println!(
+        "║{:<64}║",
+        "  Curvature from Jan\u{2013}Sep PREDICTED which cities would have"
+    );
+    println!(
+        "║{:<64}║",
+        "  extreme weather in Oct\u{2013}Dec. The geometry forecasts."
+    );
     println!("╚══════════════════════════════════════════════════════════════════╝");
 }
 
@@ -689,46 +981,75 @@ fn analyze_postgres_comparison(store: &BundleStore) {
     }
     for temps in by_city.values() {
         let mean = temps.iter().sum::<f64>() / temps.len() as f64;
-        let _var = temps.iter()
-            .map(|x| (x - mean).powi(2)).sum::<f64>() / temps.len() as f64;
+        let _var = temps.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / temps.len() as f64;
     }
     let sql_time = t0.elapsed();
 
-    println!("║{:<64}║",
-        "  Task                    GIGI             Postgres equiv.");
-    println!("║{:<64}║",
-        "  \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}");
-    println!("║{:<64}║",
-        format!("  Anomaly detection       K={:.4}          GROUP BY+STDDEV", k));
-    println!("║{:<64}║",
-        format!("    Time                  {:<16.2?} {:.2?}", curv_time, sql_time));
+    println!(
+        "║{:<64}║",
+        "  Task                    GIGI             Postgres equiv."
+    );
     println!("║{:<64}║",
         "  \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}");
-    println!("║{:<64}║",
-        format!("  Confidence per result   {:.4}            Not available", conf));
-    println!("║{:<64}║",
-        "    How                   1/(1+K) built-in  Custom UDF needed");
-    println!("║{:<64}║",
-        "  \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}");
-    println!("║{:<64}║",
-        "  Predict future anomaly  K(train)\u{2192}test     Not available");
-    println!("║{:<64}║",
-        "    How                   Built-in          External ML pipeline");
-    println!("║{:<64}║",
-        "  \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}");
-    println!("║{:<64}║",
-        "  Spectral connectivity   \u{03bb}\u{2081} built-in       Not available");
-    println!("║{:<64}║",
-        "    How                   2ms               Graph DB + custom");
+    println!(
+        "║{:<64}║",
+        format!(
+            "  Anomaly detection       K={:.4}          GROUP BY+STDDEV",
+            k
+        )
+    );
+    println!(
+        "║{:<64}║",
+        format!(
+            "    Time                  {:<16.2?} {:.2?}",
+            curv_time, sql_time
+        )
+    );
     println!("║{:<64}║",
         "  \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}");
+    println!(
+        "║{:<64}║",
+        format!(
+            "  Confidence per result   {:.4}            Not available",
+            conf
+        )
+    );
+    println!(
+        "║{:<64}║",
+        "    How                   1/(1+K) built-in  Custom UDF needed"
+    );
     println!("║{:<64}║",
-        "  Wire compression        DHOOM (~70%-)     JSON (standard)");
+        "  \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}");
+    println!(
+        "║{:<64}║",
+        "  Predict future anomaly  K(train)\u{2192}test     Not available"
+    );
+    println!(
+        "║{:<64}║",
+        "    How                   Built-in          External ML pipeline"
+    );
+    println!("║{:<64}║",
+        "  \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}");
+    println!(
+        "║{:<64}║",
+        "  Spectral connectivity   \u{03bb}\u{2081} built-in       Not available"
+    );
+    println!(
+        "║{:<64}║",
+        "    How                   2ms               Graph DB + custom"
+    );
+    println!("║{:<64}║",
+        "  \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}");
+    println!(
+        "║{:<64}║",
+        "  Wire compression        DHOOM (~70%-)     JSON (standard)"
+    );
     println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║{:<64}║",
-        "  GIGI doesn't just answer faster \u{2014} it answers questions");
-    println!("║{:<64}║",
-        "  that PostgreSQL cannot even ask.");
+    println!(
+        "║{:<64}║",
+        "  GIGI doesn't just answer faster \u{2014} it answers questions"
+    );
+    println!("║{:<64}║", "  that PostgreSQL cannot even ask.");
     println!("╚══════════════════════════════════════════════════════════════════╝");
 }
 
@@ -742,8 +1063,10 @@ fn analyze_dhoom_output(store: &BundleStore) {
     for rec in store.records() {
         let is_moscow = matches!(rec.get("city"),
             Some(Value::Text(c)) if c == "Moscow");
-        let is_cold = rec.get("temp")
-            .and_then(|v| v.as_f64()).map_or(false, |t| t < -25.0);
+        let is_cold = rec
+            .get("temp")
+            .and_then(|v| v.as_f64())
+            .map_or(false, |t| t < -25.0);
         if is_moscow && is_cold {
             cold_records.push(rec);
         }
@@ -754,9 +1077,13 @@ fn analyze_dhoom_output(store: &BundleStore) {
         da.partial_cmp(&db).unwrap()
     });
 
-    println!("║{:<64}║",
-        format!("  Query: city='Moscow' AND temp < -25  ({} records)",
-            cold_records.len()));
+    println!(
+        "║{:<64}║",
+        format!(
+            "  Query: city='Moscow' AND temp < -25  ({} records)",
+            cold_records.len()
+        )
+    );
     println!("║{:<64}║", "");
 
     if cold_records.is_empty() {
@@ -768,7 +1095,9 @@ fn analyze_dhoom_output(store: &BundleStore) {
     // Build JSON (minified)
     let mut json = String::from("[");
     for (i, rec) in cold_records.iter().enumerate() {
-        if i > 0 { json.push(','); }
+        if i > 0 {
+            json.push(',');
+        }
         let d = rec.get("date").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let t = rec.get("temp").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let tx = rec.get("temp_max").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -781,7 +1110,8 @@ fn analyze_dhoom_output(store: &BundleStore) {
             "{{\"city\":\"Moscow\",\"region\":\"EU\",\"date\":{:.0},\
              \"temp\":{:.1},\"temp_max\":{:.1},\"temp_min\":{:.1},\
              \"humidity\":{:.1},\"pressure\":{:.1},\"wind\":{:.1},\"solar\":{:.1}}}",
-            d, t, tx, tn, h, p, w, s));
+            d, t, tx, tn, h, p, w, s
+        ));
     }
     json.push(']');
 
@@ -789,7 +1119,8 @@ fn analyze_dhoom_output(store: &BundleStore) {
     let mut dhoom = String::new();
     dhoom.push_str(
         "atmosphere{date, temp, temp_max, temp_min, humidity, \
-         pressure, wind, solar, city|Moscow, region|EU}:\n");
+         pressure, wind, solar, city|Moscow, region|EU}:\n",
+    );
     for rec in &cold_records {
         let d = rec.get("date").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let t = rec.get("temp").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -801,7 +1132,8 @@ fn analyze_dhoom_output(store: &BundleStore) {
         let s = rec.get("solar").and_then(|v| v.as_f64()).unwrap_or(0.0);
         dhoom.push_str(&format!(
             "{:.0}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}\n",
-            d, t, tx, tn, h, p, w, s));
+            d, t, tx, tn, h, p, w, s
+        ));
     }
 
     let json_chars = json.len();
@@ -810,20 +1142,32 @@ fn analyze_dhoom_output(store: &BundleStore) {
     let dhoom_tokens = (dhoom_chars as f64 / 3.5).ceil() as usize;
     let char_savings = 100.0 * (1.0 - dhoom_chars as f64 / json_chars as f64);
 
-    println!("║{:<64}║",
-        format!("  JSON:  {:>6} chars  (~{:>4} tokens)", json_chars, json_tokens));
-    println!("║{:<64}║",
-        format!("  DHOOM: {:>6} chars  (~{:>4} tokens)  {:.0}% smaller",
-            dhoom_chars, dhoom_tokens, char_savings));
+    println!(
+        "║{:<64}║",
+        format!(
+            "  JSON:  {:>6} chars  (~{:>4} tokens)",
+            json_chars, json_tokens
+        )
+    );
+    println!(
+        "║{:<64}║",
+        format!(
+            "  DHOOM: {:>6} chars  (~{:>4} tokens)  {:.0}% smaller",
+            dhoom_chars, dhoom_tokens, char_savings
+        )
+    );
     println!("║{:<64}║", "");
 
     // Show DHOOM sample
-    println!("║{:<64}║",
-        "  DHOOM wire output:");
-    println!("║{:<64}║",
-        "  atmosphere{date, temp, temp_max, temp_min, humidity,");
-    println!("║{:<64}║",
-        "    pressure, wind, solar, city|Moscow, region|EU}:");
+    println!("║{:<64}║", "  DHOOM wire output:");
+    println!(
+        "║{:<64}║",
+        "  atmosphere{date, temp, temp_max, temp_min, humidity,"
+    );
+    println!(
+        "║{:<64}║",
+        "    pressure, wind, solar, city|Moscow, region|EU}:"
+    );
 
     let show_n = cold_records.len().min(5);
     for rec in cold_records.iter().take(show_n) {
@@ -835,22 +1179,34 @@ fn analyze_dhoom_output(store: &BundleStore) {
         let p = rec.get("pressure").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let w = rec.get("wind").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let s = rec.get("solar").and_then(|v| v.as_f64()).unwrap_or(0.0);
-        println!("║{:<64}║",
-            format!("  {:.0}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}",
-                d, t, tx, tn, h, p, w, s));
+        println!(
+            "║{:<64}║",
+            format!(
+                "  {:.0}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}, {:.1}",
+                d, t, tx, tn, h, p, w, s
+            )
+        );
     }
     if cold_records.len() > show_n {
-        println!("║{:<64}║",
-            format!("  ... ({} more records)", cold_records.len() - show_n));
+        println!(
+            "║{:<64}║",
+            format!("  ... ({} more records)", cold_records.len() - show_n)
+        );
     }
 
     println!("║{:<64}║", "");
-    println!("║{:<64}║",
-        "  No field names in data rows. city and region elided");
-    println!("║{:<64}║",
-        "  by trailing default. Silence means agreement.");
-    println!("║{:<64}║",
-        "  Same fiber bundle math, from storage to wire.");
+    println!(
+        "║{:<64}║",
+        "  No field names in data rows. city and region elided"
+    );
+    println!(
+        "║{:<64}║",
+        "  by trailing default. Silence means agreement."
+    );
+    println!(
+        "║{:<64}║",
+        "  Same fiber bundle math, from storage to wire."
+    );
     println!("╚══════════════════════════════════════════════════════════════════╝");
 }
 
@@ -874,7 +1230,10 @@ fn generate_html_report(store: &BundleStore) {
             let date = rec.get("date").and_then(|v| v.as_f64()).unwrap_or(0.0);
             city_temps.entry(city.clone()).or_default().push(temp);
             city_winds.entry(city.clone()).or_default().push(wind);
-            city_daily.entry(city.clone()).or_default().push((date, temp));
+            city_daily
+                .entry(city.clone())
+                .or_default()
+                .push((date, temp));
             all_temps.push(temp);
             all_winds.push(wind);
         }
@@ -883,10 +1242,12 @@ fn generate_html_report(store: &BundleStore) {
     // Global stats
     let t_mean = all_temps.iter().sum::<f64>() / all_temps.len() as f64;
     let t_std = (all_temps.iter().map(|x| (x - t_mean).powi(2)).sum::<f64>()
-        / all_temps.len() as f64).sqrt();
+        / all_temps.len() as f64)
+        .sqrt();
     let w_mean = all_winds.iter().sum::<f64>() / all_winds.len() as f64;
     let w_std = (all_winds.iter().map(|x| (x - w_mean).powi(2)).sum::<f64>()
-        / all_winds.len() as f64).sqrt();
+        / all_winds.len() as f64)
+        .sqrt();
 
     // Top 15 extreme events + per-city count
     let mut events: Vec<(String, f64)> = Vec::new();
@@ -895,7 +1256,9 @@ fn generate_html_report(store: &BundleStore) {
             let temp = rec.get("temp").and_then(|v| v.as_f64()).unwrap_or(0.0);
             let wind = rec.get("wind").and_then(|v| v.as_f64()).unwrap_or(0.0);
             let z = ((temp - t_mean).abs() / t_std).max((wind - w_mean).abs() / w_std);
-            if z > 2.5 { events.push((city.clone(), z)); }
+            if z > 2.5 {
+                events.push((city.clone(), z));
+            }
         }
     }
     events.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
@@ -924,15 +1287,18 @@ fn generate_html_report(store: &BundleStore) {
     }
 
     // Extremes (top 15)
-    let extremes_json: Vec<_> = events.iter().take(15).map(|(city, z)| {
-        serde_json::json!({ "city": city, "z": (z * 100.0).round() / 100.0 })
-    }).collect();
+    let extremes_json: Vec<_> = events
+        .iter()
+        .take(15)
+        .map(|(city, z)| serde_json::json!({ "city": city, "z": (z * 100.0).round() / 100.0 }))
+        .collect();
 
     // Daily temps per city
     let mut daily_json = serde_json::Map::new();
     for city in CITIES {
         if let Some(daily) = city_daily.get(city.name) {
-            let arr: Vec<_> = daily.iter()
+            let arr: Vec<_> = daily
+                .iter()
                 .map(|(d, t)| serde_json::json!([*d, (*t * 10.0).round() / 10.0]))
                 .collect();
             daily_json.insert(city.name.to_string(), serde_json::json!(arr));
@@ -940,11 +1306,12 @@ fn generate_html_report(store: &BundleStore) {
     }
 
     // Pearson correlation
-    let k_vals: Vec<f64> = CITIES.iter()
-        .map(|c| field_curvature(
-            &city_temps.get(c.name).cloned().unwrap_or_default(), 80.0))
+    let k_vals: Vec<f64> = CITIES
+        .iter()
+        .map(|c| field_curvature(&city_temps.get(c.name).cloned().unwrap_or_default(), 80.0))
         .collect();
-    let ext_vals: Vec<f64> = CITIES.iter()
+    let ext_vals: Vec<f64> = CITIES
+        .iter()
         .map(|c| top15_count.get(c.name).copied().unwrap_or(0) as f64)
         .collect();
     let pearson_r = pearson_correlation(&k_vals, &ext_vals);
@@ -957,7 +1324,8 @@ fn generate_html_report(store: &BundleStore) {
     for rec in store.records() {
         let date = rec.get("date").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let city = match rec.get("city") {
-            Some(Value::Text(c)) => c.clone(), _ => continue,
+            Some(Value::Text(c)) => c.clone(),
+            _ => continue,
         };
         let temp = rec.get("temp").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let wind = rec.get("wind").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -970,13 +1338,22 @@ fn generate_html_report(store: &BundleStore) {
         }
     }
     let tr_t_mean = train_all_temps.iter().sum::<f64>() / train_all_temps.len().max(1) as f64;
-    let tr_t_std = (train_all_temps.iter().map(|x| (x - tr_t_mean).powi(2)).sum::<f64>()
-        / train_all_temps.len().max(1) as f64).sqrt();
+    let tr_t_std = (train_all_temps
+        .iter()
+        .map(|x| (x - tr_t_mean).powi(2))
+        .sum::<f64>()
+        / train_all_temps.len().max(1) as f64)
+        .sqrt();
     let tr_w_mean = train_all_winds.iter().sum::<f64>() / train_all_winds.len().max(1) as f64;
-    let tr_w_std = (train_all_winds.iter().map(|x| (x - tr_w_mean).powi(2)).sum::<f64>()
-        / train_all_winds.len().max(1) as f64).sqrt();
+    let tr_w_std = (train_all_winds
+        .iter()
+        .map(|x| (x - tr_w_mean).powi(2))
+        .sum::<f64>()
+        / train_all_winds.len().max(1) as f64)
+        .sqrt();
 
-    let mut train_k: Vec<(String, f64)> = train_city_temps.iter()
+    let mut train_k: Vec<(String, f64)> = train_city_temps
+        .iter()
         .map(|(city, temps)| (city.clone(), field_curvature(temps, 80.0)))
         .collect();
     train_k.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
@@ -988,7 +1365,9 @@ fn generate_html_report(store: &BundleStore) {
     let mut test_ext: HashMap<String, usize> = HashMap::new();
     for (city, temp, wind) in &test_data {
         let z = ((temp - tr_t_mean).abs() / tr_t_std).max((wind - tr_w_mean).abs() / tr_w_std);
-        if z > 2.0 { *test_ext.entry(city.clone()).or_insert(0) += 1; }
+        if z > 2.0 {
+            *test_ext.entry(city.clone()).or_insert(0) += 1;
+        }
     }
     let mut correct = 0;
     let mut predictions_json = Vec::new();
@@ -997,7 +1376,9 @@ fn generate_html_report(store: &BundleStore) {
         let predicted = *k > median_k;
         let actual = ext > 0;
         let hit = predicted == actual;
-        if hit { correct += 1; }
+        if hit {
+            correct += 1;
+        }
         predictions_json.push(serde_json::json!({
             "city": city, "k": (*k * 1e6).round() / 1e6,
             "events": ext, "correct": hit
@@ -1049,22 +1430,32 @@ fn generate_html_report(store: &BundleStore) {
     let mut cold: Vec<Record> = Vec::new();
     for rec in store.records() {
         let is_moscow = matches!(rec.get("city"), Some(Value::Text(c)) if c == "Moscow");
-        let is_cold = rec.get("temp").and_then(|v| v.as_f64()).map_or(false, |t| t < -25.0);
-        if is_moscow && is_cold { cold.push(rec); }
+        let is_cold = rec
+            .get("temp")
+            .and_then(|v| v.as_f64())
+            .map_or(false, |t| t < -25.0);
+        if is_moscow && is_cold {
+            cold.push(rec);
+        }
     }
     let mut json_str = String::from("[");
     for (i, rec) in cold.iter().enumerate() {
-        if i > 0 { json_str.push(','); }
-        let d=rec.get("date").and_then(|v|v.as_f64()).unwrap_or(0.0);
-        let t=rec.get("temp").and_then(|v|v.as_f64()).unwrap_or(0.0);
-        json_str.push_str(&format!("{{\"city\":\"Moscow\",\"date\":{:.0},\"temp\":{:.1}}}",d,t));
+        if i > 0 {
+            json_str.push(',');
+        }
+        let d = rec.get("date").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let t = rec.get("temp").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        json_str.push_str(&format!(
+            "{{\"city\":\"Moscow\",\"date\":{:.0},\"temp\":{:.1}}}",
+            d, t
+        ));
     }
     json_str.push(']');
     let mut dhoom_str = String::from("atmosphere{date,temp,...,city|Moscow,region|EU}:\n");
     for rec in &cold {
-        let d=rec.get("date").and_then(|v|v.as_f64()).unwrap_or(0.0);
-        let t=rec.get("temp").and_then(|v|v.as_f64()).unwrap_or(0.0);
-        dhoom_str.push_str(&format!("{:.0}, {:.1}\n",d,t));
+        let d = rec.get("date").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let t = rec.get("temp").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        dhoom_str.push_str(&format!("{:.0}, {:.1}\n", d, t));
     }
     let json_sz = json_str.len();
     let dhoom_sz = dhoom_str.len();
@@ -1122,7 +1513,10 @@ fn main() {
     let start = "20240101";
     let end = "20241231";
 
-    println!("━━━ Phase 1: Fetching NASA POWER data for {} cities ━━━", CITIES.len());
+    println!(
+        "━━━ Phase 1: Fetching NASA POWER data for {} cities ━━━",
+        CITIES.len()
+    );
     println!("    Parameters: T2M, T2M_MAX, T2M_MIN, RH2M, PS, WS2M, ALLSKY_SFC_SW_DWN");
     println!("    Period: {start} → {end}\n");
 
@@ -1166,9 +1560,15 @@ fn main() {
     }
 
     let ingest_elapsed = ingest_start.elapsed();
-    println!("  Ingested {} records in {:.1?}", store.len(), ingest_elapsed);
-    println!("  Insert rate: {:.0} records/sec",
-        store.len() as f64 / ingest_elapsed.as_secs_f64());
+    println!(
+        "  Ingested {} records in {:.1?}",
+        store.len(),
+        ingest_elapsed
+    );
+    println!(
+        "  Insert rate: {:.0} records/sec",
+        store.len() as f64 / ingest_elapsed.as_secs_f64()
+    );
 
     // ── Phase 3: Geometric Analysis ──
     println!("\n━━━ Phase 3: Geometric Analysis ━━━");
@@ -1211,8 +1611,11 @@ fn main() {
 
     // ── Summary ──
     println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("  {} real NASA records. {} cities. 366 days. 7 parameters.",
-        store.len(), CITIES.len());
+    println!(
+        "  {} real NASA records. {} cities. 366 days. 7 parameters.",
+        store.len(),
+        CITIES.len()
+    );
     println!();
     println!("  GIGI detected Moscow's cold snap, Toronto's winter storms,");
     println!("  and Cape Town's wind events — using curvature, not rules.");

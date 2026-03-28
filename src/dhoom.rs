@@ -1,4 +1,4 @@
-﻿//! # DHOOM â€” Davis Human-readable Optimized Object Markup
+//! # DHOOM â€” Davis Human-readable Optimized Object Markup
 //!
 //! A compact, human-readable serialization format built on fiber bundle geometry.
 //!
@@ -84,7 +84,12 @@ impl Fiber {
     pub fn record_fields(&self) -> Vec<&FieldDecl> {
         self.fields
             .iter()
-            .filter(|f| !matches!(f.modifier, Some(Modifier::Arithmetic { .. }) | Some(Modifier::Computed { .. })))
+            .filter(|f| {
+                !matches!(
+                    f.modifier,
+                    Some(Modifier::Arithmetic { .. }) | Some(Modifier::Computed { .. })
+                )
+            })
             .collect()
     }
 
@@ -224,7 +229,11 @@ pub fn parse_fiber(input: &str) -> Result<Fiber> {
         Some(ref n) if n.starts_with('~') => {
             sparse = true;
             let stripped = n[1..].trim();
-            if stripped.is_empty() { None } else { Some(stripped.to_string()) }
+            if stripped.is_empty() {
+                None
+            } else {
+                Some(stripped.to_string())
+            }
         }
         other => other,
     };
@@ -240,7 +249,11 @@ pub fn parse_fiber(input: &str) -> Result<Fiber> {
         fields.push(parse_field_decl(token)?);
     }
 
-    Ok(Fiber { name, fields, sparse })
+    Ok(Fiber {
+        name,
+        fields,
+        sparse,
+    })
 }
 
 fn parse_field_decl(token: &str) -> Result<FieldDecl> {
@@ -402,7 +415,7 @@ fn decode_bundle(input: &str, line_offset: usize) -> Result<(Option<String>, Val
     })?;
 
     let header = input[..colon_pos - 1].trim(); // everything before ':'
-    let body_full = &input[colon_pos..];             // everything after ':'
+    let body_full = &input[colon_pos..]; // everything after ':'
     let mut fiber = parse_fiber(header)?;
 
     // Parse pool lines for interned fields
@@ -419,7 +432,8 @@ fn decode_bundle(input: &str, line_offset: usize) -> Result<(Option<String>, Val
                 if trimmed.ends_with(']') {
                     let field_name = &trimmed[1..bracket_start];
                     let pool_str = &trimmed[bracket_start + 1..trimmed.len() - 1];
-                    let pool: Vec<String> = pool_str.split(',').map(|s| s.trim().to_string()).collect();
+                    let pool: Vec<String> =
+                        pool_str.split(',').map(|s| s.trim().to_string()).collect();
                     // Set pool on matching field
                     for fd in &mut fiber.fields {
                         if fd.name == field_name {
@@ -453,13 +467,18 @@ fn decode_bundle(input: &str, line_offset: usize) -> Result<(Option<String>, Val
     // Resolve interned fields (map integer indices to pool values)
     for fd in &fiber.fields {
         if let Some(Modifier::Interned { ref pool }) = fd.modifier {
-            if pool.is_empty() { continue; }
+            if pool.is_empty() {
+                continue;
+            }
             for rec in &mut records {
                 if let Some(obj) = rec.as_object_mut() {
                     if let Some(val) = obj.get(&fd.name).cloned() {
                         if let Some(idx) = val.as_i64() {
                             if idx >= 0 && (idx as usize) < pool.len() {
-                                obj.insert(fd.name.clone(), Value::String(pool[idx as usize].clone()));
+                                obj.insert(
+                                    fd.name.clone(),
+                                    Value::String(pool[idx as usize].clone()),
+                                );
                             }
                         }
                     }
@@ -484,7 +503,9 @@ fn decode_bundle(input: &str, line_offset: usize) -> Result<(Option<String>, Val
                     break;
                 }
             }
-            if op_char == ' ' { continue; }
+            if op_char == ' ' {
+                continue;
+            }
             for rec in &mut records {
                 if let Some(obj) = rec.as_object_mut() {
                     let left = obj.get(left_field).and_then(|v| v.as_f64());
@@ -498,7 +519,10 @@ fn decode_bundle(input: &str, line_offset: usize) -> Result<(Option<String>, Val
                         };
                         let rounded = (result * 1e10).round() / 1e10;
                         if rounded == rounded.trunc() {
-                            obj.insert(fd.name.clone(), Value::Number(Number::from(rounded as i64)));
+                            obj.insert(
+                                fd.name.clone(),
+                                Value::Number(Number::from(rounded as i64)),
+                            );
                         } else if let Some(n) = Number::from_f64(rounded) {
                             obj.insert(fd.name.clone(), Value::Number(n));
                         }
@@ -541,9 +565,16 @@ fn decode_flat_records(body: &str, fiber: &Fiber, _line_offset: usize) -> Result
 
         // Fill arithmetic fields
         for fdecl in &fiber.fields {
-            if let Some(Modifier::Arithmetic { ref start, ref step }) = fdecl.modifier {
+            if let Some(Modifier::Arithmetic {
+                ref start,
+                ref step,
+            }) = fdecl.modifier
+            {
                 let s = step.unwrap_or(1);
-                obj.insert(fdecl.name.clone(), arithmetic_value(start, s, record_ordinal));
+                obj.insert(
+                    fdecl.name.clone(),
+                    arithmetic_value(start, s, record_ordinal),
+                );
             }
         }
 
@@ -578,9 +609,17 @@ fn decode_flat_records(body: &str, fiber: &Fiber, _line_offset: usize) -> Result
                             let absolute = prev + num;
                             delta_accum.insert(rf.name.clone(), absolute);
                             if absolute == absolute.trunc() {
-                                obj.insert(rf.name.clone(), Value::Number(Number::from(absolute as i64)));
+                                obj.insert(
+                                    rf.name.clone(),
+                                    Value::Number(Number::from(absolute as i64)),
+                                );
                             } else {
-                                obj.insert(rf.name.clone(), Number::from_f64(absolute).map(Value::Number).unwrap_or(Value::Null));
+                                obj.insert(
+                                    rf.name.clone(),
+                                    Number::from_f64(absolute)
+                                        .map(Value::Number)
+                                        .unwrap_or(Value::Null),
+                                );
                             }
                         }
                     } else {
@@ -626,9 +665,16 @@ fn decode_sparse_records(body: &str, fiber: &Fiber, _line_offset: usize) -> Resu
 
         // Fill arithmetic fields
         for fdecl in &fiber.fields {
-            if let Some(Modifier::Arithmetic { ref start, ref step }) = fdecl.modifier {
+            if let Some(Modifier::Arithmetic {
+                ref start,
+                ref step,
+            }) = fdecl.modifier
+            {
                 let s = step.unwrap_or(1);
-                obj.insert(fdecl.name.clone(), arithmetic_value(start, s, record_ordinal));
+                obj.insert(
+                    fdecl.name.clone(),
+                    arithmetic_value(start, s, record_ordinal),
+                );
             }
         }
 
@@ -660,11 +706,7 @@ fn decode_sparse_records(body: &str, fiber: &Fiber, _line_offset: usize) -> Resu
     Ok(records)
 }
 
-fn decode_nested_records(
-    body: &str,
-    fiber: &Fiber,
-    line_offset: usize,
-) -> Result<Vec<Value>> {
+fn decode_nested_records(body: &str, fiber: &Fiber, line_offset: usize) -> Result<Vec<Value>> {
     let record_fields = fiber.record_fields();
     let mut records = Vec::new();
     let lines: Vec<&str> = body.lines().collect();
@@ -682,7 +724,11 @@ fn decode_nested_records(
 
         // Fill arithmetic fields
         for fdecl in &fiber.fields {
-            if let Some(Modifier::Arithmetic { ref start, ref step }) = fdecl.modifier {
+            if let Some(Modifier::Arithmetic {
+                ref start,
+                ref step,
+            }) = fdecl.modifier
+            {
                 let s = step.unwrap_or(1);
                 obj.insert(
                     fdecl.name.clone(),
@@ -751,8 +797,7 @@ fn decode_nested_records(
             }
 
             if !nested_text.trim().is_empty() {
-                let (_, nested_val) =
-                    decode_bundle(nested_text.trim(), line_offset + line_idx)?;
+                let (_, nested_val) = decode_bundle(nested_text.trim(), line_offset + line_idx)?;
                 obj.insert(nf.name.clone(), nested_val);
             }
         }
@@ -949,7 +994,8 @@ fn encode_bundle(name: &str, records: &[Value], out: &mut String, indent: usize)
     }
 
     // Check sparsity
-    let non_arith_keys: Vec<&String> = keys.iter()
+    let non_arith_keys: Vec<&String> = keys
+        .iter()
         .filter(|k| !arithmetic_fields.contains(k) && !nested_fields.contains(k))
         .collect();
     let use_sparse = if non_arith_keys.len() >= 8 {
@@ -1032,7 +1078,12 @@ fn encode_bundle(name: &str, records: &[Value], out: &mut String, indent: usize)
 
     let rec_fields: Vec<&FieldDecl> = ordered_fields
         .iter()
-        .filter(|f| !matches!(f.modifier, Some(Modifier::Arithmetic { .. }) | Some(Modifier::Computed { .. })))
+        .filter(|f| {
+            !matches!(
+                f.modifier,
+                Some(Modifier::Arithmetic { .. }) | Some(Modifier::Computed { .. })
+            )
+        })
         .collect();
 
     if use_sparse {
@@ -1042,14 +1093,19 @@ fn encode_bundle(name: &str, records: &[Value], out: &mut String, indent: usize)
                 .ok_or_else(|| DhoomError::Encode("Record must be an object".into()))?;
             let mut pairs: Vec<String> = Vec::new();
             for rf in &rec_fields {
-                if matches!(rf.modifier, Some(Modifier::Nested)) { continue; }
+                if matches!(rf.modifier, Some(Modifier::Nested)) {
+                    continue;
+                }
                 if let Some(v) = obj.get(&rf.name) {
                     match v {
                         Value::Null => {}
                         Value::String(s) if s.is_empty() => {}
                         _ => {
                             if let Some(Modifier::Interned { ref pool }) = rf.modifier {
-                                let idx = pool.iter().position(|p| *p == value_to_dhoom(v)).unwrap_or(0);
+                                let idx = pool
+                                    .iter()
+                                    .position(|p| *p == value_to_dhoom(v))
+                                    .unwrap_or(0);
                                 pairs.push(format!("{}:{}", rf.name, idx));
                             } else {
                                 pairs.push(format!("{}:{}", rf.name, value_to_dhoom(v)));
@@ -1193,7 +1249,10 @@ fn detect_arithmetic(values: &[&Value]) -> Option<(Value, i64)> {
         let patterns: Option<Vec<(String, i64, usize)>> =
             strings.iter().map(|s| parse_string_pattern(s)).collect();
         if let Some(patterns) = patterns {
-            if patterns.iter().all(|(p, _, w)| p == &patterns[0].0 && *w == patterns[0].2) {
+            if patterns
+                .iter()
+                .all(|(p, _, w)| p == &patterns[0].0 && *w == patterns[0].2)
+            {
                 let step = patterns[1].1 - patterns[0].1;
                 if patterns.windows(2).all(|w| w[1].1 - w[0].1 == step) {
                     return Some((values[0].clone(), step));
@@ -1241,9 +1300,17 @@ fn detect_interned(values: &[&Value]) -> Option<Vec<String>> {
     }
     let raw_len: usize = strings.iter().map(|s| s.len()).sum();
     let pool_len = distinct.iter().map(|s| s.len()).sum::<usize>() + (distinct.len() - 1) * 2 + 2;
-    let index_len: usize = strings.iter().map(|s| {
-        distinct.iter().position(|d| d == *s).unwrap_or(0).to_string().len()
-    }).sum();
+    let index_len: usize = strings
+        .iter()
+        .map(|s| {
+            distinct
+                .iter()
+                .position(|d| d == *s)
+                .unwrap_or(0)
+                .to_string()
+                .len()
+        })
+        .sum();
     if index_len + pool_len >= raw_len * 9 / 10 {
         return None;
     }
@@ -1251,23 +1318,44 @@ fn detect_interned(values: &[&Value]) -> Option<Vec<String>> {
 }
 
 /// Detect if a field can be computed from two other fields via a binary op.
-fn detect_computed_field(key: &str, records: &[Value], candidate_keys: &[String]) -> Option<String> {
+fn detect_computed_field(
+    key: &str,
+    records: &[Value],
+    candidate_keys: &[String],
+) -> Option<String> {
     if records.len() < 2 {
         return None;
     }
-    let values: Vec<f64> = records.iter().filter_map(|r| r.as_object()?.get(key)?.as_f64()).collect();
+    let values: Vec<f64> = records
+        .iter()
+        .filter_map(|r| r.as_object()?.get(key)?.as_f64())
+        .collect();
     if values.len() != records.len() {
         return None;
     }
     for op in &['*', '+', '-'] {
         for a in candidate_keys {
-            if a == key { continue; }
-            let a_vals: Vec<f64> = records.iter().filter_map(|r| r.as_object()?.get(a.as_str())?.as_f64()).collect();
-            if a_vals.len() != records.len() { continue; }
+            if a == key {
+                continue;
+            }
+            let a_vals: Vec<f64> = records
+                .iter()
+                .filter_map(|r| r.as_object()?.get(a.as_str())?.as_f64())
+                .collect();
+            if a_vals.len() != records.len() {
+                continue;
+            }
             for b in candidate_keys {
-                if b == key || b == a { continue; }
-                let b_vals: Vec<f64> = records.iter().filter_map(|r| r.as_object()?.get(b.as_str())?.as_f64()).collect();
-                if b_vals.len() != records.len() { continue; }
+                if b == key || b == a {
+                    continue;
+                }
+                let b_vals: Vec<f64> = records
+                    .iter()
+                    .filter_map(|r| r.as_object()?.get(b.as_str())?.as_f64())
+                    .collect();
+                if b_vals.len() != records.len() {
+                    continue;
+                }
                 let mut all_match = true;
                 for i in 0..records.len() {
                     let expected = values[i];
@@ -1341,22 +1429,37 @@ pub struct Profile {
 impl std::fmt::Display for Profile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "DHOOM Profile: {}", self.collection)?;
-        writeln!(f, "  Records: {}  Fields: {}", self.record_count, self.field_count)?;
-        writeln!(f, "  DHOOM: {} bytes  JSON: {} bytes  Savings: {:.0}%",
-            self.dhoom_bytes, self.json_bytes, self.compression_pct)?;
+        writeln!(
+            f,
+            "  Records: {}  Fields: {}",
+            self.record_count, self.field_count
+        )?;
+        writeln!(
+            f,
+            "  DHOOM: {} bytes  JSON: {} bytes  Savings: {:.0}%",
+            self.dhoom_bytes, self.json_bytes, self.compression_pct
+        )?;
         writeln!(f, "  Fields elided: {:.0}%", self.fields_elided_pct)?;
         writeln!(f, "")?;
         for fp in &self.fields {
             let role_str = match &fp.role {
-                FieldRole::Arithmetic { start, step } => format!("@ arithmetic ({}+{}n)", start, step),
-                FieldRole::Default { value, match_pct } => format!("| default \"{}\" ({:.0}%)", value, match_pct),
+                FieldRole::Arithmetic { start, step } => {
+                    format!("@ arithmetic ({}+{}n)", start, step)
+                }
+                FieldRole::Default { value, match_pct } => {
+                    format!("| default \"{}\" ({:.0}%)", value, match_pct)
+                }
                 FieldRole::Delta => "^ delta".to_string(),
                 FieldRole::Interned { pool_size } => format!("& interned ({} values)", pool_size),
                 FieldRole::Computed { expr } => format!("# computed ({})", expr),
                 FieldRole::Nested => "> nested".to_string(),
                 FieldRole::Variable => "  variable".to_string(),
             };
-            writeln!(f, "  {:16} {:30} K={:.4}  C={:.4}", fp.name, role_str, fp.curvature, fp.confidence)?;
+            writeln!(
+                f,
+                "  {:16} {:30} K={:.4}  C={:.4}",
+                fp.name, role_str, fp.curvature, fp.confidence
+            )?;
         }
         Ok(())
     }
@@ -1405,7 +1508,11 @@ pub fn profile(value: &Value) -> Result<Profile> {
             let (key, val) = map.iter().next().unwrap();
             match val {
                 Value::Array(arr) => (key.clone(), arr.as_slice()),
-                _ => return Err(DhoomError::Encode("Top-level value must be an array".into())),
+                _ => {
+                    return Err(DhoomError::Encode(
+                        "Top-level value must be an array".into(),
+                    ))
+                }
             }
         }
         _ => return Err(DhoomError::Encode("Expected {collection: [...]}".into())),
@@ -1424,7 +1531,8 @@ pub fn profile(value: &Value) -> Result<Profile> {
         });
     }
 
-    let first = records[0].as_object()
+    let first = records[0]
+        .as_object()
         .ok_or_else(|| DhoomError::Encode("Records must be objects".into()))?;
     let keys: Vec<String> = first.keys().cloned().collect();
 
@@ -1444,15 +1552,18 @@ pub fn profile(value: &Value) -> Result<Profile> {
     let total_slots = records.len() * keys.len();
 
     for key in &keys {
-        let values: Vec<&Value> = records.iter()
+        let values: Vec<&Value> = records
+            .iter()
             .filter_map(|r| r.as_object().and_then(|o| o.get(key)))
             .collect();
 
         // Extract numeric values for curvature
-        let nums: Vec<f64> = values.iter()
-            .filter_map(|v| v.as_f64())
-            .collect();
-        let k = if nums.len() >= 2 { field_curvature(&nums) } else { 0.0 };
+        let nums: Vec<f64> = values.iter().filter_map(|v| v.as_f64()).collect();
+        let k = if nums.len() >= 2 {
+            field_curvature(&nums)
+        } else {
+            0.0
+        };
         let conf = 1.0 / (1.0 + k);
 
         // Classify field role (same logic as encoder)
@@ -1471,12 +1582,17 @@ pub fn profile(value: &Value) -> Result<Profile> {
         } else if detect_delta(&values) {
             FieldRole::Delta
         } else if let Some(pool) = detect_interned(&values) {
-            FieldRole::Interned { pool_size: pool.len() }
+            FieldRole::Interned {
+                pool_size: pool.len(),
+            }
         } else if let Some((default_val, match_count)) = find_modal_default(&values) {
             let pct = 100.0 * match_count as f64 / values.len() as f64;
             if match_count > records.len() / 2 {
                 elided_slots += match_count;
-                FieldRole::Default { value: value_to_dhoom(&default_val), match_pct: pct }
+                FieldRole::Default {
+                    value: value_to_dhoom(&default_val),
+                    match_pct: pct,
+                }
             } else {
                 FieldRole::Variable
             }
@@ -1529,10 +1645,7 @@ mod tests {
             })
         );
         assert_eq!(fiber.fields[1].modifier, None); // customer
-        assert_eq!(
-            fiber.fields[3].modifier,
-            Some(Modifier::Default(json!(5)))
-        );
+        assert_eq!(fiber.fields[3].modifier, Some(Modifier::Default(json!(5))));
         assert_eq!(
             fiber.fields[4].modifier,
             Some(Modifier::Default(Value::Bool(true)))
@@ -1806,7 +1919,7 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
     #[test]
     fn test_encode_sparse_when_mostly_null() {
         let mut records = Vec::new();
-        let field_names: Vec<&str> = vec!["a","b","c","d","e","f","g","h","i","j"];
+        let field_names: Vec<&str> = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
         for i in 0..5 {
             let mut obj = serde_json::Map::new();
             for name in &field_names {
@@ -1832,7 +1945,9 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
         assert_eq!(fd.name, "user_id");
         assert_eq!(
             fd.modifier,
-            Some(Modifier::Morphism { target: "users".into() })
+            Some(Modifier::Morphism {
+                target: "users".into()
+            })
         );
     }
 
@@ -1900,7 +2015,12 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
     fn test_parse_computed_modifier() {
         let fd = parse_field_decl("total#qty*price").unwrap();
         assert_eq!(fd.name, "total");
-        assert_eq!(fd.modifier, Some(Modifier::Computed { expr: "qty*price".into() }));
+        assert_eq!(
+            fd.modifier,
+            Some(Modifier::Computed {
+                expr: "qty*price".into()
+            })
+        );
     }
 
     #[test]
@@ -1936,7 +2056,12 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
     fn test_parse_constraint_modifier() {
         let fd = parse_field_decl("age!int").unwrap();
         assert_eq!(fd.name, "age");
-        assert_eq!(fd.modifier, Some(Modifier::Constraint { constraint: "int".into() }));
+        assert_eq!(
+            fd.modifier,
+            Some(Modifier::Constraint {
+                constraint: "int".into()
+            })
+        );
     }
 
     #[test]
@@ -1986,7 +2111,10 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
         let id_field = p.fields.iter().find(|f| f.name == "id").unwrap();
         assert!(matches!(id_field.role, FieldRole::Arithmetic { .. }));
         // Arithmetic integer sequence has well-defined curvature (uniform distribution)
-        assert!(id_field.confidence > 0.5, "Arithmetic field should have reasonable confidence");
+        assert!(
+            id_field.confidence > 0.5,
+            "Arithmetic field should have reasonable confidence"
+        );
     }
 
     #[test]
@@ -2031,8 +2159,16 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
         });
         let p = profile(&data).unwrap();
         let temp = p.fields.iter().find(|f| f.name == "temp").unwrap();
-        assert!(temp.curvature < 0.25, "Low-variance data should have low K, got {}", temp.curvature);
-        assert!(temp.confidence > 0.8, "Low K should give high confidence, got {}", temp.confidence);
+        assert!(
+            temp.curvature < 0.25,
+            "Low-variance data should have low K, got {}",
+            temp.curvature
+        );
+        assert!(
+            temp.confidence > 0.8,
+            "Low K should give high confidence, got {}",
+            temp.confidence
+        );
     }
 
     #[test]
@@ -2048,7 +2184,11 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
         });
         let p = profile(&data).unwrap();
         let val = p.fields.iter().find(|f| f.name == "value").unwrap();
-        assert!(val.curvature > 0.05, "Spread data should have higher K, got {}", val.curvature);
+        assert!(
+            val.curvature > 0.05,
+            "Spread data should have higher K, got {}",
+            val.curvature
+        );
     }
 
     #[test]
@@ -2088,7 +2228,11 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
             ]
         });
         let p = profile(&data).unwrap();
-        assert!(p.fields_elided_pct > 0.0, "Should have elided fields, got {}%", p.fields_elided_pct);
+        assert!(
+            p.fields_elided_pct > 0.0,
+            "Should have elided fields, got {}%",
+            p.fields_elided_pct
+        );
     }
 }
 
@@ -2212,8 +2356,7 @@ impl StreamEncoder {
         let dhoom_str = encode(&wrapped).map_err(|e| e.to_string())?;
         let header_line = dhoom_str.lines().next().unwrap_or("").to_string();
         // Trim the trailing ':'  — e.g. "name{...}:" → we keep it as-is for header()
-        let fiber = parse_fiber(header_line.trim_end_matches(':'))
-            .map_err(|e| e.to_string())?;
+        let fiber = parse_fiber(header_line.trim_end_matches(':')).map_err(|e| e.to_string())?;
         Ok(StreamEncoder {
             schema_header: header_line,
             fiber,
@@ -2257,7 +2400,9 @@ impl StreamEncoder {
         }
 
         // Trailing elision
-        while values.last().map_or(false, |v| v.is_empty()) && is_default.last().copied().unwrap_or(false) {
+        while values.last().map_or(false, |v| v.is_empty())
+            && is_default.last().copied().unwrap_or(false)
+        {
             values.pop();
             is_default.pop();
         }
@@ -2321,7 +2466,9 @@ pub fn dhoom_to_json_value(v: &DhoomValue) -> Value {
             if *n == (*n as i64) as f64 && n.abs() < 1e15 {
                 Value::Number(Number::from(*n as i64))
             } else {
-                Number::from_f64(*n).map(Value::Number).unwrap_or(Value::Null)
+                Number::from_f64(*n)
+                    .map(Value::Number)
+                    .unwrap_or(Value::Null)
             }
         }
         DhoomValue::Text(s) => Value::String(s.clone()),
@@ -2364,16 +2511,23 @@ pub fn decode_legacy(input: &str) -> std::result::Result<ParsedDhoom, String> {
             })
         })
         .collect();
-    Ok(ParsedDhoom { collection, records })
+    Ok(ParsedDhoom {
+        collection,
+        records,
+    })
 }
 
 /// dhoom_to_json_array for legacy ParsedDhoom.
 pub fn dhoom_to_json_array(parsed: &ParsedDhoom) -> Vec<Value> {
-    parsed.records.iter().map(|rec| {
-        let map: serde_json::Map<String, Value> = rec.iter()
-            .map(|(k, v)| (k.clone(), dhoom_to_json_value(v)))
-            .collect();
-        Value::Object(map)
-    }).collect()
+    parsed
+        .records
+        .iter()
+        .map(|rec| {
+            let map: serde_json::Map<String, Value> = rec
+                .iter()
+                .map(|(k, v)| (k.clone(), dhoom_to_json_value(v)))
+                .collect();
+            Value::Object(map)
+        })
+        .collect()
 }
-

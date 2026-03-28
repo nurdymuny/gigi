@@ -8,12 +8,16 @@ use std::fmt;
 pub enum FieldType {
     Numeric,
     Categorical,
-    OrderedCat { order: Vec<String> },
+    OrderedCat {
+        order: Vec<String>,
+    },
     Timestamp,
     Binary,
     /// Dense float vector of fixed dimensionality (embedding field).
     /// Geometric meaning: a section into a vector bundle V = B × ℝᵈ.
-    Vector { dims: usize },
+    Vector {
+        dims: usize,
+    },
 }
 
 /// A dynamically-typed value stored in a fiber.
@@ -67,7 +71,9 @@ impl Ord for Value {
                 // similarity is handled by vector_search, not ordering).
                 for (x, y) in a.iter().zip(b.iter()) {
                     let cmp = x.total_cmp(y);
-                    if cmp != Ordering::Equal { return cmp; }
+                    if cmp != Ordering::Equal {
+                        return cmp;
+                    }
                 }
                 a.len().cmp(&b.len())
             }
@@ -87,7 +93,9 @@ impl std::hash::Hash for Value {
             Value::Timestamp(v) => v.hash(state),
             Value::Vector(v) => {
                 v.len().hash(state);
-                for x in v { x.to_bits().hash(state); }
+                for x in v {
+                    x.to_bits().hash(state);
+                }
             }
             Value::Null => {}
         }
@@ -105,7 +113,9 @@ impl fmt::Display for Value {
             Value::Vector(v) => {
                 write!(f, "[")?;
                 for (i, x) in v.iter().enumerate() {
-                    if i > 0 { write!(f, ",")?; }
+                    if i > 0 {
+                        write!(f, ",")?;
+                    }
                     write!(f, "{x}")?;
                 }
                 write!(f, "]")
@@ -220,6 +230,10 @@ pub struct BundleSchema {
     pub indexed_fields: Vec<String>,
     /// Optional geometric encryption key (gauge transform on fibers).
     pub gauge_key: Option<crate::crypto::GaugeKey>,
+    /// Schema-declared adjacency functions for COMPLETE.
+    pub adjacencies: Vec<AdjacencyDef>,
+    /// H¹ z-score threshold for consistency checks (default 3.0).
+    pub h1_threshold: f64,
 }
 
 impl BundleSchema {
@@ -230,6 +244,8 @@ impl BundleSchema {
             fiber_fields: Vec::new(),
             indexed_fields: Vec::new(),
             gauge_key: None,
+            adjacencies: Vec::new(),
+            h1_threshold: 3.0,
         }
     }
 
@@ -248,9 +264,22 @@ impl BundleSchema {
         self
     }
 
+    pub fn adjacency(mut self, adj: AdjacencyDef) -> Self {
+        self.adjacencies.push(adj);
+        self
+    }
+
+    pub fn with_h1_threshold(mut self, threshold: f64) -> Self {
+        self.h1_threshold = threshold;
+        self
+    }
+
     /// Get the zero section (Def 1.3) — all defaults.
     pub fn zero_section(&self) -> Vec<Value> {
-        self.fiber_fields.iter().map(|f| f.default.clone()).collect()
+        self.fiber_fields
+            .iter()
+            .map(|f| f.default.clone())
+            .collect()
     }
 
     pub fn fiber_field_index(&self, name: &str) -> Option<usize> {
@@ -276,3 +305,22 @@ pub type Record = HashMap<String, Value>;
 
 /// Base point in the discrete base space B.
 pub type BasePoint = u64;
+
+/// Schema-declared adjacency kind for COMPLETE.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AdjacencyKind {
+    /// ON field = field — neighbor if same value in the named field.
+    Equality { field: String },
+    /// ON field WITHIN radius — neighbor if |field_a - field_b| < radius.
+    Metric { field: String, radius: f64 },
+    /// ON field ABOVE threshold — neighbor if |field_value| > threshold.
+    Threshold { field: String, threshold: f64 },
+}
+
+/// A named, weighted adjacency function declared in a bundle schema.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AdjacencyDef {
+    pub name: String,
+    pub kind: AdjacencyKind,
+    pub weight: f64,
+}

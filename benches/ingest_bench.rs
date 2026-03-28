@@ -5,10 +5,10 @@
 //!
 //! Methodology: timed insertion of N records (1K → 1M), 3 runs each, best-of-3.
 
+use gigi::bundle::BundleStore;
+use gigi::*;
 use std::collections::HashMap;
 use std::time::Instant;
-use gigi::*;
-use gigi::bundle::BundleStore;
 
 // ── Schema & Record Factories ───────────────────────────────────────
 
@@ -137,7 +137,11 @@ fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, f64) {
     // Build Sequential store
     let mut sequential = BundleStore::with_geometry(
         schema.clone(),
-        BaseGeometry::Flat { start: 0, step: 10, key_field: "ts".into() },
+        BaseGeometry::Flat {
+            start: 0,
+            step: 10,
+            key_field: "ts".into(),
+        },
     );
     for i in 0..n as i64 {
         sequential.insert(&make_record(i * 10));
@@ -156,7 +160,9 @@ fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, f64) {
             let _ = hashed.point_query(&key);
         }
         let ns = start.elapsed().as_nanos() as f64 / queries as f64;
-        if ns < best_h { best_h = ns; }
+        if ns < best_h {
+            best_h = ns;
+        }
 
         // Query Sequential
         let start = Instant::now();
@@ -167,7 +173,9 @@ fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, f64) {
             let _ = sequential.point_query(&key);
         }
         let ns = start.elapsed().as_nanos() as f64 / queries as f64;
-        if ns < best_s { best_s = ns; }
+        if ns < best_s {
+            best_s = ns;
+        }
     }
 
     (best_h, best_s)
@@ -178,9 +186,7 @@ fn bench_batch_hashed(n: usize, runs: usize) -> BenchResult {
     let schema = ts_schema();
     let record_bytes = 5 * 8;
 
-    let records: Vec<HashMap<String, Value>> = (0..n as i64)
-        .map(|i| make_record(i * 10))
-        .collect();
+    let records: Vec<HashMap<String, Value>> = (0..n as i64).map(|i| make_record(i * 10)).collect();
 
     let mut best_ns = f64::MAX;
     for _ in 0..runs {
@@ -206,15 +212,17 @@ fn bench_batch_sequential(n: usize, runs: usize) -> BenchResult {
     let schema = ts_schema();
     let record_bytes = 5 * 8;
 
-    let records: Vec<HashMap<String, Value>> = (0..n as i64)
-        .map(|i| make_record(i * 10))
-        .collect();
+    let records: Vec<HashMap<String, Value>> = (0..n as i64).map(|i| make_record(i * 10)).collect();
 
     let mut best_ns = f64::MAX;
     for _ in 0..runs {
         let mut store = BundleStore::with_geometry(
             schema.clone(),
-            BaseGeometry::Flat { start: 0, step: 10, key_field: "ts".into() },
+            BaseGeometry::Flat {
+                start: 0,
+                step: 10,
+                key_field: "ts".into(),
+            },
         );
         let start = Instant::now();
         store.batch_insert(&records);
@@ -260,17 +268,26 @@ fn main() {
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║           GIGI INGEST BENCHMARK — Single vs Batch, Hashed vs Vec            ║");
     println!("║           5 fiber fields × 8 bytes ≈ 40 bytes/record                       ║");
-    println!("║           Best of {runs} runs per configuration                                  ║");
+    println!(
+        "║           Best of {runs} runs per configuration                                  ║"
+    );
     println!("╠══════════════════════════════════════════════════════════════════════════════╣");
 
     // Run all benchmarks once, cache results
-    let mut results: Vec<(usize, BenchResult, BenchResult, BenchResult, BenchResult, BenchResult)> = Vec::new();
+    let mut results: Vec<(
+        usize,
+        BenchResult,
+        BenchResult,
+        BenchResult,
+        BenchResult,
+        BenchResult,
+    )> = Vec::new();
 
     for &n in &sizes {
         eprint!("  Benchmarking N={n}...");
-        let h  = bench_hashed(n, runs);
-        let s  = bench_sequential(n, runs);
-        let a  = bench_autodetect(n, runs);
+        let h = bench_hashed(n, runs);
+        let s = bench_sequential(n, runs);
+        let a = bench_autodetect(n, runs);
         let bh = bench_batch_hashed(n, runs);
         let bs = bench_batch_sequential(n, runs);
         eprintln!(" done");
@@ -288,9 +305,19 @@ fn main() {
         let speedup = h.ns_per_insert / s.ns_per_insert;
         println!(
             "║ {:>9} │ {:>8.1} │ {:>9} │ {:>8.1} │ {:>8} │ {:>5.2}x {:>11} ║",
-            n, h.ns_per_insert, fmt_rps(h.recs_per_sec),
-            s.ns_per_insert, fmt_rps(s.recs_per_sec), speedup,
-            if speedup >= 1.5 { "faster ✓" } else if speedup >= 1.0 { "faster" } else { "slower ✗" }
+            n,
+            h.ns_per_insert,
+            fmt_rps(h.recs_per_sec),
+            s.ns_per_insert,
+            fmt_rps(s.recs_per_sec),
+            speedup,
+            if speedup >= 1.5 {
+                "faster ✓"
+            } else if speedup >= 1.0 {
+                "faster"
+            } else {
+                "slower ✗"
+            }
         );
     }
 
@@ -303,9 +330,19 @@ fn main() {
         let speedup = bh.ns_per_insert / bs.ns_per_insert;
         println!(
             "║ {:>9} │ {:>8.1} │ {:>9} │ {:>8.1} │ {:>8} │ {:>5.2}x {:>11} ║",
-            n, bh.ns_per_insert, fmt_rps(bh.recs_per_sec),
-            bs.ns_per_insert, fmt_rps(bs.recs_per_sec), speedup,
-            if speedup >= 1.5 { "faster ✓" } else if speedup >= 1.0 { "faster" } else { "slower ✗" }
+            n,
+            bh.ns_per_insert,
+            fmt_rps(bh.recs_per_sec),
+            bs.ns_per_insert,
+            fmt_rps(bs.recs_per_sec),
+            speedup,
+            if speedup >= 1.5 {
+                "faster ✓"
+            } else if speedup >= 1.0 {
+                "faster"
+            } else {
+                "slower ✗"
+            }
         );
     }
 
@@ -318,9 +355,17 @@ fn main() {
         let speedup = h.ns_per_insert / bh.ns_per_insert;
         println!(
             "║ {:>9} │ {:>8.1} │ {:>9} │ {:>8.1} │ {:>8} │ {:>5.2}x {:>11} ║",
-            n, h.ns_per_insert, fmt_rps(h.recs_per_sec),
-            bh.ns_per_insert, fmt_rps(bh.recs_per_sec), speedup,
-            if speedup >= 1.1 { "faster ✓" } else { "≈ same" }
+            n,
+            h.ns_per_insert,
+            fmt_rps(h.recs_per_sec),
+            bh.ns_per_insert,
+            fmt_rps(bh.recs_per_sec),
+            speedup,
+            if speedup >= 1.1 {
+                "faster ✓"
+            } else {
+                "≈ same"
+            }
         );
     }
 
@@ -333,9 +378,17 @@ fn main() {
         let speedup = s.ns_per_insert / bs.ns_per_insert;
         println!(
             "║ {:>9} │ {:>8.1} │ {:>9} │ {:>8.1} │ {:>8} │ {:>5.2}x {:>11} ║",
-            n, s.ns_per_insert, fmt_rps(s.recs_per_sec),
-            bs.ns_per_insert, fmt_rps(bs.recs_per_sec), speedup,
-            if speedup >= 1.1 { "faster ✓" } else { "≈ same" }
+            n,
+            s.ns_per_insert,
+            fmt_rps(s.recs_per_sec),
+            bs.ns_per_insert,
+            fmt_rps(bs.recs_per_sec),
+            speedup,
+            if speedup >= 1.1 {
+                "faster ✓"
+            } else {
+                "≈ same"
+            }
         );
     }
 
@@ -347,7 +400,10 @@ fn main() {
     for (n, h, s, _, _, bs) in &results {
         println!(
             "║ {:>9} │ {:>15} │ {:>12} │ {:>12} │ ~200 MB/s (ref) ║",
-            n, fmt_mb(h.mb_per_sec), fmt_mb(s.mb_per_sec), fmt_mb(bs.mb_per_sec),
+            n,
+            fmt_mb(h.mb_per_sec),
+            fmt_mb(s.mb_per_sec),
+            fmt_mb(bs.mb_per_sec),
         );
     }
 
@@ -363,13 +419,17 @@ fn main() {
         println!("SUMMARY @ 1M records:");
         println!(
             "  Single:  HashMap {:.0} ns ({}) │ Vec {:.0} ns ({})",
-            h.ns_per_insert, fmt_rps(h.recs_per_sec),
-            s.ns_per_insert, fmt_rps(s.recs_per_sec),
+            h.ns_per_insert,
+            fmt_rps(h.recs_per_sec),
+            s.ns_per_insert,
+            fmt_rps(s.recs_per_sec),
         );
         println!(
             "  Batch:   HashMap {:.0} ns ({}) │ Vec {:.0} ns ({})",
-            bh.ns_per_insert, fmt_rps(bh.recs_per_sec),
-            bs.ns_per_insert, fmt_rps(bs.recs_per_sec),
+            bh.ns_per_insert,
+            fmt_rps(bh.recs_per_sec),
+            bs.ns_per_insert,
+            fmt_rps(bs.recs_per_sec),
         );
         println!(
             "  Batch speedup:  HashMap {:.2}x │ Vec {:.2}x",

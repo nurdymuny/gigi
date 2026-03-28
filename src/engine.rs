@@ -1,15 +1,17 @@
 //! Persistent storage engine — ties BundleStore + WAL together.
 //!
 //! Provides crash-safe, disk-backed bundle management.
-//! On startup, replays the WAL to reconstruct in-memory state.
+//! On startup, replays the WAL to reconstruct in-memory state,
+//! then loads DHOOM snapshots for any bundle whose snapshot predates the WAL.
 
 use std::collections::HashMap;
 use std::fs;
 use std::io;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use crate::bundle::BundleStore;
-use crate::types::{BundleSchema, Record};
+use crate::types::{BundleSchema, Record, Value};
 use crate::wal::{WalEntry, WalReader, WalWriter};
 
 /// The persistent database engine.
@@ -30,6 +32,21 @@ pub struct Engine {
 
 impl Engine {
     /// Open or create a database at the given directory.
+    ///
+    /// Startup sequence — three logical phases in a single streaming WAL pass:
+    ///
+    ///   Phase 1 — Schema: CreateBundle entries create empty BundleStores.
+    ///
+    ///   Phase 2 — Bulk load: at the first Checkpoint we load DHOOM snapshot
+    ///             files for every bundle that has 0 in-memory records.  This
+    ///             is the correct insertion point because `snapshot()` compacts
+    ///             the WAL to [CreateBundle* Checkpoint] and then new inserts
+    ///             follow the checkpoint.  Loading snapshots here means records
+    ///             0-N arrive before post-snapshot WAL inserts N+1..M, which is
+    ///             the order the Sequential storage's start/step require.
+    ///
+    ///   Phase 3 — Incremental: WAL entries after the checkpoint (post-snapshot
+    ///             inserts/updates/deletes) are applied on top of the snapshot.
     pub fn open(data_dir: &Path) -> io::Result<Self> {
         fs::create_dir_all(data_dir)?;
 
@@ -42,27 +59,70 @@ impl Engine {
         }
 
         let wal_path = data_dir.join("gigi.wal");
+        let snapshots_dir = data_dir.join("snapshots");
 
-        // Replay WAL if it exists
-        let mut bundles = HashMap::new();
-        let mut schemas = HashMap::new();
+        let mut bundles: HashMap<String, BundleStore> = HashMap::new();
+        let mut schemas: HashMap<String, BundleSchema> = HashMap::new();
+        let mut snapshots_loaded = false;
 
         if wal_path.exists() {
             let mut reader = WalReader::open(&wal_path)?;
-            let entries = reader.read_all()?;
-            for entry in entries {
+            reader.replay(|entry| {
                 match entry {
                     WalEntry::CreateBundle(schema) => {
-                        let store = BundleStore::new(schema.clone());
-                        bundles.insert(schema.name.clone(), store);
+                        bundles
+                            .entry(schema.name.clone())
+                            .or_insert_with(|| BundleStore::new(schema.clone()));
                         schemas.insert(schema.name.clone(), schema);
                     }
-                    WalEntry::Insert { bundle_name, record } => {
+                    WalEntry::Checkpoint if !snapshots_loaded => {
+                        // First checkpoint: load DHOOM snapshots for empty bundles.
+                        // Must happen here — before post-snapshot WAL inserts — so
+                        // that Sequential storage's start/step is anchored to the
+                        // snapshot data, not the later WAL records.
+                        snapshots_loaded = true;
+                        if snapshots_dir.exists() {
+                            for (name, store) in bundles.iter_mut() {
+                                if store.len() > 0 {
+                                    // Bundle already has WAL records, not a post-snapshot
+                                    // restart; don't overwrite with snapshot.
+                                    continue;
+                                }
+                                let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+                                if !snap_path.exists() {
+                                    continue;
+                                }
+                                match load_dhoom_snapshot(&snap_path) {
+                                    Ok(records) => {
+                                        let n = records.len();
+                                        store.batch_insert(&records);
+                                        eprintln!(
+                                            "  Loaded snapshot {name}: {n} records from DHOOM"
+                                        );
+                                    }
+                                    Err(e) => {
+                                        eprintln!("  WARNING: failed to load snapshot {name}: {e}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    WalEntry::Checkpoint => {
+                        // Subsequent periodic checkpoints — durability marker only.
+                    }
+                    WalEntry::Insert {
+                        bundle_name,
+                        record,
+                    } => {
                         if let Some(store) = bundles.get_mut(&bundle_name) {
                             store.insert(&record);
                         }
                     }
-                    WalEntry::Update { bundle_name, key, patches } => {
+                    WalEntry::Update {
+                        bundle_name,
+                        key,
+                        patches,
+                    } => {
                         if let Some(store) = bundles.get_mut(&bundle_name) {
                             store.update(&key, &patches);
                         }
@@ -76,11 +136,9 @@ impl Engine {
                         bundles.remove(&bundle_name);
                         schemas.remove(&bundle_name);
                     }
-                    WalEntry::Checkpoint => {
-                        // Checkpoint: all prior entries are committed
-                    }
                 }
-            }
+                Ok(())
+            })?;
         }
 
         // Open WAL for appending new operations
@@ -122,7 +180,12 @@ impl Engine {
     }
 
     /// Update a record: partial field patches applied to existing record.
-    pub fn update(&mut self, bundle_name: &str, key: &Record, patches: &Record) -> io::Result<bool> {
+    pub fn update(
+        &mut self,
+        bundle_name: &str,
+        key: &Record,
+        patches: &Record,
+    ) -> io::Result<bool> {
         self.wal.log_update(bundle_name, key, patches)?;
         let updated = if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.update(key, patches)
@@ -170,7 +233,10 @@ impl Engine {
 
         // In-memory: batch insert into BundleStore
         let store = self.bundles.get_mut(bundle_name).ok_or_else(|| {
-            io::Error::new(io::ErrorKind::NotFound, format!("Bundle '{}' not found", bundle_name))
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Bundle '{}' not found", bundle_name),
+            )
         })?;
         let count = store.batch_insert(records);
 
@@ -238,7 +304,8 @@ impl Engine {
         Ok(())
     }
 
-    /// Compact the WAL: write a fresh WAL from current state.
+    /// Compact the WAL: write a fresh WAL from current state (full WAL replay format).
+    /// For large datasets prefer `snapshot()` which uses DHOOM encoding.
     pub fn compact(&mut self) -> io::Result<()> {
         let wal_path = self.data_dir.join("gigi.wal");
         let tmp_path = self.data_dir.join("gigi.wal.tmp");
@@ -265,12 +332,149 @@ impl Engine {
         Ok(())
     }
 
+    /// DHOOM snapshot — persist every bundle as a DHOOM file, then compact the WAL
+    /// to schema-only entries.
+    ///
+    /// After this call:
+    /// - `/data/snapshots/{bundle}.dhoom` contains all records.
+    /// - `gigi.wal` contains only `CreateBundle` headers (fast startup).
+    /// - New inserts go to the WAL as normal; the next `snapshot()` will absorb them.
+    ///
+    /// On restart, `Engine::open()` replays the (now tiny) WAL to get schemas, then
+    /// loads each DHOOM snapshot for bundles with 0 WAL records.
+    pub fn snapshot(&mut self) -> io::Result<usize> {
+        let snapshots_dir = self.data_dir.join("snapshots");
+        fs::create_dir_all(&snapshots_dir)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&snapshots_dir, fs::Permissions::from_mode(0o700));
+        }
+
+        let mut total_records = 0usize;
+
+        for (name, store) in &self.bundles {
+            let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+            let tmp_path = snapshots_dir.join(format!("{name}.dhoom.tmp"));
+
+            let records: Vec<serde_json::Value> = store
+                .records()
+                .map(|rec| record_to_serde_json(&rec))
+                .collect();
+
+            let count = records.len();
+            if count == 0 {
+                continue;
+            }
+
+            let encoded = crate::dhoom::encode_json(&records, name);
+            {
+                let mut f = fs::File::create(&tmp_path)?;
+                f.write_all(encoded.dhoom.as_bytes())?;
+                f.sync_all()?;
+            }
+            fs::rename(&tmp_path, &snap_path)?;
+            total_records += count;
+            eprintln!("  Snapshot written: {name} ({count} records)");
+        }
+
+        // Compact WAL to schema-only (no insert entries).
+        // On next startup the DHOOM files provide the bulk data.
+        let wal_path = self.data_dir.join("gigi.wal");
+        let tmp_path = self.data_dir.join("gigi.wal.tmp");
+        {
+            let mut new_wal = WalWriter::open(&tmp_path)?;
+            for schema in self.schemas.values() {
+                new_wal.log_create_bundle(schema)?;
+            }
+            new_wal.log_checkpoint()?;
+            new_wal.sync()?;
+        }
+        fs::rename(&tmp_path, &wal_path)?;
+        self.wal = WalWriter::open(&wal_path)?;
+        self.ops_since_checkpoint = 0;
+
+        Ok(total_records)
+    }
+
     fn maybe_checkpoint(&mut self) -> io::Result<()> {
         self.ops_since_checkpoint += 1;
         if self.ops_since_checkpoint >= self.checkpoint_interval {
             self.checkpoint()?;
         }
         Ok(())
+    }
+}
+
+// ── DHOOM snapshot helpers ────────────────────────────────────────────────────
+
+/// Convert a GIGI Record into a serde_json Object (for DHOOM encoding).
+fn record_to_serde_json(rec: &Record) -> serde_json::Value {
+    let mut map = serde_json::Map::new();
+    for (k, v) in rec {
+        map.insert(k.clone(), value_to_serde_json(v));
+    }
+    serde_json::Value::Object(map)
+}
+
+fn value_to_serde_json(v: &Value) -> serde_json::Value {
+    match v {
+        Value::Integer(i) => serde_json::json!(i),
+        Value::Float(f) => serde_json::json!(f),
+        Value::Text(s) => serde_json::json!(s),
+        Value::Bool(b) => serde_json::json!(b),
+        Value::Timestamp(t) => serde_json::json!(t),
+        Value::Null => serde_json::Value::Null,
+        Value::Vector(vs) => {
+            serde_json::Value::Array(vs.iter().map(|x| serde_json::json!(x)).collect())
+        }
+    }
+}
+
+/// Load records from a DHOOM snapshot file into a Vec<Record>.
+fn load_dhoom_snapshot(path: &Path) -> io::Result<Vec<Record>> {
+    let text = fs::read_to_string(path)?;
+    let parsed = crate::dhoom::decode_legacy(&text)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let json_records = crate::dhoom::dhoom_to_json_array(&parsed);
+    let records = json_records
+        .iter()
+        .filter_map(|jv| {
+            if let serde_json::Value::Object(map) = jv {
+                Some(
+                    map.iter()
+                        .map(|(k, v)| (k.clone(), serde_json_to_value(v)))
+                        .collect::<Record>(),
+                )
+            } else {
+                None
+            }
+        })
+        .collect();
+    Ok(records)
+}
+
+fn serde_json_to_value(v: &serde_json::Value) -> Value {
+    match v {
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Value::Integer(i)
+            } else {
+                Value::Float(n.as_f64().unwrap_or(0.0))
+            }
+        }
+        serde_json::Value::String(s) => Value::Text(s.clone()),
+        serde_json::Value::Bool(b) => Value::Bool(*b),
+        serde_json::Value::Array(arr) => {
+            let floats: Vec<f64> = arr.iter().filter_map(|x| x.as_f64()).collect();
+            if floats.len() == arr.len() && !arr.is_empty() {
+                Value::Vector(floats)
+            } else {
+                Value::Null
+            }
+        }
+        _ => Value::Null,
     }
 }
 
@@ -388,7 +592,10 @@ mod tests {
 
             let size_after = fs::metadata(&wal_path).unwrap().len();
             // After compaction, WAL should be smaller (no duplicate overwrites)
-            assert!(size_after < size_before, "compact: {size_after} >= {size_before}");
+            assert!(
+                size_after < size_before,
+                "compact: {size_after} >= {size_before}"
+            );
         }
 
         // Verify data after compaction + reopen
@@ -495,6 +702,227 @@ mod tests {
             let engine = Engine::open(&dir).unwrap();
             assert_eq!(engine.total_records(), 0);
         }
+
+        cleanup(&dir);
+    }
+
+    // ── Tests for the persistence upgrade ────────────────────────────────────
+
+    /// DHOOM snapshot: data survives snapshot() + reopen with no WAL inserts.
+    ///
+    /// This tests the primary post-deploy recovery path: WAL is schema-only
+    /// after snapshot(), so reopen must load data from the DHOOM file.
+    #[test]
+    fn snapshot_survives_wal_compact() {
+        let dir = test_dir("snap_wal_compact");
+        cleanup(&dir);
+
+        // Insert data and snapshot
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("drugs")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("name"))
+                .fiber(FieldDef::numeric("mw").with_range(1000.0));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..1000i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("name".into(), Value::Text(format!("Drug_{i}")));
+                rec.insert("mw".into(), Value::Float(200.0 + i as f64 * 0.1));
+                engine.insert("drugs", &rec).unwrap();
+            }
+            let snapped = engine.snapshot().unwrap();
+            assert_eq!(snapped, 1000);
+
+            // Verify WAL is now schema-only (no insert entries)
+            let wal_path = dir.join("gigi.wal");
+            let wal_size = fs::metadata(&wal_path).unwrap().len();
+            // A WAL with 1000 inserts would be >>1 KB; schema-only should be tiny
+            assert!(
+                wal_size < 4096,
+                "WAL should be schema-only after snapshot, was {wal_size}B"
+            );
+        }
+
+        // Reopen — must load from DHOOM snapshot, not WAL inserts
+        {
+            let engine = Engine::open(&dir).unwrap();
+            assert_eq!(
+                engine.total_records(),
+                1000,
+                "records must survive snapshot+reopen"
+            );
+
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(500));
+            let r = engine.point_query("drugs", &key).unwrap().unwrap();
+            assert_eq!(r.get("name"), Some(&Value::Text("Drug_500".into())));
+            let mw = r.get("mw").unwrap();
+            // DHOOM encodes whole-number floats as integers in JSON (250.0 → 250).
+            // Accept both Float(250.0) and Integer(250) as correct.
+            let mw_f = match mw {
+                Value::Float(f) => *f,
+                Value::Integer(i) => *i as f64,
+                _ => panic!("mw not numeric: {mw:?}"),
+            };
+            assert!((mw_f - 250.0).abs() < 0.01, "mw mismatch: {mw_f}");
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Snapshot + new inserts: post-snapshot WAL inserts are not lost on reopen.
+    ///
+    /// Simulates: ingest → snapshot → more ingest → crash/restart.
+    /// All records (pre- and post-snapshot) must be present.
+    #[test]
+    fn snapshot_then_new_inserts_survive_reopen() {
+        let dir = test_dir("snap_then_insert");
+        cleanup(&dir);
+
+        // Phase 1: insert + snapshot
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("compounds")
+                .base(FieldDef::numeric("chembl_id"))
+                .fiber(FieldDef::categorical("smiles"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..500i64 {
+                let mut rec = Record::new();
+                rec.insert("chembl_id".into(), Value::Integer(i));
+                rec.insert("smiles".into(), Value::Text(format!("C{i}H{}", i * 2)));
+                engine.insert("compounds", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        // Phase 2: reopen, add more records (post-snapshot WAL inserts)
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            assert_eq!(engine.total_records(), 500);
+
+            for i in 500..600i64 {
+                let mut rec = Record::new();
+                rec.insert("chembl_id".into(), Value::Integer(i));
+                rec.insert("smiles".into(), Value::Text(format!("C{i}H{}", i * 2)));
+                engine.insert("compounds", &rec).unwrap();
+            }
+            engine.checkpoint().unwrap();
+        }
+
+        // Phase 3: reopen — must have all 600 records (500 from DHOOM + 100 from WAL)
+        {
+            let engine = Engine::open(&dir).unwrap();
+            assert_eq!(
+                engine.total_records(),
+                600,
+                "pre-snapshot + post-snapshot records must all survive"
+            );
+
+            // Spot-check pre-snapshot record
+            let mut key = Record::new();
+            key.insert("chembl_id".into(), Value::Integer(100));
+            assert!(engine.point_query("compounds", &key).unwrap().is_some());
+
+            // Spot-check post-snapshot record
+            let mut key2 = Record::new();
+            key2.insert("chembl_id".into(), Value::Integer(550));
+            assert!(engine.point_query("compounds", &key2).unwrap().is_some());
+        }
+
+        cleanup(&dir);
+    }
+
+    /// batch_insert goes through the WAL (regression for the WAL bypass bug).
+    ///
+    /// Directly tests the `Engine::batch_insert` path — if records are
+    /// not WAL-logged they won't survive reopen.
+    #[test]
+    fn batch_insert_is_wal_logged() {
+        let dir = test_dir("batch_wal");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("activities")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::numeric("ic50").with_range(100_000.0));
+            engine.create_bundle(schema).unwrap();
+
+            let records: Vec<Record> = (0..200i64)
+                .map(|i| {
+                    let mut r = Record::new();
+                    r.insert("id".into(), Value::Integer(i));
+                    r.insert("ic50".into(), Value::Float(i as f64 * 0.5));
+                    r
+                })
+                .collect();
+
+            let inserted = engine.batch_insert("activities", &records).unwrap();
+            assert_eq!(inserted, 200);
+            // Do NOT call checkpoint — tests that WAL sync in batch_insert is sufficient
+        }
+
+        // Reopen without snapshot — data must be in WAL
+        {
+            let engine = Engine::open(&dir).unwrap();
+            assert_eq!(
+                engine.total_records(),
+                200,
+                "batch_insert records must be WAL-logged even without explicit checkpoint"
+            );
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Streaming WAL replay handles large entry counts without buffering the whole file.
+    ///
+    /// Not directly observable, but we can verify the replay() closure
+    /// receives the correct entry count — ensuring the streaming path is exercised.
+    #[test]
+    fn streaming_wal_replay_correct_count() {
+        let dir = test_dir("stream_replay");
+        cleanup(&dir);
+
+        let n = 5_000usize;
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("data")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("label"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..n as i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("label".into(), Value::Text(format!("L{i}")));
+                engine.insert("data", &rec).unwrap();
+            }
+            engine.checkpoint().unwrap();
+        }
+
+        // Count entries via the new streaming replay API directly
+        let wal_path = dir.join("gigi.wal");
+        let mut reader = crate::wal::WalReader::open(&wal_path).unwrap();
+        let mut insert_count = 0usize;
+        reader
+            .replay(|entry| {
+                if matches!(entry, crate::wal::WalEntry::Insert { .. }) {
+                    insert_count += 1;
+                }
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(insert_count, n);
+
+        // Engine reopen via streaming path also correct
+        let engine = Engine::open(&dir).unwrap();
+        assert_eq!(engine.total_records(), n);
 
         cleanup(&dir);
     }

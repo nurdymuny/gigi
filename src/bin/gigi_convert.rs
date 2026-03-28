@@ -8,8 +8,8 @@
 //!   cat data.jsonl | gigi-convert --stream -o output.dhoom
 
 use clap::Parser;
-use std::io::{self, Read, Write, BufRead, BufWriter};
 use std::fs;
+use std::io::{self, BufRead, BufWriter, Read, Write};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -93,12 +93,12 @@ fn main() {
         buf
     };
 
-    let format = cli.format.clone()
-        .unwrap_or_else(|| {
-            cli.input.as_ref()
-                .map(|p| detect_format(p))
-                .unwrap_or_else(|| "json".to_string())
-        });
+    let format = cli.format.clone().unwrap_or_else(|| {
+        cli.input
+            .as_ref()
+            .map(|p| detect_format(p))
+            .unwrap_or_else(|| "json".to_string())
+    });
 
     let collection = collection_name(&cli);
 
@@ -134,8 +134,10 @@ fn main() {
                         return;
                     }
                     write_output(&cli.output, &enc.dhoom);
-                    eprintln!("Encoded {} bytes → {} bytes ({:.1}% compression)",
-                        enc.json_bytes, enc.dhoom_bytes, enc.compression_pct);
+                    eprintln!(
+                        "Encoded {} bytes → {} bytes ({:.1}% compression)",
+                        enc.json_bytes, enc.dhoom_bytes, enc.compression_pct
+                    );
                     return;
                 }
                 Err(e) => {
@@ -146,11 +148,10 @@ fn main() {
         }
         _ => {
             // JSON input
-            serde_json::from_str::<Vec<serde_json::Value>>(&input_text)
-                .unwrap_or_else(|e| {
-                    eprintln!("Error parsing JSON: {}", e);
-                    std::process::exit(1);
-                })
+            serde_json::from_str::<Vec<serde_json::Value>>(&input_text).unwrap_or_else(|e| {
+                eprintln!("Error parsing JSON: {}", e);
+                std::process::exit(1);
+            })
         }
     };
 
@@ -164,8 +165,13 @@ fn main() {
     // Encode
     let result = gigi::convert::encode_json(&json_array, &collection);
     write_output(&cli.output, &result.dhoom);
-    eprintln!("Encoded {} records | {} → {} bytes | {:.1}% compression",
-        json_array.len(), result.json_bytes, result.dhoom_bytes, result.compression_pct);
+    eprintln!(
+        "Encoded {} records | {} → {} bytes | {:.1}% compression",
+        json_array.len(),
+        result.json_bytes,
+        result.dhoom_bytes,
+        result.compression_pct
+    );
 }
 
 fn run_streaming(cli: &Cli, collection: &str) {
@@ -204,8 +210,10 @@ fn run_streaming(cli: &Cli, collection: &str) {
 
     let result = gigi::convert::encode_json(&records, collection);
     write_output(&cli.output, &result.dhoom);
-    eprintln!("Stream: {} records | {:.1}% compression",
-        line_count, result.compression_pct);
+    eprintln!(
+        "Stream: {} records | {:.1}% compression",
+        line_count, result.compression_pct
+    );
 }
 
 fn write_output(output: &Option<PathBuf>, content: &str) {

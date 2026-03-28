@@ -25,7 +25,11 @@ pub struct QueryResult {
 /// S + d² = 1 (Theorem 6.1)
 pub fn recall_deviation(returned: usize, total_correct: usize) -> (f64, f64) {
     if total_correct == 0 {
-        return if returned == 0 { (1.0, 0.0) } else { (0.0, 1.0) };
+        return if returned == 0 {
+            (1.0, 0.0)
+        } else {
+            (0.0, 1.0)
+        };
     }
     let s = returned.min(total_correct) as f64 / total_correct as f64;
     let d = (1.0 - s).max(0.0).sqrt();
@@ -49,7 +53,10 @@ mod tests {
     fn tdd_6_3_double_cover() {
         for returned in [0, 3, 7, 10] {
             let (s, d) = recall_deviation(returned, 10);
-            assert!((s + d * d - 1.0).abs() < 1e-14, "S + d² ≠ 1 for {returned}/10");
+            assert!(
+                (s + d * d - 1.0).abs() < 1e-14,
+                "S + d² ≠ 1 for {returned}/10"
+            );
         }
     }
 

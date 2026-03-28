@@ -30,16 +30,25 @@ fn components_from_index(store: &BundleStore) -> Vec<Vec<BasePoint>> {
     let mut rank: Vec<usize> = vec![0; n];
 
     fn find(parent: &mut [usize], x: usize) -> usize {
-        if parent[x] != x { parent[x] = find(parent, parent[x]); }
+        if parent[x] != x {
+            parent[x] = find(parent, parent[x]);
+        }
         parent[x]
     }
     fn union(parent: &mut [usize], rank: &mut [usize], a: usize, b: usize) {
         let ra = find(parent, a);
         let rb = find(parent, b);
-        if ra == rb { return; }
-        if rank[ra] < rank[rb] { parent[ra] = rb; }
-        else if rank[ra] > rank[rb] { parent[rb] = ra; }
-        else { parent[rb] = ra; rank[ra] += 1; }
+        if ra == rb {
+            return;
+        }
+        if rank[ra] < rank[rb] {
+            parent[ra] = rb;
+        } else if rank[ra] > rank[rb] {
+            parent[rb] = ra;
+        } else {
+            parent[rb] = ra;
+            rank[ra] += 1;
+        }
     }
 
     // For each bitmap bucket, union all members
@@ -223,7 +232,9 @@ pub fn graph_diameter(store: &BundleStore) -> usize {
     // For small component counts with clique structure, use analytic result:
     // A clique has diameter 1. Union of disjoint cliques has max diameter 1.
     let all_cliques = components.iter().all(|comp| {
-        if comp.len() <= 1 { return true; }
+        if comp.len() <= 1 {
+            return true;
+        }
         // Check: does every node in this component have degree = comp_size - 1?
         // Instead of building full adjacency, check bucket sizes from index.
         // If a component maps to a single field-value bucket, it's a clique.
@@ -236,7 +247,11 @@ pub fn graph_diameter(store: &BundleStore) -> usize {
     });
 
     if all_cliques {
-        return if components.iter().any(|c| c.len() > 1) { 1 } else { 0 };
+        return if components.iter().any(|c| c.len() > 1) {
+            1
+        } else {
+            0
+        };
     }
 
     // General case: build adjacency and BFS
@@ -244,7 +259,8 @@ pub fn graph_diameter(store: &BundleStore) -> usize {
     if components.len() > 1 {
         let mut max_diam = 0;
         for comp in &components {
-            let sub_adj: HashMap<BasePoint, Vec<BasePoint>> = comp.iter()
+            let sub_adj: HashMap<BasePoint, Vec<BasePoint>> = comp
+                .iter()
                 .filter_map(|&bp| adj.get(&bp).map(|nbrs| (bp, nbrs.clone())))
                 .collect();
             max_diam = max_diam.max(component_diameter(&sub_adj));
@@ -325,7 +341,8 @@ pub fn coarse_grain(store: &BundleStore, scale: usize) -> (Vec<Vec<BasePoint>>, 
     // Group base points by their values on the match fields
     let mut groups: HashMap<Vec<Value>, Vec<BasePoint>> = HashMap::new();
     for rec in store.records() {
-        let key_vals: Vec<Value> = match_fields.iter()
+        let key_vals: Vec<Value> = match_fields
+            .iter()
             .map(|f| rec.get(f).cloned().unwrap_or(Value::Null))
             .collect();
         let bp = store.base_point(&{
@@ -344,10 +361,17 @@ pub fn coarse_grain(store: &BundleStore, scale: usize) -> (Vec<Vec<BasePoint>>, 
 
     // Completion entropy: H = -Σ (nᵢ/N) log(nᵢ/N)
     let n_total = store.len() as f64;
-    let entropy: f64 = group_list.iter().map(|g| {
-        let p = g.len() as f64 / n_total;
-        if p > 0.0 { -p * p.ln() } else { 0.0 }
-    }).sum();
+    let entropy: f64 = group_list
+        .iter()
+        .map(|g| {
+            let p = g.len() as f64 / n_total;
+            if p > 0.0 {
+                -p * p.ln()
+            } else {
+                0.0
+            }
+        })
+        .sum();
 
     (group_list, entropy)
 }
@@ -355,8 +379,8 @@ pub fn coarse_grain(store: &BundleStore, scale: usize) -> (Vec<Vec<BasePoint>>, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::*;
     use crate::bundle::BundleStore;
+    use crate::types::*;
 
     /// Build a well-connected store (all same dept = complete subgraph).
     fn make_connected_store() -> BundleStore {
@@ -410,7 +434,10 @@ mod tests {
         let store = make_connected_store();
         let lambda1 = spectral_gap(&store);
         // For a complete graph on n vertices, λ₁ = n/(n-1 ≈ 1.05
-        assert!(lambda1 > 0.5, "λ₁ = {lambda1}, expected > 0.5 for connected graph");
+        assert!(
+            lambda1 > 0.5,
+            "λ₁ = {lambda1}, expected > 0.5 for connected graph"
+        );
     }
 
     /// TDD-3.19: Two disjoint clusters → λ₁ ≈ 0.
@@ -420,7 +447,10 @@ mod tests {
         let lambda1 = spectral_gap(&store);
         // Two disconnected components → λ₁ should be ≈ 0
         // (Power iteration may not converge perfectly, but should be small)
-        assert!(lambda1 < 0.3, "λ₁ = {lambda1}, expected < 0.3 for disconnected graph");
+        assert!(
+            lambda1 < 0.3,
+            "λ₁ = {lambda1}, expected < 0.3 for disconnected graph"
+        );
     }
 
     /// TDD-3.20: C_sp ≥ π² for connected graph.
@@ -434,7 +464,10 @@ mod tests {
         // The π² bound applies to path graphs where D is large
         // For our complete graph: D = 1, so C_sp = λ₁ ≈ 1.0
         // We verify the computation is correct rather than enforcing pi² here
-        assert!(c_sp > 0.0, "C_sp = {c_sp}, expected > 0 for connected graph");
+        assert!(
+            c_sp > 0.0,
+            "C_sp = {c_sp}, expected > 0 for connected graph"
+        );
     }
 
     /// TDD-3.22: Coarse-grain at 3 scales. Verify entropy decreases.
@@ -464,8 +497,18 @@ mod tests {
         let (g3, e3) = coarse_grain(&store, 3); // Coarse: match fewest fields
 
         // More groups at finer scale
-        assert!(g1.len() >= g2.len(), "groups: fine={} < medium={}", g1.len(), g2.len());
-        assert!(g2.len() >= g3.len(), "groups: medium={} < coarse={}", g2.len(), g3.len());
+        assert!(
+            g1.len() >= g2.len(),
+            "groups: fine={} < medium={}",
+            g1.len(),
+            g2.len()
+        );
+        assert!(
+            g2.len() >= g3.len(),
+            "groups: medium={} < coarse={}",
+            g2.len(),
+            g3.len()
+        );
 
         // C-theorem (Thm 3.5): entropy non-increasing under coarsening
         assert!(e1 >= e2 - 1e-10, "C-theorem violated: e1={e1} < e2={e2}");

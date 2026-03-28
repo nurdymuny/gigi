@@ -152,7 +152,8 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
                     return Err("Usage: .schema <bundle_name>".into());
                 }
                 let name = parts[1];
-                let store = engine.bundle(name)
+                let store = engine
+                    .bundle(name)
                     .ok_or_else(|| format!("No bundle: {name}"))?;
                 println!("Bundle: {}", store.schema.name);
                 println!("Base fields:");
@@ -172,7 +173,8 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
                     return Err("Usage: .stats <bundle_name>".into());
                 }
                 let name = parts[1];
-                let store = engine.bundle(name)
+                let store = engine
+                    .bundle(name)
                     .ok_or_else(|| format!("No bundle: {name}"))?;
                 let k = gigi::curvature::scalar_curvature(store);
                 let conf = gigi::curvature::confidence(k);
@@ -200,10 +202,17 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
                 cols.sort();
                 // Print header
                 println!("{}", cols.join(" | "));
-                println!("{}", cols.iter().map(|c| "-".repeat(c.len().max(6))).collect::<Vec<_>>().join("-+-"));
+                println!(
+                    "{}",
+                    cols.iter()
+                        .map(|c| "-".repeat(c.len().max(6)))
+                        .collect::<Vec<_>>()
+                        .join("-+-")
+                );
                 // Print rows
                 for row in &rows {
-                    let vals: Vec<String> = cols.iter()
+                    let vals: Vec<String> = cols
+                        .iter()
                         .map(|c| row.get(c).map_or("NULL".into(), |v| format!("{v}")))
                         .collect();
                     println!("{}", vals.join(" | "));
@@ -219,11 +228,17 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
             println!("confidence: {:.2}%", stats.confidence * 100.0);
             println!("records: {}", stats.record_count);
             println!("storage: {}", stats.storage_mode);
-            println!("base fields: {}, fiber fields: {}", stats.base_fields, stats.fiber_fields);
+            println!(
+                "base fields: {}, fiber fields: {}",
+                stats.base_fields, stats.fiber_fields
+            );
         }
         ExecResult::Bundles(infos) => {
             for info in &infos {
-                println!("{} ({} records, {} fields)", info.name, info.records, info.fields);
+                println!(
+                    "{} ({} records, {} fields)",
+                    info.name, info.records, info.fields
+                );
             }
             println!("({} bundles)", infos.len());
         }

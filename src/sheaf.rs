@@ -504,11 +504,7 @@ pub fn propagate(store: &BundleStore, assumption: &Record) -> Vec<Record> {
     let baseline = complete(store, &[], 0.30, false, false);
     let baseline_completed: std::collections::HashSet<(String, String)> = baseline
         .iter()
-        .filter(|r| {
-            r.get("_status")
-                .and_then(|v| v.as_str())
-                == Some("completed")
-        })
+        .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
         .filter_map(|r| {
             let bp_key = base_key_string(r, &store.schema);
             let field = r.get("_field")?.as_str()?.to_string();
@@ -754,9 +750,7 @@ mod tests {
         let results = complete(&store, &[], 0.30, false, false);
         let completed: Vec<_> = results
             .iter()
-            .filter(|r| {
-                r.get("_status").and_then(|v| v.as_str()) == Some("completed")
-            })
+            .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
             .collect();
         // Entity 5 has F1 and F2 NULL, should be completed from context "A" neighbors
         assert!(

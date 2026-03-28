@@ -27,6 +27,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use tokio::sync::broadcast;
@@ -48,6 +49,8 @@ type Record = HashMap<String, Value>;
 
 struct StreamState {
     engine: RwLock<Engine>,
+    /// True once WAL replay is complete and engine is ready for queries.
+    ready: AtomicBool,
     /// Per-bundle broadcast channels for subscriptions
     channels: RwLock<HashMap<String, broadcast::Sender<SubscriptionEvent>>>,
     /// Global dashboard broadcast — anomaly + curvature update events for all bundles
@@ -124,7 +127,7 @@ impl StreamState {
         let data_dir = std::env::var("GIGI_DATA_DIR").unwrap_or_else(|_| "./gigi_data".to_string());
         let data_path = std::path::PathBuf::from(&data_dir);
 
-        let engine = match Engine::open(&data_path) {
+        let engine = match Engine::open_empty(&data_path) {
             Ok(e) => e,
             Err(e) => {
                 eprintln!(
@@ -139,6 +142,7 @@ impl StreamState {
 
         StreamState {
             engine: RwLock::new(engine),
+            ready: AtomicBool::new(false),
             channels: RwLock::new(HashMap::new()),
             dashboard_tx: broadcast::channel(4096).0,
             api_key,
@@ -415,6 +419,8 @@ struct HealthResponse {
     bundles: usize,
     total_records: usize,
     uptime_secs: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    loading: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -655,6 +661,21 @@ fn build_cors_layer() -> CorsLayer {
 
 // ── REST Handlers ──
 
+/// Middleware: reject non-health requests while WAL replay is in progress.
+async fn readiness_middleware(
+    State(state): State<Arc<StreamState>>,
+    req: Request<axum::body::Body>,
+    next: Next,
+) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
+    if !state.ready.load(Ordering::Relaxed) && req.uri().path() != "/v1/health" {
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({"error": "WAL replay in progress — try again shortly"})),
+        ));
+    }
+    Ok(next.run(req).await)
+}
+
 /// Middleware: API key authentication.
 /// If GIGI_API_KEY is set, all requests must include `X-API-Key` header.
 /// Health endpoint is excluded (checked in the handler itself).
@@ -739,14 +760,16 @@ async fn rate_limit_middleware(
 }
 
 async fn health(State(state): State<Arc<StreamState>>) -> Json<HealthResponse> {
+    let is_ready = state.ready.load(Ordering::Relaxed);
     let engine = state.engine.read().unwrap();
     Json(HealthResponse {
-        status: "ok",
+        status: if is_ready { "ok" } else { "loading" },
         engine: "gigi-stream",
         version: "0.1.0",
         bundles: engine.bundle_names().len(),
         total_records: engine.total_records(),
         uptime_secs: state.start_time.elapsed().as_secs(),
+        loading: if is_ready { None } else { Some(true) },
     })
 }
 
@@ -4447,16 +4470,20 @@ async fn main() {
         )
         // Dashboard UI
         .route("/dashboard", get(serve_dashboard))
-        // Middleware: auth + rate limiting
+        // Middleware: auth + rate limiting + readiness
         .layer(axum_mw::from_fn_with_state(state.clone(), auth_middleware))
         .layer(axum_mw::from_fn_with_state(
             state.clone(),
             rate_limit_middleware,
         ))
+        .layer(axum_mw::from_fn_with_state(
+            state.clone(),
+            readiness_middleware,
+        ))
         // CORS — configurable via GIGI_CORS_ORIGIN env var
         // Default: restrictive (no cross-origin). Set GIGI_CORS_ORIGIN=* for permissive.
         .layer(build_cors_layer())
-        .with_state(state);
+        .with_state(state.clone());
 
     eprintln!("╔══════════════════════════════════════════════════════╗");
     eprintln!("║          GIGI Stream — Geometric Database            ║");
@@ -4484,6 +4511,20 @@ async fn main() {
     eprintln!("╚══════════════════════════════════════════════════════╝");
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    eprintln!("Listening on {addr} — starting WAL replay in background…");
+
+    // Spawn WAL replay on a blocking thread so HTTP is reachable immediately.
+    let replay_state = state.clone();
+    tokio::task::spawn_blocking(move || {
+        let mut engine = replay_state.engine.write().unwrap();
+        if let Err(e) = engine.replay_wal() {
+            eprintln!("WAL replay error: {e}");
+        }
+        drop(engine);
+        replay_state.ready.store(true, Ordering::Release);
+        eprintln!("Engine ready — all endpoints active");
+    });
+
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),

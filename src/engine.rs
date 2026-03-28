@@ -48,6 +48,17 @@ impl Engine {
     ///   Phase 3 — Incremental: WAL entries after the checkpoint (post-snapshot
     ///             inserts/updates/deletes) are applied on top of the snapshot.
     pub fn open(data_dir: &Path) -> io::Result<Self> {
+        Self::open_inner(data_dir, true)
+    }
+
+    /// Open the engine without replaying the WAL. The engine is empty but
+    /// ready to accept new writes. Call `replay_wal()` separately to load
+    /// existing data. Used for early HTTP bind during startup.
+    pub fn open_empty(data_dir: &Path) -> io::Result<Self> {
+        Self::open_inner(data_dir, false)
+    }
+
+    fn open_inner(data_dir: &Path, replay: bool) -> io::Result<Self> {
         fs::create_dir_all(data_dir)?;
 
         // Set restrictive permissions on data directory (Unix only: owner rwx only)
@@ -59,86 +70,12 @@ impl Engine {
         }
 
         let wal_path = data_dir.join("gigi.wal");
-        let snapshots_dir = data_dir.join("snapshots");
 
         let mut bundles: HashMap<String, BundleStore> = HashMap::new();
         let mut schemas: HashMap<String, BundleSchema> = HashMap::new();
-        let mut snapshots_loaded = false;
 
-        if wal_path.exists() {
-            let mut reader = WalReader::open(&wal_path)?;
-            reader.replay(|entry| {
-                match entry {
-                    WalEntry::CreateBundle(schema) => {
-                        bundles
-                            .entry(schema.name.clone())
-                            .or_insert_with(|| BundleStore::new(schema.clone()));
-                        schemas.insert(schema.name.clone(), schema);
-                    }
-                    WalEntry::Checkpoint if !snapshots_loaded => {
-                        // First checkpoint: load DHOOM snapshots for empty bundles.
-                        // Must happen here — before post-snapshot WAL inserts — so
-                        // that Sequential storage's start/step is anchored to the
-                        // snapshot data, not the later WAL records.
-                        snapshots_loaded = true;
-                        if snapshots_dir.exists() {
-                            for (name, store) in bundles.iter_mut() {
-                                if store.len() > 0 {
-                                    // Bundle already has WAL records, not a post-snapshot
-                                    // restart; don't overwrite with snapshot.
-                                    continue;
-                                }
-                                let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
-                                if !snap_path.exists() {
-                                    continue;
-                                }
-                                match load_dhoom_snapshot(&snap_path) {
-                                    Ok(records) => {
-                                        let n = records.len();
-                                        store.batch_insert(&records);
-                                        eprintln!(
-                                            "  Loaded snapshot {name}: {n} records from DHOOM"
-                                        );
-                                    }
-                                    Err(e) => {
-                                        eprintln!("  WARNING: failed to load snapshot {name}: {e}");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    WalEntry::Checkpoint => {
-                        // Subsequent periodic checkpoints — durability marker only.
-                    }
-                    WalEntry::Insert {
-                        bundle_name,
-                        record,
-                    } => {
-                        if let Some(store) = bundles.get_mut(&bundle_name) {
-                            store.insert(&record);
-                        }
-                    }
-                    WalEntry::Update {
-                        bundle_name,
-                        key,
-                        patches,
-                    } => {
-                        if let Some(store) = bundles.get_mut(&bundle_name) {
-                            store.update(&key, &patches);
-                        }
-                    }
-                    WalEntry::Delete { bundle_name, key } => {
-                        if let Some(store) = bundles.get_mut(&bundle_name) {
-                            store.delete(&key);
-                        }
-                    }
-                    WalEntry::DropBundle(bundle_name) => {
-                        bundles.remove(&bundle_name);
-                        schemas.remove(&bundle_name);
-                    }
-                }
-                Ok(())
-            })?;
+        if replay && wal_path.exists() {
+            Self::do_replay(&wal_path, data_dir, &mut bundles, &mut schemas)?;
         }
 
         // Open WAL for appending new operations
@@ -152,6 +89,114 @@ impl Engine {
             ops_since_checkpoint: 0,
             checkpoint_interval: 10_000,
         })
+    }
+
+    /// Replay the WAL from disk into this engine's in-memory state.
+    /// Call this after `open_empty()` to load existing data.
+    /// Logs progress every 100K entries to stderr.
+    pub fn replay_wal(&mut self) -> io::Result<()> {
+        let wal_path = self.data_dir.join("gigi.wal");
+        if !wal_path.exists() {
+            return Ok(());
+        }
+        Self::do_replay(
+            &wal_path,
+            &self.data_dir,
+            &mut self.bundles,
+            &mut self.schemas,
+        )
+    }
+
+    fn do_replay(
+        wal_path: &Path,
+        data_dir: &Path,
+        bundles: &mut HashMap<String, BundleStore>,
+        schemas: &mut HashMap<String, BundleSchema>,
+    ) -> io::Result<()> {
+        let snapshots_dir = data_dir.join("snapshots");
+        let mut snapshots_loaded = false;
+        let mut entry_count: u64 = 0;
+        let start = std::time::Instant::now();
+
+        let mut reader = WalReader::open(wal_path)?;
+        eprintln!("  WAL replay starting...");
+
+        reader.replay(|entry| {
+            entry_count += 1;
+            if entry_count.is_multiple_of(100_000) {
+                let elapsed = start.elapsed().as_secs_f64();
+                let rate = entry_count as f64 / elapsed;
+                let total: usize = bundles.values().map(|s| s.len()).sum();
+                eprintln!(
+                    "  WAL replay: {entry_count} entries ({total} records) — {rate:.0} entries/s"
+                );
+            }
+            match entry {
+                WalEntry::CreateBundle(schema) => {
+                    bundles
+                        .entry(schema.name.clone())
+                        .or_insert_with(|| BundleStore::new(schema.clone()));
+                    schemas.insert(schema.name.clone(), schema);
+                }
+                WalEntry::Checkpoint if !snapshots_loaded => {
+                    snapshots_loaded = true;
+                    if snapshots_dir.exists() {
+                        for (name, store) in bundles.iter_mut() {
+                            if !store.is_empty() {
+                                continue;
+                            }
+                            let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+                            if !snap_path.exists() {
+                                continue;
+                            }
+                            match load_dhoom_snapshot(&snap_path) {
+                                Ok(records) => {
+                                    let n = records.len();
+                                    store.batch_insert(&records);
+                                    eprintln!("  Loaded snapshot {name}: {n} records from DHOOM");
+                                }
+                                Err(e) => {
+                                    eprintln!("  WARNING: failed to load snapshot {name}: {e}");
+                                }
+                            }
+                        }
+                    }
+                }
+                WalEntry::Checkpoint => {}
+                WalEntry::Insert {
+                    bundle_name,
+                    record,
+                } => {
+                    if let Some(store) = bundles.get_mut(&bundle_name) {
+                        store.insert(&record);
+                    }
+                }
+                WalEntry::Update {
+                    bundle_name,
+                    key,
+                    patches,
+                } => {
+                    if let Some(store) = bundles.get_mut(&bundle_name) {
+                        store.update(&key, &patches);
+                    }
+                }
+                WalEntry::Delete { bundle_name, key } => {
+                    if let Some(store) = bundles.get_mut(&bundle_name) {
+                        store.delete(&key);
+                    }
+                }
+                WalEntry::DropBundle(bundle_name) => {
+                    bundles.remove(&bundle_name);
+                    schemas.remove(&bundle_name);
+                }
+            }
+            Ok(())
+        })?;
+
+        let elapsed = start.elapsed().as_secs_f64();
+        let total: usize = bundles.values().map(|s| s.len()).sum();
+        eprintln!("  WAL replay complete: {entry_count} entries, {total} records in {elapsed:.1}s");
+        Ok(())
     }
 
     /// Create a new bundle (table).

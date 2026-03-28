@@ -23,6 +23,11 @@ primary_region = "iad"
     interval = "30s"
     timeout = "5s"
 
+[[vm]]
+  memory = "32gb"
+  cpu_kind = "performance"
+  cpus = 4
+
 [mounts]
   source = "gigi_data"
   destination = "/data"

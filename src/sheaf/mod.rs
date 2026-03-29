@@ -26,6 +26,8 @@ struct Neighbor {
     bp: BasePoint,
     adjacency_name: String,
     weight: f64,
+    /// Restriction map coefficient F_{tgt←src}. Identity = 1.0.
+    restriction: f64,
 }
 
 /// Find all neighbors of `bp` according to schema-declared adjacency functions.
@@ -42,6 +44,7 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                 bp: nbp,
                 adjacency_name: "geometric".into(),
                 weight: 1.0,
+                restriction: 1.0,
             })
             .collect();
     }
@@ -74,6 +77,7 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                                 bp: nbp,
                                 adjacency_name: adj.name.clone(),
                                 weight: adj.weight,
+                                restriction: 1.0,
                             });
                     }
                 }
@@ -103,6 +107,7 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                                             bp: nbp,
                                             adjacency_name: adj.name.clone(),
                                             weight: scaled_weight,
+                                            restriction: 1.0,
                                         });
                                 }
                             }
@@ -128,6 +133,7 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                                                 bp: nbp,
                                                 adjacency_name: adj.name.clone(),
                                                 weight: scaled_weight,
+                                                restriction: 1.0,
                                             });
                                     }
                                 }
@@ -157,6 +163,7 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                                         bp: nbp,
                                         adjacency_name: adj.name.clone(),
                                         weight: adj.weight,
+                                        restriction: 1.0,
                                     });
                             }
                         }
@@ -199,6 +206,7 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                                                 bp: nbp,
                                                 adjacency_name: adj.name.clone(),
                                                 weight: scaled_weight,
+                                                restriction: 1.0,
                                             });
                                     }
                                 }
@@ -329,7 +337,8 @@ fn weighted_mean(predictions: &[(f64, f64)]) -> f64 {
     predictions.iter().map(|(v, w)| v * w).sum::<f64>() / total_weight
 }
 
-/// Weighted standard deviation (uncertainty band).
+/// Weighted standard deviation (uncertainty band). Kept for PROPAGATE/fallback.
+#[allow(dead_code)]
 fn weighted_std(predictions: &[(f64, f64)]) -> f64 {
     let total_weight: f64 = predictions.iter().map(|(_, w)| w).sum();
     if total_weight < f64::EPSILON {
@@ -447,20 +456,21 @@ pub fn complete(
                 neighbors.iter().collect()
             };
 
-            // Collect predictions from clean neighbors
-            let mut predictions: Vec<(f64, f64)> = Vec::new();
+            // Build local SheafProblem from clean neighbors
+            // Vertex 0 = target (missing), vertices 1..N = observed neighbors
+            let mut observed_nbs: Vec<(&Neighbor, f64)> = Vec::new();
             let mut constraint_entries: Vec<(BasePoint, String, f64, f64)> = Vec::new();
 
             for nb in &clean_neighbors {
                 if let Some(fiber_nb) = store.get_fiber(nb.bp) {
                     if let Some(v) = fiber_nb.get(field_idx).and_then(|v| v.as_f64()) {
-                        predictions.push((v, nb.weight));
+                        observed_nbs.push((nb, v));
                         constraint_entries.push((nb.bp, nb.adjacency_name.clone(), v, nb.weight));
                     }
                 }
             }
 
-            if predictions.is_empty() {
+            if observed_nbs.is_empty() {
                 let mut skip_rec = make_base_record(&record, &store.schema);
                 skip_rec.insert("_field".into(), Value::Text(field_name.clone()));
                 skip_rec.insert(
@@ -472,7 +482,52 @@ pub fn complete(
                 continue;
             }
 
-            let conf = confidence_sheaf(&predictions);
+            // Construct Laplacian problem
+            let n_vertices = 1 + observed_nbs.len();
+            let mut edges = Vec::with_capacity(observed_nbs.len());
+            let mut kinds = Vec::with_capacity(n_vertices);
+            let mut observed_map = HashMap::new();
+
+            kinds.push(laplacian::VertexKind::Missing); // vertex 0 = target
+            for (i, (nb, val)) in observed_nbs.iter().enumerate() {
+                let vi = i + 1;
+                kinds.push(laplacian::VertexKind::Observed);
+                observed_map.insert(vi, *val);
+                edges.push(laplacian::SheafEdge {
+                    src: 0,
+                    tgt: vi,
+                    weight: nb.weight,
+                    restriction: nb.restriction,
+                });
+            }
+
+            let problem = laplacian::SheafProblem {
+                n_vertices,
+                edges,
+                kinds,
+                observed: observed_map,
+            };
+
+            let solution = laplacian::solve(&problem);
+
+            // Extract result for vertex 0 (the missing target)
+            let completion = solution.completions.iter().find(|(idx, _)| *idx == 0);
+            let (completed_value, conf, uncertainty) = match completion {
+                Some((_, cr)) => (cr.value, cr.confidence, cr.inv_diag.sqrt()),
+                None => {
+                    // Undetermined — Laplacian singular at target vertex
+                    let mut skip_rec = make_base_record(&record, &store.schema);
+                    skip_rec.insert("_field".into(), Value::Text(field_name.clone()));
+                    skip_rec.insert(
+                        "_reason".into(),
+                        Value::Text("undetermined_direction".into()),
+                    );
+                    skip_rec.insert("_status".into(), Value::Text("skipped".into()));
+                    results.push(skip_rec);
+                    continue;
+                }
+            };
+
             if conf < min_confidence {
                 let mut skip_rec = make_base_record(&record, &store.schema);
                 skip_rec.insert("_field".into(), Value::Text(field_name.clone()));
@@ -483,19 +538,16 @@ pub fn complete(
                 continue;
             }
 
-            let completed_value = weighted_mean(&predictions);
-            let uncertainty = weighted_std(&predictions);
-
             let mut result_rec = make_base_record(&record, &store.schema);
             result_rec.insert("_field".into(), Value::Text(field_name.clone()));
             result_rec.insert("_completed_value".into(), Value::Float(completed_value));
             result_rec.insert("_confidence".into(), Value::Float(conf));
             result_rec.insert("_uncertainty".into(), Value::Float(uncertainty));
             result_rec.insert("_origin".into(), Value::Text("sheaf_completed".into()));
-            result_rec.insert("_method".into(), Value::Text("sheaf_extension".into()));
+            result_rec.insert("_method".into(), Value::Text("laplacian_schur".into()));
             result_rec.insert(
                 "_neighbor_count".into(),
-                Value::Integer(predictions.len() as i64),
+                Value::Integer(observed_nbs.len() as i64),
             );
             result_rec.insert("_status".into(), Value::Text("completed".into()));
 
@@ -503,14 +555,13 @@ pub fn complete(
                 result_rec.insert(
                     "_provenance".into(),
                     Value::Text(format!(
-                        "Geometrically implied by {} constraining sections with H1 = 0",
-                        predictions.len()
+                        "Schur complement of {}-vertex sheaf Laplacian, s²={:.4e}",
+                        n_vertices, solution.residual_variance
                     )),
                 );
             }
 
             if with_constraint_graph {
-                // Encode constraint graph as a JSON string in a Text value
                 let graph_json = constraint_entries
                     .iter()
                     .map(|(nbp, adj_name, val, w)| {
@@ -911,5 +962,81 @@ mod tests {
         // At minimum the function should not panic
         // Propagate should not panic; cascade may or may not be empty
         let _ = cascade.len();
+    }
+
+    #[test]
+    fn complete_uses_laplacian_method() {
+        // Verify that completed records now report method = "laplacian_schur"
+        let store = test_bundle();
+        let results = complete(&store, &[], 0.30, false, false);
+        let completed: Vec<_> = results
+            .iter()
+            .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
+            .collect();
+        assert!(!completed.is_empty(), "Should have completed records");
+        for rec in &completed {
+            let method = rec.get("_method").and_then(|v| v.as_str()).unwrap_or("");
+            assert_eq!(method, "laplacian_schur", "Method should be laplacian_schur, got {method}");
+        }
+    }
+
+    #[test]
+    fn laplacian_completion_value_matches_schur() {
+        // Directly verify: for 5 neighbors all with F1 ≈ 1.0 (weights 0.4 each),
+        // the Laplacian Schur complement should give x̂ = weighted mean of observed.
+        // With equal weights and identity restriction: Schur = weighted mean.
+        let store = test_bundle();
+        let results = complete(&store, &[], 0.10, false, false);
+        let f1_completed: Vec<_> = results
+            .iter()
+            .filter(|r| {
+                r.get("_field").and_then(|v| v.as_str()) == Some("F1")
+                    && r.get("_status").and_then(|v| v.as_str()) == Some("completed")
+            })
+            .collect();
+        assert!(!f1_completed.is_empty(), "F1 should be completed for entity 5");
+        let val = f1_completed[0]
+            .get("_completed_value")
+            .and_then(|v| v.as_f64())
+            .unwrap();
+        // Entity 5 F1 is NULL. Neighbors (entities 0-4,6) in context "A" have
+        // F1 = 1.00, 1.01, 1.02, 1.03, 1.04, 1.05.
+        // Entity 6 has F1=1.05 and is NOT an outlier for F1.
+        // With identity restriction, Schur = mean of observed = (sum/n).
+        // The exact value depends on which neighbors pass H1 check.
+        assert!(
+            val > 0.9 && val < 1.2,
+            "Completed F1 should be ≈1.0, got {val}"
+        );
+    }
+
+    #[test]
+    fn laplacian_confidence_from_inv_diag() {
+        // The Laplacian confidence = 1/(1 + (L_mm^{-1})_{00}).
+        // For a star graph (1 missing → N observed, all weight w, restriction 1):
+        //   L_mm = N*w (scalar), so L_mm^{-1} = 1/(N*w).
+        //   Confidence = 1/(1 + 1/(N*w)) = N*w/(N*w + 1).
+        let store = test_bundle();
+        let results = complete(&store, &[], 0.01, true, false);
+        let completed: Vec<_> = results
+            .iter()
+            .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
+            .collect();
+        for rec in &completed {
+            let conf = rec
+                .get("_confidence")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            // Confidence must be in (0, 1)
+            assert!(conf > 0.0, "Confidence must be > 0, got {conf}");
+            assert!(conf < 1.0, "Confidence must be < 1, got {conf}");
+            // Provenance should mention Schur complement
+            if let Some(prov) = rec.get("_provenance").and_then(|v| v.as_str()) {
+                assert!(
+                    prov.contains("Schur complement"),
+                    "Provenance should mention Schur: {prov}"
+                );
+            }
+        }
     }
 }

@@ -693,11 +693,43 @@ pub fn propagate(store: &BundleStore, assumption: &Record) -> Vec<Record> {
 // ── CONSISTENCY ──
 
 /// Scan the bundle for H¹ ≠ 0 contradictions. Returns rows describing each one.
+///
+/// For bundles with > `SAMPLING_THRESHOLD` records, uses sampling to estimate
+/// H¹ rather than full scan. Adds `_sampled: true` and `_estimated_total` to
+/// the summary when sampling is used.
 pub fn consistency_check(store: &BundleStore) -> Vec<Record> {
+    consistency_check_impl(store, None)
+}
+
+/// Sampled consistency check — check at most `sample_size` records and extrapolate.
+pub fn consistency_check_sampled(store: &BundleStore, sample_size: usize) -> Vec<Record> {
+    consistency_check_impl(store, Some(sample_size))
+}
+
+/// Auto-sampling threshold: bundles larger than this use sampling by default.
+const SAMPLING_THRESHOLD: usize = 100_000;
+
+fn consistency_check_impl(store: &BundleStore, max_records: Option<usize>) -> Vec<Record> {
     let h1_threshold = store.schema.h1_threshold;
     let mut contradictions = Vec::new();
 
+    let total_records = store.len();
+    let limit = max_records.unwrap_or_else(|| {
+        if total_records > SAMPLING_THRESHOLD {
+            SAMPLING_THRESHOLD
+        } else {
+            total_records
+        }
+    });
+    let is_sampled = limit < total_records;
+
+    let mut checked = 0usize;
     for (bp, _fiber) in store.sections() {
+        if checked >= limit {
+            break;
+        }
+        checked += 1;
+
         let record = match store.reconstruct(bp) {
             Some(r) => r,
             None => continue,
@@ -723,9 +755,40 @@ pub fn consistency_check(store: &BundleStore) -> Vec<Record> {
                     "_severity".into(),
                     Value::Float(outlier_bps.len() as f64 / neighbors.len() as f64),
                 );
+                if is_sampled {
+                    rec.insert("_sampled".into(), Value::Integer(1));
+                }
                 contradictions.push(rec);
             }
         }
+    }
+
+    // If sampled, add estimated total as a summary row at the beginning
+    if is_sampled && checked > 0 {
+        let found = contradictions.len();
+        let rate = found as f64 / checked as f64;
+        let estimated_total = (rate * total_records as f64).round() as i64;
+
+        let mut summary = Record::new();
+        summary.insert(
+            "_summary".into(),
+            Value::Text("sampling_estimate".into()),
+        );
+        summary.insert("_sample_size".into(), Value::Integer(checked as i64));
+        summary.insert("_total_records".into(), Value::Integer(total_records as i64));
+        summary.insert(
+            "_contradictions_in_sample".into(),
+            Value::Integer(found as i64),
+        );
+        summary.insert(
+            "_estimated_total_contradictions".into(),
+            Value::Integer(estimated_total),
+        );
+        summary.insert(
+            "_contradiction_rate".into(),
+            Value::Float(rate),
+        );
+        contradictions.insert(0, summary);
     }
 
     contradictions
@@ -1149,6 +1212,44 @@ mod tests {
         assert!(
             !f3_contradictions.is_empty(),
             "Should detect F3 contradiction from entity 6"
+        );
+    }
+
+    #[test]
+    fn consistency_sampled_produces_summary() {
+        let store = test_bundle();
+        // Sample only 3 records out of 8 — forces sampling mode
+        let results = consistency_check_sampled(&store, 3);
+        // Should have a summary row at index 0 with _summary = "sampling_estimate"
+        assert!(
+            !results.is_empty(),
+            "Sampled consistency should return results"
+        );
+        let summary = &results[0];
+        assert_eq!(
+            summary.get("_summary").and_then(|v| v.as_str()),
+            Some("sampling_estimate"),
+            "First row should be a sampling summary"
+        );
+        let sample_sz = summary.get("_sample_size").and_then(|v| v.as_i64()).unwrap_or(0);
+        assert!(sample_sz <= 3, "Sample size should be <= 3, got {sample_sz}");
+        assert!(
+            summary.get("_contradiction_rate").and_then(|v| v.as_f64()).is_some(),
+            "Should have _contradiction_rate"
+        );
+    }
+
+    #[test]
+    fn consistency_full_no_sampling_summary() {
+        let store = test_bundle();
+        // Full scan (8 records, well under SAMPLING_THRESHOLD)
+        let results = consistency_check(&store);
+        let has_summary = results
+            .iter()
+            .any(|r| r.get("_summary").is_some());
+        assert!(
+            !has_summary,
+            "Full scan should NOT have a sampling summary row"
         );
     }
 

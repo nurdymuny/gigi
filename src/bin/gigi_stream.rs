@@ -773,16 +773,27 @@ async fn health(State(state): State<Arc<StreamState>>) -> Json<HealthResponse> {
             loading: Some(true),
         });
     }
-    let engine = state.engine.read().unwrap();
-    Json(HealthResponse {
-        status: "ok",
-        engine: "gigi-stream",
-        version: "0.1.0",
-        bundles: engine.bundle_names().len(),
-        total_records: engine.total_records(),
-        uptime_secs: state.start_time.elapsed().as_secs(),
-        loading: None,
-    })
+    // Use try_read to avoid blocking when snapshot or other write ops hold the lock.
+    match state.engine.try_read() {
+        Ok(engine) => Json(HealthResponse {
+            status: "ok",
+            engine: "gigi-stream",
+            version: "0.1.0",
+            bundles: engine.bundle_names().len(),
+            total_records: engine.total_records(),
+            uptime_secs: state.start_time.elapsed().as_secs(),
+            loading: None,
+        }),
+        Err(_) => Json(HealthResponse {
+            status: "ok",
+            engine: "gigi-stream",
+            version: "0.1.0",
+            bundles: 0,
+            total_records: 0,
+            uptime_secs: state.start_time.elapsed().as_secs(),
+            loading: Some(true),
+        }),
+    }
 }
 
 async fn list_bundles(State(state): State<Arc<StreamState>>) -> Json<Vec<BundleInfo>> {

@@ -175,6 +175,13 @@ pub enum Statement {
         bundle: String,
         assumptions: Vec<(String, Literal)>,
     },
+    /// SUGGEST_ADJACENCY ON bundle [FIELDS f1,f2,...] [SAMPLE_SIZE n] [CANDIDATES k] MINIMIZING h1
+    SuggestAdjacency {
+        bundle: String,
+        fields: Vec<String>,
+        sample_size: usize,
+        candidates: usize,
+    },
     Health {
         bundle: String,
     },
@@ -719,6 +726,14 @@ impl Parser {
         matches!(self.peek(), Some(Token::Word(w)) if w.eq_ignore_ascii_case(kw))
     }
 
+    fn expect_usize(&mut self) -> Result<usize, String> {
+        match self.advance() {
+            Some(Token::Number(n)) if n >= 0.0 && n.fract() == 0.0 => Ok(n as usize),
+            Some(Token::Word(w)) => w.parse().map_err(|_| format!("Expected positive integer, got '{w}'")),
+            other => Err(format!("Expected positive integer, got {other:?}")),
+        }
+    }
+
     fn at_end(&self) -> bool {
         self.pos >= self.tokens.len() || matches!(self.peek(), Some(Token::Semicolon))
     }
@@ -789,6 +804,7 @@ impl Parser {
             "CONSISTENCY" => self.parse_consistency(),
             "COMPLETE" => self.parse_complete(),
             "PROPAGATE" => self.parse_propagate(),
+            "SUGGEST_ADJACENCY" => self.parse_suggest_adjacency(),
 
             // v2.1: Access Control
             "WEAVE" => self.parse_weave(),
@@ -1572,6 +1588,50 @@ impl Parser {
         Ok(Statement::Propagate {
             bundle,
             assumptions,
+        })
+    }
+
+    // ── GQL: SUGGEST_ADJACENCY ──
+
+    fn parse_suggest_adjacency(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("ON")?;
+        let bundle = self.expect_word()?;
+
+        let mut fields = Vec::new();
+        let mut sample_size = 10_000_usize;
+        let mut candidates = 5_usize;
+
+        loop {
+            if self.is_keyword("FIELDS") {
+                self.advance();
+                // Parse comma-separated field list
+                loop {
+                    fields.push(self.expect_word()?);
+                    if matches!(self.peek(), Some(Token::Comma)) {
+                        self.advance();
+                    } else {
+                        break;
+                    }
+                }
+            } else if self.is_keyword("SAMPLE_SIZE") {
+                self.advance();
+                sample_size = self.expect_usize()?;
+            } else if self.is_keyword("CANDIDATES") {
+                self.advance();
+                candidates = self.expect_usize()?;
+            } else if self.is_keyword("MINIMIZING") {
+                self.advance();
+                self.expect_keyword("h1")?; // only h1 for now
+            } else {
+                break;
+            }
+        }
+
+        Ok(Statement::SuggestAdjacency {
+            bundle,
+            fields,
+            sample_size,
+            candidates,
         })
     }
 
@@ -3656,6 +3716,24 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             Ok(ExecResult::Rows(results))
         }
 
+        Statement::SuggestAdjacency {
+            bundle,
+            fields,
+            sample_size,
+            candidates,
+        } => {
+            let store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+            let results = crate::sheaf::suggest_adjacency(
+                store,
+                fields,
+                *sample_size,
+                *candidates,
+            );
+            Ok(ExecResult::Rows(results))
+        }
+
         Statement::Health { bundle } => {
             let store = engine
                 .bundle(bundle)
@@ -4355,6 +4433,47 @@ mod tests {
                 assert!(repair);
             }
             _ => panic!("Expected Consistency"),
+        }
+    }
+
+    #[test]
+    fn gql_suggest_adjacency_basic() {
+        let stmt = parse("SUGGEST_ADJACENCY ON chembl_activities MINIMIZING h1").unwrap();
+        match stmt {
+            Statement::SuggestAdjacency {
+                bundle,
+                fields,
+                sample_size,
+                candidates,
+            } => {
+                assert_eq!(bundle, "chembl_activities");
+                assert!(fields.is_empty());
+                assert_eq!(sample_size, 10_000);
+                assert_eq!(candidates, 5);
+            }
+            _ => panic!("Expected SuggestAdjacency"),
+        }
+    }
+
+    #[test]
+    fn gql_suggest_adjacency_full() {
+        let stmt = parse(
+            "SUGGEST_ADJACENCY ON mydata FIELDS pchembl_value, assay_type SAMPLE_SIZE 5000 CANDIDATES 10 MINIMIZING h1",
+        )
+        .unwrap();
+        match stmt {
+            Statement::SuggestAdjacency {
+                bundle,
+                fields,
+                sample_size,
+                candidates,
+            } => {
+                assert_eq!(bundle, "mydata");
+                assert_eq!(fields, vec!["pchembl_value", "assay_type"]);
+                assert_eq!(sample_size, 5000);
+                assert_eq!(candidates, 10);
+            }
+            _ => panic!("Expected SuggestAdjacency"),
         }
     }
 

@@ -731,6 +731,258 @@ pub fn consistency_check(store: &BundleStore) -> Vec<Record> {
     contradictions
 }
 
+// ── SUGGEST_ADJACENCY ──
+
+/// Suggest new adjacency relations that would reduce H¹ on this bundle.
+///
+/// 1. Enumerate candidate adjacencies (Equality on each categorical field,
+///    Metric on each numeric field).
+/// 2. Sample `sample_size` records.
+/// 3. For each candidate, temporarily add it, measure H¹ on the sample.
+/// 4. Return the top `k` candidates ranked by ΔH¹.
+pub fn suggest_adjacency(
+    store: &BundleStore,
+    restrict_fields: &[String],
+    sample_size: usize,
+    k: usize,
+) -> Vec<Record> {
+    use crate::types::{AdjacencyDef, AdjacencyKind, FieldType};
+
+    // Measure baseline H¹ on the sample
+    let sample_bps: Vec<BasePoint> = store
+        .sections()
+        .map(|(bp, _)| bp)
+        .take(sample_size)
+        .collect();
+
+    let baseline_h1 = count_h1_on_sample(store, &sample_bps, &store.schema.adjacencies);
+
+    // Enumerate candidate adjacencies from schema fields
+    let mut candidates: Vec<(AdjacencyDef, String)> = Vec::new();
+    let all_fields: Vec<_> = store
+        .schema
+        .base_fields
+        .iter()
+        .chain(store.schema.fiber_fields.iter())
+        .collect();
+
+    for field in &all_fields {
+        // Skip if restrict_fields is non-empty and field not in it
+        if !restrict_fields.is_empty() && !restrict_fields.contains(&field.name) {
+            continue;
+        }
+        // Skip fields already covered by existing adjacencies
+        let already_covered = store.schema.adjacencies.iter().any(|a| match &a.kind {
+            AdjacencyKind::Equality { field: f } => f == &field.name,
+            AdjacencyKind::Metric { field: f, .. } => f == &field.name,
+            AdjacencyKind::Threshold { field: f, .. } => f == &field.name,
+            AdjacencyKind::Transform { source_field, .. } => source_field == &field.name,
+        });
+        if already_covered {
+            continue;
+        }
+
+        match field.field_type {
+            FieldType::Categorical => {
+                let desc = format!("EQUALITY ON {} WEIGHT 0.6", field.name);
+                candidates.push((
+                    AdjacencyDef {
+                        name: format!("suggest_{}", field.name),
+                        kind: AdjacencyKind::Equality {
+                            field: field.name.clone(),
+                        },
+                        weight: 0.6,
+                    },
+                    desc,
+                ));
+            }
+            FieldType::Numeric => {
+                // Metric adjacency: use 10% of range if known, else 0.5
+                let radius = field.range.map(|r| r * 0.1).unwrap_or(0.5);
+                let desc = format!(
+                    "METRIC ON {} WITHIN {:.2} WEIGHT 0.8",
+                    field.name, radius
+                );
+                candidates.push((
+                    AdjacencyDef {
+                        name: format!("suggest_{}", field.name),
+                        kind: AdjacencyKind::Metric {
+                            field: field.name.clone(),
+                            radius,
+                        },
+                        weight: 0.8,
+                    },
+                    desc,
+                ));
+            }
+            _ => {} // Timestamp, Binary, Vector, OrderedCat — skip
+        }
+    }
+
+    // Score each candidate by ΔH¹
+    let mut scored: Vec<(String, i64, i64)> = Vec::new();
+    for (adj_def, desc) in &candidates {
+        let mut trial_adjs = store.schema.adjacencies.clone();
+        trial_adjs.push(adj_def.clone());
+        let trial_h1 = count_h1_on_sample(store, &sample_bps, &trial_adjs);
+        let delta = trial_h1 as i64 - baseline_h1 as i64;
+        scored.push((desc.clone(), trial_h1 as i64, delta));
+    }
+
+    // Sort by delta (most negative = biggest H¹ reduction)
+    scored.sort_by_key(|(_, _, d)| *d);
+
+    // Build result records
+    let mut results = Vec::new();
+
+    // Summary row
+    let mut summary = Record::new();
+    summary.insert(
+        "bundle".into(),
+        Value::Text(store.schema.name.clone()),
+    );
+    summary.insert("current_h1".into(), Value::Integer(baseline_h1 as i64));
+    summary.insert(
+        "sample_size".into(),
+        Value::Integer(sample_bps.len() as i64),
+    );
+    results.push(summary);
+
+    // Top-k suggestion rows
+    for (desc, predicted_h1, delta) in scored.iter().take(k) {
+        let mut rec = Record::new();
+        rec.insert("adjacency".into(), Value::Text(desc.clone()));
+        rec.insert("predicted_h1".into(), Value::Integer(*predicted_h1));
+        rec.insert("delta".into(), Value::Integer(*delta));
+        results.push(rec);
+    }
+
+    results
+}
+
+/// Count H¹ inconsistencies on a sample using a given adjacency set.
+fn count_h1_on_sample(
+    store: &BundleStore,
+    sample_bps: &[BasePoint],
+    adjacencies: &[crate::types::AdjacencyDef],
+) -> usize {
+    let h1_threshold = store.schema.h1_threshold;
+    let mut h1_count = 0;
+
+    for &bp in sample_bps {
+        let record = match store.reconstruct(bp) {
+            Some(r) => r,
+            None => continue,
+        };
+
+        // Find neighbors using the trial adjacency set
+        let neighbors = find_neighbors_with_adjs(store, bp, &record, adjacencies);
+        if neighbors.len() < MIN_NEIGHBORS {
+            continue;
+        }
+
+        for field_def in &store.schema.fiber_fields {
+            let (consistent, _) =
+                check_h1_local(store, &field_def.name, &neighbors, h1_threshold);
+            if !consistent {
+                h1_count += 1;
+            }
+        }
+    }
+
+    h1_count
+}
+
+/// Like find_neighbors, but uses an arbitrary adjacency set (for suggest_adjacency trials).
+fn find_neighbors_with_adjs(
+    store: &BundleStore,
+    bp: BasePoint,
+    record: &Record,
+    adjacencies: &[crate::types::AdjacencyDef],
+) -> Vec<Neighbor> {
+    if adjacencies.is_empty() {
+        return store
+            .geometric_neighbors(bp)
+            .into_iter()
+            .map(|nbp| Neighbor {
+                bp: nbp,
+                adjacency_name: "geometric".into(),
+                weight: 1.0,
+                restriction: 1.0,
+            })
+            .collect();
+    }
+
+    let mut neighbors: HashMap<BasePoint, Neighbor> = HashMap::new();
+
+    for adj in adjacencies {
+        match &adj.kind {
+            AdjacencyKind::Equality { field } => {
+                if let Some(val) = record.get(field) {
+                    if *val == Value::Null {
+                        continue;
+                    }
+                    let matching = store.range_query(field, std::slice::from_ref(val));
+                    for nbr in &matching {
+                        let nbp = store.base_point(nbr);
+                        if nbp == bp {
+                            continue;
+                        }
+                        neighbors
+                            .entry(nbp)
+                            .and_modify(|n| {
+                                if adj.weight > n.weight {
+                                    n.weight = adj.weight;
+                                    n.adjacency_name = adj.name.clone();
+                                }
+                            })
+                            .or_insert_with(|| Neighbor {
+                                bp: nbp,
+                                adjacency_name: adj.name.clone(),
+                                weight: adj.weight,
+                                restriction: 1.0,
+                            });
+                    }
+                }
+            }
+            AdjacencyKind::Metric { field, radius } => {
+                if let Some(val) = record.get(field).and_then(|v| v.as_f64()) {
+                    for (nbp, fiber) in store.sections() {
+                        if nbp == bp {
+                            continue;
+                        }
+                        if let Some(idx) = store.schema.fiber_field_index(field) {
+                            if let Some(nval) = fiber.get(idx).and_then(|v| v.as_f64()) {
+                                let dist = (val - nval).abs();
+                                if dist < *radius {
+                                    let scaled_weight = adj.weight * (1.0 - dist / radius);
+                                    neighbors
+                                        .entry(nbp)
+                                        .and_modify(|n| {
+                                            if scaled_weight > n.weight {
+                                                n.weight = scaled_weight;
+                                                n.adjacency_name = adj.name.clone();
+                                            }
+                                        })
+                                        .or_insert_with(|| Neighbor {
+                                            bp: nbp,
+                                            adjacency_name: adj.name.clone(),
+                                            weight: scaled_weight,
+                                            restriction: 1.0,
+                                        });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {} // Threshold and Transform — not generated as candidates
+        }
+    }
+
+    neighbors.into_values().collect()
+}
+
 // ── Helpers ──
 
 /// Extract base field values from a record into a new record (for result rows).
@@ -1037,6 +1289,60 @@ mod tests {
                     "Provenance should mention Schur: {prov}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn suggest_adjacency_returns_candidates() {
+        let store = test_bundle();
+        let results = suggest_adjacency(&store, &[], 100, 5);
+        // First row is the summary
+        assert!(!results.is_empty(), "Should return at least a summary row");
+        let summary = &results[0];
+        assert_eq!(
+            summary.get("bundle").and_then(|v| v.as_str()),
+            Some("test_sheaf")
+        );
+        let h1 = summary.get("current_h1").and_then(|v| v.as_i64());
+        assert!(h1.is_some(), "Summary should have current_h1");
+    }
+
+    #[test]
+    fn suggest_adjacency_ranks_by_delta() {
+        let store = test_bundle();
+        let results = suggest_adjacency(&store, &[], 100, 10);
+        // Skip summary (first row), check suggestion rows are sorted by delta
+        let suggestions: Vec<_> = results
+            .iter()
+            .skip(1)
+            .filter_map(|r| r.get("delta").and_then(|v| v.as_i64()))
+            .collect();
+        if suggestions.len() >= 2 {
+            for i in 1..suggestions.len() {
+                assert!(
+                    suggestions[i] >= suggestions[i - 1],
+                    "Suggestions should be sorted by delta (ascending): {:?}",
+                    suggestions
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn suggest_adjacency_field_filter() {
+        let store = test_bundle();
+        // Restrict to just F1 — should get metric suggestion for F1
+        let results = suggest_adjacency(&store, &["F1".into()], 100, 5);
+        let suggestions: Vec<_> = results
+            .iter()
+            .skip(1)
+            .filter_map(|r| r.get("adjacency").and_then(|v| v.as_str()).map(String::from))
+            .collect();
+        for s in &suggestions {
+            assert!(
+                s.contains("F1"),
+                "Filtered suggestions should only be for F1: {s}"
+            );
         }
     }
 }

@@ -321,6 +321,13 @@ pub enum AdjacencyKind {
         target_field: String,
         transform: TransformFn,
     },
+    /// ON MORPH source_bundle.key — cross-bundle join via shared key field.
+    Morphism {
+        source_bundle: String,
+        join_field: String,
+        /// Quality discount ∈ (0,1] — how well-aligned the external measurement is.
+        quality: f64,
+    },
 }
 
 /// Built-in transform functions for non-identity restriction maps.

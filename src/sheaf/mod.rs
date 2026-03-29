@@ -215,6 +215,10 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                     }
                 }
             }
+            AdjacencyKind::Morphism { .. } => {
+                // Cross-bundle morphisms are resolved by complete_federated(),
+                // not by single-bundle find_neighbors().
+            }
         }
     }
 
@@ -585,6 +589,283 @@ pub fn complete(
     results
 }
 
+// ── FEDERATED COMPLETE ──
+
+/// Cross-bundle neighbor found via a Morphism adjacency.
+#[derive(Debug, Clone)]
+struct CrossBundleNeighbor {
+    source_bundle: String,
+    value: f64,
+    weight: f64,
+    quality: f64,
+}
+
+/// Run sheaf completion using cross-bundle morphisms.
+///
+/// Like `complete()` but resolves `AdjacencyKind::Morphism` edges by looking
+/// into other bundles in the engine.  Local (intra-bundle) neighbors are
+/// included exactly as in `complete()`.
+pub fn complete_federated(
+    target_bundle: &str,
+    bundles: &HashMap<String, BundleStore>,
+    where_conditions: &[FilterCondition],
+    min_confidence: f64,
+    with_provenance: bool,
+) -> Vec<Record> {
+    let store = match bundles.get(target_bundle) {
+        Some(s) => s,
+        None => return vec![],
+    };
+
+    let h1_threshold = store.schema.h1_threshold;
+
+    // Collect morphism adjacencies for cross-bundle lookup
+    let morphisms: Vec<_> = store
+        .schema
+        .adjacencies
+        .iter()
+        .filter_map(|a| match &a.kind {
+            AdjacencyKind::Morphism {
+                source_bundle,
+                join_field,
+                quality,
+            } => Some((a.name.clone(), a.weight, source_bundle.clone(), join_field.clone(), *quality)),
+            _ => None,
+        })
+        .collect();
+
+    // If no morphisms declared, delegate to single-bundle complete
+    if morphisms.is_empty() {
+        return complete(store, where_conditions, min_confidence, with_provenance, false);
+    }
+
+    let target_fields: Vec<String> = where_conditions
+        .iter()
+        .filter_map(|fc| match fc {
+            FilterCondition::Void(f) => Some(f.clone()),
+            _ => None,
+        })
+        .collect();
+    let all_fiber_fields: Vec<String> = store
+        .schema
+        .fiber_fields
+        .iter()
+        .map(|f| f.name.clone())
+        .collect();
+    let fields_to_check = if target_fields.is_empty() {
+        &all_fiber_fields
+    } else {
+        &target_fields
+    };
+
+    let mut results = Vec::new();
+
+    for (bp, fiber) in store.sections() {
+        let record = match store.reconstruct(bp) {
+            Some(r) => r,
+            None => continue,
+        };
+
+        for field_name in fields_to_check {
+            let field_idx = match store.schema.fiber_field_index(field_name) {
+                Some(i) => i,
+                None => continue,
+            };
+
+            match fiber.get(field_idx) {
+                Some(Value::Null) => {}
+                None => {}
+                Some(_) => continue,
+            }
+
+            // Local neighbors (intra-bundle)
+            let local_neighbors = find_neighbors(store, bp, &record);
+            let (consistent, outlier_bps) =
+                check_h1_local(store, field_name, &local_neighbors, h1_threshold);
+            let clean_local: Vec<&Neighbor> = if !consistent {
+                local_neighbors
+                    .iter()
+                    .filter(|n| !outlier_bps.contains(&n.bp))
+                    .collect()
+            } else {
+                local_neighbors.iter().collect()
+            };
+
+            // Collect observed local values
+            let mut observed_nbs: Vec<(&Neighbor, f64)> = Vec::new();
+            for nb in &clean_local {
+                if let Some(fiber_nb) = store.get_fiber(nb.bp) {
+                    if let Some(v) = fiber_nb.get(field_idx).and_then(|v| v.as_f64()) {
+                        observed_nbs.push((nb, v));
+                    }
+                }
+            }
+
+            // Cross-bundle neighbors via morphisms
+            let mut cross_nbs: Vec<CrossBundleNeighbor> = Vec::new();
+            for (adj_name, adj_weight, src_bundle, join_field, quality) in &morphisms {
+                let ext_store = match bundles.get(src_bundle.as_str()) {
+                    Some(s) => s,
+                    None => continue,
+                };
+                // Look up the join key value in the target record
+                let join_val = match record.get(join_field) {
+                    Some(v) if *v != Value::Null => v.clone(),
+                    _ => continue,
+                };
+                // Find matching sections in the external bundle
+                let ext_field_idx = ext_store.schema.fiber_field_index(field_name);
+                if ext_field_idx.is_none() {
+                    continue; // external bundle doesn't have this fiber field
+                }
+                let ext_fi = ext_field_idx.unwrap();
+
+                let matching = ext_store.range_query(join_field, std::slice::from_ref(&join_val));
+                for ext_rec in &matching {
+                    let ext_bp = ext_store.base_point(ext_rec);
+                    if let Some(ext_fiber) = ext_store.get_fiber(ext_bp) {
+                        if let Some(v) = ext_fiber.get(ext_fi).and_then(|v| v.as_f64()) {
+                            cross_nbs.push(CrossBundleNeighbor {
+                                source_bundle: format!("{}:{}", src_bundle, adj_name),
+                                value: v,
+                                weight: adj_weight * quality,
+                                quality: *quality,
+                            });
+                        }
+                    }
+                }
+            }
+
+            let total_neighbors = observed_nbs.len() + cross_nbs.len();
+            if total_neighbors < MIN_NEIGHBORS {
+                let mut skip_rec = make_base_record(&record, &store.schema);
+                skip_rec.insert("_field".into(), Value::Text(field_name.clone()));
+                skip_rec.insert(
+                    "_reason".into(),
+                    Value::Text("insufficient_neighbors".into()),
+                );
+                skip_rec.insert(
+                    "_neighbor_count".into(),
+                    Value::Integer(total_neighbors as i64),
+                );
+                skip_rec.insert("_status".into(), Value::Text("skipped".into()));
+                results.push(skip_rec);
+                continue;
+            }
+
+            // Build Laplacian: vertex 0 = target (missing)
+            // vertices 1..N_local = local observed, N_local+1..N_total = cross-bundle
+            let n_vertices = 1 + total_neighbors;
+            let mut edges = Vec::with_capacity(total_neighbors);
+            let mut kinds = Vec::with_capacity(n_vertices);
+            let mut observed_map = HashMap::new();
+
+            kinds.push(laplacian::VertexKind::Missing);
+
+            for (i, (nb, val)) in observed_nbs.iter().enumerate() {
+                let vi = i + 1;
+                kinds.push(laplacian::VertexKind::Observed);
+                observed_map.insert(vi, *val);
+                edges.push(laplacian::SheafEdge {
+                    src: 0,
+                    tgt: vi,
+                    weight: nb.weight,
+                    restriction: nb.restriction,
+                });
+            }
+
+            let local_count = observed_nbs.len();
+            for (i, cnb) in cross_nbs.iter().enumerate() {
+                let vi = local_count + 1 + i;
+                kinds.push(laplacian::VertexKind::Observed);
+                observed_map.insert(vi, cnb.value);
+                edges.push(laplacian::SheafEdge {
+                    src: 0,
+                    tgt: vi,
+                    weight: cnb.weight,
+                    restriction: cnb.quality, // quality discount acts as restriction
+                });
+            }
+
+            let problem = laplacian::SheafProblem {
+                n_vertices,
+                edges,
+                kinds,
+                observed: observed_map,
+            };
+
+            let solution = laplacian::solve(&problem);
+
+            let completion = solution.completions.iter().find(|(idx, _)| *idx == 0);
+            let (completed_value, conf, uncertainty) = match completion {
+                Some((_, cr)) => (cr.value, cr.confidence, cr.inv_diag.sqrt()),
+                None => {
+                    let mut skip_rec = make_base_record(&record, &store.schema);
+                    skip_rec.insert("_field".into(), Value::Text(field_name.clone()));
+                    skip_rec.insert(
+                        "_reason".into(),
+                        Value::Text("undetermined_direction".into()),
+                    );
+                    skip_rec.insert("_status".into(), Value::Text("skipped".into()));
+                    results.push(skip_rec);
+                    continue;
+                }
+            };
+
+            if conf < min_confidence {
+                let mut skip_rec = make_base_record(&record, &store.schema);
+                skip_rec.insert("_field".into(), Value::Text(field_name.clone()));
+                skip_rec.insert("_reason".into(), Value::Text("below_min_confidence".into()));
+                skip_rec.insert("_confidence".into(), Value::Float(conf));
+                skip_rec.insert("_status".into(), Value::Text("skipped".into()));
+                results.push(skip_rec);
+                continue;
+            }
+
+            let mut result_rec = make_base_record(&record, &store.schema);
+            result_rec.insert("_field".into(), Value::Text(field_name.clone()));
+            result_rec.insert("_completed_value".into(), Value::Float(completed_value));
+            result_rec.insert("_confidence".into(), Value::Float(conf));
+            result_rec.insert("_uncertainty".into(), Value::Float(uncertainty));
+            result_rec.insert("_origin".into(), Value::Text("sheaf_completed".into()));
+            result_rec.insert("_method".into(), Value::Text("federated_laplacian".into()));
+            result_rec.insert(
+                "_neighbor_count".into(),
+                Value::Integer(total_neighbors as i64),
+            );
+            result_rec.insert(
+                "_cross_bundle_count".into(),
+                Value::Integer(cross_nbs.len() as i64),
+            );
+            result_rec.insert("_status".into(), Value::Text("completed".into()));
+
+            if with_provenance {
+                let cross_sources: Vec<String> = cross_nbs
+                    .iter()
+                    .map(|c| c.source_bundle.clone())
+                    .collect::<std::collections::HashSet<_>>()
+                    .into_iter()
+                    .collect();
+                result_rec.insert(
+                    "_provenance".into(),
+                    Value::Text(format!(
+                        "Federated Schur complement of {}-vertex Laplacian ({} local + {} cross-bundle from [{}]), s²={:.4e}",
+                        n_vertices,
+                        local_count,
+                        cross_nbs.len(),
+                        cross_sources.join(", "),
+                        solution.residual_variance,
+                    )),
+                );
+            }
+
+            results.push(result_rec);
+        }
+    }
+
+    results
+}
+
 // ── PROPAGATE ──
 
 /// Simulate adding one measurement and return the newly-determined completions.
@@ -840,6 +1121,7 @@ pub fn suggest_adjacency(
             AdjacencyKind::Metric { field: f, .. } => f == &field.name,
             AdjacencyKind::Threshold { field: f, .. } => f == &field.name,
             AdjacencyKind::Transform { source_field, .. } => source_field == &field.name,
+            AdjacencyKind::Morphism { .. } => false, // morphisms don't cover local fields
         });
         if already_covered {
             continue;
@@ -1445,5 +1727,166 @@ mod tests {
                 "Filtered suggestions should only be for F1: {s}"
             );
         }
+    }
+
+    // ── Federation tests ──
+
+    /// Build a two-bundle universe for federation tests.
+    /// Bundle "alpha" has entity+context base, F1/F2 fibers, one record with NULL F1.
+    /// Bundle "beta" has entity+context base, F1/F2 fibers, provides F1 value for entity 5.
+    /// Morphism joins on "entity".
+    fn federated_bundles() -> HashMap<String, BundleStore> {
+        let alpha_schema = BundleSchema::new("alpha")
+            .base(FieldDef::numeric("entity"))
+            .base(FieldDef::categorical("context"))
+            .fiber(FieldDef::numeric("F1").with_range(10.0))
+            .fiber(FieldDef::numeric("F2").with_range(10.0))
+            .index("context")
+            .index("entity")
+            .adjacency(AdjacencyDef {
+                name: "same_context".into(),
+                kind: AdjacencyKind::Equality {
+                    field: "context".into(),
+                },
+                weight: 0.4,
+            })
+            .adjacency(AdjacencyDef {
+                name: "beta_morph".into(),
+                kind: AdjacencyKind::Morphism {
+                    source_bundle: "beta".into(),
+                    join_field: "entity".into(),
+                    quality: 0.9,
+                },
+                weight: 0.8,
+            });
+        let mut alpha = BundleStore::new(alpha_schema);
+
+        // 3 entities in context "A" with measured F1
+        for i in 0..3 {
+            let mut r = Record::new();
+            r.insert("entity".into(), Value::Integer(i));
+            r.insert("context".into(), Value::Text("A".into()));
+            r.insert("F1".into(), Value::Float(10.0 + i as f64));
+            r.insert("F2".into(), Value::Float(2.0));
+            alpha.insert(&r);
+        }
+        // Entity 5 in alpha — F1 is NULL (gap to complete)
+        let mut r = Record::new();
+        r.insert("entity".into(), Value::Integer(5));
+        r.insert("context".into(), Value::Text("A".into()));
+        r.insert("F1".into(), Value::Null);
+        r.insert("F2".into(), Value::Float(2.0));
+        alpha.insert(&r);
+
+        // Build beta bundle — has F1 for entity 5
+        let beta_schema = BundleSchema::new("beta")
+            .base(FieldDef::numeric("entity"))
+            .base(FieldDef::categorical("source"))
+            .fiber(FieldDef::numeric("F1").with_range(10.0))
+            .index("entity");
+        let mut beta = BundleStore::new(beta_schema);
+
+        let mut r = Record::new();
+        r.insert("entity".into(), Value::Integer(5));
+        r.insert("source".into(), Value::Text("external".into()));
+        r.insert("F1".into(), Value::Float(15.0));
+        beta.insert(&r);
+
+        // Also put entity 5 with slightly different F1 for more weight
+        let mut r = Record::new();
+        r.insert("entity".into(), Value::Integer(5));
+        r.insert("source".into(), Value::Text("lab2".into()));
+        r.insert("F1".into(), Value::Float(14.5));
+        beta.insert(&r);
+
+        let mut bundles = HashMap::new();
+        bundles.insert("alpha".into(), alpha);
+        bundles.insert("beta".into(), beta);
+        bundles
+    }
+
+    #[test]
+    fn federated_complete_uses_cross_bundle() {
+        let bundles = federated_bundles();
+        let results = complete_federated("alpha", &bundles, &[], 0.0, false);
+        let completed: Vec<_> = results
+            .iter()
+            .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
+            .filter(|r| r.get("_field").and_then(|v| v.as_str()) == Some("F1"))
+            .collect();
+        assert!(
+            !completed.is_empty(),
+            "Should complete F1 using cross-bundle data"
+        );
+        // Method should be federated_laplacian
+        for r in &completed {
+            let method = r.get("_method").and_then(|v| v.as_str()).unwrap();
+            assert_eq!(method, "federated_laplacian");
+        }
+    }
+
+    #[test]
+    fn federated_complete_counts_cross_bundle_neighbors() {
+        let bundles = federated_bundles();
+        let results = complete_federated("alpha", &bundles, &[], 0.0, false);
+        let completed: Vec<_> = results
+            .iter()
+            .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
+            .filter(|r| r.get("_field").and_then(|v| v.as_str()) == Some("F1"))
+            .collect();
+        assert!(!completed.is_empty());
+        let rec = &completed[0];
+        let cross_count = rec
+            .get("_cross_bundle_count")
+            .and_then(|v| v.as_i64())
+            .unwrap();
+        assert!(
+            cross_count >= 1,
+            "Should have at least 1 cross-bundle neighbor, got {cross_count}"
+        );
+    }
+
+    #[test]
+    fn federated_complete_provenance_shows_sources() {
+        let bundles = federated_bundles();
+        let results = complete_federated("alpha", &bundles, &[], 0.0, true);
+        let completed: Vec<_> = results
+            .iter()
+            .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
+            .filter(|r| r.get("_field").and_then(|v| v.as_str()) == Some("F1"))
+            .collect();
+        assert!(!completed.is_empty());
+        let prov = completed[0]
+            .get("_provenance")
+            .and_then(|v| v.as_str())
+            .unwrap();
+        assert!(
+            prov.contains("Federated") && prov.contains("cross-bundle"),
+            "Provenance should mention federated + cross-bundle: {prov}"
+        );
+    }
+
+    #[test]
+    fn federated_complete_no_morphisms_falls_back() {
+        // Use test_bundle() which has no morphisms — should behave like single-bundle complete
+        let store = test_bundle();
+        let mut bundles = HashMap::new();
+        bundles.insert("test_sheaf".into(), store);
+        let results = complete_federated("test_sheaf", &bundles, &[], 0.0, false);
+        let completed: Vec<_> = results
+            .iter()
+            .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
+            .collect();
+        assert!(!completed.is_empty(), "Fallback to single-bundle should complete");
+        // Method should be laplacian_schur (single-bundle path)
+        let method = completed[0].get("_method").and_then(|v| v.as_str()).unwrap();
+        assert_eq!(method, "laplacian_schur");
+    }
+
+    #[test]
+    fn federated_complete_missing_bundle_returns_empty() {
+        let bundles = HashMap::new();
+        let results = complete_federated("nonexistent", &bundles, &[], 0.0, false);
+        assert!(results.is_empty());
     }
 }

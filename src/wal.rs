@@ -22,6 +22,7 @@ const OP_CREATE_BUNDLE: u8 = 0x02;
 const OP_UPDATE: u8 = 0x03;
 const OP_DELETE: u8 = 0x04;
 const OP_DROP_BUNDLE: u8 = 0x05;
+const OP_MEASUREMENT_OVERRIDE: u8 = 0x06;
 const OP_CHECKPOINT: u8 = 0xFF;
 
 /// CRC32 (Castagnoli) — simple polynomial checksum for integrity.
@@ -93,6 +94,28 @@ impl WalWriter {
         self.write_entry(OP_DROP_BUNDLE, &payload)
     }
 
+    /// Log a MeasurementOverride — measured data supersedes a completion.
+    pub fn log_measurement_override(
+        &mut self,
+        bundle_name: &str,
+        field: &str,
+        key: &Record,
+        old_completed_value: f64,
+        old_confidence: f64,
+        new_measured_value: f64,
+        timestamp: u64,
+    ) -> io::Result<()> {
+        let mut payload = Vec::new();
+        write_string(&mut payload, bundle_name);
+        write_string(&mut payload, field);
+        encode_record_into(&mut payload, key);
+        payload.extend_from_slice(&old_completed_value.to_le_bytes());
+        payload.extend_from_slice(&old_confidence.to_le_bytes());
+        payload.extend_from_slice(&new_measured_value.to_le_bytes());
+        payload.extend_from_slice(&timestamp.to_le_bytes());
+        self.write_entry(OP_MEASUREMENT_OVERRIDE, &payload)
+    }
+
     /// Log a checkpoint marker.
     pub fn log_checkpoint(&mut self) -> io::Result<()> {
         self.write_entry(OP_CHECKPOINT, &[])
@@ -149,6 +172,16 @@ pub enum WalEntry {
         key: Record,
     },
     DropBundle(String),
+    /// A measured value overrides a previously completed (predicted) value.
+    MeasurementOverride {
+        bundle_name: String,
+        field: String,
+        key: Record,
+        old_completed_value: f64,
+        old_confidence: f64,
+        new_measured_value: f64,
+        timestamp: u64,
+    },
     Checkpoint,
 }
 
@@ -251,6 +284,37 @@ impl WalReader {
                 let mut offset = 0;
                 let bundle_name = read_string(payload, &mut offset)?;
                 Ok(Some(WalEntry::DropBundle(bundle_name)))
+            }
+            OP_MEASUREMENT_OVERRIDE => {
+                let mut offset = 0;
+                let bundle_name = read_string(payload, &mut offset)?;
+                let field = read_string(payload, &mut offset)?;
+                let key = decode_record(payload, &mut offset)?;
+                let old_completed_value = f64::from_le_bytes(
+                    payload[offset..offset + 8].try_into().unwrap(),
+                );
+                offset += 8;
+                let old_confidence = f64::from_le_bytes(
+                    payload[offset..offset + 8].try_into().unwrap(),
+                );
+                offset += 8;
+                let new_measured_value = f64::from_le_bytes(
+                    payload[offset..offset + 8].try_into().unwrap(),
+                );
+                offset += 8;
+                let timestamp = u64::from_le_bytes(
+                    payload[offset..offset + 8].try_into().unwrap(),
+                );
+                let _ = timestamp; // consume
+                Ok(Some(WalEntry::MeasurementOverride {
+                    bundle_name,
+                    field,
+                    key,
+                    old_completed_value,
+                    old_confidence,
+                    new_measured_value,
+                    timestamp,
+                }))
             }
             OP_CHECKPOINT => Ok(Some(WalEntry::Checkpoint)),
             _ => Err(io::Error::new(
@@ -518,74 +582,56 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
 fn encode_insert(bundle_name: &str, record: &Record) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string(&mut buf, bundle_name);
+    encode_record_into(&mut buf, record);
+    buf
+}
+
+/// Encode a record (field count + sorted key-value pairs) into a buffer.
+fn encode_record_into(buf: &mut Vec<u8>, record: &Record) {
     buf.extend_from_slice(&(record.len() as u32).to_le_bytes());
-    // Sort keys for deterministic encoding
     let mut keys: Vec<&String> = record.keys().collect();
     keys.sort();
     for key in keys {
-        write_string(&mut buf, key);
+        write_string(buf, key);
         buf.extend_from_slice(&encode_value(&record[key]));
     }
-    buf
+}
+
+/// Decode a record (field count + key-value pairs) from a buffer at offset.
+fn decode_record(data: &[u8], offset: &mut usize) -> io::Result<Record> {
+    let field_count = u32::from_le_bytes(
+        data[*offset..*offset + 4].try_into().unwrap(),
+    ) as usize;
+    *offset += 4;
+    let mut record = Record::new();
+    for _ in 0..field_count {
+        let key = read_string(data, offset)?;
+        let value = decode_value(data, offset)?;
+        record.insert(key, value);
+    }
+    Ok(record)
 }
 
 fn decode_insert(data: &[u8]) -> io::Result<(String, Record)> {
     let mut offset = 0usize;
     let bundle_name = read_string(data, &mut offset)?;
-    let field_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
-    offset += 4;
-    let mut record = Record::new();
-    for _ in 0..field_count {
-        let key = read_string(data, &mut offset)?;
-        let value = decode_value(data, &mut offset)?;
-        record.insert(key, value);
-    }
+    let record = decode_record(data, &mut offset)?;
     Ok((bundle_name, record))
 }
 
 fn encode_update(bundle_name: &str, key: &Record, patches: &Record) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string(&mut buf, bundle_name);
-    // Encode key
-    buf.extend_from_slice(&(key.len() as u32).to_le_bytes());
-    let mut keys: Vec<&String> = key.keys().collect();
-    keys.sort();
-    for k in keys {
-        write_string(&mut buf, k);
-        buf.extend_from_slice(&encode_value(&key[k]));
-    }
-    // Encode patches
-    buf.extend_from_slice(&(patches.len() as u32).to_le_bytes());
-    let mut pkeys: Vec<&String> = patches.keys().collect();
-    pkeys.sort();
-    for k in pkeys {
-        write_string(&mut buf, k);
-        buf.extend_from_slice(&encode_value(&patches[k]));
-    }
+    encode_record_into(&mut buf, key);
+    encode_record_into(&mut buf, patches);
     buf
 }
 
 fn decode_update(data: &[u8]) -> io::Result<(String, Record, Record)> {
     let mut offset = 0usize;
     let bundle_name = read_string(data, &mut offset)?;
-    // Decode key
-    let key_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
-    offset += 4;
-    let mut key = Record::new();
-    for _ in 0..key_count {
-        let k = read_string(data, &mut offset)?;
-        let v = decode_value(data, &mut offset)?;
-        key.insert(k, v);
-    }
-    // Decode patches
-    let patch_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
-    offset += 4;
-    let mut patches = Record::new();
-    for _ in 0..patch_count {
-        let k = read_string(data, &mut offset)?;
-        let v = decode_value(data, &mut offset)?;
-        patches.insert(k, v);
-    }
+    let key = decode_record(data, &mut offset)?;
+    let patches = decode_record(data, &mut offset)?;
     Ok((bundle_name, key, patches))
 }
 
@@ -794,6 +840,65 @@ mod tests {
                     assert_eq!(k, &key);
                 }
                 _ => panic!("Expected Delete"),
+            }
+        }
+
+        let _ = fs::remove_file(&wal_path);
+        let _ = fs::remove_dir(dir);
+    }
+
+    /// MeasurementOverride WAL entry round-trip.
+    #[test]
+    fn measurement_override_roundtrip() {
+        let dir = std::env::temp_dir().join("gigi_wal_test_mo");
+        let _ = fs::create_dir_all(&dir);
+        let wal_path = dir.join("test_mo.wal");
+        let _ = fs::remove_file(&wal_path);
+
+        let mut key = Record::new();
+        key.insert("patient_id".into(), Value::Integer(7));
+
+        // Write
+        {
+            let mut writer = WalWriter::open(&wal_path).unwrap();
+            writer
+                .log_measurement_override(
+                    "vitals",
+                    "heart_rate",
+                    &key,
+                    72.5,  // old_completed_value
+                    0.85,  // old_confidence
+                    78.0,  // new_measured_value
+                    1710000000000, // timestamp
+                )
+                .unwrap();
+            writer.sync().unwrap();
+        }
+
+        // Read back
+        {
+            let mut reader = WalReader::open(&wal_path).unwrap();
+            let entries = reader.read_all().unwrap();
+            assert_eq!(entries.len(), 1);
+            match &entries[0] {
+                WalEntry::MeasurementOverride {
+                    bundle_name,
+                    field,
+                    key: k,
+                    old_completed_value,
+                    old_confidence,
+                    new_measured_value,
+                    timestamp,
+                } => {
+                    assert_eq!(bundle_name, "vitals");
+                    assert_eq!(field, "heart_rate");
+                    assert_eq!(k, &key);
+                    assert!((old_completed_value - 72.5).abs() < f64::EPSILON);
+                    assert!((old_confidence - 0.85).abs() < f64::EPSILON);
+                    assert!((new_measured_value - 78.0).abs() < f64::EPSILON);
+                    assert_eq!(*timestamp, 1710000000000);
+                }
+                _ => panic!("Expected MeasurementOverride"),
             }
         }
 

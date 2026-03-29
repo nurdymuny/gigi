@@ -189,6 +189,20 @@ impl Engine {
                     bundles.remove(&bundle_name);
                     schemas.remove(&bundle_name);
                 }
+                WalEntry::MeasurementOverride {
+                    bundle_name,
+                    field,
+                    key,
+                    new_measured_value,
+                    ..
+                } => {
+                    // Apply the override: set the field to the measured value
+                    if let Some(store) = bundles.get_mut(&bundle_name) {
+                        let mut patches = Record::new();
+                        patches.insert(field, Value::Float(new_measured_value));
+                        store.update(&key, &patches);
+                    }
+                }
             }
             Ok(())
         })?;

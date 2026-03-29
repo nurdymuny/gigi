@@ -180,7 +180,9 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                 if let Some(src) = src_val {
                     let transformed = transform.apply(src);
                     // Find neighbors where target_field is close to transformed value
-                    let tgt_idx = store.schema.fiber_field_index(target_field)
+                    let tgt_idx = store
+                        .schema
+                        .fiber_field_index(target_field)
                         .or_else(|| store.schema.base_field_index(target_field));
                     if let Some(_idx) = tgt_idx {
                         for (nbp, _fiber) in store.sections() {
@@ -188,7 +190,9 @@ fn find_neighbors(store: &BundleStore, bp: BasePoint, record: &Record) -> Vec<Ne
                                 continue;
                             }
                             if let Some(nb_rec) = store.reconstruct(nbp) {
-                                if let Some(tgt_val) = nb_rec.get(target_field).and_then(|v| v.as_f64()) {
+                                if let Some(tgt_val) =
+                                    nb_rec.get(target_field).and_then(|v| v.as_f64())
+                                {
                                     let dist = (transformed - tgt_val).abs();
                                     // Use relative tolerance: 10% of |transformed| or absolute 0.1
                                     let tol = (transformed.abs() * 0.1).max(0.1);
@@ -629,14 +633,26 @@ pub fn complete_federated(
                 source_bundle,
                 join_field,
                 quality,
-            } => Some((a.name.clone(), a.weight, source_bundle.clone(), join_field.clone(), *quality)),
+            } => Some((
+                a.name.clone(),
+                a.weight,
+                source_bundle.clone(),
+                join_field.clone(),
+                *quality,
+            )),
             _ => None,
         })
         .collect();
 
     // If no morphisms declared, delegate to single-bundle complete
     if morphisms.is_empty() {
-        return complete(store, where_conditions, min_confidence, with_provenance, false);
+        return complete(
+            store,
+            where_conditions,
+            min_confidence,
+            with_provenance,
+            false,
+        );
     }
 
     let target_fields: Vec<String> = where_conditions
@@ -1051,12 +1067,12 @@ fn consistency_check_impl(store: &BundleStore, max_records: Option<usize>) -> Ve
         let estimated_total = (rate * total_records as f64).round() as i64;
 
         let mut summary = Record::new();
-        summary.insert(
-            "_summary".into(),
-            Value::Text("sampling_estimate".into()),
-        );
+        summary.insert("_summary".into(), Value::Text("sampling_estimate".into()));
         summary.insert("_sample_size".into(), Value::Integer(checked as i64));
-        summary.insert("_total_records".into(), Value::Integer(total_records as i64));
+        summary.insert(
+            "_total_records".into(),
+            Value::Integer(total_records as i64),
+        );
         summary.insert(
             "_contradictions_in_sample".into(),
             Value::Integer(found as i64),
@@ -1065,10 +1081,7 @@ fn consistency_check_impl(store: &BundleStore, max_records: Option<usize>) -> Ve
             "_estimated_total_contradictions".into(),
             Value::Integer(estimated_total),
         );
-        summary.insert(
-            "_contradiction_rate".into(),
-            Value::Float(rate),
-        );
+        summary.insert("_contradiction_rate".into(), Value::Float(rate));
         contradictions.insert(0, summary);
     }
 
@@ -1144,10 +1157,7 @@ pub fn suggest_adjacency(
             FieldType::Numeric => {
                 // Metric adjacency: use 10% of range if known, else 0.5
                 let radius = field.range.map(|r| r * 0.1).unwrap_or(0.5);
-                let desc = format!(
-                    "METRIC ON {} WITHIN {:.2} WEIGHT 0.8",
-                    field.name, radius
-                );
+                let desc = format!("METRIC ON {} WITHIN {:.2} WEIGHT 0.8", field.name, radius);
                 candidates.push((
                     AdjacencyDef {
                         name: format!("suggest_{}", field.name),
@@ -1182,10 +1192,7 @@ pub fn suggest_adjacency(
 
     // Summary row
     let mut summary = Record::new();
-    summary.insert(
-        "bundle".into(),
-        Value::Text(store.schema.name.clone()),
-    );
+    summary.insert("bundle".into(), Value::Text(store.schema.name.clone()));
     summary.insert("current_h1".into(), Value::Integer(baseline_h1 as i64));
     summary.insert(
         "sample_size".into(),
@@ -1227,8 +1234,7 @@ fn count_h1_on_sample(
         }
 
         for field_def in &store.schema.fiber_fields {
-            let (consistent, _) =
-                check_h1_local(store, &field_def.name, &neighbors, h1_threshold);
+            let (consistent, _) = check_h1_local(store, &field_def.name, &neighbors, h1_threshold);
             if !consistent {
                 h1_count += 1;
             }
@@ -1423,21 +1429,33 @@ mod tests {
     fn confidence_formula_bounds() {
         // N_eff = 2 with unit weights → 2/3
         let c2 = confidence_sheaf(&[(1.0, 1.0), (1.0, 1.0)]);
-        assert!((c2 - 2.0/3.0).abs() < 1e-10, "2 unit-weight → 2/3, got {c2}");
+        assert!(
+            (c2 - 2.0 / 3.0).abs() < 1e-10,
+            "2 unit-weight → 2/3, got {c2}"
+        );
         // Single prediction → 1.0
         assert_eq!(confidence_sheaf(&[(5.0, 1.0)]), 1.0);
         // N_eff = 3 with unit weights → 3/4 = 0.75
         let c = confidence_sheaf(&[(1.0, 1.0), (2.0, 1.0), (3.0, 1.0)]);
-        assert!((c - 0.75).abs() < 1e-10, "3 unit-weight preds should give 0.75, got {c}");
+        assert!(
+            (c - 0.75).abs() < 1e-10,
+            "3 unit-weight preds should give 0.75, got {c}"
+        );
         // Monotonic: more neighbors → higher confidence (structural, not value-dependent)
         let few = confidence_sheaf(&[(1.0, 1.0), (2.0, 1.0)]);
         let many = confidence_sheaf(&[(1.0, 1.0), (2.0, 1.0), (3.0, 1.0), (4.0, 1.0), (5.0, 1.0)]);
-        assert!(many > few, "more neighbors should give higher confidence: many={many}, few={few}");
+        assert!(
+            many > few,
+            "more neighbors should give higher confidence: many={many}, few={few}"
+        );
         // Higher weight → higher effective N → higher confidence
         let low_w = confidence_sheaf(&[(1.0, 0.1), (2.0, 0.1)]);
         let high_w = confidence_sheaf(&[(1.0, 5.0), (2.0, 5.0)]);
         // Both have N_eff = 2 (equal weights), so same confidence
-        assert!((low_w - high_w).abs() < 1e-10, "equal-ratio weights give same N_eff");
+        assert!(
+            (low_w - high_w).abs() < 1e-10,
+            "equal-ratio weights give same N_eff"
+        );
     }
 
     #[test]
@@ -1513,10 +1531,19 @@ mod tests {
             Some("sampling_estimate"),
             "First row should be a sampling summary"
         );
-        let sample_sz = summary.get("_sample_size").and_then(|v| v.as_i64()).unwrap_or(0);
-        assert!(sample_sz <= 3, "Sample size should be <= 3, got {sample_sz}");
+        let sample_sz = summary
+            .get("_sample_size")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
         assert!(
-            summary.get("_contradiction_rate").and_then(|v| v.as_f64()).is_some(),
+            sample_sz <= 3,
+            "Sample size should be <= 3, got {sample_sz}"
+        );
+        assert!(
+            summary
+                .get("_contradiction_rate")
+                .and_then(|v| v.as_f64())
+                .is_some(),
             "Should have _contradiction_rate"
         );
     }
@@ -1526,9 +1553,7 @@ mod tests {
         let store = test_bundle();
         // Full scan (8 records, well under SAMPLING_THRESHOLD)
         let results = consistency_check(&store);
-        let has_summary = results
-            .iter()
-            .any(|r| r.get("_summary").is_some());
+        let has_summary = results.iter().any(|r| r.get("_summary").is_some());
         assert!(
             !has_summary,
             "Full scan should NOT have a sampling summary row"
@@ -1567,11 +1592,17 @@ mod tests {
         // The old CoV formula would give confidence=0 here (division by zero).
         // With N_eff structural confidence: 3 unit-weight preds → 3/4 = 0.75
         let c = confidence_sheaf(&[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)]);
-        assert!((c - 0.75).abs() < 1e-10, "3 zero predictions → N_eff=3 → conf=0.75, got {c}");
+        assert!(
+            (c - 0.75).abs() < 1e-10,
+            "3 zero predictions → N_eff=3 → conf=0.75, got {c}"
+        );
 
         // Near-zero predictions: same structural confidence, value doesn't matter
         let c2 = confidence_sheaf(&[(0.001, 1.0), (0.002, 1.0), (0.001, 1.0)]);
-        assert!(c2 > 0.5, "3 near-zero preds should give confidence > 0.5, got {c2}");
+        assert!(
+            c2 > 0.5,
+            "3 near-zero preds should give confidence > 0.5, got {c2}"
+        );
     }
 
     #[test]
@@ -1611,7 +1642,10 @@ mod tests {
         assert!(!completed.is_empty(), "Should have completed records");
         for rec in &completed {
             let method = rec.get("_method").and_then(|v| v.as_str()).unwrap_or("");
-            assert_eq!(method, "laplacian_schur", "Method should be laplacian_schur, got {method}");
+            assert_eq!(
+                method, "laplacian_schur",
+                "Method should be laplacian_schur, got {method}"
+            );
         }
     }
 
@@ -1629,7 +1663,10 @@ mod tests {
                     && r.get("_status").and_then(|v| v.as_str()) == Some("completed")
             })
             .collect();
-        assert!(!f1_completed.is_empty(), "F1 should be completed for entity 5");
+        assert!(
+            !f1_completed.is_empty(),
+            "F1 should be completed for entity 5"
+        );
         let val = f1_completed[0]
             .get("_completed_value")
             .and_then(|v| v.as_f64())
@@ -1719,7 +1756,11 @@ mod tests {
         let suggestions: Vec<_> = results
             .iter()
             .skip(1)
-            .filter_map(|r| r.get("adjacency").and_then(|v| v.as_str()).map(String::from))
+            .filter_map(|r| {
+                r.get("adjacency")
+                    .and_then(|v| v.as_str())
+                    .map(String::from)
+            })
             .collect();
         for s in &suggestions {
             assert!(
@@ -1877,9 +1918,15 @@ mod tests {
             .iter()
             .filter(|r| r.get("_status").and_then(|v| v.as_str()) == Some("completed"))
             .collect();
-        assert!(!completed.is_empty(), "Fallback to single-bundle should complete");
+        assert!(
+            !completed.is_empty(),
+            "Fallback to single-bundle should complete"
+        );
         // Method should be laplacian_schur (single-bundle path)
-        let method = completed[0].get("_method").and_then(|v| v.as_str()).unwrap();
+        let method = completed[0]
+            .get("_method")
+            .and_then(|v| v.as_str())
+            .unwrap();
         assert_eq!(method, "laplacian_schur");
     }
 

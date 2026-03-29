@@ -271,11 +271,7 @@ pub fn solve(problem: &SheafProblem) -> SheafSolution {
 
 /// Compute the empirical residual variance s² at observed vertices.
 /// s² = (1/n_o) Σ_i (Σ_j L_ij x_j)² for i ∈ observed
-fn compute_residual_variance(
-    l: &DMatrix<f64>,
-    obs_indices: &[usize],
-    x_o: &DVector<f64>,
-) -> f64 {
+fn compute_residual_variance(l: &DMatrix<f64>, obs_indices: &[usize], x_o: &DVector<f64>) -> f64 {
     if obs_indices.is_empty() {
         return 1.0;
     }
@@ -312,9 +308,24 @@ mod tests {
     fn sheaf_1_laplacian_symmetric_psd() {
         // Triangle graph with unit weights and identity restriction maps
         let edges = vec![
-            SheafEdge { src: 0, tgt: 1, weight: 1.0, restriction: 1.0 },
-            SheafEdge { src: 1, tgt: 2, weight: 1.0, restriction: 1.0 },
-            SheafEdge { src: 0, tgt: 2, weight: 1.0, restriction: 1.0 },
+            SheafEdge {
+                src: 0,
+                tgt: 1,
+                weight: 1.0,
+                restriction: 1.0,
+            },
+            SheafEdge {
+                src: 1,
+                tgt: 2,
+                weight: 1.0,
+                restriction: 1.0,
+            },
+            SheafEdge {
+                src: 0,
+                tgt: 2,
+                weight: 1.0,
+                restriction: 1.0,
+            },
         ];
         let l = build_laplacian(3, &edges);
 
@@ -338,7 +349,10 @@ mod tests {
 
         // At least one zero eigenvalue (constant vector is in kernel)
         let min_ev = eigen.eigenvalues.iter().cloned().fold(f64::MAX, f64::min);
-        assert!(min_ev.abs() < 1e-10, "smallest eigenvalue should be ~0, got {min_ev}");
+        assert!(
+            min_ev.abs() < 1e-10,
+            "smallest eigenvalue should be ~0, got {min_ev}"
+        );
     }
 
     // ── SHEAF-2: Complete a single missing vertex on a path graph ──
@@ -351,10 +365,24 @@ mod tests {
         let problem = SheafProblem {
             n_vertices: 3,
             edges: vec![
-                SheafEdge { src: 0, tgt: 1, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 2, weight: 1.0, restriction: 1.0 },
+                SheafEdge {
+                    src: 0,
+                    tgt: 1,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 2,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
             ],
-            kinds: vec![VertexKind::Observed, VertexKind::Missing, VertexKind::Observed],
+            kinds: vec![
+                VertexKind::Observed,
+                VertexKind::Missing,
+                VertexKind::Observed,
+            ],
             observed: [(0, 1.0), (2, 3.0)].into_iter().collect(),
         };
 
@@ -362,7 +390,11 @@ mod tests {
         assert_eq!(solution.completions.len(), 1);
         let (idx, result) = &solution.completions[0];
         assert_eq!(*idx, 1);
-        assert!((result.value - 2.0).abs() < 1e-10, "should be 2.0, got {}", result.value);
+        assert!(
+            (result.value - 2.0).abs() < 1e-10,
+            "should be 2.0, got {}",
+            result.value
+        );
         assert!(result.confidence > 0.0 && result.confidence < 1.0);
         assert!(solution.undetermined.is_empty());
     }
@@ -378,17 +410,35 @@ mod tests {
         let problem = SheafProblem {
             n_vertices: 3,
             edges: vec![
-                SheafEdge { src: 0, tgt: 1, weight: 3.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 2, weight: 1.0, restriction: 1.0 },
+                SheafEdge {
+                    src: 0,
+                    tgt: 1,
+                    weight: 3.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 2,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
             ],
-            kinds: vec![VertexKind::Observed, VertexKind::Missing, VertexKind::Observed],
+            kinds: vec![
+                VertexKind::Observed,
+                VertexKind::Missing,
+                VertexKind::Observed,
+            ],
             observed: [(0, 1.0), (2, 5.0)].into_iter().collect(),
         };
 
         let solution = solve(&problem);
         let (_, result) = &solution.completions[0];
         // x̂ = (3*1 + 1*5)/(3+1) = 8/4 = 2.0
-        assert!((result.value - 2.0).abs() < 1e-10, "should be 2.0, got {}", result.value);
+        assert!(
+            (result.value - 2.0).abs() < 1e-10,
+            "should be 2.0, got {}",
+            result.value
+        );
     }
 
     // ── SHEAF-4: Confidence increases with more neighbors ──
@@ -399,10 +449,24 @@ mod tests {
         let problem_2 = SheafProblem {
             n_vertices: 3,
             edges: vec![
-                SheafEdge { src: 0, tgt: 1, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 2, weight: 1.0, restriction: 1.0 },
+                SheafEdge {
+                    src: 0,
+                    tgt: 1,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 2,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
             ],
-            kinds: vec![VertexKind::Observed, VertexKind::Missing, VertexKind::Observed],
+            kinds: vec![
+                VertexKind::Observed,
+                VertexKind::Missing,
+                VertexKind::Observed,
+            ],
             observed: [(0, 1.0), (2, 1.0)].into_iter().collect(),
         };
 
@@ -410,10 +474,30 @@ mod tests {
         let problem_4 = SheafProblem {
             n_vertices: 5,
             edges: vec![
-                SheafEdge { src: 0, tgt: 1, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 2, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 3, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 4, weight: 1.0, restriction: 1.0 },
+                SheafEdge {
+                    src: 0,
+                    tgt: 1,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 2,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 3,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 4,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
             ],
             kinds: vec![
                 VertexKind::Observed,
@@ -422,7 +506,9 @@ mod tests {
                 VertexKind::Observed,
                 VertexKind::Observed,
             ],
-            observed: [(0, 1.0), (2, 1.0), (3, 1.0), (4, 1.0)].into_iter().collect(),
+            observed: [(0, 1.0), (2, 1.0), (3, 1.0), (4, 1.0)]
+                .into_iter()
+                .collect(),
         };
 
         let sol_2 = solve(&problem_2);
@@ -443,9 +529,24 @@ mod tests {
         let problem = SheafProblem {
             n_vertices: 4,
             edges: vec![
-                SheafEdge { src: 0, tgt: 1, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 2, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 3, weight: 1.0, restriction: 1.0 },
+                SheafEdge {
+                    src: 0,
+                    tgt: 1,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 2,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 3,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
             ],
             kinds: vec![
                 VertexKind::Observed,
@@ -458,7 +559,11 @@ mod tests {
 
         let solution = solve(&problem);
         let (_, result) = &solution.completions[0];
-        assert!(result.value.abs() < 1e-10, "completion should be 0.0, got {}", result.value);
+        assert!(
+            result.value.abs() < 1e-10,
+            "completion should be 0.0, got {}",
+            result.value
+        );
         assert!(
             result.confidence > 0.5,
             "zero-valued completion should have high confidence, got {}",
@@ -473,10 +578,17 @@ mod tests {
         // v0(obs) -- v1(miss), v2(miss) is isolated (no edges)
         let problem = SheafProblem {
             n_vertices: 3,
-            edges: vec![
-                SheafEdge { src: 0, tgt: 1, weight: 1.0, restriction: 1.0 },
+            edges: vec![SheafEdge {
+                src: 0,
+                tgt: 1,
+                weight: 1.0,
+                restriction: 1.0,
+            }],
+            kinds: vec![
+                VertexKind::Observed,
+                VertexKind::Missing,
+                VertexKind::Missing,
             ],
-            kinds: vec![VertexKind::Observed, VertexKind::Missing, VertexKind::Missing],
             observed: [(0, 5.0)].into_iter().collect(),
         };
 
@@ -488,10 +600,7 @@ mod tests {
             "disconnected vertex should produce undetermined directions"
         );
         // Check that v2 is in the undetermined list
-        let v2_undetermined = solution
-            .undetermined
-            .iter()
-            .any(|u| u.vertex_idx == 2);
+        let v2_undetermined = solution.undetermined.iter().any(|u| u.vertex_idx == 2);
         assert!(v2_undetermined, "v2 (disconnected) should be undetermined");
     }
 
@@ -521,9 +630,12 @@ mod tests {
         // x̂ = -1.0^{-1} * (-0.1 * 100) = 10.0
         let problem = SheafProblem {
             n_vertices: 2,
-            edges: vec![
-                SheafEdge { src: 0, tgt: 1, weight: 1.0, restriction: 0.1 },
-            ],
+            edges: vec![SheafEdge {
+                src: 0,
+                tgt: 1,
+                weight: 1.0,
+                restriction: 0.1,
+            }],
             kinds: vec![VertexKind::Observed, VertexKind::Missing],
             observed: [(0, 100.0)].into_iter().collect(),
         };
@@ -566,9 +678,24 @@ mod tests {
         let problem = SheafProblem {
             n_vertices: 4,
             edges: vec![
-                SheafEdge { src: 0, tgt: 1, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 1, tgt: 2, weight: 1.0, restriction: 1.0 },
-                SheafEdge { src: 2, tgt: 3, weight: 1.0, restriction: 1.0 },
+                SheafEdge {
+                    src: 0,
+                    tgt: 1,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 1,
+                    tgt: 2,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
+                SheafEdge {
+                    src: 2,
+                    tgt: 3,
+                    weight: 1.0,
+                    restriction: 1.0,
+                },
             ],
             kinds: vec![
                 VertexKind::Observed,
@@ -604,9 +731,24 @@ mod tests {
     fn sheaf_10_laplacian_diagonal() {
         // Star graph: center (v0) connected to v1, v2, v3 with weights 2, 3, 5
         let edges = vec![
-            SheafEdge { src: 0, tgt: 1, weight: 2.0, restriction: 1.0 },
-            SheafEdge { src: 0, tgt: 2, weight: 3.0, restriction: 1.0 },
-            SheafEdge { src: 0, tgt: 3, weight: 5.0, restriction: 1.0 },
+            SheafEdge {
+                src: 0,
+                tgt: 1,
+                weight: 2.0,
+                restriction: 1.0,
+            },
+            SheafEdge {
+                src: 0,
+                tgt: 2,
+                weight: 3.0,
+                restriction: 1.0,
+            },
+            SheafEdge {
+                src: 0,
+                tgt: 3,
+                weight: 5.0,
+                restriction: 1.0,
+            },
         ];
         let l = build_laplacian(4, &edges);
 

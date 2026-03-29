@@ -290,21 +290,16 @@ impl WalReader {
                 let bundle_name = read_string(payload, &mut offset)?;
                 let field = read_string(payload, &mut offset)?;
                 let key = decode_record(payload, &mut offset)?;
-                let old_completed_value = f64::from_le_bytes(
-                    payload[offset..offset + 8].try_into().unwrap(),
-                );
+                let old_completed_value =
+                    f64::from_le_bytes(payload[offset..offset + 8].try_into().unwrap());
                 offset += 8;
-                let old_confidence = f64::from_le_bytes(
-                    payload[offset..offset + 8].try_into().unwrap(),
-                );
+                let old_confidence =
+                    f64::from_le_bytes(payload[offset..offset + 8].try_into().unwrap());
                 offset += 8;
-                let new_measured_value = f64::from_le_bytes(
-                    payload[offset..offset + 8].try_into().unwrap(),
-                );
+                let new_measured_value =
+                    f64::from_le_bytes(payload[offset..offset + 8].try_into().unwrap());
                 offset += 8;
-                let timestamp = u64::from_le_bytes(
-                    payload[offset..offset + 8].try_into().unwrap(),
-                );
+                let timestamp = u64::from_le_bytes(payload[offset..offset + 8].try_into().unwrap());
                 let _ = timestamp; // consume
                 Ok(Some(WalEntry::MeasurementOverride {
                     bundle_name,
@@ -599,9 +594,7 @@ fn encode_record_into(buf: &mut Vec<u8>, record: &Record) {
 
 /// Decode a record (field count + key-value pairs) from a buffer at offset.
 fn decode_record(data: &[u8], offset: &mut usize) -> io::Result<Record> {
-    let field_count = u32::from_le_bytes(
-        data[*offset..*offset + 4].try_into().unwrap(),
-    ) as usize;
+    let field_count = u32::from_le_bytes(data[*offset..*offset + 4].try_into().unwrap()) as usize;
     *offset += 4;
     let mut record = Record::new();
     for _ in 0..field_count {
@@ -866,9 +859,9 @@ mod tests {
                     "vitals",
                     "heart_rate",
                     &key,
-                    72.5,  // old_completed_value
-                    0.85,  // old_confidence
-                    78.0,  // new_measured_value
+                    72.5,          // old_completed_value
+                    0.85,          // old_confidence
+                    78.0,          // new_measured_value
                     1710000000000, // timestamp
                 )
                 .unwrap();

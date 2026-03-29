@@ -30,4 +30,6 @@ pub use bundle::{
 pub use engine::Engine;
 pub use metric::FiberMetric;
 pub use query::QueryResult;
-pub use types::{AdjacencyDef, AdjacencyKind, BundleSchema, FieldDef, FieldType, TransformFn, Value};
+pub use types::{
+    AdjacencyDef, AdjacencyKind, BundleSchema, FieldDef, FieldType, TransformFn, Value,
+};

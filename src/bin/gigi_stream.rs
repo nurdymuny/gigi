@@ -667,7 +667,7 @@ async fn readiness_middleware(
     req: Request<axum::body::Body>,
     next: Next,
 ) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
-    if !state.ready.load(Ordering::Relaxed) && req.uri().path() != "/v1/health" {
+    if !state.ready.load(Ordering::Acquire) && req.uri().path() != "/v1/health" {
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(serde_json::json!({"error": "WAL replay in progress — try again shortly"})),
@@ -760,16 +760,28 @@ async fn rate_limit_middleware(
 }
 
 async fn health(State(state): State<Arc<StreamState>>) -> Json<HealthResponse> {
-    let is_ready = state.ready.load(Ordering::Relaxed);
+    let is_ready = state.ready.load(Ordering::Acquire);
+    if !is_ready {
+        // Don't touch engine lock — replay holds a write lock for the duration.
+        return Json(HealthResponse {
+            status: "loading",
+            engine: "gigi-stream",
+            version: "0.1.0",
+            bundles: 0,
+            total_records: 0,
+            uptime_secs: state.start_time.elapsed().as_secs(),
+            loading: Some(true),
+        });
+    }
     let engine = state.engine.read().unwrap();
     Json(HealthResponse {
-        status: if is_ready { "ok" } else { "loading" },
+        status: "ok",
         engine: "gigi-stream",
         version: "0.1.0",
         bundles: engine.bundle_names().len(),
         total_records: engine.total_records(),
         uptime_secs: state.start_time.elapsed().as_secs(),
-        loading: if is_ready { None } else { Some(true) },
+        loading: None,
     })
 }
 

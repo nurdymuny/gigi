@@ -729,7 +729,9 @@ impl Parser {
     fn expect_usize(&mut self) -> Result<usize, String> {
         match self.advance() {
             Some(Token::Number(n)) if n >= 0.0 && n.fract() == 0.0 => Ok(n as usize),
-            Some(Token::Word(w)) => w.parse().map_err(|_| format!("Expected positive integer, got '{w}'")),
+            Some(Token::Word(w)) => w
+                .parse()
+                .map_err(|_| format!("Expected positive integer, got '{w}'")),
             other => Err(format!("Expected positive integer, got {other:?}")),
         }
     }
@@ -3725,12 +3727,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let results = crate::sheaf::suggest_adjacency(
-                store,
-                fields,
-                *sample_size,
-                *candidates,
-            );
+            let results = crate::sheaf::suggest_adjacency(store, fields, *sample_size, *candidates);
             Ok(ExecResult::Rows(results))
         }
 

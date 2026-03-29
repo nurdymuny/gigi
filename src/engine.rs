@@ -417,17 +417,23 @@ impl Engine {
             let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
             let tmp_path = snapshots_dir.join(format!("{name}.dhoom.tmp"));
 
+            let count = store.len();
+            if count == 0 {
+                continue;
+            }
+
+            eprintln!("  Snapshot encoding: {name} ({count} records)…");
             let records: Vec<serde_json::Value> = store
                 .records()
                 .map(|rec| record_to_serde_json(&rec))
                 .collect();
 
-            let count = records.len();
-            if count == 0 {
-                continue;
-            }
-
+            eprintln!("  Snapshot DHOOM-encoding: {name}…");
             let encoded = crate::dhoom::encode_json(&records, name);
+            eprintln!(
+                "  Snapshot writing: {name} ({} bytes)…",
+                encoded.dhoom.len()
+            );
             {
                 let mut f = fs::File::create(&tmp_path)?;
                 f.write_all(encoded.dhoom.as_bytes())?;

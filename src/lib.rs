@@ -28,7 +28,7 @@ pub use bundle::{
     detect_base_geometry, BaseGeometry, BundleStats, BundleStore, QueryCondition, QueryPlan,
     TransactionOp, TransactionResult, VectorMetric,
 };
-pub use engine::{Engine, QueryCache, query_fingerprint};
+pub use engine::{Engine, MutationOp, Notification, QueryCache, TriggerDef, TriggerKind, TriggerManager, query_fingerprint};
 pub use metric::FiberMetric;
 pub use query::QueryResult;
 pub use types::{

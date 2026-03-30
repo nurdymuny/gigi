@@ -3872,8 +3872,42 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // ── v2.1: Recursive (stub) ──
         Statement::Iterate { .. } => Ok(ExecResult::Ok),
 
-        // ── v2.1: Triggers (stubs) ──
-        Statement::CreateTrigger { .. } | Statement::DropTrigger { .. } => Ok(ExecResult::Ok),
+        // ── v2.1: Triggers — now wired to engine (Feature #9) ──
+        Statement::CreateTrigger {
+            event,
+            bundle,
+            condition: _,
+            action,
+        } => {
+            // Parse event to MutationOp
+            let op = if event.contains("INSERT") || event.contains("SECTION") {
+                crate::engine::MutationOp::Insert
+            } else if event.contains("UPDATE") || event.contains("REDEFINE") {
+                crate::engine::MutationOp::Update
+            } else if event.contains("DELETE") || event.contains("RETRACT") {
+                crate::engine::MutationOp::Delete
+            } else {
+                crate::engine::MutationOp::Any
+            };
+            let trigger_name = format!("trigger_{}_{}", bundle, event.replace(' ', "_").to_lowercase());
+            let channel = if action.is_empty() { trigger_name.clone() } else { action.clone() };
+            let def = crate::engine::TriggerDef {
+                name: trigger_name,
+                kind: crate::engine::TriggerKind::OnMutation {
+                    bundle: bundle.clone(),
+                    operation: op,
+                    filter: None,
+                },
+                channel,
+            };
+            engine.create_trigger(def).map_err(|e| format!("{e}"))?;
+            Ok(ExecResult::Ok)
+        }
+
+        Statement::DropTrigger { name, bundle: _ } => {
+            engine.drop_trigger(name).map_err(|e| format!("{e}"))?;
+            Ok(ExecResult::Ok)
+        }
 
         // ── Feature #6: Query Cache ──
         Statement::InvalidateCache { bundle } => {

@@ -196,6 +196,119 @@ impl Default for CompactionPolicy {
     }
 }
 
+// ── Feature #9: Pub/Sub with Sheaf Triggers (Definitions 9.1–9.3, Theorem 9.1) ──
+
+/// Mutation operation type for trigger matching.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MutationOp {
+    Insert,
+    Update,
+    Delete,
+    Any,
+}
+
+/// Trigger kind (Definition 9.3).
+#[derive(Debug, Clone)]
+pub enum TriggerKind {
+    /// Fires on matching mutations (insert/update/delete).
+    OnMutation {
+        bundle: String,
+        operation: MutationOp,
+        filter: Option<Vec<QueryCondition>>,
+    },
+}
+
+/// A trigger definition (Definition 9.2).
+#[derive(Debug, Clone)]
+pub struct TriggerDef {
+    pub name: String,
+    pub kind: TriggerKind,
+    pub channel: String,
+}
+
+/// A notification emitted by trigger evaluation.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Notification {
+    pub trigger_name: String,
+    pub bundle: String,
+    pub payload: Record,
+}
+
+/// Manages trigger definitions and evaluates them on mutations.
+pub struct TriggerManager {
+    triggers: Vec<TriggerDef>,
+}
+
+impl TriggerManager {
+    pub fn new() -> Self {
+        Self {
+            triggers: Vec::new(),
+        }
+    }
+
+    /// Register a new trigger.
+    pub fn create_trigger(&mut self, def: TriggerDef) {
+        // Replace existing trigger with same name
+        self.triggers.retain(|t| t.name != def.name);
+        self.triggers.push(def);
+    }
+
+    /// Remove a trigger by name.
+    pub fn drop_trigger(&mut self, name: &str) -> bool {
+        let before = self.triggers.len();
+        self.triggers.retain(|t| t.name != name);
+        self.triggers.len() < before
+    }
+
+    /// List all trigger definitions.
+    pub fn list_triggers(&self) -> &[TriggerDef] {
+        &self.triggers
+    }
+
+    /// Evaluate mutation triggers for a specific bundle and operation.
+    /// Returns notifications for all matching triggers (Theorem 9.1).
+    pub fn evaluate_mutation(
+        &self,
+        bundle: &str,
+        op: &MutationOp,
+        record: &Record,
+    ) -> Vec<Notification> {
+        let mut notifications = Vec::new();
+        for trigger in &self.triggers {
+            match &trigger.kind {
+                TriggerKind::OnMutation {
+                    bundle: trigger_bundle,
+                    operation,
+                    filter,
+                } => {
+                    if trigger_bundle != bundle {
+                        continue;
+                    }
+                    if *operation != MutationOp::Any && operation != op {
+                        continue;
+                    }
+                    if let Some(conditions) = filter {
+                        if !crate::bundle::matches_filter(record, conditions, None) {
+                            continue;
+                        }
+                    }
+                    notifications.push(Notification {
+                        trigger_name: trigger.name.clone(),
+                        bundle: bundle.to_string(),
+                        payload: record.clone(),
+                    });
+                }
+            }
+        }
+        notifications
+    }
+
+    /// Number of registered triggers.
+    pub fn len(&self) -> usize {
+        self.triggers.len()
+    }
+}
+
 /// Snapshot of bundle data: name, schema, and collected records.
 /// Point-in-time clone that can be encoded to DHOOM without holding the engine lock.
 pub struct BundleDataClone {
@@ -241,6 +354,10 @@ pub struct Engine {
     wal_byte_count: u64,
     /// Feature #6: In-memory query cache with TTL + generation invalidation.
     query_cache: QueryCache,
+    /// Feature #9: Trigger manager for pub/sub notifications.
+    trigger_manager: TriggerManager,
+    /// Pending notifications from the last mutation (drained by caller).
+    pending_notifications: Vec<Notification>,
 }
 
 impl Engine {
@@ -293,6 +410,12 @@ impl Engine {
                 Self::do_replay(&wal_path, data_dir, &mut bundles, &mut schemas)?;
         }
 
+        // Feature #9: Replay trigger definitions from WAL
+        let mut trigger_manager = TriggerManager::new();
+        if replay && wal_path.exists() {
+            Self::replay_triggers(&wal_path, &mut trigger_manager)?;
+        }
+
         // WAL byte count from file metadata
         let wal_byte_count = if wal_path.exists() {
             fs::metadata(&wal_path).map(|m| m.len()).unwrap_or(0)
@@ -317,6 +440,8 @@ impl Engine {
             wal_entry_count: replay_entry_count,
             wal_byte_count,
             query_cache: QueryCache::new(),
+            trigger_manager,
+            pending_notifications: Vec::new(),
         })
     }
 
@@ -450,6 +575,8 @@ impl Engine {
             wal_entry_count: wal_entries.len() as u64,
             wal_byte_count,
             query_cache: QueryCache::new(),
+            trigger_manager: TriggerManager::new(),
+            pending_notifications: Vec::new(),
         })
     }
 
@@ -554,6 +681,8 @@ impl Engine {
                         store.update(&key, &patches);
                     }
                 }
+                // Feature #9: Trigger WAL entries are handled post-replay by the engine
+                WalEntry::CreateTrigger { .. } | WalEntry::DropTrigger(_) => {}
             }
             Ok(())
         })?;
@@ -562,6 +691,44 @@ impl Engine {
         let total: usize = bundles.values().map(|s| s.len()).sum();
         eprintln!("  WAL replay complete: {entry_count} entries, {total} records in {elapsed:.1}s");
         Ok(entry_count)
+    }
+
+    /// Feature #9: Replay trigger WAL entries into the TriggerManager.
+    fn replay_triggers(wal_path: &Path, tm: &mut TriggerManager) -> io::Result<()> {
+        let mut reader = WalReader::open(wal_path)?;
+        reader.replay(|entry| {
+            match entry {
+                WalEntry::CreateTrigger {
+                    name,
+                    bundle,
+                    channel,
+                    operation,
+                    filter_str: _,
+                } => {
+                    let op = match operation.as_str() {
+                        "INSERT" => MutationOp::Insert,
+                        "UPDATE" => MutationOp::Update,
+                        "DELETE" => MutationOp::Delete,
+                        _ => MutationOp::Any,
+                    };
+                    tm.create_trigger(TriggerDef {
+                        name,
+                        kind: TriggerKind::OnMutation {
+                            bundle: bundle.clone(),
+                            operation: op,
+                            filter: None, // TODO: parse filter_str if needed
+                        },
+                        channel,
+                    });
+                }
+                WalEntry::DropTrigger(name) => {
+                    tm.drop_trigger(&name);
+                }
+                _ => {}
+            }
+            Ok(())
+        })?;
+        Ok(())
     }
 
     /// Create a new bundle (table).
@@ -588,6 +755,9 @@ impl Engine {
             ));
         }
         self.query_cache.on_write(bundle_name);
+        // Feature #9: Evaluate triggers
+        let notifs = self.trigger_manager.evaluate_mutation(bundle_name, &MutationOp::Insert, record);
+        self.pending_notifications.extend(notifs);
         self.maybe_checkpoint()?;
         Ok(())
     }
@@ -642,6 +812,8 @@ impl Engine {
         };
         if updated {
             self.query_cache.on_write(bundle_name);
+            let notifs = self.trigger_manager.evaluate_mutation(bundle_name, &MutationOp::Update, patches);
+            self.pending_notifications.extend(notifs);
         }
         self.maybe_checkpoint()?;
         Ok(updated)
@@ -664,6 +836,8 @@ impl Engine {
         };
         if deleted {
             self.query_cache.on_write(bundle_name);
+            let notifs = self.trigger_manager.evaluate_mutation(bundle_name, &MutationOp::Delete, key);
+            self.pending_notifications.extend(notifs);
         }
         self.maybe_checkpoint()?;
         Ok(deleted)
@@ -862,6 +1036,47 @@ impl Engine {
     /// Get a reference to the query cache.
     pub fn query_cache(&self) -> &QueryCache {
         &self.query_cache
+    }
+
+    // ── Feature #9: Trigger public API ──
+
+    /// Get a mutable reference to the trigger manager.
+    pub fn trigger_manager_mut(&mut self) -> &mut TriggerManager {
+        &mut self.trigger_manager
+    }
+
+    /// Get a reference to the trigger manager.
+    pub fn trigger_manager(&self) -> &TriggerManager {
+        &self.trigger_manager
+    }
+
+    /// Drain pending notifications (called by streaming layer after each mutation).
+    pub fn drain_notifications(&mut self) -> Vec<Notification> {
+        std::mem::take(&mut self.pending_notifications)
+    }
+
+    /// Create a trigger with WAL persistence (Feature #9, Test 9.8).
+    pub fn create_trigger(&mut self, def: TriggerDef) -> io::Result<()> {
+        let (bundle, op_str) = match &def.kind {
+            TriggerKind::OnMutation { bundle, operation, .. } => {
+                let op_str = match operation {
+                    MutationOp::Insert => "INSERT",
+                    MutationOp::Update => "UPDATE",
+                    MutationOp::Delete => "DELETE",
+                    MutationOp::Any => "ANY",
+                };
+                (bundle.clone(), op_str)
+            }
+        };
+        self.wal.log_create_trigger(&def.name, &bundle, &def.channel, op_str, None)?;
+        self.trigger_manager.create_trigger(def);
+        Ok(())
+    }
+
+    /// Drop a trigger with WAL persistence (Feature #9).
+    pub fn drop_trigger(&mut self, name: &str) -> io::Result<bool> {
+        self.wal.log_drop_trigger(name)?;
+        Ok(self.trigger_manager.drop_trigger(name))
     }
 
     /// Filtered query dispatching to both heap and mmap bundles.
@@ -1162,6 +1377,22 @@ impl Engine {
             for schema in self.schemas.values() {
                 new_wal.log_create_bundle(schema)?;
             }
+            // Persist trigger definitions through WAL compaction
+            for tdef in self.trigger_manager.list_triggers() {
+                let (bundle, op_str, filter_str) = match &tdef.kind {
+                    TriggerKind::OnMutation { bundle, operation, filter } => {
+                        let op = match operation {
+                            MutationOp::Insert => "INSERT",
+                            MutationOp::Update => "UPDATE",
+                            MutationOp::Delete => "DELETE",
+                            MutationOp::Any => "ANY",
+                        };
+                        let filt = filter.as_ref().map(|conds| format!("{conds:?}"));
+                        (bundle.clone(), op.to_string(), filt)
+                    }
+                };
+                new_wal.log_create_trigger(&tdef.name, &bundle, &tdef.channel, &op_str, filter_str.as_deref())?;
+            }
             new_wal.log_checkpoint()?;
             new_wal.sync()?;
         }
@@ -1267,6 +1498,22 @@ impl Engine {
             let mut new_wal = WalWriter::open(&tmp_path)?;
             for schema in self.schemas.values() {
                 new_wal.log_create_bundle(schema)?;
+            }
+            // Persist trigger definitions through WAL compaction
+            for tdef in self.trigger_manager.list_triggers() {
+                let (bundle, op_str, filter_str) = match &tdef.kind {
+                    TriggerKind::OnMutation { bundle, operation, filter } => {
+                        let op = match operation {
+                            MutationOp::Insert => "INSERT",
+                            MutationOp::Update => "UPDATE",
+                            MutationOp::Delete => "DELETE",
+                            MutationOp::Any => "ANY",
+                        };
+                        let filt = filter.as_ref().map(|conds| format!("{conds:?}"));
+                        (bundle.clone(), op.to_string(), filt)
+                    }
+                };
+                new_wal.log_create_trigger(&tdef.name, &bundle, &tdef.channel, &op_str, filter_str.as_deref())?;
             }
             new_wal.log_checkpoint()?;
             new_wal.sync()?;
@@ -3798,6 +4045,275 @@ mod tests {
         let stmt = crate::parser::parse("INVALIDATE CACHE ON drugs").unwrap();
         crate::parser::execute(&mut engine, &stmt).unwrap();
         assert!(engine.query_cache_mut().get(fp).is_none(), "Cache should be cleared");
+
+        cleanup(&dir);
+    }
+
+    // ── Feature #9: Pub/Sub with Sheaf Triggers — Tests 9.1–9.8 ──
+
+    fn make_trigger_engine(name: &str) -> (Engine, PathBuf) {
+        let dir = test_dir(name);
+        cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        let schema = BundleSchema::new("drugs")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("target_class"))
+            .fiber(FieldDef::numeric("mic"));
+        engine.create_bundle(schema).unwrap();
+        (engine, dir)
+    }
+
+    #[test]
+    fn test_9_6_mutation_trigger_with_filter() {
+        let (mut engine, dir) = make_trigger_engine("trigger_filter");
+
+        // ON INSERT drugs WHERE target_class = 'PBP'
+        let def = super::TriggerDef {
+            name: "pbp_inserts".into(),
+            kind: super::TriggerKind::OnMutation {
+                bundle: "drugs".into(),
+                operation: super::MutationOp::Insert,
+                filter: Some(vec![
+                    QueryCondition::Eq("target_class".into(), Value::Text("PBP".into())),
+                ]),
+            },
+            channel: "pbp_channel".into(),
+        };
+        engine.create_trigger(def).unwrap();
+
+        // Insert matching record
+        let mut rec = Record::new();
+        rec.insert("id".into(), Value::Integer(1));
+        rec.insert("target_class".into(), Value::Text("PBP".into()));
+        rec.insert("mic".into(), Value::Float(2.0));
+        engine.insert("drugs", &rec).unwrap();
+
+        let notifs = engine.drain_notifications();
+        assert_eq!(notifs.len(), 1, "Should fire for PBP insert");
+        assert_eq!(notifs[0].trigger_name, "pbp_inserts");
+
+        // Insert non-matching record
+        let mut rec2 = Record::new();
+        rec2.insert("id".into(), Value::Integer(2));
+        rec2.insert("target_class".into(), Value::Text("ribosome".into()));
+        rec2.insert("mic".into(), Value::Float(3.0));
+        engine.insert("drugs", &rec2).unwrap();
+
+        let notifs2 = engine.drain_notifications();
+        assert_eq!(notifs2.len(), 0, "Should NOT fire for ribosome insert");
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_9_7_multiple_triggers_same_bundle() {
+        let (mut engine, dir) = make_trigger_engine("trigger_multi");
+
+        // 3 triggers on drugs
+        for i in 1..=3 {
+            let def = super::TriggerDef {
+                name: format!("trigger_{i}"),
+                kind: super::TriggerKind::OnMutation {
+                    bundle: "drugs".into(),
+                    operation: super::MutationOp::Insert,
+                    filter: None,
+                },
+                channel: format!("channel_{i}"),
+            };
+            engine.create_trigger(def).unwrap();
+        }
+
+        // Insert 1 record — should fire all 3
+        let mut rec = Record::new();
+        rec.insert("id".into(), Value::Integer(1));
+        rec.insert("target_class".into(), Value::Text("test".into()));
+        rec.insert("mic".into(), Value::Float(1.0));
+        engine.insert("drugs", &rec).unwrap();
+
+        let notifs = engine.drain_notifications();
+        assert_eq!(notifs.len(), 3, "All 3 triggers should fire");
+        let names: Vec<&str> = notifs.iter().map(|n| n.trigger_name.as_str()).collect();
+        assert!(names.contains(&"trigger_1"));
+        assert!(names.contains(&"trigger_2"));
+        assert!(names.contains(&"trigger_3"));
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_9_8_trigger_survives_restart() {
+        let dir = test_dir("trigger_restart");
+        cleanup(&dir);
+
+        // Create engine with triggers, snapshot, close
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("drugs")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("name"));
+            engine.create_bundle(schema).unwrap();
+
+            let def = super::TriggerDef {
+                name: "insert_watch".into(),
+                kind: super::TriggerKind::OnMutation {
+                    bundle: "drugs".into(),
+                    operation: super::MutationOp::Insert,
+                    filter: None,
+                },
+                channel: "inserts".into(),
+            };
+            engine.create_trigger(def).unwrap();
+
+            // Insert a record to prove the trigger works
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(1));
+            rec.insert("name".into(), Value::Text("test".into()));
+            engine.insert("drugs", &rec).unwrap();
+            assert_eq!(engine.drain_notifications().len(), 1);
+
+            engine.snapshot().unwrap();
+        }
+
+        // Reopen — triggers restored from WAL
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            assert_eq!(engine.trigger_manager().len(), 1, "Trigger should survive restart");
+
+            // Trigger should fire on new insert
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(2));
+            rec.insert("name".into(), Value::Text("post_restart".into()));
+            engine.insert("drugs", &rec).unwrap();
+
+            let notifs = engine.drain_notifications();
+            assert_eq!(notifs.len(), 1, "Trigger should fire after restart");
+            assert_eq!(notifs[0].trigger_name, "insert_watch");
+        }
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_trigger_mutation_op_types() {
+        let (mut engine, dir) = make_trigger_engine("trigger_ops");
+
+        // Update trigger
+        engine.create_trigger(super::TriggerDef {
+            name: "on_update".into(),
+            kind: super::TriggerKind::OnMutation {
+                bundle: "drugs".into(),
+                operation: super::MutationOp::Update,
+                filter: None,
+            },
+            channel: "updates".into(),
+        }).unwrap();
+
+        // Delete trigger
+        engine.create_trigger(super::TriggerDef {
+            name: "on_delete".into(),
+            kind: super::TriggerKind::OnMutation {
+                bundle: "drugs".into(),
+                operation: super::MutationOp::Delete,
+                filter: None,
+            },
+            channel: "deletes".into(),
+        }).unwrap();
+
+        // Any trigger
+        engine.create_trigger(super::TriggerDef {
+            name: "on_any".into(),
+            kind: super::TriggerKind::OnMutation {
+                bundle: "drugs".into(),
+                operation: super::MutationOp::Any,
+                filter: None,
+            },
+            channel: "all_ops".into(),
+        }).unwrap();
+
+        // Insert a record
+        let mut rec = Record::new();
+        rec.insert("id".into(), Value::Integer(1));
+        rec.insert("target_class".into(), Value::Text("test".into()));
+        rec.insert("mic".into(), Value::Float(1.0));
+        engine.insert("drugs", &rec).unwrap();
+
+        let notifs = engine.drain_notifications();
+        // Only "on_any" should fire for insert (not on_update, not on_delete)
+        assert_eq!(notifs.len(), 1);
+        assert_eq!(notifs[0].trigger_name, "on_any");
+
+        // Update
+        let key = {
+            let mut k = Record::new();
+            k.insert("id".into(), Value::Integer(1));
+            k
+        };
+        let mut patches = Record::new();
+        patches.insert("mic".into(), Value::Float(9.9));
+        engine.update("drugs", &key, &patches).unwrap();
+
+        let notifs = engine.drain_notifications();
+        let names: Vec<&str> = notifs.iter().map(|n| n.trigger_name.as_str()).collect();
+        assert!(names.contains(&"on_update"), "Update trigger should fire");
+        assert!(names.contains(&"on_any"), "Any trigger should fire");
+        assert!(!names.contains(&"on_delete"), "Delete trigger should NOT fire");
+
+        // Delete
+        engine.delete("drugs", &key).unwrap();
+        let notifs = engine.drain_notifications();
+        let names: Vec<&str> = notifs.iter().map(|n| n.trigger_name.as_str()).collect();
+        assert!(names.contains(&"on_delete"), "Delete trigger should fire");
+        assert!(names.contains(&"on_any"), "Any trigger should fire");
+        assert!(!names.contains(&"on_update"), "Update trigger should NOT fire on delete");
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_trigger_drop() {
+        let (mut engine, dir) = make_trigger_engine("trigger_drop");
+
+        engine.create_trigger(super::TriggerDef {
+            name: "watch".into(),
+            kind: super::TriggerKind::OnMutation {
+                bundle: "drugs".into(),
+                operation: super::MutationOp::Insert,
+                filter: None,
+            },
+            channel: "ch".into(),
+        }).unwrap();
+        assert_eq!(engine.trigger_manager().len(), 1);
+
+        engine.drop_trigger("watch").unwrap();
+        assert_eq!(engine.trigger_manager().len(), 0);
+
+        // Insert should produce no notifications
+        let mut rec = Record::new();
+        rec.insert("id".into(), Value::Integer(1));
+        rec.insert("target_class".into(), Value::Text("x".into()));
+        rec.insert("mic".into(), Value::Float(1.0));
+        engine.insert("drugs", &rec).unwrap();
+        assert_eq!(engine.drain_notifications().len(), 0);
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_trigger_gql_create_and_drop() {
+        let (mut engine, dir) = make_trigger_engine("trigger_gql");
+
+        // GQL: ON SECTION drugs EXECUTE notify
+        let stmt = crate::parser::parse("ON SECTION drugs EXECUTE notify").unwrap();
+        crate::parser::execute(&mut engine, &stmt).unwrap();
+        assert_eq!(engine.trigger_manager().len(), 1);
+
+        // Insert fires the trigger
+        let mut rec = Record::new();
+        rec.insert("id".into(), Value::Integer(1));
+        rec.insert("target_class".into(), Value::Text("x".into()));
+        rec.insert("mic".into(), Value::Float(1.0));
+        engine.insert("drugs", &rec).unwrap();
+        assert_eq!(engine.drain_notifications().len(), 1);
 
         cleanup(&dir);
     }

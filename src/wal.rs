@@ -23,6 +23,8 @@ const OP_UPDATE: u8 = 0x03;
 const OP_DELETE: u8 = 0x04;
 const OP_DROP_BUNDLE: u8 = 0x05;
 const OP_MEASUREMENT_OVERRIDE: u8 = 0x06;
+const OP_CREATE_TRIGGER: u8 = 0x07;
+const OP_DROP_TRIGGER: u8 = 0x08;
 const OP_CHECKPOINT: u8 = 0xFF;
 
 /// CRC32 (Castagnoli) — simple polynomial checksum for integrity.
@@ -121,6 +123,37 @@ impl WalWriter {
         self.write_entry(OP_CHECKPOINT, &[])
     }
 
+    /// Log a CREATE TRIGGER operation (Feature #9).
+    pub fn log_create_trigger(
+        &mut self,
+        name: &str,
+        bundle: &str,
+        channel: &str,
+        operation: &str,
+        filter_str: Option<&str>,
+    ) -> io::Result<()> {
+        let mut payload = Vec::new();
+        write_string(&mut payload, name);
+        write_string(&mut payload, bundle);
+        write_string(&mut payload, channel);
+        write_string(&mut payload, operation);
+        // Optional filter
+        if let Some(f) = filter_str {
+            payload.push(1);
+            write_string(&mut payload, f);
+        } else {
+            payload.push(0);
+        }
+        self.write_entry(OP_CREATE_TRIGGER, &payload)
+    }
+
+    /// Log a DROP TRIGGER operation (Feature #9).
+    pub fn log_drop_trigger(&mut self, name: &str) -> io::Result<()> {
+        let mut payload = Vec::new();
+        write_string(&mut payload, name);
+        self.write_entry(OP_DROP_TRIGGER, &payload)
+    }
+
     /// Sync the WAL to disk (fsync).
     pub fn sync(&mut self) -> io::Result<()> {
         self.writer.flush()?;
@@ -183,6 +216,16 @@ pub enum WalEntry {
         timestamp: u64,
     },
     Checkpoint,
+    /// Feature #9: Trigger definition persisted to WAL.
+    CreateTrigger {
+        name: String,
+        bundle: String,
+        channel: String,
+        operation: String,
+        filter_str: Option<String>,
+    },
+    /// Feature #9: Drop a trigger by name.
+    DropTrigger(String),
 }
 
 impl WalReader {
@@ -312,6 +355,32 @@ impl WalReader {
                 }))
             }
             OP_CHECKPOINT => Ok(Some(WalEntry::Checkpoint)),
+            OP_CREATE_TRIGGER => {
+                let mut offset = 0;
+                let name = read_string(payload, &mut offset)?;
+                let bundle = read_string(payload, &mut offset)?;
+                let channel = read_string(payload, &mut offset)?;
+                let operation = read_string(payload, &mut offset)?;
+                let has_filter = if offset < payload.len() { payload[offset] } else { 0 };
+                offset += 1;
+                let filter_str = if has_filter == 1 {
+                    Some(read_string(payload, &mut offset)?)
+                } else {
+                    None
+                };
+                Ok(Some(WalEntry::CreateTrigger {
+                    name,
+                    bundle,
+                    channel,
+                    operation,
+                    filter_str,
+                }))
+            }
+            OP_DROP_TRIGGER => {
+                let mut offset = 0;
+                let name = read_string(payload, &mut offset)?;
+                Ok(Some(WalEntry::DropTrigger(name)))
+            }
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("Unknown WAL op: {op:#x}"),

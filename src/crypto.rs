@@ -189,7 +189,7 @@ pub fn seed_from_hex(hex: &str) -> Result<[u8; 32], String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{FieldDef, FieldType, Value};
+    use crate::types::{FieldDef, Value};
 
     fn test_seed() -> [u8; 32] {
         let mut s = [0u8; 32];

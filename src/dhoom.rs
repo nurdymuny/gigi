@@ -2201,7 +2201,6 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
     }
 
     #[test]
-    #[test]
     fn test_profile_default_field() {
         // Use enough unique values so interning doesn't trigger first
         let data = json!({

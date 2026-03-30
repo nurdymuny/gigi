@@ -663,11 +663,9 @@ impl Engine {
             || self.wal_byte_count > self.compaction_policy.max_wal_bytes;
 
         if should_compact {
-            self.snapshot()?;
-            // After snapshot: WAL is schema-only, reset counters.
-            let wal_path = self.data_dir.join("gigi.wal");
-            self.wal_entry_count = self.schemas.len() as u64 + 1; // schemas + checkpoint
-            self.wal_byte_count = fs::metadata(&wal_path).map(|m| m.len()).unwrap_or(0);
+            self.cow_snapshot()?;
+            // cow_snapshot() calls compact_wal_to_schemas() which resets
+            // wal_entry_count and wal_byte_count. Just update the timestamp.
             self.last_compaction = std::time::Instant::now();
         }
         Ok(())

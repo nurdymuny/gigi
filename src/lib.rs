@@ -16,6 +16,7 @@ pub mod gauge;
 pub mod hash;
 pub mod join;
 pub mod metric;
+pub mod mmap_bundle;
 pub mod parser;
 pub mod query;
 pub mod sheaf;

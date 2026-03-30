@@ -585,9 +585,9 @@ pub struct BundleStore {
     storage: BaseStorage,
     /// Field topology: open set membership for sheaf queries (Def 2.1).
     /// Maps field_name → field_value → set of base points.
-    field_index: HashMap<String, HashMap<Value, RoaringBitmap>>,
+    pub field_index: HashMap<String, HashMap<Value, RoaringBitmap>>,
     /// Running statistics for curvature computation.
-    field_stats: HashMap<String, FieldStats>,
+    pub field_stats: HashMap<String, FieldStats>,
     /// Reverse map from truncated u32 bitmap key → full u64 base point.
     bp_reverse: HashMap<u32, BasePoint>,
     /// For Sequential/Hybrid: map from sequential index → BasePoint.
@@ -1224,22 +1224,22 @@ impl BundleStore {
             None => return false,
         };
 
-        // Merge patches into existing record
-        let mut merged = existing;
-        for (field, value) in patches {
-            merged.insert(field.clone(), value.clone());
-        }
-
-        // Remove old field_index entries
+        // Remove old field_index entries BEFORE merging patches
         let bp32 = bp as u32;
         for idx_field in &self.schema.indexed_fields {
-            if let Some(old_val) = key.get(idx_field).or_else(|| merged.get(idx_field)) {
+            if let Some(old_val) = existing.get(idx_field) {
                 if let Some(field_map) = self.field_index.get_mut(idx_field) {
                     if let Some(bitmap) = field_map.get_mut(old_val) {
                         bitmap.remove(bp32);
                     }
                 }
             }
+        }
+
+        // Merge patches into existing record
+        let mut merged = existing;
+        for (field, value) in patches {
+            merged.insert(field.clone(), value.clone());
         }
 
         // Extract new fiber values
@@ -1689,8 +1689,114 @@ impl BundleStore {
         self.filtered_query_ex(conditions, None, sort_by, sort_desc, limit, offset)
     }
 
+    // ── Index Acceleration Helpers (Feature #4) ────────────────────────
+
+    /// Can this condition be accelerated via bitmap index?
+    /// True for Eq, In, IsNull on fields listed in `schema.indexed_fields`.
+    pub fn can_use_index(&self, cond: &QueryCondition) -> bool {
+        let field = match cond {
+            QueryCondition::Eq(f, _)
+            | QueryCondition::In(f, _)
+            | QueryCondition::IsNull(f) => f.as_str(),
+            _ => return false,
+        };
+        self.field_index.contains_key(field)
+    }
+
+    /// Estimated number of records matching this condition via the bitmap index.
+    /// Returns `u64::MAX` for non-indexed conditions (forces them to sort last).
+    pub fn estimate_selectivity(&self, cond: &QueryCondition) -> u64 {
+        match cond {
+            QueryCondition::Eq(field, value) => {
+                self.field_index.get(field.as_str())
+                    .and_then(|fm| fm.get(value))
+                    .map_or(0, |bm| bm.len())
+            }
+            QueryCondition::In(field, values) => {
+                self.field_index.get(field.as_str()).map_or(0, |fm| {
+                    values.iter()
+                        .filter_map(|v| fm.get(v))
+                        .map(|bm| bm.len())
+                        .sum()
+                })
+            }
+            QueryCondition::IsNull(field) => {
+                self.field_index.get(field.as_str())
+                    .and_then(|fm| fm.get(&Value::Null))
+                    .map_or(0, |bm| bm.len())
+            }
+            _ => u64::MAX,
+        }
+    }
+
+    /// Return the RoaringBitmap of base-point IDs matching this condition.
+    /// Caller must ensure `can_use_index(cond)` is true.
+    pub fn condition_bitmap(&self, cond: &QueryCondition) -> RoaringBitmap {
+        match cond {
+            QueryCondition::Eq(field, value) => {
+                self.field_index.get(field.as_str())
+                    .and_then(|fm| fm.get(value))
+                    .cloned()
+                    .unwrap_or_default()
+            }
+            QueryCondition::In(field, values) => {
+                let mut bits = RoaringBitmap::new();
+                if let Some(fm) = self.field_index.get(field.as_str()) {
+                    for v in values {
+                        if let Some(bm) = fm.get(v) {
+                            bits |= bm;
+                        }
+                    }
+                }
+                bits
+            }
+            QueryCondition::IsNull(field) => {
+                self.field_index.get(field.as_str())
+                    .and_then(|fm| fm.get(&Value::Null))
+                    .cloned()
+                    .unwrap_or_default()
+            }
+            _ => RoaringBitmap::new(),
+        }
+    }
+
+    /// Split conditions into (indexed, residual), with indexed sorted by
+    /// selectivity (smallest bitmap first) per Theorem 4.1.
+    pub fn partition_conditions<'a>(
+        &self,
+        conds: &'a [QueryCondition],
+    ) -> (Vec<&'a QueryCondition>, Vec<&'a QueryCondition>) {
+        let mut indexed = Vec::new();
+        let mut residual = Vec::new();
+        for c in conds {
+            if self.can_use_index(c) {
+                indexed.push(c);
+            } else {
+                residual.push(c);
+            }
+        }
+        // Selectivity-ordered: process smallest bitmap first (Thm 4.1)
+        indexed.sort_by_key(|c| self.estimate_selectivity(c));
+        (indexed, residual)
+    }
+
+    /// Intersect bitmaps for a set of indexed conditions (AND semantics).
+    /// Conditions MUST be pre-sorted by selectivity (smallest first).
+    pub fn intersect_bitmaps(&self, conditions: &[&QueryCondition]) -> RoaringBitmap {
+        let mut result: Option<RoaringBitmap> = None;
+        for cond in conditions {
+            let bm = self.condition_bitmap(cond);
+            result = Some(match result {
+                None => bm,
+                Some(r) => r & bm,
+            });
+        }
+        result.unwrap_or_default()
+    }
+
     /// Extended filtered query with OR condition support.
-    /// Uses bitmap indexes to accelerate Eq/In conditions on indexed fields.
+    /// Uses bitmap indexes to accelerate Eq/In/IsNull conditions on indexed fields,
+    /// with selectivity-ordered intersection (Feature #4, Theorem 4.1).
     pub fn filtered_query_ex(
         &self,
         conditions: &[QueryCondition],
@@ -1700,59 +1806,25 @@ impl BundleStore {
         limit: Option<usize>,
         offset: Option<usize>,
     ) -> Vec<Record> {
-        // Try to accelerate via bitmap indexes: extract Eq/In conditions on indexed fields
-        let indexed_fields: std::collections::HashSet<&str> = self
-            .schema
-            .indexed_fields
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
-        let mut index_bits: Option<RoaringBitmap> = None;
-        let mut remaining_conditions: Vec<&QueryCondition> = Vec::new();
+        // Phase 1: Partition into indexed (Eq/In/IsNull) and residual predicates
+        let (indexed, residual) = self.partition_conditions(conditions);
 
-        for cond in conditions {
-            match cond {
-                QueryCondition::Eq(field, value) if indexed_fields.contains(field.as_str()) => {
-                    let mut bits = RoaringBitmap::new();
-                    if let Some(field_map) = self.field_index.get(field.as_str()) {
-                        if let Some(val_bits) = field_map.get(value) {
-                            bits |= val_bits;
-                        }
-                    }
-                    index_bits = Some(match index_bits {
-                        Some(existing) => existing & bits,
-                        None => bits,
-                    });
-                }
-                QueryCondition::In(field, values) if indexed_fields.contains(field.as_str()) => {
-                    let mut bits = RoaringBitmap::new();
-                    if let Some(field_map) = self.field_index.get(field.as_str()) {
-                        for val in values {
-                            if let Some(val_bits) = field_map.get(val) {
-                                bits |= val_bits;
-                            }
-                        }
-                    }
-                    index_bits = Some(match index_bits {
-                        Some(existing) => existing & bits,
-                        None => bits,
-                    });
-                }
-                _ => {
-                    remaining_conditions.push(cond);
-                }
-            }
-        }
+        // Phase 2: Bitmap intersection for indexed predicates (selectivity-ordered)
+        let candidate_bits = if indexed.is_empty() {
+            None
+        } else {
+            Some(self.intersect_bitmaps(&indexed))
+        };
 
-        // If we narrowed via index, reconstruct only candidate records
-        let mut results: Vec<Record> = if let Some(bits) = index_bits {
+        // Phase 3: Fetch records and apply residual predicates
+        let mut results: Vec<Record> = if let Some(bits) = candidate_bits {
             bits.iter()
                 .filter_map(|bp32| {
                     let bp = self.bp_reverse.get(&bp32).copied().unwrap_or(bp32 as u64);
                     self.reconstruct(bp)
                 })
                 .filter(|record| {
-                    remaining_conditions.iter().all(|c| c.matches(record))
+                    residual.iter().all(|c| c.matches(record))
                         && matches_or_filter(record, or_conditions)
                 })
                 .collect()
@@ -1762,7 +1834,7 @@ impl BundleStore {
                 .collect()
         };
 
-        // Sort
+        // Phase 4: Sort
         if let Some(field) = sort_by {
             let field = field.to_string();
             results.sort_by(|a, b| {
@@ -1776,7 +1848,7 @@ impl BundleStore {
             });
         }
 
-        // Offset + Limit
+        // Phase 5: Offset + Limit
         let start = offset.unwrap_or(0);
         if start > 0 {
             results = results.into_iter().skip(start).collect();
@@ -5934,5 +6006,262 @@ mod tests {
             "10k stats calls took {}ms — should be ~0ms (O(1))",
             elapsed.as_millis()
         );
+    }
+
+    // ── Feature #4: Hash Index Acceleration TDD ─────────────────────────────
+
+    /// Helper: create a bundle with two indexed fields and N records.
+    fn make_indexed_store(n: usize) -> BundleStore {
+        let schema = BundleSchema::new("drugs")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("organism"))
+            .fiber(FieldDef::categorical("target_class"))
+            .fiber(FieldDef::numeric("mic").with_range(256.0))
+            .index("organism")
+            .index("target_class");
+        let mut store = BundleStore::new(schema);
+        let organisms = ["S. aureus", "E. coli", "K. pneumoniae", "P. aeruginosa", "A. baumannii"];
+        let targets = ["PBP", "Ribosome", "DNA gyrase", "Cell wall", "Membrane"];
+        for i in 0..n {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i as i64));
+            r.insert("organism".into(), Value::Text(organisms[i % organisms.len()].into()));
+            r.insert("target_class".into(), Value::Text(targets[i % targets.len()].into()));
+            r.insert("mic".into(), Value::Float((i % 64) as f64 * 0.5));
+            store.insert(&r);
+        }
+        store
+    }
+
+    /// TDD-4.1: Equality index acceleration — result identical to full scan,
+    /// only indexed records examined (no false positives).
+    #[test]
+    fn tdd_4_1_equality_index_acceleration() {
+        let store = make_indexed_store(1000);
+        let conds = [QueryCondition::Eq("organism".into(), Value::Text("S. aureus".into()))];
+
+        // Index-accelerated path
+        let indexed_results = store.filtered_query(&conds, None, false, None, None);
+
+        // Full scan for ground truth
+        let scan_results: Vec<Record> = store
+            .records()
+            .filter(|r| r.get("organism") == Some(&Value::Text("S. aureus".into())))
+            .collect();
+
+        assert_eq!(indexed_results.len(), scan_results.len(),
+            "index result count must match full scan");
+        assert!(indexed_results.len() > 0, "should find some records");
+        // 1000 records, 5 organisms → ~200 per organism
+        assert_eq!(indexed_results.len(), 200);
+
+        // Verify no false positives
+        for r in &indexed_results {
+            assert_eq!(r.get("organism"), Some(&Value::Text("S. aureus".into())));
+        }
+    }
+
+    /// TDD-4.2: Conjunction intersection — two indexed fields, bitmap AND.
+    #[test]
+    fn tdd_4_2_conjunction_intersection() {
+        let store = make_indexed_store(1000);
+        let conds = [
+            QueryCondition::Eq("organism".into(), Value::Text("S. aureus".into())),
+            QueryCondition::Eq("target_class".into(), Value::Text("PBP".into())),
+        ];
+
+        let results = store.filtered_query(&conds, None, false, None, None);
+
+        // Ground truth: organism[i%5]=0 AND target[i%5]=0 → only i%5==0 → 200 records
+        let scan_results: Vec<Record> = store
+            .records()
+            .filter(|r| {
+                r.get("organism") == Some(&Value::Text("S. aureus".into()))
+                    && r.get("target_class") == Some(&Value::Text("PBP".into()))
+            })
+            .collect();
+
+        assert_eq!(results.len(), scan_results.len());
+        assert_eq!(results.len(), 200); // i where i%5==0
+    }
+
+    /// TDD-4.3: Selectivity ordering — smaller bitmap processed first.
+    #[test]
+    fn tdd_4_3_selectivity_ordering() {
+        // Create a store where organism has 500 'S. aureus' and target has 100 'PBP'
+        let schema = BundleSchema::new("asym")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("organism"))
+            .fiber(FieldDef::categorical("target"))
+            .index("organism")
+            .index("target");
+        let mut store = BundleStore::new(schema);
+        for i in 0..1000i64 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            // 500 S. aureus, 500 E. coli
+            r.insert("organism".into(), Value::Text(
+                if i < 500 { "S. aureus" } else { "E. coli" }.into()
+            ));
+            // 100 PBP, 900 Other
+            r.insert("target".into(), Value::Text(
+                if i < 100 { "PBP" } else { "Other" }.into()
+            ));
+            store.insert(&r);
+        }
+
+        let conds = [
+            QueryCondition::Eq("organism".into(), Value::Text("S. aureus".into())),
+            QueryCondition::Eq("target".into(), Value::Text("PBP".into())),
+        ];
+
+        // partition_conditions should put target (100) before organism (500)
+        let (indexed, _residual) = store.partition_conditions(&conds);
+        assert_eq!(indexed.len(), 2);
+        // First indexed condition should be the smaller bitmap (target=PBP, ~100 entries)
+        let sel0 = store.estimate_selectivity(indexed[0]);
+        let sel1 = store.estimate_selectivity(indexed[1]);
+        assert!(sel0 <= sel1, "smallest bitmap first: {sel0} should be ≤ {sel1}");
+    }
+
+    /// TDD-4.4: Mixed indexed + residual — index narrows, then residual scans.
+    #[test]
+    fn tdd_4_4_mixed_indexed_residual() {
+        let store = make_indexed_store(1000);
+        // organism is indexed, mic is NOT indexed
+        let conds = [
+            QueryCondition::Eq("organism".into(), Value::Text("S. aureus".into())),
+            QueryCondition::Lt("mic".into(), Value::Float(4.0)),
+        ];
+
+        let results = store.filtered_query(&conds, None, false, None, None);
+
+        // Ground truth via full scan
+        let scan_results: Vec<Record> = store
+            .records()
+            .filter(|r| {
+                r.get("organism") == Some(&Value::Text("S. aureus".into()))
+                    && r.get("mic").map_or(false, |v| v < &Value::Float(4.0))
+            })
+            .collect();
+
+        assert_eq!(results.len(), scan_results.len(),
+            "mixed index+residual must match full scan");
+        // Verify correctness
+        for r in &results {
+            assert_eq!(r.get("organism"), Some(&Value::Text("S. aureus".into())));
+            assert!(r.get("mic").unwrap() < &Value::Float(4.0));
+        }
+    }
+
+    /// TDD-4.5: Index maintenance on insert — new record appears in index.
+    #[test]
+    fn tdd_4_5_index_maintenance_insert() {
+        let mut store = make_indexed_store(10);
+
+        let mut new_rec = Record::new();
+        new_rec.insert("id".into(), Value::Integer(9999));
+        new_rec.insert("organism".into(), Value::Text("NEW_ORG".into()));
+        new_rec.insert("target_class".into(), Value::Text("NEW_TGT".into()));
+        new_rec.insert("mic".into(), Value::Float(1.0));
+        store.insert(&new_rec);
+
+        // Index should contain NEW_ORG
+        let results = store.filtered_query(
+            &[QueryCondition::Eq("organism".into(), Value::Text("NEW_ORG".into()))],
+            None, false, None, None,
+        );
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].get("id"), Some(&Value::Integer(9999)));
+
+        // can_use_index should be true for organism Eq
+        assert!(store.can_use_index(
+            &QueryCondition::Eq("organism".into(), Value::Text("NEW_ORG".into()))
+        ));
+    }
+
+    /// TDD-4.6: Index maintenance on delete — removed record gone from index.
+    #[test]
+    fn tdd_4_6_index_maintenance_delete() {
+        let mut store = make_indexed_store(10);
+
+        // Record id=0 has organism="S. aureus"
+        let before = store.filtered_query(
+            &[QueryCondition::Eq("organism".into(), Value::Text("S. aureus".into()))],
+            None, false, None, None,
+        );
+        let before_count = before.len();
+        assert!(before_count > 0);
+
+        // Delete id=0
+        let mut key = Record::new();
+        key.insert("id".into(), Value::Integer(0));
+        assert!(store.delete(&key));
+
+        let after = store.filtered_query(
+            &[QueryCondition::Eq("organism".into(), Value::Text("S. aureus".into()))],
+            None, false, None, None,
+        );
+        assert_eq!(after.len(), before_count - 1, "deleted record should be gone from index");
+    }
+
+    /// TDD-4.7: Index maintenance on update — old value gone, new value present.
+    #[test]
+    fn tdd_4_7_index_maintenance_update() {
+        let mut store = make_indexed_store(10);
+
+        // Record id=0 has organism="S. aureus"
+        let mut key = Record::new();
+        key.insert("id".into(), Value::Integer(0));
+        let mut patch = Record::new();
+        patch.insert("organism".into(), Value::Text("UPDATED_ORG".into()));
+        assert!(store.update(&key, &patch));
+
+        // Old value should have one fewer record
+        let old = store.filtered_query(
+            &[QueryCondition::Eq("organism".into(), Value::Text("S. aureus".into()))],
+            None, false, None, None,
+        );
+        // Original: id 0,5 → "S. aureus" (i%5==0). After updating id=0, only id=5 remains.
+        assert_eq!(old.len(), 1);
+
+        // New value should be present
+        let new = store.filtered_query(
+            &[QueryCondition::Eq("organism".into(), Value::Text("UPDATED_ORG".into()))],
+            None, false, None, None,
+        );
+        assert_eq!(new.len(), 1);
+        assert_eq!(new[0].get("id"), Some(&Value::Integer(0)));
+    }
+
+    /// TDD-4.8: IN predicate uses index — bitmap union of multiple values.
+    #[test]
+    fn tdd_4_8_in_predicate_index() {
+        let store = make_indexed_store(1000);
+        let conds = [QueryCondition::In(
+            "organism".into(),
+            vec![
+                Value::Text("S. aureus".into()),
+                Value::Text("E. coli".into()),
+            ],
+        )];
+
+        let results = store.filtered_query(&conds, None, false, None, None);
+
+        // i%5==0 → S. aureus (200), i%5==1 → E. coli (200) → total 400
+        assert_eq!(results.len(), 400);
+        for r in &results {
+            let org = r.get("organism").unwrap();
+            assert!(
+                org == &Value::Text("S. aureus".into()) || org == &Value::Text("E. coli".into()),
+                "unexpected organism: {org:?}"
+            );
+        }
+
+        // Verify can_use_index
+        assert!(store.can_use_index(&conds[0]));
+        // Selectivity should be ~400
+        let sel = store.estimate_selectivity(&conds[0]);
+        assert_eq!(sel, 400);
     }
 }

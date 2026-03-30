@@ -113,7 +113,7 @@ impl Fiber {
 // ---------------------------------------------------------------------------
 
 /// Coerce a raw string token into a typed JSON Value per DHOOM spec Â§8.
-fn coerce(s: &str) -> Value {
+pub fn coerce(s: &str) -> Value {
     match s {
         "T" => Value::Bool(true),
         "F" => Value::Bool(false),
@@ -172,7 +172,7 @@ fn parse_string_pattern(s: &str) -> Option<(String, i64, usize)> {
 }
 
 /// Compute arithmetic value at ordinal index i.
-fn arithmetic_value(start: &Value, step: i64, i: usize) -> Value {
+pub fn arithmetic_value(start: &Value, step: i64, i: usize) -> Value {
     match start {
         Value::Number(n) => {
             if let Some(base) = n.as_i64() {
@@ -351,7 +351,7 @@ fn parse_field_decl(token: &str) -> Result<FieldDecl> {
 // Record parser â€” split a record line respecting quotes
 // ---------------------------------------------------------------------------
 
-fn split_record_fields(line: &str) -> Vec<String> {
+pub fn split_record_fields(line: &str) -> Vec<String> {
     let mut fields = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;

@@ -3112,4 +3112,118 @@ mod tests {
 
         cleanup(&dir);
     }
+
+    /// Prove that O(1) arithmetic lookup survives a rebase cycle end-to-end.
+    ///
+    /// The arithmetic modifier @start+step is the engine's core O(1) guarantee:
+    /// given key k, resolve index n = (k − start) / step in constant time.
+    /// This test verifies that after rebase (overlay merge → new DHOOM → re-mmap),
+    /// the encoder re-detects the arithmetic progression and the modifier is
+    /// physically present in the rebased fiber. No interior deletions — only
+    /// updates — so the sequence stays contiguous and detect_arithmetic() succeeds.
+    ///
+    /// Uses 100 records (≥32) so BundleStore auto-detects flat geometry and
+    /// switches to Sequential storage, ensuring records serialize in arithmetic
+    /// order for DHOOM's detect_arithmetic().
+    #[test]
+    fn mmap_rebase_arithmetic_o1_proven() {
+        use crate::dhoom::Modifier;
+
+        let n = 100i64; // ≥32 triggers auto-detection → Sequential storage
+        let dir = test_dir("mmap_rebase_o1");
+        cleanup(&dir);
+
+        // Phase 1: N records, ids 0..N-1 (arithmetic @0+1)
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("arith")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("val"));
+            engine.create_bundle(schema).unwrap();
+            for i in 0..n {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("val".into(), Value::Text(format!("v{i}")));
+                engine.insert("arith", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        // Phase 2: open mmap, confirm arithmetic modifier on base, update records, rebase
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+
+            // ─── Verify arithmetic modifier exists BEFORE rebase ───
+            let ob = engine.mmap_bundles.get("arith").unwrap();
+            let pre_fields = &ob.base().fiber().fields;
+            let pre_arith = pre_fields.iter().find(|f| f.name == "id")
+                .and_then(|f| f.modifier.as_ref());
+            assert!(
+                matches!(pre_arith, Some(Modifier::Arithmetic { .. })),
+                "Pre-rebase: 'id' must have Arithmetic modifier, got {:?}", pre_arith
+            );
+
+            // Verify start=0, step=1 on pre-rebase fiber
+            if let Some(Modifier::Arithmetic { ref start, ref step }) = pre_arith {
+                assert_eq!(start.as_i64().unwrap(), 0, "pre-rebase arithmetic start must be 0");
+                assert_eq!(step.unwrap_or(1), 1, "pre-rebase arithmetic step must be 1");
+            }
+
+            // ─── Update 3 records (no deletes — sequence stays contiguous) ───
+            for id in [1i64, 50, 98] {
+                let mut key = Record::new();
+                key.insert("id".into(), Value::Integer(id));
+                let mut patches = Record::new();
+                patches.insert("val".into(), Value::Text(format!("UPDATED{id}")));
+                assert!(engine.update("arith", &key, &patches).unwrap());
+            }
+            assert_eq!(engine.mmap_bundles.get("arith").unwrap().overlay_len(), 3);
+
+            // ─── Rebase ───
+            engine.mmap_rebase_snapshot().unwrap();
+
+            // ─── Verify arithmetic modifier exists AFTER rebase ───
+            let ob = engine.mmap_bundles.get("arith").unwrap();
+            assert_eq!(ob.overlay_len(), 0, "overlay must be empty after rebase");
+            assert_eq!(ob.tombstone_len(), 0, "tombstones must be empty after rebase");
+            assert_eq!(ob.base().len(), n as usize, "all records survive (no deletes)");
+
+            let post_fields = &ob.base().fiber().fields;
+            let post_arith = post_fields.iter().find(|f| f.name == "id")
+                .and_then(|f| f.modifier.as_ref());
+            assert!(
+                matches!(post_arith, Some(Modifier::Arithmetic { .. })),
+                "Post-rebase: 'id' MUST retain Arithmetic modifier — O(1) lookup depends on it. Got {:?}",
+                post_arith
+            );
+
+            // Verify start=0, step=1 on post-rebase fiber
+            if let Some(Modifier::Arithmetic { ref start, ref step }) = post_arith {
+                let start_i = start.as_i64().expect("start must be integer");
+                let s = step.unwrap_or(1);
+                assert_eq!(start_i, 0, "arithmetic start must be 0");
+                assert_eq!(s, 1, "arithmetic step must be 1");
+            }
+
+            // ─── Verify O(1) path returns correct data for ALL keys ───
+            for id in 0..n {
+                let mut key = Record::new();
+                key.insert("id".into(), Value::Integer(id));
+                let rec = engine.point_query("arith", &key).unwrap()
+                    .unwrap_or_else(|| panic!("id={id} must be found via O(1) arithmetic lookup"));
+                let expected_val = if [1, 50, 98].contains(&id) {
+                    format!("UPDATED{id}")
+                } else {
+                    format!("v{id}")
+                };
+                assert_eq!(
+                    rec.get("val"),
+                    Some(&Value::Text(expected_val.clone())),
+                    "id={id}: expected val={expected_val}"
+                );
+            }
+        }
+
+        cleanup(&dir);
+    }
 }

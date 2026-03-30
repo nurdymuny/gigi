@@ -401,6 +401,12 @@ pub enum Statement {
         name: String,
         bundle: String,
     },
+
+    // ── Feature #6: Query Cache ──
+    /// INVALIDATE CACHE [ON <bundle>]
+    InvalidateCache {
+        bundle: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -863,6 +869,9 @@ impl Parser {
 
             // v2.1: Triggers
             "BEFORE" | "AFTER" | "ON" => self.parse_trigger(&first),
+
+            // Feature #6: Cache invalidation
+            "INVALIDATE" => self.parse_invalidate_cache(),
 
             _ => Err(format!("Unknown statement: {first}")),
         }
@@ -2967,6 +2976,23 @@ impl Parser {
             action,
         })
     }
+
+    /// Parse: INVALIDATE CACHE [ON <bundle>]
+    fn parse_invalidate_cache(&mut self) -> Result<Statement, String> {
+        // Expect "CACHE"
+        let word = self.expect_word()?;
+        if word.to_ascii_uppercase() != "CACHE" {
+            return Err(format!("Expected CACHE after INVALIDATE, got: {word}"));
+        }
+        // Optional: ON <bundle>
+        let bundle = if self.is_keyword("ON") {
+            self.advance();
+            Some(self.expect_word()?)
+        } else {
+            None
+        };
+        Ok(Statement::InvalidateCache { bundle })
+    }
 }
 
 /// Parse a GQL statement string into a Statement AST.
@@ -3848,6 +3874,16 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
 
         // ── v2.1: Triggers (stubs) ──
         Statement::CreateTrigger { .. } | Statement::DropTrigger { .. } => Ok(ExecResult::Ok),
+
+        // ── Feature #6: Query Cache ──
+        Statement::InvalidateCache { bundle } => {
+            if let Some(b) = bundle {
+                engine.query_cache_mut().invalidate_bundle(b);
+            } else {
+                engine.query_cache_mut().invalidate_all();
+            }
+            Ok(ExecResult::Ok)
+        }
     }
 }
 

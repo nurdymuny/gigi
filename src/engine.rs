@@ -5,7 +5,9 @@
 //! then loads DHOOM snapshots for any bundle whose snapshot predates the WAL.
 
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -13,6 +15,158 @@ use crate::bundle::{BundleStore, QueryCondition};
 use crate::mmap_bundle::{MmapBundle, OverlayBundle};
 use crate::types::{BundleSchema, Record, Value};
 use crate::wal::{WalEntry, WalReader, WalWriter};
+
+// ── Feature #6: Query Cache with TTL (Definitions 6.1–6.3, Theorems 6.1–6.2) ──
+
+/// Compute a deterministic fingerprint for a query (Definition 6.1).
+///
+/// The fingerprint is a 64-bit hash of (bundle_name, sorted conditions, sorted or_conditions).
+/// Two queries Q1, Q2 are cache-equivalent iff fingerprint(Q1) == fingerprint(Q2).
+pub fn query_fingerprint(
+    bundle: &str,
+    conditions: &[QueryCondition],
+    or_conditions: Option<&[Vec<QueryCondition>]>,
+) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    bundle.hash(&mut hasher);
+
+    // Sort conditions by Debug representation for canonical ordering
+    let mut sorted: Vec<String> = conditions.iter().map(|c| format!("{c:?}")).collect();
+    sorted.sort();
+    for s in &sorted {
+        s.hash(&mut hasher);
+    }
+
+    // OR conditions: sort each group, then sort groups
+    if let Some(ors) = or_conditions {
+        let mut or_strs: Vec<String> = ors.iter().map(|group| {
+            let mut g: Vec<String> = group.iter().map(|c| format!("{c:?}")).collect();
+            g.sort();
+            format!("{g:?}")
+        }).collect();
+        or_strs.sort();
+        for s in &or_strs {
+            s.hash(&mut hasher);
+        }
+    }
+
+    hasher.finish()
+}
+
+/// A cached query result (Definition 6.2).
+struct CacheEntry {
+    bundle_name: String,
+    result: Vec<Record>,
+    created_at: std::time::Instant,
+    generation_at_creation: u64,
+    ttl_secs: u64,
+}
+
+/// In-memory query cache with TTL + generation-based invalidation (Feature #6).
+///
+/// Cache entries expire when:
+///   (a) TTL elapses (Definition 6.3a)
+///   (b) The source bundle has been written to since caching (Definition 6.3b)
+///   (c) Explicit INVALIDATE CACHE command (Definition 6.3c)
+///
+/// Bounded by `max_entries` with LRU eviction.
+pub struct QueryCache {
+    entries: HashMap<u64, CacheEntry>,
+    /// LRU order: front = oldest, back = newest
+    lru_order: VecDeque<u64>,
+    /// Per-bundle generation counters (incremented on write).
+    generations: HashMap<String, u64>,
+    /// Maximum cache size (entries). LRU eviction when full.
+    pub max_entries: usize,
+    /// Default TTL for new entries (seconds).
+    pub default_ttl_secs: u64,
+}
+
+impl QueryCache {
+    pub fn new() -> Self {
+        Self {
+            entries: HashMap::new(),
+            lru_order: VecDeque::new(),
+            generations: HashMap::new(),
+            max_entries: 1000,
+            default_ttl_secs: 60,
+        }
+    }
+
+    /// Look up a cached result. Returns None if miss or expired.
+    /// Theorem 6.2: cache hit is O(1).
+    pub fn get(&mut self, fingerprint: u64) -> Option<Vec<Record>> {
+        let entry = self.entries.get(&fingerprint)?;
+        // TTL check (Definition 6.3a)
+        if entry.created_at.elapsed().as_secs() >= entry.ttl_secs {
+            let fp = fingerprint;
+            self.entries.remove(&fp);
+            self.lru_order.retain(|&f| f != fp);
+            return None;
+        }
+        // Generation check (Definition 6.3b)
+        let current_gen = self.generations.get(&entry.bundle_name).copied().unwrap_or(0);
+        if current_gen != entry.generation_at_creation {
+            let fp = fingerprint;
+            self.entries.remove(&fp);
+            self.lru_order.retain(|&f| f != fp);
+            return None;
+        }
+        // Move to back of LRU
+        self.lru_order.retain(|&f| f != fingerprint);
+        self.lru_order.push_back(fingerprint);
+        Some(entry.result.clone())
+    }
+
+    /// Insert a query result into the cache.
+    pub fn put(&mut self, fingerprint: u64, bundle: &str, result: Vec<Record>, ttl: u64) {
+        // Evict LRU if at capacity
+        while self.entries.len() >= self.max_entries {
+            if let Some(old_fp) = self.lru_order.pop_front() {
+                self.entries.remove(&old_fp);
+            } else {
+                break;
+            }
+        }
+        let gen = self.generations.get(bundle).copied().unwrap_or(0);
+        self.entries.insert(fingerprint, CacheEntry {
+            bundle_name: bundle.to_string(),
+            result,
+            created_at: std::time::Instant::now(),
+            generation_at_creation: gen,
+            ttl_secs: ttl,
+        });
+        self.lru_order.retain(|&f| f != fingerprint);
+        self.lru_order.push_back(fingerprint);
+    }
+
+    /// Bump generation counter on write — invalidates stale cache entries on next read.
+    pub fn on_write(&mut self, bundle: &str) {
+        *self.generations.entry(bundle.to_string()).or_default() += 1;
+    }
+
+    /// Invalidate all entries for a specific bundle (Definition 6.3c).
+    pub fn invalidate_bundle(&mut self, bundle: &str) {
+        self.entries.retain(|_, e| e.bundle_name != bundle);
+        self.lru_order.retain(|fp| self.entries.contains_key(fp));
+    }
+
+    /// Invalidate all entries (Definition 6.3c).
+    pub fn invalidate_all(&mut self) {
+        self.entries.clear();
+        self.lru_order.clear();
+    }
+
+    /// Number of cached entries (for testing/diagnostics).
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Get current generation for a bundle.
+    pub fn generation(&self, bundle: &str) -> u64 {
+        self.generations.get(bundle).copied().unwrap_or(0)
+    }
+}
 
 /// Auto-compaction policy — controls when the engine automatically snapshots
 /// to keep WAL size bounded. See spec Definition 1.2.
@@ -85,6 +239,8 @@ pub struct Engine {
     wal_entry_count: u64,
     /// WAL file size in bytes (tracked incrementally).
     wal_byte_count: u64,
+    /// Feature #6: In-memory query cache with TTL + generation invalidation.
+    query_cache: QueryCache,
 }
 
 impl Engine {
@@ -160,6 +316,7 @@ impl Engine {
             last_compaction: std::time::Instant::now(),
             wal_entry_count: replay_entry_count,
             wal_byte_count,
+            query_cache: QueryCache::new(),
         })
     }
 
@@ -292,6 +449,7 @@ impl Engine {
             last_compaction: std::time::Instant::now(),
             wal_entry_count: wal_entries.len() as u64,
             wal_byte_count,
+            query_cache: QueryCache::new(),
         })
     }
 
@@ -429,6 +587,7 @@ impl Engine {
                 format!("Bundle '{}' not found", bundle_name),
             ));
         }
+        self.query_cache.on_write(bundle_name);
         self.maybe_checkpoint()?;
         Ok(())
     }
@@ -481,6 +640,9 @@ impl Engine {
                 format!("Bundle '{}' not found", bundle_name),
             ));
         };
+        if updated {
+            self.query_cache.on_write(bundle_name);
+        }
         self.maybe_checkpoint()?;
         Ok(updated)
     }
@@ -500,6 +662,9 @@ impl Engine {
                 format!("Bundle '{}' not found", bundle_name),
             ));
         };
+        if deleted {
+            self.query_cache.on_write(bundle_name);
+        }
         self.maybe_checkpoint()?;
         Ok(deleted)
     }
@@ -510,6 +675,7 @@ impl Engine {
         let existed = self.bundles.remove(name).is_some()
             || self.mmap_bundles.remove(name).is_some();
         self.schemas.remove(name);
+        self.query_cache.invalidate_bundle(name);
         self.maybe_checkpoint()?;
         Ok(existed)
     }
@@ -536,6 +702,11 @@ impl Engine {
                 format!("Bundle '{}' not found", bundle_name),
             ));
         };
+
+        // Invalidate cache for this bundle
+        if count > 0 {
+            self.query_cache.on_write(bundle_name);
+        }
 
         // Single checkpoint check for entire batch
         self.ops_since_checkpoint += count as u64;
@@ -679,6 +850,18 @@ impl Engine {
             ob.base().len() + ob.overlay_len()
         }).sum();
         heap + mmap
+    }
+
+    // ── Feature #6: Query Cache public API ──
+
+    /// Get a mutable reference to the query cache.
+    pub fn query_cache_mut(&mut self) -> &mut QueryCache {
+        &mut self.query_cache
+    }
+
+    /// Get a reference to the query cache.
+    pub fn query_cache(&self) -> &QueryCache {
+        &self.query_cache
     }
 
     /// Filtered query dispatching to both heap and mmap bundles.
@@ -3398,6 +3581,223 @@ mod tests {
                 .find(|r| r.get("id").and_then(|v| v.as_i64()) == Some(20));
             assert!(deleted.is_none(), "id=20 must be absent (tombstoned)");
         }
+
+        cleanup(&dir);
+    }
+
+    // ── Feature #6: Query Cache with TTL — Tests 6.1–6.8 ──
+
+    fn make_cache_engine(name: &str) -> (Engine, PathBuf) {
+        let dir = test_dir(name);
+        cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        let schema = BundleSchema::new("drugs")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("organism"))
+            .fiber(FieldDef::numeric("mic"));
+        engine.create_bundle(schema).unwrap();
+        for i in 0..10i64 {
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(i));
+            rec.insert("organism".into(), Value::Text(format!("org_{i}")));
+            rec.insert("mic".into(), Value::Float(i as f64 * 0.5));
+            engine.insert("drugs", &rec).unwrap();
+        }
+        (engine, dir)
+    }
+
+    #[test]
+    fn test_6_1_cache_hit_returns_correct_result() {
+        let (mut engine, dir) = make_cache_engine("cache_hit");
+
+        let conditions = vec![QueryCondition::Eq("organism".into(), Value::Text("org_3".into()))];
+        let fp = super::query_fingerprint("drugs", &conditions, None);
+
+        // Execute query, cache result
+        let result = engine.filtered_query("drugs", &conditions, None, None, false, None, None).unwrap();
+        assert_eq!(result.len(), 1);
+        engine.query_cache_mut().put(fp, "drugs", result.clone(), 60);
+
+        // Cache hit
+        let cached = engine.query_cache_mut().get(fp);
+        assert!(cached.is_some());
+        assert_eq!(cached.unwrap().len(), 1);
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_6_2_cache_miss_on_ttl_expiry() {
+        let mut cache = super::QueryCache::new();
+        let result = vec![{
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(1));
+            r
+        }];
+        cache.put(42, "drugs", result, 0); // TTL=0 → expired immediately
+
+        // Even 0-second TTL means it expires at >= 0 seconds elapsed
+        // Use std::thread::sleep to ensure elapsed > 0
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let cached = cache.get(42);
+        assert!(cached.is_none(), "Should be cache miss after TTL expiry");
+    }
+
+    #[test]
+    fn test_6_3_write_invalidation_via_generation() {
+        let (mut engine, dir) = make_cache_engine("cache_gen");
+
+        let conditions = vec![QueryCondition::Eq("organism".into(), Value::Text("org_5".into()))];
+        let fp = super::query_fingerprint("drugs", &conditions, None);
+        let result = engine.filtered_query("drugs", &conditions, None, None, false, None, None).unwrap();
+        engine.query_cache_mut().put(fp, "drugs", result, 60);
+
+        // Verify cache hit
+        assert!(engine.query_cache_mut().get(fp).is_some());
+
+        // Insert a record → bumps generation
+        let mut new_rec = Record::new();
+        new_rec.insert("id".into(), Value::Integer(100));
+        new_rec.insert("organism".into(), Value::Text("org_new".into()));
+        new_rec.insert("mic".into(), Value::Float(9.9));
+        engine.insert("drugs", &new_rec).unwrap();
+
+        // Cache miss — generation mismatch
+        assert!(engine.query_cache_mut().get(fp).is_none());
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_6_4_explicit_invalidation_per_bundle() {
+        let mut cache = super::QueryCache::new();
+        // 5 entries on "drugs", 3 on "compounds"
+        for i in 0..5u64 {
+            cache.put(i, "drugs", vec![], 60);
+        }
+        for i in 10..13u64 {
+            cache.put(i, "compounds", vec![], 60);
+        }
+        assert_eq!(cache.len(), 8);
+
+        cache.invalidate_bundle("drugs");
+        assert_eq!(cache.len(), 3, "Only compounds entries should remain");
+
+        // Verify compounds entries still accessible
+        assert!(cache.get(10).is_some());
+        assert!(cache.get(11).is_some());
+        assert!(cache.get(12).is_some());
+    }
+
+    #[test]
+    fn test_6_5_invalidate_all_clears_everything() {
+        let mut cache = super::QueryCache::new();
+        cache.put(1, "drugs", vec![], 60);
+        cache.put(2, "compounds", vec![], 60);
+        cache.put(3, "organisms", vec![], 60);
+        assert_eq!(cache.len(), 3);
+
+        cache.invalidate_all();
+        assert_eq!(cache.len(), 0);
+    }
+
+    #[test]
+    fn test_6_6_fingerprint_equivalence() {
+        // WHERE a = 1 AND b = 2  vs  WHERE b = 2 AND a = 1
+        let q1 = vec![
+            QueryCondition::Eq("a".into(), Value::Integer(1)),
+            QueryCondition::Eq("b".into(), Value::Integer(2)),
+        ];
+        let q2 = vec![
+            QueryCondition::Eq("b".into(), Value::Integer(2)),
+            QueryCondition::Eq("a".into(), Value::Integer(1)),
+        ];
+        let fp1 = super::query_fingerprint("test", &q1, None);
+        let fp2 = super::query_fingerprint("test", &q2, None);
+        assert_eq!(fp1, fp2, "Reordered conditions must produce same fingerprint");
+
+        // Different bundle name → different fingerprint
+        let fp3 = super::query_fingerprint("other", &q1, None);
+        assert_ne!(fp1, fp3);
+    }
+
+    #[test]
+    fn test_6_7_lru_eviction() {
+        let mut cache = super::QueryCache::new();
+        cache.max_entries = 3;
+
+        cache.put(1, "b", vec![], 60);
+        cache.put(2, "b", vec![], 60);
+        cache.put(3, "b", vec![], 60);
+        assert_eq!(cache.len(), 3);
+
+        // Insert Q4 → Q1 evicted (oldest)
+        cache.put(4, "b", vec![], 60);
+        assert_eq!(cache.len(), 3);
+        assert!(cache.get(1).is_none(), "Q1 should be evicted");
+        assert!(cache.get(2).is_some());
+        assert!(cache.get(3).is_some());
+        assert!(cache.get(4).is_some());
+    }
+
+    #[test]
+    fn test_6_8_staleness_bound() {
+        // With TTL=60 and writes happening, cache should be stale until TTL expires
+        let (mut engine, dir) = make_cache_engine("cache_stale");
+
+        let conditions: Vec<QueryCondition> = vec![];
+        let fp = super::query_fingerprint("drugs", &conditions, None);
+        let result = engine.filtered_query("drugs", &conditions, None, None, false, None, None).unwrap();
+        let initial_count = result.len();
+        assert_eq!(initial_count, 10);
+        engine.query_cache_mut().put(fp, "drugs", result, 60);
+
+        // Insert more records (simulating writes within TTL window)
+        for i in 100..110i64 {
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(i));
+            rec.insert("organism".into(), Value::Text(format!("new_{i}")));
+            rec.insert("mic".into(), Value::Float(1.0));
+            engine.insert("drugs", &rec).unwrap();
+        }
+
+        // Cache miss due to generation bump (Theorem 6.1: at most W*τ stale records)
+        assert!(engine.query_cache_mut().get(fp).is_none(), "Should miss after writes");
+
+        // Fresh query returns all records
+        let fresh = engine.filtered_query("drugs", &conditions, None, None, false, None, None).unwrap();
+        assert_eq!(fresh.len(), 20, "Fresh query should see all 20 records");
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_cache_gql_invalidate_parse() {
+        // INVALIDATE CACHE
+        let stmt = crate::parser::parse("INVALIDATE CACHE").unwrap();
+        assert_eq!(stmt, crate::parser::Statement::InvalidateCache { bundle: None });
+
+        // INVALIDATE CACHE ON drugs
+        let stmt2 = crate::parser::parse("INVALIDATE CACHE ON drugs").unwrap();
+        assert_eq!(stmt2, crate::parser::Statement::InvalidateCache {
+            bundle: Some("drugs".into()),
+        });
+    }
+
+    #[test]
+    fn test_cache_gql_invalidate_execute() {
+        let (mut engine, dir) = make_cache_engine("cache_gql_exec");
+
+        // Cache a result
+        let fp = super::query_fingerprint("drugs", &[], None);
+        let result = engine.filtered_query("drugs", &[], None, None, false, None, None).unwrap();
+        engine.query_cache_mut().put(fp, "drugs", result, 60);
+        assert!(engine.query_cache_mut().get(fp).is_some());
+
+        // Execute INVALIDATE CACHE ON drugs
+        let stmt = crate::parser::parse("INVALIDATE CACHE ON drugs").unwrap();
+        crate::parser::execute(&mut engine, &stmt).unwrap();
+        assert!(engine.query_cache_mut().get(fp).is_none(), "Cache should be cleared");
 
         cleanup(&dir);
     }

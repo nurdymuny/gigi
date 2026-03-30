@@ -102,7 +102,7 @@ pub fn filtered_group_by(
     let mut groups: HashMap<Value, AggResult> = HashMap::new();
 
     for rec in store.records() {
-        if !conditions.iter().all(|c| c.matches(&rec)) {
+        if !crate::bundle::matches_filter(&rec, conditions, None) {
             continue;
         }
 

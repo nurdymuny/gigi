@@ -1290,7 +1290,7 @@ impl BundleStore {
         // Collect matching keys first (can't iterate and mutate simultaneously)
         let matching_keys: Vec<Record> = self
             .records()
-            .filter(|record| conditions.iter().all(|c| c.matches(record)))
+            .filter(|record| matches_filter(record, conditions, None))
             .map(|record| {
                 let mut key = Record::new();
                 for f in &self.schema.base_fields {
@@ -2450,7 +2450,7 @@ impl BundleStore {
     pub fn bulk_delete(&mut self, conditions: &[QueryCondition]) -> usize {
         let matching_keys: Vec<Record> = self
             .records()
-            .filter(|record| conditions.iter().all(|c| c.matches(record)))
+            .filter(|record| matches_filter(record, conditions, None))
             .map(|record| {
                 self.schema
                     .base_fields
@@ -2661,7 +2661,7 @@ impl BundleStore {
         // Brute-force scan
         let mut candidates: Vec<(f64, Record)> = self
             .records()
-            .filter(|rec| pre_filter.iter().all(|c| c.matches(rec)))
+            .filter(|rec| matches_filter(rec, pre_filter, None))
             .filter_map(|rec| {
                 let vec = match rec.get(field)? {
                     Value::Vector(v) => v,

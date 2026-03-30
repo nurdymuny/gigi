@@ -876,12 +876,7 @@ impl Engine {
     /// lock) only for the duration of this call. The returned data can then
     /// be encoded to DHOOM files without any lock.
     pub fn clone_bundle_data(&self) -> Vec<BundleDataClone> {
-        assert!(
-            self.mmap_bundles.is_empty(),
-            "clone_bundle_data() called with mmap bundles present — would silently drop mmap-resident data. \
-             Use rebase() to drain overlays into new snapshots before snapshotting."
-        );
-        self.bundles
+        let mut result: Vec<BundleDataClone> = self.bundles
             .iter()
             .filter(|(_, store)| store.len() > 0)
             .map(|(name, store)| BundleDataClone {
@@ -891,7 +886,45 @@ impl Engine {
                 }),
                 records: store.records().map(|r| record_to_serde_json(&r)).collect(),
             })
-            .collect()
+            .collect();
+
+        // Include mmap bundles: merge base + overlay − tombstones
+        for (name, ob) in &self.mmap_bundles {
+            let overlay_pks: std::collections::HashSet<String> = ob.with_overlay(|s| {
+                s.records().map(|r| self.pk_string(name, &r)).collect()
+            }).unwrap_or_default();
+
+            let mut merged: Vec<serde_json::Value> = Vec::new();
+            for i in 0..ob.base().len() {
+                if let Some(val) = ob.base().get(i) {
+                    if let serde_json::Value::Object(ref map) = val {
+                        let rec = serde_map_to_record(map);
+                        let pk = self.pk_string(name, &rec);
+                        if ob.is_tombstoned(&pk) { continue; }
+                        if overlay_pks.contains(&pk) { continue; }
+                        merged.push(record_to_serde_json(&rec));
+                    }
+                }
+            }
+            let overlay_recs: Vec<Record> = ob.with_overlay(|s| {
+                s.records().collect()
+            }).unwrap_or_default();
+            for rec in &overlay_recs {
+                merged.push(record_to_serde_json(rec));
+            }
+
+            if !merged.is_empty() {
+                result.push(BundleDataClone {
+                    name: name.clone(),
+                    schema: self.schemas.get(name).cloned().unwrap_or_else(|| {
+                        BundleSchema::new(name)
+                    }),
+                    records: merged,
+                });
+            }
+        }
+
+        result
     }
 
     /// Encode pre-cloned bundle data to DHOOM snapshot files.
@@ -999,13 +1032,42 @@ impl Engine {
 
             eprintln!("  Snapshot streaming: {name} ({count} records, chunk_size={chunk_size})…");
             {
+                // Collect and sort by arithmetic key field so detect_arithmetic()
+                // sees a uniform sequence regardless of storage iteration order.
+                let schema = self.schemas.get(name.as_str());
+                let arith_key = schema.and_then(|s| {
+                    if s.base_fields.len() == 1
+                        && matches!(s.base_fields[0].field_type, crate::types::FieldType::Numeric)
+                    {
+                        Some(s.base_fields[0].name.clone())
+                    } else {
+                        None
+                    }
+                });
+
                 let file = fs::File::create(&tmp_path)?;
                 let buf = io::BufWriter::new(file);
                 let mut encoder =
                     crate::dhoom::StreamingDhoomEncoder::new(buf, name, chunk_size);
 
-                for rec in store.records() {
-                    encoder.push(record_to_serde_json(&rec))?;
+                if let Some(ref key_field) = arith_key {
+                    // Buffer → sort → encode (guarantees arithmetic detection)
+                    let mut recs: Vec<serde_json::Value> = store
+                        .records()
+                        .map(|r| record_to_serde_json(&r))
+                        .collect();
+                    recs.sort_by(|a, b| {
+                        let va = a.get(key_field).and_then(|v| v.as_i64()).unwrap_or(i64::MAX);
+                        let vb = b.get(key_field).and_then(|v| v.as_i64()).unwrap_or(i64::MAX);
+                        va.cmp(&vb)
+                    });
+                    for rec in &recs {
+                        encoder.push(rec.clone())?;
+                    }
+                } else {
+                    for rec in store.records() {
+                        encoder.push(record_to_serde_json(&rec))?;
+                    }
                 }
                 encoder.finish()?;
                 eprintln!("  Snapshot written: {name} ({count} records)");
@@ -3222,6 +3284,119 @@ mod tests {
                     "id={id}: expected val={expected_val}"
                 );
             }
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Prove that small bundles (<32 records, Hashed storage) get arithmetic
+    /// O(1) lookup after snapshot. The snapshot sort guarantees detect_arithmetic()
+    /// sees a uniform sequence regardless of HashMap iteration order.
+    #[test]
+    fn small_bundle_arithmetic_snapshot() {
+        use crate::dhoom::Modifier;
+
+        let dir = test_dir("small_arith");
+        cleanup(&dir);
+
+        // 5 records — stays in Hashed storage (< 32 auto-detect threshold)
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("tiny")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("val"));
+            engine.create_bundle(schema).unwrap();
+            for i in 0..5i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("val".into(), Value::Text(format!("v{i}")));
+                engine.insert("tiny", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        // Reopen mmap — verify arithmetic modifier and O(1) lookup
+        {
+            let engine = Engine::open_mmap(&dir).unwrap();
+            assert_eq!(engine.total_records(), 5);
+
+            let ob = engine.mmap_bundles.get("tiny").unwrap();
+            let arith = ob.base().fiber().fields.iter()
+                .find(|f| f.name == "id")
+                .and_then(|f| f.modifier.as_ref());
+            assert!(
+                matches!(arith, Some(Modifier::Arithmetic { .. })),
+                "Small bundle 'id' must have Arithmetic modifier after sorted snapshot, got {:?}",
+                arith
+            );
+
+            for id in 0..5i64 {
+                let mut key = Record::new();
+                key.insert("id".into(), Value::Integer(id));
+                let rec = engine.point_query("tiny", &key).unwrap()
+                    .unwrap_or_else(|| panic!("id={id} must be accessible"));
+                assert_eq!(rec.get("val"), Some(&Value::Text(format!("v{id}"))));
+            }
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Prove clone_bundle_data includes mmap bundles (base + overlay − tombstones).
+    #[test]
+    fn clone_bundle_data_includes_mmap() {
+        let dir = test_dir("clone_mmap");
+        cleanup(&dir);
+
+        // Phase 1: Create and snapshot
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("data")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("label"));
+            engine.create_bundle(schema).unwrap();
+            for i in 0..50i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("label".into(), Value::Text(format!("row{i}")));
+                engine.insert("data", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        // Phase 2: Open mmap, mutate, then clone
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+
+            // Update id=10
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(10));
+            let mut patches = Record::new();
+            patches.insert("label".into(), Value::Text("UPDATED".into()));
+            engine.update("data", &key, &patches).unwrap();
+
+            // Delete id=20
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(20));
+            engine.delete("data", &key).unwrap();
+
+            // Clone — should include mmap data with mutations
+            let cloned = engine.clone_bundle_data();
+            assert_eq!(cloned.len(), 1);
+            assert_eq!(cloned[0].name, "data");
+            // 50 original - 1 deleted = 49
+            assert_eq!(cloned[0].records.len(), 49, "should have 49 records (50-1 deleted)");
+
+            // Verify updated record is present with new label
+            let updated = cloned[0].records.iter()
+                .find(|r| r.get("id").and_then(|v| v.as_i64()) == Some(10))
+                .expect("id=10 must be in clone");
+            assert_eq!(updated.get("label").and_then(|v| v.as_str()), Some("UPDATED"));
+
+            // Verify deleted record is absent
+            let deleted = cloned[0].records.iter()
+                .find(|r| r.get("id").and_then(|v| v.as_i64()) == Some(20));
+            assert!(deleted.is_none(), "id=20 must be absent (tombstoned)");
         }
 
         cleanup(&dir);

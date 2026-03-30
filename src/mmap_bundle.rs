@@ -66,11 +66,13 @@ impl MmapBundle {
         let name = fiber.name.clone().unwrap_or_default();
         let parser = DhoomRecordParser::new(fiber);
 
-        // Skip pool lines (start with '&') and blank lines before records
+        // Skip pool lines (start with '&') before records.
+        // Empty lines in the data section ARE valid records (all fields arithmetic/default).
         let body = &text[header_end..];
         let mut line_offsets = Vec::new();
         let mut pos = header_end;
         let mut in_pools = true;
+        let mut saw_pool = false;
         let mut data_start = header_end;
 
         for line in body.lines() {
@@ -78,7 +80,18 @@ impl MmapBundle {
             let line_byte_len = line.len() + 1; // +1 for newline (approximate)
 
             if in_pools {
-                if trimmed.starts_with('&') || trimmed.is_empty() {
+                if trimmed.starts_with('&') {
+                    saw_pool = true;
+                    pos += line_byte_len;
+                    continue;
+                }
+                // Blank lines are pool separators only if we've seen at least one '&' line
+                if trimmed.is_empty() && saw_pool {
+                    pos += line_byte_len;
+                    continue;
+                }
+                // Skip leading blank line right after header (before any data)
+                if trimmed.is_empty() && pos == header_end {
                     pos += line_byte_len;
                     continue;
                 }

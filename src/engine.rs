@@ -9,7 +9,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::bundle::BundleStore;
+use crate::bundle::{BundleStore, QueryCondition};
 use crate::mmap_bundle::{MmapBundle, OverlayBundle};
 use crate::types::{BundleSchema, Record, Value};
 use crate::wal::{WalEntry, WalReader, WalWriter};
@@ -492,14 +492,20 @@ impl Engine {
         }
         self.wal.sync()?;
 
-        // In-memory: batch insert into BundleStore
-        let store = self.bundles.get_mut(bundle_name).ok_or_else(|| {
-            io::Error::new(
+        // In-memory: dispatch to heap or mmap overlay
+        let count = if let Some(store) = self.bundles.get_mut(bundle_name) {
+            store.batch_insert(records)
+        } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
+            for record in records {
+                ob.insert(record);
+            }
+            records.len()
+        } else {
+            return Err(io::Error::new(
                 io::ErrorKind::NotFound,
                 format!("Bundle '{}' not found", bundle_name),
-            )
-        })?;
-        let count = store.batch_insert(records);
+            ));
+        };
 
         // Single checkpoint check for entire batch
         self.ops_since_checkpoint += count as u64;
@@ -528,7 +534,11 @@ impl Engine {
             if ob.is_tombstoned(&key_str) {
                 return Ok(None);
             }
-            // Fall through to base mmap scan
+            // Arithmetic fast path: O(1) key → index resolution
+            if let Some(rec) = self.mmap_arithmetic_lookup(ob, key) {
+                return Ok(Some(rec));
+            }
+            // General fallback: O(N) scan (non-arithmetic keys only)
             for i in 0..ob.base().len() {
                 if let Some(val) = ob.base().get(i) {
                     if let serde_json::Value::Object(map) = &val {
@@ -564,12 +574,38 @@ impl Engine {
         field: &str,
         values: &[crate::types::Value],
     ) -> io::Result<Vec<Record>> {
-        match self.bundles.get(bundle_name) {
-            Some(store) => Ok(store.range_query(field, values)),
-            None => Err(io::Error::new(
+        if let Some(store) = self.bundles.get(bundle_name) {
+            Ok(store.range_query(field, values))
+        } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
+            // Overlay range query
+            let overlay_results = ob.with_overlay(|s| s.range_query(field, values))
+                .unwrap_or_default();
+            // Base scan: match records where field value is in the value set
+            let mut base_results = Vec::new();
+            for i in 0..ob.base().len() {
+                if let Some(val) = ob.base().get(i) {
+                    if let serde_json::Value::Object(map) = &val {
+                        let rec = serde_map_to_record(&map);
+                        let key_str = format!("{:?}", rec);
+                        if ob.is_tombstoned(&key_str) { continue; }
+                        // Skip if exists in overlay (overlay version takes precedence)
+                        if ob.point_query_overlay(&rec).is_some() { continue; }
+                        if let Some(fv) = rec.get(field) {
+                            if values.contains(fv) {
+                                base_results.push(rec);
+                            }
+                        }
+                    }
+                }
+            }
+            let mut combined = overlay_results;
+            combined.extend(base_results);
+            Ok(combined)
+        } else {
+            Err(io::Error::new(
                 io::ErrorKind::NotFound,
                 format!("Bundle '{}' not found", bundle_name),
-            )),
+            ))
         }
     }
 
@@ -608,6 +644,128 @@ impl Engine {
             ob.base().len() + ob.overlay_len()
         }).sum();
         heap + mmap
+    }
+
+    /// Filtered query dispatching to both heap and mmap bundles.
+    pub fn filtered_query(
+        &self,
+        bundle_name: &str,
+        conditions: &[QueryCondition],
+        or_conditions: Option<&[Vec<QueryCondition>]>,
+        sort_by: Option<&str>,
+        sort_desc: bool,
+        limit: Option<usize>,
+        offset: Option<usize>,
+    ) -> io::Result<Vec<Record>> {
+        if let Some(store) = self.bundles.get(bundle_name) {
+            Ok(store.filtered_query_ex(conditions, or_conditions, sort_by, sort_desc, limit, offset))
+        } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
+            // Overlay query (uses hash index acceleration)
+            let overlay_results = ob.with_overlay(|s| {
+                s.filtered_query_ex(conditions, or_conditions, sort_by, sort_desc, None, None)
+            }).unwrap_or_default();
+
+            // Collect overlay keys for dedup
+            let overlay_keys: Vec<String> = overlay_results.iter()
+                .map(|r| format!("{r:?}"))
+                .collect();
+
+            // Base scan with filter
+            let mut base_results = Vec::new();
+            for i in 0..ob.base().len() {
+                if let Some(val) = ob.base().get(i) {
+                    if let serde_json::Value::Object(map) = &val {
+                        let rec = serde_map_to_record(&map);
+                        let rec_key = format!("{rec:?}");
+                        if ob.is_tombstoned(&rec_key) { continue; }
+                        if overlay_keys.contains(&rec_key) { continue; }
+                        // Check AND conditions
+                        if !conditions.iter().all(|c| c.matches(&rec)) { continue; }
+                        // Check OR conditions
+                        let or_ok = match or_conditions {
+                            Some(groups) if !groups.is_empty() => groups.iter()
+                                .any(|g| g.iter().all(|c| c.matches(&rec))),
+                            _ => true,
+                        };
+                        if or_ok {
+                            base_results.push(rec);
+                        }
+                    }
+                }
+            }
+
+            let mut combined = overlay_results;
+            combined.extend(base_results);
+
+            // Apply sort
+            if let Some(field) = sort_by {
+                let field = field.to_string();
+                combined.sort_by(|a, b| {
+                    let va = a.get(&field).unwrap_or(&Value::Null);
+                    let vb = b.get(&field).unwrap_or(&Value::Null);
+                    if sort_desc { vb.cmp(va) } else { va.cmp(vb) }
+                });
+            }
+
+            // Apply offset + limit
+            if let Some(off) = offset {
+                if off < combined.len() {
+                    combined = combined.split_off(off);
+                } else {
+                    combined.clear();
+                }
+            }
+            if let Some(lim) = limit {
+                combined.truncate(lim);
+            }
+
+            Ok(combined)
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Bundle '{}' not found", bundle_name),
+            ))
+        }
+    }
+
+    /// O(1) point query on mmap base using arithmetic key resolution.
+    /// Returns None if the key field isn't arithmetic or doesn't match.
+    fn mmap_arithmetic_lookup(&self, ob: &OverlayBundle, key: &Record) -> Option<Record> {
+        let fiber = ob.base().fiber();
+        for fdecl in &fiber.fields {
+            if let Some(crate::dhoom::Modifier::Arithmetic { ref start, ref step }) = fdecl.modifier {
+                let key_val = key.get(&fdecl.name)?;
+                let s = step.unwrap_or(1);
+                // Extract integer key value
+                let key_i = match key_val {
+                    Value::Integer(i) => *i,
+                    Value::Float(f) => *f as i64,
+                    _ => return None,
+                };
+                // Extract integer start value from serde_json::Value
+                let start_i = match start {
+                    serde_json::Value::Number(n) => n.as_i64()?,
+                    _ => return None,
+                };
+                if s == 0 { return None; }
+                let diff = key_i - start_i;
+                if diff < 0 || diff % s != 0 { return None; }
+                let idx = (diff / s) as usize;
+                if idx >= ob.base().len() { return None; }
+
+                let val = ob.base().get(idx)?;
+                if let serde_json::Value::Object(map) = &val {
+                    // Verify the key field matches (guards against hash collisions in
+                    // non-contiguous arithmetic sequences)
+                    let rec = serde_map_to_record(&map);
+                    if rec.get(&fdecl.name) == Some(key_val) {
+                        return Some(rec);
+                    }
+                }
+                return None;
+            }
+        }
+        None
     }
 
     /// Force a checkpoint — syncs WAL to disk.
@@ -953,6 +1111,13 @@ fn serde_json_to_value(v: &serde_json::Value) -> Value {
         }
         _ => Value::Null,
     }
+}
+
+/// Convert a serde_json Map to a GIGI Record.
+fn serde_map_to_record(map: &serde_json::Map<String, serde_json::Value>) -> Record {
+    map.iter()
+        .map(|(k, v)| (k.clone(), serde_json_to_value(v)))
+        .collect()
 }
 
 #[cfg(test)]
@@ -2293,6 +2458,183 @@ mod tests {
             engine.delete("items", &key).unwrap();
             let result = engine.point_query("items", &key).unwrap();
             assert!(result.is_none());
+        }
+
+        cleanup(&dir);
+    }
+
+    // ── Phase 3a TDD: mmap ship-blocker tests ───────────────────────────
+
+    /// TDD Phase 3: point_query at 10K scale uses arithmetic key resolution.
+    #[test]
+    fn mmap_point_query_10k_arithmetic() {
+        let dir = test_dir("mmap_pq_10k");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("big")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("label"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..10_000i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("label".into(), Value::Text(format!("row_{i}")));
+                engine.insert("big", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        {
+            let engine = Engine::open_mmap(&dir).unwrap();
+            assert_eq!(engine.total_records(), 10_000);
+
+            for target in [0i64, 1, 500, 5000, 9999] {
+                let mut key = Record::new();
+                key.insert("id".into(), Value::Integer(target));
+                let result = engine.point_query("big", &key).unwrap()
+                    .unwrap_or_else(|| panic!("missing record id={target}"));
+                assert_eq!(
+                    result.get("label"),
+                    Some(&Value::Text(format!("row_{target}")))
+                );
+            }
+        }
+
+        cleanup(&dir);
+    }
+
+    /// TDD Phase 3: range_query on mmap bundle returns base data.
+    #[test]
+    fn mmap_range_query_base_data() {
+        let dir = test_dir("mmap_range");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("drugs")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("name"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..5i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("name".into(), Value::Text(format!("Drug_{i}")));
+                engine.insert("drugs", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        {
+            let engine = Engine::open_mmap(&dir).unwrap();
+            let results = engine.range_query(
+                "drugs", "name",
+                &[Value::Text("Drug_2".into())],
+            ).unwrap();
+            assert_eq!(results.len(), 1);
+            assert_eq!(results[0].get("name"), Some(&Value::Text("Drug_2".into())));
+        }
+
+        cleanup(&dir);
+    }
+
+    /// TDD Phase 3: filtered_query on mmap returns base + overlay data.
+    #[test]
+    fn mmap_filtered_query_base_plus_overlay() {
+        use crate::bundle::QueryCondition;
+
+        let dir = test_dir("mmap_filtered");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("compounds")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("name"))
+                .fiber(FieldDef::numeric("mw").with_range(1000.0));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..100i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("name".into(), Value::Text(format!("Cpd_{i}")));
+                rec.insert("mw".into(), Value::Float(100.0 + i as f64));
+                engine.insert("compounds", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+
+            // Insert one more into overlay
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(200));
+            rec.insert("name".into(), Value::Text("Overlay_Cpd".into()));
+            rec.insert("mw".into(), Value::Float(190.0));
+            engine.insert("compounds", &rec).unwrap();
+
+            // Query: name = "Cpd_50" — should find base record
+            let results = engine.filtered_query(
+                "compounds",
+                &[QueryCondition::Eq("name".into(), Value::Text("Cpd_50".into()))],
+                None, None, false, None, None,
+            ).unwrap();
+            assert_eq!(results.len(), 1);
+            assert_eq!(results[0].get("id"), Some(&Value::Integer(50)));
+
+            // Query: mw >= 190.0 — should find base records 90-99 + overlay record 200
+            let results = engine.filtered_query(
+                "compounds",
+                &[QueryCondition::Gte("mw".into(), Value::Float(190.0))],
+                None, None, false, None, None,
+            ).unwrap();
+            assert_eq!(results.len(), 11); // base: 90..99 (10) + overlay: 200 (1)
+        }
+
+        cleanup(&dir);
+    }
+
+    /// TDD Phase 3: batch_insert into mmap bundle.
+    #[test]
+    fn mmap_batch_insert() {
+        let dir = test_dir("mmap_batch");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("items")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("val"));
+            engine.create_bundle(schema).unwrap();
+
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(1));
+            rec.insert("val".into(), Value::Text("seed".into()));
+            engine.insert("items", &rec).unwrap();
+            engine.snapshot().unwrap();
+        }
+
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+
+            let batch: Vec<Record> = (100..110i64).map(|i| {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("val".into(), Value::Text(format!("batch_{i}")));
+                rec
+            }).collect();
+            let count = engine.batch_insert("items", &batch).unwrap();
+            assert_eq!(count, 10);
+
+            // Verify batch records are queryable
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(105));
+            let result = engine.point_query("items", &key).unwrap().unwrap();
+            assert_eq!(result.get("val"), Some(&Value::Text("batch_105".into())));
         }
 
         cleanup(&dir);

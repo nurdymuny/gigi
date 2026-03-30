@@ -201,9 +201,7 @@ mod tests {
         assert!(p.compression_pct > 0.0);
         // unit should be detected as default (100% celsius)
         assert!(
-            p.default_fields
-                .iter()
-                .any(|(n, v, _)| n == "unit" && v == "celsius"),
+            p.default_fields.iter().any(|(n, v, _)| n == "unit" && v == "celsius"),
             "Expected unit=celsius as default. Got: {:?}",
             p.default_fields
         );

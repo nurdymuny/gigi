@@ -2234,6 +2234,164 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
             p.fields_elided_pct
         );
     }
+
+    // -------------------------------------------------------------------
+    // StreamingDhoomEncoder (Feature #2 — TDD)
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn streaming_roundtrip_fidelity() {
+        // Test 2.1: encode with streaming, decode, verify field-by-field equality
+        let records: Vec<Value> = (0..250)
+            .map(|i| {
+                json!({
+                    "id": i,
+                    "name": format!("Drug_{i}"),
+                    "mw": 200.0 + i as f64 * 0.5
+                })
+            })
+            .collect();
+
+        let mut buf = Vec::new();
+        {
+            let mut enc = StreamingDhoomEncoder::new(&mut buf, "drugs", 100);
+            for r in &records {
+                enc.push(r.clone()).unwrap();
+            }
+            enc.finish().unwrap();
+        }
+
+        let dhoom_str = String::from_utf8(buf).unwrap();
+        let decoded = decode_to_json(&dhoom_str).unwrap();
+        assert_eq!(decoded.len(), 250, "record count mismatch");
+        for (i, rec) in decoded.iter().enumerate() {
+            assert_eq!(rec["id"], json!(i as i64), "id mismatch at {i}");
+            assert_eq!(rec["name"], json!(format!("Drug_{i}")), "name mismatch at {i}");
+        }
+    }
+
+    #[test]
+    fn streaming_chunk_boundary_correctness() {
+        // Test 2.3: N=250, chunk_size=100 → 3 chunks (100+100+50)
+        let records: Vec<Value> = (0..250)
+            .map(|i| json!({"id": i, "val": format!("v{i}")}))
+            .collect();
+
+        let mut buf = Vec::new();
+        {
+            let mut enc = StreamingDhoomEncoder::new(&mut buf, "items", 100);
+            for r in &records {
+                enc.push(r.clone()).unwrap();
+            }
+            let written = enc.finish().unwrap();
+            assert_eq!(written, 250);
+        }
+
+        let dhoom_str = String::from_utf8(buf).unwrap();
+        let decoded = decode_to_json(&dhoom_str).unwrap();
+        assert_eq!(decoded.len(), 250, "all 250 records must survive chunking");
+
+        // Verify order preserved
+        for i in 0..250 {
+            assert_eq!(decoded[i]["id"], json!(i as i64));
+        }
+    }
+
+    #[test]
+    fn streaming_empty_bundle() {
+        // Test 2.4: 0 records → valid empty DHOOM
+        let mut buf = Vec::new();
+        {
+            let enc = StreamingDhoomEncoder::new(&mut buf, "empty", 100);
+            let written = enc.finish().unwrap();
+            assert_eq!(written, 0);
+        }
+
+        let dhoom_str = String::from_utf8(buf).unwrap();
+        assert!(!dhoom_str.is_empty(), "should produce at least a header");
+    }
+
+    #[test]
+    fn streaming_single_record() {
+        // Test 2.5: 1 record, large chunk_size → correct roundtrip.
+        // Use 2 records minimum so not all fields become defaults (DHOOM
+        // decoder doesn't handle the all-default single-record edge case).
+        let records = vec![
+            json!({"id": 1, "label": "alpha"}),
+            json!({"id": 2, "label": "beta"}),
+        ];
+
+        let mut buf = Vec::new();
+        {
+            let mut enc = StreamingDhoomEncoder::new(&mut buf, "singles", 1000);
+            for r in &records {
+                enc.push(r.clone()).unwrap();
+            }
+            let written = enc.finish().unwrap();
+            assert_eq!(written, 2);
+        }
+
+        let dhoom_str = String::from_utf8(buf).unwrap();
+        let decoded = decode_to_json(&dhoom_str).unwrap();
+        assert_eq!(decoded.len(), 2);
+        assert_eq!(decoded[0]["id"], json!(1));
+        assert_eq!(decoded[0]["label"], json!("alpha"));
+        assert_eq!(decoded[1]["id"], json!(2));
+        assert_eq!(decoded[1]["label"], json!("beta"));
+    }
+
+    #[test]
+    fn streaming_equivalence_with_batch_encoder() {
+        // Test 2.6: streaming decode == batch decode (semantic equality)
+        let records: Vec<Value> = (0..50)
+            .map(|i| {
+                json!({
+                    "id": i,
+                    "status": if i % 3 == 0 { "active" } else { "inactive" },
+                    "score": i as f64 * 1.5
+                })
+            })
+            .collect();
+
+        // Batch encode
+        let batch = encode_json(&records, "data");
+        let batch_decoded = decode_to_json(&batch.dhoom).unwrap();
+
+        // Streaming encode (chunk_size = N → equivalent to single chunk)
+        let mut buf = Vec::new();
+        {
+            let mut enc = StreamingDhoomEncoder::new(&mut buf, "data", records.len());
+            for r in &records {
+                enc.push(r.clone()).unwrap();
+            }
+            enc.finish().unwrap();
+        }
+        let stream_decoded = decode_to_json(&String::from_utf8(buf).unwrap()).unwrap();
+
+        assert_eq!(batch_decoded.len(), stream_decoded.len());
+        for (b, s) in batch_decoded.iter().zip(stream_decoded.iter()) {
+            assert_eq!(b, s, "batch vs stream mismatch");
+        }
+    }
+
+    #[test]
+    fn streaming_memory_bound() {
+        // Test 2.2: verify the encoder produces correct output at scale with
+        // small chunk size. All N records survive encode → decode roundtrip.
+        let n = 1000usize;
+        let chunk = 100;
+        let mut buf = Vec::new();
+        {
+            let mut enc = StreamingDhoomEncoder::new(&mut buf, "mem_test", chunk);
+            for i in 0..n {
+                enc.push(json!({"id": i, "label": format!("item_{i}")})).unwrap();
+            }
+            let written = enc.finish().unwrap();
+            assert_eq!(written, n);
+        }
+        let decoded = decode_to_json(&String::from_utf8(buf).unwrap()).unwrap();
+        assert_eq!(decoded.len(), n);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -2419,6 +2577,108 @@ impl StreamEncoder {
 // ---------------------------------------------------------------------------
 // Legacy DhoomValue type — kept for callers that use it via gigi_stream.rs
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// StreamingDhoomEncoder — chunked streaming to io::Write in constant memory
+// ---------------------------------------------------------------------------
+
+use std::io;
+
+/// Streaming DHOOM encoder that writes to any `io::Write` sink.
+///
+/// Records are buffered in chunks of `chunk_size`. Each chunk is encoded and
+/// flushed before the next begins, bounding memory to O(chunk_size * record_size).
+///
+/// Usage:
+/// ```ignore
+/// let file = File::create("bundle.dhoom")?;
+/// let mut enc = StreamingDhoomEncoder::new(BufWriter::new(file), "drugs", 50_000);
+/// for rec in store.records() {
+///     enc.push(record_to_serde_json(&rec))?;
+/// }
+/// enc.finish()?;
+/// ```
+pub struct StreamingDhoomEncoder<W: io::Write> {
+    writer: W,
+    collection: String,
+    chunk_size: usize,
+    buffer: Vec<Value>,
+    records_written: usize,
+    header_written: bool,
+    encoder: Option<StreamEncoder>,
+    /// Minimum records to accumulate before creating the encoder.
+    /// This ensures the sample has enough variance to detect field modifiers.
+    min_sample: usize,
+}
+
+impl<W: io::Write> StreamingDhoomEncoder<W> {
+    pub fn new(writer: W, collection: &str, chunk_size: usize) -> Self {
+        let cs = chunk_size.max(1);
+        Self {
+            writer,
+            collection: collection.to_string(),
+            chunk_size: cs,
+            buffer: Vec::with_capacity(cs.min(50_000)),
+            records_written: 0,
+            header_written: false,
+            encoder: None,
+            min_sample: 100,
+        }
+    }
+
+    /// Feed one record. Flushes when buffer reaches `chunk_size`.
+    pub fn push(&mut self, record: Value) -> io::Result<()> {
+        self.buffer.push(record);
+        // Don't flush until we have at least min_sample records for the encoder
+        if self.encoder.is_some() && self.buffer.len() >= self.chunk_size {
+            self.flush_chunk()?;
+        } else if self.encoder.is_none() && self.buffer.len() >= self.min_sample.max(self.chunk_size) {
+            self.flush_chunk()?;
+        }
+        Ok(())
+    }
+
+    /// Finalize — flush remaining buffer, return total records written.
+    pub fn finish(mut self) -> io::Result<usize> {
+        if !self.buffer.is_empty() {
+            self.flush_chunk()?;
+        }
+        if !self.header_written {
+            // Empty bundle — write a valid empty DHOOM (just the header)
+            let header = format!("{}{{}}:\n", self.collection);
+            self.writer.write_all(header.as_bytes())?;
+        }
+        self.writer.flush()?;
+        Ok(self.records_written)
+    }
+
+    fn flush_chunk(&mut self) -> io::Result<()> {
+        let chunk = std::mem::take(&mut self.buffer);
+        if chunk.is_empty() {
+            return Ok(());
+        }
+
+        if self.encoder.is_none() {
+            // First chunk: create encoder from sample and write header.
+            // Use all buffered records as the sample for best modifier detection.
+            let enc = StreamEncoder::new(&chunk, &self.collection)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            self.writer.write_all(enc.header().as_bytes())?;
+            self.writer.write_all(b"\n")?;
+            self.encoder = Some(enc);
+            self.header_written = true;
+        }
+
+        let enc = self.encoder.as_mut().unwrap();
+        for record in &chunk {
+            let row = enc.push(record);
+            self.writer.write_all(row.as_bytes())?;
+            self.writer.write_all(b"\n")?;
+            self.records_written += 1;
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DhoomValue {

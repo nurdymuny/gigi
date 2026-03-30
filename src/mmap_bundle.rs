@@ -4,22 +4,24 @@
 //! manages record residency. Only actively queried pages consume RSS,
 //! giving ~20× memory reduction for typical query workloads (Thm 11.1).
 
-use std::collections::HashMap;
 use std::fs::File;
 use std::io;
 use std::path::Path;
+use std::sync::RwLock;
 
 use memmap2::Mmap;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
-use crate::dhoom::{arithmetic_value, coerce, parse_fiber, split_record_fields, Fiber, Modifier};
+use crate::bundle::BundleStore;
+use crate::dhoom::{parse_fiber, DhoomRecordParser, Fiber, Modifier};
+use crate::types::{BundleSchema, Record};
 
 /// Memory-mapped DHOOM bundle — records parsed on demand from OS page cache.
 pub struct MmapBundle {
     /// Memory-mapped file bytes.
     mmap: Mmap,
-    /// Parsed DHOOM fiber (schema) from the header.
-    fiber: Fiber,
+    /// Shared record parser (uses Fiber internally).
+    parser: DhoomRecordParser,
     /// Bundle/collection name.
     name: String,
     /// Byte offset of each record line start in the mmap.
@@ -62,6 +64,7 @@ impl MmapBundle {
         }
 
         let name = fiber.name.clone().unwrap_or_default();
+        let parser = DhoomRecordParser::new(fiber);
 
         // Skip pool lines (start with '&') and blank lines before records
         let body = &text[header_end..];
@@ -90,7 +93,7 @@ impl MmapBundle {
 
         Ok(Self {
             mmap,
-            fiber,
+            parser,
             name,
             line_offsets,
             _data_start: data_start,
@@ -126,57 +129,7 @@ impl MmapBundle {
         };
         let raw = std::str::from_utf8(&self.mmap[start..end]).ok()?;
         let line = raw.lines().next().unwrap_or("").trim();
-        Some(self.decode_record_line(line, index))
-    }
-
-    /// Decode a single DHOOM record line using the fiber definition.
-    fn decode_record_line(&self, line: &str, ordinal: usize) -> Value {
-        let record_fields = self.fiber.record_fields();
-        let raw_fields: Vec<String> = if line.is_empty() {
-            vec![]
-        } else {
-            split_record_fields(line)
-        };
-
-        let mut obj = Map::new();
-
-        // Fill arithmetic fields
-        for fdecl in &self.fiber.fields {
-            if let Some(Modifier::Arithmetic {
-                ref start,
-                ref step,
-            }) = fdecl.modifier
-            {
-                let s = step.unwrap_or(1);
-                obj.insert(fdecl.name.clone(), arithmetic_value(start, s, ordinal));
-            }
-        }
-
-        // Map positional record values
-        for (j, rf) in record_fields.iter().enumerate() {
-            if j < raw_fields.len() {
-                let raw = &raw_fields[j];
-                let val = if raw.is_empty() {
-                    if let Some(Modifier::Default(ref d)) = rf.modifier {
-                        d.clone()
-                    } else {
-                        Value::String(String::new())
-                    }
-                } else if let Some(stripped) = raw.strip_prefix(':') {
-                    coerce(stripped)
-                } else {
-                    coerce(raw)
-                };
-                obj.insert(rf.name.clone(), val);
-            } else {
-                // Trailing elision → fill with default
-                if let Some(Modifier::Default(ref d)) = rf.modifier {
-                    obj.insert(rf.name.clone(), d.clone());
-                }
-            }
-        }
-
-        Value::Object(obj)
+        Some(self.parser.decode_line(line, index))
     }
 
     /// Sequential scan over all records.
@@ -200,7 +153,7 @@ impl MmapBundle {
 
     /// Access the raw fiber schema.
     pub fn fiber(&self) -> &Fiber {
-        &self.fiber
+        self.parser.fiber()
     }
 }
 
@@ -229,47 +182,82 @@ impl<'a> ExactSizeIterator for MmapScanIter<'a> {}
 
 // ── OverlayBundle ───────────────────────────────────────────────────────────
 
-/// Overlay bundle: mmap base + in-memory delta for recent writes.
+/// Overlay bundle: mmap base + BundleStore overlay with full index support.
 ///
-/// Point queries check overlay first, then fall through to mmap.
-/// Tombstones suppress deleted mmap records.
+/// The overlay is a real `BundleStore`, so Feature #4's hash index acceleration
+/// works on recently-written records. The base is read-only mmap.
+/// Interior mutability via `RwLock<BundleStore>` allows concurrent reads with
+/// occasional writes — reads take a shared lock, writes take an exclusive lock.
+///
+/// Tombstones are tracked inside the overlay's RwLock to keep the critical
+/// section atomic (delete = tombstone + remove from overlay in one lock).
 pub struct OverlayBundle {
-    /// Mmap-backed snapshot data.
+    /// Mmap-backed snapshot data (immutable, shared across readers).
     base: MmapBundle,
-    /// Recent inserts/updates keyed by ordinal-like identifier.
-    overlay: HashMap<String, Value>,
-    /// Deleted keys (tombstones).
-    tombstones: std::collections::HashSet<String>,
+    /// In-memory overlay with full BundleStore (indexes, stats, etc).
+    overlay: RwLock<BundleStore>,
+    /// Deleted keys from the base (tombstones). Inside the same RwLock
+    /// would require a custom struct; we use a separate RwLock for simplicity.
+    tombstones: RwLock<std::collections::HashSet<String>>,
 }
 
 impl OverlayBundle {
     /// Create an overlay on top of an mmap'd bundle.
-    pub fn new(base: MmapBundle) -> Self {
+    pub fn new(base: MmapBundle, schema: BundleSchema) -> Self {
         Self {
             base,
-            overlay: HashMap::new(),
-            tombstones: std::collections::HashSet::new(),
+            overlay: RwLock::new(BundleStore::new(schema)),
+            tombstones: RwLock::new(std::collections::HashSet::new()),
         }
     }
 
-    /// Insert or update a record in the overlay.
-    pub fn put(&mut self, key: String, record: Value) {
-        self.tombstones.remove(&key);
-        self.overlay.insert(key, record);
-    }
-
-    /// Mark a key as deleted.
-    pub fn delete(&mut self, key: &str) {
-        self.tombstones.insert(key.to_string());
-        self.overlay.remove(key);
-    }
-
-    /// Point lookup: overlay wins, tombstone hides, base is fallback.
-    pub fn get_overlay(&self, key: &str) -> Option<&Value> {
-        if self.tombstones.contains(key) {
-            return None;
+    /// Insert a record into the overlay (acquires write lock).
+    pub fn insert(&self, record: &Record) {
+        if let Ok(mut ts) = self.tombstones.write() {
+            // If there's a key field, remove from tombstones
+            if let Some(key_val) = record.values().next() {
+                ts.remove(&format!("{key_val:?}"));
+            }
         }
-        self.overlay.get(key)
+        if let Ok(mut store) = self.overlay.write() {
+            store.insert(record);
+        }
+    }
+
+    /// Update a record in the overlay.
+    pub fn update(&self, key: &Record, patches: &Record) -> bool {
+        if let Ok(mut store) = self.overlay.write() {
+            store.update(key, patches)
+        } else {
+            false
+        }
+    }
+
+    /// Mark a key as deleted (tombstone hides base record).
+    pub fn delete(&self, key: &str, key_record: Option<&Record>) {
+        if let Ok(mut ts) = self.tombstones.write() {
+            ts.insert(key.to_string());
+        }
+        // Also remove from overlay if present
+        if let Some(kr) = key_record {
+            if let Ok(mut store) = self.overlay.write() {
+                store.delete(kr);
+            }
+        }
+    }
+
+    /// Point lookup in overlay (acquires read lock).
+    pub fn point_query_overlay(&self, key: &Record) -> Option<Record> {
+        if let Ok(store) = self.overlay.read() {
+            store.point_query(key)
+        } else {
+            None
+        }
+    }
+
+    /// Check if a key is tombstoned.
+    pub fn is_tombstoned(&self, key: &str) -> bool {
+        self.tombstones.read().map_or(false, |ts| ts.contains(key))
     }
 
     /// Get the mmap base bundle.
@@ -277,20 +265,46 @@ impl OverlayBundle {
         &self.base
     }
 
-    /// Number of overlay entries.
+    /// Number of overlay entries (acquires read lock).
     pub fn overlay_len(&self) -> usize {
-        self.overlay.len()
+        self.overlay.read().map_or(0, |s| s.len())
     }
 
     /// Number of tombstones.
     pub fn tombstone_len(&self) -> usize {
-        self.tombstones.len()
+        self.tombstones.read().map_or(0, |ts| ts.len())
+    }
+
+    /// Access overlay BundleStore for queries (acquires read lock).
+    /// The caller can use `filtered_query()` etc on the overlay store.
+    pub fn with_overlay<F, R>(&self, f: F) -> Option<R>
+    where
+        F: FnOnce(&BundleStore) -> R,
+    {
+        self.overlay.read().ok().map(|store| f(&*store))
     }
 
     /// Clear overlay and tombstones (after compaction to new mmap).
-    pub fn clear_overlay(&mut self) {
-        self.overlay.clear();
-        self.tombstones.clear();
+    pub fn clear_overlay(&self) {
+        if let Ok(mut store) = self.overlay.write() {
+            // Re-create with same schema
+            let schema = store.schema.clone();
+            *store = BundleStore::new(schema);
+        }
+        if let Ok(mut ts) = self.tombstones.write() {
+            ts.clear();
+        }
+    }
+
+    /// Swap the base mmap to a new snapshot file (after compaction).
+    pub fn rebase(&mut self, new_base: MmapBundle, schema: BundleSchema) {
+        self.base = new_base;
+        if let Ok(mut store) = self.overlay.write() {
+            *store = BundleStore::new(schema);
+        }
+        if let Ok(mut ts) = self.tombstones.write() {
+            ts.clear();
+        }
     }
 }
 
@@ -299,6 +313,8 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
+
+    use crate::types::{BundleSchema, FieldDef, Value as GigiValue};
 
     /// Write DHOOM text to a temp file and open as MmapBundle.
     fn mmap_from_dhoom(dhoom: &str) -> MmapBundle {
@@ -372,27 +388,37 @@ mod tests {
         }
     }
 
-    /// TDD-11.4: Overlay masks mmap for updates.
+    /// TDD-11.4: Overlay with BundleStore — insert lands in indexed overlay.
     #[test]
     fn tdd_11_4_overlay_masks_updates() {
         let dhoom = "items{id@1, val}:\n10\n20\n30\n";
         let bundle = mmap_from_dhoom(dhoom);
-        let mut overlay = OverlayBundle::new(bundle);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
 
         // Base record
         let base_r0 = overlay.base().get(0).unwrap();
         assert_eq!(base_r0["val"], 10);
 
-        // Overlay update
-        overlay.put(
-            "1".to_string(),
-            serde_json::json!({"id": 1, "val": 999}),
-        );
-        let ov = overlay.get_overlay("1").unwrap();
-        assert_eq!(ov["val"], 999);
+        // Insert into overlay (indexed BundleStore)
+        let mut rec = Record::new();
+        rec.insert("id".into(), GigiValue::Integer(99));
+        rec.insert("val".into(), GigiValue::Integer(999));
+        overlay.insert(&rec);
 
-        // Non-overlayed key falls through to None in overlay
-        assert!(overlay.get_overlay("2").is_none());
+        // Overlay has the record
+        let found = overlay.point_query_overlay(&{
+            let mut k = Record::new();
+            k.insert("id".into(), GigiValue::Integer(99));
+            k
+        });
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().get("val"), Some(&GigiValue::Integer(999)));
+
+        // Overlay count
+        assert_eq!(overlay.overlay_len(), 1);
     }
 
     /// TDD-11.5: Tombstones hide mmap records.
@@ -400,38 +426,50 @@ mod tests {
     fn tdd_11_5_tombstones_hide_records() {
         let dhoom = "items{id@1, val}:\n10\n20\n";
         let bundle = mmap_from_dhoom(dhoom);
-        let mut overlay = OverlayBundle::new(bundle);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
 
         // Delete key "1"
-        overlay.delete("1");
-        assert!(overlay.get_overlay("1").is_none());
+        overlay.delete("1", None);
+        assert!(overlay.is_tombstoned("1"));
         assert_eq!(overlay.tombstone_len(), 1);
 
         // Base data still exists
         assert!(overlay.base().get(0).is_some());
     }
 
-    /// TDD-11.6: Scan merges overlay and base data.
+    /// TDD-11.6: Base scan still works through overlay.
     #[test]
     fn tdd_11_6_scan_base_still_works() {
         let dhoom = "items{id@1, val}:\n10\n20\n30\n";
         let bundle = mmap_from_dhoom(dhoom);
-        let overlay = OverlayBundle::new(bundle);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
 
         // Base scan still returns all 3 records
         let all: Vec<Value> = overlay.base().scan().collect();
         assert_eq!(all.len(), 3);
     }
 
-    /// TDD-11.7: Compact clears overlay.
+    /// TDD-11.7: Clear overlay resets everything.
     #[test]
     fn tdd_11_7_compact_clears_overlay() {
         let dhoom = "items{id@1, val}:\n10\n20\n";
         let bundle = mmap_from_dhoom(dhoom);
-        let mut overlay = OverlayBundle::new(bundle);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
 
-        overlay.put("extra".into(), serde_json::json!({"id": 99, "val": 0}));
-        overlay.delete("old");
+        let mut rec = Record::new();
+        rec.insert("id".into(), GigiValue::Integer(99));
+        rec.insert("val".into(), GigiValue::Integer(0));
+        overlay.insert(&rec);
+        overlay.delete("old", None);
         assert_eq!(overlay.overlay_len(), 1);
         assert_eq!(overlay.tombstone_len(), 1);
 

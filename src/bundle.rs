@@ -1794,9 +1794,33 @@ impl BundleStore {
         result.unwrap_or_default()
     }
 
+    /// Try to resolve OR condition groups entirely via bitmap union.
+    ///
+    /// Each group is AND-conditions: if every condition in every group is
+    /// indexable, we can compute `(group1_bits) | (group2_bits) | ...`
+    /// without touching any record data. Returns `None` if any condition
+    /// in any group is non-indexable (caller falls back to residual filter).
+    pub fn or_bitmap(&self, groups: &[Vec<QueryCondition>]) -> Option<RoaringBitmap> {
+        if groups.is_empty() {
+            return None;
+        }
+        let mut union = RoaringBitmap::new();
+        for group in groups {
+            // All conditions in this group must be indexable
+            if !group.iter().all(|c| self.can_use_index(c)) {
+                return None;
+            }
+            let refs: Vec<&QueryCondition> = group.iter().collect();
+            let group_bits = self.intersect_bitmaps(&refs);
+            union |= group_bits;
+        }
+        Some(union)
+    }
+
     /// Extended filtered query with OR condition support.
     /// Uses bitmap indexes to accelerate Eq/In/IsNull conditions on indexed fields,
     /// with selectivity-ordered intersection (Feature #4, Theorem 4.1).
+    /// OR groups are accelerated via bitmap union when all conditions are indexable.
     pub fn filtered_query_ex(
         &self,
         conditions: &[QueryCondition],
@@ -1816,7 +1840,21 @@ impl BundleStore {
             Some(self.intersect_bitmaps(&indexed))
         };
 
+        // Phase 2b: OR bitmap acceleration — resolve OR groups via bitmap union
+        // when every condition in every group is indexable.
+        let or_bits = or_conditions.and_then(|groups| self.or_bitmap(groups));
+        let or_resolved = or_bits.is_some();
+
+        // AND the OR bitmap with the AND bitmap (both narrow the candidate set)
+        let candidate_bits = match (candidate_bits, or_bits) {
+            (Some(and_bm), Some(or_bm)) => Some(and_bm & or_bm),
+            (Some(and_bm), None) => Some(and_bm),
+            (None, Some(or_bm)) => Some(or_bm),
+            (None, None) => None,
+        };
+
         // Phase 3: Fetch records and apply residual predicates
+        // If OR was resolved via bitmap, skip the residual or_filter.
         let mut results: Vec<Record> = if let Some(bits) = candidate_bits {
             bits.iter()
                 .filter_map(|bp32| {
@@ -1825,7 +1863,7 @@ impl BundleStore {
                 })
                 .filter(|record| {
                     residual.iter().all(|c| c.matches(record))
-                        && matches_or_filter(record, or_conditions)
+                        && (or_resolved || matches_or_filter(record, or_conditions))
                 })
                 .collect()
         } else {
@@ -6263,5 +6301,109 @@ mod tests {
         // Selectivity should be ~400
         let sel = store.estimate_selectivity(&conds[0]);
         assert_eq!(sel, 400);
+    }
+
+    // ── Feature #4 addendum: OR bitmap acceleration ────────────────────
+
+    /// TDD-4.9: OR groups on indexed fields are accelerated through bitmap union.
+    /// `WHERE organism = "S. aureus" OR organism = "E. coli"` resolves via
+    /// bitmap union without scanning any records.
+    #[test]
+    fn tdd_4_9_or_bitmap_acceleration() {
+        let store = make_indexed_store(1000);
+        // OR groups: each group is a single Eq on indexed field "organism"
+        let or_groups = vec![
+            vec![QueryCondition::Eq(
+                "organism".into(),
+                Value::Text("S. aureus".into()),
+            )],
+            vec![QueryCondition::Eq(
+                "organism".into(),
+                Value::Text("E. coli".into()),
+            )],
+        ];
+
+        // or_bitmap should return Some (fully resolved via bitmap)
+        let bm = store.or_bitmap(&or_groups);
+        assert!(bm.is_some(), "OR groups should be resolved via bitmap");
+        assert_eq!(bm.unwrap().len(), 400); // 200 + 200
+
+        // Full query through filtered_query_ex
+        let results = store.filtered_query_ex(&[], Some(&or_groups), None, false, None, None);
+        assert_eq!(results.len(), 400);
+    }
+
+    /// TDD-4.10: OR groups with non-indexable conditions fall back to residual.
+    #[test]
+    fn tdd_4_10_or_bitmap_fallback() {
+        let store = make_indexed_store(100);
+        // One group has a non-indexable Gt condition → can't use bitmap
+        let or_groups = vec![
+            vec![QueryCondition::Eq(
+                "organism".into(),
+                Value::Text("S. aureus".into()),
+            )],
+            vec![QueryCondition::Gt(
+                "score".into(),
+                Value::Float(90.0),
+            )],
+        ];
+
+        // or_bitmap returns None (Gt is not indexable)
+        let bm = store.or_bitmap(&or_groups);
+        assert!(bm.is_none(), "Mixed OR groups should NOT resolve via bitmap");
+
+        // Query still works via residual filter
+        let results = store.filtered_query_ex(&[], Some(&or_groups), None, false, None, None);
+        assert!(!results.is_empty());
+    }
+
+    /// TDD-4.11: OR bitmap AND-chained with AND conditions.
+    /// `WHERE mic > 5.0 AND (organism = "S. aureus" OR organism = "E. coli")`
+    /// The OR part resolves via bitmap, mic > 5.0 is residual.
+    #[test]
+    fn tdd_4_11_or_bitmap_with_and_conditions() {
+        let store = make_indexed_store(1000);
+        // AND: mic > 5.0 (residual, non-indexed)
+        let and_conds = vec![QueryCondition::Gt(
+            "mic".into(),
+            Value::Float(5.0),
+        )];
+        // OR: organism in {S. aureus, E. coli}
+        let or_groups = vec![
+            vec![QueryCondition::Eq(
+                "organism".into(),
+                Value::Text("S. aureus".into()),
+            )],
+            vec![QueryCondition::Eq(
+                "organism".into(),
+                Value::Text("E. coli".into()),
+            )],
+        ];
+
+        let results = store.filtered_query_ex(
+            &and_conds,
+            Some(&or_groups),
+            None,
+            false,
+            None,
+            None,
+        );
+        // All results must satisfy both: organism in {S. aureus, E. coli} AND mic > 5.0
+        for r in &results {
+            let org = r.get("organism").unwrap();
+            assert!(
+                org == &Value::Text("S. aureus".into()) || org == &Value::Text("E. coli".into()),
+            );
+            let mic = match r.get("mic") {
+                Some(Value::Float(f)) => *f,
+                Some(Value::Integer(i)) => *i as f64,
+                _ => panic!("missing mic"),
+            };
+            assert!(mic > 5.0, "mic {mic} should be > 5.0");
+        }
+        // Should be a subset of the 400 organisms
+        assert!(results.len() < 400);
+        assert!(!results.is_empty());
     }
 }

@@ -155,7 +155,7 @@ pub struct WalReader {
 }
 
 /// A single WAL entry.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum WalEntry {
     CreateBundle(BundleSchema),
     Insert {

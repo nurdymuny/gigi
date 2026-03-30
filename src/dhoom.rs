@@ -109,6 +109,89 @@ impl Fiber {
 }
 
 // ---------------------------------------------------------------------------
+// DhoomRecordParser — shared record-line parser for streaming + mmap paths
+// ---------------------------------------------------------------------------
+
+/// Stateless record-line parser backed by a Fiber schema.
+///
+/// Both `MmapBundle::decode_record_line()` and the streaming decoder use this
+/// so DHOOM format changes only need updating in one place.
+pub struct DhoomRecordParser {
+    fiber: Fiber,
+    /// Cached: non-arithmetic field declarations (record body fields).
+    record_fields: Vec<FieldDecl>,
+}
+
+impl DhoomRecordParser {
+    /// Build a parser from a parsed Fiber.
+    pub fn new(fiber: Fiber) -> Self {
+        let record_fields: Vec<FieldDecl> = fiber
+            .fields
+            .iter()
+            .filter(|f| {
+                !matches!(
+                    f.modifier,
+                    Some(Modifier::Arithmetic { .. }) | Some(Modifier::Computed { .. })
+                )
+            })
+            .cloned()
+            .collect();
+        Self { fiber, record_fields }
+    }
+
+    /// Access the underlying fiber.
+    pub fn fiber(&self) -> &Fiber { &self.fiber }
+
+    /// Number of record-body fields (non-arithmetic).
+    pub fn record_field_count(&self) -> usize { self.record_fields.len() }
+
+    /// Decode a single DHOOM record line at a given ordinal.
+    pub fn decode_line(&self, line: &str, ordinal: usize) -> Value {
+        let raw_fields: Vec<String> = if line.is_empty() {
+            vec![]
+        } else {
+            split_record_fields(line)
+        };
+
+        let mut obj = Map::new();
+
+        // Fill arithmetic fields
+        for fdecl in &self.fiber.fields {
+            if let Some(Modifier::Arithmetic { ref start, ref step }) = fdecl.modifier {
+                let s = step.unwrap_or(1);
+                obj.insert(fdecl.name.clone(), arithmetic_value(start, s, ordinal));
+            }
+        }
+
+        // Map positional record values
+        for (j, rf) in self.record_fields.iter().enumerate() {
+            if j < raw_fields.len() {
+                let raw = &raw_fields[j];
+                let val = if raw.is_empty() {
+                    if let Some(Modifier::Default(ref d)) = rf.modifier {
+                        d.clone()
+                    } else {
+                        Value::String(String::new())
+                    }
+                } else if let Some(stripped) = raw.strip_prefix(':') {
+                    coerce(stripped)
+                } else {
+                    coerce(raw)
+                };
+                obj.insert(rf.name.clone(), val);
+            } else {
+                // Trailing elision → fill with default
+                if let Some(Modifier::Default(ref d)) = rf.modifier {
+                    obj.insert(rf.name.clone(), d.clone());
+                }
+            }
+        }
+
+        Value::Object(obj)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Value coercion
 // ---------------------------------------------------------------------------
 

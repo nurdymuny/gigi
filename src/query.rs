@@ -88,6 +88,28 @@ impl Default for CostEstimator {
     }
 }
 
+impl CostEstimator {
+    /// Cost profile tuned for mmap-backed storage.
+    ///
+    /// With mmap, `fetch_cost` is higher (potential page fault vs heap access)
+    /// but `row_cost` stays the same (predicate check is CPU-bound).
+    /// This encourages the planner to favor index-narrowed plans that minimize
+    /// random record fetches on the mmap path.
+    pub fn mmap_profile() -> Self {
+        Self {
+            row_cost: 1.0,
+            fetch_cost: 8.0,   // page fault penalty (~4× heap access)
+            lookup_cost: 10.0,
+            bitmap_cost: 0.1,
+        }
+    }
+
+    /// Cost profile for fully in-memory heap storage (same as default).
+    pub fn heap_profile() -> Self {
+        Self::default()
+    }
+}
+
 /// Statistics snapshot for query planning — extracted from BundleStore.
 #[derive(Debug, Clone)]
 pub struct BundleStats {

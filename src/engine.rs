@@ -7,10 +7,10 @@
 use std::collections::HashMap;
 use std::fs;
 use std::io;
-use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use crate::bundle::BundleStore;
+use crate::mmap_bundle::{MmapBundle, OverlayBundle};
 use crate::types::{BundleSchema, Record, Value};
 use crate::wal::{WalEntry, WalReader, WalWriter};
 
@@ -50,12 +50,25 @@ pub struct BundleDataClone {
     pub records: Vec<serde_json::Value>,
 }
 
+/// Storage mode: controls whether bundles are heap-resident or memory-mapped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageMode {
+    /// All records deserialized into heap memory (current default).
+    Heap,
+    /// DHOOM snapshots opened via mmap; WAL overlay in BundleStore.
+    Mmap,
+}
+
 /// The persistent database engine.
 pub struct Engine {
     /// Data directory for WAL and data files.
     data_dir: PathBuf,
-    /// In-memory bundle stores keyed by bundle name.
+    /// In-memory bundle stores keyed by bundle name (Heap mode).
     bundles: HashMap<String, BundleStore>,
+    /// Mmap-backed bundles with BundleStore overlay (Mmap mode).
+    mmap_bundles: HashMap<String, OverlayBundle>,
+    /// Active storage mode.
+    storage_mode: StorageMode,
     /// Schemas stored separately for WAL replay.
     schemas: HashMap<String, BundleSchema>,
     /// Write-ahead log.
@@ -137,6 +150,8 @@ impl Engine {
         Ok(Self {
             data_dir: data_dir.to_path_buf(),
             bundles,
+            mmap_bundles: HashMap::new(),
+            storage_mode: StorageMode::Heap,
             schemas,
             wal,
             ops_since_checkpoint: 0,
@@ -165,6 +180,124 @@ impl Engine {
         self.wal_entry_count = entry_count;
         self.wal_byte_count = fs::metadata(&wal_path).map(|m| m.len()).unwrap_or(0);
         Ok(())
+    }
+
+    /// Open in mmap mode: DHOOM snapshots are memory-mapped, WAL delta
+    /// replays into BundleStore overlays (with full index support).
+    ///
+    /// This is the 32GB→2GB path: only actively queried pages are resident.
+    pub fn open_mmap(data_dir: &Path) -> io::Result<Self> {
+        fs::create_dir_all(data_dir)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(data_dir, fs::Permissions::from_mode(0o700));
+        }
+
+        let wal_path = data_dir.join("gigi.wal");
+        let snapshots_dir = data_dir.join("snapshots");
+
+        // Phase 1: Read WAL to get schemas (but don't load DHOOM into heap)
+        let mut schemas: HashMap<String, BundleSchema> = HashMap::new();
+        let mut wal_entries: Vec<WalEntry> = Vec::new();
+        let mut saw_checkpoint = false;
+
+        if wal_path.exists() {
+            let mut reader = WalReader::open(&wal_path)?;
+            reader.replay(|entry| {
+                match &entry {
+                    WalEntry::CreateBundle(schema) => {
+                        schemas.insert(schema.name.clone(), schema.clone());
+                    }
+                    WalEntry::Checkpoint => {
+                        saw_checkpoint = true;
+                    }
+                    _ => {}
+                }
+                // Collect post-checkpoint entries for replay into overlay
+                if saw_checkpoint {
+                    match &entry {
+                        WalEntry::Checkpoint => {}
+                        WalEntry::CreateBundle(_) => {}
+                        other => wal_entries.push(other.clone()),
+                    }
+                }
+                Ok(())
+            })?;
+        }
+
+        // Phase 2: Open each .dhoom as MmapBundle, wrap in OverlayBundle
+        let mut mmap_bundles: HashMap<String, OverlayBundle> = HashMap::new();
+        if snapshots_dir.exists() {
+            for (name, schema) in &schemas {
+                let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+                if !snap_path.exists() {
+                    continue;
+                }
+                match MmapBundle::open(&snap_path) {
+                    Ok(mmap) => {
+                        let n = mmap.len();
+                        let overlay = OverlayBundle::new(mmap, schema.clone());
+                        eprintln!("  Mmap opened: {name} ({n} records)");
+                        mmap_bundles.insert(name.clone(), overlay);
+                    }
+                    Err(e) => {
+                        eprintln!("  WARNING: mmap open failed for {name}: {e}");
+                    }
+                }
+            }
+        }
+
+        // Phase 3: Replay post-checkpoint WAL entries into overlay BundleStores
+        for entry in &wal_entries {
+            match entry {
+                WalEntry::Insert { bundle_name, record } => {
+                    if let Some(ob) = mmap_bundles.get(bundle_name) {
+                        ob.insert(record);
+                    }
+                }
+                WalEntry::Update { bundle_name, key, patches } => {
+                    if let Some(ob) = mmap_bundles.get(bundle_name) {
+                        ob.update(key, patches);
+                    }
+                }
+                WalEntry::Delete { bundle_name, key } => {
+                    if let Some(ob) = mmap_bundles.get(bundle_name) {
+                        let key_str = format!("{key:?}");
+                        ob.delete(&key_str, Some(key));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let wal_byte_count = if wal_path.exists() {
+            fs::metadata(&wal_path).map(|m| m.len()).unwrap_or(0)
+        } else {
+            0
+        };
+        let wal = WalWriter::open(&wal_path)?;
+
+        Ok(Self {
+            data_dir: data_dir.to_path_buf(),
+            bundles: HashMap::new(),
+            mmap_bundles,
+            storage_mode: StorageMode::Mmap,
+            schemas,
+            wal,
+            ops_since_checkpoint: 0,
+            checkpoint_interval: 10_000,
+            compaction_policy: CompactionPolicy::default(),
+            last_compaction: std::time::Instant::now(),
+            wal_entry_count: wal_entries.len() as u64,
+            wal_byte_count,
+        })
+    }
+
+    /// Current storage mode.
+    pub fn storage_mode(&self) -> StorageMode {
+        self.storage_mode
     }
 
     fn do_replay(
@@ -288,6 +421,8 @@ impl Engine {
         self.wal.log_insert(bundle_name, record)?;
         if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.insert(record);
+        } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
+            ob.insert(record);
         } else {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
@@ -308,6 +443,8 @@ impl Engine {
         self.wal.log_update(bundle_name, key, patches)?;
         let updated = if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.update(key, patches)
+        } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
+            ob.update(key, patches)
         } else {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
@@ -323,6 +460,10 @@ impl Engine {
         self.wal.log_delete(bundle_name, key)?;
         let deleted = if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.delete(key)
+        } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
+            let key_str = format!("{key:?}");
+            ob.delete(&key_str, Some(key));
+            true
         } else {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
@@ -336,7 +477,8 @@ impl Engine {
     /// Drop (remove) a bundle entirely.
     pub fn drop_bundle(&mut self, name: &str) -> io::Result<bool> {
         self.wal.log_drop_bundle(name)?;
-        let existed = self.bundles.remove(name).is_some();
+        let existed = self.bundles.remove(name).is_some()
+            || self.mmap_bundles.remove(name).is_some();
         self.schemas.remove(name);
         self.maybe_checkpoint()?;
         Ok(existed)
@@ -374,12 +516,44 @@ impl Engine {
 
     /// Point query on a named bundle.
     pub fn point_query(&self, bundle_name: &str, key: &Record) -> io::Result<Option<Record>> {
-        match self.bundles.get(bundle_name) {
-            Some(store) => Ok(store.point_query(key)),
-            None => Err(io::Error::new(
+        if let Some(store) = self.bundles.get(bundle_name) {
+            Ok(store.point_query(key))
+        } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
+            // Check overlay first (indexed BundleStore)
+            if let Some(rec) = ob.point_query_overlay(key) {
+                return Ok(Some(rec));
+            }
+            // Check tombstones — if key was deleted, stop here
+            let key_str = format!("{key:?}");
+            if ob.is_tombstoned(&key_str) {
+                return Ok(None);
+            }
+            // Fall through to base mmap scan
+            for i in 0..ob.base().len() {
+                if let Some(val) = ob.base().get(i) {
+                    if let serde_json::Value::Object(map) = &val {
+                        let mut matches = true;
+                        for (k, v) in key {
+                            match map.get(k) {
+                                Some(jv) if serde_json_to_value(jv) == *v => {}
+                                _ => { matches = false; break; }
+                            }
+                        }
+                        if matches {
+                            let rec: Record = map.iter()
+                                .map(|(k, v)| (k.clone(), serde_json_to_value(v)))
+                                .collect();
+                            return Ok(Some(rec));
+                        }
+                    }
+                }
+            }
+            Ok(None)
+        } else {
+            Err(io::Error::new(
                 io::ErrorKind::NotFound,
                 format!("Bundle '{}' not found", bundle_name),
-            )),
+            ))
         }
     }
 
@@ -400,6 +574,8 @@ impl Engine {
     }
 
     /// Get a reference to a bundle store for advanced operations.
+    /// In mmap mode, returns the overlay BundleStore (which only has post-snapshot data).
+    /// For full data access in mmap mode, use `mmap_bundle()`.
     pub fn bundle(&self, name: &str) -> Option<&BundleStore> {
         self.bundles.get(name)
     }
@@ -409,14 +585,29 @@ impl Engine {
         self.bundles.get_mut(name)
     }
 
-    /// List all bundle names.
-    pub fn bundle_names(&self) -> Vec<&str> {
-        self.bundles.keys().map(|s| s.as_str()).collect()
+    /// Get a reference to an mmap overlay bundle.
+    pub fn mmap_bundle(&self, name: &str) -> Option<&OverlayBundle> {
+        self.mmap_bundles.get(name)
     }
 
-    /// Number of records across all bundles.
+    /// List all bundle names (both heap and mmap).
+    pub fn bundle_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = self.bundles.keys().map(|s| s.as_str()).collect();
+        for k in self.mmap_bundles.keys() {
+            if !names.contains(&k.as_str()) {
+                names.push(k.as_str());
+            }
+        }
+        names
+    }
+
+    /// Number of records across all bundles (heap + mmap base + overlay).
     pub fn total_records(&self) -> usize {
-        self.bundles.values().map(|b| b.len()).sum()
+        let heap: usize = self.bundles.values().map(|b| b.len()).sum();
+        let mmap: usize = self.mmap_bundles.values().map(|ob| {
+            ob.base().len() + ob.overlay_len()
+        }).sum();
+        heap + mmap
     }
 
     /// Force a checkpoint — syncs WAL to disk.
@@ -2003,5 +2194,107 @@ mod tests {
 
         cleanup(&dir_a);
         cleanup(&dir_b);
+    }
+
+    // ── Integration tests for open_mmap ──────────────────────────────────
+
+    /// open_mmap: snapshot → reopen in mmap mode → queries work.
+    #[test]
+    fn open_mmap_basic() {
+        let dir = test_dir("mmap_basic");
+        cleanup(&dir);
+
+        // Phase A: populate via heap engine, snapshot to DHOOM
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("sensors")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("name"))
+                .fiber(FieldDef::numeric("temp").with_range(200.0));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..50i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("name".into(), Value::Text(format!("Sensor_{i}")));
+                rec.insert("temp".into(), Value::Float(20.0 + i as f64 * 0.5));
+                engine.insert("sensors", &rec).unwrap();
+            }
+            let snapped = engine.snapshot().unwrap();
+            assert_eq!(snapped, 50);
+        }
+
+        // Phase B: reopen in mmap mode
+        {
+            let engine = Engine::open_mmap(&dir).unwrap();
+            assert!(matches!(engine.storage_mode(), StorageMode::Mmap));
+            assert_eq!(engine.total_records(), 50);
+            assert!(engine.bundle_names().contains(&"sensors"));
+
+            // Point query
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(25));
+            let result = engine.point_query("sensors", &key).unwrap().unwrap();
+            assert_eq!(result.get("name"), Some(&Value::Text("Sensor_25".into())));
+        }
+
+        cleanup(&dir);
+    }
+
+    /// open_mmap: insert/update/delete dispatch to overlay.
+    #[test]
+    fn open_mmap_overlay_ops() {
+        let dir = test_dir("mmap_overlay");
+        cleanup(&dir);
+
+        // Populate + snapshot
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("items")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("label"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..10i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("label".into(), Value::Text(format!("Item_{i}")));
+                engine.insert("items", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        // Reopen mmap and do overlay operations
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+            assert_eq!(engine.total_records(), 10);
+
+            // Insert into overlay
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(100));
+            rec.insert("label".into(), Value::Text("NewItem".into()));
+            engine.insert("items", &rec).unwrap();
+
+            // Query the overlay insert
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(100));
+            let result = engine.point_query("items", &key).unwrap().unwrap();
+            assert_eq!(result.get("label"), Some(&Value::Text("NewItem".into())));
+
+            // Update via overlay
+            let mut patches = Record::new();
+            patches.insert("label".into(), Value::Text("Updated".into()));
+            engine.update("items", &key, &patches).unwrap();
+
+            let result = engine.point_query("items", &key).unwrap().unwrap();
+            assert_eq!(result.get("label"), Some(&Value::Text("Updated".into())));
+
+            // Delete via overlay
+            engine.delete("items", &key).unwrap();
+            let result = engine.point_query("items", &key).unwrap();
+            assert!(result.is_none());
+        }
+
+        cleanup(&dir);
     }
 }

@@ -610,16 +610,21 @@ impl Engine {
             // Overlay range query
             let overlay_results = ob.with_overlay(|s| s.range_query(field, values))
                 .unwrap_or_default();
+
+            // Collect ALL overlay PKs for dedup (same pattern as filtered_query)
+            let overlay_pks: std::collections::HashSet<String> = ob.with_overlay(|s| {
+                s.records().map(|r| self.pk_string(bundle_name, &r)).collect()
+            }).unwrap_or_default();
+
             // Base scan: match records where field value is in the value set
             let mut base_results = Vec::new();
             for i in 0..ob.base().len() {
                 if let Some(val) = ob.base().get(i) {
                     if let serde_json::Value::Object(map) = &val {
                         let rec = serde_map_to_record(&map);
-                        let key_str = format!("{:?}", rec);
-                        if ob.is_tombstoned(&key_str) { continue; }
-                        // Skip if exists in overlay (overlay version takes precedence)
-                        if ob.point_query_overlay(&rec).is_some() { continue; }
+                        let rec_pk = self.pk_string(bundle_name, &rec);
+                        if ob.is_tombstoned(&rec_pk) { continue; }
+                        if overlay_pks.contains(&rec_pk) { continue; }
                         if let Some(fv) = rec.get(field) {
                             if values.contains(fv) {
                                 base_results.push(rec);
@@ -1089,35 +1094,51 @@ impl Engine {
                 s.records().map(|r| self.pk_string(name, &r)).collect()
             }).unwrap_or_default();
 
-            // Merge: base records (non-tombstoned, non-superseded) + overlay records
+            // Collect merged records: base (non-tombstoned, non-superseded) + overlay
+            let mut merged: Vec<serde_json::Value> = Vec::new();
+
+            for i in 0..ob.base().len() {
+                if let Some(val) = ob.base().get(i) {
+                    if let serde_json::Value::Object(ref map) = val {
+                        let rec = serde_map_to_record(map);
+                        let pk = self.pk_string(name, &rec);
+                        if ob.is_tombstoned(&pk) { continue; }
+                        if overlay_pks.contains(&pk) { continue; }
+                        merged.push(record_to_serde_json(&rec));
+                    }
+                }
+            }
+
+            let overlay_recs: Vec<Record> = ob.with_overlay(|s| {
+                s.records().collect()
+            }).unwrap_or_default();
+            for rec in &overlay_recs {
+                merged.push(record_to_serde_json(rec));
+            }
+
+            // Sort by arithmetic key field (if any) to preserve O(1) lookup after rebase.
+            // detect_arithmetic() in the encoder requires uniform consecutive diffs.
+            let arith_field: Option<String> = ob.base().fiber().fields.iter()
+                .find(|f| matches!(f.modifier, Some(crate::dhoom::Modifier::Arithmetic { .. })))
+                .map(|f| f.name.clone());
+            if let Some(ref af) = arith_field {
+                merged.sort_by(|a, b| {
+                    let va = a.get(af).and_then(|v| v.as_i64()).unwrap_or(i64::MAX);
+                    let vb = b.get(af).and_then(|v| v.as_i64()).unwrap_or(i64::MAX);
+                    va.cmp(&vb)
+                });
+            }
+
+            // Encode to DHOOM
             let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
             let tmp_path = snapshots_dir.join(format!("{name}.dhoom.tmp"));
-
             {
                 let file = fs::File::create(&tmp_path)?;
                 let buf = io::BufWriter::new(file);
                 let mut encoder =
                     crate::dhoom::StreamingDhoomEncoder::new(buf, name, 50_000);
-
-                // Base records (skip tombstoned and overlay-superseded)
-                for i in 0..ob.base().len() {
-                    if let Some(val) = ob.base().get(i) {
-                        if let serde_json::Value::Object(ref map) = val {
-                            let rec = serde_map_to_record(map);
-                            let pk = self.pk_string(name, &rec);
-                            if ob.is_tombstoned(&pk) { continue; }
-                            if overlay_pks.contains(&pk) { continue; }
-                            encoder.push(record_to_serde_json(&rec))?;
-                        }
-                    }
-                }
-
-                // Overlay records
-                let overlay_recs: Vec<Record> = ob.with_overlay(|s| {
-                    s.records().collect()
-                }).unwrap_or_default();
-                for rec in &overlay_recs {
-                    encoder.push(record_to_serde_json(rec))?;
+                for val in &merged {
+                    encoder.push(val.clone())?;
                 }
                 encoder.finish()?;
             }
@@ -2962,6 +2983,131 @@ mod tests {
             key.insert("id".into(), Value::Integer(10));
             let rec = engine.point_query("data", &key).unwrap().expect("id=10 should exist");
             assert_eq!(rec.get("val"), Some(&Value::Text("new".into())));
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Verify arithmetic O(1) lookup works after rebase (post-rebase modifier preservation).
+    #[test]
+    fn mmap_rebase_preserves_arithmetic_lookup() {
+        let dir = test_dir("mmap_rebase_arith");
+        cleanup(&dir);
+
+        // Phase 1: 10 sequential records, snapshot
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("seq")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("val"));
+            engine.create_bundle(schema).unwrap();
+            for i in 0..10i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("val".into(), Value::Text(format!("v{i}")));
+                engine.insert("seq", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        // Phase 2: open mmap, update id=3, delete id=7, insert id=10, rebase
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+
+            // Update id=3
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(3));
+            let mut patches = Record::new();
+            patches.insert("val".into(), Value::Text("UPDATED3".into()));
+            engine.update("seq", &key, &patches).unwrap();
+
+            // Delete id=7
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(7));
+            engine.delete("seq", &key).unwrap();
+
+            // Insert id=10 (extends the sequence)
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(10));
+            rec.insert("val".into(), Value::Text("v10".into()));
+            engine.insert("seq", &rec).unwrap();
+
+            engine.mmap_rebase_snapshot().unwrap();
+
+            // After rebase: 10 records (0..10 minus 7 = [0,1,2,3,4,5,6,8,9,10])
+            let ob = engine.mmap_bundles.get("seq").unwrap();
+            assert_eq!(ob.base().len(), 10);
+            assert_eq!(ob.overlay_len(), 0);
+            assert_eq!(ob.tombstone_len(), 0);
+
+            // Verify arithmetic O(1) lookup still works for multiple keys
+            for id in [0i64, 1, 2, 4, 5, 6, 8, 9, 10] {
+                let mut key = Record::new();
+                key.insert("id".into(), Value::Integer(id));
+                let rec = engine.point_query("seq", &key).unwrap();
+                assert!(rec.is_some(), "id={id} should be found after rebase");
+            }
+
+            // id=3 should have updated value
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(3));
+            let rec = engine.point_query("seq", &key).unwrap().unwrap();
+            assert_eq!(rec.get("val"), Some(&Value::Text("UPDATED3".into())));
+
+            // id=7 should be gone
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(7));
+            assert!(engine.point_query("seq", &key).unwrap().is_none());
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Verify range_query respects tombstones and overlay precedence in mmap mode.
+    #[test]
+    fn mmap_range_query_dedup() {
+        let dir = test_dir("mmap_range_dedup");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("items")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("cat"))
+                .index("cat");
+            engine.create_bundle(schema).unwrap();
+            for i in 0..5i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("cat".into(), Value::Text("A".into()));
+                engine.insert("items", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+            // Update id=1: cat A -> B
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(1));
+            let mut patches = Record::new();
+            patches.insert("cat".into(), Value::Text("B".into()));
+            engine.update("items", &key, &patches).unwrap();
+
+            // Delete id=3
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(3));
+            engine.delete("items", &key).unwrap();
+
+            // Range query for cat IN ["A"] should return 3 records (0,2,4) — not 5
+            // id=1 was updated to "B" (excluded), id=3 was deleted (excluded)
+            let results = engine.range_query("items", "cat", &[Value::Text("A".into())]).unwrap();
+            assert_eq!(results.len(), 3, "range_query should exclude updated and tombstoned records");
+
+            // Range query for cat IN ["B"] should return 1 record (id=1 overlay version)
+            let results = engine.range_query("items", "cat", &[Value::Text("B".into())]).unwrap();
+            assert_eq!(results.len(), 1);
+            assert_eq!(results[0].get("id"), Some(&Value::Integer(1)));
         }
 
         cleanup(&dir);

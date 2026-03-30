@@ -433,6 +433,20 @@ impl Engine {
         Ok(())
     }
 
+    /// Extract a deterministic primary-key string from a record for dedup/tombstone purposes.
+    /// Uses schema base_fields; falls back to `format!("{rec:?}")` if no schema found.
+    fn pk_string(&self, bundle_name: &str, rec: &Record) -> String {
+        if let Some(schema) = self.schemas.get(bundle_name) {
+            let mut parts: Vec<(&str, &Value)> = schema.base_fields.iter()
+                .filter_map(|f| rec.get(&f.name).map(|v| (f.name.as_str(), v)))
+                .collect();
+            parts.sort_by_key(|(k, _)| *k);
+            format!("{parts:?}")
+        } else {
+            format!("{rec:?}")
+        }
+    }
+
     /// Update a record: partial field patches applied to existing record.
     pub fn update(
         &mut self,
@@ -444,7 +458,23 @@ impl Engine {
         let updated = if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.update(key, patches)
         } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
-            ob.update(key, patches)
+            // Try overlay first; if not found, fetch from base, merge, insert to overlay
+            if ob.update(key, patches) {
+                true
+            } else {
+                // Record might be in base — try arithmetic O(1) path, then O(N) scan fallback
+                let base_rec = self.mmap_arithmetic_lookup(ob, key)
+                    .or_else(|| self.mmap_base_scan(ob, key));
+                if let Some(mut base_rec) = base_rec {
+                    for (k, v) in patches {
+                        base_rec.insert(k.clone(), v.clone());
+                    }
+                    ob.insert(&base_rec);
+                    true
+                } else {
+                    false
+                }
+            }
         } else {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
@@ -461,7 +491,7 @@ impl Engine {
         let deleted = if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.delete(key)
         } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
-            let key_str = format!("{key:?}");
+            let key_str = self.pk_string(bundle_name, key);
             ob.delete(&key_str, Some(key));
             true
         } else {
@@ -530,7 +560,7 @@ impl Engine {
                 return Ok(Some(rec));
             }
             // Check tombstones — if key was deleted, stop here
-            let key_str = format!("{key:?}");
+            let key_str = self.pk_string(bundle_name, key);
             if ob.is_tombstoned(&key_str) {
                 return Ok(None);
             }
@@ -665,29 +695,22 @@ impl Engine {
                 s.filtered_query_ex(conditions, or_conditions, sort_by, sort_desc, None, None)
             }).unwrap_or_default();
 
-            // Collect overlay keys for dedup
-            let overlay_keys: Vec<String> = overlay_results.iter()
-                .map(|r| format!("{r:?}"))
-                .collect();
+            // Collect ALL overlay primary keys for dedup (not just filtered results,
+            // because any overlay record supersedes its base counterpart regardless of filter)
+            let overlay_keys: std::collections::HashSet<String> = ob.with_overlay(|s| {
+                s.records().map(|r| self.pk_string(bundle_name, &r)).collect()
+            }).unwrap_or_default();
 
-            // Base scan with filter
+            // Base scan with filter — skip records whose key is in overlay or tombstoned
             let mut base_results = Vec::new();
             for i in 0..ob.base().len() {
                 if let Some(val) = ob.base().get(i) {
                     if let serde_json::Value::Object(map) = &val {
                         let rec = serde_map_to_record(&map);
-                        let rec_key = format!("{rec:?}");
-                        if ob.is_tombstoned(&rec_key) { continue; }
-                        if overlay_keys.contains(&rec_key) { continue; }
-                        // Check AND conditions
-                        if !conditions.iter().all(|c| c.matches(&rec)) { continue; }
-                        // Check OR conditions
-                        let or_ok = match or_conditions {
-                            Some(groups) if !groups.is_empty() => groups.iter()
-                                .any(|g| g.iter().all(|c| c.matches(&rec))),
-                            _ => true,
-                        };
-                        if or_ok {
+                        let rec_pk = self.pk_string(bundle_name, &rec);
+                        if ob.is_tombstoned(&rec_pk) { continue; }
+                        if overlay_keys.contains(&rec_pk) { continue; }
+                        if crate::bundle::matches_filter(&rec, conditions, or_conditions) {
                             base_results.push(rec);
                         }
                     }
@@ -768,6 +791,27 @@ impl Engine {
         None
     }
 
+    /// O(N) fallback scan on mmap base — used when arithmetic lookup doesn't apply.
+    fn mmap_base_scan(&self, ob: &OverlayBundle, key: &Record) -> Option<Record> {
+        for i in 0..ob.base().len() {
+            if let Some(val) = ob.base().get(i) {
+                if let serde_json::Value::Object(map) = &val {
+                    let mut matches = true;
+                    for (k, v) in key {
+                        match map.get(k) {
+                            Some(jv) if serde_json_to_value(jv) == *v => {}
+                            _ => { matches = false; break; }
+                        }
+                    }
+                    if matches {
+                        return Some(serde_map_to_record(&map));
+                    }
+                }
+            }
+        }
+        None
+    }
+
     /// Force a checkpoint — syncs WAL to disk.
     pub fn checkpoint(&mut self) -> io::Result<()> {
         self.wal.log_checkpoint()?;
@@ -827,6 +871,11 @@ impl Engine {
     /// lock) only for the duration of this call. The returned data can then
     /// be encoded to DHOOM files without any lock.
     pub fn clone_bundle_data(&self) -> Vec<BundleDataClone> {
+        assert!(
+            self.mmap_bundles.is_empty(),
+            "clone_bundle_data() called with mmap bundles present — would silently drop mmap-resident data. \
+             Use rebase() to drain overlays into new snapshots before snapshotting."
+        );
         self.bundles
             .iter()
             .filter(|(_, store)| store.len() > 0)
@@ -1012,11 +1061,79 @@ impl Engine {
             || self.wal_byte_count > self.compaction_policy.max_wal_bytes;
 
         if should_compact {
-            self.cow_snapshot()?;
-            // cow_snapshot() calls compact_wal_to_schemas() which resets
-            // wal_entry_count and wal_byte_count. Just update the timestamp.
+            if self.mmap_bundles.is_empty() {
+                self.cow_snapshot()?;
+            } else {
+                self.mmap_rebase_snapshot()?;
+            }
+            // cow_snapshot / mmap_rebase_snapshot calls compact_wal_to_schemas()
+            // which resets wal_entry_count and wal_byte_count. Update timestamp.
             self.last_compaction = std::time::Instant::now();
         }
+        Ok(())
+    }
+
+    /// Rebase mmap bundles: merge base + overlay − tombstones into a fresh DHOOM
+    /// snapshot, then swap the base and clear the overlay.
+    /// This is the mmap-mode equivalent of cow_snapshot().
+    fn mmap_rebase_snapshot(&mut self) -> io::Result<()> {
+        let snapshots_dir = self.data_dir.join("snapshots");
+        fs::create_dir_all(&snapshots_dir)?;
+
+        let names: Vec<String> = self.mmap_bundles.keys().cloned().collect();
+        for name in &names {
+            let ob = self.mmap_bundles.get(name).unwrap();
+
+            // Collect overlay PK set for dedup against base
+            let overlay_pks: std::collections::HashSet<String> = ob.with_overlay(|s| {
+                s.records().map(|r| self.pk_string(name, &r)).collect()
+            }).unwrap_or_default();
+
+            // Merge: base records (non-tombstoned, non-superseded) + overlay records
+            let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+            let tmp_path = snapshots_dir.join(format!("{name}.dhoom.tmp"));
+
+            {
+                let file = fs::File::create(&tmp_path)?;
+                let buf = io::BufWriter::new(file);
+                let mut encoder =
+                    crate::dhoom::StreamingDhoomEncoder::new(buf, name, 50_000);
+
+                // Base records (skip tombstoned and overlay-superseded)
+                for i in 0..ob.base().len() {
+                    if let Some(val) = ob.base().get(i) {
+                        if let serde_json::Value::Object(ref map) = val {
+                            let rec = serde_map_to_record(map);
+                            let pk = self.pk_string(name, &rec);
+                            if ob.is_tombstoned(&pk) { continue; }
+                            if overlay_pks.contains(&pk) { continue; }
+                            encoder.push(record_to_serde_json(&rec))?;
+                        }
+                    }
+                }
+
+                // Overlay records
+                let overlay_recs: Vec<Record> = ob.with_overlay(|s| {
+                    s.records().collect()
+                }).unwrap_or_default();
+                for rec in &overlay_recs {
+                    encoder.push(record_to_serde_json(rec))?;
+                }
+                encoder.finish()?;
+            }
+
+            fs::rename(&tmp_path, &snap_path)?;
+
+            // Open new mmap base and rebase the overlay
+            let new_base = MmapBundle::open(&snap_path)?;
+            let schema = self.schemas.get(name).cloned().unwrap_or_else(|| {
+                BundleSchema::new(name)
+            });
+            eprintln!("  Rebase: {name} ({} records)", new_base.len());
+            self.mmap_bundles.get_mut(name).unwrap().rebase(new_base, schema);
+        }
+
+        self.compact_wal_to_schemas()?;
         Ok(())
     }
 
@@ -2635,6 +2752,216 @@ mod tests {
             key.insert("id".into(), Value::Integer(105));
             let result = engine.point_query("items", &key).unwrap().unwrap();
             assert_eq!(result.get("val"), Some(&Value::Text("batch_105".into())));
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Edge case: arithmetic lookup for a tombstoned base record returns None.
+    #[test]
+    fn mmap_arithmetic_lookup_tombstoned() {
+        let dir = test_dir("mmap_tomb_arith");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("data")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("val"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..10i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("val".into(), Value::Text(format!("v{i}")));
+                engine.insert("data", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(5));
+            // Exists before delete
+            assert!(engine.point_query("data", &key).unwrap().is_some());
+            // Delete it
+            engine.delete("data", &key).unwrap();
+            // Should be None now (tombstoned)
+            assert!(engine.point_query("data", &key).unwrap().is_none());
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Edge case: filtered query deduplicates overlay-updated records over stale base.
+    #[test]
+    fn mmap_filtered_overlay_precedence() {
+        use crate::bundle::QueryCondition;
+
+        let dir = test_dir("mmap_dedup");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("items")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("status"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..10i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("status".into(), Value::Text("draft".into()));
+                engine.insert("items", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+            // Update base record id=1 in overlay: draft -> published
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(1));
+            let mut patches = Record::new();
+            patches.insert("status".into(), Value::Text("published".into()));
+            let updated = engine.update("items", &key, &patches).unwrap();
+            assert!(updated, "update should succeed for mmap base record id=1");
+
+            // Query for status = "published" should find exactly 1 (overlay version)
+            let results = engine.filtered_query(
+                "items",
+                &[QueryCondition::Eq("status".into(), Value::Text("published".into()))],
+                None, None, false, None, None,
+            ).unwrap();
+            assert_eq!(results.len(), 1);
+            assert_eq!(results[0].get("id"), Some(&Value::Integer(1)));
+
+            // Query for status = "draft" — should find 9 (base 0,2..9), not 10
+            let results = engine.filtered_query(
+                "items",
+                &[QueryCondition::Eq("status".into(), Value::Text("draft".into()))],
+                None, None, false, None, None,
+            ).unwrap();
+            assert_eq!(results.len(), 9);
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Edge case: arithmetic lookup for out-of-bounds key returns None.
+    #[test]
+    fn mmap_arithmetic_out_of_bounds() {
+        let dir = test_dir("mmap_oob");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("small")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("x"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..5i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("x".into(), Value::Text(format!("r{i}")));
+                engine.insert("small", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        {
+            let engine = Engine::open_mmap(&dir).unwrap();
+            // Key beyond range
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(999));
+            assert!(engine.point_query("small", &key).unwrap().is_none());
+
+            // Negative key
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(-1));
+            assert!(engine.point_query("small", &key).unwrap().is_none());
+        }
+
+        cleanup(&dir);
+    }
+
+    /// Edge case: mmap rebase merges overlay into fresh base snapshot.
+    #[test]
+    fn mmap_rebase_snapshot_roundtrip() {
+        let dir = test_dir("mmap_rebase");
+        cleanup(&dir);
+
+        // Phase 1: create bundle, insert 5 records, snapshot
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("data")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("val"));
+            engine.create_bundle(schema).unwrap();
+
+            for i in 0..5i64 {
+                let mut rec = Record::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("val".into(), Value::Text(format!("v{i}")));
+                engine.insert("data", &rec).unwrap();
+            }
+            engine.snapshot().unwrap();
+        }
+
+        // Phase 2: open mmap, update id=2, delete id=4, insert id=10, then rebase
+        {
+            let mut engine = Engine::open_mmap(&dir).unwrap();
+            assert_eq!(engine.mmap_bundles.get("data").unwrap().base().len(), 5);
+
+            // Update
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(2));
+            let mut patches = Record::new();
+            patches.insert("val".into(), Value::Text("UPDATED".into()));
+            assert!(engine.update("data", &key, &patches).unwrap());
+
+            // Delete
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(4));
+            engine.delete("data", &key).unwrap();
+
+            // Insert new
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(10));
+            rec.insert("val".into(), Value::Text("new".into()));
+            engine.insert("data", &rec).unwrap();
+
+            // Overlay should have 2 records (updated id=2 + new id=10), 1 tombstone
+            assert_eq!(engine.mmap_bundles.get("data").unwrap().overlay_len(), 2);
+            assert_eq!(engine.mmap_bundles.get("data").unwrap().tombstone_len(), 1);
+
+            // Rebase
+            engine.mmap_rebase_snapshot().unwrap();
+
+            // After rebase: overlay empty, new base has 5 records (0,1,2_updated,3,10)
+            let ob = engine.mmap_bundles.get("data").unwrap();
+            assert_eq!(ob.overlay_len(), 0, "overlay should be empty after rebase");
+            assert_eq!(ob.tombstone_len(), 0, "tombstones should be empty after rebase");
+            assert_eq!(ob.base().len(), 5, "base should have 5 records after rebase");
+
+            // Verify updated record
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(2));
+            let rec = engine.point_query("data", &key).unwrap().expect("id=2 should exist");
+            assert_eq!(rec.get("val"), Some(&Value::Text("UPDATED".into())));
+
+            // Verify deleted record gone
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(4));
+            assert!(engine.point_query("data", &key).unwrap().is_none());
+
+            // Verify new record
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(10));
+            let rec = engine.point_query("data", &key).unwrap().expect("id=10 should exist");
+            assert_eq!(rec.get("val"), Some(&Value::Text("new".into())));
         }
 
         cleanup(&dir);

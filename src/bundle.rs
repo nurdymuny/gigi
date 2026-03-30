@@ -113,8 +113,9 @@ impl QueryCondition {
     }
 }
 
-/// Helper: check if record matches AND conditions plus optional OR groups.
-fn matches_filter(
+/// Check if record matches AND conditions plus optional OR groups.
+/// Public so Engine can use the same logic for mmap base scans.
+pub fn matches_filter(
     record: &Record,
     conditions: &[QueryCondition],
     or_conditions: Option<&[Vec<QueryCondition>]>,

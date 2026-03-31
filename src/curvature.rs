@@ -106,10 +106,27 @@ pub fn free_energy(store: &BundleStore, tau: f64) -> f64 {
     }
 }
 
-/// Thermodynamic profile: (τ, F(τ), C_V(τ)) for each temperature.
+/// Thermodynamic profile point at a single temperature.
+#[derive(Debug, Clone)]
+pub struct ThermoPoint {
+    /// Temperature parameter.
+    pub temperature: f64,
+    /// Helmholtz free energy F(τ) = -τ ln Z.
+    pub free_energy: f64,
+    /// Heat capacity C_V = τ² · ∂²F/∂τ².
+    pub heat_capacity: f64,
+    /// Shannon entropy at this temperature (from spectral coarse-grain).
+    pub entropy: f64,
+    /// Scalar curvature K.
+    pub curvature: f64,
+}
+
+/// Thermodynamic profile: ThermoPoint for each temperature.
 ///
 /// Heat capacity: C_V = τ² · ∂²F/∂τ² ≈ τ² · (F(τ+δ) - 2F(τ) + F(τ-δ)) / δ²
-pub fn thermodynamic_profile(store: &BundleStore, taus: &[f64]) -> Vec<(f64, f64, f64)> {
+pub fn thermodynamic_profile(store: &BundleStore, taus: &[f64]) -> Vec<ThermoPoint> {
+    let k = scalar_curvature(store);
+    let s = crate::spectral::entropy(store);
     taus.iter()
         .map(|&tau| {
             let f = free_energy(store, tau);
@@ -117,7 +134,13 @@ pub fn thermodynamic_profile(store: &BundleStore, taus: &[f64]) -> Vec<(f64, f64
             let f_plus = free_energy(store, tau + delta);
             let f_minus = free_energy(store, (tau - delta).max(1e-15));
             let cv = tau * tau * (f_plus - 2.0 * f + f_minus) / (delta * delta);
-            (tau, f, cv)
+            ThermoPoint {
+                temperature: tau,
+                free_energy: f,
+                heat_capacity: cv,
+                entropy: s,
+                curvature: k,
+            }
         })
         .collect()
 }
@@ -317,9 +340,11 @@ mod tests {
         let taus = vec![0.1, 1.0, 10.0, 100.0];
         let profile = thermodynamic_profile(&store, &taus);
         assert_eq!(profile.len(), 4);
-        for (tau, f, _cv) in &profile {
-            assert!(*tau > 0.0);
-            assert!(f.is_finite(), "F({tau}) should be finite");
+        for point in &profile {
+            assert!(point.temperature > 0.0);
+            assert!(point.free_energy.is_finite(), "F({}) should be finite", point.temperature);
+            assert!(point.entropy.is_finite());
+            assert!(point.curvature.is_finite());
         }
     }
 

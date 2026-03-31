@@ -185,6 +185,16 @@ pub enum Statement {
     Health {
         bundle: String,
     },
+    Betti {
+        bundle: String,
+    },
+    Entropy {
+        bundle: String,
+    },
+    FreeEnergy {
+        bundle: String,
+        tau: f64,
+    },
     Explain {
         inner: Box<Statement>,
     },
@@ -810,6 +820,9 @@ impl Parser {
             "CURVATURE" => self.parse_curvature(),
             "SPECTRAL" => self.parse_spectral(),
             "CONSISTENCY" => self.parse_consistency(),
+            "BETTI" => self.parse_betti(),
+            "ENTROPY" => self.parse_entropy(),
+            "FREEENERGY" => self.parse_free_energy(),
             "COMPLETE" => self.parse_complete(),
             "PROPAGATE" => self.parse_propagate(),
             "SUGGEST_ADJACENCY" => self.parse_suggest_adjacency(),
@@ -1530,6 +1543,24 @@ impl Parser {
             bundle: name,
             repair,
         })
+    }
+
+    fn parse_betti(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        Ok(Statement::Betti { bundle: name })
+    }
+
+    fn parse_entropy(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        Ok(Statement::Entropy { bundle: name })
+    }
+
+    fn parse_free_energy(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        self.expect_keyword("AT")?;
+        let tau_str = self.expect_word()?;
+        let tau: f64 = tau_str.parse().map_err(|_| format!("expected float for tau, got '{}'", tau_str))?;
+        Ok(Statement::FreeEnergy { bundle: name, tau })
     }
 
     // ── GQL: COMPLETE / PROPAGATE ──
@@ -3949,6 +3980,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 engine.query_cache_mut().invalidate_all();
             }
             Ok(ExecResult::Ok)
+        }
+
+        Statement::Betti { bundle } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let (b0, b1) = store.betti_numbers();
+            Ok(ExecResult::Scalar(b0 as f64 + b1 as f64))
+        }
+        Statement::Entropy { bundle } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let s = store.entropy();
+            Ok(ExecResult::Scalar(s))
+        }
+        Statement::FreeEnergy { bundle, tau } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let f = store.free_energy(*tau);
+            Ok(ExecResult::Scalar(f))
         }
     }
 }

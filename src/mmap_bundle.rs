@@ -15,6 +15,7 @@ use serde_json::Value as JsonValue;
 
 use crate::bundle::{matches_filter, AnomalyRecord, BundleStats, BundleStore, CurvatureStats, FieldStats, QueryCondition, QueryPlan, TransactionOp, TransactionResult, VectorMetric};
 use crate::curvature;
+use crate::join;
 use crate::spectral;
 use crate::dhoom::{parse_fiber, DhoomRecordParser, Fiber, Modifier};
 use crate::types::{BasePoint, BundleSchema, FieldDef, Record, Value};
@@ -1457,6 +1458,27 @@ impl<'a> BundleRef<'a> {
             BundleRef::Overlay(_) => 0.0,
         }
     }
+
+    pub fn thermodynamic_profile(&self, taus: &[f64]) -> Vec<curvature::ThermoPoint> {
+        match self {
+            BundleRef::Heap(s) => curvature::thermodynamic_profile(s, taus),
+            BundleRef::Overlay(_) => vec![],
+        }
+    }
+
+    pub fn pullback_curvature(
+        &self,
+        right: &BundleRef<'_>,
+        left_field: &str,
+        right_field: &str,
+    ) -> Result<join::PullbackReport, String> {
+        match (self, right) {
+            (BundleRef::Heap(l), BundleRef::Heap(r)) => {
+                Ok(join::pullback_curvature(l, r, left_field, right_field))
+            }
+            _ => Err("pullback curvature requires heap mode (not overlay)".into()),
+        }
+    }
 }
 
 // ── BundleMut: Unified mutable access to heap or mmap bundles ──────────────
@@ -1712,6 +1734,13 @@ impl<'a> BundleMut<'a> {
         match self {
             BundleMut::Heap(s) => curvature::free_energy(s, tau),
             BundleMut::Overlay(_) => 0.0,
+        }
+    }
+
+    pub fn thermodynamic_profile(&self, taus: &[f64]) -> Vec<curvature::ThermoPoint> {
+        match self {
+            BundleMut::Heap(s) => curvature::thermodynamic_profile(s, taus),
+            BundleMut::Overlay(_) => vec![],
         }
     }
 

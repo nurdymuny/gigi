@@ -1,0 +1,906 @@
+﻿cargo :     Checking gigi v0.1.0 (C:\Users\nurdm\OneDrive\Documents\gigi)
+At line:1 char:1
++ cargo check --bin gigi-stream 2>&1 | Out-File -Encoding utf8 C:\Users ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Checking gi...Documents\gigi):String) [], RemoteE 
+   xception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+error[E0615]: attempted to take value of method `schema` on type `BundleRef<'_>`
+   --> src\bin\gigi_stream.rs:925:14
+    |
+925 |             .schema
+    |              ^^^^^^ method, not a field
+    |
+help: use parentheses to call the method
+    |
+925 |             .schema()
+    |                    ++
+
+error[E0615]: attempted to take value of method `schema` on type `BundleRef<'_>`
+   --> src\bin\gigi_stream.rs:930:14
+    |
+930 |             .schema
+    |              ^^^^^^ method, not a field
+    |
+help: use parentheses to call the method
+    |
+930 |             .schema()
+    |                    ++
+
+error[E0282]: type annotations needed
+   --> src\bin\gigi_stream.rs:968:21
+    |
+968 |             if !rec.contains_key(key_name) || rec.get(key_name) == Some(&Value::Null) {
+    |                     ^^^^^^^^^^^^ cannot infer type of the type parameter `Q` declared on the 
+method `contains_key`
+969 |                 let id = engine.bundle_mut(&name).unwrap().next_auto_id();
+970 |                 rec.insert(key_name.clone(), Value::Integer(id));
+    |                            -------- type must be known at this point
+    |
+help: consider specifying the generic argument
+    |
+968 |             if !rec.contains_key::<Q>(key_name) || rec.get(key_name) == Some(&Value::Null) {
+    |                                 +++++
+
+error[E0615]: attempted to take value of method `schema` on type `BundleRef<'_>`
+   --> src\bin\gigi_stream.rs:983:18
+    |
+983 |                 .schema
+    |                  ^^^^^^ method, not a field
+    |
+help: use parentheses to call the method
+    |
+983 |                 .schema()
+    |                        ++
+
+error[E0599]: no method named `get_field_stats` found for enum `BundleRef<'a>` in the current scope
+    --> src\bin\gigi_stream.rs:989:23
+     |
+ 989 |                 store.get_field_stats(),
+     |                       ^^^^^^^^^^^^^^^
+     |
+note: the method `get_field_stats` exists on the type `&BundleStore`
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\bundle.rs:2026:5
+     |
+2026 |     pub fn get_field_stats(&self) -> &HashMap<String, FieldStats> {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: there is a method `field_stats` with a similar name
+     |
+ 989 -                 store.get_field_stats(),
+ 989 +                 store.field_stats(),
+     |
+
+error[E0615]: attempted to take value of method `schema` on type `BundleRef<'_>`
+   --> src\bin\gigi_stream.rs:996:22
+    |
+996 |                     .schema
+    |                      ^^^^^^ method, not a field
+    |
+help: use parentheses to call the method
+    |
+996 |                     .schema()
+    |                            ++
+
+error[E0282]: type annotations needed for `(_, _)`
+    --> src\bin\gigi_stream.rs:1000:34
+     |
+1000 |                     .filter_map(|(fd, v)| {
+     |                                  ^^^^^^^
+1001 |                         let v_f = v.as_f64()?;
+     |                                   - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are 
+specified
+     |
+1000 |                     .filter_map(|(fd, v): (_, _)| {
+     |                                         ++++++++
+
+error[E0599]: no method named `get_field_stats` found for enum `BundleRef<'a>` in the current scope
+    --> src\bin\gigi_stream.rs:1002:40
+     |
+1002 |                         let fs = store.get_field_stats().get(&fd.name)?;
+     |                                        ^^^^^^^^^^^^^^^
+     |
+note: the method `get_field_stats` exists on the type `&BundleStore`
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\bundle.rs:2026:5
+     |
+2026 |     pub fn get_field_stats(&self) -> &HashMap<String, FieldStats> {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: there is a method `field_stats` with a similar name
+     |
+1002 -                         let fs = store.get_field_stats().get(&fd.name)?;
+1002 +                         let fs = store.field_stats().get(&fd.name)?;
+     |
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1037:41
+     |
+1037 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1066:9
+     |
+1063 |     let _ = state.dashboard_tx.send(build_dashboard_event(
+     |                                     --------------------- arguments to this function are 
+incorrect
+...
+1066 |         store,
+     |         ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |
+note: function defined here
+    --> src\bin\gigi_stream.rs:3228:4
+     |
+3228 | fn build_dashboard_event(
+     |    ^^^^^^^^^^^^^^^^^^^^^
+...
+3231 |     store: &gigi::bundle::BundleStore,
+     |     ---------------------------------
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1078:13
+     |
+1075 |         let _ = state.dashboard_tx.send(build_dashboard_event(
+     |                                         --------------------- arguments to this function 
+are incorrect
+...
+1078 |             store,
+     |             ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |
+note: function defined here
+    --> src\bin\gigi_stream.rs:3228:4
+     |
+3228 | fn build_dashboard_event(
+     |    ^^^^^^^^^^^^^^^^^^^^^
+...
+3231 |     store: &gigi::bundle::BundleStore,
+     |     ---------------------------------
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1168:41
+     |
+1168 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1222:49
+     |
+1222 |             let k = curvature::scalar_curvature(store);
+     |                     --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                     |
+     |                     arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1269:45
+     |
+1269 |         let k = curvature::scalar_curvature(store);
+     |                 --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                 |
+     |                 arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: arguments to this function are incorrect
+    --> src\bin\gigi_stream.rs:1313:19
+     |
+1313 |     let results = join::pullback_join(left, right, &req.left_field, &req.right_field);
+     |                   ^^^^^^^^^^^^^^^^^^^ ----  ----- expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                                       |
+     |                                       expected `&BundleStore`, found `BundleRef<'_>`
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\join.rs:15:8
+     |
+  15 | pub fn pullback_join(
+     |        ^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1358:31
+     |
+1358 |         aggregation::group_by(store, &req.group_by, &req.field)
+     |         --------------------- ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |         |
+     |         arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\aggregation.rs:62:8
+     |
+  62 | pub fn group_by(
+     |        ^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1365:40
+     |
+1365 |         aggregation::filtered_group_by(store, &req.group_by, &req.field, &conditions)
+     |         ------------------------------ ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |         |
+     |         arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\aggregation.rs:96:8
+     |
+  96 | pub fn filtered_group_by(
+     |        ^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1427:41
+     |
+1427 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1472:42
+     |
+1472 |     let lambda1 = spectral::spectral_gap(store);
+     |                   ---------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                   |
+     |                   arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\spectral.rs:123:8
+     |
+ 123 | pub fn spectral_gap(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1473:45
+     |
+1473 |     let diameter = spectral::graph_diameter(store);
+     |                    ------------------------ ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                    |
+     |                    arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\spectral.rs:223:8
+     |
+ 223 | pub fn graph_diameter(store: &BundleStore) -> usize {
+     |        ^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1474:52
+     |
+1474 |     let spectral_cap = spectral::spectral_capacity(store);
+     |                        --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                        |
+     |                        arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\spectral.rs:312:8
+     |
+ 312 | pub fn spectral_capacity(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1499:41
+     |
+1499 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1526:51
+     |
+1526 |                     let hol = curvature::holonomy(store, &keys);
+     |                               ------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                               |
+     |                               arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:86:8
+     |
+  86 | pub fn holonomy(store: &BundleStore, loop_keys: &[crate::types::Record]) -> f64 {
+     |        ^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1626:48
+     |
+1626 |     let k_global = curvature::scalar_curvature(store);
+     |                    --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                    |
+     |                    arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:1927:41
+     |
+1927 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2016:45
+     |
+2016 |         let k = curvature::scalar_curvature(store);
+     |                 --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                 |
+     |                 arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2031:45
+     |
+2031 |         let k = curvature::scalar_curvature(store);
+     |                 --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                 |
+     |                 arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2086:41
+     |
+2086 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleMut<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2133:41
+     |
+2133 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleMut<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2182:41
+     |
+2182 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleMut<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2226:41
+     |
+2226 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleMut<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2351:41
+     |
+2351 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleMut<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0596]: cannot borrow `store` as mutable, as it is not declared as mutable
+    --> src\bin\gigi_stream.rs:2386:19
+     |
+2386 |     let removed = store.truncate();
+     |                   ^^^^^ cannot borrow as mutable
+     |
+help: consider changing this to be mutable
+     |
+2377 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+     |         +++
+
+error[E0615]: attempted to take value of method `schema` on type `BundleRef<'_>`
+    --> src\bin\gigi_stream.rs:2411:10
+     |
+2411 |         .schema
+     |          ^^^^^^ method, not a field
+     |
+help: use parentheses to call the method
+     |
+2411 |         .schema()
+     |                ++
+
+error[E0615]: attempted to take value of method `schema` on type `BundleRef<'_>`
+    --> src\bin\gigi_stream.rs:2424:10
+     |
+2424 |         .schema
+     |          ^^^^^^ method, not a field
+     |
+help: use parentheses to call the method
+     |
+2424 |         .schema()
+     |                ++
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2481:41
+     |
+2481 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleMut<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0596]: cannot borrow `store` as mutable, as it is not declared as mutable
+    --> src\bin\gigi_stream.rs:2507:9
+     |
+2507 |     if !store.drop_field(&req.field) {
+     |         ^^^^^ cannot borrow as mutable
+     |
+help: consider changing this to be mutable
+     |
+2498 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+     |         +++
+
+error[E0596]: cannot borrow `store` as mutable, as it is not declared as mutable
+    --> src\bin\gigi_stream.rs:2553:5
+     |
+2553 |     store.add_field(fd);
+     |     ^^^^^ cannot borrow as mutable
+     |
+help: consider changing this to be mutable
+     |
+2544 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+     |         +++
+
+error[E0596]: cannot borrow `store` as mutable, as it is not declared as mutable
+    --> src\bin\gigi_stream.rs:2578:5
+     |
+2578 |     store.add_index(&req.field);
+     |     ^^^^^ cannot borrow as mutable
+     |
+help: consider changing this to be mutable
+     |
+2569 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+     |         +++
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2676:41
+     |
+2676 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0615]: attempted to take value of method `schema` on type `BundleMut<'_>`
+    --> src\bin\gigi_stream.rs:2718:10
+     |
+2718 |         .schema
+     |          ^^^^^^ method, not a field
+     |
+help: use parentheses to call the method
+     |
+2718 |         .schema()
+     |                ++
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2735:53
+     |
+2735 |                 let k = curvature::scalar_curvature(store);
+     |                         --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleMut<'_>`
+     |                         |
+     |                         arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `base_point` found for enum `BundleMut<'a>` in the current scope
+    --> src\bin\gigi_stream.rs:2744:37
+     |
+2744 |                     let _bp = store.base_point(&key);
+     |                                     ^^^^^^^^^^ method not found in `BundleMut<'_>`
+     |
+note: the method `base_point` exists on the type `&mut BundleStore`
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\bundle.rs:2016:5
+     |
+2016 |     pub fn base_point(&self, key: &Record) -> BasePoint {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2775:53
+     |
+2775 |                 let k = curvature::scalar_curvature(store);
+     |                         --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleMut<'_>`
+     |                         |
+     |                         arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2810:45
+     |
+2810 |         let k = curvature::scalar_curvature(store);
+     |                 --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleMut<'_>`
+     |                 |
+     |                 arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2856:53
+     |
+2856 |                 let k = curvature::scalar_curvature(store);
+     |                         --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleMut<'_>`
+     |                         |
+     |                         arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2891:45
+     |
+2891 |         let k = curvature::scalar_curvature(store);
+     |                 --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleMut<'_>`
+     |                 |
+     |                 arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `stats` found for enum `BundleRef<'a>` in the current scope
+    --> src\bin\gigi_stream.rs:2926:23
+     |
+2926 |     let stats = store.stats();
+     |                       ^^^^^ method not found in `BundleRef<'_>`
+     |
+note: the method `stats` exists on the type `&BundleStore`
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\bundle.rs:2990:5
+     |
+2990 |     pub fn stats(&self) -> BundleStats {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:2927:41
+     |
+2927 |     let k = curvature::scalar_curvature(store);
+     |             --------------------------- ^^^^^ expected `&BundleStore`, found `BundleRef<'_>`
+     |             |
+     |             arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed for `(_, _)`
+    --> src\bin\gigi_stream.rs:2932:15
+     |
+2932 |         .map(|(f, s)| (f.clone(), serde_json::json!(s)))
+     |               ^^^^^^   - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are 
+specified
+     |
+2932 |         .map(|(f, s): (_, _)| (f.clone(), serde_json::json!(s)))
+     |                     ++++++++
+
+error[E0282]: type annotations needed for `(_, _)`
+    --> src\bin\gigi_stream.rs:2939:15
+     |
+2939 |         .map(|(f, c)| (f.clone(), serde_json::json!(c)))
+     |               ^^^^^^   - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are 
+specified
+     |
+2939 |         .map(|(f, c): (_, _)| (f.clone(), serde_json::json!(c)))
+     |                     ++++++++
+
+error[E0599]: no method named `explain` found for enum `BundleRef<'a>` in the current scope
+    --> src\bin\gigi_stream.rs:3016:22
+     |
+3016 |     let plan = store.explain(
+     |                ------^^^^^^^ method not found in `BundleRef<'_>`
+     |
+note: the method `explain` exists on the type `&BundleStore`
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\bundle.rs:3020:5
+     |
+3020 | /     pub fn explain(
+3021 | |         &self,
+3022 | |         conditions: &[QueryCondition],
+3023 | |         or_conditions: Option<&[Vec<QueryCondition>]>,
+...    |
+3026 | |         offset: Option<usize>,
+3027 | |     ) -> QueryPlan {
+     | |__________________^
+
+error[E0599]: no method named `execute_transaction` found for enum `BundleMut<'a>` in the current 
+scope
+    --> src\bin\gigi_stream.rs:3163:17
+     |
+3163 |     match store.execute_transaction(&ops) {
+     |                 ^^^^^^^^^^^^^^^^^^^ method not found in `BundleMut<'_>`
+     |
+note: the method `execute_transaction` exists on the type `&mut BundleStore`
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\bundle.rs:3078:5
+     |
+3078 | /     pub fn execute_transaction(
+3079 | |         &mut self,
+3080 | |         ops: &[TransactionOp],
+3081 | |     ) -> Result<Vec<TransactionResult>, String> {
+     | |_______________________________________________^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:3165:49
+     |
+3165 |             let k = curvature::scalar_curvature(store);
+     |                     --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleMut<'_>`
+     |                     |
+     |                     arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed
+    --> src\bin\gigi_stream.rs:3168:24
+     |
+3168 |                 "ops": results.len(),
+     |                        ^^^^^^^ cannot infer type
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:3567:61
+     |
+3567 |                         let k = curvature::scalar_curvature(store);
+     |                                 --------------------------- ^^^^^ expected `&BundleStore`, 
+found `BundleMut<'_>`
+     |                                 |
+     |                                 arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:3626:65
+     |
+3626 | ...                   let k = curvature::scalar_curvature(store);
+     |                               --------------------------- ^^^^^ expected `&BundleStore`, 
+found `BundleRef<'_>`
+     |                               |
+     |                               arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:3670:61
+     |
+3670 |                         let k = curvature::scalar_curvature(store);
+     |                                 --------------------------- ^^^^^ expected `&BundleStore`, 
+found `BundleRef<'_>`
+     |                                 |
+     |                                 arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:3697:53
+     |
+3697 |                 let k = curvature::scalar_curvature(store);
+     |                         --------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                         |
+     |                         arguments to this function are incorrect
+     |
+note: function defined here
+    --> C:\Users\nurdm\OneDrive\Documents\gigi\src\curvature.rs:12:8
+     |
+  12 | pub fn scalar_curvature(store: &BundleStore) -> f64 {
+     |        ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:3945:43
+     |
+3945 |         let result = execute_gql_on_store(store, &stmt);
+     |                      -------------------- ^^^^^ expected `&mut BundleStore`, found 
+`BundleMut<'_>`
+     |                      |
+     |                      arguments to this function are incorrect
+     |
+note: function defined here
+    --> src\bin\gigi_stream.rs:3976:4
+     |
+3976 | fn execute_gql_on_store(
+     |    ^^^^^^^^^^^^^^^^^^^^
+3977 |     store: &mut gigi::bundle::BundleStore,
+     |     -------------------------------------
+
+error[E0308]: mismatched types
+    --> src\bin\gigi_stream.rs:3964:48
+     |
+3964 |         let result = execute_gql_on_store_read(store, &stmt);
+     |                      ------------------------- ^^^^^ expected `&BundleStore`, found 
+`BundleRef<'_>`
+     |                      |
+     |                      arguments to this function are incorrect
+     |
+note: function defined here
+    --> src\bin\gigi_stream.rs:4066:4
+     |
+4066 | fn execute_gql_on_store_read(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+4067 |     store: &gigi::bundle::BundleStore,
+     |     ---------------------------------
+
+error[E0599]: no method named `curvature_stats` found for reference `&BundleStore` in the current 
+scope
+    --> src\bin\gigi_stream.rs:3237:23
+     |
+3237 |     let stats = store.curvature_stats();
+     |                       ^^^^^^^^^^^^^^^-- help: remove the arguments
+     |                       |
+     |                       field, not a method
+
+error[E0599]: no method named `schema` found for reference `&BundleStore` in the current scope
+    --> src\bin\gigi_stream.rs:4215:36
+     |
+4215 |                 base_fields: store.schema().base_fields.len(),
+     |                                    ^^^^^^-- help: remove the arguments
+     |                                    |
+     |                                    field, not a method
+
+error[E0599]: no method named `schema` found for reference `&BundleStore` in the current scope
+    --> src\bin\gigi_stream.rs:4216:37
+     |
+4216 |                 fiber_fields: store.schema().fiber_fields.len(),
+     |                                     ^^^^^^-- help: remove the arguments
+     |                                     |
+     |                                     field, not a method
+
+error[E0599]: no method named `schema` found for reference `&BundleStore` in the current scope
+    --> src\bin\gigi_stream.rs:4226:36
+     |
+4226 |                 base_fields: store.schema().base_fields.len(),
+     |                                    ^^^^^^-- help: remove the arguments
+     |                                    |
+     |                                    field, not a method
+
+error[E0599]: no method named `schema` found for reference `&BundleStore` in the current scope
+    --> src\bin\gigi_stream.rs:4227:37
+     |
+4227 |                 fiber_fields: store.schema().fiber_fields.len(),
+     |                                     ^^^^^^-- help: remove the arguments
+     |                                     |
+     |                                     field, not a method
+
+Some errors have detailed explanations: E0282, E0308, E0596, E0599, E0615.
+For more information about an error, try `rustc --explain E0282`.
+error: could not compile `gigi` (bin "gigi-stream") due to 66 previous errors

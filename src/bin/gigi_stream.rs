@@ -524,6 +524,35 @@ struct SpectralReport {
 }
 
 #[derive(Serialize)]
+struct BettiReport {
+    beta_0: usize,
+    beta_1: usize,
+}
+
+#[derive(Serialize)]
+struct EntropyReport {
+    entropy: f64,
+    unit: String,
+}
+
+#[derive(Serialize)]
+struct FreeEnergyReport {
+    tau: f64,
+    free_energy: f64,
+}
+
+#[derive(Serialize)]
+struct PullbackCurvatureReport {
+    k_left: f64,
+    k_right: f64,
+    k_pullback: f64,
+    delta_k: f64,
+    matched: usize,
+    unmatched: usize,
+    right_unmatched: usize,
+}
+
+#[derive(Serialize)]
 struct AggResult {
     groups: HashMap<String, AggValues>,
 }
@@ -1547,6 +1576,75 @@ async fn consistency_check(
         "status": if h1 == 0 { "consistent" } else { "conflicts_detected" },
         "curvature": k
     })))
+}
+
+// ── Sprint A REST Handlers ────────────────────────────────────────────────────
+
+async fn betti_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> Result<Json<BettiReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    let (b0, b1) = store.betti_numbers();
+    Ok(Json(BettiReport {
+        beta_0: b0,
+        beta_1: b1,
+    }))
+}
+
+async fn entropy_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> Result<Json<EntropyReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    let s = store.entropy();
+    Ok(Json(EntropyReport {
+        entropy: s,
+        unit: "nats".to_string(),
+    }))
+}
+
+#[derive(Deserialize)]
+struct FreeEnergyQuery {
+    tau: Option<f64>,
+}
+
+async fn free_energy_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Query(params): Query<FreeEnergyQuery>,
+) -> Result<Json<FreeEnergyReport>, (StatusCode, Json<ErrorResponse>)> {
+    let tau = params.tau.unwrap_or(1.0);
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    let f = store.free_energy(tau);
+    Ok(Json(FreeEnergyReport {
+        tau,
+        free_energy: f,
+    }))
 }
 
 // ── Anomaly Detection REST Handlers ───────────────────────────────────────────
@@ -4238,6 +4336,18 @@ fn execute_gql_on_store_read(
             let k = store.scalar_curvature();
             Ok(ExecResult::Scalar(if k.abs() < 1e-10 { 0.0 } else { k }))
         }
+        Statement::Betti { .. } => {
+            let (b0, b1) = store.betti_numbers();
+            Ok(ExecResult::Scalar(b0 as f64 + b1 as f64))
+        }
+        Statement::Entropy { .. } => {
+            let s = store.entropy();
+            Ok(ExecResult::Scalar(s))
+        }
+        Statement::FreeEnergy { tau, .. } => {
+            let f = store.free_energy(*tau);
+            Ok(ExecResult::Scalar(f))
+        }
         Statement::Health { .. } => {
             let k = store.scalar_curvature();
             Ok(ExecResult::Stats(GqlStats {
@@ -4512,6 +4622,9 @@ async fn main() {
         .route("/v1/bundles/{name}/curvature", get(curvature_report))
         .route("/v1/bundles/{name}/spectral", get(spectral_report))
         .route("/v1/bundles/{name}/consistency", get(consistency_check))
+        .route("/v1/bundles/{name}/betti", get(betti_report))
+        .route("/v1/bundles/{name}/entropy", get(entropy_report))
+        .route("/v1/bundles/{name}/free-energy", get(free_energy_report))
         // Anomaly Detection + Health
         .route("/v1/bundles/{name}/anomalies", post(bundle_anomalies))
         .route("/v1/bundles/{name}/health", get(bundle_health))

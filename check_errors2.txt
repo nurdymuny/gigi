@@ -1,0 +1,43 @@
+﻿cargo :     Checking gigi v0.1.0 (C:\Users\nurdm\OneDrive\Documents\gigi)
+At line:1 char:1
++ cargo check --bin gigi-stream 2>&1 | Out-File -Encoding utf8 C:\Users ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Checking gi...Documents\gigi):String) [], RemoteE 
+   xception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+error[E0308]: mismatched types
+   --> src\bin\gigi_stream.rs:989:17
+    |
+988 |             let k_rec = compute_record_k(
+    |                         ---------------- arguments to this function are incorrect
+989 |                 store.get_field_stats(),
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^ expected `&HashMap<String, FieldStats>`, found 
+`HashMap<String, FieldStats>`
+    |
+    = note: expected reference `&HashMap<_, _>`
+                  found struct `HashMap<_, _>`
+note: function defined here
+   --> C:\Users\nurdm\OneDrive\Documents\gigi\src\bundle.rs:739:8
+    |
+739 | pub fn compute_record_k(
+    |        ^^^^^^^^^^^^^^^^
+help: consider borrowing here
+    |
+989 |                 &store.get_field_stats(),
+    |                 +
+
+error[E0596]: cannot borrow `store` as mutable, as it is not declared as mutable
+    --> src\bin\gigi_stream.rs:3566:29
+     |
+3566 | ...                   store.insert(&record);
+     |                       ^^^^^ cannot borrow as mutable
+     |
+help: consider changing this to be mutable
+     |
+3559 |                     if let Some(mut store) = engine.bundle_mut(bundle_name) {
+     |                                 +++
+
+Some errors have detailed explanations: E0308, E0596.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `gigi` (bin "gigi-stream") due to 2 previous errors

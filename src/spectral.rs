@@ -348,10 +348,11 @@ pub fn betti_numbers(store: &BundleStore) -> (usize, usize) {
     (beta_0, beta_1)
 }
 
-/// Standalone entropy from field index groupings.
+/// Standalone entropy from field index groupings (in nats, using natural log).
 ///
 /// S = -Σ (nᵢ/N) ln(nᵢ/N)
 ///
+/// Unit: nats (natural log). For bits, divide by ln(2).
 /// Uses coarse_grain at scale 1 (finest resolution).
 pub fn entropy(store: &BundleStore) -> f64 {
     coarse_grain(store, 1).1

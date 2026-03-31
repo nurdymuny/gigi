@@ -46,10 +46,12 @@ pub struct PullbackReport {
     pub k_pullback: f64,
     /// ΔK = K_pullback - K_left.
     pub delta_k: f64,
-    /// Number of matched (joined) records.
+    /// Number of left records with a successful FK match.
     pub matched: usize,
-    /// Number of unmatched (null fiber) records.
+    /// Number of left records with no right match (null fiber).
     pub unmatched: usize,
+    /// Number of right records that no left record mapped to.
+    pub right_unmatched: usize,
 }
 
 /// Pullback curvature: measures how joining two bundles distorts geometry.
@@ -90,11 +92,16 @@ pub fn pullback_curvature(
     let mut merged_store = BundleStore::new(merged_schema);
     let mut matched = 0usize;
     let mut unmatched = 0usize;
+    let mut matched_right_keys: HashSet<String> = HashSet::new();
 
     for (left_rec, right_rec_opt) in &joined {
         let mut merged = left_rec.clone();
         if let Some(right_rec) = right_rec_opt {
             matched += 1;
+            // Track which right keys were hit
+            if let Some(v) = right_rec.get(right_field) {
+                matched_right_keys.insert(format!("{:?}", v));
+            }
             for (k, v) in right_rec.iter() {
                 if !merged.contains_key(k) {
                     merged.insert(k.clone(), v.clone());
@@ -106,6 +113,10 @@ pub fn pullback_curvature(
         merged_store.insert(&merged);
     }
 
+    // Count right records that nothing mapped to
+    let total_right = right.len();
+    let right_unmatched = total_right.saturating_sub(matched_right_keys.len());
+
     let k_pullback = crate::curvature::scalar_curvature(&merged_store);
 
     PullbackReport {
@@ -115,6 +126,7 @@ pub fn pullback_curvature(
         delta_k: k_pullback - k_left,
         matched,
         unmatched,
+        right_unmatched,
     }
 }
 
@@ -206,6 +218,8 @@ mod tests {
         let report = pullback_curvature(&orders, &customers, "customer_id", "customer_id");
         assert_eq!(report.matched, 100);
         assert_eq!(report.unmatched, 0);
+        // All 10 customers are referenced by orders
+        assert_eq!(report.right_unmatched, 0);
         assert!(
             report.delta_k.abs() < 1.0,
             "ΔK = {}, expected small for faithful join",
@@ -230,6 +244,8 @@ mod tests {
         let report = pullback_curvature(&left, &customers, "fk", "customer_id");
         assert_eq!(report.unmatched, 10);
         assert_eq!(report.matched, 0);
+        // All 10 customers are unmatched since left FKs don't hit them
+        assert_eq!(report.right_unmatched, 10);
     }
 
     /// TDD-4.6: Report fields are finite and consistent.
@@ -246,5 +262,7 @@ mod tests {
             "ΔK should equal K_pullback - K_left"
         );
         assert_eq!(report.matched + report.unmatched, 100);
+        // right_unmatched should be finite and logical
+        assert!(report.right_unmatched <= 10, "at most 10 right records");
     }
 }

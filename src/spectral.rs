@@ -323,6 +323,40 @@ pub fn spectral_capacity(store: &BundleStore) -> f64 {
 /// Coarse-grain a bundle at a given scale ℓ (Def 3.11).
 ///
 /// ℓ = 1: merge base points sharing ALL indexed field values.
+/// Betti numbers of the field index graph (graph-theoretic, not persistent homology).
+///
+/// β₀ = number of connected components
+/// β₁ = |E| - |V| + β₀ (cycle rank / first Betti number)
+///
+/// Caveat: These are graph-theoretic Betti numbers computed from the 1-skeleton
+/// (field index graph), NOT topological Betti numbers from persistent homology/TDA.
+pub fn betti_numbers(store: &BundleStore) -> (usize, usize) {
+    let n = store.len();
+    if n == 0 {
+        return (0, 0);
+    }
+    let components = components_from_index(store);
+    let beta_0 = components.len();
+
+    // Count edges: each adjacency list entry is a directed edge; divide by 2
+    let adj = field_index_graph(store);
+    let edge_count: usize = adj.values().map(|nbrs| nbrs.len()).sum::<usize>() / 2;
+
+    // β₁ = |E| - |V| + β₀  (Euler formula for graphs)
+    let beta_1 = (edge_count + beta_0).saturating_sub(n);
+
+    (beta_0, beta_1)
+}
+
+/// Standalone entropy from field index groupings.
+///
+/// S = -Σ (nᵢ/N) ln(nᵢ/N)
+///
+/// Uses coarse_grain at scale 1 (finest resolution).
+pub fn entropy(store: &BundleStore) -> f64 {
+    coarse_grain(store, 1).1
+}
+
 /// ℓ = 2: merge base points sharing all but one indexed field value.
 /// etc.
 ///
@@ -554,5 +588,76 @@ mod tests {
         for g in &coarse_groups {
             assert_eq!(g.len(), 10);
         }
+    }
+
+    // ── Betti numbers ──────────────────────────────────────────────
+
+    /// TDD-3.25: Connected graph → β₀ = 1.
+    #[test]
+    fn tdd_3_25_betti_connected() {
+        let store = make_connected_store();
+        let (b0, _) = betti_numbers(&store);
+        assert_eq!(b0, 1, "β₀ should be 1 for connected graph");
+    }
+
+    /// TDD-3.26: Two clusters → β₀ = 2.
+    #[test]
+    fn tdd_3_26_betti_disconnected() {
+        let store = make_clustered_store();
+        let (b0, _) = betti_numbers(&store);
+        assert_eq!(b0, 2, "β₀ should be 2 for two disconnected clusters");
+    }
+
+    /// TDD-3.27: Complete graph K_n → β₁ = n(n-1)/2 - n + 1 = (n-1)(n-2)/2.
+    #[test]
+    fn tdd_3_27_betti_cycle_rank() {
+        let store = make_connected_store(); // 20 nodes, all same color → K_20
+        let (b0, b1) = betti_numbers(&store);
+        assert_eq!(b0, 1);
+        // K_20: |E| = 20*19/2 = 190, |V| = 20, β₁ = 190 - 20 + 1 = 171
+        assert_eq!(b1, 171, "β₁ = |E| - |V| + β₀ for complete graph K_20");
+    }
+
+    /// TDD-3.28: Empty store → (0, 0).
+    #[test]
+    fn tdd_3_28_betti_empty() {
+        let schema = BundleSchema::new("test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val").with_range(100.0))
+            .index("val");
+        let store = BundleStore::new(schema);
+        let (b0, b1) = betti_numbers(&store);
+        assert_eq!((b0, b1), (0, 0));
+    }
+
+    // ── Entropy (standalone) ───────────────────────────────────────
+
+    /// TDD-3.29: Single group → entropy = 0.
+    #[test]
+    fn tdd_3_29_entropy_single_group() {
+        let store = make_connected_store(); // all same color → 1 group
+        let s = entropy(&store);
+        assert!(s.abs() < 1e-10, "Entropy of single group should be 0, got {s}");
+    }
+
+    /// TDD-3.30: k equal groups → entropy = ln(k).
+    #[test]
+    fn tdd_3_30_entropy_uniform_groups() {
+        let store = make_clustered_store(); // 2 groups of 10
+        let s = entropy(&store);
+        let expected = (2.0_f64).ln();
+        assert!(
+            (s - expected).abs() < 1e-10,
+            "Entropy should be ln(2)={expected}, got {s}"
+        );
+    }
+
+    /// TDD-3.31: Entropy ≥ 0 always.
+    #[test]
+    fn tdd_3_31_entropy_non_negative() {
+        let store = make_connected_store();
+        assert!(entropy(&store) >= 0.0);
+        let store2 = make_clustered_store();
+        assert!(entropy(&store2) >= 0.0);
     }
 }

@@ -80,6 +80,48 @@ pub fn partition_function(store: &BundleStore, bp: BasePoint, tau: f64) -> f64 {
     z
 }
 
+/// Free energy: F(τ) = -τ · ln Z, averaged over a sample of base points.
+///
+/// Samples up to 50 base points uniformly and averages their free energy.
+pub fn free_energy(store: &BundleStore, tau: f64) -> f64 {
+    let bps: Vec<BasePoint> = store.sections().map(|(bp, _)| bp).collect();
+    if bps.is_empty() {
+        return 0.0;
+    }
+    let sample_size = bps.len().min(50);
+    let step = (bps.len() / sample_size).max(1);
+    let mut total_f = 0.0;
+    let mut count = 0;
+    for i in (0..bps.len()).step_by(step).take(sample_size) {
+        let z = partition_function(store, bps[i], tau);
+        if z > 0.0 {
+            total_f += -tau * z.ln();
+            count += 1;
+        }
+    }
+    if count == 0 {
+        0.0
+    } else {
+        total_f / count as f64
+    }
+}
+
+/// Thermodynamic profile: (τ, F(τ), C_V(τ)) for each temperature.
+///
+/// Heat capacity: C_V = τ² · ∂²F/∂τ² ≈ τ² · (F(τ+δ) - 2F(τ) + F(τ-δ)) / δ²
+pub fn thermodynamic_profile(store: &BundleStore, taus: &[f64]) -> Vec<(f64, f64, f64)> {
+    taus.iter()
+        .map(|&tau| {
+            let f = free_energy(store, tau);
+            let delta = tau * 0.01 + 1e-6;
+            let f_plus = free_energy(store, tau + delta);
+            let f_minus = free_energy(store, (tau - delta).max(1e-15));
+            let cv = tau * tau * (f_plus - 2.0 * f + f_minus) / (delta * delta);
+            (tau, f, cv)
+        })
+        .collect()
+}
+
 /// Holonomy: transport around a closed loop (Def 3.5–3.6).
 ///
 /// For a flat connection, Hol = 0.
@@ -252,5 +294,42 @@ mod tests {
         let z = partition_function(&store, bp, 1e10);
         // 50 records all in same "cat"="X" bucket: self + 49 neighbors = 50
         assert!((z - 50.0).abs() < 0.5, "Z(τ→∞) = {z}, expected ~50");
+    }
+
+    // ── Free energy + thermodynamics ───────────────────────────────
+
+    /// TDD-3.16: F decreases with temperature (more disorder at higher τ).
+    #[test]
+    fn tdd_3_16_free_energy_monotone() {
+        let store = make_store_with_data();
+        let f_low = free_energy(&store, 1.0);
+        let f_high = free_energy(&store, 100.0);
+        assert!(
+            f_high < f_low,
+            "F should decrease with temperature: F(1)={f_low}, F(100)={f_high}"
+        );
+    }
+
+    /// TDD-3.17: Thermodynamic profile has correct length and finite values.
+    #[test]
+    fn tdd_3_17_thermo_profile_shape() {
+        let store = make_store_with_data();
+        let taus = vec![0.1, 1.0, 10.0, 100.0];
+        let profile = thermodynamic_profile(&store, &taus);
+        assert_eq!(profile.len(), 4);
+        for (tau, f, _cv) in &profile {
+            assert!(*tau > 0.0);
+            assert!(f.is_finite(), "F({tau}) should be finite");
+        }
+    }
+
+    /// TDD-3.18b: Free energy of empty store = 0.
+    #[test]
+    fn tdd_3_18b_free_energy_empty() {
+        let schema = BundleSchema::new("test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val").with_range(100.0));
+        let store = BundleStore::new(schema);
+        assert_eq!(free_energy(&store, 1.0), 0.0);
     }
 }

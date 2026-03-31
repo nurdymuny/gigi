@@ -2,8 +2,10 @@
 //!
 //! Implements Theorem 4.1: O(|left|) join via pullback.
 
+use std::collections::HashSet;
+
 use crate::bundle::BundleStore;
-use crate::types::{Record, Value};
+use crate::types::{BundleSchema, FieldDef, Record, Value};
 
 /// Pullback join: for each record in `left`, look up the matching record
 /// in `right` via the foreign key relationship.
@@ -31,6 +33,89 @@ pub fn pullback_join(
         results.push((left_rec, right_rec));
     }
     results
+}
+
+/// Report from pullback curvature computation.
+#[derive(Debug, Clone)]
+pub struct PullbackReport {
+    /// Curvature of the left (source) bundle.
+    pub k_left: f64,
+    /// Curvature of the right (target) bundle.
+    pub k_right: f64,
+    /// Curvature of the pullback (merged) data.
+    pub k_pullback: f64,
+    /// ΔK = K_pullback - K_left.
+    pub delta_k: f64,
+    /// Number of matched (joined) records.
+    pub matched: usize,
+    /// Number of unmatched (null fiber) records.
+    pub unmatched: usize,
+}
+
+/// Pullback curvature: measures how joining two bundles distorts geometry.
+///
+/// Builds a merged bundle with fiber fields from both sides, then computes
+/// scalar curvature on the merged data. ΔK = K_merged - K_left.
+///
+/// A faithful join (ΔK ≈ 0) preserves geometric structure.
+pub fn pullback_curvature(
+    left: &BundleStore,
+    right: &BundleStore,
+    left_field: &str,
+    right_field: &str,
+) -> PullbackReport {
+    let k_left = crate::curvature::scalar_curvature(left);
+    let k_right = crate::curvature::scalar_curvature(right);
+
+    let joined = pullback_join(left, right, left_field, right_field);
+
+    // Build merged schema: left base + fibers from both sides
+    let mut merged_schema = BundleSchema::new("pullback");
+    for bf in &left.schema.base_fields {
+        merged_schema = merged_schema.base(bf.clone());
+    }
+    let mut seen_fields: HashSet<String> = HashSet::new();
+    for ff in &left.schema.fiber_fields {
+        merged_schema = merged_schema.fiber(ff.clone());
+        seen_fields.insert(ff.name.clone());
+    }
+    for ff in &right.schema.fiber_fields {
+        if !seen_fields.contains(&ff.name)
+            && !left.schema.base_fields.iter().any(|b| b.name == ff.name)
+        {
+            merged_schema = merged_schema.fiber(ff.clone());
+        }
+    }
+
+    let mut merged_store = BundleStore::new(merged_schema);
+    let mut matched = 0usize;
+    let mut unmatched = 0usize;
+
+    for (left_rec, right_rec_opt) in &joined {
+        let mut merged = left_rec.clone();
+        if let Some(right_rec) = right_rec_opt {
+            matched += 1;
+            for (k, v) in right_rec.iter() {
+                if !merged.contains_key(k) {
+                    merged.insert(k.clone(), v.clone());
+                }
+            }
+        } else {
+            unmatched += 1;
+        }
+        merged_store.insert(&merged);
+    }
+
+    let k_pullback = crate::curvature::scalar_curvature(&merged_store);
+
+    PullbackReport {
+        k_left,
+        k_right,
+        k_pullback,
+        delta_k: k_pullback - k_left,
+        matched,
+        unmatched,
+    }
 }
 
 #[cfg(test)]
@@ -109,5 +194,57 @@ mod tests {
         let results = pullback_join(&orders, &customers, "customer_id", "customer_id");
         assert_eq!(results.len(), 1);
         assert!(results[0].1.is_none());
+    }
+
+    // ── Pullback curvature ─────────────────────────────────────────
+
+    /// TDD-4.4: Faithful join → small ΔK and all matched.
+    #[test]
+    fn tdd_4_4_faithful_join_curvature() {
+        let orders = make_orders();
+        let customers = make_customers();
+        let report = pullback_curvature(&orders, &customers, "customer_id", "customer_id");
+        assert_eq!(report.matched, 100);
+        assert_eq!(report.unmatched, 0);
+        assert!(
+            report.delta_k.abs() < 1.0,
+            "ΔK = {}, expected small for faithful join",
+            report.delta_k
+        );
+    }
+
+    /// TDD-4.5: No-match join → all unmatched.
+    #[test]
+    fn tdd_4_5_no_match_curvature() {
+        let schema = BundleSchema::new("left")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("fk"));
+        let mut left = BundleStore::new(schema);
+        for i in 100..110 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("fk".into(), Value::Integer(i));
+            left.insert(&r);
+        }
+        let customers = make_customers();
+        let report = pullback_curvature(&left, &customers, "fk", "customer_id");
+        assert_eq!(report.unmatched, 10);
+        assert_eq!(report.matched, 0);
+    }
+
+    /// TDD-4.6: Report fields are finite and consistent.
+    #[test]
+    fn tdd_4_6_report_consistency() {
+        let orders = make_orders();
+        let customers = make_customers();
+        let report = pullback_curvature(&orders, &customers, "customer_id", "customer_id");
+        assert!(report.k_left.is_finite());
+        assert!(report.k_right.is_finite());
+        assert!(report.k_pullback.is_finite());
+        assert!(
+            (report.delta_k - (report.k_pullback - report.k_left)).abs() < 1e-10,
+            "ΔK should equal K_pullback - K_left"
+        );
+        assert_eq!(report.matched + report.unmatched, 100);
     }
 }

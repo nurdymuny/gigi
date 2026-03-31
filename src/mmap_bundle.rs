@@ -15,6 +15,7 @@ use serde_json::Value as JsonValue;
 
 use crate::bundle::{matches_filter, AnomalyRecord, BundleStats, BundleStore, CurvatureStats, FieldStats, QueryCondition, QueryPlan, TransactionOp, TransactionResult, VectorMetric};
 use crate::curvature;
+use crate::spectral;
 use crate::dhoom::{parse_fiber, DhoomRecordParser, Fiber, Modifier};
 use crate::types::{BasePoint, BundleSchema, FieldDef, Record, Value};
 
@@ -1428,6 +1429,34 @@ impl<'a> BundleRef<'a> {
             BundleRef::Overlay(_) => 0.0,
         }
     }
+
+    pub fn betti_numbers(&self) -> (usize, usize) {
+        match self {
+            BundleRef::Heap(s) => spectral::betti_numbers(s),
+            BundleRef::Overlay(_) => (0, 0),
+        }
+    }
+
+    pub fn entropy(&self) -> f64 {
+        match self {
+            BundleRef::Heap(s) => spectral::entropy(s),
+            BundleRef::Overlay(_) => 0.0,
+        }
+    }
+
+    pub fn spectral_gap(&self) -> f64 {
+        match self {
+            BundleRef::Heap(s) => spectral::spectral_gap(s),
+            BundleRef::Overlay(_) => 0.0,
+        }
+    }
+
+    pub fn free_energy(&self, tau: f64) -> f64 {
+        match self {
+            BundleRef::Heap(s) => curvature::free_energy(s, tau),
+            BundleRef::Overlay(_) => 0.0,
+        }
+    }
 }
 
 // ── BundleMut: Unified mutable access to heap or mmap bundles ──────────────
@@ -1654,6 +1683,34 @@ impl<'a> BundleMut<'a> {
     pub fn holonomy(&self, loop_keys: &[Record]) -> f64 {
         match self {
             BundleMut::Heap(s) => curvature::holonomy(s, loop_keys),
+            BundleMut::Overlay(_) => 0.0,
+        }
+    }
+
+    pub fn betti_numbers(&self) -> (usize, usize) {
+        match self {
+            BundleMut::Heap(s) => spectral::betti_numbers(s),
+            BundleMut::Overlay(_) => (0, 0),
+        }
+    }
+
+    pub fn entropy(&self) -> f64 {
+        match self {
+            BundleMut::Heap(s) => spectral::entropy(s),
+            BundleMut::Overlay(_) => 0.0,
+        }
+    }
+
+    pub fn spectral_gap(&self) -> f64 {
+        match self {
+            BundleMut::Heap(s) => spectral::spectral_gap(s),
+            BundleMut::Overlay(_) => 0.0,
+        }
+    }
+
+    pub fn free_energy(&self, tau: f64) -> f64 {
+        match self {
+            BundleMut::Heap(s) => curvature::free_energy(s, tau),
             BundleMut::Overlay(_) => 0.0,
         }
     }

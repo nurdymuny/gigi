@@ -1440,6 +1440,14 @@ pub enum BundleMut<'a> {
 }
 
 impl<'a> BundleMut<'a> {
+    /// Convert to a read-only BundleRef (borrows self).
+    pub fn as_ref(&self) -> BundleRef<'_> {
+        match self {
+            BundleMut::Heap(s) => BundleRef::Heap(s),
+            BundleMut::Overlay(o) => BundleRef::Overlay(o),
+        }
+    }
+
     // ── Read methods (same as BundleRef) ───────────────────────────────────
 
     pub fn as_heap(&self) -> Option<&BundleStore> {

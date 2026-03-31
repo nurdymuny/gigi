@@ -3946,10 +3946,7 @@ async fn gql_query(
                 )
             }
         };
-        let result = match store.as_heap_mut() {
-            Some(s) => execute_gql_on_store(s, &stmt),
-            None => Err("GQL writes require heap mode".to_string()),
-        };
+        let result = execute_gql_on_store(&mut store, &stmt);
         match result {
             Ok(r) => exec_result_to_response(r),
             Err(e) => (
@@ -3968,10 +3965,7 @@ async fn gql_query(
                 )
             }
         };
-        let result = match store.as_heap() {
-            Some(s) => execute_gql_on_store_read(s, &stmt),
-            None => Err("GQL reads require heap mode".to_string()),
-        };
+        let result = execute_gql_on_store_read(&store, &stmt);
         match result {
             Ok(r) => exec_result_to_response(r),
             Err(e) => (
@@ -3984,7 +3978,7 @@ async fn gql_query(
 
 /// Execute a GQL statement that needs mutable access to a BundleStore.
 fn execute_gql_on_store(
-    store: &mut gigi::bundle::BundleStore,
+    store: &mut gigi::mmap_bundle::BundleMut<'_>,
     stmt: &gigi::parser::Statement,
 ) -> Result<gigi::parser::ExecResult, String> {
     use gigi::bundle::QueryCondition as QC;
@@ -4068,13 +4062,13 @@ fn execute_gql_on_store(
             Ok(ExecResult::Count(n))
         }
         // For read-only ops via mutable ref, delegate
-        _ => execute_gql_on_store_read(store, stmt),
+        _ => execute_gql_on_store_read(&store.as_ref(), stmt),
     }
 }
 
 /// Execute a GQL statement that only needs read access.
 fn execute_gql_on_store_read(
-    store: &gigi::bundle::BundleStore,
+    store: &gigi::mmap_bundle::BundleRef<'_>,
     stmt: &gigi::parser::Statement,
 ) -> Result<gigi::parser::ExecResult, String> {
     use gigi::bundle::QueryCondition as QC;
@@ -4176,7 +4170,33 @@ fn execute_gql_on_store_read(
         Statement::Integrate { over, measures, .. } => {
             if let Some(gb_field) = over {
                 let agg_field = measures.first().map(|m| m.field.as_str()).unwrap_or("*");
-                let groups = gigi::aggregation::group_by(store, gb_field, agg_field);
+                // Inline group_by using BundleRef::records() — works for both heap & mmap
+                let mut groups: std::collections::HashMap<gigi::types::Value, gigi::aggregation::AggResult> =
+                    std::collections::HashMap::new();
+                for rec in store.records() {
+                    let group_val = match rec.get(gb_field) {
+                        Some(v) => v.clone(),
+                        None => continue,
+                    };
+                    let agg_val = match rec.get(agg_field).and_then(|v| v.as_f64()) {
+                        Some(v) => v,
+                        None => continue,
+                    };
+                    let entry = groups
+                        .entry(group_val)
+                        .or_insert(gigi::aggregation::AggResult {
+                            count: 0,
+                            sum: 0.0,
+                            sum_sq: 0.0,
+                            min: f64::INFINITY,
+                            max: f64::NEG_INFINITY,
+                        });
+                    entry.count += 1;
+                    entry.sum += agg_val;
+                    entry.sum_sq += agg_val * agg_val;
+                    entry.min = entry.min.min(agg_val);
+                    entry.max = entry.max.max(agg_val);
+                }
                 let mut rows = Vec::new();
                 for (key, agg_result) in &groups {
                     let mut row = std::collections::HashMap::new();
@@ -4204,37 +4224,40 @@ fn execute_gql_on_store_read(
             }
         }
         Statement::Curvature { .. } => {
-            let k = gigi::curvature::scalar_curvature(store);
+            let k = store.scalar_curvature();
             Ok(ExecResult::Scalar(k))
         }
         Statement::Spectral { .. } => {
-            let lambda1 = gigi::spectral::spectral_gap(store);
+            let lambda1 = store
+                .as_heap()
+                .map(gigi::spectral::spectral_gap)
+                .unwrap_or(0.0);
             Ok(ExecResult::Scalar(lambda1))
         }
         Statement::Consistency { .. } => {
-            let k = gigi::curvature::scalar_curvature(store);
+            let k = store.scalar_curvature();
             Ok(ExecResult::Scalar(if k.abs() < 1e-10 { 0.0 } else { k }))
         }
         Statement::Health { .. } => {
-            let k = gigi::curvature::scalar_curvature(store);
+            let k = store.scalar_curvature();
             Ok(ExecResult::Stats(GqlStats {
                 curvature: k,
                 confidence: gigi::curvature::confidence(k),
                 record_count: store.len(),
                 storage_mode: store.storage_mode().to_string(),
-                base_fields: store.schema.base_fields.len(),
-                fiber_fields: store.schema.fiber_fields.len(),
+                base_fields: store.schema().base_fields.len(),
+                fiber_fields: store.schema().fiber_fields.len(),
             }))
         }
         Statement::Describe { .. } => {
-            let k = gigi::curvature::scalar_curvature(store);
+            let k = store.scalar_curvature();
             Ok(ExecResult::Stats(GqlStats {
                 curvature: k,
                 confidence: gigi::curvature::confidence(k),
                 record_count: store.len(),
                 storage_mode: store.storage_mode().to_string(),
-                base_fields: store.schema.base_fields.len(),
-                fiber_fields: store.schema.fiber_fields.len(),
+                base_fields: store.schema().base_fields.len(),
+                fiber_fields: store.schema().fiber_fields.len(),
             }))
         }
         _ => Ok(ExecResult::Ok),

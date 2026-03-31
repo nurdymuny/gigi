@@ -1854,38 +1854,83 @@ impl BundleStore {
             (None, None) => None,
         };
 
-        // Phase 3: Fetch records and apply residual predicates
-        // If OR was resolved via bitmap, skip the residual or_filter.
-        let mut results: Vec<Record> = if let Some(bits) = candidate_bits {
-            bits.iter()
-                .filter_map(|bp32| {
-                    let bp = self.bp_reverse.get(&bp32).copied().unwrap_or(bp32 as u64);
-                    self.reconstruct(bp)
-                })
-                .filter(|record| {
-                    residual.iter().all(|c| c.matches(record))
-                        && (or_resolved || matches_or_filter(record, or_conditions))
-                })
-                .collect()
+        // ── Streaming fast-path: no sort → early-terminate at offset+limit ──
+        // When no sort is requested, we can yield matching records lazily and
+        // stop once we have enough, avoiding O(N) buffering on large bundles.
+        if sort_by.is_none() {
+            let start = offset.unwrap_or(0);
+            let take_count = limit.map(|l| start.saturating_add(l));
+
+            let iter: Box<dyn Iterator<Item = Record>> = if let Some(bits) = candidate_bits {
+                Box::new(
+                    bits.into_iter()
+                        .filter_map(|bp32| {
+                            let bp = self.bp_reverse.get(&bp32).copied().unwrap_or(bp32 as u64);
+                            self.reconstruct(bp)
+                        })
+                        .filter(move |record| {
+                            residual.iter().all(|c| c.matches(record))
+                                && (or_resolved || matches_or_filter(record, or_conditions))
+                        }),
+                )
+            } else {
+                Box::new(
+                    self.records()
+                        .filter(move |record| matches_filter(record, conditions, or_conditions)),
+                )
+            };
+
+            let results: Vec<Record> = match take_count {
+                Some(n) => iter.skip(start).take(n - start).collect(),
+                None => iter.skip(start).collect(),
+            };
+            return results;
+        }
+
+        // ── Sorted path: must buffer all matching records ──
+        // Apply per-query memory budget: cap at GIGI_QUERY_MAX_ROWS (default 10M).
+        let max_rows: usize = std::env::var("GIGI_QUERY_MAX_ROWS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10_000_000);
+
+        let mut results: Vec<Record> = Vec::new();
+        if let Some(bits) = candidate_bits {
+            for bp32 in bits.iter() {
+                let bp = self.bp_reverse.get(&bp32).copied().unwrap_or(bp32 as u64);
+                if let Some(record) = self.reconstruct(bp) {
+                    if residual.iter().all(|c| c.matches(&record))
+                        && (or_resolved || matches_or_filter(&record, or_conditions))
+                    {
+                        results.push(record);
+                        if results.len() > max_rows {
+                            break;
+                        }
+                    }
+                }
+            }
         } else {
-            self.records()
-                .filter(|record| matches_filter(record, conditions, or_conditions))
-                .collect()
-        };
+            for record in self.records() {
+                if matches_filter(&record, conditions, or_conditions) {
+                    results.push(record);
+                    if results.len() > max_rows {
+                        break;
+                    }
+                }
+            }
+        }
 
         // Phase 4: Sort
-        if let Some(field) = sort_by {
-            let field = field.to_string();
-            results.sort_by(|a, b| {
-                let va = a.get(&field).unwrap_or(&Value::Null);
-                let vb = b.get(&field).unwrap_or(&Value::Null);
-                if sort_desc {
-                    vb.cmp(va)
-                } else {
-                    va.cmp(vb)
-                }
-            });
-        }
+        let field = sort_by.unwrap().to_string();
+        results.sort_by(|a, b| {
+            let va = a.get(&field).unwrap_or(&Value::Null);
+            let vb = b.get(&field).unwrap_or(&Value::Null);
+            if sort_desc {
+                vb.cmp(va)
+            } else {
+                va.cmp(vb)
+            }
+        });
 
         // Phase 5: Offset + Limit
         let start = offset.unwrap_or(0);
@@ -2574,13 +2619,48 @@ impl BundleStore {
         offset: Option<usize>,
         fields: Option<&[&str]>,
     ) -> (Vec<Record>, usize) {
-        let all_matching: Vec<Record> = self
-            .records()
-            .filter(|record| matches_filter(record, conditions, or_conditions))
-            .collect();
-        let total = all_matching.len();
+        let has_sort = sort_fields.is_some_and(|s| !s.is_empty());
 
-        let mut results = all_matching;
+        // ── Streaming fast-path: no sort → early-terminate at offset+limit ──
+        if !has_sort {
+            let start = offset.unwrap_or(0);
+            let take_count = limit.map(|l| start.saturating_add(l));
+
+            let matching = self
+                .records()
+                .filter(|record| matches_filter(record, conditions, or_conditions));
+
+            let results: Vec<Record> = match take_count {
+                Some(n) => matching.take(n).skip(start).collect(),
+                None => matching.skip(start).collect(),
+            };
+
+            // Cheap count-only pass for exact total (no record allocation).
+            let total = self
+                .records()
+                .filter(|record| matches_filter(record, conditions, or_conditions))
+                .count();
+
+            let projected = Self::project_records(results, fields);
+            return (projected, total);
+        }
+
+        // ── Sorted path: must buffer all matching records ──
+        let max_rows: usize = std::env::var("GIGI_QUERY_MAX_ROWS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(10_000_000);
+
+        let mut results: Vec<Record> = Vec::new();
+        for record in self.records() {
+            if matches_filter(&record, conditions, or_conditions) {
+                results.push(record);
+                if results.len() > max_rows {
+                    break;
+                }
+            }
+        }
+        let total = results.len();
 
         // Multi-field sort
         if let Some(sort_fields) = sort_fields {
@@ -2606,9 +2686,14 @@ impl BundleStore {
             results.truncate(lim);
         }
 
-        // Project fields
-        if let Some(fields) = fields {
-            results = results
+        let projected = Self::project_records(results, fields);
+        (projected, total)
+    }
+
+    /// Apply field projection to a result set.
+    fn project_records(results: Vec<Record>, fields: Option<&[&str]>) -> Vec<Record> {
+        match fields {
+            Some(fields) => results
                 .into_iter()
                 .map(|record| {
                     let mut proj = Record::new();
@@ -2619,10 +2704,9 @@ impl BundleStore {
                     }
                     proj
                 })
-                .collect();
+                .collect(),
+            None => results,
         }
-
-        (results, total)
     }
 
     // ── Vector Similarity Search ───────────────────────────────

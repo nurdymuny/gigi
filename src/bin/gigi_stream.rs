@@ -759,11 +759,12 @@ async fn rate_limit_middleware(
     Ok(next.run(req).await)
 }
 
-async fn health(State(state): State<Arc<StreamState>>) -> Json<HealthResponse> {
+async fn health(State(state): State<Arc<StreamState>>) -> (StatusCode, Json<HealthResponse>) {
     let is_ready = state.ready.load(Ordering::Acquire);
     if !is_ready {
-        // Don't touch engine lock — replay holds a write lock for the duration.
-        return Json(HealthResponse {
+        // Return 503 so load balancers (Fly.io readiness check) know
+        // this instance is not ready to serve traffic during WAL replay.
+        return (StatusCode::SERVICE_UNAVAILABLE, Json(HealthResponse {
             status: "loading",
             engine: "gigi-stream",
             version: "0.1.0",
@@ -771,11 +772,11 @@ async fn health(State(state): State<Arc<StreamState>>) -> Json<HealthResponse> {
             total_records: 0,
             uptime_secs: state.start_time.elapsed().as_secs(),
             loading: Some(true),
-        });
+        }));
     }
     // Use try_read to avoid blocking when snapshot or other write ops hold the lock.
     match state.engine.try_read() {
-        Ok(engine) => Json(HealthResponse {
+        Ok(engine) => (StatusCode::OK, Json(HealthResponse {
             status: "ok",
             engine: "gigi-stream",
             version: "0.1.0",
@@ -783,8 +784,8 @@ async fn health(State(state): State<Arc<StreamState>>) -> Json<HealthResponse> {
             total_records: engine.total_records(),
             uptime_secs: state.start_time.elapsed().as_secs(),
             loading: None,
-        }),
-        Err(_) => Json(HealthResponse {
+        })),
+        Err(_) => (StatusCode::OK, Json(HealthResponse {
             status: "ok",
             engine: "gigi-stream",
             version: "0.1.0",
@@ -792,7 +793,7 @@ async fn health(State(state): State<Arc<StreamState>>) -> Json<HealthResponse> {
             total_records: 0,
             uptime_secs: state.start_time.elapsed().as_secs(),
             loading: Some(true),
-        }),
+        })),
     }
 }
 
@@ -1968,18 +1969,17 @@ async fn list_all_records(
     let limit: Option<usize> = params.get("limit").and_then(|v| v.parse().ok());
     let offset: Option<usize> = params.get("offset").and_then(|v| v.parse().ok());
 
-    // Return all records with optional pagination
-    let all: Vec<Record> = store.records().collect();
+    // Streaming pagination — never buffer the entire bundle
     let start = offset.unwrap_or(0);
-    let sliced: Vec<&Record> = all.iter().skip(start).collect();
-    let limited: Vec<&Record> = match limit {
-        Some(lim) => sliced.into_iter().take(lim).collect(),
-        None => sliced,
-    };
+    let take_count = limit.unwrap_or(usize::MAX);
 
-    let json_records: Vec<serde_json::Value> = limited.iter().map(|r| record_to_json(r)).collect();
+    let json_records: Vec<serde_json::Value> = store
+        .records()
+        .skip(start)
+        .take(take_count)
+        .map(|r| record_to_json(&r))
+        .collect();
     let count = json_records.len();
-    let _total = all.len();
 
     Ok(Json(ApiResponse {
         data: json_records,
@@ -4537,13 +4537,54 @@ async fn main() {
     eprintln!("Listening on {addr} — starting WAL replay in background…");
 
     // Spawn WAL replay on a blocking thread so HTTP is reachable immediately.
+    // After replay, snapshot to DHOOM and reopen in mmap mode to drop the
+    // ~31GB heap copy down to ~100MB RSS + OS page cache.
     let replay_state = state.clone();
+    let data_dir_for_replay = std::path::PathBuf::from(
+        std::env::var("GIGI_DATA_DIR").unwrap_or_else(|_| "./gigi_data".to_string()),
+    );
     tokio::task::spawn_blocking(move || {
-        let mut engine = replay_state.engine.write().unwrap();
-        if let Err(e) = engine.replay_wal() {
-            eprintln!("WAL replay error: {e}");
+        // Phase 1: WAL replay into heap bundles
+        {
+            let mut engine = replay_state.engine.write().unwrap();
+            if let Err(e) = engine.replay_wal() {
+                eprintln!("WAL replay error: {e}");
+                drop(engine);
+                replay_state.ready.store(true, Ordering::Release);
+                eprintln!("Engine ready (replay failed, using empty state)");
+                return;
+            }
+
+            // Phase 2: Snapshot heap bundles to DHOOM files + compact WAL
+            let total = engine.total_records();
+            if total > 0 {
+                eprintln!("WAL replay complete ({total} records). Snapshotting to DHOOM…");
+                if let Err(e) = engine.snapshot() {
+                    eprintln!("Post-replay snapshot failed: {e}");
+                    // Non-fatal: we keep running on heap. Mmap upgrade skipped.
+                    drop(engine);
+                    replay_state.ready.store(true, Ordering::Release);
+                    eprintln!("Engine ready — running on heap (snapshot failed)");
+                    return;
+                }
+                eprintln!("DHOOM snapshot written. Reopening in mmap mode…");
+            }
         }
-        drop(engine);
+
+        // Phase 3: Reopen in mmap mode (heap engine is dropped here)
+        match Engine::open_mmap(&data_dir_for_replay) {
+            Ok(mmap_engine) => {
+                let total = mmap_engine.total_records();
+                let mut engine = replay_state.engine.write().unwrap();
+                *engine = mmap_engine;
+                drop(engine);
+                eprintln!("Mmap engine active — {total} records, RSS reduced to page cache");
+            }
+            Err(e) => {
+                eprintln!("Mmap reopen failed: {e} — keeping heap engine");
+            }
+        }
+
         replay_state.ready.store(true, Ordering::Release);
         eprintln!("Engine ready — all endpoints active");
     });

@@ -4,6 +4,9 @@ primary_region = "iad"
 [build]
   dockerfile = "Dockerfile"
 
+[deploy]
+  strategy = "bluegreen"
+
 [env]
   PORT = "3142"
   GIGI_DATA_DIR = "/data"
@@ -17,13 +20,13 @@ primary_region = "iad"
   auto_stop_threshold = "off"
 
 [checks]
-  [checks.health]
+  [checks.readiness]
     type = "http"
     port = 3142
     path = "/v1/health"
-    interval = "30s"
-    timeout = "5s"
-    grace_period = "900s"
+    interval = "5s"
+    timeout = "3s"
+    grace_period = "600s"
 
 [[vm]]
   memory = "32gb"

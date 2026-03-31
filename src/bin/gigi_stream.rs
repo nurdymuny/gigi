@@ -4547,46 +4547,62 @@ async fn main() {
     eprintln!("Listening on {addr} — starting WAL replay in background…");
 
     // Spawn WAL replay on a blocking thread so HTTP is reachable immediately.
-    // After replay, snapshot to DHOOM files so future restarts can load
-    // directly from snapshots (faster than full WAL replay).
-    //
-    // NOTE: Phase 3 (mmap swap) is disabled because OverlayBundle does not
-    // implement the full BundleStore query API. engine.bundle() returns None
-    // for mmap bundles, crashing 6 handlers and breaking 25+ more.
-    // The streaming query fast-path (skip/take early termination) prevents
-    // the unbounded query allocations that caused the original OOM.
-    // Mmap mode will be re-enabled once OverlayBundle supports queries.
+    // After replay, snapshot to DHOOM and reopen in mmap mode to drop the
+    // ~13GB heap copy down to ~200MB RSS + OS page cache.
     let replay_state = state.clone();
+    let data_dir_for_replay = std::path::PathBuf::from(
+        std::env::var("GIGI_DATA_DIR").unwrap_or_else(|_| "./gigi_data".to_string()),
+    );
     tokio::task::spawn_blocking(move || {
-        let mut engine = replay_state.engine.write().unwrap();
-
         // Phase 1: WAL replay into heap bundles
-        if let Err(e) = engine.replay_wal() {
-            eprintln!("WAL replay error: {e}");
-            drop(engine);
-            replay_state.ready.store(true, Ordering::Release);
-            eprintln!("Engine ready (replay failed, using empty state)");
-            return;
-        }
+        {
+            let mut engine = replay_state.engine.write().unwrap();
+            if let Err(e) = engine.replay_wal() {
+                eprintln!("WAL replay error: {e}");
+                drop(engine);
+                replay_state.ready.store(true, Ordering::Release);
+                eprintln!("Engine ready (replay failed, using empty state)");
+                return;
+            }
 
-        // Phase 2: Snapshot heap bundles to DHOOM files + compact WAL
-        let total = engine.total_records();
-        if total > 0 {
-            eprintln!("WAL replay complete ({total} records). Snapshotting to DHOOM…");
-            if let Err(e) = engine.snapshot() {
-                eprintln!("Post-replay snapshot failed (non-fatal): {e}");
-            } else {
-                eprintln!("DHOOM snapshot written.");
+            // Phase 2: Snapshot heap bundles to DHOOM files + compact WAL
+            let total = engine.total_records();
+            if total > 0 {
+                eprintln!("WAL replay complete ({total} records). Snapshotting to DHOOM…");
+                if let Err(e) = engine.snapshot() {
+                    eprintln!("Post-replay snapshot failed: {e}");
+                    // Non-fatal: we keep running on heap. Mmap upgrade skipped.
+                    drop(engine);
+                    replay_state.ready.store(true, Ordering::Release);
+                    eprintln!("Engine ready — running on heap (snapshot failed)");
+                    return;
+                }
+                eprintln!("DHOOM snapshot written. Reopening in mmap mode…");
             }
         }
 
-        // Reclaim temporary allocations from replay/snapshot encoding
-        #[cfg(unix)]
-        unsafe { libc::malloc_trim(0); }
+        // Phase 3: Reopen in mmap mode (heap engine is dropped here)
+        match Engine::open_mmap(&data_dir_for_replay) {
+            Ok(mmap_engine) => {
+                let total = mmap_engine.total_records();
+                let mut engine = replay_state.engine.write().unwrap();
+                *engine = mmap_engine;
+                drop(engine);
 
-        drop(engine);
+                // Force glibc to return freed heap pages to the OS.
+                // Without this, the allocator holds ~13GB of freed arenas.
+                #[cfg(unix)]
+                unsafe { libc::malloc_trim(0); }
+
+                eprintln!("Mmap engine active — {total} records, RSS reduced to page cache");
+            }
+            Err(e) => {
+                eprintln!("Mmap reopen failed: {e} — keeping heap engine");
+            }
+        }
+
         replay_state.ready.store(true, Ordering::Release);
-        eprintln!("Engine ready — {total} records, all endpoints active");
+        eprintln!("Engine ready — all endpoints active");
     });
 
     axum::serve(

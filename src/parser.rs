@@ -1558,9 +1558,14 @@ impl Parser {
     fn parse_free_energy(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
         self.expect_keyword("AT")?;
-        let tau_str = self.expect_word()?;
-        let tau: f64 = tau_str.parse().map_err(|_| format!("expected float for tau, got '{}'", tau_str))?;
-        Ok(Statement::FreeEnergy { bundle: name, tau })
+        match self.tokens.get(self.pos) {
+            Some(Token::Number(n)) => {
+                let tau = *n;
+                self.pos += 1;
+                Ok(Statement::FreeEnergy { bundle: name, tau })
+            }
+            other => Err(format!("expected number for tau, got {:?}", other)),
+        }
     }
 
     // ── GQL: COMPLETE / PROPAGATE ──

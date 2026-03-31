@@ -4416,6 +4416,8 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         | Curvature { bundle, .. } | Spectral { bundle, .. }
         | Consistency { bundle, .. } | Health { bundle, .. }
         | Describe { bundle, .. }
+        | Betti { bundle, .. } | Entropy { bundle, .. }
+        | FreeEnergy { bundle, .. }
         // v2.1
         | Compact { bundle, .. } | Analyze { bundle, .. }
         | Vacuum { bundle, .. } | RebuildIndex { bundle, .. }

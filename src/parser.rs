@@ -4051,13 +4051,14 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let bp_b = store.base_point(&to_rec);
             match store.geodesic_distance(bp_a, bp_b, *max_hops) {
                 Some(d) => Ok(ExecResult::Scalar(d)),
-                None => Ok(ExecResult::Scalar(f64::INFINITY)),
+                None => Ok(ExecResult::Scalar(-1.0)),
             }
         }
         Statement::MetricTensor { bundle } => {
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
             let info = store.metric_tensor();
-            Ok(ExecResult::Scalar(info.condition_number))
+            let cond = if info.condition_number.is_finite() { info.condition_number } else { -1.0 };
+            Ok(ExecResult::Scalar(cond))
         }
     }
 }

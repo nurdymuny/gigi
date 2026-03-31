@@ -1499,7 +1499,7 @@ impl<'a> BundleRef<'a> {
             BundleRef::Overlay(_) => metric::MetricTensorInfo {
                 matrix: vec![],
                 eigenvalues: vec![],
-                condition_number: f64::INFINITY,
+                condition_number: 0.0,
                 effective_dimension: 0.0,
                 field_names: vec![],
             },
@@ -1788,7 +1788,7 @@ impl<'a> BundleMut<'a> {
             BundleMut::Overlay(_) => metric::MetricTensorInfo {
                 matrix: vec![],
                 eigenvalues: vec![],
-                condition_number: f64::INFINITY,
+                condition_number: 0.0,
                 effective_dimension: 0.0,
                 field_names: vec![],
             },

@@ -128,7 +128,7 @@ pub fn metric_tensor(store: &BundleStore) -> MetricTensorInfo {
         return MetricTensorInfo {
             matrix: vec![],
             eigenvalues: vec![],
-            condition_number: f64::INFINITY,
+            condition_number: 0.0,
             effective_dimension: 0.0,
             field_names: vec![],
         };

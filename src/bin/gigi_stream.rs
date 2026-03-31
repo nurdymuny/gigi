@@ -1713,10 +1713,11 @@ async fn metric_tensor_report(
         )
     })?;
     let info = store.metric_tensor();
+    let cond = if info.condition_number.is_finite() { info.condition_number } else { 0.0 };
     Ok(Json(MetricTensorReport {
         matrix: info.matrix,
         eigenvalues: info.eigenvalues,
-        condition_number: info.condition_number,
+        condition_number: cond,
         effective_dimension: info.effective_dimension,
         field_names: info.field_names,
     }))
@@ -4430,12 +4431,13 @@ fn execute_gql_on_store_read(
             let bp_b = store.as_heap().map(|s| s.base_point(&to_rec)).unwrap_or(0);
             match store.geodesic_distance(bp_a, bp_b, *max_hops) {
                 Some(d) => Ok(ExecResult::Scalar(d)),
-                None => Ok(ExecResult::Scalar(f64::INFINITY)),
+                None => Ok(ExecResult::Scalar(-1.0)),
             }
         }
         Statement::MetricTensor { .. } => {
             let info = store.metric_tensor();
-            Ok(ExecResult::Scalar(info.condition_number))
+            let cond = if info.condition_number.is_finite() { info.condition_number } else { -1.0 };
+            Ok(ExecResult::Scalar(cond))
         }
         Statement::Health { .. } => {
             let k = store.scalar_curvature();

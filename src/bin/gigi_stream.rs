@@ -4578,6 +4578,12 @@ async fn main() {
                 let mut engine = replay_state.engine.write().unwrap();
                 *engine = mmap_engine;
                 drop(engine);
+
+                // Force glibc to return freed heap pages to the OS.
+                // Without this, the allocator holds ~31GB of freed arenas.
+                #[cfg(unix)]
+                unsafe { libc::malloc_trim(0); }
+
                 eprintln!("Mmap engine active — {total} records, RSS reduced to page cache");
             }
             Err(e) => {

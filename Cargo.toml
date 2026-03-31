@@ -24,6 +24,7 @@ tower-http = { version = "0.6", features = ["cors"] }
 futures-util = "0.3"
 nalgebra = "0.33"
 memmap2 = "0.9"
+libc = "0.2"
 
 [[bin]]
 name = "gigi-convert"

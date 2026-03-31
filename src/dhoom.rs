@@ -1293,21 +1293,12 @@ fn encode_bundle(name: &str, records: &[Value], out: &mut String, indent: usize)
 }
 
 /// Detect if delta encoding would be beneficial for a sequence of values.
-fn detect_delta(values: &[&Value]) -> bool {
-    if values.len() < 3 {
-        return false;
-    }
-    let nums: Option<Vec<i64>> = values.iter().map(|v| v.as_i64()).collect();
-    let nums = match nums {
-        Some(n) => n,
-        None => return false,
-    };
-    let deltas: Vec<i64> = std::iter::once(nums[0])
-        .chain(nums.windows(2).map(|w| w[1] - w[0]))
-        .collect();
-    let abs_len: usize = nums.iter().map(|n| n.to_string().len()).sum();
-    let delta_len: usize = deltas.iter().map(|d| d.to_string().len()).sum();
-    delta_len * 10 < abs_len * 7
+///
+/// DISABLED: delta-encoded fields are incompatible with mmap mode (stateful
+/// decoding prevents O(1) random access). Keeping this function body for
+/// reference; re-enable only after MmapBundle supports delta fields.
+fn detect_delta(_values: &[&Value]) -> bool {
+    false
 }
 
 /// Detect if a sequence of values forms an arithmetic progression.
@@ -1956,7 +1947,9 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
             ]
         });
         let dhoom = encode(&data).unwrap();
-        assert!(dhoom.contains("ts^"), "Should use delta modifier");
+        // Delta encoding is disabled for mmap compatibility.
+        // The data should still encode (as variable fields) and roundtrip.
+        assert!(!dhoom.contains("ts^"), "Delta should be disabled for mmap compat");
     }
 
     #[test]

@@ -195,6 +195,15 @@ pub enum Statement {
         bundle: String,
         tau: f64,
     },
+    Geodesic {
+        bundle: String,
+        from_keys: Vec<(String, Literal)>,
+        to_keys: Vec<(String, Literal)>,
+        max_hops: usize,
+    },
+    MetricTensor {
+        bundle: String,
+    },
     Explain {
         inner: Box<Statement>,
     },
@@ -823,6 +832,8 @@ impl Parser {
             "BETTI" => self.parse_betti(),
             "ENTROPY" => self.parse_entropy(),
             "FREEENERGY" => self.parse_free_energy(),
+            "GEODESIC" => self.parse_geodesic(),
+            "METRIC" => self.parse_metric_tensor(),
             "COMPLETE" => self.parse_complete(),
             "PROPAGATE" => self.parse_propagate(),
             "SUGGEST_ADJACENCY" => self.parse_suggest_adjacency(),
@@ -1566,6 +1577,36 @@ impl Parser {
             }
             other => Err(format!("expected number for tau, got {:?}", other)),
         }
+    }
+
+    fn parse_geodesic(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("FROM")?;
+        let from_keys = self.parse_kv_pairs()?;
+        if from_keys.is_empty() {
+            return Err("GEODESIC: expected key=value pairs after FROM".into());
+        }
+        self.expect_keyword("TO")?;
+        let to_keys = self.parse_kv_pairs()?;
+        if to_keys.is_empty() {
+            return Err("GEODESIC: expected key=value pairs after TO".into());
+        }
+        let mut max_hops = 50;
+        if self.is_keyword("MAX_HOPS") {
+            self.advance();
+            max_hops = self.expect_usize()?;
+        }
+        Ok(Statement::Geodesic {
+            bundle,
+            from_keys,
+            to_keys,
+            max_hops,
+        })
+    }
+
+    fn parse_metric_tensor(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        Ok(Statement::MetricTensor { bundle })
     }
 
     // ── GQL: COMPLETE / PROPAGATE ──
@@ -4001,6 +4042,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
+        }
+        Statement::Geodesic { bundle, from_keys, to_keys, max_hops } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let from_rec: crate::types::Record = from_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
+            let to_rec: crate::types::Record = to_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
+            let bp_a = store.base_point(&from_rec);
+            let bp_b = store.base_point(&to_rec);
+            match store.geodesic_distance(bp_a, bp_b, *max_hops) {
+                Some(d) => Ok(ExecResult::Scalar(d)),
+                None => Ok(ExecResult::Scalar(f64::INFINITY)),
+            }
+        }
+        Statement::MetricTensor { bundle } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let info = store.metric_tensor();
+            Ok(ExecResult::Scalar(info.condition_number))
         }
     }
 }

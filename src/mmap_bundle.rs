@@ -16,6 +16,7 @@ use serde_json::Value as JsonValue;
 use crate::bundle::{matches_filter, AnomalyRecord, BundleStats, BundleStore, CurvatureStats, FieldStats, QueryCondition, QueryPlan, TransactionOp, TransactionResult, VectorMetric};
 use crate::curvature;
 use crate::join;
+use crate::metric;
 use crate::spectral;
 use crate::dhoom::{parse_fiber, DhoomRecordParser, Fiber, Modifier};
 use crate::types::{BasePoint, BundleSchema, FieldDef, Record, Value};
@@ -1479,6 +1480,31 @@ impl<'a> BundleRef<'a> {
             _ => Err("pullback curvature requires heap mode (not overlay)".into()),
         }
     }
+
+    pub fn geodesic_distance(
+        &self,
+        bp_a: crate::types::BasePoint,
+        bp_b: crate::types::BasePoint,
+        max_hops: usize,
+    ) -> Option<f64> {
+        match self {
+            BundleRef::Heap(s) => spectral::geodesic_distance(s, bp_a, bp_b, max_hops),
+            BundleRef::Overlay(_) => None,
+        }
+    }
+
+    pub fn metric_tensor(&self) -> metric::MetricTensorInfo {
+        match self {
+            BundleRef::Heap(s) => metric::metric_tensor(s),
+            BundleRef::Overlay(_) => metric::MetricTensorInfo {
+                matrix: vec![],
+                eigenvalues: vec![],
+                condition_number: f64::INFINITY,
+                effective_dimension: 0.0,
+                field_names: vec![],
+            },
+        }
+    }
 }
 
 // ── BundleMut: Unified mutable access to heap or mmap bundles ──────────────
@@ -1741,6 +1767,31 @@ impl<'a> BundleMut<'a> {
         match self {
             BundleMut::Heap(s) => curvature::thermodynamic_profile(s, taus),
             BundleMut::Overlay(_) => vec![],
+        }
+    }
+
+    pub fn geodesic_distance(
+        &self,
+        bp_a: crate::types::BasePoint,
+        bp_b: crate::types::BasePoint,
+        max_hops: usize,
+    ) -> Option<f64> {
+        match self {
+            BundleMut::Heap(s) => spectral::geodesic_distance(s, bp_a, bp_b, max_hops),
+            BundleMut::Overlay(_) => None,
+        }
+    }
+
+    pub fn metric_tensor(&self) -> metric::MetricTensorInfo {
+        match self {
+            BundleMut::Heap(s) => metric::metric_tensor(s),
+            BundleMut::Overlay(_) => metric::MetricTensorInfo {
+                matrix: vec![],
+                eigenvalues: vec![],
+                condition_number: f64::INFINITY,
+                effective_dimension: 0.0,
+                field_names: vec![],
+            },
         }
     }
 

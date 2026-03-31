@@ -411,6 +411,128 @@ pub fn coarse_grain(store: &BundleStore, scale: usize) -> (Vec<Vec<BasePoint>>, 
     (group_list, entropy)
 }
 
+// ── Geodesic Distance (§2.1) ───────────────────────────────────────────────
+
+use std::cmp::Ordering;
+
+/// Entry in the Dijkstra priority queue (min-heap by distance).
+#[derive(PartialEq)]
+struct DijkState {
+    cost: f64,
+    node: BasePoint,
+}
+
+impl Eq for DijkState {}
+
+impl PartialOrd for DijkState {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for DijkState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Reverse for min-heap
+        other
+            .cost
+            .partial_cmp(&self.cost)
+            .unwrap_or(Ordering::Equal)
+    }
+}
+
+/// Geodesic distance on the data manifold.
+///
+/// Shortest path on the field index graph weighted by fiber metric distance.
+/// Returns `None` if no path exists (disconnected components) or if the
+/// path exceeds `max_hops` nodes.
+///
+/// $d_g(p, q) = \min_{\gamma: p \to q} \sum_{(i,j) \in \gamma} g_F(r_i, r_j)$
+pub fn geodesic_distance(
+    store: &BundleStore,
+    bp_a: BasePoint,
+    bp_b: BasePoint,
+    max_hops: usize,
+) -> Option<f64> {
+    if bp_a == bp_b {
+        return Some(0.0);
+    }
+
+    let adj = field_index_graph(store);
+    if !adj.contains_key(&bp_a) || !adj.contains_key(&bp_b) {
+        return None;
+    }
+
+    let fiber_fields = &store.schema.fiber_fields;
+
+    // Cache fiber values for visited nodes
+    let mut fiber_cache: HashMap<BasePoint, Vec<crate::types::Value>> = HashMap::new();
+    let get_fiber = |bp: BasePoint, cache: &mut HashMap<BasePoint, Vec<crate::types::Value>>| -> Option<Vec<crate::types::Value>> {
+        if let Some(v) = cache.get(&bp) {
+            return Some(v.clone());
+        }
+        let fiber = store.get_fiber(bp)?.to_vec();
+        cache.insert(bp, fiber.clone());
+        Some(fiber)
+    };
+
+    // Dijkstra with hop limit
+    let mut dist: HashMap<BasePoint, f64> = HashMap::new();
+    let mut hops: HashMap<BasePoint, usize> = HashMap::new();
+    let mut heap = std::collections::BinaryHeap::new();
+
+    dist.insert(bp_a, 0.0);
+    hops.insert(bp_a, 0);
+    heap.push(DijkState { cost: 0.0, node: bp_a });
+
+    while let Some(DijkState { cost, node }) = heap.pop() {
+        if node == bp_b {
+            return Some(cost);
+        }
+
+        // Skip if we already found a better path
+        if let Some(&best) = dist.get(&node) {
+            if cost > best {
+                continue;
+            }
+        }
+
+        let current_hops = hops[&node];
+        if current_hops >= max_hops {
+            continue;
+        }
+
+        let fiber_node = match get_fiber(node, &mut fiber_cache) {
+            Some(f) => f,
+            None => continue,
+        };
+
+        if let Some(neighbors) = adj.get(&node) {
+            for &nbr in neighbors {
+                let fiber_nbr = match get_fiber(nbr, &mut fiber_cache) {
+                    Some(f) => f,
+                    None => continue,
+                };
+
+                let edge_weight = crate::metric::FiberMetric::distance(
+                    fiber_fields,
+                    &fiber_node,
+                    &fiber_nbr,
+                );
+                let new_cost = cost + edge_weight;
+
+                let is_better = dist.get(&nbr).map_or(true, |&d| new_cost < d);
+                if is_better {
+                    dist.insert(nbr, new_cost);
+                    hops.insert(nbr, current_hops + 1);
+                    heap.push(DijkState { cost: new_cost, node: nbr });
+                }
+            }
+        }
+    }
+
+    None // no path found within max_hops
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -660,5 +782,105 @@ mod tests {
         assert!(entropy(&store) >= 0.0);
         let store2 = make_clustered_store();
         assert!(entropy(&store2) >= 0.0);
+    }
+
+    // ── Sprint B: Geodesic Distance ──
+
+    /// TDD-B.1: Same point → distance 0.
+    #[test]
+    fn tdd_b1_geodesic_same_point() {
+        let store = make_connected_store();
+        let bp = store.base_point(&{
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(0));
+            r
+        });
+        let d = geodesic_distance(&store, bp, bp, 50);
+        assert_eq!(d, Some(0.0));
+    }
+
+    /// TDD-B.2: Connected pair → finite distance.
+    #[test]
+    fn tdd_b2_geodesic_connected_pair() {
+        let store = make_connected_store();
+        let bp_a = store.base_point(&{
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(0));
+            r
+        });
+        let bp_b = store.base_point(&{
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(5));
+            r
+        });
+        let d = geodesic_distance(&store, bp_a, bp_b, 50);
+        assert!(d.is_some(), "Connected points should have a geodesic");
+        assert!(d.unwrap() > 0.0, "Different points should have d > 0");
+        assert!(d.unwrap().is_finite(), "Distance should be finite");
+    }
+
+    /// TDD-B.3: Disconnected clusters → None.
+    #[test]
+    fn tdd_b3_geodesic_disconnected() {
+        let store = make_clustered_store();
+        // id=0 (Red cluster) and id=10 (Blue cluster) are disconnected
+        let bp_a = store.base_point(&{
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(0));
+            r
+        });
+        let bp_b = store.base_point(&{
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(10));
+            r
+        });
+        let d = geodesic_distance(&store, bp_a, bp_b, 50);
+        assert!(d.is_none(), "Disconnected points should have no geodesic");
+    }
+
+    /// TDD-B.4: Triangle inequality d(a,c) ≤ d(a,b) + d(b,c).
+    #[test]
+    fn tdd_b4_geodesic_triangle_inequality() {
+        let store = make_connected_store();
+        let bp = |id: i64| {
+            store.base_point(&{
+                let mut r = Record::new();
+                r.insert("id".into(), Value::Integer(id));
+                r
+            })
+        };
+        let a = bp(0);
+        let b = bp(5);
+        let c = bp(10);
+        let d_ab = geodesic_distance(&store, a, b, 50).unwrap();
+        let d_bc = geodesic_distance(&store, b, c, 50).unwrap();
+        let d_ac = geodesic_distance(&store, a, c, 50).unwrap();
+        assert!(
+            d_ac <= d_ab + d_bc + 1e-10,
+            "Triangle inequality violated: d(a,c)={d_ac} > d(a,b)+d(b,c)={}",
+            d_ab + d_bc
+        );
+    }
+
+    /// TDD-B.5: Symmetry d(a,b) = d(b,a).
+    #[test]
+    fn tdd_b5_geodesic_symmetry() {
+        let store = make_connected_store();
+        let bp_a = store.base_point(&{
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(0));
+            r
+        });
+        let bp_b = store.base_point(&{
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(5));
+            r
+        });
+        let d_ab = geodesic_distance(&store, bp_a, bp_b, 50).unwrap();
+        let d_ba = geodesic_distance(&store, bp_b, bp_a, 50).unwrap();
+        assert!(
+            (d_ab - d_ba).abs() < 1e-10,
+            "Symmetry violated: d(a,b)={d_ab} ≠ d(b,a)={d_ba}"
+        );
     }
 }

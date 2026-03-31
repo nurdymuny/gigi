@@ -553,6 +553,21 @@ struct PullbackCurvatureReport {
 }
 
 #[derive(Serialize)]
+struct GeodesicReport {
+    distance: Option<f64>,
+    path_found: bool,
+}
+
+#[derive(Serialize)]
+struct MetricTensorReport {
+    matrix: Vec<Vec<f64>>,
+    eigenvalues: Vec<f64>,
+    condition_number: f64,
+    effective_dimension: f64,
+    field_names: Vec<String>,
+}
+
+#[derive(Serialize)]
 struct AggResult {
     groups: HashMap<String, AggValues>,
 }
@@ -1644,6 +1659,66 @@ async fn free_energy_report(
     Ok(Json(FreeEnergyReport {
         tau,
         free_energy: f,
+    }))
+}
+
+#[derive(Deserialize)]
+struct GeodesicRequest {
+    from: HashMap<String, serde_json::Value>,
+    to: HashMap<String, serde_json::Value>,
+    #[serde(default = "default_max_hops")]
+    max_hops: usize,
+}
+
+fn default_max_hops() -> usize {
+    50
+}
+
+async fn geodesic_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<GeodesicRequest>,
+) -> Result<Json<GeodesicReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    let from_rec: gigi::types::Record = req.from.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect();
+    let to_rec: gigi::types::Record = req.to.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect();
+    let bp_a = store.as_heap().map(|s| s.base_point(&from_rec)).unwrap_or(0);
+    let bp_b = store.as_heap().map(|s| s.base_point(&to_rec)).unwrap_or(0);
+    let dist = store.geodesic_distance(bp_a, bp_b, req.max_hops);
+    Ok(Json(GeodesicReport {
+        distance: dist,
+        path_found: dist.is_some(),
+    }))
+}
+
+async fn metric_tensor_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> Result<Json<MetricTensorReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    let info = store.metric_tensor();
+    Ok(Json(MetricTensorReport {
+        matrix: info.matrix,
+        eigenvalues: info.eigenvalues,
+        condition_number: info.condition_number,
+        effective_dimension: info.effective_dimension,
+        field_names: info.field_names,
     }))
 }
 
@@ -4348,6 +4423,20 @@ fn execute_gql_on_store_read(
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
         }
+        Statement::Geodesic { from_keys, to_keys, max_hops, .. } => {
+            let from_rec: gigi::types::Record = from_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
+            let to_rec: gigi::types::Record = to_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
+            let bp_a = store.as_heap().map(|s| s.base_point(&from_rec)).unwrap_or(0);
+            let bp_b = store.as_heap().map(|s| s.base_point(&to_rec)).unwrap_or(0);
+            match store.geodesic_distance(bp_a, bp_b, *max_hops) {
+                Some(d) => Ok(ExecResult::Scalar(d)),
+                None => Ok(ExecResult::Scalar(f64::INFINITY)),
+            }
+        }
+        Statement::MetricTensor { .. } => {
+            let info = store.metric_tensor();
+            Ok(ExecResult::Scalar(info.condition_number))
+        }
         Statement::Health { .. } => {
             let k = store.scalar_curvature();
             Ok(ExecResult::Stats(GqlStats {
@@ -4418,6 +4507,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         | Describe { bundle, .. }
         | Betti { bundle, .. } | Entropy { bundle, .. }
         | FreeEnergy { bundle, .. }
+        | Geodesic { bundle, .. } | MetricTensor { bundle, .. }
         // v2.1
         | Compact { bundle, .. } | Analyze { bundle, .. }
         | Vacuum { bundle, .. } | RebuildIndex { bundle, .. }
@@ -4627,6 +4717,8 @@ async fn main() {
         .route("/v1/bundles/{name}/betti", get(betti_report))
         .route("/v1/bundles/{name}/entropy", get(entropy_report))
         .route("/v1/bundles/{name}/free-energy", get(free_energy_report))
+        .route("/v1/bundles/{name}/geodesic", post(geodesic_report))
+        .route("/v1/bundles/{name}/metric", get(metric_tensor_report))
         // Anomaly Detection + Health
         .route("/v1/bundles/{name}/anomalies", post(bundle_anomalies))
         .route("/v1/bundles/{name}/health", get(bundle_health))

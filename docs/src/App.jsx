@@ -860,6 +860,71 @@ CONSISTENCY sensors REPAIR;
       <P>Full geometric diagnostic — combines curvature, spectral, and consistency into one report.</P>
       <Code>{`HEALTH sensors;`}</Code>
 
+      <H3>BETTI</H3>
+      <P>Computes Betti numbers of the field index graph — β₀ (connected components) and β₁ (cycle rank). These are graph-theoretic invariants from the 1-skeleton, not persistent homology.</P>
+      <Code title="Syntax">{`BETTI <bundle>;`}</Code>
+      <Code title="Example">{`BETTI sensors;
+-- Returns: { beta_0: 1, beta_1: 171 }
+-- β₀ = 1  → fully connected field index graph
+-- β₁ = 171 → 171 independent cycles (rich topology)`}</Code>
+      <P>Returns:</P>
+      <Table
+        headers={["Field", "Description"]}
+        rows={[
+          ["beta_0", "Connected components — β₀ = 1 means all data reachable"],
+          ["beta_1", "|E| − |V| + β₀ — cycle rank (independent loops in the graph)"],
+        ]}
+      />
+      <Note type="info">These are graph-theoretic Betti numbers computed from the field index adjacency graph, not topological Betti numbers from persistent homology / TDA. β₀ uses union-find over field index bitmaps, β₁ uses the Euler formula for graphs.</Note>
+
+      <H3>ENTROPY</H3>
+      <P>Shannon entropy of the field-index grouping at finest resolution. Measures how uniformly data is distributed across indexed categories.</P>
+      <Code title="Syntax">{`ENTROPY <bundle>;`}</Code>
+      <Code title="Example">{`ENTROPY sensors;
+-- Returns: { entropy: 0.693 }
+-- S = ln(2) ≈ 0.693 for two equal groups
+-- S = 0 means all data in one group
+-- S = ln(k) for k equal groups`}</Code>
+      <P>Formula: <strong style={{ color: "#D0D8E4" }}>S = −Σ (nᵢ/N) ln(nᵢ/N)</strong> where nᵢ is the size of each group and N is total records.</P>
+
+      <H3>FREEENERGY</H3>
+      <P>Helmholtz free energy averaged over sampled base points. Connects the partition function Z(β,p) to thermodynamic language — useful for phase transition detection and temperature-dependent query analysis.</P>
+      <Code title="Syntax">{`FREEENERGY <bundle> AT <temperature>;
+PROFILE <bundle> TEMPERATURE <t1>, <t2>, ...;`}</Code>
+      <Code title="Example">{`FREEENERGY sensors AT 1.0;
+-- Returns: { free_energy: -3.91, tau: 1.0 }
+
+PROFILE sensors TEMPERATURE 0.1, 1.0, 10.0, 100.0;
+-- Returns: [{ tau: 0.1, F: -0.01, C_V: 0.02 }, ...]`}</Code>
+      <P>Returns:</P>
+      <Table
+        headers={["Field", "Description"]}
+        rows={[
+          ["free_energy (F)", "F(τ) = −τ · ln Z — averaged over sampled base points"],
+          ["C_V", "Heat capacity: C_V = τ² · ∂²F/∂τ² (finite difference)"],
+        ]}
+      />
+
+      <H3>PULLBACK CURVATURE</H3>
+      <P>Measures how a join morphism distorts fiber geometry. Given a pullback join between two bundles, computes the curvature of the merged data and reports ΔK = K_merged − K_left.</P>
+      <Code title="Syntax">{`CURVATURE PULLBACK <left> JOIN <right> ON <left_field> = <right_field>;`}</Code>
+      <Code title="Example">{`CURVATURE PULLBACK orders JOIN customers ON customer_id = customer_id;
+-- Returns: { k_left: 0.08, k_right: 0.0, k_pullback: 0.09,
+--           delta_k: 0.01, matched: 100, unmatched: 0 }`}</Code>
+      <P>Returns:</P>
+      <Table
+        headers={["Field", "Description"]}
+        rows={[
+          ["k_left", "Scalar curvature of the source (left) bundle"],
+          ["k_right", "Scalar curvature of the target (right) bundle"],
+          ["k_pullback", "Scalar curvature of the merged data"],
+          ["delta_k", "ΔK = k_pullback − k_left — geometric distortion from the join"],
+          ["matched", "Number of records with successful FK lookup"],
+          ["unmatched", "Number of records with no match (null fiber)"],
+        ]}
+      />
+      <Note type="tip">A faithful join has ΔK ≈ 0 — the morphism preserves geometric structure. Large ΔK means the joined data introduced curvature distortion. Use this to validate foreign-key relationships before merging datasets.</Note>
+
       <H3>Geometric State Functions (Spec)</H3>
       <Table
         headers={["Function", "Returns", "Description"]}
@@ -869,6 +934,9 @@ CONSISTENCY sensors REPAIR;
           ["ANOMALY()", "Boolean", "Whether the last write triggered an anomaly"],
           ["Z_SCORE()", "Float", "Z-score of the last inserted value relative to the field distribution"],
           ["CAPACITY()", "Integer", "Estimated remaining safe capacity C = τ/K"],
+          ["BETTI()", "(Int, Int)", "Betti numbers (β₀, β₁) of the field index graph"],
+          ["ENTROPY()", "Float", "Shannon entropy of field-index grouping"],
+          ["FREEENERGY(τ)", "Float", "Helmholtz free energy F(τ) = −τ ln Z"],
         ]}
       />
     </Section>
@@ -1583,7 +1651,11 @@ curl -X POST https://your-server/v1/admin/snapshot \\
           ["GET", "/v1/bundles/{name}/curvature", "Curvature report (K, confidence, capacity)"],
           ["GET", "/v1/bundles/{name}/spectral", "Spectral analysis (λ₁, diameter)"],
           ["GET", "/v1/bundles/{name}/consistency", "Čech H¹ consistency check"],
+          ["GET", "/v1/bundles/{name}/betti", "Betti numbers (β₀, β₁)"],
+          ["GET", "/v1/bundles/{name}/entropy", "Shannon entropy of field-index grouping"],
+          ["GET", "/v1/bundles/{name}/free-energy?tau=1.0", "Helmholtz free energy F(τ)"],
           ["POST", "/v1/bundles/{name}/join", "Pullback join"],
+          ["POST", "/v1/bundles/{name}/join/curvature", "Pullback curvature report (ΔK)"],
           ["POST", "/v1/bundles/{name}/aggregate", "GROUP BY aggregation"],
         ]}
       />
@@ -1753,6 +1825,11 @@ const db = new GIGIClient('https://gigi-stream.fly.dev', {
           ["b.curvature()", "CurvatureReport", "Scalar curvature, confidence, capacity"],
           ["b.spectral()", "SpectralReport", "Spectral gap λ₁, diameter"],
           ["b.checkConsistency()", "ConsistencyReport", "Čech H¹ cohomology check"],
+          ["b.betti()", "BettiReport", "Betti numbers β₀ (components), β₁ (cycles)"],
+          ["b.entropy()", "number", "Shannon entropy of field-index grouping"],
+          ["b.freeEnergy(tau)", "FreeEnergyReport", "Helmholtz free energy F(τ)"],
+          ["b.thermoProfile(taus)", "ThermoPoint[]", "(τ, F, C_V) for each temperature"],
+          ["b.pullbackCurvature(right, lf, rf)", "PullbackReport", "Join curvature distortion ΔK"],
           ["b.aggregate(opts)", "AggregateResult", "GROUP BY aggregation"],
           ["b.join(right, leftField, rightField)", "JoinResult", "Pullback join"],
           ["b.explain(opts)", "QueryPlan", "Query execution plan"],
@@ -2134,6 +2211,64 @@ Properties:
    - O(1) computation
    - Collision probability < 2⁻⁶⁴ per pair
    - Birthday bound: ~4.3 × 10⁹ (handled via secondary map)`}</Code>
+
+      <H3>Betti Numbers</H3>
+      <Code>{`β₀ = number of connected components (union-find on field index)
+β₁ = |E| − |V| + β₀   (cycle rank / Euler formula for graphs)
+
+where:
+  |E| = edges in the field index graph
+  |V| = vertices (base points / records)
+  β₀  = connected components
+
+β₀ = 1 → fully connected data
+β₁ = 0 → tree structure (no cycles)
+β₁ > 0 → rich topology with independent loops
+
+Note: graph-theoretic Betti numbers from the 1-skeleton,
+not persistent homology / TDA.`}</Code>
+
+      <H3>Shannon Entropy</H3>
+      <Code>{`S = −Σᵢ (nᵢ / N) · ln(nᵢ / N)
+
+where:
+  nᵢ = size of group i (from field-index partitioning at scale ℓ=1)
+  N  = total records
+
+S = 0      → all data in one group (minimal information)
+S = ln(k)  → k equal groups (maximum entropy for k groups)
+S ≥ 0      always (Shannon's theorem)
+
+Connected to RG flow: coarse-graining at increasing ℓ
+produces non-increasing entropy (C-theorem, Thm 3.5).`}</Code>
+
+      <H3>Helmholtz Free Energy</H3>
+      <Code>{`F(τ) = −τ · ln Z(β, p)   averaged over sampled base points
+
+where:
+  Z(β, p) = Σ_q exp(−β · d(p, q))  (partition function)
+  β = 1/τ  (inverse temperature)
+  τ = temperature parameter
+
+Thermodynamic profile:
+  Heat capacity:  C_V = τ² · ∂²F/∂τ²
+  (computed via centered finite difference)
+
+F decreases with temperature — more disorder at higher τ.
+Phase transitions appear as peaks in C_V.`}</Code>
+
+      <H3>Pullback Curvature</H3>
+      <Code>{`K_pullback = scalar_curvature(merged data after join)
+ΔK = K_pullback − K_left
+
+where:
+  K_left     = curvature of the source bundle
+  K_pullback = curvature of left ∪ right fiber fields (merged)
+  ΔK ≈ 0     → faithful morphism (geometry preserved)
+  ΔK >> 0    → join introduced curvature distortion
+
+The merged bundle inherits base fields from left,
+fiber fields from both (deduplicated).`}</Code>
 
       <H3>Fiber Product Metric</H3>
       <Code>{`g_F(v, w) = √( Σᵢ ωᵢ · gᵢ(vᵢ, wᵢ)² )

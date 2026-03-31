@@ -529,6 +529,18 @@ function MathPage() {
       <Sec title="The Double Cover: S + d² = 1">
         <P>For any query Q: <strong style={{ color: G }}>S + d² = 1</strong>. S = recall. d = √(1-S). For exact queries on a flat connection: S = 1, d = 0. Validated to 10 decimal places.</P>
       </Sec>
+      <Sec title="Betti Numbers (β₀, β₁)">
+        <P>β₀ counts connected components in the field index graph (union-find). β₁ = |E| − |V| + β₀ is the cycle rank — the number of independent loops. β₀ = 1 means all data is reachable; β₁ tells you how topologically rich the structure is. These are graph-theoretic invariants from the 1-skeleton.</P>
+      </Sec>
+      <Sec title="Entropy & RG Flow">
+        <P>Shannon entropy <strong style={{ color: "#A0B0C0" }}>S = −Σ (nᵢ/N) ln(nᵢ/N)</strong> measures information in the field-index grouping. Coarse-graining at increasing scale ℓ produces non-increasing entropy (C-theorem, Thm 3.5). GROUP BY literally satisfies the C-theorem — entropy is a first-class observable, not a metric bolt-on.</P>
+      </Sec>
+      <Sec title="Helmholtz Free Energy">
+        <P><strong style={{ color: "#A0B0C0" }}>F(τ) = −τ · ln Z(β, p)</strong> connects the partition function to thermodynamics. Heat capacity C_V = τ² · ∂²F/∂τ² detects phase transitions — peaks in C_V signal structural reorganization in the data. The thermodynamic profile sweeps temperature and reveals the energy landscape of your bundle.</P>
+      </Sec>
+      <Sec title="Pullback Curvature">
+        <P>When you join two bundles, does the geometry survive? <strong style={{ color: G }}>ΔK = K_merged − K_left</strong>. A faithful join has ΔK ≈ 0 — the morphism preserves fiber structure. Large ΔK means the foreign-key relationship introduced curvature distortion. Validate your joins geometrically, not just by row count.</P>
+      </Sec>
       <Card style={{ marginTop: 20 }}>
         <p style={{ margin: 0, fontSize: 12, color: "#506070", lineHeight: 1.6 }}>Full framework: Davis, B. R. (2024). <em style={{ color: "#A0B0C0" }}>The Geometry of Sameness</em>. Amazon KDP. Davis, B. R. (2026). <em style={{ color: "#A0B0C0" }}>The Double Cover Principle</em>. Zenodo.</p>
       </Card>

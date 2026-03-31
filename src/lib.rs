@@ -30,6 +30,7 @@ pub use bundle::{
 };
 pub use engine::{Engine, MutationOp, Notification, QueryCache, TriggerDef, TriggerKind, TriggerManager, query_fingerprint};
 pub use metric::FiberMetric;
+pub use mmap_bundle::{BundleMut, BundleRef, OverlayBundle};
 pub use query::QueryResult;
 pub use types::{
     AdjacencyDef, AdjacencyKind, BundleSchema, FieldDef, FieldType, TransformFn, Value,

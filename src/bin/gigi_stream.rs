@@ -807,7 +807,7 @@ async fn list_bundles(State(state): State<Arc<StreamState>>) -> Json<Vec<BundleI
             BundleInfo {
                 name: name.to_string(),
                 records: store.len(),
-                fields: store.schema.base_fields.len() + store.schema.fiber_fields.len(),
+                fields: store.schema().base_fields.len() + store.schema().fiber_fields.len(),
             }
         })
         .collect();
@@ -916,18 +916,18 @@ async fn insert_records(
                 }),
             )
         })?;
-        let key = if store.schema.base_fields.len() == 1 {
-            Some(store.schema.base_fields[0].name.clone())
+        let key = if store.schema().base_fields.len() == 1 {
+            Some(store.schema().base_fields[0].name.clone())
         } else {
             None
         };
         let ca = store
-            .schema
+            .schema()
             .fiber_fields
             .iter()
             .any(|f| f.name == "created_at");
         let ua = store
-            .schema
+            .schema()
             .fiber_fields
             .iter()
             .any(|f| f.name == "updated_at");
@@ -977,29 +977,30 @@ async fn insert_records(
     // doesn't inflate its own curvature stats (which would mask detection).
     let pre_anomaly: Option<(f64, f64, Vec<String>)> = if records.len() == 1 {
         let store = engine.bundle(&name).unwrap();
-        let stats = &store.curvature_stats;
+        let stats = store.curvature_stats();
         if stats.k_count >= 10 {
             let fiber_vals: Vec<Value> = store
-                .schema
+                .schema()
                 .fiber_fields
                 .iter()
                 .map(|f| records[0].get(&f.name).cloned().unwrap_or(Value::Null))
                 .collect();
             let k_rec = compute_record_k(
-                store.get_field_stats(),
+                &store.get_field_stats(),
                 &fiber_vals,
-                &store.schema.fiber_fields,
+                &store.schema().fiber_fields,
             );
             if stats.is_anomaly(k_rec, 2.0) {
                 let z = stats.z_score(k_rec);
+                let fstats = store.get_field_stats();
                 let contributing: Vec<String> = store
-                    .schema
+                    .schema()
                     .fiber_fields
                     .iter()
                     .zip(fiber_vals.iter())
                     .filter_map(|(fd, v)| {
                         let v_f = v.as_f64()?;
-                        let fs = store.get_field_stats().get(&fd.name)?;
+                        let fs = fstats.get(&fd.name)?;
                         if fs.count < 2 {
                             return None;
                         }
@@ -1034,7 +1035,7 @@ async fn insert_records(
     })?;
 
     let store = engine.bundle(&name).unwrap();
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     let conf = curvature::confidence(k);
 
     // Broadcast batch insert event — each individual record as separate event
@@ -1063,7 +1064,7 @@ async fn insert_records(
     let _ = state.dashboard_tx.send(build_dashboard_event(
         "insert",
         &name,
-        store,
+        &store,
         k,
         None,
         None,
@@ -1075,7 +1076,7 @@ async fn insert_records(
         let _ = state.dashboard_tx.send(build_dashboard_event(
             "anomaly",
             &name,
-            store,
+            &store,
             k,
             Some(k_rec),
             Some(z),
@@ -1165,7 +1166,7 @@ async fn stream_ingest(
     })?;
 
     let store = engine.bundle(&name).unwrap();
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
 
     let tx = state.get_or_create_channel(&name);
     let _ = tx.send(SubscriptionEvent {
@@ -1219,7 +1220,7 @@ async fn point_query(
 
     match store.point_query(&key) {
         Some(record) => {
-            let k = curvature::scalar_curvature(store);
+            let k = store.scalar_curvature();
             Ok(Json(ApiResponse {
                 data: record_to_json(&record),
                 meta: Some(MetaInfo {
@@ -1266,7 +1267,7 @@ async fn range_query(
 
         let records = store.range_query(field, &[val]);
         let json_records: Vec<serde_json::Value> = records.iter().map(record_to_json).collect();
-        let k = curvature::scalar_curvature(store);
+        let k = store.scalar_curvature();
         let count = json_records.len();
         Ok(Json(ApiResponse {
             data: json_records,
@@ -1310,7 +1311,10 @@ async fn pullback_join(
         )
     })?;
 
-    let results = join::pullback_join(left, right, &req.left_field, &req.right_field);
+    let results = match (left.as_heap(), right.as_heap()) {
+        (Some(l), Some(r)) => join::pullback_join(l, r, &req.left_field, &req.right_field),
+        _ => Vec::new(),
+    };
     let json_results: Vec<serde_json::Value> = results
         .iter()
         .map(|(left_rec, right_rec)| {
@@ -1355,14 +1359,14 @@ async fn aggregate(
     })?;
 
     let groups = if req.conditions.is_empty() {
-        aggregation::group_by(store, &req.group_by, &req.field)
+        store.as_heap().map(|s| aggregation::group_by(s, &req.group_by, &req.field)).unwrap_or_default()
     } else {
         let conditions: Vec<QueryCondition> = req
             .conditions
             .iter()
             .map(condition_spec_to_query_condition)
             .collect();
-        aggregation::filtered_group_by(store, &req.group_by, &req.field, &conditions)
+        store.as_heap().map(|s| aggregation::filtered_group_by(s, &req.group_by, &req.field, &conditions)).unwrap_or_default()
     };
     let mut result_groups = HashMap::new();
     for (key, agg) in groups {
@@ -1424,7 +1428,7 @@ async fn curvature_report(
         )
     })?;
 
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     let conf = curvature::confidence(k);
     let cap = curvature::capacity(1.0, k);
 
@@ -1469,9 +1473,9 @@ async fn spectral_report(
         )
     })?;
 
-    let lambda1 = spectral::spectral_gap(store);
-    let diameter = spectral::graph_diameter(store);
-    let spectral_cap = spectral::spectral_capacity(store);
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let diameter = store.as_heap().map(spectral::graph_diameter).unwrap_or(0);
+    let spectral_cap = store.as_heap().map(spectral::spectral_capacity).unwrap_or(0.0);
 
     Ok(Json(SpectralReport {
         lambda1,
@@ -1496,7 +1500,7 @@ async fn consistency_check(
 
     // Čech cohomology H¹ — measure holonomy to detect inconsistencies
     // H¹ = 0 means fully consistent (flat connection, path-independent)
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
 
     // Sample random loops and measure holonomy deviation
     let records: Vec<Record> = store.records().take(100).collect();
@@ -1514,7 +1518,7 @@ async fn consistency_check(
                         .iter()
                         .map(|r| {
                             let mut key = Record::new();
-                            for f in &store.schema.base_fields {
+                            for f in &store.schema().base_fields {
                                 if let Some(v) = r.get(&f.name) {
                                     key.insert(f.name.clone(), v.clone());
                                 }
@@ -1523,7 +1527,7 @@ async fn consistency_check(
                         })
                         .collect();
 
-                    let hol = curvature::holonomy(store, &keys);
+                    let hol = store.holonomy(&keys);
                     if hol.is_finite() && hol > threshold {
                         cocycles.push(serde_json::json!({
                             "loop": [i, j, m],
@@ -1594,7 +1598,7 @@ async fn bundle_anomalies(
         })
         .collect();
 
-    let stats = &store.curvature_stats;
+    let stats = store.curvature_stats();
     Ok(Json(serde_json::json!({
         "bundle": name,
         "threshold_sigma": req.threshold_sigma,
@@ -1623,8 +1627,8 @@ async fn bundle_health(
         )
     })?;
 
-    let k_global = curvature::scalar_curvature(store);
-    let stats = &store.curvature_stats;
+    let k_global = store.scalar_curvature();
+    let stats = store.curvature_stats();
     let k_mean = stats.mean();
     let k_std = stats.std_dev();
     let record_count = store.len();
@@ -1924,7 +1928,7 @@ async fn filtered_query(
         results.iter().map(record_to_json).collect()
     };
     let count = json_records.len();
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
 
     Ok(Json(serde_json::json!({
         "data": json_records,
@@ -2013,7 +2017,7 @@ async fn get_by_path(
 
     // Try point_query first (O(1) if it's a base field)
     if let Some(record) = store.point_query(&key) {
-        let k = curvature::scalar_curvature(store);
+        let k = store.scalar_curvature();
         return Ok(Json(ApiResponse {
             data: record_to_json(&record),
             meta: Some(MetaInfo {
@@ -2028,7 +2032,7 @@ async fn get_by_path(
     // Fallback: range_query on field_index (for fiber fields)
     let results = store.range_query(&field, &[val]);
     if let Some(record) = results.first() {
-        let k = curvature::scalar_curvature(store);
+        let k = store.scalar_curvature();
         return Ok(Json(ApiResponse {
             data: record_to_json(record),
             meta: Some(MetaInfo {
@@ -2065,7 +2069,7 @@ async fn patch_by_path(
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2083,7 +2087,7 @@ async fn patch_by_path(
         ));
     }
 
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     let total = store.len();
     drop(engine);
     let tx = state.get_or_create_channel(&name);
@@ -2112,7 +2116,7 @@ async fn delete_by_path(
     key.insert(field, val);
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2130,7 +2134,7 @@ async fn delete_by_path(
         ));
     }
 
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     let total = store.len();
     drop(engine);
     let tx = state.get_or_create_channel(&name);
@@ -2168,7 +2172,7 @@ async fn bulk_update_records(
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2179,7 +2183,7 @@ async fn bulk_update_records(
 
     let count = store.bulk_update(&conditions, &patches);
 
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     let total = store.len();
     drop(engine);
     let tx = state.get_or_create_channel(&name);
@@ -2213,7 +2217,7 @@ async fn upsert_records(
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2223,7 +2227,7 @@ async fn upsert_records(
     })?;
 
     let inserted = store.upsert(&record);
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     let total = store.len();
     let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
     drop(engine);
@@ -2338,7 +2342,7 @@ async fn bulk_delete_records(
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2348,7 +2352,7 @@ async fn bulk_delete_records(
     })?;
 
     let deleted = store.bulk_delete(&conditions);
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     let total = store.len();
     drop(engine);
     let tx = state.get_or_create_channel(&name);
@@ -2374,7 +2378,7 @@ async fn truncate_bundle(
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2408,7 +2412,7 @@ async fn get_schema(
     })?;
 
     let base_fields: Vec<serde_json::Value> = store
-        .schema
+        .schema()
         .base_fields
         .iter()
         .map(|f| {
@@ -2421,7 +2425,7 @@ async fn get_schema(
         .collect();
 
     let fiber_fields: Vec<serde_json::Value> = store
-        .schema
+        .schema()
         .fiber_fields
         .iter()
         .map(|f| {
@@ -2433,10 +2437,10 @@ async fn get_schema(
         })
         .collect();
 
-    let indexed: Vec<String> = store.schema.indexed_fields.clone();
+    let indexed: Vec<String> = store.schema().indexed_fields.clone();
 
     Ok(Json(serde_json::json!({
-        "name": store.schema.name,
+        "name": store.schema().name,
         "base_fields": base_fields,
         "fiber_fields": fiber_fields,
         "indexed_fields": indexed,
@@ -2460,7 +2464,7 @@ async fn increment_field(
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2478,7 +2482,7 @@ async fn increment_field(
         ));
     }
 
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     Ok(Json(serde_json::json!({
         "status": "incremented",
         "field": req.field,
@@ -2495,7 +2499,7 @@ async fn drop_field(
     Json(req): Json<DropFieldRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2541,7 +2545,7 @@ async fn add_field(
     };
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2566,7 +2570,7 @@ async fn add_index(
     Json(req): Json<AddIndexRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2580,7 +2584,7 @@ async fn add_index(
     Ok(Json(serde_json::json!({
         "status": "index_added",
         "field": req.field,
-        "indexed_fields": store.schema.indexed_fields
+        "indexed_fields": store.schema().indexed_fields
     })))
 }
 
@@ -2673,7 +2677,7 @@ async fn import_bundle(
         )
     })?;
     let store = engine.bundle(&name).unwrap();
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
 
     Ok(Json(serde_json::json!({
         "status": "imported",
@@ -2704,7 +2708,7 @@ async fn update_records_v2(
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2715,7 +2719,7 @@ async fn update_records_v2(
 
     // Auto-set updated_at
     if store
-        .schema
+        .schema()
         .fiber_fields
         .iter()
         .any(|f| f.name == "updated_at")
@@ -2732,7 +2736,7 @@ async fn update_records_v2(
     if let Some(expected) = req.expected_version {
         match store.update_versioned(&key, &patches, expected) {
             Ok(new_version) => {
-                let k = curvature::scalar_curvature(store);
+                let k = store.scalar_curvature();
                 let mut resp = serde_json::json!({
                     "status": "updated",
                     "version": new_version,
@@ -2772,7 +2776,7 @@ async fn update_records_v2(
     if req.returning {
         match store.update_returning(&key, &patches) {
             Some(record) => {
-                let k = curvature::scalar_curvature(store);
+                let k = store.scalar_curvature();
                 let total = store.len();
                 let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
                 drop(engine);
@@ -2807,7 +2811,7 @@ async fn update_records_v2(
                 }),
             ));
         }
-        let k = curvature::scalar_curvature(store);
+        let k = store.scalar_curvature();
         let total = store.len();
         let patch_json = serde_json::to_string(&serde_json::json!({"key": record_to_json(&key)}))
             .unwrap_or_default();
@@ -2841,7 +2845,7 @@ async fn delete_records_v2(
         .collect();
 
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -2853,7 +2857,7 @@ async fn delete_records_v2(
     if req.returning {
         match store.delete_returning(&key) {
             Some(record) => {
-                let k = curvature::scalar_curvature(store);
+                let k = store.scalar_curvature();
                 let total = store.len();
                 let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
                 drop(engine);
@@ -2888,7 +2892,7 @@ async fn delete_records_v2(
                 }),
             ));
         }
-        let k = curvature::scalar_curvature(store);
+        let k = store.scalar_curvature();
         let total = store.len();
         let key_json = serde_json::to_string(&record_to_json(&key)).unwrap_or_default();
         drop(engine);
@@ -2924,7 +2928,7 @@ async fn bundle_stats(
     })?;
 
     let stats = store.stats();
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
 
     let index_sizes: serde_json::Value = stats
         .index_sizes
@@ -3041,7 +3045,7 @@ async fn execute_transaction(
     Json(req): Json<TransactionRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine.write().unwrap();
-    let store = engine.bundle_mut(&name).ok_or_else(|| {
+    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -3162,7 +3166,7 @@ async fn execute_transaction(
 
     match store.execute_transaction(&ops) {
         Ok(results) => {
-            let k = curvature::scalar_curvature(store);
+            let k = store.scalar_curvature();
             Ok(Json(serde_json::json!({
                 "status": "committed",
                 "ops": results.len(),
@@ -3228,13 +3232,13 @@ fn now_ms() -> u64 {
 fn build_dashboard_event(
     event_type: &'static str,
     bundle: &str,
-    store: &gigi::bundle::BundleStore,
+    store: &gigi::mmap_bundle::BundleRef<'_>,
     k_global: f64,
     local_curvature: Option<f64>,
     z_score: Option<f64>,
     contributing_fields: Vec<String>,
 ) -> DashboardEvent {
-    let stats = &store.curvature_stats;
+    let stats = store.curvature_stats();
     let is_anomaly = local_curvature
         .map(|k| stats.is_anomaly(k, 2.0))
         .unwrap_or(false);
@@ -3553,7 +3557,7 @@ async fn handle_ws_command(
             match dhoom::decode_legacy(dhoom_data) {
                 Ok(parsed) => {
                     let mut engine = state.engine.write().unwrap();
-                    if let Some(store) = engine.bundle_mut(bundle_name) {
+                    if let Some(mut store) = engine.bundle_mut(bundle_name) {
                         let mut inserted_records = Vec::new();
                         for dhoom_record in &parsed.records {
                             let record: Record = dhoom_record
@@ -3564,7 +3568,7 @@ async fn handle_ws_command(
                             inserted_records.push(record_to_json(&record));
                         }
                         let count = inserted_records.len();
-                        let k = curvature::scalar_curvature(store);
+                        let k = store.scalar_curvature();
                         let total = store.len();
                         drop(engine);
                         // Broadcast each inserted record
@@ -3623,7 +3627,7 @@ async fn handle_ws_command(
                     }
                     match store.point_query(&key) {
                         Some(record) => {
-                            let k = curvature::scalar_curvature(store);
+                            let k = store.scalar_curvature();
                             format!(
                                 "RESULT {}\nMETA confidence={:.4} curvature={:.6}",
                                 record_to_json(&record),
@@ -3667,7 +3671,7 @@ async fn handle_ws_command(
                         let results = store.range_query(field, &[parse_ws_value(val)]);
                         let json_arr: Vec<serde_json::Value> =
                             results.iter().map(record_to_json).collect();
-                        let k = curvature::scalar_curvature(store);
+                        let k = store.scalar_curvature();
                         format!(
                             "RESULT {}\nMETA count={} confidence={:.4} curvature={:.6}",
                             serde_json::to_string(&json_arr).unwrap_or_default(),
@@ -3694,7 +3698,7 @@ async fn handle_ws_command(
             let bundle_name = target.split('.').next().unwrap_or(target);
             let engine = state.engine.read().unwrap();
             if let Some(store) = engine.bundle(bundle_name) {
-                let k = curvature::scalar_curvature(store);
+                let k = store.scalar_curvature();
                 format!(
                     "CURVATURE K={:.6} confidence={:.4} capacity={:.2}",
                     k,
@@ -3863,7 +3867,7 @@ async fn gql_query(
                     serde_json::json!({
                         "name": name,
                         "records": store.len(),
-                        "fields": store.schema.base_fields.len() + store.schema.fiber_fields.len(),
+                        "fields": store.schema().base_fields.len() + store.schema().fiber_fields.len(),
                     })
                 })
                 .collect();
@@ -3933,7 +3937,7 @@ async fn gql_query(
 
     if needs_write {
         let mut engine = state.engine.write().unwrap();
-        let store = match engine.bundle_mut(&bundle_name) {
+        let mut store = match engine.bundle_mut(&bundle_name) {
             Some(s) => s,
             None => {
                 return (
@@ -3942,7 +3946,10 @@ async fn gql_query(
                 )
             }
         };
-        let result = execute_gql_on_store(store, &stmt);
+        let result = match store.as_heap_mut() {
+            Some(s) => execute_gql_on_store(s, &stmt),
+            None => Err("GQL writes require heap mode".to_string()),
+        };
         match result {
             Ok(r) => exec_result_to_response(r),
             Err(e) => (
@@ -3961,7 +3968,10 @@ async fn gql_query(
                 )
             }
         };
-        let result = execute_gql_on_store_read(store, &stmt);
+        let result = match store.as_heap() {
+            Some(s) => execute_gql_on_store_read(s, &stmt),
+            None => Err("GQL reads require heap mode".to_string()),
+        };
         match result {
             Ok(r) => exec_result_to_response(r),
             Err(e) => (

@@ -12,7 +12,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::bundle::{BundleStore, QueryCondition};
-use crate::mmap_bundle::{MmapBundle, OverlayBundle};
+use crate::mmap_bundle::{BundleMut, BundleRef, MmapBundle, OverlayBundle};
 use crate::types::{BundleSchema, Record, Value};
 use crate::wal::{WalEntry, WalReader, WalWriter};
 
@@ -989,15 +989,36 @@ impl Engine {
         }
     }
 
-    /// Get a reference to a bundle store for advanced operations.
-    /// In mmap mode, returns the overlay BundleStore (which only has post-snapshot data).
-    /// For full data access in mmap mode, use `mmap_bundle()`.
-    pub fn bundle(&self, name: &str) -> Option<&BundleStore> {
+    /// Unified bundle access — checks heap first, then mmap overlay.
+    pub fn bundle(&self, name: &str) -> Option<BundleRef<'_>> {
+        if let Some(store) = self.bundles.get(name) {
+            return Some(BundleRef::Heap(store));
+        }
+        if let Some(overlay) = self.mmap_bundles.get(name) {
+            return Some(BundleRef::Overlay(overlay));
+        }
+        None
+    }
+
+    /// Unified mutable bundle access — checks heap first, then mmap overlay.
+    pub fn bundle_mut(&mut self, name: &str) -> Option<BundleMut<'_>> {
+        // Check heap first (borrow-checker friendly: separate branches).
+        if self.bundles.contains_key(name) {
+            return self.bundles.get_mut(name).map(BundleMut::Heap);
+        }
+        if let Some(overlay) = self.mmap_bundles.get(name) {
+            return Some(BundleMut::Overlay(overlay));
+        }
+        None
+    }
+
+    /// Get a direct reference to the heap BundleStore (needed for WAL/snapshot internals).
+    pub fn heap_bundle(&self, name: &str) -> Option<&BundleStore> {
         self.bundles.get(name)
     }
 
-    /// Get a mutable reference to a bundle store.
-    pub fn bundle_mut(&mut self, name: &str) -> Option<&mut BundleStore> {
+    /// Get a direct mutable reference to the heap BundleStore.
+    pub fn heap_bundle_mut(&mut self, name: &str) -> Option<&mut BundleStore> {
         self.bundles.get_mut(name)
     }
 

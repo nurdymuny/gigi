@@ -10,9 +10,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::bundle::BundleStore;
 use crate::curvature;
 use crate::engine::Engine;
+use crate::mmap_bundle::BundleRef;
 use crate::types::{BundleSchema, Record, Value};
 
 // ── Sync Queue ──
@@ -178,7 +178,7 @@ impl EdgeEngine {
     }
 
     /// Get a reference to a bundle store for advanced operations.
-    pub fn bundle(&self, name: &str) -> Option<&BundleStore> {
+    pub fn bundle(&self, name: &str) -> Option<BundleRef<'_>> {
         self.engine.bundle(name)
     }
 
@@ -194,7 +194,7 @@ impl EdgeEngine {
 
     /// Curvature for a bundle.
     pub fn curvature(&self, bundle: &str) -> Option<(f64, f64)> {
-        let store = self.engine.bundle(bundle)?;
+        let store = self.engine.heap_bundle(bundle)?;
         let k = curvature::scalar_curvature(store);
         let conf = curvature::confidence(k);
         Some((k, conf))

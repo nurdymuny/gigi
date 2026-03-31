@@ -3195,7 +3195,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     GqlBundleInfo {
                         name: name.to_string(),
                         records: store.len(),
-                        fields: store.schema.base_fields.len() + store.schema.fiber_fields.len(),
+                        fields: store.schema().base_fields.len() + store.schema().fiber_fields.len(),
                     }
                 })
                 .collect();
@@ -3206,14 +3206,15 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let k = crate::curvature::scalar_curvature(store);
+            let stats = store.curvature_stats();
+            let k = stats.mean();
             Ok(ExecResult::Stats(GqlStats {
                 curvature: k,
                 confidence: crate::curvature::confidence(k),
                 record_count: store.len(),
                 storage_mode: store.storage_mode().to_string(),
-                base_fields: store.schema.base_fields.len(),
-                fiber_fields: store.schema.fiber_fields.len(),
+                base_fields: store.schema().base_fields.len(),
+                fiber_fields: store.schema().fiber_fields.len(),
             }))
         }
 
@@ -3272,7 +3273,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             for (col, val) in columns.iter().zip(values.iter()) {
                 record.insert(col.clone(), literal_to_value(val));
             }
-            let store = engine
+            let mut store = engine
                 .bundle_mut(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
             store.upsert(&record);
@@ -3311,7 +3312,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
                 .collect();
-            let store = engine
+            let mut store = engine
                 .bundle_mut(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
             let matched = store.bulk_update(&qcs, &patches);
@@ -3338,7 +3339,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .iter()
                 .flat_map(filter_to_query_conditions)
                 .collect();
-            let store = engine
+            let mut store = engine
                 .bundle_mut(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
             let deleted = store.bulk_delete(&qcs);
@@ -3475,7 +3476,10 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             if let Some(gb_field) = over {
                 let agg_field = measures.first().map(|m| m.field.as_str()).unwrap_or("*");
 
-                let groups = crate::aggregation::group_by(store, gb_field, agg_field);
+                let groups = match store.as_heap() {
+                    Some(s) => crate::aggregation::group_by(s, gb_field, agg_field),
+                    None => HashMap::new(),
+                };
                 let mut rows = Vec::new();
                 for (key, agg_result) in &groups {
                     let mut row = HashMap::new();
@@ -3551,7 +3555,10 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .bundle(right)
                 .ok_or_else(|| format!("No bundle: {right}"))?;
             let rf = right_field.as_deref().unwrap_or(along.as_str());
-            let joined = crate::join::pullback_join(left_store, right_store, along, rf);
+            let joined = match (left_store.as_heap(), right_store.as_heap()) {
+                (Some(l), Some(r)) => crate::join::pullback_join(l, r, along, rf),
+                _ => Vec::new(),
+            };
             let rows: Vec<_> = joined
                 .into_iter()
                 .map(|(left_rec, right_rec)| {
@@ -3582,7 +3589,10 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     _ => None,
                 });
                 if let Some((func, field)) = agg_col {
-                    let groups = crate::aggregation::group_by(store, gb_field, field);
+                    let groups = match store.as_heap() {
+                        Some(s) => crate::aggregation::group_by(s, gb_field, field),
+                        None => HashMap::new(),
+                    };
                     let mut rows = Vec::new();
                     for (key, agg_result) in &groups {
                         let mut row = HashMap::new();
@@ -3604,7 +3614,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             match condition {
                 Some(Condition::Eq(field, val)) => {
                     let value = literal_to_value(val);
-                    let is_base = store.schema.base_fields.iter().any(|f| f.name == *field);
+                    let is_base = store.schema().base_fields.iter().any(|f| f.name == *field);
                     if is_base {
                         let mut key = HashMap::new();
                         key.insert(field.clone(), value);
@@ -3668,7 +3678,10 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let right_store = engine
                 .bundle(right)
                 .ok_or_else(|| format!("No bundle: {right}"))?;
-            let joined = crate::join::pullback_join(left_store, right_store, on_field, on_field);
+            let joined = match (left_store.as_heap(), right_store.as_heap()) {
+                (Some(l), Some(r)) => crate::join::pullback_join(l, r, on_field, on_field),
+                _ => Vec::new(),
+            };
             let rows: Vec<_> = joined
                 .into_iter()
                 .map(|(left_rec, right_rec)| {
@@ -3687,7 +3700,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let k = crate::curvature::scalar_curvature(store);
+            let k = store.as_heap()
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
             Ok(ExecResult::Scalar(k))
         }
 
@@ -3695,7 +3710,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let lambda1 = crate::spectral::spectral_gap(store);
+            let lambda1 = store.as_heap()
+                .map(|s| crate::spectral::spectral_gap(s))
+                .unwrap_or(0.0);
             Ok(ExecResult::Scalar(lambda1))
         }
 
@@ -3703,7 +3720,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let contradictions = crate::sheaf::consistency_check(store);
+            let contradictions = store.as_heap()
+                .map(|s| crate::sheaf::consistency_check(s))
+                .unwrap_or_default();
             Ok(ExecResult::Rows(contradictions))
         }
 
@@ -3719,13 +3738,16 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
             let min_conf = min_confidence.unwrap_or(0.30);
-            let results = crate::sheaf::complete(
-                store,
-                where_conditions,
-                min_conf,
-                *with_provenance,
-                *with_constraint_graph,
-            );
+            let results = match store.as_heap() {
+                Some(s) => crate::sheaf::complete(
+                    s,
+                    where_conditions,
+                    min_conf,
+                    *with_provenance,
+                    *with_constraint_graph,
+                ),
+                None => Vec::new(),
+            };
             Ok(ExecResult::Rows(results))
         }
 
@@ -3740,7 +3762,10 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
                 .collect::<crate::types::Record>();
-            let results = crate::sheaf::propagate(store, &assumption_record);
+            let results = match store.as_heap() {
+                Some(s) => crate::sheaf::propagate(s, &assumption_record),
+                None => Vec::new(),
+            };
             Ok(ExecResult::Rows(results))
         }
 
@@ -3753,7 +3778,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let results = crate::sheaf::suggest_adjacency(store, fields, *sample_size, *candidates);
+            let results = store.as_heap()
+                .map(|s| crate::sheaf::suggest_adjacency(s, fields, *sample_size, *candidates))
+                .unwrap_or_default();
             Ok(ExecResult::Rows(results))
         }
 
@@ -3761,14 +3788,16 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let k = crate::curvature::scalar_curvature(store);
+            let k = store.as_heap()
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
             Ok(ExecResult::Stats(GqlStats {
                 curvature: k,
                 confidence: crate::curvature::confidence(k),
                 record_count: store.len(),
                 storage_mode: store.storage_mode().to_string(),
-                base_fields: store.schema.base_fields.len(),
-                fiber_fields: store.schema.fiber_fields.len(),
+                base_fields: store.schema().base_fields.len(),
+                fiber_fields: store.schema().fiber_fields.len(),
             }))
         }
 
@@ -3817,13 +3846,16 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
+            let k = store.as_heap()
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
             Ok(ExecResult::Stats(GqlStats {
-                curvature: crate::curvature::scalar_curvature(store),
+                curvature: k,
                 confidence: 0.0,
                 record_count: store.len(),
                 storage_mode: store.storage_mode().to_string(),
-                base_fields: store.schema.base_fields.len(),
-                fiber_fields: store.schema.fiber_fields.len(),
+                base_fields: store.schema().base_fields.len(),
+                fiber_fields: store.schema().fiber_fields.len(),
             }))
         }
 

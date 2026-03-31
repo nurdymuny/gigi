@@ -155,16 +155,16 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
                 let store = engine
                     .bundle(name)
                     .ok_or_else(|| format!("No bundle: {name}"))?;
-                println!("Bundle: {}", store.schema.name);
+                println!("Bundle: {}", store.schema().name);
                 println!("Base fields:");
-                for f in &store.schema.base_fields {
+                for f in &store.schema().base_fields {
                     println!("  {} {:?} (range: {:?})", f.name, f.field_type, f.range);
                 }
                 println!("Fiber fields:");
-                for f in &store.schema.fiber_fields {
+                for f in &store.schema().fiber_fields {
                     println!("  {} {:?} (range: {:?})", f.name, f.field_type, f.range);
                 }
-                println!("Indexed: {:?}", store.schema.indexed_fields);
+                println!("Indexed: {:?}", store.schema().indexed_fields);
                 println!("Records: {}", store.len());
                 return Ok(false);
             }
@@ -176,7 +176,7 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
                 let store = engine
                     .bundle(name)
                     .ok_or_else(|| format!("No bundle: {name}"))?;
-                let k = gigi::curvature::scalar_curvature(store);
+                let k = store.scalar_curvature();
                 let conf = gigi::curvature::confidence(k);
                 println!("Records: {}", store.len());
                 println!("Curvature K: {k:.6}");

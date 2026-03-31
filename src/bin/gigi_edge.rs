@@ -396,7 +396,7 @@ async fn curvature_report(
         }
     };
 
-    let k = curvature::scalar_curvature(store);
+    let k = store.scalar_curvature();
     let conf = curvature::confidence(k);
     let capacity = if k > 0.0 { 1.0 / k } else { f64::INFINITY };
 
@@ -441,9 +441,9 @@ async fn spectral_report(
         }
     };
 
-    let lambda1 = spectral::spectral_gap(store);
-    let diameter = spectral::graph_diameter(store);
-    let cap = spectral::spectral_capacity(store);
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let diameter = store.as_heap().map(spectral::graph_diameter).unwrap_or(0);
+    let cap = store.as_heap().map(spectral::spectral_capacity).unwrap_or(0.0);
 
     Ok(Json(serde_json::json!({
         "lambda1": (lambda1 * 10000.0).round() / 10000.0,
@@ -468,28 +468,40 @@ async fn consistency_check(
         }
     };
 
+    // Čech cohomology requires bitmap access — only available on heap bundles
+    let heap = match store.as_heap() {
+        Some(s) => s,
+        None => {
+            return Ok(Json(serde_json::json!({
+                "h1": 0,
+                "cocycles": [],
+                "mode": "mmap (bitmap access unavailable)",
+            })));
+        }
+    };
+
     // Check Čech cohomology: for each pair of overlapping open sets,
     // verify sections agree on intersection.
     let mut h1 = 0;
     let mut cocycles = Vec::new();
 
-    for field_name in &store.schema.indexed_fields {
-        let values = store.indexed_values(field_name);
+    for field_name in &heap.schema.indexed_fields {
+        let values = heap.indexed_values(field_name);
         for i in 0..values.len() {
             for j in (i + 1)..values.len() {
-                let bm_i = store.field_bitmap(field_name, &values[i]);
-                let bm_j = store.field_bitmap(field_name, &values[j]);
+                let bm_i = heap.field_bitmap(field_name, &values[i]);
+                let bm_j = heap.field_bitmap(field_name, &values[j]);
                 if let (Some(bi), Some(bj)) = (bm_i, bm_j) {
                     let overlap = bi & bj;
                     if !overlap.is_empty() {
                         // Check section agreement on overlap
-                        let recs_i = store.range_query(field_name, &[values[i].clone()]);
-                        let recs_j = store.range_query(field_name, &[values[j].clone()]);
+                        let recs_i = heap.range_query(field_name, &[values[i].clone()]);
+                        let recs_j = heap.range_query(field_name, &[values[j].clone()]);
                         // If same base point has different fiber values → cocycle
                         let map_i: HashMap<_, _> = recs_i
                             .iter()
                             .map(|r| {
-                                let key: Vec<_> = store
+                                let key: Vec<_> = heap
                                     .schema
                                     .base_fields
                                     .iter()
@@ -499,14 +511,14 @@ async fn consistency_check(
                             })
                             .collect();
                         for r_j in &recs_j {
-                            let key: Vec<_> = store
+                            let key: Vec<_> = heap
                                 .schema
                                 .base_fields
                                 .iter()
                                 .map(|f| r_j.get(&f.name).cloned().unwrap_or(Value::Null))
                                 .collect();
                             if let Some(r_i) = map_i.get(&key) {
-                                for ff in &store.schema.fiber_fields {
+                                for ff in &heap.schema.fiber_fields {
                                     let vi = r_i.get(&ff.name);
                                     let vj = r_j.get(&ff.name);
                                     if vi != vj {
@@ -551,7 +563,10 @@ async fn aggregate(
         }
     };
 
-    let groups = aggregation::group_by(store, &req.group_by, &req.field);
+    let groups = match store.as_heap() {
+        Some(s) => aggregation::group_by(s, &req.group_by, &req.field),
+        None => std::collections::HashMap::new(),
+    };
     let mut result = serde_json::Map::new();
 
     for (group_val, agg) in &groups {
@@ -597,7 +612,10 @@ async fn pullback_join(
         }
     };
 
-    let joined = join::pullback_join(left, right, &req.left_field, &req.right_field);
+    let joined = match (left.as_heap(), right.as_heap()) {
+        (Some(l), Some(r)) => join::pullback_join(l, r, &req.left_field, &req.right_field),
+        _ => Vec::new(),
+    };
     let results: Vec<serde_json::Value> = joined
         .iter()
         .filter_map(|(l, r)| {
@@ -745,7 +763,7 @@ async fn main() {
                     println!("    Curvature:  K={:.4}, confidence={:.4}", k, conf);
                     println!(
                         "    Fields:     {}",
-                        store.schema.all_field_names().join(", ")
+                        store.schema().all_field_names().join(", ")
                     );
                 }
             }

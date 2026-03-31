@@ -5,7 +5,7 @@ primary_region = "iad"
   dockerfile = "Dockerfile"
 
 [deploy]
-  strategy = "bluegreen"
+  strategy = "rolling"
 
 [env]
   PORT = "3142"

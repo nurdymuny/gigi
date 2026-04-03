@@ -12,6 +12,10 @@ async function gqlPost(query) {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query }),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status} on GQL`);
+  }
   return res.json();
 }
 
@@ -20,6 +24,10 @@ async function restPost(path, body) {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status} on ${path}`);
+  }
   return res.json();
 }
 
@@ -28,10 +36,12 @@ async function restDelete(path) {
   return res.json();
 }
 
-async function runBenchmark(n) {
+async function runBenchmark(n, onProgress = () => {}) {
   const name = `bench_${n}_${Date.now() % 100000}`;
+  const chunks = Math.ceil(n / 5000);
 
   // 1. Create bundle (single int key + no indexes → turbo batch_insert fast path)
+  onProgress(`[${n.toLocaleString()}] Creating bundle...`);
   await restPost("/v1/bundles", {
     name, schema: { fields: { id: "numeric", cat: "categorical", val: "numeric", active: "categorical" }, keys: ["id"] }
   });
@@ -40,6 +50,8 @@ async function runBenchmark(n) {
   const chunkSize = 5000;
   const t0 = performance.now();
   for (let start = 0; start < n; start += chunkSize) {
+    const chunk = Math.floor(start / chunkSize) + 1;
+    onProgress(`[${n.toLocaleString()}] Inserting... ${chunk}/${chunks}`);
     const batch = [];
     const end = Math.min(start + chunkSize, n);
     for (let i = start; i < end; i++) {
@@ -50,6 +62,7 @@ async function runBenchmark(n) {
   const insT = performance.now() - t0;
 
   // 3. Point queries — 100 random lookups via GQL
+  onProgress(`[${n.toLocaleString()}] Point queries (100×)...`);
   const numPt = 100;
   const ids = Array.from({ length: numPt }, () => Math.floor(Math.random() * n));
   const t1 = performance.now();
@@ -59,12 +72,14 @@ async function runBenchmark(n) {
   const ptT = performance.now() - t1;
 
   // 4. Range query — categorical index lookup
+  onProgress(`[${n.toLocaleString()}] Range query...`);
   const t2 = performance.now();
   const rgRes = await gqlPost(`COVER ${name} ON cat = 'c0'`);
   const rgT = performance.now() - t2;
   const rgSize = rgRes.count || 0;
 
   // 5. Curvature
+  onProgress(`[${n.toLocaleString()}] Curvature...`);
   const t3 = performance.now();
   const kRes = await gqlPost(`CURVATURE ${name}`);
   const kT = performance.now() - t3;
@@ -239,48 +254,87 @@ function SectionLabel({ children }) {
 // PAGES
 // ═══════════════════════════════════════
 function BenchPage() {
-  const [res, setRes] = useState(null);
+  const [res, setRes] = useState([]);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
+  const [currentN, setCurrentN] = useState(null);
   const sizes = [100, 500, 1000, 5000, 10000, 50000];
+
   async function run() {
     setRunning(true);
+    setRes([]);
     const results = [];
     for (const n of sizes) {
-      setProgress(`Benchmarking ${n.toLocaleString()} records...`);
-      try { results.push(await runBenchmark(n)); }
-      catch (e) { setProgress(`Error at ${n}: ${e.message}`); setRunning(false); return; }
+      setCurrentN(n);
+      try {
+        const r = await runBenchmark(n, setProgress);
+        results.push(r);
+        setRes([...results]);
+      } catch (e) {
+        setProgress(`Error at ${n.toLocaleString()}: ${e.message}`);
+        setRunning(false);
+        setCurrentN(null);
+        return;
+      }
     }
-    setRes(results);
     setProgress("");
+    setCurrentN(null);
     setRunning(false);
   }
-  const lastSize = res ? res.length - 1 : 0;
-  // For the dual-bar chart: scale everything against what O(log n) would predict at the largest size
-  const baseTime = res ? res[0].ptUs : 1;
-  const logScale = res ? Math.log2(sizes[lastSize]) / Math.log2(sizes[0]) * baseTime : 1;
-  const chartMax = res ? Math.max(logScale, ...res.map(r => r.ptUs)) * 1.1 : 1;
+
+  const hasResults = res.length > 0;
+  const allDone = !running && res.length === sizes.length;
+  const lastSize = hasResults ? res.length - 1 : 0;
+  const baseTime = hasResults ? res[0].ptUs : 1;
+  const logScale = hasResults ? Math.log2(sizes[lastSize]) / Math.log2(sizes[0]) * baseTime : 1;
+  const chartMax = hasResults ? Math.max(logScale, ...res.map(r => r.ptUs)) * 1.1 : 1;
+  const donePct = running ? (res.length / sizes.length) * 100 : (hasResults ? 100 : 0);
+  // Strip the [n] prefix from progress messages for inline display
+  const stepLabel = progress.includes("] ") ? progress.split("] ")[1] : progress;
+
   return (
     <Page title="Live Benchmarks" sub={<>Running against <strong style={{ color: G }}>GIGI Stream</strong> at {BENCH_LABEL}. Real Rust engine. Real network. Real O(1).</>}>
-      <button onClick={run} disabled={running} style={{ padding: "11px 24px", borderRadius: 7, border: "none", cursor: running ? "wait" : "pointer", background: running ? "#303848" : G, color: running ? "#607080" : BG, fontSize: 13, fontWeight: 700, marginBottom: 24 }}>{running ? progress || "Running..." : "Run Benchmarks"}</button>
-      {res && (<>
+      <div style={{ marginBottom: 24 }}>
+        <button onClick={run} disabled={running} style={{ padding: "11px 24px", borderRadius: 7, border: "none", cursor: running ? "wait" : "pointer", background: running ? "#303848" : G, color: running ? "#607080" : BG, fontSize: 13, fontWeight: 700 }}>
+          {running ? "Running..." : hasResults ? "Run Again" : "Run Benchmarks"}
+        </button>
+        {(running || hasResults) && (
+          <div style={{ marginTop: 10, maxWidth: 420 }}>
+            <div style={{ height: 3, background: "#12181e", borderRadius: 2, marginBottom: 7, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: donePct + "%", background: G, borderRadius: 2, transition: "width 0.6s ease" }} />
+            </div>
+            {running && <span style={{ fontSize: 10.5, color: "#405060", fontFamily: "monospace" }}>{progress || "Starting..."}</span>}
+            {allDone && <span style={{ fontSize: 10.5, color: GD, fontFamily: "monospace" }}>✓ {sizes.length}/{sizes.length} sizes complete</span>}
+          </div>
+        )}
+      </div>
+
+      {hasResults && (<>
         <SectionLabel>Point Query: O(1) Proof — Live Server</SectionLabel>
         <p style={{ fontSize: 12, color: "#506070", marginBottom: 14 }}>100 random point queries per size via GQL. <span style={{ color: G }}>Green</span> = actual GIGI. <span style={{ color: "#FF604080" }}>Red ghost</span> = what O(log n) would cost. The green bars stay flat. The red bars grow.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 28 }}>
           {res.map((r, i) => {
             const predicted = baseTime * Math.log2(sizes[i]) / Math.log2(sizes[0]);
             return (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div key={r.n} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ width: 72, textAlign: "right", fontSize: 11, color: "#506070", fontFamily: "monospace" }}>{r.n.toLocaleString()}</span>
                 <div style={{ flex: 1, position: "relative", height: 28, background: "rgba(255,255,255,0.02)", borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ position: "absolute", top: 0, left: 0, width: Math.max((predicted / chartMax) * 100, 4) + "%", height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#FF604030,#FF604010)", borderRight: "2px solid #FF604040" }} />
-                  <div style={{ position: "relative", width: Math.max((r.ptUs / chartMax) * 100, 4) + "%", height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#40E8A0CC,#40E8A044)", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 8 }}>
+                  <div style={{ position: "relative", width: Math.max((r.ptUs / chartMax) * 100, 4) + "%", height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#40E8A0CC,#40E8A044)", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 8, transition: "width 0.4s ease" }}>
                     <span style={{ fontSize: 10.5, fontWeight: 700, color: "#fff", fontFamily: "monospace" }}>{r.ptUs.toFixed(0)}μs</span>
                   </div>
                 </div>
               </div>
             );
           })}
+          {running && currentN && !res.some(r => r.n === currentN) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.45 }}>
+              <span style={{ width: 72, textAlign: "right", fontSize: 11, color: "#506070", fontFamily: "monospace" }}>{currentN.toLocaleString()}</span>
+              <div style={{ flex: 1, height: 28, background: "rgba(255,255,255,0.02)", borderRadius: 4, display: "flex", alignItems: "center", paddingLeft: 10 }}>
+                <span style={{ fontSize: 10, color: "#405060", fontFamily: "monospace" }}>{stepLabel || "running..."}</span>
+              </div>
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
           <span style={{ fontSize: 10, color: "#506070" }}><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: "#40E8A0CC", verticalAlign: "middle", marginRight: 4 }} /> GIGI actual</span>
@@ -289,12 +343,22 @@ function BenchPage() {
         <SectionLabel>Full Results — Real GIGI Engine</SectionLabel>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, fontFamily: "monospace" }}>
           <thead><tr>{["Records", "Insert (μs/rec)", "Point (μs)", "Range (ms)", "|result|", "K (curvature)", "K time (ms)"].map((h, i) => <th key={i} style={{ textAlign: "left", padding: "7px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)", color: "#506070", fontWeight: 600, fontSize: 9.5, textTransform: "uppercase" }}>{h}</th>)}</tr></thead>
-          <tbody>{res.map((r, i) => <tr key={i}><td style={td()}>{r.n.toLocaleString()}</td><td style={td(G)}>{r.insUs.toFixed(1)}</td><td style={{...td(G), fontWeight: 700}}>{r.ptUs.toFixed(0)}</td><td style={td("#E8A830")}>{r.rgMs.toFixed(1)}</td><td style={td()}>{r.rgSize.toLocaleString()}</td><td style={td("#FF6040")}>{r.kVal !== undefined ? r.kVal.toFixed(6) : "—"}</td><td style={td("#506070")}>{r.kMs.toFixed(1)}</td></tr>)}</tbody>
+          <tbody>
+            {res.map((r, i) => <tr key={r.n}><td style={td()}>{r.n.toLocaleString()}</td><td style={td(G)}>{r.insUs.toFixed(1)}</td><td style={{...td(G), fontWeight: 700}}>{r.ptUs.toFixed(0)}</td><td style={td("#E8A830")}>{r.rgMs.toFixed(1)}</td><td style={td()}>{r.rgSize.toLocaleString()}</td><td style={td("#FF6040")}>{r.kVal !== undefined ? r.kVal.toFixed(6) : "—"}</td><td style={td("#506070")}>{r.kMs.toFixed(1)}</td></tr>)}
+            {running && currentN && !res.some(r => r.n === currentN) && (
+              <tr style={{ opacity: 0.4 }}>
+                <td style={td()}>{currentN.toLocaleString()}</td>
+                <td colSpan={6} style={td("#405060")}>{stepLabel || "running..."}</td>
+              </tr>
+            )}
+          </tbody>
         </table>
-        <div style={{ display: "flex", gap: 24, marginTop: 14, flexWrap: "wrap" }}>
-          <p style={{ fontSize: 11, color: "#384050", fontFamily: "monospace" }}>Ratio ({res[lastSize].n.toLocaleString()}/{res[0].n.toLocaleString()}): <strong style={{ color: G }}>{(res[lastSize].ptUs/res[0].ptUs).toFixed(2)}x</strong> — O(1) confirmed</p>
-          <p style={{ fontSize: 11, color: "#384050", fontFamily: "monospace" }}>Total insert ({res[lastSize].n.toLocaleString()} records): <strong style={{ color: G }}>{res[lastSize].totalInsMs.toFixed(0)}ms</strong> = <strong style={{ color: G }}>{(res[lastSize].n / (res[lastSize].totalInsMs / 1000)).toFixed(0)}</strong> rec/s</p>
-        </div>
+        {allDone && (
+          <div style={{ display: "flex", gap: 24, marginTop: 14, flexWrap: "wrap" }}>
+            <p style={{ fontSize: 11, color: "#384050", fontFamily: "monospace" }}>Ratio ({res[lastSize].n.toLocaleString()}/{res[0].n.toLocaleString()}): <strong style={{ color: G }}>{(res[lastSize].ptUs/res[0].ptUs).toFixed(2)}x</strong> — O(1) confirmed</p>
+            <p style={{ fontSize: 11, color: "#384050", fontFamily: "monospace" }}>Total insert ({res[lastSize].n.toLocaleString()} records): <strong style={{ color: G }}>{res[lastSize].totalInsMs.toFixed(0)}ms</strong> = <strong style={{ color: G }}>{(res[lastSize].n / (res[lastSize].totalInsMs / 1000)).toFixed(0)}</strong> rec/s</p>
+          </div>
+        )}
       </>)}
     </Page>
   );
@@ -359,8 +423,8 @@ function StreamPage() {
           serializeRate: Math.round(ds.n / (serializeMs / 1000)),
           pipelineRate: Math.round(ds.n / ((ingestMs + serializeMs) / 1000)),
           compression: dhoomRes.compression_pct,
-          jsonChars: dhoomRes.json_chars,
-          dhoomChars: dhoomRes.dhoom_chars,
+          jsonChars: dhoomRes.json_bytes,
+          dhoomChars: dhoomRes.dhoom_bytes,
           fieldsOmitted: dhoomRes.fields_omitted,
           totalSlots: dhoomRes.total_field_slots,
           preview,
@@ -1491,8 +1555,8 @@ function InteractiveDemoPage() {
       setServerStats({
         records: records.length,
         compression: dRes.compression_pct,
-        dhoomBytes: dRes.dhoom_chars,
-        jsonBytes: dRes.json_chars,
+        dhoomBytes: dRes.dhoom_bytes,
+        jsonBytes: dRes.json_bytes,
         fieldsOmitted: dRes.fields_omitted,
         totalSlots: dRes.total_field_slots,
       });
@@ -1686,7 +1750,7 @@ function InteractiveDemoPage() {
         {/* RIGHT — DHOOM output */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#A0B0C0" }}>Live <a href="https://dhoom.dev" target="_blank" rel="noopener noreferrer" style={{ color: "#E8A830", textDecoration: "none" }}>DHOOM</a> Output {dhoom && <span style={{ fontSize: 10, color: "#506070", fontWeight: 400 }}>{dhoom.dhoom_chars} bytes</span>}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#A0B0C0" }}>Live <a href="https://dhoom.dev" target="_blank" rel="noopener noreferrer" style={{ color: "#E8A830", textDecoration: "none" }}>DHOOM</a> Output {dhoom && <span style={{ fontSize: 10, color: "#506070", fontWeight: 400 }}>{dhoom.dhoom_bytes} bytes</span>}</div>
           </div>
           <div style={{ maxHeight: 460, overflowY: "auto", border: "1px solid rgba(255,255,255,0.04)", borderRadius: 8, background: "#06060C", padding: "12px 14px", fontFamily: "monospace", fontSize: 11, lineHeight: 1.55, color: "#708090", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
             {dhoom ? dhoom.dhoom : <span style={{ color: "#303848" }}>Push data to GIGI to see DHOOM encoding here...</span>}

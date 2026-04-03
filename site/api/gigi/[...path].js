@@ -1,3 +1,5 @@
+export const maxDuration = 30;
+
 export default async function handler(req, res) {
   const baseUrl = process.env.GIGI_URL || "https://gigi-stream.fly.dev";
   const apiKey = process.env.GIGI_API_KEY || "";

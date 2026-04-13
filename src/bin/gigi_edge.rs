@@ -419,6 +419,7 @@ async fn curvature_report(
 
     Ok(Json(serde_json::json!({
         "K": (k * 1000.0).round() / 1000.0,
+        "curvature": (k * 1000.0).round() / 1000.0,
         "confidence": (conf * 100.0).round() / 100.0,
         "capacity": (capacity * 100.0).round() / 100.0,
         "per_field": per_field,

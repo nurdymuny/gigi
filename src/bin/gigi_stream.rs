@@ -503,6 +503,8 @@ fn anomaly_to_json(a: &AnomalyRecord, include_scores: bool) -> serde_json::Value
 struct CurvatureReport {
     #[serde(rename = "K")]
     k: f64,
+    /// Alias for K — included for client compatibility.
+    curvature: f64,
     confidence: f64,
     capacity: f64,
     per_field: Vec<FieldCurvature>,
@@ -1497,6 +1499,7 @@ async fn curvature_report(
 
     Ok(Json(CurvatureReport {
         k,
+        curvature: k,
         confidence: conf,
         capacity: cap,
         per_field,
@@ -4645,6 +4648,53 @@ async fn vector_search_handler(
     })))
 }
 
+// ── Tigris / S3 snapshot sync ─────────────────────────────────────────────
+
+fn has_dhoom_files(dir: &std::path::Path) -> bool {
+    if !dir.exists() {
+        return false;
+    }
+    std::fs::read_dir(dir)
+        .map(|d| {
+            d.filter_map(|e| e.ok())
+                .any(|e| e.path().extension() == Some(std::ffi::OsStr::new("dhoom")))
+        })
+        .unwrap_or(false)
+}
+
+/// Run `aws s3 sync src dest`, passing Tigris endpoint if configured.
+fn aws_s3_sync(src: &str, dest: &str) {
+    let mut cmd = std::process::Command::new("aws");
+    cmd.args(["s3", "sync", "--no-progress", src, dest, "--exclude", "*.tmp"]);
+    // awscli v1 needs --endpoint-url explicitly; v2 reads AWS_ENDPOINT_URL env var.
+    if let Ok(ep) = std::env::var("AWS_ENDPOINT_URL_S3")
+        .or_else(|_| std::env::var("AWS_ENDPOINT_URL"))
+    {
+        cmd.args(["--endpoint-url", &ep]);
+    }
+    match cmd.status() {
+        Ok(s) if s.success() => eprintln!("S3 sync ok: {src} → {dest}"),
+        Ok(s) => eprintln!("S3 sync exit {s}: {src} → {dest}"),
+        Err(e) => eprintln!("S3 sync error (aws not found?): {e}"),
+    }
+}
+
+/// Pull snapshots + WAL from Tigris into data_dir (used on cold / volumeless start).
+fn tigris_pull(data_dir: &std::path::Path, bucket: &str) {
+    let src = format!("s3://{bucket}/");
+    let dest = format!("{}/", data_dir.display());
+    eprintln!("Tigris pull: {src} → {dest}");
+    aws_s3_sync(&src, &dest);
+}
+
+/// Push snapshots + WAL from data_dir to Tigris.
+fn tigris_push(data_dir: &std::path::Path, bucket: &str) {
+    let src = format!("{}/", data_dir.display());
+    let dest = format!("s3://{bucket}/");
+    eprintln!("Tigris push: {src} → {dest}");
+    aws_s3_sync(&src, &dest);
+}
+
 // ── Main ──
 
 #[tokio::main]
@@ -4786,7 +4836,43 @@ async fn main() {
         std::env::var("GIGI_DATA_DIR").unwrap_or_else(|_| "./gigi_data".to_string()),
     );
     tokio::task::spawn_blocking(move || {
-        // Phase 1: WAL replay into heap bundles
+        let snapshots_dir = data_dir_for_replay.join("snapshots");
+
+        // ── Step 1: Pull from Tigris if no local snapshots (new/volumeless machine) ──
+        if !has_dhoom_files(&snapshots_dir) {
+            if let Ok(bucket) = std::env::var("TIGRIS_BUCKET_NAME") {
+                eprintln!("No local snapshots — pulling from Tigris bucket '{bucket}'…");
+                tigris_pull(&data_dir_for_replay, &bucket);
+            }
+        }
+
+        // ── Step 2: Fast path — snapshots on disk, skip heap replay entirely ─────
+        if has_dhoom_files(&snapshots_dir) {
+            eprintln!("Snapshots on disk — fast mmap open (skipping heap replay)…");
+            match Engine::open_mmap(&data_dir_for_replay) {
+                Ok(mmap_engine) => {
+                    let total = mmap_engine.total_records();
+                    *replay_state.engine.write().unwrap() = mmap_engine;
+                    #[cfg(unix)]
+                    unsafe { libc::malloc_trim(0); }
+                    replay_state.ready.store(true, Ordering::Release);
+                    eprintln!("Engine ready — {total} records (fast path)");
+                    // Background: keep Tigris in sync with latest snapshot + WAL
+                    if let Ok(bucket) = std::env::var("TIGRIS_BUCKET_NAME") {
+                        let data_dir_clone = data_dir_for_replay.clone();
+                        std::thread::spawn(move || {
+                            tigris_push(&data_dir_clone, &bucket);
+                        });
+                    }
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("Fast mmap open failed: {e} — falling back to heap replay");
+                }
+            }
+        }
+
+        // ── Step 3: Slow path — heap replay + snapshot write + mmap open ─────────
         {
             let mut engine = replay_state.engine.write().unwrap();
             if let Err(e) = engine.replay_wal() {
@@ -4835,6 +4921,15 @@ async fn main() {
 
         replay_state.ready.store(true, Ordering::Release);
         eprintln!("Engine ready — all endpoints active");
+
+        // Background: upload snapshots + WAL to Tigris after slow-path write
+        if let Ok(bucket) = std::env::var("TIGRIS_BUCKET_NAME") {
+            let data_dir_clone = data_dir_for_replay.clone();
+            std::thread::spawn(move || {
+                eprintln!("Uploading snapshots to Tigris (background)…");
+                tigris_push(&data_dir_clone, &bucket);
+            });
+        }
     });
 
     axum::serve(

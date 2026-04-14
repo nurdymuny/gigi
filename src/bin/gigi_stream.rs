@@ -616,8 +616,12 @@ fn json_to_value(v: &serde_json::Value) -> Value {
         }
         serde_json::Value::String(s) => {
             // Strings prefixed with "b64:" decode to Value::Binary losslessly.
-            // Plain strings become Value::Text.
+            // Double-prefix escape (§8.9): "b64:b64:..." means the text literally
+            // starts with "b64:" — strip one prefix and return as Value::Text.
             if let Some(encoded) = s.strip_prefix("b64:") {
+                if let Some(literal) = encoded.strip_prefix("b64:") {
+                    return Value::Text(format!("b64:{literal}"));
+                }
                 use base64::Engine as _;
                 match base64::engine::general_purpose::STANDARD.decode(encoded) {
                     Ok(bytes) => Value::Binary(bytes),
@@ -645,7 +649,15 @@ fn value_to_json(v: &Value) -> serde_json::Value {
     match v {
         Value::Integer(i) => serde_json::json!(i),
         Value::Float(f) => serde_json::json!(f),
-        Value::Text(s) => serde_json::json!(s),
+        // §8.9 escape: Text values starting with "b64:" must be double-prefixed
+        // so the receiver decodes them as text, not binary.
+        Value::Text(s) => {
+            if s.starts_with("b64:") {
+                serde_json::Value::String(format!("b64:{s}"))
+            } else {
+                serde_json::json!(s)
+            }
+        }
         Value::Bool(b) => serde_json::json!(b),
         Value::Timestamp(t) => serde_json::json!(t),
         Value::Vector(v) => {
@@ -5422,6 +5434,76 @@ mod tests {
         assert!(
             matches!(v, Value::Text(_)),
             "plain string must stay Value::Text, got {v:?}"
+        );
+    }
+
+    // ── §8.9 b64: escape convention (user-controlled text) ────────────────
+    //
+    // User-generated text that literally begins with "b64:" must be escaped
+    // before writing to any GIGI field (§2.1 collision policy).
+    // Convention: prepend another "b64:" prefix.
+    //
+    //   Sender:   user text "b64:hello" → write "b64:b64:hello"
+    //   Receiver: json_to_value("b64:b64:hello") → Value::Text("b64:hello")
+    //   Re-encode: value_to_json(Value::Text("b64:hello")) → "b64:b64:hello"
+    //
+    // This creates a lossless round-trip with no schema-based exceptions.
+
+    #[test]
+    fn test_b64_escape_decoded_as_text() {
+        // "b64:b64:hello" must be decoded as Value::Text("b64:hello"), not binary.
+        let escaped = serde_json::Value::String("b64:b64:hello".into());
+        let v = json_to_value(&escaped);
+        assert_eq!(
+            v,
+            Value::Text("b64:hello".into()),
+            "double-prefix escape must return Value::Text with one prefix stripped"
+        );
+    }
+
+    #[test]
+    fn test_b64_escape_triple_prefix_roundtrip() {
+        // Text that is literally "b64:b64:foo" gets three prefixes on wire,
+        // receiver strips one → Text("b64:b64:foo"). Fully recursive.
+        let escaped = serde_json::Value::String("b64:b64:b64:foo".into());
+        let v = json_to_value(&escaped);
+        assert_eq!(v, Value::Text("b64:b64:foo".into()));
+    }
+
+    #[test]
+    fn test_value_to_json_escapes_text_starting_with_b64() {
+        // value_to_json must emit the extra prefix so the receiver decodes correctly.
+        let v = Value::Text("b64:sensitive data".into());
+        let json = value_to_json(&v);
+        assert_eq!(
+            json,
+            serde_json::Value::String("b64:b64:sensitive data".into()),
+            "value_to_json must escape Text starting with b64:"
+        );
+    }
+
+    #[test]
+    fn test_b64_escape_full_roundtrip_text() {
+        // json_to_value → store → value_to_json must reproduce the original wire string.
+        let wire = "b64:b64:user typed this literally";
+        let v = json_to_value(&serde_json::Value::String(wire.into()));
+        assert_eq!(v, Value::Text("b64:user typed this literally".into()));
+        let re_encoded = value_to_json(&v);
+        assert_eq!(
+            re_encoded,
+            serde_json::Value::String(wire.into()),
+            "round-trip must reproduce the original escaped wire string"
+        );
+    }
+
+    #[test]
+    fn test_b64_escape_does_not_affect_normal_binary() {
+        // Normal binary ingest must still work after adding the escape logic.
+        let encoded = serde_json::Value::String("b64:AAEC/w==".into());
+        let v = json_to_value(&encoded);
+        assert!(
+            matches!(v, Value::Binary(ref b) if b.as_slice() == [0x00u8, 0x01, 0x02, 0xFF]),
+            "normal b64: must still decode to Value::Binary, got {v:?}"
         );
     }
 

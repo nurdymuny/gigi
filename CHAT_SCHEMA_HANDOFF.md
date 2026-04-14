@@ -456,4 +456,48 @@ This is a joint deliverable. GIGI provides the endpoint; GGOG provides the clien
 4. ~~Both teams execute interop fixture §8.5~~ ✅ Done — live run passed against `gigi-stream.fly.dev` 2026-04-14
 5. ~~GGOG answers §8 open items 1, 2, 6, 8, 9 → GIGI finalises BundleSchema for all six families~~ ✅ Done — all six items resolved 2026-04-14
 6. ~~Joint: CI fixture coverage for all six event families (§3.3), including at least one Binary field per relevant family~~ ✅ Done — 543 tests, 0 failures, commit `71b4aa3`
-7. **→ NOW: Lock pass/fail invariants before any client ships against this contract**
+7. ~~Lock pass/fail invariants before any client ships against this contract~~ ✅ Done — see §10 below
+
+---
+
+## 10. Pass/Fail Invariants (Contract Lock)
+
+Both teams agreed these invariants on 2026-04-14. A violation of any MUST-level invariant is a hard bug — the offending side blocks ship.
+
+### 10.1 GIGI-side invariants (server must enforce)
+
+| # | Invariant | Enforcement |
+|---|-----------|-------------|
+| G1 | Any inbound field value starting with `b64:` is decoded to `Value::Binary` unconditionally, regardless of declared `FieldType` | `json_to_value` — live |
+| G2 | `Value::Binary` fields exceeding 1 MB at ingest are rejected with `413 Payload Too Large` | `check_binary_sizes()` — live |
+| G3 | Sending an unsupported `Content-Type` to `/ingest` returns `415 Unsupported Media Type` | `ingest_dhoom` handler — live |
+| G4 | `/v1/bundles/{name}/dhoom` returns `Content-Type: application/dhoom` with raw DHOOM text body (not a JSON wrapper) | `export_dhoom` — live as of `1f41c8e` |
+| G5 | `Value::Text` values starting with `b64:` are re-escaped as `b64:{value}` on output — round-trip fidelity for escaped user text | `value_to_json` — live as of `8107066` |
+
+### 10.2 GGOG-side invariants (client must enforce)
+
+| # | Invariant | Owner |
+|---|-----------|-------|
+| C1 | `projection_type`, `sender_id`, `timestamp_ns` present on every emitted record; missing any is a serialization defect | GGOG |
+| C2 | `timestamp_ns` is always integer nanoseconds since Unix epoch; formatted time strings are never sent | GGOG |
+| C3 | `chat/dm`: `encrypted=true` → `body` is binary ciphertext (`b64:...` at JSON edge); `encrypted=false` → `body` is plain text. The two branches are mutually exclusive | GGOG |
+| C4 | Any user-provided text beginning with `b64:` is double-prefixed before emission (`b64:b64:...`); unescaped emission is a blocking bug | GGOG |
+| C5 | `message_id` is caller-minted and stable across retries and replays; regenerating after first send attempt is a defect | GGOG |
+| C6 | `chat/signal`: `call_id` and a valid `signal_type` (`offer\|answer\|ice\|reject\|end\|busy`) are always present; missing or invalid values are client defects | GGOG |
+| C7 | `chat/typing`: `state` is emitted as enum (`start\|stop`); boolean typing payloads are never sent | GGOG |
+| C8 | `chat/voice_note`: exactly one of `media_ref` or `media_bytes` is present; both or neither is a client defect | GGOG |
+| C9 | If `media_bytes` is used, GGOG enforces the 256 KB ceiling before transmit; oversized payloads are rejected client-side before reaching ingest | GGOG |
+| C10 | `duration_ms` is integer milliseconds; seconds or float strings are never sent | GGOG |
+| C11 | All inbound `b64:` prefixed values are decoded as binary regardless of field name, then routed to the decrypt/media path | GGOG |
+| C12 | DHOOM import: parse success plus byte-fidelity roundtrip for all binary fields; byte mismatch is a hard failure | GGOG |
+
+### 10.3 Joint invariants
+
+| # | Invariant |
+|---|-----------|
+| J1 | `b64:` is the sole discriminator for binary data at all text-serialisation boundaries (JSON, NDJSON, DHOOM fiber). No schema-based override. |
+| J2 | `media_bytes` inline voice payload ≤ 256 KB: enforced client-side (C9) and at ingest (G2 applies the 1 MB hard cap; the 256 KB advisory is GGOG-enforced). |
+| J3 | Single-record bundle ingests return `curvature: 0`; this is correct behavior. Clients MUST NOT treat `curvature = 0` as an error. |
+
+**Contract status: LOCKED — 2026-04-14**  
+All §8 items resolved. All §10 invariants agreed. Ship-ready.

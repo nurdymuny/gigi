@@ -65,9 +65,11 @@ Inside the GIGI engine — WAL, mmap snapshot, in-memory BundleStore — binary 
 
 ### DHOOM transport
 
-DHOOM encodes binary fields as raw bytes in the fiber section. The `b64:` prefix is **not used** in DHOOM payloads. Peers communicating via `application/dhoom` carry binary at full fidelity with no encoding overhead.
+DHOOM is a **text-based** format. Binary fields are serialised with the same `b64:` prefix used at JSON API edges. A consumer parsing an `application/dhoom` body must strip the `b64:` prefix from any field value that starts with it, identical to the JSON decode rule. The byte fidelity guarantee is:
 
-> `b64:` is an API-edge bridge for JSON surfaces. It is not the conceptual model for peer-to-peer transport.
+> storage → DHOOM export (`b64:AAECAw==`) → DHOOM ingest → `json_to_value` strips prefix → `Value::Binary([0,1,2,3])` — identical bytes, full roundtrip.
+
+The `b64:` prefix is the sole discriminator for binary data across **all** serialisation surfaces (JSON, NDJSON, DHOOM). There is no separate raw-bytes encoding in the DHOOM fiber.
 
 ### Size guidance
 
@@ -412,20 +414,22 @@ Content-Type: application/x-ndjson
 
 The string `"b64:AAEC/w=="` decodes to `Value::Binary([0x00, 0x01, 0x02, 0xFF])` at the JSON boundary per §2.1.
 
-**Step 2 — DHOOM re-export (raw bytes, no b64: prefix)**
+**Step 2 — DHOOM re-export (b64: in fiber, decoded to raw bytes by consumer)**
 
 ```
 GET /v1/bundles/chat_voice_note/dhoom
 ```
 
-The exported DHOOM fiber carries `media_bytes` as raw bytes (`00 01 02 FF`). There is no `b64:` in the DHOOM payload. A second client ingesting this DHOOM export must arrive at identical `Value::Binary([0x00, 0x01, 0x02, 0xFF])` without any base64 decode step.
+Response: `Content-Type: application/dhoom` with the raw DHOOM text body.
+
+Because DHOOM is a text-based format, `media_bytes` appears in the DHOOM fiber as `"b64:AAEC/w=="`. The consuming client MUST apply the same `b64:` strip rule as it would at a JSON boundary. The storage value is identical either way.
 
 Pass criteria:
-1. Ingest (Step 1) returns `{"status": "ingested", "count": 1}` with `curvature > 0`
+1. Ingest (Step 1) returns `{"status": "ingested", "count": 1, "curvature": 0}` — single-record bundles always have curvature = 0; this is correct behavior, not an error
 2. Point-query by `message_id = "msg-vn-001"` returns the record
-3. `media_bytes` field in storage is `Value::Binary([0x00, 0x01, 0x02, 0xFF])` — exact bytes, no prefix
-4. DHOOM re-export (Step 2) completes without error
-5. A second client ingesting the DHOOM export produces identical bytes for `media_bytes` — confirming raw-byte fidelity end-to-end
+3. `media_bytes` in the returned JSON is `"b64:AAEC/w=="`; decoded bytes are `[0x00, 0x01, 0x02, 0xFF]`
+4. DHOOM re-export (Step 2) returns `Content-Type: application/dhoom` and completes without error
+5. A second client ingesting the DHOOM export, after stripping the `b64:` prefix, produces identical bytes `[0x00, 0x01, 0x02, 0xFF]` for `media_bytes` — confirming roundtrip fidelity
 
 This is a joint deliverable. GIGI provides the endpoint; GGOG provides the client-side decode verification for criteria 3 and 5.
 

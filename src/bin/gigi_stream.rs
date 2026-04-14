@@ -2967,11 +2967,18 @@ async fn export_bundle(
     })))
 }
 
-/// GET /v1/bundles/{name}/dhoom — export bundle as DHOOM wire format with compression stats
+/// GET /v1/bundles/{name}/dhoom — export bundle as DHOOM wire format.
+///
+/// Returns the raw DHOOM string body with `Content-Type: application/dhoom`.
+/// Binary fields (`Value::Binary`) are serialised with the `b64:` prefix (same
+/// as the JSON API edge) because DHOOM is a text-based format.  Consumers must
+/// strip the prefix to recover raw bytes, identical to the JSON ingest path.
 async fn export_dhoom(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
+    use axum::response::IntoResponse;
+
     let engine = state.engine.read().unwrap();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
@@ -2987,14 +2994,11 @@ async fn export_dhoom(
 
     let result = dhoom::encode_json(&json_records, &name);
 
-    Ok(Json(serde_json::json!({
-        "bundle": name,
-        "count": json_records.len(),
-        "dhoom": result.dhoom,
-        "json_bytes": result.json_bytes,
-        "dhoom_bytes": result.dhoom_bytes,
-        "compression_pct": result.compression_pct,
-    })))
+    Ok((
+        [(axum::http::header::CONTENT_TYPE, "application/dhoom")],
+        result.dhoom,
+    )
+        .into_response())
 }
 
 /// POST /v1/bundles/{name}/import — import records from JSON (WAL-logged)

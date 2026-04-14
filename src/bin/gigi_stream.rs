@@ -594,7 +594,19 @@ fn json_to_value(v: &serde_json::Value) -> Value {
                 Value::Float(n.as_f64().unwrap_or(0.0))
             }
         }
-        serde_json::Value::String(s) => Value::Text(s.clone()),
+        serde_json::Value::String(s) => {
+            // Strings prefixed with "b64:" decode to Value::Binary losslessly.
+            // Plain strings become Value::Text.
+            if let Some(encoded) = s.strip_prefix("b64:") {
+                use base64::Engine as _;
+                match base64::engine::general_purpose::STANDARD.decode(encoded) {
+                    Ok(bytes) => Value::Binary(bytes),
+                    Err(_) => Value::Text(s.clone()),
+                }
+            } else {
+                Value::Text(s.clone())
+            }
+        }
         serde_json::Value::Bool(b) => Value::Bool(*b),
         serde_json::Value::Array(arr) => {
             // Numeric arrays → Value::Vector (embedding/feature vector)
@@ -618,6 +630,13 @@ fn value_to_json(v: &Value) -> serde_json::Value {
         Value::Timestamp(t) => serde_json::json!(t),
         Value::Vector(v) => {
             serde_json::Value::Array(v.iter().map(|x| serde_json::json!(x)).collect())
+        }
+        Value::Binary(b) => {
+            use base64::Engine as _;
+            serde_json::Value::String(format!(
+                "b64:{}",
+                base64::engine::general_purpose::STANDARD.encode(b)
+            ))
         }
         Value::Null => serde_json::Value::Null,
     }
@@ -5335,5 +5354,88 @@ mod tests {
             matches!(v, Value::Integer(1)),
             "id must convert to Value::Integer(1), got {v:?}"
         );
+    }
+
+    // ── Value::Binary TDD tests ────────────────────────────────────────────
+
+    /// Binary payload survives json_to_value → value_to_json round-trip.
+    #[test]
+    fn test_binary_roundtrip_via_json() {
+        let payload: Vec<u8> = vec![0x00, 0xFF, 0x80, 0x01, 0x02, 0xFE];
+        use base64::Engine as _;
+        let b64 = format!(
+            "b64:{}",
+            base64::engine::general_purpose::STANDARD.encode(&payload)
+        );
+        let json_in = serde_json::Value::String(b64);
+
+        // Decode: "b64:..." → Value::Binary
+        let gigi_val = json_to_value(&json_in);
+        assert!(
+            matches!(gigi_val, Value::Binary(ref b) if *b == payload),
+            "json_to_value must produce Value::Binary, got {gigi_val:?}"
+        );
+
+        // Re-encode: Value::Binary → "b64:..."
+        let json_out = value_to_json(&gigi_val);
+        assert_eq!(json_in, json_out, "value_to_json must restore the b64: string");
+    }
+
+    /// Plain strings must NOT become Value::Binary.
+    #[test]
+    fn test_plain_string_stays_text() {
+        let plain = serde_json::Value::String("hello world".into());
+        let v = json_to_value(&plain);
+        assert!(
+            matches!(v, Value::Text(_)),
+            "plain string must stay Value::Text, got {v:?}"
+        );
+    }
+
+    /// Value::Binary survives WAL encode → decode round-trip.
+    #[test]
+    fn test_binary_wal_roundtrip() {
+        let dir = tmp_dir("binary_wal");
+        cleanup(&dir);
+
+        let mut engine = Engine::open(&dir).unwrap();
+        let schema = BundleSchema::new("blobs")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("payload"));
+        engine.create_bundle(schema).unwrap();
+
+        let payload: Vec<u8> = (0u8..=255).collect();
+        use base64::Engine as _;
+        let b64_str = format!(
+            "b64:{}",
+            base64::engine::general_purpose::STANDARD.encode(&payload)
+        );
+
+        let mut rec: Record = Record::new();
+        rec.insert("id".into(), Value::Integer(1));
+        rec.insert(
+            "payload".into(),
+            Value::Binary(payload.clone()),
+        );
+        engine.insert("blobs", &rec).unwrap();
+
+        // Reopen to force WAL replay
+        drop(engine);
+        let engine2 = Engine::open(&dir).unwrap();
+        let mut key = Record::new();
+        key.insert("id".into(), Value::Integer(1));
+        let result = engine2.point_query("blobs", &key).unwrap().unwrap();
+
+        assert!(
+            matches!(result.get("payload"), Some(Value::Binary(b)) if *b == payload),
+            "Binary payload must survive WAL encode → decode, got {:?}",
+            result.get("payload")
+        );
+
+        // Verify value_to_json produces b64: prefix when serialising
+        let out = value_to_json(result.get("payload").unwrap());
+        assert_eq!(out, serde_json::Value::String(b64_str));
+
+        cleanup(&dir);
     }
 }

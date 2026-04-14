@@ -112,6 +112,7 @@ fn encode_value(val: &Value) -> Vec<u8> {
             bits.to_be_bytes().to_vec()
         }
         Value::Null => vec![0xFF], // sentinel
+        Value::Binary(b) => b.clone(),
         Value::Vector(v) => {
             // Encode as concatenated big-endian f64 bytes (for total-order hashing)
             let mut bytes = Vec::with_capacity(v.len() * 8);

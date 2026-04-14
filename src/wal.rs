@@ -447,6 +447,11 @@ fn encode_value(v: &Value) -> Vec<u8> {
                 buf.extend_from_slice(&x.to_le_bytes());
             }
         }
+        Value::Binary(b) => {
+            buf.push(0x07);
+            buf.extend_from_slice(&(b.len() as u32).to_le_bytes());
+            buf.extend_from_slice(b);
+        }
     }
     buf
 }
@@ -493,6 +498,13 @@ fn decode_value(data: &[u8], offset: &mut usize) -> io::Result<Value> {
                 v.push(x);
             }
             Ok(Value::Vector(v))
+        }
+        0x07 => {
+            let len = u32::from_le_bytes(data[*offset..*offset + 4].try_into().unwrap()) as usize;
+            *offset += 4;
+            let b = data[*offset..*offset + len].to_vec();
+            *offset += len;
+            Ok(Value::Binary(b))
         }
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,

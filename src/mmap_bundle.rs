@@ -393,7 +393,17 @@ impl OverlayBundle {
                     Value::Float(n.as_f64().unwrap_or(0.0))
                 }
             }
-            serde_json::Value::String(s) => Value::Text(s.clone()),
+            serde_json::Value::String(s) => {
+                if let Some(encoded) = s.strip_prefix("b64:") {
+                    use base64::Engine as _;
+                    match base64::engine::general_purpose::STANDARD.decode(encoded) {
+                        Ok(bytes) => Value::Binary(bytes),
+                        Err(_) => Value::Text(s.clone()),
+                    }
+                } else {
+                    Value::Text(s.clone())
+                }
+            }
             serde_json::Value::Bool(b) => Value::Bool(*b),
             serde_json::Value::Array(arr) => {
                 let floats: Vec<f64> = arr.iter().filter_map(|x| x.as_f64()).collect();

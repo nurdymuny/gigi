@@ -164,7 +164,7 @@ fn gauge_retype(store: &BundleStore, field_name: &str, new_type: &FieldType) -> 
                     Value::Text(s) => s.parse::<f64>().map(Value::Float).unwrap_or(Value::Null),
                     Value::Bool(b) => Value::Integer(b as i64),
                     Value::Null => Value::Null,
-                    Value::Vector(_) => Value::Null,
+                    Value::Vector(_) | Value::Binary(_) => Value::Null,
                 },
                 FieldType::Categorical => match val {
                     Value::Text(_) => val,

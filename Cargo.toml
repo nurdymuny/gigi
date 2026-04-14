@@ -25,6 +25,7 @@ futures-util = "0.3"
 nalgebra = "0.33"
 memmap2 = "0.9"
 libc = "0.2"
+base64 = "0.22"
 
 [[bin]]
 name = "gigi-convert"

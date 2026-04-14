@@ -30,6 +30,8 @@ pub enum Value {
     Timestamp(i64),
     /// Dense float vector — embedding / feature vector.
     Vector(Vec<f64>),
+    /// Raw binary blob (voice notes, encrypted payloads). Serializes as base64.
+    Binary(Vec<u8>),
     Null,
 }
 
@@ -53,6 +55,7 @@ impl Ord for Value {
                 Value::Text(_) => 4,
                 Value::Timestamp(_) => 5,
                 Value::Vector(_) => 6,
+                Value::Binary(_) => 7,
             }
         }
         match (self, other) {
@@ -97,6 +100,7 @@ impl std::hash::Hash for Value {
                     x.to_bits().hash(state);
                 }
             }
+            Value::Binary(b) => b.hash(state),
             Value::Null => {}
         }
     }
@@ -120,6 +124,7 @@ impl fmt::Display for Value {
                 }
                 write!(f, "]")
             }
+            Value::Binary(b) => write!(f, "<binary {} bytes>", b.len()),
             Value::Null => write!(f, "NULL"),
         }
     }

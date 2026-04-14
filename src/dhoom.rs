@@ -2467,6 +2467,71 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
         let decoded = decode_to_json(&String::from_utf8(buf).unwrap()).unwrap();
         assert_eq!(decoded.len(), n);
     }
+
+    // ── Ingest pipeline tests (DHOOM → GIGI Records) ──────────────────────
+
+    /// Verify decode_to_json produces correctly typed records for a realistic
+    /// sensor payload — this is the exact path taken by POST /ingest.
+    #[test]
+    fn test_ingest_decode_sensors() {
+        // Arithmetic sequence on ts, modal default on unit
+        let dhoom = "sensors{ts@1710000000+60, temp, unit|C}:\n22.5\n23.1\n21.8\n";
+        let records = decode_to_json(dhoom).unwrap();
+        assert_eq!(records.len(), 3, "must decode all 3 records");
+
+        // Timestamps must increment by step
+        assert_eq!(records[0]["ts"], json!(1710000000i64));
+        assert_eq!(records[1]["ts"], json!(1710000060i64));
+        assert_eq!(records[2]["ts"], json!(1710000120i64));
+
+        // Modal default propagated
+        assert_eq!(records[0]["unit"], json!("C"));
+        assert_eq!(records[2]["unit"], json!("C"));
+
+        // All records are JSON objects (castable to GIGI Records)
+        for r in &records {
+            assert!(r.is_object(), "every decoded record must be a JSON object");
+        }
+    }
+
+    /// Verify deviation overrides in an ingest payload are preserved.
+    #[test]
+    fn test_ingest_decode_deviation_override() {
+        // score field has default 100; record 2 deviates with :72
+        let dhoom = "events{name, score|100}:\nalpha\nbeta, :72\ngamma\n";
+        let records = decode_to_json(dhoom).unwrap();
+        assert_eq!(records.len(), 3);
+
+        // Record 0: uses default score
+        assert_eq!(records[0]["name"], json!("alpha"));
+        assert_eq!(records[0]["score"], json!(100));
+
+        // Record 1: deviation overrides default
+        assert_eq!(records[1]["name"], json!("beta"));
+        assert_eq!(records[1]["score"], json!(72));
+
+        // Record 2: back to default
+        assert_eq!(records[2]["name"], json!("gamma"));
+        assert_eq!(records[2]["score"], json!(100));
+    }
+
+    /// Verify decode_to_json round-trips numeric fields correctly — no data
+    /// is lost when the ingest handler converts DHOOM to JSON records.
+    #[test]
+    fn test_ingest_decode_numeric_precision() {
+        let dhoom = "telemetry{id@100+1, value}:\n1.5\n2.718\n3.14159\n";
+        let records = decode_to_json(dhoom).unwrap();
+        assert_eq!(records.len(), 3);
+        // IDs must be exact integers from arithmetic sequence
+        assert_eq!(records[0]["id"], json!(100i64));
+        assert_eq!(records[1]["id"], json!(101i64));
+        assert_eq!(records[2]["id"], json!(102i64));
+        // Floating-point values must not be truncated
+        assert!(
+            (records[1]["value"].as_f64().unwrap() - 2.718).abs() < 1e-6,
+            "float value precision lost"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------

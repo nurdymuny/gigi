@@ -69,7 +69,7 @@ DHOOM encodes binary fields as raw bytes in the fiber section. The `b64:` prefix
 
 > `b64:` is an API-edge bridge for JSON surfaces. It is not the conceptual model for peer-to-peer transport.
 
-### Size guidance (provisional)
+### Size guidance
 
 | Payload type             | Recommended max per field | Strategy above limit          |
 |--------------------------|--------------------------|-------------------------------|

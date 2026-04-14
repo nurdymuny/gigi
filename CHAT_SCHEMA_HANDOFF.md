@@ -2,7 +2,9 @@
 
 **Date:** 2026-04-14  
 **Owners:** GGOG Copilot + GIGI DB Team  
-**Status:** Proposed contract v1 — NOT current GGOG implementation. Section 4 explicitly separates GGOG's live wire format from the proposed v1 target.
+**Status:** 🔒 LOCKED — Both teams ship-ready. Lock acknowledged by GGOG 2026-04-14.  
+**Lock commit:** `1b059a0` — all §8 items resolved, §10 invariants (G1–G5, C1–C12, J1–J3) agreed.  
+**Note:** Section 4 wire frame remains a v1 target (not yet implemented by either side).
 
 ---
 

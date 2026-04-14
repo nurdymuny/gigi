@@ -77,7 +77,7 @@ DHOOM encodes binary fields as raw bytes in the fiber section. The `b64:` prefix
 | Voice note (inline)      | 256 KB                   | Use `media_ref` + out-of-band blob store instead |
 | Any binary field         | 1 MB absolute cap        | Gigi ingest returns 413       |
 
-Exact limits are implementation policy, not schema — the engine does not enforce them today. These are the recommended values pending §8.8 discussion.
+Exact limits are implementation policy, not schema. The 1 MB absolute cap is enforced at ingest (returns `413 PAYLOAD_TOO_LARGE`). The 64 KB and 256 KB values are advisory. Confirmed by both teams 2026-04-14 (§8.8 ✅).
 
 ---
 
@@ -384,18 +384,18 @@ pub fn chat_voice_note_schema() -> BundleSchema {
 
 ## 8. Open Items
 
-| # | Item                                           | Owner |
-|---|------------------------------------------------|-------|
-| 1 | Confirm `recipient_id` encoding for group chats (single ID vs list) | GGOG |
-| 2 | Confirm encryption scheme for `body` field (key exchange model)     | GGOG |
-| 3 | Define `media_ref` resolution protocol (CID? URL? relay-local?)     | Joint |
-| 4 | Confirm `ack` read-receipt retention window                         | GGOG |
-| 5 | Agree interop test fixture format (DHOOM or JSON?) — see §8.5 proposal | Joint |
-| 6 | Confirm `call_id` generation scheme (who mints it: caller or relay?)   | GGOG  |
-| 7 | Define binary-first fallback negotiation error codes                   | Joint |
-| 8 | Confirm max binary payload sizes (§2.1 provisionals — 64 KB / 256 KB) | Joint |
-| 9 | Confirm `b64:` prefix escape policy for user-generated text in GGOG    | GGOG  |
-| 10 | Define binary field list per family (which families MAY carry Binary fields) | Joint |
+| # | Item | Owner | Status |
+|---|------|-------|--------|
+| 1 | `recipient_id` encoding for group chats | GGOG | ✅ Single UUID. Group chats use a group_id; GGOG handles fanout. No schema change needed. |
+| 2 | Encryption scheme for `body` field | GGOG | ✅ Pre-shared AES-256-GCM key established at pairing, never transmitted via GIGI. Relay is a dumb pipe. |
+| 3 | Define `media_ref` resolution protocol (CID? URL? relay-local?) | Joint | 🔲 Open |
+| 4 | `ack` read-receipt retention window | GGOG | ✅ No TTL at schema level. Store indefinitely; pruning is operational, not schema-driven. |
+| 5 | Interop test fixture format — see §8.5 | Joint | ✅ Agreed: JSON ingest (NDJSON + b64:) + DHOOM re-export. |
+| 6 | `call_id` generation scheme | GIGI | ✅ Caller mints UUID v4 client-side. Relay forwards untouched. |
+| 7 | Binary-first fallback negotiation error codes | Joint | 🔲 Open |
+| 8 | Max binary payload sizes | Joint | ✅ 64 KB encrypted body, 256 KB inline voice, 1 MB absolute cap (enforced, returns 413). |
+| 9 | `b64:` prefix escape policy for user text | GIGI | ✅ Double-prefix: `"b64:b64:text"`. Implemented commit `8107066`. |
+| 10 | Binary field list per family | Joint | 🔲 Open |
 
 ### §8.5 Interop Fixture Proposal
 
@@ -433,10 +433,10 @@ This is a joint deliverable. GIGI provides the endpoint; GGOG provides the clien
 
 ## 9. Next Steps
 
-1. GGOG sends current message family schema map → GIGI reviews against the migration table in §6
+1. ~~GGOG sends current message family schema map → GIGI reviews against the migration table in §6~~ ✅ Done — migration table in §6 reflects all field renames
 2. ~~GIGI cuts v1 release of `application/dhoom` content-type path on `/v1/bundles/{name}/ingest`~~ ✅ Done — `POST /v1/bundles/{name}/ingest` live as of commit `67aa7ef`
 3. ~~`Value::Binary` storage gap closed~~ ✅ Done — `e486b55`
-4. GGOG and GIGI jointly run interop fixture §8.5 — binary voice note ingest, replay, decode
-5. GGOG answers §8 open items 1, 2, 6, 8, 9 → GIGI finalises BundleSchema for all six families
-6. Joint: CI fixture coverage for all six event families (§3.3), including at least one Binary field per relevant family
+4. **→ NOW: Both teams execute interop fixture §8.5** — binary voice note ingest, DHOOM re-export, byte fidelity verification
+5. ~~GGOG answers §8 open items 1, 2, 6, 8, 9 → GIGI finalises BundleSchema for all six families~~ ✅ Done — all six items resolved 2026-04-14
+6. ~~Joint: CI fixture coverage for all six event families (§3.3), including at least one Binary field per relevant family~~ ✅ Done — 543 tests, 0 failures, commit `71b4aa3`
 7. Lock pass/fail invariants before any client ships against this contract

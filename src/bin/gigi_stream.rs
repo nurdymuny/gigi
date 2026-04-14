@@ -5781,4 +5781,230 @@ mod tests {
             "non-binary records must always pass"
         );
     }
+
+    // ── §9.6 CI Fixture Coverage — all six event families ─────────────────
+    //
+    // One smoke test per remaining family (chat/dm · signal · ack · typing · reaction).
+    // chat/voice_note is fully covered by the three §8.5 tests above.
+    //
+    // Bundle names use underscores (no slash) — slash chars in bundle names
+    // would be interpreted as filesystem path separators in WAL file creation.
+    // The projection_type field value retains the "chat/X" slash namespace.
+
+    fn chat_dm_schema_test() -> BundleSchema {
+        BundleSchema::new("chat_dm")
+            .base(FieldDef::categorical("projection_type"))
+            .base(FieldDef::categorical("sender_id"))
+            .base(FieldDef::timestamp("timestamp_ns", 1e9))
+            .base(FieldDef::categorical("message_id"))
+            .base(FieldDef::categorical("recipient_id"))
+            .base(FieldDef::categorical("conversation_id"))
+            .fiber(FieldDef::categorical("body"))
+            .fiber(FieldDef::categorical("encrypted").with_default(Value::Bool(false)))
+            .fiber(FieldDef::categorical("media_ref").with_default(Value::Null))
+            .fiber(FieldDef::categorical("reply_to").with_default(Value::Null))
+            .fiber(FieldDef::categorical("edited").with_default(Value::Bool(false)))
+            .index("timestamp_ns")
+            .index("conversation_id")
+    }
+
+    fn chat_signal_schema_test() -> BundleSchema {
+        BundleSchema::new("chat_signal")
+            .base(FieldDef::categorical("projection_type"))
+            .base(FieldDef::categorical("sender_id"))
+            .base(FieldDef::timestamp("timestamp_ns", 1e9))
+            .base(FieldDef::categorical("recipient_id"))
+            .base(FieldDef::categorical("call_id"))
+            .fiber(FieldDef::categorical("signal_type"))
+            .fiber(FieldDef::categorical("sdp").with_default(Value::Null))
+            .fiber(FieldDef::categorical("ice_candidate").with_default(Value::Null))
+            .fiber(FieldDef::categorical("media_type").with_default(Value::Null))
+            .index("timestamp_ns")
+            .index("call_id")
+    }
+
+    fn chat_ack_schema_test() -> BundleSchema {
+        BundleSchema::new("chat_ack")
+            .base(FieldDef::categorical("projection_type"))
+            .base(FieldDef::categorical("sender_id"))
+            .base(FieldDef::timestamp("timestamp_ns", 1e9))
+            .base(FieldDef::categorical("recipient_id"))
+            .fiber(FieldDef::categorical("target_id"))
+            .fiber(FieldDef::categorical("ack_type"))
+            .fiber(FieldDef::categorical("conversation_id").with_default(Value::Null))
+            .index("timestamp_ns")
+            .index("target_id")
+    }
+
+    fn chat_typing_schema_test() -> BundleSchema {
+        BundleSchema::new("chat_typing")
+            .base(FieldDef::categorical("projection_type"))
+            .base(FieldDef::categorical("sender_id"))
+            .base(FieldDef::timestamp("timestamp_ns", 1e9))
+            .base(FieldDef::categorical("recipient_id"))
+            .fiber(FieldDef::categorical("state"))
+            .fiber(FieldDef::categorical("conversation_id").with_default(Value::Null))
+    }
+
+    fn chat_reaction_schema_test() -> BundleSchema {
+        BundleSchema::new("chat_reaction")
+            .base(FieldDef::categorical("projection_type"))
+            .base(FieldDef::categorical("sender_id"))
+            .base(FieldDef::timestamp("timestamp_ns", 1e9))
+            .base(FieldDef::categorical("target_id"))
+            .fiber(FieldDef::categorical("emoji"))
+            .fiber(FieldDef::categorical("action"))
+            .fiber(FieldDef::categorical("conversation_id").with_default(Value::Null))
+            .index("timestamp_ns")
+            .index("target_id")
+    }
+
+    const DM_PLAIN_NDJSON: &str = r#"{"projection_type":"chat/dm","sender_id":"alice","timestamp_ns":1710000000000000000,"message_id":"msg-dm-001","recipient_id":"bob","conversation_id":"conv-abc","body":"hello world","encrypted":false}"#;
+    const DM_ENC_NDJSON: &str = r#"{"projection_type":"chat/dm","sender_id":"alice","timestamp_ns":1710000000000000001,"message_id":"msg-dm-002","recipient_id":"bob","conversation_id":"conv-abc","body":"b64:AAEC/w==","encrypted":true}"#;
+    const SIGNAL_NDJSON: &str = r#"{"projection_type":"chat/signal","sender_id":"alice","timestamp_ns":1710000000000000002,"recipient_id":"bob","call_id":"call-001","signal_type":"offer"}"#;
+    const ACK_NDJSON: &str = r#"{"projection_type":"chat/ack","sender_id":"bob","timestamp_ns":1710000000000000003,"recipient_id":"alice","target_id":"msg-dm-001","ack_type":"delivered"}"#;
+    const TYPING_NDJSON: &str = r#"{"projection_type":"chat/typing","sender_id":"alice","timestamp_ns":1710000000000000004,"recipient_id":"bob","state":"start"}"#;
+    const REACTION_NDJSON: &str = "{\"projection_type\":\"chat/reaction\",\"sender_id\":\"bob\",\"timestamp_ns\":1710000000000000005,\"target_id\":\"msg-dm-001\",\"emoji\":\"\u{1F44D}\",\"action\":\"add\"}";
+
+    #[test]
+    fn test_chat_dm_ingest_plain_body() {
+        let dir = tmp_dir("chat_dm_plain");
+        cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(chat_dm_schema_test()).unwrap();
+        let rec = parse_ndjson_record(DM_PLAIN_NDJSON);
+        engine.batch_insert("chat_dm", &[rec]).unwrap();
+        let store = engine.bundle("chat_dm").unwrap();
+        assert_eq!(store.len(), 1, "one DM record must be stored");
+        let body = store
+            .records()
+            .next()
+            .and_then(|r| r.get("body").cloned())
+            .expect("body field must be present");
+        assert!(
+            matches!(body, Value::Text(ref s) if s == "hello world"),
+            "plain body must be Value::Text, got {body:?}"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_chat_dm_encrypted_body_roundtrip() {
+        // §3.3 binary body convention: encrypted=true → body is Value::Binary (raw ciphertext)
+        // §2.1 boundary: "b64:AAEC/w==" at JSON edge → [0x00,0x01,0x02,0xFF] in storage
+        // value_to_json must re-encode as "b64:AAEC/w==" when crossing back to JSON
+        let dir = tmp_dir("chat_dm_enc");
+        cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(chat_dm_schema_test()).unwrap();
+        let rec = parse_ndjson_record(DM_ENC_NDJSON);
+        engine.batch_insert("chat_dm", &[rec]).unwrap();
+        let store = engine.bundle("chat_dm").unwrap();
+        let body = store
+            .records()
+            .next()
+            .and_then(|r| r.get("body").cloned())
+            .expect("body field must be present");
+        assert!(
+            matches!(body, Value::Binary(ref b) if b.as_slice() == [0x00u8, 0x01, 0x02, 0xFF]),
+            "encrypted body must be Value::Binary([0x00,0x01,0x02,0xFF]), got {body:?}"
+        );
+        // Boundary round-trip: value_to_json must emit the b64: string
+        assert_eq!(
+            value_to_json(&body),
+            serde_json::Value::String("b64:AAEC/w==".to_string()),
+            "value_to_json must re-encode binary body as b64 string"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_chat_signal_ingest() {
+        let dir = tmp_dir("chat_signal");
+        cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(chat_signal_schema_test()).unwrap();
+        let rec = parse_ndjson_record(SIGNAL_NDJSON);
+        engine.batch_insert("chat_signal", &[rec]).unwrap();
+        let store = engine.bundle("chat_signal").unwrap();
+        assert_eq!(store.len(), 1, "one signal record must be stored");
+        let signal_type = store
+            .records()
+            .next()
+            .and_then(|r| r.get("signal_type").cloned())
+            .expect("signal_type field must be present");
+        assert!(
+            matches!(signal_type, Value::Text(ref s) if s == "offer"),
+            "signal_type must be 'offer', got {signal_type:?}"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_chat_ack_ingest() {
+        let dir = tmp_dir("chat_ack");
+        cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(chat_ack_schema_test()).unwrap();
+        let rec = parse_ndjson_record(ACK_NDJSON);
+        engine.batch_insert("chat_ack", &[rec]).unwrap();
+        let store = engine.bundle("chat_ack").unwrap();
+        assert_eq!(store.len(), 1, "one ack record must be stored");
+        let ack_type = store
+            .records()
+            .next()
+            .and_then(|r| r.get("ack_type").cloned())
+            .expect("ack_type field must be present");
+        assert!(
+            matches!(ack_type, Value::Text(ref s) if s == "delivered"),
+            "ack_type must be 'delivered', got {ack_type:?}"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_chat_typing_ingest() {
+        // Schema test only: production relay must NOT persist typing events (§5).
+        // This verifies the data model stores and retrieves correctly at engine level.
+        let dir = tmp_dir("chat_typing");
+        cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(chat_typing_schema_test()).unwrap();
+        let rec = parse_ndjson_record(TYPING_NDJSON);
+        engine.batch_insert("chat_typing", &[rec]).unwrap();
+        let store = engine.bundle("chat_typing").unwrap();
+        assert_eq!(store.len(), 1, "one typing record must be stored");
+        let state = store
+            .records()
+            .next()
+            .and_then(|r| r.get("state").cloned())
+            .expect("state field must be present");
+        assert!(
+            matches!(state, Value::Text(ref s) if s == "start"),
+            "state must be 'start', got {state:?}"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_chat_reaction_ingest() {
+        let dir = tmp_dir("chat_reaction");
+        cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(chat_reaction_schema_test()).unwrap();
+        let rec = parse_ndjson_record(REACTION_NDJSON);
+        engine.batch_insert("chat_reaction", &[rec]).unwrap();
+        let store = engine.bundle("chat_reaction").unwrap();
+        assert_eq!(store.len(), 1, "one reaction record must be stored");
+        let emoji = store
+            .records()
+            .next()
+            .and_then(|r| r.get("emoji").cloned())
+            .expect("emoji field must be present");
+        assert!(
+            matches!(emoji, Value::Text(ref s) if s == "👍"),
+            "emoji must be '👍', got {emoji:?}"
+        );
+        cleanup(&dir);
+    }
 }

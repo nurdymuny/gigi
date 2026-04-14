@@ -53,11 +53,11 @@ The `b64:` prefix is the sole discriminator. The receiving side decodes any stri
 
 ### Collision policy for plain strings
 
-The prefix is **authoritative regardless of schema**. A plain `Text` field whose value begins with `b64:` will be misinterpreted as `Binary` at JSON boundaries. Therefore:
+The prefix is **authoritative regardless of schema**. This is not a soft reservation — it is an unconditional decode rule:
 
-> **Rule:** `b64:` is a reserved prefix. Clients MUST NOT store arbitrary `Text` values beginning with this prefix. If a text field value originates from user input and might start with `b64:`, it must be escaped at the application layer before storage (e.g. prefixed with a sentinel).
+> **Rule:** Any value in any field in any family that begins with `b64:` is decoded as `Value::Binary` at every JSON boundary, regardless of the field's declared `FieldType`. There are no exceptions and no schema-based override. User-controlled text that might begin with `b64:` — in a message body, a display name, a status string, anywhere — MUST be escaped at the application layer before writing to any GIGI field. The engine does not enforce this. A missed escape is silent data corruption.
 
-This constraint is not enforced by the engine. It is a client-side invariant for fields declared `FieldType::Binary`.
+This constraint applies globally, not only to fields declared `FieldType::Binary`.
 
 ### Storage and WAL
 
@@ -115,7 +115,13 @@ These fields are required by most families but not all. Each family's table in �
 | `body`           | yes      | `Text` or `Binary` | Message text, or encrypted ciphertext when `encrypted=true` |
 | `encrypted`      | yes      | `Bool`     | True if `body` carries encrypted bytes          |
 
-**Binary body convention:** When `encrypted=true`, `body` SHOULD be a `Value::Binary` containing the raw ciphertext bytes. When `encrypted=false`, `body` is `Value::Text`. Clients must check the `encrypted` flag before attempting to render. At JSON API boundaries, an encrypted body appears as `"body": "b64:..."` per §2.1.
+**Binary body convention:** `body` has two mutually exclusive runtime types depending on `encrypted`. Clients MUST implement both branches explicitly:
+
+1. Read `encrypted` first.
+2. If `encrypted = false`: `body` is `Value::Text`. Render directly.
+3. If `encrypted = true`: `body` is `Value::Binary` (raw ciphertext). Pass to the decryption layer. Do NOT attempt to render as text.
+
+Treating `body` as always-renderable text is a defect — it will produce garbage or crash on any encrypted record. At JSON API boundaries, an encrypted body arrives as `"body": "b64:..."` per §2.1; the receiving client decodes the base64 and then decrypts.
 | `media_ref`      | no       | `Text`     | Reference key for attached media (not inline)   |
 | `reply_to`       | no       | `Text`     | `message_id` of the message being replied to    |
 | `edited`         | no       | `Bool`     | True if this is an edit of a prior message      |
@@ -367,25 +373,35 @@ pub fn chat_typing_schema() -> BundleSchema {
 
 ### §8.5 Interop Fixture Proposal
 
-The first concrete end-to-end fixture should be a binary voice note ingest and replay:
+The first concrete end-to-end fixture should be a binary voice note ingest and replay. The fixture uses the JSON API edge path (`application/x-ndjson`) where `b64:` encoding is correct and expected. DHOOM is exercised in the re-export step, where the binary is raw bytes with no prefix.
+
+**Step 1 — JSON ingest (b64: at the API edge, as designed)**
 
 ```
-# Fixture: binary-voice-note-01
-# POST /v1/bundles/chat_voice_note/ingest
-# Content-Type: application/dhoom
+POST /v1/bundles/chat_voice_note/ingest
+Content-Type: application/x-ndjson
 
-chat_voice_note{sender_id, recipient_id, timestamp_ns@1710000000000000000, message_id, conversation_id, media_bytes, duration_ms, encrypted|T}:
-alice,bob,msg-vn-001,conv-xyz,b64:AAEC/w==,4200
+{"projection_type":"chat/voice_note","sender_id":"alice","recipient_id":"bob","timestamp_ns":1710000000000000000,"message_id":"msg-vn-001","conversation_id":"conv-xyz","media_bytes":"b64:AAEC/w==","duration_ms":4200,"encrypted":true}
 ```
+
+The string `"b64:AAEC/w=="` decodes to `Value::Binary([0x00, 0x01, 0x02, 0xFF])` at the JSON boundary per §2.1.
+
+**Step 2 — DHOOM re-export (raw bytes, no b64: prefix)**
+
+```
+GET /v1/bundles/chat_voice_note/dhoom
+```
+
+The exported DHOOM fiber carries `media_bytes` as raw bytes (`00 01 02 FF`). There is no `b64:` in the DHOOM payload. A second client ingesting this DHOOM export must arrive at identical `Value::Binary([0x00, 0x01, 0x02, 0xFF])` without any base64 decode step.
 
 Pass criteria:
-1. Ingest returns `{"status": "ingested", "count": 1}` with `curvature > 0`
+1. Ingest (Step 1) returns `{"status": "ingested", "count": 1}` with `curvature > 0`
 2. Point-query by `message_id = "msg-vn-001"` returns the record
-3. `media_bytes` field deserialises to `Value::Binary([0x00, 0x01, 0x02, 0xFF])`
-4. `GET /v1/bundles/chat_voice_note/dhoom` re-exports the record
-5. A second client ingesting the DHOOM export produces identical bytes for `media_bytes`
+3. `media_bytes` field in storage is `Value::Binary([0x00, 0x01, 0x02, 0xFF])` — exact bytes, no prefix
+4. DHOOM re-export (Step 2) completes without error
+5. A second client ingesting the DHOOM export produces identical bytes for `media_bytes` — confirming raw-byte fidelity end-to-end
 
-This is a joint deliverable. GIGI provides the endpoint; GGOG provides the client-side decode verification.
+This is a joint deliverable. GIGI provides the endpoint; GGOG provides the client-side decode verification for criteria 3 and 5.
 
 ---
 

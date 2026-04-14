@@ -207,6 +207,16 @@ impl FieldDef {
         }
     }
 
+    pub fn binary(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            field_type: FieldType::Binary,
+            default: Value::Null,
+            range: None,
+            weight: 1.0,
+        }
+    }
+
     pub fn with_range(mut self, range: f64) -> Self {
         self.range = Some(range);
         self

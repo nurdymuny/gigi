@@ -583,6 +583,26 @@ struct AggValues {
     max: f64,
 }
 
+// ── Binary field size cap (§2.1) ──
+
+/// Hard upper bound for a single `Value::Binary` field (1 MiB).
+const MAX_BINARY_FIELD_BYTES: usize = 1_048_576;
+
+/// Returns `Err((field_name, actual_len))` for the first binary field that
+/// exceeds `MAX_BINARY_FIELD_BYTES`.  Called after NDJSON / DHOOM parse.
+fn check_binary_sizes(records: &[Record]) -> Result<(), (String, usize)> {
+    for record in records {
+        for (field, value) in record {
+            if let Value::Binary(bytes) = value {
+                if bytes.len() > MAX_BINARY_FIELD_BYTES {
+                    return Err((field.clone(), bytes.len()));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 // ── Helper: Convert JSON value to GIGI Value ──
 
 fn json_to_value(v: &serde_json::Value) -> Value {
@@ -3122,6 +3142,19 @@ async fn ingest_dhoom(
 
     let count = records.len();
 
+    // Binary size guard (§2.1 — 1 MiB hard cap per field)
+    check_binary_sizes(&records).map_err(|(field, size)| {
+        (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            Json(ErrorResponse {
+                error: format!(
+                    "Binary field '{}' exceeds 1 MiB limit ({} bytes)",
+                    field, size
+                ),
+            }),
+        )
+    })?;
+
     // Ephemeral path: parse-only, no WAL write
     if ephemeral {
         let resp = serde_json::json!({
@@ -5253,7 +5286,7 @@ mod tests {
     use super::*;
     use gigi::dhoom;
     use gigi::engine::Engine;
-    use gigi::types::{BundleSchema, FieldDef};
+    use gigi::types::{BundleSchema, FieldDef, FieldType};
     use std::path::Path;
 
     fn tmp_dir(tag: &str) -> std::path::PathBuf {
@@ -5448,6 +5481,19 @@ mod tests {
     //
     // Run them as a suite: cargo test s85
 
+    fn chat_reaction_schema() -> BundleSchema {
+        BundleSchema::new("chat/reaction")
+            .base(FieldDef::categorical("projection_type"))
+            .base(FieldDef::categorical("sender_id"))
+            .base(FieldDef::timestamp("timestamp_ns", 1e9))
+            .base(FieldDef::categorical("target_id"))
+            .fiber(FieldDef::categorical("emoji"))
+            .fiber(FieldDef::categorical("action"))
+            .fiber(FieldDef::categorical("conversation_id").with_default(Value::Null))
+            .index("timestamp_ns")
+            .index("target_id")
+    }
+
     fn chat_voice_note_schema() -> BundleSchema {
         // message_id is the sole base field (primary key) so that
         // point_query({"message_id": ...}) works with a single-column key.
@@ -5459,7 +5505,7 @@ mod tests {
             .fiber(FieldDef::categorical("conversation_id"))
             .fiber(FieldDef::categorical("projection_type"))
             .fiber(FieldDef::timestamp("timestamp_ns", 1e9))
-            .fiber(FieldDef::categorical("media_bytes"))
+            .fiber(FieldDef::binary("media_bytes"))
             .fiber(FieldDef::numeric("duration_ms").with_range(60_000.0))
             .fiber(FieldDef::categorical("encrypted").with_default(Value::Bool(false)))
     }
@@ -5637,5 +5683,102 @@ mod tests {
 
         cleanup(&dir1);
         cleanup(&dir2);
+    }
+
+    // ── FieldDef::binary() constructor ────────────────────────────────────
+
+    #[test]
+    fn test_field_def_binary_constructor() {
+        let f = FieldDef::binary("media_bytes");
+        assert_eq!(f.name, "media_bytes");
+        assert_eq!(f.field_type, FieldType::Binary);
+        assert_eq!(f.default, Value::Null);
+        assert!(f.range.is_none());
+    }
+
+    // ── chat_reaction_schema() fields ────────────────────────────────────
+
+    #[test]
+    fn test_chat_reaction_schema_fields() {
+        let schema = chat_reaction_schema();
+        assert_eq!(schema.name, "chat/reaction");
+
+        // Base fields: projection_type, sender_id, timestamp_ns, target_id
+        let base_names: Vec<&str> = schema.base_fields.iter().map(|f| f.name.as_str()).collect();
+        assert!(base_names.contains(&"projection_type"), "missing projection_type base");
+        assert!(base_names.contains(&"sender_id"), "missing sender_id base");
+        assert!(base_names.contains(&"timestamp_ns"), "missing timestamp_ns base");
+        assert!(base_names.contains(&"target_id"), "missing target_id base");
+
+        // Fiber fields: emoji, action, conversation_id
+        let fiber_names: Vec<&str> = schema.fiber_fields.iter().map(|f| f.name.as_str()).collect();
+        assert!(fiber_names.contains(&"emoji"), "missing emoji fiber");
+        assert!(fiber_names.contains(&"action"), "missing action fiber");
+        assert!(fiber_names.contains(&"conversation_id"), "missing conversation_id fiber");
+
+        // timestamp_ns fiber must be Timestamp type
+        let ts = schema.base_fields.iter().find(|f| f.name == "timestamp_ns").unwrap();
+        assert_eq!(ts.field_type, FieldType::Timestamp);
+
+        // Indexes include timestamp_ns and target_id
+        assert!(schema.indexed_fields.contains(&"timestamp_ns".to_string()));
+        assert!(schema.indexed_fields.contains(&"target_id".to_string()));
+    }
+
+    // ── chat_voice_note_schema() uses FieldType::Binary ──────────────────
+
+    #[test]
+    fn test_chat_voice_note_media_bytes_is_binary_type() {
+        let schema = chat_voice_note_schema();
+        let media_field = schema
+            .fiber_fields
+            .iter()
+            .find(|f| f.name == "media_bytes")
+            .expect("media_bytes fiber must exist");
+        assert_eq!(
+            media_field.field_type,
+            FieldType::Binary,
+            "media_bytes must be FieldType::Binary, not Categorical"
+        );
+    }
+
+    // ── Binary size enforcement (§2.1 — 1 MiB hard cap) ─────────────────
+
+    #[test]
+    fn test_binary_size_enforcement_rejects_oversized_payload() {
+        let mut record = Record::new();
+        record.insert(
+            "media_bytes".into(),
+            Value::Binary(vec![0u8; MAX_BINARY_FIELD_BYTES + 1]),
+        );
+        let result = check_binary_sizes(&[record]);
+        assert!(result.is_err(), "must reject binary field > 1 MiB");
+        let (field, size) = result.unwrap_err();
+        assert_eq!(field, "media_bytes");
+        assert_eq!(size, MAX_BINARY_FIELD_BYTES + 1);
+    }
+
+    #[test]
+    fn test_binary_size_enforcement_allows_exactly_1mib() {
+        let mut record = Record::new();
+        record.insert(
+            "media_bytes".into(),
+            Value::Binary(vec![0u8; MAX_BINARY_FIELD_BYTES]),
+        );
+        assert!(
+            check_binary_sizes(&[record]).is_ok(),
+            "exactly 1 MiB must be accepted"
+        );
+    }
+
+    #[test]
+    fn test_binary_size_enforcement_passes_non_binary_records() {
+        let mut record = Record::new();
+        record.insert("message_id".into(), Value::Text("msg-001".into()));
+        record.insert("duration_ms".into(), Value::Integer(4200));
+        assert!(
+            check_binary_sizes(&[record]).is_ok(),
+            "non-binary records must always pass"
+        );
     }
 }

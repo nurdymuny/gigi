@@ -286,7 +286,7 @@ This table exists because GGOG's live field names differ from the v1 contract in
 
 ## 7. GIGI BundleSchema Definitions (Rust)
 
-No changes to the GIGI engine are required. These schemas use the existing `BundleSchema` / `FieldDef` API.
+No changes to the GIGI engine are required. `FieldDef::binary()` constructor was added in this sprint (commit after `fbb6f32`). These schemas use the existing `BundleSchema` / `FieldDef` API.
 
 ```rust
 use gigi::types::{BundleSchema, FieldDef, Value};
@@ -350,8 +350,34 @@ pub fn chat_typing_schema() -> BundleSchema {
     // No WAL index — typing events are not persisted
 }
 
-// reaction and voice_note follow the same pattern.
-// See §3.3 for field definitions.
+pub fn chat_reaction_schema() -> BundleSchema {
+    BundleSchema::new("chat/reaction")
+        .base(FieldDef::categorical("projection_type"))
+        .base(FieldDef::categorical("sender_id"))
+        .base(FieldDef::timestamp("timestamp_ns", 1e9))
+        .base(FieldDef::categorical("target_id"))
+        .fiber(FieldDef::categorical("emoji"))
+        .fiber(FieldDef::categorical("action"))
+        .fiber(FieldDef::categorical("conversation_id").with_default(Value::Null))
+        .index("timestamp_ns")
+        .index("target_id")
+}
+
+pub fn chat_voice_note_schema() -> BundleSchema {
+    BundleSchema::new("chat/voice_note")
+        .base(FieldDef::categorical("projection_type"))
+        .base(FieldDef::categorical("sender_id"))
+        .base(FieldDef::timestamp("timestamp_ns", 1e9))
+        .base(FieldDef::categorical("message_id"))
+        .fiber(FieldDef::categorical("recipient_id"))
+        .fiber(FieldDef::categorical("conversation_id"))
+        .fiber(FieldDef::categorical("media_ref").with_default(Value::Null))
+        .fiber(FieldDef::binary("media_bytes").with_default(Value::Null))
+        .fiber(FieldDef::numeric("duration_ms").with_range(60_000.0))
+        .fiber(FieldDef::categorical("encrypted").with_default(Value::Bool(false)))
+        .index("timestamp_ns")
+        .index("message_id")
+}
 ```
 
 ---

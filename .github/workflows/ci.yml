@@ -83,6 +83,19 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy
-        run: flyctl deploy --remote-only
+        id: deploy
+        run: flyctl deploy --remote-only --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Fly diagnostics (only if deploy fails)
+        if: failure()
+        run: |
+          echo "=== fly status ==="
+          flyctl status || true
+          echo "=== fly releases ==="
+          flyctl releases || true
+          echo "=== fly logs (last 300 lines) ==="
+          flyctl logs -n 300 || true
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

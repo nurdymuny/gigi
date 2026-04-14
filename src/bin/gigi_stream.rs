@@ -2107,18 +2107,145 @@ async fn filtered_query(
     let count = json_records.len();
     let k = store.scalar_curvature();
 
+    // Detect sorted-path truncation: sorted path caps at GIGI_QUERY_MAX_ROWS
+    // (default 10M) and returns total = min(actual_matches, max_rows+1).
+    let max_rows: usize = std::env::var("GIGI_QUERY_MAX_ROWS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(10_000_000);
+    let truncated = total > max_rows;
+    let cur_offset = req.offset.unwrap_or(0);
+    let next_offset = cur_offset + count;
+
     Ok(Json(serde_json::json!({
         "data": json_records,
         "meta": {
             "confidence": curvature::confidence(k),
             "curvature": k,
             "count": count,
-            "total": total
+            "total": total,
+            "offset": cur_offset,
+            "limit": req.limit,
+            "next_offset": next_offset,
+            "truncated": truncated
         }
     })))
 }
 
 // ── PRISM-friendly REST Handlers ──
+
+/// POST /v1/bundles/{name}/query-stream
+///
+/// Same filter/sort/search interface as `/query` but streams results as
+/// newline-delimited JSON (NDJSON / JSON Lines).  No row cap — records are
+/// serialised and flushed one at a time so RSS stays O(1) regardless of
+/// result-set size.  The final line is always a meta object:
+///
+///   {"__meta":true,"count":N,"curvature":K,"confidence":C}
+///
+/// Clients can cancel the request at any point; the server stops iterating
+/// immediately on disconnect.
+async fn stream_query_ndjson(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<FilteredQueryRequest>,
+) -> impl IntoResponse {
+    use axum::body::Body;
+    use tokio::sync::mpsc;
+
+    let (tx, rx) = mpsc::channel::<Result<Vec<u8>, std::io::Error>>(128);
+
+    // Clone what we need to move into the blocking task.
+    let arc = state.clone();
+    let bundle_name = name.clone();
+
+    tokio::task::spawn_blocking(move || {
+        let engine = arc.engine.read().unwrap();
+        let store = match engine.bundle(&bundle_name) {
+            Some(s) => s,
+            None => {
+                let err = serde_json::json!({"error": "bundle not found"}).to_string() + "\n";
+                let _ = tx.blocking_send(Ok(err.into_bytes()));
+                return;
+            }
+        };
+
+        let conditions: Vec<QueryCondition> = req
+            .conditions
+            .iter()
+            .map(condition_spec_to_query_condition)
+            .collect();
+
+        let or_conds_vec: Option<Vec<Vec<QueryCondition>>> =
+            req.or_conditions.as_ref().map(|groups| {
+                groups
+                    .iter()
+                    .map(|g| g.iter().map(condition_spec_to_query_condition).collect())
+                    .collect()
+            });
+
+        let search_term = req.search.as_ref().map(|s| s.to_lowercase());
+        let search_fields = req.search_fields.clone();
+
+        let mut count: usize = 0;
+        for record in store.records() {
+            // Apply filter conditions
+            if !gigi::bundle::matches_filter(&record, &conditions, or_conds_vec.as_deref()) {
+                continue;
+            }
+            // Apply text search if requested
+            if let Some(ref term) = search_term {
+                let hit = match &search_fields {
+                    Some(fields) => fields.iter().any(|f| {
+                        record.get(f).map_or(false, |v| {
+                            if let Value::Text(s) = v {
+                                s.to_lowercase().contains(term.as_str())
+                            } else {
+                                v.to_string().to_lowercase().contains(term.as_str())
+                            }
+                        })
+                    }),
+                    None => record.values().any(|v| {
+                        if let Value::Text(s) = v {
+                            s.to_lowercase().contains(term.as_str())
+                        } else {
+                            false
+                        }
+                    }),
+                };
+                if !hit {
+                    continue;
+                }
+            }
+            count += 1;
+            let mut line = record_to_json(&record).to_string();
+            line.push('\n');
+            if tx.blocking_send(Ok(line.into_bytes())).is_err() {
+                return; // client disconnected
+            }
+        }
+
+        let k = store.scalar_curvature();
+        let meta = serde_json::json!({
+            "__meta": true,
+            "count": count,
+            "curvature": k,
+            "confidence": curvature::confidence(k)
+        })
+        .to_string()
+            + "\n";
+        let _ = tx.blocking_send(Ok(meta.into_bytes()));
+    });
+
+    axum::response::Response::builder()
+        .status(200)
+        .header("Content-Type", "application/x-ndjson")
+        .header("X-Content-Type-Options", "nosniff")
+        .body(Body::from_stream(futures_util::stream::unfold(rx, |mut r| async move {
+            r.recv().await.map(|item| (item, r))
+        })))
+        .unwrap()
+}
 
 /// Parse a URL path value into a Value (tries integer, then float, then text).
 fn parse_path_value(raw: &str) -> Value {
@@ -4716,6 +4843,7 @@ async fn main() {
         .route("/v1/bundles/{name}/update", post(update_records_v2))
         .route("/v1/bundles/{name}/delete", post(delete_records_v2))
         .route("/v1/bundles/{name}/query", post(filtered_query))
+        .route("/v1/bundles/{name}/query-stream", post(stream_query_ndjson))
         .route("/v1/bundles/{name}/stream", post(stream_ingest))
         .route("/v1/bundles/{name}/get", get(point_query))
         .route("/v1/bundles/{name}/range", get(range_query))

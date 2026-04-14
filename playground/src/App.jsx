@@ -9,8 +9,8 @@ const C = {
 };
 
 const FONT = "'JetBrains Mono','Fira Code','SF Mono',monospace";
-const API_URL = import.meta.env.DEV ? "http://localhost:3142" : "/api/gigi-playground";
-const API_LABEL = import.meta.env.DEV ? "localhost:3142" : "gigi-playground.fly.dev";
+const API_URL = import.meta.env.DEV ? "http://localhost:3142" : "https://gigi-stream.fly.dev";
+const API_LABEL = import.meta.env.DEV ? "localhost:3142" : "gigi-stream.fly.dev";
 
 // ─── GQL Engine (real server) ───
 async function executeGQL(query) {

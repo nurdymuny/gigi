@@ -1,6 +1,6 @@
 # GIGI Stream — REST API Reference
 
-**Version:** 0.4.0 (Sprint 3)  
+**Version:** 0.5.0 (current)  
 **Default port:** `3142` (configurable via `PORT` env var)  
 **Base URL:** `http://localhost:3142`
 
@@ -858,6 +858,30 @@ Create an index on an existing field. Builds the bitmap index from all current r
 
 ---
 
+#### `POST /v1/bundles/{name}/drop-field`
+
+Remove a fiber field from an existing bundle. All existing records have that field deleted. Cannot drop base fields (key fields).
+
+**Body:**
+```json
+{
+  "field": "legacy_status"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "field_dropped",
+  "field": "legacy_status",
+  "records": 500
+}
+```
+
+Returns `404` if the field doesn't exist.
+
+---
+
 ### Atomic Operations
 
 #### `POST /v1/bundles/{name}/increment`
@@ -905,6 +929,28 @@ Export all records as a JSON array.
   ]
 }
 ```
+
+---
+
+#### `GET /v1/bundles/{name}/dhoom`
+
+Export the bundle as DHOOM wire format with compression statistics.
+
+**Response:**
+```json
+{
+  "bundle": "users",
+  "count": 500,
+  "dhoom": "users{id@1+1, name|Alice, email}:\n1, Alice, alice@example.com\n...",
+  "json_bytes": 42000,
+  "dhoom_bytes": 17500,
+  "compression_pct": 58.3
+}
+```
+
+- `dhoom` = the full DHOOM-encoded string (header + rows)
+- `json_bytes` / `dhoom_bytes` = size comparison
+- `compression_pct` = bytes saved relative to JSON
 
 ---
 
@@ -964,9 +1010,419 @@ Records with a `_ttl` field are eligible for automatic expiry. The `_ttl` value 
 
 ---
 
+## Advanced Analytics
+
+These endpoints expose deeper geometric properties of the bundle's data manifold.
+
+---
+
+### `GET /v1/bundles/{name}/betti`
+
+Betti numbers — topological invariants $\beta_0$ and $\beta_1$ of the data graph.
+
+**Response:**
+```json
+{
+  "beta_0": 1,
+  "beta_1": 3
+}
+```
+
+- `beta_0` = number of connected components ($\beta_0 = 1$ means fully connected)
+- `beta_1` = number of independent cycles (loops) in the record graph
+
+---
+
+### `GET /v1/bundles/{name}/entropy`
+
+Shannon entropy of the bundle's fiber distribution (in nats).
+
+**Response:**
+```json
+{
+  "entropy": 4.302,
+  "unit": "nats"
+}
+```
+
+Higher entropy = more diversity in the data. $H = 0$ means all records are identical.
+
+---
+
+### `GET /v1/bundles/{name}/free-energy`
+
+Helmholtz free energy $F = -\tau \ln Z$ of the bundle's partition function.
+
+**Query parameters:**
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `tau` | `float` | `1.0` | Temperature parameter $\tau$ |
+
+```
+GET /v1/bundles/sensors/free-energy?tau=0.5
+```
+
+**Response:**
+```json
+{
+  "tau": 0.5,
+  "free_energy": -12.45
+}
+```
+
+---
+
+### `POST /v1/bundles/{name}/geodesic`
+
+Geodesic distance between two records through the data graph (shortest path of hops).
+
+**Body:**
+```json
+{
+  "from": { "id": 1 },
+  "to": { "id": 42 },
+  "max_hops": 50
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `from` | `Record` | required | Source record key |
+| `to` | `Record` | required | Target record key |
+| `max_hops` | `int` | `50` | Maximum path length to search |
+
+**Response:**
+```json
+{
+  "distance": 3.0,
+  "path_found": true
+}
+```
+
+`distance` is `null` and `path_found` is `false` if no path exists within `max_hops`.
+
+---
+
+### `GET /v1/bundles/{name}/metric`
+
+Metric tensor of the fiber bundle — the matrix $g_{ij}$ encoding how fields relate geometrically.
+
+**Response:**
+```json
+{
+  "matrix": [[1.0, 0.12], [0.12, 0.87]],
+  "eigenvalues": [1.09, 0.78],
+  "condition_number": 1.4,
+  "effective_dimension": 1.85,
+  "field_names": ["age", "salary"]
+}
+```
+
+- `matrix` = $d \times d$ metric tensor (fiber fields only)
+- `eigenvalues` = eigenvalues of the metric (sorted descending)
+- `condition_number` = $\lambda_{\max} / \lambda_{\min}$ — how isotropic the metric is
+- `effective_dimension` = participation ratio $\frac{(\sum \lambda_i)^2}{\sum \lambda_i^2}$ — intrinsic dimensionality
+
+---
+
+## Anomaly Detection
+
+---
+
+### `POST /v1/bundles/{name}/anomalies`
+
+Detect anomalous records using the K-score threshold ($\mu_K + n \cdot \sigma_K$). Returns records whose local curvature deviates more than `threshold_sigma` standard deviations above the bundle mean.
+
+**Body:**
+```json
+{
+  "threshold_sigma": 2.0,
+  "filters": [
+    { "field": "status", "op": "eq", "value": "active" }
+  ],
+  "fields": ["id", "name", "score"],
+  "limit": 100,
+  "include_scores": true
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `threshold_sigma` | `float` | `2.0` | Sigma multiplier for anomaly threshold |
+| `filters` | `ConditionSpec[]` | `[]` | Pre-filter before anomaly scan |
+| `fields` | `string[]` | `[]` | Restrict returned record fields (empty = all) |
+| `limit` | `int` | `100` | Max anomalies to return |
+| `include_scores` | `bool` | `true` | Include curvature/z-score in response |
+
+**Response:**
+```json
+{
+  "bundle": "employees",
+  "threshold_sigma": 2.0,
+  "k_mean": 0.021,
+  "k_std": 0.008,
+  "k_threshold": 0.037,
+  "total_records": 500,
+  "anomaly_count": 7,
+  "anomalies": [
+    {
+      "record": { "id": 42, "name": "Charlie", "salary": 999999 },
+      "local_curvature": 0.115,
+      "z_score": 11.75,
+      "confidence": 0.89,
+      "deviation_norm": 3,
+      "deviation_distance": 0.82,
+      "neighbourhood_size": 4,
+      "contributing_fields": ["salary"]
+    }
+  ]
+}
+```
+
+---
+
+### `GET /v1/bundles/{name}/health`
+
+Bundle health snapshot: record count, global and per-record curvature statistics, confidence, and anomaly rate.
+
+**Response:**
+```json
+{
+  "bundle": "employees",
+  "record_count": 500,
+  "k_global": 0.021,
+  "k_mean": 0.021,
+  "k_std": 0.008,
+  "k_threshold_2s": 0.037,
+  "k_threshold_3s": 0.045,
+  "confidence": 0.979,
+  "anomaly_rate_2s": 0.014,
+  "per_field": [
+    { "field": "salary", "k": 0.033, "variance": 1.2e9, "range": 120000 },
+    { "field": "age",    "k": 0.005, "variance": 85.4,  "range": 60 }
+  ]
+}
+```
+
+---
+
+### `POST /v1/bundles/{name}/predict`
+
+Predict field volatility by group. Groups records by `group_by` field, computes mean, standard deviation, and relative volatility index for `field` within each group.
+
+**Body:**
+```json
+{
+  "group_by": "department",
+  "field": "salary"
+}
+```
+
+**Response:**
+```json
+{
+  "bundle": "employees",
+  "group_by": "department",
+  "field": "salary",
+  "predictions": [
+    { "group": "engineering", "count": 50, "mean": 105000, "std_dev": 18000, "volatility_index": 0.171 },
+    { "group": "sales",       "count": 30, "mean": 62000,  "std_dev": 9500,  "volatility_index": 0.153 }
+  ]
+}
+```
+
+`volatility_index` = $\sigma / \max(|\mu|, 1)$ — relative dispersion within the group.
+
+---
+
+### `POST /v1/bundles/{name}/anomalies/field`
+
+Anomaly detection scoped to a specific field. Returns records ranked by z-score where the named field is a primary contributing factor.
+
+**Body:**
+```json
+{
+  "field": "salary",
+  "threshold_sigma": 2.0,
+  "limit": 50
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `field` | `string` | required | Field to focus anomaly detection on |
+| `threshold_sigma` | `float` | `2.0` | Sigma threshold |
+| `limit` | `int` | `100` | Max results |
+
+**Response:**
+```json
+{
+  "bundle": "employees",
+  "field": "salary",
+  "threshold_sigma": 2.0,
+  "anomaly_count": 3,
+  "anomalies": [
+    {
+      "record": { "id": 42, "salary": 999999 },
+      "local_curvature": 0.115,
+      "z_score": 11.75,
+      "confidence": 0.89,
+      "deviation_norm": 3,
+      "deviation_distance": 0.82,
+      "neighbourhood_size": 4,
+      "contributing_fields": ["salary"]
+    }
+  ]
+}
+```
+
+---
+
+## Vector Search
+
+---
+
+### `POST /v1/bundles/{name}/vector-search`
+
+K-nearest neighbour search against a vector field. Finds the `top_k` most similar records using the specified distance metric.
+
+**Body:**
+```json
+{
+  "field": "embedding",
+  "vector": [0.1, 0.5, -0.3, 0.8],
+  "top_k": 10,
+  "metric": "cosine",
+  "filters": [
+    { "field": "status", "op": "eq", "value": "active" }
+  ]
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `field` | `string` | required | Name of the vector field to search |
+| `vector` | `float[]` | required | Query vector (must match stored dimensionality) |
+| `top_k` | `int` | `10` | Number of nearest neighbors to return |
+| `metric` | `string` | `"cosine"` | Distance metric: `"cosine"`, `"euclidean"` / `"l2"`, `"dot"` / `"inner_product"` |
+| `filters` | `ConditionSpec[]` | `[]` | Optional pre-filter — only score matching records |
+
+**Response:**
+```json
+{
+  "results": [
+    { "score": 0.987, "record": { "id": 7, "text": "hello world", "embedding": [0.09, 0.51, -0.28, 0.79] } },
+    { "score": 0.941, "record": { "id": 3, "text": "foo bar",     "embedding": [0.11, 0.44, -0.35, 0.82] } }
+  ],
+  "meta": {
+    "count": 2,
+    "metric": "cosine",
+    "query_dims": 4,
+    "top_k": 10
+  }
+}
+```
+
+For `cosine` and `dot`, higher score = more similar. For `euclidean`, lower score = closer.
+
+---
+
+## GQL — Query Language
+
+---
+
+### `POST /v1/gql`
+
+Execute a GIGI Query Language statement (SQL-like syntax). Supports schema creation, data insertion, queries, aggregations, joins, and analytics in a single text protocol.
+
+**Body:**
+```json
+{
+  "query": "SELECT name, age FROM users WHERE age >= 25 ORDER BY age DESC LIMIT 10"
+}
+```
+
+**Supported statements:**
+
+```sql
+-- Schema
+CREATE BUNDLE employees (id) FIBER (name, salary, dept) INDEX (dept);
+
+-- Insert
+INSERT INTO employees (id, name, salary, dept) VALUES (1, 'Alice', 90000, 'Eng');
+
+-- Select with conditions
+SELECT name, salary FROM employees WHERE dept = 'Eng' AND salary >= 80000;
+
+-- Aggregation
+SELECT AVG(salary) FROM employees GROUP BY dept;
+
+-- Join
+JOIN users ON orders.user_id = users.id;
+
+-- Analytics
+CURVATURE employees;
+SPECTRAL employees;
+
+-- List bundles
+SHOW BUNDLES;
+```
+
+**Response (SELECT):**
+```json
+{
+  "data": [
+    { "name": "Alice", "age": 30 },
+    { "name": "Bob",   "age": 28 }
+  ]
+}
+```
+
+**Response (CREATE / INSERT):**
+```json
+{ "status": "ok" }
+```
+
+Returns `400` with `{ "error": "..." }` on parse errors.
+
+---
+
+## Admin
+
+---
+
+### `POST /v1/admin/snapshot`
+
+Write DHOOM-encoded snapshots for all bundles to disk and compact the WAL to schema-only entries. Use this to reduce WAL size after large bulk loads.
+
+**No body required.**
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "total_records_snapshotted": 15000,
+  "message": "DHOOM snapshots written; WAL compacted to schema-only."
+}
+```
+
+Requires admin access (same `GIGI_API_KEY` as other authenticated endpoints).
+
+---
+
 ## WebSocket API
 
 Connect to `ws://localhost:3142/ws` for real-time operations using a text-based command protocol.
+
+### Dashboard WebSockets
+
+Two additional WebSocket endpoints stream live analytics for dashboards:
+
+- **`ws://localhost:3142/v1/ws/dashboard`** — global dashboard feed: broadcasts curvature, record counts, and anomaly alerts for all bundles.
+- **`ws://localhost:3142/v1/ws/{bundle}/dashboard`** — per-bundle dashboard feed: streams continuous health metrics for a single bundle.
+
+These push JSON objects automatically as data changes. No command protocol — just connect and receive.
 
 ### Commands
 
@@ -1177,18 +1633,34 @@ const unsubscribe = users.where('department', 'engineering').subscribe(records =
 | `GET` | `/v1/bundles/{name}/curvature` | Curvature report |
 | `GET` | `/v1/bundles/{name}/spectral` | Spectral analysis |
 | `GET` | `/v1/bundles/{name}/consistency` | Consistency check |
+| `GET` | `/v1/bundles/{name}/betti` | Betti numbers $\beta_0, \beta_1$ |
+| `GET` | `/v1/bundles/{name}/entropy` | Shannon entropy |
+| `GET` | `/v1/bundles/{name}/free-energy` | Helmholtz free energy |
+| `POST` | `/v1/bundles/{name}/geodesic` | Geodesic distance |
+| `GET` | `/v1/bundles/{name}/metric` | Metric tensor |
+| `POST` | `/v1/bundles/{name}/anomalies` | Anomaly detection |
+| `GET` | `/v1/bundles/{name}/health` | Bundle health snapshot |
+| `POST` | `/v1/bundles/{name}/predict` | Field volatility prediction |
+| `POST` | `/v1/bundles/{name}/anomalies/field` | Per-field anomaly detection |
+| `POST` | `/v1/bundles/{name}/vector-search` | K-NN vector similarity search |
 | `POST` | `/v1/bundles/{name}/increment` | Atomic increment |
 | `POST` | `/v1/bundles/{name}/add-field` | Add schema field |
+| `POST` | `/v1/bundles/{name}/drop-field` | Drop schema field |
 | `POST` | `/v1/bundles/{name}/add-index` | Add index |
 | `GET` | `/v1/bundles/{name}/export` | Export JSON |
+| `GET` | `/v1/bundles/{name}/dhoom` | Export DHOOM format |
 | `POST` | `/v1/bundles/{name}/import` | Import JSON |
 | `GET` | `/v1/bundles/{name}/stats` | Bundle statistics |
 | `POST` | `/v1/bundles/{name}/explain` | Query execution plan |
 | `POST` | `/v1/bundles/{name}/transaction` | Atomic transaction |
+| `POST` | `/v1/gql` | GQL query language |
+| `POST` | `/v1/admin/snapshot` | DHOOM snapshot + WAL compaction |
 | `GET` | `/v1/openapi.json` | OpenAPI 3.0 spec |
-| `GET` | `/ws` | WebSocket |
+| `GET` | `/ws` | WebSocket (command protocol) |
+| `GET` | `/v1/ws/dashboard` | WebSocket global dashboard feed |
+| `GET` | `/v1/ws/{bundle}/dashboard` | WebSocket per-bundle dashboard feed |
 
-**39 endpoints. 170 tests passing.**
+**55 endpoints.**
 
 ---
 

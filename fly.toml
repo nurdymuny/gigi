@@ -10,14 +10,17 @@ primary_region = "iad"
 [env]
   PORT = "3142"
   GIGI_DATA_DIR = "/data"
+  # Tigris S3 snapshot store — AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+  # AWS_ENDPOINT_URL_S3, AWS_REGION, and BUCKET_NAME are already set as Fly secrets
+  # by `flyctl storage create`. TIGRIS_BUCKET_NAME here matches Fly's BUCKET_NAME secret.
+  TIGRIS_BUCKET_NAME = "gigi-snapshots"
 
 [http_service]
   internal_port = 3142
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = "off"
   auto_start_machines = true
   min_machines_running = 1
-  auto_stop_threshold = "off"
 
 [checks]
   [checks.readiness]
@@ -26,12 +29,13 @@ primary_region = "iad"
     path = "/v1/health"
     interval = "5s"
     timeout = "3s"
-    grace_period = "600s"
+    grace_period = "900s"
 
 [[vm]]
   memory = "32gb"
   cpu_kind = "performance"
   cpus = 4
+  restart_policy = "always"
 
 [mounts]
   source = "gigi_data"

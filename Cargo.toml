@@ -55,6 +55,10 @@ name = "bench_ingest"
 path = "benches/ingest_bench.rs"
 
 [[bin]]
+name = "bench_tpch"
+path = "benches/tpch_bench.rs"
+
+[[bin]]
 name = "nasa_atmo"
 path = "examples/nasa_atmosphere.rs"
 

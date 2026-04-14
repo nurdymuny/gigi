@@ -4,7 +4,7 @@ import BracketPredictor from "./BracketPredictor";
 // ═══════════════════════════════════════
 // LIVE BENCHMARK ENGINE (real GIGI server)
 // ═══════════════════════════════════════
-const BENCH_API = import.meta.env.DEV ? "http://localhost:3142" : "/api/gigi";
+const BENCH_API = import.meta.env.DEV ? "http://localhost:3142" : "https://gigi-stream.fly.dev";
 const BENCH_LABEL = import.meta.env.DEV ? "localhost:3142" : "gigi-stream.fly.dev";
 
 async function gqlPost(query) {
@@ -145,7 +145,7 @@ function Nav({ page, go }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const links = [
     { id: "home", l: "Home" }, { id: "gigi", l: "Gigi" }, { id: "demo", l: "Try It" }, { id: "nasa", l: "NASA Demo" }, { id: "encryption", l: "Encryption" },
-    { id: "benchmarks", l: "Benchmarks" }, { id: "usecases", l: "Use Cases" },
+    { id: "benchmarks", l: "Benchmarks" }, { id: "tpch", l: "TPC-H" }, { id: "usecases", l: "Use Cases" },
     { id: "architecture", l: "Architecture" }, { id: "compare", l: "vs Others" },
     { id: "products", l: "Products" },
   ];
@@ -561,6 +561,11 @@ function ArchPage() {
           GIGI speaks <a href="https://dhoom.dev" target="_blank" rel="noopener noreferrer" style={{ color: "#E8A830", textDecoration: "none" }}>DHOOM</a> natively. The zero section becomes <code style={code()}>|</code> defaults, deviations become <code style={code()}>:</code> overrides, arithmetic base points become <code style={code()}>@</code> compression. One math, end to end. 66-84% wire savings.
         </p>
       </Card>
+      <Sec title="vs HNSW / Vector Databases">
+        <P>HNSW (Hierarchical Navigable Small World) — the algorithm behind Pinecone, Weaviate, Qdrant — builds an approximate nearest-neighbor graph over high-dimensional embedding vectors. O(log n) query time, probabilistic recall. Designed for unstructured similarity search over learned embeddings.</P>
+        <P><strong style={{ color: G }}>GIGI does not compete on unstructured embedding workloads.</strong> The architectural difference is: HNSW is approximate and works on any vector space; GIGI is exact and works on structured typed schemas with fields, predicates, and joins. For structured data — financial records, IoT sensors, user tables — GIGI's bitmap index delivers exact results with no recall penalty. The TPC-H Q3 benchmark demonstrates this directly: predicate pushdown on the BUILDING market segment reduces a 1.5M-row ORDERS scan to ~30K matching rows with zero approximation and zero probability of missing a result.</P>
+        <P>The curvature score K is also architecturally different from cosine similarity or a learned vector distance. K measures structural regularity in the local data neighborhood — it is derived from the fiber bundle geometry of the data itself, not from an external model. There is no embedding step.</P>
+      </Sec>
     </Page>
   );
 }
@@ -1281,6 +1286,95 @@ const NOBODY_HAS = [
   "Zero-Euclidean guarantee — no distance computation anywhere in the query path",
   "Unified storage/wire math — DHOOM and GIGI share the same fiber bundle, end to end",
 ];
+
+function TpchPage() {
+  const GITHUB = "https://github.com/nurdymuny/gigi/blob/master";
+  const SF1 = [
+    { q: "Q6  filter + scan agg", ms: 7585, ns: "1,264.7", rows: "6,001,215", ret: "114,160", note: "No join. Pure LINEITEM scan." },
+    { q: "Q1  group-by + multi-agg", ms: 8600, ns: "1,434.4", rows: "6,001,215", ret: "4", note: "4 groups — correct for real TPC-H. Synthetic produced 6 (uniform random)." },
+    { q: "Q14 LINEITEM to PART join", ms: 7860, ns: "1,309.9", rows: "6,001,215", ret: "1", note: "promo_revenue = 16.38%. Validates join correctness." },
+    { q: "Q3  3-way join + bitmap", ms: 3405, ns: "454.0", rows: "7,651,215", ret: "11,619", note: "Bitmap pre-filters ~30K BUILDING customers before any LINEITEM scan." },
+  ];
+  const SCALING = [
+    { q: "Q6",  s: "6K / 6.4ms",  l: "60K / 68.5ms", r: "10.8x" },
+    { q: "Q1",  s: "6K / 7.3ms",  l: "60K / 75.5ms", r: "10.3x" },
+    { q: "Q14", s: "6K / 6.6ms",  l: "60K / 69.6ms", r: "10.6x" },
+    { q: "Q3",  s: "8K / 1.9ms",  l: "76K / 22.2ms", r: "12.0x" },
+  ];
+  const links = [
+    { label: "bench source", href: `${GITHUB}/benches/tpch_bench.rs`, c: "#E8A830" },
+    { label: "python tests (33)", href: `${GITHUB}/gigi_tpch_tests.py`, c: "#E8A830" },
+    { label: "DHOOM report", href: `${GITHUB}/bench_output/tpch_report.dhoom`, c: G },
+    { label: "TDD spec", href: `${GITHUB}/GIGI_TPCH_SPEC.md`, c: "#8080E0" },
+  ];
+  return (
+    <Page title="TPC-H Benchmark — Scale Factor 1" sub="6,001,215 real LINEITEM rows  ·  Q1, Q3, Q6, Q14  ·  Best-of-3 runs  ·  Single-threaded, in-memory">
+      <Sec title="Methodology">
+        <P>Data: DuckDB TPC-H SF=1 generator — same dbgen algorithm as the official TPC council C toolkit. Six standard tables: 6,001,215 LINEITEM rows, 1.5M ORDERS, 150K CUSTOMERS, 200K PARTS, ~1GB pipe-delimited. Each query ran three times; best wall-clock time reported (standard TPC-H methodology). Single-threaded Rust release build, Windows desktop, fully in-memory.</P>
+        <P>Honest caveats: no SIMD, no vectorized execution, no query optimizer, no parallelism. This is not a claim to beat DuckDB or Velox. It is a claim that storage geometry auto-selection and the bitmap join path produce correct results at real data scale with O(n) cost growth.</P>
+        <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+          {links.map((l, i) => <a key={i} href={l.href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontWeight: 700, color: l.c, border: `1px solid ${l.c}33`, borderRadius: 5, padding: "4px 12px", textDecoration: "none" }}>{l.label} ↗</a>)}
+        </div>
+      </Sec>
+      <Sec title="Benchmark Run Output">
+        <img
+          src="/gigi/tpch-bench-output.png"
+          alt="GIGI TPC-H benchmark terminal output — synthetic scaling + SF=1 real data + DHOOM report"
+          style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "block" }}
+        />
+      </Sec>
+      <Sec title="SF=1 Results — 6,001,215 LINEITEM Rows">
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, marginBottom: 10 }}>
+          <thead><tr>{["Query", "Wall ms", "ns/row", "Rows Scanned", "Rows Out", "Notes"].map((h, i) => <th key={i} style={{ textAlign: "left", padding: "8px 10px", color: "#506070", borderBottom: "1px solid rgba(255,255,255,0.06)", fontWeight: 600, fontSize: 10 }}>{h}</th>)}</tr></thead>
+          <tbody>{SF1.map((r, i) => (
+            <tr key={i}>
+              <td style={{ ...td(), fontFamily: "monospace", fontSize: 10.5, color: "#A0B8C0" }}>{r.q}</td>
+              <td style={{ ...td(), fontWeight: 800, color: G, fontFamily: "monospace" }}>{r.ms.toLocaleString()}</td>
+              <td style={{ ...td(), fontFamily: "monospace" }}>{r.ns}</td>
+              <td style={{ ...td(), fontFamily: "monospace" }}>{r.rows}</td>
+              <td style={{ ...td(), fontFamily: "monospace" }}>{r.ret}</td>
+              <td style={{ ...td(), fontSize: 10.5 }}>{r.note}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+        <P>Q3 appears faster per-row because the bitmap pre-filter on BUILDING market segment reduces the effective scan to matching orders — not all 6M rows. That is predicate pushdown working as designed, not a measurement error.</P>
+      </Sec>
+      <Sec title="Scaling Linearity — SF=0.001 to SF=0.01 (expect 10x)">
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, marginBottom: 10 }}>
+          <thead><tr>{["Query", "SF=0.001", "SF=0.01", "Observed ratio", "Verdict"].map((h, i) => <th key={i} style={{ textAlign: "left", padding: "8px 10px", color: "#506070", borderBottom: "1px solid rgba(255,255,255,0.06)", fontWeight: 600, fontSize: 10 }}>{h}</th>)}</tr></thead>
+          <tbody>{SCALING.map((r, i) => (
+            <tr key={i}>
+              <td style={{ ...td(), fontFamily: "monospace", color: "#A0B8C0" }}>{r.q}</td>
+              <td style={td()}>{r.s}</td>
+              <td style={td()}>{r.l}</td>
+              <td style={{ ...td(), fontWeight: 700, color: G, fontFamily: "monospace" }}>{r.r}</td>
+              <td style={{ ...td(), color: G, fontWeight: 600 }}>O(n) confirmed</td>
+            </tr>
+          ))}</tbody>
+        </table>
+        <P>Q3 at 12.0x is slightly super-linear — expected for a three-table join where intermediate result sets also grow with scale factor. All four queries fall within the linear band.</P>
+      </Sec>
+      <Sec title="Storage Auto-Selection">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Card>
+            <div style={{ fontSize: 11, fontWeight: 700, color: G, marginBottom: 6 }}>LINEITEM → Sequential</div>
+            <div style={{ fontSize: 11, color: "#607080", lineHeight: 1.6 }}>l_id is dense auto-increment (1..6,001,215). GIGI selects BaseGeometry::Flat with step=1. O(1) point lookup, cache-linear full scan. Auto-detected at load time — no schema hint required.</div>
+          </Card>
+          <Card>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#E8A830", marginBottom: 6 }}>ORDERS → Hashed</div>
+            <div style={{ fontSize: 11, color: "#607080", lineHeight: 1.6 }}>o_orderkey has gaps of 1–8 between keys (standard TPC-H sparse keys). GIGI auto-selects HashMap. O(1) per orderkey lookup. Q3's bitmap join resolves ~30K orderkeys in O(|BUILDING_customers|), not O(1.5M ORDERS).</div>
+          </Card>
+        </div>
+      </Sec>
+      <Sec title="Q14 Correctness Receipt">
+        <P>Q14 computes promo_revenue = 100 × Σ(extprice × (1−disc) where part_type LIKE 'PROMO%') / Σ(extprice × (1−disc)) over September 1995 shipments. GIGI result: <strong style={{ color: G }}>16.38%</strong>. Published TPC-H reference values for SF=1 fall in the 14–18% range depending on generation seed. This validates the LINEITEM-to-PART join via key-indexed lookup (pullback join), the date range filter, and the conditional aggregation.</P>
+      </Sec>
+      <Card style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: "#506070", lineHeight: 1.7 }}>The full run was serialized to a <strong style={{ color: "#40E8A0" }}>DHOOM report</strong> — GIGI's own machine-readable structured format. It encodes the query catalogue, timing results, scaling linearity proof, and storage geometry annotations. <a href={`${GITHUB}/bench_output/tpch_report.dhoom`} target="_blank" rel="noopener noreferrer" style={{ color: G }}>View tpch_report.dhoom ↗</a></div>
+      </Card>
+    </Page>
+  );
+}
 
 function ComparePage() {
   const cellC = (v) => v.startsWith("✓") ? G : v === "✗" ? "#E05050" : "#E8A830";
@@ -2558,6 +2652,7 @@ export default function GIGISite() {
       {page === "encryption" && <EncryptionPage />}
       {page === "nasa" && <NasaPage />}
       {page === "benchmarks" && <><BenchPage /><StreamPage /><StressPage /></>}
+      {page === "tpch" && <TpchPage />}
       {page === "usecases" && <UseCasePage />}
       {page === "architecture" && <><ArchPage /><MathPage /></>}
       {page === "compare" && <ComparePage />}

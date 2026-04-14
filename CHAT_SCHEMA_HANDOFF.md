@@ -390,14 +390,14 @@ pub fn chat_voice_note_schema() -> BundleSchema {
 |---|------|-------|--------|
 | 1 | `recipient_id` encoding for group chats | GGOG | ✅ Single UUID. Group chats use a group_id; GGOG handles fanout. No schema change needed. |
 | 2 | Encryption scheme for `body` field | GGOG | ✅ Pre-shared AES-256-GCM key established at pairing, never transmitted via GIGI. Relay is a dumb pipe. |
-| 3 | Define `media_ref` resolution protocol (CID? URL? relay-local?) | Joint | 🔲 Open |
+| 3 | Define `media_ref` resolution protocol (CID? URL? relay-local?) | Joint | ✅ `media_ref` is an opaque UTF-8 `Text` field. GIGI stores and returns it verbatim. Resolution is application-layer only; the relay never reads, validates, or fetches `media_ref` values. Format is GGOG's choice (URL, CID, relay-local key, etc.). |
 | 4 | `ack` read-receipt retention window | GGOG | ✅ No TTL at schema level. Store indefinitely; pruning is operational, not schema-driven. |
 | 5 | Interop test fixture format — see §8.5 | Joint | ✅ Agreed: JSON ingest (NDJSON + b64:) + DHOOM re-export. |
 | 6 | `call_id` generation scheme | GIGI | ✅ Caller mints UUID v4 client-side. Relay forwards untouched. |
-| 7 | Binary-first fallback negotiation error codes | Joint | 🔲 Open |
+| 7 | Binary-first fallback negotiation error codes | Joint | ✅ Ingest: `415 Unsupported Media Type` if `Content-Type` is not `application/dhoom` or `application/x-ndjson`. Client fallback path: DHOOM → `415` → retry with `application/x-ndjson`. GIGI query endpoints always return JSON; no `Accept:` negotiation. |
 | 8 | Max binary payload sizes | Joint | ✅ 64 KB encrypted body, 256 KB inline voice, 1 MB absolute cap (enforced, returns 413). |
 | 9 | `b64:` prefix escape policy for user text | GIGI | ✅ Double-prefix: `"b64:b64:text"`. Implemented commit `8107066`. |
-| 10 | Binary field list per family | Joint | 🔲 Open |
+| 10 | Binary field list per family | Joint | ✅ See §8.10 below. |
 
 ### §8.5 Interop Fixture Proposal
 
@@ -431,7 +431,20 @@ Pass criteria:
 4. DHOOM re-export (Step 2) returns `Content-Type: application/dhoom` and completes without error
 5. A second client ingesting the DHOOM export, after stripping the `b64:` prefix, produces identical bytes `[0x00, 0x01, 0x02, 0xFF]` for `media_bytes` — confirming roundtrip fidelity
 
-This is a joint deliverable. GIGI provides the endpoint; GGOG provides the client-side decode verification for criteria 3 and 5.
+This is a joint deliverable. GIGI provides the endpoint; GGOG provides the client-side decode verification for criteria 3 and 5. **STATUS: ✅ PASSED** — live run against `gigi-stream.fly.dev` confirmed 2026-04-14.
+
+---
+
+### §8.10 Binary Fields Per Family
+
+| Family | Binary fields in base schema | Notes |
+|---|---|---|
+| `chat/dm` | `body` (runtime only) | Declared `FieldType::Categorical`. Stores `Value::Binary` when `encrypted=true`; `Value::Text` when `encrypted=false`. No static `FieldType::Binary` declaration needed. |
+| `chat/signal` | none | SDP and ICE payloads are text. |
+| `chat/reaction` | none | Emoji is a Unicode text string. |
+| `chat/ack` | none | Acknowledgement fields are all text or bool. |
+| `chat/typing` | none | Ephemeral, not persisted. |
+| `chat/voice_note` | `media_bytes` | `FieldDef::binary("media_bytes")` — static `FieldType::Binary`. Present only for small inline payloads (≤256 KB); production senders SHOULD use `media_ref` instead. |
 
 ---
 
@@ -440,7 +453,7 @@ This is a joint deliverable. GIGI provides the endpoint; GGOG provides the clien
 1. ~~GGOG sends current message family schema map → GIGI reviews against the migration table in §6~~ ✅ Done — migration table in §6 reflects all field renames
 2. ~~GIGI cuts v1 release of `application/dhoom` content-type path on `/v1/bundles/{name}/ingest`~~ ✅ Done — `POST /v1/bundles/{name}/ingest` live as of commit `67aa7ef`
 3. ~~`Value::Binary` storage gap closed~~ ✅ Done — `e486b55`
-4. **→ NOW: Both teams execute interop fixture §8.5** — binary voice note ingest, DHOOM re-export, byte fidelity verification
+4. ~~Both teams execute interop fixture §8.5~~ ✅ Done — live run passed against `gigi-stream.fly.dev` 2026-04-14
 5. ~~GGOG answers §8 open items 1, 2, 6, 8, 9 → GIGI finalises BundleSchema for all six families~~ ✅ Done — all six items resolved 2026-04-14
 6. ~~Joint: CI fixture coverage for all six event families (§3.3), including at least one Binary field per relevant family~~ ✅ Done — 543 tests, 0 failures, commit `71b4aa3`
-7. Lock pass/fail invariants before any client ships against this contract
+7. **→ NOW: Lock pass/fail invariants before any client ships against this contract**

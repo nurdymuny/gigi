@@ -674,6 +674,114 @@ fn value_to_json(v: &Value) -> serde_json::Value {
     }
 }
 
+/// Validate and coerce a single `Value` against the declared `FieldType` for
+/// `field_name` in `schema`.
+///
+/// Rules:
+/// - Unknown fields (not in base or fiber) pass through unchanged — no-schema
+///   bundles and extra fields are not an error.
+/// - `Value::Null` always passes — callers handle required-field checks separately.
+/// - `FieldType::Numeric`    → accepts `Integer`, `Float`. Rejects everything else.
+/// - `FieldType::Timestamp`  → accepts `Integer` (coerced to `Timestamp`), `Timestamp`.
+///   Rejects `Text` (prohibits formatted time strings, enforces invariant C2).
+/// - `FieldType::Binary`     → accepts `Binary`. Rejects `Text` without a `b64:` prefix
+///   (the only way plain text arrives here is if the caller forgot to escape it).
+/// - `FieldType::Categorical` / `OrderedCat` → accepts `Text`, `Bool`, `Integer`.
+/// - `FieldType::Vector`      → accepts `Vector`.
+///
+/// Returns `Ok(Value)` (possibly coerced) or `Err(String)` with a human-readable
+/// diagnostic naming the field, declared type, and received type.
+fn schema_coerce(schema: &BundleSchema, field_name: &str, value: Value) -> Result<Value, String> {
+    // Null bypasses all type checks — optional fields are always nullable.
+    if matches!(value, Value::Null) {
+        return Ok(value);
+    }
+
+    // Look up the declared FieldType. Unknown fields pass through.
+    let field_type = schema
+        .base_fields
+        .iter()
+        .chain(schema.fiber_fields.iter())
+        .find(|f| f.name == field_name)
+        .map(|f| &f.field_type);
+
+    let ft = match field_type {
+        None => return Ok(value), // unknown field — no schema constraint
+        Some(ft) => ft,
+    };
+
+    match ft {
+        FieldType::Numeric => match value {
+            Value::Integer(_) | Value::Float(_) => Ok(value),
+            other => Err(format!(
+                "field '{}' declared Numeric but received {}",
+                field_name,
+                value_type_name(&other)
+            )),
+        },
+        FieldType::Timestamp => match value {
+            Value::Timestamp(_) => Ok(value),
+            Value::Integer(i) => Ok(Value::Timestamp(i)), // coerce: ns epoch integer
+            other => Err(format!(
+                "field '{}' declared Timestamp but received {} (use nanosecond integer, not a formatted string)",
+                field_name,
+                value_type_name(&other)
+            )),
+        },
+        FieldType::Binary => match value {
+            Value::Binary(_) => Ok(value),
+            other => Err(format!(
+                "field '{}' declared Binary but received {} (encode as 'b64:<base64>' at JSON boundaries)",
+                field_name,
+                value_type_name(&other)
+            )),
+        },
+        FieldType::Categorical | FieldType::OrderedCat { .. } => match value {
+            Value::Text(_) | Value::Bool(_) | Value::Integer(_) => Ok(value),
+            other => Err(format!(
+                "field '{}' declared Categorical but received {}",
+                field_name,
+                value_type_name(&other)
+            )),
+        },
+        FieldType::Vector { .. } => match value {
+            Value::Vector(_) => Ok(value),
+            other => Err(format!(
+                "field '{}' declared Vector but received {}",
+                field_name,
+                value_type_name(&other)
+            )),
+        },
+    }
+}
+
+fn value_type_name(v: &Value) -> &'static str {
+    match v {
+        Value::Integer(_) => "Integer",
+        Value::Float(_) => "Float",
+        Value::Text(_) => "Text",
+        Value::Bool(_) => "Bool",
+        Value::Timestamp(_) => "Timestamp",
+        Value::Vector(_) => "Vector",
+        Value::Binary(_) => "Binary",
+        Value::Null => "Null",
+    }
+}
+
+/// Run `schema_coerce` on every field in a record.  Returns the coerced record
+/// on success, or the first violation error string on failure.
+fn coerce_record_against_schema(
+    schema: &BundleSchema,
+    record: Record,
+) -> Result<Record, String> {
+    let mut out: Record = Record::new();
+    for (k, v) in record {
+        let coerced = schema_coerce(schema, &k, v)?;
+        out.insert(k, coerced);
+    }
+    Ok(out)
+}
+
 fn record_to_json(record: &Record) -> serde_json::Value {
     let mut map = serde_json::Map::new();
     for (k, v) in record {
@@ -3113,8 +3221,15 @@ async fn ingest_dhoom(
     })?;
     let text = String::from_utf8_lossy(&bytes);
 
+    // Snapshot the schema for type-coercion validation (read lock — before parse).
+    let schema_snapshot: BundleSchema = {
+        let engine = state.engine.read().unwrap();
+        engine.bundle(&name).unwrap().schema().clone()
+    };
+
     // Parse records according to content type
     let mut parse_errors = 0usize;
+    let mut schema_violations: Vec<String> = Vec::new();
     let records: Vec<Record> = if is_dhoom {
         dhoom::decode_to_json(&text)
             .map_err(|e| {
@@ -3128,7 +3243,14 @@ async fn ingest_dhoom(
             .into_iter()
             .filter_map(|item| {
                 if let serde_json::Value::Object(map) = item {
-                    Some(map.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect())
+                    let rec: Record = map
+                        .iter()
+                        .map(|(k, v)| (k.clone(), json_to_value(v)))
+                        .collect();
+                    match coerce_record_against_schema(&schema_snapshot, rec) {
+                        Ok(r) => Some(r),
+                        Err(e) => { schema_violations.push(e); None }
+                    }
                 } else {
                     parse_errors += 1;
                     None
@@ -3145,7 +3267,14 @@ async fn ingest_dhoom(
                 }
                 match serde_json::from_str::<serde_json::Value>(line) {
                     Ok(serde_json::Value::Object(map)) => {
-                        Some(map.iter().map(|(k, v)| (k.clone(), json_to_value(v))).collect())
+                        let rec: Record = map
+                            .iter()
+                            .map(|(k, v)| (k.clone(), json_to_value(v)))
+                            .collect();
+                        match coerce_record_against_schema(&schema_snapshot, rec) {
+                            Ok(r) => Some(r),
+                            Err(e) => { schema_violations.push(e); None }
+                        }
                     }
                     _ => {
                         parse_errors += 1;
@@ -3155,6 +3284,20 @@ async fn ingest_dhoom(
             })
             .collect()
     };
+
+    // Reject the entire batch if any record failed schema validation.
+    if !schema_violations.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!(
+                    "Schema validation failed ({} record(s)): {}",
+                    schema_violations.len(),
+                    schema_violations.join("; ")
+                ),
+            }),
+        ));
+    }
 
     let count = records.len();
 
@@ -6092,5 +6235,88 @@ mod tests {
             "emoji must be '👍', got {emoji:?}"
         );
         cleanup(&dir);
+    }
+
+    // ── Schema coercion / validation tests ────────────────────────────────
+
+    /// Numeric field: integer JSON → Value::Integer, float JSON → Value::Float. Both valid.
+    #[test]
+    fn test_schema_coerce_numeric_accepts_numbers() {
+        let schema = BundleSchema::new("t").fiber(FieldDef::numeric("score"));
+        let v_int = schema_coerce(&schema, "score", Value::Integer(42));
+        assert!(matches!(v_int, Ok(Value::Integer(42))));
+        let v_float = schema_coerce(&schema, "score", Value::Float(1.5));
+        assert!(matches!(v_float, Ok(Value::Float(_))));
+    }
+
+    /// Numeric field: text → rejected.
+    #[test]
+    fn test_schema_coerce_numeric_rejects_text() {
+        let schema = BundleSchema::new("t").fiber(FieldDef::numeric("score"));
+        let err = schema_coerce(&schema, "score", Value::Text("hello".into()));
+        assert!(err.is_err(), "text must be rejected for Numeric field");
+        let msg = err.unwrap_err();
+        assert!(msg.contains("score"), "error must name the field");
+        assert!(msg.contains("Numeric"), "error must name expected type");
+    }
+
+    /// Timestamp field: integer is valid (nanosecond epoch).
+    #[test]
+    fn test_schema_coerce_timestamp_accepts_integer() {
+        let schema = BundleSchema::new("t").base(FieldDef::timestamp("ts", 1e9));
+        let v = schema_coerce(&schema, "ts", Value::Integer(1710000000000000000));
+        assert!(matches!(v, Ok(Value::Timestamp(_))), "integer must coerce to Timestamp");
+    }
+
+    /// Timestamp field: formatted string is rejected (invariant C2 enforcement).
+    #[test]
+    fn test_schema_coerce_timestamp_rejects_string() {
+        let schema = BundleSchema::new("t").base(FieldDef::timestamp("ts", 1e9));
+        let err = schema_coerce(&schema, "ts", Value::Text("2026-04-14T00:00:00Z".into()));
+        assert!(err.is_err(), "formatted timestamp string must be rejected");
+        let msg = err.unwrap_err();
+        assert!(msg.contains("ts"));
+        assert!(msg.contains("Timestamp"));
+    }
+
+    /// Binary field: Value::Binary accepted as-is.
+    #[test]
+    fn test_schema_coerce_binary_accepts_binary() {
+        let schema = BundleSchema::new("t").fiber(FieldDef::binary("blob"));
+        let v = schema_coerce(&schema, "blob", Value::Binary(vec![0, 1, 2]));
+        assert!(matches!(v, Ok(Value::Binary(_))));
+    }
+
+    /// Binary field: plain text (no b64: prefix) → rejected with helpful message.
+    #[test]
+    fn test_schema_coerce_binary_rejects_unescaped_text() {
+        let schema = BundleSchema::new("t").fiber(FieldDef::binary("blob"));
+        let err = schema_coerce(&schema, "blob", Value::Text("plain text".into()));
+        assert!(err.is_err(), "plain text must be rejected for Binary field");
+        let msg = err.unwrap_err();
+        assert!(msg.contains("blob"));
+        assert!(msg.contains("b64:"), "error must hint at b64: encoding");
+    }
+
+    /// Unknown field (not in schema) passes through unchanged.
+    #[test]
+    fn test_schema_coerce_unknown_field_passthrough() {
+        let schema = BundleSchema::new("t").fiber(FieldDef::numeric("score"));
+        // "extra" not in schema → no error, value unchanged
+        let v = schema_coerce(&schema, "extra", Value::Text("anything".into()));
+        assert!(matches!(v, Ok(Value::Text(_))));
+    }
+
+    /// Null is always accepted regardless of field type.
+    #[test]
+    fn test_schema_coerce_null_always_accepted() {
+        let schema = BundleSchema::new("t")
+            .fiber(FieldDef::numeric("score"))
+            .fiber(FieldDef::timestamp("ts", 1e9))
+            .fiber(FieldDef::binary("blob"));
+        for field in ["score", "ts", "blob"] {
+            let v = schema_coerce(&schema, field, Value::Null);
+            assert!(matches!(v, Ok(Value::Null)), "Null must be accepted for {field}");
+        }
     }
 }

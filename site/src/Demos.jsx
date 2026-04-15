@@ -930,18 +930,14 @@ function StreamingDemo() {
           const K = ev.k_global ?? 0;
           const n = ev.record_count ?? 0;
 
-          // Spike detection: K jumped by >1σ from previous value
-          const kStd = ev.k_std ?? 0;
-          const isSpike = prevKRef.current !== null && kStd > 0 &&
-            Math.abs(K - prevKRef.current) > kStd;
-          prevKRef.current = K;
-
-          if (ev.is_anomaly || isSpike) {
+          // Server sends a separate "anomaly" event (is_anomaly=true) for each
+          // single-record insert that exceeds the 2σ threshold. Count those.
+          if (ev.is_anomaly) {
             anomalyCountRef.current += 1;
             const z = ev.z_score ? `  z=${ev.z_score.toFixed(2)}` : "";
             const cf = ev.contributing_fields?.length
               ? `  [${ev.contributing_fields.join(", ")}]` : "";
-            add(`⚠ K spike  K=${K.toFixed(5)}  n=${n}${z}${cf}`, "#FF4040");
+            add(`\u26a0 Anomaly detected  K=${K.toFixed(5)}  n=${n}${z}${cf}`, "#FF4040");
           }
 
           setStats({
@@ -958,7 +954,7 @@ function StreamingDemo() {
           if (chartReadyRef.current && chartRef.current && window.Plotly &&
               n > WARMUP_RECORDS && Math.abs(K) < 1e6) {
             Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [0], 200);
-            if (ev.is_anomaly || isSpike) {
+            if (ev.is_anomaly) {
               Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [1], 200);
             }
           }
@@ -983,10 +979,15 @@ function StreamingDemo() {
   async function injectAnomaly() {
     if (!bundleRef.current) return;
     injectedCountRef.current += 1;
-    const recs = Array.from({ length: N_SENSORS }, (_, i) =>
-      mkReading(seqRef.current++, i, true));
-    await rp(`/v1/bundles/${bundleRef.current}/insert`, { records: recs }).catch(() => {});
-    add(`⚡ Injection #${injectedCountRef.current} — extreme readings sent`, "#E8A830");
+    // Send each record individually — server only runs anomaly detection for
+    // single-record inserts (batch inserts skip the pre-insert K check).
+    await Promise.all(
+      Array.from({ length: N_SENSORS }, (_, i) =>
+        rp(`/v1/bundles/${bundleRef.current}/insert`,
+          { records: [mkReading(seqRef.current++, i, true)] }).catch(() => {})
+      )
+    );
+    add(`⚡ Injection #${injectedCountRef.current} — ${N_SENSORS} extreme records sent`, "#E8A830");
   }
 
   return (
@@ -1038,13 +1039,13 @@ function StreamingDemo() {
           <StatBox
             v={`K=${stats.K.toFixed(5)}`}
             l="Live Curvature"
-            color={stats.K > stats.kThresh ? "#FF4040" : G}
+            color={stats.kThresh != null && stats.K > stats.kThresh ? "#FF4040" : G}
             sub={`conf ${(stats.conf * 100).toFixed(1)}%`}
           />
           <StatBox v={stats.count.toLocaleString()} l="Records Ingested" sub="live total" />
-          <StatBox v={stats.anomalyCount} l="K Spikes" color="#FF4040" sub="Δ K > 1σ" />
+          <StatBox v={stats.anomalyCount} l="K Spikes" color="#FF4040" sub="server-detected" />
           <StatBox v={stats.injectedCount ?? 0} l="Injections" color="#E8A830"
-            sub={stats.kThresh != null ? `2\u03c3=${stats.kThresh.toFixed(4)}` : "warming up\u2026"} />
+            sub={`${N_SENSORS} records/shot`} />
         </div>
       )}
 

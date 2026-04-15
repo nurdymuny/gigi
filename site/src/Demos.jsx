@@ -811,6 +811,247 @@ function EarthquakeDemo() {
 }
 
 // ─────────────────────────────────────────
+// DEMO 4 — Live Sensor Stream (WebSocket)
+// ─────────────────────────────────────────
+const N_SENSORS = 5;
+const WS_BASE = import.meta.env.DEV ? "ws://localhost:3142" : "wss://gigi-stream.fly.dev";
+
+function mkReading(seqId, sensorId, anomaly = false) {
+  return {
+    seq_id: seqId,
+    sensor_id: sensorId,
+    ts_ms: Date.now(),
+    temp_c: anomaly ? 140 + Math.random() * 30 : 22 + (Math.random() - 0.5) * 8,
+    pressure_hpa: anomaly ? 1900 + Math.random() * 200 : 1013 + (Math.random() - 0.5) * 30,
+    vibration_g: anomaly ? 8 + Math.random() * 4 : 0.10 + Math.random() * 0.08,
+    rpm: anomaly ? 8500 + Math.random() * 1000 : 3000 + (Math.random() - 0.5) * 500,
+    signal: anomaly ? "spike" : "normal",
+  };
+}
+
+function StreamingDemo() {
+  const chartRef = useRef(null);
+  const [log, setLog] = useState([]);
+  const [stage, setStage] = useState("idle");
+  const [stats, setStats] = useState(null);
+  const wsRef = useRef(null);
+  const intervalRef = useRef(null);
+  const bundleRef = useRef(null);
+  const seqRef = useRef(0);
+  const anomalyCountRef = useRef(0);
+  const chartReadyRef = useRef(false);
+  const t0Ref = useRef(0);
+  const add = (text, color) => setLog(p => [...p.slice(-80), { text, color }]);
+
+  useEffect(() => () => stopStream(true), []);
+
+  function stopStream(silent = false) {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+    if (bundleRef.current && !silent) rd(`/v1/bundles/${bundleRef.current}`).catch(() => {});
+    bundleRef.current = null;
+    chartReadyRef.current = false;
+    seqRef.current = 0;
+    anomalyCountRef.current = 0;
+  }
+
+  async function startStream() {
+    setStage("streaming");
+    setLog([]);
+    setStats(null);
+    if (chartRef.current && window.Plotly) Plotly.purge(chartRef.current);
+    const name = `sensor_${Date.now()}`;
+    bundleRef.current = name;
+    t0Ref.current = Date.now();
+
+    try {
+      add(`Creating bundle '${name}'…`, "#607080");
+      await rd(`/v1/bundles/${name}`).catch(() => {});
+      await rp("/v1/bundles", {
+        name,
+        schema: {
+          fields: {
+            seq_id: "numeric", sensor_id: "numeric", ts_ms: "numeric",
+            temp_c: "numeric", pressure_hpa: "numeric",
+            vibration_g: "numeric", rpm: "numeric", signal: "categorical",
+          },
+          keys: ["seq_id"],
+        },
+      });
+      add("Bundle ready. Opening WebSocket…", "#607080");
+
+      const ws = new WebSocket(`${WS_BASE}/v1/ws/${name}/dashboard`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        add(`● WS open → /v1/ws/${name}/dashboard`, G);
+        add(`Streaming ${N_SENSORS} sensors × 400ms…`, "#607080");
+        if (chartRef.current && window.Plotly) {
+          Plotly.newPlot(chartRef.current, [
+            { type: "scatter", mode: "lines", name: "K (curvature)", x: [], y: [],
+              line: { color: G, width: 2 } },
+            { type: "scatter", mode: "markers", name: "⚠ Anomaly", x: [], y: [],
+              marker: { color: "#FF4040", size: 11, symbol: "x",
+                        line: { width: 2.5, color: "#fff" } } },
+          ], {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "rgba(255,255,255,0.015)",
+            font: { family: "DM Sans, sans-serif", color: "#e2e8f0", size: 11 },
+            margin: { t: 20, b: 46, l: 76, r: 20 },
+            xaxis: { gridcolor: "rgba(255,255,255,0.04)",
+                     title: { text: "seconds elapsed", font: { size: 11 } } },
+            yaxis: { gridcolor: "rgba(255,255,255,0.04)",
+                     title: { text: "K (curvature)", font: { size: 11 } } },
+            legend: { orientation: "h", y: 1.06, x: 0.5, xanchor: "center",
+                      font: { size: 10 } },
+          }, { displayModeBar: false, responsive: true });
+          chartReadyRef.current = true;
+        }
+        intervalRef.current = setInterval(async () => {
+          if (!bundleRef.current) return;
+          const recs = Array.from({ length: N_SENSORS }, (_, i) =>
+            mkReading(seqRef.current++, i));
+          rp(`/v1/bundles/${name}/insert`, { records: recs }).catch(() => {});
+        }, 400);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const ev = JSON.parse(e.data);
+          const t = +((ev.ts_ms - t0Ref.current) / 1000).toFixed(2);
+          const K = ev.k_global ?? 0;
+          setStats({
+            K, kMean: ev.k_mean, kStd: ev.k_std, kThresh: ev.k_threshold_2s,
+            count: ev.record_count, conf: ev.global_confidence,
+            anomalyCount: anomalyCountRef.current,
+          });
+          if (chartReadyRef.current && chartRef.current && window.Plotly) {
+            Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [0], 150);
+          }
+          if (ev.is_anomaly) {
+            anomalyCountRef.current += 1;
+            const z = ev.z_score ? `  z=${ev.z_score.toFixed(2)}` : "";
+            const cf = ev.contributing_fields?.length
+              ? `  [${ev.contributing_fields.join(", ")}]` : "";
+            add(`⚠ ANOMALY  K=${K.toFixed(5)}  n=${ev.record_count}${z}${cf}`, "#FF4040");
+            if (chartReadyRef.current && chartRef.current && window.Plotly) {
+              Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [1], 150);
+            }
+          }
+        } catch (_) {}
+      };
+
+      ws.onerror = () => add("WS error", "#FF6060");
+      ws.onclose = () => { if (bundleRef.current) add("WS closed", "#404050"); };
+    } catch (e) {
+      add(`ERROR: ${e.message}`, "#FF4040");
+      setStage("idle");
+      stopStream(true);
+    }
+  }
+
+  function handleStop() {
+    stopStream(false);
+    setStage("idle");
+    add("Stream stopped. Bundle deleted.", "#607080");
+  }
+
+  async function injectAnomaly() {
+    if (!bundleRef.current) return;
+    const recs = Array.from({ length: N_SENSORS }, (_, i) =>
+      mkReading(seqRef.current++, i, true));
+    await rp(`/v1/bundles/${bundleRef.current}/insert`, { records: recs }).catch(() => {});
+    add("⚡ Anomaly records injected — watch K spike…", "#E8A830");
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 16 }}>
+        <div style={{ flex: 1, minWidth: 260 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#E0E8F0", marginBottom: 6 }}>📡 Live Sensor Stream</div>
+          <div style={{ fontSize: 12.5, color: "#607080", lineHeight: 1.65 }}>
+            {N_SENSORS} simulated IoT sensors insert readings every 400ms. A{" "}
+            <strong style={{ color: G }}>WebSocket</strong> at{" "}
+            <code style={{ color: "#E8A830", fontSize: 11 }}>/v1/ws/&#123;bundle&#125;/dashboard</code>{" "}
+            pushes curvature updates back in real time as each batch lands.{" "}
+            Hit <strong style={{ color: "#FF4040" }}>Inject Anomaly</strong> to send extreme
+            sensor readings and watch <strong style={{ color: G }}>K spike</strong> instantly.
+            No polling. No client-side math.
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexDirection: "column", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {stage === "idle" && (
+              <RunBtn onClick={startStream} stage="idle" labels={["▶ Start Stream", "", "▶ Start Stream"]} />
+            )}
+            {stage === "streaming" && (<>
+              <button onClick={injectAnomaly} style={{
+                padding: "11px 16px", borderRadius: 8, border: "none",
+                cursor: "pointer", background: "#FF4040", color: "#fff",
+                fontSize: 13, fontWeight: 800,
+              }}>⚡ Inject Anomaly</button>
+              <button onClick={handleStop} style={{
+                padding: "11px 20px", borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.1)",
+                cursor: "pointer", background: "transparent",
+                color: "#A0B0C0", fontSize: 13, fontWeight: 700,
+              }}>■ Stop</button>
+            </>)}
+          </div>
+          {stage === "streaming" && (
+            <div style={{ fontSize: 10, color: G, fontFamily: "monospace" }}>
+              ● LIVE
+            </div>
+          )}
+        </div>
+      </div>
+
+      {log.length > 0 && <DemoLog lines={log} />}
+
+      {stats && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 14 }}>
+          <StatBox
+            v={`K=${stats.K.toFixed(5)}`}
+            l="Live Curvature"
+            color={stats.K > stats.kThresh ? "#FF4040" : G}
+            sub={`conf ${(stats.conf * 100).toFixed(1)}%`}
+          />
+          <StatBox v={stats.count.toLocaleString()} l="Records Ingested" sub="live total" />
+          <StatBox v={stats.anomalyCount} l="Anomalies" color="#FF4040" sub="K > 2σ" />
+          <StatBox v={stats.kThresh.toFixed(5)} l="2σ Threshold" color="#E8A830"
+            sub={`μ=${stats.kMean.toFixed(4)}`} />
+        </div>
+      )}
+
+      <div style={{
+        background: "rgba(255,255,255,0.01)",
+        border: "1px solid rgba(255,255,255,0.04)",
+        borderRadius: 10, padding: 8, marginBottom: 12,
+      }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+          color: "#384050", marginBottom: 6, padding: "0 4px" }}>
+          LIVE K(t) — curvature updated via WebSocket push (no polling)
+        </div>
+        {stage === "idle" && !stats ? (
+          <div style={{ textAlign: "center", padding: "60px 0",
+            fontSize: 12, color: "#252535", fontFamily: "monospace" }}>
+            start stream →
+          </div>
+        ) : (
+          <div ref={chartRef} style={{ width: "100%", height: 280 }} />
+        )}
+      </div>
+
+      <GqlBox queries={[
+        `wss://gigi-stream.fly.dev/v1/ws/{bundle}/dashboard`,
+        `→ push: { type, k_global, k_mean, k_std, k_threshold_2s, is_anomaly, z_score, contributing_fields }`,
+        `POST /v1/bundles/{bundle}/insert  (5 records × every 400ms)`,
+      ]} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────
 // Main LiveDemosPage
 // ─────────────────────────────────────────
 const DEMOS = [
@@ -838,6 +1079,14 @@ const DEMOS = [
     tagColor: "#FF6040",
     desc: "Live seismic data, updated every 5 minutes. Curvature detects active fault zones. World map, magnitude histogram.",
   },
+  {
+    id: "stream",
+    icon: "📡",
+    title: "Live Sensor Stream",
+    tag: "WEBSOCKET  REAL-TIME K(t)",
+    tagColor: G,
+    desc: "5 IoT sensors stream readings every 400ms. WebSocket pushes curvature updates live. Inject anomalies to spike K instantly.",
+  },
 ];
 
 export default function LiveDemosPage() {
@@ -850,12 +1099,12 @@ export default function LiveDemosPage() {
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", color: "#E8A830", marginBottom: 6, fontFamily: "monospace" }}>LIVE DEMO GALLERY</div>
         <h1 style={{ fontSize: 28, fontWeight: 900, color: "#E0E8F0", margin: "0 0 8px", letterSpacing: "-0.02em" }}>Real data. Real GIGI. Live results.</h1>
         <p style={{ fontSize: 13.5, color: "#607080", margin: 0, maxWidth: 660, lineHeight: 1.65 }}>
-          Three production demos hitting the live GIGI Rust engine at <strong style={{ color: G }}>gigi-stream.fly.dev</strong>. Each demo fetches real public data, ingests it into GIGI's fiber bundle store, and runs geometric queries. Every chart is generated from GIGI query results — no pre-computed data.
+          Four production demos hitting the live GIGI Rust engine at <strong style={{ color: G }}>gigi-stream.fly.dev</strong>. Real data, real-time WebSocket, live curvature. Every chart is GIGI query output — no pre-computed data.
         </p>
       </div>
 
       {/* Demo selector cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 28 }}>
         {DEMOS.map(d => (
           <div key={d.id} onClick={() => setActive(d.id)} style={{
             background: active === d.id ? "rgba(64,232,160,0.04)" : "rgba(255,255,255,0.015)",
@@ -877,6 +1126,7 @@ export default function LiveDemosPage() {
       {active === "btc" && <BitcoinDemo />}
       {active === "music" && <MusicDNADemo />}
       {active === "quake" && <EarthquakeDemo />}
+      {active === "stream" && <StreamingDemo />}
 
       {/* Footer note */}
       <div style={{ marginTop: 40, padding: "16px 0", borderTop: "1px solid rgba(255,255,255,0.03)", textAlign: "center", fontSize: 10.5, color: "#303040", fontFamily: "monospace" }}>

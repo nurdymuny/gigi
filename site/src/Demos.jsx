@@ -821,7 +821,6 @@ function mkReading(seqId, sensorId, anomaly = false) {
   return {
     seq_id: seqId,
     sensor_id: sensorId,
-    ts_ms: Date.now(),
     temp_c: anomaly ? 140 + Math.random() * 30 : 22 + (Math.random() - 0.5) * 8,
     pressure_hpa: anomaly ? 1900 + Math.random() * 200 : 1013 + (Math.random() - 0.5) * 30,
     vibration_g: anomaly ? 8 + Math.random() * 4 : 0.10 + Math.random() * 0.08,
@@ -844,7 +843,6 @@ function StreamingDemo() {
   const chartReadyRef = useRef(false);
   const t0Ref = useRef(0);
   const prevKRef = useRef(null);
-  const spikeCooldownRef = useRef(0);   // debounce: skip N events after a spike
   const add = (text, color) => setLog(p => [...p.slice(-80), { text, color }]);
 
   useEffect(() => () => stopStream(true), []);
@@ -859,7 +857,6 @@ function StreamingDemo() {
     anomalyCountRef.current = 0;
     injectedCountRef.current = 0;
     prevKRef.current = null;
-    spikeCooldownRef.current = 0;
   }
 
   async function startStream() {
@@ -878,7 +875,7 @@ function StreamingDemo() {
         name,
         schema: {
           fields: {
-            seq_id: "numeric", sensor_id: "numeric", ts_ms: "numeric",
+            seq_id: "numeric", sensor_id: "numeric",
             temp_c: "numeric", pressure_hpa: "numeric",
             vibration_g: "numeric", rpm: "numeric", signal: "categorical",
           },
@@ -935,23 +932,15 @@ function StreamingDemo() {
           // Spike detection: k_global exceeds the server's own 2σ threshold.
           // The server's per-insert anomaly flag (is_anomaly) relies on running
           // field-stat ranges which adapt after many injections.
-          // Using k_global vs k_threshold_2s on every event is more reliable.
-          spikeCooldownRef.current = Math.max(0, spikeCooldownRef.current - 1);
-          const thresh = ev.k_threshold_2s ?? 0;
-          const kStd = ev.k_std ?? 0;
-          const isSpike = n > WARMUP_RECORDS &&
-            kStd > 1e-4 &&            // stats meaningful
-            thresh > 1e-4 &&           // threshold meaningful
-            K > thresh &&              // k_global above 2σ line
-            spikeCooldownRef.current === 0;
-
-          if (isSpike || ev.is_anomaly) {
+          // ev.is_anomaly is set by the server's pre-insert check (local_k > 2σ threshold).
+          // Removing ts_ms from schema ensures the k_history baseline is clean.
+          if (ev.is_anomaly) {
             anomalyCountRef.current += 1;
-            spikeCooldownRef.current = 8; // skip ~3s worth of events
-            const z = ev.z_score ? `  z=${ev.z_score.toFixed(2)}` : "";
+            const z = ev.z_score ? ` z=${ev.z_score.toFixed(0)}` : "";
+            const lk = ev.local_curvature ? ` local_K=${ev.local_curvature.toFixed(3)}` : "";
             const cf = ev.contributing_fields?.length
-              ? `  [${ev.contributing_fields.join(", ")}]` : "";
-            add(`\u26a0 K spike  K=${K.toFixed(4)} > 2\u03c3=${thresh.toFixed(4)}  n=${n}${z}${cf}`, "#FF4040");
+              ? `  fields=[${ev.contributing_fields.join(", ")}]` : "";
+            add(`\u26a0 Anomaly detected${z}${lk}${cf}  n=${n}`, "#FF4040");
           }
 
           setStats({
@@ -1015,7 +1004,8 @@ function StreamingDemo() {
             <code style={{ color: "#E8A830", fontSize: 11 }}>/v1/ws/&#123;bundle&#125;/dashboard</code>{" "}
             pushes curvature updates back in real time as each batch lands.{" "}
             Hit <strong style={{ color: "#FF4040" }}>Inject Anomaly</strong> to send extreme
-            sensor readings and watch <strong style={{ color: G }}>K spike</strong> instantly.
+            sensor readings — GIGI flags the first injection instantly (z&gt;300).
+            After detection, it updates its geometric model to include the new range.
             No polling. No client-side math.
           </div>
         </div>

@@ -4938,6 +4938,77 @@ fn execute_gql_on_store_read(
             let cond = if info.condition_number.is_finite() { info.condition_number } else { -1.0 };
             Ok(ExecResult::Scalar(cond))
         }
+        Statement::HolonomyFiber { bundle: _, fiber_fields, around_field } => {
+            if fiber_fields.len() < 2 {
+                return Err("HOLONOMY ON FIBER requires at least 2 fiber fields".to_string());
+            }
+            let f0 = &fiber_fields[0];
+            let f1 = &fiber_fields[1];
+
+            // Group records by around_field → centroid sums
+            use std::collections::BTreeMap;
+            let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
+            for rec in store.records() {
+                let key = match rec.get(around_field.as_str()) {
+                    Some(v) => format!("{v:?}"),
+                    None => continue,
+                };
+                let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
+                entry.0 += v0;
+                entry.1 += v1;
+                entry.2 += 1;
+            }
+            if groups.len() < 2 {
+                return Err(format!(
+                    "HOLONOMY ON FIBER needs ≥2 distinct '{}' values, found {}",
+                    around_field, groups.len()
+                ));
+            }
+            let centroids: Vec<(String, f64, f64)> = groups
+                .into_iter()
+                .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
+                .collect();
+            let n = centroids.len();
+            let mut transport_angles: Vec<f64> = Vec::with_capacity(n);
+            for i in 0..n {
+                let prev = if i == 0 { n - 1 } else { i - 1 };
+                let next = (i + 1) % n;
+                let dx_in  = centroids[i].1    - centroids[prev].1;
+                let dy_in  = centroids[i].2    - centroids[prev].2;
+                let dx_out = centroids[next].1 - centroids[i].1;
+                let dy_out = centroids[next].2 - centroids[i].2;
+                let angle_in  = dy_in.atan2(dx_in);
+                let angle_out = dy_out.atan2(dx_out);
+                let mut delta = angle_out - angle_in;
+                while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
+                while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
+                transport_angles.push(delta);
+            }
+            let deficit: f64 = transport_angles.iter().sum::<f64>().abs()
+                % (2.0 * std::f64::consts::PI);
+            let trivial = deficit < 1e-6;
+
+            let mut rows: Vec<gigi::types::Record> = centroids
+                .iter()
+                .enumerate()
+                .map(|(i, (label, cx, cy))| {
+                    let mut r = gigi::types::Record::new();
+                    r.insert(around_field.clone(), gigi::types::Value::Text(label.clone()));
+                    r.insert(f0.clone(), gigi::types::Value::Float(*cx));
+                    r.insert(f1.clone(), gigi::types::Value::Float(*cy));
+                    r.insert("transport_angle".to_string(), gigi::types::Value::Float(transport_angles[i]));
+                    r
+                })
+                .collect();
+            let mut summary = gigi::types::Record::new();
+            summary.insert("_type".to_string(), gigi::types::Value::Text("summary".to_string()));
+            summary.insert("holonomy_angle".to_string(), gigi::types::Value::Float(deficit));
+            summary.insert("holonomy_trivial".to_string(), gigi::types::Value::Bool(trivial));
+            rows.push(summary);
+            Ok(ExecResult::Rows(rows))
+        }
         Statement::Health { .. } => {
             let k = store.scalar_curvature();
             Ok(ExecResult::Stats(GqlStats {

@@ -113,6 +113,12 @@ pub enum Statement {
         first: Option<usize>,
         skip: Option<usize>,
         all: bool,
+        /// NEAR (f1=v1, f2=v2, ...) — query point for proximity search.
+        near_point: Vec<(String, f64)>,
+        /// WITHIN radius — max fiber distance from the query point.
+        near_radius: Option<f64>,
+        /// METRIC cosine|euclidean — distance metric for NEAR queries (default: euclidean).
+        near_metric: Option<String>,
     },
 
     // ── Aggregation ──
@@ -203,6 +209,17 @@ pub enum Statement {
     },
     MetricTensor {
         bundle: String,
+    },
+    /// HOLONOMY bundle ON FIBER (f1, f2) AROUND categorical_field
+    ///
+    /// Groups records by the distinct values of `around_field`, computes a 2-D centroid
+    /// per group in the (fiber_fields[0], fiber_fields[1]) plane, sorts the groups
+    /// lexicographically, and returns the discrete parallel-transport closure deficit
+    /// δφ = |Σ θ_k| mod 2π.
+    HolonomyFiber {
+        bundle: String,
+        fiber_fields: Vec<String>,
+        around_field: String,
     },
     Explain {
         inner: Box<Statement>,
@@ -834,6 +851,7 @@ impl Parser {
             "FREEENERGY" => self.parse_free_energy(),
             "GEODESIC" => self.parse_geodesic(),
             "METRIC" => self.parse_metric_tensor(),
+            "HOLONOMY" => self.parse_holonomy(),
             "COMPLETE" => self.parse_complete(),
             "PROPAGATE" => self.parse_propagate(),
             "SUGGEST_ADJACENCY" => self.parse_suggest_adjacency(),
@@ -1354,6 +1372,9 @@ impl Parser {
         let mut first = None;
         let mut skip = None;
         let mut all = false;
+        let mut near_point: Vec<(String, f64)> = Vec::new();
+        let mut near_radius: Option<f64> = None;
+        let mut near_metric: Option<String> = None;
 
         // Parse optional clauses in any order
         loop {
@@ -1393,6 +1414,38 @@ impl Parser {
             } else if self.is_keyword("SKIP") {
                 self.advance();
                 skip = Some(self.parse_usize()?);
+            } else if self.is_keyword("NEAR") {
+                // NEAR (f1=v1, f2=v2, ...)
+                self.advance();
+                self.expect(Token::LParen)?;
+                loop {
+                    let field = self.expect_word()?;
+                    self.expect(Token::Eq)?;
+                    let val = match self.advance() {
+                        Some(Token::Number(n)) => n,
+                        Some(Token::Minus) => match self.advance() {
+                            Some(Token::Number(n)) => -n,
+                            other => return Err(format!("Expected number after '-', got {other:?}")),
+                        },
+                        other => return Err(format!("Expected number in NEAR point, got {other:?}")),
+                    };
+                    near_point.push((field, val));
+                    if matches!(self.peek(), Some(Token::Comma)) {
+                        self.advance();
+                    } else {
+                        break;
+                    }
+                }
+                self.expect(Token::RParen)?;
+            } else if self.is_keyword("WITHIN") {
+                self.advance();
+                near_radius = Some(match self.advance() {
+                    Some(Token::Number(n)) => n,
+                    other => return Err(format!("Expected radius after WITHIN, got {other:?}")),
+                });
+            } else if self.is_keyword("METRIC") {
+                self.advance();
+                near_metric = Some(self.expect_word()?);
             } else {
                 break;
             }
@@ -1409,6 +1462,9 @@ impl Parser {
             first,
             skip,
             all,
+            near_point,
+            near_radius,
+            near_metric,
         })
     }
 
@@ -1559,6 +1615,28 @@ impl Parser {
     fn parse_betti(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
         Ok(Statement::Betti { bundle: name })
+    }
+
+    /// Parse HOLONOMY — dispatches to old random-triangle form or new ON FIBER form.
+    ///
+    /// Old:  `HOLONOMY bundle AROUND (f1, f2)`  (error: not yet supported as GQL)
+    /// New:  `HOLONOMY bundle ON FIBER (f1, f2) AROUND field`
+    fn parse_holonomy(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        if self.is_keyword("ON") {
+            // New form: HOLONOMY bundle ON FIBER (f1, f2) AROUND field
+            self.advance(); // consume ON
+            self.expect_keyword("FIBER")?;
+            self.expect(Token::LParen)?;
+            let fiber_fields = self.parse_name_list()?;
+            self.expect(Token::RParen)?;
+            self.expect_keyword("AROUND")?;
+            let around_field = self.expect_word()?;
+            Ok(Statement::HolonomyFiber { bundle, fiber_fields, around_field })
+        } else {
+            Err("Use: HOLONOMY bundle ON FIBER (f1, f2) AROUND field  \
+                 (for the REST holonomy endpoint use /holonomy/:bundle)".to_string())
+        }
     }
 
     fn parse_entropy(&mut self) -> Result<Statement, String> {
@@ -3470,10 +3548,53 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             first,
             skip,
             all: _,
+            near_point,
+            near_radius,
+            near_metric,
         } => {
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
+
+            // ── NEAR proximity search (takes priority over standard filter path) ──
+            if !near_point.is_empty() {
+                if let Some(radius) = near_radius {
+                    let metric = near_metric.as_deref();
+                    let mut hits = store.cover_near(near_point, *radius, metric);
+
+                    // Apply any ON / WHERE conditions as a post-filter
+                    if !on_conditions.is_empty() || !where_conditions.is_empty() {
+                        let post_conds: Vec<crate::bundle::QueryCondition> = on_conditions
+                            .iter()
+                            .chain(where_conditions.iter())
+                            .flat_map(filter_to_query_conditions)
+                            .collect();
+                        hits.retain(|(rec, _)| post_conds.iter().all(|c| c.matches(rec)));
+                    }
+
+                    // Pagination
+                    let start = first.map(|_| skip.unwrap_or(0)).unwrap_or(0);
+                    if start > 0 {
+                        hits = hits.into_iter().skip(start).collect();
+                    }
+                    if let Some(lim) = first {
+                        hits.truncate(*lim);
+                    }
+
+                    // Inject _distance field so callers can inspect proximity
+                    let rows: Vec<crate::types::Record> = hits
+                        .into_iter()
+                        .map(|(mut rec, dist): (crate::types::Record, f64)| {
+                            rec.insert(
+                                "_distance".to_string(),
+                                crate::types::Value::Float(dist),
+                            );
+                            rec
+                        })
+                        .collect();
+                    return Ok(ExecResult::Rows(rows));
+                }
+            }
 
             // Handle DISTINCT
             if let Some(field) = distinct_field {
@@ -4059,6 +4180,110 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let info = store.metric_tensor();
             let cond = if info.condition_number.is_finite() { info.condition_number } else { -1.0 };
             Ok(ExecResult::Scalar(cond))
+        }
+
+        /// HOLONOMY bundle ON FIBER (f1, f2) AROUND categorical_field
+        ///
+        /// Groups records by the distinct values of `around_field`, computes a 2-D centroid
+        /// per group (sorted lexicographically), then measures discrete parallel transport
+        /// deficit δφ = |Σ θ_k| mod 2π.
+        Statement::HolonomyFiber { bundle, fiber_fields, around_field } => {
+            let store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+
+            if fiber_fields.len() < 2 {
+                return Err("HOLONOMY ON FIBER requires at least 2 fiber fields".to_string());
+            }
+            let f0 = &fiber_fields[0];
+            let f1 = &fiber_fields[1];
+
+            // 1. Group records by around_field → accumulate centroid sums
+            use std::collections::BTreeMap;
+            let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
+            for rec in store.records() {
+                let key = match rec.get(around_field.as_str()) {
+                    Some(v) => format!("{v:?}"),
+                    None => continue,
+                };
+                let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
+                entry.0 += v0;
+                entry.1 += v1;
+                entry.2 += 1;
+            }
+
+            if groups.len() < 2 {
+                return Err(format!(
+                    "HOLONOMY ON FIBER needs ≥2 distinct '{}' values, found {}",
+                    around_field,
+                    groups.len()
+                ));
+            }
+
+            // 2. Compute centroids (sorted lexicographically by BTreeMap)
+            let centroids: Vec<(String, f64, f64)> = groups
+                .into_iter()
+                .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
+                .collect();
+
+            // 3. Discrete parallel transport: θ_k = angle(c_{k+1} − c_k) − angle(c_k − c_{k-1})
+            //    Close the loop: c_N = c_0.
+            let n = centroids.len();
+            let mut transport_angles: Vec<f64> = Vec::with_capacity(n);
+            for i in 0..n {
+                let prev = if i == 0 { n - 1 } else { i - 1 };
+                let next = (i + 1) % n;
+                let dx_in  = centroids[i].1    - centroids[prev].1;
+                let dy_in  = centroids[i].2    - centroids[prev].2;
+                let dx_out = centroids[next].1 - centroids[i].1;
+                let dy_out = centroids[next].2 - centroids[i].2;
+                let angle_in  = dy_in.atan2(dx_in);
+                let angle_out = dy_out.atan2(dx_out);
+                // Wrap to (−π, π]
+                let mut delta = angle_out - angle_in;
+                while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
+                while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
+                transport_angles.push(delta);
+            }
+
+            // 4. Closure deficit
+            let deficit: f64 = transport_angles.iter().sum::<f64>().abs()
+                % (2.0 * std::f64::consts::PI);
+            let trivial = deficit < 1e-6;
+
+            // 5. Return rows: one per group + summary row
+            let mut rows: Vec<crate::types::Record> = centroids
+                .iter()
+                .enumerate()
+                .map(|(i, (label, cx, cy))| {
+                    let mut r = crate::types::Record::new();
+                    r.insert(around_field.clone(), crate::types::Value::Text(label.clone()));
+                    r.insert(f0.clone(), crate::types::Value::Float(*cx));
+                    r.insert(f1.clone(), crate::types::Value::Float(*cy));
+                    r.insert(
+                        "transport_angle".to_string(),
+                        crate::types::Value::Float(transport_angles[i]),
+                    );
+                    r
+                })
+                .collect();
+
+            // Summary row
+            let mut summary = crate::types::Record::new();
+            summary.insert("_type".to_string(), crate::types::Value::Text("summary".to_string()));
+            summary.insert(
+                "holonomy_angle".to_string(),
+                crate::types::Value::Float(deficit),
+            );
+            summary.insert(
+                "holonomy_trivial".to_string(),
+                crate::types::Value::Bool(trivial),
+            );
+            rows.push(summary);
+
+            Ok(ExecResult::Rows(rows))
         }
     }
 }

@@ -1230,6 +1230,31 @@ impl<'a> BundleRef<'a> {
         }
     }
 
+    /// COVER … NEAR (f1=v1, …) WITHIN r [METRIC euclidean|cosine]
+    ///
+    /// Delegates to `BundleStore::cover_near` for heap bundles;
+    /// for overlay bundles falls back to the same linear scan using records().
+    pub fn cover_near(
+        &self,
+        query_point: &[(String, f64)],
+        radius: f64,
+        metric: Option<&str>,
+    ) -> Vec<(Record, f64)> {
+        match self {
+            BundleRef::Heap(s) => s.cover_near(query_point, radius, metric),
+            BundleRef::Overlay(_) => {
+                // Generic fallback: linear scan using BundleRef::records()
+                crate::bundle::BundleStore::cover_near_records(
+                    self.records(),
+                    self.schema(),
+                    query_point,
+                    radius,
+                    metric,
+                )
+            }
+        }
+    }
+
     pub fn filtered_query_projected(
         &self,
         conditions: &[QueryCondition],

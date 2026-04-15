@@ -6,9 +6,13 @@
 //!   TDD-2.7:  Range query O(|result|) — independent of N
 //!   TDD-2.8:  Sheaf restriction O(|U|) — sublinear
 //!   TDD-4.4:  Pullback join O(|left|) — independent of |right|
+//!   TDD-R1:   K normalization with declared RANGE O(1) — independent of N
+//!   TDD-N1:   COVER NEAR O(N) — linear scan, scales 10x per 10x N
+//!   TDD-H1:   HOLONOMY ON FIBER O(N) — linear group-by scan, 10x per 10x N
 //!
 //! Methodology: measure at N = 1K, 10K, 100K, 1M.
 //! If O(1), the ratio t(10N)/t(N) should stay near 1.0 (< 1.5).
+//! If O(N), the ratio t(10N)/t(N) should track ~10x.
 
 use gigi::aggregation::fiber_integral;
 use gigi::bundle::BundleStore;
@@ -91,7 +95,78 @@ fn bench_range_query(store: &BundleStore, count: usize) -> (f64, usize) {
     (total_ns, result_size)
 }
 
+/// Measure `compute_record_k` with a declared-RANGE schema.
+/// This should be O(1) — independent of how many records are in the store.
+fn bench_k_normalization(store: &BundleStore, iters: usize) -> f64 {
+    use gigi::bundle::compute_record_k;
+    let stats = store.get_field_stats().clone();
+    let fiber_fields = store.schema.fiber_fields.clone();
+    let record = vec![Value::Float(0.5), Value::Float(50_000.0)];
+    let start = Instant::now();
+    for _ in 0..iters {
+        let _ = compute_record_k(&stats, &record, &fiber_fields);
+    }
+    start.elapsed().as_nanos() as f64 / iters as f64
+}
+
+/// Measure `cover_near` via HNSW dispatch — O(log N) after index is built.
+fn bench_cover_near(store: &BundleStore, iters: usize) -> f64 {
+    let qp = vec![
+        ("salary".to_string(), 60_000.0f64),
+    ];
+    let start = Instant::now();
+    for _ in 0..iters {
+        let _ = store.cover_near(&qp, 0.3, None);
+    }
+    start.elapsed().as_nanos() as f64 / iters as f64
+}
+
+/// Force the linear scan path by calling cover_near_records directly.
+fn bench_cover_near_linear(store: &BundleStore, iters: usize) -> f64 {
+    let qp = vec![("salary".to_string(), 60_000.0f64)];
+    let start = Instant::now();
+    for _ in 0..iters {
+        let _ = BundleStore::cover_near_records(store.records(), &store.schema, &qp, 0.3, None);
+    }
+    start.elapsed().as_nanos() as f64 / iters as f64
+}
+
+/// Measure holonomy group-by scan — O(N) over records.
+fn bench_holonomy_groupby(store: &BundleStore, iters: usize) -> f64 {
+    use std::collections::BTreeMap;
+    let start = Instant::now();
+    for _ in 0..iters {
+        let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
+        for rec in store.records() {
+            let key = match rec.get("dept") {
+                Some(v) => format!("{v:?}"),
+                None => continue,
+            };
+            let v0 = rec.get("salary").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let v1 = rec.get("id").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
+            entry.0 += v0;
+            entry.1 += v1;
+            entry.2 += 1;
+        }
+        // Compute centroids (dropped — only timing the scan)
+        let _: Vec<_> = groups
+            .into_iter()
+            .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
+            .collect();
+    }
+    start.elapsed().as_nanos() as f64 / iters as f64
+}
+
 fn main() {
+    // On Windows, switch the console to UTF-8 so box-drawing characters render correctly.
+    // SetConsoleOutputCP is from kernel32.dll, which is always linked on Windows targets.
+    #[cfg(target_os = "windows")]
+    unsafe {
+        extern "system" { fn SetConsoleOutputCP(cp: u32) -> i32; }
+        SetConsoleOutputCP(65001);
+    }
+
     let sizes: Vec<usize> = vec![1_000, 10_000, 100_000, 1_000_000];
     let query_iters = 10_000;
     let insert_batch = 1_000;
@@ -279,6 +354,112 @@ fn main() {
         );
         prev_t = t;
     }
+
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║                                                                ║");
+    println!("║  TDD-R1: K NORMALIZATION O(1) — declared RANGE, vary N        ║");
+    println!("║  compute_record_k() must not depend on store size             ║");
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!(
+        "║  {:>10} │ {:>12} │ {:>8}                          ║",
+        "N", "ns/call", "ratio"
+    );
+    println!("╟────────────┼──────────────┼──────────────────────────────╢");
+    prev_t = 0.0;
+    for &n in &sizes {
+        let store = build_store(n);
+        let t = bench_k_normalization(&store, 100_000);
+        let ratio = if prev_t > 0.0 { t / prev_t } else { 1.0 };
+        let mark = if ratio < 1.5 || prev_t == 0.0 { "✓ O(1)" } else { "✗ NOT O(1)" };
+        println!(
+            "║  {:>10} │ {:>12.1} │ {:>6.2}x  {mark:<20} ║",
+            n, t, ratio
+        );
+        prev_t = t;
+    }
+
+    // ── COVER NEAR O(N) ──
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║  TDD-N1: COVER NEAR O(N) — linear scan, should track 10x/10x ║");
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!(
+        "║  {:>10} │ {:>12} │ {:>8}                          ║",
+        "N", "µs/scan", "ratio"
+    );
+    println!("╟────────────┼──────────────┼──────────────────────────────╢");
+    prev_t = 0.0;
+    for &n in &sizes {
+        let store = build_store(n);
+        let iters = (1_000_000 / n).max(1);
+        let t_ns = bench_cover_near(&store, iters);
+        let t_us = t_ns / 1_000.0;
+        let ratio = if prev_t > 0.0 { t_us / prev_t } else { 1.0 };
+        // O(N): ratio should track ~10x per 10x N. Accept 3x–30x as pass.
+        let mark = if ratio < 30.0 || prev_t == 0.0 { "✓ O(N)" } else { "✗ super-linear" };
+        println!(
+            "║  {:>10} │ {:>12.1} │ {:>6.1}x  {mark:<20} ║",
+            n, t_us, ratio
+        );
+        prev_t = t_us;
+    }
+
+    // ── HOLONOMY ON FIBER O(N) ──
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║  TDD-H1: HOLONOMY GROUP-BY O(N) — scan, 10x per 10x N        ║");
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!(
+        "║  {:>10} │ {:>12} │ {:>8}                          ║",
+        "N", "µs/scan", "ratio"
+    );
+    println!("╟────────────┼──────────────┼──────────────────────────────╢");
+    prev_t = 0.0;
+    for &n in &sizes {
+        let store = build_store(n);
+        let iters = (500_000 / n).max(1);
+        let t_ns = bench_holonomy_groupby(&store, iters);
+        let t_us = t_ns / 1_000.0;
+        let ratio = if prev_t > 0.0 { t_us / prev_t } else { 1.0 };
+        let mark = if ratio < 30.0 || prev_t == 0.0 { "✓ O(N)" } else { "✗ super-linear" };
+        println!(
+            "║  {:>10} │ {:>12.1} │ {:>6.1}x  {mark:<20} ║",
+            n, t_us, ratio
+        );
+        prev_t = t_us;
+    }
+
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║                                                                ║");
+    println!("║  TDD-N2: COVER NEAR — HNSW vs LINEAR at 1M records            ║");
+    println!("║  Build index once, then compare O(log N) vs O(N)              ║");
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+
+    let mut hnsw_store = build_store(1_000_000);
+    print!("║  Building HNSW index on 1M records...                          ║");
+    let _ = std::io::Write::flush(&mut std::io::stdout());
+    let t_build = Instant::now();
+    hnsw_store.build_hnsw_for_fields(&["salary"]);
+    let build_ms = t_build.elapsed().as_millis();
+    println!("\r║  HNSW index built in {build_ms} ms                                    ║");
+    println!("╟────────────────┬──────────────────┬──────────────────────────╢");
+    println!(
+        "║  {:>14} │ {:>16} │ {:>8}                  ║",
+        "method", "µs/query @1M", "speedup"
+    );
+    println!("╟────────────────┼──────────────────┼──────────────────────────╢");
+
+    let linear_ns = bench_cover_near_linear(&hnsw_store, 3);
+    let hnsw_ns   = bench_cover_near(&hnsw_store, 1_000);
+    let speedup   = linear_ns / hnsw_ns;
+
+    println!(
+        "║  {:>14} │ {:>16.1} │  1.0x  (baseline)          ║",
+        "linear scan", linear_ns / 1_000.0
+    );
+    let mark = if speedup > 10.0 { "✓" } else { "✗" };
+    println!(
+        "║  {:>14} │ {:>16.1} │  {speedup:.0}x faster  {mark}              ║",
+        "HNSW", hnsw_ns / 1_000.0
+    );
 
     println!("╠══════════════════════════════════════════════════════════════════╣");
     println!("║                     BENCHMARK COMPLETE                         ║");

@@ -578,6 +578,45 @@ pub fn detect_base_geometry(schema: &BundleSchema, records: &[Record]) -> BaseGe
 /// K=0 (flat) → Sequential Vec (memcpy insert, array[offset] lookup)
 /// K>0 (curved) → Hashed HashMap (general O(1))
 /// K≈0 (nearly flat) → Hybrid Vec + overflow HashMap
+
+// ── HNSW Acceleration for COVER NEAR ─────────────────────────────────────────
+
+/// A normalised multi-dimensional point in fiber space, used by the HNSW index.
+/// Each coordinate is `field_value / declared_range` — matches `cover_near_records`.
+#[derive(Clone)]
+struct FiberPoint(Vec<f32>);
+
+impl instant_distance::Point for FiberPoint {
+    fn distance(&self, other: &Self) -> f32 {
+        self.0
+            .iter()
+            .zip(&other.0)
+            .map(|(a, b)| (a - b) * (a - b))
+            .sum::<f32>()
+            .sqrt()
+    }
+}
+
+/// Cached HNSW graph index for a specific ordered set of fiber fields.
+struct HnswBundle {
+    map: instant_distance::HnswMap<FiberPoint, BasePoint>,
+    /// Field names in the order they appear in each `FiberPoint` vector.
+    fields: Vec<String>,
+    /// Declared range per field (normalisation matches `cover_near_records`).
+    ranges: Vec<f64>,
+}
+
+impl std::fmt::Debug for HnswBundle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HnswBundle")
+            .field("fields", &self.fields)
+            .field("ranges", &self.ranges)
+            .finish_non_exhaustive()
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 #[derive(Debug)]
 pub struct BundleStore {
     pub schema: BundleSchema,
@@ -604,6 +643,10 @@ pub struct BundleStore {
     /// Incremental curvature moments: K(p) for every inserted record.
     /// Updated in O(1) per insert — anomaly scores come for free.
     pub curvature_stats: CurvatureStats,
+    /// HNSW approximate nearest-neighbour indices for COVER NEAR acceleration.
+    /// Key: sorted comma-joined field names (e.g. "salary" or "f11,f12").
+    /// Built explicitly via `build_hnsw_for_fields()`; stale on insert.
+    hnsw_indices: HashMap<String, HnswBundle>,
 }
 
 /// Per-field running statistics for curvature.
@@ -731,11 +774,32 @@ impl CurvatureStats {
     }
 }
 
+/// Return the effective normalisation range for a field.
+///
+/// Priority:
+///   1. `field_def.range` — the declared semantic RANGE (e.g. `RANGE 2` for [-1,+1]).
+///   2. `fs.range()`      — the observed min/max spread from inserted records.
+///   3. f64::EPSILON      — last-resort guard against divide-by-zero.
+///
+/// Using the declared range keeps K dimensionless and stable regardless of
+/// sample density.  Two sparse records with identical f11 no longer produce
+/// K → ∞ just because the observed spread is zero.
+#[inline]
+fn effective_range(field_def: &crate::types::FieldDef, fs: &FieldStats) -> f64 {
+    if let Some(decl) = field_def.range {
+        decl.max(f64::EPSILON)
+    } else {
+        fs.range().max(f64::EPSILON)
+    }
+}
+
 /// Compute per-record scalar curvature K_record(p) in O(1) at insert time.
 ///
 /// Uses the field_stats that existed **before** this record's contribution
 /// so we measure how surprising the record is relative to prior data.
 /// Returns 0.0 when fewer than 2 records have been seen (no baseline yet).
+///
+/// Normalises by declared RANGE when available, observed range otherwise.
 pub fn compute_record_k(
     field_stats: &HashMap<String, FieldStats>,
     fiber_vals: &[Value],
@@ -754,7 +818,7 @@ pub fn compute_record_k(
             continue;
         }
         let mean = fs.sum / fs.count as f64;
-        let range = fs.range().max(f64::EPSILON);
+        let range = effective_range(field_def, fs);
         total += (v - mean).abs() / range;
         n += 1;
     }
@@ -787,6 +851,7 @@ impl BundleStore {
             detected: false,
             auto_id_counter: 0,
             curvature_stats: CurvatureStats::default(),
+            hnsw_indices: HashMap::new(),
         }
     }
 
@@ -837,6 +902,7 @@ impl BundleStore {
             detected: true, // geometry already set
             auto_id_counter: 0,
             curvature_stats: CurvatureStats::default(),
+            hnsw_indices: HashMap::new(),
         }
     }
 
@@ -1944,6 +2010,232 @@ impl BundleStore {
         results
     }
 
+    /// COVER … NEAR (f1=v1, …) WITHIN r [METRIC euclidean|cosine]
+    ///
+    /// Returns all records within `radius` of `query_point` in the fibre sub-space,
+    /// sorted by distance (nearest first).  Normalization uses declared `RANGE` when
+    /// available, falling back to the observed range — identical to `compute_record_k`.
+    ///
+    /// Complexity: O(n · |query_point|) — one linear scan, no index used.
+    ///
+    /// Distance metrics:
+    ///   euclidean (default) — normalised L2:  d = √(Σ((v_i − q_i)/R_i)²)
+    ///   cosine              — 1 − cos(θ) in the raw (unnormalized) space
+    /// Build an HNSW approximate nearest-neighbour index over the given fiber fields.
+    ///
+    /// After calling this, `cover_near()` with exactly these field names will use
+    /// the HNSW graph instead of a linear scan — O(log N) per query vs O(N).
+    ///
+    /// Complexity: O(N · log N) to build; O(log N) per subsequent query.
+    /// The index is stale if records are inserted after building — rebuild as needed.
+    pub fn build_hnsw_for_fields(&mut self, field_names: &[&str]) {
+        let fields: Vec<String> = field_names.iter().map(|s| s.to_string()).collect();
+
+        // Declared range per field — same normalisation used by cover_near_records.
+        let ranges: Vec<f64> = fields
+            .iter()
+            .map(|fname| {
+                self.schema
+                    .fiber_fields
+                    .iter()
+                    .find(|fd| &fd.name == fname)
+                    .and_then(|fd| fd.range)
+                    .unwrap_or(1.0)
+            })
+            .collect();
+
+        // Index of each requested field within schema.fiber_fields (for slicing sections).
+        let fiber_indices: Vec<Option<usize>> = fields
+            .iter()
+            .map(|fname| {
+                self.schema
+                    .fiber_fields
+                    .iter()
+                    .position(|fd| &fd.name == fname)
+            })
+            .collect();
+
+        // Collect (BasePoint, fiber_vals) first so the borrow on `self` ends.
+        let sections: Vec<(BasePoint, Vec<Value>)> = self
+            .sections()
+            .map(|(bp, vals)| (bp, vals.to_vec()))
+            .collect();
+
+        let mut points: Vec<FiberPoint> = Vec::with_capacity(sections.len());
+        let mut values: Vec<BasePoint> = Vec::with_capacity(sections.len());
+
+        for (bp, fiber_vals) in &sections {
+            let vec: Vec<f32> = fiber_indices
+                .iter()
+                .zip(&ranges)
+                .map(|(opt_idx, &range)| match opt_idx {
+                    Some(i) => {
+                        fiber_vals
+                            .get(*i)
+                            .and_then(|v| v.as_f64())
+                            .unwrap_or(0.0) as f32
+                            / range as f32
+                    }
+                    None => 0.0,
+                })
+                .collect();
+            points.push(FiberPoint(vec));
+            values.push(*bp);
+        }
+
+        // Build with default ef_search (100 candidates) — sufficient for radius queries.
+        let map = instant_distance::Builder::default().build(points, values);
+
+        let mut sorted_fields = fields.clone();
+        sorted_fields.sort();
+        let key = sorted_fields.join(",");
+        self.hnsw_indices.insert(key, HnswBundle { map, fields, ranges });
+    }
+
+    pub fn cover_near(
+        &self,
+        query_point: &[(String, f64)],
+        radius: f64,
+        metric: Option<&str>,
+    ) -> Vec<(crate::types::Record, f64)> {
+        let use_cosine = matches!(metric, Some(m) if m.eq_ignore_ascii_case("cosine"));
+
+        // Use HNSW index when available (euclidean only — cosine always falls back).
+        if !use_cosine && !query_point.is_empty() {
+            let mut sorted_names: Vec<&str> =
+                query_point.iter().map(|(n, _)| n.as_str()).collect();
+            sorted_names.sort();
+            let key = sorted_names.join(",");
+
+            if let Some(bundle) = self.hnsw_indices.get(&key) {
+                // Build the normalised query vector in the same field order as the index.
+                let qp_vec: Vec<f32> = bundle
+                    .fields
+                    .iter()
+                    .zip(&bundle.ranges)
+                    .map(|(fname, &range)| {
+                        query_point
+                            .iter()
+                            .find(|(n, _)| n == fname)
+                            .map(|(_, v)| (*v / range) as f32)
+                            .unwrap_or(0.0)
+                    })
+                    .collect();
+                let qp = FiberPoint(qp_vec);
+                let mut search = instant_distance::Search::default();
+                let mut out: Vec<(crate::types::Record, f64)> = bundle
+                    .map
+                    .search(&qp, &mut search)
+                    .filter_map(|item| {
+                        let dist = item.distance as f64;
+                        if dist <= radius {
+                            let rec = self.reconstruct(*item.value)?;
+                            Some((rec, dist))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                out.sort_by(|(_, da), (_, db)| {
+                    da.partial_cmp(db).unwrap_or(std::cmp::Ordering::Equal)
+                });
+                return out;
+            }
+        }
+
+        Self::cover_near_records(self.records(), &self.schema, query_point, radius, metric)
+    }
+
+    /// Generic linear scan for COVER NEAR — works over any record iterator.
+    ///
+    /// Extracted so that `BundleRef::Overlay` can reuse the same logic without
+    /// needing a full `BundleStore` reference.
+    pub fn cover_near_records(
+        iter: impl Iterator<Item = crate::types::Record>,
+        schema: &crate::types::BundleSchema,
+        query_point: &[(String, f64)],
+        radius: f64,
+        metric: Option<&str>,
+    ) -> Vec<(crate::types::Record, f64)> {
+        if query_point.is_empty() {
+            return Vec::new();
+        }
+        let use_cosine = matches!(metric, Some(m) if m.eq_ignore_ascii_case("cosine"));
+
+        // Pre-fetch declared ranges once (O(|schema|) not O(n))
+        let ranges: Vec<(&str, f64)> = query_point
+            .iter()
+            .map(|(fname, _)| {
+                let r = schema
+                    .fiber_fields
+                    .iter()
+                    .find(|fd| fd.name == *fname)
+                    .and_then(|fd| fd.range)
+                    .unwrap_or(f64::EPSILON);
+                (fname.as_str(), r)
+            })
+            .collect();
+
+        let dot_q: f64 = if use_cosine {
+            query_point.iter().map(|(_, v)| v * v).sum::<f64>().sqrt().max(f64::EPSILON)
+        } else {
+            1.0
+        };
+
+        let mut out: Vec<(crate::types::Record, f64)> = iter
+            .filter_map(|rec| {
+                let dist = if use_cosine {
+                    let dot: f64 = query_point
+                        .iter()
+                        .map(|(fname, qv)| {
+                            let rv = rec
+                                .get(fname.as_str())
+                                .and_then(|v| v.as_f64())
+                                .unwrap_or(0.0);
+                            rv * qv
+                        })
+                        .sum();
+                    let norm_r: f64 = query_point
+                        .iter()
+                        .map(|(fname, _)| {
+                            let rv = rec
+                                .get(fname.as_str())
+                                .and_then(|v| v.as_f64())
+                                .unwrap_or(0.0);
+                            rv * rv
+                        })
+                        .sum::<f64>()
+                        .sqrt()
+                        .max(f64::EPSILON);
+                    1.0 - dot / (norm_r * dot_q)
+                } else {
+                    // Normalised L2
+                    let sq: f64 = query_point
+                        .iter()
+                        .zip(ranges.iter())
+                        .map(|((fname, qv), (_, r))| {
+                            let rv = rec
+                                .get(fname.as_str())
+                                .and_then(|v| v.as_f64())
+                                .unwrap_or(0.0);
+                            let delta = (rv - qv) / r;
+                            delta * delta
+                        })
+                        .sum();
+                    sq.sqrt()
+                };
+                if dist <= radius {
+                    Some((rec, dist))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        out.sort_by(|(_, da), (_, db)| da.partial_cmp(db).unwrap_or(std::cmp::Ordering::Equal));
+        out
+    }
+
     /// Reconstruct a full record from base point.
     pub(crate) fn reconstruct(&self, bp: BasePoint) -> Option<Record> {
         let (fiber, base) = match &self.storage {
@@ -2276,7 +2568,7 @@ impl BundleStore {
                 continue;
             };
             let mean = fs.sum / fs.count as f64;
-            let range = fs.range().max(f64::EPSILON);
+            let range = effective_range(field_def, fs);
             field_devs.push((field_def.name.clone(), (v - mean).abs() / range));
         }
         if field_devs.is_empty() {
@@ -2307,7 +2599,7 @@ impl BundleStore {
             let range = self
                 .field_stats
                 .get(&field_def.name)
-                .map(|fs| fs.range().max(f64::EPSILON))
+                .map(|fs| effective_range(field_def, fs))
                 .unwrap_or(1.0);
             sq_sum += ((fv - zv) / range).powi(2);
         }
@@ -6490,5 +6782,131 @@ mod tests {
         // Should be a subset of the 400 organisms
         assert!(results.len() < 400);
         assert!(!results.is_empty());
+    }
+
+    // ── Feature 1: RANGE-declared normalisation ─────────────────────────────
+
+    /// TDD-R1: declared RANGE is used instead of observed range.
+    ///
+    /// Math: K_rec = |v - μ| / R_decl
+    /// With R_decl = 2.0 and mean = 0.0, a value of 1.0 should give K = 0.5
+    /// regardless of how many records share the same value (observed range = 0).
+    #[test]
+    fn tdd_r1_declared_range_used_for_normalisation() {
+        use crate::types::{FieldDef, FieldType};
+        // Two fields: f_decl has RANGE 2.0 declared, f_obs has no declaration.
+        let schema = BundleSchema::new("r1_test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("f_decl").with_range(2.0))
+            .fiber(FieldDef::numeric("f_obs"));
+        let mut store = BundleStore::new(schema);
+
+        // Insert two records with identical f_decl=0.0 so observed range=0,
+        // but declared range=2.0 must be used.
+        let mut r1 = Record::new();
+        r1.insert("id".into(), Value::Integer(1));
+        r1.insert("f_decl".into(), Value::Float(0.0));
+        r1.insert("f_obs".into(), Value::Float(0.0));
+        store.insert(&r1);
+
+        let mut r2 = Record::new();
+        r2.insert("id".into(), Value::Integer(2));
+        r2.insert("f_decl".into(), Value::Float(0.0));
+        r2.insert("f_obs".into(), Value::Float(0.0));
+        store.insert(&r2);
+
+        // Now insert a record with f_decl=1.0 — should give K = 0.5 (not ∞)
+        let stats = store.get_field_stats().clone();
+        let fiber_fields = store.schema.fiber_fields.clone();
+        let mut test_vals = vec![Value::Float(1.0), Value::Float(0.0)];
+        let k = compute_record_k(&stats, &test_vals, &fiber_fields);
+        // f_decl: mean=0.0, range=2.0 (declared) → |1.0 - 0.0|/2.0 = 0.5
+        // f_obs: count=2 but observed range=0 → skipped (count<2 still only 2, ok)
+        //   Actually f_obs has count=2, observed range=0 → uses EPSILON, contributes tiny amount
+        //   But the key check is that K is NOT infinity / not astronomically large.
+        assert!(
+            k.is_finite(),
+            "K must be finite even when observed range = 0 and RANGE is declared; got K={k}"
+        );
+        assert!(
+            k < 1.0,
+            "K should be ~0.5 with declared RANGE 2.0, got K={k}"
+        );
+    }
+
+    /// TDD-R2: without declared RANGE, observed range is still used (no regression).
+    #[test]
+    fn tdd_r2_observed_range_used_when_no_declaration() {
+        let schema = BundleSchema::new("r2_test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("salary"));  // no .with_range()
+        let mut store = BundleStore::new(schema);
+
+        let mut r1 = Record::new();
+        r1.insert("id".into(), Value::Integer(1));
+        r1.insert("salary".into(), Value::Float(50000.0));
+        store.insert(&r1);
+
+        let mut r2 = Record::new();
+        r2.insert("id".into(), Value::Integer(2));
+        r2.insert("salary".into(), Value::Float(100000.0));
+        store.insert(&r2);
+
+        // mean = 75000, observed range = 50000
+        // K for salary=75000 (at mean) = |75000-75000|/50000 = 0.0
+        let stats = store.get_field_stats().clone();
+        let fiber_fields = store.schema.fiber_fields.clone();
+        let k_at_mean = compute_record_k(
+            &stats,
+            &[Value::Float(75000.0)],
+            &fiber_fields,
+        );
+        assert_eq!(k_at_mean, 0.0, "K at mean with no declared range should be 0.0");
+
+        // K for salary=100000 = |100000-75000|/50000 = 0.5
+        let k_at_max = compute_record_k(
+            &stats,
+            &[Value::Float(100000.0)],
+            &fiber_fields,
+        );
+        let expected = 0.5f64;
+        assert!(
+            (k_at_max - expected).abs() < 1e-9,
+            "K without RANGE should use observed range; expected {expected}, got {k_at_max}"
+        );
+    }
+
+    /// TDD-R3: declared RANGE produces stable K across varying sample density.
+    ///
+    /// Property: K(v) = |v - μ| / R_decl  is independent of how many records
+    /// share the same value (i.e., observed range = 0 does not cause divide-by-zero).
+    #[test]
+    fn tdd_r3_declared_range_stable_across_density() {
+        let schema = BundleSchema::new("r3_test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("embedding").with_range(2.0));
+        let mut store = BundleStore::new(schema);
+
+        // Insert 10 records all at the exact same embedding value
+        for i in 0..10 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("embedding".into(), Value::Float(0.5));
+            store.insert(&r);
+        }
+        // Observed range = 0.0 (all values identical)
+        // mean = 0.5, declared range = 2.0
+        // K for embedding=0.5 = |0.5 - 0.5| / 2.0 = 0.0
+        let stats = store.get_field_stats().clone();
+        let fiber_fields = store.schema.fiber_fields.clone();
+        let k = compute_record_k(&stats, &[Value::Float(0.5)], &fiber_fields);
+        assert_eq!(k, 0.0, "K at mean with all-same values and declared range should be 0.0, got {k}");
+
+        // K for embedding=1.5 = |1.5 - 0.5| / 2.0 = 0.5
+        let k2 = compute_record_k(&stats, &[Value::Float(1.5)], &fiber_fields);
+        assert!(
+            (k2 - 0.5).abs() < 1e-9,
+            "K for value 1 unit away from mean with declared range 2 should be 0.5, got {k2}"
+        );
     }
 }

@@ -26,6 +26,7 @@ nalgebra = "0.33"
 memmap2 = "0.9"
 libc = "0.2"
 base64 = "0.22"
+instant-distance = "0.6"
 
 [[bin]]
 name = "gigi-convert"

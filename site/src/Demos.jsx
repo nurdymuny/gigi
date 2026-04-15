@@ -814,6 +814,7 @@ function EarthquakeDemo() {
 // DEMO 4 — Live Sensor Stream (WebSocket)
 // ─────────────────────────────────────────
 const N_SENSORS = 5;
+const WARMUP_RECORDS = 30;  // skip plotting until K stabilizes
 const WS_BASE = import.meta.env.DEV ? "ws://localhost:3142" : "wss://gigi-stream.fly.dev";
 
 function mkReading(seqId, sensorId, anomaly = false) {
@@ -839,8 +840,10 @@ function StreamingDemo() {
   const bundleRef = useRef(null);
   const seqRef = useRef(0);
   const anomalyCountRef = useRef(0);
+  const injectedCountRef = useRef(0);   // client-side injections count
   const chartReadyRef = useRef(false);
   const t0Ref = useRef(0);
+  const prevKRef = useRef(null);         // for spike detection
   const add = (text, color) => setLog(p => [...p.slice(-80), { text, color }]);
 
   useEffect(() => () => stopStream(true), []);
@@ -853,6 +856,8 @@ function StreamingDemo() {
     chartReadyRef.current = false;
     seqRef.current = 0;
     anomalyCountRef.current = 0;
+    injectedCountRef.current = 0;
+    prevKRef.current = null;
   }
 
   async function startStream() {
@@ -920,22 +925,36 @@ function StreamingDemo() {
           const ev = JSON.parse(e.data);
           const t = +((ev.ts_ms - t0Ref.current) / 1000).toFixed(2);
           const K = ev.k_global ?? 0;
-          setStats({
-            K, kMean: ev.k_mean, kStd: ev.k_std, kThresh: ev.k_threshold_2s,
-            count: ev.record_count, conf: ev.global_confidence,
-            anomalyCount: anomalyCountRef.current,
-          });
-          if (chartReadyRef.current && chartRef.current && window.Plotly) {
-            Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [0], 150);
-          }
-          if (ev.is_anomaly) {
+          const n = ev.record_count ?? 0;
+
+          // Spike detection: K jumped by >1σ from previous value
+          const kStd = ev.k_std ?? 0;
+          const isSpike = prevKRef.current !== null && kStd > 0 &&
+            Math.abs(K - prevKRef.current) > kStd;
+          prevKRef.current = K;
+
+          if (ev.is_anomaly || isSpike) {
             anomalyCountRef.current += 1;
             const z = ev.z_score ? `  z=${ev.z_score.toFixed(2)}` : "";
             const cf = ev.contributing_fields?.length
               ? `  [${ev.contributing_fields.join(", ")}]` : "";
-            add(`⚠ ANOMALY  K=${K.toFixed(5)}  n=${ev.record_count}${z}${cf}`, "#FF4040");
-            if (chartReadyRef.current && chartRef.current && window.Plotly) {
-              Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [1], 150);
+            add(`⚠ K spike  K=${K.toFixed(5)}  n=${n}${z}${cf}`, "#FF4040");
+          }
+
+          setStats({
+            K, kMean: ev.k_mean, kStd: ev.k_std, kThresh: ev.k_threshold_2s,
+            count: n, conf: ev.global_confidence,
+            anomalyCount: anomalyCountRef.current,
+            injectedCount: injectedCountRef.current,
+          });
+
+          // Only plot once K has stabilized (skip warm-up period)
+          // Also discard nonsensical values from near-empty bundle
+          if (chartReadyRef.current && chartRef.current && window.Plotly &&
+              n > WARMUP_RECORDS && Math.abs(K) < 1e6) {
+            Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [0], 200);
+            if (ev.is_anomaly || isSpike) {
+              Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [1], 200);
             }
           }
         } catch (_) {}
@@ -958,10 +977,11 @@ function StreamingDemo() {
 
   async function injectAnomaly() {
     if (!bundleRef.current) return;
+    injectedCountRef.current += 1;
     const recs = Array.from({ length: N_SENSORS }, (_, i) =>
       mkReading(seqRef.current++, i, true));
     await rp(`/v1/bundles/${bundleRef.current}/insert`, { records: recs }).catch(() => {});
-    add("⚡ Anomaly records injected — watch K spike…", "#E8A830");
+    add(`⚡ Injection #${injectedCountRef.current} — extreme readings sent`, "#E8A830");
   }
 
   return (
@@ -1017,9 +1037,9 @@ function StreamingDemo() {
             sub={`conf ${(stats.conf * 100).toFixed(1)}%`}
           />
           <StatBox v={stats.count.toLocaleString()} l="Records Ingested" sub="live total" />
-          <StatBox v={stats.anomalyCount} l="Anomalies" color="#FF4040" sub="K > 2σ" />
-          <StatBox v={stats.kThresh.toFixed(5)} l="2σ Threshold" color="#E8A830"
-            sub={`μ=${stats.kMean.toFixed(4)}`} />
+          <StatBox v={stats.anomalyCount} l="K Spikes" color="#FF4040" sub="Δ K > 1σ" />
+          <StatBox v={stats.injectedCount ?? 0} l="Injections" color="#E8A830"
+            sub="extreme readings sent" />
         </div>
       )}
 

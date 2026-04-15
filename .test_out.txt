@@ -1,0 +1,730 @@
+﻿cargo :    Compiling gigi v0.1.0 (C:\Users\nurdm\OneDrive\Documents\gigi)
+At line:1 char:1
++ cargo test --all 2>&1 | Out-File -FilePath .test_out.txt -Encoding UT ...
++ ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling gi...Documents\gigi) 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: unused import: `FieldDef`
+ --> src\join.rs:8:34
+  |
+8 | use crate::types::{BundleSchema, FieldDef, Record, Value};
+  |                                  ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused doc comment
+    --> src\parser.rs:4185:9
+     |
+4185 | /         /// HOLONOMY bundle ON FIBER (f1, f2) AROUND categorical_field
+4186 | |         ///
+4187 | |         /// Groups records by the distinct values of `around_field`, 
+computes a 2-D centroid
+4188 | |         /// per group (sorted lexicographically), then measures 
+discrete parallel transport
+4189 | |         /// deficit ╬┤╧å = |╬ú ╬╕_k| mod 2╧Ç.
+     | |________________________________________^
+4190 | /         Statement::HolonomyFiber { bundle, fiber_fields, around_field 
+} => {
+4191 | |             let store = engine
+4192 | |                 .bundle(bundle)
+4193 | |                 .ok_or_else(|| format!("Bundle '{}' not found", 
+bundle))?;
+...    |
+4286 | |             Ok(ExecResult::Rows(rows))
+4287 | |         }
+     | |_________- rustdoc does not generate documentation for match arms
+     |
+     = help: use `//` for a plain comment
+     = note: `#[warn(unused_doc_comments)]` (part of `#[warn(unused)]`) on by 
+default
+
+warning: unused import: `FieldType`
+    --> src\bundle.rs:6635:38
+     |
+6635 |         use crate::types::{FieldDef, FieldType};
+     |                                      ^^^^^^^^^
+     |
+     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by 
+default
+
+warning: unused import: `FieldDef`
+ --> src\join.rs:8:34
+  |
+8 | use crate::types::{BundleSchema, FieldDef, Record, Value};
+  |                                  ^^^^^^^^
+
+warning: `gigi` (lib) generated 2 warnings (run `cargo fix --lib -p gigi` to 
+apply 1 suggestion)
+warning: function `bench_point_queries` is never used
+   --> benches\ingest_bench.rs:128:4
+    |
+128 | fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, 
+f64) {
+    |    ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (bin "bench_ingest" test) generated 1 warning
+warning: variable does not need to be mutable
+    --> src\bundle.rs:6660:13
+     |
+6660 |         let mut test_vals = vec![Value::Float(1.0), Value::Float(0.0)];
+     |             ----^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `PullbackCurvatureReport` is never constructed
+   --> src\bin\gigi_stream.rs:547:8
+    |
+547 | struct PullbackCurvatureReport {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (bin "gigi-stream" test) generated 1 warning
+warning: `gigi` (lib test) generated 4 warnings (1 duplicate) (run `cargo fix 
+--lib -p gigi --tests` to apply 3 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.90s
+     Running unittests src\lib.rs (target\debug\deps\gigi-5a59a523ed17db3e.exe)
+
+running 520 tests
+test aggregation::tests::gap_f_min_max ... ok
+test aggregation::tests::test_having_avg_gt ... ok
+test aggregation::tests::test_filtered_group_by_with_condition ... ok
+test aggregation::tests::gap_f3_group_min_max ... ok
+test aggregation::tests::tdd_5_1_fiber_integral ... ok
+test aggregation::tests::test_having_count_gt ... ok
+test aggregation::tests::tdd_5_2_group_by_partition ... ok
+test bundle::tests::ad_2_4_threshold_formula ... ok
+test bundle::tests::ad_4_1_prefilter_by_city ... ok
+test bundle::tests::ad_1_1_curvature_stats_populated_after_bulk_insert ... ok
+test bundle::tests::ad_2_1_threshold_shifts_with_sigma ... ok
+test bundle::tests::ad_5_1_mean_in_unit_interval ... ok
+test bundle::tests::ad_4_2_prefilter_dubai_finds_humidity_anomaly ... ok
+test bundle::tests::add_field_extends_records ... ok
+test bundle::tests::ad_1_4_normal_records_below_threshold ... ok
+test bundle::tests::add_index_builds_from_existing ... ok
+test bundle::tests::add_index_idempotent ... ok
+test bundle::tests::auto_id_counter ... ok
+test bundle::tests::batch_insert_basic ... ok
+test bundle::tests::batch_insert_empty ... ok
+test bundle::tests::batch_insert_matches_single_insert ... ok
+test bundle::tests::batch_insert_triggers_auto_detect ... ok
+test bundle::tests::bulk_delete_by_filter ... ok
+test bundle::tests::bulk_delete_no_match ... ok
+test bundle::tests::bulk_update_matching_records ... ok
+test bundle::tests::bulk_update_no_matches ... ok
+test bundle::tests::bundle_stats_correct ... ok
+test bundle::tests::combined_in_and_gt_operators ... ok
+test bundle::tests::count_where_all ... ok
+test bundle::tests::count_where_basic ... ok
+test bundle::tests::count_where_no_match ... ok
+test bundle::tests::curved_base_stays_hashed ... ok
+test bundle::tests::delete_existing_record ... ok
+test bundle::tests::delete_nonexistent_returns_false ... ok
+test bundle::tests::delete_returning_gives_removed_record ... ok
+test bundle::tests::detect_geometry_arithmetic ... ok
+test bundle::tests::detect_geometry_curved ... ok
+test bundle::tests::distinct_no_field ... ok
+test bundle::tests::distinct_values ... ok
+test bundle::tests::exists_false ... ok
+test bundle::tests::exists_true ... ok
+test bundle::tests::explain_full_scan ... ok
+test bundle::tests::explain_index_scan ... ok
+test bundle::tests::ad_2_3_extreme_sigma_returns_zero ... ok
+test bundle::tests::filtered_query_contains ... ok
+test bundle::tests::filtered_query_eq ... ok
+test bundle::tests::filtered_query_offset ... ok
+test bundle::tests::filtered_query_projected_fields ... ok
+test bundle::tests::filtered_query_gt_sorted_limited ... ok
+test bundle::tests::filtered_query_projected_total_count_with_pagination ... ok
+test bundle::tests::filtered_query_projected_offset ... ok
+test bundle::tests::flat_base_explicit_geometry ... ok
+test bundle::tests::flat_base_auto_detect_sequential ... ok
+test bundle::tests::flat_base_overwrite ... ok
+test bundle::tests::flat_base_records_iter ... ok
+test bundle::tests::flat_base_point_query ... ok
+test bundle::tests::gap_b1_overwrite ... ok
+test bundle::tests::flat_base_sections_iter ... ok
+test bundle::tests::gap_b2_single_section ... ok
+test bundle::tests::geo_enc_12_different_seeds ... ok
+test bundle::tests::geo_enc_10_batch_insert ... ok
+test bundle::tests::geo_enc_11_batch_curvature_invariant ... ok
+test bundle::tests::geo_enc_13_known_plaintext_resistance ... ok
+test bundle::tests::geo_enc_14_gql_encrypted_syntax ... ok
+test bundle::tests::geo_enc_15_no_encryption_default ... ok
+test bundle::tests::geo_enc_1_insert_stored_differs ... ok
+test bundle::tests::geo_enc_3_confidence_invariant ... ok
+test bundle::tests::geo_enc_2_curvature_invariant ... ok
+test bundle::tests::geo_enc_5_point_query_decrypts ... ok
+test bundle::tests::geo_enc_4_spectral_gap_invariant ... ok
+test bundle::tests::geo_enc_6_raw_storage_encrypted ... ok
+test bundle::tests::geo_enc_7_records_decrypted ... ok
+test bundle::tests::increment_by_negative ... ok
+test bundle::tests::geo_enc_9_metric_invariant ... ok
+test bundle::tests::increment_integer_preserves_type ... ok
+test bundle::tests::increment_integer_field ... ok
+test bundle::tests::increment_missing_record ... ok
+test bundle::tests::math_add_field_preserves_count ... ok
+test bundle::tests::math_bulk_delete_count_consistency ... ok
+test bundle::tests::math_count_equals_len_for_empty_filter ... ok
+test bundle::tests::math_or_conditions_partition ... ok
+test bundle::tests::math_transaction_preserves_count ... ok
+test bundle::tests::math_truncate_returns_len ... ok
+test bundle::tests::math_increment_accumulates ... ok
+test bundle::tests::math_versioned_update_monotone ... ok
+test bundle::tests::multi_field_sort ... ok
+test bundle::tests::or_conditions_basic ... ok
+test bundle::tests::or_conditions_count_where ... ok
+test bundle::tests::or_conditions_exists ... ok
+test bundle::tests::or_conditions_projected ... ok
+test bundle::tests::or_conditions_with_and ... ok
+test bundle::tests::query_ends_with ... ok
+test bundle::tests::query_in_operator ... ok
+test bundle::tests::query_is_not_null ... ok
+test bundle::tests::query_is_null ... ok
+test bundle::tests::query_not_in_operator ... ok
+test bundle::tests::ad_3_1_moscow_cold_anomaly_contributing_field ... ok
+test bundle::tests::tdd_1_10_insert_then_query ... ok
+test bundle::tests::tdd_1_11_miss_query ... ok
+test bundle::tests::query_regex_invalid_pattern_matches_nothing ... ok
+test bundle::tests::tdd_1_1_insert_retrieve ... ok
+test bundle::tests::tdd_1_2_zero_deviation ... ok
+test bundle::tests::query_regex ... ok
+test bundle::tests::tdd_1_3_deviation_norm ... ok
+test bundle::tests::tdd_2_4_gluing ... ok
+test bundle::tests::tdd_2_1_restriction ... ok
+test bundle::tests::tdd_4_10_or_bitmap_fallback ... ok
+test bundle::tests::ad_1_3_confidence_formula ... ok
+test bundle::tests::tdd_4_3_selectivity_ordering ... ok
+test bundle::tests::tdd_4_11_or_bitmap_with_and_conditions ... ok
+test bundle::tests::tdd_4_6_index_maintenance_delete ... ok
+test bundle::tests::tdd_4_5_index_maintenance_insert ... ok
+test bundle::tests::tdd_4_7_index_maintenance_update ... ok
+test bundle::tests::tdd_4_2_conjunction_intersection ... ok
+test bundle::tests::tdd_r1_declared_range_used_for_normalisation ... ok
+test bundle::tests::tdd_r2_observed_range_used_when_no_declaration ... ok
+test bundle::tests::ad_3_2_reykjavik_storm_contributing_field ... ok
+test bundle::tests::tdd_r3_declared_range_stable_across_density ... ok
+test bundle::tests::test_between_no_matches ... ok
+test bundle::tests::tdd_4_1_equality_index_acceleration ... ok
+test bundle::tests::test_between_boundary_values_included ... ok
+test bundle::tests::test_between_numeric_inclusive_bounds ... ok
+test bundle::tests::test_cosine_identical_unit_vectors ... ok
+test bundle::tests::test_cosine_opposite_vectors ... ok
+test bundle::tests::test_cosine_orthogonal_vectors ... ok
+test bundle::tests::test_drop_field_does_not_affect_other_fields ... ok
+test bundle::tests::test_drop_field_records_no_longer_have_field ... ok
+test bundle::tests::test_dot_product ... ok
+test bundle::tests::test_drop_field_removes_from_schema ... ok
+test bundle::tests::test_drop_field_returns_false_for_unknown ... ok
+test bundle::tests::test_drop_field_store_still_queryable ... ok
+test bundle::tests::test_euclidean_known_distance ... ok
+test bundle::tests::test_drop_indexed_field_removes_index ... ok
+test bundle::tests::test_euclidean_same_point ... ok
+test bundle::tests::test_vector_search_top1_cosine ... ok
+test bundle::tests::test_vector_search_dimension_mismatch_skips ... ok
+test bundle::tests::test_vector_search_euclidean_ranking ... ok
+test bundle::tests::test_vector_search_with_prefilter ... ok
+test bundle::tests::timestamp_value_ordering ... ok
+test bundle::tests::test_vector_search_top3_cosine ... ok
+test bundle::tests::test_vector_search_top_k_clamped_to_n ... ok
+test bundle::tests::transaction_all_succeed ... ok
+test bundle::tests::transaction_rollback_on_failure ... ok
+test bundle::tests::truncate_clears_all ... ok
+test bundle::tests::truncate_then_insert ... ok
+test bundle::tests::ttl_expire_removes_records ... ok
+test bundle::tests::update_existing_record ... ok
+test bundle::tests::update_nonexistent_returns_false ... ok
+test bundle::tests::update_returning_gives_patched_record ... ok
+test bundle::tests::upsert_insert_new ... ok
+test bundle::tests::upsert_update_existing ... ok
+test bundle::tests::versioned_update_conflict ... ok
+test bundle::tests::versioned_update_succeeds ... ok
+test convert::tests::test_csv_encode ... ok
+test bundle::tests::tdd_4_8_in_predicate_index ... ok
+test bundle::tests::ad_1_5_deviation_distance_non_negative ... ok
+test convert::tests::test_full_roundtrip_json ... ok
+test crypto::tests::test_categorical_passthrough ... ok
+test bundle::tests::tdd_4_4_mixed_indexed_residual ... ok
+test crypto::tests::test_encrypt_decrypt_roundtrip ... ok
+test crypto::tests::test_derive_deterministic ... ok
+test crypto::tests::test_different_fields_different_transforms ... ok
+test concurrent::tests::concurrent_readers_dont_block ... ok
+test crypto::tests::test_integer_encryption ... ok
+test crypto::tests::test_encrypt_literal ... ok
+test crypto::tests::test_scale_nonzero ... ok
+test crypto::tests::test_encrypted_values_differ_from_plain ... ok
+test bundle::tests::tdd_4_9_or_bitmap_acceleration ... ok
+test crypto::tests::test_seed_from_hex ... ok
+test crypto::tests::test_seed_from_hex_bad_length ... ok
+test curvature::tests::gap_c5_davis_law ... ok
+test curvature::tests::tdd_3_10_confidence_ordering ... ok
+test curvature::tests::tdd_3_15_z_large_tau ... ok
+test curvature::tests::tdd_3_14_z_zero_tau ... ok
+test curvature::tests::tdd_3_18b_free_energy_empty ... ok
+test curvature::tests::tdd_3_4_uniform_low_curvature ... ok
+test curvature::tests::tdd_3_2_zero_holonomy ... ok
+test curvature::tests::tdd_3_5_variable_curvature ... ok
+test curvature::tests::tdd_3_9_confidence_bounds ... ok
+test convert::tests::test_profile_sensor_data ... ok
+test curvature::tests::tdd_3_1_flat_transport ... ok
+test bundle::tests::ad_1_2_injected_anomalies_exceed_2sigma ... ok
+test dhoom::tests::streaming_empty_bundle ... ok
+test dhoom::tests::streaming_single_record ... ok
+test dhoom::tests::test_arithmetic_numeric ... ok
+test dhoom::tests::streaming_chunk_boundary_correctness ... ok
+test dhoom::tests::test_arithmetic_numeric_step ... ok
+test curvature::tests::tdd_3_16_free_energy_monotone ... ok
+test dhoom::tests::streaming_equivalence_with_batch_encoder ... ok
+test dhoom::tests::test_arithmetic_string_pattern ... ok
+test dhoom::tests::test_boolean_shorthand ... ok
+test bundle::tests::ad_5_2_results_sorted_by_z_score ... ok
+test dhoom::tests::test_decode_delta_values ... ok
+test dhoom::tests::test_coerce_types ... ok
+test dhoom::tests::test_decode_computed_fields ... ok
+test dhoom::tests::test_decode_constraint_as_variable ... ok
+test dhoom::tests::test_decode_interned_fields ... ok
+test dhoom::tests::test_decode_morphism_as_regular_values ... ok
+test dhoom::tests::test_detect_arithmetic_step ... ok
+test dhoom::tests::test_decode_reviews_example ... ok
+test dhoom::tests::test_detect_arithmetic_sequence ... ok
+test dhoom::tests::test_decode_sparse_records ... ok
+test dhoom::tests::test_decode_sensors_example ... ok
+test dhoom::tests::test_empty_collection ... ok
+test dhoom::tests::test_deviation_marking ... ok
+test dhoom::tests::test_encode_delta_when_beneficial ... ok
+test dhoom::tests::test_fiber_parse_anonymous ... ok
+test dhoom::tests::test_fiber_parse_simple ... ok
+test dhoom::tests::test_find_modal_default_majority ... ok
+test dhoom::tests::test_encode_sparse_when_mostly_null ... ok
+test dhoom::tests::test_ingest_decode_deviation_override ... ok
+test dhoom::tests::test_ingest_decode_numeric_precision ... ok
+test dhoom::tests::test_ingest_decode_sensors ... ok
+test dhoom::tests::test_parse_computed_modifier ... ok
+test dhoom::tests::test_parse_constraint_modifier ... ok
+test dhoom::tests::test_parse_delta_modifier ... ok
+test dhoom::tests::test_parse_sparse_prefix ... ok
+test dhoom::tests::test_parse_interned_modifier ... ok
+test dhoom::tests::test_parse_morphism_modifier ... ok
+test dhoom::tests::test_profile_arithmetic_field ... ok
+test dhoom::tests::streaming_roundtrip_fidelity ... ok
+test dhoom::tests::test_profile_basic ... ok
+test dhoom::tests::test_profile_curvature_high_variance ... ok
+test dhoom::tests::test_profile_curvature_low_variance ... ok
+test dhoom::tests::test_profile_empty_dataset ... ok
+test dhoom::tests::test_profile_default_field ... ok
+test dhoom::tests::test_profile_elided_pct ... ok
+test dhoom::tests::test_profile_display ... ok
+test dhoom::tests::test_quoted_strings ... ok
+test dhoom::tests::test_roundtrip_computed ... ok
+test dhoom::tests::test_roundtrip_delta ... ok
+test dhoom::tests::test_trailing_elision ... ok
+test dhoom::tests::test_roundtrip_sensors ... ok
+test dhoom::tests::test_roundtrip_interned ... ok
+test dhoom::tests::test_roundtrip_reviews ... ok
+test dhoom::tests::streaming_memory_bound ... ok
+test concurrent::tests::concurrent_reads_and_writes ... ok
+test bundle::tests::ad_2_2_higher_sigma_fewer_anomalies ... ok
+test edge::tests::edge_curvature ... ok
+test edge::tests::edge_local_insert_query ... ok
+test edge::tests::edge_sync_queue_tracks_ops ... ok
+test bundle::tests::ad_6_1_record_k_for_anomaly_gt_normal ... ok
+test bundle::tests::ad_5_4_truncate_resets_curvature_stats ... ok
+test curvature::tests::tdd_3_17_thermo_profile_shape ... ok
+test edge::tests::edge_offline_persistence ... ok
+test bundle::tests::ad_7_2_stats_access_is_o1 ... ok
+test engine::tests::clone_bundle_data_includes_mmap ... ok
+test bundle::tests::ad_7_1_anomaly_scan_timing ... ok
+test bundle::tests::ad_6_2_all_four_anomalies_detected ... ok
+test engine::tests::batch_insert_is_wal_logged ... ok
+test engine::tests::engine_basic_ops ... ok
+test engine::tests::engine_delete ... ok
+test engine::tests::engine_missing_bundle ... ok
+test engine::tests::autocompact_absolute_limit_overrides_cooldown ... ok
+test engine::tests::engine_compaction ... ok
+test engine::tests::engine_update ... ok
+test engine::tests::mmap_arithmetic_lookup_tombstoned ... ok
+test engine::tests::engine_wal_replay ... ok
+test engine::tests::mmap_arithmetic_out_of_bounds ... ok
+test engine::tests::mmap_filtered_overlay_precedence ... ok
+test engine::tests::mmap_batch_insert ... ok
+test engine::tests::cow_snapshot_reads_unblocked ... ok
+test engine::tests::autocompact_wal_file_size_trigger ... ok
+test engine::tests::mmap_filtered_query_base_plus_overlay ... ok
+test engine::tests::autocompact_disabled_never_fires ... ok
+test engine::tests::mmap_range_query_base_data ... ok
+test engine::tests::cow_snapshot_point_in_time ... ok
+test engine::tests::mmap_range_query_dedup ... ok
+test engine::tests::mmap_rebase_snapshot_roundtrip ... ok
+test engine::tests::open_mmap_basic ... ok
+test engine::tests::mmap_rebase_preserves_arithmetic_lookup ... ok
+test engine::tests::open_mmap_overlay_ops ... ok
+test engine::tests::small_bundle_arithmetic_snapshot ... ok
+test engine::tests::mmap_rebase_arithmetic_o1_proven ... ok
+test engine::tests::autocompact_data_survives_cycle ... ok
+test engine::tests::autocompact_cooldown_prevents_refire ... ok
+test engine::tests::cow_snapshot_roundtrip ... ok
+test engine::tests::test_6_1_cache_hit_returns_correct_result ... ok
+test engine::tests::test_6_2_cache_miss_on_ttl_expiry ... ok
+test engine::tests::test_6_4_explicit_invalidation_per_bundle ... ok
+test engine::tests::test_6_5_invalidate_all_clears_everything ... ok
+test engine::tests::test_6_3_write_invalidation_via_generation ... ok
+test engine::tests::test_6_6_fingerprint_equivalence ... ok
+test engine::tests::test_6_7_lru_eviction ... ok
+test engine::tests::cow_disjoint_write_commutativity ... ok
+test engine::tests::snapshot_survives_wal_compact ... ok
+test engine::tests::test_9_6_mutation_trigger_with_filter ... ok
+test engine::tests::test_6_8_staleness_bound ... ok
+test engine::tests::test_cache_gql_invalidate_parse ... ok
+test engine::tests::test_9_7_multiple_triggers_same_bundle ... ok
+test engine::tests::autocompact_amplification_trigger ... ok
+test engine::tests::test_cache_gql_invalidate_execute ... ok
+test gauge::tests::gauge_rename_preserves_deviation ... ok
+test gauge::tests::tdd_5a1_add_column_k_unchanged ... ok
+test gauge::tests::tdd_5a2_drop_column_k_unchanged ... ok
+test engine::tests::test_trigger_drop ... ok
+test gauge::tests::tdd_5a3_rename_column ... ok
+test gauge::tests::tdd_5a4_rescale_k_unchanged ... ok
+test engine::tests::streaming_snapshot_chunk_size_one ... ok
+test hash::tests::tdd_1_6_composite_key ... ok
+test hash::tests::tdd_1_7_determinism ... ok
+test join::tests::tdd_4_1_correctness ... ok
+test hash::tests::tdd_1_5_uniformity ... ok
+test join::tests::tdd_4_2_cardinality ... ok
+test join::tests::tdd_4_3_null_fiber ... ok
+test join::tests::tdd_4_5_no_match_curvature ... ok
+test join::tests::tdd_4_6_report_consistency ... ok
+test metric::tests::gap_a1_identity ... ok
+test metric::tests::gap_a2_symmetry ... ok
+test metric::tests::gap_a4_ordered_cat ... ok
+test metric::tests::gap_a5_timestamp ... ok
+test join::tests::tdd_4_4_faithful_join_curvature ... ok
+test metric::tests::gap_a6_weighted ... ok
+test metric::tests::tdd_1_12_numeric_metric ... ok
+test metric::tests::tdd_1_13_categorical_metric ... ok
+test metric::tests::tdd_b11_matrix_symmetry ... ok
+test metric::tests::tdd_b10_diagonal_ones ... ok
+test metric::tests::tdd_b12_empty_store ... ok
+test metric::tests::tdd_b13_eigenvalues_2x2 ... ok
+test metric::tests::tdd_b6_metric_tensor_shape ... ok
+test metric::tests::tdd_b7_condition_number_bound ... ok
+test metric::tests::tdd_b9_eigenvalues_non_negative ... ok
+test metric::tests::tdd_b8_effective_dimension_bounds ... ok
+test hash::tests::tdd_1_4_collision_freedom ... ok
+test engine::tests::test_trigger_gql_create_and_drop ... ok
+test engine::tests::test_trigger_mutation_op_types ... ok
+test mmap_bundle::tests::tdd_11_4_overlay_masks_updates ... ok
+test mmap_bundle::tests::tdd_11_2_point_query ... ok
+test mmap_bundle::tests::tdd_11_1_mmap_reads_correct_data ... ok
+test engine::tests::streaming_snapshot_multiple_bundles ... ok
+test mmap_bundle::tests::tdd_11_5_tombstones_hide_records ... ok
+test mmap_bundle::tests::tdd_11_7_compact_clears_overlay ... ok
+test mmap_bundle::tests::tdd_11_6_scan_base_still_works ... ok
+test mmap_bundle::tests::tdd_11_10_mmap_survives_reopen ... ok
+test parser::tests::gql_analyze ... ok
+test parser::tests::gql_analyze_field ... ok
+test bundle::tests::ad_5_3_limit_respected ... ok
+test parser::tests::gql_atlas_begin_commit ... ok
+test parser::tests::gql_audit_off ... ok
+test parser::tests::gql_audit_on ... ok
+test parser::tests::gql_audit_show ... ok
+test parser::tests::gql_backup ... ok
+test parser::tests::gql_backup_all ... ok
+test parser::tests::gql_backup_incremental ... ok
+test parser::tests::gql_bundle_keyword_style ... ok
+test parser::tests::gql_check_integrity ... ok
+test parser::tests::gql_collapse ... ok
+test parser::tests::gql_comment_on_bundle ... ok
+test parser::tests::gql_comment_on_field ... ok
+test parser::tests::gql_compact ... ok
+test parser::tests::gql_consistency_repair ... ok
+test parser::tests::gql_cover_all ... ok
+test parser::tests::gql_cover_between ... ok
+test parser::tests::gql_cover_distinct ... ok
+test parser::tests::gql_cover_in ... ok
+test parser::tests::gql_cover_matches ... ok
+test parser::tests::gql_cover_not_in ... ok
+test parser::tests::gql_cover_on ... ok
+test parser::tests::gql_cover_on_where_combined ... ok
+test parser::tests::gql_cover_project ... ok
+test parser::tests::gql_cover_rank_first_skip ... ok
+test parser::tests::gql_cover_void_defined ... ok
+test parser::tests::gql_cover_where_lt ... ok
+test parser::tests::gql_curvature_fields_by ... ok
+test parser::tests::gql_deallocate ... ok
+test parser::tests::gql_describe ... ok
+test parser::tests::gql_drop_policy ... ok
+test parser::tests::gql_drop_trigger ... ok
+test parser::tests::gql_execute_params ... ok
+test parser::tests::gql_exists_section ... ok
+test parser::tests::gql_explain ... ok
+test parser::tests::gql_fill ... ok
+test parser::tests::gql_gauge_constrain ... ok
+test parser::tests::gql_gauge_unconstrain ... ok
+test parser::tests::gql_generate_base ... ok
+test parser::tests::gql_grant ... ok
+test parser::tests::gql_health ... ok
+test parser::tests::gql_ingest ... ok
+test parser::tests::gql_ingest_stdin ... ok
+test parser::tests::gql_integrate_global ... ok
+test parser::tests::gql_integrate_over_measure ... ok
+test parser::tests::gql_iterate ... ok
+test mmap_bundle::tests::tdd_11_8_default_fields ... ok
+test parser::tests::gql_iterate_depth_only ... ok
+test parser::tests::gql_iterate_no_depth ... ok
+test parser::tests::gql_line_comment_ignored ... ok
+test parser::tests::gql_on_trigger ... ok
+test parser::tests::gql_on_trigger_with_condition ... ok
+test parser::tests::gql_prepare ... ok
+test parser::tests::gql_pullback ... ok
+test parser::tests::gql_pullback_preserve_left ... ok
+test parser::tests::gql_rebuild_index ... ok
+test parser::tests::gql_redefine_point ... ok
+test parser::tests::gql_repair ... ok
+test parser::tests::gql_reset ... ok
+test parser::tests::gql_restore ... ok
+test parser::tests::gql_restore_snapshot ... ok
+test parser::tests::gql_retract ... ok
+test parser::tests::gql_revoke ... ok
+test parser::tests::gql_section_insert ... ok
+test parser::tests::gql_section_point_query ... ok
+test parser::tests::gql_section_projected ... ok
+test parser::tests::gql_section_upsert ... ok
+test parser::tests::gql_sections_column_list_single_tuple ... ok
+test parser::tests::gql_sections_column_list_tuples ... ok
+test parser::tests::gql_set ... ok
+test parser::tests::gql_show_backups ... ok
+test parser::tests::gql_show_bundles ... ok
+test parser::tests::gql_show_comments ... ok
+test parser::tests::gql_show_constraints ... ok
+test parser::tests::gql_show_current_role ... ok
+test parser::tests::gql_show_fields ... ok
+test parser::tests::gql_show_geometry ... ok
+test parser::tests::gql_show_indexes ... ok
+test parser::tests::gql_show_morphisms ... ok
+test parser::tests::gql_show_policies ... ok
+test parser::tests::gql_show_prepared ... ok
+test parser::tests::gql_show_session ... ok
+test parser::tests::gql_show_roles ... ok
+test parser::tests::gql_show_settings ... ok
+test parser::tests::gql_show_statistics ... ok
+test parser::tests::gql_show_triggers ... ok
+test parser::tests::gql_spectral_full ... ok
+test parser::tests::gql_storage ... ok
+test parser::tests::gql_suggest_adjacency_basic ... ok
+test parser::tests::gql_suggest_adjacency_full ... ok
+test parser::tests::gql_transplant ... ok
+test parser::tests::gql_unweave_role ... ok
+test parser::tests::gql_vacuum ... ok
+test parser::tests::gql_verify_backup ... ok
+test parser::tests::gql_weave_role ... ok
+test parser::tests::gql_weave_role_superweave ... ok
+test parser::tests::parse_create_bundle ... ok
+test parser::tests::parse_curvature_spectral ... ok
+test parser::tests::parse_insert ... ok
+test parser::tests::parse_join ... ok
+test parser::tests::parse_select_group_by ... ok
+test parser::tests::parse_select_point_query ... ok
+test parser::tests::parse_select_range ... ok
+test query::tests::tdd_10_1_full_scan_cost ... ok
+test query::tests::tdd_10_2_index_beats_scan ... ok
+test query::tests::tdd_10_3_index_intersection ... ok
+test query::tests::tdd_10_4_scan_when_non_selective ... ok
+test query::tests::tdd_10_6_selectivity_range ... ok
+test query::tests::tdd_10_5_selectivity_equality ... ok
+test query::tests::tdd_10_7_conjunction_selectivity ... ok
+test query::tests::tdd_10_8_explain_output ... ok
+test query::tests::tdd_6_1_exact_recall ... ok
+test query::tests::tdd_6_3_double_cover ... ok
+test mmap_bundle::tests::tdd_11_3_sequential_scan ... ok
+test query::tests::tdd_6_5_deviation_identity ... ok
+test engine::tests::snapshot_then_new_inserts_survive_reopen ... ok
+test sheaf::laplacian::tests::sheaf_10_laplacian_diagonal ... ok
+test sheaf::laplacian::tests::sheaf_2_single_completion_path ... ok
+test sheaf::laplacian::tests::sheaf_3_weighted_completion ... ok
+test sheaf::laplacian::tests::sheaf_1_laplacian_symmetric_psd ... ok
+test sheaf::laplacian::tests::sheaf_4_confidence_increases_with_neighbors ... ok
+test sheaf::laplacian::tests::sheaf_5_zero_valued_completion ... ok
+test sheaf::laplacian::tests::sheaf_7_transform_restriction_map ... ok
+test query::tests::tdd_10_9_planner_determinism ... ok
+test sheaf::laplacian::tests::sheaf_6_disconnected_missing ... ok
+test sheaf::laplacian::tests::sheaf_9_multiple_missing ... ok
+test sheaf::laplacian::tests::sheaf_8_coherence_interval ... ok
+test sheaf::tests::confidence_formula_bounds ... ok
+test sheaf::tests::confidence_sheaf_zero_value ... ok
+test sheaf::tests::complete_fills_null_cells ... ok
+test sheaf::tests::complete_with_constraint_graph ... ok
+test sheaf::tests::complete_skips_orphan ... ok
+test sheaf::tests::complete_uses_laplacian_method ... ok
+test sheaf::tests::federated_complete_missing_bundle_returns_empty ... ok
+test sheaf::tests::consistency_sampled_produces_summary ... ok
+test sheaf::tests::federated_complete_counts_cross_bundle_neighbors ... ok
+test sheaf::tests::consistency_finds_contradiction ... ok
+test sheaf::tests::consistency_full_no_sampling_summary ... ok
+test sheaf::tests::federated_complete_uses_cross_bundle ... ok
+test sheaf::tests::federated_complete_provenance_shows_sources ... ok
+test sheaf::tests::federated_complete_no_morphisms_falls_back ... ok
+test sheaf::tests::laplacian_completion_value_matches_schur ... ok
+test sheaf::tests::laplacian_confidence_from_inv_diag ... ok
+test sheaf::tests::propagate_finds_cascade ... ok
+test sheaf::tests::suggest_adjacency_field_filter ... ok
+test spectral::tests::tdd_3_18_connected_large_gap ... ok
+test spectral::tests::tdd_3_19_clustered_small_gap ... ok
+test spectral::tests::tdd_3_20_spectral_capacity_bound ... ok
+test spectral::tests::tdd_3_23_c_theorem ... ok
+test spectral::tests::tdd_3_24_group_by_equals_coarsening ... ok
+test spectral::tests::tdd_3_22_rg_flow_monotone ... ok
+test spectral::tests::tdd_3_26_betti_disconnected ... ok
+test sheaf::tests::suggest_adjacency_returns_candidates ... ok
+test spectral::tests::tdd_3_25_betti_connected ... ok
+test sheaf::tests::suggest_adjacency_ranks_by_delta ... ok
+test spectral::tests::tdd_3_28_betti_empty ... ok
+test spectral::tests::tdd_3_27_betti_cycle_rank ... ok
+test spectral::tests::tdd_3_30_entropy_uniform_groups ... ok
+test spectral::tests::tdd_3_29_entropy_single_group ... ok
+test spectral::tests::tdd_b1_geodesic_same_point ... ok
+test spectral::tests::tdd_3_31_entropy_non_negative ... ok
+test wal::tests::crc_integrity ... ok
+test spectral::tests::tdd_b2_geodesic_connected_pair ... ok
+test spectral::tests::tdd_b3_geodesic_disconnected ... ok
+test wal::tests::insert_roundtrip ... ok
+test wal::tests::schema_roundtrip ... ok
+test wal::tests::update_roundtrip ... ok
+test wal::tests::value_all_types ... ok
+test spectral::tests::tdd_b5_geodesic_symmetry ... ok
+test spectral::tests::tdd_b4_geodesic_triangle_inequality ... ok
+test engine::tests::test_9_8_trigger_survives_restart ... ok
+test parser::tests::execute_full_workflow ... ok
+test parser::tests::gql_execute_full_workflow ... ok
+test mmap_bundle::tests::tdd_11_9_concurrent_reads ... ok
+test engine::tests::streaming_snapshot_then_new_inserts ... ok
+test wal::tests::measurement_override_roundtrip ... ok
+test wal::tests::wal_update_delete_cycle ... ok
+test wal::tests::wal_write_read_cycle ... ok
+test engine::tests::streaming_snapshot_roundtrip ... ok
+test engine::tests::autocompact_amplification_increases_under_updates ... ok
+test engine::tests::autocompact_amplification_monotone_inserts ... ok
+test engine::tests::streaming_wal_replay_correct_count ... ok
+test engine::tests::autocompact_post_compaction_wal_invariant ... ok
+test engine::tests::mmap_point_query_10k_arithmetic ... ok
+
+test result: ok. 520 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s
+
+     Running unittests benches\ingest_bench.rs 
+(target\debug\deps\bench_ingest-abc6a34b50bebee1.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests benches\o1_proof.rs 
+(target\debug\deps\bench_o1-be63326bfb9fc0a8.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests benches\tpch_bench.rs 
+(target\debug\deps\bench_tpch-2445a83d54989fc8.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\main.rs 
+(target\debug\deps\gigi-915f0012c13c1310.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gigi_convert.rs 
+(target\debug\deps\gigi_convert-b9c4856298f78964.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gigi_edge.rs 
+(target\debug\deps\gigi_edge-5e72da9307089833.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gigi_server.rs 
+(target\debug\deps\gigi_server-bb99cbc098699d29.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gigi_stream.rs 
+(target\debug\deps\gigi_stream-898121a0bc922e60.exe)
+
+running 34 tests
+test tests::test_b64_escape_decoded_as_text ... ok
+test tests::test_b64_escape_full_roundtrip_text ... ok
+test tests::test_b64_escape_triple_prefix_roundtrip ... ok
+test tests::test_binary_roundtrip_via_json ... ok
+test tests::test_binary_size_enforcement_passes_non_binary_records ... ok
+test tests::test_binary_size_enforcement_rejects_oversized_payload ... ok
+test tests::test_binary_size_enforcement_allows_exactly_1mib ... ok
+test tests::test_b64_escape_does_not_affect_normal_binary ... ok
+test tests::test_chat_reaction_schema_fields ... ok
+test tests::test_chat_voice_note_media_bytes_is_binary_type ... ok
+test tests::test_field_def_binary_constructor ... ok
+test tests::test_plain_string_stays_text ... ok
+test tests::test_dhoom_arithmetic_ids_become_integer_values ... ok
+test tests::test_schema_coerce_binary_accepts_binary ... ok
+test tests::test_schema_coerce_null_always_accepted ... ok
+test tests::test_schema_coerce_binary_rejects_unescaped_text ... ok
+test tests::test_schema_coerce_numeric_accepts_numbers ... ok
+test tests::test_schema_coerce_numeric_rejects_text ... ok
+test tests::test_schema_coerce_timestamp_accepts_integer ... ok
+test tests::test_schema_coerce_timestamp_rejects_string ... ok
+test tests::test_schema_coerce_unknown_field_passthrough ... ok
+test tests::test_value_to_json_escapes_text_starting_with_b64 ... ok
+test tests::test_ephemeral_records_not_persisted ... ok
+test tests::test_chat_ack_ingest ... ok
+test tests::test_binary_wal_roundtrip ... ok
+test tests::test_chat_signal_ingest ... ok
+test tests::test_s85_point_query_by_message_id ... ok
+test tests::test_chat_dm_ingest_plain_body ... ok
+test tests::test_s85_ndjson_ingest_stores_binary ... ok
+test tests::test_dhoom_ingest_pipeline_curvature ... ok
+test tests::test_chat_typing_ingest ... ok
+test tests::test_chat_reaction_ingest ... ok
+test tests::test_chat_dm_encrypted_body_roundtrip ... ok
+test tests::test_s85_dhoom_export_reimport_byte_fidelity ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src\bin\gigi_stress.rs 
+(target\debug\deps\gigi_stress-28c533f9725dcd27.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples\nasa_atmosphere.rs 
+(target\debug\deps\nasa_atmo-ff1518ab24cda159.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gigi
+
+running 3 tests
+test src\dhoom.rs - dhoom (line 7) ... ignored
+test src\dhoom.rs - dhoom::StreamingDhoomEncoder (line 2733) ... ignored
+test src\dhoom.rs - dhoom::profile (line 1565) ... ignored
+
+test result: ok. 0 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

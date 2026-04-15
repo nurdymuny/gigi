@@ -464,4 +464,179 @@ fn main() {
     println!("╠══════════════════════════════════════════════════════════════════╣");
     println!("║                     BENCHMARK COMPLETE                         ║");
     println!("╚══════════════════════════════════════════════════════════════════╝");
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TDD-S1: SPECTRAL ON FIBER — fiber Laplacian eigenvalues
+    //   Expected complexity: O(N²) k-NN graph build + O(N·iter) eigensolver
+    //   Ratio t(10N)/t(N) should track ~10–100x (not O(1))
+    // ─────────────────────────────────────────────────────────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════════════╗");
+    println!("║         TDD-S1: SPECTRAL ON FIBER complexity scaling            ║");
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║  N (rows)  │  ms (3 modes)  │  ratio vs prev                  ║");
+    println!("╟────────────┼────────────────┼─────────────────────────────────╢");
+
+    let mut prev_s1_ms: Option<f64> = None;
+    for &n in &[100usize, 500, 1_000, 5_000] {
+        // Build small 2D embedding store
+        let schema = BundleSchema::new("s1_bench")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("ex"))
+            .fiber(FieldDef::numeric("ey"));
+        let mut s1_store = BundleStore::new(schema);
+        for i in 0..n as i64 {
+            let mut rec = std::collections::HashMap::new();
+            let angle = i as f64 * std::f64::consts::TAU / n as f64;
+            rec.insert("id".into(), Value::Integer(i));
+            rec.insert("ex".into(), Value::Float(angle.cos() + (i % 3) as f64 * 0.5));
+            rec.insert("ey".into(), Value::Float(angle.sin() + (i % 2) as f64 * 0.3));
+            s1_store.insert(&rec);
+        }
+        let t = Instant::now();
+        let _ = gigi::spectral::spectral_fiber_modes(&s1_store, &["ex", "ey"], 3);
+        let ms = t.elapsed().as_secs_f64() * 1000.0;
+        let ratio_str = match prev_s1_ms {
+            Some(p) => format!("{:.1}x", ms / p),
+            None    => "baseline".to_string(),
+        };
+        println!("║  {n:>10} │ {ms:>14.1} │  {ratio_str:<31}║");
+        prev_s1_ms = Some(ms.max(1e-3));
+    }
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║  SPEC: ratio should grow super-linearly (k-NN is O(N²))        ║");
+    println!("╚══════════════════════════════════════════════════════════════════╝");
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TDD-T1: TRANSPORT — parallel transport between two records
+    //   Expected: O(1) — just two record lookups + arithmetic
+    //   Ratio t(10N)/t(N) should stay ~1.0
+    // ─────────────────────────────────────────────────────────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════════════╗");
+    println!("║         TDD-T1: TRANSPORT scaling (should be O(1) lookups)     ║");
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║  N (rows)  │  ns/query  │  ratio vs prev                       ║");
+    println!("╟────────────┼────────────┼──────────────────────────────────────╢");
+
+    let mut prev_t1_ns: Option<f64> = None;
+    for &n in &[1_000usize, 10_000, 100_000] {
+        let schema = BundleSchema::new("t1_bench")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("ex"))
+            .fiber(FieldDef::numeric("ey"));
+        let mut t1_store = BundleStore::new(schema);
+        for i in 0..n as i64 {
+            let mut rec = std::collections::HashMap::new();
+            rec.insert("id".into(), Value::Integer(i));
+            rec.insert("ex".into(), Value::Float(i as f64 * 0.001));
+            rec.insert("ey".into(), Value::Float((i % 100) as f64 * 0.01));
+            t1_store.insert(&rec);
+        }
+        let iters = 1_000usize;
+        let start = Instant::now();
+        for k in 0..iters {
+            let from_id = (k * 37) % n;
+            let to_id   = (k * 53 + 1) % n;
+            // Simulate TRANSPORT: two scans to find records + displacement arithmetic
+            let from_pt: Option<(f64, f64)> = t1_store.records().find(|rec| {
+                rec.get("id") == Some(&Value::Integer(from_id as i64))
+            }).map(|rec| {
+                let ex = rec.get("ex").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let ey = rec.get("ey").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                (ex, ey)
+            });
+            let to_pt: Option<(f64, f64)> = t1_store.records().find(|rec| {
+                rec.get("id") == Some(&Value::Integer(to_id as i64))
+            }).map(|rec| {
+                let ex = rec.get("ex").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let ey = rec.get("ey").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                (ex, ey)
+            });
+            if let (Some(p0), Some(p1)) = (from_pt, to_pt) {
+                let dx = p1.0 - p0.0;
+                let dy = p1.1 - p0.1;
+                let _ = dy.atan2(dx);
+            }
+        }
+        let ns_per_query = start.elapsed().as_nanos() as f64 / iters as f64;
+        let ratio_str = match prev_t1_ns {
+            Some(p) => format!("{:.1}x", ns_per_query / p),
+            None    => "baseline".to_string(),
+        };
+        println!("║  {n:>10} │ {ns_per_query:>10.0} │  {ratio_str:<36}║");
+        prev_t1_ns = Some(ns_per_query.max(1.0));
+    }
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║  SPEC: ratio should grow ~O(N) (scan) — use HNSW for O(log N) ║");
+    println!("╚══════════════════════════════════════════════════════════════════╝");
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TDD-G1: GAUGE TEST — two holonomy scans
+    //   Expected: O(N₁ + N₂) — sequential group-by pass over both bundles
+    //   Ratio ~2x per 10x N (linear combined scan)
+    // ─────────────────────────────────────────────────────────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════════════╗");
+    println!("║         TDD-G1: GAUGE TEST scaling (O(N₁+N₂) expected)        ║");
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║  N (rows each) │  µs/gauge  │  ratio vs prev                  ║");
+    println!("╟────────────────┼────────────┼─────────────────────────────────╢");
+
+    let mut prev_g1_us: Option<f64> = None;
+    let categories = ["past", "present", "future", "conditional", "imperative"];
+    for &n in &[1_000usize, 10_000, 100_000] {
+        let make_gauge_store = |name: &str| {
+            let schema = BundleSchema::new(name)
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("tense"))
+                .fiber(FieldDef::numeric("ex"))
+                .fiber(FieldDef::numeric("ey"));
+            let mut s = BundleStore::new(schema);
+            for i in 0..n as i64 {
+                let mut rec = std::collections::HashMap::new();
+                rec.insert("id".into(), Value::Integer(i));
+                rec.insert("tense".into(), Value::Text(categories[(i as usize) % 5].into()));
+                rec.insert("ex".into(), Value::Float((i as f64 * 0.1).sin()));
+                rec.insert("ey".into(), Value::Float((i as f64 * 0.1).cos()));
+                s.insert(&rec);
+            }
+            s
+        };
+        let s1 = make_gauge_store("g1_a");
+        let s2 = make_gauge_store("g1_b");
+
+        let iters = 100usize;
+        let gauge_scan = |store: &BundleStore| {
+            use std::collections::BTreeMap;
+            let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
+            for rec in store.records() {
+                let key = match rec.get("tense") {
+                    Some(v) => format!("{v:?}"),
+                    None => continue,
+                };
+                let v0 = rec.get("ex").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let v1 = rec.get("ey").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let e = groups.entry(key).or_insert((0.0, 0.0, 0));
+                e.0 += v0; e.1 += v1; e.2 += 1;
+            }
+            groups.len()
+        };
+        let start = Instant::now();
+        for _ in 0..iters {
+            let _ = gauge_scan(&s1);
+            let _ = gauge_scan(&s2);
+        }
+        let us_per_gauge = start.elapsed().as_micros() as f64 / iters as f64;
+        let ratio_str = match prev_g1_us {
+            Some(p) => format!("{:.1}x", us_per_gauge / p),
+            None    => "baseline".to_string(),
+        };
+        println!("║  {n:>14} │ {us_per_gauge:>10.0} │  {ratio_str:<31}║");
+        prev_g1_us = Some(us_per_gauge.max(1.0));
+    }
+    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("║  SPEC: ratio ~10x per 10x N (O(N) group-by scan)               ║");
+    println!("╚══════════════════════════════════════════════════════════════════╝");
 }
+

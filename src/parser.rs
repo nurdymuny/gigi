@@ -221,6 +221,56 @@ pub enum Statement {
         fiber_fields: Vec<String>,
         around_field: String,
     },
+
+    /// SPECTRAL bundle ON FIBER (f1, f2, ...) MODES k
+    ///
+    /// Computes the k smallest non-zero eigenvalues of the normalised Laplacian
+    /// of the k-NN graph built over the requested fiber fields.
+    /// Returns one row per mode: { mode, lambda, ipr }.
+    SpectralFiber {
+        bundle: String,
+        fiber_fields: Vec<String>,
+        modes: usize,
+    },
+
+    /// TRANSPORT bundle FROM (key=val, ...) TO (key=val, ...) ON FIBER (f1, f2, ...)
+    ///
+    /// Returns the discrete parallel transport map from the fiber at the FROM
+    /// record to the fiber at the TO record: displacement vector, transport angle,
+    /// and the 2×2 rotation matrix.
+    Transport {
+        bundle: String,
+        from_keys: Vec<(String, Literal)>,
+        to_keys: Vec<(String, Literal)>,
+        fiber_fields: Vec<String>,
+    },
+
+    /// HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2, ...) AROUND field
+    ///
+    /// Performs a NEAR proximity search first, then computes the HOLONOMY ON FIBER
+    /// restricted to the records in that neighbourhood. Returns the local closure
+    /// deficit δφ_local alongside the global δφ_global for comparison.
+    LocalHolonomy {
+        bundle: String,
+        near_point: Vec<(String, f64)>,
+        near_radius: f64,
+        near_metric: Option<String>,
+        fiber_fields: Vec<String>,
+        around_field: String,
+    },
+
+    /// GAUGE bundle1 VS bundle2 ON FIBER (f1, f2, ...) AROUND field
+    ///
+    /// Runs HOLONOMY independently on two bundles and compares the resulting
+    /// closure deficits. Returns δφ₁, δφ₂, |δφ₁ - δφ₂|, and a boolean
+    /// `gauge_invariant` flag (true when the difference is < π/10).
+    GaugeTest {
+        bundle1: String,
+        bundle2: String,
+        fiber_fields: Vec<String>,
+        around_field: String,
+    },
+
     Explain {
         inner: Box<Statement>,
     },
@@ -852,6 +902,7 @@ impl Parser {
             "GEODESIC" => self.parse_geodesic(),
             "METRIC" => self.parse_metric_tensor(),
             "HOLONOMY" => self.parse_holonomy(),
+            "TRANSPORT" => self.parse_transport(),
             "COMPLETE" => self.parse_complete(),
             "PROPAGATE" => self.parse_propagate(),
             "SUGGEST_ADJACENCY" => self.parse_suggest_adjacency(),
@@ -1589,13 +1640,33 @@ impl Parser {
 
     fn parse_spectral(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
-        let full = if self.is_keyword("FULL") {
-            self.advance();
-            true
+        if self.is_keyword("ON") {
+            // New form: SPECTRAL bundle ON FIBER (f1, f2, ...) MODES k
+            self.advance(); // consume ON
+            self.expect_keyword("FIBER")?;
+            let fiber_fields = self.parse_name_list()?;
+            self.expect_keyword("MODES")?;
+            let modes = match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => {
+                    let m = *n as usize;
+                    self.pos += 1;
+                    m
+                }
+                other => return Err(format!("SPECTRAL … MODES: expected integer, got {:?}", other)),
+            };
+            if modes == 0 {
+                return Err("SPECTRAL … MODES: k must be >= 1".into());
+            }
+            Ok(Statement::SpectralFiber { bundle: name, fiber_fields, modes })
         } else {
-            false
-        };
-        Ok(Statement::Spectral { bundle: name, full })
+            let full = if self.is_keyword("FULL") {
+                self.advance();
+                true
+            } else {
+                false
+            };
+            Ok(Statement::Spectral { bundle: name, full })
+        }
     }
 
     fn parse_consistency(&mut self) -> Result<Statement, String> {
@@ -1617,31 +1688,77 @@ impl Parser {
         Ok(Statement::Betti { bundle: name })
     }
 
-    /// Parse HOLONOMY — dispatches to old random-triangle form or new ON FIBER form.
+    /// Parse HOLONOMY — dispatches to ON FIBER form or LOCAL HOLONOMY (NEAR) form.
     ///
-    /// Old:  `HOLONOMY bundle AROUND (f1, f2)`  (error: not yet supported as GQL)
-    /// New:  `HOLONOMY bundle ON FIBER (f1, f2) AROUND field`
+    /// Global:  `HOLONOMY bundle ON FIBER (f1, f2) AROUND field`
+    /// Local:   `HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field`
     fn parse_holonomy(&mut self) -> Result<Statement, String> {
         let bundle = self.expect_word()?;
-        if self.is_keyword("ON") {
-            // New form: HOLONOMY bundle ON FIBER (f1, f2) AROUND field
+        if self.is_keyword("NEAR") {
+            // Local holonomy form
+            self.advance(); // consume NEAR
+            self.expect(Token::LParen)?;
+            let near_point = self.parse_f64_kv_pairs()?;
+            self.expect(Token::RParen)?;
+            self.expect_keyword("WITHIN")?;
+            let near_radius = match self.tokens.get(self.pos) {
+                Some(Token::Number(r)) => { let v = *r; self.pos += 1; v }
+                other => return Err(format!("HOLONOMY NEAR … WITHIN: expected number, got {:?}", other)),
+            };
+            let near_metric = if self.is_keyword("METRIC") {
+                self.advance();
+                Some(self.expect_word()?)
+            } else {
+                None
+            };
+            self.advance_if_keyword("ON");
+            self.expect_keyword("FIBER")?;
+            let fiber_fields = self.parse_name_list()?;
+            self.expect_keyword("AROUND")?;
+            let around_field = self.expect_word()?;
+            Ok(Statement::LocalHolonomy {
+                bundle, near_point, near_radius, near_metric, fiber_fields, around_field,
+            })
+        } else if self.is_keyword("ON") {
+            // Global form: HOLONOMY bundle ON FIBER (f1, f2) AROUND field
             self.advance(); // consume ON
             self.expect_keyword("FIBER")?;
-            self.expect(Token::LParen)?;
             let fiber_fields = self.parse_name_list()?;
-            self.expect(Token::RParen)?;
             self.expect_keyword("AROUND")?;
             let around_field = self.expect_word()?;
             Ok(Statement::HolonomyFiber { bundle, fiber_fields, around_field })
         } else {
             Err("Use: HOLONOMY bundle ON FIBER (f1, f2) AROUND field  \
-                 (for the REST holonomy endpoint use /holonomy/:bundle)".to_string())
+                 or:  HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r ON FIBER (f1, f2) AROUND field".to_string())
         }
     }
 
     fn parse_entropy(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
         Ok(Statement::Entropy { bundle: name })
+    }
+
+    fn parse_transport(&mut self) -> Result<Statement, String> {
+        // TRANSPORT bundle FROM (key=val, ...) TO (key=val, ...) ON FIBER (f1, f2, ...)
+        let bundle = self.expect_word()?;
+        self.expect_keyword("FROM")?;
+        self.expect(Token::LParen)?;
+        let from_keys = self.parse_kv_pairs_inner()?;
+        self.expect(Token::RParen)?;
+        if from_keys.is_empty() {
+            return Err("TRANSPORT: expected key=value pairs after FROM (...)".into());
+        }
+        self.expect_keyword("TO")?;
+        self.expect(Token::LParen)?;
+        let to_keys = self.parse_kv_pairs_inner()?;
+        self.expect(Token::RParen)?;
+        if to_keys.is_empty() {
+            return Err("TRANSPORT: expected key=value pairs after TO (...)".into());
+        }
+        self.advance_if_keyword("ON");
+        self.expect_keyword("FIBER")?;
+        let fiber_fields = self.parse_name_list()?;
+        Ok(Statement::Transport { bundle, from_keys, to_keys, fiber_fields })
     }
 
     fn parse_free_energy(&mut self) -> Result<Statement, String> {
@@ -2139,6 +2256,50 @@ impl Parser {
             pairs.push((key, val));
         }
         Ok(pairs)
+    }
+
+    /// Parse `field=f64_value, field=f64_value` pairs (no parens — caller handles them).
+    /// Used for NEAR (...) and HOLONOMY NEAR (...) clauses.
+    fn parse_f64_kv_pairs(&mut self) -> Result<Vec<(String, f64)>, String> {
+        let mut pairs = Vec::new();
+        loop {
+            if matches!(self.peek(), Some(Token::RParen)) || self.at_end() {
+                break;
+            }
+            if !pairs.is_empty() {
+                if matches!(self.peek(), Some(Token::Comma)) {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+            let key = self.expect_word()?;
+            if matches!(self.peek(), Some(Token::Eq)) {
+                self.advance();
+            } else {
+                return Err(format!("Expected '=' after '{key}' in key=value pair"));
+            }
+            let val = match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => { let v = *n; self.pos += 1; v }
+                Some(Token::Minus) => {
+                    self.pos += 1;
+                    match self.tokens.get(self.pos) {
+                        Some(Token::Number(n)) => { let v = -*n; self.pos += 1; v }
+                        other => return Err(format!("Expected number after '-' in NEAR clause, got {:?}", other)),
+                    }
+                }
+                other => return Err(format!("Expected f64 for key '{key}' in NEAR clause, got {:?}", other)),
+            };
+            pairs.push((key, val));
+        }
+        Ok(pairs)
+    }
+
+    /// Advance past the current token only if it is the given keyword.
+    fn advance_if_keyword(&mut self, kw: &str) {
+        if self.is_keyword(kw) {
+            self.advance();
+        }
     }
 
     // ── Helper: filter conditions ──
@@ -2697,7 +2858,17 @@ impl Parser {
                     constraint_name,
                 })
             }
-            _ => Err(format!("Expected CONSTRAIN or UNCONSTRAIN, got {action}")),
+            "VS" => {
+                // GAUGE bundle1 VS bundle2 ON FIBER (f1, f2, ...) AROUND field
+                let bundle2 = self.expect_word()?;
+                self.advance_if_keyword("ON");
+                self.expect_keyword("FIBER")?;
+                let fiber_fields = self.parse_name_list()?;
+                self.expect_keyword("AROUND")?;
+                let around_field = self.expect_word()?;
+                Ok(Statement::GaugeTest { bundle1: bundle, bundle2, fiber_fields, around_field })
+            }
+            _ => Err(format!("Expected CONSTRAIN, UNCONSTRAIN, or VS, got {action}")),
         }
     }
 
@@ -4284,6 +4455,365 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             rows.push(summary);
 
             Ok(ExecResult::Rows(rows))
+        }
+
+        /// SPECTRAL bundle ON FIBER (f1, f2, ...) MODES k
+        Statement::SpectralFiber { bundle, fiber_fields, modes } => {
+            let store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+
+            let heap = store
+                .as_heap()
+                .ok_or_else(|| format!("SPECTRAL ON FIBER: bundle '{}' is not a heap bundle", bundle))?;
+
+            let refs: Vec<&str> = fiber_fields.iter().map(|s| s.as_str()).collect();
+            let fiber_modes = crate::spectral::spectral_fiber_modes(heap, &refs, *modes);
+
+            if fiber_modes.is_empty() {
+                return Err(
+                    "SPECTRAL ON FIBER: no modes computed — bundle may be empty or fiber fields \
+                     not found"
+                        .to_string(),
+                );
+            }
+
+            let rows: Vec<crate::types::Record> = fiber_modes
+                .iter()
+                .map(|m| {
+                    let mut r = crate::types::Record::new();
+                    r.insert(
+                        "mode".to_string(),
+                        crate::types::Value::Integer(m.mode as i64),
+                    );
+                    r.insert("lambda".to_string(), crate::types::Value::Float(m.lambda));
+                    r.insert("ipr".to_string(), crate::types::Value::Float(m.ipr));
+                    r
+                })
+                .collect();
+
+            Ok(ExecResult::Rows(rows))
+        }
+
+        /// TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER (f1, f2, ...)
+        Statement::Transport { bundle, from_keys, to_keys, fiber_fields } => {
+            let store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+
+            // Helper: resolve a record by key-value pairs
+            let resolve_record = |keys: &[(String, Literal)]| -> Result<crate::types::Record, String> {
+                let candidates: Vec<crate::types::Record> = store
+                    .records()
+                    .filter(|rec| {
+                        keys.iter().all(|(k, expected)| {
+                            rec.get(k.as_str())
+                                .map_or(false, |v| *v == literal_to_value(expected))
+                        })
+                    })
+                    .take(1)
+                    .collect();
+                candidates
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| format!("TRANSPORT: no record matching FROM/TO keys {:?}", keys))
+            };
+
+            let rec_from = resolve_record(from_keys)?;
+            let rec_to   = resolve_record(to_keys)?;
+
+            // Extract fiber values
+            let vals_from: Vec<f64> = fiber_fields
+                .iter()
+                .map(|f| rec_from.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
+                .collect();
+            let vals_to: Vec<f64> = fiber_fields
+                .iter()
+                .map(|f| rec_to.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
+                .collect();
+
+            // Displacement vector and Euclidean transport magnitude
+            let displacement: Vec<f64> = vals_from
+                .iter()
+                .zip(&vals_to)
+                .map(|(a, b)| b - a)
+                .collect();
+            let magnitude: f64 =
+                displacement.iter().map(|d| d * d).sum::<f64>().sqrt();
+
+            // Transport angle (2-D case: first two fiber components)
+            let transport_angle = if displacement.len() >= 2 {
+                displacement[1].atan2(displacement[0])
+            } else if displacement.len() == 1 {
+                if displacement[0] >= 0.0 { 0.0 } else { std::f64::consts::PI }
+            } else {
+                0.0
+            };
+
+            // 2×2 rotation matrix (for the first two fiber dimensions)
+            let (cos_a, sin_a) = (transport_angle.cos(), transport_angle.sin());
+
+            let mut result = crate::types::Record::new();
+            // Displacement components
+            for (i, d) in displacement.iter().enumerate() {
+                let fname = fiber_fields.get(i).cloned().unwrap_or_else(|| format!("f{i}"));
+                result.insert(format!("delta_{fname}"), crate::types::Value::Float(*d));
+            }
+            result.insert(
+                "transport_angle".to_string(),
+                crate::types::Value::Float(transport_angle),
+            );
+            result.insert(
+                "transport_magnitude".to_string(),
+                crate::types::Value::Float(magnitude),
+            );
+            result.insert("t00".to_string(), crate::types::Value::Float(cos_a));
+            result.insert("t01".to_string(), crate::types::Value::Float(-sin_a));
+            result.insert("t10".to_string(), crate::types::Value::Float(sin_a));
+            result.insert("t11".to_string(), crate::types::Value::Float(cos_a));
+
+            Ok(ExecResult::Rows(vec![result]))
+        }
+
+        /// HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field
+        Statement::LocalHolonomy {
+            bundle,
+            near_point,
+            near_radius,
+            near_metric,
+            fiber_fields,
+            around_field,
+        } => {
+            let store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+
+            if fiber_fields.len() < 2 {
+                return Err("LOCAL HOLONOMY requires at least 2 fiber fields".to_string());
+            }
+
+            // 1. NEAR filter: collect records within radius
+            let metric_str = near_metric.as_deref().unwrap_or("euclidean");
+            let use_cosine = metric_str.eq_ignore_ascii_case("cosine");
+
+            let nearby_records: Vec<crate::types::Record> = store
+                .records()
+                .filter(|rec| {
+                    let d2: f64 = near_point
+                        .iter()
+                        .map(|(fname, target)| {
+                            let v =
+                                rec.get(fname.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                            let d = v - target;
+                            d * d
+                        })
+                        .sum();
+                    if use_cosine {
+                        // Cosine: build dot product and norms
+                        let dot: f64 = near_point
+                            .iter()
+                            .map(|(fname, target)| {
+                                let v = rec
+                                    .get(fname.as_str())
+                                    .and_then(|v| v.as_f64())
+                                    .unwrap_or(0.0);
+                                v * target
+                            })
+                            .sum();
+                        let norm_rec: f64 = near_point
+                            .iter()
+                            .map(|(fname, _)| {
+                                let v = rec
+                                    .get(fname.as_str())
+                                    .and_then(|v| v.as_f64())
+                                    .unwrap_or(0.0);
+                                v * v
+                            })
+                            .sum::<f64>()
+                            .sqrt();
+                        let norm_q: f64 =
+                            near_point.iter().map(|(_, t)| t * t).sum::<f64>().sqrt();
+                        let cos_sim = if norm_rec > 0.0 && norm_q > 0.0 {
+                            dot / (norm_rec * norm_q)
+                        } else {
+                            0.0
+                        };
+                        1.0 - cos_sim < *near_radius
+                    } else {
+                        d2.sqrt() < *near_radius
+                    }
+                })
+                .collect();
+
+            // 2. Compute holonomy on the local neighbourhood
+            let f0 = &fiber_fields[0];
+            let f1 = &fiber_fields[1];
+
+            let mut groups: std::collections::BTreeMap<String, (f64, f64, usize)> =
+                std::collections::BTreeMap::new();
+            for rec in &nearby_records {
+                let key = match rec.get(around_field.as_str()) {
+                    Some(v) => format!("{v:?}"),
+                    None => continue,
+                };
+                let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
+                entry.0 += v0;
+                entry.1 += v1;
+                entry.2 += 1;
+            }
+
+            if groups.len() < 2 {
+                return Err(format!(
+                    "LOCAL HOLONOMY: neighbourhood has <2 distinct '{}' values (found {}). \
+                     Increase WITHIN radius.",
+                    around_field,
+                    groups.len()
+                ));
+            }
+
+            let centroids: Vec<(String, f64, f64)> = groups
+                .into_iter()
+                .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
+                .collect();
+
+            let n = centroids.len();
+            let mut transport_angles: Vec<f64> = Vec::with_capacity(n);
+            for i in 0..n {
+                let prev = if i == 0 { n - 1 } else { i - 1 };
+                let next = (i + 1) % n;
+                let dx_in = centroids[i].1 - centroids[prev].1;
+                let dy_in = centroids[i].2 - centroids[prev].2;
+                let dx_out = centroids[next].1 - centroids[i].1;
+                let dy_out = centroids[next].2 - centroids[i].2;
+                let angle_in = dy_in.atan2(dx_in);
+                let angle_out = dy_out.atan2(dx_out);
+                let mut delta = angle_out - angle_in;
+                while delta > std::f64::consts::PI {
+                    delta -= 2.0 * std::f64::consts::PI;
+                }
+                while delta < -std::f64::consts::PI {
+                    delta += 2.0 * std::f64::consts::PI;
+                }
+                transport_angles.push(delta);
+            }
+
+            let local_deficit: f64 = transport_angles.iter().sum::<f64>().abs()
+                % (2.0 * std::f64::consts::PI);
+
+            // 3. Build rows
+            let mut rows: Vec<crate::types::Record> = centroids
+                .iter()
+                .enumerate()
+                .map(|(i, (label, cx, cy))| {
+                    let mut r = crate::types::Record::new();
+                    r.insert(around_field.clone(), crate::types::Value::Text(label.clone()));
+                    r.insert(f0.clone(), crate::types::Value::Float(*cx));
+                    r.insert(f1.clone(), crate::types::Value::Float(*cy));
+                    r.insert(
+                        "transport_angle".to_string(),
+                        crate::types::Value::Float(transport_angles[i]),
+                    );
+                    r
+                })
+                .collect();
+
+            let mut summary = crate::types::Record::new();
+            summary.insert("_type".to_string(), crate::types::Value::Text("summary".to_string()));
+            summary.insert(
+                "local_holonomy_angle".to_string(),
+                crate::types::Value::Float(local_deficit),
+            );
+            summary.insert(
+                "neighbourhood_size".to_string(),
+                crate::types::Value::Integer(nearby_records.len() as i64),
+            );
+            rows.push(summary);
+
+            Ok(ExecResult::Rows(rows))
+        }
+
+        /// GAUGE bundle1 VS bundle2 ON FIBER (f1, f2) AROUND field
+        Statement::GaugeTest {
+            bundle1,
+            bundle2,
+            fiber_fields,
+            around_field,
+        } => {
+            // Helper: compute holonomy deficit from an iterator of records
+            let compute_deficit =
+                |records: Box<dyn Iterator<Item = crate::types::Record> + '_>| -> Result<f64, String> {
+                    if fiber_fields.len() < 2 {
+                        return Err("GAUGE: requires at least 2 fiber fields".to_string());
+                    }
+                    let f0 = &fiber_fields[0];
+                    let f1 = &fiber_fields[1];
+                    let mut groups: std::collections::BTreeMap<String, (f64, f64, usize)> =
+                        std::collections::BTreeMap::new();
+                    for rec in records {
+                        let key = match rec.get(around_field.as_str()) {
+                            Some(v) => format!("{v:?}"),
+                            None => continue,
+                        };
+                        let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
+                        entry.0 += v0;
+                        entry.1 += v1;
+                        entry.2 += 1;
+                    }
+                    if groups.len() < 2 {
+                        return Err(format!(
+                            "GAUGE: bundle needs ≥2 distinct '{}' values for holonomy",
+                            around_field
+                        ));
+                    }
+                    let centroids: Vec<(f64, f64)> = groups
+                        .into_values()
+                        .map(|(sx, sy, n)| (sx / n as f64, sy / n as f64))
+                        .collect();
+                    let n = centroids.len();
+                    let mut total_angle = 0.0f64;
+                    for i in 0..n {
+                        let prev = if i == 0 { n - 1 } else { i - 1 };
+                        let next = (i + 1) % n;
+                        let dx_in  = centroids[i].0 - centroids[prev].0;
+                        let dy_in  = centroids[i].1 - centroids[prev].1;
+                        let dx_out = centroids[next].0 - centroids[i].0;
+                        let dy_out = centroids[next].1 - centroids[i].1;
+                        let mut delta = dy_out.atan2(dx_out) - dy_in.atan2(dx_in);
+                        while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
+                        while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
+                        total_angle += delta;
+                    }
+                    Ok(total_angle.abs() % (2.0 * std::f64::consts::PI))
+                };
+
+            let store1 = engine
+                .bundle(bundle1)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle1))?;
+            let deficit1 = compute_deficit(store1.records())?;
+            let store2 = engine
+                .bundle(bundle2)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle2))?;
+            let deficit2 = compute_deficit(store2.records())?;
+            let gauge_difference = (deficit1 - deficit2).abs();
+            // Gauge invariant when difference < π/10 ≈ 0.314
+            let gauge_invariant = gauge_difference < std::f64::consts::PI / 10.0;
+
+            let mut row = crate::types::Record::new();
+            row.insert("bundle1".to_string(), crate::types::Value::Text(bundle1.clone()));
+            row.insert("bundle2".to_string(), crate::types::Value::Text(bundle2.clone()));
+            row.insert("holonomy_1".to_string(), crate::types::Value::Float(deficit1));
+            row.insert("holonomy_2".to_string(), crate::types::Value::Float(deficit2));
+            row.insert("gauge_difference".to_string(), crate::types::Value::Float(gauge_difference));
+            row.insert(
+                "gauge_invariant".to_string(),
+                crate::types::Value::Bool(gauge_invariant),
+            );
+
+            Ok(ExecResult::Rows(vec![row]))
         }
     }
 }
@@ -5970,5 +6500,125 @@ mod tests {
             }
             _ => panic!("Expected BatchInsert"),
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TDD: New fiber-geometric GQL statements  (SpectralFiber / Transport /
+    //      LocalHolonomy / GaugeTest)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn tdd_parse_spectral_fiber() {
+        // SPECTRAL bundle ON FIBER (f1, f2) MODES k
+        let stmt = parse("SPECTRAL emb ON FIBER (embed_x, embed_y) MODES 3").unwrap();
+        match stmt {
+            Statement::SpectralFiber { bundle, fiber_fields, modes } => {
+                assert_eq!(bundle, "emb");
+                assert_eq!(fiber_fields, vec!["embed_x", "embed_y"]);
+                assert_eq!(modes, 3);
+            }
+            _ => panic!("Expected SpectralFiber, got {:?}", stmt),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_spectral_fiber_single_mode() {
+        let stmt = parse("SPECTRAL corpus ON FIBER (x, y, z) MODES 1").unwrap();
+        match stmt {
+            Statement::SpectralFiber { bundle, fiber_fields, modes } => {
+                assert_eq!(bundle, "corpus");
+                assert_eq!(fiber_fields.len(), 3);
+                assert_eq!(modes, 1);
+            }
+            _ => panic!("Expected SpectralFiber"),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_transport() {
+        let stmt = parse("TRANSPORT emb FROM (id=1) TO (id=2) ON FIBER (embed_x, embed_y)").unwrap();
+        match stmt {
+            Statement::Transport { bundle, from_keys, to_keys, fiber_fields } => {
+                assert_eq!(bundle, "emb");
+                assert_eq!(from_keys.len(), 1);
+                assert_eq!(from_keys[0].0, "id");
+                assert!(matches!(from_keys[0].1, Literal::Integer(1)));
+                assert_eq!(to_keys.len(), 1);
+                assert_eq!(to_keys[0].0, "id");
+                assert!(matches!(to_keys[0].1, Literal::Integer(2)));
+                assert_eq!(fiber_fields, vec!["embed_x", "embed_y"]);
+            }
+            _ => panic!("Expected Transport, got {:?}", stmt),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_transport_string_key() {
+        let stmt = parse("TRANSPORT docs FROM (slug='hello') TO (slug='world') ON FIBER (x, y)").unwrap();
+        match stmt {
+            Statement::Transport { bundle, from_keys, to_keys, fiber_fields } => {
+                assert_eq!(bundle, "docs");
+                assert!(matches!(&from_keys[0].1, Literal::Text(s) if s == "hello"));
+                assert!(matches!(&to_keys[0].1, Literal::Text(s) if s == "world"));
+                assert_eq!(fiber_fields, vec!["x", "y"]);
+            }
+            _ => panic!("Expected Transport"),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_local_holonomy() {
+        let stmt = parse(
+            "HOLONOMY emb NEAR (embed_x=0.5, embed_y=0.5) WITHIN 0.3 ON FIBER (embed_x, embed_y) AROUND tense"
+        ).unwrap();
+        match stmt {
+            Statement::LocalHolonomy { bundle, near_point, near_radius, near_metric, fiber_fields, around_field } => {
+                assert_eq!(bundle, "emb");
+                assert_eq!(near_point.len(), 2);
+                assert_eq!(near_point[0].0, "embed_x");
+                assert!((near_point[0].1 - 0.5).abs() < 1e-10);
+                assert!((near_radius - 0.3).abs() < 1e-10);
+                assert!(near_metric.is_none());
+                assert_eq!(fiber_fields, vec!["embed_x", "embed_y"]);
+                assert_eq!(around_field, "tense");
+            }
+            _ => panic!("Expected LocalHolonomy, got {:?}", stmt),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_local_holonomy_cosine_metric() {
+        let stmt = parse(
+            "HOLONOMY corp NEAR (x=1.0) WITHIN 0.1 METRIC cosine ON FIBER (x, y) AROUND category"
+        ).unwrap();
+        match stmt {
+            Statement::LocalHolonomy { near_metric, around_field, .. } => {
+                assert_eq!(near_metric.as_deref(), Some("cosine"));
+                assert_eq!(around_field, "category");
+            }
+            _ => panic!("Expected LocalHolonomy"),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_gauge_test() {
+        let stmt = parse("GAUGE corp1 VS corp2 ON FIBER (embed_x, embed_y) AROUND tense").unwrap();
+        match stmt {
+            Statement::GaugeTest { bundle1, bundle2, fiber_fields, around_field } => {
+                assert_eq!(bundle1, "corp1");
+                assert_eq!(bundle2, "corp2");
+                assert_eq!(fiber_fields, vec!["embed_x", "embed_y"]);
+                assert_eq!(around_field, "tense");
+            }
+            _ => panic!("Expected GaugeTest, got {:?}", stmt),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_gauge_single_fiber_field_error() {
+        // At least 2 fiber fields required for meaningful holonomy; parser should accept it
+        // (runtime validation, not parse-time), so it must parse successfully.
+        let stmt = parse("GAUGE a VS b ON FIBER (x) AROUND cat");
+        assert!(stmt.is_ok(), "Parser should accept single fiber field; runtime rejects it");
     }
 }

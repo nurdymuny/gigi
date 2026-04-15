@@ -1,0 +1,45 @@
+
+-- DHOOM: Query Catalogue --
+queries{id, join_tier, name, notes, operation, predicate, tpch}:
+Q6, 1, Forecasting Revenue Change, "Pure LINEITEM scan, no join. Validates sequential storage + filter throughput.", filter + scan aggregate, "shipdate in [1994-01-01, 1995-01-01), discount in [0.05,0.07], qty < 24", 6
+Q1, 2, Pricing Summary Report, "Groups by (returnflag, linestatus). Validates HashMap aggregation over 6M rows.", filter + group_by + multi-aggregate, shipdate <= 1998-12-01, 1
+Q14, 1, Promotion Effect, Pullback join LINEITEM->PART. promo_revenue = 100 * sum(promo_price) / sum(total_price). Validates correctness of join + conditional agg., filter + pullback_join + conditional aggregate, "shipdate in [1995-09-01, 1995-10-01), join PART on p_type LIKE PROMO%", 14
+Q3, 2, Shipping Priority, Bitmap index on customer segment pre-filters ~30K BUILDING customers before any row scan. Demonstrates predicate pushdown efficiency., CUSTOMER-bitmap -> ORDERS -> LINEITEM 3-way join + aggregate, "c_mktsegment = BUILDING, o_orderdate < 1995-03-15, l_shipdate > 1995-03-15", 3
+
+
+-- DHOOM: Timing Results --
+results{data_source&, query&, ns_per_row, rows_returned, rows_scanned, sf, wall_ms, lineitem_store|sequential, orders_store|hashed, q14_promo_pct|}:
+&data_source[synthetic, real_tpch_sf1]
+&query[Q6 (filter+agg), Q1 (group agg), Q14 (join+cond), Q3 (3-way join)]
+0, 0, 1116.2, 160, 6088, 0.001, 6.8
+0, 1, 1202.9, 6, 6088, 0.001, 7.3
+0, 2, 1138.4, 1, 6088, 0.001, 6.9, , , :19.21%
+0, 3, 237.2, 16, 7738, 0.001, 1.8
+0, 0, 1159.2, 1620, 59988, 0.01, 69.5
+0, 1, 1305.7, 6, 59988, 0.01, 78.3
+0, 2, 1182.2, 1, 59988, 0.01, 70.9, , , :23.10%
+0, 3, 298.8, 96, 76488, 0.01, 22.4
+0, 0, 1210.7, 8162, 299830, 0.05, 363.0
+0, 1, 1398.4, 6, 299830, 0.05, 419.3
+0, 2, 1276.9, 1, 299830, 0.05, 382.9, , , :21.26%
+0, 3, 520.1, 609, 382330, 0.05, 195.0
+1, 0, 1264.0, 114160, 6001215, 1.0, 7585.4
+1, 1, 1434.4, 4, 6001215, 1.0, 8608.2
+1, 2, 1309.9, 1, 6001215, 1.0, 7860.9, , , :16.38%
+1, 3, 454.0, 11619, 7651215, 1.0, 3405.8
+
+
+-- DHOOM: Scaling Linearity Proof --
+scaling_linearity{sf_large#scale_factor*sf_small, deviation_pct, ms_large, ms_small, observed_ratio, query, scale_factor|10.0, sf_small|0.001, verdict|O(n) confirmed, rows_large|59988, rows_small|6088}:
+2.3, 69.54, 6.8, 10.2, Q6 (filter+agg)
+7.0, 78.33, 7.32, 10.7, Q1 (group agg)
+2.3, 70.92, 6.93, 10.2, Q14 (join+cond)
+24.5, 22.41, 1.8, 12.5, Q3 (3-way join), , , , :76488, :7738
+
+
+-- DHOOM: Storage Geometry --
+storage_geometry{implication, reason, table, mode|sequential}:
+O(1) point lookup by row id. Full scan is cache-linear., "l_id is auto-increment dense int (K=0 base). BaseGeometry::Flat with step=1.", LINEITEM
+O(1) point lookup by orderkey. Q3 bitmap join resolves orderkeys in O(|BUILDING_customers|) not O(|ORDERS|)., "o_orderkey is sparse (gaps 1-8 between keys). BundleStore::new() auto-selects HashMap.", ORDERS, :hashed
+Bitmap over mktsegment builds in O(150K). Q3 segment filter costs O(150K) not O(1.5M orders)., c_custkey is dense 1..150000., CUSTOMER
+

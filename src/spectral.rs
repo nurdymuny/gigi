@@ -533,6 +533,224 @@ pub fn geodesic_distance(
     None // no path found within max_hops
 }
 
+// ── Fiber-Space Spectral Modes (§3.8 — new) ──────────────────────────────────
+
+/// Result of `spectral_fiber_modes()`.
+#[derive(Debug, Clone)]
+pub struct FiberSpectralMode {
+    /// Mode index (1 = lowest non-zero mode).
+    pub mode: usize,
+    /// Eigenvalue λ of the normalized fiber-distance Laplacian.
+    pub lambda: f64,
+    /// Inverse participation ratio: how spread or localised the mode is.
+    /// IPR = Σ v_i^4 / (Σ v_i^2)^2. Near 1/N → fully delocalised; near 1 → localised.
+    pub ipr: f64,
+}
+
+/// Compute the `k` smallest non-zero eigenvalues of the normalised Laplacian
+/// built from the fiber-distance graph over the requested `fiber_fields`.
+///
+/// Unlike the field-index Laplacian (which uses bitmap intersections), this one
+/// builds a k-NN graph (k_graph=8 neighbours) using the normalised L2 distance
+/// between fiber field values, so it reflects the actual embedding geometry.
+///
+/// The number of near-zero eigenvalues gives the number of semantic modes:
+/// - 1 near-zero → single connected semantic cluster  
+/// - k near-zero → k distinct semantic clusters in the fiber space
+///
+/// Complexity: O(N² / 2) for the k-NN graph build, then O(N × iter) for
+/// power iteration. Practical up to N ≈ 50K; beyond that sample or use HNSW.
+pub fn spectral_fiber_modes(
+    store: &BundleStore,
+    fiber_field_names: &[&str],
+    k_modes: usize,
+) -> Vec<FiberSpectralMode> {
+    let n = store.len();
+    if n < 2 || k_modes == 0 {
+        return vec![];
+    }
+
+    // Resolve field indices and declared ranges once.
+    let field_info: Vec<(usize, f64)> = fiber_field_names
+        .iter()
+        .filter_map(|fname| {
+            let idx = store.schema.fiber_fields.iter().position(|fd| &fd.name == *fname)?;
+            let range = store
+                .schema
+                .fiber_fields
+                .get(idx)
+                .and_then(|fd| fd.range)
+                .unwrap_or(1.0)
+                .max(f64::EPSILON);
+            Some((idx, range))
+        })
+        .collect();
+
+    if field_info.is_empty() {
+        return vec![];
+    }
+
+    // Materialise normalised fiber vectors for all records.
+    let vecs: Vec<Vec<f32>> = store
+        .sections()
+        .map(|(_, fiber)| {
+            field_info
+                .iter()
+                .map(|(i, r)| {
+                    fiber.get(*i).and_then(|v| v.as_f64()).unwrap_or(0.0) as f32 / *r as f32
+                })
+                .collect()
+        })
+        .collect();
+
+    let k_graph: usize = 8.min(n - 1);
+
+    // Build sparse adjacency weights via k-NN.
+    // W[i][j] = exp(-d²) for the k nearest neighbours of i.
+    let mut adj_weights: Vec<Vec<(usize, f32)>> = vec![vec![]; n];
+    for i in 0..n {
+        let mut dists: Vec<(usize, f32)> = (0..n)
+            .filter(|&j| j != i)
+            .map(|j| {
+                let d2: f32 = vecs[i]
+                    .iter()
+                    .zip(&vecs[j])
+                    .map(|(a, b)| (a - b) * (a - b))
+                    .sum();
+                (j, (-d2).exp())
+            })
+            .collect();
+        // Keep k_graph nearest (highest weight after exp(-d²))
+        dists.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        dists.truncate(k_graph);
+        adj_weights[i] = dists;
+    }
+
+    // Symmetrise: w_ij = w_ji = max(w_ij, w_ji)
+    for i in 0..n {
+        for (j, w) in adj_weights[i].clone() {
+            if !adj_weights[j].iter().any(|&(k, _)| k == i) {
+                adj_weights[j].push((i, w));
+            }
+        }
+    }
+
+    // Degree vector d_i = Σ_j w_ij
+    let degrees: Vec<f64> = adj_weights
+        .iter()
+        .map(|row| row.iter().map(|(_, w)| *w as f64).sum())
+        .collect();
+
+    let d_inv_sqrt: Vec<f64> = degrees
+        .iter()
+        .map(|&d| if d > f64::EPSILON { 1.0 / d.sqrt() } else { 0.0 })
+        .collect();
+
+    // Sparse M·v where M = D^{-1/2} W D^{-1/2}
+    let mul_m = |src: &[f64]| -> Vec<f64> {
+        let mut out = vec![0.0f64; n];
+        for i in 0..n {
+            for &(j, w) in &adj_weights[i] {
+                out[i] += d_inv_sqrt[i] * src[j] * d_inv_sqrt[j] * w as f64;
+            }
+        }
+        out
+    };
+
+    // Dominant eigenvector of M (eigenvalue ≈ 1): u = D^{1/2}·1 normalised
+    let u: Vec<f64> = {
+        let raw: Vec<f64> = degrees.iter().map(|d| d.sqrt()).collect();
+        let norm = raw.iter().map(|x| x * x).sum::<f64>().sqrt().max(f64::EPSILON);
+        raw.into_iter().map(|x| x / norm).collect()
+    };
+
+    // Deflated power iteration to find k_modes smallest non-zero eigenvalues of L.
+    // λ_i(L) = 1 - μ_i(M) where μ_i are eigenvalues of M in descending order.
+    // We find μ₁ ≤ μ₂ ≤ … (eigenvalues of M in ascending order, skipping μ₀=1).
+
+    let mut found: Vec<FiberSpectralMode> = Vec::with_capacity(k_modes);
+    // Orthonormal deflation basis: starts with the dominant eigenvector u.
+    let mut basis: Vec<Vec<f64>> = vec![u];
+
+    let iters = 400;
+    let tol: f64 = 1e-10;
+
+    for mode_idx in 1..=(k_modes + 2) {
+        // Random-ish starting vector orthogonal to all current basis vectors.
+        let mut v: Vec<f64> = (0..n)
+            .map(|i| ((i as f64 + mode_idx as f64 * 1.732) * 2.654_f64).sin())
+            .collect();
+
+        for _ in 0..iters {
+            // Deflate against basis
+            for b in &basis {
+                let dot: f64 = v.iter().zip(b.iter()).map(|(a, c)| a * c).sum();
+                for i in 0..n {
+                    v[i] -= dot * b[i];
+                }
+            }
+            let norm = v.iter().map(|x| x * x).sum::<f64>().sqrt();
+            if norm < tol {
+                break;
+            }
+            for x in v.iter_mut() {
+                *x /= norm;
+            }
+            v = mul_m(&v);
+        }
+
+        // Final deflation + normalise
+        for b in &basis {
+            let dot: f64 = v.iter().zip(b.iter()).map(|(a, c)| a * c).sum();
+            for i in 0..n {
+                v[i] -= dot * b[i];
+            }
+        }
+        let norm = v.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if norm < tol {
+            continue;
+        }
+        for x in v.iter_mut() {
+            *x /= norm;
+        }
+
+        let mv = mul_m(&v);
+        let mu: f64 = v.iter().zip(mv.iter()).map(|(a, b)| a * b).sum();
+        let lambda = (1.0 - mu).max(0.0);
+
+        // Skip if this is just the dominant eigenvector recycled (λ ≈ 0 in first slot = Fiedler)
+        // We only collect non-trivial modes
+        if lambda < 1e-8 && found.is_empty() {
+            // Near-zero Fiedler: record as mode 1 (disconnected cluster signal)
+            let ipr = {
+                let sum4: f64 = v.iter().map(|x| x.powi(4)).sum();
+                let sum2: f64 = v.iter().map(|x| x.powi(2)).sum();
+                if sum2 > f64::EPSILON { sum4 / (sum2 * sum2) } else { 1.0 }
+            };
+            found.push(FiberSpectralMode { mode: found.len() + 1, lambda, ipr });
+            basis.push(v);
+            if found.len() >= k_modes {
+                break;
+            }
+            continue;
+        }
+
+        let ipr = {
+            let sum4: f64 = v.iter().map(|x| x.powi(4)).sum();
+            let sum2: f64 = v.iter().map(|x| x.powi(2)).sum();
+            if sum2 > f64::EPSILON { sum4 / (sum2 * sum2) } else { 1.0 }
+        };
+        found.push(FiberSpectralMode { mode: found.len() + 1, lambda, ipr });
+        basis.push(v);
+        if found.len() >= k_modes {
+            break;
+        }
+    }
+
+    found.sort_by(|a, b| a.lambda.partial_cmp(&b.lambda).unwrap_or(std::cmp::Ordering::Equal));
+    found
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -882,5 +1100,107 @@ mod tests {
             (d_ab - d_ba).abs() < 1e-10,
             "Symmetry violated: d(a,b)={d_ab} ≠ d(b,a)={d_ba}"
         );
+    }
+
+    // ── TDD tests for spectral_fiber_modes ───────────────────────────────────
+
+    fn make_two_cluster_fiber_store() -> BundleStore {
+        // Two tight clusters in fiber space:
+        // Cluster A: embed_x ≈ 0.1, embed_y ≈ 0.1
+        // Cluster B: embed_x ≈ 0.9, embed_y ≈ 0.9
+        // With RANGE 1.0 → normalised distance between clusters ≈ 1.13
+        let schema = BundleSchema::new("emb")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("embed_x").with_range(1.0))
+            .fiber(FieldDef::numeric("embed_y").with_range(1.0))
+            .index("id");
+        let mut store = BundleStore::new(schema);
+        for i in 0..10i64 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("embed_x".into(), Value::Float(0.1 + i as f64 * 0.005));
+            r.insert("embed_y".into(), Value::Float(0.1 + i as f64 * 0.005));
+            store.insert(&r);
+        }
+        for i in 10..20i64 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("embed_x".into(), Value::Float(0.9 + (i - 10) as f64 * 0.005));
+            r.insert("embed_y".into(), Value::Float(0.9 + (i - 10) as f64 * 0.005));
+            store.insert(&r);
+        }
+        store
+    }
+
+    /// TDD-S1: Two tight clusters → first mode λ₁ is near-zero (Fiedler vector
+    /// sits in the gap between clusters).
+    #[test]
+    fn tdd_s1_two_clusters_give_near_zero_first_mode() {
+        let store = make_two_cluster_fiber_store();
+        let modes = spectral_fiber_modes(&store, &["embed_x", "embed_y"], 3);
+        assert!(!modes.is_empty(), "Expected at least 1 mode");
+        let lambda1 = modes[0].lambda;
+        assert!(
+            lambda1 < 0.5,
+            "λ₁ = {lambda1:.4} — expected near-zero for two-cluster fiber space"
+        );
+    }
+
+    /// TDD-S2: Single tight cluster → first mode λ₁ is well above zero.
+    #[test]
+    fn tdd_s2_single_cluster_positive_gap() {
+        let schema = BundleSchema::new("emb")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("embed_x").with_range(1.0))
+            .fiber(FieldDef::numeric("embed_y").with_range(1.0))
+            .index("id");
+        let mut store = BundleStore::new(schema);
+        for i in 0..20i64 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            // All in a tiny region around (0.5, 0.5) — one cluster
+            r.insert("embed_x".into(), Value::Float(0.5 + i as f64 * 0.001));
+            r.insert("embed_y".into(), Value::Float(0.5 + i as f64 * 0.001));
+            store.insert(&r);
+        }
+        let modes = spectral_fiber_modes(&store, &["embed_x", "embed_y"], 3);
+        assert!(!modes.is_empty(), "Expected at least 1 mode");
+        let lambda1 = modes[0].lambda;
+        // Single connected cluster: Fiedler value should be clearly positive
+        assert!(
+            lambda1 > 1e-4,
+            "λ₁ = {lambda1:.6} — expected > 0 for single cluster"
+        );
+    }
+
+    /// TDD-S3: k_modes=0 returns empty vec, n<2 returns empty vec.
+    #[test]
+    fn tdd_s3_edge_cases_return_empty() {
+        let store = make_two_cluster_fiber_store();
+        assert!(spectral_fiber_modes(&store, &["embed_x"], 0).is_empty());
+
+        let schema = BundleSchema::new("tiny")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("embed_x").with_range(1.0));
+        let mut tiny = BundleStore::new(schema);
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Integer(1));
+        r.insert("embed_x".into(), Value::Float(0.5));
+        tiny.insert(&r);
+        assert!(spectral_fiber_modes(&tiny, &["embed_x"], 3).is_empty());
+    }
+
+    /// TDD-S4: modes are sorted ascending by lambda.
+    #[test]
+    fn tdd_s4_modes_sorted_ascending() {
+        let store = make_two_cluster_fiber_store();
+        let modes = spectral_fiber_modes(&store, &["embed_x", "embed_y"], 3);
+        for i in 1..modes.len() {
+            assert!(
+                modes[i].lambda >= modes[i - 1].lambda - 1e-10,
+                "Modes not sorted: λ[{}]={} > λ[{}]={}",
+                i - 1, modes[i-1].lambda, i, modes[i].lambda
+            );
+        }
     }
 }

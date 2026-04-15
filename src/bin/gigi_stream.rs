@@ -5031,6 +5031,243 @@ fn execute_gql_on_store_read(
                 fiber_fields: store.schema().fiber_fields.len(),
             }))
         }
+        // SPECTRAL bundle ON FIBER (f1, f2, ...) MODES k
+        Statement::SpectralFiber { bundle, fiber_fields, modes } => {
+            let heap = store
+                .as_heap()
+                .ok_or_else(|| format!("SPECTRAL ON FIBER: bundle '{}' is not a heap bundle", bundle))?;
+            let refs: Vec<&str> = fiber_fields.iter().map(|s| s.as_str()).collect();
+            let fiber_modes = gigi::spectral::spectral_fiber_modes(heap, &refs, *modes);
+            let rows: Vec<gigi::types::Record> = fiber_modes
+                .into_iter()
+                .map(|m| {
+                    let mut r = gigi::types::Record::new();
+                    r.insert("mode".to_string(), gigi::types::Value::Integer(m.mode as i64));
+                    r.insert("lambda".to_string(), gigi::types::Value::Float(m.lambda));
+                    r.insert("ipr".to_string(), gigi::types::Value::Float(m.ipr));
+                    r
+                })
+                .collect();
+            Ok(ExecResult::Rows(rows))
+        }
+        // TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER (f1, f2, ...)
+        Statement::Transport { bundle: _, from_keys, to_keys, fiber_fields } => {
+            let from_rec: gigi::types::Record =
+                from_keys.iter().map(|(k, v)| (k.clone(), gigi::parser::literal_to_value(v))).collect();
+            let to_rec: gigi::types::Record =
+                to_keys.iter().map(|(k, v)| (k.clone(), gigi::parser::literal_to_value(v))).collect();
+
+            // Locate the two records
+            let find_point = |target: &gigi::types::Record| -> Option<Vec<f64>> {
+                store.records().find(|rec| {
+                    target.iter().all(|(k, v)| rec.get(k.as_str()) == Some(v))
+                }).map(|rec| {
+                    fiber_fields.iter()
+                        .map(|f| rec.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
+                        .collect()
+                })
+            };
+
+            let p_from = find_point(&from_rec)
+                .ok_or_else(|| "TRANSPORT: FROM record not found".to_string())?;
+            let p_to = find_point(&to_rec)
+                .ok_or_else(|| "TRANSPORT: TO record not found".to_string())?;
+
+            let dim = p_from.len().min(p_to.len());
+            let displacement: Vec<f64> = (0..dim).map(|i| p_to[i] - p_from[i]).collect();
+            let norm_from: f64 = p_from.iter().map(|x| x * x).sum::<f64>().sqrt().max(1e-12);
+            let norm_to:   f64 = p_to.iter().map(|x| x * x).sum::<f64>().sqrt().max(1e-12);
+            let cos_theta: f64 = p_from.iter().zip(&p_to).map(|(a, b)| a * b).sum::<f64>()
+                / (norm_from * norm_to);
+            let angle = cos_theta.clamp(-1.0, 1.0).acos();
+
+            let (t00, t01, t10, t11) = if dim >= 2 {
+                let c = angle.cos();
+                let s = angle.sin();
+                (c, -s, s, c)
+            } else {
+                (1.0f64, 0.0f64, 0.0f64, 1.0f64)
+            };
+
+            let mut result = gigi::types::Record::new();
+            result.insert("transport_angle".to_string(), gigi::types::Value::Float(angle));
+            result.insert("t00".to_string(), gigi::types::Value::Float(t00));
+            result.insert("t01".to_string(), gigi::types::Value::Float(t01));
+            result.insert("t10".to_string(), gigi::types::Value::Float(t10));
+            result.insert("t11".to_string(), gigi::types::Value::Float(t11));
+            for (i, d) in displacement.iter().enumerate() {
+                result.insert(format!("displacement_{i}"), gigi::types::Value::Float(*d));
+            }
+            Ok(ExecResult::Rows(vec![result]))
+        }
+        // HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field
+        Statement::LocalHolonomy {
+            bundle: _,
+            near_point,
+            near_radius,
+            near_metric,
+            fiber_fields,
+            around_field,
+        } => {
+            if fiber_fields.len() < 2 {
+                return Err("HOLONOMY NEAR requires at least 2 fiber fields".to_string());
+            }
+            let f0 = &fiber_fields[0];
+            let f1 = &fiber_fields[1];
+
+            let use_cosine = near_metric.as_deref() == Some("cosine");
+            let query_vec: Vec<(String, f64)> = near_point.clone();
+
+            let neighbourhood: Vec<gigi::types::Record> = store
+                .records()
+                .filter(|rec| {
+                    if use_cosine {
+                        let dot: f64 = query_vec.iter()
+                            .map(|(f, v)| rec.get(f.as_str()).and_then(|rv| rv.as_f64()).unwrap_or(0.0) * v)
+                            .sum();
+                        let norm_q: f64 = query_vec.iter().map(|(_, v)| v * v).sum::<f64>().sqrt();
+                        let norm_r: f64 = query_vec.iter()
+                            .map(|(f, _)| rec.get(f.as_str()).and_then(|rv| rv.as_f64()).unwrap_or(0.0))
+                            .map(|x| x * x)
+                            .sum::<f64>()
+                            .sqrt();
+                        let sim = dot / (norm_q * norm_r + 1e-12);
+                        sim >= 1.0 - near_radius
+                    } else {
+                        let dist_sq: f64 = query_vec.iter()
+                            .map(|(f, v)| {
+                                let rv = rec.get(f.as_str()).and_then(|rv| rv.as_f64()).unwrap_or(0.0);
+                                (rv - v) * (rv - v)
+                            })
+                            .sum();
+                        dist_sq.sqrt() <= *near_radius
+                    }
+                })
+                .collect();
+
+            let n_size = neighbourhood.len();
+            use std::collections::BTreeMap;
+            let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
+            for rec in &neighbourhood {
+                let key = match rec.get(around_field.as_str()) {
+                    Some(v) => format!("{v:?}"),
+                    None => continue,
+                };
+                let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
+                entry.0 += v0;
+                entry.1 += v1;
+                entry.2 += 1;
+            }
+            if groups.len() < 2 {
+                let mut row = gigi::types::Record::new();
+                row.insert("local_holonomy_angle".to_string(), gigi::types::Value::Float(0.0));
+                row.insert("neighbourhood_size".to_string(), gigi::types::Value::Integer(n_size as i64));
+                row.insert("warning".to_string(), gigi::types::Value::Text(
+                    format!("fewer than 2 distinct '{}' values in neighbourhood", around_field)
+                ));
+                return Ok(ExecResult::Rows(vec![row]));
+            }
+            let centroids: Vec<(f64, f64)> = groups
+                .into_values()
+                .map(|(sx, sy, n)| (sx / n as f64, sy / n as f64))
+                .collect();
+            let nc = centroids.len();
+            let mut total_angle = 0.0f64;
+            for i in 0..nc {
+                let prev = if i == 0 { nc - 1 } else { i - 1 };
+                let next = (i + 1) % nc;
+                let dx_in  = centroids[i].0 - centroids[prev].0;
+                let dy_in  = centroids[i].1 - centroids[prev].1;
+                let dx_out = centroids[next].0 - centroids[i].0;
+                let dy_out = centroids[next].1 - centroids[i].1;
+                let mut delta = dy_out.atan2(dx_out) - dy_in.atan2(dx_in);
+                while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
+                while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
+                total_angle += delta;
+            }
+            let local_holonomy = total_angle.abs() % (2.0 * std::f64::consts::PI);
+            let mut row = gigi::types::Record::new();
+            row.insert("local_holonomy_angle".to_string(), gigi::types::Value::Float(local_holonomy));
+            row.insert("neighbourhood_size".to_string(), gigi::types::Value::Integer(n_size as i64));
+            Ok(ExecResult::Rows(vec![row]))
+        }
+        // GAUGE bundle1 VS bundle2 ON FIBER (f1, f2) AROUND field
+        Statement::GaugeTest { bundle1, bundle2, fiber_fields, around_field } => {
+            // Helper closure computing holonomy deficit from a record iterator
+            let compute_deficit =
+                |records: Box<dyn Iterator<Item = gigi::types::Record> + '_>| -> Result<f64, String> {
+                    if fiber_fields.len() < 2 {
+                        return Err("GAUGE: requires at least 2 fiber fields".to_string());
+                    }
+                    let f0 = &fiber_fields[0];
+                    let f1 = &fiber_fields[1];
+                    use std::collections::BTreeMap;
+                    let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
+                    for rec in records {
+                        let key = match rec.get(around_field.as_str()) {
+                            Some(v) => format!("{v:?}"),
+                            None => continue,
+                        };
+                        let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let e = groups.entry(key).or_insert((0.0, 0.0, 0));
+                        e.0 += v0; e.1 += v1; e.2 += 1;
+                    }
+                    if groups.len() < 2 {
+                        return Err(format!(
+                            "GAUGE: bundle needs ≥2 distinct '{}' values for holonomy", around_field
+                        ));
+                    }
+                    let centroids: Vec<(f64, f64)> = groups.into_values()
+                        .map(|(sx, sy, n)| (sx / n as f64, sy / n as f64))
+                        .collect();
+                    let n = centroids.len();
+                    let mut total_angle = 0.0f64;
+                    for i in 0..n {
+                        let prev = if i == 0 { n - 1 } else { i - 1 };
+                        let next = (i + 1) % n;
+                        let dx_in  = centroids[i].0 - centroids[prev].0;
+                        let dy_in  = centroids[i].1 - centroids[prev].1;
+                        let dx_out = centroids[next].0 - centroids[i].0;
+                        let dy_out = centroids[next].1 - centroids[i].1;
+                        let mut delta = dy_out.atan2(dx_out) - dy_in.atan2(dx_in);
+                        while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
+                        while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
+                        total_angle += delta;
+                    }
+                    Ok(total_angle.abs() % (2.0 * std::f64::consts::PI))
+                };
+
+            // Note: we need two separate engine lookups; GaugeTest stores bundle1/bundle2 names,
+            // but in gigi_stream the 'store' is already bound to 'bundle' (the primary bundle).
+            // We re-look up both here directly from the engine reference.
+            // The `engine` binding is not available in this closure form, so we use
+            // store.records() for bundle1 and a secondary lookup for bundle2.
+            let deficit1 = compute_deficit(store.records())?;
+
+            // bundle1 == bundle, bundle2 is the second bundle — look it up from the global engine
+            // (not available here). Fall back to parser::exec_statement for full two-bundle support.
+            // For the stream path, emit a placeholder with deficit1 only when bundle2 == bundle1.
+            let deficit2 = if bundle2 == bundle1 {
+                deficit1
+            } else {
+                return Err(format!(
+                    "GAUGE VS: bundle '{}' lookup not supported in stream path; use the embedded engine", bundle2
+                ));
+            };
+            let gauge_difference = (deficit1 - deficit2).abs();
+            let gauge_invariant = gauge_difference < std::f64::consts::PI / 10.0;
+            let mut row = gigi::types::Record::new();
+            row.insert("bundle1".to_string(), gigi::types::Value::Text(bundle1.clone()));
+            row.insert("bundle2".to_string(), gigi::types::Value::Text(bundle2.clone()));
+            row.insert("holonomy_1".to_string(), gigi::types::Value::Float(deficit1));
+            row.insert("holonomy_2".to_string(), gigi::types::Value::Float(deficit2));
+            row.insert("gauge_difference".to_string(), gigi::types::Value::Float(gauge_difference));
+            row.insert("gauge_invariant".to_string(), gigi::types::Value::Bool(gauge_invariant));
+            Ok(ExecResult::Rows(vec![row]))
+        }
         _ => Ok(ExecResult::Ok),
     }
 }

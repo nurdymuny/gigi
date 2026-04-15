@@ -1,0 +1,64 @@
+﻿cargo : warning: unused import: `FieldDef`
+At line:1 char:1
++ cargo build --all 2>&1 | Out-File -FilePath .build_out.txt -Encoding  ...
++ ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: unused import: `FieldDef 
+   `:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ --> src\join.rs:8:34
+  |
+8 | use crate::types::{BundleSchema, FieldDef, Record, Value};
+  |                                  ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused doc comment
+    --> src\parser.rs:4185:9
+     |
+4185 | /         /// HOLONOMY bundle ON FIBER (f1, f2) AROUND categorical_field
+4186 | |         ///
+4187 | |         /// Groups records by the distinct values of `around_field`, 
+computes a 2-D centroid
+4188 | |         /// per group (sorted lexicographically), then measures 
+discrete parallel transport
+4189 | |         /// deficit ╬┤╧å = |╬ú ╬╕_k| mod 2╧Ç.
+     | |________________________________________^
+4190 | /         Statement::HolonomyFiber { bundle, fiber_fields, around_field 
+} => {
+4191 | |             let store = engine
+4192 | |                 .bundle(bundle)
+4193 | |                 .ok_or_else(|| format!("Bundle '{}' not found", 
+bundle))?;
+...    |
+4286 | |             Ok(ExecResult::Rows(rows))
+4287 | |         }
+     | |_________- rustdoc does not generate documentation for match arms
+     |
+     = help: use `//` for a plain comment
+     = note: `#[warn(unused_doc_comments)]` (part of `#[warn(unused)]`) on by 
+default
+
+warning: `gigi` (lib) generated 2 warnings (run `cargo fix --lib -p gigi` to 
+apply 1 suggestion)
+   Compiling gigi v0.1.0 (C:\Users\nurdm\OneDrive\Documents\gigi)
+warning: function `bench_point_queries` is never used
+   --> benches\ingest_bench.rs:128:4
+    |
+128 | fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, 
+f64) {
+    |    ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (bin "bench_ingest") generated 1 warning
+warning: struct `PullbackCurvatureReport` is never constructed
+   --> src\bin\gigi_stream.rs:547:8
+    |
+547 | struct PullbackCurvatureReport {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (bin "gigi-stream") generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.53s

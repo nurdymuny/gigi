@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import BracketPredictor from "./BracketPredictor";
+import LiveDemosPage from "./Demos";
 
 // ═══════════════════════════════════════
 // LIVE BENCHMARK ENGINE (real GIGI server)
@@ -144,7 +145,7 @@ const ARCH = [
 function Nav({ page, go }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const links = [
-    { id: "home", l: "Home" }, { id: "gigi", l: "Gigi" }, { id: "demo", l: "Try It" }, { id: "nasa", l: "NASA Demo" }, { id: "encryption", l: "Encryption" },
+    { id: "home", l: "Home" }, { id: "gigi", l: "Gigi" }, { id: "demo", l: "Try It" }, { id: "live-demos", l: "Live Demos" }, { id: "nasa", l: "NASA Demo" }, { id: "encryption", l: "Encryption" },
     { id: "benchmarks", l: "Benchmarks" }, { id: "tpch", l: "TPC-H" }, { id: "usecases", l: "Use Cases" },
     { id: "architecture", l: "Architecture" }, { id: "compare", l: "vs Others" },
     { id: "products", l: "Products" },
@@ -2660,6 +2661,7 @@ export default function GIGISite() {
       {page === "gigi" && <GigiPage />}
       {page === "demo" && <InteractiveDemoPage />}
       {page === "bracket" && <BracketPredictor />}
+      {page === "live-demos" && <LiveDemosPage />}
     </div>
   );
 }

@@ -5337,6 +5337,12 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         DropPolicy { bundle, .. } | DropTrigger { bundle, .. } => Some(bundle.clone()),
         CreateTrigger { bundle, .. } => Some(bundle.clone()),
         Explain { inner } => get_bundle_name(inner),
+        // Fiber-geometric analytics (Sprint 2)
+        HolonomyFiber { bundle, .. } => Some(bundle.clone()),
+        SpectralFiber { bundle, .. } => Some(bundle.clone()),
+        Transport { bundle, .. } => Some(bundle.clone()),
+        LocalHolonomy { bundle, .. } => Some(bundle.clone()),
+        GaugeTest { bundle1, .. } => Some(bundle1.clone()),
         _ => None,
     }
 }

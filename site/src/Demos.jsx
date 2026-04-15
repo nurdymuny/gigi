@@ -843,7 +843,8 @@ function StreamingDemo() {
   const injectedCountRef = useRef(0);   // client-side injections count
   const chartReadyRef = useRef(false);
   const t0Ref = useRef(0);
-  const prevKRef = useRef(null);         // for spike detection
+  const prevKRef = useRef(null);
+  const spikeCooldownRef = useRef(0);   // debounce: skip N events after a spike
   const add = (text, color) => setLog(p => [...p.slice(-80), { text, color }]);
 
   useEffect(() => () => stopStream(true), []);
@@ -858,6 +859,7 @@ function StreamingDemo() {
     anomalyCountRef.current = 0;
     injectedCountRef.current = 0;
     prevKRef.current = null;
+    spikeCooldownRef.current = 0;
   }
 
   async function startStream() {
@@ -930,14 +932,26 @@ function StreamingDemo() {
           const K = ev.k_global ?? 0;
           const n = ev.record_count ?? 0;
 
-          // Server sends a separate "anomaly" event (is_anomaly=true) for each
-          // single-record insert that exceeds the 2σ threshold. Count those.
-          if (ev.is_anomaly) {
+          // Spike detection: k_global exceeds the server's own 2σ threshold.
+          // The server's per-insert anomaly flag (is_anomaly) relies on running
+          // field-stat ranges which adapt after many injections.
+          // Using k_global vs k_threshold_2s on every event is more reliable.
+          spikeCooldownRef.current = Math.max(0, spikeCooldownRef.current - 1);
+          const thresh = ev.k_threshold_2s ?? 0;
+          const kStd = ev.k_std ?? 0;
+          const isSpike = n > WARMUP_RECORDS &&
+            kStd > 1e-4 &&            // stats meaningful
+            thresh > 1e-4 &&           // threshold meaningful
+            K > thresh &&              // k_global above 2σ line
+            spikeCooldownRef.current === 0;
+
+          if (isSpike || ev.is_anomaly) {
             anomalyCountRef.current += 1;
+            spikeCooldownRef.current = 8; // skip ~3s worth of events
             const z = ev.z_score ? `  z=${ev.z_score.toFixed(2)}` : "";
             const cf = ev.contributing_fields?.length
               ? `  [${ev.contributing_fields.join(", ")}]` : "";
-            add(`\u26a0 Anomaly detected  K=${K.toFixed(5)}  n=${n}${z}${cf}`, "#FF4040");
+            add(`\u26a0 K spike  K=${K.toFixed(4)} > 2\u03c3=${thresh.toFixed(4)}  n=${n}${z}${cf}`, "#FF4040");
           }
 
           setStats({
@@ -954,7 +968,7 @@ function StreamingDemo() {
           if (chartReadyRef.current && chartRef.current && window.Plotly &&
               n > WARMUP_RECORDS && Math.abs(K) < 1e6) {
             Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [0], 200);
-            if (ev.is_anomaly) {
+            if (isSpike || ev.is_anomaly) {
               Plotly.extendTraces(chartRef.current, { x: [[t]], y: [[K]] }, [1], 200);
             }
           }
@@ -1043,7 +1057,7 @@ function StreamingDemo() {
             sub={`conf ${(stats.conf * 100).toFixed(1)}%`}
           />
           <StatBox v={stats.count.toLocaleString()} l="Records Ingested" sub="live total" />
-          <StatBox v={stats.anomalyCount} l="K Spikes" color="#FF4040" sub="server-detected" />
+          <StatBox v={stats.anomalyCount} l="K Spikes" color="#FF4040" sub="K > 2σ threshold" />
           <StatBox v={stats.injectedCount ?? 0} l="Injections" color="#E8A830"
             sub={`${N_SENSORS} records/shot`} />
         </div>

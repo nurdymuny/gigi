@@ -1,4 +1,4 @@
-// site/src/Demos.jsx
+﻿// site/src/Demos.jsx
 // Live Demo Gallery — Bitcoin Crash Detector, Music DNA, USGS Earthquakes
 // All math runs on GIGI's Rust backend. This file is a display shell only.
 import { useState, useEffect, useRef } from "react";
@@ -883,35 +883,38 @@ function StreamingDemo() {
           keys: ["seq_id"],
         },
       });
-      add("Bundle ready. Opening WebSocket…", "#607080");
+      add("Bundle ready. Initialising chart…", "#607080");
 
+      // Init chart BEFORE opening WS — avoids blocking the onopen handler
+      if (chartRef.current && window.Plotly) {
+        Plotly.newPlot(chartRef.current, [
+          { type: "scatter", mode: "lines", name: "K (curvature)", x: [], y: [],
+            line: { color: G, width: 2 } },
+          { type: "scatter", mode: "markers", name: "⚠ Spike", x: [], y: [],
+            marker: { color: "#FF4040", size: 11, symbol: "x",
+                      line: { width: 2.5, color: "#fff" } } },
+        ], {
+          paper_bgcolor: "transparent",
+          plot_bgcolor: "rgba(255,255,255,0.015)",
+          font: { family: "DM Sans, sans-serif", color: "#e2e8f0", size: 11 },
+          margin: { t: 20, b: 46, l: 76, r: 20 },
+          xaxis: { gridcolor: "rgba(255,255,255,0.04)",
+                   title: { text: "seconds elapsed", font: { size: 11 } } },
+          yaxis: { gridcolor: "rgba(255,255,255,0.04)",
+                   title: { text: "K (curvature)", font: { size: 11 } } },
+          legend: { orientation: "h", y: 1.06, x: 0.5, xanchor: "center",
+                    font: { size: 10 } },
+        }, { displayModeBar: false, responsive: true });
+        chartReadyRef.current = true;
+      }
+
+      add("Opening WebSocket…", "#607080");
       const ws = new WebSocket(`${WS_BASE}/v1/ws/${name}/dashboard`);
       wsRef.current = ws;
 
       ws.onopen = () => {
         add(`● WS open → /v1/ws/${name}/dashboard`, G);
         add(`Streaming ${N_SENSORS} sensors × 400ms…`, "#607080");
-        if (chartRef.current && window.Plotly) {
-          Plotly.newPlot(chartRef.current, [
-            { type: "scatter", mode: "lines", name: "K (curvature)", x: [], y: [],
-              line: { color: G, width: 2 } },
-            { type: "scatter", mode: "markers", name: "⚠ Anomaly", x: [], y: [],
-              marker: { color: "#FF4040", size: 11, symbol: "x",
-                        line: { width: 2.5, color: "#fff" } } },
-          ], {
-            paper_bgcolor: "transparent",
-            plot_bgcolor: "rgba(255,255,255,0.015)",
-            font: { family: "DM Sans, sans-serif", color: "#e2e8f0", size: 11 },
-            margin: { t: 20, b: 46, l: 76, r: 20 },
-            xaxis: { gridcolor: "rgba(255,255,255,0.04)",
-                     title: { text: "seconds elapsed", font: { size: 11 } } },
-            yaxis: { gridcolor: "rgba(255,255,255,0.04)",
-                     title: { text: "K (curvature)", font: { size: 11 } } },
-            legend: { orientation: "h", y: 1.06, x: 0.5, xanchor: "center",
-                      font: { size: 10 } },
-          }, { displayModeBar: false, responsive: true });
-          chartReadyRef.current = true;
-        }
         intervalRef.current = setInterval(async () => {
           if (!bundleRef.current) return;
           const recs = Array.from({ length: N_SENSORS }, (_, i) =>
@@ -942,7 +945,9 @@ function StreamingDemo() {
           }
 
           setStats({
-            K, kMean: ev.k_mean, kStd: ev.k_std, kThresh: ev.k_threshold_2s,
+            K, kMean: ev.k_mean, kStd: ev.k_std,
+            kThresh: Number.isFinite(ev.k_threshold_2s) && Math.abs(ev.k_threshold_2s) < 1e9
+              ? ev.k_threshold_2s : null,
             count: n, conf: ev.global_confidence,
             anomalyCount: anomalyCountRef.current,
             injectedCount: injectedCountRef.current,
@@ -1039,7 +1044,7 @@ function StreamingDemo() {
           <StatBox v={stats.count.toLocaleString()} l="Records Ingested" sub="live total" />
           <StatBox v={stats.anomalyCount} l="K Spikes" color="#FF4040" sub="Δ K > 1σ" />
           <StatBox v={stats.injectedCount ?? 0} l="Injections" color="#E8A830"
-            sub="extreme readings sent" />
+            sub={stats.kThresh != null ? `2\u03c3=${stats.kThresh.toFixed(4)}` : "warming up\u2026"} />
         </div>
       )}
 

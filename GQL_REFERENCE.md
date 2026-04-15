@@ -42,6 +42,11 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | ATLAS (transactions) | ✅ | BEGIN / COMMIT / ROLLBACK |
 | SHOW BUNDLES / DESCRIBE | ✅ | |
 | CURVATURE / RICCI / SPECTRAL | ✅ | |
+| SPECTRAL … ON FIBER (…) MODES k | ✅ | Fiber-space Laplacian eigensolver — semantic cluster count |
+| TRANSPORT … FROM (…) TO (…) ON FIBER (…) | ✅ | Parallel transport rotation matrix between two records |
+| HOLONOMY … NEAR (…) WITHIN r ON FIBER (…) AROUND field | ✅ | Local holonomy in proximity neighbourhood |
+| GAUGE … VS … ON FIBER (…) AROUND field | ✅ | Gauge invariance test across two bundles |
+| HOLONOMY … ON FIBER (…) AROUND field | ✅ | Global holonomy — full-bundle loop consistency |
 | CONSISTENCY (+ REPAIR) | ✅ | |
 | BETTI / ENTROPY / FREEENERGY | ✅ | |
 | GEODESIC / METRIC TENSOR | ✅ | |
@@ -126,7 +131,11 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | — | CURVATURE t ON f BY g | Local data variability K |
 | — | CONFIDENCE t | Query trust 1/(1+K) |
 | — | SPECTRAL t | Index connectivity λ₁ |
-| — | HOLONOMY t AROUND (f1,f2) | Loop consistency |
+| — | HOLONOMY t ON FIBER (f1,f2) AROUND field | Global loop consistency — full-bundle |
+| — | HOLONOMY t NEAR (f1=v1,...) WITHIN r ON FIBER (f1,f2) AROUND field | Local holonomy in proximity neighbourhood |
+| — | SPECTRAL t ON FIBER (f1,f2) MODES k | k eigenvalues of fiber Laplacian |
+| — | TRANSPORT t FROM (k=v) TO (k=v) ON FIBER (f1,f2) | Rotation matrix for parallel transport |
+| — | GAUGE t1 VS t2 ON FIBER (f1,f2) AROUND field | Gauge invariance test across bundles |
 | — | CONSISTENCY t | Čech H¹ diagnostic |
 | — | CONSISTENCY t REPAIR | Cocycle resolution |
 | — | PARTITION t AT p TOLERANCE τ | Boltzmann approximate query |
@@ -825,6 +834,8 @@ SPECTRAL sensors ON region;      -- per-index spectral analysis
 SPECTRAL sensors FULL;           -- full eigenvalue spectrum
 ```
 
+See also **SPECTRAL … ON FIBER** above for the fiber-space Laplacian form.
+
 ### BOTTLENECK — Find weakest connectivity (Cheeger inequality)
 
 ```sql
@@ -877,12 +888,147 @@ LAPLACIAN sensors;
 LAPLACIAN sensors ON city TOP 5;
 ```
 
-### HOLONOMY — Loop consistency
+### HOLONOMY — Loop consistency ✅
 
 ```sql
+-- Global form: holonomy over the entire bundle
+HOLONOMY corpus ON FIBER (f11, f12) AROUND tense_label;
+-- Groups records by tense_label, computes 2D centroids, measures
+-- parallel transport deficit δφ = |Σ θ_k| mod 2π.
+-- Returns one row per group (centroid + transport angle) + summary row:
+--   { _type: "summary", holonomy_angle: 0.42, holonomy_trivial: false }
+-- holonomy_angle ≈ 0   → trivial bundle (flat connection)
+-- holonomy_angle ≈ 2π  → maximally twisted fiber
+
+-- Legacy categorical form (index-based, not fiber-aware):
 HOLONOMY sensors AROUND (city, region);
 -- holonomy=0 → consistent. holonomy>0 → drift with locations.
 ```
+
+### HOLONOMY … NEAR — Local holonomy in a proximity neighbourhood ✅
+
+Computes holonomy only within the neighbourhood of a query point. Useful for Marcella-style
+NLP embeddings where you want locality-aware geometric analysis rather than a global scan.
+
+```sql
+-- Euclidean proximity neighbourhood (default metric)
+HOLONOMY corpus
+  NEAR (f11=1.0, f12=0.0)
+  WITHIN 0.3
+  ON FIBER (f11, f12)
+  AROUND tense_label;
+-- Returns: { local_holonomy_angle, neighbourhood_size }
+-- Only records within Euclidean distance 0.3 of the query point participate.
+
+-- Cosine similarity neighbourhood
+HOLONOMY corpus
+  NEAR (f11=1.0, f12=0.0)
+  WITHIN 0.1
+  METRIC cosine
+  ON FIBER (f11, f12)
+  AROUND tense_label;
+-- WITHIN r for cosine = minimum similarity 1 − r.
+-- METRIC cosine → WITHIN 0.1 means cosine_similarity ≥ 0.9.
+```
+
+**Why local holonomy:** The global holonomy scans all N records (O(N)). Local holonomy scans
+only the neighbourhood (O(|N_r|)), which for a dense embedding space can be O(log N) with
+HNSW indexing. Use local holonomy when you want to ask: *"Is the fiber geometry curved
+near this specific point in the embedding space?"*
+
+### SPECTRAL … ON FIBER — Fiber-space Laplacian eigenmodes ✅
+
+Computes the k smallest non-zero eigenvalues (and their inverse participation ratios) of
+the normalized Laplacian built from the k-nearest-neighbour graph in the named fiber fields.
+Directly answers: *"How many semantic clusters live in this fiber subspace?"*
+
+```sql
+SPECTRAL corpus ON FIBER (f11, f12) MODES 3;
+-- Returns 3 rows, one per eigenmode:
+--   { mode: 1, lambda: 0.012, ipr: 0.83 }
+--   { mode: 2, lambda: 0.018, ipr: 0.71 }
+--   { mode: 3, lambda: 0.341, ipr: 0.22 }
+-- lambda close to 0 → strong cluster boundary
+-- ipr (inverse participation ratio) → how localized the mode is
+--   ipr ≈ 1 = highly localized (single cluster). ipr ≈ 0 = fully delocalized.
+
+SPECTRAL corpus ON FIBER (f0, f1, f2, f3, f4, f5, f6, f7) MODES 5;
+-- Full 8D semantic sphere — how many stable semantic neighborhoods exist?
+
+-- Classic scalar form (spectral gap of the index graph):
+SPECTRAL sensors;
+SPECTRAL sensors FULL;
+```
+
+**Near-zero eigenvalues = cluster count.** If `MODES 5` returns λ₁=0.001, λ₂=0.002,
+λ₃=0.003, λ₄=0.41, λ₅=0.57, there are 3 natural clusters in the fiber subspace.
+
+**Algorithm:** exp(−d²) weighted k-NN graph → symmetrized adjacency → normalized Laplacian
+→ deflated power iteration. O(N²) for graph build, O(N·iter) per eigenvector.
+
+### TRANSPORT … FROM / TO — Parallel transport between records ✅
+
+Computes the rotation matrix encoding how the fiber has rotated when moving along the
+geodesic from one record to another. For NLP embeddings: how much does the semantic
+vector rotate between token A and token B?
+
+```sql
+TRANSPORT corpus FROM (token_id=42) TO (token_id=99) ON FIBER (f11, f12);
+-- Returns one row:
+--   { transport_angle: 1.047,  -- rotation in radians
+--     t00: 0.500, t01: -0.866, -- 2×2 rotation matrix
+--     t10: 0.866, t11:  0.500,
+--     displacement_0: 0.12,   -- raw displacement in each fiber dim
+--     displacement_1: -0.33 }
+
+TRANSPORT corpus FROM (token_str='walk') TO (token_str='walked') ON FIBER (f4, f11, f12);
+-- Tense transport: how much does the tense fiber rotate between forms?
+-- transport_angle ≈ π/2 → quarter turn (present → past is a 90° rotation)
+-- transport_angle ≈ 0   → trivial transport (same fiber class)
+```
+
+**Geometric meaning:** On a curved fiber bundle, moving a vector from point A to point B
+along a path rotates the vector. `transport_angle` is that rotation. `t00, t01, t10, t11`
+is the 2×2 SO(2) matrix for the 2D fiber subspace. For higher-dimensional fibers, only
+the first two dimensions are used for the rotation matrix.
+
+**Window-function form (flat parallel transport — no curvature):**
+```sql
+TRANSPORT sensors OF temp ALONG date SHIFT -1;   -- LAG(temp, 1) on sorted date
+TRANSPORT sensors OF temp ALONG date SHIFT +1;   -- LEAD(temp, 1)
+```
+
+### GAUGE … VS — Gauge invariance test across two bundles ✅
+
+Measures whether two bundles have the same holonomy structure in a shared fiber subspace.
+If gauge-invariant (deficit < π/10), the two bundles encode the same geometric information
+even if their raw values differ — a gauge transformation relates them.
+
+```sql
+GAUGE corpus_en VS corpus_fr ON FIBER (f11, f12) AROUND tense_label;
+-- Returns one row:
+--   { bundle1: "corpus_en",
+--     bundle2: "corpus_fr",
+--     holonomy_1: 0.312,
+--     holonomy_2: 0.298,
+--     gauge_difference: 0.014,
+--     gauge_invariant: true }
+-- gauge_invariant = true when |δφ₁ − δφ₂| < π/10 ≈ 0.314
+
+-- Comparing tense encoding across models:
+GAUGE marcella_v1 VS marcella_v2 ON FIBER (f11, f12) AROUND tense_label;
+-- If gauge_invariant: true, fine-tuning preserved tense topology.
+-- If gauge_invariant: false, the fine-tuning changed the geometry.
+
+-- Multi-axis gauge test:
+GAUGE corpus_en VS corpus_de ON FIBER (f8, f9) AROUND person_label;
+-- Is person encoding (1st/2nd/3rd) geometrically equivalent between languages?
+```
+
+**Interpretation:** Gauge invariance is the mathematical statement that two coordinate
+representations are describing the same underlying geometry. `gauge_difference < π/10`
+means the two bundles' holonomy angles agree to within a curvature threshold — strong
+evidence they are encoding the same fiber topology.
 
 ### WILSON — Wilson loop (holonomy along explicit path)
 
@@ -1845,12 +1991,12 @@ SHOW COMMENTS ON sensors;
 ```
 program       = statement ( ";" statement )* ";"?
 
-statement     = bundle_stmt | gauge_stmt | collapse_stmt | lens_stmt
+statement     = bundle_stmt | gauge_stmt | gauge_test_stmt | collapse_stmt | lens_stmt
               | section_stmt | sections_stmt | redefine_stmt | retract_stmt
               | point_query | cover_stmt | integrate_stmt | pullback_stmt
               | fiber_window | curvature_stmt | confidence_stmt | spectral_stmt
               | holonomy_stmt | consistency_stmt | partition_stmt | calibrate_stmt
-              | transport_stmt | flow_stmt | geodesic_stmt | restrict_stmt
+              | transport_stmt | transport_fiber | flow_stmt | geodesic_stmt | restrict_stmt
               | glue_stmt | predict_stmt | diff_stmt | snapshot_stmt
               | health_stmt | atlas_stmt | subscribe_stmt | explain_stmt
               | translate_stmt | show_stmt | describe_stmt
@@ -1889,7 +2035,15 @@ iterate_stmt  = "ITERATE" name "START" "AT" key_preds "STEP" "ALONG" field
 curvature_stmt  = "CURVATURE" name "ON" field_list ("BY" field)? ("WITHIN" "(" query ")")?
 confidence_stmt = "CONFIDENCE" name (on_clause)?
 spectral_stmt   = "SPECTRAL" name ("ON" field)? ("FULL")?
+                | "SPECTRAL" name "ON" "FIBER" "(" field_list ")" "MODES" number
 holonomy_stmt   = "HOLONOMY" name "AROUND" "(" field_list ")"
+                | "HOLONOMY" name "ON" "FIBER" "(" field_list ")" "AROUND" field
+                | "HOLONOMY" name "NEAR" "(" f64_kv_pairs ")" "WITHIN" number
+                  ("METRIC" ("euclidean" | "cosine"))?
+                  "ON" "FIBER" "(" field_list ")" "AROUND" field
+transport_fiber = "TRANSPORT" name "FROM" "(" kv_pairs ")" "TO" "(" kv_pairs ")"
+                  "ON" "FIBER" "(" field_list ")"
+gauge_test_stmt = "GAUGE" name "VS" name "ON" "FIBER" "(" field_list ")" "AROUND" field
 consistency_stmt = "CONSISTENCY" name ("REPAIR")?
 partition_stmt  = "PARTITION" name ("AT" key_preds | "WHERE" field "NEAR" value) "TOLERANCE" num
 calibrate_stmt  = "CALIBRATE" name "TOLERANCE" number
@@ -1988,6 +2142,7 @@ pred_atom       = field comp_op value | field "MATCHES" string
 | Comments | ✓ | ✓ | ❌ Returns 501 |
 | **GQL-only (no SQL equivalent)** | | | |
 | Curvature / Ricci / Spectral | — | ✓ | ✅ |
+| Fiber Laplacian eigenmodes (SPECTRAL … ON FIBER … MODES k) | — | ✓ | ✅ |
 | Betti / Euler / Topology | — | ✓ | ✅ |
 | Entropy / Free Energy | — | ✓ | ✅ |
 | Geodesic / Similarity | — | ✓ | ✅ |
@@ -1996,5 +2151,9 @@ pred_atom       = field comp_op value | field "MATCHES" string
 | Double Cover (S + d² = 1) | — | ✓ | ✅ |
 | Geometric encryption | — | ✓ | ✅ GaugeKey on ENCRYPTED fields |
 | Confidence filtering | — | ✓ | ✅ |
+| Global fiber holonomy (HOLONOMY … ON FIBER … AROUND) | — | ✓ | ✅ |
+| Local fiber holonomy (HOLONOMY … NEAR … WITHIN … ON FIBER) | — | ✓ | ✅ |
+| Fiber parallel transport matrix (TRANSPORT … FROM … TO … ON FIBER) | — | ✓ | ✅ |
+| Cross-bundle gauge invariance test (GAUGE … VS … ON FIBER) | — | ✓ | ✅ |
 | Sheaf restriction / gluing | — | ✓ | ⚠️ Sheaf module built; not wired |
 | Subscriptions (WebSocket) | — | ✓ | ✅ |

@@ -1365,6 +1365,28 @@ JOIN users ON orders.user_id = users.id;
 CURVATURE employees;
 SPECTRAL employees;
 
+-- Fiber Geometric Analysis (NLP / embedding bundles)
+-- Fiber-space Laplacian eigenmodes: how many semantic clusters exist?
+SPECTRAL corpus ON FIBER (f11, f12) MODES 3;
+-- Returns: [{ mode: 1, lambda: 0.012, ipr: 0.83 }, ...]
+
+-- Fiber parallel transport: how much does the embedding rotate between two tokens?
+TRANSPORT corpus FROM (token_id=42) TO (token_id=99) ON FIBER (f11, f12);
+-- Returns: { transport_angle, t00, t01, t10, t11, displacement_0, displacement_1 }
+
+-- Global fiber holonomy: is the fiber bundle curved globally?
+HOLONOMY corpus ON FIBER (f11, f12) AROUND tense_label;
+-- Returns centroid rows per group + summary: { holonomy_angle, holonomy_trivial }
+
+-- Local fiber holonomy: fiber curvature near a query point
+HOLONOMY corpus NEAR (f11=1.0, f12=0.0) WITHIN 0.3 ON FIBER (f11, f12) AROUND tense_label;
+HOLONOMY corpus NEAR (f11=1.0, f12=0.0) WITHIN 0.1 METRIC cosine ON FIBER (f11, f12) AROUND tense_label;
+-- Returns: { local_holonomy_angle, neighbourhood_size }
+
+-- Gauge invariance test: do two bundles share the same fiber topology?
+GAUGE corpus_en VS corpus_fr ON FIBER (f11, f12) AROUND tense_label;
+-- Returns: { bundle1, bundle2, holonomy_1, holonomy_2, gauge_difference, gauge_invariant }
+
 -- List bundles
 SHOW BUNDLES;
 ```

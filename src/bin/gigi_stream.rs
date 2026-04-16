@@ -1912,19 +1912,7 @@ async fn divergence_handler(
         )
     })?;
 
-    let rep = {
-        let heap_a = store_a.as_heap().ok_or_else(|| {
-            (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse {
-                error: format!("Bundle '{}' must be a heap bundle for divergence", req.from),
-            }))
-        })?;
-        let heap_b = store_b.as_heap().ok_or_else(|| {
-            (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse {
-                error: format!("Bundle '{}' must be a heap bundle for divergence", req.to),
-            }))
-        })?;
-        gigi::metric::kl_divergence(heap_a, heap_b)
-    };
+    let rep = gigi::metric::kl_divergence_ref(&store_a, &store_b);
 
     let per_field: Vec<serde_json::Value> = rep
         .per_field
@@ -4644,6 +4632,43 @@ async fn gql_query(
             return (
                 StatusCode::NOT_IMPLEMENTED,
                 Json(serde_json::json!({"error": "This GQL v2.1 command is not yet implemented"})),
+            );
+        }
+        // Cross-bundle: KL divergence between two bundles
+        gigi::parser::Statement::Divergence { bundle_a, bundle_b } => {
+            let engine = state.engine.read().unwrap();
+            let store_a = match engine.bundle(bundle_a) {
+                Some(s) => s,
+                None => return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": format!("Bundle '{}' not found", bundle_a)})),
+                ),
+            };
+            let store_b = match engine.bundle(bundle_b) {
+                Some(s) => s,
+                None => return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": format!("Bundle '{}' not found", bundle_b)})),
+                ),
+            };
+            let rep = gigi::metric::kl_divergence_ref(&store_a, &store_b);
+            let per_field: String = rep
+                .per_field
+                .iter()
+                .map(|(f, v)| format!("{f}={v:.6}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            return (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "bundle_a": bundle_a,
+                    "bundle_b": bundle_b,
+                    "kl_forward": rep.kl_forward,
+                    "kl_reverse": rep.kl_reverse,
+                    "jensen_shannon": rep.jensen_shannon,
+                    "fields_compared": rep.fields_compared,
+                    "per_field": per_field,
+                })),
             );
         }
         _ => {}

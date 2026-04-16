@@ -427,6 +427,97 @@ pub fn kl_divergence(a: &BundleStore, b: &BundleStore) -> DivergenceReport {
     }
 }
 
+/// Same as [`kl_divergence`] but accepts the unified [`BundleRef`] type so it works
+/// with both heap and mmap (overlay) bundles.
+pub fn kl_divergence_ref(
+    a: &crate::mmap_bundle::BundleRef<'_>,
+    b: &crate::mmap_bundle::BundleRef<'_>,
+) -> DivergenceReport {
+    let stats_a = a.field_stats();
+    let stats_b = b.field_stats();
+
+    let mut common_fields: Vec<String> = stats_a
+        .keys()
+        .filter(|f| stats_b.contains_key(*f))
+        .filter(|f| stats_a[*f].count > 0 && stats_b[*f].count > 0)
+        .cloned()
+        .collect();
+    common_fields.sort();
+
+    if common_fields.is_empty() {
+        return DivergenceReport {
+            kl_forward: 0.0,
+            kl_reverse: 0.0,
+            jensen_shannon: 0.0,
+            per_field: vec![],
+            fields_compared: 0,
+        };
+    }
+
+    let collect_ref = |store: &crate::mmap_bundle::BundleRef<'_>,
+                       fields: &[String]|
+     -> std::collections::HashMap<String, Vec<f64>> {
+        let mut map: std::collections::HashMap<String, Vec<f64>> =
+            fields.iter().map(|f| (f.clone(), Vec::new())).collect();
+        for rec in store.records() {
+            for f in fields {
+                if let Some(v) = rec.get(f) {
+                    if let Some(x) = v.as_f64() {
+                        map.get_mut(f).unwrap().push(x);
+                    }
+                }
+            }
+        }
+        map
+    };
+
+    let vals_a = collect_ref(a, &common_fields);
+    let vals_b = collect_ref(b, &common_fields);
+
+    let mut kl_fwd = 0.0;
+    let mut kl_rev = 0.0;
+    let mut js_total = 0.0;
+    let mut per_field = Vec::new();
+    let mut fields_compared = 0;
+
+    for field in &common_fields {
+        let va = &vals_a[field];
+        let vb = &vals_b[field];
+        if va.is_empty() || vb.is_empty() {
+            continue;
+        }
+        let min_val = va.iter().chain(vb).cloned().fold(f64::INFINITY, f64::min);
+        let max_val = va.iter().chain(vb).cloned().fold(f64::NEG_INFINITY, f64::max);
+        if (max_val - min_val).abs() < 1e-12 {
+            continue;
+        }
+        let n_bins = freedman_diaconis_bins(va)
+            .max(freedman_diaconis_bins(vb))
+            .clamp(10, 200);
+        let hist_a = build_histogram(va, n_bins, min_val, max_val);
+        let hist_b = build_histogram(vb, n_bins, min_val, max_val);
+        let p = smooth(&hist_a, va.len(), 1.0);
+        let q_dist = smooth(&hist_b, vb.len(), 1.0);
+        let kl_pq = kl_term(&p, &q_dist);
+        let kl_qp = kl_term(&q_dist, &p);
+        let m: Vec<f64> = p.iter().zip(&q_dist).map(|(pi, qi)| (pi + qi) / 2.0).collect();
+        let js = 0.5 * (kl_term(&p, &m) + kl_term(&q_dist, &m));
+        kl_fwd += kl_pq;
+        kl_rev += kl_qp;
+        js_total += js;
+        per_field.push((field.clone(), kl_pq));
+        fields_compared += 1;
+    }
+
+    DivergenceReport {
+        kl_forward: kl_fwd,
+        kl_reverse: kl_rev,
+        jensen_shannon: js_total,
+        per_field,
+        fields_compared,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

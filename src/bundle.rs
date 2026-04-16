@@ -647,6 +647,12 @@ pub struct BundleStore {
     /// Key: sorted comma-joined field names (e.g. "salary" or "f11,f12").
     /// Built explicitly via `build_hnsw_for_fields()`; stale on insert.
     hnsw_indices: HashMap<String, HnswBundle>,
+    /// Feature 1/3/4/5: auto-chart atlas (initialized on first AUTO_CHART insert).
+    pub atlas: Option<crate::coherence::Atlas>,
+    /// Feature 2: consistency branch state (initialized on first ON CONTRADICTION use).
+    pub branches: Option<crate::coherence::BranchStore>,
+    /// Feature 6: provenance DAG (initialized on first DERIVED_FROM use).
+    pub provenance: Option<crate::coherence::ProvenanceGraph>,
 }
 
 /// Per-field running statistics for curvature.
@@ -852,6 +858,9 @@ impl BundleStore {
             auto_id_counter: 0,
             curvature_stats: CurvatureStats::default(),
             hnsw_indices: HashMap::new(),
+            atlas: None,
+            branches: None,
+            provenance: None,
         }
     }
 
@@ -903,6 +912,9 @@ impl BundleStore {
             auto_id_counter: 0,
             curvature_stats: CurvatureStats::default(),
             hnsw_indices: HashMap::new(),
+            atlas: None,
+            branches: None,
+            provenance: None,
         }
     }
 

@@ -5343,6 +5343,15 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         Transport { bundle, .. } => Some(bundle.clone()),
         LocalHolonomy { bundle, .. } => Some(bundle.clone()),
         GaugeTest { bundle1, .. } => Some(bundle1.clone()),
+        // Coherence extensions v0.1
+        SectionCoherent { bundle, .. } => Some(bundle.clone()),
+        ShowCharts { bundle } => Some(bundle.clone()),
+        ShowContradictions { bundle } => Some(bundle.clone()),
+        CollapseBranch { bundle, .. } => Some(bundle.clone()),
+        Predict { bundle, .. } => Some(bundle.clone()),
+        CoverGeodesic { bundle, .. } => Some(bundle.clone()),
+        Why { bundle, .. } => Some(bundle.clone()),
+        Implications { bundle, .. } => Some(bundle.clone()),
         _ => None,
     }
 }

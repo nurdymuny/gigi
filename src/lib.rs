@@ -5,6 +5,7 @@
 
 pub mod aggregation;
 pub mod bundle;
+pub mod coherence;
 pub mod concurrent;
 pub mod convert;
 pub mod crypto;

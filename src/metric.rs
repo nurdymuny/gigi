@@ -433,14 +433,73 @@ pub fn kl_divergence_ref(
     a: &crate::mmap_bundle::BundleRef<'_>,
     b: &crate::mmap_bundle::BundleRef<'_>,
 ) -> DivergenceReport {
-    let stats_a = a.field_stats();
-    let stats_b = b.field_stats();
+    // Collect all numeric field values for a list of field names from a BundleRef.
+    // Returns only fields where at least one numeric value was found.
+    let collect_numeric = |store: &crate::mmap_bundle::BundleRef<'_>,
+                           candidates: &[String]|
+     -> std::collections::HashMap<String, Vec<f64>> {
+        let mut map: std::collections::HashMap<String, Vec<f64>> =
+            candidates.iter().map(|f| (f.clone(), Vec::new())).collect();
+        for rec in store.records() {
+            for f in candidates {
+                if let Some(v) = rec.get(f) {
+                    if let Some(x) = v.as_f64() {
+                        map.get_mut(f).unwrap().push(x);
+                    }
+                }
+            }
+        }
+        // Keep only fields with actual numeric data.
+        map.retain(|_, vs| !vs.is_empty());
+        map
+    };
 
-    let mut common_fields: Vec<String> = stats_a
-        .keys()
-        .filter(|f| stats_b.contains_key(*f))
-        .filter(|f| stats_a[*f].count > 0 && stats_b[*f].count > 0)
+    // Determine candidate field names.
+    // Prefer field_stats (heap bundles maintain this); fall back to schema field_names
+    // for mmap/overlay bundles where field_stats is not populated.
+    let candidate_fields_a: Vec<String> = {
+        let stats = a.field_stats();
+        if !stats.is_empty() {
+            stats.into_keys().collect()
+        } else {
+            a.field_names()
+        }
+    };
+    let candidate_fields_b: Vec<String> = {
+        let stats = b.field_stats();
+        if !stats.is_empty() {
+            stats.into_keys().collect()
+        } else {
+            b.field_names()
+        }
+    };
+
+    // Intersect candidate field names from both bundles.
+    let b_set: std::collections::HashSet<_> = candidate_fields_b.iter().collect();
+    let mut common_candidates: Vec<String> = candidate_fields_a
+        .iter()
+        .filter(|f| b_set.contains(f))
         .cloned()
+        .collect();
+    common_candidates.sort();
+
+    if common_candidates.is_empty() {
+        return DivergenceReport {
+            kl_forward: 0.0,
+            kl_reverse: 0.0,
+            jensen_shannon: 0.0,
+            per_field: vec![],
+            fields_compared: 0,
+        };
+    }
+
+    let vals_a = collect_numeric(a, &common_candidates);
+    let vals_b = collect_numeric(b, &common_candidates);
+
+    // Only compare fields with numeric data in BOTH bundles.
+    let mut common_fields: Vec<String> = common_candidates
+        .into_iter()
+        .filter(|f| vals_a.contains_key(f) && vals_b.contains_key(f))
         .collect();
     common_fields.sort();
 
@@ -454,26 +513,6 @@ pub fn kl_divergence_ref(
         };
     }
 
-    let collect_ref = |store: &crate::mmap_bundle::BundleRef<'_>,
-                       fields: &[String]|
-     -> std::collections::HashMap<String, Vec<f64>> {
-        let mut map: std::collections::HashMap<String, Vec<f64>> =
-            fields.iter().map(|f| (f.clone(), Vec::new())).collect();
-        for rec in store.records() {
-            for f in fields {
-                if let Some(v) = rec.get(f) {
-                    if let Some(x) = v.as_f64() {
-                        map.get_mut(f).unwrap().push(x);
-                    }
-                }
-            }
-        }
-        map
-    };
-
-    let vals_a = collect_ref(a, &common_fields);
-    let vals_b = collect_ref(b, &common_fields);
-
     let mut kl_fwd = 0.0;
     let mut kl_rev = 0.0;
     let mut js_total = 0.0;
@@ -483,9 +522,6 @@ pub fn kl_divergence_ref(
     for field in &common_fields {
         let va = &vals_a[field];
         let vb = &vals_b[field];
-        if va.is_empty() || vb.is_empty() {
-            continue;
-        }
         let min_val = va.iter().chain(vb).cloned().fold(f64::INFINITY, f64::min);
         let max_val = va.iter().chain(vb).cloned().fold(f64::NEG_INFINITY, f64::max);
         if (max_val - min_val).abs() < 1e-12 {

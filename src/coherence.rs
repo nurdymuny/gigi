@@ -378,6 +378,142 @@ impl Atlas {
             })
             .collect()
     }
+
+    // ── Ollivier–Ricci curvature ─────────────────────────────────────────────
+
+    /// Neighbourhood of a chart: all charts within `2 * granularity` L2 distance.
+    fn neighborhood(&self, chart_id: u32) -> Vec<u32> {
+        let r = 2.0 * self.config.granularity;
+        let c = &self.charts[chart_id as usize];
+        self.charts
+            .iter()
+            .filter(|o| l2(&c.centroid, &o.centroid) <= r)
+            .map(|o| o.id)
+            .collect()
+    }
+
+    /// Wasserstein-1 distance between two discrete uniform distributions on
+    /// sets of centroid vectors `a` and `b`.
+    ///
+    /// For equal-size sets the optimal assignment is found by greedy nearest-
+    /// neighbor matching (exact for well-separated clusters; tight approximation
+    /// otherwise).  For unequal sizes every source point is matched to its
+    /// nearest target: the cost is the mean of those distances, which is an
+    /// admissible upper bound on W₁ used consistently for both κ(a,b) and
+    /// κ(b,a) — symmetry is enforced by always computing both directions and
+    /// averaging.
+    fn wasserstein1(a_ids: &[u32], b_ids: &[u32], charts: &[Chart]) -> f64 {
+        if a_ids.is_empty() || b_ids.is_empty() {
+            return 0.0;
+        }
+        // Build centroid slices.
+        let a_cents: Vec<&[f64]> = a_ids.iter().map(|&i| charts[i as usize].centroid.as_slice()).collect();
+        let b_cents: Vec<&[f64]> = b_ids.iter().map(|&i| charts[i as usize].centroid.as_slice()).collect();
+
+        // Greedy nearest-neighbour assignment from A → B.
+        let mut used = vec![false; b_cents.len()];
+        let mut total_ab = 0.0;
+        for ac in &a_cents {
+            let (j, d) = b_cents
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| !used[*j])
+                .map(|(j, bc)| (j, l2(ac, bc)))
+                .min_by(|x, y| x.1.partial_cmp(&y.1).unwrap_or(std::cmp::Ordering::Equal))
+                .unwrap_or_else(|| {
+                    // All matched — take absolute nearest (happens when |A| > |B|).
+                    b_cents
+                        .iter()
+                        .enumerate()
+                        .map(|(j, bc)| (j, l2(ac, bc)))
+                        .min_by(|x, y| x.1.partial_cmp(&y.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .unwrap()
+                });
+            used[j] = true;
+            total_ab += d;
+        }
+
+        // Also compute B → A direction; symmetrize.
+        let mut used2 = vec![false; a_cents.len()];
+        let mut total_ba = 0.0;
+        for bc in &b_cents {
+            let (j, d) = a_cents
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| !used2[*j])
+                .map(|(j, ac)| (j, l2(bc, ac)))
+                .min_by(|x, y| x.1.partial_cmp(&y.1).unwrap_or(std::cmp::Ordering::Equal))
+                .unwrap_or_else(|| {
+                    a_cents
+                        .iter()
+                        .enumerate()
+                        .map(|(j, ac)| (j, l2(bc, ac)))
+                        .min_by(|x, y| x.1.partial_cmp(&y.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .unwrap()
+                });
+            used2[j] = true;
+            total_ba += d;
+        }
+
+        // Symmetric W₁ estimate: average of mean cost in each direction.
+        (total_ab / a_cents.len() as f64 + total_ba / b_cents.len() as f64) / 2.0
+    }
+
+    /// Ollivier–Ricci curvature κ(chart_a, chart_b).
+    ///
+    /// κ(x, y) = 1 − W₁(µ_x, µ_y) / d(x, y)
+    ///
+    /// where µ_x = uniform measure on B(x, 2g) and d = L2 of centroids.
+    ///
+    /// Returns `None` if either chart id is out of range or d = 0.
+    pub fn ricci(&self, chart_a: u32, chart_b: u32) -> Option<RicciResult> {
+        let n = self.charts.len() as u32;
+        if chart_a >= n || chart_b >= n {
+            return None;
+        }
+        let ca = &self.charts[chart_a as usize];
+        let cb = &self.charts[chart_b as usize];
+        let dist = l2(&ca.centroid, &cb.centroid);
+        if dist < 1e-12 {
+            // Same chart or zero distance — κ = 1 by convention.
+            return Some(RicciResult {
+                chart_a,
+                chart_b,
+                curvature: 1.0,
+                distance: 0.0,
+                w1: 0.0,
+                n_neighbors_a: 1,
+                n_neighbors_b: 1,
+            });
+        }
+        let nbrs_a = self.neighborhood(chart_a);
+        let nbrs_b = self.neighborhood(chart_b);
+        let w1 = Self::wasserstein1(&nbrs_a, &nbrs_b, &self.charts);
+        Some(RicciResult {
+            chart_a,
+            chart_b,
+            curvature: 1.0 - w1 / dist,
+            distance: dist,
+            w1,
+            n_neighbors_a: nbrs_a.len(),
+            n_neighbors_b: nbrs_b.len(),
+        })
+    }
+}
+
+/// Result of Ollivier–Ricci curvature computation between two charts.
+#[derive(Debug, Clone)]
+pub struct RicciResult {
+    pub chart_a: u32,
+    pub chart_b: u32,
+    /// κ(x, y) = 1 − W₁(µ_x, µ_y) / d(x, y).  > 0 → cluster interior; < 0 → bridge.
+    pub curvature: f64,
+    /// L2 distance between centroids.
+    pub distance: f64,
+    /// Wasserstein-1 distance between neighbourhood measures.
+    pub w1: f64,
+    pub n_neighbors_a: usize,
+    pub n_neighbors_b: usize,
 }
 
 /// Result of a PREDICT query.
@@ -648,5 +784,143 @@ impl ProvenanceGraph {
 
     pub fn is_empty(&self) -> bool {
         self.backward.is_empty() && self.forward.is_empty()
+    }
+}
+
+// ── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Ricci curvature TDD ───────────────────────────────────────────────────
+
+    /// Build an atlas from 1D positions with τ very small so each point
+    /// spawns its own chart.
+    fn linear_atlas(positions: &[f64], g: f64) -> Atlas {
+        let mut atlas = Atlas::new(vec!["x".to_string()], 1e-9, g);
+        for &p in positions {
+            atlas.insert(&[p]);
+        }
+        atlas
+    }
+
+    /// Ricci-1: κ ≤ 1 always.
+    #[test]
+    fn tdd_ricci_1_upper_bound() {
+        let atlas = linear_atlas(&[0.0, 0.1, 0.2, 0.3, 0.4], 0.06);
+        for a in 0..atlas.charts.len() as u32 {
+            for b in 0..atlas.charts.len() as u32 {
+                if a == b { continue; }
+                if let Some(r) = atlas.ricci(a, b) {
+                    assert!(r.curvature <= 1.0 + 1e-9, "κ({a},{b}) = {} > 1", r.curvature);
+                }
+            }
+        }
+    }
+
+    /// Ricci-2: κ is symmetric — κ(a,b) = κ(b,a).
+    #[test]
+    fn tdd_ricci_2_symmetry() {
+        let atlas = linear_atlas(&[0.0, 0.1, 0.2, 0.3, 0.4], 0.06);
+        for a in 0..atlas.charts.len() as u32 {
+            for b in (a + 1)..atlas.charts.len() as u32 {
+                let ab = atlas.ricci(a, b);
+                let ba = atlas.ricci(b, a);
+                match (ab, ba) {
+                    (Some(r_ab), Some(r_ba)) => {
+                        assert!(
+                            (r_ab.curvature - r_ba.curvature).abs() < 1e-9,
+                            "κ({a},{b})={} ≠ κ({b},{a})={}",
+                            r_ab.curvature,
+                            r_ba.curvature
+                        );
+                    }
+                    (None, None) => {}
+                    _ => panic!("ricci({a},{b}) and ricci({b},{a}) disagree on Some/None"),
+                }
+            }
+        }
+    }
+
+    /// Ricci-3: κ < 0 for a bridge edge between two disjoint clusters.
+    ///
+    /// Setup: two clusters {-1.0, -0.9, -0.8} and {0.8, 0.9, 1.0}.
+    /// g = 0.06 → 2g = 0.12. Within each cluster, spacing = 0.1 ≤ 0.12.
+    /// Between clusters: nearest pair is (-0.8, 0.8) at distance 1.6 >> 0.12.
+    /// So B(-0.8) = {-1.0, -0.9, -0.8} and B(0.8) = {0.8, 0.9, 1.0} — disjoint.
+    #[test]
+    fn tdd_ricci_3_negative_bridge() {
+        let positions: Vec<f64> = vec![-1.0, -0.9, -0.8, 0.8, 0.9, 1.0];
+        let atlas = linear_atlas(&positions, 0.06);
+        // Charts inserted in order: C0=-1.0, C1=-0.9, C2=-0.8, C3=0.8, C4=0.9, C5=1.0
+        let result = atlas.ricci(2, 3).expect("ricci(2,3) should return Some");
+        assert!(
+            result.curvature < 0.0,
+            "Expected κ < 0 for bridge, got κ = {}",
+            result.curvature
+        );
+    }
+
+    /// Ricci-4: κ > 0 for interior of a dense cluster.
+    ///
+    /// g = 0.25 → 2g = 0.5. All 5 charts at spacing 0.1 are within 0.4 < 0.5
+    /// of each other → every chart has all 5 as its neighborhood.
+    /// B(x) = B(y) = all charts → W₁ = 0 → κ = 1.
+    #[test]
+    fn tdd_ricci_4_positive_cluster_interior() {
+        // All pairwise distances ≤ 0.4, g = 0.25 → 2g = 0.5 → universal neighborhood
+        let atlas = linear_atlas(&[0.0, 0.1, 0.2, 0.3, 0.4], 0.25);
+        let result = atlas.ricci(0, 4).expect("ricci(0,4) should return Some");
+        assert!(
+            result.curvature > 0.0,
+            "Expected κ > 0 for cluster interior, got κ = {}",
+            result.curvature
+        );
+    }
+
+    /// Ricci-5: W₁ = 0 when B(x) = B(y) → κ = 1.0.
+    #[test]
+    fn tdd_ricci_5_identical_neighborhoods_kappa_one() {
+        let atlas = linear_atlas(&[0.0, 0.1, 0.2, 0.3, 0.4], 0.25);
+        // Any pair: all have the same universal neighborhood (all 5 charts)
+        let r = atlas.ricci(1, 3).expect("ricci(1,3) should return Some");
+        assert!(
+            (r.w1).abs() < 1e-9,
+            "W₁ = {} for identical neighborhoods (expected 0)",
+            r.w1
+        );
+        assert!(
+            (r.curvature - 1.0).abs() < 1e-9,
+            "κ = {} for identical neighborhoods (expected 1.0)",
+            r.curvature
+        );
+    }
+
+    /// Ricci-6: distance field equals L2 of centroids.
+    #[test]
+    fn tdd_ricci_6_distance_is_l2_of_centroids() {
+        let atlas = linear_atlas(&[0.0, 0.3], 0.06);
+        let r = atlas.ricci(0, 1).expect("ricci(0,1) should return Some");
+        assert!(
+            (r.distance - 0.3).abs() < 1e-9,
+            "distance = {} expected 0.3",
+            r.distance
+        );
+    }
+
+    /// Ricci-7: unknown chart IDs return None.
+    #[test]
+    fn tdd_ricci_7_invalid_id_returns_none() {
+        let atlas = linear_atlas(&[0.0, 0.1], 0.06);
+        assert!(atlas.ricci(0, 99).is_none(), "ricci with invalid id should return None");
+        assert!(atlas.ricci(99, 0).is_none(), "ricci with invalid id should return None");
+    }
+
+    /// Ricci-8: empty atlas returns None.
+    #[test]
+    fn tdd_ricci_8_empty_atlas() {
+        let atlas = Atlas::new(vec!["x".to_string()], 0.3, 0.15);
+        assert!(atlas.ricci(0, 1).is_none());
     }
 }

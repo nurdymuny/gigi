@@ -1068,9 +1068,10 @@ GET /v1/bundles/facts/implications/token_42
 ```sql
 SECTION facts (
   id='fact_paris_capital',
-  value='Paris is the capital of France',
-  derived_from=['phrase_capital_of_france', 'phrase_paris']
-) INHERIT BRANCHES;
+  value='Paris is the capital of France'
+) DERIVED_FROM ('phrase_capital_of_france', 'phrase_paris') INHERIT BRANCHES;
+```
+> **GQL note (implementation):** `DERIVED_FROM` takes a parenthesised list `('id1', 'id2')` — GIGI's tokenizer does not have bracket tokens. The JSON REST API still accepts array syntax.
 
 WHY fact_paris_capital;
 WHY fact_paris_capital DEPTH 3;

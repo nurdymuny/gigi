@@ -564,6 +564,19 @@ pub enum Statement {
         target_id: String,
         max_depth: Option<usize>,
     },
+
+    /// DIVERGENCE FROM bundle_a TO bundle_b
+    Divergence {
+        bundle_a: String,
+        bundle_b: String,
+    },
+
+    /// RICCI bundle BETWEEN chart_a AND chart_b
+    Ricci {
+        bundle: String,
+        chart_a: u32,
+        chart_b: u32,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1049,6 +1062,8 @@ impl Parser {
             "PREDICT" => self.parse_predict(),
             "WHY" => self.parse_why(),
             "IMPLICATIONS" => self.parse_implications(),
+            "DIVERGENCE" => self.parse_divergence(),
+            "RICCI" => self.parse_ricci(),
 
             _ => Err(format!("Unknown statement: {first}")),
         }
@@ -3601,6 +3616,25 @@ impl Parser {
         };
         Ok(Statement::Implications { bundle, target_id, max_depth })
     }
+
+    /// DIVERGENCE FROM bundle_a TO bundle_b
+    fn parse_divergence(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("FROM")?;
+        let bundle_a = self.expect_word()?;
+        self.expect_keyword("TO")?;
+        let bundle_b = self.expect_word()?;
+        Ok(Statement::Divergence { bundle_a, bundle_b })
+    }
+
+    /// RICCI bundle BETWEEN chart_a AND chart_b
+    fn parse_ricci(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("BETWEEN")?;
+        let chart_a = self.expect_usize()? as u32;
+        self.expect_keyword("AND")?;
+        let chart_b = self.expect_usize()? as u32;
+        Ok(Statement::Ricci { bundle, chart_a, chart_b })
+    }
 }
 
 /// Parse a GQL statement string into a Statement AST.
@@ -5463,6 +5497,53 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 })
                 .collect();
             Ok(ExecResult::Rows(rows))
+        }
+
+        Statement::Divergence { bundle_a, bundle_b } => {
+            let store_a = engine
+                .heap_bundle(bundle_a)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle_a))?;
+            let store_b = engine
+                .heap_bundle(bundle_b)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle_b))?;
+            let rep = crate::metric::kl_divergence(store_a, store_b);
+            let mut row = crate::types::Record::new();
+            row.insert("bundle_a".into(), crate::types::Value::Text(bundle_a.clone()));
+            row.insert("bundle_b".into(), crate::types::Value::Text(bundle_b.clone()));
+            row.insert("kl_forward".into(), crate::types::Value::Float(rep.kl_forward));
+            row.insert("kl_reverse".into(), crate::types::Value::Float(rep.kl_reverse));
+            row.insert("jensen_shannon".into(), crate::types::Value::Float(rep.jensen_shannon));
+            row.insert("fields_compared".into(), crate::types::Value::Integer(rep.fields_compared as i64));
+            let per_field: String = rep
+                .per_field
+                .iter()
+                .map(|(f, v)| format!("{f}={v:.6}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            row.insert("per_field".into(), crate::types::Value::Text(per_field));
+            Ok(ExecResult::Rows(vec![row]))
+        }
+
+        Statement::Ricci { bundle, chart_a, chart_b } => {
+            let heap = engine
+                .heap_bundle(bundle)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let atlas = heap
+                .atlas
+                .as_ref()
+                .ok_or_else(|| format!("Bundle '{}' has no atlas — run AUTO_CHART first", bundle))?;
+            let result = atlas
+                .ricci(*chart_a, *chart_b)
+                .ok_or_else(|| format!("Chart id out of range (bundle has {} charts)", atlas.charts.len()))?;
+            let mut row = crate::types::Record::new();
+            row.insert("chart_a".into(), crate::types::Value::Integer(*chart_a as i64));
+            row.insert("chart_b".into(), crate::types::Value::Integer(*chart_b as i64));
+            row.insert("curvature".into(), crate::types::Value::Float(result.curvature));
+            row.insert("distance".into(), crate::types::Value::Float(result.distance));
+            row.insert("w1".into(), crate::types::Value::Float(result.w1));
+            row.insert("n_neighbors_a".into(), crate::types::Value::Integer(result.n_neighbors_a as i64));
+            row.insert("n_neighbors_b".into(), crate::types::Value::Integer(result.n_neighbors_b as i64));
+            Ok(ExecResult::Rows(vec![row]))
         }
     }
 }
@@ -7518,5 +7599,38 @@ mod tests {
         let desc = g.implications("a", None);
         assert!(desc.iter().any(|n| n.id == "b" && n.depth == 1));
         assert!(desc.iter().any(|n| n.id == "c" && n.depth == 2));
+    }
+
+    // ── DIVERGENCE + RICCI parse tests ────────────────────────────────────────
+
+    #[test]
+    fn tdd_parse_divergence() {
+        let stmt = parse("DIVERGENCE FROM bundle_a TO bundle_b").unwrap();
+        match stmt {
+            Statement::Divergence { bundle_a, bundle_b } => {
+                assert_eq!(bundle_a, "bundle_a");
+                assert_eq!(bundle_b, "bundle_b");
+            }
+            _ => panic!("Expected Divergence, got {:?}", stmt),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_ricci() {
+        let stmt = parse("RICCI embeddings BETWEEN 2 AND 5").unwrap();
+        match stmt {
+            Statement::Ricci { bundle, chart_a, chart_b } => {
+                assert_eq!(bundle, "embeddings");
+                assert_eq!(chart_a, 2);
+                assert_eq!(chart_b, 5);
+            }
+            _ => panic!("Expected Ricci, got {:?}", stmt),
+        }
+    }
+
+    #[test]
+    fn tdd_parse_ricci_chart_zero() {
+        let stmt = parse("RICCI docs BETWEEN 0 AND 1").unwrap();
+        assert!(matches!(stmt, Statement::Ricci { chart_a: 0, chart_b: 1, .. }));
     }
 }

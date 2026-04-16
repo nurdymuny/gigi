@@ -261,6 +261,172 @@ fn symmetric_eigenvalues(matrix: &[Vec<f64>], n: usize) -> Vec<f64> {
     eigenvalues
 }
 
+// ── KL Divergence (§2.5 Information Geometry × Cross-Bundle) ─────────────────
+
+/// Per-field KL divergence report between two bundles.
+///
+/// `kl_forward` = D_KL(P ‖ Q)   `kl_reverse` = D_KL(Q ‖ P)
+/// `jensen_shannon` = D_JS(P, Q) ∈ [0, ln 2] — symmetric.
+/// `per_field` = per-field forward KL contributions.
+#[derive(Debug, Clone)]
+pub struct DivergenceReport {
+    pub kl_forward: f64,
+    pub kl_reverse: f64,
+    pub jensen_shannon: f64,
+    pub per_field: Vec<(String, f64)>,
+    pub fields_compared: usize,
+}
+
+/// Optimal number of histogram bins via the Freedman–Diaconis rule.
+/// h = 2 · IQR · N^{-1/3}, bins = ⌈range / h⌉, clamped to [10, 200].
+pub fn freedman_diaconis_bins(values: &[f64]) -> usize {
+    if values.len() < 4 {
+        return 10;
+    }
+    let mut sorted = values.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let n = sorted.len();
+    let q1 = sorted[n / 4];
+    let q3 = sorted[3 * n / 4];
+    let iqr = (q3 - q1).abs();
+    if iqr < 1e-12 {
+        return 10;
+    }
+    let range = sorted[n - 1] - sorted[0];
+    let h = 2.0 * iqr * (n as f64).powf(-1.0 / 3.0);
+    ((range / h).ceil() as usize).clamp(10, 200)
+}
+
+/// Build a raw count histogram over `n_bins` equal-width bins on [min_val, max_val].
+fn build_histogram(values: &[f64], n_bins: usize, min_val: f64, max_val: f64) -> Vec<f64> {
+    let range = (max_val - min_val).max(1e-12);
+    let bin_width = range / n_bins as f64;
+    let mut hist = vec![0.0f64; n_bins];
+    for &v in values {
+        let idx = ((v - min_val) / bin_width).floor() as usize;
+        hist[idx.min(n_bins - 1)] += 1.0;
+    }
+    hist
+}
+
+/// Laplace-smoothed probability vector from raw histogram counts.
+/// p̂(b) = (n_b + α) / (N + α K)  where α = 1 and K = n_bins.
+fn smooth(hist: &[f64], n_total: usize, alpha: f64) -> Vec<f64> {
+    let k = hist.len() as f64;
+    let denom = n_total as f64 + alpha * k;
+    hist.iter().map(|&c| (c + alpha) / denom).collect()
+}
+
+/// D_KL(p ‖ q) = Σ p_i · ln(p_i / q_i).  Both p and q must be smoothed (> 0).
+fn kl_term(p: &[f64], q: &[f64]) -> f64 {
+    p.iter()
+        .zip(q)
+        .map(|(&pi, &qi)| if pi < 1e-300 { 0.0 } else { pi * (pi / qi).ln() })
+        .sum()
+}
+
+/// Compute KL and Jensen–Shannon divergence between two bundles (per-field histogram approach).
+///
+/// Only numeric fields common to both bundles are compared.
+/// Binning: Freedman–Diaconis per field, clamped to [10, 200].
+/// Smoothing: additive Laplace (α = 1).
+pub fn kl_divergence(a: &BundleStore, b: &BundleStore) -> DivergenceReport {
+    use crate::types::Value;
+
+    let stats_a = a.field_stats();
+    let stats_b = b.field_stats();
+
+    // Common numeric fields present in both stores with at least 1 record.
+    let mut common_fields: Vec<String> = stats_a
+        .keys()
+        .filter(|f| stats_b.contains_key(*f))
+        .filter(|f| stats_a[*f].count > 0 && stats_b[*f].count > 0)
+        .cloned()
+        .collect();
+    common_fields.sort(); // deterministic order
+
+    if common_fields.is_empty() {
+        return DivergenceReport {
+            kl_forward: 0.0,
+            kl_reverse: 0.0,
+            jensen_shannon: 0.0,
+            per_field: vec![],
+            fields_compared: 0,
+        };
+    }
+
+    // Single pass over each store: collect per-field values.
+    let collect = |store: &BundleStore, fields: &[String]| -> std::collections::HashMap<String, Vec<f64>> {
+        let mut map: std::collections::HashMap<String, Vec<f64>> =
+            fields.iter().map(|f| (f.clone(), Vec::new())).collect();
+        for rec in store.records() {
+            for f in fields {
+                if let Some(v) = rec.get(f) {
+                    if let Some(x) = v.as_f64() {
+                        map.get_mut(f).unwrap().push(x);
+                    }
+                }
+            }
+        }
+        map
+    };
+
+    let vals_a = collect(a, &common_fields);
+    let vals_b = collect(b, &common_fields);
+
+    let mut kl_fwd = 0.0;
+    let mut kl_rev = 0.0;
+    let mut js_total = 0.0;
+    let mut per_field = Vec::new();
+    let mut fields_compared = 0;
+
+    for field in &common_fields {
+        let va = &vals_a[field];
+        let vb = &vals_b[field];
+        if va.is_empty() || vb.is_empty() {
+            continue;
+        }
+
+        // Range from both stores combined.
+        let min_val = va.iter().chain(vb).cloned().fold(f64::INFINITY, f64::min);
+        let max_val = va.iter().chain(vb).cloned().fold(f64::NEG_INFINITY, f64::max);
+        if (max_val - min_val).abs() < 1e-12 {
+            continue; // all values identical → no divergence
+        }
+
+        let n_bins = freedman_diaconis_bins(va)
+            .max(freedman_diaconis_bins(vb))
+            .clamp(10, 200);
+
+        let hist_a = build_histogram(va, n_bins, min_val, max_val);
+        let hist_b = build_histogram(vb, n_bins, min_val, max_val);
+
+        let p = smooth(&hist_a, va.len(), 1.0);
+        let q = smooth(&hist_b, vb.len(), 1.0);
+
+        let kl_pq = kl_term(&p, &q);
+        let kl_qp = kl_term(&q, &p);
+
+        // Jensen–Shannon via midpoint distribution M = (P + Q) / 2.
+        let m: Vec<f64> = p.iter().zip(&q).map(|(pi, qi)| (pi + qi) / 2.0).collect();
+        let js = 0.5 * (kl_term(&p, &m) + kl_term(&q, &m));
+
+        kl_fwd += kl_pq;
+        kl_rev += kl_qp;
+        js_total += js;
+        per_field.push((field.clone(), kl_pq));
+        fields_compared += 1;
+    }
+
+    DivergenceReport {
+        kl_forward: kl_fwd,
+        kl_reverse: kl_rev,
+        jensen_shannon: js_total,
+        per_field,
+        fields_compared,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -493,5 +659,137 @@ mod tests {
         let eigs = symmetric_eigenvalues(&mat, 2);
         assert!((eigs[0] - 4.0).abs() < 0.1, "λ₁ = {}, expected ≈ 4", eigs[0]);
         assert!((eigs[1] - 2.0).abs() < 0.1, "λ₂ = {}, expected ≈ 2", eigs[1]);
+    }
+
+    // ── KL Divergence TDD ─────────────────────────────────────────────────────
+
+    fn make_concentrated_bundle(x_val: f64, n: usize) -> BundleStore {
+        use crate::types::*;
+        let schema = BundleSchema::new("test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x").with_range(1.0));
+        let mut store = BundleStore::new(schema);
+        for i in 0..n {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i as i64));
+            r.insert("x".into(), Value::Float(x_val));
+            store.insert(&r);
+        }
+        store
+    }
+
+    fn make_uniform_bundle(lo: f64, hi: f64, n: usize) -> BundleStore {
+        use crate::types::*;
+        let schema = BundleSchema::new("test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x").with_range(1.0));
+        let mut store = BundleStore::new(schema);
+        for i in 0..n {
+            let x = lo + (hi - lo) * (i as f64 / (n - 1).max(1) as f64);
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i as i64));
+            r.insert("x".into(), Value::Float(x));
+            store.insert(&r);
+        }
+        store
+    }
+
+    /// KL-1: D_KL(P || P) = 0 for identical distributions.
+    #[test]
+    fn tdd_kl_1_same_distribution_is_zero() {
+        let a = make_uniform_bundle(0.0, 1.0, 200);
+        let b = make_uniform_bundle(0.0, 1.0, 200);
+        let rep = kl_divergence(&a, &b);
+        assert!(rep.kl_forward.abs() < 1e-9, "D_KL(P||P) = {}", rep.kl_forward);
+        assert!(rep.jensen_shannon.abs() < 1e-9, "D_JS(P,P) = {}", rep.jensen_shannon);
+    }
+
+    /// KL-2: D_KL ≥ 0 (Gibbs inequality).
+    #[test]
+    fn tdd_kl_2_non_negative() {
+        let a = make_concentrated_bundle(0.1, 200);
+        let b = make_concentrated_bundle(0.9, 200);
+        let rep = kl_divergence(&a, &b);
+        assert!(rep.kl_forward >= 0.0, "D_KL(P||Q) = {} < 0", rep.kl_forward);
+        assert!(rep.kl_reverse >= 0.0, "D_KL(Q||P) = {} < 0", rep.kl_reverse);
+        assert!(rep.jensen_shannon >= 0.0, "D_JS = {} < 0", rep.jensen_shannon);
+    }
+
+    /// KL-3: D_JS ≤ ln(2) (upper bound on Jensen-Shannon divergence).
+    #[test]
+    fn tdd_kl_3_js_upper_bound() {
+        let a = make_concentrated_bundle(0.0, 500);
+        let b = make_concentrated_bundle(1.0, 500);
+        let rep = kl_divergence(&a, &b);
+        let ln2 = std::f64::consts::LN_2;
+        assert!(
+            rep.jensen_shannon <= ln2 + 1e-9,
+            "D_JS = {} > ln(2) = {ln2}",
+            rep.jensen_shannon
+        );
+    }
+
+    /// KL-4: D_JS is symmetric.
+    #[test]
+    fn tdd_kl_4_js_symmetry() {
+        let a = make_uniform_bundle(0.0, 0.3, 200);
+        let b = make_uniform_bundle(0.7, 1.0, 200);
+        let ab = kl_divergence(&a, &b);
+        let ba = kl_divergence(&b, &a);
+        assert!(
+            (ab.jensen_shannon - ba.jensen_shannon).abs() < 1e-9,
+            "D_JS(P,Q)={} ≠ D_JS(Q,P)={}",
+            ab.jensen_shannon,
+            ba.jensen_shannon
+        );
+    }
+
+    /// KL-5: D_KL large when distributions are well-separated.
+    #[test]
+    fn tdd_kl_5_large_when_disjoint() {
+        let a = make_concentrated_bundle(0.0, 500);
+        let b = make_concentrated_bundle(1.0, 500);
+        let rep = kl_divergence(&a, &b);
+        assert!(rep.kl_forward > 0.5, "D_KL(P||Q) = {} expected > 0.5", rep.kl_forward);
+    }
+
+    /// KL-6: per_field contributes to total KL.
+    #[test]
+    fn tdd_kl_6_per_field_sum() {
+        let a = make_uniform_bundle(0.0, 1.0, 100);
+        let b = make_uniform_bundle(0.0, 1.0, 100);
+        let rep = kl_divergence(&a, &b);
+        let sum: f64 = rep.per_field.iter().map(|(_, v)| v).sum();
+        // For identical distributions, all per-field contributions should be ≈ 0
+        assert!(sum.abs() < 1e-9, "sum of per-field KL = {sum}");
+        assert_eq!(rep.fields_compared, 1);
+    }
+
+    /// KL-7: Empty bundle returns zero divergence, no panic.
+    #[test]
+    fn tdd_kl_7_empty_bundle() {
+        use crate::types::*;
+        let schema = BundleSchema::new("empty")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x").with_range(1.0));
+        let empty = BundleStore::new(schema.clone());
+        let other = make_uniform_bundle(0.0, 1.0, 50);
+        let rep = kl_divergence(&empty, &other);
+        // No common fields with data → fields_compared = 0
+        assert_eq!(rep.kl_forward, 0.0);
+    }
+
+    /// KL-8: Freedman-Diaconis bins in [10, 200].
+    #[test]
+    fn tdd_kl_8_bins_clamped() {
+        // 3 values → fallback to 10
+        let tiny: Vec<f64> = vec![0.1, 0.5, 0.9];
+        let b = freedman_diaconis_bins(&tiny);
+        assert!(b >= 10 && b <= 200, "bins = {b}");
+
+        // Large uniform → more bins but still ≤ 200
+        let large: Vec<f64> = (0..10000).map(|i| i as f64).collect();
+        let b2 = freedman_diaconis_bins(&large);
+        assert!(b2 >= 10 && b2 <= 200, "bins = {b2}");
     }
 }

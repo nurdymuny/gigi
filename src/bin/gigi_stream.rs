@@ -1885,6 +1885,64 @@ async fn metric_tensor_report(
     }))
 }
 
+/// POST /v1/divergence
+/// Body: `{"from": "bundle_a", "to": "bundle_b"}`
+/// Returns KL and Jensen–Shannon divergence between the two bundles.
+#[derive(Deserialize)]
+struct DivergenceRequest {
+    from: String,
+    to: String,
+}
+
+async fn divergence_handler(
+    State(state): State<Arc<StreamState>>,
+    Json(req): Json<DivergenceRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store_a = engine.bundle(&req.from).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse { error: format!("Bundle '{}' not found", req.from) }),
+        )
+    })?;
+    let store_b = engine.bundle(&req.to).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse { error: format!("Bundle '{}' not found", req.to) }),
+        )
+    })?;
+
+    let rep = {
+        let heap_a = store_a.as_heap().ok_or_else(|| {
+            (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse {
+                error: format!("Bundle '{}' must be a heap bundle for divergence", req.from),
+            }))
+        })?;
+        let heap_b = store_b.as_heap().ok_or_else(|| {
+            (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse {
+                error: format!("Bundle '{}' must be a heap bundle for divergence", req.to),
+            }))
+        })?;
+        gigi::metric::kl_divergence(heap_a, heap_b)
+    };
+
+    let per_field: Vec<serde_json::Value> = rep
+        .per_field
+        .iter()
+        .map(|(f, v)| serde_json::json!({"field": f, "kl": v}))
+        .collect();
+
+    Ok(Json(serde_json::json!({
+        "from": req.from,
+        "to": req.to,
+        "kl_forward": rep.kl_forward,
+        "kl_reverse": rep.kl_reverse,
+        "jensen_shannon": rep.jensen_shannon,
+        "fields_compared": rep.fields_compared,
+        "per_field": per_field,
+    })))
+}
+
 // ── Anomaly Detection REST Handlers ───────────────────────────────────────────
 
 /// POST /v1/bundles/{name}/anomalies
@@ -5352,6 +5410,8 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         CoverGeodesic { bundle, .. } => Some(bundle.clone()),
         Why { bundle, .. } => Some(bundle.clone()),
         Implications { bundle, .. } => Some(bundle.clone()),
+        Ricci { bundle, .. } => Some(bundle.clone()),
+        // Divergence is cross-bundle; no single name
         _ => None,
     }
 }
@@ -5597,6 +5657,8 @@ async fn main() {
         .route("/v1/bundles/{name}/health", get(bundle_health))
         .route("/v1/bundles/{name}/predict", post(predict_volatility))
         .route("/v1/bundles/{name}/anomalies/field", post(field_anomalies))
+        // KL Divergence — cross-bundle information geometry
+        .route("/v1/divergence", post(divergence_handler))
         // WebSocket — per-bundle subscriptions + global dashboard
         .route("/ws", get(ws_handler))
         .route("/v1/ws/dashboard", get(ws_dashboard_handler))

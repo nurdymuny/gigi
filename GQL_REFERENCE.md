@@ -42,6 +42,7 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | ATLAS (transactions) | ✅ | BEGIN / COMMIT / ROLLBACK |
 | SHOW BUNDLES / DESCRIBE | ✅ | |
 | CURVATURE / RICCI / SPECTRAL | ✅ | |
+| DIVERGENCE FROM bundle_a TO bundle_b | ✅ | Gaussian KL + Jensen-Shannon between two bundles |
 | SPECTRAL … ON FIBER (…) MODES k | ✅ | Fiber-space Laplacian eigensolver — semantic cluster count |
 | TRANSPORT … FROM (…) TO (…) ON FIBER (…) | ✅ | Parallel transport rotation matrix between two records |
 | HOLONOMY … NEAR (…) WITHIN r ON FIBER (…) AROUND field | ✅ | Local holonomy in proximity neighbourhood |
@@ -163,7 +164,7 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | **Information Geometry** | | |
 | — | ENTROPY t | Shannon entropy of the bundle |
 | — | ENTROPY t ON f BY g | Per-group entropy (RG flow integrand) |
-| — | DIVERGENCE (c1) FROM (c2) | KL divergence between two covers |
+| — | DIVERGENCE FROM bundle_a TO bundle_b | ✅ KL + JS divergence between two bundles |
 | — | FISHER t ON f1, f2 | Fisher information metric between fields |
 | — | MUTUAL t ON f1 WITH f2 | Mutual information between fields |
 | — | CAPACITY t | C = τ/K at every base point |
@@ -173,7 +174,7 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | — | CRITICAL t ON f | Find critical points (∂K/∂f = 0) |
 | — | TEMPERATURE t | Effective temperature per neighborhood |
 | **Curvature Variants** | | |
-| — | RICCI t ON f1, f2 | Ricci curvature between field pairs |
+| — | RICCI t BETWEEN n AND m | ✅ Ricci curvature between record index n and m |
 | — | SECTIONAL t ON f1, f2 | Sectional curvature on 2-plane |
 | — | SCALAR t | Scalar curvature (trace of Ricci) |
 | — | DEVIATION t FROM p ALONG f | Geodesic deviation — how nearby sections diverge |
@@ -756,18 +757,26 @@ CURVATURE sensors ON temp, wind, humidity;                    -- multi-field + s
 CURVATURE sensors ON temp WITHIN (COVER sensors ON region = 'EU');  -- scoped
 ```
 
-### RICCI — Curvature between field pairs ✅
+### RICCI — Ricci curvature between two records ✅
+
+Computes the Ollivier-Ricci curvature between two records (by index) on the data manifold.
 
 ```sql
-RICCI sensors ON temp, humidity;
--- Ricci curvature between temperature and humidity fibers
--- Measures how correlated their variability is
--- High Ricci = when temp is volatile, humidity is too
--- Low Ricci = independent variability
+RICCI sensors BETWEEN 0 AND 1;
+-- Ricci curvature κ(0, 1) between records at index 0 and 1
+-- κ > 0 → records are closer than typical (positively curved neighborhood)
+-- κ < 0 → records are farther than typical (negatively curved)
+-- κ = 0 → flat — records are at typical geodesic distance
 
-RICCI sensors ON temp, wind BY city;
--- Per-city Ricci curvature between temp and wind
+RICCI sensor_das BETWEEN 0 AND 100;
 ```
+
+**Response fields:**
+- `bundle` — bundle name
+- `idx_a`, `idx_b` — record indices compared
+- `ricci` — Ollivier-Ricci curvature κ(x, y)
+- `wasserstein` — 1-Wasserstein distance between neighborhoods
+- `mean_dist` — mean neighbor distance used for normalization
 
 ### SECTIONAL — Curvature on 2-planes
 
@@ -1105,18 +1114,33 @@ ENTROPY sensors ON status;
 ENTROPY sensors ON temp BY city;
 ```
 
-### DIVERGENCE — KL divergence between covers
+### DIVERGENCE — KL divergence between bundles ✅
+
+Computes Gaussian KL divergence and Jensen–Shannon divergence between two bundles using lazy-cached per-field sufficient statistics. O(1) per query after the first call (which warms the stats cache).
 
 ```sql
-DIVERGENCE (COVER sensors ON region = 'EU')
-  FROM (COVER sensors ON region = 'AS')
-  ON temp;
--- D_KL = 0 → identical distributions. D_KL >> 0 → very different.
+DIVERGENCE FROM sensor_das TO sensor_sonar;
+-- Compare numeric field distributions between two bundles
+-- Returns kl_forward, kl_reverse, jensen_shannon, fields_compared, per_field
 
-DIVERGENCE (COVER sensors ON city = 'Moscow')
-  FROM (COVER sensors ON city = 'Singapore')
-  ON temp, humidity, wind;
+DIVERGENCE FROM chembl_activities TO chembl_assays;
+-- Cross-domain divergence — fields_compared = 0 if no shared numeric fields
+
+DIVERGENCE FROM sensor_das TO sensor_das;
+-- Same bundle → kl_forward = 0.0  (sanity check)
 ```
+
+**Response fields:**
+- `kl_forward` — KL(A‖B): how surprising B's distribution is under A's model
+- `kl_reverse` — KL(B‖A): symmetric direction
+- `jensen_shannon` — JS divergence (symmetric, bounded [0, ln 2])
+- `fields_compared` — number of shared numeric fields used in computation
+- `per_field` — per-field KL contribution
+
+**Math:** Uses Gaussian KL from sufficient statistics (μ, σ²) cached per field:
+$$KL(P\|Q) = \frac{1}{2}\left[\frac{\sigma_P^2}{\sigma_Q^2} + \frac{(\mu_P - \mu_Q)^2}{\sigma_Q^2} - 1 + \ln\frac{\sigma_Q^2}{\sigma_P^2}\right]$$
+
+**Also available via REST:** `POST /v1/divergence` — see API reference.
 
 ### FISHER — Fisher information metric
 

@@ -1207,6 +1207,55 @@ Bundle health snapshot: record count, global and per-record curvature statistics
 
 ---
 
+### `POST /v1/divergence`
+
+Compute KL divergence and Jensen–Shannon divergence between two bundles across all shared numeric fields.
+
+Uses Gaussian KL from per-field sufficient statistics (μ, σ²) cached lazily — O(1) per request after the first call warms the stats cache.
+
+**Body:**
+```json
+{
+  "from": "sensor_das",
+  "to":   "sensor_sonar"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `from` | `string` | Source bundle name |
+| `to` | `string` | Target bundle name |
+
+**Response:**
+```json
+{
+  "from": "sensor_das",
+  "to": "sensor_sonar",
+  "kl_forward": 0.3944,
+  "kl_reverse": 0.3762,
+  "jensen_shannon": 0.0647,
+  "fields_compared": 1,
+  "per_field": [
+    { "field": "timestamp_us", "kl": 0.3944 }
+  ]
+}
+```
+
+| Field | Description |
+|---|---|
+| `kl_forward` | KL(from ‖ to) — how surprising `to`'s distribution is under `from`'s model |
+| `kl_reverse` | KL(to ‖ from) — symmetric direction |
+| `jensen_shannon` | JS divergence: symmetric, bounded [0, ln 2] ≈ [0, 0.693] |
+| `fields_compared` | Number of shared numeric fields used (0 if schemas have no numeric overlap) |
+| `per_field` | Per-field KL contribution |
+
+**Notes:**
+- Returns `fields_compared: 0` if the two bundles share no numeric field names.
+- Same-bundle divergence returns `kl_forward: 0.0` (correct — identical distribution).
+- Also available via GQL: `DIVERGENCE FROM bundle_a TO bundle_b`
+
+---
+
 ### `POST /v1/bundles/{name}/predict`
 
 Predict field volatility by group. Groups records by `group_by` field, computes mean, standard deviation, and relative volatility index for `field` within each group.

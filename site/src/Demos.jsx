@@ -1082,6 +1082,121 @@ function StreamingDemo() {
 }
 
 // ─────────────────────────────────────────
+// Divergence Demo
+// ─────────────────────────────────────────
+const BUNDLE_PAIRS = [
+  { a: "sensor_das", b: "sensor_sonar", label: "sensor_das → sensor_sonar" },
+  { a: "sensor_das", b: "sensor_das",   label: "sensor_das → sensor_das (same)" },
+  { a: "chembl_activities", b: "chembl_assays", label: "chembl_activities → chembl_assays" },
+  { a: "chembl_activities", b: "chembl_activities", label: "chembl_activities → itself (4.9M rows)" },
+];
+
+function DivergenceDemo() {
+  const [pairIdx, setPairIdx] = useState(0);
+  const [result, setResult] = useState(null);
+  const [ms, setMs] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function run() {
+    setRunning(true);
+    setResult(null);
+    setError(null);
+    const { a, b } = BUNDLE_PAIRS[pairIdx];
+    const t0 = performance.now();
+    try {
+      const d = await rp("/v1/divergence", { from: a, to: b });
+      setMs(Math.round(performance.now() - t0));
+      setResult(d);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  const pair = BUNDLE_PAIRS[pairIdx];
+  const jsNorm = result ? Math.min(result.jensen_shannon / 0.693, 1) : 0;
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <select
+          value={pairIdx}
+          onChange={e => { setPairIdx(Number(e.target.value)); setResult(null); }}
+          style={{
+            background: "#0E0E18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6,
+            color: "#C0D0E0", padding: "8px 12px", fontSize: 12, cursor: "pointer",
+          }}
+        >
+          {BUNDLE_PAIRS.map((p, i) => <option key={i} value={i}>{p.label}</option>)}
+        </select>
+        <button
+          onClick={run}
+          disabled={running}
+          style={{
+            background: running ? "#1a2a1a" : "rgba(64,232,160,0.08)",
+            border: `1px solid ${G}44`, borderRadius: 6, color: G,
+            padding: "8px 20px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+          }}
+        >
+          {running ? "Running…" : "Run DIVERGENCE"}
+        </button>
+        {ms !== null && <span style={{ fontSize: 11, color: "#506070", fontFamily: "monospace" }}>{ms}ms</span>}
+      </div>
+
+      <DemoLog lines={result ? [
+        { text: `DIVERGENCE FROM ${pair.a} TO ${pair.b}`, color: G },
+        { text: `→ fields_compared: ${result.fields_compared}`, color: result.fields_compared > 0 ? "#E8A830" : "#607080" },
+        { text: `→ kl_forward:      ${result.kl_forward.toFixed(4)}  nats`, color: "#C0D0E0" },
+        { text: `→ kl_reverse:      ${result.kl_reverse.toFixed(4)}  nats`, color: "#C0D0E0" },
+        { text: `→ jensen_shannon:  ${result.jensen_shannon.toFixed(4)}  (max 0.693)`, color: "#C0D0E0" },
+        ...(result.per_field ? result.per_field.map(pf =>
+          ({ text: `   ${pf.field}: kl = ${pf.kl.toFixed(4)}`, color: "#506070" })
+        ) : []),
+      ] : error ? [
+        { text: error, color: "#FF4040" },
+      ] : [
+        { text: "Select a bundle pair and click Run.", color: "#404050" },
+      ]} />
+
+      {result && result.fields_compared > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#506070", marginBottom: 8 }}>
+            JENSEN–SHANNON DIVERGENCE (0 = identical, 0.693 = maximally different)
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, height: 28, overflow: "hidden", position: "relative" }}>
+            <div style={{
+              height: "100%", borderRadius: 6, transition: "width 0.5s ease",
+              width: `${jsNorm * 100}%`,
+              background: jsNorm < 0.1 ? "#40E8A0" : jsNorm < 0.4 ? "#E8A830" : "#FF6040",
+            }} />
+            <span style={{
+              position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+              fontSize: 11, fontFamily: "monospace", color: "#C0D0E0",
+            }}>
+              {result.jensen_shannon.toFixed(4)} / 0.693
+            </span>
+          </div>
+        </div>
+      )}
+
+      {result && result.fields_compared === 0 && (
+        <div style={{ padding: "12px 16px", background: "rgba(255,255,255,0.02)", borderRadius: 8, fontSize: 12, color: "#506070" }}>
+          No shared numeric fields between these bundles — different schemas, zero overlap.
+        </div>
+      )}
+
+      <GqlBox queries={[
+        `GQL:  DIVERGENCE FROM ${pair.a} TO ${pair.b}`,
+        `REST: POST /v1/divergence  { "from": "${pair.a}", "to": "${pair.b}" }`,
+        `Math: Gaussian KL from cached sufficient stats (μ, σ²) — O(1) after cache warm`,
+      ]} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────
 // Main LiveDemosPage
 // ─────────────────────────────────────────
 const DEMOS = [
@@ -1117,6 +1232,14 @@ const DEMOS = [
     tagColor: G,
     desc: "5 IoT sensors stream readings every 400ms. WebSocket pushes curvature updates live. Inject anomalies to spike K instantly.",
   },
+  {
+    id: "diverge",
+    icon: "⚡",
+    title: "Distribution Divergence",
+    tag: "GAUSSIAN KL  O(1) STATS",
+    tagColor: "#40E8A0",
+    desc: "KL + Jensen-Shannon divergence between two bundles. Gaussian KL from cached sufficient statistics — O(1) per query regardless of bundle size.",
+  },
 ];
 
 export default function LiveDemosPage() {
@@ -1129,12 +1252,12 @@ export default function LiveDemosPage() {
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", color: "#E8A830", marginBottom: 6, fontFamily: "monospace" }}>LIVE DEMO GALLERY</div>
         <h1 style={{ fontSize: 28, fontWeight: 900, color: "#E0E8F0", margin: "0 0 8px", letterSpacing: "-0.02em" }}>Real data. Real GIGI. Live results.</h1>
         <p style={{ fontSize: 13.5, color: "#607080", margin: 0, maxWidth: 660, lineHeight: 1.65 }}>
-          Four production demos hitting the live GIGI Rust engine at <strong style={{ color: G }}>gigi-stream.fly.dev</strong>. Real data, real-time WebSocket, live curvature. Every chart is GIGI query output — no pre-computed data.
+          Five production demos hitting the live GIGI Rust engine at <strong style={{ color: G }}>gigi-stream.fly.dev</strong>. Real data, real-time WebSocket, live curvature. Every chart is GIGI query output — no pre-computed data.
         </p>
       </div>
 
       {/* Demo selector cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12, marginBottom: 28 }}>
         {DEMOS.map(d => (
           <div key={d.id} onClick={() => setActive(d.id)} style={{
             background: active === d.id ? "rgba(64,232,160,0.04)" : "rgba(255,255,255,0.015)",
@@ -1157,6 +1280,7 @@ export default function LiveDemosPage() {
       {active === "music" && <MusicDNADemo />}
       {active === "quake" && <EarthquakeDemo />}
       {active === "stream" && <StreamingDemo />}
+      {active === "diverge" && <DivergenceDemo />}
 
       {/* Footer note */}
       <div style={{ marginTop: 40, padding: "16px 0", borderTop: "1px solid rgba(255,255,255,0.03)", textAlign: "center", fontSize: 10.5, color: "#303040", fontFamily: "monospace" }}>

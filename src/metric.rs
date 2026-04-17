@@ -435,12 +435,14 @@ pub fn kl_divergence_ref(
 ) -> DivergenceReport {
     // Collect all numeric field values for a list of field names from a BundleRef.
     // Returns only fields where at least one numeric value was found.
+    // Cap at 100K records per bundle to keep latency bounded on large datasets.
+    const MAX_SAMPLE: usize = 100_000;
     let collect_numeric = |store: &crate::mmap_bundle::BundleRef<'_>,
                            candidates: &[String]|
      -> std::collections::HashMap<String, Vec<f64>> {
         let mut map: std::collections::HashMap<String, Vec<f64>> =
             candidates.iter().map(|f| (f.clone(), Vec::new())).collect();
-        for rec in store.records() {
+        for rec in store.records().take(MAX_SAMPLE) {
             for f in candidates {
                 if let Some(v) = rec.get(f) {
                     if let Some(x) = v.as_f64() {

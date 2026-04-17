@@ -695,7 +695,7 @@ impl FieldStats {
     }
 
     /// Merge another FieldStats into this one (for batch insert).
-    fn merge(&mut self, other: &FieldStats) {
+    pub fn merge(&mut self, other: &FieldStats) {
         if other.count == 0 {
             return;
         }

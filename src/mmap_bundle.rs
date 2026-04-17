@@ -219,6 +219,9 @@ pub struct OverlayBundle {
     tombstones: RwLock<HashSet<String>>,
     /// Schema cached outside the RwLock for lock-free access.
     bundle_schema: BundleSchema,
+    /// Lazily-computed per-field statistics for the mmap base.
+    /// `None` means not yet computed; populated on first access of `field_stats()`.
+    base_stats: RwLock<Option<std::collections::HashMap<String, crate::bundle::FieldStats>>>,
 }
 
 impl OverlayBundle {
@@ -229,6 +232,7 @@ impl OverlayBundle {
             overlay: RwLock::new(BundleStore::new(schema.clone())),
             tombstones: RwLock::new(HashSet::new()),
             bundle_schema: schema,
+            base_stats: RwLock::new(None),
         }
     }
 
@@ -468,13 +472,55 @@ impl OverlayBundle {
         self.overlay.write().map_or(0, |mut s| s.next_auto_id())
     }
 
-    /// Per-field statistics (from overlay only — base has no running stats).
+    /// Per-field statistics: base stats (lazily computed once from mmap) merged
+    /// with overlay stats. O(1) after the first call; first call is O(N) in base size.
     pub fn field_stats(&self) -> std::collections::HashMap<String, FieldStats> {
-        self.overlay
+        // Populate base_stats on first access (double-checked pattern).
+        {
+            let read = self.base_stats.read().unwrap();
+            if read.is_none() {
+                drop(read);
+                let mut write = self.base_stats.write().unwrap();
+                if write.is_none() {
+                    let mut stats: std::collections::HashMap<String, FieldStats> =
+                        std::collections::HashMap::new();
+                    for json_val in self.base.scan() {
+                        if let serde_json::Value::Object(map) = json_val {
+                            for (k, v) in &map {
+                                let fv = match v {
+                                    serde_json::Value::Number(n) => n.as_f64(),
+                                    _ => None,
+                                };
+                                if let Some(x) = fv {
+                                    stats.entry(k.clone()).or_default().update(x);
+                                }
+                            }
+                        }
+                    }
+                    *write = Some(stats);
+                }
+            }
+        }
+        // Merge base stats with overlay stats.
+        let base = self
+            .base_stats
+            .read()
+            .unwrap()
+            .as_ref()
+            .cloned()
+            .unwrap_or_default();
+        let overlay = self
+            .overlay
             .read()
             .map_or(std::collections::HashMap::new(), |s| {
                 s.field_stats().clone()
-            })
+            });
+        // Return base merged with overlay (overlay values take precedence by summing counts).
+        let mut merged = base;
+        for (k, ov) in overlay {
+            merged.entry(k).or_default().merge(&ov);
+        }
+        merged
     }
 
     // ── Merged Query Methods ───────────────────────────────────────────────

@@ -427,81 +427,35 @@ pub fn kl_divergence(a: &BundleStore, b: &BundleStore) -> DivergenceReport {
     }
 }
 
-/// Same as [`kl_divergence`] but accepts the unified [`BundleRef`] type so it works
-/// with both heap and mmap (overlay) bundles.
+/// Same as [`kl_divergence`] but accepts the unified [`BundleRef`] type.
+///
+/// Uses Gaussian KL divergence computed from per-field sufficient statistics
+/// (μ, σ²) cached in the bundle. Field discovery and computation are both O(1)
+/// w.r.t. record count after the first access (which warms up the stats cache).
+///
+/// KL(P‖Q) for P ~ N(μ_P, σ_P²), Q ~ N(μ_Q, σ_Q²):
+///   KL = ½ [ σ_P²/σ_Q² + (μ_P−μ_Q)²/σ_Q² − 1 + ln(σ_Q²/σ_P²) ]
+///
+/// Jensen–Shannon via moment-matched mixture M = ½P + ½Q:
+///   μ_M = (μ_P + μ_Q) / 2
+///   σ_M² = (σ_P² + σ_Q²) / 2 + (μ_P − μ_Q)² / 4
+///   JS = ½ KL(P‖M) + ½ KL(Q‖M)
 pub fn kl_divergence_ref(
     a: &crate::mmap_bundle::BundleRef<'_>,
     b: &crate::mmap_bundle::BundleRef<'_>,
 ) -> DivergenceReport {
-    // Collect all numeric field values for a list of field names from a BundleRef.
-    // Returns only fields where at least one numeric value was found.
-    // Cap at 100K records per bundle to keep latency bounded on large datasets.
-    const MAX_SAMPLE: usize = 100_000;
-    let collect_numeric = |store: &crate::mmap_bundle::BundleRef<'_>,
-                           candidates: &[String]|
-     -> std::collections::HashMap<String, Vec<f64>> {
-        let mut map: std::collections::HashMap<String, Vec<f64>> =
-            candidates.iter().map(|f| (f.clone(), Vec::new())).collect();
-        for rec in store.records().take(MAX_SAMPLE) {
-            for f in candidates {
-                if let Some(v) = rec.get(f) {
-                    if let Some(x) = v.as_f64() {
-                        map.get_mut(f).unwrap().push(x);
-                    }
-                }
-            }
-        }
-        // Keep only fields with actual numeric data.
-        map.retain(|_, vs| !vs.is_empty());
-        map
-    };
+    let stats_a = a.field_stats();
+    let stats_b = b.field_stats();
 
-    // Determine candidate field names.
-    // Prefer field_stats (heap bundles maintain this); fall back to schema field_names
-    // for mmap/overlay bundles where field_stats is not populated.
-    let candidate_fields_a: Vec<String> = {
-        let stats = a.field_stats();
-        if !stats.is_empty() {
-            stats.into_keys().collect()
-        } else {
-            a.field_names()
-        }
-    };
-    let candidate_fields_b: Vec<String> = {
-        let stats = b.field_stats();
-        if !stats.is_empty() {
-            stats.into_keys().collect()
-        } else {
-            b.field_names()
-        }
-    };
-
-    // Intersect candidate field names from both bundles.
-    let b_set: std::collections::HashSet<_> = candidate_fields_b.iter().collect();
-    let mut common_candidates: Vec<String> = candidate_fields_a
-        .iter()
-        .filter(|f| b_set.contains(f))
+    // Common fields with at least 2 observations in each bundle.
+    let mut common_fields: Vec<String> = stats_a
+        .keys()
+        .filter(|f| {
+            stats_b
+                .get(*f)
+                .map_or(false, |sb| sb.count >= 2 && stats_a[*f].count >= 2)
+        })
         .cloned()
-        .collect();
-    common_candidates.sort();
-
-    if common_candidates.is_empty() {
-        return DivergenceReport {
-            kl_forward: 0.0,
-            kl_reverse: 0.0,
-            jensen_shannon: 0.0,
-            per_field: vec![],
-            fields_compared: 0,
-        };
-    }
-
-    let vals_a = collect_numeric(a, &common_candidates);
-    let vals_b = collect_numeric(b, &common_candidates);
-
-    // Only compare fields with numeric data in BOTH bundles.
-    let mut common_fields: Vec<String> = common_candidates
-        .into_iter()
-        .filter(|f| vals_a.contains_key(f) && vals_b.contains_key(f))
         .collect();
     common_fields.sort();
 
@@ -522,28 +476,36 @@ pub fn kl_divergence_ref(
     let mut fields_compared = 0;
 
     for field in &common_fields {
-        let va = &vals_a[field];
-        let vb = &vals_b[field];
-        let min_val = va.iter().chain(vb).cloned().fold(f64::INFINITY, f64::min);
-        let max_val = va.iter().chain(vb).cloned().fold(f64::NEG_INFINITY, f64::max);
-        if (max_val - min_val).abs() < 1e-12 {
-            continue;
-        }
-        let n_bins = freedman_diaconis_bins(va)
-            .max(freedman_diaconis_bins(vb))
-            .clamp(10, 200);
-        let hist_a = build_histogram(va, n_bins, min_val, max_val);
-        let hist_b = build_histogram(vb, n_bins, min_val, max_val);
-        let p = smooth(&hist_a, va.len(), 1.0);
-        let q_dist = smooth(&hist_b, vb.len(), 1.0);
-        let kl_pq = kl_term(&p, &q_dist);
-        let kl_qp = kl_term(&q_dist, &p);
-        let m: Vec<f64> = p.iter().zip(&q_dist).map(|(pi, qi)| (pi + qi) / 2.0).collect();
-        let js = 0.5 * (kl_term(&p, &m) + kl_term(&q_dist, &m));
-        kl_fwd += kl_pq;
-        kl_rev += kl_qp;
+        let sa = &stats_a[field];
+        let sb = &stats_b[field];
+
+        let mu_a = sa.sum / sa.count as f64;
+        let mu_b = sb.sum / sb.count as f64;
+        let var_a = (sa.sum_sq / sa.count as f64 - mu_a * mu_a).max(1e-12);
+        let var_b = (sb.sum_sq / sb.count as f64 - mu_b * mu_b).max(1e-12);
+
+        // KL(a‖b) for Gaussian
+        let kl_ab = 0.5 * (var_a / var_b + (mu_a - mu_b).powi(2) / var_b - 1.0
+            + (var_b / var_a).ln());
+        let kl_ba = 0.5 * (var_b / var_a + (mu_b - mu_a).powi(2) / var_a - 1.0
+            + (var_a / var_b).ln());
+
+        // Moment-matched mixture M = ½P + ½Q
+        let mu_m = (mu_a + mu_b) / 2.0;
+        let var_m = (var_a + var_b) / 2.0 + (mu_a - mu_b).powi(2) / 4.0;
+        let kl_am = 0.5 * (var_a / var_m + (mu_a - mu_m).powi(2) / var_m - 1.0
+            + (var_m / var_a).ln());
+        let kl_bm = 0.5 * (var_b / var_m + (mu_b - mu_m).powi(2) / var_m - 1.0
+            + (var_m / var_b).ln());
+        let js = (0.5 * (kl_am + kl_bm)).max(0.0);
+
+        let kl_ab = kl_ab.max(0.0);
+        let kl_ba = kl_ba.max(0.0);
+
+        kl_fwd += kl_ab;
+        kl_rev += kl_ba;
         js_total += js;
-        per_field.push((field.clone(), kl_pq));
+        per_field.push((field.clone(), kl_ab));
         fields_compared += 1;
     }
 

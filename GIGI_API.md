@@ -1459,6 +1459,239 @@ Returns `400` with `{ "error": "..." }` on parse errors.
 
 ---
 
+## Observability
+
+GIGI emits structured JSON logs to stdout and exposes a `/v1/metrics` endpoint. Every
+query event includes a **`geometric` block** — KL divergence, Jensen-Shannon distance,
+and the number of fields compared — making GIGI the only database where query analytics
+are grounded in information geometry.
+
+---
+
+### `GET /v1/metrics`
+
+Returns an atomic snapshot of instance health and query statistics. No authentication
+required (safe to poll from dashboards).
+
+**Response:**
+```json
+{
+  "instance": "gigi-stream",
+  "version": "0.1.0",
+  "uptime_secs": 3721,
+  "bundles": 12,
+  "total_records": 2480000,
+  "queries": {
+    "total": 847,
+    "errors": 3,
+    "slow": 11,
+    "by_type": {
+      "SELECT": 680,
+      "SHOW_BUNDLES": 42,
+      "DIVERGENCE": 18,
+      "CREATE_BUNDLE": 9,
+      "DROP_BUNDLE": 4,
+      "OTHER": 91,
+      "UNKNOWN": 3
+    }
+  },
+  "latency_us": {
+    "p50": 38,
+    "p95": 214,
+    "p99": 890
+  },
+  "ingest": {
+    "records_total": 2480000,
+    "bytes_total": 187432960
+  },
+  "anomalies_total": 7,
+  "connections": {
+    "http_total": 1024,
+    "ws_total": 38
+  }
+}
+```
+
+**Field reference:**
+
+| Field | Description |
+|---|---|
+| `uptime_secs` | Seconds since process start |
+| `bundles` | Number of live bundles in the store |
+| `total_records` | Sum of all records across all bundles |
+| `queries.total` | Cumulative query count since startup |
+| `queries.errors` | Queries that returned a 4xx/5xx error |
+| `queries.slow` | Queries that exceeded the slow threshold (default 100 ms) |
+| `queries.by_type` | Breakdown by GQL statement type (see below) |
+| `latency_us.p50/p95/p99` | Latency percentiles in microseconds, rolling window of last 4 096 queries |
+| `ingest.records_total` | Total records ingested via `POST /v1/bundles/{name}/insert` |
+| `ingest.bytes_total` | Total DHOOM bytes ingested |
+| `anomalies_total` | Total anomaly events detected since startup |
+| `connections.http_total` | Cumulative HTTP requests handled |
+| `connections.ws_total` | Cumulative WebSocket connections opened |
+
+**`by_type` keys:**
+
+| Key | Triggered by |
+|---|---|
+| `SELECT` | `SELECT`, `COVER`, `SECTION`, `FILTER`, `CURVATURE`, `SPECTRAL`, `RICCI`, and all analytics GQL statements |
+| `SHOW_BUNDLES` | `SHOW BUNDLES` |
+| `DIVERGENCE` | `DIVERGENCE FROM … TO …` |
+| `CREATE_BUNDLE` | `CREATE BUNDLE …` |
+| `DROP_BUNDLE` | `COLLAPSE …` |
+| `OTHER` | `ATLAS BEGIN/COMMIT/ROLLBACK`, v2.1 statements, unknown bundle name |
+| `UNKNOWN` | Parse errors — query could not be classified (always also counted in `errors`) |
+
+**Prometheus format:** Pass `Accept: text/plain` to receive the same metrics in
+`# HELP / # TYPE / metric{labels} value` Prometheus exposition format.
+
+---
+
+### Structured Log Events
+
+GIGI writes newline-delimited JSON (NDJSON) to stdout. Each line is a single log event.
+Collect with your preferred log shipper (Fluentd, Vector, Datadog Agent, etc.).
+
+**Common envelope fields:**
+
+| Field | Description |
+|---|---|
+| `ts` | ISO 8601 timestamp with millisecond precision |
+| `level` | `INFO`, `WARN`, `ERROR`, `DEBUG` |
+| `category` | `query`, `ingest`, `anomaly`, `system`, `security` |
+| `event` | Event type string (see below) |
+| `request_id` | 24-hex-char unique request identifier |
+| `duration_us` | Operation duration in microseconds |
+
+---
+
+#### `query.complete`
+
+Emitted after every successfully executed GQL statement.
+
+```json
+{
+  "ts": "2026-04-12T14:23:01.847Z",
+  "level": "INFO",
+  "category": "query",
+  "event": "query.complete",
+  "request_id": "a3f7c2d891b04e56af120934",
+  "query_type": "SELECT",
+  "bundle": "sensor_data",
+  "rows_returned": 142,
+  "duration_us": 38,
+  "geometric": {
+    "kl_forward": 0.00412,
+    "kl_reverse": 0.00389,
+    "jensen_shannon": 0.00401,
+    "fields_compared": 6
+  }
+}
+```
+
+> **The `geometric` block is GIGI's exclusive differentiator.** No other database logs
+> the information-geometric distance between the query predicate and the matched records
+> as first-class structured fields. `kl_forward` and `kl_reverse` are the Kullback-Leibler
+> divergences in each direction; `jensen_shannon` is the symmetric distance.
+> High `jensen_shannon` on repeated queries signals distribution drift.
+
+---
+
+#### `query.error`
+
+```json
+{
+  "ts": "2026-04-12T14:23:05.112Z",
+  "level": "ERROR",
+  "category": "query",
+  "event": "query.error",
+  "request_id": "b9e1234567890abcdef12345",
+  "query_type": "UNKNOWN",
+  "error": "parse error: unexpected token 'FRON' at position 12",
+  "duration_us": 4
+}
+```
+
+---
+
+#### `query.slow`
+
+Emitted in addition to `query.complete` when duration exceeds the slow threshold.
+
+```json
+{
+  "ts": "2026-04-12T14:24:00.003Z",
+  "level": "WARN",
+  "category": "query",
+  "event": "query.slow",
+  "request_id": "cc4400112233445566778899",
+  "query_type": "SELECT",
+  "bundle": "large_dataset",
+  "duration_us": 183200,
+  "threshold_us": 100000
+}
+```
+
+---
+
+#### `ingest.complete`
+
+```json
+{
+  "ts": "2026-04-12T14:25:00.000Z",
+  "level": "INFO",
+  "category": "ingest",
+  "event": "ingest.complete",
+  "request_id": "dd5500112233445566778899",
+  "bundle": "sensor_data",
+  "records_inserted": 5000,
+  "bytes_received": 384000,
+  "duration_us": 12400,
+  "k_delta": 0.00031
+}
+```
+
+> `k_delta` is the change in scalar curvature K caused by the ingested batch. A large
+> `k_delta` means the new data significantly altered the statistical geometry of the bundle —
+> a useful early-warning signal for data quality issues or distribution shift.
+
+---
+
+#### `anomaly.detected`
+
+```json
+{
+  "ts": "2026-04-12T14:26:00.000Z",
+  "level": "WARN",
+  "category": "anomaly",
+  "event": "anomaly.detected",
+  "bundle": "financial_txns",
+  "field": "amount",
+  "severity": "high",
+  "score": 4.72,
+  "record_id": "txn_00019234"
+}
+```
+
+---
+
+#### `system.startup`
+
+```json
+{
+  "ts": "2026-04-12T14:00:00.000Z",
+  "level": "INFO",
+  "category": "system",
+  "event": "system.startup",
+  "version": "0.1.0",
+  "instance": "gigi-stream",
+  "pid": 1,
+  "log_level": "INFO"
+}
+```
+
+---
+
 ## Admin
 
 ---

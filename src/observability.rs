@@ -82,6 +82,9 @@ pub struct GeometricFields {
 pub struct LogEvent {
     /// ISO-8601 UTC timestamp with microsecond precision.
     pub ts:       String,
+    /// Epoch microseconds — skipped from JSON output, used by Phase 2 bundle inserts.
+    #[serde(skip)]
+    pub ts_us:    u64,
     pub level:    LogLevel,
     pub category: LogCategory,
     /// Dot-namespaced event name, e.g. "query.complete".
@@ -104,8 +107,13 @@ impl LogEvent {
         event:    &'static str,
         instance: &str,
     ) -> Self {
+        let ts_us = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_micros() as u64;
         Self {
             ts:          now_iso8601(),
+            ts_us,
             level,
             category,
             event,
@@ -311,8 +319,23 @@ impl Logger {
         let (tx, rx) = mpsc::unbounded_channel();
         let cfg = Arc::new(RwLock::new(config));
         let logger = Logger { tx, config: cfg.clone(), instance: instance.into() };
-        let ingester = LogIngester { rx, config: cfg };
+        let ingester = LogIngester { rx, config: cfg, bundle_tx: None };
         (logger, ingester)
+    }
+
+    /// Like `new`, but also returns a receiver for log events to be written into
+    /// `_gigi_*` system bundles. Wire the receiver to `log_bundle_writer` in
+    /// gigi_stream.rs after `Arc<StreamState>` is constructed.
+    pub fn new_with_bundle_channel(
+        config:   LogConfig,
+        instance: impl Into<String>,
+    ) -> (Self, LogIngester, UnboundedReceiver<LogEvent>) {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let (btx, brx) = mpsc::unbounded_channel();
+        let cfg = Arc::new(RwLock::new(config));
+        let logger = Logger { tx, config: cfg.clone(), instance: instance.into() };
+        let ingester = LogIngester { rx, config: cfg, bundle_tx: Some(btx) };
+        (logger, ingester, brx)
     }
 
     /// Emit a log event. Non-blocking. Drops event silently if category is disabled
@@ -676,8 +699,10 @@ impl Logger {
 /// Async log consumer. Receives events from the Logger channel and writes them
 /// to configured destinations. Spawn as a dedicated tokio task.
 pub struct LogIngester {
-    rx:     UnboundedReceiver<LogEvent>,
-    config: Arc<RwLock<LogConfig>>,
+    rx:        UnboundedReceiver<LogEvent>,
+    config:    Arc<RwLock<LogConfig>>,
+    /// Optional forwarding channel for Phase 2 bundle inserts.
+    bundle_tx: Option<UnboundedSender<LogEvent>>,
 }
 
 impl LogIngester {
@@ -690,7 +715,10 @@ impl LogIngester {
             if stdout_enabled {
                 println!("{}", event.serialize_json());
             }
-            // Phase 2: write to _gigi_* DHOOM bundles via Engine reference.
+            // Phase 2: forward to log_bundle_writer task in gigi_stream.
+            if let Some(ref btx) = self.bundle_tx {
+                let _ = btx.send(event);
+            }
         }
     }
 }

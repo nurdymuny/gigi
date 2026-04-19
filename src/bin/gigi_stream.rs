@@ -40,7 +40,8 @@ use gigi::curvature;
 use gigi::dhoom;
 use gigi::engine::Engine;
 use gigi::join;
-use gigi::observability::{GeometricFields, LogConfig, Logger, Metrics, new_request_id};
+use gigi::observability::{GeometricFields, LogCategory, LogConfig, LogEvent, Logger, Metrics, new_request_id};
+use tokio::sync::mpsc::UnboundedReceiver;
 use gigi::spectral;
 use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 
@@ -132,7 +133,7 @@ impl StreamState {
         let data_dir = std::env::var("GIGI_DATA_DIR").unwrap_or_else(|_| "./gigi_data".to_string());
         let data_path = std::path::PathBuf::from(&data_dir);
 
-        let engine = match Engine::open_empty(&data_path) {
+        let mut engine = match Engine::open_empty(&data_path) {
             Ok(e) => e,
             Err(e) => {
                 eprintln!(
@@ -143,6 +144,7 @@ impl StreamState {
             }
         };
 
+        init_system_bundles(&mut engine);
         eprintln!("  WAL persistence: {} ({})", data_path.display(), data_dir);
 
         StreamState {
@@ -1133,6 +1135,12 @@ async fn drop_bundle(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    if name.starts_with("_gigi_") {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse { error: format!("'{}' is a system bundle and is read-only", name) }),
+        ));
+    }
     let mut engine = state.engine.write().unwrap();
     match engine.drop_bundle(&name) {
         Ok(true) => Ok(Json(
@@ -1156,6 +1164,12 @@ async fn insert_records(
     Path(name): Path<String>,
     Json(req): Json<InsertRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    if name.starts_with("_gigi_") {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse { error: format!("'{}' is a system bundle and is read-only", name) }),
+        ));
+    }
     let mut engine = state.engine.write().unwrap();
 
     // Get schema info (borrow released after block)
@@ -5794,6 +5808,174 @@ fn tigris_push(data_dir: &std::path::Path, bucket: &str) {
     aws_s3_sync(&src, &dest);
 }
 
+// ── Phase 2 Observability: System Bundle Writer ───────────────────────────────
+
+/// Create the internal `_gigi_*` system bundles if they don't already exist.
+/// Called once at startup before queries are served.
+fn init_system_bundles(engine: &mut Engine) {
+    let bundles: &[(&str, &[(&str, bool)])] = &[
+        // (bundle_name, &[(field_name, is_numeric)])
+        ("_gigi_query_log", &[
+            ("ts_us",            true),
+            ("duration_us",      true),
+            ("records_returned", true),
+            ("records_scanned",  true),
+            ("kl_forward",       true),
+            ("kl_reverse",       true),
+            ("jensen_shannon",   true),
+            ("event",            false),
+            ("statement_type",   false),
+            ("bundle",           false),
+            ("slow",             false),
+            ("error_msg",        false),
+            ("request_id",       false),
+        ]),
+        ("_gigi_slow_log", &[
+            ("ts_us",            true),
+            ("duration_us",      true),
+            ("records_returned", true),
+            ("records_scanned",  true),
+            ("kl_forward",       true),
+            ("kl_reverse",       true),
+            ("jensen_shannon",   true),
+            ("event",            false),
+            ("statement_type",   false),
+            ("bundle",           false),
+            ("error_msg",        false),
+            ("request_id",       false),
+        ]),
+        ("_gigi_anomaly_log", &[
+            ("ts_us",        true),
+            ("z_score",      true),
+            ("sigma_level",  true),
+            ("k_record",     true),
+            ("k_mean",       true),
+            ("k_std",        true),
+            ("duration_us",  true),
+            ("bundle",       false),
+            ("detection_source", false),
+        ]),
+        ("_gigi_system_log", &[
+            ("ts_us",       true),
+            ("duration_us", true),
+            ("level",       false),
+            ("event",       false),
+            ("detail",      false),
+        ]),
+    ];
+
+    let existing: Vec<String> = engine.bundle_names().iter().map(|s| s.to_string()).collect();
+    for (name, fields) in bundles {
+        if existing.iter().any(|n| n == name) {
+            continue; // already exists (WAL replay)
+        }
+        let mut schema = BundleSchema::new(name);
+        for (field, numeric) in *fields {
+            let def = if *numeric {
+                FieldDef::numeric(field)
+            } else {
+                FieldDef::categorical(field)
+            };
+            schema = schema.fiber(def);
+        }
+        if let Err(e) = engine.create_bundle(schema) {
+            eprintln!("[observability] failed to create {name}: {e}");
+        }
+    }
+}
+
+/// Helper: convert a serde_json::Value payload field into a GIGI Value.
+fn log_json_to_value(v: &serde_json::Value) -> Value {
+    match v {
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() { Value::Integer(i) }
+            else { Value::Float(n.as_f64().unwrap_or(0.0)) }
+        }
+        serde_json::Value::String(s) => Value::Text(s.clone()),
+        serde_json::Value::Bool(b)   => Value::Bool(*b),
+        serde_json::Value::Null      => Value::Null,
+        other => Value::Text(other.to_string()),
+    }
+}
+
+/// Async task: receives log events from `LogIngester` and inserts them into the
+/// appropriate `_gigi_*` system bundle. Spawned after `Arc<StreamState>` is live.
+async fn log_bundle_writer(
+    mut rx:    UnboundedReceiver<LogEvent>,
+    state:     Arc<StreamState>,
+) {
+    while let Some(event) = rx.recv().await {
+        let bundle_name: &str = match event.category {
+            LogCategory::Query   => "_gigi_query_log",
+            LogCategory::Slow    => "_gigi_slow_log",
+            LogCategory::Anomaly => "_gigi_anomaly_log",
+            _                    => "_gigi_system_log",
+        };
+
+        // Build the record from event fields.
+        let mut record: HashMap<String, Value> = HashMap::new();
+
+        // Always-present base fields.
+        record.insert("ts_us".into(), Value::Integer(event.ts_us as i64));
+        if let Some(dur) = event.duration_us {
+            record.insert("duration_us".into(), Value::Integer(dur as i64));
+        }
+        record.insert("event".into(), Value::Text(event.event.to_string()));
+
+        // For query/slow logs: pull structured fields from payload.
+        if matches!(event.category, LogCategory::Query | LogCategory::Slow) {
+            for key in &["statement_type", "bundle", "request_id", "slow", "error_msg"] {
+                if let Some(v) = event.payload.get(*key) {
+                    record.insert((*key).to_string(), log_json_to_value(v));
+                }
+            }
+            for key in &["records_returned", "records_scanned", "kl_forward", "kl_reverse", "jensen_shannon"] {
+                if let Some(v) = event.payload.get(*key) {
+                    record.insert((*key).to_string(), log_json_to_value(v));
+                }
+            }
+            // Normalise "bundles_accessed" array → single "bundle" text field.
+            if let Some(serde_json::Value::Array(arr)) = event.payload.get("bundles_accessed") {
+                let names: Vec<String> = arr.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect();
+                let label = match names.len() {
+                    0 => "NONE".to_string(),
+                    1 => names[0].clone(),
+                    _ => "MULTIPLE".to_string(),
+                };
+                record.insert("bundle".into(), Value::Text(label));
+            }
+        } else if event.category == LogCategory::Anomaly {
+            for key in &["z_score", "sigma_level", "k_record", "k_mean", "k_std"] {
+                if let Some(v) = event.payload.get(*key) {
+                    record.insert((*key).to_string(), log_json_to_value(v));
+                }
+            }
+            for key in &["bundle", "detection_source"] {
+                if let Some(v) = event.payload.get(*key) {
+                    record.insert((*key).to_string(), log_json_to_value(v));
+                }
+            }
+        } else {
+            // System / other: store level + compressed detail.
+            let level_str = format!("{:?}", event.level);
+            record.insert("level".into(), Value::Text(level_str));
+            // Put remaining payload into "detail" as a JSON string.
+            if !event.payload.is_empty() {
+                let detail = serde_json::to_string(&event.payload).unwrap_or_default();
+                record.insert("detail".into(), Value::Text(detail));
+            }
+        }
+
+        // Write into the engine — best-effort, never panic the writer task.
+        let mut engine = state.engine.write().unwrap();
+        if let Err(e) = engine.insert(bundle_name, &record) {
+            eprintln!("[observability] insert into {bundle_name} failed: {e}");
+        }
+    }
+}
+
 // ── Main ──
 
 #[tokio::main]
@@ -5803,11 +5985,15 @@ async fn main() {
 
     // ── Observability: create Logger + Metrics before anything else ──────────
     let instance_name = std::env::var("GIGI_INSTANCE").unwrap_or_else(|_| "gigi-stream".to_string());
-    let (logger, log_ingester) = Logger::new(LogConfig::default(), instance_name.clone());
+    let (logger, log_ingester, bundle_rx) =
+        Logger::new_with_bundle_channel(LogConfig::default(), instance_name.clone());
     tokio::spawn(log_ingester.run());
     let metrics = Arc::new(Metrics::new());
 
     let state = Arc::new(StreamState::new(logger, metrics));
+
+    // Phase 2: spawn log bundle writer now that state (and its engine) is live.
+    tokio::spawn(log_bundle_writer(bundle_rx, Arc::clone(&state)));
 
     let app = Router::new()
         // Health

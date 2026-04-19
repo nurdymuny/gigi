@@ -356,6 +356,19 @@ impl Logger {
             .unwrap_or(DEFAULT_SLOW_QUERY_US)
     }
 
+    /// Read a snapshot of the current LogConfig.
+    pub fn get_config(&self) -> LogConfig {
+        self.config.read().map(|c| c.clone()).unwrap_or_default()
+    }
+
+    /// Replace the current LogConfig atomically. Audit category cannot be disabled.
+    pub fn update_config(&self, mut new: LogConfig) {
+        new.cat_audit = true; // audit is always on
+        if let Ok(mut cfg) = self.config.write() {
+            *cfg = new;
+        }
+    }
+
     // ── Event Builders ────────────────────────────────────────────────────────
 
     /// Build and emit a `query.complete` event. Returns the event for testing.

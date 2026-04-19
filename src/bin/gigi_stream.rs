@@ -1011,9 +1011,11 @@ async fn health(State(state): State<Arc<StreamState>>) -> (StatusCode, Json<Heal
 }
 
 /// GET /v1/metrics — live telemetry for operators, dashboards, and alerting.
+/// Accepts `Accept: text/plain` for Prometheus exposition format.
 async fn metrics_handler(
     State(state): State<Arc<StreamState>>,
-) -> (StatusCode, Json<serde_json::Value>) {
+    headers: axum::http::HeaderMap,
+) -> axum::response::Response {
     let m = &state.metrics;
     let (p50, p95, p99) = m.percentiles();
     let uptime_secs = state.start_time.elapsed().as_secs();
@@ -1021,7 +1023,72 @@ async fn metrics_handler(
         .map(|e| (e.bundle_names().len(), e.total_records()))
         .unwrap_or((0, 0));
 
-    (StatusCode::OK, Json(serde_json::json!({
+    let wants_prometheus = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.contains("text/plain"))
+        .unwrap_or(false);
+
+    if wants_prometheus {
+        let queries_total  = m.queries_total.load(Ordering::Relaxed);
+        let errors_total   = m.queries_error.load(Ordering::Relaxed);
+        let slow_total     = m.queries_slow.load(Ordering::Relaxed);
+        let records_total  = m.records_ingested.load(Ordering::Relaxed);
+        let bytes_total    = m.bytes_ingested.load(Ordering::Relaxed);
+        let anomalies      = m.anomalies_total.load(Ordering::Relaxed);
+        let http_conns     = m.http_connections_total.load(Ordering::Relaxed);
+        let ws_conns       = m.ws_connections_total.load(Ordering::Relaxed);
+
+        let body = format!(
+            "# HELP gigi_queries_total Total queries executed\n\
+             # TYPE gigi_queries_total counter\n\
+             gigi_queries_total {queries_total}\n\
+             # HELP gigi_queries_error_total Total failed queries\n\
+             # TYPE gigi_queries_error_total counter\n\
+             gigi_queries_error_total {errors_total}\n\
+             # HELP gigi_queries_slow_total Queries exceeding slow_query_threshold\n\
+             # TYPE gigi_queries_slow_total counter\n\
+             gigi_queries_slow_total {slow_total}\n\
+             # HELP gigi_query_duration_microseconds Query latency percentiles\n\
+             # TYPE gigi_query_duration_microseconds summary\n\
+             gigi_query_duration_microseconds{{quantile=\"0.5\"}} {p50}\n\
+             gigi_query_duration_microseconds{{quantile=\"0.95\"}} {p95}\n\
+             gigi_query_duration_microseconds{{quantile=\"0.99\"}} {p99}\n\
+             # HELP gigi_records_ingested_total Total records written\n\
+             # TYPE gigi_records_ingested_total counter\n\
+             gigi_records_ingested_total {records_total}\n\
+             # HELP gigi_bytes_ingested_total Total bytes written\n\
+             # TYPE gigi_bytes_ingested_total counter\n\
+             gigi_bytes_ingested_total {bytes_total}\n\
+             # HELP gigi_anomalies_detected_total Total anomalies detected\n\
+             # TYPE gigi_anomalies_detected_total counter\n\
+             gigi_anomalies_detected_total {anomalies}\n\
+             # HELP gigi_bundles Total bundles in engine\n\
+             # TYPE gigi_bundles gauge\n\
+             gigi_bundles {bundle_count}\n\
+             # HELP gigi_records_total Total records across all bundles\n\
+             # TYPE gigi_records_total gauge\n\
+             gigi_records_total {total_records}\n\
+             # HELP gigi_http_connections_total Total HTTP connections served\n\
+             # TYPE gigi_http_connections_total counter\n\
+             gigi_http_connections_total {http_conns}\n\
+             # HELP gigi_ws_connections_total Total WebSocket connections served\n\
+             # TYPE gigi_ws_connections_total counter\n\
+             gigi_ws_connections_total {ws_conns}\n\
+             # HELP gigi_uptime_seconds Server uptime\n\
+             # TYPE gigi_uptime_seconds gauge\n\
+             gigi_uptime_seconds {uptime_secs}\n"
+        );
+
+        return axum::response::Response::builder()
+            .status(200)
+            .header("content-type", "text/plain; version=0.0.4; charset=utf-8")
+            .body(axum::body::Body::from(body))
+            .unwrap();
+    }
+
+    // Default: JSON
+    let json_body = serde_json::json!({
         "instance":              state.logger.instance,
         "version":               gigi::observability::GIGI_VERSION,
         "uptime_secs":           uptime_secs,
@@ -1047,7 +1114,12 @@ async fn metrics_handler(
             "http_total":        m.http_connections_total.load(Ordering::Relaxed),
             "ws_total":          m.ws_connections_total.load(Ordering::Relaxed),
         }
-    })))
+    });
+    axum::response::Response::builder()
+        .status(200)
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(serde_json::to_vec(&json_body).unwrap()))
+        .unwrap()
 }
 
 async fn list_bundles(State(state): State<Arc<StreamState>>) -> Json<Vec<BundleInfo>> {
@@ -4600,6 +4672,87 @@ async fn admin_snapshot(State(state): State<Arc<StreamState>>) -> impl IntoRespo
     }
 }
 
+/// GET /v1/admin/log-config — read current log configuration.
+async fn get_log_config(
+    State(state): State<Arc<StreamState>>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let cfg = state.logger.get_config();
+    (StatusCode::OK, Json(serde_json::json!({
+        "level": format!("{:?}", cfg.level),
+        "slow_query_threshold_us": cfg.slow_query_threshold_us,
+        "stdout_enabled": cfg.stdout_enabled,
+        "internal_bundles_enabled": cfg.internal_bundles_enabled,
+        "categories": {
+            "query":      cfg.cat_query,
+            "ingest":     cfg.cat_ingest,
+            "wal":        cfg.cat_wal,
+            "connection": cfg.cat_connection,
+            "stream":     cfg.cat_stream,
+            "bundle":     cfg.cat_bundle,
+            "anomaly":    cfg.cat_anomaly,
+            "audit":      true,   // always on
+            "system":     cfg.cat_system,
+        }
+    })))
+}
+
+/// POST /v1/admin/log-config — update log configuration at runtime (admin only).
+/// Audit logging cannot be disabled. All other fields are optional; omitted fields
+/// keep their current values.
+async fn update_log_config(
+    State(state): State<Arc<StreamState>>,
+    Json(body): Json<serde_json::Value>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let mut cfg = state.logger.get_config();
+
+    // Apply each optional field from the request body.
+    if let Some(v) = body.get("slow_query_threshold_us").and_then(|v| v.as_u64()) {
+        cfg.slow_query_threshold_us = v;
+    }
+    if let Some(v) = body.get("stdout_enabled").and_then(|v| v.as_bool()) {
+        cfg.stdout_enabled = v;
+    }
+    if let Some(v) = body.get("internal_bundles_enabled").and_then(|v| v.as_bool()) {
+        cfg.internal_bundles_enabled = v;
+    }
+    if let Some(cats) = body.get("categories").and_then(|v| v.as_object()) {
+        if let Some(v) = cats.get("query").and_then(|v| v.as_bool())      { cfg.cat_query      = v; }
+        if let Some(v) = cats.get("ingest").and_then(|v| v.as_bool())     { cfg.cat_ingest     = v; }
+        if let Some(v) = cats.get("wal").and_then(|v| v.as_bool())        { cfg.cat_wal        = v; }
+        if let Some(v) = cats.get("connection").and_then(|v| v.as_bool()) { cfg.cat_connection = v; }
+        if let Some(v) = cats.get("stream").and_then(|v| v.as_bool())     { cfg.cat_stream     = v; }
+        if let Some(v) = cats.get("bundle").and_then(|v| v.as_bool())     { cfg.cat_bundle     = v; }
+        if let Some(v) = cats.get("anomaly").and_then(|v| v.as_bool())    { cfg.cat_anomaly    = v; }
+        if let Some(v) = cats.get("system").and_then(|v| v.as_bool())     { cfg.cat_system     = v; }
+        // "audit" key is silently ignored — cannot be disabled
+    }
+    if let Some(level_str) = body.get("level").and_then(|v| v.as_str()) {
+        use gigi::observability::LogLevel;
+        cfg.level = match level_str.to_ascii_uppercase().as_str() {
+            "TRACE" => LogLevel::Trace,
+            "DEBUG" => LogLevel::Debug,
+            "WARN"  => LogLevel::Warn,
+            "ERROR" => LogLevel::Error,
+            "FATAL" => LogLevel::Fatal,
+            _       => LogLevel::Info,
+        };
+    }
+
+    state.logger.update_config(cfg.clone());
+
+    // Emit audit event.
+    let ev = gigi::observability::LogEvent::new(
+        gigi::observability::LogLevel::Info,
+        gigi::observability::LogCategory::Audit,
+        "audit.config_change",
+        &state.logger.instance,
+    ).field("field", "log-config")
+     .field("slow_query_threshold_us", cfg.slow_query_threshold_us);
+    state.logger.emit(ev);
+
+    (StatusCode::OK, Json(serde_json::json!({ "status": "ok" })))
+}
+
 // ── GQL endpoint ──
 
 async fn gql_query(
@@ -6086,6 +6239,8 @@ async fn main() {
         )
         // Admin: DHOOM snapshot + WAL compaction
         .route("/v1/admin/snapshot", post(admin_snapshot))
+        // Admin: log configuration
+        .route("/v1/admin/log-config", get(get_log_config).post(update_log_config))
         // OpenAPI spec
         .route("/v1/openapi.json", get(openapi_spec))
         // GQL endpoint

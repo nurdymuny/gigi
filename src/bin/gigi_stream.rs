@@ -5532,6 +5532,42 @@ fn execute_gql_on_store_read(
             row.insert("gauge_invariant".to_string(), gigi::types::Value::Bool(gauge_invariant));
             Ok(ExecResult::Rows(vec![row]))
         }
+        // SQL compat: SELECT * FROM bundle [WHERE ...] — used by observability + ad-hoc queries.
+        Statement::Select { columns, condition, .. } => {
+            use gigi::parser::SelectCol;
+            let all_rows: Vec<_> = store.records().collect();
+            let filtered: Vec<_> = match condition {
+                None => all_rows,
+                Some(gigi::parser::Condition::Eq(field, val)) => {
+                    let value = literal_to_value(val);
+                    all_rows.into_iter().filter(|rec| rec.get(field) == Some(&value)).collect()
+                }
+                Some(gigi::parser::Condition::In(field, vals)) => {
+                    let values: Vec<_> = vals.iter().map(literal_to_value).collect();
+                    all_rows.into_iter().filter(|rec| {
+                        rec.get(field).map(|v| values.contains(v)).unwrap_or(false)
+                    }).collect()
+                }
+                Some(gigi::parser::Condition::Between(field, lo, hi)) => {
+                    let lo_val = literal_to_value(lo);
+                    let hi_val = literal_to_value(hi);
+                    all_rows.into_iter().filter(|rec| {
+                        rec.get(field).map(|v| *v >= lo_val && *v <= hi_val).unwrap_or(false)
+                    }).collect()
+                }
+            };
+            let is_star = columns.iter().any(|c| matches!(c, SelectCol::Star));
+            let result_rows: Vec<_> = if is_star {
+                filtered
+            } else {
+                filtered.into_iter().map(|rec| {
+                    rec.into_iter()
+                        .filter(|(k, _)| columns.iter().any(|c| matches!(c, SelectCol::Name(n) if n == k)))
+                        .collect()
+                }).collect()
+            };
+            Ok(ExecResult::Rows(result_rows))
+        }
         _ => Ok(ExecResult::Ok),
     }
 }

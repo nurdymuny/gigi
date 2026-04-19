@@ -1,9 +1,9 @@
 ﻿cargo : warning: unused import: `FieldDef`
 At line:1 char:1
-+ cargo check --bin gigi-stream 2>&1 | Out-File -FilePath check_errors. ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (warning: unused import: `FieldDef 
-   `:String) [], RemoteException
++ cargo check --all 2>&1 | Out-File -FilePath "check_output.txt" -Encod ...
++ ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: unused import: `FieldDef` 
+   :String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
  
  --> src\join.rs:8:34
@@ -65,8 +65,8 @@ bundle))?;
 warning: unused doc comment
     --> src\parser.rs:4814:9
      |
-4814 |           /// TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER 
-(f1, f2, ...)
+4814 |           /// TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER (f1, 
+f2, ...)
      |           
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 4815 | /         Statement::Transport { bundle, from_keys, to_keys, 
@@ -87,8 +87,8 @@ warning: unused doc comment
      |
 4894 |           /// HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON 
 FIBER (f1, f2) AROUND field
-     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 4895 | /         Statement::LocalHolonomy {
 4896 | |             bundle,
 4897 | |             near_point,
@@ -131,20 +131,30 @@ apply 3 suggestions)
 warning: unused import: `GeometricFields`
   --> src\bin\gigi_stream.rs:43:27
    |
-43 | use gigi::observability::{GeometricFields, LogCategory, LogConfig, 
-LogEvent, Logger, Metrics, new_request_id};
+43 | use gigi::observability::{GeometricFields, LogConfig, Logger, Metrics, 
+new_request_id};
    |                           ^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: struct `PullbackCurvatureReport` is never constructed
-   --> src\bin\gigi_stream.rs:556:8
+   --> src\bin\gigi_stream.rs:554:8
     |
-556 | struct PullbackCurvatureReport {
+554 | struct PullbackCurvatureReport {
     |        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `bench_point_queries` is never used
+   --> benches\ingest_bench.rs:128:4
+    |
+128 | fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, 
+f64) {
+    |    ^^^^^^^^^^^^^^^^^^^
     |
     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: `gigi` (bin "gigi-stream") generated 2 warnings (run `cargo fix --bin 
 "gigi-stream" -p gigi` to apply 1 suggestion)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.87s
+warning: `gigi` (bin "bench_ingest") generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.03s

@@ -1,6 +1,6 @@
 ﻿cargo : warning: unused import: `FieldDef`
 At line:1 char:1
-+ cargo check --bin gigi-stream 2>&1 | Out-File -FilePath check_errors. ...
++ cargo check --bin gigi-stream 2>&1 | Out-File -FilePath check_full.tx ...
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (warning: unused import: `FieldDef 
    `:String) [], RemoteException
@@ -138,13 +138,13 @@ LogEvent, Logger, Metrics, new_request_id};
    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: struct `PullbackCurvatureReport` is never constructed
-   --> src\bin\gigi_stream.rs:556:8
+   --> src\bin\gigi_stream.rs:555:8
     |
-556 | struct PullbackCurvatureReport {
+555 | struct PullbackCurvatureReport {
     |        ^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: `gigi` (bin "gigi-stream") generated 2 warnings (run `cargo fix --bin 
 "gigi-stream" -p gigi` to apply 1 suggestion)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.87s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.57s

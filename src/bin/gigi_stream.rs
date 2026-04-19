@@ -40,7 +40,7 @@ use gigi::curvature;
 use gigi::dhoom;
 use gigi::engine::Engine;
 use gigi::join;
-use gigi::observability::{GeometricFields, LogCategory, LogConfig, LogEvent, Logger, Metrics, new_request_id};
+use gigi::observability::{GeometricFields, LogCategory, LogConfig, LogEvent, LogLevel, Logger, Metrics, new_request_id};
 use tokio::sync::mpsc::UnboundedReceiver;
 use gigi::spectral;
 use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
@@ -1231,11 +1231,30 @@ async fn drop_bundle(
             Json(ErrorResponse { error: format!("'{}' is a system bundle and is read-only", name) }),
         ));
     }
+
+    // Capture stats before drop for the audit event
+    let (records_before, bytes_before) = {
+        let engine = state.engine.read().unwrap();
+        if let Some(store) = engine.bundle(&name) {
+            let recs = store.len() as u64;
+            let bytes = recs * 64; // same heuristic used by estimate_bytes
+            (recs, bytes)
+        } else {
+            (0, 0)
+        }
+    };
+
     let mut engine = state.engine.write().unwrap();
     match engine.drop_bundle(&name) {
-        Ok(true) => Ok(Json(
-            serde_json::json!({"status": "dropped", "bundle": name}),
-        )),
+        Ok(true) => {
+            drop(engine);
+            // Spec §3.8: audit.bundle_drop
+            let ev = state.logger.audit_bundle_drop(&name, records_before, bytes_before, "api", "");
+            state.logger.emit(ev);
+            Ok(Json(
+                serde_json::json!({"status": "dropped", "bundle": name}),
+            ))
+        }
         // Idempotent: deleting a non-existent bundle is not an error
         Ok(false) => Ok(Json(
             serde_json::json!({"status": "not_found", "bundle": name}),
@@ -4803,6 +4822,38 @@ async fn update_log_config(
     (StatusCode::OK, Json(serde_json::json!({ "status": "ok" })))
 }
 
+/// POST /v1/admin/log-level — change the log level at runtime. Emits audit.log_level_change.
+/// Body: { "level": "DEBUG" }
+async fn set_log_level(
+    State(state): State<Arc<StreamState>>,
+    Json(body): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    use gigi::observability::LogLevel;
+    let level_str = match body.get("level").and_then(|v| v.as_str()) {
+        Some(s) => s.to_ascii_uppercase(),
+        None => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Missing 'level' field"}))),
+    };
+    let new_level = match level_str.as_str() {
+        "TRACE" => LogLevel::Trace,
+        "DEBUG" => LogLevel::Debug,
+        "WARN"  => LogLevel::Warn,
+        "ERROR" => LogLevel::Error,
+        "FATAL" => LogLevel::Fatal,
+        "INFO"  => LogLevel::Info,
+        other   => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": format!("Unknown level: {other}")}))),
+    };
+    let mut cfg = state.logger.get_config();
+    let old_level_str = format!("{:?}", cfg.level).to_ascii_uppercase();
+    cfg.level = new_level;
+    state.logger.update_config(cfg);
+
+    // Spec §3.8: audit.log_level_change
+    let ev = state.logger.audit_log_level_change(&old_level_str, &level_str, "api", "success");
+    state.logger.emit(ev);
+
+    (StatusCode::OK, Json(serde_json::json!({"status": "ok", "level": level_str})))
+}
+
 // ── GQL endpoint ──
 
 async fn gql_query(
@@ -6235,6 +6286,67 @@ async fn log_bundle_writer(
 
 // ── Main ──
 
+/// Background task: hourly TTL eviction of rows from `_gigi_*` bundles.
+/// Deletes rows where `ts_us < (now_us - retention_days * 86_400 * 1_000_000)`.
+/// Spec §4 / §6: retention defaults are audit=365d, anomaly/slow=90d,
+/// stream/conn=7d, wal/ingest=14d, everything else=30d.
+async fn ttl_eviction_task(state: Arc<StreamState>) {
+    let system_bundles = [
+        "_gigi_query_log",
+        "_gigi_slow_log",
+        "_gigi_anomaly_log",
+        "_gigi_audit_log",
+        "_gigi_stream_log",
+        "_gigi_conn_log",
+        "_gigi_wal_log",
+        "_gigi_ingest_log",
+        "_gigi_system_log",
+        "_gigi_bundle_log",
+    ];
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+
+        let cfg = state.logger.get_config();
+        let now_us = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_micros() as i64;
+
+        for bundle in &system_bundles {
+            let days = cfg.retention_days(bundle) as i64;
+            let cutoff_us = now_us - days * 86_400 * 1_000_000;
+            let cond = vec![QueryCondition::Lt(
+                "ts_us".to_string(),
+                Value::Integer(cutoff_us),
+            )];
+            let deleted = {
+                let mut engine = state.engine.write().unwrap();
+                if let Some(mut store) = engine.bundle_mut(bundle) {
+                    if let Some(heap) = store.as_heap_mut() {
+                        heap.bulk_delete(&cond)
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            };
+            if deleted > 0 {
+                let ev = LogEvent::new(
+                    LogLevel::Info,
+                    LogCategory::System,
+                    "system.ttl_eviction",
+                    &state.logger.instance,
+                )
+                .field("bundle",       *bundle)
+                .field("deleted",      deleted as u64)
+                .field("cutoff_days",  days as u64);
+                state.logger.emit(ev);
+            }
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let port = std::env::var("PORT").unwrap_or_else(|_| "3142".to_string());
@@ -6251,6 +6363,9 @@ async fn main() {
 
     // Phase 2: spawn log bundle writer now that state (and its engine) is live.
     tokio::spawn(log_bundle_writer(bundle_rx, Arc::clone(&state)));
+
+    // TTL retention: hourly eviction of old rows from _gigi_* bundles.
+    tokio::spawn(ttl_eviction_task(Arc::clone(&state)));
 
     let app = Router::new()
         // Health
@@ -6310,6 +6425,7 @@ async fn main() {
         .route("/v1/admin/snapshot", post(admin_snapshot))
         // Admin: log configuration
         .route("/v1/admin/log-config", get(get_log_config).post(update_log_config))
+        .route("/v1/admin/log-level", post(set_log_level))
         // OpenAPI spec
         .route("/v1/openapi.json", get(openapi_spec))
         // GQL endpoint
@@ -7446,3 +7562,4 @@ mod tests {
         assert!(body.contains("# TYPE gigi_bundles gauge"));
     }
 }
+

@@ -165,6 +165,9 @@ pub struct LogConfig {
     pub cat_anomaly:    bool,
     pub cat_audit:      bool,
     pub cat_system:     bool,
+    /// Per-bundle retention in days. Key = bundle name (e.g. "_gigi_query_log").
+    /// Missing key → use the category default (see `retention_days()`).
+    pub retention_overrides: std::collections::HashMap<String, u32>,
 }
 
 impl Default for LogConfig {
@@ -183,6 +186,7 @@ impl Default for LogConfig {
             cat_anomaly:    true,
             cat_audit:      true,  // audit is always emitted regardless of this flag
             cat_system:     true,
+            retention_overrides: std::collections::HashMap::new(),
         }
     }
 }
@@ -200,6 +204,26 @@ impl LogConfig {
             LogCategory::Audit      => true, // audit is always on
             LogCategory::System     => self.cat_system,
         }
+    }
+
+    /// Retention period in days for a `_gigi_*` bundle.
+    /// Spec §6 defaults: audit=365, anomaly/slow=90, query/ingest/wal/bundle/system=30,
+    /// stream/connection=7.
+    pub fn retention_days(&self, bundle: &str) -> u32 {
+        if let Some(&days) = self.retention_overrides.get(bundle) {
+            return days;
+        }
+        match bundle {
+            "_gigi_audit_log"                       => 365,
+            "_gigi_anomaly_log" | "_gigi_slow_log"  => 90,
+            "_gigi_stream_log" | "_gigi_conn_log"   => 7,
+            "_gigi_wal_log" | "_gigi_ingest_log"    => 14,
+            _                                       => 30, // query, bundle, system
+        }
+    }
+
+    pub fn set_retention(&mut self, bundle: &str, days: u32) {
+        self.retention_overrides.insert(bundle.to_string(), days);
     }
 }
 
@@ -556,6 +580,39 @@ impl Logger {
             .field("messages_sent",      messages_sent)
             .field("anomalies_sent",     anomalies_sent)
             .field("reason",             reason)
+    }
+
+    // ── Audit event builders (§3.8) ───────────────────────────────────────────
+
+    pub fn audit_bundle_drop(
+        &self,
+        bundle:          &str,
+        records_deleted: u64,
+        bytes_freed:     u64,
+        triggered_by:    &str,
+        client_ip:       &str,
+    ) -> LogEvent {
+        LogEvent::new(LogLevel::Info, LogCategory::Audit, "audit.bundle_drop", &self.instance)
+            .field("bundle",          bundle)
+            .field("records_deleted", records_deleted)
+            .field("bytes_freed",     bytes_freed)
+            .field("triggered_by",    triggered_by)
+            .field("client_ip",       client_ip)
+            .field("outcome",         "success")
+    }
+
+    pub fn audit_log_level_change(
+        &self,
+        old_level: &str,
+        new_level: &str,
+        actor:     &str,
+        outcome:   &str,
+    ) -> LogEvent {
+        LogEvent::new(LogLevel::Info, LogCategory::Audit, "audit.log_level_change", &self.instance)
+            .field("old_level", old_level)
+            .field("new_level", new_level)
+            .field("actor",     actor)
+            .field("outcome",   outcome)
     }
 
     pub fn query_slow(
@@ -1505,5 +1562,63 @@ mod tests {
         assert_eq!(j["messages_sent"],      201);
         assert_eq!(j["anomalies_sent"],     3);
         assert_eq!(j["reason"],             "client_close");
+    }
+
+    // ── audit events ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_audit_bundle_drop_shape() {
+        let (log, _) = Logger::new(LogConfig::default(), inst());
+        let e = log.audit_bundle_drop("test_bundle", 1247, 62350, "api", "10.0.0.1");
+        let j: Value = serde_json::from_str(&e.serialize_json()).unwrap();
+        assert_eq!(j["event"],           "audit.bundle_drop");
+        assert_eq!(j["category"],        "audit");
+        assert_eq!(j["level"],           "INFO");
+        assert_eq!(j["bundle"],          "test_bundle");
+        assert_eq!(j["records_deleted"], 1247);
+        assert_eq!(j["bytes_freed"],     62350);
+        assert_eq!(j["triggered_by"],    "api");
+        assert_eq!(j["client_ip"],       "10.0.0.1");
+        assert_eq!(j["outcome"],         "success");
+    }
+
+    #[test]
+    fn test_audit_log_level_change_shape() {
+        let (log, _) = Logger::new(LogConfig::default(), inst());
+        let e = log.audit_log_level_change("INFO", "DEBUG", "api_key:test", "success");
+        let j: Value = serde_json::from_str(&e.serialize_json()).unwrap();
+        assert_eq!(j["event"],     "audit.log_level_change");
+        assert_eq!(j["category"],  "audit");
+        assert_eq!(j["level"],     "INFO");
+        assert_eq!(j["old_level"], "INFO");
+        assert_eq!(j["new_level"], "DEBUG");
+        assert_eq!(j["actor"],     "api_key:test");
+        assert_eq!(j["outcome"],   "success");
+    }
+
+    // ── TTL retention config ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_retention_defaults() {
+        let cfg = LogConfig::default();
+        // query_log = 30 days default
+        assert_eq!(cfg.retention_days("_gigi_query_log"), 30);
+        // audit_log = 365 days default
+        assert_eq!(cfg.retention_days("_gigi_audit_log"), 365);
+        // anomaly_log = 90 days default
+        assert_eq!(cfg.retention_days("_gigi_anomaly_log"), 90);
+        // slow_log = 90 days default
+        assert_eq!(cfg.retention_days("_gigi_slow_log"), 90);
+        // stream_log = 7 days default
+        assert_eq!(cfg.retention_days("_gigi_stream_log"), 7);
+    }
+
+    #[test]
+    fn test_retention_custom_override() {
+        let mut cfg = LogConfig::default();
+        cfg.set_retention("_gigi_query_log", 14);
+        assert_eq!(cfg.retention_days("_gigi_query_log"), 14);
+        // other bundles unchanged
+        assert_eq!(cfg.retention_days("_gigi_audit_log"), 365);
     }
 }

@@ -1057,6 +1057,19 @@ impl BundleStore {
                 .map(|f| record.get(&f.name).cloned().unwrap_or(f.default.clone()))
                 .collect();
 
+            // Invariant enforcement — skip records that violate any invariant
+            let invariant_ok = self.schema.invariants.iter().all(|inv| {
+                match self.schema.fiber_fields.iter().position(|f| f.name == inv.expr_field) {
+                    Some(idx) => fiber_vals[idx].as_f64()
+                        .map(|v| (v - inv.expected).abs() <= inv.tol)
+                        .unwrap_or(true),
+                    None => true,
+                }
+            });
+            if !invariant_ok {
+                continue;
+            }
+
             let bp32 = bp as u32;
             self.bp_reverse.insert(bp32, bp);
             for idx_field in &self.schema.indexed_fields {
@@ -1176,6 +1189,20 @@ impl BundleStore {
                     fiber_vals.push(val);
                 }
 
+                // Invariant enforcement (sequential fast path) — skip violating records
+                let invariant_ok = self.schema.invariants.iter().all(|inv| {
+                    match self.schema.fiber_fields.iter().position(|f| f.name == inv.expr_field) {
+                        Some(idx) => fiber_vals.get(idx)
+                            .and_then(|v| v.as_f64())
+                            .map(|v| (v - inv.expected).abs() <= inv.tol)
+                            .unwrap_or(true),
+                        None => true,
+                    }
+                });
+                if !invariant_ok {
+                    continue;
+                }
+
                 // Apply geometric encryption if enabled
                 let fiber_vals = if let Some(ref gk) = gauge_key {
                     gk.encrypt_fiber(&fiber_vals)
@@ -1236,6 +1263,20 @@ impl BundleStore {
                         local_stats[i].update(v);
                     }
                     fiber_vals.push(val);
+                }
+
+                // Invariant enforcement (hashed fast path) — skip violating records
+                let invariant_ok = self.schema.invariants.iter().all(|inv| {
+                    match self.schema.fiber_fields.iter().position(|f| f.name == inv.expr_field) {
+                        Some(idx) => fiber_vals.get(idx)
+                            .and_then(|v| v.as_f64())
+                            .map(|v| (v - inv.expected).abs() <= inv.tol)
+                            .unwrap_or(true),
+                        None => true,
+                    }
+                });
+                if !invariant_ok {
+                    continue;
                 }
 
                 // Apply geometric encryption if enabled
@@ -2496,7 +2537,7 @@ impl BundleStore {
         // Collect candidate base points (optionally pre-filtered)
         let base_points: Vec<BasePoint> = if let Some(conditions) = pre_filter {
             if conditions.is_empty() {
-                self.all_base_points()
+                self.all_base_points_vec()
             } else {
                 let records = self.filtered_query(conditions, None, false, None, None);
                 records
@@ -2505,7 +2546,7 @@ impl BundleStore {
                     .collect()
             }
         } else {
-            self.all_base_points()
+            self.all_base_points_vec()
         };
 
         if base_points.is_empty() {
@@ -2619,7 +2660,7 @@ impl BundleStore {
     }
 
     /// Collect all base points in the bundle.
-    fn all_base_points(&self) -> Vec<BasePoint> {
+    fn all_base_points_vec(&self) -> Vec<BasePoint> {
         match &self.storage {
             BaseStorage::Hashed { sections, .. } => sections.keys().copied().collect(),
             BaseStorage::Sequential { .. } => self.seq_bp_list.clone(),
@@ -2631,6 +2672,10 @@ impl BundleStore {
                 bps
             }
         }
+    }
+
+    pub fn all_base_points(&self) -> std::collections::HashSet<BasePoint> {
+        self.all_base_points_vec().into_iter().collect()
     }
 
     pub fn deviation_norm(&self, bp: BasePoint) -> usize {

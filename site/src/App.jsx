@@ -148,7 +148,6 @@ function Nav({ page, go }) {
     { id: "home", l: "Home" }, { id: "gigi", l: "Gigi" }, { id: "demo", l: "Try It" }, { id: "live-demos", l: "Live Demos" }, { id: "nasa", l: "NASA Demo" }, { id: "encryption", l: "Encryption" },
     { id: "benchmarks", l: "Benchmarks" }, { id: "tpch", l: "TPC-H" }, { id: "usecases", l: "Use Cases" },
     { id: "architecture", l: "Architecture" }, { id: "compare", l: "vs Others" },
-    { id: "observability", l: "Observability" },
     { id: "products", l: "Products" },
   ];
   const playgroundUrl = import.meta.env.DEV ? "http://localhost:5174" : "/gigi/playground";
@@ -1274,8 +1273,6 @@ const COMBINED_MATRIX = [
   { cap: "Connectivity analysis", druid: "✗", cass: "✗", elk: "✗", gigi: "✓ spectral" },
   { cap: "Prediction", druid: "✗", cass: "✗", elk: "✗", gigi: "✓ curvature" },
   { cap: "Wire compression", druid: "✗", cass: "✗", elk: "✗", gigi: "✓ DHOOM" },
-  { cap: "Structured observability", druid: "◐", cass: "✗", elk: "◐", gigi: "✓ geometric" },
-  { cap: "Geometric log events", druid: "✗", cass: "✗", elk: "✗", gigi: "✓ KL + JS" },
 ];
 
 const NOBODY_HAS = [
@@ -1289,9 +1286,6 @@ const NOBODY_HAS = [
   "Double Cover — S + d² = 1 bounds query completeness for any query",
   "Zero-Euclidean guarantee — no distance computation anywhere in the query path",
   "Unified storage/wire math — DHOOM and GIGI share the same fiber bundle, end to end",
-  "Geometric query logs — query.complete events carry kl_forward, jensen_shannon, and curvature as structured fields",
-  "Self-queryable observability — _gigi_query_log is a GQL-native bundle: run DIVERGENCE on your own query history",
-  "k_delta on every ingest — scalar curvature change per batch flags distribution shift at zero config",
 ];
 
 function TpchPage() {
@@ -2154,207 +2148,6 @@ function ProductCard({ name, icon, desc, tag, color, featured, features }) {
 }
 
 // ═══════════════════════════════════════
-// OBSERVABILITY PAGE
-// ═══════════════════════════════════════
-function ObservabilityPage() {
-  const [metrics, setMetrics] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
-
-  async function fetchMetrics() {
-    setLoading(true);
-    setErr(null);
-    try {
-      const res = await fetch(`${BENCH_API}/v1/metrics`, { headers: { Authorization: "Bearer dev-secret" } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setMetrics(await res.json());
-    } catch (e) {
-      setErr(e.message);
-    }
-    setLoading(false);
-  }
-
-  const COMPETITOR_GAP = [
-    { system: "PostgreSQL",   eventLog: "✗", geomFields: "✗", infoTheory: "✗", kDelta: "✗", selfQuery: "✗" },
-    { system: "ClickHouse",   eventLog: "◐ system.query", geomFields: "✗", infoTheory: "✗", kDelta: "✗", selfQuery: "◐ SQL only" },
-    { system: "MongoDB",      eventLog: "◐ slow query log", geomFields: "✗", infoTheory: "✗", kDelta: "✗", selfQuery: "✗" },
-    { system: "Elasticsearch",eventLog: "◐ index stats", geomFields: "✗", infoTheory: "✗", kDelta: "✗", selfQuery: "✗" },
-    { system: "Cassandra",    eventLog: "✗", geomFields: "✗", infoTheory: "✗", kDelta: "✗", selfQuery: "✗" },
-    { system: "Druid",        eventLog: "◐ query log", geomFields: "✗", infoTheory: "✗", kDelta: "✗", selfQuery: "✗" },
-    { system: "GIGI",         eventLog: "✓ NDJSON", geomFields: "✓ every query", infoTheory: "✓ KL + JS", kDelta: "✓ per ingest", selfQuery: "✓ native GQL", highlight: true },
-  ];
-
-  const LOG_EXAMPLE = `{
-  "ts": "2026-04-12T14:23:01.847Z",
-  "level": "INFO",
-  "category": "query",
-  "event": "query.complete",
-  "request_id": "a3f7c2d891b04e56af120934",
-  "query_type": "SELECT",
-  "bundle": "sensor_data",
-  "rows_returned": 142,
-  "duration_us": 38,
-  "geometric": {
-    "kl_forward":      0.00412,
-    "kl_reverse":      0.00389,
-    "jensen_shannon":  0.00401,
-    "fields_compared": 6
-  }
-}`;
-
-  return (
-    <Page title="Observability" sub="Geometric metrics. Structured logs. Zero instrumentation.">
-
-      {/* Hero callout */}
-      <Card style={{ marginBottom: 20, background: "linear-gradient(135deg,rgba(64,232,160,0.04),rgba(96,0,255,0.03))", border: "1px solid rgba(64,232,160,0.1)" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "#E8A830", marginBottom: 8 }}>THE GEOMETRIC DIFFERENTIATOR</div>
-        <p style={{ fontSize: 13, color: "#607080", lineHeight: 1.7, margin: 0 }}>
-          Every <code style={{ color: G, background: "rgba(64,232,160,0.06)", padding: "1px 5px", borderRadius: 3, fontSize: 11 }}>query.complete</code> event GIGI emits carries a{" "}
-          <strong style={{ color: G }}>geometric block</strong>: KL divergence in both directions and Jensen-Shannon distance between the query predicate and the matched records.
-          No other database knows if its own query patterns are drifting — GIGI does, natively, on every request.
-        </p>
-      </Card>
-
-      {/* Competitor gap table */}
-      <Sec title="Competitor Observability Gap">
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                {["System", "Structured events", "Geometric fields", "Info-theory metrics", "k_delta on ingest", "Self-queryable logs"].map((h, i) => (
-                  <th key={i} style={{ padding: "8px 10px", textAlign: i === 0 ? "left" : "center", color: "#506070", fontWeight: 700, fontSize: 10, letterSpacing: "0.06em" }}>{h.toUpperCase()}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {COMPETITOR_GAP.map((row, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.025)", background: row.highlight ? "rgba(64,232,160,0.03)" : "transparent" }}>
-                  <td style={{ padding: "7px 10px", fontWeight: row.highlight ? 800 : 600, color: row.highlight ? G : "#A0B0C0" }}>{row.system}</td>
-                  {[row.eventLog, row.geomFields, row.infoTheory, row.kDelta, row.selfQuery].map((v, j) => (
-                    <td key={j} style={{ padding: "7px 10px", textAlign: "center", color: v === "✓" || v?.startsWith("✓") ? G : v === "✗" ? "#E05050" : "#E8A830", fontFamily: "monospace", fontSize: 11 }}>{v}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ fontSize: 11, color: "#405060", marginTop: 8 }}>◐ = partial / manual setup required &nbsp;·&nbsp; ✓ = native, zero config &nbsp;·&nbsp; ✗ = not available</div>
-      </Sec>
-
-      {/* Live metrics fetch */}
-      <Sec title="Live /v1/metrics">
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
-          <button onClick={fetchMetrics} disabled={loading} style={{ padding: "9px 22px", borderRadius: 7, border: "none", cursor: loading ? "wait" : "pointer", background: loading ? "#1A2A20" : G, color: loading ? "#40E8A060" : BG, fontSize: 13, fontWeight: 800 }}>
-            {loading ? "⏳ Fetching…" : "Fetch Live Metrics"}
-          </button>
-          {err && <span style={{ fontSize: 12, color: "#E05050", fontFamily: "monospace" }}>Error: {err}</span>}
-        </div>
-        {metrics && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 12 }}>
-            {[
-              { l: "Uptime", v: `${metrics.uptime_secs}s`, c: G },
-              { l: "Bundles", v: metrics.bundles, c: G },
-              { l: "Total Records", v: metrics.total_records?.toLocaleString(), c: "#E8A830" },
-              { l: "Queries Total", v: metrics.queries?.total, c: G },
-              { l: "p50 Latency", v: `${metrics.latency_us?.p50}µs`, c: G },
-              { l: "p99 Latency", v: `${metrics.latency_us?.p99}µs`, c: metrics.latency_us?.p99 > 10000 ? "#FF6040" : "#E8A830" },
-              { l: "Errors", v: metrics.queries?.errors, c: metrics.queries?.errors > 0 ? "#FF6040" : G },
-              { l: "Slow Queries", v: metrics.queries?.slow, c: metrics.queries?.slow > 0 ? "#E8A830" : G },
-              { l: "Anomalies", v: metrics.anomalies_total, c: metrics.anomalies_total > 0 ? "#E8A830" : G },
-            ].map((s, i) => (
-              <div key={i} style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-                <div style={{ fontSize: 18, fontWeight: 900, color: s.c, fontFamily: "monospace" }}>{s.v}</div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: "#506070", marginTop: 3, letterSpacing: "0.06em" }}>{s.l.toUpperCase()}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        {metrics?.queries?.by_type && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#A0B0C0", marginBottom: 6 }}>Query breakdown by type</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {Object.entries(metrics.queries.by_type).map(([type, count]) => (
-                <div key={type} style={{ background: "rgba(64,232,160,0.05)", border: "1px solid rgba(64,232,160,0.1)", borderRadius: 5, padding: "4px 10px", fontFamily: "monospace", fontSize: 11 }}>
-                  <span style={{ color: G, fontWeight: 700 }}>{type}</span>
-                  <span style={{ color: "#506070" }}> : {count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {metrics && (
-          <details style={{ marginTop: 4 }}>
-            <summary style={{ fontSize: 11, color: "#506070", cursor: "pointer" }}>Raw JSON</summary>
-            <pre style={{ margin: "8px 0 0", padding: "12px 14px", borderRadius: 8, background: "#06060C", border: "1px solid rgba(255,255,255,0.04)", fontSize: 10.5, color: "#708090", fontFamily: "monospace", lineHeight: 1.5, overflowX: "auto" }}>{JSON.stringify(metrics, null, 2)}</pre>
-          </details>
-        )}
-        {!metrics && !loading && (
-          <pre style={{ padding: "12px 14px", borderRadius: 8, background: "#06060C", border: "1px solid rgba(255,255,255,0.04)", fontSize: 10.5, color: "#405060", fontFamily: "monospace", lineHeight: 1.5 }}>{`GET /v1/metrics\n→ { "instance": "gigi-stream", "uptime_secs": ..., "queries": { ... }, "latency_us": { "p50", "p95", "p99" } }`}</pre>
-        )}
-      </Sec>
-
-      {/* Log event example */}
-      <Sec title="query.complete — Geometric Log Event">
-        <p style={{ fontSize: 12, color: "#607080", lineHeight: 1.6, marginBottom: 10 }}>
-          Every executed query emits a structured NDJSON event to stdout. The <code style={{ color: G, background: "rgba(64,232,160,0.06)", padding: "1px 5px", borderRadius: 3, fontSize: 11 }}>geometric</code> block is
-          unique to GIGI — it quantifies information-geometric distance between the query distribution and the matched records.
-          Feed these logs to any SIEM, data lake, or GIGI itself for drift detection.
-        </p>
-        <pre style={{ padding: "14px 16px", borderRadius: 8, background: "#06060C", border: `1px solid ${G}22`, fontSize: 11, color: "#A0B8C0", fontFamily: "monospace", lineHeight: 1.6, overflowX: "auto" }}>{LOG_EXAMPLE}</pre>
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
-          {[
-            { k: "kl_forward", d: "KL divergence from query predicate to matched record distribution. Measures how much the data surprises the query." },
-            { k: "kl_reverse", d: "KL divergence from matched records back to the predicate. Asymmetry between forward/reverse reveals structured bias." },
-            { k: "jensen_shannon", d: "Symmetric information distance (square root of JS divergence). Stable, bounded [0,1]. Values > 0.3 indicate distribution shift worth investigating." },
-            { k: "fields_compared", d: "Number of fiber dimensions used in the geometric computation." },
-          ].map(({ k, d }) => (
-            <div key={k} style={{ display: "flex", gap: 10, fontSize: 11, lineHeight: 1.5 }}>
-              <code style={{ color: G, background: "rgba(64,232,160,0.06)", padding: "1px 6px", borderRadius: 3, fontFamily: "monospace", flexShrink: 0 }}>{k}</code>
-              <span style={{ color: "#506070" }}>{d}</span>
-            </div>
-          ))}
-        </div>
-      </Sec>
-
-      {/* Other event types */}
-      <Sec title="Full Event Catalog">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          {[
-            { event: "query.complete", cat: "query", level: "INFO", desc: "Every executed GQL statement. Includes geometric block." },
-            { event: "query.error", cat: "query", level: "ERROR", desc: "Parse or execution failure. Includes error message string." },
-            { event: "query.slow", cat: "query", level: "WARN", desc: "Emitted alongside query.complete when duration > slow threshold." },
-            { event: "ingest.complete", cat: "ingest", level: "INFO", desc: "Batch insert finished. Includes records_inserted, bytes_received, k_delta." },
-            { event: "anomaly.detected", cat: "anomaly", level: "WARN", desc: "Geometric anomaly score exceeded threshold. Includes field, severity, score." },
-            { event: "system.startup", cat: "system", level: "INFO", desc: "Process start. Includes version, instance name, PID, log level." },
-          ].map(({ event, cat, level, desc }) => (
-            <div key={event} style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: 8, padding: "12px 14px" }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
-                <code style={{ fontSize: 11, fontWeight: 700, color: G, fontFamily: "monospace" }}>{event}</code>
-                <span style={{ fontSize: 9, fontWeight: 700, color: level === "WARN" ? "#E8A830" : level === "ERROR" ? "#E05050" : "#506070", background: "rgba(255,255,255,0.04)", borderRadius: 3, padding: "1px 5px" }}>{level}</span>
-                <span style={{ fontSize: 9, color: "#405060" }}>{cat}</span>
-              </div>
-              <div style={{ fontSize: 11, color: "#607080", lineHeight: 1.5 }}>{desc}</div>
-            </div>
-          ))}
-        </div>
-      </Sec>
-
-      {/* k_delta callout */}
-      <Card style={{ background: "rgba(232,168,48,0.03)", border: "1px solid rgba(232,168,48,0.1)" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "#E8A830", marginBottom: 8 }}>K_DELTA — INGEST HEALTH SIGNAL</div>
-        <p style={{ fontSize: 12.5, color: "#607080", lineHeight: 1.65, margin: 0 }}>
-          The <code style={{ color: "#E8A830", fontFamily: "monospace", fontSize: 11 }}>k_delta</code> field on every{" "}
-          <code style={{ color: G, fontFamily: "monospace", fontSize: 11 }}>ingest.complete</code> event is the change in scalar curvature K caused by that batch.
-          Normal ingestion of on-distribution data produces k_delta ≈ 0. A spike — even from a single batch —
-          means the new data has changed the geometric structure of the bundle. Use it as a zero-latency
-          data quality alarm, without any schema or threshold configuration.
-        </p>
-      </Card>
-    </Page>
-  );
-}
-
-// ═══════════════════════════════════════
 // ENCRYPTION DEMO — Interactive Lab
 // ═══════════════════════════════════════
 const ENC_PRESETS = {
@@ -2449,15 +2242,15 @@ function EncryptionPage() {
       const ptP = await gqlPost(`SECTION ${plainN} AT id=${queryId}`);
       const ptE = await gqlPost(`SECTION ${encN} AT id=${queryId}`);
       setSrvStep("Exporting DHOOM...");
-      const dhP = await (await fetch(`${BENCH_API}/v1/bundles/${plainN}/dhoom`)).json();
-      const dhE = await (await fetch(`${BENCH_API}/v1/bundles/${encN}/dhoom`)).json();
+      const dhP = await (await fetch(`${BENCH_API}/v1/bundles/${plainN}/dhoom`)).text();
+      const dhE = await (await fetch(`${BENCH_API}/v1/bundles/${encN}/dhoom`)).text();
       setSrvStep("Cleanup...");
       await restDelete(`/v1/bundles/${plainN}`); await restDelete(`/v1/bundles/${encN}`);
       setSrvResult({
         kP: kP.value, kE: kE.value, match: Math.abs(kP.value - kE.value) < 0.0001,
         ptP: ptP.section || ptP, ptE: ptE.section || ptE,
-        dhP: dhP.dhoom?.split("\n").slice(0, 8).join("\n") || "",
-        dhE: dhE.dhoom?.split("\n").slice(0, 8).join("\n") || "",
+        dhP: dhP.split("\n").slice(0, 8).join("\n"),
+        dhE: dhE.split("\n").slice(0, 8).join("\n"),
       });
       setSrvStage("done"); setSrvStep("");
     } catch (e) {
@@ -2869,7 +2662,6 @@ export default function GIGISite() {
       {page === "demo" && <InteractiveDemoPage />}
       {page === "bracket" && <BracketPredictor />}
       {page === "live-demos" && <LiveDemosPage />}
-      {page === "observability" && <ObservabilityPage />}
     </div>
   );
 }

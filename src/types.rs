@@ -233,6 +233,18 @@ impl FieldDef {
     }
 }
 
+/// A schema-level invariant constraint: field must equal value ± tol on every insert.
+/// Used for INVARIANT clauses in CREATE BUNDLE (Ask 1 / unit-norm enforcement for Ask 2).
+#[derive(Debug, Clone)]
+pub struct InvariantDef {
+    /// Fiber field the constraint applies to (e.g. "norm_sq")
+    pub expr_field: String,
+    /// Expected value (e.g. 1.0)
+    pub expected: f64,
+    /// Absolute tolerance (e.g. 1e-9)
+    pub tol: f64,
+}
+
 /// Bundle schema (Def 1.1) — declares base fields and fiber fields.
 #[derive(Debug, Clone)]
 pub struct BundleSchema {
@@ -249,6 +261,8 @@ pub struct BundleSchema {
     pub adjacencies: Vec<AdjacencyDef>,
     /// H¹ z-score threshold for consistency checks (default 3.0).
     pub h1_threshold: f64,
+    /// Schema-declared invariant constraints checked on every insert.
+    pub invariants: Vec<InvariantDef>,
 }
 
 impl BundleSchema {
@@ -261,7 +275,13 @@ impl BundleSchema {
             gauge_key: None,
             adjacencies: Vec::new(),
             h1_threshold: 3.0,
+            invariants: Vec::new(),
         }
+    }
+
+    pub fn with_invariant(mut self, inv: InvariantDef) -> Self {
+        self.invariants.push(inv);
+        self
     }
 
     pub fn base(mut self, field: FieldDef) -> Self {

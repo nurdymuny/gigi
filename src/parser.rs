@@ -45,6 +45,7 @@ pub enum Statement {
         indexed: Vec<String>,
         encrypted: bool,
         adjacencies: Vec<AdjacencySpec>,
+        invariants: Vec<InvariantSpec>,
     },
     Collapse {
         bundle: String,
@@ -62,6 +63,11 @@ pub enum Statement {
         values: Vec<Literal>,
     },
     BatchInsert {
+        bundle: String,
+        columns: Vec<String>,
+        rows: Vec<Vec<Literal>>,
+    },
+    BatchSectionUpsert {
         bundle: String,
         columns: Vec<String>,
         rows: Vec<Vec<Literal>>,
@@ -113,12 +119,6 @@ pub enum Statement {
         first: Option<usize>,
         skip: Option<usize>,
         all: bool,
-        /// NEAR (f1=v1, f2=v2, ...) — query point for proximity search.
-        near_point: Vec<(String, f64)>,
-        /// WITHIN radius — max fiber distance from the query point.
-        near_radius: Option<f64>,
-        /// METRIC cosine|euclidean — distance metric for NEAR queries (default: euclidean).
-        near_metric: Option<String>,
     },
 
     // ── Aggregation ──
@@ -206,71 +206,11 @@ pub enum Statement {
         from_keys: Vec<(String, Literal)>,
         to_keys: Vec<(String, Literal)>,
         max_hops: usize,
+        restrict_bundle: Option<String>,
     },
     MetricTensor {
         bundle: String,
     },
-    /// HOLONOMY bundle ON FIBER (f1, f2) AROUND categorical_field
-    ///
-    /// Groups records by the distinct values of `around_field`, computes a 2-D centroid
-    /// per group in the (fiber_fields[0], fiber_fields[1]) plane, sorts the groups
-    /// lexicographically, and returns the discrete parallel-transport closure deficit
-    /// δφ = |Σ θ_k| mod 2π.
-    HolonomyFiber {
-        bundle: String,
-        fiber_fields: Vec<String>,
-        around_field: String,
-    },
-
-    /// SPECTRAL bundle ON FIBER (f1, f2, ...) MODES k
-    ///
-    /// Computes the k smallest non-zero eigenvalues of the normalised Laplacian
-    /// of the k-NN graph built over the requested fiber fields.
-    /// Returns one row per mode: { mode, lambda, ipr }.
-    SpectralFiber {
-        bundle: String,
-        fiber_fields: Vec<String>,
-        modes: usize,
-    },
-
-    /// TRANSPORT bundle FROM (key=val, ...) TO (key=val, ...) ON FIBER (f1, f2, ...)
-    ///
-    /// Returns the discrete parallel transport map from the fiber at the FROM
-    /// record to the fiber at the TO record: displacement vector, transport angle,
-    /// and the 2×2 rotation matrix.
-    Transport {
-        bundle: String,
-        from_keys: Vec<(String, Literal)>,
-        to_keys: Vec<(String, Literal)>,
-        fiber_fields: Vec<String>,
-    },
-
-    /// HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2, ...) AROUND field
-    ///
-    /// Performs a NEAR proximity search first, then computes the HOLONOMY ON FIBER
-    /// restricted to the records in that neighbourhood. Returns the local closure
-    /// deficit δφ_local alongside the global δφ_global for comparison.
-    LocalHolonomy {
-        bundle: String,
-        near_point: Vec<(String, f64)>,
-        near_radius: f64,
-        near_metric: Option<String>,
-        fiber_fields: Vec<String>,
-        around_field: String,
-    },
-
-    /// GAUGE bundle1 VS bundle2 ON FIBER (f1, f2, ...) AROUND field
-    ///
-    /// Runs HOLONOMY independently on two bundles and compares the resulting
-    /// closure deficits. Returns δφ₁, δφ₂, |δφ₁ - δφ₂|, and a boolean
-    /// `gauge_invariant` flag (true when the difference is < π/10).
-    GaugeTest {
-        bundle1: String,
-        bundle2: String,
-        fiber_fields: Vec<String>,
-        around_field: String,
-    },
-
     Explain {
         inner: Box<Statement>,
     },
@@ -336,6 +276,72 @@ pub enum Statement {
     GaugeUnconstrain {
         bundle: String,
         constraint_name: String,
+    },
+    GaugeTest {
+        bundle1: String,
+        bundle2: String,
+        fiber_fields: Vec<String>,
+        around_field: String,
+    },
+    // ── Parallel Transport / Holonomy ──
+    Transport {
+        bundle: String,
+        from_keys: Vec<(String, Literal)>,
+        to_keys: Vec<(String, Literal)>,
+        fiber_fields: Vec<String>,
+    },
+    HolonomyFiber {
+        bundle: String,
+        fiber_fields: Vec<String>,
+        around_field: String,
+    },
+    LocalHolonomy {
+        bundle: String,
+        near_point: Vec<(String, f64)>,
+        near_radius: f64,
+        near_metric: Option<String>,
+        fiber_fields: Vec<String>,
+        around_field: String,
+    },
+    // ── KL Divergence / Cross-bundle analytics ──
+    Divergence {
+        bundle_a: String,
+        bundle_b: String,
+    },
+    // ── Spectral fiber analysis ──
+    SpectralFiber {
+        bundle: String,
+        fiber_fields: Vec<String>,
+        modes: usize,
+    },
+    // ── Ricci curvature (per-edge) ──
+    Ricci {
+        bundle: String,
+    },
+    // ── Coherence extensions (stubs) ──
+    SectionCoherent {
+        bundle: String,
+    },
+    ShowCharts {
+        bundle: String,
+    },
+    ShowContradictions {
+        bundle: String,
+    },
+    CollapseBranch {
+        bundle: String,
+    },
+    Predict {
+        bundle: String,
+    },
+    CoverGeodesic {
+        bundle: String,
+    },
+    Why {
+        bundle: String,
+    },
+    Implications {
+        bundle: String,
     },
     ShowConstraints {
         bundle: String,
@@ -493,90 +499,6 @@ pub enum Statement {
     InvalidateCache {
         bundle: Option<String>,
     },
-
-    // ── Coherence Extensions v0.1 ─────────────────────────────────────────
-
-    /// SECTION bundle (...) AUTO_CHART [tau=N] [GRANULARITY N]
-    ///   [ON CONTRADICTION BRANCH|REPAIR|REJECT|ALLOW]
-    ///   [DERIVED_FROM ['id1', 'id2', ...]]
-    ///   [INHERIT BRANCHES]
-    ///
-    /// Coherence-aware section insert. Any combination of:
-    ///   Feature 1: AUTO_CHART — assigns the point to the atlas.
-    ///   Feature 2: ON CONTRADICTION — handles conflicting re-insert.
-    ///   Feature 6: DERIVED_FROM — records causal edges.
-    SectionCoherent {
-        bundle: String,
-        columns: Vec<String>,
-        values: Vec<Literal>,
-        upsert: bool,
-        /// Feature 1: (tau, granularity) for atlas insert.
-        auto_chart: Option<(f64, f64)>,
-        /// Feature 2: how to handle a conflicting re-insert.
-        on_contradiction: Option<String>,
-        /// Feature 6: list of source IDs this section derives from.
-        derived_from: Vec<String>,
-        /// Feature 6: inherit branch_set from all sources.
-        inherit_branches: bool,
-    },
-
-    /// SHOW CHARTS bundle
-    ShowCharts {
-        bundle: String,
-    },
-
-    /// SHOW CONTRADICTIONS bundle
-    ShowContradictions {
-        bundle: String,
-    },
-
-    /// COLLAPSE bundle BRANCH n  (distinct from Collapse which drops the whole bundle)
-    CollapseBranch {
-        bundle: String,
-        branch_id: u32,
-    },
-
-    /// PREDICT bundle GIVEN (field=val, ...) [BANDWIDTH n]
-    Predict {
-        bundle: String,
-        given: Vec<(String, f64)>,
-        bandwidth: Option<f64>,
-    },
-
-    /// COVER bundle WITHIN GEODESIC radius OF (field=val, ...)
-    CoverGeodesic {
-        bundle: String,
-        query: Vec<(String, f64)>,
-        radius: f64,
-        limit: Option<usize>,
-    },
-
-    /// WHY bundle AT 'id' [DEPTH n]
-    Why {
-        bundle: String,
-        target_id: String,
-        max_depth: Option<usize>,
-    },
-
-    /// IMPLICATIONS bundle AT 'id' [DEPTH n]
-    Implications {
-        bundle: String,
-        target_id: String,
-        max_depth: Option<usize>,
-    },
-
-    /// DIVERGENCE FROM bundle_a TO bundle_b
-    Divergence {
-        bundle_a: String,
-        bundle_b: String,
-    },
-
-    /// RICCI bundle BETWEEN chart_a AND chart_b
-    Ricci {
-        bundle: String,
-        chart_a: u32,
-        chart_b: u32,
-    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -588,6 +510,14 @@ pub struct FieldSpec {
     pub auto_inc: bool,
     pub unique: bool,
     pub required: bool,
+}
+
+/// Parsed invariant constraint: INVARIANT field = value +/- tol
+#[derive(Debug, Clone, PartialEq)]
+pub struct InvariantSpec {
+    pub field: String,
+    pub expected: f64,
+    pub tol: f64,
 }
 
 /// Parsed adjacency declaration: ADJACENCY name ON ... WEIGHT w
@@ -664,6 +594,10 @@ pub enum FilterCondition {
     Void(String),
     Defined(String),
     Between(String, Literal, Literal),
+    Exists {
+        cover_bundle: String,
+        where_conds: Vec<FilterCondition>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -696,6 +630,7 @@ enum Token {
     Lt,  // <
     Lte, // <=
     Star,
+    Slash, // /
     Dot,
     Colon, // :
     Semicolon,
@@ -845,6 +780,10 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                 let word: String = chars[start..i].iter().collect();
                 tokens.push(Token::Word(word));
             }
+            '/' => {
+                tokens.push(Token::Slash);
+                i += 1;
+            }
             c => return Err(format!("Unexpected character: {c}")),
         }
     }
@@ -954,15 +893,7 @@ impl Parser {
             "PULLBACK" => self.parse_pullback(),
             "COLLAPSE" => {
                 let name = self.expect_word()?;
-                // COLLAPSE bundle BRANCH n  →  CollapseBranch
-                // COLLAPSE bundle           →  Collapse (drops the whole bundle)
-                if self.is_keyword("BRANCH") {
-                    self.advance();
-                    let branch_id = self.expect_usize()? as u32;
-                    Ok(Statement::CollapseBranch { bundle: name, branch_id })
-                } else {
-                    Ok(Statement::Collapse { bundle: name })
-                }
+                Ok(Statement::Collapse { bundle: name })
             }
             "EXPLAIN" => self.parse_explain(),
             "SHOW" => self.parse_show(),
@@ -993,8 +924,6 @@ impl Parser {
             "FREEENERGY" => self.parse_free_energy(),
             "GEODESIC" => self.parse_geodesic(),
             "METRIC" => self.parse_metric_tensor(),
-            "HOLONOMY" => self.parse_holonomy(),
-            "TRANSPORT" => self.parse_transport(),
             "COMPLETE" => self.parse_complete(),
             "PROPAGATE" => self.parse_propagate(),
             "SUGGEST_ADJACENCY" => self.parse_suggest_adjacency(),
@@ -1010,6 +939,15 @@ impl Parser {
 
             // v2.1: Constraints
             "GAUGE" => self.parse_gauge(),
+            "TRANSPORT" => self.parse_transport(),
+            "HOLONOMY" => self.parse_holonomy(),
+            "DIVERGENCE" => {
+                // DIVERGENCE bundle_a VS bundle_b
+                let bundle_a = self.expect_word()?;
+                self.expect_word()?; // VS
+                let bundle_b = self.expect_word()?;
+                Ok(Statement::Divergence { bundle_a, bundle_b })
+            }
 
             // v2.1: Maintenance
             "COMPACT" => self.parse_compact(),
@@ -1057,13 +995,6 @@ impl Parser {
 
             // Feature #6: Cache invalidation
             "INVALIDATE" => self.parse_invalidate_cache(),
-
-            // Coherence extensions v0.1
-            "PREDICT" => self.parse_predict(),
-            "WHY" => self.parse_why(),
-            "IMPLICATIONS" => self.parse_implications(),
-            "DIVERGENCE" => self.parse_divergence(),
-            "RICCI" => self.parse_ricci(),
 
             _ => Err(format!("Unknown statement: {first}")),
         }
@@ -1121,11 +1052,20 @@ impl Parser {
         }
 
         // ADJACENCY clauses: ADJACENCY name ON field = field WEIGHT w
+        // ADJACENCY () — shorthand for empty adjacency list
         let mut adjacencies = Vec::new();
         while self.is_keyword("ADJACENCY") {
             self.advance();
+            // Allow ADJACENCY () as empty adjacency declaration
+            if matches!(self.peek(), Some(Token::LParen)) {
+                self.advance(); // (
+                self.expect(Token::RParen)?;
+                continue;
+            }
             adjacencies.push(self.parse_adjacency_spec()?);
         }
+
+        let invariants = self.parse_invariant_specs();
 
         Ok(Statement::CreateBundle {
             name,
@@ -1134,6 +1074,7 @@ impl Parser {
             indexed,
             encrypted,
             adjacencies,
+            invariants,
         })
     }
 
@@ -1279,96 +1220,13 @@ impl Parser {
             });
         }
 
-        // SECTION name (...) [UPSERT] [coherence modifiers] → insert
+        // SECTION name (...) [UPSERT] → insert
         self.expect(Token::LParen)?;
         let (columns, values) = self.parse_section_body()?;
         self.expect(Token::RParen)?;
 
-        // Detect whether this is a coherence-aware insert.
-        let mut upsert = false;
-        let mut auto_chart: Option<(f64, f64)> = None;
-        let mut on_contradiction: Option<String> = None;
-        let mut derived_from: Vec<String> = Vec::new();
-        let mut inherit_branches = false;
-
         if self.is_keyword("UPSERT") {
             self.advance();
-            upsert = true;
-        }
-
-        // Parse optional coherence modifiers in any order.
-        loop {
-            if self.is_keyword("AUTO_CHART") {
-                self.advance();
-                let mut tau = 0.3_f64;
-                let mut granularity = 0.15_f64;
-                if self.is_keyword("tau") || self.is_keyword("TAU") {
-                    self.advance();
-                    self.expect(Token::Eq)?;
-                    tau = self.parse_f64()?;
-                }
-                if self.is_keyword("GRANULARITY") {
-                    self.advance();
-                    granularity = self.parse_f64()?;
-                }
-                auto_chart = Some((tau, granularity));
-            } else if self.is_keyword("ON") {
-                self.advance();
-                self.expect_keyword("CONTRADICTION")?;
-                let policy = self.expect_word()?;
-                on_contradiction = Some(policy.to_ascii_uppercase());
-            } else if self.is_keyword("DERIVED_FROM") {
-                self.advance();
-                // DERIVED_FROM ('id1', 'id2', ...)
-                self.expect(Token::LParen)?;
-                loop {
-                    if matches!(self.peek(), Some(Token::RParen)) {
-                        break;
-                    }
-                    if !derived_from.is_empty() {
-                        if matches!(self.peek(), Some(Token::Comma)) {
-                            self.advance();
-                        }
-                    }
-                    match self.advance() {
-                        Some(Token::Str(s)) => derived_from.push(s),
-                        Some(Token::Word(w)) => derived_from.push(w),
-                        other => {
-                            return Err(format!(
-                                "Expected string id in DERIVED_FROM list, got {other:?}"
-                            ))
-                        }
-                    }
-                }
-                self.expect(Token::RParen)?;
-            } else if self.is_keyword("INHERIT") {
-                self.advance();
-                self.expect_keyword("BRANCHES")?;
-                inherit_branches = true;
-            } else {
-                break;
-            }
-        }
-
-        let is_coherent = auto_chart.is_some()
-            || on_contradiction.is_some()
-            || !derived_from.is_empty()
-            || inherit_branches;
-
-        if is_coherent {
-            return Ok(Statement::SectionCoherent {
-                bundle: name,
-                columns,
-                values,
-                upsert,
-                auto_chart,
-                on_contradiction,
-                derived_from,
-                inherit_branches,
-            });
-        }
-
-        if upsert {
             return Ok(Statement::SectionUpsert {
                 bundle: name,
                 columns,
@@ -1436,10 +1294,9 @@ impl Parser {
                 Some(Token::Comma) | Some(Token::RParen)
             );
 
-        if named {
+        let (columns, rows) = if named {
             // Pattern 1: Named key-value pairs, single row
             let mut columns = Vec::new();
-            let mut rows = Vec::new();
             let mut current_row = Vec::new();
 
             loop {
@@ -1459,14 +1316,8 @@ impl Parser {
                 columns.push(col);
                 current_row.push(val);
             }
-            rows.push(current_row);
             self.expect(Token::RParen)?;
-
-            Ok(Statement::BatchInsert {
-                bundle: name,
-                columns,
-                rows,
-            })
+            (columns, vec![current_row])
         } else if column_list {
             // Pattern 2: SECTIONS b (col1, col2, ...) (v1, v2, ...), (v1, v2, ...)
             let mut columns = Vec::new();
@@ -1508,12 +1359,7 @@ impl Parser {
                 self.expect(Token::RParen)?;
                 rows.push(row);
             }
-
-            Ok(Statement::BatchInsert {
-                bundle: name,
-                columns,
-                rows,
-            })
+            (columns, rows)
         } else {
             // Pattern 3: Positional values only, single row
             let mut all_values = Vec::new();
@@ -1527,13 +1373,24 @@ impl Parser {
                 all_values.push(self.parse_literal()?);
             }
             self.expect(Token::RParen)?;
+            (vec![], vec![all_values])
+        };
 
-            Ok(Statement::BatchInsert {
+        // UPSERT suffix: SECTIONS b (...) UPSERT → batch upsert
+        if self.is_keyword("UPSERT") {
+            self.advance();
+            return Ok(Statement::BatchSectionUpsert {
                 bundle: name,
-                columns: vec![],
-                rows: vec![all_values],
-            })
+                columns,
+                rows,
+            });
         }
+
+        Ok(Statement::BatchInsert {
+            bundle: name,
+            columns,
+            rows,
+        })
     }
 
     // ── GQL: REDEFINE (update) ──
@@ -1596,33 +1453,6 @@ impl Parser {
     fn parse_cover(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
 
-        // COVER bundle WITHIN GEODESIC radius OF (field=val, ...)  → CoverGeodesic
-        if self.is_keyword("WITHIN") {
-            self.advance();
-            self.expect_keyword("GEODESIC")?;
-            let radius = self.parse_f64()?;
-            self.expect_keyword("OF")?;
-            self.expect(Token::LParen)?;
-            let mut query: Vec<(String, f64)> = Vec::new();
-            loop {
-                if matches!(self.peek(), Some(Token::RParen)) { break; }
-                if !query.is_empty() {
-                    if matches!(self.peek(), Some(Token::Comma)) { self.advance(); }
-                }
-                let field = self.expect_word()?;
-                self.expect(Token::Eq)?;
-                let val = self.parse_f64()?;
-                query.push((field, val));
-            }
-            self.expect(Token::RParen)?;
-            let mut limit = None;
-            if self.is_keyword("LIMIT") {
-                self.advance();
-                limit = Some(self.expect_usize()?);
-            }
-            return Ok(Statement::CoverGeodesic { bundle: name, query, radius, limit });
-        }
-
         let mut on_conditions = Vec::new();
         let mut where_conditions = Vec::new();
         let mut or_groups = Vec::new();
@@ -1632,9 +1462,6 @@ impl Parser {
         let mut first = None;
         let mut skip = None;
         let mut all = false;
-        let mut near_point: Vec<(String, f64)> = Vec::new();
-        let mut near_radius: Option<f64> = None;
-        let mut near_metric: Option<String> = None;
 
         // Parse optional clauses in any order
         loop {
@@ -1674,38 +1501,6 @@ impl Parser {
             } else if self.is_keyword("SKIP") {
                 self.advance();
                 skip = Some(self.parse_usize()?);
-            } else if self.is_keyword("NEAR") {
-                // NEAR (f1=v1, f2=v2, ...)
-                self.advance();
-                self.expect(Token::LParen)?;
-                loop {
-                    let field = self.expect_word()?;
-                    self.expect(Token::Eq)?;
-                    let val = match self.advance() {
-                        Some(Token::Number(n)) => n,
-                        Some(Token::Minus) => match self.advance() {
-                            Some(Token::Number(n)) => -n,
-                            other => return Err(format!("Expected number after '-', got {other:?}")),
-                        },
-                        other => return Err(format!("Expected number in NEAR point, got {other:?}")),
-                    };
-                    near_point.push((field, val));
-                    if matches!(self.peek(), Some(Token::Comma)) {
-                        self.advance();
-                    } else {
-                        break;
-                    }
-                }
-                self.expect(Token::RParen)?;
-            } else if self.is_keyword("WITHIN") {
-                self.advance();
-                near_radius = Some(match self.advance() {
-                    Some(Token::Number(n)) => n,
-                    other => return Err(format!("Expected radius after WITHIN, got {other:?}")),
-                });
-            } else if self.is_keyword("METRIC") {
-                self.advance();
-                near_metric = Some(self.expect_word()?);
             } else {
                 break;
             }
@@ -1722,9 +1517,6 @@ impl Parser {
             first,
             skip,
             all,
-            near_point,
-            near_radius,
-            near_metric,
         })
     }
 
@@ -1849,33 +1641,23 @@ impl Parser {
 
     fn parse_spectral(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
+        // Check for ON FIBER variant: SPECTRAL bundle ON FIBER (f1, f2) MODES k
         if self.is_keyword("ON") {
-            // New form: SPECTRAL bundle ON FIBER (f1, f2, ...) MODES k
-            self.advance(); // consume ON
-            self.expect_keyword("FIBER")?;
-            let fiber_fields = self.parse_name_list()?;
-            self.expect_keyword("MODES")?;
-            let modes = match self.tokens.get(self.pos) {
-                Some(Token::Number(n)) => {
-                    let m = *n as usize;
-                    self.pos += 1;
-                    m
-                }
-                other => return Err(format!("SPECTRAL … MODES: expected integer, got {:?}", other)),
-            };
-            if modes == 0 {
-                return Err("SPECTRAL … MODES: k must be >= 1".into());
-            }
-            Ok(Statement::SpectralFiber { bundle: name, fiber_fields, modes })
-        } else {
-            let full = if self.is_keyword("FULL") {
-                self.advance();
-                true
-            } else {
-                false
-            };
-            Ok(Statement::Spectral { bundle: name, full })
+            self.advance(); // ON
+            self.expect_word()?; // FIBER
+            self.expect(Token::LParen)?;
+            let fiber_fields = self.parse_inner_word_list()?;
+            self.expect_word()?; // MODES
+            let modes = self.expect_usize()?;
+            return Ok(Statement::SpectralFiber { bundle: name, fiber_fields, modes });
         }
+        let full = if self.is_keyword("FULL") {
+            self.advance();
+            true
+        } else {
+            false
+        };
+        Ok(Statement::Spectral { bundle: name, full })
     }
 
     fn parse_consistency(&mut self) -> Result<Statement, String> {
@@ -1897,77 +1679,9 @@ impl Parser {
         Ok(Statement::Betti { bundle: name })
     }
 
-    /// Parse HOLONOMY — dispatches to ON FIBER form or LOCAL HOLONOMY (NEAR) form.
-    ///
-    /// Global:  `HOLONOMY bundle ON FIBER (f1, f2) AROUND field`
-    /// Local:   `HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field`
-    fn parse_holonomy(&mut self) -> Result<Statement, String> {
-        let bundle = self.expect_word()?;
-        if self.is_keyword("NEAR") {
-            // Local holonomy form
-            self.advance(); // consume NEAR
-            self.expect(Token::LParen)?;
-            let near_point = self.parse_f64_kv_pairs()?;
-            self.expect(Token::RParen)?;
-            self.expect_keyword("WITHIN")?;
-            let near_radius = match self.tokens.get(self.pos) {
-                Some(Token::Number(r)) => { let v = *r; self.pos += 1; v }
-                other => return Err(format!("HOLONOMY NEAR … WITHIN: expected number, got {:?}", other)),
-            };
-            let near_metric = if self.is_keyword("METRIC") {
-                self.advance();
-                Some(self.expect_word()?)
-            } else {
-                None
-            };
-            self.advance_if_keyword("ON");
-            self.expect_keyword("FIBER")?;
-            let fiber_fields = self.parse_name_list()?;
-            self.expect_keyword("AROUND")?;
-            let around_field = self.expect_word()?;
-            Ok(Statement::LocalHolonomy {
-                bundle, near_point, near_radius, near_metric, fiber_fields, around_field,
-            })
-        } else if self.is_keyword("ON") {
-            // Global form: HOLONOMY bundle ON FIBER (f1, f2) AROUND field
-            self.advance(); // consume ON
-            self.expect_keyword("FIBER")?;
-            let fiber_fields = self.parse_name_list()?;
-            self.expect_keyword("AROUND")?;
-            let around_field = self.expect_word()?;
-            Ok(Statement::HolonomyFiber { bundle, fiber_fields, around_field })
-        } else {
-            Err("Use: HOLONOMY bundle ON FIBER (f1, f2) AROUND field  \
-                 or:  HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r ON FIBER (f1, f2) AROUND field".to_string())
-        }
-    }
-
     fn parse_entropy(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
         Ok(Statement::Entropy { bundle: name })
-    }
-
-    fn parse_transport(&mut self) -> Result<Statement, String> {
-        // TRANSPORT bundle FROM (key=val, ...) TO (key=val, ...) ON FIBER (f1, f2, ...)
-        let bundle = self.expect_word()?;
-        self.expect_keyword("FROM")?;
-        self.expect(Token::LParen)?;
-        let from_keys = self.parse_kv_pairs_inner()?;
-        self.expect(Token::RParen)?;
-        if from_keys.is_empty() {
-            return Err("TRANSPORT: expected key=value pairs after FROM (...)".into());
-        }
-        self.expect_keyword("TO")?;
-        self.expect(Token::LParen)?;
-        let to_keys = self.parse_kv_pairs_inner()?;
-        self.expect(Token::RParen)?;
-        if to_keys.is_empty() {
-            return Err("TRANSPORT: expected key=value pairs after TO (...)".into());
-        }
-        self.advance_if_keyword("ON");
-        self.expect_keyword("FIBER")?;
-        let fiber_fields = self.parse_name_list()?;
-        Ok(Statement::Transport { bundle, from_keys, to_keys, fiber_fields })
     }
 
     fn parse_free_energy(&mut self) -> Result<Statement, String> {
@@ -2000,11 +1714,18 @@ impl Parser {
             self.advance();
             max_hops = self.expect_usize()?;
         }
+        let mut restrict_bundle = None;
+        if self.is_keyword("RESTRICT") {
+            self.advance();
+            self.expect_keyword("TO")?;
+            restrict_bundle = Some(self.expect_word()?);
+        }
         Ok(Statement::Geodesic {
             bundle,
             from_keys,
             to_keys,
             max_hops,
+            restrict_bundle,
         })
     }
 
@@ -2244,6 +1965,9 @@ impl Parser {
             adjacencies.push(self.parse_adjacency_spec()?);
         }
 
+        // INVARIANT field = value +/- tol
+        let invariants = self.parse_invariant_specs();
+
         Ok(Statement::CreateBundle {
             name,
             base_fields,
@@ -2251,7 +1975,48 @@ impl Parser {
             indexed,
             encrypted,
             adjacencies,
+            invariants,
         })
+    }
+
+    fn parse_invariant_specs(&mut self) -> Vec<InvariantSpec> {
+        let mut invariants = Vec::new();
+        while self.is_keyword("INVARIANT") {
+            self.advance();
+            let field = match self.expect_word() {
+                Ok(f) => f,
+                Err(_) => break,
+            };
+            if self.expect(Token::Eq).is_err() { break; }
+            let expected = match self.advance() {
+                Some(Token::Number(n)) => n,
+                _ => break,
+            };
+            // Optional +/- tol: handles `+ / -`, `+-`, `+/-`, or plain number
+            let tol = if matches!(self.peek(), Some(Token::Plus)) {
+                self.advance(); // consume +
+                if matches!(self.peek(), Some(Token::Slash)) {
+                    self.advance(); // consume /
+                    if matches!(self.peek(), Some(Token::Minus)) {
+                        self.advance(); // consume -
+                    }
+                }
+                match self.advance() {
+                    Some(Token::Number(n)) => n.abs(),
+                    _ => 1e-9,
+                }
+            } else if matches!(self.peek(), Some(Token::Word(w)) if w == "+-" || w == "+/-") {
+                self.advance();
+                match self.advance() {
+                    Some(Token::Number(n)) => n,
+                    _ => 1e-9,
+                }
+            } else {
+                1e-9
+            };
+            invariants.push(InvariantSpec { field, expected, tol });
+        }
+        invariants
     }
 
     fn parse_sql_insert(&mut self) -> Result<Statement, String> {
@@ -2467,50 +2232,6 @@ impl Parser {
         Ok(pairs)
     }
 
-    /// Parse `field=f64_value, field=f64_value` pairs (no parens — caller handles them).
-    /// Used for NEAR (...) and HOLONOMY NEAR (...) clauses.
-    fn parse_f64_kv_pairs(&mut self) -> Result<Vec<(String, f64)>, String> {
-        let mut pairs = Vec::new();
-        loop {
-            if matches!(self.peek(), Some(Token::RParen)) || self.at_end() {
-                break;
-            }
-            if !pairs.is_empty() {
-                if matches!(self.peek(), Some(Token::Comma)) {
-                    self.advance();
-                } else {
-                    break;
-                }
-            }
-            let key = self.expect_word()?;
-            if matches!(self.peek(), Some(Token::Eq)) {
-                self.advance();
-            } else {
-                return Err(format!("Expected '=' after '{key}' in key=value pair"));
-            }
-            let val = match self.tokens.get(self.pos) {
-                Some(Token::Number(n)) => { let v = *n; self.pos += 1; v }
-                Some(Token::Minus) => {
-                    self.pos += 1;
-                    match self.tokens.get(self.pos) {
-                        Some(Token::Number(n)) => { let v = -*n; self.pos += 1; v }
-                        other => return Err(format!("Expected number after '-' in NEAR clause, got {:?}", other)),
-                    }
-                }
-                other => return Err(format!("Expected f64 for key '{key}' in NEAR clause, got {:?}", other)),
-            };
-            pairs.push((key, val));
-        }
-        Ok(pairs)
-    }
-
-    /// Advance past the current token only if it is the given keyword.
-    fn advance_if_keyword(&mut self, kw: &str) {
-        if self.is_keyword(kw) {
-            self.advance();
-        }
-    }
-
     // ── Helper: filter conditions ──
 
     fn parse_filter_conditions(&mut self) -> Result<Vec<FilterCondition>, String> {
@@ -2524,7 +2245,23 @@ impl Parser {
     fn parse_filter_condition_list(&mut self) -> Result<Vec<FilterCondition>, String> {
         let mut conditions = Vec::new();
         loop {
-            conditions.push(self.parse_single_filter()?);
+            // EXISTS (COVER bundle WHERE ...) subquery condition
+            if self.is_keyword("EXISTS") {
+                self.advance();
+                self.expect(Token::LParen)?;
+                self.expect_keyword("COVER")?;
+                let cover_bundle = self.expect_word()?;
+                let where_conds = if self.is_keyword("WHERE") {
+                    self.advance();
+                    self.parse_filter_condition_list()?
+                } else {
+                    vec![]
+                };
+                self.expect(Token::RParen)?;
+                conditions.push(FilterCondition::Exists { cover_bundle, where_conds });
+            } else {
+                conditions.push(self.parse_single_filter()?);
+            }
             if self.is_keyword("AND") {
                 self.advance();
             } else {
@@ -2770,14 +2507,6 @@ impl Parser {
                 self.expect_keyword("ON")?;
                 let bundle = self.expect_word()?;
                 Ok(Statement::ShowComments { bundle })
-            }
-            "CHARTS" => {
-                let bundle = self.expect_word()?;
-                Ok(Statement::ShowCharts { bundle })
-            }
-            "CONTRADICTIONS" => {
-                let bundle = self.expect_word()?;
-                Ok(Statement::ShowContradictions { bundle })
             }
             _ => Err(format!("Unknown SHOW target: {what}")),
         }
@@ -3076,17 +2805,122 @@ impl Parser {
                 })
             }
             "VS" => {
-                // GAUGE bundle1 VS bundle2 ON FIBER (f1, f2, ...) AROUND field
-                let bundle2 = self.expect_word()?;
-                self.advance_if_keyword("ON");
-                self.expect_keyword("FIBER")?;
-                let fiber_fields = self.parse_name_list()?;
-                self.expect_keyword("AROUND")?;
+                // GAUGE bundle1 VS bundle2 ON FIBER (f1, f2) AROUND field
+                let bundle2 = bundle;
+                // In this syntax: GAUGE was parsed, bundle is bundle1, action was "VS", next is bundle2
+                // Actually: GAUGE bundle1 VS bundle2 — `bundle` = bundle1, action = "VS", we need bundle2 next
+                let bundle1_name = bundle2; // rename for clarity
+                let bundle2_name = self.expect_word()?;
+                self.expect_word()?; // ON
+                self.expect_word()?; // FIBER
+                self.expect(Token::LParen)?;
+                let fiber_fields = self.parse_word_list()?;
+                self.expect_word()?; // AROUND
                 let around_field = self.expect_word()?;
-                Ok(Statement::GaugeTest { bundle1: bundle, bundle2, fiber_fields, around_field })
+                Ok(Statement::GaugeTest {
+                    bundle1: bundle1_name,
+                    bundle2: bundle2_name,
+                    fiber_fields,
+                    around_field,
+                })
             }
             _ => Err(format!("Expected CONSTRAIN, UNCONSTRAIN, or VS, got {action}")),
         }
+    }
+
+    // ── Parallel Transport / Holonomy ──
+
+    fn parse_transport(&mut self) -> Result<Statement, String> {
+        // TRANSPORT bundle FROM (k=v, ...) TO (k=v, ...) ON FIBER (f1, f2, ...)
+        let bundle = self.expect_word()?;
+        self.expect_word()?; // FROM
+        self.expect(Token::LParen)?;
+        let from_keys = self.parse_kv_pairs_inner()?;
+        self.expect(Token::RParen)?;
+        self.expect_word()?; // TO
+        self.expect(Token::LParen)?;
+        let to_keys = self.parse_kv_pairs_inner()?;
+        self.expect(Token::RParen)?;
+        self.expect_word()?; // ON
+        self.expect_word()?; // FIBER
+        self.expect(Token::LParen)?;
+        let fiber_fields = self.parse_inner_word_list()?;
+        Ok(Statement::Transport { bundle, from_keys, to_keys, fiber_fields })
+    }
+
+    fn parse_holonomy(&mut self) -> Result<Statement, String> {
+        // HOLONOMY bundle ON FIBER (f1, f2) AROUND field
+        // HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field
+        let bundle = self.expect_word()?;
+        let keyword = self.expect_word()?;
+        match keyword.to_ascii_uppercase().as_str() {
+            "ON" => {
+                self.expect_word()?; // FIBER
+                self.expect(Token::LParen)?;
+                let fiber_fields = self.parse_inner_word_list()?;
+                self.expect_word()?; // AROUND
+                let around_field = self.expect_word()?;
+                Ok(Statement::HolonomyFiber { bundle, fiber_fields, around_field })
+            }
+            "NEAR" => {
+                self.expect(Token::LParen)?;
+                let near_kv = self.parse_kv_pairs_inner()?;
+                self.expect(Token::RParen)?;
+                // Convert Literal values to f64
+                let near_point: Vec<(String, f64)> = near_kv
+                    .into_iter()
+                    .map(|(k, v)| {
+                        let f = match v {
+                            Literal::Float(f) => f,
+                            Literal::Integer(i) => i as f64,
+                            _ => 0.0,
+                        };
+                        (k, f)
+                    })
+                    .collect();
+                self.expect_word()?; // WITHIN
+                let near_radius = match self.advance() {
+                    Some(Token::Number(n)) => n,
+                    other => return Err(format!("Expected radius number, got {other:?}")),
+                };
+                // Optional METRIC keyword
+                let near_metric = if self.is_keyword("METRIC") {
+                    self.advance(); // consume METRIC
+                    Some(self.expect_word()?)
+                } else {
+                    None
+                };
+                self.expect_word()?; // ON
+                self.expect_word()?; // FIBER
+                self.expect(Token::LParen)?;
+                let fiber_fields = self.parse_inner_word_list()?;
+                self.expect_word()?; // AROUND
+                let around_field = self.expect_word()?;
+                Ok(Statement::LocalHolonomy { bundle, near_point, near_radius, near_metric, fiber_fields, around_field })
+            }
+            other => Err(format!("Expected ON or NEAR after HOLONOMY bundle, got {other}")),
+        }
+    }
+
+    /// Parse a comma-separated word list that was already opened with `(`. Consumes the closing `)`.
+    fn parse_inner_word_list(&mut self) -> Result<Vec<String>, String> {
+        let mut names = Vec::new();
+        loop {
+            if matches!(self.peek(), Some(Token::RParen)) {
+                self.advance();
+                break;
+            }
+            if !names.is_empty() {
+                self.expect(Token::Comma)?;
+            }
+            names.push(self.expect_word()?);
+        }
+        Ok(names)
+    }
+
+    /// Alias for parse_inner_word_list used in other contexts.
+    fn parse_word_list(&mut self) -> Result<Vec<String>, String> {
+        self.parse_inner_word_list()
     }
 
     // ── v2.1: Maintenance ──
@@ -3536,105 +3370,6 @@ impl Parser {
         };
         Ok(Statement::InvalidateCache { bundle })
     }
-
-    // ── Coherence extensions v0.1 parse helpers ──────────────────────────────
-
-    /// Parse a single f64 (handles optional leading minus).
-    fn parse_f64(&mut self) -> Result<f64, String> {
-        let neg = if matches!(self.peek(), Some(Token::Minus)) {
-            self.advance();
-            true
-        } else {
-            false
-        };
-        match self.advance() {
-            Some(Token::Number(n)) => Ok(if neg { -n } else { n }),
-            other => Err(format!("Expected float, got {other:?}")),
-        }
-    }
-
-    /// PREDICT bundle GIVEN (field=val, ...) [BANDWIDTH n]
-    fn parse_predict(&mut self) -> Result<Statement, String> {
-        let bundle = self.expect_word()?;
-        self.expect_keyword("GIVEN")?;
-        self.expect(Token::LParen)?;
-        let given = self.parse_f64_kv_pairs()?;
-        self.expect(Token::RParen)?;
-        let bandwidth = if self.is_keyword("BANDWIDTH") {
-            self.advance();
-            Some(self.parse_f64()?)
-        } else {
-            None
-        };
-        // Optional RETURNING clause — ignore for parse (always returns all fields)
-        if self.is_keyword("RETURNING") {
-            self.advance();
-            while !self.at_end() {
-                if !matches!(self.peek(), Some(Token::Word(_) | Token::Comma)) { break; }
-                self.advance();
-            }
-        }
-        Ok(Statement::Predict { bundle, given, bandwidth })
-    }
-
-    /// WHY bundle AT 'id' [DEPTH n]
-    fn parse_why(&mut self) -> Result<Statement, String> {
-        let bundle = self.expect_word()?;
-        self.expect_keyword("AT")?;
-        let target_id = match self.advance() {
-            Some(Token::Str(s)) => s,
-            Some(Token::Word(w)) => w,
-            other => return Err(format!("Expected id string after WHY ... AT, got {other:?}")),
-        };
-        let max_depth = if self.is_keyword("DEPTH") {
-            self.advance();
-            Some(self.expect_usize()?)
-        } else {
-            None
-        };
-        Ok(Statement::Why { bundle, target_id, max_depth })
-    }
-
-    /// IMPLICATIONS bundle AT 'id' [DEPTH n]
-    fn parse_implications(&mut self) -> Result<Statement, String> {
-        let bundle = self.expect_word()?;
-        self.expect_keyword("AT")?;
-        let target_id = match self.advance() {
-            Some(Token::Str(s)) => s,
-            Some(Token::Word(w)) => w,
-            other => {
-                return Err(format!(
-                    "Expected id string after IMPLICATIONS ... AT, got {other:?}"
-                ))
-            }
-        };
-        let max_depth = if self.is_keyword("DEPTH") {
-            self.advance();
-            Some(self.expect_usize()?)
-        } else {
-            None
-        };
-        Ok(Statement::Implications { bundle, target_id, max_depth })
-    }
-
-    /// DIVERGENCE FROM bundle_a TO bundle_b
-    fn parse_divergence(&mut self) -> Result<Statement, String> {
-        self.expect_keyword("FROM")?;
-        let bundle_a = self.expect_word()?;
-        self.expect_keyword("TO")?;
-        let bundle_b = self.expect_word()?;
-        Ok(Statement::Divergence { bundle_a, bundle_b })
-    }
-
-    /// RICCI bundle BETWEEN chart_a AND chart_b
-    fn parse_ricci(&mut self) -> Result<Statement, String> {
-        let bundle = self.expect_word()?;
-        self.expect_keyword("BETWEEN")?;
-        let chart_a = self.expect_usize()? as u32;
-        self.expect_keyword("AND")?;
-        let chart_b = self.expect_usize()? as u32;
-        Ok(Statement::Ricci { bundle, chart_a, chart_b })
-    }
 }
 
 /// Parse a GQL statement string into a Statement AST.
@@ -3743,6 +3478,8 @@ fn filter_to_query_condition(fc: &FilterCondition) -> crate::bundle::QueryCondit
             // Between is desugared into Gte + Lte by filter_to_query_conditions()
             QC::Gte(f.clone(), literal_to_value(lo))
         }
+        // EXISTS is evaluated at a higher level that has access to the engine
+        FilterCondition::Exists { .. } => QC::IsNotNull("__always_true__".to_string()),
     }
 }
 
@@ -3754,6 +3491,7 @@ fn filter_to_query_conditions(fc: &FilterCondition) -> Vec<crate::bundle::QueryC
             QC::Gte(f.clone(), literal_to_value(lo)),
             QC::Lte(f.clone(), literal_to_value(hi)),
         ],
+        FilterCondition::Exists { .. } => vec![], // handled at engine level
         other => vec![filter_to_query_condition(other)],
     }
 }
@@ -3800,6 +3538,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             indexed,
             encrypted,
             adjacencies,
+            invariants,
         } => {
             let mut schema = crate::types::BundleSchema::new(name);
             for f in base_fields {
@@ -3813,6 +3552,13 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }
             for adj in adjacencies {
                 schema = schema.adjacency(adj_spec_to_def(adj));
+            }
+            for inv in invariants {
+                schema = schema.with_invariant(crate::types::InvariantDef {
+                    expr_field: inv.field.clone(),
+                    expected: inv.expected,
+                    tol: inv.tol,
+                });
             }
             if *encrypted {
                 let seed = crate::crypto::GaugeKey::random_seed();
@@ -3904,6 +3650,32 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .batch_insert(bundle, &records)
                 .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Ok)
+        }
+
+        Statement::BatchSectionUpsert {
+            bundle,
+            columns,
+            rows,
+        } => {
+            let mut inserted = 0usize;
+            let mut updated = 0usize;
+            for row in rows {
+                let record: crate::types::Record = if columns.is_empty() {
+                    row.iter()
+                        .enumerate()
+                        .map(|(i, v)| (format!("_{i}"), literal_to_value(v)))
+                        .collect()
+                } else {
+                    columns.iter().zip(row.iter())
+                        .map(|(c, v)| (c.clone(), literal_to_value(v)))
+                        .collect()
+                };
+                let mut store = engine
+                    .bundle_mut(bundle)
+                    .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                if store.upsert(&record) { updated += 1; } else { inserted += 1; }
+            }
+            Ok(ExecResult::Scalar(inserted as f64 + updated as f64))
         }
 
         Statement::SectionUpsert {
@@ -4035,53 +3807,10 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             first,
             skip,
             all: _,
-            near_point,
-            near_radius,
-            near_metric,
         } => {
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-
-            // ── NEAR proximity search (takes priority over standard filter path) ──
-            if !near_point.is_empty() {
-                if let Some(radius) = near_radius {
-                    let metric = near_metric.as_deref();
-                    let mut hits = store.cover_near(near_point, *radius, metric);
-
-                    // Apply any ON / WHERE conditions as a post-filter
-                    if !on_conditions.is_empty() || !where_conditions.is_empty() {
-                        let post_conds: Vec<crate::bundle::QueryCondition> = on_conditions
-                            .iter()
-                            .chain(where_conditions.iter())
-                            .flat_map(filter_to_query_conditions)
-                            .collect();
-                        hits.retain(|(rec, _)| post_conds.iter().all(|c| c.matches(rec)));
-                    }
-
-                    // Pagination
-                    let start = first.map(|_| skip.unwrap_or(0)).unwrap_or(0);
-                    if start > 0 {
-                        hits = hits.into_iter().skip(start).collect();
-                    }
-                    if let Some(lim) = first {
-                        hits.truncate(*lim);
-                    }
-
-                    // Inject _distance field so callers can inspect proximity
-                    let rows: Vec<crate::types::Record> = hits
-                        .into_iter()
-                        .map(|(mut rec, dist): (crate::types::Record, f64)| {
-                            rec.insert(
-                                "_distance".to_string(),
-                                crate::types::Value::Float(dist),
-                            );
-                            rec
-                        })
-                        .collect();
-                    return Ok(ExecResult::Rows(rows));
-                }
-            }
 
             // Handle DISTINCT
             if let Some(field) = distinct_field {
@@ -4651,14 +4380,29 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
         }
-        Statement::Geodesic { bundle, from_keys, to_keys, max_hops } => {
+        Statement::Geodesic { bundle, from_keys, to_keys, max_hops, restrict_bundle } => {
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
             let from_rec: crate::types::Record = from_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
             let to_rec: crate::types::Record = to_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
             let bp_a = store.base_point(&from_rec);
             let bp_b = store.base_point(&to_rec);
-            match store.geodesic_distance(bp_a, bp_b, *max_hops) {
-                Some(d) => Ok(ExecResult::Scalar(d)),
+            match store.geodesic_path(bp_a, bp_b, *max_hops) {
+                Some(path) => {
+                    let mut rows: Vec<crate::types::Record> = path.iter().enumerate().map(|(hop, &bp)| {
+                        let mut r = crate::types::Record::new();
+                        r.insert("hop".to_string(), crate::types::Value::Integer(hop as i64));
+                        r.insert("base_point".to_string(), crate::types::Value::Integer(bp as i64));
+                        r
+                    }).collect();
+                    if let Some(rb) = restrict_bundle {
+                        let restrict_store = engine.bundle(rb).ok_or_else(|| format!("RESTRICT TO bundle '{}' not found", rb))?;
+                        let restrict_bps: std::collections::HashSet<u64> = restrict_store.all_base_points();
+                        rows.retain(|r| {
+                            r.get("base_point").and_then(|v| v.as_i64()).map(|bp| restrict_bps.contains(&(bp as u64))).unwrap_or(false)
+                        });
+                    }
+                    Ok(ExecResult::Rows(rows))
+                }
                 None => Ok(ExecResult::Scalar(-1.0)),
             }
         }
@@ -4668,882 +4412,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let cond = if info.condition_number.is_finite() { info.condition_number } else { -1.0 };
             Ok(ExecResult::Scalar(cond))
         }
-
-        /// HOLONOMY bundle ON FIBER (f1, f2) AROUND categorical_field
-        ///
-        /// Groups records by the distinct values of `around_field`, computes a 2-D centroid
-        /// per group (sorted lexicographically), then measures discrete parallel transport
-        /// deficit δφ = |Σ θ_k| mod 2π.
-        Statement::HolonomyFiber { bundle, fiber_fields, around_field } => {
-            let store = engine
-                .bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-
-            if fiber_fields.len() < 2 {
-                return Err("HOLONOMY ON FIBER requires at least 2 fiber fields".to_string());
-            }
-            let f0 = &fiber_fields[0];
-            let f1 = &fiber_fields[1];
-
-            // 1. Group records by around_field → accumulate centroid sums
-            use std::collections::BTreeMap;
-            let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
-            for rec in store.records() {
-                let key = match rec.get(around_field.as_str()) {
-                    Some(v) => format!("{v:?}"),
-                    None => continue,
-                };
-                let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
-                entry.0 += v0;
-                entry.1 += v1;
-                entry.2 += 1;
-            }
-
-            if groups.len() < 2 {
-                return Err(format!(
-                    "HOLONOMY ON FIBER needs ≥2 distinct '{}' values, found {}",
-                    around_field,
-                    groups.len()
-                ));
-            }
-
-            // 2. Compute centroids (sorted lexicographically by BTreeMap)
-            let centroids: Vec<(String, f64, f64)> = groups
-                .into_iter()
-                .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
-                .collect();
-
-            // 3. Discrete parallel transport: θ_k = angle(c_{k+1} − c_k) − angle(c_k − c_{k-1})
-            //    Close the loop: c_N = c_0.
-            let n = centroids.len();
-            let mut transport_angles: Vec<f64> = Vec::with_capacity(n);
-            for i in 0..n {
-                let prev = if i == 0 { n - 1 } else { i - 1 };
-                let next = (i + 1) % n;
-                let dx_in  = centroids[i].1    - centroids[prev].1;
-                let dy_in  = centroids[i].2    - centroids[prev].2;
-                let dx_out = centroids[next].1 - centroids[i].1;
-                let dy_out = centroids[next].2 - centroids[i].2;
-                let angle_in  = dy_in.atan2(dx_in);
-                let angle_out = dy_out.atan2(dx_out);
-                // Wrap to (−π, π]
-                let mut delta = angle_out - angle_in;
-                while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
-                while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
-                transport_angles.push(delta);
-            }
-
-            // 4. Closure deficit
-            let deficit: f64 = transport_angles.iter().sum::<f64>().abs()
-                % (2.0 * std::f64::consts::PI);
-            let trivial = deficit < 1e-6;
-
-            // 5. Return rows: one per group + summary row
-            let mut rows: Vec<crate::types::Record> = centroids
-                .iter()
-                .enumerate()
-                .map(|(i, (label, cx, cy))| {
-                    let mut r = crate::types::Record::new();
-                    r.insert(around_field.clone(), crate::types::Value::Text(label.clone()));
-                    r.insert(f0.clone(), crate::types::Value::Float(*cx));
-                    r.insert(f1.clone(), crate::types::Value::Float(*cy));
-                    r.insert(
-                        "transport_angle".to_string(),
-                        crate::types::Value::Float(transport_angles[i]),
-                    );
-                    r
-                })
-                .collect();
-
-            // Summary row
-            let mut summary = crate::types::Record::new();
-            summary.insert("_type".to_string(), crate::types::Value::Text("summary".to_string()));
-            summary.insert(
-                "holonomy_angle".to_string(),
-                crate::types::Value::Float(deficit),
-            );
-            summary.insert(
-                "holonomy_trivial".to_string(),
-                crate::types::Value::Bool(trivial),
-            );
-            rows.push(summary);
-
-            Ok(ExecResult::Rows(rows))
-        }
-
-        /// SPECTRAL bundle ON FIBER (f1, f2, ...) MODES k
-        Statement::SpectralFiber { bundle, fiber_fields, modes } => {
-            let store = engine
-                .bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-
-            let heap = store
-                .as_heap()
-                .ok_or_else(|| format!("SPECTRAL ON FIBER: bundle '{}' is not a heap bundle", bundle))?;
-
-            let refs: Vec<&str> = fiber_fields.iter().map(|s| s.as_str()).collect();
-            let fiber_modes = crate::spectral::spectral_fiber_modes(heap, &refs, *modes);
-
-            if fiber_modes.is_empty() {
-                return Err(
-                    "SPECTRAL ON FIBER: no modes computed — bundle may be empty or fiber fields \
-                     not found"
-                        .to_string(),
-                );
-            }
-
-            let rows: Vec<crate::types::Record> = fiber_modes
-                .iter()
-                .map(|m| {
-                    let mut r = crate::types::Record::new();
-                    r.insert(
-                        "mode".to_string(),
-                        crate::types::Value::Integer(m.mode as i64),
-                    );
-                    r.insert("lambda".to_string(), crate::types::Value::Float(m.lambda));
-                    r.insert("ipr".to_string(), crate::types::Value::Float(m.ipr));
-                    r
-                })
-                .collect();
-
-            Ok(ExecResult::Rows(rows))
-        }
-
-        /// TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER (f1, f2, ...)
-        Statement::Transport { bundle, from_keys, to_keys, fiber_fields } => {
-            let store = engine
-                .bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-
-            // Helper: resolve a record by key-value pairs
-            let resolve_record = |keys: &[(String, Literal)]| -> Result<crate::types::Record, String> {
-                let candidates: Vec<crate::types::Record> = store
-                    .records()
-                    .filter(|rec| {
-                        keys.iter().all(|(k, expected)| {
-                            rec.get(k.as_str())
-                                .map_or(false, |v| *v == literal_to_value(expected))
-                        })
-                    })
-                    .take(1)
-                    .collect();
-                candidates
-                    .into_iter()
-                    .next()
-                    .ok_or_else(|| format!("TRANSPORT: no record matching FROM/TO keys {:?}", keys))
-            };
-
-            let rec_from = resolve_record(from_keys)?;
-            let rec_to   = resolve_record(to_keys)?;
-
-            // Extract fiber values
-            let vals_from: Vec<f64> = fiber_fields
-                .iter()
-                .map(|f| rec_from.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
-                .collect();
-            let vals_to: Vec<f64> = fiber_fields
-                .iter()
-                .map(|f| rec_to.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
-                .collect();
-
-            // Displacement vector and Euclidean transport magnitude
-            let displacement: Vec<f64> = vals_from
-                .iter()
-                .zip(&vals_to)
-                .map(|(a, b)| b - a)
-                .collect();
-            let magnitude: f64 =
-                displacement.iter().map(|d| d * d).sum::<f64>().sqrt();
-
-            // Transport angle (2-D case: first two fiber components)
-            let transport_angle = if displacement.len() >= 2 {
-                displacement[1].atan2(displacement[0])
-            } else if displacement.len() == 1 {
-                if displacement[0] >= 0.0 { 0.0 } else { std::f64::consts::PI }
-            } else {
-                0.0
-            };
-
-            // 2×2 rotation matrix (for the first two fiber dimensions)
-            let (cos_a, sin_a) = (transport_angle.cos(), transport_angle.sin());
-
-            let mut result = crate::types::Record::new();
-            // Displacement components
-            for (i, d) in displacement.iter().enumerate() {
-                let fname = fiber_fields.get(i).cloned().unwrap_or_else(|| format!("f{i}"));
-                result.insert(format!("delta_{fname}"), crate::types::Value::Float(*d));
-            }
-            result.insert(
-                "transport_angle".to_string(),
-                crate::types::Value::Float(transport_angle),
-            );
-            result.insert(
-                "transport_magnitude".to_string(),
-                crate::types::Value::Float(magnitude),
-            );
-            result.insert("t00".to_string(), crate::types::Value::Float(cos_a));
-            result.insert("t01".to_string(), crate::types::Value::Float(-sin_a));
-            result.insert("t10".to_string(), crate::types::Value::Float(sin_a));
-            result.insert("t11".to_string(), crate::types::Value::Float(cos_a));
-
-            Ok(ExecResult::Rows(vec![result]))
-        }
-
-        /// HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field
-        Statement::LocalHolonomy {
-            bundle,
-            near_point,
-            near_radius,
-            near_metric,
-            fiber_fields,
-            around_field,
-        } => {
-            let store = engine
-                .bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-
-            if fiber_fields.len() < 2 {
-                return Err("LOCAL HOLONOMY requires at least 2 fiber fields".to_string());
-            }
-
-            // 1. NEAR filter: collect records within radius
-            let metric_str = near_metric.as_deref().unwrap_or("euclidean");
-            let use_cosine = metric_str.eq_ignore_ascii_case("cosine");
-
-            let nearby_records: Vec<crate::types::Record> = store
-                .records()
-                .filter(|rec| {
-                    let d2: f64 = near_point
-                        .iter()
-                        .map(|(fname, target)| {
-                            let v =
-                                rec.get(fname.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                            let d = v - target;
-                            d * d
-                        })
-                        .sum();
-                    if use_cosine {
-                        // Cosine: build dot product and norms
-                        let dot: f64 = near_point
-                            .iter()
-                            .map(|(fname, target)| {
-                                let v = rec
-                                    .get(fname.as_str())
-                                    .and_then(|v| v.as_f64())
-                                    .unwrap_or(0.0);
-                                v * target
-                            })
-                            .sum();
-                        let norm_rec: f64 = near_point
-                            .iter()
-                            .map(|(fname, _)| {
-                                let v = rec
-                                    .get(fname.as_str())
-                                    .and_then(|v| v.as_f64())
-                                    .unwrap_or(0.0);
-                                v * v
-                            })
-                            .sum::<f64>()
-                            .sqrt();
-                        let norm_q: f64 =
-                            near_point.iter().map(|(_, t)| t * t).sum::<f64>().sqrt();
-                        let cos_sim = if norm_rec > 0.0 && norm_q > 0.0 {
-                            dot / (norm_rec * norm_q)
-                        } else {
-                            0.0
-                        };
-                        1.0 - cos_sim < *near_radius
-                    } else {
-                        d2.sqrt() < *near_radius
-                    }
-                })
-                .collect();
-
-            // 2. Compute holonomy on the local neighbourhood
-            let f0 = &fiber_fields[0];
-            let f1 = &fiber_fields[1];
-
-            let mut groups: std::collections::BTreeMap<String, (f64, f64, usize)> =
-                std::collections::BTreeMap::new();
-            for rec in &nearby_records {
-                let key = match rec.get(around_field.as_str()) {
-                    Some(v) => format!("{v:?}"),
-                    None => continue,
-                };
-                let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
-                entry.0 += v0;
-                entry.1 += v1;
-                entry.2 += 1;
-            }
-
-            if groups.len() < 2 {
-                return Err(format!(
-                    "LOCAL HOLONOMY: neighbourhood has <2 distinct '{}' values (found {}). \
-                     Increase WITHIN radius.",
-                    around_field,
-                    groups.len()
-                ));
-            }
-
-            let centroids: Vec<(String, f64, f64)> = groups
-                .into_iter()
-                .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
-                .collect();
-
-            let n = centroids.len();
-            let mut transport_angles: Vec<f64> = Vec::with_capacity(n);
-            for i in 0..n {
-                let prev = if i == 0 { n - 1 } else { i - 1 };
-                let next = (i + 1) % n;
-                let dx_in = centroids[i].1 - centroids[prev].1;
-                let dy_in = centroids[i].2 - centroids[prev].2;
-                let dx_out = centroids[next].1 - centroids[i].1;
-                let dy_out = centroids[next].2 - centroids[i].2;
-                let angle_in = dy_in.atan2(dx_in);
-                let angle_out = dy_out.atan2(dx_out);
-                let mut delta = angle_out - angle_in;
-                while delta > std::f64::consts::PI {
-                    delta -= 2.0 * std::f64::consts::PI;
-                }
-                while delta < -std::f64::consts::PI {
-                    delta += 2.0 * std::f64::consts::PI;
-                }
-                transport_angles.push(delta);
-            }
-
-            let local_deficit: f64 = transport_angles.iter().sum::<f64>().abs()
-                % (2.0 * std::f64::consts::PI);
-
-            // 3. Build rows
-            let mut rows: Vec<crate::types::Record> = centroids
-                .iter()
-                .enumerate()
-                .map(|(i, (label, cx, cy))| {
-                    let mut r = crate::types::Record::new();
-                    r.insert(around_field.clone(), crate::types::Value::Text(label.clone()));
-                    r.insert(f0.clone(), crate::types::Value::Float(*cx));
-                    r.insert(f1.clone(), crate::types::Value::Float(*cy));
-                    r.insert(
-                        "transport_angle".to_string(),
-                        crate::types::Value::Float(transport_angles[i]),
-                    );
-                    r
-                })
-                .collect();
-
-            let mut summary = crate::types::Record::new();
-            summary.insert("_type".to_string(), crate::types::Value::Text("summary".to_string()));
-            summary.insert(
-                "local_holonomy_angle".to_string(),
-                crate::types::Value::Float(local_deficit),
-            );
-            summary.insert(
-                "neighbourhood_size".to_string(),
-                crate::types::Value::Integer(nearby_records.len() as i64),
-            );
-            rows.push(summary);
-
-            Ok(ExecResult::Rows(rows))
-        }
-
-        /// GAUGE bundle1 VS bundle2 ON FIBER (f1, f2) AROUND field
-        Statement::GaugeTest {
-            bundle1,
-            bundle2,
-            fiber_fields,
-            around_field,
-        } => {
-            // Helper: compute holonomy deficit from an iterator of records
-            let compute_deficit =
-                |records: Box<dyn Iterator<Item = crate::types::Record> + '_>| -> Result<f64, String> {
-                    if fiber_fields.len() < 2 {
-                        return Err("GAUGE: requires at least 2 fiber fields".to_string());
-                    }
-                    let f0 = &fiber_fields[0];
-                    let f1 = &fiber_fields[1];
-                    let mut groups: std::collections::BTreeMap<String, (f64, f64, usize)> =
-                        std::collections::BTreeMap::new();
-                    for rec in records {
-                        let key = match rec.get(around_field.as_str()) {
-                            Some(v) => format!("{v:?}"),
-                            None => continue,
-                        };
-                        let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
-                        entry.0 += v0;
-                        entry.1 += v1;
-                        entry.2 += 1;
-                    }
-                    if groups.len() < 2 {
-                        return Err(format!(
-                            "GAUGE: bundle needs ≥2 distinct '{}' values for holonomy",
-                            around_field
-                        ));
-                    }
-                    let centroids: Vec<(f64, f64)> = groups
-                        .into_values()
-                        .map(|(sx, sy, n)| (sx / n as f64, sy / n as f64))
-                        .collect();
-                    let n = centroids.len();
-                    let mut total_angle = 0.0f64;
-                    for i in 0..n {
-                        let prev = if i == 0 { n - 1 } else { i - 1 };
-                        let next = (i + 1) % n;
-                        let dx_in  = centroids[i].0 - centroids[prev].0;
-                        let dy_in  = centroids[i].1 - centroids[prev].1;
-                        let dx_out = centroids[next].0 - centroids[i].0;
-                        let dy_out = centroids[next].1 - centroids[i].1;
-                        let mut delta = dy_out.atan2(dx_out) - dy_in.atan2(dx_in);
-                        while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
-                        while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
-                        total_angle += delta;
-                    }
-                    Ok(total_angle.abs() % (2.0 * std::f64::consts::PI))
-                };
-
-            let store1 = engine
-                .bundle(bundle1)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle1))?;
-            let deficit1 = compute_deficit(store1.records())?;
-            let store2 = engine
-                .bundle(bundle2)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle2))?;
-            let deficit2 = compute_deficit(store2.records())?;
-            let gauge_difference = (deficit1 - deficit2).abs();
-            // Gauge invariant when difference < π/10 ≈ 0.314
-            let gauge_invariant = gauge_difference < std::f64::consts::PI / 10.0;
-
-            let mut row = crate::types::Record::new();
-            row.insert("bundle1".to_string(), crate::types::Value::Text(bundle1.clone()));
-            row.insert("bundle2".to_string(), crate::types::Value::Text(bundle2.clone()));
-            row.insert("holonomy_1".to_string(), crate::types::Value::Float(deficit1));
-            row.insert("holonomy_2".to_string(), crate::types::Value::Float(deficit2));
-            row.insert("gauge_difference".to_string(), crate::types::Value::Float(gauge_difference));
-            row.insert(
-                "gauge_invariant".to_string(),
-                crate::types::Value::Bool(gauge_invariant),
-            );
-
-            Ok(ExecResult::Rows(vec![row]))
-        }
-
-        // ── Coherence Extensions v0.1 ─────────────────────────────────────────
-
-        Statement::SectionCoherent {
-            bundle,
-            columns,
-            values,
-            upsert,
-            auto_chart,
-            on_contradiction,
-            derived_from,
-            inherit_branches,
-        } => {
-            // Build the record.
-            let mut record: crate::types::Record = columns
-                .iter()
-                .zip(values.iter())
-                .map(|(k, v)| (k.clone(), literal_to_value(v)))
-                .collect();
-
-            // Feature 6: ensure provenance graph exists, check self-loop, record edges.
-            if !derived_from.is_empty() {
-                // Get the section id from the record for the DAG insert.
-                let id_val = record
-                    .get("id")
-                    .or_else(|| record.values().next())
-                    .cloned();
-                let section_id: String = match id_val {
-                    Some(crate::types::Value::Text(s)) => s.clone(),
-                    Some(crate::types::Value::Integer(i)) => i.to_string(),
-                    _ => format!("row_{}", record.len()),
-                };
-
-                // Lazy-init provenance graph.
-                let store = engine
-                    .heap_bundle_mut(bundle)
-                    .ok_or_else(|| format!("Bundle '{}' not found or not a heap bundle", bundle))?;
-                if store.provenance.is_none() {
-                    store.provenance = Some(crate::coherence::ProvenanceGraph::default());
-                }
-                let prov = store.provenance.as_mut().unwrap();
-                prov.insert(&section_id, derived_from)
-                    .map_err(|e| e)?;
-
-                // Feature 2+6: branch inheritance — union of source branch_sets.
-                if *inherit_branches {
-                    // We can't deeply query here without borrow issues; just tag the
-                    // record with a marker that exec could act on. For v0.1, branch
-                    // inheritance is recorded as metadata but does not affect storage.
-                    let _ = inherit_branches;
-                }
-            }
-
-            // Feature 2: contradiction check against existing record.
-            let contradiction_decision = if let Some(policy_str) = on_contradiction {
-                let policy = crate::coherence::ContradictionPolicy::from_str(policy_str)
-                    .unwrap_or(crate::coherence::ContradictionPolicy::Branch);
-
-                // Check if a record at this base point already exists.
-                let store = engine
-                    .heap_bundle_mut(bundle)
-                    .ok_or_else(|| format!("Bundle '{}' not found or not a heap bundle", bundle))?;
-                if store.branches.is_none() {
-                    store.branches = Some(crate::coherence::BranchStore::default());
-                }
-                // Compute a scalar "distance" between new fiber and existing.
-                // For v0.1: if any numeric field differs by > 0, distance > 0.
-                let base_id = record
-                    .get("id")
-                    .map(|v| format!("{v:?}"))
-                    .unwrap_or_default();
-                let existing_distance = {
-                    let existing = store.records().find(|r| {
-                        r.get("id") == record.get("id")
-                    });
-                    match existing {
-                        None => 0.0_f64,
-                        Some(ex) => {
-                            let dist: f64 = record
-                                .iter()
-                                .filter_map(|(k, v)| {
-                                    let ev = ex.get(k)?;
-                                    match (v, ev) {
-                                        (crate::types::Value::Float(a), crate::types::Value::Float(b)) => {
-                                            Some((a - b).powi(2))
-                                        }
-                                        (crate::types::Value::Integer(a), crate::types::Value::Integer(b)) => {
-                                            Some((*a as f64 - *b as f64).powi(2))
-                                        }
-                                        _ => None,
-                                    }
-                                })
-                                .sum::<f64>()
-                                .sqrt();
-                            dist
-                        }
-                    }
-                };
-                let branches = store.branches.as_mut().unwrap();
-                let decision = branches.check(&base_id, existing_distance, policy);
-                Some(decision)
-            } else {
-                None
-            };
-
-            // If REJECTED, return error.
-            if matches!(contradiction_decision, Some(crate::coherence::BranchDecision::Rejected)) {
-                return Err(format!("SECTION rejected: contradiction detected (policy=REJECT)"));
-            }
-
-            // Feature 1: auto-chart atlas insert.
-            let chart_action = if let Some((tau, granularity)) = auto_chart {
-                let heap = engine
-                    .heap_bundle_mut(bundle)
-                    .ok_or_else(|| format!("Bundle '{}' not found or not a heap bundle", bundle))?;
-
-                // Lazy-init atlas with fiber fields inferred from first insert.
-                if heap.atlas.is_none() {
-                    let fiber_fields = crate::coherence::infer_fiber_fields(&record);
-                    heap.atlas = Some(crate::coherence::Atlas::new(
-                        fiber_fields,
-                        *tau,
-                        *granularity,
-                    ));
-                }
-                let atlas = heap.atlas.as_mut().unwrap();
-                let fiber = crate::coherence::extract_fiber(&record, &atlas.fiber_fields.clone());
-                fiber.map(|v| atlas.insert(&v))
-            } else {
-                None
-            };
-
-            // Insert the record into the store.
-            {
-                let mut store = engine
-                    .bundle_mut(bundle)
-                    .ok_or_else(|| format!("No bundle: {bundle}"))?;
-                if *upsert {
-                    store.upsert(&record);
-                } else {
-                    store.insert(&record);
-                }
-            }
-
-            // Build response row.
-            let mut row = crate::types::Record::new();
-            if let Some(action) = &chart_action {
-                row.insert("chart_id".to_string(), crate::types::Value::Integer(action.chart_id as i64));
-                row.insert("action".to_string(), crate::types::Value::Text(action.action.to_string()));
-                row.insert("k_before".to_string(), crate::types::Value::Float(action.k_before));
-                row.insert("k_after".to_string(), crate::types::Value::Float(action.k_after));
-                row.insert("novelty".to_string(), crate::types::Value::Float(action.novelty));
-            }
-            if let Some(decision) = &contradiction_decision {
-                match decision {
-                    crate::coherence::BranchDecision::Branched { b_old, b_new } => {
-                        row.insert("contradiction".to_string(), crate::types::Value::Bool(true));
-                        row.insert("branch_old".to_string(), crate::types::Value::Integer(*b_old as i64));
-                        row.insert("branch_new".to_string(), crate::types::Value::Integer(*b_new as i64));
-                    }
-                    crate::coherence::BranchDecision::Repaired => {
-                        row.insert("contradiction".to_string(), crate::types::Value::Bool(true));
-                        row.insert("action".to_string(), crate::types::Value::Text("repaired".to_string()));
-                    }
-                    _ => {}
-                }
-            }
-            if !derived_from.is_empty() {
-                row.insert("n_sources".to_string(), crate::types::Value::Integer(derived_from.len() as i64));
-            }
-            if row.is_empty() {
-                Ok(ExecResult::Ok)
-            } else {
-                Ok(ExecResult::Rows(vec![row]))
-            }
-        }
-
-        Statement::ShowCharts { bundle } => {
-            let heap = engine
-                .heap_bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-            match &heap.atlas {
-                None => Ok(ExecResult::Rows(vec![])),
-                Some(atlas) => {
-                    let rows: Vec<crate::types::Record> = atlas
-                        .charts
-                        .iter()
-                        .map(|c| {
-                            let mut r = crate::types::Record::new();
-                            r.insert("chart_id".to_string(), crate::types::Value::Integer(c.id as i64));
-                            r.insert("n_members".to_string(), crate::types::Value::Integer(c.n as i64));
-                            r.insert("curvature".to_string(), crate::types::Value::Float(c.curvature()));
-                            r.insert("radius".to_string(), crate::types::Value::Float(c.radius));
-                            for (i, mu) in c.centroid.iter().enumerate() {
-                                r.insert(
-                                    format!("centroid_{i}"),
-                                    crate::types::Value::Float(*mu),
-                                );
-                            }
-                            r
-                        })
-                        .collect();
-                    Ok(ExecResult::Rows(rows))
-                }
-            }
-        }
-
-        Statement::ShowContradictions { bundle } => {
-            let heap = engine
-                .heap_bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-            match &heap.branches {
-                None => Ok(ExecResult::Rows(vec![])),
-                Some(bs) => {
-                    let rows: Vec<crate::types::Record> = bs
-                        .contradictions
-                        .iter()
-                        .map(|ev| {
-                            let mut r = crate::types::Record::new();
-                            r.insert("id".to_string(), crate::types::Value::Integer(ev.id as i64));
-                            r.insert("base_id".to_string(), crate::types::Value::Text(ev.base_id.clone()));
-                            r.insert("branch_old".to_string(), crate::types::Value::Integer(ev.branches[0] as i64));
-                            r.insert("branch_new".to_string(), crate::types::Value::Integer(ev.branches[1] as i64));
-                            r.insert("distance".to_string(), crate::types::Value::Float(ev.distance));
-                            r.insert("timestamp_ms".to_string(), crate::types::Value::Integer(ev.timestamp_ms as i64));
-                            r
-                        })
-                        .collect();
-                    Ok(ExecResult::Rows(rows))
-                }
-            }
-        }
-
-        Statement::CollapseBranch { bundle, branch_id } => {
-            let heap = engine
-                .heap_bundle_mut(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found or not a heap bundle", bundle))?;
-            match heap.branches.as_mut() {
-                None => Ok(ExecResult::Count(0)),
-                Some(bs) => {
-                    let removed = bs.collapse(*branch_id);
-                    Ok(ExecResult::Count(removed.len()))
-                }
-            }
-        }
-
-        Statement::Predict { bundle, given, bandwidth } => {
-            let heap = engine
-                .heap_bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-            let atlas = heap
-                .atlas
-                .as_ref()
-                .ok_or_else(|| format!("Bundle '{}' has no atlas (run a SECTION ... AUTO_CHART first)", bundle))?;
-
-            // Map given field names to fiber dimension indices.
-            let known: Vec<(usize, f64)> = given
-                .iter()
-                .filter_map(|(field, val)| {
-                    let idx = atlas.fiber_fields.iter().position(|f| f == field)?;
-                    Some((idx, *val))
-                })
-                .collect();
-
-            let all_dims = atlas.fiber_fields.len();
-            let bw = bandwidth.unwrap_or(atlas.config.granularity);
-            let result = atlas.predict(&known, all_dims, bw);
-
-            let mut row = crate::types::Record::new();
-            for (i, (field, pred)) in atlas.fiber_fields.iter().zip(result.predicted.iter()).enumerate() {
-                row.insert(format!("predicted_{field}"), crate::types::Value::Float(*pred));
-                let unc = result.uncertainty.get(i).copied().unwrap_or(-1.0);
-                if unc >= 0.0 {
-                    row.insert(format!("uncertainty_{field}"), crate::types::Value::Float(unc));
-                }
-            }
-            row.insert("confidence".to_string(), crate::types::Value::Float(result.confidence));
-            if let Some(hid) = result.host_chart_id {
-                row.insert("host_chart_id".to_string(), crate::types::Value::Integer(hid as i64));
-            }
-            row.insert("n_charts_used".to_string(), crate::types::Value::Integer(result.n_charts_used as i64));
-            Ok(ExecResult::Rows(vec![row]))
-        }
-
-        Statement::CoverGeodesic { bundle, query, radius, limit } => {
-            let heap = engine
-                .heap_bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-            let atlas = heap
-                .atlas
-                .as_ref()
-                .ok_or_else(|| format!("Bundle '{}' has no atlas (run a SECTION ... AUTO_CHART first)", bundle))?;
-
-            // Build query fiber from (field, val) pairs using atlas fiber_fields order.
-            let q_fiber: Vec<f64> = atlas
-                .fiber_fields
-                .iter()
-                .map(|f| {
-                    query.iter().find(|(k, _)| k == f).map(|(_, v)| *v).unwrap_or(0.0)
-                })
-                .collect();
-
-            // Collect all record fibers for the scan.
-            let records: Vec<crate::types::Record> = heap.records().collect();
-            let fiber_fields_clone = atlas.fiber_fields.clone();
-            let fibers = records
-                .iter()
-                .map(|r| crate::coherence::extract_fiber(r, &fiber_fields_clone));
-
-            let mut hits = atlas.cover_within(&q_fiber, *radius, fibers);
-            hits.sort_by(|a, b| a.1.total_cmp(&b.1));
-            if let Some(lim) = limit {
-                hits.truncate(*lim);
-            }
-
-            let rows: Vec<crate::types::Record> = hits
-                .into_iter()
-                .map(|(idx, dist)| {
-                    let mut r = records.get(idx).cloned().unwrap_or_default();
-                    r.insert("_distance".to_string(), crate::types::Value::Float(dist));
-                    r
-                })
-                .collect();
-            Ok(ExecResult::Rows(rows))
-        }
-
-        Statement::Why { bundle, target_id, max_depth } => {
-            let heap = engine
-                .heap_bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-            let prov = heap
-                .provenance
-                .as_ref()
-                .ok_or_else(|| format!("Bundle '{}' has no provenance graph", bundle))?;
-            let ancestors = prov.why(target_id, *max_depth);
-            let rows: Vec<crate::types::Record> = ancestors
-                .into_iter()
-                .map(|node| {
-                    let mut r = crate::types::Record::new();
-                    r.insert("id".to_string(), crate::types::Value::Text(node.id));
-                    r.insert("depth".to_string(), crate::types::Value::Integer(node.depth as i64));
-                    r
-                })
-                .collect();
-            Ok(ExecResult::Rows(rows))
-        }
-
-        Statement::Implications { bundle, target_id, max_depth } => {
-            let heap = engine
-                .heap_bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-            let prov = heap
-                .provenance
-                .as_ref()
-                .ok_or_else(|| format!("Bundle '{}' has no provenance graph", bundle))?;
-            let descendants = prov.implications(target_id, *max_depth);
-            let rows: Vec<crate::types::Record> = descendants
-                .into_iter()
-                .map(|node| {
-                    let mut r = crate::types::Record::new();
-                    r.insert("id".to_string(), crate::types::Value::Text(node.id));
-                    r.insert("depth".to_string(), crate::types::Value::Integer(node.depth as i64));
-                    r
-                })
-                .collect();
-            Ok(ExecResult::Rows(rows))
-        }
-
-        Statement::Divergence { bundle_a, bundle_b } => {
-            let store_a = engine
-                .heap_bundle(bundle_a)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle_a))?;
-            let store_b = engine
-                .heap_bundle(bundle_b)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle_b))?;
-            let rep = crate::metric::kl_divergence(store_a, store_b);
-            let mut row = crate::types::Record::new();
-            row.insert("bundle_a".into(), crate::types::Value::Text(bundle_a.clone()));
-            row.insert("bundle_b".into(), crate::types::Value::Text(bundle_b.clone()));
-            row.insert("kl_forward".into(), crate::types::Value::Float(rep.kl_forward));
-            row.insert("kl_reverse".into(), crate::types::Value::Float(rep.kl_reverse));
-            row.insert("jensen_shannon".into(), crate::types::Value::Float(rep.jensen_shannon));
-            row.insert("fields_compared".into(), crate::types::Value::Integer(rep.fields_compared as i64));
-            let per_field: String = rep
-                .per_field
-                .iter()
-                .map(|(f, v)| format!("{f}={v:.6}"))
-                .collect::<Vec<_>>()
-                .join(",");
-            row.insert("per_field".into(), crate::types::Value::Text(per_field));
-            Ok(ExecResult::Rows(vec![row]))
-        }
-
-        Statement::Ricci { bundle, chart_a, chart_b } => {
-            let heap = engine
-                .heap_bundle(bundle)
-                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-            let atlas = heap
-                .atlas
-                .as_ref()
-                .ok_or_else(|| format!("Bundle '{}' has no atlas — run AUTO_CHART first", bundle))?;
-            let result = atlas
-                .ricci(*chart_a, *chart_b)
-                .ok_or_else(|| format!("Chart id out of range (bundle has {} charts)", atlas.charts.len()))?;
-            let mut row = crate::types::Record::new();
-            row.insert("chart_a".into(), crate::types::Value::Integer(*chart_a as i64));
-            row.insert("chart_b".into(), crate::types::Value::Integer(*chart_b as i64));
-            row.insert("curvature".into(), crate::types::Value::Float(result.curvature));
-            row.insert("distance".into(), crate::types::Value::Float(result.distance));
-            row.insert("w1".into(), crate::types::Value::Float(result.w1));
-            row.insert("n_neighbors_a".into(), crate::types::Value::Integer(result.n_neighbors_a as i64));
-            row.insert("n_neighbors_b".into(), crate::types::Value::Integer(result.n_neighbors_b as i64));
-            Ok(ExecResult::Rows(vec![row]))
+        Statement::HolonomyFiber { .. }
+        | Statement::LocalHolonomy { .. }
+        | Statement::Transport { .. }
+        | Statement::GaugeTest { .. }
+        | Statement::Divergence { .. }
+        | Statement::SpectralFiber { .. }
+        | Statement::Ricci { .. }
+        | Statement::SectionCoherent { .. }
+        | Statement::ShowCharts { .. }
+        | Statement::ShowContradictions { .. }
+        | Statement::CollapseBranch { .. }
+        | Statement::Predict { .. }
+        | Statement::CoverGeodesic { .. }
+        | Statement::Why { .. }
+        | Statement::Implications { .. } => {
+            Err("This statement must be executed via the HTTP server endpoint".to_string())
         }
     }
 }
@@ -5776,6 +4660,21 @@ mod tests {
                 assert_eq!(fiber_fields[0].name, "city");
                 assert_eq!(fiber_fields[1].range, Some(80.0));
                 assert_eq!(indexed, vec!["city"]);
+            }
+            _ => panic!("Expected CreateBundle"),
+        }
+    }
+
+    #[test]
+    fn parse_invariant_clause() {
+        let stmt = parse("BUNDLE quat BASE (id NUMERIC) FIBER (w NUMERIC, x NUMERIC, y NUMERIC, z NUMERIC) ADJACENCY () INVARIANT norm = 1.0 +/- 0.01").unwrap();
+        match stmt {
+            Statement::CreateBundle { name, invariants, .. } => {
+                assert_eq!(name, "quat");
+                assert_eq!(invariants.len(), 1);
+                assert_eq!(invariants[0].field, "norm");
+                assert!((invariants[0].expected - 1.0).abs() < 1e-9);
+                assert!((invariants[0].tol - 0.01).abs() < 1e-9);
             }
             _ => panic!("Expected CreateBundle"),
         }
@@ -7230,407 +6129,5 @@ mod tests {
             }
             _ => panic!("Expected BatchInsert"),
         }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // TDD: New fiber-geometric GQL statements  (SpectralFiber / Transport /
-    //      LocalHolonomy / GaugeTest)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    #[test]
-    fn tdd_parse_spectral_fiber() {
-        // SPECTRAL bundle ON FIBER (f1, f2) MODES k
-        let stmt = parse("SPECTRAL emb ON FIBER (embed_x, embed_y) MODES 3").unwrap();
-        match stmt {
-            Statement::SpectralFiber { bundle, fiber_fields, modes } => {
-                assert_eq!(bundle, "emb");
-                assert_eq!(fiber_fields, vec!["embed_x", "embed_y"]);
-                assert_eq!(modes, 3);
-            }
-            _ => panic!("Expected SpectralFiber, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_spectral_fiber_single_mode() {
-        let stmt = parse("SPECTRAL corpus ON FIBER (x, y, z) MODES 1").unwrap();
-        match stmt {
-            Statement::SpectralFiber { bundle, fiber_fields, modes } => {
-                assert_eq!(bundle, "corpus");
-                assert_eq!(fiber_fields.len(), 3);
-                assert_eq!(modes, 1);
-            }
-            _ => panic!("Expected SpectralFiber"),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_transport() {
-        let stmt = parse("TRANSPORT emb FROM (id=1) TO (id=2) ON FIBER (embed_x, embed_y)").unwrap();
-        match stmt {
-            Statement::Transport { bundle, from_keys, to_keys, fiber_fields } => {
-                assert_eq!(bundle, "emb");
-                assert_eq!(from_keys.len(), 1);
-                assert_eq!(from_keys[0].0, "id");
-                assert!(matches!(from_keys[0].1, Literal::Integer(1)));
-                assert_eq!(to_keys.len(), 1);
-                assert_eq!(to_keys[0].0, "id");
-                assert!(matches!(to_keys[0].1, Literal::Integer(2)));
-                assert_eq!(fiber_fields, vec!["embed_x", "embed_y"]);
-            }
-            _ => panic!("Expected Transport, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_transport_string_key() {
-        let stmt = parse("TRANSPORT docs FROM (slug='hello') TO (slug='world') ON FIBER (x, y)").unwrap();
-        match stmt {
-            Statement::Transport { bundle, from_keys, to_keys, fiber_fields } => {
-                assert_eq!(bundle, "docs");
-                assert!(matches!(&from_keys[0].1, Literal::Text(s) if s == "hello"));
-                assert!(matches!(&to_keys[0].1, Literal::Text(s) if s == "world"));
-                assert_eq!(fiber_fields, vec!["x", "y"]);
-            }
-            _ => panic!("Expected Transport"),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_local_holonomy() {
-        let stmt = parse(
-            "HOLONOMY emb NEAR (embed_x=0.5, embed_y=0.5) WITHIN 0.3 ON FIBER (embed_x, embed_y) AROUND tense"
-        ).unwrap();
-        match stmt {
-            Statement::LocalHolonomy { bundle, near_point, near_radius, near_metric, fiber_fields, around_field } => {
-                assert_eq!(bundle, "emb");
-                assert_eq!(near_point.len(), 2);
-                assert_eq!(near_point[0].0, "embed_x");
-                assert!((near_point[0].1 - 0.5).abs() < 1e-10);
-                assert!((near_radius - 0.3).abs() < 1e-10);
-                assert!(near_metric.is_none());
-                assert_eq!(fiber_fields, vec!["embed_x", "embed_y"]);
-                assert_eq!(around_field, "tense");
-            }
-            _ => panic!("Expected LocalHolonomy, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_local_holonomy_cosine_metric() {
-        let stmt = parse(
-            "HOLONOMY corp NEAR (x=1.0) WITHIN 0.1 METRIC cosine ON FIBER (x, y) AROUND category"
-        ).unwrap();
-        match stmt {
-            Statement::LocalHolonomy { near_metric, around_field, .. } => {
-                assert_eq!(near_metric.as_deref(), Some("cosine"));
-                assert_eq!(around_field, "category");
-            }
-            _ => panic!("Expected LocalHolonomy"),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_gauge_test() {
-        let stmt = parse("GAUGE corp1 VS corp2 ON FIBER (embed_x, embed_y) AROUND tense").unwrap();
-        match stmt {
-            Statement::GaugeTest { bundle1, bundle2, fiber_fields, around_field } => {
-                assert_eq!(bundle1, "corp1");
-                assert_eq!(bundle2, "corp2");
-                assert_eq!(fiber_fields, vec!["embed_x", "embed_y"]);
-                assert_eq!(around_field, "tense");
-            }
-            _ => panic!("Expected GaugeTest, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_gauge_single_fiber_field_error() {
-        // At least 2 fiber fields required for meaningful holonomy; parser should accept it
-        // (runtime validation, not parse-time), so it must parse successfully.
-        let stmt = parse("GAUGE a VS b ON FIBER (x) AROUND cat");
-        assert!(stmt.is_ok(), "Parser should accept single fiber field; runtime rejects it");
-    }
-
-    // ── Coherence extensions v0.1 parse tests ─────────────────────────────────
-
-    #[test]
-    fn tdd_parse_section_auto_chart() {
-        let stmt = parse("SECTION documents (id='p1', x=0.21, y=-0.43) AUTO_CHART tau=0.3").unwrap();
-        match stmt {
-            Statement::SectionCoherent { bundle, auto_chart, derived_from, .. } => {
-                assert_eq!(bundle, "documents");
-                let (tau, g) = auto_chart.unwrap();
-                assert!((tau - 0.3).abs() < 1e-9);
-                assert!(g > 0.0);
-                assert!(derived_from.is_empty());
-            }
-            _ => panic!("Expected SectionCoherent, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_section_on_contradiction_branch() {
-        let stmt = parse("SECTION facts (id='p1', value=42) ON CONTRADICTION BRANCH").unwrap();
-        match stmt {
-            Statement::SectionCoherent { on_contradiction, .. } => {
-                assert_eq!(on_contradiction, Some("BRANCH".to_string()));
-            }
-            _ => panic!("Expected SectionCoherent, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_section_derived_from() {
-        let stmt = parse("SECTION facts (id='q', val=1) DERIVED_FROM ('src1', 'src2')").unwrap();
-        match stmt {
-            Statement::SectionCoherent { derived_from, .. } => {
-                assert_eq!(derived_from, vec!["src1", "src2"]);
-            }
-            _ => panic!("Expected SectionCoherent, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_section_derived_from_inherit_branches() {
-        let stmt = parse(
-            "SECTION facts (id='q', val=1) DERIVED_FROM ('src1') INHERIT BRANCHES"
-        ).unwrap();
-        match stmt {
-            Statement::SectionCoherent { derived_from, inherit_branches, .. } => {
-                assert_eq!(derived_from, vec!["src1"]);
-                assert!(inherit_branches);
-            }
-            _ => panic!("Expected SectionCoherent, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_show_charts() {
-        let stmt = parse("SHOW CHARTS documents").unwrap();
-        assert!(matches!(stmt, Statement::ShowCharts { bundle } if bundle == "documents"));
-    }
-
-    #[test]
-    fn tdd_parse_show_contradictions() {
-        let stmt = parse("SHOW CONTRADICTIONS facts").unwrap();
-        assert!(matches!(stmt, Statement::ShowContradictions { bundle } if bundle == "facts"));
-    }
-
-    #[test]
-    fn tdd_parse_collapse_branch() {
-        let stmt = parse("COLLAPSE facts BRANCH 3").unwrap();
-        match stmt {
-            Statement::CollapseBranch { bundle, branch_id } => {
-                assert_eq!(bundle, "facts");
-                assert_eq!(branch_id, 3);
-            }
-            _ => panic!("Expected CollapseBranch, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_collapse_still_drops_bundle() {
-        // Plain COLLAPSE (without BRANCH) still drops the whole bundle.
-        let stmt = parse("COLLAPSE old_bundle").unwrap();
-        assert!(matches!(stmt, Statement::Collapse { bundle } if bundle == "old_bundle"));
-    }
-
-    #[test]
-    fn tdd_parse_predict() {
-        let stmt = parse("PREDICT documents GIVEN (x=0.21, y=-0.43)").unwrap();
-        match stmt {
-            Statement::Predict { bundle, given, bandwidth } => {
-                assert_eq!(bundle, "documents");
-                assert_eq!(given.len(), 2);
-                assert_eq!(given[0].0, "x");
-                assert!((given[0].1 - 0.21).abs() < 1e-9);
-                assert!(bandwidth.is_none());
-            }
-            _ => panic!("Expected Predict, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_predict_with_bandwidth() {
-        let stmt = parse("PREDICT documents GIVEN (x=0.5) BANDWIDTH 0.2").unwrap();
-        match stmt {
-            Statement::Predict { bandwidth, .. } => {
-                assert!((bandwidth.unwrap() - 0.2).abs() < 1e-9);
-            }
-            _ => panic!("Expected Predict"),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_cover_geodesic() {
-        let stmt = parse("COVER documents WITHIN GEODESIC 0.5 OF (x=0.21, y=-0.43)").unwrap();
-        match stmt {
-            Statement::CoverGeodesic { bundle, query, radius, limit } => {
-                assert_eq!(bundle, "documents");
-                assert!((radius - 0.5).abs() < 1e-9);
-                assert_eq!(query.len(), 2);
-                assert!(limit.is_none());
-            }
-            _ => panic!("Expected CoverGeodesic, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_cover_geodesic_with_limit() {
-        let stmt = parse("COVER docs WITHIN GEODESIC 1.0 OF (x=0.0) LIMIT 10").unwrap();
-        match stmt {
-            Statement::CoverGeodesic { limit, .. } => assert_eq!(limit, Some(10)),
-            _ => panic!("Expected CoverGeodesic"),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_why() {
-        let stmt = parse("WHY facts AT 'fact_paris_capital'").unwrap();
-        match stmt {
-            Statement::Why { bundle, target_id, max_depth } => {
-                assert_eq!(bundle, "facts");
-                assert_eq!(target_id, "fact_paris_capital");
-                assert!(max_depth.is_none());
-            }
-            _ => panic!("Expected Why, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_why_with_depth() {
-        let stmt = parse("WHY facts AT 'fact_paris_capital' DEPTH 3").unwrap();
-        match stmt {
-            Statement::Why { max_depth, .. } => assert_eq!(max_depth, Some(3)),
-            _ => panic!("Expected Why"),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_implications() {
-        let stmt = parse("IMPLICATIONS facts AT 'token_42' DEPTH 1").unwrap();
-        match stmt {
-            Statement::Implications { bundle, target_id, max_depth } => {
-                assert_eq!(bundle, "facts");
-                assert_eq!(target_id, "token_42");
-                assert_eq!(max_depth, Some(1));
-            }
-            _ => panic!("Expected Implications, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_coherence_provenance_roundtrip() {
-        use crate::coherence::ProvenanceGraph;
-        let mut g = ProvenanceGraph::default();
-        g.insert("q", &["p1".to_string(), "p2".to_string()]).unwrap();
-        let anc = g.why("q", None);
-        assert_eq!(anc.len(), 2);
-        assert!(anc.iter().any(|n| n.id == "p1"));
-        assert!(anc.iter().any(|n| n.id == "p2"));
-    }
-
-    #[test]
-    fn tdd_coherence_provenance_self_loop_rejected() {
-        use crate::coherence::ProvenanceGraph;
-        let mut g = ProvenanceGraph::default();
-        let result = g.insert("p", &["p".to_string()]);
-        assert!(result.is_err(), "Self-loop should be rejected");
-    }
-
-    #[test]
-    fn tdd_coherence_atlas_insert_confirm_extend() {
-        use crate::coherence::Atlas;
-        let mut atlas = Atlas::new(vec!["x".to_string(), "y".to_string()], 0.5, 0.2);
-        // First insert always extends.
-        let a1 = atlas.insert(&[0.0, 0.0]);
-        assert_eq!(a1.action, "extend");
-        // Nearby insert should confirm (same chart, K ≤ τ).
-        let a2 = atlas.insert(&[0.05, 0.05]);
-        assert_eq!(a2.action, "confirm");
-        assert_eq!(a1.chart_id, a2.chart_id);
-    }
-
-    #[test]
-    fn tdd_coherence_atlas_spawns_new_chart_on_tau_violation() {
-        use crate::coherence::Atlas;
-        // Very tight tau so every insert spawns a new chart.
-        let mut atlas = Atlas::new(vec!["x".to_string()], 0.0, 0.1);
-        let a1 = atlas.insert(&[0.0]);
-        let a2 = atlas.insert(&[0.5]);
-        assert_eq!(a1.action, "extend");
-        assert_eq!(a2.action, "extend");
-        assert_ne!(a1.chart_id, a2.chart_id);
-    }
-
-    #[test]
-    fn tdd_coherence_branch_store_contradiction() {
-        use crate::coherence::{BranchStore, BranchDecision, ContradictionPolicy};
-        let mut bs = BranchStore::new(1e-6);
-        let d = bs.check("p1", 0.5, ContradictionPolicy::Branch);
-        assert!(matches!(d, BranchDecision::Branched { .. }));
-        assert_eq!(bs.contradictions.len(), 1);
-    }
-
-    #[test]
-    fn tdd_coherence_branch_store_reject() {
-        use crate::coherence::{BranchStore, BranchDecision, ContradictionPolicy};
-        let mut bs = BranchStore::new(1e-6);
-        let d = bs.check("p1", 1.0, ContradictionPolicy::Reject);
-        assert!(matches!(d, BranchDecision::Rejected));
-    }
-
-    #[test]
-    fn tdd_coherence_branch_store_clean_insert() {
-        use crate::coherence::{BranchStore, BranchDecision, ContradictionPolicy};
-        let mut bs = BranchStore::new(1e-6);
-        // Distance below epsilon = clean (no contradiction).
-        let d = bs.check("p1", 0.0, ContradictionPolicy::Branch);
-        assert!(matches!(d, BranchDecision::Clean));
-    }
-
-    #[test]
-    fn tdd_coherence_implications_walk() {
-        use crate::coherence::ProvenanceGraph;
-        let mut g = ProvenanceGraph::default();
-        g.insert("b", &["a".to_string()]).unwrap();
-        g.insert("c", &["b".to_string()]).unwrap();
-        let desc = g.implications("a", None);
-        assert!(desc.iter().any(|n| n.id == "b" && n.depth == 1));
-        assert!(desc.iter().any(|n| n.id == "c" && n.depth == 2));
-    }
-
-    // ── DIVERGENCE + RICCI parse tests ────────────────────────────────────────
-
-    #[test]
-    fn tdd_parse_divergence() {
-        let stmt = parse("DIVERGENCE FROM bundle_a TO bundle_b").unwrap();
-        match stmt {
-            Statement::Divergence { bundle_a, bundle_b } => {
-                assert_eq!(bundle_a, "bundle_a");
-                assert_eq!(bundle_b, "bundle_b");
-            }
-            _ => panic!("Expected Divergence, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_ricci() {
-        let stmt = parse("RICCI embeddings BETWEEN 2 AND 5").unwrap();
-        match stmt {
-            Statement::Ricci { bundle, chart_a, chart_b } => {
-                assert_eq!(bundle, "embeddings");
-                assert_eq!(chart_a, 2);
-                assert_eq!(chart_b, 5);
-            }
-            _ => panic!("Expected Ricci, got {:?}", stmt),
-        }
-    }
-
-    #[test]
-    fn tdd_parse_ricci_chart_zero() {
-        let stmt = parse("RICCI docs BETWEEN 0 AND 1").unwrap();
-        assert!(matches!(stmt, Statement::Ricci { chart_a: 0, chart_b: 1, .. }));
     }
 }

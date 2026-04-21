@@ -622,6 +622,24 @@ fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
     for idx in &schema.indexed_fields {
         write_string(&mut buf, idx);
     }
+    // ── Gauge key (encryption) ──
+    if let Some(ref gk) = schema.gauge_key {
+        buf.push(1u8);
+        buf.extend_from_slice(&(gk.transforms.len() as u32).to_le_bytes());
+        for t in &gk.transforms {
+            buf.extend_from_slice(&t.scale.to_le_bytes());
+            buf.extend_from_slice(&t.offset.to_le_bytes());
+        }
+    } else {
+        buf.push(0u8);
+    }
+    // ── Invariant constraints ──
+    buf.extend_from_slice(&(schema.invariants.len() as u32).to_le_bytes());
+    for inv in &schema.invariants {
+        write_string(&mut buf, &inv.expr_field);
+        buf.extend_from_slice(&inv.expected.to_le_bytes());
+        buf.extend_from_slice(&inv.tol.to_le_bytes());
+    }
     buf
 }
 
@@ -650,6 +668,39 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     offset += 4;
     for _ in 0..idx_count {
         schema.indexed_fields.push(read_string(data, &mut offset)?);
+    }
+
+    // ── Gauge key (encryption) — may be absent in old WAL entries ──
+    if offset < data.len() {
+        let has_key = data[offset];
+        offset += 1;
+        if has_key != 0 {
+            let n = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
+            offset += 4;
+            let mut transforms = Vec::with_capacity(n);
+            for _ in 0..n {
+                let scale = f64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+                offset += 8;
+                let off_val = f64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+                offset += 8;
+                transforms.push(crate::crypto::FieldTransform { scale, offset: off_val });
+            }
+            schema.gauge_key = Some(crate::crypto::GaugeKey { transforms });
+        }
+    }
+
+    // ── Invariant constraints — may be absent in old WAL entries ──
+    if offset + 4 <= data.len() {
+        let inv_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
+        offset += 4;
+        for _ in 0..inv_count {
+            let field = read_string(data, &mut offset)?;
+            let expected = f64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+            offset += 8;
+            let tol = f64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+            offset += 8;
+            schema.invariants.push(crate::types::InvariantDef { expr_field: field, expected, tol });
+        }
     }
 
     Ok(schema)
@@ -743,6 +794,46 @@ mod tests {
         assert_eq!(decoded.base_fields[0].name, "id");
         assert_eq!(decoded.fiber_fields[0].name, "name");
         assert_eq!(decoded.fiber_fields[1].range, Some(100_000.0));
+    }
+
+    /// WAL-1: gauge_key survives encode → decode (was silently dropped before fix).
+    #[test]
+    fn schema_roundtrip_with_gauge_key() {
+        let mut schema = test_schema();
+        let seed = crate::crypto::GaugeKey::random_seed();
+        schema.gauge_key = Some(crate::crypto::GaugeKey::derive(&seed, &schema.fiber_fields));
+        let n_transforms = schema.gauge_key.as_ref().unwrap().transforms.len();
+        let encoded = encode_schema(&schema);
+        let decoded = decode_schema(&encoded).unwrap();
+        let gk = decoded.gauge_key.expect("gauge_key must survive WAL roundtrip");
+        assert_eq!(gk.transforms.len(), n_transforms);
+        let orig = &schema.gauge_key.as_ref().unwrap().transforms;
+        for (a, b) in orig.iter().zip(gk.transforms.iter()) {
+            assert!((a.scale - b.scale).abs() < 1e-15);
+            assert!((a.offset - b.offset).abs() < 1e-15);
+        }
+    }
+
+    /// WAL-2: invariants survive encode → decode.
+    #[test]
+    fn schema_roundtrip_with_invariants() {
+        let schema = BundleSchema::new("quat")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("q0"))
+            .fiber(FieldDef::numeric("q1"))
+            .fiber(FieldDef::numeric("q2"))
+            .fiber(FieldDef::numeric("q3"))
+            .with_invariant(crate::types::InvariantDef {
+                expr_field: "q0".to_string(),
+                expected: 1.0,
+                tol: 1e-9,
+            });
+        let encoded = encode_schema(&schema);
+        let decoded = decode_schema(&encoded).unwrap();
+        assert_eq!(decoded.invariants.len(), 1);
+        assert_eq!(decoded.invariants[0].expr_field, "q0");
+        assert!((decoded.invariants[0].expected - 1.0).abs() < 1e-15);
+        assert!((decoded.invariants[0].tol - 1e-9).abs() < 1e-30);
     }
 
     /// Insert record round-trip.

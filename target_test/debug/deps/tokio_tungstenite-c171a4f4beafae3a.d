@@ -1,0 +1,10 @@
+C:\Users\nurdm\OneDrive\Documents\gigi\target_test\debug\deps\tokio_tungstenite-c171a4f4beafae3a.d: C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\lib.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\compat.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\connect.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\handshake.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\stream.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\tls.rs
+
+C:\Users\nurdm\OneDrive\Documents\gigi\target_test\debug\deps\libtokio_tungstenite-c171a4f4beafae3a.rmeta: C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\lib.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\compat.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\connect.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\handshake.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\stream.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\tls.rs
+
+C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\lib.rs:
+C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\compat.rs:
+C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\connect.rs:
+C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\handshake.rs:
+C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\stream.rs:
+C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-tungstenite-0.28.0\src\tls.rs:

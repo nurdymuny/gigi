@@ -243,6 +243,12 @@ pub struct Metrics {
     pub durations: Mutex<DurationWindow>,
     /// Per-statement-type query counts.
     pub by_type: Mutex<std::collections::HashMap<String, u64>>,
+    /// Sliding window of kl_forward values from DIVERGENCE queries (for avg).
+    pub kl_window: Mutex<F64Window>,
+    /// Sliding window of jensen_shannon values from DIVERGENCE queries (for avg).
+    pub js_window: Mutex<F64Window>,
+    /// Latest k_global (scalar curvature) per bundle name.
+    pub k_global_by_bundle: Mutex<std::collections::HashMap<String, f64>>,
 }
 
 impl Metrics {
@@ -258,6 +264,9 @@ impl Metrics {
             ws_connections_total:   AtomicU64::new(0),
             durations: Mutex::new(DurationWindow::new(4096)),
             by_type:   Mutex::new(std::collections::HashMap::new()),
+            kl_window:         Mutex::new(F64Window::new(1024)),
+            js_window:         Mutex::new(F64Window::new(1024)),
+            k_global_by_bundle: Mutex::new(std::collections::HashMap::new()),
         }
     }
 
@@ -278,6 +287,23 @@ impl Metrics {
 
     pub fn record_anomaly(&self) {
         self.anomalies_total.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record geometric values from a DIVERGENCE query.
+    pub fn record_geometric_query(&self, kl_forward: Option<f64>, jensen_shannon: Option<f64>) {
+        if let Some(kl) = kl_forward {
+            if let Ok(mut w) = self.kl_window.lock() { w.push(kl); }
+        }
+        if let Some(js) = jensen_shannon {
+            if let Ok(mut w) = self.js_window.lock() { w.push(js); }
+        }
+    }
+
+    /// Update the latest k_global for a bundle (overwrite on each push/curvature query).
+    pub fn record_bundle_k_global(&self, bundle: &str, k: f64) {
+        if let Ok(mut m) = self.k_global_by_bundle.lock() {
+            m.insert(bundle.to_string(), k);
+        }
     }
 
     /// Returns (p50_us, p95_us, p99_us).
@@ -324,6 +350,32 @@ impl DurationWindow {
             sorted[idx.min(sorted.len() - 1)]
         };
         (p(50.0), p(95.0), p(99.0))
+    }
+}
+
+/// Fixed-capacity sliding window for f64 values (used for avg KL/JS).
+pub struct F64Window {
+    buf:      Vec<f64>,
+    capacity: usize,
+    pos:      usize,
+    count:    usize,
+}
+
+impl F64Window {
+    pub fn new(capacity: usize) -> Self {
+        Self { buf: vec![0.0f64; capacity], capacity, pos: 0, count: 0 }
+    }
+
+    pub fn push(&mut self, v: f64) {
+        self.buf[self.pos % self.capacity] = v;
+        self.pos += 1;
+        self.count = (self.count + 1).min(self.capacity);
+    }
+
+    /// Arithmetic mean over the window. Returns None if empty.
+    pub fn avg(&self) -> Option<f64> {
+        if self.count == 0 { return None; }
+        Some(self.buf[..self.count].iter().sum::<f64>() / self.count as f64)
     }
 }
 

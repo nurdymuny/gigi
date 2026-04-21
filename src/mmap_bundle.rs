@@ -1574,6 +1574,25 @@ impl<'a> BundleRef<'a> {
         }
     }
 
+    pub fn geodesic_path(
+        &self,
+        bp_a: crate::types::BasePoint,
+        bp_b: crate::types::BasePoint,
+        max_hops: usize,
+    ) -> Option<Vec<crate::types::BasePoint>> {
+        match self {
+            BundleRef::Heap(s) => spectral::geodesic_path(s, bp_a, bp_b, max_hops),
+            BundleRef::Overlay(_) => None,
+        }
+    }
+
+    pub fn all_base_points(&self) -> std::collections::HashSet<crate::types::BasePoint> {
+        match self {
+            BundleRef::Heap(s) => s.all_base_points(),
+            BundleRef::Overlay(_) => std::collections::HashSet::new(),
+        }
+    }
+
     pub fn metric_tensor(&self) -> metric::MetricTensorInfo {
         match self {
             BundleRef::Heap(s) => metric::metric_tensor(s),
@@ -1860,6 +1879,25 @@ impl<'a> BundleMut<'a> {
         match self {
             BundleMut::Heap(s) => spectral::geodesic_distance(s, bp_a, bp_b, max_hops),
             BundleMut::Overlay(_) => None,
+        }
+    }
+
+    pub fn geodesic_path(
+        &self,
+        bp_a: crate::types::BasePoint,
+        bp_b: crate::types::BasePoint,
+        max_hops: usize,
+    ) -> Option<Vec<crate::types::BasePoint>> {
+        match self {
+            BundleMut::Heap(s) => spectral::geodesic_path(s, bp_a, bp_b, max_hops),
+            BundleMut::Overlay(_) => None,
+        }
+    }
+
+    pub fn all_base_points(&self) -> std::collections::HashSet<crate::types::BasePoint> {
+        match self {
+            BundleMut::Heap(s) => s.all_base_points(),
+            BundleMut::Overlay(_) => std::collections::HashSet::new(),
         }
     }
 

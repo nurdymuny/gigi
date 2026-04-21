@@ -1,0 +1,6 @@
+C:\Users\nurdm\OneDrive\Documents\gigi\target_test\debug\deps\native_tls-a9325842c64f6950.d: C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\native-tls-0.2.18\src\lib.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\native-tls-0.2.18\src\imp\schannel.rs
+
+C:\Users\nurdm\OneDrive\Documents\gigi\target_test\debug\deps\libnative_tls-a9325842c64f6950.rmeta: C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\native-tls-0.2.18\src\lib.rs C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\native-tls-0.2.18\src\imp\schannel.rs
+
+C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\native-tls-0.2.18\src\lib.rs:
+C:\Users\nurdm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\native-tls-0.2.18\src\imp\schannel.rs:

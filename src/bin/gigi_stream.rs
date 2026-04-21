@@ -4332,17 +4332,33 @@ async fn handle_ws(socket: WebSocket, state: Arc<StreamState>) {
                             Ok(event) => {
                                 // Apply filter predicate (sheaf restriction)
                                 if !sub.filters.is_empty() {
-                                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&event.record_json) {
-                                        let passes = sub.filters.iter().all(|(field, op, expected)| {
+                                    let k_json = serde_json::json!(event.curvature);
+                                    let passes = sub.filters.iter().all(|(field, op, expected)| {
+                                        if field == "K" {
+                                            // K pseudo-field: compare against event curvature
+                                            let exp_json = value_to_json(expected);
+                                            match op.as_str() {
+                                                ">" | "gt"  => numeric_cmp(&k_json, &exp_json) > 0,
+                                                ">=" | "gte" => numeric_cmp(&k_json, &exp_json) >= 0,
+                                                "<" | "lt"  => numeric_cmp(&k_json, &exp_json) < 0,
+                                                "<=" | "lte" => numeric_cmp(&k_json, &exp_json) <= 0,
+                                                "=" | "eq"  => numeric_cmp(&k_json, &exp_json) == 0,
+                                                _ => true,
+                                            }
+                                        } else if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&event.record_json) {
                                             eval_ws_filter(&parsed, field, op, expected)
-                                        });
-                                        if !passes { continue; }
-                                    }
+                                        } else {
+                                            false
+                                        }
+                                    });
+                                    if !passes { continue; }
                                 }
                                 let push_t0 = std::time::Instant::now();
                                 let frame = format!(
-                                    "EVENT {} {} {} K={:.6}",
-                                    event.bundle, event.op, event.record_json, event.curvature
+                                    "EVENT {} {} {} K={:.6} C={:.4}",
+                                    event.bundle, event.op, event.record_json,
+                                    event.curvature,
+                                    gigi::curvature::confidence(event.curvature)
                                 );
                                 let bytes_sent = frame.len() as u64;
                                 if push_tx.send(frame).is_err() {
@@ -4471,21 +4487,37 @@ async fn handle_ws_command(
 
         "SUBSCRIBE" => {
             // SUBSCRIBE <bundle> [WHERE <field> <op> <value> [AND ...]]
+            // SUBSCRIBE <bundle> ON K [> threshold]
             if parts.len() < 2 {
                 return "ERROR: SUBSCRIBE requires a bundle name".to_string();
             }
             let rest = parts[1];
-            let where_pos = rest.to_uppercase().find(" WHERE ");
-            let bundle_name = if let Some(pos) = where_pos {
-                rest[..pos].trim().to_string()
-            } else {
-                rest.trim().to_string()
-            };
+            let rest_upper = rest.to_uppercase();
 
-            let filters = if let Some(pos) = where_pos {
-                parse_ws_filters(&rest[pos + 7..])
+            // Check for ON K syntax: SUBSCRIBE bundle ON K [> threshold]
+            let (bundle_name, filters) = if let Some(on_pos) = rest_upper.find(" ON K") {
+                let bn = rest[..on_pos].trim().to_string();
+                // Parse optional operator+threshold after "ON K"
+                let after_on_k = rest[on_pos + 5..].trim();
+                let k_filters = if after_on_k.is_empty() {
+                    vec![]
+                } else {
+                    parse_ws_filters(&format!("K {}", after_on_k))
+                };
+                (bn, k_filters)
             } else {
-                vec![]
+                let where_pos = rest_upper.find(" WHERE ");
+                let bn = if let Some(pos) = where_pos {
+                    rest[..pos].trim().to_string()
+                } else {
+                    rest.trim().to_string()
+                };
+                let f = if let Some(pos) = where_pos {
+                    parse_ws_filters(&rest[pos + 7..])
+                } else {
+                    vec![]
+                };
+                (bn, f)
             };
 
             // Verify bundle exists
@@ -4968,6 +5000,7 @@ async fn gql_query(
             indexed,
             encrypted,
             adjacencies,
+            invariants,
         } => {
             let mut schema = gigi::types::BundleSchema::new(name);
             for f in base_fields {
@@ -4981,6 +5014,13 @@ async fn gql_query(
             }
             for adj in adjacencies {
                 schema = schema.adjacency(gigi::parser::adj_spec_to_def(adj));
+            }
+            for inv in invariants {
+                schema = schema.with_invariant(gigi::types::InvariantDef {
+                    expr_field: inv.field.clone(),
+                    expected: inv.expected,
+                    tol: inv.tol,
+                });
             }
             if *encrypted {
                 let seed = gigi::crypto::GaugeKey::random_seed();
@@ -5137,6 +5177,7 @@ async fn gql_query(
         &stmt,
         gigi::parser::Statement::Insert { .. }
             | gigi::parser::Statement::BatchInsert { .. }
+            | gigi::parser::Statement::BatchSectionUpsert { .. }
             | gigi::parser::Statement::SectionUpsert { .. }
             | gigi::parser::Statement::Redefine { .. }
             | gigi::parser::Statement::BulkRedefine { .. }
@@ -5197,7 +5238,7 @@ async fn gql_query(
                 )
             }
         };
-        let result = execute_gql_on_store_read(&store, &stmt);
+        let result = execute_gql_with_exists(&store, &stmt, &state.engine);
         let dur = t0.elapsed().as_micros() as u64;
         let (status, resp) = match result {
             Ok(r) => exec_result_to_response(r),
@@ -5266,6 +5307,24 @@ fn execute_gql_on_store(
             store.batch_insert(&records);
             Ok(ExecResult::Ok)
         }
+        Statement::BatchSectionUpsert { columns, rows, .. } => {
+            let mut inserted = 0usize;
+            let mut updated = 0usize;
+            for row in rows {
+                let record: gigi::types::Record = columns
+                    .iter()
+                    .zip(row.iter())
+                    .map(|(c, v)| (c.clone(), literal_to_value(v)))
+                    .collect();
+                if store.upsert(&record) { updated += 1; } else { inserted += 1; }
+            }
+            Ok(ExecResult::Rows(vec![{
+                let mut r = gigi::types::Record::new();
+                r.insert("inserted".to_string(), gigi::types::Value::Integer(inserted as i64));
+                r.insert("updated".to_string(), gigi::types::Value::Integer(updated as i64));
+                r
+            }]))
+        }
         Statement::Redefine { key, sets, .. } => {
             let key_rec: gigi::types::Record = key
                 .iter()
@@ -5309,14 +5368,60 @@ fn execute_gql_on_store(
             Ok(ExecResult::Count(n))
         }
         // For read-only ops via mutable ref, delegate
-        _ => execute_gql_on_store_read(&store.as_ref(), stmt),
+        _ => execute_gql_on_store_read(&store.as_ref(), stmt, None),
     }
 }
 
 /// Execute a GQL statement that only needs read access.
+/// Wraps execute_gql_on_store_read but handles EXISTS subquery conditions
+/// in COVER WHERE clauses by pre-computing allowed base-point sets.
+fn execute_gql_with_exists(
+    store: &gigi::mmap_bundle::BundleRef<'_>,
+    stmt: &gigi::parser::Statement,
+    engine: &std::sync::RwLock<gigi::engine::Engine>,
+) -> Result<gigi::parser::ExecResult, String> {
+    use gigi::parser::{ExecResult, FilterCondition, Statement};
+
+    if let Statement::Cover { on_conditions, where_conditions, .. } = stmt {
+        // Check if any EXISTS conditions are present
+        let all_conds: Vec<&FilterCondition> = on_conditions.iter().chain(where_conditions.iter()).collect();
+        let exists_conds: Vec<&FilterCondition> = all_conds.iter().filter_map(|fc| {
+            if matches!(fc, FilterCondition::Exists { .. }) { Some(*fc) } else { None }
+        }).collect();
+
+        if !exists_conds.is_empty() {
+            // First run the query without EXISTS filters
+            let result = execute_gql_on_store_read(store, stmt, Some(engine))?;
+            // Then post-filter rows by EXISTS conditions
+            let rows = match result {
+                ExecResult::Rows(rows) => rows,
+                other => return Ok(other),
+            };
+            let engine_read = engine.read().unwrap();
+            let filtered: Vec<gigi::types::Record> = rows.into_iter().filter(|row| {
+                exists_conds.iter().all(|fc| {
+                    if let FilterCondition::Exists { cover_bundle, where_conds } = fc {
+                        if let Some(sub_store) = engine_read.bundle(cover_bundle) {
+                            let sub_qcs: Vec<gigi::bundle::QueryCondition> = where_conds.iter()
+                                .flat_map(filter_to_qcs)
+                                .collect();
+                            !sub_store.filtered_query_ex(&sub_qcs, None, None, false, Some(1), None).is_empty()
+                        } else {
+                            false
+                        }
+                    } else { true }
+                })
+            }).collect();
+            return Ok(ExecResult::Rows(filtered));
+        }
+    }
+    execute_gql_on_store_read(store, stmt, Some(engine))
+}
+
 fn execute_gql_on_store_read(
     store: &gigi::mmap_bundle::BundleRef<'_>,
     stmt: &gigi::parser::Statement,
+    engine: Option<&std::sync::RwLock<gigi::engine::Engine>>,
 ) -> Result<gigi::parser::ExecResult, String> {
     use gigi::bundle::QueryCondition as QC;
     use gigi::parser::{literal_to_value, ExecResult, GqlStats, Statement};
@@ -5497,13 +5602,39 @@ fn execute_gql_on_store_read(
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
         }
-        Statement::Geodesic { from_keys, to_keys, max_hops, .. } => {
+        Statement::Geodesic { from_keys, to_keys, max_hops, restrict_bundle, .. } => {
             let from_rec: gigi::types::Record = from_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
             let to_rec: gigi::types::Record = to_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
             let bp_a = store.as_heap().map(|s| s.base_point(&from_rec)).unwrap_or(0);
             let bp_b = store.as_heap().map(|s| s.base_point(&to_rec)).unwrap_or(0);
-            match store.geodesic_distance(bp_a, bp_b, *max_hops) {
-                Some(d) => Ok(ExecResult::Scalar(d)),
+            match store.geodesic_path(bp_a, bp_b, *max_hops) {
+                Some(path) => {
+                    let rows: Vec<gigi::types::Record> = path.iter().enumerate().map(|(hop, &bp)| {
+                        let mut r = gigi::types::Record::new();
+                        r.insert("hop".to_string(), gigi::types::Value::Integer(hop as i64));
+                        r.insert("base_point".to_string(), gigi::types::Value::Integer(bp as i64));
+                        r
+                    }).collect();
+                    let rows = if let Some(rb) = restrict_bundle {
+                        if let Some(eng) = engine {
+                            let engine_read = eng.read().unwrap();
+                            if let Some(rs) = engine_read.bundle(rb) {
+                                let restrict_bps: std::collections::HashSet<gigi::types::BasePoint> = rs.all_base_points();
+                                let filtered: Vec<gigi::types::Record> = rows.into_iter().filter(|r| {
+                                    r.get("base_point").and_then(|v| v.as_i64()).map(|bp| restrict_bps.contains(&(bp as gigi::types::BasePoint))).unwrap_or(false)
+                                }).collect();
+                                filtered
+                            } else {
+                                rows
+                            }
+                        } else {
+                            rows
+                        }
+                    } else {
+                        rows
+                    };
+                    Ok(ExecResult::Rows(rows))
+                }
                 None => Ok(ExecResult::Scalar(-1.0)),
             }
         }
@@ -5610,7 +5741,7 @@ fn execute_gql_on_store_read(
             let heap = store
                 .as_heap()
                 .ok_or_else(|| format!("SPECTRAL ON FIBER: bundle '{}' is not a heap bundle", bundle))?;
-            let refs: Vec<&str> = fiber_fields.iter().map(|s| s.as_str()).collect();
+            let refs: Vec<&str> = fiber_fields.iter().map(|s: &String| s.as_str()).collect();
             let fiber_modes = gigi::spectral::spectral_fiber_modes(heap, &refs, *modes);
             let rows: Vec<gigi::types::Record> = fiber_modes
                 .into_iter()
@@ -5627,9 +5758,9 @@ fn execute_gql_on_store_read(
         // TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER (f1, f2, ...)
         Statement::Transport { bundle: _, from_keys, to_keys, fiber_fields } => {
             let from_rec: gigi::types::Record =
-                from_keys.iter().map(|(k, v)| (k.clone(), gigi::parser::literal_to_value(v))).collect();
+                from_keys.iter().map(|(k, v): &(String, gigi::parser::Literal)| (k.clone(), gigi::parser::literal_to_value(v))).collect();
             let to_rec: gigi::types::Record =
-                to_keys.iter().map(|(k, v)| (k.clone(), gigi::parser::literal_to_value(v))).collect();
+                to_keys.iter().map(|(k, v): &(String, gigi::parser::Literal)| (k.clone(), gigi::parser::literal_to_value(v))).collect();
 
             // Locate the two records
             let find_point = |target: &gigi::types::Record| -> Option<Vec<f64>> {
@@ -5637,7 +5768,7 @@ fn execute_gql_on_store_read(
                     target.iter().all(|(k, v)| rec.get(k.as_str()) == Some(v))
                 }).map(|rec| {
                     fiber_fields.iter()
-                        .map(|f| rec.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
+                        .map(|f: &String| rec.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
                         .collect()
                 })
             };
@@ -5649,26 +5780,58 @@ fn execute_gql_on_store_read(
 
             let dim = p_from.len().min(p_to.len());
             let displacement: Vec<f64> = (0..dim).map(|i| p_to[i] - p_from[i]).collect();
-            let norm_from: f64 = p_from.iter().map(|x| x * x).sum::<f64>().sqrt().max(1e-12);
-            let norm_to:   f64 = p_to.iter().map(|x| x * x).sum::<f64>().sqrt().max(1e-12);
-            let cos_theta: f64 = p_from.iter().zip(&p_to).map(|(a, b)| a * b).sum::<f64>()
-                / (norm_from * norm_to);
-            let angle = cos_theta.clamp(-1.0, 1.0).acos();
-
-            let (t00, t01, t10, t11) = if dim >= 2 {
-                let c = angle.cos();
-                let s = angle.sin();
-                (c, -s, s, c)
-            } else {
-                (1.0f64, 0.0f64, 0.0f64, 1.0f64)
-            };
 
             let mut result = gigi::types::Record::new();
-            result.insert("transport_angle".to_string(), gigi::types::Value::Float(angle));
-            result.insert("t00".to_string(), gigi::types::Value::Float(t00));
-            result.insert("t01".to_string(), gigi::types::Value::Float(t01));
-            result.insert("t10".to_string(), gigi::types::Value::Float(t10));
-            result.insert("t11".to_string(), gigi::types::Value::Float(t11));
+
+            if dim == 4 {
+                // Quaternion TRANSPORT path — q = (w, x, y, z)
+                let qa = [p_from[0], p_from[1], p_from[2], p_from[3]];
+                let qb = [p_to[0],   p_to[1],   p_to[2],   p_to[3]];
+                // qa_conj = (w, -x, -y, -z)
+                let qa_conj = [qa[0], -qa[1], -qa[2], -qa[3]];
+                // Hamilton product: q_rel = qb * qa_conj
+                let (w1, x1, y1, z1) = (qb[0], qb[1], qb[2], qb[3]);
+                let (w2, x2, y2, z2) = (qa_conj[0], qa_conj[1], qa_conj[2], qa_conj[3]);
+                let mut q_rel = [
+                    w1*w2 - x1*x2 - y1*y2 - z1*z2,
+                    w1*x2 + x1*w2 + y1*z2 - z1*y2,
+                    w1*y2 - x1*z2 + y1*w2 + z1*x2,
+                    w1*z2 + x1*y2 - y1*x2 + z1*w2,
+                ];
+                // Normalize
+                let norm = q_rel.iter().map(|v| v * v).sum::<f64>().sqrt().max(1e-12);
+                for v in &mut q_rel { *v /= norm; }
+                // Canonical form: w >= 0
+                if q_rel[0] < 0.0 { for v in &mut q_rel { *v = -*v; } }
+                let transport_angle = 2.0 * q_rel[0].clamp(-1.0, 1.0).acos();
+
+                result.insert("transport_angle".to_string(), gigi::types::Value::Float(transport_angle));
+                result.insert("q0".to_string(), gigi::types::Value::Float(q_rel[0]));
+                result.insert("q1".to_string(), gigi::types::Value::Float(q_rel[1]));
+                result.insert("q2".to_string(), gigi::types::Value::Float(q_rel[2]));
+                result.insert("q3".to_string(), gigi::types::Value::Float(q_rel[3]));
+            } else {
+                let norm_from: f64 = p_from.iter().map(|x| x * x).sum::<f64>().sqrt().max(1e-12);
+                let norm_to:   f64 = p_to.iter().map(|x| x * x).sum::<f64>().sqrt().max(1e-12);
+                let cos_theta: f64 = p_from.iter().zip(&p_to).map(|(a, b)| a * b).sum::<f64>()
+                    / (norm_from * norm_to);
+                let angle = cos_theta.clamp(-1.0, 1.0).acos();
+
+                let (t00, t01, t10, t11) = if dim >= 2 {
+                    let c = angle.cos();
+                    let s = angle.sin();
+                    (c, -s, s, c)
+                } else {
+                    (1.0f64, 0.0f64, 0.0f64, 1.0f64)
+                };
+
+                result.insert("transport_angle".to_string(), gigi::types::Value::Float(angle));
+                result.insert("t00".to_string(), gigi::types::Value::Float(t00));
+                result.insert("t01".to_string(), gigi::types::Value::Float(t01));
+                result.insert("t10".to_string(), gigi::types::Value::Float(t10));
+                result.insert("t11".to_string(), gigi::types::Value::Float(t11));
+            }
+
             for (i, d) in displacement.iter().enumerate() {
                 result.insert(format!("displacement_{i}"), gigi::types::Value::Float(*d));
             }
@@ -5697,11 +5860,11 @@ fn execute_gql_on_store_read(
                 .filter(|rec| {
                     if use_cosine {
                         let dot: f64 = query_vec.iter()
-                            .map(|(f, v)| rec.get(f.as_str()).and_then(|rv| rv.as_f64()).unwrap_or(0.0) * v)
+                            .map(|(f, v): &(String, f64)| rec.get(f.as_str()).and_then(|rv| rv.as_f64()).unwrap_or(0.0) * v)
                             .sum();
-                        let norm_q: f64 = query_vec.iter().map(|(_, v)| v * v).sum::<f64>().sqrt();
+                        let norm_q: f64 = query_vec.iter().map(|(_, v): &(String, f64)| v * v).sum::<f64>().sqrt();
                         let norm_r: f64 = query_vec.iter()
-                            .map(|(f, _)| rec.get(f.as_str()).and_then(|rv| rv.as_f64()).unwrap_or(0.0))
+                            .map(|(f, _): &(String, f64)| rec.get(f.as_str()).and_then(|rv| rv.as_f64()).unwrap_or(0.0))
                             .map(|x| x * x)
                             .sum::<f64>()
                             .sqrt();
@@ -5709,7 +5872,7 @@ fn execute_gql_on_store_read(
                         sim >= 1.0 - near_radius
                     } else {
                         let dist_sq: f64 = query_vec.iter()
-                            .map(|(f, v)| {
+                            .map(|(f, v): &(String, f64)| {
                                 let rv = rec.get(f.as_str()).and_then(|rv| rv.as_f64()).unwrap_or(0.0);
                                 (rv - v) * (rv - v)
                             })
@@ -5909,6 +6072,8 @@ fn filter_to_qcs(fc: &gigi::parser::FilterCondition) -> Vec<gigi::bundle::QueryC
             QC::Gte(f.clone(), literal_to_value(lo)),
             QC::Lte(f.clone(), literal_to_value(hi)),
         ],
+        // EXISTS is handled at query level via execute_gql_with_exists
+        FilterCondition::Exists { .. } => vec![],
     }
 }
 
@@ -5975,6 +6140,7 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Select { .. }         => "SELECT",
         Insert { .. }         => "INSERT",
         BatchInsert { .. }    => "BATCH_INSERT",
+        BatchSectionUpsert { .. } => "BATCH_UPSERT",
         SectionUpsert { .. }  => "UPSERT",
         Redefine { .. }       => "UPDATE",
         BulkRedefine { .. }   => "BULK_UPDATE",

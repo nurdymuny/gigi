@@ -5343,7 +5343,7 @@ fn execute_gql_on_store(
         Statement::BulkRedefine {
             conditions, sets, ..
         } => {
-            let qcs: Vec<QC> = conditions.iter().flat_map(|fc| filter_to_qcs(fc)).collect();
+            let qcs: Vec<QC> = conditions.iter().flat_map(|fc| gigi::parser::filter_to_query_conditions(fc)).collect();
             let patches: gigi::types::Record = sets
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
@@ -5363,7 +5363,7 @@ fn execute_gql_on_store(
             }
         }
         Statement::BulkRetract { conditions, .. } => {
-            let qcs: Vec<QC> = conditions.iter().flat_map(|fc| filter_to_qcs(fc)).collect();
+            let qcs: Vec<QC> = conditions.iter().flat_map(|fc| gigi::parser::filter_to_query_conditions(fc)).collect();
             let n = store.bulk_delete(&qcs);
             Ok(ExecResult::Count(n))
         }
@@ -5403,7 +5403,7 @@ fn execute_gql_with_exists(
                     if let FilterCondition::Exists { cover_bundle, where_conds } = fc {
                         if let Some(sub_store) = engine_read.bundle(cover_bundle) {
                             let sub_qcs: Vec<gigi::bundle::QueryCondition> = where_conds.iter()
-                                .flat_map(filter_to_qcs)
+                                .flat_map(gigi::parser::filter_to_query_conditions)
                                 .collect();
                             !sub_store.filtered_query_ex(&sub_qcs, None, None, false, Some(1), None).is_empty()
                         } else {
@@ -5418,13 +5418,76 @@ fn execute_gql_with_exists(
     execute_gql_on_store_read(store, stmt, Some(engine))
 }
 
+/// Group records by `around_field`, compute 2D centroids in (`f0`, `f1`), and measure
+/// the parallel-transport polygon deficit.  Returns `(deficit, centroids)` where each
+/// centroid entry is `(label, cx, cy, transport_angle)`.  The caller checks `len() < 2`.
+fn compute_fiber_holonomy(
+    records: impl Iterator<Item = gigi::types::Record>,
+    f0: &str,
+    f1: &str,
+    around_field: &str,
+) -> (f64, Vec<(String, f64, f64, f64)>) {
+    use std::collections::BTreeMap;
+    let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
+    for rec in records {
+        let key = match rec.get(around_field) {
+            Some(v) => format!("{v:?}"),
+            None => continue,
+        };
+        let v0 = rec.get(f0).and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let v1 = rec.get(f1).and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let e = groups.entry(key).or_insert((0.0, 0.0, 0));
+        e.0 += v0; e.1 += v1; e.2 += 1;
+    }
+    if groups.len() < 2 {
+        return (0.0, groups.into_iter()
+            .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64, 0.0))
+            .collect());
+    }
+    let centroids: Vec<(String, f64, f64)> = groups.into_iter()
+        .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
+        .collect();
+    let nc = centroids.len();
+    let mut transport_angles = vec![0.0f64; nc];
+    for i in 0..nc {
+        let prev = if i == 0 { nc - 1 } else { i - 1 };
+        let next = (i + 1) % nc;
+        let dx_in  = centroids[i].1 - centroids[prev].1;
+        let dy_in  = centroids[i].2 - centroids[prev].2;
+        let dx_out = centroids[next].1 - centroids[i].1;
+        let dy_out = centroids[next].2 - centroids[i].2;
+        let mut delta = dy_out.atan2(dx_out) - dy_in.atan2(dx_in);
+        while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
+        while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
+        transport_angles[i] = delta;
+    }
+    let deficit = transport_angles.iter().sum::<f64>().abs() % (2.0 * std::f64::consts::PI);
+    let result = centroids.into_iter().zip(transport_angles)
+        .map(|((label, cx, cy), ta)| (label, cx, cy, ta))
+        .collect();
+    (deficit, result)
+}
+
+/// Build a GqlStats snapshot from a bundle store.
+fn bundle_gql_stats(store: &gigi::mmap_bundle::BundleRef<'_>) -> gigi::parser::GqlStats {
+    let k = store.scalar_curvature();
+    gigi::parser::GqlStats {
+        curvature: k,
+        confidence: gigi::curvature::confidence(k),
+        record_count: store.len(),
+        storage_mode: store.storage_mode().to_string(),
+        base_fields: store.schema().base_fields.len(),
+        fiber_fields: store.schema().fiber_fields.len(),
+    }
+}
+
 fn execute_gql_on_store_read(
     store: &gigi::mmap_bundle::BundleRef<'_>,
     stmt: &gigi::parser::Statement,
     engine: Option<&std::sync::RwLock<gigi::engine::Engine>>,
 ) -> Result<gigi::parser::ExecResult, String> {
     use gigi::bundle::QueryCondition as QC;
-    use gigi::parser::{literal_to_value, ExecResult, GqlStats, Statement};
+    use gigi::parser::{literal_to_value, ExecResult, Statement};
 
     match stmt {
         Statement::PointQuery { key, project, .. } => {
@@ -5477,11 +5540,11 @@ fn execute_gql_on_store_read(
             }
             let mut conditions: Vec<QC> = Vec::new();
             for fc in on_conditions.iter().chain(where_conditions.iter()) {
-                conditions.extend(filter_to_qcs(fc));
+                conditions.extend(gigi::parser::filter_to_query_conditions(fc));
             }
             let or_qcs: Vec<Vec<QC>> = or_groups
                 .iter()
-                .map(|g| g.iter().flat_map(filter_to_qcs).collect())
+                .map(|g| g.iter().flat_map(gigi::parser::filter_to_query_conditions).collect())
                 .collect();
             let or_ref = if or_qcs.is_empty() {
                 None
@@ -5649,61 +5712,22 @@ fn execute_gql_on_store_read(
             }
             let f0 = &fiber_fields[0];
             let f1 = &fiber_fields[1];
-
-            // Group records by around_field → centroid sums
-            use std::collections::BTreeMap;
-            let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
-            for rec in store.records() {
-                let key = match rec.get(around_field.as_str()) {
-                    Some(v) => format!("{v:?}"),
-                    None => continue,
-                };
-                let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
-                entry.0 += v0;
-                entry.1 += v1;
-                entry.2 += 1;
-            }
-            if groups.len() < 2 {
+            let (deficit, centroids) = compute_fiber_holonomy(store.records(), f0, f1, around_field);
+            if centroids.len() < 2 {
                 return Err(format!(
                     "HOLONOMY ON FIBER needs ≥2 distinct '{}' values, found {}",
-                    around_field, groups.len()
+                    around_field, centroids.len()
                 ));
             }
-            let centroids: Vec<(String, f64, f64)> = groups
-                .into_iter()
-                .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
-                .collect();
-            let n = centroids.len();
-            let mut transport_angles: Vec<f64> = Vec::with_capacity(n);
-            for i in 0..n {
-                let prev = if i == 0 { n - 1 } else { i - 1 };
-                let next = (i + 1) % n;
-                let dx_in  = centroids[i].1    - centroids[prev].1;
-                let dy_in  = centroids[i].2    - centroids[prev].2;
-                let dx_out = centroids[next].1 - centroids[i].1;
-                let dy_out = centroids[next].2 - centroids[i].2;
-                let angle_in  = dy_in.atan2(dx_in);
-                let angle_out = dy_out.atan2(dx_out);
-                let mut delta = angle_out - angle_in;
-                while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
-                while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
-                transport_angles.push(delta);
-            }
-            let deficit: f64 = transport_angles.iter().sum::<f64>().abs()
-                % (2.0 * std::f64::consts::PI);
             let trivial = deficit < 1e-6;
-
             let mut rows: Vec<gigi::types::Record> = centroids
                 .iter()
-                .enumerate()
-                .map(|(i, (label, cx, cy))| {
+                .map(|(label, cx, cy, ta)| {
                     let mut r = gigi::types::Record::new();
                     r.insert(around_field.clone(), gigi::types::Value::Text(label.clone()));
                     r.insert(f0.clone(), gigi::types::Value::Float(*cx));
                     r.insert(f1.clone(), gigi::types::Value::Float(*cy));
-                    r.insert("transport_angle".to_string(), gigi::types::Value::Float(transport_angles[i]));
+                    r.insert("transport_angle".to_string(), gigi::types::Value::Float(*ta));
                     r
                 })
                 .collect();
@@ -5714,28 +5738,8 @@ fn execute_gql_on_store_read(
             rows.push(summary);
             Ok(ExecResult::Rows(rows))
         }
-        Statement::Health { .. } => {
-            let k = store.scalar_curvature();
-            Ok(ExecResult::Stats(GqlStats {
-                curvature: k,
-                confidence: gigi::curvature::confidence(k),
-                record_count: store.len(),
-                storage_mode: store.storage_mode().to_string(),
-                base_fields: store.schema().base_fields.len(),
-                fiber_fields: store.schema().fiber_fields.len(),
-            }))
-        }
-        Statement::Describe { .. } => {
-            let k = store.scalar_curvature();
-            Ok(ExecResult::Stats(GqlStats {
-                curvature: k,
-                confidence: gigi::curvature::confidence(k),
-                record_count: store.len(),
-                storage_mode: store.storage_mode().to_string(),
-                base_fields: store.schema().base_fields.len(),
-                fiber_fields: store.schema().fiber_fields.len(),
-            }))
-        }
+        Statement::Health { .. } => Ok(ExecResult::Stats(bundle_gql_stats(store))),
+        Statement::Describe { .. } => Ok(ExecResult::Stats(bundle_gql_stats(store))),
         // SPECTRAL bundle ON FIBER (f1, f2, ...) MODES k
         Statement::SpectralFiber { bundle, fiber_fields, modes } => {
             let heap = store
@@ -5883,21 +5887,8 @@ fn execute_gql_on_store_read(
                 .collect();
 
             let n_size = neighbourhood.len();
-            use std::collections::BTreeMap;
-            let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
-            for rec in &neighbourhood {
-                let key = match rec.get(around_field.as_str()) {
-                    Some(v) => format!("{v:?}"),
-                    None => continue,
-                };
-                let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let entry = groups.entry(key).or_insert((0.0, 0.0, 0));
-                entry.0 += v0;
-                entry.1 += v1;
-                entry.2 += 1;
-            }
-            if groups.len() < 2 {
+            let (local_holonomy, centroids) = compute_fiber_holonomy(neighbourhood.into_iter(), f0, f1, around_field);
+            if centroids.len() < 2 {
                 let mut row = gigi::types::Record::new();
                 row.insert("local_holonomy_angle".to_string(), gigi::types::Value::Float(0.0));
                 row.insert("neighbourhood_size".to_string(), gigi::types::Value::Integer(n_size as i64));
@@ -5906,25 +5897,6 @@ fn execute_gql_on_store_read(
                 ));
                 return Ok(ExecResult::Rows(vec![row]));
             }
-            let centroids: Vec<(f64, f64)> = groups
-                .into_values()
-                .map(|(sx, sy, n)| (sx / n as f64, sy / n as f64))
-                .collect();
-            let nc = centroids.len();
-            let mut total_angle = 0.0f64;
-            for i in 0..nc {
-                let prev = if i == 0 { nc - 1 } else { i - 1 };
-                let next = (i + 1) % nc;
-                let dx_in  = centroids[i].0 - centroids[prev].0;
-                let dy_in  = centroids[i].1 - centroids[prev].1;
-                let dx_out = centroids[next].0 - centroids[i].0;
-                let dy_out = centroids[next].1 - centroids[i].1;
-                let mut delta = dy_out.atan2(dx_out) - dy_in.atan2(dx_in);
-                while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
-                while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
-                total_angle += delta;
-            }
-            let local_holonomy = total_angle.abs() % (2.0 * std::f64::consts::PI);
             let mut row = gigi::types::Record::new();
             row.insert("local_holonomy_angle".to_string(), gigi::types::Value::Float(local_holonomy));
             row.insert("neighbourhood_size".to_string(), gigi::types::Value::Integer(n_size as i64));
@@ -5932,52 +5904,16 @@ fn execute_gql_on_store_read(
         }
         // GAUGE bundle1 VS bundle2 ON FIBER (f1, f2) AROUND field
         Statement::GaugeTest { bundle1, bundle2, fiber_fields, around_field } => {
-            // Helper closure computing holonomy deficit from a record iterator
-            let compute_deficit =
-                |records: Box<dyn Iterator<Item = gigi::types::Record> + '_>| -> Result<f64, String> {
-                    if fiber_fields.len() < 2 {
-                        return Err("GAUGE: requires at least 2 fiber fields".to_string());
-                    }
-                    let f0 = &fiber_fields[0];
-                    let f1 = &fiber_fields[1];
-                    use std::collections::BTreeMap;
-                    let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
-                    for rec in records {
-                        let key = match rec.get(around_field.as_str()) {
-                            Some(v) => format!("{v:?}"),
-                            None => continue,
-                        };
-                        let v0 = rec.get(f0.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let v1 = rec.get(f1.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let e = groups.entry(key).or_insert((0.0, 0.0, 0));
-                        e.0 += v0; e.1 += v1; e.2 += 1;
-                    }
-                    if groups.len() < 2 {
-                        return Err(format!(
-                            "GAUGE: bundle needs ≥2 distinct '{}' values for holonomy", around_field
-                        ));
-                    }
-                    let centroids: Vec<(f64, f64)> = groups.into_values()
-                        .map(|(sx, sy, n)| (sx / n as f64, sy / n as f64))
-                        .collect();
-                    let n = centroids.len();
-                    let mut total_angle = 0.0f64;
-                    for i in 0..n {
-                        let prev = if i == 0 { n - 1 } else { i - 1 };
-                        let next = (i + 1) % n;
-                        let dx_in  = centroids[i].0 - centroids[prev].0;
-                        let dy_in  = centroids[i].1 - centroids[prev].1;
-                        let dx_out = centroids[next].0 - centroids[i].0;
-                        let dy_out = centroids[next].1 - centroids[i].1;
-                        let mut delta = dy_out.atan2(dx_out) - dy_in.atan2(dx_in);
-                        while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
-                        while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
-                        total_angle += delta;
-                    }
-                    Ok(total_angle.abs() % (2.0 * std::f64::consts::PI))
-                };
+            if fiber_fields.len() < 2 {
+                return Err("GAUGE: requires at least 2 fiber fields".to_string());
+            }
+            let f0 = &fiber_fields[0];
+            let f1 = &fiber_fields[1];
 
-            let deficit1 = compute_deficit(store.records())?;
+            let (deficit1, centroids1) = compute_fiber_holonomy(store.records(), f0, f1, around_field);
+            if centroids1.len() < 2 {
+                return Err(format!("GAUGE: bundle needs ≥2 distinct '{}' values for holonomy", around_field));
+            }
 
             let deficit2 = if bundle2 == bundle1 {
                 deficit1
@@ -5985,7 +5921,11 @@ fn execute_gql_on_store_read(
                 let eng_read = eng.read().map_err(|_| "engine lock poisoned".to_string())?;
                 let store2 = eng_read.bundle(&bundle2)
                     .ok_or_else(|| format!("GAUGE VS: bundle '{}' not found", bundle2))?;
-                compute_deficit(Box::new(store2.records()))?
+                let (d2, c2) = compute_fiber_holonomy(store2.records(), f0, f1, around_field);
+                if c2.len() < 2 {
+                    return Err(format!("GAUGE: bundle '{}' needs ≥2 distinct '{}' values for holonomy", bundle2, around_field));
+                }
+                d2
             } else {
                 return Err(format!("GAUGE VS: bundle '{}' not found (no engine context)", bundle2));
             };
@@ -6037,38 +5977,6 @@ fn execute_gql_on_store_read(
             Ok(ExecResult::Rows(result_rows))
         }
         _ => Ok(ExecResult::Ok),
-    }
-}
-
-fn filter_to_qcs(fc: &gigi::parser::FilterCondition) -> Vec<gigi::bundle::QueryCondition> {
-    use gigi::bundle::QueryCondition as QC;
-    use gigi::parser::{literal_to_value, FilterCondition};
-    match fc {
-        FilterCondition::Eq(f, v) => vec![QC::Eq(f.clone(), literal_to_value(v))],
-        FilterCondition::Neq(f, v) => vec![QC::Neq(f.clone(), literal_to_value(v))],
-        FilterCondition::Gt(f, v) => vec![QC::Gt(f.clone(), literal_to_value(v))],
-        FilterCondition::Gte(f, v) => vec![QC::Gte(f.clone(), literal_to_value(v))],
-        FilterCondition::Lt(f, v) => vec![QC::Lt(f.clone(), literal_to_value(v))],
-        FilterCondition::Lte(f, v) => vec![QC::Lte(f.clone(), literal_to_value(v))],
-        FilterCondition::In(f, vs) => {
-            vec![QC::In(f.clone(), vs.iter().map(literal_to_value).collect())]
-        }
-        FilterCondition::NotIn(f, vs) => vec![QC::NotIn(
-            f.clone(),
-            vs.iter().map(literal_to_value).collect(),
-        )],
-        FilterCondition::Contains(f, s) => vec![QC::Contains(f.clone(), s.clone())],
-        FilterCondition::StartsWith(f, s) => vec![QC::StartsWith(f.clone(), s.clone())],
-        FilterCondition::EndsWith(f, s) => vec![QC::EndsWith(f.clone(), s.clone())],
-        FilterCondition::Matches(f, s) => vec![QC::Regex(f.clone(), s.clone())],
-        FilterCondition::Void(f) => vec![QC::IsNull(f.clone())],
-        FilterCondition::Defined(f) => vec![QC::IsNotNull(f.clone())],
-        FilterCondition::Between(f, lo, hi) => vec![
-            QC::Gte(f.clone(), literal_to_value(lo)),
-            QC::Lte(f.clone(), literal_to_value(hi)),
-        ],
-        // EXISTS is handled at query level via execute_gql_with_exists
-        FilterCondition::Exists { .. } => vec![],
     }
 }
 

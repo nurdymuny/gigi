@@ -325,59 +325,6 @@ impl BaseStorage {
         }
     }
 
-    #[allow(dead_code)]
-    fn get_fiber(&self, bp: BasePoint) -> Option<&[Value]> {
-        match self {
-            BaseStorage::Hashed { sections, .. } => sections.get(&bp).map(|v| v.as_slice()),
-            BaseStorage::Sequential {
-                sections,
-                start,
-                step,
-                ..
-            } => {
-                // Reverse: bp was computed from the key, but we need the index.
-                // For sequential mode, we use the bp_to_idx map maintained externally.
-                // Fallback: linear scan (shouldn't be hit — caller uses get_fiber_by_idx).
-                let _ = (start, step);
-                // Sequential mode doesn't map by bp — see get_fiber_by_key
-                // This path is hit by external code using raw bp; do linear search
-                None.or_else(|| {
-                    // Not reachable in normal operation for Sequential
-                    let _ = sections;
-                    None
-                })
-            }
-            BaseStorage::Hybrid {
-                sections,
-                overflow_sections,
-                start,
-                step,
-                ..
-            } => {
-                let _ = (start, step, sections);
-                overflow_sections.get(&bp).map(|v| v.as_slice())
-            }
-        }
-    }
-
-    #[allow(dead_code)]
-    fn get_section_and_base(&self, bp: BasePoint) -> Option<(&[Value], &[Value])> {
-        match self {
-            BaseStorage::Hashed {
-                sections,
-                base_values,
-            } => {
-                let s = sections.get(&bp)?;
-                let b = base_values.get(&bp)?;
-                Some((s.as_slice(), b.as_slice()))
-            }
-            BaseStorage::Sequential { .. } | BaseStorage::Hybrid { .. } => {
-                // For sequential/hybrid, use get_by_key_value instead
-                None
-            }
-        }
-    }
-
     fn get_by_index(&self, idx: usize) -> Option<(&[Value], &[Value])> {
         match self {
             BaseStorage::Hashed { .. } => None,
@@ -416,11 +363,6 @@ impl BaseStorage {
 
     fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    #[allow(dead_code)]
-    fn is_sequential(&self) -> bool {
-        matches!(self, BaseStorage::Sequential { .. })
     }
 
     fn is_hybrid(&self) -> bool {

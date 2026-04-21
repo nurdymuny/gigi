@@ -3474,9 +3474,8 @@ fn filter_to_query_condition(fc: &FilterCondition) -> crate::bundle::QueryCondit
         FilterCondition::Matches(f, s) => QC::Regex(f.clone(), s.clone()),
         FilterCondition::Void(f) => QC::IsNull(f.clone()),
         FilterCondition::Defined(f) => QC::IsNotNull(f.clone()),
-        FilterCondition::Between(f, lo, _hi) => {
-            // Between is desugared into Gte + Lte by filter_to_query_conditions()
-            QC::Gte(f.clone(), literal_to_value(lo))
+        FilterCondition::Between(..) => {
+            unreachable!("Between must be desugared via filter_to_query_conditions()")
         }
         // EXISTS is evaluated at a higher level that has access to the engine
         FilterCondition::Exists { .. } => QC::IsNotNull("__always_true__".to_string()),
@@ -3484,7 +3483,7 @@ fn filter_to_query_condition(fc: &FilterCondition) -> crate::bundle::QueryCondit
 }
 
 /// Convert FilterCondition::Between into two QueryConditions.
-fn filter_to_query_conditions(fc: &FilterCondition) -> Vec<crate::bundle::QueryCondition> {
+pub fn filter_to_query_conditions(fc: &FilterCondition) -> Vec<crate::bundle::QueryCondition> {
     use crate::bundle::QueryCondition as QC;
     match fc {
         FilterCondition::Between(f, lo, hi) => vec![

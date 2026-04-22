@@ -57,6 +57,7 @@
 \rfoot{\footnotesize Page \thepage}
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
+\emergencystretch=3em
 
 \begin{document}
 
@@ -270,7 +271,7 @@ GIGI is a geometric database engine that models every data collection as a fiber
 
 \textbf{Geometric Storage Architecture.} Records are stored as sections of a fiber bundle. The storage engine supports three indexing modes: sequential (arithmetic base space), hashed (arbitrary key space), and hybrid (sequential with hashed overflow). All modes share a common schema representation (the fiber) and are interchangeable without data loss. Bundles are persisted via memory-mapped files (mmap) with a geometric write-ahead log.
 
-\textbf{Geometric Query Language (GQL).} A domain-specific query language whose statements are geometric operations. GQL is not a dialect of SQL; its primitives have no relational algebra equivalents. Statements include: \textsc{Section} (point query by key), \textsc{Curvature} (scalar curvature of a bundle), \textsc{Cover} (range scan with filter), \textsc{Transport} (parallel transport along a path), \textsc{Holonomy} (polygon deficit computation), \textsc{LocalHolonomy} (neighbourhood-restricted holonomy), \textsc{GaugeTest} (cross-bundle gauge invariance), \textsc{SpectralFiber} (spectral decomposition of a fiber field), \textsc{Divergence} (field-theoretic distance between bundles), \textsc{BulkDefine}/\textsc{BulkRedefine}/\textsc{BulkRetract} (batch mutations), and \textsc{SheafCompletion} (local-to-global section inference).
+\textbf{Geometric Query Language (GQL).} A domain-specific query language whose statements are geometric operations. GQL is not a dialect of SQL; its primitives have no relational algebra equivalents. Statements include: \textsc{Section} (point query by key), \textsc{Curvature} (scalar curvature of a bundle), \textsc{Cover} (range scan with filter), \textsc{Transport} (parallel transport along a path), \textsc{Holonomy} (polygon deficit computation), \textsc{LocalHolonomy} (neighbourhood-restricted holonomy), \textsc{GaugeTest} (cross-bundle gauge invariance), \textsc{SpectralFiber} (spectral decomposition of a fiber field), \textsc{Divergence} (field-theoretic distance between bundles), \textsc{BulkDefine}/\allowbreak\textsc{BulkRedefine}/\allowbreak\textsc{BulkRetract} (batch mutations), and \textsc{SheafCompletion} (local-to-global section inference).
 
 \textbf{Holonomy Analytics.} The holonomy deficit of a fiber bundle is computed as the absolute value of the total parallel-transport angle accumulated around a closed polygon formed by the centroids of groups in a two-dimensional fiber subspace. This scalar measures the geometric coherence of the grouped structure and is exposed as a queryable result.
 
@@ -990,7 +991,7 @@ wherein curvature drift detection enables systematic data quality degradation to
 %--------------------------------------------------------------
 
 The following table presents empirical benchmark results from the GIGI TPC-H test
-suite (\texttt{benches/tpch\_bench.rs}). All measurements are wall-clock time on
+suite (\texttt{benches/\allowbreak{}tpch\_bench.rs}). All measurements are wall-clock time on
 a single-threaded Rust executor with no query caching. The queries correspond to
 TPC-H standard queries Q6, Q1, Q14, and Q3 at four scale factors.
 
@@ -1066,7 +1067,7 @@ Cypher/Gremlin graph queries  & --- & --- & \checkmark & --- \\
 %--------------------------------------------------------------
 
 The following example illustrates the \texttt{vitals} bundle with fiber fields
-\texttt{heart\_rate} (Float), \texttt{blood\_pressure} (Float),
+\texttt{heart\_rate} (Float), \texttt{blood\_\allowbreak{}pressure} (Float),
 \texttt{temperature} (Float), and \texttt{spo2} (Float). Three records are
 shown with their computed per-record local holonomy and the bundle-level
 geometric quantities.

@@ -218,15 +218,129 @@ async function testSprintF() {
   }
 }
 
-// ── Sprint G: app-bundle bootstrap (smoke) ──────────────────────────
-async function testSprintG() {
-  console.log('\n── Sprint G: app-bundle bootstrap (smoke) ────');
+// ── App-bundle bootstrap (smoke) ────────────────────────────────────
+async function testAppBootstrap() {
+  console.log('\n── App-bundle bootstrap (smoke) ──────────────');
   const r = await gql('SHOW BUNDLES');
   const names = (r.bundles || []).map(b => b.name);
   if (names.includes('jg_kv')) {
     ok('jg_kv present in SHOW BUNDLES (bootstrap working)');
   } else {
-    bad('jg_kv missing — Sprint G bootstrap regressed');
+    bad('jg_kv missing — app-bundle bootstrap regressed');
+  }
+}
+
+// ── Sprint G: ROTATE_KEY FORWARD_SECRET ─────────────────────────────
+async function testSprintG() {
+  console.log('\n── Sprint G: ROTATE_KEY FORWARD_SECRET ──────');
+  const b = `enc_v02_g_${stamp}`;
+  try {
+    await gql(`CREATE BUNDLE ${b} (id INT BASE, score NUMERIC FIBER ENCRYPTED AFFINE) WITH ENCRYPTION SEED 'aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899'`);
+    await gql(`SECTIONS ${b} (id, score) (1, 11.0)`);
+    await gql(`SECTIONS ${b} (id, score) (2, 22.0)`);
+    await gql(`SECTIONS ${b} (id, score) (3, 33.0)`);
+    ok('CREATE + insert 3 records in encrypted bundle');
+
+    // Pre-rotation snapshot — read records with the in-memory key.
+    const before = await query(b, [], 10);
+    if (before.length !== 3) {
+      bad(`expected 3 rows pre-rotation, got ${before.length}`);
+      return;
+    }
+
+    // Trigger rotation. Server derives a fresh CSPRNG seed.
+    const rotateResp = await gql(`GAUGE ${b} ROTATE_KEY FORWARD_SECRET`);
+    if (rotateResp.status === 'ok') {
+      ok(`GAUGE ${b} ROTATE_KEY FORWARD_SECRET succeeded`);
+    } else {
+      bad(`rotation response unexpected`, JSON.stringify(rotateResp));
+    }
+    if (typeof rotateResp.rotated === 'number' && rotateResp.rotated === 3) {
+      ok(`rotation reports 3 records re-encrypted (record-count invariant)`);
+    } else {
+      bad(`rotation count mismatch`, JSON.stringify(rotateResp));
+    }
+
+    // Post-rotation: data must still round-trip to the same plaintext.
+    const after = await query(b, [], 10);
+    if (after.length !== 3) {
+      bad(`expected 3 rows post-rotation, got ${after.length}`);
+    } else {
+      const beforeMap = new Map(before.map(r => [r.id, r.score]));
+      const afterMap = new Map(after.map(r => [r.id, r.score]));
+      let ok_count = 0;
+      for (const [id, s] of beforeMap) {
+        if (afterMap.get(id) === s) ok_count++;
+      }
+      if (ok_count === 3) {
+        ok(`all 3 records round-trip identically post-rotation (recoverable with NEW key)`);
+      } else {
+        bad(`some records did not round-trip`, `${ok_count}/3 matched`);
+      }
+    }
+
+    // Try a second rotation — should also succeed (idempotency under chain).
+    const rotate2 = await gql(`GAUGE ${b} ROTATE_KEY FORWARD_SECRET WITH ENCRYPTION SEED '0000111122223333444455556666777788889999aaaabbbbccccddddeeeeffff'`);
+    if (rotate2.status === 'ok') {
+      ok('second rotation with explicit hex seed succeeds');
+    } else {
+      bad('second rotation failed', JSON.stringify(rotate2));
+    }
+  } finally {
+    await cleanup([b]);
+  }
+}
+
+// ── Sprint H: PROJECT INVARIANT ─────────────────────────────────────
+async function testSprintH() {
+  console.log('\n── Sprint H: PROJECT INVARIANT ──────────────');
+  const b = `enc_v02_h_${stamp}`;
+  try {
+    await gql(`CREATE BUNDLE ${b} (id INT BASE, x NUMERIC FIBER ENCRYPTED AFFINE)`);
+    for (let i = 0; i < 30; i++) {
+      await gql(`SECTIONS ${b} (id, x) (${i}, ${(i % 7) * 1.5})`);
+    }
+
+    // Single invariant: curvature.
+    const r1 = await gql(`PROJECT INVARIANT (curvature) FROM ${b}`);
+    if (r1.invariants && typeof r1.invariants.curvature === 'number') {
+      ok(`PROJECT INVARIANT (curvature) returns a number (${r1.invariants.curvature.toFixed(6)})`);
+    } else {
+      bad('PROJECT INVARIANT (curvature) shape unexpected', JSON.stringify(r1));
+    }
+
+    // Multiple invariants in one query.
+    const r2 = await gql(`PROJECT INVARIANT (curvature, confidence, beta_0) FROM ${b}`);
+    const got = Object.keys(r2.invariants || {});
+    if (got.length === 3 && got.includes('curvature') && got.includes('confidence') && got.includes('beta_0')) {
+      ok(`multi-invariant returns all 3 keys: ${got.join(', ')}`);
+    } else {
+      bad('multi-invariant key set wrong', JSON.stringify(r2));
+    }
+
+    // Whitelist enforcement: 'sum' must be rejected at parse time.
+    let rejected = false;
+    try {
+      await gql(`PROJECT INVARIANT (sum) FROM ${b}`);
+    } catch (e) {
+      rejected = /unknown invariant|sum/i.test(String(e.message));
+    }
+    if (rejected) {
+      ok('PROJECT INVARIANT rejects non-invariant op (sum) at parse time');
+    } else {
+      bad('PROJECT INVARIANT accepted non-invariant op — whitelist not enforced');
+    }
+
+    // Arithmetic on invariants.
+    const r3 = await gql(`PROJECT INVARIANT (curvature + confidence) FROM ${b}`);
+    const keys3 = Object.keys(r3.invariants || {});
+    if (keys3.length === 1 && typeof r3.invariants[keys3[0]] === 'number') {
+      ok(`arithmetic on invariants returns a value (${keys3[0]} = ${r3.invariants[keys3[0]].toFixed(6)})`);
+    } else {
+      bad('arithmetic invariant shape unexpected', JSON.stringify(r3));
+    }
+  } finally {
+    await cleanup([b]);
   }
 }
 
@@ -238,7 +352,9 @@ async function testSprintG() {
     await testSprintD();
     await testSprintE();
     await testSprintF();
+    await testAppBootstrap();
     await testSprintG();
+    await testSprintH();
   } catch (e) {
     console.error('\nUNEXPECTED ERROR:', e.message);
     fails++;

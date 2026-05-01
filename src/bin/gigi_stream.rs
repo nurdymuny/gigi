@@ -5113,6 +5113,74 @@ async fn gql_query(
                 );
             }
         }
+        // Sprint G: forward-secret key rotation.
+        gigi::parser::Statement::RotateKey { bundle, new_seed_source } => {
+            let new_seed = match new_seed_source {
+                gigi::types::EncryptionSeedSource::Random => {
+                    gigi::crypto::GaugeKey::random_seed()
+                }
+                gigi::types::EncryptionSeedSource::Hex(hex) => {
+                    match gigi::crypto::seed_from_hex(hex) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
+                            return (
+                                StatusCode::BAD_REQUEST,
+                                Json(serde_json::json!({"error": format!("invalid encryption seed: {e}")})),
+                            );
+                        }
+                    }
+                }
+                gigi::types::EncryptionSeedSource::Env(name) => match std::env::var(name) {
+                    Ok(hex) => match gigi::crypto::seed_from_hex(&hex) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
+                            return (
+                                StatusCode::BAD_REQUEST,
+                                Json(serde_json::json!({"error": format!("invalid seed in env {name}: {e}")})),
+                            );
+                        }
+                    },
+                    Err(_) => {
+                        emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
+                        return (
+                            StatusCode::BAD_REQUEST,
+                            Json(serde_json::json!({"error": format!("env var {name} not set")})),
+                        );
+                    }
+                },
+            };
+            let mut engine = state.engine.write().unwrap();
+            let store = match engine.heap_bundle_mut(bundle) {
+                Some(s) => s,
+                None => {
+                    emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
+                    return (
+                        StatusCode::NOT_FOUND,
+                        Json(serde_json::json!({"error": format!("bundle {bundle} not in heap mode")})),
+                    );
+                }
+            };
+            let new_key =
+                gigi::crypto::GaugeKey::derive(&new_seed, &store.schema.fiber_fields);
+            match store.rotate_key(new_key) {
+                Ok(count) => {
+                    emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, false);
+                    return (
+                        StatusCode::OK,
+                        Json(serde_json::json!({"status": "ok", "rotated": count})),
+                    );
+                }
+                Err(e) => {
+                    emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(serde_json::json!({"error": e})),
+                    );
+                }
+            }
+        }
         gigi::parser::Statement::AtlasBegin
         | gigi::parser::Statement::AtlasCommit
         | gigi::parser::Statement::AtlasRollback => {
@@ -6107,6 +6175,8 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Spectral { .. }       => "SPECTRAL",
         CreateBundle { .. }   => "CREATE_BUNDLE",
         Collapse { .. }       => "DROP_BUNDLE",
+        RotateKey { .. }      => "ROTATE_KEY",
+        ProjectInvariant { .. } => "PROJECT_INVARIANT",
         ShowBundles           => "SHOW_BUNDLES",
         Describe { .. }       => "DESCRIBE",
         Explain { .. }        => "EXPLAIN",
@@ -6145,6 +6215,18 @@ fn exec_result_to_response(
                 .map(|i| serde_json::json!({"name": i.name, "records": i.records, "fields": i.fields}))
                 .collect();
             (StatusCode::OK, Json(serde_json::json!({"bundles": list})))
+        }
+        Invariants(results) => {
+            // Sprint H: PROJECT INVARIANT response. Each entry is
+            // (canonical_label, value) — flatten to a single JSON object.
+            let mut obj = serde_json::Map::new();
+            for (label, value) in &results {
+                obj.insert(label.clone(), serde_json::json!(value));
+            }
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"invariants": serde_json::Value::Object(obj)})),
+            )
         }
     }
 }

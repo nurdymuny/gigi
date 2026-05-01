@@ -152,6 +152,7 @@ impl FieldTransform {
     /// supported access pattern). For Probabilistic, decrypt is approximate:
     /// recovers `(noisy - offset) / scale` with precision ±σ/|scale|.
     pub fn decrypt_value(&self, w: &Value, aad: &[u8]) -> Value {
+        decrypt_call_counter_inc();
         match self {
             FieldTransform::Identity => w.clone(),
             FieldTransform::Affine { scale, offset } => match w {
@@ -429,6 +430,7 @@ impl GaugeKey {
         bundle_name: &str,
         fiber_fields: &[FieldDef],
     ) -> Vec<Value> {
+        decrypt_call_counter_inc();
         let mut out: Vec<Value> = vec![Value::Null; encrypted_vals.len()];
         use std::collections::HashMap;
         let mut group_pending: HashMap<String, Vec<(usize, usize, f64)>> = HashMap::new();
@@ -519,6 +521,43 @@ impl GaugeKey {
         getrandom::getrandom(&mut seed).expect("Failed to generate random seed from OS CSPRNG");
         seed
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sprint H: decrypt-call telemetry
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Both `decrypt_value` and `decrypt_fiber` increment this atomic on every
+// call. The PROJECT INVARIANT regression test
+// `test_project_invariant_zero_decrypt_calls_in_execution_path` asserts
+// the counter stays at 0 for the duration of an invariant evaluation —
+// that's the *structural* part of the no-decrypt guarantee for the
+// invariant query surface. Negligible runtime cost (one relaxed atomic
+// fetch_add per decrypt) so we leave it on in release builds too.
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static DECRYPT_CALL_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+#[inline]
+fn decrypt_call_counter_inc() {
+    DECRYPT_CALL_COUNTER.fetch_add(1, Ordering::Relaxed);
+}
+
+/// Read the global decrypt-call counter. Increments on every
+/// `FieldTransform::decrypt_value` and `GaugeKey::decrypt_fiber` call,
+/// across the entire process. Used by Sprint H tests to assert the
+/// PROJECT INVARIANT execution path triggers zero decrypts.
+pub fn decrypt_call_count() -> usize {
+    DECRYPT_CALL_COUNTER.load(Ordering::Relaxed)
+}
+
+/// Reset the global decrypt-call counter to 0. Tests call this before
+/// each invariant evaluation to get a clean baseline. NOT a thread-safe
+/// transactional reset across concurrent decrypts — the assumption is
+/// that test bodies are single-threaded with respect to this counter.
+pub fn reset_decrypt_call_count() {
+    DECRYPT_CALL_COUNTER.store(0, Ordering::Relaxed);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -242,6 +242,11 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
             }
             println!("({} bundles)", infos.len());
         }
+        ExecResult::Invariants(results) => {
+            for (label, value) in &results {
+                println!("{label}: {value:.6}");
+            }
+        }
     }
 
     Ok(false)

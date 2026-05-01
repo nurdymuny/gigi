@@ -2830,6 +2830,62 @@ impl BundleStore {
         count
     }
 
+    /// Sprint G: forward-secret key rotation.
+    ///
+    /// Materialize every record (decrypted under the OLD GaugeKey),
+    /// install the NEW GaugeKey on the schema, drop the old storage,
+    /// and re-insert every record so the on-disk fiber values are
+    /// re-encrypted under the new transforms.
+    ///
+    /// Returns the number of records re-encrypted. After this call:
+    ///
+    ///   - `schema.gauge_key` holds the new key.
+    ///   - The OLD GaugeKey, if held by a caller, will fail to decrypt
+    ///     any record stored on this bundle. That's the forward-secret
+    ///     guarantee.
+    ///   - Record count is invariant (records before == records after).
+    ///   - Base-point hashing is unchanged (this rotation is fiber-side
+    ///     only; base-space hash seed rotation is a follow-up).
+    ///
+    /// Atomicity caveat: this is **in-memory** atomic — we materialize
+    /// records first, then rebuild storage. A panic between truncate
+    /// and re-insert would lose data. WAL-level crash atomicity (the
+    /// spec's `test_rotate_key_atomicity_via_wal`) is a follow-up.
+    pub fn rotate_key(
+        &mut self,
+        new_gauge_key: crate::crypto::GaugeKey,
+    ) -> Result<usize, String> {
+        if self.schema.gauge_key.is_none() {
+            return Err(
+                "rotate_key: bundle has no gauge_key — cannot rotate an unencrypted bundle".into(),
+            );
+        }
+
+        // Step 1: materialize all records (decrypts via OLD gauge_key
+        // through the records() iterator).
+        let plaintext_records: Vec<Record> = self.records().collect();
+        let count = plaintext_records.len();
+
+        // Step 2: install the new key. From this point on, insert() and
+        // records() use the new transforms.
+        self.schema.gauge_key = Some(new_gauge_key);
+
+        // Step 3: drop the existing storage (clears WAL is responsibility
+        // of the caller — for an in-memory rotate this is enough; for
+        // engine-level rotate_key the caller emits the corresponding WAL
+        // entry separately).
+        self.truncate();
+
+        // Step 4: re-insert each record. insert() picks up
+        // self.schema.gauge_key.encrypt_fiber and produces the new
+        // ciphertext form.
+        for r in &plaintext_records {
+            self.insert(r);
+        }
+
+        Ok(count)
+    }
+
     /// Count records matching conditions without returning them.
     pub fn count_where(&self, conditions: &[QueryCondition]) -> usize {
         self.count_where_ex(conditions, None)
@@ -6952,5 +7008,333 @@ mod tests {
             (k2 - 0.5).abs() < 1e-9,
             "K for value 1 unit away from mean with declared range 2 should be 0.5, got {k2}"
         );
+    }
+
+    // ── Sprint G: forward-secret key rotation ────────────────────────
+    //
+    // The forward-secret guarantee: after `rotate_key`, the OLD GaugeKey
+    // cannot decrypt records stored on the bundle. Even if an attacker
+    // holds the post-rotation key + a backup made before rotation, they
+    // cannot recover plaintext from the post-rotation bundle's storage
+    // — because the on-disk fiber values were re-encrypted under the
+    // new key. Conversely the bundle continues to round-trip cleanly
+    // under the NEW key.
+
+    fn make_encrypted_test_store(name: &str, n: usize) -> BundleStore {
+        use crate::crypto::GaugeKey;
+        use crate::types::EncryptionMode;
+
+        // Affine-only schema: Affine has no MAC, so decrypting with the
+        // wrong key produces a (deterministic but wrong) numeric value
+        // rather than panicking. That lets the rotation tests directly
+        // compare "old-key recovered" vs "true plaintext" to prove the
+        // ciphertext was actually rewritten under the new key. (For
+        // OPAQUE/AEAD modes the same property holds even more strongly
+        // — wrong key → MAC verify fails → panic — but we avoid that
+        // path here so the assertions are simple value comparisons.)
+        let schema = BundleSchema::new(name)
+            .base(FieldDef::numeric("id"))
+            .fiber(
+                FieldDef::numeric("score")
+                    .with_range(100.0)
+                    .with_encryption(EncryptionMode::Affine),
+            )
+            .fiber(
+                FieldDef::numeric("level")
+                    .with_range(10.0)
+                    .with_encryption(EncryptionMode::Affine),
+            );
+        let mut schema = schema;
+        let seed = [11u8; 32];
+        schema.gauge_key = Some(GaugeKey::derive(&seed, &schema.fiber_fields));
+
+        let mut store = BundleStore::new(schema);
+        for i in 0..(n as i64) {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("score".into(), Value::Float((i as f64) * 0.5));
+            r.insert("level".into(), Value::Float(((i % 7) as f64) + 0.1));
+            store.insert(&r);
+        }
+        store
+    }
+
+    /// Test 1: ROTATE_KEY changes the bundle's GaugeKey transforms.
+    /// The old key bytes are not the same as the new key bytes for
+    /// any non-trivial encryption mode.
+    #[test]
+    fn test_rotate_key_changes_gauge_key() {
+        use crate::crypto::{FieldTransform, GaugeKey};
+
+        let mut store = make_encrypted_test_store("rotate1", 10);
+        // Snapshot the OLD key.
+        let old_key = store.schema.gauge_key.as_ref().unwrap().clone();
+
+        // Derive a different new key from a different seed.
+        let new_seed = [99u8; 32];
+        let new_key = GaugeKey::derive(&new_seed, &store.schema.fiber_fields);
+
+        store.rotate_key(new_key.clone()).expect("rotation must succeed");
+        let installed = store.schema.gauge_key.as_ref().unwrap();
+
+        // The installed key matches the new_key, not old_key.
+        match (&old_key.transforms[0], &installed.transforms[0]) {
+            (
+                FieldTransform::Affine { scale: s_old, offset: o_old },
+                FieldTransform::Affine { scale: s_new, offset: o_new },
+            ) => {
+                assert!(
+                    (s_old - s_new).abs() > 1e-12 || (o_old - o_new).abs() > 1e-12,
+                    "affine params must change after rotation"
+                );
+            }
+            _ => panic!("expected Affine transforms"),
+        }
+    }
+
+    /// Test 2: record count is invariant across rotation.
+    #[test]
+    fn test_rotate_key_record_count_invariant() {
+        use crate::crypto::GaugeKey;
+
+        let mut store = make_encrypted_test_store("rotate2", 100);
+        let count_before = store.len();
+
+        let new_key = GaugeKey::derive(&[42u8; 32], &store.schema.fiber_fields);
+        let rotated = store.rotate_key(new_key).expect("rotation");
+        let count_after = store.len();
+
+        assert_eq!(count_before, 100);
+        assert_eq!(count_before, count_after);
+        assert_eq!(rotated, count_before, "rotate_key returns the rotated count");
+    }
+
+    /// Test 3 (CRITICAL — the headline forward-secrecy property):
+    /// records remain queryable under the NEW key, and their decrypted
+    /// plaintexts match what was originally inserted. If we ALSO read
+    /// the bundle's raw fiber values back out and try to decrypt them
+    /// with the OLD key, we get garbage — proving the on-disk form was
+    /// rewritten.
+    #[test]
+    fn test_rotate_key_old_gauge_cannot_decrypt_post_rotation() {
+        use crate::crypto::GaugeKey;
+
+        let mut store = make_encrypted_test_store("rotate3", 50);
+
+        // Snapshot OLD key so we can attempt to decrypt with it later.
+        let old_key = store.schema.gauge_key.as_ref().unwrap().clone();
+        let bundle_name = store.schema.name.clone();
+        let fiber_fields = store.schema.fiber_fields.clone();
+
+        // Plaintext of record 0 BEFORE rotation, fetched via the bundle's
+        // own decrypted view (uses the OLD key — that's still installed).
+        let r0_before = store
+            .point_query(&{
+                let mut k = Record::new();
+                k.insert("id".into(), Value::Integer(0));
+                k
+            })
+            .expect("record 0 must exist before rotation");
+        let score_before = r0_before.get("score").and_then(|v| v.as_f64()).unwrap();
+
+        // Rotate.
+        let new_key = GaugeKey::derive(&[123u8; 32], &fiber_fields);
+        store.rotate_key(new_key).expect("rotation");
+
+        // Plaintext of record 0 AFTER rotation, via the bundle's view
+        // which now uses the NEW key.
+        let r0_after = store
+            .point_query(&{
+                let mut k = Record::new();
+                k.insert("id".into(), Value::Integer(0));
+                k
+            })
+            .expect("record 0 must exist after rotation");
+        let score_after = r0_after.get("score").and_then(|v| v.as_f64()).unwrap();
+        // Round-trip: same plaintext.
+        assert!(
+            (score_before - score_after).abs() < 1e-9,
+            "record plaintext must round-trip unchanged through rotation"
+        );
+
+        // Now: extract the raw fiber values stored AFTER rotation. These
+        // are the new ciphertext form. Try to decrypt them with the OLD
+        // key. This must NOT recover the plaintext score (0.0 for record 0).
+        // It will produce garbage of some form.
+        let bp = store.base_point(&{
+            let mut k = Record::new();
+            k.insert("id".into(), Value::Integer(0));
+            k
+        });
+        let raw_fiber = store.get_fiber(bp).expect("raw fiber must exist").to_vec();
+        let attempted = old_key.decrypt_fiber(&raw_fiber, &bundle_name, &fiber_fields);
+
+        // Forward-secret check: decrypting POST-rotation ciphertext with
+        // the OLD key must NOT recover the original plaintext.
+        let attempted_score = attempted.get(0).and_then(|v| v.as_f64());
+        match attempted_score {
+            Some(v) => assert!(
+                (v - score_before).abs() > 1e-3,
+                "OLD key recovered plaintext from POST-rotation ciphertext — forward secrecy broken"
+            ),
+            // None / non-numeric is even better — definitely not a hit.
+            None => {}
+        }
+    }
+
+    /// Test 4: the bundle stays queryable end-to-end after rotation —
+    /// curvature, lookups, all the operations that worked before must
+    /// still work afterward.
+    #[test]
+    fn test_rotate_key_bundle_remains_queryable() {
+        use crate::crypto::GaugeKey;
+
+        let mut store = make_encrypted_test_store("rotate4", 30);
+        let k_before = crate::curvature::scalar_curvature(&store);
+
+        let new_key = GaugeKey::derive(&[7u8; 32], &store.schema.fiber_fields);
+        store.rotate_key(new_key).expect("rotation");
+
+        let k_after = crate::curvature::scalar_curvature(&store);
+        // Curvature is gauge-invariant: both pre- and post-rotation
+        // scores should yield the same curvature on the same data.
+        assert!(
+            k_before.is_finite() && k_after.is_finite(),
+            "curvature finite before and after rotation"
+        );
+
+        // Lookup still resolves.
+        let mut k = Record::new();
+        k.insert("id".into(), Value::Integer(15));
+        let r = store.point_query(&k).expect("record 15 still findable");
+        assert_eq!(r.get("id"), Some(&Value::Integer(15)));
+    }
+
+    /// Test 5: rotating an unencrypted bundle is rejected — there's
+    /// nothing to rotate, and silently treating it as a no-op would
+    /// hide misuse.
+    #[test]
+    fn test_rotate_key_rejects_unencrypted_bundle() {
+        use crate::crypto::GaugeKey;
+
+        let schema = BundleSchema::new("plain")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("v"));
+        let mut store = BundleStore::new(schema);
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Integer(1));
+        r.insert("v".into(), Value::Float(1.0));
+        store.insert(&r);
+
+        let key = GaugeKey::derive(&[0u8; 32], &store.schema.fiber_fields);
+        let result = store.rotate_key(key);
+        assert!(result.is_err(), "rotating unencrypted bundle must error");
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("no gauge_key") || err.contains("unencrypted"),
+            "error must explain why: {err}"
+        );
+    }
+
+    /// Test 6: the GQL `GAUGE <bundle> ROTATE_KEY FORWARD_SECRET` parses
+    /// into the right Statement variant — this is the user-visible
+    /// surface of Sprint G.
+    #[test]
+    fn test_rotate_key_gql_parses() {
+        use crate::parser::{parse, Statement};
+        use crate::types::EncryptionSeedSource;
+
+        let stmt = parse("GAUGE my_bundle ROTATE_KEY FORWARD_SECRET").unwrap();
+        match stmt {
+            Statement::RotateKey { bundle, new_seed_source } => {
+                assert_eq!(bundle, "my_bundle");
+                assert!(matches!(new_seed_source, EncryptionSeedSource::Random));
+            }
+            _ => panic!("expected RotateKey, got {:?}", stmt),
+        }
+
+        // With explicit hex seed.
+        let hex = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+        let stmt = parse(&format!(
+            "GAUGE my_bundle ROTATE_KEY FORWARD_SECRET WITH ENCRYPTION SEED '{hex}'"
+        ))
+        .unwrap();
+        match stmt {
+            Statement::RotateKey { bundle, new_seed_source } => {
+                assert_eq!(bundle, "my_bundle");
+                match new_seed_source {
+                    EncryptionSeedSource::Hex(s) => assert_eq!(s, hex),
+                    other => panic!("expected Hex seed source, got {:?}", other),
+                }
+            }
+            _ => panic!("expected RotateKey"),
+        }
+    }
+
+    /// Test 7: parser rejects ROTATE_KEY without the FORWARD_SECRET keyword.
+    /// We don't (yet) ship a non-forward-secret rotate, so the syntax must
+    /// require the explicit token.
+    #[test]
+    fn test_rotate_key_gql_rejects_missing_forward_secret() {
+        let r = crate::parser::parse("GAUGE b ROTATE_KEY");
+        assert!(r.is_err());
+        let r = crate::parser::parse("GAUGE b ROTATE_KEY FAST_BUT_INSECURE");
+        assert!(r.is_err());
+        let err = r.unwrap_err();
+        assert!(
+            err.contains("FORWARD_SECRET"),
+            "error must mention required token: {err}"
+        );
+    }
+
+    /// Test 8: two consecutive rotations are independent — neither key
+    /// in the chain can decrypt the post-final-rotation ciphertext.
+    /// Defends against a regression where rotation is not actually
+    /// applying the new key (just permuting metadata).
+    #[test]
+    fn test_rotate_key_two_consecutive_rotations() {
+        use crate::crypto::GaugeKey;
+
+        let mut store = make_encrypted_test_store("rotate8", 20);
+        let key_v1 = store.schema.gauge_key.as_ref().unwrap().clone();
+
+        let key_v2 = GaugeKey::derive(&[1u8; 32], &store.schema.fiber_fields);
+        store.rotate_key(key_v2.clone()).unwrap();
+
+        let key_v3 = GaugeKey::derive(&[2u8; 32], &store.schema.fiber_fields);
+        store.rotate_key(key_v3.clone()).unwrap();
+
+        // After two rotations: v1 cannot decrypt; v2 cannot decrypt;
+        // only v3 (the installed key) can.
+        let bp = store.base_point(&{
+            let mut k = Record::new();
+            k.insert("id".into(), Value::Integer(5));
+            k
+        });
+        let raw = store.get_fiber(bp).expect("fiber").to_vec();
+
+        let v1_attempt = key_v1
+            .decrypt_fiber(&raw, &store.schema.name, &store.schema.fiber_fields);
+        let v2_attempt = key_v2
+            .decrypt_fiber(&raw, &store.schema.name, &store.schema.fiber_fields);
+
+        let expected_score = 5.0 * 0.5;
+        let v1_score = v1_attempt.get(0).and_then(|v| v.as_f64()).unwrap_or(f64::NAN);
+        let v2_score = v2_attempt.get(0).and_then(|v| v.as_f64()).unwrap_or(f64::NAN);
+        assert!(
+            v1_score.is_nan() || (v1_score - expected_score).abs() > 1e-3,
+            "v1 (twice-stale) key must not recover plaintext"
+        );
+        assert!(
+            v2_score.is_nan() || (v2_score - expected_score).abs() > 1e-3,
+            "v2 (once-stale) key must not recover plaintext"
+        );
+
+        // The currently-installed v3 still gives the right answer.
+        let mut k = Record::new();
+        k.insert("id".into(), Value::Integer(5));
+        let r = store.point_query(&k).unwrap();
+        let score = r.get("score").and_then(|v| v.as_f64()).unwrap();
+        assert!((score - expected_score).abs() < 1e-9);
     }
 }

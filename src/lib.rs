@@ -15,6 +15,7 @@ pub mod edge;
 pub mod engine;
 pub mod gauge;
 pub mod hash;
+pub mod invariant;
 pub mod join;
 pub mod metric;
 pub mod mmap_bundle;

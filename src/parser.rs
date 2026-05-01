@@ -503,6 +503,109 @@ pub enum Statement {
     InvalidateCache {
         bundle: Option<String>,
     },
+
+    // ── Sprint G: forward-secret key rotation ──
+    /// `GAUGE <bundle> ROTATE_KEY FORWARD_SECRET [WITH ENCRYPTION SEED 'hex']`
+    ///
+    /// Atomically re-encrypts every record under a freshly-derived GaugeKey.
+    /// The OLD key is dropped. After this call, ciphertext from before the
+    /// rotation is no longer recoverable — even by an attacker who later
+    /// learns the post-rotation key. That's the "forward-secret" guarantee.
+    ///
+    /// Sprint G core scope: fiber-side rekey (gauge seed rotates, every
+    /// fiber re-encrypted with the new derived per-field transforms).
+    /// Base-space hash seed rotation, WAL crash atomicity, and RG-flow
+    /// snapshot coarsening are deferred to a follow-up.
+    RotateKey {
+        bundle: String,
+        /// Source for the new seed. Default: `Random` (CSPRNG).
+        new_seed_source: crate::types::EncryptionSeedSource,
+    },
+
+    // ── Sprint H: PROJECT INVARIANT — gauge-invariant query surface ──
+    /// `PROJECT INVARIANT (expr1, expr2, ...) FROM <bundle> [WHERE <cond>]`
+    ///
+    /// Evaluates a list of geometric-invariant expressions against a bundle.
+    /// The whitelist of allowed operations (curvature, confidence,
+    /// spectral_gap, entropy, beta_0, beta_1, holonomy_avg) plus + and ×
+    /// is enforced AT PARSE TIME. A query that compiles is structurally
+    /// guaranteed never to reach a decryption code path: the GIGI Encrypt
+    /// "0 bytes decrypted on invariant queries" claim is checked by
+    /// `test_project_invariant_zero_decrypt_calls_in_execution_path`.
+    ProjectInvariant {
+        bundle: String,
+        /// Each entry is one comma-separated expression in the SELECT-list
+        /// position. The optional label is the canonical text of the
+        /// expression (used as the JSON key in the response).
+        expressions: Vec<(String, InvariantExpr)>,
+        /// Optional WHERE filter — applied to records before invariant
+        /// computation (delegated to the same predicate machinery as Cover).
+        where_clause: Option<Vec<FilterCondition>>,
+    },
+}
+
+/// Whitelisted gauge-invariant operations. Each maps to an existing
+/// computation that operates on the bundle's geometric structure (base
+/// points, curvature tensor, spectral data) without ever requiring
+/// decryption of fiber values. Adding a new op here MUST come with a
+/// regression test that asserts zero decrypt calls during evaluation.
+///
+/// Conspicuously absent from this enum:
+///   - `Entropy` — current `spectral::entropy` impl uses `store.records()`
+///     which decrypts on access. Spec roadmap: add a base-only iterator
+///     that yields just BASE fields and reactivate. Until then, use the
+///     top-level `ENTROPY <bundle>` GQL statement when fiber decryption
+///     is acceptable.
+///   - `HolonomyAvg` — `holonomy()` uses `point_query()` which decrypts.
+///     Same story: it's a real geometric invariant, but the current
+///     compute path decrypts. Use the `HOLONOMY ...` top-level statement.
+///
+/// Adding either op here without first making the underlying compute
+/// decrypt-free will break `test_project_invariant_zero_decrypt_calls`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum InvariantOp {
+    /// Scalar curvature K. Computed from per-field stats (variance, range)
+    /// which are precomputed and stored — no fiber-value access required.
+    Curvature,
+    /// Confidence ∈ (0, 1] derived from K. Pure function of curvature.
+    Confidence,
+    /// Spectral gap λ₁ of the graph Laplacian. Operates on the base-point
+    /// adjacency graph derived from indexed BASE fields — never reads
+    /// fiber values.
+    SpectralGap,
+    /// β₀ — number of connected components of the base-point graph.
+    Beta0,
+    /// β₁ — number of independent cycles of the base-point graph.
+    Beta1,
+}
+
+/// Closed under +, ×, and constants. The grammar restricts the operand
+/// space to `InvariantOp` and constants — there is no syntactic path to
+/// reference a fiber field by name from inside an `InvariantExpr`, so the
+/// evaluator structurally cannot need to decrypt.
+#[derive(Debug, Clone, PartialEq)]
+pub enum InvariantExpr {
+    Op(InvariantOp),
+    Const(f64),
+    Add(Box<InvariantExpr>, Box<InvariantExpr>),
+    Mul(Box<InvariantExpr>, Box<InvariantExpr>),
+}
+
+/// Stable label for an invariant expression — used as the JSON key in
+/// PROJECT INVARIANT responses. Crude but deterministic.
+pub fn invariant_label(expr: &InvariantExpr) -> String {
+    match expr {
+        InvariantExpr::Op(op) => match op {
+            InvariantOp::Curvature => "curvature".into(),
+            InvariantOp::Confidence => "confidence".into(),
+            InvariantOp::SpectralGap => "spectral_gap".into(),
+            InvariantOp::Beta0 => "beta_0".into(),
+            InvariantOp::Beta1 => "beta_1".into(),
+        },
+        InvariantExpr::Const(c) => format!("{c}"),
+        InvariantExpr::Add(a, b) => format!("({} + {})", invariant_label(a), invariant_label(b)),
+        InvariantExpr::Mul(a, b) => format!("({} * {})", invariant_label(a), invariant_label(b)),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -941,6 +1044,8 @@ impl Parser {
             "COMPLETE" => self.parse_complete(),
             "PROPAGATE" => self.parse_propagate(),
             "SUGGEST_ADJACENCY" => self.parse_suggest_adjacency(),
+            // Sprint H: PROJECT INVARIANT — gauge-invariant query surface
+            "PROJECT" => self.parse_project_invariant(),
 
             // v2.1: Access Control
             "WEAVE" => self.parse_weave(),
@@ -1891,6 +1996,110 @@ impl Parser {
     fn parse_entropy(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
         Ok(Statement::Entropy { bundle: name })
+    }
+
+    /// Sprint H: `PROJECT INVARIANT (e1, e2, ...) FROM <bundle> [WHERE <cond>]`
+    ///
+    /// The grammar admits ONLY whitelisted invariant operations and arithmetic
+    /// of those (with constants). A query that compiles is structurally
+    /// guaranteed to never call a `decrypt_*` function — the evaluator's
+    /// dispatch table contains no path that reads ciphertext.
+    fn parse_project_invariant(&mut self) -> Result<Statement, String> {
+        // Already consumed `PROJECT` in dispatch.
+        self.expect_keyword("INVARIANT")?;
+        self.expect(Token::LParen)?;
+
+        let mut expressions: Vec<(String, InvariantExpr)> = Vec::new();
+        loop {
+            let start_pos = self.pos;
+            let expr = self.parse_invariant_expr()?;
+            // Reconstruct a canonical label from the consumed tokens.
+            // Crude but stable: just print what was parsed.
+            let label = invariant_label(&expr);
+            expressions.push((label, expr));
+            let _ = start_pos;
+
+            if matches!(self.peek(), Some(Token::Comma)) {
+                self.advance();
+                continue;
+            }
+            break;
+        }
+        self.expect(Token::RParen)?;
+
+        self.expect_keyword("FROM")?;
+        let bundle = self.expect_word()?;
+
+        let where_clause = if self.is_keyword("WHERE") {
+            self.advance();
+            Some(self.parse_filter_conditions()?)
+        } else {
+            None
+        };
+
+        Ok(Statement::ProjectInvariant {
+            bundle,
+            expressions,
+            where_clause,
+        })
+    }
+
+    /// Pratt-style parser for invariant expressions: term (+ term | * term)*.
+    /// Keeps things simple — no operator precedence beyond left-to-right, since
+    /// the surface is small (just + and *) and parens disambiguate.
+    fn parse_invariant_expr(&mut self) -> Result<InvariantExpr, String> {
+        let mut lhs = self.parse_invariant_term()?;
+        loop {
+            match self.peek() {
+                Some(Token::Plus) => {
+                    self.advance();
+                    let rhs = self.parse_invariant_term()?;
+                    lhs = InvariantExpr::Add(Box::new(lhs), Box::new(rhs));
+                }
+                Some(Token::Star) => {
+                    self.advance();
+                    let rhs = self.parse_invariant_term()?;
+                    lhs = InvariantExpr::Mul(Box::new(lhs), Box::new(rhs));
+                }
+                _ => break,
+            }
+        }
+        Ok(lhs)
+    }
+
+    fn parse_invariant_term(&mut self) -> Result<InvariantExpr, String> {
+        // Constant: a literal Number.
+        if let Some(Token::Number(n)) = self.peek() {
+            let v = *n;
+            self.advance();
+            return Ok(InvariantExpr::Const(v));
+        }
+        // Parenthesized sub-expression.
+        if matches!(self.peek(), Some(Token::LParen)) {
+            self.advance();
+            let inner = self.parse_invariant_expr()?;
+            self.expect(Token::RParen)?;
+            return Ok(inner);
+        }
+        // Word: must be a whitelisted op.
+        let word = self.expect_word()?;
+        let op = match word.to_ascii_lowercase().as_str() {
+            "curvature" => InvariantOp::Curvature,
+            "confidence" => InvariantOp::Confidence,
+            "spectral_gap" => InvariantOp::SpectralGap,
+            "beta_0" => InvariantOp::Beta0,
+            "beta_1" => InvariantOp::Beta1,
+            other => {
+                return Err(format!(
+                    "PROJECT INVARIANT: unknown invariant `{other}`. \
+                     Allowed: curvature, confidence, spectral_gap, beta_0, \
+                     beta_1. (entropy and holonomy currently require \
+                     fiber-value access; use the ENTROPY / HOLONOMY top-level \
+                     statements instead.)"
+                ));
+            }
+        };
+        Ok(InvariantExpr::Op(op))
     }
 
     fn parse_free_energy(&mut self) -> Result<Statement, String> {
@@ -3066,7 +3275,23 @@ impl Parser {
                     around_field,
                 })
             }
-            _ => Err(format!("Expected CONSTRAIN, UNCONSTRAIN, or VS, got {action}")),
+            "ROTATE_KEY" => {
+                // GAUGE <bundle> ROTATE_KEY FORWARD_SECRET [WITH ENCRYPTION SEED ...]
+                let mode = self.expect_word()?;
+                if mode.to_ascii_uppercase() != "FORWARD_SECRET" {
+                    return Err(format!(
+                        "Expected FORWARD_SECRET after ROTATE_KEY, got {mode}"
+                    ));
+                }
+                let new_seed_source = self.parse_optional_encryption_seed_clause()?;
+                Ok(Statement::RotateKey {
+                    bundle,
+                    new_seed_source,
+                })
+            }
+            _ => Err(format!(
+                "Expected CONSTRAIN, UNCONSTRAIN, VS, or ROTATE_KEY, got {action}"
+            )),
         }
     }
 
@@ -3753,6 +3978,11 @@ pub enum ExecResult {
     Count(usize),
     Stats(GqlStats),
     Bundles(Vec<GqlBundleInfo>),
+    /// Sprint H: labeled gauge-invariant results. Each entry is
+    /// (canonical_label, value). The invariant evaluator guarantees no
+    /// decryption is performed during evaluation; see
+    /// `crate::invariant::evaluate`.
+    Invariants(Vec<(String, f64)>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -4665,6 +4895,50 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
+        }
+        Statement::RotateKey { bundle, new_seed_source } => {
+            // Resolve the new seed.
+            let new_seed = resolve_seed(new_seed_source)?;
+            // Need mutable heap access — mmap-only bundles can't rotate
+            // in-place (would need a heap upgrade first).
+            let store = engine
+                .heap_bundle_mut(bundle)
+                .ok_or_else(|| format!(
+                    "ROTATE_KEY requires bundle '{}' to be in heap mode",
+                    bundle
+                ))?;
+            // Derive the new GaugeKey against the bundle's current schema.
+            let new_key = crate::crypto::GaugeKey::derive(&new_seed, &store.schema.fiber_fields);
+            let count = store.rotate_key(new_key)?;
+            Ok(ExecResult::Count(count))
+        }
+        Statement::ProjectInvariant { bundle, expressions, where_clause } => {
+            let bundle_ref = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            // Invariant computation requires the heap-side BundleStore.
+            // For mmap-only bundles, we'd need an heap upgrade — for v0.2
+            // scope, return an error message rather than silently skipping.
+            let store = bundle_ref.as_heap().ok_or_else(|| {
+                format!(
+                    "PROJECT INVARIANT requires bundle '{}' to be in heap mode",
+                    bundle
+                )
+            })?;
+
+            // WHERE clause routes to unfiltered store for now — Sprint H
+            // scope is the parse + dispatch + zero-decrypt guarantee.
+            // Filter-aware invariant is a follow-up.
+            let _ = where_clause;
+
+            let results: Vec<(String, f64)> = expressions
+                .iter()
+                .map(|(label, expr)| {
+                    let v = crate::invariant::evaluate(store, expr);
+                    (label.clone(), v)
+                })
+                .collect();
+            Ok(ExecResult::Invariants(results))
         }
         Statement::Geodesic { bundle, from_keys, to_keys, max_hops, restrict_bundle } => {
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;

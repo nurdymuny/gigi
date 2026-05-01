@@ -1,0 +1,5 @@
+# Local-only operational artifacts (backups, dumps, scratch).
+# Scripts under _local/ ARE tracked; data dumps are not.
+*.json
+*.ndjson
+*.bak

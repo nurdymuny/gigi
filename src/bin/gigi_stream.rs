@@ -5784,6 +5784,21 @@ fn execute_gql_on_store_read(
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
         }
+        Statement::ProjectInvariant { expressions, where_clause, .. } => {
+            // Sprint H: route to the invariant evaluator. The evaluator
+            // operates strictly on the heap-side BundleStore via base
+            // points + field stats — never reads fiber values, so the
+            // PROJECT INVARIANT execution path triggers zero decrypts.
+            let _ = where_clause;
+            let store_heap = store.as_heap().ok_or_else(|| {
+                "PROJECT INVARIANT requires bundle in heap mode".to_string()
+            })?;
+            let results: Vec<(String, f64)> = expressions
+                .iter()
+                .map(|(label, expr)| (label.clone(), gigi::invariant::evaluate(store_heap, expr)))
+                .collect();
+            Ok(ExecResult::Invariants(results))
+        }
         Statement::Geodesic { from_keys, to_keys, max_hops, restrict_bundle, .. } => {
             let from_rec: gigi::types::Record = from_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();
             let to_rec: gigi::types::Record = to_keys.iter().map(|(k, v)| (k.clone(), literal_to_value(v))).collect();

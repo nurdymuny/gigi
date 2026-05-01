@@ -266,16 +266,20 @@ async function testSprintG() {
     if (after.length !== 3) {
       bad(`expected 3 rows post-rotation, got ${after.length}`);
     } else {
-      const beforeMap = new Map(before.map(r => [r.id, r.score]));
-      const afterMap = new Map(after.map(r => [r.id, r.score]));
+      console.log(`    pre-rotation : ${JSON.stringify(before.map(r => ({id: r.id, score: r.score})))}`);
+      console.log(`    post-rotation: ${JSON.stringify(after.map(r => ({id: r.id, score: r.score})))}`);
+      // Compare against the original inserts (1→11, 2→22, 3→33). Float
+      // tolerance accounts for any tiny float drift from re-encrypt.
+      const expected = new Map([[1, 11.0], [2, 22.0], [3, 33.0]]);
       let ok_count = 0;
-      for (const [id, s] of beforeMap) {
-        if (afterMap.get(id) === s) ok_count++;
+      for (const r of after) {
+        const exp = expected.get(r.id);
+        if (exp !== undefined && Math.abs(r.score - exp) < 1e-6) ok_count++;
       }
       if (ok_count === 3) {
-        ok(`all 3 records round-trip identically post-rotation (recoverable with NEW key)`);
+        ok(`all 3 records round-trip post-rotation (NEW key recovers plaintext)`);
       } else {
-        bad(`some records did not round-trip`, `${ok_count}/3 matched`);
+        bad(`round-trip mismatch`, `${ok_count}/3 records match expected plaintext`);
       }
     }
 

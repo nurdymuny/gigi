@@ -52,7 +52,10 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | BETTI / ENTROPY / FREEENERGY | ✅ | |
 | GEODESIC / METRIC TENSOR | ✅ | |
 | HEALTH | ✅ | |
-| CREATE BUNDLE with ENCRYPTED | ✅ | Geometric encryption |
+| CREATE BUNDLE with ENCRYPTED `<MODE>` | ✅ | v0.2 — AFFINE / OPAQUE / INDEXED / PROBABILISTIC / ISOMETRIC |
+| WITH ENCRYPTION SEED `'<hex>'` / `FROM ENV $NAME` | ✅ | v0.2 — bundle-level master seed source |
+| GAUGE `<bundle>` ROTATE_KEY FORWARD_SECRET | ✅ | v0.2 — atomic (s, g) → (s', g') rotation, in-process atomic |
+| PROJECT INVARIANT (…) FROM `<b>` [WHERE …] | ✅ | v0.2 — 0-decrypt analytics ring (curvature, confidence, capacity(τ), spectral_gap, β₀, β₁, holonomy_avg) |
 | SUBSCRIBE / UNSUBSCRIBE | ✅ | WebSocket subscriptions |
 | EXPLAIN / TRANSLATE SQL | ✅ | |
 | COMPLETE / PROPAGATE / SUGGEST_ADJACENCY | ⚠️ | Parsed; sheaf module built but not wired |
@@ -247,7 +250,7 @@ BUNDLE sensors
 | UNIQUE | Enforce injectivity across sections | — |
 | REQUIRED | Must be defined in every section | — |
 | NULLABLE | May be VOID (default) | — |
-| ENCRYPTED | Gauge-invariant encryption (GaugeKey) | — |
+| ENCRYPTED [`<MODE>`] | Gauge-invariant encryption (GaugeKey). See [Encryption](#encryption) below. | — |
 
 **INVARIANT constraints:**
 
@@ -292,11 +295,137 @@ CREATE BUNDLE secrets
   BASE (id NUMERIC AUTO)
   FIBER (
     label CATEGORICAL,
-    payload TEXT ENCRYPTED
+    payload TEXT ENCRYPTED                  -- defaults to OPAQUE for TEXT
   );
--- payload is stored and queried via gauge-invariant GaugeKey encryption
--- K is preserved under encryption (topology of the data is maintained)
+-- payload is stored and queried via gauge-invariant GaugeKey encryption.
+-- The 32-byte master seed is generated server-side (CSPRNG) by default;
+-- use `WITH ENCRYPTION SEED ...` to supply your own (see Encryption below).
+-- K, λ₁, β₀, β₁, capacity(τ) are preserved under encryption — the topology
+-- of the data is maintained, so analytics work directly on ciphertext.
 ```
+
+### Encryption
+
+GIGI Encrypt v0.2 ships five gauge-invariant encryption modes, all
+declarable per-field on `CREATE BUNDLE`. The bare `ENCRYPTED` keyword
+picks a sensible default for the field type; explicit modes are below.
+
+**Modes:**
+
+| Mode | Field types | Equality query | Randomized? | Use when |
+|---|---|---|---|---|
+| `AFFINE` | numeric (default for INT/FLOAT/TIMESTAMP) | O(1) exact | No (deterministic) | gauge-invariant numeric — preserves curvature, distances, holonomy |
+| `OPAQUE` | TEXT, BINARY (default for TEXT/BINARY) | ❌ no equality | Yes (AEAD per-record nonce) | sensitive payloads where indexed lookup isn't needed (chat content, free-form notes) |
+| `INDEXED` | TEXT, CATEGORICAL | O(1) exact via deterministic PRF | No | high-cardinality text where you need equality queries (UUIDs, row keys, hashed IDs). **Frequency-leaks** on low-cardinality columns — don't use on `gender`/`zip`/`diagnosis`. |
+| `PROBABILISTIC SIGMA n` | numeric | O(1) σ-bucket via Davis Identity | Yes (Gaussian noise width σ) | randomized numeric encryption that's still queryable. Same plaintext → different ciphertext, but equality survives because S + d² = 1. |
+| `ISOMETRIC GROUP <name>` | numeric (≥2 fields per group) | distance-preserving | No (deterministic) | grouped vectors (wind {u,v,w}, embeddings) where pairwise Euclidean distance must be exact post-encryption — encryption is a shared O(k) rotation + offset |
+
+**Examples:**
+
+```sql
+-- Per-field AFFINE on a single numeric (default for INT/FLOAT)
+CREATE BUNDLE temps (
+  id INT BASE,
+  reading NUMERIC FIBER ENCRYPTED AFFINE
+);
+
+-- OPAQUE (AEAD) on the chat payload — IND-CPA, tamper-detected
+CREATE BUNDLE chat (
+  id INT BASE,
+  body TEXT FIBER ENCRYPTED OPAQUE,
+  created_at TIMESTAMP FIBER INDEX
+);
+
+-- INDEXED PRF for equality lookup on a UUID column
+CREATE BUNDLE accounts (
+  account_id TEXT BASE,
+  external_uuid TEXT FIBER ENCRYPTED INDEXED INDEX
+);
+
+-- PROBABILISTIC for randomized but queryable numeric (Davis Identity)
+CREATE BUNDLE scores (
+  id INT BASE,
+  score NUMERIC FIBER ENCRYPTED PROBABILISTIC SIGMA 0.5
+);
+
+-- ISOMETRIC GROUP for vector-like fields — shared O(k) matrix
+CREATE BUNDLE telemetry (
+  id INT BASE,
+  wind_u NUMERIC FIBER ENCRYPTED ISOMETRIC GROUP wind,
+  wind_v NUMERIC FIBER ENCRYPTED ISOMETRIC GROUP wind,
+  wind_w NUMERIC FIBER ENCRYPTED ISOMETRIC GROUP wind
+);
+```
+
+**Master-seed sources** (the 32-byte input that derives every per-field
+GaugeKey + the base-space hash seed):
+
+```sql
+-- Random — server-side CSPRNG (default if no clause given)
+CREATE BUNDLE b (...) ;
+
+-- Hex literal — exactly 64 hex chars
+CREATE BUNDLE b (...)
+  WITH ENCRYPTION SEED '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+-- Environment variable — the engine reads $NAME at create-time and
+-- derives the master seed from its hex value. Production-recommended:
+-- the secret never appears in the GQL stream or query log.
+CREATE BUNDLE b (...) WITH ENCRYPTION SEED FROM ENV JG_KV_ENCRYPTION_SEED;
+```
+
+**Key rotation** (Sprint G — forward secrecy on both seeds):
+
+```sql
+-- Rotate (s, g) → (s', g') with a freshly-generated CSPRNG seed
+GAUGE chat ROTATE_KEY FORWARD_SECRET;
+
+-- Or rotate to a specific new seed (for staged rollouts)
+GAUGE chat ROTATE_KEY FORWARD_SECRET
+  WITH ENCRYPTION SEED FROM ENV JG_KV_ENCRYPTION_SEED_V2;
+```
+
+After rotation:
+- The OLD GaugeKey cannot decrypt any post-rotation record — even if
+  the attacker has it AND a backup of the post-rotation storage.
+- The OLD base-space hash seed cannot map plaintext keys to their
+  post-rotation `BasePoint`s — the lookup-via-old-seed hit rate drops
+  to ~0% (≤ 5/1000 by random collision).
+- Record count is invariant across rotation. The bundle stays
+  queryable end-to-end via the new key.
+- Rotation is in-process atomic: a panic mid-rotation leaves the
+  ORIGINAL bundle untouched (atomic-swap rebuild). Cross-process
+  WAL crash atomicity is on the roadmap.
+
+**Zero-decrypt analytics** (Sprint H — invariant ring):
+
+```sql
+-- Each op evaluates directly on ciphertext; bytes decrypted = 0
+PROJECT INVARIANT (curvature, confidence, capacity(0.1), spectral_gap,
+                   beta_0, beta_1, holonomy_avg)
+  FROM chat;
+
+-- WHERE clause filters records before invariant computation
+PROJECT INVARIANT (curvature)
+  FROM chat
+  WHERE created_at > 1700000000;
+
+-- Arithmetic on invariants — closed under + and ×
+PROJECT INVARIANT (curvature * confidence) FROM chat;
+```
+
+The whitelist of invariant ops is enforced **at parse time** —
+`PROJECT INVARIANT (sum)` is a syntax error, not a runtime error. A
+query that compiles is one whose evaluator is structurally guaranteed
+never to reach a `decrypt_*` function. Pinned by an instrumented
+per-thread decrypt counter; see
+`gigi/src/invariant.rs::test_project_invariant_zero_decrypt_calls_in_execution_path`.
+
+Allowed ops: `curvature`, `confidence`, `capacity(τ)`, `spectral_gap`,
+`beta_0`, `beta_1`, `holonomy_avg`, plus constants and `+`/`*`
+combinations of those. (Entropy + full affine-gauge holonomy require
+fiber-value access; use the standalone `ENTROPY <bundle>` and
+`HOLONOMY ...` statements when you're willing to decrypt.)
 
 ### GAUGE — Schema migration (gauge transformation) ✅
 

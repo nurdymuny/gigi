@@ -1542,6 +1542,210 @@ Returns `400` with `{ "error": "..." }` on parse errors.
 
 ---
 
+## Encryption (v0.2)
+
+GIGI Encrypt v0.2 ships gauge-invariant encryption as a first-class
+feature surface. Every encryption mode is reachable via
+`POST /v1/gql` — there is **no** REST endpoint for encryption mode
+configuration; the GQL `CREATE BUNDLE` syntax with per-field
+`ENCRYPTED <mode>` is the canonical entry point. (POSTing directly
+to `/v1/bundles` with a JSON schema does NOT support per-field
+encryption modes and is destructive on existing bundles — avoid it
+in production.)
+
+See `GQL_REFERENCE.md` § Encryption for full syntax. This section
+documents the API-level response shapes, the bootstrap manifest
+(for deploy-time bundle provisioning), and the Fly secret pattern
+for production seed material.
+
+### Creating an encrypted bundle via `POST /v1/gql`
+
+```bash
+curl -X POST https://gigi-stream.fly.dev/v1/gql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"CREATE BUNDLE chat (
+        id INT BASE,
+        body TEXT FIBER ENCRYPTED OPAQUE,
+        created_at TIMESTAMP FIBER INDEX
+      ) WITH ENCRYPTION SEED FROM ENV CHAT_ENCRYPTION_SEED"}'
+# → {"status": "ok"}
+```
+
+After this call, every subsequent `INSERT` / `SECTIONS` flows through
+`encrypt_fiber` and the body lands as `Value::Binary` AEAD ciphertext
+at rest. `POST /v1/bundles/chat/query` and friends decrypt
+transparently on read — the API surface is unchanged for the caller.
+
+### Modes (one-line summary)
+
+| GQL syntax | Field types | Equality | Randomized? |
+|---|---|---|---|
+| `ENCRYPTED AFFINE` | numeric | O(1) exact | no (deterministic, gauge-invariant) |
+| `ENCRYPTED OPAQUE` | TEXT/BINARY | ❌ no equality | yes (AEAD per-record nonce, IND-CPA) |
+| `ENCRYPTED INDEXED` | TEXT (high-card only) | O(1) exact via PRF | no (deterministic — frequency-leak risk on low-cardinality) |
+| `ENCRYPTED PROBABILISTIC SIGMA n` | numeric | O(1) σ-bucket via Davis Identity | yes (Gaussian noise width σ) |
+| `ENCRYPTED ISOMETRIC GROUP <name>` | grouped numeric | distance-preserving | no (shared O(k) rotation) |
+
+### Master-seed sources
+
+```sql
+WITH ENCRYPTION SEED 'aabbccddeeff...64hex'   -- inline hex literal
+WITH ENCRYPTION SEED FROM ENV $NAME           -- read 32-byte hex from env at create-time
+-- (omitted)                                  -- server-side CSPRNG
+```
+
+### Key rotation — `GAUGE <bundle> ROTATE_KEY FORWARD_SECRET`
+
+Atomic rotation of BOTH the GaugeKey seed `g` and the base-space hash
+seed `s`. After rotation:
+- The OLD GaugeKey cannot decrypt any post-rotation record.
+- The OLD base hash seed cannot map plaintext keys to their
+  post-rotation `BasePoint`s (~0% hit rate over 1000 keys).
+- Record count is invariant; the bundle remains queryable end-to-end.
+- In-process atomic via off-side rebuild + atomic swap; cross-process
+  WAL crash atomicity is on the roadmap.
+
+```bash
+# Rotate to a fresh CSPRNG-generated seed
+curl -X POST https://gigi-stream.fly.dev/v1/gql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"GAUGE chat ROTATE_KEY FORWARD_SECRET"}'
+# → {"status": "ok", "rotated": 1234}
+
+# Rotate to a specific new seed (via env var or hex literal)
+curl -X POST https://gigi-stream.fly.dev/v1/gql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"GAUGE chat ROTATE_KEY FORWARD_SECRET WITH ENCRYPTION SEED FROM ENV CHAT_SEED_V2"}'
+# → {"status": "ok", "rotated": 1234}
+```
+
+The `rotated` field reports the number of records re-encrypted under
+the new key (== record count before rotation == record count after).
+
+### Zero-decrypt analytics — `PROJECT INVARIANT (...)`
+
+```bash
+curl -X POST https://gigi-stream.fly.dev/v1/gql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"PROJECT INVARIANT (curvature, confidence, capacity(0.1), spectral_gap, beta_0, beta_1, holonomy_avg) FROM chat"}'
+```
+
+Response:
+
+```json
+{
+  "invariants": {
+    "curvature":      0.114969,
+    "confidence":     0.896875,
+    "capacity(0.1)":  0.869800,
+    "spectral_gap":   0.000000,
+    "beta_0":         3.000000,
+    "beta_1":         0.000000,
+    "holonomy_avg":   0.000000
+  }
+}
+```
+
+`PROJECT INVARIANT` enforces the gauge-invariant whitelist at parse
+time — a query that compiles is one whose evaluator is statically
+guaranteed never to call `decrypt_*`. Zero bytes of plaintext are
+materialized during evaluation. Pinned by an instrumented
+per-thread decrypt counter in
+`gigi/src/invariant.rs::test_project_invariant_zero_decrypt_calls_in_execution_path`.
+
+Allowed expressions: `curvature`, `confidence`, `capacity(τ)`,
+`spectral_gap`, `beta_0`, `beta_1`, `holonomy_avg`, plus constants
+and `+`/`*` combinations of those. Anything outside the whitelist
+fails the parser:
+
+```json
+{"error":"PROJECT INVARIANT: unknown invariant `sum`. Allowed: curvature, confidence, capacity(tau), spectral_gap, beta_0, beta_1, holonomy_avg. ..."}
+```
+
+`WHERE` clause filters records before computation:
+
+```bash
+curl -X POST https://gigi-stream.fly.dev/v1/gql ... \
+  -d '{"query":"PROJECT INVARIANT (curvature) FROM chat WHERE created_at > 1700000000"}'
+```
+
+### App-bundle bootstrap manifest — `GIGI_APP_BUNDLES`
+
+For deploy-time bundle provisioning, gigi-stream reads a JSON manifest
+from the `GIGI_APP_BUNDLES` env var on every startup. After WAL replay
++ Tigris pull + system-bundle init, `init_app_bundles` walks the
+manifest: for each entry, if the bundle is **missing** from
+`engine.bundle_names()`, it gets created from the manifest schema. If
+the bundle already exists, it is **never touched** — the bootstrap is
+idempotent and never wipes data.
+
+This is the recommended way to ensure app-required bundles survive a
+Fly volume loss / cross-machine reschedule. The website's `lib/redis.js`
+wrapper, for example, depends on a `jg_kv` bundle existing; that
+bundle is declared in the manifest so a fresh machine boot recreates
+it deterministically.
+
+**Manifest schema:**
+
+```json
+[
+  {
+    "name": "jg_kv",
+    "seed_env": "JG_KV_ENCRYPTION_SEED",
+    "base": [
+      {"name": "key", "type": "text"}
+    ],
+    "fiber": [
+      {"name": "kind",       "type": "text",      "indexed": true},
+      {"name": "payload",    "type": "text",      "encrypted": "opaque"},
+      {"name": "expires_at", "type": "timestamp", "indexed": true},
+      {"name": "updated_at", "type": "timestamp", "indexed": true}
+    ]
+  }
+]
+```
+
+**Field-level options:**
+
+| Key | Type | Effect |
+|---|---|---|
+| `name` | string | Field name. Required. |
+| `type` | string | `text` / `string` / `categorical` / `numeric` / `int` / `integer` / `float` / `double` / `timestamp`. Defaults to `text`. |
+| `indexed` | boolean | If true, the field gets a bitmap index. Default false. |
+| `encrypted` | string | (FIBER only) One of `none` / `affine` / `opaque` / `indexed`. Default `none`. The bundle gets a GaugeKey when ANY fiber field is non-`none`. |
+
+**Bundle-level options:**
+
+| Key | Type | Effect |
+|---|---|---|
+| `name` | string | Bundle name. Required. |
+| `base` | array | Base-field specs. |
+| `fiber` | array | Fiber-field specs. |
+| `seed_env` | string | Name of an env var holding the 32-byte hex master seed. Required when any fiber field declares `encrypted`. If unset, bootstrap falls back to a per-startup random seed (with a loud stderr warning) — fine for first creation, but ciphertext won't survive the next redeploy. |
+
+**Fly secret pattern (production):**
+
+```bash
+# Generate a stable master seed
+flyctl secrets set JG_KV_ENCRYPTION_SEED=$(openssl rand -hex 32) -a gigi-stream
+
+# fly.toml [env] block declares the manifest
+GIGI_APP_BUNDLES = '''[{
+  "name": "jg_kv",
+  "seed_env": "JG_KV_ENCRYPTION_SEED",
+  "base": [...],
+  "fiber": [...]
+}]'''
+```
+
+The secret is read by gigi-stream at startup; it never appears in
+any GQL stream, query log, or wire protocol. Rotating the secret +
+issuing `GAUGE jg_kv ROTATE_KEY FORWARD_SECRET WITH ENCRYPTION SEED
+FROM ENV JG_KV_ENCRYPTION_SEED_V2` is the recommended way to do
+forward-secret key rotation at the app level.
+
+---
+
 ## Observability
 
 GIGI emits structured JSON logs to stdout and exposes a `/v1/metrics` endpoint. Every

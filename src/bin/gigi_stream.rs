@@ -5982,6 +5982,88 @@ fn execute_gql_on_store_read(
             }
             Ok(ExecResult::Rows(vec![result]))
         }
+        // C2 — TRANSPORT_ROTATION: Rodrigues rotation in the plane spanned
+        // by (FROM, TO) fiber vectors by a SUPPLIED angle. Returns the
+        // N×N matrix as a comma-separated `matrix_flat` string plus a
+        // numeric `dim` field. Pairs the Python C0 rotation_in_plane.
+        Statement::TransportRotation {
+            bundle: _,
+            from_keys,
+            to_keys,
+            fiber_fields,
+            angle,
+        } => {
+            let from_rec: gigi::types::Record = from_keys.iter()
+                .map(|(k, v): &(String, gigi::parser::Literal)| (
+                    k.clone(), gigi::parser::literal_to_value(v)
+                )).collect();
+            let to_rec: gigi::types::Record = to_keys.iter()
+                .map(|(k, v): &(String, gigi::parser::Literal)| (
+                    k.clone(), gigi::parser::literal_to_value(v)
+                )).collect();
+
+            let find_vec = |target: &gigi::types::Record| -> Option<Vec<f64>> {
+                store.records().find(|rec| {
+                    target.iter().all(|(k, v)| rec.get(k.as_str()) == Some(v))
+                }).map(|rec| {
+                    fiber_fields.iter()
+                        .map(|f: &String| rec.get(f.as_str())
+                            .and_then(|v| v.as_f64()).unwrap_or(0.0))
+                        .collect()
+                })
+            };
+
+            let u = find_vec(&from_rec)
+                .ok_or_else(|| "TRANSPORT_ROTATION: FROM record not found".to_string())?;
+            let v = find_vec(&to_rec)
+                .ok_or_else(|| "TRANSPORT_ROTATION: TO record not found".to_string())?;
+            let n = u.len().min(v.len());
+            if n == 0 {
+                return Err("TRANSPORT_ROTATION: zero-length fiber".to_string());
+            }
+
+            // Rodrigues in the plane (u, v) by the supplied angle.
+            // R = I + (cos θ − 1)(e1 e1^T + e2 e2^T) + sin θ (e2 e1^T − e1 e2^T)
+            // where e1 = u/‖u‖, e2 = (v − ⟨v,e1⟩ e1) / ‖…‖.
+            let nu: f64 = u.iter().map(|x| x*x).sum::<f64>().sqrt();
+            let mut matrix = vec![0.0f64; n * n];
+            // Identity by default
+            for i in 0..n { matrix[i * n + i] = 1.0; }
+
+            if nu >= 1e-12 && angle.abs() >= 1e-12 {
+                let e1: Vec<f64> = u.iter().map(|x| x / nu).collect();
+                let dot_v_e1: f64 = v.iter().zip(&e1).map(|(a, b)| a * b).sum();
+                let e2_unnorm: Vec<f64> = v.iter().zip(&e1)
+                    .map(|(vi, ei)| vi - dot_v_e1 * ei)
+                    .collect();
+                let ne: f64 = e2_unnorm.iter().map(|x| x*x).sum::<f64>().sqrt();
+                if ne >= 1e-12 {
+                    let e2: Vec<f64> = e2_unnorm.iter().map(|x| x / ne).collect();
+                    let cos_t = angle.cos();
+                    let sin_t = angle.sin();
+                    let coef_p = cos_t - 1.0;
+                    // R = I + coef_p · (e1 e1^T + e2 e2^T) + sin_t · (e2 e1^T − e1 e2^T)
+                    for i in 0..n {
+                        for j in 0..n {
+                            let p_ij = e1[i] * e1[j] + e2[i] * e2[j];
+                            let a_ij = e2[i] * e1[j] - e1[i] * e2[j];
+                            matrix[i * n + j] += coef_p * p_ij + sin_t * a_ij;
+                        }
+                    }
+                }
+            }
+
+            let mut result = gigi::types::Record::new();
+            result.insert("dim".to_string(),
+                          gigi::types::Value::Integer(n as i64));
+            result.insert("angle".to_string(),
+                          gigi::types::Value::Float(*angle));
+            // Return the N×N matrix as a flat row-major Vector
+            // (Value::Vector is gigi's native dense float vector).
+            result.insert("matrix".to_string(),
+                          gigi::types::Value::Vector(matrix));
+            Ok(ExecResult::Rows(vec![result]))
+        }
         // HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field
         Statement::LocalHolonomy {
             bundle: _,
@@ -6160,6 +6242,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         HolonomyFiber { bundle, .. } => Some(bundle.clone()),
         SpectralFiber { bundle, .. } => Some(bundle.clone()),
         Transport { bundle, .. } => Some(bundle.clone()),
+        TransportRotation { bundle, .. } => Some(bundle.clone()),
         LocalHolonomy { bundle, .. } => Some(bundle.clone()),
         GaugeTest { bundle1, .. } => Some(bundle1.clone()),
         // Coherence extensions v0.1

@@ -294,6 +294,20 @@ pub enum Statement {
         to_keys: Vec<(String, Literal)>,
         fiber_fields: Vec<String>,
     },
+    /// C2 — Rodrigues-style parallel transport: rotation in the plane
+    /// spanned by (FROM, TO) fiber vectors by a SPECIFIED angle.
+    /// Returns the full N×N rotation matrix as `matrix_flat` (comma-
+    /// separated, row-major). Different from `Transport`:
+    ///   - Angle is supplied (not derived from inner product)
+    ///   - Output is the matrix, not displacement / 2x2 block
+    /// Pairs the Python C0 `rotation_in_plane(θ, c_a, c_b)` math.
+    TransportRotation {
+        bundle: String,
+        from_keys: Vec<(String, Literal)>,
+        to_keys: Vec<(String, Literal)>,
+        fiber_fields: Vec<String>,
+        angle: f64,
+    },
     HolonomyFiber {
         bundle: String,
         fiber_fields: Vec<String>,
@@ -1067,6 +1081,7 @@ impl Parser {
             // v2.1: Constraints
             "GAUGE" => self.parse_gauge(),
             "TRANSPORT" => self.parse_transport(),
+            "TRANSPORT_ROTATION" => self.parse_transport_rotation(),
             "HOLONOMY" => self.parse_holonomy(),
             "DIVERGENCE" => {
                 // DIVERGENCE bundle_a VS bundle_b
@@ -3339,6 +3354,39 @@ impl Parser {
         Ok(Statement::Transport { bundle, from_keys, to_keys, fiber_fields })
     }
 
+    /// C2 — TRANSPORT_ROTATION bundle
+    ///         FROM (k=v, ...) TO (k=v, ...)
+    ///         ON FIBER (f0, f1, ..., fN-1)
+    ///         WITH ANGLE 0.6
+    /// Returns the N×N Rodrigues rotation matrix in the plane spanned
+    /// by the FROM/TO fiber vectors, rotated by the supplied angle.
+    fn parse_transport_rotation(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_word()?; // FROM
+        self.expect(Token::LParen)?;
+        let from_keys = self.parse_kv_pairs_inner()?;
+        self.expect(Token::RParen)?;
+        self.expect_word()?; // TO
+        self.expect(Token::LParen)?;
+        let to_keys = self.parse_kv_pairs_inner()?;
+        self.expect(Token::RParen)?;
+        self.expect_word()?; // ON
+        self.expect_word()?; // FIBER
+        self.expect(Token::LParen)?;
+        let fiber_fields = self.parse_inner_word_list()?;
+        self.expect_word()?; // WITH
+        self.expect_word()?; // ANGLE
+        let angle = match self.advance() {
+            Some(Token::Number(n)) => n,
+            other => return Err(format!(
+                "Expected angle number after WITH ANGLE, got {other:?}"
+            )),
+        };
+        Ok(Statement::TransportRotation {
+            bundle, from_keys, to_keys, fiber_fields, angle,
+        })
+    }
+
     fn parse_holonomy(&mut self) -> Result<Statement, String> {
         // HOLONOMY bundle ON FIBER (f1, f2) AROUND field
         // HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field
@@ -4993,6 +5041,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::HolonomyFiber { .. }
         | Statement::LocalHolonomy { .. }
         | Statement::Transport { .. }
+        | Statement::TransportRotation { .. }
         | Statement::GaugeTest { .. }
         | Statement::Divergence { .. }
         | Statement::SpectralFiber { .. }
@@ -6991,5 +7040,30 @@ mod tests {
         assert_eq!(fiber_field(&fiber, "kind").encryption, EncryptionMode::Indexed);
         assert_eq!(fiber_field(&fiber, "score").encryption, EncryptionMode::Affine);
         assert_eq!(fiber_field(&fiber, "attempts").encryption, EncryptionMode::None);
+    }
+
+    /// C2 — TRANSPORT_ROTATION must parse and populate
+    /// Statement::TransportRotation with FROM/TO/ON FIBER/WITH ANGLE.
+    #[test]
+    fn test_parse_transport_rotation() {
+        let sql = "TRANSPORT_ROTATION emb FROM (id='a') TO (id='b') \
+                   ON FIBER (f0, f1, f2, f3) WITH ANGLE 0.785";
+        let stmt = parse(sql).expect("parse failed");
+        match stmt {
+            Statement::TransportRotation {
+                bundle, from_keys, to_keys, fiber_fields, angle,
+            } => {
+                assert_eq!(bundle, "emb");
+                assert_eq!(from_keys.len(), 1);
+                assert_eq!(to_keys.len(), 1);
+                assert_eq!(
+                    fiber_fields,
+                    vec!["f0".to_string(), "f1".to_string(),
+                         "f2".to_string(), "f3".to_string()],
+                );
+                assert!((angle - 0.785).abs() < 1e-9);
+            }
+            other => panic!("Expected TransportRotation, got {other:?}"),
+        }
     }
 }

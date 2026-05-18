@@ -1,6 +1,9 @@
 {
   "framework": "vite",
+  "buildCommand": "cd ../sheets && npm ci && npm run build && mkdir -p ../site/public/gigi && rm -rf ../site/public/gigi/sheets && cp -r dist/gigi/sheets ../site/public/gigi/sheets && cd ../site && npm run build",
   "rewrites": [
+    { "source": "/gigi/sheets/(.*)", "destination": "/gigi/sheets/index.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
+

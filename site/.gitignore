@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vite/
+*.log
+.DS_Store
+
+# Build-time artifact: the site's Vercel build copies the sheets app's
+# output into `public/gigi/sheets/` so it ships as static files under
+# the same domain. The copy happens on every Vercel deploy — do not
+# track these files in git.
+public/gigi/

@@ -1,0 +1,280 @@
+.geometry {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+}
+
+.geometry-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #4b5565;
+  padding: 32px;
+  font-size: 13.5px;
+  height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.55;
+}
+.geometry-empty h3 {
+  margin: 0 0 12px;
+  color: #0b1220;
+  font-size: 16px;
+}
+.geometry-empty p {
+  margin: 0 0 10px;
+}
+.geometry-empty-hint {
+  color: #8a93a4;
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+
+.geometry-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef0f4;
+  background: #fbfbfc;
+  font-size: 12.5px;
+}
+
+.geometry-axis-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.geometry-axis-label {
+  color: #8a93a4;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.geometry-toolbar select {
+  border: 1px solid #e6e8ee;
+  background: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font: inherit;
+  color: #0b1220;
+  cursor: pointer;
+}
+
+.geometry-toolbar select:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 1px;
+}
+
+.geometry-hint {
+  margin-left: auto;
+  color: #8a93a4;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.geometry-hint .mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: #0e7490;
+}
+
+.geometry-sidebar-toggle {
+  padding: 4px 10px;
+  border: 1px solid #e6e8ee;
+  background: #fbfbfc;
+  border-radius: 6px;
+  color: #4b5565;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+}
+.geometry-sidebar-toggle:hover {
+  background: #fff;
+  color: #0b1220;
+  border-color: #d9dcfb;
+}
+
+.geometry-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  /* Two-row grid: a fixed-aspect plot row, then everything else flows
+     beneath. align-content: start prevents the grid from stretching
+     rows to fill the available height, which was causing the scatter
+     to float in a huge white box. */
+  grid-template-rows: auto;
+  align-content: start;
+  gap: 14px;
+  padding: 14px;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+}
+
+.geometry-body-no-sidebar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 900px) {
+  .geometry-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+.geometry-plot {
+  background: #fff;
+  border: 1px solid #eef0f4;
+  border-radius: 10px;
+  padding: 10px;
+  /* Cap height so the plot doesn't sprawl when the viewport is tall.
+     The SVG keeps its 720×480 aspect via aspect-ratio below. */
+  max-height: 560px;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.geometry-plot .scatter {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  aspect-ratio: 720 / 480;
+  display: block;
+}
+
+.scatter-empty {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8a93a4;
+  padding: 32px;
+}
+
+.geometry-sidebar {
+  background: #fbfbfc;
+  border: 1px solid #eef0f4;
+  border-radius: 10px;
+  padding: 12px;
+  overflow: auto;
+  align-self: start;
+  max-height: 560px;
+}
+
+.geometry-sidebar h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: #8a93a4;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.geometry-sidebar-empty {
+  color: #8a93a4;
+  font-size: 12px;
+}
+
+.cover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cover-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.cover-row:hover {
+  background: #fff;
+}
+
+.cover-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.cover-label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  color: #0b1220;
+}
+
+.cover-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cover-count {
+  font-variant-numeric: tabular-nums;
+  color: #4b5565;
+  font-size: 11px;
+}
+
+.cover-pill {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.cover-pill-bad { background: #fde8e8; color: #b91c1c; }
+.cover-pill-warn { background: #fff4e0; color: #b45309; }
+
+/* Tabs */
+.view-tabs {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid #e6e8ee;
+  background: #fff;
+  padding: 0 4px;
+}
+
+.view-tab {
+  padding: 8px 14px 10px;
+  color: #4b5565;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-weight: 500;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.view-tab:hover:not(.view-tab-active) {
+  color: #0b1220;
+}
+
+.view-tab-active {
+  color: #0b1220;
+  border-bottom-color: #4f46e5;
+  font-weight: 600;
+}

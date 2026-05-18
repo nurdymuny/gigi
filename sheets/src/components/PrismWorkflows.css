@@ -1,0 +1,365 @@
+/* ════════════════════════════════════════════════════════════════════
+   Prism brand palette (matched to PRISM_Pitch_Deck.tex)
+   navy        #0A0F1E
+   navy-mid    #111D35
+   navy-card   #151F32
+   prism-blue  #3B82F6
+   prism-dark  #2563EB
+   prism-light #60A5FA
+   gold        #D97706
+   gold-light  #FBBF24
+   cream       #F8FAFC
+   These colors are intentionally NOT the GIGI indigo/teal — the Prism
+   panels read as a different product the user can also use.
+   ════════════════════════════════════════════════════════════════════ */
+
+.prism-drawer-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.5);
+  z-index: 240;
+}
+
+.prism-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 440px;
+  max-width: 100vw;
+  background: #0A0F1E;
+  color: #F8FAFC;
+  border-left: 1px solid #1E293B;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  z-index: 241;
+}
+
+.prism-drawer-head {
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid #1E293B;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.prism-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #60A5FA;
+  margin-bottom: 8px;
+}
+
+.prism-brand-mark {
+  color: #3B82F6;
+  font-size: 14px;
+}
+
+.prism-brand-tag {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  color: #94A3B8;
+  letter-spacing: 0.18em;
+  padding-left: 8px;
+  border-left: 1px solid #1E293B;
+  margin-left: 4px;
+}
+
+.prism-drawer-head h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #F8FAFC;
+  font-family: Garamond, "Iowan Old Style", "Apple Garamond", Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+.prism-drawer-sub {
+  margin: 0;
+  color: #CBD5E1;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.prism-drawer-sub strong {
+  color: #FBBF24;
+  font-weight: 600;
+}
+
+.prism-drawer-close {
+  background: transparent;
+  border: 0;
+  color: #94A3B8;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.prism-drawer-close:hover {
+  background: #1E293B;
+  color: #F8FAFC;
+}
+
+.prism-drawer-body {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prism-card {
+  background: #151F32;
+  border: 1px solid #1E293B;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.prism-card:hover:not(.prism-card-disabled) {
+  border-color: #3B82F6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+.prism-card-disabled {
+  opacity: 0.5;
+}
+
+.prism-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.prism-card-head h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: Garamond, "Iowan Old Style", "Apple Garamond", Georgia, serif;
+  color: #F8FAFC;
+  letter-spacing: -0.01em;
+}
+
+.prism-card-badge {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #60A5FA;
+  background: rgba(59, 130, 246, 0.12);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.prism-card-blurb {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #CBD5E1;
+}
+
+.prism-card-hint {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  color: #94A3B8;
+}
+
+.prism-card-run {
+  margin-top: 4px;
+  padding: 7px 14px;
+  background: #3B82F6;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #F8FAFC;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.prism-card-run:hover:not(:disabled) {
+  background: #2563EB;
+}
+.prism-card-run:disabled {
+  background: #475569;
+  cursor: not-allowed;
+}
+
+.prism-drawer-foot {
+  border-top: 1px solid #1E293B;
+  padding: 12px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: #94A3B8;
+  background: #111D35;
+}
+
+.prism-drawer-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prism-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FBBF24;
+}
+.prism-dot-active {
+  background: #34D399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+}
+.prism-dot-empty {
+  background: #EF4444;
+}
+
+.prism-drawer-foot-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.prism-drawer-foot-link {
+  color: #60A5FA;
+  text-decoration: none;
+  font-weight: 500;
+}
+.prism-drawer-foot-link:hover {
+  text-decoration: underline;
+}
+
+.prism-drawer-foot-reset {
+  background: transparent;
+  border: 0;
+  color: #94A3B8;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-style: italic;
+}
+.prism-drawer-foot-reset:hover {
+  color: #FBBF24;
+}
+
+/* Books picker — surfaces when 2+ other tabs are open. */
+.prism-books-picker {
+  background: #0A0F1E;
+  color: #F8FAFC;
+  border-radius: 12px;
+  width: 440px;
+  max-width: 100%;
+  padding: 22px;
+  border: 1px solid #1E293B;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+}
+
+.prism-books-picker header {
+  margin-bottom: 14px;
+}
+.prism-books-picker h3 {
+  margin: 6px 0 0;
+  font-family: Garamond, "Iowan Old Style", "Apple Garamond", Georgia, serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #F8FAFC;
+  letter-spacing: -0.01em;
+}
+
+.prism-books-picker ul {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prism-books-picker-row {
+  width: 100%;
+  text-align: left;
+  background: #151F32;
+  border: 1px solid #1E293B;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #CBD5E1;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.prism-books-picker-row:hover {
+  background: #1e3a8a;
+  color: #F8FAFC;
+  border-color: #3B82F6;
+}
+.prism-books-picker-row[data-selected="true"] {
+  background: #1e3a8a;
+  color: #F8FAFC;
+  border-color: #FBBF24;
+}
+
+.prism-books-picker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3B82F6;
+}
+
+.prism-books-picker footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.prism-books-picker-cancel {
+  background: transparent;
+  border: 1px solid #1E293B;
+  color: #94A3B8;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.prism-books-picker-cancel:hover {
+  background: #151F32;
+  color: #F8FAFC;
+}
+
+.prism-books-picker-run {
+  background: #FBBF24;
+  border: 0;
+  color: #0A0F1E;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.prism-books-picker-run:hover:not(:disabled) {
+  background: #f59e0b;
+}
+.prism-books-picker-run:disabled {
+  background: #475569;
+  cursor: progress;
+}

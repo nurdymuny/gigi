@@ -1,0 +1,590 @@
+.grid-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* The single scroll container — owns both header (sticky-top) and rows.
+   Without this structure, horizontal scroll desyncs header from rows. */
+.grid-scroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  position: relative;
+}
+
+.grid-header {
+  display: grid;
+  position: sticky;
+  /* The letters row is 22px tall; the field-name header sits below it. */
+  top: 22px;
+  z-index: 3;
+  background: #fbfbfc;
+  border-bottom: 1px solid #e6e8ee;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5565;
+  /* The header's grid template can exceed the scroll container's width;
+     it pulls the scrollbar with it (since it lives inside grid-scroll). */
+  width: max-content;
+  min-width: 100%;
+}
+
+/* ── Column letters row (Excel-style A, B, C, ... above field names) ── */
+.grid-letters-row {
+  display: grid;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #f1f3f7;
+  border-bottom: 1px solid #e6e8ee;
+  width: max-content;
+  min-width: 100%;
+  height: 22px;
+}
+
+.grid-letter-corner {
+  background: #eceff5;
+  border-right: 1px solid #e6e8ee;
+}
+
+.grid-letter-cell {
+  font: inherit;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #6b7280;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid #e6e8ee;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  user-select: none;
+  transition: background 0.1s, color 0.1s;
+}
+.grid-letter-cell:hover {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+.grid-letter-cell-active {
+  background: #c7d2fe;
+  color: #312e81;
+}
+
+/* When a column is selected, every cell in that column gets a subtle tint
+   so the user sees the column highlighted top-to-bottom. */
+.grid-cell-col-selected {
+  background-color: rgba(79, 70, 229, 0.06);
+}
+.grid-cell-col-selected.grid-cell-num {
+  /* Numeric cells already have a tabular treatment; keep them readable. */
+  background-color: rgba(79, 70, 229, 0.06);
+}
+
+.grid-rows {
+  width: max-content;
+  min-width: 100%;
+}
+
+.grid-hcell {
+  padding: 8px 10px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-right: 1px solid #eef0f4;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.grid-hcell-kappa {
+  justify-content: center;
+  color: #0e7490;
+  font-weight: 700;
+}
+
+.grid-hcell .htype {
+  color: #8a93a4;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.grid-hcell .hname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grid-hcell-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.grid-hcell-sortable:hover {
+  background: #f3f4f6;
+}
+.grid-hcell-sort-active {
+  color: #4f46e5;
+}
+.grid-hcell-sort-active .htype {
+  color: #8a8fdf;
+}
+
+.grid-sort-indicator {
+  display: inline-flex;
+  align-items: center;
+  color: #4f46e5;
+  margin-left: 2px;
+}
+
+.grid-hcell-sort-hint {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+}
+
+/* Drag-to-resize handle pinned to the right edge of each column header.
+   Wide hit target (6px) so it's easy to grab, but visually invisible
+   until hover. */
+.grid-col-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -3px;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+  background: transparent;
+  user-select: none;
+}
+.grid-col-resize:hover,
+.grid-col-resize:active {
+  background: linear-gradient(to right, transparent 1px, #4f46e5 2px, #4f46e5 4px, transparent 5px);
+}
+
+/* Legacy class kept for back-compat with older tests; new layout uses .grid-scroll. */
+.grid-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Sticky-left chrome — keeps row-number gutter, κ gutter, and key column
+   visible during horizontal scroll. Use position:sticky on individual
+   cells (not the row), so each row independently honors the sticky offsets.
+   Stacking order, left to right: row-number (0px) → κ (44px) → key (108px). */
+.grid-cell-sticky-row-number {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fbfbfc;
+}
+
+.grid-cell-row-number {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 10px 0 6px;
+  color: #8a93a4;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  border-right: 1px solid #eef0f4;
+  user-select: none;
+}
+.grid-row-selected .grid-cell-row-number,
+.grid-row-focused .grid-cell-row-number {
+  background: #eef0ff;
+  color: #4f46e5;
+  font-weight: 600;
+}
+.grid-hcell-row-number {
+  justify-content: center;
+  color: #8a93a4;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.grid-cell-sticky-kappa {
+  position: sticky;
+  left: 44px;
+  z-index: 2;
+  background: #fbfbfc;
+}
+
+.grid-cell-sticky-key {
+  position: sticky;
+  left: 114px; /* row-number 44 + κ 70 = 114 */
+  z-index: 2;
+  background: #fff;
+  box-shadow: 1px 0 0 #eef0f4;
+}
+
+.grid-row-selected .grid-cell-sticky-key { background: #eef0ff; }
+.grid-row-focused .grid-cell-sticky-key { background: #eef0ff; }
+body[data-overlay="on"] .grid-row.kappa-warn .grid-cell-sticky-key {
+  background: #fff4e0;
+}
+body[data-overlay="on"] .grid-row.kappa-bad .grid-cell-sticky-key {
+  background: #fde8e8;
+}
+
+.grid-header .grid-cell-sticky-row-number,
+.grid-header .grid-cell-sticky-kappa,
+.grid-header .grid-cell-sticky-key {
+  z-index: 4; /* over row cells when both scrollings happen */
+  background: #fbfbfc;
+}
+
+.grid-row {
+  display: grid;
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Match the grid-rows container so each row is as wide as the columns
+     dictate — the scroll container handles overflow. */
+  width: max-content;
+  min-width: 100%;
+  border-bottom: 1px solid #eef0f4;
+  background: #fff;
+  /* Block browser text-selection on rows. Without this, shift-click
+     paints the browser's text selection across cells and our
+     multi-select handler never sees the modifier event. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The inline editor input restores text editability inside its own cell. */
+.grid-cell-editing input {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.grid-row:hover {
+  background: #fafbfd;
+}
+
+.grid-row-selected {
+  background: #eef0ff !important;
+}
+
+.grid-row-selected:hover {
+  background: #e6e9ff !important;
+}
+
+/* Focused row = inspector target. Visually a thicker accent on the κ gutter. */
+.grid-row-focused .grid-cell-kappa {
+  box-shadow: inset 3px 0 0 #4f46e5;
+}
+
+.grid-cell {
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid #eef0f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: #0b1220;
+}
+
+.grid-cell-num {
+  font-variant-numeric: tabular-nums;
+  justify-content: flex-start;
+}
+
+.grid-cell-null {
+  color: #8a93a4;
+}
+
+/* Formula-error sentinel. A red pill badge replaces the cell's text
+   when a formula evaluates to #REF!, #DIV0!, #NAME!, #CIRC!, etc.
+   The full message lives in the cell's `title` attribute (tooltip). */
+.grid-cell-error-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* Subtle yellow tint to flag formula cells (vs raw values) when the
+   user is scanning a column — disambiguates "this is computed" from
+   "this is the source of truth". */
+.grid-cell-has-formula {
+  background: #fffbeb;
+}
+
+/* Range-select highlight (Excel-style marching-ants rectangle).
+   Cells inside the drag-rectangle get a translucent indigo tint +
+   a faint inset border so the boundary is visible against alternating
+   row colors. Cells need to be positioned so the absolutely-placed
+   fill handle anchors to the corner. */
+.grid-cell { position: relative; }
+.grid-cell-in-range {
+  background: rgba(79, 70, 229, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.18);
+}
+.grid-cell-in-range.grid-cell-has-formula {
+  /* Formula-cell yellow + range-tint indigo blend cleanly with multiply. */
+  background: rgba(79, 70, 229, 0.08);
+}
+
+/* Drag-fill handle — the small bottom-right square Excel uses to
+   extend a range. Renders only on the bottom-right cell of the
+   active range; mousedown begins a fill-drag. */
+.grid-cell-fill-handle {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 8px;
+  height: 8px;
+  background: #4f46e5;
+  border: 1px solid #fff;
+  border-radius: 1px;
+  cursor: crosshair;
+  z-index: 3;
+}
+.grid-cell-fill-handle:hover {
+  background: #4338ca;
+  transform: scale(1.15);
+}
+
+/* Live preview band while a fill-drag is in progress — softer indigo
+   than the source range so the user sees where the fill will land. */
+.grid-cell-fill-preview {
+  background: rgba(99, 102, 241, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25);
+}
+
+/* κ gutter cell. Simplest possible layout: centered text, fixed width,
+   no flex children, no overflow tricks. Color encodes severity. */
+.grid-cell-kappa {
+  justify-content: center;
+  color: #4b5565;
+  font-variant-numeric: tabular-nums;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: #fbfbfc;
+  padding: 0 4px;
+  border-right: 1px solid #e6e8ee;
+  letter-spacing: -0.02em;
+}
+
+.grid-cell-kappa .kval {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.grid-cell-kappa.kappa-warn { color: #b45309; background: #fffaf0; }
+.grid-cell-kappa.kappa-bad  { color: #b91c1c; background: #fef6f6; }
+.grid-cell-kappa.kappa-warn .kval,
+.grid-cell-kappa.kappa-bad .kval { color: inherit; }
+
+.grid-hcell.grid-hcell-kappa {
+  border-right: 1px solid #e6e8ee;
+}
+
+/* Overlay tinting — driven by body[data-overlay="on"] from the toolbar.
+   Healthy rows get a faint green wash so toggling is always visible,
+   even on bundles without anomalies. Warn/bad rows get stronger tints. */
+body[data-overlay="on"] .grid-row.kappa-ok {
+  background: linear-gradient(90deg, #ecfdf5, #fff 50%);
+}
+body[data-overlay="on"] .grid-row.kappa-warn {
+  background: linear-gradient(90deg, #fff4e0, #fff 60%);
+}
+body[data-overlay="on"] .grid-row.kappa-bad {
+  background: linear-gradient(90deg, #fde8e8, #fff 60%);
+}
+body[data-overlay="on"] .grid-row.kappa-ok .grid-cell-sticky-key {
+  background: #ecfdf5;
+}
+
+.grid-cell-enc {
+  color: #b45309;
+  gap: 4px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.grid-cell-enc .lock-icon {
+  flex-shrink: 0;
+}
+
+.grid-cell-enc-opaque .enc-val {
+  letter-spacing: 1px;
+  color: #b45309;
+  font-family: "JetBrains Mono", monospace;
+  /* So a copy-paste literally yields the block char rather than the plaintext */
+  user-select: text;
+}
+
+.grid-cell-enc-affine {
+  color: #4f46e5;
+  font-style: italic;
+}
+
+.grid-cell-editable {
+  cursor: text;
+}
+
+.grid-cell-editable:hover {
+  box-shadow: inset 0 0 0 2px #d9dcfb;
+  border-radius: 2px;
+}
+
+/* Hover on the editable key column is a warmer color — orange instead of
+   indigo — so users notice that editing it is a different gesture
+   (rename → delete+insert) than editing any other cell. */
+.grid-cell-key-editable:hover {
+  box-shadow: inset 0 0 0 2px #fde68a;
+  background: #fffbeb;
+}
+
+.grid-cell-editing {
+  padding: 0;
+}
+
+.grid-cell-editing input {
+  width: 100%;
+  height: 100%;
+  padding: 0 10px;
+  border: 0;
+  outline: 2px solid #4f46e5;
+  background: #fff;
+  font: inherit;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid-skeleton {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeleton-row {
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #eef0f4 0%, #f6f7f9 50%, #eef0f4 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+.grid-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: #4b5565;
+  font-size: 13px;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-empty-card {
+  max-width: 460px;
+}
+
+.grid-empty-card h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0b1220;
+  letter-spacing: -0.01em;
+}
+
+.grid-empty-card p {
+  margin: 0 0 16px;
+  color: #4b5565;
+  font-size: 13px;
+}
+
+.grid-empty-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.grid-empty-btn {
+  padding: 8px 16px;
+  border: 1px solid #e6e8ee;
+  background: #fbfbfc;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #0b1220;
+  cursor: pointer;
+}
+.grid-empty-btn:hover {
+  background: #fff;
+  border-color: #d9dcfb;
+}
+
+.grid-empty-btn-primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+.grid-empty-btn-primary:hover {
+  background: #4f46e5;
+  filter: brightness(1.05);
+}
+
+.grid-empty-hint {
+  color: #8a93a4;
+  font-size: 11.5px;
+  margin: 0;
+}
+
+.grid-error {
+  padding: 16px 18px;
+  margin: 12px;
+  border: 1px solid #f3c9c9;
+  background: #fde8e8;
+  border-radius: 10px;
+  color: #b91c1c;
+}
+
+.grid-error strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.grid-error p {
+  color: #4b5565;
+  margin: 4px 0;
+}
+
+.grid-error small {
+  color: #8a93a4;
+  font-family: "JetBrains Mono", monospace;
+}

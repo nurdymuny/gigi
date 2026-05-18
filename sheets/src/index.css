@@ -1,0 +1,566 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; overflow: hidden; }
+
+/* ── Print styles ──────────────────────────────────────────────────────
+   Print should output just the grid data — no UI chrome, no menus
+   bleeding through, all rows visible (not just the virtualized window).
+   We toggle `data-printing="true"` on <body> in the beforeprint event
+   so the Grid switches off virtualization for the print job. */
+@media print {
+  html, body, #root, .app, .main { overflow: visible !important; height: auto !important; }
+  .topbar, .menubar, .footer, .view-tabs, .toolbar,
+  .inspector, .toast,
+  .menu-dropdown, .schema-modal-bg, .views-drawer-bg, .views-drawer,
+  .insights-drawer-bg, .insights-drawer, .import-bg, .hide-fields-bg,
+  .context-menu, .grid-col-resize {
+    display: none !important;
+  }
+  .app {
+    display: block !important;
+    page-break-inside: auto;
+  }
+  .main { padding: 0 !important; gap: 0 !important; }
+  .main-stack { border: 0 !important; border-radius: 0 !important; overflow: visible !important; }
+  .grid-root { border: 0 !important; border-radius: 0 !important; overflow: visible !important; height: auto !important; }
+  .grid-scroll { overflow: visible !important; height: auto !important; }
+  .grid-header { position: static !important; background: #fff !important; }
+  .grid-rows { height: auto !important; }
+  .grid-row { position: static !important; transform: none !important; page-break-inside: avoid; }
+  /* Sticky-left chrome → static in print. */
+  .grid-cell-sticky-kappa,
+  .grid-cell-sticky-key { position: static !important; box-shadow: none !important; }
+  /* No overlay tints in print. */
+  body[data-overlay="on"] .grid-row.kappa-warn,
+  body[data-overlay="on"] .grid-row.kappa-bad { background: #fff !important; }
+}
+body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #f6f7f9;
+  color: #0b1220;
+  -webkit-font-smoothing: antialiased;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+.app {
+  display: grid;
+  grid-template-rows: 52px 32px 1fr 36px;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "topbar"
+    "menubar"
+    "main"
+    "footer";
+  height: 100vh;
+  min-height: 0;
+  /* Don't let any child overflow the viewport horizontally. Internal
+     scroll containers (Grid, Inspector, drawers) own their own scrollbars. */
+  overflow: hidden;
+}
+
+/* When a Sidebar is present, switch to a two-column layout so the
+   sidebar pins to the left edge while topbar/menubar/footer remain
+   full-width.
+   data-sidebar="open"      → full bundles/views rail
+   data-sidebar="collapsed" → sidebar hidden (full-width main)
+*/
+.app[data-sidebar="collapsed"] .sidebar {
+  display: none;
+}
+.app[data-sidebar="open"] {
+  /* Sidebar widened from 220px so demo titles + their badges (e.g.
+     "Prism · Dedup ready", "Kaggle · classic") fit without truncation.
+     Most demo titles need ~210px for the name, and the badge wraps
+     below on its own line — 280px keeps everything legible on a
+     laptop screen and leaves the main grid comfortably wide. */
+  grid-template-columns: 280px 1fr;
+  grid-template-areas:
+    "topbar  topbar"
+    "menubar menubar"
+    "sidebar main"
+    "footer  footer";
+}
+
+.topbar { grid-area: topbar; }
+.menubar { grid-area: menubar; }
+.main { grid-area: main; }
+.footer { grid-area: footer; }
+.sidebar { grid-area: sidebar; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: #fff;
+  border-bottom: 1px solid #e6e8ee;
+  /* Children must lay out left-to-right without wrapping. The crumbs
+     section gets min-width: 0 so it can shrink first when the topbar
+     is tight, before the brand or stats are forced to wrap. */
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: conic-gradient(from 220deg, #4f46e5, #0e7490, #4f46e5);
+  box-shadow: inset 0 0 0 2px #fff, 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.brand-icon {
+  width: 30px;
+  height: 30px;
+  display: block;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 1px 1px rgba(31, 118, 30, 0.15));
+}
+
+.brand-name {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.brand-sub {
+  font-weight: 500;
+  color: #8a93a4;
+  font-size: 12px;
+  border-left: 1px solid #e6e8ee;
+  padding-left: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* Hide the subtitle on narrow viewports — it's marketing-y not load-bearing. */
+@media (max-width: 1100px) {
+  .brand-sub { display: none; }
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #4b5565;
+  font-size: 12px;
+  /* Allow crumbs to shrink first when the topbar is tight. */
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+.crumbs > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-weight: 500;
+  color: #0b1220;
+}
+
+.crumbs .sep { color: #8a93a4; }
+
+.crumbs .mono {
+  background: #fbfbfc;
+  border: 1px solid #e6e8ee;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #4b5565;
+}
+
+.meta {
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+
+.stat-label {
+  color: #8a93a4;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 14px;
+  color: #0b1220;
+}
+
+.realtime-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #4b5565;
+  border: 1px solid #e6e8ee;
+  margin-right: 8px;
+  user-select: none;
+}
+
+/* Inspector toggle button — sits next to the stats in the topbar. */
+.inspector-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #e6e8ee;
+  background: #fbfbfc;
+  border-radius: 6px;
+  color: #4b5565;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  margin-right: 8px;
+}
+.inspector-toggle:hover { background: #fff; color: #0b1220; border-color: #d9dcfb; }
+.inspector-toggle svg { color: #8a93a4; transition: transform 0.15s; }
+.inspector-toggle.inspector-toggle-closed svg { transform: rotate(180deg); }
+.inspector-toggle.inspector-toggle-primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+.inspector-toggle.inspector-toggle-primary:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+  color: #fff;
+}
+.inspector-toggle.inspector-toggle-primary svg { color: #fff; }
+
+/* Prism brand button in the topbar. Navy + blue so it reads as a
+   different product from GIGI's indigo, without clashing visually. */
+.inspector-toggle.prism-topbar-btn {
+  background: #0A0F1E;
+  border-color: #0A0F1E;
+  color: #60A5FA;
+}
+.inspector-toggle.prism-topbar-btn:hover {
+  background: #111D35;
+  border-color: #3B82F6;
+  color: #fff;
+}
+.prism-topbar-mark {
+  color: #3B82F6;
+  font-size: 13px;
+  margin-right: 2px;
+}
+.prism-topbar-credits {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.18);
+  color: #FBBF24;
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #6b7280;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+.sidebar-toggle:hover {
+  background: #f3f4f6;
+  color: #0b1220;
+  border-color: #e6e8ee;
+}
+.sidebar-toggle[aria-pressed="true"] {
+  background: #eef0ff;
+  color: #4f46e5;
+  border-color: #d9dcfb;
+}
+
+.topbar-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border: 0;
+  flex-shrink: 0;
+  margin-left: 4px;
+  transition: transform 0.12s, box-shadow 0.12s;
+  font-family: inherit;
+}
+.topbar-avatar:hover {
+  transform: scale(1.04);
+}
+.topbar-avatar:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+/* Signed-in: indigo→teal gradient with white initials. */
+.topbar-avatar-user {
+  background: linear-gradient(135deg, #4f46e5, #0e7490);
+  color: #fff;
+}
+.topbar-avatar-user:hover {
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+
+/* Guest: subdued outline + "↪" sign-in arrow. */
+.topbar-avatar-guest {
+  background: #fbfbfc;
+  border: 1px dashed #d1d5db;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+}
+.topbar-avatar-guest:hover {
+  background: #fff;
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+/* Loading: thin pulsing placeholder. */
+.topbar-avatar-loading {
+  background: #f3f4f6;
+  color: #8a93a4;
+  font-size: 13px;
+  cursor: progress;
+}
+.topbar-avatar-loading:hover {
+  transform: none;
+}
+
+.meta-multiselect {
+  background: #eef0ff;
+  color: #4f46e5;
+  border: 1px solid #d9dcfb;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.realtime-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+
+.realtime-open { background: #e6f4ee; color: #047857; border-color: #c6e3d4; }
+.realtime-open .realtime-dot {
+  background: #047857;
+  box-shadow: 0 0 0 4px rgba(4, 120, 87, 0.18);
+  animation: realtime-pulse 2.2s ease-in-out infinite;
+}
+
+.realtime-connecting { background: #eef0ff; color: #4f46e5; border-color: #d9dcfb; }
+.realtime-connecting .realtime-dot { background: #4f46e5; }
+
+.realtime-error,
+.realtime-closed {
+  background: #fff4e0;
+  color: #b45309;
+  border-color: #f3e3c4;
+}
+.realtime-error .realtime-dot,
+.realtime-closed .realtime-dot {
+  background: #b45309;
+}
+
+.realtime-lag {
+  background: #fde8e8;
+  color: #b91c1c;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+@keyframes realtime-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(4, 120, 87, 0.18); }
+  50%      { box-shadow: 0 0 0 8px rgba(4, 120, 87, 0.04); }
+}
+
+.main {
+  padding: 12px;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* min-width:0 is the magic line — without it, flex items default to
+   min-width:auto (= their content's min-content). The Grid's
+   minmax(140px, 1fr) columns make main-stack want ≥1400px, which
+   pushes Inspector off the right edge. */
+.main > * { min-height: 0; min-width: 0; }
+.main > .main-stack { flex: 1; }
+.main-with-inspector > .inspector {
+  border-radius: 10px;
+  border: 1px solid #e6e8ee;
+  border-left: 1px solid #e6e8ee;
+  flex-shrink: 0;
+}
+.main-with-inspector > .inspector.inspector-collapsed { display: none; }
+
+@media (max-width: 1100px) {
+  /* On a tablet-ish viewport, slim down the inspector so the grid stays usable. */
+  .main-with-inspector > .inspector { width: 300px; }
+  .main-with-inspector > .inspector .gauges { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  /* Narrow: inspector becomes an overlay drawer that doesn't steal column space. */
+  .main-with-inspector > .inspector {
+    position: fixed;
+    top: 52px;
+    right: 0;
+    bottom: 36px;
+    width: 320px;
+    z-index: 40;
+    box-shadow: -8px 0 24px rgba(11, 18, 32, 0.12);
+    border-radius: 10px 0 0 10px;
+  }
+}
+
+.main-stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.main-stack > .grid-root {
+  border: 0;
+  border-radius: 0;
+  flex: 1;
+  min-height: 0;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  background: #0b1220;
+  color: #c9d2e1;
+  font-size: 12px;
+}
+
+.footer {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.footer .label {
+  color: #8a93a4;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.footer-sep {
+  color: #4b5565;
+  margin-right: 6px;
+}
+
+.footer-segment-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer .mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  color: #e6e8ee;
+}
+
+.footer-bundle {
+  color: #a5b4fc !important;
+  font-weight: 500;
+}
+
+.footer-hint {
+  color: #6b7280;
+  font-size: 11px;
+  margin-left: auto;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footer b {
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.footer-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-left: 2px;
+}
+.footer-pill-ok   { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; }
+.footer-pill-warn { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
+.footer-pill-bad  { background: rgba(239, 68, 68, 0.22);  color: #fca5a5; }

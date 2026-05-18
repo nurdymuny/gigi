@@ -1,0 +1,280 @@
+/* Demo dataset section. Sits at the top of the picker — recognizable
+   public data the user can one-click load to start exploring.
+   Cards are intentionally uniform: same slots in the same order so the
+   grid reads cleanly across very different blurb lengths. */
+.demo-bundles {
+  margin-bottom: 28px;
+}
+
+.demo-bundles-head {
+  margin-bottom: 14px;
+}
+
+.demo-bundles-head h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0b1220;
+}
+
+.demo-bundles-head p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.demo-bundles-head code {
+  background: #f3f4f6;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: #4f46e5;
+}
+
+.demo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+/* Each card is a 5-row internal grid so every slot lines up across cards
+   regardless of how long the blurb is. */
+.demo-card {
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+  gap: 10px;
+  transition: border-color 100ms, box-shadow 100ms;
+  min-height: 290px;
+}
+
+.demo-card:hover {
+  border-color: #d9dcfb;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.06);
+}
+
+.demo-card[data-state="imported"] {
+  background: #f5f9f7;
+  border-color: #c6e3d4;
+}
+.demo-card[data-state="loading"] {
+  border-color: #d9dcfb;
+}
+.demo-card[data-state="error"] {
+  border-color: #f3c9c9;
+  background: #fef6f6;
+}
+
+/* Slot 1: badge — always present, even on plain datasets, so card heights line up. */
+.demo-card-badge-slot {
+  display: flex;
+}
+
+.demo-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff9ee;
+  color: #b45309;
+  border: 1px solid #f3e3c4;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.demo-card-badge-plain {
+  background: #f3f4f6;
+  color: #6b7280;
+  border-color: #e6e8ee;
+}
+
+/* Slot 2: title + row/field count. */
+.demo-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.demo-card-head h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0b1220;
+  line-height: 1.25;
+}
+
+.demo-card-stats {
+  font-size: 11px;
+  color: #8a93a4;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Slot 3: blurb — clamps to 4 lines so cards stay aligned. */
+.demo-card-blurb {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #4b5565;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Slot 4: metadata rows (cover + source). Definition list so cover label
+   and value stack consistently across cards. */
+.demo-card-meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.demo-card-meta > div {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.demo-card-meta dt {
+  color: #8a93a4;
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.demo-card-meta dd {
+  margin: 0;
+  color: #4b5565;
+  font-size: 11.5px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-card-meta dd code {
+  background: #f4f1ff;
+  color: #4f46e5;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* Slot 5: the call to action. Always at the bottom, always full-width. */
+.demo-card-foot {
+  margin-top: auto;
+}
+
+.demo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border: 1px solid #e6e8ee;
+  background: #fbfbfc;
+  color: #0b1220;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+}
+
+.demo-btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: #d9dcfb;
+}
+
+.demo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demo-btn-primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+
+.demo-btn-primary:hover:not(:disabled) {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+.demo-btn-imported {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.demo-btn-imported:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+}
+
+/* Progress bar replaces the button while loading — same 36px height
+   so the card doesn't jump. */
+.demo-progress {
+  position: relative;
+  height: 36px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid #d9dcfb;
+}
+
+.demo-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  transition: width 100ms linear;
+}
+
+.demo-progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  mix-blend-mode: difference;
+}
+
+.demo-card-error {
+  margin: 0;
+  padding: 8px 10px;
+  background: #fde8e8;
+  border-radius: 6px;
+  color: #b91c1c;
+  font-size: 12px;
+  grid-column: 1 / -1;
+}

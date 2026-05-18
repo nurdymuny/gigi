@@ -1,0 +1,249 @@
+.sidebar {
+  background: #fff;
+  border-right: 1px solid #e6e8ee;
+  overflow: auto;
+  padding: 12px 8px 16px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+
+.side-section {
+  margin-top: 14px;
+}
+
+.side-section:first-child {
+  margin-top: 4px;
+}
+
+.side-section-system {
+  border-top: 1px solid #eef0f4;
+  margin-top: 18px;
+  padding-top: 8px;
+}
+
+.side-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  color: #8a93a4;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  cursor: default;
+}
+
+details > .side-title {
+  cursor: pointer;
+}
+
+.side-title-btn {
+  background: transparent;
+  border: 0;
+  color: #8a93a4;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+.side-title-btn:hover {
+  background: #f3f4f6;
+  color: #0b1220;
+}
+
+.side-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.side-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #4b5565;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+}
+
+.side-row:hover {
+  background: #fbfbfc;
+  color: #0b1220;
+}
+
+.side-row-active,
+.side-row-active:hover {
+  background: #eef0ff;
+  color: #0b1220;
+}
+
+.side-row-button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  grid-template-columns: 12px 1fr;
+}
+
+.side-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #8a93a4;
+}
+
+.side-row-active .side-dot {
+  background: #4f46e5;
+}
+
+.side-dot-view {
+  background: #0e7490;
+}
+
+.side-dot-system {
+  background: #f59e0b;
+}
+
+.side-name {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-count {
+  font-variant-numeric: tabular-nums;
+  color: #8a93a4;
+  font-size: 11px;
+}
+
+.side-empty {
+  padding: 6px 10px;
+  color: #8a93a4;
+  font-size: 11.5px;
+  font-style: italic;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.side-error {
+  padding: 6px 10px;
+  color: #b91c1c;
+  background: #fde8e8;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+details.side-section[open] > .side-title::before {
+  content: "▼ ";
+  color: #8a93a4;
+  font-size: 9px;
+  margin-right: 4px;
+}
+
+details.side-section:not([open]) > .side-title::before {
+  content: "▶ ";
+  color: #8a93a4;
+  font-size: 9px;
+  margin-right: 4px;
+}
+
+@media print {
+  .sidebar { display: none !important; }
+}
+
+/* Guest CTA card — shown in place of the bundles list when the user
+   isn't signed in. The same indigo→teal gradient as the signed-in
+   avatar, so the "sign in" CTA reads as continuous with the avatar in
+   the top-right. */
+.sidebar-cta {
+  margin: 12px 8px;
+  padding: 16px 14px;
+  border-radius: 10px;
+  background: linear-gradient(155deg, #eef0ff 0%, #f5f9ff 50%, #fff 100%);
+  border: 1px solid #d9dcfb;
+}
+
+.sidebar-cta-icon {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.sidebar-cta h4 {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0b1220;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-cta p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #4b5565;
+}
+
+.sidebar-cta-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-cta-list li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 11.5px;
+  color: #4b5565;
+  line-height: 1.45;
+}
+.sidebar-cta-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.sidebar-cta-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: #4f46e5;
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sidebar-cta-btn:hover {
+  background: #4338ca;
+}
+
+.sidebar-cta-fine {
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  color: #8a93a4;
+  text-align: center;
+  font-style: italic;
+}

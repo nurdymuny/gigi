@@ -1,0 +1,85 @@
+.account-menu-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 290;
+  background: transparent;
+}
+
+.account-menu {
+  position: absolute;
+  top: 58px;
+  right: 18px;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(11, 18, 32, 0.18);
+  width: 260px;
+  overflow: hidden;
+}
+
+.account-menu-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef0f4;
+  background: linear-gradient(135deg, #eef0ff 0%, #fff 60%);
+}
+
+.account-eyebrow {
+  color: #8a93a4;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.account-email {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  color: #0b1220;
+  word-break: break-all;
+  line-height: 1.35;
+}
+
+.account-tier {
+  display: inline-flex;
+  margin-top: 8px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.account-menu-body {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+}
+
+.account-link,
+.account-signout {
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  border-radius: 6px;
+  color: #0b1220;
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+}
+.account-link:hover,
+.account-signout:hover {
+  background: #f3f4f6;
+}
+
+.account-signout {
+  color: #b91c1c;
+}
+.account-signout:hover {
+  background: #fde8e8;
+}

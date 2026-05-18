@@ -1,0 +1,198 @@
+.prism-upsell-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  z-index: 330;
+}
+
+.prism-upsell-modal {
+  background: #0A0F1E;
+  color: #F8FAFC;
+  border-radius: 14px;
+  width: 720px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 40px 36px 32px;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+  border: 1px solid #1E293B;
+  position: relative;
+}
+
+.prism-upsell-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: transparent;
+  border: 0;
+  color: #94A3B8;
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+.prism-upsell-close:hover {
+  background: #1E293B;
+  color: #F8FAFC;
+}
+
+.prism-upsell-mark {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #60A5FA;
+  margin-bottom: 12px;
+}
+
+.prism-upsell-modal h2 {
+  margin: 0 0 12px;
+  font-size: 26px;
+  font-weight: 700;
+  font-family: Garamond, "Iowan Old Style", "Apple Garamond", Georgia, serif;
+  color: #F8FAFC;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.prism-upsell-sub {
+  margin: 0 0 26px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #CBD5E1;
+}
+
+.prism-upsell-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 0 0 24px;
+}
+
+@media (max-width: 640px) {
+  .prism-upsell-tiers { grid-template-columns: 1fr; }
+}
+
+.prism-upsell-tier {
+  background: #151F32;
+  border: 1px solid #1E293B;
+  border-radius: 10px;
+  padding: 18px 16px;
+}
+
+.prism-upsell-tier-featured {
+  background: linear-gradient(165deg, #1e3a8a 0%, #151F32 80%);
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.25);
+  transform: scale(1.03);
+}
+
+.prism-upsell-tier-name {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #94A3B8;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.prism-upsell-tier-featured .prism-upsell-tier-name {
+  color: #FBBF24;
+}
+
+.prism-upsell-tier-price {
+  font-size: 22px;
+  font-weight: 700;
+  color: #F8FAFC;
+  font-family: Garamond, "Iowan Old Style", "Apple Garamond", Georgia, serif;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.prism-upsell-tier ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prism-upsell-tier li {
+  font-size: 12px;
+  color: #CBD5E1;
+  padding-left: 14px;
+  position: relative;
+  line-height: 1.4;
+}
+.prism-upsell-tier li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: #3B82F6;
+}
+
+.prism-upsell-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.prism-upsell-btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  border: 1px solid #1E293B;
+  background: transparent;
+  color: #F8FAFC;
+}
+.prism-upsell-btn:hover {
+  background: #151F32;
+  border-color: #3B82F6;
+}
+
+.prism-upsell-btn-primary {
+  background: #FBBF24;
+  border-color: #FBBF24;
+  color: #0A0F1E;
+}
+.prism-upsell-btn-primary:hover {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #0A0F1E;
+}
+
+.prism-upsell-fine {
+  margin: 0;
+  font-size: 11.5px;
+  color: #64748b;
+  font-style: italic;
+  text-align: center;
+}
+
+.prism-upsell-reset {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 11.5px;
+  font-style: italic;
+  color: #60A5FA;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prism-upsell-reset:hover {
+  color: #FBBF24;
+}

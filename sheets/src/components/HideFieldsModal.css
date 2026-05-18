@@ -1,0 +1,130 @@
+.hide-fields-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.42);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 16px 16px;
+  z-index: 200;
+}
+
+.hide-fields-modal {
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 12px;
+  width: 480px;
+  max-width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.hide-fields-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e6e8ee;
+}
+
+.hide-fields-head h3 { margin: 0; font-size: 14px; }
+
+.hide-fields-close {
+  background: transparent;
+  border: 0;
+  color: #8a93a4;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.hide-fields-close:hover { background: #f3f4f6; color: #0b1220; }
+
+.hide-fields-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-bottom: 1px solid #eef0f4;
+  font-size: 12px;
+}
+
+.hide-fields-hint {
+  margin-left: auto;
+  color: #8a93a4;
+}
+
+.hide-fields-btn {
+  padding: 4px 10px;
+  border: 1px solid #e6e8ee;
+  background: #fbfbfc;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  color: #0b1220;
+}
+.hide-fields-btn:hover { background: #fff; border-color: #d9dcfb; }
+
+.hide-fields-btn-primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+.hide-fields-btn-primary:hover { background: #4f46e5; filter: brightness(1.05); }
+
+.hide-fields-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  overflow: auto;
+  flex: 1;
+}
+
+.hide-fields-row {
+  border-bottom: 1px solid #eef0f4;
+}
+
+.hide-fields-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.hide-fields-label:hover { background: #fafbfd; }
+.hide-fields-label input:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.hide-fields-name {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0b1220;
+}
+
+.hide-fields-type {
+  color: #8a93a4;
+  font-size: 11.5px;
+}
+
+.hide-fields-tag {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #f4f1ff;
+  color: #4f46e5;
+}
+
+.hide-fields-foot {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 18px;
+  border-top: 1px solid #e6e8ee;
+}

@@ -1,0 +1,147 @@
+.insights-drawer-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.42);
+  z-index: 200;
+}
+
+.insights-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  max-width: 95vw;
+  background: #fff;
+  border-left: 1px solid #e6e8ee;
+  box-shadow: -10px 0 30px rgba(11, 18, 32, 0.08);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  animation: insights-slide 0.18s ease-out;
+}
+
+@keyframes insights-slide {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.insights-drawer-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e6e8ee;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.insights-drawer-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.insights-drawer-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #8a93a4;
+}
+
+.insights-drawer-sub code {
+  font-family: "JetBrains Mono", monospace;
+  color: #4f46e5;
+}
+
+.insights-drawer-close {
+  background: transparent;
+  border: 0;
+  color: #8a93a4;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.insights-drawer-close:hover { background: #f3f4f6; color: #0b1220; }
+
+.insights-drawer-empty {
+  padding: 24px 18px;
+  color: #8a93a4;
+  font-size: 13px;
+  text-align: center;
+}
+
+.insights-list {
+  list-style: none;
+  margin: 0;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  flex: 1;
+}
+
+.insight {
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fbfbfc;
+}
+
+.insight-tag {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.insight-tag-bad  { background: #fde8e8; color: #b91c1c; }
+.insight-tag-warn { background: #fff4e0; color: #b45309; }
+.insight-tag-geo  { background: #e6f5f7; color: #0e7490; }
+.insight-tag-info { background: #eef0ff; color: #4f46e5; }
+
+.insight-body {
+  margin: 0;
+  font-size: 13px;
+  color: #0b1220;
+  line-height: 1.5;
+}
+
+.insight-body b {
+  color: #0b1220;
+}
+
+.insight-gql-wrap {
+  display: flex;
+  align-items: stretch;
+  margin-top: 10px;
+  border: 1px solid #eef0f4;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.insight-gql {
+  flex: 1;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: #4b5565;
+  padding: 6px 10px;
+  white-space: nowrap;
+  overflow: auto;
+  align-self: center;
+}
+
+.insight-copy {
+  border: 0;
+  border-left: 1px solid #eef0f4;
+  background: #fbfbfc;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.insight-copy:hover { background: #eef0ff; }

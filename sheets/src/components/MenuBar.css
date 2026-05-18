@@ -1,0 +1,106 @@
+.menubar {
+  grid-area: menubar;
+  display: flex;
+  align-items: stretch;
+  background: #fff;
+  border-bottom: 1px solid #e6e8ee;
+  padding: 0 8px;
+  position: relative;
+  z-index: 30;
+  font-size: 12.5px;
+}
+
+.menu-wrap {
+  position: relative;
+}
+
+.menu-btn {
+  padding: 0 10px;
+  background: transparent;
+  border: 0;
+  color: #4b5565;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  margin: 4px 1px;
+  height: calc(100% - 8px);
+}
+.menu-btn:hover { background: #fbfbfc; color: #0b1220; }
+.menu-btn-open { background: #eef0ff; color: #4f46e5; }
+
+.menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 240px;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(11, 18, 32, 0.16);
+  padding: 4px;
+  z-index: 60;
+  animation: menu-pop 0.08s ease-out;
+}
+@keyframes menu-pop {
+  from { transform: scale(0.97); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.menu-item-wrap { position: relative; }
+
+.menu-item {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: #0b1220;
+  cursor: pointer;
+  font-size: 12.5px;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+}
+.menu-item:hover { background: #eef0ff; }
+.menu-item-has-sub:hover { background: #eef0ff; }
+
+.menu-check { color: #4f46e5; font-size: 12px; text-align: center; }
+.menu-label { color: inherit; }
+.menu-shortcut {
+  color: #8a93a4;
+  font-size: 11px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.menu-sep {
+  height: 1px;
+  background: #eef0f4;
+  margin: 4px 2px;
+}
+
+.menu-section {
+  padding: 6px 10px 2px;
+  color: #8a93a4;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.menu-submenu {
+  position: absolute;
+  left: 100%;
+  top: -5px;
+  min-width: 240px;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(11, 18, 32, 0.16);
+  padding: 4px;
+}

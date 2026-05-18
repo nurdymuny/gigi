@@ -1,0 +1,162 @@
+.term-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: #8a93a4;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: color 100ms, background 100ms;
+}
+.term-info-btn:hover {
+  color: #4f46e5;
+  background: #f4f1ff;
+}
+.term-info-btn:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 1px;
+}
+
+.term-info-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.42);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 90px 16px 24px;
+  z-index: 300;
+  /* TermInfo can be rendered inside parents with text-transform/font/etc.
+     overrides (e.g. .toolbar-label is uppercase). Reset everything so the
+     modal always renders in normal book typography. */
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  font-style: normal;
+  font-variant: normal;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #0b1220;
+}
+
+.term-info-modal {
+  background: #fff;
+  border-radius: 12px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  border: 1px solid #e6e8ee;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.term-info-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid #eef0f4;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.term-info-title {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #0b1220;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.term-info-summary {
+  margin: 0;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.term-info-close {
+  background: transparent;
+  border: 0;
+  color: #8a93a4;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.term-info-close:hover {
+  background: #f3f4f6;
+  color: #0b1220;
+}
+
+.term-info-body {
+  padding: 18px 22px 22px;
+  overflow: auto;
+  flex: 1;
+  color: #0b1220;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.term-info-body p {
+  margin: 0 0 12px;
+}
+
+.term-info-example {
+  margin-top: 18px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border-left: 3px solid #4f46e5;
+  border-radius: 0 6px 6px 0;
+}
+
+.term-info-example h4,
+.term-info-gql h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.term-info-example p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.term-info-example p:last-child {
+  margin-bottom: 0;
+}
+
+.term-info-example-tag {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-right: 6px;
+}
+
+.term-info-gql {
+  margin-top: 18px;
+}
+
+.term-info-gql pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: #0b1220;
+  color: #e6e8ee;
+  border-radius: 6px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  overflow: auto;
+}

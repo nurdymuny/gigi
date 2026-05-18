@@ -1,0 +1,300 @@
+.prism-result-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 70px 16px 24px;
+  z-index: 320;
+}
+
+.prism-result-modal {
+  background: #F8FAFC;
+  color: #0A0F1E;
+  border-radius: 12px;
+  width: 720px;
+  max-width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #1E293B;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.prism-result-head {
+  background: linear-gradient(135deg, #0A0F1E 0%, #111D35 100%);
+  color: #F8FAFC;
+  padding: 18px 24px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.prism-brand-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #60A5FA;
+  margin-bottom: 6px;
+}
+
+.prism-result-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: Garamond, "Iowan Old Style", "Apple Garamond", Georgia, serif;
+  letter-spacing: -0.01em;
+  color: #F8FAFC;
+}
+
+.prism-result-headline {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #FBBF24;
+  font-weight: 500;
+}
+
+.prism-result-close {
+  background: transparent;
+  border: 0;
+  color: #94A3B8;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.prism-result-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #F8FAFC;
+}
+
+.prism-result-body {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.prism-result-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.prism-stat {
+  background: #fff;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.prism-stat-label {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  font-weight: 600;
+}
+.prism-stat-value {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0A0F1E;
+  font-variant-numeric: tabular-nums;
+  /* Long values (e.g. "+1765.490/step") wrap rather than overflow. */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+.prism-stat-warn {
+  background: #fef3c7;
+  border-color: #FBBF24;
+}
+.prism-stat-warn .prism-stat-value {
+  color: #92400e;
+}
+.prism-stat-bad {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+.prism-stat-bad .prism-stat-value {
+  color: #991b1b;
+}
+.prism-stat-ok {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+}
+.prism-stat-ok .prism-stat-value {
+  color: #047857;
+}
+
+.prism-result-findings h4,
+.prism-result-table-wrap h4,
+.prism-result-method h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #2563EB;
+  font-weight: 700;
+}
+
+.prism-result-findings ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prism-result-findings li {
+  padding: 6px 10px 6px 22px;
+  background: #fff;
+  border-left: 3px solid #3B82F6;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #1E293B;
+  line-height: 1.5;
+  position: relative;
+}
+.prism-result-findings li::before {
+  content: "·";
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  color: #3B82F6;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.prism-result-table-scroll {
+  overflow: auto;
+  max-height: 240px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+}
+
+.prism-result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: #fff;
+}
+.prism-result-table th {
+  text-align: left;
+  padding: 6px 10px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #CBD5E1;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  font-weight: 600;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+.prism-result-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1E293B;
+  font-variant-numeric: tabular-nums;
+}
+.prism-result-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.prism-result-method p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #475569;
+}
+
+.prism-result-foot {
+  background: #f1f5f9;
+  border-top: 1px solid #CBD5E1;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.prism-result-foot-note {
+  font-size: 11px;
+  color: #64748b;
+  font-style: italic;
+  min-width: 0;
+  flex: 1;
+}
+.prism-result-foot-note code {
+  background: #1e3a8a;
+  color: #FBBF24;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+.prism-result-foot-err {
+  color: #991b1b;
+  font-weight: 500;
+}
+
+.prism-result-foot-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.prism-result-foot-btn {
+  padding: 7px 14px;
+  background: #3B82F6;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.prism-result-foot-btn:hover:not(:disabled) {
+  background: #2563EB;
+}
+.prism-result-foot-btn:disabled {
+  background: #94a3b8;
+  cursor: progress;
+}
+
+/* Secondary action ("Save as bundle") — gold accent matching the upsell. */
+.prism-result-foot-btn-secondary {
+  background: #FBBF24;
+  color: #0A0F1E;
+}
+.prism-result-foot-btn-secondary:hover:not(:disabled) {
+  background: #f59e0b;
+}
+
+/* Plain "Close" — subdued so the action buttons are the focus. */
+.prism-result-foot-btn-plain {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #0A0F1E;
+}
+.prism-result-foot-btn-plain:hover:not(:disabled) {
+  background: #e2e8f0;
+}

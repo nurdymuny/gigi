@@ -1,0 +1,1042 @@
+/* ─── Landing page ───────────────────────────────────────────────────
+ *
+ * Public marketing surface. Clean white theme with navy/blue/gold
+ * accents. Page is a tall scrollable document; the body override below
+ * opts out of the app's global overflow:hidden lock.
+ * ─────────────────────────────────────────────────────────────────── */
+
+/* Allow page-level scroll while the landing page is mounted. The app's
+   global #root/html/body lock would otherwise pin the page to viewport
+   height. */
+body.landing-mounted,
+body.landing-mounted #root {
+  height: auto !important;
+  min-height: 100%;
+  overflow: visible !important;
+}
+html:has(body.landing-mounted) {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.landing {
+  --ink: #0A0F1E;
+  --ink-2: #1E293B;
+  --ink-3: #475569;
+  --ink-4: #64748B;
+  --ink-5: #94A3B8;
+  --bg: #FFFFFF;
+  --bg-2: #F8FAFC;
+  --bg-3: #F1F5F9;
+  --border: #E2E8F0;
+  --border-2: #CBD5E1;
+  --blue: #2563EB;
+  --blue-2: #1D4ED8;
+  --blue-hi: #3B82F6;
+  --blue-soft: #EFF6FF;
+  --gold: #F59E0B;
+  --gold-2: #D97706;
+  --gold-hi: #FBBF24;
+  --gold-soft: #FFFBEB;
+  --good: #16A34A;
+
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.55;
+}
+
+.landing .accent-blue { color: var(--blue); }
+.landing .accent-gold { color: var(--gold-2); }
+
+/* ── nav ───────────────────────────────────────────────────────────── */
+.landing-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 48px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  z-index: 50;
+}
+
+.landing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.landing-brand-icon {
+  width: 26px;
+  height: 26px;
+}
+.landing-brand-name {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.landing-nav-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 22px;
+}
+.landing-nav-link {
+  color: var(--ink-3);
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.landing-nav-link:hover {
+  color: var(--ink);
+}
+.landing-nav-cta {
+  background: var(--ink);
+  color: #FFFFFF;
+  border: 0;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.landing-nav-cta:hover {
+  background: var(--ink-2);
+}
+
+/* ── hero ──────────────────────────────────────────────────────────── */
+.landing-hero {
+  padding: 96px 48px 120px;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(37, 99, 235, 0.07), transparent 55%),
+    radial-gradient(ellipse at 10% 100%, rgba(245, 158, 11, 0.08), transparent 55%),
+    var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.landing-hero-inner {
+  max-width: 980px;
+  margin: 0 auto;
+}
+.landing-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: lowercase;
+  color: var(--blue);
+  background: var(--blue-soft);
+  padding: 6px 12px;
+  border-radius: 999px;
+  margin-bottom: 28px;
+}
+.landing-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+.landing-h1 {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-size: clamp(40px, 6.4vw, 72px);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 0 0 18px;
+  max-width: 18ch;
+  color: var(--ink);
+}
+.landing-hero-tagline {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-style: italic;
+  font-size: clamp(22px, 2.8vw, 30px);
+  line-height: 1.3;
+  color: var(--ink-2);
+  margin: -8px 0 28px;
+  max-width: 30ch;
+  letter-spacing: -0.01em;
+}
+.landing-sub {
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 64ch;
+  margin: 0 0 36px;
+}
+.landing-hero-cta {
+  display: inline-flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.landing-btn {
+  display: inline-block;
+  padding: 13px 24px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 0;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+.landing-btn:active {
+  transform: translateY(1px);
+}
+.landing-btn-primary {
+  background: var(--ink);
+  color: #FFFFFF;
+}
+.landing-btn-primary:hover {
+  background: var(--ink-2);
+}
+.landing-btn-lg {
+  padding: 16px 36px;
+  font-size: 16px;
+}
+.landing-btn-ghost {
+  background: #FFFFFF;
+  color: var(--ink);
+  border: 1px solid var(--border-2);
+}
+.landing-btn-ghost:hover {
+  background: var(--bg-2);
+  border-color: var(--ink-5);
+}
+
+.landing-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+.landing-hero-meta strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.landing-meta-sep {
+  color: var(--border-2);
+}
+
+/* ── sections common ──────────────────────────────────────────────── */
+.landing-section {
+  padding: 96px 48px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.landing-h2 {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-size: clamp(28px, 3.6vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  max-width: 22ch;
+  color: var(--ink);
+}
+.landing-sub-small {
+  font-size: 15.5px;
+  color: var(--ink-3);
+  max-width: 60ch;
+  margin: 0 0 40px;
+}
+.landing-sub-small code {
+  background: var(--blue-soft);
+  color: var(--blue);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+}
+
+/* ── pillars ──────────────────────────────────────────────────────── */
+.landing-pillars {
+  background: var(--bg-2);
+  max-width: none;
+  padding: 96px 48px;
+}
+.landing-pillars > .landing-h2,
+.landing-pillars > .landing-sub-small {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing-pillar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin-top: 36px;
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing-pillar {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 22px 22px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.landing-pillar:hover {
+  border-color: var(--ink-5);
+  transform: translateY(-2px);
+}
+.landing-pillar-n {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--gold-2);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.landing-pillar-title {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.landing-pillar-body {
+  font-size: 14.5px;
+  color: var(--ink-3);
+  margin: 0;
+  flex: 1;
+}
+.landing-pillar-tag {
+  display: inline-block;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--blue);
+  background: var(--blue-soft);
+  padding: 4px 9px;
+  border-radius: 5px;
+  align-self: flex-start;
+}
+
+/* ── comparison table ────────────────────────────────────────────── */
+.landing-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  /* On narrow viewports, hint the horizontal scroll with a fading edge
+     so users see there's more content to the right. */
+  -webkit-overflow-scrolling: touch;
+}
+.landing-table {
+  width: 100%;
+  min-width: 600px; /* below this the table compresses awkwardly — scroll instead */
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.landing-table thead th {
+  text-align: left;
+  padding: 14px 18px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--ink-4);
+  font-weight: 600;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+.landing-table thead th.landing-th-gigi {
+  color: var(--ink);
+  background: var(--gold-soft);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.landing-table tbody th {
+  text-align: left;
+  padding: 14px 18px;
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.landing-table tbody td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.landing-table tbody tr:last-child th,
+.landing-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.landing-table tbody tr:hover {
+  background: var(--bg-2);
+}
+.landing-td-other {
+  color: var(--ink-4);
+  font-size: 13.5px;
+}
+.landing-td-gigi {
+  color: var(--ink);
+  background: var(--gold-soft);
+  font-size: 13.5px;
+  font-weight: 500;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.landing-td-win::before {
+  content: "✓ ";
+  color: var(--good);
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+/* ── the math block ──────────────────────────────────────────────── */
+.landing-math {
+  background:
+    linear-gradient(180deg, var(--bg-2), #FFFFFF);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 64px 0;
+  max-width: none;
+  padding: 96px 48px;
+}
+.landing-math-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  text-align: center;
+}
+.landing-math-inner .landing-h2 {
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing-math-inner .landing-sub-small {
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing-equation {
+  margin: 36px 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.landing-equation code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: clamp(32px, 5.4vw, 64px);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 44px;
+  display: inline-block;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.landing-equation-label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--ink-4);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.landing-math-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+.landing-math-chip {
+  display: inline-flex;
+  flex-direction: column;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: left;
+  min-width: 200px;
+}
+.landing-math-chip-label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-4);
+}
+.landing-math-chip-expr {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13.5px;
+  color: var(--blue);
+  margin-top: 4px;
+}
+.landing-math-chip-plain {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-align: left;
+}
+
+/* ── math: extras (eyebrow, explain block, example, why-table, footer) ── */
+.landing-eyebrow-center {
+  align-self: center;
+  margin: 0 auto 24px;
+}
+
+.landing-math-explain {
+  margin: 36px auto 0;
+  max-width: 720px;
+  text-align: left;
+}
+.landing-math-explain-p {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  margin: 0 0 18px;
+}
+.landing-math-explain-p code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 14px;
+  background: var(--bg-2);
+  color: var(--ink);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.landing-math-cases {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.landing-math-cases li {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+.landing-math-cases strong {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.landing-math-example {
+  margin: 56px auto 0;
+  max-width: 760px;
+  text-align: left;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 28px 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.landing-math-example-head {
+  margin-bottom: 18px;
+}
+.landing-math-example-label {
+  display: inline-block;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--gold-2);
+  background: var(--gold-soft);
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.landing-math-example-h {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--ink);
+}
+.landing-math-example-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.landing-math-example-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border-radius: 6px;
+}
+.landing-math-example-key {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.landing-math-example-val {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  color: var(--ink);
+  line-height: 1.5;
+  word-break: break-word;
+}
+.landing-math-example-arrow {
+  text-align: center;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--ink-4);
+  padding: 4px 0;
+  letter-spacing: 0.04em;
+}
+.landing-math-example-out {
+  background: var(--gold-soft);
+  border: 1px solid #FCD34D;
+}
+.landing-math-example-out .landing-math-example-val {
+  color: var(--ink);
+}
+.landing-math-example-out strong {
+  color: var(--gold-2);
+  font-weight: 700;
+}
+.landing-math-example-note {
+  margin: 18px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+.landing-math-example-note code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.landing-math-h3 {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 64px 0 12px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.landing-math-why {
+  margin: 28px auto 0;
+  max-width: 920px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.landing-math-why-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1.6fr 1.3fr;
+  gap: 14px;
+  padding: 14px 18px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.landing-math-why-row:last-child {
+  border-bottom: 0;
+}
+.landing-math-why-row:hover {
+  background: var(--bg-2);
+}
+.landing-math-why-task {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
+.landing-math-why-other {
+  color: var(--ink-4);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.landing-math-why-gigi {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+.landing-math-why-gigi code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  background: var(--gold-soft);
+  color: var(--ink);
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.landing-math-footer {
+  margin: 56px auto 0;
+  max-width: 580px;
+  font-size: 14px;
+  color: var(--ink-4);
+  text-align: center;
+  line-height: 1.55;
+}
+.landing-math-footer code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  background: var(--bg-2);
+  color: var(--ink);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.landing-math-link {
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 500;
+}
+.landing-math-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .landing-math-why-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .landing-math-example {
+    padding: 22px 18px;
+  }
+}
+
+/* ── feature grid ────────────────────────────────────────────────── */
+.landing-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 36px;
+}
+.landing-feature {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 18px 16px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.landing-feature:hover {
+  border-color: var(--ink-5);
+  transform: translateY(-2px);
+}
+.landing-feature-name {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.landing-feature-pitch {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+
+/* ── workflows ───────────────────────────────────────────────────── */
+.landing-workflows-section {
+  background: var(--bg);
+  max-width: none;
+  padding: 96px 48px;
+}
+.landing-workflows-section > .landing-h2,
+.landing-workflows-section > .landing-sub-small {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing-workflows-wrap {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  margin: 36px auto 0;
+  max-width: 1180px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+/* ── demos ───────────────────────────────────────────────────────── */
+.landing-demos-section {
+  background: var(--bg-2);
+  max-width: none;
+  padding: 96px 48px;
+}
+.landing-demos-section > .landing-h2,
+.landing-demos-section > .landing-sub-small {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.landing-demos-wrap {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  margin: 36px auto 0;
+  max-width: 1180px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+/* Give the demo cards more vertical room on the landing page — the
+   default 4-line clamp truncated the longer blurbs (e.g. Hospital
+   patient records) mid-word. The picker dashboard keeps the tighter
+   defaults. */
+.landing-demos-wrap .demo-card {
+  min-height: 340px;
+}
+.landing-demos-wrap .demo-card-blurb {
+  -webkit-line-clamp: 7;
+}
+
+/* ── final CTA ───────────────────────────────────────────────────── */
+.landing-final-cta {
+  padding-top: 60px;
+  padding-bottom: 96px;
+}
+.landing-cta-card {
+  text-align: center;
+  background: var(--ink);
+  color: #FFFFFF;
+  border-radius: 14px;
+  padding: 56px 32px;
+  max-width: 760px;
+  margin: 0 auto;
+  box-shadow: 0 20px 50px rgba(10, 15, 30, 0.12);
+}
+.landing-cta-h {
+  font-family: Garamond, "Iowan Old Style", Georgia, serif;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 12px;
+  color: #FFFFFF;
+}
+.landing-cta-sub {
+  font-size: 16px;
+  color: #CBD5E1;
+  margin: 0 auto 28px;
+  max-width: 48ch;
+}
+.landing-cta-card .landing-btn-primary {
+  background: var(--gold);
+  color: var(--ink);
+}
+.landing-cta-card .landing-btn-primary:hover {
+  background: var(--gold-hi);
+}
+.landing-cta-fine {
+  margin: 18px 0 0;
+  font-size: 12.5px;
+  color: #94A3B8;
+}
+
+/* ── footer ──────────────────────────────────────────────────────── */
+.landing-footer {
+  border-top: 1px solid var(--border);
+  padding: 28px 48px;
+  background: var(--bg-2);
+}
+.landing-footer-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  font-size: 12.5px;
+  color: var(--ink-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.landing-footer-sep {
+  color: var(--border-2);
+}
+.landing-footer-link {
+  color: var(--blue);
+  text-decoration: none;
+}
+.landing-footer-link:hover {
+  text-decoration: underline;
+}
+
+/* ── responsive trims ────────────────────────────────────────────── */
+
+/* Tablet + small-desktop (mid breakpoint). */
+@media (max-width: 960px) {
+  .landing-nav {
+    padding: 16px 24px;
+  }
+  .landing-section,
+  .landing-pillars,
+  .landing-demos-section {
+    padding: 80px 24px;
+  }
+  .landing-math {
+    padding: 80px 24px;
+  }
+  .landing-hero {
+    padding: 80px 24px 96px;
+  }
+  /* Pull the "Compare/Features/etc." links onto two rows rather than
+     truncating them. */
+  .landing-nav-actions {
+    gap: 18px;
+  }
+}
+
+/* Mobile (phones, narrow tablets). */
+@media (max-width: 720px) {
+  .landing-nav {
+    padding: 14px 16px;
+  }
+  .landing-nav-actions {
+    gap: 12px;
+  }
+  /* Hide deep-link nav entries — sign-in remains tappable. */
+  .landing-nav-link {
+    display: none;
+  }
+  .landing-hero {
+    padding: 56px 18px 72px;
+  }
+  .landing-section,
+  .landing-pillars,
+  .landing-demos-section {
+    padding: 56px 18px;
+  }
+  .landing-math {
+    padding: 56px 18px;
+  }
+  .landing-footer {
+    padding: 20px 18px;
+  }
+  /* Equation: shrink the padding so the box doesn't break out of the
+     viewport, and keep the equation itself within the box via clamp. */
+  .landing-equation code {
+    padding: 14px 18px;
+    font-size: clamp(24px, 9vw, 40px);
+  }
+  /* Math chips: drop the rigid min-width so they reflow to a single
+     column rather than triggering horizontal scroll. */
+  .landing-math-chip {
+    min-width: 0;
+    width: 100%;
+  }
+  /* Cases list: tighten padding. */
+  .landing-math-cases li {
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+  /* Math why-row already collapses to 1fr at this width via the earlier
+     media query — add a separator hint so the rows read as a list. */
+  .landing-math-why-row {
+    padding: 12px 14px;
+  }
+  /* Comparison table: enable internal scroll and reduce padding so it
+     doesn't push the page wider than the viewport. */
+  .landing-table thead th,
+  .landing-table tbody th,
+  .landing-table tbody td {
+    padding: 10px 12px;
+    font-size: 12.5px;
+  }
+  .landing-td-other,
+  .landing-td-gigi {
+    font-size: 12.5px;
+  }
+  /* Final CTA card: trim outer padding. */
+  .landing-cta-card {
+    padding: 40px 22px;
+  }
+  /* Hero CTA buttons: full width on a single line each. */
+  .landing-hero-cta {
+    gap: 10px;
+    width: 100%;
+  }
+  .landing-hero-cta .landing-btn {
+    width: 100%;
+    text-align: center;
+  }
+  /* Demo wrap padding. */
+  .landing-demos-wrap {
+    padding: 18px;
+  }
+}
+
+/* Tight mobile (≤ 380px iPhone SE-class). */
+@media (max-width: 380px) {
+  .landing-h1 {
+    /* clamp's min was 40px; on 380px the page can still feel cramped,
+       so drop it a notch more. */
+    font-size: 34px;
+  }
+  .landing-hero-tagline {
+    font-size: 19px;
+  }
+  .landing-sub {
+    font-size: 16px;
+  }
+  .landing-eyebrow {
+    font-size: 10px;
+  }
+  .landing-equation code {
+    font-size: 22px;
+    padding: 12px 14px;
+  }
+  .landing-math-example-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .landing-math-example-key {
+    font-size: 10px;
+  }
+}
+
+/* Prefer-reduced-motion: kill the hover transforms. */
+@media (prefers-reduced-motion: reduce) {
+  .landing-pillar,
+  .landing-feature,
+  .landing-btn {
+    transition: none;
+  }
+  .landing-pillar:hover,
+  .landing-feature:hover,
+  .landing-btn:active {
+    transform: none;
+  }
+}

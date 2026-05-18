@@ -1,0 +1,440 @@
+/* Formula picker — Excel "Insert Function"-style modal.
+   Two views in one card: list (search + categories + results) and
+   edit (per-arg inputs + live preview). */
+
+.formula-picker-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 56px 16px 16px;
+  z-index: 240;
+}
+
+.formula-picker {
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 14px;
+  width: 820px;
+  max-width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  position: relative;
+  animation: formula-picker-pop 0.18s ease-out;
+}
+
+@keyframes formula-picker-pop {
+  from { transform: translateY(8px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.formula-picker-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e6e8ee;
+  color: #4b5565;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  z-index: 2;
+}
+.formula-picker-close:hover { background: #fff; color: #0b1220; }
+
+/* ── header ───────────────────────────────────────────────────── */
+
+.formula-picker-header {
+  padding: 22px 28px 14px;
+  border-bottom: 1px solid #eef0f4;
+  background: linear-gradient(180deg, #fbfbfc, #f6f7f9);
+}
+.formula-picker-header h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0b1220;
+}
+
+.formula-picker-search {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #d8dce6;
+  border-radius: 8px;
+  outline: 0;
+  background: #fff;
+  font-family: inherit;
+}
+.formula-picker-search:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+/* ── list view ────────────────────────────────────────────────── */
+
+.formula-picker-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.formula-picker-cats {
+  display: flex;
+  flex-direction: column;
+  background: #fbfbfc;
+  border-right: 1px solid #eef0f4;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.formula-picker-cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #4b5565;
+  text-align: left;
+  cursor: pointer;
+}
+.formula-picker-cat:hover { background: #f0f2f6; color: #0b1220; }
+.formula-picker-cat-active {
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+  border-left: 2px solid #4f46e5;
+  padding-left: 12px;
+}
+.formula-picker-cat-count {
+  font-size: 11px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+.formula-picker-cat-active .formula-picker-cat-count { color: #6366f1; }
+
+.formula-picker-results {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+}
+
+.formula-picker-result {
+  border-bottom: 1px solid #f1f3f7;
+}
+.formula-picker-result:last-child { border-bottom: 0; }
+
+.formula-picker-result-btn {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 12px 18px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  display: block;
+}
+.formula-picker-result-btn:hover { background: #f6f7fb; }
+.formula-picker-result-btn:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+}
+
+.formula-picker-result-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.formula-picker-name {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b1220;
+}
+
+.formula-picker-cat-pill {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6366f1;
+  background: #eef2ff;
+  padding: 2px 8px;
+  border-radius: 9px;
+}
+
+.formula-picker-sig {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.formula-picker-desc {
+  font-size: 12px;
+  color: #4b5565;
+  line-height: 1.4;
+}
+
+.formula-picker-empty {
+  padding: 24px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* ── edit view ────────────────────────────────────────────────── */
+
+.formula-picker-header-edit {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 28px 14px;
+}
+
+.formula-picker-back {
+  background: transparent;
+  border: 1px solid #d8dce6;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: #4b5565;
+  cursor: pointer;
+}
+.formula-picker-back:hover { background: #f6f7fb; color: #0b1220; }
+
+.formula-picker-edit-titles {
+  flex: 1;
+  min-width: 0;
+}
+.formula-picker-edit-name {
+  margin: 0 0 4px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0b1220;
+  letter-spacing: -0.01em;
+}
+.formula-picker-edit-sig {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.formula-picker-edit-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px 28px 18px;
+}
+
+.formula-picker-edit-desc {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  color: #1f2937;
+  line-height: 1.5;
+}
+
+.formula-picker-edit-details {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #4b5565;
+  background: #fef9c3;
+  border-left: 3px solid #ca8a04;
+  border-radius: 4px;
+  line-height: 1.45;
+}
+
+.formula-picker-no-args {
+  font-size: 13px;
+  color: #6b7280;
+  font-style: italic;
+  margin: 8px 0;
+}
+
+.formula-picker-args {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 12px 0 16px;
+}
+
+.formula-picker-arg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.formula-picker-arg-name {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0b1220;
+}
+.formula-picker-arg-opt {
+  font-weight: 400;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.formula-picker-arg-input {
+  padding: 8px 10px;
+  border: 1px solid #d8dce6;
+  border-radius: 6px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  outline: 0;
+  background: #fff;
+}
+.formula-picker-arg-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.formula-picker-arg-desc {
+  font-size: 11.5px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* ── live preview ─────────────────────────────────────────────── */
+
+.formula-picker-preview {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e6e8ee;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formula-picker-preview-row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.formula-picker-preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.formula-picker-preview-formula {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  color: #0b1220;
+  background: transparent;
+  word-break: break-all;
+}
+
+.formula-picker-preview-value {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b1220;
+}
+
+.formula-picker-preview-err {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 2px 8px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+/* ── example ──────────────────────────────────────────────────── */
+
+.formula-picker-example {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: #6b7280;
+  flex-wrap: wrap;
+}
+.formula-picker-example-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+.formula-picker-example-code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  background: #f1f3f7;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #0b1220;
+}
+.formula-picker-example-result {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: #4b5565;
+}
+
+/* ── footer (edit step) ───────────────────────────────────────── */
+
+.formula-picker-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 28px;
+  border-top: 1px solid #eef0f4;
+  background: #fbfbfc;
+}
+
+.formula-picker-cancel,
+.formula-picker-insert {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid #d8dce6;
+}
+.formula-picker-cancel { background: #fff; color: #4b5565; }
+.formula-picker-cancel:hover { background: #f6f7fb; color: #0b1220; }
+
+.formula-picker-insert {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4338ca;
+}
+.formula-picker-insert:hover:not(:disabled) { background: #4338ca; }
+.formula-picker-insert:disabled {
+  background: #cbd5e1;
+  border-color: #cbd5e1;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .formula-picker { width: 100%; }
+  .formula-picker-body { grid-template-columns: 140px 1fr; }
+}

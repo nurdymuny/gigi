@@ -1,0 +1,221 @@
+.schema-modal-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.42);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 16px 16px;
+  z-index: 200;
+}
+
+.schema-modal {
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 12px;
+  width: 560px;
+  max-width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.schema-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e6e8ee;
+}
+
+.schema-modal-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.schema-modal-head code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: #4f46e5;
+}
+
+.schema-modal-close {
+  border: 0;
+  background: transparent;
+  color: #8a93a4;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.schema-modal-close:hover { background: #f3f4f6; color: #0b1220; }
+
+.schema-modal-error {
+  margin: 12px 18px 0;
+  padding: 8px 12px;
+  background: #fde8e8;
+  color: #b91c1c;
+  border-radius: 6px;
+  font-size: 12px;
+  border-left: 3px solid #b91c1c;
+}
+
+.schema-modal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.schema-modal-hint {
+  margin-left: auto;
+  color: #8a93a4;
+  font-size: 12px;
+}
+
+.schema-modal-btn {
+  padding: 6px 12px;
+  border: 1px solid #e6e8ee;
+  background: #fbfbfc;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #0b1220;
+  cursor: pointer;
+}
+.schema-modal-btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: #d9dcfb;
+}
+.schema-modal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.schema-modal-btn-primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+.schema-modal-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  background: #4f46e5;
+}
+
+.schema-field-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  overflow: auto;
+  flex: 1;
+}
+
+.schema-field-row {
+  display: grid;
+  grid-template-columns: 1.5fr 2fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 18px;
+  border-bottom: 1px solid #eef0f4;
+}
+.schema-field-row:last-child { border-bottom: 0; }
+.schema-field-row:hover { background: #fafbfd; }
+
+.schema-field-name {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0b1220;
+}
+
+.schema-field-meta {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.schema-field-type {
+  color: #4b5565;
+  font-size: 12px;
+}
+
+.schema-field-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.schema-field-tag-key { background: #f4f1ff; color: #4f46e5; }
+.schema-field-tag-idx { background: #e6f5f7; color: #0e7490; }
+.schema-field-tag-enc { background: #fff4e0; color: #b45309; }
+
+.schema-field-drop {
+  padding: 4px 10px;
+  border: 1px solid #e6e8ee;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #b91c1c;
+  font-weight: 500;
+  cursor: pointer;
+}
+.schema-field-drop:hover:not(:disabled) {
+  background: #fde8e8;
+  border-color: #f3c9c9;
+}
+.schema-field-drop:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #8a93a4;
+}
+
+.schema-add-form {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schema-add-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.schema-add-row > span {
+  color: #4b5565;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.schema-add-row input,
+.schema-add-row select {
+  padding: 6px 10px;
+  border: 1px solid #e6e8ee;
+  border-radius: 6px;
+  font: inherit;
+  background: #fbfbfc;
+}
+
+.schema-add-row input:focus,
+.schema-add-row select:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 1px;
+  background: #fff;
+}
+
+.schema-modal-note {
+  margin-top: 4px;
+  color: #8a93a4;
+  font-size: 11.5px;
+  font-style: italic;
+}
+
+.schema-modal-note code {
+  font-family: "JetBrains Mono", monospace;
+  color: #0e7490;
+}

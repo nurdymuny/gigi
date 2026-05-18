@@ -1,0 +1,422 @@
+/* Gallery view — card-grid layout. κ-tinted card borders. */
+
+.gallery {
+  flex: 1;
+  min-height: 0;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  overflow: auto;
+}
+
+.gallery-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.gallery-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+/* Density variants — tighter columns + smaller cards for compact,
+   wider columns + denser bodies for expanded. */
+.gallery-grid-compact {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+.gallery-grid-standard {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.gallery-grid-expanded {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+.gallery-grid-compact .gallery-card { padding: 8px 10px; gap: 4px; }
+.gallery-grid-compact .gallery-card-foot { font-size: 10px; }
+.gallery-grid-compact .gallery-card-key { font-size: 11.5px; }
+
+/* ── Toolbar ─────────────────────────────────────────────────────── */
+
+.gallery-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 0 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eef0f4;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.gallery-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+}
+.gallery-toolbar-group > span {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+.gallery-toolbar-group select {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid #d8dce6;
+  border-radius: 6px;
+  background: #fff;
+  color: #0b1220;
+  cursor: pointer;
+}
+.gallery-toolbar-group select:focus {
+  outline: 0;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.gallery-toolbar-dir {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: 1px solid #d8dce6;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #4b5565;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 50px;
+}
+.gallery-toolbar-dir:hover { background: #eef2ff; color: #4338ca; }
+
+.gallery-toolbar-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.gallery-toolbar-chips-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  margin-right: 4px;
+}
+
+.gallery-chip {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #d8dce6;
+  background: #fff;
+  color: #6b7280;
+  cursor: pointer;
+}
+.gallery-chip:hover { background: #f6f7fb; color: #0b1220; }
+.gallery-chip-active {
+  background: #eef2ff;
+  border-color: #6366f1;
+  color: #4338ca;
+}
+.gallery-chip-drift.gallery-chip-active {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+.gallery-chip-bad.gallery-chip-active {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.gallery-toolbar-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Find-similar chip — shown when the user picks a pivot row from the
+   right-click menu. Pinned in the toolbar so exiting the mode is one
+   click; sort/dir controls go to disabled while it's active. */
+.gallery-toolbar-similar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  border: 1px solid #a78bfa;
+  border-radius: 999px;
+  font-size: 11px;
+  color: #5b21b6;
+}
+.gallery-toolbar-similar-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  color: #7c3aed;
+}
+.gallery-toolbar-similar-pivot {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 600;
+  font-size: 11px;
+  color: #4c1d95;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.gallery-toolbar-similar-clear {
+  background: transparent;
+  border: 0;
+  color: #6d28d9;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.gallery-toolbar-similar-clear:hover {
+  background: rgba(255, 255, 255, 0.7);
+  color: #4c1d95;
+}
+
+/* Pivot card — distinctive purple border + faint glow so it's easy to
+   tell from the highest-similarity neighbor (which is always rank 2). */
+.gallery-card-pivot {
+  outline: 2px solid #a78bfa;
+  outline-offset: -2px;
+  background: linear-gradient(180deg, #faf5ff, #fff);
+}
+.gallery-card-pivot-mark {
+  display: inline-block;
+  color: #7c3aed;
+  margin-right: 4px;
+  font-weight: 700;
+}
+
+/* Per-card sameness bar (only in similar-mode). Visual gauge of S in
+   [0, 1] — the wider/darker the fill, the more similar the card is to
+   the pivot. */
+.gallery-card-sameness {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: #6b7280;
+}
+.gallery-card-sameness-label {
+  font-weight: 700;
+  color: #7c3aed;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.gallery-card-sameness-bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: #f1f3f7;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.gallery-card-sameness-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #c4b5fd, #7c3aed);
+  border-radius: 2px;
+}
+.gallery-card-sameness-value {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #4c1d95;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ── Group sections ─────────────────────────────────────────────── */
+
+.gallery-group {
+  margin-bottom: 18px;
+}
+.gallery-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0b1220;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eef0f4;
+}
+.gallery-group-name {
+  color: #1f2937;
+}
+.gallery-group-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6366f1;
+  background: #eef2ff;
+  padding: 2px 8px;
+  border-radius: 9px;
+}
+
+.gallery-card {
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-left: 3px solid #94a3b8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s, transform 0.05s, box-shadow 0.15s;
+}
+.gallery-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+.gallery-card:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.gallery-card.kappa-ok {
+  border-left-color: #16a34a;
+}
+.gallery-card.kappa-warn {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+.gallery-card.kappa-bad {
+  border-left-color: #dc2626;
+  background: #fef2f2;
+}
+
+.gallery-card-selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+}
+
+.gallery-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 6px;
+}
+
+.gallery-card-key {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #0b1220;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.gallery-card-cover {
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.gallery-card-body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gallery-card-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) 1.4fr;
+  gap: 8px;
+  align-items: baseline;
+}
+.gallery-card-row dt {
+  font-size: 10.5px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin: 0;
+}
+.gallery-card-row dd {
+  font-size: 12.5px;
+  color: #1e293b;
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-card-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 6px;
+  margin-top: auto;
+}
+.gallery-card-kappa-label {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.gallery-card-kappa-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b1220;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .gallery {
+    padding: 8px;
+  }
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  .gallery-card {
+    padding: 10px 12px;
+  }
+}

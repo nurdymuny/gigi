@@ -63,10 +63,11 @@ export function useEngineAccess(
     }
 
     if (account.state === "guest") {
-      // Engine stays locked; keep the previous key cleared so a stale
-      // key from a prior signed-in session can't accidentally ride on
-      // a guest's requests.
+      // Engine stays locked; clear any credentials so a stale key/
+      // token from a prior signed-in session can't ride on a guest's
+      // requests.
       client.setApiKey(null);
+      client.setBearerToken(null);
       setState({ kind: "anonymous" });
       return;
     }
@@ -86,6 +87,7 @@ export function useEngineAccess(
             message?: string;
           };
           client.setApiKey(null);
+          client.setBearerToken(null);
           setState({
             kind: "denied",
             message:
@@ -96,6 +98,7 @@ export function useEngineAccess(
         }
         if (!res.ok) {
           client.setApiKey(null);
+          client.setBearerToken(null);
           setState({
             kind: "error",
             message: `Couldn't reach the engine (status ${res.status}).`,
@@ -103,25 +106,38 @@ export function useEngineAccess(
           return;
         }
         const data = (await res.json().catch(() => ({}))) as {
+          mode?: "apiKey" | "token";
+          // Phase A / owner path: raw engine API key.
           key?: string;
+          // Phase B / tenant path: HMAC-signed bearer token.
+          token?: string;
           namespace?: string;
           isOwner?: boolean;
           email?: string;
         };
-        if (!data.key) {
+        // Mode-driven dispatch. Pre-Phase-B deploys don't send `mode`;
+        // infer from which credential field is present so the client
+        // keeps working against either response shape.
+        const mode =
+          data.mode ?? (data.token ? "token" : data.key ? "apiKey" : null);
+        if (mode === "apiKey" && data.key) {
+          client.setApiKey(data.key);
+        } else if (mode === "token" && data.token) {
+          client.setBearerToken(data.token);
+        } else {
           client.setApiKey(null);
+          client.setBearerToken(null);
           setState({
             kind: "error",
-            message: "Engine token response missing key.",
+            message: "Engine token response missing credential.",
           });
           return;
         }
-        client.setApiKey(data.key);
-        // Older DG deploys may not surface namespace/isOwner yet — fall
-        // back to owner semantics in that case so we don't accidentally
-        // hide bundles from a deployment that hasn't been upgraded.
+        // Older DG deploys may not surface namespace/isOwner — fall
+        // back to owner semantics so we don't accidentally hide
+        // bundles from an un-upgraded deployment.
         const namespace = data.namespace ?? "";
-        const isOwner = data.isOwner ?? true;
+        const isOwner = data.isOwner ?? mode === "apiKey";
         client.setNamespace(namespace, isOwner);
         setState({
           kind: "granted",
@@ -132,6 +148,7 @@ export function useEngineAccess(
       } catch (e) {
         if (cancelled) return;
         client.setApiKey(null);
+        client.setBearerToken(null);
         setState({
           kind: "error",
           message:

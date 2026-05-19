@@ -49,6 +49,115 @@ use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 
 type Record = HashMap<String, Value>;
 
+// ── Phase B multi-tenant auth ──
+//
+// davisgeometric.com/api/gigi/token mints a compact signed token for
+// non-owner users containing their per-user namespace. The engine
+// verifies the HMAC-SHA256 signature with a shared secret
+// (GIGI_JWT_SECRET) and uses the embedded namespace + owner flag to
+// gate every /v1/bundles/<name>/* request.
+//
+// Token wire format (simpler than full JWT, no header):
+//   base64url(payload_json).base64url(hmac_sha256(payload_json, secret))
+//
+// Payload schema:
+//   { "email": "...", "ns": "ns_<12-hex>", "owner": bool, "exp": <unix_seconds> }
+//
+// Owner tokens bypass namespace enforcement so bee retains full access
+// to bundles created before namespacing existed. Non-owner tokens can
+// only touch bundles whose name starts with their `<ns>__` prefix.
+
+#[derive(Debug, Clone, Deserialize)]
+struct GigiClaims {
+    #[serde(default)]
+    email: String,
+    #[serde(default)]
+    ns: String,
+    #[serde(default)]
+    owner: bool,
+    /// Unix seconds. Tokens past this are rejected.
+    #[serde(default)]
+    exp: u64,
+}
+
+impl GigiClaims {
+    /// Owner-equivalent claims used when the request authenticated via
+    /// the legacy GIGI_API_KEY header. Server-internal callers (the
+    /// davisgeometric redis wrapper, snapshot tools, oncall debugging)
+    /// land here and get unrestricted access by design.
+    fn owner_via_api_key() -> Self {
+        GigiClaims {
+            email: String::new(),
+            ns: String::new(),
+            owner: true,
+            exp: u64::MAX,
+        }
+    }
+
+    /// Does this caller have permission to touch `bundle_name`?
+    /// Owners bypass the check; everyone else must have a bundle whose
+    /// name is prefixed with `<ns>__`.
+    fn allows_bundle(&self, bundle_name: &str) -> bool {
+        if self.owner {
+            return true;
+        }
+        if self.ns.is_empty() {
+            // Defensive: a non-owner with no namespace shouldn't exist,
+            // and we never want to silently grant access. Refuse.
+            return false;
+        }
+        let prefix = format!("{}__", self.ns);
+        bundle_name.starts_with(&prefix)
+    }
+}
+
+/// URL-safe base64 without padding — matches what davisgeometric's
+/// Node mint side produces.
+fn b64url_decode(input: &str) -> Option<Vec<u8>> {
+    use base64::Engine;
+    base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(input.as_bytes())
+        .ok()
+}
+
+/// Verify a compact-signed token and return its claims.
+///
+/// Format: `<payload_b64url>.<sig_b64url>`. The sig is HMAC-SHA256 of
+/// the raw payload base64 string (NOT the decoded JSON) so re-encoding
+/// quirks can't break verification on either side.
+fn verify_gigi_token(token: &str, secret: &str) -> Result<GigiClaims, &'static str> {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+
+    let (payload_b64, sig_b64) = token.split_once('.').ok_or("malformed token")?;
+    if payload_b64.is_empty() || sig_b64.is_empty() {
+        return Err("malformed token");
+    }
+
+    let sig_bytes = b64url_decode(sig_b64).ok_or("malformed signature")?;
+
+    let mut mac =
+        Hmac::<Sha256>::new_from_slice(secret.as_bytes()).map_err(|_| "secret key error")?;
+    mac.update(payload_b64.as_bytes());
+    mac.verify_slice(&sig_bytes).map_err(|_| "invalid signature")?;
+
+    let payload_json = b64url_decode(payload_b64).ok_or("malformed payload")?;
+    let claims: GigiClaims =
+        serde_json::from_slice(&payload_json).map_err(|_| "malformed claims")?;
+
+    // Reject expired tokens. exp=0 means "no expiry set" — treat as
+    // invalid since every legitimate mint sets exp.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    if claims.exp == 0 || claims.exp < now {
+        return Err("token expired");
+    }
+
+    Ok(claims)
+}
+
 struct StreamState {
     engine: RwLock<Engine>,
     /// True once WAL replay is complete and engine is ready for queries.
@@ -57,8 +166,14 @@ struct StreamState {
     channels: RwLock<HashMap<String, broadcast::Sender<SubscriptionEvent>>>,
     /// Global dashboard broadcast — anomaly + curvature update events for all bundles
     dashboard_tx: broadcast::Sender<DashboardEvent>,
-    /// API key for authentication (None = no auth required)
+    /// API key for authentication (None = no auth required). Carries
+    /// owner-equivalent permissions and is used by server-internal
+    /// callers (davisgeometric redis wrapper, snapshot tools).
     api_key: Option<String>,
+    /// HMAC-SHA256 secret used to verify per-user signed tokens minted
+    /// by davisgeometric.com/api/gigi/token. None disables JWT auth
+    /// entirely (legacy / dev / single-tenant deployments).
+    jwt_secret: Option<String>,
     /// Rate limit: max requests per window (0 = unlimited)
     rate_limit: u32,
     /// Rate limit window in seconds
@@ -121,6 +236,7 @@ struct DashboardEvent {
 impl StreamState {
     fn new(logger: Logger, metrics: Arc<Metrics>) -> Self {
         let api_key = std::env::var("GIGI_API_KEY").ok();
+        let jwt_secret = std::env::var("GIGI_JWT_SECRET").ok();
         let rate_limit = std::env::var("GIGI_RATE_LIMIT")
             .ok()
             .and_then(|v| v.parse().ok())
@@ -152,6 +268,7 @@ impl StreamState {
             channels: RwLock::new(HashMap::new()),
             dashboard_tx: broadcast::channel(4096).0,
             api_key,
+            jwt_secret,
             rate_limit,
             rate_window_secs,
             rate_tracker: RwLock::new(HashMap::new()),
@@ -889,15 +1006,22 @@ async fn readiness_middleware(
     Ok(next.run(req).await)
 }
 
-/// Middleware: API key authentication.
-/// If GIGI_API_KEY is set, all requests must present the matching key,
-/// supplied either as the `X-API-Key` header (HTTP) or as an `api_key`
-/// query-string parameter (WebSocket upgrades, which can't carry custom
-/// headers from a browser). Health endpoint is excluded so liveness
-/// probes don't need the key.
+/// Middleware: API key OR per-user signed-token authentication.
+///
+/// Accepts either:
+///   - `X-API-Key` header (HTTP) / `?api_key=...` query (WS upgrade)
+///     matching `GIGI_API_KEY` — server-internal / owner-equivalent.
+///   - `Authorization: Bearer <token>` header (HTTP) /
+///     `?gigi_token=...` query (WS upgrade) — verifies HMAC-SHA256
+///     against `GIGI_JWT_SECRET` and pulls out per-user claims.
+///
+/// Attaches `GigiClaims` to the request extensions so the downstream
+/// `namespace_enforcement_middleware` can gate /v1/bundles/<name>/*
+/// paths by tenant. Health endpoint is excluded so liveness probes
+/// don't need credentials.
 async fn auth_middleware(
     State(state): State<Arc<StreamState>>,
-    req: Request<axum::body::Body>,
+    mut req: Request<axum::body::Body>,
     next: Next,
 ) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
     // Skip auth for health endpoint
@@ -905,19 +1029,15 @@ async fn auth_middleware(
         return Ok(next.run(req).await);
     }
 
+    // Try API-key path first (legacy + admin). A successful match
+    // grants owner-equivalent claims; the JWT path is skipped.
+    let mut claims: Option<GigiClaims> = None;
     if let Some(ref expected_key) = state.api_key {
         let header_key = req
             .headers()
             .get("x-api-key")
             .and_then(|v| v.to_str().ok())
             .map(str::to_owned);
-
-        // Browser WebSocket clients cannot set arbitrary headers, so the
-        // sheets app passes the key as `?api_key=...` on the upgrade URL.
-        // Parse it out of the URI's query string. The API key is a
-        // URL-safe random string by construction (base64url, no '%' or
-        // '+'), so a literal compare is sufficient — no percent decode
-        // needed.
         let query_key = req.uri().query().and_then(|q| {
             for pair in q.split('&') {
                 let mut it = pair.splitn(2, '=');
@@ -928,13 +1048,62 @@ async fn auth_middleware(
             }
             None
         });
+        if let Some(provided) = header_key.or(query_key) {
+            if constant_time_eq(provided.as_bytes(), expected_key.as_bytes()) {
+                claims = Some(GigiClaims::owner_via_api_key());
+            } else {
+                return Err((
+                    StatusCode::UNAUTHORIZED,
+                    Json(ErrorResponse {
+                        error: "Invalid or missing API key".to_string(),
+                    }),
+                ));
+            }
+        }
+    }
 
-        let provided = header_key.or(query_key);
-        let ok = match provided.as_deref() {
-            Some(p) => constant_time_eq(p.as_bytes(), expected_key.as_bytes()),
-            None => false,
-        };
-        if !ok {
+    // No API key supplied — try the JWT path. Per-user tokens are
+    // minted by davisgeometric.com/api/gigi/token and carry the user's
+    // namespace claim.
+    if claims.is_none() {
+        if let Some(ref secret) = state.jwt_secret {
+            let header_tok = req
+                .headers()
+                .get("authorization")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.strip_prefix("Bearer "))
+                .map(str::to_owned);
+            let query_tok = req.uri().query().and_then(|q| {
+                for pair in q.split('&') {
+                    let mut it = pair.splitn(2, '=');
+                    let k = it.next().unwrap_or("");
+                    if k == "gigi_token" {
+                        return it.next().map(str::to_owned);
+                    }
+                }
+                None
+            });
+            if let Some(tok) = header_tok.or(query_tok) {
+                match verify_gigi_token(&tok, secret) {
+                    Ok(c) => claims = Some(c),
+                    Err(reason) => {
+                        return Err((
+                            StatusCode::UNAUTHORIZED,
+                            Json(ErrorResponse {
+                                error: format!("Invalid token: {reason}"),
+                            }),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    // If GIGI_API_KEY is set we require *some* auth to land. If it's
+    // unset and JWT is also unconfigured, the engine is in
+    // open/dev mode and we let everything through with owner claims.
+    if claims.is_none() {
+        if state.api_key.is_some() || state.jwt_secret.is_some() {
             return Err((
                 StatusCode::UNAUTHORIZED,
                 Json(ErrorResponse {
@@ -942,8 +1111,90 @@ async fn auth_middleware(
                 }),
             ));
         }
+        claims = Some(GigiClaims::owner_via_api_key());
     }
+
+    // Stash claims so downstream handlers / middleware can read them.
+    req.extensions_mut().insert(claims.unwrap());
+
     Ok(next.run(req).await)
+}
+
+/// Middleware: tenant namespace enforcement on bundle-path operations.
+///
+/// Reads the `GigiClaims` left by `auth_middleware` and rejects any
+/// `/v1/bundles/<name>/*` request where `<name>` is outside the
+/// caller's namespace. Owner claims (from API key or `owner=true` in
+/// the JWT payload) bypass this check entirely.
+///
+/// This is the engine-side half of Phase B: the sheets client also
+/// strips/prefixes bundle names for UX, but ALL real authorization
+/// happens here so a hand-crafted HTTP request can't bypass the
+/// prefix. List endpoints (`GET /v1/bundles`) handle their own
+/// filtering — see `list_bundles`.
+async fn namespace_enforcement_middleware(
+    req: Request<axum::body::Body>,
+    next: Next,
+) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
+    // Path patterns we gate:
+    //   /v1/bundles/<name>/...
+    //   /v1/ws/<name>/dashboard
+    // Everything else (list, ws root, gql, health, etc.) is either
+    // separately guarded (handlers filter their own results) or
+    // intentionally global.
+    let path = req.uri().path().to_string();
+    let bundle_segment = parse_bundle_segment(&path);
+
+    if let Some(name) = bundle_segment {
+        // No claims means the engine is in open/dev mode (no auth
+        // configured). Skip enforcement.
+        if let Some(claims) = req.extensions().get::<GigiClaims>() {
+            if !claims.allows_bundle(&name) {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse {
+                        error: format!(
+                            "Bundle '{}' is outside your workspace namespace.",
+                            name
+                        ),
+                    }),
+                ));
+            }
+        }
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Pull `<name>` out of /v1/bundles/<name>/... or /v1/ws/<name>/dashboard.
+/// Returns None for /v1/bundles (list endpoint) and unrelated paths.
+fn parse_bundle_segment(path: &str) -> Option<String> {
+    let mut parts = path.trim_start_matches('/').split('/');
+    let first = parts.next()?;
+    if first != "v1" {
+        return None;
+    }
+    match parts.next()? {
+        "bundles" => {
+            let name = parts.next()?;
+            if name.is_empty() {
+                None
+            } else {
+                Some(name.to_string())
+            }
+        }
+        "ws" => {
+            // /v1/ws/<name>/dashboard — gate the per-bundle dashboard.
+            // The bare /v1/ws/dashboard (global) has no bundle segment.
+            let next = parts.next()?;
+            if next == "dashboard" {
+                None
+            } else {
+                Some(next.to_string())
+            }
+        }
+        _ => None,
+    }
 }
 
 /// Length-then-byte compare in constant time. Pulled inline so we don't
@@ -1184,11 +1435,24 @@ async fn metrics_handler(
         .unwrap()
 }
 
-async fn list_bundles(State(state): State<Arc<StreamState>>) -> Json<Vec<BundleInfo>> {
+async fn list_bundles(
+    State(state): State<Arc<StreamState>>,
+    req: Request<axum::body::Body>,
+) -> Json<Vec<BundleInfo>> {
+    // Per-user namespace filter: non-owner sessions only see bundles
+    // inside their `<ns>__*` prefix. Owner / API-key sessions see all
+    // bundles. Lifting this server-side is the security-critical half
+    // of Phase B — the sheets client also filters, but a hand-crafted
+    // HTTP request can't bypass this filter.
+    let claims = req.extensions().get::<GigiClaims>().cloned();
     let engine = state.engine.read().unwrap();
     let infos: Vec<BundleInfo> = engine
         .bundle_names()
         .iter()
+        .filter(|name| match &claims {
+            Some(c) => c.allows_bundle(name),
+            None => true,
+        })
         .map(|name| {
             let store = engine.bundle(name).unwrap();
             BundleInfo {
@@ -1203,8 +1467,56 @@ async fn list_bundles(State(state): State<Arc<StreamState>>) -> Json<Vec<BundleI
 
 async fn create_bundle(
     State(state): State<Arc<StreamState>>,
-    Json(req): Json<CreateBundleRequest>,
+    request: Request<axum::body::Body>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
+    // Pull claims out before consuming the body (extensions are
+    // detached from the Request, so cloning is free).
+    let claims = request.extensions().get::<GigiClaims>().cloned();
+
+    // Now manually parse the JSON body — we couldn't use the
+    // Json(req) extractor in the signature because we needed the raw
+    // Request first to read extensions.
+    let bytes = match axum::body::to_bytes(request.into_body(), 16 * 1024 * 1024).await {
+        Ok(b) => b,
+        Err(_) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: "Failed to read request body".to_string(),
+                }),
+            ));
+        }
+    };
+    let req: CreateBundleRequest = match serde_json::from_slice(&bytes) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!("Invalid JSON: {e}"),
+                }),
+            ));
+        }
+    };
+
+    // Phase B: non-owner sessions can only create bundles inside their
+    // own namespace. We can't intercept this in
+    // namespace_enforcement_middleware because the bundle name lives
+    // in the request body, not the URL.
+    if let Some(ref c) = claims {
+        if !c.allows_bundle(&req.name) {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse {
+                    error: format!(
+                        "New bundle name must start with your workspace prefix '{}__'.",
+                        c.ns
+                    ),
+                }),
+            ));
+        }
+    }
+
     let mut schema = BundleSchema::new(&req.name);
 
     // Keys become base fields, rest become fiber fields
@@ -7182,8 +7494,14 @@ async fn main() {
         )
         // Dashboard UI
         .route("/dashboard", get(serve_dashboard))
-        // Middleware: auth + rate limiting + readiness
+        // Middleware: auth + namespace enforcement + rate limiting + readiness.
+        // Layers wrap the inner router from the bottom up, so the order of
+        // events on a request is auth → namespace_enforcement → rate_limit
+        // → readiness → handler. auth populates `GigiClaims` in request
+        // extensions; namespace_enforcement reads those claims to gate
+        // /v1/bundles/<name>/* per Phase B.
         .layer(axum_mw::from_fn_with_state(state.clone(), auth_middleware))
+        .layer(axum_mw::from_fn(namespace_enforcement_middleware))
         .layer(axum_mw::from_fn_with_state(
             state.clone(),
             rate_limit_middleware,

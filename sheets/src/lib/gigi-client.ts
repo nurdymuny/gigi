@@ -241,15 +241,22 @@ export class SheetsClient {
   // Mutable so the App can update these after the async token fetch
   // completes without rebuilding the client (which would tear down
   // every open subscription + in-flight request).
+  //
+  // The engine accepts two credentials:
+  //   - `apiKey`: legacy / owner. Sent as `X-API-Key` header (HTTP)
+  //     or `?api_key=` query (WS). Grants unrestricted access.
+  //   - `bearerToken`: per-user signed token (Phase B). Sent as
+  //     `Authorization: Bearer …` header (HTTP) or `?gigi_token=`
+  //     query (WS). Carries the user's namespace and is enforced
+  //     server-side on every bundle op.
+  // Exactly one is non-null at a time, picked by davisgeometric's
+  // /api/gigi/token based on whether the user is the deployment owner.
   private apiKey: string | null;
+  private bearerToken: string | null;
   // Per-user namespace tag (`ns_<12-hex>`) handed back by
   // davisgeometric's /api/gigi/token. Non-owners only see/create
   // bundles whose name starts with `<namespace>__`. The deployment
   // owner has isOwner=true and sees every bundle without prefixing.
-  // CAVEAT (Phase A): the engine doesn't verify the namespace yet;
-  // isolation is enforced only here. A motivated user could call the
-  // engine directly with the shared API key. Phase B (JWT auth in the
-  // engine) closes this gap.
   private namespace: string;
   private isOwner: boolean;
 
@@ -259,6 +266,7 @@ export class SheetsClient {
     this.timeoutMs = opts.timeoutMs ?? 30_000;
     this.wsFactory = opts.WebSocket ?? defaultWebSocketFactory;
     this.apiKey = opts.apiKey ?? null;
+    this.bearerToken = null;
     this.namespace = "";
     // Default to owner semantics until /api/gigi/token says otherwise,
     // so a misconfigured token response doesn't silently hide existing
@@ -270,14 +278,29 @@ export class SheetsClient {
    * Update the engine API key. Calls made before this lands will fail
    * with 401 against a locked-down engine; the App should defer the
    * first request until the key resolves (or display a "loading
-   * engine access…" state in the UI).
+   * engine access…" state in the UI). Setting an API key clears any
+   * previously-set bearer token — the two are mutually exclusive.
    */
   setApiKey(key: string | null): void {
     this.apiKey = key && key.length > 0 ? key : null;
+    if (this.apiKey) this.bearerToken = null;
+  }
+
+  /**
+   * Set a Phase-B signed bearer token. Cleared if `null` is passed.
+   * Setting a token clears any previously-set API key.
+   */
+  setBearerToken(token: string | null): void {
+    this.bearerToken = token && token.length > 0 ? token : null;
+    if (this.bearerToken) this.apiKey = null;
   }
 
   hasApiKey(): boolean {
     return this.apiKey !== null;
+  }
+
+  hasCredential(): boolean {
+    return this.apiKey !== null || this.bearerToken !== null;
   }
 
   /**
@@ -324,12 +347,17 @@ export class SheetsClient {
     const m = this.baseUrl.match(/^https?:\/\/(.+)$/);
     const proto = this.baseUrl.startsWith("https") ? "wss" : "ws";
     const hostPath = m ? m[1] : this.baseUrl;
-    // Append api_key as a query param because browsers can't add custom
-    // headers to WebSocket handshakes. The engine accepts the key from
-    // either the X-API-Key header (HTTP) or this query param (WS).
+    // Browsers can't set custom headers on a WebSocket handshake, so
+    // we pass the credential as a query parameter instead. Engine
+    // accepts either api_key= (legacy/owner) or gigi_token= (tenant
+    // bearer token). Mutually exclusive — only the one we hold gets
+    // attached.
+    const sep = path.includes("?") ? "&" : "?";
     if (this.apiKey) {
-      const sep = path.includes("?") ? "&" : "?";
       return `${proto}://${hostPath}${path}${sep}api_key=${encodeURIComponent(this.apiKey)}`;
+    }
+    if (this.bearerToken) {
+      return `${proto}://${hostPath}${path}${sep}gigi_token=${encodeURIComponent(this.bearerToken)}`;
     }
     return `${proto}://${hostPath}${path}`;
   }
@@ -714,14 +742,13 @@ export class SheetsClient {
   }
 
   /**
-   * Layer the engine API key onto whatever headers the caller passed.
-   * Accepts any of the three init.headers shapes (Headers, array of
-   * tuples, plain record) and always returns a plain record so the
-   * final fetch call has a stable shape. No-op when the key is unset
-   * (during development against a key-less local engine).
+   * Layer the engine credential onto whatever headers the caller
+   * passed. Sends `X-API-Key` for the owner credential or
+   * `Authorization: Bearer <token>` for the tenant bearer token.
+   * No-op when neither is set (dev against a key-less local engine).
    */
   private withAuthHeaders(init?: RequestInit): RequestInit {
-    if (!this.apiKey) return init ?? {};
+    if (!this.apiKey && !this.bearerToken) return init ?? {};
     const merged: Record<string, string> = {};
     const src = init?.headers;
     if (src instanceof Headers) {
@@ -733,7 +760,11 @@ export class SheetsClient {
     } else if (src && typeof src === "object") {
       Object.assign(merged, src as Record<string, string>);
     }
-    merged["x-api-key"] = this.apiKey;
+    if (this.apiKey) {
+      merged["x-api-key"] = this.apiKey;
+    } else if (this.bearerToken) {
+      merged["authorization"] = `Bearer ${this.bearerToken}`;
+    }
     return { ...(init ?? {}), headers: merged };
   }
 

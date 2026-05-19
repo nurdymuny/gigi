@@ -33,6 +33,11 @@ libc = "0.2"
 base64 = "0.22"
 instant-distance = "0.6"
 uuid = { version = "1", features = ["v4"] }
+# Phase B multi-tenant: HMAC-SHA256 verification of compact signed
+# tokens minted by davisgeometric.com. Engine extracts {namespace,
+# owner, exp} from each token to enforce per-tenant bundle isolation.
+hmac = "0.12"
+sha2 = "0.10"
 
 [[bin]]
 name = "gigi-convert"

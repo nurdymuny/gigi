@@ -167,10 +167,24 @@ export function App() {
     );
   }
 
-  // Engine-access gate. Guests still see the public LandingPage (no
-  // engine calls) via PickerShell's own branch, so we only short-circuit
-  // signed-in users that the engine refuses. Loading state for a guest
-  // is uninteresting — the picker can render itself.
+  // Engine-access gate.
+  //
+  // PickerShell + BundleApp both fire engine calls on mount (listBundles,
+  // schema, …). If we let them mount before the engine key is in the
+  // client, those calls 401 against the locked engine. So we gate the
+  // entire initial-render window:
+  //
+  //   1. account hook still resolving      → loading panel (also covers
+  //      the case where the user has a session — we don't yet know)
+  //   2. user signed in, token fetching    → loading panel
+  //   3. user signed in, token denied      → "private deployment" panel
+  //   4. user signed in, token errored     → "couldn't reach engine"
+  //
+  // Guests fall through to PickerShell, which renders LandingPage —
+  // marketing-only surface, no engine calls.
+  if (gateAccount.state === "loading") {
+    return <EngineLockedPanel reason="loading" />;
+  }
   if (gateAccount.state === "user") {
     if (engineAccess.kind === "loading") {
       return <EngineLockedPanel reason="loading" />;

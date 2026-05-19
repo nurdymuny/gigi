@@ -67,8 +67,10 @@ import {
 // for the "open" fallback link); App itself routes through useBundleRoute.
 import { useAccount } from "./lib/use-account";
 import { useBundleRoute } from "./lib/use-bundle-route";
+import { useEngineAccess } from "./lib/use-engine-access";
 import { WelcomePage } from "./components/WelcomePage";
 import { AccountPage } from "./components/AccountPage";
+import { EngineLockedPanel } from "./components/EngineLockedPanel";
 import { useEditHistory } from "./lib/use-edit-history";
 import { usePrismCredits } from "./lib/use-prism-credits";
 import { useGlobalShortcuts, type ShortcutBinding } from "./lib/use-global-shortcuts";
@@ -113,6 +115,12 @@ const DEFAULT_SERVER = resolveEngineBaseUrl();
 export function App() {
   const client = useMemo(() => new SheetsClient({ baseUrl: DEFAULT_SERVER }), []);
   const route = useBundleRoute();
+  // One auth + engine-access pair for the whole bundle/picker path.
+  // The child components (BundleApp, PickerShell) instantiate their
+  // own useAccount for now — keeping this hook here is what enables the
+  // app-level "private deployment" gate before any engine call fires.
+  const gateAccount = useAccount();
+  const engineAccess = useEngineAccess(client, gateAccount);
   // Tour state at the app level so it survives the picker → bundle-app
   // transition (the first tour step navigates to a workflow bundle, which
   // unmounts PickerShell and mounts BundleApp; Tutorial keeps running).
@@ -157,6 +165,36 @@ export function App() {
         onBackToPicker={route.navigateToPicker}
       />
     );
+  }
+
+  // Engine-access gate. Guests still see the public LandingPage (no
+  // engine calls) via PickerShell's own branch, so we only short-circuit
+  // signed-in users that the engine refuses. Loading state for a guest
+  // is uninteresting — the picker can render itself.
+  if (gateAccount.state === "user") {
+    if (engineAccess.kind === "loading") {
+      return <EngineLockedPanel reason="loading" />;
+    }
+    if (engineAccess.kind === "denied") {
+      return (
+        <EngineLockedPanel
+          reason="denied"
+          message={engineAccess.message}
+          onOpenAccount={() => route.navigateToSystem("account")}
+          onSignOut={() => void gateAccount.signOut()}
+        />
+      );
+    }
+    if (engineAccess.kind === "error") {
+      return (
+        <EngineLockedPanel
+          reason="error"
+          message={engineAccess.message}
+          onOpenAccount={() => route.navigateToSystem("account")}
+          onSignOut={() => void gateAccount.signOut()}
+        />
+      );
+    }
   }
 
   return (

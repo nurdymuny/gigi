@@ -890,8 +890,11 @@ async fn readiness_middleware(
 }
 
 /// Middleware: API key authentication.
-/// If GIGI_API_KEY is set, all requests must include `X-API-Key` header.
-/// Health endpoint is excluded (checked in the handler itself).
+/// If GIGI_API_KEY is set, all requests must present the matching key,
+/// supplied either as the `X-API-Key` header (HTTP) or as an `api_key`
+/// query-string parameter (WebSocket upgrades, which can't carry custom
+/// headers from a browser). Health endpoint is excluded so liveness
+/// probes don't need the key.
 async fn auth_middleware(
     State(state): State<Arc<StreamState>>,
     req: Request<axum::body::Body>,
@@ -903,19 +906,59 @@ async fn auth_middleware(
     }
 
     if let Some(ref expected_key) = state.api_key {
-        match req.headers().get("x-api-key").and_then(|v| v.to_str().ok()) {
-            Some(provided) if provided == expected_key => {}
-            _ => {
-                return Err((
-                    StatusCode::UNAUTHORIZED,
-                    Json(ErrorResponse {
-                        error: "Invalid or missing API key".to_string(),
-                    }),
-                ));
+        let header_key = req
+            .headers()
+            .get("x-api-key")
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned);
+
+        // Browser WebSocket clients cannot set arbitrary headers, so the
+        // sheets app passes the key as `?api_key=...` on the upgrade URL.
+        // Parse it out of the URI's query string. The API key is a
+        // URL-safe random string by construction (base64url, no '%' or
+        // '+'), so a literal compare is sufficient — no percent decode
+        // needed.
+        let query_key = req.uri().query().and_then(|q| {
+            for pair in q.split('&') {
+                let mut it = pair.splitn(2, '=');
+                let k = it.next().unwrap_or("");
+                if k == "api_key" {
+                    return it.next().map(str::to_owned);
+                }
             }
+            None
+        });
+
+        let provided = header_key.or(query_key);
+        let ok = match provided.as_deref() {
+            Some(p) => constant_time_eq(p.as_bytes(), expected_key.as_bytes()),
+            None => false,
+        };
+        if !ok {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse {
+                    error: "Invalid or missing API key".to_string(),
+                }),
+            ));
         }
     }
     Ok(next.run(req).await)
+}
+
+/// Length-then-byte compare in constant time. Pulled inline so we don't
+/// add a crate dep just for one call site. The header / query branches
+/// must take indistinguishable time so an attacker can't probe key
+/// material via timing.
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff: u8 = 0;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
 }
 
 /// Middleware: Rate limiting (per-IP sliding window).

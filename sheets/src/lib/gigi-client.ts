@@ -192,6 +192,15 @@ export interface SheetsClientOptions {
    * The factory receives the resolved ws:// URL.
    */
   WebSocket?: WebSocketFactory;
+  /**
+   * Engine API key. When set, the client adds `X-API-Key` to every HTTP
+   * request and appends `?api_key=…` to WebSocket upgrade URLs. The key
+   * is fetched from davisgeometric.com/api/gigi/token after the user
+   * signs in (see App.tsx), so the client is typically constructed
+   * without a key and later updated via `setApiKey`. The engine refuses
+   * unauthenticated calls when GIGI_API_KEY is set on the deployment.
+   */
+  apiKey?: string | null;
 }
 
 export type WebSocketFactory = (url: string) => MinimalWebSocket;
@@ -229,12 +238,31 @@ export class SheetsClient {
   private readonly fetcher: Fetcher;
   private readonly timeoutMs: number;
   private readonly wsFactory: WebSocketFactory;
+  // Mutable so the App can update the key after the async token fetch
+  // completes without rebuilding the client (which would tear down
+  // every open subscription + in-flight request).
+  private apiKey: string | null;
 
   constructor(opts: SheetsClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.fetcher = opts.fetch ?? globalThis.fetch.bind(globalThis);
     this.timeoutMs = opts.timeoutMs ?? 30_000;
     this.wsFactory = opts.WebSocket ?? defaultWebSocketFactory;
+    this.apiKey = opts.apiKey ?? null;
+  }
+
+  /**
+   * Update the engine API key. Calls made before this lands will fail
+   * with 401 against a locked-down engine; the App should defer the
+   * first request until the key resolves (or display a "loading
+   * engine access…" state in the UI).
+   */
+  setApiKey(key: string | null): void {
+    this.apiKey = key && key.length > 0 ? key : null;
+  }
+
+  hasApiKey(): boolean {
+    return this.apiKey !== null;
   }
 
   /** Derive ws:// URL from the configured base URL. */
@@ -242,6 +270,13 @@ export class SheetsClient {
     const m = this.baseUrl.match(/^https?:\/\/(.+)$/);
     const proto = this.baseUrl.startsWith("https") ? "wss" : "ws";
     const hostPath = m ? m[1] : this.baseUrl;
+    // Append api_key as a query param because browsers can't add custom
+    // headers to WebSocket handshakes. The engine accepts the key from
+    // either the X-API-Key header (HTTP) or this query param (WS).
+    if (this.apiKey) {
+      const sep = path.includes("?") ? "&" : "?";
+      return `${proto}://${hostPath}${path}${sep}api_key=${encodeURIComponent(this.apiKey)}`;
+    }
     return `${proto}://${hostPath}${path}`;
   }
 
@@ -368,9 +403,11 @@ export class SheetsClient {
     let res: Response;
     try {
       res = await this.fetcher(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query }),
+        ...this.withAuthHeaders({
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ query }),
+        }),
         signal: ac.signal,
       });
     } catch (err) {
@@ -605,12 +642,39 @@ export class SheetsClient {
     return applyOverlay(normalizeSchema(body as BundleSchema));
   }
 
+  /**
+   * Layer the engine API key onto whatever headers the caller passed.
+   * Accepts any of the three init.headers shapes (Headers, array of
+   * tuples, plain record) and always returns a plain record so the
+   * final fetch call has a stable shape. No-op when the key is unset
+   * (during development against a key-less local engine).
+   */
+  private withAuthHeaders(init?: RequestInit): RequestInit {
+    if (!this.apiKey) return init ?? {};
+    const merged: Record<string, string> = {};
+    const src = init?.headers;
+    if (src instanceof Headers) {
+      src.forEach((v, k) => {
+        merged[k] = v;
+      });
+    } else if (Array.isArray(src)) {
+      for (const [k, v] of src) merged[k] = v;
+    } else if (src && typeof src === "object") {
+      Object.assign(merged, src as Record<string, string>);
+    }
+    merged["x-api-key"] = this.apiKey;
+    return { ...(init ?? {}), headers: merged };
+  }
+
   private async request(url: string, init: RequestInit): Promise<unknown> {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), this.timeoutMs);
     let res: Response;
     try {
-      res = await this.fetcher(url, { ...init, signal: ac.signal });
+      res = await this.fetcher(url, {
+        ...this.withAuthHeaders(init),
+        signal: ac.signal,
+      });
     } catch (err) {
       const name = (err as { name?: string })?.name;
       if (name === "AbortError") {

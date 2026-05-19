@@ -1,0 +1,335 @@
+.account-page-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f6f7fb;
+  color: #0b1220;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+.account-page-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 1px solid #eef0f4;
+  background: #fff;
+}
+
+.account-page-brand-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.account-page-brand-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.account-page-brand-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.account-page-brand-sub {
+  font-size: 11.5px;
+  color: #6b7280;
+  margin-left: 4px;
+}
+
+.account-page-back {
+  background: transparent;
+  border: 1px solid #e6e8ee;
+  color: #4b5565;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.account-page-back:hover {
+  background: #f3f4f6;
+}
+
+.account-page-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 24px 48px;
+  gap: 18px;
+}
+
+.account-page-card {
+  width: 100%;
+  max-width: 560px;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 14px;
+  padding: 24px 26px;
+  box-shadow: 0 6px 24px rgba(11, 18, 32, 0.05);
+}
+
+.account-page-h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+.account-page-h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.account-page-p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #4b5565;
+  margin: 0 0 14px;
+}
+
+.account-page-empty {
+  color: #94a3b8;
+  margin: 0;
+}
+
+.account-page-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.account-page-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.account-page-identity-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-page-eyebrow {
+  color: #8a93a4;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.account-page-email {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  color: #0b1220;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.account-page-tier-row {
+  margin-top: 8px;
+}
+
+.account-page-tier {
+  display: inline-flex;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.account-page-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.account-page-btn {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b1220;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.account-page-btn:hover {
+  background: #f3f4f6;
+}
+
+.account-page-btn-primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+
+.account-page-btn-primary:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+.account-page-btn-danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.account-page-btn-danger:hover {
+  background: #fde8e8;
+}
+
+.account-page-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.account-page-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.account-page-link-btn {
+  background: transparent;
+  border: 0;
+  color: #4f46e5;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.account-page-link-btn:hover {
+  text-decoration: underline;
+}
+
+.account-page-terms-status {
+  font-size: 13px;
+  color: #4b5565;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.account-page-terms-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #0b1220;
+}
+
+.account-page-terms-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd2dc;
+}
+
+.account-page-terms-dot-ok {
+  background: #10b981;
+}
+
+.account-page-terms-dot-warn {
+  background: #f59e0b;
+}
+
+.account-page-terms-meta {
+  font-size: 12.5px;
+  color: #6b7280;
+}
+
+.account-page-terms-meta code {
+  font-size: 12px;
+  background: #f3f4f6;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #0b1220;
+}
+
+.account-page-terms-warn {
+  color: #b91c1c;
+}
+
+.account-page-tabs {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.account-page-tab {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #fafbfc;
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.account-page-tab:hover {
+  background: #fff;
+  border-color: #c7d2fe;
+}
+
+.account-page-tab-name {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  color: #0b1220;
+}
+
+.account-page-tab-go {
+  font-size: 11.5px;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.account-page-footer {
+  padding: 18px 28px 24px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+
+.account-page-footer a {
+  color: #6b7280;
+}

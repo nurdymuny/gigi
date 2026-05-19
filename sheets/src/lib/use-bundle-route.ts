@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { bundleFromPath, pathForBundle } from "./route";
+import {
+  bundleFromPath,
+  pathForBundle,
+  pathForSystem,
+  systemPageFromPath,
+  type SystemPage,
+} from "./route";
 
 /**
  * Client-side router for bundle navigation, with multi-tab support.
@@ -39,8 +45,14 @@ function writeTabs(tabs: string[]): void {
 }
 
 export interface BundleRoute {
-  /** The currently-active bundle (URL path segment). null = picker. */
+  /** The currently-active bundle (URL path segment). null = picker or system page. */
   bundle: string | null;
+  /**
+   * Reserved system pages that live alongside bundles under /gigi/sheets/.
+   * When set, the app should render the corresponding shell (welcome /
+   * account) instead of the picker or bundle UI.
+   */
+  systemPage: SystemPage | null;
   /** The full list of open bundle tabs, in insertion order. */
   tabs: string[];
   /** Switch active to this bundle. Adds to tabs if not already open. */
@@ -51,11 +63,18 @@ export interface BundleRoute {
   closeTab: (name: string) => void;
   /** Return to the picker (no active bundle). */
   navigateToPicker: () => void;
+  /** Navigate to a reserved system page (welcome / account). */
+  navigateToSystem: (page: SystemPage) => void;
 }
 
 export function useBundleRoute(): BundleRoute {
   const [bundle, setBundle] = useState<string | null>(() =>
     typeof window !== "undefined" ? bundleFromPath(window.location.pathname) : null,
+  );
+  const [systemPage, setSystemPage] = useState<SystemPage | null>(() =>
+    typeof window !== "undefined"
+      ? systemPageFromPath(window.location.pathname)
+      : null,
   );
   const [tabs, setTabs] = useState<string[]>(() => {
     const stored = readTabs();
@@ -75,6 +94,7 @@ export function useBundleRoute(): BundleRoute {
   useEffect(() => {
     function onPop() {
       setBundle(bundleFromPath(window.location.pathname));
+      setSystemPage(systemPageFromPath(window.location.pathname));
     }
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -87,6 +107,7 @@ export function useBundleRoute(): BundleRoute {
         window.history.pushState({}, "", next);
       }
       setBundle(name);
+      setSystemPage(null);
       setTabs((prev) => {
         if (prev.includes(name)) return prev;
         const updated = [...prev, name];
@@ -96,6 +117,15 @@ export function useBundleRoute(): BundleRoute {
     },
     [],
   );
+
+  const navigateToSystem = useCallback((page: SystemPage) => {
+    const next = pathForSystem(page);
+    if (window.location.pathname !== next) {
+      window.history.pushState({}, "", next);
+    }
+    setBundle(null);
+    setSystemPage(page);
+  }, []);
 
   const openInNewTab = useCallback(
     (name: string) => {
@@ -148,6 +178,7 @@ export function useBundleRoute(): BundleRoute {
       window.history.pushState({}, "", next);
     }
     setBundle(null);
+    setSystemPage(null);
     // Keep tabs intact — going to picker doesn't close them.
   }, []);
 
@@ -162,10 +193,12 @@ export function useBundleRoute(): BundleRoute {
 
   return {
     bundle,
+    systemPage,
     tabs,
     navigateToBundle,
     openInNewTab,
     closeTab,
     navigateToPicker,
+    navigateToSystem,
   };
 }

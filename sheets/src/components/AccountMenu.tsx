@@ -8,6 +8,12 @@ export interface AccountMenuProps {
   subscription: Subscription | null | undefined;
   onClose: () => void;
   onSignOut: () => Promise<void>;
+  /**
+   * If provided, the menu renders a "View full account" item that takes
+   * the user to the sheets-branded /gigi/sheets/account dashboard. Left
+   * undefined we just show the legacy "Manage account ↗" external link.
+   */
+  onOpenFullAccount?: () => void;
 }
 
 /**
@@ -20,6 +26,7 @@ export function AccountMenu({
   subscription,
   onClose,
   onSignOut,
+  onOpenFullAccount,
 }: AccountMenuProps) {
   useEffect(() => {
     if (!open) return;
@@ -61,13 +68,23 @@ export function AccountMenu({
           ) : null}
         </div>
         <div className="account-menu-body">
+          {onOpenFullAccount ? (
+            <button
+              type="button"
+              className="account-link"
+              onClick={onOpenFullAccount}
+              data-testid="account-open-full"
+            >
+              View account →
+            </button>
+          ) : null}
           <a
             href="https://davisgeometric.com/members/"
             className="account-link"
             target="_blank"
             rel="noopener noreferrer"
           >
-            Manage account ↗
+            Manage subscription ↗
           </a>
           <button
             type="button"

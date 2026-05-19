@@ -199,12 +199,27 @@ export function useAccount(opts: { baseUrl?: string | null } = {}): Account {
             "Sign-in is disabled in this build. Set VITE_AUTH_BASE_URL to enable.",
         };
       }
+      // Drop the user back on the sheets-branded /welcome page after they
+      // click the magic link. /welcome handles the T&Cs gate inline and
+      // then bounces to `next` (the bundle they were on, or /gigi/sheets
+      // root). We build the path from the current window location so a
+      // user signing in from /gigi/sheets/some-bundle lands back there.
+      let returnTo = "/gigi/sheets/welcome";
+      if (typeof window !== "undefined") {
+        const here = window.location.pathname + window.location.search;
+        // Only forward an internal sheets path — anything else falls back
+        // to the sheets root so we don't echo arbitrary URLs through the
+        // server-side whitelist (defense in depth; the server enforces
+        // its own check).
+        const next = here.startsWith("/gigi/sheets") ? here : "/gigi/sheets/";
+        returnTo = `/gigi/sheets/welcome?next=${encodeURIComponent(next)}`;
+      }
       try {
         const res = await fetch(`${base}/api/auth/magic-link`, {
           method: "POST",
           credentials: "include",
           headers: { "content-type": "application/json", accept: "application/json" },
-          body: JSON.stringify({ email: addr }),
+          body: JSON.stringify({ email: addr, returnTo, app: "sheets" }),
         });
         const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
         if (res.ok) {

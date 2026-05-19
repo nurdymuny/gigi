@@ -67,6 +67,8 @@ import {
 // for the "open" fallback link); App itself routes through useBundleRoute.
 import { useAccount } from "./lib/use-account";
 import { useBundleRoute } from "./lib/use-bundle-route";
+import { WelcomePage } from "./components/WelcomePage";
+import { AccountPage } from "./components/AccountPage";
 import { useEditHistory } from "./lib/use-edit-history";
 import { usePrismCredits } from "./lib/use-prism-credits";
 import { useGlobalShortcuts, type ShortcutBinding } from "./lib/use-global-shortcuts";
@@ -124,6 +126,39 @@ export function App() {
     [client, route.navigateToBundle],
   );
 
+  // System pages (/welcome, /account) live outside the bundle UI. They
+  // pre-empt picker + BundleApp because their concerns (T&Cs flow,
+  // account dashboard) don't depend on a loaded bundle and shouldn't
+  // share the bundle chrome.
+  if (route.systemPage === "welcome") {
+    return (
+      <SystemWelcome
+        onDone={(next) => {
+          // Hand the user back to where they wanted to go. If `next` is a
+          // bundle path, route through navigateToBundle so the tab list
+          // picks it up; otherwise fall back to the picker.
+          const stripped = next.startsWith("/gigi/sheets/")
+            ? next.slice("/gigi/sheets/".length).split(/[?#]/)[0]
+            : "";
+          if (stripped && /^[A-Za-z_][A-Za-z0-9_-]*$/.test(stripped)) {
+            route.navigateToBundle(stripped);
+          } else {
+            route.navigateToPicker();
+          }
+        }}
+      />
+    );
+  }
+  if (route.systemPage === "account") {
+    return (
+      <SystemAccount
+        openTabs={route.tabs}
+        onOpenBundle={route.navigateToBundle}
+        onBackToPicker={route.navigateToPicker}
+      />
+    );
+  }
+
   return (
     <>
       {!route.bundle ? (
@@ -133,6 +168,7 @@ export function App() {
           loadError={null}
           onPickBundle={route.navigateToBundle}
           onStartTour={() => setTourOpen(true)}
+          onOpenAccount={() => route.navigateToSystem("account")}
         />
       ) : (
         // No `key` here intentionally — switching tabs should be smooth, not a
@@ -145,6 +181,7 @@ export function App() {
           onNavigateToBundle={route.navigateToBundle}
           onCloseTab={route.closeTab}
           onNavigateToPicker={route.navigateToPicker}
+          onOpenAccount={() => route.navigateToSystem("account")}
         />
       )}
       <Tutorial
@@ -157,6 +194,64 @@ export function App() {
   );
 }
 
+/**
+ * Thin wrappers that instantiate the auth hook for the system pages.
+ * Kept here (not inlined) so they participate in React's normal hook
+ * rules — useAccount sets up its own session fetch effect.
+ */
+function SystemWelcome({ onDone }: { onDone: (next: string) => void }) {
+  const account = useAccount();
+  const [signInOpen, setSignInOpen] = useState(false);
+  const params = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : "",
+  );
+  const next = params.get("next") ?? "/gigi/sheets/";
+  return (
+    <>
+      <WelcomePage
+        account={account}
+        next={next}
+        onRequestSignIn={() => setSignInOpen(true)}
+        onDone={onDone}
+      />
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        onSignIn={account.signInWithEmail}
+      />
+    </>
+  );
+}
+
+function SystemAccount({
+  openTabs,
+  onOpenBundle,
+  onBackToPicker,
+}: {
+  openTabs: string[];
+  onOpenBundle: (name: string) => void;
+  onBackToPicker: () => void;
+}) {
+  const account = useAccount();
+  const [signInOpen, setSignInOpen] = useState(false);
+  return (
+    <>
+      <AccountPage
+        account={account}
+        openTabs={openTabs}
+        onOpenBundle={onOpenBundle}
+        onBackToPicker={onBackToPicker}
+        onRequestSignIn={() => setSignInOpen(true)}
+      />
+      <SignInModal
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        onSignIn={account.signInWithEmail}
+      />
+    </>
+  );
+}
+
 interface BundleAppProps {
   client: SheetsClient;
   bundleName: string;
@@ -164,6 +259,8 @@ interface BundleAppProps {
   onNavigateToBundle: (name: string) => void;
   onCloseTab: (name: string) => void;
   onNavigateToPicker: () => void;
+  /** Jump to /gigi/sheets/account (sheets-branded account dashboard). */
+  onOpenAccount: () => void;
 }
 
 function BundleApp({
@@ -173,6 +270,7 @@ function BundleApp({
   onNavigateToBundle,
   onCloseTab,
   onNavigateToPicker,
+  onOpenAccount,
 }: BundleAppProps) {
   const {
     schema,
@@ -2771,6 +2869,10 @@ function BundleApp({
         subscription={account.subscription}
         onClose={() => setAccountMenuOpen(false)}
         onSignOut={account.signOut}
+        onOpenFullAccount={() => {
+          setAccountMenuOpen(false);
+          onOpenAccount();
+        }}
       />
       <InsertRowModal
         open={insertRowOpen}
@@ -2904,15 +3006,18 @@ function PickerShell({
   loadError,
   onPickBundle,
   onStartTour,
+  onOpenAccount,
 }: {
   client: SheetsClient;
   requestedBundle: string | null;
   loadError: ReturnType<typeof useBundle>["error"];
   onPickBundle?: (name: string) => void;
   onStartTour?: () => void;
+  onOpenAccount?: () => void;
 }) {
   const account = useAccount();
   const [signInOpen, setSignInOpen] = useState<boolean>(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState<boolean>(false);
 
   // Public landing: shown when an unauthenticated visitor hits the root
   // path (no requested bundle, no load error). Signed-in users — and
@@ -2958,6 +3063,36 @@ function PickerShell({
           <span className="sep">·</span>
           <span className="mono">{DEFAULT_SERVER}</span>
         </div>
+        <div className="topbar-right">
+          <button
+            type="button"
+            className={`topbar-avatar topbar-avatar-${account.state}`}
+            onClick={() => {
+              if (account.state === "user") setAccountMenuOpen(true);
+              else setSignInOpen(true);
+            }}
+            data-testid="topbar-avatar"
+            data-state={account.state}
+            aria-label={
+              account.state === "user"
+                ? `Signed in as ${account.email}`
+                : "Sign in"
+            }
+            title={
+              account.state === "user"
+                ? `${account.email} · click for account menu`
+                : account.state === "loading"
+                  ? "Checking session…"
+                  : "Sign in (optional) — save views to the cloud"
+            }
+          >
+            {account.state === "user"
+              ? account.initials
+              : account.state === "loading"
+                ? "…"
+                : "↪"}
+          </button>
+        </div>
       </header>
       <main className="main">
         <BundlePicker
@@ -2979,6 +3114,21 @@ function PickerShell({
         open={signInOpen}
         onClose={() => setSignInOpen(false)}
         onSignIn={account.signInWithEmail}
+      />
+      <AccountMenu
+        open={accountMenuOpen}
+        email={account.email ?? ""}
+        subscription={account.subscription}
+        onClose={() => setAccountMenuOpen(false)}
+        onSignOut={account.signOut}
+        onOpenFullAccount={
+          onOpenAccount
+            ? () => {
+                setAccountMenuOpen(false);
+                onOpenAccount();
+              }
+            : undefined
+        }
       />
     </div>
   );

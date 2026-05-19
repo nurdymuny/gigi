@@ -13,17 +13,18 @@
           via HTTP headers if you don't want the `https:` catch-all.
         - `style-src 'self' 'unsafe-inline'` permits the inline styles
           React inserts; tightening this needs a nonce strategy.
-        - `frame-ancestors 'self'` — same-origin embedding only. Hosts
-          who want to surface the Sheets UI inside another property
-          should override this at the edge (e.g. `frame-ancestors 'self'
-          https://docs.davisgeometric.com`) rather than reopening the
-          wildcard, which would invite clickjacking.
+        - `frame-ancestors` is intentionally NOT included here because
+          browsers ignore it when delivered via a `<meta>` element (per
+          the CSP spec). Clickjacking protection should be set as an
+          HTTP header at the edge — the davisgeometric.com deployment
+          already returns `X-Frame-Options: DENY`, which covers the
+          same surface.
         - `img-src` allows data: URIs (icon svgs encoded inline) plus self.
       Referrer-Policy keeps full URLs from leaking to external resources.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' http://localhost:3142 ws://localhost:3142 https: wss:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' http://localhost:3142 ws://localhost:3142 https: wss:; base-uri 'self'; form-action 'self'"
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>GIGI Sheets · Davis Geometric</title>

@@ -258,11 +258,13 @@ function SystemWelcome({ onDone }: { onDone: (next: string) => void }) {
     typeof window !== "undefined" ? window.location.search : "",
   );
   const next = params.get("next") ?? "/gigi/sheets/";
+  const error = params.get("error");
   return (
     <>
       <WelcomePage
         account={account}
         next={next}
+        error={error}
         onRequestSignIn={() => setSignInOpen(true)}
         onDone={onDone}
       />

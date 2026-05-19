@@ -26,10 +26,33 @@ export interface WelcomePageProps {
   account: Account;
   /** Where to send the user once they're signed in + agreed. */
   next: string;
+  /**
+   * Sign-in failure reason carried over from /api/auth/verify when the
+   * magic-link token couldn't be exchanged for a session (expired,
+   * already used, etc.). Surfaces a sheets-branded banner so the user
+   * doesn't get bounced into the davisgeometric members shell.
+   */
+  error?: string | null;
   /** Open the sheets sign-in modal. */
   onRequestSignIn: () => void;
   /** Bounce here when the user is already done. */
   onDone: (next: string) => void;
+}
+
+function errorCopy(code: string | null | undefined): string | null {
+  if (!code) return null;
+  switch (code) {
+    case "invalid_token":
+      return "That sign-in link has expired or was already used. Send yourself a fresh one to continue.";
+    case "missing_token":
+      return "The sign-in link was missing or malformed. Send yourself a new one.";
+    case "account_deactivated":
+      return "This account has been deactivated. Reach out to bee@davisgeometric.com if you think that's wrong.";
+    case "server_error":
+      return "We hit a snag verifying your sign-in. Try sending a new link.";
+    default:
+      return "Sign-in didn't complete. Send yourself a fresh link to try again.";
+  }
 }
 
 type CheckState =
@@ -55,6 +78,7 @@ function resolveAuthBase(): string {
 export function WelcomePage({
   account,
   next,
+  error,
   onRequestSignIn,
   onDone,
 }: WelcomePageProps) {
@@ -259,10 +283,22 @@ export function WelcomePage({
 
         {check.kind === "needs_signin" ? (
           <Panel>
-            <h1 className="welcome-h1">Sign in to continue</h1>
+            {errorCopy(error) ? (
+              <div
+                className="welcome-error-banner"
+                role="alert"
+                data-testid="welcome-error-banner"
+              >
+                {errorCopy(error)}
+              </div>
+            ) : null}
+            <h1 className="welcome-h1">
+              {error ? "Let's try that again" : "Sign in to continue"}
+            </h1>
             <p className="welcome-p">
-              Your session expired or you haven't signed in yet. Send yourself a
-              magic link to land back here.
+              {error
+                ? "Click below to send yourself a fresh sign-in link."
+                : "Your session expired or you haven't signed in yet. Send yourself a magic link to land back here."}
             </p>
             <button
               type="button"

@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  bundleFromPath,
+  bundleFromLocation,
   pathForBundle,
   pathForSystem,
   systemPageFromPath,
   type SystemPage,
 } from "./route";
+
+function currentBundle(): string | null {
+  if (typeof window === "undefined") return null;
+  return bundleFromLocation(window.location.pathname, window.location.hash);
+}
 
 /**
  * Client-side router for bundle navigation, with multi-tab support.
@@ -68,9 +73,7 @@ export interface BundleRoute {
 }
 
 export function useBundleRoute(): BundleRoute {
-  const [bundle, setBundle] = useState<string | null>(() =>
-    typeof window !== "undefined" ? bundleFromPath(window.location.pathname) : null,
-  );
+  const [bundle, setBundle] = useState<string | null>(() => currentBundle());
   const [systemPage, setSystemPage] = useState<SystemPage | null>(() =>
     typeof window !== "undefined"
       ? systemPageFromPath(window.location.pathname)
@@ -78,10 +81,7 @@ export function useBundleRoute(): BundleRoute {
   );
   const [tabs, setTabs] = useState<string[]>(() => {
     const stored = readTabs();
-    const initialBundle =
-      typeof window !== "undefined"
-        ? bundleFromPath(window.location.pathname)
-        : null;
+    const initialBundle = currentBundle();
     // Make sure the currently-active bundle is in the tab list.
     if (initialBundle && !stored.includes(initialBundle)) {
       const next = [...stored, initialBundle];
@@ -92,18 +92,32 @@ export function useBundleRoute(): BundleRoute {
   });
 
   useEffect(() => {
-    function onPop() {
-      setBundle(bundleFromPath(window.location.pathname));
+    function syncFromUrl() {
+      setBundle(currentBundle());
       setSystemPage(systemPageFromPath(window.location.pathname));
     }
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    window.addEventListener("popstate", syncFromUrl);
+    // Bundle URLs are hash-based (see route.ts) so we ALSO have to
+    // listen on hashchange — popstate doesn't fire when only the
+    // fragment changes.
+    window.addEventListener("hashchange", syncFromUrl);
+    return () => {
+      window.removeEventListener("popstate", syncFromUrl);
+      window.removeEventListener("hashchange", syncFromUrl);
+    };
   }, []);
+
+  // Helper: bundle URLs now carry the bundle name in the URL hash
+  // (e.g. /gigi/sheets/#sensors), so the comparison can't just be
+  // pathname === next — we need the full pathname+hash too.
+  function currentPathPlusHash(): string {
+    return window.location.pathname + window.location.hash;
+  }
 
   const navigateToBundle = useCallback(
     (name: string) => {
       const next = pathForBundle(name);
-      if (window.location.pathname !== next) {
+      if (currentPathPlusHash() !== next) {
         window.history.pushState({}, "", next);
       }
       setBundle(name);
@@ -120,7 +134,7 @@ export function useBundleRoute(): BundleRoute {
 
   const navigateToSystem = useCallback((page: SystemPage) => {
     const next = pathForSystem(page);
-    if (window.location.pathname !== next) {
+    if (currentPathPlusHash() !== next) {
       window.history.pushState({}, "", next);
     }
     setBundle(null);
@@ -151,7 +165,7 @@ export function useBundleRoute(): BundleRoute {
         if (bundle === name) {
           if (updated.length === 0) {
             const nextPath = "/gigi/sheets/";
-            if (window.location.pathname !== nextPath) {
+            if (currentPathPlusHash() !== nextPath) {
               window.history.pushState({}, "", nextPath);
             }
             setBundle(null);
@@ -160,7 +174,7 @@ export function useBundleRoute(): BundleRoute {
             // fall back to the first remaining tab.
             const fallback = updated[Math.max(0, idx - 1)] ?? updated[0];
             const nextPath = pathForBundle(fallback);
-            if (window.location.pathname !== nextPath) {
+            if (currentPathPlusHash() !== nextPath) {
               window.history.pushState({}, "", nextPath);
             }
             setBundle(fallback);
@@ -174,7 +188,7 @@ export function useBundleRoute(): BundleRoute {
 
   const navigateToPicker = useCallback(() => {
     const next = "/gigi/sheets/";
-    if (window.location.pathname !== next) {
+    if (currentPathPlusHash() !== next) {
       window.history.pushState({}, "", next);
     }
     setBundle(null);

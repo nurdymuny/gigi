@@ -142,14 +142,24 @@ export function App() {
     return (
       <SystemWelcome
         onDone={(next) => {
-          // Hand the user back to where they wanted to go. If `next` is a
-          // bundle path, route through navigateToBundle so the tab list
-          // picks it up; otherwise fall back to the picker.
-          const stripped = next.startsWith("/gigi/sheets/")
-            ? next.slice("/gigi/sheets/".length).split(/[?#]/)[0]
-            : "";
-          if (stripped && /^[A-Za-z_][A-Za-z0-9_-]*$/.test(stripped)) {
-            route.navigateToBundle(stripped);
+          // Hand the user back to where they wanted to go. Bundle URLs
+          // are hash-based now (`/gigi/sheets/#sensors`), so we prefer
+          // the hash segment over the path segment when both are
+          // present. Legacy path-form URLs still parse for back-compat.
+          let candidate = "";
+          if (next.startsWith("/gigi/sheets/")) {
+            const afterBase = next.slice("/gigi/sheets/".length);
+            // Strip query first so "#mybundle?foo=1" works (defensive).
+            const noQuery = afterBase.split("?")[0] ?? "";
+            const hashIdx = noQuery.indexOf("#");
+            if (hashIdx >= 0) {
+              candidate = noQuery.slice(hashIdx + 1);
+            } else {
+              candidate = noQuery;
+            }
+          }
+          if (candidate && /^[A-Za-z_][A-Za-z0-9_-]*$/.test(candidate)) {
+            route.navigateToBundle(candidate);
           } else {
             route.navigateToPicker();
           }

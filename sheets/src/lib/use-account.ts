@@ -202,11 +202,16 @@ export function useAccount(opts: { baseUrl?: string | null } = {}): Account {
       // Drop the user back on the sheets-branded /welcome page after they
       // click the magic link. /welcome handles the T&Cs gate inline and
       // then bounces to `next` (the bundle they were on, or /gigi/sheets
-      // root). We build the path from the current window location so a
-      // user signing in from /gigi/sheets/some-bundle lands back there.
+      // root). Build the path from the current window location so a
+      // user signing in from /gigi/sheets/#some-bundle lands back there.
+      // Bundle URLs are hash-based now (see route.ts), so we include
+      // the hash too.
       let returnTo = "/gigi/sheets/welcome";
       if (typeof window !== "undefined") {
-        const here = window.location.pathname + window.location.search;
+        const here =
+          window.location.pathname +
+          window.location.search +
+          window.location.hash;
         // Only forward an internal sheets path — anything else falls back
         // to the sheets root so we don't echo arbitrary URLs through the
         // server-side whitelist (defense in depth; the server enforces

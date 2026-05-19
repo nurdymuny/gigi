@@ -238,10 +238,20 @@ export class SheetsClient {
   private readonly fetcher: Fetcher;
   private readonly timeoutMs: number;
   private readonly wsFactory: WebSocketFactory;
-  // Mutable so the App can update the key after the async token fetch
+  // Mutable so the App can update these after the async token fetch
   // completes without rebuilding the client (which would tear down
   // every open subscription + in-flight request).
   private apiKey: string | null;
+  // Per-user namespace tag (`ns_<12-hex>`) handed back by
+  // davisgeometric's /api/gigi/token. Non-owners only see/create
+  // bundles whose name starts with `<namespace>__`. The deployment
+  // owner has isOwner=true and sees every bundle without prefixing.
+  // CAVEAT (Phase A): the engine doesn't verify the namespace yet;
+  // isolation is enforced only here. A motivated user could call the
+  // engine directly with the shared API key. Phase B (JWT auth in the
+  // engine) closes this gap.
+  private namespace: string;
+  private isOwner: boolean;
 
   constructor(opts: SheetsClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
@@ -249,6 +259,11 @@ export class SheetsClient {
     this.timeoutMs = opts.timeoutMs ?? 30_000;
     this.wsFactory = opts.WebSocket ?? defaultWebSocketFactory;
     this.apiKey = opts.apiKey ?? null;
+    this.namespace = "";
+    // Default to owner semantics until /api/gigi/token says otherwise,
+    // so a misconfigured token response doesn't silently hide existing
+    // bundles from a legacy deployment.
+    this.isOwner = true;
   }
 
   /**
@@ -263,6 +278,45 @@ export class SheetsClient {
 
   hasApiKey(): boolean {
     return this.apiKey !== null;
+  }
+
+  /**
+   * Update tenant identity. Called by `useEngineAccess` after the
+   * token endpoint resolves.
+   */
+  setNamespace(namespace: string, isOwner: boolean): void {
+    this.namespace = namespace ?? "";
+    this.isOwner = Boolean(isOwner);
+  }
+
+  getNamespace(): string {
+    return this.namespace;
+  }
+
+  getIsOwner(): boolean {
+    return this.isOwner;
+  }
+
+  /**
+   * Turn a user-facing bundle name into the engine-side fully-qualified
+   * name. For the deployment owner this is a no-op; for tenants we
+   * prefix `<namespace>__` if it's not already there.
+   */
+  qualifyBundleName(name: string): string {
+    if (this.isOwner) return name;
+    if (!this.namespace) return name;
+    const prefix = `${this.namespace}__`;
+    return name.startsWith(prefix) ? name : prefix + name;
+  }
+
+  /**
+   * Reverse of `qualifyBundleName`: strip the tenant prefix for
+   * display. No-op for the owner and for names that aren't prefixed.
+   */
+  displayBundleName(name: string): string {
+    if (!this.namespace) return name;
+    const prefix = `${this.namespace}__`;
+    return name.startsWith(prefix) ? name.slice(prefix.length) : name;
   }
 
   /** Derive ws:// URL from the configured base URL. */
@@ -292,10 +346,11 @@ export class SheetsClient {
     onStatus?: (status: "open" | "close" | "error") => void,
   ): Subscription {
     const ws = this.wsFactory(this.wsUrl("/ws"));
+    const engineBundle = this.qualifyBundleName(bundle);
     ws.addEventListener("open", () => {
       onStatus?.("open");
       // The engine accepts the SUBSCRIBE command as a single line.
-      ws.send(`SUBSCRIBE ${bundle}`);
+      ws.send(`SUBSCRIBE ${engineBundle}`);
     });
     ws.addEventListener("message", (ev) => {
       const data = typeof ev.data === "string" ? ev.data : "";
@@ -317,7 +372,7 @@ export class SheetsClient {
    * with κ and confidence promoted to top-level fields.
    */
   async section(bundle: string, query: SectionQuery = {}): Promise<SectionResult> {
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/query`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/query`;
     const body = await this.request(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -340,7 +395,7 @@ export class SheetsClient {
         "no_key",
       );
     }
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/update`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/update`;
     const body = await this.request(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -361,7 +416,7 @@ export class SheetsClient {
    * Maps to GET /v1/bundles/{name}/spectral.
    */
   async spectral(bundle: string): Promise<SpectralResult> {
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/spectral`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/spectral`;
     const body = await this.request(url, { method: "GET" });
     const obj = body as Record<string, unknown>;
     return {
@@ -377,7 +432,7 @@ export class SheetsClient {
    * Maps to GET /v1/bundles/{name}/betti.
    */
   async betti(bundle: string): Promise<BettiResult> {
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/betti`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/betti`;
     const body = await this.request(url, { method: "GET" });
     const obj = body as Record<string, unknown>;
     return {
@@ -527,7 +582,7 @@ export class SheetsClient {
         "parse_error",
       );
     }
-    return body
+    const raw = body
       .map((entry): BundleListEntry => {
         const obj = entry as Record<string, unknown>;
         return {
@@ -537,6 +592,17 @@ export class SheetsClient {
         };
       })
       .filter((b) => b.name.length > 0);
+
+    // Tenant view: only surface bundles inside the user's namespace,
+    // and strip the prefix from the display name so the UI never has
+    // to know about it. Owner sees everything raw.
+    if (this.isOwner || !this.namespace) {
+      return raw;
+    }
+    const prefix = `${this.namespace}__`;
+    return raw
+      .filter((b) => b.name.startsWith(prefix))
+      .map((b) => ({ ...b, name: b.name.slice(prefix.length) }));
   }
 
   /**
@@ -558,12 +624,17 @@ export class SheetsClient {
         "parse_error",
       );
     }
+    // Auto-prefix the engine-side name for tenants so the new bundle
+    // lands inside their namespace. The UI continues to refer to it by
+    // the unprefixed name — qualifyBundleName + displayBundleName
+    // bridge the two on every later call.
+    const engineName = this.qualifyBundleName(args.name);
     const url = `${this.baseUrl}/v1/bundles`;
     await this.request(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        name: args.name,
+        name: engineName,
         schema: {
           fields: args.fields,
           keys: args.keys,
@@ -579,7 +650,7 @@ export class SheetsClient {
    */
   async insert(bundle: string, records: RowMap | RowMap[]): Promise<void> {
     const list = Array.isArray(records) ? records : [records];
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/insert`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/insert`;
     await this.request(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -592,7 +663,7 @@ export class SheetsClient {
    * Maps to POST /v1/bundles/{name}/delete with { key: { … } }.
    */
   async deleteRow(bundle: string, key: Record<string, unknown>): Promise<void> {
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/delete`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/delete`;
     await this.request(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -614,7 +685,7 @@ export class SheetsClient {
         "parse_error",
       );
     }
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/add-field`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/add-field`;
     await this.request(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -627,7 +698,7 @@ export class SheetsClient {
    * Maps to POST /v1/bundles/{name}/drop-field.
    */
   async dropField(bundle: string, field: string): Promise<void> {
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/drop-field`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/drop-field`;
     await this.request(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -637,7 +708,7 @@ export class SheetsClient {
 
   /** Fetch a bundle's schema. Maps to GET /v1/bundles/{name}/schema. */
   async schema(bundle: string): Promise<BundleSchema> {
-    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(bundle)}/schema`;
+    const url = `${this.baseUrl}/v1/bundles/${encodeURIComponent(this.qualifyBundleName(bundle))}/schema`;
     const body = await this.request(url, { method: "GET" });
     return applyOverlay(normalizeSchema(body as BundleSchema));
   }

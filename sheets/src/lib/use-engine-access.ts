@@ -27,7 +27,19 @@ import type { Account } from "./use-account";
 export type EngineAccessState =
   | { kind: "loading" }
   | { kind: "anonymous" }
-  | { kind: "granted" }
+  | {
+      kind: "granted";
+      /**
+       * Per-user namespace tag — `ns_<12-hex>` derived from sha256(email)
+       * on the davisgeometric side. Sheets uses this to filter the
+       * bundle picker + prefix newly-created bundles so each user has
+       * an isolated workspace. The deployment owner has `isOwner=true`
+       * and sees every bundle, prefixed or not.
+       */
+      namespace: string;
+      isOwner: boolean;
+      email: string;
+    }
   | { kind: "denied"; message: string }
   | { kind: "error"; message: string };
 
@@ -90,7 +102,12 @@ export function useEngineAccess(
           });
           return;
         }
-        const data = (await res.json().catch(() => ({}))) as { key?: string };
+        const data = (await res.json().catch(() => ({}))) as {
+          key?: string;
+          namespace?: string;
+          isOwner?: boolean;
+          email?: string;
+        };
         if (!data.key) {
           client.setApiKey(null);
           setState({
@@ -100,7 +117,18 @@ export function useEngineAccess(
           return;
         }
         client.setApiKey(data.key);
-        setState({ kind: "granted" });
+        // Older DG deploys may not surface namespace/isOwner yet — fall
+        // back to owner semantics in that case so we don't accidentally
+        // hide bundles from a deployment that hasn't been upgraded.
+        const namespace = data.namespace ?? "";
+        const isOwner = data.isOwner ?? true;
+        client.setNamespace(namespace, isOwner);
+        setState({
+          kind: "granted",
+          namespace,
+          isOwner,
+          email: data.email ?? account.email ?? "",
+        });
       } catch (e) {
         if (cancelled) return;
         client.setApiKey(null);

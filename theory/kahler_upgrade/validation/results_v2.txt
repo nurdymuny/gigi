@@ -1,0 +1,30 @@
+
+=== Test 7: Prequantization integrality (Wu-Yang) ===
+  Integer Chern (2q ∈ ℤ): N and S holonomy agree (mod 2π)
+    q = 0.5000 (Chern = 1): diff/(2π) = 1.0000, dev from int = 0.00e+00  ✓
+    q = 1.0000 (Chern = 2): diff/(2π) = 2.0000, dev from int = 0.00e+00  ✓
+    q = 1.5000 (Chern = 3): diff/(2π) = 3.0000, dev from int = 0.00e+00  ✓
+    q = 2.0000 (Chern = 4): diff/(2π) = 4.0000, dev from int = 0.00e+00  ✓
+    q = 3.0000 (Chern = 6): diff/(2π) = 6.0000, dev from int = 0.00e+00  ✓
+  Non-integer Chern (2q ∉ ℤ): N and S DISAGREE — Dirac obstruction
+    q = 0.3000: diff/(2π) = 0.6000, dev from int = 0.4000  ✓ (correctly fails)
+    q = 0.3333: diff/(2π) = 0.6667, dev from int = 0.3333  ✓ (correctly fails)
+    q = 0.3183: diff/(2π) = 0.6366, dev from int = 0.3634  ✓ (correctly fails)
+    q = 0.7000: diff/(2π) = 1.4000, dev from int = 0.4000  ✓ (correctly fails)
+  PASS
+
+=== Test 8: Frobenius / WDVV associativity ===
+  Sanity: ‖H³ − q‖ = 0.00e+00
+  QH*(CP²): max ‖(a*b)*c − a*(b*c)‖ over 27 triples = 0.00e+00
+  Sanity: ‖[J_x, J_y] − J_z‖ = 0.00e+00
+  so(3): max associator over 27 triples = 1.0000 at ('J_x', 'J_x', 'J_y')
+  so(3): max Jacobi violation = 0.00e+00  (must be 0)
+  PASS
+
+============================================================
+V2 SUMMARY
+============================================================
+  test_7_prequantization_integrality: PASS
+  test_8_frobenius_wdvv: PASS
+
+2/2 v2 tests passed.

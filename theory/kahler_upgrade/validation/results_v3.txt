@@ -1,0 +1,43 @@
+
+=== Test 9: Riemann-Roch / index on T² ===
+  Grid: 8×8 = 64 sample points; θ series truncated at ±12
+  Level n = 1: rank of θ basis = 1, RR prediction = 1  ✓
+  Level n = 2: rank of θ basis = 2, RR prediction = 2  ✓
+  Level n = 3: rank of θ basis = 3, RR prediction = 3  ✓
+  Level n = 4: rank of θ basis = 4, RR prediction = 4  ✓
+  Level n = 5: rank of θ basis = 5, RR prediction = 5  ✓
+  Negative check: n = 3 theta functions + duplicate of θ_0: rank = 3 (must remain 3)  ✓
+  PASS
+
+=== Test 10: Berezin-Toeplitz semiclassical ===
+  Truncation N = 80; comparing interior 20×20 block
+  ℏ = 1.0000: [X,P]−iℏI err = 8.22e-15, BCH err = 9.05e-15, normalized dev = 4.1149e-02, theoretical = 4.1149e-02
+  ℏ = 0.5000: [X,P]−iℏI err = 3.66e-15, BCH err = 6.72e-15, normalized dev = 5.1921e-03, theoretical = 5.1921e-03
+  ℏ = 0.2500: [X,P]−iℏI err = 2.05e-15, BCH err = 2.83e-15, normalized dev = 6.5053e-04, theoretical = 6.5053e-04
+  ℏ = 0.1250: [X,P]−iℏI err = 9.16e-16, BCH err = 3.78e-15, normalized dev = 8.1364e-05, theoretical = 8.1364e-05
+  BCH ground-truth formula holds: True
+  Deviation matches |ℏ−2sin(ℏ/2)| within 10%: True
+  Cubic scaling (dev/ℏ³ ratios within 2×): True
+    ratios dev/ℏ³ = ['0.04115', '0.04154', '0.04163', '0.04166']  (theoretical ~1/24 ≈ 0.0417)
+  PASS
+
+=== Test 11: Discrete Hodge cohomology of T² ===
+  Grid: V=36, E=72, F=36;  V−E+F = 0 (must = 0 for T²)
+  Sanity: ‖d₁∘d₀‖_∞ = 0.00e+00 (must = 0)
+  dim ker Δ_0 = 1  (b_0 expected 1)  ✓
+  dim ker Δ_1 = 2  (b_1 expected 2)  ✓
+  dim ker Δ_2 = 1  (b_2 expected 1)  ✓
+  Hodge χ = 0  (expected 0)
+  Six smallest eigenvalues of Δ_1: ['3.2652e-16', '3.1086e-15', '1.0000e+00', '1.0000e+00', '1.0000e+00', '1.0000e+00']
+  Bonus: compare to tetrahedron (boundary of 3-simplex, = S²) with Betti (1,0,1)
+    Tetrahedron: d² err = 0.00e+00; (b_0, b_1, b_2) = (1, 0, 1); expected (1, 0, 1) for S²  ✓
+  PASS
+
+============================================================
+V3 SUMMARY
+============================================================
+  test_9_index_theorem_torus: PASS
+  test_10_berezin_toeplitz: PASS
+  test_11_hodge_torus: PASS
+
+3/3 v3 tests passed.

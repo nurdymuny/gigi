@@ -1,0 +1,60 @@
+
+=== Test 1: Kähler graph commutativity ===
+  Abelian Z/4 × Z/4: |[A_p, A_a]|_∞ = 0.00e+00
+  Non-abelian S_3:   |[B_p, B_a]|_∞ = 1.00e+00
+  Ratio non-ab/ab = 1.00e+30
+  PASS
+
+=== Test 2: Magnetic trajectory on flat R² ===
+  Magnetic case (b=1.5):
+    Expected cyclotron radius: 0.666667
+    Max deviation from circle: 1.98e-14
+    Energy drift over period:  6.00e-15
+    Period closure error:      9.80e-06
+  Control (b=0): max |y| should be ~0: 0.00e+00
+  PASS
+
+=== Test 3: Hadamard-Cartan via Jacobi fields ===
+  Euclidean (K=0):  err vs t      = 3.75e-13
+  Hyperbolic (K=-1): rel err vs sinh = 2.21e-15
+  Spherical (K=+1):  err vs sin   = 4.55e-15
+  S² first conjugate point: t = 3.141593 (expected π = 3.141593)
+  H² Jacobi field positive everywhere: True
+  H² Jacobi field monotone: True
+  PASS
+
+=== Test 4: Trajectory-ball volume ===
+  R = 2.0
+  H² (K=-1): V_num=17.355387, V_exact=17.355387, rel err=8.33e-10
+  R² (K=0):  V_num=12.566371, V_exact=12.566371, rel err=9.44e-14
+  S² (K=+1): V_num=8.897913, V_exact=8.897913, rel err=8.33e-10
+  V_H/V_E = 1.3811 (must be > 1: negative curvature grows faster)
+  V_S/V_E = 0.7081 (must be < 1: positive curvature grows slower)
+  PASS
+
+=== Test 5: Moment map / Noether conservation ===
+  Initial μ = 0.550000
+  Symmetric H (SO(2)-invariant): μ drift = 6.66e-15
+  Asymmetric H (broken):         μ drift = 19.5033
+  Sanity (energy conserved in both): sym E drift = 8.10e-15, asym E drift = 1.24e-14
+  PASS
+
+=== Test 6: Spectral gap vs mixing time ===
+  Cycle C_n     : gap = 0.0489, mix τ =    103, gap·τ = 5.04
+  Complete K_n  : gap = 1.0526, mix τ =      4, gap·τ = 4.21
+  Path P_n      : gap = 0.0136, mix τ =    372, gap·τ = 5.07
+  Ordering (gap_C > gap_cy > gap_P and mix opposite): True
+  Coupling (all gap·τ within 50× of each other):     True
+  PASS
+
+============================================================
+SUMMARY
+============================================================
+  test_1_kahler_commutativity: PASS
+  test_2_magnetic_trajectory: PASS
+  test_3_hadamard_cartan: PASS
+  test_4_trajectory_ball_volume: PASS
+  test_5_moment_map: PASS
+  test_6_spectral_gap: PASS
+
+6/6 tests passed.

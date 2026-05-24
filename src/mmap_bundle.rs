@@ -1488,6 +1488,8 @@ impl<'a> BundleRef<'a> {
                 has_limit: limit.is_some(),
                 has_offset: offset.is_some(),
                 storage_mode: "mmap+overlay".to_string(),
+                #[cfg(feature = "kahler")]
+                commutativity_class: None,
             },
         }
     }
@@ -1817,6 +1819,8 @@ impl<'a> BundleMut<'a> {
                 has_limit: limit.is_some(),
                 has_offset: offset.is_some(),
                 storage_mode: "mmap+overlay".to_string(),
+                #[cfg(feature = "kahler")]
+                commutativity_class: None,
             },
         }
     }

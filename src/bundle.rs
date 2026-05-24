@@ -3754,6 +3754,12 @@ impl BundleStore {
             has_limit,
             has_offset,
             storage_mode: self.storage_mode().to_string(),
+            // Kähler upgrade L2.4: planner enrichment slot.
+            // Populated by callers that have built the principal/
+            // auxiliary adjacency pair; the default-None branch is
+            // what the existing planner sees (no behavior change).
+            #[cfg(feature = "kahler")]
+            commutativity_class: None,
         }
     }
 
@@ -3878,6 +3884,16 @@ pub struct QueryPlan {
     pub has_limit: bool,
     pub has_offset: bool,
     pub storage_mode: String,
+    /// Commutativity verdict between the bundle's principal and
+    /// auxiliary adjacency operators (catalog §1.1). `None` when
+    /// the bundle has no Kähler structure attached — the planner
+    /// falls back to its existing heuristic ordering in that case.
+    /// `Some(class)` lets the planner reorder joins safely when
+    /// `class` is `Commute(_)` and forces a specific order when
+    /// `NotCommute`. Surfaced in EXPLAIN output. See
+    /// `theory/kahler_upgrade/IMPLEMENTATION_PLAN.md` L2.4.
+    #[cfg(feature = "kahler")]
+    pub commutativity_class: Option<crate::graph::CommutativityClass>,
 }
 
 /// A single transactional operation.

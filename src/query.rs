@@ -62,6 +62,15 @@ pub struct QueryPlan {
     pub residual_predicates: Vec<QueryCondition>,
     pub estimated_cost: f64,
     pub estimated_rows: usize,
+    /// Commutativity verdict between the bundle's principal and
+    /// auxiliary adjacency operators (catalog §1.1). Set by callers
+    /// that have access to both adjacency types; the planner will
+    /// use this for safe join reordering once the reordering
+    /// logic lands (later milestone). `None` preserves today's
+    /// heuristic-only behavior. See
+    /// `theory/kahler_upgrade/IMPLEMENTATION_PLAN.md` L2.4.
+    #[cfg(feature = "kahler")]
+    pub commutativity_class: Option<crate::graph::CommutativityClass>,
 }
 
 /// Cost coefficients for plan estimation (Definition 10.2).
@@ -292,6 +301,10 @@ impl CostEstimator {
             residual_predicates: conditions.to_vec(),
             estimated_cost: self.full_scan_cost(n),
             estimated_rows: n,
+            // L2.4: leave None here; a higher-level wrapper that
+            // owns both adjacencies decorates the plan post-hoc.
+            #[cfg(feature = "kahler")]
+            commutativity_class: None,
         }
     }
 
@@ -332,6 +345,8 @@ impl CostEstimator {
             residual_predicates: residual,
             estimated_cost: cost,
             estimated_rows: cardinality as usize,
+            #[cfg(feature = "kahler")]
+            commutativity_class: None,
         })
     }
 
@@ -401,6 +416,8 @@ impl CostEstimator {
             residual_predicates: residual,
             estimated_cost: cost,
             estimated_rows: result_card as usize,
+            #[cfg(feature = "kahler")]
+            commutativity_class: None,
         })
     }
 }

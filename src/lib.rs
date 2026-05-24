@@ -21,6 +21,12 @@ pub mod gauge;
 // plan + validation tests.
 #[cfg(feature = "kahler")]
 pub mod geometry;
+// Kähler graph operators (catalog.md §1.1): dual principal/
+// auxiliary adjacency + commutativity classifier the query planner
+// uses for theorem-backed join reordering. Same feature gate as
+// `geometry` — strict additive layer.
+#[cfg(feature = "kahler")]
+pub mod graph;
 pub mod hash;
 pub mod invariant;
 pub mod join;

@@ -30,9 +30,13 @@
 
 pub mod complex_structure;
 pub mod forms;
+pub mod transport;
 
 pub use complex_structure::{ComplexStructure, ComplexStructureError};
 pub use forms::{ClosedTwoForm, ClosednessError, TwoForm};
+pub use transport::{
+    flat_transport, BSource, TransportError, TransportResult, TransportSegment,
+};
 
 /// The Kähler structure attached to a bundle's schema.
 ///

@@ -6256,6 +6256,24 @@ fn execute_gql_on_store_read(
             Ok(ExecResult::Rows(rows))
         }
         // TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER (f1, f2, ...)
+        //
+        // L1.5.3 extension (catalog §1.2, consumption draft v2 §2):
+        // when the bundle carries a Kähler structure with attached
+        // closed 2-form B AND the fiber dimension matches B's dim,
+        // the verb dispatches into `gigi::geometry::flat_transport`
+        // for magnetically-perturbed transport. The response gains
+        // these v2-contract fields:
+        //
+        //   b_source         — "bundle" | "override" | "none"
+        //   used_magnetic    — bool
+        //   energy_drift     — f64 (must be < 1e-9 per turn in prod)
+        //   holonomy_norm    — f64 (rotation accumulated along path)
+        //   path_length      — f64 (integrated arc length)
+        //   closedness_norm  — f64 (only on fallback_non_closed path)
+        //
+        // Bundles WITHOUT a Kähler structure fall through to the
+        // existing quaternion / rotation paths — strict additive
+        // contract per IMPLEMENTATION_PLAN §0.
         Statement::Transport { bundle: _, from_keys, to_keys, fiber_fields } => {
             let from_rec: gigi::types::Record =
                 from_keys.iter().map(|(k, v): &(String, gigi::parser::Literal)| (k.clone(), gigi::parser::literal_to_value(v))).collect();
@@ -6282,6 +6300,21 @@ fn execute_gql_on_store_read(
             let displacement: Vec<f64> = (0..dim).map(|i| p_to[i] - p_from[i]).collect();
 
             let mut result = gigi::types::Record::new();
+
+            // L1.5.3 Kähler path: dispatch when bundle has attached
+            // K-structure AND dimensions match. The helper does the
+            // RK4 magnetic geodesic + builds the v2 contract record;
+            // factored out so the test in this file can call it
+            // without spinning up a BundleMut.
+            #[cfg(feature = "kahler")]
+            {
+                if let Some(k) = store.schema().kahler.as_ref() {
+                    if let Some(rec) = kahler_transport_dispatch(k, &p_from, &p_to, &displacement) {
+                        let rec = rec?;
+                        return Ok(ExecResult::Rows(vec![rec]));
+                    }
+                }
+            }
 
             if dim == 4 {
                 // Quaternion TRANSPORT path — q = (w, x, y, z)
@@ -7713,6 +7746,110 @@ async fn main() {
     })
     .await
     .unwrap();
+}
+
+/// L1.5.3 helper: build the v2-contract Record from a flat magnetic
+/// transport. Returns `None` when the Kähler structure's dimension
+/// doesn't match the segment dimension (caller falls back to the
+/// classical quaternion / rotation path). Returns
+/// `Some(Err(...))` when the integrator rejected the inputs
+/// (dimension mismatch, empty segment) — surface as a TRANSPORT
+/// error to the GQL client.
+///
+/// Extracted from the inline match arm so the in-bin test can call
+/// it directly without spinning up a full BundleMut.
+#[cfg(feature = "kahler")]
+fn kahler_transport_dispatch(
+    kahler: &gigi::geometry::KahlerStructure,
+    p_from: &[f64],
+    p_to: &[f64],
+    displacement: &[f64],
+) -> Option<Result<gigi::types::Record, String>> {
+    let dim = p_from.len();
+    if kahler.dim() != dim {
+        return None;
+    }
+
+    // Unit-vector initial velocity pointing from p_from toward
+    // p_to. Magnetic perturbation bends the path, so the trajectory
+    // does NOT in general arrive AT p_to — that's the price of
+    // having a bias. Callers wanting strict endpoint-reaching
+    // should use the classical path or wait for the curved-space
+    // L5.5 transport API that solves a BVP.
+    let mut v_init = displacement.to_vec();
+    let mag: f64 = v_init.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if mag > 1e-12 {
+        for x in &mut v_init {
+            *x /= mag;
+        }
+    }
+
+    let seg = match gigi::geometry::TransportSegment::new(
+        p_from.to_vec(),
+        p_to.to_vec(),
+        v_init,
+    ) {
+        Ok(s) => s,
+        Err(e) => return Some(Err(format!("TRANSPORT: {e}"))),
+    };
+
+    let r = match gigi::geometry::flat_transport(
+        &seg,
+        Some(&kahler.b),
+        1e-3,
+        10_000,
+        gigi::geometry::BSource::Bundle,
+    ) {
+        Ok(r) => r,
+        Err(e) => return Some(Err(format!("TRANSPORT: {e}"))),
+    };
+
+    // Build the v2-contract response record (consumption draft §2).
+    let mut result = gigi::types::Record::new();
+    result.insert(
+        "path_length".to_string(),
+        gigi::types::Value::Float(r.path_length),
+    );
+    result.insert(
+        "energy_drift".to_string(),
+        gigi::types::Value::Float(r.energy_drift),
+    );
+    result.insert(
+        "holonomy_norm".to_string(),
+        gigi::types::Value::Float(r.holonomy_norm),
+    );
+    result.insert(
+        "used_magnetic".to_string(),
+        gigi::types::Value::Bool(r.used_magnetic),
+    );
+    result.insert(
+        "b_source".to_string(),
+        gigi::types::Value::Text(
+            match r.b_source {
+                gigi::geometry::BSource::Bundle => "bundle",
+                gigi::geometry::BSource::Override => "override",
+                gigi::geometry::BSource::None => "none",
+                gigi::geometry::BSource::FallbackNonClosed => "fallback_non_closed",
+            }
+            .to_string(),
+        ),
+    );
+    if let Some(c) = r.closedness_norm {
+        result.insert(
+            "closedness_norm".to_string(),
+            gigi::types::Value::Float(c),
+        );
+    }
+    // Surface displacement so callers upgrading from the classical
+    // verb still see the familiar diagnostic fields.
+    for (i, d) in displacement.iter().enumerate() {
+        result.insert(
+            format!("displacement_{i}"),
+            gigi::types::Value::Float(*d),
+        );
+    }
+
+    Some(Ok(result))
 }
 
 // ── Unit tests ─────────────────────────────────────────────────────────────
@@ -9159,5 +9296,111 @@ mod tests {
         unsafe { std::env::remove_var("GIGI_APP_BUNDLES"); }
         drop(lock);
         cleanup(&dir);
+    }
+
+    // ── L1.5.3: in-bin smoke test for the kahler_transport_dispatch
+    //   helper. Exercises the same code path the GQL TRANSPORT verb
+    //   uses; asserts the response record carries the v2 contract
+    //   field set Marcella's runtime deserializes.
+    //   Per IMPLEMENTATION_PLAN.md L1.5 + consumption draft v2 §2.
+    //   ───────────────────────────────────────────────────────────
+
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn test_kahler_transport_dispatch_returns_v2_contract_fields() {
+        use gigi::geometry::{
+            ClosedTwoForm, ComplexStructure, KahlerStructure, TwoForm,
+        };
+
+        // 2D Kähler: J on R², B = b·dx∧dy with b = 0.5.
+        let j = ComplexStructure::standard(1);
+        let b = ClosedTwoForm::new_constant(
+            TwoForm::new(vec![0.0, 0.5, -0.5, 0.0], 2).expect("antisymmetric"),
+        );
+        let k = KahlerStructure::new(j, b);
+
+        // Synthetic transport: from (0, 0) toward (1, 1).
+        let p_from = vec![0.0, 0.0];
+        let p_to = vec![1.0, 1.0];
+        let displacement = vec![1.0, 1.0];
+
+        let result = kahler_transport_dispatch(&k, &p_from, &p_to, &displacement)
+            .expect("dim 2 matches K dim 2, dispatch must trigger")
+            .expect("flat_transport must succeed on synthetic input");
+
+        // v2 contract fields present.
+        assert!(
+            result.contains_key("path_length"),
+            "path_length missing"
+        );
+        assert!(
+            result.contains_key("energy_drift"),
+            "energy_drift missing"
+        );
+        assert!(
+            result.contains_key("holonomy_norm"),
+            "holonomy_norm missing"
+        );
+        assert!(
+            result.contains_key("used_magnetic"),
+            "used_magnetic missing"
+        );
+        assert!(result.contains_key("b_source"), "b_source missing");
+        // Displacement still surfaced for back-compat with the
+        // classical TRANSPORT response shape.
+        assert!(result.contains_key("displacement_0"));
+        assert!(result.contains_key("displacement_1"));
+
+        // b_source == "bundle" since dispatch used the Kähler's B.
+        match result.get("b_source") {
+            Some(Value::Text(s)) => assert_eq!(s, "bundle"),
+            other => panic!("b_source must be Text(\"bundle\"), got {other:?}"),
+        }
+
+        // used_magnetic == true since we actually applied B.
+        match result.get("used_magnetic") {
+            Some(Value::Bool(true)) => {}
+            other => panic!("used_magnetic must be Bool(true), got {other:?}"),
+        }
+
+        // energy_drift below the production 1e-9 bound.
+        match result.get("energy_drift") {
+            Some(Value::Float(drift)) => assert!(
+                *drift < 1e-9,
+                "energy_drift {drift} exceeds production 1e-9 bound"
+            ),
+            other => panic!("energy_drift must be Float, got {other:?}"),
+        }
+    }
+
+    /// Negative: when the Kähler structure's dim doesn't match the
+    /// segment dim, the helper returns None so the GQL caller falls
+    /// back to the classical quaternion/rotation path. Prevents
+    /// dimension-mismatch surprises when a 4D bundle has a 2D
+    /// Kähler attached (which is itself a schema bug, but the
+    /// transport verb should fail gracefully not panic).
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn test_kahler_transport_dispatch_returns_none_on_dim_mismatch() {
+        use gigi::geometry::{
+            ClosedTwoForm, ComplexStructure, KahlerStructure, TwoForm,
+        };
+
+        // 2D Kähler.
+        let j = ComplexStructure::standard(1);
+        let b = ClosedTwoForm::new_constant(
+            TwoForm::new(vec![0.0, 0.5, -0.5, 0.0], 2).unwrap(),
+        );
+        let k = KahlerStructure::new(j, b);
+
+        // 4D segment — dim doesn't match.
+        let p_from = vec![0.0, 0.0, 0.0, 0.0];
+        let p_to = vec![1.0, 1.0, 1.0, 1.0];
+        let displacement = vec![1.0, 1.0, 1.0, 1.0];
+
+        assert!(
+            kahler_transport_dispatch(&k, &p_from, &p_to, &displacement).is_none(),
+            "dim mismatch must return None so caller falls back to classical"
+        );
     }
 }

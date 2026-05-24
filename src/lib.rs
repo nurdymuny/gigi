@@ -27,6 +27,13 @@ pub mod geometry;
 // `geometry` — strict additive layer.
 #[cfg(feature = "kahler")]
 pub mod graph;
+// Geometric cost-model primitives (catalog.md §1.3, §1.4, §1.5):
+// Jacobi-field cardinality estimation + trajectory-ball volume
+// bounds via Bishop / Günther. Feeds the query planner with
+// theorem-bound cardinality estimates instead of statistics-based
+// guesses.
+#[cfg(feature = "kahler")]
+pub mod cost;
 pub mod hash;
 pub mod invariant;
 pub mod join;

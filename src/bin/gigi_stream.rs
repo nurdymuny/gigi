@@ -2259,6 +2259,76 @@ async fn spectral_report(
     }))
 }
 
+/// L3.4 — Marcella consumption surface for spectral gap
+/// (consumption draft v2 §4, GIGI reply Q4).
+///
+/// `GET /v1/bundles/<name>/spectral_gap` — returns the cached
+/// snapshot with mixing-time + Cheeger bounds + freshness
+/// timestamp. Marcella's runtime reads this per retrieval
+/// session (or out-of-band) to set the rose-mechanism α
+/// coefficient: `α = 1 - 1/sqrt(mix_time)`.
+///
+/// Returns 404 when the bundle has fewer than 2 records (the
+/// snapshot is degenerate) — semantically correct for the
+/// "no spectral structure to report" case.
+///
+/// Gated on the `kahler` feature; route is only mounted when
+/// the feature is on (see the route table later in this file).
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, Serialize)]
+struct SpectralGapResponse {
+    /// Smallest non-zero eigenvalue of the normalized Laplacian.
+    lambda_2: f64,
+    /// Mixing-time bound Θ((1/λ₂)·log(1/ε)), ε = 1e-3.
+    mix_time: u64,
+    /// Cheeger lower bound on edge expansion: λ₂ / 2.
+    cheeger_lower: f64,
+    /// Cheeger upper bound on edge expansion: √(2 λ₂).
+    cheeger_upper: f64,
+    /// Timestamp the snapshot was computed (epoch seconds string).
+    /// Marcella compares against insert events to detect drift.
+    cached_at: String,
+}
+
+#[cfg(feature = "kahler")]
+async fn spectral_gap_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> Result<Json<SpectralGapResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+
+    let snap = store
+        .as_heap()
+        .and_then(|s| s.spectral_gap_cached())
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!(
+                        "Bundle '{}' has insufficient records for spectral gap (need ≥ 2)",
+                        name
+                    ),
+                }),
+            )
+        })?;
+
+    Ok(Json(SpectralGapResponse {
+        lambda_2: snap.lambda_2,
+        mix_time: snap.mix_time,
+        cheeger_lower: snap.cheeger_lower,
+        cheeger_upper: snap.cheeger_upper,
+        cached_at: snap.cached_at,
+    }))
+}
+
 async fn consistency_check(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
@@ -7526,7 +7596,18 @@ async fn main() {
             get(ws_bundle_dashboard_handler),
         )
         // Dashboard UI
-        .route("/dashboard", get(serve_dashboard))
+        .route("/dashboard", get(serve_dashboard));
+
+    // L3.4: Kähler spectral gap — Marcella contract surface.
+    // Mounted only when the `kahler` feature is on so the no-feature
+    // build stays bit-identical to pre-upgrade GIGI.
+    #[cfg(feature = "kahler")]
+    let app = app.route(
+        "/v1/bundles/{name}/spectral_gap",
+        get(spectral_gap_endpoint),
+    );
+
+    let app = app
         // Middleware: auth + namespace enforcement + rate limiting + readiness.
         // Layers wrap the inner router from the bottom up, so the order of
         // events on a request is auth → namespace_enforcement → rate_limit

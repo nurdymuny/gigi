@@ -615,6 +615,50 @@ pub struct BundleStore {
     pub branches: Option<crate::coherence::BranchStore>,
     /// Feature 6: provenance DAG (initialized on first DERIVED_FROM use).
     pub provenance: Option<crate::coherence::ProvenanceGraph>,
+    /// Cached spectral-gap snapshot (L3.3, gated by `kahler` feature).
+    /// Lazily filled on first read of `spectral_gap_cached()`; cleared
+    /// on every insert so the next read recomputes. The cached value
+    /// is what Marcella's runtime reads per retrieval per the
+    /// consumption-draft v2 §4 contract — recomputing on every
+    /// retrieval would be O(n × fields) which is too expensive at
+    /// the rates we expect.
+    ///
+    /// Stored under a `Mutex` because `BundleStore` is `Send` (the
+    /// engine moves stores across threads) and `RefCell` would
+    /// break that. The lock is only held for the duration of a
+    /// cache read or invalidation — never across a recomputation.
+    #[cfg(feature = "kahler")]
+    pub(crate) spectral_gap_cache: std::sync::Mutex<Option<SpectralGapSnapshot>>,
+}
+
+/// Cached spectral-gap reading with provenance.
+///
+/// Marcella reads this off the retrieval response (per consumption-
+/// draft v2 §4 Q4) and uses `lambda_2` to set the rose-mechanism α
+/// coefficient. `cached_at` lets the runtime detect drift between
+/// reads and insert-driven invalidations.
+///
+/// Cheeger bounds: `λ₂ / 2 ≤ h(G) ≤ √(2 λ₂)`, where `h(G)` is the
+/// edge expansion. We surface both directions so callers can pick
+/// the appropriate bound for their use case.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpectralGapSnapshot {
+    /// The smallest non-zero eigenvalue of the normalized Laplacian.
+    /// Zero iff the field-index graph is disconnected (multiple
+    /// components).
+    pub lambda_2: f64,
+    /// Mixing time bound `Θ((1/λ₂) · log(1/ε))` with `ε = 1e-3`.
+    /// Production runtime uses this to set α = 1 - 1/sqrt(mix_time)
+    /// for the rose mechanism per consumption-draft v2 §4.
+    pub mix_time: u64,
+    /// Cheeger lower bound on edge expansion.
+    pub cheeger_lower: f64,
+    /// Cheeger upper bound on edge expansion.
+    pub cheeger_upper: f64,
+    /// ISO 8601 timestamp of when this snapshot was computed. The
+    /// runtime compares against insert timestamps to detect drift.
+    pub cached_at: String,
 }
 
 /// Per-field running statistics for curvature.
@@ -833,6 +877,8 @@ impl BundleStore {
             atlas: None,
             branches: None,
             provenance: None,
+            #[cfg(feature = "kahler")]
+            spectral_gap_cache: std::sync::Mutex::new(None),
         }
     }
 
@@ -887,6 +933,8 @@ impl BundleStore {
             atlas: None,
             branches: None,
             provenance: None,
+            #[cfg(feature = "kahler")]
+            spectral_gap_cache: std::sync::Mutex::new(None),
         }
     }
 
@@ -904,6 +952,22 @@ impl BundleStore {
     /// O(1) amortized. Overwrites on same key (Def 1.2 — unique section per base point).
     /// For Sequential/Hybrid mode, insert is array.push() — same as Druid's memcpy.
     pub fn insert(&mut self, record: &Record) {
+        // L3.3: invalidate the cached spectral-gap snapshot on every
+        // insert. The cache rebuilds lazily on the next read of
+        // `spectral_gap_cached()`. Cheaper than incremental
+        // Davis-Kahan updates for the data sizes we currently see.
+        #[cfg(feature = "kahler")]
+        {
+            // Lock briefly to invalidate. Poisoning is non-fatal —
+            // we don't care about the prior value's integrity since
+            // we're discarding it; recover the lock and clear.
+            let mut guard = match self.spectral_gap_cache.lock() {
+                Ok(g) => g,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            guard.take();
+        }
+
         let bp = self.hash_config.hash(record, &self.schema);
 
         // Extract base field values
@@ -3833,6 +3897,83 @@ impl BundleStore {
         }
 
         Ok(results)
+    }
+
+    /// Cached spectral-gap snapshot (L3.3 + consumption-draft v2 §4).
+    ///
+    /// First call computes the snapshot from `spectral::spectral_gap`
+    /// + the Cheeger / mixing-time formulas and caches it. Subsequent
+    /// calls return the cache without recomputing — O(1). Any
+    /// `insert()` invalidates the cache so the next read is fresh.
+    ///
+    /// Marcella's runtime reads this per retrieval to set the
+    /// rose-mechanism α coefficient via
+    /// `α = 1 - 1/sqrt(mix_time)` instead of the hardcoded 0.7.
+    ///
+    /// Returns `None` on bundles with fewer than 2 records (the
+    /// spectral graph is degenerate). Otherwise always returns a
+    /// snapshot — even disconnected graphs return `lambda_2 = 0`,
+    /// which IS the meaningful spectral statement.
+    #[cfg(feature = "kahler")]
+    pub fn spectral_gap_cached(&self) -> Option<SpectralGapSnapshot> {
+        if self.len() < 2 {
+            return None;
+        }
+
+        // Fast path: cache hit. Recover from poisoning since the
+        // cached value is just a snapshot — no integrity invariants
+        // to defend against panics elsewhere.
+        {
+            let guard = match self.spectral_gap_cache.lock() {
+                Ok(g) => g,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            if let Some(snapshot) = guard.as_ref() {
+                return Some(snapshot.clone());
+            }
+        }
+
+        // Compute fresh. spectral_gap() is the existing implementation
+        // (catalog §2.5 / src/spectral.rs); we just wrap it with the
+        // Cheeger / mixing-time conversion + cache the answer.
+        let lambda_2 = crate::spectral::spectral_gap(self);
+
+        // Mix time bound: τ ≈ (1/λ₂) · log(1/ε), ε = 1e-3.
+        let mix_time = if lambda_2 > 0.0 {
+            ((1.0 / lambda_2) * (1.0_f64 / 1e-3).ln()).ceil() as u64
+        } else {
+            // Disconnected graph → no mixing. Caller treats this
+            // as "infinite mixing time" / "do not use spectral
+            // tuning on this bundle."
+            u64::MAX
+        };
+
+        // Cheeger: λ₂ / 2 ≤ h(G) ≤ √(2 λ₂).
+        let cheeger_lower = lambda_2 / 2.0;
+        let cheeger_upper = (2.0 * lambda_2).sqrt();
+
+        // ISO 8601 timestamp without pulling chrono — use SystemTime.
+        let cached_at = {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            format!("epoch:{now}")
+        };
+
+        let snapshot = SpectralGapSnapshot {
+            lambda_2,
+            mix_time,
+            cheeger_lower,
+            cheeger_upper,
+            cached_at,
+        };
+        let mut guard = match self.spectral_gap_cache.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        *guard = Some(snapshot.clone());
+        Some(snapshot)
     }
 }
 
@@ -7953,6 +8094,143 @@ mod tests {
         assert!(
             delta >= -1e-9,
             "ΔS must be >= 0 (2nd law / RG monotonicity); got ΔS = {delta}"
+        );
+    }
+
+    // ── L3.3: spectral_gap_cached + invalidation on insert ────────
+
+    /// Build a small bundle with two indexed fields so the field-
+    /// index graph has structure. Used by the L3.3 cache tests.
+    #[cfg(feature = "kahler")]
+    fn make_spectral_test_store() -> BundleStore {
+        let schema = BundleSchema::new("spectral_test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("tier"))
+            .fiber(FieldDef::categorical("topic"))
+            .index("tier")
+            .index("topic");
+        let mut s = BundleStore::new(schema);
+        // 6 records in 2x3 = 6 combinations so the field-index
+        // graph is fully connected.
+        for (i, (tier, topic)) in [
+            ("A", "math"), ("A", "code"), ("A", "geo"),
+            ("B", "math"), ("B", "code"), ("B", "geo"),
+        ].iter().enumerate() {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Float(i as f64));
+            r.insert("tier".into(), Value::Text(tier.to_string()));
+            r.insert("topic".into(), Value::Text(topic.to_string()));
+            s.insert(&r);
+        }
+        s
+    }
+
+    /// Positive: first call computes a snapshot; second call returns
+    /// the SAME snapshot byte-for-byte (cached, not recomputed).
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn spectral_gap_cached_returns_stable_snapshot_on_repeat() {
+        let s = make_spectral_test_store();
+        let first = s.spectral_gap_cached().expect("≥ 2 records");
+        let second = s.spectral_gap_cached().expect("≥ 2 records");
+        assert_eq!(first, second, "cache must return identical snapshots on repeat");
+    }
+
+    /// Positive: insert invalidates the cache. The `cached_at` of
+    /// the post-insert snapshot must differ from the pre-insert one
+    /// (or, at minimum, the lambda_2 may change because the graph
+    /// has a new vertex). What's load-bearing: the cache MUST be
+    /// recomputed, not stale.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn spectral_gap_cached_invalidates_on_insert() {
+        let mut s = make_spectral_test_store();
+        let before = s.spectral_gap_cached().expect("≥ 2 records").clone();
+
+        // Insert one more record. cached_at uses epoch-seconds —
+        // to guarantee a different timestamp without a sleep, we
+        // verify the cache was CLEARED (post-insert, the inner
+        // value is None until the next read).
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Float(6.0));
+        r.insert("tier".into(), Value::Text("C".into()));
+        r.insert("topic".into(), Value::Text("math".into()));
+        s.insert(&r);
+
+        let guard = s.spectral_gap_cache.lock().unwrap();
+        assert!(
+            guard.is_none(),
+            "insert must clear the cache; got {:?}",
+            *guard
+        );
+        drop(guard);
+
+        // Reading again returns a fresh snapshot. The graph grew
+        // by one vertex, so the gap may differ; what we assert is
+        // that ANY snapshot returns (not None) and that it's
+        // stable on the second read after the recompute.
+        let after = s.spectral_gap_cached().expect("≥ 2 records");
+        let after2 = s.spectral_gap_cached().expect("cached after first read");
+        assert_eq!(after, after2);
+
+        // Sanity: the recomputed snapshot's lambda_2 is in [0, 2]
+        // (normalized Laplacian eigenvalue range).
+        assert!(
+            (0.0..=2.0).contains(&after.lambda_2),
+            "lambda_2 out of range: {}",
+            after.lambda_2
+        );
+        // And the pre-insert lambda_2 was also in range (sanity for
+        // the before-state).
+        assert!(
+            (0.0..=2.0).contains(&before.lambda_2),
+            "before lambda_2 out of range: {}",
+            before.lambda_2
+        );
+    }
+
+    /// Negative: bundles with fewer than 2 records return None
+    /// (the spectral graph is degenerate). Defends against the
+    /// "spectral gap on a 1-record bundle" silent-zero footgun.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn spectral_gap_cached_returns_none_when_too_small() {
+        let schema = BundleSchema::new("tiny")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("k"))
+            .index("k");
+        let mut s = BundleStore::new(schema);
+        assert!(s.spectral_gap_cached().is_none(), "empty bundle: None");
+
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Float(0.0));
+        r.insert("k".into(), Value::Text("v".into()));
+        s.insert(&r);
+        assert!(
+            s.spectral_gap_cached().is_none(),
+            "1-record bundle: still None"
+        );
+    }
+
+    /// Positive: Cheeger bounds are consistent with lambda_2 per the
+    /// classical inequality λ₂/2 ≤ h(G) ≤ √(2 λ₂).
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn spectral_gap_cached_cheeger_bounds_consistent_with_lambda() {
+        let s = make_spectral_test_store();
+        let snap = s.spectral_gap_cached().expect("≥ 2 records");
+        assert!(
+            (snap.cheeger_lower - snap.lambda_2 / 2.0).abs() < 1e-12,
+            "cheeger_lower should equal λ₂/2: got {} vs {}",
+            snap.cheeger_lower,
+            snap.lambda_2 / 2.0
+        );
+        let expected_upper = (2.0 * snap.lambda_2).sqrt();
+        assert!(
+            (snap.cheeger_upper - expected_upper).abs() < 1e-12,
+            "cheeger_upper should equal √(2λ₂): got {} vs {}",
+            snap.cheeger_upper,
+            expected_upper
         );
     }
 }

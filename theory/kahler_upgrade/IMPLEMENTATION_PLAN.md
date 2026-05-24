@@ -64,6 +64,10 @@ constraints between layers.*
 ```
               L1 (Foundation: J, B, schema wiring)
                         │
+                        ▼
+                   L1.5 (B-perturbed
+                         transport, flat case)
+                        │
         ┌───────────────┼───────────────┐
         ▼               ▼               ▼
        L2              L3              L4
@@ -74,23 +78,60 @@ constraints between layers.*
                 ▼               ▼
                L5              L6
         (Substructure       (Hodge complex
-         detection)          §2.9)
+         detection,          §2.9, Morse
+         curved-B            compress API)
+         transport)
                 │
                 ▼
                L7
-        (Quantization:
-         E.1, E.2, §2.1)
+        (Quantization L7.1-L7.4: E.1, E.2, §2.1
+         +  L7.5: Frobenius/WDVV on toy manifolds (§2.10)
+         +  L7.6: Berezin-Toeplitz on toy manifolds (§2.8)
+         +  L7.7: Riemann-Roch capacity API (§2.2))
                 │
                 ▼
                L8
         (Marcella substrate
-         handoff)
+         handoff — opens
+         EARLY via L8.0
+         consumption draft)
 ```
 
-L1 blocks everything. L5 needs L3 + L4 (Hadamard detection reads
-curvature). L7 needs L1 + L3 (line bundle needs forms and Jacobi
-cost). L8 ships last and is mostly documentation + the empirical
-pre-flight gate from §E.5.
+L1 blocks everything. L1.5 ships flat-space B-perturbed transport
+right after L1 so Marcella's runtime can start integrating against
+the API surface without waiting for L7. L5 takes over for
+curved-manifold B-transport. L5 needs L3 + L4 (Hadamard detection
+reads curvature). L7 needs L1 + L3 (line bundle needs forms and
+Jacobi cost). L8 was originally scoped as documentation + empirical
+pre-flight; we now ALSO open it early via L8.0 — the Marcella team
+contributes `marcella_kahler_consumption_draft.md` as a PR before L2
+ships, so the API surface stabilizes before L7 finalizes.
+
+### Why this layout (versus Marcella team's tier-1-first proposal)
+
+The 2026-05-24 letter from Marcella team correctly argues that
+their tier-1 items (B-perturbed transport, Frobenius composition,
+Berezin-Toeplitz regime) are the generative primitives, not the
+GIGI-engine items L2 (adjacency) and L4 (curvature decomp). We
+agree on priority — and on what those items unlock for Marcella.
+
+We DON'T fully re-order the layers because the dependency stack
+is real: L5 needs L3 + L4; L7 needs L1 + L3. Shuffling tier ordering
+doesn't actually unlock Marcella's items faster — it just delays
+GIGI's internal stability without buying time elsewhere.
+
+What we DO change, per their letter:
+- **Add L1.5** (B-perturbed transport, flat case) so the API
+  surface lands right after L1.
+- **Add L7.5 / L7.6 / L7.7** so Frobenius, Berezin-Toeplitz, and
+  Riemann-Roch capacity all ship in L7 (scoped to toy Kähler
+  manifolds — CP^n, T^n, S² — until §E.5 pre-flight confirms
+  Marcella's actual embedding manifold structure).
+- **Add L8.0** as the consumption-draft PR slot; doesn't gate
+  anything but unblocks the interface conversation now.
+- **Add Marcella-runtime API requirements** to L3, L5, L6, L7
+  inline so each layer ships exposed-to-Marcella, not just
+  exposed-to-planner.
 
 
 ---
@@ -171,6 +212,164 @@ mod kahler_schema_tests {
 
 ---
 
+## L1.5 — B-perturbed transport API (flat case)
+
+**Depends on.** L1.
+**Parallel with.** L2.
+
+**Scope.** Marcella team's #1 ask in the 2026-05-24 letter: surface
+a `bundle.transport_along(γ, with_B)` API at L2 timing so the
+Marcella runtime can integrate against the surface while the rest
+of the upgrade lands. We carve this out as a sub-layer because
+it's a tiny additive surface that doesn't touch the planner.
+
+GIGI already has a `TRANSPORT` GQL verb in `gigi_stream.rs` using
+quaternion-based parallel transport on fiber bundles. L1.5 adds
+the **magnetically-perturbed** variant (catalog §1.2): the
+trajectory satisfies `∇_{γ̇} γ̇ = B(γ̇, ·)^♯` instead of
+`∇_{γ̇} γ̇ = 0`. Energy is conserved along the flow (the
+antisymmetry argument in catalog §1.2).
+
+**Scope caveat.** L1.5 ships **flat-space** B-transport only —
+exactly the case validated by `validation_tests.py::test_2`
+(cyclotron trajectory on R², radius error 2e-14). On a curved
+underlying manifold the magnetic geodesic equation is a nonlinear
+ODE system that requires the curvature decomposition (L4) and the
+Hadamard-region machinery (L5) before it's safe to run in
+production. Curved-space B-transport is L5.
+
+### Items
+
+- **L1.5.1** `src/geometry/transport.rs` — new submodule under
+  `geometry`. Contains:
+  ```rust
+  pub struct TransportSegment {
+      pub from_point: Vec<f64>,
+      pub to_point: Vec<f64>,
+      pub initial_velocity: Vec<f64>,
+      pub bias: Option<ClosedTwoForm>,
+  }
+  pub fn flat_transport(seg: &TransportSegment, steps: usize) -> TransportResult {
+      // RK4 integration of:
+      //   ẍ = B(ẋ, ·)^♯   when seg.bias = Some(B)
+      //   ẍ = 0           when seg.bias = None
+      // Returns the trajectory, final velocity, and
+      // kinetic-energy drift (must be < tolerance per catalog §1.2).
+  }
+  ```
+- **L1.5.2** Wire the API into `BundleStore` as
+  `bundle.transport_along(seg, opts) -> SectionResult`. The opts
+  parameter carries `with_B: Option<ClosedTwoForm>`; absent =
+  classical transport (unchanged behavior); present = magnetic
+  trajectory.
+- **L1.5.3** Surface in GQL: extend the existing `TRANSPORT` verb
+  with an optional `WITH B = <2form>` clause and an optional
+  `ALLOW_NON_CLOSED` modifier. Backwards-compatible — TRANSPORT
+  without `WITH B` behaves exactly as it does today.
+
+### API contract (ratified per Marcella consumption draft §12 + 2026-05-24 reply)
+
+Default behavior (B from bundle attribute when present):
+```
+TRANSPORT <section_id> FROM <start> TO <end> ON <bundle>
+  [WITH B = <2form_symbol>]
+  [ALLOW_NON_CLOSED]
+RETURNS {
+  transported_section: <id>,
+  path_length: f64,
+  energy_drift: f64,
+  holonomy_norm: f64,
+  used_magnetic: bool,
+  b_source: "bundle" | "override" | "none" | "fallback_non_closed",
+  closedness_norm: f64    // present only when b_source = fallback_non_closed
+}
+```
+
+Resolution order for B:
+1. `WITH B = <override>` if provided → `b_source: "override"`.
+2. Else `bundle.kahler.B` if present → `b_source: "bundle"`.
+3. Else classical quaternion transport → `b_source: "none"`.
+
+Non-closed B handling:
+- Default: validation error `{"error": "non_closed_b",
+  "closedness_norm": ..., "tolerance": ...}` — fails loudly.
+- With `ALLOW_NON_CLOSED`: falls back to classical transport,
+  returns the result with `b_source: "fallback_non_closed"`
+  and the `closedness_norm` for diagnostic.
+
+Energy drift acceptance:
+- 1e-9 per turn hard limit (response surfaces actual drift).
+- Test-2-derived ground truth is 6e-15 on flat R²; production
+  limit gives 6 orders of magnitude headroom for curved
+  manifolds in L5.
+
+### TDD spec
+
+```rust
+// src/geometry/transport.rs
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn flat_classical_transport_is_straight_line() {
+        // B = None ⇒ trajectory is exactly the straight line from
+        // from_point to to_point at initial_velocity. Anchors the
+        // "no behavior change without B" contract.
+    }
+
+    #[test]
+    fn flat_magnetic_transport_cyclotron_radius() {
+        // Port of validation_tests.py::test_2: B = b·dx∧dy,
+        // initial v = (1, 0), cyclotron radius = |v|/b, period
+        // 2π/b. Asserts radius error < 1e-12 AND energy drift
+        // < 1e-12 over one full period.
+    }
+
+    #[test]
+    fn flat_magnetic_transport_energy_conserved() {
+        // ½|v|² constant along flow. Independently of cyclotron
+        // form — works for any closed B on flat space.
+    }
+
+    #[test]
+    fn opposite_signed_B_reverses_curvature_direction() {
+        // Negative case: B with opposite sign sends the trajectory
+        // the other way. Catches "we accidentally returned the
+        // wrong sign" bugs.
+    }
+}
+```
+
+### Math validation gate
+
+- `validation_tests.py::test_2_magnetic_trajectory` (the canonical
+  cyclotron test) is the Python ground truth. Rust port must
+  produce the SAME cyclotron radius for the same (B, v₀) inputs
+  to within 1e-12.
+
+### e2e validation gate
+
+- `tests/kahler_transport_real_data_smoke.rs` — load sensor data,
+  build a small Kähler bundle on (temperature, humidity), call
+  `transport_along` with `with_B = None` and with `with_B = Some(B)`,
+  verify the trajectories are different and that energy is
+  conserved in both. Asserts the API surface works under realistic
+  load.
+- `tests/kahler_transport_marcella_contract.rs` — explicit assertion
+  that the API shape matches what the Marcella consumption draft
+  (L8.0) says it should be. If Marcella team's draft changes the
+  contract, this test fails first.
+
+### Definition of done
+
+- L1.5 items pass per §0 (including bee's real-data rule).
+- Marcella runtime can call `bundle.transport_along(seg, opts)` and
+  get a result that includes the trajectory + conserved energy.
+- Marcella team confirms the API shape matches their consumption
+  draft (L8.0 dependency).
+
+
+---
+
 ## L2 — Adjacency (§1.1)
 
 **Depends on.** L1.
@@ -195,6 +394,20 @@ check the catalog identified as load-bearing.
     (commutator on a random vector basis; bounded error).
 - **L2.4** `src/query.rs` — tag each `QueryPlan` node with
   `commutativity_class` so the planner can reorder where safe.
+- **L2.5** (Marcella-facing, ratified in 2026-05-24 reply Q3)
+  Surface `commutativity` in the HTTP query response JSON:
+  ```json
+  "commutativity": {
+    "class": "Abelian" | "GeneratorSetsCentral" | "NumericallyVerified"
+           | "NotCommute" | "Unknown" | "NotApplicable",
+    "principal_field": "<field_id>",
+    "auxiliary_field": "<field_id>",
+    "max_commutator_entry": 0.0,        // present only when class=NotCommute
+    "reason": "single_field"             // present only when class=NotApplicable
+  }
+  ```
+  Omitted entirely (not null) when no Kähler structure is attached.
+  Contract test: `tests/kahler_adjacency_marcella_contract.rs`.
 
 ### TDD spec
 
@@ -296,6 +509,32 @@ mod tests {
   verify cached `spectral_gap()` matches the on-demand recomputation
   every 100 inserts to within ε.
 
+### Marcella-runtime surface (per consumption draft §4)
+
+Two surfaces ship at L3 (both ratified in the 2026-05-24 reply Q4):
+
+1. **In-response field on every retrieval** when Kähler is attached:
+   ```
+   { "bundle_spectral_gap": 0.083,
+     "spectral_gap_cached_at": "<iso8601>" }
+   ```
+   Cached on the bundle; freshness timestamp lets the runtime
+   detect drift between reads and insert-driven bumps.
+   Omitted entirely (not null) when no Kähler attached — keeps
+   response shape unchanged for non-Kähler users.
+
+2. **Dedicated endpoint** for out-of-band reads:
+   ```
+   GET /v1/bundles/<bundle_id>/spectral_gap
+   RETURNS { lambda_2: f64, mix_time: u64,
+             cheeger_lower: f64, cheeger_upper: f64 }
+   ```
+   Marcella's runtime uses `lambda_2` to set the rose-mechanism α
+   coefficient via `α = 1 - 1/sqrt(mix_time)` — replaces the
+   hardcoded 0.7 with a theorem-bound value per bundle.
+
+Contract test: `tests/kahler_spectral_marcella_contract.rs`.
+
 ### Definition of done
 
 - L3 items pass per §0.
@@ -379,6 +618,17 @@ everywhere. Tag them as Hadamard; surface guarantees in the API.
   `(records, convergence_rate)` when the propagation runs over a
   Hadamard region.
 - **L5.3** `bundle.tag('hadamard')` predicate exposed via SQL/GQL.
+- **L5.4** (Marcella ask) `bundle.is_hadamard_region(query) -> bool`
+  + `bundle.transport_inverse(γ) -> Section` Rust API exposed for
+  the Marcella runtime to call directly. Lets Marcella's
+  self-inspect output assert "this turn landed in a Hadamard
+  sub-bundle; residue is provably stable" (catalog §1.4-1.5
+  product application).
+- **L5.5** (Marcella ask) Curved-manifold extension of L1.5's
+  flat-space B-perturbed transport. The magnetic geodesic equation
+  on a Kähler-Hadamard region is well-posed (no conjugate points,
+  invertible). `bundle.transport_along(seg, with_B)` becomes
+  globally well-defined on Hadamard sub-bundles.
 
 ### TDD spec
 
@@ -434,6 +684,12 @@ cell incidence, Hodge Laplacians, Betti numbers per bundle.
   `Δ_k = d†d + dd†`, betti numbers via eigendecomposition.
 - **L6.4** Compression API: `compress_to_morse(store) -> MorseComplex`
   keeps only critical points + connections.
+- **L6.5** (Marcella ask) Expose `bundle.morse_compress() ->
+  MorseComplex` directly on `BundleStore` so the Marcella runtime
+  can run transport on the compressed structure when prose density
+  is uniform across regions. Per the 2026-05-24 letter, this is
+  what makes Marcella scale to 10⁶+ substrate items without
+  linear-walk costs (catalog §2.9 product application).
 
 ### TDD spec
 
@@ -559,23 +815,215 @@ mod chern_compression_tests {
   (bee writes the legal text; this is the technical-disclosure stub).
 
 
+### L7.5 Frobenius / WDVV composition (catalog §2.10, scoped)
+
+**Promoted from "Marcella v3 substrate / phase-1 deferred" to
+active L7 sub-item per the 2026-05-24 Marcella team letter.**
+
+**Scope caveat.** Full Frobenius / WDVV on arbitrary Kähler
+manifolds requires computing Gromov-Witten invariants, which is
+genuinely research-grade. We ship **toy-manifold composition only**:
+the QH*(CP^n) product (closed-form via `(H^k mod n+1, q^k div n+1)`
+arithmetic), plus T^n and S². Marcella's runtime can start
+integrating against the API surface immediately; the production
+deployment on her actual embedding manifold is gated on §E.5
+pre-flight (which manifold she lives on, and whether its GW
+invariants are known/computable).
+
+### Items
+- **L7.5.1** `src/geometry/quantum_cohomology.rs` —
+  `QuantumCohomology` trait, with `Cpn { n: usize, q_truncation: usize }`,
+  `TorusTn { n: usize }`, `Sphere2` implementations.
+- **L7.5.2** `bundle.frobenius_compose(a: &Section, b: &Section) -> Section`
+  on bundles whose schema declares `kahler.B` and an attached
+  `QuantumCohomology` type. Returns `Result` (errors when the
+  attached type doesn't support general composition yet).
+
+### TDD spec
+```rust
+// src/geometry/quantum_cohomology.rs
+#[cfg(test)]
+mod tests {
+    #[test] fn cp2_associator_zero_on_27_triples() { /* port test 8 */ }
+    #[test] fn h_cubed_equals_q_on_cp2() { /* sanity for CP² */ }
+    #[test] fn unknown_manifold_returns_unimplemented() { /* negative */ }
+}
+```
+
+### Math validation gate
+- `validation_tests_v2.py::test_8_frobenius_wdvv` still PASS.
+- New `tests/kahler_frobenius_real_data_smoke.rs`: build a CP²
+  Kähler bundle from synthetic real-shaped data, run
+  `frobenius_compose` on all 27 basis triples, verify associator
+  = 0 to machine epsilon.
+
+### Per-region status (ratified in 2026-05-24 reply Q5)
+
+When Marcella's embedding manifold has regions that are
+toy-classifiable (CP^n, T^n, S²) and regions that aren't, the API
+returns a region partition:
+
+```json
+{
+  "regions": [
+    { "region_id": "...", "manifold_class": "CP_3" | "T_n" | "S2" | "non_toy",
+      "frobenius_ok": bool, "covers_fraction": f64,
+      "associator_norm": f64 | null,
+      "reason": "general_GW_invariants_not_computable" | null }
+  ],
+  "global_associator_ok": bool,
+  "callable_on_regions": ["..."]
+}
+```
+
+`POST .../frobenius_compose` takes a `region_id` parameter for
+explicit region selection. Without `region_id`, errors with the
+region partition as data — never silently picks a region.
+
+Region detection runs after L5 Hadamard regions are detected;
+re-classification on insert is debounced. Contract test
+`tests/kahler_l7_marcella_contract.rs` asserts the region-partition
+shape matches the consumption draft.
+
+
+### L7.6 Berezin-Toeplitz operators on toy manifolds (catalog §2.8, scoped)
+
+**Promoted from research-mode to active L7 sub-item per the
+2026-05-24 letter.** Same scoping logic as L7.5: ship the API on
+toy manifolds (CP^n, T^n, S²) where coherent states have
+closed-form expressions; general case stays research-mode.
+
+### Items
+- **L7.6.1** `src/geometry/toeplitz.rs` — coherent-state
+  construction on CP^n at fixed `k` (where ℏ = 1/k), Toeplitz
+  operator `T_f` for `f: M → ℝ` smooth.
+- **L7.6.2** `bundle.toeplitz_operator(f: SmoothFunction) -> Operator`
+  surface on Kähler bundles with attached `QuantumCohomology` of
+  toy type.
+
+### TDD spec
+```rust
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn toeplitz_bohr_correspondence_holds_at_small_hbar() {
+        // T_f T_g - T_{fg} = O(ℏ), checked at ℏ ∈ {1, 1/2, 1/4, 1/8}
+        // via the same BCH ground truth used in test 10.
+    }
+    #[test] fn toeplitz_on_general_manifold_returns_unimplemented() {}
+}
+```
+
+### Math validation gate
+- `validation_tests_v3.py::test_10_berezin_toeplitz` still PASS.
+
+### Production ℏ lower bound (ratified in 2026-05-24 reply Q6)
+
+`ℏ ≥ 4 / embedding_dim` is the safe deployment bound. Reason: the
+bosonic-operator truncation `N ≳ 1/ℏ` must resolve ℏ-scale
+features in the BT correction; `N ≤ d/4` gives headroom for the
+truncation to not dominate the O(ℏ³) correction term.
+
+`POST .../berezin_toeplitz` enforces:
+- `hbar < 4/embedding_dim` → 400 `{"error": "hbar_below_safe_bound",
+  "minimum": 4.0/d, "supplied": h}`
+- `hbar ≥ 4/embedding_dim` → 200 with the operator + corrections
+- Opt-out via body `"allow_below_safe_hbar": true` returns the
+  result with `truncation_dominates_correction: bool` diagnostic
+  so the caller knows reliability is compromised.
+
+For Marcella's typical d ≈ 1024, safe minimum is ≈ 0.0039 — well
+below the "deterministic" use case, so the production range is
+wide. Contract test asserts both paths (in-bound + opt-out).
+
+
+### L7.7 Riemann-Roch capacity API (catalog §2.2)
+
+**Adopted per the 2026-05-24 letter, no scoping caveats.** Direct
+consequence of L7 having the line bundle. Hilbert polynomial of
+the Kähler embedding manifold, evaluated at `k = 1/ℏ`, gives the
+capacity bound Marcella needs for her AGI-claim publishable
+statement.
+
+### Items
+- **L7.7.1** `bundle.representational_capacity(k_max: i64) -> i64`
+  — computes `dim H⁰(M, L^k)` via Riemann-Roch on toy manifolds.
+  Returns the integer capacity bound.
+- **L7.7.2** `bundle.hilbert_polynomial() -> Polynomial<i64>` —
+  the full polynomial in k, so Marcella's runtime can read off
+  coefficients (the integer ∫_M (B/2π)^n / n! that dominates the
+  asymptotic).
+
+### TDD spec
+```rust
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn cp1_capacity_matches_test_9_theta_function_basis() {
+        // Port of validation_tests_v3.py::test_9:
+        //   dim H⁰(L^n) on T² with τ = i must equal n
+        // for n ∈ {1, 2, 3, 4, 5}. Same answer through our
+        // Riemann-Roch path.
+    }
+}
+```
+
+
 ---
 
 ## L8 — Marcella substrate handoff + Hadamard pre-flight (§E.5)
 
-**Depends on.** L1–L7 all shipped.
+**Depends on.** L1–L7 all shipped (for L8.1+).
+L8.0 is the early-handoff slot — depends only on the 2026-05-24
+Marcella letter being received (DONE: consumption draft mirrored
+into this folder, GIGI replied with 7 question answers).
 
 **Scope.** Document the substrate, write the empirical pre-flight
 tests Marcella v3 needs before citing the Kähler upgrade as theorem.
 This layer is mostly docs + tests on the Marcella side, no GIGI
-engine changes.
+engine changes — with the exception of L8.0, which opens the
+cross-team interface conversation before L2 even ships.
+
+### Flip protocol (ratified in 2026-05-24 reply Q7)
+
+`KAHLER_ENABLED` default flips from `false` to `true` when ALL of:
+
+1. L7 has shipped — all 7 sub-items (L7.1 through L7.7) with
+   contract tests green.
+2. All §E.5 pre-flight tests pass on Marcella's *actual*
+   embedding manifold (not synthetic stand-ins).
+3. Consumption-spec contract tests pass on the latest sheets
+   bundle deployment for ≥ 1 full week without regression.
+4. Marcella v3 paper draft reviewed by ≥ 1 external geometer
+   (ideally from the ICDG colloquium circle given the Adachi-
+   program provenance).
+
+**GIGI proposes the flip; Marcella has veto with a stated reason.**
+The principle: you're the gatekeeper of the thing you consume.
+A postponement is data — usually means a pre-flight check is
+borderline and we should investigate rather than override.
+
+Co-announce when the flip happens.
 
 ### Items
 
+- **L8.0** `theory/kahler_upgrade/marcella_kahler_consumption_draft.md`
+  — Marcella team contributes this as a PR to this folder per the
+  2026-05-24 letter. Documents the API surface they need from each
+  layer (L2 commutativity class, L3 spectral gap, L4 curvature
+  decomp, L5 Hadamard predicate, L6 Morse compress, L7
+  transport_along + representational_capacity + Frobenius
+  compose). GIGI team reviews; disagreements surface NOW, not at
+  L8.1. Acceptance criteria: the API shapes in the draft match
+  what L1.5 / L3 / L5 / L6 / L7 actually ship (the
+  `kahler_transport_marcella_contract.rs` test in L1.5 enforces
+  this for transport_along; analogous contract tests added per
+  layer).
 - **L8.1** `theory/kahler_upgrade/marcella_substrate.md` —
   spec describing exactly which GIGI APIs Marcella v3 consumes
   for its Kähler substrate (J operator, B 2-form, Jacobi
-  cardinality, Hadamard detection, Morse compression).
+  cardinality, Hadamard detection, Morse compression, B-perturbed
+  transport, representational capacity, Frobenius compose).
 - **L8.2** `marcella/v3/preflight/hadamard_check.py` — implements
   §E.5 check 1 (sample 1000 Jacobi fields, verify non-vanishing).
   Lives in the Marcella repo, references GIGI APIs.

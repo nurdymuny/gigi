@@ -14,6 +14,13 @@ pub mod dhoom;
 pub mod edge;
 pub mod engine;
 pub mod gauge;
+// Kähler-geometry substrate (catalog.md §1, the generator
+// 𝒢 = (M, g, J, ∇, B, Γ)). Gated by the `kahler` feature so the
+// engine's existing surface area is bit-identical when the feature
+// is OFF. See theory/kahler_upgrade/ for catalog + implementation
+// plan + validation tests.
+#[cfg(feature = "kahler")]
+pub mod geometry;
 pub mod hash;
 pub mod invariant;
 pub mod join;

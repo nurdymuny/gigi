@@ -377,6 +377,17 @@ pub struct BundleSchema {
     pub h1_threshold: f64,
     /// Schema-declared invariant constraints checked on every insert.
     pub invariants: Vec<InvariantDef>,
+    /// Optional Kähler structure (complex structure J + closed 2-form B)
+    /// attached to the fiber tangent space. When `Some`, downstream
+    /// layers (dual adjacency, Jacobi cost, Hadamard detection,
+    /// prequantization) automatically apply their Kähler-aware code
+    /// paths. When `None`, the bundle is purely Riemannian and behaves
+    /// identically to a pre-upgrade GIGI. Gated by the `kahler`
+    /// feature flag so the engine surface stays bit-identical when
+    /// the feature is off — see catalog.md §1 + IMPLEMENTATION_PLAN.md
+    /// L1.4.
+    #[cfg(feature = "kahler")]
+    pub kahler: Option<crate::geometry::KahlerStructure>,
 }
 
 impl BundleSchema {
@@ -390,7 +401,28 @@ impl BundleSchema {
             adjacencies: Vec::new(),
             h1_threshold: 3.0,
             invariants: Vec::new(),
+            // Default: no Kähler structure attached — bundle is
+            // purely Riemannian and behaves exactly as pre-upgrade.
+            // Attach via `with_kahler` when the feature is on.
+            #[cfg(feature = "kahler")]
+            kahler: None,
         }
+    }
+
+    /// Attach a Kähler structure (J, B) to this schema. Sets the
+    /// `kahler` field; idempotent — calling twice replaces. The
+    /// dim-coherence invariant is checked at attach time so a
+    /// schema with mismatched J/B dimensions can never be stored.
+    #[cfg(feature = "kahler")]
+    pub fn with_kahler(mut self, k: crate::geometry::KahlerStructure) -> Self {
+        assert!(
+            k.dim_coherent(),
+            "KahlerStructure dim mismatch: J dim={}, B dim={}",
+            k.j.dim(),
+            k.b.dim()
+        );
+        self.kahler = Some(k);
+        self
     }
 
     pub fn with_invariant(mut self, inv: InvariantDef) -> Self {

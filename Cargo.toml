@@ -9,6 +9,20 @@ default-run = "gigi"
 autoexamples = false
 autobenches = false
 
+# ── Feature flags ──
+#
+# `kahler` — opt-in Kähler-geometry substrate (catalog.md §1, the
+# generator 𝒢 = (M, g, J, ∇, B, Γ)). When ON, BundleSchema gains an
+# optional `KahlerStructure` field carrying a complex structure J and
+# a closed 2-form B; the new `gigi::geometry` module provides the
+# math. When OFF, the engine compiles and runs exactly as before —
+# this upgrade is strictly additive. See
+# `theory/kahler_upgrade/IMPLEMENTATION_PLAN.md` for the rollout
+# layers.
+[features]
+default = []
+kahler = []
+
 [dependencies]
 roaring = "0.10"
 regex = "1"

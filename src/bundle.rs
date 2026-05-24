@@ -3971,6 +3971,78 @@ impl BundleStore {
         crate::curvature::compute_kahler_decomposition(self, kahler)
     }
 
+    /// L6.5 — Morse compression of this bundle's field-index graph
+    /// (catalog §2.9, Marcella ask).
+    ///
+    /// Builds the discrete Hodge complex from records (0-cells),
+    /// index-shared pairs (1-cells), and 3-cliques (2-cells); then
+    /// returns the Morse compression — critical-cell counts equal
+    /// Betti numbers. Marcella runs transport on the compressed
+    /// representation when prose density is uniform across regions,
+    /// avoiding linear-walk costs (per the 2026-05-24 letter).
+    ///
+    /// Returns `None` when the bundle has fewer than 2 records
+    /// (degenerate cell complex). For larger bundles the call is
+    /// O((V+E+F)³) due to the underlying eigendecompositions; cache
+    /// on the caller side for hot paths.
+    #[cfg(feature = "kahler")]
+    pub fn morse_compress(&self) -> Option<crate::discrete::MorseComplex> {
+        if self.len() < 2 {
+            return None;
+        }
+        // Build vertices = base points (in iteration order).
+        let bps: Vec<BasePoint> = self.sections().map(|(bp, _)| bp).collect();
+        let n_vertices = bps.len();
+        let bp_to_idx: std::collections::HashMap<BasePoint, usize> =
+            bps.iter().enumerate().map(|(i, &b)| (b, i)).collect();
+
+        // Build edges = pairs sharing an indexed-field value. This
+        // is the same field-index graph the L3 spectral_gap runs on.
+        let mut edge_set: std::collections::BTreeSet<(usize, usize)> =
+            std::collections::BTreeSet::new();
+        for &bp in &bps {
+            for nb in self.geometric_neighbors(bp) {
+                if let (Some(&i), Some(&j)) = (bp_to_idx.get(&bp), bp_to_idx.get(&nb)) {
+                    if i != j {
+                        edge_set.insert((i.min(j), i.max(j)));
+                    }
+                }
+            }
+        }
+        let edges: Vec<(usize, usize)> = edge_set.iter().copied().collect();
+
+        // Build faces = 3-cliques in the edge graph. Cap at the
+        // bundle's record count squared to keep the compute bounded;
+        // for tiny bundles we enumerate exhaustively.
+        let adj: std::collections::HashMap<usize, std::collections::HashSet<usize>> = edges
+            .iter()
+            .flat_map(|&(a, b)| [(a, b), (b, a)])
+            .fold(
+                std::collections::HashMap::new(),
+                |mut acc, (a, b)| {
+                    acc.entry(a).or_default().insert(b);
+                    acc
+                },
+            );
+        let mut face_set: std::collections::BTreeSet<(usize, usize, usize)> =
+            std::collections::BTreeSet::new();
+        for &(a, b) in &edges {
+            if let Some(neighbors_a) = adj.get(&a) {
+                if let Some(neighbors_b) = adj.get(&b) {
+                    for &c in neighbors_a.intersection(neighbors_b) {
+                        if c > b {
+                            face_set.insert((a, b, c));
+                        }
+                    }
+                }
+            }
+        }
+        let faces: Vec<(usize, usize, usize)> = face_set.into_iter().collect();
+
+        let hc = crate::discrete::HodgeComplex::new(n_vertices, edges, faces).ok()?;
+        Some(crate::discrete::morse_compress(&hc))
+    }
+
     /// L5.1 — detect all Hadamard substructures in this bundle.
     ///
     /// Convenience wrapper around `geometry::hadamard::detect`. See

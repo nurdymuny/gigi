@@ -34,6 +34,13 @@ pub mod graph;
 // guesses.
 #[cfg(feature = "kahler")]
 pub mod cost;
+// L6 — discrete exterior calculus + Hodge complex (catalog §2.9):
+// d_0, d_1 chain operators, Hodge Laplacians, Betti numbers,
+// Morse compression. Enables Marcella's transport on a compressed
+// substrate without linear-walk costs (catalog §2.9 product
+// application; per Marcella's 2026-05-24 letter).
+#[cfg(feature = "kahler")]
+pub mod discrete;
 pub mod hash;
 pub mod invariant;
 pub mod join;

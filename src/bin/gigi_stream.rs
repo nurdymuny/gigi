@@ -633,6 +633,49 @@ struct CurvatureReport {
     confidence: f64,
     capacity: f64,
     per_field: Vec<FieldCurvature>,
+    /// L4 / catalog §E.3 — Kähler curvature decomposition. Present
+    /// only when the `kahler` feature is on and the bundle has a
+    /// Kähler structure attached with enough data to compute the
+    /// four invariants. Per the v2 consumption draft, Marcella
+    /// reads this off the curvature endpoint and uses Ricci/Weyl
+    /// for diversity bounds and holo-bisectional for the Hadamard
+    /// gating decision.
+    #[cfg(feature = "kahler")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    kahler: Option<KahlerCurvatureReport>,
+}
+
+/// L4 — serialized Kähler curvature decomposition. Mirrors
+/// `gigi::bundle::KahlerCurvature` for the HTTP response shape.
+#[cfg(feature = "kahler")]
+#[derive(Serialize, Debug, Clone)]
+struct KahlerCurvatureReport {
+    /// Scalar Ricci curvature; sign indicates Fano (`>0`) / Ricci-
+    /// flat / general type.
+    ricci: f64,
+    /// Conformal-curvature deviation; `0` ⇔ constant complex space
+    /// form.
+    weyl: f64,
+    /// Minimum holomorphic bisectional curvature across complex
+    /// pair combinations. `≤ 0` ⇒ Kähler-Hadamard regime.
+    holo_bisectional_min: f64,
+    /// Maximum holomorphic bisectional curvature.
+    holo_bisectional_max: f64,
+    /// Mean holomorphic sectional curvature across complex pairs.
+    holo_sectional: f64,
+}
+
+#[cfg(feature = "kahler")]
+impl From<gigi::bundle::KahlerCurvature> for KahlerCurvatureReport {
+    fn from(k: gigi::bundle::KahlerCurvature) -> Self {
+        Self {
+            ricci: k.ricci,
+            weyl: k.weyl,
+            holo_bisectional_min: k.holo_bisectional_min,
+            holo_bisectional_max: k.holo_bisectional_max,
+            holo_sectional: k.holo_sectional,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -2225,12 +2268,22 @@ async fn curvature_report(
         });
     }
 
+    // L4 — Kähler curvature decomposition (gated; None when no
+    // Kähler attached or insufficient data).
+    #[cfg(feature = "kahler")]
+    let kahler = store
+        .as_heap()
+        .and_then(|s| s.kahler_curvature())
+        .map(KahlerCurvatureReport::from);
+
     Ok(Json(CurvatureReport {
         k,
         curvature: k,
         confidence: conf,
         capacity: cap,
         per_field,
+        #[cfg(feature = "kahler")]
+        kahler,
     }))
 }
 

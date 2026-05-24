@@ -661,6 +661,57 @@ pub struct SpectralGapSnapshot {
     pub cached_at: String,
 }
 
+/// Kähler curvature decomposition (catalog §E.3 / L4).
+///
+/// On a Kähler manifold the Riemann tensor splits into four
+/// independent invariants — Ricci, Weyl, holomorphic sectional, and
+/// holomorphic bisectional curvature. Each is computed from the same
+/// Welford-style streaming statistics already maintained by
+/// `FieldStats`, so the decomposition is O(n_fields) per call without
+/// rescanning records.
+///
+/// The numeric fiber fields are paired off in declaration order into
+/// `n` complex coordinates `z_k = f_{2k} + i·f_{2k+1}` (J's standard
+/// action on R^{2n}). The four invariants are:
+///
+/// - `ricci`  — scalar Ricci curvature. On a Kähler-Einstein
+///   manifold `Ric = λg` for a constant `λ`; per catalog the
+///   normalization is `λ = (n+1)·K_H` so CP¹ Fubini-Study with
+///   `K_H = 4` gives `Ric = 2` (matching `Ric = (n+1)g`, n=1).
+/// - `weyl`   — conformal-curvature deviation across complex pairs.
+///   Computed as the standard deviation of per-pair holomorphic
+///   sectional curvature; zero iff every pair has the same `K_H`
+///   (constant complex space form, e.g. CP^n FS).
+/// - `holo_sectional` — mean per-pair `K_H` across the `n` complex
+///   coordinates. For CP¹ FS this is 4.
+/// - `holo_bisectional_min / _max` — pinching range
+///   `K_B(X,Y) = √(K_H(X)·K_H(Y))` over the `n²` pair combinations.
+///   On CP¹ FS the catalog specifies `K_B ∈ [1, 4]`; our streaming
+///   version takes the geometric-mean pinching across observed pairs.
+///
+/// Per the L4 math validation gate the analytic CP¹ FS values
+/// (`Ric = 2`, `Weyl = 0`, `K_H = 4`, `K_B ∈ [1, 4]`) are recovered
+/// in the limit of many FS-distributed samples; finite-sample
+/// tolerance is asserted in `validation_tests_v4.py::test_14`.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct KahlerCurvature {
+    /// Mean scalar Ricci curvature. Sign indicates Fano (`>0`),
+    /// Ricci-flat (`=0`), or general type (`<0`) regime.
+    pub ricci: f64,
+    /// Conformal-curvature deviation. `0` ⇔ conformally flat /
+    /// constant complex space form.
+    pub weyl: f64,
+    /// Minimum holomorphic bisectional curvature across observed
+    /// complex-pair combinations. `K_B ≤ 0` ⇒ Kähler-Hadamard
+    /// regime (catalog §1.4 applies).
+    pub holo_bisectional_min: f64,
+    /// Maximum holomorphic bisectional curvature.
+    pub holo_bisectional_max: f64,
+    /// Mean holomorphic sectional curvature across complex pairs.
+    pub holo_sectional: f64,
+}
+
 /// Per-field running statistics for curvature.
 #[derive(Debug, Clone, Default)]
 pub struct FieldStats {
@@ -3897,6 +3948,27 @@ impl BundleStore {
         }
 
         Ok(results)
+    }
+
+    /// Kähler curvature decomposition snapshot (L4 / catalog §E.3).
+    ///
+    /// Returns the four-component decomposition
+    /// `(ricci, weyl, holo_bisectional_min/max, holo_sectional)`
+    /// computed from the existing per-field Welford statistics in
+    /// O(n_fields). Returns `None` when:
+    /// - the bundle has no Kähler structure attached, or
+    /// - the bundle has fewer than 2 records of variance to compute, or
+    /// - the schema cannot pair its numeric fiber fields into complex
+    ///   coordinates (odd parity / no numeric fields).
+    ///
+    /// Unlike `spectral_gap_cached` this is NOT cached: the compute
+    /// is O(n_fields) and would be cheaper than the cache lock+miss
+    /// overhead. Callers that hit it on a hot path can wrap with
+    /// their own memo.
+    #[cfg(feature = "kahler")]
+    pub fn kahler_curvature(&self) -> Option<KahlerCurvature> {
+        let kahler = self.schema.kahler.as_ref()?;
+        crate::curvature::compute_kahler_decomposition(self, kahler)
     }
 
     /// Cached spectral-gap snapshot (L3.3 + consumption-draft v2 §4).

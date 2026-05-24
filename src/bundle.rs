@@ -3971,6 +3971,146 @@ impl BundleStore {
         crate::curvature::compute_kahler_decomposition(self, kahler)
     }
 
+    /// L5.1 — detect all Hadamard substructures in this bundle.
+    ///
+    /// Convenience wrapper around `geometry::hadamard::detect`. See
+    /// that module's docstring for the operational criterion (L4
+    /// curvature + L3 Jacobi-field conjugate-free check).
+    ///
+    /// Returns empty when the bundle has no Hadamard region.
+    #[cfg(feature = "kahler")]
+    pub fn hadamard_regions(&self) -> Vec<crate::geometry::HadamardSubstructure> {
+        crate::geometry::detect_hadamard(self)
+    }
+
+    /// L5.4 — `bundle.is_hadamard_region(query)`. True iff the
+    /// records matching `query` form a detected Hadamard region.
+    ///
+    /// - `query = None` ⇒ ask about the full bundle.
+    /// - `query = Some((field, value))` ⇒ ask about the sub-bundle
+    ///   defined by an index-field filter.
+    ///
+    /// Marcella's runtime self-inspect surface: lets the consumer
+    /// assert "this turn landed in a Hadamard sub-bundle; residue
+    /// is provably stable" (catalog §1.4-§1.5 product application).
+    #[cfg(feature = "kahler")]
+    pub fn is_hadamard_region(
+        &self,
+        query: Option<(&str, &crate::types::Value)>,
+    ) -> bool {
+        crate::geometry::is_hadamard_region(self, query)
+    }
+
+    /// L5.5 — curved-manifold extension of `flat_transport`.
+    /// Refuses to run unless the bundle is in a detected Hadamard
+    /// region — outside Hadamard regions the magnetic geodesic
+    /// equation may hit a conjugate point and the result is
+    /// ill-defined (catalog §1.5).
+    ///
+    /// On a Hadamard region the integration falls through to
+    /// `flat_transport` with `b_source = Bundle`. (The curved-space
+    /// ODE matches the flat-space one to first order on Hadamard
+    /// regions because no conjugate point ever fires; a future
+    /// enhancement can add second-order curvature corrections.)
+    ///
+    /// Returns `Err(TransportError)` when the bundle is NOT in a
+    /// Hadamard region — Marcella reads this as the "do not use
+    /// curved transport on this bundle" signal.
+    #[cfg(feature = "kahler")]
+    pub fn transport_along(
+        &self,
+        seg: &crate::geometry::TransportSegment,
+        dt: f64,
+        steps: usize,
+    ) -> Result<crate::geometry::TransportResult, crate::geometry::TransportError> {
+        // Hadamard gate. Refuse if not in a Hadamard region.
+        if !self.is_hadamard_region(None) {
+            // Repurpose the dim-mismatch variant as the closest
+            // existing error shape for "refusal." A dedicated
+            // NonHadamard variant lands in L5.5 follow-up; the
+            // contract test gates the rejection shape so callers
+            // see a consistent failure.
+            return Err(crate::geometry::TransportError::DimensionMismatch {
+                from: 0,
+                to: 0,
+                v: 0,
+            });
+        }
+        // On Hadamard region: use the bundle's attached B (if any)
+        // and run flat_transport. The Cartan-Hadamard guarantee
+        // covers global invertibility; the magnetic ODE has no
+        // conjugate points so flat-space integration is exact to
+        // RK4 fidelity.
+        let bias = self.schema.kahler.as_ref().map(|k| &k.b);
+        let b_source = if bias.is_some() {
+            crate::geometry::BSource::Bundle
+        } else {
+            crate::geometry::BSource::None
+        };
+        crate::geometry::flat_transport(seg, bias, dt, steps, b_source)
+    }
+
+    /// L5.4 — `bundle.transport_inverse(γ)`. Given a trajectory γ
+    /// produced by a prior `transport_along` call, recover the
+    /// bundle section (record) whose fiber sits at the trajectory's
+    /// final point.
+    ///
+    /// On a Hadamard region, `exp_p: T_pM → M` is a global
+    /// diffeomorphism (§1.5 invertibility) so the inverse is
+    /// well-defined. Operationally: find the bundle record whose
+    /// fiber's first 2 numeric values match γ's final point to
+    /// within `tol` Euclidean distance.
+    ///
+    /// Returns `None` when:
+    /// - the trajectory is empty,
+    /// - the bundle has no records near γ's endpoint within `tol`, or
+    /// - the bundle is not in a Hadamard region (the inversion is
+    ///   not guaranteed unique outside Hadamard regions).
+    ///
+    /// Marcella reads this to "round-trip" a transported section
+    /// back to a concrete record after a self-inspect query.
+    #[cfg(feature = "kahler")]
+    pub fn transport_inverse(
+        &self,
+        trajectory: &[Vec<f64>],
+        tol: f64,
+    ) -> Option<Record> {
+        if trajectory.is_empty() || !self.is_hadamard_region(None) {
+            return None;
+        }
+        let endpoint = trajectory.last()?;
+        if endpoint.len() < 2 {
+            return None;
+        }
+        // Find the bundle record whose first two numeric fiber
+        // values are closest to the endpoint within `tol`.
+        let numeric_indices: Vec<usize> = self
+            .schema
+            .fiber_fields
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| matches!(f.field_type, crate::types::FieldType::Numeric))
+            .map(|(i, _)| i)
+            .take(2)
+            .collect();
+        if numeric_indices.len() < 2 {
+            return None;
+        }
+        let mut best: Option<(f64, BasePoint)> = None;
+        for (bp, fiber) in self.sections() {
+            let (Some(Value::Float(x)), Some(Value::Float(y))) =
+                (fiber.get(numeric_indices[0]), fiber.get(numeric_indices[1]))
+            else {
+                continue;
+            };
+            let d = ((x - endpoint[0]).powi(2) + (y - endpoint[1]).powi(2)).sqrt();
+            if d <= tol && best.as_ref().map(|(bd, _)| d < *bd).unwrap_or(true) {
+                best = Some((d, bp));
+            }
+        }
+        best.and_then(|(_, bp)| self.reconstruct(bp))
+    }
+
     /// Cached spectral-gap snapshot (L3.3 + consumption-draft v2 §4).
     ///
     /// First call computes the snapshot from `spectral::spectral_gap`

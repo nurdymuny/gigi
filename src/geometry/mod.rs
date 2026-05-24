@@ -30,10 +30,15 @@
 
 pub mod complex_structure;
 pub mod forms;
+pub mod hadamard;
 pub mod transport;
 
 pub use complex_structure::{ComplexStructure, ComplexStructureError};
 pub use forms::{ClosedTwoForm, ClosednessError, TwoForm};
+pub use hadamard::{
+    detect as detect_hadamard, is_hadamard_region, HadamardRegion, HadamardSubstructure,
+    HADAMARD_KB_THRESHOLD, HADAMARD_TEST_RADIUS,
+};
 pub use transport::{
     flat_transport, BSource, TransportError, TransportResult, TransportSegment,
 };

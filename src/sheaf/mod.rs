@@ -1362,6 +1362,33 @@ fn base_key_string(record: &Record, schema: &crate::types::BundleSchema) -> Stri
         .join("|")
 }
 
+/// L5.2 — propagate with Adachi convergence-rate bound on
+/// Hadamard regions (catalog §1.4 ideal-boundary application).
+///
+/// Wraps `propagate` and additionally reports the convergence-
+/// rate guarantee when the bundle is in a detected Hadamard
+/// region. Per catalog §1.4: continuous queries on Hadamard
+/// substructures provably converge to ideal-boundary states at
+/// rate `r ≈ |K_B|` (Eberlein-O'Neill bound).
+///
+/// Returns `(records, Some(rate))` when the bundle is Hadamard,
+/// `(records, None)` otherwise. Marcella reads the rate to set
+/// the convergence horizon for streaming queries: iteration
+/// count needed for ε-convergence is `⌈log(1/ε) / rate⌉`.
+#[cfg(feature = "kahler")]
+pub fn propagate_with_convergence_bound(
+    store: &BundleStore,
+    assumption: &Record,
+) -> (Vec<Record>, Option<f64>) {
+    let records = propagate(store, assumption);
+    let regions = store.hadamard_regions();
+    let rate = regions
+        .iter()
+        .find(|r| matches!(r.region, crate::geometry::HadamardRegion::FullBundle))
+        .map(|r| r.convergence_rate);
+    (records, rate)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

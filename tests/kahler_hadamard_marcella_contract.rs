@@ -23,7 +23,7 @@
 
 use gigi::geometry::{
     ClosedTwoForm, ComplexStructure, HadamardRegion, HadamardSubstructure, KahlerStructure,
-    TransportSegment, TwoForm, HADAMARD_KB_THRESHOLD,
+    TransportError, TransportSegment, TwoForm, HADAMARD_KB_THRESHOLD,
 };
 use gigi::types::{BundleSchema, FieldDef, Record, Value};
 use gigi::BundleStore;
@@ -174,6 +174,11 @@ fn transport_along_rejects_non_hadamard_bundle() {
     // Negative: spherical bundle ⇒ transport_along returns Err.
     // Per L5.5 the magnetic geodesic equation isn't safe outside
     // a Hadamard region (conjugate points possible).
+    //
+    // The refusal carries the dedicated `NotHadamard` variant per
+    // the 2026-05-24 Gate 2 reply — Marcella pattern-matches on
+    // this on high-curvature substrates (e.g., S³⁸³) to fall back
+    // to ambient flat_transport + L2 projection.
     let sph = spherical_bundle();
     let seg = TransportSegment::new(
         vec![0.0, 0.0],
@@ -181,10 +186,24 @@ fn transport_along_rejects_non_hadamard_bundle() {
         vec![1.0, 0.0],
     )
     .unwrap();
-    assert!(
-        sph.transport_along(&seg, 1e-3, 100).is_err(),
-        "non-Hadamard bundle: transport_along must refuse"
-    );
+    let err = sph
+        .transport_along(&seg, 1e-3, 100)
+        .expect_err("non-Hadamard bundle: transport_along must refuse");
+    match err {
+        TransportError::NotHadamard { kb_max, threshold } => {
+            assert!(
+                kb_max > threshold,
+                "NotHadamard carries kb_max ({}) > threshold ({})",
+                kb_max,
+                threshold
+            );
+            assert!(
+                (threshold - HADAMARD_KB_THRESHOLD).abs() < 1e-12,
+                "threshold field carries the documented HADAMARD_KB_THRESHOLD"
+            );
+        }
+        other => panic!("expected NotHadamard variant; got {:?}", other),
+    }
 }
 
 #[test]

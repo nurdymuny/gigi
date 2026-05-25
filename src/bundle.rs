@@ -4096,16 +4096,20 @@ impl BundleStore {
         steps: usize,
     ) -> Result<crate::geometry::TransportResult, crate::geometry::TransportError> {
         // Hadamard gate. Refuse if not in a Hadamard region.
+        // Returns the dedicated `NotHadamard` variant per the
+        // 2026-05-24 Gate 2 findings reply — carries the observed
+        // kb_max + threshold so callers can see exactly how far
+        // off Hadamard the bundle was. Marcella reads this as the
+        // "use ambient flat_transport + projection instead"
+        // signal on high-curvature substrates (e.g., S³⁸³).
         if !self.is_hadamard_region(None) {
-            // Repurpose the dim-mismatch variant as the closest
-            // existing error shape for "refusal." A dedicated
-            // NonHadamard variant lands in L5.5 follow-up; the
-            // contract test gates the rejection shape so callers
-            // see a consistent failure.
-            return Err(crate::geometry::TransportError::DimensionMismatch {
-                from: 0,
-                to: 0,
-                v: 0,
+            let kb_max = self
+                .kahler_curvature()
+                .map(|c| c.holo_bisectional_max)
+                .unwrap_or(f64::INFINITY);
+            return Err(crate::geometry::TransportError::NotHadamard {
+                kb_max,
+                threshold: crate::geometry::HADAMARD_KB_THRESHOLD,
             });
         }
         // On Hadamard region: use the bundle's attached B (if any)

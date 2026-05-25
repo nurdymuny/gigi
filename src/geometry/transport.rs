@@ -176,6 +176,17 @@ pub enum TransportError {
     /// Bias 2-form dimension differs from segment dimension.
     #[error("bias 2-form dim {bias_dim} doesn't match segment dim {seg_dim}")]
     BiasDimensionMismatch { seg_dim: usize, bias_dim: usize },
+
+    /// L5.5 — `BundleStore::transport_along` was called on a
+    /// non-Hadamard bundle. The magnetic geodesic equation is not
+    /// safe outside Hadamard regions (conjugate points possible).
+    /// Marcella reads this as the "use ambient flat_transport +
+    /// projection instead" signal per the Gate 2 findings reply.
+    #[error(
+        "transport_along refused: bundle is not in a Hadamard region \
+         (kb_max = {kb_max}; threshold = {threshold})"
+    )]
+    NotHadamard { kb_max: f64, threshold: f64 },
 }
 
 /// Solve the magnetic geodesic equation on flat `Rⁿ` via RK4.

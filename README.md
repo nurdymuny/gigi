@@ -38,26 +38,40 @@ about your data:
 
 ## What's new in 2026 — the Kähler upgrade
 
-GIGI v3 shipped the **Kähler upgrade**: eight layers (L1–L7 + L8 handoff) of
-geometric machinery extending the fiber-bundle substrate with a complex
-structure J, a closed 2-form B, and everything that falls out of the pair —
-Hadamard substructure detection, holomorphic curvature decomposition, Morse
-compression, line-bundle integrality checks, quantum cohomology on toy
-manifolds, Berezin-Toeplitz operators, Riemann-Roch representational
-capacity. The catalog and per-layer plan live in
-[`theory/kahler_upgrade/`](theory/kahler_upgrade/).
+GIGI v3 shipped the **Kähler upgrade**: nine layers (L1–L7, L8 cross-team
+handoff, L9 moment maps) of geometric machinery extending the fiber-bundle
+substrate with a complex structure J, a closed 2-form B, and everything
+that falls out of the pair — Hadamard substructure detection, holomorphic
+curvature decomposition, Morse compression, line-bundle integrality checks,
+quantum cohomology on toy manifolds, Berezin-Toeplitz operators,
+Riemann-Roch representational capacity, **moment-map / Noether conservation
+along Hamiltonian B-flows**. The catalog and per-layer plan live in
+[`theory/kahler_upgrade/`](theory/kahler_upgrade/). The catalog closes at
+**16 of 21 items shipped** — 100% of items the catalog itself classified
+as ship-able; the remaining 5 (§1.6 hypersurface, §2.4 K-theory,
+§2.6 Floer, §2.7 mirror symmetry, §E.4 hyperkähler) are explicitly deferred
+in the catalog's own classification.
+
+For the next round, see
+[`theory/post_kahler_directions/`](theory/post_kahler_directions/) — a
+companion catalog of nine **post-Kähler** geometric programs (Sasaki,
+information geometry, optimal transport, persistent homology, Gromov
+δ-hyperbolicity, tropical geometry, synthetic differential geometry,
+noncommutative geometry, CAT(κ)) drawn from patent-clean public-domain
+math by other named lineages. Each entry follows the same catalog
+template; 30/30 numerical-validation checks pass.
 
 Three properties are worth calling out because they're hard to find anywhere
 else at this scale:
 
-**1. Strict additivity. The optionality contract holds across all eight layers.**
+**1. Strict additivity. The optionality contract holds across all nine layers.**
 The entire Kähler upgrade lives behind a single Cargo feature flag (`kahler`).
 With the feature off, the engine is **bit-identical to pre-upgrade GIGI**
-— 720 tests pass, byte-equal to before the upgrade landed. With the feature
-on, 902+ tests pass, including a per-layer real-data smoke against the
+— 674 tests pass, byte-equal to before the upgrade landed. With the feature
+on, 788 tests pass, including a per-layer real-data smoke against the
 20-record sensor dataset and a per-layer cross-team contract test
 (`tests/kahler_*_marcella_contract.rs`) that fails before any consumer
-deserialization can drift. Eight layers of new math, zero breaking changes.
+deserialization can drift. Nine layers of new math, zero breaking changes.
 
 **2. Math predictions validated by production observation to rounding precision.**
 The first downstream consumer (Marcella) ran a 30-prompt A/B harness +
@@ -109,7 +123,7 @@ v1–v4) + the per-layer contract / real-data / e2e tests — is in
 | `sheaf` | Sheaf cohomology — `BETTI`, `CONSISTENCY` |
 | `spectral` | Graph Laplacian eigenvalue/eigenvector queries |
 | `concurrent` | Lock-free reader / single-writer concurrency |
-| `dhoom` | DHOOM wire protocol — JSON-compatible binary serialization; integral-Chern compression (L7.3) when `kahler` is on |
+| `dhoom` | DHOOM wire protocol — JSON-compatible binary serialization; integral-Chern compression (L7.3) when `kahler` is on; arrays-of-primitives encoded inline via a `\x1F`-sentinel JSON field (round-trip safe for `{tokens: ["the","cat",...]}`-shaped records) |
 | `observability` | Geometric logs (κ, KL, JS per query) |
 | `convert` | JSON / CSV / SQL → DHOOM ingestion |
 | `edge` | Local-first sync layer (mobile/IoT) |
@@ -125,6 +139,7 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `geometry::line_bundle` | `LineBundle` + Dirac integrality check (Wu-Yang) | L7.1 |
 | `geometry::quantum_cohomology` | Frobenius/WDVV composition on toy manifolds (CPⁿ, Tⁿ, S²) + Riemann-Roch capacity | L7.5 / L7.7 |
 | `geometry::toeplitz` | Berezin-Toeplitz operators with `ℏ ≥ 4 / embedding_dim` safety gate | L7.6 |
+| `geometry::moment_map` | `MomentMap` + `InfinitesimalAction`; B-symplecticity validated; `measure_conservation` integrates Hamilton's equations and reports drift of `μ_ξ` along H-flow plus the pointwise invariance residual — Noether's "if and only if" both halves | L9 |
 | `graph::adjacency` | Dual principal/auxiliary adjacency operators | L2 |
 | `graph::commutativity` | Group-algebra-centrality commutativity classifier | L2 |
 | `cost::jacobi_estimator` | Jacobi-field cardinality bounds via Bishop / Günther | L3 |
@@ -132,15 +147,17 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `discrete::hodge_laplacian` | Δ_k = d†d + dd†, Betti via eigendecomposition | L6 |
 | `discrete::morse` | Algebraic Morse compression; preserves cohomology | L6 |
 
-### Binaries (`src/bin/`)
+### Binaries (`src/bin/` + `examples/`)
 
 | Binary | Purpose |
 |---|---|
 | `gigi-server` | The cloud-hosted database — REST + WebSocket on port `3142` |
-| `gigi-stream` | Streaming ingestion + subscription daemon |
+| `gigi-stream` | Streaming ingestion + subscription daemon (deployed at `gigi-stream.fly.dev`) |
 | `gigi-edge` | Local-first edge node (mobile / on-device) |
 | `gigi-convert` | CLI: JSON / CSV / SQL → DHOOM bundle |
 | `gigi-stress` | Load + correctness stress harness |
+| `nasa_atmo` | End-to-end NASA-atmosphere demo (`examples/nasa_atmosphere.rs`) |
+| `kahler_tour` | One-run walk through every Kähler layer L1–L9 + DHOOM round-trip + PR-window endpoints, with concrete inputs / outputs / catalog refs. Requires `--features kahler`. (`examples/kahler_tour.rs`) |
 
 ### Benches (`benches/`)
 
@@ -181,7 +198,8 @@ code so a reviewer can read the claim and the implementation in the same place:
 - `GQL_SPECIFICATION.md` + `GQL_REFERENCE.md` + `GQL_ADDENDUM_v2.1.md` — the query language
 - [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md) — natural-language → GQL → fiber response (v0.1.1)
 - [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md) — public `/schema` endpoint with `@public` / `@gated` directive policy
-- [`theory/kahler_upgrade/`](theory/kahler_upgrade/) — the Kähler upgrade catalog + 8-layer implementation plan + Marcella substrate spec + Python validation suites + cross-team correspondence
+- [`theory/kahler_upgrade/`](theory/kahler_upgrade/) — the Kähler upgrade catalog (16/21 items shipped through L1–L9) + per-layer implementation plan + Marcella substrate spec + Python validation suites + cross-team correspondence
+- [`theory/post_kahler_directions/`](theory/post_kahler_directions/) — companion catalog: nine **post-Kähler** geometric programs from outside the Adachi lineage (Sasaki / contact, information geometry, optimal transport / Wasserstein, persistent homology, Gromov δ-hyperbolicity, tropical geometry, synthetic DG, noncommutative geometry, CAT(κ)). Same template — claim, proof sketch, validation status, applications, implementation pointers. 30/30 numerical checks pass.
 
 ---
 
@@ -252,13 +270,42 @@ CREATE BUNDLE finance FIBER (
 See `GQL_REFERENCE.md` for the complete grammar (status table, complexity per verb,
 EMIT / wire format options).
 
+### Kähler-substrate HTTP endpoints (`gigi-stream`, deployed)
+
+For downstream consumers that want the geometric primitives directly over
+HTTP, `gigi-stream` exposes four endpoints under `/v1/` (added in the
+PR-window sprint for Marcella's Hopf + Riemann-Roch wiring; wire shapes
+pinned by [`tests/kahler_pr_window_marcella_contract.rs`](tests/)):
+
+| Endpoint | What it does | Catalog |
+|---|---|---|
+| `POST /v1/quantum_cohomology/compose` | Frobenius / WDVV composition on toy manifolds (CPⁿ, Tⁿ, S²) | §2.10 |
+| `POST /v1/quantum_cohomology/capacity` | Riemann-Roch capacity — `dim H⁰(L^k)` | §2.2 |
+| `POST /v1/bundles/{name}/holonomy_debt` | Davis non-decoupling — `Quantized(n)` vs `Continuous(x)` | §E.1 |
+| `POST /v1/bundles/{name}/flat_transport` | Classical / magnetic parallel transport with `BSource` selector | §1.5 |
+
+### One-shot tour of every shipped Kähler layer
+
+```bash
+cargo run --release --features kahler --bin kahler_tour
+```
+
+Walks L1 (J, B), L1.5 (transport), L2 (adjacency commutativity), L3 (Jacobi
+cardinality), L4 (Kähler curvature decomposition), L5 (Hadamard detection),
+L6 (Hodge + Morse), L7 (line bundle, holonomy debt, quantum cohomology,
+Toeplitz, Riemann-Roch capacity), L9 (moment map / Noether), plus the
+DHOOM array-of-primitives round-trip and a summary of the four PR-window
+endpoints. Each section prints concrete inputs and outputs with catalog
+references. Source at [`examples/kahler_tour.rs`](examples/kahler_tour.rs).
+
 ---
 
 ## Build, test, run
 
 ```bash
-# Build everything (engine + 5 binaries + 3 benches + the NASA example)
+# Build everything (engine + 5 production bins + 3 benches + 2 examples)
 cargo build --release
+cargo build --release --features kahler   # adds the kahler_tour example bin
 
 # Run the full test suite — unit + integration tests in src/ and tests/
 cargo test --release
@@ -274,15 +321,25 @@ cd e2e && npm install && npm test
 
 As of this README the engine ships with:
 
-- **720 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract.
-- **902 tests passing, 0 failed** with `cargo test --features kahler` — adds the eight-layer Kähler stack, per-layer real-data smokes against the 20-record sensor dataset, and the cross-team contract tests pinning each consumer-facing API shape.
+- **674 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract.
+- **788 tests passing, 0 failed** with `cargo test --features kahler` — adds the nine-layer Kähler stack (L1–L9), per-layer real-data smokes against the 20-record sensor dataset, and the cross-team contract tests pinning each consumer-facing API shape.
 
-The Python validation suites (`theory/kahler_upgrade/validation/*.py`)
-independently verify the math from four directions: 15/15 PASS across v1–v4
-(Adachi commutativity, magnetic trajectory, Hadamard-Cartan, trajectory-ball
-volume, moment map, spectral gap, prequantization integrality, Frobenius/WDVV,
-index theorem, Berezin-Toeplitz, Hodge cohomology, Kähler curvature
-decomposition, quantized holonomy debt, DHOOM Chern round-trip).
+The Python validation suites independently verify the math from two
+independent angles:
+
+- `theory/kahler_upgrade/validation/*.py` — 15/15 PASS across v1–v4
+  (Adachi commutativity, magnetic trajectory, Hadamard-Cartan,
+  trajectory-ball volume, moment map, spectral gap, prequantization
+  integrality, Frobenius/WDVV, index theorem, Berezin-Toeplitz, Hodge
+  cohomology, Kähler curvature decomposition, quantized holonomy debt,
+  DHOOM Chern round-trip).
+- `theory/post_kahler_directions/validation_tests.py` — 30/30 PASS
+  across the nine post-Kähler directions (Sasaki Reeb characterization,
+  Fisher metric on Gaussians, Wasserstein W₂, MST persistence,
+  Gromov-δ closed forms, tropical fundamental theorem, dual-number
+  derivatives, Connes distance on S¹, CAT(κ) comparison inequality).
+  Every check pairs an independently-derived closed-form ground truth
+  with a negative control.
 
 ---
 
@@ -340,17 +397,33 @@ gigi/
 ├── src/                  Rust engine (single crate, 25+ modules)
 │   ├── lib.rs            module roots
 │   ├── bin/              5 production binaries
+│   ├── geometry/         Kähler L1–L9 (J, B, transport, hadamard,
+│   │                       line_bundle, quantum_cohomology, toeplitz,
+│   │                       moment_map)
+│   ├── graph/            L2 adjacency + commutativity classifier
+│   ├── cost/             L3 Jacobi-field cardinality estimator
+│   ├── discrete/         L6 Hodge complex + Laplacian + Morse
 │   ├── sheaf/            sheaf cohomology + Laplacian
 │   └── …
 ├── benches/              3 cargo-bin benchmarks
-├── examples/             nasa_atmosphere.rs (full end-to-end demo)
+├── examples/             nasa_atmosphere.rs (end-to-end NASA demo);
+│                         kahler_tour.rs (one-shot walk through every
+│                         shipped Kähler layer)
 ├── e2e/                  Playwright + Node integration tests
 ├── sdk/
 │   ├── python/           gigi-client (pandas-aware)
 │   └── js/               @gigi-db/client (TS, browser + node)
 ├── dashboard/            Operator dashboard (React/Vite)
 ├── playground/           In-browser GQL REPL
-├── theory/               LaTeX papers underpinning the engine
+├── theory/
+│   ├── kahler_upgrade/   Kähler catalog (16/21 shipped) + impl plan +
+│   │                       Marcella substrate spec + 4 Python validation
+│   │                       suites (15/15 PASS) + cross-team correspondence
+│   └── post_kahler_directions/
+│                         Companion catalog: 9 post-Kähler directions
+│                         (Sasaki, info-geom, OT, persistent homology,
+│                         Gromov δ, tropical, synthetic DG, NCG, CAT(κ))
+│                         + validation_tests.py (30/30 PASS)
 ├── docs/                 Site + landing pages
 ├── demos/                Self-contained Python demos
 └── *_SPEC.md             Build-ready specs (encryption, observability, …)

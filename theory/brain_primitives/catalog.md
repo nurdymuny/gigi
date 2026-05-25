@@ -397,21 +397,38 @@ L11 SHIPPED — Predictive coding: src/geometry/predictive_coding.rs
   └─► §12 SELF-MONITOR | kernel_density_confidence(samples, query, bw)
                          confidence_normalized(samples, query, bw)
 
-L12 — Attention + memory: attention.rs + memory.rs (next)
-  ├─► §8 ATTEND        | attend() + GQL verb
-  ├─► §9 FOCUS         | focus() returns sub-bundle
-  ├─► §10 EPISODIC     | episodic_events() + sleep-cycle Morse recompute
-  └─► §11 SEMANTIC     | semantic_gist() — already in L6; expose API
+L12 SHIPPED — Attention + memory: src/geometry/{attention, memory}.rs
+  ├─► §8 ATTEND        | attend(samples, query, bandwidth)
+  ├─► §9 FOCUS         | focus(samples, query, bandwidth, k) → Vec<(idx, weight)>
+  ├─► §10 EPISODIC     | episodic_events(values, min_persistence_ratio)
+  └─► §11 SEMANTIC     | semantic_gist(bundle) — wraps L6 morse_compress
 ```
 
-L10 and L11 shipped together: keystone gradient/Hamiltonian flow +
-the three predictive-coding primitives stacked on top. Catalog now
-covers 7 of 12 brain primitives in code; L12 brings the remaining 5
-(attention + memory pillars). Real-bundle demo end-to-end on a
-synthetic MIRADOR PK cohort:
-[`examples/predictive_coding_demo.rs`](../../examples/predictive_coding_demo.rs)
-— SELF-MONITOR cleanly separates known patients from out-of-cohort
-queries by **184 orders of magnitude**.
+**ALL 12 BRAIN PRIMITIVES SHIPPED.** Catalog complete across L10 +
+L11 + L12. Real-bundle demos confirm end-to-end behavior:
+
+- [`examples/predictive_coding_demo.rs`](../../examples/predictive_coding_demo.rs)
+  — SELF-MONITOR separates known patients from out-of-cohort queries
+  by **184 orders of magnitude** (3.4e-184 vs 44.78 raw kernel sum)
+  on a real `BundleStore` of 80 synthetic MIRADOR PK records.
+- [`examples/attention_memory_demo.rs`](../../examples/attention_memory_demo.rs)
+  — ATTEND on a 12-token semantic bundle correctly surfaces the
+  4 animals when queried with a cat-like embedding; FOCUS picks
+  exactly the 3 vehicles for a vehicle-like query; EPISODIC
+  detects a regime change in a 60-day transaction stream at
+  **1711× persistence ratio**.
+
+What's left as runway for the substrate:
+
+- **GQL verb extensions** for SAMPLE / FORECAST / DREAM /
+  RECONSTRUCT / INPAINT / PREDICT / ATTEND / FOCUS / EPISODIC /
+  SEMANTIC / CONFIDENCE — exposing the brain primitives at the
+  query-language level (currently only the L10 / L11 / L12 Rust
+  APIs and the L1-L9 HTTP endpoints are reachable).
+- **HTTP endpoints** for the brain primitives (parallel to the
+  existing PR-window endpoints for Marcella's Hopf wiring).
+- **Marcella consumption letter** — she runs against L1-L8 today;
+  L9 / L10 / L11 / L12 are all new capability she can build on.
 
 ## 5. License & provenance
 

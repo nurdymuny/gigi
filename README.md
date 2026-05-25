@@ -38,21 +38,25 @@ about your data:
 
 ## What's new in 2026 — the Kähler upgrade
 
-GIGI v3 shipped the **Kähler upgrade**: eleven layers (L1–L7, L8 cross-team
-handoff, L9 moment maps, L10 generative flow, L11 predictive coding) of
-geometric machinery extending the fiber-bundle substrate with a complex
-structure J, a closed 2-form B, and everything that falls out of the pair
-— Hadamard substructure detection, holomorphic curvature decomposition,
-Morse compression, line-bundle integrality checks, quantum cohomology on
-toy manifolds, Berezin-Toeplitz operators, Riemann-Roch representational
-capacity, moment-map / Noether conservation along Hamiltonian B-flows,
-**the Friston-FEP keystone — generative flow on the Kähler bundle that
-parametrizes its boundary conditions to deliver SAMPLE / FORECAST / DREAM
-/ RECONSTRUCT as one piece of infrastructure**, and **predictive-coding
-primitives stacked on top: INPAINT (constrained Langevin for filling in
-missing fields), PREDICT (single Fisher-natural-gradient step), and
-SELF-MONITOR (kernel-density confidence — the brain's "I don't know"
-signal)**. The Kähler catalog
+GIGI v3 shipped the **Kähler upgrade**: twelve layers (L1–L7, L8 cross-team
+handoff, L9 moment maps, L10 generative flow, L11 predictive coding,
+L12 attention + memory) of geometric machinery extending the fiber-bundle
+substrate with a complex structure J, a closed 2-form B, and everything
+that falls out of the pair — Hadamard substructure detection, holomorphic
+curvature decomposition, Morse compression, line-bundle integrality checks,
+quantum cohomology on toy manifolds, Berezin-Toeplitz operators,
+Riemann-Roch representational capacity, moment-map / Noether conservation
+along Hamiltonian B-flows, **the Friston-FEP keystone — generative flow on
+the Kähler bundle that parametrizes its boundary conditions to deliver
+SAMPLE / FORECAST / DREAM / RECONSTRUCT as one piece of infrastructure**,
+**predictive-coding primitives stacked on top: INPAINT (constrained
+Langevin for filling in missing fields), PREDICT (single Fisher-natural-
+gradient step), and SELF-MONITOR (kernel-density confidence — the brain's
+"I don't know" signal)**, and **the attention + memory pillar that closes
+the brain-primitives catalog: ATTEND (softmax over geodesic distance),
+FOCUS (top-k sub-bundle retrieval), EPISODIC (persistent-H₀ change-point
+detection on time-indexed value sequences), SEMANTIC (Morse-compressed
+gist wrapping L6)**. All 12 brain primitives now operational. The Kähler catalog
 ([`theory/kahler_upgrade/`](theory/kahler_upgrade/)) closes at **16 of 21
 items shipped** — 100% of items the catalog itself classified as ship-able;
 the remaining 5 (§1.6 hypersurface, §2.4 K-theory, §2.6 Floer, §2.7 mirror
@@ -81,14 +85,14 @@ GIGI now ships **three companion catalogs**, each in the same format:
 Three properties are worth calling out because they're hard to find anywhere
 else at this scale:
 
-**1. Strict additivity. The optionality contract holds across all eleven layers.**
+**1. Strict additivity. The optionality contract holds across all twelve layers.**
 The entire Kähler upgrade lives behind a single Cargo feature flag (`kahler`).
 With the feature off, the engine is **bit-identical to pre-upgrade GIGI**
 — 674 tests pass, byte-equal to before the upgrade landed. With the feature
-on, 806 tests pass, including a per-layer real-data smoke against the
+on, 821 tests pass, including a per-layer real-data smoke against the
 20-record sensor dataset and a per-layer cross-team contract test
 (`tests/kahler_*_marcella_contract.rs`) that fails before any consumer
-deserialization can drift. Eleven layers of new math, zero breaking changes.
+deserialization can drift. Twelve layers of new math, zero breaking changes.
 
 **2. Math predictions validated by production observation to rounding precision.**
 The first downstream consumer (Marcella) ran a 30-prompt A/B harness +
@@ -159,6 +163,7 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `geometry::moment_map` | `MomentMap` + `InfinitesimalAction`; B-symplecticity validated; `measure_conservation` integrates Hamilton's equations and reports drift of `μ_ξ` along H-flow plus the pointwise invariance residual — Noether's "if and only if" both halves | L9 |
 | `geometry::generative_flow` | `GenerativeFlow` keystone for the brain-primitives catalog: the SDE `ẋ = -∇H dt + √(2T) dW` (gradient half) and `ẋ = B⁻¹∇H` (Hamiltonian half) parametrized to deliver SAMPLE / FORECAST / DREAM / RECONSTRUCT as four boundary conditions on one generator. Convenience constructor `from_isotropic_gaussian()` plugs into L4's Welford stats so any bundle becomes a Friston-style generative model | L10 |
 | `geometry::predictive_coding` | Three more brain primitives stacked on L10: `inpaint()` (constrained Langevin — lock some fields, sample the rest from the conditional density), `predict_one_step()` + `predict_one_step_natural()` (single Fisher-natural-gradient forward step — the brain's online predictive-coding update), `kernel_density_confidence()` + `confidence_normalized()` (kernel-density-estimate "I don't know" signal — separates known patients from out-of-cohort queries by 184 orders of magnitude in the demo) | L11 |
+| `geometry::attention` + `geometry::memory` | Closes the brain-primitives catalog with the attention + memory pillar. `attend()` (softmax over `-‖q-x‖²/2σ²` — identical to a normalized Gaussian kernel), `focus()` (top-k attended → sub-bundle), `episodic_events()` (persistent-H₀ change-point detection via elder-rule on the sorted-values MST), `semantic_gist()` (wraps `BundleStore::morse_compress` under the brain-API name) | L12 |
 | `graph::adjacency` | Dual principal/auxiliary adjacency operators | L2 |
 | `graph::commutativity` | Group-algebra-centrality commutativity classifier | L2 |
 | `cost::jacobi_estimator` | Jacobi-field cardinality bounds via Bishop / Günther | L3 |
@@ -178,6 +183,7 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `nasa_atmo` | End-to-end NASA-atmosphere demo (`examples/nasa_atmosphere.rs`) |
 | `kahler_tour` | One-run walk through every Kähler layer L1–L11 + DHOOM round-trip + PR-window endpoints, with concrete inputs / outputs / catalog refs. Requires `--features kahler`. (`examples/kahler_tour.rs`) |
 | `predictive_coding_demo` | L11 INPAINT / PREDICT / SELF-MONITOR exercised on a real `BundleStore` holding 80 synthetic MIRADOR-style PK records. The SELF-MONITOR signal cleanly separates known patients from out-of-cohort queries by **184 orders of magnitude**. Requires `--features kahler`. (`examples/predictive_coding_demo.rs`) |
+| `attention_memory_demo` | L12 ATTEND / FOCUS / EPISODIC / SEMANTIC on two real `BundleStore` scenarios: a 12-token semantic-embedding bundle (ATTEND correctly surfaces the 4 animals when queried with a cat-like embedding; FOCUS picks exactly the 3 vehicles for a vehicle-like query) and a 60-day PRISM-style transaction stream (EPISODIC detects a regime change at **1711× persistence ratio**). Requires `--features kahler`. (`examples/attention_memory_demo.rs`) |
 
 ### Benches (`benches/`)
 
@@ -342,7 +348,7 @@ cd e2e && npm install && npm test
 As of this README the engine ships with:
 
 - **674 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract.
-- **806 tests passing, 0 failed** with `cargo test --features kahler` — adds the eleven-layer Kähler stack (L1–L11), per-layer real-data smokes against the 20-record sensor dataset, and the cross-team contract tests pinning each consumer-facing API shape.
+- **821 tests passing, 0 failed** with `cargo test --features kahler` — adds the twelve-layer Kähler stack (L1–L12, all 12 brain primitives operational), per-layer real-data smokes against the 20-record sensor dataset, and the cross-team contract tests pinning each consumer-facing API shape.
 
 The Python validation suites independently verify the math from three
 independent angles:

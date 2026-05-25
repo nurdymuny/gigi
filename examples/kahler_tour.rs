@@ -20,11 +20,11 @@ use gigi::discrete::hodge_complex::HodgeComplex;
 use gigi::discrete::hodge_laplacian::betti;
 use gigi::discrete::morse::morse_compress;
 use gigi::geometry::{
-    confidence_normalized, flat_transport, from_isotropic_gaussian, inpaint,
-    kernel_density_confidence, predict_one_step, BSource, ClosedTwoForm, CohClass,
-    ComplexStructure, FlowConfig, HadamardSubstructure, InfinitesimalAction,
-    KahlerStructure, LineBundle, MomentMap, QuantumCohomology, TransportSegment,
-    TwoForm,
+    attend, confidence_normalized, episodic_events, flat_transport, focus,
+    from_isotropic_gaussian, inpaint, kernel_density_confidence, predict_one_step,
+    BSource, ClosedTwoForm, CohClass, ComplexStructure, FlowConfig,
+    HadamardSubstructure, InfinitesimalAction, KahlerStructure, LineBundle,
+    MomentMap, QuantumCohomology, TransportSegment, TwoForm,
 };
 use gigi::graph::adjacency::{AuxiliaryAdjacency, PrincipalAdjacency, SparseAdjacency};
 use gigi::graph::commutativity::commute;
@@ -508,6 +508,54 @@ fn l11_predictive_coding() {
     note("(See examples/predictive_coding_demo.rs for a real PK cohort bundle.)");
 }
 
+// ── L12 — Attention + memory (ATTEND / FOCUS / EPISODIC) ─────────
+
+fn l12_attention_memory() {
+    header("L12", "ATTEND / FOCUS / EPISODIC (brain catalog §8, §9, §10)");
+
+    // 5 token-embedding-style samples on R².
+    let samples = vec![
+        vec![0.0, 0.0],
+        vec![0.5, 0.0],
+        vec![1.0, 0.0],
+        vec![2.0, 0.0],
+        vec![3.0, 0.0],
+    ];
+    let weights = attend(&samples, &[0.0, 0.0], 1.0);
+    line(
+        "ATTEND from (0,0) — weights",
+        format!(
+            "[{:.3}, {:.3}, {:.3}, {:.3}, {:.3}]  Σ = {:.4}",
+            weights[0], weights[1], weights[2], weights[3], weights[4],
+            weights.iter().sum::<f64>(),
+        ),
+    );
+
+    let top2 = focus(&samples, &[2.5, 0.0], 0.5, 2);
+    line(
+        "FOCUS top-2 from query (2.5, 0)",
+        format!(
+            "indices {} & {}  (weights {:.3} / {:.3})",
+            top2[0].0, top2[1].0, top2[0].1, top2[1].1,
+        ),
+    );
+
+    // EPISODIC: two clusters separated by a gap.
+    let mut signal = Vec::new();
+    for i in 0..20 { signal.push(0.0 + i as f64 * 0.01); }
+    for i in 0..20 { signal.push(5.0 + i as f64 * 0.01); }
+    let events = episodic_events(&signal, 50.0);
+    if let Some(e) = events.first() {
+        line(
+            "EPISODIC change-point on 40-sample series",
+            format!("gap = {:.2}, persistence ratio = {:.1}×", e.gap, e.persistence_ratio),
+        );
+    } else {
+        line("EPISODIC events", "(none)");
+    }
+    note("(See examples/attention_memory_demo.rs for richer real-bundle scenarios.)");
+}
+
 // ── DHOOM encoder — arrays of primitives round-trip ───────────────
 
 fn dhoom_arrays_of_primitives() {
@@ -568,11 +616,12 @@ fn main() {
     l9_moment_map_noether();
     l10_generative_flow();
     l11_predictive_coding();
+    l12_attention_memory();
     dhoom_arrays_of_primitives();
     pr_window_endpoints_summary();
 
     println!();
-    println!("Done — 13 layers exercised.");
+    println!("Done — 14 layers exercised.  Brain catalog: 12/12 primitives shipped.");
     println!("  Kähler catalog:     theory/kahler_upgrade/catalog.md");
     println!("  Post-Kähler menu:   theory/post_kahler_directions/catalog.md");
     println!("  Brain-primitives:   theory/brain_primitives/catalog.md");

@@ -38,16 +38,22 @@
 //!   primitives — INPAINT (constrained Langevin), PREDICT (single
 //!   Fisher-natural-gradient step), SELF-MONITOR (kernel-density
 //!   confidence). Stack on top of L10's flow infrastructure.
+//! - **L12** (`geometry::attention` + `geometry::memory`): closes
+//!   the brain-primitives catalog. ATTEND (softmax over distance),
+//!   FOCUS (top-k sub-bundle), EPISODIC (persistent-H₀ change-point
+//!   detection), SEMANTIC (Morse-compressed gist).
 //!
 //! L1 — this module — only declares the foundation types. Subsequent
 //! layers live in their own modules and depend on what we publish
 //! from here.
 
+pub mod attention;
 pub mod complex_structure;
 pub mod forms;
 pub mod generative_flow;
 pub mod hadamard;
 pub mod line_bundle;
+pub mod memory;
 pub mod moment_map;
 pub mod predictive_coding;
 pub mod quantum_cohomology;
@@ -67,6 +73,8 @@ pub use line_bundle::{ChernClass, IntegralityError, LineBundle};
 pub use moment_map::{
     ConservationVerdict, InfinitesimalAction, MomentMap, MomentMapError,
 };
+pub use attention::{attend, focus};
+pub use memory::{episodic_events, semantic_gist, EpisodicEvent};
 pub use predictive_coding::{
     confidence_normalized, inpaint, kernel_density_confidence, predict_one_step,
     predict_one_step_natural,

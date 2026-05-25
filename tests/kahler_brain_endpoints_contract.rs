@@ -411,3 +411,81 @@ fn pr_window_3_all_use_isotropic_gaussian_fit() {
         gigi::geometry::from_isotropic_gaussian(b, vec![mu_x, mu_y], var_avg.max(1e-12))
             .expect("fit must succeed on real bundle");
 }
+
+// ─── L13.3 DIAGONAL GAUSSIAN FIT ───────────────────────────
+//
+// Per Marcella's 2026-05-25 brain-endpoints probe Finding 3:
+// SAMPLE / DREAM / FORECAST / RECONSTRUCT / INPAINT / PREDICT
+// all gain an optional `fit_mode: "diagonal"` request param that
+// uses per-axis σ² instead of the averaged scalar. Response echoes
+// `fit_mode_used` and `fit_sigma_sq_per_field` so consumers can
+// inspect what was actually fit.
+
+#[test]
+fn diagonal_fit_produces_distinct_per_axis_variances() {
+    use gigi::geometry::from_diagonal_gaussian;
+    // Set up a bundle where x and y have very different variances:
+    // x ∈ [0, 0.3], y ∈ [0, 3.0] — 10× ratio.
+    let schema = BundleSchema::new("diag_fit_test")
+        .base(FieldDef::numeric("id"))
+        .fiber(FieldDef::numeric("x").with_range(1.0))
+        .fiber(FieldDef::numeric("y").with_range(5.0))
+        .with_kahler(kahler_2d());
+    let mut store = BundleStore::new(schema);
+    for i in 0..30 {
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Integer(i));
+        r.insert("x".into(), Value::Float((i as f64) * 0.01));
+        r.insert("y".into(), Value::Float((i as f64) * 0.1));
+        store.insert(&r);
+    }
+    let stats = store.field_stats();
+    let mu = vec![
+        stats["x"].sum / stats["x"].count as f64,
+        stats["y"].sum / stats["y"].count as f64,
+    ];
+    let sigma_sq_per_field = vec![
+        stats["x"].variance().max(1e-12),
+        stats["y"].variance().max(1e-12),
+    ];
+
+    // The two axes should have substantially different variances
+    // (≈ 100× by construction; we just verify > 10× to allow for
+    // numerical noise).
+    let ratio = sigma_sq_per_field[1] / sigma_sq_per_field[0];
+    assert!(
+        ratio > 10.0,
+        "synthetic bundle should have anisotropic variances; ratio = {:.2}",
+        ratio
+    );
+
+    // The diagonal-Gaussian constructor must accept this asymmetric
+    // input and produce a flow that we can sample from.
+    let b = ClosedTwoForm::new_constant(
+        TwoForm::new(vec![0.0, 1.0, -1.0, 0.0], 2).unwrap(),
+    );
+    let flow = from_diagonal_gaussian(b, mu, sigma_sq_per_field.clone())
+        .expect("diagonal fit must accept asymmetric variances");
+    let cfg = gigi::geometry::FlowConfig {
+        dt: 0.01,
+        temperature: 1.0,
+        n_steps: 1,
+        burn_in: 1_000,
+        seed: Some(20260525),
+    };
+    let _samples = flow
+        .sample_many(&[0.0, 0.0], &cfg, 100, 1)
+        .expect("diagonal flow must sample");
+
+    // ISOTROPIC fit would have given a SINGLE σ² = mean(per-axis),
+    // losing the anisotropy. That's the value of the diagonal fit
+    // — distinct per-axis σ² preserved.
+    let iso_sigma_sq =
+        (sigma_sq_per_field[0] + sigma_sq_per_field[1]) / 2.0;
+    assert!(
+        (iso_sigma_sq - sigma_sq_per_field[0]).abs() > 0.01,
+        "isotropic averaging would lose the anisotropy (iso={:.4}, axis_0={:.4})",
+        iso_sigma_sq,
+        sigma_sq_per_field[0]
+    );
+}

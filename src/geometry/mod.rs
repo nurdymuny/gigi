@@ -63,7 +63,8 @@ pub mod transport;
 pub use complex_structure::{ComplexStructure, ComplexStructureError};
 pub use forms::{ClosedTwoForm, ClosednessError, TwoForm};
 pub use generative_flow::{
-    from_isotropic_gaussian, FlowConfig, GenerativeFlow, GenerativeFlowError,
+    from_diagonal_gaussian, from_isotropic_gaussian, FlowConfig, GenerativeFlow,
+    GenerativeFlowError,
 };
 pub use hadamard::{
     detect as detect_hadamard, is_hadamard_region, HadamardRegion, HadamardSubstructure,

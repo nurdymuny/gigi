@@ -2903,6 +2903,56 @@ fn extract_field_samples(
     Ok(samples)
 }
 
+/// Which fit to use when building a generative flow from a bundle.
+/// L13.3 ships the `Diagonal` variant per Marcella's Finding 3 —
+/// anisotropic per-axis σ² instead of a single averaged scalar.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+enum FitMode {
+    #[default]
+    Isotropic,
+    Diagonal,
+}
+
+#[cfg(feature = "kahler")]
+fn fit_diagonal_gaussian(
+    store: &gigi::BundleStore,
+    fields: &[String],
+) -> Result<(Vec<f64>, Vec<f64>), String> {
+    let stats = store.field_stats();
+    let mut mu = Vec::with_capacity(fields.len());
+    let mut sigma_sq = Vec::with_capacity(fields.len());
+    for f in fields {
+        let s = stats.get(f).ok_or_else(|| {
+            let in_base = store.schema.base_fields.iter().any(|fd| fd.name == *f);
+            let available: Vec<&str> = stats.keys().map(|k| k.as_str()).collect();
+            if in_base {
+                format!(
+                    "field '{}' is a base_field (query key); brain endpoints only \
+                     fit Gaussians on numeric fiber_fields. Available stats: {:?}",
+                    f, available
+                )
+            } else {
+                format!(
+                    "no Welford stats for field '{}'. Available stats: {:?} \
+                     (brain endpoints require numeric fiber fields)",
+                    f, available
+                )
+            }
+        })?;
+        if s.count == 0 {
+            return Err(format!("field '{}' has no observations", f));
+        }
+        mu.push(s.sum / s.count as f64);
+        // Guard against degenerate (constant) fields by flooring
+        // variance at machine epsilon × range² — matches the L4
+        // K_H convention.
+        sigma_sq.push(s.variance().max(1e-12));
+    }
+    Ok((mu, sigma_sq))
+}
+
 #[cfg(feature = "kahler")]
 fn fit_isotropic_gaussian(
     store: &gigi::BundleStore,
@@ -2952,6 +3002,11 @@ fn fit_isotropic_gaussian(
 struct BrainSampleRequest {
     /// Numeric fiber fields to use as manifold dimensions.
     fields: Vec<String>,
+    /// Gaussian fit to use: "isotropic" (default, single scalar σ²)
+    /// or "diagonal" (per-axis σ² — recommended for anisotropic
+    /// manifolds like learned token fibers, per Marcella Finding 3).
+    #[serde(default)]
+    fit_mode: Option<FitMode>,
     /// Number of samples to draw post burn-in. Default 100.
     #[serde(default = "default_brain_n_samples")]
     n_samples: usize,
@@ -2980,7 +3035,13 @@ struct BrainSampleResponse {
     /// Inferred mean from the bundle's Welford stats — useful for
     /// the consumer to sanity-check the fit.
     fit_mean: Vec<f64>,
+    /// Mean of per-axis variances (always present for back-compat).
     fit_sigma_sq: f64,
+    /// Per-axis variances. With fit_mode="isotropic" all entries
+    /// equal fit_sigma_sq; with fit_mode="diagonal" they're distinct.
+    fit_sigma_sq_per_field: Vec<f64>,
+    /// Echo of the fit mode actually used (post-default-resolution).
+    fit_mode_used: String,
 }
 
 #[cfg(feature = "kahler")]
@@ -2996,18 +3057,7 @@ async fn brain_sample_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let (mu, sigma_sq) = fit_isotropic_gaussian(heap, &req.fields)
-        .map_err(|e| bad_request(&e))?;
-    let n = req.fields.len();
-    // Use canonical 2D symplectic form padded to n dimensions. The
-    // dissipative path (SAMPLE) doesn't use B, but the constructor
-    // needs a valid one.
-    let b = match canonical_symplectic_pad(n) {
-        Some(b) => b,
-        None => return Err(bad_request("dimension must be ≥ 2 and even")),
-    };
-    let flow = gigi::geometry::from_isotropic_gaussian(b, mu.clone(), sigma_sq)
-        .map_err(|e| bad_request(&format!("{}", e)))?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
     let config = gigi::geometry::FlowConfig {
         dt: 0.01,
         temperature: req.temperature,
@@ -3015,14 +3065,22 @@ async fn brain_sample_endpoint(
         burn_in: req.burn_in,
         seed: req.seed,
     };
-    let initial = vec![0.0; n];
-    let samples = flow
+    let initial = vec![0.0; ctx.dim];
+    let samples = ctx
+        .flow
         .sample_many(&initial, &config, req.n_samples, 1)
         .map_err(|e| bad_request(&format!("{}", e)))?;
+    let fit_mode_used = match ctx.fit_mode {
+        FitMode::Isotropic => "isotropic",
+        FitMode::Diagonal => "diagonal",
+    }
+    .to_string();
     Ok(Json(BrainSampleResponse {
         samples,
-        fit_mean: mu,
-        fit_sigma_sq: sigma_sq,
+        fit_mean: ctx.mu,
+        fit_sigma_sq: ctx.sigma_sq,
+        fit_sigma_sq_per_field: ctx.sigma_sq_per_field,
+        fit_mode_used,
     }))
 }
 
@@ -3350,36 +3408,76 @@ fn canonical_symplectic_pad(n: usize) -> Option<gigi::geometry::ClosedTwoForm> {
 struct BundleFlowCtx {
     flow: gigi::geometry::GenerativeFlow<Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>>,
     mu: Vec<f64>,
+    /// Mean of per-axis variances (for response echo regardless of
+    /// fit mode — consumers want a single scalar for back-compat).
     sigma_sq: f64,
+    /// Per-axis variances. Equal across axes when fit_mode = Isotropic;
+    /// distinct when fit_mode = Diagonal. Surfaced in responses so
+    /// consumers can see the anisotropy.
+    sigma_sq_per_field: Vec<f64>,
     dim: usize,
+    fit_mode: FitMode,
 }
 
 #[cfg(feature = "kahler")]
 fn flow_from_bundle(
     store: &gigi::BundleStore,
     fields: &[String],
+    fit_mode: FitMode,
 ) -> Result<BundleFlowCtx, (StatusCode, Json<ErrorResponse>)> {
-    let (mu, sigma_sq) =
-        fit_isotropic_gaussian(store, fields).map_err(|e| bad_request(&e))?;
     let n = fields.len();
     let b = canonical_symplectic_pad(n)
         .ok_or_else(|| bad_request("dimension must be ≥ 2 and even"))?;
-    let mu_for_grad = mu.clone();
-    let grad: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync> =
-        Box::new(move |x: &[f64]| -> Vec<f64> {
-            x.iter()
-                .zip(mu_for_grad.iter())
-                .map(|(xi, mi)| (xi - mi) / sigma_sq)
-                .collect()
-        });
-    let flow = gigi::geometry::GenerativeFlow::new(b, grad)
-        .map_err(|e| bad_request(&format!("{}", e)))?;
-    Ok(BundleFlowCtx {
-        flow,
-        mu,
-        sigma_sq,
-        dim: n,
-    })
+    match fit_mode {
+        FitMode::Isotropic => {
+            let (mu, sigma_sq) =
+                fit_isotropic_gaussian(store, fields).map_err(|e| bad_request(&e))?;
+            let mu_for_grad = mu.clone();
+            let grad: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync> =
+                Box::new(move |x: &[f64]| -> Vec<f64> {
+                    x.iter()
+                        .zip(mu_for_grad.iter())
+                        .map(|(xi, mi)| (xi - mi) / sigma_sq)
+                        .collect()
+                });
+            let flow = gigi::geometry::GenerativeFlow::new(b, grad)
+                .map_err(|e| bad_request(&format!("{}", e)))?;
+            Ok(BundleFlowCtx {
+                flow,
+                mu,
+                sigma_sq,
+                sigma_sq_per_field: vec![sigma_sq; n],
+                dim: n,
+                fit_mode,
+            })
+        }
+        FitMode::Diagonal => {
+            let (mu, sigma_sq_per_field) =
+                fit_diagonal_gaussian(store, fields).map_err(|e| bad_request(&e))?;
+            let scalar_sigma_sq =
+                sigma_sq_per_field.iter().sum::<f64>() / sigma_sq_per_field.len() as f64;
+            let mu_for_grad = mu.clone();
+            let sigma_for_grad = sigma_sq_per_field.clone();
+            let grad: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync> =
+                Box::new(move |x: &[f64]| -> Vec<f64> {
+                    x.iter()
+                        .zip(mu_for_grad.iter())
+                        .zip(sigma_for_grad.iter())
+                        .map(|((xi, mi), si)| (xi - mi) / si)
+                        .collect()
+                });
+            let flow = gigi::geometry::GenerativeFlow::new(b, grad)
+                .map_err(|e| bad_request(&format!("{}", e)))?;
+            Ok(BundleFlowCtx {
+                flow,
+                mu,
+                sigma_sq: scalar_sigma_sq,
+                sigma_sq_per_field,
+                dim: n,
+                fit_mode,
+            })
+        }
+    }
 }
 
 // ─── §4 DREAM (trajectory) ──────────────────────────────────
@@ -3388,6 +3486,11 @@ fn flow_from_bundle(
 #[derive(Debug, Clone, serde::Deserialize)]
 struct BrainDreamRequest {
     fields: Vec<String>,
+    /// Gaussian fit to use: "isotropic" (default, single scalar σ²)
+    /// or "diagonal" (per-axis σ² — recommended for anisotropic
+    /// manifolds like learned token fibers, per Marcella Finding 3).
+    #[serde(default)]
+    fit_mode: Option<FitMode>,
     /// Starting state. If None, defaults to the fit mean (origin
     /// of the flow's energy landscape).
     #[serde(default)]
@@ -3442,7 +3545,7 @@ async fn brain_dream_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields)?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
     let initial = req.initial.unwrap_or_else(|| ctx.mu.clone());
     if initial.len() != ctx.dim {
         return Err(bad_request(&format!(
@@ -3493,6 +3596,9 @@ async fn brain_dream_endpoint(
 #[derive(Debug, Clone, serde::Deserialize)]
 struct BrainForecastRequest {
     fields: Vec<String>,
+    /// Gaussian fit to use (see BrainDreamRequest.fit_mode).
+    #[serde(default)]
+    fit_mode: Option<FitMode>,
     initial: Vec<f64>,
     /// Number of Hamilton steps. Default 1000.
     #[serde(default = "default_brain_forecast_steps")]
@@ -3528,7 +3634,7 @@ async fn brain_forecast_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields)?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
     if req.initial.len() != ctx.dim {
         return Err(bad_request(&format!(
             "initial length {} ≠ fields length {}",
@@ -3560,6 +3666,9 @@ async fn brain_forecast_endpoint(
 #[derive(Debug, Clone, serde::Deserialize)]
 struct BrainReconstructRequest {
     fields: Vec<String>,
+    /// Gaussian fit to use (see BrainDreamRequest.fit_mode).
+    #[serde(default)]
+    fit_mode: Option<FitMode>,
     /// Noisy / partial observation. Descent starts here.
     noisy_initial: Vec<f64>,
     /// Descent budget. Default 500.
@@ -3599,7 +3708,7 @@ async fn brain_reconstruct_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields)?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
     if req.noisy_initial.len() != ctx.dim {
         return Err(bad_request(&format!(
             "noisy_initial length {} ≠ fields length {}",
@@ -3638,6 +3747,9 @@ async fn brain_reconstruct_endpoint(
 #[derive(Debug, Clone, serde::Deserialize)]
 struct BrainInpaintRequest {
     fields: Vec<String>,
+    /// Gaussian fit to use (see BrainDreamRequest.fit_mode).
+    #[serde(default)]
+    fit_mode: Option<FitMode>,
     /// Initial state. Locked coordinates stay fixed at their
     /// supplied values; unlocked coordinates flow.
     partial_state: Vec<f64>,
@@ -3683,7 +3795,7 @@ async fn brain_inpaint_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields)?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
     if req.partial_state.len() != ctx.dim {
         return Err(bad_request(&format!(
             "partial_state length {} ≠ fields length {}",
@@ -3727,6 +3839,9 @@ async fn brain_inpaint_endpoint(
 #[derive(Debug, Clone, serde::Deserialize)]
 struct BrainPredictRequest {
     fields: Vec<String>,
+    /// Gaussian fit to use (see BrainDreamRequest.fit_mode).
+    #[serde(default)]
+    fit_mode: Option<FitMode>,
     state: Vec<f64>,
     /// Step size for the single forward update. Default 0.1.
     #[serde(default = "default_brain_predict_lr")]
@@ -3762,7 +3877,7 @@ async fn brain_predict_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields)?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
     if req.state.len() != ctx.dim {
         return Err(bad_request(&format!(
             "state length {} ≠ fields length {}",

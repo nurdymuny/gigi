@@ -412,6 +412,59 @@ pub fn from_isotropic_gaussian(
     GenerativeFlow::new(b, grad)
 }
 
+/// Convenience: build a generative flow whose Hamiltonian is the
+/// negative-log-density of a *diagonal* (axis-aligned, anisotropic)
+/// Gaussian `N(μ, diag(σ²₁, σ²₂, …, σ²ₙ))`.
+///
+/// `∇H(x)_i = (xᵢ - μᵢ) / σ²ᵢ` — each axis has its own variance.
+///
+/// **Why this exists** (per Marcella's 2026-05-25 brain-endpoints
+/// probe, Finding 3). [`from_isotropic_gaussian`] uses a single
+/// scalar `σ²` (typically the *mean* of per-field variances),
+/// which understates spread on anisotropic manifolds — common for
+/// learned token / sensor fibers where different dimensions have
+/// very different natural scales. The diagonal variant gives
+/// numerically accurate SAMPLE / DREAM spread ratios per-axis
+/// while remaining cheap (no full Fisher matrix, just `n` scalars).
+///
+/// Math note: this is still Friston's FEP at temperature T = 1
+/// — `p ∝ exp(-H)` with `H(x) = ½ Σ (xᵢ - μᵢ)² / σ²ᵢ`. The L11
+/// `predict_one_step_natural` consumer can pair this with a
+/// diagonal Fisher inverse `g_F⁻¹ = diag(σ²ᵢ)` for the
+/// Amari-natural-gradient update.
+pub fn from_diagonal_gaussian(
+    b: ClosedTwoForm,
+    mu: Vec<f64>,
+    sigma_sq_per_field: Vec<f64>,
+) -> Result<GenerativeFlow<impl Fn(&[f64]) -> Vec<f64>>, GenerativeFlowError> {
+    let n = b.dim();
+    if mu.len() != n {
+        return Err(GenerativeFlowError::DimensionMismatch {
+            state_dim: mu.len(),
+            b_dim: n,
+        });
+    }
+    if sigma_sq_per_field.len() != n {
+        return Err(GenerativeFlowError::DimensionMismatch {
+            state_dim: sigma_sq_per_field.len(),
+            b_dim: n,
+        });
+    }
+    for &s in &sigma_sq_per_field {
+        if s <= 0.0 {
+            return Err(GenerativeFlowError::NonPositiveStep(s));
+        }
+    }
+    let grad = move |x: &[f64]| -> Vec<f64> {
+        x.iter()
+            .zip(mu.iter())
+            .zip(sigma_sq_per_field.iter())
+            .map(|((xi, mi), si)| (xi - mi) / si)
+            .collect()
+    };
+    GenerativeFlow::new(b, grad)
+}
+
 // ── helpers ───────────────────────────────────────────────────────
 
 /// Lightweight PCG-style PRNG. Avoids pulling in the `rand` crate
@@ -748,5 +801,143 @@ mod tests {
         // ~0.003 standard error on mean, ~0.0045 on variance.
         assert!(mean.abs() < 0.02, "mean = {}", mean);
         assert!((var - 1.0).abs() < 0.05, "var = {}", var);
+    }
+
+    // ── from_diagonal_gaussian (L13.3, anisotropic fit) ────────
+
+    /// Anisotropic Gaussian sampling recovers the per-axis variance
+    /// *ratio*, not just the mean — that's the property the isotropic
+    /// fit can't deliver. (Per Marcella's Finding 3, the absolute
+    /// magnitudes converge slowly at fixed dt for the wider axis;
+    /// what the diagonal fit FIXES is recovering the relative
+    /// per-axis shape that isotropic averaging hides.)
+    #[test]
+    fn diagonal_gaussian_recovers_per_axis_variance_ratio() {
+        let mu = vec![1.0, -2.0];
+        // 4× ratio across axes — moderate anisotropy, mixes well
+        // at the default dt + burn_in budget.
+        let sigma_sq_per_field = vec![0.5, 2.0];
+        let flow = from_diagonal_gaussian(
+            canonical_b2(),
+            mu.clone(),
+            sigma_sq_per_field.clone(),
+        )
+        .unwrap();
+
+        let config = FlowConfig {
+            dt: 0.01,
+            temperature: 1.0,
+            n_steps: 1,
+            burn_in: 5_000,
+            seed: Some(20260525),
+        };
+        let samples = flow
+            .sample_many(&[0.0, 0.0], &config, 20_000, 1)
+            .unwrap();
+
+        let n = samples.len() as f64;
+        let mean_x: f64 = samples.iter().map(|s| s[0]).sum::<f64>() / n;
+        let mean_y: f64 = samples.iter().map(|s| s[1]).sum::<f64>() / n;
+        let var_x: f64 =
+            samples.iter().map(|s| (s[0] - mean_x).powi(2)).sum::<f64>() / n;
+        let var_y: f64 =
+            samples.iter().map(|s| (s[1] - mean_y).powi(2)).sum::<f64>() / n;
+
+        // Mean recovery: tight for both axes.
+        assert!(
+            (mean_x - mu[0]).abs() < 0.1,
+            "mean_x = {:.4} vs μ_x = {:.4}",
+            mean_x,
+            mu[0]
+        );
+        assert!(
+            (mean_y - mu[1]).abs() < 0.2,
+            "mean_y = {:.4} vs μ_y = {:.4}",
+            mean_y,
+            mu[1]
+        );
+        // Per-axis variance recovery: each within 25% of target.
+        // (Euler-Maruyama at dt=0.01 has 3-5% discretization bias
+        // on top of MC error; tighter would over-fit the integrator.)
+        assert!(
+            (var_x - sigma_sq_per_field[0]).abs() / sigma_sq_per_field[0] < 0.25,
+            "axis 0 variance: {:.4} vs target {:.4} ({:.0}% off)",
+            var_x,
+            sigma_sq_per_field[0],
+            100.0 * (var_x - sigma_sq_per_field[0]).abs() / sigma_sq_per_field[0]
+        );
+        assert!(
+            (var_y - sigma_sq_per_field[1]).abs() / sigma_sq_per_field[1] < 0.25,
+            "axis 1 variance: {:.4} vs target {:.4} ({:.0}% off)",
+            var_y,
+            sigma_sq_per_field[1],
+            100.0 * (var_y - sigma_sq_per_field[1]).abs() / sigma_sq_per_field[1]
+        );
+
+        // The asymmetry-recovery check — the actual point of the
+        // diagonal fit: axis 1's variance should be at least 2×
+        // axis 0's (target ratio = 4×, even with bias we should
+        // see ≥ 2×). The isotropic fit would give the SAME variance
+        // on both axes, so this test is what makes the diagonal
+        // version distinguishable.
+        let empirical_ratio = var_y / var_x;
+        let target_ratio = sigma_sq_per_field[1] / sigma_sq_per_field[0];
+        assert!(
+            empirical_ratio > 2.0,
+            "variance ratio var_y/var_x = {:.2} should exceed 2.0 (target {:.1})",
+            empirical_ratio,
+            target_ratio
+        );
+    }
+
+    #[test]
+    fn diagonal_gaussian_rejects_dim_mismatch() {
+        let r = from_diagonal_gaussian(
+            canonical_b2(),
+            vec![0.0],     // wrong: 1, expected 2
+            vec![1.0, 1.0],
+        );
+        assert!(matches!(r, Err(GenerativeFlowError::DimensionMismatch { .. })));
+
+        let r2 = from_diagonal_gaussian(
+            canonical_b2(),
+            vec![0.0, 0.0],
+            vec![1.0, 1.0, 1.0], // wrong: 3, expected 2
+        );
+        assert!(matches!(r2, Err(GenerativeFlowError::DimensionMismatch { .. })));
+    }
+
+    #[test]
+    fn diagonal_gaussian_rejects_non_positive_variance() {
+        let r = from_diagonal_gaussian(
+            canonical_b2(),
+            vec![0.0, 0.0],
+            vec![1.0, -0.5], // wrong: negative σ²
+        );
+        assert!(matches!(r, Err(GenerativeFlowError::NonPositiveStep(_))));
+
+        let r2 = from_diagonal_gaussian(
+            canonical_b2(),
+            vec![0.0, 0.0],
+            vec![1.0, 0.0], // wrong: zero σ²
+        );
+        assert!(matches!(r2, Err(GenerativeFlowError::NonPositiveStep(_))));
+    }
+
+    /// Reconstruct still converges to μ when each axis has its own σ².
+    /// This is the L11 §5 RECONSTRUCT primitive under the diagonal fit.
+    #[test]
+    fn diagonal_gaussian_reconstruct_converges_to_mu() {
+        let mu = vec![3.0, -1.0];
+        let sigma_sq_per_field = vec![0.5, 2.0];
+        let flow = from_diagonal_gaussian(
+            canonical_b2(),
+            mu.clone(),
+            sigma_sq_per_field,
+        )
+        .unwrap();
+        let map = flow.reconstruct(&[10.0, 10.0], &FlowConfig::reconstructing()).unwrap();
+        let err = ((map[0] - mu[0]).powi(2) + (map[1] - mu[1]).powi(2)).sqrt();
+        assert!(err < 1e-3, "MAP err {:.4e}", err);
     }
 }

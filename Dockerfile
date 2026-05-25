@@ -12,7 +12,13 @@ RUN cargo build --release --features kahler --bin gigi-stream
 
 # Stage 2: Runtime
 FROM debian:trixie-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+# awscli: needed by gigi-stream's Tigris S3 push at startup. Tigris is
+# fly.io's S3-compatible storage (NOT Amazon — credentials in fly.toml
+# point at fly's TIGRIS endpoint). The aws CLI is just a generic S3
+# client we shell out to for the /data/ → gigi-snapshots/ sync.
+# Without it, the push silently fails on every startup and the only
+# copy of production data is the local fly volume.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates awscli && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /build/target/release/gigi-stream /usr/local/bin/
 RUN useradd -m gigi
 USER gigi

@@ -2838,7 +2838,11 @@ fn extract_field_samples(
         return Err("at least one fiber field required".into());
     }
     // Records are slices indexed by fiber-field position. Resolve
-    // each requested name to its index in the schema.
+    // each requested name to its index in the schema. We give a
+    // detailed error message if the field is in base_fields rather
+    // than fiber_fields (per Marcella's 2026-05-25 probe report —
+    // her `token_id` is a base_field and the original "not in
+    // schema" message was confusing).
     let mut field_idx = Vec::with_capacity(fields.len());
     for f in fields {
         let i = store
@@ -2846,7 +2850,33 @@ fn extract_field_samples(
             .fiber_fields
             .iter()
             .position(|fd| fd.name == *f)
-            .ok_or_else(|| format!("field '{}' not in schema", f))?;
+            .ok_or_else(|| {
+                let in_base = store
+                    .schema
+                    .base_fields
+                    .iter()
+                    .any(|fd| fd.name == *f);
+                let available_fiber: Vec<&str> = store
+                    .schema
+                    .fiber_fields
+                    .iter()
+                    .map(|fd| fd.name.as_str())
+                    .collect();
+                if in_base {
+                    format!(
+                        "field '{}' is a base_field (query key), not a fiber_field. \
+                         Brain endpoints only operate on fiber dimensions. \
+                         Available fiber_fields: {:?}",
+                        f, available_fiber
+                    )
+                } else {
+                    format!(
+                        "field '{}' not found in schema. \
+                         Available fiber_fields: {:?}",
+                        f, available_fiber
+                    )
+                }
+            })?;
         field_idx.push(i);
     }
     let mut samples = Vec::new();
@@ -2883,9 +2913,23 @@ fn fit_isotropic_gaussian(
     let mut var_sum = 0.0_f64;
     let mut var_count = 0_usize;
     for f in fields {
-        let s = stats
-            .get(f)
-            .ok_or_else(|| format!("no stats for field '{}'", f))?;
+        let s = stats.get(f).ok_or_else(|| {
+            let in_base = store.schema.base_fields.iter().any(|fd| fd.name == *f);
+            let available: Vec<&str> = stats.keys().map(|k| k.as_str()).collect();
+            if in_base {
+                format!(
+                    "field '{}' is a base_field (query key); brain endpoints only \
+                     fit Gaussians on numeric fiber_fields. Available stats: {:?}",
+                    f, available
+                )
+            } else {
+                format!(
+                    "no Welford stats for field '{}'. Available stats: {:?} \
+                     (brain endpoints require numeric fiber fields)",
+                    f, available
+                )
+            }
+        })?;
         if s.count == 0 {
             return Err(format!("field '{}' has no observations", f));
         }

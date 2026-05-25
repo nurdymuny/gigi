@@ -118,6 +118,31 @@ type Query {
 
 A non-commercial user can call `city` and `cities` freely. Calling `manifoldOf` returns an error from the *execution* layer (not the schema layer) with a category of `LICENSE_REQUIRED` and a pointer to davisgeometric.com for licensing.
 
+### The license boundary tracks the geometric boundary
+
+The `@public` / `@gated` split is not arbitrary — it tracks where the engine's actual IP lives. Operations that are computationally cheap, format-conversion-only, or infrastructure-level naturally classify as `@public`:
+
+- Record CRUD (create / read / update / delete bundles + records)
+- Basic vector search (similarity, k-NN over stored embeddings)
+- Schema introspection itself
+- Subscriptions to standard event streams
+
+Operations that depend on the engine's serious geometric machinery — the Davis Field Equation, the Kähler upgrades, the fiber-bundle work shipped through L1–L7 — naturally classify as `@gated(tier: "commercial")`:
+
+- `curvature(bundle)` — Kähler curvature decomposition (L4)
+- `spectral_gap(bundle)` — cached spectral analysis (L3)
+- `transport(seg, B, ...)` — B-perturbed transport (L1.5)
+- `hadamard_regions(bundle)` — Hadamard substructure detection (L5)
+- `morse_compress(bundle)` — Morse compression (L6)
+- `holonomy_debt(bundle)` — accumulated non-associativity tracking
+- `encode_chern(bundle)` — Chern character encoding (L7.3)
+- `quantum_cohomology(bundle)` — quantum cohomology operations (L7)
+- `toeplitz_operator(bundle)` — Berezin-Toeplitz operators (L7)
+
+The license boundary tracks the IP boundary because that's how the engine is structured: classical fiber-bundle operations are infrastructure; geometrically-novel operations are research. Mapping `@gated` to "where the research actually lives" makes the licensing posture legible to a reader of the schema in the same way the math is legible to a reader of the framework papers — both surfaces are honest about where the real work is.
+
+This also means the gating registry (§9 implementation note) doesn't need clever logic. The directive applied to each schema element follows a simple rule of thumb: if the operation needs L1–L7 machinery, it's `@gated`; otherwise it's `@public`. Adding new public operations is friction-free; adding new gated operations is rare (the L-series cadence is the rate-of-arrival).
+
 ---
 
 ## 5. Response shape (SDL is canonical)

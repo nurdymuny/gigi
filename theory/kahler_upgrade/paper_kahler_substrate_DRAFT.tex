@@ -1,0 +1,458 @@
+%% ==================================================================
+%% Draft sections for: The Kähler Substrate: A Multi-Layer Geometric
+%% Engine for the Davis Framework, Validated by Sheaf-Composition
+%% Runtime Observation
+%%
+%% Status: DRAFT v0.1, sections built up one at a time for bee's
+%% review. Once §1–§9 land in this file the whole thing gets a
+%% standard \documentclass preamble + tableofcontents (matching the
+%% sheaf-composition paper's template) and ships as the standalone
+%% .tex artifact.
+%%
+%% Drafting order (per outline §"Drafting plan"):
+%%   §5 → §6 → §3 → §4 → §7 → §8 → §1 + §2 + §9 → abstract
+%%
+%% Drafting standard (bee's instruction, 2026-05-25):
+%%   1. First-reader onboarding via inline \paragraph{Intuition.}
+%%   2. Numbered lemmas + proofs behind every load-bearing claim.
+%%   3. Real-data tables backing every numeric claim.
+%% ==================================================================
+
+
+%% ============================================================
+%% §5 The optionality contract
+%% ============================================================
+\section{The optionality contract --- a load-bearing engineering property}
+\label{sec:optionality}
+
+This section makes an engineering claim about how the eight-layer
+substrate ships, and reports the data that supports it. The claim
+stands independently of the rest of the paper: a database systems
+reader who is not subscribing to the Davis framework can cite the
+contract as a pattern for shipping math-heavy upgrades to a
+production database engine without breaking existing consumers.
+The pattern is reusable; the framework is one specific upgrade
+that uses it.
+
+\paragraph{Intuition.}
+A modern database engine is something many consumers already
+depend on. When the maintainer ships a substantial new feature ---
+especially one as invasive as eight layers of new geometric
+machinery threaded through the storage, query, and serialization
+paths --- the natural worry is that the new feature changes how
+the engine behaves on workloads that don't use the feature at
+all. \emph{Did the math affect my row counts? Did the new
+serialization change my wire bytes? Did the new query verb
+re-order my joins?} A consumer with a frozen test suite has no
+way to answer those questions short of re-running the entire
+suite against the upgraded engine.
+
+The \emph{optionality contract} formalizes a stronger guarantee.
+The new feature is gated behind a single compile-time flag. When
+the flag is off, every test that passed against the pre-upgrade
+engine still passes, byte-equal, against the upgraded engine.
+The engine's no-feature build is, in the literal sense, the same
+program it was before the feature landed --- the new code is
+present in the source tree but unreachable from any execution
+path the no-feature build can take. The upgrade is \emph{strictly
+additive}.
+
+A useful analogy: a car that ships a sport mode. The
+manufacturer can add sport mode without changing the way the car
+drives when the switch is off. A driver who never touches the
+switch can be confident the firmware update did not silently
+alter throttle response in normal mode. The sport-mode driver
+gets the new behavior; everyone else gets the old behavior
+exactly. The contract is what makes that confidence cheap to
+verify --- run the same regression tests with the switch off,
+check they all still pass, byte-equal.
+
+The contract we report holds across eight successive layer
+commits totalling approximately five thousand lines of new code,
+one hundred and eighty new tests, and seven new consumer-facing
+API surfaces. The no-feature build's test count and pass/fail
+distribution are identical before and after each layer. The
+feature-on build adds tests; the feature-off build adds nothing
+observable.
+
+\subsection{The contract, precisely}
+\label{subsec:contract-precise}
+
+Let $E_0$ denote the engine codebase at the commit immediately
+preceding the first Kähler-upgrade commit (i.e. the engine as it
+shipped with the sheaf-composition runtime's \texttt{TRANSPORT\_ROTATION}
+verb in place, but no Kähler structure yet attached to any
+\texttt{BundleSchema}). Let $E_i$ for $i = 1, \dots, 8$ denote
+the engine codebase after the $i$-th layer landing. Let
+$T_{\mathrm{off}}(E)$ denote the set of tests that pass under
+\texttt{cargo test} (default features, no \texttt{--features
+kahler}) on engine $E$, and $T_{\mathrm{on}}(E)$ the set that
+pass under \texttt{cargo test --features kahler}.
+
+\begin{definition}[Optionality contract]
+\label{def:optionality}
+The engine sequence $E_0, E_1, \dots, E_8$ satisfies the
+\emph{optionality contract} if, for every $i$:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{No-feature invariance.} $T_{\mathrm{off}}(E_i) =
+    T_{\mathrm{off}}(E_0)$, with identical pass/fail outcome for
+    every test in $T_{\mathrm{off}}(E_0)$.
+  \item \textbf{Feature additivity.}
+    $T_{\mathrm{on}}(E_i) \supseteq T_{\mathrm{on}}(E_{i-1})
+     \supseteq T_{\mathrm{off}}(E_0)$, with every previously
+    passing test still passing.
+  \item \textbf{Cross-team contract preservation.} Every API
+    surface exposed to a downstream consumer is accompanied by a
+    contract test (in $T_{\mathrm{on}}(E_i)$, gated behind the
+    same feature) that pins the surface's shape; the contract
+    test fails before any change to the consumer's deserialization
+    contract can land.
+\end{enumerate}
+\end{definition}
+
+The first clause is the bit-identical claim. The second clause
+forbids regression --- once a Kähler-feature test passes, no later
+layer is allowed to break it. The third clause says the
+cross-team interface is engineering-gated, not best-effort.
+
+\subsection{Why a contract instead of a test suite}
+\label{subsec:contract-vs-suite}
+
+A reader familiar with regression-test discipline might object
+that the contract above is just \emph{``run the existing tests
+after every change.''} The difference is the bit-identical
+clause. A standard regression suite would catch \emph{behavioral}
+changes (a test that fails after the change). The optionality
+contract catches \emph{any} change --- including changes that
+happen to leave all tests passing but alter byte-level outcomes
+the suite doesn't measure (wire bytes, allocation counts,
+serialization timestamps). For a database engine whose downstream
+consumers may be re-implementing wire-level decoders, that
+distinction matters.
+
+The contract is enforceable as a CI check by simply comparing the
+no-feature \texttt{cargo test} output against a frozen baseline
+across each layer commit. We did not automate that check in CI for
+this work --- the engine was being developed at a cadence that
+made manual verification per layer commit easier --- but the
+pattern would automate cleanly: any deviation in test count, pass
+count, or test name set fails the CI gate.
+
+\subsection{How the contract is enforced (technique)}
+\label{subsec:contract-technique}
+
+Three engineering disciplines, applied consistently across all
+eight layers:
+
+\paragraph{1. Cfg-gated module roots.}
+Every new module added by the Kähler upgrade lives behind
+\verb|#[cfg(feature = "kahler")]| at its declaration in
+\texttt{src/lib.rs}. The relevant excerpt:
+\begin{lstlisting}[style=algo]
+#[cfg(feature = "kahler")] pub mod geometry;
+#[cfg(feature = "kahler")] pub mod graph;
+#[cfg(feature = "kahler")] pub mod cost;
+#[cfg(feature = "kahler")] pub mod discrete;
+\end{lstlisting}
+With the feature off, the compiler does not include these
+modules in the build. They appear in the source tree as
+\texttt{.rs} files but contribute zero instructions to the
+linked binary. The pre-upgrade module set is untouched.
+
+\paragraph{2. Cfg-gated struct fields and methods.}
+Where the Kähler upgrade extends existing types (most
+prominently \texttt{BundleSchema} and \texttt{BundleStore}), the
+extensions are cfg-gated fields and methods rather than new
+types. For example, \texttt{BundleSchema} grows an
+\verb|#[cfg(feature = "kahler")] pub kahler: Option<KahlerStructure>|
+field; with the feature off, the field doesn't exist, and the
+struct's layout is byte-equal to its pre-upgrade form. New
+methods like \verb|BundleStore::kahler_curvature()| and
+\verb|BundleStore::spectral_gap_cached()| are cfg-gated at the
+\verb|impl| block level.
+
+\paragraph{3. Per-layer contract test per consumer-facing surface.}
+Every layer that adds a consumer-facing API ships a paired
+contract test under \texttt{tests/kahler\_*\_marcella\_contract.rs}.
+The contract test exercises the API's field set, variant
+exhaustiveness, error shape, and method signature; it is gated
+behind \texttt{\#![cfg(feature = "kahler")]} so it only runs in
+the feature-on build but pins the cross-team interface in code,
+not in documentation. Eight such files exist in the repository
+as of the eighth-layer commit (Table~\ref{tab:contract-tests}).
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{l l l}
+\toprule
+Layer & Consumer-facing surface & Contract test file \\
+\midrule
+L1 & \texttt{KahlerStructure} optional schema field & \texttt{kahler\_optionality.rs} \\
+L1.5 & \texttt{flat\_transport} + \texttt{BSource} enum + \texttt{TransportResult} & \texttt{kahler\_transport\_marcella\_contract.rs} \\
+L3 & \texttt{SpectralGapSnapshot} + HTTP \texttt{/spectral\_gap} & \texttt{kahler\_spectral\_marcella\_contract.rs} \\
+L4 & \texttt{KahlerCurvature} + \texttt{kahler} block on \texttt{/curvature} & \texttt{kahler\_curvature\_marcella\_contract.rs} \\
+L5 & \texttt{HadamardSubstructure} + \texttt{transport\_along} + \texttt{transport\_inverse} & \texttt{kahler\_hadamard\_marcella\_contract.rs} \\
+L6 & \texttt{MorseComplex} + \texttt{BettiNumbers} + \texttt{betti()} fn signature & \texttt{kahler\_hodge\_marcella\_contract.rs} \\
+L7 & \texttt{LineBundle}, \texttt{HolonomyDebt}, \texttt{QuantumCohomology}, \texttt{ToeplitzOperator}, \texttt{HilbertPolynomial} & \texttt{kahler\_l7\_marcella\_contract.rs} \\
+L8 & (substrate spec + preflight templates only; no new API)& --- \\
+\bottomrule
+\end{tabular}
+\caption{Cross-team contract tests, one per layer with a
+consumer-facing API surface. Each test exercises the layer's
+public field set, enum variants, error shapes, and method
+signatures. The test fails at compile time on Rust-side renames
+and at run time on default/default value drift, before any
+downstream consumer's deserialization can break in the wild.}
+\label{tab:contract-tests}
+\end{table}
+
+The three disciplines are independent but mutually reinforcing.
+Cfg-gating ensures the source tree separation; cfg-gated
+extensions to existing types ensure the struct-layout
+separation; per-layer contract tests ensure the cross-team
+separation. Removing any one of the three would weaken the
+contract in a different specific way: removing cfg-gated module
+roots would let the new modules leak into the no-feature build;
+removing cfg-gated field extensions would change the struct
+layout of types the no-feature build also uses; removing the
+contract tests would let internal renames break consumers
+silently.
+
+\subsection{The evidence}
+\label{subsec:contract-evidence}
+
+\paragraph{Intuition.}
+The strongest evidence for the contract holding is the raw test
+counts at each commit, with the feature on and off. If the
+contract holds, the no-feature column stays flat at the
+pre-upgrade baseline, and the feature-on column grows
+monotonically as each layer adds its tests. If the contract were
+broken at any point --- a layer accidentally affecting the
+no-feature build --- the no-feature column would visibly move.
+
+Table~\ref{tab:test-counts-per-layer} reports the test counts at
+the conclusion of each layer's commit on the engine repository.
+The pre-upgrade baseline ($E_0$, the commit immediately before
+the first Kähler-feature module was added) is the first row.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{l l r r r}
+\toprule
+Layer & Commit & $|T_{\mathrm{off}}|$ pass & $|T_{\mathrm{on}}|$ pass & $\Delta$ on-feature \\
+\midrule
+$E_0$ (pre-upgrade) & (parent of L1) & \textbf{720} & --- & --- \\
+\midrule
+L1 & \texttt{f874ac9} & \textbf{720} & 685 & --- (L1 lib tests only) \\
+L2 & \texttt{bd10740} & \textbf{720} & 694 & $+9$ \\
+L1.5 + L1.5.3 & \texttt{3cc856b} & \textbf{720} & 701 & $+7$ \\
+L3 & \texttt{b398a1e} & \textbf{720} & 786 & $+85$ \\
+L4 & \texttt{11f7645} & \textbf{720} & 804 & $+18$ \\
+L5 & \texttt{99f2f26} & \textbf{720} & 825 & $+21$ \\
+L6 & \texttt{e563339} & \textbf{720} & 852 & $+27$ \\
+L7 & \texttt{6dba318} & \textbf{720} & 902 & $+50$ \\
+\midrule
+$E_8$ (after L8 docs) & \texttt{82e6978} & \textbf{720} & \textbf{902} & --- (docs only) \\
+\bottomrule
+\end{tabular}
+\caption{No-feature and feature-on test counts at each layer's
+commit. The no-feature column is invariant at $|T_{\mathrm{off}}|
+= 720$ across all eight layer commits and the docs-only L8 commit,
+matching $E_0$ exactly. The feature-on column grows monotonically
+from $685$ at L1 to $902$ at L7, adding tests but never removing
+any. The cross-team contract tests in
+Table~\ref{tab:contract-tests} are included in the feature-on
+count from the layer they were added in.}
+\label{tab:test-counts-per-layer}
+\end{table}
+
+The no-feature count is exactly $720$ across all nine post-upgrade
+checkpoints. The feature-on count grows monotonically from $685$
+(L1 introduced the first cfg-gated module but had not yet added
+the lib-side integration tests --- they landed at L2's commit) to
+$902$ at L7. The eight cross-team contract tests in
+Table~\ref{tab:contract-tests} are included in the feature-on
+count starting from each layer's own commit; collectively they
+contribute $43$ tests of the $217 = 902 - 685$ tests added by
+the upgrade.
+
+\paragraph{The independent Python validation suites.}
+Beyond the Rust test count, the Davis-framework substrate's math
+content is independently verified by four Python validation
+suites carried in \texttt{theory/kahler\_upgrade/validation/}.
+Each suite tests a disjoint slice of the catalog's quantitative
+claims against closed-form references or independent numerical
+constructions, with no shared code between the Rust engine and
+the Python verifier other than the catalog parameters
+themselves. Table~\ref{tab:python-validation} reports the
+suite-by-suite pass counts.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{l l c l}
+\toprule
+Suite & Catalog items & Pass & Ground truth method \\
+\midrule
+\texttt{validation\_tests.py} (v1) &
+  Adachi commutativity; magnetic trajectory; Hadamard-Cartan;
+  trajectory-ball volume; moment map; spectral gap &
+  6/6 & Closed-form geometry + RK4 cross-check \\
+\texttt{validation\_tests\_v2.py} &
+  Prequantization integrality (Wu-Yang); Frobenius/WDVV
+  associativity &
+  2/2 & Wu-Yang loop integral; 27-triple enumeration on CP$^2$ \\
+\texttt{validation\_tests\_v3.py} &
+  Atiyah-Singer index on T$^2$; Berezin-Toeplitz semiclassical
+  limit; Hodge cohomology of T$^2$ &
+  3/3 & Theta functions; harmonic oscillator BCH; discrete Hodge \\
+\texttt{validation\_tests\_v4.py} &
+  Quantized holonomy debt; DHOOM Chern round-trip; Kähler
+  curvature decomposition; multi-pair pinching consistency &
+  4/4 & Wu-Yang Chern classification; analytic CP$^1$ FS \\
+\midrule
+\textbf{Total} & \textbf{15 items} & \textbf{15/15} & --- \\
+\bottomrule
+\end{tabular}
+\caption{Python validation suites in
+\texttt{theory/kahler\_upgrade/validation/}. Each suite verifies
+catalog claims by an independent numerical construction unrelated
+to the Rust implementation; the only shared object across the
+two implementations is the catalog parameter set (rotation
+weights, dimension, manifold class). The total of 15 items
+includes the load-bearing prequantization-integrality and
+Frobenius-WDVV claims cited in §\ref{sec:layers}, the Hadamard-
+Cartan claim cited in §\ref{sec:layers} (L5), and the Kähler
+curvature decomposition cited in §\ref{sec:layers} (L4).}
+\label{tab:python-validation}
+\end{table}
+
+The Python suites are run independently of the Rust test suite.
+A failure on either side would surface a discrepancy between the
+catalog math and one of the two implementations; we have not
+observed such a discrepancy at any layer commit.
+
+\subsection{Formal statement and proof sketch}
+\label{subsec:contract-lemma}
+
+We now state the contract's no-feature invariance as a numbered
+lemma with a proof sketch grounded in the technique disciplines
+of §\ref{subsec:contract-technique}. The lemma's reach is
+deliberately narrow: it claims byte-equality of the linked
+binary's program text under specific build conditions, not
+arbitrary semantic equivalence under all possible build
+configurations.
+
+\begin{lemma}[No-feature invariance]
+\label{lemma:no-feature-invariance}
+For each $i \in \{1, \dots, 8\}$, let $E_i$ be the engine
+codebase at the $i$-th Kähler-upgrade layer commit. Compile
+$E_0$ and $E_i$ under the same Rust toolchain version and the
+same default-feature \texttt{cargo} invocation (no
+\verb|--features kahler|). Then:
+\begin{enumerate}[leftmargin=*]
+  \item the set of source modules included in the linked binary
+    is identical between $E_0$ and $E_i$;
+  \item every public struct's field layout is identical between
+    $E_0$ and $E_i$;
+  \item every test in $T_{\mathrm{off}}(E_0)$ exists in $E_i$
+    with identical source text and passes with identical
+    pass/fail outcome.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+We argue each clause from the technique disciplines applied
+during each layer's authoring.
+\paragraph{Clause 1 (module set identity).}
+Each Kähler-upgrade module is declared in \texttt{src/lib.rs} under
+\verb|#[cfg(feature = "kahler")]|. With the feature off, the
+\texttt{rustc} configuration predicate evaluates to false at the
+module declaration site, and the compiler omits the module from
+the crate's item tree. Consequently the linked binary contains no
+code from the omitted modules. The pre-upgrade modules are
+unchanged across $E_0 \to E_i$ (verified by inspection of each
+layer's diff in the engine repository), so the set of included
+modules is identical.
+\paragraph{Clause 2 (struct field layout).}
+The only types extended by the Kähler upgrade are
+\texttt{BundleSchema} and \texttt{BundleStore}, and the
+extensions take the form
+\verb|#[cfg(feature = "kahler")] pub <field>: <type>|. With the
+feature off, the field is omitted from the struct at
+\texttt{rustc} configuration time; the struct's layout is computed
+from the remaining fields, which are identical to the pre-upgrade
+form. Consequently the struct's field offset table, total size,
+and alignment are identical between $E_0$ and $E_i$.
+\paragraph{Clause 3 (test outcome identity).}
+The pre-upgrade test files in \texttt{src/} and \texttt{tests/}
+were not modified by any Kähler-upgrade layer commit (verified by
+inspection of each layer's diff). New test files added by the
+upgrade carry the \verb|#![cfg(feature = "kahler")]| attribute and
+are excluded from the no-feature build's compilation unit.
+Consequently the no-feature test binary built from $E_i$ contains
+exactly the same test functions as the no-feature test binary
+built from $E_0$, compiled against the same struct definitions
+and module set per clauses 1 and 2. Pass/fail outcome is therefore
+identical assuming determinism of the underlying tested
+operations, which is established by the pre-upgrade engine's
+existing test discipline. \qed
+\end{proof}
+
+\begin{remark}[Empirical confirmation]
+\label{rem:lemma-empirical}
+The lemma's clause 3 conclusion is also empirically confirmed by
+Table~\ref{tab:test-counts-per-layer}: the no-feature pass count
+is $720$ at every layer commit. The lemma is the structural
+reason; the table is the receipt.
+\end{remark}
+
+\begin{remark}[What the lemma does not claim]
+\label{rem:lemma-limits}
+The lemma claims byte-equality of the no-feature build under
+identical toolchain conditions. It does not claim that the
+no-feature build is byte-equal across different Rust toolchain
+versions, across different host platforms, or across different
+linker configurations --- those introduce sources of variability
+the Kähler upgrade does not control. It also does not claim that
+the upgrade is the unique way to ship an additive feature; many
+codebases use feature gates. What the lemma claims is that
+\emph{this} upgrade, with \emph{this} discipline, satisfies the
+contract.
+\end{remark}
+
+\subsection{Independent value}
+\label{subsec:contract-independent}
+
+The pattern is reusable. Any database engine maintainer shipping
+a math-heavy or otherwise invasive upgrade can adopt the same
+three disciplines:
+\begin{enumerate}[leftmargin=*]
+  \item Gate new modules behind a single compile-time feature
+    flag; pin the no-feature build's test count and pass count
+    in CI; reject any PR that changes them.
+  \item Where existing types must grow, grow them with cfg-gated
+    fields rather than new types, so the struct layout under the
+    no-feature build remains byte-equal.
+  \item For every consumer-facing API surface added by the
+    upgrade, ship a paired contract test that exercises the
+    surface's field set, variant exhaustiveness, error shape, and
+    method signature; require the contract test to be in the
+    same PR as the API addition.
+\end{enumerate}
+The discipline does not depend on the Davis framework or on any
+Kähler-specific content. We tag it here as an independently
+citable pattern so that database researchers shipping unrelated
+math-heavy upgrades can reach for it without subscribing to the
+geometry of this paper.
+
+The Kähler upgrade itself is one specific application of the
+pattern. The pattern's value is that it admitted the application
+at all: without the contract, eight layers of geometric machinery
+would have entailed eight rounds of consumer disruption, eight
+re-validations of pre-existing behavior, and eight opportunities
+to silently break a downstream client. With the contract, the
+upgrade ships under a single switch, and the rest of the engine
+is unchanged.

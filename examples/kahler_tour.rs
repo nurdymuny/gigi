@@ -581,9 +581,9 @@ fn dhoom_arrays_of_primitives() {
 // ── PR window — HTTP endpoints summary ────────────────────────────
 
 fn pr_window_endpoints_summary() {
-    header("PR window", "HTTP endpoints for Marcella (deployed)");
+    header("PR window 1", "HTTP endpoints for Marcella (L7 / L1.5 / catalog §)");
 
-    let endpoints = [
+    let endpoints_1 = [
         ("POST /v1/quantum_cohomology/compose",
          "Frobenius/WDVV composition on CP^n / S² / T^n (catalog §2.10)"),
         ("POST /v1/quantum_cohomology/capacity",
@@ -593,10 +593,29 @@ fn pr_window_endpoints_summary() {
         ("POST /v1/bundles/{name}/flat_transport",
          "Magnetic/classical parallel transport (catalog §1.5)"),
     ];
-    for (route, desc) in &endpoints {
+    for (route, desc) in &endpoints_1 {
         println!("  {:<48} {}", route, desc);
     }
-    note("(See tests/kahler_pr_window_marcella_contract.rs for wire shapes.)");
+
+    println!();
+    println!("══ PR window 2 (L13)  brain-primitive HTTP endpoints ══");
+    let endpoints_2 = [
+        ("POST /v1/bundles/{name}/brain/sample",
+         "Langevin draws from the bundle's density (catalog §2)"),
+        ("POST /v1/bundles/{name}/brain/confidence",
+         "Fisher-precision 'I don't know' gate (catalog §12)"),
+        ("POST /v1/bundles/{name}/brain/attend",
+         "Softmax / top-k attention over records (catalog §8, §9)"),
+        ("POST /v1/bundles/{name}/brain/episodic",
+         "Persistent-H₀ change-point detection (catalog §10)"),
+        ("GET  /v1/bundles/{name}/brain/semantic",
+         "Morse-compressed gist of the bundle (catalog §11)"),
+    ];
+    for (route, desc) in &endpoints_2 {
+        println!("  {:<48} {}", route, desc);
+    }
+    note("(See tests/kahler_pr_window_marcella_contract.rs +");
+    note(" tests/kahler_brain_endpoints_contract.rs for wire shapes.)");
 }
 
 // ── main ──────────────────────────────────────────────────────────

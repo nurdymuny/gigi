@@ -2811,6 +2811,478 @@ async fn flat_transport_endpoint(
     }))
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 2026-05-25 PR window 2 — brain-primitive HTTP endpoints (L13)
+// ═══════════════════════════════════════════════════════════════
+//
+// Surface 5 of the 12 brain primitives over HTTP for cross-team
+// consumption (Marcella, MIRADOR, PRISM). All endpoints live under
+// `/v1/bundles/{name}/brain/*` to avoid colliding with existing
+// `/predict` route and to keep the brain namespace cleanly demarcated.
+//
+//   POST /v1/bundles/{name}/brain/sample      §2  — Langevin draw
+//   POST /v1/bundles/{name}/brain/confidence  §12 — Fisher-precision gate
+//   POST /v1/bundles/{name}/brain/attend      §8  — softmax retrieval
+//   POST /v1/bundles/{name}/brain/episodic    §10 — change-point detect
+//   GET  /v1/bundles/{name}/brain/semantic    §11 — Morse-compressed gist
+//
+// Wire shapes pinned by tests/kahler_brain_endpoints_contract.rs.
+// Catalog: theory/brain_primitives/catalog.md.
+
+#[cfg(feature = "kahler")]
+fn extract_field_samples(
+    store: &gigi::BundleStore,
+    fields: &[String],
+) -> Result<Vec<Vec<f64>>, String> {
+    if fields.is_empty() {
+        return Err("at least one fiber field required".into());
+    }
+    // Records are slices indexed by fiber-field position. Resolve
+    // each requested name to its index in the schema.
+    let mut field_idx = Vec::with_capacity(fields.len());
+    for f in fields {
+        let i = store
+            .schema
+            .fiber_fields
+            .iter()
+            .position(|fd| fd.name == *f)
+            .ok_or_else(|| format!("field '{}' not in schema", f))?;
+        field_idx.push(i);
+    }
+    let mut samples = Vec::new();
+    for (_bp, record) in store.sections() {
+        let mut row = Vec::with_capacity(fields.len());
+        for &i in &field_idx {
+            let val = record.get(i).ok_or_else(|| {
+                format!("record missing fiber position {}", i)
+            })?;
+            let v = match val {
+                gigi::types::Value::Float(x) => *x,
+                gigi::types::Value::Integer(j) => *j as f64,
+                _ => {
+                    return Err(format!(
+                        "field '{}' has non-numeric value in a record",
+                        fields[field_idx.iter().position(|&x| x == i).unwrap_or(0)]
+                    ));
+                }
+            };
+            row.push(v);
+        }
+        samples.push(row);
+    }
+    Ok(samples)
+}
+
+#[cfg(feature = "kahler")]
+fn fit_isotropic_gaussian(
+    store: &gigi::BundleStore,
+    fields: &[String],
+) -> Result<(Vec<f64>, f64), String> {
+    let stats = store.field_stats();
+    let mut mu = Vec::with_capacity(fields.len());
+    let mut var_sum = 0.0_f64;
+    let mut var_count = 0_usize;
+    for f in fields {
+        let s = stats
+            .get(f)
+            .ok_or_else(|| format!("no stats for field '{}'", f))?;
+        if s.count == 0 {
+            return Err(format!("field '{}' has no observations", f));
+        }
+        mu.push(s.sum / s.count as f64);
+        var_sum += s.variance();
+        var_count += 1;
+    }
+    let sigma_sq = if var_count == 0 {
+        1.0
+    } else {
+        (var_sum / var_count as f64).max(1e-12)
+    };
+    Ok((mu, sigma_sq))
+}
+
+// ─── §2 SAMPLE ──────────────────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainSampleRequest {
+    /// Numeric fiber fields to use as manifold dimensions.
+    fields: Vec<String>,
+    /// Number of samples to draw post burn-in. Default 100.
+    #[serde(default = "default_brain_n_samples")]
+    n_samples: usize,
+    /// Langevin temperature. Default 1.0 (canonical sampling).
+    #[serde(default = "default_brain_temperature")]
+    temperature: f64,
+    /// Burn-in iterations. Default 2000.
+    #[serde(default = "default_brain_burn_in")]
+    burn_in: usize,
+    /// PRNG seed. None → entropy.
+    #[serde(default)]
+    seed: Option<u64>,
+}
+
+#[cfg(feature = "kahler")]
+fn default_brain_n_samples() -> usize { 100 }
+#[cfg(feature = "kahler")]
+fn default_brain_temperature() -> f64 { 1.0 }
+#[cfg(feature = "kahler")]
+fn default_brain_burn_in() -> usize { 2_000 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainSampleResponse {
+    samples: Vec<Vec<f64>>,
+    /// Inferred mean from the bundle's Welford stats — useful for
+    /// the consumer to sanity-check the fit.
+    fit_mean: Vec<f64>,
+    fit_sigma_sq: f64,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_sample_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainSampleRequest>,
+) -> Result<Json<BrainSampleResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    let (mu, sigma_sq) = fit_isotropic_gaussian(heap, &req.fields)
+        .map_err(|e| bad_request(&e))?;
+    let n = req.fields.len();
+    // Use canonical 2D symplectic form padded to n dimensions. The
+    // dissipative path (SAMPLE) doesn't use B, but the constructor
+    // needs a valid one.
+    let b = match canonical_symplectic_pad(n) {
+        Some(b) => b,
+        None => return Err(bad_request("dimension must be ≥ 2 and even")),
+    };
+    let flow = gigi::geometry::from_isotropic_gaussian(b, mu.clone(), sigma_sq)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+    let config = gigi::geometry::FlowConfig {
+        dt: 0.01,
+        temperature: req.temperature,
+        n_steps: 1,
+        burn_in: req.burn_in,
+        seed: req.seed,
+    };
+    let initial = vec![0.0; n];
+    let samples = flow
+        .sample_many(&initial, &config, req.n_samples, 1)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+    Ok(Json(BrainSampleResponse {
+        samples,
+        fit_mean: mu,
+        fit_sigma_sq: sigma_sq,
+    }))
+}
+
+// ─── §12 SELF-MONITOR (confidence) ──────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainConfidenceRequest {
+    fields: Vec<String>,
+    /// Query point — length must equal `fields.len()`.
+    query: Vec<f64>,
+    /// Kernel bandwidth. Default √σ² from the bundle's fit.
+    #[serde(default)]
+    bandwidth: Option<f64>,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainConfidenceResponse {
+    /// Σᵢ exp(−‖q−xᵢ‖²/2σ²) — Bayesian precision proxy.
+    raw: f64,
+    /// raw / max_density, ratio to densest sample point.
+    normalized: f64,
+    /// bandwidth actually used (either request or derived from fit).
+    bandwidth: f64,
+    n_samples: usize,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_confidence_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainConfidenceRequest>,
+) -> Result<Json<BrainConfidenceResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    if req.query.len() != req.fields.len() {
+        return Err(bad_request(&format!(
+            "query length {} ≠ fields length {}",
+            req.query.len(),
+            req.fields.len()
+        )));
+    }
+    let samples = extract_field_samples(heap, &req.fields)
+        .map_err(|e| bad_request(&e))?;
+    let bandwidth = match req.bandwidth {
+        Some(b) if b > 0.0 => b,
+        _ => {
+            let (_, s_sq) = fit_isotropic_gaussian(heap, &req.fields)
+                .map_err(|e| bad_request(&e))?;
+            s_sq.sqrt().max(1e-9)
+        }
+    };
+    let raw = gigi::geometry::kernel_density_confidence(&samples, &req.query, bandwidth);
+    let normalized =
+        gigi::geometry::confidence_normalized(&samples, &req.query, bandwidth);
+    Ok(Json(BrainConfidenceResponse {
+        raw,
+        normalized,
+        bandwidth,
+        n_samples: samples.len(),
+    }))
+}
+
+// ─── §8 ATTEND ──────────────────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainAttendRequest {
+    fields: Vec<String>,
+    query: Vec<f64>,
+    #[serde(default)]
+    bandwidth: Option<f64>,
+    /// If provided, only return weights for the top-k records (in
+    /// descending order). When absent, full attention vector
+    /// (`weights.len() == n_samples`) is returned.
+    #[serde(default)]
+    top_k: Option<usize>,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainAttendResponse {
+    /// Attention weights aligned with `indices`. Sums to ≈ 1.0.
+    weights: Vec<f64>,
+    /// Record indices (in the bundle's section iteration order)
+    /// corresponding to each weight.
+    indices: Vec<usize>,
+    bandwidth: f64,
+    n_samples: usize,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_attend_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainAttendRequest>,
+) -> Result<Json<BrainAttendResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    if req.query.len() != req.fields.len() {
+        return Err(bad_request(&format!(
+            "query length {} ≠ fields length {}",
+            req.query.len(),
+            req.fields.len()
+        )));
+    }
+    let samples = extract_field_samples(heap, &req.fields)
+        .map_err(|e| bad_request(&e))?;
+    let bandwidth = match req.bandwidth {
+        Some(b) if b > 0.0 => b,
+        _ => {
+            let (_, s_sq) = fit_isotropic_gaussian(heap, &req.fields)
+                .map_err(|e| bad_request(&e))?;
+            s_sq.sqrt().max(1e-9)
+        }
+    };
+    let (weights, indices) = match req.top_k {
+        Some(k) if k < samples.len() => {
+            let top = gigi::geometry::focus(&samples, &req.query, bandwidth, k);
+            let weights: Vec<f64> = top.iter().map(|(_, w)| *w).collect();
+            let indices: Vec<usize> = top.iter().map(|(i, _)| *i).collect();
+            (weights, indices)
+        }
+        _ => {
+            let weights = gigi::geometry::attend(&samples, &req.query, bandwidth);
+            let indices: Vec<usize> = (0..samples.len()).collect();
+            (weights, indices)
+        }
+    };
+    Ok(Json(BrainAttendResponse {
+        weights,
+        indices,
+        bandwidth,
+        n_samples: samples.len(),
+    }))
+}
+
+// ─── §10 EPISODIC ───────────────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainEpisodicRequest {
+    /// Single numeric fiber field whose value sequence to scan for
+    /// change-points (persistent H₀ on the sorted-values MST).
+    field: String,
+    /// Persistence threshold (multiple of median gap). Default 50.
+    #[serde(default = "default_min_persistence_ratio")]
+    min_persistence_ratio: f64,
+}
+
+#[cfg(feature = "kahler")]
+fn default_min_persistence_ratio() -> f64 { 50.0 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainEpisodicEventWire {
+    boundary_idx: usize,
+    gap: f64,
+    persistence_ratio: f64,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainEpisodicResponse {
+    events: Vec<BrainEpisodicEventWire>,
+    n_records: usize,
+    threshold_used: f64,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_episodic_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainEpisodicRequest>,
+) -> Result<Json<BrainEpisodicResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    let samples = extract_field_samples(heap, std::slice::from_ref(&req.field))
+        .map_err(|e| bad_request(&e))?;
+    let values: Vec<f64> = samples.iter().map(|v| v[0]).collect();
+    let events = gigi::geometry::episodic_events(&values, req.min_persistence_ratio);
+    let wire = events
+        .into_iter()
+        .map(|e| BrainEpisodicEventWire {
+            boundary_idx: e.boundary_idx,
+            gap: e.gap,
+            persistence_ratio: e.persistence_ratio,
+        })
+        .collect();
+    Ok(Json(BrainEpisodicResponse {
+        events: wire,
+        n_records: values.len(),
+        threshold_used: req.min_persistence_ratio,
+    }))
+}
+
+// ─── §11 SEMANTIC ───────────────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainSemanticResponse {
+    /// Betti numbers (b_0, b_1, b_2) of the bundle's Hodge complex.
+    /// Preserved across Morse compression.
+    betti_b0: usize,
+    betti_b1: usize,
+    betti_b2: usize,
+    /// Cell counts post-Morse compression.
+    n_critical: usize,
+    /// Original cell count (V + E + F).
+    n_original: usize,
+    /// Compression ratio = n_original / n_critical.
+    compression_ratio: f64,
+    cohomology_preserved: bool,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_semantic_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> Result<Json<BrainSemanticResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    let morse = gigi::geometry::semantic_gist(heap).ok_or_else(|| {
+        not_found(&format!(
+            "Bundle '{}' produced no Morse compression (too few records or degenerate complex)",
+            name
+        ))
+    })?;
+    Ok(Json(BrainSemanticResponse {
+        betti_b0: morse.betti.b0,
+        betti_b1: morse.betti.b1,
+        betti_b2: morse.betti.b2,
+        n_critical: morse.n_critical(),
+        n_original: morse.n_original(),
+        compression_ratio: morse.compression_ratio(),
+        cohomology_preserved: morse.cohomology_preserved(),
+    }))
+}
+
+// ─── helpers for the 5 brain endpoints ─────────────────────
+
+#[cfg(feature = "kahler")]
+fn not_found(msg: &str) -> (StatusCode, Json<ErrorResponse>) {
+    (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse {
+            error: msg.to_string(),
+        }),
+    )
+}
+
+#[cfg(feature = "kahler")]
+fn bad_request(msg: &str) -> (StatusCode, Json<ErrorResponse>) {
+    (
+        StatusCode::BAD_REQUEST,
+        Json(ErrorResponse {
+            error: msg.to_string(),
+        }),
+    )
+}
+
+/// Build a canonical block-form symplectic 2-form `[[0, -I], [I, 0]]`
+/// in even dimension `n`. Returns None for odd or zero dimension.
+/// SAMPLE doesn't actually use B for its dissipative gradient flow
+/// (Friston FEP), but `from_isotropic_gaussian` requires *a* valid
+/// closed 2-form for the L10 type signature.
+#[cfg(feature = "kahler")]
+fn canonical_symplectic_pad(n: usize) -> Option<gigi::geometry::ClosedTwoForm> {
+    if n < 2 || n % 2 != 0 {
+        return None;
+    }
+    let half = n / 2;
+    let mut raw = vec![0.0_f64; n * n];
+    for i in 0..half {
+        // Upper-right block: -I.
+        raw[i * n + (half + i)] = -1.0;
+        // Lower-left block: +I.
+        raw[(half + i) * n + i] = 1.0;
+    }
+    let form = gigi::geometry::TwoForm::new(raw, n).ok()?;
+    Some(gigi::geometry::ClosedTwoForm::new_constant(form))
+}
+
 
 async fn consistency_check(
     State(state): State<Arc<StreamState>>,
@@ -8110,6 +8582,33 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/flat_transport",
             post(flat_transport_endpoint),
+        );
+
+    // 2026-05-25 PR window 2: 5 brain-primitive endpoints (L13).
+    // Surfaces the high-leverage subset of the L10/L11/L12 catalog
+    // under /v1/bundles/{name}/brain/* — picked for diversity of
+    // downstream use case (generative, gate, retrieval, memory, gist).
+    #[cfg(feature = "kahler")]
+    let app = app
+        .route(
+            "/v1/bundles/{name}/brain/sample",
+            post(brain_sample_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/confidence",
+            post(brain_confidence_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/attend",
+            post(brain_attend_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/episodic",
+            post(brain_episodic_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/semantic",
+            get(brain_semantic_endpoint),
         );
 
     let app = app

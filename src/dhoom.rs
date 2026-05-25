@@ -195,6 +195,22 @@ impl DhoomRecordParser {
 // Value coercion
 // ---------------------------------------------------------------------------
 
+/// Sentinel prefix for arrays of primitives encoded as JSON inside a
+/// single DHOOM field. ASCII Unit Separator (0x1F) — never appears in
+/// human text, so we can use prefix detection as the discriminator
+/// between "string that happens to start with [" and "JSON-encoded
+/// primitive array".
+const PRIMITIVE_ARRAY_SENTINEL: char = '\u{001F}';
+
+/// True if every element of an array is a primitive (not an object or
+/// nested array). Empty arrays count as primitive — the categorizer
+/// can't tell what they were intended to hold, and treating empties as
+/// primitive is safe round-trip.
+fn is_primitive_array(arr: &[Value]) -> bool {
+    arr.iter()
+        .all(|v| !matches!(v, Value::Object(_) | Value::Array(_)))
+}
+
 /// Coerce a raw string token into a typed JSON Value per DHOOM spec Â§8.
 pub fn coerce(s: &str) -> Value {
     match s {
@@ -203,6 +219,17 @@ pub fn coerce(s: &str) -> Value {
         "null" => Value::Null,
         "" => Value::String(String::new()),
         _ => {
+            // Primitive-array sentinel: \x1F prefix + JSON body.
+            if let Some(rest) = s.strip_prefix(PRIMITIVE_ARRAY_SENTINEL) {
+                if let Ok(parsed) = serde_json::from_str::<Value>(rest) {
+                    if parsed.is_array() {
+                        return parsed;
+                    }
+                }
+                // Malformed sentinel payload → fall through to string
+                // (defensive; encoder always emits valid JSON).
+                return Value::String(s.to_string());
+            }
             if let Ok(i) = s.parse::<i64>() {
                 Value::Number(Number::from(i))
             } else if let Ok(f) = s.parse::<f64>() {
@@ -231,6 +258,15 @@ fn value_to_dhoom(v: &Value) -> String {
             }
         }
         Value::Number(n) => n.to_string(),
+        Value::Array(arr) if is_primitive_array(arr) => {
+            // Encode arrays of primitives inline as `\x1F` + JSON.
+            // The string-formatting branch above will quote-wrap and
+            // `""`-escape the JSON's embedded double-quotes so commas
+            // inside the array don't fragment record-field splitting.
+            let json = serde_json::to_string(v).unwrap_or_else(|_| "[]".into());
+            let wrapped = Value::String(format!("{}{}", PRIMITIVE_ARRAY_SENTINEL, json));
+            value_to_dhoom(&wrapped)
+        }
         Value::Array(_) | Value::Object(_) => String::new(),
     }
 }
@@ -957,8 +993,25 @@ fn encode_bundle(name: &str, records: &[Value], out: &mut String, indent: usize)
             .collect();
 
         if values.iter().all(|v| v.is_array()) {
-            nested_fields.push(key.clone());
-            continue;
+            // Only treat as a nested sub-bundle if at least one array
+            // carries objects (the records of the sub-bundle). Pure
+            // arrays-of-primitives (e.g. `{tokens: ["the", "cat"]}`)
+            // are not bundles — they're scalar-shaped values; let them
+            // fall through to the regular per-record encoder which
+            // serializes them inline via the \x1F sentinel.
+            let any_object_array = values.iter().any(|v| {
+                v.as_array()
+                    .map(|a| a.iter().any(|x| x.is_object()))
+                    .unwrap_or(false)
+            });
+            let all_empty = values.iter().all(|v| {
+                v.as_array().map(|a| a.is_empty()).unwrap_or(false)
+            });
+            if any_object_array || all_empty {
+                nested_fields.push(key.clone());
+                continue;
+            }
+            // else: arrays of primitives → fall through to remaining_keys
         }
 
         if let Some((start, step)) = detect_arithmetic(&values) {
@@ -2714,6 +2767,111 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
             (records[1]["value"].as_f64().unwrap() - 2.718).abs() < 1e-6,
             "float value precision lost"
         );
+    }
+
+    // ── arrays-of-primitives round-trip ──────────────────────────
+    //
+    // Regression for the "Array elements must be objects" encoder
+    // panic that broke wikitext snapshots in prod. Records with
+    // fields like {tokens: ["the","cat","sat"]} must encode inline
+    // (\x1F + JSON sentinel) and decode back to the same arrays.
+
+    #[test]
+    fn primitive_array_string_round_trip() {
+        let input = json!({
+            "wikitext": [
+                {"id": 1, "tokens": ["the", "cat", "sat"]},
+                {"id": 2, "tokens": ["on", "the", "mat"]},
+                {"id": 3, "tokens": []},
+            ]
+        });
+        let encoded = encode(&input).expect("encode primitive-array bundle");
+        assert!(
+            !encoded.contains("Array elements must be objects"),
+            "encoder must not panic on primitive arrays"
+        );
+        let decoded = decode(&encoded).expect("decode round-trip");
+        let recs = decoded["wikitext"].as_array().expect("array");
+        assert_eq!(recs.len(), 3);
+        assert_eq!(recs[0]["tokens"], json!(["the", "cat", "sat"]));
+        assert_eq!(recs[1]["tokens"], json!(["on", "the", "mat"]));
+        // empty array survives — categorizer treats all-empty as
+        // nested, but with no objects this still round-trips as []
+        assert!(recs[2]["tokens"].is_array());
+        assert_eq!(recs[2]["tokens"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn primitive_array_numeric_round_trip() {
+        let input = json!({
+            "signals": [
+                {"id": 1, "samples": [1, 2, 3, 4]},
+                {"id": 2, "samples": [-1, 0, 1]},
+            ]
+        });
+        let encoded = encode(&input).expect("encode numeric array bundle");
+        let decoded = decode(&encoded).expect("decode round-trip");
+        let recs = decoded["signals"].as_array().expect("array");
+        assert_eq!(recs[0]["samples"], json!([1, 2, 3, 4]));
+        assert_eq!(recs[1]["samples"], json!([-1, 0, 1]));
+    }
+
+    #[test]
+    fn primitive_array_mixed_types_round_trip() {
+        // Two differing records so the modal-default heuristic
+        // doesn't pull payload into the header — we want to exercise
+        // the per-record inline encoding path.
+        let input = json!({
+            "events": [
+                {"id": 1, "payload": ["alpha", 42, true, null]},
+                {"id": 2, "payload": ["beta", 7, false]},
+            ]
+        });
+        let encoded = encode(&input).expect("encode mixed-type array bundle");
+        let decoded = decode(&encoded).expect("decode round-trip");
+        let recs = decoded["events"].as_array().expect("array");
+        assert_eq!(recs[0]["payload"], json!(["alpha", 42, true, null]));
+        assert_eq!(recs[1]["payload"], json!(["beta", 7, false]));
+    }
+
+    #[test]
+    fn nested_object_arrays_still_use_nested_bundles() {
+        // Object-arrays must still take the nested sub-bundle path —
+        // our categorization change must not regress them into the
+        // inline-JSON path. We assert that on the header level: an
+        // arrays-of-objects field gets the `>` modifier, NOT the
+        // inline sentinel.
+        let input = json!({
+            "orders": [
+                {"id": 1, "items": [{"sku": "A", "qty": 2}, {"sku": "B", "qty": 1}]},
+                {"id": 2, "items": [{"sku": "C", "qty": 5}]},
+            ]
+        });
+        let encoded = encode(&input).expect("encode object-array bundle");
+        assert!(
+            encoded.contains("items>"),
+            "object-arrays must still encode as nested sub-bundles, got:\n{}",
+            encoded
+        );
+        assert!(
+            !encoded.contains(PRIMITIVE_ARRAY_SENTINEL),
+            "object-arrays must NOT be encoded inline as primitive-array JSON, got:\n{}",
+            encoded
+        );
+    }
+
+    #[test]
+    fn coerce_handles_sentinel_prefix_directly() {
+        let v = coerce("\u{001F}[1,2,3]");
+        assert_eq!(v, json!([1, 2, 3]));
+    }
+
+    #[test]
+    fn coerce_falls_back_on_malformed_sentinel_payload() {
+        // Defensive: if a sentinel-prefixed string somehow has bad
+        // JSON, we don't panic — we return it as a string.
+        let v = coerce("\u{001F}not json[");
+        assert!(matches!(v, Value::String(_)));
     }
 }
 

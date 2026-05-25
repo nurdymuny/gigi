@@ -34,6 +34,10 @@
 //!   parametrizes its boundary conditions to deliver SAMPLE,
 //!   FORECAST, DREAM, RECONSTRUCT as one piece of infrastructure.
 //!   See `theory/brain_primitives/catalog.md`.
+//! - **L11** (`geometry::predictive_coding`): three more brain
+//!   primitives — INPAINT (constrained Langevin), PREDICT (single
+//!   Fisher-natural-gradient step), SELF-MONITOR (kernel-density
+//!   confidence). Stack on top of L10's flow infrastructure.
 //!
 //! L1 — this module — only declares the foundation types. Subsequent
 //! layers live in their own modules and depend on what we publish
@@ -45,6 +49,7 @@ pub mod generative_flow;
 pub mod hadamard;
 pub mod line_bundle;
 pub mod moment_map;
+pub mod predictive_coding;
 pub mod quantum_cohomology;
 pub mod toeplitz;
 pub mod transport;
@@ -61,6 +66,10 @@ pub use hadamard::{
 pub use line_bundle::{ChernClass, IntegralityError, LineBundle};
 pub use moment_map::{
     ConservationVerdict, InfinitesimalAction, MomentMap, MomentMapError,
+};
+pub use predictive_coding::{
+    confidence_normalized, inpaint, kernel_density_confidence, predict_one_step,
+    predict_one_step_natural,
 };
 pub use quantum_cohomology::{CohClass, HilbertPolynomial, QuantumCohomology, QuantumError};
 pub use toeplitz::{toeplitz_operator, ToeplitzOperator, ToeplitzError, ToeplitzSafetyGate};

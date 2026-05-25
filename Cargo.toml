@@ -94,6 +94,11 @@ name = "kahler_tour"
 path = "examples/kahler_tour.rs"
 required-features = ["kahler"]
 
+[[bin]]
+name = "predictive_coding_demo"
+path = "examples/predictive_coding_demo.rs"
+required-features = ["kahler"]
+
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"

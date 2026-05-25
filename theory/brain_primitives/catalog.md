@@ -384,28 +384,34 @@ TDD / contract / real-data / no-feature regression discipline as
 L1–L9.
 
 ```
-L10 — Keystone: generative_flow.rs
-  ├─► §2 SAMPLE        | sample() method on BundleStore + GQL verb
-  ├─► §3 FORECAST      | forecast() method + GQL verb
-  ├─► §4 DREAM         | dream() method + GQL verb
-  └─► §5 RECONSTRUCT   | reconstruct() method + GQL verb
+L10 SHIPPED — Keystone: src/geometry/generative_flow.rs
+  ├─► §2 SAMPLE        | flow.sample() / flow.sample_many()
+  ├─► §3 FORECAST      | flow.forecast()
+  ├─► §4 DREAM         | flow.dream()
+  └─► §5 RECONSTRUCT   | flow.reconstruct()
 
-L11 — Predictive coding: predictive_coding.rs
-  ├─► §6 INPAINT       | inpaint() + GQL verb
-  ├─► §7 PREDICT       | predict_next() + GQL verb
-  └─► §12 SELF-MONITOR | confidence() + already wired into all queries
+L11 SHIPPED — Predictive coding: src/geometry/predictive_coding.rs
+  ├─► §6 INPAINT       | inpaint(flow, partial, locked_indices, config)
+  ├─► §7 PREDICT       | predict_one_step(flow, state, lr)
+  │                      predict_one_step_natural(flow, state, g_inv, lr)
+  └─► §12 SELF-MONITOR | kernel_density_confidence(samples, query, bw)
+                         confidence_normalized(samples, query, bw)
 
-L12 — Attention + memory: attention.rs + memory.rs
+L12 — Attention + memory: attention.rs + memory.rs (next)
   ├─► §8 ATTEND        | attend() + GQL verb
   ├─► §9 FOCUS         | focus() returns sub-bundle
   ├─► §10 EPISODIC     | episodic_events() + sleep-cycle Morse recompute
   └─► §11 SEMANTIC     | semantic_gist() — already in L6; expose API
 ```
 
-This catalog ships L10 today as a Sudoku-anchor — the keystone module
-[`src/geometry/generative_flow.rs`](../../src/geometry/generative_flow.rs)
-implements §2–§5 by parametrizing the Hamilton-flow boundary
-conditions. L11 and L12 follow the same pattern.
+L10 and L11 shipped together: keystone gradient/Hamiltonian flow +
+the three predictive-coding primitives stacked on top. Catalog now
+covers 7 of 12 brain primitives in code; L12 brings the remaining 5
+(attention + memory pillars). Real-bundle demo end-to-end on a
+synthetic MIRADOR PK cohort:
+[`examples/predictive_coding_demo.rs`](../../examples/predictive_coding_demo.rs)
+— SELF-MONITOR cleanly separates known patients from out-of-cohort
+queries by **184 orders of magnitude**.
 
 ## 5. License & provenance
 

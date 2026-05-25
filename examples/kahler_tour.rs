@@ -20,7 +20,8 @@ use gigi::discrete::hodge_complex::HodgeComplex;
 use gigi::discrete::hodge_laplacian::betti;
 use gigi::discrete::morse::morse_compress;
 use gigi::geometry::{
-    flat_transport, from_isotropic_gaussian, BSource, ClosedTwoForm, CohClass,
+    confidence_normalized, flat_transport, from_isotropic_gaussian, inpaint,
+    kernel_density_confidence, predict_one_step, BSource, ClosedTwoForm, CohClass,
     ComplexStructure, FlowConfig, HadamardSubstructure, InfinitesimalAction,
     KahlerStructure, LineBundle, MomentMap, QuantumCohomology, TransportSegment,
     TwoForm,
@@ -451,6 +452,62 @@ fn l10_generative_flow() {
     note("(One generator, four brain-like operations. Friston FEP on the Kähler bundle.)");
 }
 
+// ── L11 — Predictive coding (INPAINT / PREDICT / SELF-MONITOR) ───
+
+fn l11_predictive_coding() {
+    header("L11", "INPAINT / PREDICT / SELF-MONITOR (brain catalog §6, §7, §12)");
+
+    let b = ClosedTwoForm::new_constant(
+        TwoForm::new(vec![0.0, 1.0, -1.0, 0.0], 2).unwrap(),
+    );
+    let mu = vec![5.0, -2.0];
+    let flow = from_isotropic_gaussian(b, mu.clone(), 1.0).unwrap();
+
+    // §6 INPAINT: lock x₀ at 10.0 (far from μ₀ = 5), sample x₁.
+    let config = FlowConfig {
+        dt: 0.05,
+        temperature: 1.0,
+        n_steps: 1,
+        burn_in: 5000,
+        seed: Some(42),
+    };
+    let filled = inpaint(&flow, &[10.0, 0.0], &[0], &config).unwrap();
+    line(
+        "INPAINT lock x₀=10  →  (x₀, x₁)",
+        format!("({:.4}, {:.4})  [μ₁ = {:.1}]", filled[0], filled[1], mu[1]),
+    );
+
+    // §7 PREDICT: one Fisher-natural step from (10, 10).
+    let next = predict_one_step(&flow, &[10.0, 10.0], 0.2).unwrap();
+    line(
+        "PREDICT one step from (10, 10)",
+        format!("({:.4}, {:.4})  toward μ = ({:.1}, {:.1})", next[0], next[1], mu[0], mu[1]),
+    );
+
+    // §12 SELF-MONITOR: build a synthetic data ball and measure
+    // confidence near it vs far from it.
+    let cluster: Vec<Vec<f64>> = (0..100)
+        .map(|i| {
+            let t = i as f64 * 0.05;
+            vec![5.0 + 0.3 * t.cos(), -2.0 + 0.3 * t.sin()]
+        })
+        .collect();
+    let c_known = kernel_density_confidence(&cluster, &[5.0, -2.0], 0.5);
+    let c_far = kernel_density_confidence(&cluster, &[50.0, 50.0], 0.5);
+    let cn_known = confidence_normalized(&cluster, &[5.0, -2.0], 0.5);
+    let cn_far = confidence_normalized(&cluster, &[50.0, 50.0], 0.5);
+    line("SELF-MONITOR at cluster center (raw)", format!("{:.3}", c_known));
+    line(
+        "SELF-MONITOR at (50,50) outlier (raw)",
+        format!("{:.3e}", c_far),
+    );
+    line(
+        "SELF-MONITOR normalized (known / far)",
+        format!("{:.3} / {:.3e}", cn_known, cn_far),
+    );
+    note("(See examples/predictive_coding_demo.rs for a real PK cohort bundle.)");
+}
+
 // ── DHOOM encoder — arrays of primitives round-trip ───────────────
 
 fn dhoom_arrays_of_primitives() {
@@ -510,11 +567,12 @@ fn main() {
     l7_line_bundle_holonomy_quantum_cohomology();
     l9_moment_map_noether();
     l10_generative_flow();
+    l11_predictive_coding();
     dhoom_arrays_of_primitives();
     pr_window_endpoints_summary();
 
     println!();
-    println!("Done — 12 layers exercised.");
+    println!("Done — 13 layers exercised.");
     println!("  Kähler catalog:     theory/kahler_upgrade/catalog.md");
     println!("  Post-Kähler menu:   theory/post_kahler_directions/catalog.md");
     println!("  Brain-primitives:   theory/brain_primitives/catalog.md");

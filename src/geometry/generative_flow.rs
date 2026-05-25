@@ -175,13 +175,29 @@ where
         self.b.dim()
     }
 
+    /// Evaluate the negative-log-density gradient `∇H(x)` at a point.
+    /// L11 uses this directly for single-step PREDICT (no integration
+    /// loop, just one Fisher-natural-gradient step).
+    pub fn grad_neg_log_p(&self, state: &[f64]) -> Vec<f64> {
+        (self.grad_neg_log_p)(state)
+    }
+
+    /// Borrow the precomputed inverse symplectic form `B⁻¹`. L11
+    /// uses this for the Hamiltonian PREDICT variant.
+    pub(crate) fn b_inv(&self) -> &[f64] {
+        &self.b_inv
+    }
+
     /// Dissipative Langevin step: `dx = -∇H dt + √(2T·dt) dW`.
     ///
     /// This is the gradient-descent half of the Kähler-bundle flow
     /// (uses no `B`). Stationary distribution at `T = 1` is
     /// `p ∝ exp(-H)`. Used by SAMPLE, DREAM, RECONSTRUCT, INPAINT —
     /// all the primitives that *minimize* free energy (Friston FEP).
-    fn step_gradient(
+    ///
+    /// `pub(crate)` so L11 `predictive_coding` can build INPAINT on
+    /// top of the same step without re-implementing it.
+    pub(crate) fn step_gradient(
         &self,
         state: &[f64],
         config: &FlowConfig,
@@ -212,7 +228,9 @@ where
     /// `MomentMap::flow_step` — we keep it inline here so this
     /// module stays free-standing, and so the FORECAST sign
     /// convention is explicit at the call site.
-    fn step_hamiltonian(&self, state: &[f64], config: &FlowConfig) -> Vec<f64> {
+    ///
+    /// `pub(crate)` so L11 can use it for the one-step PREDICT.
+    pub(crate) fn step_hamiltonian(&self, state: &[f64], config: &FlowConfig) -> Vec<f64> {
         let n = self.dim();
         let g = (self.grad_neg_log_p)(state);
         let drift = matvec(&self.b_inv, &g, n);

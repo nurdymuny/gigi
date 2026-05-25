@@ -7,24 +7,7 @@
 
 ---
 
-## What's IN and what's OUT (clear since v0.2)
-
-### IN — the math, the prediction, the measurement
-
-- The Kähler upgrade itself, as **eight layers of geometric machinery**. Each layer is a mathematical primitive with a closed-form claim. The substrate IS the paper's content.
-- The **specific prediction** validated: catalog §2.10 / §E.5 non-associativity bound = 7.6pp on a substrate embedded in a Kähler ambient.
-- The **independent measurement** by Marcella's runtime: peak per-turn Δ-residue = 0.0747 on 30 A/B-paired conversations.
-- The **agreement** between prediction and measurement: 0.0013 difference = below sampling noise.
-- The **stationarity surprise**: the same meter surfaces a conversation-stationarity signal (4/4 sessions monotonic decay at ~2pp/turn) — geometric machinery doing product work it wasn't designed for.
-
-### OUT — process and collaboration
-
-- **Optionality contract** as a load-bearing section. Engineering hygiene; private. Mentioned only as a footnote: "the upgrade lives behind a Cargo feature flag; reproducibility appendix gives the invocation."
-- **Failure log / sprint arc** (V3→V10, G0→G3, S0 pivot trajectory). Private to internal docs.
-- **Cross-team collaboration story** (the 8+ letters between gigi engine team and Marcella team, the gate protocol, the flip clock, the per-letter audit trail). The paper cites Marcella's runtime as an *independent measurement source*, not as a *collaboration partner story*.
-- **Engineering disciplines** (cfg-gated modules, per-layer contract tests, sprint cadence). Footnote at most.
-
-### Drafting standard (unchanged from v0.1.1)
+## Drafting standard (unchanged from v0.1.1)
 
 1. First-reader onboarding via inline `\paragraph{Intuition.}` blocks.
 2. Numbered lemmas + proofs (or proof sketches) behind every load-bearing claim.

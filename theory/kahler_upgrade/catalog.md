@@ -406,7 +406,7 @@ Items 1–6 are the practical v3 upgrade. 7–12 extend it. 13–15 are research
 | 1.6 | Hypersurface trajectories | — | not tested | Documented in Adachi papers; revisit if load-bearing |
 | 2.1 | Prequantization | v2::test_7_prequantization_integrality | PASS | Integer 2q: dev 0; non-integer: dev 0.33–0.40 |
 | 2.2 | Index / Riemann-Roch | v3::test_9_index_theorem_torus | PASS | dim H⁰(L^n) = n for n = 1, …, 5 on T² |
-| 2.3 | Moment map / Noether | v1::test_5_moment_map | PASS | Symmetric drift 7e-15, asymmetric drift 19.5 |
+| 2.3 | Moment map / Noether | v1::test_5_moment_map + `geometry::moment_map::tests::*` | PASS — shipped L9 (2026-05-25) | Symmetric drift 7e-15 (analytic) / ≤ 1e-9 (RK4 in-process); asymmetric drift 19.5 / > 0.1 |
 | 2.4 | K-theoretic operations | — | not tested | Standard K-theory; lower priority |
 | 2.5 | Spectral gap / mixing | v1::test_6_spectral_gap | PASS | gap·τ products within 1.2× across topologies |
 | 2.6 | Floer invariants | — | not tested | Research-mode (PDE-heavy) |

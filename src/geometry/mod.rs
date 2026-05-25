@@ -23,6 +23,11 @@
 //!   (catalog §2.9).
 //! - **L7** (`geometry::line_bundle`): prequantization + Chern-class
 //!   compression (catalog §2.1, §E.1, §E.2).
+//! - **L9** (`geometry::moment_map`): moment maps + Noether
+//!   conservation along Hamiltonian B-flows (catalog §2.3).
+//!   Retrofit of the L1.1 placeholder that didn't land first time;
+//!   ships independently because it only depends on L1's
+//!   `ClosedTwoForm`.
 //!
 //! L1 — this module — only declares the foundation types. Subsequent
 //! layers live in their own modules and depend on what we publish
@@ -32,6 +37,7 @@ pub mod complex_structure;
 pub mod forms;
 pub mod hadamard;
 pub mod line_bundle;
+pub mod moment_map;
 pub mod quantum_cohomology;
 pub mod toeplitz;
 pub mod transport;
@@ -43,6 +49,9 @@ pub use hadamard::{
     HADAMARD_KB_THRESHOLD, HADAMARD_TEST_RADIUS,
 };
 pub use line_bundle::{ChernClass, IntegralityError, LineBundle};
+pub use moment_map::{
+    ConservationVerdict, InfinitesimalAction, MomentMap, MomentMapError,
+};
 pub use quantum_cohomology::{CohClass, HilbertPolynomial, QuantumCohomology, QuantumError};
 pub use toeplitz::{toeplitz_operator, ToeplitzOperator, ToeplitzError, ToeplitzSafetyGate};
 pub use transport::{

@@ -31,6 +31,9 @@
 pub mod complex_structure;
 pub mod forms;
 pub mod hadamard;
+pub mod line_bundle;
+pub mod quantum_cohomology;
+pub mod toeplitz;
 pub mod transport;
 
 pub use complex_structure::{ComplexStructure, ComplexStructureError};
@@ -39,6 +42,9 @@ pub use hadamard::{
     detect as detect_hadamard, is_hadamard_region, HadamardRegion, HadamardSubstructure,
     HADAMARD_KB_THRESHOLD, HADAMARD_TEST_RADIUS,
 };
+pub use line_bundle::{ChernClass, IntegralityError, LineBundle};
+pub use quantum_cohomology::{CohClass, HilbertPolynomial, QuantumCohomology, QuantumError};
+pub use toeplitz::{toeplitz_operator, ToeplitzOperator, ToeplitzError, ToeplitzSafetyGate};
 pub use transport::{
     flat_transport, BSource, TransportError, TransportResult, TransportSegment,
 };

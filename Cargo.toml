@@ -104,6 +104,11 @@ name = "attention_memory_demo"
 path = "examples/attention_memory_demo.rs"
 required-features = ["kahler"]
 
+[[bin]]
+name = "dream_demo"
+path = "examples/dream_demo.rs"
+required-features = ["kahler"]
+
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"

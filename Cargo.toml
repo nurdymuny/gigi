@@ -109,6 +109,11 @@ name = "dream_demo"
 path = "examples/dream_demo.rs"
 required-features = ["kahler"]
 
+[[bin]]
+name = "dream_anisotropic_demo"
+path = "examples/dream_anisotropic_demo.rs"
+required-features = ["kahler"]
+
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"

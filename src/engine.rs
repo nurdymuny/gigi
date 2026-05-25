@@ -509,14 +509,24 @@ impl Engine {
             })?;
         }
 
-        // Phase 2: Open each .dhoom as MmapBundle, wrap in OverlayBundle
+        // Phase 2: Open each .dhoom as MmapBundle, wrap in OverlayBundle.
+        // For schemas that have a CreateBundle in WAL but NO matching .dhoom
+        // file (i.e. bundles created after the last snapshot was written),
+        // fall back to creating a heap-only BundleStore. The Engine's bundle
+        // accessor (`pub fn bundle`) checks `bundles` before `mmap_bundles`
+        // so mixed mode works transparently at the lookup layer.
+        //
+        // Pre-2026-05-25 behavior was to `continue` on missing .dhoom,
+        // silently dropping the bundle. That meant any bundle created
+        // since the last snapshot vanished from the live engine on every
+        // fast-path startup — invisible until queried. The fix restores
+        // those bundles as heap-only stores; subsequent WAL inserts (the
+        // Phase 3 loop below) land on them correctly.
         let mut mmap_bundles: HashMap<String, OverlayBundle> = HashMap::new();
-        if snapshots_dir.exists() {
-            for (name, schema) in &schemas {
-                let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
-                if !snap_path.exists() {
-                    continue;
-                }
+        let mut heap_bundles: HashMap<String, BundleStore> = HashMap::new();
+        for (name, schema) in &schemas {
+            let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+            if snapshots_dir.exists() && snap_path.exists() {
                 match MmapBundle::open(&snap_path) {
                     Ok(mmap) => {
                         let n = mmap.len();
@@ -525,29 +535,47 @@ impl Engine {
                         mmap_bundles.insert(name.clone(), overlay);
                     }
                     Err(e) => {
-                        eprintln!("  WARNING: mmap open failed for {name}: {e}");
+                        eprintln!(
+                            "  WARNING: mmap open failed for {name}: {e} — falling back to heap"
+                        );
+                        heap_bundles.insert(name.clone(), BundleStore::new(schema.clone()));
                     }
                 }
+            } else {
+                // No snapshot on disk for this schema. Create a heap-only
+                // BundleStore so subsequent WAL inserts find a target.
+                eprintln!("  Heap-only (no snapshot): {name}");
+                heap_bundles.insert(name.clone(), BundleStore::new(schema.clone()));
             }
         }
 
-        // Phase 3: Replay post-checkpoint WAL entries into overlay BundleStores
+        // Phase 3: Replay post-checkpoint WAL entries. Apply to mmap
+        // overlay if the bundle was snapshotted, otherwise to the heap-
+        // only store created above. Either target catches the insert.
         for entry in &wal_entries {
             match entry {
                 WalEntry::Insert { bundle_name, record } => {
                     if let Some(ob) = mmap_bundles.get(bundle_name) {
                         ob.insert(record);
+                    } else if let Some(store) = heap_bundles.get_mut(bundle_name) {
+                        store.insert(record);
                     }
                 }
                 WalEntry::Update { bundle_name, key, patches } => {
                     if let Some(ob) = mmap_bundles.get(bundle_name) {
                         ob.update(key, patches);
+                    } else if let Some(store) = heap_bundles.get_mut(bundle_name) {
+                        store.update(key, patches);
                     }
                 }
                 WalEntry::Delete { bundle_name, key } => {
                     if let Some(ob) = mmap_bundles.get(bundle_name) {
                         let key_str = format!("{key:?}");
                         ob.delete(&key_str, Some(key));
+                    } else if let Some(store) = heap_bundles.get_mut(bundle_name) {
+                        // BundleStore::delete takes &Record directly
+                        // (mirrors the slow-path do_replay handler).
+                        store.delete(key);
                     }
                 }
                 _ => {}
@@ -563,7 +591,11 @@ impl Engine {
 
         Ok(Self {
             data_dir: data_dir.to_path_buf(),
-            bundles: HashMap::new(),
+            // Mixed mode: snapshotted bundles live in `mmap_bundles`;
+            // WAL-only (post-snapshot) bundles live in `bundles`.
+            // The Engine's bundle accessor checks `bundles` first then
+            // `mmap_bundles`, so callers don't need to know the split.
+            bundles: heap_bundles,
             mmap_bundles,
             storage_mode: StorageMode::Mmap,
             schemas,

@@ -235,17 +235,42 @@ veto-with-reason. Co-announce.
 
 ---
 
+## Empirical fingerprint — Marcella A/B harness 2026-05-24
+
+First end-to-end consumption evidence on Marcella's
+`marcella_source_embeddings_bge` substrate (9910 × L2-normalized
+384-D vectors on S³⁸³). 10 prompts × 3-turn conversations × off/on
+flag, deterministic session IDs paired across passes.
+
+| Metric | Predicted | Observed |
+|---|---|---|
+| Per-turn divergence rate (reply text) | 15% baseline | 7 / 10 = 70% on residue-consuming turns; 0% on canned handlers (correct invariant) |
+| Cite-set change rate | proportional to rotation magnitude | 3 / 10 = 30% (matches 8.6° rotation crossing typical cosine top-K threshold) |
+| Residue norm drift per turn | rotation re-projects; small drop | 0.85 → 0.76 observed (≈10%) |
+| Multi-turn non-associativity (sequential vs batch) | non-zero on non-Kähler substrate, < 100% | +7.6pp (in expected band for "embedded in Kähler ambient") |
+
+Full panels: see Marcella's
+`artifacts/kahler_ab_samples_2026-05-24.md` and findings writeup
+`artifacts/kahler_ab_findings_2026-05-24.md` in her repo.
+
+GIGI reply with implications for the flip protocol:
+`REPLY_TO_AB_HARNESS_FINDINGS_2026-05-24.md`.
+
+---
+
 ## Provenance
 
 - Catalog: `theory/kahler_upgrade/catalog.md`
 - Implementation plan: `theory/kahler_upgrade/IMPLEMENTATION_PLAN.md`
 - Validation (Python ground truth): `theory/kahler_upgrade/validation/`
-- Cross-team correspondence:
+- Cross-team correspondence (chronological):
   - `LETTER_FROM_MARCELLA_TEAM_2026-05-24.md`
   - `REPLY_TO_MARCELLA_TEAM_2026-05-24.md`
   - `marcella_kahler_consumption_draft.md` / `_v2.md`
   - `REPLY_TO_CONSUMPTION_DRAFT_2026-05-24.md`
-  - `HANDOFF_TO_MARCELLA_2026-05-24.md` (this layer's announcement)
+  - `HANDOFF_TO_MARCELLA_2026-05-24.md` (L8 announcement: L1–L7 shipped)
+  - `REPLY_TO_GATE_2_FINDINGS_2026-05-24.md` (sphere geometry + 3 asks answered)
+  - `REPLY_TO_AB_HARNESS_FINDINGS_2026-05-24.md` (consumption evidence ↔ math predictions; Gate 3 clock can start)
 
 If you're starting fresh, read in this order:
 1. `catalog.md` Part I (foundations).

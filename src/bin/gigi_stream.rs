@@ -2382,6 +2382,436 @@ async fn spectral_gap_endpoint(
     }))
 }
 
+// ────────────────────────────────────────────────────────────
+// PR-window endpoints for Marcella's Hopf + Riemann-Roch wiring
+// (cross-team thread 2026-05-25). Four endpoints in one window:
+//
+//   POST /v1/quantum_cohomology/compose      — L7.5 frobenius
+//   POST /v1/quantum_cohomology/capacity     — L7.7 Riemann-Roch
+//   POST /v1/bundles/{name}/holonomy_debt    — L7.2
+//   POST /v1/bundles/{name}/flat_transport   — L1.5
+//
+// All cfg-gated on `kahler`. Each handler is a thin wrapper over
+// the existing Rust API; the wire shapes are the Marcella
+// contract surface.
+// ────────────────────────────────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct QuantumCohomologySpec {
+    /// Manifold class: "cpn", "torus_tn", "sphere2", or "non_toy".
+    class: String,
+    /// Complex dim n (required for "cpn" and "torus_tn"; ignored otherwise).
+    #[serde(default)]
+    n: Option<usize>,
+    /// Quantum truncation (cpn only; defaults to n+1 if omitted).
+    #[serde(default)]
+    q_truncation: Option<usize>,
+}
+
+#[cfg(feature = "kahler")]
+impl QuantumCohomologySpec {
+    fn to_quantum_cohomology(
+        &self,
+    ) -> Result<gigi::geometry::QuantumCohomology, String> {
+        match self.class.as_str() {
+            "cpn" => {
+                let n = self.n.ok_or_else(|| "cpn requires n".to_string())?;
+                let q = self.q_truncation.unwrap_or(n + 1);
+                Ok(gigi::geometry::QuantumCohomology::Cpn { n, q_truncation: q })
+            }
+            "torus_tn" => {
+                let n = self.n.ok_or_else(|| "torus_tn requires n".to_string())?;
+                Ok(gigi::geometry::QuantumCohomology::TorusTn { n })
+            }
+            "sphere2" => Ok(gigi::geometry::QuantumCohomology::Sphere2),
+            "non_toy" => Ok(gigi::geometry::QuantumCohomology::NonToy),
+            other => Err(format!(
+                "unknown manifold class '{}' (expected: cpn, torus_tn, sphere2, non_toy)",
+                other
+            )),
+        }
+    }
+}
+
+/// Wire shape for a `CohClass` term — `(coefficient, h_power, q_power)`.
+/// Round-trips through serde as a 3-element JSON array so the Python
+/// adapter can build/decode without bespoke struct support.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct CohTerm(f64, usize, usize);
+
+#[cfg(feature = "kahler")]
+impl From<&gigi::geometry::CohClass> for CohClassWire {
+    fn from(c: &gigi::geometry::CohClass) -> Self {
+        CohClassWire {
+            terms: c.terms.iter().map(|&(c, h, q)| CohTerm(c, h, q)).collect(),
+        }
+    }
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct CohClassWire {
+    terms: Vec<CohTerm>,
+}
+
+#[cfg(feature = "kahler")]
+impl CohClassWire {
+    fn to_coh_class(&self) -> gigi::geometry::CohClass {
+        gigi::geometry::CohClass {
+            terms: self
+                .terms
+                .iter()
+                .map(|t| (t.0, t.1, t.2))
+                .collect(),
+        }
+    }
+}
+
+// ─── L7.5 frobenius_compose ─────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct FrobeniusComposeRequest {
+    qh: QuantumCohomologySpec,
+    a: CohClassWire,
+    b: CohClassWire,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct FrobeniusComposeResponse {
+    result: CohClassWire,
+}
+
+/// POST /v1/quantum_cohomology/compose
+///
+/// L7.5 Frobenius/WDVV composition on toy manifolds. Returns
+/// `400 NonToy` when the manifold class is `non_toy` (research-
+/// grade GW invariants not supported); returns `400 BadRequest`
+/// on malformed input.
+#[cfg(feature = "kahler")]
+async fn frobenius_compose_endpoint(
+    Json(req): Json<FrobeniusComposeRequest>,
+) -> Result<Json<FrobeniusComposeResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let qh = req.qh.to_quantum_cohomology().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+    let a = req.a.to_coh_class();
+    let b = req.b.to_coh_class();
+    let result = qh.compose(&a, &b).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("{}", e),
+            }),
+        )
+    })?;
+    Ok(Json(FrobeniusComposeResponse {
+        result: CohClassWire::from(&result),
+    }))
+}
+
+// ─── L7.7 representational_capacity ─────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct CapacityRequest {
+    qh: QuantumCohomologySpec,
+    k_max: i64,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct CapacityResponse {
+    capacity: i64,
+}
+
+/// POST /v1/quantum_cohomology/capacity
+///
+/// L7.7 Riemann-Roch representational capacity `dim H⁰(M, L^k)`
+/// on toy manifolds. Returns `400 NonToy` on `non_toy`.
+#[cfg(feature = "kahler")]
+async fn capacity_endpoint(
+    Json(req): Json<CapacityRequest>,
+) -> Result<Json<CapacityResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let qh = req.qh.to_quantum_cohomology().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+    let capacity = qh.representational_capacity(req.k_max).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("{}", e),
+            }),
+        )
+    })?;
+    Ok(Json(CapacityResponse { capacity }))
+}
+
+// ─── L7.2 holonomy_debt ─────────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct HolonomyDebtRequest {
+    loop_winding: f64,
+    #[serde(default = "default_holonomy_tolerance")]
+    tolerance: f64,
+}
+
+#[cfg(feature = "kahler")]
+fn default_holonomy_tolerance() -> f64 {
+    1e-6
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct HolonomyDebtResponse {
+    /// "quantized" or "continuous"
+    variant: String,
+    /// Integer winding count when variant == "quantized"; null otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    quantized: Option<i64>,
+    /// Real-valued winding when variant == "continuous"; null otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    continuous: Option<f64>,
+    /// `winding()` value — `n as f64` for quantized, `x` for continuous.
+    /// Always populated for callers who don't want to pattern-match
+    /// on the variant.
+    winding: f64,
+}
+
+/// POST /v1/bundles/{name}/holonomy_debt
+///
+/// L7.2 quantized vs continuous holonomy classification for a loop
+/// integral over the bundle's attached B. Returns `404` when the
+/// bundle has no Kähler structure attached (no B to integrate).
+#[cfg(feature = "kahler")]
+async fn holonomy_debt_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<HolonomyDebtRequest>,
+) -> Result<Json<HolonomyDebtResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    let heap = store.as_heap().ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' is not heap-resident", name),
+            }),
+        )
+    })?;
+    let debt = gigi::curvature::holonomy_debt(heap, req.loop_winding, req.tolerance)
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!(
+                        "Bundle '{}' has no Kähler structure attached",
+                        name
+                    ),
+                }),
+            )
+        })?;
+    let (variant, quantized, continuous) = match debt {
+        gigi::curvature::HolonomyDebt::Quantized(n) => {
+            ("quantized".to_string(), Some(n), None)
+        }
+        gigi::curvature::HolonomyDebt::Continuous(x) => {
+            ("continuous".to_string(), None, Some(x))
+        }
+    };
+    Ok(Json(HolonomyDebtResponse {
+        variant,
+        quantized,
+        continuous,
+        winding: debt.winding(),
+    }))
+}
+
+// ─── L1.5 flat_transport ────────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct FlatTransportRequest {
+    /// Starting position p ∈ R^n.
+    from_point: Vec<f64>,
+    /// Target endpoint q ∈ R^n (diagnostic only; trajectory is
+    /// driven by `initial_velocity` + `bias`).
+    to_point: Vec<f64>,
+    /// Initial tangent vector v ∈ T_p M = R^n.
+    initial_velocity: Vec<f64>,
+    /// Optional bias 2-form (row-major flat antisymmetric matrix).
+    /// When `null`, runs classical (no magnetic perturbation).
+    #[serde(default)]
+    bias: Option<Vec<f64>>,
+    /// RK4 step size; defaults to 1e-4.
+    #[serde(default = "default_dt")]
+    dt: f64,
+    /// Number of RK4 steps; defaults to 65536.
+    #[serde(default)]
+    steps: usize,
+    /// Provenance tag: "bundle", "override", "none", "fallback_non_closed".
+    /// Defaults to "override" when bias is provided, "none" otherwise.
+    #[serde(default)]
+    b_source: Option<String>,
+}
+
+#[cfg(feature = "kahler")]
+fn default_dt() -> f64 {
+    1e-4
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct FlatTransportResponse {
+    trajectory: Vec<Vec<f64>>,
+    final_velocity: Vec<f64>,
+    path_length: f64,
+    energy_drift: f64,
+    holonomy_norm: f64,
+    used_magnetic: bool,
+    b_source: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    closedness_norm: Option<f64>,
+}
+
+/// POST /v1/bundles/{name}/flat_transport
+///
+/// L1.5 B-perturbed flat-space magnetic transport. Bundle is
+/// used only for dimension validation against its attached
+/// Kähler structure (when present); the integration itself runs
+/// on the supplied bias 2-form.
+#[cfg(feature = "kahler")]
+async fn flat_transport_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<FlatTransportRequest>,
+) -> Result<Json<FlatTransportResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Bundle lookup — must exist; used for dim coherence check.
+    let engine = state.engine.read().unwrap();
+    let _store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    drop(engine);
+
+    let dim = req.from_point.len();
+    let seg = gigi::geometry::TransportSegment::new(
+        req.from_point,
+        req.to_point,
+        req.initial_velocity,
+    )
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("{}", e),
+            }),
+        )
+    })?;
+
+    let bias_form = if let Some(raw) = req.bias {
+        if raw.len() != dim * dim {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!(
+                        "bias matrix has {} entries; expected {} × {} = {}",
+                        raw.len(),
+                        dim,
+                        dim,
+                        dim * dim
+                    ),
+                }),
+            ));
+        }
+        let tf = gigi::geometry::TwoForm::new(raw, dim).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!("{:?}", e),
+                }),
+            )
+        })?;
+        Some(gigi::geometry::ClosedTwoForm::new_constant(tf))
+    } else {
+        None
+    };
+
+    let b_source = match req.b_source.as_deref() {
+        Some("bundle") => gigi::geometry::BSource::Bundle,
+        Some("override") => gigi::geometry::BSource::Override,
+        Some("none") => gigi::geometry::BSource::None,
+        Some("fallback_non_closed") => gigi::geometry::BSource::FallbackNonClosed,
+        None => {
+            if bias_form.is_some() {
+                gigi::geometry::BSource::Override
+            } else {
+                gigi::geometry::BSource::None
+            }
+        }
+        Some(other) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!(
+                        "unknown b_source '{}' (expected: bundle, override, none, fallback_non_closed)",
+                        other
+                    ),
+                }),
+            ));
+        }
+    };
+
+    let result = gigi::geometry::flat_transport(
+        &seg,
+        bias_form.as_ref(),
+        req.dt,
+        req.steps,
+        b_source,
+    )
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("{}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(FlatTransportResponse {
+        trajectory: result.trajectory,
+        final_velocity: result.final_velocity,
+        path_length: result.path_length,
+        energy_drift: result.energy_drift,
+        holonomy_norm: result.holonomy_norm,
+        used_magnetic: result.used_magnetic,
+        b_source: format!("{:?}", result.b_source).to_lowercase(),
+        closedness_norm: result.closedness_norm,
+    }))
+}
+
+
 async fn consistency_check(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
@@ -7659,6 +8089,28 @@ async fn main() {
         "/v1/bundles/{name}/spectral_gap",
         get(spectral_gap_endpoint),
     );
+
+    // 2026-05-25 PR window: 4 endpoints for Marcella's Hopf +
+    // Riemann-Roch wiring. Same cfg-gate; no-feature build still
+    // bit-identical to pre-upgrade.
+    #[cfg(feature = "kahler")]
+    let app = app
+        .route(
+            "/v1/quantum_cohomology/compose",
+            post(frobenius_compose_endpoint),
+        )
+        .route(
+            "/v1/quantum_cohomology/capacity",
+            post(capacity_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/holonomy_debt",
+            post(holonomy_debt_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/flat_transport",
+            post(flat_transport_endpoint),
+        );
 
     let app = app
         // Middleware: auth + namespace enforcement + rate limiting + readiness.

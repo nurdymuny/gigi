@@ -38,40 +38,53 @@ about your data:
 
 ## What's new in 2026 — the Kähler upgrade
 
-GIGI v3 shipped the **Kähler upgrade**: nine layers (L1–L7, L8 cross-team
-handoff, L9 moment maps) of geometric machinery extending the fiber-bundle
-substrate with a complex structure J, a closed 2-form B, and everything
-that falls out of the pair — Hadamard substructure detection, holomorphic
-curvature decomposition, Morse compression, line-bundle integrality checks,
-quantum cohomology on toy manifolds, Berezin-Toeplitz operators,
-Riemann-Roch representational capacity, **moment-map / Noether conservation
-along Hamiltonian B-flows**. The catalog and per-layer plan live in
-[`theory/kahler_upgrade/`](theory/kahler_upgrade/). The catalog closes at
-**16 of 21 items shipped** — 100% of items the catalog itself classified
-as ship-able; the remaining 5 (§1.6 hypersurface, §2.4 K-theory,
-§2.6 Floer, §2.7 mirror symmetry, §E.4 hyperkähler) are explicitly deferred
-in the catalog's own classification.
+GIGI v3 shipped the **Kähler upgrade**: ten layers (L1–L7, L8 cross-team
+handoff, L9 moment maps, L10 generative flow) of geometric machinery
+extending the fiber-bundle substrate with a complex structure J, a closed
+2-form B, and everything that falls out of the pair — Hadamard substructure
+detection, holomorphic curvature decomposition, Morse compression,
+line-bundle integrality checks, quantum cohomology on toy manifolds,
+Berezin-Toeplitz operators, Riemann-Roch representational capacity,
+moment-map / Noether conservation along Hamiltonian B-flows, and **the
+Friston-FEP keystone — generative flow on the Kähler bundle that
+parametrizes its boundary conditions to deliver SAMPLE / FORECAST / DREAM
+/ RECONSTRUCT as one piece of infrastructure**. The Kähler catalog
+([`theory/kahler_upgrade/`](theory/kahler_upgrade/)) closes at **16 of 21
+items shipped** — 100% of items the catalog itself classified as ship-able;
+the remaining 5 (§1.6 hypersurface, §2.4 K-theory, §2.6 Floer, §2.7 mirror
+symmetry, §E.4 hyperkähler) are explicitly deferred in the catalog's own
+classification.
 
-For the next round, see
-[`theory/post_kahler_directions/`](theory/post_kahler_directions/) — a
-companion catalog of nine **post-Kähler** geometric programs (Sasaki,
-information geometry, optimal transport, persistent homology, Gromov
-δ-hyperbolicity, tropical geometry, synthetic differential geometry,
-noncommutative geometry, CAT(κ)) drawn from patent-clean public-domain
-math by other named lineages. Each entry follows the same catalog
-template; 30/30 numerical-validation checks pass.
+GIGI now ships **three companion catalogs**, each in the same format:
+
+- [`theory/kahler_upgrade/`](theory/kahler_upgrade/) — the 21-item Kähler
+  catalog with 16 shipped; 15/15 Python validation tests pass across
+  v1–v4 suites.
+- [`theory/post_kahler_directions/`](theory/post_kahler_directions/) — nine
+  **post-Kähler** geometric programs (Sasaki, information geometry, OT/
+  Wasserstein, persistent homology, Gromov δ-hyperbolicity, tropical,
+  synthetic DG, NCG, CAT(κ)) from outside the Adachi lineage; 30/30
+  numerical checks pass.
+- [`theory/brain_primitives/`](theory/brain_primitives/) — the Sudoku-10×
+  reading. **Twelve brain-like operations forced by one master equation**
+  `ẋ = B⁻¹∇(−log p)` on the Kähler bundle — the same equation Friston
+  writes down for variational free-energy minimization. One generator,
+  twelve product-level primitives (SAMPLE, FORECAST, DREAM, RECONSTRUCT,
+  INPAINT, PREDICT, ATTEND, FOCUS, EPISODIC, SEMANTIC, SELF-MONITOR,
+  EXPLAIN); 26/26 numerical checks pass. L10 ships the keystone (gradient-
+  + Hamilton-flow infrastructure); L11/L12 follow the same pattern.
 
 Three properties are worth calling out because they're hard to find anywhere
 else at this scale:
 
-**1. Strict additivity. The optionality contract holds across all nine layers.**
+**1. Strict additivity. The optionality contract holds across all ten layers.**
 The entire Kähler upgrade lives behind a single Cargo feature flag (`kahler`).
 With the feature off, the engine is **bit-identical to pre-upgrade GIGI**
 — 674 tests pass, byte-equal to before the upgrade landed. With the feature
-on, 788 tests pass, including a per-layer real-data smoke against the
+on, 796 tests pass, including a per-layer real-data smoke against the
 20-record sensor dataset and a per-layer cross-team contract test
 (`tests/kahler_*_marcella_contract.rs`) that fails before any consumer
-deserialization can drift. Nine layers of new math, zero breaking changes.
+deserialization can drift. Ten layers of new math, zero breaking changes.
 
 **2. Math predictions validated by production observation to rounding precision.**
 The first downstream consumer (Marcella) ran a 30-prompt A/B harness +
@@ -140,6 +153,7 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `geometry::quantum_cohomology` | Frobenius/WDVV composition on toy manifolds (CPⁿ, Tⁿ, S²) + Riemann-Roch capacity | L7.5 / L7.7 |
 | `geometry::toeplitz` | Berezin-Toeplitz operators with `ℏ ≥ 4 / embedding_dim` safety gate | L7.6 |
 | `geometry::moment_map` | `MomentMap` + `InfinitesimalAction`; B-symplecticity validated; `measure_conservation` integrates Hamilton's equations and reports drift of `μ_ξ` along H-flow plus the pointwise invariance residual — Noether's "if and only if" both halves | L9 |
+| `geometry::generative_flow` | `GenerativeFlow` keystone for the brain-primitives catalog: the SDE `ẋ = -∇H dt + √(2T) dW` (gradient half) and `ẋ = B⁻¹∇H` (Hamiltonian half) parametrized to deliver SAMPLE / FORECAST / DREAM / RECONSTRUCT as four boundary conditions on one generator. Convenience constructor `from_isotropic_gaussian()` plugs into L4's Welford stats so any bundle becomes a Friston-style generative model | L10 |
 | `graph::adjacency` | Dual principal/auxiliary adjacency operators | L2 |
 | `graph::commutativity` | Group-algebra-centrality commutativity classifier | L2 |
 | `cost::jacobi_estimator` | Jacobi-field cardinality bounds via Bishop / Günther | L3 |
@@ -322,9 +336,9 @@ cd e2e && npm install && npm test
 As of this README the engine ships with:
 
 - **674 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract.
-- **788 tests passing, 0 failed** with `cargo test --features kahler` — adds the nine-layer Kähler stack (L1–L9), per-layer real-data smokes against the 20-record sensor dataset, and the cross-team contract tests pinning each consumer-facing API shape.
+- **796 tests passing, 0 failed** with `cargo test --features kahler` — adds the ten-layer Kähler stack (L1–L10), per-layer real-data smokes against the 20-record sensor dataset, and the cross-team contract tests pinning each consumer-facing API shape.
 
-The Python validation suites independently verify the math from two
+The Python validation suites independently verify the math from three
 independent angles:
 
 - `theory/kahler_upgrade/validation/*.py` — 15/15 PASS across v1–v4
@@ -338,8 +352,16 @@ independent angles:
   Fisher metric on Gaussians, Wasserstein W₂, MST persistence,
   Gromov-δ closed forms, tropical fundamental theorem, dual-number
   derivatives, Connes distance on S¹, CAT(κ) comparison inequality).
-  Every check pairs an independently-derived closed-form ground truth
-  with a negative control.
+- `theory/brain_primitives/validation_tests.py` — 26/26 PASS for the
+  twelve brain-like primitives (SAMPLE Langevin convergence, FORECAST
+  harmonic energy conservation, DREAM temperature scaling, RECONSTRUCT
+  MAP recovery, INPAINT conditional sampling, PREDICT natural-gradient
+  step, ATTEND Gaussian-kernel softmax identity, FOCUS top-k
+  correctness, EPISODIC persistent H₀ on time slices, SEMANTIC Morse
+  Betti preservation, SELF-MONITOR Fisher precision decay).
+
+Every check pairs an independently-derived closed-form ground truth
+with a negative control.
 
 ---
 

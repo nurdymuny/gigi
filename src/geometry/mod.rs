@@ -28,6 +28,12 @@
 //!   Retrofit of the L1.1 placeholder that didn't land first time;
 //!   ships independently because it only depends on L1's
 //!   `ClosedTwoForm`.
+//! - **L10** (`geometry::generative_flow`): generative flow on the
+//!   Kähler bundle — Sudoku-10× keystone for the brain-primitives
+//!   catalog. Implements `ẋ = B⁻¹ ∇(-log p) + √(2T) dW` and
+//!   parametrizes its boundary conditions to deliver SAMPLE,
+//!   FORECAST, DREAM, RECONSTRUCT as one piece of infrastructure.
+//!   See `theory/brain_primitives/catalog.md`.
 //!
 //! L1 — this module — only declares the foundation types. Subsequent
 //! layers live in their own modules and depend on what we publish
@@ -35,6 +41,7 @@
 
 pub mod complex_structure;
 pub mod forms;
+pub mod generative_flow;
 pub mod hadamard;
 pub mod line_bundle;
 pub mod moment_map;
@@ -44,6 +51,9 @@ pub mod transport;
 
 pub use complex_structure::{ComplexStructure, ComplexStructureError};
 pub use forms::{ClosedTwoForm, ClosednessError, TwoForm};
+pub use generative_flow::{
+    from_isotropic_gaussian, FlowConfig, GenerativeFlow, GenerativeFlowError,
+};
 pub use hadamard::{
     detect as detect_hadamard, is_hadamard_region, HadamardRegion, HadamardSubstructure,
     HADAMARD_KB_THRESHOLD, HADAMARD_TEST_RADIUS,

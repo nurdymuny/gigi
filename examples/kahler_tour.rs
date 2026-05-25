@@ -20,9 +20,10 @@ use gigi::discrete::hodge_complex::HodgeComplex;
 use gigi::discrete::hodge_laplacian::betti;
 use gigi::discrete::morse::morse_compress;
 use gigi::geometry::{
-    flat_transport, BSource, ClosedTwoForm, CohClass, ComplexStructure,
-    HadamardSubstructure, InfinitesimalAction, KahlerStructure, LineBundle, MomentMap,
-    QuantumCohomology, TransportSegment, TwoForm,
+    flat_transport, from_isotropic_gaussian, BSource, ClosedTwoForm, CohClass,
+    ComplexStructure, FlowConfig, HadamardSubstructure, InfinitesimalAction,
+    KahlerStructure, LineBundle, MomentMap, QuantumCohomology, TransportSegment,
+    TwoForm,
 };
 use gigi::graph::adjacency::{AuxiliaryAdjacency, PrincipalAdjacency, SparseAdjacency};
 use gigi::graph::commutativity::commute;
@@ -369,6 +370,87 @@ fn l9_moment_map_noether() {
     note("(Noether iff: dH(X_ξ) = 0 ⇔ μ_ξ conserved along H-flow.)");
 }
 
+// ── L10 — Generative flow (brain-primitives keystone) ────────────
+
+fn l10_generative_flow() {
+    header("L10", "generative flow: SAMPLE / FORECAST / DREAM / RECONSTRUCT (brain catalog §2-§5)");
+
+    // Standard symplectic on R²: B = [[0, 1], [-1, 0]].
+    let b = ClosedTwoForm::new_constant(
+        TwoForm::new(vec![0.0, 1.0, -1.0, 0.0], 2).unwrap(),
+    );
+    let mu = vec![2.0, -3.0];
+    let sigma_sq = 1.0;
+    let flow = from_isotropic_gaussian(b, mu.clone(), sigma_sq).unwrap();
+
+    // §5 RECONSTRUCT: deterministic descent from far away → MAP = μ.
+    let config_recon = FlowConfig::reconstructing();
+    let map = flow.reconstruct(&[10.0, 10.0], &config_recon).unwrap();
+    line(
+        "RECONSTRUCT from (10,10) → MAP",
+        format!("({:.4}, {:.4})  [μ = ({:.1}, {:.1})]", map[0], map[1], mu[0], mu[1]),
+    );
+
+    // §2 SAMPLE: empirical mean/var from 5000 Langevin samples.
+    let config_sample = FlowConfig {
+        dt: 0.01,
+        temperature: 1.0,
+        n_steps: 1,
+        burn_in: 2000,
+        seed: Some(42),
+    };
+    let samples = flow
+        .sample_many(&[0.0, 0.0], &config_sample, 5000, 1)
+        .unwrap();
+    let n = samples.len() as f64;
+    let mean_x: f64 = samples.iter().map(|s| s[0]).sum::<f64>() / n;
+    let mean_y: f64 = samples.iter().map(|s| s[1]).sum::<f64>() / n;
+    let var_x: f64 =
+        samples.iter().map(|s| (s[0] - mean_x).powi(2)).sum::<f64>() / n;
+    line(
+        "SAMPLE 5k draws  empirical (μ_x, μ_y)",
+        format!("({:.4}, {:.4})", mean_x, mean_y),
+    );
+    line(
+        "SAMPLE 5k draws  empirical σ²_x",
+        format!("{:.4}  [closed {:.1}]", var_x, sigma_sq),
+    );
+
+    // §3 FORECAST: deterministic Hamilton flow from a seed; harmonic
+    // motion on a Gaussian Hamiltonian rotates around μ.
+    let config_fc = FlowConfig::forecasting();
+    let path = flow.forecast(&[3.0, -3.0], &config_fc).unwrap();
+    line(
+        "FORECAST 1000 steps from (3,-3): start/mid/end",
+        format!(
+            "({:.2},{:.2}) → ({:.2},{:.2}) → ({:.2},{:.2})",
+            path[0][0], path[0][1],
+            path[500][0], path[500][1],
+            path.last().unwrap()[0], path.last().unwrap()[1],
+        ),
+    );
+
+    // §4 DREAM: high-T Langevin variance >> low-T variance.
+    fn variance_at_temperature(
+        flow: &gigi::geometry::GenerativeFlow<impl Fn(&[f64]) -> Vec<f64>>,
+        t: f64, seed: u64,
+    ) -> f64 {
+        let cfg = FlowConfig {
+            dt: 0.01, temperature: t, n_steps: 1, burn_in: 1000, seed: Some(seed),
+        };
+        let s = flow.sample_many(&[0.0, 0.0], &cfg, 3000, 1).unwrap();
+        let m: f64 = s.iter().map(|p| p[0]).sum::<f64>() / s.len() as f64;
+        s.iter().map(|p| (p[0] - m).powi(2)).sum::<f64>() / s.len() as f64
+    }
+    let cold = variance_at_temperature(&flow, 0.5, 1);
+    let hot = variance_at_temperature(&flow, 4.0, 2);
+    line(
+        "DREAM cold (T=0.5) / hot (T=4) variance",
+        format!("{:.3} / {:.3}  ({:.1}× spread)", cold, hot, hot / cold),
+    );
+    note("(One generator, four brain-like operations. Friston FEP on the Kähler bundle.)");
+}
+
 // ── DHOOM encoder — arrays of primitives round-trip ───────────────
 
 fn dhoom_arrays_of_primitives() {
@@ -427,9 +509,13 @@ fn main() {
     l6_hodge_complex_and_morse_compression();
     l7_line_bundle_holonomy_quantum_cohomology();
     l9_moment_map_noether();
+    l10_generative_flow();
     dhoom_arrays_of_primitives();
     pr_window_endpoints_summary();
 
     println!();
-    println!("Done — 11 layers exercised. Catalog: theory/kahler_upgrade/catalog.md");
+    println!("Done — 12 layers exercised.");
+    println!("  Kähler catalog:     theory/kahler_upgrade/catalog.md");
+    println!("  Post-Kähler menu:   theory/post_kahler_directions/catalog.md");
+    println!("  Brain-primitives:   theory/brain_primitives/catalog.md");
 }

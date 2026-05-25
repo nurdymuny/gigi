@@ -3283,6 +3283,466 @@ fn canonical_symplectic_pad(n: usize) -> Option<gigi::geometry::ClosedTwoForm> {
     Some(gigi::geometry::ClosedTwoForm::new_constant(form))
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 2026-05-25 PR window 3 — 5 more brain HTTP endpoints (L13.2)
+// ═══════════════════════════════════════════════════════════════
+//
+// Surfaces the remaining flow-based brain primitives over HTTP so
+// downstream consumers don't need to link the GIGI crate to reach
+// them. Same template / namespace / cfg-gate as PR window 2:
+//
+//   POST /v1/bundles/{name}/brain/dream       §4  DREAM (trajectory)
+//   POST /v1/bundles/{name}/brain/forecast    §3  FORECAST (Hamilton)
+//   POST /v1/bundles/{name}/brain/reconstruct §5  RECONSTRUCT (MAP)
+//   POST /v1/bundles/{name}/brain/inpaint     §6  INPAINT (conditional)
+//   POST /v1/bundles/{name}/brain/predict     §7  PREDICT (one-step)
+//
+// FOCUS (§9) is reachable via /brain/attend with top_k set; no
+// dedicated endpoint needed.
+
+// ─── shared helper: build a flow from the bundle's Gaussian fit ──
+
+#[cfg(feature = "kahler")]
+struct BundleFlowCtx {
+    flow: gigi::geometry::GenerativeFlow<Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>>,
+    mu: Vec<f64>,
+    sigma_sq: f64,
+    dim: usize,
+}
+
+#[cfg(feature = "kahler")]
+fn flow_from_bundle(
+    store: &gigi::BundleStore,
+    fields: &[String],
+) -> Result<BundleFlowCtx, (StatusCode, Json<ErrorResponse>)> {
+    let (mu, sigma_sq) =
+        fit_isotropic_gaussian(store, fields).map_err(|e| bad_request(&e))?;
+    let n = fields.len();
+    let b = canonical_symplectic_pad(n)
+        .ok_or_else(|| bad_request("dimension must be ≥ 2 and even"))?;
+    let mu_for_grad = mu.clone();
+    let grad: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync> =
+        Box::new(move |x: &[f64]| -> Vec<f64> {
+            x.iter()
+                .zip(mu_for_grad.iter())
+                .map(|(xi, mi)| (xi - mi) / sigma_sq)
+                .collect()
+        });
+    let flow = gigi::geometry::GenerativeFlow::new(b, grad)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+    Ok(BundleFlowCtx {
+        flow,
+        mu,
+        sigma_sq,
+        dim: n,
+    })
+}
+
+// ─── §4 DREAM (trajectory) ──────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainDreamRequest {
+    fields: Vec<String>,
+    /// Starting state. If None, defaults to the fit mean (origin
+    /// of the flow's energy landscape).
+    #[serde(default)]
+    initial: Option<Vec<f64>>,
+    /// Number of trajectory steps. Default 1000.
+    #[serde(default = "default_brain_dream_steps")]
+    n_steps: usize,
+    /// Langevin temperature. Default 4.0 (canonical DREAM regime).
+    /// At T = 1 you'd be doing SAMPLE; at T → ∞ pure noise.
+    #[serde(default = "default_brain_dream_temperature")]
+    temperature: f64,
+    #[serde(default = "default_brain_dt")]
+    dt: f64,
+    #[serde(default)]
+    seed: Option<u64>,
+}
+
+#[cfg(feature = "kahler")]
+fn default_brain_dream_steps() -> usize { 1_000 }
+#[cfg(feature = "kahler")]
+fn default_brain_dream_temperature() -> f64 { 4.0 }
+#[cfg(feature = "kahler")]
+fn default_brain_dt() -> f64 { 0.01 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainDreamResponse {
+    /// Full Langevin walk: `n_steps + 1` states (initial + n_steps
+    /// forward). Order matters; the trajectory has narrative
+    /// structure (each next state follows from the last).
+    trajectory: Vec<Vec<f64>>,
+    fit_mean: Vec<f64>,
+    fit_sigma_sq: f64,
+    temperature_used: f64,
+    /// Quick diagnostics so consumers can sanity-check the dream:
+    /// mean / max Euclidean distance of trajectory points from
+    /// the fit_mean. DREAM should reach further than SAMPLE.
+    mean_dist_from_mean: f64,
+    max_dist_from_mean: f64,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_dream_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainDreamRequest>,
+) -> Result<Json<BrainDreamResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    let ctx = flow_from_bundle(heap, &req.fields)?;
+    let initial = req.initial.unwrap_or_else(|| ctx.mu.clone());
+    if initial.len() != ctx.dim {
+        return Err(bad_request(&format!(
+            "initial length {} ≠ fields length {}",
+            initial.len(),
+            ctx.dim
+        )));
+    }
+    let config = gigi::geometry::FlowConfig {
+        dt: req.dt,
+        temperature: req.temperature,
+        n_steps: req.n_steps,
+        burn_in: 0,
+        seed: req.seed,
+    };
+    let trajectory = ctx
+        .flow
+        .dream(&initial, &config)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+
+    // Compute trajectory spread diagnostics.
+    let distances: Vec<f64> = trajectory
+        .iter()
+        .map(|p| {
+            p.iter()
+                .zip(ctx.mu.iter())
+                .map(|(a, m)| (a - m).powi(2))
+                .sum::<f64>()
+                .sqrt()
+        })
+        .collect();
+    let mean_d = distances.iter().sum::<f64>() / distances.len() as f64;
+    let max_d = distances.iter().cloned().fold(0.0_f64, f64::max);
+
+    Ok(Json(BrainDreamResponse {
+        trajectory,
+        fit_mean: ctx.mu,
+        fit_sigma_sq: ctx.sigma_sq,
+        temperature_used: req.temperature,
+        mean_dist_from_mean: mean_d,
+        max_dist_from_mean: max_d,
+    }))
+}
+
+// ─── §3 FORECAST (Hamilton-flow extension) ──────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainForecastRequest {
+    fields: Vec<String>,
+    initial: Vec<f64>,
+    /// Number of Hamilton steps. Default 1000.
+    #[serde(default = "default_brain_forecast_steps")]
+    n_steps: usize,
+    #[serde(default = "default_brain_dt")]
+    dt: f64,
+}
+
+#[cfg(feature = "kahler")]
+fn default_brain_forecast_steps() -> usize { 1_000 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainForecastResponse {
+    /// Deterministic trajectory (T = 0): conservative Hamilton
+    /// flow `ẋ = B⁻¹∇H`. Energy is conserved along this path —
+    /// quadratic Hamiltonians give closed orbits.
+    trajectory: Vec<Vec<f64>>,
+    fit_mean: Vec<f64>,
+    fit_sigma_sq: f64,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_forecast_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainForecastRequest>,
+) -> Result<Json<BrainForecastResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    let ctx = flow_from_bundle(heap, &req.fields)?;
+    if req.initial.len() != ctx.dim {
+        return Err(bad_request(&format!(
+            "initial length {} ≠ fields length {}",
+            req.initial.len(),
+            ctx.dim
+        )));
+    }
+    let config = gigi::geometry::FlowConfig {
+        dt: req.dt,
+        temperature: 0.0,
+        n_steps: req.n_steps,
+        burn_in: 0,
+        seed: None,
+    };
+    let trajectory = ctx
+        .flow
+        .forecast(&req.initial, &config)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+    Ok(Json(BrainForecastResponse {
+        trajectory,
+        fit_mean: ctx.mu,
+        fit_sigma_sq: ctx.sigma_sq,
+    }))
+}
+
+// ─── §5 RECONSTRUCT (T=0 descent to MAP) ────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainReconstructRequest {
+    fields: Vec<String>,
+    /// Noisy / partial observation. Descent starts here.
+    noisy_initial: Vec<f64>,
+    /// Descent budget. Default 500.
+    #[serde(default = "default_brain_reconstruct_steps")]
+    n_steps: usize,
+    #[serde(default = "default_brain_reconstruct_dt")]
+    dt: f64,
+}
+
+#[cfg(feature = "kahler")]
+fn default_brain_reconstruct_steps() -> usize { 500 }
+#[cfg(feature = "kahler")]
+fn default_brain_reconstruct_dt() -> f64 { 0.05 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainReconstructResponse {
+    /// Final state of zero-noise gradient descent. For unimodal
+    /// p, equals MAP. For multimodal, equals nearest local mode.
+    result: Vec<f64>,
+    fit_mean: Vec<f64>,
+    /// Euclidean distance from start to result — large means the
+    /// noisy_initial was far from any mode.
+    descent_distance: f64,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_reconstruct_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainReconstructRequest>,
+) -> Result<Json<BrainReconstructResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    let ctx = flow_from_bundle(heap, &req.fields)?;
+    if req.noisy_initial.len() != ctx.dim {
+        return Err(bad_request(&format!(
+            "noisy_initial length {} ≠ fields length {}",
+            req.noisy_initial.len(),
+            ctx.dim
+        )));
+    }
+    let config = gigi::geometry::FlowConfig {
+        dt: req.dt,
+        temperature: 0.0,
+        n_steps: req.n_steps,
+        burn_in: 0,
+        seed: None,
+    };
+    let result = ctx
+        .flow
+        .reconstruct(&req.noisy_initial, &config)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+    let descent_distance = req
+        .noisy_initial
+        .iter()
+        .zip(result.iter())
+        .map(|(a, b)| (a - b).powi(2))
+        .sum::<f64>()
+        .sqrt();
+    Ok(Json(BrainReconstructResponse {
+        result,
+        fit_mean: ctx.mu,
+        descent_distance,
+    }))
+}
+
+// ─── §6 INPAINT (constrained Langevin) ──────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainInpaintRequest {
+    fields: Vec<String>,
+    /// Initial state. Locked coordinates stay fixed at their
+    /// supplied values; unlocked coordinates flow.
+    partial_state: Vec<f64>,
+    /// Indices into `fields` (0-based) that should be held fixed.
+    /// E.g. fields = ["weight", "clearance"], locked_indices = [0]
+    /// → lock weight, sample clearance from the conditional.
+    locked_indices: Vec<usize>,
+    /// Mixing budget for the unlocked coordinates. Default 2000.
+    #[serde(default = "default_brain_burn_in")]
+    burn_in: usize,
+    #[serde(default = "default_brain_inpaint_dt")]
+    dt: f64,
+    #[serde(default = "default_brain_temperature")]
+    temperature: f64,
+    #[serde(default)]
+    seed: Option<u64>,
+}
+
+#[cfg(feature = "kahler")]
+fn default_brain_inpaint_dt() -> f64 { 0.05 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainInpaintResponse {
+    /// Filled record: locked coords are untouched; unlocked
+    /// coords sampled from the conditional density.
+    result: Vec<f64>,
+    locked_indices: Vec<usize>,
+    fit_mean: Vec<f64>,
+    fit_sigma_sq: f64,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_inpaint_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainInpaintRequest>,
+) -> Result<Json<BrainInpaintResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    let ctx = flow_from_bundle(heap, &req.fields)?;
+    if req.partial_state.len() != ctx.dim {
+        return Err(bad_request(&format!(
+            "partial_state length {} ≠ fields length {}",
+            req.partial_state.len(),
+            ctx.dim
+        )));
+    }
+    for &i in &req.locked_indices {
+        if i >= ctx.dim {
+            return Err(bad_request(&format!(
+                "locked_index {} out of range (fields.len() = {})",
+                i, ctx.dim
+            )));
+        }
+    }
+    let config = gigi::geometry::FlowConfig {
+        dt: req.dt,
+        temperature: req.temperature,
+        n_steps: 1,
+        burn_in: req.burn_in,
+        seed: req.seed,
+    };
+    let result = gigi::geometry::inpaint(
+        &ctx.flow,
+        &req.partial_state,
+        &req.locked_indices,
+        &config,
+    )
+    .map_err(|e| bad_request(&format!("{}", e)))?;
+    Ok(Json(BrainInpaintResponse {
+        result,
+        locked_indices: req.locked_indices,
+        fit_mean: ctx.mu,
+        fit_sigma_sq: ctx.sigma_sq,
+    }))
+}
+
+// ─── §7 PREDICT (single-step natural gradient) ──────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainPredictRequest {
+    fields: Vec<String>,
+    state: Vec<f64>,
+    /// Step size for the single forward update. Default 0.1.
+    #[serde(default = "default_brain_predict_lr")]
+    lr: f64,
+}
+
+#[cfg(feature = "kahler")]
+fn default_brain_predict_lr() -> f64 { 0.1 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainPredictResponse {
+    /// `state - lr · ∇H(state)`. For the isotropic-Gaussian
+    /// bundle fit, ∇H = (state - μ)/σ², so the predicted next
+    /// state shifts toward μ proportional to deviation.
+    next_state: Vec<f64>,
+    fit_mean: Vec<f64>,
+    fit_sigma_sq: f64,
+    /// Euclidean step magnitude — useful diagnostic.
+    step_size: f64,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_predict_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainPredictRequest>,
+) -> Result<Json<BrainPredictResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    let ctx = flow_from_bundle(heap, &req.fields)?;
+    if req.state.len() != ctx.dim {
+        return Err(bad_request(&format!(
+            "state length {} ≠ fields length {}",
+            req.state.len(),
+            ctx.dim
+        )));
+    }
+    let next_state = gigi::geometry::predict_one_step(&ctx.flow, &req.state, req.lr)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+    let step_size = req
+        .state
+        .iter()
+        .zip(next_state.iter())
+        .map(|(a, b)| (a - b).powi(2))
+        .sum::<f64>()
+        .sqrt();
+    Ok(Json(BrainPredictResponse {
+        next_state,
+        fit_mean: ctx.mu,
+        fit_sigma_sq: ctx.sigma_sq,
+        step_size,
+    }))
+}
+
 
 async fn consistency_check(
     State(state): State<Arc<StreamState>>,
@@ -8609,6 +9069,34 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/brain/semantic",
             get(brain_semantic_endpoint),
+        );
+
+    // 2026-05-25 PR window 3: the remaining 5 flow-based brain
+    // primitives (L13.2). Brings the cross-team HTTP surface to
+    // 10/12 of the brain-primitives catalog (FOCUS is reachable
+    // via /brain/attend with `top_k`; SEMANTIC is GET, shipped
+    // in PR window 2).
+    #[cfg(feature = "kahler")]
+    let app = app
+        .route(
+            "/v1/bundles/{name}/brain/dream",
+            post(brain_dream_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/forecast",
+            post(brain_forecast_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/reconstruct",
+            post(brain_reconstruct_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/inpaint",
+            post(brain_inpaint_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/predict",
+            post(brain_predict_endpoint),
         );
 
     let app = app

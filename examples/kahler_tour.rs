@@ -598,7 +598,7 @@ fn pr_window_endpoints_summary() {
     }
 
     println!();
-    println!("══ PR window 2 (L13)  brain-primitive HTTP endpoints ══");
+    println!("══ PR window 2 (L13)  brain primitives — gate / retrieval / memory ══");
     let endpoints_2 = [
         ("POST /v1/bundles/{name}/brain/sample",
          "Langevin draws from the bundle's density (catalog §2)"),
@@ -614,8 +614,26 @@ fn pr_window_endpoints_summary() {
     for (route, desc) in &endpoints_2 {
         println!("  {:<48} {}", route, desc);
     }
-    note("(See tests/kahler_pr_window_marcella_contract.rs +");
-    note(" tests/kahler_brain_endpoints_contract.rs for wire shapes.)");
+
+    println!();
+    println!("══ PR window 3 (L13.2)  brain primitives — flow / generative / inference ══");
+    let endpoints_3 = [
+        ("POST /v1/bundles/{name}/brain/dream",
+         "High-T Langevin TRAJECTORY (catalog §4) — REM-sleep mode"),
+        ("POST /v1/bundles/{name}/brain/forecast",
+         "Hamilton-flow extension, energy-conserving (catalog §3)"),
+        ("POST /v1/bundles/{name}/brain/reconstruct",
+         "T=0 descent to MAP estimate (catalog §5)"),
+        ("POST /v1/bundles/{name}/brain/inpaint",
+         "Constrained Langevin — lock subset, sample rest (catalog §6)"),
+        ("POST /v1/bundles/{name}/brain/predict",
+         "Single-step natural-gradient PREDICT (catalog §7)"),
+    ];
+    for (route, desc) in &endpoints_3 {
+        println!("  {:<48} {}", route, desc);
+    }
+    note("Cross-team HTTP surface: 10 of 12 brain primitives reachable over the wire.");
+    note("(FOCUS via /brain/attend with top_k; see contract tests for wire shapes.)");
 }
 
 // ── main ──────────────────────────────────────────────────────────

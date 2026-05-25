@@ -176,9 +176,107 @@ def main(base: str) -> int:
     elif code == 404:
         print(f"   (bundle has no Morse-compressible structure; expected for small bundles)")
 
+    # ──────────────────────────────────────────────────────
+    # PR window 3 endpoints (L13.2)
+    # ──────────────────────────────────────────────────────
+
+    # ── §4 DREAM (trajectory) ──────────────────────────────
+    print()
+    print("8. POST /brain/dream - high-T trajectory (T=4.0, 200 steps)")
+    code, resp = call(
+        "POST", base, f"/v1/bundles/{bundle}/brain/dream",
+        body={
+            "fields": ["x", "y"],
+            "n_steps": 200,
+            "temperature": 4.0,
+            "seed": 42,
+        },
+        api_key=api_key,
+    )
+    print(f"   dream -> {code}")
+    if code == 200:
+        print(f"   trajectory length: {len(resp['trajectory'])} (= n_steps + 1)")
+        print(f"   fit_mean: {resp['fit_mean']}")
+        print(f"   mean dist from mean: {resp['mean_dist_from_mean']:.3f}")
+        print(f"   max  dist from mean: {resp['max_dist_from_mean']:.3f}  (wandering)")
+
+    # ── §3 FORECAST (Hamilton trajectory, no noise) ────────
+    print()
+    print("9. POST /brain/forecast - Hamilton flow from (3, 2)")
+    code, resp = call(
+        "POST", base, f"/v1/bundles/{bundle}/brain/forecast",
+        body={
+            "fields": ["x", "y"],
+            "initial": [3.0, 2.0],
+            "n_steps": 300,
+        },
+        api_key=api_key,
+    )
+    print(f"   forecast -> {code}")
+    if code == 200:
+        path = resp["trajectory"]
+        print(f"   trajectory length: {len(path)}")
+        print(f"   start: ({path[0][0]:.3f}, {path[0][1]:.3f})")
+        print(f"   mid:   ({path[len(path)//2][0]:.3f}, {path[len(path)//2][1]:.3f})")
+        print(f"   end:   ({path[-1][0]:.3f}, {path[-1][1]:.3f})")
+
+    # ── §5 RECONSTRUCT (T=0 descent to MAP) ────────────────
+    print()
+    print("10. POST /brain/reconstruct - descent from (10, 10) toward MAP")
+    code, resp = call(
+        "POST", base, f"/v1/bundles/{bundle}/brain/reconstruct",
+        body={
+            "fields": ["x", "y"],
+            "noisy_initial": [10.0, 10.0],
+            "n_steps": 500,
+        },
+        api_key=api_key,
+    )
+    print(f"   reconstruct -> {code}")
+    if code == 200:
+        print(f"   result (= MAP): {resp['result']}")
+        print(f"   fit_mean:       {resp['fit_mean']}")
+        print(f"   descent_distance: {resp['descent_distance']:.3f}")
+
+    # ── §6 INPAINT (lock x=8, sample y) ────────────────────
+    print()
+    print("11. POST /brain/inpaint - lock x=8, sample y from conditional")
+    code, resp = call(
+        "POST", base, f"/v1/bundles/{bundle}/brain/inpaint",
+        body={
+            "fields": ["x", "y"],
+            "partial_state": [8.0, 0.0],
+            "locked_indices": [0],
+            "burn_in": 2000,
+            "seed": 42,
+        },
+        api_key=api_key,
+    )
+    print(f"   inpaint -> {code}")
+    if code == 200:
+        print(f"   result: ({resp['result'][0]:.3f}, {resp['result'][1]:.3f})  (x locked at 8.0)")
+        print(f"   locked_indices: {resp['locked_indices']}")
+
+    # ── §7 PREDICT (single-step natural-gradient) ──────────
+    print()
+    print("12. POST /brain/predict - one step from (5, 5)")
+    code, resp = call(
+        "POST", base, f"/v1/bundles/{bundle}/brain/predict",
+        body={
+            "fields": ["x", "y"],
+            "state": [5.0, 5.0],
+            "lr": 0.2,
+        },
+        api_key=api_key,
+    )
+    print(f"   predict -> {code}")
+    if code == 200:
+        print(f"   next_state: {resp['next_state']}")
+        print(f"   step_size:  {resp['step_size']:.4f}")
+
     # ── Cleanup ────────────────────────────────────────────
     print()
-    print("8. Cleanup: drop bundle")
+    print("13. Cleanup: drop bundle")
     code, _ = call("POST", base, f"/v1/bundles/{bundle}/truncate", body={}, api_key=api_key)
     print(f"   truncate -> {code}")
 

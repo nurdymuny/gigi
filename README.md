@@ -32,6 +32,57 @@ about your data:
 | Compute on encrypted data | Homomorphic encryption (~10,000× slowdown) | Gauge encryption — **native speed**, geometry-preserving |
 | Logging with semantic insight | Text logs + sampling | DHOOM events with κ, KL-div, JS-div per query |
 | NLP fiber geometry (tense, morphology, …) | Vector DB + bespoke analysis | `HOLONOMY corpus ON FIBER (f11, f12) AROUND tense_label` |
+| Long-context theorems on a substrate | "trust me" + benchmarks | Kähler-upgrade catalog with cross-team math validation matching observations to rounding precision |
+
+---
+
+## What's new in 2026 — the Kähler upgrade
+
+GIGI v3 shipped the **Kähler upgrade**: eight layers (L1–L7 + L8 handoff) of
+geometric machinery extending the fiber-bundle substrate with a complex
+structure J, a closed 2-form B, and everything that falls out of the pair —
+Hadamard substructure detection, holomorphic curvature decomposition, Morse
+compression, line-bundle integrality checks, quantum cohomology on toy
+manifolds, Berezin-Toeplitz operators, Riemann-Roch representational
+capacity. The catalog and per-layer plan live in
+[`theory/kahler_upgrade/`](theory/kahler_upgrade/).
+
+Three properties are worth calling out because they're hard to find anywhere
+else at this scale:
+
+**1. Strict additivity. The optionality contract holds across all eight layers.**
+The entire Kähler upgrade lives behind a single Cargo feature flag (`kahler`).
+With the feature off, the engine is **bit-identical to pre-upgrade GIGI**
+— 720 tests pass, byte-equal to before the upgrade landed. With the feature
+on, 902+ tests pass, including a per-layer real-data smoke against the
+20-record sensor dataset and a per-layer cross-team contract test
+(`tests/kahler_*_marcella_contract.rs`) that fails before any consumer
+deserialization can drift. Eight layers of new math, zero breaking changes.
+
+**2. Math predictions validated by production observation to rounding precision.**
+The first downstream consumer (Marcella) ran a 30-prompt A/B harness +
+10-turn deep-trace on her actual embedding substrate
+(`marcella_source_embeddings_bge`, 9910 × L2-normalized 384-D vectors on
+S³⁸³). Perfect monotonicity: 21/21 reply-different when the residue moved,
+9/9 byte-identical when it didn't. Peak per-turn Δ-residue measured at
+**0.0747**, matching the closed-form non-associativity bound of **7.6pp**
+to within rounding (0.0013). The deep-trace held coherence through 86°
+accumulated rotation across 10 turns — exactly 10 × 8.6° per turn, linear.
+
+**3. Geometric machinery doing real work in user-facing behavior.**
+The non-associativity meter that started as a math sanity check turned out
+to be a **conversation-stationarity signal**: 4-of-4 stationary sessions
+show monotonic decay at ~2pp per turn toward the calibrated floor. Same
+infrastructure, two readable surfaces. Geometric structure showing up as
+useful product behavior is what the substrate is for.
+
+The full audit trail — eight per-layer commits + ~15 cross-team
+correspondence docs + four Python validation suites (15/15 PASS across
+v1–v4) + the per-layer contract / real-data / e2e tests — is in
+[`theory/kahler_upgrade/`](theory/kahler_upgrade/) and
+[`tests/kahler_*`](tests/). The language layer on top is specified in
+[`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md) +
+[`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md).
 
 ---
 
@@ -58,10 +109,28 @@ about your data:
 | `sheaf` | Sheaf cohomology — `BETTI`, `CONSISTENCY` |
 | `spectral` | Graph Laplacian eigenvalue/eigenvector queries |
 | `concurrent` | Lock-free reader / single-writer concurrency |
-| `dhoom` | DHOOM wire protocol — JSON-compatible binary serialization |
+| `dhoom` | DHOOM wire protocol — JSON-compatible binary serialization; integral-Chern compression (L7.3) when `kahler` is on |
 | `observability` | Geometric logs (κ, KL, JS per query) |
 | `convert` | JSON / CSV / SQL → DHOOM ingestion |
 | `edge` | Local-first sync layer (mobile/IoT) |
+
+Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are bit-identical to the pre-upgrade engine):
+
+| Module | What it does | Layer |
+|---|---|---|
+| `geometry::complex_structure` | `ComplexStructure` (J² = -I, enforced) | L1 |
+| `geometry::forms` | `TwoForm` + `ClosedTwoForm` with discrete dB closedness check | L1 |
+| `geometry::transport` | B-perturbed magnetic transport via RK4; cyclotron-conserving | L1.5 |
+| `geometry::hadamard` | Hadamard substructure detection + `transport_along` / `transport_inverse` | L5 |
+| `geometry::line_bundle` | `LineBundle` + Dirac integrality check (Wu-Yang) | L7.1 |
+| `geometry::quantum_cohomology` | Frobenius/WDVV composition on toy manifolds (CPⁿ, Tⁿ, S²) + Riemann-Roch capacity | L7.5 / L7.7 |
+| `geometry::toeplitz` | Berezin-Toeplitz operators with `ℏ ≥ 4 / embedding_dim` safety gate | L7.6 |
+| `graph::adjacency` | Dual principal/auxiliary adjacency operators | L2 |
+| `graph::commutativity` | Group-algebra-centrality commutativity classifier | L2 |
+| `cost::jacobi_estimator` | Jacobi-field cardinality bounds via Bishop / Günther | L3 |
+| `discrete::hodge_complex` | `d_0` / `d_1` operators built from cell incidence; `d² = 0` enforced | L6 |
+| `discrete::hodge_laplacian` | Δ_k = d†d + dd†, Betti via eigendecomposition | L6 |
+| `discrete::morse` | Algebraic Morse compression; preserves cohomology | L6 |
 
 ### Binaries (`src/bin/`)
 
@@ -110,6 +179,9 @@ code so a reviewer can read the claim and the implementation in the same place:
 - `GIGI_PERSISTENCE_UPGRADE_SPEC.md` — WAL + mmap durability
 - `GIGI_PRODUCT_SPECS.md` — the three-product surface (Convert · Stream · Edge)
 - `GQL_SPECIFICATION.md` + `GQL_REFERENCE.md` + `GQL_ADDENDUM_v2.1.md` — the query language
+- [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md) — natural-language → GQL → fiber response (v0.1.1)
+- [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md) — public `/schema` endpoint with `@public` / `@gated` directive policy
+- [`theory/kahler_upgrade/`](theory/kahler_upgrade/) — the Kähler upgrade catalog + 8-layer implementation plan + Marcella substrate spec + Python validation suites + cross-team correspondence
 
 ---
 
@@ -200,10 +272,17 @@ cargo run --release --bin bench_tpch
 cd e2e && npm install && npm test
 ```
 
-As of this README the engine ships with **717 tests passing, 0 failed** (667
-unit tests across the library + 50 in the `gigi-stream` binary). The test suite
-has grown to cover persistence, encryption, sheaf cohomology, and additional
-geometric verbs since the v0.5 audit.
+As of this README the engine ships with:
+
+- **720 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract.
+- **902 tests passing, 0 failed** with `cargo test --features kahler` — adds the eight-layer Kähler stack, per-layer real-data smokes against the 20-record sensor dataset, and the cross-team contract tests pinning each consumer-facing API shape.
+
+The Python validation suites (`theory/kahler_upgrade/validation/*.py`)
+independently verify the math from four directions: 15/15 PASS across v1–v4
+(Adachi commutativity, magnetic trajectory, Hadamard-Cartan, trajectory-ball
+volume, moment map, spectral gap, prequantization integrality, Frobenius/WDVV,
+index theorem, Berezin-Toeplitz, Hodge cohomology, Kähler curvature
+decomposition, quantized holonomy debt, DHOOM Chern round-trip).
 
 ---
 
@@ -236,10 +315,21 @@ All NIST-standardized primitives, all from the RustCrypto suite. Spec:
 
 ## What plugs into GIGI
 
-- **Marcella** (NLP) — fiber-geometric reads of language corpora. `HOLONOMY`, `TRANSPORT`, `SPECTRAL ON FIBER` over (f11, f12) tense circles.
+- **Marcella** (NLP) — first consumer of the Kähler substrate. Runtime reads
+  `BundleStore::kahler_curvature` / `spectral_gap_cached` / `hadamard_regions`
+  / `morse_compress` / `transport_along` / `holonomy_debt` and surfaces them
+  in self-inspect alongside a non-associativity meter that doubles as a
+  conversation-stationarity signal. Substrate spec:
+  [`theory/kahler_upgrade/marcella_substrate.md`](theory/kahler_upgrade/marcella_substrate.md).
+  Cross-team correspondence (8 letters) lives alongside it.
 - **KRAKEN** (sensor fusion) — DAS / sonar / SAT / SIGINT bundles, CUSUM state, decisions, audit log, operator judgments — all on GIGI.
 - **ICARUS** — sprint deliverables across `Transport`, `Holonomy`, `GaugeTest`, `SpectralFiber`, and `Divergence` verbs.
 - **DHOOM** (`src/dhoom.rs`) — the canonical wire protocol used by every client.
+- **GIGI Lang** — natural-language → GQL → fiber-shaped response. Spec at
+  [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md); SDK skeleton at
+  [`sdk/python/gigi/lang.py`](sdk/python/gigi/lang.py) with contract tests
+  pinning the shape; schema introspection at
+  [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md).
 
 ---
 

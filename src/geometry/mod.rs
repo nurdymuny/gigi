@@ -57,6 +57,7 @@ pub mod memory;
 pub mod moment_map;
 pub mod predictive_coding;
 pub mod quantum_cohomology;
+pub mod sudoku;
 pub mod toeplitz;
 pub mod transport;
 
@@ -84,6 +85,10 @@ pub use predictive_coding::{
     predict_one_step_natural,
 };
 pub use quantum_cohomology::{CohClass, HilbertPolynomial, QuantumCohomology, QuantumError};
+pub use sudoku::{
+    solve_constraints, Constraint, FieldOp, NearMiss, SudokuConfig, SudokuError,
+    SudokuRequest, SudokuResponse, SudokuVerdict, ViolationDetail,
+};
 pub use toeplitz::{toeplitz_operator, ToeplitzOperator, ToeplitzError, ToeplitzSafetyGate};
 pub use transport::{
     flat_transport, BSource, TransportError, TransportResult, TransportSegment,

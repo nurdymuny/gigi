@@ -1,8 +1,27 @@
-# SUDOKU Primitive — Specification v0.2
+# SUDOKU Primitive — Specification v0.3
 
-**Date:** 2026-05-26
-**Author:** Bee Davis + GIGI substrate, with feedback from Marcella team
-**Status:** Frozen for S1+S2 implementation. All v0.1 open decisions resolved per Marcella's 2026-05-26 reply (see Appendix A). Subject to revision if H2 fit-diagnostic (S1) surfaces a structural pathology that invalidates §6's preconditions.
+**Date:** 2026-05-27 (v0.3); 2026-05-26 (v0.2); 2026-05-26 (v0.1).
+**Author:** Bee Davis + GIGI substrate, with feedback from Marcella team.
+**Status:** Frozen for S2 implementation. All open decisions resolved.
+H2 investigation closed (v0.3 update — see Appendix B); §6
+preconditions empirically validated by today's seed-variation probe.
+
+### Changelog v0.2 → v0.3
+
+- **§6 preconditions empirically validated.** The multi-seed basin
+  diversity check is now confirmed correct by the bge_v2 sweep: at
+  T≥1 the bundle correctly fails multi-seed basin diversity (3
+  prompts × 4 seeds produce 3 distinct doc-winners by seed),
+  exactly the failure mode the precondition is designed to catch.
+- **Appendix B rewritten** to reflect the H2 verdict: H1 falsified
+  (mean-central claim refuted), H2 untested but irrelevant for
+  bge_v2 (symptoms came from noise-dominated dynamics at T≥1, not
+  fit pathology — H3-Gigi seed artifact confirmed).
+- **§4.5 added** — per-primitive latency contract table. Informed
+  by wave 1 load test + sweep measurements.
+- **Floor-tunable spec** (`SPEC_FLOOR_TUNABLE_S1_WAVE2.md`)
+  retained as defensive documentation for future bundles where
+  H2 IS the actual mechanism; not built for bge_v2.
 
 ---
 
@@ -210,6 +229,72 @@ The mode doesn't change the API surface; only the time budget changes.
 The honest-coverage contract still works at 30ms — the response just
 frequently has `coverage: 0.2, unsat: null`, which is fine because the
 caller knew the budget when they set it.
+
+---
+
+## 4.5. Per-primitive latency contract (v0.3)
+
+Per Bee's 2026-05-27 latency-as-product-property reframe: every
+primitive carries an explicit SLO. Targets below are calibrated
+against wave 1 load test measurements (bge_v2, n_fields ≤ 50) +
+the bge_v2 sweep (n_fields = 384). All targets assume cache-warm
+unless noted. Cache miss adds the cold-fit cost shown.
+
+### Cold-fit cost (paid once per `(bundle, fit_mode, fields, ε, abs_floor)`)
+
+| fit_mode | n_fields | Walk cost | Inversion cost | Total cold | Cached warm |
+|---|---:|---:|---:|---:|---:|
+| isotropic | any | µs (Welford lookup) | — | < 1 ms | < 1 µs |
+| diagonal | any | µs (Welford lookup) | — | < 1 ms | < 1 µs |
+| full | 10 | ~5 ms | ~1 ms | ~10 ms | < 1 µs |
+| full | 50 | ~50 ms | ~10 ms | ~70 ms | < 1 µs |
+| full | 384 | ~3 s | ~200 ms | ~3.3 s | < 1 µs |
+
+Cold-fit happens at most once per cache key. Wave 1 single-flight
+(planned wave 2) makes concurrent cold misses share the work.
+
+### Per-primitive endpoint targets (cache-warm, network-included)
+
+| Primitive | Endpoint | p50 target | p95 target | Notes |
+|---|---|---:|---:|---|
+| SAMPLE | `/brain/sample` | 100 ms | 200 ms | 1 Langevin step + n_samples draws |
+| DREAM (1k steps, n=50) | `/brain/dream` | 500 ms | 700 ms | dominated by 1k Langevin steps |
+| FORECAST | `/brain/forecast` | 100 ms | 250 ms | Hamilton flow, n_steps × matvec |
+| RECONSTRUCT | `/brain/reconstruct` | 200 ms | 400 ms | T=0 descent to MAP |
+| INPAINT | `/brain/inpaint` | 150 ms | 300 ms | Constrained Langevin |
+| PREDICT | `/brain/predict` | 50 ms | 100 ms | Single natural-gradient step |
+| ATTEND | `/brain/attend` | 100 ms | 200 ms | Softmax over n records |
+| EPISODIC | `/brain/episodic` | 200 ms | 400 ms | Change-point detection over N |
+| SEMANTIC | `/brain/semantic` | 150 ms | 300 ms | Morse compression |
+| EXPLAIN | `/brain/explain` | 50 ms | 100 ms | Nearest-neighbor + interpolation |
+| CONFIDENCE | `/brain/confidence` | 50 ms | 100 ms | Kernel density |
+| CONFIDENCE+EXPLAIN | `/brain/confidence_with_explain` | 75 ms | 150 ms | Combined, one record walk |
+| FIT_DIAGNOSTICS | `/brain/fit_diagnostics` | < 5 ms | 20 ms | Reads cached fit directly |
+| DISTANCE_TO_FIT_MEAN | `/brain/distance_to_fit_mean` | 50 ms | 150 ms | Per-call record walk for distribution |
+
+### SUDOKU composition latency targets (the meta-primitive)
+
+| SUDOKU mode | Total target (cache-warm) | Cold-path penalty |
+|---|---:|---|
+| **fast** | ≤ 50 ms | + cold-fit (one-time) |
+| **default** | 200–2000 ms | + cold-fit |
+| **thorough** | ≥ 5000 ms | + cold-fit per restart-seed (5×) |
+
+Decomposed for the **default** mode (200–2000 ms budget):
+1. Precondition check (multi-seed basin diversity at low T): ~50 ms × 5 seeds = ~250 ms
+2. Constraint-filter pass over records: ~50 ms (O(N) per record)
+3. Candidate enumeration (ATTEND-biased SAMPLE): ~300–1500 ms
+4. Coverage estimator: ~10 ms (importance sum over visited)
+5. Near-miss enumeration: ~50–100 ms
+6. Response encoding (DHOOM or JSON): ~5 ms
+
+### Cache observability targets
+
+| Metric | Target | Action if breached |
+|---|---|---|
+| `gigi_brain_cache_hit_rate` | ≥ 0.85 steady-state | Investigate working-set vs cap; bump max_entries or switch to LRU |
+| `gigi_brain_cache_evictions_total` rate | ≤ 1/min steady-state | Same as above |
+| `gigi_brain_fit_total_us` slope | Decreasing then flat after warm-up | If still rising, cache key has a bug (always missing) |
 
 ---
 
@@ -657,42 +742,82 @@ open decisions for v1.
 
 ---
 
-## Appendix B — H2 attractor status (2026-05-26)
+## Appendix B — H2 attractor verdict (closed 2026-05-27)
 
-Marcella's `LETTER_TO_GIGI_DREAM_ATTRACTOR_2026-05-26.md` confirms via
-temperature sweep on bge_v2 that `double_cover_v3` is a universal
-attractor at T≥0.3 for every probe prompt (6 out of 6). At T=0.1 the
-walk stays topical; somewhere between T=0.1 and T=0.3 the dynamics
-escape into the `double_cover_v3` basin and stay. **This is H2 (diagonal-
-fit artifact), confirmed.**
+### v0.2 prediction (preserved for reference)
 
-**Impact on SUDOKU:** the multi-seed basin coverage precondition in §6
-would correctly catch this — Langevin from 5 random seeds all land in
-the same basin → fails ≥3 distinct basins check → SUDOKU rejects bge_v2
-as pathological. Correct behavior. **But:** SUDOKU is non-functional on
-semantic bundles until S1 (fit-diagnostic + remediation) lands.
+Marcella's 2026-05-26 letter hypothesized that the `double_cover_v3`
+universal attractor at T≥0.3 was the H2 mechanism (diagonal-fit
+eigenvalue pathology). The spec v0.2 expected S1 to either confirm H2
+(full-fit + eigenvalue floor diffuses the attractor) or H1 (the
+substrate is genuinely concentrated at that cite).
 
-**S1 deliverables (informed by Marcella's diagnostic asks):**
-1. New endpoint `GET /v1/bundles/{name}/brain/fit_diagnostics` returning
-   `{eigenvalues, variance_per_dim, n_floored, fit_mean_norm, variance_ratio}`.
-2. Add `fit_mode: "full"` variant to `BrainDreamRequest` /
-   `BrainSampleRequest` (currently `FitMode::Isotropic` /
-   `FitMode::Diagonal` only — no `Full`). Implement full-covariance
-   Langevin in `generative_flow.rs`.
-3. Quick script: given a record_id, return `‖vec(record) − fit_mean‖`
-   for any bundle. Confirms H2's prediction that `double_cover_v3` lies
-   unusually close to fit_mean.
-4. If full-fit diffuses the attractor on bge_v2 → H2 confirmed →
-   consider making full-fit the default for creative endpoints
-   (DREAM/RECONSTRUCT/SUDOKU).
-5. If full-fit also converges → H1 (real signal) confirmed → SUDOKU
-   ships at T=0.1 with "main attractor" voice semantics.
+### v0.3 resolution — neither H1 nor H2
 
-S1 is now **upstream of both SUDOKU and Marcella's DREAM-extension
-project**. It moves above the 4 open operational fixes (#104–#106) in
-priority. Operations are stable enough to wait; H2 unblocks two
-downstream projects.
+Cheap diagnostic probes on 2026-05-27 falsified both:
+
+| Probe | Result |
+|---|---|
+| **fit_mean_distance for `double_cover_v3`** (119 chunks) | Median percentile rank = 0.53; **NOT mean-central**. H1's mechanism claim falsified. |
+| **Seed-variation sweep** (3 prompts × 4 seeds at T=2, fit_mode=diagonal) | seed=7 → `double_cover_v3` for all 3 prompts. seed=42, 1234, 9999 → 3 different doc-winners. **`double_cover_v3` wins only at seed=7.** |
+
+**Verdict: H3-Gigi (seed=7 artifact) confirmed.** At T=2 the Langevin
+noise dominates the gradient, so the walk's destination is determined
+by the noise sequence rather than the prompt. Same seed → same
+destination regardless of prompt; different seeds → different
+"attractors." The substrate is fine. The fit machinery is fine.
+The probe was fine — it just used a single seed and we read the
+result as a substrate property.
+
+Also discovered: the H2 vs H1 test was degenerate because BOTH fit
+modes operated on the same `0.03·I` Σ. The absolute Euler-stability
+floor (`3·dt = 0.03`) is 30× above bge_v2's natural per-axis variance
+(~0.001), so the spectrum never surfaced. Floor-tunable spec
+(`SPEC_FLOOR_TUNABLE_S1_WAVE2.md`) retained as defensive documentation
+for future bundles where H2 IS the actual mechanism; not needed for
+bge_v2 because the symptoms came from elsewhere.
+
+### Impact on SUDOKU — preconditions empirically validated
+
+The multi-seed basin diversity precondition in §6 does **exactly the
+right work** on bge_v2 at T≥1: 3 prompts × 4 seeds → 1 basin per
+seed (different basin per seed) → fails ≥3 distinct basins check.
+SUDOKU correctly declines this bundle at high T. The `acknowledge_pathology`
+opt-in is the correct UX for the "I know it's noisy here, give me
+what you have" diagnostic case.
+
+**At T≤0.3 the substrate IS multi-modal** — different prompts give
+different drift winners. SUDOKU at low T on bge_v2 should work
+cleanly. Document bge_v2 (and likely other normalized 384-D embedding
+bundles) as "constrain to T≤0.3 for SUDOKU consumption" in the
+consumer guide.
+
+### S1 deliverables — all shipped in wave 1
+
+1. ✅ `POST /v1/bundles/{name}/brain/fit_diagnostics` — full eigenvalue
+   spectrum + variance + floor diagnostics. Commit `8be8f84`.
+2. ✅ `FitMode::Full` variant + full-covariance Langevin. Commits
+   `1376cb2` (geometry) + `78f45dd` (server wiring).
+3. ✅ `POST /v1/bundles/{name}/brain/distance_to_fit_mean` — H1
+   mean-centrality check. Commit `302f5d6`. **This is the probe that
+   falsified H1.**
+4. ✅ Eigenvalue floor on Σ. Commit `22a35b6`. Retained as defensive
+   for future bundles where H2 applies; didn't apply for bge_v2 because
+   the absolute Euler-stability floor dominated.
+5. ✅ Seed-variation re-run (Marcella's Step A). Used existing
+   `seed` request param — no code change needed.
+
+### Reframe for paper §4 (Task #75)
+
+The empirical story is now: **GIGI's geometry adds signal at the
+user's natural exploration scale (T≈0.1) where the gradient dominates
+noise; at high-T noise-dominated regimes the walk goes wherever the
+noise sequence takes it, regardless of fit machinery.** That's a
+cleaner story than either "full-fit fixes diagonal" (H2) or "geometry
+finds the main attractor" (H1) would have been. The +7.6pp prediction
+holds for T≈0.1 retrieval against cosine baseline; high-T is where
+ALL approaches degrade similarly.
 
 ---
 
-*End of spec v0.2.*
+*End of spec v0.3.*

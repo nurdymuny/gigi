@@ -3032,11 +3032,13 @@ fn fit_diagonal_gaussian(
 /// Full-covariance fit result. Carries μ, the full Σ matrix
 /// (so consumers can introspect), the precision Σ⁻¹ (so the
 /// gradient eval is a single matvec), and diagnostic info about
-/// the conditioning of the fit.
+/// the conditioning of the fit — including the eigenvalue
+/// spectrum, which is the load-bearing diagnostic for H2.
 #[cfg(feature = "kahler")]
 struct FullFitResult {
     mu: Vec<f64>,
-    /// Full n×n covariance matrix in row-major Vec<Vec<f64>>.
+    /// Full n×n covariance matrix in row-major Vec<Vec<f64>>
+    /// (post eigenvalue flooring).
     covariance: Vec<Vec<f64>>,
     /// Precision matrix Σ⁻¹ — used by the Langevin gradient.
     precision: Vec<Vec<f64>>,
@@ -3044,13 +3046,34 @@ struct FullFitResult {
     sigma_sq_per_field: Vec<f64>,
     /// Per-axis RAW variances (diagonal of Σ, pre-floor).
     sigma_sq_per_field_raw: Vec<f64>,
-    /// Diagonal floor applied (analog of L13.6's σ² floor).
+    /// Diagonal floor applied to per-axis variances (analog of
+    /// L13.6's σ² floor — necessary but NOT sufficient for H2;
+    /// see eigenvalue_floor below for the correct floor).
     effective_floor: f64,
     /// Diagonal indices floored (rank-deficient axes).
     floored_indices: Vec<usize>,
     /// Ratio of largest to smallest diagonal entry after flooring.
-    /// Useful for the fit_diagnostics endpoint and H2 detection.
     variance_ratio: f64,
+    /// Eigenvalues of Σ BEFORE flooring, sorted descending.
+    /// THE H2 diagnostic — small eigenvalues create deep narrow
+    /// grooves in Σ⁻¹ that pull Langevin walks regardless of
+    /// which axis they're aligned with. Surfaced so the
+    /// fit_diagnostics endpoint can report them directly.
+    eigenvalues_raw: Vec<f64>,
+    /// Eigenvalues AFTER flooring (max(λ, ε·median(λ))).
+    eigenvalues_effective: Vec<f64>,
+    /// Eigenvalue floor used: ε × median(λ_raw), bounded below
+    /// by the absolute stability floor.
+    eigenvalue_floor_used: f64,
+    /// How many eigenvalues got clipped by the floor. Non-zero
+    /// here is exactly the condition Marcella's H2 letter
+    /// predicted — diagonal model couldn't see this because the
+    /// pathology lives in directions, not axes.
+    floored_eigenvalue_count: usize,
+    /// Condition number of Σ post-floor: λ_max / λ_min.
+    /// The well-conditioning guarantee the eigenvalue floor
+    /// provides.
+    condition_number: f64,
 }
 
 /// Full-covariance Gaussian fit per Marcella's 2026-05-26 H2
@@ -3183,10 +3206,20 @@ fn fit_full_gaussian(
         .fold(f64::INFINITY, f64::min);
     let variance_ratio = if var_min > 0.0 { var_max / var_min } else { f64::INFINITY };
 
-    // Cholesky-invert Σ → Σ⁻¹. nalgebra is already a dep; we build
-    // a DMatrix view from the row-major Vec<Vec<f64>>, Cholesky-
-    // decompose, then call .inverse() on the factor (which returns
-    // the full inverse via back-substitution).
+    // ── Eigenvalue floor (Marcella 2026-05-26 §2) ─────────────
+    //
+    // The diagonal floor above clips per-axis variance, but the
+    // pathology that creates universal attractors lives in
+    // EIGENDIRECTIONS, not axes. A near-rank-deficient Σ has small
+    // eigenvalues along correlated directions; the inverse Σ⁻¹
+    // amplifies them into deep narrow grooves that pull every
+    // Langevin walk into them — exactly H2 with the attractor
+    // relocated rather than diffused.
+    //
+    // The fix: eigendecompose Σ, clip eigenvalues below
+    // ε·median(λ_raw), reconstruct, THEN invert. This makes the
+    // geometry well-conditioned regardless of variance skew or
+    // correlation pattern.
     let mut cov_flat = Vec::with_capacity(n * n);
     for i in 0..n {
         for j in 0..n {
@@ -3194,15 +3227,83 @@ fn fit_full_gaussian(
         }
     }
     let mat = nalgebra::DMatrix::from_row_slice(n, n, &cov_flat);
-    let chol = nalgebra::Cholesky::new(mat).ok_or_else(|| {
+    let eigen = nalgebra::SymmetricEigen::new(mat);
+    let eigenvalues_raw: Vec<f64> = {
+        let mut e: Vec<f64> = eigen.eigenvalues.iter().copied().collect();
+        e.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+        e
+    };
+    // Floor = ε · median(eigenvalues), bounded below by the same
+    // absolute stability floor used on the diagonal. Median is
+    // robust to a few small eigenvalues — picks the "typical" scale
+    // of the spectrum.
+    let mut sorted_eig = eigenvalues_raw.clone();
+    sorted_eig.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let eigenvalue_median = sorted_eig[sorted_eig.len() / 2].max(1e-12);
+    let eigenvalue_relative_floor = if floor_epsilon > 0.0 {
+        floor_epsilon * eigenvalue_median
+    } else {
+        0.0
+    };
+    let eigenvalue_floor_used = eigenvalue_relative_floor
+        .max(ABSOLUTE_STABILITY_FLOOR)
+        .max(1e-12);
+
+    let mut floored_eigenvalue_count = 0_usize;
+    let eigenvalues_effective: Vec<f64> = eigen
+        .eigenvalues
+        .iter()
+        .map(|&l| {
+            if l < eigenvalue_floor_used {
+                floored_eigenvalue_count += 1;
+                eigenvalue_floor_used
+            } else {
+                l
+            }
+        })
+        .collect();
+    let lambda_effective_max = eigenvalues_effective
+        .iter()
+        .cloned()
+        .fold(0.0_f64, f64::max);
+    let lambda_effective_min = eigenvalues_effective
+        .iter()
+        .cloned()
+        .fold(f64::INFINITY, f64::min);
+    let condition_number = if lambda_effective_min > 0.0 {
+        lambda_effective_max / lambda_effective_min
+    } else {
+        f64::INFINITY
+    };
+
+    // Reconstruct Σ_regularized = U · diag(λ_eff) · Uᵀ. Then
+    // overwrite our `cov` so the response surfaces the actual
+    // matrix used (post-flooring); consumers can subtract from
+    // the raw to see what changed.
+    let lambda_diag = nalgebra::DMatrix::from_diagonal(
+        &nalgebra::DVector::from_vec(eigenvalues_effective.clone()),
+    );
+    let cov_regularized = &eigen.eigenvectors * &lambda_diag * eigen.eigenvectors.transpose();
+    for i in 0..n {
+        for j in 0..n {
+            cov[i][j] = cov_regularized[(i, j)];
+        }
+    }
+    // Refresh per-axis diagonals (the diagonal floor still applies
+    // as a guard, but with eigenvalue flooring done the diagonals
+    // are usually already above it).
+    let sigma_sq_per_field: Vec<f64> = (0..n).map(|i| cov[i][i]).collect();
+
+    // Cholesky-invert the regularized Σ → Σ⁻¹.
+    let chol = nalgebra::Cholesky::new(cov_regularized).ok_or_else(|| {
+        // After eigenvalue flooring, Cholesky should never fail.
+        // If it does, something is structurally broken with the
+        // input data (NaN, Inf) — bubble that up clearly.
         format!(
-            "covariance matrix is not positive-definite after diagonal floor \
-             (eigenvalue test failed). variance_ratio = {:.2e}, \
-             n_floored = {}/{}. Try increasing sigma_floor_epsilon or use \
-             fewer correlated fields.",
-            variance_ratio,
-            floored_indices.len(),
-            n
+            "Cholesky failed after eigenvalue flooring — covariance has \
+             NaN or Inf entries? variance_ratio = {:.2e}, \
+             condition_number = {:.2e}, n_floored_eigenvalues = {}/{}.",
+            variance_ratio, condition_number, floored_eigenvalue_count, n
         )
     })?;
     let precision_mat = chol.inverse();
@@ -3223,6 +3324,11 @@ fn fit_full_gaussian(
         effective_floor,
         floored_indices,
         variance_ratio,
+        eigenvalues_raw,
+        eigenvalues_effective,
+        eigenvalue_floor_used,
+        floored_eigenvalue_count,
+        condition_number,
     })
 }
 

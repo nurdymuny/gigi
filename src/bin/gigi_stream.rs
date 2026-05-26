@@ -3240,6 +3240,23 @@ struct BrainEpisodicRequest {
     /// Persistence threshold (multiple of median gap). Default 50.
     #[serde(default = "default_min_persistence_ratio")]
     min_persistence_ratio: f64,
+    /// L13.5 — Optional fiber-field equality filter (Marcella's
+    /// upgrade path for per-user EPISODIC). Pre-filters records to
+    /// those whose `where_field` equals `where_value`, then runs
+    /// change-point detection on the filtered subset's `field`
+    /// values. Useful when the bundle interleaves multiple users /
+    /// streams / cohorts and you want per-cohort change-points
+    /// rather than the bundle-wide aggregate.
+    ///
+    /// Both fields must be supplied together; supplying only one is
+    /// a 400. Only fiber fields are supported (base fields are
+    /// query keys, not values; filter at the application layer if
+    /// you need that — POST a precomputed time series here via your
+    /// own base-field lookup instead).
+    #[serde(default)]
+    where_field: Option<String>,
+    #[serde(default)]
+    where_value: Option<serde_json::Value>,
 }
 
 #[cfg(feature = "kahler")]
@@ -3259,6 +3276,18 @@ struct BrainEpisodicResponse {
     events: Vec<BrainEpisodicEventWire>,
     n_records: usize,
     threshold_used: f64,
+    /// Echo of the filter, when one was applied. None means the
+    /// scan was bundle-wide (no filter); Some means n_records is
+    /// the post-filter count.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    filter_applied: Option<EpisodicFilterEcho>,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct EpisodicFilterEcho {
+    field: String,
+    value: serde_json::Value,
 }
 
 #[cfg(feature = "kahler")]
@@ -3274,9 +3303,116 @@ async fn brain_episodic_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let samples = extract_field_samples(heap, std::slice::from_ref(&req.field))
-        .map_err(|e| bad_request(&e))?;
-    let values: Vec<f64> = samples.iter().map(|v| v[0]).collect();
+
+    // Validate filter pair: both-or-neither.
+    let filter = match (&req.where_field, &req.where_value) {
+        (Some(f), Some(v)) => Some((f.clone(), v.clone())),
+        (None, None) => None,
+        (Some(_), None) => {
+            return Err(bad_request(
+                "where_field supplied without where_value (both must be present together)",
+            ));
+        }
+        (None, Some(_)) => {
+            return Err(bad_request(
+                "where_value supplied without where_field (both must be present together)",
+            ));
+        }
+    };
+
+    // Find target field position once.
+    let field_idx = heap
+        .schema
+        .fiber_fields
+        .iter()
+        .position(|fd| fd.name == req.field)
+        .ok_or_else(|| {
+            let in_base = heap.schema.base_fields.iter().any(|fd| fd.name == req.field);
+            let avail: Vec<&str> = heap
+                .schema
+                .fiber_fields
+                .iter()
+                .map(|fd| fd.name.as_str())
+                .collect();
+            if in_base {
+                bad_request(&format!(
+                    "field '{}' is a base_field (query key), not a fiber_field. \
+                     /brain/episodic operates on numeric fiber values. \
+                     Available fiber_fields: {:?}",
+                    req.field, avail
+                ))
+            } else {
+                bad_request(&format!(
+                    "field '{}' not in fiber_fields. Available: {:?}",
+                    req.field, avail
+                ))
+            }
+        })?;
+
+    // Find filter-field position if requested.
+    let filter_idx = if let Some((wf, _)) = &filter {
+        let idx = heap
+            .schema
+            .fiber_fields
+            .iter()
+            .position(|fd| fd.name == *wf)
+            .ok_or_else(|| {
+                let in_base = heap.schema.base_fields.iter().any(|fd| fd.name == *wf);
+                let avail: Vec<&str> = heap
+                    .schema
+                    .fiber_fields
+                    .iter()
+                    .map(|fd| fd.name.as_str())
+                    .collect();
+                if in_base {
+                    bad_request(&format!(
+                        "where_field '{}' is a base_field; /brain/episodic per-key \
+                         filter currently supports fiber_fields only. To filter on \
+                         a base_field, query records by that key on your side and \
+                         POST the resulting per-cohort time series.",
+                        wf
+                    ))
+                } else {
+                    bad_request(&format!(
+                        "where_field '{}' not in fiber_fields. Available: {:?}",
+                        wf, avail
+                    ))
+                }
+            })?;
+        Some(idx)
+    } else {
+        None
+    };
+
+    // Walk sections, applying optional filter, collecting values.
+    let mut values: Vec<f64> = Vec::new();
+    for (_bp, rec) in heap.sections() {
+        // Apply filter first.
+        if let (Some(idx), Some((_, wv))) = (filter_idx, filter.as_ref()) {
+            let cell = rec.get(idx).ok_or_else(|| {
+                bad_request("record missing fiber slot for filter field")
+            })?;
+            if !value_matches_json(cell, wv) {
+                continue;
+            }
+        }
+        // Extract the value for the change-point series.
+        let cell = rec
+            .get(field_idx)
+            .ok_or_else(|| bad_request("record missing fiber slot for value field"))?;
+        let v = match cell {
+            gigi::types::Value::Float(x) => *x,
+            gigi::types::Value::Integer(j) => *j as f64,
+            _ => {
+                return Err(bad_request(&format!(
+                    "field '{}' has a non-numeric value in a record (only Float / Integer supported)",
+                    req.field
+                )));
+            }
+        };
+        values.push(v);
+    }
+
     let events = gigi::geometry::episodic_events(&values, req.min_persistence_ratio);
     let wire = events
         .into_iter()
@@ -3290,7 +3426,28 @@ async fn brain_episodic_endpoint(
         events: wire,
         n_records: values.len(),
         threshold_used: req.min_persistence_ratio,
+        filter_applied: filter.map(|(field, value)| EpisodicFilterEcho { field, value }),
     }))
+}
+
+/// Loose equality between a stored `gigi::Value` and a JSON value
+/// supplied in the request body. Supports the variants Marcella
+/// actually uses for filtering (Integer / Float / Text / Bool).
+#[cfg(feature = "kahler")]
+fn value_matches_json(cell: &gigi::types::Value, json: &serde_json::Value) -> bool {
+    match (cell, json) {
+        (gigi::types::Value::Integer(i), serde_json::Value::Number(n)) => n
+            .as_i64()
+            .map(|j| *i == j)
+            .unwrap_or_else(|| n.as_f64().map(|f| (*i as f64 - f).abs() < 1e-12).unwrap_or(false)),
+        (gigi::types::Value::Float(x), serde_json::Value::Number(n)) => n
+            .as_f64()
+            .map(|f| (*x - f).abs() < 1e-12)
+            .unwrap_or(false),
+        (gigi::types::Value::Text(s), serde_json::Value::String(t)) => s == t,
+        (gigi::types::Value::Bool(b), serde_json::Value::Bool(c)) => b == c,
+        _ => false,
+    }
 }
 
 // ─── §11 SEMANTIC ───────────────────────────────────────────

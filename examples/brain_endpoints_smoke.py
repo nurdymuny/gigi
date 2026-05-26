@@ -164,6 +164,25 @@ def main(base: str) -> int:
         for e in resp["events"]:
             print(f"     boundary_idx={e['boundary_idx']}  gap={e['gap']:.3f}  ratio={e['persistence_ratio']:.1f}x")
 
+    # ── §10 EPISODIC w/ filter (L13.5) - per-cohort change-point ──
+    print()
+    print("6a. POST /brain/episodic with where_field filter (L13.5)")
+    code, resp = call(
+        "POST", base, f"/v1/bundles/{bundle}/brain/episodic",
+        body={
+            "field": "y",
+            "min_persistence_ratio": 20.0,
+            "where_field": "x",          # filter records where x ≈ 0.1
+            "where_value": 0.1,
+        },
+        api_key=api_key,
+    )
+    print(f"   episodic filtered -> {code}")
+    if code == 200:
+        print(f"   n_records (post-filter): {resp['n_records']}, events: {len(resp['events'])}")
+        if resp.get('filter_applied'):
+            print(f"   filter_applied: {resp['filter_applied']}")
+
     # ── §11 SEMANTIC ───────────────────────────────────────
     print()
     print("7. GET /brain/semantic - Morse-compressed gist")

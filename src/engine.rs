@@ -1699,6 +1699,59 @@ impl Engine {
             self.mmap_bundles.get_mut(name).unwrap().rebase(new_base, schema);
         }
 
+        // ── Phase 2 ── heap-only bundles get snapshotted too.
+        //
+        // The 2026-05-25 recovery fix (commit 9826f9b) populates
+        // self.bundles with heap-only BundleStores for any schema
+        // that didn't have a .dhoom on disk at startup. Before
+        // this Phase 2, those bundles never got a .dhoom written —
+        // mmap_rebase_snapshot only iterated self.mmap_bundles, so
+        // heap-only bundles stayed WAL-only across restarts and
+        // re-replayed the entire WAL on every boot. Production at
+        // 2026-05-26T01:05 had 61 .dhoom files vs ~4900 logical
+        // bundles; this Phase 2 closes the gap.
+        //
+        // The heap-only bundles stay in self.bundles after writing
+        // their .dhoom — on the next restart, open_mmap picks them
+        // up as mmap_bundles per the standard fast path, so they
+        // participate in the rebase loop above going forward.
+        let heap_names: Vec<String> = self
+            .bundles
+            .iter()
+            .filter(|(name, store)| {
+                !self.mmap_bundles.contains_key(*name) && store.len() > 0
+            })
+            .map(|(name, _)| name.clone())
+            .collect();
+        for name in &heap_names {
+            let store = match self.bundles.get(name) {
+                Some(s) => s,
+                None => continue,
+            };
+            let records: Vec<serde_json::Value> = store
+                .records()
+                .map(|r| record_to_serde_json(&r))
+                .collect();
+            if records.is_empty() {
+                continue;
+            }
+
+            let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+            let tmp_path = snapshots_dir.join(format!("{name}.dhoom.tmp"));
+            {
+                let file = fs::File::create(&tmp_path)?;
+                let buf = io::BufWriter::new(file);
+                let mut encoder =
+                    crate::dhoom::StreamingDhoomEncoder::new(buf, name, 50_000);
+                for val in &records {
+                    encoder.push(val.clone())?;
+                }
+                encoder.finish()?;
+            }
+            fs::rename(&tmp_path, &snap_path)?;
+            eprintln!("  Heap snapshot: {name} ({} records)", records.len());
+        }
+
         self.compact_wal_to_schemas()?;
         Ok(())
     }
@@ -4381,6 +4434,91 @@ mod tests {
         rec.insert("mic".into(), Value::Float(1.0));
         engine.insert("drugs", &rec).unwrap();
         assert_eq!(engine.drain_notifications().len(), 1);
+
+        cleanup(&dir);
+    }
+
+    /// 2026-05-26 auto-snapshot bug regression: when the engine has
+    /// BOTH mmap-backed bundles (with .dhoom on disk) AND heap-only
+    /// bundles (created post the 2026-05-25 recovery), auto-compact
+    /// used to take the mmap_rebase branch which only iterated
+    /// self.mmap_bundles, leaving heap-only bundles WAL-only
+    /// forever. Production at 2026-05-26T01:05 had 61 .dhoom files
+    /// vs ~4900 logical bundles. This test guarantees the fix —
+    /// the Phase 2 in mmap_rebase_snapshot now writes a .dhoom for
+    /// heap-only bundles too.
+    #[test]
+    fn mmap_rebase_also_snapshots_heap_only_bundles() {
+        let dir = test_dir("mmap_rebase_heap");
+        cleanup(&dir);
+
+        // Phase 1 — create bundle A, snapshot it, force the engine
+        // to load it as mmap on the next open.
+        {
+            let mut engine = engine_no_autocompact(&dir);
+            let schema_a = BundleSchema::new("alpha")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("kind"));
+            engine.create_bundle(schema_a).unwrap();
+            for i in 0..30i64 {
+                let mut r = Record::new();
+                r.insert("id".into(), Value::Integer(i));
+                r.insert("kind".into(), Value::Text("a".into()));
+                engine.insert("alpha", &r).unwrap();
+            }
+            engine.cow_snapshot().unwrap();
+        }
+
+        // Phase 2 — reopen via the mmap fast path. Bundle 'alpha'
+        // loads from .dhoom → self.mmap_bundles. Now create a NEW
+        // bundle 'beta' that doesn't have a .dhoom → goes into
+        // self.bundles as heap-only.
+        let mut engine = Engine::open_mmap(&dir).unwrap();
+        let schema_b = BundleSchema::new("beta")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("kind"));
+        engine.create_bundle(schema_b).unwrap();
+        for i in 0..20i64 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("kind".into(), Value::Text("b".into()));
+            engine.insert("beta", &r).unwrap();
+        }
+
+        // Sanity: alpha is mmap, beta is heap (mixed mode).
+        // We don't have direct accessors for mmap_bundles/bundles
+        // (private), but the snapshot files tell the story.
+        let snapshots_dir = dir.join("snapshots");
+        let alpha_dhoom_before = snapshots_dir.join("alpha.dhoom").exists();
+        let beta_dhoom_before = snapshots_dir.join("beta.dhoom").exists();
+        assert!(alpha_dhoom_before, "alpha.dhoom should exist before rebase");
+        assert!(
+            !beta_dhoom_before,
+            "beta.dhoom should NOT exist before rebase (heap-only)"
+        );
+
+        // Phase 3 — set the checkpoint to fire immediately, push
+        // a single insert to trigger auto-compact, then verify
+        // BOTH bundles have .dhoom files. Before the fix beta
+        // would be skipped because mmap_rebase_snapshot only
+        // iterated self.mmap_bundles.
+        engine.set_checkpoint_interval(1);
+        engine.compaction_policy_mut().disabled = false;
+        engine.compaction_policy_mut().max_wal_entries = 1; // force trigger
+        engine.compaction_policy_mut().min_interval_secs = 0;
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Integer(999));
+        r.insert("kind".into(), Value::Text("trigger".into()));
+        engine.insert("alpha", &r).unwrap(); // any insert → maybe_checkpoint → maybe_auto_compact
+
+        let alpha_dhoom_after = snapshots_dir.join("alpha.dhoom").exists();
+        let beta_dhoom_after = snapshots_dir.join("beta.dhoom").exists();
+        assert!(alpha_dhoom_after, "alpha.dhoom should still exist after rebase");
+        assert!(
+            beta_dhoom_after,
+            "REGRESSION: beta.dhoom must exist after rebase \
+             (was the bug — heap-only bundles were skipped)"
+        );
 
         cleanup(&dir);
     }

@@ -4206,6 +4206,178 @@ async fn brain_confidence_endpoint(
     }))
 }
 
+// ─── confidence_with_explain (S1 wave 1, Marcella P0 #3 unblock) ─
+//
+// Combined endpoint that returns BOTH /brain/confidence (Gaussian-
+// kernel density) AND /brain/explain (interpolation path to nearest
+// known record) in one call. Marcella's refuse-gate hits both per
+// turn; combining saves a round trip + one record walk + lets us
+// share the cached fit/bandwidth in a single response.
+//
+// Why this exists: refuse-gate runs every conversational turn,
+// must complete in <50ms total. Two separate HTTP round trips
+// (each ~5-15ms network + processing) + two separate record walks
+// (each O(N·n) over the same samples) is wasteful. Combining
+// halves the network cost and the record-walk cost.
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainConfidenceWithExplainRequest {
+    fields: Vec<String>,
+    /// Query point — length must equal `fields.len()`.
+    query: Vec<f64>,
+    /// Kernel bandwidth for confidence. Default √σ² from fit.
+    #[serde(default)]
+    bandwidth: Option<f64>,
+    /// Interpolation resolution for explain path. Default 10
+    /// (returns 11 points: start + 10 forward toward target).
+    #[serde(default = "default_explain_n_steps")]
+    n_steps: usize,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainConfidenceWithExplainResponse {
+    // ── Confidence side — field names MATCH /brain/confidence
+    //    verbatim (raw, normalized, bandwidth) so consumers can
+    //    treat this endpoint as a strict superset. Per Marcella's
+    //    2026-05-27 wire-shape verification: her refuse-gate code
+    //    indexes resp["raw"], resp["nearest_index"],
+    //    resp["nearest_distance"] at top level — this layout
+    //    gives her exactly that.
+    /// Σᵢ exp(−‖q−xᵢ‖²/2σ²) — raw Bayesian-precision proxy.
+    raw: f64,
+    /// raw / max_density — ratio to densest sample point.
+    normalized: f64,
+    /// Bandwidth actually used (request or derived from fit).
+    bandwidth: f64,
+
+    // ── Explain side — field names MATCH /brain/explain
+    //    verbatim (query, nearest_record, nearest_index,
+    //    nearest_distance, path, n_steps).
+    /// Query echo.
+    query: Vec<f64>,
+    /// Nearest record's fiber values (None if no records).
+    nearest_record: Option<Vec<f64>>,
+    /// Nearest record's iteration index.
+    nearest_index: Option<usize>,
+    /// Euclidean distance query → nearest.
+    nearest_distance: f64,
+    /// `n_steps + 1` interpolation points from query → nearest.
+    path: Vec<Vec<f64>>,
+    /// Step count actually used.
+    n_steps: usize,
+
+    // ── Shared diagnostics ─────────────────────────────────
+    /// Number of records with all requested fields present.
+    /// Single key (vs `confidence.n_samples` + `explain.n_samples`)
+    /// because the two ops share the same sample extraction.
+    n_samples: usize,
+    /// Bundle's mutation counter at the time of the response.
+    /// Same value as the X-Bundle-Mutation-Counter header.
+    counter_at_fit: u64,
+}
+
+/// POST /v1/bundles/{name}/brain/confidence_with_explain
+///
+/// Combined refuse-gate endpoint. Returns both Gaussian-kernel
+/// confidence and explain-path trace from a single record walk +
+/// cached fit lookup. Saves a network round trip + one O(N·n)
+/// record walk vs calling /brain/confidence and /brain/explain
+/// separately.
+#[cfg(feature = "kahler")]
+async fn brain_confidence_with_explain_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainConfidenceWithExplainRequest>,
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainConfidenceWithExplainResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    if req.query.len() != req.fields.len() {
+        return Err(bad_request(&format!(
+            "query length {} ≠ fields length {}",
+            req.query.len(),
+            req.fields.len()
+        )));
+    }
+
+    // Extract field samples ONCE — both ops share this.
+    let samples = extract_field_samples(heap, &req.fields)
+        .map_err(|e| bad_request(&e))?;
+
+    // Bandwidth: request value if positive, else derive from
+    // isotropic fit (cached path — sub-µs warm).
+    let bandwidth = match req.bandwidth {
+        Some(b) if b > 0.0 => b,
+        _ => {
+            let (_, counter_at_fit) = flow_from_bundle_cached(
+                &state,
+                &name,
+                heap,
+                &req.fields,
+                FitMode::Isotropic,
+                None,
+            )?;
+            // The cached fit's sigma_sq is what we need; rebuild
+            // ctx via the cache (cheap closure construction).
+            // Re-fetch the cached entry directly to avoid building
+            // a flow we won't use.
+            let key = CacheKey::build(&name, FitMode::Isotropic, &req.fields, None);
+            let cached = state.flow_cache.get(&key, counter_at_fit).ok_or_else(|| {
+                bad_request(
+                    "confidence_with_explain: cache lookup failed post-fit; this is a bug",
+                )
+            })?;
+            cached.sigma_sq.sqrt().max(1e-9)
+        }
+    };
+
+    // Read counter for the response header. Use the bundle's
+    // current value (the fit may have been a cache hit at a
+    // possibly-older counter, but for the X-Bundle-Mutation-Counter
+    // header we want the *current* counter so consumers know
+    // whether their warm path is still consistent with what we
+    // just served).
+    let counter_at_fit = heap.mutation_counter();
+
+    // Confidence (shares `samples`).
+    let confidence_raw =
+        gigi::geometry::kernel_density_confidence(&samples, &req.query, bandwidth);
+    let confidence_normalized =
+        gigi::geometry::confidence_normalized(&samples, &req.query, bandwidth);
+
+    // Explain (shares `samples`).
+    let exp = gigi::geometry::explain(&samples, &req.query, req.n_steps);
+
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainConfidenceWithExplainResponse {
+            raw: confidence_raw,
+            normalized: confidence_normalized,
+            bandwidth,
+            query: exp.query,
+            nearest_record: exp.nearest_record,
+            nearest_index: exp.nearest_index,
+            nearest_distance: exp.nearest_distance,
+            path: exp.path,
+            n_steps: exp.n_steps,
+            n_samples: samples.len(),
+            counter_at_fit,
+        }),
+    ))
+}
+
 // ─── §8 ATTEND ──────────────────────────────────────────────
 
 #[cfg(feature = "kahler")]
@@ -11019,6 +11191,13 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/brain/distance_to_fit_mean",
             post(brain_distance_to_fit_mean_endpoint),
+        )
+        // S1 wave 1 — combined confidence + explain for Marcella's
+        // refuse-gate (P0 #3). One record walk + one network call
+        // instead of two of each.
+        .route(
+            "/v1/bundles/{name}/brain/confidence_with_explain",
+            post(brain_confidence_with_explain_endpoint),
         );
 
     let app = app

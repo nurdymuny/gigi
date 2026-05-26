@@ -3079,6 +3079,24 @@ struct CachedFit {
 #[cfg(feature = "kahler")]
 pub struct BundleFlowCache {
     inner: std::sync::RwLock<std::collections::HashMap<CacheKey, CachedFit>>,
+    /// Per-key compute locks for single-flight deduplication on cache
+    /// miss. Per Marcella's 2026-05-27 check #1a: without this, N
+    /// concurrent cache misses on the same key all perform the full
+    /// (~3s at n=384) fit computation, only the last winning the
+    /// race; N-1 of those are wasted CPU.
+    ///
+    /// Pattern: cache miss → acquire per-key lock (blocks if another
+    /// thread holds it) → re-check main cache (the prior holder may
+    /// have just inserted) → if still missing, compute + insert + drop
+    /// the lock. Other waiters re-check on acquire and find the entry.
+    ///
+    /// The Arc<Mutex<()>> holds the actual lock; the outer Mutex
+    /// guards the map structure itself. Map mutations are brief
+    /// (Mutex::lock + HashMap::entry); only the actual fit work
+    /// holds the inner per-key Mutex.
+    compute_locks: std::sync::Mutex<
+        std::collections::HashMap<CacheKey, std::sync::Arc<std::sync::Mutex<()>>>,
+    >,
     max_entries: usize,
 }
 
@@ -3087,8 +3105,47 @@ impl BundleFlowCache {
     pub fn new(max_entries: usize) -> Self {
         BundleFlowCache {
             inner: std::sync::RwLock::new(std::collections::HashMap::new()),
+            compute_locks: std::sync::Mutex::new(std::collections::HashMap::new()),
             max_entries: max_entries.max(1),
         }
+    }
+
+    /// Single-flight: acquire (or create) the per-key compute lock.
+    /// Returns an Arc<Mutex<()>> the caller holds for the duration of
+    /// the compute. Subsequent callers with the same key BLOCK on
+    /// this Mutex until the first releases it — at which point they
+    /// re-check the main cache and (if a fit was inserted) skip the
+    /// compute.
+    ///
+    /// The outer Mutex on `compute_locks` is held only briefly to
+    /// look up or insert the per-key Arc. The actual compute happens
+    /// under the per-key Mutex, with the outer Mutex released. So
+    /// concurrent cold misses on DIFFERENT keys do not contend.
+    fn acquire_compute_lock(
+        &self,
+        key: &CacheKey,
+    ) -> std::sync::Arc<std::sync::Mutex<()>> {
+        let mut locks = match self.compute_locks.lock() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        locks
+            .entry(key.clone())
+            .or_insert_with(|| std::sync::Arc::new(std::sync::Mutex::new(())))
+            .clone()
+    }
+
+    /// Release the per-key compute lock entry from the lookup map.
+    /// Called by the thread that successfully computed + inserted,
+    /// after dropping its hold on the per-key Mutex. Other waiters
+    /// will find their queued lock acquire succeed and then re-check
+    /// the main cache — finding the entry — and skip recompute.
+    fn release_compute_lock(&self, key: &CacheKey) {
+        let mut locks = match self.compute_locks.lock() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        locks.remove(key);
     }
 
     /// Hot path lookup. Returns Some only if the cached fit's
@@ -4933,7 +4990,8 @@ fn flow_from_bundle_cached(
     let counter = store.mutation_counter();
     let key = CacheKey::build(bundle_name, fit_mode, fields, sigma_floor_epsilon);
 
-    // Hot path: cache lookup.
+    // Hot path: cache lookup. Lock-free read; no contention with
+    // concurrent hits.
     if let Some(cached) = state.flow_cache.get(&key, counter) {
         state.metrics.record_brain_cache_hit();
         let ctx = build_ctx_from_cached(&cached, fit_mode, n, b.clone())
@@ -4941,28 +4999,63 @@ fn flow_from_bundle_cached(
         return Ok((ctx, counter));
     }
 
-    // Cache miss: compute and insert. We re-load the counter
-    // right before computing so a concurrent insert during the
-    // fit walk gets noticed on the next call (a stale fit
-    // computed against a moving target will still get evicted
-    // by the next mutation_counter mismatch — correctness
-    // preserved).
+    // Cache miss path with single-flight (per Marcella's 2026-05-27
+    // check #1a). Without this, N concurrent misses on the same key
+    // perform N independent fits and the last wins — N-1 wasted.
+    //
+    // Pattern:
+    //   1. Acquire per-key compute lock. If another thread is mid-
+    //      compute, BLOCK here until they finish + release.
+    //   2. After acquire, re-check the main cache. The thread that
+    //      held the lock before us may have just inserted; serve
+    //      from cache and skip compute.
+    //   3. If still missing, compute + insert. Hold the per-key
+    //      lock for the duration so other waiters serialize.
+    //   4. Release the per-key lock entry so it doesn't accumulate.
+    let compute_lock_arc = state.flow_cache.acquire_compute_lock(&key);
+    let _compute_guard = match compute_lock_arc.lock() {
+        Ok(g) => g,
+        Err(p) => p.into_inner(),
+    };
+
+    // Re-check after acquiring the lock — another thread may have
+    // computed + inserted while we were blocked.
+    if let Some(cached) = state.flow_cache.get(&key, counter) {
+        // Single-flight saved a redundant compute.
+        state.metrics.record_brain_cache_hit();
+        let ctx = build_ctx_from_cached(&cached, fit_mode, n, b.clone())
+            .map_err(|e| bad_request(&e))?;
+        // Release the compute lock entry (we held it briefly but
+        // didn't compute). Best-effort cleanup; if another thread
+        // is queued behind, they'll just see the same cached entry.
+        state.flow_cache.release_compute_lock(&key);
+        return Ok((ctx, counter));
+    }
+
+    // True cache miss: compute and insert.
     state.metrics.record_brain_cache_miss();
     let counter_at_fit = store.mutation_counter();
     let fit_start = std::time::Instant::now();
     let cached = compute_fit_data(store, fields, fit_mode, sigma_floor_epsilon, counter_at_fit)
-        .map_err(|e| bad_request(&e))?;
+        .map_err(|e| {
+            // Release compute lock on error so the next caller can retry.
+            state.flow_cache.release_compute_lock(&key);
+            bad_request(&e)
+        })?;
     let fit_us = fit_start.elapsed().as_micros() as u64;
     state.metrics.record_brain_timing(fit_us, 0);
 
-    let ctx = build_ctx_from_cached(&cached, fit_mode, n, b)
-        .map_err(|e| bad_request(&e))?;
-    // Eviction count is bumped inside cache.insert when it actually
-    // evicts; we hook into that path via metrics passed to insert.
-    let evicted = state.flow_cache.insert_with_eviction_hint(key, cached);
+    let ctx = build_ctx_from_cached(&cached, fit_mode, n, b).map_err(|e| {
+        state.flow_cache.release_compute_lock(&key);
+        bad_request(&e)
+    })?;
+    let evicted = state.flow_cache.insert_with_eviction_hint(key.clone(), cached);
     if evicted {
         state.metrics.record_brain_cache_eviction();
     }
+    // Drop the per-key compute lock entry. Other waiters will find
+    // the new cache entry on their re-check after our lock release.
+    state.flow_cache.release_compute_lock(&key);
     Ok((ctx, counter_at_fit))
 }
 

@@ -3688,6 +3688,200 @@ async fn brain_sample_endpoint(
     ))
 }
 
+// ─── fit_diagnostics (S1 wave 1 §G) ─────────────────────────
+//
+// Per Marcella's 2026-05-26 H2 attractor letter §Asks + her
+// 2026-05-27 G-side adjustment: return the FULL eigenvalue
+// spectrum (not summary stats) so consumers can see the
+// distribution shape — heavy tail (real signal, H1) vs sharp
+// cliff (diagonal-fit pathology, H2). 3KB at n=384, tiny.
+//
+// Uses the cache path: fit_diagnostics on a bundle with a warm
+// cache returns sub-µs; cold path = ~3s at n=384 (same cost as
+// the other brain endpoints' first call after invalidation).
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainFitDiagnosticsRequest {
+    fields: Vec<String>,
+    /// Fit mode to inspect. Defaults to isotropic; pass "full" to
+    /// get the eigenvalue spectrum (the H1-vs-H2 diagnostic).
+    #[serde(default)]
+    fit_mode: Option<FitMode>,
+    /// Relative-median ε floor for diagonal AND eigenvalue floors.
+    /// Default 1e-3 per L13.6 (diagonal) and S1 §2a (eigenvalue).
+    /// Pass 0 to disable relative flooring (absolute Euler-
+    /// stability floor remains).
+    #[serde(default)]
+    sigma_floor_epsilon: Option<f64>,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainFitDiagnosticsResponse {
+    /// Echo of the fit mode actually used.
+    fit_mode_used: String,
+    /// Number of dimensions (== `fields.len()`).
+    dim: usize,
+
+    // ── Mean ────────────────────────────────────────────────
+    /// Fit_mean vector (length = dim).
+    fit_mean: Vec<f64>,
+    /// L2 norm of fit_mean. Marcella's H2 §Asks Diagnostic 3
+    /// uses this to compare against record distances: if a
+    /// specific record (e.g. `double_cover_v3`) sits unusually
+    /// close to fit_mean it's at the deep point of the
+    /// fitted Gaussian — the H2 mechanism.
+    fit_mean_norm: f64,
+
+    // ── Per-axis variance (diagonal of Σ) ──────────────────
+    /// Per-axis raw variance (pre-floor).
+    variance_per_dim_raw: Vec<f64>,
+    /// Per-axis effective variance (post-diagonal-floor).
+    variance_per_dim_effective: Vec<f64>,
+    /// Effective floor applied to per-axis variance.
+    variance_floor_used: f64,
+    /// Indices in `fields` whose raw variance was below floor.
+    floored_diagonal_indices: Vec<usize>,
+    /// Ratio max(σ²)/min(σ²) of the diagonal entries after floor.
+    /// First-pass H2 diagnostic — high ratio is suggestive.
+    variance_ratio: f64,
+
+    // ── Eigenvalue spectrum (Full fit only) ────────────────
+    //
+    // The load-bearing H1-vs-H2 diagnostic per Marcella's
+    // 2026-05-27 G-side ask. Empty for Isotropic/Diagonal
+    // (those don't compute eigendecomposition).
+    /// Eigenvalues of Σ BEFORE flooring, sorted descending.
+    /// Length = dim for Full; empty otherwise.
+    eigenvalues_raw: Vec<f64>,
+    /// Eigenvalues AFTER flooring. Length = dim for Full; empty
+    /// otherwise.
+    eigenvalues_effective: Vec<f64>,
+    /// Eigenvalue floor used (max of ε·median(λ), absolute
+    /// stability floor). 0 for non-Full modes.
+    eigenvalue_floor_used: f64,
+    /// How many eigenvalues got clipped. Non-zero is H2.
+    n_floored_eigenvalues: usize,
+    /// λ_max / λ_min post-floor. Bounded above by 1/ε for the
+    /// effective-fit case. Infinity if not yet computed.
+    condition_number: f64,
+
+    // ── Provenance ─────────────────────────────────────────
+    /// Bundle's mutation counter at the time this fit was
+    /// computed. Surfaced in the response BODY (also in the
+    /// X-Bundle-Mutation-Counter header) so consumers reading
+    /// the JSON / DHOOM payload directly can stamp warmth
+    /// without needing header access.
+    counter_at_fit: u64,
+    /// Was this fit served from cache?
+    cache_hit: bool,
+}
+
+/// POST /v1/bundles/{name}/brain/fit_diagnostics
+///
+/// Per Marcella's H2 attractor letter — returns the full
+/// diagnostic shape of the Gaussian fit on the given bundle +
+/// fields + fit_mode + floor, including the eigenvalue spectrum
+/// for the H1-vs-H2 verdict.
+///
+/// Uses the BundleFlowCache: cache hit serves the diagnostic
+/// payload from cached fit data (sub-µs); cache miss computes
+/// the fit (one record walk + Cholesky/eigendecomp).
+#[cfg(feature = "kahler")]
+async fn brain_fit_diagnostics_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainFitDiagnosticsRequest>,
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainFitDiagnosticsResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+
+    let fit_mode = req.fit_mode.unwrap_or_default();
+    let counter_before = heap.mutation_counter();
+    let key = CacheKey::build(&name, fit_mode, &req.fields, req.sigma_floor_epsilon);
+    let cache_hit_initial = state.flow_cache.get(&key, counter_before).is_some();
+
+    // Route through the cache so we don't double-compute.
+    let (_, counter_at_fit) = flow_from_bundle_cached(
+        &state,
+        &name,
+        heap,
+        &req.fields,
+        fit_mode,
+        req.sigma_floor_epsilon,
+    )?;
+
+    // After the call we KNOW the cache has the entry. Read it
+    // directly to extract the diagnostic-shaped data.
+    let cached = state
+        .flow_cache
+        .get(&key, counter_at_fit)
+        .ok_or_else(|| {
+            bad_request("fit_diagnostics: cache lookup failed post-fit; this is a bug")
+        })?;
+
+    let fit_mode_used = match fit_mode {
+        FitMode::Isotropic => "isotropic",
+        FitMode::Diagonal => "diagonal",
+        FitMode::Full => "full",
+    }
+    .to_string();
+
+    let fit_mean_vec = (*cached.mu).clone();
+    let fit_mean_norm = fit_mean_vec
+        .iter()
+        .map(|x| x * x)
+        .sum::<f64>()
+        .sqrt();
+
+    // Eigenvalues are only populated for Full; empty Vec for
+    // other modes (consumers get a stable shape).
+    let eigenvalues_raw = cached
+        .eigenvalues_raw
+        .as_ref()
+        .map(|a| (**a).clone())
+        .unwrap_or_default();
+    let eigenvalues_effective = cached
+        .eigenvalues_effective
+        .as_ref()
+        .map(|a| (**a).clone())
+        .unwrap_or_default();
+
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainFitDiagnosticsResponse {
+            fit_mode_used,
+            dim: req.fields.len(),
+            fit_mean: fit_mean_vec,
+            fit_mean_norm,
+            variance_per_dim_raw: (*cached.sigma_sq_per_field_raw).clone(),
+            variance_per_dim_effective: (*cached.sigma_sq_per_field).clone(),
+            variance_floor_used: cached.effective_floor,
+            floored_diagonal_indices: (*cached.floored_indices).clone(),
+            variance_ratio: cached.variance_ratio,
+            eigenvalues_raw,
+            eigenvalues_effective,
+            eigenvalue_floor_used: cached.eigenvalue_floor_used,
+            n_floored_eigenvalues: cached.floored_eigenvalue_count,
+            condition_number: cached.condition_number,
+            counter_at_fit,
+            cache_hit: cache_hit_initial,
+        }),
+    ))
+}
+
 // ─── §12 SELF-MONITOR (confidence) ──────────────────────────
 
 #[cfg(feature = "kahler")]
@@ -10538,6 +10732,15 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/brain/predict",
             post(brain_predict_endpoint),
+        )
+        // S1 wave 1 §G — fit_diagnostics, the H2-vs-H1 verdict
+        // endpoint. Returns full eigenvalue spectrum + per-axis
+        // variance + fit_mean for any (bundle, fit_mode, fields,
+        // sigma_floor_epsilon) configuration. Uses the
+        // BundleFlowCache so warm calls are sub-µs.
+        .route(
+            "/v1/bundles/{name}/brain/fit_diagnostics",
+            post(brain_fit_diagnostics_endpoint),
         );
 
     let app = app

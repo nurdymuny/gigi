@@ -2906,6 +2906,9 @@ fn extract_field_samples(
 /// Which fit to use when building a generative flow from a bundle.
 /// L13.3 ships the `Diagonal` variant per Marcella's Finding 3 —
 /// anisotropic per-axis σ² instead of a single averaged scalar.
+/// S1 (2026-05-26) adds `Full` per Marcella's H2 attractor letter:
+/// captures inter-axis correlation that the diagonal model ignores
+/// — required to diffuse the `double_cover_v3` attractor on bge_v2.
 #[cfg(feature = "kahler")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -2913,6 +2916,7 @@ enum FitMode {
     #[default]
     Isotropic,
     Diagonal,
+    Full,
 }
 
 /// Default relative-median ε floor for diagonal fit. Per Marcella
@@ -3022,6 +3026,203 @@ fn fit_diagonal_gaussian(
         sigma_sq_effective,
         effective_floor,
         floored_indices,
+    })
+}
+
+/// Full-covariance fit result. Carries μ, the full Σ matrix
+/// (so consumers can introspect), the precision Σ⁻¹ (so the
+/// gradient eval is a single matvec), and diagnostic info about
+/// the conditioning of the fit.
+#[cfg(feature = "kahler")]
+struct FullFitResult {
+    mu: Vec<f64>,
+    /// Full n×n covariance matrix in row-major Vec<Vec<f64>>.
+    covariance: Vec<Vec<f64>>,
+    /// Precision matrix Σ⁻¹ — used by the Langevin gradient.
+    precision: Vec<Vec<f64>>,
+    /// Per-axis variances (diagonal of Σ, post-floor).
+    sigma_sq_per_field: Vec<f64>,
+    /// Per-axis RAW variances (diagonal of Σ, pre-floor).
+    sigma_sq_per_field_raw: Vec<f64>,
+    /// Diagonal floor applied (analog of L13.6's σ² floor).
+    effective_floor: f64,
+    /// Diagonal indices floored (rank-deficient axes).
+    floored_indices: Vec<usize>,
+    /// Ratio of largest to smallest diagonal entry after flooring.
+    /// Useful for the fit_diagnostics endpoint and H2 detection.
+    variance_ratio: f64,
+}
+
+/// Full-covariance Gaussian fit per Marcella's 2026-05-26 H2
+/// attractor letter. The diagonal fit on semantic embedding bundles
+/// produces universal attractors because it can't represent inter-
+/// axis correlation; this fit captures the full Σ via two passes
+/// over the records, applies the same L13.6-style diagonal floor
+/// for numerical stability, then inverts via Cholesky to get the
+/// precision matrix Σ⁻¹.
+///
+/// Algorithm:
+///   1. Pass 1: μᵢ = mean of field i (from Welford stats, free).
+///   2. Pass 2: Σ_ij = (1/(N-1)) Σ_k (x_ki − μᵢ)(x_kj − μⱼ).
+///   3. Apply diagonal floor: Σ_ii ← max(Σ_ii, ε · median(diag)).
+///   4. Cholesky-decompose Σ; compute Σ⁻¹ via the factor.
+///
+/// Returns FullFitResult with Σ, Σ⁻¹, and diagnostics.
+#[cfg(feature = "kahler")]
+fn fit_full_gaussian(
+    store: &gigi::BundleStore,
+    fields: &[String],
+    floor_epsilon: f64,
+) -> Result<FullFitResult, String> {
+    // Pass 1: mean from Welford stats (already computed, free).
+    let stats = store.field_stats();
+    let mut mu = Vec::with_capacity(fields.len());
+    for f in fields {
+        let s = stats.get(f).ok_or_else(|| {
+            let in_base = store.schema.base_fields.iter().any(|fd| fd.name == *f);
+            let available: Vec<&str> = stats.keys().map(|k| k.as_str()).collect();
+            if in_base {
+                format!(
+                    "field '{}' is a base_field (query key); brain endpoints only \
+                     fit Gaussians on numeric fiber_fields. Available stats: {:?}",
+                    f, available
+                )
+            } else {
+                format!(
+                    "no Welford stats for field '{}'. Available stats: {:?} \
+                     (brain endpoints require numeric fiber fields)",
+                    f, available
+                )
+            }
+        })?;
+        if s.count == 0 {
+            return Err(format!("field '{}' has no observations", f));
+        }
+        mu.push(s.sum / s.count as f64);
+    }
+
+    let n = fields.len();
+
+    // Pass 2: walk records, accumulate Σ. For N records, n fields:
+    // O(N·n²) memory-light (one record at a time). bge_v2 with
+    // N=9964 and (say) n=10 fields = ~10⁶ ops, sub-second. For
+    // n=384 (full embedding) ~1.5G ops ~1-2s. Both acceptable.
+    let mut cov = vec![vec![0.0_f64; n]; n];
+    let mut n_obs = 0_usize;
+    for record in store.records() {
+        // Extract this record's field values into a deviation vector.
+        // Records may be sparse — skip any record missing any field
+        // (matches the existing fit_isotropic / fit_diagonal logic
+        // which relies on Welford stats over present-only values).
+        let mut dx = Vec::with_capacity(n);
+        let mut all_present = true;
+        for (i, f) in fields.iter().enumerate() {
+            match record.get(f) {
+                Some(gigi::Value::Float(v)) => dx.push(v - mu[i]),
+                Some(gigi::Value::Integer(v)) => dx.push((*v as f64) - mu[i]),
+                _ => {
+                    all_present = false;
+                    break;
+                }
+            }
+        }
+        if !all_present {
+            continue;
+        }
+        for i in 0..n {
+            for j in 0..n {
+                cov[i][j] += dx[i] * dx[j];
+            }
+        }
+        n_obs += 1;
+    }
+    if n_obs < 2 {
+        return Err(format!(
+            "full-covariance fit requires ≥ 2 records with ALL {} fields present; \
+             found {} (sparse records were skipped)",
+            n, n_obs
+        ));
+    }
+    // Sample covariance: divide by (N − 1).
+    let denom = (n_obs - 1) as f64;
+    for i in 0..n {
+        for j in 0..n {
+            cov[i][j] /= denom;
+        }
+    }
+
+    // Diagonal floor — analog of L13.6 for the diagonal entries
+    // of Σ. Off-diagonal entries are NOT floored (they can legitimately
+    // be ~0 for uncorrelated axes). Same composition as fit_diagonal:
+    // relative ε·median floor + absolute Euler-stability floor.
+    let sigma_sq_per_field_raw: Vec<f64> = (0..n).map(|i| cov[i][i].max(0.0)).collect();
+    let mut sorted = sigma_sq_per_field_raw.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let median = sorted[sorted.len() / 2].max(1e-12);
+    let relative_floor = if floor_epsilon > 0.0 {
+        floor_epsilon * median
+    } else {
+        0.0
+    };
+    const ABSOLUTE_STABILITY_FLOOR: f64 = 3.0 * 0.01;
+    let effective_floor = relative_floor.max(ABSOLUTE_STABILITY_FLOOR).max(1e-12);
+
+    let mut floored_indices = Vec::new();
+    for i in 0..n {
+        if cov[i][i] < effective_floor {
+            floored_indices.push(i);
+            cov[i][i] = effective_floor;
+        }
+    }
+    let sigma_sq_per_field: Vec<f64> = (0..n).map(|i| cov[i][i]).collect();
+
+    let var_max = sigma_sq_per_field.iter().cloned().fold(0.0_f64, f64::max);
+    let var_min = sigma_sq_per_field
+        .iter()
+        .cloned()
+        .fold(f64::INFINITY, f64::min);
+    let variance_ratio = if var_min > 0.0 { var_max / var_min } else { f64::INFINITY };
+
+    // Cholesky-invert Σ → Σ⁻¹. nalgebra is already a dep; we build
+    // a DMatrix view from the row-major Vec<Vec<f64>>, Cholesky-
+    // decompose, then call .inverse() on the factor (which returns
+    // the full inverse via back-substitution).
+    let mut cov_flat = Vec::with_capacity(n * n);
+    for i in 0..n {
+        for j in 0..n {
+            cov_flat.push(cov[i][j]);
+        }
+    }
+    let mat = nalgebra::DMatrix::from_row_slice(n, n, &cov_flat);
+    let chol = nalgebra::Cholesky::new(mat).ok_or_else(|| {
+        format!(
+            "covariance matrix is not positive-definite after diagonal floor \
+             (eigenvalue test failed). variance_ratio = {:.2e}, \
+             n_floored = {}/{}. Try increasing sigma_floor_epsilon or use \
+             fewer correlated fields.",
+            variance_ratio,
+            floored_indices.len(),
+            n
+        )
+    })?;
+    let precision_mat = chol.inverse();
+    // Pack Σ⁻¹ back into Vec<Vec<f64>>.
+    let mut precision = vec![vec![0.0_f64; n]; n];
+    for i in 0..n {
+        for j in 0..n {
+            precision[i][j] = precision_mat[(i, j)];
+        }
+    }
+
+    Ok(FullFitResult {
+        mu,
+        covariance: cov,
+        precision,
+        sigma_sq_per_field,
+        sigma_sq_per_field_raw,
+        effective_floor,
+        floored_indices,
+        variance_ratio,
     })
 }
 
@@ -3158,6 +3359,7 @@ async fn brain_sample_endpoint(
     let fit_mode_used = match ctx.fit_mode {
         FitMode::Isotropic => "isotropic",
         FitMode::Diagonal => "diagonal",
+        FitMode::Full => "full",
     }
     .to_string();
     Ok(Json(BrainSampleResponse {
@@ -3834,6 +4036,58 @@ fn flow_from_bundle(
                 sigma_sq: scalar_sigma_sq,
                 sigma_sq_per_field: fit.sigma_sq_effective,
                 sigma_sq_per_field_raw: fit.sigma_sq_raw,
+                effective_floor: fit.effective_floor,
+                floored_indices: fit.floored_indices,
+                dim: n,
+                fit_mode,
+            })
+        }
+        FitMode::Full => {
+            // S1 — full-covariance fit per Marcella's H2 attractor letter.
+            // Captures inter-axis correlation that diagonal model ignores.
+            let epsilon = sigma_floor_epsilon.unwrap_or(DEFAULT_SIGMA_FLOOR_EPSILON);
+            if epsilon < 0.0 {
+                return Err(bad_request(
+                    "sigma_floor_epsilon must be ≥ 0 (0 disables relative floor)",
+                ));
+            }
+            let fit = fit_full_gaussian(store, fields, epsilon)
+                .map_err(|e| bad_request(&e))?;
+            let scalar_sigma_sq =
+                fit.sigma_sq_per_field.iter().sum::<f64>()
+                    / fit.sigma_sq_per_field.len() as f64;
+            // Move precision and mu into the gradient closure. The
+            // gradient is Σ⁻¹(x − μ) — single matvec per Langevin step.
+            let mu_for_grad = fit.mu.clone();
+            let precision_for_grad = fit.precision.clone();
+            let n_for_grad = n;
+            let grad: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync> =
+                Box::new(move |x: &[f64]| -> Vec<f64> {
+                    // dx = x − μ
+                    let dx: Vec<f64> = x
+                        .iter()
+                        .zip(mu_for_grad.iter())
+                        .map(|(xi, mi)| xi - mi)
+                        .collect();
+                    // Σ⁻¹ · dx
+                    (0..n_for_grad)
+                        .map(|i| {
+                            precision_for_grad[i]
+                                .iter()
+                                .zip(dx.iter())
+                                .map(|(p, d)| p * d)
+                                .sum()
+                        })
+                        .collect()
+                });
+            let flow = gigi::geometry::GenerativeFlow::new(b, grad)
+                .map_err(|e| bad_request(&format!("{}", e)))?;
+            Ok(BundleFlowCtx {
+                flow,
+                mu: fit.mu,
+                sigma_sq: scalar_sigma_sq,
+                sigma_sq_per_field: fit.sigma_sq_per_field,
+                sigma_sq_per_field_raw: fit.sigma_sq_per_field_raw,
                 effective_floor: fit.effective_floor,
                 floored_indices: fit.floored_indices,
                 dim: n,

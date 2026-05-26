@@ -465,6 +465,91 @@ pub fn from_diagonal_gaussian(
     GenerativeFlow::new(b, grad)
 }
 
+/// Convenience: build a generative flow whose Hamiltonian is the
+/// negative-log-density of a *full-covariance* Gaussian
+/// `N(μ, Σ)` — captures cross-axis correlation that the diagonal
+/// fit ignores.
+///
+/// `∇H(x) = Σ⁻¹ (x - μ)` — the precision matrix `Σ⁻¹` is the
+/// inverse covariance. We accept the precision directly (not Σ) so
+/// the gradient evaluation in the inner Langevin loop is a single
+/// matrix-vector multiply with no per-step factorization.
+///
+/// **Why this exists** (per Marcella's 2026-05-26 H2 attractor
+/// letter). The diagonal-Gaussian fit on `bge_v2` (9964 records,
+/// 384 dims) produces a universal attractor at temperature T ≥ 0.3:
+/// `double_cover_v3` pulls every Langevin seed regardless of prompt.
+/// The hypothesis (H2): the diagonal model can't represent the
+/// inter-axis correlation that creates a deep, narrow joint minimum;
+/// a full-covariance fit should capture the correlated directions
+/// and diffuse the attractor.
+///
+/// Caller is responsible for ensuring `precision` is symmetric and
+/// positive-definite (typically by inverting a covariance matrix
+/// computed from records, optionally with a diagonal floor for
+/// numerical stability — analog of L13.6's σ² floor). We validate:
+/// dimensions match, matrix is square, diagonal entries are
+/// positive (necessary-but-not-sufficient PD check; full PD via
+/// Cholesky is the caller's responsibility).
+///
+/// Math note: this is still Friston's FEP at temperature T = 1 —
+/// `p ∝ exp(-H)` with `H(x) = ½ (x − μ)ᵀ Σ⁻¹ (x − μ)`. The
+/// diagonal variant is the special case where Σ⁻¹ is diagonal; the
+/// isotropic variant is the further special case where it's a
+/// scalar multiple of identity.
+pub fn from_full_gaussian(
+    b: ClosedTwoForm,
+    mu: Vec<f64>,
+    precision: Vec<Vec<f64>>,
+) -> Result<GenerativeFlow<impl Fn(&[f64]) -> Vec<f64>>, GenerativeFlowError> {
+    let n = b.dim();
+    if mu.len() != n {
+        return Err(GenerativeFlowError::DimensionMismatch {
+            state_dim: mu.len(),
+            b_dim: n,
+        });
+    }
+    if precision.len() != n {
+        return Err(GenerativeFlowError::DimensionMismatch {
+            state_dim: precision.len(),
+            b_dim: n,
+        });
+    }
+    for (i, row) in precision.iter().enumerate() {
+        if row.len() != n {
+            return Err(GenerativeFlowError::DimensionMismatch {
+                state_dim: row.len(),
+                b_dim: n,
+            });
+        }
+        // Diagonal entry must be positive for the matrix to be PD
+        // (Σ⁻¹ ≻ 0 ⇒ all diagonal entries > 0). Catches the
+        // catastrophic case where the caller passed Σ instead of
+        // Σ⁻¹ on a singular covariance, or didn't add a floor.
+        if row[i] <= 0.0 {
+            return Err(GenerativeFlowError::NonPositiveStep(row[i]));
+        }
+    }
+    let grad = move |x: &[f64]| -> Vec<f64> {
+        // ∇H(x) = Σ⁻¹ (x − μ).
+        let dx: Vec<f64> = x
+            .iter()
+            .zip(mu.iter())
+            .map(|(xi, mi)| xi - mi)
+            .collect();
+        (0..n)
+            .map(|i| {
+                precision[i]
+                    .iter()
+                    .zip(dx.iter())
+                    .map(|(p, d)| p * d)
+                    .sum()
+            })
+            .collect()
+    };
+    GenerativeFlow::new(b, grad)
+}
+
 // ── helpers ───────────────────────────────────────────────────────
 
 /// Lightweight PCG-style PRNG. Avoids pulling in the `rand` crate
@@ -921,6 +1006,234 @@ mod tests {
             vec![0.0, 0.0],
             vec![1.0, 0.0], // wrong: zero σ²
         );
+        assert!(matches!(r2, Err(GenerativeFlowError::NonPositiveStep(_))));
+    }
+
+    // ── from_full_gaussian (S1, full-covariance fit per Marcella H2) ──
+    //
+    // The distinguishing test from diagonal: with off-diagonal
+    // entries in Σ (correlated axes), the diagonal fit would
+    // recover wrong per-axis variances AND zero correlation. The
+    // full fit must recover BOTH per-axis variances AND the
+    // off-diagonal covariance. We verify the correlation
+    // explicitly — the property the diagonal model can never
+    // express.
+
+    /// Identity precision (Σ = I) must behave identically to
+    /// isotropic fit with σ² = 1. Sanity check that the full-fit
+    /// machinery degenerates correctly. Uses burn_in 5000 +
+    /// 20k samples to match the diagonal test's MC budget —
+    /// at 2k/8k the chain under-mixes at dt=0.01.
+    #[test]
+    fn full_gaussian_with_identity_precision_matches_isotropic() {
+        let mu = vec![0.5, -0.3];
+        let precision = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
+        let flow = from_full_gaussian(canonical_b2(), mu.clone(), precision).unwrap();
+
+        let config = FlowConfig {
+            dt: 0.01,
+            temperature: 1.0,
+            n_steps: 1,
+            burn_in: 5_000,
+            seed: Some(42),
+        };
+        let samples = flow
+            .sample_many(&[1.0, -0.5], &config, 20_000, 1)
+            .unwrap();
+        let n = samples.len() as f64;
+        let mean_x: f64 = samples.iter().map(|s| s[0]).sum::<f64>() / n;
+        let mean_y: f64 = samples.iter().map(|s| s[1]).sum::<f64>() / n;
+        let var_x: f64 =
+            samples.iter().map(|s| (s[0] - mean_x).powi(2)).sum::<f64>() / n;
+        let var_y: f64 =
+            samples.iter().map(|s| (s[1] - mean_y).powi(2)).sum::<f64>() / n;
+
+        // Tolerance: σ²=1 is wider than the σ²=0.64 of the
+        // isotropic baseline test; mean MC error scales with σ,
+        // so 0.15 ≈ 20 × (σ/√N) absorbs MC + chain autocorrelation
+        // + integrator bias. Variance tolerance 0.25 matches the
+        // diagonal-fit test.
+        assert!((mean_x - mu[0]).abs() < 0.15, "mean_x = {}", mean_x);
+        assert!((mean_y - mu[1]).abs() < 0.15, "mean_y = {}", mean_y);
+        assert!((var_x - 1.0).abs() < 0.25, "var_x = {}", var_x);
+        assert!((var_y - 1.0).abs() < 0.25, "var_y = {}", var_y);
+    }
+
+    /// THE distinguishing test for full-fit over diagonal-fit:
+    /// recover an off-diagonal covariance term that the diagonal
+    /// model cannot represent at all.
+    ///
+    /// Target Σ = [[1, ρ], [ρ, 1]] with ρ = 0.7 (strong but not
+    /// degenerate correlation). The corresponding precision is
+    /// Σ⁻¹ = 1/(1−ρ²) · [[1, −ρ], [−ρ, 1]].
+    ///
+    /// After sampling, the empirical correlation
+    /// Cov(x,y) / √(Var(x)·Var(y)) should recover ρ within
+    /// Monte-Carlo + integrator-bias tolerance. Diagonal fit on
+    /// the same data would give ρ̂ ≈ 0 — this test is what makes
+    /// the full version distinguishable.
+    #[test]
+    fn full_gaussian_recovers_off_diagonal_correlation() {
+        let rho = 0.7_f64;
+        let mu = vec![0.0_f64, 0.0_f64];
+        let det = 1.0_f64 - rho * rho; // 0.51
+        let precision = vec![
+            vec![1.0 / det, -rho / det],
+            vec![-rho / det, 1.0 / det],
+        ];
+        let flow = from_full_gaussian(canonical_b2(), mu, precision).unwrap();
+
+        let config = FlowConfig {
+            dt: 0.01,
+            temperature: 1.0,
+            n_steps: 1,
+            burn_in: 5_000,
+            seed: Some(20260526),
+        };
+        let samples = flow
+            .sample_many(&[0.0, 0.0], &config, 20_000, 1)
+            .unwrap();
+
+        let n = samples.len() as f64;
+        let mean_x: f64 = samples.iter().map(|s| s[0]).sum::<f64>() / n;
+        let mean_y: f64 = samples.iter().map(|s| s[1]).sum::<f64>() / n;
+        let var_x: f64 =
+            samples.iter().map(|s| (s[0] - mean_x).powi(2)).sum::<f64>() / n;
+        let var_y: f64 =
+            samples.iter().map(|s| (s[1] - mean_y).powi(2)).sum::<f64>() / n;
+        let cov_xy: f64 = samples
+            .iter()
+            .map(|s| (s[0] - mean_x) * (s[1] - mean_y))
+            .sum::<f64>()
+            / n;
+        let rho_emp = cov_xy / (var_x.sqrt() * var_y.sqrt());
+
+        // The whole point: recover off-diagonal correlation. With
+        // dt=0.01 and 20k samples, Euler-Maruyama plus MC error
+        // gives roughly ±0.05 on ρ̂. Diagonal fit on the same data
+        // would yield ρ̂ ≈ 0 (no off-diagonal in the model).
+        assert!(
+            (rho_emp - rho).abs() < 0.12,
+            "empirical ρ = {:.3} vs target {:.3}",
+            rho_emp,
+            rho
+        );
+        // Sanity: variances are still near 1 (this is what the
+        // diagonal fit DOES get right; we shouldn't regress).
+        assert!(
+            (var_x - 1.0).abs() < 0.25,
+            "var_x = {:.3} vs target 1.0",
+            var_x
+        );
+        assert!(
+            (var_y - 1.0).abs() < 0.25,
+            "var_y = {:.3} vs target 1.0",
+            var_y
+        );
+    }
+
+    /// Anisotropic + correlated: Σ = [[1, 0.5], [0.5, 4]] — wider
+    /// in y, half-correlated. Tests that both anisotropy AND
+    /// correlation are recovered simultaneously.
+    #[test]
+    fn full_gaussian_recovers_anisotropic_correlated() {
+        // Σ = [[1, 0.5], [0.5, 4]], det = 4 - 0.25 = 3.75
+        // Σ⁻¹ = 1/det · [[4, -0.5], [-0.5, 1]]
+        let det = 3.75_f64;
+        let precision = vec![
+            vec![4.0 / det, -0.5 / det],
+            vec![-0.5 / det, 1.0 / det],
+        ];
+        let flow = from_full_gaussian(canonical_b2(), vec![0.0, 0.0], precision).unwrap();
+
+        let config = FlowConfig {
+            dt: 0.01,
+            temperature: 1.0,
+            n_steps: 1,
+            burn_in: 5_000,
+            seed: Some(20260527),
+        };
+        let samples = flow
+            .sample_many(&[0.0, 0.0], &config, 20_000, 1)
+            .unwrap();
+        let n = samples.len() as f64;
+        let mean_x: f64 = samples.iter().map(|s| s[0]).sum::<f64>() / n;
+        let mean_y: f64 = samples.iter().map(|s| s[1]).sum::<f64>() / n;
+        let var_x: f64 =
+            samples.iter().map(|s| (s[0] - mean_x).powi(2)).sum::<f64>() / n;
+        let var_y: f64 =
+            samples.iter().map(|s| (s[1] - mean_y).powi(2)).sum::<f64>() / n;
+        let cov_xy: f64 = samples
+            .iter()
+            .map(|s| (s[0] - mean_x) * (s[1] - mean_y))
+            .sum::<f64>()
+            / n;
+
+        // Variance ratio (anisotropy): target is 4:1, with bias
+        // expect ≥ 2:1.
+        assert!(
+            var_y / var_x > 2.0,
+            "anisotropy: var_y/var_x = {:.2} (target 4)",
+            var_y / var_x
+        );
+        // Correlation positive and non-trivial. Target ρ = 0.25
+        // (since Σ_xy / √(Σ_xx · Σ_yy) = 0.5 / √4 = 0.25); with
+        // integrator bias expect 0.05 ≤ ρ̂ ≤ 0.45.
+        let rho_emp = cov_xy / (var_x.sqrt() * var_y.sqrt());
+        assert!(
+            rho_emp > 0.05,
+            "correlation: ρ̂ = {:.3} should be positive and non-trivial (target 0.25)",
+            rho_emp
+        );
+    }
+
+    #[test]
+    fn full_gaussian_rejects_dim_mismatch_in_mu() {
+        let precision = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
+        let r = from_full_gaussian(canonical_b2(), vec![0.0], precision);
+        assert!(matches!(r, Err(GenerativeFlowError::DimensionMismatch { .. })));
+    }
+
+    #[test]
+    fn full_gaussian_rejects_dim_mismatch_in_precision() {
+        // precision row count wrong (3 rows, expected 2)
+        let bad_precision = vec![
+            vec![1.0, 0.0],
+            vec![0.0, 1.0],
+            vec![0.0, 0.0],
+        ];
+        let r = from_full_gaussian(canonical_b2(), vec![0.0, 0.0], bad_precision);
+        assert!(matches!(r, Err(GenerativeFlowError::DimensionMismatch { .. })));
+    }
+
+    #[test]
+    fn full_gaussian_rejects_non_square_precision() {
+        // precision row length wrong on second row
+        let bad_precision = vec![
+            vec![1.0, 0.0],
+            vec![0.0, 1.0, 0.0],
+        ];
+        let r = from_full_gaussian(canonical_b2(), vec![0.0, 0.0], bad_precision);
+        assert!(matches!(r, Err(GenerativeFlowError::DimensionMismatch { .. })));
+    }
+
+    #[test]
+    fn full_gaussian_rejects_non_positive_diagonal() {
+        // Diagonal entry zero on second row — necessary-but-not-
+        // sufficient PD check; this is the catch for "caller
+        // passed singular Σ⁻¹".
+        let bad_precision = vec![
+            vec![1.0, 0.0],
+            vec![0.0, 0.0],
+        ];
+        let r = from_full_gaussian(canonical_b2(), vec![0.0, 0.0], bad_precision);
+        assert!(matches!(r, Err(GenerativeFlowError::NonPositiveStep(_))));
+
+        let bad_precision_neg = vec![
+            vec![1.0, 0.0],
+            vec![0.0, -1.0],
+        ];
+        let r2 = from_full_gaussian(canonical_b2(), vec![0.0, 0.0], bad_precision_neg);
         assert!(matches!(r2, Err(GenerativeFlowError::NonPositiveStep(_))));
     }
 

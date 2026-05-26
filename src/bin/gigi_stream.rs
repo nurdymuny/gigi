@@ -4278,6 +4278,298 @@ async fn brain_distance_to_fit_mean_endpoint(
     )
 }
 
+// ─── SUDOKU (S3 — HTTP endpoint for the constraint-inference meta-primitive) ─
+//
+// Per theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md v0.3. The
+// geometry layer (src/geometry/sudoku.rs, S2) does the actual
+// constraint matching + verdict logic; this layer is just wire
+// marshalling.
+//
+// Constraint vocabulary on the wire is tagged-enum JSON:
+//   { "type": "field", "field": "...", "op": "eq" | ..., "value": ..., "hard": bool }
+//   { "type": "manifold", ... }   (stubbed — returns 400 with S4 note)
+//   { "type": "relation", ... }   (stubbed — returns 400 with S4 note)
+//
+// Response uses the existing content negotiation helper from §D:
+// DHOOM if Accept: application/dhoom, else JSON. X-Bundle-Mutation-
+// Counter header surfaced same as other brain endpoints.
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+enum ConstraintWire {
+    Field {
+        field: String,
+        op: String,
+        value: serde_json::Value,
+        #[serde(default = "default_constraint_hard")]
+        hard: bool,
+    },
+    Manifold {
+        field: String,
+        near_manifold: String,
+        epsilon: f64,
+        #[serde(default = "default_constraint_hard")]
+        hard: bool,
+    },
+    Relation {
+        expr: String,
+        #[serde(default)]
+        vars: std::collections::HashMap<String, f64>,
+        #[serde(default = "default_constraint_hard")]
+        hard: bool,
+    },
+}
+
+#[cfg(feature = "kahler")]
+fn default_constraint_hard() -> bool { true }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainSudokuRequest {
+    /// Constraints to satisfy. v1 supports only `type: "field"`;
+    /// manifold + relation route to a 400 error pointing at S4.
+    constraints: Vec<ConstraintWire>,
+    /// Cap on returned satisfying options. Default 5.
+    #[serde(default = "default_sudoku_max_options")]
+    max_options: usize,
+    /// Cap on returned near-misses (options violating ONE constraint).
+    /// Default 3.
+    #[serde(default = "default_sudoku_max_near_misses")]
+    max_near_misses: usize,
+}
+
+#[cfg(feature = "kahler")]
+fn default_sudoku_max_options() -> usize { 5 }
+#[cfg(feature = "kahler")]
+fn default_sudoku_max_near_misses() -> usize { 3 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct SudokuSolutionWire {
+    record: serde_json::Value,
+    stated_prior_mass: f64,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct SudokuViolationWire {
+    constraint_idx: usize,
+    field: String,
+    violation: String,
+    relax_to: serde_json::Value,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct SudokuNearMissWire {
+    record: serde_json::Value,
+    stated_prior_mass: f64,
+    violations: Vec<SudokuViolationWire>,
+    would_unlock_if_relaxed: Vec<usize>,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainSudokuResponse {
+    solutions: Vec<SudokuSolutionWire>,
+    near_misses: Vec<SudokuNearMissWire>,
+    /// "sat" | "unsat" | "unknown" — the honest-coverage tristate.
+    /// Per spec §3: unknown means "I didn't look enough to claim
+    /// either" (rather than "shrug, no solution"). Consumers MUST
+    /// handle unknown distinctly from unsat.
+    verdict: String,
+    /// Fraction of stated-prior mass explored. v1 exhaustive walk
+    /// → always 1.0.
+    coverage: f64,
+    /// Number of records considered (post-context filter).
+    n_records_considered: usize,
+    /// Bundle's mutation counter at the time of this fit. Same
+    /// value as the X-Bundle-Mutation-Counter response header.
+    counter_at_fit: u64,
+}
+
+/// Translate wire constraints to the geometry-layer Constraint
+/// types. Returns 400-style errors for the v1-unsupported types
+/// (manifold, relation) with S4 references.
+#[cfg(feature = "kahler")]
+fn translate_constraints(
+    wire: Vec<ConstraintWire>,
+) -> Result<Vec<gigi::geometry::Constraint>, String> {
+    let mut out = Vec::with_capacity(wire.len());
+    for (i, c) in wire.into_iter().enumerate() {
+        let translated = match c {
+            ConstraintWire::Field { field, op, value, hard } => {
+                let op = translate_field_op(&op, &value).map_err(|e| {
+                    format!("constraint[{}]: {}", i, e)
+                })?;
+                gigi::geometry::Constraint::Field { field, op, hard }
+            }
+            ConstraintWire::Manifold { field, near_manifold, epsilon, hard } => {
+                gigi::geometry::Constraint::Manifold {
+                    field,
+                    near_manifold,
+                    epsilon,
+                    hard,
+                }
+            }
+            ConstraintWire::Relation { expr, vars, hard } => {
+                gigi::geometry::Constraint::Relation { expr, vars, hard }
+            }
+        };
+        out.push(translated);
+    }
+    Ok(out)
+}
+
+#[cfg(feature = "kahler")]
+fn translate_field_op(
+    op: &str,
+    value: &serde_json::Value,
+) -> Result<gigi::geometry::FieldOp, String> {
+    use gigi::geometry::FieldOp;
+    match op {
+        "eq" => Ok(FieldOp::Eq(json_to_value(value))),
+        "ne" => Ok(FieldOp::Ne(json_to_value(value))),
+        "lt" | "le" | "gt" | "ge" => {
+            let n = value.as_f64().ok_or_else(|| {
+                format!("op '{}' requires numeric value, got {:?}", op, value)
+            })?;
+            Ok(match op {
+                "lt" => FieldOp::Lt(n),
+                "le" => FieldOp::Le(n),
+                "gt" => FieldOp::Gt(n),
+                "ge" => FieldOp::Ge(n),
+                _ => unreachable!(),
+            })
+        }
+        "between" => {
+            let arr = value.as_array().ok_or_else(|| {
+                format!("op 'between' requires array [lo, hi], got {:?}", value)
+            })?;
+            if arr.len() != 2 {
+                return Err(format!(
+                    "op 'between' requires array of length 2, got {} items",
+                    arr.len()
+                ));
+            }
+            let lo = arr[0].as_f64().ok_or("between lo not numeric")?;
+            let hi = arr[1].as_f64().ok_or("between hi not numeric")?;
+            Ok(FieldOp::Between { lo, hi })
+        }
+        "is_in" => {
+            let arr = value.as_array().ok_or_else(|| {
+                format!("op 'is_in' requires array, got {:?}", value)
+            })?;
+            let values: Vec<Value> = arr.iter().map(json_to_value).collect();
+            Ok(FieldOp::IsIn(values))
+        }
+        other => Err(format!(
+            "unknown op '{}'; expected one of: eq, ne, lt, le, gt, ge, between, is_in",
+            other
+        )),
+    }
+}
+
+/// POST /v1/bundles/{name}/brain/sudoku
+///
+/// Constraint-inference meta-primitive per
+/// theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md v0.3.
+///
+/// v1 (S3): exhaustive O(N) record walk + Field-predicate
+/// constraints + honest-coverage tristate. S3.5 ships puzzle
+/// expansion (constraint_relaxation + bundle_hop); S4 ships
+/// manifold-distance + cross-field-relation constraints + soft
+/// scoring with penalty calibration; S5 ships demos.
+#[cfg(feature = "kahler")]
+async fn brain_sudoku_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
+    Json(req): Json<BrainSudokuRequest>,
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+
+    // Translate wire constraints → geometry-layer types.
+    let constraints = translate_constraints(req.constraints)
+        .map_err(|e| bad_request(&e))?;
+    let sudoku_req = gigi::geometry::SudokuRequest {
+        constraints,
+        max_options: req.max_options,
+        max_near_misses: req.max_near_misses,
+    };
+    let config = gigi::geometry::SudokuConfig::default();
+
+    // Snapshot the mutation counter at solve time so the response
+    // header reflects the bundle state we actually read.
+    let counter_at_fit = heap.mutation_counter();
+
+    // Walk the bundle's records. The geometry-layer solver does the
+    // actual filtering + verdict logic. Iterator avoids materializing
+    // the full record list up-front.
+    let records_iter = heap.records();
+    let resp = gigi::geometry::solve_constraints(records_iter, &sudoku_req, &config)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+
+    // Marshal to wire format. Records → JSON via record_to_json
+    // (DHOOM-flag at response-encoding time, not here).
+    let solutions_wire: Vec<SudokuSolutionWire> = resp
+        .solutions
+        .into_iter()
+        .map(|s| SudokuSolutionWire {
+            record: record_to_json(&s.record),
+            stated_prior_mass: s.stated_prior_mass,
+        })
+        .collect();
+    let near_misses_wire: Vec<SudokuNearMissWire> = resp
+        .near_misses
+        .into_iter()
+        .map(|nm| SudokuNearMissWire {
+            record: record_to_json(&nm.record),
+            stated_prior_mass: nm.stated_prior_mass,
+            violations: nm
+                .violations
+                .into_iter()
+                .map(|v| SudokuViolationWire {
+                    constraint_idx: v.constraint_idx,
+                    field: v.field,
+                    violation: v.violation,
+                    relax_to: value_to_json(&v.relax_to),
+                })
+                .collect(),
+            would_unlock_if_relaxed: nm.would_unlock_if_relaxed,
+        })
+        .collect();
+    let verdict = match resp.verdict {
+        gigi::geometry::SudokuVerdict::Sat => "sat",
+        gigi::geometry::SudokuVerdict::Unsat => "unsat",
+        gigi::geometry::SudokuVerdict::Unknown => "unknown",
+    }
+    .to_string();
+
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainSudokuResponse {
+            solutions: solutions_wire,
+            near_misses: near_misses_wire,
+            verdict,
+            coverage: resp.coverage,
+            n_records_considered: resp.n_records_considered,
+            counter_at_fit,
+        },
+    )
+}
+
 // ─── §12 SELF-MONITOR (confidence) ──────────────────────────
 
 #[cfg(feature = "kahler")]
@@ -11374,6 +11666,15 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/brain/confidence_with_explain",
             post(brain_confidence_with_explain_endpoint),
+        )
+        // SUDOKU S3 — constraint-inference meta-primitive
+        // (theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md v0.3).
+        // v1: Field-predicate constraints + honest-coverage
+        // tristate verdict. Expansion (S3.5) + manifold/relation
+        // constraints (S4) + soft scoring + demos (S5) follow.
+        .route(
+            "/v1/bundles/{name}/brain/sudoku",
+            post(brain_sudoku_endpoint),
         );
 
     let app = app

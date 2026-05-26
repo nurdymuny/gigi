@@ -1,10 +1,25 @@
-# SUDOKU Primitive — Specification v0.3
+# SUDOKU Primitive — Specification v0.4 (wave-6 prep)
 
-**Date:** 2026-05-27 (v0.3); 2026-05-26 (v0.2); 2026-05-26 (v0.1).
+**Date:** 2026-05-27 (v0.4); 2026-05-27 (v0.3); 2026-05-26 (v0.2).
 **Author:** Bee Davis + GIGI substrate, with feedback from Marcella team.
-**Status:** Frozen for S2 implementation. All open decisions resolved.
-H2 investigation closed (v0.3 update — see Appendix B); §6
-preconditions empirically validated by today's seed-variation probe.
+**Status:** Wave 3/4/5 shipped; wave 6 plan added (constraint curvature
++ holonomy pre-flight + Γ trichotomy + energy descent — see §9).
+
+### Sister project — same math, different consumer
+
+The Davis-manifold machinery used here is the same substrate that
+powers the **sudoky-energy** GPU CSP solver
+(`~/Documents/sudoky-energy`, U.S. Provisional Patent, Feb 2026):
+both projects use local curvature `K_loc` as a scheduling signal,
+information value `V(c) = ∫_{R_c} K_loc dV_g` for ordering,
+trichotomy parameter `Γ = m·τ / (K̂_max · log|S|)` for routing, and
+holonomy as the obstruction-to-completion measure. sudoky-energy
+solves canonical CSPs (Sudoku, SAT, graph coloring); GIGI's SUDOKU
+primitive filters records against constraints on the Kähler bundle.
+The wave-6 upgrades port the sudoky-energy machinery to the bundle-
+filtering context. See `sudoky-energy/theory/noether_davis_analysis.md`
+and `sudoky-energy/theory/curvature_guided_wavefront.tex` for the
+underlying theory; the present spec is the GIGI-bundle adaptation.
 
 ### Changelog v0.2 → v0.3
 

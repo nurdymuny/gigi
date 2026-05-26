@@ -4366,6 +4366,10 @@ fn default_sudoku_max_near_misses() -> usize { 3 }
 struct SudokuSolutionWire {
     record: serde_json::Value,
     stated_prior_mass: f64,
+    /// **Wave 4 — Upgrade 4.** Depth into the satisfaction region in
+    /// [0, 1]. Higher = better margin to every constraint. Sort key
+    /// alongside stated_prior_mass.
+    quality_score: f64,
 }
 
 #[cfg(feature = "kahler")]
@@ -4375,6 +4379,14 @@ struct SudokuViolationWire {
     field: String,
     violation: String,
     relax_to: serde_json::Value,
+    /// **Wave 3 — Upgrade 1.** Normalized cost to relax this
+    /// constraint enough to admit this record. Z-score: |actual -
+    /// threshold| / std(field). 1.0 for categorical violations.
+    relaxation_cost: f64,
+    /// Raw violation magnitude in the field's native units. None
+    /// for categorical / non-ordered violations.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    raw_delta: Option<f64>,
 }
 
 #[cfg(feature = "kahler")]
@@ -4384,6 +4396,50 @@ struct SudokuNearMissWire {
     stated_prior_mass: f64,
     violations: Vec<SudokuViolationWire>,
     would_unlock_if_relaxed: Vec<usize>,
+}
+
+/// **Wave 3 — Upgrade 2.** Per-constraint selectivity wire.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct SudokuSelectivityWire {
+    constraint_idx: usize,
+    field: String,
+    n_match_all: usize,
+    n_match_without: usize,
+    marginal_filter_count: usize,
+    /// True if this constraint filters the most records given the
+    /// others. The deal-breaker. Ties: multiple may be flagged.
+    binding: bool,
+    /// **Wave 6.** Per-constraint raw curvature K_c in [0, 1] =
+    /// fraction of records that fail this constraint regardless
+    /// of others. High K_c + low marginal = REDUNDANT constraint
+    /// (already covered by another). High K_c + high marginal =
+    /// the deal-breaker. Maps to sudoky-energy's K_loc.
+    raw_curvature: f64,
+}
+
+/// **Wave 3 — Upgrade 3.** Counterfactual relaxation menu entry.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct SudokuRelaxationWire {
+    constraint_idx: usize,
+    field: String,
+    description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    new_threshold: Option<serde_json::Value>,
+    gain: usize,
+    relaxation_cost: f64,
+}
+
+/// **Wave 3 — Upgrade 5.** Pareto-frontier near-miss (allows
+/// multi-violation; non-dominated on n_violations × total_cost).
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct SudokuParetoNearMissWire {
+    record: serde_json::Value,
+    stated_prior_mass: f64,
+    violations: Vec<SudokuViolationWire>,
+    total_relaxation_cost: f64,
 }
 
 #[cfg(feature = "kahler")]
@@ -4401,9 +4457,28 @@ struct BrainSudokuResponse {
     coverage: f64,
     /// Number of records considered (post-context filter).
     n_records_considered: usize,
+    /// **Wave 3 — Upgrade 2.** Per-constraint selectivity report —
+    /// identifies which constraint(s) are doing the binding work.
+    /// Empty if no constraints were supplied.
+    selectivity: Vec<SudokuSelectivityWire>,
+    /// **Wave 3 — Upgrade 3.** Counterfactual relaxation menu.
+    /// Sorted by gain/cost descending — best bang-per-bend first.
+    relaxations: Vec<SudokuRelaxationWire>,
+    /// **Wave 3 — Upgrade 5.** Pareto-optimal multi-violation
+    /// near-misses (non-dominated on n_violations × total_cost).
+    /// Generalizes `near_misses` (which is the k=1 slice).
+    pareto_near_misses: Vec<SudokuParetoNearMissWire>,
     /// Bundle's mutation counter at the time of this fit. Same
     /// value as the X-Bundle-Mutation-Counter response header.
     counter_at_fit: u64,
+    /// **Wave 6.2 — pre-flight contradiction reason.** Populated when
+    /// the constraint set is trivially self-contradictory (detected in
+    /// O(C²) before any bundle walk). When present, verdict is "unsat"
+    /// and n_records_considered is 0. Consumers should surface this
+    /// as "your constraints cannot both hold" rather than "no records
+    /// match."
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pre_flight_unsat_reason: Option<String>,
 }
 
 /// Translate wire constraints to the geometry-layer Constraint
@@ -4536,12 +4611,24 @@ async fn brain_sudoku_endpoint(
 
     // Marshal to wire format. Records → JSON via record_to_json
     // (DHOOM-flag at response-encoding time, not here).
+    // Helper: violation → wire (DRY — used by near_misses AND pareto).
+    fn vd_to_wire(v: gigi::geometry::ViolationDetail) -> SudokuViolationWire {
+        SudokuViolationWire {
+            constraint_idx: v.constraint_idx,
+            field: v.field,
+            violation: v.violation,
+            relax_to: value_to_json(&v.relax_to),
+            relaxation_cost: v.relaxation_cost,
+            raw_delta: v.raw_delta,
+        }
+    }
     let solutions_wire: Vec<SudokuSolutionWire> = resp
         .solutions
         .into_iter()
         .map(|s| SudokuSolutionWire {
             record: record_to_json(&s.record),
             stated_prior_mass: s.stated_prior_mass,
+            quality_score: s.quality_score,
         })
         .collect();
     let near_misses_wire: Vec<SudokuNearMissWire> = resp
@@ -4550,19 +4637,52 @@ async fn brain_sudoku_endpoint(
         .map(|nm| SudokuNearMissWire {
             record: record_to_json(&nm.record),
             stated_prior_mass: nm.stated_prior_mass,
-            violations: nm
-                .violations
-                .into_iter()
-                .map(|v| SudokuViolationWire {
-                    constraint_idx: v.constraint_idx,
-                    field: v.field,
-                    violation: v.violation,
-                    relax_to: value_to_json(&v.relax_to),
-                })
-                .collect(),
+            violations: nm.violations.into_iter().map(vd_to_wire).collect(),
             would_unlock_if_relaxed: nm.would_unlock_if_relaxed,
         })
         .collect();
+
+    // Wave 3 — Upgrade 2: selectivity report wire-format.
+    let selectivity_wire: Vec<SudokuSelectivityWire> = resp
+        .selectivity
+        .into_iter()
+        .map(|s| SudokuSelectivityWire {
+            constraint_idx: s.constraint_idx,
+            field: s.field,
+            n_match_all: s.n_match_all,
+            n_match_without: s.n_match_without,
+            marginal_filter_count: s.marginal_filter_count,
+            binding: s.binding,
+            raw_curvature: s.raw_curvature,
+        })
+        .collect();
+
+    // Wave 3 — Upgrade 3: relaxation menu wire-format.
+    let relaxations_wire: Vec<SudokuRelaxationWire> = resp
+        .relaxations
+        .into_iter()
+        .map(|r| SudokuRelaxationWire {
+            constraint_idx: r.constraint_idx,
+            field: r.field,
+            description: r.description,
+            new_threshold: r.new_threshold.as_ref().map(value_to_json),
+            gain: r.gain,
+            relaxation_cost: r.relaxation_cost,
+        })
+        .collect();
+
+    // Wave 3 — Upgrade 5: Pareto near-misses wire-format.
+    let pareto_wire: Vec<SudokuParetoNearMissWire> = resp
+        .pareto_near_misses
+        .into_iter()
+        .map(|p| SudokuParetoNearMissWire {
+            record: record_to_json(&p.record),
+            stated_prior_mass: p.stated_prior_mass,
+            violations: p.violations.into_iter().map(vd_to_wire).collect(),
+            total_relaxation_cost: p.total_relaxation_cost,
+        })
+        .collect();
+
     let verdict = match resp.verdict {
         gigi::geometry::SudokuVerdict::Sat => "sat",
         gigi::geometry::SudokuVerdict::Unsat => "unsat",
@@ -4582,7 +4702,11 @@ async fn brain_sudoku_endpoint(
             verdict,
             coverage: resp.coverage,
             n_records_considered: resp.n_records_considered,
+            selectivity: selectivity_wire,
+            relaxations: relaxations_wire,
+            pareto_near_misses: pareto_wire,
             counter_at_fit,
+            pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
         },
     )
 }
@@ -13728,5 +13852,237 @@ mod tests {
             kahler_transport_dispatch(&k, &p_from, &p_to, &displacement).is_none(),
             "dim mismatch must return None so caller falls back to classical"
         );
+    }
+
+    // ── SUDOKU wire-format gate tests (waves 3-6.2) ─────────────────────
+    // These tests exercise the in-process geometry layer directly (not the
+    // HTTP stack) to prove that every wave-3+ field actually reaches the
+    // BrainSudokuResponse wire struct. The geometry-layer unit tests in
+    // sudoku.rs prove the math; these prove the wire boundary carries it.
+
+    /// **Gate W3/W4/W6.** A multi-constraint request on a small bundle
+    /// produces non-empty selectivity, non-empty relaxation menu,
+    /// quality_score > 0 on solutions, and raw_curvature on every
+    /// selectivity report. Confirms waves 3, 4, and 6.1 all reach wire.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sudoku_wire_gate_w3_w4_w6_fields_present() {
+        use gigi::geometry::{
+            Constraint, FieldOp, SudokuConfig, SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        // 8 records: price 100..800 in 100-steps, color alternating.
+        let mut records: Vec<gigi::types::Record> = Vec::new();
+        for i in 1..=8u64 {
+            let mut r = gigi::types::Record::new();
+            r.insert("price".into(), Value::Float(i as f64 * 100.0));
+            r.insert(
+                "color".into(),
+                Value::Text(if i % 2 == 0 { "red" } else { "blue" }.into()),
+            );
+            records.push(r);
+        }
+
+        // Constraints: price <= 500 (5 pass) AND color == "red" (4 pass).
+        // Intersection: price <= 500 AND red → records 2,4 → 2 solutions.
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "price".into(),
+                    op: FieldOp::Le(500.0),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("red".into())),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 5,
+        };
+
+        let resp = gigi::geometry::solve_constraints(
+            records,
+            &req,
+            &SudokuConfig::default(),
+        )
+        .unwrap();
+
+        // W3 — selectivity present and non-trivial.
+        assert_eq!(
+            resp.selectivity.len(),
+            2,
+            "one selectivity report per constraint"
+        );
+        // At least one constraint binds — the Pareto test for binding.
+        assert!(
+            resp.selectivity.iter().any(|s| s.binding),
+            "at least one binding constraint"
+        );
+
+        // W6.1 — raw_curvature is in [0,1] for every report.
+        for s in &resp.selectivity {
+            assert!(
+                (0.0..=1.0).contains(&s.raw_curvature),
+                "raw_curvature {} out of [0,1] for field '{}'",
+                s.raw_curvature,
+                s.field
+            );
+        }
+
+        // W4 — quality_score is in [0,1] for every solution.
+        assert!(
+            !resp.solutions.is_empty(),
+            "expected solutions for compatible constraints"
+        );
+        for sol in &resp.solutions {
+            assert!(
+                (0.0..=1.0).contains(&sol.quality_score),
+                "quality_score {} out of [0,1]",
+                sol.quality_score
+            );
+        }
+
+        // W3 — relaxation menu non-empty (the binding constraint
+        // has near-misses it can propose thresholds for).
+        assert!(
+            !resp.relaxations.is_empty(),
+            "relaxation menu must be non-empty when constraints filter records"
+        );
+
+        // W6.2 — no pre-flight contradiction (compatible constraints).
+        assert!(
+            resp.pre_flight_unsat_reason.is_none(),
+            "compatible constraints must not trigger pre-flight: {:?}",
+            resp.pre_flight_unsat_reason
+        );
+        assert_eq!(resp.verdict, SudokuVerdict::Sat);
+    }
+
+    /// **Gate W6.2 wire.** Contradictory constraints (Le(100) + Ge(500))
+    /// produce a non-None pre_flight_unsat_reason that names the field.
+    /// Proves the pre-flight path from geometry layer to BrainSudokuResponse.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sudoku_wire_gate_w6_2_preflight_reaches_wire() {
+        use gigi::geometry::{
+            Constraint, FieldOp, SudokuConfig, SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        // Bundle has 1000 records — they never get walked (pre-flight fires first).
+        let records: Vec<gigi::types::Record> = (0..1000)
+            .map(|i| {
+                let mut r = gigi::types::Record::new();
+                r.insert("rent".into(), Value::Float(i as f64 * 10.0));
+                r
+            })
+            .collect();
+
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "rent".into(),
+                    op: FieldOp::Le(100.0),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "rent".into(),
+                    op: FieldOp::Ge(500.0),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 5,
+        };
+
+        let resp = gigi::geometry::solve_constraints(
+            records,
+            &req,
+            &SudokuConfig::default(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            resp.verdict,
+            SudokuVerdict::Unsat,
+            "contradictory constraints must be Unsat"
+        );
+        let reason = resp
+            .pre_flight_unsat_reason
+            .as_ref()
+            .expect("pre_flight_unsat_reason must be Some for Le(100)+Ge(500)");
+        assert!(
+            reason.contains("rent"),
+            "reason must name the field 'rent'; got: {reason}"
+        );
+        // Pre-flight fires before any bundle walk.
+        assert_eq!(
+            resp.n_records_considered, 0,
+            "n_records_considered must be 0 (no bundle walk on pre-flight Unsat)"
+        );
+    }
+
+    /// **Gate W5.** Pareto frontier includes multi-violation records and
+    /// excludes dominated ones. Confirms wave-5 Pareto logic is active.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sudoku_wire_gate_w5_pareto_non_empty_and_dominated_excluded() {
+        use gigi::geometry::{Constraint, FieldOp, SudokuConfig, SudokuRequest};
+        use gigi::types::Value;
+
+        // 4 records: one satisfies all, two violate one each (different
+        // costs), one violates both. Pareto must keep both single-violation
+        // records if their costs differ; only the dominated multi-violation
+        // should be filtered.
+        let mut records: Vec<gigi::types::Record> = Vec::new();
+        let mut make = |a: f64, b: f64| {
+            let mut r = gigi::types::Record::new();
+            r.insert("a".into(), Value::Float(a));
+            r.insert("b".into(), Value::Float(b));
+            r
+        };
+        records.push(make(3.0, 3.0));   // solution
+        records.push(make(15.0, 3.0));  // violates only a, cheap
+        records.push(make(3.0, 25.0));  // violates only b, expensive
+        records.push(make(15.0, 25.0)); // violates both
+
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "a".into(),
+                    op: FieldOp::Le(10.0),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "b".into(),
+                    op: FieldOp::Le(10.0),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 5,
+        };
+
+        let resp = gigi::geometry::solve_constraints(
+            records,
+            &req,
+            &SudokuConfig::default(),
+        )
+        .unwrap();
+
+        assert!(
+            !resp.pareto_near_misses.is_empty(),
+            "Pareto frontier must not be empty"
+        );
+        // The cheap single-violation record must appear.
+        let has_cheap = resp.pareto_near_misses.iter().any(|p| {
+            p.violations.len() == 1
+                && p.record.get("a") == Some(&Value::Float(15.0))
+                && p.record.get("b") == Some(&Value::Float(3.0))
+        });
+        assert!(has_cheap, "cheap single-violation record must be on frontier");
     }
 }

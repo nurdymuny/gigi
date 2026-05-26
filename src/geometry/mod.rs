@@ -48,6 +48,7 @@
 //! from here.
 
 pub mod attention;
+pub mod bundle_stats;
 pub mod complex_structure;
 pub mod forms;
 pub mod generative_flow;
@@ -76,6 +77,9 @@ pub use moment_map::{
     ConservationVerdict, InfinitesimalAction, MomentMap, MomentMapError,
 };
 pub use attention::{attend, focus};
+pub use bundle_stats::{
+    compute_stats, BundleStats, CategoricalFieldStats, NumericFieldStats,
+};
 pub use memory::{
     episodic_events, episodic_events_with_floor, explain, semantic_gist,
     EpisodicEvent, ExplanationPath, DEFAULT_GAP_FLOOR_EPSILON,

@@ -1375,6 +1375,8 @@ fn build_prometheus_text(
     records_total: u64, bytes_total: u64,
     anomalies: u64, bundle_count: usize, total_records: usize,
     http_conns: u64, ws_conns: u64, uptime_secs: u64,
+    brain_cache_hits: u64, brain_cache_misses: u64, brain_cache_evictions: u64,
+    brain_fit_total_us: u64, brain_compute_total_us: u64,
 ) -> String {
     format!(
         "# HELP gigi_queries_total Total queries executed\n\
@@ -1414,7 +1416,22 @@ fn build_prometheus_text(
          gigi_ws_connections_total {ws_conns}\n\
          # HELP gigi_uptime_seconds Server uptime\n\
          # TYPE gigi_uptime_seconds gauge\n\
-         gigi_uptime_seconds {uptime_secs}\n"
+         gigi_uptime_seconds {uptime_secs}\n\
+         # HELP gigi_brain_cache_hits_total BundleFlowCache hits\n\
+         # TYPE gigi_brain_cache_hits_total counter\n\
+         gigi_brain_cache_hits_total {brain_cache_hits}\n\
+         # HELP gigi_brain_cache_misses_total BundleFlowCache misses (cold path)\n\
+         # TYPE gigi_brain_cache_misses_total counter\n\
+         gigi_brain_cache_misses_total {brain_cache_misses}\n\
+         # HELP gigi_brain_cache_evictions_total BundleFlowCache evictions (capacity-bound)\n\
+         # TYPE gigi_brain_cache_evictions_total counter\n\
+         gigi_brain_cache_evictions_total {brain_cache_evictions}\n\
+         # HELP gigi_brain_fit_total_microseconds Cumulative time spent in fit (record-walk + Cholesky/eigendecomp)\n\
+         # TYPE gigi_brain_fit_total_microseconds counter\n\
+         gigi_brain_fit_total_microseconds {brain_fit_total_us}\n\
+         # HELP gigi_brain_compute_total_microseconds Cumulative time spent in post-fit brain compute (Langevin etc.)\n\
+         # TYPE gigi_brain_compute_total_microseconds counter\n\
+         gigi_brain_compute_total_microseconds {brain_compute_total_us}\n"
     )
 }
 
@@ -1447,12 +1464,20 @@ async fn metrics_handler(
         let http_conns     = m.http_connections_total.load(Ordering::Relaxed);
         let ws_conns       = m.ws_connections_total.load(Ordering::Relaxed);
 
+        let brain_cache_hits      = m.brain_cache_hits.load(Ordering::Relaxed);
+        let brain_cache_misses    = m.brain_cache_misses.load(Ordering::Relaxed);
+        let brain_cache_evictions = m.brain_cache_evictions.load(Ordering::Relaxed);
+        let brain_fit_total_us    = m.brain_fit_total_us.load(Ordering::Relaxed);
+        let brain_compute_total_us = m.brain_compute_total_us.load(Ordering::Relaxed);
+
         let body = build_prometheus_text(
             queries_total, errors_total, slow_total,
             p50, p95, p99,
             records_total, bytes_total,
             anomalies, bundle_count, total_records,
             http_conns, ws_conns, uptime_secs,
+            brain_cache_hits, brain_cache_misses, brain_cache_evictions,
+            brain_fit_total_us, brain_compute_total_us,
         );
 
         return axum::response::Response::builder()
@@ -1461,6 +1486,19 @@ async fn metrics_handler(
             .body(axum::body::Body::from(body))
             .unwrap();
     }
+
+    // Brain cache stats — pre-computed for the JSON body. The
+    // serde_json::json! macro doesn't accept block-expression
+    // values inline.
+    let brain_cache_hits      = m.brain_cache_hits.load(Ordering::Relaxed);
+    let brain_cache_misses    = m.brain_cache_misses.load(Ordering::Relaxed);
+    let brain_cache_evictions = m.brain_cache_evictions.load(Ordering::Relaxed);
+    let brain_total_calls     = brain_cache_hits + brain_cache_misses;
+    let brain_hit_rate = if brain_total_calls > 0 {
+        brain_cache_hits as f64 / brain_total_calls as f64
+    } else {
+        0.0
+    };
 
     // Default: JSON
     let json_body = serde_json::json!({
@@ -1488,6 +1526,16 @@ async fn metrics_handler(
         "connections": {
             "http_total":        m.http_connections_total.load(Ordering::Relaxed),
             "ws_total":          m.ws_connections_total.load(Ordering::Relaxed),
+        },
+        "brain_cache": {
+            "hits":              brain_cache_hits,
+            "misses":            brain_cache_misses,
+            "evictions":         brain_cache_evictions,
+            "hit_rate":          brain_hit_rate,
+        },
+        "brain_timing_us": {
+            "fit_total":         m.brain_fit_total_us.load(Ordering::Relaxed),
+            "compute_total":     m.brain_compute_total_us.load(Ordering::Relaxed),
         }
     });
     axum::response::Response::builder()
@@ -3060,18 +3108,28 @@ impl BundleFlowCache {
     }
 
     fn insert(&self, key: CacheKey, fit: CachedFit) {
+        let _ = self.insert_with_eviction_hint(key, fit);
+    }
+
+    /// Insert variant that reports whether an eviction happened —
+    /// used by callers that want to record the eviction in metrics.
+    /// Returns true iff an entry was evicted to make room.
+    fn insert_with_eviction_hint(&self, key: CacheKey, fit: CachedFit) -> bool {
         let mut map = match self.inner.write() {
             Ok(g) => g,
             Err(p) => p.into_inner(),
         };
+        let mut evicted = false;
         if map.len() >= self.max_entries {
             // Random eviction: drop any one entry. Acceptable for
             // v1 — LRU is a follow-up if hit-rate telemetry warrants.
             if let Some(k) = map.keys().next().cloned() {
                 map.remove(&k);
+                evicted = true;
             }
         }
         map.insert(key, fit);
+        evicted
     }
 
     /// Number of entries currently held. Exposed for diagnostics
@@ -4705,6 +4763,7 @@ fn flow_from_bundle_cached(
 
     // Hot path: cache lookup.
     if let Some(cached) = state.flow_cache.get(&key, counter) {
+        state.metrics.record_brain_cache_hit();
         let ctx = build_ctx_from_cached(&cached, fit_mode, n, b.clone())
             .map_err(|e| bad_request(&e))?;
         return Ok((ctx, counter));
@@ -4716,12 +4775,22 @@ fn flow_from_bundle_cached(
     // computed against a moving target will still get evicted
     // by the next mutation_counter mismatch — correctness
     // preserved).
+    state.metrics.record_brain_cache_miss();
     let counter_at_fit = store.mutation_counter();
+    let fit_start = std::time::Instant::now();
     let cached = compute_fit_data(store, fields, fit_mode, sigma_floor_epsilon, counter_at_fit)
         .map_err(|e| bad_request(&e))?;
+    let fit_us = fit_start.elapsed().as_micros() as u64;
+    state.metrics.record_brain_timing(fit_us, 0);
+
     let ctx = build_ctx_from_cached(&cached, fit_mode, n, b)
         .map_err(|e| bad_request(&e))?;
-    state.flow_cache.insert(key, cached);
+    // Eviction count is bumped inside cache.insert when it actually
+    // evicts; we hook into that path via metrics passed to insert.
+    let evicted = state.flow_cache.insert_with_eviction_hint(key, cached);
+    if evicted {
+        state.metrics.record_brain_cache_eviction();
+    }
     Ok((ctx, counter_at_fit))
 }
 
@@ -12299,8 +12368,12 @@ mod tests {
 
     #[test]
     fn test_prometheus_text_contains_required_metric_names() {
-        let body = build_prometheus_text(100, 2, 1, 50_000, 200_000, 900_000,
-                                        5000, 250_000, 3, 7, 14_000, 88, 12, 3600);
+        // S1 wave 1 §E: 5 new args for brain cache + timing metrics.
+        let body = build_prometheus_text(
+            100, 2, 1, 50_000, 200_000, 900_000,
+            5000, 250_000, 3, 7, 14_000, 88, 12, 3600,
+            42, 8, 0, 1_500_000, 12_000,
+        );
         for metric in &[
             "gigi_queries_total",
             "gigi_queries_error_total",
@@ -12314,6 +12387,12 @@ mod tests {
             "gigi_http_connections_total",
             "gigi_ws_connections_total",
             "gigi_uptime_seconds",
+            // S1 wave 1 §E additions.
+            "gigi_brain_cache_hits_total",
+            "gigi_brain_cache_misses_total",
+            "gigi_brain_cache_evictions_total",
+            "gigi_brain_fit_total_microseconds",
+            "gigi_brain_compute_total_microseconds",
         ] {
             assert!(body.contains(metric), "missing metric: {metric}");
         }
@@ -12321,8 +12400,11 @@ mod tests {
 
     #[test]
     fn test_prometheus_text_values_correct() {
-        let body = build_prometheus_text(100, 2, 1, 50_000, 200_000, 900_000,
-                                        5000, 250_000, 3, 7, 14_000, 88, 12, 3600);
+        let body = build_prometheus_text(
+            100, 2, 1, 50_000, 200_000, 900_000,
+            5000, 250_000, 3, 7, 14_000, 88, 12, 3600,
+            42, 8, 0, 1_500_000, 12_000,
+        );
         assert!(body.contains("gigi_queries_total 100"));
         assert!(body.contains("gigi_queries_error_total 2"));
         assert!(body.contains("gigi_queries_slow_total 1"));
@@ -12330,16 +12412,26 @@ mod tests {
         assert!(body.contains(r#"gigi_query_duration_microseconds{quantile="0.95"} 200000"#));
         assert!(body.contains(r#"gigi_query_duration_microseconds{quantile="0.99"} 900000"#));
         assert!(body.contains("gigi_uptime_seconds 3600"));
+        // S1 wave 1 §E values.
+        assert!(body.contains("gigi_brain_cache_hits_total 42"));
+        assert!(body.contains("gigi_brain_cache_misses_total 8"));
+        assert!(body.contains("gigi_brain_fit_total_microseconds 1500000"));
     }
 
     #[test]
     fn test_prometheus_text_has_help_and_type_lines() {
-        let body = build_prometheus_text(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let body = build_prometheus_text(
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        );
         // Every metric must be preceded by # HELP and # TYPE
         assert!(body.contains("# HELP gigi_queries_total"));
         assert!(body.contains("# TYPE gigi_queries_total counter"));
         assert!(body.contains("# HELP gigi_bundles"));
         assert!(body.contains("# TYPE gigi_bundles gauge"));
+        // S1 wave 1 §E HELP/TYPE.
+        assert!(body.contains("# HELP gigi_brain_cache_hits_total"));
+        assert!(body.contains("# TYPE gigi_brain_cache_hits_total counter"));
     }
 
     // ── Observability v1.1 — new builders ─────────────────────────────────

@@ -239,6 +239,23 @@ pub struct Metrics {
     pub anomalies_total:        AtomicU64,
     pub http_connections_total: AtomicU64,
     pub ws_connections_total:   AtomicU64,
+    // ── Brain/fit cache observability (S1 wave 1 §E, per
+    // Marcella's 2026-05-27 caveat: "make sure the cache exports
+    // hit/miss/eviction counters so we can spot the LRU-switch
+    // signal"). Lock-free counters on the hot path.
+    pub brain_cache_hits:       AtomicU64,
+    pub brain_cache_misses:     AtomicU64,
+    pub brain_cache_evictions:  AtomicU64,
+    /// Microseconds spent in fit_full / fit_diagonal / fit_isotropic
+    /// across all brain calls. Lets us read "how much fit work has
+    /// been done across the process lifetime" — a cold-path
+    /// indicator. Per-call fit_ms is also surfaced in response
+    /// headers (X-Brain-Fit-Us).
+    pub brain_fit_total_us:     AtomicU64,
+    /// Microseconds spent in the per-call brain compute (Langevin
+    /// trajectory, kernel density, etc.) post-fit. Tracks the
+    /// hot-path work after a cache hit.
+    pub brain_compute_total_us: AtomicU64,
     /// Sliding window of recent query durations for p50/p95/p99.
     pub durations: Mutex<DurationWindow>,
     /// Per-statement-type query counts.
@@ -256,9 +273,38 @@ impl Metrics {
             anomalies_total:        AtomicU64::new(0),
             http_connections_total: AtomicU64::new(0),
             ws_connections_total:   AtomicU64::new(0),
+            brain_cache_hits:       AtomicU64::new(0),
+            brain_cache_misses:     AtomicU64::new(0),
+            brain_cache_evictions:  AtomicU64::new(0),
+            brain_fit_total_us:     AtomicU64::new(0),
+            brain_compute_total_us: AtomicU64::new(0),
             durations: Mutex::new(DurationWindow::new(4096)),
             by_type:   Mutex::new(std::collections::HashMap::new()),
         }
+    }
+
+    /// Record a brain cache hit (lock-free, hot-path).
+    pub fn record_brain_cache_hit(&self) {
+        self.brain_cache_hits.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record a brain cache miss (lock-free).
+    pub fn record_brain_cache_miss(&self) {
+        self.brain_cache_misses.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record a brain cache eviction (when insert past capacity).
+    pub fn record_brain_cache_eviction(&self) {
+        self.brain_cache_evictions.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record fit + compute timing for a single brain call.
+    /// `fit_us` is 0 on a cache hit (no fit performed).
+    pub fn record_brain_timing(&self, fit_us: u64, compute_us: u64) {
+        if fit_us > 0 {
+            self.brain_fit_total_us.fetch_add(fit_us, Ordering::Relaxed);
+        }
+        self.brain_compute_total_us.fetch_add(compute_us, Ordering::Relaxed);
     }
 
     pub fn record_query(&self, duration_us: u64, stmt_type: &str, is_slow: bool, is_error: bool) {

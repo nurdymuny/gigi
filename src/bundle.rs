@@ -1163,6 +1163,18 @@ impl BundleStore {
             return 0;
         }
 
+        // CRITICAL (wave 2 e2e finding 2026-05-27): bump the
+        // mutation_counter ONCE per batch so downstream caches
+        // (BundleFlowCache, spectral_gap_cache) invalidate. Without
+        // this, batch_insert bypassed the cache-invalidation signal
+        // entirely — the counter stayed stale, and cached fits
+        // were served against post-insert record data with
+        // pre-insert counter stamps. Single bump per batch (not
+        // per record) is correct: consumers only care about the
+        // post-batch state, and bumping N times would serialize
+        // observers behind every individual record.
+        self.mark_mutated();
+
         // Check if the turbo fast path is available
         let single_int_base = self.schema.base_fields.len() == 1
             && matches!(self.schema.base_fields[0].field_type, FieldType::Numeric);
@@ -4917,6 +4929,47 @@ mod tests {
     //
     // If any of these change the cache invariant breaks and we'd
     // serve stale fits. So they get a dedicated regression test.
+    /// 2026-05-27 e2e finding: batch_insert was bypassing mark_mutated,
+    /// leaving the counter at 0 even after 100 records inserted. That
+    /// would have served stale cached fits in production. This test
+    /// pins the fix: a batch_insert call bumps the counter EXACTLY
+    /// ONCE per batch (not per record — consumers only care about
+    /// the post-batch state).
+    #[test]
+    fn mutation_counter_bumps_on_batch_insert() {
+        let mut store = make_store();
+        assert_eq!(store.mutation_counter(), 0, "fresh store at 0");
+
+        let batch = vec![
+            rec(1, "Alice", 75000.0, "Eng"),
+            rec(2, "Bob", 80000.0, "Sales"),
+            rec(3, "Carol", 90000.0, "Mgmt"),
+        ];
+        let count = store.batch_insert(&batch);
+        assert_eq!(count, 3, "batch_insert returns count");
+        // ONE bump per batch (not three).
+        assert_eq!(
+            store.mutation_counter(),
+            1,
+            "batch_insert bumps counter ONCE per batch — cache-invalidation contract"
+        );
+
+        // Empty batch is a no-op — should NOT bump.
+        let empty: Vec<crate::types::Record> = Vec::new();
+        let count = store.batch_insert(&empty);
+        assert_eq!(count, 0);
+        assert_eq!(
+            store.mutation_counter(),
+            1,
+            "empty batch_insert must NOT bump counter"
+        );
+
+        // Second non-empty batch bumps once more.
+        let batch2 = vec![rec(4, "Dave", 100000.0, "Eng")];
+        store.batch_insert(&batch2);
+        assert_eq!(store.mutation_counter(), 2, "second batch bumps once");
+    }
+
     #[test]
     fn mutation_counter_contract() {
         let mut store = make_store();

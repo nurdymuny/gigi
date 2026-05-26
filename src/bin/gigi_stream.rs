@@ -3272,17 +3272,34 @@ fn negotiated_brain_response<T: serde::Serialize>(
     );
 
     if wants_dhoom {
-        // Struct → Value → DHOOM. The JSON intermediate is
-        // internal-impl-only; task #112 cleans it up.
+        // Struct → Value → wrap-in-array → DHOOM. The DHOOM encoder
+        // is records-oriented: the top-level shape it accepts is
+        // `{collection_name: [record, record, ...]}` (encode_json's
+        // contract). Analytical responses are one heterogeneous
+        // object, not a list of records — so we wrap as a
+        // single-element array under collection name "brain_response".
+        // Consumers MUST unwrap by indexing [0] under "brain_response".
+        //
+        // Discovered via wave-2 e2e probe 2026-05-27: prior attempt
+        // used dhoom::encode with a single-key object envelope and
+        // hit "Top-level object value must be an array" — that's
+        // what encode_json's array wrapping solves directly.
+        //
+        // Task #112 (native heterogeneous-Value Record API on the
+        // DHOOM encoder) eliminates the array wrapper; until then,
+        // single-element array under "brain_response" is the
+        // documented wire contract.
         let value = serde_json::to_value(&body).map_err(|e| {
             bad_request(&format!(
                 "DHOOM encode: serialize struct → Value failed: {}",
                 e
             ))
         })?;
-        let encoded = gigi::dhoom::encode(&value).map_err(|e| {
-            bad_request(&format!("DHOOM encode: {}", e))
-        })?;
+        let result = gigi::dhoom::encode_json(
+            std::slice::from_ref(&value),
+            "brain_response",
+        );
+        let encoded = result.dhoom;
         headers.insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/dhoom"),

@@ -3882,6 +3882,206 @@ async fn brain_fit_diagnostics_endpoint(
     ))
 }
 
+// ─── distance_to_fit_mean (S1 wave 1 §H) ────────────────────
+//
+// Per Marcella's 2026-05-26 H2 attractor letter Diagnostic 3:
+// "does `double_cover_v3` live near the fit_mean? what's
+// ‖vec(double_cover_v3) − fit_mean‖? and for comparison, the
+// median across all 9964 records?"
+//
+// Endpoint that answers BOTH at once: for any set of target
+// vectors, returns each target's distance to fit_mean + its
+// percentile within the bundle's distance distribution, plus
+// the full distribution statistics (min/p25/median/p75/p90/p99/
+// max) so consumers can interpret the percentile in context.
+//
+// Detects the H2 mechanism directly: if the target sits at p<0.01
+// (closer than 99% of records), it's at the deep point of the
+// fitted Gaussian — every Langevin walk rolls there.
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainDistanceToFitMeanRequest {
+    fields: Vec<String>,
+    /// Fit mode for fit_mean computation. Defaults to isotropic.
+    #[serde(default)]
+    fit_mode: Option<FitMode>,
+    /// Floor for the fit. See L13.6 + S1 §2a.
+    #[serde(default)]
+    sigma_floor_epsilon: Option<f64>,
+    /// Target vectors to measure. Each must have length == fields.len().
+    targets: Vec<Vec<f64>>,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct DistanceDistribution {
+    /// Records counted (those with all fields present).
+    n_records: usize,
+    /// Euclidean distance statistics across all records.
+    min: f64,
+    p25: f64,
+    median: f64,
+    p75: f64,
+    p90: f64,
+    p99: f64,
+    max: f64,
+    mean: f64,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainDistanceToFitMeanResponse {
+    /// Fit_mean vector (length = fields.len()).
+    fit_mean: Vec<f64>,
+    /// Per-target Euclidean distance to fit_mean. Aligned with
+    /// request.targets order.
+    target_distances: Vec<f64>,
+    /// Per-target percentile rank within the bundle's distance
+    /// distribution. percentile=0.01 means "closer than 99% of
+    /// records" — the H2 hallmark.
+    target_percentiles: Vec<f64>,
+    /// Full distance distribution across all records.
+    distance_distribution: DistanceDistribution,
+    /// fit_mode that was used to compute fit_mean.
+    fit_mode_used: String,
+    counter_at_fit: u64,
+}
+
+/// POST /v1/bundles/{name}/brain/distance_to_fit_mean
+///
+/// Diagnoses the H2 mechanism for any target vector. Walks all
+/// records once to build the distance distribution, returns
+/// per-target distance + percentile + distribution stats.
+///
+/// Cost: O(N·n) per call (one record walk; not cached). For
+/// bge_v2 at N=9964, n=384 that's ~3.8M ops, ~10ms. The fit
+/// itself comes from the cache (sub-µs warm).
+#[cfg(feature = "kahler")]
+async fn brain_distance_to_fit_mean_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainDistanceToFitMeanRequest>,
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainDistanceToFitMeanResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+
+    // Validate every target has the right dim.
+    let n = req.fields.len();
+    for (i, t) in req.targets.iter().enumerate() {
+        if t.len() != n {
+            return Err(bad_request(&format!(
+                "target[{}] length {} ≠ fields length {}",
+                i,
+                t.len(),
+                n
+            )));
+        }
+    }
+
+    let fit_mode = req.fit_mode.unwrap_or_default();
+    let (ctx, counter_at_fit) = flow_from_bundle_cached(
+        &state,
+        &name,
+        heap,
+        &req.fields,
+        fit_mode,
+        req.sigma_floor_epsilon,
+    )?;
+    let fit_mean = ctx.mu.clone();
+
+    // Build distance distribution across all records.
+    let samples = extract_field_samples(heap, &req.fields)
+        .map_err(|e| bad_request(&e))?;
+    let mut distances: Vec<f64> = samples
+        .iter()
+        .map(|s| {
+            s.iter()
+                .zip(fit_mean.iter())
+                .map(|(a, m)| (a - m).powi(2))
+                .sum::<f64>()
+                .sqrt()
+        })
+        .collect();
+    if distances.is_empty() {
+        return Err(bad_request(
+            "no records have all requested fields present",
+        ));
+    }
+    distances.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let n_records = distances.len();
+
+    let percentile_at = |p: f64| -> f64 {
+        let idx = ((p * (n_records - 1) as f64).round() as usize).min(n_records - 1);
+        distances[idx]
+    };
+    let mean = distances.iter().sum::<f64>() / n_records as f64;
+    let distribution = DistanceDistribution {
+        n_records,
+        min: distances[0],
+        p25: percentile_at(0.25),
+        median: percentile_at(0.5),
+        p75: percentile_at(0.75),
+        p90: percentile_at(0.9),
+        p99: percentile_at(0.99),
+        max: *distances.last().unwrap(),
+        mean,
+    };
+
+    // Compute target distances and percentile ranks.
+    let target_distances: Vec<f64> = req
+        .targets
+        .iter()
+        .map(|t| {
+            t.iter()
+                .zip(fit_mean.iter())
+                .map(|(a, m)| (a - m).powi(2))
+                .sum::<f64>()
+                .sqrt()
+        })
+        .collect();
+    // Percentile rank: fraction of records whose distance is
+    // strictly less than the target's. Use binary search since
+    // `distances` is sorted.
+    let target_percentiles: Vec<f64> = target_distances
+        .iter()
+        .map(|&d| {
+            let pos = distances.partition_point(|x| *x < d);
+            pos as f64 / n_records as f64
+        })
+        .collect();
+
+    let fit_mode_used = match fit_mode {
+        FitMode::Isotropic => "isotropic",
+        FitMode::Diagonal => "diagonal",
+        FitMode::Full => "full",
+    }
+    .to_string();
+
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainDistanceToFitMeanResponse {
+            fit_mean,
+            target_distances,
+            target_percentiles,
+            distance_distribution: distribution,
+            fit_mode_used,
+            counter_at_fit,
+        }),
+    ))
+}
+
 // ─── §12 SELF-MONITOR (confidence) ──────────────────────────
 
 #[cfg(feature = "kahler")]
@@ -10741,6 +10941,15 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/brain/fit_diagnostics",
             post(brain_fit_diagnostics_endpoint),
+        )
+        // S1 wave 1 §H — distance_to_fit_mean. Diagnoses the H2
+        // mechanism for any target vector by reporting its
+        // percentile within the bundle's full distance
+        // distribution. Target at p<0.01 = at the deep point
+        // of the fitted Gaussian = H2 attractor source.
+        .route(
+            "/v1/bundles/{name}/brain/distance_to_fit_mean",
+            post(brain_distance_to_fit_mean_endpoint),
         );
 
     let app = app

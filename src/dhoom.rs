@@ -277,14 +277,33 @@ fn value_to_dhoom(v: &Value) -> String {
 
 /// Parse a string-pattern arithmetic start value.
 /// Returns (prefix, numeric_suffix, padding_width) or None if purely numeric.
+//
+// 2026-05-26 hotfix: previously did `let prefix = &s[..=last_nondigit]`
+// where `last_nondigit` is the BYTE position of the START of the last
+// non-digit char (rfind on a char-predicate returns char-start indices).
+// For multi-byte UTF-8 chars (e.g. 'é' = 0xC3 0xA9) the inclusive
+// slice cut through a continuation byte and panicked. The new code
+// walks the string char-aware from the end: count the trailing ASCII
+// digits, then split at that boundary — both halves are guaranteed
+// to be valid UTF-8 boundaries by construction.
 fn parse_string_pattern(s: &str) -> Option<(String, i64, usize)> {
-    // Find the last non-digit character
-    let last_nondigit = s.rfind(|c: char| !c.is_ascii_digit())?;
-    let prefix = &s[..=last_nondigit];
-    let suffix = &s[last_nondigit + 1..];
-    if suffix.is_empty() {
+    // Walk chars from the end, counting trailing ASCII digits.
+    // (We're looking for an arithmetic suffix; only ASCII digits
+    // count — Unicode digit chars like '٢' are intentionally treated
+    // as part of the prefix.)
+    let suffix_byte_len: usize = s
+        .chars()
+        .rev()
+        .take_while(|c| c.is_ascii_digit())
+        .map(|c| c.len_utf8())
+        .sum();
+    if suffix_byte_len == 0 || suffix_byte_len == s.len() {
         return None;
     }
+    let split = s.len() - suffix_byte_len;
+    debug_assert!(s.is_char_boundary(split));
+    let prefix = &s[..split];
+    let suffix = &s[split..];
     let width = suffix.len();
     let num: i64 = suffix.parse().ok()?;
     Some((prefix.to_string(), num, width))
@@ -1968,6 +1987,45 @@ mod tests {
         assert_eq!(fiber.name, None);
         assert_eq!(fiber.fields.len(), 2);
         assert_eq!(fiber.fields[1].modifier, Some(Modifier::Nested));
+    }
+
+    // 2026-05-26 regression: parse_string_pattern panicked on strings
+    // ending in digits where the immediately preceding char was a
+    // multi-byte UTF-8 codepoint (e.g. "café123"). The byte-inclusive
+    // slice cut through a continuation byte. Production hit this when
+    // the auto-snapshot fix routed previously-skipped heap-only
+    // bundles through the dhoom encoder for the first time and one
+    // of them held a non-ASCII string in an arithmetic-detection
+    // path. Must NOT panic for any UTF-8 input.
+    #[test]
+    fn parse_string_pattern_handles_multibyte_prefix() {
+        // The historical poison case: multi-byte char immediately
+        // before the digit suffix.
+        let result = parse_string_pattern("café123");
+        assert_eq!(
+            result,
+            Some(("café".to_string(), 123, 3)),
+            "multi-byte prefix should split cleanly on char boundary"
+        );
+
+        // Two-byte char, three-byte char, four-byte char (emoji)
+        // all just before the digit run.
+        assert!(parse_string_pattern("naïve42").is_some());
+        assert!(parse_string_pattern("漢字007").is_some());
+        assert!(parse_string_pattern("🎯99").is_some());
+
+        // Edge cases — pure digits, no digits, empty: all must not
+        // panic and return None.
+        assert_eq!(parse_string_pattern(""), None);
+        assert_eq!(parse_string_pattern("123"), None);
+        assert_eq!(parse_string_pattern("café"), None);
+        assert_eq!(parse_string_pattern("hello"), None);
+
+        // Sanity — ASCII path still works.
+        assert_eq!(
+            parse_string_pattern("order042"),
+            Some(("order".to_string(), 42, 3))
+        );
     }
 
     #[test]

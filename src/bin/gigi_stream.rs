@@ -3227,6 +3227,79 @@ fn bundle_counter_header(counter: u64) -> [(axum::http::HeaderName, String); 1] 
     )]
 }
 
+/// Brain endpoint response with content negotiation (wave 2 §D).
+///
+/// Per Bee's 2026-05-27 product policy: **internals DHOOM-only,
+/// externals DHOOM first-class with JSON optional via Accept header.**
+///
+/// Routing:
+///   - `Accept: application/dhoom` → DHOOM-encoded body
+///   - default (or `Accept: application/json`) → JSON
+///
+/// Same X-Bundle-Mutation-Counter header surfaced either way so the
+/// cache-warmth contract is encoding-independent.
+///
+/// Known wart (filed as task #112): we currently serialize the
+/// response struct via serde_json::to_value before handing to
+/// dhoom::encode. The intermediate JSON Value is an internal
+/// implementation detail; the public wire is DHOOM end-to-end. A
+/// native Record API on the DHOOM encoder eliminates the
+/// intermediate — deferred to wave 2.5 per the spec.
+///
+/// Safe default: JSON. This is the back-compat-preserving default;
+/// existing consumers (Marcella's wire code that doesn't yet send
+/// the Accept header) continue to work unchanged. New consumers
+/// opt into DHOOM by sending the Accept header. Once Marcella's
+/// side flips to DHOOM-by-default in her client code, we can flip
+/// the server default too.
+#[cfg(feature = "kahler")]
+fn negotiated_brain_response<T: serde::Serialize>(
+    accept: Option<&str>,
+    counter_at_fit: u64,
+    body: T,
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
+    use axum::http::{header, HeaderMap, HeaderName, HeaderValue};
+    use axum::response::IntoResponse;
+
+    let wants_dhoom = accept
+        .map(|s| s.contains("application/dhoom"))
+        .unwrap_or(false);
+
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        HeaderName::from_static("x-bundle-mutation-counter"),
+        HeaderValue::from(counter_at_fit),
+    );
+
+    if wants_dhoom {
+        // Struct → Value → DHOOM. The JSON intermediate is
+        // internal-impl-only; task #112 cleans it up.
+        let value = serde_json::to_value(&body).map_err(|e| {
+            bad_request(&format!(
+                "DHOOM encode: serialize struct → Value failed: {}",
+                e
+            ))
+        })?;
+        let encoded = gigi::dhoom::encode(&value).map_err(|e| {
+            bad_request(&format!("DHOOM encode: {}", e))
+        })?;
+        headers.insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/dhoom"),
+        );
+        Ok((headers, encoded).into_response())
+    } else {
+        headers.insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        );
+        let json_bytes = serde_json::to_vec(&body).map_err(|e| {
+            bad_request(&format!("JSON encode: serialize failed: {}", e))
+        })?;
+        Ok((headers, json_bytes).into_response())
+    }
+}
+
 /// Default relative-median ε floor for diagonal fit. Per Marcella
 /// 2026-05-25 (REPLY_L13_3_DIAGONAL_FIT): without a floor,
 /// rank-deficient axes (σ² ≈ 0) make the natural-gradient term
@@ -3758,14 +3831,9 @@ struct BrainSampleResponse {
 async fn brain_sample_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainSampleRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainSampleResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -3799,12 +3867,13 @@ async fn brain_sample_endpoint(
         FitMode::Full => "full",
     }
     .to_string();
-    // Surface the bundle mutation counter at fit time so consumers
-    // can stamp their warm-path cache and detect server-side
-    // invalidations between calls.
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainSampleResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainSampleResponse {
             samples,
             fit_mean: ctx.mu,
             fit_sigma_sq: ctx.sigma_sq,
@@ -3813,8 +3882,8 @@ async fn brain_sample_endpoint(
             fit_sigma_floor_used: ctx.effective_floor,
             fit_floored_indices: ctx.floored_indices,
             fit_mode_used,
-        }),
-    ))
+        },
+    )
 }
 
 // ─── fit_diagnostics (S1 wave 1 §G) ─────────────────────────
@@ -3921,14 +3990,9 @@ struct BrainFitDiagnosticsResponse {
 async fn brain_fit_diagnostics_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainFitDiagnosticsRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainFitDiagnosticsResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -3988,9 +4052,13 @@ async fn brain_fit_diagnostics_endpoint(
         .map(|a| (**a).clone())
         .unwrap_or_default();
 
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainFitDiagnosticsResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainFitDiagnosticsResponse {
             fit_mode_used,
             dim: req.fields.len(),
             fit_mean: fit_mean_vec,
@@ -4007,8 +4075,8 @@ async fn brain_fit_diagnostics_endpoint(
             condition_number: cached.condition_number,
             counter_at_fit,
             cache_hit: cache_hit_initial,
-        }),
-    ))
+        },
+    )
 }
 
 // ─── distance_to_fit_mean (S1 wave 1 §H) ────────────────────
@@ -4090,14 +4158,9 @@ struct BrainDistanceToFitMeanResponse {
 async fn brain_distance_to_fit_mean_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainDistanceToFitMeanRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainDistanceToFitMeanResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -4198,17 +4261,21 @@ async fn brain_distance_to_fit_mean_endpoint(
     }
     .to_string();
 
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainDistanceToFitMeanResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainDistanceToFitMeanResponse {
             fit_mean,
             target_distances,
             target_percentiles,
             distance_distribution: distribution,
             fit_mode_used,
             counter_at_fit,
-        }),
-    ))
+        },
+    )
 }
 
 // ─── §12 SELF-MONITOR (confidence) ──────────────────────────
@@ -4360,14 +4427,9 @@ struct BrainConfidenceWithExplainResponse {
 async fn brain_confidence_with_explain_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainConfidenceWithExplainRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainConfidenceWithExplainResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -4431,9 +4493,13 @@ async fn brain_confidence_with_explain_endpoint(
     // Explain (shares `samples`).
     let exp = gigi::geometry::explain(&samples, &req.query, req.n_steps);
 
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainConfidenceWithExplainResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainConfidenceWithExplainResponse {
             raw: confidence_raw,
             normalized: confidence_normalized,
             bandwidth,
@@ -4445,8 +4511,8 @@ async fn brain_confidence_with_explain_endpoint(
             n_steps: exp.n_steps,
             n_samples: samples.len(),
             counter_at_fit,
-        }),
-    ))
+        },
+    )
 }
 
 // ─── §8 ATTEND ──────────────────────────────────────────────
@@ -5452,14 +5518,9 @@ struct BrainDreamResponse {
 async fn brain_dream_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainDreamRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainDreamResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -5509,17 +5570,21 @@ async fn brain_dream_endpoint(
     let mean_d = distances.iter().sum::<f64>() / distances.len() as f64;
     let max_d = distances.iter().cloned().fold(0.0_f64, f64::max);
 
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainDreamResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainDreamResponse {
             trajectory,
             fit_mean: ctx.mu,
             fit_sigma_sq: ctx.sigma_sq,
             temperature_used: req.temperature,
             mean_dist_from_mean: mean_d,
             max_dist_from_mean: max_d,
-        }),
-    ))
+        },
+    )
 }
 
 // ─── §3 FORECAST (Hamilton-flow extension) ──────────────────
@@ -5565,14 +5630,9 @@ struct BrainForecastResponse {
 async fn brain_forecast_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainForecastRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainForecastResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -5606,14 +5666,18 @@ async fn brain_forecast_endpoint(
         .flow
         .forecast(&req.initial, &config)
         .map_err(|e| bad_request(&format!("{}", e)))?;
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainForecastResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainForecastResponse {
             trajectory,
             fit_mean: ctx.mu,
             fit_sigma_sq: ctx.sigma_sq,
-        }),
-    ))
+        },
+    )
 }
 
 // ─── §5 RECONSTRUCT (T=0 descent to MAP) ────────────────────
@@ -5663,14 +5727,9 @@ struct BrainReconstructResponse {
 async fn brain_reconstruct_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainReconstructRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainReconstructResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -5711,14 +5770,18 @@ async fn brain_reconstruct_endpoint(
         .map(|(a, b)| (a - b).powi(2))
         .sum::<f64>()
         .sqrt();
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainReconstructResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainReconstructResponse {
             result,
             fit_mean: ctx.mu,
             descent_distance,
-        }),
-    ))
+        },
+    )
 }
 
 // ─── §6 INPAINT (constrained Langevin) ──────────────────────
@@ -5774,14 +5837,9 @@ struct BrainInpaintResponse {
 async fn brain_inpaint_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainInpaintRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainInpaintResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -5826,15 +5884,19 @@ async fn brain_inpaint_endpoint(
         &config,
     )
     .map_err(|e| bad_request(&format!("{}", e)))?;
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainInpaintResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainInpaintResponse {
             result,
             locked_indices: req.locked_indices,
             fit_mean: ctx.mu,
             fit_sigma_sq: ctx.sigma_sq,
-        }),
-    ))
+        },
+    )
 }
 
 // ─── §7 PREDICT (single-step natural gradient) ──────────────
@@ -5880,14 +5942,9 @@ struct BrainPredictResponse {
 async fn brain_predict_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<BrainPredictRequest>,
-) -> Result<
-    (
-        [(axum::http::HeaderName, String); 1],
-        Json<BrainPredictResponse>,
-    ),
-    (StatusCode, Json<ErrorResponse>),
-> {
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -5919,15 +5976,19 @@ async fn brain_predict_endpoint(
         .map(|(a, b)| (a - b).powi(2))
         .sum::<f64>()
         .sqrt();
-    Ok((
-        bundle_counter_header(counter_at_fit),
-        Json(BrainPredictResponse {
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainPredictResponse {
             next_state,
             fit_mean: ctx.mu,
             fit_sigma_sq: ctx.sigma_sq,
             step_size,
-        }),
-    ))
+        },
+    )
 }
 
 

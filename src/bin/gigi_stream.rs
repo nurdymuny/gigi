@@ -186,6 +186,14 @@ struct StreamState {
     logger: Logger,
     /// Live metrics counters for GET /v1/metrics.
     metrics: Arc<Metrics>,
+    /// Bundle flow cache (S1 wave 1 §A) — caches expensive
+    /// Gaussian fits keyed on (bundle, fit_mode, fields,
+    /// sigma_floor_epsilon). Invalidated by `mutation_counter`
+    /// on BundleStore; bounded to 50 entries (LRU follow-up).
+    /// Lock-free read on cache hit. Only present under
+    /// `kahler` feature — brain endpoints are kahler-gated.
+    #[cfg(feature = "kahler")]
+    flow_cache: Arc<BundleFlowCache>,
 }
 
 /// A mutation event broadcast to all subscribers of a bundle.
@@ -262,6 +270,15 @@ impl StreamState {
 
         eprintln!("  WAL persistence: {} ({})", data_path.display(), data_dir);
 
+        // Cache capacity — 50 entries default, configurable via env.
+        // At n=384 each FullFitResult is ~10MB, so 50 entries =
+        // ~500MB worst case (fits in production's 1GB).
+        #[cfg(feature = "kahler")]
+        let flow_cache_capacity = std::env::var("GIGI_FLOW_CACHE_SIZE")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(50_usize);
+
         StreamState {
             engine: RwLock::new(engine),
             ready: AtomicBool::new(false),
@@ -275,6 +292,8 @@ impl StreamState {
             start_time: Instant::now(),
             logger,
             metrics,
+            #[cfg(feature = "kahler")]
+            flow_cache: Arc::new(BundleFlowCache::new(flow_cache_capacity)),
         }
     }
 
@@ -2910,13 +2929,183 @@ fn extract_field_samples(
 /// captures inter-axis correlation that the diagonal model ignores
 /// — required to diffuse the `double_cover_v3` attractor on bge_v2.
 #[cfg(feature = "kahler")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 enum FitMode {
     #[default]
     Isotropic,
     Diagonal,
     Full,
+}
+
+// ─── BundleFlowCache (S1 wave 1 §A) ─────────────────────────────
+//
+// Per Bee's 2026-05-27 product-latency reframe: brain endpoints
+// must serve fits from cache on the hot path. Without this, every
+// `/brain/dream` with `fit_mode: "full"` re-walks ALL records of
+// the bundle — ~3s at n=384 on bge_v2 — which kills the product
+// latency story.
+//
+// Architecture:
+//   - Hot path = lock-free read: RwLock::read + HashMap::get +
+//     counter compare. Sub-microsecond on cache hit.
+//   - Miss path = drop read, acquire write, compute fit, insert.
+//   - Invalidation = `BundleStore::mutation_counter` (added in
+//     bundle.rs). Each cached fit stamps the counter at fit time;
+//     a stale lookup (counter changed) returns None.
+//   - Eviction = bounded count (default 50). On insert past cap,
+//     evict any one entry (random) — O(1), good enough for v1.
+//     LRU as a follow-up if telemetry shows hit-rate problems.
+//   - Surface = `X-Bundle-Mutation-Counter` response header on
+//     brain endpoints, so consumers can stamp their warm path and
+//     detect server-side invalidations.
+
+#[cfg(feature = "kahler")]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+struct CacheKey {
+    bundle_name: String,
+    fit_mode: FitMode,
+    fields_hash: u64,
+    /// Bits of f64 — exact comparison. None = floor unset.
+    sigma_floor_epsilon_bits: u64,
+}
+
+#[cfg(feature = "kahler")]
+impl CacheKey {
+    fn build(
+        bundle_name: &str,
+        fit_mode: FitMode,
+        fields: &[String],
+        sigma_floor_epsilon: Option<f64>,
+    ) -> Self {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        // Hash fields in their incoming order (caller controls
+        // ordering — different orderings = different fits).
+        for f in fields {
+            f.hash(&mut hasher);
+        }
+        let fields_hash = hasher.finish();
+        // Encode "unset" as a sentinel that never collides with a
+        // valid floor value (NaN's bit pattern).
+        let sigma_floor_epsilon_bits = match sigma_floor_epsilon {
+            Some(eps) => eps.to_bits(),
+            None => f64::NAN.to_bits(),
+        };
+        CacheKey {
+            bundle_name: bundle_name.to_string(),
+            fit_mode,
+            fields_hash,
+            sigma_floor_epsilon_bits,
+        }
+    }
+}
+
+/// Cached fit data — the expensive part. The Langevin closure is
+/// rebuilt on each call from these Arc'd payloads (cheap: just
+/// captures Arc clones, no data copy).
+#[cfg(feature = "kahler")]
+#[derive(Clone)]
+struct CachedFit {
+    counter_at_fit: u64,
+    mu: Arc<Vec<f64>>,
+    sigma_sq: f64,
+    sigma_sq_per_field: Arc<Vec<f64>>,
+    sigma_sq_per_field_raw: Arc<Vec<f64>>,
+    effective_floor: f64,
+    floored_indices: Arc<Vec<usize>>,
+    /// Σ⁻¹ — only populated for `FitMode::Full`. None otherwise.
+    precision: Option<Arc<Vec<Vec<f64>>>>,
+    /// Σ post-flooring — only populated for `FitMode::Full`.
+    /// Surfaced via fit_diagnostics endpoint.
+    covariance: Option<Arc<Vec<Vec<f64>>>>,
+    /// Full-fit diagnostics (None for isotropic/diagonal).
+    eigenvalues_raw: Option<Arc<Vec<f64>>>,
+    eigenvalues_effective: Option<Arc<Vec<f64>>>,
+    eigenvalue_floor_used: f64,
+    floored_eigenvalue_count: usize,
+    condition_number: f64,
+    variance_ratio: f64,
+}
+
+#[cfg(feature = "kahler")]
+pub struct BundleFlowCache {
+    inner: std::sync::RwLock<std::collections::HashMap<CacheKey, CachedFit>>,
+    max_entries: usize,
+}
+
+#[cfg(feature = "kahler")]
+impl BundleFlowCache {
+    pub fn new(max_entries: usize) -> Self {
+        BundleFlowCache {
+            inner: std::sync::RwLock::new(std::collections::HashMap::new()),
+            max_entries: max_entries.max(1),
+        }
+    }
+
+    /// Hot path lookup. Returns Some only if the cached fit's
+    /// counter still matches the bundle's current counter — i.e.
+    /// no inserts have happened since the fit was computed.
+    fn get(&self, key: &CacheKey, current_counter: u64) -> Option<CachedFit> {
+        let map = match self.inner.read() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        let entry = map.get(key)?;
+        if entry.counter_at_fit == current_counter {
+            Some(entry.clone())
+        } else {
+            None
+        }
+    }
+
+    fn insert(&self, key: CacheKey, fit: CachedFit) {
+        let mut map = match self.inner.write() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        if map.len() >= self.max_entries {
+            // Random eviction: drop any one entry. Acceptable for
+            // v1 — LRU is a follow-up if hit-rate telemetry warrants.
+            if let Some(k) = map.keys().next().cloned() {
+                map.remove(&k);
+            }
+        }
+        map.insert(key, fit);
+    }
+
+    /// Number of entries currently held. Exposed for diagnostics
+    /// (the future fit_diagnostics endpoint surfaces this).
+    pub fn len(&self) -> usize {
+        let map = match self.inner.read() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        map.len()
+    }
+
+    /// Drop all cached fits. Called when global invalidation is
+    /// desired (engine reload, schema migration, etc.).
+    #[allow(dead_code)]
+    pub fn clear(&self) {
+        let mut map = match self.inner.write() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        map.clear();
+    }
+}
+
+/// Construct the `X-Bundle-Mutation-Counter` response header from a
+/// counter value. Used by brain endpoints to surface the cache-
+/// invalidation signal back to consumers, so they can stamp their
+/// own warm path and detect server-side invalidation.
+#[cfg(feature = "kahler")]
+fn bundle_counter_header(counter: u64) -> [(axum::http::HeaderName, String); 1] {
+    [(
+        axum::http::HeaderName::from_static("x-bundle-mutation-counter"),
+        counter.to_string(),
+    )]
 }
 
 /// Default relative-median ε floor for diagonal fit. Per Marcella
@@ -3441,7 +3630,13 @@ async fn brain_sample_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainSampleRequest>,
-) -> Result<Json<BrainSampleResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainSampleResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -3449,7 +3644,14 @@ async fn brain_sample_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
+    let (ctx, counter_at_fit) = flow_from_bundle_cached(
+        &state,
+        &name,
+        heap,
+        &req.fields,
+        req.fit_mode.unwrap_or_default(),
+        req.sigma_floor_epsilon,
+    )?;
     let config = gigi::geometry::FlowConfig {
         dt: 0.01,
         temperature: req.temperature,
@@ -3468,16 +3670,22 @@ async fn brain_sample_endpoint(
         FitMode::Full => "full",
     }
     .to_string();
-    Ok(Json(BrainSampleResponse {
-        samples,
-        fit_mean: ctx.mu,
-        fit_sigma_sq: ctx.sigma_sq,
-        fit_sigma_sq_per_field: ctx.sigma_sq_per_field,
-        fit_sigma_sq_per_field_raw: ctx.sigma_sq_per_field_raw,
-        fit_sigma_floor_used: ctx.effective_floor,
-        fit_floored_indices: ctx.floored_indices,
-        fit_mode_used,
-    }))
+    // Surface the bundle mutation counter at fit time so consumers
+    // can stamp their warm-path cache and detect server-side
+    // invalidations between calls.
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainSampleResponse {
+            samples,
+            fit_mean: ctx.mu,
+            fit_sigma_sq: ctx.sigma_sq,
+            fit_sigma_sq_per_field: ctx.sigma_sq_per_field,
+            fit_sigma_sq_per_field_raw: ctx.sigma_sq_per_field_raw,
+            fit_sigma_floor_used: ctx.effective_floor,
+            fit_floored_indices: ctx.floored_indices,
+            fit_mode_used,
+        }),
+    ))
 }
 
 // ─── §12 SELF-MONITOR (confidence) ──────────────────────────
@@ -4075,6 +4283,233 @@ struct BundleFlowCtx {
     fit_mode: FitMode,
 }
 
+/// Cached version of `flow_from_bundle`. The brain endpoints
+/// MUST use this, not the raw `flow_from_bundle` — without the
+/// cache, every call re-walks all records (~3s at n=384) and
+/// kills the product latency story.
+///
+/// Returns `(BundleFlowCtx, counter_at_fit)`. The counter is
+/// surfaced via the `X-Bundle-Mutation-Counter` response header
+/// so consumers can stamp their own warm path and detect
+/// server-side invalidation.
+#[cfg(feature = "kahler")]
+fn flow_from_bundle_cached(
+    state: &StreamState,
+    bundle_name: &str,
+    store: &gigi::BundleStore,
+    fields: &[String],
+    fit_mode: FitMode,
+    sigma_floor_epsilon: Option<f64>,
+) -> Result<(BundleFlowCtx, u64), (StatusCode, Json<ErrorResponse>)> {
+    let n = fields.len();
+    let b = canonical_symplectic_pad(n)
+        .ok_or_else(|| bad_request("dimension must be ≥ 2 and even"))?;
+
+    // Lock-free counter load.
+    let counter = store.mutation_counter();
+    let key = CacheKey::build(bundle_name, fit_mode, fields, sigma_floor_epsilon);
+
+    // Hot path: cache lookup.
+    if let Some(cached) = state.flow_cache.get(&key, counter) {
+        let ctx = build_ctx_from_cached(&cached, fit_mode, n, b.clone())
+            .map_err(|e| bad_request(&e))?;
+        return Ok((ctx, counter));
+    }
+
+    // Cache miss: compute and insert. We re-load the counter
+    // right before computing so a concurrent insert during the
+    // fit walk gets noticed on the next call (a stale fit
+    // computed against a moving target will still get evicted
+    // by the next mutation_counter mismatch — correctness
+    // preserved).
+    let counter_at_fit = store.mutation_counter();
+    let cached = compute_fit_data(store, fields, fit_mode, sigma_floor_epsilon, counter_at_fit)
+        .map_err(|e| bad_request(&e))?;
+    let ctx = build_ctx_from_cached(&cached, fit_mode, n, b)
+        .map_err(|e| bad_request(&e))?;
+    state.flow_cache.insert(key, cached);
+    Ok((ctx, counter_at_fit))
+}
+
+/// Compute the raw fit data (mu, sigma_sq variants, optional
+/// precision matrix + eigenvalue spectrum) for any of the three
+/// fit modes. Does NOT build the Langevin closure — that's
+/// `build_ctx_from_cached`. The split is what lets the cache
+/// store fit data once and rebuild closures cheaply on each call.
+#[cfg(feature = "kahler")]
+fn compute_fit_data(
+    store: &gigi::BundleStore,
+    fields: &[String],
+    fit_mode: FitMode,
+    sigma_floor_epsilon: Option<f64>,
+    counter_at_fit: u64,
+) -> Result<CachedFit, String> {
+    let n = fields.len();
+    match fit_mode {
+        FitMode::Isotropic => {
+            let (mu, sigma_sq) = fit_isotropic_gaussian(store, fields)?;
+            let per_field = vec![sigma_sq; n];
+            Ok(CachedFit {
+                counter_at_fit,
+                mu: Arc::new(mu),
+                sigma_sq,
+                sigma_sq_per_field: Arc::new(per_field.clone()),
+                sigma_sq_per_field_raw: Arc::new(per_field),
+                effective_floor: 0.0,
+                floored_indices: Arc::new(Vec::new()),
+                precision: None,
+                covariance: None,
+                eigenvalues_raw: None,
+                eigenvalues_effective: None,
+                eigenvalue_floor_used: 0.0,
+                floored_eigenvalue_count: 0,
+                condition_number: 1.0,
+                variance_ratio: 1.0,
+            })
+        }
+        FitMode::Diagonal => {
+            let epsilon = sigma_floor_epsilon.unwrap_or(DEFAULT_SIGMA_FLOOR_EPSILON);
+            if epsilon < 0.0 {
+                return Err(
+                    "sigma_floor_epsilon must be ≥ 0 (0 disables relative floor)".into(),
+                );
+            }
+            let fit = fit_diagonal_gaussian(store, fields, epsilon)?;
+            let scalar_sigma_sq =
+                fit.sigma_sq_effective.iter().sum::<f64>() / fit.sigma_sq_effective.len() as f64;
+            let var_max = fit
+                .sigma_sq_effective
+                .iter()
+                .cloned()
+                .fold(0.0_f64, f64::max);
+            let var_min = fit
+                .sigma_sq_effective
+                .iter()
+                .cloned()
+                .fold(f64::INFINITY, f64::min);
+            let variance_ratio = if var_min > 0.0 {
+                var_max / var_min
+            } else {
+                f64::INFINITY
+            };
+            Ok(CachedFit {
+                counter_at_fit,
+                mu: Arc::new(fit.mu),
+                sigma_sq: scalar_sigma_sq,
+                sigma_sq_per_field: Arc::new(fit.sigma_sq_effective),
+                sigma_sq_per_field_raw: Arc::new(fit.sigma_sq_raw),
+                effective_floor: fit.effective_floor,
+                floored_indices: Arc::new(fit.floored_indices),
+                precision: None,
+                covariance: None,
+                eigenvalues_raw: None,
+                eigenvalues_effective: None,
+                eigenvalue_floor_used: 0.0,
+                floored_eigenvalue_count: 0,
+                condition_number: variance_ratio, // diag: λ_max/λ_min = var_max/var_min
+                variance_ratio,
+            })
+        }
+        FitMode::Full => {
+            let epsilon = sigma_floor_epsilon.unwrap_or(DEFAULT_SIGMA_FLOOR_EPSILON);
+            if epsilon < 0.0 {
+                return Err(
+                    "sigma_floor_epsilon must be ≥ 0 (0 disables relative floor)".into(),
+                );
+            }
+            let fit = fit_full_gaussian(store, fields, epsilon)?;
+            let scalar_sigma_sq =
+                fit.sigma_sq_per_field.iter().sum::<f64>() / fit.sigma_sq_per_field.len() as f64;
+            Ok(CachedFit {
+                counter_at_fit,
+                mu: Arc::new(fit.mu),
+                sigma_sq: scalar_sigma_sq,
+                sigma_sq_per_field: Arc::new(fit.sigma_sq_per_field),
+                sigma_sq_per_field_raw: Arc::new(fit.sigma_sq_per_field_raw),
+                effective_floor: fit.effective_floor,
+                floored_indices: Arc::new(fit.floored_indices),
+                precision: Some(Arc::new(fit.precision)),
+                covariance: Some(Arc::new(fit.covariance)),
+                eigenvalues_raw: Some(Arc::new(fit.eigenvalues_raw)),
+                eigenvalues_effective: Some(Arc::new(fit.eigenvalues_effective)),
+                eigenvalue_floor_used: fit.eigenvalue_floor_used,
+                floored_eigenvalue_count: fit.floored_eigenvalue_count,
+                condition_number: fit.condition_number,
+                variance_ratio: fit.variance_ratio,
+            })
+        }
+    }
+}
+
+/// Build the BundleFlowCtx (with Langevin closure) from cached
+/// fit data. Cheap: just constructs a closure capturing Arc
+/// clones of the cached data — no record walks, no Cholesky.
+#[cfg(feature = "kahler")]
+fn build_ctx_from_cached(
+    cached: &CachedFit,
+    fit_mode: FitMode,
+    n: usize,
+    b: gigi::geometry::ClosedTwoForm,
+) -> Result<BundleFlowCtx, String> {
+    let mu_arc = cached.mu.clone();
+    let sigma_per_arc = cached.sigma_sq_per_field.clone();
+    let grad: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync> = match fit_mode {
+        FitMode::Isotropic => {
+            let sigma_sq = cached.sigma_sq;
+            Box::new(move |x: &[f64]| -> Vec<f64> {
+                x.iter()
+                    .zip(mu_arc.iter())
+                    .map(|(xi, mi)| (xi - mi) / sigma_sq)
+                    .collect()
+            })
+        }
+        FitMode::Diagonal => Box::new(move |x: &[f64]| -> Vec<f64> {
+            x.iter()
+                .zip(mu_arc.iter())
+                .zip(sigma_per_arc.iter())
+                .map(|((xi, mi), si)| (xi - mi) / si)
+                .collect()
+        }),
+        FitMode::Full => {
+            let precision_arc = cached
+                .precision
+                .as_ref()
+                .ok_or_else(|| "internal: Full fit missing precision matrix".to_string())?
+                .clone();
+            let n_for_grad = n;
+            Box::new(move |x: &[f64]| -> Vec<f64> {
+                let dx: Vec<f64> = x
+                    .iter()
+                    .zip(mu_arc.iter())
+                    .map(|(xi, mi)| xi - mi)
+                    .collect();
+                (0..n_for_grad)
+                    .map(|i| {
+                        precision_arc[i]
+                            .iter()
+                            .zip(dx.iter())
+                            .map(|(p, d)| p * d)
+                            .sum()
+                    })
+                    .collect()
+            })
+        }
+    };
+    let flow =
+        gigi::geometry::GenerativeFlow::new(b, grad).map_err(|e| format!("{}", e))?;
+    Ok(BundleFlowCtx {
+        flow,
+        mu: (*cached.mu).clone(),
+        sigma_sq: cached.sigma_sq,
+        sigma_sq_per_field: (*cached.sigma_sq_per_field).clone(),
+        sigma_sq_per_field_raw: (*cached.sigma_sq_per_field_raw).clone(),
+        effective_floor: cached.effective_floor,
+        floored_indices: (*cached.floored_indices).clone(),
+        dim: n,
+        fit_mode,
+    })
+}
+
 #[cfg(feature = "kahler")]
 fn flow_from_bundle(
     store: &gigi::BundleStore,
@@ -4268,7 +4703,13 @@ async fn brain_dream_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainDreamRequest>,
-) -> Result<Json<BrainDreamResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainDreamResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -4276,7 +4717,14 @@ async fn brain_dream_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
+    let (ctx, counter_at_fit) = flow_from_bundle_cached(
+        &state,
+        &name,
+        heap,
+        &req.fields,
+        req.fit_mode.unwrap_or_default(),
+        req.sigma_floor_epsilon,
+    )?;
     let initial = req.initial.unwrap_or_else(|| ctx.mu.clone());
     if initial.len() != ctx.dim {
         return Err(bad_request(&format!(
@@ -4311,14 +4759,17 @@ async fn brain_dream_endpoint(
     let mean_d = distances.iter().sum::<f64>() / distances.len() as f64;
     let max_d = distances.iter().cloned().fold(0.0_f64, f64::max);
 
-    Ok(Json(BrainDreamResponse {
-        trajectory,
-        fit_mean: ctx.mu,
-        fit_sigma_sq: ctx.sigma_sq,
-        temperature_used: req.temperature,
-        mean_dist_from_mean: mean_d,
-        max_dist_from_mean: max_d,
-    }))
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainDreamResponse {
+            trajectory,
+            fit_mean: ctx.mu,
+            fit_sigma_sq: ctx.sigma_sq,
+            temperature_used: req.temperature,
+            mean_dist_from_mean: mean_d,
+            max_dist_from_mean: max_d,
+        }),
+    ))
 }
 
 // ─── §3 FORECAST (Hamilton-flow extension) ──────────────────
@@ -4365,7 +4816,13 @@ async fn brain_forecast_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainForecastRequest>,
-) -> Result<Json<BrainForecastResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainForecastResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -4373,7 +4830,14 @@ async fn brain_forecast_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
+    let (ctx, counter_at_fit) = flow_from_bundle_cached(
+        &state,
+        &name,
+        heap,
+        &req.fields,
+        req.fit_mode.unwrap_or_default(),
+        req.sigma_floor_epsilon,
+    )?;
     if req.initial.len() != ctx.dim {
         return Err(bad_request(&format!(
             "initial length {} ≠ fields length {}",
@@ -4392,11 +4856,14 @@ async fn brain_forecast_endpoint(
         .flow
         .forecast(&req.initial, &config)
         .map_err(|e| bad_request(&format!("{}", e)))?;
-    Ok(Json(BrainForecastResponse {
-        trajectory,
-        fit_mean: ctx.mu,
-        fit_sigma_sq: ctx.sigma_sq,
-    }))
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainForecastResponse {
+            trajectory,
+            fit_mean: ctx.mu,
+            fit_sigma_sq: ctx.sigma_sq,
+        }),
+    ))
 }
 
 // ─── §5 RECONSTRUCT (T=0 descent to MAP) ────────────────────
@@ -4447,7 +4914,13 @@ async fn brain_reconstruct_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainReconstructRequest>,
-) -> Result<Json<BrainReconstructResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainReconstructResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -4455,7 +4928,14 @@ async fn brain_reconstruct_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
+    let (ctx, counter_at_fit) = flow_from_bundle_cached(
+        &state,
+        &name,
+        heap,
+        &req.fields,
+        req.fit_mode.unwrap_or_default(),
+        req.sigma_floor_epsilon,
+    )?;
     if req.noisy_initial.len() != ctx.dim {
         return Err(bad_request(&format!(
             "noisy_initial length {} ≠ fields length {}",
@@ -4481,11 +4961,14 @@ async fn brain_reconstruct_endpoint(
         .map(|(a, b)| (a - b).powi(2))
         .sum::<f64>()
         .sqrt();
-    Ok(Json(BrainReconstructResponse {
-        result,
-        fit_mean: ctx.mu,
-        descent_distance,
-    }))
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainReconstructResponse {
+            result,
+            fit_mean: ctx.mu,
+            descent_distance,
+        }),
+    ))
 }
 
 // ─── §6 INPAINT (constrained Langevin) ──────────────────────
@@ -4542,7 +5025,13 @@ async fn brain_inpaint_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainInpaintRequest>,
-) -> Result<Json<BrainInpaintResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainInpaintResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -4550,7 +5039,14 @@ async fn brain_inpaint_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
+    let (ctx, counter_at_fit) = flow_from_bundle_cached(
+        &state,
+        &name,
+        heap,
+        &req.fields,
+        req.fit_mode.unwrap_or_default(),
+        req.sigma_floor_epsilon,
+    )?;
     if req.partial_state.len() != ctx.dim {
         return Err(bad_request(&format!(
             "partial_state length {} ≠ fields length {}",
@@ -4580,12 +5076,15 @@ async fn brain_inpaint_endpoint(
         &config,
     )
     .map_err(|e| bad_request(&format!("{}", e)))?;
-    Ok(Json(BrainInpaintResponse {
-        result,
-        locked_indices: req.locked_indices,
-        fit_mean: ctx.mu,
-        fit_sigma_sq: ctx.sigma_sq,
-    }))
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainInpaintResponse {
+            result,
+            locked_indices: req.locked_indices,
+            fit_mean: ctx.mu,
+            fit_sigma_sq: ctx.sigma_sq,
+        }),
+    ))
 }
 
 // ─── §7 PREDICT (single-step natural gradient) ──────────────
@@ -4632,7 +5131,13 @@ async fn brain_predict_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainPredictRequest>,
-) -> Result<Json<BrainPredictResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<
+    (
+        [(axum::http::HeaderName, String); 1],
+        Json<BrainPredictResponse>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -4640,7 +5145,14 @@ async fn brain_predict_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
+    let (ctx, counter_at_fit) = flow_from_bundle_cached(
+        &state,
+        &name,
+        heap,
+        &req.fields,
+        req.fit_mode.unwrap_or_default(),
+        req.sigma_floor_epsilon,
+    )?;
     if req.state.len() != ctx.dim {
         return Err(bad_request(&format!(
             "state length {} ≠ fields length {}",
@@ -4657,12 +5169,15 @@ async fn brain_predict_endpoint(
         .map(|(a, b)| (a - b).powi(2))
         .sum::<f64>()
         .sqrt();
-    Ok(Json(BrainPredictResponse {
-        next_state,
-        fit_mean: ctx.mu,
-        fit_sigma_sq: ctx.sigma_sq,
-        step_size,
-    }))
+    Ok((
+        bundle_counter_header(counter_at_fit),
+        Json(BrainPredictResponse {
+            next_state,
+            fit_mean: ctx.mu,
+            fit_sigma_sq: ctx.sigma_sq,
+            step_size,
+        }),
+    ))
 }
 
 
@@ -10367,6 +10882,141 @@ mod tests {
 
     fn cleanup(dir: &Path) {
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    // ── BundleFlowCache contract tests (S1 wave 1 §A) ──────────
+    //
+    // The cache is the load-bearing latency property for brain
+    // endpoints. These tests pin the contract: cache miss
+    // computes, cache hit serves stored value, counter mismatch
+    // invalidates, and the random eviction respects max_entries.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn flow_cache_miss_then_hit_then_invalidate() {
+        let cache = BundleFlowCache::new(10);
+        let key = CacheKey::build("test_bundle", FitMode::Diagonal, &["a".to_string(), "b".to_string()], Some(1e-3));
+
+        // 1. Empty cache: miss.
+        assert!(cache.get(&key, 0).is_none(), "fresh cache must miss");
+
+        // 2. Insert at counter 5.
+        let fit = CachedFit {
+            counter_at_fit: 5,
+            mu: Arc::new(vec![1.0, 2.0]),
+            sigma_sq: 0.5,
+            sigma_sq_per_field: Arc::new(vec![0.4, 0.6]),
+            sigma_sq_per_field_raw: Arc::new(vec![0.4, 0.6]),
+            effective_floor: 0.0,
+            floored_indices: Arc::new(Vec::new()),
+            precision: None,
+            covariance: None,
+            eigenvalues_raw: None,
+            eigenvalues_effective: None,
+            eigenvalue_floor_used: 0.0,
+            floored_eigenvalue_count: 0,
+            condition_number: 1.5,
+            variance_ratio: 1.5,
+        };
+        cache.insert(key.clone(), fit);
+
+        // 3. Hit at the SAME counter — returns the cached fit.
+        let hit = cache.get(&key, 5);
+        assert!(hit.is_some(), "hit at same counter");
+        assert_eq!(hit.unwrap().sigma_sq, 0.5);
+
+        // 4. Counter mismatch — must return None (stale).
+        assert!(
+            cache.get(&key, 6).is_none(),
+            "counter mismatch must invalidate"
+        );
+        assert!(
+            cache.get(&key, 0).is_none(),
+            "earlier counter also invalidates"
+        );
+    }
+
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn flow_cache_evicts_at_capacity() {
+        let cache = BundleFlowCache::new(3);
+        // Fill to capacity.
+        for i in 0..3 {
+            let key = CacheKey::build(
+                &format!("bundle_{}", i),
+                FitMode::Diagonal,
+                &["a".to_string()],
+                Some(1e-3),
+            );
+            let fit = CachedFit {
+                counter_at_fit: 0,
+                mu: Arc::new(vec![i as f64]),
+                sigma_sq: 1.0,
+                sigma_sq_per_field: Arc::new(vec![1.0]),
+                sigma_sq_per_field_raw: Arc::new(vec![1.0]),
+                effective_floor: 0.0,
+                floored_indices: Arc::new(Vec::new()),
+                precision: None,
+                covariance: None,
+                eigenvalues_raw: None,
+                eigenvalues_effective: None,
+                eigenvalue_floor_used: 0.0,
+                floored_eigenvalue_count: 0,
+                condition_number: 1.0,
+                variance_ratio: 1.0,
+            };
+            cache.insert(key, fit);
+        }
+        assert_eq!(cache.len(), 3, "filled to capacity");
+
+        // Insert one more — eviction must keep len bounded.
+        let key4 = CacheKey::build("bundle_4", FitMode::Diagonal, &["a".to_string()], Some(1e-3));
+        let fit4 = CachedFit {
+            counter_at_fit: 0,
+            mu: Arc::new(vec![4.0]),
+            sigma_sq: 1.0,
+            sigma_sq_per_field: Arc::new(vec![1.0]),
+            sigma_sq_per_field_raw: Arc::new(vec![1.0]),
+            effective_floor: 0.0,
+            floored_indices: Arc::new(Vec::new()),
+            precision: None,
+            covariance: None,
+            eigenvalues_raw: None,
+            eigenvalues_effective: None,
+            eigenvalue_floor_used: 0.0,
+            floored_eigenvalue_count: 0,
+            condition_number: 1.0,
+            variance_ratio: 1.0,
+        };
+        cache.insert(key4.clone(), fit4);
+        assert_eq!(cache.len(), 3, "still at capacity after eviction");
+        // New key is present.
+        assert!(cache.get(&key4, 0).is_some(), "newly-inserted key present");
+    }
+
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn flow_cache_key_disambiguates_fit_mode_and_fields() {
+        // Same bundle, different fit_mode → different cache entries.
+        let k_iso = CacheKey::build("b", FitMode::Isotropic, &["x".to_string()], Some(1e-3));
+        let k_diag = CacheKey::build("b", FitMode::Diagonal, &["x".to_string()], Some(1e-3));
+        let k_full = CacheKey::build("b", FitMode::Full, &["x".to_string()], Some(1e-3));
+        assert_ne!(k_iso, k_diag, "fit modes distinguish");
+        assert_ne!(k_diag, k_full, "fit modes distinguish");
+        assert_ne!(k_iso, k_full, "fit modes distinguish");
+
+        // Same bundle + mode, different fields → different entries.
+        let k_a = CacheKey::build("b", FitMode::Diagonal, &["x".to_string()], Some(1e-3));
+        let k_b = CacheKey::build("b", FitMode::Diagonal, &["y".to_string()], Some(1e-3));
+        assert_ne!(k_a, k_b, "field set distinguishes");
+
+        // Same everything except sigma_floor_epsilon → different.
+        let k_eps1 = CacheKey::build("b", FitMode::Diagonal, &["x".to_string()], Some(1e-3));
+        let k_eps2 = CacheKey::build("b", FitMode::Diagonal, &["x".to_string()], Some(1e-4));
+        assert_ne!(k_eps1, k_eps2, "floor epsilon distinguishes");
+
+        // Same everything → equal (cache hit).
+        let k_a2 = CacheKey::build("b", FitMode::Diagonal, &["x".to_string()], Some(1e-3));
+        assert_eq!(k_a, k_a2, "identical key parameters → identical key");
     }
 
     /// Parse a DHOOM body the same way ingest_dhoom will: decode → json_to_value

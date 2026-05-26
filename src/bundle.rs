@@ -629,6 +629,27 @@ pub struct BundleStore {
     /// cache read or invalidation — never across a recomputation.
     #[cfg(feature = "kahler")]
     pub(crate) spectral_gap_cache: std::sync::Mutex<Option<SpectralGapSnapshot>>,
+    /// Monotonically-increasing counter incremented on every mutation
+    /// (`insert`, `update`, `delete`, and their variants). Used by
+    /// downstream cache layers (e.g. `BundleFlowCache` in
+    /// `gigi_stream`) to detect when a cached derivative (a fit, a
+    /// snapshot, etc.) is stale.
+    ///
+    /// Why `AtomicU64::fetch_add(1, Relaxed)`: lock-free reads in the
+    /// hot path; cache reads check `current == stored_at_fit_time`
+    /// against this counter. `Relaxed` ordering is sufficient because
+    /// the counter only needs monotonicity, not happens-before with
+    /// other writes — a cache lookup that races with an in-progress
+    /// insert will either see the pre-insert counter (and use the
+    /// cached fit, which is still consistent with what's been
+    /// written) or the post-insert counter (and recompute). Either
+    /// outcome is correct.
+    ///
+    /// Also surfaced to HTTP clients via the
+    /// `X-Bundle-Mutation-Counter` response header on brain
+    /// endpoints, so consumers can stamp their warm path and detect
+    /// when a cached fit they relied on got invalidated server-side.
+    pub mutation_counter: std::sync::atomic::AtomicU64,
 }
 
 /// Cached spectral-gap reading with provenance.
@@ -930,6 +951,7 @@ impl BundleStore {
             provenance: None,
             #[cfg(feature = "kahler")]
             spectral_gap_cache: std::sync::Mutex::new(None),
+            mutation_counter: std::sync::atomic::AtomicU64::new(0),
         }
     }
 
@@ -986,6 +1008,7 @@ impl BundleStore {
             provenance: None,
             #[cfg(feature = "kahler")]
             spectral_gap_cache: std::sync::Mutex::new(None),
+            mutation_counter: std::sync::atomic::AtomicU64::new(0),
         }
     }
 
@@ -998,15 +1021,23 @@ impl BundleStore {
         }
     }
 
-    /// Insert = define section value at base point (Thm 1.3).
+    /// Mark the bundle as mutated. Called at the start of every
+    /// mutating operation (`insert`, `update`, `delete`, and their
+    /// variants). Does two things atomically from the consumer's
+    /// perspective:
     ///
-    /// O(1) amortized. Overwrites on same key (Def 1.2 — unique section per base point).
-    /// For Sequential/Hybrid mode, insert is array.push() — same as Druid's memcpy.
-    pub fn insert(&mut self, record: &Record) {
-        // L3.3: invalidate the cached spectral-gap snapshot on every
-        // insert. The cache rebuilds lazily on the next read of
-        // `spectral_gap_cached()`. Cheaper than incremental
-        // Davis-Kahan updates for the data sizes we currently see.
+    ///   1. Bumps `mutation_counter` via `fetch_add(1, Relaxed)`.
+    ///      This is what downstream cache layers (e.g.
+    ///      `BundleFlowCache` in `gigi_stream`) read to detect
+    ///      that derivative quantities (fits, snapshots, etc.) are
+    ///      stale.
+    ///   2. Invalidates the spectral-gap cache (L3.3) so the next
+    ///      read recomputes. This was previously only done in
+    ///      `insert`, but `update` and `delete` also change the
+    ///      spectrum — the omission was a latent bug.
+    pub(crate) fn mark_mutated(&self) {
+        self.mutation_counter
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         #[cfg(feature = "kahler")]
         {
             // Lock briefly to invalidate. Poisoning is non-fatal —
@@ -1018,6 +1049,22 @@ impl BundleStore {
             };
             guard.take();
         }
+    }
+
+    /// Returns the current mutation counter without any side effects.
+    /// Cache readers use this to stamp the value of a derivative at
+    /// fit time and compare on subsequent reads. Lock-free.
+    pub fn mutation_counter(&self) -> u64 {
+        self.mutation_counter
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Insert = define section value at base point (Thm 1.3).
+    ///
+    /// O(1) amortized. Overwrites on same key (Def 1.2 — unique section per base point).
+    /// For Sequential/Hybrid mode, insert is array.push() — same as Druid's memcpy.
+    pub fn insert(&mut self, record: &Record) {
+        self.mark_mutated();
 
         let bp = self.hash_config.hash(record, &self.schema);
 
@@ -1435,6 +1482,11 @@ impl BundleStore {
             None => return false,
         };
 
+        // Mark mutated after the existence check — a missed update
+        // (key not found) shouldn't bump the counter or invalidate
+        // caches.
+        self.mark_mutated();
+
         // Remove old field_index entries BEFORE merging patches
         let bp32 = bp as u32;
         for idx_field in &self.schema.indexed_fields {
@@ -1540,6 +1592,10 @@ impl BundleStore {
         } else {
             return false;
         }
+
+        // Mark mutated after confirming the record existed (a missed
+        // delete shouldn't bump counters).
+        self.mark_mutated();
 
         // Remove from storage
         self.remove_from_storage(bp);
@@ -4846,6 +4902,64 @@ mod tests {
     }
 
     // ── Update Tests ──
+
+    // ── mutation_counter contract ────────────────────────────
+    //
+    // The counter is the load-bearing invalidation signal for
+    // downstream cache layers (BundleFlowCache in gigi_stream).
+    // The contract:
+    //   1. Starts at 0 for a fresh store.
+    //   2. Bumps monotonically on every successful insert / update /
+    //      delete.
+    //   3. Does NOT bump on a failed update or delete (key not
+    //      found) — those don't change derived state.
+    //   4. Survives concurrent reads — load is lock-free.
+    //
+    // If any of these change the cache invariant breaks and we'd
+    // serve stale fits. So they get a dedicated regression test.
+    #[test]
+    fn mutation_counter_contract() {
+        let mut store = make_store();
+        assert_eq!(store.mutation_counter(), 0, "fresh store starts at 0");
+
+        // Successful insert bumps once.
+        store.insert(&rec(1, "Alice", 75000.0, "Eng"));
+        assert_eq!(store.mutation_counter(), 1, "insert bumps");
+
+        // Second insert bumps again.
+        store.insert(&rec(2, "Bob", 80000.0, "Sales"));
+        assert_eq!(store.mutation_counter(), 2, "second insert bumps");
+
+        // Successful update bumps.
+        let mut key = Record::new();
+        key.insert("id".into(), Value::Integer(1));
+        let mut patches = Record::new();
+        patches.insert("salary".into(), Value::Float(95000.0));
+        assert!(store.update(&key, &patches));
+        assert_eq!(store.mutation_counter(), 3, "successful update bumps");
+
+        // FAILED update (key not found) does NOT bump.
+        let mut bad_key = Record::new();
+        bad_key.insert("id".into(), Value::Integer(999));
+        assert!(!store.update(&bad_key, &patches));
+        assert_eq!(
+            store.mutation_counter(),
+            3,
+            "failed update must NOT bump — cache invariant"
+        );
+
+        // Successful delete bumps.
+        assert!(store.delete(&key));
+        assert_eq!(store.mutation_counter(), 4, "successful delete bumps");
+
+        // FAILED delete (already deleted) does NOT bump.
+        assert!(!store.delete(&key));
+        assert_eq!(
+            store.mutation_counter(),
+            4,
+            "failed delete must NOT bump — cache invariant"
+        );
+    }
 
     #[test]
     fn update_existing_record() {

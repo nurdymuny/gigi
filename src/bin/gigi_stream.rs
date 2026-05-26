@@ -3328,23 +3328,20 @@ struct BrainEpisodicRequest {
     /// Persistence threshold (multiple of median gap). Default 50.
     #[serde(default = "default_min_persistence_ratio")]
     min_persistence_ratio: f64,
-    /// L13.5 — Optional fiber-field equality filter (Marcella's
-    /// upgrade path for per-user EPISODIC). Pre-filters records to
-    /// those whose `where_field` equals `where_value`, then runs
-    /// change-point detection on the filtered subset's `field`
-    /// values. Useful when the bundle interleaves multiple users /
-    /// streams / cohorts and you want per-cohort change-points
-    /// rather than the bundle-wide aggregate.
-    ///
-    /// Both fields must be supplied together; supplying only one is
-    /// a 400. Only fiber fields are supported (base fields are
-    /// query keys, not values; filter at the application layer if
-    /// you need that — POST a precomputed time series here via your
-    /// own base-field lookup instead).
+    /// L13.5 — Optional fiber-field equality filter.
     #[serde(default)]
     where_field: Option<String>,
     #[serde(default)]
     where_value: Option<serde_json::Value>,
+    /// L13.7 — Denominator floor (Marcella's second-pathology fix).
+    /// Without a floor, clustered input (batched timestamps,
+    /// duplicated rows) collapses `median(gap)` toward 0, and
+    /// `persistence_ratio = gap / median` overflows. Default
+    /// `DEFAULT_GAP_FLOOR_EPSILON = 1e-6` caps reported ratios at
+    /// ≈ 1e6 — still distinguishes any real event but stays a
+    /// finite number. Pass 0 to disable (escape hatch).
+    #[serde(default)]
+    gap_floor_epsilon: Option<f64>,
 }
 
 #[cfg(feature = "kahler")]
@@ -3364,11 +3361,12 @@ struct BrainEpisodicResponse {
     events: Vec<BrainEpisodicEventWire>,
     n_records: usize,
     threshold_used: f64,
-    /// Echo of the filter, when one was applied. None means the
-    /// scan was bundle-wide (no filter); Some means n_records is
-    /// the post-filter count.
+    /// Echo of the filter, when one was applied.
     #[serde(skip_serializing_if = "Option::is_none")]
     filter_applied: Option<EpisodicFilterEcho>,
+    /// L13.7 — echo of the gap-floor epsilon used (post-default
+    /// resolution); 0.0 means floor disabled.
+    gap_floor_epsilon_used: f64,
 }
 
 #[cfg(feature = "kahler")]
@@ -3501,7 +3499,19 @@ async fn brain_episodic_endpoint(
         values.push(v);
     }
 
-    let events = gigi::geometry::episodic_events(&values, req.min_persistence_ratio);
+    let epsilon = req
+        .gap_floor_epsilon
+        .unwrap_or(gigi::geometry::DEFAULT_GAP_FLOOR_EPSILON);
+    if epsilon < 0.0 {
+        return Err(bad_request(
+            "gap_floor_epsilon must be ≥ 0 (0 disables relative floor)",
+        ));
+    }
+    let events = gigi::geometry::episodic_events_with_floor(
+        &values,
+        req.min_persistence_ratio,
+        epsilon,
+    );
     let wire = events
         .into_iter()
         .map(|e| BrainEpisodicEventWire {
@@ -3515,6 +3525,7 @@ async fn brain_episodic_endpoint(
         n_records: values.len(),
         threshold_used: req.min_persistence_ratio,
         filter_applied: filter.map(|(field, value)| EpisodicFilterEcho { field, value }),
+        gap_floor_epsilon_used: epsilon,
     }))
 }
 

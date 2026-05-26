@@ -54,7 +54,41 @@ pub struct EpisodicEvent {
 /// topologically stable first).
 ///
 /// Empty input or fewer than 3 values → empty result.
+///
+/// Uses the default denominator floor (`DEFAULT_GAP_FLOOR_EPSILON
+/// = 1e-6`). For tighter control over the floor — e.g. on data
+/// known to be clustered (batched timestamps, etc.) — use
+/// [`episodic_events_with_floor`] directly.
 pub fn episodic_events(values: &[f64], min_persistence_ratio: f64) -> Vec<EpisodicEvent> {
+    episodic_events_with_floor(values, min_persistence_ratio, DEFAULT_GAP_FLOOR_EPSILON)
+}
+
+/// Default relative-max-gap floor for the persistence-ratio
+/// denominator. Per Marcella 2026-05-25 (REPLY_L13_5_FILTER_PROBE):
+/// when input has clustered structure (e.g. batched timestamps in
+/// bge ingest), `median(gap) → 0` and the unfloored
+/// `ratio = gap / median` overflows to ~1e288. The floor caps
+/// reported ratios at `≈ 1 / ε = 1e6` — still distinguishes "real
+/// event" from "noise" at any caller's threshold.
+///
+/// Pass 0 to [`episodic_events_with_floor`] to disable (escape
+/// hatch for callers with well-spaced data); the absolute 1e-300
+/// guard remains.
+pub const DEFAULT_GAP_FLOOR_EPSILON: f64 = 1e-6;
+
+/// L13.7 — Episodic-event detection with explicit denominator
+/// floor.
+///
+/// Denominator formula: `denom = max(median, ε × max_gap, 1e-300)`.
+/// At default ε = 1e-6, reported `persistence_ratio` is capped at
+/// `≈ max_gap / (ε × max_gap) = 1 / ε = 1e6` — preserves ordering
+/// across all gaps while preventing the overflow class
+/// (Marcella's bge `ingested_at` 2.3e+288).
+pub fn episodic_events_with_floor(
+    values: &[f64],
+    min_persistence_ratio: f64,
+    gap_floor_epsilon: f64,
+) -> Vec<EpisodicEvent> {
     if values.len() < 3 {
         return Vec::new();
     }
@@ -66,13 +100,22 @@ pub fn episodic_events(values: &[f64], min_persistence_ratio: f64) -> Vec<Episod
     }
     let mut sorted_gaps = gaps.clone();
     sorted_gaps.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let median = sorted_gaps[sorted_gaps.len() / 2].max(1e-300);
+    let raw_median = sorted_gaps[sorted_gaps.len() / 2];
+    let max_gap = *sorted_gaps.last().unwrap_or(&0.0);
+    // Same defensive-floor idiom as L13.6 σ² floor:
+    //   denom = max(raw_median, ε × max_gap, 1e-300)
+    let relative_floor = if gap_floor_epsilon > 0.0 {
+        gap_floor_epsilon * max_gap
+    } else {
+        0.0
+    };
+    let denom = raw_median.max(relative_floor).max(1e-300);
 
     let mut events: Vec<EpisodicEvent> = gaps
         .iter()
         .enumerate()
         .filter_map(|(i, &g)| {
-            let ratio = g / median;
+            let ratio = g / denom;
             if ratio >= min_persistence_ratio {
                 Some(EpisodicEvent {
                     boundary_idx: i,
@@ -191,6 +234,69 @@ mod tests {
         assert!(episodic_events(&[], 50.0).is_empty());
         assert!(episodic_events(&[1.0], 50.0).is_empty());
         assert!(episodic_events(&[1.0, 2.0], 50.0).is_empty());
+    }
+
+    /// L13.7 — clustered-input pathology (Marcella's bge bundle).
+    ///
+    /// 50 values clustered tightly around two batches with tiny
+    /// intra-cluster gaps + 2 large inter-cluster gaps. Without the
+    /// floor, the inter-cluster gap (real, large) divided by the
+    /// intra-cluster median (tiny, near machine zero) overflows.
+    /// With the default ε = 1e-6 floor, the ratio is capped at
+    /// ≈ 1e6 — large enough to fire on real events, finite enough
+    /// to be a useful number.
+    #[test]
+    fn episodic_clustered_input_does_not_overflow() {
+        let mut values: Vec<f64> = Vec::new();
+        // Cluster A: 25 values within 1e-9 of t=0 (simulates a
+        // batch ingest where timestamps are nominally same).
+        for i in 0..25 {
+            values.push(i as f64 * 1e-9);
+        }
+        // Cluster B: 25 values within 1e-9 of t=234000 (65 hours
+        // later — matches Marcella's bge ingest case).
+        for i in 0..25 {
+            values.push(234_000.0 + i as f64 * 1e-9);
+        }
+
+        // Default function should not overflow.
+        let events = episodic_events(&values, 1e3);
+        assert!(
+            !events.is_empty(),
+            "real 65-hour gap should fire a persistence event"
+        );
+        let top = &events[0];
+        assert!(
+            top.persistence_ratio.is_finite(),
+            "persistence_ratio {} should be finite (pre-floor was 2.3e288)",
+            top.persistence_ratio
+        );
+        assert!(
+            top.persistence_ratio < 1.0e9,
+            "persistence_ratio {} should be capped under 1e9 (pre-floor was 2.3e288)",
+            top.persistence_ratio
+        );
+        // Gap is the real one (~234000s).
+        assert!(
+            top.gap > 100_000.0,
+            "gap {} should be the real 65h jump, not the noise floor",
+            top.gap
+        );
+    }
+
+    /// L13.7 — disabling the floor (`gap_floor_epsilon = 0`)
+    /// reverts to the old behavior — overflow possible.
+    #[test]
+    fn episodic_zero_floor_still_works_for_well_spaced_data() {
+        // Well-spaced data: floor or no floor, results match.
+        let values: Vec<f64> = (0..30).map(|i| i as f64 * 0.5).collect();
+        let with_floor = episodic_events_with_floor(&values, 50.0, 1e-6);
+        let without_floor = episodic_events_with_floor(&values, 50.0, 0.0);
+        assert_eq!(
+            with_floor.len(),
+            without_floor.len(),
+            "well-spaced data: floored and unfloored should agree on event count"
+        );
     }
 
     #[test]

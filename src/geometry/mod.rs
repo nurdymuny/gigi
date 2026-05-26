@@ -75,7 +75,10 @@ pub use moment_map::{
     ConservationVerdict, InfinitesimalAction, MomentMap, MomentMapError,
 };
 pub use attention::{attend, focus};
-pub use memory::{episodic_events, semantic_gist, EpisodicEvent};
+pub use memory::{
+    episodic_events, episodic_events_with_floor, semantic_gist, EpisodicEvent,
+    DEFAULT_GAP_FLOOR_EPSILON,
+};
 pub use predictive_coding::{
     confidence_normalized, inpaint, kernel_density_confidence, predict_one_step,
     predict_one_step_natural,

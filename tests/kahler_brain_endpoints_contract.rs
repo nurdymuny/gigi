@@ -186,6 +186,138 @@ fn brain_episodic_response_shape() {
     assert_eq!(event_wire_fields.len(), 3);
 }
 
+/// L13.6 — the σ² floor prevents diagonal-fit explosion on
+/// rank-deficient axes (Marcella's v11_fiber f12/f13/f14 case).
+///
+/// Setup: a bundle with 4 fiber fields where two are healthy
+/// (σ² ~ 1.0) and two are rank-deficient (σ² ~ 1e-30). Without
+/// the floor, the diagonal-Gaussian gradient `(x - μ)/σ²` divides
+/// by ~1e-30 → samples explode by ~30 orders of magnitude within
+/// a few steps. With the floor (default ε=1e-3), the effective σ²
+/// for the degenerate axes gets bumped to `1e-3 × median(σ²)`,
+/// the gradient stays bounded, samples stay finite.
+#[test]
+fn diagonal_fit_floor_prevents_rank_deficient_explosion() {
+    use gigi::geometry::from_diagonal_gaussian;
+    // Build a bundle where dims 2 and 3 are constant (σ² ≈ 0).
+    let schema = BundleSchema::new("rank_deficient_test")
+        .base(FieldDef::numeric("id"))
+        .fiber(FieldDef::numeric("healthy_x").with_range(2.0))
+        .fiber(FieldDef::numeric("healthy_y").with_range(2.0))
+        .fiber(FieldDef::numeric("constant_z").with_range(1.0))
+        .fiber(FieldDef::numeric("constant_w").with_range(1.0))
+        .with_kahler(kahler_2d());
+    let mut store = BundleStore::new(schema);
+    for i in 0..50 {
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Integer(i));
+        r.insert("healthy_x".into(), Value::Float((i as f64) * 0.05));
+        r.insert("healthy_y".into(), Value::Float((i as f64) * 0.03));
+        r.insert("constant_z".into(), Value::Float(0.7)); // never moves
+        r.insert("constant_w".into(), Value::Float(-0.2)); // never moves
+        store.insert(&r);
+    }
+
+    let stats = store.field_stats();
+    let raw_sigma_sq = vec![
+        stats["healthy_x"].variance(),
+        stats["healthy_y"].variance(),
+        stats["constant_z"].variance(),
+        stats["constant_w"].variance(),
+    ];
+
+    // Verify the pathology exists before the floor: healthy dims
+    // ~ 0.01-ish, constant dims approaching zero (subject to
+    // sum_sq - mean² catastrophic-cancellation noise; what matters
+    // is they're orders-of-magnitude below the healthy dims).
+    assert!(raw_sigma_sq[0] > 0.001, "healthy_x should have real variance");
+    assert!(raw_sigma_sq[1] > 0.001, "healthy_y should have real variance");
+    assert!(
+        raw_sigma_sq[2] < raw_sigma_sq[0] / 1000.0,
+        "constant_z variance {} should be ≥ 3 orders of magnitude smaller than healthy_x {}",
+        raw_sigma_sq[2],
+        raw_sigma_sq[0]
+    );
+    assert!(
+        raw_sigma_sq[3] < raw_sigma_sq[0] / 1000.0,
+        "constant_w variance {} should be ≥ 3 orders of magnitude smaller than healthy_x {}",
+        raw_sigma_sq[3],
+        raw_sigma_sq[0]
+    );
+
+    // Apply Marcella's recommended floor: ε × median.
+    let epsilon = 1e-3;
+    let median = {
+        let mut s = raw_sigma_sq.clone();
+        s.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        s[s.len() / 2].max(1e-12)
+    };
+    let floor = (epsilon * median).max(1e-12);
+    let effective: Vec<f64> = raw_sigma_sq.iter().map(|&r| r.max(floor)).collect();
+    let floored: Vec<usize> = raw_sigma_sq
+        .iter()
+        .enumerate()
+        .filter(|(_, &r)| r < floor)
+        .map(|(i, _)| i)
+        .collect();
+
+    // The two constant dims should be floored.
+    assert_eq!(
+        floored,
+        vec![2, 3],
+        "expected constant_z and constant_w to be floored; got {:?}",
+        floored
+    );
+
+    // Effective floor should be > 0 (so the natural gradient won't
+    // divide-by-zero) but not absurdly large.
+    assert!(
+        floor > 1e-15 && floor < 1e-3,
+        "effective floor {:.3e} should be in (1e-15, 1e-3)",
+        floor
+    );
+
+    // Build the flow on the effective σ². Padding to even dim ≥ 2:
+    // here we have 4 dims, which is even.
+    let raw_padding = vec![
+        0.0, 0.0, -1.0, 0.0,
+        0.0, 0.0, 0.0, -1.0,
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+    ];
+    let b = ClosedTwoForm::new_constant(TwoForm::new(raw_padding, 4).unwrap());
+    let mu = vec![1.225, 0.735, 0.7, -0.2]; // empirical means
+    let flow = from_diagonal_gaussian(b, mu, effective.clone())
+        .expect("diagonal-fit with floored σ² must construct");
+
+    // A few sample-many steps should produce finite samples — not
+    // 10^96 garbage. Euler-Maruyama stability requires dt < 2 σ²,
+    // so we use dt small enough relative to the computed floor.
+    // (The HTTP layer's fit_diagonal_gaussian additionally clamps
+    // the floor to ≥ 3 × default_dt = 0.03 to guarantee stability
+    // at the brain endpoints' default dt = 0.01; this unit test
+    // exercises from_diagonal_gaussian *without* that clamp, so
+    // we pair the raw floor with a matching small dt.)
+    let safe_dt = (floor * 0.5).min(0.001);
+    let cfg = gigi::geometry::FlowConfig {
+        dt: safe_dt,
+        temperature: 1.0,
+        n_steps: 1,
+        burn_in: 50,
+        seed: Some(20260525),
+    };
+    let samples = flow.sample_many(&[0.0, 0.0, 0.0, 0.0], &cfg, 10, 1).unwrap();
+    for s in &samples {
+        for &v in s {
+            assert!(
+                v.is_finite() && v.abs() < 1e6,
+                "sample value {} should be finite and bounded (Marcella's pre-floor case hit 1e96)",
+                v
+            );
+        }
+    }
+}
+
 /// L13.5 — per-cohort EPISODIC filter recovers a single-stream
 /// change-point that's invisible in the bundle-wide aggregate.
 ///

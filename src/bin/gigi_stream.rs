@@ -2915,14 +2915,43 @@ enum FitMode {
     Diagonal,
 }
 
+/// Default relative-median ε floor for diagonal fit. Per Marcella
+/// 2026-05-25 (REPLY_L13_3_DIAGONAL_FIT): without a floor,
+/// rank-deficient axes (σ² ≈ 0) make the natural-gradient term
+/// `(x − μ) / σ²` blow up — confirmed at 10^96 on v11_fiber dims
+/// f12 / f13 / f14. ε = 1e-3 (her recommended default) bounds the
+/// per-axis effective σ² at one part in 1000 of the median, which
+/// kills the explosion while preserving most of the legitimate
+/// anisotropy.
+#[cfg(feature = "kahler")]
+const DEFAULT_SIGMA_FLOOR_EPSILON: f64 = 1e-3;
+
+/// Result of a diagonal-Gaussian fit on bundle Welford stats —
+/// includes the raw observed variances, the post-floor effective
+/// variances, the floor value used, and which indices were
+/// floored (the rank-deficient dims). Surfaced in response so
+/// consumers can see *which* dimensions the fit considered
+/// degenerate.
+#[cfg(feature = "kahler")]
+struct DiagonalFitResult {
+    mu: Vec<f64>,
+    sigma_sq_raw: Vec<f64>,
+    sigma_sq_effective: Vec<f64>,
+    /// Threshold below which a per-axis σ² gets floored.
+    effective_floor: f64,
+    /// Indices in `fields` whose raw σ² was below the floor.
+    floored_indices: Vec<usize>,
+}
+
 #[cfg(feature = "kahler")]
 fn fit_diagonal_gaussian(
     store: &gigi::BundleStore,
     fields: &[String],
-) -> Result<(Vec<f64>, Vec<f64>), String> {
+    floor_epsilon: f64,
+) -> Result<DiagonalFitResult, String> {
     let stats = store.field_stats();
     let mut mu = Vec::with_capacity(fields.len());
-    let mut sigma_sq = Vec::with_capacity(fields.len());
+    let mut sigma_sq_raw = Vec::with_capacity(fields.len());
     for f in fields {
         let s = stats.get(f).ok_or_else(|| {
             let in_base = store.schema.base_fields.iter().any(|fd| fd.name == *f);
@@ -2945,12 +2974,55 @@ fn fit_diagonal_gaussian(
             return Err(format!("field '{}' has no observations", f));
         }
         mu.push(s.sum / s.count as f64);
-        // Guard against degenerate (constant) fields by flooring
-        // variance at machine epsilon × range² — matches the L4
-        // K_H convention.
-        sigma_sq.push(s.variance().max(1e-12));
+        sigma_sq_raw.push(s.variance().max(0.0)); // no floor yet — applied below
     }
-    Ok((mu, sigma_sq))
+
+    // ── L13.6 stability floor (Marcella REPLY_L13_3_DIAGONAL_FIT) ──
+    //
+    // Two floors composed via max:
+    //   - RELATIVE: σ²_eff ≥ ε × median(σ²) (Marcella's Option 2).
+    //   - ABSOLUTE: σ²_eff ≥ 2 × DT_DEFAULT (Euler-Maruyama
+    //     stability requires dt < 2 σ², so any σ² below 2 × dt
+    //     causes oscillatory explosion). DT_DEFAULT corresponds
+    //     to the brain endpoints' default 0.01 — at smaller user-
+    //     supplied dt the absolute floor could be relaxed, but
+    //     keeping it constant means downstream is *always* stable
+    //     at default dt.
+    //
+    // `floor_epsilon = 0.0` disables the relative floor (escape
+    // hatch for well-conditioned data); the absolute stability
+    // floor stays in effect so the integrator can't blow up.
+    let mut sorted = sigma_sq_raw.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let median = sorted[sorted.len() / 2].max(1e-12);
+    let relative_floor = if floor_epsilon > 0.0 {
+        floor_epsilon * median
+    } else {
+        0.0
+    };
+    // Default brain-endpoint dt is 0.01; Euler stability needs
+    // σ² > 2 × dt. We use 3 × dt for a small safety margin.
+    const ABSOLUTE_STABILITY_FLOOR: f64 = 3.0 * 0.01;
+    let effective_floor = relative_floor.max(ABSOLUTE_STABILITY_FLOOR).max(1e-12);
+
+    let mut sigma_sq_effective = Vec::with_capacity(sigma_sq_raw.len());
+    let mut floored_indices = Vec::new();
+    for (i, &raw) in sigma_sq_raw.iter().enumerate() {
+        if raw < effective_floor {
+            floored_indices.push(i);
+            sigma_sq_effective.push(effective_floor);
+        } else {
+            sigma_sq_effective.push(raw);
+        }
+    }
+
+    Ok(DiagonalFitResult {
+        mu,
+        sigma_sq_raw,
+        sigma_sq_effective,
+        effective_floor,
+        floored_indices,
+    })
 }
 
 #[cfg(feature = "kahler")]
@@ -3007,6 +3079,14 @@ struct BrainSampleRequest {
     /// manifolds like learned token fibers, per Marcella Finding 3).
     #[serde(default)]
     fit_mode: Option<FitMode>,
+    /// L13.6 — Relative-median ε floor for the diagonal fit
+    /// (ignored when fit_mode = "isotropic"). Default 1e-3 per
+    /// Marcella 2026-05-25 — caps the per-axis effective σ² at
+    /// ε × median(σ²) to prevent natural-gradient explosion on
+    /// rank-deficient axes. Pass 0 to disable (raw fit; only the
+    /// 1e-12 hard floor remains).
+    #[serde(default)]
+    sigma_floor_epsilon: Option<f64>,
     /// Number of samples to draw post burn-in. Default 100.
     #[serde(default = "default_brain_n_samples")]
     n_samples: usize,
@@ -3032,14 +3112,19 @@ fn default_brain_burn_in() -> usize { 2_000 }
 #[derive(Debug, Clone, serde::Serialize)]
 struct BrainSampleResponse {
     samples: Vec<Vec<f64>>,
-    /// Inferred mean from the bundle's Welford stats — useful for
-    /// the consumer to sanity-check the fit.
+    /// Inferred mean from the bundle's Welford stats.
     fit_mean: Vec<f64>,
-    /// Mean of per-axis variances (always present for back-compat).
+    /// Mean of per-axis EFFECTIVE variances (back-compat scalar).
     fit_sigma_sq: f64,
-    /// Per-axis variances. With fit_mode="isotropic" all entries
-    /// equal fit_sigma_sq; with fit_mode="diagonal" they're distinct.
+    /// Per-axis EFFECTIVE variances (post-floor for Diagonal).
     fit_sigma_sq_per_field: Vec<f64>,
+    /// L13.6 — per-axis RAW variances as observed (pre-floor).
+    /// Lets consumers see which dims were rank-deficient.
+    fit_sigma_sq_per_field_raw: Vec<f64>,
+    /// L13.6 — floor used (0 for Isotropic; ε × median for Diagonal).
+    fit_sigma_floor_used: f64,
+    /// L13.6 — indices whose raw σ² was below the floor.
+    fit_floored_indices: Vec<usize>,
     /// Echo of the fit mode actually used (post-default-resolution).
     fit_mode_used: String,
 }
@@ -3057,7 +3142,7 @@ async fn brain_sample_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
     let config = gigi::geometry::FlowConfig {
         dt: 0.01,
         temperature: req.temperature,
@@ -3080,6 +3165,9 @@ async fn brain_sample_endpoint(
         fit_mean: ctx.mu,
         fit_sigma_sq: ctx.sigma_sq,
         fit_sigma_sq_per_field: ctx.sigma_sq_per_field,
+        fit_sigma_sq_per_field_raw: ctx.sigma_sq_per_field_raw,
+        fit_sigma_floor_used: ctx.effective_floor,
+        fit_floored_indices: ctx.floored_indices,
         fit_mode_used,
     }))
 }
@@ -3565,13 +3653,23 @@ fn canonical_symplectic_pad(n: usize) -> Option<gigi::geometry::ClosedTwoForm> {
 struct BundleFlowCtx {
     flow: gigi::geometry::GenerativeFlow<Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>>,
     mu: Vec<f64>,
-    /// Mean of per-axis variances (for response echo regardless of
-    /// fit mode — consumers want a single scalar for back-compat).
+    /// Mean of per-axis effective variances (for response echo
+    /// regardless of fit mode — consumers want a single scalar for
+    /// back-compat).
     sigma_sq: f64,
-    /// Per-axis variances. Equal across axes when fit_mode = Isotropic;
-    /// distinct when fit_mode = Diagonal. Surfaced in responses so
-    /// consumers can see the anisotropy.
+    /// Per-axis effective variances (post-floor for Diagonal fit).
+    /// Equal across axes when fit_mode = Isotropic.
     sigma_sq_per_field: Vec<f64>,
+    /// Per-axis RAW variances as observed from Welford stats
+    /// (pre-floor). Only present for Diagonal fit; for Isotropic
+    /// it's the same as `sigma_sq_per_field`.
+    sigma_sq_per_field_raw: Vec<f64>,
+    /// Floor used. Equals 0 for Isotropic; equals `ε × median(σ²)`
+    /// (with `ε` from request, default 1e-3) for Diagonal.
+    effective_floor: f64,
+    /// Indices in `fields` whose raw σ² was floored. Empty for
+    /// Isotropic and for well-conditioned Diagonal fits.
+    floored_indices: Vec<usize>,
     dim: usize,
     fit_mode: FitMode,
 }
@@ -3581,6 +3679,7 @@ fn flow_from_bundle(
     store: &gigi::BundleStore,
     fields: &[String],
     fit_mode: FitMode,
+    sigma_floor_epsilon: Option<f64>,
 ) -> Result<BundleFlowCtx, (StatusCode, Json<ErrorResponse>)> {
     let n = fields.len();
     let b = canonical_symplectic_pad(n)
@@ -3599,22 +3698,33 @@ fn flow_from_bundle(
                 });
             let flow = gigi::geometry::GenerativeFlow::new(b, grad)
                 .map_err(|e| bad_request(&format!("{}", e)))?;
+            let per_field = vec![sigma_sq; n];
             Ok(BundleFlowCtx {
                 flow,
                 mu,
                 sigma_sq,
-                sigma_sq_per_field: vec![sigma_sq; n],
+                sigma_sq_per_field: per_field.clone(),
+                sigma_sq_per_field_raw: per_field,
+                effective_floor: 0.0,
+                floored_indices: Vec::new(),
                 dim: n,
                 fit_mode,
             })
         }
         FitMode::Diagonal => {
-            let (mu, sigma_sq_per_field) =
-                fit_diagonal_gaussian(store, fields).map_err(|e| bad_request(&e))?;
+            let epsilon = sigma_floor_epsilon.unwrap_or(DEFAULT_SIGMA_FLOOR_EPSILON);
+            if epsilon < 0.0 {
+                return Err(bad_request(
+                    "sigma_floor_epsilon must be ≥ 0 (0 disables relative floor)",
+                ));
+            }
+            let fit = fit_diagonal_gaussian(store, fields, epsilon)
+                .map_err(|e| bad_request(&e))?;
             let scalar_sigma_sq =
-                sigma_sq_per_field.iter().sum::<f64>() / sigma_sq_per_field.len() as f64;
-            let mu_for_grad = mu.clone();
-            let sigma_for_grad = sigma_sq_per_field.clone();
+                fit.sigma_sq_effective.iter().sum::<f64>()
+                    / fit.sigma_sq_effective.len() as f64;
+            let mu_for_grad = fit.mu.clone();
+            let sigma_for_grad = fit.sigma_sq_effective.clone();
             let grad: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync> =
                 Box::new(move |x: &[f64]| -> Vec<f64> {
                     x.iter()
@@ -3627,9 +3737,12 @@ fn flow_from_bundle(
                 .map_err(|e| bad_request(&format!("{}", e)))?;
             Ok(BundleFlowCtx {
                 flow,
-                mu,
+                mu: fit.mu,
                 sigma_sq: scalar_sigma_sq,
-                sigma_sq_per_field,
+                sigma_sq_per_field: fit.sigma_sq_effective,
+                sigma_sq_per_field_raw: fit.sigma_sq_raw,
+                effective_floor: fit.effective_floor,
+                floored_indices: fit.floored_indices,
                 dim: n,
                 fit_mode,
             })
@@ -3648,6 +3761,14 @@ struct BrainDreamRequest {
     /// manifolds like learned token fibers, per Marcella Finding 3).
     #[serde(default)]
     fit_mode: Option<FitMode>,
+    /// L13.6 — Relative-median ε floor for the diagonal fit
+    /// (ignored when fit_mode = "isotropic"). Default 1e-3 per
+    /// Marcella 2026-05-25 — caps the per-axis effective σ² at
+    /// ε × median(σ²) to prevent natural-gradient explosion on
+    /// rank-deficient axes. Pass 0 to disable (raw fit; only the
+    /// 1e-12 hard floor remains).
+    #[serde(default)]
+    sigma_floor_epsilon: Option<f64>,
     /// Starting state. If None, defaults to the fit mean (origin
     /// of the flow's energy landscape).
     #[serde(default)]
@@ -3702,7 +3823,7 @@ async fn brain_dream_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
     let initial = req.initial.unwrap_or_else(|| ctx.mu.clone());
     if initial.len() != ctx.dim {
         return Err(bad_request(&format!(
@@ -3756,6 +3877,14 @@ struct BrainForecastRequest {
     /// Gaussian fit to use (see BrainDreamRequest.fit_mode).
     #[serde(default)]
     fit_mode: Option<FitMode>,
+    /// L13.6 — Relative-median ε floor for the diagonal fit
+    /// (ignored when fit_mode = "isotropic"). Default 1e-3 per
+    /// Marcella 2026-05-25 — caps the per-axis effective σ² at
+    /// ε × median(σ²) to prevent natural-gradient explosion on
+    /// rank-deficient axes. Pass 0 to disable (raw fit; only the
+    /// 1e-12 hard floor remains).
+    #[serde(default)]
+    sigma_floor_epsilon: Option<f64>,
     initial: Vec<f64>,
     /// Number of Hamilton steps. Default 1000.
     #[serde(default = "default_brain_forecast_steps")]
@@ -3791,7 +3920,7 @@ async fn brain_forecast_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
     if req.initial.len() != ctx.dim {
         return Err(bad_request(&format!(
             "initial length {} ≠ fields length {}",
@@ -3826,6 +3955,14 @@ struct BrainReconstructRequest {
     /// Gaussian fit to use (see BrainDreamRequest.fit_mode).
     #[serde(default)]
     fit_mode: Option<FitMode>,
+    /// L13.6 — Relative-median ε floor for the diagonal fit
+    /// (ignored when fit_mode = "isotropic"). Default 1e-3 per
+    /// Marcella 2026-05-25 — caps the per-axis effective σ² at
+    /// ε × median(σ²) to prevent natural-gradient explosion on
+    /// rank-deficient axes. Pass 0 to disable (raw fit; only the
+    /// 1e-12 hard floor remains).
+    #[serde(default)]
+    sigma_floor_epsilon: Option<f64>,
     /// Noisy / partial observation. Descent starts here.
     noisy_initial: Vec<f64>,
     /// Descent budget. Default 500.
@@ -3865,7 +4002,7 @@ async fn brain_reconstruct_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
     if req.noisy_initial.len() != ctx.dim {
         return Err(bad_request(&format!(
             "noisy_initial length {} ≠ fields length {}",
@@ -3907,6 +4044,14 @@ struct BrainInpaintRequest {
     /// Gaussian fit to use (see BrainDreamRequest.fit_mode).
     #[serde(default)]
     fit_mode: Option<FitMode>,
+    /// L13.6 — Relative-median ε floor for the diagonal fit
+    /// (ignored when fit_mode = "isotropic"). Default 1e-3 per
+    /// Marcella 2026-05-25 — caps the per-axis effective σ² at
+    /// ε × median(σ²) to prevent natural-gradient explosion on
+    /// rank-deficient axes. Pass 0 to disable (raw fit; only the
+    /// 1e-12 hard floor remains).
+    #[serde(default)]
+    sigma_floor_epsilon: Option<f64>,
     /// Initial state. Locked coordinates stay fixed at their
     /// supplied values; unlocked coordinates flow.
     partial_state: Vec<f64>,
@@ -3952,7 +4097,7 @@ async fn brain_inpaint_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
     if req.partial_state.len() != ctx.dim {
         return Err(bad_request(&format!(
             "partial_state length {} ≠ fields length {}",
@@ -3999,6 +4144,14 @@ struct BrainPredictRequest {
     /// Gaussian fit to use (see BrainDreamRequest.fit_mode).
     #[serde(default)]
     fit_mode: Option<FitMode>,
+    /// L13.6 — Relative-median ε floor for the diagonal fit
+    /// (ignored when fit_mode = "isotropic"). Default 1e-3 per
+    /// Marcella 2026-05-25 — caps the per-axis effective σ² at
+    /// ε × median(σ²) to prevent natural-gradient explosion on
+    /// rank-deficient axes. Pass 0 to disable (raw fit; only the
+    /// 1e-12 hard floor remains).
+    #[serde(default)]
+    sigma_floor_epsilon: Option<f64>,
     state: Vec<f64>,
     /// Step size for the single forward update. Default 0.1.
     #[serde(default = "default_brain_predict_lr")]
@@ -4034,7 +4187,7 @@ async fn brain_predict_endpoint(
     let heap = store
         .as_heap()
         .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
-    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default())?;
+    let ctx = flow_from_bundle(heap, &req.fields, req.fit_mode.unwrap_or_default(), req.sigma_floor_epsilon)?;
     if req.state.len() != ctx.dim {
         return Err(bad_request(&format!(
             "state length {} ≠ fields length {}",

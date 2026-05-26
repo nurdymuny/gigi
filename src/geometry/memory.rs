@@ -135,6 +135,112 @@ pub fn episodic_events_with_floor(
     events
 }
 
+/// L12 / §13 (catalog "EXPLAIN") — geodesic path from a query
+/// state to its nearest known record in the bundle.
+///
+/// Brain-primitive reading: "show me how the brain would get from
+/// here to the closest thing it knows." For Friston-FEP free-energy
+/// minimization on an isotropic Gaussian, the optimal-path-of-
+/// descent from query `q` to the nearest sample `x*` is exactly
+/// the straight-line interpolation in the metric-normalized
+/// coordinates. For default Euclidean metric (what we use here),
+/// that's literally linear interpolation `(1-t)q + t·x*` for `t`
+/// in `[0, 1]`.
+///
+/// `n_steps` controls the path resolution. `n_steps + 1` points
+/// are returned (initial query + n_steps forward toward the
+/// target). With `n_steps = 0` you just get the endpoints.
+///
+/// Empty samples or zero-length query → empty path (and `None`
+/// for nearest fields in the returned struct).
+///
+/// Usage:
+/// - **Marcella**: "what's the closest memory to this novel query,
+///   and what does the in-between look like?" — useful for
+///   visualizing the bridge between a novel input and the model's
+///   nearest training-distribution anchor.
+/// - **PRISM**: "this transaction doesn't match anything cleanly —
+///   what's the path from it to the most-similar known record?"
+///   Provides interpretable "your transaction differs from
+///   [closest match] by this gradient" output.
+/// - **MIRADOR**: "this patient profile is unusual — here are the
+///   intermediate cohort members along the path to the closest
+///   known cohort."
+pub fn explain(
+    samples: &[Vec<f64>],
+    query: &[f64],
+    n_steps: usize,
+) -> ExplanationPath {
+    if samples.is_empty() || query.is_empty() {
+        return ExplanationPath {
+            query: query.to_vec(),
+            nearest_record: None,
+            nearest_index: None,
+            nearest_distance: 0.0,
+            path: Vec::new(),
+            n_steps,
+        };
+    }
+    // Find the nearest sample by Euclidean distance.
+    let (nearest_idx, nearest_distance) = samples
+        .iter()
+        .enumerate()
+        .map(|(i, s)| {
+            let d_sq: f64 = s
+                .iter()
+                .zip(query.iter())
+                .map(|(a, b)| (a - b).powi(2))
+                .sum();
+            (i, d_sq.sqrt())
+        })
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+        .unwrap_or((0, 0.0));
+    let nearest = samples[nearest_idx].clone();
+
+    // Linear interpolation query → nearest in (n_steps + 1) points.
+    let path: Vec<Vec<f64>> = (0..=n_steps)
+        .map(|i| {
+            let t = if n_steps == 0 {
+                1.0
+            } else {
+                i as f64 / n_steps as f64
+            };
+            query
+                .iter()
+                .zip(nearest.iter())
+                .map(|(q, x)| (1.0 - t) * q + t * x)
+                .collect()
+        })
+        .collect();
+
+    ExplanationPath {
+        query: query.to_vec(),
+        nearest_record: Some(nearest),
+        nearest_index: Some(nearest_idx),
+        nearest_distance,
+        path,
+        n_steps,
+    }
+}
+
+/// Geodesic-interpolation explanation returned by [`explain`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExplanationPath {
+    /// The query point as supplied.
+    pub query: Vec<f64>,
+    /// The nearest sample to the query (None if `samples` was empty).
+    pub nearest_record: Option<Vec<f64>>,
+    /// Index of the nearest sample in the original `samples` slice.
+    pub nearest_index: Option<usize>,
+    /// Euclidean distance from query to nearest sample.
+    pub nearest_distance: f64,
+    /// `n_steps + 1` points interpolating from `query` to
+    /// `nearest_record`. Empty when no nearest record was found.
+    pub path: Vec<Vec<f64>>,
+    /// Step count as requested.
+    pub n_steps: usize,
+}
+
 /// L12 / §11 — Semantic gist of a bundle (= Morse-compressed
 /// representation of its Hodge complex, with cohomology preserved).
 ///
@@ -327,7 +433,169 @@ mod tests {
     //
     // semantic_gist is a thin wrapper over BundleStore::morse_compress
     // which has its own tests in src/discrete/morse.rs and src/bundle.rs.
-    // Just verify the re-export compiles + returns Some for a real
-    // bundle. (Constructing a BundleStore worth Morse-compressing
-    // requires a kahler-flagged schema; the L6 tests cover that.)
+    // We add a brain-API-layer test here to close the TDD gap noted
+    // in Bee's 2026-05-26 cleanup audit — confirms the wrapper
+    // returns a MorseComplex when the underlying store has enough
+    // structure, and `None` when it doesn't.
+
+    use crate::bundle::BundleStore;
+    use crate::geometry::{ClosedTwoForm, ComplexStructure, KahlerStructure, TwoForm};
+    use crate::types::{BundleSchema, FieldDef, Record, Value};
+
+    fn make_kahler_bundle(n_records: usize) -> BundleStore {
+        let kahler = KahlerStructure::new(
+            ComplexStructure::standard(1),
+            ClosedTwoForm::new_constant(
+                TwoForm::new(vec![0.0, 0.5, -0.5, 0.0], 2).unwrap(),
+            ),
+        );
+        let schema = BundleSchema::new("semantic_test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x").with_range(2.0))
+            .fiber(FieldDef::numeric("y").with_range(2.0))
+            .with_kahler(kahler);
+        let mut store = BundleStore::new(schema);
+        for i in 0..n_records {
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(i as i64));
+            rec.insert("x".into(), Value::Float(i as f64 * 0.1));
+            rec.insert("y".into(), Value::Float((i as f64 * 0.05).sin()));
+            store.insert(&rec);
+        }
+        store
+    }
+
+    #[test]
+    fn semantic_gist_returns_morse_complex_for_non_trivial_bundle() {
+        let store = make_kahler_bundle(20);
+        let m = semantic_gist(&store);
+        assert!(
+            m.is_some(),
+            "20-record kahler bundle should produce a Morse complex"
+        );
+        let morse = m.unwrap();
+        assert!(morse.cohomology_preserved(), "Morse compression must preserve cohomology");
+        assert!(
+            morse.n_critical() <= morse.n_original(),
+            "critical-cell count {} should be ≤ original {}",
+            morse.n_critical(),
+            morse.n_original(),
+        );
+        assert!(morse.compression_ratio() >= 1.0);
+    }
+
+    #[test]
+    fn semantic_gist_returns_none_for_too_small_bundle() {
+        let store = make_kahler_bundle(1);
+        assert!(
+            semantic_gist(&store).is_none(),
+            "single-record bundle is below Morse-compression threshold"
+        );
+    }
+
+    // ── EXPLAIN (catalog §13) ────────────────────────────────
+
+    #[test]
+    fn explain_finds_nearest_sample() {
+        let samples = vec![
+            vec![0.0, 0.0],
+            vec![5.0, 5.0],
+            vec![10.0, 10.0],
+        ];
+        let query = vec![5.1, 4.9];
+        let exp = explain(&samples, &query, 10);
+        assert_eq!(exp.nearest_index, Some(1), "expected nearest to be index 1");
+        assert_eq!(exp.nearest_record.as_deref(), Some(&[5.0, 5.0][..]));
+        let expected_dist = ((5.1_f64 - 5.0).powi(2) + (4.9_f64 - 5.0).powi(2)).sqrt();
+        assert!(
+            (exp.nearest_distance - expected_dist).abs() < 1e-12,
+            "expected distance ≈ {:.4}, got {:.4}",
+            expected_dist,
+            exp.nearest_distance,
+        );
+    }
+
+    #[test]
+    fn explain_path_has_n_steps_plus_one_points() {
+        let samples = vec![vec![0.0, 0.0], vec![10.0, 0.0]];
+        let query = vec![0.0, 0.0]; // exactly at sample 0
+        let n = 5;
+        let exp = explain(&samples, &query, n);
+        assert_eq!(exp.path.len(), n + 1, "path has n+1 points");
+    }
+
+    #[test]
+    fn explain_path_endpoints_are_query_and_nearest() {
+        let samples = vec![vec![1.0, 2.0, 3.0]];
+        let query = vec![7.0, 8.0, 9.0];
+        let exp = explain(&samples, &query, 4);
+        // First point of path == query.
+        assert_eq!(exp.path[0], query);
+        // Last point of path == nearest record.
+        assert_eq!(*exp.path.last().unwrap(), vec![1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn explain_path_is_linear_interpolation() {
+        let samples = vec![vec![0.0, 0.0]];
+        let query = vec![10.0, 0.0];
+        let exp = explain(&samples, &query, 10);
+        // Each successive point should advance by 1.0 along x.
+        for (i, p) in exp.path.iter().enumerate() {
+            let expected_x = 10.0 * (1.0 - i as f64 / 10.0);
+            assert!(
+                (p[0] - expected_x).abs() < 1e-12,
+                "path point {} x = {} should be {}",
+                i,
+                p[0],
+                expected_x,
+            );
+            assert!((p[1] - 0.0).abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn explain_zero_steps_returns_endpoints_only() {
+        let samples = vec![vec![5.0, 5.0]];
+        let query = vec![0.0, 0.0];
+        let exp = explain(&samples, &query, 0);
+        // n_steps = 0 → one point (the endpoint).
+        assert_eq!(exp.path.len(), 1);
+        assert_eq!(exp.path[0], vec![5.0, 5.0]); // collapses to target
+    }
+
+    #[test]
+    fn explain_empty_samples_returns_no_nearest() {
+        let exp = explain(&[], &[1.0, 2.0], 5);
+        assert!(exp.nearest_record.is_none());
+        assert!(exp.nearest_index.is_none());
+        assert!(exp.path.is_empty());
+    }
+
+    #[test]
+    fn explain_picks_correct_record_among_many() {
+        // 100 random-ish samples; verify EXPLAIN finds the actual
+        // closest by independent direct search.
+        let samples: Vec<Vec<f64>> = (0..100)
+            .map(|i| {
+                let t = i as f64 * 0.1;
+                vec![t.cos(), t.sin()]
+            })
+            .collect();
+        let query = vec![0.5, 0.0];
+        let exp = explain(&samples, &query, 3);
+        // Verify independently: walk all samples, find the one with
+        // smallest Euclidean distance to query.
+        let truth_idx = samples
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                let d_sq: f64 = (s[0] - 0.5).powi(2) + s[1].powi(2);
+                (i, d_sq)
+            })
+            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .unwrap()
+            .0;
+        assert_eq!(exp.nearest_index, Some(truth_idx));
+    }
 }

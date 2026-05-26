@@ -581,59 +581,38 @@ fn dhoom_arrays_of_primitives() {
 // ── PR window — HTTP endpoints summary ────────────────────────────
 
 fn pr_window_endpoints_summary() {
-    header("PR window 1", "HTTP endpoints for Marcella (L7 / L1.5 / catalog §)");
+    header("HTTP", "every brain + Kähler endpoint, one table");
 
-    let endpoints_1 = [
-        ("POST /v1/quantum_cohomology/compose",
-         "Frobenius/WDVV composition on CP^n / S² / T^n (catalog §2.10)"),
-        ("POST /v1/quantum_cohomology/capacity",
-         "Riemann-Roch capacity dim H⁰(L^k) (catalog §2.2)"),
-        ("POST /v1/bundles/{name}/holonomy_debt",
-         "Quantized vs continuous winding (catalog §E.1)"),
-        ("POST /v1/bundles/{name}/flat_transport",
-         "Magnetic/classical parallel transport (catalog §1.5)"),
-    ];
-    for (route, desc) in &endpoints_1 {
-        println!("  {:<48} {}", route, desc);
-    }
-
+    // Unified table — replaces the previous PR-window-1 / PR-window-2 /
+    // PR-window-3 fragmentation. § column is catalog reference. 12/12
+    // brain primitives now reachable.
+    println!("  {:<5} {:<46} {}", "§",   "route", "what it returns");
+    println!("  {:<5} {:<46} {}", "─",   "─────", "──────────────────");
     println!();
-    println!("══ PR window 2 (L13)  brain primitives — gate / retrieval / memory ══");
-    let endpoints_2 = [
-        ("POST /v1/bundles/{name}/brain/sample",
-         "Langevin draws from the bundle's density (catalog §2)"),
-        ("POST /v1/bundles/{name}/brain/confidence",
-         "Fisher-precision 'I don't know' gate (catalog §12)"),
-        ("POST /v1/bundles/{name}/brain/attend",
-         "Softmax / top-k attention over records (catalog §8, §9)"),
-        ("POST /v1/bundles/{name}/brain/episodic",
-         "Persistent-H₀ change-point detection (catalog §10)"),
-        ("GET  /v1/bundles/{name}/brain/semantic",
-         "Morse-compressed gist of the bundle (catalog §11)"),
-    ];
-    for (route, desc) in &endpoints_2 {
-        println!("  {:<48} {}", route, desc);
-    }
-
+    println!("  Kähler upgrade — L7 / L1.5 cross-team surface (PR window 1):");
+    println!("  {:<5} {:<46} {}", "2.10", "POST /v1/quantum_cohomology/compose",       "{result: CohClass}");
+    println!("  {:<5} {:<46} {}", "2.2",  "POST /v1/quantum_cohomology/capacity",      "{capacity: i64}");
+    println!("  {:<5} {:<46} {}", "E.1",  "POST /v1/bundles/{n}/holonomy_debt",        "{variant, quantized?, continuous?, winding}");
+    println!("  {:<5} {:<46} {}", "1.5",  "POST /v1/bundles/{n}/flat_transport",       "{trajectory, final_velocity, holonomy_norm,...}");
     println!();
-    println!("══ PR window 3 (L13.2)  brain primitives — flow / generative / inference ══");
-    let endpoints_3 = [
-        ("POST /v1/bundles/{name}/brain/dream",
-         "High-T Langevin TRAJECTORY (catalog §4) — REM-sleep mode"),
-        ("POST /v1/bundles/{name}/brain/forecast",
-         "Hamilton-flow extension, energy-conserving (catalog §3)"),
-        ("POST /v1/bundles/{name}/brain/reconstruct",
-         "T=0 descent to MAP estimate (catalog §5)"),
-        ("POST /v1/bundles/{name}/brain/inpaint",
-         "Constrained Langevin — lock subset, sample rest (catalog §6)"),
-        ("POST /v1/bundles/{name}/brain/predict",
-         "Single-step natural-gradient PREDICT (catalog §7)"),
-    ];
-    for (route, desc) in &endpoints_3 {
-        println!("  {:<48} {}", route, desc);
-    }
-    note("Cross-team HTTP surface: 10 of 12 brain primitives reachable over the wire.");
-    note("(FOCUS via /brain/attend with top_k; see contract tests for wire shapes.)");
+    println!("  Brain primitives — flow pillar (Friston SDE):");
+    println!("  {:<5} {:<46} {}", "2",    "POST /v1/bundles/{n}/brain/sample",         "{samples, fit_mean, fit_sigma_sq_per_field*,...}");
+    println!("  {:<5} {:<46} {}", "3",    "POST /v1/bundles/{n}/brain/forecast",       "{trajectory, fit_mean,...}");
+    println!("  {:<5} {:<46} {}", "4",    "POST /v1/bundles/{n}/brain/dream",          "{trajectory, mean_dist_from_mean, max_dist,...}");
+    println!("  {:<5} {:<46} {}", "5",    "POST /v1/bundles/{n}/brain/reconstruct",    "{result (MAP), descent_distance,...}");
+    println!("  {:<5} {:<46} {}", "6",    "POST /v1/bundles/{n}/brain/inpaint",        "{result, locked_indices,...}");
+    println!("  {:<5} {:<46} {}", "7",    "POST /v1/bundles/{n}/brain/predict",        "{next_state, step_size,...}");
+    println!();
+    println!("  Brain primitives — attention + memory pillar:");
+    println!("  {:<5} {:<46} {}", "8/9",  "POST /v1/bundles/{n}/brain/attend",         "{weights, indices, bandwidth,...} (FOCUS via top_k)");
+    println!("  {:<5} {:<46} {}", "10",   "POST /v1/bundles/{n}/brain/episodic",       "{events, n_records, filter_applied?, gap_floor_used}");
+    println!("  {:<5} {:<46} {}", "11",   "GET  /v1/bundles/{n}/brain/semantic",       "{betti_b0..b2, n_critical, compression_ratio,...}");
+    println!("  {:<5} {:<46} {}", "12",   "POST /v1/bundles/{n}/brain/confidence",     "{raw, normalized, bandwidth,...}");
+    println!("  {:<5} {:<46} {}", "13",   "POST /v1/bundles/{n}/brain/explain",        "{nearest_record, nearest_distance, path,...}");
+    println!();
+    note("12 of 12 brain primitives reachable over the wire. FOCUS via /brain/attend with top_k.");
+    note("Full request/response shapes + tuning advice: BRAIN_PRIMITIVES_CONSUMER_GUIDE.md");
+    note("Contract tests: tests/kahler_{pr_window_marcella,brain_endpoints}_contract.rs");
 }
 
 // ── main ──────────────────────────────────────────────────────────

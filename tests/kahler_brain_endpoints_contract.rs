@@ -396,6 +396,53 @@ fn brain_episodic_filter_recovers_per_cohort_change_point() {
     );
 }
 
+// ── §13 EXPLAIN ────────────────────────────────────────────
+
+#[test]
+fn brain_explain_response_shape() {
+    // Request:
+    //   fields: Vec<String>
+    //   query: Vec<f64>          (length must = fields.len())
+    //   n_steps: usize           (default 10)
+    //
+    // Response:
+    //   query: Vec<f64>           (echo)
+    //   nearest_record: Option<Vec<f64>>
+    //   nearest_index: Option<usize>
+    //   nearest_distance: f64
+    //   path: Vec<Vec<f64>>        (n_steps + 1 points)
+    //   n_steps: usize             (echo)
+    //   n_samples: usize           (bundle population at time of query)
+    //
+    // The endpoint delegates to gigi::geometry::explain on the
+    // extracted fiber samples; we exercise that path directly.
+    let samples = vec![
+        vec![0.0, 0.0],
+        vec![5.0, 5.0],
+        vec![10.0, 10.0],
+    ];
+    let exp = gigi::geometry::explain(&samples, &[5.1, 4.9], 10);
+    // 11 points along the interpolation.
+    assert_eq!(exp.path.len(), 11);
+    // Nearest is sample 1 (the one at 5, 5).
+    assert_eq!(exp.nearest_index, Some(1));
+    // First path point is the query; last is the nearest record.
+    assert_eq!(exp.path[0], vec![5.1, 4.9]);
+    assert_eq!(*exp.path.last().unwrap(), vec![5.0, 5.0]);
+    // Midpoint is roughly halfway.
+    let mid = &exp.path[5];
+    assert!((mid[0] - 5.05).abs() < 1e-3);
+    assert!((mid[1] - 4.95).abs() < 1e-3);
+}
+
+#[test]
+fn brain_explain_empty_bundle_returns_no_nearest() {
+    let exp = gigi::geometry::explain(&[], &[1.0, 2.0], 5);
+    assert!(exp.nearest_record.is_none());
+    assert!(exp.nearest_index.is_none());
+    assert!(exp.path.is_empty());
+}
+
 // ── §11 SEMANTIC ───────────────────────────────────────────
 
 #[test]

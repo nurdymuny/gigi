@@ -76,8 +76,8 @@ pub use moment_map::{
 };
 pub use attention::{attend, focus};
 pub use memory::{
-    episodic_events, episodic_events_with_floor, semantic_gist, EpisodicEvent,
-    DEFAULT_GAP_FLOOR_EPSILON,
+    episodic_events, episodic_events_with_floor, explain, semantic_gist,
+    EpisodicEvent, ExplanationPath, DEFAULT_GAP_FLOOR_EPSILON,
 };
 pub use predictive_coding::{
     confidence_normalized, inpaint, kernel_density_confidence, predict_one_step,

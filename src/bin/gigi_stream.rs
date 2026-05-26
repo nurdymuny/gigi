@@ -3549,6 +3549,88 @@ fn value_matches_json(cell: &gigi::types::Value, json: &serde_json::Value) -> bo
     }
 }
 
+// ─── §13 EXPLAIN — geodesic path from query to nearest known ──
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainExplainRequest {
+    /// Numeric fiber fields defining the manifold coordinates.
+    fields: Vec<String>,
+    /// Query point — length must equal `fields.len()`.
+    query: Vec<f64>,
+    /// Interpolation resolution. Default 10 → returns 11 points
+    /// (start + 10 forward toward target).
+    #[serde(default = "default_explain_n_steps")]
+    n_steps: usize,
+}
+
+#[cfg(feature = "kahler")]
+fn default_explain_n_steps() -> usize { 10 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainExplainResponse {
+    /// The query point as supplied (echo).
+    query: Vec<f64>,
+    /// The nearest record's fiber values (None if bundle had no
+    /// extractable records).
+    nearest_record: Option<Vec<f64>>,
+    /// The nearest record's index in iteration order over
+    /// `BundleStore::sections()`.
+    nearest_index: Option<usize>,
+    /// Euclidean distance from query to `nearest_record`.
+    nearest_distance: f64,
+    /// `n_steps + 1` interpolation points from query → nearest.
+    /// First entry equals `query`; last equals `nearest_record`.
+    /// Empty when no nearest record was found.
+    path: Vec<Vec<f64>>,
+    /// Step count actually used.
+    n_steps: usize,
+    n_samples: usize,
+}
+
+/// POST /v1/bundles/{name}/brain/explain
+///
+/// §13 EXPLAIN — interpolation path from the query to the bundle's
+/// nearest known record. Useful for "show me the bridge between
+/// this novel input and your closest training example."
+///
+/// Returns 404 if bundle missing or not heap-resident; 400 on
+/// dimension mismatch.
+#[cfg(feature = "kahler")]
+async fn brain_explain_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<BrainExplainRequest>,
+) -> Result<Json<BrainExplainResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    if req.query.len() != req.fields.len() {
+        return Err(bad_request(&format!(
+            "query length {} ≠ fields length {}",
+            req.query.len(),
+            req.fields.len()
+        )));
+    }
+    let samples = extract_field_samples(heap, &req.fields)
+        .map_err(|e| bad_request(&e))?;
+    let exp = gigi::geometry::explain(&samples, &req.query, req.n_steps);
+    Ok(Json(BrainExplainResponse {
+        query: exp.query,
+        nearest_record: exp.nearest_record,
+        nearest_index: exp.nearest_index,
+        nearest_distance: exp.nearest_distance,
+        path: exp.path,
+        n_steps: exp.n_steps,
+        n_samples: samples.len(),
+    }))
+}
+
 // ─── §11 SEMANTIC ───────────────────────────────────────────
 
 #[cfg(feature = "kahler")]
@@ -9549,6 +9631,10 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/brain/semantic",
             get(brain_semantic_endpoint),
+        )
+        .route(
+            "/v1/bundles/{name}/brain/explain",
+            post(brain_explain_endpoint),
         );
 
     // 2026-05-25 PR window 3: the remaining 5 flow-based brain

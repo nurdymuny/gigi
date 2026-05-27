@@ -121,6 +121,113 @@ v1–v4) + the per-layer contract / real-data / e2e tests — is in
 
 ---
 
+## What's new in late May 2026 — the SUDOKU + SAMPLE_TRANSPORT sprint
+
+Six waves of work landed on top of the brain catalog, taking the substrate
+from "we have 12 brain primitives" to "we have a constrained-inference
+meta-primitive that solves real problems across unrelated domains" plus a
+neighborhood-sampling primitive that answers "what other points are
+geometrically reachable from here?"
+
+The work shares the same Davis-manifold machinery as the
+**sudoky-energy** sister project (Bee Davis, U.S. Provisional Patent
+Feb 2026 — a GPU-accelerated CSP solver using `K_loc` curvature scheduling
++ `V(c)` information value + Γ trichotomy routing + holonomy pruning).
+sudoky-energy solves canonical CSPs (Sudoku, SAT, graph coloring); GIGI's
+SUDOKU primitive applies the same Čech-cohomology pre-filter and curvature
+diagnostics to bundle-record filtering.
+
+### SUDOKU — constrained inference on a learned affordance manifold
+
+The primitive: a consumer hands SUDOKU a constraint set; it returns
+satisfying records, near-miss records (records that violate exactly one
+constraint), a Pareto frontier of multi-violation alternatives, a
+counterfactual relaxation menu, per-constraint diagnostics, and an
+**honest tristate verdict** — `Sat` / `Unsat` / `Unknown` (the last meaning
+"I didn't look enough to claim either", explicit by API design; most CSP
+solvers conflate empty-result with no-such-thing).
+
+Six waves of additive geometry, all behind the `kahler` feature flag, all
+free for the diagonal-metric case and Mahalanobis-ready for FitMode::Full
+bundles:
+
+| Wave | What it adds |
+|---|---|
+| **W3** | Per-violation `relaxation_cost` (Kähler-natural z-score = `|actual − threshold| / field_std`). Per-constraint `SelectivityReport` (marginal filter count, binding flag). `RelaxationOption` menu — counterfactual "what if I bent this rule to value X" with data-derived thresholds, sorted by gain/cost. |
+| **W4** | `Solution.quality_score` — depth into the satisfaction region (soft-constraint posterior under independent half-normal priors). `Eq(Vector)` violation cost upgraded from flat 1.0 to bundle-derived L2 distance — fixes the dishonest math where geometrically close embeddings were indistinguishable from geometrically far ones. |
+| **W5** | `ParetoNearMiss` — Pareto frontier on (n_violations, total_cost). Generalizes single-violation near-misses; the k=1 slice equals the existing list. Cap scales with constraint count (was incorrectly hard-capped at 3). |
+| **W6.1** | `SelectivityReport.raw_curvature` — `K_c` = fraction of records that fail this constraint regardless of others. High K_c + zero marginal = **redundant constraint** (covered by another). Maps to sudoky-energy's per-variable `K_loc` scheduling signal. |
+| **W6.2** | Čech-cohomology **holonomy pre-flight** — O(C²) pairwise scan for *trivially* self-contradictory constraint pairs (`Eq(x,a)+Eq(x,b)`, `Le(x,c)+Ge(x,d)` with `d>c`, `Between` intervals disjoint, `IsIn` empty intersection, etc.). Fires before any record IO, returns `Unsat` with `pre_flight_unsat_reason` populated. Provably zero false positives by construction. |
+| **S3.5** | **Puzzle expansion** — when the original constraint set is UNSAT (verdict or pre-flight), opt-in `expansion: { allowed: true }` walks the relaxation menu (best gain/cost first) and stops at the first relaxation that finds ≥1 solution. Sets advisory when no relaxation works. |
+
+**Wire surface** (single endpoint, content-negotiated DHOOM ↔ JSON):
+
+```
+POST /v1/bundles/{name}/brain/sudoku
+```
+
+Returns `solutions[]`, `near_misses[]`, `verdict`, `coverage`,
+`n_records_considered`, `selectivity[]` (with `K_c`),
+`relaxations[]`, `pareto_near_misses[]`, optional
+`pre_flight_unsat_reason`, optional `expansion_result` — every field
+data-derived, no domain configuration. The same call works on a drug-
+discovery bundle, an apartment bundle, a stock-screening bundle, a
+sensor bundle — verified end-to-end across 24 distinct domains in the
+demo set below.
+
+### SAMPLE_TRANSPORT — curvature-bounded neighborhood sampling
+
+When deterministic `TRANSPORT` returns one geodesic, `SAMPLE_TRANSPORT`
+returns a neighborhood of `k` valid destinations within a curvature
+budget τ:
+
+```
+N(p_src, τ) = { p ∈ E : d²(p_src, p) ≤ τ }
+```
+
+where `d² = (1 - cos θ) / 2 ∈ [0, 1]` (Double-Cover half-angle formula —
+`S + d² = 1`). Candidates weighted by `exp(-β · d²)`, sampled without
+replacement via the **Efraimidis-Spirakis priority algorithm** (r^(1/w)
+keys, top-k). Per-candidate `curvature_k = 2 · √d²`; bundle-wide
+`confidence = 1 / (1 + κ)`.
+
+```
+POST /v1/bundles/{name}/brain/sample_transport
+GQL:  SAMPLE_TRANSPORT bundle FROM (k=v,...) ON FIBER (...) BUDGET τ N k [BETA β] [SEED s];
+```
+
+### #107 — brain endpoints work on reloaded (mmap+overlay) bundles
+
+Pre-existing limitation closed: every brain endpoint had the guard
+`as_heap().ok_or(404 "not heap-resident")`, so after any server restart
+bundles reloaded from snapshot became inaccessible until manual
+recreation — Marcella's refuse-gate broke on every deploy. Fix:
+`OverlayBundle::to_temp_heap_store()` materializes the merged
+(mmap base − tombstones + overlay) view into a fresh heap store in
+~10ms per 10k records; new `heap_or_promote` adapter dispatches —
+zero cost on heap, one-shot promote on overlay. **15 brain endpoints
+updated; live verified on `gigi-stream.fly.dev` after deploy
+(4,961 bundles / 12.8M records reloaded with zero loss).**
+
+### The eight worked-example demos (under `e2e/probes/`)
+
+Each demo is self-contained — no shared schema, no shared config, just
+the wire endpoint and a synthetic-but-realistic bundle. Together they
+exercise every wave's functionality across **24 distinct domains**.
+
+| Demo | What it shows |
+|---|---|
+| [`sudoku_six_domains_demo.py`](e2e/probes/sudoku_six_domains_demo.py) | Wave 3 baseline — drug discovery, real estate, recipes, hiring, stock screening, music playlists. Headline: relaxation cost in σ-units, binding constraint, gain-per-bend menu. |
+| [`sudoku_six_more_domains_demo.py`](e2e/probes/sudoku_six_more_domains_demo.py) | Wave 4 — used cars (multi-numeric Pareto), restaurants (many-SAT quality rank), flights (timestamp-as-numeric), books, sensors (Vector Eq geometric distance), HR. Surfaced + closed two GP gaps (vector cost, quality_score). |
+| [`sudoku_geometry_diagnostics_demo.py`](e2e/probes/sudoku_geometry_diagnostics_demo.py) | Waves 5 + 6.1 + 6.2 — NYC apartments (K_c curvature table) + Clinical trial eligibility (Čech pre-flight catches `age<18 AND age≥65` without walking 300 patient records). The proof that "your constraints can't both hold" is mechanically distinct from "the world doesn't have what you want". |
+| [`sudoku_expansion_demo.py`](e2e/probes/sudoku_expansion_demo.py) | S3.5 — drug discovery, real estate, clinical trials, double-UNSAT. Original UNSAT, expansion relaxes cheapest constraint, finds solutions; double-UNSAT case fires the advisory cleanly. |
+| [`sudoku_at_scale_demo.py`](e2e/probes/sudoku_at_scale_demo.py) | 100–1000 record bundles — NYC apartments (500), drug discovery (1000 compounds), SP500-sized stock screen (500), restaurants city-wide (300), sensor fleet (200, 8D embeddings). Real server-side latency: 7–52 ms per call. |
+| [`sudoku_32x32_grid_demo.py`](e2e/probes/sudoku_32x32_grid_demo.py) | The namesake at literal scale — solves a 32×32 sudoku grid (1024 cells, 30% empty) using the SUDOKU primitive as a per-cell oracle inside a constraint-propagation loop. 300/307 cells filled correctly in **795 ms** / **1.5 ms per call**. The 7 unresolved cells are "needs backtracking" candidates where SUDOKU correctly returned ≥2 valid digits. |
+| [`sample_transport_demo.py`](e2e/probes/sample_transport_demo.py) | S4 — semantic analogy (2D unit-circle corpus; "walk" finds "walked", "walking", "run", "ran" within budget=0.3), music similarity, drug analog discovery, reproducibility. 18/18 checks. |
+| [`preship_audit.py`](e2e/probes/preship_audit.py) | 25-check production gate — malformed-input fuzz, memory/payload bounds, persistence smoke (insert → query → restart → re-query → identical fingerprint). All 25 pass pre- and post-#107. |
+
+---
+
 ## What's in this repo
 
 ### Engine (Rust, single crate — `Cargo.toml`)
@@ -164,6 +271,9 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `geometry::generative_flow` | `GenerativeFlow` keystone for the brain-primitives catalog: the SDE `ẋ = -∇H dt + √(2T) dW` (gradient half) and `ẋ = B⁻¹∇H` (Hamiltonian half) parametrized to deliver SAMPLE / FORECAST / DREAM / RECONSTRUCT as four boundary conditions on one generator. Convenience constructor `from_isotropic_gaussian()` plugs into L4's Welford stats so any bundle becomes a Friston-style generative model | L10 |
 | `geometry::predictive_coding` | Three more brain primitives stacked on L10: `inpaint()` (constrained Langevin — lock some fields, sample the rest from the conditional density), `predict_one_step()` + `predict_one_step_natural()` (single Fisher-natural-gradient forward step — the brain's online predictive-coding update), `kernel_density_confidence()` + `confidence_normalized()` (kernel-density-estimate "I don't know" signal — separates known patients from out-of-cohort queries by 184 orders of magnitude in the demo) | L11 |
 | `geometry::attention` + `geometry::memory` | Closes the brain-primitives catalog with the attention + memory pillar. `attend()` (softmax over `-‖q-x‖²/2σ²` — identical to a normalized Gaussian kernel), `focus()` (top-k attended → sub-bundle), `episodic_events()` (persistent-H₀ change-point detection via elder-rule on the sorted-values MST), `semantic_gist()` (wraps `BundleStore::morse_compress` under the brain-API name) | L12 |
+| `geometry::bundle_stats` | One-pass Welford per-field empirical statistics — mean, std, min/max for numeric (with Bessel-corrected length-scale fallbacks for degenerate fields), value→count for categorical, component-wise mean + mean pairwise L2 length scale for Vector fields. Single source of truth for "what's a typical distance in this bundle" — feeds every Kähler-natural normalization downstream. Domain-agnostic by construction. | SUDOKU foundation |
+| `geometry::sudoku` | The SUDOKU meta-primitive — `solve_constraints()` with the honest-coverage `Sat/Unsat/Unknown` tristate. Per-violation Kähler-natural `relaxation_cost`, per-constraint `K_c` curvature + selectivity, Pareto frontier of multi-violation near-misses, data-driven `RelaxationOption` menu sorted by gain/cost, Čech-style `check_constraint_holonomy()` pre-flight contradiction detection (O(C²), zero false positives), S3.5 `attempt_expansion()` for UNSAT puzzle relaxation. 41 unit tests + 6 HTTP wire-gate tests + 8 worked-example demos across 24 domains. | Waves 3–6.2, S3.5 |
+| `geometry::sample_transport` | Curvature-bounded neighborhood sampling: `sample_transport_neighborhood()` with `d² = (1-cos θ)/2 ∈ [0,1]` half-angle formula, Efraimidis-Spirakis weighted-sampling-without-replacement (`r^(1/w)` priorities, top-k), exp(-β·d²) kernel, per-candidate `curvature_k = 2·√d²`, bundle-wide `confidence = 1/(1+κ)`. 13 geometry tests + 3 HTTP wire-gate + 4-domain worked example. | S4 |
 | `graph::adjacency` | Dual principal/auxiliary adjacency operators | L2 |
 | `graph::commutativity` | Group-algebra-centrality commutativity classifier | L2 |
 | `cost::jacobi_estimator` | Jacobi-field cardinality bounds via Bishop / Günther | L3 |
@@ -310,6 +420,23 @@ pinned by [`tests/kahler_pr_window_marcella_contract.rs`](tests/)):
 | `POST /v1/bundles/{name}/holonomy_debt` | Davis non-decoupling — `Quantized(n)` vs `Continuous(x)` | §E.1 |
 | `POST /v1/bundles/{name}/flat_transport` | Classical / magnetic parallel transport with `BSource` selector | §1.5 |
 
+Plus the brain-primitives surface (`POST /v1/bundles/{name}/brain/*`, content-negotiated DHOOM ↔ JSON, all polymorphic over heap and mmap+overlay bundles per #107):
+
+| Endpoint | What it returns | Layer |
+|---|---|---|
+| `/brain/sample` | Friston-FEP Langevin samples from `p ∝ exp(-H)` | L10 |
+| `/brain/dream`, `/forecast`, `/reconstruct` | SAMPLE variants under different boundary conditions | L10 |
+| `/brain/inpaint` | Constrained Langevin — lock some fields, sample the rest | L11 |
+| `/brain/predict` | Single Fisher-natural-gradient step | L11 |
+| `/brain/confidence`, `/confidence_with_explain` | Kernel-density confidence + nearest-record explain path | L11 (Marcella refuse-gate) |
+| `/brain/attend`, `/focus` | Softmax over geodesic distance + top-k sub-bundle | L12 |
+| `/brain/episodic` | Persistent-H₀ change-point detection | L12 |
+| `/brain/semantic` | Morse-compressed gist | L12 |
+| `/brain/explain` | Interpolation path to nearest known record | L12 |
+| `/brain/fit_diagnostics`, `/distance_to_fit_mean` | Σ eigenstructure + Mahalanobis distance to fit mean | wave 1 |
+| `/brain/sudoku` | Constrained inference — see SUDOKU section above | waves 3–6.2, S3.5 |
+| `/brain/sample_transport` | Curvature-bounded neighborhood sampling | S4 |
+
 ### One-shot tour of every shipped Kähler layer
 
 ```bash
@@ -347,8 +474,8 @@ cd e2e && npm install && npm test
 
 As of this README the engine ships with:
 
-- **674 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract.
-- **821 tests passing, 0 failed** with `cargo test --features kahler` — adds the twelve-layer Kähler stack (L1–L12, all 12 brain primitives operational), per-layer real-data smokes against the 20-record sensor dataset, and the cross-team contract tests pinning each consumer-facing API shape.
+- **680 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract (was 674 pre-SUDOKU; +6 from the wave-2 + #107 work that's structural enough to run feature-off).
+- **909 tests passing, 0 failed** with `cargo test --lib --features kahler` (+ 64 in `cargo test --bin gigi-stream --features kahler`) — adds the twelve-layer Kähler stack (L1–L12, all 12 brain primitives operational), the SUDOKU meta-primitive (waves 3–6.2 + S3.5), SAMPLE_TRANSPORT (S4), the #107 polymorphic brain-endpoint fix, per-layer real-data smokes against the 20-record sensor dataset, the cross-team contract tests pinning each consumer-facing API shape, and six new HTTP wire-gate tests verifying that every wave-3/4/5/6 field reaches the response and the Čech pre-flight + Pareto + expansion paths return correctly.
 
 The Python validation suites independently verify the math from three
 independent angles:
@@ -410,7 +537,9 @@ All NIST-standardized primitives, all from the RustCrypto suite. Spec:
   `BundleStore::kahler_curvature` / `spectral_gap_cached` / `hadamard_regions`
   / `morse_compress` / `transport_along` / `holonomy_debt` and surfaces them
   in self-inspect alongside a non-associativity meter that doubles as a
-  conversation-stationarity signal. Substrate spec:
+  conversation-stationarity signal. Refuse-gate hits `/brain/confidence_with_explain`
+  every conversational turn — now survives server restarts cleanly via the
+  #107 polymorphic adapter. Substrate spec:
   [`theory/kahler_upgrade/marcella_substrate.md`](theory/kahler_upgrade/marcella_substrate.md).
   Cross-team correspondence (8 letters) lives alongside it.
 - **KRAKEN** (sensor fusion) — DAS / sonar / SAT / SIGINT bundles, CUSUM state, decisions, audit log, operator judgments — all on GIGI.
@@ -421,6 +550,17 @@ All NIST-standardized primitives, all from the RustCrypto suite. Spec:
   [`sdk/python/gigi/lang.py`](sdk/python/gigi/lang.py) with contract tests
   pinning the shape; schema introspection at
   [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md).
+- **sudoky-energy** (sibling project, not in this repo) — Bee Davis's
+  GPU-accelerated CSP solver (U.S. Provisional Patent Feb 2026). Solves
+  the world's hardest 9×9 Sudoku puzzles in 20–49 ms on a single laptop
+  GPU; **260,042 puzzles/sec** batch throughput. Shares the Davis-manifold
+  machinery with GIGI's SUDOKU primitive: same `K_loc` curvature
+  scheduling signal, same `V(c) = ∫_{R_c} K_loc dV_g` information value
+  for ordering, same Γ trichotomy parameter for difficulty classification,
+  same Čech `H̆¹` holonomy obstruction for pruning. sudoky-energy solves
+  canonical CSPs; GIGI's SUDOKU applies the same machinery to bundle-
+  record filtering. The cross-reference is documented in
+  [`theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md`](theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md).
 
 ---
 
@@ -431,19 +571,43 @@ gigi/
 ├── src/                  Rust engine (single crate, 25+ modules)
 │   ├── lib.rs            module roots
 │   ├── bin/              5 production binaries
-│   ├── geometry/         Kähler L1–L9 (J, B, transport, hadamard,
-│   │                       line_bundle, quantum_cohomology, toeplitz,
-│   │                       moment_map)
+│   ├── geometry/         Kähler L1–L12 + the SUDOKU sprint:
+│   │                       L1   complex_structure, forms (J, B)
+│   │                       L1.5 transport (B-perturbed magnetic)
+│   │                       L5   hadamard
+│   │                       L7   line_bundle, quantum_cohomology,
+│   │                              toeplitz
+│   │                       L9   moment_map (Noether)
+│   │                       L10  generative_flow (Friston-FEP keystone)
+│   │                       L11  predictive_coding (INPAINT/PREDICT/SELF-MONITOR)
+│   │                       L12  attention, memory (ATTEND/FOCUS/EPISODIC/SEMANTIC)
+│   │                       —    bundle_stats (W3 foundation)
+│   │                       —    sudoku (W3–6.2 + S3.5)
+│   │                       —    sample_transport (S4)
 │   ├── graph/            L2 adjacency + commutativity classifier
 │   ├── cost/             L3 Jacobi-field cardinality estimator
 │   ├── discrete/         L6 Hodge complex + Laplacian + Morse
 │   ├── sheaf/            sheaf cohomology + Laplacian
+│   ├── bundle.rs         Heap BundleStore + Welford field stats + mutation_counter
+│   ├── mmap_bundle.rs    BundleRef / BundleMut / OverlayBundle —
+│   │                       polymorphic over heap and mmap+overlay (#107)
 │   └── …
 ├── benches/              3 cargo-bin benchmarks
-├── examples/             nasa_atmosphere.rs (end-to-end NASA demo);
-│                         kahler_tour.rs (one-shot walk through every
-│                         shipped Kähler layer)
-├── e2e/                  Playwright + Node integration tests
+├── examples/             nasa_atmosphere.rs; kahler_tour.rs (every
+│                         Kähler layer); predictive_coding_demo.rs (L11
+│                         INPAINT/PREDICT/SELF-MONITOR on 80 MIRADOR
+│                         PK records); attention_memory_demo.rs (L12
+│                         on a 12-token corpus + 60-day PRISM stream)
+├── e2e/
+│   ├── probes/           8 SUDOKU + SAMPLE_TRANSPORT worked examples
+│   │                       across 24 distinct domains + preship audit
+│   │                       (sudoku_six_domains_demo, sudoku_six_more_
+│   │                       domains_demo, sudoku_geometry_diagnostics_
+│   │                       demo, sudoku_expansion_demo, sudoku_at_
+│   │                       scale_demo, sudoku_32x32_grid_demo,
+│   │                       sample_transport_demo, postdeploy_smoke,
+│   │                       preship_audit)
+│   └── *.mjs             Playwright + Node integration tests
 ├── sdk/
 │   ├── python/           gigi-client (pandas-aware)
 │   └── js/               @gigi-db/client (TS, browser + node)
@@ -452,12 +616,14 @@ gigi/
 ├── theory/
 │   ├── kahler_upgrade/   Kähler catalog (16/21 shipped) + impl plan +
 │   │                       Marcella substrate spec + 4 Python validation
-│   │                       suites (15/15 PASS) + cross-team correspondence
-│   └── post_kahler_directions/
-│                         Companion catalog: 9 post-Kähler directions
-│                         (Sasaki, info-geom, OT, persistent homology,
-│                         Gromov δ, tropical, synthetic DG, NCG, CAT(κ))
-│                         + validation_tests.py (30/30 PASS)
+│   │                       suites (15/15 PASS) + cross-team correspondence +
+│   │                       SUDOKU_PRIMITIVE_SPEC.md (sudoky-energy cross-ref)
+│   ├── post_kahler_directions/
+│   │                     Companion catalog: 9 post-Kähler directions
+│   │                       (Sasaki, info-geom, OT, persistent homology,
+│   │                       Gromov δ, tropical, synthetic DG, NCG, CAT(κ))
+│   │                       + validation_tests.py (30/30 PASS)
+│   └── brain_primitives/ 12 brain-like operations + 26/26 numerical checks
 ├── docs/                 Site + landing pages
 ├── demos/                Self-contained Python demos
 └── *_SPEC.md             Build-ready specs (encryption, observability, …)

@@ -1,4 +1,4 @@
-//! GIGI Stream — Real-time Geometric Database Server
+﻿//! GIGI Stream — Real-time Geometric Database Server
 //!
 //! WebSocket + REST API for:
 //!   - O(1) insert/query/range
@@ -4341,6 +4341,22 @@ enum ConstraintWire {
 #[cfg(feature = "kahler")]
 fn default_constraint_hard() -> bool { true }
 
+/// **S3.5 — Expansion config wire.** Opt-in puzzle expansion: when
+/// the original puzzle is UNSAT, try relaxing the cheapest constraint.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct ExpansionConfigWire {
+    /// Master switch. Must be `true` for expansion to run.
+    #[serde(default)]
+    allowed: bool,
+    /// How many relaxation options to try before giving up. Default 1.
+    #[serde(default = "default_max_constraint_relaxations")]
+    max_constraint_relaxations: usize,
+}
+
+#[cfg(feature = "kahler")]
+fn default_max_constraint_relaxations() -> usize { 1 }
+
 #[cfg(feature = "kahler")]
 #[derive(Debug, Clone, serde::Deserialize)]
 struct BrainSudokuRequest {
@@ -4354,6 +4370,11 @@ struct BrainSudokuRequest {
     /// Default 3.
     #[serde(default = "default_sudoku_max_near_misses")]
     max_near_misses: usize,
+    /// **S3.5 — puzzle expansion.** Opt-in: when set with
+    /// `allowed: true` and the puzzle is UNSAT, try relaxing the
+    /// cheapest constraint. Default: None (no expansion).
+    #[serde(default)]
+    expansion: Option<ExpansionConfigWire>,
 }
 
 #[cfg(feature = "kahler")]
@@ -4442,6 +4463,44 @@ struct SudokuParetoNearMissWire {
     total_relaxation_cost: f64,
 }
 
+/// **S3.5 — Expanded solution wire.** A record from the RELAXED
+/// puzzle — clearly distinct from `solutions` (which requires all
+/// original constraints). `relaxed_constraint_idx` identifies which
+/// original constraint was relaxed or dropped.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct SudokuExpandedSolutionWire {
+    record: serde_json::Value,
+    stated_prior_mass: f64,
+    /// Normalized cost of the relaxation that unlocked this record.
+    /// Same units as `ViolationDetail::relaxation_cost`.
+    expansion_cost: f64,
+    /// Index into the original `constraints` array that was relaxed.
+    relaxed_constraint_idx: usize,
+    /// The new threshold used (null = constraint dropped entirely).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    relaxed_to: Option<serde_json::Value>,
+}
+
+/// **S3.5 — Expansion result wire.** Present only when
+/// `expansion.allowed` was true and original verdict was "unsat".
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct SudokuExpansionResultWire {
+    /// True when expansion was actually attempted.
+    attempted: bool,
+    /// "constraint_relaxation" in v1; "bundle_hop" added at HTTP
+    /// layer in S3.5.
+    expansion_type: String,
+    /// Solutions from the relaxed puzzle. Empty → expansion also
+    /// failed; see `advisory`.
+    solutions: Vec<SudokuExpandedSolutionWire>,
+    /// Set when expansion finds nothing. Suggests asking a human
+    /// or reformulating.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    advisory: Option<String>,
+}
+
 #[cfg(feature = "kahler")]
 #[derive(Debug, Clone, serde::Serialize)]
 struct BrainSudokuResponse {
@@ -4479,6 +4538,12 @@ struct BrainSudokuResponse {
     /// match."
     #[serde(skip_serializing_if = "Option::is_none")]
     pre_flight_unsat_reason: Option<String>,
+    /// **S3.5 — puzzle expansion result.** Present only when
+    /// `expansion.allowed` was true and original verdict is "unsat".
+    /// Null → expansion was not attempted (SAT, unknown, or not
+    /// opted in).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expanded: Option<SudokuExpansionResultWire>,
 }
 
 /// Translate wire constraints to the geometry-layer Constraint
@@ -4591,10 +4656,16 @@ async fn brain_sudoku_endpoint(
     // Translate wire constraints → geometry-layer types.
     let constraints = translate_constraints(req.constraints)
         .map_err(|e| bad_request(&e))?;
+    // S3.5 — translate expansion config from wire format.
+    let expansion = req.expansion.map(|e| gigi::geometry::ExpansionConfig {
+        allowed: e.allowed,
+        max_constraint_relaxations: e.max_constraint_relaxations,
+    });
     let sudoku_req = gigi::geometry::SudokuRequest {
         constraints,
         max_options: req.max_options,
         max_near_misses: req.max_near_misses,
+        expansion,
     };
     let config = gigi::geometry::SudokuConfig::default();
 
@@ -4690,6 +4761,27 @@ async fn brain_sudoku_endpoint(
     }
     .to_string();
 
+    // S3.5 — convert expansion result to wire format.
+    let expanded_wire: Option<SudokuExpansionResultWire> = resp.expanded.map(|exp| {
+        let sol_wire: Vec<SudokuExpandedSolutionWire> = exp
+            .solutions
+            .into_iter()
+            .map(|s| SudokuExpandedSolutionWire {
+                record: record_to_json(&s.record),
+                stated_prior_mass: s.stated_prior_mass,
+                expansion_cost: s.expansion_cost,
+                relaxed_constraint_idx: s.relaxed_constraint_idx,
+                relaxed_to: s.relaxed_to.as_ref().map(value_to_json),
+            })
+            .collect();
+        SudokuExpansionResultWire {
+            attempted: exp.attempted,
+            expansion_type: exp.expansion_type,
+            solutions: sol_wire,
+            advisory: exp.advisory,
+        }
+    });
+
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
@@ -4707,6 +4799,7 @@ async fn brain_sudoku_endpoint(
             pareto_near_misses: pareto_wire,
             counter_at_fit,
             pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
+            expanded: expanded_wire,
         },
     )
 }
@@ -13901,6 +13994,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
 
         let resp = gigi::geometry::solve_constraints(
@@ -13996,6 +14090,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
 
         let resp = gigi::geometry::solve_constraints(
@@ -14064,6 +14159,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
 
         let resp = gigi::geometry::solve_constraints(
@@ -14084,5 +14180,153 @@ mod tests {
                 && p.record.get("b") == Some(&Value::Float(3.0))
         });
         assert!(has_cheap, "cheap single-violation record must be on frontier");
+    }
+
+    // ── S3.5 expansion wire-gate tests ───────────────────────────────────────
+    // These tests hit the geometry layer directly (same pattern as the W3-W6
+    // gates above) and prove that the expansion result reaches the
+    // BrainSudokuResponse wire struct. The math is proved in sudoku.rs;
+    // these prove the HTTP boundary carries the new fields.
+
+    /// **Gate E-WIRE-1.** Expansion field is None (omitted) on SAT verdict.
+    /// Consumers must not see `expanded` when the original puzzle found
+    /// solutions — we only expand on UNSAT.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sudoku_wire_gate_expansion_absent_on_sat() {
+        use gigi::geometry::{
+            solve_constraints, Constraint, ExpansionConfig, FieldOp, SudokuConfig,
+            SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        let mut records = Vec::new();
+        for i in 1..=5 {
+            let mut r = gigi::types::Record::new();
+            r.insert("price".into(), Value::Float(i as f64 * 10.0));
+            records.push(r);
+        }
+        // price <= 40 → records 10, 20, 30, 40 all satisfy → SAT.
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "price".into(),
+                op: FieldOp::Le(40.0),
+                hard: true,
+            }],
+            max_options: 5,
+            max_near_misses: 3,
+            expansion: Some(ExpansionConfig { allowed: true, max_constraint_relaxations: 1 }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Sat, "must be SAT");
+        assert!(
+            resp.expanded.is_none(),
+            "expanded must be None on SAT — expansion only runs on UNSAT"
+        );
+    }
+
+    /// **Gate E-WIRE-2.** Expansion is attempted and finds solutions on
+    /// UNSAT. The `expanded` field is Some with `attempted: true` and
+    /// at least one expanded solution. The expanded solution carries the
+    /// correct `relaxed_constraint_idx` and a finite `expansion_cost`.
+    ///
+    /// This proves the full path: geometry layer → BrainSudokuResponse →
+    /// wire struct fields are populated correctly.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sudoku_wire_gate_expansion_result_reaches_wire_on_unsat() {
+        use gigi::geometry::{
+            solve_constraints, Constraint, ExpansionConfig, FieldOp, SudokuConfig,
+            SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        // 5 records: price 100..500. Constraint: price <= 90 → UNSAT.
+        // Expansion: relax price → should find the $100 record.
+        let records: Vec<gigi::types::Record> = (1..=5)
+            .map(|i| {
+                let mut r = gigi::types::Record::new();
+                r.insert("price".into(), Value::Float(i as f64 * 100.0));
+                r
+            })
+            .collect();
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "price".into(),
+                op: FieldOp::Le(90.0),
+                hard: true,
+            }],
+            max_options: 5,
+            max_near_misses: 5,
+            expansion: Some(ExpansionConfig { allowed: true, max_constraint_relaxations: 1 }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat, "must be UNSAT");
+        let expanded = resp.expanded.as_ref()
+            .expect("expanded must be Some when UNSAT + expansion allowed");
+        assert!(expanded.attempted, "attempted must be true");
+        assert_eq!(expanded.expansion_type, "constraint_relaxation");
+        assert!(
+            !expanded.solutions.is_empty(),
+            "expansion must find the $100 record"
+        );
+        let sol = &expanded.solutions[0];
+        assert_eq!(sol.relaxed_constraint_idx, 0, "price is constraint 0");
+        assert!(
+            sol.expansion_cost.is_finite() && sol.expansion_cost > 0.0,
+            "expansion_cost must be finite positive, got {}",
+            sol.expansion_cost
+        );
+    }
+
+    /// **Gate E-WIRE-3.** When expansion also fails (advisory path):
+    /// `expanded.solutions` is empty, `advisory` is Some, and the
+    /// advisory message suggests asking a human or reformulating.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sudoku_wire_gate_expansion_advisory_on_double_unsat() {
+        use gigi::geometry::{
+            solve_constraints, Constraint, ExpansionConfig, FieldOp, SudokuConfig,
+            SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        // All records fail price AND color — no near-misses → empty
+        // relaxation menu → expansion also fails → advisory.
+        let records: Vec<gigi::types::Record> = (1..=3)
+            .map(|i| {
+                let mut r = gigi::types::Record::new();
+                r.insert("price".into(), Value::Float(i as f64 * 100.0));
+                r.insert("color".into(), Value::Text("blue".into()));
+                r
+            })
+            .collect();
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "price".into(),
+                    op: FieldOp::Le(50.0),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("red".into())),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 5,
+            expansion: Some(ExpansionConfig { allowed: true, max_constraint_relaxations: 1 }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat);
+        let expanded = resp.expanded.as_ref().expect("expanded must be Some");
+        assert!(expanded.attempted);
+        assert!(expanded.solutions.is_empty(), "double-UNSAT: no expansion solutions");
+        let advisory = expanded.advisory.as_ref().expect("advisory must be set");
+        assert!(
+            advisory.to_lowercase().contains("human") || advisory.to_lowercase().contains("reformulat"),
+            "advisory must suggest asking a human or reformulating; got: {advisory}"
+        );
     }
 }

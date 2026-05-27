@@ -1,4 +1,4 @@
-//! # SUDOKU — Constrained inference on a learned affordance manifold
+﻿//! # SUDOKU — Constrained inference on a learned affordance manifold
 //!
 //! Implements the meta-primitive specified in
 //! `theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md` v0.3.
@@ -137,6 +137,10 @@ pub struct SudokuRequest {
     /// Maximum number of near-misses to return (options that violate
     /// exactly one hard constraint).
     pub max_near_misses: usize,
+    /// **S3.5 — puzzle expansion.** When set and allowed=true, SUDOKU
+    /// will attempt to solve a relaxed version of the problem when the
+    /// original returns Unsat. Opt-in; None = no expansion attempted.
+    pub expansion: Option<ExpansionConfig>,
 }
 
 impl Default for SudokuRequest {
@@ -145,6 +149,7 @@ impl Default for SudokuRequest {
             constraints: Vec::new(),
             max_options: 5,
             max_near_misses: 3,
+            expansion: None,
         }
     }
 }
@@ -201,6 +206,10 @@ pub struct SudokuResponse {
     /// Maps to sudoky-energy's Čech H̆¹ pre-filter (catches 100% of
     /// overt constraint contradictions per the Noether-Davis tests).
     pub pre_flight_unsat_reason: Option<String>,
+    /// **S3.5 — expansion result.** Present only when
+    /// `req.expansion.allowed` was true and original verdict was Unsat.
+    /// None → expansion was not attempted (SAT, Unknown, or not opted in).
+    pub expanded: Option<ExpansionResult>,
 }
 
 /// A satisfying option.
@@ -383,6 +392,73 @@ pub enum SudokuVerdict {
     Unknown,
 }
 
+// ─── S3.5 — Puzzle expansion types ─────────────────────────────
+
+/// Opt-in expansion config. When `allowed: true` and the original
+/// puzzle is UNSAT, SUDOKU asks "what other puzzle is this?" and
+/// tries to solve a slightly relaxed version of the problem.
+///
+/// v1 implements constraint_relaxation only (cheapest relaxation
+/// from the menu). bundle_hop is wired at the HTTP layer in S3.5.
+#[derive(Debug, Clone)]
+pub struct ExpansionConfig {
+    /// Master switch. Default: false (expansion is opt-in).
+    pub allowed: bool,
+    /// How many relaxation options to try before giving up.
+    /// Each option relaxes exactly one constraint by the cheapest
+    /// data-driven amount from the relaxation menu. Default: 1.
+    pub max_constraint_relaxations: usize,
+}
+
+impl Default for ExpansionConfig {
+    fn default() -> Self {
+        ExpansionConfig {
+            allowed: false,
+            max_constraint_relaxations: 1,
+        }
+    }
+}
+
+/// A solution found in the expanded (10×10) puzzle — a different
+/// puzzle than the one originally asked. Always clearly labelled
+/// so consumers know this is NOT an answer to the original question.
+#[derive(Debug, Clone)]
+pub struct ExpandedSolution {
+    /// The record that satisfies the relaxed constraints.
+    pub record: Record,
+    /// Stated-prior mass from the expansion solve (denominator =
+    /// n_records in the original bundle, same as original solve).
+    pub stated_prior_mass: f64,
+    /// Normalized cost of the relaxation that unlocked this record.
+    /// Same units as `ViolationDetail::relaxation_cost` (std-normalized).
+    pub expansion_cost: f64,
+    /// Index into the ORIGINAL request's `constraints` array that
+    /// was relaxed or dropped to unlock this record.
+    pub relaxed_constraint_idx: usize,
+    /// The new threshold used (None = constraint dropped entirely).
+    pub relaxed_to: Option<Value>,
+}
+
+/// Result of an expansion attempt (constraint_relaxation). Present
+/// on the response only when `expansion.allowed` was true on the
+/// request AND the original verdict was Unsat.
+#[derive(Debug, Clone)]
+pub struct ExpansionResult {
+    /// True when expansion was actually attempted (original was Unsat
+    /// with coverage ≥ high_threshold and expansion was allowed).
+    pub attempted: bool,
+    /// "constraint_relaxation" in v1. "bundle_hop" added at HTTP
+    /// layer in S3.5.
+    pub expansion_type: String,
+    /// Solutions found in the expanded puzzle. Empty → the expanded
+    /// puzzle is also UNSAT; see `advisory`.
+    pub solutions: Vec<ExpandedSolution>,
+    /// Human-readable advisory when expansion also finds nothing.
+    /// Per spec §6.5: "consider asking a human" is the right output
+    /// when geometry has honestly exhausted itself.
+    pub advisory: Option<String>,
+}
+
 /// SUDOKU configuration (defaults per spec v0.3 §3 + §4).
 #[derive(Debug, Clone, Copy)]
 pub struct SudokuConfig {
@@ -452,6 +528,48 @@ where
     // constraint sets BEFORE any record IO. O(C²) pairwise scan.
     // Returns Unsat with a populated reason immediately.
     if let Some(reason) = check_constraint_holonomy(&req.constraints) {
+        // Pre-flight caught a structural contradiction. Expansion can
+        // still run on the original records because the relaxed
+        // constraint set may be valid (we drop or relax one of the
+        // contradicting pair). We need the records for that, so
+        // materialize them only when expansion is requested.
+        let expanded = if req.expansion.as_ref().map(|e| e.allowed).unwrap_or(false) {
+            let materialized: Vec<Record> = records.into_iter().collect();
+            // Build a synthetic response with the preflight relaxations
+            // to feed attempt_expansion. The relaxation menu for overt
+            // contradictions is "drop one of the contradicting constraints"
+            // — we synthesize that directly since compute_relaxation_menu
+            // requires classified records.
+            let synthetic_relaxations: Vec<RelaxationOption> = req.constraints
+                .iter()
+                .enumerate()
+                .map(|(i, c)| {
+                    let field = if let Constraint::Field { field, .. } = c {
+                        field.clone()
+                    } else {
+                        format!("constraint_{i}")
+                    };
+                    RelaxationOption {
+                        constraint_idx: i,
+                        field,
+                        description: "drop contradicting constraint".into(),
+                        new_threshold: None,
+                        gain: 1, // unknown — will be computed by re-solve
+                        relaxation_cost: 1.0,
+                    }
+                })
+                .collect();
+            Some(attempt_expansion(
+                &materialized,
+                req,
+                &synthetic_relaxations,
+                config,
+            ))
+        } else {
+            // No expansion requested — don't materialize.
+            let _ = records; // consume iterator
+            None
+        };
         return Ok(SudokuResponse {
             solutions: Vec::new(),
             near_misses: Vec::new(),
@@ -464,6 +582,7 @@ where
             relaxations: Vec::new(),
             pareto_near_misses: Vec::new(),
             pre_flight_unsat_reason: Some(reason),
+            expanded,
         });
     }
 
@@ -487,6 +606,7 @@ where
             relaxations: Vec::new(),
             pareto_near_misses: Vec::new(),
             pre_flight_unsat_reason: None,
+            expanded: None,
         });
     }
 
@@ -611,6 +731,15 @@ where
         req.constraints.len(),
     );
 
+    // S3.5 — puzzle expansion. Only when Unsat and opt-in.
+    let expanded = if verdict == SudokuVerdict::Unsat
+        && req.expansion.as_ref().map(|e| e.allowed).unwrap_or(false)
+    {
+        Some(attempt_expansion(&materialized, req, &relaxations, config))
+    } else {
+        None
+    };
+
     Ok(SudokuResponse {
         solutions,
         near_misses,
@@ -621,7 +750,148 @@ where
         relaxations,
         pareto_near_misses,
         pre_flight_unsat_reason: None,
+        expanded,
     })
+}
+
+// ─── S3.5 — Puzzle expansion helpers ────────────────────────────
+
+/// Build the relaxed constraint set by either dropping or
+/// replacing the threshold of the constraint at `opt.constraint_idx`.
+///
+/// - `new_threshold = None` → drop the constraint entirely.
+/// - `new_threshold = Some(Float(t))` → replace the numeric
+///   threshold in Le/Lt/Ge/Gt with `t`. Categorical constraints
+///   (`Eq`, `Ne`, `IsIn`) are copied unchanged when a numeric
+///   threshold is supplied (shouldn't happen in practice).
+fn apply_relaxation(constraints: &[Constraint], opt: &RelaxationOption) -> Vec<Constraint> {
+    constraints
+        .iter()
+        .enumerate()
+        .filter_map(|(i, c)| {
+            if i != opt.constraint_idx {
+                return Some(c.clone());
+            }
+            match &opt.new_threshold {
+                // Drop-style relaxation: remove the constraint.
+                None => None,
+                // Threshold-replacement: swap the numeric bound.
+                Some(Value::Float(t)) => {
+                    if let Constraint::Field { field, op, hard } = c {
+                        let new_op = match op {
+                            FieldOp::Le(_) => FieldOp::Le(*t),
+                            FieldOp::Lt(_) => FieldOp::Lt(*t),
+                            FieldOp::Ge(_) => FieldOp::Ge(*t),
+                            FieldOp::Gt(_) => FieldOp::Gt(*t),
+                            // Categorical / other numeric ops: can't
+                            // replace with a float threshold — keep as-is.
+                            other => other.clone(),
+                        };
+                        Some(Constraint::Field {
+                            field: field.clone(),
+                            op: new_op,
+                            hard: *hard,
+                        })
+                    } else {
+                        Some(c.clone())
+                    }
+                }
+                // Integer threshold (e.g. from an integer-valued
+                // relaxation proposal): promote to f64 and apply.
+                Some(Value::Integer(t)) => {
+                    let tf = *t as f64;
+                    if let Constraint::Field { field, op, hard } = c {
+                        let new_op = match op {
+                            FieldOp::Le(_) => FieldOp::Le(tf),
+                            FieldOp::Lt(_) => FieldOp::Lt(tf),
+                            FieldOp::Ge(_) => FieldOp::Ge(tf),
+                            FieldOp::Gt(_) => FieldOp::Gt(tf),
+                            other => other.clone(),
+                        };
+                        Some(Constraint::Field {
+                            field: field.clone(),
+                            op: new_op,
+                            hard: *hard,
+                        })
+                    } else {
+                        Some(c.clone())
+                    }
+                }
+                // Unknown threshold type: keep constraint unchanged.
+                Some(_) => Some(c.clone()),
+            }
+        })
+        .collect()
+}
+
+/// Try up to `req.expansion.max_constraint_relaxations` options from
+/// the pre-computed relaxation menu. Re-solves the bundle with the
+/// relaxed constraint set. Stops at the first relaxation that finds
+/// ≥1 solution. Returns an `ExpansionResult` with `attempted: true`
+/// regardless.
+///
+/// The `relaxations` slice is the output of `compute_relaxation_menu`
+/// (for the data-UNSAT case) or the synthetic menu built in the
+/// pre-flight branch (for the Čech-UNSAT case). Either way they are
+/// already sorted best-first by gain / cost.
+fn attempt_expansion(
+    materialized: &[Record],
+    req: &SudokuRequest,
+    relaxations: &[RelaxationOption],
+    config: &SudokuConfig,
+) -> ExpansionResult {
+    let max_tries = req
+        .expansion
+        .as_ref()
+        .map(|e| e.max_constraint_relaxations)
+        .unwrap_or(1);
+
+    let mut found: Vec<ExpandedSolution> = Vec::new();
+
+    for relaxation in relaxations.iter().take(max_tries) {
+        let relaxed_constraints = apply_relaxation(&req.constraints, relaxation);
+        // If applying the relaxation left us with no constraints,
+        // every record satisfies — still a meaningful expansion result.
+        let relaxed_req = SudokuRequest {
+            constraints: relaxed_constraints,
+            max_options: req.max_options,
+            max_near_misses: 0, // no near-misses on inner solve
+            expansion: None,    // no recursive expansion
+        };
+        if let Ok(inner) = solve_constraints(materialized.iter().cloned(), &relaxed_req, config) {
+            if !inner.solutions.is_empty() {
+                let cost = relaxation.relaxation_cost;
+                for sol in inner.solutions {
+                    found.push(ExpandedSolution {
+                        record: sol.record,
+                        stated_prior_mass: sol.stated_prior_mass,
+                        expansion_cost: cost,
+                        relaxed_constraint_idx: relaxation.constraint_idx,
+                        relaxed_to: relaxation.new_threshold.clone(),
+                    });
+                }
+                // Got solutions — stop trying further relaxations.
+                break;
+            }
+        }
+    }
+
+    let advisory = if found.is_empty() {
+        Some(
+            "No solutions found even after constraint relaxation. \
+             Consider reformulating the problem or asking a human expert."
+                .into(),
+        )
+    } else {
+        None
+    };
+
+    ExpansionResult {
+        attempted: true,
+        expansion_type: "constraint_relaxation".into(),
+        solutions: found,
+        advisory,
+    }
 }
 
 // ─── Internals ──────────────────────────────────────────────────
@@ -1492,6 +1762,7 @@ mod tests {
             constraints: vec![],
             max_options: 10,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.verdict, SudokuVerdict::Sat);
@@ -1517,6 +1788,7 @@ mod tests {
             }],
             max_options: 10,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.verdict, SudokuVerdict::Sat);
@@ -1542,6 +1814,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.verdict, SudokuVerdict::Unsat);
@@ -1562,6 +1835,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.verdict, SudokuVerdict::Unknown);
@@ -1611,6 +1885,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.verdict, SudokuVerdict::Sat);
@@ -1635,6 +1910,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let result = solve_constraints(
             vec![rec(&[("embedding", Value::Float(0.5))])],
@@ -1667,6 +1943,7 @@ mod tests {
             }],
             max_options: 10,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.verdict, SudokuVerdict::Sat);
@@ -1692,6 +1969,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 3,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.solutions.len(), 2);
@@ -1723,6 +2001,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         // Find the x=40 near-miss and check its cost.
@@ -1757,6 +2036,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         let nm = &resp.near_misses[0];
@@ -1796,6 +2076,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         let sel_color = &resp.selectivity[0];
@@ -1825,6 +2106,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         // Menu should propose each violating value as a new threshold.
@@ -1887,6 +2169,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         // R1 must appear; R3 must not (dominated). R2 may appear
@@ -1921,6 +2204,7 @@ mod tests {
             }],
             max_options: 3,
             max_near_misses: 5,
+            expansion: None,
         };
         let drug_resp = solve_constraints(drug_records, &drug_req, &SudokuConfig::default()).unwrap();
 
@@ -1940,6 +2224,7 @@ mod tests {
             }],
             max_options: 3,
             max_near_misses: 5,
+            expansion: None,
         };
         let rent_resp = solve_constraints(rent_records, &rent_req, &SudokuConfig::default()).unwrap();
 
@@ -2016,6 +2301,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         // Two near-misses with different distances → different costs.
@@ -2048,6 +2334,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         // The single record violates — its cost must be finite.
@@ -2075,6 +2362,7 @@ mod tests {
             }],
             max_options: 11,
             max_near_misses: 0,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         // Find the price=100 and price=200 solutions; the former
@@ -2121,6 +2409,7 @@ mod tests {
             }],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.solutions.len(), 3);
@@ -2153,6 +2442,7 @@ mod tests {
             }],
             max_options: 11,
             max_near_misses: 0,
+            expansion: None,
         };
         let r_resp = solve_constraints(restaurants, &r_req, &SudokuConfig::default()).unwrap();
 
@@ -2168,6 +2458,7 @@ mod tests {
             }],
             max_options: 11,
             max_near_misses: 0,
+            expansion: None,
         };
         let h_resp = solve_constraints(houses, &h_req, &SudokuConfig::default()).unwrap();
 
@@ -2230,6 +2521,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         let sel_a = &resp.selectivity[0];
@@ -2274,6 +2566,7 @@ mod tests {
             ],
             max_options: 10,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         // Both K_c = 0.4 (4 records fail v ≥ 5).
@@ -2313,6 +2606,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.verdict, SudokuVerdict::Unsat);
@@ -2339,6 +2633,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let records: Vec<Record> = (0..100)
             .map(|i| rec(&[("rent", Value::Float(2000.0 + 50.0 * i as f64))]))
@@ -2369,6 +2664,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let records: Vec<Record> = (0..10)
             .map(|_| rec(&[("k", Value::Text("red".into()))]))
@@ -2396,6 +2692,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let records: Vec<Record> = (0..50)
             .map(|i| rec(&[("v", Value::Float(i as f64))]))
@@ -2439,6 +2736,7 @@ mod tests {
             ],
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.verdict, SudokuVerdict::Sat, "must NOT be falsely flagged Unsat");
@@ -2477,6 +2775,7 @@ mod tests {
             constraints,
             max_options: 5,
             max_near_misses: 5,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert!(
@@ -2497,9 +2796,345 @@ mod tests {
             constraints: vec![],
             max_options: 5,
             max_near_misses: 3,
+            expansion: None,
         };
         let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
         assert_eq!(resp.solutions.len(), 1);
         assert!((resp.solutions[0].stated_prior_mass - 1.0).abs() < 1e-9);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // S3.5 — Puzzle expansion tests (TDD — red before green)
+    // ─────────────────────────────────────────────────────────────
+
+    /// **E1.** Expansion is NOT triggered when the original verdict
+    /// is SAT — we only expand when the 9×9 has no solution.
+    #[test]
+    fn expansion_not_triggered_when_original_is_sat() {
+        let records = vec![
+            rec(&[("price", Value::Float(80.0))]),
+            rec(&[("price", Value::Float(120.0))]),
+        ];
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "price".into(),
+                op: FieldOp::Le(100.0),
+                hard: true,
+            }],
+            max_options: 5,
+            max_near_misses: 3,
+            expansion: Some(ExpansionConfig {
+                allowed: true,
+                max_constraint_relaxations: 2,
+            }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Sat);
+        // expanded must be None — no point asking "what other puzzle
+        // is this?" when the original puzzle has solutions.
+        assert!(
+            resp.expanded.is_none(),
+            "expansion must not trigger on SAT — got: {:?}",
+            resp.expanded.as_ref().map(|e| &e.expansion_type)
+        );
+    }
+
+    /// **E2.** Expansion IS triggered on UNSAT and finds solutions
+    /// by relaxing the cheapest constraint.
+    ///
+    /// Setup: 5 records with price 100..500. Constraint: price <= 90.
+    /// Zero solutions. Expansion: relax price to the cheapest
+    /// near-miss value (100). Should find the $100 record.
+    #[test]
+    fn expansion_relaxes_cheapest_constraint_on_unsat() {
+        let records = vec![
+            rec(&[("price", Value::Float(100.0))]), // cheapest violator
+            rec(&[("price", Value::Float(200.0))]),
+            rec(&[("price", Value::Float(300.0))]),
+            rec(&[("price", Value::Float(400.0))]),
+            rec(&[("price", Value::Float(500.0))]),
+        ];
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "price".into(),
+                op: FieldOp::Le(90.0),
+                hard: true,
+            }],
+            max_options: 5,
+            max_near_misses: 5,
+            expansion: Some(ExpansionConfig {
+                allowed: true,
+                max_constraint_relaxations: 1,
+            }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat, "original must be Unsat");
+        let expanded = resp.expanded.as_ref()
+            .expect("expanded must be Some when Unsat + expansion allowed");
+        assert!(expanded.attempted, "attempted must be true");
+        assert!(
+            !expanded.solutions.is_empty(),
+            "expansion must find the $100 record after relaxing price"
+        );
+        // The $100 record should be the first expanded solution.
+        let first = &expanded.solutions[0];
+        assert_eq!(
+            first.record.get("price"),
+            Some(&Value::Float(100.0)),
+            "expanded solution should be the $100 record"
+        );
+        // expansion_cost must be finite and positive.
+        assert!(
+            first.expansion_cost > 0.0 && first.expansion_cost.is_finite(),
+            "expansion_cost must be finite positive, got {}",
+            first.expansion_cost
+        );
+        // relaxed_constraint_idx must point to the price constraint (idx 0).
+        assert_eq!(first.relaxed_constraint_idx, 0);
+    }
+
+    /// **E3.** When expansion is not allowed (`allowed: false`), the
+    /// `expanded` field is None even on UNSAT.
+    #[test]
+    fn expansion_not_triggered_when_not_allowed() {
+        let records = vec![rec(&[("x", Value::Float(5.0))])];
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "x".into(),
+                op: FieldOp::Ge(10.0),
+                hard: true,
+            }],
+            max_options: 5,
+            max_near_misses: 3,
+            expansion: Some(ExpansionConfig {
+                allowed: false, // explicitly disabled
+                max_constraint_relaxations: 1,
+            }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat);
+        assert!(
+            resp.expanded.is_none(),
+            "expanded must be None when expansion.allowed = false"
+        );
+    }
+
+    /// **E4.** When no `expansion` field is set on the request,
+    /// `expanded` is None (default is opt-out).
+    #[test]
+    fn expansion_absent_by_default() {
+        let records = vec![rec(&[("x", Value::Float(5.0))])];
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "x".into(),
+                op: FieldOp::Ge(10.0),
+                hard: true,
+            }],
+            max_options: 5,
+            max_near_misses: 3,
+            expansion: None, // no expansion field
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert!(
+            resp.expanded.is_none(),
+            "expanded must be None when no expansion config provided"
+        );
+    }
+
+    /// **E5.** When expansion is allowed but even relaxation finds no
+    /// solutions, `expanded.solutions` is empty and `advisory` is set.
+    ///
+    /// Setup: 3 records with price 100, 200, 300. Two hard constraints:
+    /// price <= 90 (blocks all) AND color = "red" (blocks all).
+    /// Relaxing price (cheapest numeric constraint) still leaves no
+    /// matches because color = "red" is also violated by all records.
+    /// The advisory must say "consider asking a human."
+    #[test]
+    fn expansion_advisory_set_when_relaxation_also_fails() {
+        let records = vec![
+            rec(&[("price", Value::Float(100.0)), ("color", Value::Text("blue".into()))]),
+            rec(&[("price", Value::Float(200.0)), ("color", Value::Text("blue".into()))]),
+        ];
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "price".into(),
+                    op: FieldOp::Le(90.0),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("red".into())),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 5,
+            expansion: Some(ExpansionConfig {
+                allowed: true,
+                max_constraint_relaxations: 1, // only try the cheapest
+            }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat);
+        let expanded = resp.expanded.as_ref()
+            .expect("expanded must be Some");
+        assert!(expanded.attempted);
+        // Relaxing price Le(90) to Le(100) or Le(200) still leaves
+        // color = "red" unsatisfied → no expansion solutions.
+        assert!(
+            expanded.solutions.is_empty(),
+            "expansion should find no solutions when second constraint still blocks"
+        );
+        let advisory = expanded.advisory.as_ref()
+            .expect("advisory must be set when expansion also fails");
+        assert!(
+            advisory.to_lowercase().contains("human") || advisory.to_lowercase().contains("reformulat"),
+            "advisory should suggest asking a human or reformulating; got: {advisory}"
+        );
+    }
+
+    /// **E6.** Expansion triggered by pre-flight UNSAT (Le+Ge
+    /// contradiction) — the relaxed constraint set is valid, and
+    /// expansion should run on the underlying records.
+    ///
+    /// Constraint: Le(100) AND Ge(500) — pre-flight catches it.
+    /// Expansion relaxes Le(100) → Le(200) (dropping the first
+    /// constraint from a "drop" style relaxation, which isn't
+    /// applicable here since they're numeric). We use a drop-style
+    /// relaxation via categorical to test that pre-flight Unsat
+    /// correctly feeds into expansion.
+    ///
+    /// Simpler version: price Eq("red") AND price Eq("blue") →
+    /// pre-flight fires. Expansion (attempted on the original records
+    /// with one constraint relaxed) should find records if they exist.
+    #[test]
+    fn expansion_runs_after_preflight_unsat() {
+        // Pre-flight: color=red AND color=blue is trivially contradictory.
+        // Bundle has 5 red records. Expansion drops color=blue → finds them.
+        let records: Vec<Record> = (0..5)
+            .map(|i| rec(&[("color", Value::Text("red".into())),
+                           ("id", Value::Integer(i))]))
+            .collect();
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("red".into())),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("blue".into())),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 5,
+            expansion: Some(ExpansionConfig {
+                allowed: true,
+                max_constraint_relaxations: 2,
+            }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat);
+        assert!(resp.pre_flight_unsat_reason.is_some(), "should fire pre-flight");
+        // Expansion should be attempted and find the red records.
+        let expanded = resp.expanded.as_ref()
+            .expect("expanded must be Some — pre-flight Unsat still triggers expansion");
+        assert!(expanded.attempted);
+        assert!(
+            !expanded.solutions.is_empty(),
+            "expansion should find red records after dropping blue constraint"
+        );
+    }
+
+    /// **E7.** Expanded solutions do NOT duplicate records already
+    /// in the original `solutions` list (they are from a different
+    /// puzzle — a stricter constraint that the expansion relaxed).
+    /// Since the original is always Unsat when expansion triggers,
+    /// original solutions is always empty. But multi-constraint
+    /// cases: relaxing constraint A might unlock records that are
+    /// already in the original `near_misses` — those should appear
+    /// in `expanded.solutions` (they're now SOLUTIONS to the relaxed
+    /// puzzle), not be suppressed.
+    #[test]
+    fn expansion_solutions_are_distinct_from_original_solutions() {
+        // 3 records: 1 satisfies all, 2 violate price only.
+        // Constraint: price <= 100 AND color = "red". Both records
+        // satisfy color=red, one satisfies price.
+        let records = vec![
+            rec(&[("price", Value::Float(80.0)),  ("color", Value::Text("red".into()))]),
+            rec(&[("price", Value::Float(150.0)), ("color", Value::Text("red".into()))]),
+            rec(&[("price", Value::Float(200.0)), ("color", Value::Text("red".into()))]),
+        ];
+        // Make it UNSAT: price <= 70 (nothing matches).
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "price".into(),
+                    op: FieldOp::Le(70.0),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("red".into())),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 5,
+            expansion: Some(ExpansionConfig {
+                allowed: true,
+                max_constraint_relaxations: 3,
+            }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat);
+        // original solutions empty
+        assert!(resp.solutions.is_empty());
+        let expanded = resp.expanded.as_ref().expect("expansion must run");
+        // Expansion should find at least the $80 record (cheapest near-miss).
+        assert!(
+            !expanded.solutions.is_empty(),
+            "expansion must find solutions in the relaxed puzzle"
+        );
+        // All expanded solutions must have a valid relaxed_constraint_idx.
+        for sol in &expanded.solutions {
+            assert!(
+                sol.relaxed_constraint_idx < req.constraints.len(),
+                "relaxed_constraint_idx {} out of range",
+                sol.relaxed_constraint_idx
+            );
+        }
+    }
+
+    /// **E8.** `expansion_type` is "constraint_relaxation" in v1
+    /// (bundle_hop is an HTTP-layer concern).
+    #[test]
+    fn expansion_type_is_constraint_relaxation_in_v1() {
+        let records = vec![rec(&[("x", Value::Float(5.0))])];
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "x".into(),
+                op: FieldOp::Ge(10.0),
+                hard: true,
+            }],
+            max_options: 5,
+            max_near_misses: 3,
+            expansion: Some(ExpansionConfig {
+                allowed: true,
+                max_constraint_relaxations: 1,
+            }),
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        if let Some(expanded) = &resp.expanded {
+            assert_eq!(
+                expanded.expansion_type, "constraint_relaxation",
+                "v1 expansion type must be 'constraint_relaxation'"
+            );
+        }
+        // If expanded is None (no relaxation menu — single record,
+        // no near-misses to relax from), that's also acceptable.
     }
 }

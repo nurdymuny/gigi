@@ -90,8 +90,9 @@ pub use predictive_coding::{
 };
 pub use quantum_cohomology::{CohClass, HilbertPolynomial, QuantumCohomology, QuantumError};
 pub use sudoku::{
-    solve_constraints, Constraint, FieldOp, NearMiss, SudokuConfig, SudokuError,
-    SudokuRequest, SudokuResponse, SudokuVerdict, ViolationDetail,
+    solve_constraints, Constraint, ExpandedSolution, ExpansionConfig, ExpansionResult,
+    FieldOp, NearMiss, SudokuConfig, SudokuError, SudokuRequest, SudokuResponse,
+    SudokuVerdict, ViolationDetail,
 };
 pub use toeplitz::{toeplitz_operator, ToeplitzOperator, ToeplitzError, ToeplitzSafetyGate};
 pub use transport::{

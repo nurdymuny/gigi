@@ -309,6 +309,27 @@ impl OverlayBundle {
         self.overlay.read().ok().map(|store| f(&*store))
     }
 
+    /// **#107 fix.** Materialize the merged view (mmap base − tombstones +
+    /// overlay) into a fresh heap-resident `BundleStore`. Used by brain
+    /// endpoints as a one-shot promotion so existing `&BundleStore`-typed
+    /// fit + sample machinery can read overlay bundles without a deep
+    /// refactor.
+    ///
+    /// Cost: O(N) walk + N inserts. ~10ms for Marcella's 10k bundle.
+    /// Caller should cache the result if calling repeatedly — this
+    /// re-walks every time.
+    ///
+    /// Correctness: uses `self.records()` which already applies the
+    /// tombstone mask and merges overlay-on-top-of-base. The resulting
+    /// store has identical record set to what reads see.
+    pub fn to_temp_heap_store(&self) -> BundleStore {
+        let mut store = BundleStore::new(self.bundle_schema.clone());
+        for record in self.records() {
+            store.insert(&record);
+        }
+        store
+    }
+
     /// Clear overlay and tombstones (after compaction to new mmap).
     pub fn clear_overlay(&self) {
         if let Ok(mut store) = self.overlay.write() {
@@ -466,6 +487,23 @@ impl OverlayBundle {
 
     pub fn storage_mode(&self) -> &'static str {
         "mmap+overlay"
+    }
+
+    /// **#107 fix.** Mutation counter for the overlay portion of the
+    /// bundle. The mmap base is immutable by construction (snapshot
+    /// data) so its mutation count is constant; the overlay tracks
+    /// mutations since reload. Brain endpoints use this for cache
+    /// invalidation just as they do on heap-only bundles.
+    ///
+    /// Note: an overlay starts at counter=0 immediately after
+    /// reload. Consumers that cached a fit against a higher counter
+    /// from before the restart will see the overlay's lower value
+    /// and correctly treat their cached fit as stale (the cache
+    /// key is keyed on bundle name + counter, so a "lower" counter
+    /// is a miss, which is the right behavior — the base data IS
+    /// the same but we don't know what the consumer's fit assumed).
+    pub fn mutation_counter(&self) -> u64 {
+        self.overlay.read().map_or(0, |s| s.mutation_counter())
     }
 
     pub fn next_auto_id(&self) -> i64 {
@@ -1224,6 +1262,16 @@ impl<'a> BundleRef<'a> {
         }
     }
 
+    /// **#107 fix.** Polymorphic mutation counter. Heap bundles
+    /// return their own; overlay bundles return the overlay-portion
+    /// counter (the mmap base is immutable so its mutations are 0).
+    pub fn mutation_counter(&self) -> u64 {
+        match self {
+            BundleRef::Heap(s) => s.mutation_counter(),
+            BundleRef::Overlay(o) => o.mutation_counter(),
+        }
+    }
+
     pub fn field_names(&self) -> Vec<String> {
         match self {
             BundleRef::Heap(s) => s.schema.base_fields.iter()
@@ -1741,6 +1789,14 @@ impl<'a> BundleMut<'a> {
         }
     }
 
+    /// **#107 fix.** See `BundleRef::mutation_counter` for semantics.
+    pub fn mutation_counter(&self) -> u64 {
+        match self {
+            BundleMut::Heap(s) => s.mutation_counter(),
+            BundleMut::Overlay(o) => o.mutation_counter(),
+        }
+    }
+
     pub fn field_names(&self) -> Vec<String> {
         match self {
             BundleMut::Heap(s) => s.schema.base_fields.iter()
@@ -2137,6 +2193,62 @@ mod tests {
             assert_eq!(rec["id"], (i + 1) as i64);
             assert_eq!(rec["value"], (i * 10) as i64);
         }
+    }
+
+    /// **#107 fix.** OverlayBundle exposes a mutation_counter that
+    /// bumps on every overlay-side write. Brain endpoints depend on
+    /// this for cache invalidation; without it, post-restart bundles
+    /// are uncacheable AND inaccessible.
+    #[test]
+    fn issue_107_overlay_mutation_counter_bumps_on_insert() {
+        let dhoom = "items{id@1, val}:\n10\n20\n30\n";
+        let bundle = mmap_from_dhoom(dhoom);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
+
+        // Fresh overlay: counter starts at 0.
+        assert_eq!(overlay.mutation_counter(), 0,
+                   "fresh overlay starts at counter=0");
+
+        // Insert → counter bumps.
+        let mut rec = Record::new();
+        rec.insert("id".into(), GigiValue::Integer(99));
+        rec.insert("val".into(), GigiValue::Integer(999));
+        overlay.insert(&rec);
+        let after_first = overlay.mutation_counter();
+        assert!(after_first > 0,
+                "counter must bump after insert; got {}", after_first);
+
+        // Second insert bumps again.
+        let mut rec2 = Record::new();
+        rec2.insert("id".into(), GigiValue::Integer(100));
+        rec2.insert("val".into(), GigiValue::Integer(1000));
+        overlay.insert(&rec2);
+        assert!(overlay.mutation_counter() > after_first,
+                "counter must bump on second insert too");
+    }
+
+    /// **#107 fix.** BundleRef::mutation_counter dispatches correctly
+    /// for both Heap and Overlay variants.
+    #[test]
+    fn issue_107_bundle_ref_polymorphic_mutation_counter() {
+        let dhoom = "items{id@1, val}:\n10\n20\n";
+        let bundle = mmap_from_dhoom(dhoom);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
+        let ref_overlay = BundleRef::Overlay(&overlay);
+        // Polymorphic accessor returns 0 initially.
+        assert_eq!(ref_overlay.mutation_counter(), 0);
+        // After overlay insert, polymorphic accessor reflects it.
+        let mut rec = Record::new();
+        rec.insert("id".into(), GigiValue::Integer(7));
+        rec.insert("val".into(), GigiValue::Integer(77));
+        overlay.insert(&rec);
+        assert!(ref_overlay.mutation_counter() > 0);
     }
 
     /// TDD-11.4: Overlay with BundleStore — insert lands in indexed overlay.

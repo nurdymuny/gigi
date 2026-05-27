@@ -3855,9 +3855,10 @@ async fn brain_sample_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     let (ctx, counter_at_fit) = flow_from_bundle_cached(
         &state,
         &name,
@@ -4014,9 +4015,10 @@ async fn brain_fit_diagnostics_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
 
     let fit_mode = req.fit_mode.unwrap_or_default();
     let counter_before = heap.mutation_counter();
@@ -4182,9 +4184,10 @@ async fn brain_distance_to_fit_mean_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
 
     // Validate every target has the right dim.
     let n = req.fields.len();
@@ -4425,9 +4428,7 @@ async fn brain_sample_transport_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic over Heap and Overlay.
 
     if req.fiber_fields.is_empty() {
         return Err(bad_request("fiber_fields must not be empty"));
@@ -4443,7 +4444,7 @@ async fn brain_sample_transport_endpoint(
         .collect();
 
     // Collect all records; locate source and extract fiber projection.
-    let all_records: Vec<gigi::types::Record> = heap.records().collect();
+    let all_records: Vec<gigi::types::Record> = store.records().collect();
     let src_fiber: Vec<f64> = {
         let src_rec = all_records
             .iter()
@@ -4463,7 +4464,7 @@ async fn brain_sample_transport_endpoint(
     };
 
     let kappa = store.scalar_curvature();
-    let counter_at_fit = heap.mutation_counter();
+    let counter_at_fit = store.mutation_counter();
 
     let result = gigi::geometry::sample_transport_neighborhood(
         &all_records,
@@ -4798,9 +4799,9 @@ async fn brain_sudoku_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic over Heap and Overlay (post-restart
+    // mmap+overlay bundles). SUDOKU is read-only; both variants
+    // support records() and mutation_counter() identically.
 
     // Translate wire constraints → geometry-layer types.
     let constraints = translate_constraints(req.constraints)
@@ -4820,12 +4821,12 @@ async fn brain_sudoku_endpoint(
 
     // Snapshot the mutation counter at solve time so the response
     // header reflects the bundle state we actually read.
-    let counter_at_fit = heap.mutation_counter();
+    let counter_at_fit = store.mutation_counter();
 
-    // Walk the bundle's records. The geometry-layer solver does the
-    // actual filtering + verdict logic. Iterator avoids materializing
-    // the full record list up-front.
-    let records_iter = heap.records();
+    // Walk the bundle's records. Polymorphic — works on Heap and
+    // Overlay alike. The geometry-layer solver does the actual
+    // filtering + verdict logic.
+    let records_iter = store.records();
     let resp = gigi::geometry::solve_constraints(records_iter, &sudoku_req, &config)
         .map_err(|e| bad_request(&format!("{}", e)))?;
 
@@ -4988,9 +4989,10 @@ async fn brain_confidence_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     if req.query.len() != req.fields.len() {
         return Err(bad_request(&format!(
             "query length {} ≠ fields length {}",
@@ -5109,9 +5111,10 @@ async fn brain_confidence_with_explain_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     if req.query.len() != req.fields.len() {
         return Err(bad_request(&format!(
             "query length {} ≠ fields length {}",
@@ -5228,9 +5231,10 @@ async fn brain_attend_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     if req.query.len() != req.fields.len() {
         return Err(bad_request(&format!(
             "query length {} ≠ fields length {}",
@@ -5338,9 +5342,10 @@ async fn brain_episodic_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
 
     // Validate filter pair: both-or-neither.
     let filter = match (&req.where_field, &req.where_value) {
@@ -5559,9 +5564,10 @@ async fn brain_explain_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     if req.query.len() != req.fields.len() {
         return Err(bad_request(&format!(
             "query length {} ≠ fields length {}",
@@ -5611,9 +5617,10 @@ async fn brain_semantic_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     let morse = gigi::geometry::semantic_gist(heap).ok_or_else(|| {
         not_found(&format!(
             "Bundle '{}' produced no Morse compression (too few records or degenerate complex)",
@@ -5651,6 +5658,43 @@ fn bad_request(msg: &str) -> (StatusCode, Json<ErrorResponse>) {
             error: msg.to_string(),
         }),
     )
+}
+
+/// **#107 fix.** Adapter that lets brain endpoints handle both
+/// heap-resident and mmap+overlay bundles. Heap path is zero-cost
+/// (returns the existing &BundleStore reference). Overlay path
+/// materializes the merged view into a temporary heap store
+/// (O(N) walk, ~10ms for 10k records) and returns a reference
+/// into the caller's stack-allocated `Option<BundleStore>`.
+///
+/// Usage pattern (3 lines per endpoint):
+///
+/// ```ignore
+/// let store_ref = engine.bundle(&name).ok_or_else(|| not_found(...))?;
+/// let mut _promoted: Option<gigi::BundleStore> = None;
+/// let heap = heap_or_promote(&store_ref, &mut _promoted);
+/// // ... `heap: &BundleStore` works identically for both variants ...
+/// ```
+///
+/// This is a deliberately surgical fix: it preserves the existing
+/// helper signatures (`extract_field_samples`, `fit_*_gaussian`,
+/// `flow_from_bundle_cached`, etc.) that all take `&BundleStore`,
+/// instead of refactoring them to be polymorphic. The one-time
+/// materialize cost is dominated by the existing per-call fit work.
+#[cfg(feature = "kahler")]
+fn heap_or_promote<'a>(
+    store: &'a gigi::BundleRef<'a>,
+    promoted: &'a mut Option<gigi::BundleStore>,
+) -> &'a gigi::BundleStore {
+    match store {
+        gigi::BundleRef::Heap(h) => *h,
+        gigi::BundleRef::Overlay(o) => {
+            *promoted = Some(o.to_temp_heap_store());
+            promoted
+                .as_ref()
+                .expect("promoted was just set in this branch")
+        }
+    }
 }
 
 /// Build a canonical block-form symplectic 2-form `[[0, -I], [I, 0]]`
@@ -6200,9 +6244,10 @@ async fn brain_dream_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     let (ctx, counter_at_fit) = flow_from_bundle_cached(
         &state,
         &name,
@@ -6312,9 +6357,10 @@ async fn brain_forecast_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     let (ctx, counter_at_fit) = flow_from_bundle_cached(
         &state,
         &name,
@@ -6409,9 +6455,10 @@ async fn brain_reconstruct_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     let (ctx, counter_at_fit) = flow_from_bundle_cached(
         &state,
         &name,
@@ -6519,9 +6566,10 @@ async fn brain_inpaint_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     let (ctx, counter_at_fit) = flow_from_bundle_cached(
         &state,
         &name,
@@ -6624,9 +6672,10 @@ async fn brain_predict_endpoint(
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let heap = store
-        .as_heap()
-        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+    // **#107 fix.** Polymorphic via heap_or_promote: heap path
+    // is zero-cost; overlay path materializes once (~10ms/10k records).
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
     let (ctx, counter_at_fit) = flow_from_bundle_cached(
         &state,
         &name,

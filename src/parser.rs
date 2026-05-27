@@ -294,6 +294,19 @@ pub enum Statement {
         to_keys: Vec<(String, Literal)>,
         fiber_fields: Vec<String>,
     },
+    /// S4 — SAMPLE_TRANSPORT: curvature-bounded neighborhood sampling.
+    /// Returns `k` candidates from the fiber neighborhood of a source
+    /// point within budget `tau` (max `d^2`), weighted by
+    /// `exp(-beta * d^2)`.
+    SampleTransport {
+        bundle: String,
+        from_keys: Vec<(String, Literal)>,
+        fiber_fields: Vec<String>,
+        budget: f64,
+        k: usize,
+        beta: Option<f64>,
+        seed: Option<u64>,
+    },
     /// C2 — Rodrigues-style parallel transport: rotation in the plane
     /// spanned by (FROM, TO) fiber vectors by a SPECIFIED angle.
     /// Returns the full N×N rotation matrix as `matrix_flat` (comma-
@@ -1082,6 +1095,7 @@ impl Parser {
             "GAUGE" => self.parse_gauge(),
             "TRANSPORT" => self.parse_transport(),
             "TRANSPORT_ROTATION" => self.parse_transport_rotation(),
+            "SAMPLE_TRANSPORT" => self.parse_sample_transport(),
             "HOLONOMY" => self.parse_holonomy(),
             "DIVERGENCE" => {
                 // DIVERGENCE bundle_a VS bundle_b
@@ -3387,6 +3401,71 @@ impl Parser {
         })
     }
 
+    /// S4 — SAMPLE_TRANSPORT verb.
+    ///
+    /// Grammar:
+    /// ```text
+    /// SAMPLE_TRANSPORT bundle
+    ///   FROM (k=v, ...)
+    ///   ON FIBER (f1, f2, ...)
+    ///   BUDGET <number>
+    ///   N <integer>
+    ///   [BETA <number>]
+    ///   [SEED <integer>]
+    ///   ;
+    /// ```
+    fn parse_sample_transport(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("FROM")?;
+        self.expect(Token::LParen)?;
+        let from_keys = self.parse_kv_pairs_inner()?;
+        self.expect(Token::RParen)?;
+        self.expect_keyword("ON")?;
+        self.expect_keyword("FIBER")?;
+        self.expect(Token::LParen)?;
+        let fiber_fields = self.parse_inner_word_list()?;
+        self.expect(Token::RParen)?;
+        self.expect_keyword("BUDGET")?;
+        let budget = match self.advance() {
+            Some(Token::Number(n)) => n,
+            other => return Err(format!("Expected budget number after BUDGET, got {other:?}")),
+        };
+        self.expect_keyword("N")?;
+        let k = self.expect_usize()?;
+        let mut beta: Option<f64> = None;
+        let mut seed: Option<u64> = None;
+        while !self.at_end() {
+            if self.is_keyword("BETA") {
+                self.advance();
+                beta = Some(match self.advance() {
+                    Some(Token::Number(n)) => n,
+                    other => {
+                        return Err(format!("Expected beta number after BETA, got {other:?}"))
+                    }
+                });
+            } else if self.is_keyword("SEED") {
+                self.advance();
+                seed = Some(match self.advance() {
+                    Some(Token::Number(n)) if n >= 0.0 && n.fract() == 0.0 => n as u64,
+                    other => {
+                        return Err(format!("Expected seed integer after SEED, got {other:?}"))
+                    }
+                });
+            } else {
+                break;
+            }
+        }
+        Ok(Statement::SampleTransport {
+            bundle,
+            from_keys,
+            fiber_fields,
+            budget,
+            k,
+            beta,
+            seed,
+        })
+    }
+
     fn parse_holonomy(&mut self) -> Result<Statement, String> {
         // HOLONOMY bundle ON FIBER (f1, f2) AROUND field
         // HOLONOMY bundle NEAR (f1=v1, ...) WITHIN r [METRIC m] ON FIBER (f1, f2) AROUND field
@@ -5053,7 +5132,8 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         | Statement::Predict { .. }
         | Statement::CoverGeodesic { .. }
         | Statement::Why { .. }
-        | Statement::Implications { .. } => {
+        | Statement::Implications { .. }
+        | Statement::SampleTransport { .. } => {
             Err("This statement must be executed via the HTTP server endpoint".to_string())
         }
     }

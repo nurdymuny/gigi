@@ -58,6 +58,7 @@ pub mod memory;
 pub mod moment_map;
 pub mod predictive_coding;
 pub mod quantum_cohomology;
+pub mod sample_transport;
 pub mod sudoku;
 pub mod toeplitz;
 pub mod transport;
@@ -89,6 +90,10 @@ pub use predictive_coding::{
     predict_one_step_natural,
 };
 pub use quantum_cohomology::{CohClass, HilbertPolynomial, QuantumCohomology, QuantumError};
+pub use sample_transport::{
+    extract_fiber, sample_transport_neighborhood, SampleTransportError, SampleTransportRequest,
+    SampleTransportResult, TransportCandidate,
+};
 pub use sudoku::{
     solve_constraints, Constraint, ExpandedSolution, ExpansionConfig, ExpansionResult,
     FieldOp, NearMiss, SudokuConfig, SudokuError, SudokuRequest, SudokuResponse,

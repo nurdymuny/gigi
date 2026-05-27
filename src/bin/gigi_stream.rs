@@ -4354,6 +4354,155 @@ struct ExpansionConfigWire {
     max_constraint_relaxations: usize,
 }
 
+// ── S4: SAMPLE_TRANSPORT brain endpoint ─────────────────────────────────
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainSampleTransportRequest {
+    /// Key-value pairs that identify the source record.
+    from_keys: serde_json::Value,
+    /// Fiber field names to project onto.
+    fiber_fields: Vec<String>,
+    /// Max `d^2` per candidate. Must be in `[0.0, 1.0]`. Default 0.3.
+    #[serde(default = "default_sample_transport_budget")]
+    budget: f64,
+    /// Number of candidates to return. Default 16.
+    #[serde(default = "default_sample_transport_k")]
+    k: usize,
+    /// Temperature for `exp(-beta * d^2)` kernel. Default 1.0.
+    #[serde(default = "default_sample_transport_beta")]
+    beta: f64,
+    /// Optional deterministic seed.
+    #[serde(default)]
+    seed: Option<u64>,
+}
+
+#[cfg(feature = "kahler")]
+fn default_sample_transport_budget() -> f64 { 0.3 }
+#[cfg(feature = "kahler")]
+fn default_sample_transport_k() -> usize { 16 }
+#[cfg(feature = "kahler")]
+fn default_sample_transport_beta() -> f64 { 1.0 }
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct TransportCandidateWire {
+    record: serde_json::Value,
+    fiber_projection: Vec<f64>,
+    d_sq: f64,
+    sameness: f64,
+    weight: f64,
+    curvature_k: f64,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainSampleTransportResponse {
+    candidates: Vec<TransportCandidateWire>,
+    budget: f64,
+    n_admissible: usize,
+    n_returned: usize,
+    kappa: f64,
+    confidence: f64,
+}
+
+/// POST /v1/bundles/{name}/brain/sample_transport
+///
+/// Curvature-bounded neighborhood sampling — returns `k` candidates
+/// from the fiber neighborhood `N(p_src, tau)` of a source record,
+/// weighted by `exp(-beta * d^2)` and sampled without replacement.
+///
+/// See `theory/GIGI_SAMPLE_TRANSPORT_SPRINT_SPEC.md` for the full
+/// math (Double Cover budget, Efraimidis-Spirakis sampling).
+#[cfg(feature = "kahler")]
+async fn brain_sample_transport_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
+    Json(req): Json<BrainSampleTransportRequest>,
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let heap = store
+        .as_heap()
+        .ok_or_else(|| not_found(&format!("Bundle '{}' is not heap-resident", name)))?;
+
+    if req.fiber_fields.is_empty() {
+        return Err(bad_request("fiber_fields must not be empty"));
+    }
+
+    // Parse from_keys JSON object into a Record filter.
+    let from_map: HashMap<String, gigi::types::Value> = req
+        .from_keys
+        .as_object()
+        .ok_or_else(|| bad_request("from_keys must be a JSON object"))?
+        .iter()
+        .map(|(k, v)| (k.clone(), json_to_value(v)))
+        .collect();
+
+    // Collect all records; locate source and extract fiber projection.
+    let all_records: Vec<gigi::types::Record> = heap.records().collect();
+    let src_fiber: Vec<f64> = {
+        let src_rec = all_records
+            .iter()
+            .find(|rec: &&gigi::types::Record| {
+                from_map.iter().all(|(k, v)| rec.get(k.as_str()) == Some(v))
+            })
+            .ok_or_else(|| not_found("Source record not found in bundle"))?;
+        gigi::geometry::extract_fiber(src_rec, &req.fiber_fields)
+    };
+
+    let st_req = gigi::geometry::SampleTransportRequest {
+        fiber_fields: req.fiber_fields.clone(),
+        budget: req.budget,
+        k: req.k,
+        beta: req.beta,
+        seed: req.seed,
+    };
+
+    let kappa = store.scalar_curvature();
+    let counter_at_fit = heap.mutation_counter();
+
+    let result = gigi::geometry::sample_transport_neighborhood(
+        &all_records,
+        &src_fiber,
+        &st_req,
+        kappa,
+    )
+    .map_err(|e| bad_request(&e.to_string()))?;
+
+    let candidates_wire: Vec<TransportCandidateWire> = result
+        .candidates
+        .into_iter()
+        .map(|c| TransportCandidateWire {
+            record: record_to_json(&c.record),
+            fiber_projection: c.fiber_projection,
+            d_sq: c.d_sq,
+            sameness: c.sameness,
+            weight: c.weight,
+            curvature_k: c.curvature_k,
+        })
+        .collect();
+
+    let resp_body = BrainSampleTransportResponse {
+        candidates: candidates_wire,
+        budget: result.budget,
+        n_admissible: result.n_admissible,
+        n_returned: result.n_returned,
+        kappa: result.kappa,
+        confidence: result.confidence,
+    };
+
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(accept, counter_at_fit, resp_body)
+}
+
+// ── End S4: SAMPLE_TRANSPORT ─────────────────────────────────────────────
+
 #[cfg(feature = "kahler")]
 fn default_max_constraint_relaxations() -> usize { 1 }
 
@@ -10890,6 +11039,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         SpectralFiber { bundle, .. } => Some(bundle.clone()),
         Transport { bundle, .. } => Some(bundle.clone()),
         TransportRotation { bundle, .. } => Some(bundle.clone()),
+        SampleTransport { bundle, .. } => Some(bundle.clone()),
         LocalHolonomy { bundle, .. } => Some(bundle.clone()),
         GaugeTest { bundle1, .. } => Some(bundle1.clone()),
         // Coherence extensions v0.1
@@ -11909,6 +12059,13 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/brain/sudoku",
             post(brain_sudoku_endpoint),
+        )
+        // S4: SAMPLE_TRANSPORT — curvature-bounded neighborhood
+        // sampling on the fiber. Returns k candidates from
+        // N(p_src, tau) weighted by exp(-beta * d^2).
+        .route(
+            "/v1/bundles/{name}/brain/sample_transport",
+            post(brain_sample_transport_endpoint),
         );
 
     let app = app
@@ -14328,5 +14485,140 @@ mod tests {
             advisory.to_lowercase().contains("human") || advisory.to_lowercase().contains("reformulat"),
             "advisory must suggest asking a human or reformulating; got: {advisory}"
         );
+    }
+
+    // ── SAMPLE_TRANSPORT wire-format gate tests (S4) ─────────────────────
+    // Exercise the geometry layer directly to prove the wire boundary
+    // carries d_sq, sameness, weight, curvature_k, n_admissible, kappa.
+
+    /// **ST-WIRE-1.** Full-budget query returns all corpus records; each
+    /// candidate has correct sameness = 1 - d_sq and curvature_k = 2*sqrt(d_sq).
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sample_transport_wire_gate_full_budget_all_returned() {
+        use std::f64::consts::PI;
+        use gigi::geometry::{sample_transport_neighborhood, SampleTransportRequest};
+        use gigi::types::Value;
+        use std::collections::HashMap;
+
+        let corpus: Vec<HashMap<String, Value>> = (0..8)
+            .map(|i| {
+                let theta = i as f64 * PI / 4.0;
+                let mut m = HashMap::new();
+                m.insert("x".to_string(), Value::Float(theta.cos()));
+                m.insert("y".to_string(), Value::Float(theta.sin()));
+                m
+            })
+            .collect();
+
+        let src_fiber = vec![1.0_f64, 0.0_f64];
+        let req = SampleTransportRequest {
+            fiber_fields: vec!["x".to_string(), "y".to_string()],
+            budget: 1.0,
+            k: 100,
+            beta: 1.0,
+            seed: Some(10),
+        };
+        let result = sample_transport_neighborhood(&corpus, &src_fiber, &req, 0.2).unwrap();
+
+        assert_eq!(result.n_admissible, corpus.len(), "budget=1.0 => all records admissible");
+        assert_eq!(result.n_returned, corpus.len(), "k > n => n_returned = n_admissible");
+        for c in &result.candidates {
+            assert!(
+                (c.sameness - (1.0 - c.d_sq)).abs() < 1e-12,
+                "sameness wire invariant broken"
+            );
+            assert!(
+                (c.curvature_k - 2.0 * c.d_sq.sqrt()).abs() < 1e-12,
+                "curvature_k wire invariant broken"
+            );
+            assert!(c.d_sq <= 1.0 + 1e-12, "d_sq > 1.0");
+        }
+    }
+
+    /// **ST-WIRE-2.** Budget 0.15 admits only the near-neighbors; every
+    /// returned candidate satisfies d_sq <= budget.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sample_transport_wire_gate_budget_filter_respected() {
+        use std::f64::consts::PI;
+        use gigi::geometry::{sample_transport_neighborhood, SampleTransportRequest};
+        use gigi::types::Value;
+        use std::collections::HashMap;
+
+        let budget = 0.15_f64;
+        let corpus: Vec<HashMap<String, Value>> = (0..16)
+            .map(|i| {
+                let theta = i as f64 * 2.0 * PI / 16.0;
+                let mut m = HashMap::new();
+                m.insert("a".to_string(), Value::Float(theta.cos()));
+                m.insert("b".to_string(), Value::Float(theta.sin()));
+                m
+            })
+            .collect();
+
+        let src_fiber = vec![1.0_f64, 0.0_f64];
+        let req = SampleTransportRequest {
+            fiber_fields: vec!["a".to_string(), "b".to_string()],
+            budget,
+            k: 100,
+            beta: 1.0,
+            seed: Some(11),
+        };
+        let result = sample_transport_neighborhood(&corpus, &src_fiber, &req, 0.1).unwrap();
+
+        assert!(result.n_admissible > 0, "budget=0.15 should admit some records");
+        for c in &result.candidates {
+            assert!(
+                c.d_sq <= budget + 1e-12,
+                "returned candidate d_sq={} exceeds budget={}",
+                c.d_sq,
+                budget
+            );
+        }
+    }
+
+    /// **ST-WIRE-3.** Kappa is echoed; weight = exp(-beta * d_sq) exactly.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn sample_transport_wire_gate_kappa_and_weight_kernel() {
+        use std::f64::consts::PI;
+        use gigi::geometry::{sample_transport_neighborhood, SampleTransportRequest};
+        use gigi::types::Value;
+        use std::collections::HashMap;
+
+        let corpus: Vec<HashMap<String, Value>> = (0..6)
+            .map(|i| {
+                let theta = i as f64 * PI / 3.0;
+                let mut m = HashMap::new();
+                m.insert("p".to_string(), Value::Float(theta.cos()));
+                m.insert("q".to_string(), Value::Float(theta.sin()));
+                m
+            })
+            .collect();
+
+        let kappa = 0.42_f64;
+        let beta = 2.5_f64;
+        let src_fiber = vec![1.0_f64, 0.0_f64];
+        let req = SampleTransportRequest {
+            fiber_fields: vec!["p".to_string(), "q".to_string()],
+            budget: 1.0,
+            k: 100,
+            beta,
+            seed: Some(12),
+        };
+        let result = sample_transport_neighborhood(&corpus, &src_fiber, &req, kappa).unwrap();
+
+        assert!((result.kappa - kappa).abs() < 1e-12, "kappa not echoed");
+        let expected_conf = 1.0 / (1.0 + kappa);
+        assert!((result.confidence - expected_conf).abs() < 1e-12, "confidence wrong");
+        for c in &result.candidates {
+            let expected_w = (-beta * c.d_sq).exp();
+            assert!(
+                (c.weight - expected_w).abs() < 1e-12,
+                "weight={} != exp(-{} * {}) = {}",
+                c.weight, beta, c.d_sq, expected_w
+            );
+        }
     }
 }

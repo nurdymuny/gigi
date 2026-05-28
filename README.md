@@ -16,6 +16,113 @@ Davis Geometric · 2026 · Bee Rosa Davis
 
 ---
 
+## Plain-English primer
+
+### What's a fiber bundle, really?
+
+Imagine a phone book. Names are how you find an entry; the stuff about
+each person — address, phone, age, occupation — is what you find when
+you look them up. The names form an **index**. The stuff at each name
+is the **fiber** (the values).
+
+A fiber bundle is the same shape, taken seriously. The index is the
+**base space** B. The stuff at each index point is the **fiber** F.
+Every "row" in the bundle is a *section* — a way of assigning one fiber
+to each base point. That's the same thing every relational DB does:
+keys on one side, values on the other.
+
+Where it changes is what GIGI does *with* that shape. Imagine the index
+isn't a flat list — it's the surface of the moon. Every point on the
+moon (a base point) has terrain underneath it (the fiber). The way the
+terrain changes as you walk around the moon — that's **curvature**.
+The presence of crater rings — that's **non-trivial topology**. If you
+walk in a closed loop and end up facing a different direction than when
+you started — that's **holonomy**. None of that is in the phone book.
+All of it is in the moon.
+
+GIGI treats your database like the moon, not like the phone book. Every
+record is a point on a curved surface. The shape of that surface tells
+you things the rows alone never could:
+
+- **Curvature κ** at a record = *"how anomalous is this row compared to
+  what's nearby?"*
+- **Spectral gap λ₁** of the whole bundle = *"how clumpy or smooth is
+  the data?"*
+- **Holonomy** around a categorical loop = *"does this category
+  implicitly twist the values somehow?"*
+- **Parallel transport** between two records = *"if I had to walk from
+  row A to row B along the data's natural geometry, what path would
+  I take?"*
+- **Confidence 1/(1+κ)** = *"how much should I trust this answer?"*
+
+These aren't add-ons. They are **what GIGI computes during normal
+operation**. Curvature updates on every insert via Welford's online
+algorithm. Spectral gap is cached and incrementally refreshed.
+Holonomy is a verb in the query language (`HOLONOMY corpus ...`).
+
+The headline: **a conventional database stores rows. GIGI stores the
+geometry that rows live on.** The rows are still there — every GIGI
+query returns the same shape Postgres or Mongo would — but every
+response also carries the geometric quantities, free, because the
+substrate computed them on the way through.
+
+### Day-one operations: GIGI vs Postgres / MySQL / Mongo
+
+How the basics work, side by side. Every row here is a real operation
+the engine implements, not an aspirational future.
+
+| You want to… | Conventional DB | GIGI |
+|---|---|---|
+| **Insert one row** | Append to table, update indexes | Append + bump Welford field stats + mutation_counter + curvature; the bundle's geometry incrementally evolves |
+| **Look up by primary key** | B-tree (O(log N)) or hash (O(1)) | `SECTION bundle AT (id='X');` — GIGI hash G(K₁,…,Kₘ) → ℤ₂⁶⁴, **always O(1)**; response also carries κ + confidence |
+| **`WHERE x = 5`** | Index scan or full table scan | Same O(1) GIGI hash on the addressed key; with geometric annotation per result |
+| **`WHERE x BETWEEN 10 AND 20`** | Range scan over a sorted index | `filtered_query` over the bundle; returns hits + per-hit position in the fiber |
+| **`GROUP BY region`** | Hash-grouped aggregation | `INTEGRATE field OVER bundle COVER ALL;` — aggregation = integration over a base-space cover (geometric, not relational) |
+| **`JOIN orders ON customers`** | Hash join / merge join | `PULLBACK orders ALONG customers` — pullback of one bundle along a shared base map |
+| **`COUNT(*)`, `AVG(x)`, `STDDEV(x)`** | Scan, or precomputed summary tables | Welford stats maintained incrementally on every insert — **O(1) read**, never stale |
+| **Detect anomalies / outliers** | Add a streaming pipeline + outlier model | Curvature κ already updated per insert; outliers are points where κ spikes — no separate pipeline |
+| **"How clustered is my data?"** | Run k-means or DBSCAN offline | `SPECTRAL bundle;` — Fiedler value λ₁ from the index Laplacian, cached and incrementally refreshed |
+| **"Are A and B related geometrically?"** | Foreign key + join | `TRANSPORT bundle FROM (id=A) TO (id=B) ON FIBER (...);` — explicit parallel transport, returns the SO(n) rotation matrix |
+| **Encrypt sensitive columns** | Column encryption — usually breaks indexes | **Gauge encryption** preserves κ, λ₁, anomaly scores, holonomy at **native speed** (vs ~10,000× slowdown for homomorphic encryption) |
+| **Add a new column** | `ALTER TABLE`, schema migration, downtime | Fiber type evolves; old records remain valid sections under the wider fiber |
+| **Restart the server** | Reload from disk, indexes rebuild from scratch | Reload from mmap snapshot in seconds; brain endpoints work polymorphically on the reloaded bundle (#107) |
+| **"Tell me how surprising this query was"** | Build a custom logging layer | Every response includes κ, KL-divergence, JS-divergence via the `dhoom` event protocol — free |
+| **"Find me an option that's close to satisfying these 5 constraints"** | Multiple WHERE queries + manual relaxation | `POST /v1/bundles/{name}/brain/sudoku` — returns solutions, near-misses with quantified relaxation cost, Pareto frontier of multi-violation alternatives, and an honest `Sat`/`Unsat`/`Unknown` verdict |
+| **"What other records are geometrically nearby?"** | Vector DB + ANN index | `POST /v1/bundles/{name}/brain/sample_transport` — curvature-bounded neighborhood (`d² ≤ τ`), Efraimidis-Spirakis weighted sample, returns k records with per-candidate `curvature_k` and bundle-wide confidence |
+
+The compounding effect: because curvature updates on every insert, you
+don't have to *decide later* to add anomaly detection — it's already
+running. Because spectral gap is cached, *"is this data clumpy?"* is a
+constant-time read instead of an offline batch job. Because confidence
+ships in every response, *"should I trust this?"* doesn't need a
+separate ML stack. **Geometry is not a plugin.** It's the substrate.
+
+### What it costs
+
+- **Insert latency**: ~the same as a relational DB doing the same
+  number of column writes. The Welford updates are O(1) per numeric
+  field; the mutation_counter is a single atomic increment.
+- **Memory**: ~1.5× a row-store for the same data, because the geometric
+  metadata (per-field stats, fiber index, mutation epoch) lives
+  alongside the records.
+- **Cold-start after restart**: bundles reload from mmap snapshots in
+  seconds, not the minutes a B-tree rebuild can take. Brain endpoints
+  (curvature reads, SUDOKU, SAMPLE_TRANSPORT) are available immediately,
+  not after a warm-up.
+
+### What it doesn't do (yet)
+
+- **Cross-bundle ACID transactions** — single-bundle writes are
+  atomic; multi-bundle is your problem to coordinate.
+- **SQL-compatible wire** — the query language is GQL (similar shape
+  to SQL but with the geometric verbs above; full grammar in
+  `GQL_REFERENCE.md`). SDKs in Python and JS hide the difference.
+- **Sharding across nodes** — single-node engine right now. The
+  fiber-bundle structure should shard cleanly along base-space
+  partitions, but that work is for a later sprint.
+
+---
+
 ## Why GIGI
 
 Conventional databases see rows. GIGI sees a section σ: B → E of a fiber

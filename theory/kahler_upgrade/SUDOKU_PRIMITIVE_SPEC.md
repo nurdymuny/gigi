@@ -835,4 +835,162 @@ ALL approaches degrade similarly.
 
 ---
 
-*End of spec v0.3.*
+## 11. S7 — `/brain/intent_gate` composite endpoint
+
+**Status:** added in v0.4. The general-purpose "should I respond to this
+turn?" endpoint that composes SUDOKU + Čech pre-flight + kernel-density
+confidence into one atomic call. Marcella migration target; any
+GIGI-backed consumer that does turn-by-turn decision gating uses the
+same shape.
+
+### Motivation (JTBD)
+
+> *"I'm any GIGI-backed system that decides whether to commit to a
+> response. Before I do, I want one call that tells me — is this
+> query feasible against my bundle, AND is the user's intent grounded
+> in known territory? I don't want to make this decision in three
+> network round-trips and risk a stale cache between them."*
+
+This is Marcella's refuse-gate verbatim, but stated generally so it
+also covers PRISM's transaction-feasibility gate, ICARUS's pre-flight
+constraint check, and any future intent-routing consumer. **There is
+no Marcella-specific code in the endpoint** — it's pure composition.
+
+### Wire shape
+
+```
+POST /v1/bundles/{name}/brain/intent_gate
+Content-Type: application/json
+
+{
+  "constraints": [                       // SUDOKU constraint set (required)
+    {"type": "field", "field": "...", "op": "...", "value": ..., "hard": true},
+    ...
+  ],
+  "max_options": 5,                      // forwarded to SUDOKU; default 5
+  "max_near_misses": 3,                  // forwarded to SUDOKU; default 3
+  "expansion": {"allowed": false},       // optional S3.5 puzzle expansion
+
+  // Optional: only set when you want grounding-of-query-vector check
+  "query_fields": ["v0", "v1", ...],     // fiber field names for confidence
+  "query": [0.1, 0.2, ...],              // f64 vector, length == query_fields.len()
+  "bandwidth": null                      // optional; defaults to √σ² from fit
+}
+```
+
+If `query_fields` + `query` are both supplied, the confidence half
+runs; otherwise it's skipped and confidence fields in the response
+are `null`. The endpoint never *requires* a query vector — pure
+constraint-feasibility gating works on its own.
+
+### Response shape
+
+```jsonc
+{
+  // ── 1. SUDOKU half (always present) ─────────────────────────────
+  "verdict": "sat" | "unsat" | "unknown",
+  "n_records_considered": 12815,
+  "n_solutions": 3,
+  "solutions": [...],                    // SUDOKU shape, includes K_c + quality
+  "near_misses": [...],                  // when verdict is unsat or sat-with-options
+  "pareto_near_misses": [...],
+  "selectivity": [...],                  // includes raw_curvature K_c
+  "relaxations": [...],                  // counterfactual menu
+  "pre_flight_unsat_reason": null | "constraints [i] and [j] on field ... contradict ...",
+  "expansion": null | {...},             // when S3.5 expansion fires
+
+  // ── 2. Confidence half (null if no query supplied) ──────────────
+  "query_grounding": {
+    "raw": 1.2e-4,                       // kernel-density raw value
+    "normalized": 0.034,                 // ratio to densest sample in bundle, ∈ [0, 1]
+    "bandwidth_used": 0.041,             // bandwidth actually applied
+    "n_samples": 12815,                  // records contributing to the density estimate
+    "nearest_record_index": 9842         // closest record by L2 (free signal)
+  } | null,
+
+  // ── 3. Header / cache freshness (always present) ────────────────
+  "counter_at_fit": 8341127               // same bundle mutation counter as other endpoints
+}
+```
+
+### Decision matrix (consumer-side)
+
+The endpoint deliberately **does not bake a refuse threshold**. Per the
+GP contract, the consumer composes their own decision logic from the
+raw signals returned. The intended use patterns:
+
+| Signal pattern | Suggested consumer action | Why |
+|---|---|---|
+| `pre_flight_unsat_reason` is set | Decline + show the contradiction back to the user | The constraints themselves are self-contradictory; no amount of data resolves this. The reason field names the conflicting pair so the consumer can repair the prompt. |
+| `verdict == "unsat"` AND `near_misses` non-empty | Decline + offer near-misses as alternatives | The data is OK but the constraint conjunction has no satisfier. The relaxation menu suggests the cheapest single-constraint bend. |
+| `verdict == "unsat"` AND `near_misses` empty | Decline silently OR run with `expansion.allowed=true` for a retry | The bundle simply doesn't cover this region. Either widen the query (S3.5 expansion) or admit "I don't know". |
+| `verdict == "sat"` AND `query_grounding.normalized` is high (consumer-defined; ≥ 0.5 is "comparable to a typical sample") | Respond with full confidence | The constraints have satisfying records AND the user's intent vector sits in a well-supported region of the manifold. |
+| `verdict == "sat"` AND `query_grounding.normalized` is low (consumer-defined; ≤ 0.1 is "far from anything we know") | Respond with caveat OR decline | The constraints have satisfiers but the user's query is geometrically out-of-distribution. The retrieved records exist but may not actually answer what was asked. |
+| `verdict == "sat"` AND no query supplied | Respond | Pure feasibility gating; consumer has chosen not to ground against the query vector. |
+
+The 0.5 / 0.1 numbers are **consumer-side calibration**, not server
+defaults. Marcella may set her thresholds at 0.4 / 0.05 after looking
+at her own user log; PRISM may set them at 0.7 / 0.2 because financial
+decisions need tighter grounding. The server returns the raw signal;
+the consumer picks the bar.
+
+### General-purpose contract
+
+Per the wave-6 discipline:
+
+1. **No fit params required from the caller.** Bandwidth defaults to
+   √σ² from the bundle's existing isotropic fit; constraints + query
+   are the only required inputs.
+2. **No baked refuse threshold.** The endpoint returns signals, not
+   decisions. The four-line decision matrix above is *suggested use*,
+   not enforced behavior.
+3. **Atomicity / cache consistency.** All three sub-calls (pre-flight
+   check, SUDOKU walk, confidence calc) observe the same
+   `counter_at_fit`. A consumer that called the three pieces separately
+   could see them straddle a write boundary.
+4. **One round-trip.** Marcella's refuse-gate fires on every turn; the
+   combined endpoint replaces three round-trips (and three potential
+   stale-cache windows) with one.
+5. **Polymorphic over heap and overlay (#107).** Works on both freshly-
+   inserted and reloaded bundles. Survives server restarts.
+
+### TDD gate (S7-C)
+
+Four in-bin wire tests, all on synthetic real-data bundles (no mocks):
+
+| Test | Scenario | Asserted output |
+|---|---|---|
+| `intent_gate_wire_contradiction` | `Eq(color,"red") AND Eq(color,"blue")` | `verdict="unsat"`, `pre_flight_unsat_reason` populated, `n_records_considered=0` |
+| `intent_gate_wire_empty_feasible` | `color=purple AND price≤50` with no purple records ≤ $50 | `verdict="unsat"`, `pre_flight_unsat_reason=null`, `near_misses` non-empty |
+| `intent_gate_wire_sat_low_confidence` | `color=red AND price≤200` with query vector far from any record | `verdict="sat"`, `query_grounding.normalized < 0.1` |
+| `intent_gate_wire_sat_high_confidence` | `color=red AND price≤200` with query vector near the centroid of red records | `verdict="sat"`, `query_grounding.normalized > 0.5` |
+
+### JTBD gate (S7-D)
+
+`e2e/probes/intent_gate_demo.py` — medical-triage bundle, 4 scenarios:
+
+1. **Contradictory rx**: "patient must avoid penicillin AND drug must
+   be penicillin" → pre-flight UNSAT with `Eq(class,...)` contradiction
+2. **No-approved-drug**: "FDA-approved AND covers this rare condition
+   AND under $X" → walk UNSAT + near-miss menu shows what to relax
+3. **OOD patient**: feasible constraints + patient embedding far from
+   any past patient → SAT but `normalized < 0.05` → caveat / decline
+4. **Clean recommendation**: feasible constraints + patient near
+   established cohort → SAT + `normalized > 0.6` → confident respond
+
+The gate: all four scenarios must produce the documented response shape
+AND a human reading the output can correctly say which of the four
+cases each one is. **Push is blocked until this demo runs end-to-end.**
+
+### Sequencing
+
+S7 closes the SUDOKU sprint. After S7:
+- Marcella migration recipe doc (`MARCELLA_INTENT_GATE_MIGRATION.md`)
+  ships alongside; not in this spec.
+- Marcella's own refuse-gate adoption is on her clock, not ours.
+- W6.3 (Γ trichotomy) and W6.4 (energy descent) remain open as
+  separate work items.
+
+---
+
+*End of spec v0.4.*

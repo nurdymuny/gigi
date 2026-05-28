@@ -4954,6 +4954,320 @@ async fn brain_sudoku_endpoint(
     )
 }
 
+// ─── S7: /brain/intent_gate — refuse-gate composite ─────────────────────────
+//
+// JTBD: "I'm any GIGI-backed system deciding whether to commit to a
+// response. I want one atomic call that tells me — is this query
+// feasible against my bundle, AND is the user's intent grounded in
+// known territory?"
+//
+// Composes three primitives that all shipped:
+//   1. Čech holonomy pre-flight (W6.2) — instant UNSAT on contradictions
+//   2. SUDOKU walk (waves 3-6.2) — verdict + near-misses + Pareto
+//   3. kernel-density confidence (L11) — geometric grounding of query
+//
+// Returns ALL the signals; bakes NO refuse threshold. Consumers
+// (Marcella, PRISM, ICARUS) compose their own decision from raw values.
+// Spec: theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md §11.
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Deserialize)]
+struct BrainIntentGateRequest {
+    constraints: Vec<ConstraintWire>,
+    #[serde(default = "default_sudoku_max_options")]
+    max_options: usize,
+    #[serde(default = "default_sudoku_max_near_misses")]
+    max_near_misses: usize,
+    /// Optional S3.5 puzzle expansion (forwarded to SUDOKU).
+    #[serde(default)]
+    expansion: Option<ExpansionConfigWire>,
+    /// Optional query-grounding half. If `query_fields` and `query`
+    /// are both Some, kernel-density confidence runs; otherwise it
+    /// is skipped and `query_grounding` in the response is `null`.
+    #[serde(default)]
+    query_fields: Option<Vec<String>>,
+    #[serde(default)]
+    query: Option<Vec<f64>>,
+    /// Optional bandwidth override. None → defaults to √σ² from the
+    /// bundle's isotropic fit (data-derived, no consumer config).
+    #[serde(default)]
+    bandwidth: Option<f64>,
+}
+
+/// Query-grounding half of the intent_gate response. `null` when the
+/// caller did not supply `query_fields` + `query`.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct IntentGateQueryGroundingWire {
+    /// `Σᵢ exp(-‖q-xᵢ‖²/2σ²)` — raw Bayesian-precision proxy.
+    raw: f64,
+    /// `raw / max_density_in_bundle` ∈ [0, 1]. Consumer threshold:
+    /// `> 0.5` ≈ "comparable to a typical sample"; `< 0.1` ≈
+    /// "very far from anything we know." Both bounds are suggested,
+    /// not enforced.
+    normalized: f64,
+    /// Bandwidth actually used (request override or fit-derived).
+    bandwidth_used: f64,
+    /// Number of records that contributed to the density estimate.
+    n_samples: usize,
+    /// Index of the closest record by raw L2 (free signal — comes
+    /// from the same single pass). `None` if no samples in the bundle.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    nearest_record_index: Option<usize>,
+    /// L2 distance from `query` to the nearest record.
+    nearest_distance: f64,
+}
+
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, serde::Serialize)]
+struct BrainIntentGateResponse {
+    // ── SUDOKU half (always present) ────────────────────────────────
+    verdict: String,
+    coverage: f64,
+    n_records_considered: usize,
+    solutions: Vec<SudokuSolutionWire>,
+    near_misses: Vec<SudokuNearMissWire>,
+    selectivity: Vec<SudokuSelectivityWire>,
+    relaxations: Vec<SudokuRelaxationWire>,
+    pareto_near_misses: Vec<SudokuParetoNearMissWire>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pre_flight_unsat_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expanded: Option<SudokuExpansionResultWire>,
+
+    // ── Confidence half (null if no query supplied) ─────────────────
+    #[serde(skip_serializing_if = "Option::is_none")]
+    query_grounding: Option<IntentGateQueryGroundingWire>,
+
+    // ── Cache freshness (always present) ────────────────────────────
+    counter_at_fit: u64,
+}
+
+#[cfg(feature = "kahler")]
+async fn brain_intent_gate_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    headers: axum::http::HeaderMap,
+    Json(req): Json<BrainIntentGateRequest>,
+) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    // **#107 fix** — polymorphic over heap + mmap+overlay bundles.
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
+
+    // Validate query / fields pair: both-or-neither.
+    let query_pair = match (&req.query_fields, &req.query) {
+        (Some(f), Some(q)) => {
+            if f.len() != q.len() {
+                return Err(bad_request(&format!(
+                    "query length {} ≠ query_fields length {}",
+                    q.len(),
+                    f.len()
+                )));
+            }
+            if f.is_empty() {
+                return Err(bad_request(
+                    "query_fields must not be empty when supplied",
+                ));
+            }
+            Some((f.clone(), q.clone()))
+        }
+        (None, None) => None,
+        _ => {
+            return Err(bad_request(
+                "query_fields and query must be supplied together (both or neither)",
+            ));
+        }
+    };
+
+    // ── 1. SUDOKU half ──────────────────────────────────────────────
+    let constraints = translate_constraints(req.constraints)
+        .map_err(|e| bad_request(&e))?;
+    let expansion = req.expansion.map(|e| gigi::geometry::ExpansionConfig {
+        allowed: e.allowed,
+        max_constraint_relaxations: e.max_constraint_relaxations,
+    });
+    let sudoku_req = gigi::geometry::SudokuRequest {
+        constraints,
+        max_options: req.max_options,
+        max_near_misses: req.max_near_misses,
+        expansion,
+    };
+    let config = gigi::geometry::SudokuConfig::default();
+    let counter_at_fit = heap.mutation_counter();
+    let resp = gigi::geometry::solve_constraints(heap.records(), &sudoku_req, &config)
+        .map_err(|e| bad_request(&format!("{}", e)))?;
+
+    // Wire-format the SUDOKU result (same helpers brain_sudoku uses).
+    fn vd_to_wire(v: gigi::geometry::ViolationDetail) -> SudokuViolationWire {
+        SudokuViolationWire {
+            constraint_idx: v.constraint_idx,
+            field: v.field,
+            violation: v.violation,
+            relax_to: value_to_json(&v.relax_to),
+            relaxation_cost: v.relaxation_cost,
+            raw_delta: v.raw_delta,
+        }
+    }
+    let solutions_wire: Vec<SudokuSolutionWire> = resp
+        .solutions
+        .into_iter()
+        .map(|s| SudokuSolutionWire {
+            record: record_to_json(&s.record),
+            stated_prior_mass: s.stated_prior_mass,
+            quality_score: s.quality_score,
+        })
+        .collect();
+    let near_misses_wire: Vec<SudokuNearMissWire> = resp
+        .near_misses
+        .into_iter()
+        .map(|nm| SudokuNearMissWire {
+            record: record_to_json(&nm.record),
+            stated_prior_mass: nm.stated_prior_mass,
+            violations: nm.violations.into_iter().map(vd_to_wire).collect(),
+            would_unlock_if_relaxed: nm.would_unlock_if_relaxed,
+        })
+        .collect();
+    let selectivity_wire: Vec<SudokuSelectivityWire> = resp
+        .selectivity
+        .into_iter()
+        .map(|s| SudokuSelectivityWire {
+            constraint_idx: s.constraint_idx,
+            field: s.field,
+            n_match_all: s.n_match_all,
+            n_match_without: s.n_match_without,
+            marginal_filter_count: s.marginal_filter_count,
+            binding: s.binding,
+            raw_curvature: s.raw_curvature,
+        })
+        .collect();
+    let relaxations_wire: Vec<SudokuRelaxationWire> = resp
+        .relaxations
+        .into_iter()
+        .map(|r| SudokuRelaxationWire {
+            constraint_idx: r.constraint_idx,
+            field: r.field,
+            description: r.description,
+            new_threshold: r.new_threshold.as_ref().map(value_to_json),
+            gain: r.gain,
+            relaxation_cost: r.relaxation_cost,
+        })
+        .collect();
+    let pareto_wire: Vec<SudokuParetoNearMissWire> = resp
+        .pareto_near_misses
+        .into_iter()
+        .map(|p| SudokuParetoNearMissWire {
+            record: record_to_json(&p.record),
+            stated_prior_mass: p.stated_prior_mass,
+            violations: p.violations.into_iter().map(vd_to_wire).collect(),
+            total_relaxation_cost: p.total_relaxation_cost,
+        })
+        .collect();
+    let expanded_wire = resp.expanded.map(|e| SudokuExpansionResultWire {
+        attempted: e.attempted,
+        expansion_type: e.expansion_type,
+        solutions: e.solutions.into_iter().map(|s| SudokuExpandedSolutionWire {
+            record: record_to_json(&s.record),
+            stated_prior_mass: s.stated_prior_mass,
+            expansion_cost: s.expansion_cost,
+            relaxed_constraint_idx: s.relaxed_constraint_idx,
+            relaxed_to: s.relaxed_to.as_ref().map(value_to_json),
+        }).collect(),
+        advisory: e.advisory,
+    });
+
+    let verdict = match resp.verdict {
+        gigi::geometry::SudokuVerdict::Sat => "sat",
+        gigi::geometry::SudokuVerdict::Unsat => "unsat",
+        gigi::geometry::SudokuVerdict::Unknown => "unknown",
+    }
+    .to_string();
+
+    // ── 2. Confidence half (only if query supplied) ─────────────────
+    let query_grounding = if let Some((fields, query)) = query_pair {
+        // Extract samples (reuses existing helper).
+        let samples = extract_field_samples(heap, &fields).map_err(|e| bad_request(&e))?;
+
+        // Bandwidth: request override if positive, else derive from
+        // bundle's isotropic fit (cached path — sub-µs warm).
+        let bandwidth = match req.bandwidth {
+            Some(b) if b > 0.0 => b,
+            _ => {
+                let (_, fit_counter) = flow_from_bundle_cached(
+                    &state,
+                    &name,
+                    heap,
+                    &fields,
+                    FitMode::Isotropic,
+                    None,
+                )?;
+                let key = CacheKey::build(&name, FitMode::Isotropic, &fields, None);
+                let cached = state
+                    .flow_cache
+                    .get(&key, fit_counter)
+                    .ok_or_else(|| bad_request("intent_gate: cache lookup failed post-fit"))?;
+                cached.sigma_sq.sqrt().max(1e-9)
+            }
+        };
+
+        let raw = gigi::geometry::kernel_density_confidence(&samples, &query, bandwidth);
+        let normalized = gigi::geometry::confidence_normalized(&samples, &query, bandwidth);
+
+        // Nearest-record info (free — same pass would compute it).
+        let mut nearest_index: Option<usize> = None;
+        let mut nearest_distance = f64::INFINITY;
+        for (i, s) in samples.iter().enumerate() {
+            let d_sq: f64 = s.iter().zip(query.iter()).map(|(a, b)| (a - b).powi(2)).sum();
+            let d = d_sq.sqrt();
+            if d < nearest_distance {
+                nearest_distance = d;
+                nearest_index = Some(i);
+            }
+        }
+        if !nearest_distance.is_finite() {
+            nearest_distance = 0.0;
+        }
+
+        Some(IntentGateQueryGroundingWire {
+            raw,
+            normalized,
+            bandwidth_used: bandwidth,
+            n_samples: samples.len(),
+            nearest_record_index: nearest_index,
+            nearest_distance,
+        })
+    } else {
+        None
+    };
+
+    let accept = headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok());
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        BrainIntentGateResponse {
+            verdict,
+            coverage: resp.coverage,
+            n_records_considered: resp.n_records_considered,
+            solutions: solutions_wire,
+            near_misses: near_misses_wire,
+            selectivity: selectivity_wire,
+            relaxations: relaxations_wire,
+            pareto_near_misses: pareto_wire,
+            pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
+            expanded: expanded_wire,
+            query_grounding,
+            counter_at_fit,
+        },
+    )
+}
+
+// ─── End S7: intent_gate ────────────────────────────────────────────────────
+
 // ─── §12 SELF-MONITOR (confidence) ──────────────────────────
 
 #[cfg(feature = "kahler")]
@@ -12115,6 +12429,14 @@ async fn main() {
         .route(
             "/v1/bundles/{name}/brain/sample_transport",
             post(brain_sample_transport_endpoint),
+        )
+        // S7: intent_gate — composite refuse-gate primitive (SUDOKU +
+        // Čech pre-flight + kernel-density confidence in one atomic
+        // call). Marcella's refuse-gate migration target. JTBD-gated
+        // by e2e/probes/intent_gate_demo.py.
+        .route(
+            "/v1/bundles/{name}/brain/intent_gate",
+            post(brain_intent_gate_endpoint),
         );
 
     let app = app
@@ -14669,5 +14991,245 @@ mod tests {
                 c.weight, beta, c.d_sq, expected_w
             );
         }
+    }
+
+    // ─── S7 intent_gate composition tests ──────────────────────────────────
+    //
+    // The endpoint composes three primitives (Čech pre-flight, SUDOKU
+    // walk, kernel-density confidence). These four tests assert each
+    // verdict shape is producible from the same composition. Geometry-
+    // level — actual HTTP path is exercised by intent_gate_demo.py.
+
+    /// **S7 gate 1**: contradictory constraints → pre-flight fires,
+    /// verdict=Unsat, zero records walked. The "your prompt is broken"
+    /// case — Marcella shows it back to the user, doesn't search.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn intent_gate_composition_contradiction() {
+        use gigi::geometry::{
+            Constraint, FieldOp, SudokuConfig, SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        // 100 records — any bundle would do; pre-flight must fire
+        // BEFORE the walk, so the record count is irrelevant.
+        let records: Vec<gigi::types::Record> = (0..100)
+            .map(|i| {
+                let mut r = gigi::types::Record::new();
+                r.insert(
+                    "color".into(),
+                    Value::Text(["red", "blue", "green"][i % 3].into()),
+                );
+                r
+            })
+            .collect();
+
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("red".into())),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("blue".into())),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 3,
+            expansion: None,
+        };
+        let resp = gigi::geometry::solve_constraints(records, &req, &SudokuConfig::default())
+            .unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat);
+        assert_eq!(resp.n_records_considered, 0,
+            "pre-flight must short-circuit before walking the bundle");
+        let reason = resp.pre_flight_unsat_reason.as_ref()
+            .expect("pre_flight_unsat_reason must be populated on Eq+Eq contradiction");
+        assert!(reason.contains("color"),
+            "reason must name the conflicting field; got {}", reason);
+    }
+
+    /// **S7 gate 2**: compatible constraints that no record satisfies →
+    /// walk UNSAT, near-misses populated, no pre-flight reason. The
+    /// "we searched and didn't find it" case — Marcella surfaces the
+    /// near-misses + relaxation menu to offer alternatives.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn intent_gate_composition_empty_feasible() {
+        use gigi::geometry::{
+            Constraint, FieldOp, SudokuConfig, SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        // 30 records: prices 100..400 in 10-steps, colors red/blue/green.
+        // Constraint: color="purple" AND price<=50 — no record satisfies.
+        let records: Vec<gigi::types::Record> = (0..30)
+            .map(|i| {
+                let mut r = gigi::types::Record::new();
+                r.insert("price".into(), Value::Float(100.0 + 10.0 * i as f64));
+                r.insert(
+                    "color".into(),
+                    Value::Text(["red", "blue", "green"][i % 3].into()),
+                );
+                r
+            })
+            .collect();
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("purple".into())),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "price".into(),
+                    op: FieldOp::Le(50.0),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 5,
+            expansion: None,
+        };
+        let resp = gigi::geometry::solve_constraints(records, &req, &SudokuConfig::default())
+            .unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Unsat);
+        assert!(resp.pre_flight_unsat_reason.is_none(),
+            "constraints are compatible — pre-flight must NOT fire");
+        assert!(resp.n_records_considered > 0,
+            "walk must run when pre-flight passes");
+        assert!(resp.solutions.is_empty());
+        // Near-misses OR pareto OR relaxation menu — at least ONE
+        // actionable signal must surface so consumer can offer alternatives.
+        assert!(
+            !resp.near_misses.is_empty()
+                || !resp.pareto_near_misses.is_empty()
+                || !resp.relaxations.is_empty(),
+            "walk-UNSAT must produce actionable alternatives (near_misses, \
+             pareto, or relaxation menu); else consumer is told 'no' with \
+             nothing to do about it"
+        );
+    }
+
+    /// **S7 gate 3**: feasible constraints + query vector FAR from any
+    /// record → SAT but confidence is low. The "I can answer but I'm
+    /// guessing" case — Marcella responds with caveat or declines.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn intent_gate_composition_sat_low_confidence() {
+        use gigi::geometry::{
+            kernel_density_confidence, confidence_normalized,
+            Constraint, FieldOp, SudokuConfig, SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        // 40 records clustered near origin in 4D; query far away.
+        let mut samples: Vec<Vec<f64>> = Vec::new();
+        let mut records: Vec<gigi::types::Record> = Vec::new();
+        for i in 0..40u64 {
+            let theta = i as f64 * 0.15;
+            let v = vec![theta.cos() * 0.1, theta.sin() * 0.1, 0.0, 0.0];
+            samples.push(v.clone());
+            let mut r = gigi::types::Record::new();
+            r.insert("price".into(), Value::Float(100.0 + i as f64));
+            r.insert(
+                "color".into(),
+                Value::Text(if i % 2 == 0 { "red" } else { "blue" }.into()),
+            );
+            records.push(r);
+        }
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("red".into())),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "price".into(),
+                    op: FieldOp::Le(200.0),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 3,
+            expansion: None,
+        };
+        let resp = gigi::geometry::solve_constraints(records, &req, &SudokuConfig::default())
+            .unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Sat,
+            "constraints have satisfying records");
+
+        // Query 10× outside the cluster's typical scale → low confidence.
+        let far_query = vec![10.0, 10.0, 10.0, 10.0];
+        let bw = 0.1; // matches cluster scale
+        let normalized = confidence_normalized(&samples, &far_query, bw);
+        assert!(normalized < 0.1,
+            "far query must produce normalized confidence < 0.1; got {}",
+            normalized);
+        let raw = kernel_density_confidence(&samples, &far_query, bw);
+        assert!(raw < 1.0,
+            "raw density at far query must be near-zero; got {}", raw);
+    }
+
+    /// **S7 gate 4**: feasible constraints + query vector NEAR records →
+    /// SAT with high confidence. The "I know this territory" case —
+    /// Marcella responds with full confidence.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn intent_gate_composition_sat_high_confidence() {
+        use gigi::geometry::{
+            confidence_normalized, Constraint, FieldOp, SudokuConfig,
+            SudokuRequest, SudokuVerdict,
+        };
+        use gigi::types::Value;
+
+        // Same cluster as gate 3; query AT the centroid.
+        let mut samples: Vec<Vec<f64>> = Vec::new();
+        let mut records: Vec<gigi::types::Record> = Vec::new();
+        for i in 0..40u64 {
+            let theta = i as f64 * 0.15;
+            let v = vec![theta.cos() * 0.1, theta.sin() * 0.1, 0.0, 0.0];
+            samples.push(v.clone());
+            let mut r = gigi::types::Record::new();
+            r.insert("price".into(), Value::Float(100.0 + i as f64));
+            r.insert(
+                "color".into(),
+                Value::Text(if i % 2 == 0 { "red" } else { "blue" }.into()),
+            );
+            records.push(r);
+        }
+        let req = SudokuRequest {
+            constraints: vec![
+                Constraint::Field {
+                    field: "color".into(),
+                    op: FieldOp::Eq(Value::Text("red".into())),
+                    hard: true,
+                },
+                Constraint::Field {
+                    field: "price".into(),
+                    op: FieldOp::Le(200.0),
+                    hard: true,
+                },
+            ],
+            max_options: 5,
+            max_near_misses: 3,
+            expansion: None,
+        };
+        let resp = gigi::geometry::solve_constraints(records, &req, &SudokuConfig::default())
+            .unwrap();
+        assert_eq!(resp.verdict, SudokuVerdict::Sat);
+
+        // Query at a sample point itself → normalized confidence must
+        // be exactly 1.0 (the densest possible point).
+        let near_query = samples[0].clone();
+        let bw = 0.1;
+        let normalized = confidence_normalized(&samples, &near_query, bw);
+        assert!(normalized > 0.5,
+            "query at a sample point must produce normalized confidence > 0.5; \
+             got {}", normalized);
     }
 }

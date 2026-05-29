@@ -1,281 +1,244 @@
-# GIGI Schema Introspection Endpoint — Specification
+# GIGI Schema Introspection — Specification
 
 **Owner:** Bee Rosa Davis / Davis Geometric
 **Drafted:** 2026-05-24
-**Status:** v0.1 DRAFT — endpoint design and response contract. Companion to [GIGI_LANG_SPEC.md](GIGI_LANG_SPEC.md) and prerequisite P3 in `~/Documents/davis-contributions/PRE_REQS.md`.
-**Scope:** Specifies the publicly-accessible endpoint that exposes GIGI's GraphQL schema for use by GIGI Lang's translator, MCP clients, the geomstats GIGI loader, and any external integration. Does not change what the schema *is* — only how it's published.
+**Status:** v0.2 DRAFT — architectural revision. v0.1 specced a single global `/schema` endpoint returning GraphQL SDL; that model was wrong. GIGI's actual schema introspection is **per-bundle** (`GET /v1/bundles/{name}/schema`) plus a **bundle list** (`GET /v1/bundles`). v0.2 documents the existing endpoints and adds license-tier annotation as the only new piece.
+**Scope:** Documents the publicly-accessible schema introspection surface that GIGI Lang's translator, MCP clients, the geomstats GIGI loader, and any external integration depend on. Most of what this spec describes *already exists* in the GIGI server and the Python SDK; the new piece is a `license_tier` annotation on schema elements so callers know which operations require a commercial license.
 
 ---
 
-## 1. What this endpoint is for
+## What changed from v0.1
 
-GIGI Lang's translator needs to know what queries are valid before it can compile a prompt to GQL. External tools (MCP servers, the geomstats GIGI loader, any agent integration) need to know what data shapes GIGI returns. Both need a stable, machine-readable surface for *what's queryable.*
+| v0.1 (wrong) | v0.2 (corrected) |
+|--------------|------------------|
+| Single `GET /schema` endpoint returning GraphQL SDL | Existing `GET /v1/bundles` + `GET /v1/bundles/{name}/schema` (already implemented) |
+| GraphQL SDL as canonical format with `@public` / `@gated` directives | JSON dicts (GIGI's native format) with a `license_tier` field on each element |
+| Designed around a single global schema document | Per-bundle schemas; bundle list endpoint for discovery |
+| Required Apollo/GraphQL ecosystem tooling | Works with standard HTTP/JSON clients today |
 
-The endpoint provides that surface. One URL, one response, current as of the time of the request. It's the smallest possible thing that unblocks everything in §5 of GIGI_LANG_SPEC and several venues in the davis-contributions master plan.
-
-This is **not** a new feature of GIGI — it's the publication of an existing internal capability (schema introspection that the engine already uses internally) as a stable public surface.
-
----
-
-## 2. Design goals
-
-### G1. Discoverable without authentication.
-Anyone — researcher, agent, casual visitor — can hit the endpoint and learn what GIGI exposes. No API key, no signup, no rate-limit-by-default. The schema is a public artifact; commercial gating happens at the *query execution* layer, not at the *schema discovery* layer.
-
-### G2. Machine-first, human-readable second.
-The primary consumers are translation layers, codegen tools, and SDK builders. Response formats favor what machines parse cleanly. Human readability is a derived benefit (which DHOOM happens to provide for free).
-
-### G3. Show everything; gate at execution.
-Both public and gated capabilities appear in the schema. Gated capabilities are *marked* (so callers know they exist and can request commercial licensing), but the schema itself never hides them. This is the inverse of the typical "show what you can use" pattern — it's "show what exists, and what's behind which door."
-
-### G4. Cacheable.
-The schema doesn't change often. Standard HTTP caching (ETag, Last-Modified, immutable + versioned URLs for major versions) lets clients cache aggressively.
-
-### G5. Self-describing across formats.
-Available as GraphQL SDL (the standard), DHOOM (the geometry-native), and JSON introspection (the GraphQL ecosystem-compatible). Content negotiation picks the right one.
+The architectural principles from v0.1 (no auth on introspection, show-everything-gate-at-execution, cacheable, agent-friendly) all carry forward. The wire format was the wrong part, not the strategy.
 
 ---
 
-## 3. Endpoint design
+## 1. What this spec is for
 
-### URL
+The translator inside GIGI Lang needs to know what queries are valid. External tools (MCP servers, the geomstats GIGI loader, any agent integration) need to know what data shapes GIGI returns. Both need a stable, machine-readable description of *what's queryable.*
 
-```
-GET /schema
-```
+The existing GIGI server already provides this. v0.2 documents it as the canonical public surface and adds a single annotation (`license_tier`) so callers can distinguish free non-commercial operations from gated commercial ones.
 
-Lives at the GIGI server root, sibling to the existing `/curvature`, `/spectral_gap`, `/betti`, etc.
-
-### Methods
-
-`GET /schema` — return the current schema in the requested format. Default is SDL.
-
-`HEAD /schema` — return only headers (ETag, Last-Modified, Schema-Version), for cache validation.
-
-No `POST` / `PUT` / `DELETE` — schema is published, not mutated through this endpoint.
-
-### Authentication
-
-**None required.** This is the public surface. (Commercial-license enforcement happens at the query-execution layer; discovery is open.)
-
-### Content negotiation
-
-| `Accept` header | Response |
-|-----------------|----------|
-| `application/graphql` (default) | GraphQL SDL — the canonical format |
-| `application/dhoom` | DHOOM-shaped, fiber-bundle native |
-| `application/json` | GraphQL introspection JSON — for tools expecting the standard introspection-query shape |
-| (omitted) | SDL |
-
-### Versioning
-
-Schema version returned in the `Schema-Version: vMAJOR.MINOR` response header *and* embedded in the body. Major version changes are breaking; minor are additive.
-
-Versioned URLs available for pinning:
-```
-GET /schema/v1
-GET /schema/v1.3
-```
-
-The unversioned `/schema` returns the latest. Clients that want stability pin a specific version.
+This is **publication, not new functionality.** The endpoints exist; the annotation is the only new piece.
 
 ---
 
-## 4. What's public vs. gated
+## 2. Design principles (unchanged from v0.1)
 
-Every type, field, and verb in the schema carries a directive or metadata field indicating its license tier:
+### G1. Discoverable without authentication
+Anyone — researcher, agent, casual visitor — can hit the introspection endpoints and learn what GIGI exposes. No API key, no signup, no rate-limit-by-default. Commercial gating happens at the *query execution* layer, not at the *schema discovery* layer.
 
-- `@public` — free for non-commercial use (the default — most things)
-- `@gated(tier: "commercial")` — requires commercial license to call
-- `@research_only` — available to verified academic / research users (a possible future tier)
+### G2. Machine-first, human-readable second
+The primary consumers are translation layers, codegen tools, and SDK builders. JSON is the native format (matches what GIGI already returns). DHOOM is available via content negotiation when geometric structure matters to the consumer.
 
-The schema **shows everything.** A type marked `@gated` is fully described in the schema; callers can see what it does, what arguments it takes, what it returns. They simply cannot execute it without the appropriate license token.
+### G3. Show everything; gate at execution
+Both public and gated capabilities appear in the schema. Gated capabilities are *marked* (so callers know they exist and can request commercial licensing), but the schema never hides them. The "I didn't know that was possible" problem is solved at the schema layer; the "can I actually call this" question is answered at the execution layer.
 
-This is deliberate: hiding things creates the "I didn't know that was possible" problem. Showing-with-gating creates the "I know exactly what I'd be licensing if I needed it" experience — which is the right experience for someone potentially becoming a commercial customer.
+### G4. Cacheable
+Schemas change slowly. ETag + Last-Modified headers let clients cache aggressively.
 
-### Example fragment
+### G5. Self-describing
+Schema responses include enough metadata (field names, types, indexes, license tiers) that a consumer never needs a separate documentation source to interpret them.
 
-```graphql
-type City @public {
-  name: String!
-  lat: Float!
-  lng: Float!
-  population: Int
-}
+---
 
-type ManifoldStructure @gated(tier: "commercial") {
-  fiber: Fiber!
-  curvature: Tensor!
-  holonomyDebt: Float
-}
+## 3. Existing endpoints
 
-type Query {
-  city(name: String!): City @public
-  cities(near: String, limit: Int): [City!]! @public
-  manifoldOf(dataset: String!): ManifoldStructure @gated(tier: "commercial")
+These are already implemented in the GIGI server and exercised by the Python SDK.
+
+### 3.1 `GET /v1/bundles` — list bundles
+
+**Already implemented.** Exercised by `GigiClient.list_bundles()`.
+
+Returns a JSON array of bundle summaries:
+
+```json
+[
+  {
+    "name": "cities",
+    "record_count": 50,
+    "fields": {
+      "city": "categorical",
+      "lat": "numeric",
+      "lng": "numeric",
+      "population": "numeric"
+    },
+    "license_tier": "public"
+  },
+  ...
+]
+```
+
+**v0.2 addition:** the `license_tier` field on each bundle entry. Tier is "public" by default; bundles that exist only behind a commercial license can be marked "commercial" so the schema lists them but execution refuses.
+
+### 3.2 `GET /v1/bundles/{name}/schema` — per-bundle schema
+
+**Already implemented.** Exercised by `GigiClient.schema(name)`.
+
+Returns a JSON object describing one bundle's structure:
+
+```json
+{
+  "name": "cities",
+  "base_fields": [
+    {"name": "city", "type": "categorical", "license_tier": "public"}
+  ],
+  "fiber_fields": [
+    {"name": "lat", "type": "numeric", "license_tier": "public"},
+    {"name": "lng", "type": "numeric", "license_tier": "public"},
+    {"name": "population", "type": "numeric", "license_tier": "public"}
+  ],
+  "indexed_fields": ["city"],
+  "license_tier": "public"
 }
 ```
 
-A non-commercial user can call `city` and `cities` freely. Calling `manifoldOf` returns an error from the *execution* layer (not the schema layer) with a category of `LICENSE_REQUIRED` and a pointer to davisgeometric.com for licensing.
+**v0.2 addition:** `license_tier` on the bundle itself, on each field, and on derived operations available for that bundle.
 
-### The license boundary tracks the geometric boundary
+### 3.3 `GET /v1/operations` — available operations (proposed for v0.2)
 
-The `@public` / `@gated` split is not arbitrary — it tracks where the engine's actual IP lives. Operations that are computationally cheap, format-conversion-only, or infrastructure-level naturally classify as `@public`:
+**Not yet implemented.** This is the one new endpoint v0.2 proposes — a registry of operations callable across all bundles, each with its license tier.
+
+```json
+[
+  {"name": "query", "license_tier": "public", "description": "Filter records by field conditions"},
+  {"name": "count", "license_tier": "public", "description": "Count records matching filters"},
+  {"name": "vector_search", "license_tier": "public", "description": "k-NN over stored embeddings"},
+  {"name": "gql", "license_tier": "public", "description": "Execute a GIGI Query Language statement"},
+
+  {"name": "curvature", "license_tier": "commercial", "description": "Kähler curvature decomposition (L4)"},
+  {"name": "spectral_gap", "license_tier": "commercial", "description": "Cached spectral analysis (L3)"},
+  {"name": "transport", "license_tier": "commercial", "description": "B-perturbed transport (L1.5)"},
+  {"name": "hadamard_regions", "license_tier": "commercial", "description": "Hadamard substructure detection (L5)"},
+  {"name": "morse_compress", "license_tier": "commercial", "description": "Morse compression (L6)"},
+  {"name": "holonomy_debt", "license_tier": "commercial", "description": "Holonomy accumulation tracking"},
+  {"name": "encode_chern", "license_tier": "commercial", "description": "Chern character encoding (L7.3)"},
+  {"name": "quantum_cohomology", "license_tier": "commercial", "description": "Quantum cohomology (L7)"},
+  {"name": "toeplitz_operator", "license_tier": "commercial", "description": "Berezin-Toeplitz operators (L7)"}
+]
+```
+
+This is the only endpoint v0.2 *adds*. It complements the per-bundle schema with a global operations catalog so callers can see what's possible across the whole server without enumerating bundles.
+
+---
+
+## 4. License-tier annotation
+
+The single new concept v0.2 introduces. Three values defined now (with `research` reserved for a possible future tier):
+
+| Tier | Meaning |
+|------|---------|
+| `public` | Free for non-commercial use. The default. |
+| `commercial` | Requires a commercial license to *execute.* Visible to everyone in the schema. |
+| `research` *(reserved)* | Available to verified academic/research users. Not yet implemented; declared so it's available later. |
+
+Schema elements that may carry a `license_tier`:
+- Bundles (`/v1/bundles[].license_tier`)
+- Individual fields within a bundle (`/v1/bundles/{name}/schema.base_fields[].license_tier`)
+- Operations in the catalog (`/v1/operations[].license_tier`)
+- The bundle's own derived operations (e.g., a `manifold_structure` accessor on a Kähler-bundle would carry `license_tier: "commercial"`)
+
+**Enforcement model:** the schema is open; calling a `commercial`-tier operation without a valid commercial license returns a unified error envelope with `category: "license_required"` from the execution layer, not from the schema layer. The schema's job is to communicate the boundary, not to enforce it.
+
+---
+
+## 5. The license boundary tracks the geometric boundary
+
+The `public` / `commercial` split is not arbitrary. It tracks where the engine's actual IP lives.
+
+**Public-tier operations are infrastructure** — computationally cheap, format-conversion-only, or universally useful:
 
 - Record CRUD (create / read / update / delete bundles + records)
+- Filter-based record queries
+- Counts
 - Basic vector search (similarity, k-NN over stored embeddings)
 - Schema introspection itself
+- GIGI Query Language (the language is public; specific GQL statements that invoke commercial operations are gated at execution)
+- Bundle export to JSON or DHOOM
 - Subscriptions to standard event streams
 
-Operations that depend on the engine's serious geometric machinery — the Davis Field Equation, the Kähler upgrades, the fiber-bundle work shipped through L1–L7 — naturally classify as `@gated(tier: "commercial")`:
+**Commercial-tier operations are research** — they depend on the engine's serious geometric machinery (Davis Field Equation, Kähler upgrades, L1–L7 work):
 
-- `curvature(bundle)` — Kähler curvature decomposition (L4)
-- `spectral_gap(bundle)` — cached spectral analysis (L3)
-- `transport(seg, B, ...)` — B-perturbed transport (L1.5)
-- `hadamard_regions(bundle)` — Hadamard substructure detection (L5)
-- `morse_compress(bundle)` — Morse compression (L6)
-- `holonomy_debt(bundle)` — accumulated non-associativity tracking
-- `encode_chern(bundle)` — Chern character encoding (L7.3)
-- `quantum_cohomology(bundle)` — quantum cohomology operations (L7)
-- `toeplitz_operator(bundle)` — Berezin-Toeplitz operators (L7)
+| Operation | Layer | What it does |
+|-----------|-------|--------------|
+| `curvature` | L4 | Kähler curvature decomposition |
+| `spectral_gap` | L3 | Cached spectral analysis |
+| `transport` | L1.5 | B-perturbed transport |
+| `hadamard_regions` | L5 | Hadamard substructure detection |
+| `morse_compress` | L6 | Morse compression |
+| `holonomy_debt` | — | Holonomy accumulation tracking |
+| `encode_chern` | L7.3 | Chern character encoding |
+| `quantum_cohomology` | L7 | Quantum cohomology operations |
+| `toeplitz_operator` | L7 | Berezin-Toeplitz operators |
 
-The license boundary tracks the IP boundary because that's how the engine is structured: classical fiber-bundle operations are infrastructure; geometrically-novel operations are research. Mapping `@gated` to "where the research actually lives" makes the licensing posture legible to a reader of the schema in the same way the math is legible to a reader of the framework papers — both surfaces are honest about where the real work is.
+The license boundary tracks the IP boundary because that's how the engine is structured: classical fiber-bundle operations are *infrastructure;* geometrically-novel operations are *research.* Mapping `commercial` to "where the research lives" makes the licensing posture legible to a reader of the schema in the same way the math is legible to a reader of the framework papers — both surfaces are honest about where the real work is.
 
-This also means the gating registry (§9 implementation note) doesn't need clever logic. The directive applied to each schema element follows a simple rule of thumb: if the operation needs L1–L7 machinery, it's `@gated`; otherwise it's `@public`. Adding new public operations is friction-free; adding new gated operations is rare (the L-series cadence is the rate-of-arrival).
-
----
-
-## 5. Response shape (SDL is canonical)
-
-When responding with SDL (the default), the body is GraphQL SDL with Davis Geometric-specific directives declared:
-
-```graphql
-# Davis Geometric directives
-directive @public on FIELD_DEFINITION | OBJECT | INTERFACE | ENUM
-directive @gated(tier: String!) on FIELD_DEFINITION | OBJECT | INTERFACE | ENUM
-directive @research_only on FIELD_DEFINITION | OBJECT | INTERFACE | ENUM
-
-# Schema metadata
-schema {
-  query: Query
-  mutation: Mutation
-  subscription: Subscription
-}
-
-# ... full type definitions ...
-```
-
-Plus standard headers:
-```
-Schema-Version: v1.3.2
-ETag: "abc123def456"
-Last-Modified: Wed, 24 May 2026 12:34:56 GMT
-Cache-Control: public, max-age=3600
-Content-Type: application/graphql
-```
+This also means the license-tier registry doesn't need clever logic. The annotation follows a simple rule: if the operation needs L1–L7 machinery, it's `commercial`; otherwise it's `public`. Adding new public operations is friction-free; adding new commercial operations is rare (the L-series cadence is the rate-of-arrival).
 
 ---
 
-## 6. Examples
+## 6. Content negotiation (optional, lower priority for v0.2)
 
-### Example 1 — fetch SDL
+JSON is the canonical and default format — it's what GIGI already returns. DHOOM is available via `Accept: application/dhoom` for callers who want fiber-shaped responses for downstream geometric tooling.
 
-```
-$ curl https://gigi-stream.fly.dev/schema
-# Davis Geometric directives
-directive @public on FIELD_DEFINITION | ...
-# Schema-Version: v1.3.2
-...
-```
+| `Accept` header | Response format |
+|-----------------|-----------------|
+| `application/json` (default) | JSON dict, as documented above |
+| `application/dhoom` | DHOOM-shaped (single bundle with nested bundles per type) |
 
-### Example 2 — fetch DHOOM-shaped
-
-```
-$ curl -H "Accept: application/dhoom" https://gigi-stream.fly.dev/schema
-schema{name, version, types>, queries>}:
-gigi-stream, v1.3.2,
-  {name, kind, fields>, license|public}:
-  City, OBJECT, ...
-...
-```
-
-### Example 3 — cache validation
-
-```
-$ curl -I -H "If-None-Match: \"abc123def456\"" https://gigi-stream.fly.dev/schema
-HTTP/1.1 304 Not Modified
-```
-
-### Example 4 — pinned version for stability
-
-```
-$ curl https://gigi-stream.fly.dev/schema/v1
-(returns the latest v1.x.y, never a v2.x.y; client code written against v1 stays working)
-```
+DHOOM serialization of the schema isn't blocking for v0.2 — JSON is sufficient for all currently-planned consumers (GIGI Lang translator, MCP server, geomstats loader). DHOOM support can land in v0.3 when there's a concrete consumer that benefits.
 
 ---
 
-## 7. Integration points
+## 7. Open questions
 
-### 7.1 GIGI Lang translator
-On startup (or on cache miss), the translator fetches `/schema` with `Accept: application/graphql`, parses the SDL, builds a structured representation of valid queries, and uses it to ground prompt → GQL translations. Caches with ETag; refetches on cache invalidation.
+1. **`/v1/operations` endpoint — implement now or defer?** The per-bundle schema already exists; the operations catalog is the one piece this spec *adds.* It's small. Lean toward implementing now so callers don't have to crawl every bundle to discover what operations are available.
 
-### 7.2 GIGI Python SDK
-The `GigiLang.schema()` method (see `lang.py`) calls this endpoint. Returns a `Schema` object (parsed) or raw SDL on request.
+2. **License-tier annotation rollout.** The annotation can be added incrementally: start with the bundle-level tier, then per-field, then operations. What's the order? Recommendation: bundle-level first (smallest change), then operations catalog (`/v1/operations`), then field-level last (most granular, most diff).
 
-### 7.3 MCP server (venue 04)
-Exposes `gigi_schema()` as an MCP tool that any LLM client can invoke when it needs to know what's queryable.
+3. **Bundle-level vs. operation-level gating.** Some operations (e.g., `curvature`) are universally commercial regardless of bundle. Others (e.g., a specific bundle's content) might be commercial because the *bundle* is gated, not because the operation is. Make sure both axes are representable: a `commercial` bundle blocks all operations on it; a `commercial` operation is blocked regardless of bundle.
 
-### 7.4 Geomstats GIGI loader (venue 02)
-The loader's docs link to this endpoint so users can discover what `load_gigi(query)` can fetch.
+4. **Caching and staleness.** ETag + Last-Modified on `/v1/bundles` and `/v1/bundles/{name}/schema`. Refresh cadence — schemas don't change minute-to-minute, so a 5-minute browser cache + ETag revalidation should be fine.
 
-### 7.5 GraphQL ecosystem tools
-Tools expecting the GraphQL introspection query (Apollo Studio, GraphQL Playground, GraphiQL, codegen tools) work out of the box via `Accept: application/json` content negotiation.
+5. **`research` tier — declare or defer?** Reserved in §4 but not yet defined. Lean toward declaring the enum value now so clients pattern-match permissively from day one; the actual enforcement comes later.
+
+6. **Deprecation handling.** When a field or operation is being phased out, a `deprecated: true` boolean (plus optional `deprecation_reason`) on the schema element. Standard pattern; small to add. Worth specifying now to avoid retrofitting later.
 
 ---
 
-## 8. Open questions
+## 8. Implementation notes (sketch, non-binding)
 
-1. **Authentication on `/schema` itself.** G1 says no auth. Is there a case where even schema visibility should be gated (e.g., paid-tier-only types that competitors shouldn't even know exist)? Default to "no, show everything" but worth a sanity check.
-
-2. **Rate-limiting on `/schema`.** Probably negligible traffic (cached aggressively), but unauthenticated public endpoints attract scanners and crawlers. Light rate limit (60 req/min per IP?) is sensible; aggressive limits would defeat the discoverability goal.
-
-3. **Schema staleness window.** How fresh does the schema need to be? Real-time (regenerated on each request) is wasteful. Hourly (refreshed by a background job) seems sufficient. Specifying this prevents subtle bugs where a client gets a stale schema and the query it constructs fails at execution.
-
-4. **DHOOM serialization shape.** SDL is the standard, well-defined. Introspection JSON is well-defined. What does "schema as DHOOM" look like exactly? Probably a single bundle with nested bundles per type, fields as records. Worth a small design exercise; not blocking.
-
-5. **`@research_only` tier — yes/no?** Mentioned as a possible future. Decide whether to declare the directive now (for forward compatibility) or wait until the tier exists in practice. Lean toward declaring now; cheap to do, hard to retrofit.
-
-6. **Deprecation handling.** When a type or field is deprecated, GraphQL's `@deprecated(reason: ...)` directive applies. Confirm this is honored in the SDL output and that GIGI Lang's translator avoids deprecated paths in its generated GQL.
+- The per-bundle endpoints exist. The only genuinely new code is the `license_tier` field on existing responses and the `/v1/operations` endpoint.
+- License-tier registry can be a small static config file initially (per-bundle and per-operation annotations); could grow into a database-backed thing later if tier rules become more dynamic.
+- The annotation should be added in one PR to GIGI server side (Rust) plus one PR to update the Python SDK to surface the field (`GigiClient.schema()` returns the new field as part of the dict).
 
 ---
 
-## 9. Implementation notes (sketch, non-binding)
+## 9. References
 
-- GIGI already has internal schema introspection (the engine uses it to validate incoming GQL); this endpoint is the *publication* of that capability, not new functionality.
-- Recommend implementing as a thin handler that calls the existing introspection, applies output formatting based on `Accept`, attaches `@public` / `@gated` directives from a license-tier registry (which is the only genuinely new piece).
-- License-tier registry is a small static config initially (per-type/per-field annotations); could grow into a database-driven thing later if the tier structure becomes more dynamic.
-
----
-
-## 10. References
-
-- Companion spec: [GIGI_LANG_SPEC.md](GIGI_LANG_SPEC.md) (v0.1.1)
+- Companion spec: [GIGI_LANG_SPEC.md](GIGI_LANG_SPEC.md) (v0.1.2)
+- Existing client methods: `GigiClient.list_bundles()`, `GigiClient.schema(name)` in `sdk/python/gigi/client.py`
 - Prerequisite P3: `~/Documents/davis-contributions/PRE_REQS.md`
-- GraphQL SDL specification: https://spec.graphql.org/ (current edition)
-- GraphQL introspection query: same spec, §4.5
 - DHOOM specification: https://dhoom.dev
-- Davis Geometric licensing philosophy: applies — schema visibility is free for everyone; execution of gated types requires commercial license
+- Davis Geometric licensing philosophy: applies — schema visibility is free for everyone; execution of `commercial`-tier elements requires commercial license
 
 ---
 
-## 11. What to do with this spec
+## 10. What to do with this spec
 
-This is **v0.1, endpoint-level.** It specifies the surface and the contract but not the wire-level handler code.
+This is **v0.2, architecturally corrected.** It specifies the schema introspection surface as it actually is (mostly) and what one piece needs to be added (license-tier annotation + `/v1/operations`).
 
 **Next steps:**
-- Resolve the 6 open questions in §8 (most are small)
-- Implement the handler (single endpoint, leverages existing internal introspection)
-- Publish on the davisgeometric.com infrastructure or wherever GIGI lives publicly
-- Update GIGI Lang's SDK skeleton (`lang.py`) once the endpoint exists, replacing `schema()`'s `NotImplementedError` with a real fetch
-- Announce in the MCP server docs (venue 04) once it's live — that venue depends on this
+- Resolve the 6 open questions in §7 (most are small)
+- Add `license_tier` to existing `/v1/bundles` and `/v1/bundles/{name}/schema` responses
+- Implement `/v1/operations` endpoint
+- Update the GIGI Python SDK to surface the new fields
+- Update the GIGI Lang SDK skeleton (`lang.py`)'s `schema()` method docstring to reflect this real shape
+- Announce in the MCP server docs (venue 04 in the contribution plan) once the annotation rollout is complete

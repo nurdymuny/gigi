@@ -2,7 +2,7 @@
 
 **Owner:** Bee Rosa Davis / Davis Geometric
 **Drafted:** 2026-05-24
-**Status:** v0.1.1 DRAFT — goals-level spec, with reviewer-informed resolutions to 4 of 8 open questions. Mathematical machinery and implementation details defer to GIGI internals and Bee's published framework.
+**Status:** v0.1.2 DRAFT — terminology revision. v0.1.1 conflated GIGI's "GQL" (GIGI Query Language, an SQL-flavored DSL) with GraphQL; v0.1.2 corrects this throughout. Architecture and resolved questions unchanged. Mathematical machinery and implementation details defer to GIGI internals and Bee's published framework.
 **Scope:** This document specifies *what GIGI Lang is for and what it must achieve.* It does not define wire protocols, codec details, or mathematical correctness conditions — those live in the GIGI codebase, the DHOOM SPEC, and the Davis Geometric framework papers.
 
 ---
@@ -12,13 +12,15 @@
 GIGI Lang is the **prompt-to-fiber-response language layer** for the GIGI database engine. It's the named, documented surface that ties together:
 
 - **Natural language prompts** (from humans or LLMs)
-- **GIGI's GraphQL query interface** (already exists; the structured query layer)
+- **GIGI Query Language (GQL)** (already exists; GIGI's own SQL-flavored query DSL — see `client.gql()` and the GIGI server's `/v1/gql` endpoint)
 - **GIGI's fiber-bundle data substrate** (the geometric storage layer)
 - **DHOOM serialization** (the wire format for fiber-shaped responses)
 
-The user-facing contract is simple: **write a prompt, get back a fiber-shaped response.** Internally, the prompt is translated to GQL, the GQL executes against GIGI's fiber-bundle store, and the response comes back shaped by the fiber — serialized as DHOOM by default.
+The user-facing contract is simple: **write a prompt, get back a fiber-shaped response.** Internally, the prompt is translated to GIGI's GQL, the GQL executes against GIGI's fiber-bundle store, and the response comes back shaped by the fiber — serialized as DHOOM by default.
 
-GIGI Lang is **not a new language in the lexer/parser sense.** No `.gigi` source files, no new syntax to learn. It's "language" in the sense PromQL, Cypher, and GraphQL itself are languages: a defined query surface plus a defined response shape, exposed through SDKs and APIs.
+> **Terminology note:** "GQL" in this document means **GIGI Query Language** — GIGI's own SQL-flavored DSL with statements like `CREATE BUNDLE`, `INSERT INTO`, `COVER WHERE`, `SCAN`, `TRANSPORT`. It is **not** GraphQL. (Earlier drafts of this spec used "GraphQL" loosely; v0.1.2 corrects throughout.)
+
+GIGI Lang is **not a new language in the lexer/parser sense.** No `.gigi` source files, no new syntax to learn. It's "language" in the sense PromQL, Cypher, SQL, and GraphQL are languages: a defined query surface plus a defined response shape, exposed through SDKs and APIs.
 
 ---
 
@@ -56,7 +58,7 @@ This is the same architectural shape GIGI already uses for the **Kähler-upgrade
 
 - **GIGI Lang is not a general-purpose programming language.** No loops, no conditionals, no user-defined functions. It's a query interface plus a translation layer.
 - **GIGI Lang is not Marcella.** Marcella is one specific intelligence built on this stack — a *consumer* of GIGI Lang, not part of it. GIGI Lang contains no agent-specific prompts, history, or behavior.
-- **GIGI Lang does not replace GraphQL.** GIGI's GQL stays the authoritative structured query layer. GIGI Lang adds the prompt-translation surface on top.
+- **GIGI Lang does not replace GIGI's GQL.** The existing GIGI Query Language remains the authoritative structured query layer; GIGI Lang adds the prompt-translation surface on top of it.
 - **GIGI Lang does not include the language model that does the translation.** The translation layer may delegate to Claude, another LLM, or a Davis-Geometric-specific model. The spec defines the *contract;* the choice of translator is an implementation decision.
 - **The math is out of scope for this spec.** Davis Field Equation, fiber bundle structure, geometric primitives — these are GIGI's internals. This spec describes the *language layer* on top, and assumes the math works.
 
@@ -157,11 +159,11 @@ response = client.ask("show me the 10 nearest cities to Tokyo")
 
 # Mid-level: inspect the generated GQL before executing
 gql = client.translate("show me the 10 nearest cities to Tokyo")
-print(gql)
+print(gql)  # e.g., "COVER cities ORDER BY distance_to('Tokyo') LIMIT 10"
 response = client.execute(gql)
 
-# Low-level: write GQL directly
-response = client.query("{ cities(near: \"Tokyo\", limit: 10) { name } }")
+# Low-level: write GIGI Query Language directly
+response = client.query("COVER cities WHERE population > 1000000 LIMIT 10")
 ```
 
 ### 6.2 MCP Tool (for Claude and other LLM clients)
@@ -174,52 +176,57 @@ Standard REST surface plus a GraphQL endpoint. The prompt-translation endpoint a
 ```
 gigi ask "show me the 10 nearest cities to Tokyo"
 gigi translate "show me the 10 nearest cities to Tokyo"   # GQL only
-gigi query '{ cities(near: "Tokyo", limit: 10) { name } }'
-gigi schema                                                 # introspect
+gigi query "COVER cities WHERE population > 1000000 LIMIT 10"
+gigi schema cities                                          # per-bundle schema
+gigi bundles                                                # list bundles
 ```
 
 ---
 
 ## 7. Examples
 
+> **Examples below use illustrative GIGI Query Language syntax.** Exact syntax is defined by the GIGI parser; what's shown here is shape, not contract. See `client.gql()` examples in the GIGI Python SDK for canonical syntax.
+
 ### Example 1 — Simple lookup
 **Prompt:** *"what's the population of Tokyo?"*
 
-**Implied GQL:**
-```graphql
-{ city(name: "Tokyo") { population } }
+**Implied GQL (illustrative):**
+```sql
+COVER cities WHERE city = 'Tokyo'
 ```
 
 **Response (DHOOM):**
 ```
-city{name, population}:
-Tokyo, 35676000
+cities{city, lat, lng, population, ...}:
+Tokyo, 35.685, 139.7514, 35676000, ...
 ```
 
 ### Example 2 — Geometric / relational query
 **Prompt:** *"show me city pairs within 500km of each other"*
 
-**Implied GQL:**
-```graphql
-{ cityPairs(maxDistanceKm: 500) { from, to, distanceKm } }
+**Implied GQL (illustrative):**
+```sql
+COVER city_pairs WHERE distance_km < 500
 ```
 
 **Response (DHOOM):**
 ```
-cityPairs{from, to, distanceKm}:
+city_pairs{from, to, distance_km}:
 Paris, London, 344
 ...
 ```
 
 ### Example 3 — Fiber-aware query
-**Prompt:** *"give me the manifold structure of the cities dataset"*
+**Prompt:** *"give me the schema and fiber structure of the cities dataset"*
 
-**Implied GQL:**
-```graphql
-{ dataset(name: "cities") { fiber { fields }, baseSpace, sections { count } } }
+**Implied GQL (illustrative):**
+```sql
+DESCRIBE cities WITH FIBER
 ```
 
-**Response:** carries the full fiber metadata as a DHOOM bundle, ready for downstream geometric tools (e.g., geomstats `load_gigi`).
+(or via the bundle-schema endpoint directly: `GET /v1/bundles/cities/schema` — see `GIGI_SCHEMA_INTROSPECTION_SPEC.md`)
+
+**Response:** carries the full per-bundle schema (base fields, fiber fields, indexed fields) as a DHOOM bundle, ready for downstream geometric tools (e.g., geomstats `load_gigi`).
 
 ---
 
@@ -265,7 +272,7 @@ These aren't substrate questions; they're business / strategy decisions only Bee
 
 ## 9. Relationship to Other Davis Geometric Components
 
-- **GIGI:** GIGI Lang sits on top of GIGI's GraphQL surface. GIGI is the engine; GIGI Lang is the named user-facing language.
+- **GIGI:** GIGI Lang sits on top of GIGI's GIGI Query Language (GQL) surface. GIGI is the engine; GIGI Lang is the named user-facing language layer that translates prompts into GQL.
 - **DHOOM:** DHOOM is the default wire format for fiber-shaped responses. GIGI Lang assumes DHOOM availability; falling back to JSON is supported.
 - **Marcella:** Marcella consumes GIGI Lang as her interface to the GIGI substrate. Marcella is a *user* of GIGI Lang, not a component of it.
 - **DGP (the graphene chip):** when DGP exists, GIGI's execution layer runs on it natively. GIGI Lang's spec is unchanged; only the implementation under it gets faster.
@@ -276,7 +283,7 @@ These aren't substrate questions; they're business / strategy decisions only Bee
 
 ## 10. References
 
-- GIGI's existing GraphQL surface: internal docs; public surface TBD per prerequisite P3 in the davis-contributions master plan
+- GIGI's existing GQL (GIGI Query Language) surface: defined by the GIGI server; client surface via `GigiClient.gql()` in `sdk/python/gigi/client.py`. Public documentation TBD per prerequisite P3 in the davis-contributions master plan.
 - DHOOM specification, v0.5: https://dhoom.dev
 - The Davis Field Equation C = τ/K and the broader framework: davisgeometric.com + Zenodo papers cited in *The Geometry of Flight* (Davis 2026, ISBN 979-8-1983-7541-3)
 - Cross-venue contribution plan: `~/Documents/davis-contributions/MASTER_PLAN.md`

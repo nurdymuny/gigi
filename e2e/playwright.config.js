@@ -18,4 +18,19 @@ export default defineConfig({
     // Switch to headless: true for CI
     headless: true,
   },
+
+  // Auto-start dev servers for tests that need them.
+  // gigi-stream is NOT started here — Rust binary, user runs it manually.
+  // Sheets is a Vite dev server we can boot on demand. reuseExistingServer
+  // keeps it cheap if you already have `npm run dev` going.
+  webServer: [
+    {
+      command: 'npm --prefix ../sheets run dev -- --no-open',
+      url: 'http://localhost:5177/gigi/sheets/',
+      reuseExistingServer: true,
+      timeout: 60_000,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  ],
 });

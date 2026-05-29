@@ -4,8 +4,7 @@
 %% Bee Rosa Davis · Davis Geometric · 2026
 %% Companion paper to the Kähler Substrate (Davis 2026).
 %% Patent reference: U.S. Provisional Application No. 64/045,889 (GIGI),
-%% with continuation-in-part covering v0.3 constructions to be filed
-%% before submission.
+%% with continuations-in-part covering v0.3 + v0.4 constructions.
 
 \documentclass[11pt,letterpaper]{article}
 \usepackage[utf8]{inputenc}
@@ -55,63 +54,33 @@ Davis Geometric, Sacramento, CA}
 \maketitle
 
 \begin{abstract}
-\noindent We introduce \emph{geometric encryption}, a property-preserving
-database-encryption framework in which the encryption acts on the
-fiber of a fiber-bundle data store. The action determines, by
-construction, which queries are computable on ciphertext: a query
-of arity $m$ is computable on ciphertext at native server speed
-with $O(\mathrm{poly}(m))$ closed-form client post-processing iff
-it is \emph{$\rho$-equivariant} under the structure group $G$ for
-some representation $\rho: G \to \mathrm{Aut}(\mathbb{R}^m)$. The
-$\rho = \mathrm{id}$ slice (gauge-invariant queries) needs no
-post-processing; the non-trivial slices --- SUM, AVG, MIN, MAX,
-VAR, STDDEV, RANGE on affine ciphertext --- are recovered by the
-client via a single closed-form $\rho_g^{-1}$ application. We propose a taxonomy of five encryption modes (Affine,
-Opaque, Indexed, Probabilistic, Isometric), each parameterized by its
-mathematical structure --- a fiber-automorphism group for the
-deterministic modes (Affine: $\mathrm{Aff}(\mathbb{R})^k$;
-Isometric: $O(k)$ on a grouped $k$-tuple), and a randomized or
-one-way structure map for the modes whose action is not a
-deterministic bijection (Opaque: AEAD-randomized; Indexed: PRF
-quotient; Probabilistic: $\mathrm{Aff}(\mathbb{R})$ with Gaussian-perturbed
-key). On top of the taxonomy we develop five higher-level
-constructions: Curvature-MAC bundle integrity,
-$\mathrm{Aff}(\mathbb{R})$ capability delegation, holonomy ledger,
-\v{C}ech threshold sharing, and a continuous RG-flow ratchet for
-per-write forward secrecy. A sixth construction --- a
-pairing-based collusion-resistant alternative to
-$\mathrm{Aff}(\mathbb{R})$ delegation, built on BLS12-381 with
-collusion resistance reducing to discrete log on $G_2$
-(${\sim}2^{128}$ work) --- ships alongside. All five shipping modes
-and six constructions are implemented in the public GIGI Rust
-codebase~\cite{gigi2026code} with $981+$ passing tests; an
-independent Python math-validation suite ($66$ tests, including
-the $66/66$ FHE / PQ parity rigor oracle that proves the
-order-statistic Probabilistic-bias caveat) confirms every
-shipped mathematical claim from a second implementation path. We
-document one resolved floating-point design issue: the v0.3.0 draft
-included Davis capacity $\tau / K$ in the integrity-tag input, which
-amplified $K$'s relative drift through the division and required a
-$10^{-6}$ quantization grain to absorb. The v0.3.1 design replaces
-the capacity slot with the record-count $\tau$ (an exact $u64$) and
-tightens the f64 quantization grain to $10^{-10}$. Three further
-constructions (geodesic-ball ABE, spectral-signature ZKP,
-lattice-fiber post-quantum gauge) are stated as derived but with
-reference implementation deferred to a successor paper. The
-$\mathrm{Aff}(\mathbb{R})$ delegation construction is explicitly
-\emph{not} collusion-resistant proxy re-encryption in the
-Ateniese--Hohenberger sense; this is a fundamental consequence of
-additive arithmetic, documented as a tested limitation alongside the
-collusion-resistant pairing alternative. \emph{Draft status}: this
-paper is v0.1 and presents \S\S 1--3 (introduction, background,
-gauge-invariance framework). \S\S 4--14 (full mode taxonomy,
-constructions, evaluation) are in active draft; the test counts and
-performance numbers above are reproducible from the public
-repository today.
+\noindent We introduce \emph{geometric encryption}, a
+property-preserving database-encryption framework in which
+encryption is modeled as a gauge action on the fibers of a
+fiber-bundle data store. The central theorem characterizes the
+ciphertext-computable query class: a query is computable on
+encrypted data at native server speed with closed-form client
+post-processing iff its answer space carries an efficiently
+invertible action $\rho_g$ compatible with the gauge. The
+gauge-invariant slice (curvature, spectral gap, Betti numbers,
+mean holonomy) requires no post-processing; the non-trivial
+equivariant slice --- the twelve standard analytical-SQL
+aggregates on affine ciphertext --- admits closed-form client
+recovery from a single ciphertext-side server computation. We
+instantiate the framework with five encryption modes (Affine,
+Opaque, Indexed, Probabilistic, Isometric) and provide an
+explicit per-mode leakage profile graded by the Chase--Kamara
+structured-encryption taxonomy. A reference implementation in
+Rust ($1000+$ passing tests) and an independent Python
+math-validation suite ($68+$ tests across three oracle files)
+confirm the algebraic invariance claims; the higher-level
+cryptographic constructions, the per-mode security analyses, and
+the empirical evaluation are developed in a companion preprint.
 \end{abstract}
 
+\newpage
 \tableofcontents
-\bigskip
+\newpage
 
 
 %% ==================================================================
@@ -122,10 +91,14 @@ repository today.
 \subsection{The compute-on-ciphertext problem}
 \label{sec:intro:problem}
 
-Three decades after Rivest, Adleman, and Dertouzos posed it
-in 1978, the question ``how do we compute on encrypted data?'' remains
-the central tension of database confidentiality. The dominant answers
-cluster into two families with sharp trade-offs:
+Every database in production today asks its operators to choose
+between confidentiality and computation. Encrypt the data and you
+cannot query it without first decrypting on a privileged node; query
+it natively and you have surrendered confidentiality to whoever
+controls that node. Three decades after Rivest, Adleman, and
+Dertouzos asked whether the choice was forced~\cite{gentry2009fhe},
+the dominant answers cluster into two families with sharp
+trade-offs:
 
 \begin{enumerate}[nosep]
 \item \textbf{Fully homomorphic encryption} (Gentry 2009 and
@@ -158,8 +131,140 @@ in \S\ref{sec:gauge-invariance} is the database-runtime
 instantiation of the same idea, with the structure group of the
 encryption playing the role of the policy.
 
+\emph{In this paper, we propose \textbf{geometric encryption} --- a
+framework in which the choice of encryption mode and the choice of
+ciphertext-computable query class are two views of the same
+mathematical object: the structure group $G$ acting on the bundle's
+fiber. The framework recovers several standard
+property-preserving patterns --- order, equality, distance, and
+selected aggregate computation --- as instances of a single
+equivariance principle (Theorem~\ref{thm:equivariance}) and
+adds, beyond them, a large new equivariant query class on which
+any computation runs at native server speed without ever
+decrypting.}
+
+Table~\ref{tab:landscape} situates GIGI Encrypt against the
+families above on the six dimensions that matter for a database
+workload. The pattern: every prior family fixes one cell of the
+trade-off (FHE buys universality at $10^3$--$10^5\times$ cost; TDE
+buys speed by decrypting; OPE / SSE / Functional / Structured /
+PP-Blueprints each preserve one chosen property). GIGI is the only
+row that combines a \emph{large} query class on ciphertext, native
+server speed, forward secrecy at rest, and post-quantum readiness
+in a single construction --- and the only row that derives the
+preserved query class from a uniform mathematical reason
+(Theorem~\ref{thm:equivariance}) rather than a per-property
+construction.
+
+\begin{table}[p]
+\centering
+\vspace*{\fill}
+\caption{The compute-on-ciphertext landscape and where GIGI
+Encrypt sits. ``Query class on ciphertext'' is the surface the
+server can evaluate without decryption. ``Overhead'' is the
+per-query server cost relative to a plaintext index of the same
+shape. ``Forward secrecy at rest'' means a future key compromise
+cannot recover historical plaintext from a stored snapshot
+(a stronger property than operational key-rotation). The pattern
+across rows: every prior family fixes one cell of the trade-off
+(FHE buys universality at $10^3$--$10^5\times$ cost; TDE buys
+speed by decrypting; OPE / SSE / Functional / Structured /
+PP-Blueprints each preserve one chosen property). GIGI is the
+only row that combines a \emph{large} query class on ciphertext,
+native server speed, forward secrecy at rest, and post-quantum
+readiness in a single construction.}
+\label{tab:landscape}
+\vspace{1.5em}
+
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{4.1cm}>{\raggedright\arraybackslash}p{1.4cm}>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{1.6cm}}
+\toprule
+\textbf{Approach} & \textbf{Query class on ciphertext} & \textbf{Overhead} & \textbf{Leakage profile} & \textbf{Forward secrecy} & \textbf{PQ-ready?} \\
+\midrule
+TDE (Oracle, AWS RDS, MongoDB CSFLE)
+  & None: decrypts before every query
+  & $1\times$
+  & At-rest only; plaintext on the hot path
+  & Op.\ key-rotation
+  & AES yes; RSA wrap no \\
+\addlinespace
+FHE~\cite{gentry2009fhe,bgv2012,ckks2017}
+  & Arbitrary polynomial circuits
+  & $10^3$--$10^5\times$
+  & IND-CPA
+  & None
+  & Yes (LWE) \\
+\addlinespace
+OPE~\cite{boldyreva2009ope,popa2011cryptdb}
+  & Range / order on one field
+  & ${\sim}1\times$
+  & Order leaked
+  & None
+  & Classical \\
+\addlinespace
+SSE~\cite{curtmola2006sse}
+  & Equality search on indexed fields
+  & ${\sim}1\times$
+  & Query / access-pattern leakage
+  & None
+  & Mostly classical \\
+\addlinespace
+Structured Enc.~\cite{chase2010structured}
+  & Predefined structured queries
+  & ${\sim}1\times$
+  & Per-construction $\mathcal{L}$
+  & None
+  & Per-scheme \\
+\addlinespace
+Functional Enc.~\cite{boneh2011fe}
+  & One chosen function class per key
+  & High setup, native eval
+  & IND-CPA
+  & None
+  & Yes (LWE) \\
+\addlinespace
+PPE~\cite{pandey2012ppe}
+  & Predefined predicate per scheme
+  & ${\sim}1\times$
+  & Predicate-specific leakage
+  & None
+  & Per-scheme \\
+\addlinespace
+PP Blueprints~\cite{kohlweiss2023blueprints}
+  & ZK proofs of policy on commitments (not a DB runtime)
+  & Verifier $O(1)$
+  & Selective disclosure under CL / BBS+
+  & N/A
+  & Yes (lattice BBS+) \\
+\midrule
+\textbf{GIGI Encrypt} (this work)
+  & \textbf{Invariant ring $\mathcal{I}_G$ + $\rho$-equivariant aggregates (Thm.~\ref{thm:equivariance})}
+  & \textbf{Native}
+  & \textbf{Per-mode; IND-CPA on OPAQUE}
+  & \textbf{Dual-seed + RG ratchet}
+  & \textbf{Yes (AES, ML-KEM)} \\
+\bottomrule
+\end{tabular}
+\vspace*{\fill}
+\end{table}
+
 \subsection{The geometric move}
 \label{sec:intro:geometric}
+
+Consider a research hospital shipping de-identified patient records
+to an external statistics lab for population-level analytics ---
+disease prevalence, treatment-response curves, drug-interaction
+warnings. Today the hospital encrypts the records at rest with
+TDE; when the lab requests a query, a privileged node decrypts the
+relevant columns, computes the answer, and ships it back. The lab
+gets a number. The privileged operator sees every record. The
+cryptographic primitive that lets the lab compute population-level
+statistics without anyone, anywhere, holding decrypted patient
+data has remained a long-standing target of property-preserving database
+encryption for two decades. The geometric move is the observation
+that the framework's analytics already \emph{are} that primitive
+--- if the database is presented as a fiber bundle.
 
 The Davis framework~\cite{davis2026sheafcomposition,davis2026manifold}
 represents a database as sections of a fiber bundle
@@ -182,29 +287,49 @@ An attacker who sees only the gauged data cannot recover plaintext
 decryption privilege --- can compute any $G$-invariant function on the
 gauged data and get the same answer as on plaintext.
 
-The encryption is not a layer bolted onto the database. \textbf{The
-geometry is the encryption.}
+The encryption is not a layer bolted onto the database; it is a
+gauge action on the same geometric object the engine already
+uses for its analytics. \textbf{The geometry is the encryption.}
 
 \subsection{What this paper adds}
 \label{sec:intro:adds}
 
 \begin{enumerate}[nosep]
-\item \textbf{A closed taxonomy} of five encryption modes (Affine,
-  Opaque, Indexed, Probabilistic, Isometric) keyed by their structure
-  groups. Each row of the taxonomy is a triple (structure group $G$,
-  AEAD/PRF primitive, query class preserved).
-\item \textbf{Six higher-level constructions} built on the taxonomy
-  (five in the main path plus a pairing-based collusion-resistant
-  delegation alternative):
-  Curvature-MAC bundle integrity, $\mathrm{Aff}(\mathbb{R})$ capability
-  delegation, holonomy ledger (Merkle audit log), \v{C}ech threshold
-  sharing, continuous RG-flow ratchet.
-\item \textbf{A reference implementation} in the public GIGI Rust
-  codebase~\cite{gigi2026code}, with TDD test surface ($826+$ passing
-  tests) backing every claim. Each math primitive ships with both Rust
-  integration tests and Python math-validation mirrors.
-\item \textbf{Honest scope statements} for each construction's
-  threat model. $\mathrm{Aff}(\mathbb{R})$ capability delegation
+\item \textbf{We give a closed taxonomy} of five encryption modes
+  (Affine, Opaque, Indexed, Probabilistic, Isometric) keyed by their
+  structure groups. Each row of the taxonomy is a triple (structure
+  group $G$, AEAD/PRF primitive, query class preserved).
+\item \textbf{We provide eight v0.3 cryptographic constructions}:
+  Curvature-MAC bundle integrity (Sprint~I), capability delegation
+  with four interoperable modes
+  ($\mathrm{Aff}(\mathbb{R})$ algebraic, Sprint~J;
+  BLS12-381 pairing-based, Sprint~J.2;
+  ML-KEM-768 trusted-delegatee, Sprint~J.3;
+  lattice threshold, Sprint~J.4),
+  the holonomy ledger (Sprint~K, RFC 6962 Merkle audit log),
+  \v{C}ech threshold sharing (Sprint~L), and a continuous RG-flow
+  ratchet for per-write forward secrecy (Sprint~M).
+\item \textbf{We provide four v0.4 cryptographic constructions}:
+  public deterministic verification of the invariant fingerprint
+  $\pi_{\mathrm{inv}}$ from ciphertext alone, with no gauge key
+  given to the verifier (Sprint~N);
+  HMAC-bound credential-gated invariant queries with a runtime
+  falsification harness that re-evaluates ad-hoc query callbacks
+  under five random gauges and rejects anything not in the
+  invariant ring $\mathcal{I}_{\mathrm{Aff}}$ (Sprint~O);
+  a geodesic-ball membership index with dimension-aware
+  $\chi^2(k, 1-\alpha)$ threshold and per-field-gauge ellipsoidal
+  variant (Sprint~P); and a characterization of the
+  $K$-preserving transformation group as the diagonal-affine
+  semidirect product $G_{\mathrm{AffK}} = (\mathbb{R}^*)^k \ltimes
+  \mathbb{R}^k$ (Sprint~Q).
+\item \textbf{We provide a reference implementation}: the public
+  GIGI Rust codebase~\cite{gigi2026code} carries a TDD test
+  surface ($1000+$ passing tests), with each math primitive
+  backed by both a Rust integration test and an independent
+  Python math-validation mirror.
+\item \textbf{We document the honest scope statements} for each
+  construction's threat model. $\mathrm{Aff}(\mathbb{R})$ capability delegation
   (\S 6) is \emph{not} collusion-resistant PRE in the
   Ateniese--Hohenberger sense~\cite{ateniese2005pre,libert2008pre} ---
   a fundamental consequence of additive arithmetic. The
@@ -215,163 +340,160 @@ geometry is the encryption.}
   being honest \emph{and} the delegatee's key remaining
   uncompromised; a key-leak in the delegatee compounds with a
   capability leak to immediately expose the delegator.
-\item For deployments where this combined-trust model is too
-  strong, we ship a pairing-based \emph{collusion-resistant
-  key-delegation} primitive in
-  \texttt{src/pairing\_delegation.rs}~\cite{gigi2026code} (related
-  in spirit to the production PRE of
-  Umbral~\cite{nunez2018umbral} but simpler in shape). The
+\item For deployments where Alice wants to delegate decryption to
+  a specific Bob without ever exposing $sk_A$ in plaintext, we
+  provide a pairing-based \emph{bearer-capability delegation}
+  primitive in
+  \texttt{src/pairing\_delegation.rs}~\cite{gigi2026code}, related
+  in spirit to Umbral-style PRE constructions like
+  Umbral~\cite{nunez2018umbral} but simpler in shape. The
   construction is conceptually adjacent to two decades of
   anonymous-credential delegation work originating with the CL
-  signature scheme~\cite{camenisch2004clsigs} and continuing through
-  mercurial signatures~\cite{camenisch2019mercurial,
-  garman2024mercurial}; we deliver the database-record-access
-  analogue of what those constructions deliver at the credential
-  layer. Construction:
-  BLS12-381 keypairs $sk \in \mathbb{F}_p$, $pk = g_2^{sk} \in G_2$;
-  KEM capsule $C_1 = g_1^r \in G_1$; delegation capability
-  $rk_{A \to B} = pk_B^{1/sk_A} = g_2^{sk_B / sk_A} \in G_2$. We
-  emphasize \emph{this is not strict proxy re-encryption}: the
-  proxy holds $rk$ and forwards it but plays no cryptographic
-  role; the delegatee applies the capability themselves via
-  pairing,
+  signature scheme~\cite{camenisch2004clsigs} and continuing
+  through mercurial
+  signatures~\cite{camenisch2019mercurial, garman2024mercurial};
+  we deliver a database-record-access analogue at the storage
+  layer. Construction: BLS12-381 keypairs $sk \in \mathbb{F}_p$,
+  $pk = g_2^{sk} \in G_2$; KEM capsule $C_1 = g_1^r \in G_1$;
+  delegation capability
+  $rk_{A \to B} = pk_B^{1/sk_A} = g_2^{sk_B / sk_A} \in G_2$. To
+  decrypt a capsule, the bearer of $rk$ computes
   \[
   K_{\mathrm{shared}} \;=\; e(C_1,\, rk_{A \to B})
-                       \;=\; e(g_1, g_2)^{r \cdot sk_B / sk_A}.
+                       \;=\; e(g_1, g_2)^{r \cdot sk_B / sk_A},
   \]
-  Alice arrives at the same $K_{\mathrm{shared}}$ via her own
-  side-computation (she knows $sk_A$ and $pk_B$, so she can
-  construct $rk$ and apply the pairing herself). The two parties'
-  AEAD keys are derived from the same $K_{\mathrm{shared}}$ via
-  HKDF-SHA256, enabling sender-receiver agreement. The full
-  Ateniese--Hohenberger AHP construction with a separate
-  $g_1^r$-bound commitment encrypted under the delegatee's pubkey
-  --- which would make the proxy's operation cryptographic in the
-  strict sense --- is left to a v0.4 refinement.
+  and derives an AEAD key from $K_{\mathrm{shared}}$ via
+  HKDF-SHA256. Alice can derive the same $K_{\mathrm{shared}}$
+  herself from $sk_A$ and $pk_B$ without materializing $rk$,
+  enabling sender--receiver agreement.
   \par
   \par
-  \textbf{Security (informal statement; full proof in \S 6).}
-  Let $\mathcal{A}$ be a PPT adversary in the trusted-delegatee
-  model given the public parameters $(G_1, G_2, G_T, e, g_1, g_2)$
-  for BLS12-381, Alice's public key
-  $pk_A = g_2^{sk_A}$, the delegation capability
-  $rk_{A \to B} = g_2^{sk_B / sk_A}$, the KEM capsule $C_1 = g_1^r$
-  for an honestly-sampled $r \in \mathbb{F}_p$, and oracle access
-  to all algorithms on non-challenge inputs. Then $\mathcal{A}$'s
-  distinguishing advantage against the delegated-KEM shared key
-  $K_{\mathrm{shared}} = e(g_1, g_2)^{r \cdot sk_B / sk_A} \in G_T$
-  reduces to the \emph{Bilinear Diffie--Hellman} (BDH) assumption
-  on BLS12-381:
-  \[
-  \mathrm{Adv}^{\mathrm{deleg\text{-}KEM}}_{\mathcal{A}}
-  \;\leq\;
-  \mathrm{Adv}^{\mathrm{BDH}}_{\mathcal{B}},
-  \]
-  for a constructed PPT $\mathcal{B}$ running in the same time as
-  $\mathcal{A}$. Reduction sketch: embed the BDH challenge
-  $(g_1, g_1^a, g_1^b, g_2, g_2^a, g_2^b)$ by setting
-  $C_1 = g_1^a$ and $rk_{A \to B} = g_2^b$ (implicit
-  $r = a$, $sk_B / sk_A = b$); then $K_{\mathrm{shared}}
-  = e(g_1, g_2)^{ab}$ is exactly the BDH target. The
-  \emph{collusion} case (delegatee $\cup$ proxy) reduces to DLP
-  on $G_2$: the coalition computes
-  $rk^{1/sk_B} = g_2^{1/sk_A} \in G_2$, and recovering
-  $sk_A \in \mathbb{F}_p$ from $g_2^{1/sk_A}$ requires solving the
-  discrete logarithm on $G_2$, hard at $\sim 2^{128}$ work in
-  BLS12-381. Forging $K_{\mathrm{shared}}$ for a fresh capsule
-  $C_1' = g_1^{r'}$ unseen by the coalition reduces to DLP on
-  $G_1$ (recovering $r'$) or to BDH (computing the pairing
-  output directly). The construction therefore upgrades the
-  Aff$(\mathbb{R})$ algebraic-recovery attack (constant-time) to
-  a computational-hardness floor under BDH (passive adversary)
-  and DLP (active collusion). Both constructions share the paper,
-  with \S 6 documenting the Aff$(\mathbb{R})$ trusted-delegatee
-  model and the pairing construction's BDH-hardness theorem
-  side-by-side; the formal theorem statement and complete
-  reduction live in \S 6.
+  \textbf{Scope of the security claim.} This construction provides
+  \emph{$rk$-unforgeability without $sk_A$}: an adversary holding
+  the public parameters $(G_1, G_2, G_T, e, g_1, g_2, pk_A, pk_B)$
+  but \emph{not} $rk_{A \to B}$ cannot derive a valid delegation
+  token. Constructing $rk = g_2^{sk_B / sk_A}$ from
+  $(pk_A, pk_B)$ alone is an exponent-ratio problem in $G_2$
+  --- given $(g^a, g^b)$, compute $g^{b/a}$ --- closely related
+  to the inverse Diffie--Hellman family. It is efficiently
+  solvable given discrete logarithms (hard at ${\sim}2^{128}$
+  work in BLS12-381) and is plausibly hard in the generic group
+  model, but we do not establish a reduction in either direction
+  here; we treat it as a bearer-capability hardness assumption
+  rather than a full PRE security proof. We emphasize
+  \emph{this is not} strict collusion-resistant proxy
+  re-encryption in the Ateniese--Hohenberger
+  sense~\cite{ateniese2005pre,libert2008pre}: $rk$ is a bearer
+  capability, and a coalition that holds both $rk$ and any
+  visible capsule $C_1$ derives $K_{\mathrm{shared}}$ directly
+  via the public pairing, with no additional hardness assumption
+  needed. The appropriate threat model is therefore
+  honest-delegatee: Alice transmits $rk$ to Bob through a
+  \emph{confidential and authenticated} channel (authentication
+  alone is insufficient because anyone who observes $rk$ can use
+  it), and the security perimeter is the set of parties Bob
+  (and any proxy he chooses) intentionally shares $rk$ with. The full Ateniese--Hohenberger AHP construction
+  with a separate $g_1^r$-bound commitment encrypted under Bob's
+  public key --- which would bind capsule-use to $sk_B$ and
+  achieve collusion-resistance against the (proxy~$\cup$~$rk$)
+  coalition --- is the open successor construction; we discuss
+  the design space in the companion preprint (\S 6) alongside the
+  ML-KEM trusted-delegatee mode below and the lattice threshold
+  construction that achieves true information-theoretic
+  collusion-resistance in the multi-party setting.
 \item \textbf{Three derived-but-unimplemented constructions}
-  (geodesic-ball ABE, spectral-signature ZKP, lattice-fiber PQ gauge)
-  with security arguments, deferred to a v0.4 successor paper. The
-  Davis-Manifold pattern: publish the construction, defer the production
-  implementation until peer review of the construction.
+  (spectral-signature ZKP, lattice-fiber PQ gauge, full
+  Sigma-protocol upgrade of the deterministic verifier) with
+  security arguments, deferred to a successor preprint pending
+  peer review of the construction.
 \end{enumerate}
 
 \subsection{Scope: what this paper is and is not}
 \label{sec:intro:not}
 
-\paragraph{Relation to FHE.}
-GIGI is a different point on the Pareto frontier from fully
-homomorphic encryption~\cite{gentry2009fhe,bgv2012,ckks2017}. FHE
-achieves arbitrary-function evaluation on ciphertext at
-$10^3$--$10^5\times$ overhead; GIGI achieves a large
-\emph{gauge-equivariant} query class at native speed via $O(1)$
-client-side post-processing per query. Concretely, the
-gauge-equivariant class shipped in v0.3 (\texttt{src/aggregate\_helpers.rs})
-covers:
-\begin{quote}
-\sloppy
-COUNT, SUM, AVG, MIN, MAX, VARIANCE, STDDEV, RANGE, any polynomial
-combination of these, GROUP BY with these aggregates, HAVING on
-aggregate predicates, range queries via literal-transform, equality
-search (via INDEXED mode), distance / k-NN (via ISOMETRIC mode),
-$\sigma$-bucket approximate equality (via PROBABILISTIC mode).
-\end{quote}
-The pattern: server computes $f(\text{ciphertext}) = h(f(\text{plaintext}), g)$
-for closed-form $h$; client applies $h^{-1}$ to a single scalar.
-The record set never leaves ciphertext form on the server.
+\paragraph{Affine aggregate coverage.}
+Geometric encryption achieves plaintext-exact, native-speed
+recovery for the standard analytical-SQL aggregate class on
+ciphertext: COUNT, SUM, AVG, VAR, STDDEV, MIN, MAX, RANGE, MEDIAN,
+QUANTILE, ARGMIN, ARGMAX --- twelve aggregate operators --- plus
+any polynomial combination of these and GROUP BY / HAVING over
+them. The server evaluates the aggregate directly on ciphertext;
+the client recovers the plaintext result via a single closed-form
+$\rho_g^{-1}$ application per query, at cost $O(\mathrm{poly}(m))$
+in the answer dimension $m$ and independent of the record count.
+The record set never leaves ciphertext form on the server. This is
+the surface on which the framework covers a complementary
+aggregate class at native database cost under an explicit
+leakage profile (\S\ref{sec:gauge-invariance:examples}), in
+contrast with fully homomorphic
+encryption~\cite{gentry2009fhe,bgv2012,ckks2017}, which targets
+arbitrary-function evaluation at $10^3$ to $10^5\times$ overhead
+under bounded-depth and ciphertext-blow-up restrictions. Range queries (via
+literal-transform on Affine), equality search (via INDEXED's
+deterministic PRF), distance and $k$-NN (via ISOMETRIC's
+orthogonal action on grouped numeric fields), and $\sigma$-bucket
+approximate equality (via PROBABILISTIC plus the Davis Identity
+$S + d^2 = 1$, which makes equality on the noised representation
+a distance check) sit alongside the aggregates and round out the
+implemented query surface.
 
-\paragraph{Caveat: order statistics under Probabilistic mode.}
-The claim above is \emph{plaintext-exact} for COUNT, SUM, AVG, VAR,
-STDDEV under both Affine and Probabilistic modes (verified in
-\texttt{tests/fhe\_pq\_parity\_rigor.rs} \S\,A.1--A.3 and
-\texttt{validation\_tests\_fhe\_pq\_rigor.py} \S\,A.1--A.3), and for
-MIN, MAX, RANGE under Affine mode. \emph{Under Probabilistic mode with
-$\sigma > 0$, MIN, MAX, RANGE are biased}: order statistics do not
-commute with additive Gaussian noise. The naïve closed-form inverse
-$(f_{\text{cipher}} - b) / a$ overshoots by
-$\Theta(\sigma \sqrt{2 \log n} / |a|)$ in expectation
-(sub-Gaussian extreme-value bound), and the bias does \emph{not}
-vanish as $n \to \infty$. The shipped helpers
-\texttt{decrypt\_min}, \texttt{decrypt\_max}, \texttt{decrypt\_range}
-return \texttt{BiasedUnderProbabilisticNoise} when $\sigma > 0$;
-callers who accept the bias for coarse bounds use the explicit
-\texttt{*\_unchecked} variants. Bias detectability is locked in by
-\texttt{tests/fhe\_pq\_parity\_rigor.rs::a4\_*\_is\_biased\_*} and the
-Python oracle \S\,A.4. Practical mitigations: (i) use VAR + mean for
-spread queries (VAR \emph{is} bias-correctable via $\sigma^2$
-subtraction); (ii) switch the column to Affine mode (set $\sigma = 0$)
-for exact MIN/MAX; (iii) pair GIGI with FHE on the specific column
-when exact encrypted-side extremes under noise are required.
-
-The genuine FHE-only territory is narrow: encrypted-side
-conditionals whose branch depends on encrypted predicates,
-non-polynomial functions of fiber values (transcendentals,
-neural-network activations), and reductions whose intermediate
-values must stay encrypted (median, $\arg\max$). For these we
-recommend pairing GIGI with an FHE layer on the specific columns
-that need them, rather than wrapping the entire database in FHE.
+\paragraph{Where FHE still wins.}
+Three regions remain genuine FHE-only territory:
+(a)~encrypted-side conditionals whose branch depends on encrypted
+predicates; (b)~non-polynomial functions of fiber values
+(transcendentals, neural-network activations);
+(c)~reductions over randomized ciphertexts whose intermediate
+values must remain encrypted under noise --- order statistics on
+PROBABILISTIC columns ($\sigma > 0$) are the canonical case, since
+extreme values do not commute with additive Gaussian noise.
+PROBABILISTIC's role is to trade exact order statistics for
+statistical unlinkability under chosen-plaintext attack; the trade
+is by design, not a limitation, and the implemented
+order-statistic helpers refuse with a typed error on PROBABILISTIC columns rather
+than silently return a biased value. Applications needing exact
+extremes under noise either set the column to Affine ($\sigma = 0$)
+or pair GIGI with FHE on the one column that needs it. The
+recommended pattern is per-column FHE rather than wrapping the
+entire database in FHE.
 
 \paragraph{Confidentiality scope.}
-The framework provides \emph{selective compute on encrypted data}.
-For confidentiality of individual record values --- ensuring an
-attacker who reads the database file cannot recover plaintext ---
-the OPAQUE mode (AES-256-GCM-SIV) is the appropriate primitive,
-applied to columns containing sensitive values. The
-gauge-equivariant modes (Affine, Probabilistic, Isometric) are
-not chosen-plaintext-attack secure on their own; in deployments
-where an attacker may obtain plaintext--ciphertext pairs, use
-OPAQUE for those columns.
+The five encryption modes target different confidentiality
+profiles, declared per-column at schema time. OPAQUE
+(AES-256-GCM-SIV, RFC 8452) provides full IND-CPA confidentiality
+on payload columns where no query surface is needed. INDEXED
+(deterministic PRF) preserves $O(1)$ equality search on ciphertext
+but leaks frequency by construction --- it is intended for
+high-cardinality columns (UUIDs, row keys, 64-bit IDs);
+low-cardinality categoricals must use OPAQUE or PROBABILISTIC.
+PROBABILISTIC (Affine plus additive Gaussian noise) provides
+bounded statistical unlinkability against chosen-plaintext
+distinguishers (advantage scales with the schema-declared
+$\sigma$) combined with approximate $O(1)$ bucket equality:
+$\sigma$-resolution bucketing of the noised representation gives
+a deterministic equivalence relation on ciphertexts that
+approximates plaintext equality, with false-positive and
+false-negative rates at the bucket boundaries that depend on
+$\sigma$, the bucket width, and the field's value distribution
+(see \S\ref{sec:gauge-invariance:examples}). Affine and
+Isometric are deterministic and not IND-CPA secure on their own;
+in deployments where an attacker may obtain
+plaintext--ciphertext pairs, apply OPAQUE to those columns. Above
+the per-column profile, Sprint O credential-gated invariant
+queries authorize specific query classes at the API surface,
+refusing ad-hoc callbacks not in the invariant ring.
 
 \paragraph{Quantum security.}
-The taxonomy of shipped primitives by post-quantum status:
+The post-quantum status of the implemented primitives is
+summarized in Table~\ref{tab:pq}.
 
-\begin{center}
+\begin{table}[!htbp]
+\centering
 \small
 \begin{tabular}{p{4.5cm}p{6.5cm}c}
 \toprule
 \textbf{Primitive} & \textbf{Used for} & \textbf{PQ?} \\
 \midrule
-$\mathrm{Aff}(\mathbb{R})$, $\mathrm{Probabilistic}$, $O(k)$ & gauge modes (linear arithmetic, no algebraic hardness assumption) & \checkmark \\
+$\mathrm{Aff}(\mathbb{R})$, $\mathrm{Probabilistic}$, $E(k)$ & property-preserving gauge transforms (not standalone confidentiality primitives) & N/A \\
 AES-256-GCM-SIV & OPAQUE mode AEAD & \checkmark \\
 AES-256-CMAC & INDEXED mode PRF & \checkmark \\
 HMAC-SHA256 & Curvature-MAC, Čech share authentication & \checkmark \\
@@ -379,91 +501,90 @@ HKDF-SHA256 & integrity key derivation, ratchet chain & \checkmark \\
 SHA-256 & holonomy ledger Merkle leaves and internal nodes & \checkmark \\
 Shamir over secp256k1 base field $\mathbb{F}_p$ & Čech threshold sharing (we use the \emph{field}, not the curve group) & \checkmark \\
 ML-KEM-768 (FIPS 203) & PQ trusted-delegatee mode (Sprint J.3), threshold-PQ delegation envelopes (Sprint J.4) & \checkmark \\
-BLS12-381 pairings ($G_1, G_2, G_T$) & collusion-resistant delegation (Sprint J.2; pre-quantum, retained alongside the two PQ-safe delegation modes below) & $\times$ \\
+BLS12-381 pairings ($G_1, G_2, G_T$) & bearer-capability delegation (Sprint J.2; pre-quantum, retained alongside the two PQ-safe delegation modes below) & $\times$ \\
 \bottomrule
 \end{tabular}
-\end{center}
+\caption{Post-quantum status of the implemented cryptographic
+primitives. Gauge transforms are property-preserving
+representations, not standalone confidentiality primitives, so
+the PQ question does not apply to them directly.}
+\label{tab:pq}
+\end{table}
 
-Of the ten shipped primitive classes, nine are post-quantum
-acceptable at NIST Level 1 or higher (AES-256 family, SHA-256-based
-constructions, ML-KEM-768 at Level 3). The exception is the
-BLS12-381 pairing-based delegation, whose security reduces to BDH
-on $G_T$ and DLP on $G_2$ --- both broken by Shor's algorithm.
-\textbf{For deployments requiring post-quantum security
-across all delegation paths, v0.3 ships two PQ-safe alternatives}
-that together cover both threat models:
-\begin{itemize}[nosep]
-\item ML-KEM trusted-delegatee delegation (Sprint J.3, NIST Level 3
-  PQ under MLWE) --- single-party recipient, no collusion-resistance
-  claim; the analogue of the BLS12-381 mode under the PQ assumption.
-\item Lattice threshold delegation (Sprint J.4, Shamir K-of-N over
-  $\mathbb{F}_p$ composed with per-share ML-KEM transport).
-  Information-theoretic collusion-resistance against any
-  $K-1$-shareholder coalition (Shamir) composed with PQ transport
-  (MLWE) --- a \emph{strictly stronger} collusion-resistance
-  property than BLS12-381's computational DLP-based resistance, but
-  predicated on the multi-party deployment shape.
-\end{itemize}
-The pre-quantum BLS12-381 mode is retained for deployments that
-need (i) a single-party recipient and (ii) collusion-resistance
-under classical assumptions; PQ-safe single-party
-collusion-resistant delegation (lattice-PRE in the Kirshanova~2014
-sense) is the v0.4 deferred construction. Users select the mode
-matching their threat model.
+The gauge modes ($\mathrm{Aff}(\mathbb{R})$, Probabilistic,
+$E(k)$) are property-preserving representations rather than
+confidentiality primitives in their own right --- they do not
+provide IND-CPA hiding without being paired with a confidentiality
+primitive (typically OPAQUE on the sensitive columns), and the
+``PQ?'' question therefore does not apply to them directly.
+Seven of the eight cryptographic primitive classes are
+post-quantum acceptable at NIST Level 1 or higher: the AES-256
+family (OPAQUE + INDEXED), the SHA-256-based constructions
+(Curvature-MAC, Holonomy Ledger, HKDF ratchet, \v{C}ech share
+authentication), Shamir over the secp256k1 base field
+(\v{C}ech threshold sharing --- we use the \emph{field}, not the
+curve group), and ML-KEM-768 at NIST Level 3 under MLWE
+(FIPS 203). The exception is BLS12-381 pairing delegation
+(Sprint J.2), whose $rk$-unforgeability rests on an
+exponent-ratio hardness assumption in $G_2$ that is efficiently
+solvable given discrete logarithms --- broken by Shor's
+algorithm. Two PQ-safe
+delegation paths are implemented alongside it: ML-KEM trusted-delegatee
+(Sprint J.3, the PQ analogue of the BLS12-381 mode for single-party
+recipients), and lattice threshold (Sprint J.4, Shamir $K$-of-$N$
+composed with per-share ML-KEM transport, giving
+information-theoretic collusion-resistance against any
+$K{-}1$-shareholder coalition).
 
-The full post-quantum table: GIGI v0.3 ships PQ-safe primitives
-for confidentiality (OPAQUE), equality search (INDEXED),
-integrity (Curvature-MAC + Holonomy Ledger), key derivation
-(HKDF), threshold sharing (Čech), continuous forward secrecy
-(Sprint M ratchet via HKDF), and two flavors of delegation
-(ML-KEM trusted + lattice threshold).
-
-\paragraph{Threshold vs.\ pairing-PRE: trust-model dependence.}
-The lattice threshold construction (Sprint J.4) and the BLS12-381
-pairing PRE (Sprint J.2) are \emph{not} substitutable across all
-trust models; the right choice depends on the deployment:
+\paragraph{Delegation trust models.}
+The four delegation modes (Aff$(\mathbb{R})$ algebraic,
+BLS12-381 pairing, ML-KEM trusted, and lattice threshold) are
+not substitutable; the right choice depends on the deployment
+shape:
 
 \begin{itemize}[nosep,leftmargin=*]
 \item For \textbf{$K$-of-$N$ distributed delegation} (Alice
   delegates to a quorum), the lattice threshold construction is
-  strictly stronger than pairing PRE: it is post-quantum (ML-KEM-768
-  outer + Shamir over $\mathbb{F}_p$ inner) and any subset of size
-  $\leq K-1$ recovers \emph{information-theoretically zero} ---
-  exhaustively verified for $(K{=}3, N{=}5)$ across all $\binom{5}{2}
-  = 10$ collusion subsets in
-  \texttt{tests/fhe\_pq\_parity\_rigor.rs::b2\_*\_subset\_*}. This
-  is stronger than the DLP-on-$G_2$ hardness pairing PRE relies on,
-  and dominates pairing PRE on the multi-party axis.
-\item For \textbf{single-party delegation Alice $\to$ single Bob}
-  with delegatee-collusion resistance, the threshold construction
-  degenerates at $K = 1$ to plain ML-KEM trusted delegation: no
-  collusion-resistance beyond ``Bob is trusted.'' Pairing PRE, by
-  contrast, gives delegatee-vs-proxy collusion-resistance via
-  $\mathrm{DLP}_{G_2}$-hardness (Sprint J.2) at the cost of being
-  pre-quantum. True single-party post-quantum collusion-resistant
-  PRE (lattice-PRE in the Kirshanova~2014 / Aono--Hayashi~2017
-  sense) is the v0.4 deferred construction.
+  the only implemented path that achieves true collusion-resistance:
+  it is post-quantum and any subset of size $\leq K-1$ recovers
+  \emph{information-theoretically zero} from the inner Shamir
+  layer. Exhaustively verified for $(K{=}3, N{=}5)$ across all
+  $\binom{5}{2} = 10$ collusion subsets in the public test suite.
+\item For \textbf{single-party delegation Alice $\to$ Bob} (one
+  designated delegatee, no quorum), the three implemented paths ---
+  the Aff$(\mathbb{R})$ algebraic mode (Sprint J), the BLS12-381
+  pairing mode (Sprint J.2), and the ML-KEM-768 trusted-delegatee
+  mode (Sprint J.3) --- are all bearer-capability primitives: the
+  delegation token is unforgeable without Alice's secret key (the
+  hardness floor varies per mode), but once Bob holds the token
+  any party Bob shares it with can derive the shared key. None of
+  the three implemented single-party modes achieves
+  delegatee-vs-proxy collusion-resistance in the
+  Ateniese--Hohenberger sense. True single-party collusion-resistant
+  PRE --- whether classical (AHP with capsule--pubkey binding) or
+  post-quantum (lattice-PRE in the
+  Kirshanova--Aono-Hayashi sense) --- is the deferred construction
+  discussed in the companion preprint.
 \end{itemize}
 
-Therefore: \textbf{lattice threshold dominates pairing PRE on the
-quorum axis but does not replace it on the single-delegatee axis};
-both are shipped and users select per their trust model.
+All four delegation modes are implemented; users select per
+their trust model.
 
 \subsection{Roadmap}
 \label{sec:intro:roadmap}
 
 \S\ref{sec:background} reviews the prior canon --- three Davis
-manuscripts that this work extends --- plus the external math anchors.
-\S\ref{sec:gauge-invariance} states the gauge-equivariance
-theorem: a query is computable on encrypted data with at most
-$O(\mathrm{poly}(m))$ client-side post-processing iff it is
-$\rho$-equivariant under the structure group $G$ for some
-representation $\rho: G \to \mathrm{Aut}(\mathbb{R}^m)$. The
-invariant case ($\rho = \mathrm{id}$) is the no-post-processing
-slice. \S\S 4--9 (forthcoming) develop the five
-modes and six constructions in turn. \S 10 reports the empirical
-evaluation; \S 11 presents the three deferred constructions; \S 12
-surveys related work; \S 13 limits and future work; \S 14 conclusion.
+manuscripts that this work extends --- plus the external math
+anchors. \S\ref{sec:gauge-invariance} states and proves the
+gauge-equivariance theorem: a query
+$f: \Gamma(E) \to Y_f$ is computable on encrypted data with
+closed-form client post-processing iff it is $\rho$-equivariant
+under the structure group $G$ for some efficiently invertible
+action $\rho_g: Y_f \to Y_f$. The invariant case
+($\rho \equiv \mathrm{id}$) is the no-post-processing slice. The
+companion preprint develops the five modes and the higher-level
+constructions in turn, reports the empirical evaluation across
+the implemented suites, and presents the three deferred constructions.
 
 
 %% ==================================================================
@@ -474,27 +595,62 @@ surveys related work; \S 13 limits and future work; \S 14 conclusion.
 \subsection{Prior canon --- three Davis manuscripts}
 \label{sec:background:canon}
 
-This paper is the cryptographic application of two prior Davis
-substrates:
+This paper is the cryptographic application of three prior
+Davis works --- two geometric substrates (the Davis Manifold and
+the K\"ahler Substrate) plus the section-graph runtime
+(Sheaf Composition) on which both substrates execute:
 
 \paragraph{The Davis Manifold~\cite{davis2026manifold}.}
 A Riemannian substrate $(M, g, P, \varepsilon, \kappa_{\text{hard}},
-\kappa_{\text{soft}})$ for residue-bounded computation. The non-vacuity
-condition $\kappa_{\text{soft}} - 2R\varepsilon(L^*) > 0$ is the source
-of the Hadamard-detection invariant that Sprint M (continuous ratchet,
-\S 9) preserves under per-write gauge advance.
+\kappa_{\text{soft}})$ for \emph{residue-bounded computation}:
+$M$ is the manifold of admissible computational states, $g$ the
+metric measuring how far two states diverge, $P$ a transport
+operator, $\varepsilon$ the per-step error rate, and
+$\kappa_{\text{hard}}, \kappa_{\text{soft}}$ a pair of error
+budgets (hard = the absolute ceiling, soft = the regime in which
+the computation is still considered consistent). The substrate's
+load-bearing inequality, the \emph{non-vacuity condition}
+$\kappa_{\text{soft}} - 2R\varepsilon(L^*) > 0$, certifies that
+the soft budget exceeds twice the radius-times-Lipschitz error
+product; when it holds, $M$ admits Hadamard regions in which any
+two states are connected by a unique geodesic, and transport
+under bounded noise remains invertible. The continuous RG-flow
+ratchet of \S 9 advances the encryption gauge per write while
+preserving this Hadamard certification --- fine-resolution
+plaintext below the bin width is thermodynamically erased, but
+the runtime stays in the regime where gauge-invariant queries are
+still well-defined.
 
 \paragraph{The K\"ahler Substrate~\cite{davis2026kahlersubstrate}.}
-Extends $(M, g)$ to $(M, g, J, \nabla, B, \Gamma)$ --- a K\"ahler
-manifold with closed magnetic 2-form $B$ and discrete graph
-approximation $\Gamma$. The eight-layer catalog (L1--L8 plus
-extensions) provides the invariant ring (curvature, spectral gap,
-Davis capacity, mean holonomy, Betti numbers) that Sprint I
-(Curvature-MAC, \S 5) signs.
+Extends $(M, g)$ to a K\"ahler manifold
+$(M, g, J, \nabla, B, \Gamma)$: a complex structure $J$ satisfying
+$J^2 = -I$, a Levi-Civita connection $\nabla$, a closed magnetic
+2-form $B$ (the curvature of a line bundle over $M$, encoding
+the geometry's holonomic content), and a discrete graph
+approximation $\Gamma$ on which the continuous geometry is
+evaluated in practice. The eight-layer catalog (L1--L8 plus
+extensions) develops the gauge invariants this paper consumes:
+scalar curvature $K$, spectral gap $\lambda_1$, Davis capacity
+$C = \tau / K$, mean holonomy $\overline{\mathrm{Hol}}$, and the
+Betti numbers $\beta_0, \beta_1$ of the field-index bitmap graph.
+Together these form the six-component invariant fingerprint
+$\pi_{\mathrm{inv}} = (K, \lambda_1, \overline{\mathrm{Hol}},
+\tau, \beta_0, \beta_1)$ that the integrity tag of \S 5 signs
+and the deterministic verifier of \S 10 recomputes from
+ciphertext alone.
 
 \paragraph{Sheaf Composition~\cite{davis2026sheafcomposition}.}
-The discrete section-graph runtime --- the fiber-bundle data model on
-which both substrates execute.
+The discrete section-graph runtime that both substrates execute
+on. Records are stored as sections of a fiber bundle, queries are
+evaluated by composing operations on sections, and the encryption
+gauge acts pointwise on each section's fiber values without
+touching the base graph or the sheaf-glueing relations between
+sections. This paper inherits that runtime verbatim: the
+encryption modes of the companion preprint's \S 4 are gauge
+actions on the same section-graph, and the integrity,
+delegation, ledger, and verification constructions of the
+companion preprint's \S\S 5--13 all compose against the same
+fiber-bundle structure without modifying it.
 
 \subsection{External math anchors}
 \label{sec:background:anchors}
@@ -579,6 +735,62 @@ encrypted writes the encryption map $\mathrm{Enc}_g$ acts on the
 section by transforming each pointwise fiber value, hence
 $\mathrm{Enc}_g: \Gamma(E) \to \Gamma(E)$.
 
+\paragraph{A worked example.}
+Consider a three-record patient table with primary key
+\texttt{patient\_id} and three fiber fields --- numeric
+\texttt{age} and \texttt{pressure}, and categorical
+\texttt{diagnosis}:
+\begin{center}
+\small
+\begin{tabular}{lrrl}
+\toprule
+\texttt{patient\_id} & \texttt{age} & \texttt{pressure} & \texttt{diagnosis} \\
+\midrule
+P001 & 47 & 130.5 & hypertension \\
+P002 & 62 & 142.0 & hypertension \\
+P003 & 35 & 118.3 & healthy \\
+\bottomrule
+\end{tabular}
+\end{center}
+The fiber-bundle representation is:
+\begin{itemize}[nosep,leftmargin=*]
+\item \textbf{Base space.} $B = \{p_1, p_2, p_3\}$ with
+  $p_i = G(\texttt{P00}i) \in \mathbb{Z}_2^{64}$; each base point is
+  the keyed hash of the corresponding primary key.
+\item \textbf{Fiber.} $F = \texttt{INT} \times \texttt{FLOAT}
+  \times \texttt{TEXT}$ --- the Cartesian product of the three
+  non-key field types.
+\item \textbf{Sections.} Each row is a section
+  $\sigma_i \in \Gamma(E)$:
+  \[
+  \begin{aligned}
+  \sigma_1(p_1) &= (p_1,\, 47,\, 130.5,\, \text{`hypertension'}),\\
+  \sigma_2(p_2) &= (p_2,\, 62,\, 142.0,\, \text{`hypertension'}),\\
+  \sigma_3(p_3) &= (p_3,\, 35,\, 118.3,\, \text{`healthy'}).
+  \end{aligned}
+  \]
+\end{itemize}
+An Affine gauge $g = (a, b)$ applied to the \texttt{age} column
+transforms $\sigma_1$ into
+\[
+\mathrm{Enc}_g(\sigma_1)(p_1) \;=\; \bigl(p_1,\; 47 a + b,\;
+130.5,\; \text{`hypertension'}\bigr).
+\]
+The base point $p_1$ is unchanged, only the \texttt{age} fiber
+value is transformed. An attacker observing only the encrypted
+bundle sees the base hashes (which hide raw key values under
+the PRF security of $G$ but still reveal equality and
+access-pattern structure --- the standard deterministic-hash
+leakage profile) and the encrypted fiber values
+$\{47 a + b,\, 62 a + b,\, 35 a + b\}$. An analyst
+without the gauge key but querying
+\verb|PROJECT INVARIANT (curvature) ON age| computes
+$K = \mathrm{Var}/\mathrm{range}^2$ directly on the encrypted
+column and obtains the same number as on plaintext, because $K$
+is gauge-invariant under $\mathrm{Aff}(\mathbb{R})$ (the affine
+scaling cancels between numerator and denominator;
+Theorem~\ref{thm:affine-invariants}).
+
 \begin{definition}[Dispersion ratio $K$]
 \label{def:dispersion}
 For a numeric fiber field $F_i$ with finite-sample variance
@@ -625,20 +837,17 @@ the base graph alone (no fiber decryption required).
 A separate query, the GQL-level \texttt{HOLONOMY \ldots ON FIBER}
 statement, computes the discrete Gauss-Bonnet angle-deficit
 holonomy in a $2$-fiber $(f_0, f_1)$-plane around a chosen base
-field. That operation reads stored fiber values; under v0.3.0 the
-deficit it returned was gauge-dependent (per-field Aff with
-$a_0 \neq a_1$ distorts angle calculations). \textbf{v0.3.1
-normalizes centroids by their own min/range per axis before
-computing angles}, which makes the deficit gauge-invariant
-modulo $2\pi$ under any per-field Aff$(\mathbb{R})$ gauge --- the
-fix is in
+field. That operation reads stored fiber values, but normalizes
+centroids by their own min/range per axis before computing angles,
+which makes the deficit gauge-invariant modulo $2\pi$ under any
+per-field Aff$(\mathbb{R})$ gauge --- the normalization lives in
 \texttt{src/bin/gigi\_stream.rs::compute\_fiber\_holonomy} and is
 exercised by \texttt{tests/holonomy\_gauge\_invariance\_v0\_3.rs}
 across a 20-gauge random sweep (including per-axis scale
 mismatches, negative scales, and large translations). The
-\texttt{HOLONOMY} statement therefore no longer requires
-decryption: it can be evaluated on ciphertext and returns the
-same deficit (mod $2\pi$) as it would on plaintext.
+\texttt{HOLONOMY} statement therefore does not require decryption:
+it can be evaluated on ciphertext and returns the same deficit
+(mod $2\pi$) as it would on plaintext.
 
 Throughout this paper, $\overline{\mathrm{Hol}}$ refers to the
 base-graph topological ratio of
@@ -673,11 +882,50 @@ equivalently the algebraic connectivity à la Fiedler),
 $\overline{\mathrm{Hol}}$ is the mean holonomy
 (Definition~\ref{def:hol-mean}), $\tau$ is the record count,
 and $\beta_0, \beta_1$ are the $0$th and $1$st Betti numbers of
-$\mathcal{G}_{\mathrm{fi}}$. (The v0.3.0 draft of this tuple included
-$C = \tau/K$ instead of $\tau$ directly; see §3.5 for the rationale
-for the v0.3.1 replacement.) This tuple is the load-bearing object
+$\mathcal{G}_{\mathrm{fi}}$. This tuple is the load-bearing object
 for Curvature-MAC (\S 5).
 \end{definition}
+
+\paragraph{Which graph carries which invariant.}
+The graph-based invariants in $\pi_{\mathrm{inv}}$ are distributed
+across two related objects --- the field-index bitmap graph
+$\mathcal{G}_{\mathrm{fi}}$ (vertices~=~distinct fiber-value
+equivalence classes per indexed field, edges~=~field-index
+adjacencies) and the discrete base graph $\Gamma_{\!B}$
+(vertices~=~base points, edges induced by
+$\mathcal{G}_{\mathrm{fi}}$ adjacencies on the records'
+field-index entries). Under value-injective gauge transformations
+the edge relations used to construct $\mathcal{G}_{\mathrm{fi}}$
+are preserved, and the induced base-graph topology is unchanged.
+The per-invariant attribution below clarifies which graph each
+component is computed on:
+
+\begin{center}
+\small
+\begin{tabular}{p{2.3cm}p{4.0cm}p{6.5cm}}
+\toprule
+\textbf{Quantity} & \textbf{Built on} & \textbf{Preserved under Aff$(\mathbb{R})$ because} \\
+\midrule
+$K_i$ (per-field) & $\mathrm{Var}_i / \mathrm{range}_i^2$ of fiber values in column $i$ & $a^2$ cancels between numerator and denominator (Theorem~\ref{thm:affine-invariants}) \\
+\addlinespace
+$\lambda_1$ & Laplacian of $\mathcal{G}_{\mathrm{fi}}$ & affine injectivity preserves value-equivalence classes; same graph $\Rightarrow$ same Laplacian spectrum \\
+\addlinespace
+$\beta_0, \beta_1$ & Betti numbers of $\mathcal{G}_{\mathrm{fi}}$ & same graph $\Rightarrow$ same Betti numbers \\
+\addlinespace
+$\overline{\mathrm{Hol}}$ & $\beta_1(\Gamma_{\!B}) / (\beta_0(\Gamma_{\!B}) + 1)$ & base-graph topology unchanged (encryption acts on fibers only) \\
+\addlinespace
+$\tau$ & $|B|$ (record count) & base set cardinality unchanged \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Probabilistic and Opaque modes break the value-injectivity
+condition (fresh randomness on each encryption), so their
+preservation guarantees are weaker: $\lambda_1$ and the Betti
+numbers are preserved only up to the equivalence relation the
+mode actually preserves (bucket-equivalence for Probabilistic;
+nothing on the fiber for Opaque). See \S\ref{sec:gauge-invariance:examples}
+for the per-mode treatment.
 
 \begin{remark}[What the Curvature-MAC tag does and does not protect]
 \label{rmk:cmac-scope}
@@ -718,7 +966,8 @@ unchanged by $\alpha$.
 \begin{remark}
 For the two deterministic-bijective modes (Affine and Isometric),
 $\mathcal{M}$ is a genuine structure group $G \subset \mathrm{Aut}(F)$
-acting linearly on $F$. For the three non-deterministic-bijective
+acting invertibly and affinely on $F$ (linearly after a
+homogeneous-coordinate embedding that absorbs the translation). For the three non-deterministic-bijective
 modes (Opaque, Indexed, Probabilistic), $\mathcal{M}$ is a wider
 mathematical object: Opaque uses a randomized AEAD, so the same
 plaintext maps to a probability distribution over ciphertexts;
@@ -739,7 +988,7 @@ a group action.
 \textbf{Mode} & \textbf{Mathematical structure $\mathcal{M}$} \\
 \midrule
 Affine & Structure group $G = \mathrm{Aff}(\mathbb{R})^k$ acting field-wise: $g_i(v) = a_i v + b_i$ with $a_i \neq 0$. \\
-Isometric & Structure group $G = O(k)$ on a grouped $k$-tuple of numeric fields: $g(v) = O v + b$, $O^\top O = I$. \\
+Isometric & Structure group $G = E(k) = O(k) \ltimes \mathbb{R}^k$ on a grouped $k$-tuple of numeric fields: $g(v) = O v + b$ with $O^\top O = I$; the orthogonal-only case $O(k)$ is recovered by setting $b = 0$. \\
 Opaque & Randomized AEAD on the byte encoding of a fiber field. Same plaintext maps to a distribution over ciphertexts (per-record nonce). Not a deterministic gauge; not invertible without the AEAD key. \\
 Indexed & Deterministic PRF $F_k: F \to \{0,1\}^n$ keyed by $k$. The induced equivalence relation $v_1 \sim v_2 \Leftrightarrow F_k(v_1) = F_k(v_2)$ is the structure preserved on ciphertext; the encryption is a quotient map, not a bijection. \\
 Probabilistic & Aff($\mathbb{R}$) gauge $(a, b)$ plus i.i.d.~additive noise: $g(v) = a v + b + \varepsilon$ with $\varepsilon \sim \mathcal{N}(0, \sigma^2)$. Bijective in expectation, randomized per-record. \\
@@ -757,7 +1006,8 @@ computable on encrypted data depends on which sub-structure of
 $\mathcal{M}$ is preserved by the encryption. For group-action modes,
 this reduces to the structure group's invariant theory; for
 randomized or quotient-map modes, it requires a separate
-characterization per mode (which we develop in \S\S 4--9).
+characterization per mode (developed in \S\S 4--9 of the
+companion preprint).
 
 
 %% ==================================================================
@@ -768,6 +1018,7 @@ characterization per mode (which we develop in \S\S 4--9).
 \subsection{Setup}
 \label{sec:gauge-invariance:setup}
 
+\emph{Bundle, gauge, and query.}
 Let $B = (E, B, F, \pi, \Phi)$ be a fiber-bundle data store with
 structure group $G \subset \mathrm{Aut}(F)$, and let $\Gamma(E)$
 denote the space of sections (the bundle's record set; §2.3). Let
@@ -792,6 +1043,7 @@ f(\mathrm{Enc}_g(\sigma)) \;=\; f(\sigma).
 \subsection{The framework: equivariance and ciphertext computability}
 \label{sec:gauge-invariance:thm}
 
+\emph{From invariance to equivariance.}
 The reviewer-friendly statement of the framework is not an
 invariance characterization but an \emph{equivariance}
 characterization. Many of the queries an analyst actually wants ---
@@ -810,45 +1062,56 @@ are both corollaries.
 \begin{definition}[Equivariant query]
 \label{def:equivariant-query}
 Let $G$ act on $\Gamma(E)$ via $\mathrm{Enc}_g$
-(Definition~\ref{def:gauge-action}), let
-$f: \Gamma(E) \to \mathbb{R}^m$ be a query function, and let
-$\rho: G \to \mathrm{Aut}(\mathbb{R}^m)$ be a group representation.
-$f$ is \emph{$\rho$-equivariant under $G$} iff for every $g \in G$
-and every $\sigma \in \Gamma(E)$:
+(Definition~\ref{def:gauge-action}). Let $f: \Gamma(E) \to Y_f$
+be a query function with answer set $Y_f$, and let
+$\rho: G \to \mathrm{Sym}(Y_f)$ be an action of $G$ on $Y_f$ by
+efficiently invertible maps --- i.e., for each $g \in G$ the map
+$\rho_g: Y_f \to Y_f$ is a bijection whose inverse $\rho_g^{-1}$
+is computable in time $O(\mathrm{poly}(|g|, |y|))$ in the
+description sizes of the gauge and the answer. The map $\rho_g$
+may additionally depend on bundle-derived public parameters that
+are themselves computable on ciphertext (e.g., the record count
+$\tau$ for $\textsc{sum}$); we write this dependency implicitly.
+
+$f$ is \emph{$\rho$-equivariant under $G$} iff for every
+$g \in G$ and every $\sigma \in \Gamma(E)$:
 \[
-f(\mathrm{Enc}_g(\sigma)) \;=\; \rho_g \cdot f(\sigma).
+f(\mathrm{Enc}_g(\sigma)) \;=\; \rho_g\bigl(f(\sigma)\bigr).
 \]
-When $\rho_g \equiv \mathrm{id}_{\mathbb{R}^m}$, $f$ is
-\emph{gauge-invariant} (Definition~\ref{def:gauge-invariance}, the
-$m=1$, $\rho = \mathrm{triv}$ instance).
+When $\rho_g \equiv \mathrm{id}_{Y_f}$ for all $g$, $f$ is
+\emph{gauge-invariant} (Definition~\ref{def:gauge-invariance},
+the trivial-representation case).
 \end{definition}
 
 \begin{theorem}[Equivariant ciphertext-computability]
 \label{thm:equivariance}
 Let $G$ act on $\Gamma(E)$ via $\mathrm{Enc}_g$ with
-$\mathrm{Enc}_e = \mathrm{id}_{\Gamma(E)}$, and let
-$\rho: G \to \mathrm{Aut}(\mathbb{R}^m)$ be a representation. For
-$f: \Gamma(E) \to \mathbb{R}^m$ the following are equivalent:
+$\mathrm{Enc}_e = \mathrm{id}_{\Gamma(E)}$, let $Y_f$ be a query
+answer set, and let $\rho: G \to \mathrm{Sym}(Y_f)$ be an action
+by efficiently invertible maps. For $f: \Gamma(E) \to Y_f$ the
+following are equivalent:
 \begin{enumerate}[label=(\alph*),nosep]
 \item \textbf{(Equivariance.)} $f$ is $\rho$-equivariant:
-  $f(\mathrm{Enc}_g(\sigma)) = \rho_g(f(\sigma))$ for all $g, \sigma$.
-\item \textbf{(Ciphertext-side computability up to $\rho$.)} There
-  exists a deterministic algorithm $A_\rho: \Gamma(E) \to \mathbb{R}^m$
-  such that
+  $f(\mathrm{Enc}_g(\sigma)) = \rho_g(f(\sigma))$ for all
+  $g, \sigma$.
+\item \textbf{(Ciphertext-side computability up to $\rho$.)}
+  There exists a deterministic algorithm
+  $A_\rho: \Gamma(E) \to Y_f$ such that
   $A_\rho(\mathrm{Enc}_g(\sigma)) = \rho_g(f(\sigma))$ for all
   $g \in G, \sigma \in \Gamma(E)$.
-\item \textbf{(Client-side recovery with $O(\mathrm{poly}(m))$ post-processing.)}
-  There exists $A_\rho$ as in (b) such that the client, given the
-  secret gauge $g$, recovers the plaintext answer via
+\item \textbf{(Client-side recovery with closed-form
+  post-processing.)} There exists $A_\rho$ as in (b) such that
+  the client, given the secret gauge $g$, recovers the plaintext
+  answer via
   \[
   f(\sigma) \;=\; \rho_g^{-1}\!\bigl(A_\rho(\mathrm{Enc}_g(\sigma))\bigr),
   \]
-  at cost $O(\mathrm{poly}(m))$ \emph{independent of $|E|$}.
+  at cost $O(\mathrm{poly}(|g|, |y|))$ \emph{independent of $|E|$}.
 \end{enumerate}
 The invariant special case $\rho \equiv \mathrm{id}$ collapses
 (b)/(c) to $A(\mathrm{Enc}_g(\sigma)) = f(\sigma)$ --- the
-no-post-processing regime --- and recovers the v0.3.0 framing of
-\S\,3.2 as a corollary (Corollary~\ref{cor:invariant-special-case}).
+no-post-processing regime --- and is recovered as
+Corollary~\ref{cor:invariant-special-case}.
 \end{theorem}
 
 \begin{proof}
@@ -856,11 +1119,11 @@ no-post-processing regime --- and recovers the v0.3.0 framing of
 $A_\rho(\mathrm{Enc}_g(\sigma)) = f(\mathrm{Enc}_g(\sigma))
 = \rho_g(f(\sigma))$ by (a). So $A_\rho = f$ witnesses (b).
 
-\emph{(b) $\Rightarrow$ (c).} Since $\rho_g \in \mathrm{Aut}(\mathbb{R}^m)$
-is invertible, $\rho_g^{-1}$ is well-defined; the client computes it
-from $g$ in $O(m^3)$ (matrix inversion when $m > 1$; scalar
-reciprocation when $m = 1$) and applies it to the server's output.
-The cost is in $m$, the answer dimension, not $|E|$.
+\emph{(b) $\Rightarrow$ (c).} By hypothesis $\rho_g: Y_f \to Y_f$
+is invertible with $\rho_g^{-1}$ computable in
+$O(\mathrm{poly}(|g|, |y|))$; the client computes $\rho_g^{-1}$
+from $g$ and applies it to the server's output. The cost is in
+the description sizes of $g$ and the answer, independent of $|E|$.
 
 \emph{(c) $\Rightarrow$ (a).} Let $A_\rho$ witness (c). Fix any
 $\sigma$ and $g$, and let $\sigma' := \mathrm{Enc}_g(\sigma)$. Apply
@@ -869,10 +1132,10 @@ $A_\rho$ to $\sigma'$ along two paths:
 \item Path 1 (true gauge $g$): $\sigma' = \mathrm{Enc}_g(\sigma)$, so
   by (c): $A_\rho(\sigma') = \rho_g(f(\sigma))$.
 \item Path 2 (identity gauge $e$): $\sigma' = \mathrm{Enc}_e(\sigma')$
-  since $\mathrm{Enc}_e = \mathrm{id}_E$, and by (c) applied to
-  $\sigma'$ and gauge $e$: $A_\rho(\sigma') = \rho_e(f(\sigma'))
-  = f(\sigma')$ because $\rho$ is a homomorphism so $\rho_e
-  = \mathrm{id}_{\mathbb{R}^m}$.
+  since $\mathrm{Enc}_e = \mathrm{id}_{\Gamma(E)}$, and by (c)
+  applied to $\sigma'$ and gauge $e$:
+  $A_\rho(\sigma') = \rho_e(f(\sigma')) = f(\sigma')$ because
+  $\rho$ is a homomorphism so $\rho_e = \mathrm{id}_{Y_f}$.
 \end{itemize}
 Equating: $\rho_g(f(\sigma)) = f(\sigma')
 = f(\mathrm{Enc}_g(\sigma))$. Since $g, \sigma$ were arbitrary,
@@ -881,44 +1144,55 @@ $f$ is $\rho$-equivariant.
 
 \begin{corollary}[Invariant special case]
 \label{cor:invariant-special-case}
-With $\rho \equiv \mathrm{id}$ and $m = 1$,
-Theorem~\ref{thm:equivariance} reduces to: $f$ is $G$-invariant iff
-there exists $A: E \to \mathbb{R}$ with
-$A(\mathrm{Enc}_g(\sigma)) = f(\sigma)$ for all $g, \sigma$. This is
-the ``invariance characterizes ciphertext computability'' framing of
-v0.3.0; it is now a corollary of the equivariant theorem.
+With $\rho \equiv \mathrm{id}$,
+Theorem~\ref{thm:equivariance} reduces to: $f$ is $G$-invariant
+iff there exists $A: \Gamma(E) \to Y_f$ with
+$A(\mathrm{Enc}_g(\sigma)) = f(\sigma)$ for all $g, \sigma$. This
+recovers the ``invariance characterizes ciphertext computability''
+slice as a corollary of the equivariant theorem.
 \end{corollary}
 
 \begin{remark}[Why equivariance is the right framework]
-The earlier v0.3.0 framing as ``invariance characterizes
-ciphertext computability'' systematically undercounted the
+Stating the result as pure ``invariance characterizes ciphertext
+computability'' would systematically undercount the
 ciphertext-computable query class. $\textsc{sum}$ on an
-affine-encrypted column has $\rho_g(s) = a \cdot s + n \cdot b$ ---
-a non-trivial $\rho$, so SUM is \emph{not} invariant but \emph{is}
-ciphertext-computable: the encrypted sum, post-processed by
-$\rho_g^{-1}(\hat s) = (\hat s - n b)/a$ at the client, equals the
-plaintext sum exactly. The same closed-form $\rho_g^{-1}$ recovers
-AVG, MIN, MAX, VAR, STDDEV, RANGE
-(\S\,\ref{sec:gauge-invariance:examples}). Calling these queries
-``not computable from the ciphertext'' would have been a strict
-factual error; the equivariance lens repairs it.
+affine-encrypted column has answer space
+$Y_{\textsc{sum}} = \mathbb{R}$ and gauge action
+$\rho_g(s) = a \cdot s + n \cdot b$ parameterized by the
+bundle-derived public count $n$ (which the server can also
+compute, since $\textsc{count}$ is itself gauge-invariant). The
+action is non-trivial, so $\textsc{sum}$ is \emph{not} invariant
+but \emph{is} ciphertext-computable: the encrypted sum,
+post-processed by $\rho_g^{-1}(\hat s) = (\hat s - n b)/a$ at the
+client, equals the plaintext sum exactly. Analogous answer
+spaces and actions recover AVG ($Y = \mathbb{R}$,
+$\rho_g(\mu) = a\mu + b$), VAR/STDDEV/RANGE (scalar actions in
+$a$ alone), MEDIAN and QUANTILE (sign-aware quantile-flip on
+$\mathbb{R}$), and ARGMIN/ARGMAX
+($Y = [\tau] \times [\tau]$, $\rho_g$ a joint index swap when
+$a < 0$) --- see \S\,\ref{sec:gauge-invariance:examples}.
+Calling these queries ``not computable from the ciphertext''
+would have been a strict factual error; the equivariance lens
+repairs it.
 \end{remark}
 
 \begin{remark}[Closed-form vs.\ general decryption]
 The post-processing in (c) is $\rho_g^{-1}$, a closed-form
 algebraic operation derived from $g$ and the query's
 representation $\rho$. It is \emph{not} full decryption of the
-bundle, and it is \emph{not} computation on plaintext; the client
-applies a single $O(\mathrm{poly}(m))$ matrix (typically $m = 1$,
-so a single scalar division). The server's compute remains over
-ciphertext at native speed, on a fully encrypted bundle.
+bundle, and it is \emph{not} computation on plaintext; for the
+analytical-SQL aggregates of \S\,\ref{sec:gauge-invariance:examples}
+the client applies a single scalar division (or, for the joint
+sign-aware aggregates ARGMIN/ARGMAX, a pair swap). The server's
+compute remains over ciphertext at native speed, on a fully
+encrypted bundle.
 \end{remark}
 
 \begin{remark}[Equivariant ring vs.\ invariant ring]
-For each structure group $G$ and representation $\rho$,
-Theorem~\ref{thm:equivariance} identifies the
+For each structure group $G$ and answer-space action $\rho$ on
+$Y_f$, Theorem~\ref{thm:equivariance} identifies the
 \emph{$\rho$-equivariant subspace}
-$\mathcal{E}_{G,\rho} \subset C^\infty(E, \mathbb{R}^m)$. The
+$\mathcal{E}_{G,\rho} \subset \mathrm{Map}(\Gamma(E), Y_f)$. The
 invariant ring $\mathcal{I}_G = \mathcal{E}_{G,\mathrm{id}}$ of
 \S\,\ref{sec:gauge-invariance:ring} is the trivial-representation
 slice. The non-trivial slices give the analytical SQL surface
@@ -965,6 +1239,57 @@ We check each component:
 All six components are therefore fixed under $G$.
 \end{proof}
 
+\begin{proposition}[The diagonal-affine group is the maximal affine linear gauge preserving the per-field $K$-vector universally]
+\label{prop:k-preserving}
+Let $F = \mathbb{R}^k$ with labeled coordinates and let
+$K_{\mathrm{vec}}(X) = (K_1(X), \ldots, K_k(X))$ be the per-field
+dispersion vector on a record set $X \subset F$ with
+$K_i = \mathrm{Var}_i / \mathrm{range}_i^2$. Within the class of
+affine linear gauges $g(v) = Av + b$ with $A \in
+\mathrm{GL}_k(\mathbb{R})$, the largest subgroup that preserves
+$K_{\mathrm{vec}}$ for \emph{all} nondegenerate record sets
+$X \subset \mathbb{R}^k$ is the diagonal affine group
+\[
+G_{\mathrm{AffK}} \;=\; (\mathbb{R}^*)^k \ltimes \mathbb{R}^k
+\;=\; \{\,g(v) = D v + b \mid D = \mathrm{diag}(a_1, \ldots, a_k),\ a_i \neq 0\,\}.
+\]
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+\emph{Sufficiency} is Theorem~\ref{thm:affine-invariants}: the
+diagonal $A = D$ scales $\mathrm{Var}_i$ and $\mathrm{range}_i^2$
+by the same factor $a_i^2$, so $K_i$ is unchanged for every $X$.
+
+\emph{Necessity.} Suppose $A$ is not diagonal. Then there exist
+indices $i \neq j$ with $A_{ij} \neq 0$, so the post-gauge $i$-th
+coordinate is $A_{ii} v_i + A_{ij} v_j + b_i$. The post-gauge
+$\mathrm{Var}_i$ depends on $\mathrm{Var}_i, \mathrm{Var}_j$,
+and $\mathrm{Cov}(v_i, v_j)$; a nondegenerate $X$ with
+non-trivial $\mathrm{Cov}(v_i, v_j)$ produces a post-gauge
+$K_i$ that differs from the plaintext $K_i$, witnessing
+non-preservation. Pure rotations $A = O \in O(k)$ are the
+canonical case: $O$ preserves $\mathrm{tr}(\mathrm{Cov})$ but
+mixes the per-field ranges, so the per-field ratio breaks even
+though the trace is invariant. Translations $b$ shift the mean
+but leave $\mathrm{Var}_i$ and $\mathrm{range}_i$ unchanged, so
+the translation part is free. The maximal universally-preserving
+subgroup is therefore diagonal scalings plus translations,
+i.e.\ $(\mathbb{R}^*)^k \ltimes \mathbb{R}^k$.
+\end{proof}
+
+\noindent
+The proposition is stated within the affine linear class and
+asserts universality over nondegenerate $X$; it does not claim
+maximality among nonlinear or measurable transformations, nor
+does it preclude that for a specific degenerate $X$ a
+non-diagonal $A$ may happen to preserve $K_{\mathrm{vec}}$. The
+trace-form $K_{\mathrm{group}} = \mathrm{tr}(\mathrm{Cov}) /
+\mathrm{diam}^2$ on a grouped tuple
+(\S\,\ref{sec:gauge-invariance:examples}, Isometric paragraph)
+is the $E(k)$-invariant alternative that admits the full
+Euclidean group, at the cost of conflating the per-field
+structure into a single scalar.
+
 \begin{remark}[On generating sets]
 Theorem~\ref{thm:affine-invariants} states containment in
 $\mathcal{I}_{\mathrm{Aff}}$, not generation. The question of
@@ -988,11 +1313,13 @@ equality is always bijective).
 \smallskip
 
 \noindent
-\emph{Equivariant slice} (non-trivial $\rho_g$): the analytical-SQL
-aggregates SUM, AVG, MIN, MAX, VAR, STDDEV, RANGE are computable on
-ciphertext at native server speed, then inverted at the client in
-$O(1)$ via $\rho_g^{-1}$. For a single column under
-$g(v) = a v + b$ over $n$ records:
+\emph{Equivariant slice} (non-trivial $\rho_g$): the eleven
+non-trivial analytical-SQL aggregates SUM, AVG, MIN, MAX, VAR,
+STDDEV, RANGE, MEDIAN, QUANTILE, ARGMIN, ARGMAX (plus the
+trivially gauge-invariant COUNT, for twelve operators total) are
+computable on ciphertext at native server speed, then
+inverted at the client in $O(1)$ via $\rho_g^{-1}$. For a single
+column under $g(v) = a v + b$ over $n$ records:
 \[
 \begin{aligned}
 &\rho_{\textsc{sum}}(s) = a s + n b,
@@ -1004,34 +1331,62 @@ $g(v) = a v + b$ over $n$ records:
 &\rho_{\textsc{var}}(V) = a^2 V,
 \quad
 &\rho_{\textsc{stddev}}(s) = |a| s,\\
-&\rho_{\textsc{range}}(R) = |a| R.
+&\rho_{\textsc{range}}(R) = |a| R,
+\quad
+&\rho_{\textsc{median}}(m) = a m + b,\\
+&\rho_{\textsc{quantile}_q}(q_v) = a q_v + b \;(a>0),
+\quad
+&\rho_{\textsc{argmin/argmax}} = \text{joint sign-aware swap}.
 \end{aligned}
 \]
-Each $\rho_g$ is a closed-form invertible map in
-$\mathrm{Aut}(\mathbb{R})$; the client inversion
-$\rho_g^{-1}$ is one division and one subtraction. This is the
-equivariant ring under
-$\rho: \mathrm{Aff}(\mathbb{R}) \to \mathrm{Aut}(\mathbb{R})$ for
-each of the seven aggregates; the reference implementation is
-\texttt{src/aggregate\_helpers.rs} ($16$ unit tests, $12$ exactness
-+ $4$ bias-refusal under Probabilistic-mode noise).
+Each $\rho_g$ is a closed-form efficiently invertible map on
+the appropriate answer space $Y_f$: for the scalar aggregates
+(SUM, AVG, MIN, MAX, VAR, STDDEV, RANGE, MEDIAN, QUANTILE) the
+inversion $\rho_g^{-1}$ is one division and one subtraction on
+$\mathbb{R}$; for the sign-sensitive joint aggregates
+ARGMIN/ARGMAX the inversion is a joint swap of the returned
+index pair when $a < 0$ on $Y = [\tau] \times [\tau]$; and for
+QUANTILE the analogous $q \mapsto 1 - q$ flip is applied at the
+query layer when $a < 0$.
+The reference implementation is
+\texttt{src/aggregate\_helpers.rs} ($24$ unit tests: $16$ exactness
++ $8$ bias-refusal under Probabilistic-mode noise).
+
+\emph{Concretely, SUM.}
+Alice holds the gauge $g = (a, b)$ and ships an encrypted column
+of $n$ records to Bob, the server. Bob evaluates
+$\hat{s} = \sum_{i=1}^n g(v_i)$ over the ciphertext and returns
+the single scalar $\hat{s} = a s + n b$, where
+$s = \sum_i v_i$ is the plaintext sum. Alice recovers
+$s = (\hat{s} - n b)/a$ in one subtraction and one division;
+her work is $O(1)$ independent of $n$, and Bob's server-side
+computation has run end-to-end on ciphertext. The remaining
+aggregate operators follow the same pattern with their
+respective $\rho_g^{-1}$ on the answer space appropriate to
+each query.
 
 \paragraph{Opaque (randomized AEAD).}
 Functions of the encrypted fiber values are not invariant
-(only constants), because AEAD output is a randomized function of
-plaintext + nonce. Functions of \emph{the base alone} --- record
-count $\tau$, Betti numbers $\beta_0$, $\beta_1$, schema structure
---- are trivially invariant because the encryption does not touch
-the base space (Definition~\ref{def:gauge-action}).
-Computability class on the fiber: nothing without decryption.
+(only constants), because AEAD output is a randomized function
+of plaintext + nonce. Functions of \emph{the base alone} ---
+record count $\tau$, the base-graph Betti numbers
+$\beta_0(\Gamma_{\!B}), \beta_1(\Gamma_{\!B})$, and the schema
+structure --- are trivially invariant because the encryption
+does not touch the base space (Definition~\ref{def:gauge-action}).
+The field-index bitmap graph $\mathcal{G}_{\mathrm{fi}}$ and any
+invariants computed on it are \emph{not} preserved under Opaque,
+because randomized AEAD breaks the value-equivalence classes the
+graph is built from. Computability class on the fiber: nothing
+without decryption.
 
 \paragraph{Indexed (deterministic PRF).}
 $v_1 = v_2 \Rightarrow \mathrm{PRF}_k(v_1) = \mathrm{PRF}_k(v_2)$
-deterministically; the converse holds with overwhelming probability
-$1 - 2^{-128}$ for the AES-CMAC instantiation, the standard
-PRF-collision floor at the $128$-bit security level (so spurious
-collisions on the encrypted side are negligible and the verifier
-treats them as an honest content edit). Computability: equality
+deterministically; for distinct plaintexts, spurious-collision
+probability is birthday-bounded by $O(q^2 / 2^{128})$ for $q$
+indexed values under the AES-CMAC instantiation behaving as a
+PRF (so spurious collisions on the encrypted side are negligible
+for any practical $q$ and the verifier treats them as honest
+content edits). Computability: equality
 and equality-based queries (\textsc{group by}, \textsc{join} on
 equality, bitmap-index lookup). Functions of the base also remain
 trivially invariant. The structure group is degenerate (a
@@ -1040,6 +1395,22 @@ Theorem~\ref{thm:equivariance} applies in the form ``the
 equivariance class is the equality predicate $v_1 = v_2$,
 realized through the PRF rather than through a closed-form
 $\rho_g$.''
+
+\begin{remark}[Equality predicate structure]
+\label{rmk:indexed-eq}
+In the implemented Indexed equality path, the final equality
+predicate reduces to a fixed-width integer comparison over the
+stored index tag; the source contains no data-dependent byte
+loop for equality testing. This does not remove access-pattern
+leakage from the index lookup (a HashMap probe still touches
+data-dependent memory), but it avoids short-circuit timing
+behavior in the equality comparison itself. This is structurally
+different from byte-loop constant-time equality disciplines such
+as \texttt{subtle::ConstantTimeEq}, which compare byte sequences
+without data-dependent branches \emph{inside} the loop; here, no
+loop body exists for a compiler or speculative-execution path to
+short-circuit.
+\end{remark}
 
 \paragraph{Probabilistic ($g(v) = av + b + \varepsilon$ with $\varepsilon \sim \mathcal{N}(0, \sigma^2)$ per encryption).}
 Probabilistic mode breaks exact equivariance: the per-encryption
@@ -1062,23 +1433,33 @@ independent Gaussian noise draws:
 \begin{itemize}[nosep]
 \item \textbf{SUM.}\quad
   $\widehat{S}_n - (a S_n + n b) = \sum_{i=1}^n \varepsilon_i \sim
-  \mathcal{N}(0, n \sigma^2)$. Hoeffding / Chernoff yields
+  \mathcal{N}(0, n \sigma^2)$ is exactly Gaussian, so the standard
+  Gaussian tail
   \[
   \Pr\!\left[\,\bigl|\widehat{S}_n - (aS_n + nb)\bigr| \geq \epsilon\,\right]
-  \;\leq\; 2 \exp\!\left(-\frac{\epsilon^2}{2 n \sigma^2}\right),
+  \;\leq\; 2 \exp\!\left(-\frac{\epsilon^2}{2 n \sigma^2}\right)
   \]
-  so for $\epsilon = c \sigma \sqrt{n}$ the failure probability is
-  $\leq 2 e^{-c^2/2}$ --- standard sub-Gaussian concentration.
+  holds without any boundedness assumption on the plaintexts. For
+  $\epsilon = c \sigma \sqrt{n}$ the failure probability is
+  $\leq 2 e^{-c^2/2}$.
 \item \textbf{AVG.}\quad The mean error
   $\widehat{\mu}_n - (a \mu_n + b) \sim \mathcal{N}(0, \sigma^2/n)$
-  contracts at rate $1/\sqrt{n}$:
+  is again exactly Gaussian and contracts at rate $1/\sqrt{n}$:
   $\Pr[|\widehat{\mu}_n - (a\mu_n + b)| \geq \epsilon]
   \leq 2 \exp(-n \epsilon^2 / (2\sigma^2))$.
-\item \textbf{VAR.}\quad Bernstein's inequality applies to the
-  bounded centered moments, giving a one-sided tail
-  $\Pr[\widehat{V}_n - (a^2 V_n + \sigma^2) \geq \epsilon]
-  \leq \exp\!\bigl(-n\epsilon^2/(2(2\sigma^4 + 2\sigma^2 M^2 + M \epsilon/3))\bigr)$
-  where $M$ is an a-priori bound on $|av+b|$ in the bundle.
+\item \textbf{VAR.}\quad The estimator
+  $\widehat{V}_n$ is a chi-square--scaled noisy variance whose
+  sub-exponential tails require an a-priori bound on the
+  plaintexts. \emph{Under the bounded-plaintext assumption}
+  $|av + b| \leq M$ for all records, Bernstein's inequality yields
+  the one-sided tail
+  \[
+  \Pr\!\left[\widehat{V}_n - (a^2 V_n + \sigma^2) \geq \epsilon\right]
+  \leq \exp\!\bigl(-n\epsilon^2 / (2(2\sigma^4 + 2\sigma^2 M^2 + M \epsilon/3))\bigr).
+  \]
+  Without the bounded-plaintext assumption, the analogous
+  sub-exponential concentration holds with constants depending on
+  the moment bounds (see companion preprint).
 \end{itemize}
 The result is an $(\epsilon,\delta)$-equivariant ring under $\rho$
 covering \emph{linear and quadratic aggregates}
@@ -1086,23 +1467,74 @@ covering \emph{linear and quadratic aggregates}
 $\rho_g^{-1}$ on the noisy estimator: the
 client recovers the plaintext aggregate to within an additive
 $O(\sigma/\sqrt{n})$ error with high probability.
-\emph{Order statistics (MIN, MAX, RANGE) are excluded}: the
-extreme-value functional does not commute with additive Gaussian
-noise, and the naïve closed-form $\rho_g^{-1}$ overshoots in
-expectation by $\Theta(\sigma\sqrt{2\log n}/|a|)$, a bias that
-does \emph{not} contract as $n \to \infty$. \S\,\ref{sec:intro:not}
-documents the resulting deployment caveat and the three
-operational mitigations (use VAR-derived spread, switch to Affine
-$\sigma = 0$, or escalate the column to FHE); the shipped helpers
-refuse \texttt{decrypt\_min}/\texttt{\_max}/\texttt{\_range} under
-$\sigma > 0$ with a typed \texttt{BiasedUnderProbabilisticNoise}
-error so the bias cannot leak into application code unnoticed.
-For $\sigma$-bucket equality predicates, the Davis Identity
-$v_1 \approx_\sigma v_2 \Leftrightarrow
-\mathrm{bucket}_\sigma(v_1) = \mathrm{bucket}_\sigma(v_2)$
-gives a deterministic equivalence relation on the noised
-ciphertext space, so equality-modulo-$\sigma$ remains an
-exact invariant predicate.
+\emph{Order statistics (MIN, MAX, RANGE, MEDIAN, QUANTILE,
+ARGMIN, ARGMAX) are excluded under Probabilistic noise}: the
+extreme-value and rank functionals do not commute with additive
+Gaussian noise, and the naïve closed-form $\rho_g^{-1}$ overshoots
+in expectation by $\Theta(\sigma\sqrt{2\log n}/|a|)$ for the
+extremes (with analogous rank-bias terms for MEDIAN/QUANTILE/
+ARGMIN/ARGMAX), a bias that does \emph{not} contract as
+$n \to \infty$. \S\,\ref{sec:intro:not} documents the resulting
+deployment caveat and the operational alternatives (switch the
+column to Affine $\sigma = 0$ for plaintext-exact extremes; pair
+GIGI with FHE on the specific column when exact extremes under
+noise are required); the implemented helpers refuse the seven
+order-statistic operators under $\sigma > 0$ with a typed
+bias-refusal error so the bias cannot leak into application code
+unnoticed.
+\smallskip
+
+\noindent
+\emph{Approximate bucket equality via the Davis Identity.}
+For normalized similarity $S$ and normalized squared distance
+$d^2$, the \emph{Davis Identity} $S + d^2 = 1$ converts a
+sameness scoring problem into a distance-threshold predicate:
+two values are deemed equal iff their squared distance falls
+below a chosen threshold. Applied to Probabilistic mode, this
+yields a deterministic bucket relation on the noised
+representation,
+\[
+v_1 \approx_\sigma v_2 \;\;\Longleftrightarrow\;\;
+\mathrm{bucket}_\sigma(v_1) = \mathrm{bucket}_\sigma(v_2),
+\]
+and a corresponding approximate plaintext-equality predicate
+whose false-positive and false-negative rates are controlled by
+the noise scale, the bucket width $w$, and the boundary distance
+of the test values.
+
+\begin{proposition}[FP/FN tail bounds for $\sigma$-bucket equality]
+\label{prop:bucket-fp-fn}
+Let $w$ be the bucket width, let $\eta_1, \eta_2 \sim
+\mathcal{N}(0, \sigma^2)$ be the independent noise draws on the
+two ciphertexts under test, and let $\Phi$ denote the standard
+normal CDF.
+
+\emph{False negatives (equal plaintexts split across a boundary).}
+If a plaintext value lies at distance $\delta > 0$ from the
+nearest bucket boundary, two independent noisy encryptions of
+that same plaintext land on opposite sides of the boundary only
+if at least one of $\eta_1, \eta_2$ crosses the boundary.
+A union bound on the two single-noise crossing events yields
+\[
+\Pr[\text{FN at boundary distance }\delta]
+\;\leq\;
+2\,\Phi(-\delta / \sigma).
+\]
+
+\emph{False positives (distinct plaintexts colliding in one bucket).}
+For two plaintexts separated by $\Delta$, the noisy separation
+is $\Delta + Z$ with $Z = \eta_1 - \eta_2 \sim \mathcal{N}(0,
+2\sigma^2)$. Bucket collision then requires $|\Delta + Z|$ to
+fall below the bucket threshold relative to the nearest boundary,
+and the false-positive rate is bounded by the corresponding
+Gaussian tail on $Z$ at scale $\sqrt{2}\sigma$.
+\end{proposition}
+
+\noindent
+The engineering practice is to choose $\sigma$ small relative to
+the field's resolvable granularity and to align bucket boundaries
+away from the most-probable test points so that boundary
+collisions are rare in the target workload.
 
 \paragraph{Isometric ($G = E(k) = O(k) \ltimes \mathbb{R}^k$ on a grouped $k$-tuple).}
 We take the full Euclidean group $E(k) = O(k) \ltimes \mathbb{R}^k$
@@ -1133,14 +1565,11 @@ denominator are $E(k)$-invariant: the trace of the covariance
 matrix is the sum of eigenvalues, which is conjugation-invariant
 under $O(k)$ and unchanged by mean-shifts (translations); the
 squared diameter is a max over pairwise Euclidean distances and is
-preserved exactly under $E(k)$ by definition.
-
-The earlier v0.3.0 draft used a per-coordinate range
-$(\max_i v - \min_i v)^2$ in the denominator; this is \emph{not}
-$O(k)$-invariant (the coordinate-wise extrema change under
-rotation) and was a bug. The squared-diameter denominator
-$\mathrm{diam}^2(X)$ above is the corrected, genuinely
-$E(k)$-invariant form.
+preserved exactly under $E(k)$ by definition. The per-coordinate
+range $(\max_i v - \min_i v)^2$ is \emph{not} $O(k)$-invariant
+(the coordinate-wise extrema change under rotation), so the
+squared-diameter denominator $\mathrm{diam}^2(X)$ above is the
+correct $E(k)$-invariant choice.
 
 The Curvature-MAC construction
 (\S\,5) uses the per-field $K$ for fields
@@ -1173,7 +1602,7 @@ an isometrically-grouped tuple).
 \textbf{Mode} & \textbf{Eq.} & \textbf{Ord.} & \textbf{Dist.} & \textbf{Aggregate} & \textbf{Adversary class} \\
 \hline
 Opaque (AEAD)              & $\bot$ & $\bot$ & $\bot$ & $\bot$ & IND-CPA / IND-CCA \\
-Indexed (det.\ PRF)        & $\mathcal{L}_{\mathrm{eq}}$ & $\bot$ & $\bot$ & $\bot$ & PRF-secure, $2^{-128}$ collision floor \\
+Indexed (det.\ PRF)        & $\mathcal{L}_{\mathrm{eq}}$ & $\bot$ & $\bot$ & $\bot$ & PRF-secure, birthday-bounded $O(q^2/2^{128})$ \\
 Affine (Aff$(\mathbb{R})$) & $\mathcal{L}_{\mathrm{eq}}$ & $\mathcal{L}_{\mathrm{ord}}$ & $\bot$ & \textbf{equiv.}~via $\rho_g$ & IND-OCPA (single column) \\
 Probabilistic              & $\approx_\sigma$ & $\bot$ & $\bot$ & $(\epsilon,\delta)$-equiv.~via $\rho_g$ & noise-bucket OCPA ($\sigma$) \\
 Isometric ($E(k)$)         & $\bot$ & $\bot$ & $\mathcal{L}_{\mathrm{dist}}$ & dist-invariant & distance-only (no per-coord) \\
@@ -1186,11 +1615,16 @@ Three things to read out of this table:
   the gauge-equivariance structure forces the server to learn.
   Anything beyond this is a leakage bug, not a leakage feature.
 \item \textbf{Equivariant computability is a separate axis from
-  leakage}: the Affine and Probabilistic rows compute SUM / AVG /
-  MIN / MAX / VAR / STDDEV / RANGE via the equivariant representation
+  leakage}: the Affine row computes all twelve analytical-SQL
+  aggregates (COUNT, SUM, AVG, MIN, MAX, VAR, STDDEV, RANGE,
+  MEDIAN, QUANTILE, ARGMIN, ARGMAX) via the equivariant
+  representation
   $\rho_g$ \emph{without expanding the access / order / equality
-  leakage profile} --- the client's $\rho_g^{-1}$ is purely
-  post-processing of the server's aggregate output.
+  leakage profile}; the Probabilistic row computes the linear and
+  quadratic subset (COUNT, SUM, AVG, VAR, STDDEV) on the same axis
+  with $(\epsilon, \delta)$-equivariance. The client's
+  $\rho_g^{-1}$ is purely post-processing of the server's aggregate
+  output.
 \item All five modes share access-pattern leakage
   $\mathcal{L}_{\mathrm{acc}}$ at the bundle layer (which records
   are read by which query); the standard
@@ -1199,10 +1633,13 @@ Three things to read out of this table:
   construction.
 \end{itemize}
 
-The forthcoming \S\,4 develops the per-mode security proofs
-(reductions to IND-CPA, PRF, BDH, MLWE) against the leakage
+The companion preprint develops the per-mode security proofs
+(reductions and assumptions for IND-CPA, PRF security, the
+exponent-ratio bearer-capability hardness assumption underlying
+BLS12-381 delegation, and MLWE for the PQ paths) against the
+leakage
 profiles above; the present subsection's purpose is to make the
-profile explicit before the proofs land.
+profile explicit so the framework theorem can be read against it.
 
 \subsection{The invariant ring}
 \label{sec:gauge-invariance:ring}
@@ -1211,7 +1648,7 @@ For each deterministic-bijective mode with structure group $G$, the
 $G$-invariant ring is the subalgebra of real-valued bundle functions
 fixed by $G$:
 \[
-\mathcal{I}_G \;=\; \bigl\{\, f \in \mathrm{Map}(E, \mathbb{R})
+\mathcal{I}_G \;=\; \bigl\{\, f \in \mathrm{Map}(\Gamma(E), \mathbb{R})
                           \;\big|\; f \circ \mathrm{Enc}_g = f
                           \text{ for all } g \in G \,\bigr\}.
 \]
@@ -1223,12 +1660,23 @@ $\pi_{\mathrm{inv}}$ (Definition~\ref{def:invariant-tuple}). Further
 $\mathcal{I}_{\mathrm{Aff}}$ contains every polynomial combination of
 those components; whether they generate the full invariant ring is
 left open here (see Remark on generating sets following
-Theorem~\ref{thm:affine-invariants}). The Sprint H
+Theorem~\ref{thm:affine-invariants}). The
 \verb|PROJECT INVARIANT(...)| query language is the parser surface
 that admits polynomial-combination expressions over $\pi_{\mathrm{inv}}$;
 it is by construction a sublanguage of $\mathcal{I}_{\mathrm{Aff}}$.
-This pattern --- restricting the query grammar to admit only
-operations on a committed invariant subspace --- is the
+
+\paragraph{Parse-time enforcement.}
+The production \verb|PROJECT INVARIANT| grammar accepts only an
+AST generated by invariant-ring constructors. Non-invariant
+operators such as \verb|sum|, \verb|mean|, or raw field projection
+fail at parse time, before query planning or execution: the
+decryption code path is unreachable from any query that compiles
+through the \verb|PROJECT INVARIANT| surface. The runtime
+gauge-falsification harness (\S\ref{sec:intro:adds}, item 3) is a
+test/development guard for ad-hoc query callbacks supplied outside
+the certified grammar; the parser is the load-bearing enforcement
+mechanism. This pattern --- restricting the query grammar to admit
+only operations on a committed invariant subspace --- is the
 database-runtime analogue of the privacy-preserving-blueprints
 proof discipline~\cite{kohlweiss2023blueprints}, in which the
 admissible statements about a committed value are restricted to
@@ -1252,9 +1700,14 @@ $\pi_{\mathrm{inv}}(B)$ (Definition~\ref{def:invariant-tuple}):
 \begin{itemize}[nosep]
 \item $\beta_0$, $\beta_1$, $\tau$ are integers (Betti numbers and
   record count) --- exact, zero drift.
-\item $\lambda_1$ is computed from the field-index bitmap topology by
-  integer-arithmetic eigenvalue routines on the $0$/$1$ adjacency ---
-  exact under any value-preserving gauge transformation.
+\item $\lambda_1$ is a deterministic graph invariant of the
+  $0$/$1$ field-index bitmap topology --- preserved \emph{as a
+  mathematical object} under any value-preserving gauge
+  transformation, because the underlying graph is unchanged. The
+  implementation stores a canonical quantized numerical
+  approximation (see Quantization grain below); invariance holds
+  because the graph is the same, not because the floating-point
+  eigenvalue is itself an integer.
 \item $K = \mathrm{Var}/\mathrm{range}^2$ drifts by $\sim 10^{-11}$
   relative through the Welford-streaming variance computation across
   the rotated record set --- the only f64 component with any drift.
@@ -1263,31 +1716,22 @@ $\pi_{\mathrm{inv}}(B)$ (Definition~\ref{def:invariant-tuple}):
   drift under any gauge that preserves the base-graph topology.
 \end{itemize}
 
-\paragraph{Why $\tau$ replaces capacity in $\pi_{\mathrm{inv}}$.}
-An earlier draft (v0.3.0) included $C = \tau/K$ explicitly in the
-invariant tuple. This amplified $K$'s relative drift ($\sim 10^{-11}$)
-into capacity's absolute drift by a factor of $\tau$: for a 40-record
-bundle, the observed drift on $C$ was $\sim 4 \times 10^{-9}$ ---
-$10^4 \times$ worse than $K$'s drift. Because $C$ is fully recoverable
-on demand from $K$ and $\tau$, storing it in the tuple input adds no
-information beyond what already binds the tag: $K$ is signed at full
-precision, $\tau$ is a $u64$ with zero drift, and $C = \tau/K$ is
-trivially recomputable by any caller. v0.3.1 therefore replaces the
-$C$ slot with a $\tau$ slot in the canonical-bytes encoding. The
-information content is identical; the drift amplification is gone.
-
-\begin{remark}[Reading numbers across drafts]
-The abstract's reference to ``$\sim 10^{-9}$ noise on the Davis
-capacity'' is the v0.3.0 $C$-drift figure --- the resolved
-amplification problem. The v0.3.1 worst remaining f64 component
-drift is $K$'s $\sim 10^{-13}$ absolute (i.e.\ $\sim 10^{-11}$
-relative), four orders of magnitude below the v0.3.0 number.
-\end{remark}
+\paragraph{Why $\tau$ enters $\pi_{\mathrm{inv}}$ directly.}
+The Davis capacity $C = \tau / K$ is fully recoverable on demand
+from $K$ and $\tau$; storing $C$ in the integrity-tag input adds
+no information beyond what the tag already binds, and would
+amplify $K$'s relative drift by a factor of $\tau$ through the
+division (e.g.\ a $40$-record bundle would push the drift on $C$
+into the $\sim 10^{-9}$ regime). $\pi_{\mathrm{inv}}$ therefore
+carries the exact $u64$ record-count $\tau$ directly; any caller
+needing capacity recomputes $\tau / K$ trivially after retrieving
+the tuple.
 
 \paragraph{Quantization grain.}
-With $\overline{\mathrm{Hol}}$ now a Betti-ratio (integer-exact) and
-$\lambda_1$ computed by integer-arithmetic eigenvalue routines on a
-$0$/$1$ bitmap, the only f64 component with any drift is $K$. We
+With $\overline{\mathrm{Hol}}$ a Betti-ratio (integer-exact) and
+$\lambda_1$ a canonical-quantized graph invariant of the $0$/$1$
+bitmap (deterministic across runs on the same graph topology),
+the only f64 component with any data-dependent drift is $K$. We
 quantize the f64 slots ($K$, $\lambda_1$, $\overline{\mathrm{Hol}}$)
 uniformly to $10$ decimal digits before HMAC:
 \[
@@ -1303,38 +1747,72 @@ through the integrity tag in practice. The quantization grain is
 chosen $3$ orders of magnitude looser than the measured drift so
 that legitimate floating-point noise rounds away \emph{below} the
 HMAC input; any genuine drift in the invariants reaching the
-$10^{-10}$ digit --- $4$ orders of magnitude tighter sensitivity
-than v0.3.0's $10^{-6}$ grain --- is preserved through the tag and
-detected as a content edit by the verifier.
+$10^{-10}$ digit is preserved through the tag and detected as a
+content edit by the verifier.
 
-\paragraph{Reference implementation.}
-The fix and measured drift numbers are reproducible from the public
-GIGI repository. Three artifacts:
-\begin{itemize}[nosep,leftmargin=1.5em]
-\item \texttt{src/integrity.rs} --- the \texttt{InvariantTuple}
-  struct and \texttt{quantize\_f64} helper.
-\item \texttt{tests/composition\_v0\_3.rs} --- end-to-end roundtrip
-  test\\
-  \texttt{test\_composition\_\allowbreak{}integrity\_tag\_\allowbreak{}invariant\_under\_\allowbreak{}gauge\_rotation}\\
-  on a $40$-record encrypted bundle.
-\item \texttt{theory/encryption/validation/}\\
-  \texttt{validation\_tests\_v0\_3.py} --- independent Python math
-  oracle.
-\end{itemize}
-
-\subsection{Implications for the rest of the paper}
+\subsection{Roadmap to the companion preprint}
 \label{sec:gauge-invariance:implications}
 
-\S 4 catalogs the five modes with their mathematical structure. \S 5
-builds Curvature-MAC: an HMAC on the invariant tuple,
-gauge-rotation-invariant in floating-point thanks to the $10$-dp
-quantization. \S 6 builds two delegation modes side-by-side:
-Aff$(\mathbb{R})$ closure (trusted-delegatee, $O(1)$ algebraic
-recovery on collusion; intended for honest-delegatee deployments
-where Bob's key is independently protected) and pairing-based
-key-delegation on BLS12-381 (collusion-resistance under DLP on
-$G_2$; suitable when the delegatee or Bob's key may be
-compromised). \S\S 7--9 build three further constructions on top.
+Internal references to \S\S 4--18 throughout this manuscript point
+to sections of the companion preprint, which writes up the ten
+cryptographic constructions and the empirical evaluation that ride
+on top of Theorem~\ref{thm:equivariance}:
+\begin{itemize}[nosep,leftmargin=*]
+\item \S 4 --- the five-mode taxonomy with mathematical structure
+  per mode.
+\item \S 5 --- Curvature-MAC: an HMAC on the invariant tuple,
+  gauge-rotation-invariant in floating-point thanks to the $10$-dp
+  quantization. (Sprint I.)
+\item \S 6 --- the four delegation constructions side-by-side:
+  Aff$(\mathbb{R})$ algebraic capability delegation (Sprint J;
+  trusted-delegatee, $O(1)$ algebraic recovery on collusion;
+  intended for honest-delegatee deployments where Bob's key is
+  independently protected), BLS12-381 pairing-based delegation
+  (Sprint J.2; bearer-capability with $rk$-unforgeability under
+  an exponent-ratio assumption in $G_2$, pre-quantum),
+  ML-KEM-768 trusted-delegatee (Sprint J.3; PQ
+  analogue of J.2 under MLWE), and the lattice threshold mode
+  (Sprint J.4; Shamir $K$-of-$N$ composed with per-share ML-KEM
+  transport, information-theoretic collusion-resistance up to
+  $K{-}1$ shareholders).
+\item \S 7 --- Holonomy Ledger: append-only RFC 6962 Merkle tree
+  over per-write leaves carrying $(\Delta \oint \Gamma,\,
+  \text{record\_hash})$. (Sprint K.)
+\item \S 8 --- \v{C}ech threshold sharing: Shamir $K$-of-$N$ over
+  $\mathbb{F}_p$ with pubkey-bound share tags. (Sprint L.)
+\item \S 9 --- Continuous RG-flow ratchet for per-write forward
+  secrecy via HKDF chain. (Sprint M.)
+\item \S 10 --- Public deterministic verification of the invariant
+  fingerprint $\pi_{\mathrm{inv}}$ from ciphertext alone: an
+  auditor holding only the encrypted bundle recomputes $\pi_{\mathrm{inv}}$
+  and compares to the prover's claim, returning the first
+  disagreement in canonical fingerprint order. No gauge key given
+  to the verifier. (Sprint N.)
+\item \S 11 --- Credential-gated invariant queries: HMAC-bound
+  query-class capability tags with a runtime falsification harness
+  that re-evaluates ad-hoc query callbacks under five random
+  gauges and rejects anything not in the invariant ring
+  $\mathcal{I}_{\mathrm{Aff}}$. (Sprint O.)
+\item \S 12 --- Geodesic-ball membership index: dimension-aware
+  Mahalanobis-distance index with $\chi^2(k, 1-\alpha)$ threshold
+  (exact table for $k \in \{1,\ldots,5\}$ at $p \in \{0.95, 0.99\}$
+  with Wilson--Hilferty cubic fallback elsewhere); scalar-gauge
+  ball preserved, per-field gauge handled via induced ellipsoidal
+  Mahalanobis metric. (Sprint P.)
+\item \S 13 --- $K$-preserving group characterization: the diagonal
+  affine group
+  $G_{\mathrm{AffK}} = (\mathbb{R}^*)^k \ltimes \mathbb{R}^k$ is
+  the exact transformation group that preserves per-field
+  curvature $K$. Shear matrices break $K$ (off-diagonal mixing);
+  rotations preserve $\mathrm{tr}(\mathrm{Cov})$ but break
+  $(\max - \min)^2$, so an $O(k)$-invariant trace-$K$ must use
+  squared diameter rather than coordinate range. (Sprint Q.)
+\item \S 14 --- empirical evaluation across the implemented suites.
+\item \S 15 --- the three deferred constructions (spectral-signature
+  ZKP, lattice-fiber PQ gauge, full Sigma-protocol upgrade of the
+  Sprint N verifier).
+\item \S\S 16--18 --- related work, limits, conclusion.
+\end{itemize}
 
 The thread tying them together is
 Theorem~\ref{thm:equivariance}: each construction either
@@ -1345,53 +1823,220 @@ with closed-form client recovery (analytical SQL helpers
 \S\,\ref{sec:gauge-invariance:examples}), or \emph{advances the
 gauge} in a controlled way (RG-flow ratchet). The taxonomy of
 what's possible flows directly from the choice of structure group
-and the representation $\rho$ each query realises.
+and the representation $\rho$ each query realises. Every
+construction listed above has a passing reference implementation
+and test suite in the public GIGI repository~\cite{gigi2026code}.
 
 
 %% ==================================================================
-%% Forward references and reproducibility (placeholder block for future sections)
+\appendix
+\section{Worked examples (Alice and Bob)}
+\label{sec:appendix:examples}
 %% ==================================================================
 
-\section*{Forthcoming sections}
+This appendix walks through twelve concrete scenarios that
+exercise the framework end-to-end. Throughout, \emph{Alice} is
+the data owner (holds the gauge key), \emph{Bob} is the server
+(holds only ciphertext), \emph{Carol} is an analyst or auditor
+without the gauge key, and \emph{Eve} is the adversary. All
+numerical values are chosen for arithmetic clarity, not
+realism; the implementations in \cite{gigi2026code} use
+production-strength parameters throughout.
 
-\S 4 through \S 14 will be drafted in subsequent revisions:
+\subsection*{A.1\quad SUM under Affine}
+Alice has a three-record column of ages
+$v = (47, 62, 35)$ and an Affine gauge $g = (a, b) = (2.5, 7)$.
+She encrypts pointwise: $\mathrm{Enc}_g(v) = (124.5, 162.0, 94.5)$
+and ships the ciphertext to Bob. Bob computes the encrypted-side
+sum $\hat{s} = 124.5 + 162.0 + 94.5 = 381.0$ and returns the
+single scalar. Alice recovers the plaintext sum via
+$\rho_g^{-1}(\hat{s}) = (\hat{s} - nb)/a = (381.0 - 3 \cdot 7)/2.5
+= 144.0$, matching the plaintext sum $47 + 62 + 35 = 144$.
+Bob never sees the plaintext ages; Alice's work is one division
+and one subtraction, independent of $n$.
 
-\begin{itemize}[nosep]
-\item \S 4 --- The mode taxonomy (one subsection per mode).
-\item \S 5 --- Curvature-MAC (Sprint I).
-\item \S 6 --- $\mathrm{Aff}(\mathbb{R})$ capability delegation
-  (Sprint J), including \textbf{Limitation 4.7.1 (collusion path
-  documented explicitly)}.
-\item \S 7 --- Holonomy ledger (Sprint K).
-\item \S 8 --- \v{C}ech threshold sharing (Sprint L).
-\item \S 9 --- Continuous RG-flow ratchet (Sprint M).
-\item \S 10 --- Empirical evaluation (981+ Rust tests + 66 Python
-  oracles).
-\item \S 11 --- Deferred constructions (geodesic-ball ABE,
-  spectral-signature ZKP, lattice-fiber PQ gauge).
-\item \S 12 --- Related work.
-\item \S 13 --- Limits.
-\item \S 14 --- Conclusion.
-\end{itemize}
+\subsection*{A.2\quad MEDIAN under Affine (sign-aware)}
+Same column. Plaintext median is $47$. With $a > 0$ (gauge
+$(2.5, 7)$) the sorted ciphertext is $(94.5, 124.5, 162.0)$, so
+the encrypted-side median is $124.5$; Alice recovers
+$(124.5 - 7)/2.5 = 47$. With $a < 0$ (gauge $(-2.5, 7)$) the
+ciphertext becomes $(-110.5, -148.0, -80.5)$; sorted, the
+encrypted-side median is $-110.5$; Alice recovers
+$(-110.5 - 7)/(-2.5) = 47$. The median is sign-symmetric because
+the $q = \tfrac{1}{2}$ quantile is its own complement under
+$q \mapsto 1 - q$; no client-side flip is needed.
 
-The math primitives backing each forthcoming section are already
-implemented in the public GIGI repository at
-\url{https://github.com/nurdymuny/gigi/}; the Python math-validation
-suite at \texttt{theory/encryption/validation/validation\_tests\_v0\_3.py}
-captures $66$ independent oracle tests for the constructions in
-\S\S 5--9.
+\subsection*{A.3\quad ARGMIN / ARGMAX under Affine (joint swap)}
+Same column $v = (47, 62, 35)$, indexed $0, 1, 2$. The plaintext
+$\textsc{argmin}$ is index $2$ (value $35$) and the plaintext
+$\textsc{argmax}$ is index $1$ (value $62$). Under $a > 0$ the
+encrypted ranking matches: Bob returns $(\textsc{argmin}_{\text{enc}},
+\textsc{argmax}_{\text{enc}}) = (2, 1)$, and Alice accepts the pair
+unchanged. Under $a < 0$ (gauge $(-2.5, 7)$, ciphertext
+$(-110.5, -148.0, -80.5)$), the encrypted-side
+$\textsc{argmin}$ is index $1$ (value $-148.0$) and the
+encrypted-side $\textsc{argmax}$ is index $2$ (value $-80.5$).
+Bob returns $(1, 2)$. Alice's client detects $a < 0$ and applies
+the joint swap on the answer space
+$Y = [\tau] \times [\tau]$, recovering
+$(\textsc{argmin}_{\text{plain}}, \textsc{argmax}_{\text{plain}})
+= (2, 1)$. The swap is the action $\rho_g$ on the index-pair
+answer space (Theorem~\ref{thm:equivariance}); no decryption of
+fiber values is needed.
 
+\subsection*{A.4\quad VAR under Probabilistic (bias correction)}
+Alice declares a Probabilistic gauge $(a, b, \sigma) = (1.0, 0,
+2.0)$ on the same column with $n = 3$ records and plaintext
+(population) variance $\mathrm{Var}(v) = 122$. Bob computes the
+encrypted-side sample variance estimator on the noised
+ciphertexts. Under the unbiased (Bessel-corrected) convention,
+its expected value is
+$\mathbb{E}[\widehat{V}] = a^2 \mathrm{Var}(v) + \sigma^2$ for
+the population, with a finite-sample correction of $(n{-}1)/n$
+on the noise term in the small-$n$ regime; for moderate or
+large $n$ this approaches $a^2 V + \sigma^2$ exactly. Treating
+the formula as asymptotic, Alice recovers
+$V \approx (\widehat{V} - \sigma^2) / a^2$: for example, an
+observed $\widehat{V} = 126$ gives $V = 122$. The correction
+works because $\mathrm{Var}$ is translation-free, so the
+$(a, b)$ part of the gauge contributes only $a^2$, and the
+Gaussian noise variance is additive and known to Alice.
 
-%% ==================================================================
-\section*{Acknowledgments}
-%% ==================================================================
+\subsection*{A.5\quad MIN under Probabilistic (typed refusal)}
+Same Probabilistic gauge with $\sigma = 2.0$. Bob computes the
+encrypted-side $\textsc{min}$ over the $n$ noised values; its
+expected value depends on the plaintext spread. \emph{For
+widely-spread plaintexts} like our $(47, 62, 35)$ (range
+$27 \gg \sigma$), the noised minimum is dominated by the
+smallest record's noise term and the expected bias is near
+zero. \emph{For tightly-packed plaintexts} (worst case: all
+$n$ values equal), the noised minimum is the order statistic
+of $n$ iid Gaussians, and its expected downward bias from the
+plaintext is the standard sub-Gaussian extreme-value bound
+$\Theta(\sigma \sqrt{2 \log n} / |a|)$ --- approximately
+$2.96$ at $\sigma = 2, n = 3$ --- a bias that does \emph{not}
+vanish as $n \to \infty$. Because the helper cannot tell which
+regime applies without inspecting plaintext, it refuses any
+$\textsc{min}$ call on $\sigma > 0$ by default, returning the
+typed error \texttt{BiasedUnderProbabilisticNoise} rather than
+silently risking a downward bias. Alice's options are
+documented at the API: (i) set $\sigma = 0$ on the column
+(Affine) for exact extremes, (ii) call
+\texttt{decrypt\_min\_unchecked} if she accepts the bias for a
+coarse bound, or (iii) pair GIGI with FHE on the single column
+where exact extremes under noise are required.
 
-Solo-authored. Drafting and editing of this manuscript were assisted by
-Claude (Anthropic); the mathematical positions, design choices, framing
-decisions, and acceptance or rejection of empirical results are the
-author's. The GIGI runtime referenced throughout is maintained at
-Davis Geometric; the test surface backing every claim in this paper is
-reproducible from the public \texttt{gigi} repository alone.
+\subsection*{A.6\quad Equality search under INDEXED}
+Alice has a column of high-cardinality user IDs. She wants
+\texttt{WHERE user\_id = 'P042'}. At ingest time each row's
+\texttt{user\_id} was encrypted as $\mathrm{PRF}_k(\texttt{`P042'})
+= X_{42}$, a $128$-bit ciphertext. To query, Alice (who holds the
+key) computes $\mathrm{PRF}_k(\texttt{`P042'}) = X_{42}$ locally
+and sends $X_{42}$ to Bob. Bob looks up $X_{42}$ in the bitmap
+index and returns the matching record IDs. Bob never sees
+\texttt{`P042'}. Spurious-collision probability is birthday-bounded
+by $O(q^2/2^{128})$, negligible for any practical $q$. As noted
+in Remark~\ref{rmk:indexed-eq}, the final tag-comparison primitive
+is a fixed-width integer comparison with no data-dependent byte
+loop, though the index lookup itself retains the usual
+access-pattern leakage.
+
+\subsection*{A.7\quad Bucket equality under PROBABILISTIC (Davis Identity)}
+Alice stores GPS coordinates in a Probabilistic-mode column with
+$\sigma = 10^{-4}$ degrees ($\approx 11$\,m) and bucket width
+$w = 10^{-3}$ degrees ($\approx 110$\,m). Two records have plain
+coordinates $r_1 = 37.7749$ and $r_2 = 37.7750$ (plaintext
+distance $\approx 11$\,m). Their noised representations land in
+the same bucket with high probability, so the Davis-Identity
+predicate $\mathrm{bucket}_\sigma(r_1) =
+\mathrm{bucket}_\sigma(r_2)$ returns ``equal.'' For two records
+at plain distance $0.0015^\circ$ ($\approx 165$\,m), the noisy
+separation $\Delta + Z$ with $Z \sim \mathcal{N}(0, 2\sigma^2)$
+puts them in different buckets with high probability. The
+boundary-FN rate is bounded by Proposition~\ref{prop:bucket-fp-fn}.
+
+\subsection*{A.8\quad PROJECT INVARIANT curvature (no gauge key)}
+Carol is an analyst with no gauge key but read access to the
+encrypted bundle. She issues the query
+\verb|PROJECT INVARIANT (curvature, capacity(0.1)) FROM patients|.
+Bob computes
+$K = \mathrm{Var}/\mathrm{range}^2$ and $C = \tau / K$ on the
+encrypted column. Because both $K$ and $C$ are gauge-invariant
+under $\mathrm{Aff}(\mathbb{R})$
+(Theorem~\ref{thm:affine-invariants}), Bob's results are
+bit-identical to what plaintext would yield. Carol receives the
+two numbers without any fiber-value ever being decrypted.
+Attempting \verb|PROJECT INVARIANT (sum)| would fail at parse
+time --- $\textsc{sum}$ is not a member of the certified
+invariant-ring grammar (\S\ref{sec:gauge-invariance:ring}).
+
+\subsection*{A.9\quad BLS12-381 bearer-capability delegation}
+Alice holds BLS12-381 keys $(sk_A, pk_A = g_2^{sk_A})$. Bob
+holds $(sk_B, pk_B = g_2^{sk_B})$. To delegate decryption of a
+single capsule, Alice samples $r \in \mathbb{F}_p$, computes the
+capsule $C_1 = g_1^r \in G_1$ and the delegation token
+$rk_{A \to B} = pk_B^{1/sk_A} = g_2^{sk_B/sk_A} \in G_2$, and
+transmits $rk$ to Bob over a \emph{confidential and authenticated}
+channel. Bob computes the shared key by pairing:
+$K_{\mathrm{shared}} = e(C_1, rk) = e(g_1, g_2)^{r \cdot sk_B/sk_A}
+\in G_T$, then derives an AEAD key via HKDF and decrypts.
+Honest scope: this is a bearer capability. If Eve compromises
+the proxy and obtains both $rk$ and a visible $C_1$, she
+computes $K_{\mathrm{shared}}$ directly via the public pairing
+--- no hardness assumption protects against this. The
+construction is appropriate when Alice trusts Bob (and any
+proxy Bob chooses) not to leak $rk$.
+
+\subsection*{A.10\quad Lattice $K$-of-$N$ threshold delegation}
+Alice has a $32$-byte AEAD master key $K$ for an encrypted
+bundle and wants to delegate decryption to a quorum of $3$ out
+of $5$ deputies. She runs Shamir $K{=}3$-of-$N{=}5$ over the
+secp256k1 base field $\mathbb{F}_p$, producing shares
+$s_1, \ldots, s_5$ such that any $3$ shares reconstruct $K$ and
+any $2$ reveal information-theoretically nothing. Each share is
+then wrapped under the matching deputy's ML-KEM-768 public key:
+$\mathrm{envelope}_i = \mathrm{MLKEM}.\mathrm{Encaps}(pk_i, s_i)$.
+Eve compromises two deputies (say $i = 1, 2$) and recovers
+$s_1, s_2$: she learns zero bits of $K$ by Shamir's
+information-theoretic guarantee. When three honest deputies
+(say $i = 3, 4, 5$) cooperate, each decapsulates its share
+under its $sk_i$, and they jointly compute Lagrange
+interpolation at zero, $K = \lambda_3 s_3 + \lambda_4 s_4 +
+\lambda_5 s_5 \pmod{p}$. The outer ML-KEM layer adds NIST
+Level 3 post-quantum confidentiality on each share's transport.
+
+\subsection*{A.11\quad Public deterministic verification of $\pi_{\mathrm{inv}}$}
+Bob the data steward publishes the encrypted bundle along with
+his claim $\pi_{\mathrm{inv}}^{\text{claim}} = (K = 0.142,
+\lambda_1 = 1.83, \overline{\mathrm{Hol}} = 0.667, \tau = 40,
+\beta_0 = 2, \beta_1 = 2)$. Carol the auditor holds no gauge
+key. She recomputes $\pi_{\mathrm{inv}}$ from the ciphertext
+alone --- all six components are gauge-invariant under Affine,
+so her computed values must match the plaintext fingerprint,
+which equals Bob's claim. Carol observes $(0.142, 1.83, 0.667,
+40, 2, 2)$ within the $10^{-10}$ quantization grain on f64
+fields and exact equality on integer fields: \emph{Verified}.
+Had Bob (or an adversary) tampered with a record so that the
+recomputed $K$ became $0.151$, Carol would report
+$\textsc{Rejected}(K, \mathrm{gap} = 0.009)$, naming the first
+disagreement in canonical fingerprint order.
+
+\subsection*{A.12\quad Curvature-MAC tamper detection}
+Alice computes $\pi_{\mathrm{inv}}$ on her bundle at write time
+and HMACs the canonical-byte encoding under an integrity key:
+$t = \mathrm{HMAC\text{-}SHA256}_{k_{\text{int}}}
+(\mathrm{canon}(\pi_{\mathrm{inv}}))$. She stores
+$(\text{encrypted\_bundle}, t)$ on Bob. Eve flips bits in record
+$7$'s age field. At verification time, Alice (or any reader with
+$k_{\text{int}}$) recomputes $\pi_{\mathrm{inv}}'$ on the
+modified bundle and the tag candidate $t'$. If Eve's edit
+crossed the $10^{-10}$ quantization grain on any invariant
+component, $t' \neq t$ and the tamper is detected. If Eve's edit
+was below the grain (a sub-quantization perturbation that left
+all six components fixed), the Curvature-MAC tag misses it ---
+which is why the Holonomy ledger (companion preprint \S 7) signs
+per-record \texttt{record\_hash} leaves in parallel, closing the
+sub-grain gap at byte level.
 
 
 %% ==================================================================

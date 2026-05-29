@@ -1,0 +1,129 @@
+\contentsline {section}{\numberline {1}Introduction}{2}{section.1}%
+\contentsline {paragraph}{Thesis.}{4}{section*.2}%
+\contentsline {paragraph}{Roadmap.}{4}{section*.3}%
+\contentsline {section}{\numberline {2}Background}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Prior canon --- three Davis manuscripts}{4}{subsection.2.1}%
+\contentsline {paragraph}{Sheaf Composition~\cite {davis2026sheafcomposition}.}{4}{section*.4}%
+\contentsline {paragraph}{Pure-Fiber Language Modeling~\cite {davis2026purefiber}.}{4}{section*.5}%
+\contentsline {paragraph}{The Double Cover Principle~\cite {davis2026doublecover}.}{5}{section*.6}%
+\contentsline {subsection}{\numberline {2.2}External math anchors}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}What this paper adds}{5}{subsection.2.3}%
+\contentsline {section}{\numberline {3}The arc}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Expectations entering the upgrade}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}What the substrate actually said}{6}{subsection.3.2}%
+\contentsline {paragraph}{Sphere geometry was the real result.}{6}{section*.7}%
+\contentsline {paragraph}{$S^n$ for $n > 2$ is not K\"ahler.}{6}{section*.8}%
+\contentsline {paragraph}{\texttt {morse\_compress} is $\mathcal {O}(V^3)$ on dense graphs.}{6}{section*.9}%
+\contentsline {paragraph}{The 10-test A/B underclaimed.}{6}{section*.10}%
+\contentsline {subsection}{\numberline {3.3}The pivot}{6}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}What the arc says}{6}{subsection.3.4}%
+\contentsline {section}{\numberline {4}The eight layers}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}L1 --- K\"ahler structure $(J, B)$ on the bundle}{7}{subsection.4.1}%
+\contentsline {paragraph}{Definition.}{7}{section*.11}%
+\contentsline {paragraph}{Intuition.}{7}{section*.12}%
+\contentsline {paragraph}{Equation.}{7}{section*.13}%
+\contentsline {paragraph}{Implementation.}{8}{section*.14}%
+\contentsline {paragraph}{Validation.}{8}{section*.15}%
+\contentsline {paragraph}{Consumer API.}{8}{section*.16}%
+\contentsline {subsection}{\numberline {4.2}L1.5 --- $B$-perturbed magnetic transport}{8}{subsection.4.2}%
+\contentsline {paragraph}{Definition.}{8}{section*.17}%
+\contentsline {paragraph}{Intuition.}{8}{section*.18}%
+\contentsline {paragraph}{Equation.}{8}{section*.19}%
+\contentsline {paragraph}{Proof.}{8}{section*.20}%
+\contentsline {paragraph}{Implementation.}{8}{section*.21}%
+\contentsline {paragraph}{Validation.}{9}{section*.22}%
+\contentsline {paragraph}{Consumer API.}{9}{section*.23}%
+\contentsline {subsection}{\numberline {4.3}L2 --- Dual adjacency commutativity classifier}{9}{subsection.4.3}%
+\contentsline {paragraph}{Definition.}{9}{section*.24}%
+\contentsline {paragraph}{Intuition.}{9}{section*.25}%
+\contentsline {paragraph}{Equation.}{9}{section*.26}%
+\contentsline {paragraph}{Implementation.}{9}{section*.27}%
+\contentsline {paragraph}{Validation.}{9}{section*.28}%
+\contentsline {paragraph}{Consumer API.}{9}{section*.29}%
+\contentsline {subsection}{\numberline {4.4}L3 --- Jacobi-field cardinality bounds}{9}{subsection.4.4}%
+\contentsline {paragraph}{Definition.}{9}{section*.30}%
+\contentsline {paragraph}{Intuition.}{10}{section*.31}%
+\contentsline {paragraph}{Equation.}{10}{section*.32}%
+\contentsline {paragraph}{Implementation.}{10}{section*.33}%
+\contentsline {paragraph}{Validation.}{10}{section*.34}%
+\contentsline {paragraph}{Consumer API.}{10}{section*.35}%
+\contentsline {subsection}{\numberline {4.5}L4 --- Holomorphic curvature decomposition}{10}{subsection.4.5}%
+\contentsline {paragraph}{Definition.}{10}{section*.36}%
+\contentsline {paragraph}{Intuition.}{10}{section*.37}%
+\contentsline {paragraph}{Equation.}{10}{section*.38}%
+\contentsline {paragraph}{Implementation.}{10}{section*.39}%
+\contentsline {paragraph}{Validation.}{11}{section*.40}%
+\contentsline {paragraph}{Consumer API.}{11}{section*.41}%
+\contentsline {subsection}{\numberline {4.6}L5 --- Hadamard substructure detection}{11}{subsection.4.6}%
+\contentsline {paragraph}{Definition.}{11}{section*.42}%
+\contentsline {paragraph}{Intuition.}{11}{section*.43}%
+\contentsline {paragraph}{Equation.}{11}{section*.44}%
+\contentsline {paragraph}{Implementation.}{11}{section*.45}%
+\contentsline {paragraph}{Validation.}{11}{section*.46}%
+\contentsline {paragraph}{Consumer API.}{11}{section*.47}%
+\contentsline {subsection}{\numberline {4.7}L6 --- Hodge complex and Morse compression}{12}{subsection.4.7}%
+\contentsline {paragraph}{Definition.}{12}{section*.48}%
+\contentsline {paragraph}{Intuition.}{12}{section*.49}%
+\contentsline {paragraph}{Equation.}{12}{section*.50}%
+\contentsline {paragraph}{Implementation.}{12}{section*.51}%
+\contentsline {paragraph}{Validation.}{12}{section*.52}%
+\contentsline {paragraph}{Consumer API.}{12}{section*.53}%
+\contentsline {subsection}{\numberline {4.8}L7.1 --- Prequantization line bundle (integrality)}{12}{subsection.4.8}%
+\contentsline {paragraph}{Definition.}{12}{section*.54}%
+\contentsline {paragraph}{Intuition.}{12}{section*.55}%
+\contentsline {paragraph}{Equation.}{13}{section*.56}%
+\contentsline {paragraph}{Implementation.}{13}{section*.57}%
+\contentsline {paragraph}{Validation.}{13}{section*.58}%
+\contentsline {paragraph}{Consumer API.}{13}{section*.59}%
+\contentsline {subsection}{\numberline {4.9}L7.5 --- Quantum cohomology (Frobenius/WDVV)}{13}{subsection.4.9}%
+\contentsline {paragraph}{Definition.}{13}{section*.60}%
+\contentsline {paragraph}{Intuition.}{13}{section*.61}%
+\contentsline {paragraph}{Equation.}{13}{section*.62}%
+\contentsline {paragraph}{Implementation.}{13}{section*.63}%
+\contentsline {paragraph}{Validation.}{14}{section*.64}%
+\contentsline {paragraph}{Consumer API.}{14}{section*.65}%
+\contentsline {subsection}{\numberline {4.10}L7.6 --- Berezin--Toeplitz quantization}{14}{subsection.4.10}%
+\contentsline {paragraph}{Definition.}{14}{section*.66}%
+\contentsline {paragraph}{Intuition.}{14}{section*.67}%
+\contentsline {paragraph}{Equation.}{14}{section*.68}%
+\contentsline {paragraph}{Implementation.}{14}{section*.69}%
+\contentsline {paragraph}{Validation.}{14}{section*.70}%
+\contentsline {paragraph}{Consumer API.}{14}{section*.71}%
+\contentsline {subsection}{\numberline {4.11}L8 --- Marcella substrate handoff}{15}{subsection.4.11}%
+\contentsline {paragraph}{Definition.}{15}{section*.72}%
+\contentsline {paragraph}{Intuition.}{15}{section*.73}%
+\contentsline {paragraph}{Equation.}{15}{section*.74}%
+\contentsline {paragraph}{Implementation.}{15}{section*.75}%
+\contentsline {paragraph}{Validation.}{15}{section*.76}%
+\contentsline {paragraph}{Consumer API.}{15}{section*.77}%
+\contentsline {section}{\numberline {5}The optionality contract}{15}{section.5}%
+\contentsline {subsection}{\numberline {5.1}The claim}{15}{subsection.5.1}%
+\contentsline {paragraph}{Proof sketch.}{15}{section*.78}%
+\contentsline {subsection}{\numberline {5.2}Numbers}{16}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Discipline}{16}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Independent citability}{16}{subsection.5.4}%
+\contentsline {section}{\numberline {6}Cross-team validation}{16}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Setup (data-substrate consumer: Marcella)}{16}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}The four cells}{16}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}The headline number}{17}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Calibration theorem}{17}{subsection.6.4}%
+\contentsline {paragraph}{Proof.}{17}{section*.79}%
+\contentsline {paragraph}{Consequence.}{17}{section*.80}%
+\contentsline {subsection}{\numberline {6.5}Deep-trace long-context evidence}{17}{subsection.6.5}%
+\contentsline {subsection}{\numberline {6.6}Cross-domain validation: physical-substrate consumer (DPU / BLG)}{17}{subsection.6.6}%
+\contentsline {paragraph}{Intuition.}{17}{section*.81}%
+\contentsline {paragraph}{Three-way validation.}{17}{section*.82}%
+\contentsline {paragraph}{Quantitative agreement.}{18}{section*.83}%
+\contentsline {paragraph}{Headline.}{18}{section*.84}%
+\contentsline {paragraph}{What this section adds.}{18}{section*.85}%
+\contentsline {paragraph}{Reproducibility.}{18}{section*.86}%
+\contentsline {section}{\numberline {7}The surprise: the meter is a stationarity signal}{18}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Setup}{19}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}The observation}{19}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Interpretation}{19}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Caveats}{19}{subsection.7.4}%
+\contentsline {section}{\numberline {8}Limits}{19}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Does claim}{19}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Does not claim}{20}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Independently citable}{20}{subsection.8.3}%
+\contentsline {section}{\numberline {9}Conclusion}{20}{section.9}%

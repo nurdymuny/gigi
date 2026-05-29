@@ -1,0 +1,56 @@
+========================================================================
+ GIGI Kähler catalog v5 validation — L7.1 cross-domain
+ Physical-substrate consumer: AB-stacked bilayer graphene
+ (DGP / dgp-core::physics::bilayer)
+========================================================================
+
+=== Test 15: BLG prequantization integrality (catalog L7.1 / §2.1) ===
+  Source: physics::bilayer.rs in dgp-core; cross-test
+         tests/kahler_l71_integrality_smoke.rs.
+
+  Setup: loop radius = 5.00e+07 m⁻¹, kinetic energy ε = 2.7085 meV
+         BLG effective mass m* = 3.2040e-32 kg
+
+       Δ/ε |   analytic |γ| |   Wilson |γ| |   rel_err |  |γ|/(2π) |  int_dev
+  --------------------------------------------------------------------------------
+      0.00 |       6.283185 |     6.283185 |   0.00000 |   1.00000 |   0.0000
+      0.25 |       5.503852 |     5.503740 |   0.00002 |   0.87597 |   0.1240
+      0.50 |       4.759289 |     4.759079 |   0.00004 |   0.75746 |   0.2425
+      1.00 |       3.473259 |     3.472931 |   0.00009 |   0.55279 |   0.4472
+      2.00 |       1.840302 |     1.839978 |   0.00018 |   0.29289 |   0.2929
+      5.00 |       0.449394 |     0.449277 |   0.00026 |   0.07152 |   0.0715
+    100.00 |       0.001256 |     0.001256 |   0.00029 |   0.00020 |   0.0002
+
+  Assertion 1: analytic closed-form vs Wilson-loop numerical
+  PASS  max rel_err = 0.00029 < 5% across all Δ values
+
+  Assertion 2: integrality at endpoints (catalog L7.1)
+  PASS  Δ=0:    integrality dev = 0.0000  (integer Chern -1)
+  PASS  Δ=100ε: integrality dev = 0.0002  (integer Chern  0)
+
+  Assertion 3: Dirac string at intermediate Δ (catalog L7.1)
+  PASS  Δ=ε: integrality dev = 0.4472  (Dirac string, non-integer Chern)
+
+  Assertion 4: BLG Dirac string magnitude matches Wu-Yang (catalog test_7)
+  Wu-Yang non-integer q reported deviations: 0.33–0.40
+  BLG mid-Δ integrality deviation:           0.4472
+  PASS  BLG Dirac string deviation in same regime as toy S² monopole
+
+  ────────────────────────────────────────────────────────────
+  Test 15 PASS  —  catalog L7.1 has a second physical-substrate
+                   consumer (DGP / BLG); validation independent of
+                   the Marcella data-substrate evidence in §6.
+  ────────────────────────────────────────────────────────────
+
+=== Test 16: BLG bundle deformation is monotonic in Δ ===
+  PASS  |γ_BLG(Δ)| is strictly monotonically decreasing across 20 sample points
+
+=== Test 17: Negative control — flat bundle has no Dirac string ===
+  Trivial constant γ = π/2: integrality dev = 0.2500
+  PASS  Constant deviation cannot mimic BLG's endpoint-vs-middle signature
+        (test 15 signature: endpoints ~0, middle ~0.45 — bundle deformation, not constant noise)
+
+========================================================================
+ v5 ALL PASS — catalog L7.1 validated against real BLG physics
+ Cross-test:  dgp-core/tests/kahler_l71_integrality_smoke.rs
+========================================================================

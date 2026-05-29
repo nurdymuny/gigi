@@ -1,0 +1,222 @@
+GIGI Encrypt v0.3 — Python math validation
+======================================================================
+Total: 25 passed, 0 failed, 25 total
+
+--- Sprint I (3 tests) ---
+  [PASS] test_curvature_mac_canonical_encoding_52_bytes (0.030 ms)
+  [PASS] test_curvature_mac_hmac_pseudorandomness_chi_square (2.392 ms)
+  [PASS] test_curvature_mac_quantization_collapses_noise (0.064 ms)
+
+--- Sprint J (2 tests) ---
+  [PASS] test_capability_proxy_alone_unrecoverability (0.004 ms)
+  [PASS] test_capability_collusion_recovers_alice_key (0.003 ms)
+
+--- Sprint K (3 tests) ---
+  [PASS] test_holonomy_ledger_merkle_inclusion_proof_correctness (0.592 ms)
+  [PASS] test_holonomy_ledger_telescoping_correctness (0.004 ms)
+  [PASS] test_holonomy_ledger_record_hash_byte_tamper (0.003 ms)
+
+--- Sprint L (3 tests) ---
+  [PASS] test_shamir_reconstruction_at_threshold_secp256k1 (0.257 ms)
+  [PASS] test_shamir_information_theoretic_security_k_minus_1 (0.009 ms)
+  [PASS] test_cech_auth_tag_holder_pubkey_binding (0.076 ms)
+
+--- Sprint M (4 tests) ---
+  [PASS] test_ratchet_hkdf_chain_determinism (0.671 ms)
+  [PASS] test_ratchet_hkdf_one_wayness_empirical (7.456 ms)
+  [PASS] test_ratchet_curvature_invariance_across_steps (0.698 ms)
+  [PASS] test_ratchet_checkpoint_replay_correctness (0.113 ms)
+
+--- Sprint Composition (4 tests) ---
+  [PASS] test_composition_integrity_x_ledger_full_coverage (0.093 ms)
+  [PASS] test_composition_integrity_x_ratchet_invariance (1.143 ms)
+  [PASS] test_composition_ledger_x_ratchet_rotation_event (0.058 ms)
+  [PASS] test_composition_capability_x_ratchet_stale (0.005 ms)
+
+--- Sprint Golden (6 tests) ---
+  [PASS] test_golden_vectors_secp256k1_field_arithmetic (0.003 ms)
+  [PASS] test_golden_vectors_hmac_sha256 (0.008 ms)
+  [PASS] test_golden_vectors_hkdf_sha256 (0.013 ms)
+  [PASS] test_golden_vectors_sha256_merkle_node (0.002 ms)
+  [PASS] test_golden_vectors_sha256_empty_input (0.013 ms)
+  [PASS] test_golden_vectors_canonical_invariant_roundtrip (0.018 ms)
+
+
+--- JSON ---
+[
+  {
+    "sprint": "I",
+    "name": "test_curvature_mac_canonical_encoding_52_bytes",
+    "passed": true,
+    "duration_ms": 0.030499999411404133,
+    "note": ""
+  },
+  {
+    "sprint": "I",
+    "name": "test_curvature_mac_hmac_pseudorandomness_chi_square",
+    "passed": true,
+    "duration_ms": 2.391800007899292,
+    "note": ""
+  },
+  {
+    "sprint": "I",
+    "name": "test_curvature_mac_quantization_collapses_noise",
+    "passed": true,
+    "duration_ms": 0.06410000787582248,
+    "note": ""
+  },
+  {
+    "sprint": "J",
+    "name": "test_capability_proxy_alone_unrecoverability",
+    "passed": true,
+    "duration_ms": 0.0037999998312443495,
+    "note": ""
+  },
+  {
+    "sprint": "J",
+    "name": "test_capability_collusion_recovers_alice_key",
+    "passed": true,
+    "duration_ms": 0.002900007530115545,
+    "note": ""
+  },
+  {
+    "sprint": "K",
+    "name": "test_holonomy_ledger_merkle_inclusion_proof_correctness",
+    "passed": true,
+    "duration_ms": 0.5922999989707023,
+    "note": ""
+  },
+  {
+    "sprint": "K",
+    "name": "test_holonomy_ledger_telescoping_correctness",
+    "passed": true,
+    "duration_ms": 0.0042000028770416975,
+    "note": ""
+  },
+  {
+    "sprint": "K",
+    "name": "test_holonomy_ledger_record_hash_byte_tamper",
+    "passed": true,
+    "duration_ms": 0.002700006007216871,
+    "note": ""
+  },
+  {
+    "sprint": "L",
+    "name": "test_shamir_reconstruction_at_threshold_secp256k1",
+    "passed": true,
+    "duration_ms": 0.25660000392235816,
+    "note": ""
+  },
+  {
+    "sprint": "L",
+    "name": "test_shamir_information_theoretic_security_k_minus_1",
+    "passed": true,
+    "duration_ms": 0.0092999980552122,
+    "note": ""
+  },
+  {
+    "sprint": "L",
+    "name": "test_cech_auth_tag_holder_pubkey_binding",
+    "passed": true,
+    "duration_ms": 0.07610001193825155,
+    "note": ""
+  },
+  {
+    "sprint": "M",
+    "name": "test_ratchet_hkdf_chain_determinism",
+    "passed": true,
+    "duration_ms": 0.6708000000799075,
+    "note": ""
+  },
+  {
+    "sprint": "M",
+    "name": "test_ratchet_hkdf_one_wayness_empirical",
+    "passed": true,
+    "duration_ms": 7.455500002834015,
+    "note": ""
+  },
+  {
+    "sprint": "M",
+    "name": "test_ratchet_curvature_invariance_across_steps",
+    "passed": true,
+    "duration_ms": 0.6976999866310507,
+    "note": ""
+  },
+  {
+    "sprint": "M",
+    "name": "test_ratchet_checkpoint_replay_correctness",
+    "passed": true,
+    "duration_ms": 0.11340000492054969,
+    "note": ""
+  },
+  {
+    "sprint": "Composition",
+    "name": "test_composition_integrity_x_ledger_full_coverage",
+    "passed": true,
+    "duration_ms": 0.09349999891128391,
+    "note": ""
+  },
+  {
+    "sprint": "Composition",
+    "name": "test_composition_integrity_x_ratchet_invariance",
+    "passed": true,
+    "duration_ms": 1.1432999890530482,
+    "note": ""
+  },
+  {
+    "sprint": "Composition",
+    "name": "test_composition_ledger_x_ratchet_rotation_event",
+    "passed": true,
+    "duration_ms": 0.05789998976979405,
+    "note": ""
+  },
+  {
+    "sprint": "Composition",
+    "name": "test_composition_capability_x_ratchet_stale",
+    "passed": true,
+    "duration_ms": 0.0046000059228390455,
+    "note": ""
+  },
+  {
+    "sprint": "Golden",
+    "name": "test_golden_vectors_secp256k1_field_arithmetic",
+    "passed": true,
+    "duration_ms": 0.0026000052457675338,
+    "note": ""
+  },
+  {
+    "sprint": "Golden",
+    "name": "test_golden_vectors_hmac_sha256",
+    "passed": true,
+    "duration_ms": 0.00829999044071883,
+    "note": ""
+  },
+  {
+    "sprint": "Golden",
+    "name": "test_golden_vectors_hkdf_sha256",
+    "passed": true,
+    "duration_ms": 0.012799995602108538,
+    "note": ""
+  },
+  {
+    "sprint": "Golden",
+    "name": "test_golden_vectors_sha256_merkle_node",
+    "passed": true,
+    "duration_ms": 0.0020000006770715117,
+    "note": ""
+  },
+  {
+    "sprint": "Golden",
+    "name": "test_golden_vectors_sha256_empty_input",
+    "passed": true,
+    "duration_ms": 0.013299999409355223,
+    "note": ""
+  },
+  {
+    "sprint": "Golden",
+    "name": "test_golden_vectors_canonical_invariant_roundtrip",
+    "passed": true,
+    "duration_ms": 0.01780000457074493,
+    "note": ""
+  }
+]

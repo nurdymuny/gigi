@@ -2450,6 +2450,172 @@ async fn spectral_gap_endpoint(
 }
 
 // ────────────────────────────────────────────────────────────
+// Sprint N (v0.4) — Invariant Consistency Verification endpoint.
+// Auditor-facing surface for `gigi::invariant_verify`.
+//
+//   POST /v1/bundles/{name}/verify_invariant
+//     Body: { "bundle_id": <prover's claim>, "claimed": { k, lambda_1,
+//             holonomy_mean, record_count, beta_0, beta_1 },
+//             "tolerances": Option<{ k, lambda_1, holonomy_mean }> }
+//     Resp: { "verdict": "verified" | "bundle_mismatch" | "rejected", ... }
+//
+// Path {name} is the verifier's claim about which bundle this is —
+// passed as `store_bundle_id` so the bundle_id binding (review Gap 1)
+// is enforced at the HTTP layer too.
+// Not gated on `kahler` — Sprint N is generally useful for any v0.2+
+// bundle whose invariant tuple computes.
+// ────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct InvariantTupleWire {
+    k: f64,
+    lambda_1: f64,
+    holonomy_mean: f64,
+    record_count: u64,
+    beta_0: u64,
+    beta_1: u64,
+}
+
+impl From<gigi::integrity::InvariantTuple> for InvariantTupleWire {
+    fn from(t: gigi::integrity::InvariantTuple) -> Self {
+        Self {
+            k: t.k,
+            lambda_1: t.lambda_1,
+            holonomy_mean: t.holonomy_mean,
+            record_count: t.record_count,
+            beta_0: t.beta_0,
+            beta_1: t.beta_1,
+        }
+    }
+}
+
+impl From<InvariantTupleWire> for gigi::integrity::InvariantTuple {
+    fn from(w: InvariantTupleWire) -> Self {
+        Self {
+            k: w.k,
+            lambda_1: w.lambda_1,
+            holonomy_mean: w.holonomy_mean,
+            record_count: w.record_count,
+            beta_0: w.beta_0,
+            beta_1: w.beta_1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct InvariantTolerancesWire {
+    k: Option<f64>,
+    lambda_1: Option<f64>,
+    holonomy_mean: Option<f64>,
+}
+
+impl From<InvariantTolerancesWire> for gigi::invariant_verify::InvariantTolerances {
+    fn from(w: InvariantTolerancesWire) -> Self {
+        let d = gigi::invariant_verify::InvariantTolerances::default();
+        Self {
+            k: w.k.unwrap_or(d.k),
+            lambda_1: w.lambda_1.unwrap_or(d.lambda_1),
+            holonomy_mean: w.holonomy_mean.unwrap_or(d.holonomy_mean),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct VerifyInvariantRequest {
+    /// The prover's claim about which bundle the tuple is for. Checked
+    /// against the URL path `{name}` (which the verifier asserts is
+    /// the bundle they hold); mismatch → `bundle_mismatch` verdict.
+    bundle_id: String,
+    /// The full six-component tuple the prover claims.
+    claimed: InvariantTupleWire,
+    /// Per-field f64 tolerances. Defaults (1e-10 each) used when omitted.
+    tolerances: Option<InvariantTolerancesWire>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "verdict", rename_all = "snake_case")]
+enum VerifyInvariantResponse {
+    /// Bundle + all six tuple components agreed.
+    Verified { computed: InvariantTupleWire },
+    /// Bundle identity disagreed (Gap 1 trust-handoff check).
+    BundleMismatch { claimed: String, store_id: String },
+    /// First tuple component disagreement in fingerprint order.
+    Rejected {
+        field: String,
+        claimed: f64,
+        computed: f64,
+        delta: f64,
+    },
+}
+
+impl From<gigi::invariant_verify::VerifyResult> for VerifyInvariantResponse {
+    fn from(r: gigi::invariant_verify::VerifyResult) -> Self {
+        use gigi::invariant_verify::VerifyResult as VR;
+        match r {
+            VR::Verified { computed } => VerifyInvariantResponse::Verified {
+                computed: computed.into(),
+            },
+            VR::BundleMismatch { claimed, store_id } => {
+                VerifyInvariantResponse::BundleMismatch { claimed, store_id }
+            }
+            VR::Rejected {
+                field,
+                claimed,
+                computed,
+                delta,
+            } => VerifyInvariantResponse::Rejected {
+                field: field.to_string(),
+                claimed,
+                computed,
+                delta,
+            },
+        }
+    }
+}
+
+async fn verify_invariant_endpoint(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<VerifyInvariantRequest>,
+) -> Result<Json<VerifyInvariantResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+    let heap = store.as_heap().ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!(
+                    "Bundle '{}' is mmap-resident; Sprint N verifier requires heap bundle for InvariantTuple::compute",
+                    name
+                ),
+            }),
+        )
+    })?;
+    let statement = gigi::invariant_verify::InvariantStatement {
+        bundle_id: req.bundle_id,
+        claimed: req.claimed.into(),
+    };
+    let tolerances: gigi::invariant_verify::InvariantTolerances = req
+        .tolerances
+        .map(Into::into)
+        .unwrap_or_default();
+    let result = gigi::invariant_verify::verify_invariant_statement(
+        heap,
+        &name,
+        &statement,
+        tolerances,
+    );
+    Ok(Json(result.into()))
+}
+
+// ────────────────────────────────────────────────────────────
 // PR-window endpoints for Marcella's Hopf + Riemann-Roch wiring
 // (cross-team thread 2026-05-25). Four endpoints in one window:
 //
@@ -10668,6 +10834,31 @@ fn execute_gql_with_exists(
 /// Group records by `around_field`, compute 2D centroids in (`f0`, `f1`), and measure
 /// the parallel-transport polygon deficit.  Returns `(deficit, centroids)` where each
 /// centroid entry is `(label, cx, cy, transport_angle)`.  The caller checks `len() < 2`.
+/// Discrete Gauss-Bonnet angle-deficit holonomy in the (f0, f1) fiber plane.
+///
+/// **Gauge invariance (v0.3.1)**: previously this function computed angles
+/// directly on raw centroid coordinates, which made the result depend on the
+/// active gauge — under per-field Affine encryption with scales (a_0, a_1),
+/// the direction vectors (dx, dy) become (a_0·dx, a_1·dy), and `atan2`
+/// distorts when a_0 ≠ a_1. v0.3.1 normalizes centroids by their own
+/// min/max per axis before computing angles. Under any field-wise Affine
+/// gauge g_i(v) = a_i·v + b_i, the centroid-set's min/range transforms
+/// equivariantly, so the normalized centroids are gauge-invariant up to
+/// per-axis reflection in [0,1]². Reflection preserves angle magnitudes;
+/// the angle-deficit therefore remains invariant in absolute value.
+///
+/// The returned centroids are reported in raw (gauge-active) coordinates
+/// for display purposes; only the angle/deficit computation runs in
+/// normalized space. This means the `transport_angle` values reported per
+/// centroid are also the gauge-invariant normalized-space angles.
+///
+/// **No decryption required**: the function reads the stored fiber bytes
+/// directly. For the Affine, Isometric, and Identity encryption modes the
+/// returned deficit equals what would be computed on plaintext (up to sign
+/// for per-axis reflections under negative scales). For Opaque / Indexed
+/// (non-numeric ciphertexts), `Value::as_f64()` will return None for most
+/// fields and the function returns 0.0 — call HOLONOMY only on numeric
+/// fiber fields.
 fn compute_fiber_holonomy(
     records: impl Iterator<Item = gigi::types::Record>,
     f0: &str,
@@ -10694,15 +10885,33 @@ fn compute_fiber_holonomy(
     let centroids: Vec<(String, f64, f64)> = groups.into_iter()
         .map(|(k, (sx, sy, n))| (k, sx / n as f64, sy / n as f64))
         .collect();
-    let nc = centroids.len();
+
+    // v0.3.1 gauge-invariance: normalize centroids by their own (min, max)
+    // per axis. This makes the subsequent angle computation invariant under
+    // per-field Aff(ℝ) up to per-axis reflection (which preserves magnitudes).
+    let (mut min_x, mut max_x) = (f64::INFINITY, f64::NEG_INFINITY);
+    let (mut min_y, mut max_y) = (f64::INFINITY, f64::NEG_INFINITY);
+    for (_, cx, cy) in &centroids {
+        if *cx < min_x { min_x = *cx; }
+        if *cx > max_x { max_x = *cx; }
+        if *cy < min_y { min_y = *cy; }
+        if *cy > max_y { max_y = *cy; }
+    }
+    let range_x = (max_x - min_x).max(f64::EPSILON);
+    let range_y = (max_y - min_y).max(f64::EPSILON);
+    let normalized: Vec<(f64, f64)> = centroids.iter()
+        .map(|(_, cx, cy)| ((cx - min_x) / range_x, (cy - min_y) / range_y))
+        .collect();
+
+    let nc = normalized.len();
     let mut transport_angles = vec![0.0f64; nc];
     for i in 0..nc {
         let prev = if i == 0 { nc - 1 } else { i - 1 };
         let next = (i + 1) % nc;
-        let dx_in  = centroids[i].1 - centroids[prev].1;
-        let dy_in  = centroids[i].2 - centroids[prev].2;
-        let dx_out = centroids[next].1 - centroids[i].1;
-        let dy_out = centroids[next].2 - centroids[i].2;
+        let dx_in  = normalized[i].0 - normalized[prev].0;
+        let dy_in  = normalized[i].1 - normalized[prev].1;
+        let dx_out = normalized[next].0 - normalized[i].0;
+        let dy_out = normalized[next].1 - normalized[i].1;
         let mut delta = dy_out.atan2(dx_out) - dy_in.atan2(dx_in);
         while delta >  std::f64::consts::PI { delta -= 2.0 * std::f64::consts::PI; }
         while delta < -std::f64::consts::PI { delta += 2.0 * std::f64::consts::PI; }
@@ -12298,7 +12507,14 @@ async fn main() {
             get(ws_bundle_dashboard_handler),
         )
         // Dashboard UI
-        .route("/dashboard", get(serve_dashboard));
+        .route("/dashboard", get(serve_dashboard))
+        // Sprint N (v0.4) — Invariant Consistency Verification.
+        // Auditor-facing endpoint; bundle_id binding enforced.
+        // Not feature-gated — Sprint N applies to any v0.2+ bundle.
+        .route(
+            "/v1/bundles/{name}/verify_invariant",
+            post(verify_invariant_endpoint),
+        );
 
     // L3.4: Kähler spectral gap — Marcella contract surface.
     // Mounted only when the `kahler` feature is on so the no-feature

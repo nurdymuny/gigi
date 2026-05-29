@@ -52,6 +52,32 @@ uuid = { version = "1", features = ["v4"] }
 # owner, exp} from each token to enforce per-tenant bundle isolation.
 hmac = "0.12"
 sha2 = "0.10"
+# v0.3 GIGI Encrypt — Sprint I (Curvature-MAC integrity-key derivation)
+# and forthcoming Sprint M (continuous KDF chain). HKDF-SHA256 per
+# Krawczyk CRYPTO 2010; domain-separates the integrity key from the
+# gauge key via a fixed salt (`"gigi-integrity-v1"`).
+hkdf = "0.12"
+# v0.3 GIGI Encrypt — Sprint L (Čech threshold sharing): Shamir over the
+# secp256k1 base field F_p, p = 2^256 - 2^32 - 977. We don't need EC
+# operations, just constant-time prime-field arithmetic; num-bigint
+# already transits the dep tree so we surface it directly.
+num-bigint = "0.4"
+num-traits = "0.2"
+# v0.3.x GIGI Encrypt — Sprint J.2 (Pairing-based collusion-resistant
+# delegation). Ateniese–Hohenberger 2005 PRE construction over BLS12-381:
+# pk = e(g1,g2)^sk ∈ Gt, capability rk = g2^{sk_B/sk_A} ∈ G2, collusion
+# resistance reduces to discrete log on G2 (~2^128 work).
+bls12_381 = "0.8"
+group = "0.13"
+ff = "0.13"
+rand_core = { version = "0.6", features = ["getrandom"] }
+# v0.3.x GIGI Encrypt — Sprint J.3 (ML-KEM trusted-delegatee delegation).
+# FIPS 203 (NIST PQ standard, formerly CRYSTALS-Kyber). Post-quantum
+# IND-CCA KEM under the MLWE assumption. Closes the BLS12-381 quantum
+# gap for the trusted-delegatee threat model.
+ml-kem = "0.2"
+kem = "=0.3.0-pre.0"
+hybrid-array = "0.2.0-rc.9"
 
 [[bin]]
 name = "gigi-convert"

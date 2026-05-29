@@ -1,0 +1,35 @@
+\contentsline {section}{\numberline {1}Introduction}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}The compute-on-ciphertext problem}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}The geometric move}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}What this paper adds}{3}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Scope: what this paper is and is not}{4}{subsection.1.4}%
+\contentsline {paragraph}{Relation to FHE.}{4}{section*.2}%
+\contentsline {paragraph}{Caveat: order statistics under Probabilistic mode.}{4}{section*.3}%
+\contentsline {paragraph}{Confidentiality scope.}{5}{section*.4}%
+\contentsline {paragraph}{Quantum security.}{5}{section*.5}%
+\contentsline {paragraph}{Threshold vs.\ pairing-PRE: trust-model dependence.}{6}{section*.6}%
+\contentsline {subsection}{\numberline {1.5}Roadmap}{6}{subsection.1.5}%
+\contentsline {section}{\numberline {2}Background}{7}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Prior canon --- three Davis manuscripts}{7}{subsection.2.1}%
+\contentsline {paragraph}{The Davis Manifold~\cite {davis2026manifold}.}{7}{section*.7}%
+\contentsline {paragraph}{The K\"ahler Substrate~\cite {davis2026kahlersubstrate}.}{7}{section*.8}%
+\contentsline {paragraph}{Sheaf Composition~\cite {davis2026sheafcomposition}.}{7}{section*.9}%
+\contentsline {subsection}{\numberline {2.2}External math anchors}{7}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}The fiber-bundle data model}{8}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Encryption modes and their mathematical structure}{9}{subsection.2.4}%
+\contentsline {section}{\numberline {3}The gauge-equivariance theorem}{10}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Setup}{10}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}The framework: equivariance and ciphertext computability}{11}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Examples per mode}{12}{subsection.3.3}%
+\contentsline {paragraph}{Affine ($G = \mathrm {Aff}(\mathbb {R})^k$).}{12}{section*.10}%
+\contentsline {paragraph}{Opaque (randomized AEAD).}{13}{section*.11}%
+\contentsline {paragraph}{Indexed (deterministic PRF).}{13}{section*.12}%
+\contentsline {paragraph}{Probabilistic ($g(v) = av + b + \varepsilon $ with $\varepsilon \sim \mathcal {N}(0, \sigma ^2)$ per encryption).}{13}{section*.13}%
+\contentsline {paragraph}{Isometric ($G = E(k) = O(k) \ltimes \mathbb {R}^k$ on a grouped $k$-tuple).}{14}{section*.14}%
+\contentsline {paragraph}{Per-mode leakage profile.}{15}{section*.15}%
+\contentsline {subsection}{\numberline {3.4}The invariant ring}{15}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Floating-point reality}{15}{subsection.3.5}%
+\contentsline {paragraph}{Why $\tau $ replaces capacity in $\pi _{\mathrm {inv}}$.}{16}{section*.16}%
+\contentsline {paragraph}{Quantization grain.}{16}{section*.17}%
+\contentsline {paragraph}{Reference implementation.}{16}{section*.18}%
+\contentsline {subsection}{\numberline {3.6}Implications for the rest of the paper}{17}{subsection.3.6}%

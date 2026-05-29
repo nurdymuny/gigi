@@ -136,11 +136,18 @@ fn evaluate_op(store: &BundleStore, op: &InvariantOp) -> f64 {
 /// strictly on the base-point graph — fiber values are never read. So
 /// `holonomy_avg` stays inside the no-decrypt structural guarantee.
 ///
-/// The full-precision affine-gauge holonomy (with the Γ = Δv/range
-/// connection 1-form) is computed by the `HOLONOMY` top-level GQL
-/// statement, which DOES read fiber values. That statement is the
-/// right tool when the caller is willing to decrypt; this op is the
-/// right tool when "0 bytes decrypted" is the constraint.
+/// The full-precision discrete Gauss-Bonnet angle-deficit holonomy in
+/// a 2-fiber (f_0, f_1) plane is computed by the `HOLONOMY ... ON FIBER`
+/// top-level GQL statement. As of v0.3.1 that statement is also
+/// gauge-invariant (the implementation in
+/// `src/bin/gigi_stream.rs::compute_fiber_holonomy` normalizes
+/// centroids by their own min/range per axis before computing angles,
+/// making the deficit invariant mod 2π under any per-field Aff(ℝ)
+/// gauge — see `tests/holonomy_gauge_invariance_v0_3.rs` for the
+/// 20-gauge invariance sweep). Both this op (β-Betti ratio) and the
+/// HOLONOMY ON FIBER op (Gauss-Bonnet deficit) honor the
+/// "0 bytes decrypted" constraint; they compute distinct but related
+/// geometric quantities.
 fn holonomy_avg_base_only(store: &BundleStore) -> f64 {
     let (b0, b1) = crate::spectral::betti_numbers(store);
     let denom = (b0 as f64) + 1.0;

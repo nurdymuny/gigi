@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io;
 use std::path::Path;
-use std::sync::RwLock;
+use std::sync::{OnceLock, RwLock};
 
 use memmap2::Mmap;
 use serde_json::Value as JsonValue;
@@ -222,6 +222,13 @@ pub struct OverlayBundle {
     /// Lazily-computed per-field statistics for the mmap base.
     /// `None` means not yet computed; populated on first access of `field_stats()`.
     base_stats: RwLock<Option<std::collections::HashMap<String, crate::bundle::FieldStats>>>,
+    /// **#106 fix.** Lazily-computed set of primary-key strings present
+    /// in the mmap base. Used by `len()` (and any other dedup-needing
+    /// caller) to count overlay-shadowing-base records *exactly once*
+    /// instead of double-counting them. Built in O(base) on first
+    /// access; subsequent calls are O(1). The base is immutable so the
+    /// set is too.
+    base_pk_set: OnceLock<HashSet<String>>,
 }
 
 impl OverlayBundle {
@@ -233,7 +240,44 @@ impl OverlayBundle {
             tombstones: RwLock::new(HashSet::new()),
             bundle_schema: schema,
             base_stats: RwLock::new(None),
+            base_pk_set: OnceLock::new(),
         }
+    }
+
+    /// Lazily build (or retrieve) the set of base primary-key strings.
+    ///
+    /// Walks every record in the mmap base once, extracts its PK using
+    /// `pk_field()`, and caches the resulting `HashSet<String>`. The
+    /// initial cost is O(base records); subsequent calls are O(1).
+    /// Returns an empty set if the schema has no detectable PK field.
+    ///
+    /// **#106 fix** — used by `len()` to count overlay records that
+    /// shadow base records (same PK) only once.
+    fn base_pk_set(&self) -> &HashSet<String> {
+        self.base_pk_set.get_or_init(|| {
+            let pk_field = match self.pk_field() {
+                Some(f) => f.to_string(),
+                None => return HashSet::new(),
+            };
+            let mut set = HashSet::with_capacity(self.base.len());
+            for i in 0..self.base.len() {
+                if let Some(jv) = self.base.get(i) {
+                    // Convert through json_to_record so the PK format
+                    // matches the overlay path. The overlay stores
+                    // `GigiValue` (e.g. `Integer(2)`), whereas raw
+                    // `serde_json::Value::Number` debug-formats as
+                    // `Number(2)`. Mismatch would defeat the shadow-
+                    // dedup intersection in `len()`. The conversion is
+                    // O(record) — only done once per record at cache
+                    // build time, then never again.
+                    let rec = Self::json_to_record(&jv);
+                    if let Some(pk) = rec.get(pk_field.as_str()) {
+                        set.insert(format!("{pk:?}"));
+                    }
+                }
+            }
+            set
+        })
     }
 
     /// Insert a record into the overlay (acquires write lock).
@@ -465,10 +509,65 @@ impl OverlayBundle {
 
     // ── Merged Metadata ────────────────────────────────────────────────────
 
-    /// Total record count (base − tombstones + overlay).
+    /// Total record count.
+    ///
+    /// Mirrors `records()`'s deduplication contract: a base record is
+    /// hidden iff its PK is in `tombstones` OR `overlay_keys`. So:
+    ///
+    ///   visible_base = |base| − |base ∩ (tombstones ∪ overlay_keys)|
+    ///   total       = visible_base + |overlay|
+    ///
+    /// Since `tombstones` and `overlay_keys` are mutually exclusive by
+    /// the insert/delete invariants (insert removes from tombstones,
+    /// delete removes from overlay), the intersection with base
+    /// decomposes cleanly into two non-overlapping counts.
+    ///
+    /// **#106 fix** — pre-fix `len()` did `|base| − |tombstones| +
+    /// |overlay|`, which (a) ignored that an overlay record shadowing
+    /// a base record should subtract from the base count (double-
+    /// counting on updates), and (b) over-subtracted when a tombstone
+    /// referenced a key that wasn't in the base. `records()` was
+    /// already correct (line ~959); `len()` now matches that contract.
     pub fn len(&self) -> usize {
-        let ts_count = self.tombstones.read().map_or(0, |ts| ts.len());
-        self.base.len().saturating_sub(ts_count) + self.overlay_len()
+        let pk_field = match self.pk_field() {
+            Some(f) => f.to_string(),
+            // No detectable PK → no dedup machinery; fall back to the
+            // (still-imperfect, but compatible) old behavior.
+            None => {
+                let ts_count = self.tombstones.read().map_or(0, |ts| ts.len());
+                return self.base.len().saturating_sub(ts_count) + self.overlay_len();
+            }
+        };
+        let base_keys = self.base_pk_set();
+
+        // Count tombstones whose key is actually in the base — these
+        // hide a real base record. Tombstones for keys not in base are
+        // no-ops for counting (the key was overlay-only and got
+        // removed; that removal already showed up in overlay.len()).
+        let ts_in_base = self
+            .tombstones
+            .read()
+            .map_or(0, |ts| ts.iter().filter(|k| base_keys.contains(*k)).count());
+
+        // Count overlay records whose PK is in base — these shadow a
+        // base record (update semantics). Subtract so the shadowed
+        // base version isn't counted in addition to the overlay one.
+        let overlay_shadow = if base_keys.is_empty() {
+            0
+        } else {
+            self.overlay.read().map_or(0, |store| {
+                store
+                    .records()
+                    .filter_map(|r| r.get(pk_field.as_str()).map(|v| format!("{v:?}")))
+                    .filter(|k| base_keys.contains(k))
+                    .count()
+            })
+        };
+
+        self.base
+            .len()
+            .saturating_sub(ts_in_base + overlay_shadow)
+            + self.overlay_len()
     }
 
     pub fn is_empty_bundle(&self) -> bool {
@@ -2316,6 +2415,145 @@ mod tests {
         // Base scan still returns all 3 records
         let all: Vec<JsonValue> = overlay.base().scan().collect();
         assert_eq!(all.len(), 3);
+    }
+
+    /// **#106 fix** — `OverlayBundle::len()` must NOT double-count when the
+    /// overlay shadows a base record (same primary key). This is the WAL
+    /// replay double-count bug: pre-checkpoint record persists in mmap base;
+    /// a post-checkpoint update lands in the overlay; both base and overlay
+    /// hold the key. `records()` already deduplicates by overlay-shadows-base
+    /// (line 959); `len()` must match.
+    ///
+    /// Spec: tasks #106 in the project tracker.
+    #[test]
+    fn issue_106_len_does_not_double_count_overlay_shadowing_base() {
+        // Base mmap has 3 records: keys 1, 2, 3.
+        let dhoom = "items{id@1, val}:\n10\n20\n30\n";
+        let bundle = mmap_from_dhoom(dhoom);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
+
+        // Baseline: 3 records visible, no overlay/tombstones.
+        assert_eq!(overlay.len(), 3, "baseline: only base records");
+        assert_eq!(overlay.records().count(), 3, "records() agrees");
+
+        // Insert a NEW record (key=99): both counts go to 4.
+        let mut new_rec = Record::new();
+        new_rec.insert("id".into(), GigiValue::Integer(99));
+        new_rec.insert("val".into(), GigiValue::Integer(999));
+        overlay.insert(&new_rec);
+        assert_eq!(overlay.len(), 4, "after new insert: 3 base + 1 overlay");
+        assert_eq!(overlay.records().count(), 4);
+
+        // Update an EXISTING base record (key=2, same PK as base[1]):
+        // overlay grows by 1, but the logical record count should stay 4.
+        // **This is the #106 bug:** without the fix, len() returns 5 here
+        // because base.len()=3 + overlay.len()=2 = 5, ignoring that one
+        // overlay entry shadows a base entry.
+        let mut update_rec = Record::new();
+        update_rec.insert("id".into(), GigiValue::Integer(2));
+        update_rec.insert("val".into(), GigiValue::Integer(2000));
+        overlay.insert(&update_rec);
+        assert_eq!(
+            overlay.len(),
+            4,
+            "after shadowing-update of key=2: still 4 logical records \
+             (base[1] is shadowed, not added). records().count() agrees: {}",
+            overlay.records().count()
+        );
+        assert_eq!(
+            overlay.records().count(),
+            4,
+            "records() must be consistent with len()"
+        );
+
+        // Update the SAME key=2 again — should not change the count.
+        let mut update_rec2 = Record::new();
+        update_rec2.insert("id".into(), GigiValue::Integer(2));
+        update_rec2.insert("val".into(), GigiValue::Integer(2222));
+        overlay.insert(&update_rec2);
+        assert_eq!(overlay.len(), 4, "re-update of same key: still 4");
+        assert_eq!(overlay.records().count(), 4);
+
+        // Delete key=2 (which is now in both base AND overlay):
+        // base.len()=3, ts=1, overlay loses key=2.
+        // Logical count: 3 - 1 (tombstoned base[1]) + 1 (new[99]) = 3.
+        //
+        // Note: `OverlayBundle::delete` takes a tombstone key string in
+        // the format `records()` filters by, i.e. `format!("{pk:?}")`
+        // on the extracted `Value`. For `Value::Integer(2)` that's
+        // `"Integer(2)"`. Callers passing the raw "2" produce a
+        // tombstone that won't filter the base record (separate API-
+        // ergonomics issue; not in scope for #106).
+        let mut del_key = Record::new();
+        del_key.insert("id".into(), GigiValue::Integer(2));
+        overlay.delete("Integer(2)", Some(&del_key));
+        assert_eq!(
+            overlay.records().count(),
+            3,
+            "after delete of key=2: records() should give 3 (only 99 from \
+             overlay + {{1, 3}} from base; base[2] filtered by tombstone)",
+        );
+        assert_eq!(
+            overlay.len(),
+            3,
+            "after delete of key=2: base(3) - ts(1) - shadow(0, since key=2 \
+             was removed from overlay) + overlay(1, just key=99) = 3",
+        );
+    }
+
+    /// **#106 corollary** — len() consistency under arbitrary
+    /// insert/delete sequences. Property test: after any sequence of
+    /// inserts and deletes, `len() == records().count()`.
+    #[test]
+    fn issue_106_len_matches_records_count_under_arbitrary_ops() {
+        // Base mmap has 5 records: keys 1..=5.
+        let dhoom = "items{id@1, val}:\n10\n20\n30\n40\n50\n";
+        let bundle = mmap_from_dhoom(dhoom);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
+
+        // Sequence of ops mixing shadowing inserts, new inserts, and deletes.
+        // Each op-and-check pair asserts the invariant len() == records().count().
+        let ops: Vec<(&str, i64, Option<i64>)> = vec![
+            ("insert", 6, Some(60)),   // new key
+            ("insert", 1, Some(100)),  // shadow base key=1
+            ("insert", 7, Some(70)),   // new key
+            ("delete", 3, None),       // tombstone base key=3
+            ("insert", 3, Some(333)),  // re-insert key=3 (lifts tombstone, shadows base)
+            ("insert", 1, Some(101)),  // re-update shadowed key=1
+            ("delete", 6, None),       // delete new key=6
+        ];
+        for (op, key, val) in ops {
+            match op {
+                "insert" => {
+                    let mut r = Record::new();
+                    r.insert("id".into(), GigiValue::Integer(key));
+                    if let Some(v) = val {
+                        r.insert("val".into(), GigiValue::Integer(v));
+                    }
+                    overlay.insert(&r);
+                }
+                "delete" => {
+                    let mut k = Record::new();
+                    k.insert("id".into(), GigiValue::Integer(key));
+                    // Format matches records()'s tombstone-filter format.
+                    overlay.delete(&format!("Integer({key})"), Some(&k));
+                }
+                _ => unreachable!(),
+            }
+            assert_eq!(
+                overlay.len(),
+                overlay.records().count(),
+                "invariant broken after op={op} key={key}: len()={}, records().count()={}",
+                overlay.len(),
+                overlay.records().count()
+            );
+        }
     }
 
     /// TDD-11.7: Clear overlay resets everything.

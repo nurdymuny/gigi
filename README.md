@@ -83,7 +83,7 @@ the engine implements, not an aspirational future.
 | **Detect anomalies / outliers** | Add a streaming pipeline + outlier model | Curvature κ already updated per insert; outliers are points where κ spikes — no separate pipeline |
 | **"How clustered is my data?"** | Run k-means or DBSCAN offline | `SPECTRAL bundle;` — Fiedler value λ₁ from the index Laplacian, cached and incrementally refreshed |
 | **"Are A and B related geometrically?"** | Foreign key + join | `TRANSPORT bundle FROM (id=A) TO (id=B) ON FIBER (...);` — explicit parallel transport, returns the SO(n) rotation matrix |
-| **Encrypt sensitive columns** | Column encryption — usually breaks indexes | **Gauge encryption** preserves κ, λ₁, anomaly scores, holonomy at **native speed** (vs ~10,000× slowdown for homomorphic encryption) |
+| **Encrypt sensitive columns** | Column encryption — usually breaks indexes | **Gauge encryption v0.4** preserves κ, λ₁, anomaly scores, holonomy at **native speed**. Six modes (Affine / Probabilistic / Opaque / Indexed / Isometric / Identity); SQL analytics (SUM/AVG/VAR/STDDEV exact on ciphertext via closed-form inverses); PQ-safe trusted + threshold delegation (ML-KEM-768 + Shamir K-of-N); public deterministic invariant verification (`/v1/bundles/{name}/verify_invariant`) |
 | **Add a new column** | `ALTER TABLE`, schema migration, downtime | Fiber type evolves; old records remain valid sections under the wider fiber |
 | **Restart the server** | Reload from disk, indexes rebuild from scratch | Reload from mmap snapshot in seconds; brain endpoints work polymorphically on the reloaded bundle (#107) |
 | **"Tell me how surprising this query was"** | Build a custom logging layer | Every response includes κ, KL-divergence, JS-divergence via the `dhoom` event protocol — free |
@@ -335,6 +335,82 @@ exercise every wave's functionality across **24 distinct domains**.
 
 ---
 
+## What's new in late May 2026 — GIGI Encrypt v0.3 + v0.4 ship
+
+The encryption surface jumped two minor versions in one window. v0.3
+fleshed out the gauge-mode primitives and shipped the full delegation
+family. v0.4 added the verification layer that turns the invariant
+tuple into a public, deterministic audit primitive. Both are now live
+on `gigi-stream.fly.dev` alongside the brain catalog.
+
+### v0.3 — gauge-mode completion + delegation family
+
+| Sprint | What it adds |
+|---|---|
+| **I** Curvature-MAC | HMAC-SHA256 over the canonical π_inv tuple (52-byte big-endian layout, 10⁻¹⁰ quantization — 4× tighter than v0.3.0 by replacing the f64 `capacity` field with a u64 `record_count`). Tag changes iff the bundle's *invariants* change, regardless of gauge. |
+| **J.1** Aff(ℝ) delegation | Compose two `GaugeKey`s' Affine / Isometric / Identity transforms into a per-field capability the proxy applies on ciphertext. Honestly labeled: **not collusion-resistant** (Bob + capability + own key recovers Alice's key) — this is *capability delegation*, not PRE. |
+| **J.2** Pairing-based PRE | BLS12-381 — Ateniese-Hohenberger 2005 construction. Single-party Alice→Bob with delegatee-vs-proxy collusion resistance reducing to DLP on G₂ (~2^128 work). Pre-quantum by design. |
+| **J.3** ML-KEM trusted delegation | FIPS 203 ML-KEM-768 (post-quantum KEM, NIST Level 3) wraps a session secret to the recipient; AES-256-GCM-SIV AEAD encrypts the payload under the KEM-derived key. Trust model: trusted delegatee. Closes the BLS12-381 quantum gap. |
+| **J.4** Lattice threshold delegation | Two-layer composition: Shamir K-of-N split over the secp256k1 base field F_p (info-theoretic on ≤K−1 subsets) + per-share ML-KEM-768 envelope (PQ IND-CCA outer layer). Closes the **PQ + collusion-resistance** gap structurally for the K-of-N quorum trust model. |
+| **K** Holonomy ledger | RFC 6962 Merkle audit log over per-write leaves; gauge-invariant. |
+| **L** Čech threshold | Same Shamir-over-F_p that J.4 reuses, surfaced as a primitive for non-delegation use cases (gauge-key escrow, secret-of-secret recovery). |
+| **M** RG-flow ratchet | HKDF chain for continuous forward secrecy on the integrity key. |
+| **aggregate_helpers** | Client-side closed-form inverters for COUNT / SUM / AVG / VAR / STDDEV on Affine + Probabilistic gauges. Server runs native aggregates over ciphertext; client recovers plaintext via one affine inverse — **native server speed + O(1) client post-processing** (vs ~10³–10⁵× slowdown for FHE on the same query class). |
+
+**Honest carveout shipped with v0.3** (review-driven, see paper §1.4):
+`decrypt_min` / `decrypt_max` / `decrypt_range` **refuse** Probabilistic
+gauges with σ > 0 — order statistics don't commute with additive
+Gaussian noise. Bias is `Θ(σ √(2 log n) / |a|)` and doesn't vanish as
+n → ∞. Callers who accept the bias for coarse bounds opt in via the
+explicit `*_unchecked` variants. The Rust rigor suite
+`tests/fhe_pq_parity_rigor.rs` (25 tests) and the Python oracle
+`validation_tests_fhe_pq_rigor.py` (66/66) lock the behavior in.
+
+### v0.4 — invariant verification + the four follow-up sprints
+
+| Sprint | What it adds | Surface |
+|---|---|---|
+| **N** Invariant Consistency Verification | Public deterministic verification that a prover's claimed π_inv = (K, λ₁, ⟨Hol⟩, τ, β₀, β₁) agrees with the bundle's computed tuple. **No gauge key required** — every component is invariant under v0.2+ modes. **Bundle-id binding** enforced at API + HTTP layers (closes review Gap 1: a claim about bundle A presented against bundle B is rejected on identity grounds before any tuple computation). | `POST /v1/bundles/{name}/verify_invariant` — body carries `{bundle_id, claimed, tolerances?}`, response is tagged `verdict ∈ {verified, bundle_mismatch, rejected}` with the first failing field named in fingerprint order. |
+| **O** Credential-Gated Invariant Queries | HMAC-SHA256-bound credentials today; constant-time tag comparison; typed domain separator. BBS+ unlinkability pinned as the v0.5 upgrade target (Au-Susilo-Mu 2006 / Beullens-Dobson-Katsumata 2023 lattice-BBS path). | Falsification harness `is_in_IAff()` + parser-by-construction; adversarial K_fake = mean/std² caught at relative error 0.59 under any gauge. |
+| **Q** K-Preserving Transformation Characterization | Identifies the **diagonal affine group** `(ℝ*)ᵏ ⋉ ℝᵏ` as the exact K-preserving subgroup (corrected from earlier scalar-only overclaim). Rotation analysis: `tr(Cov)/diam²` is rotation-invariant; `(max−min)²` is not. LWE separation: hiding layer ≠ gauge action. **Roadmap only — not a shipped PQ mode.** | `is_K_preserving_affine()`, `characterize_K_preserving_group()`. PQ-Scalar deferred until the lattice-PRE construction question (open; closest prior work Kirshanova 2014 / Aono-Hayashi 2017) is resolved. |
+| **P** Geodesic-Ball Membership Index | Chi-square / Mahalanobis dimension-aware threshold (**exact-table** for k ∈ {1..5} × p ∈ {0.95, 0.99} — χ²(1, 0.95) = 3.841 returns *exactly*; Wilson-Hilferty fallback for everything else). Scalar isotropic gauge preserves ball membership; field-wise affine requires the ellipsoidal Mahalanobis condition (documented). **Explicit leakage scope**: index reveals centroid + covariance + count; not a hiding primitive. | `GeodesicBallIndex` with `membership_check()` / `encrypted_membership_scalar()` / `encrypted_membership_fieldwise()`. |
+
+**Cross-validation discipline:** every Sprint N–P primitive has a
+parallel Python oracle in `theory/encryption/validation/`. Rust + Python
+agree to 1e-10 on every cross-checked assertion.
+
+### The numbers
+
+```
+Rust  lib (--features kahler):                999 / 999  pass
+Rust  lib (no-feature):                       781 / 781  pass
+Rust  integration (50+ test binaries):        all "0 failed"
+Python  FHE/PQ rigor oracle:                   66 / 66
+Python  Sprint N oracle:                       17 / 17
+```
+
+**Live verification** (post-deploy on `gigi-stream.fly.dev`):
+4,961 bundles / 12,815,846 records reloaded across the rolling restart
+with zero data loss. The new `POST /v1/bundles/{name}/verify_invariant`
+endpoint is online and auth-gated.
+
+### The paper
+
+[`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encryption/paper_geometric_encryption_v0.1.tex)
+ships with two review-driven carveouts:
+
+1. **§1.4 FHE parity scope** — plaintext-exact for {COUNT, SUM, AVG,
+   VAR, STDDEV} under both Affine and Probabilistic modes, and for MIN
+   / MAX / RANGE under Affine. Probabilistic MIN/MAX/RANGE is biased
+   and refused at the API.
+2. **§1.4 Threshold vs pairing-PRE** — *mode-dependent*: lattice
+   threshold (J.4) dominates on the K-of-N quorum axis (PQ +
+   info-theoretic on ≤K-1 subsets); pairing PRE (J.2) covers the
+   single-delegatee axis (DLP_G₂-hard but pre-quantum). The true PQ
+   single-delegatee construction is the v0.5 lattice-PRE target.
+
+---
+
 ## What's in this repo
 
 ### Engine (Rust, single crate — `Cargo.toml`)
@@ -347,7 +423,17 @@ exercise every wave's functionality across **24 distinct domains**.
 | `wal` | Write-ahead log — durability across restarts |
 | `query` | GQL query execution + result shape |
 | `parser` | GQL grammar — `CREATE BUNDLE`, `SECTION`, `COVER`, `INTEGRATE`, `CURVATURE`, `SPECTRAL`, `HOLONOMY`, `TRANSPORT`, `BETTI`, `ENTROPY`, `FREEENERGY`, `GEODESIC`, … |
-| `crypto` | **GIGI Encrypt v0.2** — gauge encryption (OPAQUE / AES-GCM-SIV, INDEXED / AES-256-CMAC), affine numeric gauge |
+| `crypto` | **GIGI Encrypt v0.4** — six gauge modes (Identity / Affine / Probabilistic / Opaque AES-GCM-SIV / Indexed AES-256-CMAC / Isometric O(k)), per-field encryption pipeline (`GaugeKey::encrypt_fiber`) |
+| `aggregate_helpers` | v0.3 — client-side closed-form aggregate inverters (SUM/AVG/VAR/STDDEV exact under Affine + Probabilistic; MIN/MAX/RANGE exact under Affine, refused under Probabilistic σ>0 with explicit `*_unchecked` opt-in) |
+| `integrity` | v0.3 — Curvature-MAC HMAC-SHA256 over the canonical π_inv tuple; `InvariantTuple` + `sign_bundle` / `verify_bundle` |
+| `invariant_verify` | v0.4 Sprint N — public deterministic verification with bundle-id binding; `verify_invariant_statement` returns `Verified` / `BundleMismatch` / `Rejected{field}` |
+| `credentials` | v0.4 Sprint O — HMAC-bound credentials today; BBS+ unlinkability pinned as v0.5 |
+| `invariant_ring` | v0.4 Sprint O — falsification harness for I_Aff membership; parser-by-construction proof |
+| `membership_index` | v0.4 Sprint P — geodesic-ball Mahalanobis index with dimension-aware χ² threshold (table-exact for {1..5}×{0.95, 0.99}, Wilson-Hilferty otherwise) |
+| `delegation`, `pairing_delegation`, `mlkem_delegation`, `lattice_delegation` | v0.3 Sprint J family — Aff(ℝ) capability composition (J.1), BLS12-381 pairing PRE (J.2), ML-KEM-768 trusted delegation (J.3), Shamir K-of-N × ML-KEM threshold lattice delegation (J.4) |
+| `threshold` | v0.3 Sprint L — Shamir secret sharing over secp256k1 F_p; info-theoretic on ≤K−1 subsets |
+| `ledger` | v0.3 Sprint K — RFC 6962 Merkle holonomy ledger (gauge-invariant audit log) |
+| `ratchet` | v0.3 Sprint M — HKDF chain for continuous forward secrecy on the integrity key |
 | `coherence` | Field consistency / Davis field equations |
 | `curvature` | Scalar curvature K, capacity C = τ/K, confidence 1/(1+K) |
 | `gauge` | Structure-group transformations on the fiber |
@@ -433,7 +519,8 @@ The repo carries the math (`theory/*.tex`) and the build-ready specs alongside t
 code so a reviewer can read the claim and the implementation in the same place:
 
 - `GIGI_SPEC_v0.1.md` — the formal mathematical foundation (definitions 1.1 – 4.x)
-- `GIGI_GEOMETRIC_ENCRYPTION_SPEC.md` + `GIGI_ENCRYPT_v0.2_SPRINT_SPEC.md` — gauge encryption
+- `GIGI_GEOMETRIC_ENCRYPTION_SPEC.md` + `GIGI_ENCRYPT_v0.2_SPRINT_SPEC.md` + `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` + [`theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md`](theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md) — gauge encryption v0.2 → v0.3 (full delegation family + aggregate inversion) → v0.4 (invariant verification + credentials + K-preserving characterization + geodesic-ball membership)
+- [`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encryption/paper_geometric_encryption_v0.1.tex) — the load-bearing encryption paper (Aff(ℝ) trusted-delegatee model + pairing-PRE BDH-hard delegation + threshold lattice delegation; honest carveouts for Probabilistic MIN/MAX/RANGE bias and threshold-vs-PRE trust-model dependence)
 - `GIGI_OBSERVABILITY_SPEC.md` — geometric logging / DHOOM event protocol
 - `GIGI_AUTOMATIC_ANALYTICS_API.md` — "the analytics ARE the database response"
 - `GIGI_PERSISTENCE_UPGRADE_SPEC.md` — WAL + mmap durability
@@ -611,30 +698,64 @@ with a negative control.
 
 ---
 
-## Geometric encryption (Encrypt v0.2)
+## Geometric encryption (Encrypt v0.2 → v0.3 → v0.4)
 
-`src/crypto.rs` ships **gauge encryption** — the structure group of the fiber
-bundle is itself the cipher. The result is encryption that preserves every
-geometric quantity GIGI computes:
+`src/crypto.rs` + the v0.3/v0.4 modules (`integrity`, `aggregate_helpers`,
+`delegation` family, `ratchet`, `ledger`, `threshold`, `invariant_verify`,
+`credentials`, `invariant_ring`, `membership_index`) ship **gauge
+encryption** — the structure group of the fiber bundle is itself the
+cipher. The result is encryption that preserves every geometric
+quantity GIGI computes:
 
 | Quantity | Plaintext | Encrypted | Match? |
 |---|---|---|---|
 | Scalar curvature K | ✓ | ✓ | exact |
 | Confidence 1/(1+K) | ✓ | ✓ | exact |
 | Capacity C = τ/K | ✓ | ✓ | exact |
-| Spectral gap λ₁ | ✓ | ✓ | exact |
+| Spectral gap λ₁ | ✓ | ✓ | exact (graph-topology invariant) |
 | Anomaly scores | ✓ | ✓ | exact |
-| Holonomy δφ | ✓ | ✓ | exact (gauge-invariant) |
+| Holonomy δφ | ✓ | ✓ | exact (gauge-invariant — including HOLONOMY ON FIBER) |
 | WHERE / range comparisons | ✓ | ✓ | preserved order on numeric fields |
+| SUM / AVG / VAR / STDDEV | ✓ | ✓ | **plaintext-exact via O(1) client-side closed-form inverse** (v0.3 `aggregate_helpers`) |
+| MIN / MAX / RANGE under Affine | ✓ | ✓ | exact |
+| MIN / MAX / RANGE under Probabilistic σ>0 | ✓ | ✗ | refused at API (`BiasedUnderProbabilisticNoise`); `*_unchecked` opt-in if you accept the `Θ(σ √(2 log n) / \|a\|)` bias |
+| **π_inv fingerprint** (K, λ₁, ⟨Hol⟩, τ, β₀, β₁) | ✓ | ✓ | **publicly verifiable, no gauge key required** (v0.4 Sprint N) |
 
-Three modes:
+**Six v0.2 gauge modes** + **v0.3 delegation family** + **v0.4 verification**:
 
-1. **OPAQUE** (`AES-GCM-SIV`) — random-access ciphertext, no equality leakage.
-2. **INDEXED** (`AES-256-CMAC`) — deterministic for indexed lookups; equality leaks by design (it's what lets the index work).
-3. **AFFINE** (numeric gauge) — `v ↦ a·v + b` per fiber field, preserves variance/range² ratios. The original v0.1 substrate.
+| Layer | Primitives |
+|---|---|
+| **v0.2 gauge** | IDENTITY, AFFINE (numeric `v ↦ a·v + b`), PROBABILISTIC (Affine + i.i.d. Gaussian noise), OPAQUE (AES-256-GCM-SIV — random-access ciphertext, no equality leakage), INDEXED (AES-256-CMAC PRF — deterministic for indexed lookups, equality leaks by design), ISOMETRIC (O(k) rotation on Vector fields) |
+| **v0.3 integrity** | Curvature-MAC (HMAC-SHA256 over canonical π_inv tuple; 10⁻¹⁰ quantization; 4× tighter than v0.3.0) |
+| **v0.3 aggregate inversion** | Client-side closed-form decoders for SUM / AVG / VAR / STDDEV exact on Affine + Probabilistic; MIN / MAX / RANGE exact on Affine; honest refusal on Probabilistic σ>0 |
+| **v0.3 audit log** | RFC 6962 Merkle holonomy ledger (gauge-invariant) |
+| **v0.3 forward secrecy** | HKDF-chain RG-flow ratchet on the integrity key |
+| **v0.3 delegation family** | J.1 Aff(ℝ) capability composition · J.2 BLS12-381 pairing PRE (DLP_G₂-hard, pre-quantum) · J.3 ML-KEM-768 trusted-delegatee (FIPS 203, NIST Level 3 PQ) · J.4 lattice threshold = Shamir K-of-N over F_p × per-share ML-KEM (info-theoretic on ≤K-1 subsets + PQ outer layer) |
+| **v0.3 secret sharing** | Shamir over secp256k1 base field F_p (Sprint L); the primitive J.4 composes |
+| **v0.4 Sprint N** | Public deterministic invariant-tuple verification; `POST /v1/bundles/{name}/verify_invariant`; bundle-id binding; `Verified` / `BundleMismatch` / `Rejected{field}` verdicts |
+| **v0.4 Sprint O** | Credential-gated invariant queries (HMAC-bound today; BBS+ pinned as v0.5 unlinkability upgrade) |
+| **v0.4 Sprint Q** | K-preserving subgroup characterized as the diagonal affine group `(ℝ*)ᵏ ⋉ ℝᵏ`; rotation-invariant `tr(Cov)/diam²` (corrects earlier `(max−min)²` overclaim); LWE separation as hiding-vs-gauge layers. **Roadmap only** — not a shipped PQ mode |
+| **v0.4 Sprint P** | Geodesic-ball Mahalanobis membership index with dimension-aware χ² threshold (table-exact for k ∈ {1..5} × p ∈ {0.95, 0.99}; Wilson-Hilferty fallback elsewhere). Explicit leakage scope: not a hiding primitive |
 
-All NIST-standardized primitives, all from the RustCrypto suite. Spec:
-`GIGI_GEOMETRIC_ENCRYPTION_SPEC.md` and `GIGI_ENCRYPT_v0.2_SPRINT_SPEC.md`.
+**Rigor** (cross-team review-driven, locked in by tests):
+
+- 25 Rust integration tests in `tests/fhe_pq_parity_rigor.rs`
+- 12 Rust integration tests in `tests/invariant_verify_v0_4.rs`
+  (including end-to-end through real `EncryptionMode::Affine` and
+  `EncryptionMode::Indexed` write paths under multiple gauge seeds)
+- 6 + 6 + 5 Rust integration tests for Sprints O / P / Q
+- Python oracle `validation_tests_fhe_pq_rigor.py` (66/66 assertions)
+- Python oracle `validation_tests_v0_4_sprint_n.py` (17/17 assertions)
+- Paper [`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encryption/paper_geometric_encryption_v0.1.tex)
+  with two review-driven honest carveouts (§1.4 FHE parity scope; §1.4
+  threshold-vs-PRE trust-model dependence)
+
+All NIST-standardized primitives, all from the RustCrypto suite +
+`bls12_381` + `ml-kem` + `hkdf` + `num-bigint`. Specs:
+`GIGI_GEOMETRIC_ENCRYPTION_SPEC.md`,
+`GIGI_ENCRYPT_v0.2_SPRINT_SPEC.md`,
+`GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md`,
+[`theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md`](theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md).
 
 ---
 

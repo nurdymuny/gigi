@@ -1518,7 +1518,12 @@ impl Engine {
                     crate::dhoom::StreamingDhoomEncoder::new(buf, name, chunk_size);
 
                 if let Some(ref key_field) = arith_key {
-                    // Buffer → sort → encode (guarantees arithmetic detection)
+                    // Buffer → sort → encode (guarantees arithmetic
+                    // detection on the sample). The arithmetic-sort
+                    // path needs to inspect `id` numerically, so we
+                    // keep the JSON intermediate here — sorting native
+                    // Records would require an extra GigiValue→i64
+                    // accessor and the snapshot path isn't hot.
                     let mut recs: Vec<serde_json::Value> = store
                         .records()
                         .map(|r| record_to_serde_json(&r))
@@ -1532,8 +1537,11 @@ impl Engine {
                         encoder.push(rec.clone())?;
                     }
                 } else {
+                    // **#112 — native Record path.** Skips the
+                    // per-record `serde_json::Value` allocation on the
+                    // streaming encoder hot path.
                     for rec in store.records() {
-                        encoder.push(record_to_serde_json(&rec))?;
+                        encoder.push_record(&rec)?;
                     }
                 }
                 encoder.finish()?;
@@ -1781,31 +1789,16 @@ impl Engine {
 // ── DHOOM snapshot helpers ────────────────────────────────────────────────────
 
 /// Convert a GIGI Record into a serde_json Object (for DHOOM encoding).
-fn record_to_serde_json(rec: &Record) -> serde_json::Value {
-    let mut map = serde_json::Map::new();
-    for (k, v) in rec {
-        map.insert(k.clone(), value_to_serde_json(v));
-    }
-    serde_json::Value::Object(map)
-}
-
-fn value_to_serde_json(v: &Value) -> serde_json::Value {
-    match v {
-        Value::Integer(i) => serde_json::json!(i),
-        Value::Float(f) => serde_json::json!(f),
-        Value::Text(s) => serde_json::json!(s),
-        Value::Bool(b) => serde_json::json!(b),
-        Value::Timestamp(t) => serde_json::json!(t),
-        Value::Null => serde_json::Value::Null,
-        Value::Vector(vs) => {
-            serde_json::Value::Array(vs.iter().map(|x| serde_json::json!(x)).collect())
-        }
-        Value::Binary(b) => {
-            use base64::Engine as _;
-            serde_json::Value::String(base64::engine::general_purpose::STANDARD.encode(b))
-        }
-    }
-}
+// **#112 — DHOOM native Record API.** The pre-fix duplicates of
+// `record_to_serde_json` + `value_to_serde_json` previously lived here
+// as private helpers (and were re-implemented in several other call
+// sites across the codebase). They moved to `crate::dhoom` so the
+// conversion lives next to the format definition. The remaining call
+// sites in this file use `crate::dhoom::record_to_dhoom_value` for
+// snapshot-clone paths (which need the `Vec<serde_json::Value>` shape)
+// and `encoder.push_record(&rec)` for the streaming-encoder paths
+// (which skip the intermediate Vec).
+use crate::dhoom::record_to_dhoom_value as record_to_serde_json;
 
 /// Load records from a DHOOM snapshot file into a Vec<Record>.
 fn load_dhoom_snapshot(path: &Path) -> io::Result<Vec<Record>> {

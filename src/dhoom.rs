@@ -2639,6 +2639,60 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
         }
     }
 
+    /// **#112 — push_record TDD.** The native-Record API
+    /// `StreamingDhoomEncoder::push_record(&Record)` must produce
+    /// byte-identical output to the legacy
+    /// `push(record_to_dhoom_value(&record))` path. This is the
+    /// "kill the serde_json intermediate at the API surface, not the
+    /// semantics" guarantee — every existing consumer can migrate
+    /// without behavior change.
+    #[test]
+    fn issue_112_push_record_matches_push_via_helper() {
+        use crate::types::{Record, Value as GValue};
+        // Build 150 native Records with a mix of types.
+        let records: Vec<Record> = (0..150)
+            .map(|i| {
+                let mut r = Record::new();
+                r.insert("id".to_string(), GValue::Integer(i as i64));
+                r.insert("name".to_string(), GValue::Text(format!("rec_{i}")));
+                r.insert("score".to_string(), GValue::Float((i as f64) * 0.13));
+                r.insert("active".to_string(), GValue::Bool(i % 2 == 0));
+                r
+            })
+            .collect();
+
+        // Path A: push_record (native).
+        let mut buf_a = Vec::new();
+        {
+            let mut enc = StreamingDhoomEncoder::new(&mut buf_a, "issue112", 50);
+            for r in &records {
+                enc.push_record(r).unwrap();
+            }
+            enc.finish().unwrap();
+        }
+
+        // Path B: push(record_to_dhoom_value(&r)) — what the old call
+        // sites manually inlined.
+        let mut buf_b = Vec::new();
+        {
+            let mut enc = StreamingDhoomEncoder::new(&mut buf_b, "issue112", 50);
+            for r in &records {
+                enc.push(record_to_dhoom_value(r)).unwrap();
+            }
+            enc.finish().unwrap();
+        }
+
+        assert_eq!(
+            buf_a, buf_b,
+            "push_record must produce byte-identical output to the \
+             record_to_dhoom_value + push path"
+        );
+        // Sanity: the output decodes correctly and has all 150 records.
+        let dhoom_str = String::from_utf8(buf_a).unwrap();
+        let decoded = decode_to_json(&dhoom_str).unwrap();
+        assert_eq!(decoded.len(), 150);
+    }
+
     #[test]
     fn streaming_chunk_boundary_correctness() {
         // Test 2.3: N=250, chunk_size=100 → 3 chunks (100+100+50)
@@ -3177,6 +3231,20 @@ impl<W: io::Write> StreamingDhoomEncoder<W> {
         Ok(())
     }
 
+    /// **#112 — native Record API.** Feed one native
+    /// `crate::types::Record` directly, instead of forcing the caller
+    /// to materialize a `serde_json::Value` intermediate first. The
+    /// conversion still happens once at the push site (via
+    /// `record_to_dhoom_value`), but it now lives inside the DHOOM
+    /// crate where the format definition lives, instead of being
+    /// duplicated as a private helper in every caller (previously
+    /// `record_to_serde_json` in `engine.rs`).
+    ///
+    /// Equivalent to `self.push(record_to_dhoom_value(record))`.
+    pub fn push_record(&mut self, record: &crate::types::Record) -> io::Result<()> {
+        self.push(record_to_dhoom_value(record))
+    }
+
     /// Finalize — flush remaining buffer, return total records written.
     pub fn finish(mut self) -> io::Result<usize> {
         if !self.buffer.is_empty() {
@@ -3216,6 +3284,51 @@ impl<W: io::Write> StreamingDhoomEncoder<W> {
             self.records_written += 1;
         }
         Ok(())
+    }
+}
+
+// ─── #112 — Native Record API helpers ───────────────────────────────────────
+//
+// Public conversions from `crate::types::{Record, Value}` to the
+// `serde_json::Value` shape DHOOM works on internally. Replaces the
+// pre-#112 duplication where each caller (engine.rs, gigi_stream.rs,
+// etc.) carried its own private `record_to_serde_json` helper. The
+// conversion lives here so the format definition + format-aware
+// conversion stay in one place.
+
+/// Convert a native `Record` to a `serde_json::Value::Object` suitable
+/// for `StreamingDhoomEncoder::push` or `StreamEncoder::push`. Use
+/// `push_record(&record)` to skip this step — equivalent path.
+pub fn record_to_dhoom_value(rec: &crate::types::Record) -> serde_json::Value {
+    let mut map = serde_json::Map::with_capacity(rec.len());
+    for (k, v) in rec {
+        map.insert(k.clone(), value_to_dhoom_value(v));
+    }
+    serde_json::Value::Object(map)
+}
+
+/// Convert a single native `Value` to `serde_json::Value`. Used by
+/// `record_to_dhoom_value`; exposed so callers building partial JSON
+/// records (e.g. wire-shape constructors in gigi_stream) can use the
+/// same canonical conversion.
+pub fn value_to_dhoom_value(v: &crate::types::Value) -> serde_json::Value {
+    use crate::types::Value;
+    match v {
+        Value::Integer(i) => serde_json::json!(i),
+        Value::Float(f) => serde_json::json!(f),
+        Value::Text(s) => serde_json::json!(s),
+        Value::Bool(b) => serde_json::json!(b),
+        Value::Timestamp(t) => serde_json::json!(t),
+        Value::Null => serde_json::Value::Null,
+        Value::Vector(vs) => {
+            serde_json::Value::Array(vs.iter().map(|x| serde_json::json!(x)).collect())
+        }
+        Value::Binary(b) => {
+            use base64::Engine as _;
+            serde_json::Value::String(
+                base64::engine::general_purpose::STANDARD.encode(b),
+            )
+        }
     }
 }
 

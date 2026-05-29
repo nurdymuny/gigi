@@ -544,29 +544,40 @@ impl OverlayBundle {
         // hide a real base record. Tombstones for keys not in base are
         // no-ops for counting (the key was overlay-only and got
         // removed; that removal already showed up in overlay.len()).
-        let ts_in_base = self
-            .tombstones
-            .read()
-            .map_or(0, |ts| ts.iter().filter(|k| base_keys.contains(*k)).count());
-
-        // Count overlay records whose PK is in base — these shadow a
-        // base record (update semantics). Subtract so the shadowed
-        // base version isn't counted in addition to the overlay one.
-        let overlay_shadow = if base_keys.is_empty() {
-            0
-        } else {
-            self.overlay.read().map_or(0, |store| {
-                store
-                    .records()
-                    .filter_map(|r| r.get(pk_field.as_str()).map(|v| format!("{v:?}")))
-                    .filter(|k| base_keys.contains(k))
-                    .count()
-            })
-        };
+        // Collect the *union* of tombstones and overlay keys that
+        // exist in the base. `records()`'s base-filter uses an OR
+        // (skip if in tombstones OR in overlay_keys), so a base key
+        // present in BOTH should only count once toward hiding the
+        // base record. The previous formulation
+        // `|base ∩ ts| + |base ∩ overlay_keys|` double-subtracted when
+        // the sets overlapped (which can happen due to the existing
+        // `OverlayBundle::insert` HashMap-order tombstone-lift bug
+        // where the wrong field is used to identify the tombstone to
+        // clear). Use a HashSet to compute the union correctly.
+        let mut hidden_base: HashSet<String> = HashSet::new();
+        if let Ok(ts) = self.tombstones.read() {
+            for k in ts.iter() {
+                if base_keys.contains(k) {
+                    hidden_base.insert(k.clone());
+                }
+            }
+        }
+        if !base_keys.is_empty() {
+            if let Ok(store) = self.overlay.read() {
+                for r in store.records() {
+                    if let Some(k) = r.get(pk_field.as_str()).map(|v| format!("{v:?}")) {
+                        if base_keys.contains(&k) {
+                            hidden_base.insert(k);
+                        }
+                    }
+                }
+            }
+        }
+        let hidden_base_count = hidden_base.len();
 
         self.base
             .len()
-            .saturating_sub(ts_in_base + overlay_shadow)
+            .saturating_sub(hidden_base_count)
             + self.overlay_len()
     }
 

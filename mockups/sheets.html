@@ -1,0 +1,1970 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GIGI Sheets — bundles, but human</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --panel-2: #fbfbfc;
+    --ink: #0b1220;
+    --ink-2: #4b5565;
+    --ink-3: #8a93a4;
+    --line: #e6e8ee;
+    --line-2: #eef0f4;
+    --accent: #4f46e5;
+    --accent-soft: #eef0ff;
+    --geo: #0e7490;
+    --geo-soft: #e6f5f7;
+    --warn: #b45309;
+    --warn-soft: #fff4e0;
+    --bad: #b91c1c;
+    --bad-soft: #fde8e8;
+    --good: #047857;
+    --good-soft: #e6f4ee;
+    --key-soft: #f4f1ff;
+    --shadow: 0 1px 2px rgba(11,18,32,.04), 0 6px 24px rgba(11,18,32,.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; font-size: inherit; color: inherit; cursor: pointer; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr 360px;
+    grid-template-rows: 52px 32px 1fr 36px;
+    grid-template-areas:
+      "topbar  topbar  topbar"
+      "menubar menubar menubar"
+      "sidebar main    inspector"
+      "footer  footer  footer";
+    height: 100vh;
+    min-height: 0;
+  }
+  body.no-footer .app { grid-template-rows: 52px 32px 1fr 0; }
+  body.no-footer .footer { display: none; }
+  body.no-inspector .app { grid-template-columns: 240px 1fr 0; }
+  body.no-inspector .inspector { display: none; }
+
+  /* Topbar */
+  .topbar { grid-area: topbar; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand-mark { width: 22px; height: 22px; border-radius: 6px; background: conic-gradient(from 220deg, #4f46e5, #0e7490, #4f46e5); box-shadow: inset 0 0 0 2px #fff, 0 1px 2px rgba(0,0,0,.18); }
+  .brand small { font-weight: 500; color: var(--ink-3); margin-left: 4px; border-left: 1px solid var(--line); padding-left: 10px; }
+  .crumbs { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .crumbs .sep { color: var(--ink-3); }
+  .crumbs .cur { color: var(--ink); font-weight: 600; }
+  .top-spacer { flex: 1; }
+  .search { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 300px; color: var(--ink-3); }
+  .search input { border: 0; outline: 0; background: transparent; flex: 1; font: inherit; color: var(--ink); }
+  .search:focus-within { border-color: var(--accent); background: #fff; }
+  .kbd { border: 1px solid var(--line); background: #fff; color: var(--ink-3); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
+  .btn:hover { background: var(--panel-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.05); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+  .btn.ghost:hover { background: var(--panel-2); color: var(--ink); }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #0e7490); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 11px; }
+
+  /* Menubar */
+  .menubar { grid-area: menubar; display: flex; align-items: stretch; background: var(--panel); border-bottom: 1px solid var(--line); padding: 0 8px; position: relative; z-index: 30; }
+  .menu-btn { padding: 0 10px; background: transparent; border: 0; color: var(--ink-2); font-size: 12.5px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; border-radius: 6px; margin: 4px 1px; }
+  .menu-btn:hover { background: var(--panel-2); color: var(--ink); }
+  .menu-btn.open { background: var(--accent-soft); color: var(--accent); }
+  .menu-dropdown { position: absolute; top: 100%; min-width: 240px; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 32px rgba(11,18,32,.12); padding: 4px; z-index: 60; display: none; }
+  .menu-dropdown.open { display: block; animation: pop 0.12s ease-out; }
+  .menu-item { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 5px; color: var(--ink); cursor: pointer; font-size: 12.5px; user-select: none; }
+  .menu-item:hover { background: var(--accent-soft); }
+  .menu-item.disabled { color: var(--ink-3); cursor: default; }
+  .menu-item.disabled:hover { background: transparent; }
+  .menu-item .check { color: var(--accent); font-size: 12px; text-align: center; }
+  .menu-item .shortcut { color: var(--ink-3); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+  .menu-item.has-sub { position: relative; }
+  .menu-item .submenu-pop { position: absolute; left: 100%; top: -5px; }
+  .menu-sep { height: 1px; background: var(--line-2); margin: 4px 2px; }
+  .menu-section { padding: 6px 10px 2px; color: var(--ink-3); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(11, 18, 32, 0.42); display: none; align-items: center; justify-content: center; z-index: 200; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; width: 480px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,.25); display: flex; flex-direction: column; max-height: 80vh; }
+  .modal-head { padding: 14px 18px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h3 { margin: 0; font-size: 15px; }
+  .modal-body { padding: 16px 18px; overflow: auto; }
+  .modal-foot { padding: 12px 18px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+  .modal input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; outline: none; }
+  .modal input[type="text"]:focus { border-color: var(--accent); }
+  .shortcut-grid { display: grid; grid-template-columns: 1fr auto; gap: 6px 24px; font-size: 12.5px; }
+  .shortcut-grid .k { color: var(--ink); }
+  .shortcut-grid .v { font-family: 'JetBrains Mono', monospace; color: var(--ink-3); }
+  .shortcut-grid h5 { grid-column: span 2; margin: 12px 0 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); font-weight: 600; }
+  .shortcut-grid h5:first-child { margin-top: 0; }
+
+  /* Sidebar */
+  .sidebar { grid-area: sidebar; background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 10px 8px 16px; }
+  .side-section { margin-top: 12px; }
+  .side-title { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; color: var(--ink-3); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; font-weight: 600; }
+  .side-title button { color: var(--ink-3); }
+  .bundle { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--ink-2); cursor: pointer; user-select: none; }
+  .bundle:hover { background: var(--panel-2); color: var(--ink); }
+  .bundle.active { background: var(--accent-soft); color: var(--ink); }
+  .bundle.active .bdot { background: var(--accent); }
+  .bdot { width: 8px; height: 8px; border-radius: 2px; background: var(--ink-3); }
+  .bdot.geo { background: var(--geo); }
+  .bdot.lock { background: var(--warn); }
+  .bcount { font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: 11px; }
+
+  /* Main */
+  .main { grid-area: main; display: grid; grid-template-rows: 44px 36px 1fr; min-height: 0; background: var(--bg); }
+  .tabs { display: flex; align-items: end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .tab { padding: 8px 12px 10px; color: var(--ink-2); border-bottom: 2px solid transparent; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+  .tab.active { color: var(--ink); border-color: var(--accent); font-weight: 600; }
+  .tab:hover:not(.active) { color: var(--ink); }
+  .tab small { color: var(--ink-3); font-weight: 500; }
+  .tab svg { color: var(--ink-3); }
+
+  .toolbar { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; color: var(--ink-2); font-size: 12px; }
+  .chip:hover { background: #fff; color: var(--ink); }
+  .chip.active { background: var(--accent-soft); border-color: #d9dcfb; color: var(--accent); }
+  .chip svg { color: var(--ink-3); }
+  .chip.active svg { color: var(--accent); }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; color: var(--ink-2); border: 1px solid transparent; }
+  .toggle:hover { background: var(--panel-2); }
+  .toggle.on { color: var(--geo); background: var(--geo-soft); }
+  .sw { width: 26px; height: 14px; border-radius: 10px; background: var(--line); position: relative; transition: background .15s; }
+  .sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left .15s; }
+  .toggle.on .sw { background: var(--geo); }
+  .toggle.on .sw::after { left: 14px; }
+
+  /* View host */
+  .view-host { position: relative; min-height: 0; overflow: hidden; }
+  .view { position: absolute; inset: 0; display: none; overflow: auto; background: var(--panel); }
+  .view.active { display: block; }
+
+  /* Grid */
+  table.grid { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 980px; }
+  table.grid th, table.grid td { border-bottom: 1px solid var(--line-2); border-right: 1px solid var(--line-2); padding: 0 10px; height: 34px; text-align: left; vertical-align: middle; white-space: nowrap; }
+  table.grid thead th { position: sticky; top: 0; background: var(--panel-2); color: var(--ink-2); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--line); z-index: 2; cursor: pointer; user-select: none; }
+  table.grid thead th:hover { background: #f1f3f7; color: var(--ink); }
+  table.grid thead th .col { display: inline-flex; align-items: center; gap: 6px; }
+  table.grid thead th .col svg { color: var(--ink-3); }
+  table.grid thead th .type { color: var(--ink-3); font-weight: 500; font-size: 11px; margin-left: 4px; }
+  table.grid thead th .sortmark { color: var(--accent); font-size: 11px; margin-left: 6px; }
+  table.grid tbody tr { background: #fff; cursor: pointer; }
+  table.grid tbody tr:hover { background: #fafbfd; }
+  table.grid tbody tr.selected { background: var(--accent-soft); }
+  table.grid tbody tr.selected td { border-color: #dcdcfb; }
+  table.grid td.num { font-variant-numeric: tabular-nums; }
+  table.grid td.editable { cursor: text; }
+  table.grid td.editable:hover { box-shadow: inset 0 0 0 2px #d9dcfb; border-radius: 2px; }
+  table.grid td.editing { padding: 0; }
+  table.grid td.editing input { width: 100%; height: 100%; padding: 0 10px; border: 0; outline: 2px solid var(--accent); background: #fff; font: inherit; color: inherit; font-variant-numeric: tabular-nums; }
+  table.grid td.key { font-family: 'JetBrains Mono', ui-monospace, monospace; background: var(--key-soft); color: var(--ink); font-size: 12px; }
+  table.grid td.row-h, table.grid th.row-h { width: 64px; padding-left: 8px; color: var(--ink-3); font-variant-numeric: tabular-nums; background: var(--panel-2); position: sticky; left: 0; z-index: 1; cursor: default; }
+  table.grid thead th.row-h { z-index: 3; }
+  table.grid tr.selected td.row-h { background: #ecebff; color: var(--ink); }
+
+  .kappa { display: inline-flex; align-items: center; gap: 6px; width: 100%; }
+  .kbar { flex: 1; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--good) 0%, var(--good) var(--p,40%), var(--line-2) var(--p,40%)); transition: background 0.25s; }
+  .kbar.warn { background: linear-gradient(90deg, var(--warn) 0%, var(--warn) var(--p,70%), var(--line-2) var(--p,70%)); }
+  .kbar.bad  { background: linear-gradient(90deg, var(--bad)  0%, var(--bad)  var(--p,90%), var(--line-2) var(--p,90%)); }
+
+  body[data-overlay="on"] tbody tr.warn td { background: linear-gradient(90deg, var(--warn-soft), #fff 60%); }
+  body[data-overlay="on"] tbody tr.bad  td { background: linear-gradient(90deg, var(--bad-soft),  #fff 60%); }
+  body[data-overlay="on"] tbody tr.selected td { background: var(--accent-soft); }
+
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 500; background: var(--panel-2); color: var(--ink-2); border: 1px solid var(--line); }
+  .pill.geo  { background: var(--geo-soft);  color: var(--geo);  border-color: #cfe9ec; }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); border-color: #f3e3c4; }
+  .pill.bad  { background: var(--bad-soft);  color: var(--bad);  border-color: #f3c9c9; }
+  .pill.good { background: var(--good-soft); color: var(--good); border-color: #c6e3d4; }
+  .lock { display: inline-flex; align-items: center; gap: 4px; color: var(--warn); font-size: 11px; }
+  .spark { display: inline-block; vertical-align: middle; }
+
+  /* Inspector */
+  .inspector { grid-area: inspector; background: var(--panel); border-left: 1px solid var(--line); overflow: auto; }
+  .insp-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+  .insp-eyebrow { color: var(--geo); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .insp-title { font-size: 16px; font-weight: 700; margin-top: 2px; display: flex; align-items: center; gap: 8px; }
+  .insp-sub { color: var(--ink-3); font-size: 12px; margin-top: 2px; }
+
+  .insp-section { padding: 14px 16px; border-bottom: 1px solid var(--line-2); }
+  .insp-section h4 { margin: 0 0 8px; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px; }
+  .gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gauge { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--panel-2); }
+  .gauge .lbl { color: var(--ink-3); font-size: 11px; }
+  .gauge .val { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .gauge .delta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+  .gauge .delta.up { color: var(--bad); }
+  .gauge .delta.dn { color: var(--good); }
+
+  .verb { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; background: var(--panel-2); }
+  .verb:hover { background: #fff; border-color: #d9dcfb; }
+  .verb .name { font-weight: 600; }
+  .verb .name code { color: var(--accent); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .verb .desc { color: var(--ink-3); font-size: 11px; }
+
+  .explain { border-left: 3px solid var(--geo); background: var(--geo-soft); padding: 10px 12px; border-radius: 6px; color: var(--ink); }
+  .explain strong { color: var(--geo); }
+
+  .result {
+    margin-top: 8px;
+    border: 1px solid #d9dcfb;
+    background: linear-gradient(180deg, #fff, #fafaff);
+    border-radius: 10px; padding: 12px;
+    animation: pop 0.2s ease-out;
+  }
+  @keyframes pop {
+    from { transform: translateY(-2px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  .result h5 { margin: 0 0 6px; font-size: 12px; color: var(--accent); display: flex; justify-content: space-between; align-items: center; }
+  .result h5 code { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 600; }
+  .result h5 button { background: transparent; border: 0; color: var(--ink-3); cursor: pointer; padding: 0 4px; }
+  .matrix { display: inline-grid; grid-template-columns: auto auto; gap: 2px 14px; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 6px 12px; border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); margin: 6px 0; }
+  .matrix .mv { font-variant-numeric: tabular-nums; }
+  .bars { display: grid; grid-template-columns: 24px 1fr 40px; align-items: center; gap: 6px; margin-top: 4px; }
+  .bars .lbl { color: var(--ink-3); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .bars .bar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--geo)); }
+  .bars .val { color: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+  .dial { display: inline-flex; align-items: center; gap: 10px; }
+  .dial-num { font-size: 22px; font-weight: 700; }
+  .dial-num small { color: var(--ink-3); font-size: 11px; font-weight: 500; margin-left: 4px; }
+
+  /* Footer */
+  .footer { grid-area: footer; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: #0b1220; color: #c9d2e1; border-top: 1px solid #0b1220; font-size: 12px; }
+  .footer .label { color: #8a93a4; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10.5px; font-weight: 600; }
+  .footer .gql { font-family: 'JetBrains Mono', ui-monospace, monospace; color: #e8ecf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+  .footer .gql .kw { color: #a5b4fc; }
+  .footer .gql .str { color: #6ee7b7; }
+  .footer .gql .num { color: #fcd34d; }
+  .footer .spacer { flex: 1; }
+  .footer .stat { color: #8a93a4; }
+  .footer .stat b { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .footer .stat.bad b { color: #fca5a5; }
+
+  .ic { width: 14px; height: 14px; }
+  .ic-sm { width: 12px; height: 12px; }
+
+  .banner { margin: 10px 12px 0; border: 1px dashed #d9dcfb; background: #f6f5ff; color: var(--ink-2); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .banner b { color: var(--ink); }
+
+  /* Geometry tab */
+  .geo-wrap { padding: 16px; display: grid; grid-template-columns: 1fr 280px; gap: 16px; }
+  .geo-card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); }
+  .geo-card h3 { margin: 0 0 4px; font-size: 14px; }
+  .geo-card p { color: var(--ink-3); margin: 0 0 12px; font-size: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+  .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+
+  /* GQL tab */
+  .gql-wrap { padding: 16px; display: grid; grid-template-rows: auto 1fr; gap: 12px; height: 100%; }
+  .editor { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: #0b1220; color: #e8ecf3; padding: 14px; border-radius: 12px; min-height: 160px; border: 1px solid #1f2937; outline: none; white-space: pre-wrap; tab-size: 2; }
+  .gql-toolbar { display: flex; align-items: center; gap: 10px; }
+  .gql-result { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow: auto; min-height: 200px; }
+  .gql-meta { display: flex; gap: 16px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+  .gql-meta .mi { font-size: 11px; color: var(--ink-3); }
+  .gql-meta .mi b { color: var(--ink); font-size: 13px; display: block; font-variant-numeric: tabular-nums; }
+
+  /* Charts tab */
+  .charts-wrap { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Kanban tab */
+  .kanban-wrap { padding: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; height: 100%; min-height: 0; }
+  .kanban-col { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow: auto; }
+  .kanban-col h4 { margin: 0 0 8px; font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; display: flex; justify-content: space-between; }
+  .kanban-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; font-size: 12px; }
+  .kanban-card:hover { border-color: #d9dcfb; }
+  .kanban-card .kc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .kanban-card .id { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .kanban-card .meta { color: var(--ink-3); font-size: 11px; }
+
+  /* Insights drawer */
+  .drawer-bg { position: fixed; inset: 0; background: rgba(11, 18, 32, 0.4); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 50; }
+  .drawer-bg.open { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; background: var(--panel); border-left: 1px solid var(--line); box-shadow: -10px 0 30px rgba(11,18,32,.08); transform: translateX(100%); transition: transform 0.25s ease-out; z-index: 51; display: flex; flex-direction: column; }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head { padding: 16px 18px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .drawer-head h3 { margin: 0; font-size: 15px; }
+  .drawer-body { padding: 16px 18px; overflow: auto; }
+  .insight { padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; background: var(--panel-2); }
+  .insight .tag { display: inline-block; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-bottom: 6px; }
+  .insight .tag.bad  { background: var(--bad-soft); color: var(--bad); }
+  .insight .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .insight .tag.geo  { background: var(--geo-soft); color: var(--geo); }
+  .insight .body { color: var(--ink); }
+  .insight .body b { color: var(--ink); }
+  .insight footer { margin-top: 6px; color: var(--ink-3); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Tooltip */
+  .tip { position: fixed; background: #0b1220; color: #e8ecf3; padding: 6px 10px; border-radius: 6px; font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  .tip.show { opacity: 1; }
+  .tip .mono { font-family: 'JetBrains Mono', monospace; color: #a5b4fc; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 56px; left: 50%; transform: translateX(-50%) translateY(20px); background: #0b1220; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.3); opacity: 0; pointer-events: none; transition: transform 0.2s, opacity 0.2s; z-index: 200; display: flex; align-items: center; gap: 8px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--geo); }
+</style>
+</head>
+<body data-overlay="on">
+
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      GIGI Sheets
+      <small>fiber bundles · for humans</small>
+    </div>
+    <div class="crumbs" style="margin-left: 16px;">
+      <span>Davis Geometric</span>
+      <span class="sep">/</span>
+      <span>Workspaces</span>
+      <span class="sep">/</span>
+      <span class="cur">Field Ops</span>
+    </div>
+    <div class="top-spacer"></div>
+    <label class="search" title="Search anything (⌘K)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="searchInput" placeholder="Search rows by id, site, status…" />
+      <span class="kbd">⌘K</span>
+    </label>
+    <button class="btn ghost" title="Share">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.6 13.5 15.4 17M15.4 7 8.6 10.5"/></svg>
+      Share
+    </button>
+    <button class="btn primary" id="newRowBtn">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      New row
+    </button>
+    <div class="avatar" title="Bee Rosa Davis">BD</div>
+  </div>
+
+  <!-- MENUBAR -->
+  <nav class="menubar" id="menubar"></nav>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="side-section">
+      <div class="side-title">Workspaces<button class="btn ghost" style="padding:2px 6px;"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button></div>
+      <div class="bundle"><span class="bdot geo"></span><span>Field Ops</span><span class="bcount">4</span></div>
+      <div class="bundle" style="opacity:.7"><span class="bdot"></span><span>Marcella · corpora</span><span class="bcount">2</span></div>
+      <div class="bundle" style="opacity:.7"><span class="bdot lock"></span><span>Finance (encrypted)</span><span class="bcount">3</span></div>
+    </div>
+    <div class="side-section">
+      <div class="side-title">Bundles in Field Ops<button class="btn ghost" style="padding:2px 6px;" title="New bundle"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button></div>
+      <div class="bundle active"><span class="bdot geo"></span><span>sensors</span><span class="bcount" id="bcount">13</span></div>
+      <div class="bundle"><span class="bdot"></span><span>sites</span><span class="bcount">4</span></div>
+      <div class="bundle"><span class="bdot"></span><span>incidents</span><span class="bcount">17</span></div>
+      <div class="bundle"><span class="bdot lock"></span><span>operators</span><span class="bcount">9</span></div>
+    </div>
+    <div class="side-section">
+      <div class="side-title">Saved views</div>
+      <div class="bundle"><span class="bdot"></span><span>All sensors</span><span class="bcount"></span></div>
+      <div class="bundle"><span class="bdot lock"></span><span>Anomalies last 24h</span><span class="bcount" id="anomCount">3</span></div>
+      <div class="bundle"><span class="bdot geo"></span><span>By κ (curvature)</span><span class="bcount"></span></div>
+      <div class="bundle"><span class="bdot"></span><span>Offline only</span><span class="bcount">1</span></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <section class="main">
+
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-view="grid">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>
+        Grid <small>· sensors</small>
+      </div>
+      <div class="tab" data-view="geometry">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7.5 7.2 11 16.4M16.6 7.5 12.7 16.5M8 6h8"/></svg>
+        Geometry
+      </div>
+      <div class="tab" data-view="charts">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 16V9M12 16v-4M16 16v-7"/></svg>
+        Charts
+      </div>
+      <div class="tab" data-view="kanban">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+        Kanban
+      </div>
+      <div class="tab" data-view="gql">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>
+        GQL
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="chip" id="filterAnom">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+        Anomalies only
+      </button>
+      <button class="chip" id="sortChip">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4v16M4 7l3-3 3 3M17 4v16M14 17l3 3 3-3"/></svg>
+        Sort · <span id="sortLabel">κ desc</span>
+      </button>
+      <button class="chip">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18M3 9h12M3 14h18M3 19h12"/></svg>
+        Group · site_id
+      </button>
+      <div style="flex:1"></div>
+      <button class="toggle on" id="overlayToggle" title="Color rows by curvature / anomaly">
+        <span class="sw"></span>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        Geometry overlay
+      </button>
+      <button class="btn" id="insightsBtn">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3"/></svg>
+        Insights
+      </button>
+    </div>
+
+    <div class="view-host">
+      <!-- GRID VIEW -->
+      <div class="view active" data-view="grid">
+        <div class="banner" id="banner">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          <div><b id="banner-text"></b></div>
+          <div style="flex:1"></div>
+          <button class="btn ghost" style="font-size:12px;" onclick="this.parentElement.style.display='none'">Dismiss</button>
+        </div>
+        <table class="grid" id="grid">
+          <thead>
+            <tr id="header-row"></tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- GEOMETRY VIEW -->
+      <div class="view" data-view="geometry">
+        <div class="geo-wrap">
+          <div class="geo-card">
+            <h3>(temp, humidity) fiber — base-space projection</h3>
+            <p>Each point is one record. Size scales with curvature κ. Click a point to select. The selected row is haloed; its nearest peer is connected by a transport line.</p>
+            <svg id="scatter" viewBox="0 0 700 460" style="width: 100%; height: auto;"></svg>
+            <div class="legend" id="legend"></div>
+          </div>
+          <div>
+            <div class="geo-card" style="margin-bottom: 12px;">
+              <h3 style="font-size:13px;">Spectral profile (this view)</h3>
+              <p style="margin-bottom:8px;">Top Laplacian eigenvalues. λ₁ is the algebraic connectivity.</p>
+              <div id="scatterSpectral"></div>
+            </div>
+            <div class="geo-card">
+              <h3 style="font-size:13px;">Cover stats</h3>
+              <div id="coverStats" style="font-size: 12px; color: var(--ink-2);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHARTS VIEW -->
+      <div class="view" data-view="charts">
+        <div class="charts-wrap">
+          <div class="geo-card">
+            <h3>Rows by site</h3>
+            <p>Count of sections per site_id.</p>
+            <svg id="bySite" viewBox="0 0 400 220" style="width: 100%; height: auto;"></svg>
+          </div>
+          <div class="geo-card">
+            <h3>Temperature distribution</h3>
+            <p>Histogram of temp across all rows in this view.</p>
+            <svg id="histTemp" viewBox="0 0 400 220" style="width: 100%; height: auto;"></svg>
+          </div>
+          <div class="geo-card">
+            <h3>κ by row</h3>
+            <p>Curvature per record. Anomalies stand out.</p>
+            <svg id="kappaChart" viewBox="0 0 400 220" style="width: 100%; height: auto;"></svg>
+          </div>
+          <div class="geo-card">
+            <h3>Confidence vs κ</h3>
+            <p>conf = 1/(1+κ). Cells near the bottom-right need attention.</p>
+            <svg id="confChart" viewBox="0 0 400 220" style="width: 100%; height: auto;"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- KANBAN VIEW -->
+      <div class="view" data-view="kanban">
+        <div class="kanban-wrap">
+          <div class="kanban-col" data-status="ok"><h4>● Ok <span id="kc-ok">0</span></h4><div id="kanban-ok"></div></div>
+          <div class="kanban-col" data-status="warning"><h4>● Warning <span id="kc-warn">0</span></h4><div id="kanban-warn"></div></div>
+          <div class="kanban-col" data-status="offline"><h4>● Offline <span id="kc-off">0</span></h4><div id="kanban-off"></div></div>
+        </div>
+      </div>
+
+      <!-- GQL VIEW -->
+      <div class="view" data-view="gql">
+        <div class="gql-wrap">
+          <div>
+            <div class="gql-toolbar">
+              <button class="btn primary" id="runGql">
+                <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                Run
+              </button>
+              <button class="btn" id="formatGql">Format</button>
+              <span style="color:var(--ink-3); font-size: 12px;">⌘↵ to run</span>
+            </div>
+            <div class="editor" id="editor" contenteditable="true" spellcheck="false"></div>
+          </div>
+          <div class="gql-result" id="gqlResult">
+            <div style="color: var(--ink-3); font-size: 12px;">Press Run to execute the query.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSPECTOR -->
+  <aside class="inspector" id="inspector">
+    <div class="insp-head">
+      <div class="insp-eyebrow">Geometry inspector</div>
+      <div class="insp-title" id="insp-title">S-0142 <span class="pill bad" id="insp-flag">anomaly</span></div>
+      <div class="insp-sub" id="insp-sub">sensors · site North-3</div>
+    </div>
+
+    <div class="insp-section">
+      <h4><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg>Bundle properties at this section</h4>
+      <div class="gauges">
+        <div class="gauge"><div class="lbl">Scalar curvature κ</div><div class="val" id="g-k">—</div><div class="delta" id="g-k-delta"></div></div>
+        <div class="gauge"><div class="lbl">Confidence 1/(1+κ)</div><div class="val" id="g-c">—</div><div class="delta" id="g-c-delta"></div></div>
+        <div class="gauge"><div class="lbl">Capacity C = τ/κ</div><div class="val" id="g-cap">—</div><div class="delta">τ = 1.98</div></div>
+        <div class="gauge"><div class="lbl">Spectral λ₁ (site)</div><div class="val" id="g-l1">—</div><div class="delta" id="g-l1-delta"></div></div>
+      </div>
+    </div>
+
+    <div class="insp-section">
+      <h4>Why is this flagged?</h4>
+      <div class="explain" id="explain"></div>
+    </div>
+
+    <div class="insp-section">
+      <h4>Run a geometric verb</h4>
+      <div class="verb" data-verb="spectral"><div><div class="name"><code>SPECTRAL</code> on neighbors</div><div class="desc">Laplacian eigenmodes for the selected site</div></div><button class="btn ghost">Run</button></div>
+      <div class="verb" data-verb="transport"><div><div class="name"><code>TRANSPORT</code> to nearest peer</div><div class="desc">SO(2) rotation to closest healthy neighbor</div></div><button class="btn ghost">Run</button></div>
+      <div class="verb" data-verb="holonomy"><div><div class="name"><code>HOLONOMY</code> around site</div><div class="desc">How much the fiber rotates around the site loop</div></div><button class="btn ghost">Run</button></div>
+      <div class="verb" data-verb="betti"><div><div class="name"><code>BETTI</code> numbers</div><div class="desc">Sheaf cohomology — topology of this cover</div></div><button class="btn ghost">Run</button></div>
+      <div id="verbResults"></div>
+    </div>
+
+    <div class="insp-section">
+      <h4><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Encrypted fields</h4>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span class="lock"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>operator</span>
+          <span class="mono" style="color:var(--ink-3); font-size:11px;">INDEXED · CMAC</span>
+        </div>
+        <div class="insp-sub">Queryable on equality, never decrypted in the UI. κ and λ₁ were computed <b>over the ciphertext</b> at native speed.</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- FOOTER GQL -->
+  <div class="footer">
+    <span class="label">GQL</span>
+    <span class="gql" id="gql"></span>
+    <span class="spacer"></span>
+    <span class="stat">rows <b id="stat-rows">0</b></span><span class="stat">·</span>
+    <span class="stat">κ̄ <b id="stat-k">0</b></span><span class="stat">·</span>
+    <span class="stat">conf̄ <b id="stat-c">0</b></span><span class="stat">·</span>
+    <span class="stat bad">anomalies <b id="stat-a">0</b></span>
+  </div>
+</div>
+
+<!-- Insights drawer -->
+<div class="drawer-bg" id="drawerBg"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head"><h3>Insights · sensors</h3><button class="btn ghost" id="drawerClose">✕</button></div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<!-- Find modal -->
+<div class="modal-bg" id="findModal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Find</h3>
+      <button class="btn ghost" id="findClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <input id="findInput" type="text" placeholder="Find in sensor_id, site_id, status…" />
+      <div id="findResults" style="margin-top: 12px; max-height: 280px; overflow: auto; font-size: 12px;"></div>
+    </div>
+    <div class="modal-foot">
+      <span style="color: var(--ink-3); font-size: 11px; margin-right: auto;">Press Enter on a result to jump to it.</span>
+      <button class="btn" id="findCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shortcuts modal -->
+<div class="modal-bg" id="shortcutsModal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Keyboard shortcuts</h3>
+      <button class="btn ghost" id="shortcutsClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="shortcut-grid">
+        <h5>Navigation</h5>
+        <span class="k">Move selection up / down</span><span class="v">↑ · ↓</span>
+        <span class="k">Search rows (toolbar)</span><span class="v">/ · ⌘K</span>
+        <span class="k">Find (modal)</span><span class="v">⌘F</span>
+        <span class="k">Switch view</span><span class="v">Menu › View</span>
+        <h5>Editing</h5>
+        <span class="k">Edit cell</span><span class="v">click numeric cell</span>
+        <span class="k">Commit edit</span><span class="v">Enter</span>
+        <span class="k">Cancel edit</span><span class="v">Esc</span>
+        <span class="k">New row</span><span class="v">"New row" button</span>
+        <span class="k">Delete selected row</span><span class="v">⌫ · Delete</span>
+        <span class="k">Undo · Redo</span><span class="v">⌘Z · ⌘⇧Z</span>
+        <h5>Geometry</h5>
+        <span class="k">Run a verb</span><span class="v">Inspector › Run</span>
+        <span class="k">Toggle κ overlay</span><span class="v">Toolbar toggle</span>
+        <span class="k">Open insights</span><span class="v">Insights button</span>
+        <h5>GQL</h5>
+        <span class="k">Run query</span><span class="v">⌘↵ (in GQL tab)</span>
+        <h5>Help</h5>
+        <span class="k">This menu</span><span class="v">?</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- About modal -->
+<div class="modal-bg" id="aboutModal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>About GIGI Sheets</h3>
+      <button class="btn ghost" id="aboutClose">✕</button>
+    </div>
+    <div class="modal-body" style="font-size: 13px; line-height: 1.55;">
+      <p style="margin: 0 0 8px;"><b>GIGI Sheets</b> — a spreadsheet front-end for fiber-bundle databases.</p>
+      <p style="margin: 0 0 8px; color: var(--ink-2);">Every row is a <span class="mono" style="color:var(--accent)">SECTION</span> of a bundle. Every cell carries curvature κ. Every encrypted field stays encrypted in the UI — geometry is computed over the ciphertext.</p>
+      <p style="margin: 12px 0 0; color: var(--ink-3); font-size: 11.5px;">Davis Geometric · 2026 · Bee Rosa Davis</p>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip + toast -->
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
+
+<script>
+/* =========================================================================
+   GIGI Sheets — interactive mockup
+   Everything below is client-side fakery, but the formulas are real-shape:
+   the same κ / Laplacian / TRANSPORT-rotation that the engine computes
+   over a real bundle. Wired against a live gigi-server, this is the spec.
+   ========================================================================= */
+
+// ---------- columns ----------
+const COLS = [
+  { key: "sensor_id", label: "sensor_id", type: "key",      },
+  { key: "site",      label: "site_id",   type: "cat",      },
+  { key: "temp",      label: "temp",      type: "num", unit: "°C", edit: true },
+  { key: "hum",       label: "humidity",  type: "num", unit: "%",  edit: true },
+  { key: "trend",     label: "trend 24h", type: "spark"     },
+  { key: "status",    label: "status",    type: "status"    },
+  { key: "op",        label: "operator",  type: "enc"       },
+  { key: "upd",       label: "updated",   type: "time"      },
+];
+
+// ---------- data ----------
+let rows = [
+  { id:"S-0142", site:"North-3", temp:38.7, hum:18.2, trend:[20,21,22,23,28,32,35,38], status:"warning", op:"opr_d2a8…", upd:"4 min ago" },
+  { id:"S-0117", site:"North-3", temp:21.9, hum:62.4, trend:[22,22,21,22,22,21,22,22], status:"ok",      op:"opr_d2a8…", upd:"1 min ago" },
+  { id:"S-0089", site:"East-1",  temp:19.4, hum:71.0, trend:[20,20,19,19,20,19,19,19], status:"ok",      op:"opr_77bc…", upd:"2 min ago" },
+  { id:"S-0091", site:"East-1",  temp:33.6, hum:22.7, trend:[20,21,22,24,27,30,32,34], status:"warning", op:"opr_77bc…", upd:"3 min ago" },
+  { id:"S-0034", site:"South-2", temp:22.0, hum:60.1, trend:[22,21,22,22,22,22,22,22], status:"ok",      op:"opr_c41a…", upd:"6 min ago" },
+  { id:"S-0035", site:"South-2", temp:22.4, hum:59.8, trend:[23,22,22,22,22,22,22,22], status:"ok",      op:"opr_c41a…", upd:"6 min ago" },
+  { id:"S-0201", site:"North-3", temp:21.8, hum:63.1, trend:[22,22,21,22,21,22,22,21], status:"ok",      op:"opr_d2a8…", upd:"just now" },
+  { id:"S-0210", site:"North-3", temp:24.1, hum:55.4, trend:[22,22,22,23,23,23,24,24], status:"ok",      op:"opr_d2a8…", upd:"just now" },
+  { id:"S-0007", site:"West-4",  temp:-9.8, hum:88.0, trend:[2,1,0,-2,-4,-6,-8,-9],    status:"offline", op:"opr_9f12…", upd:"22 min ago" },
+  { id:"S-0008", site:"West-4",  temp:1.2,  hum:84.3, trend:[2,2,2,1,1,1,1,1],         status:"ok",      op:"opr_9f12…", upd:"3 min ago" },
+  { id:"S-0162", site:"South-2", temp:22.7, hum:58.9, trend:[22,22,22,23,22,22,23,22],status:"ok",      op:"opr_c41a…", upd:"4 min ago" },
+  { id:"S-0163", site:"South-2", temp:22.9, hum:58.1, trend:[22,22,22,22,22,23,23,23],status:"ok",      op:"opr_c41a…", upd:"4 min ago" },
+  { id:"S-0044", site:"East-1",  temp:20.0, hum:69.7, trend:[20,20,20,20,20,20,20,20],status:"ok",      op:"opr_77bc…", upd:"8 min ago" },
+];
+
+// ---------- view state ----------
+let state = {
+  sortKey: "k",
+  sortDir: "desc",
+  filterAnom: false,
+  search: "",
+  selectedId: "S-0142",
+  view: "grid",
+};
+
+// ---------- geometry kernel (the actual point of this mockup) ----------
+function recomputeKappa() {
+  // For each row, κ ∝ leave-one-out Euclidean distance from its site cover
+  const sites = {};
+  rows.forEach((r, i) => {
+    if (!sites[r.site]) sites[r.site] = [];
+    sites[r.site].push(i);
+  });
+  rows.forEach((r, i) => {
+    const peers = sites[r.site].filter(j => j !== i);
+    if (peers.length === 0) { r.k = 0; r.p = 0; r.cls = ""; return; }
+    const ct = peers.reduce((a, j) => a + rows[j].temp, 0) / peers.length;
+    const ch = peers.reduce((a, j) => a + rows[j].hum,  0) / peers.length;
+    const dt = r.temp - ct;
+    const dh = r.hum  - ch;
+    const d  = Math.sqrt(dt*dt + dh*dh);
+    r.k = d / 10;
+    r.p = Math.min(100, r.k * 22);
+    r.cls = r.k >= 2 ? "bad" : r.k >= 0.8 ? "warn" : "";
+  });
+}
+
+// Per-site Laplacian λ₁ (algebraic connectivity), fake but data-driven
+function siteSpectral(site) {
+  const idxs = rows.map((r, i) => [r, i]).filter(([r]) => r.site === site).map(([, i]) => i);
+  if (idxs.length < 2) return { l1: 0, l2: 0, l3: 0, n: idxs.length };
+  // average pairwise (temp, hum) distance — proxy for spread
+  let total = 0, count = 0;
+  for (let a = 0; a < idxs.length; a++) {
+    for (let b = a + 1; b < idxs.length; b++) {
+      const ra = rows[idxs[a]], rb = rows[idxs[b]];
+      total += Math.hypot(ra.temp - rb.temp, ra.hum - rb.hum);
+      count++;
+    }
+  }
+  const avg = total / count;
+  // smaller spread → higher connectivity → larger λ₁
+  const l1 = +(0.05 + 0.6 / (1 + avg / 5)).toFixed(3);
+  return { l1, l2: +(l1 * 4.1).toFixed(3), l3: +(l1 * 11.7).toFixed(3), n: idxs.length };
+}
+
+// TRANSPORT: signed rotation angle from A to B in centered (t, h) plane
+function transport(a, b) {
+  const peers = rows.filter(r => r.site === a.site);
+  const ct = peers.reduce((s, r) => s + r.temp, 0) / peers.length;
+  const ch = peers.reduce((s, r) => s + r.hum, 0) / peers.length;
+  const va = { x: a.temp - ct, y: a.hum - ch };
+  const vb = { x: b.temp - ct, y: b.hum - ch };
+  // signed angle from va to vb
+  const angA = Math.atan2(va.y, va.x);
+  const angB = Math.atan2(vb.y, vb.x);
+  let theta = angB - angA;
+  while (theta >  Math.PI) theta -= 2 * Math.PI;
+  while (theta < -Math.PI) theta += 2 * Math.PI;
+  return theta;
+}
+
+function nearestHealthyPeer(r) {
+  const candidates = rows.filter(x => x.site === r.site && x.id !== r.id && x.cls === "");
+  if (candidates.length === 0) return rows.find(x => x.site === r.site && x.id !== r.id);
+  let best = candidates[0], bestD = Infinity;
+  for (const c of candidates) {
+    const d = Math.hypot(c.temp - r.temp, c.hum - r.hum);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return best;
+}
+
+// HOLONOMY: sum of signed rotations around a closed loop through site members
+function holonomy(siteId) {
+  const list = rows.filter(r => r.site === siteId);
+  if (list.length < 3) return 0;
+  let sum = 0;
+  for (let i = 0; i < list.length; i++) {
+    sum += transport(list[i], list[(i + 1) % list.length]);
+  }
+  return sum;
+}
+
+// BETTI: very rough — b₀ = sites in current view, b₁ = anomaly count, b₂ = 0
+function bettiNumbers(view) {
+  const sites = new Set(view.map(r => r.site));
+  const anomalies = view.filter(r => r.cls === "bad").length;
+  return { b0: sites.size, b1: anomalies, b2: 0 };
+}
+
+// ---------- view derivation ----------
+function visibleRows() {
+  let v = rows;
+  if (state.filterAnom) v = v.filter(r => r.cls === "bad" || r.cls === "warn");
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    v = v.filter(r => r.id.toLowerCase().includes(q) || r.site.toLowerCase().includes(q) || r.status.toLowerCase().includes(q));
+  }
+  const dir = state.sortDir === "asc" ? 1 : -1;
+  const k = state.sortKey;
+  v = [...v].sort((a, b) => {
+    let va = a[k], vb = b[k];
+    if (k === "id") return va.localeCompare(vb) * dir;
+    if (typeof va === "string") return va.localeCompare(vb) * dir;
+    return (va - vb) * dir;
+  });
+  return v;
+}
+
+// ---------- renderers ----------
+function spark(values, anomaly) {
+  const w = 84, h = 18, pad = 1;
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = (max - min) || 1;
+  const stepX = (w - pad*2) / (values.length - 1);
+  const pts = values.map((v,i) => `${(pad + i * stepX).toFixed(1)},${(h - pad - ((v - min) / span) * (h - pad*2)).toFixed(1)}`).join(" ");
+  const stroke = anomaly === "bad" ? "var(--bad)" : anomaly === "warn" ? "var(--warn)" : "var(--ink-2)";
+  const fill   = anomaly === "bad" ? "var(--bad-soft)" : anomaly === "warn" ? "var(--warn-soft)" : "#eef0f4";
+  const last = pts.split(" ").pop().split(",");
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <polyline points="${pts}" fill="none" stroke="${stroke}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="${pts} ${w-pad},${h-pad} ${pad},${h-pad}" fill="${fill}" opacity="0.55"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="1.8" fill="${stroke}"/>
+  </svg>`;
+}
+function statusPill(s) {
+  if (s === "ok")      return `<span class="pill good">● ok</span>`;
+  if (s === "warning") return `<span class="pill warn">● warning</span>`;
+  if (s === "offline") return `<span class="pill bad">● offline</span>`;
+  return `<span class="pill">${s}</span>`;
+}
+function kbarClass(p) { return p >= 80 ? "bad" : p >= 60 ? "warn" : ""; }
+
+function renderHeader() {
+  const tr = document.getElementById("header-row");
+  let html = `<th class="row-h" data-sort="k">κ ${state.sortKey === "k" ? `<span class="sortmark">${state.sortDir === "desc" ? "▼" : "▲"}</span>` : ""}</th>`;
+  for (const c of COLS) {
+    const key = c.key === "site" ? "site" : c.key === "sensor_id" ? "id" : c.key;
+    const sm = state.sortKey === key ? `<span class="sortmark">${state.sortDir === "desc" ? "▼" : "▲"}</span>` : "";
+    let icon = "";
+    if (c.type === "key")  icon = `<svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10v10H7z"/><path d="M3 3h4v4M21 3h-4v4M3 21h4v-4M21 21h-4v-4"/></svg>`;
+    if (c.type === "enc")  icon = `<svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>`;
+    const typeLabel = c.type === "key" ? "· key" : c.type === "num" ? "· numeric" : c.type === "cat" ? "· categorical" : c.type === "enc" ? "· encrypted" : c.type === "time" ? "· timestamp" : "";
+    html += `<th data-sort="${key}"><span class="col">${icon}${c.label}<span class="type">${typeLabel}</span>${sm}</span></th>`;
+  }
+  tr.innerHTML = html;
+  tr.querySelectorAll("[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.sort;
+      if (state.sortKey === k) state.sortDir = state.sortDir === "desc" ? "asc" : "desc";
+      else { state.sortKey = k; state.sortDir = "desc"; }
+      document.getElementById("sortLabel").textContent = `${k} ${state.sortDir}`;
+      renderAll();
+    });
+  });
+}
+
+function renderGrid() {
+  const tbody = document.getElementById("tbody");
+  const v = visibleRows();
+  tbody.innerHTML = v.map(r => `
+    <tr class="${r.cls} ${r.id === state.selectedId ? "selected" : ""}" data-id="${r.id}">
+      <td class="row-h"><span class="kappa" title="κ = ${r.k.toFixed(3)}"><span class="kbar ${kbarClass(r.p)}" style="--p:${r.p}%"></span></span></td>
+      <td class="key">${r.id}</td>
+      <td><span class="pill">${r.site}</span></td>
+      <td class="num editable" data-field="temp">${r.temp.toFixed(1)} °C</td>
+      <td class="num editable" data-field="hum">${r.hum.toFixed(1)} %</td>
+      <td>${spark(r.trend, r.cls)}</td>
+      <td>${statusPill(r.status)}</td>
+      <td><span class="lock"><svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="mono">${r.op}</span></span></td>
+      <td style="color:var(--ink-3)">${r.upd}</td>
+    </tr>
+  `).join("");
+
+  // row click → select; double-click row to scroll inspector verbs in
+  tbody.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", e => {
+      if (e.target.classList.contains("editable")) return;
+      select(tr.dataset.id);
+    });
+  });
+  // editable cells
+  tbody.querySelectorAll("td.editable").forEach(td => {
+    td.addEventListener("click", e => { e.stopPropagation(); beginEdit(td); });
+  });
+}
+
+function renderStats() {
+  const v = visibleRows();
+  document.getElementById("stat-rows").textContent = v.length.toLocaleString();
+  const kMean = v.reduce((s, r) => s + r.k, 0) / Math.max(1, v.length);
+  const cMean = v.reduce((s, r) => s + 1/(1+r.k), 0) / Math.max(1, v.length);
+  const anom = v.filter(r => r.cls === "bad").length;
+  const warn = v.filter(r => r.cls === "warn").length;
+  document.getElementById("stat-k").textContent = kMean.toFixed(2);
+  document.getElementById("stat-c").textContent = cMean.toFixed(2);
+  document.getElementById("stat-a").textContent = anom;
+  document.getElementById("bcount").textContent = rows.length.toLocaleString();
+  document.getElementById("anomCount").textContent = anom;
+  const bt = document.getElementById("banner-text");
+  if (anom + warn === 0) bt.textContent = "No anomalies in this view. Curvature is flat.";
+  else bt.textContent = `${anom} anomalies + ${warn} drift rows in this view — colored by κ. Click a row to inspect the geometry.`;
+}
+
+function renderGqlFooter(q) {
+  const gql = document.getElementById("gql");
+  if (!q) {
+    const r = rowById(state.selectedId);
+    q = r ? `SECTION sensors AT (sensor_id='${r.id}') WITH κ, confidence, λ₁;` : "SECTION sensors ORDER BY κ DESC LIMIT 25;";
+  }
+  gql.innerHTML = highlight(q);
+}
+
+function highlight(q) {
+  return q
+    .replace(/\b(SECTION|WHERE|ON FIBER|FROM|TO|AROUND|MODES|ORDER BY|LIMIT|DESC|ASC|AT|WITH|SPECTRAL|TRANSPORT|HOLONOMY|BETTI|AND|OR|CREATE|BUNDLE|FIBER|ENCRYPTED|INDEXED|INTEGRATE|OVER|COVER|CURVATURE)\b/g, '<span class="kw">$1</span>')
+    .replace(/'([^']+)'/g, `'<span class="str">$1</span>'`)
+    .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="num">$1</span>');
+}
+
+function rowById(id) { return rows.find(r => r.id === id); }
+
+// ---------- inline edit ----------
+function beginEdit(td) {
+  if (td.classList.contains("editing")) return;
+  const tr = td.parentElement;
+  const id = tr.dataset.id;
+  const r = rowById(id);
+  const field = td.dataset.field;
+  const cur = r[field];
+  td.classList.add("editing");
+  td.innerHTML = `<input type="number" step="0.1" value="${cur}" />`;
+  const input = td.querySelector("input");
+  input.focus(); input.select();
+  const commit = () => {
+    const next = parseFloat(input.value);
+    if (!isNaN(next) && next !== cur) {
+      pushHistory();
+      r[field] = next;
+      recomputeKappa();
+      toast(`Updated ${id}.${field} → ${next} · κ recomputed for ${siteSize(r.site)} rows in ${r.site}`);
+      renderAll();
+      // keep this row selected
+      select(id);
+    } else {
+      td.classList.remove("editing");
+      renderGrid();
+    }
+  };
+  input.addEventListener("blur", commit);
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Escape") { td.classList.remove("editing"); renderGrid(); }
+  });
+}
+function siteSize(site) { return rows.filter(r => r.site === site).length; }
+
+// ---------- selection / inspector ----------
+function select(id) {
+  state.selectedId = id;
+  const r = rowById(id);
+  if (!r) return;
+  document.querySelectorAll("#tbody tr").forEach(tr => tr.classList.toggle("selected", tr.dataset.id === id));
+  document.getElementById("insp-title").firstChild.nodeValue = r.id + " ";
+  document.getElementById("insp-sub").textContent = `sensors · site ${r.site} · last seen ${r.upd}`;
+  const flag = document.getElementById("insp-flag");
+  flag.className = "pill " + (r.cls === "bad" ? "bad" : r.cls === "warn" ? "warn" : "good");
+  flag.textContent = r.cls === "bad" ? "anomaly" : r.cls === "warn" ? "drift" : "healthy";
+
+  document.getElementById("g-k").textContent = r.k.toFixed(2);
+  const conf = 1 / (1 + r.k);
+  document.getElementById("g-c").textContent = conf.toFixed(2);
+  document.getElementById("g-cap").textContent = (1.98 / Math.max(0.01, r.k)).toFixed(2);
+
+  const sp = siteSpectral(r.site);
+  document.getElementById("g-l1").textContent = sp.l1.toFixed(3);
+  document.getElementById("g-l1-delta").textContent = sp.l1 > 0.3 ? "well-connected cluster" : sp.l1 > 0.1 ? "moderate connectivity" : "loose / disconnected";
+
+  const peersK = rows.filter(x => x.site === r.site && x.id !== r.id).map(x => x.k);
+  const med = peersK.sort()[Math.floor(peersK.length / 2)] || 0;
+  const ratio = med > 0 ? (r.k / med) : r.k;
+  const kd = document.getElementById("g-k-delta");
+  if (r.cls === "bad")   { kd.className = "delta up"; kd.textContent = `▲ ${ratio.toFixed(1)}× site median`; }
+  else if (r.cls === "warn") { kd.className = "delta up"; kd.textContent = `▲ ${ratio.toFixed(1)}× site median`; }
+  else                       { kd.className = "delta dn"; kd.textContent = "near site center"; }
+  const cd = document.getElementById("g-c-delta");
+  if (conf < 0.4) { cd.className = "delta dn"; cd.textContent = "low — investigate"; }
+  else            { cd.className = "delta";    cd.textContent = "healthy"; }
+
+  // explainer
+  const exp = document.getElementById("explain");
+  if (r.cls === "bad") {
+    exp.innerHTML = `<strong>Outlier on the (temp, humidity) fiber.</strong> This row sits far from the local cover at site <b>${r.site}</b>. Curvature jumped to <b>${r.k.toFixed(2)}</b> while the surrounding sensors moved less — a single-point divergence, not a regional shift.`;
+  } else if (r.cls === "warn") {
+    exp.innerHTML = `<strong>Drifting from cohort.</strong> Section is moving away from the <b>${r.site}</b> centroid (κ = ${r.k.toFixed(2)}). Watch for it to either return or escalate.`;
+  } else {
+    exp.innerHTML = `<strong>Within the local cover.</strong> κ = ${r.k.toFixed(2)} — this section is well-aligned with its <b>${r.site}</b> neighbors. No action required.`;
+  }
+
+  // refresh footer GQL
+  renderGqlFooter();
+  document.getElementById("verbResults").innerHTML = "";
+}
+
+// ---------- verbs ----------
+function verb(kind) {
+  const r = rowById(state.selectedId);
+  if (!r) return;
+  const host = document.getElementById("verbResults");
+  let html = "", gql = "";
+
+  if (kind === "spectral") {
+    const sp = siteSpectral(r.site);
+    gql = `SPECTRAL sensors WHERE site_id='${r.site}' MODES 3;`;
+    html = `
+      <div class="result">
+        <h5><code>SPECTRAL · ${r.site}</code><button onclick="this.closest('.result').remove()">✕</button></h5>
+        <div style="font-size:11px; color:var(--ink-3); margin-bottom:6px;">Top Laplacian eigenvalues over the (temp, humidity) graph at ${r.site} · n=${sp.n}</div>
+        <div class="bars"><span class="lbl">λ₁</span><span class="bar" style="width: ${Math.min(100, sp.l1*120)}%"></span><span class="val">${sp.l1}</span></div>
+        <div class="bars"><span class="lbl">λ₂</span><span class="bar" style="width: ${Math.min(100, sp.l2*60)}%"></span><span class="val">${sp.l2}</span></div>
+        <div class="bars"><span class="lbl">λ₃</span><span class="bar" style="width: ${Math.min(100, sp.l3*20)}%"></span><span class="val">${sp.l3}</span></div>
+        <div style="font-size:11px; color:var(--ink-2); margin-top:8px;">${sp.l1 > 0.3 ? "Well-connected cluster — neighbors form a coherent cover." : "Loose connectivity — this site is structurally weak."}</div>
+      </div>`;
+  }
+  else if (kind === "transport") {
+    const target = nearestHealthyPeer(r);
+    if (!target) { toast("No healthy peer in this site."); return; }
+    const theta = transport(r, target);
+    const c = Math.cos(theta), s = Math.sin(theta);
+    gql = `TRANSPORT sensors FROM (sensor_id='${r.id}') TO (sensor_id='${target.id}') ON FIBER (temp, humidity);`;
+    html = `
+      <div class="result">
+        <h5><code>TRANSPORT · ${r.id} → ${target.id}</code><button onclick="this.closest('.result').remove()">✕</button></h5>
+        <div style="font-size:11px; color:var(--ink-3); margin-bottom:6px;">SO(2) rotation in centered (temp, humidity) plane</div>
+        <div class="matrix">
+          <span class="mv">${c.toFixed(3)}</span><span class="mv">${(-s).toFixed(3)}</span>
+          <span class="mv">${s.toFixed(3)}</span><span class="mv">${c.toFixed(3)}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; margin-top:6px;">
+          <div class="dial-num">${theta.toFixed(3)}<small>rad</small></div>
+          <div class="dial-num" style="color:var(--ink-2)">${(theta * 180 / Math.PI).toFixed(1)}<small>°</small></div>
+        </div>
+        <div style="font-size:11px; color:var(--ink-2); margin-top:8px;">${Math.abs(theta) > 1.5 ? "Large rotation — these sections live on very different parts of the fiber." : "Small rotation — peers are geometrically close."}</div>
+      </div>`;
+  }
+  else if (kind === "holonomy") {
+    const hol = holonomy(r.site);
+    const deg = hol * 180 / Math.PI;
+    gql = `HOLONOMY sensors ON FIBER (temp, humidity) AROUND site_id WHERE site_id='${r.site}';`;
+    html = `
+      <div class="result">
+        <h5><code>HOLONOMY · loop around ${r.site}</code><button onclick="this.closest('.result').remove()">✕</button></h5>
+        <div style="font-size:11px; color:var(--ink-3); margin-bottom:6px;">Net signed rotation accumulated around the cyclic site loop</div>
+        <div class="dial">
+          <div class="dial-num">δφ = ${hol.toFixed(3)}<small>rad</small></div>
+          <div class="dial-num" style="color:var(--ink-2)">${deg.toFixed(1)}<small>°</small></div>
+        </div>
+        <div style="font-size:11px; color:var(--ink-2); margin-top:8px;">${Math.abs(hol) < 0.2 ? "Near-zero holonomy — flat connection on this site. The fiber returns to itself." : "Non-trivial holonomy — the bundle has curvature you can see by walking the loop."}</div>
+      </div>`;
+  }
+  else if (kind === "betti") {
+    const v = visibleRows();
+    const b = bettiNumbers(v);
+    gql = `BETTI sensors;`;
+    html = `
+      <div class="result">
+        <h5><code>BETTI · current cover</code><button onclick="this.closest('.result').remove()">✕</button></h5>
+        <div style="font-size:11px; color:var(--ink-3); margin-bottom:6px;">Sheaf cohomology — topology of the current view</div>
+        <div style="display:flex; gap: 18px; margin-top: 6px;">
+          <div><div class="dial-num">${b.b0}<small>b₀</small></div><div style="font-size:11px; color:var(--ink-3);">components</div></div>
+          <div><div class="dial-num">${b.b1}<small>b₁</small></div><div style="font-size:11px; color:var(--ink-3);">loops</div></div>
+          <div><div class="dial-num">${b.b2}<small>b₂</small></div><div style="font-size:11px; color:var(--ink-3);">voids</div></div>
+        </div>
+        <div style="font-size:11px; color:var(--ink-2); margin-top:8px;">Euler characteristic χ = ${b.b0 - b.b1 + b.b2}</div>
+      </div>`;
+  }
+
+  host.innerHTML = html;
+  renderGqlFooter(gql);
+}
+
+// ---------- Geometry tab ----------
+const SITE_COLOR = { "North-3": "#4f46e5", "East-1": "#0e7490", "South-2": "#b45309", "West-4": "#be185d" };
+function renderScatter() {
+  const svg = document.getElementById("scatter");
+  if (!svg) return;
+  const W = 700, H = 460, mL = 50, mR = 20, mT = 20, mB = 40;
+  const tMin = Math.min(...rows.map(r => r.temp)) - 4;
+  const tMax = Math.max(...rows.map(r => r.temp)) + 4;
+  const hMin = Math.max(0, Math.min(...rows.map(r => r.hum)) - 6);
+  const hMax = Math.min(100, Math.max(...rows.map(r => r.hum)) + 6);
+  const sx = v => mL + (v - tMin) / (tMax - tMin) * (W - mL - mR);
+  const sy = v => H - mB - (v - hMin) / (hMax - hMin) * (H - mT - mB);
+
+  let g = "";
+  // grid
+  for (let i = 0; i <= 5; i++) {
+    const y = mT + i * (H - mT - mB) / 5;
+    const x = mL + i * (W - mL - mR) / 5;
+    g += `<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}" stroke="#eef0f4"/>`;
+    g += `<line y1="${mT}" y2="${H-mB}" x1="${x}" x2="${x}" stroke="#eef0f4"/>`;
+  }
+  g += `<line x1="${mL}" x2="${W-mR}" y1="${H-mB}" y2="${H-mB}" stroke="#cbd2dc"/>`;
+  g += `<line x1="${mL}" x2="${mL}" y1="${mT}" y2="${H-mB}" stroke="#cbd2dc"/>`;
+  // axis labels
+  g += `<text x="${(W)/2}" y="${H-8}" text-anchor="middle" fill="#8a93a4" font-size="11">temperature (°C)</text>`;
+  g += `<text x="${14}" y="${H/2}" transform="rotate(-90 14 ${H/2})" text-anchor="middle" fill="#8a93a4" font-size="11">humidity (%)</text>`;
+  // tick labels
+  for (let i = 0; i <= 4; i++) {
+    const t = tMin + (tMax - tMin) * i / 4;
+    const h = hMin + (hMax - hMin) * i / 4;
+    g += `<text x="${sx(t)}" y="${H-mB+14}" text-anchor="middle" fill="#8a93a4" font-size="10">${t.toFixed(0)}</text>`;
+    g += `<text x="${mL-8}" y="${sy(h)+3}" text-anchor="end" fill="#8a93a4" font-size="10">${h.toFixed(0)}</text>`;
+  }
+
+  // transport line between selected and nearest healthy peer
+  const sel = rowById(state.selectedId);
+  if (sel) {
+    const peer = nearestHealthyPeer(sel);
+    if (peer) {
+      g += `<line x1="${sx(sel.temp)}" y1="${sy(sel.hum)}" x2="${sx(peer.temp)}" y2="${sy(peer.hum)}" stroke="${SITE_COLOR[sel.site]}" stroke-dasharray="4 4" opacity="0.7"/>`;
+      const midx = (sx(sel.temp) + sx(peer.temp)) / 2, midy = (sy(sel.hum) + sy(peer.hum)) / 2;
+      const theta = transport(sel, peer);
+      g += `<rect x="${midx-32}" y="${midy-10}" width="64" height="18" rx="9" fill="#0b1220"/>`;
+      g += `<text x="${midx}" y="${midy+3}" text-anchor="middle" fill="#fff" font-family="JetBrains Mono" font-size="10">θ=${theta.toFixed(2)}</text>`;
+    }
+  }
+
+  // points
+  for (const r of rows) {
+    const x = sx(r.temp), y = sy(r.hum);
+    const size = 4 + r.k * 3;
+    const color = SITE_COLOR[r.site] || "#4b5565";
+    if (r.cls === "bad" || r.cls === "warn") {
+      g += `<circle cx="${x}" cy="${y}" r="${size + 6}" fill="${r.cls === 'bad' ? 'var(--bad)' : 'var(--warn)'}" opacity="0.18"/>`;
+    }
+    if (r.id === state.selectedId) {
+      g += `<circle cx="${x}" cy="${y}" r="${size + 4}" fill="none" stroke="${color}" stroke-width="2"/>`;
+    }
+    g += `<circle cx="${x}" cy="${y}" r="${size}" fill="${color}" data-id="${r.id}" style="cursor:pointer">
+      <title>${r.id} · ${r.site} · κ=${r.k.toFixed(2)} · ${r.temp}°C / ${r.hum}%</title>
+    </circle>`;
+  }
+
+  svg.innerHTML = g;
+  svg.querySelectorAll("circle[data-id]").forEach(c => {
+    c.addEventListener("click", () => select(c.dataset.id));
+  });
+
+  // legend
+  const legend = document.getElementById("legend");
+  legend.innerHTML = Object.entries(SITE_COLOR).map(([s, c]) => `<span><span class="swatch" style="background:${c}"></span>${s}</span>`).join("") +
+    `<span><span class="swatch" style="background:var(--bad)"></span>anomaly halo</span>`;
+
+  // sidebar mini spectral
+  const sites = [...new Set(rows.map(r => r.site))];
+  const spHtml = sites.map(s => {
+    const sp = siteSpectral(s);
+    return `<div class="bars"><span class="lbl">${s.slice(0,7)}</span><span class="bar" style="width:${Math.min(100, sp.l1*120)}%; background:${SITE_COLOR[s]}"></span><span class="val">${sp.l1}</span></div>`;
+  }).join("");
+  document.getElementById("scatterSpectral").innerHTML = spHtml;
+
+  // cover stats
+  const total = rows.length;
+  const bad = rows.filter(r => r.cls === "bad").length;
+  const warn = rows.filter(r => r.cls === "warn").length;
+  const kAvg = rows.reduce((s, r) => s + r.k, 0) / total;
+  document.getElementById("coverStats").innerHTML = `
+    <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Total sections</span><b>${total}</b></div>
+    <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Sites (b₀)</span><b>${sites.length}</b></div>
+    <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Anomalies</span><b style="color:var(--bad)">${bad}</b></div>
+    <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Drift</span><b style="color:var(--warn)">${warn}</b></div>
+    <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>κ̄</span><b>${kAvg.toFixed(2)}</b></div>`;
+}
+
+// ---------- Charts tab ----------
+function renderCharts() {
+  const v = visibleRows();
+  const W = 400, H = 220, mL = 40, mR = 16, mT = 16, mB = 36;
+
+  // By site
+  const sites = [...new Set(rows.map(r => r.site))];
+  const counts = sites.map(s => rows.filter(r => r.site === s).length);
+  const maxC = Math.max(...counts);
+  const bw = (W - mL - mR) / sites.length - 6;
+  let bs = "";
+  for (let i = 0; i <= 4; i++) {
+    const y = mT + i * (H - mT - mB) / 4;
+    bs += `<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}" stroke="#eef0f4"/>`;
+  }
+  sites.forEach((s, i) => {
+    const x = mL + i * (bw + 6) + 3;
+    const h = (counts[i] / maxC) * (H - mT - mB);
+    bs += `<rect x="${x}" y="${H - mB - h}" width="${bw}" height="${h}" rx="3" fill="${SITE_COLOR[s]}"/>`;
+    bs += `<text x="${x + bw/2}" y="${H - mB + 14}" text-anchor="middle" fill="#4b5565" font-size="11">${s}</text>`;
+    bs += `<text x="${x + bw/2}" y="${H - mB - h - 6}" text-anchor="middle" fill="#0b1220" font-size="11" font-weight="600">${counts[i]}</text>`;
+  });
+  document.getElementById("bySite").innerHTML = bs;
+
+  // Temp histogram
+  const temps = rows.map(r => r.temp);
+  const minT = Math.min(...temps), maxT = Math.max(...temps);
+  const bins = 8, binW = (maxT - minT) / bins;
+  const hist = Array(bins).fill(0);
+  temps.forEach(t => { const idx = Math.min(bins-1, Math.floor((t - minT) / binW)); hist[idx]++; });
+  const maxH = Math.max(...hist);
+  const bw2 = (W - mL - mR) / bins;
+  let hs = "";
+  for (let i = 0; i <= 4; i++) {
+    const y = mT + i * (H - mT - mB) / 4;
+    hs += `<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}" stroke="#eef0f4"/>`;
+  }
+  hist.forEach((c, i) => {
+    const x = mL + i * bw2 + 2;
+    const h = (c / maxH) * (H - mT - mB);
+    hs += `<rect x="${x}" y="${H - mB - h}" width="${bw2 - 4}" height="${h}" rx="3" fill="#4f46e5" opacity="${0.5 + (c/maxH)*0.5}"/>`;
+  });
+  hs += `<text x="${mL}" y="${H-mB+14}" fill="#8a93a4" font-size="10">${minT.toFixed(0)}°</text>`;
+  hs += `<text x="${W-mR}" y="${H-mB+14}" text-anchor="end" fill="#8a93a4" font-size="10">${maxT.toFixed(0)}°</text>`;
+  document.getElementById("histTemp").innerHTML = hs;
+
+  // κ by row
+  let ks = "";
+  const sortedK = [...rows].sort((a, b) => b.k - a.k);
+  const bw3 = (W - mL - mR) / sortedK.length - 2;
+  const maxK = Math.max(...sortedK.map(r => r.k));
+  for (let i = 0; i <= 4; i++) {
+    const y = mT + i * (H - mT - mB) / 4;
+    ks += `<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}" stroke="#eef0f4"/>`;
+  }
+  sortedK.forEach((r, i) => {
+    const x = mL + i * (bw3 + 2);
+    const h = (r.k / maxK) * (H - mT - mB);
+    const c = r.cls === "bad" ? "var(--bad)" : r.cls === "warn" ? "var(--warn)" : "var(--ink-2)";
+    ks += `<rect x="${x}" y="${H - mB - h}" width="${bw3}" height="${h}" rx="2" fill="${c}"/>`;
+  });
+  document.getElementById("kappaChart").innerHTML = ks;
+
+  // Confidence vs κ scatter
+  let cs = "";
+  for (let i = 0; i <= 4; i++) {
+    const y = mT + i * (H - mT - mB) / 4;
+    cs += `<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}" stroke="#eef0f4"/>`;
+  }
+  const xK = k => mL + (k / Math.max(maxK, 1)) * (W - mL - mR);
+  const yC = c => H - mB - c * (H - mT - mB);
+  // theoretical curve y=1/(1+x)
+  let curve = "";
+  for (let i = 0; i <= 50; i++) {
+    const k = (i/50) * maxK;
+    const c = 1/(1+k);
+    curve += `${i === 0 ? "M" : "L"}${xK(k)},${yC(c)} `;
+  }
+  cs += `<path d="${curve}" stroke="var(--geo)" fill="none" stroke-width="1.5" stroke-dasharray="2 3"/>`;
+  rows.forEach(r => {
+    const c = 1/(1+r.k);
+    const col = r.cls === "bad" ? "var(--bad)" : r.cls === "warn" ? "var(--warn)" : "var(--good)";
+    cs += `<circle cx="${xK(r.k)}" cy="${yC(c)}" r="3.5" fill="${col}"/>`;
+  });
+  cs += `<text x="${mL}" y="${H-mB+14}" fill="#8a93a4" font-size="10">κ=0</text>`;
+  cs += `<text x="${W-mR}" y="${H-mB+14}" text-anchor="end" fill="#8a93a4" font-size="10">κ=${maxK.toFixed(1)}</text>`;
+  cs += `<text x="${mL-6}" y="${mT+8}" text-anchor="end" fill="#8a93a4" font-size="10">conf 1</text>`;
+  cs += `<text x="${mL-6}" y="${H-mB+2}" text-anchor="end" fill="#8a93a4" font-size="10">conf 0</text>`;
+  document.getElementById("confChart").innerHTML = cs;
+}
+
+// ---------- Kanban tab ----------
+function renderKanban() {
+  const groups = { ok: [], warning: [], offline: [] };
+  rows.forEach(r => { if (groups[r.status]) groups[r.status].push(r); });
+  const card = r => `
+    <div class="kanban-card" data-id="${r.id}">
+      <div class="kc-head"><span class="id">${r.id}</span><span class="pill ${r.cls === 'bad' ? 'bad' : r.cls === 'warn' ? 'warn' : 'good'}" style="font-size:10px;">κ ${r.k.toFixed(2)}</span></div>
+      <div class="meta">${r.site} · ${r.temp.toFixed(1)}° · ${r.hum.toFixed(0)}%</div>
+    </div>`;
+  document.getElementById("kanban-ok").innerHTML   = groups.ok.map(card).join("");
+  document.getElementById("kanban-warn").innerHTML = groups.warning.map(card).join("");
+  document.getElementById("kanban-off").innerHTML  = groups.offline.map(card).join("");
+  document.getElementById("kc-ok").textContent   = groups.ok.length;
+  document.getElementById("kc-warn").textContent = groups.warning.length;
+  document.getElementById("kc-off").textContent  = groups.offline.length;
+  document.querySelectorAll(".kanban-card").forEach(c => {
+    c.addEventListener("click", () => { select(c.dataset.id); switchView("grid"); });
+  });
+}
+
+// ---------- GQL tab ----------
+function initGqlEditor() {
+  const ed = document.getElementById("editor");
+  if (!ed.dataset.inited) {
+    ed.textContent = `SECTION sensors\nWHERE site_id = 'North-3'\nORDER BY κ DESC\nLIMIT 25;\n`;
+    ed.dataset.inited = "1";
+  }
+}
+function runGql() {
+  const ed = document.getElementById("editor");
+  const q = ed.innerText.trim();
+  const v = visibleRows();
+  const res = document.getElementById("gqlResult");
+  const kAvg = v.reduce((s, r) => s + r.k, 0) / Math.max(1, v.length);
+  res.innerHTML = `
+    <div class="gql-meta">
+      <div class="mi">rows<b>${v.length}</b></div>
+      <div class="mi">κ̄<b>${kAvg.toFixed(3)}</b></div>
+      <div class="mi">conf̄<b>${(1/(1+kAvg)).toFixed(3)}</b></div>
+      <div class="mi">elapsed<b>0.8 ms</b></div>
+      <div class="mi">plan<b>HashIndex → CoverScan</b></div>
+    </div>
+    <table class="grid"><thead><tr>
+      <th class="row-h">κ</th><th>sensor_id</th><th>site_id</th><th>temp</th><th>humidity</th><th>status</th>
+    </tr></thead><tbody>
+      ${v.map(r => `<tr><td class="row-h"><span class="kbar ${kbarClass(r.p)}" style="--p:${r.p}%; display:block; height:4px; width:50px;"></span></td><td class="key">${r.id}</td><td>${r.site}</td><td class="num">${r.temp.toFixed(1)} °C</td><td class="num">${r.hum.toFixed(1)} %</td><td>${statusPill(r.status)}</td></tr>`).join("")}
+    </tbody></table>`;
+  renderGqlFooter(q.replace(/\n/g, " "));
+}
+
+// ---------- Insights drawer ----------
+function openInsights() {
+  const v = visibleRows();
+  const bySite = {};
+  rows.forEach(r => { (bySite[r.site] ||= []).push(r); });
+  const anomBySite = Object.entries(bySite).map(([s, list]) => [s, list.filter(r => r.cls === "bad").length]).sort((a,b)=>b[1]-a[1]);
+  const totalAnom = rows.filter(r => r.cls === "bad").length;
+  const topSite = anomBySite[0];
+  const offline = rows.filter(r => r.status === "offline");
+  const sortedK = [...rows].sort((a,b) => b.k - a.k);
+  const top1 = sortedK[0];
+  const sites = [...new Set(rows.map(r => r.site))];
+  const sp = sites.map(s => [s, siteSpectral(s).l1]).sort((a,b)=>a[1]-b[1]);
+
+  const items = [];
+  if (totalAnom > 0 && topSite) {
+    items.push({ tag: "bad", body: `<b>${topSite[0]}</b> holds <b>${Math.round(topSite[1]/totalAnom*100)}%</b> of all anomalies (${topSite[1]} of ${totalAnom}).`, gql: `SECTION sensors WHERE site_id='${topSite[0]}' AND κ > 2 ORDER BY κ DESC;` });
+  }
+  if (top1) {
+    items.push({ tag: "warn", body: `Highest κ in the workspace: <b>${top1.id}</b> at <b>${top1.k.toFixed(2)}</b>. Confidence ${(1/(1+top1.k)).toFixed(2)}.`, gql: `SECTION sensors AT (sensor_id='${top1.id}') WITH κ, confidence;` });
+  }
+  if (offline.length) {
+    items.push({ tag: "bad", body: `<b>${offline.length}</b> offline sensor(s): ${offline.map(o=>o.id).join(", ")}.`, gql: `SECTION sensors WHERE status='offline';` });
+  }
+  if (sp.length) {
+    items.push({ tag: "geo", body: `Weakest connectivity: <b>${sp[0][0]}</b> with λ₁ = <b>${sp[0][1]}</b>. Cover is loose here.`, gql: `SPECTRAL sensors WHERE site_id='${sp[0][0]}' MODES 3;` });
+  }
+  items.push({ tag: "geo", body: `Mean κ̄ across <b>${rows.length}</b> sections is <b>${(rows.reduce((s,r)=>s+r.k,0)/rows.length).toFixed(2)}</b>. Editing any cell will recompute κ live.`, gql: `INTEGRATE κ OVER sensors COVER ALL;` });
+
+  const body = document.getElementById("drawerBody");
+  body.innerHTML = items.map(it => `
+    <div class="insight">
+      <span class="tag ${it.tag}">${it.tag === "bad" ? "anomaly" : it.tag === "warn" ? "watch" : "geometry"}</span>
+      <div class="body">${it.body}</div>
+      <footer>${it.gql}</footer>
+    </div>
+  `).join("");
+
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawerBg").classList.add("open");
+}
+function closeInsights() {
+  document.getElementById("drawer").classList.remove("open");
+  document.getElementById("drawerBg").classList.remove("open");
+}
+
+// ---------- toasts ----------
+let toastT;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  document.getElementById("toastMsg").textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+// ---------- tab switching ----------
+function switchView(name) {
+  state.view = name;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === name));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.dataset.view === name));
+  if (name === "geometry") renderScatter();
+  if (name === "charts")   renderCharts();
+  if (name === "kanban")   renderKanban();
+  if (name === "gql")      { initGqlEditor(); }
+}
+
+// ---------- master render ----------
+function renderAll() {
+  recomputeKappa();
+  renderHeader();
+  renderGrid();
+  renderStats();
+  if (state.view === "geometry") renderScatter();
+  if (state.view === "charts")   renderCharts();
+  if (state.view === "kanban")   renderKanban();
+}
+
+// ---------- bind ----------
+document.getElementById("overlayToggle").addEventListener("click", e => {
+  const cur = document.body.dataset.overlay === "on";
+  document.body.dataset.overlay = cur ? "off" : "on";
+  e.currentTarget.classList.toggle("on", !cur);
+});
+document.getElementById("filterAnom").addEventListener("click", e => {
+  state.filterAnom = !state.filterAnom;
+  e.currentTarget.classList.toggle("active", state.filterAnom);
+  renderAll();
+});
+document.getElementById("sortChip").addEventListener("click", () => {
+  state.sortDir = state.sortDir === "desc" ? "asc" : "desc";
+  document.getElementById("sortLabel").textContent = `${state.sortKey} ${state.sortDir}`;
+  renderAll();
+});
+document.getElementById("searchInput").addEventListener("input", e => {
+  state.search = e.target.value;
+  renderAll();
+});
+document.getElementById("newRowBtn").addEventListener("click", () => {
+  pushHistory();
+  const n = rows.length;
+  const newId = "S-" + String(300 + n).padStart(4, "0");
+  rows.push({ id: newId, site: "North-3", temp: 22.0, hum: 60.0, trend: [22,22,22,22,22,22,22,22], status: "ok", op: "opr_new…", upd: "just now" });
+  recomputeKappa();
+  state.selectedId = newId;
+  renderAll();
+  toast(`Inserted ${newId} → bundle κ recomputed`);
+});
+document.getElementById("insightsBtn").addEventListener("click", openInsights);
+document.getElementById("drawerClose").addEventListener("click", closeInsights);
+document.getElementById("drawerBg").addEventListener("click", closeInsights);
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchView(t.dataset.view)));
+document.querySelectorAll(".verb").forEach(v => v.addEventListener("click", () => verb(v.dataset.verb)));
+document.getElementById("runGql").addEventListener("click", runGql);
+document.getElementById("formatGql").addEventListener("click", () => {
+  const ed = document.getElementById("editor");
+  ed.textContent = ed.innerText
+    .replace(/\s+/g, " ")
+    .replace(/\s*(SECTION|WHERE|ORDER BY|LIMIT|ON FIBER|AROUND|AT|MODES|AND|OR)\s+/gi, "\n$1 ")
+    .trim() + "\n";
+});
+document.getElementById("editor").addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); runGql(); }
+});
+// keyboard nav
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.isContentEditable) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    const v = visibleRows();
+    const idx = v.findIndex(r => r.id === state.selectedId);
+    const next = e.key === "ArrowDown" ? Math.min(v.length-1, idx+1) : Math.max(0, idx-1);
+    if (v[next]) { select(v[next].id); document.querySelector(`#tbody tr[data-id="${v[next].id}"]`)?.scrollIntoView({block:"nearest"}); }
+    e.preventDefault();
+  } else if (e.key === "/" || ((e.metaKey || e.ctrlKey) && e.key === "k")) {
+    e.preventDefault();
+    document.getElementById("searchInput").focus();
+  }
+});
+
+/* =========================================================================
+   MENUBAR — File / Edit / View / Insert / Format / Data / Geometry / Tools / Help
+   Excel/Airtable familiarity layer on top of the geometric primitives.
+   ========================================================================= */
+
+const MENUS = [
+  { name: "File", items: [
+    { label: "New bundle…",         shortcut: "⌘N", action: "newBundle" },
+    { label: "Open bundle…",        shortcut: "⌘O", action: "openBundle" },
+    { sep: true },
+    { label: "Import", submenu: [
+      { label: "From CSV…",        action: "importCsv" },
+      { label: "From JSON…",       action: "importJson" },
+      { label: "From SQL dump…",   action: "importSql" },
+      { label: "From DHOOM file…", action: "importDhoom" },
+    ]},
+    { label: "Export", submenu: [
+      { label: "CSV (visible rows)", action: "exportCsv" },
+      { label: "JSON",               action: "exportJson" },
+      { label: "GQL script",         action: "exportGql" },
+      { label: "DHOOM bundle",       action: "exportDhoom" },
+    ]},
+    { sep: true },
+    { label: "Duplicate bundle",    action: "duplicate" },
+    { label: "Rename bundle…",      action: "rename" },
+    { label: "Move to workspace…",  action: "moveWs" },
+    { sep: true },
+    { label: "Share…",              shortcut: "⌘⇧S", action: "share" },
+    { label: "Print / PDF…",        shortcut: "⌘P",  action: "print" },
+  ]},
+  { name: "Edit", items: [
+    { label: "Undo",                shortcut: "⌘Z",  action: "undo" },
+    { label: "Redo",                shortcut: "⌘⇧Z", action: "redo" },
+    { sep: true },
+    { label: "Cut",                 shortcut: "⌘X",  action: "cut" },
+    { label: "Copy",                shortcut: "⌘C",  action: "copy" },
+    { label: "Paste",               shortcut: "⌘V",  action: "paste" },
+    { sep: true },
+    { label: "Find…",               shortcut: "⌘F",  action: "find" },
+    { label: "Find & replace…",     shortcut: "⌘⇧H", action: "findReplace" },
+    { label: "Select all rows",     shortcut: "⌘A",  action: "selectAll" },
+    { sep: true },
+    { label: "Insert row above",    action: "insertRowAbove" },
+    { label: "Insert row below",    action: "insertRowBelow" },
+    { label: "Delete selected row", shortcut: "⌫",   action: "deleteRow" },
+  ]},
+  { name: "View", items: [
+    { section: "Switch view" },
+    { label: "Grid",     check: () => state.view === "grid",     action: "viewGrid" },
+    { label: "Geometry", check: () => state.view === "geometry", action: "viewGeometry" },
+    { label: "Charts",   check: () => state.view === "charts",   action: "viewCharts" },
+    { label: "Kanban",   check: () => state.view === "kanban",   action: "viewKanban" },
+    { label: "GQL",      check: () => state.view === "gql",      action: "viewGql" },
+    { sep: true },
+    { section: "Show / hide" },
+    { label: "κ in row gutter",    check: () => true, action: "toggleGutter" },
+    { label: "Geometry overlay",   check: () => document.body.dataset.overlay === "on", action: "toggleOverlay" },
+    { label: "Inspector panel",    check: () => !document.body.classList.contains("no-inspector"), action: "toggleInspector" },
+    { label: "GQL footer",         check: () => !document.body.classList.contains("no-footer"), action: "toggleFooter" },
+    { sep: true },
+    { label: "Zoom in",            shortcut: "⌘=", action: "zoomIn" },
+    { label: "Zoom out",           shortcut: "⌘-", action: "zoomOut" },
+    { label: "Reset zoom",         shortcut: "⌘0", action: "zoomReset" },
+    { label: "Full screen",        shortcut: "F11", action: "fullscreen" },
+  ]},
+  { name: "Insert", items: [
+    { label: "Row",                 shortcut: "⌘⇧+", action: "insertRow" },
+    { label: "Field…", submenu: [
+      { label: "Text",         action: "addFieldText" },
+      { label: "Number",       action: "addFieldNum" },
+      { label: "Categorical",  action: "addFieldCat" },
+      { label: "Date / time",  action: "addFieldDate" },
+      { label: "Computed (κ, λ₁, …)", action: "addFieldComputed" },
+      { sep: true },
+      { label: "Encrypted · OPAQUE",  action: "addFieldEncOpaque" },
+      { label: "Encrypted · INDEXED", action: "addFieldEncIndexed" },
+      { label: "Encrypted · AFFINE",  action: "addFieldEncAffine" },
+    ]},
+    { sep: true },
+    { label: "Saved view",          action: "newView" },
+    { label: "Chart",               action: "newChart" },
+    { label: "Comment",             action: "newComment" },
+  ]},
+  { name: "Format", items: [
+    { label: "Number format…",      action: "fmtNum" },
+    { label: "Date format…",        action: "fmtDate" },
+    { sep: true },
+    { label: "Conditional format", submenu: [
+      { label: "Color by κ",        action: "cfKappa" },
+      { label: "Color by status",   action: "cfStatus" },
+      { label: "Color by site",     action: "cfSite" },
+      { label: "Color by λ₁ (cluster connectivity)", action: "cfL1" },
+    ]},
+    { sep: true },
+    { label: "Column width: auto",  action: "colAuto" },
+    { label: "Wrap text",           action: "wrapText" },
+    { sep: true },
+    { label: "Cell color…",         action: "cellColor" },
+    { label: "Text color…",         action: "textColor" },
+  ]},
+  { name: "Data", items: [
+    { label: "Sort…",               action: "openSort" },
+    { label: "Filter…",             shortcut: "⌘⇧F", action: "openFilter" },
+    { label: "Group by…",           action: "openGroup" },
+    { sep: true },
+    { section: "GIGI — geometric data ops" },
+    { label: "Define cover…",       action: "defineCover" },
+    { label: "Integrate over cover…", action: "integrate" },
+    { label: "Aggregate (sum/avg/min/max)…", action: "aggregate" },
+    { label: "Join with bundle…",   action: "join" },
+    { label: "Pullback…",           action: "pullback" },
+    { sep: true },
+    { label: "Validate schema",     action: "validate" },
+    { label: "Refresh from server", shortcut: "⌘R", action: "refresh" },
+  ]},
+  { name: "Geometry", items: [
+    { section: "Bundle-wide" },
+    { label: "Curvature κ (this view)", action: "geoKappa" },
+    { label: "Spectral λ₁ (per site)",  action: "geoSpectral" },
+    { label: "Betti numbers b₀ b₁ b₂",  action: "geoBetti" },
+    { label: "Free energy",             action: "geoFreeEnergy" },
+    { label: "Entropy",                 action: "geoEntropy" },
+    { sep: true },
+    { section: "Selected row" },
+    { label: "Curvature here",            action: "geoKappaRow" },
+    { label: "Transport to nearest peer", action: "geoTransport" },
+    { label: "Holonomy around site",      action: "geoHolonomy" },
+    { label: "Geodesic to…",              action: "geoGeodesic" },
+    { sep: true },
+    { label: "Recompute geometry now",  action: "recompute" },
+    { label: "Toggle κ overlay",        check: () => document.body.dataset.overlay === "on", action: "toggleOverlay" },
+  ]},
+  { name: "Tools", items: [
+    { label: "GQL console",         shortcut: "⌘⇧G", action: "openGql" },
+    { label: "Schema editor",       action: "openSchema" },
+    { label: "Encryption settings", action: "openEnc" },
+    { sep: true },
+    { label: "WAL / audit log",     action: "openWal" },
+    { label: "Triggers",            action: "openTriggers" },
+    { label: "Stress test…",        action: "openStress" },
+    { sep: true },
+    { label: "Open in playground",  action: "openPlayground" },
+  ]},
+  { name: "Help", items: [
+    { label: "Welcome tour",        action: "tour" },
+    { label: "Keyboard shortcuts",  shortcut: "?",   action: "shortcuts" },
+    { sep: true },
+    { label: "GQL reference",       action: "gqlRef" },
+    { label: "Encryption spec",     action: "encSpec" },
+    { label: "Observability spec",  action: "obsSpec" },
+    { label: "Sprint spec",         action: "sprintSpec" },
+    { sep: true },
+    { label: "About GIGI Sheets",   action: "about" },
+  ]},
+];
+
+let openMenuName = null;
+
+function renderMenubar() {
+  const mb = document.getElementById("menubar");
+  mb.innerHTML = MENUS.map(m => `<button class="menu-btn" data-menu="${m.name}">${m.name}</button>`).join("")
+    + `<div class="menu-dropdown" id="menuDropdown"></div>`;
+  mb.querySelectorAll(".menu-btn").forEach(btn => {
+    btn.addEventListener("click", e => { e.stopPropagation(); openMenuAt(btn); });
+    btn.addEventListener("mouseenter", () => { if (openMenuName && openMenuName !== btn.dataset.menu) openMenuAt(btn); });
+  });
+}
+
+function openMenuAt(btn) {
+  const name = btn.dataset.menu;
+  if (openMenuName === name) { closeMenu(); return; }
+  const m = MENUS.find(x => x.name === name);
+  const dd = document.getElementById("menuDropdown");
+  document.querySelectorAll(".menu-btn").forEach(b => b.classList.toggle("open", b.dataset.menu === name));
+  dd.innerHTML = renderMenuItems(m.items);
+  dd.style.left = btn.offsetLeft + "px";
+  dd.classList.add("open");
+  openMenuName = name;
+  bindMenuItems(dd);
+}
+function closeMenu() {
+  const dd = document.getElementById("menuDropdown");
+  if (dd) dd.classList.remove("open");
+  document.querySelectorAll(".menu-btn").forEach(b => b.classList.remove("open"));
+  openMenuName = null;
+  document.querySelectorAll(".submenu-pop").forEach(p => p.remove());
+}
+function renderMenuItems(items) {
+  return items.map(it => {
+    if (it.sep) return `<div class="menu-sep"></div>`;
+    if (it.section) return `<div class="menu-section">${it.section}</div>`;
+    const check = it.check && it.check() ? "✓" : "";
+    if (it.submenu) {
+      return `<div class="menu-item has-sub" data-sub='${encodeURIComponent(JSON.stringify(it.submenu))}'><span class="check">${check}</span><span>${it.label}</span><span class="shortcut">▸</span></div>`;
+    }
+    const sc = it.shortcut ? `<span class="shortcut">${it.shortcut}</span>` : `<span class="shortcut"></span>`;
+    return `<div class="menu-item" data-action="${it.action}"><span class="check">${check}</span><span>${it.label}</span>${sc}</div>`;
+  }).join("");
+}
+function bindMenuItems(scope) {
+  scope.querySelectorAll(".menu-item[data-action]").forEach(el => {
+    el.addEventListener("click", e => {
+      e.stopPropagation();
+      const a = el.dataset.action;
+      closeMenu();
+      runAction(a);
+    });
+  });
+  scope.querySelectorAll(".menu-item.has-sub").forEach(el => {
+    el.addEventListener("click", e => {
+      e.stopPropagation();
+      const existing = el.querySelector(".submenu-pop");
+      if (existing) { existing.remove(); return; }
+      el.parentElement.querySelectorAll(".submenu-pop").forEach(p => p.remove());
+      const items = JSON.parse(decodeURIComponent(el.dataset.sub));
+      const pop = document.createElement("div");
+      pop.className = "menu-dropdown open submenu-pop";
+      pop.innerHTML = renderMenuItems(items);
+      el.appendChild(pop);
+      bindMenuItems(pop);
+    });
+  });
+}
+document.addEventListener("click", () => closeMenu());
+
+/* ---------- undo / redo ---------- */
+let history = [];
+let redoStack = [];
+function snapshot() { return JSON.stringify(rows.map(({k,p,cls,...r}) => r)); }
+function pushHistory() {
+  history.push(snapshot());
+  if (history.length > 50) history.shift();
+  redoStack = [];
+}
+function undo() {
+  if (!history.length) { toast("Nothing to undo"); return; }
+  redoStack.push(snapshot());
+  rows = JSON.parse(history.pop());
+  renderAll();
+  toast("Undo");
+}
+function redo() {
+  if (!redoStack.length) { toast("Nothing to redo"); return; }
+  history.push(snapshot());
+  rows = JSON.parse(redoStack.pop());
+  renderAll();
+  toast("Redo");
+}
+
+/* ---------- export ---------- */
+function download(name, content, type = "text/plain") {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportCSV() {
+  const cols = ["sensor_id","site_id","temp","humidity","status","operator","kappa","updated"];
+  const lines = [cols.join(",")];
+  visibleRows().forEach(r => {
+    const vals = [r.id, r.site, r.temp, r.hum, r.status, r.op, r.k.toFixed(3), r.upd];
+    lines.push(vals.map(v => `"${String(v).replace(/"/g,'""')}"`).join(","));
+  });
+  download("sensors.csv", lines.join("\n"), "text/csv");
+  toast(`Exported ${visibleRows().length} rows to CSV`);
+}
+function exportJSON() {
+  const payload = visibleRows().map(({k,p,cls,...r}) => ({ ...r, kappa: +k.toFixed(3) }));
+  download("sensors.json", JSON.stringify(payload, null, 2), "application/json");
+  toast(`Exported ${visibleRows().length} rows to JSON`);
+}
+function exportGQL() {
+  const stmts = ["-- generated by GIGI Sheets"];
+  stmts.push(`CREATE BUNDLE sensors FIBER (sensor_id TEXT, site_id TEXT, temp NUMERIC, humidity NUMERIC, status TEXT, operator TEXT ENCRYPTED INDEXED) KEYS (sensor_id);`);
+  visibleRows().forEach(r => {
+    stmts.push(`SECTION sensors INSERT (sensor_id='${r.id}', site_id='${r.site}', temp=${r.temp}, humidity=${r.hum}, status='${r.status}', operator='${r.op}');`);
+  });
+  download("sensors.gql", stmts.join("\n"));
+  toast(`Exported ${visibleRows().length} rows to GQL`);
+}
+
+/* ---------- find modal ---------- */
+function openFind() {
+  const m = document.getElementById("findModal");
+  m.classList.add("open");
+  const inp = document.getElementById("findInput");
+  inp.value = ""; inp.focus();
+  document.getElementById("findResults").innerHTML = `<div style="color:var(--ink-3); padding:6px;">Type to search…</div>`;
+  inp.oninput = () => {
+    const q = inp.value.toLowerCase().trim();
+    const r = document.getElementById("findResults");
+    if (!q) { r.innerHTML = `<div style="color:var(--ink-3); padding:6px;">Type to search…</div>`; return; }
+    const matches = rows.filter(x =>
+      x.id.toLowerCase().includes(q) ||
+      x.site.toLowerCase().includes(q) ||
+      x.status.toLowerCase().includes(q)
+    );
+    r.innerHTML = matches.length === 0
+      ? `<div style="color:var(--ink-3); padding:6px;">No matches</div>`
+      : matches.map(m2 => `
+        <div class="findhit" data-id="${m2.id}" style="padding: 8px 10px; border-bottom: 1px solid var(--line-2); cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span><span class="mono" style="font-weight:600;">${m2.id}</span> · ${m2.site} · ${m2.status}</span>
+          <span style="color:var(--ink-3); font-size: 11px;">κ ${m2.k.toFixed(2)}</span>
+        </div>`).join("");
+    r.querySelectorAll(".findhit").forEach(el => {
+      el.addEventListener("click", () => { select(el.dataset.id); closeFind(); });
+    });
+  };
+}
+function closeFind() { document.getElementById("findModal").classList.remove("open"); }
+document.getElementById("findClose").addEventListener("click", closeFind);
+document.getElementById("findCloseBtn").addEventListener("click", closeFind);
+document.getElementById("findModal").addEventListener("click", e => { if (e.target.id === "findModal") closeFind(); });
+
+/* ---------- shortcuts modal ---------- */
+function openShortcuts() { document.getElementById("shortcutsModal").classList.add("open"); }
+function closeShortcuts() { document.getElementById("shortcutsModal").classList.remove("open"); }
+document.getElementById("shortcutsClose").addEventListener("click", closeShortcuts);
+document.getElementById("shortcutsModal").addEventListener("click", e => { if (e.target.id === "shortcutsModal") closeShortcuts(); });
+
+/* ---------- about modal ---------- */
+function openAbout() { document.getElementById("aboutModal").classList.add("open"); }
+function closeAbout() { document.getElementById("aboutModal").classList.remove("open"); }
+document.getElementById("aboutClose").addEventListener("click", closeAbout);
+document.getElementById("aboutModal").addEventListener("click", e => { if (e.target.id === "aboutModal") closeAbout(); });
+
+/* ---------- row mutations ---------- */
+function insertRowRelative(where) {
+  const r = rowById(state.selectedId);
+  if (!r) { document.getElementById("newRowBtn").click(); return; }
+  pushHistory();
+  const idx = rows.indexOf(r);
+  const ins = idx + (where === "above" ? 0 : 1);
+  const newId = "S-" + String(300 + rows.length).padStart(4, "0");
+  rows.splice(ins, 0, { id: newId, site: r.site, temp: r.temp, hum: r.hum, trend: r.trend.slice(), status: "ok", op: r.op, upd: "just now" });
+  state.selectedId = newId;
+  renderAll();
+  toast(`Inserted ${newId} ${where} ${r.id}`);
+}
+function deleteSelectedRow() {
+  const r = rowById(state.selectedId);
+  if (!r) return;
+  if (rows.length <= 2) { toast("Need at least 2 rows for κ to be defined"); return; }
+  pushHistory();
+  const idx = rows.indexOf(r);
+  rows.splice(idx, 1);
+  state.selectedId = rows[Math.min(idx, rows.length - 1)].id;
+  renderAll();
+  toast(`Deleted ${r.id} · κ recomputed for ${r.site}`);
+}
+
+/* ---------- actions table ---------- */
+const ACTIONS = {
+  /* File — mostly stubbed */
+  newBundle:  () => toast(`File › New bundle — calls CREATE BUNDLE in v0.1`),
+  openBundle: () => toast(`File › Open — bundle picker in S0`),
+  importCsv:  () => toast(`File › Import CSV — backed by gigi-convert`),
+  importJson: () => toast(`File › Import JSON — backed by gigi-convert`),
+  importSql:  () => toast(`File › Import SQL — backed by gigi-convert`),
+  importDhoom:() => toast(`File › Import DHOOM — direct bundle ingest`),
+  exportCsv:  exportCSV,
+  exportJson: exportJSON,
+  exportGql:  exportGQL,
+  exportDhoom:() => toast(`Export DHOOM — wire format in S0`),
+  duplicate:  () => toast(`Duplicate bundle — engine work for S5`),
+  rename:     () => toast(`Rename bundle — ALTER BUNDLE RENAME (S5)`),
+  moveWs:     () => toast(`Move to workspace — BFF work in S6`),
+  share:      () => toast(`Share — saved views ship in S6`),
+  print:      () => window.print(),
+
+  /* Edit */
+  undo: undo,
+  redo: redo,
+  cut:        () => toast(`Cut — multi-select rows coming`),
+  copy:       () => toast(`Copy — copies selected row as JSON to clipboard`),
+  paste:      () => toast(`Paste — inserts row from clipboard`),
+  find:       openFind,
+  findReplace:() => { openFind(); toast(`Replace lands with schema mutation in S5`); },
+  selectAll:  () => toast(`Selected ${visibleRows().length} rows (multi-select UI ships later)`),
+  insertRowAbove: () => insertRowRelative("above"),
+  insertRowBelow: () => insertRowRelative("below"),
+  deleteRow:  deleteSelectedRow,
+
+  /* View */
+  viewGrid:     () => switchView("grid"),
+  viewGeometry: () => switchView("geometry"),
+  viewCharts:   () => switchView("charts"),
+  viewKanban:   () => switchView("kanban"),
+  viewGql:      () => switchView("gql"),
+  toggleGutter: () => toast(`κ gutter — always-on in v0.1; column-config in S5`),
+  toggleOverlay:() => document.getElementById("overlayToggle").click(),
+  toggleInspector: () => document.body.classList.toggle("no-inspector"),
+  toggleFooter: () => document.body.classList.toggle("no-footer"),
+  zoomIn:       () => { document.body.style.zoom = (parseFloat(document.body.style.zoom || "1") + 0.1).toFixed(1); },
+  zoomOut:      () => { document.body.style.zoom = Math.max(0.5, parseFloat(document.body.style.zoom || "1") - 0.1).toFixed(1); },
+  zoomReset:    () => { document.body.style.zoom = "1"; },
+  fullscreen:   () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); },
+
+  /* Insert */
+  insertRow:        () => document.getElementById("newRowBtn").click(),
+  addFieldText:     () => toast(`ALTER BUNDLE ADD FIELD … TEXT — ships in S5`),
+  addFieldNum:      () => toast(`ALTER BUNDLE ADD FIELD … NUMERIC — ships in S5`),
+  addFieldCat:      () => toast(`ALTER BUNDLE ADD FIELD … CATEGORICAL — ships in S5`),
+  addFieldDate:     () => toast(`ALTER BUNDLE ADD FIELD … TIMESTAMP — ships in S5`),
+  addFieldComputed: () => toast(`Computed field (κ, λ₁) — design pass in S5+`),
+  addFieldEncOpaque:  () => toast(`ALTER BUNDLE ADD FIELD … ENCRYPTED OPAQUE — S8`),
+  addFieldEncIndexed: () => toast(`ALTER BUNDLE ADD FIELD … ENCRYPTED INDEXED — S8`),
+  addFieldEncAffine:  () => toast(`ALTER BUNDLE ADD FIELD … ENCRYPTED AFFINE — S8`),
+  newView:    () => toast(`Saved view — ships in S6`),
+  newChart:   () => switchView("charts"),
+  newComment: () => toast(`Comments — ships post-v0.1`),
+
+  /* Format */
+  fmtNum:     () => toast(`Number format — column-config in S5`),
+  fmtDate:    () => toast(`Date format — column-config in S5`),
+  cfKappa:    () => { document.body.dataset.overlay = "on"; document.getElementById("overlayToggle").classList.add("on"); toast(`Conditional format: by κ`); },
+  cfStatus:   () => toast(`Conditional format: by status — column rules in S5`),
+  cfSite:     () => toast(`Conditional format: by site — column rules in S5`),
+  cfL1:       () => toast(`Conditional format: by λ₁ — geometric rules in S5+`),
+  colAuto:    () => toast(`Auto column width — virtualized grid in S0`),
+  wrapText:   () => toast(`Wrap text — virtualized grid in S0`),
+  cellColor:  () => toast(`Cell color — column rules in S5`),
+  textColor:  () => toast(`Text color — column rules in S5`),
+
+  /* Data */
+  openSort:     () => toast(`Sort by clicking any column header (try it)`),
+  openFilter:   () => document.getElementById("filterAnom").click(),
+  openGroup:    () => toast(`Group by — already wired on the toolbar chip`),
+  defineCover:  () => toast(`COVER — define a cover over base-space keys (S3+)`),
+  integrate:    () => toast(`INTEGRATE field OVER bundle COVER cover — design in S3`),
+  aggregate:    () => toast(`Aggregate over visible rows — column-rule (S5)`),
+  join:         () => toast(`JOIN with another bundle — design pass post-v0.1`),
+  pullback:     () => toast(`PULLBACK — geometric join (post-v0.1)`),
+  validate:     () => toast(`Schema valid · ${rows.length} rows · 0 type errors`),
+  refresh:      () => { renderAll(); toast(`Refreshed`); },
+
+  /* Geometry */
+  geoKappa:     () => { switchView("grid"); const m = rows.reduce((s,r)=>s+r.k,0)/rows.length; toast(`κ̄ across ${rows.length} sections = ${m.toFixed(2)}`); },
+  geoSpectral:  () => switchView("geometry"),
+  geoBetti:     () => verb("betti"),
+  geoFreeEnergy:() => toast(`FREEENERGY — engine verb exists; UI card in S3+`),
+  geoEntropy:   () => toast(`ENTROPY — engine verb exists; UI card in S3+`),
+  geoKappaRow:  () => { const r = rowById(state.selectedId); if (r) toast(`${r.id} κ = ${r.k.toFixed(3)} · conf = ${(1/(1+r.k)).toFixed(2)}`); },
+  geoTransport: () => verb("transport"),
+  geoHolonomy:  () => verb("holonomy"),
+  geoGeodesic:  () => toast(`GEODESIC FROM … TO — engine verb exists; target picker in S3+`),
+  recompute:    () => { recomputeKappa(); renderAll(); toast(`Geometry recomputed for ${rows.length} sections`); },
+
+  /* Tools */
+  openGql:        () => switchView("gql"),
+  openSchema:     () => toast(`Schema editor — ships in S5`),
+  openEnc:        () => toast(`Encryption settings — ships in S8`),
+  openWal:        () => toast(`WAL audit — ships post-v0.1`),
+  openTriggers:   () => toast(`Triggers — bundled with subscriptions`),
+  openStress:     () => toast(`Stress harness — wraps gigi-stress binary`),
+  openPlayground: () => toast(`Open in playground/ — GQL REPL ships separately`),
+
+  /* Help */
+  tour:       () => toast(`Welcome tour — coachmark pass in S0+`),
+  shortcuts:  openShortcuts,
+  gqlRef:     () => toast(`GQL_REFERENCE.md — lives in repo root`),
+  encSpec:    () => toast(`GIGI_GEOMETRIC_ENCRYPTION_SPEC.md`),
+  obsSpec:    () => toast(`GIGI_OBSERVABILITY_SPEC.md`),
+  sprintSpec: () => toast(`GIGI_SHEETS_SPRINT_SPEC.md — TDD plan for this app`),
+  about:      openAbout,
+};
+
+function runAction(name) {
+  const fn = ACTIONS[name];
+  if (fn) fn();
+  else toast(`"${name}" — not yet implemented`);
+}
+
+/* ---------- global keyboard shortcuts ---------- */
+document.addEventListener("keydown", e => {
+  // don't hijack typing
+  if (e.target.tagName === "INPUT" || e.target.isContentEditable) {
+    if (e.key === "Escape") {
+      closeFind(); closeShortcuts(); closeAbout(); closeMenu();
+    }
+    return;
+  }
+  const meta = e.metaKey || e.ctrlKey;
+  if (meta && !e.shiftKey && (e.key === "z" || e.key === "Z")) { e.preventDefault(); undo(); }
+  else if (meta && e.shiftKey && (e.key === "z" || e.key === "Z")) { e.preventDefault(); redo(); }
+  else if (meta && (e.key === "f" || e.key === "F")) { e.preventDefault(); openFind(); }
+  else if (e.key === "?") { e.preventDefault(); openShortcuts(); }
+  else if ((e.key === "Delete" || e.key === "Backspace") && !meta) {
+    if (e.target === document.body) { e.preventDefault(); deleteSelectedRow(); }
+  }
+  else if (e.key === "Escape") { closeMenu(); closeFind(); closeShortcuts(); closeAbout(); }
+});
+
+/* ---------- boot ----------*/
+renderMenubar();
+renderAll();
+select("S-0142");
+renderGqlFooter();
+</script>
+</body>
+</html>

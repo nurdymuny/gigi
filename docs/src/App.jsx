@@ -17,6 +17,9 @@ const NAV = [
   { id: "overview", label: "Overview", icon: "📖" },
   { id: "quickstart", label: "Quick Start", icon: "⚡" },
   { id: "concepts", label: "Core Concepts", icon: "🧬" },
+  { id: "sheets", label: "GIGI Sheets", icon: "📊" },
+  { id: "prism", label: "Prism Workflows", icon: "🔷" },
+  { id: "workflows", label: "Workflow Templates", icon: "🧩" },
   { id: "types", label: "Data Types", icon: "🔢" },
   { id: "bundles", label: "Bundles (DDL)", icon: "📦" },
   { id: "sections", label: "Sections (DML)", icon: "✏️" },
@@ -316,6 +319,123 @@ CONSISTENCY sensors REPAIR;
 
       <H3>Holonomy</H3>
       <P>Holonomy measures what happens when you "parallel-transport" a value around a loop in the data graph. Nonzero holonomy means the round-trip doesn't return to the start — a sign of drift, inconsistency, or data quality issues.</P>
+    </Section>
+  );
+}
+
+// ─── GIGI Sheets product ──────────────────────────────────────────
+function SheetsSection() {
+  return (
+    <Section id="sheets" title="GIGI Sheets">
+      <P>The spreadsheet front-end. Reads and writes any bundle on the engine; every cell sits in the same Davis fiber bundle as the data underneath, so every grid feature can ask geometric questions — not just text ones.</P>
+
+      <H3>Views</H3>
+      <P>The same data, rendered six ways. Each view-tab pulls from the same bundle; switching is free.</P>
+      <Table
+        headers={["View", "What it shows", "Best for"]}
+        rows={[
+          ["Grid", "rows × columns, virtualized, inline edit, κ overlay", "everything"],
+          ["Geometry", "scatter of two numeric fields, cohort-tinted", "spotting clusters"],
+          ["Charts", "histogram + line + scatter combos", "first-pass exploration"],
+          ["Kanban", "cards grouped by a categorical field", "status pipelines"],
+          ["Gallery", "card grid, κ-tinted borders", "browsing recognizable records"],
+          ["Form", "schema-driven intake form", "data entry by non-engineers"],
+          ["GQL", "live query editor against the bundle", "power users"],
+        ]}
+      />
+
+      <H3>Formula bar</H3>
+      <P>The <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>fx</code> strip above the grid. Standard arithmetic + the 80/20 function set plus four GIGI-native primitives:</P>
+      <Code lang="formula">{`=SUM(A1:A10)               // standard
+=IF(A1 > 0, "pos", "neg")  // standard
+
+=SAME(A1, A2)              // Davis sameness in [0, 1]
+=DIST(A1, A2)              // Davis distance = √(1 − S²)
+=K(A1)                     // curvature κ of the row
+=COHORT("region")          // cohort name for a column`}</Code>
+      <P>The Davis double-cover identity <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>S + d² = 1</code> holds exactly for any cell pair — <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>=DIST</code> is derived from <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>=SAME</code> inline (<code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>d = √(1 − S) = sin(θ/2)</code>), so they can't drift apart.</P>
+
+      <H3>κ overlay</H3>
+      <P>Always-on anomaly highlight. Each row's κ-curvature tints the row green (healthy) / amber (drift) / red (anomaly). No rule to write, no plug-in to install. Toggle from the toolbar.</P>
+
+      <H3>Field-level encryption</H3>
+      <P>Per-column encryption modes set at bundle creation:</P>
+      <Table
+        headers={["Mode", "Visibility", "Queryable", "Use case"]}
+        rows={[
+          ["det", "decrypted in UI", "equality search", "low-sensitivity IDs"],
+          ["ored", "decrypted in UI", "equality + range", "indexed but private"],
+          ["opaque", "•••• in UI", "equality only", "PII, secrets, SSNs"],
+        ]}
+      />
+      <P>Sheets reads the bundle's encryption schema and renders accordingly. OPAQUE columns ship redacted; the user can still filter/sort on them via the engine without ever seeing plaintext.</P>
+
+      <H3>Find · Sort · Filter</H3>
+      <P>Three modes per surface. Find: exact, canonical (strip punctuation/whitespace), sameness ≥ τ. Sort: A→Z, Z→A, or κ-rank (curvature first). Filter: text, numeric range, κ-class, sameness-to-pivot.</P>
+
+      <H3>Copy as TSV</H3>
+      <P>⌘C / Ctrl+C on a selected-rows set copies the rows as Excel-paste-native TSV with a header row. Paste straight into Excel / Google Sheets / Numbers / another GIGI bundle.</P>
+    </Section>
+  );
+}
+
+// ─── Prism reconcile workflows ────────────────────────────────────
+function PrismSection() {
+  return (
+    <Section id="prism" title="Prism Workflows">
+      <P>Four reconcile workflows that run inline on any bundle. Each one wraps a Davis-math primitive and surfaces the result as ranked rows.</P>
+
+      <Table
+        headers={["Workflow", "Question it answers", "Math underneath"]}
+        rows={[
+          ["Dedup", "which rows are the same record entered twice?", "sameness ≥ 0.999 same-rail · 0.85 cross-rail + 3% amount drift + currency match"],
+          ["Forecast", "where is this trend going?", "OLS over selection + √step σ confidence band"],
+          ["Monitor", "which rows don't belong?", "κ-class buckets · cohort drift detection"],
+          ["Books", "where do these two bundles disagree?", "canonical sameness-join + numeric ε-comparison"],
+        ]}
+      />
+
+      <H3>Dedup</H3>
+      <P>Mirrors production <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>PrismMatcher</code>. Hashes each row to a 448-dim block embedding (φ_inv + φ_ent + φ_sem), L2-normalizes, then sameness <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>S = (1 + cosθ)/2</code>. Same-rail at S ≥ 0.999 (effectively identical); cross-rail at S ≥ 0.85 with ≤ 3% amount drift and currency match. Catches reference-drift duplicates ("INV-2026-04823" vs "INV 2026 04823") via canonical-form fast-path.</P>
+
+      <H3>Forecast</H3>
+      <P>Picks the highest-variance numeric column, fits an OLS trend over the full series, projects N=7 steps forward with a <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>√step · σ</code> widening band. Not a stand-in for production time-series forecasting — a clean band that says "if the trend holds, here's where it's going."</P>
+
+      <H3>Monitor</H3>
+      <P>For each row, computes <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>drift = 1 − sameness(row, cohort_centroid)</code>. Buckets: HIGH at drift &gt; 0.2, MEDIUM at &gt; 0.1. Cohorts derived from the bundle's rail / category column; falls back to a single global cohort if none.</P>
+
+      <H3>Books</H3>
+      <P>Canonical sameness-join on the primary key across two bundles. Matched rows compared column-by-column (free-text fields skipped; numeric epsilon 0.005). Returns clean matches, conflicts, and orphans. Used by the Chase ↔ QuickBooks demo to find 3 amount conflicts + 2 orphans automatically.</P>
+    </Section>
+  );
+}
+
+// ─── Workflow templates ───────────────────────────────────────────
+function WorkflowsSection() {
+  return (
+    <Section id="workflows" title="Workflow Templates">
+      <P>Six one-click starter bundles that match classic Airtable use cases. Each template ships with a schema, a small seed CSV (Acme/Globex/etc. fake data), a default view, and Prism wire-up notes.</P>
+
+      <Table
+        headers={["Workflow", "Bundles", "Default view", "Prism wire-up"]}
+        rows={[
+          ["📋 Project tracker", "workflow_projects", "kanban", "Monitor flags stalled tasks"],
+          ["📅 Content calendar", "workflow_content_calendar", "calendar", "Forecast on posts/week"],
+          ["💼 CRM", "workflow_crm_contacts + workflow_crm_deals", "kanban (on deals)", "Monitor flags stale deals · Books reconciles to accounting"],
+          ["🎉 Event planning", "workflow_event_rsvps", "form", "Dedup catches double-RSVPs"],
+          ["📦 Inventory", "workflow_inventory", "grid", "Forecast on stock levels · Monitor on velocity"],
+          ["👥 Recruiting", "workflow_recruiting", "kanban", "Monitor flags high-score rejected candidates"],
+        ]}
+      />
+
+      <H3>Why "workflow"</H3>
+      <P>The word overlaps with Prism's "reconcile workflows" intentionally. Both run on the same substrate: a bundle, a schema, a set of analytics that can read it. A workflow template is just a pre-baked bundle that the Prism workflows can run against immediately.</P>
+
+      <H3>Picker</H3>
+      <P>On the landing page (above the demos) and inside the bundle picker. One click → bundle(s) created on the engine, seed CSV ingested, navigation to the default view.</P>
+
+      <H3>Custom workflows</H3>
+      <P>The template shape is <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>{`{ id, title, icon, blurb, pitch, bundles, defaultBundle, defaultView, prismWireUp, gigiBetter }`}</code> — see <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>sheets/src/lib/workflow-templates.ts</code>. Add an entry to <code style={{ fontSize: 12, background: "#0E1020", padding: "2px 6px", borderRadius: 3, fontFamily: MONO }}>WORKFLOW_TEMPLATES</code>; the picker renders it automatically.</P>
     </Section>
   );
 }
@@ -2514,12 +2634,12 @@ export default function GQLDocs() {
       >
         {/* Title */}
         <div style={{ marginBottom: 48 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#40E8A028", fontFamily: MONO, marginBottom: 8 }}>REFERENCE DOCUMENTATION</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", color: "#40E8A028", fontFamily: MONO, marginBottom: 8 }}>DOCUMENTATION</div>
           <h1 style={{ fontSize: 42, fontWeight: 900, color: "#E0E8F0", margin: 0, letterSpacing: "-0.03em" }}>
-            GQL <span style={{ color: G }}>Reference</span>
+            GIGI <span style={{ color: G }}>Docs</span>
           </h1>
           <p style={{ fontSize: 15, color: "#607080", marginTop: 12, lineHeight: 1.65, maxWidth: 600 }}>
-            Complete reference for the Geometric Query Language — data types, statements, operators, functions, REST API, WebSocket protocol, JavaScript SDK, and mathematical foundations.
+            The fiber-bundle database engine, the GIGI Sheets product, Prism reconcile workflows, and the GQL query language — one site. Quick start, concepts, full reference, and worked-example how-tos.
           </p>
           <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10, padding: "3px 10px", background: "rgba(64,232,160,0.08)", border: `1px solid ${G}33`, borderRadius: 12, color: G, fontFamily: MONO }}>v2.1</span>
@@ -2531,6 +2651,9 @@ export default function GQLDocs() {
         <OverviewSection />
         <QuickStartSection />
         <ConceptsSection />
+        <SheetsSection />
+        <PrismSection />
+        <WorkflowsSection />
         <TypesSection />
         <BundlesSection />
         <SectionsSection />

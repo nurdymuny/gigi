@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gigi-mcp"
+version = "0.0.1"
+description = "MCP server for GIGI — fiber-bundle persistent memory and reasoning for Claude and other MCP-aware LLM clients"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Bee Rosa Davis", email = "bee_davis@alumni.brown.edu" }]
+keywords = ["mcp", "model-context-protocol", "gigi", "fiber-bundle", "geometric-database", "claude"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Database",
+]
+dependencies = [
+    "mcp[cli]>=1.0",
+    # NOTE: gigi-client must be published to PyPI before `pip install gigi-mcp`
+    # works cleanly. Until then, install both from the local repo in editable mode:
+    #     cd sdk/python && pip install -e .
+    #     cd mcp && pip install -e .
+    "gigi-client>=0.5",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-asyncio>=0.21", "ruff>=0.1"]
+
+[project.scripts]
+gigi-mcp = "gigi_mcp.server:main"
+
+[project.urls]
+Homepage = "https://davisgeometric.com"
+Repository = "https://github.com/nurdymuny/gigi"
+Documentation = "https://github.com/nurdymuny/gigi/tree/main/mcp"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gigi_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "D"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -452,6 +452,26 @@ pub struct RelaxationOption {
     /// Normalized cost of this relaxation, computed in the same
     /// units as `ViolationDetail::relaxation_cost`.
     pub relaxation_cost: f64,
+    /// **Wave 6.4 — energy descent per unit cost.** The negative
+    /// log-likelihood drop:
+    ///
+    ///   ΔE / cost = log(1 + gain / max(n_current_solutions, 1)) / max(cost, ε)
+    ///
+    /// This is the "diminishing-returns-aware" replacement for the
+    /// W3 `gain / cost` heuristic. Larger ΔE/cost = more
+    /// satisfaction-probability gained per σ of constraint bending.
+    /// The relaxation menu is sorted by this descending instead of by
+    /// raw `gain / cost`; the raw counts (`gain`, `relaxation_cost`)
+    /// remain in the response unchanged so consumers can re-sort if
+    /// they prefer the W3 ordering.
+    ///
+    /// **Why log?** Going from 1 → 10 solutions is structurally bigger
+    /// than going from 100 → 109, even though both are `gain = 9`. The
+    /// log compresses high-base options so an option that *multiplies*
+    /// the satisfaction count ranks above one that adds a fixed offset.
+    ///
+    /// Cross-ref: sudoky-energy spec §energy-descent; SUDOKU_PRIMITIVE_SPEC §9.
+    pub energy_descent: f64,
 }
 
 /// **Wave 3 — Upgrade 5.** A near-miss that may violate multiple
@@ -647,6 +667,10 @@ where
                         new_threshold: None,
                         gain: 1, // unknown — will be computed by re-solve
                         relaxation_cost: 1.0,
+                        // Synthetic option for pre-flight UNSAT path; not
+                        // sorted here, so leave at 0.0. The attempt_expansion
+                        // caller doesn't use this field.
+                        energy_descent: 0.0,
                     }
                 })
                 .collect();
@@ -1540,6 +1564,7 @@ fn compute_relaxation_menu(
                         new_threshold: Some(Value::Float(*new_threshold)),
                         gain,
                         relaxation_cost: cost,
+                        energy_descent: 0.0, // finalized after all pushes
                     });
                 }
             }
@@ -1569,6 +1594,7 @@ fn compute_relaxation_menu(
                             new_threshold: Some(Value::Float(new_lo)),
                             gain,
                             relaxation_cost: (lo - new_lo).abs() / ls,
+                            energy_descent: 0.0, // finalized after all pushes
                         });
                     }
                 }
@@ -1585,6 +1611,7 @@ fn compute_relaxation_menu(
                             new_threshold: Some(Value::Float(new_hi)),
                             gain,
                             relaxation_cost: (new_hi - hi).abs() / ls,
+                            energy_descent: 0.0, // finalized after all pushes
                         });
                     }
                 }
@@ -1604,19 +1631,36 @@ fn compute_relaxation_menu(
                         new_threshold: None,
                         gain,
                         relaxation_cost: 1.0,
+                        energy_descent: 0.0, // finalized after all pushes
                     });
                 }
             }
         }
     }
 
-    // Sort by gain / cost descending. Use a tiny epsilon to avoid
-    // div-by-zero on cost==0 relaxations (which happen when the
-    // violation distance is below f64 precision).
+    // **Wave 6.4 — energy descent per unit cost.** Replaces the W3
+    // `gain / cost` sort. For each option compute
+    //
+    //   ΔE = log(1 + gain / max(n_solutions, 1))
+    //   energy_descent = ΔE / max(cost, ε)
+    //
+    // The `max(n_solutions, 1)` handles the "no current solutions"
+    // case (treat as one phantom match — any gain is still log-finite
+    // rather than log(∞)). The `max(cost, ε)` mirrors the W3 div-by-
+    // zero guard. Sort descending by `energy_descent`; the raw
+    // `gain` and `relaxation_cost` remain in the response so consumers
+    // who prefer the W3 ordering can re-sort.
+    let n_solutions_safe = (n_solutions.max(1)) as f64;
+    let cost_eps = 1e-9_f64;
+    for opt in menu.iter_mut() {
+        let delta_e = (1.0 + (opt.gain as f64) / n_solutions_safe).ln();
+        let cost = opt.relaxation_cost.max(cost_eps);
+        opt.energy_descent = delta_e / cost;
+    }
     menu.sort_by(|a, b| {
-        let ra = a.gain as f64 / a.relaxation_cost.max(1e-9);
-        let rb = b.gain as f64 / b.relaxation_cost.max(1e-9);
-        rb.partial_cmp(&ra).unwrap_or(std::cmp::Ordering::Equal)
+        b.energy_descent
+            .partial_cmp(&a.energy_descent)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     // Dedup near-identical proposals — keep at most 3 per constraint
@@ -3058,6 +3102,152 @@ mod tests {
         assert!(
             resp.gamma_trichotomy.is_none(),
             "Γ must be None when n=0 (no candidate records)"
+        );
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // W6.4 — Energy descent ordering on the relaxation menu
+    // ───────────────────────────────────────────────────────────
+
+    /// **W6.4** — every RelaxationOption has a populated, non-negative
+    /// `energy_descent` value, and the menu is sorted by it descending.
+    /// Subsumes the W3 `gain / cost` ordering for the diminishing-
+    /// returns case; coincides with it when n_current_solutions is
+    /// small.
+    #[test]
+    fn w6_4_relaxation_menu_sorted_by_energy_descent() {
+        // 20 records with a numeric field. Constraint: v >= 15
+        // (5/20 currently pass → n_solutions = 5). Relaxing this to
+        // v >= 10 unlocks 5 more (gain = 5). Relaxing to v >= 5
+        // unlocks 10 more (gain = 10) but at higher cost (5 σ vs 10 σ
+        // depending on the data's length scale). We don't care about
+        // the exact numbers — just that the field is populated, non-
+        // negative, and the menu is sorted by it descending.
+        let records: Vec<Record> = (0..20)
+            .map(|i| rec(&[("v", Value::Integer(i))]))
+            .collect();
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "v".into(),
+                op: FieldOp::Ge(15.0),
+                hard: true,
+            }],
+            max_options: 10,
+            max_near_misses: 10,
+            expansion: None,
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert!(
+            !resp.relaxations.is_empty(),
+            "should have proposed at least one relaxation"
+        );
+        // Every option has a populated, non-negative energy_descent.
+        for opt in &resp.relaxations {
+            assert!(
+                opt.energy_descent.is_finite() && opt.energy_descent >= 0.0,
+                "energy_descent must be finite + non-negative; got {} for {}",
+                opt.energy_descent,
+                opt.description
+            );
+        }
+        // Menu is sorted by energy_descent descending.
+        for pair in resp.relaxations.windows(2) {
+            assert!(
+                pair[0].energy_descent >= pair[1].energy_descent,
+                "menu not sorted descending: {} (\"{}\") then {} (\"{}\")",
+                pair[0].energy_descent,
+                pair[0].description,
+                pair[1].energy_descent,
+                pair[1].description,
+            );
+        }
+    }
+
+    /// **W6.4 math check** — `energy_descent` matches the closed-form
+    /// `log(1 + gain / max(n_solutions, 1)) / max(cost, ε)` for a
+    /// hand-engineered single-option case.
+    #[test]
+    fn w6_4_energy_descent_matches_closed_form() {
+        // Build a tiny scenario: 4 records {1, 2, 3, 4}, constraint
+        // v >= 4 (only record v=4 passes → n_solutions = 1). The only
+        // numeric relaxation should propose v >= some-lower-value
+        // chosen from the violating set {1, 2, 3}.
+        let records: Vec<Record> = (1..=4)
+            .map(|i| rec(&[("v", Value::Integer(i))]))
+            .collect();
+        let req = SudokuRequest {
+            constraints: vec![Constraint::Field {
+                field: "v".into(),
+                op: FieldOp::Ge(4.0),
+                hard: true,
+            }],
+            max_options: 10,
+            max_near_misses: 3,
+            expansion: None,
+        };
+        let resp = solve_constraints(records, &req, &SudokuConfig::default()).unwrap();
+        assert!(!resp.relaxations.is_empty());
+        // For each option, verify the closed-form matches.
+        for opt in &resp.relaxations {
+            let n_solutions_safe = (resp.solutions.len().max(1)) as f64;
+            let expected_delta_e =
+                (1.0 + (opt.gain as f64) / n_solutions_safe).ln();
+            let expected = expected_delta_e / opt.relaxation_cost.max(1e-9);
+            assert!(
+                (opt.energy_descent - expected).abs() < 1e-9,
+                "closed-form mismatch for \"{}\": got {}, expected {}",
+                opt.description,
+                opt.energy_descent,
+                expected
+            );
+        }
+    }
+
+    /// **W6.4 diminishing returns** — when two options have the same
+    /// `gain / cost` ratio but vastly different absolute gain, the
+    /// log-transform makes them tie OR rewards the lower-cost option
+    /// (not the bigger one). This is the qualitative difference
+    /// between the W3 and W6.4 orderings.
+    #[test]
+    fn w6_4_energy_descent_vs_raw_gain_per_cost() {
+        // Two synthetic options:
+        //   A: gain=1, cost=1 → gain/cost = 1, ΔE/cost = log(2) ≈ 0.693
+        //   B: gain=100, cost=100 → gain/cost = 1, ΔE/cost = log(101) ≈ 4.62 / 100 = 0.046
+        // Both have the same gain/cost (= 1), but A has MUCH higher
+        // energy_descent because log is sublinear: the same fractional
+        // increase from a tiny base is worth more than a huge absolute
+        // gain at high cost.
+        let n_solutions = 1usize;
+        let opt_a = RelaxationOption {
+            constraint_idx: 0,
+            field: "test".into(),
+            description: "A".into(),
+            new_threshold: None,
+            gain: 1,
+            relaxation_cost: 1.0,
+            energy_descent: 0.0,
+        };
+        let opt_b = RelaxationOption {
+            constraint_idx: 1,
+            field: "test".into(),
+            description: "B".into(),
+            new_threshold: None,
+            gain: 100,
+            relaxation_cost: 100.0,
+            energy_descent: 0.0,
+        };
+        // Apply the same formula the menu does.
+        let n_safe = (n_solutions.max(1)) as f64;
+        let a_e = (1.0 + opt_a.gain as f64 / n_safe).ln() / opt_a.relaxation_cost.max(1e-9);
+        let b_e = (1.0 + opt_b.gain as f64 / n_safe).ln() / opt_b.relaxation_cost.max(1e-9);
+        // gain/cost is equal:
+        assert!(((opt_a.gain as f64 / opt_a.relaxation_cost) - (opt_b.gain as f64 / opt_b.relaxation_cost)).abs() < 1e-9);
+        // But energy_descent ranks A > B by a wide margin:
+        assert!(
+            a_e > b_e * 10.0,
+            "log-transform should rank A >> B: a_e={}, b_e={}",
+            a_e,
+            b_e
         );
     }
 

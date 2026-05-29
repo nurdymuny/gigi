@@ -4766,6 +4766,12 @@ struct SudokuRelaxationWire {
     new_threshold: Option<serde_json::Value>,
     gain: usize,
     relaxation_cost: f64,
+    /// **Wave 6.4** — energy descent per unit cost (the negative
+    /// log-likelihood drop divided by σ-cost). Higher = more
+    /// satisfaction-probability gained per σ of bending. The menu is
+    /// ordered by this descending; `gain` / `relaxation_cost` remain
+    /// available for consumers who prefer the W3 ordering.
+    energy_descent: f64,
 }
 
 /// **Wave 3 — Upgrade 5.** Pareto-frontier near-miss (allows
@@ -5090,6 +5096,7 @@ async fn brain_sudoku_endpoint(
             new_threshold: r.new_threshold.as_ref().map(value_to_json),
             gain: r.gain,
             relaxation_cost: r.relaxation_cost,
+            energy_descent: r.energy_descent,
         })
         .collect();
 
@@ -5360,6 +5367,7 @@ async fn brain_intent_gate_endpoint(
             new_threshold: r.new_threshold.as_ref().map(value_to_json),
             gain: r.gain,
             relaxation_cost: r.relaxation_cost,
+            energy_descent: r.energy_descent,
         })
         .collect();
     let pareto_wire: Vec<SudokuParetoNearMissWire> = resp

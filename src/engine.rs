@@ -182,6 +182,22 @@ pub struct CompactionPolicy {
     pub max_wal_bytes: u64,
     /// Disabled flag — when true, auto-compaction never fires.
     pub disabled: bool,
+    /// **#105 fix.** Per-bundle timeout for cow_snapshot's
+    /// per-bundle write loop. If any single bundle's snapshot encode
+    /// + flush exceeds this budget, the writer aborts that bundle
+    /// (deletes the partial .tmp file), logs a `TimedOut` warning,
+    /// and continues with the next bundle. Other bundles in the
+    /// batch are unaffected — snapshot files are per-bundle.
+    ///
+    /// `None` = no timeout (pre-#105 behavior; can hang
+    /// indefinitely on a pathological bundle, as observed on
+    /// `icarus_traverse_130799` per task #104).
+    ///
+    /// Default: `Some(600)` (10 minutes per bundle). Generous for
+    /// large bundles; tight enough that a true hang is caught within
+    /// a single ops shift rather than blocking the whole snapshot
+    /// pipeline indefinitely.
+    pub per_bundle_timeout_secs: Option<u64>,
 }
 
 impl Default for CompactionPolicy {
@@ -192,8 +208,29 @@ impl Default for CompactionPolicy {
             max_wal_entries: 10_000_000,
             max_wal_bytes: 2 * 1024 * 1024 * 1024, // 2 GiB
             disabled: false,
+            per_bundle_timeout_secs: Some(600), // 10 minutes per bundle
         }
     }
+}
+
+/// **#105 fix.** Outcome report from a per-bundle snapshot write.
+/// Returned by `write_snapshot_files_with_timeout` so callers can see
+/// which bundles succeeded vs timed out without aborting the whole
+/// snapshot operation.
+#[derive(Debug, Clone)]
+pub struct SnapshotBundleOutcome {
+    pub bundle_name: String,
+    /// `Ok(record_count)` on success; `Err(elapsed_secs)` on timeout.
+    pub result: Result<usize, u64>,
+}
+
+/// **#105 fix.** Aggregate report from `write_snapshot_files_with_timeout`.
+/// Successful bundles + timed-out bundles, summed for convenience.
+#[derive(Debug, Clone)]
+pub struct SnapshotReport {
+    pub bundles: Vec<SnapshotBundleOutcome>,
+    pub total_records_written: usize,
+    pub timed_out_bundles: Vec<String>,
 }
 
 // ── Feature #9: Pub/Sub with Sheaf Triggers (Definitions 9.1–9.3, Theorem 9.1) ──
@@ -1385,6 +1422,46 @@ impl Engine {
         bundles: &[BundleDataClone],
         chunk_size: usize,
     ) -> io::Result<usize> {
+        // Backwards-compat shim: no timeout, all-or-fail. The new
+        // `write_snapshot_files_with_timeout` is recommended for any
+        // call where a single hung bundle should not block the rest.
+        let report = Self::write_snapshot_files_with_timeout(
+            data_dir, bundles, chunk_size, None,
+        )?;
+        // No timeouts were possible (None passed), so empty timed_out
+        // list is guaranteed. Return the total for API parity.
+        Ok(report.total_records_written)
+    }
+
+    /// **#105 fix.** Per-bundle timeout-aware snapshot writer.
+    ///
+    /// Iterates each bundle in `bundles`; for each one, encodes records
+    /// into a `.dhoom.tmp` file under `snapshots/` and atomically
+    /// renames to `.dhoom` on success. If `per_bundle_timeout_secs`
+    /// is `Some(t)` and a single bundle's work exceeds `t` seconds,
+    /// that bundle is aborted (partial `.tmp` file deleted on a
+    /// best-effort basis), recorded in `report.timed_out_bundles`,
+    /// and the loop continues with the next bundle. Other bundles in
+    /// the batch are unaffected — snapshot files are per-bundle, so
+    /// one hang doesn't break the rest.
+    ///
+    /// The timeout is checked between records in the inner encode
+    /// loop (every record by default). For pathological encoders
+    /// that hang *inside* a single `encoder.push()` call without
+    /// returning, this approach cannot interrupt them (would require
+    /// thread-level cancellation, which Rust's std doesn't support
+    /// portably). The current StreamingDhoomEncoder per-record cost
+    /// is bounded, so the inter-record check is sufficient for the
+    /// observed-in-prod failure mode (#104: snapshot of
+    /// `icarus_traverse_130799` hung indefinitely — exact root cause
+    /// not yet diagnosed; this timeout is the protective mitigation
+    /// per Bee's request).
+    pub fn write_snapshot_files_with_timeout(
+        data_dir: &Path,
+        bundles: &[BundleDataClone],
+        chunk_size: usize,
+        per_bundle_timeout_secs: Option<u64>,
+    ) -> io::Result<SnapshotReport> {
         let snapshots_dir = data_dir.join("snapshots");
         fs::create_dir_all(&snapshots_dir)?;
 
@@ -1394,30 +1471,87 @@ impl Engine {
             let _ = fs::set_permissions(&snapshots_dir, fs::Permissions::from_mode(0o700));
         }
 
-        let mut total = 0usize;
+        let mut report = SnapshotReport {
+            bundles: Vec::with_capacity(bundles.len()),
+            total_records_written: 0,
+            timed_out_bundles: Vec::new(),
+        };
+
+        let budget = per_bundle_timeout_secs.map(std::time::Duration::from_secs);
+
         for bdc in bundles {
             let snap_path = snapshots_dir.join(format!("{}.dhoom", bdc.name));
             let tmp_path = snapshots_dir.join(format!("{}.dhoom.tmp", bdc.name));
 
             eprintln!(
-                "  CoW snapshot streaming: {} ({} records, chunk_size={chunk_size})…",
+                "  CoW snapshot streaming: {} ({} records, chunk_size={chunk_size}{})…",
                 bdc.name,
-                bdc.records.len()
+                bdc.records.len(),
+                budget.map_or(String::new(), |b| format!(", budget={}s", b.as_secs())),
             );
-            {
+
+            let start = std::time::Instant::now();
+            let mut timed_out = false;
+            let inner = (|| -> io::Result<usize> {
                 let file = fs::File::create(&tmp_path)?;
                 let buf = io::BufWriter::new(file);
                 let mut encoder =
                     crate::dhoom::StreamingDhoomEncoder::new(buf, &bdc.name, chunk_size);
                 for rec in &bdc.records {
+                    if let Some(b) = budget {
+                        if start.elapsed() > b {
+                            timed_out = true;
+                            return Ok(0); // outer code will discard
+                        }
+                    }
                     encoder.push(rec.clone())?;
                 }
                 encoder.finish()?;
+                Ok(bdc.records.len())
+            })();
+
+            if timed_out {
+                // Best-effort cleanup of the partial tmp file.
+                let _ = fs::remove_file(&tmp_path);
+                let elapsed = start.elapsed().as_secs();
+                eprintln!(
+                    "  CoW snapshot TIMED OUT on bundle '{}' after {}s (budget {}s, \
+                     {} records). Partial .tmp removed; remaining bundles continue.",
+                    bdc.name,
+                    elapsed,
+                    budget.map(|b| b.as_secs()).unwrap_or(0),
+                    bdc.records.len(),
+                );
+                report
+                    .timed_out_bundles
+                    .push(bdc.name.clone());
+                report.bundles.push(SnapshotBundleOutcome {
+                    bundle_name: bdc.name.clone(),
+                    result: Err(elapsed),
+                });
+                continue;
             }
-            fs::rename(&tmp_path, &snap_path)?;
-            total += bdc.records.len();
+
+            match inner {
+                Ok(n) => {
+                    fs::rename(&tmp_path, &snap_path)?;
+                    report.total_records_written += n;
+                    report.bundles.push(SnapshotBundleOutcome {
+                        bundle_name: bdc.name.clone(),
+                        result: Ok(n),
+                    });
+                }
+                Err(e) => {
+                    // I/O error inside the inner block — propagate.
+                    // Clean up the tmp on the way out so we don't
+                    // leave a partial file.
+                    let _ = fs::remove_file(&tmp_path);
+                    return Err(e);
+                }
+            }
         }
-        Ok(total)
+
+        Ok(report)
     }
 
     /// Compact the WAL to schema-only entries (called after snapshot files
@@ -1461,10 +1595,64 @@ impl Engine {
     /// then compact WAL (`&mut self`). When called from single-threaded
     /// context, this is equivalent to `snapshot()`.
     pub fn cow_snapshot(&mut self) -> io::Result<usize> {
+        // **#105 fix.** Route through the timeout-aware variant
+        // using the policy's per_bundle_timeout_secs. A bundle that
+        // exceeds the budget is skipped (its prior .dhoom remains
+        // valid; the .tmp is cleaned up) and the loop continues with
+        // the next bundle.
+        //
+        // **Critical data-loss guard:** `compact_wal_to_schemas`
+        // REWRITES the WAL to schemas-only, dropping all data
+        // records. If we ran it after a timeout, the timed-out
+        // bundle's data — which is still only in the WAL because
+        // no .dhoom was written for it — would be LOST. Instead we
+        // skip compaction whenever any bundle timed out; the WAL
+        // grows for one snapshot cycle, but no data is destroyed.
+        // The next snapshot attempt (or a manual `cow_snapshot`)
+        // can succeed and compact then.
         let cloned = self.clone_bundle_data();
-        let total = Self::write_snapshot_files(&self.data_dir, &cloned, 50_000)?;
-        self.compact_wal_to_schemas()?;
-        Ok(total)
+        let report = Self::write_snapshot_files_with_timeout(
+            &self.data_dir,
+            &cloned,
+            50_000,
+            self.compaction_policy.per_bundle_timeout_secs,
+        )?;
+        if report.timed_out_bundles.is_empty() {
+            // Clean run — safe to compact.
+            self.compact_wal_to_schemas()?;
+        } else {
+            eprintln!(
+                "  CoW snapshot: {} of {} bundle(s) timed out: [{}]. \
+                 SKIPPING WAL compaction this cycle to preserve the timed-out \
+                 bundle's data (still WAL-resident; would be erased by \
+                 compaction). Next snapshot attempt may succeed and compact \
+                 then. WAL will grow by one snapshot interval.",
+                report.timed_out_bundles.len(),
+                cloned.len(),
+                report.timed_out_bundles.join(", "),
+            );
+        }
+        Ok(report.total_records_written)
+    }
+
+    /// **#105 fix.** Per-bundle-timeout-aware variant that returns
+    /// the full per-bundle outcome report. Use when the caller wants
+    /// to see *which* bundles timed out (for alerting / diagnostics),
+    /// rather than just the success count. Same data-loss guard as
+    /// `cow_snapshot`: WAL compaction is skipped if any bundle timed
+    /// out.
+    pub fn cow_snapshot_with_report(&mut self) -> io::Result<SnapshotReport> {
+        let cloned = self.clone_bundle_data();
+        let report = Self::write_snapshot_files_with_timeout(
+            &self.data_dir,
+            &cloned,
+            50_000,
+            self.compaction_policy.per_bundle_timeout_secs,
+        )?;
+        if report.timed_out_bundles.is_empty() {
+            self.compact_wal_to_schemas()?;
+        }
+        Ok(report)
     }
 
     /// Get the data directory (for external snapshot file writing).
@@ -2915,6 +3103,122 @@ mod tests {
         key.insert("id".into(), Value::Integer(99));
         let found = engine.point_query("tissue", &key).unwrap().unwrap();
         assert_eq!(found.get("name"), Some(&Value::Text("t_99".into())));
+
+        cleanup(&dir);
+    }
+
+    /// **#105 fix** — zero timeout: every bundle's snapshot work
+    /// times out (no chance to even start), and the report names
+    /// every bundle in `timed_out_bundles`. Critically, **WAL
+    /// compaction is skipped** so the timed-out bundles' WAL-resident
+    /// data is not destroyed.
+    #[test]
+    fn issue_105_zero_timeout_records_all_bundles_as_timed_out() {
+        let dir = test_dir("issue_105_zero_timeout");
+        cleanup(&dir);
+
+        let mut engine = engine_no_autocompact(&dir);
+        let schema = BundleSchema::new("data")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        engine.create_bundle(schema).unwrap();
+
+        // Insert enough records that *something* would be written
+        // under a non-zero budget.
+        for i in 0..500i64 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("val".into(), Value::Float(i as f64));
+            engine.insert("data", &r).unwrap();
+        }
+
+        // Capture WAL byte count *before* the failed snapshot so we
+        // can verify it's preserved.
+        let wal_bytes_before = engine.wal_byte_count();
+        assert!(wal_bytes_before > 0, "WAL should have data records");
+
+        // Set zero timeout → every bundle times out (the inner loop
+        // checks elapsed > budget on the FIRST record and bails).
+        engine.compaction_policy_mut().per_bundle_timeout_secs = Some(0);
+
+        let report = engine.cow_snapshot_with_report().unwrap();
+
+        assert_eq!(
+            report.timed_out_bundles,
+            vec!["data".to_string()],
+            "every bundle should be in timed_out_bundles under a zero budget"
+        );
+        assert_eq!(
+            report.total_records_written, 0,
+            "no records should have been persisted under a zero budget"
+        );
+        assert_eq!(
+            report.bundles.len(),
+            1,
+            "report should list one outcome per requested bundle"
+        );
+        assert!(
+            matches!(report.bundles[0].result, Err(_)),
+            "bundle outcome should be Err on timeout"
+        );
+
+        // **Data preservation check.** WAL must NOT have been
+        // compacted — the timed-out bundle's records are still only
+        // in the WAL, so erasing them would lose data. WAL size
+        // should be >= what it was before (slightly different is fine
+        // due to internal state, but it must contain at least the
+        // original data records).
+        assert!(
+            engine.wal_byte_count() >= wal_bytes_before / 2,
+            "WAL should NOT have been compacted on timeout — preserves WAL-resident data. \
+             before={wal_bytes_before}, after={}",
+            engine.wal_byte_count()
+        );
+
+        // Sanity: bundle still queryable from live engine (in-memory
+        // state untouched by the failed snapshot).
+        assert_eq!(engine.total_records(), 500);
+
+        cleanup(&dir);
+    }
+
+    /// **#105 fix** — passing `None` (no timeout) makes the new
+    /// `write_snapshot_files_with_timeout` behave identically to the
+    /// legacy `write_snapshot_files`. Backwards compat guarantee.
+    #[test]
+    fn issue_105_none_timeout_matches_legacy_path() {
+        let dir = test_dir("issue_105_none_timeout");
+        cleanup(&dir);
+
+        let mut engine = engine_no_autocompact(&dir);
+        let schema = BundleSchema::new("data")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        engine.create_bundle(schema).unwrap();
+        for i in 0..100i64 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("val".into(), Value::Float(i as f64));
+            engine.insert("data", &r).unwrap();
+        }
+
+        let cloned = engine.clone_bundle_data();
+        let legacy_total =
+            Engine::write_snapshot_files(engine.data_dir(), &cloned, 50_000).unwrap();
+        // Snapshot the same data via the new path with None timeout
+        // into a separate directory (write_snapshot_files reuses
+        // snapshot file names — call into the same dir is fine since
+        // it's idempotent).
+        let report = Engine::write_snapshot_files_with_timeout(
+            engine.data_dir(),
+            &cloned,
+            50_000,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(legacy_total, report.total_records_written);
+        assert!(report.timed_out_bundles.is_empty());
 
         cleanup(&dir);
     }

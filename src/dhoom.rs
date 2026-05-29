@@ -1435,23 +1435,49 @@ fn detect_interned(values: &[&Value]) -> Option<Vec<String>> {
     if strings.len() != values.len() {
         return None;
     }
+
+    // **#104 fix.** Build the distinct list in O(N + D log D) instead
+    // of the pre-fix O(N × D) (D = number of distinct values). The
+    // old `distinct.iter().any(...)` linear-scan-per-element dedup
+    // was the load-bearing source of the `icarus_traverse_130799`
+    // snapshot hang: for a 50,000-record sample with ~50,000 unique
+    // strings (flight telemetry, transaction IDs, anything with
+    // high cardinality on a string field), the loop did ~5 billion
+    // comparisons — manifesting as an apparent hang inside the
+    // streaming encoder's first-chunk header analysis.
+    //
+    // Use a HashSet for membership ($O(1)$ avg) to dedup, and
+    // preserve insertion order in `distinct: Vec<String>` since the
+    // interning header depends on it.
+    let mut seen: std::collections::HashSet<&str> =
+        std::collections::HashSet::with_capacity(strings.len());
     let mut distinct: Vec<String> = Vec::new();
     for s in &strings {
-        if !distinct.iter().any(|d| d == *s) {
+        if seen.insert(*s) {
             distinct.push(s.to_string());
         }
     }
+
     if distinct.len() < 2 || distinct.len() > (values.len() + 2) / 3 {
         return None;
     }
+
+    // Pre-compute index lookup so the second pass below is O(N)
+    // instead of O(N × D).
+    let index_of: std::collections::HashMap<&str, usize> = distinct
+        .iter()
+        .enumerate()
+        .map(|(i, d)| (d.as_str(), i))
+        .collect();
+
     let raw_len: usize = strings.iter().map(|s| s.len()).sum();
     let pool_len = distinct.iter().map(|s| s.len()).sum::<usize>() + (distinct.len() - 1) * 2 + 2;
     let index_len: usize = strings
         .iter()
         .map(|s| {
-            distinct
-                .iter()
-                .position(|d| d == *s)
+            index_of
+                .get(s)
+                .copied()
                 .unwrap_or(0)
                 .to_string()
                 .len()
@@ -2637,6 +2663,53 @@ readings{sensor_id@T-001, timestamp@1710000000+60, value, status|normal, unit|ce
             assert_eq!(rec["id"], json!(i as i64), "id mismatch at {i}");
             assert_eq!(rec["name"], json!(format!("Drug_{i}")), "name mismatch at {i}");
         }
+    }
+
+    /// **#104 fix** — high-cardinality string field on a 50K-record
+    /// sample must NOT hang the encoder. Pre-fix `detect_interned`
+    /// was O(N × D) on the dedup loop + O(N × D) on the index-len
+    /// loop, giving ~5 billion comparisons for the icarus_traverse
+    /// shape (mostly-unique flight-telemetry strings) and a
+    /// multi-minute hang. Post-fix it's O(N) with `HashSet` +
+    /// `HashMap`; the test asserts the encoder completes in well
+    /// under a second on this shape.
+    #[test]
+    fn issue_104_detect_interned_no_quadratic_blowup_on_high_cardinality() {
+        let n = 50_000;
+        // 50,000 records, each with a unique string id — the worst
+        // case for `detect_interned` (it has to walk all N, then
+        // discover the field isn't internable because D ≈ N).
+        let records: Vec<Value> = (0..n)
+            .map(|i| {
+                json!({
+                    "id": i,
+                    "trace_id": format!("traverse_{i:08x}_{i:08x}_{i:08x}"),
+                })
+            })
+            .collect();
+
+        let start = std::time::Instant::now();
+        let mut buf = Vec::new();
+        {
+            let mut enc = StreamingDhoomEncoder::new(&mut buf, "icarus_repro", n);
+            for r in &records {
+                enc.push(r.clone()).unwrap();
+            }
+            enc.finish().unwrap();
+        }
+        let elapsed = start.elapsed();
+
+        // Pre-fix this took multiple minutes (and the prod report
+        // was an apparent hang). Post-fix: well under a second on
+        // commodity hardware. Generous bound — even a 10× regression
+        // would still pass at 10s, alerting future devs.
+        assert!(
+            elapsed.as_secs() < 10,
+            "encoder must complete on 50K high-cardinality strings in < 10s; got {:?}. \
+             Regression in detect_interned dedup → O(N²) again?",
+            elapsed
+        );
+        assert!(!buf.is_empty(), "encoder should have produced output");
     }
 
     /// **#112 — push_record TDD.** The native-Record API

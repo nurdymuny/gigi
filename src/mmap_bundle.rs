@@ -281,11 +281,25 @@ impl OverlayBundle {
     }
 
     /// Insert a record into the overlay (acquires write lock).
+    ///
+    /// **#165 fix (post-#106 follow-up):** the tombstone-lift now
+    /// extracts the PK by *name* via `tombstone_key()`, instead of the
+    /// pre-fix `record.values().next()` which picked an arbitrary
+    /// `HashMap` iteration-order entry. Because Rust's `HashMap` is
+    /// randomized by default (SipHash with a per-process seed), the
+    /// old code would non-deterministically pick a non-PK field as the
+    /// "key" and try to remove a tombstone keyed by that value — which
+    /// of course wouldn't match the real tombstone, leaving it in
+    /// place. After a delete-then-reinsert sequence, the tombstone
+    /// would leak alongside the new overlay entry, causing `len()` /
+    /// `records()` accounting drift (the #106 invariant property
+    /// test caught this). The fix uses the schema's declared PK
+    /// field, matching what `delete()` / `tombstone_key()` use.
     pub fn insert(&self, record: &Record) {
+        let pk_str = self.tombstone_key(record);
         if let Ok(mut ts) = self.tombstones.write() {
-            // If there's a key field, remove from tombstones
-            if let Some(key_val) = record.values().next() {
-                ts.remove(&format!("{key_val:?}"));
+            if let Some(ref k) = pk_str {
+                ts.remove(k);
             }
         }
         if let Ok(mut store) = self.overlay.write() {
@@ -2513,6 +2527,69 @@ mod tests {
             "after delete of key=2: base(3) - ts(1) - shadow(0, since key=2 \
              was removed from overlay) + overlay(1, just key=99) = 3",
         );
+    }
+
+    /// **#165 (post-#106 follow-up).** `OverlayBundle::insert` must
+    /// lift a prior tombstone for the SAME PK regardless of which
+    /// field happens to come first in the Record's `HashMap`
+    /// iteration order. Pre-fix, `insert` used
+    /// `record.values().next()` to pick the "key" — which depends on
+    /// `HashMap` bucket order (randomized per-process). On a record
+    /// like `{id: Integer(3), val: Integer(333)}`, the iterator might
+    /// yield `Integer(333)` first, and the tombstone-remove would
+    /// look for `"Integer(333)"` instead of `"Integer(3)"` —
+    /// missing the actual tombstone. Post-fix, the lift uses
+    /// `tombstone_key(record)` which extracts the PK by *name* via
+    /// the schema's `pk_field()`.
+    ///
+    /// To make this test deterministic (rather than relying on a
+    /// lucky `HashMap` seed), we force the failure shape: build many
+    /// records with the same PK and varied non-PK fields, and assert
+    /// that for ALL of them the tombstone-lift works correctly.
+    /// Before the fix this would fail intermittently across runs;
+    /// after the fix it succeeds every time.
+    #[test]
+    fn issue_165_insert_lifts_tombstone_by_pk_not_first_value() {
+        let dhoom = "items{id@1, val}:\n10\n";
+        let bundle = mmap_from_dhoom(dhoom);
+        let schema = BundleSchema::new("items")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val"));
+        let overlay = OverlayBundle::new(bundle, schema);
+
+        // Try the delete-then-reinsert cycle for many distinct values
+        // of the non-PK `val` field. Each iteration:
+        //   1. Delete key=1 → tombstone "Integer(1)".
+        //   2. Re-insert key=1 with a fresh `val`.
+        //   3. Assert the tombstone is gone (insert lifted it).
+        //   4. Clear overlay + tombstones for next iteration.
+        for val in [42_i64, 999, -1, 0, 7777777, 1] {
+            let mut del_key = Record::new();
+            del_key.insert("id".into(), GigiValue::Integer(1));
+            overlay.delete("Integer(1)", Some(&del_key));
+            assert!(
+                overlay.is_tombstoned("Integer(1)"),
+                "tombstone should be set after delete for val={val}"
+            );
+
+            // Re-insert: a Record with both `id` and `val`. The HashMap
+            // iteration order between these is random per Rust process,
+            // but the tombstone-lift should succeed regardless of which
+            // one .values().next() would have picked.
+            let mut new_rec = Record::new();
+            new_rec.insert("id".into(), GigiValue::Integer(1));
+            new_rec.insert("val".into(), GigiValue::Integer(val));
+            overlay.insert(&new_rec);
+
+            assert!(
+                !overlay.is_tombstoned("Integer(1)"),
+                "tombstone for key=1 must be lifted by insert (val={val}); pre-#165 \
+                 this could non-deterministically fail when HashMap order put `val` \
+                 ahead of `id`"
+            );
+
+            overlay.clear_overlay();
+        }
     }
 
     /// **#106 corollary** — len() consistency under arbitrary

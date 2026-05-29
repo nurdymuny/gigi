@@ -4860,6 +4860,41 @@ struct BrainSudokuResponse {
     /// opted in).
     #[serde(skip_serializing_if = "Option::is_none")]
     expanded: Option<SudokuExpansionResultWire>,
+    /// **Wave 6.3 — Γ trichotomy diagnostic.** Dimensionless quantity
+    /// `Γ = m / (K̂_max · log(n+1))` classifying the problem into
+    /// `numeric` / `structural` / `geometric` regime. Null when the
+    /// diagnostic is undefined (pre-flight UNSAT or n = 0).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    gamma_trichotomy: Option<SudokuGammaTrichotomyWire>,
+}
+
+/// Wire shape for the Wave 6.3 Γ trichotomy diagnostic.
+#[cfg(feature = "kahler")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SudokuGammaTrichotomyWire {
+    /// Dimensionless Γ value.
+    gamma: f64,
+    /// Regime tag: `"numeric"` / `"structural"` / `"geometric"`.
+    regime: String,
+    /// Number of constraints (`m`).
+    m: usize,
+    /// Max raw_curvature across all constraints (`K̂_max`).
+    k_max: f64,
+    /// `log(n + 1)` term.
+    log_s: f64,
+}
+
+#[cfg(feature = "kahler")]
+impl From<gigi::geometry::GammaTrichotomy> for SudokuGammaTrichotomyWire {
+    fn from(g: gigi::geometry::GammaTrichotomy) -> Self {
+        Self {
+            gamma: g.gamma,
+            regime: g.regime.as_str().to_string(),
+            m: g.m,
+            k_max: g.k_max,
+            log_s: g.log_s,
+        }
+    }
 }
 
 /// Translate wire constraints to the geometry-layer Constraint
@@ -5116,6 +5151,7 @@ async fn brain_sudoku_endpoint(
             counter_at_fit,
             pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
             expanded: expanded_wire,
+            gamma_trichotomy: resp.gamma_trichotomy.map(Into::into),
         },
     )
 }
@@ -5200,6 +5236,10 @@ struct BrainIntentGateResponse {
     pre_flight_unsat_reason: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expanded: Option<SudokuExpansionResultWire>,
+    /// **Wave 6.3 — Γ trichotomy diagnostic** (composite endpoint).
+    /// Same shape as the standalone SUDOKU endpoint.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    gamma_trichotomy: Option<SudokuGammaTrichotomyWire>,
 
     // ── Confidence half (null if no query supplied) ─────────────────
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -5426,6 +5466,7 @@ async fn brain_intent_gate_endpoint(
             pareto_near_misses: pareto_wire,
             pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
             expanded: expanded_wire,
+            gamma_trichotomy: resp.gamma_trichotomy.map(Into::into),
             query_grounding,
             counter_at_fit,
         },

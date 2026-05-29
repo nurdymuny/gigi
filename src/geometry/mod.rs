@@ -96,8 +96,8 @@ pub use sample_transport::{
 };
 pub use sudoku::{
     solve_constraints, Constraint, ExpandedSolution, ExpansionConfig, ExpansionResult,
-    FieldOp, NearMiss, SudokuConfig, SudokuError, SudokuRequest, SudokuResponse,
-    SudokuVerdict, ViolationDetail,
+    FieldOp, GammaTrichotomy, NearMiss, SudokuConfig, SudokuError, SudokuRequest,
+    SudokuResponse, SudokuVerdict, TrichotomyRegime, ViolationDetail,
 };
 pub use toeplitz::{toeplitz_operator, ToeplitzOperator, ToeplitzError, ToeplitzSafetyGate};
 pub use transport::{

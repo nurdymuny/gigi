@@ -1,0 +1,1590 @@
+\documentclass[11pt]{article}
+
+% Page geometry
+\usepackage[margin=1in, headheight=14pt]{geometry}
+
+% Math packages
+\usepackage{amsmath, amsthm, amssymb, mathtools}
+\usepackage{mathrsfs}
+
+% Formatting
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+
+% Header
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Spectral Geometry of Completion}
+\rhead{BRANCH-IX}
+\cfoot{\thepage}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% Custom commands
+\newcommand{\Ric}{\operatorname{Ric}}
+\newcommand{\Vol}{\operatorname{Vol}}
+\newcommand{\Spec}{\operatorname{Spec}}
+\newcommand{\Hol}{\operatorname{Hol}}
+\newcommand{\Hom}{\operatorname{Hom}}
+\newcommand{\dvol}{\,d\mathrm{vol}}
+\newcommand{\Mflat}{\mathcal{M}_{\mathrm{flat}}}
+\newcommand{\Csp}{C_{\mathrm{sp}}}
+\newcommand{\ncells}{n_{\mathrm{cells}}}
+\newcommand{\Cexact}{C_{\mathrm{exact}}}
+\newcommand{\Ic}{\mathcal{I}}
+\newcommand{\HYM}{H_{\mathrm{YM}}}
+\newcommand{\SYM}{S_{\mathrm{YM}}}
+\newcommand{\SW}{S_W}
+
+\title{%
+\textbf{Branch IX: Spectral Geometry of Completion}\\[6pt]
+\large The Eigenvalue Theory of Completion Capacity\\[4pt]
+\normalsize Davis Field Equations --- Spectral Branch
+}
+\author{%
+Bee Rosa Davis\\
+\texttt{bee\_davis@alumni.brown.edu}\\
+Independent Researcher
+}
+\date{February 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We develop the spectral geometry of the Davis completion manifold, establishing that the spectral gap $\lambda_1$ of the Laplace--Beltrami operator is a canonical invariant governing completion capacity. The central result is the \emph{Spectral Capacity Equivalence}: for compact Riemannian manifolds with $\Ric \ge 0$, the spectral capacity $\Csp = \lambda_1 D^2$ satisfies $\tfrac{1}{4}h^2 D^2 \le \Csp \le c_B(n) h^2 D^2$ (isoperimetric equivalence via the Cheeger constant $h$, with dimension-dependent Buser constant $c_B(n)$) and $\Csp \ge \pi^2$ (universal). Under the stronger hypothesis $\Ric \ge (n-1)\kappa > 0$, $\Csp \ge n\kappa D^2$ (curvature lower bound via Lichnerowicz), with equality if and only if $M$ is a round sphere (Obata rigidity). The parent framework's Davis Law $C = \tau/\hat{K}$ is recovered as the curvature capacity, a lower bound on $\Csp$. We develop three spectral regimes: \emph{approximate} ($\tau > 0$, heat kernel diffusion), \emph{exact} ($\tau = 0$, eigenspace projections from the Hodge proof), and \emph{gauge-theoretic} (Yang--Mills Hessian spectrum from the Poincar\'{e} proof). Six operators are distinguished: Laplace--Beltrami, Hodge, connection, \v{C}ech (Branch VII), monodromy (Hodge proof), and Yang--Mills Hessian (Poincar\'{e} proof). On the computable Shidoku model ($n = 288$ vertices) and the $4 \times 4$ Latin square model ($n = 576$), we prove a \emph{Completion Count Decomposition Theorem} giving an exact formula for expected completion counts via Hamming shells, and a \emph{Spectral Localization Theorem} showing that completion count variation lives entirely in the top eigenspace ($\mu_{\max}$), not the spectral gap ($\mu_1$)---revealing a dynamics/statics separation in which $\mu_1$ governs mixing and $\mu_{\max}$ governs the completion landscape. The localization replicates exactly across both models despite different constraint structures, providing evidence that the phenomenon is a property of the CSP graph family. Across 35 named results (SP1--SP10, SP1a--SP7a, Y1--Y17), we provide 26 theorems with proofs, 1 proposition, 5 lemmas, and 18 conjectures. The named result count remains 35, bringing the framework total to 223.
+\end{abstract}
+
+\tableofcontents
+
+%% =====================================================
+\section{Introduction}
+\label{sec:intro}
+%% =====================================================
+
+\subsection{The Gap This Branch Fills}
+
+The parent framework \cite{DFE} uses curvature $\hat{K}$ as its primary geometric invariant. Every capacity result flows through the Davis Law $C = \tau/\hat{K}$. But curvature is a \emph{local} quantity---it measures infinitesimal distortion. The parent's global results (consensus convergence, mixing time, diameter bounds) all involve curvature composed with global quantities ($D^2$, $L$, $\log|S|$) in ad hoc ways.
+
+Spectral geometry provides the \emph{intrinsic global invariants} that the framework needs. The eigenvalues $\lambda_k$ of the Laplace--Beltrami operator on $(M,g)$ encode both local curvature \emph{and} global topology simultaneously. The spectral gap $\lambda_1$ is the single number governing diffusion, mixing, bottleneck structure, and convergence---all things the parent handles via curvature proxies.
+
+\subsection{Three Regimes}
+
+The parent framework operates in three regimes that the spectral branch must serve:
+
+\begin{itemize}[nosep]
+\item \textbf{Approximate regime ($\tau > 0$):} The Davis Law $C = \tau/\hat{K}$, heat kernel diffusion, exponential suppression of modes. Generic setting: Sudoku, consensus, inference.
+
+\item \textbf{Exact regime ($\tau = 0$):} T1e/T3e, codimension counting, hard eigenspace projections. The regime of the Hodge Conjecture proof \cite{HodgeProof}, where constraints are exact and solutions forced by transversal intersection.
+
+\item \textbf{Gauge-theoretic regime (flow convergence):} Davis--Wilson Flow $\partial A/\partial t = -d_A^* F_A$ on connections. The Yang--Mills Hessian spectrum at critical points governs convergence rate, stability, and the Davis Trichotomy. The regime of the Poincar\'{e} proof \cite{PoincareProof}, where the spectral gap of the Hessian at vacuum determines whether flow reaches vacuum ($\pi_1 = 0$) or gets trapped ($\pi_1 \neq 0$).
+\end{itemize}
+
+These are limits of the same spectral theory: as $\tau \to 0$, the heat kernel's smooth exponential suppression $e^{-\lambda_k t}$ degenerates into indicator functions (eigenspace projections).
+
+\subsection{Central Claim}
+
+\begin{quote}
+\emph{The spectral gap $\lambda_1$ is a canonical invariant governing completion capacity.} We prove (Theorems~\ref{thm:SCE} and~\ref{thm:SCE_curv}) that the spectral capacity $\Csp = \lambda_1 D^2$ is a natural invariant characterized, up to dimension-dependent constants, by isoperimetric bottleneck width (Cheeger--Buser equivalence), curvature lower bounds (Lichnerowicz, with Obata rigidity for sharpness), and a universal minimum $\pi^2$ (Li--Yau). The parent framework's curvature-based capacity $C = \tau/\hat{K}$ is recovered as a lower bound, with equality only on round spheres. In the exact regime, the relevant spectral object shifts to the monodromy operator gap $\mu_1$; in the gauge-theoretic regime, to the Yang--Mills Hessian gap $\nu_1$.
+\end{quote}
+
+\subsection{Result Summary}
+
+Branch IX contributes 35 results: 11 foundational (SP1--SP10, SP2e), 7 extended (SP1a--SP7a), and 17 cross-synthesis (Y1--Y17). The framework total reaches \textbf{223 results} across Branches I--IX.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccccc}
+\toprule
+Tier & Results & Thms & Props. & Lemmas & Conj. \\
+\midrule
+Foundational SP1--SP10 (incl.\ SP2e) & 11 & 12 & 1 & 1 & 11 \\
+Extended SP1a--SP7a & 7 & 7 & 0 & 0 & 7 \\
+Cross-Synthesis Y1--Y17 & 17 & 0 & 0 & 0 & 0$^\dagger$ \\
+Finite Model (Section~\ref{sec:finite}) & --- & 6 & 0 & 4 & 0 \\
+\midrule
+\textbf{Total} & \textbf{35} & \textbf{26$^\ddagger$} & \textbf{1} & \textbf{5} & \textbf{18} \\
+\bottomrule
+\end{tabular}
+\caption{Branch IX formal environment count. $^\dagger$Y1--Y17 are 17 named results stated in prose (Section~\ref{sec:cross}); conjectural in character but not in formal environments. $^\ddagger$Includes 1 theorem in Setup (Spectral Decomposition), plus 5 corollaries and 10 remarks. Framework total: $188 + 35 = 223$.}
+\end{table}
+
+
+%% =====================================================
+\section{Preliminaries: Six Operators}
+\label{sec:prelim}
+%% =====================================================
+
+Six Laplacian-type operators appear across the framework. We distinguish them carefully.
+
+\begin{definition}[Laplace--Beltrami on functions]\label{def:LB}
+$\Delta_M f = -\operatorname{div}_g(\operatorname{grad}_g f)$ on $C^\infty(M)$. In coordinates: $\Delta_M f = -\frac{1}{\sqrt{|g|}}\partial_i\bigl(\sqrt{|g|}\,g^{ij}\partial_j f\bigr)$. Self-adjoint and non-negative on $L^2(M, \dvol_g)$. Eigenvalues $0 = \lambda_0 < \lambda_1 \le \lambda_2 \le \cdots$. \emph{Primary object of Branch IX.}
+\end{definition}
+
+\begin{definition}[Hodge Laplacian on $p$-forms]\label{def:Hodge}
+$\Delta_p = d\delta + \delta d$ on $\Omega^p(M)$. By the Hodge theorem, $\ker(\Delta_p) \cong H^p_{\mathrm{dR}}(M)$. \emph{Secondary object---connects to Branch VII.}
+\end{definition}
+
+\begin{definition}[Connection Laplacian]\label{def:conn}
+$\nabla^*\nabla$ on sections of a vector bundle $(E, \nabla) \to M$. Related to the Hodge Laplacian by the Bochner--Weitzenb\"{o}ck identity: $\Delta_p = \nabla^*\nabla + \text{curvature terms}$. \emph{Structural tool.}
+
+\emph{Key specialization:} When the connection is flat ($\Omega = 0$), as with the Gauss--Manin connection (Hodge proof, Lemma~17), the connection piece vanishes and all spectral content lives in the base metric (Griffiths--Schmid).
+\end{definition}
+
+\begin{definition}[\v{C}ech Laplacian (Branch VII)]\label{def:Cech}
+$\Delta_p^{\check{C}}$ on $\check{C}^p(\mathcal{N}, \mathcal{F})$. Combinatorial, lives on the nerve $\mathcal{N}$. Developed in Branches VII--VIII. \emph{Known object---this branch relates operators (a)--(c) to (d).}
+\end{definition}
+
+\begin{definition}[Monodromy operator (Hodge proof)]\label{def:mono}
+Let $\{\gamma_1, \ldots, \gamma_r\}$ generate $\pi_1(M, s)$. Define
+\[
+M_\rho = \sum_{i=1}^r (\Hol_{\gamma_i} - I)^\dagger (\Hol_{\gamma_i} - I)
+\]
+acting on the fiber $H^{2p}(X, \mathbb{R})$. Positive semidefinite with $\ker(M_\rho) = \{\alpha : \Delta(\alpha) = 0\}$ (monodromy-fixed subspace). Spectral gap $\mu_1(M_\rho)$ measures algebraic/non-algebraic separation. \emph{New object for exact regime.}
+\end{definition}
+
+\begin{definition}[Yang--Mills Hessian (Poincar\'{e} proof)]\label{def:YMH}
+$\HYM = d^2\SYM/dA^2$ at a critical point $A_{\mathrm{crit}}$, acting on $\Omega^1(M, \mathrm{ad}\,P)/\ker(d_A^*)$ (tangent directions modulo gauge). For flat $A_{\mathrm{crit}}$: $\HYM$ equals the Hodge Laplacian on adjoint-bundle-valued 1-forms via Bochner--Weitzenb\"{o}ck. Eigenvalues govern stability under Davis--Wilson Flow. \emph{Key object for gauge-theoretic regime.}
+\end{definition}
+
+
+%% =====================================================
+\section{Setup: The Davis Manifold as a Spectral Object}
+\label{sec:setup}
+%% =====================================================
+
+Let $(M, g)$ be the \emph{Davis manifold}---a compact connected Riemannian manifold where points $x \in M$ are world states $W$, the metric $g$ encodes semantic/structural distance, and curvature $\hat{K}$ measures geometric complexity.
+
+\textbf{Compactness.} For finite completion problems (finite constraint set, bounded configuration space), $M$ is compact. The parent works with finite nerves, so this is natural.
+
+\subsection{Notation and Conventions}
+
+Three spectral gaps appear throughout, associated with distinct operators on distinct spaces. All eigenvalues refer to the operator on \emph{functions} (0-forms) unless explicitly stated otherwise (the Hodge Laplacian $\Delta_p$ on $p$-forms appears only in SP7 and SP4a):
+
+\begin{center}
+\begin{tabular}{clll}
+\toprule
+Symbol & Operator & Domain & Regime \\
+\midrule
+$\lambda_1$ & Laplace--Beltrami $\Delta_M$ & $C^\infty(M)$ & Approximate ($\tau > 0$) \\
+$\mu_1$ & Monodromy $M_\rho$ & $H^{2p}(X, \mathbb{R})$ & Exact ($\tau = 0$, Hodge) \\
+$\nu_1$ & Yang--Mills Hessian $\HYM$ & $\Omega^1(\mathrm{ad}\,P)/\text{gauge}$ & Gauge-theoretic \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In Section~\ref{sec:finite} (finite model), $\mu_k$ denotes graph Laplacian eigenvalues, overloading the notation for the monodromy operator. Context disambiguates: monodromy appears only in Sections~\ref{sec:foundational}--\ref{sec:cross}, graph eigenvalues only in Section~\ref{sec:finite}.
+
+\textbf{Sign convention.} $\Delta_M = -\operatorname{div}_g(\operatorname{grad}_g)$ is non-negative (geometer's convention). The heat equation is $(\partial_t + \Delta_M)u = 0$, giving $K_t = e^{-t\Delta_M}$ with eigenvalue expansion $\sum e^{-\lambda_k t}\varphi_k \otimes \varphi_k$. Varadhan's formula takes the form $\lim_{t \to 0^+}(-4t)\log K_t(x,y) = d(x,y)^2$.
+
+\textbf{Curvature convention.} The parameter $\kappa$ always denotes a \emph{sectional curvature scale}, entering through the Ricci bound $\Ric \ge (n-1)\kappa$. On a space form of constant sectional curvature $K_{\mathrm{sect}}$, we have $\Ric = (n-1)K_{\mathrm{sect}}$, so $\kappa = K_{\mathrm{sect}}$. The parent's $\hat{K}$ is identified with $\kappa$ in Corollary~\ref{cor:davis_recovery}.
+
+\subsection{The Davis Manifold}
+
+\begin{theorem}[Spectral Decomposition]\label{thm:spectral}
+The Laplace--Beltrami operator $\Delta_M$ on compact connected $(M,g)$ without boundary has discrete spectrum $0 = \lambda_0 < \lambda_1 \le \lambda_2 \le \cdots \to \infty$, eigenvalues of finite multiplicity, eigenfunctions $\{\varphi_k\}$ forming a complete orthonormal basis of $L^2(M, \dvol_g)$, with $\varphi_0 = 1/\sqrt{\Vol(M)}$.
+\end{theorem}
+
+\begin{proof}
+Standard. $\Delta_M$ is essentially self-adjoint on $C^\infty(M)$ with compact resolvent (Rellich--Kondrachov). The spectral theorem for compact self-adjoint operators yields the discrete decomposition. Strict positivity $\lambda_1 > 0$ follows from connectedness: $\Delta_M f = 0$ iff $f$ is constant. See Berger--Gauduchon--Mazet \cite{BGM} or Chavel \cite{Chavel}.
+\end{proof}
+
+\textbf{Convention.} Closed manifolds or Neumann boundary conditions (preserving $\lambda_0 = 0$).
+
+\begin{example}[VHS base (Hodge proof)]
+$(M, g) = (M, g_{\mathrm{GS}})$, the VHS base with Griffiths--Schmid metric (pullback from the period domain $D = G_\mathbb{R}/V$). A locally symmetric space with bounded sectional curvature $K_M \le K_D < \infty$ (Hodge proof, Theorem~16). For noncompact $M$, work inside a precompact finite-capacity window $W \subset M$ with Neumann conditions.
+\end{example}
+
+\begin{example}[Connection moduli (Poincar\'{e} proof)]
+The spectral object is the Yang--Mills Hessian on $\mathcal{B} = \mathcal{A}/\mathcal{G}$ (connections mod gauge) over a closed 3-manifold $M$. Davis--Wilson Flow $\partial A/\partial t = -d_A^* F_A$ is gradient descent on $\SYM = \int|F_A|^2$. At a flat critical point, the Hessian acts on $\Omega^1(M, \mathrm{ad}\,P)/\mathrm{gauge}$. Its spectrum determines stability, convergence rate, and the dimension of $\Mflat \cong \Hom(\pi_1, \mathrm{SU}(2))/\mathrm{SU}(2)$. The Cache Space Collapse (Poincar\'{e} proof, Theorem~8.4): $\pi_1 = 0 \implies \Mflat = \{\mathrm{pt}\} \implies$ no zero modes $\implies$ unique basin.
+\end{example}
+
+
+%% =====================================================
+\section{Foundational Results}
+\label{sec:foundational}
+%% =====================================================
+
+\subsection{SP1: The Completion Laplacian}
+
+\begin{definition}[Davis spectrum]
+$\Spec(M,g) = \{\lambda_k\}_{k \ge 0}$. Spectral gap: $\Delta_{\mathrm{sp}} := \lambda_1$.
+\end{definition}
+
+\textbf{Interpretation.}
+\begin{itemize}[nosep]
+\item $\lambda_0 = 0$: The uninformative zero mode (uniform prior over completions).
+\item $\lambda_1$: Rate at which the first nontrivial information mode decays under diffusion---the bottleneck of the completion problem.
+\item $\varphi_1$: Its nodal set $\{\varphi_1 = 0\}$ divides $M$ into two regions---the fundamental ``cut'' of the completion space.
+\end{itemize}
+
+\textbf{Status:} THEOREM (Theorem~\ref{thm:spectral}).
+
+
+\subsection{SP2: Spectral Completion Capacity}
+
+\textbf{Key dimensional analysis.} The parent has Conjecture~41.1: $\lambda_{\mathrm{consensus}} = 1 - \tau/(\hat{K} D^2)$, giving mixing time $T_{\mathrm{mix}} = O(\hat{K} D^2/\tau \cdot \log(1/\varepsilon))$. In spectral theory, $T_{\mathrm{mix}} \sim (1/\lambda_1)\log(\Vol/\varepsilon)$. Comparing:
+\[
+\frac{1}{\lambda_1} \sim \frac{\hat{K} D^2}{\tau} \qquad\Longrightarrow\qquad \lambda_1 \sim \frac{\tau}{\hat{K} D^2}.
+\]
+Therefore $C = \tau/\hat{K} = \lambda_1 D^2$.
+
+\begin{quote}
+\textbf{Central insight:} The Davis Law capacity $C = \tau/\hat{K}$ and the spectral capacity $\Csp = \lambda_1 D^2$ are related by a rigorous inequality: under $\Ric \ge (n-1)\kappa > 0$, $\tau/\hat{K}$ is a \emph{lower bound} on $\Csp$, with equality only on round spheres (Theorem~\ref{thm:SCE_curv} and Corollary~\ref{cor:strict}). Under $\Ric \ge 0$, the spectral capacity is equivalently characterized by the Cheeger constant (Theorem~\ref{thm:SCE}). The spectral branch reveals what the parent misses: bottleneck obstructions visible to the Cheeger constant but invisible to curvature.
+\end{quote}
+
+\begin{theorem}[Lichnerowicz, 1958 {\cite{Lichnerowicz}}]\label{thm:lich}
+If $\Ric \ge (n-1)\kappa$ for $\kappa > 0$, then $\lambda_1 \ge n\kappa$.
+\end{theorem}
+
+\begin{proof}
+Bochner's formula gives $\frac{1}{2}\Delta|\nabla f|^2 = |\nabla^2 f|^2 + \Ric(\nabla f, \nabla f) + \langle\nabla\Delta f, \nabla f\rangle$. Integrating for $f = \varphi_1$ with $\Delta\varphi_1 = \lambda_1\varphi_1$, the Ricci bound and Cauchy--Schwarz ($|\nabla^2 f|^2 \ge (\Delta f)^2/n$) yield $\lambda_1 \ge n\kappa$.
+\end{proof}
+
+\begin{theorem}[Li--Yau/Zhong--Yang, 1980/1984 {\cite{LiYau}}]\label{thm:liyau}
+If $\Ric \ge 0$ on compact $M$ with diameter $D$, then $\lambda_1 \ge \pi^2/D^2$.
+\end{theorem}
+
+\begin{proof}
+Li--Yau \cite{LiYau} proved $\lambda_1 \ge \pi^2/(4D^2)$ via gradient estimates on $\log\varphi_1$. Zhong--Yang sharpened to $\pi^2/D^2$ using a refined maximum principle on $|\nabla\varphi_1|^2 + h(\varphi_1)$ for an auxiliary function $h$. Sharp: equality on $S^1$.
+\end{proof}
+
+\begin{corollary}\label{cor:capacity_lower}
+Defining the spectral capacity $\Csp := \lambda_1 D^2$, for $\Ric \ge 0$:
+\[
+\Csp \ge \pi^2.
+\]
+\end{corollary}
+
+\begin{proof}
+Immediate from Theorem~\ref{thm:liyau}: $\lambda_1 D^2 \ge (\pi^2/D^2)\cdot D^2 = \pi^2$.
+\end{proof}
+
+\begin{theorem}[Cheng, 1975 {\cite{Cheng}}]\label{thm:cheng}
+$\lambda_1 \le \lambda_1(S^n_\kappa, D)$: comparison with model spaces of constant curvature $\kappa$ gives sharp upper bounds.
+\end{theorem}
+
+\begin{proof}
+If $\Ric \ge (n-1)\kappa$, Bishop--Gromov volume comparison gives $\lambda_1(M) \le \lambda_1(B_\kappa(D/2))$ where $B_\kappa(D/2)$ is the geodesic ball of radius $D/2$ in the space form of curvature $\kappa$, with Dirichlet boundary. See \cite{Cheng}, Theorem~1.
+\end{proof}
+
+\begin{theorem}[Spectral Capacity Equivalence --- Non-negative Ricci]\label{thm:SCE}
+Let $(M^n, g)$ be a compact connected $n$-dimensional Riemannian manifold without boundary, with $\Ric \ge 0$ and diameter $D$. Define:
+\begin{align}
+\Csp &:= \lambda_1 D^2 \tag{spectral capacity} \\
+C_{\mathrm{iso}} &:= h(M)^2 D^2 \tag{isoperimetric capacity}
+\end{align}
+where $h(M)$ is the Cheeger constant (Definition~\ref{def:cheeger}). Then:
+\begin{enumerate}[nosep, label=(\alph*)]
+\item \textbf{Universal lower bound:} $\Csp \ge \pi^2$, with equality on $S^1$.
+\item \textbf{Isoperimetric equivalence:} $\tfrac{1}{4}\,C_{\mathrm{iso}} \le \Csp \le c_B(n)\,C_{\mathrm{iso}}$,
+
+where $c_B(n)$ is the dimension-dependent Buser constant from Theorem~\ref{thm:cheeger}.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+\emph{Part~(a):} Theorem~\ref{thm:liyau} gives $\lambda_1 \ge \pi^2/D^2$. Sharpness: on $S^1$ of circumference $L$, $\lambda_1 = (2\pi/L)^2$, $D = L/2$, so $\Csp = (2\pi/L)^2 \cdot (L/2)^2 = \pi^2$.
+
+\emph{Part~(b), lower bound:} Cheeger (Theorem~\ref{thm:cheeger}): $\lambda_1 \ge h^2/4$, hence $\Csp \ge C_{\mathrm{iso}}/4$.
+
+\emph{Part~(b), upper bound:} Buser \cite{Buser} for $\Ric \ge -(n-1)\kappa$ gives $\lambda_1 \le 2(n-1)\kappa + c(n)h\sqrt{\kappa} + c_B(n)h^2$. Setting $\kappa = 0$: $\lambda_1 \le c_B(n)h^2$, hence $\Csp \le c_B(n)\,C_{\mathrm{iso}}$. The constant $c_B(n)$ is explicit and dimension-dependent; Buser's original proof gives $c_B(n) \le 4(n-1) + 10$. For fixed dimension, $c_B$ is a computable constant.
+\end{proof}
+
+\begin{theorem}[Curvature Capacity Bounds --- Positive Ricci]\label{thm:SCE_curv}
+Let $(M^n, g)$ additionally satisfy $\Ric \ge (n-1)\kappa$ for some $\kappa > 0$, where $\kappa$ has the dimension of (sectional curvature). Define:
+\[
+C_{\mathrm{curv}} := n\kappa D^2. \tag{curvature capacity}
+\]
+Then:
+\begin{enumerate}[nosep, label=(\alph*)]
+\setcounter{enumi}{2}
+\item \textbf{Curvature lower bound:} $\Csp \ge C_{\mathrm{curv}}$, with equality if and only if $M$ is isometric to the round $n$-sphere $S^n(1/\sqrt{\kappa})$.
+\item \textbf{Curvature upper bound:} $\Csp \le \lambda_1^D(M^n_\kappa, D/2)\cdot D^2$, where $\lambda_1^D(M^n_\kappa, D/2)$ is the first Dirichlet eigenvalue of the geodesic ball of radius $D/2$ in the simply connected space form $M^n_\kappa$ of constant sectional curvature $\kappa$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+\emph{Part~(c):} Lichnerowicz (Theorem~\ref{thm:lich}): $\lambda_1 \ge n\kappa$, hence $\Csp \ge n\kappa D^2 = C_{\mathrm{curv}}$.
+
+Sharpness and rigidity: On the round $S^n$ of radius $r = 1/\sqrt{\kappa}$, sectional curvature $= \kappa$, so $\Ric = (n-1)\kappa$. By Obata \cite{Obata}: $\lambda_1 = n\kappa$, and $D = \pi/\sqrt{\kappa}$, giving $\Csp = n\kappa \cdot \pi^2/\kappa = n\pi^2 = C_{\mathrm{curv}}$. Moreover, Obata's rigidity theorem states that $\lambda_1 = n\kappa$ \emph{if and only if} $M$ is isometric to $S^n(1/\sqrt{\kappa})$. Hence the equality case is sharp and exclusive.
+
+\emph{Part~(d):} Cheng \cite{Cheng}, Theorem~1: $\lambda_1(M) \le \lambda_1^D(M^n_\kappa, D/2)$, where $\lambda_1^D$ denotes the first Dirichlet eigenvalue of the geodesic ball of radius $D/2$ in the space form of sectional curvature $\kappa$. The Dirichlet boundary condition is essential: this is a ball comparison, not a closed-manifold comparison.
+\end{proof}
+
+\begin{corollary}[Strict inequality via Obata rigidity]\label{cor:strict}
+If $\Ric \ge (n-1)\kappa > 0$ and $M$ is \emph{not} isometric to $S^n(1/\sqrt{\kappa})$, then $C_{\mathrm{curv}} < \Csp$ strictly. In particular, the parent's curvature-based capacity $C = \tau/\hat{K}$ strictly underestimates the spectral capacity for every positively curved manifold that is not a round sphere.
+\end{corollary}
+
+\begin{proof}
+Obata rigidity (Theorem~\ref{thm:SCE_curv}(c)): $\lambda_1 = n\kappa$ iff $M \cong S^n(1/\sqrt{\kappa})$. If $M \not\cong S^n$, then $\lambda_1 > n\kappa$ strictly, so $\Csp > C_{\mathrm{curv}}$.
+\end{proof}
+
+\begin{corollary}[Recovery of the Davis Law]\label{cor:davis_recovery}
+When $\Ric \ge (n-1)\kappa > 0$, the parent framework's $C = \tau/\hat{K}$ is the curvature capacity under the identification $\hat{K} = \kappa$ and $\tau = n D^2$:
+\[
+\frac{\tau}{\hat{K}} = n\kappa D^2 = C_{\mathrm{curv}} \le \Csp = \lambda_1 D^2.
+\]
+\end{corollary}
+
+\begin{proof}
+Theorem~\ref{thm:SCE_curv}(c).
+\end{proof}
+
+\begin{remark}[On the identification $\tau = nD^2$]\label{rem:tau}
+The identification $\hat{K} = \kappa$ (Ricci lower-bound parameter) is forced by Lichnerowicz. The identification $\tau = nD^2$ is then the \emph{unique choice} making $\tau/\hat{K} = C_{\mathrm{curv}}$ match with equality on $S^n$. However, this is a dimensional-analysis identification, not a derivation from the parent's tolerance budget. The parent defines $\tau$ as a tolerance parameter for constraint satisfaction; why $\tau$ should equal $nD^2$ in physical terms remains an open modeling question.
+\end{remark}
+
+\begin{remark}[Where bottleneck obstructions live]\label{rem:bottleneck}
+Under $\Ric \ge (n-1)\kappa > 0$, Myers' theorem constrains $D \le \pi/\sqrt{\kappa}$, and the Cheeger constant is bounded below by a function of $\kappa$, $n$, and $D$. This means positive Ricci curvature \emph{prevents} extreme bottleneck degeneration---topology is already constrained. The isoperimetric equivalence (Theorem~\ref{thm:SCE}(b)) is most informative in the $\Ric \ge 0$ regime, where bottlenecks \emph{can} form freely while curvature stays non-negative. Example: a flat torus $T^n$ with a constriction has $\kappa = 0$ (so $C_{\mathrm{curv}}$ is undefined/zero), but $\Csp$ and $C_{\mathrm{iso}}$ still detect the bottleneck. The spectral gap captures topology; curvature capacity does not---but this distinction is sharpest when curvature is non-negative, not when it is strictly positive.
+\end{remark}
+
+\begin{remark}[What the theorem does not say]\label{rem:notunique}
+Theorem~\ref{thm:SCE} does \emph{not} prove that $\lambda_1 D^2$ is the ``unique'' invariant governing completion capacity. It proves that $\lambda_1 D^2$ is a \emph{natural} invariant: characterized up to dimension-dependent constants by three independent geometric quantities (eigenvalue, bottleneck width, Ricci curvature), satisfying a universal lower bound, and recovering the parent's capacity in the constant-curvature limit. The identification with ``completion capacity'' is a modeling choice justified by this characterization, not a uniqueness theorem over all possible invariants.
+\end{remark}
+
+\textbf{Status:} THEOREMS (\ref{thm:SCE}, \ref{thm:SCE_curv}) + COROLLARIES (\ref{cor:strict}, \ref{cor:davis_recovery}).
+
+
+\subsection{SP2e: Exact Spectral Capacity ($\tau = 0$ Regime)}
+
+\textbf{Motivation.} The Hodge proof operates at $\tau = 0$, where $C = \tau/\hat{K}$ degenerates.
+
+\textbf{Setup.} Each exact constraint $\mathcal{C}_i$ defines a closed submanifold of $M$. Spectrally, the constraint acts as a \emph{projection}: it kills all eigenmodes not compatible with $\mathcal{C}_i$.
+
+\begin{proposition}[Spectral Transversality]\label{prop:trans}
+Let $\mathcal{C}_1, \ldots, \mathcal{C}_m$ be smooth closed submanifolds of compact $(M,g)$ intersecting transversally. Set $S_{\mathrm{valid}} = \bigcap_i \mathcal{C}_i$. Then:
+\begin{enumerate}[nosep, label=(\roman*)]
+\item If $\sum_i \operatorname{codim}(\mathcal{C}_i) < \dim(M)$, then $S_{\mathrm{valid}}$ is a smooth submanifold of dimension $\dim(M) - \sum_i\operatorname{codim}(\mathcal{C}_i)$, and $\Delta_{S_{\mathrm{valid}}}$ has a discrete spectrum with $\lambda_0 = 0$ (if $S_{\mathrm{valid}}$ is connected).
+\item If $\sum_i \operatorname{codim}(\mathcal{C}_i) \ge \dim(M)$, then $S_{\mathrm{valid}}$ is a discrete (possibly empty) set of points, and the notion of continuous spectrum is vacuous---the ``Laplacian'' acts on a finite-dimensional space.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+Part~(i): By the transversality theorem, $S_{\mathrm{valid}}$ is a smooth submanifold of dimension $n - \sum\operatorname{codim}(\mathcal{C}_i)$. The induced metric $g|_{S_{\mathrm{valid}}}$ makes it a compact Riemannian manifold, so Theorem~\ref{thm:spectral} applies. Part~(ii): Transversal intersection of submanifolds with total codimension $\ge n$ in an $n$-manifold is generically a $0$-dimensional manifold (discrete point set) by dimension counting. This is standard differential topology (Guillemin--Pollack, Theorem~1.35).
+\end{proof}
+
+\begin{conjecture}[Exact Spectral Capacity]\label{conj:exact}
+In the exact regime, the spectral capacity is:
+\[
+\Cexact = \dim(M) - \sum_i \operatorname{codim}(\mathcal{C}_i),
+\]
+recovering T3e's codimension count. The connection to the approximate regime: as $\tau \to 0$,
+\[
+e^{-\lambda_k/\tau} \to \mathbf{1}_{\{\lambda_k = 0\}},
+\]
+so smooth exponential suppression hardens into eigenspace projection.
+\end{conjecture}
+
+\textbf{Hodge application.} The constraints $(R)$, $(T)$, $(HR)$, $(M)$ from the Hodge proof project onto subspaces: $(R)$ onto $H^{2p}(X, \mathbb{Q})$, $(T)$ onto $H^{p,p}$, $(HR)$ via positivity, $(M)$ onto $\ker(M_\rho)$. These four projections compose to give a zero-dimensional solution set (spectral restatement of Hodge proof, Theorem~33).
+
+\textbf{Status:} PROPOSITION (\ref{prop:trans}) + CONJECTURE (\ref{conj:exact}).
+
+
+\subsection{SP3: The Heat Kernel of Completion}
+
+\begin{definition}[Heat kernel]
+$K_t(x, y) = \sum_{k \ge 0} e^{-\lambda_k t}\,\varphi_k(x)\,\varphi_k(y)$. Fundamental solution of $(\partial_t + \Delta_M)u = 0$.
+\end{definition}
+
+\begin{theorem}[Heat kernel properties]\label{thm:heat}
+$K_t(x,y) > 0$, $K_t(x,y) = K_t(y,x)$, $\int_M K_t(x,y)\dvol(y) = 1$, and $K_{t+s} = K_t * K_s$ (semigroup).
+\end{theorem}
+
+\begin{proof}
+Positivity: the parabolic maximum principle (or Harnack inequality). Symmetry: self-adjointness of $\Delta_M$. Conservation: $\Delta_M 1 = 0$ implies $e^{-t\Delta_M}1 = 1$. Semigroup: $e^{-t\Delta_M}e^{-s\Delta_M} = e^{-(t+s)\Delta_M}$. Standard; see \cite{Chavel}, Chapter~VI.
+\end{proof}
+
+\textbf{Asymptotics.}
+\begin{itemize}[nosep]
+\item \emph{Varadhan's formula \cite{Varadhan}:} $\lim_{t \to 0^+}(-4t)\log K_t(x,y) = d_g(x,y)^2$. The heat kernel recovers Riemannian distance.
+\item \emph{Short-time (Minakshisundaram--Pleijel):} $K_t(x,x) \sim (4\pi t)^{-n/2}\bigl(1 + R(x)t/6 + \cdots\bigr)$ where $R$ is scalar curvature.
+\item \emph{Long-time:} $K_t(x,y) \sim e^{-\lambda_1 t}\,\varphi_1(x)\,\varphi_1(y)$. Dominated by the spectral gap.
+\end{itemize}
+
+\begin{definition}[Time-dependent completion capacity]
+\[
+C(t) = \tau \cdot \operatorname{tr}(e^{-t\Delta_M}) = \tau \sum_{k \ge 0} e^{-\lambda_k t} = \tau \int_M K_t(x,x)\dvol(x).
+\]
+\end{definition}
+
+This interpolates: $C(0) \to \infty$ (all modes active), $C(\infty) \to \tau$ (zero mode only).
+
+\begin{conjecture}[Heat kernel completion dynamics]\label{conj:heatdyn}
+$C(t)$ refines D2 (Learning--Completion Tradeoff). The parent's $C_{\mathrm{dyn}} = \tau/(\hat{K} + \eta T)$ corresponds to the single-eigenvalue approximation $C(t) \approx \tau \cdot e^{-\lambda_1 t}$ for $t = \eta T$. The full spectral sum captures transient dynamics invisible to the parent.
+\end{conjecture}
+
+\textbf{Status:} THEOREM (\ref{thm:heat}) + CONJECTURE (\ref{conj:heatdyn}).
+
+
+\subsection{SP4: The Cheeger--Davis Inequality}
+
+\begin{definition}[Cheeger constant]\label{def:cheeger}
+\[
+h(M) = \inf_\Omega \frac{\Vol_{n-1}(\partial\Omega)}{\min\bigl(\Vol_n(\Omega),\, \Vol_n(M \setminus \Omega)\bigr)},
+\]
+infimum over all smooth dividing hypersurfaces $\partial\Omega$. The infimum is achieved by a (possibly singular) minimizer in the class of sets of finite perimeter (by compactness in BV; see Federer, 1969).
+\end{definition}
+
+\begin{theorem}[Cheeger 1970 {\cite{Cheeger}}; Buser 1982 {\cite{Buser}}]\label{thm:cheeger}
+\[
+\frac{h^2}{4} \le \lambda_1 \qquad\text{(Cheeger)}, \qquad
+\lambda_1 \le 2(n-1)\kappa + c(n)\,h\sqrt{\kappa} + c_B(n)\,h^2 \quad\text{when } \Ric \ge -(n-1)\kappa \text{ (Buser)}.
+\]
+For $\Ric \ge 0$ (setting $\kappa = 0$): $h^2/4 \le \lambda_1 \le c_B(n)\,h^2$, where $c_B(n)$ is an explicit dimension-dependent constant (Buser's original proof gives $c_B(n) \le 4(n-1) + 10$).
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Cheeger lower bound: for any domain $\Omega$ with $\Vol(\Omega) \le \Vol(M)/2$, the co-area formula gives $\int_\Omega|\nabla f|\dvol \ge h\int_\Omega|f|\dvol$. Applying to the Fiedler eigenfunction $\varphi_1$ on its positive set and squaring yields $\lambda_1 \ge h^2/4$. Buser upper bound: construct a test function supported near the Cheeger cut and estimate its Rayleigh quotient using Ricci comparison and volume doubling. The dimension dependence of $c_B(n)$ arises from Bishop--Gromov volume comparison. See \cite{Cheeger}, \cite{Buser}.
+\end{proof}
+
+\textbf{Interpretation.} The Cheeger constant $h(M)$ measures the \emph{narrowest bottleneck} in the completion space---the minimum information throughput across any cut.
+
+\begin{conjecture}[Cheeger--Davis Inequality]\label{conj:cheeger}
+Completion capacity satisfies $\tau h^2 D^2/4 \le C \le \tau\bigl(c(n)\kappa + c_B(n)h^2\bigr)D^2$.
+\end{conjecture}
+
+\textbf{Key prediction:} A Davis manifold can have low curvature everywhere (parent predicts high capacity) yet still have low completion capacity if it has a narrow bottleneck. The spectral theory captures this; the parent framework does not.
+
+\begin{example}[Bottleneck manifold, $\Ric \ge 0$ regime]
+Two flat disks connected by a thin tube of radius $r$ (smooth, with $\Ric \ge 0$ everywhere via appropriate rounding). Parent: $\hat{K} \approx 0$, so $C$ is large. Spectral: $h \approx \pi r^2/\Vol(\text{disk}) \to 0$ as $r \to 0$, so $\lambda_1 \to 0$ and $\Csp \to 0$. The problem is hard not because of curvature but because of the isoperimetric bottleneck. This example cannot be realized under $\Ric > 0$ (Myers' theorem would prevent the degeneration).
+\end{example}
+
+\textbf{Status:} THEOREM (\ref{thm:cheeger}) + CONJECTURE (\ref{conj:cheeger}).
+
+
+\subsection{SP5: Weyl's Law for Completions}
+
+\begin{theorem}[Weyl, 1911 {\cite{Weyl}}]\label{thm:weyl}
+The eigenvalue counting function satisfies
+\[
+N(\lambda) := \#\{k : \lambda_k \le \lambda\} \sim \frac{\omega_n}{(2\pi)^n}\,\Vol(M)\,\lambda^{n/2} \qquad\text{as } \lambda \to \infty,
+\]
+where $\omega_n$ is the volume of the unit $n$-ball. Equivalently: $\lambda_k \sim (2\pi)^2\bigl(k/(\omega_n \Vol(M))\bigr)^{2/n}$.
+\end{theorem}
+
+\begin{proof}
+The Dirichlet--Neumann bracketing technique: partition $M$ into small cubes, bound eigenvalue counts by Dirichlet (above) and Neumann (below) counts on cubes, and take the mesh to zero. See \cite{Weyl} or Chavel \cite{Chavel}, Chapter~VI.
+\end{proof}
+
+\textbf{Interpretation.} Volume and dimension can be ``heard'' from the spectrum. The counting function $N(\lambda)$ counts completion modes below energy $\lambda$---the effective complexity at scale $\lambda$.
+
+\begin{conjecture}[Spectral Complexity Function]\label{conj:weyl}
+The density of states $\rho(\lambda) = dN/d\lambda$ is the mode density of the completion problem. The effective dimensionality $n_{\mathrm{eff}} = 2\lim(\log N)/(\log\lambda)$ characterizes the problem independently of coordinates. This connects to Kac's question: the spectrum determines $\Vol$, $\dim$, and total scalar curvature---but not the isometry class (Milnor, 1964).
+\end{conjecture}
+
+\textbf{Status:} THEOREM (\ref{thm:weyl}) + CONJECTURE (\ref{conj:weyl}).
+
+
+\subsection{SP6: Spectral Consensus Convergence}
+
+\begin{theorem}[Spectral Mixing]\label{thm:mix}
+For heat kernel diffusion on compact $(M,g)$:
+\[
+T_{\mathrm{mix}}(\varepsilon) \le \frac{1}{\lambda_1}\log\frac{\Vol(M)}{\varepsilon}.
+\]
+\end{theorem}
+
+\begin{proof}
+$\|K_t(x, \cdot) - \Vol^{-1}\|_{L^2}^2 = \sum_{k \ge 1}e^{-2\lambda_k t}\varphi_k(x)^2 \le e^{-2\lambda_1 t}\sum_{k \ge 1}\varphi_k(x)^2 = e^{-2\lambda_1 t}(K_0(x,x) - \Vol^{-1})$. By Cauchy--Schwarz, $\|K_t(x,\cdot) - \Vol^{-1}\|_{L^1} \le \sqrt{\Vol}\cdot\|K_t(x,\cdot) - \Vol^{-1}\|_{L^2}$. Setting the right side $\le \varepsilon$ gives $t \ge (2\lambda_1)^{-1}\log(\Vol/\varepsilon^2)$.
+\end{proof}
+
+\begin{conjecture}[Spectral Consensus Refinement]\label{conj:consensus}
+The parent's mixing time (Conjecture~41.1) is a corollary with $\lambda_1 \sim \tau/(\hat{K}D^2)$. The spectral version is tighter:
+\begin{enumerate}[nosep, label=(\alph*)]
+\item Bottleneck manifolds: spectral $T_{\mathrm{mix}} \gg$ parent's estimate.
+\item Uniformly curved manifolds: spectral $T_{\mathrm{mix}} \approx$ parent's estimate.
+\item High-dimensional spheres: spectral $T_{\mathrm{mix}}$ can be $n\times$ smaller (many diffusion directions).
+\end{enumerate}
+\end{conjecture}
+
+\textbf{Comparison.} On $S^n(r)$: $\hat{K} = 1/r^2$, $D = \pi r$, $\lambda_1 = n/r^2$ (Obata, sharp). For a flat bottleneck manifold (two flat regions joined by a narrow passage, $\Ric \ge 0$ everywhere): the spectral bound correctly captures the passage bottleneck via the Cheeger constant, while the parent's curvature-based estimate (with $\hat{K} \approx 0$) cannot detect it. (Note: this bottleneck example lives in the $\Ric \ge 0$ regime, not the $\Ric > 0$ regime; see Remark~\ref{rem:bottleneck}.)
+
+\textbf{Status:} THEOREM (\ref{thm:mix}) + CONJECTURE (\ref{conj:consensus}).
+
+
+\subsection{SP7: The Bochner--Weitzenb\"{o}ck Identity}
+
+\begin{theorem}[Bochner--Weitzenb\"{o}ck]\label{thm:bochner}
+On $(M,g)$, the Hodge Laplacian on 1-forms satisfies:
+\[
+\Delta_1 \omega = \nabla^*\nabla\omega + \Ric(\omega).
+\]
+\end{theorem}
+
+\begin{proof}
+Direct computation in normal coordinates: $(\Delta_1\omega)_i = (d\delta + \delta d)(\omega)_i = -\nabla^j\nabla_j\omega_i + R_{ij}\omega^j$. The first term is $(\nabla^*\nabla\omega)_i$ and the second is $\Ric(\omega)_i$. See Warner, \emph{Foundations of Differentiable Manifolds and Lie Groups}, Theorem~6.25.
+\end{proof}
+
+\begin{corollary}[Bochner Vanishing]\label{cor:bochner}
+$\Ric > 0$ on compact $M$ implies $H^1_{\mathrm{dR}}(M) = 0$.
+\end{corollary}
+
+\begin{proof}
+If $\omega$ is harmonic ($\Delta_1\omega = 0$), then $0 = \langle\nabla^*\nabla\omega, \omega\rangle + \langle\Ric(\omega), \omega\rangle = \|\nabla\omega\|^2 + \int\Ric(\omega, \omega)\dvol$. Both terms are non-negative (the second by $\Ric > 0$), so $\nabla\omega = 0$ and $\Ric(\omega, \omega) = 0$, forcing $\omega = 0$.
+\end{proof}
+
+\textbf{Connection to Branch VII.} $\check{H}^1(\mathcal{N}, \mathcal{F})$ classifies obstructions to completion. By de Rham--\v{C}ech isomorphism, $H^1_{\mathrm{dR}}(M) \cong \check{H}^1$. Bochner vanishing: $\Ric > 0 \implies$ no first-order obstructions. On a positively curved Davis manifold, every local completion extends globally.
+
+\begin{conjecture}[Bochner--Davis Vanishing]\label{conj:bochner}
+$\Ric > 0$ implies the completion problem has no first-order obstruction. Quantitatively: if $\Ric \ge (n-1)\kappa > 0$, the first nonzero eigenvalue of $\Delta_1$ satisfies $\lambda_1^{(1)} \ge 2\kappa$ (Gallot--Meyer), giving an obstruction gap.
+\end{conjecture}
+
+\textbf{Flat connection specialization (Hodge application).} When the connection is flat ($\Omega = 0$), as with Gauss--Manin (Hodge proof, Lemma~17), Bochner--Weitzenb\"{o}ck simplifies to $\Delta_H = \nabla^*\nabla + R_{\mathrm{base}}$, where $R_{\mathrm{base}}$ involves only the Griffiths--Schmid curvature of the VHS base $M$. All spectral content is determined by the base geometry alone.
+
+\textbf{Status:} THEOREM (\ref{thm:bochner}, \ref{cor:bochner}) + CONJECTURE (\ref{conj:bochner}).
+
+
+\subsection{SP8: The Spectral Zeta Function}
+
+\begin{definition}[Spectral zeta function]
+$\zeta_M(s) = \sum_{k \ge 1} \lambda_k^{-s}$, convergent for $\operatorname{Re}(s) > n/2$.
+\end{definition}
+
+\begin{theorem}[Seeley 1967; Minakshisundaram--Pleijel 1949]\label{thm:zeta}
+$\zeta_M(s)$ extends meromorphically to $\mathbb{C}$, regular at $s = 0$. The functional determinant is $\det'(\Delta_M) = \exp(-\zeta'_M(0))$.
+\end{theorem}
+
+\begin{proof}
+The Mellin transform $\zeta_M(s) = \Gamma(s)^{-1}\int_0^\infty t^{s-1}(\operatorname{tr}(e^{-t\Delta}) - 1)dt$ converges for $\operatorname{Re}(s) > n/2$. The short-time heat trace asymptotics (Theorem~\ref{thm:heattrace}) provide the pole structure needed for meromorphic continuation. Regularity at $s = 0$ follows from the asymptotic expansion having no $t^0$ log-term. See Seeley, \emph{Complex powers of an elliptic operator}, Proc.\ Sympos.\ Pure Math.\ 10, 1967.
+\end{proof}
+
+\textbf{Connection to Branch VI.} The Mellin transform relates heat trace to zeta:
+\[
+\zeta_M(s) = \frac{1}{\Gamma(s)}\int_0^\infty t^{s-1}\bigl(\operatorname{tr}(e^{-t\Delta}) - 1\bigr)\,dt.
+\]
+Branch VI's partition function $Z(\beta)$ \emph{is} the heat trace under $\beta = t$, $E_k = \lambda_k$.
+
+\begin{conjecture}[Spectral Zeta as Complexity]\label{conj:zeta}
+$\det'(\Delta_M)$ encodes ``total difficulty'' and provides natural normalization for the Branch~VI partition function. $\zeta_M(n/2)$ measures regularized total complexity.
+\end{conjecture}
+
+\textbf{Status:} THEOREM (\ref{thm:zeta}) + CONJECTURE (\ref{conj:zeta}).
+
+
+\subsection{SP9: The Monodromy Operator Spectrum}
+
+\textbf{Motivation.} The Hodge proof's key discriminant $\Delta(\alpha) = \max_\gamma \|\Hol_\gamma(\alpha) - \alpha\|$ measures distance from the kernel of a family of operators. Figure~1 of the Hodge proof shows clean spectral separation between $\Delta \approx 0$ (algebraic) and $\Delta > 0$ (non-algebraic).
+
+\begin{definition}[Monodromy operator]\label{def:Mrho}
+$M_\rho = \sum_{i=1}^r (\Hol_{\gamma_i} - I)^\dagger(\Hol_{\gamma_i} - I)$ on $H^{2p}(X, \mathbb{R})$.
+\end{definition}
+
+\textbf{Properties.}
+
+\begin{lemma}\label{lem:Mrho_psd}
+$M_\rho$ is positive semidefinite with $\ker(M_\rho) = \{\alpha \in H^{2p}(X, \mathbb{R}) : \Hol_{\gamma_i}(\alpha) = \alpha \text{ for all } i\}$.
+\end{lemma}
+
+\begin{proof}
+$\langle M_\rho\alpha, \alpha\rangle = \sum_{i=1}^r \|(\Hol_{\gamma_i} - I)\alpha\|^2 \ge 0$. Equality holds iff each summand vanishes, i.e., $\Hol_{\gamma_i}\alpha = \alpha$ for all generators $\gamma_i$, which (since $\{\gamma_i\}$ generate $\pi_1$) is equivalent to $\alpha$ being monodromy-invariant. This is the kernel condition $\Delta(\alpha) = 0$ from the Hodge proof.
+\end{proof}
+
+\begin{definition}[Monodromy spectral gap]
+$\mu_1(M_\rho) := \min\{\text{eigenvalues of } M_\rho \text{ on } \ker(M_\rho)^\perp\}$.
+\end{definition}
+
+\begin{conjecture}[Quantitative T1e]\label{conj:quantT1e}
+$\Delta(\alpha) \ge \sqrt{\mu_1}\cdot d(\alpha, \ker(M_\rho))$. Larger $\mu_1$ means sharper separation and more robust uniqueness.
+\end{conjecture}
+
+\begin{conjecture}[Monodromy Gap Universality]\label{conj:monouniv}
+For smooth projective varieties $X$ with semisimple monodromy, $\mu_1(M_\rho) \ge c(h^{p,q}) > 0$, depending only on Hodge numbers. This gives a uniform stability bound for the Hodge conjecture across varieties with fixed Hodge type.
+\end{conjecture}
+
+\textbf{Interpretation.} The Hodge proof's Figure~1 \emph{is} the monodromy spectrum: green dots ($\Delta \approx 0$) lie in $\ker(M_\rho)$; red dots lie in eigenspaces with eigenvalue $\ge \mu_1$. The clean gap in the figure is $\mu_1$.
+
+\textbf{Status:} CONJECTURES (\ref{conj:quantT1e}, \ref{conj:monouniv}).
+
+
+\subsection{SP10: Yang--Mills Hessian and Flow Convergence}
+
+\textbf{Motivation.} The Poincar\'{e} proof's Cache Space Collapse (Theorem~8.4) is fundamentally a spectral uniqueness statement: on $\pi_1 = 0$, the Yang--Mills Hessian at vacuum has no zero modes beyond gauge.
+
+\begin{definition}[Yang--Mills Hessian at a critical point]
+Let $A_{\mathrm{crit}}$ be a Yang--Mills critical point ($d_A^* F_A = 0$) on a closed 3-manifold $M$ with $G = \mathrm{SU}(2)$:
+\[
+\HYM(A_{\mathrm{crit}}) := \frac{d^2 \SYM}{dA^2}\bigg|_{A_{\mathrm{crit}}}
+\]
+acting on $\Omega^1(M, \mathrm{ad}\,P)/\ker(d_A^*)$.
+\end{definition}
+
+\begin{theorem}[Bourguignon--Lawson, 1981]\label{thm:BL}
+For a flat connection $A_{\mathrm{flat}}$: $\HYM(A_{\mathrm{flat}}) = \Delta_1^{\mathrm{ad}}$ (Hodge Laplacian on adjoint-valued 1-forms). By Bochner--Weitzenb\"{o}ck: $\Delta_1^{\mathrm{ad}} = \nabla^*\nabla + \Ric$, with the adjoint curvature term vanishing at flatness.
+\end{theorem}
+
+\begin{proof}
+At a flat critical point, $F_A = 0$, so the second variation $\delta^2\SYM = \int|d_A\alpha|^2 + \int|d_A^*\alpha|^2 = \langle\alpha, (d_Ad_A^* + d_A^*d_A)\alpha\rangle = \langle\alpha, \Delta_1^{\mathrm{ad}}\alpha\rangle$ modulo gauge directions. The Bochner identity $\Delta_1^{\mathrm{ad}} = \nabla^*\nabla + \Ric + [F_A, \cdot]$ reduces to $\nabla^*\nabla + \Ric$ at flatness. See Bourguignon--Lawson, \emph{Stability and isolation phenomena for Yang--Mills fields}, Comm.\ Math.\ Phys.\ 79, 1981.
+\end{proof}
+
+\textbf{Spectral classification (Davis Trichotomy restated).}
+\begin{itemize}[nosep]
+\item \textbf{Type I} ($\pi_1 = 0$): $\Mflat = \{\text{vacuum}\}$. $\HYM$ has no zero modes. Spectral gap $\nu_1 > 0$. Flow converges exponentially at rate $\nu_1$.
+\item \textbf{Type IIa} (torsion $\pi_1$): $\Mflat$ is isolated points. $\HYM$ gapped at each flat connection. Multiple basins with energy barriers (Master Lemma).
+\item \textbf{Type IIb} (infinite abelian $\pi_1$): $\Mflat$ has positive dimension. $\HYM$ has zero modes tangent to $\Mflat$. Flow converges to $\Mflat$ but not to a unique point.
+\item \textbf{Type III} (infinite non-abelian $\pi_1$): Non-flat Yang--Mills critical points exist. $\HYM$ may have negative eigenvalues (saddles). Genus obstruction.
+\end{itemize}
+
+\begin{conjecture}[Spectral Cache Space Collapse]\label{conj:cache}
+For $\pi_1(M) = 0$: $\nu_1(\HYM(\text{vacuum})) \ge c(M) > 0$ where $c(M)$ depends on geometry (volume, curvature bounds). Convergence rate: $\SW(t) \le \SW(0)\cdot e^{-2\nu_1 t}$.
+\end{conjecture}
+
+\begin{conjecture}[Spectral Genus Obstruction]\label{conj:genus}
+For $\Sigma_g \times S^1$ (Poincar\'{e} proof, PC-012 data), the distance from vacuum scales as $\nu_1^{-1}(g)$ where $\nu_1(g)$ decreases with genus $g$. Experimental: $\mathrm{dist} = 3 \times 10^{-6}$ for $g = 0$, increasing to $0.031$ for $g = 3$.
+\end{conjecture}
+
+\textbf{Connection to SP7.} At flat vacuum, $\HYM = \nabla^*\nabla + \Ric$. Bochner vanishing ($\Ric > 0 \implies$ no harmonic 1-forms) gives $\nu_1 > 0$. For $S^3$: $\Ric = 2g$ (round), giving $\nu_1 \ge 2$---consistent with fast convergence in PC-001.
+
+\textbf{Connection to SP9.} $M_\rho$ (fibers, Hodge) and $\HYM$ (connections, Poincar\'{e}) play structurally identical roles: both are positive semidefinite with spectral gap governing ``trivial vs.\ non-trivial'' separation.
+
+\textbf{Status:} THEOREM (\ref{thm:BL}) + CONJECTURES (\ref{conj:cache}, \ref{conj:genus}).
+
+
+%% =====================================================
+\section{Extended Results}
+\label{sec:extended}
+%% =====================================================
+
+\subsection{SP1a: Li--Yau Heat Kernel Bounds}
+
+\begin{theorem}[Li--Yau {\cite{LiYau}}]\label{thm:liyau2}
+$\Ric \ge -(n-1)\kappa$ implies $K_t(x,y) \le \frac{C(n)}{\Vol(B(x,\sqrt{t}))}\exp\bigl(-d^2/(5t) + C\kappa t\bigr)$.
+\end{theorem}
+
+\begin{proof}
+Gradient estimate on $\log K_t$, then integration along a minimal geodesic. The factor $1/5$ can be improved to $1/(4+\varepsilon)$; see Li--Yau \cite{LiYau}, Theorem~1.
+\end{proof}
+
+\begin{conjecture}\label{conj:liyau}
+Completion information at distance $d$ decays like $\exp(-d^2/5t)$. Refines T4 (Reasoning Fidelity).
+\end{conjecture}
+
+\subsection{SP2a: Eigenvalue Perturbation Under Metric Change}
+
+\begin{theorem}[Berger, 1971]\label{thm:perturb}
+$d\lambda_k/d\varepsilon\big|_{\varepsilon=0} = -\int_M (\delta g)(\nabla\varphi_k, \nabla\varphi_k)\dvol_g$ for $g_\varepsilon = g + \varepsilon h$.
+\end{theorem}
+
+\begin{proof}
+Differentiate the eigenvalue equation $\Delta_{g_\varepsilon}\varphi_k^\varepsilon = \lambda_k^\varepsilon\varphi_k^\varepsilon$ with respect to $\varepsilon$ at $\varepsilon = 0$, using $\langle\varphi_k, \varphi_k\rangle = 1$. The variation of $\Delta_g$ under $g \mapsto g + \varepsilon h$ involves only the gradient term. See Berger \cite{BGM}, Chapter~III.
+\end{proof}
+
+\begin{conjecture}\label{conj:perturb}
+Spectral learning tradeoff: safe condition $|d\lambda_1/dt| < \lambda_1/T$ gives spectral safe learning rate tighter than D2.
+\end{conjecture}
+
+\subsection{SP3a: Spectral Clustering and Basin Detection}
+
+\begin{theorem}[Courant, 1923]\label{thm:courant}
+$\varphi_k$ has at most $k+1$ nodal domains.
+\end{theorem}
+
+\begin{proof}
+Assume $\varphi_k$ has $k+2$ nodal domains. Construct a function orthogonal to $\varphi_0, \ldots, \varphi_{k-1}$ supported on at most $k+1$ of these domains. Its Rayleigh quotient is at most $\lambda_k$ by the min-max principle, contradicting the zero Dirichlet boundary condition on the remaining domain. See Courant--Hilbert, \emph{Methods of Mathematical Physics}, Chapter~VI.
+\end{proof}
+
+\begin{conjecture}\label{conj:nodal}
+Nodal domains of $\varphi_1$ are the two main completion basins. Higher eigenfunctions subdivide further. Spectral embedding recovers basin structure of T1.
+\end{conjecture}
+
+\subsection{SP4a: Hodge--\v{C}ech Spectral Comparison}
+
+\begin{theorem}[de Rham--Hodge--\v{C}ech]\label{thm:deRham}
+$H^p_{\mathrm{dR}}(M) \cong \check{H}^p(\mathcal{U}, \mathbb{R}) \cong \ker(\Delta_p^{\mathrm{Hodge}}) \cong \ker(\Delta_p^{\check{C}})$. Kernels are isomorphic.
+\end{theorem}
+
+\begin{proof}
+de Rham: sheaf-theoretic (fine resolution of $\underline{\mathbb{R}}$ by $\Omega^*$). Hodge: harmonic representatives on compact $(M,g)$. \v{C}ech--de Rham: partition of unity on a good cover. Standard; see Warner, \emph{Foundations}, Chapters~5--6.
+\end{proof}
+
+\begin{conjecture}\label{conj:cech}
+Nonzero spectra satisfy $c_1 \lambda_k^{\check{C}} \le \lambda_k^{\mathrm{Hodge}} \le c_2 \lambda_k^{\check{C}}$ where $c_1, c_2$ depend on cover quality. Bridges Branch~VII to Branch~IX.
+\end{conjecture}
+
+\subsection{SP5a: Heat Trace Asymptotics}
+
+\begin{theorem}[Minakshisundaram--Pleijel, 1949]\label{thm:heattrace}
+$\operatorname{tr}(e^{-t\Delta}) \sim (4\pi t)^{-n/2}\sum_k a_k t^k$ with $a_0 = \Vol(M)$, $a_1 = \frac{1}{6}\int R\dvol$, $a_2 = \frac{1}{360}\int(5R^2 - 2|\Ric|^2 + 2|\mathrm{Rm}|^2)\dvol$.
+\end{theorem}
+
+\begin{proof}
+Parametrix construction: the heat kernel on $M$ is $K_t = K_t^{\mathrm{flat}} + \text{corrections}$. Expanding the corrections in powers of $t$ and integrating over the diagonal gives the $a_k$ in terms of curvature invariants. See Berger--Gauduchon--Mazet \cite{BGM}, Chapter~III.E.
+\end{proof}
+
+\begin{conjecture}\label{conj:heattrace}
+Heat coefficients form a hierarchy of completion invariants: $a_0$ (size), $a_1$ (total complexity), $a_2$ (curvature heterogeneity).
+\end{conjecture}
+
+\subsection{SP6a: Poincar\'{e} Inequality and Completion Stability}
+
+\begin{theorem}[Poincar\'{e} Inequality]\label{thm:poincare}
+$\int|f - \bar{f}|^2 \le (1/\lambda_1)\int|\nabla f|^2$.
+\end{theorem}
+
+\begin{proof}
+Expand $f = \sum c_k\varphi_k$. Then $f - \bar{f} = \sum_{k\ge 1}c_k\varphi_k$ and
+\[
+\int|f - \bar{f}|^2 = \sum_{k\ge 1}c_k^2 \le \frac{1}{\lambda_1}\sum_{k\ge 1}\lambda_k c_k^2 = \frac{1}{\lambda_1}\int|\nabla f|^2. \qedhere
+\]
+\end{proof}
+
+\begin{conjecture}\label{conj:stability}
+Variance of completion quality $\le (1/\lambda_1) \times$ gradient energy. Small $\lambda_1 \to$ unstable completions. Large $\lambda_1 \to$ robust completions. Spectral stability certificate.
+\end{conjecture}
+
+\subsection{SP7a: Spectral Gap and Diameter}
+
+\begin{theorem}[Li--Yau/Zhong--Yang + Cheng {\cite{LiYau, Cheng}}]\label{thm:gapdiameter}
+$\Ric \ge 0$ implies $\pi^2/D^2 \le \lambda_1 \le C(n)/D^2$.
+\end{theorem}
+
+\begin{proof}
+Lower bound: Theorem~\ref{thm:liyau}. Upper bound: Theorem~\ref{thm:cheng} applied with $\kappa = 0$.
+\end{proof}
+
+\begin{conjecture}\label{conj:gapdiameter}
+Spectral gap bracketed by diameter gives capacity bounds: $\pi^2\tau \le C \cdot \hat{K} \le C(n)\tau$.
+\end{conjecture}
+
+
+%% =====================================================
+\section{Cross-Synthesis with Other Branches}
+\label{sec:cross}
+%% =====================================================
+
+\subsection{Branches VI--VIII}
+
+\textbf{Y1: Spectral Partition Function = Branch~VI Partition Function.}
+$\operatorname{tr}(e^{-t\Delta})$ \emph{is} $Z(\beta)$ under $\beta = t$, $E_k = \lambda_k$. All Branch~VI thermodynamics have spectral interpretations. Phase transition at $\Gamma = 1$ corresponds to $\lambda_1 \to 0$.
+
+\textbf{Y2: \v{C}ech Spectrum vs Hodge Spectrum (Branch~VII).}
+Same kernels (Betti numbers), different nonzero spectra. The discrepancy measures how well the nerve approximates the manifold spectrally.
+
+\textbf{Y3: Spectral Truncation as RG (Branch~VIII).}
+Keep eigenmodes $\lambda_k < \Lambda$. Decreasing $\Lambda$ = increasing $\ell$ (coarser resolution). C-theorem: $\operatorname{tr}(e^{-t\Delta^{(\ell)}}) \le \operatorname{tr}(e^{-t\Delta})$ via eigenvalue interlacing.
+
+\textbf{Y4: Heat Kernel as Transformer Attention.}
+$K_t(x,y) = \sum e^{-\lambda_k t}\varphi_k(x)\varphi_k(y)$ has the structure of attention: query $= x$, key $= y$, heads $= \varphi_k$, decay $= \lambda_k$, depth $= t$.
+
+\textbf{Y5: Spectral Gap Bounds Safe Learning Rate.}
+From SP2a: $|d\lambda_1/dt| < \lambda_1/T$ gives $\|\partial g/\partial t\| < \lambda_1/(T\|\nabla\varphi_1\|^2)$. Tighter than D2 because it uses the actual bottleneck.
+
+\textbf{Y6: Spectral Determinant as Complexity.}
+$\det'(\Delta)$ appears in one-loop path integrals. Natural normalization for Branch~VI partition function.
+
+\textbf{Y7: Bochner Vanishing $\to$ Sheaf Obstruction Vanishing (Branch~VII).}
+$\Ric > 0 \implies H^1_{\mathrm{dR}} = 0 \implies \check{H}^1$ trivial for good covers. Spectral certificate for the determined regime.
+
+\textbf{Y8: Weyl Counting $\to$ Trichotomy.}
+$\Gamma > 1$: eigenvalue density exceeds constraint count $\to$ determined.
+$\Gamma = 1$: critical. $\Gamma < 1$: underdetermined.
+
+\textbf{Y9: Spectral Flow $\to$ Dynamic Trichotomy.}
+Under learning $g(t)$, eigenvalues $\lambda_k(t)$ flow. $\lambda_1(t)$ crossing zero = passing through criticality.
+
+\textbf{Y10: Spectral Fingerprint.}
+$\{\lambda_k\}$ (or heat coefficients $\{a_k\}$) = coordinate-independent fingerprint. Natural notion of ``problem equivalence.''
+
+\subsection{Hodge Proof}
+
+\textbf{Y11: Spectral Certificate for Hodge Conjecture.}
+The spectral gap $\lambda_1(M, g_{\mathrm{GS}})$ combined with $\mu_1(M_\rho)$ provides a quantitative version of Hodge Theorem~33: convergence to the unique algebraic class is exponential with rate $\min(\lambda_1, \mu_1)$.
+
+\textbf{Y12: Heat Kernel on VHS Base = Hodge Information Diffusion.}
+$K_t(s_1, s_2)$ on $(M, g_{\mathrm{GS}})$ describes Hodge-theoretic information propagation. Short-time: local Hodge structure (curvature). Long-time: global algebraicity (spectral gap). The heat kernel interpolates between ``local Hodge theory'' and ``global algebraicity''---the conceptual arc of the Hodge proof.
+
+\textbf{Y13: Exact--Approximate Spectral Duality.}
+The $\tau > 0$ regime (heat kernel) and $\tau = 0$ regime (eigenspace projection) are connected by $\tau \to 0$:
+\[
+e^{-\lambda_k/\tau} \to \mathbf{1}_{\{\lambda_k = 0\}}.
+\]
+SP2 ($C = \lambda_1 D^2$) and SP2e ($\Cexact = \text{codim count}$) are limits of a single spectral capacity function $C(\tau) = \sum_k e^{-\lambda_k/\tau}$. The Hodge proof lives at $\tau = 0$; the Sudoku/consensus applications live at $\tau > 0$.
+
+\textbf{Y14: Monodromy Gap as Spectral Trichotomy Discriminant.}
+$\mu_1 > 0$ (gap open): determined, unique algebraic realization. $\mu_1 = 0$ (gap closed): critical/underdetermined. Gap closing corresponds to VHS degeneration---the boundary cases where the Hodge conjecture is hardest (HC-002/003).
+
+\subsection{Poincar\'{e} Proof}
+
+\textbf{Y15: Davis--Wilson Flow Rate = Yang--Mills Spectral Gap.}
+Convergence rate of $\SW(t)$ to vacuum is exponential with rate $2\nu_1$. Simply connected manifolds: $\nu_1 > 0$ (no zero modes). $T^3$: $\nu_1 = 0$ on flat moduli (zero modes from $\dim\Mflat = 3$). The Ricci--Wilson correlation $\rho = 0.959$ (PC-001) reflects the spectral correspondence.
+
+\textbf{Y16: Davis Trichotomy as Yang--Mills Spectral Classification.}
+\begin{itemize}[nosep]
+\item Type I: $\HYM$ purely positive (gapped) $\to$ unique vacuum.
+\item Type IIa: gapped at each isolated flat point $\to$ discrete basins (lens spaces).
+\item Type IIb: continuous zero modes $\to$ positive-dimensional $\Mflat$.
+\item Type III: negative eigenvalues possible $\to$ saddle points.
+\end{itemize}
+This unifies Y8 (Weyl $\to$ parent trichotomy), Y14 (monodromy $\to$ Hodge trichotomy), and the Poincar\'{e} trichotomy into a single spectral framework.
+
+\textbf{Y17: Fixed Point Correspondence as Spectral Isomorphism.}
+Einstein metrics (Ricci Flow fixed points) correspond to Yang--Mills connections (Davis--Wilson fixed points). Spectrally: $\lambda_1(\text{Lichnerowicz})$ on symmetric 2-tensors $\leftrightarrow$ $\nu_1(\HYM)$ on 1-forms. For 3-manifolds (Einstein $=$ constant curvature), this is the spectral content of the Davis--Poincar\'{e} dictionary.
+
+
+%% =====================================================
+\section{Finite-Model Anchor: Shidoku}
+\label{sec:finite}
+%% =====================================================
+
+All results are grounded in a computable finite model: the Shidoku ($4 \times 4$ Sudoku) solution graph. Every computation reported below was performed on an NVIDIA GeForce RTX~5070 GPU using PyTorch CUDA, with full results archived in machine-readable JSON.\footnote{Source code and data: \texttt{shidoku\_spectral.py}, \texttt{shidoku\_spectral\_results.json}, available in the Branch~IX validation directory.}
+
+\subsection{Graph Construction}
+
+The Shidoku constraint system requires each row, column, and $2 \times 2$ block of a $4 \times 4$ grid to contain $\{1,2,3,4\}$ exactly once. Exhaustive enumeration yields exactly $\tau = 288$ valid completions (vertices).
+
+\textbf{Adjacency.} Two solutions are adjacent when they differ in the minimum possible number of cells. The Shidoku constraint structure is tight: the minimum Hamming distance between any two distinct solutions is~4 (no pair differs in fewer than 4 cells). The Hamming distance histogram over all $\binom{288}{2} = 41{,}328$ pairs is:
+
+\begin{center}
+\begin{tabular}{l*{9}{r}}
+\toprule
+Hamming distance & 4 & 7 & 8 & 10 & 12 & 13 & 14 & 15 & 16 \\
+\midrule
+Pairs & 768 & 1536 & 1824 & 7680 & 13440 & 3072 & 7680 & 1536 & 3792 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+This gives a graph $G = (V, E)$ with $|V| = 288$, $|E| = 768$, degree range $[4, 8]$, mean degree $\bar{d} = 16/3 \approx 5.33$. The graph is connected ($1$ connected component). The graph Laplacian is $L = D - A$ where $D = \operatorname{diag}(\deg(v))$ and $A$ is the adjacency matrix (combinatorial, unnormalized). The diameter $D_G$ is the graph-theoretic diameter (maximum shortest-path length).
+
+
+\subsection{Spectrum}
+
+The full eigendecomposition $L = V \Lambda V^T$ was computed via \texttt{torch.linalg.eigh} on GPU (0.194\,s wall time). Key spectral data:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\toprule
+Quantity & Value \\
+\midrule
+Spectral gap $\mu_1$ & $0.70849738$ \\
+$\mu_1$ multiplicity & 2 \\
+$\mu_2$ & $1.10102051$ (multiplicity 12) \\
+$\mu_{\max} = \mu_{287}$ & $12.000000$ \\
+$\mu_1/\mu_{\max}$ & $0.05904$ \\
+$d_{\max}$ & 8 \\
+$d_{\min}$ & 4 \\
+Diameter $D$ & 8 \\
+\bottomrule
+\end{tabular}
+\caption{Spectral summary of the Shidoku solution graph ($n = 288$).}
+\label{tab:spectrum}
+\end{table}
+
+The eigenvalue distribution exhibits pronounced plateaus: $\mu_{1\text{--}2} \approx 0.709$ (doublet), $\mu_{3\text{--}14} \approx 1.101$ (12-fold degenerate), then a sequence of higher multiplets up to $\mu_{\max} = 12$. These degeneracies reflect the symmetry group of the Shidoku constraint system (row/column/block permutations and digit relabeling). The Fiedler vector $\varphi_1$ partitions the 288 vertices into two nodal domains (145 positive, 143 negative, 32 near-zero), consistent with the Courant nodal domain theorem ($\le 2$ domains for $\varphi_1$).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{shidoku_spectral.pdf}
+\caption{Branch~IX spectral diagnostics for the Shidoku solution graph. Top row: eigenvalue spectrum (first~50), eigenvalue distribution with $\mu_1$ marked, and time-dependent completion capacity $C(t)/\tau = \operatorname{tr}(e^{-tL})$ on log scale. Middle row: Weyl counting function $N(\mu)$, log-log Weyl law fit (slope $= n_{\mathrm{eff}}/2$), and Cheeger inequality verification. Bottom row: full spectrum on log scale (14 orders of magnitude), single-mode approximation $1 + 2e^{-\mu_1 t}$ vs.\ actual heat trace, and summary panel.}
+\label{fig:spectral}
+\end{figure}
+
+
+\subsection{Graph-Theoretic Preliminaries}
+
+The continuous theory of Sections~\ref{sec:foundational}--\ref{sec:extended} lives on Riemannian manifolds; the finite model uses graph Laplacians. The following lemmas establish the discrete analogs that make the verifications in subsequent subsections well-defined.
+
+\begin{lemma}[Discrete Cheeger inequality {\cite{AlonMilman, Dodziuk}}]\label{lem:graph_cheeger}
+Let $G = (V, E)$ be a connected graph with graph Laplacian $L = D - A$ and maximum degree $d_{\max}$. Define the graph Cheeger constant
+\[
+h_G = \min_{\substack{S \subset V \\ 0 < |S| \le |V|/2}} \frac{|\partial(S, V\setminus S)|}{\min(|S|,\, |V\setminus S|)},
+\]
+where $|\partial(S, V\setminus S)|$ counts edges between $S$ and its complement. Then
+\[
+\frac{h_G^2}{2\,d_{\max}} \;\le\; \mu_1 \;\le\; 2\,h_G\cdot d_{\max},
+\]
+where $\mu_1$ is the smallest positive eigenvalue of $L$.
+\end{lemma}
+
+\begin{proof}
+The lower bound follows from the discrete co-area formula applied to the Fiedler eigenvector: $\mu_1 = \min_{f \perp \mathbf{1}} \sum_{(i,j)\in E}(f_i - f_j)^2/\sum_i d_i f_i^2$, and the Cheeger constant bounds the numerator from below. The upper bound uses a test vector supported on the optimal Cheeger cut. This is the graph analog of Theorem~\ref{thm:cheeger}; see Alon--Milman \cite{AlonMilman} and Dodziuk \cite{Dodziuk}.
+\end{proof}
+
+\begin{lemma}[Graph heat kernel distance decay]\label{lem:graph_varadhan}
+Let $G$ be a connected graph with Laplacian $L$ and eigendecomposition $L = V\Lambda V^T$. Define the graph heat kernel
+\[
+K_t(i,j) = (e^{-tL})_{ij} = \sum_k e^{-\mu_k t}\varphi_k(i)\varphi_k(j).
+\]
+For small $t > 0$, $K_t(i,j)$ is a decreasing function of graph distance: if $d_G(i,j) < d_G(i,j')$, then $K_t(i,j) > K_t(i,j')$.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+$K_t = e^{-tL} = \sum_{m=0}^\infty (-tL)^m/m!$. Since $(-L)^m_{ij} = 0$ whenever $d_G(i,j) > m$, the leading nonzero term in $K_t(i,j)$ is $O(t^{d_G(i,j)})$. For small $t$, this geometric suppression dominates, giving strict distance monotonicity. This is the graph analog of Varadhan's formula: both express the principle that short-time heat flow is concentrated near the source.
+\end{proof}
+
+\begin{remark}[Graph-to-manifold convergence]\label{rem:convergence}
+The finite model is a graph, not a Riemannian manifold. For families of increasingly fine graphs approximating a manifold (e.g., $\varepsilon$-neighborhood graphs on point clouds), the graph Laplacian eigenvalues converge to the Laplace--Beltrami eigenvalues as $\varepsilon \to 0$ and $|V| \to \infty$ (Belkin--Niyogi, 2007; von Luxburg--Belkin--Bousquet, 2008). The Shidoku graph is a \emph{fixed} finite model, not a mesh refinement limit, so convergence theorems do not directly apply. The verifications below test structural properties (monotonicity, inequalities, correlations) that hold for both graph and continuous Laplacians, rather than numerical convergence of eigenvalues to a continuous limit.
+\end{remark}
+
+
+\subsection{Graph Spectral Capacity Equivalence}
+
+The following is the graph-theoretic analog of Theorem~\ref{thm:SCE}, with explicit verification on the Shidoku graph.
+
+\begin{theorem}[Graph Spectral Capacity Equivalence]\label{thm:graph_SCE}
+Let $G = (V, E)$ be a connected graph with $n = |V|$ vertices, maximum degree $d_{\max}$, graph Laplacian $L = D - A$, spectral gap $\mu_1 > 0$, Cheeger constant $h_G$, and diameter $D_G$. Define:
+\begin{align}
+\Csp^G &:= \mu_1 D_G^2, \tag{graph spectral capacity} \\
+C_{\mathrm{iso}}^G &:= h_G^2 D_G^2. \tag{graph isoperimetric capacity}
+\end{align}
+Then:
+\begin{enumerate}[nosep, label=(\alph*)]
+\item \textbf{Isoperimetric equivalence:} $\displaystyle\frac{C_{\mathrm{iso}}^G}{2\,d_{\max}} \le \Csp^G \le 2\,d_{\max}\cdot C_{\mathrm{iso}}^G$.
+\item \textbf{Diameter lower bound:} $\Csp^G \ge 1/D_G$ (from the path graph bound $\mu_1 \ge 1/(nD_G)$ for $n$-vertex graphs).
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+Part~(a) follows from the discrete Cheeger inequality (Lemma~\ref{lem:graph_cheeger}): $h_G^2/(2d_{\max}) \le \mu_1 \le 2h_G d_{\max}$. Multiplying by $D_G^2$ gives the result. Part~(b): the Fiedler bound $\mu_1 \ge 2(1-\cos(\pi/n))/d_{\max} \ge 2\pi^2/(n^2 d_{\max})$ combined with $D_G \le n-1$ gives a lower bound; the simpler $\mu_1 \ge 1/(nD_G)$ from electrical resistance bounds suffices.
+\end{proof}
+
+\textbf{Shidoku verification.} With $n = 288$, $d_{\max} = 8$, $D_G = 8$, $h_G = 0.8889$, and $\mu_1 = 0.70850$:
+\[
+\underbrace{\frac{0.8889^2 \cdot 64}{16}}_{= 3.16} \;\le\; \underbrace{0.70850 \cdot 64}_{= 45.34} \;\le\; \underbrace{16 \cdot 0.8889^2 \cdot 64}_{= 809.5}. \qquad\checkmark
+\]
+The ratio $\Csp^G / C_{\mathrm{iso}}^G = 45.34 / 50.57 = 0.897$, so the spectral and isoperimetric capacities agree to within $11\%$---far tighter than the theoretical factor of $2d_{\max} = 16$. This reflects the regularity of the Shidoku graph (low degree variance, high symmetry).
+
+
+\subsection{Bipartite Structure and Completion Count Decomposition}\label{sec:bipartite}
+
+The Shidoku graph possesses a structural property not assumed in the general theory: it is \emph{bipartite}. This leads to the strongest results in the branch---an exact decomposition of completion counts and a spectral localization theorem that is new.
+
+\begin{theorem}[Bipartite Structure of the Shidoku Graph]\label{thm:bipartite}
+The Shidoku solution graph $G = (V, E)$ is bipartite semiregular. Specifically, $V = A \sqcup B$ with:
+\begin{enumerate}[nosep, label=(\roman*)]
+\item $|A| = 192$, $\deg(v) = 4$ for all $v \in A$;
+\item $|B| = 96$, $\deg(v) = 8$ for all $v \in B$;
+\item Every edge connects a vertex in $A$ to a vertex in $B$.
+\end{enumerate}
+Consequently, $\mu_{\max} = d_A + d_B = 12$, and the top eigenvector $\varphi_{n-1}$ takes exactly two values: $\varphi_{n-1}|_A = -1/\sqrt{24 \cdot 8} = -1/(8\sqrt{3})$ and $\varphi_{n-1}|_B = 1/\sqrt{24 \cdot 4} = 1/(4\sqrt{6})$ (up to global sign), with the eigenvalue $\mu_{\max} = 12$.
+\end{theorem}
+
+\begin{proof}
+Direct computation on the 288-vertex graph. The bipartiteness is verified by checking that all 768 edges cross the partition induced by $\operatorname{sign}(\varphi_{n-1})$ ($100\%$ crossing edges). Semiregularity: all 192 vertices in $A$ have degree 4, all 96 in $B$ have degree 8. For a bipartite semiregular graph, $\mu_{\max} = d_A + d_B$ is standard (see e.g.\ Brouwer--Haemers, \S3.3).
+\end{proof}
+
+\begin{remark}[Algebraic origin of the bipartition]
+The bipartition $V = A \sqcup B$ arises from the symmetry group of the Shidoku puzzle. The 288 solutions form orbits under the Shidoku automorphism group (row/column/symbol permutations preserving constraint structure), and the bipartition respects this action. The combinatorial characterization of which solutions belong to $A$ vs.\ $B$ is left as an open question; the spectral computation detects the partition without requiring its combinatorial description.
+\end{remark}
+
+The bipartite structure leads to an exact decomposition of completion counts into spectral data.
+
+\begin{definition}[Hamming shells]
+For $v \in V$, the \emph{Hamming shell} of radius $d$ is $S_d(v) = \{w \in V : d_H(v, w) = d\}$, where $d_H$ is the Hamming distance on the 16-cell grid.
+\end{definition}
+
+\begin{theorem}[Completion Count Decomposition]\label{thm:decomp}
+Let $G = (V, E)$ be the solution graph of an $\ncells$-cell constraint satisfaction problem, with Hamming distance spectrum $\mathcal{D} = \{d : \exists\, v, w \in V,\; d_H(v, w) = d\}$. For the \emph{expected completion count} at removal level $k$ (the expected number of valid completions when $k$ of $\ncells$ cells are removed uniformly at random):
+\begin{equation}\label{eq:decomp}
+N_k(v) \;=\; \sum_{d \in \mathcal{D}} |S_d(v)| \cdot p(d, k),
+\end{equation}
+where $p(d, k) = \binom{\ncells - d}{k - d}\Big/\binom{\ncells}{k}$ is the probability that all $d$ differing cells are among the $k$ removed.
+\end{theorem}
+
+\begin{proof}
+Fix a solution $v$ and a random mask $M \subset \{1, \ldots, \ncells\}$ with $|M| = k$ (removed cells). A solution $w$ matches $v$ on the kept cells iff every position where $v$ and $w$ differ is in $M$. If $d_H(v, w) = d$, the probability that all $d$ specific differing positions lie in $M$ is $\binom{\ncells - d}{k - d}/\binom{\ncells}{k}$. Summing over all $w$ and grouping by Hamming distance gives \eqref{eq:decomp}.
+\end{proof}
+
+\begin{corollary}[Degree Approximation]\label{cor:degree_approx}
+The leading variable term of $N_k(v)$ is the degree contribution:
+\[
+N_k(v) = \bar{N}_k + (\deg(v) - \bar{d})\cdot p(d_{\min}, k) + \varepsilon_k(v),
+\]
+where $\bar{N}_k = \tfrac{1}{n}\sum_v N_k(v)$, $\bar{d}$ is the mean degree, $d_{\min}$ is the minimum nonzero Hamming distance, and $\varepsilon_k(v)$ collects higher-shell corrections. On the Shidoku graph, the Pearson correlation between $N_k$ and $\deg$ is $r = 1.000$ for $k \in \{6, 8, 10, 12\}$, so $\varepsilon_k$ is constant across vertices---the degree approximation is \emph{exact} up to a constant.
+\end{corollary}
+
+\begin{proof}
+Expand \eqref{eq:decomp}: $N_k(v) = \sum_d |S_d(v)| \cdot p(d,k) = 1 + \deg(v) \cdot p(d_{\min}, k) + \sum_{d > d_{\min}} |S_d(v)| \cdot p(d,k)$. On the Shidoku graph, the bipartite structure forces all $|S_d(v)|$ to depend only on which class $v \in \{A, B\}$ belongs to, so $|S_d(v)| = \alpha_d + \beta_d \cdot \mathbf{1}_B(v)$ for constants $\alpha_d$, $\beta_d$. Since $\deg(v) = 4 + 4 \cdot \mathbf{1}_B(v)$, every Hamming shell is an affine function of degree, making $\varepsilon_k$ constant.
+\end{proof}
+
+\begin{lemma}[Spectral polarity of semiregular bipartite graphs]\label{lem:spectral_polarity}
+Let $G = (V, E)$ be a connected semiregular bipartite graph with partition $V = A \sqcup B$, where every vertex in $A$ has degree $d_A$ and every vertex in $B$ has degree $d_B$. Define $f \colon V \to \mathbb{R}$ by
+\[
+f(v) = \begin{cases} |B| & \text{if } v \in A, \\ -|A| & \text{if } v \in B. \end{cases}
+\]
+Then $f$ is an eigenvector of the combinatorial Laplacian $L = D - \mathcal{A}$ with eigenvalue $\mu_{\max} = d_A + d_B$. Consequently, any function that is constant on each side of the bipartition lies in $\operatorname{span}(\mathbf{1}, f) = \operatorname{span}(\mathbf{1}) \oplus \ker(L - \mu_{\max} I)$.
+\end{lemma}
+
+\begin{proof}
+Note $\sum_V f = |A| \cdot |B| - |B| \cdot |A| = 0$, so $f \perp \mathbf{1}$.
+
+For $v \in A$: all $d_A$ neighbors lie in $B$, so
+\[
+(Lf)(v) = d_A \cdot f(v) - \sum_{w \sim v} f(w) = d_A |B| - d_A(-|A|) = d_A(|A| + |B|).
+\]
+We need $(d_A + d_B)f(v) = (d_A + d_B)|B|$.  The semiregularity condition $d_A |A| = d_B |B|$ (edge counting) gives $d_A |A| = d_B |B|$, hence $d_A(|A| + |B|) = d_B |B| + d_A |B| = (d_A + d_B)|B|$. $\checkmark$
+
+For $v \in B$: all $d_B$ neighbors lie in $A$, so
+\[
+(Lf)(v) = d_B(-|A|) - d_B \cdot |B| = -d_B(|A| + |B|).
+\]
+We need $(d_A + d_B)f(v) = -(d_A + d_B)|A|$. Again by $d_A |A| = d_B |B|$: $d_B(|A| + |B|) = d_B |A| + d_A |A| = (d_A + d_B)|A|$. $\checkmark$
+
+That $d_A + d_B$ is the \emph{largest} eigenvalue follows from the bound $\mu_{\max} \le \max_{(u,v) \in E}(d_u + d_v) = d_A + d_B$ for bipartite graphs (cf.\ Anderson--Morley, 1985), with equality realized by $f$.
+\end{proof}
+
+\begin{theorem}[Spectral Localization of Completion Counts]\label{thm:spectral_loc}
+On the Shidoku graph, the centered completion count function $\tilde{N}_k = N_k - \bar{N}_k$ satisfies:
+\begin{enumerate}[nosep, label=(\alph*)]
+\item $\tilde{N}_k$ is an eigenvector of $L$ with eigenvalue $\mu_{\max} = 12$. In particular, $100\%$ of the spectral energy of $\tilde{N}_k$ lies in the top eigenspace.
+\item The Rayleigh quotient is $R(\tilde{N}_k) := \langle \tilde{N}_k, L\tilde{N}_k\rangle / \langle \tilde{N}_k, \tilde{N}_k\rangle = 12 = \mu_{\max}$ for all $k \ge d_{\min} = 4$.
+\item The Poincar\'{e} bound $\mu_1 \cdot \operatorname{Var}(N_k) \le \langle \tilde{N}_k, L\tilde{N}_k\rangle$ is satisfied with a factor of $\mu_{\max}/\mu_1 = 12/0.7085 = 16.94$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+By Corollary~\ref{cor:degree_approx}, $\tilde{N}_k$ is proportional to $\deg(v) - \bar{d}$, which is constant on each side of the bipartition. By Lemma~\ref{lem:spectral_polarity}, any such function lies in $\ker(L - \mu_{\max} I)$, so $L\tilde{N}_k = \mu_{\max}\,\tilde{N}_k$. Parts (b) and (c) are immediate.
+\end{proof}
+
+\textbf{Direct eigen-equation verification.} Writing $\tilde{N}_k = (a_c, a_c, \ldots, b_c, b_c, \ldots)$ with $a_c = N_k|_A - \bar{N}_k$ and $b_c = N_k|_B - \bar{N}_k$, the eigenvector equation reduces to two scalar equations: $d_A(a_c - b_c) = \mu_{\max} \cdot a_c$ and $d_B(b_c - a_c) = \mu_{\max} \cdot b_c$.  On both graphs (Shidoku and Latin square), these hold to $< 10^{-15}$ at every $k$, directly confirming $L \tilde{N}_k = \mu_{\max}\,\tilde{N}_k$ without passing through the eigenvector expansion. The consistency condition $d_A/d_B = |B|/|A|$ (Shidoku: $4/8 = 96/192$; Latin square: $4/12 = 144/432$) holds exactly.
+
+\begin{remark}[Dynamics vs.\ statics separation]\label{rem:separation}
+Theorem~\ref{thm:spectral_loc} reveals a separation between two roles of the spectrum:
+\begin{itemize}[nosep]
+\item $\mu_1$ controls \emph{dynamics}: mixing time $T_{\mathrm{mix}} \sim 1/\mu_1$, heat kernel equilibration, how fast a random walk spreads through the solution space. This is the content of the Spectral Capacity Equivalence (Theorems~\ref{thm:SCE}--\ref{thm:SCE_curv}).
+\item $\mu_{\max}$ controls \emph{statics}: how the completion count \emph{varies} across solutions. Adjacent solutions (Hamming distance $d_{\min} = 4$) can have very different completion counts, and this variation is maximally anti-diffusive ($R = \mu_{\max}$).
+\end{itemize}
+The spectral gap $\mu_1$ remains canonical for diffusion-based capacity (it controls how fast you \emph{find} completions by random search); but the completion count \emph{landscape} is governed by the opposite end of the spectrum.
+\end{remark}
+
+\textbf{Exhaustive verification.} The decomposition was verified by exact computation over \emph{all} $\binom{16}{k}$ masks at each removal level (no Monte Carlo sampling). For each $k$, $N_k(v)$ is exactly constant within each bipartition class:
+
+\begin{center}
+\begin{tabular}{cccccc}
+\toprule
+$k$ & Masks & $\bar{N}_k$ (Class $B$, deg 8) & $\bar{N}_k$ (Class $A$, deg 4) & $R(\tilde{N}_k)$ & $= \mu_{\max}$? \\
+\midrule
+4  & 1\,820 & 1.00440 & 1.00220 & 12.000 & Yes \\
+6  & 8\,008 & 1.06593 & 1.03297 & 12.000 & Yes \\
+8  & 12\,870 & 1.30878 & 1.16597 & 12.000 & Yes \\
+10 & 8\,008 & 1.98002 & 1.67732 & 12.000 & Yes \\
+12 & 1\,820 & 4.29890 & 4.10110 & 12.000 & Yes \\
+14 & 120 & 22.400 & 22.400 & --- & const. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Within-class standard deviation is $0$ to machine precision ($< 10^{-15}$) at every removal level. At $k = 14$ (only 2 cells given), the completion count becomes constant across \emph{both} classes---the bipartition distinction vanishes, as the 2-cell constraint is too weak to distinguish the two classes. For $k \le 12$, the completion count is a \emph{pure} function of bipartition class: all 288 vertices are classified into exactly two completion-count values by $\varphi_{n-1}$ alone.
+
+
+\subsection{Generalization: 4$\times$4 Latin Square Graph}\label{sec:latin}
+
+The bipartite structure and spectral localization are not artifacts of the Shidoku block constraint. Removing the block constraint entirely (keeping only row and column constraints) yields the $4 \times 4$ Latin square solution graph, which exhibits the \emph{identical} spectral phenomenon.
+
+\begin{theorem}[Latin Square Spectral Localization]\label{thm:latin_loc}
+The $4 \times 4$ Latin square solution graph $G_L = (V_L, E_L)$ with adjacency at minimum Hamming distance $d_{\min} = 4$ satisfies:
+\begin{enumerate}[nosep, label=(\roman*)]
+\item $|V_L| = 576$, $|E_L| = 1728$, connected, diameter $D_G = 6$.
+\item $G_L$ is bipartite semiregular: $V_L = A_L \sqcup B_L$ with $|A_L| = 432$ (all degree $4$) and $|B_L| = 144$ (all degree $12$).
+\item $\mu_{\max} = d_{A_L} + d_{B_L} = 16$, and $\mu_1 = 1.6754$ (multiplicity $\ge 29$).
+\item The degree function lives $100\%$ in the top eigenspace: $\deg - \bar{d}$ is proportional to $\varphi_{n-1}$.
+\item The expected completion count $N_k(v)$ is constant within each bipartition class (within-class std $= 0$ to machine precision) and satisfies $R(\tilde{N}_k) = \mu_{\max} = 16$ exactly, for all $k \in \{4, 6, 8, 10, 12\}$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+Exhaustive computation on all 576 vertices, verified by brute-force enumeration over all $\binom{16}{k}$ masks at $k = 4$ and $k = 8$ (agreement to $< 10^{-15}$). The Hamming shell decomposition (Theorem~\ref{thm:decomp}) gives the exact formula; bipartiteness is verified by checking that all 1728 edges cross the $\operatorname{sign}(\varphi_{n-1})$ partition ($100\%$ crossing).
+\end{proof}
+
+\textbf{Exact completion counts (Latin square).}
+
+\begin{center}
+\begin{tabular}{cccccc}
+\toprule
+$k$ & Masks & $\bar{N}_k$ (Class $B$, deg 12) & $\bar{N}_k$ (Class $A$, deg 4) & $R(\tilde{N}_k)$ & $= \mu_{\max}$? \\
+\midrule
+4  & 1\,820 & 1.00659 & 1.00220 & 16.000 & Yes \\
+6  & 8\,008 & 1.09890 & 1.03297 & 16.000 & Yes \\
+8  & 12\,870 & 1.46294 & 1.17762 & 16.000 & Yes \\
+10 & 8\,008 & 2.46553 & 1.87213 & 16.000 & Yes \\
+12 & 1\,820 & 6.25934 & 5.89890 & 16.000 & Yes \\
+14 & 120 & 41.600 & 41.600 & --- & const. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+Property & Shidoku & Latin Square \\
+\midrule
+Vertices $n$ & 288 & 576 \\
+Edges & 768 & 1728 \\
+Bipartite semiregular & Yes: $(d_A, d_B) = (4, 8)$ & Yes: $(d_A, d_B) = (4, 12)$ \\
+Class sizes $|A| : |B|$ & $192 : 96 = 2{:}1$ & $432 : 144 = 3{:}1$ \\
+$\mu_1$ & 0.7085 & 1.6754 \\
+$\mu_{\max} = d_A + d_B$ & 12 & 16 \\
+Diameter $D_G$ & 8 & 6 \\
+$\Csp = \mu_1 D_G^2$ & 45.34 & 60.32 \\
+$\deg$ in $\varphi_{n-1}$  & 100\% & 100\% \\
+$N_k$ in $\varphi_{n-1}$  & 100\% & 100\% \\
+$R(\tilde{N}_k) = \mu_{\max}$ & Yes (all $k$) & Yes (all $k$) \\
+$\rho(\varphi_1^2, N_k)$ & $\le 0.09$ (n.s.) & $\le 0.07$ (n.s.) \\
+\bottomrule
+\end{tabular}
+\caption{Comparison of spectral localization across two CSP graphs. Every structural property replicates exactly. The phenomenon is not specific to the Shidoku block constraint.}
+\label{tab:comparison}
+\end{table}
+
+\begin{remark}[Structural pattern]\label{rem:pattern}
+Two features are notable across both graphs:
+\begin{enumerate}[nosep, label=(\alph*)]
+\item The low-degree class is always the majority: $|A|/|B| = 2$ (Shidoku) and $|A|/|B| = 3$ (Latin square). In both cases, $|A| = (n-1)! / (n/4 - 1)!$ times the number of cosets under some symmetry group; the precise group-theoretic characterization remains open.
+\item The spectral gap $\mu_1$ \emph{increases} when the block constraint is removed ($0.71 \to 1.68$), because the graph becomes denser and better-connected. But the localization phenomenon ($R(\tilde{N}_k) = \mu_{\max}$) is preserved despite this spectral gap change. The localization depends on the \emph{bipartite structure}, not on the value of $\mu_1$.
+\end{enumerate}
+\end{remark}
+
+This generalization from one CSP graph to a second, structurally different CSP graph provides evidence that the dynamics/statics separation (Remark~\ref{rem:separation}) is a property of the CSP solution graph \emph{family}, not a coincidence of Shidoku symmetry.
+
+\begin{remark}[Class-constancy vs.\ spectral localization]\label{rem:adversarial}
+An adversarial robustness test on the Latin square graph clarifies the logical structure.  The partition $V_L = A_L \sqcup B_L$ is a property of the \emph{solution set}: changing the adjacency rule (e.g., connecting at $d_H = 7$, $d_H = 8$, or $d_H \in \{4,7\}$) does not change the partition, and $N_k(v)$ remains exactly constant within each class under every alternative graph.  However, spectral localization ($R(\tilde{N}_k) = \mu_{\max}$) holds \emph{only} when the graph is bipartite with respect to this partition.  Under the mixed-parity rule $d_H \in \{4,7\}$, the graph is connected ($\mu_1 = 10.14$) and the partition is equitable (each vertex in $A$ has 32 neighbors in $A$ and 4 in $B$; each vertex in $B$ has 12 in $A$ and 0 in $B$), but the graph is not bipartite, so $R(\tilde{N}_k) = 16 \neq \mu_{\max} = 52$.  The completion count still lives in \emph{an} eigenspace of the new Laplacian, but not the top one.
+
+This separates two claims:
+\begin{enumerate}[nosep, label=(\roman*)]
+\item \textbf{Class-constancy} (CSP-intrinsic): $N_k$ depends only on bipartition class.  This is a combinatorial property of the solution set, independent of graph structure.
+\item \textbf{Top-eigenspace localization} (graph-dependent): $\tilde{N}_k \in \ker(L - \mu_{\max} I)$.  This requires that the adjacency rule connect \emph{only} across the partition (bipartiteness).
+\end{enumerate}
+The $d_H = 4$ adjacency rule satisfies bipartiteness on both Shidoku and Latin square graphs, which is why Theorems~\ref{thm:spectral_loc} and~\ref{thm:latin_loc} hold.
+\end{remark}
+
+\begin{remark}[CSP zoo: necessity of semiregularity]\label{rem:csp_zoo}
+A broader adversarial survey across 14 CSP families sharpens the localization conditions.  Table~\ref{tab:csp_zoo} summarizes the findings.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrccccc}
+\toprule
+CSP & $n$ & Bip. & Semireg. & Conn. & deg-const & $R = \mu_{\max}$ \\
+\midrule
+4$\times$4 Latin square & 576 & \checkmark & \checkmark & \checkmark & all $k$ & all $k$ \\
+4$\times$4 Shidoku & 288 & \checkmark & \checkmark & \checkmark & all $k$ & all $k$ \\
+4$\times$4 reduced Latin & 24 & \checkmark & \checkmark & \checkmark & all $k$ & all $k$ \\
+\midrule
+3-color $K_{3,3}$ & 42 & \checkmark & $\times$ & \checkmark & all $k$ & \textbf{none} \\
+\midrule
+5-Queens & 10 & \checkmark & \checkmark & \checkmark & \multicolumn{2}{c}{$N_k$ constant} \\
+3-color Petersen & 120 & \checkmark & \checkmark & $\times$ & \multicolumn{2}{c}{$N_k$ constant} \\
+\midrule
+5$\times$5 reduced Latin & 1344 & $\times$ & --- & $\times$ & some & none \\
+3-color $C_7$ & 126 & $\times$ & --- & $\times$ & none & none \\
+Random CSPs ($\times$5) & 10--42 & mixed & --- & mixed & mixed & none \\
+\bottomrule
+\end{tabular}
+\caption{CSP zoo: spectral localization across constraint families.  ``deg-const'' indicates $N_k$ takes the same value on all vertices of the same degree.  ``$R = \mu_{\max}$'' indicates the Rayleigh quotient of $\tilde{N}_k$ equals $\mu_{\max}$ (100\% top-eigenspace localization).}\label{tab:csp_zoo}
+\end{table}
+
+The critical discriminator is the 3-coloring of $K_{3,3}$.  This graph is bipartite and connected, and $N_k$ is degree-constant (two values), yet $R(\tilde{N}_k) = 7 \neq \mu_{\max} = 8$.  The failure is precisely that the bipartition classes have \emph{mixed degrees}: both class $A$ and class $B$ contain vertices of degree 3 and degree 6, so the graph is \emph{not semiregular}.  Lemma~\ref{lem:spectral_polarity} requires semiregularity ($d_A$ constant on $A$, $d_B$ constant on $B$) to guarantee that $\tilde{N}_k \propto \deg - \bar{d}$ lies in $\ker(L - \mu_{\max} I)$.
+
+Thus the necessary conditions for top-eigenspace localization are:
+\begin{enumerate}[nosep, label=(\alph*)]
+\item Connected graph (otherwise $\mu_1 = 0$ and the problem is trivial);
+\item Bipartite with respect to the solution partition (Remark~\ref{rem:adversarial});
+\item Semiregular (the $K_{3,3}$ coloring test);
+\item Non-constant $N_k$ (otherwise $\tilde{N}_k = 0$ and localization is vacuous).
+\end{enumerate}
+Among the 14 CSPs tested, only those satisfying all four conditions exhibit localization.  The $5 \times 5$ reduced Latin square ($n = 1344$) is particularly notable: it is \emph{not bipartite}, showing the phenomenon does not automatically persist to $n = 5$.
+\end{remark}
+
+\begin{lemma}[Intercalate structure of $d_H = 4$ edges]\label{lem:intercalate}
+Let $L, L'$ be two $4 \times 4$ Latin squares (or Shidoku solutions) with $d_H(L, L') = 4$.  Then the four differing cells form a $2 \times 2$ submatrix $\{r_1, r_2\} \times \{c_1, c_2\}$, and the two squares differ by an \emph{intercalate switch}: there exist distinct symbols $a \neq b$ such that
+\[
+L\big|_{\{r_1,r_2\} \times \{c_1,c_2\}} = \begin{pmatrix} a & b \\ b & a \end{pmatrix}, \qquad
+L'\big|_{\{r_1,r_2\} \times \{c_1,c_2\}} = \begin{pmatrix} b & a \\ a & b \end{pmatrix}.
+\]
+\end{lemma}
+
+\begin{proof}
+Let $S \subset [4] \times [4]$ be the set of cells where $L$ and $L'$ differ, with $|S| = 4$.  Let $t_r$ count the differing cells in row~$r$.  If $t_r = 1$ for some~$r$, then row~$r$ of $L'$ differs from row~$r$ of $L$ in one entry: some symbol $a$ is removed and $b$ inserted, violating the Latin condition (row~$r$ now has two copies of $b$, unless a compensating change restores $a$ in the same row, contradicting $t_r = 1$).  Similarly $t_r = 3$ forces a fourth change in row~$r$ to maintain symbol multiplicities.  So $t_r \in \{0, 2, 4\}$, and $\sum_r t_r = 4$ forces either one row with $t_r = 4$ or two rows with $t_r = 2$ each.  The one-row case fails by the same argument applied to columns.  Hence the support is a $2 \times 2$ block $\{r_1, r_2\} \times \{c_1, c_2\}$.
+
+On this block, $L$ has entries $(a, b; c, d)$.  For $L'$ to remain Latin with the same row and column multisets, we need $\{a, b\} = \{c, d\}$ (so the two rows use the same symbol pair) with $a = d$, $b = c$.  Thus the block is $\binom{a\ b}{b\ a}$ and the only alternative filling is $\binom{b\ a}{a\ b}$.
+\end{proof}
+
+\begin{theorem}[Combinatorial characterization of the bipartition]\label{thm:intercalate_char}
+Let $\Ic(L)$ denote the number of \emph{intercalates} (i.e., $2 \times 2$ Latin subsquares of the form $\binom{a\ b}{b\ a}$) in a $4 \times 4$ Latin square~$L$. Then:
+\begin{enumerate}[nosep, label=(\alph*)]
+\item On both the Shidoku graph ($n = 288$) and the Latin square graph ($n = 576$), $\Ic(L) \in \{4, 12\}$ for every vertex.
+\item The bipartition is $A = \{L : \Ic(L) = 4\}$ and $B = \{L : \Ic(L) = 12\}$. This gives $|A| = 192$, $|B| = 96$ (Shidoku) and $|A| = 432$, $|B| = 144$ (Latin square), matching the spectral bipartition exactly.
+\item Every intercalate switch toggles $\Ic(L)$ between 4 and 12.  In the Latin square graph, $\deg(L) = \Ic(L)$ (every intercalate can be switched).  In the Shidoku graph, $\deg(L) = 4$ for $L \in A$ and $\deg(L) = 8$ for $L \in B$, because 8 of the 12 intercalate switches in a class-$B$ Shidoku solution preserve the block constraint.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+\emph{Parts (a)--(b): image and toggle.}
+By Lemma~\ref{lem:intercalate}, every $d_H = 4$ edge is an intercalate switch on some block $\{r_1, r_2\} \times \{c_1, c_2\}$.  This switch modifies the four entries in that block but leaves all other entries unchanged.  A 2$\times$2 block $\{r_a, r_b\} \times \{c_a, c_b\}$ changes intercalate status only if it shares exactly one row and one column with the switched block (``mixed'' overlap), since such blocks have precisely one modified cell.  There are 16 such mixed blocks; exhaustive verification confirms that exactly 8 of these change status on every edge, with the switched block itself always remaining an intercalate.  Thus $\Ic(L') = \Ic(L) \mp 8$, and since $\Ic(L) \in \{4, 12\}$ for all 576 Latin squares and all 288 Shidoku solutions (verified by enumeration), the toggle gives $\Ic(L') = 16 - \Ic(L)$.
+
+\emph{Part (c): bipartition.}
+A function taking two values that differ across every edge is a proper 2-coloring.  Connectedness of $G$ implies the bipartition is unique.
+
+\emph{Part (d): degree identity.}
+In the Latin square graph (no block constraint), every intercalate can be independently switched to produce a valid Latin square at Hamming distance~4.  Hence the number of $d_H = 4$ neighbors of $L$ equals $\Ic(L)$, i.e., $\deg(L) = \Ic(L)$.  In the Shidoku graph, the block constraint forbids some switches: $\deg(L) = 4$ for $L \in A$ and $\deg(L) = 8$ for $L \in B$, because 8 of the 12 intercalate switches in a class-$B$ solution preserve the $2 \times 2$ block structure.
+\end{proof}
+
+\begin{remark}[From spectral to combinatorial]\label{rem:spectral_to_comb}
+Theorem~\ref{thm:intercalate_char} gives a purely combinatorial description of the bipartition that was identified spectrally in Theorem~\ref{thm:bipartite}: a $4 \times 4$ Latin square belongs to class~$B$ (high degree) if and only if it contains 12 intercalates, and to class~$A$ (low degree) if and only if it contains~4.  The centered statistic $\widetilde{\Ic}(L) = \Ic(L) - 8$ takes values $\pm 4$, which is precisely the signed class indicator; by Lemma~\ref{lem:spectral_polarity}, $L_G \widetilde{\Ic} = \mu_{\max}\, \widetilde{\Ic}$, so $\operatorname{sign}(\varphi_{n-1}) = \operatorname{sign}(\widetilde{\Ic})$.  Thus the intercalate count is an intrinsic invariant of the square (no reference vertex, no eigendecomposition needed), resolving the open characterization problem.  The graph is bipartite because every edge is an intercalate switch, semiregular because degree equals intercalate count, and spectrally localized because semiregular bipartiteness forces $\tilde{N}_k$ into the top eigenspace.
+\end{remark}
+
+
+\subsection{Classical Verifications}
+
+Five classical spectral-geometric results are verified on the Shidoku graph. These are sanity checks confirming that the graph Laplacian behaves as the theory predicts; they do not test Davis-specific claims.
+
+\textbf{V1: Cheeger inequality (Lemma~\ref{lem:graph_cheeger}).} The Cheeger constant $h = 0.8889$ was computed via Fiedler vector sweep (optimal cut at position~144). The discrete Cheeger inequality,
+\[
+\frac{h^2}{2\,d_{\max}} \;\le\; \mu_1 \;\le\; 2h \cdot d_{\max},
+\]
+is verified:
+\[
+0.0494 \;\le\; 0.7085 \;\le\; 14.222 \qquad\checkmark.
+\]
+The normalized Laplacian $\mathcal{L} = D^{-1/2}LD^{-1/2}$ satisfies $\lambda_1^{(\mathrm{norm})} = 0.1340$, with $h^2/(2\,d_{\max}) \le \lambda_1^{(\mathrm{norm})} \le 2h$ also verified.
+
+\textbf{V2: Courant nodal domain theorem.} $\varphi_1$ has exactly 2 nodal domains $\le 2$. $\checkmark$
+
+\textbf{V3: Li--Yau analog.} The continuous bound $\mu_1 \ge \pi^2/D^2$ (Theorem~\ref{thm:liyau}) predicts $\mu_1 \ge 0.1542$. The graph achieves $\mu_1 = 0.7085 \gg 0.1542$. $\checkmark$
+
+\textbf{V4: Weyl effective dimension.} The counting function $N(\mu) = \#\{k : \mu_k \le \mu\}$ was fit in the log-log plane; the slope gives $n_{\mathrm{eff}}/2 = 1.466$, hence $n_{\mathrm{eff}} = 2.93$. This places the Shidoku graph spectrally between a 2D lattice ($n_{\mathrm{eff}} = 2$) and a 3D lattice ($n_{\mathrm{eff}} = 3$), consistent with the 16-cell configuration space constrained by 12 independent constraints leaving $\sim 3$ effective degrees of freedom.
+
+\textbf{V5: Spectral zeta function.} $\zeta_G(s) = \sum_{k \ge 1} \mu_k^{-s}$ converges for $\operatorname{Re}(s) > n_{\mathrm{eff}}/2$. Computed: $\zeta_G(1/2) = 141.24$, $\zeta_G(1) = 76.89$, $\zeta_G(3/2) = 46.78$. The analytic torsion analog: $\log\det'(L) = 433.83$, giving $\det'(L) \approx 2.56 \times 10^{188}$.
+
+
+\subsection{Heat Kernel Distance Decay (Varadhan Test)}
+
+This is the first \textbf{non-tautological} test. Varadhan's formula (Section~\ref{sec:foundational}, SP3) predicts that the heat kernel $K_t(x,y)$, computed purely from the eigendecomposition, should decay monotonically with graph distance $d(x,y)$. This tests whether spectral data (eigenvalues/eigenvectors) correctly predicts geometric structure (distances).
+
+For each graph distance $d = 0, 1, \ldots, D$, we sample 200 vertex pairs and compute $\bar{K}_t(d) = \mathbb{E}[K_t(x,y) \mid d(x,y) = d]$. Results for four time scales:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cccl}
+\toprule
+$t$ & Spearman $\rho(d,\, \bar{K}_t)$ & $p$-value & Dynamic range $K_t(0)/K_t(D)$ \\
+\midrule
+0.1 & $-1.000$ & $< 10^{-15}$ & $6.1 \times 10^{-1} \;/\; 2.7 \times 10^{-10} = 2.3 \times 10^{9}$ \\
+0.5 & $-1.000$ & $< 10^{-15}$ & $1.5 \times 10^{-1} \;/\; 1.2 \times 10^{-5} = 1.2 \times 10^{4}$ \\
+1.0 & $-1.000$ & $< 10^{-15}$ & $4.4 \times 10^{-2} \;/\; 2.9 \times 10^{-4} = 1.5 \times 10^{2}$ \\
+2.0 & $-0.983$ & $1.9 \times 10^{-6}$ & $1.2 \times 10^{-2} \;/\; 1.9 \times 10^{-3} = 6.1$ \\
+\bottomrule
+\end{tabular}
+\caption{Varadhan test: heat kernel $K_t(x,y)$ vs.\ graph distance. Perfect rank correlation $\rho = -1$ at short times ($t \le 1$), consistent with Varadhan's formula $\lim_{t \to 0}(-4t)\log K_t = d^2$.}
+\label{tab:varadhan}
+\end{table}
+
+At $t = 0.1$, the heat kernel spans 10 orders of magnitude across the diameter, with \emph{perfect} monotone decay ($\rho = -1.000$). As $t$ increases, thermal diffusion equilibrates the graph, reducing dynamic range and slightly softening the correlation at $t = 2.0$ ($\rho = -0.983$). This is the expected crossover from the short-time geometric regime (Varadhan) to the long-time spectral regime (dominated by $\mu_1$).
+
+\textbf{Symmetry signature.} At distances $d = 1$ and $d = 7$, the standard deviation of $K_t(x,y)$ across sampled pairs is numerically zero ($< 10^{-16}$): every pair at these distances sees identical heat flow. This implies these distances correspond to single orbits under the Shidoku automorphism group, an observation that falls out of the spectral computation without being requested.
+
+
+\subsection{Spectral Capacity}
+
+The spectral capacity $\Csp = \mu_1 D^2 = 0.7085 \times 64 = 45.34$, satisfying $\Csp \ge \pi^2 = 9.87$ (the universal lower bound from Li--Yau, Theorem~\ref{thm:liyau}). The time-dependent completion capacity $C(t)/\tau = \operatorname{tr}(e^{-tL})$ interpolates from $C(0)/\tau = 288$ (all modes active) to $C(\infty)/\tau = 1$ (zero mode only). At $t = 100$, the single-mode approximation $1 + 2e^{-\mu_1 t}$ matches the actual trace to machine precision (Figure~\ref{fig:spectral}, lower-middle panel), confirming the spectral gap dominates the long-time dynamics.
+
+\textbf{Remark on independent verification.} Theorem~\ref{thm:SCE} (Spectral Capacity Equivalence) establishes $\Csp = \mu_1 D^2$ as a canonical capacity invariant and gives $C_{\mathrm{curv}} \le \Csp$ via the Ricci lower bound. The Ollivier--Ricci curvature $\kappa(x,y) = 1 - W_1(\mu_x, \mu_y)$ was computed independently via optimal transport on both CSP graphs.  The result is striking: the curvature is \emph{exactly constant} on every edge, with zero variance.
+
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+Graph & $(d_A, d_B)$ & $\kappa$ (non-lazy) & $\kappa$ (lazy, $\alpha = 0.5$) & Bound status \\
+\midrule
+Shidoku & $(4, 8)$ & $-1/2$ (all 768 edges) & $-1/4$ (all 768 edges) & vacuous \\
+Latin square & $(4, 12)$ & $-5/6$ (all 1728 edges) & $-5/12$ (all 1728 edges) & vacuous \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Both graphs have \emph{uniformly negative} Ollivier--Ricci curvature, making the Ollivier--Lichnerowicz bound ($\lambda_1^{\mathrm{norm}} \ge \kappa_{\min}$, Ollivier \cite{Ollivier}) vacuous.  This is structurally inevitable for semiregular bipartite graphs: even with the lazy walk ($\alpha = 0.5$), the degree asymmetry forces negative curvature on every cross-partition edge.  The exact constancy reflects the vertex-transitive-within-class symmetry.  Thus $C_{\mathrm{curv}} \le \Csp$ is trivially satisfied (negative curvature gives no lower bound), and the spectral capacity $\Csp = 45.34$ remains bounded only by the Cheeger inequality (Theorem~\ref{thm:graph_SCE}).  The curvature computation itself is a meaningful geometric finding: these CSP graphs are ``negatively curved'' in the Ollivier sense, analogous to manifolds with $\Ric < 0$.
+
+
+\subsection{Completion Difficulty Correlation (Test~B)}
+
+This is the second \textbf{non-tautological} test. The spectral theory predicts that eigenvalue structure encodes completion difficulty. But Theorem~\ref{thm:spectral_loc} now identifies \emph{which} part of the spectrum matters: completion count variation lives entirely in the top eigenspace ($\mu_{\max}$), not the spectral gap ($\mu_1$).
+
+\textbf{Protocol.} For each removal level $k \in \{8, 10, 12, 14\}$, generate 200 random partial Shidoku puzzles by removing $k$ of 16 cells from valid solutions. For each partial puzzle, count all valid completions and compute two spectral predictors: (1)~the \emph{spectral spread} (variance of the completion set's coordinates in the eigenvector basis $\{\varphi_k\}$), and (2)~the \emph{degree} of the seed vertex.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cccccc}
+\toprule
+$k$ & Cells given & $N_k$ (Class $B$) & $N_k$ (Class $A$) & $\Delta N_k$ & Verification \\
+\midrule
+4  & 12 & 1.00440 & 1.00220 & 0.00220 & All $\binom{16}{4} = 1820$ masks \\
+6  & 10 & 1.06593 & 1.03297 & 0.03297 & All $\binom{16}{6} = 8008$ masks \\
+8  & 8 & 1.30878 & 1.16597 & 0.14281 & All $\binom{16}{8} = 12870$ masks \\
+10 & 6 & 1.98002 & 1.67732 & 0.30270 & All $\binom{16}{10} = 8008$ masks \\
+12 & 4 & 4.29890 & 4.10110 & 0.19780 & All $\binom{16}{12} = 1820$ masks \\
+14 & 2 & 22.400 & 22.400 & 0 & All $\binom{16}{14} = 120$ masks \\
+\bottomrule
+\end{tabular}
+\caption{Test~B: Exact completion counts by bipartition class, exhaustively verified over all $\binom{16}{k}$ masks. Within-class standard deviation is $0$ to machine precision ($< 10^{-15}$) at every level. The completion count is a \emph{pure function of bipartition class}: 288 vertices collapse to exactly two values. At $k = 14$ the distinction vanishes (2 given cells are too few to distinguish the classes).}
+\label{tab:testB}
+\end{table}
+
+The key insight is not just that spectral data predicts completion count---it is \emph{which} spectral data. The first eigenvector $\varphi_1$ (Fiedler vector) has negligible correlation with completion count: $\rho(\varphi_1^2, N_k) \le 0.09$ with $p > 0.12$ for all $k$. Instead, the top eigenvector $\varphi_{n-1}$ (bipartition indicator) is perfectly correlated. This is because the completion count is an affine function of degree (Corollary~\ref{cor:degree_approx}), and degree lives entirely in the top eigenspace (Theorem~\ref{thm:spectral_loc}).
+
+\textbf{Correction.} An earlier version of this analysis reported $\rho = 0.994$ between spectral spread and completion count using Monte Carlo sampling. That correlation, while numerically correct as a sampling statistic, obscured the mechanism: the spread was dominated by the $\varphi_{n-1}$ component. Exhaustive computation reveals the underlying structure is exact, not statistical.
+
+
+\subsection{Trichotomy Verification (Test~C)}
+
+This is the third \textbf{non-tautological} test, addressing Y16 (Trichotomy). The Davis Trichotomy predicts that as constraints relax (more solutions become valid), the spectral gap should respond systematically. We build solution graphs under progressively weaker constraint systems:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l r r r r r r r}
+\toprule
+Constraint level & $|V|$ & $|E|$ & Comp. & $\bar{d}$ & $\mu_1$ & $\lambda_1^{(\mathrm{norm})}$ & $\Csp$ \\
+\midrule
+Full Shidoku (row+col+block) & 288 & 768 & 1 & 5.3 & 0.7085 & 0.1340 & 45.34 \\
+Latin square (row+col only) & 576 & 1728 & 1 & 6.0 & 1.6754 & 0.2929 & 60.32 \\
+Partial (row+col$_0$+col$_1$) & 1000$^*$ & 549 & 477 & 1.1 & 0.0000 & 0.0000 & 0.00 \\
+Row only & 576 & 10 & 566 & 0.03 & 0.0000 & 0.0000 & 0.00 \\
+\bottomrule
+\multicolumn{8}{l}{\footnotesize $^*$Sampled from 3456 total solutions.}
+\end{tabular}
+\caption{Test~C: Trichotomy. Spectral quantities as constraints relax. Comp.\ = connected components, $\bar{d}$ = mean degree.}
+\label{tab:testC}
+\end{table}
+
+\textbf{Result: a topological phase transition, not smooth gap closing.} The naive prediction---that relaxing constraints monotonically decreases the spectral gap---fails. Instead:
+
+\begin{enumerate}[nosep]
+\item \textbf{Full $\to$ Latin square:} Removing the block constraint \emph{doubles} the vertex count ($288 \to 576$) but \emph{triples} the edge count ($768 \to 1728$). The graph becomes \emph{denser}: more nearby solutions become valid, improving connectivity. The spectral gap \emph{increases} from $0.709$ to $1.675$.
+
+\item \textbf{Latin square $\to$ Partial:} Removing column constraints collapses the graph. The solution count explodes ($576 \to 3456$), but the adjacency structure fragments: the 1000-vertex sample has 477 connected components, mean degree $1.1$, and $\mu_1 = 0$ exactly (the graph is disconnected).
+
+\item \textbf{Partial $\to$ Row only:} Near-total fragmentation. 576 vertices, 10 edges, 566 components. The solution ``graph'' is a gas of isolated points.
+\end{enumerate}
+
+The trichotomy manifests not as a smooth gap closing but as a \textbf{connectivity phase transition}: the gap \emph{increases} in the first relaxation step (denser graph), then \emph{collapses discontinuously to zero} (graph disconnection). This is the discrete analog of the Type~I $\to$ Type~IIb boundary in the Davis Trichotomy (Y16). The continuous theory predicts smooth spectral flow; the finite model reveals that on discrete graphs, the transition is topological (connected $\to$ disconnected) rather than spectral (gap closing smoothly to zero).
+
+This finding refines the Trichotomy conjecture for finite graphs: the Type~I/Type~IIb boundary is not a second-order phase transition (smooth gap closing) but a first-order phase transition (connectivity collapse). In the language of statistical mechanics, this is a \emph{percolation threshold} on the solution graph.
+
+
+\subsection{Summary of Empirical Status}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{clcl}
+\toprule
+\# & Verification & Status & Evidence quality \\
+\midrule
+V1 & Cheeger inequality & \checkmark & Classical (sanity check) \\
+V2 & Courant nodal bound & \checkmark & Classical (sanity check) \\
+V3 & Li--Yau lower bound & \checkmark & Classical (sanity check) \\
+V4 & Weyl effective dimension & \checkmark & Computed: $n_{\mathrm{eff}} = 2.93$ \\
+V5 & Spectral zeta function & \checkmark & Computed \\
+V6 & Varadhan heat decay & \checkmark & Non-tautological ($\rho = -1.0$) \\
+V7 & Spectral capacity $\Csp$ & Reported & $45.34$; independent $\hat{K}$ requires \texttt{--full} \\
+V8 & Difficulty correlation & \checkmark & Non-tautological ($\rho = 0.99$ at $k\!=\!8$) \\
+V9 & Trichotomy (Y16) & \checkmark$^*$ & Phase transition found (non-monotone) \\
+V10 & Branch~VII \v{C}ech comparison & --- & Not yet computed \\
+V11 & Branch~VIII coarsening & --- & Not yet computed \\
+\bottomrule
+\multicolumn{4}{l}{\footnotesize $^*$Result refines rather than confirms the original Y16 prediction.}
+\end{tabular}
+\caption{Empirical status of the finite-model verifications. Nine of eleven tests completed; three yield non-tautological evidence for the spectral theory.}
+\label{tab:status}
+\end{table}
+
+
+%% =====================================================
+\section{Discussion}
+\label{sec:discussion}
+%% =====================================================
+
+\subsection{Three Spectral Gaps for Three Applications}
+
+The spectral branch introduces three distinct spectral gaps:
+\begin{itemize}[nosep]
+\item $\lambda_1$ (Laplace--Beltrami): generic DFE capacity.
+\item $\mu_1$ (monodromy operator): Hodge algebraicity.
+\item $\nu_1$ (Yang--Mills Hessian): Poincar\'{e} flow convergence.
+\end{itemize}
+These are distinct operators on distinct spaces (see the convention table in Section~\ref{sec:setup}). The branch presents each cleanly and states their structural parallels: all three are positive semidefinite operators whose spectral gap governs the separation between ``trivial'' and ``non-trivial'' sectors. The unifying principle is that in each regime, the hardest step of the completion problem is controlled by the smallest nonzero eigenvalue of the relevant operator.
+
+\subsection{Status of the Spectral Capacity Equivalence}
+
+Theorems~\ref{thm:SCE} and~\ref{thm:SCE_curv} are the central results of the branch. They are \emph{not} new mathematics: every bound is classical (Cheeger, Buser, Li--Yau, Lichnerowicz, Cheng, Obata). The contribution is the \emph{assembly}: identifying $\lambda_1 D^2$ as a natural invariant characterized by three independent geometric routes (spectral, isoperimetric, curvature), and showing the parent's $C = \tau/\hat{K}$ is the curvature lower bound with Obata rigidity pinning the equality case.
+
+Corollary~\ref{cor:davis_recovery} recovers the Davis Law under an explicit identification: $\hat{K} = \kappa$ and $\tau = nD^2$. This identification is \emph{not unique}---other choices of $\tau$ and $\hat{K}$ could give different correspondences. What the theorems establish is that $\lambda_1 D^2$ is a natural capacity invariant satisfying the isoperimetric equivalence, curvature bounds, and universal lower bound, regardless of how one maps it to the parent's parameters. (We do not claim this is the \emph{only} such invariant; that would require a classification argument not given here.)
+
+\subsection{Which Curvature Is $\hat{K}$?}
+
+The parent framework's curvature $\hat{K}$ must be identified with a specific differential-geometric quantity. For the Lichnerowicz bound (Theorem~\ref{thm:lich}), $\hat{K}$ plays the role of a Ricci lower bound $\kappa$. For comparison theorems (Theorem~\ref{thm:cheng}), it serves as a sectional curvature bound. For the Bochner vanishing result (Corollary~\ref{cor:bochner}), it is the Ricci tensor itself. The spectral gap $\lambda_1$ subsumes all three roles through the eigenvalue bounds it satisfies, which is the fundamental reason the spectral approach is more general than the curvature-based approach.
+
+\subsection{Finite vs Continuous}
+
+The theory of Sections~\ref{sec:foundational}--\ref{sec:extended} concerns continuous Riemannian manifolds, while the finite model of Section~\ref{sec:finite} uses graph Laplacians. The relationship between these is discussed in Remark~\ref{rem:convergence}: for mesh-refinement sequences, graph Laplacian eigenvalues converge to continuous Laplacian eigenvalues (Belkin--Niyogi, 2007). The Shidoku graph is not a mesh-refinement approximation to any specific manifold, so convergence theorems do not directly apply. Instead, the finite model validates \emph{structural} properties---the Cheeger inequality holds in both settings (Theorem~\ref{thm:cheeger} and Lemma~\ref{lem:graph_cheeger}), as does heat kernel distance decay (Varadhan's formula and Lemma~\ref{lem:graph_varadhan}). The non-tautological tests (Section~\ref{sec:finite}) test these structural properties rather than numerical convergence.
+
+\subsection{Exact vs Approximate Regime}
+
+The approximate regime ($\tau > 0$, SP1--SP8) is presented first because it is the generic setting for the Davis framework. The exact regime ($\tau = 0$, SP2e, SP9) is the singular limit $\tau \to 0$, where smooth exponential suppression $e^{-\lambda_k/\tau}$ hardens into indicator functions $\mathbf{1}_{\{\lambda_k = 0\}}$. This mirrors the parent framework's presentation of T1 before T1e. The gauge-theoretic regime (SP10, Y15--Y17) is a further specialization where the spectral object shifts from the Laplace--Beltrami operator to the Yang--Mills Hessian.
+
+\subsection{Limitations and Open Problems}
+
+Several limitations should be noted:
+\begin{enumerate}[nosep]
+\item \textbf{Assembly, not discovery.} The Spectral Capacity Equivalence (Theorem~\ref{thm:SCE}) assembles classical results into a single characterization. The individual bounds (Cheeger, Buser, Li--Yau, Lichnerowicz, Cheng) are all decades old. The contribution is identification and interpretation within the Davis framework.
+\item \textbf{Ric $\ge$ 0 hypothesis.} The isoperimetric equivalence (Theorem~\ref{thm:SCE}(b)) uses Buser's bound with a dimension-dependent constant $c_B(n)$. Without $\Ric \ge 0$, the upper bound involves additional curvature-dependent terms (see Theorem~\ref{thm:cheeger}). Many Davis manifolds of interest may have mixed-sign curvature, requiring the full Buser inequality rather than the clean $\kappa = 0$ specialization.
+\item \textbf{Finite models and generalization boundary.} The spectral localization (Theorems~\ref{thm:spectral_loc} and~\ref{thm:latin_loc}) is verified on three CSP graphs (Shidoku, Latin square, reduced Latin square; see Remark~\ref{rem:csp_zoo}).  A zoo of 14 CSP families identifies the precise failure modes: the 3-coloring of $K_{3,3}$ fails due to non-semiregularity, the $5 \times 5$ reduced Latin square is not bipartite, and random CSPs generically lack the required structure.  Whether bipartite semiregular CSP graphs exist at larger scales ($9 \times 9$ Sudoku, $|V| \approx 6.67 \times 10^{21}$) remains the central open question.
+\item \textbf{Ollivier--Ricci curvature (resolved).} The Ollivier--Ricci curvature was computed on both CSP graphs via optimal transport, independently of the eigendecomposition.  Both graphs have uniformly negative curvature ($\kappa = -1/4$ on Shidoku, $\kappa = -5/12$ on Latin square, lazy walk), making the Ollivier--Lichnerowicz bound vacuous.  This is structurally inevitable for semiregular bipartite graphs with no triangles.  The inequality $C_{\mathrm{curv}} \le \Csp$ is trivially satisfied; the curvature capacity provides no constraint.  Whether positively curved CSP graphs exist (e.g., non-bipartite constraint structures with triangles) is an open question.
+\item \textbf{Cross-branch comparisons (V10, V11).} Comparison of the Shidoku graph Laplacian to Branch~VII \v{C}ech Laplacian and Branch~VIII coarsened Laplacian has not been carried out.
+\item \textbf{Combinatorial characterization of the bipartition (resolved).} Theorem~\ref{thm:intercalate_char} identifies the combinatorial invariant: the bipartition is $\{L : \Ic(L) = 4\}$ vs.\ $\{L : \Ic(L) = 12\}$, where $\Ic(L)$ counts the intercalates ($2 \times 2$ Latin subsquares). Every intercalate switch toggles the count between 4 and 12, and in the Latin square graph, $\deg(L) = \Ic(L)$ exactly. Whether an analogous intercalate-count characterization holds for larger Latin squares ($n > 4$) remains open.
+\item \textbf{Spectral localization beyond bipartite graphs.} Theorems~\ref{thm:spectral_loc} and~\ref{thm:latin_loc} prove that completion count variation lives in the top eigenspace on two bipartite semiregular CSP graphs. Adversarial testing (Remark~\ref{rem:adversarial}) shows that class-constancy of $N_k$ is CSP-intrinsic, but top-eigenspace localization requires bipartiteness. For non-bipartite CSP graphs, $\tilde{N}_k$ still lives in \emph{some} eigenspace (it is still a step function on the partition), but that eigenspace need not be the top one. Characterizing \emph{which} eigenvalue governs $\tilde{N}_k$ on non-bipartite CSP graphs is the natural next problem.
+\item \textbf{Sudoku solution graph structure.} The $9 \times 9$ Sudoku solution graph ($|V| \approx 6.67 \times 10^{21}$) is currently intractable for full eigendecomposition. Whether it is bipartite, approximately bipartite, or has a different spectral localization structure for completion counts is an open question with implications for the generality of the spectral approach.
+\end{enumerate}
+
+\subsection{Dependency Map}
+
+\begin{verbatim}
+Parent (C = tau/K, Conj 22.1, 41.1, D2, T1e, T3e)
+  |
+SP1 (Completion Laplacian) <- Standard spectral theory
+  |
+SP2 (Spectral Capacity, tau > 0) <- SP1 + Lichnerowicz + Li-Yau
+  |              \
+SP2e (Exact, tau=0)   SP4 (Cheeger) <- SP1 + isoperimetric
+  |                     |
+SP3 (Heat Kernel)     SP6 (Consensus) <- SP1 + SP2 + Markov
+  |                     |
+SP5 (Weyl)           SP7 (Bochner) <- Hodge theory
+  |                     |            \
+SP8 (Zeta)           SP9 (Monodromy) <- Hodge proof + SP2e
+                        |
+                     SP10 (YM Hessian) <- Poincare proof + SP7
+
+Extended (SP1a-SP7a) <- SP1-SP10
+Cross-synthesis (Y1-Y17) <- Branches VI, VII, VIII,
+                            Hodge proof, Poincare proof
+\end{verbatim}
+
+
+%% =====================================================
+\section*{References}
+%% =====================================================
+
+\begin{thebibliography}{20}
+
+\bibitem{DFE}
+B.\,R.\ Davis,
+\emph{The Field Equations of Semantic Coherence: A Geometric Theory of Meaning, Curvature, and Reasoning in Transformer Architectures},
+Zenodo, 2025.
+\url{https://doi.org/10.5281/zenodo.17771796}.
+
+\bibitem{HodgeProof}
+B.\,R.\ Davis,
+\emph{The Davis Field Equations Applied to the Hodge Conjecture: Algebraic Realizability via Holonomy Constraints},
+2025.
+
+\bibitem{PoincareProof}
+B.\,R.\ Davis,
+\emph{Davis--Wilson Flow as Ricci Flow: Empirical Validation of the Davis--Poincar\'{e} Correspondence},
+POINCARE-001, January 2026.
+
+\bibitem{YangMills}
+B.\,R.\ Davis,
+\emph{The Incompressibility of Topological Charge and the Energy Cost of Distinguishability: An Information-Geometric Reduction of the Yang--Mills Mass Gap},
+Zenodo, 2025.
+\url{https://doi.org/10.5281/zenodo.17846521}.
+
+\bibitem{Cheeger}
+J.\ Cheeger,
+\emph{A lower bound for the smallest eigenvalue of the Laplacian},
+Problems in Analysis, Princeton, 195--199, 1970.
+
+\bibitem{LiYau}
+P.\ Li and S.-T.\ Yau,
+\emph{Estimates of eigenvalues of a compact Riemannian manifold},
+Proc.\ Sympos.\ Pure Math., 36:205--239, 1980.
+
+\bibitem{Lichnerowicz}
+A.\ Lichnerowicz,
+\emph{G\'{e}om\'{e}trie des groupes de transformations},
+Dunod, Paris, 1958.
+
+\bibitem{Weyl}
+H.\ Weyl,
+\emph{\"Uber die asymptotische Verteilung der Eigenwerte},
+Nachr.\ K\"{o}nigl.\ Ges.\ Wiss.\ G\"{o}ttingen, 110--117, 1911.
+
+\bibitem{Buser}
+P.\ Buser,
+\emph{A note on the isoperimetric constant},
+Ann.\ Sci.\ \'{E}cole Norm.\ Sup., 15:213--230, 1982.
+
+\bibitem{Cheng}
+S.-Y.\ Cheng,
+\emph{Eigenvalue comparison theorems and its geometric applications},
+Math.\ Z., 143:289--297, 1975.
+
+\bibitem{KronheimerMrowka}
+P.\ Kronheimer and T.\ Mrowka,
+\emph{Witten's conjecture and Property P},
+Geom.\ Topol., 8:295--310, 2004.
+
+\bibitem{Rade}
+J.\ R\aa de,
+\emph{On the Yang--Mills heat equation in two and three dimensions},
+J.\ Reine Angew.\ Math., 431:123--163, 1992.
+
+\bibitem{Luscher}
+M.\ L\"{u}scher,
+\emph{Properties and uses of the Wilson flow in lattice QCD},
+JHEP, 1008:071, 2010.
+
+\bibitem{Varadhan}
+S.\,R.\,S.\ Varadhan,
+\emph{On the behavior of the fundamental solution of the heat equation with variable coefficients},
+Comm.\ Pure Appl.\ Math., 20:431--455, 1967.
+
+\bibitem{Ollivier}
+Y.\ Ollivier,
+\emph{Ricci curvature of Markov chains on metric spaces},
+J.\ Funct.\ Anal., 256(3):810--864, 2009.
+
+\bibitem{Obata}
+M.\ Obata,
+Certain conditions for a Riemannian manifold to be isometric with a sphere,
+J.\ Math.\ Soc.\ Japan, 14(3):333--340, 1962.
+
+\bibitem{BGM}
+M.\ Berger, P.\ Gauduchon, and E.\ Mazet,
+\emph{Le spectre d'une vari\'{e}t\'{e} riemannienne},
+Lecture Notes in Mathematics 194, Springer, 1971.
+
+\bibitem{Chavel}
+I.\ Chavel,
+\emph{Eigenvalues in Riemannian Geometry},
+Academic Press, 1984.
+
+\bibitem{AlonMilman}
+N.\ Alon and V.\,D.\ Milman,
+$\lambda_1$, isoperimetric inequalities for graphs, and superconcentrators,
+J.\ Combin.\ Theory Ser.\ B, 38(1):73--88, 1985.
+
+\bibitem{Dodziuk}
+J.\ Dodziuk,
+Difference equations, isoperimetric inequality and transience of certain random walks,
+Trans.\ Amer.\ Math.\ Soc., 284(2):787--794, 1984.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,1772 @@
+\documentclass[11pt,letterpaper]{article}
+
+% ============================================================================
+% PACKAGES
+% ============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+% ============================================================================
+% PAGE SETUP
+% ============================================================================
+\geometry{margin=1in}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{The Field Equations of Semantic Coherence}
+\lhead{B. Davis}
+\rfoot{Page \thepage}
+
+% ============================================================================
+% THEOREM ENVIRONMENTS
+% ============================================================================
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{algorithm_def}[theorem]{Algorithm}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% ============================================================================
+% CUSTOM BOXES
+% ============================================================================
+\newtcolorbox{masterbox}[1][]{
+  colback=yellow!10!white,
+  colframe=orange!75!black,
+  fonttitle=\bfseries,
+  title=#1
+}
+
+\newtcolorbox{foundationbox}[1][]{
+  colback=blue!5!white,
+  colframe=blue!75!black,
+  fonttitle=\bfseries,
+  title=#1
+}
+
+\newtcolorbox{energybox}[1][]{
+  colback=orange!5!white,
+  colframe=orange!75!black,
+  fonttitle=\bfseries,
+  title=#1
+}
+
+\newtcolorbox{dynamicsbox}[1][]{
+  colback=red!5!white,
+  colframe=red!75!black,
+  fonttitle=\bfseries,
+  title=#1
+}
+
+% ============================================================================
+% CUSTOM COMMANDS
+% ============================================================================
+\newcommand{\Hol}{\mathrm{Hol}}
+\newcommand{\Khat}{\hat{K}}
+\newcommand{\Kmax}{\hat{K}_{\max}}
+\newcommand{\Kloc}{\hat{K}_{\mathrm{loc}}}
+\newcommand{\taubudget}{\tau_{\mathrm{budget}}}
+\newcommand{\smax}{s_{\max}}
+\newcommand{\Svalid}{S_{\mathrm{valid}}}
+\newcommand{\Sunconstrained}{S_{\mathrm{unconstrained}}}
+\newcommand{\edisc}{\varepsilon_{\mathrm{disc}}}
+\newcommand{\Cdyn}{C_{\mathrm{dyn}}}
+
+% ============================================================================
+% TITLE
+% ============================================================================
+\title{
+  \textbf{The Field Equations of Semantic Coherence} \\
+  \large A Geometric Theory of Meaning, Curvature, and Reasoning \\
+  in Transformer Architectures \\
+  \vspace{1em}
+  \normalsize Complete Conjecture Reference \\
+  89 Mathematical Results with Dependency Structure
+}
+
+\author{
+  Bee Rosa Davis
+}
+
+\date{November 30th, 2025}
+
+% ============================================================================
+% DOCUMENT BEGIN
+% ============================================================================
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================================
+% DISCLAIMER
+% ============================================================================
+\vspace*{1em}
+\begin{tcolorbox}[colback=gray!10!white, colframe=gray!75!black, title=\textbf{Note on Mathematical Status}]
+The results in this document are stated as \textbf{conjectures} establishing a geometric research program for semantic coherence in transformer architectures. Formal proofs are under development. Scaling relationships use $\approx$ or $\propto$ to indicate functional form rather than exact equality. Optimality claims represent design hypotheses to be validated. Topological results assume benign manifold conditions (compact, finite-type, bounded curvature) unless otherwise specified.
+
+This release establishes priority for the theoretical framework.
+\end{tcolorbox}
+\vspace{1em}
+
+% ============================================================================
+% PART I: OVERVIEW AND MASTER RESULTS
+% ============================================================================
+\part{Overview and Master Results}
+
+\section{The Master Equation}
+
+\begin{masterbox}[The Davis Law]
+The fundamental equation governing inference from incomplete information:
+
+\begin{equation}
+\boxed{C = \frac{\tau}{K}}
+\end{equation}
+
+\textbf{Where:}
+\begin{itemize}
+  \item $C$ = \textbf{Inference Capacity} (Completion) --- A measure of the degree to which unobserved states are uniquely determined by observed constraints on a geometric manifold
+  \item $\tau$ = \textbf{Tolerance Budget} --- The acceptable error threshold; the slack in the system
+  \item $K$ = \textbf{Curvature} --- The geometric complexity of the space where information lives
+\end{itemize}
+\end{masterbox}
+
+\subsection{The Three Master Equations}
+
+\begin{enumerate}
+  \item \textbf{Static Form (Existence):}
+  \begin{equation}
+    C = \frac{\tau}{K}
+  \end{equation}
+  \textit{How much can be completed from incomplete information.}
+  
+  \item \textbf{Variational Form (Selection):}
+  \begin{equation}
+    \delta \oint \Hol = 0
+  \end{equation}
+  \textit{Which completion is chosen among possibilities --- the Principle of Stationary Holonomy.}
+  
+  \item \textbf{Dynamic Form (Evolution):}
+  \begin{equation}
+    \Cdyn = \frac{\tau}{K + \eta T}
+  \end{equation}
+  \textit{How completion capacity changes during learning, where $\eta$ is the learning rate and $T$ is time.}
+\end{enumerate}
+
+\section{The Extended Master Trichotomy}
+
+\begin{masterbox}[Geometric Trichotomy]
+Every completion problem falls into exactly one regime, determined by the parameter:
+\begin{equation}
+  \Gamma = \frac{m \cdot \taubudget}{\Kmax \cdot \log|S|}
+\end{equation}
+
+\textbf{Static Regime} ($\partial M / \partial t = 0$):
+\begin{itemize}
+  \item $\Gamma > 1$: \textbf{DETERMINED} --- Unique completion, stable, fast consensus
+  \item $\Gamma = 1$: \textbf{CRITICAL} --- Phase transition, power-law behavior, slow dynamics
+  \item $\Gamma < 1$: \textbf{UNDERDETERMINED} --- Multiple completions, unstable, no consensus
+\end{itemize}
+
+\textbf{Dynamic Regime} ($\partial M / \partial t \neq 0$):
+\begin{equation}
+  \Gamma_{\mathrm{eff}} = \Gamma \cdot \left(1 - \frac{\eta T}{\tau}\right)
+\end{equation}
+
+Learning pushes the system toward critical/underdetermined. Three dynamic phases:
+\begin{itemize}
+  \item $\eta < \eta_{\mathrm{safe}}$: \textbf{STABLE LEARNING} --- Guarantees preserved
+  \item $\eta = \eta_{\mathrm{safe}}$: \textbf{CRITICAL LEARNING} --- Guarantees marginal
+  \item $\eta > \eta_{\mathrm{safe}}$: \textbf{UNSTABLE LEARNING} --- Cache invalidation
+\end{itemize}
+\end{masterbox}
+
+\section{Summary of Results}
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Order} & \textbf{Results} & \textbf{Cumulative} \\
+\midrule
+Foundation (T1--T5, E0, Corollary) & 7 & 7 \\
+First Order & 8 & 15 \\
+Second Order & 24 & 39 \\
+Third Order & 33 & 72 \\
+Fourth Order & 13 & 85 \\
+Fifth Order: Energy (E1--E5) & 5 & 90 \\
+Fifth Order: Dynamics (D1--D6) & 6 & 96 \\
+\midrule
+\textbf{Total Derived Results} & \textbf{89} & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textit{Note: The count of 89 excludes the foundational axioms and counts only derived results.}
+
+% ============================================================================
+% PART II: FOUNDATIONAL THEOREMS
+% ============================================================================
+\newpage
+\part{Foundational Theorems}
+
+\section{The Five Foundational Theorems}
+
+\begin{foundationbox}[T1: Geometric Completion Uniqueness]
+\begin{conjecture}[Geometric Completion Uniqueness]
+\label{thm:T1}
+Given a partial world state $W_0$ on a Davis manifold $(M, g)$ with curvature bound $\Kloc < \Kmax$, and a set of observed constraints $C$, if the holonomy around all constraint-bounded regions satisfies 
+\begin{equation}
+  \|\Hol - I\| < \taubudget
+\end{equation}
+then there exists at most one completion $W^*$ consistent with $C$ up to $\varepsilon$-equivalence, where $\varepsilon$ is determined by the Davis distortion radius.
+\end{conjecture}
+
+\textbf{Interpretation:} This is the Sudoku theorem --- sufficient constraints plus bounded curvature implies a unique solution.
+\end{foundationbox}
+
+\begin{foundationbox}[T2: Harmonization Preserves Completion]
+\begin{conjecture}[Harmonization Preserves Completion]
+\label{thm:T2}
+Let $H$ be a harmonization operator that forces path-independence on observable operations $O$. For any non-deterministic completion process $A$, the harmonized completion $H(A(W_0, C))$ is observationally equivalent to the deterministic completion $D(W_0, C)$ on all operations in $O$.
+\end{conjecture}
+
+\textbf{Interpretation:} This imports the BRIDGE result into the reasoning setting --- harmonization makes non-deterministic processes behave deterministically on observables.
+\end{foundationbox}
+
+\begin{foundationbox}[T3: Gap-Filling Complexity Reduction]
+\begin{conjecture}[Gap-Filling Complexity Reduction]
+\label{thm:T3}
+For a world model with $n$ unobserved variables and $m$ geometric constraints satisfying the benign curvature condition, the effective search space for valid completions is bounded by:
+\begin{equation}
+  |\Svalid| \leq |\Sunconstrained| \cdot \exp\left(-\frac{m \cdot \taubudget}{\Kmax}\right)
+\end{equation}
+In the limit of tight curvature bounds ($\Kmax \to 0$), valid completions converge to a unique solution.
+\end{conjecture}
+
+\textbf{Interpretation:} This quantifies how geometry compresses the hypothesis space --- constraints exponentially shrink the space of valid completions.
+\end{foundationbox}
+
+\begin{foundationbox}[T4: Reasoning Fidelity Under Partial Observation]
+\begin{conjecture}[Reasoning Fidelity Under Partial Observation]
+\label{thm:T4}
+Let $\gamma$ be a reasoning path from premises $P$ to conclusion $Q$ on $(M, g)$, with $k$ intermediate steps unobserved. If the observed steps satisfy the holonomy budget and the manifold has bounded curvature, then any valid completion of $\gamma$ produces conclusions $Q'$ satisfying:
+\begin{equation}
+  d_g(Q, Q') \leq k \cdot \ell_c \cdot \sqrt{\Kmax} + \edisc
+\end{equation}
+The reasoning error grows at most linearly in gap size, not exponentially.
+\end{conjecture}
+
+\textbf{Interpretation:} This is the anti-hallucination guarantee --- geometry prevents drift even when you can't observe every step.
+\end{foundationbox}
+
+\begin{foundationbox}[T5: Davis Cache Sufficiency]
+\begin{conjecture}[Davis Cache Sufficiency]
+\label{thm:T5}
+For gap-filling on benign paths, the state $(\Phi_t, r_t)$ --- continuous potential plus topological residue --- is sufficient to determine valid completions. The cache size remains $O(1)$ in the number of gaps, provided total path length stays within the holonomy horizon $\smax$.
+\end{conjecture}
+
+\textbf{Interpretation:} You don't need to store the whole world; the geometric summary is enough to constrain completions.
+\end{foundationbox}
+
+\section{The Sudoku Principle Corollary}
+
+\begin{foundationbox}[Corollary: The Sudoku Principle Test]
+\begin{corollary}[The Sudoku Principle]
+\label{cor:sudoku}
+A world model is ``sudoku-complete'' if its geometric constraints uniquely determine all unobserved states. The Davis framework provides a constructive test: compute holonomy around gap boundaries; if $\|\Hol - I\| < \tau$ for all such loops, the completion is unique.
+\end{corollary}
+\end{foundationbox}
+
+\section{The Energy Principle}
+
+\begin{energybox}[E0: Principle of Least Holonomy]
+\begin{conjecture}[Principle of Least Holonomy]
+\label{thm:E0}
+Among all paths connecting premises to conclusions, the realized path minimizes total holonomy. Define the Davis Energy Functional:
+\begin{equation}
+  E[\gamma] = \int_0^L \left(\lambda_1 + \lambda_2 \Kloc(s) + \lambda_3 \|\Hol_{\gamma_s} - I\|\right) ds
+\end{equation}
+Optimal paths satisfy $\delta E / \delta \gamma = 0$.
+\end{conjecture}
+
+\textbf{Interpretation:} This is the variational principle for reasoning --- nature chooses the path of least resistance (lowest curvature and holonomy).
+\end{energybox}
+
+% ============================================================================
+% PART III: FIRST-ORDER DERIVATIONS
+% ============================================================================
+\newpage
+\part{First-Order Derivations}
+
+\textit{These 8 results follow directly from the foundational theorems.}
+
+\section{(1) Constraint Saturation Threshold}
+
+\begin{conjecture}[Constraint Saturation Threshold $m^*$]
+\label{thm:F1}
+There exists a critical threshold $m^*$ where $|\Svalid| \approx 1$:
+\begin{equation}
+  m^* = \frac{\Kmax \cdot \log|\Sunconstrained|}{\taubudget}
+\end{equation}
+At $m = m^*$, the completion becomes unique. Below $m^*$, multiplicity remains. Above $m^*$, constraints are redundant or inconsistent.
+\end{conjecture}
+
+\textbf{Derived from:} T1 (Uniqueness) + T3 (Complexity Reduction)
+
+\textbf{Interpretation:} This is the ``sudoku moment'' --- the phase transition in the system.
+
+\section{(2) Compositional Holonomy}
+
+\begin{conjecture}[Compositional Holonomy]
+\label{thm:F2}
+Holonomy composes additively to first order when individual holonomies are small:
+\begin{equation}
+  \|\Hol_{\gamma_A \cup \gamma_B} - I\| \leq \|\Hol_{\gamma_A} - I\| + \|\Hol_{\gamma_B} - I\| + \mathcal{O}(\|\Hol_{\gamma_A} - I\| \cdot \|\Hol_{\gamma_B} - I\|)
+\end{equation}
+\end{conjecture}
+
+\textbf{Derived from:} T1 (Uniqueness) + Corollary (Sudoku Principle)
+
+\textbf{Interpretation:} This justifies doing completions incrementally --- the locality property.
+
+\section{(3) Constraint Consistency Test}
+
+\begin{lemma}[Constraint Consistency Test]
+\label{thm:F3}
+Constraints $C$ are geometrically consistent iff there exists a path $\gamma$ passing through $\bigcap_c R_c$ with holonomy below budget. Equivalently: if the holonomy around the boundary of $\bigcap_c R_c$ exceeds $\taubudget$, no valid completion exists.
+\end{lemma}
+
+\textbf{Derived from:} T1 (Uniqueness)
+
+\textbf{Interpretation:} The unsolvable sudoku detector.
+
+\section{(4) Completion Stability Under Perturbation}
+
+\begin{conjecture}[Completion Stability]
+\label{thm:F4}
+If $W_0'$ satisfies $d_g(W_0, W_0') < \delta$ and $\Kloc < \Kmax$ throughout, then the completions satisfy:
+\begin{equation}
+  d_g(W^*, W'^*) \leq \delta \cdot \exp\left(\sqrt{\Kmax} \cdot L\right)
+\end{equation}
+where $L$ is the path length through the gap region.
+\end{conjecture}
+
+\textbf{Derived from:} T1 (Uniqueness) + T4 (Fidelity)
+
+\textbf{Interpretation:} Small input perturbations don't cause large completion changes in the benign regime.
+
+\section{(5) Optimal Constraint Ordering}
+
+\begin{lemma}[Optimal Constraint Ordering]
+\label{thm:F5}
+Given constraints $\{c_1, \ldots, c_m\}$, the optimal projection order minimizes cumulative holonomy. Greedily: at each step, project to the constraint whose region $R_c$ is closest to the current path in geodesic distance.
+\end{lemma}
+
+\textbf{Derived from:} T3 (Complexity) + F2 (Compositional Holonomy)
+
+\textbf{Interpretation:} The greedy constraint scheduling lemma.
+
+\section{(6) Cache Compression Bound}
+
+\begin{conjecture}[Cache Compression Bound]
+\label{thm:F6}
+The Davis Cache $(\Phi_t, r_t)$ contains at most:
+\begin{equation}
+  I[(\Phi_t, r_t)] \leq d_\Phi \cdot \log(1/\varepsilon) + \log K + \log B + W \cdot \log 3
+\end{equation}
+bits, where $d_\Phi$ is potential dimension, $K$ charts, $B$ basins, $W$ winding components. This is independent of path length $L$ and gap count $k$.
+\end{conjecture}
+
+\textbf{Derived from:} T5 (Cache Sufficiency)
+
+\textbf{Interpretation:} The cache has bounded entropy regardless of problem size.
+
+\section{(7) Maximum Gap Size from Holonomy Horizon}
+
+\begin{lemma}[Maximum Gap Size]
+\label{thm:F7}
+A gap of geodesic length $g$ can be uniquely completed iff:
+\begin{equation}
+  g < \frac{\taubudget}{\sqrt{\Kmax}}
+\end{equation}
+Gaps larger than this threshold admit multiple completions even with perfect boundary constraints.
+\end{lemma}
+
+\textbf{Derived from:} T4 (Fidelity) + T1 (Uniqueness)
+
+\textbf{Interpretation:} The holonomy horizon \textit{is} the maximum gap size.
+
+\section{(8) Multi-Agent Consensus}
+
+\begin{conjecture}[Multi-Agent Consensus]
+\label{thm:F8}
+If agents $A$ and $B$ share anchor topology and both receive $(\Phi_t, r_t)$ with holonomy below budget, their completions $W_A$ and $W_B$ satisfy:
+\begin{equation}
+  d_g(W_A, W_B) \leq 2\edisc
+\end{equation}
+where $\edisc$ is the discretization slack.
+\end{conjecture}
+
+\textbf{Derived from:} T5 (Cache Sufficiency) + T1 (Uniqueness)
+
+\textbf{Interpretation:} The consensus theorem for teleportation --- agents converge.
+
+% ============================================================================
+% PART IV: SECOND-ORDER DERIVATIONS
+% ============================================================================
+\newpage
+\part{Second-Order Derivations}
+
+\textit{These 24 results follow from the first-order derivations.}
+
+\section{From (1) Saturation Threshold}
+
+\subsection{(1a) Constraint Redundancy Detection}
+
+\begin{conjecture}[Constraint Redundancy Detection]
+\label{thm:S1a}
+If $m > m^*$, then at least $(m - m^*)$ constraints are redundant --- they can be removed without changing the unique completion. Constructively: a constraint $c_i$ is redundant iff removing it does not increase $|\Svalid|$ above 1.
+\end{conjecture}
+
+\textbf{Derived from:} F1 (Saturation)
+
+\subsection{(1b) Constraint Value Ordering}
+
+\begin{conjecture}[Constraint Value Ordering]
+\label{thm:S1b}
+Not all constraints contribute equally to shrinking $\Svalid$. Define the information value of constraint $c$ as:
+\begin{equation}
+  V(c) = \log|\Svalid^{-c}| - \log|\Svalid|
+\end{equation}
+where $\Svalid^{-c}$ is the valid set without $c$. Constraints with higher $V(c)$ are more ``informative'' geometrically.
+\end{conjecture}
+
+\textbf{Derived from:} F1 (Saturation)
+
+\textbf{Interpretation:} Geometric entropy measure on constraints.
+
+\subsection{(1c) Phase Transition Sharpness}
+
+\begin{corollary}[Phase Transition Sharpness]
+\label{thm:S1c}
+Near $m^*$, the transition from multiple completions to unique completion is sharp:
+\begin{equation}
+  \frac{d|\Svalid|}{dm}\bigg|_{m=m^*} = -\frac{\taubudget}{\Kmax} |\Svalid|
+\end{equation}
+The transition sharpens as $\Kmax \to 0$ (flatter geometry = sharper phase transition).
+\end{corollary}
+
+\textbf{Derived from:} F1 (Saturation)
+
+\textbf{Interpretation:} The manifold has a critical exponent.
+
+\section{From (2) Compositional Holonomy}
+
+\subsection{(2a) Holonomy Algebra}
+
+\begin{conjecture}[Holonomy Algebra]
+\label{thm:S2a}
+The set of holonomy operators $\{\Hol_\gamma\}$ under composition forms a group $H \subset GL(d)$. In the benign regime (all $\|\Hol - I\| < \tau$), $H$ is approximately abelian:
+\begin{equation}
+  [\Hol_{\gamma_1}, \Hol_{\gamma_2}] = \mathcal{O}(\tau^2)
+\end{equation}
+Completion order doesn't matter to first order.
+\end{conjecture}
+
+\textbf{Derived from:} F2 (Compositional Holonomy)
+
+\textbf{Interpretation:} The holonomy group is nearly commutative in the benign regime.
+
+\subsection{(2b) Holonomy Decomposition}
+
+\begin{lemma}[Holonomy Decomposition]
+\label{thm:S2b}
+Any holonomy $\Hol_\gamma$ for a complex loop $\gamma$ can be decomposed into elementary loops around single gaps:
+\begin{equation}
+  \Hol_\gamma = \prod_i \Hol_{\gamma_i} + \mathcal{O}(\tau^2)
+\end{equation}
+where $\gamma_i$ are simple loops around individual gaps.
+\end{lemma}
+
+\textbf{Derived from:} F2 (Compositional Holonomy)
+
+\textbf{Interpretation:} Holonomy factorization --- complex reasoning decomposes into local completions.
+
+\subsection{(2c) Parallel Gap-Filling}
+
+\begin{corollary}[Parallel Gap-Filling]
+\label{thm:S2c}
+If gaps $\{g_1, \ldots, g_k\}$ have non-overlapping loop boundaries, their completions can be computed in parallel with combined error:
+\begin{equation}
+  \varepsilon_{\mathrm{parallel}} = \varepsilon_{\mathrm{sequential}} + \mathcal{O}(\tau^2)
+\end{equation}
+\end{corollary}
+
+\textbf{Derived from:} F2 (Compositional Holonomy)
+
+\textbf{Interpretation:} Parallelization with bounded additional error.
+
+\section{From (3) Consistency Test}
+
+\subsection{(3a) Inconsistency Localization}
+
+\begin{conjecture}[Inconsistency Localization]
+\label{thm:S3a}
+If constraints $C$ are inconsistent, there exists a minimal inconsistent subset $C' \subseteq C$ such that:
+\begin{itemize}
+  \item $|C'| \leq d + 1$ where $d = \dim(M)$
+  \item The holonomy around $\bigcap_{c \in C'} R_c$ exceeds $\taubudget$
+\end{itemize}
+Inconsistency is always localizable to at most $(d+1)$ constraints.
+\end{conjecture}
+
+\textbf{Derived from:} F3 (Consistency Test)
+
+\textbf{Interpretation:} This is a geometric Helly theorem.
+
+\subsection{(3b) Inconsistency Resolution}
+
+\begin{algorithm_def}[Inconsistency Resolution]
+\label{thm:S3b}
+Given inconsistent $C$, iteratively:
+\begin{enumerate}
+  \item Find minimal inconsistent $C'$ (at most $d+1$ constraints)
+  \item Compute holonomy excess: $\Delta\tau = \|\Hol\| - \taubudget$
+  \item Relax the weakest constraint in $C'$ by $\Delta\tau$
+\end{enumerate}
+Terminates in at most $|C|$ iterations with a consistent relaxed constraint set.
+\end{algorithm_def}
+
+\textbf{Derived from:} F3 (Consistency Test)
+
+\textbf{Interpretation:} How to fix an unsolvable sudoku by minimal relaxation.
+
+\section{From (4) Stability}
+
+\subsection{(4a) Stability Radius}
+
+\begin{conjecture}[Stability Radius]
+\label{thm:S4a}
+For a completion $W^*$ under constraints $C$, define the stability radius:
+\begin{equation}
+  r_{\mathrm{stable}}(W^*) = \sup\{\delta : d_g(W_0, W_0') < \delta \Rightarrow d_g(W^*, W'^*) < \varepsilon\}
+\end{equation}
+Then:
+\begin{equation}
+  r_{\mathrm{stable}} \geq \frac{\varepsilon}{\exp(\sqrt{\Kmax} \cdot L)}
+\end{equation}
+Flatter geometry (smaller $\Kmax$) yields larger stability radius.
+\end{conjecture}
+
+\textbf{Derived from:} F4 (Stability)
+
+\textbf{Interpretation:} Quantifies robustness to input noise.
+
+\subsection{(4b) Adversarial Perturbation Bound}
+
+\begin{corollary}[Adversarial Perturbation Bound]
+\label{thm:S4b}
+To change the completion from $W^*$ to a different $W'^*$ with $d_g(W^*, W'^*) > \varepsilon$, an adversary must perturb inputs by at least:
+\begin{equation}
+  \delta_{\mathrm{adv}} \geq \varepsilon \cdot \exp(-\sqrt{\Kmax} \cdot L)
+\end{equation}
+\end{corollary}
+
+\textbf{Derived from:} F4 (Stability)
+
+\textbf{Interpretation:} Geometric adversarial robustness certificate.
+
+\section{From (5) Optimal Ordering}
+
+\subsection{(5a) Ordering Regret Bound}
+
+\begin{conjecture}[Ordering Regret Bound]
+\label{thm:S5a}
+Let $\sigma$ be any constraint ordering and $\sigma^*$ the optimal ordering. The excess holonomy from suboptimal ordering is bounded:
+\begin{equation}
+  \sum_i \|\Hol_{\sigma(i)}\| - \sum_i \|\Hol_{\sigma^*(i)}\| \leq m \cdot \Kmax \cdot D^2
+\end{equation}
+where $D$ is the diameter of $\bigcap_c R_c$.
+\end{conjecture}
+
+\textbf{Derived from:} F5 (Ordering)
+
+\textbf{Interpretation:} Greedy is near-optimal.
+
+\subsection{(5b) Constraint Ordering is Submodular}
+
+\begin{corollary}[Submodularity]
+\label{thm:S5b}
+The cumulative holonomy reduction from adding constraints is submodular:
+\begin{equation}
+  \Delta \Hol(c | C_1) \geq \Delta \Hol(c | C_2) \quad \text{whenever } C_1 \subseteq C_2
+\end{equation}
+Adding a constraint helps more when you have fewer constraints.
+\end{corollary}
+
+\textbf{Derived from:} F5 (Ordering)
+
+\textbf{Interpretation:} Greedy achieves $(1 - 1/e)$ optimal by standard submodular optimization.
+
+\section{From (6) Cache Compression}
+
+\subsection{(6a) Cache Rate-Distortion}
+
+\begin{conjecture}[Cache Rate-Distortion]
+\label{thm:S6a}
+For any compression of the reasoning state to fewer than $I[(\Phi_t, r_t)]$ bits, there exist completions with error exceeding $\varepsilon$. The Davis Cache is conjectured to be rate-distortion optimal.
+\end{conjecture}
+
+\textbf{Derived from:} F6 (Compression)
+
+\subsection{(6b) Incompressibility of Winding Code}
+
+\begin{corollary}[Incompressibility of Winding]
+\label{thm:S6b}
+The winding code component $r_t$ cannot be compressed below $W \cdot \log 3$ bits without losing topological distinguishability of paths.
+\end{corollary}
+
+\textbf{Derived from:} F6 (Compression)
+
+\textbf{Interpretation:} Topology is incompressible.
+
+\subsection{(6c) Cache Sufficiency is Tight}
+
+\begin{conjecture}[Cache Tightness]
+\label{thm:S6c}
+There exists a family of manifolds and path pairs $(\gamma_1, \gamma_2)$ with identical $\Phi_t$ but different $r_t$ that yield completions differing by $\Omega(\varepsilon)$. Both components are necessary.
+\end{conjecture}
+
+\textbf{Derived from:} F6 (Compression)
+
+\textbf{Interpretation:} You can't drop either $\Phi$ or $r$.
+
+\section{From (7) Maximum Gap}
+
+\subsection{(7a) Gap Additivity}
+
+\begin{conjecture}[Gap Additivity]
+\label{thm:S7a}
+Multiple gaps of sizes $g_1, \ldots, g_k$ can all be uniquely completed iff:
+\begin{equation}
+  \sum_i g_i \cdot \sqrt{\Kloc(g_i)} < \taubudget
+\end{equation}
+Gaps compete for the shared holonomy budget.
+\end{conjecture}
+
+\textbf{Derived from:} F7 (Max Gap)
+
+\textbf{Interpretation:} Gap budget allocation.
+
+\subsection{(7b) Optimal Gap Distribution}
+
+\begin{corollary}[Optimal Gap Distribution]
+\label{thm:S7b}
+Given total unknown length $G = \sum g_i$, uniqueness is maximized when gaps are distributed to minimize $\sum g_i \cdot \sqrt{\Kloc(g_i)}$. In uniform curvature: equal-sized gaps are optimal.
+\end{corollary}
+
+\textbf{Derived from:} F7 (Max Gap)
+
+\textbf{Interpretation:} Spread your ignorance evenly.
+
+\subsection{(7c) Critical Gap Ratio}
+
+\begin{lemma}[Critical Gap Ratio]
+\label{thm:S7c}
+Define the critical gap ratio:
+\begin{equation}
+  \rho^* = \frac{g_{\max}}{L_{\mathrm{total}}}
+\end{equation}
+where $g_{\max}$ is the largest gap and $L_{\mathrm{total}}$ is total path length. Unique completion requires:
+\begin{equation}
+  \rho^* < \frac{\taubudget}{\sqrt{\Kmax} \cdot L_{\mathrm{total}}}
+\end{equation}
+\end{lemma}
+
+\textbf{Derived from:} F7 (Max Gap)
+
+\textbf{Interpretation:} Gap fraction determines completion success.
+
+\section{From (8) Consensus}
+
+\subsection{(8a) Consensus Convergence Rate}
+
+\begin{conjecture}[Consensus Convergence]
+\label{thm:S8a}
+If $k$ agents iteratively share $(\Phi_t, r_t)$ and re-complete, their completions converge:
+\begin{equation}
+  d_g(W_i^{(n)}, W_j^{(n)}) \leq 2\edisc \cdot \lambda^n
+\end{equation}
+where $\lambda < 1$ depends on anchor alignment quality.
+\end{conjecture}
+
+\textbf{Derived from:} F8 (Consensus)
+
+\textbf{Interpretation:} Exponential convergence through cache exchange.
+
+\subsection{(8b) Byzantine Fault Tolerance}
+
+\begin{corollary}[Byzantine Fault Tolerance]
+\label{thm:S8b}
+If $f < k/3$ agents send corrupted $(\Phi_t, r_t)$, the remaining agents can still reach consensus on the correct completion by majority filtering on $r_t$ (discrete) and median filtering on $\Phi_t$ (continuous).
+\end{corollary}
+
+\textbf{Derived from:} F8 (Consensus)
+
+\textbf{Interpretation:} Protocol is BFT for free.
+
+\subsection{(8c) Anchor Misalignment Tolerance}
+
+\begin{conjecture}[Anchor Misalignment Tolerance]
+\label{thm:S8c}
+If agents share anchors with alignment error $\delta_A$ (i.e., $d_g(a_i^A, a_i^B) < \delta_A$ for all anchors), consensus completions satisfy:
+\begin{equation}
+  d_g(W_A, W_B) \leq 2\edisc + K \cdot \delta_A
+\end{equation}
+where $K$ is the number of charts traversed.
+\end{conjecture}
+
+\textbf{Derived from:} F8 (Consensus)
+
+\textbf{Interpretation:} Approximate anchor alignment is enough.
+
+% ============================================================================
+% PART V: THIRD-ORDER DERIVATIONS
+% ============================================================================
+\newpage
+\part{Third-Order Derivations}
+
+\textit{These 33 results follow from the second-order derivations. For brevity, we state them with minimal commentary.}
+
+\section{From (1a) Constraint Redundancy}
+
+\begin{conjecture}[Minimal Constraint Basis]
+\label{thm:T1ai}
+Every sudoku-complete constraint set $C$ contains a minimal basis $B \subseteq C$ of exactly $m^*$ constraints such that:
+\begin{itemize}
+  \item Removing any $b \in B$ breaks uniqueness
+  \item All $c \in C \setminus B$ are expressible as geometric combinations of $B$
+\end{itemize}
+The basis is unique up to holonomy-preserving equivalence. This is the \textbf{geometric matroid} underlying the constraint system.
+\end{conjecture}
+
+\begin{algorithm_def}[Basis Extraction]
+\label{thm:T1aii}
+Given $C$ with $|C| > m^*$:
+\begin{enumerate}
+  \item Order constraints by information value $V(c)$
+  \item Greedily add $c$ to $B$ if it reduces $|\Svalid|$
+  \item Stop when $|\Svalid| = 1$
+\end{enumerate}
+Outputs minimal basis in $O(m \cdot |C|)$ holonomy computations.
+\end{algorithm_def}
+
+\begin{corollary}[Constraint Dimension]
+\label{thm:T1aiii}
+The dimension of the constraint space is:
+\begin{equation}
+  \dim(C) = m^* = \frac{\Kmax \cdot \log|\Sunconstrained|}{\taubudget}
+\end{equation}
+This is invariant under constraint reparameterization. The system has a \textbf{geometric rank}.
+\end{corollary}
+
+\section{From (1b) Constraint Value}
+
+\begin{conjecture}[Information Monotonicity]
+\label{thm:T1bi}
+Constraint information value satisfies:
+\begin{equation}
+  V(c | C_1) \geq V(c | C_2) \quad \text{when } C_1 \subseteq C_2
+\end{equation}
+Later constraints are always less informative than earlier ones (diminishing returns).
+\end{conjecture}
+
+\begin{lemma}[Curvature-Information Duality]
+\label{thm:T1bii}
+For a constraint $c$ with region $R_c$:
+\begin{equation}
+  V(c) = \int_{R_c} \Kloc(x) \, dV_g(x) + \mathcal{O}(\tau^2)
+\end{equation}
+Information value equals integrated curvature over the constraint region. \textbf{Curvature is information.}
+\end{lemma}
+
+\begin{corollary}[Optimal Observation Strategy]
+\label{thm:T1biii}
+To maximally reduce $|\Svalid|$ with $k$ observations, sample constraints from regions of highest integrated curvature. This is \textbf{geometric active learning}.
+\end{corollary}
+
+\section{From (1c) Phase Transition}
+
+\begin{conjecture}[Critical Exponent]
+\label{thm:T1ci}
+Near the phase transition $m^*$, define order parameter $\phi = |\Svalid| - 1$. Then:
+\begin{equation}
+  \phi \sim (m^* - m)^\beta, \quad \beta = \frac{\Kmax}{\taubudget}
+\end{equation}
+The critical exponent $\beta$ is determined by the curvature-to-budget ratio. The manifold has \textbf{universality class}.
+\end{conjecture}
+
+\begin{corollary}[Finite-Size Scaling]
+\label{thm:T1cii}
+For finite systems (bounded $M$), the transition smooths:
+\begin{equation}
+  \Delta m_{\mathrm{transition}} \sim \frac{1}{\sqrt{\mathrm{Vol}(M)}}
+\end{equation}
+Larger manifolds have sharper transitions.
+\end{corollary}
+
+\section{From (2a) Holonomy Algebra}
+
+\begin{conjecture}[Holonomy Lie Algebra]
+\label{thm:T2ai}
+In the infinitesimal limit ($\tau \to 0$), the holonomy operators generate a Lie algebra $\mathfrak{h}$ with bracket:
+\begin{equation}
+  [A_{\gamma_1}, A_{\gamma_2}] = \oint_{\gamma_1 \cap \gamma_2} R
+\end{equation}
+where $R$ is the curvature 2-form and $A_\gamma = \Hol_\gamma - I$. \textbf{The holonomy algebra is the curvature.}
+\end{conjecture}
+
+\begin{corollary}[Holonomy Dimension Bound]
+\label{thm:T2aii}
+\begin{equation}
+  \dim(\mathfrak{h}) \leq \frac{d(d-1)}{2}
+\end{equation}
+where $d = \dim(M)$. Equality holds iff curvature spans all antisymmetric matrices.
+\end{corollary}
+
+\begin{lemma}[Abelianization Error]
+\label{thm:T2aiii}
+The error from treating $H$ as abelian is:
+\begin{equation}
+  \|\Hol_{\gamma_1} \Hol_{\gamma_2} - \Hol_{\gamma_2} \Hol_{\gamma_1}\| \leq \|R\|_{L^\infty} \cdot A(\gamma_1 \cap \gamma_2)
+\end{equation}
+where $A$ is the area of loop intersection. Non-commutativity is \textbf{localized to intersections}.
+\end{lemma}
+
+\section{From (2b) Holonomy Decomposition}
+
+\begin{conjecture}[Prime Loop Decomposition]
+\label{thm:T2bi}
+Under suitable topological conditions, every loop $\gamma$ on $M$ decomposes into prime loops $\{\pi_i\}$ (not decomposable into smaller loops) such that:
+\begin{equation}
+  \Hol_\gamma = \prod_i \Hol_{\pi_i}
+\end{equation}
+The prime loops generate the fundamental group $\pi_1(M)$.
+\end{conjecture}
+
+\begin{corollary}[Holonomy Basis]
+\label{thm:T2bii}
+The number of independent holonomy operators is bounded by a function of the topology, related to $\beta_1(M)$ (the first Betti number) and the holonomy group dimension. \textbf{Topology bounds holonomy complexity.}
+\end{corollary}
+
+\begin{algorithm_def}[Loop Factorization]
+\label{thm:T2biii}
+Given complex loop $\gamma$:
+\begin{enumerate}
+  \item Compute homology class $[\gamma] \in H_1(M)$
+  \item Express $[\gamma] = \sum n_i [\pi_i]$ in prime basis
+  \item Approximate $\Hol_\gamma \approx \prod (\Hol_{\pi_i})^{n_i}$
+\end{enumerate}
+Reduces holonomy computation from $O(\mathrm{length}(\gamma))$ to $O(\beta_1)$.
+\end{algorithm_def}
+
+\section{From (2c) Parallel Gap-Filling}
+
+\begin{conjecture}[Parallelization Overhead]
+\label{thm:T2ci}
+The overhead from parallel vs. sequential gap-filling is exactly:
+\begin{equation}
+  \varepsilon_{\mathrm{overhead}} = \sum_{i < j} \|[\Hol_{\gamma_i}, \Hol_{\gamma_j}]\|
+\end{equation}
+This is computable before execution.
+\end{conjecture}
+
+\begin{corollary}[Optimal Parallelization Partition]
+\label{thm:T2cii}
+Given gaps $G = \{g_1, \ldots, g_k\}$, the optimal partition into parallel batches minimizes:
+\begin{equation}
+  \sum_{\mathrm{batches}} \sum_{i < j \in \mathrm{batch}} A(\gamma_i \cap \gamma_j)
+\end{equation}
+Gaps with non-intersecting boundaries should be parallelized.
+\end{corollary}
+
+\begin{lemma}[Amdahl's Law for Geometric Completion]
+\label{thm:T2ciii}
+Maximum speedup from parallelization:
+\begin{equation}
+  S_{\max} = \frac{1}{f_{\mathrm{sequential}} + \frac{\varepsilon_{\mathrm{overhead}}}{\varepsilon_{\mathrm{total}}}}
+\end{equation}
+where $f_{\mathrm{sequential}}$ is the fraction of inherently sequential holonomy.
+\end{lemma}
+
+\section{From (3a) Inconsistency Localization}
+
+\begin{conjecture}[Geometric Helly Number]
+\label{thm:T3ai}
+The Helly number of constraint consistency on a $d$-dimensional Davis manifold is at most $d + 1$ under geodesic convexity assumptions. That is: $C$ is consistent iff every subset of size $\leq d + 1$ is consistent.
+\end{conjecture}
+
+\begin{corollary}[Inconsistency Detection Complexity]
+\label{thm:T3aii}
+Checking consistency of $m$ constraints requires at most:
+\begin{equation}
+  \binom{m}{d+1} = O(m^{d+1})
+\end{equation}
+holonomy computations. For fixed $d$, this is polynomial in $m$.
+\end{corollary}
+
+\begin{algorithm_def}[Fast Inconsistency Detection]
+\label{thm:T3aiii}
+Using geometric hashing:
+\begin{enumerate}
+  \item Hash each constraint by its boundary holonomy signature
+  \item Constraints with incompatible signatures cannot be jointly consistent
+  \item Only check $(d+1)$-tuples with compatible signatures
+\end{enumerate}
+Expected complexity $O(m^2)$ for randomly distributed constraints.
+\end{algorithm_def}
+
+\section{From (3b) Inconsistency Resolution}
+
+\begin{conjecture}[Minimal Relaxation]
+\label{thm:T3bi}
+Among all relaxations of inconsistent $C$ to consistent $C'$, the minimal relaxation $C^{*'}$ satisfies:
+\begin{equation}
+  \sum_{c \in C} d_{\mathrm{relax}}(c, c') \geq \oint_{\partial(\cap R_c)} \|\Hol - I\| - \taubudget
+\end{equation}
+with equality for $C^{*'}$. \textbf{Minimum edit distance to consistency equals holonomy excess.}
+\end{conjecture}
+
+\begin{corollary}[Relaxation is Unique]
+\label{thm:T3bii}
+If the holonomy excess is distributed among constraints proportionally to their boundary curvature contribution, the relaxation is unique.
+\end{corollary}
+
+\begin{lemma}[Relaxation Preserves Structure]
+\label{thm:T3biii}
+Minimal relaxation preserves constraint topology:
+\begin{equation}
+  \pi_1\left(\bigcap_{c \in C'} R_{c'}\right) \cong \pi_1\left(\bigcap_{c \in C} R_c\right)
+\end{equation}
+when relaxation is below the injectivity radius. You don't \textbf{tear} the constraint space, just stretch it.
+\end{lemma}
+
+\section{From (4a) Stability Radius}
+
+\begin{conjecture}[Stability is Curvature-Determined]
+\label{thm:T4ai}
+The stability radius satisfies:
+\begin{equation}
+  r_{\mathrm{stable}} = \frac{\taubudget}{\sqrt{\Kmax}} \cdot \frac{1}{L}
+\end{equation}
+Stability degrades linearly with path length and with square root of curvature.
+\end{conjecture}
+
+\begin{corollary}[Condition Number of Completion]
+\label{thm:T4aii}
+Define the geometric condition number:
+\begin{equation}
+  \kappa_g = \frac{L \cdot \sqrt{\Kmax}}{\taubudget}
+\end{equation}
+Completions with $\kappa_g > 1$ are ill-conditioned. This is \textbf{numerical stability} for geometric inference.
+\end{corollary}
+
+\begin{lemma}[Stability Under Constraint Perturbation]
+\label{thm:T4aiii}
+If constraint $c$ is perturbed to $c'$ with $d_g(R_c, R_{c'}) < \delta_c$, then:
+\begin{equation}
+  d_g(W^*, W'^*) \leq \delta_c \cdot V(c)
+\end{equation}
+High-information constraints are more sensitive to perturbation.
+\end{lemma}
+
+\section{From (4b) Adversarial Bound}
+
+\begin{conjecture}[Adversarial Budget]
+\label{thm:T4bi}
+To force completion to a target $W_{\mathrm{adv}}$ with $d_g(W^*, W_{\mathrm{adv}}) = \Delta$, an adversary must spend budget:
+\begin{equation}
+  B_{\mathrm{adv}} \geq \Delta \cdot \exp(-\kappa_g)
+\end{equation}
+Attacks are expensive when condition number is low.
+\end{conjecture}
+
+\begin{corollary}[Certified Radius]
+\label{thm:T4bii}
+No perturbation of size $\delta < r_{\mathrm{stable}}$ can change the completion. This is a \textbf{geometric certificate}.
+\end{corollary}
+
+\begin{algorithm_def}[Adversarial Detection via Stability]
+\label{thm:T4biii}
+Given input $W_0$ and completion $W^*$:
+\begin{enumerate}
+  \item Compute $r_{\mathrm{stable}}$
+  \item Sample perturbations of size $r_{\mathrm{stable}} / 2$
+  \item If completions vary by more than $\varepsilon$, flag as adversarial
+\end{enumerate}
+Detects attacks that reduce stability radius.
+\end{algorithm_def}
+
+\section{From (5a) Regret Bound}
+
+\begin{conjecture}[Regret Decomposition]
+\label{thm:T5ai}
+Total regret decomposes:
+\begin{equation}
+  \mathrm{Regret}(\sigma) = \sum_i \sum_{j > i} \|[\Hol_{\sigma(i)}, \Hol_{\sigma(j)}]\|
+\end{equation}
+Regret is sum of commutator norms over ordering inversions.
+\end{conjecture}
+
+\begin{corollary}[Optimal Order is Curvature-Sorted]
+\label{thm:T5aii}
+When constraints have nested regions ($R_{c_1} \supset R_{c_2} \supset \cdots$), optimal order is by decreasing integrated curvature. Large, curved constraints first.
+\end{corollary}
+
+\section{From (5b) Submodularity}
+
+\begin{conjecture}[Greedy Approximation Ratio]
+\label{thm:T5bi}
+Greedy constraint ordering achieves holonomy reduction within factor $(1 - 1/e)$ of optimal:
+\begin{equation}
+  \Hol_{\mathrm{greedy}} \leq (1 - 1/e) \cdot \Hol_{\mathrm{optimal}} + \taubudget
+\end{equation}
+\end{conjecture}
+
+\begin{corollary}[Online Constraint Selection]
+\label{thm:T5bii}
+Constraints arriving online can be greedily accepted/rejected with competitive ratio $(1 - 1/e)$ against offline optimal.
+\end{corollary}
+
+\section{From (6a) Rate-Distortion}
+
+\begin{conjecture}[Cache is Sufficient Statistic]
+\label{thm:T6ai}
+$(\Phi_t, r_t)$ is a minimal sufficient statistic for completion:
+\begin{equation}
+  I(W^* ; W_0, \gamma) = I(W^* ; \Phi_t, r_t)
+\end{equation}
+All completion-relevant information is captured.
+\end{conjecture}
+
+\begin{corollary}[No Better Cache Exists]
+\label{thm:T6aii}
+Any cache with fewer than $I[(\Phi_t, r_t)]$ bits must either lose completions or introduce errors exceeding $\varepsilon$.
+\end{corollary}
+
+\section{From (6b) Winding Incompressibility}
+
+\begin{conjecture}[Winding Code is Homological]
+\label{thm:T6bi}
+The winding code $r_t$ encodes the homology class of the path:
+\begin{equation}
+  r_t \cong [\gamma_{0:t}] \in H_1(M; \mathbb{Z})
+\end{equation}
+Winding counts crossings of homology generators.
+\end{conjecture}
+
+\begin{corollary}[Winding Dimension Equals Betti Number]
+\label{thm:T6bii}
+\begin{equation}
+  |r_t| = \beta_1(M) \cdot \log 3
+\end{equation}
+bits (for winding in $\{-1, 0, +1\}$ per generator).
+\end{corollary}
+
+\section{From (6c) Cache Tightness}
+
+\begin{lemma}[$\Phi$-Distinguishability]
+\label{thm:T6ci}
+Paths with different $\Phi_t$ are geometrically separated:
+\begin{equation}
+  \Phi_t \neq \Phi'_t \Rightarrow d_g(\gamma(t), \gamma'(t)) > \varepsilon
+\end{equation}
+\end{lemma}
+
+\begin{lemma}[$r$-Distinguishability]
+\label{thm:T6cii}
+Paths with different $r_t$ are topologically separated:
+\begin{equation}
+  r_t \neq r'_t \Rightarrow [\gamma] \neq [\gamma'] \in \pi_1(M)
+\end{equation}
+\end{lemma}
+
+\begin{conjecture}[Cache Separates All Paths]
+\label{thm:T6ciii}
+Two paths yield the same completion iff they have identical $(\Phi_t, r_t)$:
+\begin{equation}
+  W^*_\gamma = W^*_{\gamma'} \Leftrightarrow (\Phi_t, r_t) = (\Phi'_t, r'_t)
+\end{equation}
+\textbf{Complete invariant.}
+\end{conjecture}
+
+\section{From (7a) Gap Additivity}
+
+\begin{conjecture}[Gap Budget Allocation]
+\label{thm:T7ai}
+Given total gap length $G$ and holonomy budget $\tau$, optimal allocation minimizes:
+\begin{equation}
+  \min_{\{g_i\}} \sum_i g_i \sqrt{\Kloc(g_i)} \quad \text{s.t.} \quad \sum_i g_i = G
+\end{equation}
+Solution: allocate proportionally to $1/\Kloc$. \textbf{Put gaps where curvature is low.}
+\end{conjecture}
+
+\begin{corollary}[Gap Capacity]
+\label{thm:T7aii}
+Maximum total gap length achievable:
+\begin{equation}
+  G_{\max} = \frac{\taubudget}{\min_x \sqrt{\Kloc(x)}}
+\end{equation}
+Capacity is determined by the flattest region.
+\end{corollary}
+
+\begin{lemma}[Gap Interference]
+\label{thm:T7aiii}
+Gaps $g_i$ and $g_j$ interfere iff their loop boundaries share edges. Interference cost:
+\begin{equation}
+  I(g_i, g_j) = \|\Hol_{\gamma_i \cap \gamma_j}\|
+\end{equation}
+\end{lemma}
+
+\section{From (7b) Optimal Distribution}
+
+\begin{conjecture}[Uniform Distribution Optimality]
+\label{thm:T7bi}
+In constant curvature ($\Kloc = \Kmax$ everywhere), equal-sized gaps minimize total holonomy:
+\begin{equation}
+  g_i = G/k \quad \forall i
+\end{equation}
+\end{conjecture}
+
+\begin{corollary}[Gap Fragmentation Principle]
+\label{thm:T7bii}
+Many small gaps are better than few large gaps:
+\begin{equation}
+  \sum_i \sqrt{g_i} \leq \sqrt{k} \cdot \sqrt{G/k} = \sqrt{G}
+\end{equation}
+with equality for uniform distribution. \textbf{Divide your ignorance.}
+\end{corollary}
+
+\section{From (7c) Critical Ratio}
+
+\begin{conjecture}[Observability Threshold]
+\label{thm:T7ci}
+A world model is observable (admits unique completion) iff:
+\begin{equation}
+  \rho_{\mathrm{observed}} = \frac{L_{\mathrm{observed}}}{L_{\mathrm{total}}} > 1 - \frac{\taubudget}{\sqrt{\Kmax} \cdot L_{\mathrm{total}}}
+\end{equation}
+Must observe at least this fraction.
+\end{conjecture}
+
+\begin{corollary}[Minimum Observation Density]
+\label{thm:T7cii}
+The minimum observation density for unique completion:
+\begin{equation}
+  \rho_{\min} = 1 - \frac{\taubudget}{\sqrt{\Kmax} \cdot L_{\mathrm{total}}}
+\end{equation}
+In flat geometry ($\Kmax \to 0$), even sparse observations suffice.
+\end{corollary}
+
+\section{From (8a) Convergence}
+
+\begin{conjecture}[Convergence Rate]
+\label{thm:T8ai}
+\begin{equation}
+  \lambda = 1 - \frac{\taubudget}{\Kmax \cdot D^2}
+\end{equation}
+where $D$ is manifold diameter. Flatter geometry = faster consensus.
+\end{conjecture}
+
+\begin{corollary}[Mixing Time]
+\label{thm:T8aii}
+Agents reach $\varepsilon$-consensus in:
+\begin{equation}
+  T_{\mathrm{mix}} = \frac{\log(1/\varepsilon)}{\log(1/\lambda)} = O\left(\frac{\Kmax \cdot D^2}{\taubudget} \log(1/\varepsilon)\right)
+\end{equation}
+\end{corollary}
+
+\section{From (8b) BFT}
+
+\begin{conjecture}[Geometric BFT Threshold]
+\label{thm:T8bi}
+With $f$ Byzantine agents among $k$ total:
+\begin{equation}
+  f < \frac{k}{3} \cdot \frac{\taubudget}{\Kmax}
+\end{equation}
+Curvature reduces fault tolerance.
+\end{conjecture}
+
+\begin{corollary}[Flat Geometry Maximizes Fault Tolerance]
+\label{thm:T8bii}
+As $\Kmax \to 0$, Byzantine threshold approaches $k/3$ (classical optimal).
+\end{corollary}
+
+\section{From (8c) Misalignment}
+
+\begin{conjecture}[Alignment-Consensus Tradeoff]
+\label{thm:T8ci}
+\begin{equation}
+  d_g(W_A, W_B) \leq 2\edisc + K \cdot \delta_A + \frac{\delta_A^2}{\taubudget}
+\end{equation}
+Quadratic penalty for large misalignment.
+\end{conjecture}
+
+\begin{corollary}[Maximum Tolerable Misalignment]
+\label{thm:T8cii}
+\begin{equation}
+  \delta_A^{\max} = \sqrt{\taubudget \cdot \varepsilon}
+\end{equation}
+Beyond this, consensus degrades rapidly.
+\end{corollary}
+
+\begin{algorithm_def}[Anchor Alignment Protocol]
+\label{thm:T8ciii}
+Given agents $A$, $B$ with potentially misaligned anchors:
+\begin{enumerate}
+  \item Exchange cache states $(\Phi_t^A, r_t^A)$, $(\Phi_t^B, r_t^B)$
+  \item Compute alignment error: $\delta_A \approx \|\Phi_t^A - \Phi_t^B\|$ (on shared test paths)
+  \item If $\delta_A > \delta_A^{\max}$, run anchor recalibration
+  \item Else proceed with completion
+\end{enumerate}
+\end{algorithm_def}
+
+% ============================================================================
+% PART VI: FOURTH-ORDER DERIVATIONS
+% ============================================================================
+\newpage
+\part{Fourth-Order Derivations (Synthesis)}
+
+\textit{These 13 results synthesize across third-order branches.}
+
+\section{Basis-Cache Duality}
+
+\begin{conjecture}[Basis-Cache Duality]
+\label{thm:FO1}
+The minimal constraint basis $B$ and the Davis cache $(\Phi_t, r_t)$ are dual representations:
+\begin{equation}
+  |B| = m^* = \frac{I[(\Phi_t, r_t)]}{\log(1/\varepsilon)}
+\end{equation}
+Constraints and cache carry the same information, differently encoded. This is \textbf{duality between observations and state}.
+\end{conjecture}
+
+\textbf{Derived from:} T1a-i (Minimal Basis) + T6a-i (Sufficient Statistic)
+
+\section{Information-Curvature Conservation}
+
+\begin{conjecture}[Information-Curvature Conservation]
+\label{thm:FO2}
+Total information required for completion equals total curvature over gaps:
+\begin{equation}
+  I_{\mathrm{required}} = \int_{\mathrm{gaps}} \Kloc(x) \, dV_g(x)
+\end{equation}
+\textbf{Information and curvature are conserved quantities.}
+\end{conjecture}
+
+\textbf{Derived from:} T1b-ii (Curvature-Info Duality) + T7a-i (Gap Allocation)
+
+\begin{corollary}[Observation-Gap Complementarity]
+\label{thm:FO3}
+\begin{equation}
+  \int_{\mathrm{observed}} \Kloc \, dV + \int_{\mathrm{gaps}} \Kloc \, dV = \int_M \Kloc \, dV = \mathrm{const}
+\end{equation}
+What you observe and what you infer sum to the total manifold curvature.
+\end{corollary}
+
+\section{Structure Theorem for Davis Cache}
+
+\begin{conjecture}[Structure Theorem]
+\label{thm:FO4}
+The Davis cache decomposes as:
+\begin{equation}
+  (\Phi_t, r_t) \cong \mathfrak{h}^* \times H_1(M; \mathbb{Z})
+\end{equation}
+Continuous part lives in dual of holonomy algebra; discrete part lives in first homology.
+\end{conjecture}
+
+\textbf{Derived from:} T2a-i (Lie Algebra) + T6b-i (Winding Homological)
+
+\begin{corollary}[Cache Dimension Formula]
+\label{thm:FO5}
+\begin{align}
+  \dim(\Phi_t) &= \dim(\mathfrak{h}) \leq \frac{d(d-1)}{2} \\
+  |r_t| &= \beta_1(M)
+\end{align}
+Both determined by manifold topology.
+\end{corollary}
+
+\section{Constraint-Loop Duality}
+
+\begin{conjecture}[Constraint-Loop Duality]
+\label{thm:FO6}
+The minimal constraint basis $B$ has size:
+\begin{equation}
+  |B| = \beta_1(M) + d + 1
+\end{equation}
+First Betti number (topological) plus Helly number (geometric). Constraints split into \textbf{topological and geometric components}.
+\end{conjecture}
+
+\textbf{Derived from:} T2b-ii (Holonomy Basis) + T3a-i (Helly Number)
+
+\section{Condition-Convergence Relationship}
+
+\begin{conjecture}[Condition-Convergence]
+\label{thm:FO7}
+\begin{equation}
+  T_{\mathrm{mix}} = O(\kappa_g^2 \cdot \log(1/\varepsilon))
+\end{equation}
+Consensus time scales with square of condition number. \textbf{Ill-conditioned problems have slow consensus.}
+\end{conjecture}
+
+\textbf{Derived from:} T4a-ii (Condition Number) + T8a-i (Convergence Rate)
+
+\section{Greedy Gap-Filling Near-Optimal}
+
+\begin{conjecture}[Greedy Gap-Filling]
+\label{thm:FO8}
+Greedily filling smallest gaps first achieves:
+\begin{equation}
+  \Hol_{\mathrm{greedy}} \leq (1 + 1/e) \cdot \Hol_{\mathrm{optimal}}
+\end{equation}
+Combined with constraint ordering, total approximation ratio is $(1 - 1/e^2)$.
+\end{conjecture}
+
+\textbf{Derived from:} T5b-i (Greedy Ratio) + T7b-ii (Fragmentation)
+
+\section{Phase Diagram of Completion}
+
+\begin{conjecture}[Phase Diagram]
+\label{thm:FO9}
+The $(\rho_{\mathrm{observed}}, \Kmax)$ plane divides into:
+\begin{enumerate}
+  \item \textbf{Unique completion region}: $\rho > \rho_{\min}(\Khat)$
+  \item \textbf{Multiple completion region}: $\rho < \rho_{\min}(\Khat)$
+  \item \textbf{Critical line}: $\rho = \rho_{\min}(\Khat)$ with phase transition
+\end{enumerate}
+The critical line is:
+\begin{equation}
+  \rho_{\mathrm{crit}}(\Khat) = 1 - \frac{\taubudget}{\sqrt{\Khat} \cdot L}
+\end{equation}
+\end{conjecture}
+
+\textbf{Derived from:} T1c-i (Critical Exponent) + T7c-i (Observability)
+
+\section{Fault-Constraint Duality}
+
+\begin{conjecture}[Fault-Constraint Duality]
+\label{thm:FO10}
+Byzantine agents act as inconsistent constraints. Maximum tolerable:
+\begin{equation}
+  f_{\max} = \frac{k - (d+1)}{3}
+\end{equation}
+Must have enough honest agents to satisfy Helly bound.
+\end{conjecture}
+
+\textbf{Derived from:} T3a-i (Helly) + T8b-i (BFT Threshold)
+
+\section{Universal Cache Protocol}
+
+\begin{conjecture}[Universal Cache Protocol]
+\label{thm:FO11}
+For any two agents $A$, $B$ with bounded misalignment $\delta_A < \delta_A^{\max}$:
+\begin{enumerate}
+  \item Cache exchange: $O(d_\Phi + \beta_1)$ bits
+  \item Alignment check: $O(1)$ paths
+  \item Consensus: $O(T_{\mathrm{mix}})$ rounds
+\end{enumerate}
+Total communication: $O(d_\Phi + \beta_1 + T_{\mathrm{mix}})$. \textbf{Optimal} for the given geometric constraints.
+\end{conjecture}
+
+\textbf{Derived from:} T6c-iii (Cache Separates) + T8c-iii (Alignment Protocol)
+
+\section{Representation Theorem}
+
+\begin{conjecture}[Representation Theorem]
+\label{thm:FO12}
+The following are equal:
+\begin{enumerate}
+  \item Minimal constraint basis size $|B| = m^*$
+  \item Cache information $I[(\Phi_t, r_t)] / \log(1/\varepsilon)$
+  \item Holonomy algebra dimension + Betti number + 1
+  \item Geometric degrees of freedom for completion
+\end{enumerate}
+\textbf{Fundamental invariant} of the completion problem.
+\end{conjecture}
+
+\textbf{Derived from:} T1a-iii (Constraint Dim) + T6a-ii (No Better Cache)
+
+\section{Parallel-Sequential Equivalence}
+
+\begin{conjecture}[Parallel-Sequential Equivalence]
+\label{thm:FO13}
+Total holonomy is invariant under execution strategy:
+\begin{equation}
+  \Hol_{\mathrm{sequential}} + \mathrm{Regret}(\sigma) = \Hol_{\mathrm{parallel}} + \varepsilon_{\mathrm{overhead}}
+\end{equation}
+for any ordering $\sigma$ and any parallel partition. \textbf{Conservation law for holonomy.}
+\end{conjecture}
+
+\textbf{Derived from:} T2c-i (Overhead) + T5a-i (Regret Decomposition)
+
+\section{Attack Surface Geometry}
+
+\begin{conjecture}[Attack Surface Geometry]
+\label{thm:FO14}
+The adversarial attack surface has measure:
+\begin{equation}
+  \mu(\mathrm{Attack}) = G_{\max} \cdot \exp(-\kappa_g)
+\end{equation}
+Large gap capacity but high condition number = small attack surface.
+\end{conjecture}
+
+\textbf{Derived from:} T4b-i (Adversarial Budget) + T7a-ii (Gap Capacity)
+
+% ============================================================================
+% PART VII: FIFTH-ORDER DERIVATIONS
+% ============================================================================
+\newpage
+\part{Fifth-Order Derivations}
+
+\section{Energy Derivations (E1--E5)}
+
+\begin{energybox}[From E0: Principle of Least Holonomy]
+
+\begin{conjecture}[Geodesic Completion]
+\label{thm:E1}
+In regions where $\Kloc < \Kmax$ uniformly, energy-minimizing paths are geodesics:
+\begin{equation}
+  \nabla_{\dot{\gamma}} \dot{\gamma} = 0
+\end{equation}
+\textbf{Optimal reasoning follows straight lines in flat regions.}
+\end{conjecture}
+
+\begin{conjecture}[Energy-Holonomy Equivalence]
+\label{thm:E2}
+For benign paths, total energy equals integrated holonomy:
+\begin{equation}
+  E[\gamma] = \lambda_3 \oint_{\partial \gamma} \|\Hol - I\| + O(\tau^2)
+\end{equation}
+\textbf{Energy is holonomy} (to first order).
+\end{conjecture}
+
+\begin{conjecture}[Noether's Theorem for Reasoning]
+\label{thm:E3}
+If the manifold has a symmetry (isometry group $G$), then there exists a conserved quantity along optimal paths:
+\begin{equation}
+  J_G = \langle \dot{\gamma}, \xi_G \rangle = \mathrm{const}
+\end{equation}
+where $\xi_G$ is the Killing field of $G$. \textbf{Symmetries produce conservation laws.}
+\end{conjecture}
+
+\begin{conjecture}[Hamilton-Jacobi Equation]
+\label{thm:E4}
+The optimal completion value function $V(W_0, W_{\mathrm{goal}})$ satisfies:
+\begin{equation}
+  \|\nabla V\|^2 = \lambda_1 + \lambda_2 \Kloc + \lambda_3 \|\Hol - I\|
+\end{equation}
+This PDE characterizes all optimal completions simultaneously.
+\end{conjecture}
+
+\begin{corollary}[Principle of Stationary Holonomy]
+\label{thm:E5}
+Among all completions connecting $W_0$ to $W^*$, the realized completion is the one for which holonomy is stationary:
+\begin{equation}
+  \delta \oint \Hol = 0
+\end{equation}
+\textbf{The variational principle for reasoning.}
+\end{corollary}
+
+\end{energybox}
+
+\section{Dynamics Derivations (D1--D6)}
+
+\begin{dynamicsbox}[Manifold Evolution: $\partial M / \partial t$]
+
+\begin{conjecture}[Cache Invalidation Condition]
+\label{thm:D1}
+The Davis Cache $(\Phi_t, r_t)$ remains valid under manifold update $\partial M / \partial t$ iff:
+\begin{equation}
+  \left\|\frac{\partial g}{\partial t}\right\|_{L^\infty} < \frac{\taubudget}{T \cdot L}
+\end{equation}
+where $T$ is time since cache computation and $L$ is path length. Beyond this rate, cache must be recomputed.
+\end{conjecture}
+
+\begin{conjecture}[Learning-Completion Tradeoff]
+\label{thm:D2}
+During active learning with rate $\eta$, the completion capacity degrades:
+\begin{equation}
+  \Cdyn = \frac{\tau}{K + \eta \cdot T}
+\end{equation}
+\textbf{Fast learning temporarily reduces completion capacity.}
+\end{conjecture}
+
+\begin{conjecture}[Manifold Stability Under Updates]
+\label{thm:D3}
+A manifold remains in the benign regime during learning iff:
+\begin{equation}
+  \frac{\partial \Kmax}{\partial t} < \frac{\taubudget}{\smax^2}
+\end{equation}
+Curvature cannot grow faster than the holonomy horizon can accommodate.
+\end{conjecture}
+
+\begin{conjecture}[Basin Drift Bound]
+\label{thm:D4}
+If basin $B$ has center $c_B$ at time $t$, then under learning:
+\begin{equation}
+  \|c_B(t + \Delta t) - c_B(t)\| \leq \eta \cdot \Delta t \cdot \sqrt{\Kloc(c_B)}
+\end{equation}
+\textbf{Basins in high-curvature regions drift faster.}
+\end{conjecture}
+
+\begin{conjecture}[Anchor Persistence]
+\label{thm:D5}
+An anchor set $A$ remains valid (preserves cache structure) iff no anchor crosses a basin boundary:
+\begin{equation}
+  d_g(a_i(t), \partial B_j) > \eta \cdot T \cdot \sqrt{\Kmax} \quad \forall i, j
+\end{equation}
+Anchors must stay away from basin boundaries by a margin proportional to learning rate.
+\end{conjecture}
+
+\begin{corollary}[Safe Learning Rate]
+\label{thm:D6}
+The maximum learning rate that preserves all completion guarantees:
+\begin{equation}
+  \eta_{\mathrm{safe}} = \min\left(\frac{\tau}{T \cdot L \cdot K}, \frac{d_{\min}(A, \partial B)}{T \cdot \sqrt{\Kmax}}\right)
+\end{equation}
+where $d_{\min}$ is minimum anchor-to-boundary distance. \textbf{This is the speed limit for training.}
+\end{corollary}
+
+\end{dynamicsbox}
+
+% ============================================================================
+% PART VIII: THE ALGORITHM
+% ============================================================================
+\newpage
+\part{The Davis Manifold Relaxation Algorithm}
+
+\section{Problem Formulation}
+
+\textbf{Given:}
+\begin{itemize}
+  \item Partial world $W_0$, goal $W_{\mathrm{goal}}$, constraints $C$
+  \item Curvature bound $\Kmax$, holonomy budget $\taubudget$
+\end{itemize}
+
+\textbf{Goal:} Compute a benign, low-curvature path $\gamma^*$ from $W_0$ to $W_{\mathrm{goal}}$ whose completions obey the Sudoku Principle.
+
+\section{Algorithm Steps}
+
+\begin{enumerate}
+  \item \textbf{Initialization (Anchor Step)}
+  \begin{itemize}
+    \item Map $W_0$, $W_{\mathrm{goal}}$ to anchors $z_{\mathrm{start}}$, $z_{\mathrm{end}}$
+    \item Initialize $\gamma$ as a geodesic between anchors
+  \end{itemize}
+  
+  \item \textbf{Constraint Projection (Sudoku Step)}
+  \begin{itemize}
+    \item For each constraint $c \in C$, define valid region $R_c \subset M$
+    \item Project $\gamma$ toward $R_c$; treat violations as forces pulling $\gamma$ back into $\bigcap_c R_c$
+  \end{itemize}
+  
+  \item \textbf{Manifold Relaxation (Energy Minimization)}
+  \begin{itemize}
+    \item Define Davis Energy Functional:
+    \begin{equation}
+      E[\gamma] = \lambda_1 \int_0^L ds + \lambda_2 \int_0^L \Kloc(s) \, ds + \lambda_3 \int_0^L \|\Hol_{\gamma_s} - I\| \, ds
+    \end{equation}
+    \item Gradient descent or geodesic shooting to minimize functional subject to boundary conditions
+  \end{itemize}
+  
+  \item \textbf{Discretization \& Harmonization (BRIDGE Step)}
+  \begin{itemize}
+    \item Discretize $\gamma^*$ via speed-of-thought CFL: $\Delta s \approx \ell_c / \sqrt{1 + \Kloc}$
+    \item Execute reasoning via BRIDGE-like engine
+    \item Use Davis cache to store $(\Phi_t, r_t)$
+    \item Apply harmonization $H$ on observable operations
+    \item On failure (e.g., exit code 126 or holonomy spike), add new constraint at collision point and re-run relaxation
+  \end{itemize}
+  
+  \item \textbf{Output}
+  \begin{itemize}
+    \item Verified deterministic path $\gamma^*$ with:
+    \begin{itemize}
+      \item Bounded curvature and holonomy
+      \item Unique completion guarantees
+      \item Zero hallucinated observables under $H$
+    \end{itemize}
+  \end{itemize}
+\end{enumerate}
+
+\section{Correctness Links to Theorems}
+
+\begin{itemize}
+  \item \textbf{Theorem 1}: Uniqueness of $\gamma^*$'s induced world completion
+  \item \textbf{Theorem 2}: Harmonization ensures deterministic replay
+  \item \textbf{Theorem 3}: Effective search-space reduction via energy functional
+  \item \textbf{Theorem 4}: Linear error bounds for any remaining gaps
+  \item \textbf{Theorem 5}: Use of Davis cache as sufficient state
+  \item \textbf{E0}: Energy minimization selects optimal path
+\end{itemize}
+
+% ============================================================================
+% PART IX: APPLICATIONS
+% ============================================================================
+\newpage
+\part{Applications}
+
+\section{Curvature-Aware Training Data Filtering}
+
+Use $\Kloc$ as a pretrain filter:
+\begin{itemize}
+  \item Estimate curvature induced by documents/tasks
+  \item Exclude high-curvature samples to learn flatter world manifolds
+  \item Extends the Sudoku regime
+\end{itemize}
+
+\section{Teleporting Reasoning State Between Agents}
+
+Protocol:
+\begin{itemize}
+  \item Each agent maintains $(\Phi_t, r_t)$
+  \item On handoff, send only this cache and relevant constraints
+  \item Receiver reconstructs local view and continues Davis Manifold Relaxation
+  \item Communication cost: $O(d_\Phi + \beta_1)$ bits
+\end{itemize}
+
+\section{Adversarial Detection via Holonomy Spikes}
+
+Prompt/observation injection shatters geometry:
+\begin{itemize}
+  \item Sudden increase in $\Kloc$ or $\|\Hol - I\|$ across loops that used to be benign
+  \item Detect and block completions when holonomy exceeds $\taubudget$
+  \item Detection before generation via curvature monitoring
+\end{itemize}
+
+\section{Mental Stack Trace Debugger}
+
+Log $(\Phi_t, r_t, \Kloc, \Hol)$ along reasoning:
+\begin{itemize}
+  \item On failure, locate step where:
+  \begin{itemize}
+    \item Curvature exceeded $\Kmax$, or
+    \item Holonomy budget violated
+  \end{itemize}
+  \item Provide human-readable ``where it lost the Sudoku solution'' stack trace
+  \item Geometric debugging: ``model lost coherence at step 43 because curvature exceeded 1.0''
+\end{itemize}
+
+% ============================================================================
+% APPENDIX: NOTATION
+% ============================================================================
+\newpage
+\appendix
+\part*{Appendices}
+\addcontentsline{toc}{part}{Appendices}
+
+\section{Notation Reference}
+
+\begin{longtable}{p{3cm} p{10cm}}
+\toprule
+\textbf{Symbol} & \textbf{Definition} \\
+\midrule
+\endhead
+
+$(M, g)$ & Davis manifold with metric $g$ \\
+$\Kloc$ & Local normalized curvature \\
+$\Kmax$ & Maximum curvature bound \\
+$\taubudget$ & Holonomy/tolerance budget \\
+$\Hol_\gamma$ & Holonomy operator around loop $\gamma$ \\
+$\smax$ & Holonomy horizon (maximum coherent path length) \\
+$\ell_c$ & Characteristic semantic length \\
+$C$ & Constraint set \\
+$R_c$ & Valid region for constraint $c$ \\
+$W$, $W_0$, $W^*$ & World state, partial world, completion \\
+$\Phi_t$ & Continuous potential (location on manifold) \\
+$r_t$ & Topological residue (chart, basin, winding code) \\
+$(\Phi_t, r_t)$ & Davis cache \\
+$m^*$ & Constraint saturation threshold \\
+$\Svalid$ & Set of valid completions \\
+$V(c)$ & Information value of constraint $c$ \\
+$\kappa_g$ & Geometric condition number \\
+$\beta_1(M)$ & First Betti number of $M$ \\
+$\mathfrak{h}$ & Holonomy Lie algebra \\
+$\edisc$ & Discretization slack \\
+$\eta$ & Learning rate \\
+$\eta_{\mathrm{safe}}$ & Maximum safe learning rate \\
+$C$ (in $C = \tau/K$) & Inference capacity / completion \\
+$\Gamma$ & Trichotomy parameter \\
+$E[\gamma]$ & Davis energy functional \\
+
+\bottomrule
+\end{longtable}
+
+\section{Dependency Summary}
+
+\textbf{Foundation $\to$ First Order:}
+\begin{itemize}
+  \item T1 + T3 $\to$ F1 (Saturation)
+  \item T1 + Cor $\to$ F2 (Compositional)
+  \item T1 $\to$ F3 (Consistency)
+  \item T1 + T4 $\to$ F4 (Stability)
+  \item T3 + F2 $\to$ F5 (Ordering)
+  \item T5 $\to$ F6 (Compression)
+  \item T4 + T1 $\to$ F7 (Max Gap)
+  \item T5 + T1 $\to$ F8 (Consensus)
+\end{itemize}
+
+\textbf{First $\to$ Second:}
+Each F$i$ generates multiple S$i$x results (see main text).
+
+\textbf{Second $\to$ Third:}
+Each S$i$x generates multiple T$i$x-y results (see main text).
+
+\textbf{Third $\to$ Fourth:}
+Cross-synthesis produces FO1--FO14.
+
+\textbf{Foundation $\to$ Fifth:}
+E0 generates E1--E5 (Energy).
+T1, T5, FO, S6, S8 generate D1--D6 (Dynamics).
+
+\textbf{Fourth + Fifth $\to$ Master:}
+FO9, FO12, E5, D6 $\to$ Extended Trichotomy $\to$ Master Equations.
+
+% ============================================================================
+% END DOCUMENT
+% ============================================================================
+
+\vfill
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}
+
+\textit{``The amount you can know from incomplete information is inversely proportional to the curvature of the space where that information lives.''}
+
+\vspace{1em}
+
+\textbf{The Davis Law: $C = \tau / K$}
+
+\vspace{1em}
+
+\rule{0.5\textwidth}{0.4pt}
+\end{center}
+
+\end{document}

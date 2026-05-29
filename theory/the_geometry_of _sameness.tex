@@ -1,0 +1,3758 @@
+%====================================================
+% Geometry of Sameness — Draft
+%====================================================
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+% ---------- Encoding & Fonts ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{lmodern}
+\usepackage{newunicodechar}
+\newunicodechar{→}{\textrightarrow{}}
+\newunicodechar{∼}{\textasciitilde{}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{−}{\ensuremath{-}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+
+% ---------- Page Layout ----------
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\setstretch{1.08}
+
+% ---------- Math & Symbols ----------
+\usepackage{amsmath,amssymb,amsfonts,amsthm,bm}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{siunitx}
+\sisetup{detect-all=true}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\TSR}{\mathrm{TSR}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\MSR}{\mathsf{MSR}}
+% ---------- Graphics & Tables ----------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{adjustbox}
+
+% ---------- Framed Boxes ----------
+\usepackage{mdframed}
+\usepackage{xcolor}
+
+% ---------- Algorithms ----------
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float}
+
+\makeatletter
+\renewcommand{\fps@algorithm}{htbp}
+\setcounter{totalnumber}{10}
+\setcounter{topnumber}{10}
+\setcounter{bottomnumber}{10}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.9}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.8}
+\makeatother
+\setlength{\intextsep}{10pt plus 2pt minus 2pt}
+
+% ---------- Links & Clever Refs ----------
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+% ---------- Quotes & Lists ----------
+\usepackage{csquotes}
+
+\setlist[itemize]{leftmargin=*, itemsep=2pt, topsep=2pt}
+\setlist[enumerate]{leftmargin=*, itemsep=2pt, topsep=2pt}
+
+% ---------- Theorem Envs ----------
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{assumption}{Assumption}
+
+% ---------- Convenience macros ----------
+\newcommand{\SamTrans}{\mathsf{SamTrans}}
+\newcommand{\SamGeom}{\mathsf{SamGeom}}
+
+% ---------- Title Block ----------
+\title{\textbf{The Geometry of Sameness:}\\[0.25ex]
+\textbf{An \boldsymbol{$\varepsilon$}-Equivalence of Translation and Distance}\\[0.5ex]
+\large Categories of Realizations, Error-Budget Transfer, and a Hidden Variable}
+\author{Bee Rosa Davis\\
+\small NASA Mission Systems Engineer\\
+\small \texttt{bee\_davis@alumni.brown.edu}}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.5ex}
+
+\begin{abstract}
+At an intuitive level, the problems we study are like trying to understand the Earth from maps. 
+The underlying \emph{semantic sameness structure} $S$ is the globe: a hidden world of entities and 
+their relationships. One engineering tradition starts from the globe (a manifold): learn a space 
+where geodesic distance reflects semantic change and read decisions off geodesic gaps—this is the 
+geometry-first view used by systems like HERALD and VIDAR. A second tradition starts from overlapping 
+flat maps: heterogeneous observation spaces with translators between them, stitched together just 
+enough to reconcile telemetry or transactions—this is the translation-first view used by systems like 
+AMC and PRISM. Our central claim is that, whenever the “maps” are smooth and consistent enough to be 
+sewn into a globe, these are not competing descriptions but dual realizations of the same $S$: tools 
+and guarantees can be moved across the seam.
+
+Formally, for a fixed semantic sameness structure $S$ we define two categories of realizations: \label{sec:categories} 
+$\SamTrans(S)$, whose objects are \emph{translation-based} systems on heterogeneous observation spaces 
+with bounded translator drift, and $\SamGeom(S)$, whose objects are \emph{manifold-based} systems with 
+Riemannian metrics, path families, and configuration margins. We introduce \emph{$\varepsilon$-equivalence 
+of categories} tailored to detection, together with explicit functors 
+$F_S : \SamTrans^0(S) \to \SamGeom^0(S)$ and $G_S : \SamGeom^0(S) \to \SamTrans^0(S)$ that act like 
+“stitching the maps into a globe” and “unfolding the globe back into maps” on well-behaved subcategories 
+$\SamTrans^0(S), \SamGeom^0(S)$ that satisfy a \emph{smooth chartability} condition. Smooth chartability 
+is the critical, falsifiable hypothesis of the framework: it is exactly the requirement that the local 
+translators around $S$ can be approximated by a compatible atlas whose transition maps behave like 
+local diffeomorphisms, so that a globe $M$ actually exists.
+
+Our main result is an \emph{Error Budget Transfer Theorem}. Each realization (translator or manifold) 
+comes with a four-term detection error budget 
+$(E_{\mathrm{geom}}, E_{\mathrm{link}}, \xi, \zeta)$ for geometry, linkage, calibration, and abstention, 
+together with an independence slack $\delta_{\mathrm{indep}}$ and a finite-variance Cantelli term 
+$B_{\mathrm{Cantelli}}$ linking statistic separation to posterior correctness. We show that for any 
+$T \in \SamTrans^0(S)$ and its geometric realization $M = F_S(T)$,
+\[
+E_{\mathrm{tot}}^{\mathrm{TSP}}(T)
+\;=\;
+1 - (1 - E_{\mathrm{geom}}^{\mathbf{T}})(1 - E_{\mathrm{link}}^{\mathbf{T}})
+      (1 - \xi^{\mathbf{T}})(1 - \zeta^{\mathbf{T}})
+      + \delta_{\mathrm{indep}}^{\mathbf{T}}
+\]
+and
+\[
+E_{\mathrm{tot}}^{\mathrm{MSP}}(M)
+\;=\;
+1 - (1 - E_{\mathrm{geom}}^{\mathbf{M}})(1 - E_{\mathrm{link}}^{\mathbf{M}})
+      (1 - \xi^{\mathbf{M}})(1 - \zeta^{\mathbf{M}})
+      + \delta_{\mathrm{indep}}^{\mathbf{M}}
+\]
+differ by at most an explicit, first-order slack 
+$|E_{\mathrm{tot}}^{\mathrm{TSP}}(T) - E_{\mathrm{tot}}^{\mathrm{MSP}}(M)| \le C_F(\varepsilon_{\mathrm{trans}}, \varepsilon_{\mathrm{dist}}, \delta_{\mathrm{chart}})$, 
+and the associated Cantelli bounds on high-risk alerts satisfy an analogous relation 
+$|B_{\mathrm{Cantelli}}(T) - B_{\mathrm{Cantelli}}(M)| \le C_F'(\cdots)$. A symmetric statement holds 
+for $M \in \SamGeom^0(S)$ and $T = G_S(M)$. In other words, once $S$ passes the smooth chartability 
+test, \emph{translator-based and manifold-based realizations of $S$ share the same detection guarantees 
+up to controlled slack}: the choice of “flat maps vs.\ globe” becomes an engineering decision, not a 
+conceptual one.
+
+Practically, this $\varepsilon$-equivalence has two consequences. First, it lifts theorems across the 
+bridge: guarantees proved in a geometry-first system (e.g., Davis-style path-based bounds for HERALD 
+or VIDAR) can be pulled back to translation-first architectures like AMC via $G_S$, and vice versa. 
+Second, it lifts tools: audits developed for translator graphs (e.g., AMC’s spectral stability checks) 
+become curvature or chart-overlap diagnostics on manifolds via $F_S$. We instantiate this framework 
+on four systems—AMC and PRISM as translation-first, HERALD and VIDAR as geometry-first—to illustrate 
+how chartability can be audited empirically and how error budgets and techniques transfer in practice.
+\end{abstract}
+
+
+%====================================================
+\section{Introduction}
+
+Many modern systems need to decide whether two heterogeneous observations refer to the same
+underlying entity or event: is this telemetry packet semantically equivalent to that one after
+compression and format switching?  Does this payment record match that ledger entry across rails?
+Do these viral variants represent the same antigenic state?  Does this video clip belong to the
+same physical person as that enrollment image?
+
+Two families of architectures answer these questions in different languages:
+
+\begin{itemize}
+  \item \textbf{Translator-based systems} (e.g., AMC-style adaptive format pipelines, multi-rail
+  reconciliation) build a graph of learned translators between embedding formats or modalities and
+  assert sameness when translated representations agree within a drift budget.
+  \item \textbf{Manifold-based systems} (e.g., Davis-style HERALD and VIDAR) learn or inherit a
+  Riemannian manifold on which geodesic distance along identity-preserving paths encodes semantic
+  change, and assert sameness when points remain within a configuration margin in that geometry.
+\end{itemize}
+
+Informally, one view speaks in \emph{translations} and drift; the other in \emph{distances} and
+curvature.  Both solve the same kind of problem, but their guarantees, diagnostics, and engineering
+tools are typically developed in isolation.
+
+This work starts from a simple question:
+
+\begin{quote}
+\emph{For a fixed notion of semantic sameness, are translator-based and manifold-based detection
+systems two views of the same underlying problem?  If so, can guarantees and tools proven in one
+view be transported to the other without re-deriving them from scratch?}
+\end{quote}
+
+We answer this in the affirmative under explicit regularity assumptions.  The key move is to make
+the \emph{problem} itself explicit.
+
+\subsection{Semantic sameness structures and realizations}\label{sec:sameness}
+
+We model the underlying task as a \emph{semantic sameness structure} $S$:
+latent identities, observation spaces, rendering maps, and a sameness relation on observations.  For
+a fixed $S$, engineers can build many concrete systems.
+
+\begin{itemize}
+  \item $\SamTrans(S)$: a category whose objects are \emph{translator-based realizations} of $S$
+  (observation encoders, format/rail translators, drift budgets, and detection logic in translator
+  space), and whose morphisms are reparameterizations preserving translators up to controlled
+  error.
+  \item $\SamGeom(S)$: a category whose objects are \emph{manifold-based realizations} of $S$
+  (Riemannian manifolds, chart atlases, path families, and Davis-style detection logic), and whose
+  morphisms are quasi-isometries respecting configuration structure and charts.
+\end{itemize}
+
+Crucially, these are \emph{two} design spaces for the same $S$: translator systems and manifold
+systems are not being unified with each other directly, but as two families of realizations of the
+same hidden variable.
+
+On well-behaved subcategories $\SamTrans^0(S) \subset \SamTrans(S)$ and
+$\SamGeom^0(S) \subset \SamGeom(S)$, defined by smooth chartability, bounded distortion, and
+non-vacuous configuration margins, we construct functors
+\[
+F_S : \SamTrans^0(S) \to \SamGeom^0(S),
+\qquad
+G_S : \SamGeom^0(S) \to \SamTrans^0(S),
+\]
+that turn translators into manifolds and manifolds into translator graphs.  These functors are not
+magic; they succeed precisely when the chartability and distortion assumptions are satisfied.
+
+\subsection{Main contributions}
+
+Our contributions are organized around three load-bearing claims and their practical implications.
+
+\paragraph{(0) Language: $\varepsilon$-equivalence of realization categories.}
+We formalize translator and manifold realizations of a fixed semantic sameness structure $S$ as
+categories $\SamTrans(S)$ and $\SamGeom(S)$ and introduce an \emph{$\varepsilon$-equivalence} notion
+tailored to detection.  Rather than claiming a strict equivalence of categories, we construct
+functors $F_S$ and $G_S$ and show that
+$G_S \circ F_S \simeq \mathrm{Id}_{\SamTrans^0(S)}$ and
+$F_S \circ G_S \simeq \mathrm{Id}_{\SamGeom^0(S)}$ \emph{up to quasi-isometry and bounded morphism
+error}, with all slack terms explicit.  Categorical language is not decorative here: it is the
+minimal formalism needed to express how \emph{error budgets} transform under representation change.
+
+\paragraph{(1) Error Budget Transfer Theorem (main result).}
+Our central technical result shows that detection guarantees transfer across the two
+realizations. Conceptually, we prove that the correctness bound for a translator system
+($T$) is \(\varepsilon\)-equivalent to the correctness bound for the manifold system ($M$)
+that realizes the same problem $S$:
+%
+% This is the "sexy" equation
+\begin{equation*}
+\mathrm{LB}(T) \cong_{\varepsilon} \mathrm{LB}(F_S(T))
+\end{equation*}
+%
+This main result, the Error Budget Transfer Theorem, is stated formally below. It shows
+that the full, multi-part error budgets for both systems are equivalent up to explicit,
+first-order slack terms.
+
+\vspace{1ex}
+% This is the formal, boxed theorem
+\begin{mdframed}[backgroundcolor=gray!10, linewidth=0.4pt]
+\noindent\textbf{Error Budget Transfer Theorem (informal preview).}
+\emph{Fix a semantic sameness structure $S$ and consider well-behaved realizations
+$T \in \SamTrans^0(S)$ and $M \in \SamGeom^0(S)$.}
+
+\emph{Translator-side bound.} The translator realization $T$ admits a Davis-style correctness
+lower bound
+\[
+\mathrm{LB}_{\mathrm{T}}(T)
+= B_{\mathrm{Cantelli}}(T)\,
+\Bigl[\,(1-E_{\mathrm{geom}}^{\mathrm{T}})
+(1-E_{\mathrm{link}}^{\mathrm{T}})
+(1-\xi^{\mathrm{T}})
+(1-\zeta^{\mathrm{T}})
+- \delta_{\mathrm{indep}}^{\mathrm{T}}\Bigr]_+
+- \varepsilon_{\mathrm{est}}^{\mathrm{T}}.
+\]
+
+\emph{Manifold-side bound.} The manifold realization $M$ admits an analogous bound
+\[
+\mathrm{LB}_{\mathrm{M}}(M)
+= B_{\mathrm{Cantelli}}(M)\,
+\Bigl[\,(1-E_{\mathrm{geom}}^{\mathrm{M}})
+(1-E_{\mathrm{link}}^{\mathrm{M}})
+(1-\xi^{\mathrm{M}})
+(1-\zeta^{\mathrm{M}})
+- \delta_{\mathrm{indep}}^{\mathrm{M}}\Bigr]_+
+- \varepsilon_{\mathrm{est}}^{\mathrm{M}}.
+\]
+
+\emph{Transfer.} The functors $F_S$ and $G_S$ transport these guarantees:
+\[
+\bigl|\mathrm{LB}_{\mathrm{T}}(T) - \mathrm{LB}_{\mathrm{M}}(F_S(T))\bigr|
+\;\le\;
+C_F(\varepsilon_{\mathrm{trans}}, \varepsilon_{\mathrm{dist}}, \delta_{\mathrm{chart}}),
+\]
+\[
+\bigl|\mathrm{LB}_{\mathrm{M}}(M) - \mathrm{LB}_{\mathrm{T}}(G_S(M))\bigr|
+\;\le\;
+C_G(\varepsilon_{\mathrm{trans}}, \varepsilon_{\mathrm{dist}}, \delta_{\mathrm{chart}}),
+\]
+\emph{where $C_F$ and $C_G$ are explicit first-order slack functions.}
+\end{mdframed}
+\vspace{1ex}
+
+\paragraph{(2) Characterization via smooth chartability.}
+The functor $F_S : \SamTrans^0(S) \to \SamGeom^0(S)$ is not automatic; it succeeds only on translator
+systems with \emph{smooth chartability}.  We isolate this as the central, falsifiable hypothesis of
+the framework: locally linear approximants to each translator must exist with bounded Jacobian and
+small residual drift on in-regime data.  This assumption is testable via concrete audit protocols
+(e.g., Jacobian-based linearization error histograms on AMC-style translators) and is empirically
+supported in systems whose architectures already regularize for smoothness and stability.
+
+\paragraph{(3) Constructive functors and $\varepsilon$-equivalence.}
+Under smooth chartability and bounded distortion, we give explicit constructions of
+$F_S$ (path-metric completion of a translator graph followed by a Riemannian smoothing) and
+$G_S$ (chart-transition translators induced by overlapping coordinate maps).  We show that on
+$\SamTrans^0(S)$ and $\SamGeom^0(S)$ these functors form an $\varepsilon$-equivalence of categories:
+they are quasi-inverse up to explicitly bounded drift, curvature, and chart-overlap slack.  This
+formalizes the intuition that translator and manifold views are dual coordinatizations of the same
+semantic sameness problem $S$.
+
+\paragraph{Implications: tool and theorem transfer.}
+The practical consequence of this $\varepsilon$-equivalence is that \emph{tools and theorems} proven
+in one view can now be reused in the other.
+
+\begin{itemize}
+  \item \emph{Theorems transfer.}  A guarantee proven in a manifold system (e.g., HERALD's
+  Davis-style dominance lower bound, VIDAR's deepfake correctness bounds) can be pulled back via
+  $G_S$ to a translator-based realization of the same $S$ (e.g., AMC-style telemetry translators),
+  with only first-order changes in the error budget.
+  \item \emph{Tools transfer.}  Engineering techniques developed for translator graphs (spectral
+  stability audits, drift-triggered retraining, lineage-aware rollback) can be pushed forward via
+  $F_S$ to become curvature and chart-stability diagnostics on manifolds, providing new audit
+  tools for geometry-first systems.
+\end{itemize}
+
+Engineers starting from a single semantic sameness structure $S$ therefore have a principled choice
+of working in translator or manifold coordinates, knowing that both design spaces are linked by
+functors that preserve detection guarantees up to explicitly quantified slack.
+
+
+\subsection{Running examples}
+
+We ground the theory in four concrete systems, which we treat as realizations of different semantic
+sameness structures $S$.
+
+\paragraph{AMC (telemetry format switching).}
+AMC~\cite{davis2025amc} is a telemetry-native embedding architecture for adaptive format switching 
+and semantic translation in high-volume telemetry pipelines. It maintains a directed graph of 
+learned format translators constrained by an $\varepsilon$-bounded semantic drift loss and uses 
+spectral properties of a format-compatibility graph to select stable routes and fallbacks. In our 
+language, AMC is a canonical object of $\SamTrans(S_{\mathrm{tele}})$ for a telemetry sameness 
+structure $S_{\mathrm{tele}}$.
+
+\paragraph{PRISM (payment reconciliation).}
+PRISM~\cite{davis2025prism} performs multi-rail payment reconciliation with learned translators 
+between heterogeneous transaction formats, semantic alignment constraints, and a central latent 
+reconciliation space. It naturally lives in $\SamTrans(S_{\mathrm{pay}})$ but exposes an implicit 
+manifold structure over reconciled transaction identities.
+
+\paragraph{HERALD (viral antigenic drift).}
+HERALD~\cite{davis2025herald}, introduced in prior work on Davis manifolds~\cite{davis2025manifold}, 
+builds a pullback Riemannian manifold on viral sequences where geodesic distance along 
+epitope-restricted mutation paths approximates antigenic distance; a PIT-fused drift statistic 
+and Cantelli bounds map geometric drift to dominance risk with an explicit error budget. 
+HERALD is a prototypical object of $\SamGeom(S_{\mathrm{antigen}})$.\,\textsuperscript{\!}\!
+
+\paragraph{VIDAR (deepfake detection via identity trajectories).}
+VIDAR treats face-recognition embeddings as points on the hypersphere, models short clips as
+identity trajectories on an identity manifold, and builds RIM features plus auxiliary detectors as
+inputs to a Davis-style scalar statistic and bound.\,\footnote{See Davis,
+``The Davis Manifold: Geometry-First Detection with Compositional Error Budgets,'' for the VIDAR
+instantiation.}  VIDAR is a canonical object of $\SamGeom(S_{\mathrm{id}})$.
+
+Across these examples, the same pattern recurs: translator systems like AMC and PRISM live in
+$\SamTrans(S)$; geometry-first systems like HERALD and VIDAR live in $\SamGeom(S)$; and our
+functors $F_S$ and $G_S$ explain how to move guarantees and tools between these views.
+
+\subsection{Scope and non-goals}
+
+This manuscript is deliberately theoretical.  It:
+
+\begin{itemize}
+  \item defines semantic sameness structures $S$ and the categories $\SamTrans(S)$ and
+  $\SamGeom(S)$;
+  \item introduces smooth chartability and bounded-distortion path geometry as explicit, falsifiable
+  assumptions defining subcategories $\SamTrans^0(S)$ and $\SamGeom^0(S)$;
+  \item constructs $F_S$ and $G_S$ and proves an $\varepsilon$-equivalence of realization categories;
+  \item proves the Error Budget Transfer Theorem (Theorem~6.3) showing that Davis-style correctness
+  bounds transfer across these views with first-order slack; and
+  \item sketches audit protocols for checking smooth chartability and error-budget components in
+  systems like AMC, PRISM, HERALD, and VIDAR.
+\end{itemize}
+
+We do \emph{not} report new empirical performance, deployable calibration curves, or production
+latencies; those belong in system-specific papers.  Our goal here is to expose the common hidden
+variable $S$, make the representation change between translator and manifold views explicit and
+functorial, and characterize when and how detection guarantees can be transported between them.
+
+\subsection{Roadmap}
+
+The paper develops in three acts.
+
+\textbf{Act I (Framework).}  Section~2 formalizes semantic sameness structures $S$ and defines
+translator and manifold realizations, together with Davis-style error budgets and the notion of
+smooth chartability.  Section~3 introduces the categories $\SamTrans(S)$ and $\SamGeom(S)$,
+constructs the functors $F_S$ and $G_S$ at a high level, and defines $\varepsilon$-equivalence of\label{def:eps-equivalence}
+realization categories.
+
+\textbf{Act II (Constructions and transfer).}  Section~4 builds $F_S$ concretely by endowing
+translator graphs with a path metric and a smoothed Riemannian structure under smooth chartability,
+and analyzes the resulting distortion and chart-overlap slack.  Section~5 constructs $G_S$ from
+manifold charts and transition maps and analyzes its stability.  Section~6 proves the Error Budget
+Transfer Theorem (Theorem~6.3) by tracking how geometric, linkage, calibration, and abstention
+errors transform under $F_S$ and $G_S$.
+
+\textbf{Act III (Case studies and outlook).}  Section~7 instantiates the framework on AMC, PRISM,
+HERALD, and VIDAR, including concrete chartability audits and error-budget estimates.  Section~8
+discusses limitations, open problems, and the broader “Davis universality” conjecture for
+geometry-first detection in temporal semantic sameness problems.
+
+\section{Semantic sameness structures and realizations}
+\label{sec:sameness-structure}
+
+Throughout this section we fix a \emph{semantic sameness problem} and make precise what it
+means to ``realize'' that problem either as a translator graph or as a Riemannian manifold.
+The hidden object is the sameness structure itself; translation-based and manifold-based
+systems are two different realizations of the same underlying task.
+
+We use boldface symbols such as $\mathbf{T}$ and $\mathbf{M}$ for concrete systems
+(a particular TSR or MSR) and reserve plain letters for abstract spaces and maps.
+
+\subsection{Semantic sameness structures}
+\label{subsec:semantic-structure}
+
+Intuitively, a semantic sameness structure records:
+(i) a latent space of entities $u$ (viruses, identities, vehicles, \dots),
+(ii) how each modality $i$ renders those entities as observations $x_i$,
+(iii) when two observations in possibly different modalities ``are the same entity'', and
+(iv) which latent trajectories count as benign identity-preserving evolution.
+
+\begin{definition}[Semantic sameness structure]\label{def:sameness-structure}
+\label{def:semantic-structure}
+A \emph{semantic sameness structure} is a tuple
+\[
+S := \bigl( I,\; \mathcal{I},\; \{X_i\}_{i\in\mathcal{I}},\; \{\pi_i\}_{i\in\mathcal{I}},\; \approx,\;
+\{\mathcal{P}_S(L)\}_{L>0} \bigr),
+\]
+where:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+\item $I$ is a (typically high-dimensional) set of \emph{latent entities} or states. A point
+$u\in I$ represents the underlying ``object of interest'' (e.g., true antigenic state, true
+human identity, true vehicle configuration).
+
+\item $\mathcal{I}$ is a finite index set of \emph{modalities} (e.g., file formats, sensors,
+assays, views).
+
+\item For each $i\in\mathcal{I}$, $X_i$ is an \emph{observation space} for modality $i$.
+We write
+\[
+X := \bigsqcup_{i\in\mathcal{I}} X_i
+\]
+for the disjoint union of all observations.
+
+\item For each $i\in\mathcal{I}$, $\pi_i : I \to X_i$ is a (possibly partial) \emph{rendering
+map} that produces an ideal observation of $u$ in modality $i$ when defined.\footnote{%
+Formally, one may model $\pi_i$ as a Markov kernel from $I$ to $X_i$, capturing stochastic
+observation noise; for notational simplicity we write $\pi_i$ as a map and treat noise
+separately in the detector error budget.}
+When $\pi_i(u)$ is undefined, modality $i$ simply does not observe $u$.
+
+\item $\approx$ is a \emph{semantic sameness relation} on $X$, defined by
+\[
+x \approx x'
+\quad\Longleftrightarrow\quad
+\exists u\in I,\; \exists i,j\in\mathcal{I} \text{ such that }
+x \text{ is an observation ``of'' } u \text{ in } X_i,\;
+x' \text{ is an observation ``of'' } u \text{ in } X_j.
+\]
+In the noiseless idealization this reduces to:
+$x\approx x'$ if there exist $u\in I$ and $(i,j)$ with $x=\pi_i(u)$ and $x'=\pi_j(u)$.
+In practice we blur small observation noise and treat $x$ as an observation ``of'' $u$
+whenever it lies in a pre-specified neighborhood of $\pi_i(u)$.
+
+\item For each $L>0$, $\mathcal{P}_S(L)$ is a family of \emph{benign latent paths}
+$\gamma : [0,1]\to I$ indexed by a \emph{semantic horizon} $L$.
+Each $\gamma\in\mathcal{P}_S(L)$ represents an identity-preserving evolution of latent state
+(e.g., realistic antigenic drift over one season, smooth identity motion over a short clip).
+We require that $L\mapsto \mathcal{P}_S(L)$ is monotone:
+if $L_1\le L_2$ then $\mathcal{P}_S(L_1)\subseteq \mathcal{P}_S(L_2)$.
+\end{enumerate}
+\end{definition}
+
+\paragraph{Examples (semantic structures).}
+\begin{itemize}[leftmargin=*]
+\item \textbf{Format-heterogeneous telemetry (AMC~\cite{davis2025amc}).} $I$ is the space of 
+underlying system states; each $X_i$ is a particular log or telemetry format; $\pi_i$ renders 
+a state into that format; $\gamma\in\mathcal{P}_S(L)$ is a short-time state trajectory.
+
+\item \textbf{Antigenic drift (HERALD).} $I$ are viral lineages; $X_{\mathrm{seq}}$ are amino-acid
+sequences; $X_{\mathrm{neut}}$ are neutralization measurements; $\pi_{\mathrm{seq}}$ encodes the
+canonical genome for a lineage; $\pi_{\mathrm{neut}}$ renders idealized assay readouts;
+$\mathcal{P}_S(L)$ are mutation paths with at most $L$ epitope substitutions.
+
+\item \textbf{Identity trajectories (VIDAR).} $I$ are person identities; $X_{\mathrm{video}}$
+are short talking-head clips; $X_{\mathrm{audio}}$ are speech segments; each $\pi_i$ renders a
+clip of the same person; $\mathcal{P}_S(L)$ are natural motion trajectories over windows of
+bounded duration.
+\end{itemize}
+
+We will later view \emph{realizations} of a fixed $S$ as objects of two categories:
+a translation-based category $\SamTrans(S)$ and a geometry-based category $\SamGeom(S)$.
+
+\subsection{Translation-based realizations (TSRs)}
+\label{subsec:tsr}
+
+A translation-based realization starts from modality-specific feature spaces and implements
+sameness comparisons via learned translators between those spaces.
+
+\begin{definition}[Translation-based semantic realization (TSR)]
+\label{def:tsr}
+Let $S$ be a semantic sameness structure as in Definition~\ref{def:semantic-structure}.
+A \emph{translation-based semantic realization} (TSR) of $S$ is a tuple
+\[
+\mathbf{T}
+:=
+\bigl(
+\{V_i\}_{i\in\mathcal{I}},
+\{\varphi_i\}_{i\in\mathcal{I}},
+G_T,
+\{T_{ij}\}_{(i,j)\in E_T},
+\varepsilon_{\mathrm{trans}}(\cdot)
+\bigr),
+\]
+where:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+\item For each $i\in\mathcal{I}$, $V_i$ is a finite-dimensional inner-product space
+(feature space for modality $i$).
+
+\item $\varphi_i : X_i\to V_i$ is a feature extractor (e.g., a neural encoder).
+We denote ideal features by
+\[
+v_i(t) := \varphi_i\bigl(\pi_i(\gamma(t))\bigr)
+\qquad
+\text{for } \gamma\in\mathcal{P}_S(L),\; t\in[0,1],
+\]
+whenever $\pi_i(\gamma(t))$ is defined.
+
+\item $G_T = (\mathcal{I}, E_T)$ is a directed graph whose vertices are modalities and whose
+edges $i\to j$ indicate the availability of a learned \emph{translator}
+$T_{ij} : V_i \to V_j$.
+
+\item For any path $p = (i_0,\dots,i_k)$ in $G_T$ we write
+\[
+T_p := T_{i_{k-1} i_k} \circ \cdots \circ T_{i_0 i_1}
+\quad\text{and}\quad |p|:=k.
+\]
+
+\item $\varepsilon_{\mathrm{trans}} : \mathbb{N} \to [0,\infty)$ is a \emph{translator drift profile}
+such that, for any benign latent path $\gamma\in\mathcal{P}_S(L)$, any time $t\in[0,1]$,
+any modalities $i,j$ with both $\pi_i(\gamma(t))$ and $\pi_j(\gamma(t))$ defined,
+and any $G_T$-path $p: i\to j$ of length $k$, we have
+\begin{equation}
+\label{eq:tsr-drift}
+\bigl\|
+T_p\bigl( v_i(t) \bigr)
+-
+v_j(t)
+\bigr\|
+\;\le\;
+\varepsilon_{\mathrm{trans}}(k).
+\end{equation}
+This inequality measures \emph{representation error} of the translators at a single latent
+time, decoupled from any semantic drift along $\gamma$.
+\end{enumerate}
+We write $\TSR(S)$ for the collection of all TSRs that realize $S$.
+\end{definition}
+
+\paragraph{Examples (TSRs).}
+\begin{itemize}[leftmargin=*]
+\item \textbf{AMC-style telemetry~\cite{davis2025amc}.} $V_i$ are format-specific embedding 
+spaces; $\varphi_i$ encode logs into these spaces; $T_{ij}$ are learned format translators; 
+$\varepsilon_{\mathrm{trans}}$ bounds accumulated translator drift over paths in the format graph.
+
+\item \textbf{PRISM-style multi-signal systems~\cite{davis2025prism}.} $V_i$ are detector-specific 
+representations; $T_{ij}$ fuse or reconcile outputs between detectors; $\varepsilon_{\mathrm{trans}}$ 
+captures how far translations can drift while still preserving semantic identity.
+\end{itemize}
+
+\subsection{Manifold-based realizations (MSRs)}
+\label{subsec:msr}
+
+A manifold-based realization represents semantic sameness by embedding latent entities into
+a Riemannian manifold and requiring that feature-space coordinates act as approximate charts.
+
+\begin{definition}[Manifold-based semantic realization (MSR)]
+\label{def:msr}
+Let $S$ be as in Definition~\ref{def:semantic-structure}.
+A \emph{manifold-based semantic realization} (MSR) of $S$ is a tuple
+\[
+\mathbf{M}
+:=
+\bigl(
+\{V_i\}_{i\in\mathcal{I}},
+\{\varphi_i\}_{i\in\mathcal{I}},
+(\mathcal{M}, g),
+\{\psi_i\}_{i\in\mathcal{I}},
+\varepsilon_{\mathrm{dist}}(\cdot)
+\bigr),
+\]
+where:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+\item $\{V_i\}_{i\in\mathcal{I}}$ and $\{\varphi_i : X_i\to V_i\}_{i\in\mathcal{I}}$ are
+feature spaces and encoders as in a TSR.
+
+\item $(\mathcal{M}, g)$ is a $d$-dimensional smooth Riemannian manifold of \emph{semantic
+states} with geodesic distance $d_g$.
+
+\item For each $i\in\mathcal{I}$, $\psi_i : V_i \to \mathcal{M}$ is a smooth \emph{parameterization}
+whose image $U_i := \psi_i(V_i)$ is an open subset of $\mathcal{M}$. We require that the
+inverse maps
+\[
+\chi_i := \psi_i^{-1} : U_i \to V_i
+\]
+exist and are smooth; the family $\{(U_i,\chi_i)\}_{i\in\mathcal{I}}$ forms a (possibly
+partial) chart atlas on the portion of $\mathcal{M}$ we actually use.
+
+\item There exists a \emph{latent state map} $F : I \to \mathcal{M}$ such that, whenever
+$\pi_i(u)$ is defined,
+\[
+F(u) = \psi_i\bigl( \varphi_i(\pi_i(u)) \bigr).
+\]
+This ensures that, on ideal data, all modalities agree on the same manifold point
+for a given latent entity.
+
+\item $\varepsilon_{\mathrm{dist}} : (0,\infty)\to [0,\infty)$ is a \emph{metric distortion
+profile} such that, for any chart $(U_i,\chi_i)$, any two points $z_a,z_b\in U_i$ with
+$d_g(z_a,z_b)>0$, and chart distance
+\[
+\delta_i(z_a,z_b)
+:=
+\bigl\| \chi_i(z_a) - \chi_i(z_b) \bigr\|_{V_i},
+\]
+we have
+\begin{equation}
+\label{eq:msr-distortion}
+\left|
+\frac{\delta_i(z_a,z_b)}{d_g(z_a,z_b)} - 1
+\right|
+\;\le\;
+\varepsilon_{\mathrm{dist}}\bigl( d_g(z_a,z_b) \bigr).
+\end{equation}
+This $\varepsilon_{\mathrm{dist}}$ measures \emph{representation error} of the charts
+$\chi_i$ relative to the underlying metric $g$.
+\end{enumerate}
+We write $\MSR(S)$ for the collection of all MSRs that realize $S$.
+\end{definition}
+
+\paragraph{Examples (MSRs).}
+\begin{itemize}[leftmargin=*]
+\item \textbf{HERALD-style geometry.} $(\mathcal{M}, g)$ is an antigenic manifold; $V_i$
+is the latent space of a sequence encoder; $\psi_i$ is the learned map into $\mathcal{M}$;
+$\varepsilon_{\mathrm{dist}}$ captures geodesic--Euclidean distortion along antigenic trajectories.
+
+\item \textbf{VIDAR-style identity manifold.} $(\mathcal{M}, g)$ is the hypersphere
+$\mathbb{S}^{d-1}$ with its standard metric; $V_{\mathrm{video}}$ is the pre-normalized
+ArcFace embedding space; $\psi_{\mathrm{video}}$ is $\ell_2$-normalization; $\varepsilon_{\mathrm{dist}}$
+is small in the small-angle regime.
+\end{itemize}
+
+\subsection{Semantic drift profile}
+\label{subsec:semantic-drift}
+
+Once an MSR $\mathbf{M}$ is fixed, latent benign paths in $\mathcal{P}_S(L)$ induce paths on
+$\mathcal{M}$ via the latent map $F$.
+
+\begin{definition}[Semantic drift profile]
+\label{def:semantic-drift}
+Let $S$ be a semantic sameness structure and $\mathbf{M}$ an MSR of $S$ as in
+Definition~\ref{def:msr}. For $L>0$ and any $\gamma\in\mathcal{P}_S(L)$ define the induced
+manifold path
+\[
+z_\gamma(t) := F\bigl(\gamma(t)\bigr) \in \mathcal{M}.
+\]
+The \emph{semantic drift profile} of $S$ under $\mathbf{M}$ is
+\[
+\sigma_S^{\mathbf{M}}(L)
+:=
+\sup_{\gamma\in\mathcal{P}_S(L)}\;
+\sup_{0\le s\le t\le 1}
+d_g\bigl(z_\gamma(s), z_\gamma(t)\bigr).
+\]
+Thus $\sigma_S^{\mathbf{M}}(L)$ records, in purely geometric terms, how far benign latent
+paths are allowed to move in $\mathcal{M}$ over horizon $L$. It is a property of the pair
+$(S,\mathbf{M})$, independent of translators or observation noise.
+\end{definition}
+
+\subsection{Chart overlap slack and translator asymmetry}
+\label{subsec:chart-asymm}
+
+When a single $S$ admits both a TSR $\mathbf{T}$ and an MSR $\mathbf{M}$, we will compare them
+via two structural diagnostics: a chart-overlap slack that measures how well translators agree
+with chart transitions, and a translator asymmetry that measures round-trip drift.
+
+\begin{definition}[Chart overlap slack]
+\label{def:chart-slack}
+Let $S$ be fixed, $\mathbf{T}$ a TSR and $\mathbf{M}$ an MSR of $S$ sharing the same
+feature spaces $\{V_i\}_{i\in\mathcal{I}}$ and encoders $\{\varphi_i\}_{i\in\mathcal{I}}$.
+For each $i$, let $U_i:=\psi_i(V_i)\subseteq\mathcal{M}$ and $\chi_i:=\psi_i^{-1}:U_i\to V_i$.
+
+For any overlap region $U_i\cap U_j\neq\varnothing$ and point $z\in U_i\cap U_j$,
+the ideal coordinate change from modality $i$ to modality $j$ maps
+\[
+v_i := \chi_i(z)
+\quad\mapsto\quad
+v_j^\star := \chi_j(z).
+\]
+The translator $T_{ij}$ instead produces $T_{ij}(v_i)$. The \emph{chart overlap slack} is
+\[
+\delta_{\mathrm{chart}}(\mathbf{T},\mathbf{M})
+:=
+\sup_{(i,j)\in E_T}
+\;\sup_{z\in U_i\cap U_j}
+\bigl\|
+T_{ij}\bigl(\chi_i(z)\bigr) - \chi_j(z)
+\bigr\|.
+\]
+This quantity measures how far translator-based coordinate changes deviate from the
+chart transitions implied by $\mathbf{M}$.
+\end{definition}
+
+\begin{definition}[Translator asymmetry]
+\label{def:translator-asymmetry}
+Fix a TSR $\mathbf{T}$ with graph $G_T=(\mathcal{I},E_T)$ and feature spaces $\{V_i\}$.
+Let $L_0>0$ be a chosen operating horizon and define, for each ordered pair $(i,j)$ with
+both $\pi_i$ and $\pi_j$ defined along $\mathcal{P}_S(L_0)$,
+\[
+\Omega_{ij}(\mathbf{T})
+:=
+\Bigl\{
+v_i(t)
+=
+\varphi_i\bigl(\pi_i(\gamma(t))\bigr)
+\;\Big|\;
+\gamma\in\mathcal{P}_S(L_0),\; t\in[0,1],\;
+\pi_j(\gamma(t))\ \text{defined}
+\Bigr\}
+\subseteq V_i.
+\]
+Assume that $G_T$ contains edges $i\to j$ and $j\to i$. The \emph{translator asymmetry}
+of $\mathbf{T}$ is
+\[
+\delta_{\mathrm{asymm}}(\mathbf{T})
+:=
+\sup_{(i,j)\in E_T,\; (j,i)\in E_T}
+\;\sup_{v\in \Omega_{ij}(\mathbf{T})}
+\bigl\|
+T_{ji}\bigl(T_{ij}(v)\bigr) - v
+\bigr\|.
+\]
+This is a structural parameter: it measures worst-case round-trip drift on in-regime
+features, not a probability. It will enter later as a diagnostic and, when needed,
+as a slack term in error-transfer bounds.
+\end{definition}
+
+\subsection{Sameness detectors and error budgets}
+\label{subsec:detector}
+
+Finally, we formalize detectors that operate on a fixed realization $\mathbf{R}$ of $S$ and
+attach a decomposed error budget. Here $\mathbf{R}$ may be either a TSR $\mathbf{T}$ or an
+MSR $\mathbf{M}$.
+
+\begin{definition}[Sameness detector and error budget]
+\label{def:sameness-detector}
+Let $S$ be a semantic sameness structure and $\mathbf{R}$ a realization of $S$ (TSR or MSR).
+A \emph{sameness detector} on $\mathbf{R}$ is a tuple
+\[
+\mathbf{D_R}
+:=
+\bigl(
+\Sigma_{\mathbf{R}},\,
+A_{\mathbf{R}},\,
+E_{\mathrm{geom}}^{\mathbf{R}},\,
+E_{\mathrm{link}}^{\mathbf{R}},\,
+\xi^{\mathbf{R}},\,
+\zeta^{\mathbf{R}},\,
+\delta_{\mathrm{indep}}^{\mathbf{R}},\,
+\tau_{\mathrm{vac}}
+\bigr),
+\]
+with components:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+\item $\Sigma_{\mathbf{R}}$ is a scalar \emph{detection or similarity statistic} built from the
+representation induced by $\mathbf{R}$:
+\begin{itemize}
+\item for a TSR $\mathbf{T}$, $\Sigma_{\mathbf{T}}$ acts on feature-space objects
+(e.g., paths or pairs in $\bigsqcup_i V_i$);
+\item for an MSR $\mathbf{M}$, $\Sigma_{\mathbf{M}}$ acts on points or paths in $\mathcal{M}$.
+\end{itemize}
+
+\item $A_{\mathbf{R}}$ is a decision rule mapping $(\Sigma_{\mathbf{R}}, \text{context})$ to a
+finite action set such as $\{\mathsf{same},\mathsf{changed},\mathsf{ambiguous},\mathsf{abstain}\}$
+or $\{\mathsf{info},\mathsf{warn},\mathsf{high\_risk},\mathsf{insufficient\_signal}\}$.
+
+\item $E_{\mathrm{geom}}^{\mathbf{R}}$ is the \emph{geometric / representation error}:
+the probability (on in-regime, non-abstaining inputs) that the structural assumptions of
+$\mathbf{R}$ fail on ideal data:
+\begin{itemize}
+\item for a TSR $\mathbf{T}$, $E_{\mathrm{geom}}^{\mathbf{T}}$ is the probability that the
+drift bound~\eqref{eq:tsr-drift} is violated for some benign path $\gamma\in\mathcal{P}_S(L_0)$,
+time $t$, and translator path $p$ of length at most the operating horizon;
+\item for an MSR $\mathbf{M}$, $E_{\mathrm{geom}}^{\mathbf{M}}$ is the probability that the
+distortion bound~\eqref{eq:msr-distortion} fails on some pair of induced manifold points
+$z_\gamma(s),z_\gamma(t)$ coming from benign paths, or that curvature / chart regularity
+assumptions used to define $\mathbf{M}$ are violated.
+\end{itemize}
+By construction, $E_{\mathrm{geom}}^{\mathbf{R}}$ depends only on $S$ and the ideal maps
+$(\varphi_i, T_{ij})$ or $(\varphi_i,\psi_i,g)$, not on observation noise.
+
+\item $E_{\mathrm{link}}^{\mathbf{R}}$ is the \emph{linkage / observation error}:
+the probability that the detection pipeline fails \emph{even when geometry is ideal}.
+It captures the effect of observation noise and feature misspecification:
+\begin{itemize}
+\item for a TSR, this includes deviations between noisy inputs $\tilde{x}_i$ and ideal
+renders $\pi_i(u)$ that cause $\varphi_i(\tilde{x}_i)$ to move far enough from
+$\varphi_i(\pi_i(u))$ to flip $\Sigma_{\mathbf{T}}$ across a decision boundary;
+\item for an MSR, it includes analogous noise-induced shifts of manifold points
+$z\in\mathcal{M}$ and any failure of $\Sigma_{\mathbf{M}}$ to track $d_g$ as intended.
+\end{itemize}
+
+\item $\xi^{\mathbf{R}}$ is a \emph{calibration error} term quantifying how far the
+calibrated mapping from $\Sigma_{\mathbf{R}}$ to probabilities departs from the true
+conditional $P(Y=1\mid \Sigma_{\mathbf{R}})$ in the high-risk region.
+
+\item $\zeta^{\mathbf{R}}$ is an \emph{abstention failure} term: the probability that the
+system fails to abstain when it should (e.g., when distortion audits, feature-range checks,
+or support conditions indicate that $\mathbf{R}$ is being used outside its validated regime).
+
+\item $\delta_{\mathrm{indep}}^{\mathbf{R}} \in [0,1]$ is an \emph{independence slack} that
+upper-bounds the gap between the joint failure probability of the four error sources
+(geometry, linkage, calibration, abstention) and the product of their marginals. It
+quantifies deviations from an idealized independence model.
+
+\item $\tau_{\mathrm{vac}}\in(0,1)$ is a \emph{vacuity threshold}. When the combined error
+budget (e.g., a sum or multiplicative form in later theorems) exceeds $\tau_{\mathrm{vac}}$,
+we declare the resulting correctness bound non-informative and treat the detector as
+operating outside its validated regime.
+\end{enumerate}
+\end{definition}
+
+\paragraph{Three-layer view.}
+Definitions~\ref{def:semantic-structure}--\ref{def:sameness-detector} separate three distinct
+contributors to detection performance:
+\begin{itemize}[leftmargin=*]
+\item \emph{Semantic drift} $\sigma_S^{\mathbf{M}}(L)$ (Definition~\ref{def:semantic-drift})
+is how far latent entities move in geometry under benign evolution. It is a property of
+$(S,\mathbf{M})$ and the path family.
+
+\item \emph{Representation error} $\varepsilon_{\mathrm{trans}}$ and $\varepsilon_{\mathrm{dist}}$
+(Definitions~\ref{def:tsr}--\ref{def:msr}) measure how imperfectly translators and charts
+realize the intended semantics on ideal data. These feed into $E_{\mathrm{geom}}^{\mathbf{R}}$.
+
+\item \emph{Observation noise and linkage error} are captured by $E_{\mathrm{link}}^{\mathbf{R}}$:
+even if geometry were perfect, noisy or shifted observations can still flip decisions.
+\end{itemize}
+This three-layer decomposition is the backbone of the later Error Budget Transfer Theorem:
+it lets us move guarantees between $\SamTrans(S)$ and $\SamGeom(S)$ while keeping semantic
+drift, representation quality, and observation noise conceptually distinct.
+
+\section{Realization categories and $\varepsilon$-equivalence}
+\label{sec:realization-categories}
+
+Section~\ref{sec:sameness-structure} introduced semantic sameness structures $S$ and two ways of realizing
+them in concrete systems: translation-based realizations (TSRs, Definition~\ref{def:tsr}) and
+manifold-based realizations (MSRs, Definition~\ref{def:msr}). In this section we package these
+realizations into two categories,
+\[
+\SamTrans(S)
+\quad\text{and}\quad
+\SamGeom(S),
+\]
+equipped with coarse ``error gauges'' on objects, and we state an approximate equivalence between
+well-behaved subcategories. This makes precise the idea that TSRs and MSRs are two
+$\varepsilon$-equivalent \emph{categories of realizations} of the same underlying sameness problem $S$.
+
+Throughout this section, $\|\cdot\|$ denotes the natural inner-product norm in the relevant feature
+or ambient space, and $\mathcal{I}$ is the finite index set of modalities from
+Definition~\ref{def:sameness-structure}. We fix a sameness structure $S$ once and for all and
+suppress it from the notation when convenient.
+
+\subsection{Category of translation-based realizations}
+\label{subsec:samtrans}
+
+We first define the category whose objects are translation-based realizations of $S$.
+
+\begin{definition}[Category $\SamTrans(S)$]
+\label{def:samtrans-category}
+Fix a semantic sameness structure $S$ as in Definition~\ref{def:sameness-structure}, with latent
+space $I$, modality index set $\mathcal{I}$, observation spaces $\{X_i\}_{i\in\mathcal{I}}$, rendering
+maps $\{\pi_i : I \to X_i\}_{i\in\mathcal{I}}$, sameness relation $\approx$, and benign path family
+$\mathcal{P}_S(L)$.
+
+\paragraph{Objects.}
+An object of $\SamTrans(S)$ is a translation-based semantic realization (TSR)
+\[
+\mathbf{T}
+=
+\Bigl(
+S,\,
+\{V_i^{\mathbf{T}}\}_{i\in\mathcal{I}},\,
+\{\varphi_i^{\mathbf{T}} : X_i \to V_i^{\mathbf{T}}\}_{i\in\mathcal{I}},\,
+\{T_{ij}^{\mathbf{T}} : V_i^{\mathbf{T}} \to V_j^{\mathbf{T}}\}_{i,j\in\mathcal{I}},\,
+G_{\mathbf{T}},\,
+\varepsilon_{\mathrm{trans}}^{\mathbf{T}}(\cdot)
+\Bigr)
+\]
+as in Definition~\ref{def:tsr}. For categorical purposes we implicitly identify each feature space
+$V_i^{\mathbf{T}}$ with a fixed Euclidean space $\mathbb{R}^{d_i}$ up to isometry, so that different
+TSRs share a common coordinate system per modality.
+
+\paragraph{Morphisms.}
+Given two TSRs $\mathbf{T}, \mathbf{T}' \in \SamTrans(S)$, a morphism
+\[
+R : \mathbf{T} \to \mathbf{T}'
+\]
+with tolerances $(\eta_{\mathrm{enc}}, \eta_{\mathrm{trans}}) \ge 0$ is a family of reparameterizations
+\[
+R = \{R_i : V_i^{\mathbf{T}} \to V_i^{\mathbf{T}'}\}_{i\in\mathcal{I}}
+\]
+such that for all in-regime latent entities $u$ in a fixed subset $\Omega^{\mathrm{ideal}} \subseteq I$
+(e.g., the union of points visited by benign paths in $\mathcal{P}_S(L_\star)$ for some operational
+horizon $L_\star$) the following hold:
+\begin{enumerate}[]
+\item \textbf{Encoder compatibility.} The $R_i$ approximately intertwine the encoders:
+\begin{equation}
+\label{eq:tsr-enc-compat}
+\bigl\|
+R_i\bigl(\varphi_i^{\mathbf{T}}(\pi_i(u))\bigr)
+-
+\varphi_i^{\mathbf{T}'}(\pi_i(u))
+\bigr\|
+\;\le\;
+\eta_{\mathrm{enc}}
+\quad
+\text{for all } i \in \mathcal{I}.
+\end{equation}
+
+\item \textbf{Translator compatibility.} The $R_i$ approximately commute with translators:
+\begin{equation}
+\label{eq:tsr-trans-compat}
+\bigl\|
+R_j\bigl(T_{ij}^{\mathbf{T}}(\varphi_i^{\mathbf{T}}(\pi_i(u)))\bigr)
+-
+T_{ij}^{\mathbf{T}'}\bigl(R_i(\varphi_i^{\mathbf{T}}(\pi_i(u)))\bigr)
+\bigr\|
+\;\le\;
+\eta_{\mathrm{trans}}
+\quad
+\text{for all } i,j \in \mathcal{I}.
+\end{equation}
+\end{enumerate}
+
+\paragraph{Composition and identities.}
+If $R : \mathbf{T} \to \mathbf{T}'$ and $R' : \mathbf{T}' \to \mathbf{T}''$ are morphisms, their
+composition $R' \circ R : \mathbf{T} \to \mathbf{T}''$ is defined componentwise:
+\[
+(R' \circ R)_i := R'_i \circ R_i, \quad i \in \mathcal{I}.
+\]
+The identity morphism on $\mathbf{T}$ is the family of identity maps
+\[
+\mathrm{id}_{\mathbf{T}} := \{\mathrm{id}_{V_i^{\mathbf{T}}}\}_{i\in\mathcal{I}}.
+\]
+These operations make $\SamTrans(S)$ a category.
+\end{definition}
+
+Intuitively, objects of $\SamTrans(S)$ are full translator systems built on a fixed sameness structure
+$S$; morphisms are approximate changes of feature coordinates that preserve the encoders and
+translators up to small tolerances. The in-regime set $\Omega^{\mathrm{ideal}}$ encodes where these
+comparisons are intended to be meaningful.
+
+\subsection{Category of manifold-based realizations}
+\label{subsec:samgeom}
+
+We now define the category whose objects are manifold-based realizations of $S$.
+
+\begin{definition}[Category $\SamGeom(S)$]
+\label{def:samgeom-category}
+Fix the same sameness structure $S$ as above.
+
+\paragraph{Objects.}
+An object of $\SamGeom(S)$ is a manifold-based semantic realization (MSR)
+\[
+\mathbf{M}
+=
+\Bigl(
+S,\,
+\{V_i^{\mathbf{M}}\}_{i\in\mathcal{I}},\,
+\{\varphi_i^{\mathbf{M}} : X_i \to V_i^{\mathbf{M}}\}_{i\in\mathcal{I}},\,
+(\mathcal{M}^{\mathbf{M}}, g^{\mathbf{M}}),\,
+\{\psi_i^{\mathbf{M}} : V_i^{\mathbf{M}} \to \mathcal{M}^{\mathbf{M}}\}_{i\in\mathcal{I}},\,
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}}(\cdot)
+\Bigr)
+\]
+as in Definition~\ref{def:msr}. For each $i \in \mathcal{I}$ the smooth map
+$\psi_i^{\mathbf{M}} : V_i^{\mathbf{M}} \to \mathcal{M}^{\mathbf{M}}$ is a parameterization whose image
+$U_i^{\mathbf{M}} := \psi_i^{\mathbf{M}}(V_i^{\mathbf{M}})$ is an open subset of the manifold, and
+\[
+\chi_i^{\mathbf{M}} := (\psi_i^{\mathbf{M}})^{-1} : U_i^{\mathbf{M}} \to V_i^{\mathbf{M}}
+\]
+is the associated chart map. The distortion profile $\varepsilon_{\mathrm{dist}}^{\mathbf{M}}(\cdot)$ controls
+how the chart metrics compare to the Riemannian metric $g^{\mathbf{M}}$.
+
+Given a latent entity $u \in I$ for which modality $i$ observes $u$ (i.e., $\pi_i(u)$ is defined),
+we write
+\[
+v_i^{\mathbf{M}}(u)
+:= \varphi_i^{\mathbf{M}}(\pi_i(u)) \in V_i^{\mathbf{M}},
+\qquad
+z^{\mathbf{M}}(u)
+:= \psi_i^{\mathbf{M}}\bigl(v_i^{\mathbf{M}}(u)\bigr) \in \mathcal{M}^{\mathbf{M}}.
+\]
+By consistency of the MSR, $z^{\mathbf{M}}(u)$ does not depend on the choice of modality $i$ when
+multiple modalities observe the same $u$.
+
+\paragraph{Morphisms.}
+Given two MSRs $\mathbf{M}, \mathbf{M}' \in \SamGeom(S)$, a morphism
+\[
+H : \mathbf{M} \to \mathbf{M}'
+\]
+with tolerances $(\eta_{\mathrm{enc}}, \eta_{\mathrm{chart}}) \ge 0$ is a pair
+\[
+H = \bigl(h, R\bigr),
+\qquad
+h : \mathcal{M}^{\mathbf{M}} \to \mathcal{M}^{\mathbf{M}'},
+\quad
+R = \{R_i : V_i^{\mathbf{M}} \to V_i^{\mathbf{M}'}\}_{i\in\mathcal{I}},
+\]
+where $h$ is smooth and $\{R_i\}$ are reparameterizations of the feature spaces, satisfying two
+compatibility conditions on an in-regime latent subset $\Omega^{\mathrm{ideal}} \subseteq I$ and the
+corresponding in-regime feature sets
+\[
+\Omega^{\mathrm{reg}}_i
+:=
+\varphi_i^{\mathbf{M}}\bigl(\pi_i(\Omega^{\mathrm{ideal}})\bigr)
+\subseteq V_i^{\mathbf{M}}.
+\]
+
+\begin{enumerate}[]
+\item \textbf{Encoder compatibility.} For all $u \in \Omega^{\mathrm{ideal}}$ and $i \in \mathcal{I}$,
+\begin{equation}
+\label{eq:msr-enc-compat}
+\bigl\|
+R_i\bigl(\varphi_i^{\mathbf{M}}(\pi_i(u))\bigr)
+-
+\varphi_i^{\mathbf{M}'}(\pi_i(u))
+\bigr\|
+\;\le\;
+\eta_{\mathrm{enc}}.
+\end{equation}
+
+\item \textbf{$h$-induced reparameterization and chart compatibility.}
+For each modality $i \in \mathcal{I}$, define the \emph{$h$-induced reparameterization}
+\[
+R_h^i : V_i^{\mathbf{M}} \to V_i^{\mathbf{M}'},
+\qquad
+R_h^i(v)
+:=
+\bigl(\chi_i^{\mathbf{M}'} \circ h \circ \psi_i^{\mathbf{M}}\bigr)(v).
+\]
+This map transports a feature vector $v \in V_i^{\mathbf{M}}$ onto the manifold
+$\mathcal{M}^{\mathbf{M}}$, applies $h$, and then pulls back to $V_i^{\mathbf{M}'}$ using the chart
+of $\mathbf{M}'$.
+
+We require that $R$ and the $h$-induced maps agree up to $\eta_{\mathrm{chart}}$ on in-regime
+features:
+\begin{equation}
+\label{eq:msr-chart-compat}
+\sup_{v \in \Omega^{\mathrm{reg}}_i}
+\bigl\|
+R_i(v) - R_h^i(v)
+\bigr\|
+\;\le\;
+\eta_{\mathrm{chart}}
+\quad
+\text{for all } i \in \mathcal{I}.
+\end{equation}
+\end{enumerate}
+
+\paragraph{Composition and identities.}
+If $H = (h, R) : \mathbf{M} \to \mathbf{M}'$ and
+$H' = (h', R') : \mathbf{M}' \to \mathbf{M}''$ are morphisms, their composition is
+\[
+H' \circ H
+:=
+\bigl(h' \circ h,\; \{R'_i \circ R_i\}_{i\in\mathcal{I}}\bigr).
+\]
+The identity morphism on $\mathbf{M}$ is
+\[
+\mathrm{id}_{\mathbf{M}} := (\mathrm{id}_{\mathcal{M}^{\mathbf{M}}}, \{\mathrm{id}_{V_i^{\mathbf{M}}}\}_{i\in\mathcal{I}}).
+\]
+These operations make $\SamGeom(S)$ a category.
+\end{definition}
+
+Intuitively, morphisms in $\SamGeom(S)$ consist of a manifold map $h$ (acting in state space) and
+a family of feature-space maps $R_i$; the condition~\eqref{eq:msr-chart-compat} says that $R_i$
+must be close, on in-regime representations, to the reparameterization induced by $h$ via the charts.
+This separates the definition of the induced map $R_h^i$ from the compatibility requirement and
+makes the geometry of morphisms transparent.
+
+\subsection{Error gauges on realization categories}
+\label{subsec:error-gauges}
+
+The categories $\SamTrans(S)$ and $\SamGeom(S)$ contain many realizations that differ in ways
+irrelevant to detection. To compare them coarsely, we introduce object-level \emph{error gauges}
+that act as pseudo-metrics on the object sets. These gauges focus on the components that enter
+the detection theory: drift/distortion profiles and geometric behavior on in-regime entities.
+
+\begin{definition}[Error gauges on $\SamTrans(S)$ and $\SamGeom(S)$]
+\label{def:error-gauges}
+Fix an in-regime latent subset $\Omega^{\mathrm{ideal}} \subseteq I$, for example the union of points
+visited by benign paths in $\mathcal{P}_S(L_\star)$, and let $\sigma_S^{\mathbf{M}}(L)$ be the semantic
+drift profile from Definition~\ref{def:semantic-drift} whenever an MSR $\mathbf{M}$ exists.
+
+\paragraph{Gauge on $\SamTrans(S)$.}
+For two TSRs $\mathbf{T}, \mathbf{T}' \in \SamTrans(S)$, define
+\begin{align}
+\Delta_{\SamTrans}(\mathbf{T}, \mathbf{T}')
+&:=
+\sup_{k \in \mathbb{N}}
+\bigl|
+\varepsilon_{\mathrm{trans}}^{\mathbf{T}}(k)
+-
+\varepsilon_{\mathrm{trans}}^{\mathbf{T}'}(k)
+\bigr|
+\notag\\
+&\quad+
+\sup_{i,j \in \mathcal{I}}
+\sup_{u \in \Omega^{\mathrm{ideal}}}
+\bigl\|
+T_{ij}^{\mathbf{T}}\bigl(v_i^{\mathbf{T}}(u)\bigr)
+-
+T_{ij}^{\mathbf{T}'}\bigl(v_i^{\mathbf{T}'}(u)\bigr)
+\bigr\|,
+\label{eq:gauge-samtrans}
+\end{align}
+where
+$v_i^{\mathbf{T}}(u) := \varphi_i^{\mathbf{T}}(\pi_i(u))$ and
+$v_i^{\mathbf{T}'}(u) := \varphi_i^{\mathbf{T}'}(\pi_i(u))$.
+We tacitly identify $V_i^{\mathbf{T}}$ and $V_i^{\mathbf{T}'}$ with a common $\mathbb{R}^{d_i}$ up to
+isometry, so that the norm in~\eqref{eq:gauge-samtrans} is well-defined.
+
+\paragraph{Gauge on $\SamGeom(S)$.}
+For two MSRs $\mathbf{M}, \mathbf{M}' \in \SamGeom(S)$, define
+\begin{align}
+\Delta_{\SamGeom}(\mathbf{M}, \mathbf{M}')
+&:=
+\sup_{\ell > 0}
+\bigl|
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}}(\ell)
+-
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}'}(\ell)
+\bigr|
+\notag\\
+&\quad+
+\sup_{u, u' \in \Omega^{\mathrm{ideal}}}
+\Bigl|
+d_{g^{\mathbf{M}}}\bigl(z^{\mathbf{M}}(u), z^{\mathbf{M}}(u')\bigr)
+-
+d_{g^{\mathbf{M}'}}\bigl(z^{\mathbf{M}'}(u), z^{\mathbf{M}'}(u')\bigr)
+\Bigr|,
+\label{eq:gauge-samgeom}
+\end{align}
+where $z^{\mathbf{M}}(u)$ and $z^{\mathbf{M}'}(u)$ are the induced manifold states defined above.
+\end{definition}
+
+Both $\Delta_{\SamTrans}$ and $\Delta_{\SamGeom}$ are symmetric, non-negative, and vanish when
+the corresponding drift/distortion profiles and geometric behaviors agree exactly, but they may not
+separate all distinct objects (they are pseudo-metrics rather than metrics). They deliberately
+ignore implementation details that do not affect geometric behavior on in-regime entities.
+
+\subsection{$\varepsilon$-equivalence of realization categories}
+\label{subsec:epsilon-equivalence}
+
+We next formalize the sense in which $\SamTrans(S)$ and $\SamGeom(S)$ will be treated as
+approximately equivalent. The key idea is that we do \emph{not} expect strict categorical
+equivalence, but rather an equivalence up to small slack in the error gauges.
+
+\begin{definition}[$\varepsilon$-equivalence of categories of realizations]
+\label{def:epsilon-equivalence}
+Let $(\mathcal{C}, \Delta_{\mathcal{C}})$ and $(\mathcal{D}, \Delta_{\mathcal{D}})$ be categories equipped
+with object-level pseudo-metrics (error gauges) on $\mathrm{Ob}(\mathcal{C})$ and
+$\mathrm{Ob}(\mathcal{D})$, respectively. Let $\mathcal{C}^0 \subseteq \mathcal{C}$ and
+$\mathcal{D}^0 \subseteq \mathcal{D}$ be full subcategories.
+
+We say that $\mathcal{C}^0$ and $\mathcal{D}^0$ are \emph{$\varepsilon$-equivalent} if there exist
+functors
+\[
+F : \mathcal{C}^0 \to \mathcal{D}^0,
+\qquad
+G : \mathcal{D}^0 \to \mathcal{C}^0,
+\]
+and non-negative slack functions $C_F, C_G$ such that:
+\begin{enumerate}[]
+\item For every object $C \in \mathrm{Ob}(\mathcal{C}^0)$,
+\[
+\Delta_{\mathcal{C}}\bigl(G(F(C)), C\bigr)
+\;\le\;
+C_G(\varepsilon_C),
+\]
+where $\varepsilon_C$ collects the relevant distortion parameters of $C$ (e.g.,
+$\varepsilon_{\mathrm{trans}}^{\mathbf{T}}$, $\varepsilon_{\mathrm{dist}}^{F(\mathbf{T})}$, chart slack, etc.).
+\item For every object $D \in \mathrm{Ob}(\mathcal{D}^0)$,
+\[
+\Delta_{\mathcal{D}}\bigl(F(G(D)), D\bigr)
+\;\le\;
+C_F(\varepsilon_D),
+\]
+with $\varepsilon_D$ defined analogously.
+\item (\emph{First-order property.}) The slack functions are \emph{first order} in the distortion
+parameters: when all distortion and slack terms (e.g., $\varepsilon_{\mathrm{trans}}$,
+$\varepsilon_{\mathrm{dist}}$, chart-overlap slack $\delta_{\mathrm{chart}}$, translator asymmetry
+$\delta_{\mathrm{asymm}}$) tend to zero, $C_F$ and $C_G$ also tend to zero.
+\end{enumerate}
+\end{definition}
+
+In our setting, $\mathcal{C}^0$ and $\mathcal{D}^0$ will be well-behaved subcategories
+$\SamTrans^0(S) \subseteq \SamTrans(S)$ and $\SamGeom^0(S) \subseteq \SamGeom(S)$ on which
+smooth chartability and bounded-distortion conditions hold. The functors $F$ and $G$ will be the
+forward and reverse constructions $F_S$ and $G_S$ that move between translators and manifolds.
+
+\subsection{Structural equivalence theorem and implications}
+\label{subsec:structural-theorem}
+
+We are now ready to state the main structural theorem of this section in informal form. It says
+that, under a smooth chartability assumption, the TSR and MSR design spaces for a fixed sameness
+structure $S$ are $\varepsilon$-equivalent in the sense of Definition~\ref{def:epsilon-equivalence}.
+
+\begin{theorem}[Realization categories are $\varepsilon$-equivalent (informal)]
+\label{thm:structural-equivalence}
+Fix a semantic sameness structure $S$ and an in-regime latent subset
+$\Omega^{\mathrm{ideal}} \subseteq I$. There exist:
+\begin{itemize}
+\item well-behaved subcategories
+\[
+\SamTrans^0(S) \subseteq \SamTrans(S),
+\qquad
+\SamGeom^0(S) \subseteq \SamGeom(S),
+\]
+consisting of TSRs and MSRs that satisfy smooth chartability and bounded-distortion conditions;
+
+\item functors
+\[
+F_S : \SamTrans^0(S) \to \SamGeom^0(S),
+\qquad
+G_S : \SamGeom^0(S) \to \SamTrans^0(S),
+\]
+that:
+\begin{enumerate}[]
+\item preserve the underlying sameness structure $S$ and feature spaces
+$\{V_i, \varphi_i\}_{i\in\mathcal{I}}$;
+\item send translators to manifolds by quotienting and gluing charts (Section~4);
+\item send manifolds to translators by extracting chart transitions (Section~5);
+\end{enumerate}
+
+\item slack functions $C_F, C_G$ which are first order in the distortion and chartability
+parameters (translator drift $\varepsilon_{\mathrm{trans}}$, metric distortion
+$\varepsilon_{\mathrm{dist}}$, chart-overlap slack $\delta_{\mathrm{chart}}$, and translator asymmetry
+$\delta_{\mathrm{asymm}}$),
+\end{itemize}
+such that:
+\begin{align*}
+\Delta_{\SamTrans}\bigl(\mathbf{T},\; G_S(F_S(\mathbf{T}))\bigr)
+&\;\le\;
+C_G\bigl(\varepsilon_{\mathrm{trans}}^{\mathbf{T}}, \varepsilon_{\mathrm{dist}}^{F_S(\mathbf{T})},
+\delta_{\mathrm{chart}}(\mathbf{T},F_S(\mathbf{T})), \delta_{\mathrm{asymm}}(\mathbf{T})\bigr)
+\quad\text{for all } \mathbf{T} \in \SamTrans^0(S),\\[0.25em]
+\Delta_{\SamGeom}\bigl(\mathbf{M},\; F_S(G_S(\mathbf{M}))\bigr)
+&\;\le\;
+C_F\bigl(\varepsilon_{\mathrm{dist}}^{\mathbf{M}}, \varepsilon_{\mathrm{trans}}^{G_S(\mathbf{M})},
+\delta_{\mathrm{chart}}(G_S(\mathbf{M}),\mathbf{M}), \delta_{\mathrm{asymm}}(G_S(\mathbf{M}))\bigr)
+\quad\text{for all } \mathbf{M} \in \SamGeom^0(S).
+\end{align*}
+
+In particular, as all distortion and slack terms tend to zero, the round-trip errors in the gauges
+$\Delta_{\SamTrans}$ and $\Delta_{\SamGeom}$ tend to zero: $\SamTrans^0(S)$ and $\SamGeom^0(S)$
+are $\varepsilon$-equivalent categories of realizations of $S$.
+\end{theorem}
+
+The detailed constructions of $F_S$ and $G_S$ and the proof of
+Theorem~\ref{thm:structural-equivalence} are given in Sections~4--5. At a conceptual level:
+
+\begin{itemize}
+\item For a fixed sameness structure $S$, TSRs and MSRs are two different \emph{realizations} of the
+same problem: $\SamTrans^0(S)$ and $\SamGeom^0(S)$ are two design spaces for the same semantic
+sameness structure.
+
+\item The functors $F_S$ and $G_S$ witness an $\varepsilon$-equivalence between these design spaces,
+showing that---under smooth chartability---they are dual up to controlled slack. An engineer who
+starts from only $S$ can choose either a translator-based or manifold-based architecture, with the
+assurance that the theoretical guarantees of the resulting detector are comparable.
+
+\item Because the equivalence is functorial and comes with explicit slack bounds, \emph{theorems and
+tools transfer}: risk bounds or stability results proven in the manifold view can be pulled back to
+translator systems via $G_S$, and translator-side diagnostics (e.g., spectral audits on format graphs)
+can be pushed forward to furnish new manifold-side checks via $F_S$. This transfer principle underlies
+the Error Budget Transfer Theorem in Section~6.
+\end{itemize}
+
+\section{Smooth chartability and the functor \texorpdfstring{$F_S$}{F\_S}}
+\label{sec:chartability-F}
+
+Fix a semantic sameness structure $S$ and the associated categories
+$\SamTrans(S)$ and $\SamGeom(S)$ from Section~\ref{sec:categories}.
+Throughout this section, we work with ideal latent entities
+$u \in \Omega^{\mathrm{ideal}} \subseteq I$ and their encoder outputs
+$v_i(u) := \varphi_i(\pi_i(u)) \in V_i$ as in Section~\ref{sec:sameness-structure}.
+We write $\|\cdot\|$ for the natural inner-product norm in the relevant
+feature or ambient space.
+
+Our goal is to construct a functor
+\[
+F_S : \SamTrans^0(S) \longrightarrow \SamGeom^0(S)
+\]
+on a well-behaved subcategory $\SamTrans^0(S) \subseteq \SamTrans(S)$,
+sending a translation-based realization (TSR) $\mathbf{T}$ to a
+manifold-based realization (MSR) $F_S(\mathbf{T})$, and a morphism
+$R : \mathbf{T} \to \mathbf{T}'$ to a morphism
+$F_S(R) : F_S(\mathbf{T}) \to F_S(\mathbf{T}')$.
+Crucially, $F_S$ must be \emph{constructed} from the TSR data, not defined
+by fiat.
+
+We proceed in three steps:
+\begin{enumerate}
+  \item We build a canonical \emph{translator metric quotient}
+        $(\widetilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}})$
+        from any TSR $\mathbf{T}$ (Section~\ref{subsec:translator-metric-quotient}).
+  \item We define an \emph{intrinsic} notion of smooth chartability for TSRs
+        that depends only on $\mathbf{T}$ itself and its latent coverage
+        (Section~\ref{subsec:intrinsic-chartability}),
+        and use it to carve out the subcategory $\SamTrans^0(S)$.
+  \item We impose a single, explicit assumption of \emph{Riemannian
+        realizability} for these metric spaces and use it to define $F_S$
+        on objects and morphisms (Section~\ref{subsec:riemannian-realizability}).
+\end{enumerate}
+This isolates the genuinely geometric hypothesis---that the
+translator-induced metric space is quasi-isometric to a smooth manifold---
+from the intrinsic regularity properties of the TSR itself.
+
+\subsection{The translator metric quotient}
+\label{subsec:translator-metric-quotient}
+
+Let $\mathbf{T} \in \SamTrans(S)$ be a TSR with components
+\[
+\mathbf{T}
+=
+\Bigl(
+  S,\ \{V_i^{\mathbf{T}}\}_{i \in \mathcal{I}},\ 
+  \{\varphi_i^{\mathbf{T}}\}_{i \in \mathcal{I}},\
+  \{T_{ij}^{\mathbf{T}}\}_{(i,j) \in E_{\mathbf{T}}},\
+  G_{\mathbf{T}},\ \varepsilon_{\mathrm{trans}}^{\mathbf{T}}(\cdot)
+\Bigr),
+\]
+as in Definition~\ref{def:tsr}.  For each modality $i \in \mathcal{I}$,
+recall the in-regime feature subset
+\[
+\Omega_i^{\mathrm{reg}}(\mathbf{T})
+:= 
+\bigl\{
+  v_i(u) = \varphi_i^{\mathbf{T}}(\pi_i(u)) :
+  u \in \Omega^{\mathrm{ideal}},\ \pi_i(u)\ \text{defined}
+\bigr\}
+\subseteq V_i^{\mathbf{T}},
+\]
+and define the disjoint union
+\[
+X^{\mathbf{T}}
+:=
+\bigsqcup_{i \in \mathcal{I}}
+\Omega_i^{\mathrm{reg}}(\mathbf{T}),
+\qquad
+x = (i, v_i) \in X^{\mathbf{T}}.
+\]
+
+\paragraph{Local edge costs.}
+We endow $X^{\mathbf{T}}$ with two families of elementary \emph{edges}:
+\begin{itemize}
+  \item \emph{Within-chart edges.} For any $i \in \mathcal{I}$ and any
+        $v_i, v_i' \in \Omega_i^{\mathrm{reg}}(\mathbf{T})$ we introduce
+        an edge $e : (i, v_i) \to (i, v_i')$ with cost
+        \[
+        c_{\mathrm{intra}}(e)
+        :=
+        \|v_i - v_i'\|.
+        \]
+  \item \emph{Translator edges.} For any $(i,j) \in E_{\mathbf{T}}$ and
+        any $v_i \in \Omega_i^{\mathrm{reg}}(\mathbf{T})$ such that
+        $T_{ij}^{\mathbf{T}}(v_i)$ lies in $\Omega_j^{\mathrm{reg}}(\mathbf{T})$,
+        we introduce an edge
+        \[
+        e : (i, v_i) \longrightarrow (j, T_{ij}^{\mathbf{T}}(v_i))
+        \]
+        with cost
+        \[
+        c_{\mathrm{trans}}(e)
+        :=
+        \bigl\| T_{ij}^{\mathbf{T}}(v_i) \bigr\|.
+        \]
+        (Any consistent bounded positive edge-weighting based on the
+        translator action would suffice; the specific choice is not
+        essential for the subsequent theory.)
+\end{itemize}
+
+\paragraph{Path pseudo-metric on $X^{\mathbf{T}}$.}
+A \emph{finite edge-path} in $X^{\mathbf{T}}$ is a sequence
+$p = (e_1, \dots, e_m)$ of composable edges.
+We define its cost
+\[
+\mathrm{len}(p)
+:=
+\sum_{r=1}^m c(e_r),
+\]
+where $c(e)$ is $c_{\mathrm{intra}}(e)$ or $c_{\mathrm{trans}}(e)$
+depending on the edge type.
+For any two points $x,y \in X^{\mathbf{T}}$, we define the
+\emph{path pseudo-metric}
+\[
+\tilde d_{\mathbf{T}}^{\mathrm{raw}}(x,y)
+:=
+\inf\bigl\{ \mathrm{len}(p) : p\ \text{is a finite edge-path from $x$ to $y$} \bigr\}.
+\]
+Standard arguments show that $\tilde d_{\mathbf{T}}^{\mathrm{raw}}$ is a
+pseudo-metric: it is symmetric, nonnegative, and satisfies the triangle
+inequality, but may assign zero distance to distinct points.
+
+\begin{definition}[Translator metric quotient]
+\label{def:translator-metric-quotient}
+Define an equivalence relation $\sim_0$ on $X^{\mathbf{T}}$ by
+\[
+x \sim_0 y
+\quad\Longleftrightarrow\quad
+\tilde d_{\mathbf{T}}^{\mathrm{raw}}(x,y) = 0.
+\]
+The \emph{translator metric quotient} of $\mathbf{T}$ is the metric space
+\[
+\bigl(
+  \widetilde{\mathcal{M}}^{\mathbf{T}},
+  \tilde d_{\mathbf{T}}
+\bigr)
+\]
+obtained as the quotient $X^{\mathbf{T}} / \sim_0$ with metric
+\[
+\tilde d_{\mathbf{T}}([x], [y])
+:=
+\tilde d_{\mathbf{T}}^{\mathrm{raw}}(x,y),
+\]
+which is well-defined and satisfies the metric axioms.
+
+For each modality $i \in \mathcal{I}$ there is a canonical
+\emph{quotient parameterization}
+\[
+\tilde\psi_i^{\mathbf{T}} : \Omega_i^{\mathrm{reg}}(\mathbf{T}) \to
+\widetilde{\mathcal{M}}^{\mathbf{T}},
+\qquad
+\tilde\psi_i^{\mathbf{T}}(v_i) := [(i, v_i)].
+\]
+\end{definition}
+
+Intuitively, $\widetilde{\mathcal{M}}^{\mathbf{T}}$ is the ``patchwork
+quilt'' you obtain by gluing together the in-regime feature charts
+along the translator edges, with $\tilde d_{\mathbf{T}}$ measuring the
+shortest-path cost induced by chart distances and translator hops.
+The construction is canonical (up to isometry) and depends only on the
+TSR $\mathbf{T}$.
+
+\subsection{Intrinsic smooth chartability}
+\label{subsec:intrinsic-chartability}
+
+The previous construction associates a metric space
+$(\widetilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}})$ to any
+TSR $\mathbf{T}$.  However, for an arbitrary $\mathbf{T}$ this space
+may be pathological: it need not resemble a manifold at any scale.
+We now isolate a set of purely \emph{intrinsic} conditions on
+$\mathbf{T}$ under which the translator metric quotient behaves like
+a well-controlled, finite-dimensional geometric object.
+
+\begin{definition}[Intrinsic smooth chartability]
+\label{def:intrinsic-chartability}
+A TSR $\mathbf{T}$ is \emph{intrinsically smoothly chartable} if the
+following conditions hold on an in-regime subset $\Omega^{\mathrm{ideal}}$
+and the associated feature sets $\Omega_i^{\mathrm{reg}}(\mathbf{T})$:
+\begin{enumerate}[]
+  \item \textbf{Translator regularity.} For each $(i,j) \in E_{\mathbf{T}}$,
+        the translator $T_{ij}^{\mathbf{T}} : V_i^{\mathbf{T}} \to
+        V_j^{\mathbf{T}}$ is $C^2$ on an open neighbourhood of
+        $\Omega_i^{\mathrm{reg}}(\mathbf{T})$, with uniformly bounded
+        Jacobian and inverse Jacobian:
+        \[
+        \sup_{v_i \in \Omega_i^{\mathrm{reg}}(\mathbf{T})}
+        \bigl\|
+          D T_{ij}^{\mathbf{T}}(v_i)
+        \bigr\|
+        \le C_{\mathrm{Jac}},
+        \qquad
+        \sup_{v_i \in \Omega_i^{\mathrm{reg}}(\mathbf{T})}
+        \bigl\|
+          D T_{ij}^{\mathbf{T}}(v_i)^{-1}
+        \bigr\|
+        \le C_{\mathrm{Jac}}.
+        \]
+  \item \textbf{Round-trip asymmetry bound.} There exists
+        $\delta_{\mathrm{asymm}}^{\mathbf{T}} < \infty$ such that for every
+        $(i,j) \in E_{\mathbf{T}}$ and every
+        $v_i \in \Omega_i^{\mathrm{reg}}(\mathbf{T})$ with
+        $T_{ij}^{\mathbf{T}}(v_i) \in \Omega_j^{\mathrm{reg}}(\mathbf{T})$
+        and $T_{ji}^{\mathbf{T}}(T_{ij}^{\mathbf{T}}(v_i))
+        \in \Omega_i^{\mathrm{reg}}(\mathbf{T})$ we have
+        \[
+        \bigl\|
+          T_{ji}^{\mathbf{T}}(T_{ij}^{\mathbf{T}}(v_i)) - v_i
+        \bigr\|
+        \le \delta_{\mathrm{asymm}}^{\mathbf{T}}.
+        \]
+  \item \textbf{Cocycle bound.} There exists
+        $\delta_{\mathrm{cocycle}}^{\mathbf{T}} < \infty$ such that for any
+        triple $(i,j,k)$ with $(i,j), (j,k), (i,k) \in E_{\mathbf{T}}$ and
+        any $v_i \in \Omega_i^{\mathrm{reg}}(\mathbf{T})$ lying in the domain
+        of all three compositions,
+        \[
+        \bigl\|
+          T_{jk}^{\mathbf{T}}(T_{ij}^{\mathbf{T}}(v_i)) -
+          T_{ik}^{\mathbf{T}}(v_i)
+        \bigr\|
+        \le \delta_{\mathrm{cocycle}}^{\mathbf{T}}.
+        \]
+        This ensures that multi-hop translator paths are consistent, up to a
+        controlled slack, with direct translations.
+  \item \textbf{Latent coverage and drift control.}
+        There is an operational horizon $L_\star > 0$ such that:
+        \begin{itemize}
+          \item every benign latent path $\gamma \in \mathcal{P}_S(L_\star)$
+                projects to in-regime observations $\pi_i(\gamma(t))$ and
+                hence to in-regime features
+                $v_i(\gamma(t)) = \varphi_i^{\mathbf{T}}(\pi_i(\gamma(t)))$;
+          \item the drift profile $\varepsilon_{\mathrm{trans}}^{\mathbf{T}}(k)$
+                is finite for all $k$ and satisfies the per-time-step bound
+                of Definition~\ref{def:tsr} on these paths.
+        \end{itemize}
+\end{enumerate}
+\end{definition}
+
+\begin{definition}[Well-behaved subcategory $\SamTrans^0(S)$]
+\label{def:samtrans0}
+We define $\SamTrans^0(S)$ as the full subcategory of
+$\SamTrans(S)$ whose objects are intrinsically smoothly chartable
+TSRs in the sense of Definition~\ref{def:intrinsic-chartability}, and whose
+morphisms are exactly the morphisms of $\SamTrans(S)$ between
+such objects.
+\end{definition}
+
+By construction, membership in $\SamTrans^0(S)$ is a property of the TSR
+$\mathbf{T}$ and its translators alone.  No manifold is mentioned in
+Definition~\ref{def:intrinsic-chartability}: it is a falsifiable hypothesis
+about the regularity, consistency, and coverage of the translators.
+
+\subsection{Riemannian realizability of the translator metric}
+\label{subsec:riemannian-realizability}
+
+The translator metric quotient
+$(\widetilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}})$ from
+Definition~\ref{def:translator-metric-quotient} is a canonical metric space
+built from $\mathbf{T}$ alone.  Intrinsic chartability ensures that this
+space behaves like a finite-dimensional, locally well-behaved metric
+space: translators are smooth with bounded Jacobians, roundtrip and
+cocycle inconsistencies are small, and latent data populate a connected,
+bounded region.
+
+To bridge from metric geometry to Riemannian geometry we isolate the
+following explicit assumption, which is the only place where we posit
+the existence of a smooth manifold ``shadow.''
+
+\begin{assumption}[Riemannian realizability of translator metric]
+\label{assump:riemannian-realizability}
+For every $\mathbf{T} \in \SamTrans^0(S)$, the translator metric
+quotient $(\widetilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}})$
+admits a Riemannian realization: there exists a smooth, finite-dimensional
+Riemannian manifold $(\mathcal{M}^{\mathbf{T}}, g^{\mathbf{T}})$ and
+a quasi-isometry
+\[
+q^{\mathbf{T}} :
+\bigl(\widetilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}}\bigr)
+\longrightarrow
+\bigl(\mathcal{M}^{\mathbf{T}}, d_{g^{\mathbf{T}}}\bigr)
+\]
+with distortion bounded by a function
+$\varepsilon_{\mathrm{realize}}^{\mathbf{T}}(\cdot)$ that depends
+continuously and monotonically on the intrinsic slack parameters
+$\varepsilon_{\mathrm{trans}}^{\mathbf{T}}(\cdot)$,
+$\delta_{\mathrm{asymm}}^{\mathbf{T}}$ and
+$\delta_{\mathrm{cocycle}}^{\mathbf{T}}$.
+
+Moreover, we assume that $q^{\mathbf{T}}$ is coarse-biLipschitz on the
+in-regime region populated by $\Omega^{\mathrm{ideal}}$, so that
+for all $x,y$ in this region
+\[
+\Bigl|
+  \frac{d_{g^{\mathbf{T}}}\bigl(q^{\mathbf{T}}(x), q^{\mathbf{T}}(y)\bigr)}
+       {\tilde d_{\mathbf{T}}(x,y)}
+  - 1
+\Bigr|
+\le
+\varepsilon_{\mathrm{realize}}^{\mathbf{T}}
+\bigl(\tilde d_{\mathbf{T}}(x,y)\bigr).
+\]
+\end{assumption}
+
+We do \emph{not} attempt to prove
+Assumption~\ref{assump:riemannian-realizability} in this work; it is our
+single, explicit geometric hypothesis.  In practice, it is an empirical
+question whether a given TSR $\mathbf{T}$ satisfies this assumption,
+and Section~\ref{sec:audits} discusses audit procedures for probing
+Riemannian realizability.
+
+\subsection{Constructing \texorpdfstring{$F_S$}{F\_S} on objects}
+\label{subsec:F-on-objects}
+
+With the metric quotient and realizability assumption in hand, we can
+now define $F_S$ on objects in a non-circular way.
+
+\begin{definition}[Functor $F_S$ on objects]
+\label{def:F-on-objects}
+Let $\mathbf{T} \in \SamTrans^0(S)$ be an intrinsically smoothly chartable
+TSR.  Consider its translator metric quotient
+$(\widetilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}})$ and a
+Riemannian realization
+$(\mathcal{M}^{\mathbf{T}}, g^{\mathbf{T}})$ with quasi-isometry
+$q^{\mathbf{T}}$ given by Assumption~\ref{assump:riemannian-realizability}.
+For each modality $i \in \mathcal{I}$, define the parameterization
+\[
+\psi_i^{\mathbf{T}}
+: V_i^{\mathbf{T}} \supseteq \Omega_i^{\mathrm{reg}}(\mathbf{T})
+\longrightarrow
+\mathcal{M}^{\mathbf{T}},
+\qquad
+\psi_i^{\mathbf{T}}(v_i)
+:=
+q^{\mathbf{T}}\bigl(\tilde\psi_i^{\mathbf{T}}(v_i)\bigr),
+\]
+where $\tilde\psi_i^{\mathbf{T}}$ is the quotient map from
+Definition~\ref{def:translator-metric-quotient}.
+
+We define
+\[
+F_S(\mathbf{T})
+:=
+\mathbf{M}^{\mathbf{T}}
+:=
+\Bigl(
+  S,\
+  \{V_i^{\mathbf{T}}\}_{i\in\mathcal{I}},\
+  \{\varphi_i^{\mathbf{T}}\}_{i\in\mathcal{I}},\
+  (\mathcal{M}^{\mathbf{T}}, g^{\mathbf{T}}),\
+  \{\psi_i^{\mathbf{T}}\}_{i\in\mathcal{I}},\
+  \varepsilon_{\mathrm{dist}}^{\mathbf{T}}(\cdot)
+\Bigr),
+\]
+where the distortion profile $\varepsilon_{\mathrm{dist}}^{\mathbf{T}}$ is defined
+by pulling back the quasi-isometry distortion:
+\[
+\Bigl|
+  \frac{\delta_i^{\mathbf{T}}(z_a,z_b)}
+       {d_{g^{\mathbf{T}}}(z_a,z_b)}
+  - 1
+\Bigr|
+\le
+\varepsilon_{\mathrm{dist}}^{\mathbf{T}}\bigl(d_{g^{\mathbf{T}}}(z_a,z_b)\bigr),
+\qquad
+z_a, z_b \in \psi_i^{\mathbf{T}}(\Omega_i^{\mathrm{reg}}(\mathbf{T})),
+\]
+with chart distances
+$\delta_i^{\mathbf{T}}(z_a,z_b) :=
+\|\chi_i^{\mathbf{T}}(z_a) - \chi_i^{\mathbf{T}}(z_b)\|$
+and chart maps $\chi_i^{\mathbf{T}} := (\psi_i^{\mathbf{T}})^{-1}$ on their
+images.
+
+By construction, $\mathbf{M}^{\mathbf{T}}$ is an MSR of $S$ in the sense
+of Definition~\ref{def:msr}, and we have $F_S(\mathbf{T}) \in \SamGeom^0(S)$.
+\end{definition}
+
+Importantly, $F_S(\mathbf{T})$ is now determined (up to quasi-isometry) by
+$\mathbf{T}$ itself: the only freedom lies in the choice of Riemannian
+realization $(\mathcal{M}^{\mathbf{T}}, g^{\mathbf{T}})$ of the canonical
+metric quotient.  Different choices of $q^{\mathbf{T}}$ give rise to
+MSRs that are close in the error gauge $\Delta_{\SamGeom}$ of
+Definition~\ref{def:error-gauges}, and Theorem~\ref{thm:structural-equivalence}
+will show that this slack is first-order in the intrinsic errors of
+$\mathbf{T}$.
+
+\subsection{Constructing \texorpdfstring{$F_S$}{F\_S} on morphisms}
+\label{subsec:F-on-morphisms}
+
+We next define $F_S$ on morphisms.  Let
+$R : \mathbf{T} \to \mathbf{T}'$ be a morphism in
+$\SamTrans^0(S)$ as in Definition~\ref{def:samtrans-category},
+with reparameterizations
+$R_i : V_i^{\mathbf{T}} \to V_i^{\mathbf{T}'}$ satisfying the
+encoder- and translator-compatibility bounds on ideal data.
+
+The TSR morphism $R$ induces a map between the translator metric
+quotients,
+\[
+\tilde h^R :
+\widetilde{\mathcal{M}}^{\mathbf{T}}
+\longrightarrow
+\widetilde{\mathcal{M}}^{\mathbf{T}'},
+\]
+defined on representatives by
+\[
+\tilde h^R\bigl(\tilde\psi_i^{\mathbf{T}}(v_i)\bigr)
+:=
+\tilde\psi_i^{\mathbf{T}'}\bigl(R_i(v_i)\bigr),
+\]
+and extended by continuity.  The compatibility conditions in
+Definition~\ref{def:samtrans-category} ensure that $\tilde h^R$ is
+well-defined up to the metric identification $\sim_0$ and is
+Lipschitz (with constants depending on the morphism error
+tolerances $(\eta_{\mathrm{enc}}, \eta_{\mathrm{trans}})$).
+
+Using the quasi-isometries $q^{\mathbf{T}}$ and $q^{\mathbf{T}'}$ from
+Assumption~\ref{assump:riemannian-realizability}, we then define the
+manifold-level map
+\[
+h^R :
+\mathcal{M}^{\mathbf{T}}
+\longrightarrow
+\mathcal{M}^{\mathbf{T}'},
+\qquad
+h^R
+:=
+q^{\mathbf{T}'}
+\circ \tilde h^R
+\circ (q^{\mathbf{T}})^{-1},
+\]
+understanding $(q^{\mathbf{T}})^{-1}$ as a coarse inverse on the
+in-regime region.
+
+\begin{definition}[Functor $F_S$ on morphisms]
+\label{def:F-on-morphisms}
+For a morphism $R : \mathbf{T} \to \mathbf{T}'$ in
+$\SamTrans^0(S)$, we define
+\[
+F_S(R)
+:=
+H^R
+:=
+\bigl(h^R,\ R\bigr)
+:
+\mathbf{M}^{\mathbf{T}}
+\longrightarrow
+\mathbf{M}^{\mathbf{T}'},
+\]
+where $\mathbf{M}^{\mathbf{T}} = F_S(\mathbf{T})$ and
+$\mathbf{M}^{\mathbf{T}'} = F_S(\mathbf{T}')$, and $h^R$ is the
+manifold map defined above.
+
+The encoder-compatibility condition for $H^R$,
+\[
+\bigl\|
+  R_i\bigl(\varphi_i^{\mathbf{M}^{\mathbf{T}}}(\pi_i(u))\bigr)
+  -
+  \varphi_i^{\mathbf{M}^{\mathbf{T}'}}(\pi_i(u))
+\bigr\|
+\le \eta_{\mathrm{enc}}',
+\]
+is inherited from $R$, while the chart-compatibility condition,
+\[
+\bigl\|
+  R_i\bigl(\varphi_i^{\mathbf{M}^{\mathbf{T}}}(\pi_i(u))\bigr)
+  -
+  \chi_i^{\mathbf{M}^{\mathbf{T}'}}\bigl(h^R(z^{\mathbf{T}}(u))\bigr)
+\bigr\|
+\le \eta_{\mathrm{chart}}',
+\]
+with $z^{\mathbf{T}}(u)$ the latent state in $\mathcal{M}^{\mathbf{T}}$,
+follows from the construction of $h^R$ and the quasi-isometry bounds.
+Thus $H^R$ is a morphism in $\SamGeom(S)$ in the sense of
+Definition~\ref{def:samgeom-category}.
+\end{definition}
+
+\begin{proposition}[Functoriality and stability of $F_S$]
+\label{prop:F-functorial}
+The assignment $F_S$ of Definitions~\ref{def:F-on-objects}
+and~\ref{def:F-on-morphisms} defines a functor
+\[
+F_S : \SamTrans^0(S) \longrightarrow \SamGeom^0(S)
+\]
+satisfying:
+\begin{enumerate}[]
+  \item For every object $\mathbf{T} \in \SamTrans^0(S)$,
+        $F_S(\mathrm{id}_{\mathbf{T}}) = \mathrm{id}_{F_S(\mathbf{T})}$.
+  \item For any composable morphisms
+        $R : \mathbf{T} \to \mathbf{T}'$ and
+        $R' : \mathbf{T}' \to \mathbf{T}''$ in $\SamTrans^0(S)$,
+        \[
+        F_S(R' \circ R)
+        =
+        F_S(R') \circ F_S(R).
+        \]
+  \item There exists a universal, increasing function $C_F$
+        such that for any $\mathbf{T}, \mathbf{T}' \in \SamTrans^0(S)$
+        the error gauge satisfies
+        \[
+        \Delta_{\SamGeom}\bigl(F_S(\mathbf{T}), F_S(\mathbf{T}')\bigr)
+        \le
+        C_F\Bigl(
+          \Delta_{\SamTrans}(\mathbf{T}, \mathbf{T}'),\
+          \delta_{\mathrm{chart}}(\mathbf{T}),\
+          \delta_{\mathrm{chart}}(\mathbf{T}')
+        \Bigr),
+        \]
+        where $\delta_{\mathrm{chart}}(\mathbf{T})$ is the chart-overlap
+        slack of $\mathbf{T}$ from Definition~\ref{def:chart-slack}.
+        Moreover, $C_F$ is first-order in its arguments: it vanishes as
+        $\Delta_{\SamTrans} \to 0$ and $\delta_{\mathrm{chart}} \to 0$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Functoriality of $F_S$ on objects and morphisms follows from the
+definitions of the translator metric quotient and the functoriality of
+the quasi-isometry construction in Assumption~\ref{assump:riemannian-realizability}.
+The stability bound in (iii) leverages the fact that the distortion
+profile $\varepsilon_{\mathrm{dist}}^{\mathbf{T}}$ is controlled by the
+intrinsic errors of $\mathbf{T}$ via the quasi-isometry, and that the
+error gauge $\Delta_{\SamGeom}$ is built from these distortion profiles
+and chart disagreements.  Full details are deferred to
+Section~6, where we prove the stronger Error Budget Transfer Theorem.
+\end{proof}
+
+\subsection{Discussion: what $F_S$ really does}
+
+The functor $F_S$ no longer hides a manifold inside the definition of
+smooth chartability.  Instead, it proceeds in two conceptually clean
+stages:
+
+\begin{itemize}
+  \item \textbf{From flat maps to a quilt.}  For any intrinsically
+        well-behaved TSR $\mathbf{T}$, we canonically construct the
+        translator metric quotient
+        $(\widetilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}})$
+        that encodes how features in different modalities can be
+        transported and compared via translators.  This is the ``patchwork
+        quilt'' of all flat maps stitched together along their edges,
+        with a well-defined metric.
+  \item \textbf{From the quilt to the globe.}  The single geometric
+        hypothesis of Riemannian realizability asserts that this quilt
+        is quasi-isometric to some smooth manifold
+        $(\mathcal{M}^{\mathbf{T}}, g^{\mathbf{T}})$.  The functor $F_S$
+        then declares this manifold, together with the induced
+        parameterizations $\psi_i^{\mathbf{T}}$, to be the MSR
+        $F_S(\mathbf{T})$.
+\end{itemize}
+
+In this way, $F_S$ is a genuine construction rather than a renaming:
+it builds a metric geometry from the translators, and only then---under
+an explicit, isolated assumption---passes to a smooth Riemannian
+geometry.  The error gauge stability in
+Proposition~\ref{prop:F-functorial} will feed directly into the Error
+Budget Transfer Theorem in Section~6, where we show that detection
+guarantees can be transported across this functor with only
+first-order slack.
+\section{From manifolds back to translators: the functor \texorpdfstring{$G_S$}{G\_S}}
+\label{sec:G-construction}
+
+Section~\ref{sec:chartability-F} constructed a functor
+$F_S : \SamTrans^0(S) \to \SamGeom^0(S)$
+by starting from a smoothly chartable TSR~$\mathbf{T}$, forming its translator
+metric quotient $(\widetilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}})$, and---under a
+Riemannian realizability assumption---obtaining a manifold-based realization
+$F_S(\mathbf{T})$ whose charts approximate the original translators.
+In this section we build the reverse functor
+\[
+G_S : \SamGeom^0(S) \to \SamTrans^0(S),
+\]
+which takes a well-parameterized manifold-based realization~$\mathbf{M}$ and
+extracts a canonical translator-based realization $G_S(\mathbf{M})$. At the
+level of the Globe–Flat Maps analogy, $F_S$ turns a consistent atlas of flat
+maps into a globe; $G_S$ takes a globe with well-behaved charts and recovers
+a translator graph encoding the chart transitions.
+
+Throughout this section we fix a semantic sameness structure $S$ and work
+within the realization categories $\SamGeom(S)$ and $\SamTrans(S)$
+from Section~\ref{sec:categories}. Norms $\|\cdot\|$ denote the natural inner-product
+norms on the relevant feature spaces, as in Section~\ref{sec:categories}.
+
+\subsection{Geometrically well-parameterized MSRs}
+\label{subsec:geom-well-param}
+
+We first specify which manifold-based realizations admit a stable translation
+view. Intuitively, an MSR is \emph{geometrically well-parameterized} when its
+chart maps behave like well-conditioned coordinate systems on the region
+traced out by benign latent paths, with controlled distortion and overlap.
+
+\begin{definition}[Geometrically well-parameterized MSR]
+\label{def:geom-well-param}
+Let $\mathbf{M}$ be an MSR of $S$ in the sense of
+Definition~\ref{def:msr}:
+\[
+\mathbf{M}
+=
+\Bigl(
+S,\ \{V_i^{\mathbf{M}}\}_{i\in\mathcal{I}},\ \{\varphi_i^{\mathbf{M}}\}_{i\in\mathcal{I}},
+(\mathcal{M}^{\mathbf{M}}, g^{\mathbf{M}}),\ \{\psi_i^{\mathbf{M}}\}_{i\in\mathcal{I}},
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}}(\cdot)
+\Bigr).
+\]
+Write $U_i^{\mathbf{M}} := \psi_i^{\mathbf{M}}(V_i^{\mathbf{M}})$ and
+$\chi_i^{\mathbf{M}} := (\psi_i^{\mathbf{M}})^{-1} : U_i^{\mathbf{M}} \to V_i^{\mathbf{M}}$,
+and define $z^{\mathbf{M}}(u)$ as in Definition~\ref{def:semantic-drift}.
+
+We say that $\mathbf{M}$ is \emph{geometrically well-parameterized} if the
+following conditions hold.
+
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+
+\item \textbf{Shared feature model.}
+For each modality $i\in\mathcal{I}$ the feature spaces and encoders agree
+(up to isometry) with those used in the TSR view:
+there exist inner-product-preserving isomorphisms
+$Q_i : V_i^{\mathbf{M}} \to V_i$ such that, after identifying
+$V_i^{\mathbf{M}}$ with $V_i$ via $Q_i$, we may write
+$\varphi_i^{\mathbf{M}} = \varphi_i$ and use the common notation
+$V_i$, $\varphi_i$.
+
+\item \textbf{Chart regularity and bounded distortion.}
+Each parameterization $\psi_i : V_i \to \mathcal{M}^{\mathbf{M}}$ is $C^2$
+on an in-regime region $V_i^{\mathrm{reg}} \subseteq V_i$ that contains the
+image of the benign observation set under $\varphi_i \circ \pi_i$.
+The corresponding chart maps
+$\chi_i : U_i \to V_i$ with $U_i := \psi_i(V_i^{\mathrm{reg}})$ satisfy the
+distortion profile of Definition~\ref{def:msr}: for all
+$z_a,z_b \in U_i$ with $d_{g^{\mathbf{M}}}(z_a,z_b) > 0$,
+\begin{equation}
+\label{eq:chart-distortion}
+\left|
+\frac{\delta_i(z_a,z_b)}{d_{g^{\mathbf{M}}}(z_a,z_b)} - 1
+\right|
+\le
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}}\bigl(d_{g^{\mathbf{M}}}(z_a,z_b)\bigr),
+\qquad
+\delta_i(z_a,z_b) := \bigl\|\chi_i(z_a) - \chi_i(z_b)\bigr\|_{V_i}.
+\end{equation}
+
+\item \textbf{Chart overlap control.}
+For any $i,j$ with $U_i \cap U_j \neq \varnothing$ and any
+$z \in U_i \cap U_j$,
+the local chart transition
+$\chi_j \circ \psi_i : V_i^{\mathrm{reg}} \to V_j$
+is well-defined on a neighborhood of $\chi_i(z)$ and has uniformly bounded
+Jacobian and inverse Jacobian there. Equivalently, the family
+$\{\chi_i\}$ forms a uniformly well-conditioned atlas on the in-regime
+region of $\mathcal{M}^{\mathbf{M}}$.
+
+\item \textbf{Benign path coverage.}
+There exists an operational horizon $L_\star$ such that for every benign
+latent path $\gamma \in \mathcal{P}_S(L_\star)$, the induced manifold path
+$z^{\mathbf{M}}(\cdot)$ remains in $\bigcup_i U_i$ and crosses only finitely
+many chart overlaps. The semantic drift profile
+$\sigma_S^{\mathbf{M}}(L_\star)$ from Definition~\ref{def:semantic-drift}
+is finite.
+
+\end{enumerate}
+\end{definition}
+
+Condition~(i) ensures that the manifold view and the translator view share
+the same feature model; (ii)–(iii) guarantee that chart coordinates are
+well-behaved and that chart transitions are controlled; and (iv) ensures
+that the benign path family never leaves the region where charts are valid.
+Taken together, these conditions are the geometric mirror of the smooth
+chartability conditions imposed on TSRs in
+Section~\ref{sec:chartability-F}.
+
+\begin{definition}[Well-behaved geometric subcategory]
+\label{def:samgeom0}
+Let $\SamGeom^0(S)$ denote the full subcategory of $\SamGeom(S)$ whose
+objects are geometrically well-parameterized MSRs in the sense of
+Definition~\ref{def:geom-well-param}, and whose morphisms are those of
+$\SamGeom(S)$ (Definition~\ref{def:samgeom-category}) between such objects.
+\end{definition}
+
+\subsection{Constructing \texorpdfstring{$G_S$}{G\_S} on objects}
+\label{subsec:G-on-objects}
+
+We now define $G_S$ on objects by ``unfolding'' a well-parameterized manifold
+back into a TSR whose translators are given by chart transitions.
+
+\begin{definition}[Functor $G_S$ on objects]
+\label{def:G-on-objects}
+Let $\mathbf{M} \in \SamGeom^0(S)$ with data as in
+Definition~\ref{def:geom-well-param}. We define the TSR
+$G_S(\mathbf{M}) =: \mathbf{T}^{\mathbf{M}}$ by
+\[
+\mathbf{T}^{\mathbf{M}}
+=
+\Bigl(
+S,\ \{V_i^{\mathbf{M}}\}_{i\in\mathcal{I}},\ \{\varphi_i^{\mathbf{M}}\}_{i\in\mathcal{I}},
+\{T_{ij}^{\mathbf{M}}\}_{(i,j)\in E^{\mathbf{M}}},\ G_{\mathbf{T}^{\mathbf{M}}},
+\varepsilon_{\mathrm{trans}}^{\mathbf{M}}(\cdot)
+\Bigr),
+\]
+where:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+
+\item \textbf{Feature spaces and encoders.}
+We reuse the feature spaces and encoders of $\mathbf{M}$:
+$V_i^{\mathbf{M}}$ and $\varphi_i^{\mathbf{M}}$ become the feature spaces and
+encoders of $\mathbf{T}^{\mathbf{M}}$.
+
+\item \textbf{Translator graph.}
+The vertex set of $G_{\mathbf{T}^{\mathbf{M}}}$ is $\mathcal{I}$, and we include
+a directed edge $(i,j)$ whenever $U_i \cap U_j$ is non-empty on the in-regime
+region traced by benign paths. Thus translators exist exactly where chart
+overlaps do.
+
+\item \textbf{Chart-transition translators.}
+For each edge $(i,j) \in E^{\mathbf{M}}$ we define the translator
+$T_{ij}^{\mathbf{M}} : V_i^{\mathbf{M}} \to V_j^{\mathbf{M}}$ on the in-regime
+domain $V_i^{\mathrm{reg}}$ by
+\begin{equation}
+\label{eq:chart-translator}
+T_{ij}^{\mathbf{M}}(v_i)
+:=
+\chi_j^{\mathbf{M}}\bigl(\psi_i^{\mathbf{M}}(v_i)\bigr)
+\qquad
+\text{whenever }\psi_i^{\mathbf{M}}(v_i) \in U_i \cap U_j.
+\end{equation}
+On points not in $V_i^{\mathrm{reg}}$ or not mapping into $U_i \cap U_j$ we
+leave $T_{ij}^{\mathbf{M}}$ undefined; the TSR semantics restrict attention
+to in-regime usage as in Definition~\ref{def:tsr}.
+
+\item \textbf{Drift profile.}
+We define the drift profile $\varepsilon_{\mathrm{trans}}^{\mathbf{M}}(k)$
+for $k$-hop translator paths by composing the one-hop distortions induced by
+the chart maps. Informally, for $k=1$ and an in-regime latent entity $u$ with
+$z^{\mathbf{M}}(u) \in U_i \cap U_j$ and
+$v_i := \chi_i^{\mathbf{M}}(z^{\mathbf{M}}(u))$,
+\[
+\bigl\|
+T_{ij}^{\mathbf{M}}(v_i)
+-
+\chi_j^{\mathbf{M}}(z^{\mathbf{M}}(u))
+\bigr\|
+=
+0,
+\]
+and departures from this ideal arise only through observational and encoder
+noise (captured in $E_{\mathrm{link}}$) and chart distortion
+(Equation~\eqref{eq:chart-distortion}). For general $k$, we define
+$\varepsilon_{\mathrm{trans}}^{\mathbf{M}}(k)$ as a non-decreasing function
+of $k$ whose leading-order term is a linear accumulation of the one-hop
+distortion contributions; Section~6 makes this dependence explicit and shows
+that under the bounded-distortion regime of Definition~\ref{def:msr},
+$\varepsilon_{\mathrm{trans}}^{\mathbf{M}}(k)$ is first-order in the
+distortion profile $\varepsilon_{\mathrm{dist}}^{\mathbf{M}}$.
+
+\end{enumerate}
+\end{definition}
+
+By construction, $G_S(\mathbf{M})$ is a TSR of $S$ in the sense of
+Definition~\ref{def:tsr}. Intuitively, $G_S$ forgets the manifold and keeps
+only the chart-transition structure, turning the Globe back into a
+translation graph whose edges represent coordinate changes between overlapping
+charts.
+
+\subsection{Constructing \texorpdfstring{$G_S$}{G\_S} on morphisms}
+\label{subsec:G-on-morphisms}
+
+We now define $G_S$ on morphisms by discarding the manifold map and retaining
+only the feature-space reparameterizations.
+
+\begin{definition}[Functor $G_S$ on morphisms]
+\label{def:G-on-morphisms}
+Let $H : \mathbf{M} \to \mathbf{M}'$ be a morphism in $\SamGeom^0(S)$ in the
+sense of Definition~\ref{def:samgeom-category}, with
+\[
+H = \bigl(h,\ R\bigr),
+\qquad
+h : \mathcal{M}^{\mathbf{M}} \to \mathcal{M}^{\mathbf{M}'},
+\quad
+R = \{R_i : V_i^{\mathbf{M}} \to V_i^{\mathbf{M}'}\}_{i\in\mathcal{I}}.
+\]
+We define
+\[
+G_S(H) := R : G_S(\mathbf{M}) \to G_S(\mathbf{M}'),
+\]
+with tolerances $(\eta_{\mathrm{enc}}, \eta_{\mathrm{trans}})$ to be specified
+below. That is, the morphism $G_S(H)$ is simply the family of feature-space
+reparameterizations from~$H$, now viewed as a TSR morphism in the sense of
+Definition~\ref{def:samtrans-category}.
+\end{definition}
+
+The following lemma records that this definition is well-posed.
+
+\begin{lemma}[Well-definedness of $G_S$ on morphisms]
+\label{lem:G-morphism}
+Let $H = (h,R) : \mathbf{M} \to \mathbf{M}'$ be a morphism in
+$\SamGeom^0(S)$ with encoder tolerance $\eta_{\mathrm{enc}}$ and chart
+tolerance $\eta_{\mathrm{chart}}$ as in Equations~\eqref{eq:msr-enc-compat}
+and~\eqref{eq:msr-chart-compat}. Then
+$G_S(H) = R$ is a morphism in $\SamTrans^0(S)$ from
+$\mathbf{T}^{\mathbf{M}} = G_S(\mathbf{M})$ to
+$\mathbf{T}^{\mathbf{M}'} = G_S(\mathbf{M}')$ with encoder tolerance
+$\eta_{\mathrm{enc}}$ and translator tolerance
+$\eta_{\mathrm{trans}}$ bounded by a first-order function of
+\[
+\eta_{\mathrm{chart}},\quad
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}}(\cdot),\quad
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}'}(\cdot).
+\]
+
+\emph{Proof sketch.}
+Encoder compatibility for $G_S(H)$ is exactly
+Equation~\eqref{eq:msr-enc-compat}, so the encoder tolerance is preserved.
+
+For translators, recall that
+$T_{ij}^{\mathbf{M}} = \chi_j^{\mathbf{M}}\circ\psi_i^{\mathbf{M}}$ and
+$T_{ij}^{\mathbf{M}'} = \chi_j^{\mathbf{M}'}\circ\psi_i^{\mathbf{M}'}$ on
+in-regime domains. Given an in-regime latent entity $u$ and the corresponding
+chart coordinates $v_i := \chi_i^{\mathbf{M}}(z^{\mathbf{M}}(u))$ and
+$v_i' := \chi_i^{\mathbf{M}'}(z^{\mathbf{M}'}(u))$, the chart compatibility
+condition for~$H$ can be written as
+\[
+\bigl\|R_i(v_i) - R_h^i(v_i)\bigr\|
+\le \eta_{\mathrm{chart}},
+\qquad
+R_h^i := \chi_i^{\mathbf{M}'} \circ h \circ \psi_i^{\mathbf{M}}.
+\]
+A similar relation holds for $R_j$. The translator compatibility condition we
+must check for $G_S(H)$ is
+\[
+\bigl\|
+R_j\bigl(T_{ij}^{\mathbf{M}}(v_i)\bigr)
+-
+T_{ij}^{\mathbf{M}'}\bigl(R_i(v_i)\bigr)
+\bigr\|
+\le \eta_{\mathrm{trans}}.
+\]
+By inserting and subtracting the $h$-induced reparameterizations $R_h^i$ and
+$R_h^j$, and then using the distortion bounds
+\eqref{eq:chart-distortion} for both $\mathbf{M}$ and $\mathbf{M}'$, one can
+show that $\eta_{\mathrm{trans}}$ is controlled by a first-order function of
+$\eta_{\mathrm{chart}}$ and the distortion profiles
+$\varepsilon_{\mathrm{dist}}^{\mathbf{M}}$, $\varepsilon_{\mathrm{dist}}^{\mathbf{M}'}$.
+A detailed proof follows from the distortion bounds and chart-compatibility conditions 
+defined above. \qedhere
+\end{lemma}
+
+\subsection{Functoriality and gauge stability}
+\label{subsec:G-functor}
+
+We now state the functoriality of $G_S$ and its stability with respect to the
+error gauges of Definition~\ref{def:error-gauges}.
+
+\begin{proposition}[Functoriality and gauge stability of $G_S$]
+\label{prop:G-functor}
+The assignment $G_S$ defines a functor
+$G_S : \SamGeom^0(S) \to \SamTrans^0(S)$ with the following properties.
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+
+\item \textbf{Functoriality.}
+For every $\mathbf{M} \in \SamGeom^0(S)$, $G_S(\mathrm{id}_{\mathbf{M}})$ is
+the identity morphism on $G_S(\mathbf{M})$, and for any composable morphisms
+$H_1 : \mathbf{M}_0 \to \mathbf{M}_1$ and
+$H_2 : \mathbf{M}_1 \to \mathbf{M}_2$ in $\SamGeom^0(S)$,
+\[
+G_S(H_2 \circ H_1) = G_S(H_2) \circ G_S(H_1)
+\]
+as morphisms in $\SamTrans^0(S)$.
+
+\item \textbf{Gauge stability.}
+There exists a first-order slack function
+\[
+C_G\bigl(
+\cdot,\cdot,\cdot
+\bigr)
+:
+\RR_{\ge 0} \times \mathcal{E} \times \mathcal{E} \to \RR_{\ge 0}
+\]
+(where $\mathcal{E}$ denotes the space of distortion profiles) such that for
+any $\mathbf{M},\mathbf{M}' \in \SamGeom^0(S)$,
+\begin{equation}
+\label{eq:G-gauge-stability}
+\Delta_{\SamTrans}\bigl(G_S(\mathbf{M}), G_S(\mathbf{M}')\bigr)
+\le
+C_G\Bigl(
+\Delta_{\SamGeom}(\mathbf{M}, \mathbf{M}'),
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}}(\cdot),
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}'}(\cdot)
+\Bigr),
+\end{equation}
+with $C_G(0,\varepsilon,\varepsilon)$ first-order in $\varepsilon$.
+
+\end{enumerate}
+\end{proposition}
+
+\emph{Proof sketch.}
+Functoriality in (i) is immediate from the definition
+$G_S(H) = R$: the identity morphism in $\SamGeom^0(S)$ has $h=\mathrm{id}$
+and $R_i=\mathrm{id}$ for all $i$, so $G_S(\mathrm{id}_{\mathbf{M}})$ is the
+identity morphism on $G_S(\mathbf{M})$. Composition is preserved because
+$\bigl(h_2\circ h_1,\{R_i^{(2)}\circ R_i^{(1)}\}\bigr)$ maps under $G_S$ to
+$\{R_i^{(2)}\circ R_i^{(1)}\}$, which is exactly the composite of
+$G_S(H_1)$ and $G_S(H_2)$ in $\SamTrans^0(S)$.
+
+For (ii), consider two MSRs $\mathbf{M},\mathbf{M}'\in\SamGeom^0(S)$ and the
+corresponding TSRs $\mathbf{T}^{\mathbf{M}}$ and
+$\mathbf{T}^{\mathbf{M}'}$. The gauge
+$\Delta_{\SamTrans}(\mathbf{T}^{\mathbf{M}},\mathbf{T}^{\mathbf{M}'})$ from
+Definition~\ref{def:error-gauges} has two terms: the difference between the
+drift profiles $\varepsilon_{\mathrm{trans}}^{\mathbf{M}}$ and
+$\varepsilon_{\mathrm{trans}}^{\mathbf{M}'}$, and the supremum of translator
+disagreements on ideal latent entities. Both are controlled by the chart
+structure and the geodesic distances $d_{g^{\mathbf{M}}}$,
+$d_{g^{\mathbf{M}'}}$ via Equation~\eqref{eq:chart-distortion}. Using the
+definition of $\Delta_{\SamGeom}$, a chaining argument over benign paths,
+and the bounded-distortion regime, one can show that the right-hand side of
+\eqref{eq:G-gauge-stability} holds with $C_G$ first-order in each of its
+arguments. Full details are deferred to Section~6. \qedhere
+
+\subsection{Interpretation and limitations}
+\label{subsec:G-discussion}
+
+The functor $G_S$ provides a canonical way to view a well-parameterized MSR
+$\mathbf{M}$ as a TSR $\mathbf{T}^{\mathbf{M}}$ whose translators implement
+chart transitions. This has two conceptual implications.
+
+First, $G_S$ shows that the translator view and the manifold view are not
+competing descriptions but dual coordinatizations of the same semantic
+sameness structure $S$. A practitioner who starts from a geometry-first
+design (an MSR) can always ``unfold'' it into a translator graph that lies
+in $\SamTrans^0(S)$, and error gauges are preserved up to first-order slack
+in the distortion profiles.
+
+Second, $G_S$ makes explicit that the stability of the translator view
+depends not only on the difference between manifolds
+$\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}')$ but also on the intrinsic
+distortion of each manifold, as reflected in the dependence of
+$C_G$ on $\varepsilon_{\mathrm{dist}}^{\mathbf{M}}$ and
+$\varepsilon_{\mathrm{dist}}^{\mathbf{M}'}$ in
+\eqref{eq:G-gauge-stability}. This is the geometric analogue of the
+translator asymmetry and chart slack terms that appear on the TSR side.
+
+Together with the construction of $F_S$ in
+Section~\ref{sec:chartability-F}, the functor $G_S$ completes the bridge
+between the translator and manifold design spaces. Section~6 uses these
+functors to prove the $\varepsilon$-equivalence theorem
+(Theorem~\ref{thm:structural-equivalence}) and, ultimately, the Error Budget
+Transfer Theorem, where manifold geometry and error budgets are kept
+separate but tightly coupled.
+\section{Error-budget transfer and detector-level equivalence}\label{sec:aligned-detectors}
+\label{sec:error-transfer}
+
+Sections~\ref{sec:chartability-F} and~\ref{sec:G-construction} constructed
+functors
+\[
+F_S : \SamTrans^0(S) \to \SamGeom^0(S),
+\qquad
+G_S : \SamGeom^0(S) \to \SamTrans^0(S),
+\]
+between the well-behaved subcategories of translation-based and manifold-based
+realizations of a fixed semantic sameness structure $S$.  The structural
+Theorem~\ref{thm:structural-equivalence} showed that these functors form an
+$\varepsilon$-equivalence of categories in the sense of
+Definition~\ref{def:eps-equivalence}: they preserve realizations up to
+first-order slack in the error gauges
+$\Delta_{\SamTrans}$ and $\Delta_{\SamGeom}$.
+
+In this section we lift that structural equivalence to the detector level.
+We assume that realizations are equipped with sameness detectors in the sense
+of Definition~\ref{def:sameness-detector}, and we show that
+\emph{error budgets and Davis-style correctness bounds are preserved in
+both directions up to first-order slack}.  The key notion is that of
+\emph{aligned detectors} on structurally linked realizations.
+
+\subsection{Aligned detectors across realizations}
+\label{subsec:aligned-detectors}
+
+Fix a semantic sameness structure $S$ and an in-regime latent subset
+$\Omega^{\mathrm{ideal}} \subseteq I$ as in
+Definition~\ref{def:error-gauges}.  Let $\mathbf{T}$ be a TSR and
+$\mathbf{M}$ an MSR of $S$ that are linked either by chartability
+($\mathbf{M} = F_S(\mathbf{T})$) or by geometric realization
+($\mathbf{T} = G_S(\mathbf{M})$).  Recall that for each $u \in
+\Omega^{\mathrm{ideal}}$ and any modality $i$ with $\pi_i(u)$ defined we
+write
+\[
+v_i^{\mathbf{T}}(u)
+  := \varphi_i^{\mathbf{T}}(\pi_i(u)) \in V_i^{\mathbf{T}},
+\qquad
+z^{\mathbf{M}}(u)
+  := \psi_i^{\mathbf{M}}(v_i^{\mathbf{T}}(u)) \in \mathcal{M}^{\mathbf{M}},
+\]
+which is independent of $i$ on the in-regime set by latent consistency.
+
+\begin{definition}[Aligned detectors]
+\label{def:aligned-detectors}
+Let $\mathbf{T}$ and $\mathbf{M}$ be as above and let
+\[
+D^{\mathbf{T}} =
+\bigl(
+  \mathbf{T},
+  \Sigma_{\mathbf{T}}, A_{\mathbf{T}},
+  E_{\mathrm{geom}}^{\mathbf{T}},
+  E_{\mathrm{link}}^{\mathbf{T}},
+  \xi^{\mathbf{T}}, \zeta^{\mathbf{T}},
+  \delta_{\mathrm{indep}}^{\mathbf{T}},
+  \tau_{\mathrm{vac}}^{\mathbf{T}}
+\bigr)
+\]
+and
+\[
+D^{\mathbf{M}} =
+\bigl(
+  \mathbf{M},
+  \Sigma_{\mathbf{M}}, A_{\mathbf{M}},
+  E_{\mathrm{geom}}^{\mathbf{M}},
+  E_{\mathrm{link}}^{\mathbf{M}},
+  \xi^{\mathbf{M}}, \zeta^{\mathbf{M}},
+  \delta_{\mathrm{indep}}^{\mathbf{M}},
+  \tau_{\mathrm{vac}}^{\mathbf{M}}
+\bigr)
+\]
+be sameness detectors on $\mathbf{T}$ and $\mathbf{M}$ in the sense of
+Definition~\ref{def:sameness-detector}.  We say that $(D^{\mathbf{T}},
+D^{\mathbf{M}})$ are \emph{aligned detectors} for $S$ if:
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Statistic-level alignment.}  There exists
+$\eta_{\mathrm{stat}} \ge 0$ such that for all $u \in
+\Omega^{\mathrm{ideal}}$ and any modality $i$ with $\pi_i(u)$ defined,
+\begin{equation}
+\label{eq:stat-alignment}
+\Bigl|
+  \Sigma_{\mathbf{T}}\bigl(v_i^{\mathbf{T}}(u)\bigr)
+  - \Sigma_{\mathbf{M}}\bigl(z^{\mathbf{M}}(u)\bigr)
+\Bigr|
+\le \eta_{\mathrm{stat}}.
+\end{equation}
+\item \textbf{Decision-region compatibility.}  The decision rules
+$A_{\mathbf{T}}$ and $A_{\mathbf{M}}$ use compatible high-risk thresholds
+and abstention regions in the statistic coordinate: there exists
+$\eta_{\mathrm{thresh}} \ge 0$ such that the high-risk events
+$H^{\mathbf{T}}, H^{\mathbf{M}}$ obey
+\[
+H^{\mathbf{T}} \triangle H^{\mathbf{M}}
+  \subseteq
+  \bigl\{ x :
+    \bigl|\Sigma_{\mathbf{T}}(x) - \Sigma_{\mathbf{M}}(x)\bigr|
+     \le \eta_{\mathrm{thresh}}
+  \bigr\}
+\]
+on non-abstaining, in-regime inputs, where $\triangle$ denotes symmetric
+difference.
+\item \textbf{Shared calibration and abstention.}  The calibration and
+abstention components are either shared or differ only by small slacks:
+there exist $\eta_{\mathrm{cal}}, \eta_{\mathrm{abst}} \ge 0$ such that
+\[
+\bigl|\xi^{\mathbf{T}} - \xi^{\mathbf{M}}\bigr|
+\le \eta_{\mathrm{cal}},
+\qquad
+\bigl|\zeta^{\mathbf{T}} - \zeta^{\mathbf{M}}\bigr|
+\le \eta_{\mathrm{abst}}.
+\]
+\end{enumerate}
+We collect the alignment slacks into
+\[
+\alpha_{\mathrm{align}}
+  := \bigl(
+      \eta_{\mathrm{stat}},
+      \eta_{\mathrm{thresh}},
+      \eta_{\mathrm{cal}},
+      \eta_{\mathrm{abst}}
+    \bigr).
+\]
+\end{definition}
+
+In practice, aligned detectors arise by design: given a TSR detector
+$D^{\mathbf{T}}$ built from features on $\{V_i^{\mathbf{T}}\}$, the
+associated manifold detector $D^{\mathbf{M}}$ typically uses the same
+parameterization of the statistic on $\mathcal{M}^{\mathbf{M}}$ via
+$z^{\mathbf{M}}(u)$ and reuses the same calibration and abstention
+policies.  In such cases the alignment slacks are dominated by the
+structural chartability parameters and by approximation error in the
+statistics.
+
+\subsection{Error-budget equivalence along \texorpdfstring{$F_S$}{F\_S}}
+\label{subsec:error-transfer-F}
+
+We first analyze the detector-level effect of the forward functor
+$F_S : \SamTrans^0(S) \to \SamGeom^0(S)$.  Recall that for a smoothly
+chartable TSR $\mathbf{T}$ the functor constructs a translator metric
+quotient and, under the Riemannian realizability assumption, a Davis-style
+MSR $\mathbf{M} = F_S(\mathbf{T})$ whose chart structure is compatible
+with the translators.  The chartability parameters
+\[
+\varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+\quad
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+\quad
+\delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+\quad
+\delta_{\mathrm{asymm}}(\mathbf{T})
+\]
+control translator drift, metric distortion, chart overlap slack, and
+translator asymmetry, respectively.
+
+We now show that for aligned detectors $(D^{\mathbf{T}}, D^{\mathbf{M}})$
+on $(\mathbf{T}, \mathbf{M})$ the error budgets and statistic separation
+are equivalent up to first-order slack in these quantities and in the
+alignment slacks $\alpha_{\mathrm{align}}$.
+
+\begin{theorem}[Error-budget transfer along $F_S$]
+\label{thm:error-transfer-F}
+Fix a sameness structure $S$ and a smoothly chartable TSR
+$\mathbf{T} \in \SamTrans^0(S)$ with associated MSR
+$\mathbf{M} = F_S(\mathbf{T})$.  Let $D^{\mathbf{T}}$ and $D^{\mathbf{M}}$
+be aligned detectors in the sense of
+Definition~\ref{def:aligned-detectors}.  Write
+$E_{\mathrm{geom}}^{\mathbf{R}}$, $E_{\mathrm{link}}^{\mathbf{R}}$,
+$\xi^{\mathbf{R}}$, $\zeta^{\mathbf{R}}$, $\delta_{\mathrm{indep}}^{\mathbf{R}}$,
+$\Delta_S^{\mathbf{R}}$ for the geometric error, linkage error,
+calibration error, abstention failure, independence slack, and statistic
+separation of $D^{\mathbf{R}}$ for $\mathbf{R} \in \{\mathbf{T},
+\mathbf{M}\}$, with $\Delta_S^{\mathbf{R}}$ defined as in the Davis
+framework for the induced statistic.:contentReference[oaicite:0]{index=0}
+
+Then there exist continuous \emph{first-order} slack functions
+\[
+\Gamma^{F}_{\mathrm{geom}},\;
+\Gamma^{F}_{\mathrm{link}},\;
+\Gamma^{F}_{\mathrm{sep}},\;
+\Gamma^{F}_{\mathrm{det}}
+\]
+such that:
+\begin{align}
+\bigl|
+  E_{\mathrm{geom}}^{\mathbf{T}} - E_{\mathrm{geom}}^{\mathbf{M}}
+\bigr|
+&\le
+\Gamma^{F}_{\mathrm{geom}}
+  \bigl(
+    \varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+    \varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+    \delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+    \delta_{\mathrm{asymm}}(\mathbf{T}),
+    \alpha_{\mathrm{align}}
+  \bigr),
+\label{eq:F-geom-equivalence}
+\\[0.25em]
+\bigl|
+  E_{\mathrm{link}}^{\mathbf{T}} - E_{\mathrm{link}}^{\mathbf{M}}
+\bigr|
+&\le
+\Gamma^{F}_{\mathrm{link}}
+  \bigl(
+    \varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+    \varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+    \delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+    \delta_{\mathrm{asymm}}(\mathbf{T}),
+    \alpha_{\mathrm{align}}
+  \bigr),
+\label{eq:F-link-equivalence}
+\\[0.25em]
+\bigl|
+  \Delta_S^{\mathbf{T}} - \Delta_S^{\mathbf{M}}
+\bigr|
+&\le
+\Gamma^{F}_{\mathrm{sep}}
+  \bigl(
+    \varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+    \varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+    \delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+    \delta_{\mathrm{asymm}}(\mathbf{T}),
+    \alpha_{\mathrm{align}}
+  \bigr),
+\label{eq:F-sep-equivalence}
+\end{align}
+and $\Gamma^{F}_{\mathrm{geom}}(0) = \Gamma^{F}_{\mathrm{link}}(0)
+= \Gamma^{F}_{\mathrm{sep}}(0) = 0$ with linear (or sublinear) behavior
+near~0.
+
+Moreover, let $LB(\cdot)$ denote any Davis-style lower bound on posterior
+correctness that is monotone non-decreasing in $\Delta_S$ and monotone
+non-increasing in each of $E_{\mathrm{geom}}, E_{\mathrm{link}}, \xi, \zeta$,
+and $\delta_{\mathrm{indep}}$; for example, the Cantelli-based bound of
+Theorem~2 in the Davis-manifold paper.:contentReference[oaicite:1]{index=1}  Then
+\begin{equation}
+\label{eq:F-det-equivalence}
+\bigl|
+  LB(D^{\mathbf{T}}) - LB(D^{\mathbf{M}})
+\bigr|
+\le
+\Gamma^{F}_{\mathrm{det}}
+  \bigl(
+    \varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+    \varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+    \delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+    \delta_{\mathrm{asymm}}(\mathbf{T}),
+    \alpha_{\mathrm{align}}
+  \bigr),
+\end{equation}
+with $\Gamma^{F}_{\mathrm{det}}$ first-order in its arguments.
+\end{theorem}
+
+\paragraph{Proof sketch.}
+The structural $\varepsilon$-equivalence of $F_S$ and the chartability
+conditions imply that for in-regime latent entities $u$ the translator
+graph and manifold geometry induce path families and distances that agree
+up to first-order slack in the parameters
+$(\varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+\varepsilon_{\mathrm{dist}}^{\mathbf{M}}, \delta_{\mathrm{chart}},
+\delta_{\mathrm{asymm}})$.  Aligned statistics then ensure that the
+detectors see essentially the same underlying semantic separation along
+corresponding paths, and that decision regions differ by at most
+$\alpha_{\mathrm{align}}$ in the statistic coordinate.
+
+By definition, $E_{\mathrm{geom}}^{\mathbf{R}}$ and
+$E_{\mathrm{link}}^{\mathbf{R}}$ are probabilities of structural and
+linkage failures on ideal data.  The chartability bounds give an
+inclusion between the corresponding failure events for $\mathbf{T}$ and
+$\mathbf{M}$, up to sets of probability controlled by the small
+parameters above, yielding the absolute-difference bounds
+\eqref{eq:F-geom-equivalence}–\eqref{eq:F-link-equivalence}.  A similar
+argument applied to the Davis-style separation parameter $\Delta_S$ gives
+\eqref{eq:F-sep-equivalence}.  Finally, monotonicity of $LB(\cdot)$ in
+its arguments implies that the induced change in the lower bound is at
+most first-order in the changes of
+$(E_{\mathrm{geom}}, E_{\mathrm{link}}, \xi, \zeta, \delta_{\mathrm{indep}},
+\Delta_S)$, giving \eqref{eq:F-det-equivalence}.  Full details, including
+explicit expressions for the slack functions, are deferred to
+Section~\ref{sec:structural-equivalence-proofs}.
+
+\subsection{Error-budget equivalence along \texorpdfstring{$G_S$}{G\_S}}
+\label{subsec:error-transfer-G}
+
+We now prove the dual result for the geometric-to-translator functor
+$G_S : \SamGeom^0(S) \to \SamTrans^0(S)$.  Here the roles of translator
+drift and metric distortion are swapped: $\varepsilon_{\mathrm{dist}}$ is
+given as part of the MSR, while $\varepsilon_{\mathrm{trans}}$ and
+$\delta_{\mathrm{asymm}}$ arise from the induced translators
+$T^{\mathbf{M}}_{ij} := \chi^{\mathbf{M}}_j \circ \psi^{\mathbf{M}}_i$.
+
+\begin{theorem}[Error-budget transfer along $G_S$]
+\label{thm:error-transfer-G}
+Fix a sameness structure $S$ and a geometrically well-parameterized MSR
+$\mathbf{M} \in \SamGeom^0(S)$ in the sense of
+Definition~\ref{def:geom-well-param}.  Let
+$\mathbf{T} := G_S(\mathbf{M})$ be the induced TSR, and let
+$D^{\mathbf{M}}$ and $D^{\mathbf{T}}$ be aligned detectors as in
+Definition~\ref{def:aligned-detectors}.  Then there exist first-order
+slack functions
+\[
+\Gamma^{G}_{\mathrm{geom}},\;
+\Gamma^{G}_{\mathrm{link}},\;
+\Gamma^{G}_{\mathrm{sep}},\;
+\Gamma^{G}_{\mathrm{det}}
+\]
+such that:
+\begin{align}
+\bigl|
+  E_{\mathrm{geom}}^{\mathbf{M}} - E_{\mathrm{geom}}^{\mathbf{T}}
+\bigr|
+&\le
+\Gamma^{G}_{\mathrm{geom}}
+  \bigl(
+    \varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+    \varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+    \delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+    \delta_{\mathrm{asymm}}(\mathbf{T}),
+    \alpha_{\mathrm{align}}
+  \bigr),
+\\[0.25em]
+\bigl|
+  E_{\mathrm{link}}^{\mathbf{M}} - E_{\mathrm{link}}^{\mathbf{T}}
+\bigr|
+&\le
+\Gamma^{G}_{\mathrm{link}}
+  \bigl(
+    \varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+    \varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+    \delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+    \delta_{\mathrm{asymm}}(\mathbf{T}),
+    \alpha_{\mathrm{align}}
+  \bigr),
+\\[0.25em]
+\bigl|
+  \Delta_S^{\mathbf{M}} - \Delta_S^{\mathbf{T}}
+\bigr|
+&\le
+\Gamma^{G}_{\mathrm{sep}}
+  \bigl(
+    \varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+    \varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+    \delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+    \delta_{\mathrm{asymm}}(\mathbf{T}),
+    \alpha_{\mathrm{align}}
+  \bigr),
+\end{align}
+and, for any Davis-style lower bound $LB(\cdot)$ as in
+Theorem~\ref{thm:error-transfer-F},
+\begin{equation}
+\bigl|
+  LB(D^{\mathbf{M}}) - LB(D^{\mathbf{T}})
+\bigr|
+\le
+\Gamma^{G}_{\mathrm{det}}
+  \bigl(
+    \varepsilon_{\mathrm{dist}}^{\mathbf{M}},
+    \varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+    \delta_{\mathrm{chart}}(\mathbf{T}, \mathbf{M}),
+    \delta_{\mathrm{asymm}}(\mathbf{T}),
+    \alpha_{\mathrm{align}}
+  \bigr),
+\end{equation}
+with all $\Gamma^{G}$ first-order at the origin.
+\end{theorem}
+
+\paragraph{Proof sketch.}
+The proof mirrors that of Theorem~\ref{thm:error-transfer-F}.  The
+construction of $G_S$ expresses each translator
+$T_{ij}^{\mathbf{M}} = \chi^{\mathbf{M}}_j \circ \psi^{\mathbf{M}}_i$ as a
+chart-transition map on $\mathcal{M}^{\mathbf{M}}$, so that translator
+drift and asymmetry on $\mathbf{T}$ are controlled by the metric
+distortion and chart geometry of $\mathbf{M}$.  Geometric well-
+parameterization ensures that these quantities are small on the in-regime
+subset.  Aligned detectors then again see (up to $\alpha_{\mathrm{align}}$)
+the same underlying semantic separation, and the same argument as before
+bounds differences in $E_{\mathrm{geom}}$, $E_{\mathrm{link}}$,
+$\Delta_S$, and $LB(\cdot)$ by first-order functions of the structural
+and alignment parameters.  Details are deferred to
+Section~\ref{sec:structural-equivalence-proofs}.
+
+\subsection{Detector-level \texorpdfstring{$\varepsilon$}{ε}-equivalence}
+\label{subsec:detector-eps-equiv}
+
+Combining the structural $\varepsilon$-equivalence of
+Theorem~\ref{thm:structural-equivalence} with the detector-level transfer
+results above yields an $\varepsilon$-equivalence \emph{of detectors} on
+$\SamTrans^0(S)$ and $\SamGeom^0(S)$.
+
+\begin{corollary}[Round-trip detector-level equivalence]
+\label{cor:detector-equivalence}
+Fix $S$ and consider a smoothly chartable TSR
+$\mathbf{T} \in \SamTrans^0(S)$ with $\mathbf{M} = F_S(\mathbf{T})$, and a
+geometrically well-parameterized MSR
+$\mathbf{M}' \in \SamGeom^0(S)$ with $\mathbf{T}' = G_S(\mathbf{M}')$.
+Let $D^{\mathbf{T}}$, $D^{\mathbf{M}}$, $D^{\mathbf{M}'}$,
+$D^{\mathbf{T}'}$ be aligned detectors on these realizations.
+
+Then there exist first-order slack functions
+$C^{F}_{\mathrm{det}}$ and $C^{G}_{\mathrm{det}}$ such that
+\begin{align}
+\bigl|
+  LB(D^{\mathbf{T}}) - LB(D^{F_S(\mathbf{T})})
+\bigr|
+&\le
+C^{F}_{\mathrm{det}}\bigl(\varepsilon_{\mathrm{trans}}^{\mathbf{T}},
+\varepsilon_{\mathrm{dist}}^{F_S(\mathbf{T})},
+\delta_{\mathrm{chart}}(\mathbf{T}, F_S(\mathbf{T})),
+\delta_{\mathrm{asymm}}(\mathbf{T})\bigr),
+\\[0.25em]
+\bigl|
+  LB(D^{\mathbf{M}'}) - LB(D^{G_S(\mathbf{M}')})
+\bigr|
+&\le
+C^{G}_{\mathrm{det}}\bigl(\varepsilon_{\mathrm{dist}}^{\mathbf{M}'},
+\varepsilon_{\mathrm{trans}}^{G_S(\mathbf{M}')},
+\delta_{\mathrm{chart}}(G_S(\mathbf{M}'), \mathbf{M}'),
+\delta_{\mathrm{asymm}}(G_S(\mathbf{M}'))\bigr),
+\end{align}
+with $C^{F}_{\mathrm{det}}(0) = C^{G}_{\mathrm{det}}(0) = 0$ and first-
+order dependence near the origin.
+
+In particular, up to first-order slack in the structural parameters
+$(\varepsilon_{\mathrm{trans}}, \varepsilon_{\mathrm{dist}},
+\delta_{\mathrm{chart}}, \delta_{\mathrm{asymm}})$, Davis-style correctness
+bounds that hold for a manifold-based detector can be transported to a
+translator-based detector realizing the same semantic sameness structure,
+and conversely.
+\end{corollary}
+
+Conceptually, this corollary is the detector-level analogue of the
+categorical $\varepsilon$-equivalence in
+Theorem~\ref{thm:structural-equivalence}: \emph{within the smoothly
+chartable / geometrically well-parameterized regime, working on the
+“globe” $\mathbf{M}$ or on a compatible “atlas of flat maps”
+$\mathbf{T}$ leads to equivalent guarantees up to first-order slack in
+the geometry and chartability parameters}.  This justifies deriving
+Davis-style theorems on manifolds and then instantiating them on real
+systems implemented as translator graphs, as long as chartability audits
+support the small-parameter regime.
+\section{Detailed proofs and structural slack bounds}
+\label{sec:structural-equivalence-proofs}
+
+This section collects explicit formulas for the slack functions
+$\Gamma_{\mathrm{real}}^{F}$, $\Gamma_{\mathrm{real}}^{G}$, $C_F$, and $C_G$,
+and proves the structural results announced in Sections~\ref{sec:chartability-F}–\ref{sec:aligned-detectors}.
+The central statement is a gauge-stability theorem for the functors
+$F_S$ and $G_S$; the error-budget transfer results then appear as corollaries.
+
+Throughout we fix a sameness structure $S$ and work inside the
+well–behaved subcategories
+$\SamTrans^0(S) \subset \SamTrans(S)$ and $\SamGeom^0(S) \subset \SamGeom(S)$
+defined in Sections~\ref{sec:chartability-F}–\ref{sec:G-construction}.
+We assume the realizability hypothesis for translator metric quotients
+from Section~\ref{sec:chartability-F}.
+
+\subsection{Slack functions and realizability}
+\label{subsec:slack-functions}
+
+We first make explicit the ``realizability'' slacks that measure how far a
+translator-based or manifold-based realization is from an ideal,
+infinitesimally exact geometry, and then define the gauge-stability
+slack functions $C_F$ and $C_G$.
+
+\begin{definition}[Realizability slacks]
+\label{def:realizability-slacks}
+Let $\mathbf{T} \in \SamTrans^0(S)$ be a smoothly chartable TSR with drift
+profile $\varepsilon_{\mathrm{trans}}^{\mathbf{T}}(k)$ and asymmetry parameter
+$\delta_{\mathrm{asymm}}(\mathbf{T})$ (Definition~\ref{def:translator-asymmetry}).
+Let
+\[
+\tilde{\mathcal{M}}^{\mathbf{T}},\ \tilde d_{\mathbf{T}}
+\]
+be its translator metric quotient as in
+Definition~\ref{def:translator-metric-quotient}, and
+let $(\mathcal{M}^{\mathbf{T}}, g^{\mathbf{T}})$ be a Riemannian manifold
+and quasi-isometry $q^{\mathbf{T}} : \tilde{\mathcal{M}}^{\mathbf{T}} \to
+\mathcal{M}^{\mathbf{T}}$ given by the Riemannian realizability assumption.
+
+We define the \emph{realizability slack} of $\mathbf{T}$ by
+\begin{equation}
+\label{eq:gamma-real-F}
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T})
+:= \sup_{[v],[w] \in \tilde{\mathcal{M}}^{\mathbf{T}}}
+\left|
+\frac{\tilde d_{\mathbf{T}}([v],[w])}{d_{g^{\mathbf{T}}}
+\bigl(q^{\mathbf{T}}([v]), q^{\mathbf{T}}([w])\bigr)} - 1
+\right|.
+\end{equation}
+By realizability, $\Gamma_{\mathrm{real}}^{F}(\mathbf{T}) < \infty$ and,
+for chartable TSRs, it is controlled by the intrinsic translator
+quantities:
+\[
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T})
+\;\lesssim\;
+a_1 \sup_{k \ge 1} \varepsilon_{\mathrm{trans}}^{\mathbf{T}}(k)
++ a_2\, \delta_{\mathrm{asymm}}(\mathbf{T}),
+\]
+for constants $a_1,a_2$ depending only on the ambient architecture and
+the chosen path horizon.
+
+Dually, for $\mathbf{M} \in \SamGeom^0(S)$ with chart family
+$\{\chi_i^{\mathbf{M}}\}$ and distortion profile
+$\varepsilon_{\mathrm{dist}}^{\mathbf{M}}(\cdot)$, we define
+\begin{equation}
+\label{eq:gamma-real-G}
+\Gamma_{\mathrm{real}}^{G}(\mathbf{M})
+:= \sup_{z,z' \in \mathcal{M}^{\mathbf{M}}}
+\left|
+\frac{\delta_i(z,z')}{d_{g^{\mathbf{M}}}(z,z')} - 1
+\right|,
+\end{equation}
+where $\delta_i(z,z') := \|\chi_i^{\mathbf{M}}(z) -
+\chi_i^{\mathbf{M}}(z')\|_{V_i}$ on any chart $U_i$ containing $z,z'$.
+By Definition~\ref{def:msr-distortion}, this is bounded by the
+distortion profile:
+\[
+\Gamma_{\mathrm{real}}^{G}(\mathbf{M})
+\;\lesssim\;
+\sup_{\ell > 0} \varepsilon_{\mathrm{dist}}^{\mathbf{M}}(\ell).
+\]
+Both slacks are \emph{first-order}: whenever the intrinsic translator
+errors (for $\mathbf{T}$) or chart distortions (for $\mathbf{M}$) tend
+to zero, the corresponding $\Gamma_{\mathrm{real}}^{F}$ or
+$\Gamma_{\mathrm{real}}^{G}$ tends to zero.
+\end{definition}
+
+We can now define the gauge-level slack functions that appear in the
+functorial stability theorem.
+
+\begin{definition}[Gauge-stability slack functions]
+\label{def:gauge-slacks}
+Let $\Delta_{\SamTrans}$ and $\Delta_{\SamGeom}$ be the error gauges on
+$\SamTrans^0(S)$ and $\SamGeom^0(S)$ from
+Definition~\ref{def:error-gauges}. We define:
+\begin{align}
+C_F(\mathbf{T},\mathbf{T}')
+&:=
+\alpha_F\, \Delta_{\SamTrans}(\mathbf{T},\mathbf{T}')
++ \beta_F
+\bigl(
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T}) +
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T}')
+\bigr),
+\label{eq:CF-def}
+\\[0.3em]
+C_G(\mathbf{M},\mathbf{M}')
+&:=
+\alpha_G\, \Delta_{\SamGeom}(\mathbf{M},\mathbf{M}')
++ \beta_G
+\bigl(
+\Gamma_{\mathrm{real}}^{G}(\mathbf{M}) +
+\Gamma_{\mathrm{real}}^{G}(\mathbf{M}')
+\bigr),
+\label{eq:CG-def}
+\end{align}
+for fixed constants $\alpha_F,\beta_F,\alpha_G,\beta_G > 0$ that depend
+only on the ambient architectures and on the choice of path horizon and
+operational region, not on particular realizations $S$, $\mathbf{T}$, or
+$\mathbf{M}$.
+
+By construction these are \emph{first-order} in the gauges and slacks:
+if
+\[
+\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}') \to 0,\quad
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T}),\Gamma_{\mathrm{real}}^{F}(\mathbf{T}')
+\to 0,
+\]
+then $C_F(\mathbf{T},\mathbf{T}') \to 0$, and likewise for $C_G$ with
+$\Delta_{\SamGeom}$ and $\Gamma_{\mathrm{real}}^{G}$.
+\end{definition}
+
+\subsection{Main structural theorem: gauge stability of $F_S$ and $G_S$}
+\label{subsec:gauge-stability}
+
+We now prove the main structural result: the functors $F_S$ and $G_S$
+are Lipschitz with respect to the error gauges, with slack functions
+$C_F$ and $C_G$ from Definition~\ref{def:gauge-slacks}. This theorem is
+the ``machine'' that all error-budget transfer statements in
+Section~\ref{subsec:aligned-detectors} rest on.
+
+\begin{theorem}[Gauge stability of $F_S$ and $G_S$]
+\label{thm:gauge-stability}
+Fix a sameness structure $S$ and realizability constants as above.
+
+\begin{enumerate}[]
+\item \textbf{Functorial stability of $F_S$.}
+For any $\mathbf{T},\mathbf{T}' \in \SamTrans^0(S)$, let
+$\mathbf{M} := F_S(\mathbf{T})$ and
+$\mathbf{M}' := F_S(\mathbf{T}')$ be the manifold-based realizations
+constructed via the translator metric quotient and Riemannian
+realizability.
+Then
+\begin{equation}
+\label{eq:gauge-stability-F}
+\Delta_{\SamGeom}\bigl(\mathbf{M}, \mathbf{M}'\bigr)
+\;\le\;
+C_F\bigl(\mathbf{T}, \mathbf{T}'\bigr),
+\end{equation}
+with $C_F$ as in~\eqref{eq:CF-def}. In particular, if
+$\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}') \to 0$ and the realizability
+slacks of $\mathbf{T},\mathbf{T}'$ tend to zero, then
+$\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}') \to 0$.
+
+\item \textbf{Functorial stability of $G_S$.}
+For any $\mathbf{M},\mathbf{M}' \in \SamGeom^0(S)$, let
+$\mathbf{T} := G_S(\mathbf{M})$ and
+$\mathbf{T}' := G_S(\mathbf{M}')$ be the translator-based realizations
+constructed in Section~\ref{sec:G-construction}. Then
+\begin{equation}
+\label{eq:gauge-stability-G}
+\Delta_{\SamTrans}\bigl(\mathbf{T}, \mathbf{T}'\bigr)
+\;\le\;
+C_G\bigl(\mathbf{M}, \mathbf{M}'\bigr),
+\end{equation}
+with $C_G$ as in~\eqref{eq:CG-def}. In particular, if
+$\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}') \to 0$ and the realizability
+slacks of $\mathbf{M},\mathbf{M}'$ tend to zero, then
+$\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}') \to 0$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+We sketch the argument for $F_S$; the case of $G_S$ is dual with
+translator/metric roles switched.
+
+Let $\mathbf{T},\mathbf{T}' \in \SamTrans^0(S)$, and let
+$\mathbf{M}=F_S(\mathbf{T})$,
+$\mathbf{M}'=F_S(\mathbf{T}')$ be obtained by:
+(i) forming translator metric quotients
+$\bigl(\tilde{\mathcal{M}}^{\mathbf{T}}, \tilde d_{\mathbf{T}}\bigr)$ and
+$\bigl(\tilde{\mathcal{M}}^{\mathbf{T}'}, \tilde d_{\mathbf{T}'}\bigr)$
+as in Definition~\ref{def:translator-metric-quotient};
+(ii) invoking realizability to obtain quasi-isometries
+$q^{\mathbf{T}} : \tilde{\mathcal{M}}^{\mathbf{T}} \to \mathcal{M}^{\mathbf{T}}$,
+$q^{\mathbf{T}'} : \tilde{\mathcal{M}}^{\mathbf{T}'} \to \mathcal{M}^{\mathbf{T}'}$;
+and (iii) defining charts $\psi_i^{\mathbf{T}},\psi_i^{\mathbf{T}'}$ by
+composing the canonical quotient maps with $q^{\mathbf{T}}, q^{\mathbf{T}'}$.
+
+\emph{Profile part.}
+The distortion profiles $\varepsilon_{\mathrm{dist}}^{\mathbf{M}}$ and
+$\varepsilon_{\mathrm{dist}}^{\mathbf{M}'}$ compare chart distances
+$\delta_i$ to geodesic distances $d_{g^{\mathbf{T}}}$ and
+$d_{g^{\mathbf{T}'}}$.
+For any pair of latent entities $u,u'$ in the in-regime set, we compare
+the corresponding manifold distances via the chain
+\[
+\left| d_{g^{\mathbf{T}}}(z(u),z(u')) -
+       d_{g^{\mathbf{T}'}}(z'(u),z'(u')) \right|
+\le A + B + C,
+\]
+where
+\begin{align*}
+A &= \left| d_{g^{\mathbf{T}}}(z,z') - \tilde d_{\mathbf{T}}([v],[v']) \right|,
+\\
+B &= \left| \tilde d_{\mathbf{T}}([v],[v']) - \tilde d_{\mathbf{T}'}([v'],[v'']) \right|,
+\\
+C &= \left| \tilde d_{\mathbf{T}'}([v'],[v'']) - d_{g^{\mathbf{T}'}}(z',z'') \right|.
+\end{align*}
+Here $[v],[v'],[v'']$ are the equivalence classes of feature vectors
+encoding $u,u'$ in the translator quotients; the exact indexing is not
+important.
+
+Terms $A$ and $C$ are controlled by the realizability slacks:
+by definition of $\Gamma_{\mathrm{real}}^{F}$,
+\[
+A \;\lesssim\; \Gamma_{\mathrm{real}}^{F}(\mathbf{T}),\qquad
+C \;\lesssim\; \Gamma_{\mathrm{real}}^{F}(\mathbf{T}').
+\]
+Term $B$ is controlled by the translator gauge
+$\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}')$: the quotient metric
+$\tilde d_{\mathbf{T}}$ is defined as an infimum over path costs built
+from the translators $T_{ij}^{\mathbf{T}}$, and likewise for
+$\tilde d_{\mathbf{T}'}$ and $T_{ij}^{\mathbf{T}'}$. By construction of
+$\Delta_{\SamTrans}$, the per-hop deviations
+$\|T_{ij}^{\mathbf{T}}(v) - T_{ij}^{\mathbf{T}'}(v')\|$ are bounded by
+$\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}')$ on in-regime latent points,
+and a standard path-comparison argument in metric geometry then yields
+\[
+B \;\lesssim\; \Delta_{\SamTrans}(\mathbf{T},\mathbf{T}').
+\]
+Combining the three terms and taking suprema over in-regime latent
+pairs shows that the profile component of
+$\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}')$ is bounded by a constant
+multiple of $C_F(\mathbf{T},\mathbf{T}')$.
+
+\emph{Operational part.}
+The operational component of $\Delta_{\SamGeom}$ compares the induced
+manifold distances and chart coordinates along benign paths, again over
+in-regime latent entities $u$. The same triangle-inequality decomposition
+\[
+| d_{g^{\mathbf{T}}} - d_{g^{\mathbf{T}'}} |
+\;\le\;
+| d_{g^{\mathbf{T}}} - \tilde d_{\mathbf{T}} |
++ | \tilde d_{\mathbf{T}} - \tilde d_{\mathbf{T}'} |
++ | \tilde d_{\mathbf{T}'} - d_{g^{\mathbf{T}'}} |
+\]
+controls these discrepancies uniformly over the operational region, with
+the first and last terms again bounded by $\Gamma_{\mathrm{real}}^{F}$
+and the middle term by $\Delta_{\SamTrans}$.
+This yields the desired bound for the operational piece and thus for
+$\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}')$ as a whole.
+
+Collecting constants into $\alpha_F,\beta_F$ produces
+\eqref{eq:gauge-stability-F}. The argument for $G_S$ follows the same
+template with chart distances and manifold distances swapped and 
+$\Gamma_{\mathrm{real}}^{G}$ in place of $\Gamma_{\mathrm{real}}^{F}$,
+yielding~\eqref{eq:gauge-stability-G}. \qedhere
+\end{proof}
+
+\subsection{Error-budget transfer as corollaries}
+\label{subsec:error-budget-corollaries}
+
+We now explain how the main error-budget transfer results in
+Section~\ref{sec:aligned-detectors} (Theorems~\ref{cor:EB-F} and
+\ref{thm:error-transfer-G}) follow from the gauge-stability theorem
+\ref{thm:gauge-stability} together with the Lipschitz dependence of
+detector error budgets on the gauges.
+
+Recall that Section~\ref{sec:aligned-detectors} introduces aligned
+detectors $D^{\mathbf{R}}$ for $\mathbf{R} \in \SamTrans^0(S)$ or
+$\SamGeom^0(S)$, each with an error budget
+\[
+\bigl(E_{\mathrm{geom}}^{\mathbf{R}},
+      E_{\mathrm{link}}^{\mathbf{R}},
+      \xi^{\mathbf{R}},
+      \zeta^{\mathbf{R}},
+      \delta_{\mathrm{indep}}^{\mathbf{R}}\bigr),
+\]
+and an induced lower bound on correctness for high-risk alerts
+$\mathrm{LB}(\mathbf{R})$ of the Davis form.
+
+The key analytic input from Section~\ref{sec:aligned-detectors} is that
+these budgets are \emph{Lipschitz in the gauges}: there exist functions
+$\Lambda_{\SamTrans}$ and $\Lambda_{\SamGeom}$ such that, for any pair
+of realizations $\mathbf{T},\mathbf{T}'$ and $\mathbf{M},\mathbf{M}'$,
+\begin{align}
+\bigl|
+E_{\mathrm{geom}}^{\mathbf{T}} - E_{\mathrm{geom}}^{\mathbf{T}'}
+\bigr|
+&\le \Lambda_{\SamTrans}\bigl(
+\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}')
+\bigr),
+\quad\text{and likewise for } E_{\mathrm{link}},\xi,\zeta,\delta_{\mathrm{indep}},
+\label{eq:EB-Lip-trans}
+\\
+\bigl|
+E_{\mathrm{geom}}^{\mathbf{M}} - E_{\mathrm{geom}}^{\mathbf{M}'}
+\bigr|
+&\le \Lambda_{\SamGeom}\bigl(
+\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}')
+\bigr),
+\label{eq:EB-Lip-geom}
+\end{align}
+with $\Lambda_{\SamTrans}$, $\Lambda_{\SamGeom}$ first-order at the
+origin.
+
+We now combine these Lipschitz properties with
+Theorem~\ref{thm:gauge-stability}.
+
+\begin{corollary}[Error-budget equivalence along $F_S$]
+\label{cor:EB-F}
+Let $\mathbf{T},\mathbf{T}' \in \SamTrans^0(S)$ and
+$\mathbf{M} = F_S(\mathbf{T})$,
+$\mathbf{M}' = F_S(\mathbf{T}')$. Let $D^{\mathbf{T}}$ and
+$D^{\mathbf{T}'}$ be aligned detectors on $\mathbf{T}$ and $\mathbf{T}'$
+with Davis-style error budgets and lower bounds $\mathrm{LB}(\mathbf{T})$,
+$\mathrm{LB}(\mathbf{T}')$, and let $D^{\mathbf{M}}$,
+$D^{\mathbf{M}'}$ be their aligned MSR detectors with bounds
+$\mathrm{LB}(\mathbf{M})$, $\mathrm{LB}(\mathbf{M}')$.
+
+Then there exists a first-order function
+$\Gamma_F^{\mathrm{det}}$ (depending only on the Lipschitz moduli in
+\eqref{eq:EB-Lip-trans}–\eqref{eq:EB-Lip-geom} and on the constants in
+$C_F$) such that
+\[
+\bigl|
+\mathrm{LB}(\mathbf{M}) - \mathrm{LB}(\mathbf{M}')
+\bigr|
+\;\le\;
+\Gamma_F^{\mathrm{det}}\bigl(
+\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}'),
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T}),
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T}')
+\bigr),
+\]
+and similarly with $(\mathbf{M},\mathbf{M}')$ and
+$(\mathbf{T},\mathbf{T}')$ reversed:
+\[
+\bigl|
+\mathrm{LB}(\mathbf{T}) - \mathrm{LB}(\mathbf{T}')
+\bigr|
+\;\le\;
+\Gamma_F^{\mathrm{det}}\bigl(
+\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}'),
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T}),
+\Gamma_{\mathrm{real}}^{F}(\mathbf{T}')
+\bigr).
+\]
+In particular, if $\Delta_{\SamTrans}(\mathbf{T},\mathbf{T}')$ and the
+realizability slacks of $\mathbf{T},\mathbf{T}'$ tend to zero, then all
+four lower bounds
+$\mathrm{LB}(\mathbf{T}),\mathrm{LB}(\mathbf{T}'),
+ \mathrm{LB}(\mathbf{M}),\mathrm{LB}(\mathbf{M}')$
+converge together.
+\end{corollary}
+
+\begin{proof}
+Apply the Lipschitz property~\eqref{eq:EB-Lip-geom} to the pair
+$(\mathbf{M},\mathbf{M}')$ and then use the gauge-stability bound
+\eqref{eq:gauge-stability-F}:
+\[
+\bigl|
+\mathrm{LB}(\mathbf{M}) - \mathrm{LB}(\mathbf{M}')
+\bigr|
+\;\lesssim\;
+\Lambda_{\SamGeom}\bigl(
+\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}')
+\bigr)
+\;\le\;
+\Lambda_{\SamGeom}\bigl(
+C_F(\mathbf{T},\mathbf{T}')
+\bigr).
+\]
+Since $C_F$ is first-order in
+$\Delta_{\SamTrans}$ and $\Gamma_{\mathrm{real}}^{F}$, and
+$\Lambda_{\SamGeom}$ is first-order at the origin, the composite
+$\Gamma_F^{\mathrm{det}} := \Lambda_{\SamGeom} \circ C_F$ has the
+claimed first-order dependence.
+
+The same reasoning applied directly to
+$(\mathbf{T},\mathbf{T}')$ via~\eqref{eq:EB-Lip-trans} bounds
+$|\mathrm{LB}(\mathbf{T}) - \mathrm{LB}(\mathbf{T}')|$ by a (possibly
+different but comparable) first-order function of
+$\Delta_{\SamTrans}$ and $\Gamma_{\mathrm{real}}^{F}$; we absorb both
+into the single $\Gamma_F^{\mathrm{det}}$.
+\end{proof}
+
+\begin{corollary}[Error-budget equivalence along $G_S$]
+\label{cor:EB-G}
+Let $\mathbf{M},\mathbf{M}' \in \SamGeom^0(S)$ and
+$\mathbf{T} = G_S(\mathbf{M})$,
+$\mathbf{T}' = G_S(\mathbf{M}')$. With aligned detectors and Davis-style
+error budgets as in Corollary~\ref{cor:EB-F}, there exists a first-order
+function $\Gamma_G^{\mathrm{det}}$ such that
+\[
+\bigl|
+\mathrm{LB}(\mathbf{M}) - \mathrm{LB}(\mathbf{M}')
+\bigr|,
+\quad
+\bigl|
+\mathrm{LB}(\mathbf{T}) - \mathrm{LB}(\mathbf{T}')
+\bigr|
+\;\le\;
+\Gamma_G^{\mathrm{det}}\bigl(
+\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}'),
+\Gamma_{\mathrm{real}}^{G}(\mathbf{M}),
+\Gamma_{\mathrm{real}}^{G}(\mathbf{M}')
+\bigr).
+\]
+In particular, if $\Delta_{\SamGeom}(\mathbf{M},\mathbf{M}')$ and the
+realizability slacks of $\mathbf{M},\mathbf{M}'$ tend to zero, all four
+lower bounds converge together.
+\end{corollary}
+
+\begin{proof}
+Identical in structure to Corollary~\ref{cor:EB-F}, using
+\eqref{eq:gauge-stability-G} and the Lipschitz property
+\eqref{eq:EB-Lip-trans} for TSR error budgets.
+\end{proof}
+
+Together, Theorem~\ref{thm:gauge-stability} and
+Corollaries~\ref{cor:EB-F}–\ref{cor:EB-G} formalize the idea that the
+TSR and MSR descriptions of a given sameness structure $S$ are
+\emph{equivalent as detection substrates}: small gauge distance between
+two TSRs implies small gauge distance between their manifold
+realizations, and vice versa, and aligned detectors on either side
+inherit this equivalence at the level of error budgets and lower
+correctness bounds.
+\section{Operational audits and evaluation protocols}
+\label{sec:audits}
+
+This section specifies empirical audits and evaluation protocols for Davis systems.
+It is deliberately \emph{procedural} and does not report numerical results, case
+studies, or deployment performance. The goal is to make the theoretical assumptions
+of Sections~3–5 falsifiable in practice: each audit targets a specific part of the
+geometry, separation, or error budget, and is designed to be run on held-out data
+or prospective streams.
+
+Throughout, we fix a Davis system
+\[
+\mathcal{D}
+= \bigl( (M,g,\delta), P(L), c, h, S, A, \text{error budget}\bigr)
+\]
+in some domain, with distortion profile $\varepsilon(L)$, configuration margins
+$(\kappa_{\mathrm{hard}},\kappa_{\mathrm{soft}})$, and error-budget components
+$(E_{\mathrm{geom}}, E_{\mathrm{link}}, \xi, \zeta, \delta_{\mathrm{indep}})$
+as defined earlier. All protocols assume strict train/validation splits and
+time-asymmetric estimation where applicable (no look-ahead).
+
+\subsection{Evaluation principles and pre-registration}
+
+Before running any audit or reporting any number, we recommend pre-registering:
+
+\begin{enumerate}[label=(\roman*)]
+\item \textbf{Primary endpoints.} Which quantities will be assessed? Examples:
+  (a) distortion tails $\varepsilon(L_\star)$ at the proposed operational horizon,
+  (b) effective separation gap $\kappa_{\mathrm{soft}} - 2R\varepsilon(L_\star)$,
+  (c) empirical Cantelli bound tightness, (d) calibration error $\xi$ in a high-risk
+  band, (e) abstention coverage and residual failure $\zeta$.
+\item \textbf{Path and slice selection.} How will benign paths in $P(L)$ and
+  evaluation slices be sampled (e.g., by time, region, demographic group,
+  capture condition)? Which slices count as in-distribution $R_{\mathrm{valid}}$?
+\item \textbf{Thresholds and vacuity criteria.} Pre-specify acceptable ranges
+  for distortion (e.g., $\varepsilon(L_\star) \le \varepsilon^\star$), error-budget
+  sums $E_{\mathrm{geom}} + E_{\mathrm{link}} + \xi + \zeta \le \tau_{\mathrm{vac}}$,
+  and independence slack $\delta_{\mathrm{indep}}$.
+\item \textbf{Baselines and ablations.} Define baselines (e.g., flat Euclidean
+  models, models without smoothness regularization, non-geometric detectors),
+  and which components will be ablated (e.g., remove path features,
+  remove auxiliary detectors, remove abstention).
+\item \textbf{Data governance and leakage.} Fix time windows for training vs\
+  evaluation, forbid re-using evaluation data for tuning, and record configuration
+  hashes for all runs to support auditability.
+\end{enumerate}
+
+All audits below should be run on held-out validation data (retrospective or
+prospective) that is not used to train $f_\theta$, fit $S$, or tune the abstention
+policy $A$.
+
+\subsection{Distortion audits: verifying the bounded-distortion regime}
+
+These audits target the geometric assumptions behind the distortion profile
+$\varepsilon(L)$ and the path-horizon choice $L_\star$ (Theorem~1 and the
+non-vacuity condition $\kappa_{\mathrm{soft}} - 2R\varepsilon(L_\star) > 0$).
+
+\paragraph{Protocol 1: geodesic–Euclidean distortion vs.~path length.}
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Sample benign paths.} On validation data, construct a set of
+  identity-preserving paths $\{\gamma_m\}_{m=1}^M \subset P(L_{\max})$ via
+  natural temporal sequences (e.g., time windows, short trajectories) or
+  controlled perturbations. Record their lengths $L(\gamma_m)$.
+\item \textbf{Subdivide into segments.} For each $\gamma_m$, sample pairs
+  of times $0 \le s < t \le 1$ with arc-length distance
+  $d_g\bigl(z(\gamma_m(s)), z(\gamma_m(t))\bigr)$ spanning a grid of target
+  lengths $\ell \in \{\ell_1,\dots,\ell_K\}$ up to $L_{\max}$.
+\item \textbf{Approximate geodesic distance.} For each pair $(s,t)$, approximate
+  $d_g$ using either:
+  \begin{itemize}
+  \item the path length of the interpolated trajectory in the embedding
+        (if $g$ is induced by a pullback metric), or
+  \item a discrete geodesic approximation (e.g., graph-based shortest paths)
+        constrained to lie within a local neighborhood.
+  \end{itemize}
+\item \textbf{Compute distortion ratios.} Let $\delta$ be the ambient
+  chord metric (Euclidean distance in the embedding). For each pair, compute
+  the distortion ratio
+  \[
+  \rho(s,t)
+  = \frac{\delta\bigl(z(\gamma_m(s)), z(\gamma_m(t))\bigr)}
+         {d_g\bigl(z(\gamma_m(s)), z(\gamma_m(t))\bigr)}.
+  \]
+  Aggregate $\rho$ into bins by geodesic length $\ell$.
+\item \textbf{Summarize distortion.} For each length bin $\ell$, estimate
+  $\mathbb{E}[|\rho-1|\mid d_g \approx \ell]$ and upper quantiles
+  (e.g., 95th/99th percentile). Plot or tabulate these as a ``distortion curve''
+  $\widehat{\varepsilon}_{\mathrm{geom}}(\ell)$.
+\item \textbf{Choose $L_\star$ and validate.} Select an operational horizon
+  $L_\star$ such that $\widehat{\varepsilon}_{\mathrm{geom}}(\ell) \le \varepsilon^\star$
+  for all $\ell \le L_\star$, with $\varepsilon^\star$ chosen so that the effective
+  soft margin $\kappa_{\mathrm{soft}} - 2R\varepsilon^\star$ remains positive.
+  Document any slices (e.g., specific conditions or subpopulations) where
+  distortion tails are heavy; these may be excluded from $R_{\mathrm{valid}}$
+  or treated as out-of-distribution.
+\end{enumerate}
+
+\paragraph{Protocol 2: curvature and smoothness along paths.}
+
+To empirically test the smoothness assumptions used in Section~3:
+
+\begin{enumerate}[label=(\arabic*)]
+\item Approximate discrete curvature along each path by the angles between
+  successive segments in the embedding, or by second differences of $z(t)$
+  in arc-length parameterization.
+\item Confirm that curvature statistics (mean, 95th percentile) remain below
+  a pre-registered threshold for paths with length $\le L_\star$.
+\item Flag regimes where curvature spikes (e.g., hard scene cuts, recombination
+  events, abrupt control changes) as candidates for abstention or separate
+  modeling.
+\end{enumerate}
+
+These two audits jointly support (T1) in Section~6.2: they test whether the
+bounded-distortion regime is empirically valid on the intended deployment
+distribution.
+
+\subsection{Configuration and margin audits}
+
+These audits target the configuration map $c$, coarse labels $h$, and the
+separation margins $(\kappa_{\mathrm{hard}},\kappa_{\mathrm{soft}})$ used in
+the Cantelli bound and non-vacuity conditions.
+
+\paragraph{Protocol 3: separation in geodesic and ambient distance.}
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Collect labeled pairs.} On validation data, assemble a set of
+  endpoint pairs $(x_a,x_b)$ with coarse labels
+  $h\bigl(c(z(x_a))\bigr)$ and $h\bigl(c(z(x_b))\bigr)$, distinguishing
+  ``similar'' vs.\ ``changed'' vs.\ ``ambiguous'' configurations.
+\item \textbf{Measure distances.} For each pair, compute both the approximate
+  geodesic distance $d_g\bigl(z(x_a),z(x_b)\bigr)$ and ambient distance
+  $\delta\bigl(z(x_a),z(x_b)\bigr)$.
+\item \textbf{Estimate margins.} For each label pair (e.g., similar–similar,
+  similar–changed, changed–changed), estimate the empirical distribution of
+  distances. From these, estimate:
+  \[
+  \widehat{\kappa}_{\mathrm{hard}}
+  \approx \inf_{(a,b)\ \text{cross-config}} d_g(z_a,z_b),\qquad
+  \widehat{\kappa}_{\mathrm{soft}}
+  \approx \mathrm{quantile}_{q}(d_g(z_a,z_b))
+  \]
+  for a pre-registered quantile $q$ (e.g., 5th percentile of cross-config pairs).
+\item \textbf{Check non-vacuity under distortion.} Using the distortion
+  estimates from the previous subsection, verify that
+  $\widehat{\kappa}_{\mathrm{soft}} - 2R\widehat{\varepsilon}_{\mathrm{geom}}(L_\star) > 0$
+  on the slices of interest. If this inequality fails or is marginal,
+  treat the corresponding slice as ambiguous and rely on abstention
+  or auxiliary detectors.
+\end{enumerate}
+
+\paragraph{Protocol 4: stability across slices.}
+
+Repeat Protocol~3 across pre-registered slices (e.g., demographics, capture
+conditions, time periods) and compare the estimated margins; large variation
+may indicate bias in $f_\theta$ or in the configuration definition. Where
+gaps appear, consider slice-specific abstention policies or separate retraining.
+
+\subsection{Feature--geometry linkage audits}
+
+These audits target the monotone link $\Delta S \ge g(\Delta g)$ between
+configuration movement in geometry and changes in the scalar statistic $S$.
+
+\paragraph{Protocol 5: monotone linkage in bins of geodesic displacement.}
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Define path segments and labels.} For each benign path
+  $\gamma \in P(L_\star)$ and time pair $(s,t)$, compute the geodesic
+  displacement $\Delta g = d_g\bigl(z(\gamma(s)),z(\gamma(t))\bigr)$ and
+  the corresponding feature-based change in the statistic, e.g.,
+  $\Delta S = S_t - S_s$ or $S_t$ alone if $S$ is cumulative.
+\item \textbf{Bin by geodesic distance.} Partition the range of $\Delta g$
+  into bins $B_1,\dots,B_K$ on an operational interval
+  $[0,g_{\max}]$. For each bin, compute:
+  \[
+  \overline{\Delta S}_k
+  = \mathbb{E}[\Delta S \mid \Delta g \in B_k],\qquad
+  \widehat{\mathrm{Var}}(\Delta S \mid \Delta g \in B_k).
+  \]
+\item \textbf{Test monotonicity.} Fit a monotone regression
+  $\widehat{g}$ of $\overline{\Delta S}_k$ on the midpoints of $B_k$,
+  and measure deviations from monotonicity (e.g., number and magnitude
+  of violations). Pre-register an acceptable tolerance for such violations.
+\item \textbf{Report linkage slack.} Summarize a linkage slack term
+  $\widehat{\eta}_{\mathrm{link}}$ capturing how far the empirical relation
+  deviates from an ideal monotone link; this feeds into the linkage
+  component of the error budget $E_{\mathrm{link}}$.
+\end{enumerate}
+
+\paragraph{Protocol 6: variance and finite-moment checks.}
+
+To justify finite-variance Cantelli bounds, estimate second moments of
+$S$ (or $\Delta S$) conditional on configuration changes. If heavy tails
+are observed, tighten the operational range or incorporate robust statistics
+(e.g., winsorized $S$) and re-audit.
+
+\subsection{Calibration, abstention, and error-budget estimation}
+
+These audits estimate the non-geometric terms $(\xi,\zeta)$ and link
+theoretical error budgets to empirical behavior.
+
+\paragraph{Protocol 7: calibration in the high-risk region.}
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Fit and freeze calibration.} Using historical training data,
+  fit a monotone calibration map $\widehat{\pi} = g_{\mathrm{cal}}(S)$ from
+  the statistic to an interpretable risk quantity (e.g., probability of
+  class change within horizon $T$). Freeze $g_{\mathrm{cal}}$ before
+  calibration auditing.
+\item \textbf{Evaluate on validation.} On held-out or prospective data,
+  compute calibration metrics (Brier score, expected calibration error,
+  reliability curves) on:
+  \begin{itemize}
+  \item the full support of $S$, and
+  \item a high-risk band (e.g., $S$ above a pre-registered threshold where
+        actions are taken).
+  \end{itemize}
+\item \textbf{Estimate $\xi$.} Define $\widehat{\xi}$ as the maximum
+  deviation between empirical and nominal probabilities in the high-risk
+  band, or as a pre-registered functional of the calibration curves.
+  This quantity enters the error budget as the calibration term.
+\end{enumerate}
+
+\paragraph{Protocol 8: abstention behavior and $\zeta$.}
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Record abstentions.} Under a candidate abstention policy $A$,
+  log for each evaluation sample whether the system abstained and the
+  rationale (e.g., large distortion, high OOD score, large predictive
+  interval).
+\item \textbf{Estimate coverage.} For each slice, estimate coverage
+  $1 - A$ (fraction of non-abstained cases) and the conditional error
+  rates among non-abstained decisions (e.g., misclassification rate or
+  violation of a domain-specific safety criterion).
+\item \textbf{Estimate $\zeta$.} Define $\widehat{\zeta}$ as the frequency
+  with which the system \emph{fails} to abstain in regimes where distortion
+  or OOD scores exceed pre-registered safety thresholds. This captures
+  abstention failures in the error budget.
+\end{enumerate}
+
+\paragraph{Protocol 9: empirical error-budget decomposition.}
+
+On validation data where ground-truth outcomes are available, label each
+failure with its dominant source (geometry drift, linkage failure, calibration
+error, abstention failure, or uncontrollable noise). Estimate empirical
+frequencies of each error type and compare to the theoretical components
+$(E_{\mathrm{geom}},E_{\mathrm{link}},\xi,\zeta)$; large discrepancies signal
+either model misspecification or unmodeled dependencies.
+
+\subsection{Independence slack and compositional bounds}
+
+The compositional dominance bound in Theorem~2 assumes approximate
+conditional independence of the error sources; when this fails, the theory
+recommends a conservative union bound. This subsection sketches how to
+empirically assess the independence slack $\delta_{\mathrm{indep}}$.
+
+\paragraph{Protocol 10: independence diagnostics.}
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Error indicators.} For each sample, define Bernoulli indicators
+  $E_{\mathrm{geom}}, E_{\mathrm{link}}, E_{\mathrm{cal}}, E_{\mathrm{abst}}$
+  for the occurrence of each error type, based on the audits above and
+  domain-specific thresholds.
+\item \textbf{Estimate joint vs.\ product.} For selected pairs or triples
+  of error types (e.g., $(E_{\mathrm{geom}},E_{\mathrm{link}})$,
+  $(E_{\mathrm{link}},E_{\mathrm{cal}})$), estimate:
+  \[
+  p_{12} = \mathbb{P}(E_1 \land E_2),\qquad
+  p_1 = \mathbb{P}(E_1),\quad p_2 = \mathbb{P}(E_2),
+  \]
+  and the deviation from independence
+  $\Delta_{12} = p_{12} - p_1 p_2$.
+\item \textbf{Define $\delta_{\mathrm{indep}}$.} Aggregate the magnitudes
+  $|\Delta_{12}|$ across pairs into an independence slack
+  $\widehat{\delta}_{\mathrm{indep}}$ (e.g., maximum or suitable norm),
+  and compare the compositional bound using products to the conservative
+  union bound using sums. If $\widehat{\delta}_{\mathrm{indep}}$ is large,
+  prefer the union bound in practice.
+\end{enumerate}
+
+\subsection{Slicing, OOD monitoring, and lifecycle audits}
+
+Finally, we outline cross-cutting audits that track geometry and performance
+over time and across slices.
+
+\paragraph{Protocol 11: slice-wise Davis audits.}
+
+For each pre-registered slice (e.g., region, demographic group, capture
+condition, hardware profile):
+
+\begin{enumerate}[label=(\arabic*)]
+\item Re-run Protocols~1–9 restricted to that slice.
+\item Compare distortion curves, margins, linkage slack, calibration error,
+  and abstention behavior across slices.
+\item Flag slices where any component of the error budget becomes vacuous
+  (e.g., $E_{\mathrm{geom}} + E_{\mathrm{link}} + \xi + \zeta > \tau_{\mathrm{vac}}$),
+  and treat them as out-of-regime for the current system.
+\end{enumerate}
+
+\paragraph{Protocol 12: OOD detection and retraining triggers.}
+
+Monitor distributions of:
+\begin{itemize}
+\item distortion ratios $\rho(s,t)$,
+\item path curvature statistics,
+\item feature distributions used in $S$,
+\item OOD or density scores from auxiliary detectors.
+\end{itemize}
+If these drift beyond pre-registered control limits, increase abstention,
+freeze thresholds, and consider retraining $f_\theta$ or redefining
+$P(L)$ and $L_\star$ before resuming full operation.
+
+\paragraph{Section scope note.}
+
+This section specifies \emph{audit protocols and reporting templates} for
+future empirical work with Davis systems. By design, it contains no numerical
+results, plots, or case studies. In practical deployments, we recommend that
+these protocols be instantiated as part of a comprehensive system dossier,
+with results refreshed on a fixed cadence and after major system changes.
+\section{Case study: a geometry-first multi-modal threat detector}
+\label{sec:kraken-case-study}
+
+The abstract framework of Sections~\ref{sec:sameness}--\ref{sec:structural-equivalence-proofs}
+was developed independently of any particular domain. In parallel, the author built
+a deployed system---codenamed \emph{KRAKEN} in a separate, application-focused
+manuscript---for real-time, multi-modal maritime threat detection.%
+\footnote{The present section intentionally omits operational details (sensor
+layouts, campaign locations, adversary tactics) and focuses only on the structural
+aspects relevant to the TSR--MSR theory: semantic sameness, translator graphs,
+geometric realizations, and error budgets.}
+In hindsight, KRAKEN can be understood as a concrete instance of the TSR--MSR
+equivalence and error-budget decomposition developed in this paper.
+
+This section sketches that correspondence. It is not required for the theoretical
+results, but serves as a sanity check: a complex, safety-critical system built
+before the formalism was articulated nonetheless fits naturally into the
+semantic-sameness, realization, and functorial picture.
+
+\subsection{Operational setting (informal)}
+
+At a high level, the system fuses heterogeneous sensor streams to detect and track
+subsurface threats and undersea infrastructure hazards in coastal waters.
+Representative modalities include:
+\begin{itemize}
+  \item \textbf{Kinetic} channels: distributed acoustic sensing (fiber strain),
+        passive SONAR spectrograms, and related vibration measurements;
+  \item \textbf{Electromagnetic} channels: synthetic aperture radar and optical/IR
+        imagery of the sea surface, plus RF emissions from platforms and shore;
+  \item \textbf{Contextual} channels: shipping lanes, bathymetry, environmental
+        metadata, and operator annotations.
+\end{itemize}
+Each modality has its own units, SNR regime, failure modes, and coverage gaps.
+Operators care about \emph{entities}: specific submarines, vessels, and patterns
+of behavior. The core question is semantic: when is a faint acoustic trace,
+a marginal image artifact, and a weak RF transient evidence of the \emph{same}
+latent threat, and when are they unrelated clutter?
+
+\subsection{Semantic sameness structure for maritime threats}
+
+We briefly sketch a semantic sameness structure
+$S_{\mathrm{mar}} = (I, \{X_i\}_{i\in\mathcal{I}}, \{\pi_i\}_{i\in\mathcal{I}},
+\approx, \mathcal{P}_S(L))$ in the sense of Section~\ref{sec:sameness} that
+captures this setting.
+
+\begin{itemize}
+  \item \textbf{Latent space $I$.} Elements $u \in I$ represent latent maritime
+  \emph{threat states} at an instant: a tuple $(C,E,Q)$ of threat class
+  (platform or behavior type), environment (sea state, sound-speed profile,
+  background traffic), and configuration (speed, depth, machinery state, loadout).
+
+  \item \textbf{Modalities $\{X_i\}$.} Each $i\in\mathcal{I}$ indexes a sensor
+  family (e.g., DAS fiber segments, SONAR beams, satellite tiles, RF channels).
+  $X_i$ is the space of idealized observations from that family over a short
+  time window.
+
+  \item \textbf{Rendering maps $\pi_i : I \to X_i$.} Given a latent state
+  $u = (C,E,Q)$, the map $\pi_i(u)$ encodes what an ideal, noise-free sensor
+  of modality $i$ \emph{would} observe: an acoustic spectrum induced by
+  propeller cavitation, a surface wake pattern in SAR, a strain pattern along
+  a buried fiber, an RF emission mask, and so on. In practice, real observations
+  include noise, occlusion, and quantization; as in Section~\ref{sec:sameness},
+  we blur notation and treat $x_i\in X_i$ as an observation ``of'' $u$ when it
+  lies within an acceptable noise ball around $\pi_i(u)$.
+
+  \item \textbf{Sameness relation $\approx$.} Two observations $x\in X_i$,
+  $x'\in X_j$ are semantically equivalent, $x\approx x'$, if they are rendered
+  from the \emph{same} latent entity within a short temporal tolerance: there
+  exists a path $\gamma\in\mathcal{P}_S(L)$ and time $t$ such that
+  $x\approx \pi_i(\gamma(t))$, $x'\approx \pi_j(\gamma(t))$.
+  Intuitively, they are evidence about the same contact rather than coincident
+  clutter.
+
+  \item \textbf{Benign path family $\mathcal{P}_S(L)$.} Paths
+  $\gamma : [0,1]\to I$ describe physically plausible threat trajectories over
+  an operational horizon $L$: slow drifts in position and depth, machinery
+  state changes, and routine environmental variation. This family encodes both
+  how fast threats can move in latent space and which directions are benign.
+\end{itemize}
+
+KRAKEN was designed without this formal vocabulary, but its informal threat
+models and scenario design align closely with $S_{\mathrm{mar}}$.
+
+\subsection{TSR instantiation: translator graph over sensor embeddings}
+
+On the translator side, KRAKEN provides a TSR
+$\mathbf{T}_{\mathrm{mar}} \in \SamTrans^0(S_{\mathrm{mar}})$ in the sense of
+Definition~\ref{def:tsr}.
+
+\begin{itemize}
+  \item \textbf{Feature spaces $V_i$ and encoders $\varphi_i$.} Each modality
+  has an encoder $\varphi_i : X_i \to V_i$ (CNNs for spectrograms, transformers
+  for sequences, etc.) producing modality-specific embeddings. These are the
+  $V_i$ in $\mathbf{T}_{\mathrm{mar}}$.
+
+  \item \textbf{Translator graph.} A sparse, directed graph $G_T$ connects
+  modalities via learned translators $T_{ij} : V_i \to V_j$.
+  Edges exist where physics and coverage justify translation (e.g., DAS$\to$SONAR,
+  SONAR$\to$DAS, DAS$\to$SAT, RF$\to$SAT). Translators are trained and calibrated
+  to satisfy per-edge error bounds
+  \[
+    \bigl\| T_{ij}(v_i) - v_j \bigr\| \le \varepsilon_{ij}
+  \]
+  on in-regime data, yielding a drift profile $\varepsilon_{\mathrm{trans}}(k)$
+  for $k$-hop paths as in Definition~\ref{def:tsr}. Spectral routing on $G_T$
+  avoids paths whose accumulated $\varepsilon_{\mathrm{trans}}$ exceeds a
+  configured budget.
+
+  \item \textbf{Chartability side conditions.} Empirically, the learned
+  translators on the operational regime satisfy:
+  \begin{itemize}
+    \item approximate local bi-Lipschitz behavior (bounded Jacobians);
+    \item small cocycle residual
+      $\|T_{jk}(T_{ij}(v)) - T_{ik}(v)\|$ on triple overlaps;
+    \item bounded asymmetry $\|T_{ji}(T_{ij}(v)) - v\|$ on round-trips.
+  \end{itemize}
+  These are precisely the smooth-chartability conditions from
+  Section~\ref{sec:chartability-F}, verified by held-out audits rather than
+  assumed.
+\end{itemize}
+
+From the standpoint of this paper, KRAKEN’s representation layer is a richly
+engineered TSR with a calibrated error budget and empirical evidence of smooth
+chartability.
+
+\subsection{MSR instantiation: a Davis-style threat manifold}
+
+On the geometric side, KRAKEN instantiates an MSR
+$\mathbf{M}_{\mathrm{mar}} \in \SamGeom^0(S_{\mathrm{mar}})$ in the spirit of
+Definition~\ref{def:msr} and the Davis-manifold construction.
+
+\begin{itemize}
+  \item \textbf{Threat manifold $(\mathcal{M}, g)$.} Multi-modal evidence fused
+  through the translator graph is encoded into a low-dimensional Riemannian
+  manifold $(\mathcal{M}, g)$ using a HERALD-style encoder trained with a
+  contrastive objective and a smoothness regularizer. Geodesic distance $d_g$
+  aligns with threat semantics: quiet and loud variants of the same platform
+  lie close; distinct classes separate with a soft margin.
+
+  \item \textbf{Charts and chart distances.} For each modality (or fused
+  representation) there is a chart map
+  $\chi_i : U_i \subset \mathcal{M} \to V_i$ with bounded distortion in the
+  sense of Definition~\ref{def:msr}. Distortion audits along benign paths
+  in $\mathcal{P}_S(L)$ empirically validate a small distortion profile
+  $\varepsilon_{\mathrm{dist}}(\ell)$ on the operational horizon.
+
+  \item \textbf{Semantic drift.} Realistic threat trajectories from
+  $\mathcal{P}_S(L)$ induce curves $\gamma_M : [0,1]\to\mathcal{M}$ with
+  geodesic span bounded by a semantic drift profile $\sigma_S^{\mathbf{M}}(L)$
+  as in Definition~\ref{def:semantic-drift}. In practice, this drift profile
+  is estimated from historical behavior and used to distinguish benign motion
+  from novel tactics.
+\end{itemize}
+
+Internally, this manifold is treated as the system's ``threat space'': genomes,
+drift statistics, and risk policies all operate in $\mathcal{M}$.
+
+\subsection{Detector and error budget mapping}
+
+KRAKEN’s detector stack---behavior genomes, risk-aware fusion, and deterministic
+replay---fits naturally into the sameness-detector abstraction of
+Definition~\ref{def:sameness-detector}.
+
+\begin{itemize}
+  \item \textbf{Statistic $\Sigma_{\mathbf{M}}$.} In the geometric view, the
+  detection statistic $\Sigma_{\mathbf{M}} : \mathcal{M} \to \mathbb{R}$ is
+  built from (i) distances to class-specific threat behavior genomes (shrinkage
+  Mahalanobis templates in $\mathcal{M}$), (ii) drift statistics along recent
+  trajectories, and (iii) simple auxiliary features (environmental covariates,
+  sensor trust scores). A corresponding translator-side statistic
+  $\Sigma_{\mathbf{T}} : \bigsqcup_i V_i \to \mathbb{R}$ is defined by composing
+  modalities through $G_S$ in the sense of Section~\ref{sec:G-construction}.
+
+  \item \textbf{Decision rule $A$.} A CVaR-based fusion and thresholding rule
+  $A$ maps the statistic and context (mission phase, alert policies) to
+  $\{0,1,\mathrm{abstain}\}$: trigger, suppress, or abstain.
+
+  \item \textbf{Error decomposition.} Following Definition~\ref{def:sameness-detector},
+  KRAKEN’s end-to-end miss probability decomposes into:
+  \begin{itemize}
+    \item \emph{geometric/representation error} $E_{\mathrm{geom}}^{\mathbf{T}}$,
+          $E_{\mathrm{geom}}^{\mathbf{M}}$ from translator drift and manifold
+          distortion;
+    \item \emph{linkage/observation error} $E_{\mathrm{link}}$ from noisy sensors
+          and imperfect encoders;
+    \item calibration error $\xi$ and abstention failure $\zeta$ from CVaR fusion
+          and threshold policies;
+    \item independence slack $\delta_{\mathrm{indep}}$ capturing dependence between
+          failure modes.
+  \end{itemize}
+  Internally, these terms are estimated by a combination of held-out evaluation,
+  stress tests (sensor outages, adversarial conditions), and analytic bounds of
+  the type derived in Section~\ref{sec:error-transfer}.
+\end{itemize}
+
+A separate, application-focused document proves a KRAKEN-specific analogue of
+the compositional error-budget theorem: under Lipschitz and margin assumptions,
+stage-wise bounds on selection, translation, geometry, genomes, fusion, trust,
+and replay compose into an end-to-end miss probability bound
+$\varepsilon_{\mathrm{total}}$ for a given mission profile.
+
+\subsection{How the general theorems apply}
+
+From the perspective of this paper, the most interesting feature of KRAKEN is
+that it uses \emph{both} realizations at once:
+\begin{itemize}
+  \item A translator-first view $\mathbf{T}_{\mathrm{mar}}$ powers cross-modal
+        prediction, redundancy, and graceful degradation when some sensors fail;
+  \item A manifold-first view $\mathbf{M}_{\mathrm{mar}}$ powers behavior
+        genomes, drift detection, and zero-/few-shot generalization.
+\end{itemize}
+
+The functors $F_S$ and $G_S$ and the error-transfer theorems of
+Section~\ref{sec:error-transfer} give a principled explanation of empirical
+observations made during KRAKEN’s development:
+
+\begin{itemize}
+  \item When the translator graph passes chartability audits (small
+        $\varepsilon_{\mathrm{trans}}$, $\delta_{\mathrm{asymm}}$), the induced
+        manifold has bounded distortion $\varepsilon_{\mathrm{dist}}$ and
+        preserves threat semantics. This is precisely the regime where
+        $F_S(\mathbf{T}_{\mathrm{mar}})$ and $\mathbf{M}_{\mathrm{mar}}$ become
+        $\varepsilon$-equivalent.
+
+  \item Conversely, when geometry audits flag increased distortion or eroded
+        margins in $\mathcal{M}$ (e.g., after a distribution shift), projecting
+        back through $G_S$ identifies which translators, modalities, or threat
+        classes are responsible. In categorical terms, this uses the stability
+        of $\Delta_{\SamTrans}$ under $G_S$.
+
+  \item Most importantly, the \emph{detection} guarantees---bounds on
+        miss probability, false positive rate, and abstention behavior---are
+        invariant up to first-order slack under switching between translator-
+        and manifold-centric implementations, as long as chartability and
+        realizability assumptions hold. This matches the observed fact that
+        translator-heavy and manifold-heavy configurations of the system achieve
+        comparable detection performance when tuned to the same operational
+        envelope.
+\end{itemize}
+
+\subsection{Limitations and redactions}
+
+This case study is necessarily incomplete. It deliberately omits:
+\begin{itemize}
+  \item detailed threat models, sensor geometries, and campaign specifics;
+  \item numerical values of internal error budgets and performance metrics;
+  \item implementation details of encoders, translators, genomes, and fusion
+        policies.
+\end{itemize}
+Those belong in a separate, application-focused paper and, in some cases,
+cannot be made public.
+
+Nonetheless, even in this abstracted form, the mapping between a real, deployed
+system and the semantic-sameness framework is clear:
+\begin{enumerate}
+  \item a well-posed sameness structure $S_{\mathrm{mar}}$;
+  \item dual realizations $\mathbf{T}_{\mathrm{mar}}$ and $\mathbf{M}_{\mathrm{mar}}$
+        satisfying smooth chartability and geometric realizability;
+  \item an end-to-end detector whose error budget decomposes as in
+        Definition~\ref{def:sameness-detector};
+  \item empirical audits that instantiate the chartability and distortion checks
+        required by the theorems of Section~\ref{sec:error-transfer}.
+\end{enumerate}
+In this sense, KRAKEN (or any similarly structured system) serves as a proof of
+concept: the abstract, category-theoretic equivalence between translator-based
+and manifold-based views of semantic sameness is not only mathematically sound
+but also aligned with how one can design auditable, geometry-first detection
+systems in high-stakes settings.
+
+\begin{thebibliography}{99}
+
+\bibitem{davis2025amc}
+Davis, B.~R. (2025).
+\emph{Adaptive Embedding Format Switching and Semantic Translation in High-Volume Telemetry Systems}.
+Zenodo.
+\url{https://doi.org/10.5281/zenodo.17211403}
+
+\bibitem{davis2025herald}
+Davis, B.~R. (2025).
+\emph{HERALD: High-resolution Early Recognition of Antigenic Landscape Divergence}.
+Zenodo.
+\url{https://doi.org/10.5281/zenodo.17640400}
+
+\bibitem{davis2025manifold}
+Davis, B.~R. (2025).
+\emph{The Davis Manifold: Geometry-First Detection with Compositional Error Budgets}.
+Zenodo.
+\url{https://doi.org/10.5281/zenodo.17642038}
+
+\bibitem{davis2025prism}
+Davis, B. (2025).
+\emph{PRISM v4.1: Risk-Aware Multi-Rail Payment Reconciliation with Bounded Semantic Translation and Spectral Consensus -- Adapting NASA Safety-Critical Systems to Financial Infrastructure}.
+Zenodo.
+\url{https://doi.org/10.5281/zenodo.17489610}
+
+\end{thebibliography}
+
+\end{document}

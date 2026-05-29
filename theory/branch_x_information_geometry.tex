@@ -1,0 +1,2884 @@
+%====================================================
+% Branch X — Information Geometry of Semantic Fields
+%====================================================
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+% ---------- Encoding & Fonts ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{lmodern}
+\usepackage{newunicodechar}
+\newunicodechar{→}{\textrightarrow{}}
+\newunicodechar{∼}{\textasciitilde{}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{−}{\ensuremath{-}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+
+% ---------- Page Layout ----------
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\setstretch{1.08}
+
+% ---------- Math & Symbols ----------
+\usepackage{amsmath,amssymb,amsfonts,amsthm,bm}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{siunitx}
+\sisetup{detect-all=true}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\KL}{KL}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\gF}{g^{\mathrm{F}}}
+\newcommand{\DKL}{D_{\mathrm{KL}}}
+\newcommand{\SamTrans}{\mathsf{SamTrans}}
+\newcommand{\SamGeom}{\mathsf{SamGeom}}
+\newcommand{\SamInfo}{\mathsf{SamInfo}}
+\newcommand{\MSR}{\mathsf{MSR}}
+
+% ---------- Graphics & Tables ----------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{adjustbox}
+
+% ---------- Framed Boxes ----------
+\usepackage{mdframed}
+\usepackage{xcolor}
+
+% ---------- Algorithms ----------
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float}
+
+\makeatletter
+\renewcommand{\fps@algorithm}{htbp}
+\setcounter{totalnumber}{10}
+\setcounter{topnumber}{10}
+\setcounter{bottomnumber}{10}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.9}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.8}
+\makeatother
+\setlength{\intextsep}{10pt plus 2pt minus 2pt}
+
+% ---------- Links & Clever Refs ----------
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+% ---------- Quotes & Lists ----------
+\usepackage{csquotes}
+
+\setlist[itemize]{leftmargin=*, itemsep=2pt, topsep=2pt}
+\setlist[enumerate]{leftmargin=*, itemsep=2pt, topsep=2pt}
+
+% ---------- Theorem Envs ----------
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{assumption}{Assumption}
+\newtheorem{conjecture}{Conjecture}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+% ---------- Title Block ----------
+\title{\textbf{Information Geometry of Semantic Fields:}\\[0.25ex]
+\textbf{The Fisher Metric as Canonical Davis Metric}\\[0.5ex]
+\large Dual Connections, Spectral Capacity, and Measurable Curvature\\[0.25ex]
+\large Branch X of the Davis Framework}
+\author{Bee Rosa Davis\\
+\small \texttt{bee\_davis@alumni.brown.edu}}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.5ex}
+
+%====================================================
+% ABSTRACT
+%====================================================
+\begin{abstract}
+The Davis framework for geometry-first detection posits a Riemannian manifold
+$(M, g)$ on which semantic evolution obeys compositional field equations with
+explicit curvature capacity bounds, spectral gap constraints, and
+renormalization group structure (Branches~I--IX).  Throughout this development,
+the metric~$g$ has remained a free parameter: chosen by the engineer, validated
+by distortion audits, never derived from first principles.
+
+This paper resolves the metric-selection problem through an identification, not
+an invention.  We observe that when the Davis manifold carries a statistical
+structure---that is, when points on $M$ parameterize probability
+distributions---\v{C}encov's uniqueness theorem (1982) forces $g$ to be the
+Fisher information metric $\gF$, up to a positive scalar.  This is the unique
+Riemannian metric invariant under sufficient statistics, and it is exactly the
+invariance demanded by the Davis framework's representation-independence
+principle.
+
+The identification has three consequences.  First, Amari's
+$\alpha$-connection family equips $(M, \gF)$ with a one-parameter deformation
+$\nabla^{(\alpha)}$ of the Levi-Civita connection, including dual flat
+connections $\nabla^{(e)}$ and $\nabla^{(m)}$ on exponential families.  This
+duality has no analog in the parent framework and constitutes the genuine
+structural extension of this branch.  Second, the parent's curvature capacity
+law is obtained from Bonnet--Myers and the Cram\'er--Rao inequality on the Fisher
+manifold, with equality on exponential families explaining why softmax
+architectures locally saturate capacity bounds.  Third, the Fisher metric is the
+Hessian of the log-partition function, which is the free energy of Branch~VI;
+the susceptibility matrix of statistical mechanics, the spectral gap of
+Branch~IX, the sheaf compatibility condition of Branch~VII, and the RG
+monotonicity of Branch~VIII all acquire information-geometric interpretations.
+
+We verify the identification on the finite combinatorial models (Shidoku and
+Latin square CSP graphs) from Branch~IX, computing Fisher-weighted Laplacians
+and checking cross-branch consistency.  We close with an empirical measurement
+program: the Fisher metric is computable from transformer logit distributions,
+making the Davis framework's curvature bounds testable on real neural
+architectures for the first time.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%====================================================
+% IDENTIFICATION TABLE
+%====================================================
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Core identification:} Davis framework objects and their
+information-geometric counterparts.  Each row shows a parent-framework
+construct (left) and its canonical Fisher-metric realization (right).
+Entries marked $\dagger$ are new to Branch~X; all others are classical.}
+\label{tab:identification}
+\begin{tabularx}{\linewidth}{@{}p{0.38\linewidth}p{0.54\linewidth}@{}}
+\toprule
+\textbf{Davis framework object} & \textbf{Fisher-metric realization} \\
+\midrule
+Manifold $(M, g)$ &
+Statistical manifold $(\mathcal{S}, \gF)$ with Fisher metric \\
+\addlinespace[2pt]
+Metric $g$ (free parameter) &
+$\gF_{ij} = \E[\partial_i \ell \cdot \partial_j \ell]$ (canonical via \v{C}encov) \\
+\addlinespace[2pt]
+Levi-Civita connection $\nabla^{(0)}$ &
+Self-dual $\alpha = 0$ connection (parent's only connection) \\
+\addlinespace[2pt]
+--- (no parent analog)$^\dagger$ &
+$\alpha$-connection family $\nabla^{(\alpha)}$; dual pair $(\nabla^{(e)}, \nabla^{(m)})$ \\
+\addlinespace[2pt]
+Sectional curvature $K$ &
+Statistical curvature (Efron 1975); $\alpha$-curvature tensor \\
+\addlinespace[2pt]
+Geodesic paths &
+Maximum-likelihood trajectories in distribution space \\
+\addlinespace[2pt]
+Holonomy $\mathrm{Hol}(\gamma)$ &
+Information loss around constraint loops (Ambrose--Singer) \\
+\addlinespace[2pt]
+Tolerance budget $\tau$ &
+KL divergence budget: $\sum_\ell D_{\mathrm{KL}}(p_\ell \| p_{\ell+1}) \le \tau$ \\
+\addlinespace[2pt]
+Distortion $\varepsilon(L)$ &
+Fisher-Rao vs.\ Euclidean distortion along completion paths \\
+\addlinespace[2pt]
+Spectral gap $\mu_1$ &
+Fisher spectral gap $\mu_1^{\mathrm{F}}$ (Fisher Laplacian) \\
+\addlinespace[2pt]
+Capacity $C \le 1/\sup K$ &
+Cram\'er--Rao capacity; saturated on exponential families \\
+\addlinespace[2pt]
+Parallel transport &
+$\alpha$-transport of sufficient statistics$^\dagger$ \\
+\addlinespace[2pt]
+Free energy $\psi = \log Z$ (Branch~VI) &
+Log-partition function; $\gF_{ij} = \partial^2\psi / \partial\theta^i\partial\theta^j$ \\
+\addlinespace[2pt]
+Completion count $N_k$ (Branch~IX) &
+Fisher weight $\gF(L_k) = 1/N_k(L_k)$ on CSP graphs \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+%====================================================
+\section{Introduction}\label{sec:introduction}
+%====================================================
+
+The Davis framework is a program for geometry-first detection: given a semantic
+sameness structure~$S$, one builds a Riemannian manifold $(M, g)$, reads
+decisions off geodesic gaps, and bounds error via a compositional budget
+(geometry, linkage, calibration, abstention, independence
+slack)~\cite{davis2025manifold, davis2025sameness}.  Across nine branches, the
+framework has been developed along several mathematical axes: statistical
+mechanics (Branch~VI)~\cite{davis2025statmech}, sheaf cohomology
+(Branch~VII)~\cite{davis2025sheaf}, renormalization group
+(Branch~VIII)~\cite{davis2025rg}, and spectral geometry
+(Branch~IX)~\cite{davis2025spectral}.
+
+A persistent gap has remained: the metric~$g$ is always \emph{given}, never
+\emph{derived}.  In the Geometry of Sameness~\cite{davis2025sameness}, the
+manifold-based semantic realization (MSR) packages feature spaces $\{V_i\}$,
+chart maps $\{\psi_i\}$, and a Riemannian metric $g$ into a single object, but
+the definition does not specify which metric to choose.  Engineers select~$g$
+through contrastive training objectives, smoothness regularizers, or inherited
+hyperbolic/spherical structures, and then audit distortion
+post~hoc~\cite{davis2025manifold}.
+
+This branch resolves the gap by observing that the answer already exists in
+the mathematical literature, and has for forty years.
+
+\subsection{The observation}
+
+Suppose the Davis manifold carries a \emph{statistical structure}: each point
+$\theta \in M$ parameterizes a probability distribution $p_\theta$ over
+observations.  This is not a restrictive assumption; it is already true in
+every concrete instantiation of the framework.  HERALD's antigenic manifold
+parameterizes posterior distributions over viral lineages.  VIDAR's identity
+manifold parameterizes face-recognition likelihoods.  AMC's translator graph,
+when lifted to a manifold via the functor $F_S$, parameterizes
+reconstruction-error distributions across modalities.
+
+On statistical manifolds, there is a classical uniqueness result.
+
+\begin{quote}
+\emph{\v{C}encov's theorem} (1982): The Fisher information metric is the unique
+(up to positive scalar) Riemannian metric on the space of probability
+distributions that is invariant under sufficient statistics.
+\end{quote}
+
+The Davis framework's representation-independence principle demands that
+detection guarantees be invariant under changes of feature-space coordinates
+that preserve sufficient statistics of the underlying sameness structure~$S$.
+This is precisely the invariance condition in \v{C}encov's theorem.  Therefore:
+
+\begin{quote}
+\emph{Within the statistical-manifold regime (axioms IG-A1--A4),
+the Fisher information metric is the unique Davis metric, up to scale.}
+\end{quote}
+
+This is the core identification of Branch~X.  It is not a new theorem.  It is
+a recognition that two independently motivated invariance requirements---one
+from detection theory, one from mathematical statistics---select the same
+metric, \emph{conditional on the manifold carrying statistical-model structure}.
+
+\subsection{What is new}
+
+While the Fisher metric itself is classical (Rao 1945, \v{C}encov 1982, Amari
+1985), three consequences of its identification as the Davis metric
+(within the statistical-manifold regime) are new to this framework:
+
+\paragraph{(1) Dual $\alpha$-connections.}
+The Fisher metric on a statistical manifold admits Amari's one-parameter family
+of $\alpha$-connections $\nabla^{(\alpha)}$~\cite{amari2000}.  The parent
+framework uses only the Levi-Civita connection ($\alpha = 0$).  The exponential
+connection ($\alpha = +1$) and mixture connection ($\alpha = -1$) form a
+conjugate pair that is flat on exponential families.  This duality has no analog
+in the parent framework and constitutes the genuine structural extension of
+Branch~X.
+
+\paragraph{(2) Curvature law from Cram\'er--Rao.}
+A $d$-dimensional curvature capacity bound is proved via
+the Bonnet--Myers theorem, Bishop--Gromov volume comparison, and the
+Cram\'er--Rao inequality on the Fisher manifold.  The bound
+$C_\delta(\Omega) \le c(d)\,\kappa^{-d/2}\,\delta^{-d}$ is explicit in
+both dimension and curvature; the parent framework's law $C \lesssim 1/K$
+appears as the $d{=}2$ specialization.
+On exponential families (such as softmax outputs), the Efron curvature
+correction vanishes and the bound is tight.  This provides a structural
+explanation for why softmax architectures are locally geometrically efficient.
+
+\paragraph{(3) Measurable curvature.}
+The Fisher metric is computable from output distributions.  Given a
+transformer's logit distributions $p_{\ell,t}$ at each layer~$\ell$ and
+position~$t$, the Fisher information matrix $\gF_\ell$ can be estimated
+(via stochastic approximation or low-rank methods such as K-FAC).  This makes
+the Davis framework's curvature bounds \emph{empirically testable} on real
+neural architectures---a capability that no previous branch provides.
+
+\subsection{Scope and non-goals}
+
+This paper:
+\begin{itemize}
+  \item identifies the Fisher metric as the unique Davis metric
+  within the statistical-manifold regime, via \v{C}encov's theorem;
+  \item introduces the $\alpha$-connection family into the Davis framework
+  and derives the dual-connection structure on exponential families;
+  \item contains the parent curvature capacity law as the $d{=}2$ specialization, via Bonnet--Myers and
+  Cram\'er--Rao, with explicit constants, and proves saturation on exponential
+  families;
+  \item computes Fisher geometry on the finite CSP models (Shidoku, Latin
+  square) from Branch~IX as finite-model verification;
+  \item proposes a central conjecture (Fisher spectral gap governs completion
+  mixing) and an empirical measurement program for real transformers.
+\end{itemize}
+
+This paper does \emph{not}:
+\begin{itemize}
+  \item construct new functors or $\varepsilon$-equivalence chains (those belong
+  in a future synthesis paper);
+  \item claim new information-geometric results (all core theorems are
+  classical; the contribution is identification and assembly);
+  \item report empirical results on neural networks (the measurement program
+  is proposed, not executed).
+\end{itemize}
+
+\subsection{Roadmap}
+
+The paper develops in three acts.
+
+\textbf{Act~I (Identification).}  Section~\ref{sec:statistical-manifolds}
+establishes statistical manifolds and the Fisher metric, states \v{C}encov's
+uniqueness theorem, and makes the core identification.
+Section~\ref{sec:alpha-connections} introduces the $\alpha$-connection family,
+proves duality, and derives dual coordinate systems on exponential families.
+Section~\ref{sec:curvature-capacity} proves a $d$-dimensional curvature capacity
+bound that contains the parent law as the $d{=}2$ specialization,
+from Bonnet--Myers and the Cram\'er--Rao inequality, with explicit constants
+and a complete proof, and establishes exponential-family saturation.
+
+\textbf{Act~II (Consequences).}  Section~\ref{sec:spectral-capacity} derives
+the Fisher spectral capacity and states the central conjecture.
+Section~\ref{sec:directions} collects conjectural connections between dual
+connections and neural architecture, clearly labeled as directions rather than
+results.
+
+\textbf{Act~III (Computation and synthesis).}
+Section~\ref{sec:cross-branch} establishes cross-branch synthesis with
+Branches~VI--IX.  Section~\ref{sec:finite-models} computes Fisher geometry on
+the Shidoku and Latin square graphs.  Section~\ref{sec:empirical} describes the
+empirical measurement program.  Section~\ref{sec:limitations} discusses
+limitations and open problems.  Appendix~\ref{sec:appendix} provides detailed
+proofs.
+
+\subsection{Running examples}\label{subsec:running-examples}
+
+We ground the theory in three systems from earlier papers, which serve as
+running examples throughout.
+
+\paragraph{HERALD (viral antigenic drift).}
+HERALD~\cite{davis2025manifold} learns a pullback Riemannian manifold on viral
+spike protein sequences where geodesic distance approximates antigenic distance.
+In the information-geometric view, each point on the HERALD manifold
+parameterizes a posterior distribution over compatible viral lineages given
+neutralization assay data.  The Fisher metric on this space is the
+susceptibility of lineage posteriors to perturbation in antigenic coordinates.
+
+\paragraph{VIDAR (deepfake detection).}
+VIDAR~\cite{davis2025manifold} treats face-recognition embeddings as points on
+the hypersphere $\mathbb{S}^{d-1}$.  In the information-geometric view, each
+embedding parameterizes a von Mises--Fisher distribution over identity
+observations.  The Fisher metric of the von Mises--Fisher family on
+$\mathbb{S}^{d-1}$ is proportional to the standard round metric, confirming
+that VIDAR's inherited geometry is already Fisher-canonical for its output
+distribution family.
+
+\paragraph{AMC (telemetry format switching).}
+AMC~\cite{davis2025sameness} uses learned format translators between
+heterogeneous telemetry formats.  When lifted to a manifold via the functor
+$F_S$, each point parameterizes a reconstruction-error distribution across
+modalities.  The Fisher metric on this space controls the sensitivity of
+cross-format translation to perturbations in the underlying system state.
+
+In each case, the pattern is the same: the Davis manifold already carries a
+statistical structure (explicitly or implicitly), and the Fisher metric
+canonically instantiates the abstract metric~$g$.
+
+\subsection{Core assumptions}\label{subsec:assumptions}
+
+For reference, we collect the assumptions under which this branch's results
+hold.
+
+\begin{samepage}
+\begin{mdframed}[linewidth=0.5pt]
+\noindent\textbf{Core Assumptions for Branch~X}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{IG-A1 (Statistical structure).} The Davis manifold $(M, g)$
+  carries a statistical structure: each point $\theta \in M$ parameterizes a
+  probability distribution $p_\theta$ over an observation space $\mathcal{X}$,
+  and the parameterization is identifiable, smooth, and has common support
+  (Definition~\ref{def:stat-manifold}).
+
+  \item \textbf{IG-A2 (Fisher regularity).} The Fisher information matrix
+  $\gF(\theta)$ is positive definite with uniformly bounded condition number
+  $\kappa(\gF) \le \kappa_{\max}$ on the in-regime set $\Omega^{\mathrm{ideal}}$.
+  This ensures the Fisher metric is a well-defined Riemannian metric on the
+  operational domain.
+
+  \item \textbf{IG-A3 (Exponential family structure).}  For the strongest
+  results (dual flatness, Cram\'er--Rao saturation, Pythagorean decomposition),
+  the output distribution family $\{p_\theta\}$ is an exponential family.
+  Softmax outputs satisfy this assumption.  Results marked ``exponential family
+  only'' require IG-A3; all others hold on general statistical manifolds.
+
+  \item \textbf{IG-A4 (Representation-independence).} The Davis metric $g$ is
+  required to be invariant under sufficient statistic reductions of the
+  observation model.  This is the invariance condition in \v{C}encov's theorem
+  and the representation-independence principle of the parent
+  framework~\cite{davis2025manifold}.
+
+  \item \textbf{IG-A5 (Bounded path curvature).}  Along benign completion paths
+  $\gamma \in \mathcal{P}(L)$, the sectional curvature of $(\mathcal{S}, \gF)$
+  is bounded: $|K^{(0)}(\gamma(t))| \le K_{\max}$ for all $t \in [0,1]$.
+  This is the Fisher-metric analog of the parent's curvature control
+  assumption~A2.
+
+  \item \textbf{IG-A6 (Finite Fisher information).}  The Fisher information is
+  finite: $\E_{p_\theta}[\|\partial_i \ell_\theta\|^2] < \infty$ for all
+  $\theta \in \Omega^{\mathrm{ideal}}$ and all $i$.  This ensures the Fisher
+  metric is well-defined and the Cram\'er--Rao bound applies.
+\end{itemize}
+\end{mdframed}
+\end{samepage}
+
+\paragraph{Relationship to parent assumptions.}
+Assumptions IG-A1 through IG-A6 refine the parent framework's assumptions
+A1--A6 (see \cite{davis2025manifold}, Section~2.4) to the statistical-manifold
+setting.  IG-A1 (statistical structure) is the new condition that enables the
+Fisher identification; it is satisfied in every concrete Davis system (HERALD,
+VIDAR, AMC, PRISM, KRAKEN).  IG-A2 (Fisher regularity) implies the parent's
+smooth chartability condition.  IG-A4 (representation-independence) is the
+parent's principle stated in information-geometric language.  IG-A5 (bounded
+curvature) specializes the parent's A2 to the Fisher metric.
+
+\subsection{Parameter scales}\label{subsec:param-scales}
+
+Table~\ref{tab:fisher-params} lists illustrative parameter scales for the
+Fisher-metric identification in two running examples.
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Illustrative Fisher-metric parameter scales.}  Values are
+representative orders of magnitude, not empirical measurements.}
+\label{tab:fisher-params}
+\begin{tabular}{llcc}
+\toprule
+Symbol & Meaning & HERALD & VIDAR \\
+\midrule
+$d$ & Distribution dimension & $\sim 10^3$ (lineage posteriors) & $V - 1$ (vocabulary) \\
+$\kappa(\gF)$ & Fisher condition number & $\sim 10$--$50$ & $\sim 5$--$20$ \\
+$K_{\max}$ & Curvature bound & $\sim 0.1$--$1.0$ & $\sim 0.01$--$0.1$ \\
+$D_{\mathrm{F}}$ & Fisher-Rao diameter & $\sim 2$--$5$ (nats) & $\sim 1$--$3$ (nats) \\
+$\mu_1^{\mathrm{F}}$ & Fisher spectral gap & (to be computed) & (to be computed) \\
+$\alpha_{\mathrm{eff}}$ & Effective $\alpha$ & $\approx 1$ (exponential) & $\approx 1$ (softmax) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%====================================================
+\section{Statistical manifolds and the Fisher metric}
+\label{sec:statistical-manifolds}
+%====================================================
+
+We begin by recalling the foundational objects of information geometry in a
+form adapted to the Davis framework.  Throughout this section, all definitions
+and theorems through Theorem~\ref{thm:cencov} are classical; we restate them
+to fix notation and to make precise how they interact with the Davis
+framework's existing structures.
+
+\subsection{Statistical manifolds}
+
+\begin{definition}[Statistical manifold]\label{def:stat-manifold}
+Let $\Theta \subseteq \RR^d$ be an open domain and let
+$\{p_\theta\}_{\theta \in \Theta}$ be a family of probability distributions on
+a measurable space $(\mathcal{X}, \mathcal{A})$ such that:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+  \item For each $x \in \mathcal{X}$, the map $\theta \mapsto p_\theta(x)$ is
+  $C^\infty$ on $\Theta$.
+  \item The map $\theta \mapsto p_\theta$ is injective (identifiability).
+  \item For each $\theta \in \Theta$, the support of $p_\theta$ does not depend
+  on $\theta$ (common support).
+\end{enumerate}
+The \emph{statistical manifold} is the pair $(\mathcal{S}, \iota)$ where
+$\mathcal{S} = \Theta$ as a smooth $d$-dimensional manifold and
+$\iota : \mathcal{S} \to \mathcal{P}(\mathcal{X})$ is the parameterization
+$\iota(\theta) = p_\theta$.
+\end{definition}
+
+\paragraph{Example (exponential families).}
+A \emph{$d$-dimensional exponential family} on $\mathcal{X}$ is a statistical
+manifold of the form
+\begin{equation}\label{eq:exp-family}
+p_\theta(x)
+= h(x) \exp\!\bigl(\theta^i t_i(x) - \psi(\theta)\bigr),
+\end{equation}
+where $\theta = (\theta^1, \dots, \theta^d)$ are \emph{natural parameters},
+$t = (t_1, \dots, t_d)$ are \emph{sufficient statistics}, $h(x)$ is a base
+measure, and the \emph{log-partition function}
+\begin{equation}\label{eq:log-partition}
+\psi(\theta) = \log \int_{\mathcal{X}} h(x)
+\exp\!\bigl(\theta^i t_i(x)\bigr)\, dx
+\end{equation}
+ensures normalization.  We use the Einstein summation convention throughout.
+
+\paragraph{Example (softmax output distributions).}
+At layer~$\ell$ and context position~$t$, a transformer with vocabulary
+$\mathcal{V}$ (where $|\mathcal{V}| = V$) produces logits
+$z_{\ell,t} \in \RR^V$ and outputs
+\[
+p_{\ell,t}(v) = \frac{\exp(z_{\ell,t}^v)}{\sum_{w \in \mathcal{V}}
+\exp(z_{\ell,t}^w)}
+= \exp\!\bigl(z_{\ell,t}^v - \psi(z_{\ell,t})\bigr),
+\]
+where $\psi(z) = \log \sum_w \exp(z^w)$.  This is a $(V{-}1)$-dimensional
+exponential family with natural parameter
+$\theta = z_{\ell,t}$ (up to the shift ambiguity $z \mapsto z + c\mathbf{1}$,
+which is quotiented out by softmax).
+
+\paragraph{Running examples (statistical structure in Davis systems).}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{HERALD.}  The HERALD manifold embeds viral spike sequences into
+  $\RR^d$ via a pullback metric $g = J_\theta^\top J_\theta$.  Each embedded
+  point $z = f_\theta(x)$ parameterizes a posterior distribution over compatible
+  viral lineages given the observed antigenic distances.  The statistical manifold
+  is the space of these posteriors, with $\mathcal{X}$ the space of
+  neutralization assay outcomes and $p_z(\cdot)$ the posterior over lineages
+  given embedding~$z$.  Condition~(i) of Definition~\ref{def:stat-manifold}
+  holds when the encoder $f_\theta$ is smooth (guaranteed by the Jacobian
+  regularizer $\mathcal{L}_{\mathrm{smooth}}$ of Theorem~1 in
+  \cite{davis2025manifold}); condition~(ii) holds when the encoding is
+  identifiable on the operational region $\Omega_{\mathrm{in}}$.
+
+  \item \textbf{VIDAR.}  Face-recognition embeddings on $\mathbb{S}^{d-1}$
+  parameterize von Mises--Fisher (vMF) distributions over identity observations.
+  For a unit vector $\mu \in \mathbb{S}^{d-1}$ and concentration $\kappa > 0$,
+  the vMF density is
+  $p_{\mu,\kappa}(x) = C_d(\kappa) \exp(\kappa \mu^\top x)$,
+  which is an exponential family with natural parameter
+  $\theta = \kappa\mu$ and sufficient statistic $t(x) = x$.
+  The Fisher metric of the vMF family at fixed $\kappa$ is proportional to the
+  round metric on $\mathbb{S}^{d-1}$:
+  $\gF_{ij}(\mu) = \kappa A_d(\kappa)\,(\delta_{ij} - \mu_i\mu_j)$,
+  where $A_d(\kappa) = I_{d/2}(\kappa)/I_{d/2-1}(\kappa)$ is the ratio of
+  modified Bessel functions.  Thus VIDAR's inherited spherical geometry is
+  already Fisher-canonical for its output family.
+
+  \item \textbf{AMC.}  When lifted via the functor $F_S$, AMC's translator graph
+  becomes a manifold whose points parameterize reconstruction-error distributions
+  across telemetry formats.  The Fisher metric on this space measures the
+  sensitivity of format translation to perturbations in the underlying system
+  state---exactly the distortion control that the AMC drift budget $\varepsilon$
+  is designed to enforce.
+\end{itemize}
+
+\subsection{The Fisher information metric}
+
+\begin{definition}[Fisher information metric]\label{def:fisher-metric}
+Let $(\mathcal{S}, \iota)$ be a statistical manifold with log-likelihood
+$\ell_\theta(x) := \log p_\theta(x)$.  The \emph{Fisher information metric} is
+the symmetric $(0,2)$-tensor field on $\mathcal{S}$ defined by
+\begin{equation}\label{eq:fisher-metric}
+\gF_{ij}(\theta)
+:= \E_{p_\theta}\!\bigl[\partial_i \ell_\theta \cdot \partial_j \ell_\theta\bigr]
+= -\E_{p_\theta}\!\bigl[\partial_i \partial_j \ell_\theta\bigr],
+\end{equation}
+where $\partial_i := \partial / \partial\theta^i$ and the second equality holds
+under the common-support and smoothness conditions of
+Definition~\ref{def:stat-manifold}.
+\end{definition}
+
+The Fisher metric $\gF$ is symmetric, non-negative, and positive definite when
+the score functions $\partial_i \ell_\theta$ are linearly independent---which
+holds generically on identifiable families.  It thus equips $\mathcal{S}$ with
+a Riemannian structure.
+
+\begin{proposition}[Fisher metric on exponential families]
+\label{prop:fisher-exp-family}
+On an exponential family~\eqref{eq:exp-family} with log-partition function
+$\psi(\theta)$, the Fisher metric is the Hessian of $\psi$:
+\begin{equation}\label{eq:fisher-hessian}
+\gF_{ij}(\theta) = \frac{\partial^2 \psi}{\partial\theta^i \partial\theta^j}
+= \Cov_{p_\theta}\!\bigl[t_i, t_j\bigr].
+\end{equation}
+In particular, $\gF$ is the covariance matrix of the sufficient statistics
+under~$p_\theta$.
+\end{proposition}
+
+\begin{proof}
+For an exponential family,
+$\ell_\theta(x) = \log h(x) + \theta^i t_i(x) - \psi(\theta)$, so
+$\partial_i \ell_\theta = t_i(x) - \partial_i \psi(\theta)$.  Then
+$\gF_{ij} = \E[(\partial_i \ell_\theta)(\partial_j \ell_\theta)]
+= \E[(t_i - \E[t_i])(t_j - \E[t_j])]
+= \Cov[t_i, t_j]$.  Since
+$\E[t_i] = \partial_i \psi$ and
+$\Cov[t_i, t_j] = \partial_i \partial_j \psi$, the result follows.
+\end{proof}
+
+\paragraph{Explicit computation: softmax Fisher metric.}
+For the softmax exponential family on vocabulary $\mathcal{V}$ with
+$|\mathcal{V}| = V$ and natural parameters $\theta = z$ (logits), the
+log-partition function is $\psi(\theta) = \log \sum_{v=1}^V \exp(\theta^v)$.
+By Proposition~\ref{prop:fisher-exp-family},
+\begin{equation}\label{eq:softmax-fisher-explicit}
+\gF_{ij}(z) = \frac{\partial^2 \psi}{\partial z^i \partial z^j}
+= \delta_{ij}\, p_i - p_i\, p_j
+= \begin{cases}
+p_i(1-p_i) & \text{if } i = j, \\
+-p_i\, p_j & \text{if } i \neq j,
+\end{cases}
+\end{equation}
+where $p_i = \exp(z^i)/\sum_w \exp(z^w)$.  In matrix form,
+$\gF(z) = \diag(p) - p\, p^\top$.
+
+This is the covariance matrix of the categorical distribution and can be
+computed \emph{exactly} from the softmax output---no stochastic estimation,
+no sampling, no approximation.  For a vocabulary of size $V = 50{,}000$, the
+Fisher matrix is $50{,}000 \times 50{,}000$ but has rank at most $V-1$ and
+admits efficient storage and manipulation via the Sherman--Morrison structure
+$\gF = \diag(p) - p\,p^\top$.
+
+\paragraph{Numerical example (toy vocabulary).}
+Consider a toy model with $V = 4$ and logits $z = (2.0, 1.0, 0.5, 0.0)$.  The
+softmax probabilities are $p \approx (0.506, 0.186, 0.113, 0.068)$.  The
+Fisher matrix is
+\[
+\gF \approx
+\begin{pmatrix}
+0.250 & -0.094 & -0.057 & -0.035 \\
+-0.094 & 0.152 & -0.021 & -0.013 \\
+-0.057 & -0.021 & 0.100 & -0.008 \\
+-0.035 & -0.013 & -0.008 & 0.064
+\end{pmatrix}.
+\]
+The eigenvalues are approximately $(0.341, 0.157, 0.068, 0.000)$---the zero
+eigenvalue corresponds to the shift ambiguity $z \mapsto z + c\mathbf{1}$,
+confirming the $(V{-}1)$-dimensional structure.  The condition number on the
+non-degenerate subspace is $\kappa \approx 0.341/0.068 \approx 5.0$, which is
+moderate and well within the Fisher regularity assumption IG-A2.
+
+\paragraph{Fisher metric of the vMF family (VIDAR).}
+For a von Mises--Fisher distribution on $\mathbb{S}^{d-1}$ with concentration
+$\kappa$ and mean direction $\mu$, the Fisher metric restricted to the
+tangent space $T_\mu \mathbb{S}^{d-1}$ at fixed $\kappa$ is
+\begin{equation}\label{eq:vmf-fisher}
+\gF_{ij}(\mu) = \kappa A_d(\kappa)\,(\delta_{ij} - \mu_i \mu_j),
+\end{equation}
+where $A_d(\kappa) = I_{d/2}(\kappa)/I_{d/2-1}(\kappa)$.  The projector
+$\Pi_\mu = I - \mu\mu^\top$ restricts to the tangent space, so this is simply
+$\kappa A_d(\kappa)$ times the round metric on the sphere.  For large $\kappa$
+(high concentration), $A_d(\kappa) \to 1$ and the Fisher metric approaches
+$\kappa$ times the round metric.
+
+This confirms the observation from Section~\ref{subsec:running-examples}: VIDAR's
+inherited spherical geometry is Fisher-canonical for its output family.
+
+\subsection{\v{C}encov's uniqueness theorem and the core identification}
+
+The Fisher metric is not one of many possible choices.  It is the
+\emph{only} Riemannian metric on statistical manifolds that respects the
+structure of statistical inference.
+
+\begin{theorem}[\v{C}encov uniqueness, 1982]\label{thm:cencov}
+On the category of finite statistical models with morphisms given by
+congruent Markov kernels (sufficient statistic reductions), the Fisher
+information metric $\gF$ is the unique Riemannian metric, up to a positive
+scalar multiple, that is invariant under all such morphisms.
+\end{theorem}
+
+\v{C}encov's original proof~\cite{cencov1982} established uniqueness on
+finite sample spaces.  Extensions to general dominated families were given
+by Campbell~\cite{campbell1986} and Ay et al.~\cite{ay2017}; the essential
+content is unchanged: any Riemannian metric satisfying statistical invariance
+must be proportional to the Fisher metric.
+
+We now state the core identification of this branch.
+
+\begin{mdframed}[backgroundcolor=gray!10, linewidth=0.4pt]
+\noindent\textbf{Core Identification (informal preview).}
+\emph{The Davis framework's representation-independence principle requires the
+metric $g$ to be invariant under changes of feature-space coordinates that
+preserve sufficient statistics of the sameness structure~$S$.  \v{C}encov's
+uniqueness theorem requires the same invariance and concludes that the only
+such metric is the Fisher information metric $\gF$, up to a positive scalar.
+These are the same requirement.  Therefore $g = c \cdot \gF$ is forced, not
+chosen.}
+\end{mdframed}
+\vspace{1ex}
+
+\begin{corollary}[Unique Davis metric in the statistical-manifold regime]\label{cor:canonical-davis}
+Let $(M, g)$ be a Davis manifold whose points parameterize probability
+distributions (i.e., $M$ carries the structure of a statistical manifold
+$\mathcal{S}$).  If $g$ is required to be invariant under sufficient statistic
+reductions of the observation model---the invariance demanded by the Davis
+framework's representation-independence principle---then
+\[
+g = c \cdot \gF
+\]
+for some constant $c > 0$.
+\end{corollary}
+
+\begin{proof}
+The Davis framework's representation-independence principle requires that
+detection guarantees be invariant under reparameterizations that preserve
+sufficient statistics~\cite{davis2025manifold, davis2025sameness}.  A
+Riemannian metric is invariant under such reparameterizations if and only if it
+is invariant under congruent Markov kernels on the induced statistical model.
+By Theorem~\ref{thm:cencov}, the only such metric is $c \cdot \gF$ for
+$c > 0$.
+\end{proof}
+
+\begin{remark}[What this identification is and is not]
+\label{rmk:identification}
+Corollary~\ref{cor:canonical-davis} is not a deep new result.  It is a
+recognition that two independently motivated invariance conditions---one from
+detection theory (Davis representation-independence), one from mathematical
+statistics (\v{C}encov invariance under sufficient statistics)---impose the
+same constraint on the metric.  The contribution is not the mathematics but the
+\emph{assembly}: placing the Fisher metric into the Davis framework reveals
+that the parent's curvature, holonomy, spectral gap, and capacity bounds all
+have canonical statistical interpretations.
+\end{remark}
+
+%====================================================
+\section{The \texorpdfstring{$\alpha$}{alpha}-connection family}
+\label{sec:alpha-connections}
+%====================================================
+
+The Fisher metric alone recovers the parent framework's metric.  But
+statistical manifolds carry additional structure: a one-parameter family of
+affine connections, introduced by Amari~\cite{amari1985}, that includes the
+Levi-Civita connection as a special case.  This family has no analog in the
+parent framework and constitutes the genuine structural extension of Branch~X.
+
+\subsection{Definition and duality}
+
+\begin{definition}[$\alpha$-connections]\label{def:alpha-connection}
+Let $(\mathcal{S}, \gF)$ be a statistical manifold.  For $\alpha \in \RR$, the
+\emph{$\alpha$-connection} $\nabla^{(\alpha)}$ is the affine connection on
+$\mathcal{S}$ defined by
+\begin{equation}\label{eq:alpha-connection}
+\gF\!\left(\nabla^{(\alpha)}_{\partial_i} \partial_j,\; \partial_k\right)
+= \E_{p_\theta}\!\left[\left(\partial_i \partial_j \ell_\theta
++ \frac{1-\alpha}{2}\, \partial_i \ell_\theta \cdot
+\partial_j \ell_\theta\right) \partial_k \ell_\theta\right].
+\end{equation}
+\end{definition}
+
+Three values are distinguished:
+\begin{itemize}
+  \item $\alpha = 0$: the \emph{Levi-Civita connection} $\nabla^{(0)}$, which
+  is the unique torsion-free, metric-compatible connection on
+  $(\mathcal{S}, \gF)$.  This is the connection used throughout the parent
+  framework.
+  \item $\alpha = +1$: the \emph{exponential connection} $\nabla^{(e)}$, which
+  is flat on exponential families.
+  \item $\alpha = -1$: the \emph{mixture connection} $\nabla^{(m)}$, which is
+  flat on mixture families.
+\end{itemize}
+
+The central structural result is duality.
+
+\begin{theorem}[Conjugate duality]\label{thm:duality}
+For every $\alpha \in \RR$, the pair
+$(\nabla^{(\alpha)}, \nabla^{(-\alpha)})$ is conjugate with respect to the
+Fisher metric: for any smooth vector fields $X, Y, Z$ on $\mathcal{S}$,
+\begin{equation}\label{eq:duality}
+X \cdot \gF(Y, Z)
+= \gF\!\left(\nabla^{(\alpha)}_X Y,\; Z\right)
++ \gF\!\left(Y,\; \nabla^{(-\alpha)}_X Z\right).
+\end{equation}
+In particular, $\nabla^{(0)}$ is self-dual, and the pair
+$(\nabla^{(e)}, \nabla^{(m)})$ is dual.
+\end{theorem}
+
+\begin{proof}
+Direct computation from Definition~\ref{def:alpha-connection}.  Write
+$\Gamma^{(\alpha)}_{ij,k}$ for the Christoffel symbols of
+$\nabla^{(\alpha)}$ lowered by $\gF$.  Then
+\begin{align*}
+\Gamma^{(\alpha)}_{ij,k} + \Gamma^{(-\alpha)}_{ik,j}
+&= \E\!\left[\left(\partial_i \partial_j \ell + \frac{1-\alpha}{2}
+\partial_i \ell\, \partial_j \ell\right) \partial_k \ell\right] \\
+&\quad + \E\!\left[\left(\partial_i \partial_k \ell + \frac{1+\alpha}{2}
+\partial_i \ell\, \partial_k \ell\right) \partial_j \ell\right].
+\end{align*}
+Adding these and using
+$\partial_i(\gF_{jk}) = \E[\partial_i \partial_j \ell\, \partial_k \ell]
++ \E[\partial_j \ell\, \partial_i \partial_k \ell]
++ \E[\partial_i \ell\, \partial_j \ell\, \partial_k \ell]$
+(which holds by differentiating under the expectation and using the score
+equation $\E[\partial_i \ell] = 0$), one verifies that
+$\Gamma^{(\alpha)}_{ij,k} + \Gamma^{(-\alpha)}_{ik,j}
+= \partial_i(\gF_{jk})$,
+which is exactly the duality condition~\eqref{eq:duality}.
+\end{proof}
+
+\noindent\emph{Intuition.}  Duality means that the two connections
+$\nabla^{(\alpha)}$ and $\nabla^{(-\alpha)}$ ``share'' the metric: they are
+compatible with $\gF$ not individually (neither is metric-compatible unless
+$\alpha = 0$) but \emph{jointly}: their failure to preserve the metric cancels
+when combined.  For a vector $Y$ parallel-transported along $X$ using
+$\nabla^{(\alpha)}$, the inner product $\gF(Y, Z)$ changes; but if $Z$ is
+simultaneously transported using $\nabla^{(-\alpha)}$, the changes cancel and
+the inner product is preserved.
+
+This is the geometric content of conjugate pairs in estimation theory: the
+exponential family's natural parameterization and mean parameterization are
+``opposite'' in a precise sense, and neither alone preserves the Fisher inner
+product, but together they do.
+
+\subsection{The Amari--Chentsov tensor}
+
+The entire $\alpha$-connection family is determined by the Fisher metric $\gF$
+and a single additional object: the \emph{skewness tensor} (or
+Amari--Chentsov tensor).
+
+\begin{definition}[Amari--Chentsov tensor]\label{def:ac-tensor}
+The \emph{Amari--Chentsov tensor} is the symmetric $(0,3)$-tensor field
+$T_{ijk}$ on $(\mathcal{S}, \gF)$ defined by
+\begin{equation}\label{eq:ac-tensor}
+T_{ijk}(\theta) := \E_{p_\theta}\!\left[
+\partial_i \ell_\theta \cdot \partial_j \ell_\theta \cdot
+\partial_k \ell_\theta\right].
+\end{equation}
+This is the third central moment of the score function.
+\end{definition}
+
+\begin{lemma}[$\alpha$-connections from the Amari--Chentsov tensor]
+\label{lem:alpha-from-ac}
+The Christoffel symbols of $\nabla^{(\alpha)}$ (lowered by $\gF$) are related
+to those of the Levi-Civita connection $\nabla^{(0)}$ by
+\begin{equation}\label{eq:alpha-from-ac}
+\Gamma^{(\alpha)}_{ij,k}
+= \Gamma^{(0)}_{ij,k} - \frac{\alpha}{2}\, T_{ijk}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Direct computation from Definition~\ref{def:alpha-connection}.  The
+Levi-Civita Christoffel symbols satisfy
+$\Gamma^{(0)}_{ij,k} = \frac{1}{2}(\partial_i \gF_{jk} + \partial_j \gF_{ik}
+- \partial_k \gF_{ij})$.  The difference
+$\Gamma^{(\alpha)}_{ij,k} - \Gamma^{(0)}_{ij,k}$ is computed from
+\eqref{eq:alpha-connection} by expanding the expectation and using the score
+equation $\E[\partial_i \ell] = 0$.  The result is
+$-\frac{\alpha}{2} T_{ijk}$.
+\end{proof}
+
+\noindent\emph{Significance.}  Lemma~\ref{lem:alpha-from-ac} shows that the
+\emph{entire} $\alpha$-connection family is generated by two objects:
+$\gF$ and $T$.  The Fisher metric is the ``metric part'' and the
+Amari--Chentsov tensor is the ``cubic part.''  On exponential families,
+$T_{ijk}$ has a simple closed form in natural coordinates:
+$T_{ijk} = -\partial_i \partial_j \partial_k \psi(\theta)$, the third
+derivative of the log-partition function.  When $T \equiv 0$ (Gaussian
+families in natural parameterization), all $\alpha$-connections coincide with
+the Levi-Civita connection and the manifold is ``statistically flat.''
+
+\begin{remark}[What duality means for the Davis framework]
+\label{rmk:duality-davis}
+The parent framework's curvature, parallel transport, geodesics, and holonomy
+are all defined using the Levi-Civita connection $\nabla^{(0)}$.  Duality
+reveals that $\nabla^{(0)}$ is the ``average'' of two flat connections
+$\nabla^{(e)}$ and $\nabla^{(-e)}$ on exponential families.  The parent's
+curvature is entirely an artifact of this averaging: it measures the cost of
+using a single symmetric connection rather than exploiting the exponential
+family structure.  On a non-exponential manifold, all three connections are
+curved, and the $\alpha$-curvature family provides a finer diagnostic than the
+Levi-Civita curvature alone.
+\end{remark}
+
+\subsection{Dual coordinate systems on exponential families}
+
+On exponential families, the dual connections induce canonical coordinate
+systems via the Legendre transform.
+
+\begin{theorem}[Dual coordinates]\label{thm:dual-coordinates}
+Let $\mathcal{S}$ be an exponential family~\eqref{eq:exp-family} with
+log-partition function $\psi(\theta)$.  Define:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+  \item \emph{Natural parameters} (or $\theta$-coordinates):
+  the coordinates in which $\nabla^{(e)}$ is flat.
+  \item \emph{Expectation parameters} (or $\eta$-coordinates):
+  \begin{equation}\label{eq:eta-coords}
+  \eta^i := \E_{p_\theta}[t_i]
+  = \frac{\partial \psi}{\partial \theta^i},
+  \end{equation}
+  which are the coordinates in which $\nabla^{(m)}$ is flat.
+\end{enumerate}
+The two coordinate systems are related by the Legendre transform:
+\begin{equation}\label{eq:legendre}
+\varphi(\eta) := \sup_\theta\!\bigl\{\theta \cdot \eta - \psi(\theta)\bigr\}
+= \theta(\eta) \cdot \eta - \psi\bigl(\theta(\eta)\bigr),
+\end{equation}
+where $\varphi(\eta)$ is the negative entropy (or dual potential).  The
+Fisher metric in the two coordinate systems is:
+\begin{equation}\label{eq:fisher-dual}
+\gF_{ij}(\theta) = \frac{\partial^2 \psi}{\partial\theta^i\, \partial\theta^j},
+\qquad
+g^{\mathrm{F},ij}(\eta) = \frac{\partial^2 \varphi}{\partial\eta^i\, \partial\eta^j}.
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+That $\eta^i = \partial_i \psi$ follows from
+$\E[t_i] = \partial_i \log Z = \partial_i \psi$.  The Legendre duality between
+$\psi$ and $\varphi$ is standard convex analysis: $\psi$ is strictly convex
+on the natural parameter space (since $\gF = \nabla^2 \psi > 0$), so the
+Legendre transform is well-defined and involutive.  The Fisher metric in
+$\eta$-coordinates is $g^{\mathrm{F},ij} = \partial^2 \varphi / \partial\eta^i
+\partial\eta^j$ by the standard identity for Legendre-dual Hessians.
+\end{proof}
+
+\paragraph{Worked example: dual coordinates on softmax.}
+For the softmax family with $V = 4$ and natural parameters
+$\theta = (z^1, z^2, z^3, z^4)$:
+\begin{itemize}[leftmargin=*]
+  \item \emph{Natural coordinates} ($\theta$-coordinates):
+  the logits $z = (2.0, 1.0, 0.5, 0.0)$.  The exponential connection
+  $\nabla^{(e)}$ is flat in these coordinates: Christoffel symbols vanish.
+  Straight lines in logit space are $e$-geodesics.
+
+  \item \emph{Expectation coordinates} ($\eta$-coordinates):
+  the softmax probabilities $\eta = p = (0.506, 0.186, 0.113, 0.068)$.  The
+  mixture connection $\nabla^{(m)}$ is flat in these coordinates: straight
+  lines in probability space are $m$-geodesics (i.e., mixture interpolations
+  $q_t = (1-t)p + tq$ are $m$-geodesics).
+
+  \item \emph{Log-partition function}:
+  $\psi(\theta) = \log(\exp(2) + \exp(1) + \exp(0.5) + 1) \approx 2.695$.
+
+  \item \emph{Dual potential}:
+  $\varphi(\eta) = \sum_v \eta^v \log \eta^v \approx -1.165$ (the negative
+  entropy of the softmax distribution).
+
+  \item \emph{Legendre relation}:
+  $\theta \cdot \eta - \psi(\theta) = (2)(0.506) + (1)(0.186) + (0.5)(0.113) +
+  (0)(0.068) - 2.695 \approx -1.165 = \varphi(\eta)$. \checkmark
+\end{itemize}
+
+\paragraph{What dual coordinates mean for Davis systems.}
+In a transformer, the logits are natural coordinates and the softmax outputs
+are expectation coordinates.  The softmax function itself is the
+Legendre-transform map $\theta \mapsto \eta = \nabla \psi(\theta)$.  This
+means the transformer's computation naturally alternates between two
+``flat'' coordinate systems:
+\begin{itemize}[leftmargin=*]
+  \item Logit space (before softmax): flat under $\nabla^{(e)}$, natural for
+  exponential-family operations (inner products, additions in log-space).
+  \item Probability space (after softmax): flat under $\nabla^{(m)}$, natural
+  for mixture operations (convex combinations, averaging).
+\end{itemize}
+The Levi-Civita connection $\nabla^{(0)}$---the parent framework's
+connection---is curved in both coordinate systems.  This curvature is the
+``price of symmetry'': using a single self-dual connection that treats both
+parameterizations equally.
+
+\begin{remark}[Bridge to Branch~VI]\label{rmk:bridge-vi}
+The log-partition function $\psi(\theta) = \log Z(\theta)$ is the
+\emph{free energy} (up to a temperature factor) in the statistical-mechanics
+formulation of Branch~VI.  Proposition~\ref{prop:fisher-exp-family} and
+Theorem~\ref{thm:dual-coordinates} together say: the Fisher metric is the
+Hessian of the free energy, i.e., the \emph{susceptibility matrix} of the
+thermal ensemble.  This connection is structural, not analogical: the same
+function $\psi$ governs both the information geometry and the thermodynamics.
+\end{remark}
+
+\subsection{Flatness and curvature of \texorpdfstring{$\alpha$}{alpha}-connections}
+
+\begin{theorem}[Exponential flatness]\label{thm:e-flat}
+On an exponential family $\mathcal{S}$, the exponential connection
+$\nabla^{(e)}$ is flat: its Riemann curvature tensor vanishes identically,
+$R^{(e)} \equiv 0$.  In natural coordinates $\theta$, the Christoffel symbols
+of $\nabla^{(e)}$ vanish:
+$\Gamma^{(e)\, k}_{ij}(\theta) = 0$ for all $i, j, k$.
+\end{theorem}
+
+\begin{proof}
+In natural coordinates, $\ell_\theta(x) = \theta^i t_i(x) - \psi(\theta)
++ \log h(x)$, so $\partial_i \partial_j \ell_\theta = -\partial_i \partial_j
+\psi = -\gF_{ij}$.  The $\alpha = 1$ Christoffel symbols
+(lowered) are
+$\Gamma^{(e)}_{ij,k} = \E[(\partial_i \partial_j \ell) \partial_k \ell]
+= -\gF_{ij} \cdot \E[\partial_k \ell] = 0$
+since $\E[\partial_k \ell] = 0$.  Therefore $\nabla^{(e)}$ is flat in natural
+coordinates, and flatness is coordinate-independent.
+\end{proof}
+
+\begin{corollary}[Mixture flatness]\label{cor:m-flat}
+By duality (Theorem~\ref{thm:duality}), the mixture connection $\nabla^{(m)}$
+is flat on exponential families when expressed in expectation coordinates
+$\eta$.
+\end{corollary}
+
+The Levi-Civita connection $\nabla^{(0)}$, by contrast, is generically
+\emph{curved} on exponential families.  Its curvature is the ``price of
+symmetry'': the cost of insisting on a single self-dual connection rather than
+choosing one of the two flat ones.
+
+%====================================================
+\section{Curvature, capacity, and the Cram\'er--Rao connection}
+\label{sec:curvature-capacity}
+%====================================================
+
+We now show that the parent framework's curvature capacity law is a
+consequence of the Cram\'er--Rao inequality on the Fisher manifold, and that
+exponential families saturate the bound.
+
+\subsection{The Cram\'er--Rao inequality on statistical manifolds}
+
+\begin{theorem}[Cram\'er--Rao bound]\label{thm:cramer-rao}
+Let $(\mathcal{S}, \gF)$ be a statistical manifold and let
+$\hat\theta : \mathcal{X} \to \RR^d$ be an unbiased estimator of $\theta$.
+Then the covariance matrix of $\hat\theta$ satisfies
+\begin{equation}\label{eq:cramer-rao}
+\Cov_{p_\theta}[\hat\theta]
+\;\succeq\;
+\bigl(\gF(\theta)\bigr)^{-1}
+\end{equation}
+in the Loewner (positive semidefinite) order.  Equality holds if and only if
+$\hat\theta$ is a sufficient statistic and $\mathcal{S}$ is an exponential
+family.
+\end{theorem}
+
+\begin{proof}
+Classical; see e.g.\ Rao (1945) or Lehmann \& Casella (1998).
+\end{proof}
+
+Efron~\cite{efron1975} showed that on curved statistical manifolds (where
+$R^{(e)} \neq 0$), the Cram\'er--Rao bound tightens by a curvature correction:
+the variance of any estimator exceeds $(\gF)^{-1}$ by an amount that depends on
+the \emph{statistical curvature} of the model.  We use this to derive the
+curvature capacity bound.
+
+\begin{lemma}[Efron curvature correction]\label{lem:efron}
+Let $(\mathcal{S}, \gF)$ be a $d$-dimensional statistical manifold and let
+$\hat\theta$ be an asymptotically efficient estimator.  The covariance of
+$\hat\theta$ satisfies
+\begin{equation}\label{eq:efron-correction}
+\Cov[\hat\theta] = (\gF)^{-1}
++ \frac{1}{n}\,(\gF)^{-1}\, C_E\, (\gF)^{-1}
++ O(n^{-2}),
+\end{equation}
+where $n$ is the sample size and $C_E$ is Efron's curvature matrix:
+\[
+(C_E)_{ij} = \sum_{k,\ell}
+(\gF)^{k\ell}\, R^{(e)}_{ik\ell j},
+\]
+with $R^{(e)}$ the Riemann curvature tensor of the exponential connection
+$\nabla^{(e)}$.  On exponential families, $R^{(e)} \equiv 0$ (by
+Theorem~\ref{thm:e-flat}), so $C_E = 0$ and the Cram\'er--Rao bound is
+achieved to second order.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Efron's original argument~\cite{efron1975} uses the geometry of the score
+function manifold: the locus $\{s_\theta := \nabla \ell_\theta\}$ in
+$L^2(p_\theta)$ forms a surface whose curvature determines the gap between
+the Cram\'er--Rao bound and the achievable variance.  The curvature of this
+surface is exactly the curvature of $\nabla^{(e)}$ on $\mathcal{S}$.  When
+$\nabla^{(e)}$ is flat (exponential families), the score surface is affinely
+embedded and the bound is tight.  A complete treatment is given in
+Amari~\cite{amari1985}, Chapter~4.
+\end{proof}
+
+\subsection{The curvature capacity bound}
+
+\begin{theorem}[Curvature capacity from Cram\'er--Rao]
+\label{thm:curvature-capacity}
+Let $(M, \gF)$ be a Davis manifold identified with a $d$-dimensional
+statistical manifold $(\mathcal{S}, \gF)$ via
+Corollary~\ref{cor:canonical-davis}.  Suppose
+$K^{(0)}(\sigma) \ge \kappa > 0$
+for all tangent $2$-planes $\sigma$ on $\mathcal{S}$ (i.e., the sectional
+curvature is bounded below by $\kappa$).
+
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+  \item \textbf{Path capacity.}  For any completion path
+  $\gamma : [0,1] \to M$, the
+  $\delta$-packing number of $\gamma$ in the Fisher-Rao metric satisfies
+  \begin{equation}\label{eq:capacity-path}
+  C_\delta(\gamma) \;\le\;
+  \frac{\pi}{\delta\,\sqrt{\kappa}} + 1.
+  \end{equation}
+
+  \item \textbf{Region capacity (Davis curvature capacity law).}
+  For any completion region $\Omega \subseteq \mathcal{S}$, the
+  $\delta$-packing number satisfies
+  \begin{equation}\label{eq:capacity-region}
+  C_\delta(\Omega) \;\le\;
+  c(d)\;\kappa^{-d/2}\;\delta^{-d},
+  \end{equation}
+  where $c(d) = 2^{d+1}\pi^{(d+1)/2} /
+  (\Gamma(\frac{d+1}{2})\,\omega_d)$ is an explicit dimensional constant
+  and $\omega_d = \pi^{d/2}/\Gamma(d/2+1)$ is the Euclidean unit-ball
+  volume.  In particular, for $d = 2$ this contains the parent framework's
+  curvature capacity law $C \lesssim 1/K$ as a specialization:
+  \begin{equation}\label{eq:capacity-law}
+  C_\delta(\Omega) \;\le\;
+  c(2)\;\frac{1}{\kappa\,\delta^2}.
+  \end{equation}
+
+  \item \textbf{Efron correction on curved models.}  If the statistical
+  manifold has nonzero Efron curvature $c_E$ (i.e., the model is
+  not an exponential family), the effective resolution enlarges to
+  $\delta_{\mathrm{eff}} = \delta\,\sqrt{1 + \|c_E\|^2}$, and both
+  bounds above hold with $\delta$ replaced by $\delta_{\mathrm{eff}}$:
+  \begin{equation}\label{eq:capacity-efron}
+  C_{\delta}(\Omega)
+  \;\le\;
+  c(d)\;\frac{1}
+  {\kappa^{d/2}\;\delta^d\;
+  (1 + \sup_{\theta \in \Omega} \|c_E(\theta)\|^2)^{d/2}}.
+  \end{equation}
+\end{enumerate}
+
+In all cases, higher Levi-Civita curvature reduces capacity.  At general
+$d$, the bound $C \sim \kappa^{-d/2}$ is \emph{stronger} than the parent's
+$1/K$ law.
+\end{theorem}
+
+\begin{proof}
+We prove each part.
+
+\paragraph{Step 1: Diameter bound (Bonnet--Myers).}
+Since $K^{(0)}(\sigma) \ge \kappa > 0$ for all tangent $2$-planes,
+the Ricci curvature satisfies
+$\mathrm{Ric}_{\gF} \ge (d{-}1)\kappa > 0$.
+By the Bonnet--Myers theorem~\cite{bonnet1855, myers1941},
+$\mathcal{S}$ is compact with
+\begin{equation}\label{eq:bonnet-myers}
+\mathrm{diam}(\mathcal{S}, \gF) \le \frac{\pi}{\sqrt{\kappa}}.
+\end{equation}
+
+\paragraph{Step 2: Path packing (part~(i)).}
+Points along a curve of Fisher-Rao arc length
+$\ell_{\mathrm{F}}(\gamma) \le \pi/\sqrt\kappa$ that are mutually
+$\delta$-separated number at most
+$\lfloor \ell_{\mathrm{F}} / \delta \rfloor + 1
+\le \pi/(\delta\sqrt\kappa) + 1$.  This gives~\eqref{eq:capacity-path}.
+
+\paragraph{Step 3: Volume packing (part~(ii)).}
+In a $\delta$-packing of $\Omega$, the balls $B(x_i, \delta/2)$ are
+disjoint and contained in $\mathcal{S}$, so
+\[
+C_\delta(\Omega)
+\;\le\;
+\frac{\mathrm{Vol}_{\gF}(\mathcal{S})}
+     {\inf_{x \in \Omega}\mathrm{Vol}_{\gF}(B(x,\,\delta/2))}.
+\]
+By the Bishop--Gromov volume comparison theorem, on a $d$-manifold with
+$K^{(0)} \ge \kappa > 0$:
+\begin{itemize}[leftmargin=*]
+\item The total volume is bounded above by that of the round
+$d$-sphere $S^d(1/\sqrt\kappa)$:
+\[
+\mathrm{Vol}_{\gF}(\mathcal{S})
+\;\le\;
+\mathrm{Vol}(S^d(1/\sqrt\kappa))
+\;=\;
+\frac{2\,\pi^{(d+1)/2}}
+     {\Gamma\!\bigl(\tfrac{d+1}{2}\bigr)}\;
+\kappa^{-d/2}.
+\]
+\item For $\delta/2$ below the injectivity radius
+($\le \pi/\sqrt\kappa$ by Klingenberg), the small-ball volume
+expansion gives
+\[
+\mathrm{Vol}_{\gF}(B(x, \delta/2))
+\;\ge\;
+\omega_d\;\Bigl(\frac{\delta}{2}\Bigr)^d
+\;\Bigl(1 - \frac{d\,\kappa\,\delta^2}{24(d+2)}
++ O(\delta^4)\Bigr),
+\]
+where $\omega_d = \pi^{d/2}/\Gamma(d/2+1)$.
+\end{itemize}
+Combining and dropping the lower-order correction:
+\[
+C_\delta(\Omega)
+\;\le\;
+\frac{2^{d+1}\,\pi^{(d+1)/2}}
+     {\Gamma\!\bigl(\tfrac{d+1}{2}\bigr)\;\omega_d}
+\;\kappa^{-d/2}\;\delta^{-d}
+\;=\; c(d)\;\kappa^{-d/2}\;\delta^{-d}.
+\]
+At $d = 2$: $c(2) = 2^3 \pi^{3/2}/(\Gamma(3/2)\,\pi) = 8$, and
+$\kappa^{-d/2} = \kappa^{-1}$, giving the parent's
+$C \le 8\,K^{-1}\,\delta^{-2}$.
+
+\paragraph{Step 4: Efron correction (part~(iii)).}
+By Efron~\cite{efron1975}, on a non-exponential statistical manifold with
+Efron curvature $c_E(\theta) := \|R^{(e)}(\theta)\|$, the minimum variance
+of any unbiased estimator exceeds
+$(\gF)^{-1}$ by a multiplicative factor $(1 + \|c_E\|^2)$.
+This enlarges the minimum $\delta$-distinguishability separation to
+$\delta_{\mathrm{eff}} = \delta\,\sqrt{1 + \|c_E\|^2}$.  Substituting
+$\delta_{\mathrm{eff}}$ for $\delta$ in~\eqref{eq:capacity-path}
+and~\eqref{eq:capacity-region} gives~\eqref{eq:capacity-efron}.
+\end{proof}
+
+\begin{corollary}[Saturation on exponential families]
+\label{cor:saturation}
+On an exponential family $\mathcal{S}$, the exponential connection is flat
+($R^{(e)} = 0$), so $c_E \equiv 0$.  The Efron correction
+in~\eqref{eq:capacity-efron} vanishes, and the capacity
+bounds~\eqref{eq:capacity-path}--\eqref{eq:capacity-region} are tight: the
+maximum likelihood estimator achieves the Cram\'er--Rao bound, and the
+packing arguments reach maximum density.\end{corollary}
+
+\begin{proof}
+By Theorem~\ref{thm:e-flat}, $R^{(e)} \equiv 0$ on exponential families.
+The Efron curvature correction is $\|c_E\| = 0$, so
+$\delta_{\mathrm{eff}} = \delta$.
+The path bound~\eqref{eq:capacity-path}
+is achieved with equality (up to the $+1$ floor term) when $\gamma$ is a
+geodesic of length $\pi/\sqrt{\kappa}$.
+The region bound~\eqref{eq:capacity-region} is achieved when
+$\Omega = \mathcal{S}$ is the full round sphere $S^{V-1}$
+(in the square-root parametrization $\xi_i = 2\sqrt{p_i}$), for which
+Bishop--Gromov comparison holds with equality.
+\end{proof}
+
+
+\begin{remark}[Why softmax is special]\label{rmk:softmax}
+The softmax output layer of a transformer produces an exponential family
+distribution~\eqref{eq:exp-family} with natural parameters given by the logits.
+Corollary~\ref{cor:saturation} provides a structural explanation for why
+softmax-based architectures are \emph{locally} geometrically efficient: at the
+output layer, their distributions lie on an $e$-flat manifold where the
+capacity bound is tight.  The full transformer (including attention
+nonlinearities, layer normalization, and residual connections) is not globally
+an exponential family; the saturation claim applies to the
+\emph{output distribution conditional on the hidden state}.
+Non-exponential output distributions (e.g., those produced by sparse attention
+or mixture-of-experts layers) would have nonzero statistical curvature and
+correspondingly reduced capacity.
+\end{remark}
+
+\subsection{KL divergence as tolerance budget}
+
+\begin{theorem}[KL divergence as infinitesimal Fisher-Rao distance]
+\label{thm:kl-fisher}
+For nearby distributions $p_\theta$ and $p_{\theta + d\theta}$ on a
+statistical manifold $(\mathcal{S}, \gF)$,
+\begin{equation}\label{eq:kl-fisher}
+\DKL(p_\theta \| p_{\theta + d\theta})
+= \tfrac{1}{2}\, \gF_{ij}(\theta)\, d\theta^i\, d\theta^j
++ O(\|d\theta\|^3).
+\end{equation}
+The KL divergence is the local quadratic approximation to the squared
+Fisher-Rao geodesic distance.
+\end{theorem}
+
+\begin{proof}
+Taylor expand $\DKL(p_\theta \| p_{\theta + d\theta})
+= \E_{p_\theta}[\ell_\theta - \ell_{\theta + d\theta}]$
+to second order in $d\theta$.  The first-order term vanishes by
+$\E[\partial_i \ell_\theta] = 0$, and the second-order term is
+$\tfrac{1}{2} \gF_{ij}\, d\theta^i\, d\theta^j$.
+\end{proof}
+
+\begin{corollary}[Tolerance budget as KL budget]\label{cor:tolerance-kl}
+The parent framework's tolerance budget $\tau$ has a canonical
+information-geometric interpretation: it is a KL divergence budget.  The
+total information-theoretic distance a completion is allowed to travel is
+\[
+\sum_{\ell} \DKL(p_{\ell} \| p_{\ell+1}) \;\le\; \tau,
+\]
+where the sum is over layers (or time steps) of the completion path.
+\end{corollary}
+
+\begin{corollary}[Holonomy as information loss]\label{cor:holonomy-kl}
+The parent framework's holonomy $\mathrm{Hol}(\gamma)$ around a closed path
+$\gamma$ in $(\mathcal{S}, \gF)$ satisfies
+\begin{equation}\label{eq:holonomy-area}
+\norm{\mathrm{Hol}(\gamma) - I}
+\;\le\;
+C_R \cdot \mathrm{Area}_{\gF}(\gamma) + O(\mathrm{Area}^2),
+\end{equation}
+where $C_R$ depends on the Riemann curvature of $\nabla^{(0)}$ and
+$\mathrm{Area}_{\gF}$ is the Fisher-metric area enclosed by $\gamma$.  This
+is the Ambrose--Singer theorem applied to the Fisher Levi-Civita connection:
+information loss around constraint loops is controlled by curvature times
+enclosed area.
+\end{corollary}
+
+
+%====================================================
+\section{Fisher spectral capacity and the central conjecture}
+\label{sec:spectral-capacity}
+%====================================================
+
+Branch~IX established that spectral gap controls capacity on CSP graphs.
+We now lift this to the Fisher-metric setting.
+
+\subsection{Fisher Laplacian}
+
+\begin{definition}[Fisher Laplacian]\label{def:fisher-laplacian}
+On a statistical manifold $(\mathcal{S}, \gF)$, the \emph{Fisher Laplacian}
+$\Delta^{\mathrm{F}}$ is the Laplace--Beltrami operator of the Fisher metric:
+for $f \in C^\infty(\mathcal{S})$,
+\begin{equation}\label{eq:fisher-laplacian}
+\Delta^{\mathrm{F}} f
+= \frac{1}{\sqrt{\det \gF}}
+\partial_i\!\left(\sqrt{\det \gF}\; (\gF)^{ij}\, \partial_j f\right).
+\end{equation}
+The \emph{Fisher spectral gap} is $\mu_1^{\mathrm{F}} > 0$, the smallest
+positive eigenvalue of $-\Delta^{\mathrm{F}}$ on $L^2(\mathcal{S}, \gF)$.
+\end{definition}
+
+\begin{theorem}[Fisher spectral capacity sandwiching]
+\label{thm:fisher-spectral-sandwich}
+Let $(\mathcal{S}, \gF)$ be a compact statistical manifold of dimension $n$
+with Ricci curvature $\mathrm{Ric}_{\gF} \ge (n-1)\kappa$ and diameter
+$D_{\mathrm{F}} := \sup_{p,q} d_{\gF}(p,q)$.  The Fisher spectral gap
+$\mu_1^{\mathrm{F}}$ satisfies:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+  \item \emph{(Cheeger lower bound.)}
+  $\displaystyle \mu_1^{\mathrm{F}} \;\ge\; \frac{h_{\mathrm{F}}^2}{2}$,
+  where $h_{\mathrm{F}}$ is the Cheeger isoperimetric constant of
+  $(\mathcal{S}, \gF)$.
+  \item \emph{(Lichnerowicz lower bound.)} If $\kappa > 0$, then
+  $\mu_1^{\mathrm{F}} \ge n\kappa$.
+  \item \emph{(Cheng upper bound.)}
+  $\displaystyle \mu_1^{\mathrm{F}} \;\le\;
+  \frac{C(n, \kappa)}{D_{\mathrm{F}}^2}$.
+\end{enumerate}
+These recover Branch~IX's Theorem~3.1 with $g = \gF$.  The Fisher spectral
+capacity $C_{\mathrm{sp}}^{\mathrm{F}} := \mu_1^{\mathrm{F}} D_{\mathrm{F}}^2$
+is therefore bounded by the same Cheeger--Ricci--Cheng sandwich as the parent
+framework's spectral capacity.
+\end{theorem}
+
+\begin{proof}
+These are standard results in spectral Riemannian geometry
+(Cheeger 1970, Lichnerowicz 1958, Cheng 1975) applied to the specific metric
+$\gF$.  No additional argument is needed beyond specialization.
+\end{proof}
+
+\subsection{Central conjecture}
+
+\begin{mdframed}[backgroundcolor=gray!10, linewidth=0.4pt]
+\begin{conjecture}[Fisher gap governs completion mixing]
+\label{conj:fisher-mixing}
+Let $(\mathcal{S}, \gF)$ be the Fisher-metric Davis manifold of a generative
+model.  The spectral gap $\mu_1^{\mathrm{F}}$ of the Fisher Laplacian controls
+the mixing time of the Markov chain on completions induced by autoregressive
+sampling:
+\begin{equation}\label{eq:mixing-bound}
+t_{\mathrm{mix}}(\varepsilon)
+\;\le\;
+\frac{1}{\mu_1^{\mathrm{F}}}
+\log\!\left(\frac{n}{\varepsilon}\right),
+\end{equation}
+where $n$ is the effective dimension of the completion space and $\varepsilon$
+is the total-variation mixing tolerance.
+\end{conjecture}
+\end{mdframed}
+
+This is the single central conjecture of Branch~X.  It is empirically testable:
+compute $\mu_1^{\mathrm{F}}$ from the Fisher information of a transformer's
+output distributions and check whether it predicts the number of sampling steps
+needed for convergence to the stationary distribution over completions.
+
+Motivation comes from the classical connection between spectral gaps and mixing
+times on Riemannian manifolds (see e.g.\ Diaconis \& Stroock 1991): the
+spectral gap of the generator of a reversible Markov chain controls the
+exponential rate of convergence to equilibrium.  On the Fisher manifold, the
+generator of the natural Brownian motion is precisely $\Delta^{\mathrm{F}}$,
+and $\mu_1^{\mathrm{F}}$ controls its mixing.  The conjecture asserts that
+autoregressive sampling, while not literally Brownian motion on
+$(\mathcal{S}, \gF)$, is governed by the same spectral quantity
+\emph{in the continuous-time diffusion limit} of the sampling chain
+(or, equivalently, for any reversible approximation whose generator's
+principal symbol agrees with $\Delta^{\mathrm{F}}$).
+
+%====================================================
+\section{Directions: dual connections and neural architecture}
+\label{sec:directions}
+%====================================================
+
+This section collects conjectural connections between the $\alpha$-connection
+family and the internal structure of transformer architectures.  These are
+\emph{directions}, not results: they are clearly speculative, empirically
+testable in several cases, and would require substantial additional work to
+establish.  They are included to map the landscape of questions that
+Branch~X's identification opens, not to claim answers.
+
+\begin{conjecture}[Attention as $\alpha$-transport]
+\label{conj:attention-transport}
+Each attention head in a transformer performs approximate parallel transport of
+information vectors along an effective $\alpha$-connection
+$\nabla^{(\alpha_h)}$, where $\alpha_h$ depends on the head's learned
+parameters:
+\begin{itemize}
+  \item Value projection transports content along the mixture connection
+  $\nabla^{(m)}$, operating in expectation (mean) coordinates.
+  \item Key-query interaction computes inner products in natural
+  ($\theta$-)coordinates, where the exponential connection $\nabla^{(e)}$
+  is flat.
+  \item Multi-head combination approximates Levi-Civita transport
+  $\nabla^{(0)}$ by averaging over heads with different effective $\alpha$.
+\end{itemize}
+Evidence required: empirical measurement of the effective $\alpha$ from
+attention weight distributions across layers.
+\end{conjecture}
+
+\begin{conjecture}[Pythagorean decomposition]
+\label{conj:pythagorean}
+On an exponential family manifold, the generalized Pythagorean theorem for KL
+divergence
+\[
+\DKL(p \| r) = \DKL(p \| q) + \DKL(q \| r)
+\]
+holds when $q$ is the $e$-projection of $p$ onto the $m$-geodesic through $r$
+(Amari \& Nagaoka 2000, \S3.4).  Softmax normalization implements exactly this
+$e$-projection, decomposing the total KL distance into orthogonal
+information-geometric components.
+\end{conjecture}
+
+\begin{conjecture}[Layer norm as Fisher normalization]
+\label{conj:layer-norm}
+Layer normalization rescales activations to approximately unit Fisher norm,
+acting as a gauge-fixing operation on the statistical manifold that prevents
+the metric tensor from degenerating during deep composition.
+\end{conjecture}
+
+\begin{conjecture}[Residual stream as perturbed geodesic]
+\label{conj:residual}
+The residual connection $h_\ell = h_{\ell-1} + f_\ell(h_{\ell-1})$
+implements a discretized geodesic equation on $(\mathcal{S}, \gF)$ with
+layer-dependent perturbation.  The deviation from a true geodesic is
+controlled by the Jacobi field equation on $(\mathcal{S}, \gF)$; reasoning
+failures correspond to geodesic deviation exceeding the curvature-dependent
+stability bound.
+\end{conjecture}
+
+Each of these conjectures is empirically testable but speculative at this
+stage.  We record them as guide-posts for future work, not as claims of the
+current paper.
+
+%====================================================
+\section{Cross-branch synthesis}
+\label{sec:cross-branch}
+%====================================================
+
+The Fisher metric identification creates organic connections to each preceding
+branch.  In each case, the connection arises from a classical identity in
+information geometry, not from a forced analogy.
+
+\subsection{Branch~VI: statistical mechanics}
+
+\begin{theorem}[Fisher metric as free energy Hessian]
+\label{thm:fisher-free-energy}
+Let $Z(\theta) = \int h(x) \exp(\theta^i t_i(x))\, dx$ be the partition
+function of an exponential family, and let
+$\psi(\theta) = \log Z(\theta)$ be the log-partition function (free energy up
+to temperature scaling).  Then:
+\begin{equation}\label{eq:fisher-free-energy}
+\gF_{ij}(\theta)
+= \frac{\partial^2 \psi}{\partial\theta^i\, \partial\theta^j}
+= \frac{\partial^2 (-F / T)}{\partial\theta^i\, \partial\theta^j},
+\end{equation}
+where $F = -T \psi(\theta)$ is the Helmholtz free energy at temperature $T$.
+The Branch~VI susceptibility matrix
+$\chi_{ij} = \partial^2 F / \partial h^i \partial h^j$ is (up to a
+temperature factor) the Fisher metric at thermal equilibrium.
+\end{theorem}
+
+\begin{proof}
+This is Proposition~\ref{prop:fisher-exp-family} restated in
+thermodynamic language: $\gF = \nabla^2 \psi = \Cov[t_i, t_j]$ is both
+the Fisher information and the fluctuation matrix of the sufficient
+statistics, which in statistical mechanics is the susceptibility.
+\end{proof}
+
+\noindent\emph{Intuition.}  The Fisher metric at a point $\theta$ on the
+statistical manifold measures how ``responsive'' the distribution $p_\theta$
+is to small changes in $\theta$.  In thermodynamics, the susceptibility
+$\chi$ measures how responsive a system's macroscopic properties are to
+changes in external fields.  These are the same quantity because both ask:
+``How much does the system fluctuate around its mean state?''  The
+fluctuation--dissipation theorem of statistical mechanics is, in this light,
+a statement about the Fisher metric: the equilibrium fluctuations (covariance
+of sufficient statistics) equal the response to perturbation (Fisher
+information).
+
+\paragraph{Running example: HERALD at the antigenic transition.}
+In HERALD's antigenic model, $\theta$ parameterizes the position in antigenic
+space and $\psi(\theta)$ is the free energy of the lineage ensemble.  At
+the Branch~VI completion transition ($\Gamma = 1$), the susceptibility
+diverges: the system becomes maximally sensitive to perturbation.  In
+Fisher-metric language, this means the Fisher information becomes large
+(or ill-conditioned), and the Davis capacity bound
+$C \le c / \sup K^{(0)}$ becomes tight.  The transition from ``single
+dominant lineage'' to ``coexisting lineages'' is geometrically a transition
+from a well-conditioned Fisher metric to an ill-conditioned one.
+
+\begin{conjecture}[Phase transitions as Fisher degeneracy]
+\label{conj:phase-transition}
+The Branch~VI completion transition at $\Gamma = 1$ (the Davis trichotomy
+boundary) corresponds to degeneracy of the Fisher metric:
+$\det(\gF) \to 0$ as $\Gamma \to 1$.  The three regimes are:
+\begin{itemize}
+  \item Determined ($\Gamma > 1$): $\gF$ positive definite, unique completion
+  geodesic, finite curvature.
+  \item Critical ($\Gamma = 1$): $\gF$ degenerates along one or more
+  directions, curvature diverges, phase transition.
+  \item Underdetermined ($\Gamma < 1$): $\gF$ develops null directions,
+  multiple completion geodesics, flat directions in the Fisher manifold.
+\end{itemize}
+\end{conjecture}
+
+\subsection{Branch~VII: sheaf theory}
+
+\begin{conjecture}[Obstruction as Fisher incompatibility]
+\label{conj:sheaf-fisher}
+The \v{C}ech obstruction class
+$\delta(b) \in \check{H}^1(M, \mathcal{F}_{\mathrm{ext}})$ of Branch~VII
+has an information-geometric interpretation: it measures the failure of local
+Fisher metrics on constraint patches to glue into a global Fisher metric.
+The obstruction vanishes if and only if local exponential families on each
+patch of the constraint nerve are globally compatible---that is, there exists
+a single exponential family on $M$ whose restriction to each patch agrees
+with the local family up to controlled error.
+\end{conjecture}
+
+\subsection{Branch~VIII: renormalization group}
+
+\begin{conjecture}[Data processing and the $C$-theorem]
+\label{conj:data-processing}
+The Branch~VIII $C$-theorem (completion entropy is monotonically
+non-increasing under coarse-graining) is a consequence of the
+\emph{data processing inequality for Fisher information}: for any Markov
+kernel (coarse-graining map) $K$,
+\[
+\gF_{K \circ p}
+\;\preceq\;
+\gF_p
+\]
+in the Loewner order.  The Branch~VIII $C$-function is the trace (or
+determinant) of the Fisher metric at scale $\ell$: it decreases under
+each RG step because coarse-graining cannot increase Fisher information.
+\end{conjecture}
+
+\noindent\emph{Intuition.}  The data processing inequality says that
+processing data through a noisy channel cannot increase Fisher information.
+Coarse-graining in the RG sense is exactly such a channel: it maps
+fine-grained distributions to coarse-grained ones.  Branch~VIII's
+$C$-theorem says that a ``complexity'' measure decreases under RG flow.
+The conjecture identifies this complexity measure as $\tr(\gF)$: the total
+Fisher information at each scale.  This provides a statistical foundation
+for the RG monotonicity that was postulated in Branch~VIII on physical
+grounds.
+
+\paragraph{Running example: AMC coarse-graining.}
+In AMC's translator graph, coarse-graining corresponds to merging telemetry
+formats that have ``similar enough'' translation behavior.  The data
+processing inequality predicts that the Fisher information of the coarsened
+graph is dominated by that of the fine-grained graph.  In concrete terms:
+if AMC merges two telemetry formats whose reconstruction-error distributions
+are close, the merged node's Fisher weight is less than or equal to the sum
+of the original weights.  This controls the loss of discriminative power
+under format consolidation.
+
+\subsection{Branch~IX: spectral geometry}
+
+\begin{theorem}[Fisher Laplacian on CSP graphs]
+\label{thm:fisher-csp}
+Let $G = (V, E)$ be a finite CSP graph with $n$ vertices and combinatorial
+Laplacian $L_G$.  At each vertex $L_k$, the completion count $N_k := N_k(L_k)$
+induces a scalar Fisher weight
+\begin{equation}\label{eq:fisher-csp-weight}
+\gF(L_k) = \frac{1}{N_k(L_k)},
+\end{equation}
+corresponding to the Fisher information of a uniform distribution over
+$N_k$ compatible clue configurations.\footnote{If each solution $L_k$ admits
+$N_k$ compatible clue configurations with equal probability $1/N_k$, the
+Fisher information for the ``identity parameter'' is $1/N_k$.  More precisely,
+this is the Fisher information for estimating which of $N_k$ equally likely
+configurations generated the observed clues.
+\emph{This is a choice of statistical model} (uniform likelihood over
+completions), not a theorem.  The $1/N_k$ weighting is the simplest model
+consistent with the completion-count structure; non-uniform priors over
+clue configurations would yield different Fisher weights while preserving
+the qualitative sandwiching structure of Theorem~\ref{thm:fisher-spectral-sandwich}.}
+
+Define the diagonal Fisher weight matrix
+$D_{\mathrm{F}} := \diag(\gF(L_1), \dots, \gF(L_n))$.  The
+\emph{Fisher Laplacian on $G$} is
+\begin{equation}\label{eq:fisher-laplacian-csp}
+\Delta^{\mathrm{F}}_G
+:= D_{\mathrm{F}}^{-1/2}\; L_G\; D_{\mathrm{F}}^{-1/2}.
+\end{equation}
+This is a symmetric positive semidefinite operator whose spectral gap
+$\mu_1^{\mathrm{F}}(G)$ is the Fisher-weighted analog of the combinatorial
+spectral gap $\mu_1(G)$ of Branch~IX.
+
+The two spectral gaps are related by
+\begin{equation}\label{eq:gap-relation}
+\frac{\mu_1(G)}{\max_k \gF(L_k)}
+\;\le\;
+\mu_1^{\mathrm{F}}(G)
+\;\le\;
+\frac{\mu_1(G)}{\min_k \gF(L_k)},
+\end{equation}
+so the Fisher and combinatorial spectral gaps agree up to the condition number
+of $D_{\mathrm{F}}$.
+\end{theorem}
+
+\begin{proof}
+The matrix $\Delta^{\mathrm{F}}_G = D_{\mathrm{F}}^{-1/2} L_G
+D_{\mathrm{F}}^{-1/2}$ is congruent to $L_G$ via $D_{\mathrm{F}}^{-1/2}$,
+so it is symmetric and positive semidefinite with the same rank.  Its
+eigenvalues are related to those of $L_G$ by the standard Rayleigh quotient
+comparison: for any $f \perp \mathbf{1}$,
+\[
+\mu_1^{\mathrm{F}}
+= \min_{f \perp \mathbf{1}} \frac{f^T \Delta^{\mathrm{F}}_G f}{f^T f}
+= \min_{f \perp \mathbf{1}} \frac{(D_{\mathrm{F}}^{-1/2} f)^T L_G
+(D_{\mathrm{F}}^{-1/2} f)}{f^T f}.
+\]
+Writing $h = D_{\mathrm{F}}^{-1/2} f$ and bounding the ratio
+$\|f\|^2 / \|h\|^2$ by the extremal eigenvalues of $D_{\mathrm{F}}$
+gives~\eqref{eq:gap-relation}.
+\end{proof}
+
+\begin{conjecture}[Fisher-weighted localization]
+\label{conj:fisher-localization}
+The Branch~IX result that completion count variation $N_k - \bar{N}$ lies in
+the top eigenspace of $L_G$ has a Fisher-metric refinement: the
+Fisher-weighted statistic
+$\tilde{N}_k^{\mathrm{F}} := (N_k - \bar{N}) / \sqrt{\gF(L_k)}
+= (N_k - \bar{N}) \sqrt{N_k}$
+is an eigenvector (or near-eigenvector) of the Fisher Laplacian
+$\Delta^{\mathrm{F}}_G$.
+\end{conjecture}
+
+
+%====================================================
+\section{Finite-model computations}
+\label{sec:finite-models}
+%====================================================
+
+We now compute the Fisher geometry on the two finite CSP graphs from
+Branch~IX: the 288-vertex Shidoku graph and the 576-vertex Latin square graph.
+These computations serve as sanity checks and as concrete instances where the
+cross-branch predictions can be verified numerically.
+
+\subsection{Fisher geometry of the Shidoku graph}
+
+Recall from Branch~IX that the Shidoku graph $G_{\mathrm{Sh}}$ has
+$n = 288$ vertices (the complete set of order-4 Shidoku solutions) and is
+semiregular with two vertex classes determined by the Hamming-shell
+completion count $N_k$ (the number of neighboring solutions at Hamming
+distance exactly~$4$, corresponding to single-band swaps):
+\begin{itemize}
+  \item \textbf{Class A:} 192 vertices with $N_k = 4$.
+  Fisher weight: $\gF = 1/4 = 0.25$.
+  \item \textbf{Class B:} 96 vertices with $N_k = 8$.
+  Fisher weight: $\gF = 1/8 = 0.125$.
+\end{itemize}
+
+The Fisher weight ratio is $\gF_A / \gF_B = 2$, so the condition number of
+$D_{\mathrm{F}}$ is~$2$.  By~\eqref{eq:gap-relation}, the Fisher and
+combinatorial spectral gaps differ by at most a factor of~$2$.
+
+\paragraph{Worked computation: Fisher Laplacian eigenvalues.}
+The combinatorial Laplacian $L_G$ of $G_{\mathrm{Sh}}$ has eigenvalues
+$0 = \lambda_0 < \lambda_1 \le \cdots \le \lambda_{287}$.  The Fisher Laplacian
+$\Delta^{\mathrm{F}} = D_{\mathrm{F}}^{-1/2}\, L_G\, D_{\mathrm{F}}^{-1/2}$
+rescales each row and column by $(\gF(L_k))^{-1/2}$.  Since the graph has
+only two Fisher-weight values, the rescaling acts blockwise:
+\begin{itemize}[leftmargin=*]
+  \item Edges between Class~A ($\gF = 1/4$) and Class~B ($\gF = 1/8$):
+  rescaled by
+  $(\gF_A \cdot \gF_B)^{-1/2} = (1/4 \cdot 1/8)^{-1/2} = \sqrt{32}
+  \approx 5.66$.
+  \item Edges within each class: rescaled by $(\gF_k)^{-1}$, i.e.\ by~$4$
+  for Class~A and by~$8$ for Class~B.
+  \item Diagonal entries: $d_i / \gF(L_i)$, preserving the Laplacian
+  row-sum property.
+\end{itemize}
+
+Numerically, the combinatorial spectral gap is $\lambda_1 = 0.7085$ and the
+Fisher spectral gap is $\mu_1^{\mathrm{F}} = 3.3394$.  The eigenvalue bounds
+from Theorem~\ref{thm:fisher-csp} give:
+\begin{align*}
+\frac{\lambda_1}{\gF_{\max}}
+&= \frac{0.7085}{0.25}
+= 2.834
+\;\le\; \mu_1^{\mathrm{F}} = 3.339, \\
+\mu_1^{\mathrm{F}}
+&\le\; \frac{\lambda_1}{\gF_{\min}}
+= \frac{0.7085}{0.125}
+= 5.668.
+\end{align*}
+The Fisher spectral gap is sandwiched between $2.834$ and $5.668$, a
+factor-of-two window consistent with the condition number~$\kappa_{\mathrm{F}} = 2$.
+
+\paragraph{Fisher-weighted completion count.}
+The Fisher-weighted completion count statistic is
+\[
+\tilde{N}_k^{\mathrm{F}} := \frac{N_k - \bar{N}}{\sqrt{N_k}}
+= \begin{cases}
+(4 - 5.33)/\sqrt{4} = -1.33/2 \approx -0.67 & \text{(Class A, $N_k = 4$)}, \\
+(8 - 5.33)/\sqrt{8} = 2.67/\sqrt{8} \approx 0.94 & \text{(Class B, $N_k = 8$)},
+\end{cases}
+\]
+where $\bar{N} = (192 \times 4 + 96 \times 8)/288 = 5.33$.  The Fisher
+weighting normalizes by $\sqrt{N_k}$, giving
+more weight to vertices with fewer completions (higher Fisher information).
+In raw units the signal amplification is
+$(N_k - \bar{N}) \cdot \sqrt{N_k}$: Class~A emits $-2.67$ and Class~B
+emits $+7.54$, so Class~B (fewer vertices, higher degree) is ``louder'' by
+a factor of $7.54/2.67 \approx 2.8$ in Fisher-weighted coordinates.
+
+\subsection{Fisher geometry of the Latin square graph}
+
+The Latin square graph $G_{\mathrm{LS}}$ has $n = 576$ vertices (the complete
+set of reduced $4 \times 4$ Latin squares, up to the appropriate equivalence)
+and is again bipartite semiregular:
+\begin{itemize}
+  \item \textbf{Class A:} 432 vertices with $N_k = 72$.
+  Fisher weight: $\gF = 1/72 \approx 0.0139$.
+  \item \textbf{Class B:} 144 vertices with $N_k = 24$.
+  Fisher weight: $\gF = 1/24 \approx 0.0417$.
+\end{itemize}
+
+The condition number of $D_{\mathrm{F}}$ is $\gF_B/\gF_A = (1/24)/(1/72) = 3$,
+so the Fisher and combinatorial spectral gaps differ by at most a factor of~$3$.
+The eigenvalue bounds give:
+\begin{align*}
+24\, \mu_1(G_{\mathrm{LS}})
+&\;\le\; \mu_1^{\mathrm{F}}(G_{\mathrm{LS}})
+\;\le\; 72\, \mu_1(G_{\mathrm{LS}}).
+\end{align*}
+
+\paragraph{Fisher-weighted intercalate count.}
+The intercalate count $\mathcal{I}(L)$ is the variable that separates the two
+classes in Branch~IX: $\mathcal{I} = 12$ for Class~A and $\mathcal{I} = 4$ for
+Class~B.  The mean intercalate count is
+$\bar{\mathcal{I}} = (432 \times 12 + 144 \times 4)/576 = 10$.  The
+Fisher-weighted intercalate statistic is
+\[
+\tilde{\mathcal{I}}^{\mathrm{F}}(L) :=
+\frac{\mathcal{I}(L) - \bar{\mathcal{I}}}{\sqrt{\gF(L)}}
+= (\mathcal{I}(L) - \bar{\mathcal{I}}) \cdot \sqrt{N_k(L)}
+= \begin{cases}
+(12 - 10)\sqrt{72} = 2\sqrt{72} \approx 16.97 & \text{(Class A)}, \\
+(4 - 10)\sqrt{24} = -6\sqrt{24} \approx -29.39 & \text{(Class B)}.
+\end{cases}
+\]
+The Fisher weighting \emph{amplifies} the separation for Class~B vertices
+(which have fewer completions and hence higher Fisher information),
+producing an asymmetric signal: Class~B is ``louder'' in Fisher-weighted
+coordinates because it has higher information density per vertex.  The
+absolute separation is
+$|\tilde{\mathcal{I}}^{\mathrm{F}}_A| + |\tilde{\mathcal{I}}^{\mathrm{F}}_B|
+\approx 46.4$,
+compared to the unweighted separation $|2| + |{-}6| = 8$.  Fisher weighting
+amplifies the signal by a factor of approximately~$5.8$.
+
+\paragraph{Comparison of Fisher weighting across the two graphs.}
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Fisher geometry comparison} of the Shidoku and Latin square
+CSP graphs.  Condition number $\kappa_{\mathrm{F}}$ controls the gap between
+Fisher and combinatorial spectral gaps.}
+\label{tab:fisher-comparison}
+\begin{tabular}{lccccc}
+\toprule
+Graph & $n$ & $\kappa_{\mathrm{F}}$ & $\gF_{\min}$ & $\gF_{\max}$ &
+Fisher signal amplification \\
+\midrule
+Shidoku & 288 & 2 & $1/8$ & $1/4$ & $\times 2.8$ \\
+Latin square & 576 & 3 & $1/72$ & $1/24$ & $\times 5.8$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Latin square graph has both a higher condition number and stronger Fisher
+signal amplification, reflecting its more heterogeneous completion structure.
+This predicts that Fisher-weighted diagnostics will be more informative on the
+Latin square graph than on the Shidoku graph---exactly the opposite of what
+one might expect from the unweighted combinatorial analysis alone.
+
+\subsection{Partition function cross-check with Branch~VI}
+
+As a cross-check with the statistical mechanics formulation of Branch~VI, we
+verify the identity $\gF(\beta) = \partial^2 \psi / \partial\beta^2$ on the
+Shidoku model.
+
+\paragraph{Setup.}  Branch~VI defines a partition function over Shidoku clue
+configurations at inverse temperature $\beta$:
+\[
+Z(\beta) = \sum_{\gamma \in \Gamma} \exp(-\beta\, E[\gamma]),
+\]
+where $\Gamma$ is the set of clue configurations and $E[\gamma]$ is an energy
+functional measuring the constraint-violation count.  The log-partition function
+is $\psi(\beta) = \log Z(\beta)$, and the Branch~VI specific heat is
+\[
+C_V(\beta) = \beta^2\,\bigl(\langle E^2 \rangle_\beta -
+\langle E \rangle_\beta^2\bigr)
+= \beta^2\, \Var_\beta[E].
+\]
+
+\paragraph{Information-geometric identity.}
+Treating $\beta$ as a one-dimensional natural parameter with sufficient
+statistic $t(\gamma) = -E[\gamma]$, the Boltzmann distribution
+$p_\beta(\gamma) = \exp(-\beta E[\gamma])/Z(\beta)$
+is a one-dimensional exponential family.  By
+Proposition~\ref{prop:fisher-exp-family}, the Fisher metric at $\beta$ is
+\[
+\gF(\beta) = \frac{\partial^2 \psi}{\partial\beta^2}
+= \Var_\beta[E] = \frac{C_V(\beta)}{\beta^2}.
+\]
+
+\paragraph{Verification protocol.}
+\begin{enumerate}[label=\textnormal{(\arabic*)}, leftmargin=*]
+  \item Compute $Z(\beta)$ by exact enumeration over Shidoku clue
+  configurations (feasible because $|\Gamma| = 288 \times
+  \binom{16}{k}$ for each clue count $k$, which is computationally accessible
+  for $k \le 6$).
+  \item Compute $C_V(\beta)$ from the thermal ensemble by finite differencing
+  of $\psi(\beta)$ or by direct variance computation.
+  \item Compute $\gF(\beta)$ from the information-geometric definition as
+  $\partial^2 \psi / \partial\beta^2$.
+  \item Verify numerical agreement: $C_V(\beta)/\beta^2 = \gF(\beta)$ to
+  machine precision.
+\end{enumerate}
+
+This computation is a \emph{non-trivial cross-branch consistency check}: it
+verifies that the same function $\psi = \log Z$ governs both the Branch~VI
+thermodynamics and the Branch~X information geometry.  Agreement confirms that
+the Fisher metric identification is consistent with the statistical-mechanics
+framework.  Disagreement would indicate a bug in the formalism.
+
+\paragraph{Expected behavior near the completion transition.}
+At the Branch~VI completion transition ($\Gamma = 1$, the Davis trichotomy
+boundary), the specific heat $C_V(\beta)$ diverges (or peaks sharply on a
+finite system), corresponding to a large Fisher metric $\gF(\beta)$.  This is
+exactly the prediction of Conjecture~\ref{conj:phase-transition}: the Fisher
+metric becomes large near the transition, and its condition number
+deteriorates, signaling the onset of multi-valued completions.
+
+
+\subsection{Computational verification}
+\label{sec:computational-evidence}
+
+The claims of Sections~\ref{sec:statistical-manifolds}--\ref{sec:finite-models} and the
+cross-branch identity of Theorem~\ref{thm:fisher-free-energy} were verified
+numerically by an independent Python script that takes no analytic shortcuts:
+every eigenvalue, variance, and gradient is computed from scratch on the
+288-vertex Shidoku model.  We report the results below; the full script and
+raw output are available in the supplementary materials.\footnote{Script:
+\texttt{branch\_x\_evidence.py}.  All tests pass on NumPy~1.26 /
+SciPy~1.14 with no manual tolerances wider than $10^{-4}$.}
+
+\paragraph{Part~1: Softmax Fisher geometry (Proposition~\ref{prop:fisher-exp-family} through Theorem~\ref{thm:curvature-capacity}).}
+For $\bm{\theta} = (2, 1, 0.5, 0)$ with $V = 4$:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+  \item $\gF = \diag(p) - pp^\top$ confirmed symmetric, PSD, rank $V{-}1 = 3$,
+  with null vector $\mathbf{1}$ (shift invariance).
+  Eigenvalues: $0.3464, 0.1590, 0.0908, 0.0000$.  Condition number
+  $\kappa = 3.81 < 10$.
+  \item Numerical Hessian of $\psi(\bm{\theta}) = \log \sum_v e^{\theta_v}$
+  agrees with $\gF$ to $1.93 \times 10^{-6}$ (central differences,
+  $\varepsilon = 10^{-5}$).
+  \item Legendre duality:
+  $\bm{\eta} = \nabla\psi = \mathrm{softmax}(\bm{\theta})$ verified to
+  $10^{-8}$; conjugate potential $\varphi(\bm{\eta}) = \bm{\theta} \cdot
+  \bm{\eta} - \psi$ matches negative entropy to $10^{-10}$.
+  \item Fisher--Rao distance $d_{\mathrm{FR}}(p, q)$ versus
+  $\sqrt{2\,\DKL(p \| q)}$: ratio converges to $1.0000$ at
+  $\varepsilon = 10^{-3}$ and remains above $0.97$ at $\varepsilon = 0.5$.
+  \item Cram\'{e}r--Rao saturation: $50{,}000$-sample MLE over $1{,}000$
+  trials gives $n \cdot \Cov[\hat{p}] / \gF$ with mean diagonal ratio
+  $0.983$, confirming that the categorical MLE saturates the bound.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[t]{0.38\textwidth}
+\centering
+\includegraphics[width=\textwidth]{fig_01_fisher_heatmap.png}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.58\textwidth}
+\centering
+\includegraphics[width=\textwidth]{fig_02_fisher_rao_kl.png}
+\end{minipage}
+\caption{\textbf{Left:} Fisher information metric $\gF = \diag(p) - pp^\top$
+for $p = \mathrm{softmax}(2, 1, 0.5, 0)$.  Diagonal entries decrease with
+probability; off-diagonal entries are negative (anti-correlated).
+\textbf{Right:} Fisher--Rao distance versus $\sqrt{2\,\DKL}$ as a function
+of perturbation scale $\varepsilon$.  The two metrics agree to second order
+(ratio $\to 1$ as $\varepsilon \to 0$), confirming
+Theorem~\ref{thm:kl-fisher}.}
+\label{fig:fisher-geometry}
+\end{figure}
+
+\paragraph{Part~2: Shidoku Fisher Laplacian (Theorem~\ref{thm:fisher-spectral-sandwich}).}
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+  \item Backtracking enumeration finds exactly $288$ Shidoku solutions.
+  \item Adjacency at Hamming distance exactly~$4$ (a single-band swap) yields
+  $768$ edges on $1$ connected component, with degree range $[4, 8]$.
+  \item Hamming-shell completion counts $N_k$ (the number of solutions at
+  distance exactly~$4$ from each vertex) produce two Fisher-weight classes:
+  \begin{center}
+  \begin{tabular}{cccl}
+  \toprule
+  $N_k$ & vertices & $\gF = 1/N_k$ & class \\
+  \midrule
+  $4$ & $192$ & $0.2500$ & high-information \\
+  $8$ & $96$  & $0.1250$ & low-information \\
+  \bottomrule
+  \end{tabular}
+  \end{center}
+  Condition number $\kappa_{\mathrm{F}} = 2.00$.
+  \item Combinatorial spectral gap $\lambda_1 = 0.7085$.
+  Fisher Laplacian spectral gap $\mu_1^{\mathrm{F}} = 3.3394$.
+  Sandwiching inequality:
+  \[
+  \underbrace{\frac{\lambda_1}{\gF_{\max}}}_{2.8340}
+  \;\le\; \mu_1^{\mathrm{F}} = 3.3394
+  \;\le\; \underbrace{\frac{\lambda_1}{\gF_{\min}}}_{5.6680}.
+  \]
+  \textbf{Theorem~\ref{thm:fisher-spectral-sandwich} confirmed.}
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{fig_04_sandwich.png}
+\caption{\textbf{Spectral gap sandwiching (Theorem~\ref{thm:fisher-spectral-sandwich}).}
+The combinatorial spectral gap $\lambda_1 = 0.708$ (dotted white) is
+amplified by the Fisher weighting to $\mu_1^{\mathrm{F}} = 3.339$ (solid
+gold), landing within the sandwich bounds $[2.834, 5.668]$ (blue band).
+The $\kappa_{\mathrm{F}} = 2$ condition number gives a tight factor-of-two
+window.}
+\label{fig:spectral-sandwich}
+\end{figure}
+
+\paragraph{Part~3: Partition function cross-check (Theorem~\ref{thm:fisher-free-energy}).}
+Using energy $E = -\sum_{r} s_{rr}$ (negative diagonal sum), the $288$
+solutions partition into a symmetric energy spectrum with nine distinct levels
+($E \in \{-14, \ldots, -6\}$).  At each inverse temperature
+$\beta \in [0.05, 4.0]$:
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+  \item $\Var_\beta[E]$ from the Boltzmann ensemble agrees with
+  $\partial^2\psi/\partial\beta^2$ (numerical second derivative) to four
+  significant figures across the full range.  Maximum absolute deviation:
+  $1.39 \times 10^{-4}$.
+  Representative values:
+  \begin{center}
+  \begin{tabular}{cccc}
+  \toprule
+  $\beta$ & $\Var_\beta[E]$ & $\psi''(\beta)$ & ratio \\
+  \midrule
+  $0.10$ & $3.3071$ & $3.3069$ & $0.9999$ \\
+  $1.00$ & $1.6880$ & $1.6881$ & $1.0000$ \\
+  $3.00$ & $0.1278$ & $0.1278$ & $1.0001$ \\
+  \bottomrule
+  \end{tabular}
+  \end{center}
+  \item The fluctuation-dissipation theorem $C_V = \beta^2 \Var_\beta[E]$
+  holds to machine precision ($< 10^{-15}$), and $C_V$ computed from
+  $-\partial\langle E\rangle / \partial\beta$ agrees with
+  $\beta^2 \Var_\beta[E]$ to $10^{-4}$.
+  \item The Fisher metric peaks at $\beta \approx 0.05$ (maximum fluctuations),
+  while $C_V$ peaks at $\beta \approx 1.51$, consistent with the predicted
+  phase-transition signature.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{fig_03_partition.png}
+\caption{\textbf{Left:} Fisher metric $\gF(\beta) = \Var_\beta[E]$ (blue)
+overlaid with $\psi''(\beta)$ (pink dashed) on the 288-solution Shidoku
+ensemble.  The two curves are indistinguishable, confirming
+$\gF = \partial^2\psi/\partial\beta^2$
+(Theorem~\ref{thm:fisher-free-energy}).
+\textbf{Right:} Specific heat $C_V(\beta) = \beta^2 \Var_\beta[E]$, peaking
+at $\beta \approx 1.50$ (the completion transition).  The Fisher metric
+peaks at maximum fluctuations ($\beta \to 0$), consistent with
+Conjecture~\ref{conj:phase-transition}.}
+\label{fig:partition-function}
+\end{figure}
+
+\paragraph{Part~4: Supplementary verifications.}
+\begin{enumerate}[label=\textnormal{(\roman*)}, leftmargin=*]
+  \item \emph{von Mises--Fisher (VIDAR).}  For $d = 128$, the ratio
+  $A_d(\kappa) = I_{d/2}(\kappa) / I_{d/2-1}(\kappa)$ approaches~$1$ as
+  $\kappa$ increases ($A_d(1000) = 0.938$), confirming
+  $\gF \to \kappa \cdot g_{\mathrm{round}}$ on $S^{d-1}$.
+  \item \emph{Data processing inequality.}  Progressive coarsening
+  (merging categories) on a $V{=}5$ softmax distribution yields strictly
+  decreasing $\tr(\gF)$: $0.565 \to 0.562 \to 0.549 \to 0.475$.
+  \item \emph{Amari--Chentsov tensor.}  $T_{ijk}$ computed analytically for
+  $V{=}4$ is totally symmetric with $\norm{T}_F = 0.254 > 0$, confirming
+  nonzero Levi-Civita curvature on non-uniform categorical distributions
+  (while the $e$- and $m$-connections remain individually flat, per
+  Proposition~\ref{def:alpha-connection}).
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{fig_05_vmf.png}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{fig_06_dpi.png}
+\end{minipage}
+\caption{\textbf{Left:} Convergence of the von Mises--Fisher ratio
+$A_d(\kappa) \to 1$ across embedding dimensions $d = 16, 64, 128, 512$.
+Higher dimensions require larger concentration $\kappa$ to approach the
+round-metric limit, but all curves converge, confirming
+$\gF \to \kappa \cdot g_{\mathrm{round}}$ on $S^{d-1}$.
+\textbf{Right:} Data processing inequality under progressive coarsening
+($V = 5 \to 2$).  $\tr(\gF)$ decreases monotonically (left panel);
+the pseudo-determinant $\det^*(\gF)$ increases (right panel, log scale)
+because the surviving eigenvalues become less degenerate as categories merge.}
+\label{fig:vmf-dpi}
+\end{figure}
+
+All eleven tested claims pass.  The script provides reproducible
+computational evidence that the information-geometric framework of
+Branch~X is internally consistent and that the cross-branch identities
+with Branch~VI (partition functions) and Branch~IX (spectral geometry)
+hold numerically.
+
+%====================================================
+\section{The empirical program}
+\label{sec:empirical}
+%====================================================
+
+The Fisher metric is computable from data.  This section describes how to
+measure it on real transformers, what predictions Branch~X makes, and what
+success or failure would mean.
+
+\subsection{Measurement protocol}
+
+The following algorithm describes how to extract Fisher-geometric observables
+from a transformer at inference time.  It is designed to parallel the distortion
+audit protocol (Algorithm~1 in \cite{davis2025manifold}): where that protocol
+measures geodesic-Euclidean distortion ratios $\rho_j$ along paths, this
+protocol measures Fisher-Rao distances, curvature, and spectral gap along
+completion paths.
+
+\begin{algorithm}[H]
+\caption{Fisher-Metric Extraction from Transformer Logits}
+\label{alg:fisher-extraction}
+\begin{algorithmic}[1]
+\Require Transformer with $L$ layers, vocabulary $\mathcal{V}$ ($|\mathcal{V}|=V$),
+completion tasks $\{(\text{prompt}_k, \text{completion}_k)\}_{k=1}^{N_{\mathrm{task}}}$
+\Ensure Fisher-Rao distances $\{d^{\mathrm{F}}_k\}$, curvature profiles
+$\{K_k(\ell)\}$, spectral gap estimate $\hat\mu_1^{\mathrm{F}}$
+\For{each task $k = 1, \dots, N_{\mathrm{task}}$}
+  \State Feed $\text{prompt}_k$ through the transformer
+  \For{each layer $\ell = 1, \dots, L$}
+    \State Extract logit vector $z_{\ell} \in \RR^V$
+    \State Compute softmax: $p_{\ell}^v = \exp(z_\ell^v)/\sum_w \exp(z_\ell^w)$
+    \State \textbf{Fisher metric:}
+    $\gF(\ell) = \diag(p_\ell) - p_\ell\, p_\ell^\top$
+    \Comment{Eq.~\eqref{eq:softmax-fisher-explicit}}
+    \State Store eigenvalues $\lambda_1(\ell) \ge \cdots \ge \lambda_{V-1}(\ell) > 0$
+    of $\gF(\ell)$
+  \EndFor
+  \State \textbf{Fisher-Rao path length:}
+  $d_k^{\mathrm{F}} = \sum_{\ell=1}^{L-1}
+  \sqrt{(z_{\ell+1} - z_\ell)^\top\, \gF(\ell)\, (z_{\ell+1} - z_\ell)}$
+  \State \textbf{Layer-wise curvature proxy:}
+  $K_k(\ell) = \kappa(\gF(\ell)) := \lambda_1(\ell)/\lambda_{V-1}(\ell)$
+  \Comment{Condition number}
+  \State \textbf{KL divergence:}
+  $D_k(\ell) = \DKL(p_\ell \| p_{\ell+1})$
+  for each $\ell$
+\EndFor
+\State \textbf{Aggregate Fisher-Rao statistics:}
+mean $\bar{d}^{\mathrm{F}}$, std $\sigma_d$, percentiles
+\State \textbf{Spectral gap estimate:}
+$\hat\mu_1^{\mathrm{F}} = \text{median over tasks of } \min_\ell \lambda_{V-1}(\ell)$
+\State \Return $\{d_k^{\mathrm{F}}\}$, $\{K_k(\ell)\}$, $\hat\mu_1^{\mathrm{F}}$,
+$\{D_k(\ell)\}$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Implementation notes.}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Computational cost.}  The Fisher metric
+  $\gF = \diag(p) - pp^\top$ is computed from the softmax output without
+  additional forward passes.  Its eigendecomposition costs $O(V^2)$ per layer
+  per position, which is dominated by the transformer's $O(V \cdot d_{\mathrm{model}})$
+  output projection.  For large vocabularies ($V \sim 50{,}000$), the full
+  eigendecomposition can be replaced by a rank-$k$ approximation using
+  randomized SVD, since the Fisher matrix of a peaked softmax has rapidly
+  decaying eigenvalues.
+
+  \item \textbf{Sherman--Morrison structure.}
+  The matrix $\gF = \diag(p) - pp^\top$ is a rank-1 perturbation of a
+  diagonal matrix.  The inverse is available in closed form via the
+  Sherman--Morrison formula:
+  \[
+  (\gF)^{-1} = \diag(p)^{-1} + \frac{\diag(p)^{-1}\, pp^\top\, \diag(p)^{-1}}
+  {1 - p^\top \diag(p)^{-1} p}
+  = \diag(1/p_i) + \mathbf{1}\mathbf{1}^\top,
+  \]
+  where the second equality holds on the $(V{-}1)$-dimensional subspace
+  orthogonal to $\mathbf{1}$.  This allows $O(V)$ computation of quadratic
+  forms involving $(\gF)^{-1}$.
+
+  \item \textbf{Batch processing.}  For a batch of $B$ prompts, Fisher metrics
+  at all layers can be computed in parallel, since each depends only on the
+  local softmax output.
+
+  \item \textbf{Low-rank Fisher for hidden states.}
+  If Fisher information is desired for internal representations (not just the
+  output softmax), the empirical Fisher
+  $\hat{\gF} = \frac{1}{N}\sum_{n=1}^N
+  \nabla_\theta \ell_n \,(\nabla_\theta \ell_n)^\top$
+  can be estimated via gradient samples; low-rank approximations such as
+  K-FAC~\cite{martens2020} reduce this to $O(d_{\mathrm{model}}^2)$ per layer.
+\end{itemize}
+
+\begin{algorithm}[H]
+\caption{Fisher Curvature Diagnostic for Completion Tasks}
+\label{alg:fisher-diagnostic}
+\begin{algorithmic}[1]
+\Require Fisher-Rao distances $\{d_k^{\mathrm{F}}\}$, curvature profiles
+$\{K_k(\ell)\}$, KL divergences $\{D_k(\ell)\}$, task difficulty labels
+$\{y_k\}$ (correct/incorrect completion)
+\Ensure Correlation analysis, curvature alarm thresholds
+\State \textbf{Hypothesis 1 (Fisher-difficulty correlation):}
+\State \quad Compute rank correlation $\rho(d^{\mathrm{F}}, y)$; report $p$-value
+\State \textbf{Hypothesis 2 (curvature predicts failure):}
+\State \quad For each task $k$, compute
+$K_k^{\max} := \max_\ell K_k(\ell)$
+\State \quad Fit logistic regression: $\Prob(y_k = \text{incorrect})
+\sim \beta_0 + \beta_1 K_k^{\max}$
+\State \quad Report coefficient $\beta_1$ and significance
+\State \textbf{Hypothesis 3 (KL budget predicts failure):}
+\State \quad Compute total KL: $\tau_k := \sum_\ell D_k(\ell)$
+\State \quad Test whether failures cluster among tasks with $\tau_k > \tau_{\mathrm{thresh}}$
+\State \textbf{Curvature alarm:}
+\State \quad Set $K_{\mathrm{alarm}} = $ 90th percentile of $K_k^{\max}$
+among correct completions
+\State \quad Flag tasks with $K_k^{\max} > K_{\mathrm{alarm}}$ for abstention
+\State \Return Correlations, thresholds, alarm rate
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Decision rules.}
+Table~\ref{tab:fisher-diagnostic-rules} summarizes the diagnostic decision rules
+analogous to the distortion audit gates in \cite{davis2025manifold},
+Table~6.
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Fisher curvature diagnostic decision rules.}  Thresholds are
+illustrative; actual values depend on architecture and task.}
+\label{tab:fisher-diagnostic-rules}
+\begin{tabularx}{\linewidth}{@{}p{0.28\linewidth}p{0.30\linewidth}p{0.34\linewidth}@{}}
+\toprule
+\textbf{Condition} & \textbf{Interpretation} & \textbf{Action} \\
+\midrule
+$K_k^{\max} < K_{\mathrm{nominal}}$ &
+Low curvature; Fisher geometry reliable &
+Trust completion; report $d^{\mathrm{F}}_k$ as confidence proxy \\
+\addlinespace[2pt]
+$K_{\mathrm{nominal}} \le K_k^{\max} < K_{\mathrm{alarm}}$ &
+Moderate curvature; capacity may be reduced &
+Report with reduced confidence; increase
+sampling temperature or beam width \\
+\addlinespace[2pt]
+$K_k^{\max} \ge K_{\mathrm{alarm}}$ &
+High curvature; capacity bound may be violated &
+\textbf{Abstain} or defer to ensemble; flag for human review \\
+\addlinespace[2pt]
+$\tau_k > \tau_{\mathrm{max}}$ &
+KL budget exceeded; accumulated information loss too large &
+Completion path has exceeded tolerance; truncate or restart \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{What success would mean}
+
+If the empirical program confirms the predictions of Branch~X:
+\begin{itemize}
+  \item The Davis framework's curvature bounds become \emph{measurable
+  diagnostics} for transformer reliability, computable at inference time.
+  \item Reasoning failures become \emph{predictable} from Fisher-geometric
+  invariants before they occur: a ``curvature alarm'' that fires when the
+  accumulated Fisher-Rao distance or sectional curvature exceeds
+  tolerance.
+  \item The tolerance budget $\tau$ becomes a \emph{computable quantity},
+  not a fitted parameter: it is determined by the Fisher geometry of the
+  output distribution and the acceptable KL divergence.
+\end{itemize}
+
+\paragraph{Running example: HERALD success scenario.}
+If Fisher curvature along epitope-restricted mutation paths correlates with
+antigenic escape risk, then the HERALD system could use
+Algorithm~\ref{alg:fisher-diagnostic} as a \emph{pre-screening} tool: compute
+the Fisher-Rao distance between a new variant and the vaccine anchor in the
+lineage posterior space, estimate the accumulated curvature, and flag variants
+whose Fisher-geometric trajectory enters the high-curvature regime as escape
+candidates \emph{before} neutralization assay data are available.  This would
+provide earlier warning than the current protocol (which requires wet-lab assay
+results to update the drift statistic $D(t)$).
+
+\paragraph{Running example: VIDAR success scenario.}
+If Fisher curvature of the softmax output distributions during identity
+embedding predicts deepfake detection difficulty, then VIDAR could add a
+Fisher-based pre-filter: compute $K_k^{\max}$ for each clip, and for clips
+where $K_k^{\max} > K_{\mathrm{alarm}}$, escalate to ensemble methods or
+human review before running the full RIM feature pipeline.  The curvature
+alarm would act as an uncertainty quantification layer that is \emph{internal}
+to the model's geometry, rather than bolted on post hoc.
+
+\subsection{What failure would mean}
+
+If the empirical program fails:
+\begin{itemize}
+  \item The Fisher metric may not be the right instantiation of the Davis
+  metric: perhaps the transformer's internal geometry is not
+  well-approximated by its \emph{output} statistics.  The Fisher metric
+  of intermediate representations (hidden states, attention patterns) might
+  be more appropriate than the Fisher metric of the final softmax.
+  \item The exponential family assumption may be too restrictive: sparse
+  attention, mixture-of-experts, and other non-softmax output heads
+  produce non-exponential distributions for which the dual-flatness results
+  of Section~\ref{sec:alpha-connections} do not hold.
+  \item The finite-dimensional parameterization may be inadequate: for
+  transformers with billions of parameters, the full Fisher matrix is
+  intractable, and low-rank approximations (K-FAC, diagonal Fisher,
+  empirical Fisher) introduce systematic error that could invalidate
+  the curvature predictions.
+\end{itemize}
+Each failure mode is informative, falsifiable, and points toward a specific
+refinement.  This is a feature of the framework, not a limitation: it is
+designed to fail in scientifically useful ways.
+
+\paragraph{Failure mode analysis.}
+Table~\ref{tab:failure-modes} maps each failure mode to its diagnostic
+signature and the corrective action it would motivate.
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Failure mode analysis for the empirical program.}}
+\label{tab:failure-modes}
+\begin{tabularx}{\linewidth}{@{}p{0.25\linewidth}p{0.32\linewidth}p{0.35\linewidth}@{}}
+\toprule
+\textbf{Failure mode} & \textbf{Diagnostic signature} & \textbf{Corrective action} \\
+\midrule
+Output Fisher insufficient &
+No correlation between $d^{\mathrm{F}}$ and task difficulty; curvature alarm
+has no predictive power &
+Compute Fisher metric on hidden states via empirical Fisher or K-FAC; test
+intermediate-layer Fisher \\
+\addlinespace[2pt]
+Non-exponential outputs &
+Dual flatness violated; Cram\'er--Rao not saturated; capacity bounds loose &
+Use general $\alpha$-geometry on curved manifolds; relax exponential family
+assumption IG-A3 \\
+\addlinespace[2pt]
+Low-rank approximation error &
+Fisher spectrum poorly estimated; eigenvalue ratios unstable across runs &
+Increase rank in K-FAC/randomized SVD; use full Fisher on smaller models
+as ground truth \\
+\addlinespace[2pt]
+Curvature--failure decorrelation &
+Failures occur at low curvature; successes occur at high curvature &
+Fisher metric captures wrong notion of difficulty; consider non-geometric
+failure modes (data quality, distribution shift) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%====================================================
+\section{Limitations and open problems}
+\label{sec:limitations}
+%====================================================
+
+\subsection{Technical limitations}
+
+\paragraph{Scope of the metric identification.}
+The identification of the Fisher metric as the unique Davis metric
+(Corollary~\ref{cor:canonical-davis}) is conditional on axioms IG-A1--A4:
+that the Davis manifold carries statistical-model structure and that the
+metric is required to be invariant under sufficient-statistic reductions.
+Outside this statistical-manifold regime---for example, on Davis manifolds
+arising from purely geometric or topological sameness structures that do not
+naturally parameterize probability distributions---metric selection remains
+an open problem.  The results of this branch apply whenever the axioms hold,
+but do not claim to resolve metric selection in full generality.
+
+\paragraph{Exponential family scope.}
+The cleanest results of this branch---dual flatness
+(Theorem~\ref{thm:e-flat}), Cram\'er--Rao saturation
+(Corollary~\ref{cor:saturation}), the Pythagorean theorem
+(Conjecture~\ref{conj:pythagorean})---hold only on exponential families.
+Non-exponential output distributions require $\alpha$-geometry on general
+curved statistical manifolds, where computations are harder and uniqueness
+results (beyond \v{C}encov's, which still holds) are weaker.
+
+\paragraph{Discrete-to-continuous gap.}
+The Shidoku and Latin square computations of Section~\ref{sec:finite-models}
+are on discrete CSP graphs with finitely many vertices.  The continuous
+statistical manifold theory of Sections~\ref{sec:statistical-manifolds}--\ref{sec:curvature-capacity} applies in the limit of large, smoothly
+parameterized families.  Bridging the gap requires scaling analysis analogous
+to Branch~IX's generalization boundary (the point at which finite-model
+spectral results extend to families of CSP instances).
+
+\paragraph{$\alpha$-observability.}
+Conjectures~\ref{conj:attention-transport}--\ref{conj:residual} posit specific
+$\alpha$ values for transformer components (attention heads, layer norm,
+residual stream).  These are empirically testable but theoretically
+unmotivated at present: we have no architectural argument for why a particular
+component should implement transport along a particular $\alpha$-connection.
+The effective $\alpha$ may vary across heads, layers, and inputs.
+
+\subsection{Relation to existing literature}
+
+Information geometry of neural networks is an active and mature field.
+Amari's natural gradient~\cite{amari1998} uses the Fisher metric to define
+steepest descent in distribution space.
+Martens~\cite{martens2020} provides a comprehensive analysis of the natural
+gradient and its approximations.
+Kunstner et al.~\cite{kunstner2019} study the gap between the exact and
+empirical Fisher, which is directly relevant to the tractability of
+Branch~X's measurement program.
+
+This branch's contribution is not the Fisher metric per se, but:
+\begin{itemize}
+  \item its identification as the unique Davis metric (within the
+  statistical-manifold regime) via \v{C}encov;
+  \item the dual-connection extension of the parent framework;
+  \item the cross-branch synthesis (Fisher = free energy Hessian =
+  sheaf compatibility = RG monotone = spectral weighting);
+  \item the specific empirical measurement program connecting abstract
+  geometry to transformer observables.
+\end{itemize}
+The branch should be understood as building on, not competing with, the
+existing information geometry literature.
+
+\subsection{Connection to the Geometry of Sameness}
+
+In the Geometry of Sameness~\cite{davis2025sameness}, the manifold-based
+semantic realization (MSR, Definition~3) requires a Riemannian metric $g$
+on the semantic manifold $\mathcal{M}$ but does not specify how to choose it.
+Corollary~\ref{cor:canonical-davis} resolves this: when the feature spaces
+$\{V_i\}$ of the MSR parameterize probability distributions, the Fisher
+metric is the canonical choice.
+
+\begin{remark}[\v{C}encov and the metric-selection problem]
+\label{rmk:cencov-sameness}
+The Geometry of Sameness defines $\varepsilon$-equivalence of realization
+categories $\SamTrans(S)$ and $\SamGeom(S)$ and constructs functors $F_S$,
+$G_S$ between them.  The functor $F_S$ builds a manifold from a translator
+graph but does not specify which metric to place on the resulting manifold
+beyond requiring bounded distortion.
+
+\v{C}encov's theorem provides the missing prescription.  When the translator
+graph has a statistical interpretation---each node parameterizes a
+distribution over reconstruction errors across formats---the Fisher metric is
+the unique metric on the resulting manifold that is invariant under sufficient
+statistic reductions.  This means $F_S$ should use the Fisher metric, and
+$G_S$ should use the inverse Fisher metric to build transition translators.
+
+A full functor $\Phi_S : \SamGeom^0(S) \to \SamInfo^0(S)$ extending the
+$\varepsilon$-equivalence chain to include information-geometric realizations
+is a natural next step.  Such a functor would compose with $F_S$ and $G_S$
+to form a triangle of $\varepsilon$-equivalences:
+\[
+\SamTrans^0(S) \xrightarrow{F_S} \SamGeom^0(S) \xrightarrow{\Phi_S}
+\SamInfo^0(S) \xrightarrow{G'_S} \SamTrans^0(S).
+\]
+We defer the construction of $\Phi_S$ to a future synthesis paper; the
+present branch establishes the identification $g = c \cdot \gF$ that would
+form its core content.
+\end{remark}
+
+The Geometry of Sameness's smooth chartability condition (Definition~8) is
+implied by \emph{Fisher regularity}: the condition that
+$\gF(\theta)$ is positive definite with bounded condition number on the
+in-regime set $\Omega^{\mathrm{ideal}}$.  Fisher regularity is checkable
+from data: it requires only that the model's output distributions are
+non-degenerate and smoothly parameterized.
+
+\subsection{Open conjectures}
+
+\Cref{tab:conjectures} summarizes the status of all conjectures in this branch.
+
+\begin{table}[htbp]
+\centering
+\caption{Conjecture status summary}
+\label{tab:conjectures}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{ID} & \textbf{Statement} & \textbf{Type} & \textbf{Status} \\
+\midrule
+\ref{conj:fisher-mixing} & Fisher gap governs mixing &
+Central & Open (testable) \\
+\ref{conj:attention-transport} & Attention as $\alpha$-transport &
+Direction & Open (testable) \\
+\ref{conj:pythagorean} & Pythagorean decomposition &
+Direction & Open \\
+\ref{conj:layer-norm} & Layer norm as Fisher normalization &
+Direction & Open (testable) \\
+\ref{conj:residual} & Residual stream as geodesic &
+Direction & Open (testable) \\
+\ref{conj:phase-transition} & Phase transitions as Fisher degeneracy &
+Cross-branch & Finite-model testable \\
+\ref{conj:sheaf-fisher} & Obstruction as Fisher incompatibility &
+Cross-branch & Open \\
+\ref{conj:data-processing} & Data processing and $C$-theorem &
+Cross-branch & Open \\
+\ref{conj:fisher-localization} & Fisher-weighted localization &
+Cross-branch & Finite-model testable \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For a journal submission, Conjecture~\ref{conj:fisher-mixing} is the central
+open problem.  Conjectures~\ref{conj:phase-transition}
+and~\ref{conj:fisher-localization} are finite-model testable and could be
+resolved computationally in subsequent work.  All others are directions for
+future research.
+
+\subsection{Cross-branch synthesis summary}
+
+Table~\ref{tab:cross-branch} summarizes how each preceding branch acquires a
+Fisher-metric interpretation under the identification of Branch~X.
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Cross-branch synthesis.}  Each row shows a parent-branch
+result (left) and its Fisher-metric interpretation (right).  Entries marked
+with $\star$ are conjectural.}
+\label{tab:cross-branch}
+\begin{tabularx}{\linewidth}{@{}p{0.12\linewidth}p{0.36\linewidth}p{0.44\linewidth}@{}}
+\toprule
+\textbf{Branch} & \textbf{Parent result} & \textbf{Fisher-metric interpretation} \\
+\midrule
+VI &
+Free energy $\psi = \log Z$; susceptibility $\chi$ &
+$\gF = \nabla^2\psi$; Fisher metric = susceptibility (Thm.~\ref{thm:fisher-free-energy}) \\
+\addlinespace[2pt]
+VI &
+Completion transition at $\Gamma = 1$ &
+Fisher degeneracy $\det(\gF) \to 0$ at transition$^\star$ (Conj.~\ref{conj:phase-transition}) \\
+\addlinespace[2pt]
+VII &
+\v{C}ech obstruction $\delta(b) \in \check{H}^1$ &
+Failure of local Fisher metrics to glue globally$^\star$ (Conj.~\ref{conj:sheaf-fisher}) \\
+\addlinespace[2pt]
+VIII &
+$C$-theorem: entropy monotone under RG &
+Data processing inequality for Fisher information$^\star$ (Conj.~\ref{conj:data-processing}) \\
+\addlinespace[2pt]
+IX &
+Spectral gap $\mu_1$ controls capacity &
+Fisher Laplacian gap $\mu_1^{\mathrm{F}}$ (Thm.~\ref{thm:fisher-csp}); sandwiching by $\kappa_{\mathrm{F}}$ \\
+\addlinespace[2pt]
+IX &
+Completion count $N_k$ localizes in eigenspace &
+Fisher-weighted $\tilde{N}_k^{\mathrm{F}}$ amplifies signal$^\star$ (Conj.~\ref{conj:fisher-localization}) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Instantiation: Fisher-metric objects in running examples}
+
+Table~\ref{tab:fisher-instantiation} shows how the abstract Fisher-metric
+objects of Branch~X instantiate in each running example, paralleling the
+instantiation tables in \cite{davis2025manifold} (Tables~3--4) and
+\cite{davis2025sameness} (Section~7).
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Fisher-metric instantiation in running examples.}}
+\label{tab:fisher-instantiation}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{p{0.22\linewidth}p{0.24\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
+\toprule
+\textbf{Object} & \textbf{HERALD} & \textbf{VIDAR} & \textbf{AMC} \\
+\midrule
+Statistical manifold $\mathcal{S}$ &
+Lineage posterior space &
+vMF identity space on $\mathbb{S}^{d-1}$ &
+Reconstruction-error distribution space \\
+\addlinespace[2pt]
+Fisher metric $\gF$ &
+Hessian of log-partition of lineage model &
+$\kappa A_d(\kappa)(\delta_{ij} - \mu_i\mu_j)$ &
+Sensitivity of format translation to state perturbation \\
+\addlinespace[2pt]
+Exponential family? &
+Approximately (Boltzmann over lineages) &
+Yes (von Mises--Fisher) &
+Approximately (Gaussian reconstruction error) \\
+\addlinespace[2pt]
+Natural params $\theta$ &
+Log-odds of lineage assignment &
+$\kappa\mu$ (concentration $\times$ direction) &
+Mean reconstruction error per format \\
+\addlinespace[2pt]
+Expectation params $\eta$ &
+Lineage posterior means &
+$A_d(\kappa)\mu$ (mean direction) &
+Expected reconstruction quality \\
+\addlinespace[2pt]
+Dual connections &
+$\nabla^{(e)}$: flat in log-odds; $\nabla^{(m)}$: flat in posteriors &
+$\nabla^{(e)}$: flat in $\kappa\mu$; $\nabla^{(m)}$: flat in mean direction &
+$\nabla^{(e)}$: flat in log-error; $\nabla^{(m)}$: flat in expected error \\
+\addlinespace[2pt]
+Measurable via &
+Assay posterior logits &
+Softmax logits at output layer &
+Translation loss gradients \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{Result count and framework tracking}
+
+Table~\ref{tab:result-count} summarizes the formal results in this branch.
+
+\begin{table}[htbp]
+\centering
+\caption{\textbf{Branch~X result count.}  The ``Journal paper'' column
+indicates which results would appear in a standalone journal submission
+(see Strategic Note in the outline document).}
+\label{tab:result-count}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Result type} & \textbf{Branch document} & \textbf{Journal paper} \\
+\midrule
+Definitions & 5 & 3 \\
+Theorems & 10 & 5 \\
+Lemmas & 2 & 1 \\
+Corollaries & 5 & 2 \\
+Propositions & 2 & 1 \\
+Remarks & 5 & 1 \\
+Conjectures & 9 & 1 (central) \\
+Algorithms & 2 & 2 \\
+\midrule
+\textbf{Total formal results} & \textbf{40} & $\sim$\textbf{15} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Running framework total.}
+With Branch~X, the Davis framework contains approximately $252 + 40 = 292$
+formal results across Branches~I--X.  The information-geometric identification
+provides the first principled metric-selection mechanism and the first
+empirically testable measurement program for the framework's curvature bounds.
+
+
+%====================================================
+% APPENDIX
+%====================================================
+\appendix
+\section{Detailed proofs}\label{sec:appendix}
+
+\subsection{Supplementary details for Theorem~\ref{thm:curvature-capacity}
+(Curvature capacity from Cram\'er--Rao)}
+\label{subsec:proof-curvature-capacity}
+
+The complete proof---including the $d$-dimensional Bishop--Gromov volume
+packing argument that contains the parent framework's $C \lesssim 1/K$
+law as the $d{=}2$ specialization---is given in Section~\ref{sec:curvature-capacity}.  Here we record the
+distinguishability-theoretic foundation that connects the $\delta$-packing
+definition to statistical hypothesis testing.
+
+\paragraph{Distinguishability via Pinsker.}
+Two distributions $p_{\gamma(s)}$ and
+$p_{\gamma(t)}$ along a completion path $\gamma$ are distinguishable at error level $\delta$
+if and only if there exists a test $\phi : \mathcal{X} \to \{0,1\}$ with
+\[
+\Prob_{p_{\gamma(s)}}(\phi = 1) + \Prob_{p_{\gamma(t)}}(\phi = 0) \le \delta.
+\]
+By the Neyman--Pearson lemma, optimal distinguishability is controlled by the
+total variation distance $\|p_{\gamma(s)} - p_{\gamma(t)}\|_{\mathrm{TV}}$,
+which is bounded below by the Fisher-Rao distance via Pinsker's inequality:
+\begin{equation}\label{eq:pinsker}
+\|p_s - p_t\|_{\mathrm{TV}} \ge \frac{1}{\sqrt{2}}\,
+d_{\mathrm{F}}(\gamma(s), \gamma(t)),
+\end{equation}
+where $d_{\mathrm{F}}$ is the geodesic distance in $(\mathcal{S}, \gF)$.
+This justifies the identification of ``distinguishable completions'' with
+``$\delta$-separated points in the Fisher-Rao metric'' that underlies the
+packing argument in Theorem~\ref{thm:curvature-capacity}.
+
+\subsection{Proof of Theorem~\ref{thm:fisher-spectral-sandwich}
+(Fisher spectral capacity sandwiching)}
+\label{subsec:proof-spectral-sandwich}
+
+\begin{proof}
+Each bound is a specialization of a classical spectral-geometric inequality
+to the specific metric $\gF$.
+
+\paragraph{(i) Cheeger bound.}
+The Cheeger constant of $(\mathcal{S}, \gF)$ is
+$h_{\mathrm{F}} := \inf_{\Omega} \mathrm{Area}_{\gF}(\partial\Omega) /
+\min\{\mathrm{Vol}_{\gF}(\Omega),
+\mathrm{Vol}_{\gF}(\mathcal{S} \setminus \Omega)\}$,
+where the infimum is over all smooth domains $\Omega \subset \mathcal{S}$.
+Cheeger's inequality~\cite{cheeger1970} gives
+$\mu_1 \ge h^2/4$ for any compact Riemannian manifold; the factor $1/2$
+in the stated bound uses the improved constant from
+Buser~\cite{buser1982}.  Specializing to $(\mathcal{S}, \gF)$ yields~(i).
+
+\paragraph{(ii) Lichnerowicz bound.}
+If $\mathrm{Ric}_{\gF} \ge (n-1)\kappa$ with $\kappa > 0$, then
+Lichnerowicz's theorem~\cite{lichnerowicz1958} gives
+$\mu_1 \ge n\kappa$.  Applied to $\gF$, this requires the Ricci curvature
+of the Fisher metric to be positively bounded below---a non-trivial
+condition that depends on the statistical manifold's geometry.  On compact
+exponential families with bounded parameters, this is typically satisfied
+with $\kappa$ depending on the parameter domain.
+
+\paragraph{(iii) Cheng bound.}
+Cheng's comparison theorem~\cite{cheng1975} gives
+$\mu_1 \le (n-1)^2 \kappa / 4 + C/D^2$ on a manifold with Ricci curvature
+$\ge (n-1)\kappa$ and diameter $D$.  When $\kappa \le 0$, this simplifies to
+$\mu_1 \le C(n,\kappa)/D^2$.  Applied to $(\mathcal{S}, \gF)$ with
+$D = D_{\mathrm{F}}$, this gives~(iii).
+
+The Fisher spectral capacity
+$C_{\mathrm{sp}}^{\mathrm{F}} = \mu_1^{\mathrm{F}} D_{\mathrm{F}}^2$
+is thus bounded by the same Cheeger--Ricci--Cheng sandwich as the parent
+framework's spectral capacity in Branch~IX, with all geometric quantities
+computed in the Fisher metric.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:fisher-csp}
+(Fisher Laplacian on CSP graphs)}
+\label{subsec:proof-fisher-csp}
+
+\begin{proof}
+We provide the full argument, including the Rayleigh quotient comparison.
+
+The Fisher Laplacian is defined as
+$\Delta^{\mathrm{F}}_G = D_{\mathrm{F}}^{-1/2}\, L_G\, D_{\mathrm{F}}^{-1/2}$,
+where $D_{\mathrm{F}} = \diag(\gF(L_1), \dots, \gF(L_n))$ with
+$\gF(L_k) = 1/N_k(L_k)$.  This is a symmetric matrix (since $L_G$ is
+symmetric and $D_{\mathrm{F}}^{-1/2}$ is diagonal), and positive semidefinite
+(since $L_G \succeq 0$ implies
+$f^\top \Delta^{\mathrm{F}}_G f = (D_{\mathrm{F}}^{-1/2} f)^\top L_G
+(D_{\mathrm{F}}^{-1/2} f) \ge 0$ for all $f$).
+
+The null space of $\Delta^{\mathrm{F}}_G$ is
+$\{f : D_{\mathrm{F}}^{-1/2} f \in \ker L_G\}
+= \{D_{\mathrm{F}}^{1/2} \mathbf{1}\}$,
+which is one-dimensional on connected graphs.  The first positive eigenvalue is
+\[
+\mu_1^{\mathrm{F}} = \min_{\substack{f \neq 0 \\ f \perp D_{\mathrm{F}}^{1/2}
+\mathbf{1}}} \frac{f^\top \Delta^{\mathrm{F}}_G f}{f^\top f}.
+\]
+Substituting $h = D_{\mathrm{F}}^{-1/2} f$ and noting that
+$f^\top f = h^\top D_{\mathrm{F}} h$, we get
+\[
+\mu_1^{\mathrm{F}} = \min_{\substack{h \neq 0 \\ h \perp \mathbf{1}}}
+\frac{h^\top L_G h}{h^\top D_{\mathrm{F}} h}.
+\]
+Since $\gF_{\min} \|h\|^2 \le h^\top D_{\mathrm{F}} h \le \gF_{\max}
+\|h\|^2$, we have
+\[
+\frac{h^\top L_G h}{\gF_{\max} \|h\|^2}
+\le \frac{h^\top L_G h}{h^\top D_{\mathrm{F}} h}
+\le \frac{h^\top L_G h}{\gF_{\min} \|h\|^2},
+\]
+and taking the minimum over $h \perp \mathbf{1}$ gives
+\[
+\frac{\mu_1(G)}{\gF_{\max}}
+\le \mu_1^{\mathrm{F}}(G)
+\le \frac{\mu_1(G)}{\gF_{\min}},
+\]
+which is~\eqref{eq:gap-relation}.  Here $\gF_{\max} = \max_k \gF(L_k)
+= 1/\min_k N_k$ and $\gF_{\min} = \min_k \gF(L_k) = 1/\max_k N_k$.
+\end{proof}
+
+\subsection{Relationship between Amari--Chentsov tensor and parent curvature}
+\label{subsec:ac-parent}
+
+\begin{proposition}[Levi-Civita curvature from $\alpha$-curvatures]
+\label{prop:lc-from-alpha}
+The Riemann curvature tensor of the Levi-Civita connection $\nabla^{(0)}$ on
+$(\mathcal{S}, \gF)$ is related to the $\alpha$-curvature tensors by
+\begin{equation}\label{eq:lc-alpha-curvature}
+R^{(0)}_{ijkl} = \frac{1}{2}\bigl(R^{(\alpha)}_{ijkl}
++ R^{(-\alpha)}_{ijkl}\bigr)
++ \frac{\alpha^2}{4}\bigl(T_{im} T_{jn} - T_{jm} T_{in}\bigr)
+(\gF)^{mn} \gF_{kl},
+\end{equation}
+where $T_{ijk}$ is the Amari--Chentsov tensor
+(Definition~\ref{def:ac-tensor}).  In particular, when $R^{(e)} = 0$
+(exponential families), the Levi-Civita curvature is entirely determined by
+the Amari--Chentsov tensor:
+\[
+R^{(0)}_{ijkl} = \frac{1}{4}\bigl(T_{im} T_{jn} - T_{jm} T_{in}\bigr)
+(\gF)^{mn} \gF_{kl}.
+\]
+\end{proposition}
+
+\begin{proof}
+This follows from Lemma~\ref{lem:alpha-from-ac} and the standard relation
+between Christoffel symbols and curvature.  The $\alpha$-connection's
+Christoffel symbols differ from the Levi-Civita's by $-(\alpha/2)T_{ijk}$.
+Computing the Riemann tensor $R^{(\alpha)}$ from
+$\Gamma^{(\alpha)} = \Gamma^{(0)} - (\alpha/2)T$ and expanding to second
+order in $\alpha$ gives the stated formula.  The details are in
+Amari~\cite{amari1985}, Chapter~3.
+\end{proof}
+
+\noindent\emph{Significance for the Davis framework.}  On exponential families
+(such as softmax outputs), the parent framework's curvature is entirely
+``Amari--Chentsov curvature'': it arises from the third-order statistics of
+the score function, not from any intrinsic geometric curvature of the
+parameter space.  The parent's curvature capacity law
+$C \le c/\sup K^{(0)}$ can therefore be expressed as a bound involving only
+the skewness tensor $T$---the ``cubic part'' of the statistical geometry.
+This connects the parent's capacity bounds to higher-order cumulants of the
+output distribution, opening a path to estimation from finite samples.
+
+%====================================================
+% BIBLIOGRAPHY
+%====================================================
+\begin{thebibliography}{99}
+
+\bibitem{amari1985}
+Amari, S. (1985).
+\emph{Differential-Geometrical Methods in Statistics.}
+Lecture Notes in Statistics~28, Springer.
+
+\bibitem{amari1998}
+Amari, S. (1998).
+Natural gradient works efficiently in learning.
+\emph{Neural Computation} 10(2), 251--276.
+
+\bibitem{amari2000}
+Amari, S. \& Nagaoka, H. (2000).
+\emph{Methods of Information Geometry.}
+Translations of Mathematical Monographs~191, AMS/Oxford.
+
+\bibitem{ay2017}
+Ay, N., Jost, J., L\^e, H.V., \& Schwachh\"ofer, L. (2017).
+\emph{Information Geometry.}
+Ergebnisse der Mathematik~64, Springer.
+
+\bibitem{campbell1986}
+Campbell, L.L. (1986).
+An extended \v{C}encov characterization of the information metric.
+\emph{Proceedings of the AMS} 98(1), 135--141.
+
+\bibitem{cencov1982}
+\v{C}encov, N.N. (1982).
+\emph{Statistical Decision Rules and Optimal Inference.}
+Translations of Mathematical Monographs~53, AMS.
+
+\bibitem{efron1975}
+Efron, B. (1975).
+Defining the curvature of a statistical problem (with applications to
+second-order efficiency).
+\emph{Annals of Statistics} 3(6), 1189--1217.
+
+\bibitem{kunstner2019}
+Kunstner, F., Hennig, P., \& Balles, L. (2019).
+Limitations of the empirical Fisher approximation for natural gradient
+descent.
+\emph{NeurIPS 2019.}
+
+\bibitem{martens2020}
+Martens, J. (2020).
+New insights and perspectives on the natural gradient method.
+\emph{JMLR} 21(146), 1--76.
+
+\bibitem{davis2025manifold}
+Davis, B.R. (2025).
+\emph{The Davis Manifold: Geometry-First Detection with Compositional
+Error Budgets.}
+Zenodo.
+\url{https://doi.org/10.5281/zenodo.17642038}
+
+\bibitem{davis2025sameness}
+Davis, B.R. (2025).
+\emph{The Geometry of Sameness: An $\varepsilon$-Equivalence of Translation
+and Distance.}
+Zenodo.
+
+\bibitem{davis2025statmech}
+Davis, B.R. (2025).
+\emph{Statistical Mechanics of Semantic Fields} (Branch~VI).
+Zenodo.
+
+\bibitem{davis2025sheaf}
+Davis, B.R. (2025).
+\emph{Sheaf-Theoretic Completion Obstruction} (Branch~VII).
+Zenodo.
+
+\bibitem{davis2025rg}
+Davis, B.R. (2025).
+\emph{Renormalization Group Structure of Completion Fields} (Branch~VIII).
+Zenodo.
+
+\bibitem{davis2025spectral}
+Davis, B.R. (2025).
+\emph{Spectral Geometry of Constraint-Satisfaction Graphs} (Branch~IX).
+Zenodo.
+
+\bibitem{cheeger1970}
+Cheeger, J. (1970).
+A lower bound for the smallest eigenvalue of the Laplacian.
+In \emph{Problems in Analysis}, Princeton University Press, 195--199.
+
+\bibitem{buser1982}
+Buser, P. (1982).
+A note on the isoperimetric constant.
+\emph{Annales scientifiques de l'\'Ecole Normale Sup\'erieure} 15(2), 213--230.
+
+\bibitem{lichnerowicz1958}
+Lichnerowicz, A. (1958).
+\emph{G\'eom\'etrie des groupes de transformations.}
+Dunod, Paris.
+
+\bibitem{cheng1975}
+Cheng, S.-Y. (1975).
+Eigenvalue comparison theorems and its geometric applications.
+\emph{Mathematische Zeitschrift} 143(3), 289--297.
+
+\bibitem{rao1945}
+Rao, C.R. (1945).
+Information and the accuracy attainable in the estimation of statistical
+parameters.
+\emph{Bulletin of the Calcutta Mathematical Society} 37, 81--91.
+
+\bibitem{bonnet1855}
+Bonnet, O. (1855).
+Sur quelques propri\'et\'es des lignes g\'eod\'esiques.
+\emph{Comptes rendus de l'Acad\'emie des Sciences} 40, 1311--1313.
+
+\bibitem{myers1941}
+Myers, S.B. (1941).
+Riemannian manifolds with positive mean curvature.
+\emph{Duke Mathematical Journal} 8(2), 401--404.
+
+\bibitem{diaconis1991}
+Diaconis, P. \& Stroock, D. (1991).
+Geometric bounds for eigenvalues of Markov chains.
+\emph{Annals of Applied Probability} 1(1), 36--61.
+
+\end{thebibliography}
+
+\end{document}

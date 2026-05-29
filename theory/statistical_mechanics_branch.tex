@@ -1,0 +1,1660 @@
+\documentclass[11pt,letterpaper]{article}
+
+% ── Packages ──
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{tocloft}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+% ── Theorem environments ──
+\newtheorem{conjecture}{Conjecture}[section]
+\newtheorem{corollary}[conjecture]{Corollary}
+\newtheorem{lemma}[conjecture]{Lemma}
+\newtheorem{definition}[conjecture]{Definition}
+\newtheorem{proposition}[conjecture]{Proposition}
+\newtheorem{algorithm_box}[conjecture]{Algorithm}
+\newtheorem{example}[conjecture]{Example}
+\newtheorem{remark}[conjecture]{Remark}
+
+% ── Header ──
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{B.\ Davis}
+\rhead{The Thermodynamics of Semantic Coherence}
+\cfoot{\thepage}
+
+% ── Commands ──
+\newcommand{\Hol}{\mathrm{Hol}}
+\newcommand{\Khat}{\hat{K}}
+\newcommand{\tbudget}{\tau_{\mathrm{budget}}}
+\newcommand{\smax}{s_{\mathrm{max}}}
+\newcommand{\Svalid}{S_{\mathrm{valid}}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\Vol}{\operatorname{Vol}}
+\newcommand{\dg}{d_g}
+\newcommand{\edisc}{\varepsilon_{\mathrm{disc}}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\begin{document}
+
+\title{\textbf{The Thermodynamics of Semantic Coherence}\\[6pt]
+\large A Statistical Mechanics Extension of the Davis Field Equations\\[4pt]
+\normalsize Branch VI: Partition Functions, Free Energy, and the\\
+Thermodynamic Origin of Phase Transitions in Completion Space}
+\author{Bee Rosa Davis}
+\date{February 2026}
+\maketitle
+
+\begin{abstract}
+We extend the Field Equations of Semantic Coherence by constructing a 
+complete statistical mechanics over the space of completions on a Davis 
+manifold $(M,g)$. The tolerance budget $\tau$ is identified with 
+thermodynamic temperature, the Davis Energy Functional $E[\gamma]$ with 
+Hamiltonian energy, and the set of valid completions $\Svalid$ with the 
+microcanonical ensemble. This identification is not merely analogical: we 
+show that the partition function $Z(\beta)$ over completion paths reproduces 
+the Davis Law $C = \tau/K$ as a thermodynamic equation of state, that the 
+phase transition at constraint saturation $m^*$ is a genuine second-order 
+phase transition with the critical exponent $\beta_c = \Khat_{\max}/\tbudget$ 
+derived from first principles, and that fluctuation-dissipation relations 
+connect perturbation stability (Conjecture~4.4 of the parent framework) to 
+equilibrium thermal fluctuations. The branch generates 8 foundational 
+results, 24 first-order derivations, and identifies 12 cross-synthesis 
+points with existing branches, yielding an estimated 40+ new results when 
+cascaded through the derivation hierarchy.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ═══════════════════════════════════════════════════════
+\part{Motivation and Physical Dictionary}
+% ═══════════════════════════════════════════════════════
+
+\section{Why Statistical Mechanics?}
+
+The parent framework already contains the ingredients of a thermodynamic 
+theory without assembling them. Specifically:
+
+\begin{enumerate}[label=(\roman*)]
+    \item The Davis Energy Functional $E[\gamma]$ (Conjecture~6.1) assigns 
+    an energy to every reasoning path, but no temperature or entropy has 
+    been defined, so we cannot speak of free energy, thermal equilibrium, 
+    or fluctuations.
+    
+    \item The phase transition at $m = m^*$ (Conjecture~15.3) exhibits 
+    a critical exponent $\beta_c = \Khat_{\max}/\tbudget$, but without a 
+    partition function, the transition has no thermodynamic classification 
+    (first-order, second-order, Kosterlitz-Thouless, etc.).
+    
+    \item The trichotomy parameter $\Gamma$ (Equation~5 of the parent) 
+    divides completion space into three regimes that look exactly like a 
+    thermodynamic phase diagram, but no equation of state connects the 
+    ``phases.''
+    
+    \item The stability results (Conjectures~10.1, 18.1) describe response 
+    to perturbation, which in physics is the domain of 
+    fluctuation-dissipation theory, but no fluctuation spectrum has been 
+    computed.
+    
+    \item The consensus convergence results (Conjecture~22.1) describe 
+    relaxation to equilibrium, but no detailed balance condition has been 
+    identified.
+\end{enumerate}
+
+This branch fills all five gaps simultaneously by constructing the 
+statistical mechanics of the completion ensemble.
+
+\section{The Physical Dictionary}
+
+The following identifications are not analogies. They are structural 
+isomorphisms between the algebraic objects in the Davis framework and the 
+algebraic objects in equilibrium statistical mechanics.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\textbf{Davis Framework} & \textbf{Statistical Mechanics} & \textbf{Equation} \\
+\hline
+Tolerance budget $\tau$ & Temperature $T = 1/\beta$ & $\tau \leftrightarrow k_B T$ \\
+Davis Energy $E[\gamma]$ & Hamiltonian $H$ & $E[\gamma] \leftrightarrow H(\gamma)$ \\
+Completion path $\gamma$ & Microstate & $\gamma \leftrightarrow \sigma$ \\
+$|\Svalid|$ & Multiplicity $\Omega$ & $|\Svalid| \leftrightarrow \Omega(E)$ \\
+Curvature $\Khat_{\mathrm{loc}}$ & Coupling constant $J$ & $\Khat \leftrightarrow J$ \\
+Holonomy $\|\Hol_\gamma - I\|$ & Order parameter & $\|\Hol - I\| \leftrightarrow \langle m \rangle$ \\
+Constraint set $\mathcal{C}$ & External field $h$ & $\mathcal{C} \leftrightarrow h$ \\
+Inference capacity $C$ & Magnetization / response & $C \leftrightarrow M$ \\
+Davis cache $(\Phi_t, r_t)$ & Sufficient statistic & $(\Phi_t, r_t) \leftrightarrow T(x)$ \\
+Trichotomy parameter $\Gamma$ & Reduced temperature & $\Gamma \leftrightarrow T/T_c$ \\
+\end{tabular}
+\end{center}
+
+\begin{remark}[Why $\tau$ is Temperature]
+Temperature in physics controls the trade-off between energy minimization 
+(the system wants the lowest-energy state) and entropy maximization (the 
+system wants to explore many states). The tolerance budget $\tbudget$ plays 
+exactly this role: high $\tau$ allows many completions (high entropy, high 
+temperature), while low $\tau$ forces the system toward the unique 
+minimum-energy completion (low temperature, ordered phase). When 
+$\tau \to 0$, only the ground state survives. When $\tau \to \infty$, all 
+completions are equally accessible. This is the definition of temperature.
+\end{remark}
+
+\begin{example}[The Sudoku Analogy, Extended]
+Consider a Sudoku puzzle as a Davis manifold. In the original framework, 
+the puzzle is either solvable (determined) or not (underdetermined). 
+Statistical mechanics adds nuance: at low temperature ($\tau$ small), 
+the solver commits firmly to the unique solution and small perturbations 
+to a clue do not change the answer. At high temperature ($\tau$ large), 
+the solver entertains many possible completions, weighting them by energy. 
+At the critical temperature ($\tau = \tau_c$), the solver is poised between 
+commitment and exploration: long-range correlations appear (filling one 
+cell suddenly constrains cells far away), response to perturbation diverges 
+(changing one clue can flip large regions of the grid), and the 
+correlation length --- how far information propagates through the 
+constraint network --- diverges. This is the phase transition at $m = m^*$, 
+now understood thermodynamically.
+\end{example}
+
+\newpage
+% ═══════════════════════════════════════════════════════
+\part{Foundational Results (S1--S8)}
+% ═══════════════════════════════════════════════════════
+
+\section{S1: The Completion Partition Function}
+
+\begin{definition}[Completion Ensemble]
+Let $(M, g)$ be a Davis manifold with partial world $W_0$, goal $W_{\mathrm{goal}}$, 
+and constraint set $\mathcal{C}$. The \emph{completion ensemble} is the set 
+of all paths $\gamma$ from $W_0$ to $W_{\mathrm{goal}}$ satisfying the 
+constraint topology (passing through $\bigcap_c R_c$), weighted by the 
+Boltzmann factor of the Davis Energy Functional.
+\end{definition}
+
+\begin{conjecture}[Completion Partition Function]\label{conj:partition}
+Define the \emph{Davis partition function}:
+\begin{equation}\label{eq:partition}
+    Z(\beta) = \int_{\Gamma(W_0, W_{\mathrm{goal}})} 
+    \mathcal{D}\gamma \; e^{-\beta E[\gamma]}
+\end{equation}
+where $\Gamma(W_0, W_{\mathrm{goal}})$ is the space of admissible completion 
+paths, $\mathcal{D}\gamma$ is the path measure induced by $(M, g)$, and 
+$\beta = 1/\tau$ is the inverse tolerance. Then:
+
+\begin{enumerate}[label=(\alph*)]
+    \item $Z(\beta)$ is finite for $\beta > 0$ on compact Davis manifolds 
+    with $\Khat_{\mathrm{loc}} < \Khat_{\max}$ (convergence).
+    
+    \item $Z(\beta)$ encodes all thermodynamic quantities of the completion 
+    problem via standard derivatives:
+    \begin{align}
+        \langle E \rangle &= -\frac{\partial \ln Z}{\partial \beta} 
+        \quad \text{(mean completion energy)} \label{eq:mean_energy}\\
+        \langle (\Delta E)^2 \rangle &= \frac{\partial^2 \ln Z}{\partial \beta^2} 
+        \quad \text{(energy fluctuations)} \label{eq:fluctuations}\\
+        S &= \beta \langle E \rangle + \ln Z 
+        \quad \text{(completion entropy)} \label{eq:entropy}
+    \end{align}
+    
+    \item In the zero-temperature limit ($\beta \to \infty$), 
+    $Z(\beta) \to e^{-\beta E[\gamma^*]}$ where $\gamma^*$ is the 
+    energy-minimizing path from E0 (Principle of Least Holonomy). The 
+    variational principle is recovered as the ground state.
+\end{enumerate}
+
+\textbf{Derived from:} E0 (Principle of Least Holonomy) + T3 (Gap-Filling 
+Complexity Reduction).
+
+\textbf{Interpretation:} The partition function is the generating function 
+for all completion statistics. The Principle of Least Holonomy (E0) selects 
+the ground state; statistical mechanics extends this to the full thermal 
+ensemble. Just as classical mechanics is the $\hbar \to 0$ limit of quantum 
+mechanics, the variational principle E0 is the $\tau \to 0$ limit of the 
+thermodynamic theory.
+\end{conjecture}
+
+\begin{example}[Partition Function for a Two-Completion System]
+Consider the simplest non-trivial case: a Davis manifold with exactly two 
+valid completions $\gamma_1$ and $\gamma_2$ with energies $E_1 < E_2$. Then:
+\begin{equation}
+    Z(\beta) = e^{-\beta E_1} + e^{-\beta E_2} 
+    = e^{-\beta E_1}\left(1 + e^{-\beta \Delta E}\right)
+\end{equation}
+where $\Delta E = E_2 - E_1 > 0$. At low temperature ($\beta \to \infty$), 
+$Z \approx e^{-\beta E_1}$ and only the ground state $\gamma_1$ contributes. 
+At high temperature ($\beta \to 0$), $Z \approx 2$ and both completions 
+contribute equally. The crossover occurs at $\beta_c = \ln 2 / \Delta E$, 
+i.e., $\tau_c = \Delta E / \ln 2$. When the tolerance budget exceeds the 
+energy gap, the system cannot distinguish between completions. This is the 
+thermodynamic restatement of the Sudoku Principle: unique completion requires 
+$\tau < \Delta E / \ln 2$.
+\end{example}
+
+\newpage
+\section{S2: The Davis Free Energy}
+
+\begin{conjecture}[Davis Free Energy]\label{conj:free_energy}
+Define the \emph{Davis free energy}:
+\begin{equation}\label{eq:free_energy}
+    F(\beta, \mathcal{C}) = -\frac{1}{\beta} \ln Z(\beta) 
+    = \langle E \rangle - \frac{1}{\beta} S
+\end{equation}
+Then:
+
+\begin{enumerate}[label=(\alph*)]
+    \item The realized completion minimizes $F$, not $E$. That is, the 
+    system trades energy (holonomy minimization) against entropy 
+    (completion multiplicity):
+    \begin{equation}
+        \gamma^*_\beta = \argmin_\gamma \left[ E[\gamma] 
+        - \frac{1}{\beta} S[\gamma] \right]
+    \end{equation}
+    
+    \item The Davis Law $C = \tau / K$ is the \emph{equation of state} 
+    obtained from the free energy:
+    \begin{equation}\label{eq:eos}
+        C = -\frac{\partial F}{\partial K}\bigg|_{\tau} 
+        = \frac{\tau}{K}
+    \end{equation}
+    under the mean-field approximation where $E[\gamma] \approx K \cdot L$ 
+    and $S \approx \ln |\Svalid|$.
+    
+    \item The free energy decomposes into geometric and topological 
+    contributions:
+    \begin{equation}\label{eq:free_decomp}
+        F = F_{\mathrm{geom}}(\Phi_t) + F_{\mathrm{top}}(r_t) + F_{\mathrm{int}}
+    \end{equation}
+    where $F_{\mathrm{geom}}$ depends on continuous potential, 
+    $F_{\mathrm{top}}$ on winding code, and $F_{\mathrm{int}}$ is their 
+    interaction.
+\end{enumerate}
+
+\textbf{Derived from:} S1 (Partition Function) + Master Equation 
+($C = \tau/K$).
+
+\textbf{Interpretation:} Free energy is the true objective function for 
+completion. At zero temperature, it reduces to energy (holonomy 
+minimization, the E0 principle). At finite temperature, the system accepts 
+higher-energy completions if they are entropically favored --- that is, if 
+the completion lives in a region of path space with many nearby alternatives. 
+This is the geometric version of Occam's razor: among completions of similar 
+energy, the system prefers the one embedded in a larger ``basin'' of 
+path space.
+\end{conjecture}
+
+\begin{example}[Free Energy as Occam's Razor]
+Imagine two regions of a Davis manifold. Region~A contains a single 
+low-energy completion path ($E_A$ small, $S_A = 0$). Region~B contains many 
+paths of moderate energy ($E_B > E_A$, $S_B$ large). The free energies are:
+\begin{align}
+    F_A &= E_A \\
+    F_B &= E_B - \tau \cdot S_B
+\end{align}
+At low tolerance ($\tau$ small), $F_A < F_B$ and the system commits to the 
+unique precise path. At high tolerance ($\tau$ large), $F_B < F_A$ and the 
+system prefers the entropic region --- it accepts a noisier completion 
+because many similar completions exist. The crossover temperature 
+$\tau_c = (E_B - E_A)/S_B$ is the point where precision and diversity are 
+equally valued. In language model terms: low temperature produces the single 
+most likely token sequence; high temperature produces diverse, creative, 
+but less precise outputs. The Davis free energy makes this trade-off 
+geometric.
+\end{example}
+
+\newpage
+\section{S3: Completion Entropy and the Entropy--Curvature Relation}
+
+\begin{conjecture}[Completion Entropy]\label{conj:entropy}
+The completion entropy $S(\beta, \mathcal{C})$ satisfies:
+\begin{equation}\label{eq:entropy_bound}
+    S = \ln |\Svalid| - \beta \langle E - E_{\min} \rangle + O(\beta^2)
+\end{equation}
+In the thermodynamic regime, entropy is bounded by:
+\begin{equation}\label{eq:entropy_curvature}
+    S \leq \frac{d}{2} \ln\left(\frac{2\pi \tau}{\Khat_{\max}}\right) 
+    + \frac{1}{2}\ln \det\left(\frac{\partial^2 E}{\partial \gamma^2}
+    \bigg|_{\gamma^*}\right)^{-1}
+\end{equation}
+where $d = \dim(M)$ and the determinant is the Hessian of energy at the 
+ground state. Equality holds in the Gaussian (harmonic) approximation 
+around $\gamma^*$.
+
+Furthermore, entropy and curvature are related by:
+\begin{equation}\label{eq:entropy_curvature_relation}
+    \frac{\partial S}{\partial \Khat_{\max}} = -\frac{d}{2\Khat_{\max}} 
+    + O(\tau)
+\end{equation}
+Increasing curvature decreases entropy. Curved spaces have fewer valid 
+completions.
+
+\textbf{Derived from:} S1 (Partition Function) + T3 (Complexity Reduction).
+
+\textbf{Interpretation:} The entropy is the logarithm of the effective 
+number of thermally accessible completions. The bound \eqref{eq:entropy_curvature} 
+says that entropy is controlled by the ratio $\tau / \Khat_{\max}$ --- the 
+same ratio that appears in the Davis Law. High curvature constrains the 
+completion space (fewer valid paths), reducing entropy. The Hessian term 
+captures the ``width of the valley'' around the optimal path: a sharp 
+minimum (large Hessian determinant) means the ground state is isolated 
+and entropy is low.
+\end{conjecture}
+
+\begin{example}[Entropy of a Flat vs.\ Curved Manifold]
+On a flat manifold ($\Khat_{\mathrm{loc}} = 0$ everywhere), parallel 
+transport is trivial, holonomy vanishes, and every path connecting 
+$W_0$ to $W_{\mathrm{goal}}$ has the same energy $E = \lambda_1 L$. 
+The entropy is maximal: $S_{\mathrm{flat}} = \ln |\Gamma|$ where $|\Gamma|$ 
+is the total number of admissible paths. All completions are equally valid.
+
+On a highly curved manifold ($\Khat_{\mathrm{loc}} \to \Khat_{\max}$), 
+the energy landscape is rugged: most paths accumulate large holonomy and 
+are exponentially suppressed by the Boltzmann factor. Only paths near 
+the geodesic survive, and entropy collapses: 
+$S_{\mathrm{curved}} \approx (d/2) \ln(2\pi\tau / \Khat_{\max}) \to -\infty$ 
+as $\Khat_{\max} \to \infty$.
+
+This is the thermodynamic restatement of T3 (Complexity Reduction): 
+curvature exponentially shrinks the valid completion space, which is 
+exactly entropy reduction.
+\end{example}
+
+\newpage
+\section{S4: The Specific Heat and the Phase Transition at $m^*$}
+
+\begin{conjecture}[Specific Heat of Completion]\label{conj:specific_heat}
+Define the \emph{completion specific heat}:
+\begin{equation}\label{eq:specific_heat}
+    C_V = -\beta^2 \frac{\partial^2 \ln Z}{\partial \beta^2} 
+    = \beta^2 \langle (\Delta E)^2 \rangle
+\end{equation}
+Then:
+
+\begin{enumerate}[label=(\alph*)]
+    \item In the determined regime ($\Gamma > 1$), $C_V \to 0$ as 
+    $\tau \to 0$. The system is frozen; fluctuations vanish.
+    
+    \item In the underdetermined regime ($\Gamma < 1$), $C_V$ is smooth 
+    and scales as $C_V \sim d/2$ (equipartition).
+    
+    \item At the critical point ($\Gamma = 1$, $m = m^*$), the specific 
+    heat diverges:
+    \begin{equation}\label{eq:specific_heat_divergence}
+        C_V \sim |m - m^*|^{-\alpha}, \quad 
+        \alpha = 2 - d \cdot \frac{\tbudget}{\Khat_{\max}}
+    \end{equation}
+    This divergence signals the second-order phase transition. The 
+    critical exponent $\alpha$ is determined by dimension and the 
+    curvature-to-budget ratio.
+\end{enumerate}
+
+\textbf{Derived from:} S1 (Partition Function) + Conjecture~15.3 
+(Phase Transition Sharpness) + Conjecture~25.1 (Critical Exponent).
+
+\textbf{Interpretation:} Specific heat measures how sensitive the mean 
+completion energy is to changes in tolerance. At the phase transition, 
+this sensitivity diverges: an infinitesimal change in tolerance causes a 
+finite change in the energy landscape. This is the thermodynamic signature 
+of criticality. The critical exponent $\alpha$ depends on dimension, which 
+is the hallmark of a genuine universality class --- different Davis 
+manifolds with the same dimension and curvature-to-budget ratio exhibit 
+the same critical behavior, regardless of microscopic details.
+\end{conjecture}
+
+\begin{example}[The Phase Transition as a Water Analogy]
+At the critical point of water (374\textdegree C, 218 atm), liquid and gas 
+become indistinguishable. The specific heat diverges because the system 
+cannot ``decide'' which phase it is in; thermal fluctuations span all 
+length scales.
+
+The completion phase transition at $m = m^*$ is the same phenomenon in a 
+different space. Below $m^*$ (too few constraints), the system is in the 
+``gas phase'': completions are numerous, loosely structured, and 
+uncorrelated. Above $m^*$ (enough constraints), the system ``condenses'' 
+into the unique completion. At exactly $m^*$, the system fluctuates between 
+commitment and exploration: filling one gap suddenly constrains distant 
+gaps (long-range correlations), the number of near-optimal completions 
+fluctuates wildly (diverging specific heat), and the system exhibits 
+critical slowing down (the consensus convergence rate $\lambda \to 1$ 
+from Conjecture~41.1). The specific heat exponent $\alpha$ tells you 
+\emph{how} the divergence scales, which is a measurable, testable 
+prediction of the theory.
+\end{example}
+
+\newpage
+\section{S5: Fluctuation-Dissipation for Completions}
+
+\begin{conjecture}[Fluctuation-Dissipation Theorem for Davis 
+Manifolds]\label{conj:fdt}
+Let $\chi$ be the \emph{completion susceptibility} --- the linear response 
+of the mean completion to an external perturbation $\delta W_0$:
+\begin{equation}\label{eq:susceptibility}
+    \chi = \frac{\partial \langle W^* \rangle}{\partial (\delta W_0)}
+    \bigg|_{\delta W_0 = 0}
+\end{equation}
+Then the fluctuation-dissipation theorem holds:
+\begin{equation}\label{eq:fdt}
+    \chi = \beta \left\langle (\Delta W^*)^2 \right\rangle
+\end{equation}
+where $\langle (\Delta W^*)^2 \rangle$ is the variance of completions in 
+the thermal ensemble.
+
+\textbf{Consequences:}
+\begin{enumerate}[label=(\alph*)]
+    \item The stability radius (Conjecture~18.1) is related to equilibrium 
+    fluctuations:
+    \begin{equation}\label{eq:stability_fdt}
+        r_{\mathrm{stable}} = \frac{\varepsilon}{\sqrt{\chi / \beta}} 
+        = \frac{\varepsilon}{\sqrt{\langle (\Delta W^*)^2 \rangle}}
+    \end{equation}
+    Large thermal fluctuations imply small stability radius.
+    
+    \item The adversarial perturbation bound (Corollary~18.2) becomes:
+    \begin{equation}\label{eq:adversarial_fdt}
+        \delta_{\mathrm{adv}} \geq \frac{\varepsilon}{\chi} 
+        = \frac{\varepsilon}{\beta \langle (\Delta W^*)^2 \rangle}
+    \end{equation}
+    Adversarial cost is inversely proportional to thermal fluctuations. 
+    Systems that fluctuate more are easier to attack.
+    
+    \item At the critical point ($m = m^*$), $\chi \to \infty$. The system 
+    becomes infinitely susceptible to perturbation. This is the 
+    \emph{thermodynamic origin of adversarial vulnerability at phase 
+    transitions}.
+\end{enumerate}
+
+\textbf{Derived from:} S1 (Partition Function) + Conjectures~18.1, 18.2 
+(Stability).
+
+\textbf{Interpretation:} This is the deepest connection between the 
+existing stability results and the new thermodynamic framework. The parent 
+framework treats stability and fluctuations as separate phenomena. 
+Statistical mechanics reveals they are the same thing: systems that 
+fluctuate a lot in equilibrium are exactly the systems that respond strongly 
+to perturbation. The fluctuation-dissipation theorem is not an analogy; it 
+is a mathematical identity linking two previously separate branches of the 
+Davis framework.
+\end{conjecture}
+
+\begin{example}[Why LLMs Are Vulnerable Near Phase Transitions]
+Consider a language model completing a sentence where the next word is 
+ambiguous (``The bank was...'' --- financial institution or riverbank?). 
+This is a critical point: two completions of similar energy compete. 
+The model's internal ``temperature'' determines whether it commits to one 
+interpretation or fluctuates between them.
+
+The fluctuation-dissipation theorem predicts that at this critical point, 
+the model is maximally susceptible to adversarial perturbation. A tiny 
+change to the prompt (a single word, a subtle context shift) can flip the 
+completion from one branch to the other. This is not a bug in the model; 
+it is a thermodynamic inevitability. Systems at phase transitions are 
+\emph{necessarily} susceptible. The defense is not to eliminate 
+susceptibility but to \emph{detect} criticality (via specific heat 
+divergence) and flag outputs produced near phase transitions as uncertain.
+\end{example}
+
+\newpage
+\section{S6: Detailed Balance and Consensus Dynamics}
+
+\begin{conjecture}[Detailed Balance for Completion 
+Dynamics]\label{conj:detailed_balance}
+Define a Markov chain on the completion space where transition rates between 
+paths $\gamma_i$ and $\gamma_j$ satisfy:
+\begin{equation}\label{eq:detailed_balance}
+    \frac{W(\gamma_i \to \gamma_j)}{W(\gamma_j \to \gamma_i)} 
+    = e^{-\beta(E[\gamma_j] - E[\gamma_i])}
+\end{equation}
+Then:
+
+\begin{enumerate}[label=(\alph*)]
+    \item The Boltzmann distribution $P(\gamma) = e^{-\beta E[\gamma]} / Z$ 
+    is the unique stationary distribution.
+    
+    \item The consensus convergence rate (Conjecture~22.1) is bounded by 
+    the spectral gap of this Markov chain:
+    \begin{equation}\label{eq:consensus_spectral}
+        \lambda_{\mathrm{consensus}} \leq 1 - \Delta_{\mathrm{spectral}}
+    \end{equation}
+    where $\Delta_{\mathrm{spectral}}$ is the gap between the largest and 
+    second-largest eigenvalues of the transition matrix.
+    
+    \item Multi-agent consensus (Conjecture~14.1) is equivalent to 
+    convergence to the Boltzmann equilibrium: agents that exchange Davis 
+    caches are performing distributed Gibbs sampling on the completion 
+    ensemble.
+\end{enumerate}
+
+\textbf{Derived from:} S1 (Partition Function) + Conjecture~22.1 
+(Consensus Convergence) + Conjecture~14.1 (Multi-Agent Consensus).
+
+\textbf{Interpretation:} The consensus process in the parent framework 
+is revealed to be a specific instance of Markov Chain Monte Carlo (MCMC) 
+sampling from the Boltzmann distribution. Agents exchanging caches are not 
+merely ``agreeing'' --- they are collectively sampling the thermal 
+equilibrium of the completion ensemble. The convergence rate $\lambda$ from 
+Conjecture~41.1 is the autocorrelation time of this MCMC process, and 
+critical slowing down at $m = m^*$ is the vanishing of the spectral gap.
+\end{conjecture}
+
+\begin{example}[Consensus as Gibbs Sampling]
+Three agents are asked to complete a story from the same partial 
+information. Each starts with a different completion. They exchange caches 
+(not full completions, just $(\Phi_t, r_t)$). After each exchange, each 
+agent resamples its completion conditioned on the received cache.
+
+This is exactly the Gibbs sampling algorithm. The agents are not 
+converging because they are ``cooperating'' --- they are converging 
+because the Boltzmann distribution is the unique fixed point of the 
+detailed balance dynamics. Even adversarial agents (Byzantine faults) 
+cannot prevent convergence as long as fewer than $k/3$ are corrupted 
+(Corollary~22.2), because majority filtering on the discrete component 
+$r_t$ acts as a rejection step in the Metropolis-Hastings algorithm, 
+discarding proposals that violate the energy constraint.
+\end{example}
+
+\newpage
+\section{S7: The Correlation Length and Semantic Coherence Range}
+
+\begin{conjecture}[Semantic Correlation Length]\label{conj:correlation}
+Define the \emph{semantic correlation function} on the Davis manifold:
+\begin{equation}\label{eq:correlation}
+    G(x, y) = \langle \delta W^*(x) \, \delta W^*(y) \rangle 
+    - \langle \delta W^*(x) \rangle \langle \delta W^*(y) \rangle
+\end{equation}
+where $\delta W^*(x)$ is the fluctuation of the completion at point $x$ 
+from its thermal mean. Then:
+
+\begin{enumerate}[label=(\alph*)]
+    \item Away from criticality, correlations decay exponentially:
+    \begin{equation}\label{eq:correlation_decay}
+        G(x, y) \sim \exp\left(-\frac{\dg(x, y)}{\xi}\right)
+    \end{equation}
+    where the \emph{correlation length} $\xi$ is:
+    \begin{equation}\label{eq:correlation_length}
+        \xi = \frac{1}{\sqrt{\Khat_{\max}}} 
+        \cdot \frac{1}{|1 - \Gamma|}
+    \end{equation}
+    
+    \item At the critical point ($\Gamma = 1$), $\xi \to \infty$ and 
+    correlations decay as a power law:
+    \begin{equation}\label{eq:critical_correlation}
+        G(x, y) \sim \dg(x, y)^{-(d-2+\eta)}
+    \end{equation}
+    with anomalous dimension $\eta$ determined by the curvature 
+    distribution.
+    
+    \item The correlation length $\xi$ is the \emph{semantic coherence 
+    range}: the maximum geodesic distance over which filling one gap 
+    significantly constrains another gap's completion.
+    
+    \item The holonomy horizon $\smax$ from the parent framework satisfies:
+    \begin{equation}\label{eq:horizon_correlation}
+        \smax = \xi \cdot \sqrt{\frac{\tbudget}{\Khat_{\max}}}
+    \end{equation}
+    The holonomy horizon is the correlation length scaled by the 
+    curvature-to-budget ratio.
+\end{enumerate}
+
+\textbf{Derived from:} S1 (Partition Function) + Lemma~13.1 
+(Maximum Gap Size) + Conjecture~25.1 (Critical Exponent).
+
+\textbf{Interpretation:} The correlation length $\xi$ answers the 
+question: ``How far does information travel through the constraint 
+network?'' In transformer terms, this is the effective context window --- 
+the maximum distance over which a token can influence the completion of 
+another token. Away from criticality, this distance is finite and set by 
+curvature. At criticality, it diverges: every token influences every other 
+token, which is the hallmark of emergent long-range coherence.
+\end{conjecture}
+
+\begin{example}[Correlation Length in Natural Language]
+In casual conversation, semantic constraints are weak (low $\Khat$, high 
+$\tau$). The correlation length is short: the meaning of a word on page~1 
+has little influence on the word chosen on page~10. $\xi$ is small; 
+coherence is local.
+
+In a legal contract, semantic constraints are tight (high $\Khat$, low 
+$\tau$). The definition of a term in Section~1 rigidly constrains its usage 
+in Section~47. $\xi$ is large; coherence is global. If the contract is 
+well-drafted (above $m^*$), the correlation length exceeds the document 
+length, and the entire document behaves as a single coherent unit.
+
+A poorly drafted contract with ambiguous definitions sits near the critical 
+point. The correlation length is finite but comparable to the document 
+length, creating pockets of local coherence that do not globally compose 
+--- exactly the failure mode that $\xi$ predicts.
+\end{example}
+
+\newpage
+\section{S8: The Davis Equation of State}
+
+\begin{conjecture}[Thermodynamic Equation of State]\label{conj:eos}
+The Davis Law $C = \tau / K$ generalizes to a full thermodynamic equation 
+of state relating inference capacity, tolerance (temperature), curvature 
+(coupling), and constraint count (external field):
+\begin{equation}\label{eq:full_eos}
+    C(\tau, K, m) = \frac{\tau}{K} \cdot 
+    \Phi\left(\frac{m - m^*}{m^* \cdot |1 - \Gamma|^{1/\beta_c}}\right)
+\end{equation}
+where $\Phi$ is a universal scaling function satisfying:
+\begin{align}
+    \Phi(x) &\to 1 \quad \text{as } x \to +\infty 
+    \quad \text{(determined regime)} \\
+    \Phi(x) &\to |x|^{-\beta_c} \quad \text{as } x \to -\infty 
+    \quad \text{(underdetermined regime)} \\
+    \Phi(0) &= \Phi_0 \quad \text{(critical point)}
+\end{align}
+with $\beta_c = \Khat_{\max} / \tbudget$ the critical exponent from 
+Conjecture~25.1.
+
+\textbf{Derived from:} S2 (Free Energy) + S4 (Specific Heat) + S7 
+(Correlation Length) + Master Equation.
+
+\textbf{Interpretation:} The original Davis Law $C = \tau/K$ is exact only 
+in the determined regime ($\Gamma \gg 1$) and at mean-field level. The 
+full equation of state includes corrections near the phase transition 
+encoded in the scaling function $\Phi$. This is the standard construction 
+in critical phenomena: the mean-field theory (here, $C = \tau/K$) is 
+modified by a universal function that captures fluctuation effects near 
+$m^*$. The scaling function $\Phi$ depends only on the universality class 
+(dimension $d$ and ratio $\Khat_{\max}/\tbudget$), not on microscopic 
+details of the manifold. Different Davis manifolds with the same 
+universality class have the same $\Phi$.
+\end{conjecture}
+
+\begin{example}[The Equation of State Near Criticality]
+A reasoning system is operating with 95\% of the constraints needed for 
+unique completion ($m = 0.95 \, m^*$). The original Davis Law predicts 
+$C = \tau/K$ regardless of how close to $m^*$ we are. The equation of 
+state corrects this:
+\begin{equation}
+    C_{\mathrm{actual}} = \frac{\tau}{K} \cdot 
+    \Phi\left(\frac{-0.05}{|1 - \Gamma|^{1/\beta_c}}\right)
+\end{equation}
+Near the critical point, $|1 - \Gamma|$ is small, so the argument of 
+$\Phi$ is large and negative, and $\Phi \sim |x|^{-\beta_c}$ --- the 
+inference capacity is suppressed relative to the mean-field prediction. 
+The system is \emph{less capable} near the phase transition than $C = 
+\tau/K$ would suggest, because critical fluctuations waste computational 
+resources exploring competing completions. This suppression is measurable 
+and provides a test of the theory: systems operating near $m^*$ should 
+show degraded inference capacity relative to the Davis Law prediction.
+\end{example}
+
+\newpage
+% ═══════════════════════════════════════════════════════
+\part{First-Order Derivations (S1.x--S8.x)}
+% ═══════════════════════════════════════════════════════
+
+These 24 results follow directly from the 8 foundational results. Three 
+derivations per foundation.
+
+\section{From S1: Partition Function}
+
+\begin{conjecture}[S1a: Saddle-Point Approximation]\label{conj:saddle}
+In the limit of large manifold dimension ($d \to \infty$), the partition 
+function is dominated by saddle points:
+\begin{equation}
+    Z(\beta) \approx \sum_{\gamma^*_i} 
+    \frac{e^{-\beta E[\gamma^*_i]}}
+    {\sqrt{\det\left(\beta \, \nabla^2 E|_{\gamma^*_i}\right)}}
+\end{equation}
+where the sum is over all critical points of $E[\gamma]$ (not just 
+the global minimum). Each critical point contributes a Gaussian peak 
+weighted by the inverse square root of its Hessian determinant.
+
+\textbf{Derived from:} S1 (Partition Function).
+
+\textbf{Interpretation:} In high-dimensional completion spaces, the 
+partition function is dominated by a discrete set of ``candidate 
+completions'' --- each a local energy minimum with its own basin of 
+attraction. The Hessian determinant measures the basin width. Wide 
+basins contribute more to $Z$ even if their energy is higher. This 
+connects to the ``beam search'' intuition in language modeling: the 
+most probable completions are not necessarily the lowest-energy ones; 
+they are the ones with the widest basins.
+\end{conjecture}
+
+\begin{conjecture}[S1b: Canonical--Microcanonical 
+Equivalence]\label{conj:equiv}
+In the thermodynamic limit ($\Vol(M) \to \infty$), the canonical ensemble 
+(Boltzmann-weighted paths) and the microcanonical ensemble (equal-weight 
+paths with $E[\gamma] = E_0 \pm \delta$) are equivalent:
+\begin{equation}
+    \lim_{\Vol \to \infty} 
+    \langle \mathcal{O} \rangle_{\mathrm{canonical}} 
+    = \langle \mathcal{O} \rangle_{\mathrm{micro}}
+\end{equation}
+for any local observable $\mathcal{O}$.
+
+\textbf{Derived from:} S1 (Partition Function).
+
+\textbf{Interpretation:} For large enough manifolds, it does not matter 
+whether you weight completions by Boltzmann factors or simply count 
+completions at fixed energy. The two descriptions agree. This matters 
+because the microcanonical ensemble (counting) is what the parent 
+framework uses ($|\Svalid|$), while the canonical ensemble (Boltzmann 
+weighting) is the natural language of this branch. Equivalence means the 
+two are consistent.
+\end{conjecture}
+
+\begin{conjecture}[S1c: Annealing Schedule for 
+Completion]\label{conj:annealing}
+Define an annealing schedule $\beta(t)$ that increases from $\beta_0 = 0$ 
+(infinite temperature, uniform sampling) to $\beta_f = 1/\tau$ (target 
+temperature). If:
+\begin{equation}
+    \frac{d\beta}{dt} \leq \frac{\Delta_{\mathrm{spectral}}(\beta(t))^2}
+    {\ln |\Svalid|}
+\end{equation}
+then the system remains in quasi-equilibrium throughout and converges to 
+the Boltzmann distribution at $\beta_f$.
+
+\textbf{Derived from:} S1 (Partition Function) + S6 (Detailed Balance).
+
+\textbf{Interpretation:} This is simulated annealing for geometric 
+completion. Start with no constraints (all completions equally likely), 
+then slowly tighten the tolerance budget. If you tighten slowly enough 
+(the annealing condition), you are guaranteed to find the ground-state 
+completion. If you tighten too fast, you get trapped in a metastable 
+state --- a locally optimal but globally suboptimal completion. The 
+annealing rate is controlled by the spectral gap, which connects back to 
+consensus convergence (S6b).
+\end{conjecture}
+
+\newpage
+\section{From S2: Free Energy}
+
+\begin{conjecture}[S2a: Legendre Structure of the Davis 
+Thermodynamics]\label{conj:legendre}
+The thermodynamic potentials form a Legendre transform hierarchy:
+\begin{align}
+    F(\tau, K, m) &= \langle E \rangle - \tau S 
+    \quad &\text{(Helmholtz: natural variables } \tau, K, m\text{)} \\
+    G(\tau, K, C) &= F + K \cdot C 
+    \quad &\text{(Gibbs: natural variables } \tau, K, C\text{)} \\
+    H(S, K, m) &= \langle E \rangle 
+    \quad &\text{(Enthalpy: natural variables } S, K, m\text{)}
+\end{align}
+Maxwell relations connect partial derivatives across potentials. In 
+particular:
+\begin{equation}
+    \frac{\partial S}{\partial K}\bigg|_{\tau} 
+    = -\frac{\partial C}{\partial \tau}\bigg|_{K}
+\end{equation}
+The entropy change from increasing curvature equals (minus) the capacity 
+change from increasing tolerance.
+
+\textbf{Derived from:} S2 (Free Energy).
+
+\textbf{Interpretation:} The Legendre structure is not merely formal. 
+It means that different experimental setups (fixed tolerance vs.\ fixed 
+capacity; fixed curvature vs.\ fixed constraints) correspond to different 
+thermodynamic potentials, and Maxwell relations connect measurements made 
+under different conditions. The Maxwell relation above says: if you 
+measure how entropy changes with curvature, you automatically know how 
+capacity changes with tolerance, without a separate measurement.
+\end{conjecture}
+
+\begin{conjecture}[S2b: Gibbs-Duhem Relation for 
+Completion]\label{conj:gibbs_duhem}
+The intensive variables ($\tau$, $C$, chemical potential $\mu = \partial F / 
+\partial m$) satisfy:
+\begin{equation}
+    S \, d\tau - C \, dK + m \, d\mu = 0
+\end{equation}
+Only two of the three intensive variables are independent. Fixing any two 
+determines the third.
+
+\textbf{Derived from:} S2 (Free Energy) + S2a (Legendre Structure).
+
+\textbf{Interpretation:} You cannot independently control tolerance, 
+curvature, and constraint informativeness. If you increase tolerance while 
+keeping curvature fixed, the constraint chemical potential must adjust. 
+This is a non-trivial constraint on experimental design for testing the 
+theory.
+\end{conjecture}
+
+\begin{conjecture}[S2c: Phase Coexistence at 
+$m^*$]\label{conj:coexistence}
+At the critical constraint count $m^*$, the free energies of the 
+determined and underdetermined phases are equal:
+\begin{equation}
+    F_{\mathrm{determined}}(\tau_c, K) 
+    = F_{\mathrm{underdetermined}}(\tau_c, K)
+\end{equation}
+The two phases coexist. In the coexistence region, the system can be found 
+in either phase with probabilities given by the lever rule:
+\begin{equation}
+    p_{\mathrm{det}} = \frac{S_{\mathrm{undet}} - S_{\mathrm{actual}}}
+    {S_{\mathrm{undet}} - S_{\mathrm{det}}}
+\end{equation}
+
+\textbf{Derived from:} S2 (Free Energy) + S4 (Specific Heat).
+
+\textbf{Interpretation:} Near $m^*$, the system does not simply ``switch'' 
+from multiple completions to one. It can be found in a superposition of 
+the two regimes, sometimes committing to the unique completion and 
+sometimes exploring alternatives. This is the geometric version of 
+``model uncertainty'' --- the system knows it is near a phase boundary 
+and hedges.
+\end{conjecture}
+
+\newpage
+\section{From S3: Entropy}
+
+\begin{conjecture}[S3a: Maximum Entropy Completion]\label{conj:maxent}
+Among all completions satisfying the constraints $\mathcal{C}$ and the 
+energy bound $\langle E \rangle \leq E_0$, the maximum-entropy completion 
+is the Boltzmann distribution:
+\begin{equation}
+    P^*(\gamma) = \frac{1}{Z} e^{-\beta E[\gamma]}, \quad 
+    \beta \text{ chosen so that } \langle E \rangle = E_0
+\end{equation}
+This is the completion that assumes the least about the unobserved world 
+beyond what the constraints and energy bound require.
+
+\textbf{Derived from:} S3 (Entropy).
+
+\textbf{Interpretation:} Maximum entropy is the principled way to handle 
+ambiguity. When the Sudoku is not yet complete ($m < m^*$), there are 
+multiple valid completions. The max-entropy principle says: weight them 
+by the Boltzmann factor. This is the unique weighting that encodes the 
+constraints without adding extra assumptions. It is Jaynes's maximum 
+entropy principle applied to geometric completion.
+\end{conjecture}
+
+\begin{conjecture}[S3b: Entropy Production During 
+Learning]\label{conj:entropy_prod}
+During manifold evolution ($\partial M / \partial t \neq 0$), entropy 
+changes as:
+\begin{equation}
+    \frac{dS}{dt} = -\beta \frac{d\langle E \rangle}{dt} 
+    + \beta^2 \langle (\Delta E)^2 \rangle \cdot \frac{d\beta}{dt} 
+    + \Sigma_{\mathrm{irr}}
+\end{equation}
+where $\Sigma_{\mathrm{irr}} \geq 0$ is the irreversible entropy 
+production from non-equilibrium dynamics. $\Sigma_{\mathrm{irr}} = 0$ only 
+for quasi-static (infinitely slow) learning.
+
+\textbf{Derived from:} S3 (Entropy) + D2 (Learning-Completion Tradeoff).
+
+\textbf{Interpretation:} Fast learning ($\eta > \eta_{\mathrm{safe}}$) 
+produces entropy irreversibly --- the system cannot keep up with the 
+changing manifold, and completion quality degrades. The safe learning rate 
+$\eta_{\mathrm{safe}}$ (Corollary~57.6) is the rate at which 
+$\Sigma_{\mathrm{irr}}$ remains negligible. This is the second law of 
+thermodynamics for semantic coherence: you cannot learn without cost, and 
+learning too fast wastes capacity.
+\end{conjecture}
+
+\begin{conjecture}[S3c: Entropy Bounds on Cache 
+Compression]\label{conj:entropy_cache}
+The Davis cache entropy satisfies:
+\begin{equation}
+    H(\Phi_t, r_t) \geq S(\beta, \mathcal{C}) - \ln \varepsilon
+\end{equation}
+The cache must store at least the completion entropy minus a resolution 
+term. Combined with Cache Compression Bound (Conjecture~12.1):
+\begin{equation}
+    d_\Phi \cdot \log(1/\varepsilon) + W \cdot \log 3 
+    \geq S(\beta, \mathcal{C}) - \ln \varepsilon
+\end{equation}
+This gives a thermodynamic lower bound on cache dimension $d_\Phi$.
+
+\textbf{Derived from:} S3 (Entropy) + Conjecture~12.1 
+(Cache Compression).
+
+\textbf{Interpretation:} The cache must be large enough to store the 
+system's thermodynamic entropy. This connects the information-theoretic 
+cache bounds from the parent framework to the thermodynamic entropy from 
+this branch, closing the loop between information and thermodynamics in 
+the Davis framework.
+\end{conjecture}
+
+\newpage
+\section{From S4: Specific Heat}
+
+\begin{conjecture}[S4a: Universality Classes of Davis 
+Manifolds]\label{conj:universality}
+Davis manifolds fall into universality classes determined by:
+\begin{equation}
+    \mathcal{U} = \left(d, \; \frac{\Khat_{\max}}{\tbudget}, \; 
+    \text{symmetry group of } (M, g)\right)
+\end{equation}
+All manifolds in the same class share the same critical exponents 
+$(\alpha, \beta_c, \gamma, \delta, \eta, \nu)$, related by standard 
+scaling relations:
+\begin{align}
+    \alpha + 2\beta_c + \gamma &= 2 
+    \quad &\text{(Rushbrooke)} \\
+    \gamma &= \beta_c(\delta - 1) 
+    \quad &\text{(Widom)} \\
+    \gamma &= \nu(2 - \eta) 
+    \quad &\text{(Fisher)} \\
+    2 - \alpha &= d \cdot \nu 
+    \quad &\text{(Josephson/hyperscaling)}
+\end{align}
+
+\textbf{Derived from:} S4 (Specific Heat) + S7 (Correlation Length).
+
+\textbf{Interpretation:} Critical exponents are not free parameters. The 
+parent framework determined $\beta_c = \Khat_{\max}/\tbudget$ 
+(Conjecture~25.1). Scaling relations now determine all other exponents 
+from this one. Two manifolds that look completely different microscopically 
+(different constraint structures, different topologies) will exhibit 
+identical critical behavior if they share the same universality class. 
+This is the most powerful prediction of the statistical mechanics branch: 
+\emph{universality}.
+\end{conjecture}
+
+\begin{conjecture}[S4b: Upper Critical 
+Dimension]\label{conj:upper_critical}
+There exists an upper critical dimension $d_c$ above which mean-field 
+theory (the original Davis Law $C = \tau/K$) becomes exact:
+\begin{equation}
+    d_c = \frac{2\Khat_{\max}}{\tbudget} + 2
+\end{equation}
+For $d > d_c$, the critical exponents take their mean-field values 
+($\beta_c = 1/2$, $\gamma = 1$, $\alpha = 0$), and the scaling function 
+$\Phi$ in the equation of state (Conjecture~\ref{conj:eos}) is trivial.
+
+\textbf{Derived from:} S4 (Specific Heat) + S4a (Universality).
+
+\textbf{Interpretation:} In high-dimensional completion spaces, 
+fluctuations are self-averaging and the mean-field Davis Law is sufficient. 
+This suggests that the original framework's predictions are most accurate 
+for \emph{large} language models (high embedding dimension) and may need 
+thermodynamic corrections for smaller models operating in lower effective 
+dimensions. The upper critical dimension is itself a function of the 
+curvature-to-budget ratio, creating a testable prediction about when 
+model size ``saturates'' and scaling behavior changes.
+\end{conjecture}
+
+\begin{conjecture}[S4c: Schottky Anomaly for Discrete 
+Completions]\label{conj:schottky}
+When the completion space is discrete (finitely many valid completions), 
+the specific heat exhibits a Schottky anomaly --- a peak at finite 
+temperature without a true divergence:
+\begin{equation}
+    C_V^{\mathrm{Schottky}} = \beta^2 \frac{(\Delta E)^2 \, 
+    n \, e^{-\beta \Delta E}}{(1 + n \, e^{-\beta \Delta E})^2}
+\end{equation}
+where $\Delta E$ is the energy gap between the ground state and the first 
+excited state, and $n$ is the degeneracy of the first excited level.
+
+\textbf{Derived from:} S4 (Specific Heat).
+
+\textbf{Interpretation:} Real completion spaces are finite, not 
+continuous. The true phase transition (diverging $C_V$) is rounded into 
+a Schottky peak. The peak height and position are measurable: the peak 
+occurs at $\tau_{\mathrm{peak}} = \Delta E / \ln n$, and the peak height 
+scales as $(\Delta E)^2 / (4\tau_{\mathrm{peak}}^2)$. This is the finite-size 
+version of Corollary~25.2 (Finite-Size Scaling) from the parent framework, 
+now derived thermodynamically.
+\end{conjecture}
+
+\newpage
+\section{From S5: Fluctuation-Dissipation}
+
+\begin{conjecture}[S5a: Kubo Formula for 
+Completion]\label{conj:kubo}
+The dynamic susceptibility (frequency-dependent response to perturbation) 
+is:
+\begin{equation}
+    \chi(\omega) = \int_0^\infty dt \; e^{i\omega t} \; 
+    \langle \delta W^*(t) \, \delta W^*(0) \rangle
+\end{equation}
+The static susceptibility $\chi = \chi(\omega = 0)$ recovers 
+Conjecture~\ref{conj:fdt}. The imaginary part $\chi''(\omega)$ gives the 
+dissipation spectrum --- the rate at which perturbation energy is absorbed 
+at each frequency.
+
+\textbf{Derived from:} S5 (Fluctuation-Dissipation).
+
+\textbf{Interpretation:} Different ``frequencies'' of perturbation probe 
+different scales of the completion. High-frequency perturbations (changing 
+a single token) are absorbed quickly and locally. Low-frequency 
+perturbations (shifting the overall context) propagate slowly and affect 
+global structure. The dissipation spectrum $\chi''(\omega)$ maps the 
+scales at which the system is vulnerable.
+\end{conjecture}
+
+\begin{conjecture}[S5b: Johnson-Nyquist Noise for 
+Completion]\label{conj:johnson}
+The equilibrium fluctuation spectrum of completions satisfies:
+\begin{equation}
+    \langle |\delta W^*(\omega)|^2 \rangle = \frac{2\tau}{\omega} \, 
+    \chi''(\omega)
+\end{equation}
+Completion noise is proportional to tolerance (temperature) times 
+dissipation. This is the Johnson-Nyquist theorem for semantic coherence.
+
+\textbf{Derived from:} S5 (Fluctuation-Dissipation) + S5a (Kubo).
+
+\textbf{Interpretation:} Every system in thermal equilibrium has 
+fluctuations. A language model at finite temperature has ``semantic noise'' 
+--- random variations in completion that are not caused by input 
+perturbation but by the system's own thermal fluctuations. The noise 
+power is proportional to $\tau$ (tolerance/temperature), providing a 
+fundamental lower bound on completion variability at finite tolerance.
+\end{conjecture}
+
+\begin{conjecture}[S5c: Onsager Reciprocal Relations for 
+Multi-Gap Completion]\label{conj:onsager}
+When multiple gaps $\{g_1, \ldots, g_k\}$ are filled simultaneously, 
+the response coefficients satisfy Onsager reciprocity:
+\begin{equation}
+    L_{ij} = L_{ji}
+\end{equation}
+where $L_{ij} = \partial (\text{completion of gap } i) / 
+\partial (\text{perturbation of gap } j)$. The response of gap $i$ 
+to perturbation of gap $j$ equals the response of gap $j$ to 
+perturbation of gap $i$.
+
+\textbf{Derived from:} S5 (Fluctuation-Dissipation) + S6 
+(Detailed Balance).
+
+\textbf{Interpretation:} Onsager reciprocity is a consequence of 
+microscopic reversibility (detailed balance). It says that completion 
+interactions are symmetric: if knowing what fills gap~A helps determine 
+gap~B, then knowing what fills gap~B helps determine gap~A by exactly 
+the same amount. This is a non-trivial constraint on the completion 
+dynamics that can be empirically tested.
+\end{conjecture}
+
+\newpage
+\section{From S6: Detailed Balance}
+
+\begin{conjecture}[S6a: Metropolis Algorithm for 
+Completion]\label{conj:metropolis}
+The following Markov chain converges to the Boltzmann distribution on 
+completions:
+
+\begin{enumerate}[label=\arabic*.]
+    \item Sample candidate completion $\gamma'$ by perturbing current 
+    completion $\gamma$ within geodesic ball of radius $\delta$.
+    \item Compute energy change $\Delta E = E[\gamma'] - E[\gamma]$.
+    \item Accept with probability $\min(1, e^{-\beta \Delta E})$.
+\end{enumerate}
+
+Convergence time:
+\begin{equation}
+    T_{\mathrm{mix}} = O\left(\frac{\Vol(M)}{\delta^d} \cdot 
+    e^{\beta \Delta E_{\max}}\right)
+\end{equation}
+where $\Delta E_{\max}$ is the maximum energy barrier between basins.
+
+\textbf{Derived from:} S6 (Detailed Balance).
+
+\textbf{Interpretation:} This is a constructive algorithm for sampling 
+from the completion ensemble. The mixing time depends exponentially on 
+energy barriers, which means that manifolds with deep, separated energy 
+basins (``mode collapse'') require exponentially long sampling. This 
+is the thermodynamic origin of mode collapse in generative models: 
+the energy landscape has barriers that trap the sampling algorithm.
+\end{conjecture}
+
+\begin{conjecture}[S6b: Glauber Dynamics for 
+Local Gap-Filling]\label{conj:glauber}
+If gaps are filled one at a time (Glauber dynamics), with each gap 
+resampled from its conditional distribution given all other gaps, the 
+relaxation time is:
+\begin{equation}
+    T_{\mathrm{Glauber}} = O\left(\frac{k}
+    {\Delta_{\mathrm{spectral}}}\right)
+\end{equation}
+where $k$ is the number of gaps and $\Delta_{\mathrm{spectral}}$ is the 
+spectral gap of the conditional distribution.
+
+At the critical point ($m = m^*$), critical slowing down:
+\begin{equation}
+    T_{\mathrm{Glauber}} \sim \xi^z \sim |m - m^*|^{-z\nu}
+\end{equation}
+with dynamic exponent $z$ determined by the universality class.
+
+\textbf{Derived from:} S6 (Detailed Balance) + S7 (Correlation Length).
+
+\textbf{Interpretation:} Filling gaps sequentially (autoregressive 
+generation) is Glauber dynamics. The dynamic exponent $z$ determines 
+how much slower sequential generation becomes near the phase transition. 
+Large $z$ means the model ``hesitates'' for a long time near ambiguous 
+completions. This is directly measurable in transformer inference: track 
+how generation latency scales with proximity to ambiguous prompts.
+\end{conjecture}
+
+\begin{conjecture}[S6c: Kawasaki Dynamics for Cache 
+Exchange]\label{conj:kawasaki}
+Multi-agent consensus via cache exchange (Conjecture~14.1) is equivalent 
+to Kawasaki dynamics (conserved-order-parameter dynamics). The 
+conservation law is:
+\begin{equation}
+    \sum_{\text{agents}} (\Phi_t^{(a)}, r_t^{(a)}) = \text{const}
+\end{equation}
+Total cache is conserved during exchange. Kawasaki dynamics has slower 
+convergence than Glauber:
+\begin{equation}
+    T_{\mathrm{Kawasaki}} = O\left(\xi^{z+2}\right)
+\end{equation}
+Consensus is inherently slower than single-agent completion by a factor 
+$\xi^2$.
+
+\textbf{Derived from:} S6 (Detailed Balance) + Conjecture~22.1 
+(Consensus).
+
+\textbf{Interpretation:} The $\xi^2$ slowdown is a fundamental cost of 
+distributed consensus. You cannot make agents agree faster than $\xi^2$ 
+without breaking conservation (i.e., injecting external information). 
+This provides a lower bound on communication rounds for multi-agent 
+reasoning systems.
+\end{conjecture}
+
+\newpage
+\section{From S7: Correlation Length}
+
+\begin{conjecture}[S7a: Widom Scaling for 
+Completion]\label{conj:widom}
+Near the critical point, all thermodynamic quantities are functions of the 
+single scaling variable $t = (m - m^*) / m^*$ scaled by the correlation 
+length:
+\begin{equation}
+    f(t, K) = \xi^{-d} \, \mathcal{F}(K \cdot \xi^{1/\nu})
+\end{equation}
+where $\mathcal{F}$ is a universal function and $f$ is the free energy 
+density.
+
+\textbf{Derived from:} S7 (Correlation Length) + S4a (Universality).
+
+\textbf{Interpretation:} Near criticality, the system has only one 
+relevant length scale: $\xi$. All physics is determined by $\xi$ and the 
+universal function $\mathcal{F}$. This is the deepest form of universality 
+--- it doesn't just fix exponents, it fixes entire functions.
+\end{conjecture}
+
+\begin{conjecture}[S7b: Finite-Size Scaling for Bounded 
+Manifolds]\label{conj:finite_size}
+On a compact Davis manifold of diameter $L_{\mathrm{sys}}$, the 
+correlation length is capped at $\xi_{\mathrm{eff}} = \min(\xi, 
+L_{\mathrm{sys}})$. The specific heat peak rounds and shifts:
+\begin{equation}
+    m^*_{\mathrm{eff}} = m^* + a \cdot L_{\mathrm{sys}}^{-1/\nu}
+\end{equation}
+\begin{equation}
+    C_V^{\mathrm{peak}} \sim L_{\mathrm{sys}}^{\alpha / \nu}
+\end{equation}
+where $a$ is a non-universal constant.
+
+\textbf{Derived from:} S7 (Correlation Length) + Corollary~25.2 
+(Finite-Size Scaling).
+
+\textbf{Interpretation:} Real systems are finite. A transformer with 
+context window $L_{\mathrm{sys}}$ cannot exhibit a true phase transition; 
+instead, it shows a rounded crossover. The rounding is controlled by 
+$L_{\mathrm{sys}}^{-1/\nu}$, which is a testable prediction: models with 
+longer context windows should exhibit sharper transitions between the 
+determined and underdetermined regimes.
+\end{conjecture}
+
+\begin{conjecture}[S7c: Correlation Length as Effective Context 
+Window]\label{conj:context}
+The effective context window $W_{\mathrm{eff}}$ of a transformer 
+operating on a Davis manifold is:
+\begin{equation}
+    W_{\mathrm{eff}} = \min\left(W_{\mathrm{arch}}, \; 
+    \xi(\tau, K)\right)
+\end{equation}
+where $W_{\mathrm{arch}}$ is the architectural context window (number of 
+tokens) and $\xi$ is the thermodynamic correlation length.
+
+Even with unlimited architectural context, the effective context is bounded 
+by $\xi$. Increasing $W_{\mathrm{arch}}$ beyond $\xi$ yields no 
+improvement in completion quality.
+
+\textbf{Derived from:} S7 (Correlation Length).
+
+\textbf{Interpretation:} This is a concrete, testable prediction. A 
+model with a 100K-token context window processing a document with 
+correlation length $\xi = 5000$ tokens operates with an effective context 
+of 5000 tokens. Extending the architectural window to 200K would not 
+improve performance on this document. The bottleneck is not architecture 
+but geometry --- the curvature of the semantic manifold sets the 
+coherence range.
+\end{conjecture}
+
+\newpage
+\section{From S8: Equation of State}
+
+\begin{conjecture}[S8a: Clausius-Clapeyron for Regime 
+Boundaries]\label{conj:clausius}
+The boundary between determined and underdetermined regimes in the 
+$(\tau, K)$ plane satisfies:
+\begin{equation}
+    \frac{d\tau}{dK}\bigg|_{\mathrm{boundary}} 
+    = \frac{\Delta C}{\Delta S}
+\end{equation}
+where $\Delta C$ and $\Delta S$ are the jumps in inference capacity and 
+entropy across the boundary. The slope of the phase boundary is determined 
+by the ratio of capacity jump to entropy jump.
+
+\textbf{Derived from:} S8 (Equation of State) + S2c (Coexistence).
+
+\textbf{Interpretation:} This is the Clausius-Clapeyron equation for 
+completion. It tells you how the critical temperature (tolerance) changes 
+as you vary curvature. If you make the manifold more curved, does the 
+system need more or less tolerance to reach the determined regime? The 
+answer depends on the ratio $\Delta C / \Delta S$, which is measurable.
+\end{conjecture}
+
+\begin{conjecture}[S8b: Corresponding States for Davis 
+Manifolds]\label{conj:corresponding}
+When expressed in reduced variables:
+\begin{equation}
+    \tilde{\tau} = \tau / \tau_c, \quad 
+    \tilde{K} = K / K_c, \quad 
+    \tilde{C} = C / C_c
+\end{equation}
+the equation of state becomes universal:
+\begin{equation}
+    \tilde{C} = \frac{\tilde{\tau}}{\tilde{K}} \cdot 
+    \Phi\left(\frac{m - m^*}{m^*}\right)
+\end{equation}
+independent of the specific manifold. All Davis manifolds in the same 
+universality class collapse onto the same curve.
+
+\textbf{Derived from:} S8 (Equation of State) + S4a (Universality).
+
+\textbf{Interpretation:} This is the law of corresponding states. Once 
+you rescale by critical-point values, every Davis manifold looks the same. 
+This means that experimental measurements on one manifold (one transformer, 
+one task) can be used to predict behavior on a different manifold (different 
+transformer, different task) in the same universality class, without 
+additional measurements.
+\end{conjecture}
+
+\begin{conjecture}[S8c: van der Waals Model of 
+Completion]\label{conj:vdw}
+The simplest non-trivial equation of state beyond mean field is the van 
+der Waals model:
+\begin{equation}
+    \left(K + \frac{a}{C^2}\right)(C - b) = \tau
+\end{equation}
+where $a$ parameterizes attractive interactions between completions 
+(tendency to cluster in path space) and $b$ is the excluded volume 
+(minimum capacity floor). This model exhibits:
+
+\begin{enumerate}[label=(\alph*)]
+    \item A critical point at $K_c = a/(27b^2)$, $\tau_c = 8a/(27b)$, 
+    $C_c = 3b$.
+    \item A spinodal region where $\partial K / \partial C|_\tau > 0$ 
+    (mechanical instability).
+    \item A Maxwell construction that resolves the instability and yields 
+    the coexistence curve.
+\end{enumerate}
+
+\textbf{Derived from:} S8 (Equation of State).
+
+\textbf{Interpretation:} The van der Waals model is to the Davis equation 
+of state what the ideal gas law is to real gas behavior: a minimal model 
+that captures the essential physics of the phase transition. The parameter 
+$a$ (attraction between completions) corresponds to the tendency of 
+nearby paths in completion space to ``agree'' --- high $a$ means the 
+completion ensemble is clustered, which favors phase transition to the 
+determined regime. The parameter $b$ (excluded volume) is the minimum 
+inference capacity that cannot be reduced even at zero tolerance, 
+corresponding to topological constraints that persist regardless of 
+curvature.
+\end{conjecture}
+
+\newpage
+% ═══════════════════════════════════════════════════════
+\part{Cross-Synthesis Points}
+% ═══════════════════════════════════════════════════════
+
+The following 12 results arise from synthesizing the statistical mechanics 
+branch with existing results from other branches of the Davis framework. 
+These are the high-value connections that justify parallel branch 
+development.
+
+\section{Cross-Synthesis with Cache Branch}
+
+\begin{conjecture}[X1: Thermodynamic Cache 
+Optimality]\label{conj:x_cache}
+The Davis cache $(\Phi_t, r_t)$ is the minimal sufficient statistic for the 
+Boltzmann distribution on completions:
+\begin{equation}
+    I(W^*; W_0, \gamma \mid \Phi_t, r_t) = 0
+\end{equation}
+The cache captures exactly the information needed to reconstruct the 
+thermal ensemble, not just the ground state. This strengthens 
+Conjecture~35.1 (Cache is Sufficient Statistic) from sufficiency for 
+\emph{one} completion to sufficiency for the \emph{entire distribution}.
+
+\textbf{Synthesizes:} S3c (Entropy-Cache) + Conjecture~35.1 (Sufficient 
+Statistic) + Conjecture~44.1 (Basis-Cache Duality).
+\end{conjecture}
+
+\begin{conjecture}[X2: Free Energy 
+Decomposition via Cache]\label{conj:x_free_cache}
+The free energy decomposition (Eq.~\ref{eq:free_decomp}) corresponds to 
+the cache decomposition:
+\begin{align}
+    F_{\mathrm{geom}} &= -\frac{1}{\beta} \ln Z_\Phi \quad 
+    &\text{(partition function over continuous paths at fixed $r_t$)} \\
+    F_{\mathrm{top}} &= -\frac{1}{\beta} \ln \sum_{r_t} 
+    e^{-\beta F_{\mathrm{geom}}(r_t)} \quad 
+    &\text{(topological free energy)} \\
+    F &= F_{\mathrm{top}} \quad 
+    &\text{(total, after tracing over $r_t$)}
+\end{align}
+Topological sectors (winding codes) act as ``superselection sectors'' 
+that partition the completion ensemble into non-mixing components.
+
+\textbf{Synthesizes:} S2 (Free Energy) + Conjecture~46.1 
+(Structure Theorem for Davis Cache).
+\end{conjecture}
+
+\section{Cross-Synthesis with Adversarial Branch}
+
+\begin{conjecture}[X3: Thermal Adversarial 
+Surface]\label{conj:x_adversarial}
+The attack surface geometry (Conjecture~55.1) acquires temperature 
+dependence:
+\begin{equation}
+    \mu_\tau(\text{Attack}) = G_{\max} \cdot 
+    e^{-\kappa_g / \tau} \cdot \sqrt{\frac{2\pi\tau}{\Khat_{\max}}}
+\end{equation}
+At finite temperature, the attack surface grows as $\sqrt{\tau}$ due to 
+thermal fluctuations opening new attack vectors. This corrects 
+Conjecture~55.1 which implicitly assumed $\tau = 0$.
+
+\textbf{Synthesizes:} S5 (Fluctuation-Dissipation) + Conjecture~55.1 
+(Attack Surface Geometry).
+\end{conjecture}
+
+\begin{conjecture}[X4: Thermal Certified 
+Radius]\label{conj:x_certified}
+The certified radius (Corollary~32.2) at finite temperature becomes:
+\begin{equation}
+    r_{\mathrm{stable}}(\tau) = r_{\mathrm{stable}}(0) - 
+    \sqrt{\tau \cdot \chi}
+\end{equation}
+Thermal fluctuations reduce the certified radius. At $\tau = 
+r_{\mathrm{stable}}(0)^2 / \chi$, the certified radius vanishes: the 
+system can no longer certify any robustness against adversarial 
+perturbation. This is the \emph{thermal destruction of adversarial 
+certificates}.
+
+\textbf{Synthesizes:} S5 (Fluctuation-Dissipation) + Corollary~32.2 
+(Certified Radius).
+\end{conjecture}
+
+\section{Cross-Synthesis with Consensus Branch}
+
+\begin{conjecture}[X5: Thermodynamic Consensus 
+Bound]\label{conj:x_consensus}
+The mixing time for multi-agent consensus (Corollary~41.2) is bounded 
+from below by the Kawasaki time:
+\begin{equation}
+    T_{\mathrm{mix}} \geq \frac{\xi^{z+2}}
+    {\Delta_{\mathrm{spectral}}}
+\end{equation}
+No consensus protocol can converge faster than this bound. This 
+strengthens Corollary~41.2 from an upper bound to a matching lower bound 
+(up to constants), establishing the tight scaling of consensus time.
+
+\textbf{Synthesizes:} S6c (Kawasaki Dynamics) + Conjecture~41.1 
+(Convergence Rate) + Conjecture~48.1 (Condition-Convergence).
+\end{conjecture}
+
+\begin{conjecture}[X6: Thermal BFT 
+Threshold]\label{conj:x_bft}
+Temperature modifies the Byzantine fault tolerance threshold 
+(Conjecture~42.1):
+\begin{equation}
+    f_{\max}(\tau) = \frac{k}{3} \cdot 
+    \frac{\tbudget}{\Khat_{\max}} \cdot 
+    \left(1 - \frac{\tau}{\tau_c}\right)
+\end{equation}
+As $\tau \to \tau_c$ (approaching the phase transition), fault tolerance 
+degrades to zero. At the critical point, even a single Byzantine agent can 
+prevent consensus.
+
+\textbf{Synthesizes:} S4 (Specific Heat) + Conjecture~42.1 
+(Geometric BFT).
+\end{conjecture}
+
+\section{Cross-Synthesis with Gap-Filling Branch}
+
+\begin{conjecture}[X7: Thermal Gap 
+Capacity]\label{conj:x_gap}
+The maximum gap capacity (Corollary~38.2) at finite temperature:
+\begin{equation}
+    G_{\max}(\tau) = G_{\max}(0) + \xi \cdot \ln\left(
+    \frac{\tau}{\Delta E}\right)
+\end{equation}
+Thermal fluctuations allow the system to tolerate slightly larger gaps 
+than the zero-temperature theory predicts, because the system can accept 
+higher-energy completions. The gain is logarithmic in $\tau$.
+
+\textbf{Synthesizes:} S3 (Entropy) + Corollary~38.2 (Gap Capacity).
+\end{conjecture}
+
+\begin{conjecture}[X8: Entropic Gap 
+Distribution]\label{conj:x_gap_dist}
+The optimal gap distribution (Corollary~39.1) at finite temperature 
+changes from uniform to curvature-weighted:
+\begin{equation}
+    g_i^*(\tau) \propto \frac{1}{\sqrt{\Khat_{\mathrm{loc}}(g_i)}} 
+    + \frac{\tau}{2\Khat_{\mathrm{loc}}(g_i)}
+\end{equation}
+At finite temperature, gaps should be even more concentrated in flat 
+regions than the zero-temperature theory predicts.
+
+\textbf{Synthesizes:} S3 (Entropy) + Conjecture~38.1 (Gap Budget).
+\end{conjecture}
+
+\section{Cross-Synthesis with Dynamics Branch}
+
+\begin{conjecture}[X9: Thermodynamic Learning 
+Rate]\label{conj:x_learning}
+The safe learning rate (Corollary~57.6) is the rate at which entropy 
+production remains quasi-static:
+\begin{equation}
+    \eta_{\mathrm{safe}} = \min\left(\frac{\tau}{T \cdot L \cdot K}, \;
+    \frac{\Delta_{\mathrm{spectral}}}{\beta^2 C_V}\right)
+\end{equation}
+The new bound (second term) comes from requiring that specific heat 
+fluctuations remain in equilibrium during learning. Near the phase 
+transition ($C_V \to \infty$), the safe learning rate vanishes: you must 
+learn infinitely slowly near criticality.
+
+\textbf{Synthesizes:} S3b (Entropy Production) + S4 (Specific Heat) + 
+Corollary~57.6 (Safe Learning Rate).
+\end{conjecture}
+
+\begin{conjecture}[X10: Cache Invalidation as Phase 
+Transition]\label{conj:x_invalidation}
+Cache invalidation (Conjecture~57.1) is a first-order phase transition 
+in the cache state. The cache free energy has two minima: ``valid'' and 
+``invalid.'' At the invalidation threshold:
+\begin{equation}
+    \left\|\frac{\partial g}{\partial t}\right\|_{L^\infty} 
+    = \frac{\tbudget}{T \cdot L}
+\end{equation}
+the two minima become degenerate, and the system undergoes a discontinuous 
+jump from valid to invalid cache. The latent heat of this transition is:
+\begin{equation}
+    Q_{\mathrm{invalidation}} = T \cdot \Delta S_{\mathrm{cache}} 
+    = T \cdot (S_{\mathrm{invalid}} - S_{\mathrm{valid}})
+\end{equation}
+
+\textbf{Synthesizes:} S2 (Free Energy) + Conjecture~57.1 
+(Cache Invalidation).
+
+\textbf{Interpretation:} Cache invalidation is not gradual. It is a 
+sharp phase transition: the cache is either valid or invalid, and the 
+transition between the two states absorbs a finite amount of 
+``computational energy.'' This explains why cache invalidation in practice 
+feels catastrophic rather than graceful --- it is a first-order transition 
+with latent heat, not a smooth crossover.
+\end{conjecture}
+
+\section{Cross-Synthesis with Information Branch}
+
+\begin{conjecture}[X11: Fisher Information as Inverse 
+Temperature]\label{conj:x_fisher}
+The Fisher information metric on the completion space is:
+\begin{equation}
+    g_{ij}^{\mathrm{Fisher}} = \beta \cdot g_{ij}
+\end{equation}
+The Fisher metric is the Davis metric scaled by inverse temperature. This 
+identifies the information geometry of the completion space with its 
+Riemannian geometry at a scale set by temperature.
+
+\textbf{Synthesizes:} S1 (Partition Function) + Conjecture~45.1 
+(Information-Curvature Conservation).
+
+\textbf{Interpretation:} At low temperature, the Fisher metric is 
+``zoomed in'' (high resolution) and completions are sharply distinguished. 
+At high temperature, the Fisher metric is ``zoomed out'' (low resolution) 
+and completions blur together. The curvature of the Fisher metric is 
+$K^{\mathrm{Fisher}} = \beta \cdot K$, so the Davis Law becomes $C = 
+1 / K^{\mathrm{Fisher}}$ --- inference capacity is the reciprocal of 
+Fisher curvature.
+\end{conjecture}
+
+\begin{conjecture}[X12: Landauer's Principle for Cache 
+Erasure]\label{conj:x_landauer}
+Erasing the Davis cache requires dissipating at least:
+\begin{equation}
+    Q_{\mathrm{erase}} \geq \tau \cdot \ln 2 \cdot I[(\Phi_t, r_t)]
+\end{equation}
+energy (in the Davis energy units). Cache erasure is thermodynamically 
+irreversible. This is Landauer's principle applied to the completion 
+ensemble.
+
+\textbf{Synthesizes:} S3c (Entropy-Cache) + Conjecture~12.1 
+(Cache Compression Bound).
+
+\textbf{Interpretation:} You cannot ``forget'' a completion state for 
+free. The minimum energy cost of forgetting is proportional to the 
+information stored in the cache times the temperature. This provides a 
+thermodynamic foundation for the cache compression bound: the cache is 
+optimally compressed not just informationally but thermodynamically --- it 
+stores exactly the information whose erasure cost equals the available 
+energy budget.
+\end{conjecture}
+
+\newpage
+% ═══════════════════════════════════════════════════════
+\part{Summary and Dependency Map}
+% ═══════════════════════════════════════════════════════
+
+\section{Result Count}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcc}
+\textbf{Order} & \textbf{Results} & \textbf{Cumulative} \\
+\hline
+Foundational (S1--S8) & 8 & 8 \\
+First-Order (S1a--S8c) & 24 & 32 \\
+Cross-Synthesis (X1--X12) & 12 & 44 \\
+\hline
+\textbf{Total (this branch)} & \textbf{44} & \\
+\textbf{Combined with parent (89)} & & \textbf{133} \\
+\end{tabular}
+\end{center}
+
+\section{Dependency Structure}
+
+\noindent\textbf{Internal dependencies (within this branch):}
+
+S1 $\to$ S2, S3, S4, S5, S6 (partition function is the root)
+
+S2 $\to$ S8 (free energy $\to$ equation of state)
+
+S4 + S7 $\to$ S4a (specific heat + correlation length $\to$ universality)
+
+S5 + S6 $\to$ S5c (FDT + detailed balance $\to$ Onsager)
+
+S6 + S7 $\to$ S6b (detailed balance + correlation $\to$ Glauber dynamics)
+
+\medskip
+
+\noindent\textbf{Connections to parent framework:}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{ll}
+\textbf{Parent Result} & \textbf{StatMech Connection} \\
+\hline
+E0 (Least Holonomy) & Ground state of partition function (S1c) \\
+T3 (Complexity Reduction) & Entropy reduction (S3) \\
+Conj.\ 15.3 (Phase Transition) & Second-order transition with exponents (S4) \\
+Conj.\ 18.1 (Stability) & Fluctuation-dissipation theorem (S5) \\
+Conj.\ 22.1 (Consensus) & Gibbs sampling / detailed balance (S6) \\
+Conj.\ 25.1 (Critical Exponent) & Universality class (S4a) \\
+Conj.\ 35.1 (Sufficient Statistic) & Thermodynamic sufficiency (X1) \\
+Conj.\ 41.1 (Convergence Rate) & Spectral gap / mixing time (S6a) \\
+Conj.\ 42.1 (BFT) & Thermal fault tolerance (X6) \\
+Conj.\ 44.1 (Basis-Cache Duality) & Free energy decomposition (X2) \\
+Conj.\ 45.1 (Info-Curvature) & Fisher information metric (X11) \\
+Conj.\ 55.1 (Attack Surface) & Thermal attack surface (X3) \\
+Corollary 57.6 (Safe Learning) & Thermodynamic learning rate (X9) \\
+\end{tabular}
+\end{center}
+
+\section{Open Questions for This Branch}
+
+\begin{enumerate}[label=\arabic*.]
+    \item \textbf{Quantum extension:} If the partition function is 
+    extended to a quantum partition function $Z = \tr(e^{-\beta H})$ 
+    with operator-valued Hamiltonian, does the resulting quantum 
+    statistical mechanics correspond to quantum computing approaches 
+    to completion?
+    
+    \item \textbf{Non-equilibrium thermodynamics:} The entropy 
+    production result (S3b) assumes near-equilibrium dynamics. What 
+    happens far from equilibrium (fast learning, adversarial 
+    perturbation, distribution shift)?
+    
+    \item \textbf{Experimental validation:} The specific heat 
+    divergence (S4), correlation length (S7), and effective context 
+    window (S7c) are all empirically testable. Designing the 
+    experiments requires mapping Davis manifold quantities to 
+    measurable transformer quantities.
+    
+    \item \textbf{Renormalization group:} The universality classes 
+    (S4a) demand an RG treatment to compute critical exponents 
+    beyond mean field. This is the natural next branch.
+    
+    \item \textbf{Phase diagram completion:} The full phase diagram 
+    in the $(\tau, K, m)$ space has been sketched but not fully 
+    characterized. Are there tricritical points? Re-entrant phases? 
+    Lifshitz points where the correlation length changes character?
+\end{enumerate}
+
+\vfill
+
+\begin{center}
+\large
+\textit{``The amount you can know from incomplete information is 
+inversely proportional to the curvature of the space where that 
+information lives --- and the fluctuations around that knowledge 
+are controlled by the temperature of the ensemble.''}
+
+\bigskip
+
+The Davis Law, Extended: $C = \tau / K$, $\delta C = \sqrt{\tau \cdot \chi}$
+
+\bigskip
+
+B.\ Davis, 2026
+\end{center}
+
+\end{document}

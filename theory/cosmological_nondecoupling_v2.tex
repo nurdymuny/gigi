@@ -1,0 +1,539 @@
+\documentclass[12pt]{amsart}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage{enumitem}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\vol}{\operatorname{vol}}
+\newcommand{\Riem}{\operatorname{Riem}}
+\newcommand{\Ric}{\operatorname{Ric}}
+\newcommand{\Hol}{\operatorname{Hol}}
+\newcommand{\SYM}{S_{\mathrm{YM}}}
+
+\title[Cosmological Non-Decoupling]{Cosmological Non-Decoupling: \\ Why the Universe Must Expand}
+\author{Bee Rosa Davis}
+\address{Independent Researcher}
+\email{bee\_davis@alumni.brown.edu}
+\date{February 24, 2026}
+
+\begin{document}
+
+\begin{abstract}
+We apply the Davis Non-Decoupling Theorem to cosmological spacetimes, proving that any universe satisfying Einstein's field equations with non-vanishing stress-energy or cosmological constant carries strictly positive holonomy debt density on every Cauchy surface.  The key technical step is the use of the Ashtekar-Barbero $\mathrm{SO}(3)$-connection on spatial slices, which captures both intrinsic and extrinsic curvature in a compact-group connection---resolving the obstruction posed by the non-compact spacetime structure group $\mathrm{SO}(3,1)$ and the vanishing of intrinsic spatial curvature for $k = 0$ FLRW.  We show that geodesic deviation---the physical separation of comoving observers---is driven by the same curvature that generates this holonomy debt, with the Friedmann equations providing the quantitative link.  Because no two distinct worldlines can remain parallel in curved spacetime (the parallel postulate fails for the Levi-Civita connection whenever the Riemann tensor is non-zero), trajectories that would otherwise converge must be geometrically accommodated.  Expansion provides this accommodation.  In the $\Lambda$-dominated epoch, the curvature source is permanent and non-diluting, so holonomy debt density grows while the volume it occupies grows exponentially: the accelerating expansion of the universe is the regime in which geometric structure is produced faster than spatial volume can dilute it.  We propose that dark energy is not a substance but a geometric inevitability---the permanent curvature floor of a bundle that can never be made flat.  Our framework is conditional: if $\Riem \neq 0$, the consequences follow; the existence of matter and $\Lambda > 0$ are empirical inputs.
+\end{abstract}
+
+\maketitle
+
+\setcounter{tocdepth}{1}
+\tableofcontents
+
+\bigskip
+
+\section{Introduction}
+
+The accelerating expansion of the universe is among the most consequential observations in modern physics.  The standard explanation posits a cosmological constant $\Lambda > 0$ or a dynamical dark energy field, but the physical origin of this term remains one of the deepest open problems in theoretical physics.  The cosmological constant problem---the $\sim 10^{120}$ discrepancy between the observed value and quantum field theory predictions---suggests that the conceptual framework is incomplete.
+
+In this paper, we offer a different perspective.  We do not propose a new dynamical mechanism for expansion.  Instead, we prove that expansion is a \emph{geometric inevitability} for any universe in which the parallel postulate fails---that is, for any universe with curvature---and we identify the precise sense in which curvature makes parallelism impossible.
+
+The argument rests on three established facts and one recent theorem:
+\begin{enumerate}[label=(\roman*)]
+\item Spacetime is faithfully described as a principal fiber bundle (the frame bundle) with the Levi-Civita connection.
+\item Einstein's field equations guarantee non-vanishing curvature whenever matter or a cosmological constant is present.
+\item The Davis Non-Decoupling Theorem \cite{davis2026} proves that non-vanishing curvature on a fiber bundle produces strictly positive, irreducible holonomy debt.
+\item Geodesic deviation---the physical mechanism of expansion---is driven by the same Riemann curvature that generates holonomy debt on the frame bundle.
+\end{enumerate}
+
+The chain is: matter exists $\Longrightarrow$ curvature is non-zero $\Longrightarrow$ parallel lines do not exist $\Longrightarrow$ holonomy debt is positive $\Longrightarrow$ comoving worldlines deviate $\Longrightarrow$ the universe expands.  When $\Lambda > 0$, the curvature floor is permanent, the debt density persists, and expansion accelerates.
+
+\subsection{The core insight}  Parallel lines do not exist in the real world.  This is not a philosophical claim; it is a consequence of the Riemann tensor being non-zero.  Two geodesics that are instantaneously parallel at a point \emph{cannot remain parallel} as they evolve, because the curvature of the connection produces a deviation acceleration proportional to $\Riem$.  In a universe containing anything at all, trajectories must curve.  Expansion is the mechanism by which the universe accommodates the geometric impossibility of maintaining parallel worldlines.
+
+
+\section{The Frame Bundle of Spacetime}
+
+\begin{definition}[Spacetime frame bundle]
+Let $(M, g)$ be a four-dimensional Lorentzian manifold satisfying Einstein's field equations.  The \emph{frame bundle} is the principal $\mathrm{SO}(3,1)$-bundle
+\[
+\pi : \mathrm{Fr}(M) \to M,
+\]
+where the fiber over each point $p \in M$ consists of all ordered orthonormal bases of $T_pM$ with respect to $g$.  The Levi-Civita connection $\nabla$ on $(M, g)$ induces a principal connection $\omega$ on $\mathrm{Fr}(M)$ with curvature 2-form $\Omega$ that corresponds precisely to the Riemann curvature tensor $\Riem$.
+\end{definition}
+
+\begin{remark}[Lorentzian signature and non-compact structure group]
+\label{rmk:signature}
+The spacetime frame bundle has structure group $\mathrm{SO}(3,1)$, which is \emph{non-compact}.  The Killing form on $\mathfrak{so}(3,1)$ has indefinite signature $(3,3)$, so the Yang-Mills integrand $\|\Omega\|^2$ computed with the Killing form may be negative or zero even when $\Omega \neq 0$.  This means the Davis Non-Decoupling Theorem, as stated in \cite{davis2026} for compact structure groups and Riemannian base manifolds, does not apply directly to $\mathrm{Fr}(M)$.
+
+To resolve this, we work on \emph{spatial slices}.  Let $(M, g)$ be globally hyperbolic with foliation $M \cong \R \times \Sigma$, and let $\Sigma_t$ denote the Cauchy surfaces with induced Riemannian metric $g_t$.  The frame bundle of each spatial slice,
+\[
+\mathrm{Fr}(\Sigma_t) \to \Sigma_t,
+\]
+is a principal $\mathrm{SO}(3)$-bundle.  $\mathrm{SO}(3)$ is compact and connected, the Killing form on $\mathfrak{so}(3)$ is negative definite (hence a valid inner product after sign change), and $g_t$ is Riemannian.  For $k > 0$, the spatial curvature ${}^{(3)}\Riem \neq 0$, and all hypotheses of the Davis Non-Decoupling Theorem are satisfied directly.  For $k = 0$, the spatial Levi-Civita connection is flat, but the \emph{Ashtekar-Barbero connection} $A = \Gamma + \gamma K$ (Proposition~\ref{prop:ashtekar}) incorporates the extrinsic curvature and has nonzero $\mathrm{SO}(3)$-valued curvature whenever $H \neq 0$.  This resolves the $k = 0$ case entirely within the compact-group framework.
+
+For non-compact spatial slices (e.g., $\Sigma = \R^3$ in flat FLRW), the total holonomy debt $\int_{\Sigma_t}\|\Riem\|\,d\vol$ is infinite whenever $\Riem \neq 0$ (trivially, not because of any deep principle).  In this case, we work with the \emph{holonomy debt density} $h(t) = \|{}^{(3)}\Riem\|$ or with the debt on finite comoving regions $V \subset \Sigma_t$.  The essential content of the theorem---that the debt density is strictly positive and cannot be eliminated---holds regardless of compactness.
+\end{remark}
+
+\begin{remark}[Representation theorem for spacetime]
+Unlike applications of the Non-Decoupling Theorem to computational architectures (where the fiber bundle description is a modeling assumption requiring empirical validation), the frame bundle of spacetime is not an assumption.  It is the mathematical structure of general relativity itself.  The representation theorem---identified as the missing Part (1) in the adversarial audit of \cite{davis2026}---is, for spacetime, a theorem of differential geometry: every pseudo-Riemannian manifold has a frame bundle, and the Levi-Civita connection is its canonical connection.
+\end{remark}
+
+
+\section{Curvature is Guaranteed}
+
+\begin{proposition}[Einstein's equations guarantee curvature]
+\label{prop:curvature}
+Let $(M, g)$ satisfy the Einstein field equations
+\[
+G_{\mu\nu} + \Lambda g_{\mu\nu} = 8\pi G \, T_{\mu\nu}.
+\]
+If either $T_{\mu\nu} \neq 0$ at some point $p \in M$, or $\Lambda \neq 0$, then $\Riem$ does not vanish identically on $M$.  More precisely:
+\begin{enumerate}[label=\textup{(\alph*)}]
+\item If $\Lambda \neq 0$ and $T_{\mu\nu} = 0$, then $\Riem \neq 0$ at \emph{every} point of $M$.
+\item If the tracefree stress-energy is nonzero at a point $p$---that is, $T_{\mu\nu}(p) - \frac{1}{4}T(p)\,g_{\mu\nu}(p) \neq 0$---then $\Riem(p) \neq 0$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+\textbf{Part (a).}  With $T_{\mu\nu} = 0$, the field equations give $G_{\mu\nu} = -\Lambda g_{\mu\nu}$, i.e., $R_{\mu\nu} = \Lambda g_{\mu\nu}$ (Einstein manifold).  Tracing gives $R = 4\Lambda$.  Since $\Lambda \neq 0$, $R \neq 0$ at every point, so $\Riem \neq 0$ at every point (vanishing of $\Riem$ would force $R = 0$).
+
+\textbf{Part (b).}  The tracefree projection of the Einstein equations gives
+\[
+R_{\mu\nu} - \tfrac{1}{4}R\,g_{\mu\nu} = 8\pi G\bigl(T_{\mu\nu} - \tfrac{1}{4}T\,g_{\mu\nu}\bigr),
+\]
+since the $\Lambda g_{\mu\nu}$ terms cancel in the tracefree part.  If $T_{\mu\nu}(p) - \frac{1}{4}T(p)g_{\mu\nu}(p) \neq 0$, then $R_{\mu\nu}(p) - \frac{1}{4}R(p)g_{\mu\nu}(p) \neq 0$, so $R_{\mu\nu}(p)$ is not proportional to $g_{\mu\nu}(p)$.  In particular $R_{\mu\nu}(p) \neq 0$, and since $R_{\mu\nu}$ is a contraction of $\Riem$, $\Riem(p) \neq 0$.
+\end{proof}
+
+\begin{remark}
+The solutions with $\Riem \equiv 0$ are precisely the \emph{flat} spacetimes: Minkowski space $(\R^{3,1}, \eta)$ and its quotients by discrete isometry groups.  All require $\Lambda = 0$ and $T_{\mu\nu} = 0$ everywhere.
+\end{remark}
+
+\begin{remark}[The conformally coupled case]
+Part (b) requires the tracefree condition $T_{\mu\nu} - \frac{1}{4}Tg_{\mu\nu} \neq 0$ rather than merely $T_{\mu\nu} \neq 0$.  The excluded case $T_{\mu\nu} = \lambda\,g_{\mu\nu}$ is physically equivalent to a shift in the cosmological constant: setting $\Lambda_{\mathrm{eff}} = \Lambda - 8\pi G\lambda$, the equations reduce to vacuum with $\Lambda_{\mathrm{eff}}$, and Part~(a) applies when $\Lambda_{\mathrm{eff}} \neq 0$.  If $\Lambda_{\mathrm{eff}} = 0$ (the stress-energy exactly cancels $\Lambda$), the equations are $G_{\mu\nu} = 0$, admitting Ricci-flat solutions---including flat Minkowski space.  This is the unique loophole: a stress-energy tensor that masquerades as a cosmological constant and exactly cancels it.  All physical matter (dust, radiation, dark matter) satisfies $T_{\mu\nu} \not\propto g_{\mu\nu}$ and is covered by Part~(b).
+\end{remark}
+
+\begin{lemma}[Gauss-Codazzi: spatial curvature inherits non-vanishing]
+\label{lem:gauss}
+Let $(M, g)$ be a globally hyperbolic spacetime with Cauchy surface $\Sigma$ having induced metric $\bar{g}$, unit normal $n$, and extrinsic curvature $K_{ij}$.  The Gauss equation relates the spatial and spacetime Riemann tensors:
+\[
+{}^{(3)}R_{ijkl} = R_{ijkl} + K_{ik}K_{jl} - K_{il}K_{jk},
+\]
+where the right-hand side involves the projection of the spacetime Riemann tensor onto $\Sigma$ plus extrinsic curvature terms.  
+
+In FLRW spacetime with scale factor $a(t)$ and spatial curvature parameter $k$, the spatial Riemann tensor on $\Sigma_t$ is:
+\[
+{}^{(3)}R_{ijkl} = \frac{k}{a(t)^2}(\bar{g}_{ik}\bar{g}_{jl} - \bar{g}_{il}\bar{g}_{jk}).
+\]
+For $k \neq 0$, this is nonzero everywhere on $\Sigma_t$.
+
+For $k = 0$ (spatially flat FLRW), the intrinsic spatial Riemann tensor vanishes: ${}^{(3)}R_{ijkl} = 0$.  However, the extrinsic curvature $K_{ij} = Ha^2\bar{g}_{ij}$ is nonzero whenever $H \neq 0$, and the spacetime curvature is carried by the time-space components $R_{0i0j} = -\frac{\ddot{a}}{a}\bar{g}_{ij}$.  The Ashtekar-Barbero connection (Proposition~\ref{prop:ashtekar}) captures this curvature in a compact-group connection on the spatial slice.
+\end{lemma}
+
+\begin{remark}[$k = 0$: resolved by the Ashtekar-Barbero connection]
+\label{rmk:kzero}
+For spatially flat FLRW ($k = 0$), the Davis Non-Decoupling Theorem applied to the spatial \emph{Levi-Civita} frame bundle $\mathrm{Fr}(\Sigma_t)$ gives zero holonomy debt, since the intrinsic geometry is flat.  This might appear to break the framework, since the universe still expands.
+
+The resolution is that the spatial Levi-Civita connection sees only the intrinsic geometry of $\Sigma_t$, missing the extrinsic curvature $K_{ij}$ that encodes the embedding in spacetime.  The Ashtekar-Barbero connection (Proposition~\ref{prop:ashtekar}) packages both intrinsic and extrinsic geometry into a single $\mathrm{SO}(3)$-connection whose curvature is nonzero whenever $H \neq 0$---including for $k = 0$.  Since $\mathrm{SO}(3)$ is compact, all hypotheses of the Davis Non-Decoupling Theorem are satisfied.  No Lorentzian extension is needed.
+\end{remark}
+
+\begin{proposition}[Ashtekar-Barbero connection: compact holonomy for all $k$]
+\label{prop:ashtekar}
+Let $(\Sigma_t, \bar{g}, K)$ be a Cauchy surface with induced metric $\bar{g}$, extrinsic curvature $K_{ij}$, and orthonormal triad $e^a_i$ for $\bar{g}$.  Let $\Gamma^a_i$ denote the spatial spin connection.  For any nonzero real parameter $\gamma$ (the Barbero-Immirzi parameter), the \emph{Ashtekar-Barbero connection}
+\[
+A^a_i = \Gamma^a_i + \gamma\, K^a_i, \qquad K^a_i := K_{ij}\,e^{ja},
+\]
+is an $\mathrm{SO}(3)$-valued connection on $\Sigma_t$ with curvature
+\[
+F^a_{ij} = {}^{(3)}\!R^a_{ij} + 2\gamma\,\nabla_{[i}K^a_{j]} + \gamma^2 \epsilon^a{}_{bc}\,K^b_i K^c_j,
+\]
+where ${}^{(3)}\!R^a_{ij}$ is the curvature of $\Gamma$.
+
+In FLRW spacetime with scale factor $a(t)$, Hubble parameter $H = \dot{a}/a$, and spatial curvature $k$:
+\begin{enumerate}[label=\textup{(\alph*)}]
+\item \textup{($k > 0$):} Both intrinsic and extrinsic terms contribute.  The curvature is nonzero.
+\item \textup{($k = 0$):} $\Gamma = 0$ and ${}^{(3)}\!R = 0$, but $K^a_i = Ha\,\delta^a_i \neq 0$.  The curvature is purely from the extrinsic self-coupling:
+\begin{equation}
+\label{eq:ashtekar-k0}
+F^a_{ij} = \gamma^2 H^2 a^2\,\epsilon^a{}_{ij} \neq 0.
+\end{equation}
+\end{enumerate}
+In both cases, the Ashtekar-Barbero connection is an $\mathrm{SO}(3)$-connection with nonzero curvature.  On any compact comoving region $V \subset \Sigma_t$, the Davis Non-Decoupling Theorem applies: the holonomy debt
+\[
+\mathcal{H}_A(t) = \int_V \|F\|\,d\vol > 0
+\]
+is strictly positive and cannot be eliminated by any flat connection.
+\end{proposition}
+
+\begin{proof}
+The curvature formula follows from $F = d\Gamma + \Gamma \wedge \Gamma + \gamma\,(d_\Gamma K + K \wedge \Gamma + \Gamma \wedge K) + \gamma^2\, K \wedge K$.
+
+For FLRW with $k = 0$: the triad is $e^a_i = a\,\delta^a_i$, the spatial spin connection vanishes (the metric $a^2\delta_{ij}$ is conformally flat with diagonal conformal factor), and the extrinsic curvature is $K_{ij} = \dot{a}\,a\,\delta_{ij}$, giving $K^a_i = Ha\,\delta^a_i$.  Since $K^a_i$ is spatially homogeneous, $\nabla_{[i}K^a_{j]} = 0$.  The curvature reduces to
+\[
+F^a_{ij} = \gamma^2\epsilon^a{}_{bc}\,K^b_i K^c_j = \gamma^2 H^2 a^2\,\epsilon^a{}_{bc}\,\delta^b_i\delta^c_j = \gamma^2 H^2 a^2\,\epsilon^a{}_{ij},
+\]
+which is nonzero whenever $H \neq 0$.  The norm is $\|F\|^2 = C\,\gamma^4 H^4 a^4 > 0$ (where $C$ depends on the norm convention).
+
+Since $\mathrm{SO}(3)$ is compact and connected, and $\bar{g}$ is Riemannian, the hypotheses of the Davis Non-Decoupling Theorem \cite{davis2026} are satisfied on any compact region $V$.
+\end{proof}
+
+\begin{remark}[Physical interpretation]
+The Ashtekar-Barbero connection is not an ad hoc construction.  It is the canonical configuration variable of loop quantum gravity \cite{ashtekar1986,barbero1995}, and its holonomies---Wilson loops of $A$ around spatial curves---are the fundamental observables in the LQG quantization program.  The parameter $\gamma$ enters the area spectrum: $A = 8\pi\gamma\ell_P^2\sum_i \sqrt{j_i(j_i+1)}$.  The geometric insight is that even when the \emph{intrinsic} curvature of a spatial slice vanishes ($k = 0$), the \emph{extrinsic} curvature---the rate at which the slice bends within spacetime---provides a compact-group connection with nonzero field strength.  The spatial Levi-Civita frame bundle misses this curvature; the Ashtekar-Barbero connection sees it.
+\end{remark}
+
+\begin{remark}[$\gamma$-independence of qualitative results]
+\label{rmk:gamma}
+The Barbero-Immirzi parameter $\gamma$ enters the \emph{magnitude} of the Ashtekar holonomy debt: $\mathcal{H}_A \propto \gamma^2$.  However, the qualitative conclusions of this paper---positivity of the debt, impossibility of a flat model, exponential growth in the de Sitter regime---are independent of $\gamma$.  For \emph{any} nonzero $\gamma \in \R \setminus \{0\}$, the curvature $F \neq 0$ and the Davis Non-Decoupling Theorem applies.  The choice of $\gamma$ affects the \emph{size} of the debt, not its \emph{existence}.
+
+The quantitative dependence on $\gamma$ is a feature, not a bug: it connects the holonomy debt to LQG observables (area spectrum, black hole entropy) where $\gamma$ is independently determined.  Should $\gamma$ be derived from first principles within the Non-Decoupling framework, the quantitative predictions would follow.  Until then, the qualitative results are parameter-free.
+\end{remark}
+
+\begin{remark}[Gauge-theoretic status of the spatial-slice approach]
+\label{rmk:gauge}
+The use of spatial slices with compact $\mathrm{SO}(3)$ is not a retreat from the full Lorentzian theory---it \emph{is} the standard non-perturbative approach to gauge theory.  Every rigorous non-perturbative result in gauge physics works on Euclidean or spatial slices with compact structure groups:
+\begin{itemize}
+\item \textbf{Lattice QCD} formulates $\mathrm{SU}(3)$ gauge theory on a Euclidean lattice, not a Lorentzian one.  The Davis-Wilson map \cite{davis2026ym} extracts gauge-invariant physics from Wilson loop traces on a finite skeleton---precisely the holonomies of a compact-group connection around closed curves.
+\item \textbf{Giles' reconstruction theorem} \cite{giles1981} guarantees that the set of all Wilson loop traces determines a connection up to gauge equivalence.  For the Ashtekar-Barbero connection, this means holonomy data on spatial curves captures all gauge-invariant content of $A = \Gamma + \gamma K$.
+\item \textbf{Osterwalder-Schrader reconstruction} recovers Lorentzian physics from Euclidean data.  The dynamical content missing from a single spatial slice is encoded in the \emph{Hamiltonian constraint}, which is the Einstein field equation itself.
+\end{itemize}
+Non-compact groups ($\mathrm{SO}(3,1)$, $\mathrm{SL}(2,\mathbb{C})$) lack a finite Haar measure, have unbounded Wilson loop traces, and a Yang-Mills integrand of indefinite sign---all obstacles to non-perturbative control.  The compact-group spatial-slice formulation is not ``playing it safe''; it is working with the correct non-perturbative degrees of freedom.
+\end{remark}
+
+
+\section{The Failure of Parallelism}
+
+\begin{corollary}[The parallel postulate fails in any non-empty universe]
+\label{cor:noparallel}
+In any spacetime satisfying the hypotheses of Proposition~\ref{prop:curvature}, there exist no globally parallel line fields along generic geodesics.  Specifically: for any timelike geodesic $\gamma$ and any spacelike Jacobi field $J$ along $\gamma$ connecting it to a neighboring geodesic, the geodesic deviation equation
+\[
+\frac{D^2 J^\mu}{d\tau^2} = -R^\mu{}_{\nu\alpha\beta}\, \dot\gamma^\nu J^\alpha \dot\gamma^\beta
+\]
+has a nonzero right-hand side whenever $\Riem \neq 0$.  The neighboring geodesic is not parallel: the separation $|J|$ is not constant.
+\end{corollary}
+
+\begin{proof}
+By Proposition~\ref{prop:curvature}, $\Riem \neq 0$ at every point (case (a): $\Lambda \neq 0$, vacuum) or at points where $T \neq 0$ (case (b)).  The tidal tensor $E^\mu{}_\alpha = R^\mu{}_{\nu\alpha\beta}\dot\gamma^\nu \dot\gamma^\beta$ is a symmetric map on the subspace orthogonal to $\dot\gamma$.  In FLRW spacetime, $E^\mu{}_\alpha = -\frac{\ddot a}{a}\delta^\mu_\alpha$ is a nonzero scalar multiple of the identity (since $\ddot a \neq 0$ when $\Lambda \neq 0$ or $\rho + 3p \neq 0$).  Therefore $\frac{D^2 J}{d\tau^2} \neq 0$ for all nonzero $J$, and no two comoving geodesics remain equidistant.
+
+\emph{Note}: We do not invoke Berger's holonomy classification.  The failure of parallelism follows directly from the geodesic deviation equation and the non-vanishing of the tidal tensor, without requiring irreducibility of the holonomy representation.
+\end{proof}
+
+\begin{remark}[Conformally flat spacetimes]
+\label{rmk:weyl}
+FLRW spacetimes are conformally flat: the Weyl tensor $C_{\mu\nu\rho\sigma} = 0$.  This means all curvature is Ricci, with no anisotropic tidal degrees of freedom.  This does \emph{not} weaken the expansion argument---it \emph{is} the cosmological symmetry assumption.  The Raychaudhuri equation (Proposition~\ref{prop:raychaudhuri}) depends on $R_{\mu\nu}u^\mu u^\nu$, which is the Ricci contraction, not the Weyl tensor.  The Ricci tensor drives \emph{volume} change (expansion or contraction of a geodesic ball); the Weyl tensor drives \emph{shape} change (tidal distortion at constant volume).  For the expansion problem, the Ricci part is the relevant one, and Proposition~\ref{prop:curvature} guarantees it is nonzero.
+
+In spacetimes with $C_{\mu\nu\rho\sigma} \neq 0$ (e.g., near black holes or in anisotropic cosmologies), the Weyl curvature provides \emph{additional} holonomy debt beyond the Ricci contribution.  The conformally flat case is therefore the \emph{minimum debt} scenario---our bounds are conservative.
+\end{remark}
+
+
+\section{Holonomy Debt on the Spatial Frame Bundle}
+
+\begin{theorem}[Cosmological holonomy debt]
+\label{thm:cosmo}
+Let $(M, g)$ be a globally hyperbolic spacetime satisfying Einstein's field equations with $\Lambda > 0$ or $T_{\mu\nu} \neq 0$.  Let $\Sigma_t$ denote the Cauchy surfaces of a foliation $M \cong \R \times \Sigma$, and let $V \subset \Sigma_t$ be a compact comoving region.  Equip $\Sigma_t$ with the Ashtekar-Barbero connection $A = \Gamma + \gamma K$ (Proposition~\ref{prop:ashtekar}).  Then:
+\begin{enumerate}[label=\textup{(\Roman*)}]
+\item \textbf{(Debt existence)} The holonomy debt on each Cauchy surface is strictly positive:
+\[
+\mathcal{H}_A(t) := \int_V \|F\| \, d\vol_{\Sigma_t} > 0 \quad \text{for all } t \text{ with } H(t) \neq 0 \text{ or } k \neq 0.
+\]
+This follows from the Davis Non-Decoupling Theorem applied to the $\mathrm{SO}(3)$-connection $A$ on $V$, whose curvature $F \neq 0$ by Proposition~\ref{prop:ashtekar}.  This holds for \emph{all} values of $k$, including $k = 0$.
+
+\item \textbf{(No flat spatial model)} No flat $\mathrm{SO}(3)$-connection can faithfully model the parallel transport of $A$.  The modeling error satisfies
+\[
+\mathcal{E}(A_{\mathrm{flat}}, A) \geq c \cdot \SYM(A) > 0.
+\]
+
+\item \textbf{(Debt--deviation duality)} The Ashtekar-Barbero curvature and the tidal tensor are quantitatively linked through the Friedmann equations.  In FLRW (for $k = 0$):
+\begin{align*}
+\|F\|^2 &= C_1\,\gamma^4 H^4 a^4 &\quad &(\text{Ashtekar curvature}), \\
+\|E\|^2 &= C_2\,(\dot H + H^2)^2 &\quad &(\text{tidal acceleration}),
+\end{align*}
+where $H^2 = \frac{8\pi G}{3}\rho + \frac{\Lambda}{3}$ and $\dot H + H^2 = -\frac{4\pi G}{3}(\rho + 3p) + \frac{\Lambda}{3}$.  The time derivative of the holonomy debt density is governed by the same Raychaudhuri dynamics that drives geodesic deviation:
+\[
+\frac{d}{dt}\|F\|^{1/2} \propto \gamma\,\ddot a = \gamma\, a\Bigl(-\frac{4\pi G}{3}(\rho + 3p) + \frac{\Lambda}{3}\Bigr).
+\]
+This is not a tautology: the Ashtekar curvature (a bundle-theoretic quantity on spatial slices) and the tidal tensor (a spacetime curvature component) live on different bundles, yet the Einstein field equations lock their dynamics together.
+
+\item \textbf{(Behavior in the $\Lambda$-dominated epoch)} In the de Sitter regime, $a(t) \sim e^{Ht}$ with $H = \sqrt{\Lambda/3}$.
+
+\emph{Ashtekar debt ($k = 0$ or $k > 0$ asymptotically):} The curvature density $\|F\| \propto \gamma^2 H^2 a(t)^2$ grows as $e^{2Ht}$ (the extrinsic curvature does not dilute).  The total debt on a comoving region:
+\[
+\mathcal{H}_A(t) \sim C\,\gamma^2 H^2\,a(t)^2 \cdot a(t)^3 \cdot \vol(V_0) = C'\,a(t)^5 \cdot \vol(V_0) \sim e^{5Ht}.
+\]
+
+\emph{Spatial Levi-Civita debt ($k > 0$ only):} The intrinsic curvature density $\|{}^{(3)}\Riem\| \sim k/a(t)^2$ dilutes as $e^{-2Ht}$, giving
+\[
+\mathcal{H}_{\mathrm{LC}}(t) \sim \frac{k}{a(t)^2} \cdot a(t)^3 \cdot \vol(\Sigma_0) \sim e^{Ht}.
+\]
+
+Both diverge.  The Ashtekar debt grows faster ($e^{5Ht}$ vs.\ $e^{Ht}$) because the extrinsic curvature $K_{ij} = Ha^2\bar{g}_{ij}$ increases with $a$, while the intrinsic curvature dilutes.  In the $\Lambda$-dominated epoch, geometric debt is produced faster than volume can dilute it.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+\textbf{Part I.}  By Proposition~\ref{prop:ashtekar}, the Ashtekar-Barbero connection $A$ on $V \subset \Sigma_t$ has curvature $F \neq 0$ whenever $H \neq 0$ or $k \neq 0$.  Since $\mathrm{SO}(3)$ is compact and connected, $\bar{g}$ is Riemannian, and $V$ is compact, the Davis Non-Decoupling Theorem \cite{davis2026}, Theorem 4.1, Part IV gives $\mathcal{H}_A(t) = \int_V \|F\|\,d\vol > 0$.
+
+\textbf{Part II.}  Direct application of \cite{davis2026}, Theorem 4.1, Part II, to the $\mathrm{SO}(3)$-connection $A$ on $(V, \bar{g})$.
+
+\textbf{Part III.}  The Ashtekar curvature for $k = 0$ FLRW is $\|F\|^2 = C_1\gamma^4 H^4 a^4$ (Proposition~\ref{prop:ashtekar}, equation~\eqref{eq:ashtekar-k0}).  The tidal tensor is $E^i{}_j = -\frac{\ddot a}{a}\delta^i_j$, with $\|E\|^2 = C_2(\dot H + H^2)^2$.  The Friedmann equations express both $H^2$ and $\dot H + H^2$ in terms of $(\rho, p, \Lambda)$, establishing the quantitative link.  Taking the time derivative of $\|F\|^{1/2} \propto \gamma H a$:
+\[
+\frac{d}{dt}(\gamma H a) = \gamma(\dot H a + H\dot a) = \gamma(\dot H + H^2)a = \gamma\,\frac{\ddot a}{a}\cdot a = \gamma\,\ddot a,
+\]
+and $\ddot a/a = -\frac{4\pi G}{3}(\rho + 3p) + \frac{\Lambda}{3}$ is the Raychaudhuri equation for FLRW.
+
+\textbf{Part IV.}  In de Sitter ($H = \sqrt{\Lambda/3} = \text{const}$, $a(t) = a_0 e^{Ht}$):
+
+\emph{Ashtekar debt:} $\|F\| \propto \gamma^2 H^2 a(t)^2 = \gamma^2 H^2 a_0^2\, e^{2Ht}$.  The comoving volume is $\vol(V(t)) = a(t)^3\,\vol_0$.  So
+\[
+\mathcal{H}_A(t) = \int_V \|F\|\,d\vol = C\,\gamma^2 H^2 a_0^2\, e^{2Ht} \cdot a_0^3\, e^{3Ht}\cdot\vol_0 = C'\, e^{5Ht}.
+\]
+
+\emph{Spatial Levi-Civita debt ($k > 0$):} $\|{}^{(3)}\Riem\| = C''\,k/a(t)^2$ and $\vol(\Sigma_t) = 2\pi^2 a(t)^3$ (for $\Sigma = S^3$).  So
+\[
+\mathcal{H}_{\mathrm{LC}}(t) = C''\,\frac{k}{a(t)^2}\cdot 2\pi^2 a(t)^3 = 2\pi^2 C'' k\, a(t) \sim e^{Ht}.
+\]
+
+Both diverge exponentially.  The Ashtekar debt grows at $e^{5Ht}$ because $\|F\| \propto a^2$ (extrinsic curvature increases with expansion), while the Levi-Civita debt grows at $e^{Ht}$ because $\|{}^{(3)}\Riem\| \propto a^{-2}$ (intrinsic curvature dilutes).
+\end{proof}
+
+\begin{remark}[Fundamental group and discrete holonomy]
+\label{rmk:pi1}
+The Davis Non-Decoupling Theorem \cite{davis2026} assumes $M$ (or $\Sigma_t$) is simply connected, so that the holonomy group is connected and entirely determined by the curvature via the Ambrose-Singer theorem.  The FLRW universal covers ($S^3$, $\R^3$, $H^3$) are all simply connected, so this hypothesis is satisfied.
+
+For quotient spacetimes (e.g., $T^3 = \R^3/\mathbb{Z}^3$ or lens spaces $S^3/\mathbb{Z}_p$), the fundamental group $\pi_1(\Sigma) \neq 0$ introduces \emph{discrete} holonomy components: parallel transport around non-contractible loops can yield nontrivial group elements that are not captured by the curvature 2-form.  This discrete holonomy provides \emph{additional} obstructions to flatness beyond the curvature debt.  In such spaces, the total debt is the sum of the continuous contribution (measured by $\SYM$) and a topological contribution (from $\pi_1$).  The bounds in Theorem~\ref{thm:cosmo} remain valid as \emph{lower bounds}: the true debt on a non-simply-connected spatial slice is at least as large as the curvature debt computed here.
+\end{remark}
+
+
+\section{Expansion as Geometric Accommodation}
+
+\begin{proposition}[The Raychaudhuri equation: curvature drives expansion or contraction]
+\label{prop:raychaudhuri}
+The expansion scalar $\theta$ of a congruence of timelike geodesics satisfies the Raychaudhuri equation:
+\[
+\frac{d\theta}{d\tau} = -\frac{1}{3}\theta^2 - \sigma_{\mu\nu}\sigma^{\mu\nu} + \omega_{\mu\nu}\omega^{\mu\nu} - R_{\mu\nu}u^\mu u^\nu.
+\]
+For an irrotational ($\omega = 0$), shear-free ($\sigma \approx 0$) congruence (the cosmological case):
+\[
+\frac{d\theta}{d\tau} \approx -\frac{1}{3}\theta^2 - R_{\mu\nu}u^\mu u^\nu.
+\]
+Using Einstein's equations:
+\[
+R_{\mu\nu}u^\mu u^\nu = 4\pi G(\rho + 3p) - \Lambda.
+\]
+\begin{enumerate}[label=\textup{(\alph*)}]
+\item When $\rho + 3p > 0$ and $\Lambda = 0$: the Ricci term is positive, driving $d\theta/d\tau < 0$ (deceleration/focusing).  Geodesics converge.  This is the Penrose-Hawking regime.
+\item When $\Lambda > 4\pi G(\rho + 3p)$ (the current epoch): the Ricci term is effectively negative, driving $d\theta/d\tau > 0$ (acceleration/defocusing).  Geodesics diverge.  This is accelerating expansion.
+\end{enumerate}
+In both regimes, the curvature ($R_{\mu\nu}$) is the source of the deviation from inertial behavior ($\theta = \text{const}$).  There is no regime in which curvature has zero effect on the congruence.
+\end{proposition}
+
+\begin{remark}[Curvature causes deviation, not specifically expansion]
+We emphasize a critical distinction.  \textbf{Curvature guarantees geodesic deviation}---the failure of parallelism.  It does \emph{not} by itself determine the \emph{sign} of the deviation.  In a matter-dominated universe, curvature causes \emph{focusing} (convergence, structure formation, and ultimately singularities).  In a $\Lambda$-dominated universe, it causes \emph{defocusing} (expansion).
+
+Our claim is therefore two-layered:
+\begin{enumerate}[label=\textup{(\arabic*)}]
+\item \textbf{Geometric necessity (general):} In any universe with $\Riem \neq 0$, comoving worldlines cannot be parallel.  The universe must either expand or contract.  A static configuration is unstable---this is Einstein's original insight, which motivated the introduction of $\Lambda$ in the first place.
+\item \textbf{Directional claim ($\Lambda > 0$):} With $\Lambda > 0$, the asymptotic state is de Sitter expansion.  The cosmological constant sets a permanent curvature floor that drives defocusing.  This is the regime of our universe today.
+\end{enumerate}
+We do not claim that holonomy debt \emph{causes} expansion.  We claim that holonomy debt, geodesic deviation, and expansion are \emph{co-manifestations} of the same underlying fact: $\Riem \neq 0$.  Expansion is the kinematic realization; holonomy debt is the bundle-theoretic measure.
+\end{remark}
+
+
+\section{Dark Energy as Permanent Curvature}
+
+\begin{proposition}[Reinterpretation of the cosmological constant]
+\label{prop:darkenergy}
+The cosmological constant $\Lambda$ is the curvature floor of spacetime---the minimum value of the tidal tensor that persists even in vacuum.  In de Sitter spacetime ($T_{\mu\nu} = 0$, $\Lambda > 0$):
+\[
+R_{\mu\nu\alpha\beta} = \frac{\Lambda}{3}(g_{\mu\alpha}g_{\nu\beta} - g_{\mu\beta}g_{\nu\alpha}).
+\]
+This is a maximally symmetric space with constant, isotropic, non-zero curvature everywhere.  There is no matter, no radiation, no dynamical field---only geometry.  Yet the space expands exponentially because:
+\begin{enumerate}[label=\textup{(\alph*)}]
+\item The curvature $\Riem \neq 0$ makes parallelism impossible (Corollary~\ref{cor:noparallel}).
+\item The Raychaudhuri equation with $R_{\mu\nu}u^\mu u^\nu = -\Lambda$ drives defocusing.
+\item The curvature does not dilute ($\|\Riem\| = \text{const}$), so the holonomy debt density on the spacetime frame bundle is permanent.
+\end{enumerate}
+\end{proposition}
+
+\begin{remark}[On the causal direction]
+\label{rmk:causal}
+We must be precise about what is a \emph{cause} and what is a \emph{description}.  In the framework of general relativity, the dynamical driver of expansion is the Einstein field equation with $\Lambda > 0$: it is $\Lambda$ that appears in the Friedmann equations, $\Lambda$ that sets the de Sitter expansion rate $H = \sqrt{\Lambda/3}$, and $\Lambda$ that determines the tidal tensor.
+
+Holonomy debt is a \emph{measure} of the curvature's cumulative effect, not a separate dynamical agent.  The relationship is:
+\[
+\Lambda > 0 \;\xrightarrow{\text{field eqs}}\; \Riem \neq 0 \;\xrightarrow{\text{bundle theory}}\; H(t) > 0 \;\xleftarrow{\text{same source}}\; \text{geodesic deviation}.
+\]
+The arrows indicate logical dependence, not temporal causation.  The holonomy debt framework does not add a new force to physics.  It provides a \emph{geometric characterization} of why the effects of curvature are irreducible and structurally inevitable, rather than contingent on initial conditions.
+
+The value added is this: standard GR shows that $\Lambda > 0$ causes expansion.  The Non-Decoupling Theorem shows that \emph{any} non-zero curvature produces irreducible structural consequences that no flat approximation can capture.  Applied to spacetime, this means: the effects of $\Lambda$ cannot be mimicked, approximated, or eliminated by any model that assumes the geometry is flat.  This is a statement about the \emph{necessity} of the geometric description, not about the mechanism of expansion.
+\end{remark}
+
+
+\section{The Non-Collision Principle}
+
+\begin{proposition}[Static universes are unstable]
+\label{prop:static}
+In a spacetime with $\Riem \neq 0$ and a perfect-fluid source, a static configuration ($\dot a = 0$, $\ddot a = 0$) requires a precise balance: $\Lambda = 4\pi G(\rho + 3p)$.  This is Einstein's static universe.  It is unstable: any perturbation $\delta a$ satisfies $\ddot{\delta a}/\delta a > 0$ (the perturbation grows exponentially for $\Lambda > 0$).
+
+The geometric interpretation: in curved spacetime, ``parallel worldlines''---comoving observers maintaining constant separation---requires an exact, unstable tuning.  Generically, curvature forces worldlines to either converge or diverge.  The parallel configuration has measure zero in the space of initial conditions.
+\end{proposition}
+
+\begin{proof}
+The second Friedmann equation:
+\[
+\frac{\ddot a}{a} = -\frac{4\pi G}{3}(\rho + 3p) + \frac{\Lambda}{3}.
+\]
+A static solution requires $\ddot a = 0$, giving $\Lambda = 4\pi G(\rho + 3p)$.  Perturbing: $a = a_0 + \delta a$, and expanding to first order (for dust, $p = 0$, using $\rho a^3 = \text{const}$):
+\[
+\ddot{\delta a} = \frac{4\pi G \rho_0}{a_0} \delta a > 0.
+\]
+The perturbation grows exponentially: $\delta a \sim e^{t\sqrt{4\pi G \rho_0/a_0}}$.  The static solution is a saddle point.  The universe must expand or contract; stasis is geometrically unstable precisely because $\Riem \neq 0$ forces the tidal tensor to act on any deviation from the exact balance.
+\end{proof}
+
+
+\section{Master Statement}
+
+\begin{center}
+\framebox{\parbox{0.85\textwidth}{
+\textbf{Cosmological Non-Decoupling Principle}
+
+\medskip
+
+Under the standing hypotheses (globally hyperbolic spacetime satisfying Einstein's equations with $\Lambda > 0$ or $T_{\mu\nu} \neq 0$):
+
+\medskip
+
+$\Riem \neq 0 \implies$ parallel postulate fails $\implies$ geodesic deviation $\neq 0$ $\implies$ static universe unstable $\implies$ expansion or contraction.
+
+\medskip
+
+With $\Lambda > 0$: $\|\Riem\| \geq \Lambda/3 > 0$ permanently $\implies$ defocusing dominates asymptotically $\implies$ accelerating expansion.
+
+\medskip
+
+On spatial slices (all $k$): $\mathcal{H}_A(t) = \int_V\|F\|\,d\vol > 0$ (Davis Non-Decoupling Theorem applied to the Ashtekar-Barbero $\mathrm{SO}(3)$-connection) and $\mathcal{H}_A(t) \sim e^{5Ht} \to \infty$.
+
+\medskip
+
+\emph{The universe expands because parallel lines do not exist.  It accelerates because the curvature floor is permanent.  Dark energy is not a substance---it is the permanent curvature of a bundle that can never be made flat.}
+}}
+\end{center}
+
+
+\section{Implications}
+
+\subsection{The cosmological constant problem, reframed}
+
+The standard cosmological constant problem asks: \emph{Why is $\Lambda$ so small compared to quantum field theory predictions?}  Our framework reframes this: $\Lambda$ is the curvature floor of the spacetime frame bundle---the minimum holonomy debt density.  The question becomes: \emph{What sets the minimum curvature of spacetime?}  This is a question about the topology and geometry of the bundle, not about vacuum energy.
+
+\subsection{Information creation}
+
+Holonomy debt has an information-theoretic interpretation.  Each non-trivial parallel transport around a loop encodes geometric data not determined by the endpoints alone---it depends on the enclosed curvature.  In an expanding universe with $\Lambda > 0$, the total geometric information content of a comoving region grows (more volume, same curvature density, more total curvature to integrate over).  This connects to the holographic principle: the information content of a region is bounded by its boundary area, which also grows with expansion.
+
+\subsection{Connection to the Davis Law}
+
+The Davis Law $C = \tau/K$ from \cite{davis2026} takes a cosmological form.  Setting $K = \|\Riem\| \geq \Lambda/3 > 0$, the representational capacity of any flat model of the universe is:
+\[
+C_{\mathrm{flat}} = \frac{\tau}{\Lambda/3}.
+\]
+Since $\Lambda > 0$, $C_{\mathrm{flat}} < \infty$: a flat model of an expanding universe has finite capacity and cannot capture the exponentially growing geometric content.  The universe outgrows any flat description.
+
+
+\section{Adversarial Audit}
+
+\textbf{Objection 1.}  \emph{The Raychaudhuri equation and geodesic deviation are standard GR.  What is new here?}
+
+\textbf{Response.}  The equations are standard.  The interpretation is new.  Standard GR treats expansion as a dynamical consequence of initial conditions and the field equations.  Our contribution is the identification of expansion as a manifestation of the \emph{geometric impossibility of parallelism}, connected to the Davis Non-Decoupling Theorem's proof that flat models of curved systems carry irreducible error.  The theorem provides the quantitative lower bound (via the Yang-Mills functional on spatial slices) and the structural prohibition that standard GR does not frame in these terms.
+
+\textbf{Objection 2.}  \emph{The claim that ``dark energy is not a substance but a debt payment'' is a reinterpretation, not a prediction.  Does this framework predict anything that standard $\Lambda$CDM does not?}
+
+\textbf{Response.}  This is the most important objection.  At the level of classical GR, our framework is mathematically equivalent to $\Lambda$CDM---it uses the same field equations and the same Raychaudhuri dynamics.  The contribution is conceptual and structural, not predictive at the classical level.  See Remark~\ref{rmk:causal} for a detailed discussion of what is and is not being claimed.
+
+The framework suggests a specific research program:
+\begin{enumerate}[label=(\alph*)]
+\item \emph{Holonomy debt should be quantizable.}  If the geometric information produced by curvature is discrete (as the holographic principle suggests), then holonomy debt should come in quanta, and $\Lambda$ should be derivable from the quantization condition.  This may connect to loop quantum gravity, where area and volume are quantized.
+\item \emph{The holonomy debt growth rate should be measurable.}  The rate $dH/dt$ is a computable quantity that can be related to observables (expansion rate, curvature power spectrum).
+\end{enumerate}
+
+\textbf{Objection 3.}  \emph{Minkowski spacetime ($\Lambda = 0$, $T = 0$) is flat, has $\Riem = 0$, and does not expand.  This is consistent with the theorem, but it means the theorem only applies to universes that are already non-flat.  You cannot prove that the universe \emph{must} be non-flat.}
+
+\textbf{Response.}  Correct.  The theorem is conditional: \emph{if} $\Riem \neq 0$, \emph{then} the consequences follow.  The existence of matter ($T_{\mu\nu} \neq 0$) is an empirical fact, not a theorem.  Similarly, $\Lambda > 0$ is an observational result.  Our claim is not that a universe must contain matter or have a cosmological constant---it is that once it does, the failure of parallelism and its consequences are geometrically inevitable.
+
+\textbf{Objection 4.}  \emph{For spatially flat FLRW ($k = 0$), the spatial Riemann tensor vanishes.  The Davis Non-Decoupling Theorem on the spatial Levi-Civita frame bundle gives zero debt.  Yet the universe still expands.  Doesn't this break your framework?}
+
+\textbf{Response.}  This was the most important technical challenge, and it is now resolved.  The spatial \emph{Levi-Civita} connection sees only the intrinsic geometry of $\Sigma_t$ and indeed gives zero holonomy debt for $k = 0$.  But the Ashtekar-Barbero connection $A = \Gamma + \gamma K$ (Proposition~\ref{prop:ashtekar}) incorporates the extrinsic curvature $K_{ij}$, which is nonzero whenever $H \neq 0$.  Its curvature $F^a_{ij} = \gamma^2 H^2 a^2\,\epsilon^a{}_{ij} \neq 0$ is $\mathrm{SO}(3)$-valued, and all hypotheses of the Davis Non-Decoupling Theorem are satisfied on compact comoving regions.  No extension to non-compact structure groups is needed.
+
+The Ashtekar-Barbero connection is not an ad hoc fix: it is the canonical variable of loop quantum gravity \cite{ashtekar1986,barbero1995}, and its use here simultaneously resolves the $k = 0$ gap and connects the holonomy debt framework to the LQG quantization program.
+
+\textbf{Objection 5.}  \emph{Holonomy debt doesn't ``cause'' expansion.  $\Lambda$ causes expansion.  You are conflating a measure with a mechanism.}
+
+\textbf{Response.}  Correct, and we agree explicitly (Remark~\ref{rmk:causal}).  Holonomy debt is a \emph{characterization}, not a \emph{force}.  The field equations are the dynamical law.  Our contribution is to show that the consequences of $\Lambda > 0$ (and more generally of $\Riem \neq 0$) are structurally irreducible: they cannot be captured, approximated, or eliminated by any model that assumes flat geometry.  This is a statement about the \emph{nature} of the geometric effect, not about its mechanism.
+
+\textbf{Objection 6.}  \emph{The paper claims ``the universe must expand'' but curvature can cause contraction too.  In the matter-dominated era, geodesics focus.  Structure formation is the opposite of expansion.}
+
+\textbf{Response.}  Correct.  We have revised the master statement to reflect this.  The precise claim is: curvature guarantees that static equilibrium is unstable (Proposition~\ref{prop:static}), so the universe must \emph{either expand or contract}.  The cosmological constant determines which: $\Lambda > 0$ makes expansion the asymptotic attractor.  We do not claim that curvature alone implies expansion---only that it implies the impossibility of stasis, with $\Lambda$ selecting the direction.
+
+\textbf{Objection 7.}  \emph{You avoid the full Lorentzian structure group $\mathrm{SO}(3,1)$ by retreating to spatial slices with compact $\mathrm{SO}(3)$.  This is a technical dodge.}
+
+\textbf{Response.}  This objection reverses the logic of non-perturbative gauge theory.  The Davis-Wilson mass gap framework \cite{davis2026ym} establishes the Yang-Mills spectral gap by working with $\mathrm{SU}(3)$ on a Euclidean lattice---not Lorentzian spacetime.  Lattice QCD, the only first-principles tool that computes hadron masses, works exclusively with compact groups on Euclidean slices.  Constructive quantum field theory builds its measures on Euclidean functional spaces and recovers Lorentzian physics via Osterwalder-Schrader reconstruction.  In every case, the compact-group Euclidean/spatial formulation is the \emph{rigorous} approach, and the Lorentzian extension is the (important but technically harder) generalization.
+
+Our use of the Ashtekar-Barbero $\mathrm{SO}(3)$-connection is the gravitational analog.  It is the configuration variable of loop quantum gravity, its Wilson loops (holonomies around spatial curves) are the fundamental observables of the quantum theory, and Giles' reconstruction theorem \cite{giles1981} guarantees that these holonomies contain all gauge-invariant information about the spatial connection.  The Lorentzian extension to $\mathrm{SO}(3,1)$ or $\mathrm{SL}(2,\mathbb{C})$ is a mathematical generalization listed in Open Question~3---one we intend to pursue---but the physical conclusions of this paper follow entirely from the spatial-slice framework, just as the mass gap follows from the Euclidean lattice framework.  See Remark~\ref{rmk:gauge} for the full argument.
+
+
+\section{Open Questions}
+\label{sec:open}
+
+\begin{enumerate}
+\item \textbf{Quantization of holonomy debt via LQG.}  The Ashtekar-Barbero connection used in Theorem~\ref{thm:cosmo} is precisely the configuration variable that loop quantum gravity quantizes.  The area spectrum $A = 8\pi\gamma\ell_P^2\sum_i\sqrt{j_i(j_i+1)}$ suggests that holonomy debt comes in discrete quanta.  Can the cosmological constant $\Lambda$ be derived from a quantization condition on the minimum Ashtekar curvature $\|F\|_{\min}$?  This would convert the holonomy debt framework from a characterization of $\Lambda$ to a \emph{prediction}.
+\item \textbf{Barbero-Immirzi parameter and debt magnitude.}  The Ashtekar holonomy debt depends on $\gamma$: $\mathcal{H}_A \propto \gamma^2$.  The Barbero-Immirzi parameter is fixed in LQG by black hole entropy calculations ($\gamma \approx 0.274$ from Bekenstein-Hawking).  Does this value correctly predict the ratio of Ashtekar holonomy debt to the geometric debt inferred from the expansion rate?
+\item \textbf{Lorentzian Non-Decoupling Theorem.}  The spatial-slice formulation with compact $\mathrm{SO}(3)$ is the standard non-perturbative approach (Remark~\ref{rmk:gauge}), and the physical conclusions of this paper are complete within it.  A natural mathematical generalization is to extend the Davis Non-Decoupling Theorem directly to non-compact structure groups ($\mathrm{SO}(3,1)$) using the Cartan involution inner product on $\mathfrak{so}(3,1)$.  The Cartan decomposition $\mathfrak{so}(3,1) = \mathfrak{k} \oplus \mathfrak{p}$ (where $\mathfrak{k} \cong \mathfrak{so}(3)$ is the compact part and $\mathfrak{p}$ is the boost sector) provides a candidate positive-definite inner product $\langle X, Y \rangle_\theta = -B(X, \theta Y)$ where $B$ is the Killing form and $\theta$ the Cartan involution.  This is a pure-mathematics problem that would place the spacetime frame bundle results on equal footing with the spatial-slice treatment, but is not required for any conclusion of this paper.
+\item \textbf{Holographic connection.}  The Bekenstein-Hawking entropy of a horizon is $S = A/(4\ell_P^2)$.  Is the Ashtekar holonomy debt on a spatial region bounded by the entropy of its boundary?  The connection to LQG, where the entropy counting uses spin network punctures of the Ashtekar connection, makes this plausible.
+\item \textbf{Early universe.}  During inflation, $H \gg H_0$ and $\|F\| \propto H^2 a^2$ is enormous.  Does the transition from inflation to radiation domination correspond to a phase transition in the holonomy debt accumulation rate?  The reheating epoch, where $\dot H$ changes sign, is a natural candidate.
+\item \textbf{Predictive divergence from $\Lambda$CDM.}  If holonomy debt is quantized, the late-universe de Sitter limit may exhibit discrete corrections to the expansion rate.  These would be $O(\ell_P^2/L_H^2) \sim 10^{-122}$---too small to observe directly, but potentially detectable through cumulative effects on the CMB or large-scale structure.
+\end{enumerate}
+
+
+\section*{Acknowledgments}
+
+The geometric interpretation of cosmological expansion as a consequence of the failure of parallelism emerged directly from the Davis Non-Decoupling Theorem.  The identification of the Ashtekar-Barbero connection as the resolution of the $k = 0$ gap connects the Non-Decoupling framework to loop quantum gravity in a way that was not anticipated.  The adversarial audit was conducted by the author against her own claims.
+
+\begin{thebibliography}{99}
+\bibitem{davis2026} B.~R.~Davis, \emph{The Davis Non-Decoupling Theorem: Why every flat model of a curved system fails, and the topological size of the debt}, 2026.
+
+\bibitem{einstein1915} A.~Einstein, \emph{Die Feldgleichungen der Gravitation}, Sitzungsberichte der Preussischen Akademie der Wissenschaften, 1915, 844--847.
+
+\bibitem{raychaudhuri1955} A.~Raychaudhuri, \emph{Relativistic cosmology.\ I}, Phys.\ Rev.\ 98 (1955), 1123--1126.
+
+\bibitem{penrose1965} R.~Penrose, \emph{Gravitational collapse and space-time singularities}, Phys.\ Rev.\ Lett.\ 14 (1965), 57--59.
+
+\bibitem{hawking1966} S.~W.~Hawking, \emph{The occurrence of singularities in cosmology}, Proc.\ R.\ Soc.\ Lond.\ A 294 (1966), 511--521.
+
+\bibitem{hawkingpenrose1970} S.~W.~Hawking and R.~Penrose, \emph{The singularities of gravitational collapse and cosmology}, Proc.\ R.\ Soc.\ Lond.\ A 314 (1970), 529--548.
+
+\bibitem{perlmutter1999} S.~Perlmutter et al., \emph{Measurements of $\Omega$ and $\Lambda$ from 42 high-redshift supernovae}, Astrophys.\ J.\ 517 (1999), 565--586.
+
+\bibitem{riess1998} A.~G.~Riess et al., \emph{Observational evidence from supernovae for an accelerating universe and a cosmological constant}, Astron.\ J.\ 116 (1998), 1009--1038.
+
+\bibitem{ambrose1953} W.~Ambrose and I.~M.~Singer, \emph{A theorem on holonomy}, Trans.\ Amer.\ Math.\ Soc.\ 75 (1953), 428--443.
+
+\bibitem{berry1984} M.~V.~Berry, \emph{Quantal phase factors accompanying adiabatic changes}, Proc.\ R.\ Soc.\ Lond.\ A 392 (1984), 45--57.
+
+\bibitem{bekenstein1973} J.~D.~Bekenstein, \emph{Black holes and entropy}, Phys.\ Rev.\ D 7 (1973), 2333--2346.
+
+\bibitem{wald1984} R.~M.~Wald, \emph{General Relativity}, University of Chicago Press, 1984.
+
+\bibitem{ashtekar1986} A.~Ashtekar, \emph{New variables for classical and quantum gravity}, Phys.\ Rev.\ Lett.\ 57 (1986), 2244--2247.
+
+\bibitem{barbero1995} J.~F.~Barbero~G., \emph{Real Ashtekar variables for Lorentzian signature space-times}, Phys.\ Rev.\ D 51 (1995), 5507--5510.
+
+\bibitem{davis2026ym} B.~R.~Davis, \emph{The Incompressibility of Topological Charge and the Energy Cost of Distinguishability: An Information-Geometric Proof of the Yang-Mills Mass Gap}, 2026.
+
+\bibitem{giles1981} R.~Giles, \emph{Reconstruction of gauge potentials from Wilson loops}, Phys.\ Rev.\ D 24 (1981), 2160--2174.
+\end{thebibliography}
+
+\end{document}

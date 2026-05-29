@@ -1,0 +1,2601 @@
+\documentclass[11pt,letterpaper]{article}
+
+% ── Packages ──
+\usepackage[margin=1in,headheight=14pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{tocloft}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tikz-cd}
+\usepackage{booktabs}
+
+% ── Theorem environments ──
+\newtheorem{conjecture}{Conjecture}[section]
+\newtheorem{theorem}[conjecture]{Theorem}
+\newtheorem{corollary}[conjecture]{Corollary}
+\newtheorem{lemma}[conjecture]{Lemma}
+\newtheorem{definition}[conjecture]{Definition}
+\newtheorem{proposition}[conjecture]{Proposition}
+\newtheorem{example}[conjecture]{Example}
+\newtheorem{remark}[conjecture]{Remark}
+
+% ── Header ──
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{B.\ Davis}
+\rhead{Renormalization of Completion}
+\cfoot{\thepage}
+
+% ── Commands (inherited from Branches VI--VII) ──
+\newcommand{\Hol}{\mathrm{Hol}}
+\newcommand{\Khat}{\hat{K}}
+\newcommand{\tbudget}{\tau_{\mathrm{budget}}}
+\newcommand{\smax}{s_{\mathrm{max}}}
+\newcommand{\Svalid}{S_{\mathrm{valid}}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\Vol}{\operatorname{Vol}}
+\newcommand{\Cech}{\check{C}}
+\newcommand{\Hcech}{\check{H}}
+\newcommand{\sheaf}{\mathcal{F}}
+\newcommand{\cover}{\mathcal{U}}
+\newcommand{\nerve}{\mathcal{N}}
+\newcommand{\constraint}{\mathcal{C}}
+\DeclareMathOperator{\im}{im}
+\DeclareMathOperator{\coker}{coker}
+\DeclareMathOperator{\Hom}{Hom}
+\DeclareMathOperator{\Ext}{Ext}
+\DeclareMathOperator{\rk}{rk}
+\DeclareMathOperator{\diam}{diam}
+
+% ── New commands for Branch VIII ──
+\newcommand{\block}{\mathcal{B}}
+\newcommand{\partition}{\mathcal{P}}
+\newcommand{\SO}{\mathrm{SO}}
+
+\begin{document}
+
+\title{\textbf{Renormalization of Completion}\\[6pt]
+\large Renormalization Group Flow on the Davis Manifold\\[4pt]
+\normalsize Branch VIII: Coarse-Graining, Fixed Points, and the\\
+Scale-Dependent Structure of Completion}
+\author{Bee Rosa Davis}
+\date{February 2026}
+\maketitle
+
+\begin{abstract}
+We construct a renormalization group (RG) flow on the space of 
+completion problems by defining a coarse-graining operation on the 
+nerve of the constraint cover. Merging nearby constraint patches into 
+blocks and pushing forward the completion presheaf defines a 
+semigroup of scale transformations $\{T_\ell\}_{\ell \geq 1}$ acting 
+on pairs $(\nerve, \sheaf)$. The trichotomy parameter $\Gamma$ of the 
+parent framework becomes scale-dependent: $\Gamma(\ell)$ flows under 
+coarse-graining, and its beta function $\beta(\Gamma) = 
+d\Gamma / d(\ln \ell)$ has exactly three fixed points corresponding 
+to the determined ($\Gamma^* = \infty$), critical ($\Gamma^* = 1$), 
+and underdetermined ($\Gamma^* = 0$) regimes. The critical fixed 
+point is unstable, with the relevant eigenvalue $y_t = 1/\nu$ 
+recovering the correlation length exponent of Branch~VI. A 
+C-theorem analog (monotonically decreasing completion entropy) 
+follows from a Cauchy interlace inequality on the coarsened \v{C}ech 
+Laplacian. Cross-synthesis with the parent framework interprets 
+transformer layers as successive RG steps, predicting scale-dependent 
+completion capacity and connecting semantic depth to the number of 
+coarse-graining steps needed to reach the determined fixed point.
+
+\medskip\noindent
+\textbf{Result count:} 8 foundational results (RG1--RG8), 7 
+first-order derivations, 11 cross-synthesis points with the parent 
+framework and Branches~VI--VII. Total: 26 new results (4 theorems, 
+22 conjectures).
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ═══════════════════════════════════════════════════════
+\section{Motivation: Why Renormalization?}
+% ═══════════════════════════════════════════════════════
+
+Branch~VI establishes that the completion transition at $\Gamma = 1$ 
+has the hallmarks of a genuine phase transition: divergent specific 
+heat, divergent correlation length, and critical exponents satisfying 
+scaling relations. Branch~VII identifies the \v{C}ech Laplacian as 
+the natural operator governing these phenomena, with the spectral 
+gap $\lambda_1(\Delta_1)$ playing the role of the inverse squared 
+correlation length.
+
+What is missing is a \emph{scale-dependent} theory. In the current 
+framework, the trichotomy parameter $\Gamma$ and the curvature 
+$\Khat$ are properties of the problem as a whole. But real 
+completion problems --- and especially transformer-based language 
+models --- process information \emph{hierarchically}: local 
+constraints are resolved first, and global coherence emerges through 
+successive layers of integration. This multi-scale structure demands 
+a renormalization group.
+
+The RG program in condensed matter physics asks three questions:
+
+\begin{enumerate}
+    \item \textbf{Coarse-graining:} How do you systematically 
+    eliminate fine-scale degrees of freedom while preserving 
+    long-range structure?
+    
+    \item \textbf{Fixed points:} What are the scale-invariant 
+    theories that anchor the space of all theories?
+    
+    \item \textbf{Universality:} Why do microscopically different 
+    systems share the same critical behavior?
+\end{enumerate}
+
+The Davis framework contains natural answers to all three:
+
+\begin{enumerate}
+    \item Coarse-graining means merging constraint patches on the 
+    nerve and pushing forward the completion presheaf (a 
+    block-spin transformation on the nerve).
+    
+    \item The three fixed points are the three regimes: determined, 
+    critical, and underdetermined.
+    
+    \item Universality arises because the critical exponents depend 
+    only on the Hausdorff dimension of the constraint graph and 
+    the symmetry group of the constraint structure, not on the 
+    microscopic details of the presheaf.
+\end{enumerate}
+
+This branch makes all three connections precise.
+
+% ═══════════════════════════════════════════════════════
+\section{The RG Dictionary}
+% ═══════════════════════════════════════════════════════
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\textbf{Statistical Mechanics} & \textbf{Davis Framework} 
+& \textbf{Equation} \\
+\hline
+Lattice sites & Nerve vertices (constraints) 
+& $v \in \nerve^{(0)}$ \\
+Block-spin partition $\partition_\ell$ & Constraint grouping 
+& $\block_a \subset \nerve^{(0)}$ \\
+Block-spin variable & Coarsened presheaf section 
+& $s_a \in \sheaf_\ell(\block_a)$ \\
+Coarsened lattice & Coarsened nerve $\nerve_\ell$ 
+& $|\nerve_\ell^{(0)}| < |\nerve^{(0)}|$ \\
+Effective Hamiltonian $H_{\mathrm{eff}}$ & Coarsened Laplacian 
+$\Delta_0^{(\ell)}$ & Leading-order RG \\
+Mass gap $m$ & Spectral gap $\lambda_1(\Delta_1^{(\ell)})$ 
+& $m^2 = \lambda_1$ \\
+Running coupling $g(\ell)$ & Scale-dependent $\Gamma(\ell)$ 
+& $\beta(\Gamma)$ flow \\
+UV fixed point & Fine-scale completion problem 
+& $\ell = 0$ \\
+IR fixed point & Coarsest completion problem 
+& $\ell = \ell_{\max}$ \\
+Relevant operator & Obstruction surviving coarse-graining 
+& $[\alpha] \in \Hcech^1(\nerve_\ell, \sheaf_\ell)$ \\
+Irrelevant operator & Sub-scale obstruction 
+& $[\alpha] \in \ker(\Hcech^1 \to \Hcech^1_\ell)$ \\
+C-theorem (Zamolodchikov) & Completion entropy monotonicity 
+& $C(\ell_2) \leq C(\ell_1)$ \\
+\end{tabular}
+\end{center}
+
+\begin{remark}[What is Being Coarse-Grained]
+A critical distinction: the coarse-graining operates on the 
+\emph{nerve} $\nerve(\cover)$ of the constraint cover, whose 
+vertices are \emph{constraints} (rows, columns, boxes in Sudoku), 
+not on the manifold $M$ directly. The nerve is the combinatorial 
+skeleton encoding which constraints interact. A block-spin step 
+merges nearby \emph{constraints} into super-constraints, not 
+nearby cells into super-cells. This is the natural scale 
+transformation because the completion obstruction lives in the 
+\v{C}ech cohomology of the nerve, not in the homology of $M$.
+\end{remark}
+
+\begin{remark}[Linearization Regime]\label{rem:rg_linearization}
+All quantitative RG results in this branch (spectral gaps, 
+partition functions, trace inequalities, anomalous dimensions) 
+operate in the linearized regime established in Branch~VII: the 
+presheaf $\sheaf^{\mathrm{lin}}$ with additive coboundary operators 
+on $\mathfrak{gl}(W)$-valued cochains. The exact non-abelian 
+$\mathrm{GL}(W)$-valued cocycle condition is preserved qualitatively 
+(gauge triviality, fixed-point structure) but the spectral analysis 
+requires the abelian setting. As established in Branch~VII, 
+Remark~5.1 (BCH Analytic Control), the linearization is valid when 
+$\|\alpha\|_{\Cech^1} < (\log 2) / L$ where $L$ is the nerve 
+diameter. Coarse-graining \emph{reduces} the nerve diameter, so 
+the linearized regime becomes \emph{more} accurate at larger scales 
+(see Y6 below).
+\end{remark}
+
+\begin{example}[The Shidoku Nerve]\label{ex:shidoku_nerve}
+A $4 \times 4$ Shidoku has 12 constraints: 4 rows ($r_1, \ldots, 
+r_4$), 4 columns ($c_1, \ldots, c_4$), and 4 boxes ($b_1, \ldots, 
+b_4$, each $2 \times 2$). The nerve $\nerve(\cover)$ has 12 vertices 
+and 32 edges (16 row-column, 8 row-box, 8 column-box), with the 
+adjacency structure determined by cell sharing.
+
+A natural coarse-graining groups constraints that share a band:
+\begin{align*}
+    \block_1 &= \{r_1, r_2, b_1, b_2\} 
+    && \text{(top rows + top boxes)} \\
+    \block_2 &= \{r_3, r_4, b_3, b_4\} 
+    && \text{(bottom rows + bottom boxes)} \\
+    \block_3 &= \{c_1, c_2\} && \text{(left columns)} \\
+    \block_4 &= \{c_3, c_4\} && \text{(right columns)}
+\end{align*}
+The coarsened nerve $\nerve_1$ has 4 vertices with edges between 
+every row-band block and every column block, forming the complete 
+bipartite graph $K_{2,2}$.
+\end{example}
+
+% ═══════════════════════════════════════════════════════
+\newpage
+\part{Foundational Results (RG1--RG8)}
+% ═══════════════════════════════════════════════════════
+
+% ── RG1 ──
+\section{RG1: Block-Spin Coarse-Graining on the Nerve}
+
+\begin{definition}[Coarse-Graining Triple]\label{def:coarse_grain}
+Let $\nerve = \nerve(\cover)$ be the nerve of the constraint cover 
+$\cover = \{U_c\}_{c \in \constraint}$, with graph metric $d_\nerve$ 
+on the 1-skeleton.
+
+A \emph{scale-$\ell$ coarse-graining} of $(\nerve, \sheaf)$ is a 
+triple $(\nerve_\ell, \pi_\ell, \sheaf_\ell)$ defined as follows:
+
+\begin{enumerate}[label=(\roman*)]
+    \item \textbf{Partition.} $\partition_\ell = 
+    \{\block_a\}_{a \in A}$ is a partition of the vertex set 
+    $\nerve^{(0)}$ such that $\diam(\block_a) \leq \ell$ in 
+    $d_\nerve$ for all blocks $\block_a$.
+    
+    \item \textbf{Coarsened nerve.} $\nerve_\ell$ is the simplicial 
+    complex with vertex set $A$ and a $k$-simplex 
+    $[a_0, \ldots, a_k]$ whenever there exist 
+    $v_i \in \block_{a_i}$ forming a $k$-simplex in $\nerve$.
+    
+    \item \textbf{Quotient map.} $\pi_\ell : \nerve \to \nerve_\ell$ 
+    is the induced surjective simplicial map.
+    
+    \item \textbf{Coarsened presheaf.} The pushed-forward completion 
+    presheaf is the inverse limit:
+    \begin{equation}\label{eq:coarsened_presheaf}
+        \sheaf_\ell(\block_a) = \varprojlim_{v \in \block_a} 
+        \sheaf(v)
+    \end{equation}
+    where the limit is taken over all pairwise overlaps within the 
+    block. That is: a section of $\sheaf_\ell$ on $\block_a$ is a 
+    family of local completions on every constraint in $\block_a$ 
+    that are mutually compatible on all pairwise overlaps within the 
+    block.
+\end{enumerate}
+\end{definition}
+
+\begin{theorem}[Injectivity of Coarse-Graining]\label{thm:rg_inject}
+The coarse-graining construction yields a well-defined presheaf 
+$\sheaf_\ell$ on $\nerve_\ell$. There is a canonical restriction map 
+on global sections:
+\begin{equation}\label{eq:rg_restriction}
+    r_\ell : \Gamma(\nerve, \sheaf) \longrightarrow 
+    \Gamma(\nerve_\ell, \sheaf_\ell)
+\end{equation}
+and $r_\ell$ is injective: every global completion of the original 
+problem induces a global completion of the coarsened problem.
+\end{theorem}
+
+\begin{proof}
+\textbf{Well-definedness.} Each stalk $\sheaf_\ell(\block_a)$ is 
+an inverse limit of sets (the local section spaces connected by 
+restriction maps), which exists in the category of sets. The 
+restriction maps of $\sheaf_\ell$ (for inclusions between simplices 
+of $\nerve_\ell$) are induced by the restriction maps of $\sheaf$ 
+on the corresponding sub-collections of the original nerve.
+
+\textbf{Canonical map.} A global section $s \in \Gamma(\nerve, 
+\sheaf)$ is a compatible family $(s_v)_{v \in \nerve^{(0)}}$. For 
+each block $\block_a$, the restriction $(s_v)_{v \in \block_a}$ is 
+automatically compatible on all pairwise overlaps within $\block_a$ 
+(since it is compatible on \emph{all} overlaps globally). Therefore 
+$(s_v)_{v \in \block_a} \in \sheaf_\ell(\block_a)$.
+
+\textbf{Injectivity.} If $r_\ell(s) = r_\ell(s')$, then for every 
+block $\block_a$ and every $v \in \block_a$, $s_v = s'_v$. Since 
+the blocks partition $\nerve^{(0)}$, $s_v = s'_v$ for all $v$, 
+hence $s = s'$.
+\end{proof}
+
+\begin{remark}[Non-Surjectivity and False Completions]
+\label{rem:false_completions}
+The map $r_\ell$ is generally \emph{not} surjective: the coarsened 
+problem $(\nerve_\ell, \sheaf_\ell)$ can have global sections that 
+do not lift to global sections of $(\nerve, \sheaf)$. These are 
+\emph{false completions} --- configurations that look valid at scale 
+$\ell$ (compatible within each block and between blocks) but fail at 
+finer scales (incompatible within a block when one examines the 
+internal structure). The obstruction to lifting is classified by the 
+Leray spectral sequence (RG1a below): the higher direct images 
+$R^q \pi_{\ell *} \sheaf$ for $q \geq 1$ measure the sub-scale 
+obstructions invisible at scale $\ell$.
+
+\textbf{Linearization scope.} The coarse-graining construction 
+(Definition~\ref{def:coarse_grain}) operates on the set-valued 
+presheaf $\sheaf$ and requires no linearization. The spectral 
+analysis (RG3 onward: Laplacians, partition functions, spectral 
+gaps, anomalous dimensions) requires the linearized presheaf 
+$\sheaf^{\mathrm{lin}}$. The Leray spectral sequence 
+(Theorem~\ref{thm:leray_rg}) is stated for the abelian presheaf 
+$\sheaf^{\mathrm{lin}}$. See Remark~\ref{rem:rg_linearization} 
+for the linearization regime.
+\end{remark}
+
+\begin{example}[Shidoku Coarse-Graining]
+Continuing Example~\ref{ex:shidoku_nerve}: the partition 
+$\partition_1 = \{\block_1, \block_2, \block_3, \block_4\}$ groups 
+the 12 nerve vertices into 4 blocks. The stalk dimensions of the 
+coarsened presheaf are:
+\begin{itemize}
+    \item $\sheaf_1(\block_1)$: all completions of the top two rows 
+    that are simultaneously valid for both rows \emph{and} both 
+    top boxes. This is a \emph{stronger} constraint than requiring 
+    validity for each constraint individually.
+    \item $\sheaf_1(\block_3)$: all completions of the two left 
+    columns, constrained to be mutually compatible (which is 
+    automatic since distinct columns share no cells in a $4 \times 4$ 
+    grid, so $\sheaf_1(\block_3) \cong \sheaf(c_1) \times 
+    \sheaf(c_2)$).
+\end{itemize}
+The coarsened nerve $\nerve_1 \cong K_{2,2}$ has 4 vertices, 4 
+edges, and no higher simplices. Global sections of $\sheaf_1$ on 
+$K_{2,2}$ are band-level compatible completions.
+\end{example}
+
+\textbf{Derived from:} Branch~VII, SH1 (completion presheaf) + SH2 
+(\v{C}ech complex) + standard inverse limit construction.
+
+\textbf{Interpretation:} This is the Kadanoff block-spin 
+transformation transplanted from the square lattice to the nerve of 
+the constraint cover. Each ``super-spin'' (block section) is a 
+coarsened description of the constraint structure at scale $\ell$.
+
+% ── RG2 ──
+\section{RG2: The Coarse-Graining Semigroup}
+
+\begin{definition}[Filtration of Partitions and RG 
+Semigroup]\label{def:rg_semigroup}
+A \emph{hierarchical coarse-graining} of $(\nerve, \sheaf)$ is a 
+filtration of partitions:
+\begin{equation}\label{eq:filtration}
+    \partition_0 = \{\{v\}\}_{v \in \nerve^{(0)}} 
+    \preccurlyeq \partition_1 \preccurlyeq \cdots 
+    \preccurlyeq \partition_L = \{\nerve^{(0)}\}
+\end{equation}
+where $\partition_i \preccurlyeq \partition_j$ means every block of 
+$\partition_j$ is a union of blocks of $\partition_i$ (the coarser 
+partition refines the finer one). The \emph{scale} $\ell$ ranges 
+from $0$ (trivial partition, original nerve) to $L$ (single block, 
+maximally coarsened).
+
+The filtration induces a directed system of simplicial maps:
+\begin{equation}\label{eq:directed_system}
+    \nerve = \nerve_0 \xrightarrow{\pi_{0,1}} \nerve_1 
+    \xrightarrow{\pi_{1,2}} \cdots 
+    \xrightarrow{\pi_{L-1,L}} \nerve_L = \{*\}
+\end{equation}
+with pushed-forward presheaves $\sheaf_0 = \sheaf, \sheaf_1, 
+\ldots, \sheaf_L$.
+
+The \emph{RG semigroup} $T = \{T_\ell\}_{\ell = 0}^{L}$ is defined 
+by $T_\ell(\nerve, \sheaf) = (\nerve_\ell, \sheaf_\ell)$, acting on 
+the space of completion problems 
+$\mathcal{P} = \{(\nerve, \sheaf) : \nerve \text{ finite simplicial 
+complex}, \sheaf \text{ presheaf on } \nerve\}$.
+
+\textbf{Effective parameters.} Each completion problem 
+$(\nerve_\ell, \sheaf_\ell)$ induces effective parameters at 
+scale $\ell$:
+\begin{align}
+    n(\ell) &= |\nerve_\ell^{(0)}| 
+    && \text{(number of effective constraints)} 
+    \label{eq:n_ell}\\
+    m(\ell)^2 &= \lambda_1(\Delta_1^{(\ell)}) 
+    && \text{(spectral gap of degree-1 Laplacian)} 
+    \label{eq:m_ell}\\
+    s(\ell) &= \frac{1}{n(\ell)} \sum_a \dim \sheaf_\ell(\block_a) 
+    && \text{(average stalk dimension)} 
+    \label{eq:s_ell}
+\end{align}
+The \emph{scale-dependent trichotomy parameter} is defined 
+operationally:
+\begin{equation}\label{eq:Gamma_ell}
+    \Gamma(\ell) = \text{the parent's } \Gamma \text{ evaluated 
+    on the coarsened problem } 
+    (\nerve_\ell, \sheaf_\ell)
+\end{equation}
+That is, $\Gamma(\ell)$ inherits whatever functional form relates 
+$\Gamma$ to the curvature, constraint count, and tolerance in the 
+parent framework, applied to the effective quantities at scale 
+$\ell$. At $\ell = 0$, $\Gamma(0)$ is the original trichotomy 
+parameter.
+\end{definition}
+
+\begin{remark}[Wilson vs.\ Kadanoff Convention]\label{rem:wilson}
+The tolerance budget $\tau$ (a property of the model, not the 
+problem) is held fixed under coarse-graining. This is Wilson's 
+convention: fix the ``temperature'' and coarse-grain the 
+``Hamiltonian'' (the constraint structure). An alternative 
+Kadanoff convention rescales $\tau(\ell) = \tau_0 \cdot 
+\ell^{y_\tau}$ for some scaling dimension $y_\tau$, which can be 
+absorbed into a redefinition of $\Gamma(\ell)$. We adopt the Wilson 
+convention throughout.
+\end{remark}
+
+\textbf{Derived from:} RG1 (coarse-graining triple).
+
+\textbf{Interpretation:} The filtration of partitions is the analog 
+of choosing a specific blocking scheme in real-space 
+renormalization. The nesting requirement ensures that each RG step 
+groups previously-grouped constraints, never splitting a block. 
+This is the minimal structure needed for the semigroup property 
+$T_{\ell_2} = T_{\ell_2, \ell_1} \circ T_{\ell_1}$ to hold.
+
+\begin{remark}[Semigroup Functoriality]\label{rem:semigroup}
+The semigroup property holds because the pushforward of presheaves 
+is functorial: if $\pi_{\ell_1, \ell_2} : \nerve_{\ell_1} \to 
+\nerve_{\ell_2}$ is the simplicial map induced by coarsening 
+$\partition_{\ell_1}$ to $\partition_{\ell_2}$, then 
+$(\pi_{\ell_1, \ell_2})_* \sheaf_{\ell_1} = \sheaf_{\ell_2}$. 
+This follows from the universal property of inverse limits: the 
+inverse limit defining $\sheaf_{\ell_2}(\block_a^{(\ell_2)})$ over 
+all vertices $v \in \block_a^{(\ell_2)}$ factors through the 
+intermediate inverse limits $\sheaf_{\ell_1}(\block_b^{(\ell_1)})$ 
+for blocks $\block_b^{(\ell_1)} \subseteq \block_a^{(\ell_2)}$ 
+(which exist because the partitions are nested). The nesting 
+$\partition_{\ell_1} \preccurlyeq \partition_{\ell_2}$ is essential: 
+without it, the factorization fails and the semigroup property 
+need not hold.
+\end{remark}
+
+% ── RG3 ──
+\section{RG3: The \v{C}ech Laplacian at Scale $\ell$}
+
+\begin{definition}[Coarsened \v{C}ech 
+Complex]\label{def:coarsened_cech}
+At scale $\ell$, the \emph{coarsened \v{C}ech complex} is:
+\begin{equation}\label{eq:coarsened_complex}
+    0 \longrightarrow \Cech^0(\nerve_\ell, \sheaf_\ell^{\mathrm{lin}}) 
+    \xrightarrow{\;\delta_\ell^0\;}
+    \Cech^1(\nerve_\ell, \sheaf_\ell^{\mathrm{lin}}) 
+    \xrightarrow{\;\delta_\ell^1\;} \cdots
+\end{equation}
+with coboundary operators $\delta_\ell^p$ defined by the restriction 
+maps of $\sheaf_\ell^{\mathrm{lin}}$ (the linearization of the 
+coarsened presheaf, in the additive regime of Branch~VII).
+
+The \emph{coarsened \v{C}ech Laplacian} on $p$-cochains is:
+\begin{equation}\label{eq:coarsened_laplacian}
+    \Delta_p^{(\ell)} = P_\ell^{(p)\dagger} \, \Delta_p \, P_\ell^{(p)}
+\end{equation}
+where $P_\ell^{(p)} : V_\ell^{(p)} \hookrightarrow 
+\Cech^p(\nerve, \sheaf^{\mathrm{lin}})$ is the inclusion of the 
+subspace of \emph{block-compatible $p$-cochains} and 
+$P_\ell^{(p)\dagger}$ is its adjoint (orthogonal projection).
+
+\textbf{Inherited inner product.} A block-compatible 0-cochain is 
+constant on each block $\block_a$; a block-compatible 1-cochain 
+assigns the same value to all original edges connecting a given 
+pair of blocks (and zero to within-block edges). The inner product 
+on $V_\ell^{(p)}$ is inherited from the ambient 
+$\Cech^p(\nerve, \sheaf^{\mathrm{lin}})$ by restriction.
+
+\textbf{Equivalently,} $\Delta_p^{(\ell)}$ is the Laplacian of the 
+coarsened coboundary operators $\delta_\ell^p$ with \emph{weighted} 
+inner product on $\Cech^p(\nerve_\ell, \sheaf_\ell^{\mathrm{lin}})$: 
+each coarsened $p$-simplex $(a_0, \ldots, a_p)$ carries weight 
+equal to the number of original $p$-simplices it represents. This 
+edge-multiplicity weighting ensures the coarsened coboundary 
+structure faithfully represents the fine-scale spectral content.
+\end{definition}
+
+\begin{remark}[Compression vs.\ Coarsened Nerve 
+Laplacian]\label{rem:compression_vs_coarse}
+The operator $\Delta_p^{(\ell)} = P_\ell^{(p)\dagger} \Delta_p 
+P_\ell^{(p)}$ is \emph{not} the bare graph Laplacian of the 
+coarsened nerve $\nerve_\ell$ with unit edge weights. That ``bare'' 
+Laplacian forgets how many original edges each coarsened edge 
+represents, and has a different spectrum. The C-theorem 
+(Theorem~\ref{thm:c_theorem}) and Cauchy interlace both require the 
+\emph{compression} definition, which preserves the inclusion 
+$V_{\ell_2} \subseteq V_{\ell_1}$ and the associated spectral 
+ordering. For the Shidoku nerve with the block partition of 
+Appendix~\ref{app:shidoku_rg}, the compression has eigenvalues 
+$\{0, 3, 6, 9\}$ while the bare coarsened Laplacian has 
+$\{0, 2, 2, 4\}$ --- the C-theorem applies to the former.
+\end{remark}
+
+\begin{conjecture}[Spectral Gap Scaling]\label{conj:spectral_gap}
+The spectral gap $m(\ell)^2 = \lambda_1(\Delta_1^{(\ell)})$ 
+satisfies the scaling relation:
+\begin{equation}\label{eq:spectral_scaling}
+    m(\ell)^2 = \ell^{-2} \cdot m_R(g(\ell))^2
+\end{equation}
+where $m_R$ is the \emph{renormalized mass} and $g(\ell) = 
+\Gamma(\ell)$ is the running coupling. At the critical point 
+($\Gamma = 1$), $m_R = 0$ and the spectrum is gapless at all 
+scales (scale invariance). Away from criticality, 
+$m_R \neq 0$ and $m(\ell)$ vanishes at the scale $\ell = \xi$ 
+(the correlation length).
+
+The $\ell^{-2}$ prefactor is the standard engineering dimension 
+of the mass gap under block-spin RG: since blocks of diameter 
+$\ell$ merge $\sim\!\ell^{d_H}$ vertices, the effective spectral 
+gap (an eigenvalue of a matrix whose dimension decreases with 
+$\ell$) generically increases as $\ell^{-2}$ absent anomalous 
+corrections. For discrete nerves, this should be understood as 
+the leading scaling behavior of the spectral gap, to be verified 
+numerically in specific examples (Appendix~A).
+\end{conjecture}
+
+\textbf{Derived from:} Branch~VII, SH7 (Euler characteristic, 
+Laplacian) + X3 (correlation length from spectral gap).
+
+\textbf{Interpretation:} The spectral gap of $\Delta_1^{(\ell)}$ 
+is the inverse squared correlation length at scale $\ell$. When 
+the gap vanishes, the system has long-range correlations at that 
+scale --- the hallmark of criticality. The scaling relation 
+connects the bare spectral gap to the renormalized mass through 
+the running coupling.
+
+% ── RG4 ──
+\section{RG4: The Beta Function}
+
+\begin{conjecture}[Beta Function of the Trichotomy 
+Parameter]\label{conj:beta}
+The RG flow of $\Gamma$ is governed by the beta function:
+\begin{equation}\label{eq:beta_def}
+    \beta(\Gamma) := \frac{d\Gamma}{d(\ln \ell)}
+\end{equation}
+For generic completion problems on Davis manifolds with finite 
+nerve, the beta function has the qualitative form:
+\begin{equation}\label{eq:beta_form}
+    \beta(\Gamma) = \frac{1}{\nu} \cdot \Gamma \cdot 
+    (\Gamma - 1) \cdot h(\Gamma)
+\end{equation}
+where:
+\begin{itemize}
+    \item $\nu$ is the correlation length exponent of the completion 
+    transition (Branch~VI, S7);
+    \item $h : (0, \infty) \to (0, \infty)$ is a smooth positive 
+    function with $h(1) = 1$, depending on the universality class;
+    \item the factor $\Gamma$ ensures $\beta(0) = 0$ 
+    (underdetermined fixed point);
+    \item the factor $(\Gamma - 1)$ ensures $\beta(1) = 0$ 
+    (critical fixed point).
+\end{itemize}
+\end{conjecture}
+
+\begin{remark}[Motivation for the Beta Function 
+Form]\label{rem:beta_motivation}
+The qualitative form~\eqref{eq:beta_form} is not derived from 
+first principles but is constrained by three independent requirements:
+
+\begin{enumerate}
+    \item \textbf{Fixed-point structure.} The three regimes of the 
+    Davis trichotomy (determined, critical, underdetermined) must be 
+    fixed points of the RG flow. This requires $\beta(0) = \beta(1) 
+    = 0$ and $\beta(\Gamma) \to +\infty$ as $\Gamma \to \infty$ 
+    (so that $\Gamma = \infty$ is an attracting fixed point).
+    
+    \item \textbf{Flow direction.} Coarse-graining a determined 
+    system ($\Gamma > 1$) averages out compatible sub-scale 
+    solutions, producing an even-more-determined effective problem: 
+    $\beta > 0$ for $\Gamma > 1$. Coarse-graining an underdetermined 
+    system ($\Gamma < 1$) reveals even more freedom at larger scales: 
+    $\beta < 0$ for $0 < \Gamma < 1$.
+    
+    \item \textbf{Consistency with Branch~VI.} At the critical point 
+    $\Gamma = 1$, the derivative $\beta'(1) = 1/\nu$ must equal the 
+    thermal exponent (the inverse correlation length exponent) to 
+    recover the Branch~VI scaling $\xi \sim |\Gamma - 1|^{-\nu}$.
+\end{enumerate}
+The simplest function satisfying all three constraints is 
+$(1/\nu) \cdot \Gamma \cdot (\Gamma - 1)$. The factor $h(\Gamma)$ 
+absorbs higher-order corrections whose precise form depends on the 
+microscopic constraint structure.
+\end{remark}
+
+The flow has the following properties:
+\begin{enumerate}[label=(\alph*)]
+    \item $\beta(\Gamma) < 0$ for $0 < \Gamma < 1$: the trichotomy 
+    parameter \emph{decreases} under coarse-graining (flows toward 
+    the underdetermined fixed point $\Gamma^* = 0$).
+    
+    \item $\beta(\Gamma) > 0$ for $\Gamma > 1$: $\Gamma$ 
+    \emph{increases} under coarse-graining (flows toward the 
+    determined fixed point $\Gamma^* = \infty$).
+    
+    \item $\beta(1) = 0$: the critical point is scale-invariant 
+    (the constraint-to-freedom ratio does not change under 
+    coarse-graining).
+\end{enumerate}
+
+\textbf{Derived from:} RG2 (semigroup) + RG3 (Laplacian) + 
+Branch~VI, S7 (correlation length exponent $\nu$).
+
+\begin{remark}[Discrete vs.\ Continuous Beta 
+Function]\label{rem:discrete_beta}
+The scale $\ell$ takes discrete values $\{0, 1, \ldots, L\}$ 
+corresponding to the filtration levels of the partition 
+(Definition~\ref{def:rg_semigroup}). The derivative 
+$d\Gamma / d(\ln \ell)$ should therefore be understood as a 
+discrete difference quotient:
+\begin{equation}\label{eq:discrete_beta}
+    \beta(\Gamma(\ell)) \approx 
+    \frac{\Gamma(\ell + 1) - \Gamma(\ell)}
+    {\ln(\ell + 1) - \ln(\ell)}
+\end{equation}
+The continuous form~\eqref{eq:beta_form} is a smooth interpolation 
+through these discrete values. All downstream results (RG5 
+fixed-point analysis, RG6 critical exponents, RG7 phase diagram) 
+use only the sign structure and fixed-point values of $\beta$, 
+which are well-defined in the discrete setting. In particular, 
+$\beta(\Gamma^*) = 0$ means $\Gamma(\ell + 1) = \Gamma(\ell)$ at 
+the fixed point, and the stability condition $\beta'(\Gamma^*) > 0$ 
+means $|\Gamma(\ell + 1) - \Gamma^*| > |\Gamma(\ell) - \Gamma^*|$ 
+(the deviation grows at each step). These are discrete dynamical 
+statements requiring no differentiability.
+\end{remark}
+
+\textbf{Interpretation:} The beta function encodes how the 
+``difficulty'' of a completion problem changes when viewed at 
+different resolutions. Easy problems (determined regime) look 
+progressively easier at coarser scales. Hard problems 
+(underdetermined regime) look progressively harder. Critical 
+problems look the same at every scale.
+
+% ── RG5 ──
+\section{RG5: Fixed Points and Stability}
+
+\begin{conjecture}[Three Fixed Points of the Completion 
+RG]\label{conj:fixed_points}
+The beta function $\beta(\Gamma)$ of Conjecture~\ref{conj:beta} has 
+exactly three fixed points in $[0, \infty]$:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lccll}
+\textbf{Fixed point} & $\Gamma^*$ & \textbf{Stability} 
+& \textbf{Physical regime} & \textbf{Cohomological signature} \\
+\hline
+Underdetermined & $0$ & IR stable & No effective constraints 
+& $\dim \Hcech^0 \gg 1$, $\Hcech^1 = 0$ \\
+Critical & $1$ & Unstable & Scale-invariant 
+& spectral gap $= 0$ \\
+Determined & $\infty$ & IR stable & Fully constrained 
+& $\Hcech^0 = \{*\}$, $\Hcech^1 = 0$ \\
+\end{tabular}
+\end{center}
+\end{conjecture}
+
+\begin{remark}[The Determined Fixed Point at 
+$\Gamma = \infty$]\label{rem:compactification}
+The fixed point $\Gamma^* = \infty$ is a fixed point of the 
+\emph{one-point compactification} $[0, \infty]$: writing 
+$u = 1/\Gamma$, the beta function in the $u$-coordinate is 
+$\beta_u = du / d(\ln \ell) = -u^2 \beta(1/u)$, which has a 
+regular fixed point at $u^* = 0$ with stability exponent 
+$d\beta_u/du|_{u=0} = -1/\nu < 0$ (stable, since $\beta_u < 0$ 
+for small $u > 0$). The analysis of the determined regime is 
+therefore well-defined in the compactified coordinate; the use 
+of ``$\Gamma = \infty$'' is a notational convenience.
+\end{remark}
+
+\textbf{Stability analysis at $\Gamma^* = 1$.} Linearize 
+$\beta(\Gamma) \approx (1/\nu) \cdot (\Gamma - 1) + 
+O((\Gamma - 1)^2)$ near $\Gamma = 1$. The \emph{relevant 
+eigenvalue} is:
+\begin{equation}\label{eq:thermal_exponent}
+    y_t = \left.\frac{d\beta}{d\Gamma}\right|_{\Gamma = 1} 
+    = \frac{1}{\nu}
+\end{equation}
+This is the \emph{thermal exponent}. Since $y_t > 0$ ($\nu > 0$), 
+the critical fixed point is \emph{unstable}: any perturbation 
+$\Gamma = 1 + \varepsilon$ flows away exponentially under 
+coarse-graining.
+
+\textbf{Solution near criticality.} In the discrete setting 
+(Remark~\ref{rem:discrete_beta}), the linearized RG map near 
+$\Gamma^* = 1$ has a single relevant eigenvalue $\mu > 1$: each 
+coarse-graining step multiplies the deviation from criticality by 
+$\mu$. Writing $\delta\Gamma(\ell) = \Gamma(\ell) - 1$:
+\begin{equation}\label{eq:discrete_recursion}
+    \delta\Gamma(\ell + 1) = \mu \cdot \delta\Gamma(\ell) 
+    + O(\delta\Gamma(\ell)^2)
+\end{equation}
+After $\ell$ discrete RG steps starting from scale $0$:
+\begin{equation}\label{eq:flow_near_crit}
+    \delta\Gamma(\ell) = \mu^\ell \cdot \delta\Gamma(0) 
+    + O(\delta\Gamma(0)^2)
+\end{equation}
+This is purely discrete and requires no continuum limit.
+
+\textbf{Defining $\nu$ from $\mu$.} The discrete eigenvalue $\mu$ is 
+the \emph{primary observable} of the linearized RG map (in principle 
+computable for any finite nerve). The correlation length exponent 
+$\nu$ is \emph{defined} from $\mu$:
+\begin{equation}\label{eq:nu_from_mu}
+    \nu = \frac{1}{\ln \mu}
+\end{equation}
+so that $\mu = e^{1/\nu}$. The thermal exponent 
+$y_t$~\eqref{eq:thermal_exponent} then satisfies $y_t = \ln \mu = 
+1/\nu$. The continuous $\beta$-function (Remark~\ref{rem:discrete_beta}) 
+reproduces this: $\beta'(1) = 1/\nu = \ln \mu$. There is no 
+circularity: $\mu$ is computed from the discrete map, $\nu$ is derived, 
+and the $\beta$-function's slope at the fixed point is a 
+\emph{consequence}, not an input.
+
+The continuous power-law form $\delta\Gamma \propto \ell^{1/\nu}$ 
+arises only when one identifies the discrete step index $\ell$ 
+with a continuous scale variable and writes $\mu^\ell = 
+e^{\ell \ln \mu} = e^{(\ell/\nu) \cdot \nu \ln \mu}$. For 
+logarithmically-spaced scales, $\mu^\ell = \ell^{1/\nu}$. 
+This identification is a convenience, not a requirement: the 
+discrete recursion~\eqref{eq:discrete_recursion} is the 
+fundamental object.
+
+\textbf{Correlation length from RG.} Define the correlation length 
+$\xi$ as the scale $\ell^*$ at which 
+$|\Gamma(\ell^*) - 1| \sim O(1)$:
+\begin{equation}\label{eq:xi_from_rg}
+    \xi \sim |\Gamma_0 - 1|^{-\nu}
+\end{equation}
+This recovers the Branch~VI result (S7) from the RG fixed-point 
+structure.
+
+\textbf{Derived from:} RG4 (beta function) + Branch~VI, S7 
+(correlation length exponent $\nu$).
+
+\textbf{Interpretation:} The three fixed points of the RG flow 
+are the three regimes of the Davis trichotomy. The flow structure 
+explains \emph{why} the trichotomy exists: it is the fixed-point 
+structure of the coarse-graining operation. The instability of 
+the critical point explains \emph{why} the phase transition is 
+sharp: any perturbation away from $\Gamma = 1$ is amplified by 
+the RG flow.
+
+% ── RG6 ──
+\section{RG6: Critical Exponents from RG Eigenvalues}
+
+\begin{conjecture}[Critical Exponents as RG 
+Eigenvalues]\label{conj:rg_exponents}
+All critical exponents of the Davis completion transition 
+(Branch~VI) are determined by the eigenvalues of the linearized 
+RG transformation at the critical fixed point $\Gamma^* = 1$.
+
+The completion transition has one relevant direction with 
+eigenvalue:
+\begin{equation}\label{eq:yt}
+    y_t = \frac{1}{\nu}
+\end{equation}
+(the thermal exponent, controlling the distance $\Gamma - 1$ 
+from criticality). All other directions are irrelevant 
+(eigenvalues $< 0$), representing sub-scale constraint 
+details that do not affect the critical behavior.
+
+The standard scaling relations (derived, not independent) 
+give all Branch~VI exponents from $y_t$ and the effective 
+dimension $d_H$ of the constraint graph:
+\begin{align}
+    \alpha &= 2 - \nu \cdot d_H 
+    && \text{(specific heat, Branch~VI S4)}
+    \label{eq:hyperscaling}\\
+    \gamma &= \nu(2 - \eta) 
+    && \text{(susceptibility, Fisher's relation)}
+    \label{eq:fisher}\\
+    \beta_{\mathrm{mag}} &= \frac{\nu(d_H - 2 + \eta)}{2} 
+    && \text{(order parameter)}
+    \label{eq:beta_mag}
+\end{align}
+where $\eta$ is the anomalous dimension (correction to mean-field 
+scaling of the \v{C}ech cochain two-point function).
+\end{conjecture}
+
+\begin{remark}[Upper Critical Dimension]\label{rem:upper_critical}
+The hyperscaling relation~\eqref{eq:hyperscaling} holds when 
+$d_H < d_{\mathrm{uc}}$, where $d_{\mathrm{uc}}$ is the 
+\emph{upper critical dimension} of the completion transition. For 
+$d_H \geq d_{\mathrm{uc}}$, mean-field exponents apply: $\alpha = 
+0$, $\nu = 1/2$, $\eta = 0$, with possible logarithmic corrections 
+at $d_H = d_{\mathrm{uc}}$. Completion problems on random graphs 
+(random $k$-SAT, Erd\H{o}s--R\'enyi CSPs) have $d_H \to \infty$ 
+and lie in the mean-field universality class. The value of 
+$d_{\mathrm{uc}}$ for the Davis completion transition is an open 
+question; by analogy with the Ising model, we conjecture 
+$d_{\mathrm{uc}} = 4$, but the correct value may differ due to the 
+non-standard interaction structure of constraint graphs.
+\end{remark}
+
+\textbf{Key prediction.} The anomalous dimension $\eta$ controls 
+the decay of the \v{C}ech cochain correlator:
+\begin{equation}\label{eq:anomalous_decay}
+    G(v, w) = \langle \sigma(v) \, \sigma(w) \rangle_\beta 
+    \sim d_\nerve(v, w)^{-(d_H - 2 + \eta)}
+\end{equation}
+at the critical point, where $d_\nerve$ is the graph metric on the 
+nerve. Mean-field theory gives $\eta = 0$; nonzero $\eta$ arises 
+from nonlinear interactions between constraint patches (the 
+Baker--Campbell--Hausdorff corrections of Branch~VII, SH5).
+
+\textbf{Derived from:} RG5 (fixed-point structure) + Branch~VI, S4 
+(specific heat exponent $\alpha$), S7 (correlation length exponent 
+$\nu$) + standard scaling relations.
+
+\textbf{Interpretation:} The critical exponents are not free 
+parameters --- they are \emph{eigenvalues} of the linearized RG at 
+the critical fixed point. This is the sense in which the phase 
+transition is ``universal'': systems with the same RG fixed point 
+share the same eigenvalues and therefore the same critical behavior.
+
+\begin{remark}[One Relevant Direction 
+Hypothesis]\label{rem:one_relevant}
+The conjecture that $\Gamma$ captures the \emph{only} relevant 
+direction near the critical fixed point is the universality 
+hypothesis. Irrelevant directions (sub-scale constraint details, 
+gauge-equivalent configurations) flow to zero under 
+coarse-graining and do not affect the critical behavior. This is 
+the standard assumption in Wilson's RG and is supported by the 
+observation that microscopically different CSPs (Sudoku, $k$-SAT, 
+graph coloring) exhibit qualitatively similar phase transitions 
+near their respective critical points.
+\end{remark}
+
+% ── RG7 ──
+\section{RG7: The Phase Diagram as RG Flow Diagram}
+
+\begin{conjecture}[Phase Diagram Flow 
+Lines]\label{conj:phase_flow}
+The phase diagram of the parent framework (Conjecture~50.1) in the 
+$(\rho, \Khat)$ plane acquires RG flow lines. Each initial 
+condition $(\rho_0, \Khat_0)$ flows under $T_\ell$ to a 
+trajectory $(\rho(\ell), \Khat(\ell))$ with:
+
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Above the critical line} ($\Gamma > 1$): flow 
+    lines converge to the determined fixed point ($\rho \to \infty$, 
+    $\Khat \to 0$) --- constraints dominate, effective curvature 
+    vanishes.
+    
+    \item \textbf{Below the critical line} ($\Gamma < 1$): flow 
+    lines converge to the underdetermined fixed point 
+    ($\rho \to 0$, $\Khat \to 0$) --- both constraints and 
+    curvature vanish (free theory).
+    
+    \item \textbf{On the critical line} ($\Gamma = 1$): flow lines 
+    converge to the critical fixed point --- a unique point 
+    $(\rho^*, \Khat^*)$ where the constraint-to-freedom ratio is 
+    scale-invariant.
+\end{enumerate}
+
+The critical line $\rho_{\mathrm{crit}}(\Khat)$ is the 
+\emph{separatrix} (co-dimension~1 invariant manifold) of the RG 
+flow: the set of initial conditions flowing to the critical fixed 
+point. Since the critical fixed point has exactly one relevant 
+direction ($y_t = 1/\nu$), the separatrix is co-dimension~1, 
+meaning a single parameter ($\Gamma$) must be tuned to reach 
+criticality.
+\end{conjecture}
+
+\begin{remark}[RG-Improved Critical Line]\label{rem:rg_improved}
+The RG flow provides corrections to the critical line at finite 
+system size. Let $\omega > 0$ be the leading irrelevant exponent 
+(the magnitude of the largest negative eigenvalue of the linearized 
+RG). Then:
+\begin{equation}\label{eq:rg_improved_line}
+    \rho_{\mathrm{crit}}(\Khat, \ell) = 
+    \rho_{\mathrm{crit}}^{(0)}(\Khat) + c \cdot \ell^{-\omega} 
+    + \cdots
+\end{equation}
+At $\ell \to \infty$ (thermodynamic limit), corrections vanish and 
+the critical line is sharp. At finite $\ell$ (finite problem size), 
+the critical line is broadened by an amount $\sim \ell^{-\omega}$.
+\end{remark}
+
+\textbf{Derived from:} RG4 (beta function) + RG5 (fixed-point 
+structure) + Parent Conjecture~50.1 (phase diagram).
+
+\textbf{Interpretation:} The phase diagram is the \emph{projection} 
+of the RG flow onto the $(\rho, \Khat)$ plane. The critical line 
+is not an arbitrary boundary but the separatrix of a dynamical 
+system --- the unique set of initial conditions balanced between 
+the two stable fixed points.
+
+% ── RG8 ──
+\section{RG8: Monotonicity (C-Theorem Analog)}
+
+\begin{theorem}[Completion Entropy 
+Monotonicity]\label{thm:c_theorem}
+Define the \emph{completion entropy} at scale $\ell$:
+\begin{equation}\label{eq:completion_entropy}
+    C(\ell) = \ln Z_0(\beta, \ell) 
+    = \ln \tr \exp(-\beta \, \Delta_0^{(\ell)})
+\end{equation}
+where $Z_0(\beta, \ell)$ is the degree-0 partition function 
+(Branch~VII, SH7) evaluated on the coarsened \v{C}ech Laplacian 
+$\Delta_0^{(\ell)}$ with the inherited inner product 
+(Definition~\ref{def:coarsened_cech}).
+
+Then $C(\ell)$ is monotonically non-increasing under 
+coarse-graining:
+\begin{equation}\label{eq:c_monotone}
+    C(\ell_2) \leq C(\ell_1) \qquad \text{for } \ell_2 > \ell_1
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+We first establish a self-contained lemma, then apply it.
+
+\begin{lemma}[Trace Monotonicity Under Subspace 
+Restriction]\label{lem:trace_mono}
+Let $A$ be an $n \times n$ positive semidefinite Hermitian matrix 
+with eigenvalues $\lambda_1 \leq \cdots \leq \lambda_n$. Let 
+$V \subseteq \mathbb{R}^n$ be a subspace of dimension $m \leq n$, 
+and let $B = P^\dagger A P$ be the $m \times m$ compression, where 
+$P : V \hookrightarrow \mathbb{R}^n$ is the inclusion. Let 
+$\mu_1 \leq \cdots \leq \mu_m$ be the eigenvalues of $B$. Then 
+for all $\beta > 0$:
+\[
+    \sum_{j=1}^{m} e^{-\beta \mu_j} 
+    \leq \sum_{j=1}^{n} e^{-\beta \lambda_j}
+\]
+\end{lemma}
+
+\begin{proof}[Proof of Lemma]
+\textbf{Step 1} (Cauchy--Poincar\'e interlace theorem). For a 
+Hermitian matrix $A$ with eigenvalues 
+$\lambda_1 \leq \cdots \leq \lambda_n$ and its compression $B$ 
+to an $m$-dimensional subspace with eigenvalues 
+$\mu_1 \leq \cdots \leq \mu_m$, we have:
+\begin{equation}\label{eq:interlace_explicit}
+    \lambda_j \leq \mu_j \leq \lambda_{j + n - m} 
+    \qquad \text{for } j = 1, \ldots, m
+\end{equation}
+In particular, $\mu_j \geq \lambda_j$ for all $j$. This is 
+standard and proved via the min-max characterization of eigenvalues. 
+Eigenvalues are counted with multiplicity throughout.
+
+\textbf{Step 2} (term-by-term comparison). Since $\mu_j \geq 
+\lambda_j$ and the function $x \mapsto e^{-\beta x}$ is strictly 
+decreasing for $\beta > 0$:
+\[
+    e^{-\beta \mu_j} \leq e^{-\beta \lambda_j} 
+    \qquad \text{for } j = 1, \ldots, m
+\]
+Summing over $j = 1, \ldots, m$:
+\begin{equation}\label{eq:step2}
+    \sum_{j=1}^{m} e^{-\beta \mu_j} 
+    \leq \sum_{j=1}^{m} e^{-\beta \lambda_j}
+\end{equation}
+
+\textbf{Step 3} (dimension counting). Since $e^{-\beta \lambda_j} 
+> 0$ for all $j$ and $m \leq n$:
+\begin{equation}\label{eq:step3}
+    \sum_{j=1}^{m} e^{-\beta \lambda_j} 
+    \leq \sum_{j=1}^{n} e^{-\beta \lambda_j}
+\end{equation}
+
+Combining~\eqref{eq:step2} and~\eqref{eq:step3} gives the result.
+No operator monotonicity, L\"owner order, majorization, or 
+functional calculus is used --- only the Cauchy--Poincar\'e 
+interlace theorem (a statement about finite sequences of real 
+numbers) and the monotonicity of the real-valued function 
+$e^{-\beta x}$.
+\end{proof}
+
+\textbf{Application to completion entropy.} By 
+Definition~\ref{def:coarsened_cech}, the coarsened Laplacian is 
+$\Delta_0^{(\ell)} = P_\ell^{(0)\dagger} \Delta_0 P_\ell^{(0)}$, 
+the compression of $\Delta_0$ to the subspace $V_\ell$ of 
+block-compatible 0-cochains. Since $\partition_{\ell_1} 
+\preccurlyeq \partition_{\ell_2}$, we have $V_{\ell_2} \subseteq 
+V_{\ell_1}$. The \v{C}ech Laplacian is positive semidefinite 
+($\Delta_0 = (\delta^0)^\dagger \delta^0$, a sum of squares). 
+Applying Lemma~\ref{lem:trace_mono} with $A = \Delta_0^{(\ell_1)}$ 
+restricted to $V_{\ell_2} \subseteq V_{\ell_1}$ gives:
+\[
+    \tr \exp(-\beta \, \Delta_0^{(\ell_2)}) 
+    \leq \tr \exp(-\beta \, \Delta_0^{(\ell_1)})
+\]
+Taking logarithms: $C(\ell_2) \leq C(\ell_1)$.
+
+\textbf{Note (Remark~\ref{rem:compression_vs_coarse}).} The 
+completion entropy uses the \emph{compression} $P_\ell^\dagger 
+\Delta_0 P_\ell$, not the bare graph Laplacian of $\nerve_\ell$. 
+These are different operators with different spectra; the 
+C-theorem holds for the compression because it preserves the 
+nested-subspace structure required by Cauchy interlace.
+\end{proof}
+
+\begin{remark}[Physical Interpretation]\label{rem:c_physical}
+Coarse-graining can only \emph{destroy} completion possibilities, 
+never create new ones (Theorem~\ref{thm:rg_inject}: the restriction 
+$r_\ell$ is injective but not surjective). The completion entropy 
+$C(\ell)$ counts (in a thermal-weighted sense) the effective number 
+of completions visible at scale $\ell$. This number decreases 
+monotonically:
+
+\begin{itemize}
+    \item At the determined fixed point: $C \to 0$ (one solution, 
+    $Z_0 \to 1$).
+    \item At the underdetermined fixed point: $C$ is maximal (many 
+    solutions, large $Z_0$).
+    \item At the critical fixed point: $C = C_{\mathrm{crit}}$, a 
+    \emph{universal constant} that depends only on the universality 
+    class. This universality of $C_{\mathrm{crit}}$ is conjectural 
+    and analogous to Zamolodchikov's c-theorem for 2D conformal 
+    field theories.
+\end{itemize}
+\end{remark}
+
+\textbf{Derived from:} RG2 (semigroup, nested filtration) + 
+Branch~VII, SH7 (partition function on \v{C}ech complex) + Cauchy 
+interlace theorem.
+
+\textbf{Interpretation:} The C-theorem provides an ``arrow of 
+time'' for the RG flow. Information about completions flows 
+from fine to coarse scales and is irreversibly lost. The 
+monotonicity of $C(\ell)$ is the information-theoretic content of 
+coarse-graining: you cannot recover fine-scale completion data from 
+coarse-scale observations.
+
+% ═══════════════════════════════════════════════════════
+\newpage
+\part{First-Order Derivations (RG1a--RG7a)}
+% ═══════════════════════════════════════════════════════
+
+\noindent
+\textbf{Linearization convention.} All results in Parts~II and~III 
+operate on the linearized presheaf $\sheaf^{\mathrm{lin}}$ 
+(Branch~VII, abelian regime). The derived pushforward, spectral 
+sequences, anomalous dimensions, and partition function computations 
+require the additive coboundary structure. The set-valued 
+coarse-graining of Part~I (RG1--RG2) does not; only the spectral 
+analysis (RG3 onward) requires linearization.
+
+% ── RG1a ──
+\section{RG1a: Derived Pushforward and RG Spectral Sequence}
+
+\begin{theorem}[Leray Spectral Sequence of 
+Coarse-Graining]\label{thm:leray_rg}
+The coarse-graining map $\pi_\ell : \nerve \to \nerve_\ell$ induces 
+a derived pushforward $R\pi_{\ell *} : D^+(\nerve) \to 
+D^+(\nerve_\ell)$. The higher direct images $R^q \pi_{\ell *} 
+\sheaf$ form presheaves on $\nerve_\ell$ with stalks:
+\begin{equation}\label{eq:higher_direct}
+    (R^q \pi_{\ell *} \sheaf)(\block_a) 
+    = H^q\!\left(\pi_\ell^{-1}(\block_a),\; 
+    \sheaf\big|_{\pi_\ell^{-1}(\block_a)}\right)
+\end{equation}
+measuring the degree-$q$ cohomological obstruction within each 
+block. There is a Leray spectral sequence:
+\begin{equation}\label{eq:leray}
+    E_2^{p,q} = \Hcech^p(\nerve_\ell,\; R^q \pi_{\ell *} \sheaf) 
+    \;\Longrightarrow\; \Hcech^{p+q}(\nerve, \sheaf)
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+This is the standard Leray spectral sequence applied to the 
+simplicial map $\pi_\ell$ and the presheaf $\sheaf$. The 
+construction requires only that $\pi_\ell$ is a surjective 
+simplicial map between finite simplicial complexes and that 
+$\sheaf$ is a presheaf of abelian groups (which holds for 
+$\sheaf^{\mathrm{lin}}$). The spectral sequence converges because 
+$\nerve$ and $\nerve_\ell$ are finite-dimensional.
+\end{proof}
+
+\begin{conjecture}[RG Interpretation of the Spectral 
+Sequence]\label{conj:rg_spectral}
+The terms of the Leray spectral sequence have the following RG 
+interpretation:
+
+\begin{enumerate}[label=(\alph*)]
+    \item $R^0 \pi_{\ell *} \sheaf = \sheaf_\ell$: the 
+    \emph{renormalized presheaf} (effective theory at scale $\ell$).
+    
+    \item $R^q \pi_{\ell *} \sheaf$ for $q \geq 1$: the 
+    \emph{integrated-out degrees of freedom}. These are sub-scale 
+    obstructions absorbed into the effective theory.
+    
+    \item \textbf{Leray condition at scale $\ell$:} If 
+    $R^q \pi_{\ell *} \sheaf = 0$ for all $q \geq 1$ (every block 
+    is internally acyclic), the spectral sequence degenerates at 
+    $E_2$ and:
+    \begin{equation}\label{eq:leray_degen}
+        \Hcech^n(\nerve, \sheaf) \cong 
+        \Hcech^n(\nerve_\ell, \sheaf_\ell) \qquad \text{for all } n
+    \end{equation}
+    No cohomological information is lost by coarse-graining.
+\end{enumerate}
+
+\textbf{RG relevance classification.} An obstruction class 
+$[\alpha] \in \Hcech^1(\nerve, \sheaf)$ is:
+\begin{itemize}
+    \item \emph{Relevant} if its image in 
+    $\Hcech^1(\nerve_\ell, \sheaf_\ell)$ is nonzero for all $\ell$ 
+    (survives all coarse-graining).
+    \item \emph{Irrelevant} if its image vanishes at some finite 
+    $\ell$ (a sub-scale obstruction).
+    \item \emph{Marginal} if it maps to zero in $\Hcech^1$ but 
+    appears in $\Hcech^0(\nerve_\ell, R^1 \pi_{\ell *} \sheaf)$ 
+    (visible only through the spectral sequence correction).
+\end{itemize}
+\end{conjecture}
+
+\textbf{Derived from:} RG1 (coarse-graining) + Branch~VII, SH5a 
+(\v{C}ech-to-derived spectral sequence) + X10 (renormalization 
+as derived pushforward).
+
+% ── RG2a ──
+\section{RG2a: Anomalous Dimensions and Cocycle Scaling}
+
+\begin{conjecture}[Anomalous Scaling at 
+Criticality]\label{conj:anomalous}
+At the critical fixed point $\Gamma^* = 1$, the \v{C}ech cochains 
+acquire \emph{anomalous scaling dimensions}. The two-point 
+function on 0-cochains is the Green's function of the \v{C}ech 
+Laplacian:
+\begin{equation}\label{eq:green}
+    G(v, w) = \langle \sigma(v) \, \sigma(w) \rangle_\beta 
+    = (\Delta_0^{-1})(v, w)
+\end{equation}
+At the critical point, $G(v, w)$ decays as a power law:
+\begin{equation}\label{eq:anomalous}
+    G(v, w) \sim d_\nerve(v, w)^{-(d_H - 2 + \eta)}
+\end{equation}
+where $d_H$ is the effective dimension and $\eta$ is the anomalous 
+dimension.
+
+The scaling dimension of a $p$-cochain field is:
+\begin{equation}\label{eq:cochain_dimension}
+    [\sigma_p] = \frac{d_H - 2 + \eta}{2} + p
+\end{equation}
+Mean-field theory gives $\eta = 0$. Nonzero $\eta$ arises from 
+the BCH quadratic corrections (Branch~VII, SH5):
+\begin{equation}\label{eq:eta_bch}
+    \eta = c \cdot \|\alpha_c\|^2 + O(\|\alpha_c\|^4)
+\end{equation}
+where $\|\alpha_c\|$ is the typical cocycle norm at criticality 
+and $c$ is a geometry-dependent constant.
+\end{conjecture}
+
+\textbf{Derived from:} RG6 (critical exponents) + Branch~VII, SH5 
+(BCH control).
+
+% ── RG3a ──
+\section{RG3a: Crossover Scaling Functions}
+
+\begin{conjecture}[Universal Scaling 
+Form]\label{conj:crossover}
+The free energy density $f = F/n$ obeys a universal scaling form 
+near the critical point $\Gamma^* = 1$:
+\begin{equation}\label{eq:scaling_form}
+    f(\Gamma, \beta) = |\Gamma - 1|^{2 - \alpha} \cdot 
+    \Phi_\pm\!\left(\beta \cdot |\Gamma - 1|^{\nu \cdot d_H}\right)
+\end{equation}
+where $\Phi_\pm$ are universal scaling functions (one for 
+$\Gamma > 1$, one for $\Gamma < 1$), $\alpha = 2 - \nu \cdot d_H$ 
+(hyperscaling), and $\beta$ is the inverse temperature of the 
+partition function (Branch~VII, SH7).
+
+Three regimes emerge:
+\begin{enumerate}[label=(\alph*)]
+    \item $\beta |\Gamma - 1|^{\nu d_H} \gg 1$ (ordered): deep in 
+    a phase, mean-field behavior, exponential correlation decay.
+    
+    \item $\beta |\Gamma - 1|^{\nu d_H} \ll 1$ (critical): 
+    fluctuation-dominated, power-law correlations, anomalous 
+    exponents.
+    
+    \item $\beta |\Gamma - 1|^{\nu d_H} \sim 1$ (crossover): 
+    $\Phi_\pm$ interpolates smoothly between ordered and critical 
+    behavior.
+\end{enumerate}
+\end{conjecture}
+
+\textbf{Derived from:} RG5 (fixed-point structure) + RG6 (critical 
+exponents) + Branch~VI (thermodynamic formalism).
+
+% ── RG4a ──
+\section{RG4a: Corrections to Scaling}
+
+\begin{conjecture}[Irrelevant Operators and Correction 
+Exponents]\label{conj:corrections}
+The leading \emph{correction-to-scaling exponent} $\omega > 0$ is 
+the magnitude of the largest irrelevant eigenvalue of the 
+linearized RG at $\Gamma^* = 1$. Observables receive power-law 
+corrections:
+\begin{align}
+    \xi &= \xi_0 \, |\Gamma - 1|^{-\nu} 
+    \left(1 + c_1 \, |\Gamma - 1|^{\omega \nu} + \cdots\right)
+    \label{eq:xi_correction}\\
+    C_V &= C_0 \, |\Gamma - 1|^{-\alpha} 
+    \left(1 + c_2 \, |\Gamma - 1|^{\omega \nu} + \cdots\right)
+    \label{eq:cv_correction}
+\end{align}
+
+Irrelevant operators in the Davis context are sub-scale constraint 
+arrangements that do not affect long-distance completion physics: 
+cell permutations within a Sudoku box, variable relabeling in 
+$k$-SAT, local gauge transformations of the cocycle. The 
+correction exponent can be computed from the \v{C}ech Laplacian 
+spectrum at the critical point:
+\begin{equation}\label{eq:omega_spectral}
+    \omega = \frac{\ln(\lambda_2 / \lambda_1)}{\ln \ell}
+\end{equation}
+where $\lambda_1, \lambda_2$ are the two smallest nonzero 
+eigenvalues of $\Delta_1^{(\ell)}$ at criticality.
+\end{conjecture}
+
+\textbf{Derived from:} RG5 (fixed-point structure) + RG6 (critical 
+exponents).
+
+% ── RG5a ──
+\section{RG5a: Universality Classes of Completion Problems}
+
+\begin{conjecture}[Universality 
+Classification]\label{conj:universality}
+Completion problems flowing to the same critical fixed point under 
+RG share the same critical exponents --- the same 
+\emph{universality class}. The universality class is determined by:
+\begin{enumerate}[label=(\roman*)]
+    \item $d_H$: the effective dimension of the constraint graph 
+    (Hausdorff dimension of the nerve for structured problems, or 
+    $d_H \to \infty$ for random graphs).
+    
+    \item The \emph{symmetry group} of the constraint structure 
+    (automorphism group of the nerve acting on the presheaf).
+    
+    \item The \emph{range of interaction} (whether constraints have 
+    finite-range or long-range overlap structure).
+\end{enumerate}
+
+Conjectured universality classes include:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llp{3.8cm}}
+\textbf{Class} & $d_H$ & \textbf{Examples} \\
+\hline
+Short-range lattice & $2$ & Sudoku, Latin squares, crosswords \\
+Random graph (mean-field) & $\to \infty$ & Random $k$-SAT, 
+Erd\H{o}s--R\'enyi CSP \\
+Hierarchical & $\log_b a$ & Nested constraint trees \\
+Long-range & $d_{\mathrm{eff}} < d$ & Attention-connected 
+transformer blocks \\
+\end{tabular}
+\end{center}
+\end{conjecture}
+
+\textbf{Derived from:} RG6 (critical exponents from RG eigenvalues).
+
+\textbf{Interpretation:} Universality explains why microscopically 
+different completion problems exhibit the same critical behavior: 
+they flow to the same RG fixed point. The irrelevant operators 
+(microscopic details) wash out under coarse-graining, and only the 
+relevant direction ($\Gamma - 1$) and the fixed-point eigenvalue 
+($1/\nu$) determine the critical behavior.
+
+% ── RG6a ──
+\section{RG6a: RG-Improved Partition Function}
+
+\begin{conjecture}[RG Resummation of the Partition 
+Function]\label{conj:rg_partition}
+The bare partition function $Z_0(\beta)$ (Branch~VII, SH7) 
+receives RG corrections. The \emph{RG-improved partition function} 
+replaces bare parameters with running couplings:
+\begin{equation}\label{eq:rg_partition}
+    Z_{\mathrm{RG}}(\beta) = \tr \exp(-\beta \, 
+    \Delta_0(g(\beta)))
+\end{equation}
+where $g(\beta) = \{m(\ell_T)^2, n(\ell_T), s(\ell_T), \ldots\}$ 
+are the running couplings evaluated at the \emph{thermal scale} 
+$\ell_T = \beta^{1/d_H}$. The running couplings satisfy the RG 
+equations (Conjecture~\ref{conj:beta}) at $\ell = \ell_T$.
+
+The RG-improved partition function:
+\begin{enumerate}[label=(\alph*)]
+    \item Captures the correct critical scaling (Branch~VI exponents 
+    reproduced by construction).
+    \item Agrees with the bare $Z_0$ at high temperature 
+    ($\beta \to 0$, $\ell_T \to 0$, no running).
+    \item Agrees with the ground-state count at low temperature 
+    ($\beta \to \infty$, $\ell_T \to \infty$, fully coarsened).
+\end{enumerate}
+\end{conjecture}
+
+\textbf{Derived from:} RG2 (semigroup) + RG4 (beta function) + 
+Branch~VII, SH7 (partition function).
+
+% ── RG7a ──
+\section{RG7a: Euler Characteristic as RG Invariant}
+
+\begin{theorem}[Topological Invariance of Euler 
+Characteristic]\label{thm:euler_invariant}
+Under the hypotheses of Branch~VII, SH7 (finite nerve, 
+finite-dimensional stalks) and the \emph{Leray-acyclicity 
+condition} $R^q \pi_{\ell *} \sheaf = 0$ for all $q \geq 1$ 
+(every block $\block_a$ is internally acyclic: 
+$H^q(\pi_\ell^{-1}(\block_a), \sheaf|_{\pi_\ell^{-1}(\block_a)}) 
+= 0$ for $q \geq 1$), the sheaf Euler characteristic is invariant 
+under coarse-graining:
+\begin{equation}\label{eq:euler_invariant}
+    \chi(\sheaf) = \chi(\sheaf_\ell) \qquad 
+    \text{(under Leray-acyclicity)}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+The Leray spectral sequence 
+(Theorem~\ref{thm:leray_rg},~\eqref{eq:leray}) has $E_2^{p,q} = 
+\Hcech^p(\nerve_\ell, R^q \pi_{\ell *} \sheaf)$ converging to 
+$\Hcech^{p+q}(\nerve, \sheaf)$. The Euler characteristic of each 
+page of a spectral sequence is the same (the alternating sum of 
+dimensions is preserved by the differentials). Therefore:
+\begin{equation}\label{eq:euler_pages}
+    \chi(\sheaf) = \sum_n (-1)^n \dim \Hcech^n(\nerve, \sheaf) 
+    = \sum_{p,q} (-1)^{p+q} \dim E_2^{p,q}
+\end{equation}
+Expanding the $E_2$ page:
+\begin{equation}\label{eq:euler_expand}
+    \sum_{p,q} (-1)^{p+q} \dim E_2^{p,q} 
+    = \sum_q (-1)^q \chi(R^q \pi_{\ell *} \sheaf)
+\end{equation}
+Under the Leray-acyclicity hypothesis, $R^q \pi_{\ell *} \sheaf = 0$ 
+for all $q \geq 1$. Only the $q = 0$ term survives:
+\[
+    \chi(\sheaf) = \chi(R^0 \pi_{\ell *} \sheaf) 
+    = \chi(\sheaf_\ell)
+\]
+since $R^0 \pi_{\ell *} \sheaf = \sheaf_\ell$ by construction 
+(Definition~\ref{def:coarse_grain}).
+\end{proof}
+
+\begin{remark}[When Leray-Acyclicity Holds]
+\label{rem:leray_acyclic}
+The Leray-acyclicity condition requires that each block 
+$\block_a$ is ``internally coherent'': any local sections on the 
+constraints within $\block_a$ that agree on pairwise overlaps 
+already agree on all higher overlaps. For blocks of small diameter 
+(low $\ell$), this is physically reasonable: constraints in a 
+small neighborhood interact simply. The condition can fail for 
+large blocks that combine constraints with complex internal 
+topology.
+
+When the condition fails, the spectral sequence still gives 
+$\chi(\sheaf) = \sum_q (-1)^q \chi(R^q \pi_{\ell *} \sheaf)$, 
+but the individual terms with $q \geq 1$ need not vanish, and 
+$\chi(\sheaf) \neq \chi(\sheaf_\ell)$ in general. The difference 
+$\chi(\sheaf) - \chi(\sheaf_\ell) = \sum_{q \geq 1} (-1)^q 
+\chi(R^q \pi_{\ell *} \sheaf)$ measures the sub-scale 
+cohomological information invisible at scale $\ell$.
+\end{remark}
+
+\begin{remark}[Physical Interpretation]
+\label{rem:euler_physical}
+The Euler characteristic $\chi(\sheaf) = \sum (-1)^p \dim 
+\Hcech^p(\nerve, \sheaf)$ counts the net degrees of freedom 
+(solutions minus obstructions). Under the Leray-acyclicity 
+condition of Theorem~\ref{thm:euler_invariant}, this is an RG 
+invariant: $\chi(\sheaf) = \chi(\sheaf_\ell)$. The RG flow 
+changes the distribution of information across cohomological 
+degrees (solutions and obstructions can individually change) but 
+the net balance is fixed.
+
+When the Leray condition fails, the general identity 
+$\chi(\sheaf) = \sum_q (-1)^q \chi(R^q \pi_{\ell *} \sheaf)$ 
+still holds, but $\chi(\sheaf_\ell)$ alone does not capture the 
+full Euler characteristic --- the higher direct images contribute.
+
+The McKean--Singer formula in the Davis context states: the 
+supertrace $\sum (-1)^p \tr(e^{-\beta \Delta_p})$ equals 
+$\chi(\sheaf)$ independently of $\beta$. Under Leray-acyclicity, 
+this is also independent of the coarse-graining scale $\ell$.
+\end{remark}
+
+\textbf{Derived from:} RG1a (Leray spectral sequence) + 
+Branch~VII, SH7 (Euler characteristic).
+
+% ═══════════════════════════════════════════════════════
+\newpage
+\part{Cross-Synthesis with Parent Framework and Branches~VI--VII}
+% ═══════════════════════════════════════════════════════
+
+% ── Y1 ──
+\section{Y1: Transformer Layers as RG Steps}
+
+\begin{conjecture}[Layer-Scale 
+Correspondence]\label{conj:layers_rg}
+In a transformer with $L$ layers processing a completion task, 
+each layer $\ell \in \{1, \ldots, L\}$ implements one RG 
+coarse-graining step $T_{\ell/L \cdot \ell_{\max}}$, where 
+$\ell_{\max}$ is the maximum scale (set by the context window 
+length). The residual stream at layer $\ell$ carries the 
+scale-dependent trichotomy parameter $\Gamma(\ell)$.
+
+This yields three layer-wise predictions:
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Easy completions ($\Gamma_0 > 1$):} 
+    $\Gamma(\ell)$ increases rapidly through layers. The residual 
+    stream converges early and attention patterns become sparse 
+    (few heads active in later layers). This matches empirical 
+    observations that transformers ``solve'' easy tasks in early 
+    layers.
+    
+    \item \textbf{Hard completions ($\Gamma_0 \approx 1$):} 
+    $\Gamma(\ell)$ stays near $1$ through many layers. Attention 
+    patterns exhibit long-range structure at all scales. This 
+    matches the critical slowing-down observed in transformer 
+    processing of ambiguous or complex inputs.
+    
+    \item \textbf{Impossible completions ($\Gamma_0 < 1$):} 
+    $\Gamma(\ell)$ decreases through layers toward the 
+    underdetermined fixed point. No convergence occurs, and the 
+    model hallucinates (generates output from the underdetermined 
+    regime where many completions exist but none is uniquely 
+    correct).
+\end{enumerate}
+\end{conjecture}
+
+\textbf{Derived from:} RG4 (beta function) + RG5 (fixed-point 
+structure).
+
+\textbf{Interpretation:} Hallucination is not a failure of the 
+model per se --- it is the correct dynamical behavior of a system 
+in the underdetermined basin of attraction: $\Gamma < 1$ flows 
+toward $\Gamma^* = 0$, where all local completions are compatible 
+and any output is ``valid'' at the coarsest scale. The model 
+produces a completion because it must, but the completion is 
+underdetermined by the input.
+
+% ── Y2 ──
+\section{Y2: Multi-Head Attention as Multi-Scale Parallel Transport}
+
+\begin{conjecture}[Multi-Head Multi-Scale 
+Decomposition]\label{conj:multihead}
+Different attention heads within the same transformer layer operate 
+at different effective scales, implementing parallel RG steps at 
+multiple resolutions simultaneously:
+\begin{equation}\label{eq:multihead_scale}
+    \text{Head } h \text{ at layer } \ell 
+    \quad\longleftrightarrow\quad T_{\ell_h}
+\end{equation}
+where $\ell_h = f(h, \ell)$ is a head-dependent effective scale.
+
+The attention matrix $A^{(h)}$ of head $h$ has an effective range 
+$\mathrm{range}(A^{(h)}) \sim \ell_h$: short-range heads (small 
+$\ell_h$) handle local constraint compatibility, while long-range 
+heads (large $\ell_h$) handle global coherence. The multi-head 
+mechanism provides a \emph{multi-scale decomposition} of the RG 
+flow within each layer.
+
+\textbf{Prediction:} Transformers are more powerful than 
+single-head architectures because they simultaneously process 
+constraint information at multiple scales within each layer, rather 
+than being limited to a single coarse-graining step.
+\end{conjecture}
+
+\textbf{Derived from:} Y1 (layer-scale correspondence) + 
+Branch~VII, SH5 (parallel transport on the nerve).
+
+% ── Y3 ──
+\section{Y3: Scale-Dependent Completion Capacity}
+
+\begin{conjecture}[Depth-Capacity 
+Scaling]\label{conj:capacity}
+The \emph{completion capacity} of a model at scale $\ell$ is:
+\begin{equation}\label{eq:capacity}
+    C_{\mathrm{cap}}(\ell) = \max\{\Gamma : \text{model can reach 
+    determined fixed point starting from } \Gamma \text{ at scale } 
+    \ell\}
+\end{equation}
+For a transformer with $L$ layers:
+\begin{equation}\label{eq:capacity_depth}
+    C_{\mathrm{cap}} \approx 1 + c \cdot L^{1/\nu}
+\end{equation}
+where $c$ is a model-dependent constant and $\nu$ is the 
+correlation length exponent.
+
+\textbf{Scaling prediction:} Doubling transformer depth increases 
+capacity by a factor of $2^{1/\nu}$. If $\nu \approx 1$ 
+(mean-field), doubling depth doubles capacity. If $\nu > 1$, the 
+return on depth diminishes (sublinear in layers).
+\end{conjecture}
+
+\textbf{Derived from:} Y1 (layers as RG steps) + RG5 (stability) 
++ RG6 (critical exponents).
+
+% ── Y4 ──
+\section{Y4: Residual Stream as RG Trajectory}
+
+\begin{conjecture}[Residual Stream 
+Dynamics]\label{conj:residual}
+The residual stream $x_\ell$ at layer $\ell$ encodes the effective 
+completion state at scale $\ell$. The layer-to-layer update:
+\begin{equation}\label{eq:residual_update}
+    x_{\ell+1} = x_\ell + \mathrm{Attn}(x_\ell) + 
+    \mathrm{FFN}(x_\ell)
+\end{equation}
+implements an infinitesimal RG step:
+\begin{equation}\label{eq:rg_step}
+    (\nerve_{\ell+\delta\ell}, \sheaf_{\ell+\delta\ell}) 
+    = T_{\delta\ell}(\nerve_\ell, \sheaf_\ell)
+\end{equation}
+
+The norm of the per-layer update 
+$\|x_{\ell+1} - x_\ell\|$ is large when $\Gamma(\ell) \approx 1$ 
+(critical regime, active processing) and small when 
+$|\Gamma(\ell) - 1| \gg 0$ (deep in a phase, convergence). 
+
+\textbf{Prediction:} Per-layer activation norms peak at layers 
+where the effective completion problem is near criticality.
+\end{conjecture}
+
+\textbf{Derived from:} Y1 (layers as RG steps).
+
+% ── Y5 ──
+\section{Y5: Obstruction Persistence Under RG}
+
+\begin{conjecture}[Persistence as RG 
+Relevance]\label{conj:persistence}
+The persistence diagram of the completion presheaf (Branch~VII, 
+SH4b/X9) classifies obstruction classes by their \emph{RG 
+relevance}. Each class $[\alpha] \in \Hcech^1(\nerve, \sheaf)$ has:
+\begin{itemize}
+    \item \emph{Birth scale} $\ell_{\mathrm{birth}}$: the coarsest 
+    scale at which the obstruction appears.
+    \item \emph{Death scale} $\ell_{\mathrm{death}}$: the finest 
+    scale at which the obstruction can be resolved.
+\end{itemize}
+
+Persistent classes ($\ell_{\mathrm{death}} - \ell_{\mathrm{birth}}$ 
+large) are \emph{relevant operators}: they survive coarse-graining 
+and control long-distance completion physics. Ephemeral classes 
+($\ell_{\mathrm{death}} - \ell_{\mathrm{birth}}$ small) are 
+\emph{irrelevant operators}: sub-scale obstructions that do not 
+affect the large-scale completion.
+
+The difficulty spectrum $D(\tau)$ from Branch~VII, X9 acquires a 
+scale-dependent form:
+\begin{equation}\label{eq:difficulty_rg}
+    D(\tau, \ell) = |\{[\alpha] : 
+    \ell_{\mathrm{birth}}([\alpha]) \leq \ell 
+    \leq \ell_{\mathrm{death}}([\alpha]),\; 
+    \tau_{\mathrm{death}}([\alpha]) > \tau\}|
+\end{equation}
+The RG flow decreases $D(\tau, \ell)$ monotonically, consistent 
+with the C-theorem (Theorem~\ref{thm:c_theorem}).
+\end{conjecture}
+
+\textbf{Derived from:} RG1a (relevance classification) + RG8 
+(monotonicity) + Branch~VII, SH4b/X9 (persistence diagrams).
+
+% ── Y6 ──
+\section{Y6: Asymptotic Freedom}
+
+\begin{conjecture}[Asymptotic Freedom of the Davis 
+Theory]\label{conj:asymptotic_freedom}
+The holonomy budget constraint (Parent framework, Branch~VII SH5(d)) 
+acquires a scale-dependent form under RG:
+\begin{equation}\label{eq:holonomy_budget_rg}
+    \|\alpha\|_{\Cech^1}^{(\ell)} < \frac{\tau}{k(\ell)}
+\end{equation}
+where $k(\ell)$ is the maximum loop length in the coarsened nerve 
+$\nerve_\ell$.
+
+Coarse-graining reduces loop lengths under the following 
+hypothesis:
+
+\textbf{Loop contraction hypothesis.} For coarse-grainings whose 
+blocks have bounded overlap (the induced partition of the 
+1-skeleton is $\ell$-Lipschitz with respect to the graph metric), 
+the maximum loop length satisfies:
+\begin{equation}\label{eq:loop_contraction}
+    k(\ell) \leq C \cdot k_0 / \ell
+\end{equation}
+for a constant $C$ depending on the local geometry of the nerve. 
+This holds whenever the coarse-graining contracts graph distances 
+by a factor proportional to $\ell$ (the block diameter), which is 
+the case for structured nerves (lattice-like, hierarchical) but may 
+fail for highly irregular graph topologies. In particular, 
+expander-type nerves (where long geodesic cycles survive 
+coarse-graining because high connectivity prevents cycle collapse) 
+and graphs with girth $\gg$ diameter are excluded.
+
+Under this hypothesis, the 
+effective budget per cocycle \emph{increases} at larger 
+scales:
+\begin{equation}\label{eq:tau_eff}
+    \tau_{\mathrm{eff}}(\ell) 
+    = \frac{\tau \cdot \ell}{k_0}
+\end{equation}
+
+Moreover, in the linearized regime, the coarsened cocycle norm is 
+bounded:
+\begin{equation}\label{eq:cocycle_bound}
+    \|\alpha_\ell(a, b)\| \leq \max\{\|\alpha(v, w)\| 
+    : v \in \block_a,\; w \in \block_b,\; (v, w) \text{ edge}\} 
+    \leq \|\alpha\|_{\Cech^1}
+\end{equation}
+since the block-level transition is determined by a single 
+boundary overlap (or a finite composition of commuting transitions 
+in the additive regime). The total accumulation around a coarsened 
+loop of length $k(\ell)$ is thus bounded by:
+\begin{equation}\label{eq:total_accumulation}
+    k(\ell) \cdot \|\alpha_\ell\|_{\Cech^1} 
+    \leq \frac{k_0}{\ell} \cdot \|\alpha\|_{\Cech^1} 
+    = \frac{1}{\ell} \cdot k_0 \cdot \|\alpha\|_{\Cech^1}
+\end{equation}
+which shrinks with $\ell$.
+
+\textbf{Conclusion:} At large scales, the effective coupling is 
+weak and the linearized theory (Branch~VII, additive regime) 
+becomes increasingly accurate. The BCH convergence condition 
+$\|\alpha\| < (\log 2) / k(\ell)$ (Branch~VII, 
+Remark~5.1) is automatically satisfied at sufficiently 
+large $\ell$. The entire linearized apparatus of Branches~VI--VII 
+is \emph{self-consistently justified in the infrared}.
+\end{conjecture}
+
+\textbf{Derived from:} Branch~VII, SH5 (holonomy, BCH control) + 
+RG2 (scale-dependent parameters).
+
+\textbf{Interpretation:} Asymptotic freedom means that the 
+nonlinear corrections (BCH terms, group-valued cocycles) are 
+\emph{ultraviolet effects}: they matter at fine scales where loop 
+lengths are long and cocycle accumulation is large, but they wash 
+out at coarse scales where loops are short and the linearized 
+theory is valid. This is the inverse of the QCD pattern (where the 
+coupling is weak at short distances and strong at long distances); 
+in the Davis theory, the coupling is strong at short distances 
+(fine-scale constraint interactions) and weak at long distances 
+(coarse-scale effective theory).
+
+% ── Y6a ──
+\section{Y6a: Scale-Local Connections (Product Gauge Structure)}
+
+\begin{conjecture}[Scale-Local 
+Connections]\label{conj:scale_local}
+A multi-scale transport architecture implementing $N$ successive 
+RG steps (Y1) requires $N$ \emph{scale-local connections}, one per 
+scale. That is, the connection (equivalently, the metric from which 
+it derives) at scale $\ell$ must be the connection of the 
+\emph{coarsened} geometry $\Delta_p^{(\ell)}$, not the original 
+fine-scale geometry $\Delta_p$.
+
+\textbf{Statement.} Let $(M, g)$ be a Davis manifold and 
+$T_{\ell_1}, \ldots, T_{\ell_N}$ be $N$ RG coarse-graining 
+steps at scales $\ell_1 < \cdots < \ell_N$. The parallel 
+transport operator at scale $\ell_k$ is determined by the 
+connection $\nabla^{(\ell_k)}$ derived from the compressed 
+Laplacian $\Delta_p^{(\ell_k)} = P_{\ell_k}^\dagger \Delta_p 
+P_{\ell_k}$ (RG3). This connection is generically distinct from 
+$\nabla^{(\ell_j)}$ for $j \neq k$, because the compressed 
+Laplacian has a different spectrum at each scale 
+(Remark~\ref{rem:compression_vs_coarse}).
+
+\textbf{Consequence.} A neural architecture implementing 
+multi-scale transport cannot share a single learned metric across 
+scales. Each transport block requires its own metric network 
+$g^{(\ell_k)}$, which learns the effective geometry at scale 
+$\ell_k$. The inter-scale coupling is provided by the 
+coarse-graining map itself --- in a transformer, the attention 
+layer between transport blocks.
+\end{conjecture}
+
+\textbf{Derived from:} Y1 (layers as RG steps) + RG3 (coarsened 
+Laplacian, Remark~\ref{rem:compression_vs_coarse}: spectrum changes 
+under coarsening) + Y6 (asymptotic freedom: coupling constants 
+differ across scales).
+
+\begin{remark}[Gauge-Theoretic 
+Interpretation]\label{rem:product_gauge}
+The scale-local connection structure has a natural interpretation 
+in gauge theory. Each scale $\ell_k$ carries its own gauge group 
+$G_k = O(d)$ (orthogonal transport in $d$ dimensions) with its own 
+connection $\nabla^{(\ell_k)}$. The total gauge group of an 
+$N$-scale architecture is the product:
+\begin{equation}\label{eq:product_gauge}
+    G = G_1 \times G_2 \times \cdots \times G_N
+\end{equation}
+with each factor possessing an independent connection (equivalently, 
+an independent metric network). The factors do not interact 
+directly: there is no mixed $G_i$--$G_j$ gauge field. Inter-scale 
+coupling occurs through the \emph{matter fields} --- the hidden 
+state representations $h_\ell$ that transform under the gauge 
+group at their respective scale. The attention layer between 
+scales $\ell_k$ and $\ell_{k+1}$ is the ``matter field'' that 
+couples the two gauge sectors.
+
+This structure extends naturally: adding a third scale adds 
+$G_3$ to the product, with its own metric network and its own 
+connection. The architectural complexity scales linearly with the 
+number of scales, not combinatorially.
+\end{remark}
+
+\begin{remark}[Finite-Model 
+Evidence]\label{rem:finite_model_y6a}
+The Shidoku finite model (Appendix~\ref{app:shidoku_rg}) provides 
+direct evidence. The 12-vertex nerve with its 4-block partition 
+produces a compressed Laplacian with spectrum $\{0, 3, 6, 9\}$, 
+while the bare $K_{2,2}$ Laplacian of the coarsened nerve has 
+spectrum $\{0, 2, 2, 4\}$. These are genuinely different operators 
+with different eigenvectors. Any transport process using the 
+$\{0, 2, 2, 4\}$ geometry at the coarse scale would be solving 
+the wrong variational problem --- the effective constraint 
+structure at that scale is $\{0, 3, 6, 9\}$, not $\{0, 2, 2, 4\}$. 
+A~fortiori, using the fine-scale spectrum (12~eigenvalues) at the 
+coarse scale would be even more wrong: the coarsened geometry lives 
+in a 4-dimensional subspace of the original 12-dimensional space, 
+and the compressed Laplacian captures exactly the spectral content 
+relevant to that subspace.
+\end{remark}
+
+% ── Y6b ──
+\section{Y6b: Bounded Coarse-Scale Transport (Low-Rank Connection)}
+
+The scale-local connection structure of Y6a introduces a new 
+instability: the coarse manifold $\mathcal{M}_2$ receives 
+\emph{contextual} base points (post-attention hidden states) rather 
+than discrete vocabulary embeddings. We show that finite-difference 
+Christoffel estimation diverges in this regime, and that a low-rank 
+factored connection provides an architecturally bounded alternative.
+
+\begin{proposition}[Divergence of FD Christoffels on Contextual 
+Positions]\label{prop:fd_divergence}
+Let $\mathcal{M}$ be a Davis manifold with learned metric 
+$G(x) = L(x)L(x)^\top + \varepsilon I$ where $L(x)$ is a neural 
+network. Define the finite-difference Christoffel symbols
+\begin{equation}\label{eq:fd_christoffel}
+    \hat{\Gamma}^k_{ij}(x) = \frac{1}{2} G^{kl}(x) \left(
+    \frac{G_{li}(x + h e_j) - G_{li}(x - h e_j)}{2h}
+    + \frac{G_{lj}(x + h e_i) - G_{lj}(x - h e_i)}{2h}
+    - \frac{G_{ij}(x + h e_k) - G_{ij}(x - h e_k)}{2h}
+    \right).
+\end{equation}
+When $x$ ranges over a continuous manifold of contextual hidden 
+states $h_t \in \mathbb{R}^d$ (as opposed to a finite vocabulary 
+$\{e_1, \ldots, e_V\}$), the FD estimates suffer a positive 
+feedback loop:
+\begin{enumerate}
+    \item The metric network $L$ is cold-started on inputs $h_t$ 
+    that are themselves a moving training target;
+    \item Cold $L$ produces ill-conditioned $G(x)$, amplifying 
+    $G^{-1}$ in~\eqref{eq:fd_christoffel};
+    \item Wild $\hat{\Gamma}$ produces large transport norms 
+    $\kappa_2 = \|T_{\hat{\Gamma}}\|$, corrupting gradients;
+    \item Corrupted gradients prevent $L$ from learning a 
+    well-conditioned metric.
+\end{enumerate}
+Consequently, the condition number proxy 
+$\kappa_2(t) = \mathbb{E}[\|\Gamma \cdot \delta\|]$ grows 
+monotonically without bound during training.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Each FD evaluation of~\eqref{eq:fd_christoffel} requires $d+1$ 
+evaluations of the metric network (one at $x$ and two per 
+coordinate direction, with symmetry). With $d = 32$ and batch size 
+$B \times T = 1024$ unique contextual positions (no vocabulary 
+deduplication possible), this amounts to $33 \times 1024 = 33{,}792$ 
+metric network evaluations per step. Each evaluation at a 
+previously-unseen contextual position returns an essentially random 
+metric tensor until the network has converged --- but convergence 
+requires stable gradients, which requires bounded Christoffels, 
+closing the loop.
+
+Empirically, on Tiny Shakespeare with $(d, H) = (32, 256)$: 
+$\kappa_2$ grows as $54 \to 127 \to 236 \to 322 \to 407 \to 553$ 
+over 15 epochs (seed 42, 137), with no sign of stabilisation. 
+Training PPL plateaus at $\sim\!15\text{--}16$ versus $V_3$'s 
+$1.55$.
+\end{proof}
+
+\begin{theorem}[Bounded Transport via Low-Rank Factored 
+Connection]\label{thm:lowrank_connection}
+Let $R \ll d$ be the \emph{connection rank}. Define the factored 
+connection
+\begin{equation}\label{eq:lowrank_gamma}
+    \tilde{\Gamma}^k_{ij}(x) = \sum_{r=1}^{R} U^k_r(x) \, 
+    V_{r,ij}
+\end{equation}
+where $U(x) \in \mathbb{R}^{d \times R}$ is produced by a 
+\emph{connection network} (a learned MLP) and 
+$V \in \mathbb{R}^{R \times d \times d}$ is a shared 
+(position-independent) parameter. Then:
+\begin{enumerate}
+    \item \textbf{Bounded transport norms.} The contraction 
+    $\tilde{\Gamma} \cdot \delta$ for tangent vector $\delta$ 
+    satisfies
+    \begin{equation}\label{eq:transport_bound}
+        \|\tilde{\Gamma}^k_{ij} \delta^i\|^2 \leq 
+        \|U(x)\|_F^2 \cdot \|V\|_F^2 \cdot \|\delta\|^2,
+    \end{equation}
+    so the transport norm is bounded by the product of the 
+    connection-network output norm and the (fixed, learnable) 
+    $V$-factor norm. Standard weight initialisation 
+    ($V_{r,ij} \sim \mathcal{N}(0, 0.01/\sqrt{R})$) ensures 
+    $\|V\|_F = O(d)$ at initialisation, and gradient descent 
+    maintains this scale.
+    
+    \item \textbf{Computational efficiency.} Each transport step 
+    requires $O(1)$ connection-network evaluations (versus $O(d)$ 
+    metric-network evaluations for FD), reducing the per-step 
+    cost from $O(d \cdot C_{\mathrm{metric}})$ to 
+    $O(C_{\mathrm{conn}})$ where $C_{\mathrm{metric}}$ and 
+    $C_{\mathrm{conn}}$ are the network evaluation costs.
+    
+    \item \textbf{Rank constraint as regularisation.} The rank-$R$ 
+    factorisation restricts $\tilde{\Gamma}$ to an 
+    $R$-dimensional subspace of the $d^3$-dimensional space of 
+    possible connection coefficients. This implicit regularisation 
+    prevents the coarse connection from developing spurious 
+    high-frequency structure that the coarse metric cannot resolve.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(1)~Expanding \eqref{eq:lowrank_gamma}:
+\[
+    (\tilde{\Gamma} \cdot \delta)^k_j 
+    = \sum_i \tilde{\Gamma}^k_{ij} \delta^i 
+    = \sum_r U^k_r \underbrace{\left(\sum_i V_{r,ij} 
+    \delta^i\right)}_{w_{r,j}}.
+\]
+By Cauchy--Schwarz in the $r$-index:
+$\|(\tilde{\Gamma} \cdot \delta)_j\|^2 
+\leq \sum_k \left(\sum_r |U^k_r| |w_{r,j}|\right)^2 
+\leq \|U\|_F^2 \|w_j\|^2$,
+and $\|w_j\|^2 \leq \|V_{:,:,j}\|_F^2 \|\delta\|^2$ by a second 
+application. Summing over $j$ gives \eqref{eq:transport_bound}.
+
+(2)~The FD scheme requires metric evaluations at 
+$x \pm h e_i$ for $i = 1, \ldots, d$, giving $2d + 1$ network 
+calls. The factored connection~\eqref{eq:lowrank_gamma} requires 
+one forward pass of the connection network to produce $U(x)$, 
+then matrix operations in $O(dR)$ which are dominated by the 
+network evaluation.
+
+(3)~The image of the map $x \mapsto \tilde{\Gamma}(x)$ lies in 
+the $R$-dimensional affine subspace 
+$\mathrm{span}\{V_1, \ldots, V_R\} \subset 
+\mathbb{R}^{d \times d \times d}$. For $R \ll d$, this 
+eliminates $(d^3 - Rd^2)$ degrees of freedom, functioning as a 
+strong implicit prior toward simple (low-rank) geometry at the 
+coarse scale.
+\end{proof}
+
+\begin{remark}[Alignment with Asymptotic 
+Freedom]\label{rem:lowrank_y6}
+The rank constraint on the coarse connection is the architectural 
+realisation of Y6 asymptotic freedom. Y6 predicts that coupling 
+constants decrease under RG flow --- the effective interaction 
+becomes simpler at coarser scales. The factored 
+connection~\eqref{eq:lowrank_gamma} makes this structural: the 
+fine manifold $\mathcal{M}_1$ uses full finite-difference 
+Christoffels (unconstrained connection complexity), while the 
+coarse manifold $\mathcal{M}_2$ is restricted to rank-$R$ 
+connections. The ratio 
+$R / d^2 = 8/1024 \approx 0.008$ measures the degree of 
+asymptotic simplification --- the coarse geometry uses less than 
+$1\%$ of the connection degrees of freedom available to the fine 
+geometry.
+\end{remark}
+
+\begin{remark}[Experimental 
+Validation]\label{rem:lowrank_experiment}
+On Tiny Shakespeare with $(d, H, R) = (32, 256, 8)$:
+
+\medskip
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Architecture} & \textbf{$\kappa_2$ (ep.\,2)} 
+& \textbf{PPL (2\,ep.)} & \textbf{Speed} & \textbf{vs.\,V3} \\
+\midrule
+V3RG (FD, $R{=}0$) & $54 \to 127$ (diverging) & 27.92 & 
+$8.5\times$ slower & $-51\%$ \\
+V3RG (Rank-8, $R{=}8$) & $1.2 \to 1.1$ (bounded) & 14.58 & 
+$1.9\times$ slower & $+21\%$ \\
+V3 (baseline) & --- & 18.46 & $1\times$ & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip\noindent
+The rank-8 connection simultaneously: (i)~bounds $\kappa_2$ near 
+unity (versus unbounded growth), (ii)~enables V3RG to outperform 
+the V3 baseline from the first evaluation, and 
+(iii)~reduces the speed penalty from $8.5\times$ to $1.9\times$ by 
+eliminating the $O(d)$ metric-network evaluations. The gate 
+parameter remains live at $\sigma(g) \approx 0.49$, confirming 
+that the coarse block is actively contributing to the 
+representation rather than being gated out.
+\end{remark}
+
+% ── Y6c ──
+\section{Y6c: Fiber Bundle Transport (Gauge-Coupled Extension)}
+
+The low-rank factored connection (Y6b) stabilises coarse-scale 
+transport but introduces a second transport block operating on 
+contextual positions---a domain where the learned metric is 
+untrained. We show that a \emph{fiber bundle extension} of the 
+original transport eliminates this problem entirely: multi-scale 
+information is encoded in internal degrees of freedom coupled 
+through a gauge connection, within a single transport step over the 
+original embedding positions.
+
+\begin{theorem}[Fiber Bundle Transport]\label{thm:fiber_transport}
+Let $(\mathcal{M}, g)$ be a Davis manifold with Levi-Civita 
+connection $\nabla$ producing Christoffel-contracted transport 
+matrices $M(x) \in \mathbb{R}^{d \times d}$ at base points 
+$x \in \mathcal{M}$. Let $f \geq 1$ and define the 
+\emph{gauge-extended connection}:
+\begin{equation}\label{eq:fiber_connection}
+    M_{\mathrm{ext}}(x) = 
+    \begin{pmatrix} M(x) & W_{bf} \\ 
+    -W_{bf}^\top & W_{ff} \end{pmatrix}
+    \in \mathbb{R}^{(d+f) \times (d+f)}
+\end{equation}
+where $W_{bf} \in \mathbb{R}^{d \times f}$ is the 
+\emph{gauge coupling} (base $\leftrightarrow$ fiber) and 
+$W_{ff} \in \mathbb{R}^{f \times f}$ is the \emph{fiber 
+self-connection} (both learned, position-independent). Define the 
+extended transport via the Cayley map:
+\begin{equation}\label{eq:fiber_cayley}
+    R(x) = \bigl(I_{d+f} + \tfrac{1}{2}A(x)\bigr)^{-1}
+    \bigl(I_{d+f} - \tfrac{1}{2}A(x)\bigr), \quad
+    A(x) = \tfrac{1}{2}\bigl(M_{\mathrm{ext}}(x) - 
+    M_{\mathrm{ext}}(x)^\top\bigr).
+\end{equation}
+Then:
+\begin{enumerate}
+    \item \textbf{$R(x) \in \SO(d{+}f)$.} The extended transport 
+    preserves the norm of the extended state 
+    $\tilde{h} = (h_{\mathrm{base}}, h_{\mathrm{fiber}}) 
+    \in \mathbb{R}^{d+f}$.
+    
+    \item \textbf{Multi-scale coupling without metric 
+    extrapolation.} The base Christoffels $M(x)$ are evaluated 
+    only at original embedding positions $x \in \{e_1, \ldots, 
+    e_V\}$, where the metric network is trained. The gauge 
+    coupling $W_{bf}$ mixes base and fiber dimensions 
+    \emph{algebraically}, without requiring any metric evaluation 
+    at new positions. Consequently, the feedback instability of 
+    Proposition~\ref{prop:fd_divergence} does not arise.
+    
+    \item \textbf{The fiber carries holonomy memory.} A state 
+    $\tilde{h}_0 = (h_0, f_0)$ transported along a closed loop 
+    $\gamma$ on $\mathcal{M}$ returns to 
+    $\tilde{h}_0' = R_\gamma \tilde{h}_0$ where 
+    $R_\gamma \in \SO(d{+}f)$. The off-diagonal blocks of 
+    $R_\gamma$ (generated by $W_{bf}$) transfer holonomy 
+    information between base and fiber subspaces: the fiber 
+    accumulates geometric information from the base path 
+    that persists even when the base component returns to its 
+    starting point.
+    
+    \item \textbf{Dimensional reduction at readout.} Only the 
+    first $d$ components of $\tilde{h}$ are used for prediction 
+    (logits $= \tilde{h}_{1:d} \cdot E^\top$). The fiber 
+    dimensions $\tilde{h}_{d+1:d+f}$ are internal degrees of 
+    freedom---analogous to the electromagnetic phase in $U(1)$ 
+    gauge theory, which governs dynamics but is not directly 
+    observable.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(1)~$A(x)$ is skew-symmetric by construction, so the Cayley map 
+$R = (I + A/2)^{-1}(I - A/2)$ is orthogonal (and 
+orientation-preserving since $\det R = +1$ for skew-$A$ in odd and 
+even dimensions). 
+
+(2)~The metric network $L(x)$ producing $G(x) = L(x)L(x)^\top + 
+\varepsilon I$ is evaluated only at the $V$ vocabulary base points 
+(with deduplication), exactly as in the V3 architecture. The gauge 
+parameters $W_{bf}, W_{ff}$ are global (position-independent) and 
+enter only through the block structure 
+of~\eqref{eq:fiber_connection}. No new metric evaluations are 
+introduced.
+
+(3)~The holonomy of $\SO(d{+}f)$ transport on a closed loop 
+$\gamma$ is $R_\gamma = \prod_{t} R(x_t) \in \SO(d{+}f)$. Write 
+$R_\gamma$ in block form:
+\[
+    R_\gamma = \begin{pmatrix} R_{bb} & R_{bf} \\ R_{fb} & R_{ff}
+    \end{pmatrix}.
+\]
+When $W_{bf} = 0$, the connection is block-diagonal, 
+$R_\gamma$ is block-diagonal, and no information transfers 
+between base and fiber. For $W_{bf} \neq 0$, the off-diagonal 
+blocks $R_{bf}, R_{fb}$ are generically nonzero, enabling 
+cross-subspace information flow. The total holonomy group is a 
+subgroup of $\SO(d{+}f)$ that is generically \emph{not} 
+reducible to $\SO(d) \times \SO(f)$---the gauge coupling generates 
+genuinely entangled holonomy.
+
+(4)~The projection $\pi: \mathbb{R}^{d+f} \to \mathbb{R}^d$, 
+$\pi(\tilde{h}) = \tilde{h}_{1:d}$, discards the fiber at 
+readout. This is the standard construction: in a principal 
+$G$-bundle, physical observables are gauge-invariant quantities 
+on the base, while the internal fiber degrees of freedom mediate 
+dynamics.
+\end{proof}
+
+\begin{remark}[Physical Interpretation: Principal Bundle 
+Structure]\label{rem:principal_bundle}
+The fiber bundle transport has a precise gauge-theoretic 
+interpretation. The Davis manifold $(\mathcal{M}, g)$ is the 
+\emph{base space}. The fiber $\mathbb{R}^f$ at each point is an 
+\emph{internal space} carrying additional geometric degrees of 
+freedom. The gauge coupling $W_{bf}$ is the \emph{connection 
+form} on the associated vector bundle 
+$E = \mathcal{M} \times \mathbb{R}^f$, specifying how the fiber 
+directions rotate as the base point moves along a path.
+
+The key insight connecting this to RG: the fiber carries 
+\emph{scale-local} information. At each transport step, the base 
+subspace encodes the fine-scale (token-level) geometry, while the 
+fiber subspace accumulates coarse-scale information through the 
+gauge coupling. The coupling $W_{bf}$ plays the role of the 
+\emph{anomalous dimension matrix}: it governs how information 
+transfers between the fine description (base) and the coarse 
+description (fiber) at each step. This is precisely the 
+relationship predicted by Y6a (scale-local connections), but 
+realised within a \emph{single} transport step rather than by 
+stacking separate transport blocks.
+\end{remark}
+
+\begin{remark}[Experimental 
+Validation]\label{rem:fiber_experiment}
+On Tiny Shakespeare with $(d, H, f) = (32, 256, 8)$, five 
+physics-inspired architectures were tested at iso-parameters 
+($\sim\!154$K each), two seeds $\{42, 137\}$, five epochs:
+
+\medskip
+\begin{center}
+\begin{tabular}{lcccl}
+\toprule
+\textbf{Architecture} & \textbf{PPL ($\pm$ std)} 
+& \textbf{vs.\ V3} & \textbf{Time} & \textbf{Physics} \\
+\midrule
+V3-Holo (AdS/CFT) & 37.45 & $+217\%$ & $2.9\times$ 
+& two transports, shared $\mathcal{M}$ \\
+V3-BO (Born--Opp.) & 34.85 & $+195\%$ & $7.5\times$ 
+& $\kappa$-conditioned $T_2$ \\
+\midrule
+V3 (baseline) & $11.82 \pm 0.00$ & --- & $1\times$ & --- \\
+V3-Y2 (multi-head) & $11.09 \pm 0.20$ & $-6.2\%$ & $3.0\times$ 
+& block-diagonal sub-transports \\
+\textbf{V3-Fiber (gauge)} & $\mathbf{11.06 \pm 0.02}$ 
+& $\mathbf{-6.5\%}$ & $\mathbf{1.4\times}$ 
+& \textbf{$\SO(d{+}f)$ with $W_{bf}$} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip\noindent
+Three findings:
+\begin{enumerate}[nosep]
+    \item \emph{Two-transport architectures fail catastrophically.} 
+    Holo and BO both evaluate the learned metric at post-attention 
+    positions where it is untrained, producing wild Christoffels 
+    ($\kappa_2 = 8$--$10$). This confirms 
+    Proposition~\ref{prop:fd_divergence}: the instability is not 
+    specific to finite-difference estimation but to any metric 
+    evaluation at out-of-distribution positions.
+    
+    \item \emph{Fiber transport wins on all axes.} Best PPL 
+    ($11.06$), lowest variance ($\pm 0.02$, compared to Y2's 
+    $\pm 0.20$), and minimal overhead ($1.4\times$, compared to 
+    Y2's $3.0\times$). The gauge coupling converges to 
+    $\|W_{bf}\| \approx 0.13$ with consistent coupling energy 
+    $\approx 0.28$---small but nonzero, confirming that the 
+    fiber is active.
+    
+    \item \emph{The universal physics principle holds.} Every 
+    architecture where coarse transport emerges from or is coupled 
+    to the fine geometry (Fiber, Y2) beats V3. Every architecture 
+    where the metric is evaluated at unfamiliar positions (Holo, 
+    BO) or where the coarse geometry is independent (the earlier 
+    V3RG) fails. This is the computational confirmation of the 
+    gauge-theoretic prediction of Y6a.
+\end{enumerate}
+\end{remark}
+
+% ── Y7 ──
+\section{Y7: Partition Function Decimation}
+
+\begin{conjecture}[Decimation 
+Formula]\label{conj:decimation}
+The coarsened partition function $Z_0(\beta, \ell)$ is related to 
+the original by a \emph{decimation formula}:
+\begin{equation}\label{eq:decimation}
+    Z_0(\beta, \ell) = \sum_{\sigma_\ell \in 
+    \Cech^0(\nerve_\ell, \sheaf_\ell)} 
+    \exp(-\beta \, H_{\mathrm{eff}}(\sigma_\ell))
+\end{equation}
+where the effective Hamiltonian is defined by integrating out 
+sub-scale degrees of freedom:
+\begin{equation}\label{eq:heff}
+    \exp(-\beta \, H_{\mathrm{eff}}(\sigma_\ell)) 
+    = \sum_{\substack{\sigma \in \Cech^0(\nerve, \sheaf) \\ 
+    \pi_\ell(\sigma) = \sigma_\ell}} 
+    \exp(-\beta \, \langle \sigma, \Delta_0 \, \sigma \rangle)
+\end{equation}
+The sum runs over all fine-scale 0-cochains $\sigma$ consistent 
+with the coarse-scale configuration $\sigma_\ell$.
+
+\textbf{Normalization.} The decimation preserves the total partition 
+function: $Z_0(\beta, 0) = Z_0(\beta, \ell)$ since every fine-scale 
+configuration $\sigma$ belongs to exactly one coarse-scale class 
+$\sigma_\ell = \pi_\ell(\sigma)$. No Jacobian or measure factor is 
+needed because the summation variable changes from fine-scale 
+configurations to (coarse-scale configuration, sub-scale 
+configuration within block) pairs, and the latter decomposition is 
+a partition of the original sum. When passing to continuous 
+integration (for large stalks), a Jacobian from the change of 
+variables would appear; in the discrete setting used here, 
+combinatorial counting suffices.
+
+The effective Hamiltonian $H_{\mathrm{eff}}$ generates new 
+``interactions'' (non-local terms) at each RG step --- the standard 
+phenomenon of RG-generated couplings. Notably, $H_{\mathrm{eff}}$ 
+is no longer purely quadratic even if the original Hamiltonian 
+$\langle \sigma, \Delta_0 \, \sigma \rangle$ was, reflecting the 
+nonlinearity of constraint satisfaction.
+\end{conjecture}
+
+\begin{remark}[Truncation and Asymptotic 
+Freedom]\label{rem:truncation}
+The \v{C}ech Laplacian quadratic form is not closed under RG: after 
+one decimation step, $H_{\mathrm{eff}}$ contains quartic and 
+higher-order terms. The \v{C}ech framework provides a 
+\emph{leading-order (Gaussian) approximation} to the exact effective 
+theory. By Y6 (asymptotic freedom), the generated higher-order 
+couplings are suppressed at large scales --- the Gaussian 
+approximation improves under coarse-graining. Rigorous control of 
+the remainder requires bounding the generated higher-order 
+couplings, which we leave as an open problem.
+\end{remark}
+
+\textbf{Derived from:} RG8 (monotonicity) + Branch~VII, SH7 
+(partition function).
+
+% ── Y8 ──
+\section{Y8: Phase Diagram Flow Lines}
+
+\begin{conjecture}[RG Flow on the Phase 
+Diagram]\label{conj:flow_lines}
+The phase diagram of the parent framework (Conjecture~50.1) in the 
+$(\rho, \Khat)$ plane acquires RG flow lines. Each initial 
+condition $(\rho_0, \Khat_0)$ flows under $T_\ell$ to a trajectory 
+$(\rho(\ell), \Khat(\ell))$:
+
+\begin{enumerate}[label=(\alph*)]
+    \item Above the critical line: flow to the determined fixed 
+    point ($\rho \to \infty$, $\Khat \to 0$).
+    
+    \item Below the critical line: flow to the underdetermined 
+    fixed point ($\rho \to 0$, $\Khat \to 0$).
+    
+    \item On the critical line: flow to the critical fixed point 
+    $(\rho^*, \Khat^*)$.
+\end{enumerate}
+
+The critical line $\rho_{\mathrm{crit}}(\Khat)$ is the 
+\emph{separatrix} of the flow (the invariant manifold separating 
+the two basins of attraction), and its equation is determined by 
+$\beta(\Gamma) = 0$, i.e., the condition $\Gamma = 1$.
+\end{conjecture}
+
+\textbf{Derived from:} RG4--RG7 + Parent Conjecture~50.1.
+
+% ── Y9 ──
+\section{Y9: Finite-Size Scaling}
+
+\begin{conjecture}[Finite-Size 
+Effects]\label{conj:finite_size}
+For a completion problem on a finite nerve with $N$ vertices 
+(e.g., Sudoku with $N = 27$ constraints), the RG flow terminates 
+at scale $\ell_{\max} \sim N^{1/d_H}$ (the system size). 
+Finite-size effects replace the true phase transition with a 
+smooth crossover.
+
+The \emph{finite-size scaling ansatz}:
+\begin{equation}\label{eq:fss}
+    \Gamma_{\mathrm{eff}}(N) - 1 
+    \sim N^{-1/(\nu d_H)} \cdot 
+    G\!\left(N^{1/(\nu d_H)} \cdot (\Gamma_0 - 1)\right)
+\end{equation}
+where $G$ is a universal scaling function. This predicts:
+\begin{align}
+    \text{Critical region width:}\quad 
+    \Delta\mu &\sim N^{-1/(\nu d_H)} 
+    \label{eq:fss_width}\\
+    \text{Maximum susceptibility:}\quad 
+    \chi_{\max} &\sim N^{\gamma/(\nu d_H)} 
+    \label{eq:fss_chi}\\
+    \text{Order parameter at criticality:}\quad 
+    \langle m \rangle &\sim N^{-\beta_{\mathrm{mag}}/(\nu d_H)} 
+    \label{eq:fss_m}
+\end{align}
+
+\textbf{Testable prediction for Sudoku:} A $4 \times 4$ Shidoku 
+($N = 12$ constraints) has a much broader crossover than a 
+$9 \times 9$ Sudoku ($N = 27$) or $16 \times 16$ super-Sudoku 
+($N = 48$). The sharpness of the determined/underdetermined 
+transition scales as $N^{1/(\nu d_H)}$.
+\end{conjecture}
+
+\textbf{Derived from:} RG5 (fixed-point structure) + RG6 (critical 
+exponents) + Branch~VII, Appendix~A (Shidoku computation).
+
+% ── Y10 ──
+\section{Y10: Semantic Depth as RG Scale}
+
+\begin{conjecture}[Semantic 
+Depth]\label{conj:semantic_depth}
+The ``depth'' of a semantic completion --- the number of reasoning 
+steps required --- equals the number of RG steps needed to reach 
+the determined fixed point:
+\begin{equation}\label{eq:semantic_depth}
+    \mathrm{depth} = \min\{\ell : 
+    \Gamma(\ell) > \Gamma_{\mathrm{threshold}}\}
+\end{equation}
+This provides a precise, mathematically grounded definition of 
+\emph{semantic depth} connecting three quantities:
+
+\begin{enumerate}[label=(\roman*)]
+    \item The mathematical RG (number of coarse-graining steps on 
+    the nerve).
+    \item The computational architecture (number of transformer 
+    layers actively engaged).
+    \item The cognitive difficulty (number of reasoning steps a 
+    human needs).
+\end{enumerate}
+
+Shallow completions (syntax, pattern matching) have 
+$\mathrm{depth} \sim 1$: one coarse-graining step suffices. 
+Deep completions (multi-step reasoning, long-range inference) have 
+$\mathrm{depth} \sim L$: the full transformer depth is needed. The 
+maximum semantic depth of a model is bounded by its architectural 
+depth $L$.
+\end{conjecture}
+
+\textbf{Derived from:} Y1 (layers as RG steps) + Y3 (completion 
+capacity).
+
+% ═══════════════════════════════════════════════════════
+\newpage
+\part{Open Questions}
+% ═══════════════════════════════════════════════════════
+
+\section{Directions for Future Work}
+
+\begin{enumerate}
+    \item \textbf{Explicit beta function computation:} The 
+    qualitative form $\beta(\Gamma) = (1/\nu) \cdot \Gamma \cdot 
+    (\Gamma - 1) \cdot h(\Gamma)$ is constrained by fixed-point 
+    structure, flow direction, and Branch~VI consistency. Computing 
+    $h(\Gamma)$ for specific completion problems (Shidoku, random 
+    3-SAT) via numerical RG on the nerve is the most direct test.
+    
+    \item \textbf{Upper critical dimension:} Is 
+    $d_{\mathrm{uc}} = 4$ for the Davis completion transition, as 
+    for the Ising model? Or does the non-standard interaction 
+    structure of constraint graphs change the critical dimension? 
+    Numerical study of completion transitions on lattices of varying 
+    dimension could answer this.
+    
+    \item \textbf{Universality class identification:} Do Sudoku and 
+    Latin squares share the same critical exponents? Do random 
+    $k$-SAT and Erd\H{o}s--R\'enyi graph coloring? Testing 
+    universality requires computing $\nu, \alpha, \eta$ for 
+    specific problem families and comparing.
+    
+    \item \textbf{Transformer mechanistic interpretation:} The 
+    layer-scale correspondence (Y1) predicts that per-layer 
+    activation norms peak at critical layers and that attention 
+    patterns become sparse after convergence. These predictions are 
+    testable on existing transformer architectures via 
+    mechanistic interpretability methods.
+    
+    \item \textbf{Rigorous C-theorem:} 
+    Theorem~\ref{thm:c_theorem} proves monotonicity of the trace. 
+    The universality of $C_{\mathrm{crit}}$ (the value of 
+    completion entropy at the critical fixed point) remains 
+    conjectural. Is $C_{\mathrm{crit}}$ computable from the 
+    universality class data ($d_H$, symmetry group, range)?
+    
+    \item \textbf{Anomalous dimension from BCH:} The perturbative 
+    formula $\eta = c \cdot \|\alpha_c\|^2$ (RG2a) requires 
+    computing the BCH correction to the two-point function at 
+    criticality. Is the perturbative expansion convergent, or does 
+    a Wilson--Fisher-type fixed point require non-perturbative 
+    methods?
+    
+    \item \textbf{Asymptotic freedom beyond leading order:} Y6 
+    establishes that the linearized theory improves at large scales. 
+    What is the rate of improvement? Can we bound the generated 
+    higher-order couplings (Y7, Remark~\ref{rem:truncation}) to 
+    establish rigorous control of the Gaussian approximation?
+    
+    \item \textbf{Multi-scale persistence and computational 
+    complexity:} The obstruction persistence diagram (Y5) 
+    classifies completion difficulty by RG scale. Is there a 
+    relationship between the persistence diagram and the 
+    computational complexity (NP-hardness, approximation ratios) 
+    of the associated CSP?
+\end{enumerate}
+
+% ═══════════════════════════════════════════════════════
+\newpage
+\appendix
+\part*{Appendix}
+\addcontentsline{toc}{part}{Appendix}
+% ═══════════════════════════════════════════════════════
+
+\section{Finite-Model Anchor: RG Flow on 
+Shidoku}\label{app:shidoku_rg}
+
+To ground the abstract machinery in a computable example, we carry 
+out the full RG flow for the $4 \times 4$ Shidoku grid from the 
+Branch~VII appendix, verifying that the coarse-graining 
+construction, Cauchy interlace inequality, and Euler characteristic 
+invariance hold explicitly.
+
+\subsection{Setup: The Shidoku Nerve}
+
+The Shidoku nerve $\nerve(\cover)$ has:
+\begin{itemize}
+    \item 12 vertices: $r_1, r_2, r_3, r_4$ (rows), 
+    $c_1, c_2, c_3, c_4$ (columns), 
+    $b_1, b_2, b_3, b_4$ (boxes).
+    \item 32 edges: 16 row-column (each sharing 1 cell), 
+    8 row-box (each sharing 2 cells), 8 column-box (each sharing 
+    2 cells).
+    \item 16 triangles: one per cell (triple overlap of row, 
+    column, and box).
+\end{itemize}
+
+The adjacency structure of the row-box and column-box overlaps is:
+\begin{align*}
+    r_1, r_2 &\text{ overlap } b_1, b_2 
+    && c_1, c_2 \text{ overlap } b_1, b_3 \\
+    r_3, r_4 &\text{ overlap } b_3, b_4 
+    && c_3, c_4 \text{ overlap } b_2, b_4
+\end{align*}
+No two rows share cells. No two columns share cells. No two boxes 
+share cells.
+
+\subsection{Scale $\ell = 0$: Original Problem}
+
+At scale $\ell = 0$, $\nerve_0 = \nerve$ with 12 vertices and 32 
+edges. The graph Laplacian $L_0 = D - A$ (where $D$ is the degree 
+matrix and $A$ the adjacency matrix) on scalar 0-cochains has 
+spectrum:
+\begin{equation}\label{eq:shidoku_spectrum_0}
+    \mathrm{spec}(L_0) = \{0,\; 2.764,\; 2.764,\; 4,\; 6,\; 6,\; 
+    6,\; 6,\; 6,\; 7.236,\; 7.236,\; 10\}
+\end{equation}
+The spectral gap is $\lambda_1 = 4(2 - \sqrt{2}) \approx 2.764$.
+
+\subsection{Scale $\ell = 1$: Band-Level Coarse-Graining}
+
+The natural coarse-graining groups constraints into bands:
+\begin{align*}
+    \block_1 &= \{r_1, r_2, b_1, b_2\} 
+    && \text{(top band: 2 rows + 2 boxes)} \\
+    \block_2 &= \{r_3, r_4, b_3, b_4\} 
+    && \text{(bottom band)} \\
+    \block_3 &= \{c_1, c_2\} && \text{(left columns)} \\
+    \block_4 &= \{c_3, c_4\} && \text{(right columns)}
+\end{align*}
+This partitions all 12 nerve vertices. The blocks satisfy 
+$\diam(\block_a) \leq 1$ in $d_\nerve$ (every vertex in a block 
+is adjacent to every other vertex in that block, since rows and 
+boxes in the same band share cells).
+
+The coarsened nerve $\nerve_1$ has 4 vertices. An edge 
+$[\block_a, \block_b]$ exists whenever some $v \in \block_a$ is 
+adjacent to some $w \in \block_b$ in $\nerve$. Since every row 
+overlaps every column but no column overlaps another column and 
+no row-band overlaps another row-band:
+\begin{equation}\label{eq:coarsened_edges}
+    \text{Edges of } \nerve_1 = \{(\block_1, \block_3),\; 
+    (\block_1, \block_4),\; (\block_2, \block_3),\; 
+    (\block_2, \block_4)\}
+\end{equation}
+Thus $\nerve_1 \cong K_{2,2}$ (the complete bipartite graph).
+
+\subsection{Laplacian at Scale $\ell = 1$}
+
+With the inherited inner product (block-compatible 0-cochains 
+embedded in $\mathbb{R}^{12}$, with each block's indicator 
+normalized to unit length), the \emph{compression} 
+$\Delta_0^{(1)} = P_1^\dagger L_0 P_1$ 
+(Definition~\ref{def:coarsened_cech}) has spectrum:
+\begin{equation}\label{eq:shidoku_spectrum_1}
+    \mathrm{spec}(\Delta_0^{(1)}) = \{0,\; 3,\; 6,\; 9\}
+\end{equation}
+The spectral gap increases: $\lambda_1 = 2.764 \to 3.000$. (By 
+contrast, the bare graph Laplacian of $K_{2,2}$ with unit edge 
+weights has spectrum $\{0, 2, 2, 4\}$ --- see 
+Remark~\ref{rem:compression_vs_coarse}.)
+
+\subsection{Verification}
+
+\textbf{(1) Cauchy interlace.} Sorting both spectra and comparing 
+the first 4 eigenvalues:
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{cccl}
+$j$ & $\lambda_j$ (original) & $\mu_j$ (coarsened) 
+& Interlace \\
+\hline
+0 & $0$ & $0$ & $\mu_0 \geq \lambda_0$ \checkmark \\
+1 & $2.764$ & $3$ & $\mu_1 \geq \lambda_1$ \checkmark \\
+2 & $2.764$ & $6$ & $\mu_2 \geq \lambda_2$ \checkmark \\
+3 & $4$ & $9$ & $\mu_3 \geq \lambda_3$ \checkmark \\
+\end{tabular}
+\end{center}
+
+\textbf{(2) Trace inequality.} At $\beta = 1$:
+\begin{align}
+    \tr e^{-\beta L_0} &= \sum_{j=0}^{11} 
+    e^{-\lambda_j} \approx 1.158 
+    \label{eq:trace_full}\\
+    \tr e^{-\beta \Delta_0^{(1)}} &= 1 + e^{-3} + e^{-6} 
+    + e^{-9} \approx 1.052 
+    \label{eq:trace_coarse}
+\end{align}
+confirming $C(1) = \ln(1.052) \leq C(0) = \ln(1.158)$: completion 
+entropy decreases under coarse-graining.
+
+\textbf{(3) Euler characteristic invariance.} For scalar 
+0-cochains on the nerve (the simplified setting of this appendix), 
+the Euler characteristic $\chi = \dim \ker L - \dim \Hcech^1 
++ \cdots$ The zero eigenvalue is preserved 
+($\lambda_0 = \mu_0 = 0$), and the alternating sum of Betti 
+numbers is invariant by the Leray spectral sequence argument 
+(Theorem~\ref{thm:euler_invariant}).
+
+\textbf{(4) Flow direction.} The spectral gap \emph{increases} 
+under coarse-graining ($2.764 \to 3.000$), corresponding to 
+$m(\ell)^2$ increasing and the effective correlation length 
+$\xi(\ell) = 1/m(\ell)$ decreasing. For a well-posed Shidoku 
+(unique solution, $\Gamma > 1$), this confirms the RG flow toward 
+the determined fixed point: constraints become easier to satisfy at 
+coarser scales.
+
+\subsection{Three Shidoku Cases}
+
+For the three cases from Branch~VII, Appendix~A:
+
+\begin{enumerate}
+    \item \textbf{Well-posed (6 clues, unique solution):} Clues 
+    reduce stalk dimensions. At scale $\ell = 0$: 
+    $\dim \Hcech^0 = 1$, $\Hcech^1 = 0$. Under coarse-graining, 
+    the unique solution projects to a unique coarsened section. 
+    $\Gamma(\ell)$ increases: flow to determined fixed point.
+    
+    \item \textbf{Under-clued (2 clues, 48 solutions):} 
+    $\dim \Hcech^0 = 48$, $\Hcech^1 = 0$. Coarse-graining reduces 
+    the number of distinguishable solutions (some differ only at 
+    sub-scale level). $\Gamma(\ell)$ decreases: flow toward 
+    underdetermined fixed point.
+    
+    \item \textbf{Contradictory (locally valid, globally 
+    impossible):} $\Hcech^0 = 0$, $\dim \Hcech^1 \geq 1$. The 
+    obstruction class $[\alpha] \in \Hcech^1$ is either relevant 
+    (persists at scale $\ell = 1$, detectable from band-level 
+    incompatibility) or irrelevant (vanishes at scale $\ell = 1$, 
+    a sub-band obstruction). Under Leray-acyclic coarse-graining 
+    (Theorem~\ref{thm:euler_invariant}), the Euler characteristic 
+    $\chi(\sheaf) = 0 - \dim \Hcech^1 < 0$ is preserved at all 
+    scales.
+\end{enumerate}
+
+% ═══════════════════════════════════════════════════════
+\newpage
+\section{Result Summary}\label{app:results}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llcl}
+\textbf{Label} & \textbf{Title} & \textbf{Type} 
+& \textbf{Dependencies} \\
+\hline
+\multicolumn{4}{c}{\emph{Foundational (RG1--RG8)}} \\
+\hline
+RG1 & Block-Spin Coarse-Graining & Def + Thm 
+& VII.SH1, VII.SH2 \\
+RG2 & Coarse-Graining Semigroup & Def 
+& RG1 \\
+RG3 & \v{C}ech Laplacian at Scale $\ell$ & Def + Conj 
+& VII.SH7, VII.X3 \\
+RG4 & Beta Function & Conj 
+& RG2, RG3, VI.S7 \\
+RG5 & Fixed Points and Stability & Conj 
+& RG4, VI.S7 \\
+RG6 & Critical Exponents from RG & Conj 
+& RG5, VI.S4 \\
+RG7 & Phase Diagram as RG Flow & Conj 
+& RG4--5, Parent 50.1 \\
+RG8 & Monotonicity (C-Theorem) & Thm 
+& RG2, VII.SH7 \\
+\hline
+\multicolumn{4}{c}{\emph{First-Order Derivations 
+(RG1a--RG7a)}} \\
+\hline
+RG1a & Derived Pushforward / Spectral Seq.\ & Thm + Conj 
+& RG1, VII.SH5a \\
+RG2a & Anomalous Dimensions & Conj 
+& RG6, VII.SH5 \\
+RG3a & Crossover Scaling Functions & Conj 
+& RG5, RG6, VI \\
+RG4a & Corrections to Scaling & Conj 
+& RG5, RG6 \\
+RG5a & Universality Classes & Conj 
+& RG6 \\
+RG6a & RG-Improved Partition Function & Conj 
+& RG2, RG4, VII.SH7 \\
+RG7a & Euler Characteristic Invariance & Thm 
+& RG1a, VII.SH7 \\
+\hline
+\multicolumn{4}{c}{\emph{Cross-Synthesis (Y1--Y10, Y6a--b)}} \\
+\hline
+Y1 & Layers as RG Steps & Conj 
+& RG4, RG5 \\
+Y2 & Multi-Head = Multi-Scale & Conj 
+& Y1, VII.SH5 \\
+Y3 & Completion Capacity & Conj 
+& Y1, RG5, RG6 \\
+Y4 & Residual Stream = Trajectory & Conj 
+& Y1 \\
+Y5 & Persistence = Relevance & Conj 
+& RG1a, VII.SH4b \\
+Y6 & Asymptotic Freedom & Conj 
+& VII.SH5, RG2 \\
+Y6a & Scale-Local Connections & Conj 
+& Y1, RG3, Y6 \\
+Y6b & Bounded Coarse Transport & Prop+Thm 
+& Y6a, Y6 \\
+Y6c & Fiber Bundle Transport & Thm 
+& Y6a, Y6b \\
+Y7 & Partition Function Decimation & Conj 
+& RG8, VII.SH7 \\
+Y8 & Phase Diagram Flow Lines & Conj 
+& RG4--7 \\
+Y9 & Finite-Size Scaling & Conj 
+& RG5, RG6 \\
+Y10 & Semantic Depth = RG Scale & Conj 
+& Y1, Y3 \\
+\end{tabular}
+\end{center}
+
+\medskip\noindent
+\textbf{Totals:} 29 results (6~theorems, 1~proposition, 22~conjectures). 
+Framework total after Branch~VIII: $89 + 44 + 30 + 29 = 192$ 
+results.
+
+\end{document}

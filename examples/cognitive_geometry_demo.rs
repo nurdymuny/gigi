@@ -36,9 +36,11 @@
 #![cfg(feature = "kahler")]
 
 use gigi::curvature::{
-    capacity, encoding_depth_with, horizon_with, scalar_curvature, DepthConfig,
+    capacity, encoding_depth_with, horizon_with, perceive, scalar_curvature, DepthConfig,
     EncodingDepth, HorizonConfig,
 };
+use gigi::geometry::forms::{ClosedTwoForm, TwoForm};
+use gigi::geometry::transport::{flat_transport, BSource, TransportSegment};
 use gigi::spectral::spectral_gap;
 use gigi::types::{BundleSchema, FieldDef, Value};
 use gigi::BundleStore;
@@ -429,5 +431,172 @@ fn main() {
   thresholds from the joint (K, λ₁) distribution at bundle-load
   time) is the v2 follow-up — same move as the δ recalibration
   0.657 → 0.74."#
+    );
+
+    perceive_section();
+}
+
+/// PERCEIVE — Theorem 8.6 (Davis 2026). The fourth and final Cognitive
+/// Geometry verb. Where CAPACITY / HORIZON / DEPTH read scalar features
+/// off the bundle's static geometry, PERCEIVE acts on a vector:
+///
+///   v_perceived = R_acc · v
+///   bias        = ‖R_acc − I‖_F
+///
+/// R_acc is the rotation the substrate accumulated while transporting v
+/// along some path. The bias scalar quantifies how much v has drifted
+/// from its starting frame.
+///
+/// The JTBD: a builder has a retrieved vector that came back from a
+/// curved sub-bundle. PERCEIVE tells them (a) what the system actually
+/// perceives that vector to be after the transport, and (b) how much
+/// to trust that perception (low bias ⇒ near-identity rotation ⇒ no
+/// distortion; high bias ⇒ substantial frame drift, hedge before
+/// acting).
+fn perceive_section() {
+    header("PERCEIVE — Theorem 8.6 (R_acc on a real transport)");
+    println!(
+        r#"  PERCEIVE is the fourth Cognitive Geometry verb. Where the
+  other three read static geometric scalars (K, λ₁), PERCEIVE
+  acts on a vector — it asks "what does the substrate actually
+  perceive this vector to be after parallel transport, and how
+  much should we trust that perception?"
+
+  The chain: TRANSPORT → R_acc (from TransportResult.rotation,
+  shipped on this branch) → perceive(R_acc, v) → (v_perceived, bias).
+"#
+    );
+
+    // 1) Set up a small representative transport — a magnetic flow in
+    //    3D about the z-axis. Builders running the demo see all the
+    //    moving parts in one place.
+    let b_strength = 0.6_f64;
+    let bias_mat = vec![
+        0.0, -b_strength, 0.0,
+        b_strength, 0.0, 0.0,
+        0.0, 0.0, 0.0,
+    ];
+    let bias = ClosedTwoForm::new_constant(
+        TwoForm::new(bias_mat, 3).expect("antisymmetric"),
+    );
+    let seg = TransportSegment::new(
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+        vec![1.0, 0.0, 0.5],
+    )
+    .expect("valid segment");
+    let dt = 1e-4;
+    let n_steps = 5_000usize;
+    let t = dt * n_steps as f64; // total transport time
+
+    let r = flat_transport(&seg, Some(&bias), dt, n_steps, BSource::Override)
+        .expect("transport succeeds");
+    let rotation = r.rotation.as_ref().expect("R_acc present on success");
+
+    line("transport bias", format!("constant B = {} dx∧dy in (x,y) plane", b_strength));
+    line(
+        "transport time T",
+        format!("{:.3} (dt={:.0e} × {} steps)", t, dt, n_steps),
+    );
+    line("initial v", format!("{:?}", &[1.0_f64, 0.0, 0.5]));
+    line("final v (after RK4)", format!("{:?}", r.final_velocity));
+    line(
+        "holonomy_norm",
+        format!("{:.6}  (‖v_final − v_initial‖)", r.holonomy_norm),
+    );
+
+    println!();
+    println!("  ┌── R_acc (3×3 row-major)");
+    for i in 0..3 {
+        println!(
+            "    [ {:>10.6}, {:>10.6}, {:>10.6} ]",
+            rotation[i * 3],
+            rotation[i * 3 + 1],
+            rotation[i * 3 + 2],
+        );
+    }
+    println!(
+        "    expected: rotation by θ = b·T = {:.3} rad about z-axis",
+        b_strength * t
+    );
+
+    // 2) PERCEIVE on the initial velocity.
+    println!();
+    let v_initial = vec![1.0_f64, 0.0, 0.5];
+    let res = perceive(rotation, &v_initial, 3).expect("perceive succeeds");
+
+    println!("  ┌── PERCEIVE(R_acc, v_initial)");
+    line("  v_perceived", format!("{:?}", res.v_perceived));
+    line(
+        "  matches final_velocity?",
+        if res
+            .v_perceived
+            .iter()
+            .zip(r.final_velocity.iter())
+            .all(|(a, b)| (a - b).abs() < 1e-5)
+        {
+            "✓ to RK4 tolerance"
+        } else {
+            "✗ mismatch (BUG)"
+        },
+    );
+    line("  bias = ‖R - I‖_F", format!("{:.6}", res.bias));
+
+    // 3) Interpret the bias.
+    let theta = b_strength * t;
+    let closed_form = (4.0 * (1.0 - theta.cos())).sqrt();
+    line(
+        "  closed-form bias",
+        format!("sqrt(4·(1-cos θ)) = {:.6}", closed_form),
+    );
+
+    let interpretation = if res.bias < 0.1 {
+        "low — substrate has not meaningfully distorted v"
+    } else if res.bias < 1.0 {
+        "moderate — v_perceived diverges; reweight before acting"
+    } else {
+        "high — substantial drift; treat v_perceived as low-confidence"
+    };
+    line("  regime", interpretation);
+
+    // 4) Pivot to a second vector to show PERCEIVE's per-vector nature.
+    println!();
+    println!("  ┌── PERCEIVE on a different vector (same R_acc)");
+    let v_alt = vec![0.0_f64, 1.0, 0.0]; // pure y-axis input
+    let res_alt = perceive(rotation, &v_alt, 3).expect("perceive succeeds");
+    line("  v_alt          ", format!("{:?}", v_alt));
+    line("  v_perceived_alt", format!("{:?}", res_alt.v_perceived));
+    line(
+        "  bias (unchanged)",
+        format!("{:.6}  (bias is a property of R, not v)", res_alt.bias),
+    );
+
+    // 5) Wire surfaces summary.
+    println!();
+    println!(
+        r#"  ┌── Wire surfaces
+
+  Rust API:
+    let r = flat_transport(...).unwrap();
+    let res = perceive(&r.rotation.unwrap(), &v, dim).unwrap();
+    // res.v_perceived, res.bias
+
+  HTTP (POST):
+    /v1/bundles/{{name}}/perceive
+    body: {{ rotation: [r00,...], vector: [v0,...], dim: N }}
+    resp: {{ v_perceived, bias, dim, bundle, interpretation }}
+
+  JTBD recap (4-verb routing pipeline):
+
+    1. CAPACITY → can we hold the interpretation? (PROCEED / HEDGE / ASK)
+    2. HORIZON  → how deep is coherent context here? (token budget)
+    3. DEPTH    → what's the erasure energy of writing? (write strategy)
+    4. PERCEIVE → what does the substrate actually see this vector as?
+                  How much do we trust that perception?
+
+  PERCEIVE is the only verb that acts on a *specific* retrieved
+  value. It closes the loop: not just "what does the geometry tell
+  us about this region" but "what does the geometry do to this
+  particular answer when we move it through the substrate"."#
     );
 }

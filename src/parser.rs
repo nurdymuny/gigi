@@ -205,6 +205,25 @@ pub enum Statement {
         bundle: String,
         tau: f64,
     },
+    /// CAPACITY <bundle> [TOLERANCE τ] — Davis capacity C = τ/K.
+    /// Standalone verb: returns C, K, confidence, and interpretation.
+    /// τ defaults to 1.0 when not specified.
+    Capacity {
+        bundle: String,
+        tau: f64,
+    },
+    /// HORIZON <bundle> [TOLERANCE τ] — holonomy horizon s_max = τ/(K·ℓ_c).
+    /// Returns the maximum coherent context depth for this bundle's geometry.
+    /// τ defaults to 1.0; ℓ_c estimated from the spectral gap.
+    Horizon {
+        bundle: String,
+        tau: f64,
+    },
+    /// DEPTH <bundle> — encoding depth classification from K and λ₁.
+    /// Returns I (tangent) / II (connection) / III (metric) / IV (topological).
+    Depth {
+        bundle: String,
+    },
     Geodesic {
         bundle: String,
         from_keys: Vec<(String, Literal)>,
@@ -1074,6 +1093,9 @@ impl Parser {
             "BETTI" => self.parse_betti(),
             "ENTROPY" => self.parse_entropy(),
             "FREEENERGY" => self.parse_free_energy(),
+            "CAPACITY"   => self.parse_capacity_stmt(),
+            "HORIZON"    => self.parse_horizon_stmt(),
+            "DEPTH"      => self.parse_depth_stmt(),
             "GEODESIC" => self.parse_geodesic(),
             "METRIC" => self.parse_metric_tensor(),
             "COMPLETE" => self.parse_complete(),
@@ -2166,6 +2188,50 @@ impl Parser {
             }
             other => Err(format!("expected number for tau, got {:?}", other)),
         }
+    }
+
+    /// CAPACITY <bundle> [TOLERANCE τ]
+    ///
+    /// Returns Davis capacity C = τ/K for the bundle. τ defaults to 1.0.
+    /// The TOLERANCE keyword mirrors the planned GQL_REFERENCE syntax.
+    fn parse_capacity_stmt(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let tau = if self.is_keyword("TOLERANCE") {
+            self.advance();
+            match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => { let v = *n; self.pos += 1; v }
+                other => return Err(format!("CAPACITY: expected τ after TOLERANCE, got {other:?}")),
+            }
+        } else {
+            1.0 // default: C = 1/K (τ=1 makes C dimensionless)
+        };
+        Ok(Statement::Capacity { bundle, tau })
+    }
+
+    /// HORIZON <bundle> [TOLERANCE τ]
+    ///
+    /// Returns holonomy horizon s_max = τ/(K·ℓ_c).
+    /// τ defaults to 1.0; ℓ_c estimated from spectral gap as 1/√λ₁.
+    fn parse_horizon_stmt(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let tau = if self.is_keyword("TOLERANCE") {
+            self.advance();
+            match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => { let v = *n; self.pos += 1; v }
+                other => return Err(format!("HORIZON: expected τ after TOLERANCE, got {other:?}")),
+            }
+        } else {
+            1.0
+        };
+        Ok(Statement::Horizon { bundle, tau })
+    }
+
+    /// DEPTH <bundle>
+    ///
+    /// Returns the encoding depth classification (I–IV) based on K and λ₁.
+    fn parse_depth_stmt(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        Ok(Statement::Depth { bundle })
     }
 
     fn parse_geodesic(&mut self) -> Result<Statement, String> {
@@ -5047,6 +5113,41 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
         }
+        // ── Cognitive Geometry (Branch VII — Davis 2026-05-29) ──────────────
+        Statement::Capacity { bundle, tau } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let k = store.as_heap()
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
+            Ok(ExecResult::Scalar(crate::curvature::capacity(*tau, k)))
+        }
+        Statement::Horizon { bundle, tau } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let k = store.as_heap()
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
+            let lambda1 = store.as_heap()
+                .map(|s| crate::spectral::spectral_gap(s))
+                .unwrap_or(0.0);
+            Ok(ExecResult::Scalar(crate::curvature::horizon(*tau, k, lambda1)))
+        }
+        Statement::Depth { bundle } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let k = store.as_heap()
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
+            let lambda1 = store.as_heap()
+                .map(|s| crate::spectral::spectral_gap(s))
+                .unwrap_or(0.0);
+            let depth = crate::curvature::encoding_depth(k, lambda1);
+            let level: f64 = match depth {
+                crate::curvature::EncodingDepth::Tangent     => 1.0,
+                crate::curvature::EncodingDepth::Connection  => 2.0,
+                crate::curvature::EncodingDepth::Metric      => 3.0,
+                crate::curvature::EncodingDepth::Topological => 4.0,
+            };
+            Ok(ExecResult::Scalar(level))
+        }
         Statement::RotateKey { bundle, new_seed_source } => {
             let new_seed = resolve_seed(new_seed_source)?;
             let store = engine
@@ -5301,6 +5402,81 @@ mod tests {
             parse("SPECTRAL employees").unwrap(),
             Statement::Spectral { .. }
         ));
+    }
+
+    /// Cognitive Geometry Correspondence (Branch VII — Davis 2026-05-29).
+    /// Tests that the three new GQL verbs parse correctly.
+    #[test]
+    fn parse_cognitive_geometry_verbs() {
+        // CAPACITY: default τ=1.0
+        match parse("CAPACITY sensors").unwrap() {
+            Statement::Capacity { bundle, tau } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 1.0).abs() < f64::EPSILON, "default τ should be 1.0");
+            }
+            _ => panic!("Expected Capacity"),
+        }
+        // CAPACITY: explicit τ
+        match parse("CAPACITY sensors TOLERANCE 2.5").unwrap() {
+            Statement::Capacity { bundle, tau } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 2.5).abs() < f64::EPSILON);
+            }
+            _ => panic!("Expected Capacity with TOLERANCE"),
+        }
+        // HORIZON: default τ=1.0
+        match parse("HORIZON sensors").unwrap() {
+            Statement::Horizon { bundle, tau } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 1.0).abs() < f64::EPSILON);
+            }
+            _ => panic!("Expected Horizon"),
+        }
+        // HORIZON: explicit τ
+        match parse("HORIZON sensors TOLERANCE 3.0").unwrap() {
+            Statement::Horizon { bundle, tau } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 3.0).abs() < f64::EPSILON);
+            }
+            _ => panic!("Expected Horizon with TOLERANCE"),
+        }
+        // DEPTH: no parameters beyond bundle name
+        match parse("DEPTH sensors").unwrap() {
+            Statement::Depth { bundle } => assert_eq!(bundle, "sensors"),
+            _ => panic!("Expected Depth"),
+        }
+    }
+
+    /// Round-trip execute for cognitive geometry verbs on a real bundle.
+    #[test]
+    fn execute_cognitive_geometry_verbs() {
+        let dir = std::env::temp_dir().join("gigi_cog_geo_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut engine = crate::engine::Engine::open(&dir).unwrap();
+
+        execute(&mut engine,
+            &parse("CREATE BUNDLE cog (x INT BASE, y FLOAT FIBER)").unwrap()
+        ).unwrap();
+        for i in 0..8 {
+            execute(&mut engine,
+                &parse(&format!("INSERT INTO cog (x, y) VALUES ({i}, {})", i as f64 * 0.5)).unwrap()
+            ).unwrap();
+        }
+
+        // CAPACITY should return a finite or infinite scalar
+        let cap = execute(&mut engine, &parse("CAPACITY cog").unwrap()).unwrap();
+        assert!(matches!(cap, ExecResult::Scalar(_)), "CAPACITY returned non-scalar");
+
+        // HORIZON should return a finite or infinite scalar
+        let hor = execute(&mut engine, &parse("HORIZON cog").unwrap()).unwrap();
+        assert!(matches!(hor, ExecResult::Scalar(_)), "HORIZON returned non-scalar");
+
+        // DEPTH should return 1.0–4.0
+        if let ExecResult::Scalar(level) = execute(&mut engine, &parse("DEPTH cog").unwrap()).unwrap() {
+            assert!(level >= 1.0 && level <= 4.0, "DEPTH level out of range: {level}");
+        } else {
+            panic!("DEPTH returned non-scalar");
+        }
     }
 
     #[test]

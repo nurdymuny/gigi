@@ -130,6 +130,15 @@ name = "attention_memory_demo"
 path = "examples/attention_memory_demo.rs"
 required-features = ["kahler"]
 
+# Branch VII — Cognitive Geometry verbs JTBD demo. Two-bundle
+# comparison (peaceful real sensor data vs synthetic volatile
+# trace) exercising CAPACITY / HORIZON / DEPTH end-to-end with
+# concrete routing decisions printed for each bundle.
+[[bin]]
+name = "cognitive_geometry_demo"
+path = "examples/cognitive_geometry_demo.rs"
+required-features = ["kahler"]
+
 [[bin]]
 name = "dream_demo"
 path = "examples/dream_demo.rs"

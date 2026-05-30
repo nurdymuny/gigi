@@ -763,6 +763,65 @@ struct PullbackCurvatureReport {
     right_unmatched: usize,
 }
 
+/// Response for `GET /v1/bundles/{name}/capacity` and `CAPACITY` GQL verb.
+/// Davis capacity C = τ/K (Theorem 8.1 — Cognitive Geometry Correspondence).
+#[derive(Serialize)]
+struct CapacityReport {
+    /// Davis capacity C = τ/K. How many distinct interpretations the
+    /// system can maintain simultaneously at this curvature level.
+    capacity: f64,
+    /// Local scalar curvature K.
+    k: f64,
+    /// Tolerance budget τ used to compute C.
+    tau: f64,
+    /// Confidence ∈ (0,1]: 1/(1+K).
+    confidence: f64,
+    /// Qualitative regime: "flat" (K≈0), "low" (C>10), "moderate",
+    /// "high" (C<1, overloaded), or "critical" (C≈0, K→∞).
+    regime: &'static str,
+    /// Human-readable interpretation for builders.
+    interpretation: String,
+}
+
+/// Response for `GET /v1/bundles/{name}/horizon` and `HORIZON` GQL verb.
+/// Holonomy horizon s_max = τ/(K·ℓ_c) (Definition 5.1 — Cognitive
+/// Geometry Correspondence). The maximum coherent context depth.
+#[derive(Serialize)]
+struct HorizonReport {
+    /// s_max = τ/(K·ℓ_c). Beyond this many positions, individual
+    /// contributions to the accumulated frame rotation are irrecoverable.
+    s_max: f64,
+    /// Local scalar curvature K.
+    k: f64,
+    /// Tolerance budget τ.
+    tau: f64,
+    /// Estimated correlation length ℓ_c = 1/√λ₁.
+    l_c: f64,
+    /// Spectral gap λ₁ used to estimate ℓ_c.
+    lambda1: f64,
+    /// Human-readable interpretation.
+    interpretation: String,
+}
+
+/// Response for `GET /v1/bundles/{name}/depth` and `DEPTH` GQL verb.
+/// Encoding depth classification (Theorem 8.14 — Cognitive Geometry
+/// Correspondence). Maps K and λ₁ to one of four resistance levels.
+#[derive(Serialize)]
+struct DepthReport {
+    /// Encoding depth: "tangent" | "connection" | "metric" | "topological".
+    depth: gigi::curvature::EncodingDepth,
+    /// Roman numeral label: "I" | "II" | "III" | "IV".
+    level: &'static str,
+    /// Scalar curvature K used for classification.
+    k: f64,
+    /// Spectral gap λ₁ used for classification.
+    lambda1: f64,
+    /// Erasure energy scale: "low" | "moderate" | "high" | "infinite".
+    erasure_energy: &'static str,
+    /// Full description of what this depth means.
+    description: &'static str,
+}
+
 #[derive(Serialize)]
 struct GeodesicReport {
     distance: Option<f64>,
@@ -2398,6 +2457,113 @@ async fn spectral_report(
         lambda1,
         diameter,
         spectral_capacity: spectral_cap,
+    }))
+}
+
+// ── Cognitive Geometry Verbs (Branch VII — Davis 2026-05-29) ────────────────
+
+/// `GET /v1/bundles/{name}/capacity[?tau=n]`
+///
+/// Davis capacity C = τ/K. Returns how many distinct interpretations the
+/// bundle can support simultaneously at its current curvature level.
+/// τ defaults to 1.0 (C = 1/K in natural units).
+async fn bundle_capacity_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<CapacityReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
+    })?;
+
+    let tau: f64 = params.get("tau").and_then(|s| s.parse().ok()).unwrap_or(1.0);
+    let k = store.scalar_curvature();
+    let c = curvature::capacity(tau, k);
+    let conf = curvature::confidence(k);
+
+    let (regime, interpretation) = if k < f64::EPSILON {
+        ("flat", format!("K ≈ 0: flat space, infinite capacity. No curvature barriers — every query resolves cleanly."))
+    } else if c > 10.0 {
+        ("low", format!("C = {c:.2}: low-curvature region. Room for {c:.0} distinct interpretations per unit τ. Synthesis is reliable."))
+    } else if c >= 1.0 {
+        ("moderate", format!("C = {c:.2}: moderate curvature. The system can hold {c:.1} interpretations simultaneously. Watch for ambiguity."))
+    } else if c > 0.1 {
+        ("high", format!("C = {c:.3}: high curvature — fewer than one interpretation per unit τ. Ambiguity detection recommended before synthesis."))
+    } else {
+        ("critical", format!("C = {c:.4}: near-critical curvature. The system cannot reliably distinguish interpretations. Query is at a topological fork."))
+    };
+
+    Ok(Json(CapacityReport { capacity: c, k, tau, confidence: conf, regime, interpretation }))
+}
+
+/// `GET /v1/bundles/{name}/horizon[?tau=n]`
+///
+/// Holonomy horizon s_max = τ/(K·ℓ_c). Returns the maximum coherent
+/// context depth — beyond s_max positions, individual contributions to
+/// the accumulated frame rotation become irrecoverable.
+async fn bundle_horizon_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<HorizonReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
+    })?;
+
+    let tau: f64 = params.get("tau").and_then(|s| s.parse().ok()).unwrap_or(1.0);
+    let k = store.scalar_curvature();
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let l_c = if lambda1 > f64::EPSILON { 1.0 / lambda1.sqrt() } else { 1.0 };
+    let s_max = curvature::horizon(tau, k, lambda1);
+
+    let interpretation = if s_max.is_infinite() {
+        "K ≈ 0: infinite horizon. Flat geometry — all positions remain \
+         individually attributable indefinitely.".to_string()
+    } else {
+        format!(
+            "s_max = {s_max:.1}: coherent attribution extends {s_max:.0} positions. \
+             Beyond this, accumulated frame rotation cannot be decomposed into \
+             individual contributions. (K={k:.4}, ℓ_c={l_c:.2}, τ={tau})"
+        )
+    };
+
+    Ok(Json(HorizonReport { s_max, k, tau, l_c, lambda1, interpretation }))
+}
+
+/// `GET /v1/bundles/{name}/depth`
+///
+/// Encoding depth classification from K and λ₁. Returns I (tangent,
+/// easily erased) through IV (topological, irrecoverable). Implements
+/// Theorem 8.14 of the Cognitive Geometry Correspondence.
+async fn bundle_depth_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> Result<Json<DepthReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
+    })?;
+
+    let k = store.scalar_curvature();
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let depth = curvature::encoding_depth(k, lambda1);
+
+    let erasure_energy = match depth {
+        curvature::EncodingDepth::Tangent     => "low",
+        curvature::EncodingDepth::Connection  => "moderate",
+        curvature::EncodingDepth::Metric      => "high",
+        curvature::EncodingDepth::Topological => "infinite",
+    };
+
+    Ok(Json(DepthReport {
+        level: depth.label(),
+        description: depth.description(),
+        depth,
+        k,
+        lambda1,
+        erasure_energy,
     }))
 }
 
@@ -11302,6 +11468,33 @@ fn execute_gql_on_store_read(
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
         }
+        // ── Cognitive Geometry (Branch VII) ─────────────────────────────────
+        Statement::Capacity { tau, .. } => {
+            // C = τ/K. Returns the Davis capacity as a scalar.
+            // For rich interpretation use GET /v1/bundles/{name}/capacity.
+            let k = store.scalar_curvature();
+            Ok(ExecResult::Scalar(curvature::capacity(*tau, k)))
+        }
+        Statement::Horizon { tau, .. } => {
+            // s_max = τ/(K·ℓ_c). Returns the holonomy horizon as a scalar.
+            let k = store.scalar_curvature();
+            let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+            Ok(ExecResult::Scalar(curvature::horizon(*tau, k, lambda1)))
+        }
+        Statement::Depth { .. } => {
+            // Returns encoding depth as a scalar: I=1, II=2, III=3, IV=4.
+            // For the full classification use GET /v1/bundles/{name}/depth.
+            let k = store.scalar_curvature();
+            let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+            let depth = curvature::encoding_depth(k, lambda1);
+            let level: f64 = match depth {
+                curvature::EncodingDepth::Tangent     => 1.0,
+                curvature::EncodingDepth::Connection  => 2.0,
+                curvature::EncodingDepth::Metric      => 3.0,
+                curvature::EncodingDepth::Topological => 4.0,
+            };
+            Ok(ExecResult::Scalar(level))
+        }
         Statement::ProjectInvariant { expressions, where_clause, .. } => {
             // Sprint H: route to the invariant evaluator. The evaluator
             // operates strictly on the heap-side BundleStore via base
@@ -11809,6 +12002,8 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         // single-bundle read path; expose its bundle name here so the
         // dispatcher knows where to attach.
         ProjectInvariant { bundle, .. } => Some(bundle.clone()),
+        // Cognitive Geometry (Branch VII — Davis 2026-05-29)
+        Capacity { bundle, .. } | Horizon { bundle, .. } | Depth { bundle } => Some(bundle.clone()),
         // Divergence is cross-bundle; no single name
         _ => None,
     }
@@ -12665,6 +12860,10 @@ async fn main() {
         // Analytics
         .route("/v1/bundles/{name}/curvature", get(curvature_report))
         .route("/v1/bundles/{name}/spectral", get(spectral_report))
+        // Cognitive geometry (Branch VII — C = τ/K, horizon, encoding depth)
+        .route("/v1/bundles/{name}/capacity", get(bundle_capacity_report))
+        .route("/v1/bundles/{name}/horizon",  get(bundle_horizon_report))
+        .route("/v1/bundles/{name}/depth",    get(bundle_depth_report))
         .route("/v1/bundles/{name}/consistency", get(consistency_check))
         .route("/v1/bundles/{name}/betti", get(betti_report))
         .route("/v1/bundles/{name}/entropy", get(entropy_report))

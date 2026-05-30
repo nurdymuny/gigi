@@ -301,6 +301,114 @@ pub fn capacity(tau: f64, k: f64) -> f64 {
     tau / k
 }
 
+/// Holonomy horizon (Def 5.1 — Cognitive Geometry Correspondence, 2026-05-29):
+/// s_max = τ / (K · ℓ_c)
+///
+/// The maximum sequence length over which the system can attribute
+/// accumulated frame rotation to specific positions. Beyond s_max,
+/// individual contributions to the holonomy product are irrecoverable —
+/// not because information was lost, but because non-abelian composition
+/// has mixed them into an inseparable product.
+///
+/// ℓ_c (correlation length) is estimated from the spectral gap:
+///   ℓ_c ≈ 1 / √λ₁
+/// From the heat kernel: on a manifold with spectral gap λ₁, correlations
+/// decay as exp(−√λ₁ · distance), so the e-folding scale is 1/√λ₁.
+/// When λ₁ = 0 (disconnected or flat), ℓ_c defaults to 1.0.
+///
+/// Returns f64::INFINITY when K ≈ 0 (flat space, infinite horizon).
+pub fn horizon(tau: f64, k: f64, lambda1: f64) -> f64 {
+    if k.abs() < f64::EPSILON {
+        return f64::INFINITY;
+    }
+    let l_c = if lambda1 > f64::EPSILON {
+        1.0 / lambda1.sqrt()
+    } else {
+        1.0 // default: correlation length = 1 structural unit
+    };
+    tau / (k * l_c)
+}
+
+/// Encoding depth classification (Theorem 8.14 — Cognitive Geometry
+/// Correspondence, 2026-05-29). Maps local curvature K and spectral
+/// gap λ₁ to one of four encoding depths from Definition 3.1 of that
+/// paper:
+///
+///   I  — Tangent:     low K, high λ₁  → easily erased (facts from books)
+///   II — Connection:  moderate K or λ₁ → skill-level persistence (practice)
+///   III— Metric:      high K, low λ₁  → resists argument (emotional beliefs)
+///   IV — Topological: K→∞ or λ₁→0   → irrecoverable (trauma, topology change)
+///
+/// This is the Laplace-Beltrami spectral hierarchy: encoding depth
+/// determines diffusion rate; deep beliefs have small λ₁ and resist
+/// the diffusion of counter-evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EncodingDepth {
+    Tangent,
+    Connection,
+    Metric,
+    Topological,
+}
+
+impl EncodingDepth {
+    /// Roman numeral label (I–IV).
+    pub fn label(self) -> &'static str {
+        match self {
+            EncodingDepth::Tangent     => "I",
+            EncodingDepth::Connection  => "II",
+            EncodingDepth::Metric      => "III",
+            EncodingDepth::Topological => "IV",
+        }
+    }
+
+    /// One-line description of the depth's erasure characteristics.
+    pub fn description(self) -> &'static str {
+        match self {
+            EncodingDepth::Tangent =>
+                "Tangent encoding — fast diffusion, low erasure energy. \
+                 Facts stored here are easily updated or forgotten.",
+            EncodingDepth::Connection =>
+                "Connection encoding — moderate erasure energy. \
+                 Skills and habits; distributed across a neighborhood, \
+                 harder to displace than facts but does not change the metric.",
+            EncodingDepth::Metric =>
+                "Metric encoding — high erasure energy; the geometry itself \
+                 has been deformed. Deep beliefs resist rational argument \
+                 because the argument operates at tangent depth while the \
+                 belief lives here.",
+            EncodingDepth::Topological =>
+                "Topological encoding — infinite erasure energy; \
+                 the manifold topology has changed. Cannot be continuously \
+                 deformed away. Trauma, foundational axioms, identity structure.",
+        }
+    }
+}
+
+/// Classify encoding depth from local curvature K and spectral gap λ₁.
+///
+/// The classification uses a 2-D criterion:
+///   - λ₁ ≈ 0 → topological (manifold barrier, disconnected region)
+///   - high K  → metric (curvature deformation, deep belief)
+///   - moderate K with moderate λ₁ → connection (skill-level)
+///   - low K with high λ₁ → tangent (surface, easily updated)
+pub fn encoding_depth(k: f64, lambda1: f64) -> EncodingDepth {
+    // Topological: spectral gap has collapsed (disconnected or near-singular)
+    if lambda1 < 0.01 {
+        return EncodingDepth::Topological;
+    }
+    // Metric: high curvature — geometry itself is deformed
+    if k > 0.5 {
+        return EncodingDepth::Metric;
+    }
+    // Connection: moderate curvature or low spectral gap — skill range
+    if k > 0.1 || lambda1 < 0.3 {
+        return EncodingDepth::Connection;
+    }
+    // Tangent: low curvature, high connectivity — surface encoding
+    EncodingDepth::Tangent
+}
+
 /// Partition function Z(β, p) = Σ exp(-β · d(p, q)) (Def 3.7).
 ///
 /// Sums over the geometric neighborhood of p (records sharing indexed field

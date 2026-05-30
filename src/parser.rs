@@ -242,6 +242,28 @@ pub enum Statement {
         bundle: String,
         config: Option<crate::curvature::DepthConfig>,
     },
+    /// PERCEIVE <bundle>
+    ///   ROTATION (r00, r01, ..., r_{N²-1})  -- row-major dim²
+    ///   VECTOR   (v0, v1, ..., v_{N-1})
+    ///   [DIM N]                              -- inferred from VECTOR if omitted
+    ///
+    /// Davis PERCEIVE (Theorem 8.6 — Cognitive Geometry Correspondence).
+    /// Returns the perception bias `‖R - I‖_F` as the scalar result;
+    /// the full v_perceived vector is on the HTTP surface
+    /// (POST /v1/bundles/{name}/perceive) and Rust API
+    /// (`curvature::perceive`). GQL exposes the scalar because GQL
+    /// scalars compose with the rest of the language (e.g. comparisons,
+    /// EXPLAIN blocks); vector results are a wire-only surface.
+    ///
+    /// `dim` is optional: when omitted, taken as `vector.len()`. If
+    /// provided, the parser still validates `rotation.len() == dim * dim`
+    /// and `vector.len() == dim` at execution time (in the executor).
+    Perceive {
+        bundle: String,
+        rotation: Vec<f64>,
+        vector: Vec<f64>,
+        dim: Option<usize>,
+    },
     Geodesic {
         bundle: String,
         from_keys: Vec<(String, Literal)>,
@@ -1114,6 +1136,7 @@ impl Parser {
             "CAPACITY"   => self.parse_capacity_stmt(),
             "HORIZON"    => self.parse_horizon_stmt(),
             "DEPTH"      => self.parse_depth_stmt(),
+            "PERCEIVE"   => self.parse_perceive_stmt(),
             "GEODESIC" => self.parse_geodesic(),
             "METRIC" => self.parse_metric_tensor(),
             "COMPLETE" => self.parse_complete(),
@@ -2321,6 +2344,98 @@ impl Parser {
             }
         }
         Ok(Statement::Depth { bundle, config: overrides })
+    }
+
+    /// PERCEIVE <bundle>
+    ///   ROTATION (r00, r01, ..., r_{N²-1})
+    ///   VECTOR   (v0, v1, ..., v_{N-1})
+    ///   [DIM N]
+    ///
+    /// Davis PERCEIVE (Theorem 8.6 — Cognitive Geometry Correspondence).
+    /// Returns the perception bias `‖R - I‖_F` as a GQL scalar; the full
+    /// (v_perceived, bias) pair is available on the HTTP surface
+    /// POST /v1/bundles/{name}/perceive and via the Rust
+    /// `curvature::perceive` API.
+    ///
+    /// `dim` is optional: defaults to `vector.len()`. When supplied,
+    /// the executor validates `rotation.len() == dim*dim` and
+    /// `vector.len() == dim` and returns PerceiveError variants
+    /// translated into GQL execution errors. ROTATION and VECTOR may
+    /// appear in either order.
+    fn parse_perceive_stmt(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let mut rotation: Option<Vec<f64>> = None;
+        let mut vector: Option<Vec<f64>> = None;
+        let mut dim: Option<usize> = None;
+
+        loop {
+            if self.is_keyword("ROTATION") {
+                self.advance();
+                self.expect(Token::LParen)?;
+                rotation = Some(self.parse_inner_number_list()?);
+            } else if self.is_keyword("VECTOR") {
+                self.advance();
+                self.expect(Token::LParen)?;
+                vector = Some(self.parse_inner_number_list()?);
+            } else if self.is_keyword("DIM") {
+                self.advance();
+                let n = match self.tokens.get(self.pos) {
+                    Some(Token::Number(n)) => {
+                        let v = *n;
+                        self.pos += 1;
+                        v
+                    }
+                    other => {
+                        return Err(format!("PERCEIVE: expected dim integer after DIM, got {other:?}"));
+                    }
+                };
+                if n < 1.0 || n.fract() != 0.0 {
+                    return Err(format!(
+                        "PERCEIVE: DIM must be a positive integer, got {}",
+                        n
+                    ));
+                }
+                dim = Some(n as usize);
+            } else {
+                break;
+            }
+        }
+
+        let rotation = rotation.ok_or_else(|| {
+            "PERCEIVE: ROTATION (r00, r01, ...) clause is required".to_string()
+        })?;
+        let vector = vector.ok_or_else(|| {
+            "PERCEIVE: VECTOR (v0, v1, ...) clause is required".to_string()
+        })?;
+        Ok(Statement::Perceive { bundle, rotation, vector, dim })
+    }
+
+    /// Parse `(n0, n1, n2, ...)` after the opening `(` has been consumed.
+    /// Returns the inner list of f64 values; the closing `)` is consumed
+    /// when encountered. Used by PERCEIVE for ROTATION + VECTOR clauses.
+    fn parse_inner_number_list(&mut self) -> Result<Vec<f64>, String> {
+        let mut nums = Vec::new();
+        loop {
+            if matches!(self.peek(), Some(Token::RParen)) {
+                self.advance();
+                break;
+            }
+            if !nums.is_empty() {
+                self.expect(Token::Comma)?;
+            }
+            match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => {
+                    nums.push(*n);
+                    self.pos += 1;
+                }
+                other => {
+                    return Err(format!(
+                        "expected number in list, got {other:?}"
+                    ));
+                }
+            }
+        }
+        Ok(nums)
     }
 
     fn parse_geodesic(&mut self) -> Result<Statement, String> {
@@ -5249,6 +5364,21 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             };
             Ok(ExecResult::Scalar(level))
         }
+        Statement::Perceive { bundle, rotation, vector, dim } => {
+            // 404-equivalent: bundle must exist (consistent with C/H/D
+            // and the HTTP endpoint).
+            let _store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            // Default dim = vector length when not supplied.
+            let d = dim.unwrap_or(vector.len());
+            let res = crate::curvature::perceive(rotation, vector, d)
+                .map_err(|e| format!("PERCEIVE: {}", e))?;
+            // GQL returns the scalar bias; v_perceived is wire-only
+            // (HTTP POST). Scalar bias composes with the rest of GQL
+            // (comparisons, EXPLAIN, etc.).
+            Ok(ExecResult::Scalar(res.bias))
+        }
         Statement::RotateKey { bundle, new_seed_source } => {
             let new_seed = resolve_seed(new_seed_source)?;
             let store = engine
@@ -7095,6 +7225,113 @@ mod tests {
             }
             _ => panic!("Expected DropTrigger"),
         }
+    }
+
+    // ── PERCEIVE GQL parser ────────────────────────────────────
+
+    /// Identity rotation in 2D, vector unchanged. Verifies the
+    /// happy-path GQL syntax: PERCEIVE <bundle> ROTATION (...) VECTOR (...).
+    #[test]
+    fn gql_perceive_identity_2d() {
+        let stmt = parse(
+            "PERCEIVE my_bundle ROTATION (1.0, 0.0, 0.0, 1.0) VECTOR (3.0, 4.0)",
+        )
+        .unwrap();
+        match stmt {
+            Statement::Perceive { bundle, rotation, vector, dim } => {
+                assert_eq!(bundle, "my_bundle");
+                assert_eq!(rotation, vec![1.0, 0.0, 0.0, 1.0]);
+                assert_eq!(vector, vec![3.0, 4.0]);
+                assert_eq!(dim, None, "DIM omitted ⇒ inferred at execute time");
+            }
+            _ => panic!("Expected Perceive, got {:?}", stmt),
+        }
+    }
+
+    /// Explicit DIM keyword overrides the inference. Useful when the
+    /// rotation length encodes a dim the caller wants to validate.
+    #[test]
+    fn gql_perceive_with_explicit_dim() {
+        let stmt = parse(
+            "PERCEIVE sensors ROTATION (0.0, -1.0, 1.0, 0.0) VECTOR (1.0, 0.0) DIM 2",
+        )
+        .unwrap();
+        match stmt {
+            Statement::Perceive { dim, .. } => assert_eq!(dim, Some(2)),
+            _ => panic!("Expected Perceive"),
+        }
+    }
+
+    /// Clauses can appear in any order. Pin both orderings.
+    #[test]
+    fn gql_perceive_clause_order_flexible() {
+        // VECTOR before ROTATION
+        let a = parse(
+            "PERCEIVE b VECTOR (1.0, 2.0) ROTATION (1.0, 0.0, 0.0, 1.0)",
+        )
+        .unwrap();
+        let b = parse(
+            "PERCEIVE b ROTATION (1.0, 0.0, 0.0, 1.0) VECTOR (1.0, 2.0)",
+        )
+        .unwrap();
+        // Same parsed Statement either way.
+        match (a, b) {
+            (
+                Statement::Perceive {
+                    rotation: ra,
+                    vector: va,
+                    ..
+                },
+                Statement::Perceive {
+                    rotation: rb,
+                    vector: vb,
+                    ..
+                },
+            ) => {
+                assert_eq!(ra, rb);
+                assert_eq!(va, vb);
+            }
+            _ => panic!("Expected Perceive variants"),
+        }
+    }
+
+    /// Missing ROTATION clause is a parser error with a clear message.
+    /// The user-facing error path matters here — wrong matrix input is
+    /// the most common GQL user mistake on this verb.
+    #[test]
+    fn gql_perceive_missing_rotation_is_an_error() {
+        let err = parse("PERCEIVE b VECTOR (1.0, 0.0)").unwrap_err();
+        assert!(
+            err.contains("ROTATION"),
+            "error should mention ROTATION, got: {}",
+            err
+        );
+    }
+
+    /// Missing VECTOR clause is a parser error.
+    #[test]
+    fn gql_perceive_missing_vector_is_an_error() {
+        let err = parse("PERCEIVE b ROTATION (1.0, 0.0, 0.0, 1.0)").unwrap_err();
+        assert!(
+            err.contains("VECTOR"),
+            "error should mention VECTOR, got: {}",
+            err
+        );
+    }
+
+    /// Non-integer DIM is rejected at parse time (catches typos like
+    /// `DIM 3.5` before they reach the executor).
+    #[test]
+    fn gql_perceive_non_integer_dim_rejected() {
+        let err = parse(
+            "PERCEIVE b ROTATION (1.0, 0.0, 0.0, 1.0) VECTOR (1.0, 0.0) DIM 2.5",
+        )
+        .unwrap_err();
+        assert!(
+            err.contains("DIM"),
+            "error should mention DIM, got: {}",
+            err
+        );
     }
 
     #[test]

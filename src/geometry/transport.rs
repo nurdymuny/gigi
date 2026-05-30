@@ -158,6 +158,21 @@ pub struct TransportResult {
     /// closedness violation `‖dB‖` of the rejected form so the
     /// caller can see how far off it was. `None` otherwise.
     pub closedness_norm: Option<f64>,
+    /// Accumulated rotation matrix `R_acc` such that
+    /// `final_velocity ≈ R_acc · initial_velocity` (up to numerical
+    /// error). Row-major, `dim × dim`. Always `Some(...)` on success
+    /// — classical (no bias) transports return the identity matrix;
+    /// magnetic transports return the rotation accumulated by RK4 of
+    /// `dR/dt = B · R` alongside the velocity integration.
+    ///
+    /// This is the GIGI-side analogue of Marcella's `R_acc` from the
+    /// prefix scan (`COHERENCE_SIGNAL_SPEC.md §3`). Feeds the PERCEIVE
+    /// verb directly: `perceive(&rotation, &v, dim)` returns
+    /// `R_acc · v` and `‖R_acc − I‖_F` in one call. Optional so a
+    /// future code path that skips the rotation pass (e.g. a fast
+    /// scalar-only flat_transport variant) can return None without
+    /// breaking the API.
+    pub rotation: Option<Vec<f64>>,
 }
 
 /// Failure modes for transport requests. All errors surface
@@ -245,6 +260,13 @@ pub fn flat_transport(
     let mut max_energy_dev = 0.0_f64;
     let mut path_length = 0.0_f64;
 
+    // R_acc: accumulated rotation. Starts at the identity matrix. For
+    // classical (no bias) transports, R stays at I throughout because
+    // the matrix derivative dR/dt = B · R is identically zero when B
+    // is absent. For magnetic transports, R integrates via RK4
+    // alongside (x, v) using the same dt + steps.
+    let mut r_acc = identity_matrix(dim);
+
     for _ in 0..steps {
         // RK4 on (x, v) with ẋ = v, v̇ = B^♯(v).
         let (k1x, k1v) = derivative(&x, &v, bias);
@@ -263,6 +285,20 @@ pub fn flat_transport(
 
         let x_next = combine4(&x, &k1x, &k2x, &k3x, &k4x, dt);
         let v_next = combine4(&v, &k1v, &k2v, &k3v, &k4v, dt);
+
+        // RK4 on R with dR/dt = B · R. Same dt + sub-step structure
+        // as the velocity integration → same order of accuracy. Pure
+        // no-op when bias is None (k1..k4 are zero matrices).
+        if bias.is_some() {
+            let k1r = mat_derivative(&r_acc, bias, dim);
+            let rb = mat_add_scaled(&r_acc, &k1r, 0.5 * dt, dim);
+            let k2r = mat_derivative(&rb, bias, dim);
+            let rc = mat_add_scaled(&r_acc, &k2r, 0.5 * dt, dim);
+            let k3r = mat_derivative(&rc, bias, dim);
+            let rd = mat_add_scaled(&r_acc, &k3r, dt, dim);
+            let k4r = mat_derivative(&rd, bias, dim);
+            r_acc = mat_combine4(&r_acc, &k1r, &k2r, &k3r, &k4r, dt, dim);
+        }
 
         // Path-length accumulation: just sum |x_next - x|.
         path_length += distance(&x, &x_next);
@@ -301,6 +337,7 @@ pub fn flat_transport(
         used_magnetic,
         b_source,
         closedness_norm: None,
+        rotation: Some(r_acc),
     })
 }
 
@@ -358,6 +395,72 @@ fn distance(a: &[f64], b: &[f64]) -> f64 {
         .map(|(x, y)| (x - y).powi(2))
         .sum::<f64>()
         .sqrt()
+}
+
+// ── Matrix helpers for R_acc integration ─────────────────────────────
+
+/// Row-major `dim × dim` identity matrix.
+fn identity_matrix(dim: usize) -> Vec<f64> {
+    let mut m = vec![0.0_f64; dim * dim];
+    for i in 0..dim {
+        m[i * dim + i] = 1.0;
+    }
+    m
+}
+
+/// Right-hand side of the matrix ODE `dR/dt = B · R`. Returns the
+/// `dim × dim` row-major product. When `bias` is None, returns a zero
+/// matrix (the classical case where R stays at I).
+fn mat_derivative(r: &[f64], bias: Option<&ClosedTwoForm>, dim: usize) -> Vec<f64> {
+    match bias {
+        None => vec![0.0; dim * dim],
+        Some(b) => {
+            let m = b.form().matrix();
+            // (B · R)[i,j] = Σ_k B[i,k] · R[k,j]
+            let mut out = vec![0.0_f64; dim * dim];
+            for i in 0..dim {
+                for j in 0..dim {
+                    let mut s = 0.0_f64;
+                    for k in 0..dim {
+                        s += m[i * dim + k] * r[k * dim + j];
+                    }
+                    out[i * dim + j] = s;
+                }
+            }
+            out
+        }
+    }
+}
+
+/// Row-major matrix `A + k · B` of `dim × dim` shape. Mirrors
+/// [`add_scaled`] for vectors so the matrix RK4 step has the same
+/// substructure as the velocity RK4 step.
+fn mat_add_scaled(a: &[f64], b: &[f64], k: f64, dim: usize) -> Vec<f64> {
+    debug_assert_eq!(a.len(), dim * dim);
+    debug_assert_eq!(b.len(), dim * dim);
+    a.iter().zip(b.iter()).map(|(x, y)| x + k * y).collect()
+}
+
+/// RK4 combiner for a matrix ODE: `base + (dt/6)·(k1 + 2k2 + 2k3 + k4)`,
+/// component-wise on a flat row-major vec of length `dim²`. Mirrors
+/// [`combine4`] for vectors.
+fn mat_combine4(
+    base: &[f64],
+    k1: &[f64],
+    k2: &[f64],
+    k3: &[f64],
+    k4: &[f64],
+    dt: f64,
+    dim: usize,
+) -> Vec<f64> {
+    debug_assert_eq!(base.len(), dim * dim);
+    base.iter()
+        .zip(k1.iter())
+        .zip(k2.iter())
+        .zip(k3.iter())
+        .zip(k4.iter())
+        .map(|((((b, a), c), d), e)| b + (dt / 6.0) * (a + 2.0 * c + 2.0 * d + e))
+        .collect()
 }
 
 // ── Tests (red-first, ports validation_tests.py test 2) ─────────
@@ -593,5 +696,107 @@ mod tests {
             "holonomy {} too large for one-period closure",
             r.holonomy_norm
         );
+    }
+
+    // ── R_acc rotation matrix (step 4b — wires PERCEIVE) ──────────
+
+    /// Classical transport (no bias) returns the identity matrix as
+    /// the accumulated rotation. Pins the "no drift ⇒ no rotation"
+    /// contract that PERCEIVE relies on when called on classical
+    /// transport results — perceive(I, v) = v with bias 0.
+    #[test]
+    fn classical_transport_returns_identity_rotation() {
+        let seg = TransportSegment::new(vec![0.0, 0.0], vec![1.0, 0.0], vec![1.0, 0.0]).unwrap();
+        let r = flat_transport(&seg, None, 0.01, 100, BSource::None).unwrap();
+        let rot = r.rotation.expect("rotation always present on success");
+        assert_eq!(rot.len(), 4, "rotation must be dim²=4 for dim=2");
+        // R = I exactly: classical case never touches r_acc inside the loop.
+        assert_eq!(rot, vec![1.0, 0.0, 0.0, 1.0]);
+    }
+
+    /// Magnetic transport over time T with constant `B = b·dx∧dy` in
+    /// 2D produces an accumulated rotation R(T) = exp(B·T):
+    ///   R(T) = [[cos(b·T), -sin(b·T)],
+    ///           [sin(b·T),  cos(b·T)]]   (for the bias matrix
+    /// [[0,-b],[b,0]] — note the sign).
+    ///
+    /// For a quarter period (T = π/(2b)), R should be a 90° rotation
+    /// in this plane. Pin the closed-form match to RK4 tolerance.
+    /// This is the canonical case PERCEIVE consumers will hit.
+    #[test]
+    fn magnetic_transport_rotation_matches_matrix_exponential() {
+        let b = 1.0_f64;
+        // Bias [[0, -b], [b, 0]] generates rotation by +b·T after
+        // time T (CCW in the (x,y) plane).
+        let bias = ClosedTwoForm::new_constant(
+            TwoForm::new(vec![0.0, -b, b, 0.0], 2).expect("antisymmetric"),
+        );
+        let quarter = PI / (2.0 * b);
+        let dt = 1e-4;
+        let n_steps = (quarter / dt).round() as usize;
+
+        let seg = TransportSegment::new(vec![0.0, 0.0], vec![0.0, 0.0], vec![1.0, 0.0]).unwrap();
+        let r = flat_transport(&seg, Some(&bias), dt, n_steps, BSource::Override).unwrap();
+        let rot = r.rotation.expect("rotation present");
+
+        // Expected R = [[cos π/2, -sin π/2], [sin π/2, cos π/2]]
+        //            = [[0, -1], [1, 0]]. RK4 tolerance on ~15k steps
+        // at dt=1e-4 is empirically ~4e-6; 1e-5 is conservative.
+        let expected = [0.0, -1.0, 1.0, 0.0];
+        for i in 0..4 {
+            assert!(
+                (rot[i] - expected[i]).abs() < 1e-5,
+                "rot[{}] = {} (expected {})",
+                i, rot[i], expected[i]
+            );
+        }
+
+        // R must remain orthogonal (R Rᵀ = I) to RK4 tolerance.
+        // For our 2x2 row-major: R Rᵀ[0,0] = r00² + r01²,
+        // R Rᵀ[1,1] = r10² + r11², off-diag = r00·r10 + r01·r11.
+        let rrt_00 = rot[0] * rot[0] + rot[1] * rot[1];
+        let rrt_11 = rot[2] * rot[2] + rot[3] * rot[3];
+        let rrt_01 = rot[0] * rot[2] + rot[1] * rot[3];
+        assert!((rrt_00 - 1.0).abs() < 1e-5, "R Rᵀ[0,0] = {}", rrt_00);
+        assert!((rrt_11 - 1.0).abs() < 1e-5, "R Rᵀ[1,1] = {}", rrt_11);
+        assert!(rrt_01.abs() < 1e-5, "R Rᵀ[0,1] = {}", rrt_01);
+    }
+
+    /// R_acc must take initial_velocity to final_velocity to RK4
+    /// tolerance. This is the contract PERCEIVE consumers depend on:
+    /// they call perceive(R_acc, initial_v) and get final_v.
+    #[test]
+    fn rotation_maps_initial_velocity_to_final_velocity() {
+        let b = 0.7_f64;
+        let bias = ClosedTwoForm::new_constant(
+            TwoForm::new(vec![0.0, -b, b, 0.0], 2).expect("antisymmetric"),
+        );
+        // Short transport (not a full period) so the rotation is
+        // non-trivial but well-resolved by RK4.
+        let r = flat_transport(
+            &TransportSegment::new(vec![0.0, 0.0], vec![0.0, 0.0], vec![1.0, 0.5]).unwrap(),
+            Some(&bias),
+            1e-4,
+            5_000, // T = 0.5
+            BSource::Override,
+        )
+        .unwrap();
+        let rot = r.rotation.expect("rotation present");
+        let initial_v = [1.0_f64, 0.5];
+
+        // (R · v_initial)[i] = Σ_j R[i,j] · v_initial[j]
+        let predicted = [
+            rot[0] * initial_v[0] + rot[1] * initial_v[1],
+            rot[2] * initial_v[0] + rot[3] * initial_v[1],
+        ];
+
+        // Match the RK4'd final_velocity to RK4 tolerance.
+        for i in 0..2 {
+            assert!(
+                (predicted[i] - r.final_velocity[i]).abs() < 1e-6,
+                "R · v_initial[{}] = {} vs final_velocity[{}] = {}",
+                i, predicted[i], i, r.final_velocity[i]
+            );
+        }
     }
 }

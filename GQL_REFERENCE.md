@@ -50,6 +50,7 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | HOLONOMY … ON FIBER (…) AROUND field | ✅ | Global holonomy — full-bundle loop consistency |
 | CONSISTENCY (+ REPAIR) | ✅ | |
 | BETTI / ENTROPY / FREEENERGY | ✅ | |
+| CAPACITY / HORIZON / DEPTH | ✅ | Cognitive Geometry Correspondence — Davis 2026-05-29 |
 | GEODESIC / METRIC TENSOR | ✅ | |
 | HEALTH | ✅ | |
 | CREATE BUNDLE with ENCRYPTED `<MODE>` | ✅ | v0.2 — AFFINE / OPAQUE / INDEXED / PROBABILISTIC / ISOMETRIC |
@@ -985,15 +986,55 @@ CONFIDENCE sensors;                       -- global: 0.9665
 CONFIDENCE sensors ON city = 'Moscow';    -- cover-specific: 0.9772
 ```
 
-### CAPACITY — Query capacity (C = τ/K)
+### CAPACITY — Davis capacity (C = τ/K) ✅
 
 ```sql
-CAPACITY sensors;
--- C = τ/K. ~how many independent queries can be answered unambiguously per unit τ.
+CAPACITY sensors;               -- C = τ/K. Davis Theorem 8.1 (Cognitive Geometry Correspondence).
+                                -- How many distinct interpretations the system can maintain
+                                -- simultaneously at this curvature level (τ = 1.0 default).
+CAPACITY sensors TOLERANCE 2.5; -- explicit τ
 
-CAPACITY sensors BY city;
-CAPACITY sensors TOLERANCE 1.0;
+-- GQL scalar result. For full report including confidence and regime interpretation
+-- use GET /v1/bundles/{name}/capacity[?tau=n]
 ```
+
+**Cognitive Geometry connection:** C = τ/K is the Davis Capacity Law (Thm 8.1). Gate J in
+Marcella fires at the C→0 boundary — high curvature, few distinguishable interpretations.
+
+### HORIZON — Holonomy horizon (s_max = τ/(K·ℓ_c)) ✅
+
+```sql
+HORIZON sensors;               -- s_max = τ/(K · ℓ_c). Definition 5.1 (Cognitive Geometry Correspondence).
+                               -- Maximum coherent context depth: beyond s_max positions,
+                               -- contributions to the accumulated frame rotation are irrecoverable.
+HORIZON sensors TOLERANCE 3.0; -- explicit τ
+
+-- ℓ_c (correlation length) is estimated from the spectral gap: ℓ_c ≈ 1/√λ₁.
+-- Returns Inf when K ≈ 0 (flat geometry, unlimited depth).
+-- GQL scalar result. For full report use GET /v1/bundles/{name}/horizon[?tau=n]
+```
+
+**Cognitive Geometry connection:** s_max is the maximum sequence length over which a system
+can attribute accumulated frame rotation to specific positions. Beyond s_max, non-abelian
+holonomy composition has irreversibly mixed individual contributions.
+
+### DEPTH — Encoding depth classification (I–IV) ✅
+
+```sql
+DEPTH sensors;
+-- Returns encoding depth as a scalar:
+--   1.0 → I  (Tangent)     low K, high λ₁  — easily erased (facts from books)
+--   2.0 → II (Connection)  moderate K or λ₁ — skill-level persistence (practice)
+--   3.0 → III (Metric)     high K, low λ₁  — resists argument (emotional beliefs)
+--   4.0 → IV (Topological) K→∞ or λ₁→0    — irrecoverable (trauma, topology change)
+
+-- For the full classification with labels and descriptions
+-- use GET /v1/bundles/{name}/depth
+```
+
+**Cognitive Geometry connection:** Theorem 8.14 — encoding depth determines how much energy
+is required to erase an encoding. The Laplace-Beltrami spectral hierarchy: small λ₁ means
+slow diffusion of counter-evidence, high erasure cost.
 
 ### SPECTRAL — Index connectivity ✅
 

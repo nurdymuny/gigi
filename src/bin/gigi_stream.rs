@@ -763,6 +763,84 @@ struct PullbackCurvatureReport {
     right_unmatched: usize,
 }
 
+/// Response for `GET /v1/bundles/{name}/capacity` and `CAPACITY` GQL verb.
+/// Davis capacity C = τ/K (Theorem 8.1 — Cognitive Geometry Correspondence).
+#[derive(Serialize)]
+struct CapacityReport {
+    /// Davis capacity C = τ/K. How many distinct interpretations the
+    /// system can maintain simultaneously at this curvature level.
+    capacity: f64,
+    /// Local scalar curvature K.
+    k: f64,
+    /// Tolerance budget τ used to compute C.
+    tau: f64,
+    /// Confidence ∈ (0,1]: 1/(1+K).
+    confidence: f64,
+    /// Qualitative regime: "flat" (K≈0), "low" (C>10), "moderate",
+    /// "high" (C<1, overloaded), or "critical" (C≈0, K→∞).
+    regime: &'static str,
+    /// Human-readable interpretation for builders.
+    interpretation: String,
+}
+
+/// Response for `GET /v1/bundles/{name}/horizon` and `HORIZON` GQL verb.
+/// Holonomy horizon s_max = τ/(K·ℓ_c) (Definition 5.1 — Cognitive
+/// Geometry Correspondence). The maximum coherent context depth.
+///
+/// `estimator_used` and `fallback_engaged` report which length-scale
+/// estimator actually produced `l_c`. The default config tries
+/// SpectralGap first and falls back to WelfordRadius when λ₁ is
+/// degenerate — sensor-style bundles always hit the fallback because
+/// their connectivity isn't graph-structured.
+#[derive(Serialize)]
+struct HorizonReport {
+    /// s_max = τ/(K·ℓ_c). Beyond this many positions, individual
+    /// contributions to the accumulated frame rotation are irrecoverable.
+    s_max: f64,
+    /// Local scalar curvature K.
+    k: f64,
+    /// Tolerance budget τ.
+    tau: f64,
+    /// Correlation length ℓ_c actually used (from the estimator that won).
+    l_c: f64,
+    /// Spectral gap λ₁ (always reported, even when the fallback fires).
+    lambda1: f64,
+    /// Which estimator produced `l_c`. Either the primary
+    /// (`config.estimator`) or the fallback when the primary was
+    /// degenerate. Strings: "spectral_gap" | "welford_radius" | {"fixed":N}.
+    estimator_used: gigi::curvature::LengthScaleEstimator,
+    /// True iff the primary estimator was degenerate and the fallback
+    /// fired. Convenience flag — equivalent to
+    /// `estimator_used != config.estimator`.
+    fallback_engaged: bool,
+    /// Human-readable interpretation.
+    interpretation: String,
+}
+
+/// Response for `GET /v1/bundles/{name}/depth` and `DEPTH` GQL verb.
+/// Encoding depth classification (Theorem 8.14 — Cognitive Geometry
+/// Correspondence). Maps K and λ₁ to one of four resistance levels.
+#[derive(Serialize)]
+struct DepthReport {
+    /// Encoding depth: "tangent" | "connection" | "metric" | "topological".
+    depth: gigi::curvature::EncodingDepth,
+    /// Roman numeral label: "I" | "II" | "III" | "IV".
+    level: &'static str,
+    /// Scalar curvature K used for classification.
+    k: f64,
+    /// Spectral gap λ₁ used for classification.
+    lambda1: f64,
+    /// Erasure energy scale: "low" | "moderate" | "high" | "infinite".
+    erasure_energy: &'static str,
+    /// Full description of what this depth means.
+    description: &'static str,
+    /// The threshold config the classifier used. Echoed back so the
+    /// caller can audit which numbers produced the verdict — exposes
+    /// any query-param overrides the caller supplied. Defaults
+    /// (Theorem 8.14 published values) when no overrides.
+    config_used: gigi::curvature::DepthConfig,
+}
+
 #[derive(Serialize)]
 struct GeodesicReport {
     distance: Option<f64>,
@@ -2398,6 +2476,300 @@ async fn spectral_report(
         lambda1,
         diameter,
         spectral_capacity: spectral_cap,
+    }))
+}
+
+// ── Cognitive Geometry Verbs (Branch VII — Davis 2026-05-29) ────────────────
+
+/// `GET /v1/bundles/{name}/capacity[?tau=n]`
+///
+/// Davis capacity C = τ/K. Returns how many distinct interpretations the
+/// bundle can support simultaneously at its current curvature level.
+/// τ defaults to 1.0 (C = 1/K in natural units).
+async fn bundle_capacity_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<CapacityReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
+    })?;
+
+    let tau: f64 = params.get("tau").and_then(|s| s.parse().ok()).unwrap_or(1.0);
+    let k = store.scalar_curvature();
+    let c = curvature::capacity(tau, k);
+    let conf = curvature::confidence(k);
+
+    let (regime, interpretation) = if k < f64::EPSILON {
+        ("flat", format!("K ≈ 0: flat space, infinite capacity. No curvature barriers — every query resolves cleanly."))
+    } else if c > 10.0 {
+        ("low", format!("C = {c:.2}: low-curvature region. Room for {c:.0} distinct interpretations per unit τ. Synthesis is reliable."))
+    } else if c >= 1.0 {
+        ("moderate", format!("C = {c:.2}: moderate curvature. The system can hold {c:.1} interpretations simultaneously. Watch for ambiguity."))
+    } else if c > 0.1 {
+        ("high", format!("C = {c:.3}: high curvature — fewer than one interpretation per unit τ. Ambiguity detection recommended before synthesis."))
+    } else {
+        ("critical", format!("C = {c:.4}: near-critical curvature. The system cannot reliably distinguish interpretations. Query is at a topological fork."))
+    };
+
+    Ok(Json(CapacityReport { capacity: c, k, tau, confidence: conf, regime, interpretation }))
+}
+
+/// `GET /v1/bundles/{name}/horizon[?tau=n&estimator=spectral_gap|welford_radius|fixed&fixed_value=N]`
+///
+/// Holonomy horizon s_max = τ/(K·ℓ_c). Returns the maximum coherent
+/// context depth — beyond s_max positions, individual contributions to
+/// the accumulated frame rotation become irrecoverable.
+///
+/// `estimator` chooses the primary length-scale estimator (default:
+/// `spectral_gap`). When the primary is degenerate (λ₁ < epsilon for
+/// the heat-kernel estimator, NaN for Welford on flat bundles), the
+/// fallback (default: `welford_radius`) fires. The response echoes
+/// `estimator_used` so the caller can audit which path produced ℓ_c.
+async fn bundle_horizon_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<HorizonReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
+    })?;
+
+    let tau: f64 = params.get("tau").and_then(|s| s.parse().ok()).unwrap_or(1.0);
+    let k = store.scalar_curvature();
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+
+    // Build HorizonConfig from query params. Default: SpectralGap +
+    // WelfordRadius fallback (which is HorizonConfig::default()).
+    let estimator = match params.get("estimator").map(|s| s.as_str()) {
+        Some("welford_radius") => curvature::LengthScaleEstimator::WelfordRadius,
+        Some("fixed") => {
+            let v: f64 = params.get("fixed_value")
+                .and_then(|s| s.parse().ok())
+                .ok_or_else(|| (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse { error: "estimator=fixed requires &fixed_value=<f64>".into() }),
+                ))?;
+            curvature::LengthScaleEstimator::Fixed(v)
+        }
+        Some("spectral_gap") | None => curvature::LengthScaleEstimator::SpectralGap,
+        Some(other) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!(
+                        "estimator must be one of: spectral_gap, welford_radius, fixed; got {other}"
+                    ),
+                }),
+            ));
+        }
+    };
+    let cfg = curvature::HorizonConfig {
+        estimator,
+        ..curvature::HorizonConfig::default()
+    };
+
+    // The calibrated path needs a heap store for the Welford radius
+    // pass. If we only have mmap+overlay, fall back to the scalar
+    // shim (same behavior as before the calibrated path existed —
+    // documented as a "degenerate when λ₁=0" limitation).
+    let (s_max, l_c, estimator_used, fallback_engaged) = if let Some(heap) = store.as_heap() {
+        let res = curvature::horizon_with(tau, k, heap, lambda1, &cfg);
+        (res.s_max, res.l_c, res.estimator_used, res.fallback_engaged)
+    } else {
+        let l_c_shim = if lambda1 > f64::EPSILON { 1.0 / lambda1.sqrt() } else { 1.0 };
+        let s = curvature::horizon(tau, k, lambda1);
+        (s, l_c_shim, curvature::LengthScaleEstimator::SpectralGap, lambda1 < f64::EPSILON)
+    };
+
+    let interpretation = if s_max.is_infinite() {
+        "K ≈ 0: infinite horizon. Flat geometry — all positions remain \
+         individually attributable indefinitely.".to_string()
+    } else {
+        let fallback_note = if fallback_engaged {
+            " [fallback estimator engaged; primary was degenerate]"
+        } else {
+            ""
+        };
+        format!(
+            "s_max = {s_max:.1}: coherent attribution extends {s_max:.0} positions. \
+             Beyond this, accumulated frame rotation cannot be decomposed into \
+             individual contributions. (K={k:.4}, ℓ_c={l_c:.4}, τ={tau}){fallback_note}"
+        )
+    };
+
+    Ok(Json(HorizonReport {
+        s_max, k, tau, l_c, lambda1,
+        estimator_used, fallback_engaged, interpretation,
+    }))
+}
+
+/// `GET /v1/bundles/{name}/depth[?k_metric=…&k_connection=…&lambda1_topological=…&lambda1_connection=…]`
+///
+/// Encoding depth classification from K and λ₁. Returns I (tangent,
+/// easily erased) through IV (topological, irrecoverable). Implements
+/// Theorem 8.14 of the Cognitive Geometry Correspondence.
+///
+/// All four threshold query params are optional. Unspecified ones use
+/// the `DepthConfig::default()` values from Theorem 8.14. The
+/// response echoes the `config_used` so the caller can audit which
+/// numbers produced the verdict (defaults are bit-identical to
+/// `DepthConfig::default()` when no overrides supplied).
+async fn bundle_depth_report(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<DepthReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
+    })?;
+
+    let k = store.scalar_curvature();
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+
+    // Build DepthConfig, applying per-field overrides from query params.
+    // Unspecified params fall through to DepthConfig::default().
+    let mut cfg = curvature::DepthConfig::default();
+    let parse_override = |key: &str| -> Option<f64> {
+        params.get(key).and_then(|s| s.parse::<f64>().ok())
+    };
+    if let Some(v) = parse_override("k_metric") { cfg.k_metric = v; }
+    if let Some(v) = parse_override("k_connection") { cfg.k_connection = v; }
+    if let Some(v) = parse_override("lambda1_topological") { cfg.lambda1_topological = v; }
+    if let Some(v) = parse_override("lambda1_connection") { cfg.lambda1_connection = v; }
+
+    let depth = curvature::encoding_depth_with(k, lambda1, &cfg);
+
+    let erasure_energy = match depth {
+        curvature::EncodingDepth::Tangent     => "low",
+        curvature::EncodingDepth::Connection  => "moderate",
+        curvature::EncodingDepth::Metric      => "high",
+        curvature::EncodingDepth::Topological => "infinite",
+    };
+
+    Ok(Json(DepthReport {
+        level: depth.label(),
+        description: depth.description(),
+        depth,
+        k,
+        lambda1,
+        erasure_energy,
+        config_used: cfg,
+    }))
+}
+
+/// Request body for `POST /v1/bundles/{name}/perceive` — Davis PERCEIVE
+/// (Theorem 8.6, Branch VII Cognitive Geometry Correspondence).
+///
+/// Both `rotation` and `vector` are caller-supplied — typically extracted
+/// from a recent TRANSPORT call's `rotation` field. The bundle name is
+/// in the path for consistency with the other CG verbs (and so a future
+/// server-side rotation source can hang off it), but the math itself is
+/// determined by the request body.
+#[derive(Deserialize)]
+struct PerceiveRequest {
+    /// Accumulated rotation matrix R, row-major `dim × dim`. Must be
+    /// exactly `dim * dim` floats long.
+    rotation: Vec<f64>,
+    /// Input vector v, length `dim`. The output is `R · v`.
+    vector: Vec<f64>,
+    /// Dimension of the rotation matrix and vector.
+    dim: usize,
+}
+
+/// Response for `POST /v1/bundles/{name}/perceive`. Wraps the
+/// `PerceptionResult` from `curvature::perceive` plus the bundle name
+/// (echo-back so consumers can log/audit which substrate the verb was
+/// scoped to) and a one-line interpretation for builders.
+#[derive(Serialize)]
+struct PerceiveResponse {
+    /// `v_perceived = R · v`. The vector the system actually sees
+    /// after parallel-transport through the accumulated rotation R.
+    v_perceived: Vec<f64>,
+    /// `‖R − I‖_F`. Zero when R = I (no drift); grows monotonically
+    /// with the rotation angle. Marcella's coherence-signal δ_t.
+    bias: f64,
+    /// Dimension of the rotation / vectors, echoed back.
+    dim: usize,
+    /// Bundle name the request was scoped to.
+    bundle: String,
+    /// Builder-readable interpretation of the bias magnitude.
+    interpretation: String,
+}
+
+/// `POST /v1/bundles/{name}/perceive`
+///
+/// Davis PERCEIVE (Theorem 8.6 — Cognitive Geometry Correspondence).
+/// Given an accumulated rotation R (from a prior TRANSPORT, or
+/// caller-supplied) and an input vector v, returns:
+///
+///   v_perceived = R · v
+///   bias        = ‖R − I‖_F
+///
+/// Pure function on `(rotation, vector)` — the bundle name in the
+/// path is contextual (for logging / future server-side rotation
+/// extraction); the math doesn't read bundle state. Returns 400 on
+/// any input-shape mismatch; 404 when the bundle doesn't exist.
+async fn bundle_perceive(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<PerceiveRequest>,
+) -> Result<Json<PerceiveResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // 404 if the bundle doesn't exist. Even though PERCEIVE is pure on
+    // its inputs, callers expect the same not-found semantics as the
+    // other CG verbs.
+    {
+        let engine = state.engine.read().unwrap();
+        if engine.bundle(&name).is_none() {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+            ));
+        }
+    }
+
+    let result = curvature::perceive(&req.rotation, &req.vector, req.dim).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse { error: format!("perceive: {}", e) }),
+        )
+    })?;
+
+    // Upper-bound: bias ≤ 2·√dim for orthogonal R (hit by R = −I).
+    let max_bias = 2.0 * (req.dim as f64).sqrt();
+    let interpretation = if result.bias < 1e-9 {
+        "bias ≈ 0: no accumulated rotation. v_perceived ≡ v — the substrate has not \
+         distorted this vector along the transport path."
+            .to_string()
+    } else if result.bias < 0.1 {
+        format!(
+            "bias = {:.4}: small rotation. v_perceived is a near-trivial perturbation of v; \
+             the substrate's drift is below typical action thresholds.",
+            result.bias
+        )
+    } else if result.bias < max_bias / 2.0 {
+        format!(
+            "bias = {:.4}: moderate rotation (max possible = {:.2}). v_perceived diverges \
+             meaningfully from v — re-check before acting on the perceived value.",
+            result.bias, max_bias
+        )
+    } else {
+        format!(
+            "bias = {:.4}: large rotation (max possible = {:.2}). v_perceived has drifted \
+             substantially from v; the substrate's coherence over this path is degraded.",
+            result.bias, max_bias
+        )
+    };
+
+    Ok(Json(PerceiveResponse {
+        v_perceived: result.v_perceived,
+        bias: result.bias,
+        dim: req.dim,
+        bundle: name,
+        interpretation,
     }))
 }
 
@@ -11302,6 +11674,33 @@ fn execute_gql_on_store_read(
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
         }
+        // ── Cognitive Geometry (Branch VII) ─────────────────────────────────
+        Statement::Capacity { tau, .. } => {
+            // C = τ/K. Returns the Davis capacity as a scalar.
+            // For rich interpretation use GET /v1/bundles/{name}/capacity.
+            let k = store.scalar_curvature();
+            Ok(ExecResult::Scalar(curvature::capacity(*tau, k)))
+        }
+        Statement::Horizon { tau, .. } => {
+            // s_max = τ/(K·ℓ_c). Returns the holonomy horizon as a scalar.
+            let k = store.scalar_curvature();
+            let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+            Ok(ExecResult::Scalar(curvature::horizon(*tau, k, lambda1)))
+        }
+        Statement::Depth { .. } => {
+            // Returns encoding depth as a scalar: I=1, II=2, III=3, IV=4.
+            // For the full classification use GET /v1/bundles/{name}/depth.
+            let k = store.scalar_curvature();
+            let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+            let depth = curvature::encoding_depth(k, lambda1);
+            let level: f64 = match depth {
+                curvature::EncodingDepth::Tangent     => 1.0,
+                curvature::EncodingDepth::Connection  => 2.0,
+                curvature::EncodingDepth::Metric      => 3.0,
+                curvature::EncodingDepth::Topological => 4.0,
+            };
+            Ok(ExecResult::Scalar(level))
+        }
         Statement::ProjectInvariant { expressions, where_clause, .. } => {
             // Sprint H: route to the invariant evaluator. The evaluator
             // operates strictly on the heap-side BundleStore via base
@@ -11809,6 +12208,8 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         // single-bundle read path; expose its bundle name here so the
         // dispatcher knows where to attach.
         ProjectInvariant { bundle, .. } => Some(bundle.clone()),
+        // Cognitive Geometry (Branch VII — Davis 2026-05-29)
+        Capacity { bundle, .. } | Horizon { bundle, .. } | Depth { bundle, .. } => Some(bundle.clone()),
         // Divergence is cross-bundle; no single name
         _ => None,
     }
@@ -12665,6 +13066,11 @@ async fn main() {
         // Analytics
         .route("/v1/bundles/{name}/curvature", get(curvature_report))
         .route("/v1/bundles/{name}/spectral", get(spectral_report))
+        // Cognitive geometry (Branch VII — C = τ/K, horizon, encoding depth)
+        .route("/v1/bundles/{name}/capacity", get(bundle_capacity_report))
+        .route("/v1/bundles/{name}/horizon",  get(bundle_horizon_report))
+        .route("/v1/bundles/{name}/depth",    get(bundle_depth_report))
+        .route("/v1/bundles/{name}/perceive", post(bundle_perceive))
         .route("/v1/bundles/{name}/consistency", get(consistency_check))
         .route("/v1/bundles/{name}/betti", get(betti_report))
         .route("/v1/bundles/{name}/entropy", get(entropy_report))

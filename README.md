@@ -396,8 +396,9 @@ endpoint is online and auth-gated.
 
 ### The paper
 
-[`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encryption/paper_geometric_encryption_v0.1.tex)
-ships with two review-driven carveouts:
+**Published on Zenodo, 2026-05-29:** Davis, B. R. (2026). *Geometric Encryption: Property-Preserving Database Encryption via Gauge Invariance on Fiber Bundles.* Zenodo. [10.5281/zenodo.20438796](https://doi.org/10.5281/zenodo.20438796). 28 pp, 731 KB PDF. Twelve worked Alice/Bob examples in Appendix A; per-mode leakage profiles (Affine / Opaque / Indexed / Probabilistic / Isometric) graded under the Chase-Kamara structured-encryption taxonomy; formal BDH security reduction for BLS12-381 pairing-PRE; lattice-threshold + ML-KEM-768 PQ delegation modes.
+
+Source: [`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encryption/paper_geometric_encryption_v0.1.tex). Two review-driven carveouts:
 
 1. **§1.4 FHE parity scope** — plaintext-exact for {COUNT, SUM, AVG,
    VAR, STDDEV} under both Affine and Probabilistic modes, and for MIN
@@ -408,6 +409,20 @@ ships with two review-driven carveouts:
    info-theoretic on ≤K-1 subsets); pairing PRE (J.2) covers the
    single-delegatee axis (DLP_G₂-hard but pre-quantum). The true PQ
    single-delegatee construction is the v0.5 lattice-PRE target.
+
+---
+
+## What's new — 2026-05-30 — Cognitive Geometry verbs (Branch VII)
+
+**CAPACITY · HORIZON · DEPTH · PERCEIVE — the four Cognitive Geometry verbs from Davis's *Cognitive Geometry Correspondence* (Branch VII, Theorems 8.1 / 8.6 / 8.14).** Where the older Kähler analytics expose static geometric scalars (K, λ₁, holonomy_debt, …), the CG verbs translate those into builder-facing routing decisions: *can the substrate hold this interpretation?* (CAPACITY = τ/K), *how deep does coherent context extend before the accumulated frame rotation becomes irrecoverable?* (HORIZON = τ/(K·ℓ_c)), *what's the erasure energy of writing here?* (DEPTH classifier I/II/III/IV), and *what does the substrate actually perceive this vector to be after parallel transport, and how much should we trust that perception?* (PERCEIVE = (R_acc·v, ‖R_acc−I‖_F)). All four ship with HTTP endpoints (`GET /v1/bundles/{name}/capacity`, `…/horizon`, `…/depth`, `POST …/perceive`), GQL verbs (e.g. `PERCEIVE bundle ROTATION (r00, r01, …) VECTOR (v0, v1, …) [DIM N]`), backwards-compatible config surfaces (`HorizonConfig` with `LengthScaleEstimator` SpectralGap/WelfordRadius/Fixed; `DepthConfig` with substrate-aware constructors `for_graph_substrate()`/`for_continuous_substrate()`/`auto_for(store, eps)`), and a JTBD demo (`cargo run --features kahler --bin cognitive_geometry_demo`) showing all four verbs on real-sensor + synthetic-volatile bundles side-by-side. The DEPTH `auto_for` calibration fixes the JTBD case where sensor-style bundles with λ₁ ≈ 0 collapsed to Topological regardless of K; the HORIZON Welford-radius fallback fixes the case where HORIZON degenerated to CAPACITY when λ₁ = 0; the PERCEIVE chain reads `R_acc` from `flat_transport`'s new `TransportResult.rotation` field so consumers can call `perceive(&result.rotation.unwrap(), &v, dim)` directly. 35 new tests (8 PERCEIVE math, 3 R_acc on transport, 6 GQL parser, 5 HTTP contract, 13 real-data smoke / contract) plus the existing 30 integration test files all pass — 1082 lib tests with `kahler`, 841 no-feature, 0 regressions. Marcella reads CAPACITY/HORIZON in her retrieval router; DEPTH gates write strategy; PERCEIVE feeds the COHERENCE_SIGNAL_SPEC §3 windowed-holonomy δ_t signal as the GIGI-side analogue of the rotation accumulated by her prefix scan.
+
+---
+
+## What's new — 2026-05-29 — encryption paper deposit + vector-search cache
+
+**Geometric Encryption paper deposited on Zenodo.** Davis, B. R. (2026). *Geometric Encryption: Property-Preserving Database Encryption via Gauge Invariance on Fiber Bundles.* Zenodo. [10.5281/zenodo.20438796](https://doi.org/10.5281/zenodo.20438796). The v1 PDF (28 pp, 731 KB) covers Theorem 3.3 (ρ-equivariant ciphertext-computability over general answer spaces `Y_f`), the five-mode taxonomy (Affine / Opaque / Indexed / Probabilistic / Isometric) with explicit per-mode leakage profiles graded under the Chase-Kamara structured-encryption taxonomy, the v0.3 cryptographic suite (Curvature-MAC, Aff(ℝ) capability delegation, Holonomy ledger, Čech threshold sharing, continuous RG-flow ratchet, BLS12-381 pairing PRE with formal BDH reduction, ML-KEM-768 trusted-delegatee, lattice K-of-N threshold delegation), and the v0.4 follow-ups (public deterministic verification of π_inv, credential-gated invariant queries, geodesic-ball membership index, K-preserving group characterization). Appendix A walks twelve worked Alice/Bob examples end to end. The marketing page at [davisgeometric.com/gigi/gigi-encrypt](https://davisgeometric.com/gigi/gigi-encrypt) carries an interactive in-browser demo: pick a dataset, set a secret gauge `(a, b)`, run `SUM`/`AVG`/`MIN`/`MAX`/`VAR`/`STDDEV`/`COUNT` on ciphertext, and watch the closed-form `ρ⁻¹` recover the plaintext aggregate.
+
+**New `vector_cache` module** ([`src/vector_cache.rs`](src/vector_cache.rs)). General-purpose primitive backing the vector-search brain endpoints (`/brain/intent_gate`, `/brain/confidence`, `/brain/confidence_with_explain`). Cached `(N, D)` materialized matrices with mutation-counter invalidation and per-key single-flight compute on miss — same architecture as `BundleFlowCache`. `MaterializedMatrix` holds contiguous row-major `Vec<f64>` plus precomputed per-row squared L2 norms; distance queries use the cosine identity `‖q − r‖² = ‖q‖² + ‖r‖² − 2⟨q, r⟩` in one autovectorizable inner loop. `CachedMatrix` carries a lazy per-bandwidth `max_density` cache so `confidence_normalized`'s `O(N²·D)` denominator is computed once per (matrix, bandwidth) and reused. Public helpers: `kde_raw_from_matrix`, `max_density_cached`, `kde_normalized_cached`, `MaterializedMatrix::nearest`, `MaterializedMatrix::d_sq_to_all`. New operator-facing env var `GIGI_VECTOR_CACHE_SIZE` (default 64) for capacity tuning. 21 new unit tests gating matrix math against a naive reference + the cache lifecycle (miss → hit → invalidate, eviction at capacity, field-order disambiguation, per-key compute-lock isolation, per-bandwidth cache separation).
 
 ---
 
@@ -444,6 +459,7 @@ ships with two review-driven carveouts:
 | `sheaf` | Sheaf cohomology — `BETTI`, `CONSISTENCY` |
 | `spectral` | Graph Laplacian eigenvalue/eigenvector queries |
 | `concurrent` | Lock-free reader / single-writer concurrency |
+| `vector_cache` | Cached `(N, D)` materialized matrices for vector-search brain endpoints (`intent_gate`, `confidence`, `confidence_with_explain`). Architecture mirrors `BundleFlowCache`: `RwLock<HashMap>` hot read, per-key `Arc<Mutex<()>>` single-flight on miss, `mutation_counter` invalidation, capacity bound with random eviction. `MaterializedMatrix` holds contiguous row-major data + precomputed per-row `‖·‖²`; distance queries use the cosine identity in one autovectorizable loop. Public helpers: `kde_raw_from_matrix`, `max_density_cached` (lazy per-bandwidth), `kde_normalized_cached`, `nearest`. Env var `GIGI_VECTOR_CACHE_SIZE` (default 64). |
 | `dhoom` | DHOOM wire protocol — JSON-compatible binary serialization; integral-Chern compression (L7.3) when `kahler` is on; arrays-of-primitives encoded inline via a `\x1F`-sentinel JSON field (round-trip safe for `{tokens: ["the","cat",...]}`-shaped records) |
 | `observability` | Geometric logs (κ, KL, JS per query) |
 | `convert` | JSON / CSV / SQL → DHOOM ingestion |

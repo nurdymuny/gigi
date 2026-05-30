@@ -301,6 +301,534 @@ pub fn capacity(tau: f64, k: f64) -> f64 {
     tau / k
 }
 
+/// Holonomy horizon (Def 5.1 — Cognitive Geometry Correspondence, 2026-05-29):
+/// s_max = τ / (K · ℓ_c)
+///
+/// The maximum sequence length over which the system can attribute
+/// accumulated frame rotation to specific positions. Beyond s_max,
+/// individual contributions to the holonomy product are irrecoverable —
+/// not because information was lost, but because non-abelian composition
+/// has mixed them into an inseparable product.
+///
+/// ℓ_c (correlation length) is estimated from the spectral gap:
+///   ℓ_c ≈ 1 / √λ₁
+/// From the heat kernel: on a manifold with spectral gap λ₁, correlations
+/// decay as exp(−√λ₁ · distance), so the e-folding scale is 1/√λ₁.
+/// When λ₁ ≈ 0 (the substrate is non-graph-structured, e.g. dense-vector
+/// sensor data), this scalar shim falls back to `ℓ_c = 1.0` — which makes
+/// the returned value numerically identical to capacity. Bundle-aware
+/// callers should use [`horizon_with`], which picks a sensible
+/// length-scale estimator (Welford radius by default) for that case
+/// and reports the estimator it used.
+///
+/// Returns f64::INFINITY when K ≈ 0 (flat space, infinite horizon).
+pub fn horizon(tau: f64, k: f64, lambda1: f64) -> f64 {
+    if k.abs() < f64::EPSILON {
+        return f64::INFINITY;
+    }
+    let l_c = if lambda1 > f64::EPSILON {
+        1.0 / lambda1.sqrt()
+    } else {
+        1.0 // documented fallback; see horizon_with for the calibrated path
+    };
+    tau / (k * l_c)
+}
+
+/// Strategy for estimating the substrate's correlation length ℓ_c used
+/// in [`horizon_with`]. The default `HorizonConfig` uses `SpectralGap`
+/// as the primary and `WelfordRadius` as the fallback when λ₁ is below
+/// `epsilon` (the JTBD demo on real sensor data lands here — sensor
+/// bundles have λ₁ ≈ 0 because their connectivity isn't graph-structured
+/// the way the default Laplacian estimator expects).
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LengthScaleEstimator {
+    /// ℓ_c = 1/√λ₁ from heat-kernel correlation length. Returns
+    /// f64::NAN when λ₁ ≤ epsilon so the caller's fallback fires.
+    SpectralGap,
+    /// ℓ_c = sqrt(mean variance across fiber FieldStats) — the Welford
+    /// characteristic length scale. Always defined when the bundle has
+    /// at least one numeric fiber field with ≥ 2 records. Independent
+    /// of the spectral gap.
+    WelfordRadius,
+    /// ℓ_c = explicit constant supplied by the caller. Useful when the
+    /// caller has an external length-scale estimate (e.g. from a domain
+    /// model) and wants to make HORIZON read from it directly.
+    Fixed(f64),
+}
+
+/// Configuration for the calibrated [`horizon_with`] path. Defaults
+/// reproduce a sensible-for-most-cases behavior: heat-kernel
+/// correlation length when the spectral gap is non-degenerate, falling
+/// back to the Welford radius otherwise.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct HorizonConfig {
+    /// Primary length-scale estimator. Default: `SpectralGap`.
+    pub estimator: LengthScaleEstimator,
+    /// Fallback when the primary returns NaN, ≤ 0, or non-finite.
+    /// Default: `WelfordRadius`.
+    pub fallback: LengthScaleEstimator,
+    /// Numerical guard: λ₁ < epsilon → SpectralGap estimator returns
+    /// NaN (triggers fallback). Default 1e-9.
+    pub epsilon: f64,
+}
+
+impl Default for HorizonConfig {
+    fn default() -> Self {
+        HorizonConfig {
+            estimator: LengthScaleEstimator::SpectralGap,
+            fallback: LengthScaleEstimator::WelfordRadius,
+            epsilon: 1e-9,
+        }
+    }
+}
+
+/// Result of a calibrated [`horizon_with`] call. The estimator that
+/// actually produced ℓ_c is reported so the caller can audit which path
+/// the report came from (the primary or the fallback).
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct HorizonResult {
+    /// s_max = τ / (K · ℓ_c). Infinite when K ≈ 0.
+    pub s_max: f64,
+    /// The correlation length actually used.
+    pub l_c: f64,
+    /// The estimator that produced `l_c`. Echoed back so the caller
+    /// can detect that the primary estimator was degenerate and the
+    /// fallback fired (i.e. `estimator_used != config.estimator`).
+    pub estimator_used: LengthScaleEstimator,
+    /// True iff the primary estimator was degenerate and the fallback
+    /// was used. Convenience for callers that want a single boolean
+    /// flag rather than comparing `estimator_used` to `config.estimator`.
+    pub fallback_engaged: bool,
+}
+
+/// Compute the Welford radius of a bundle: sqrt of the mean per-fiber-
+/// field variance, restricted to fiber FieldStats with count ≥ 2 and
+/// finite variance. Returns NaN when no such fields exist.
+fn welford_radius(store: &crate::bundle::BundleStore) -> f64 {
+    let stats = store.field_stats();
+    if stats.is_empty() {
+        return f64::NAN;
+    }
+    let mut sum = 0.0_f64;
+    let mut n = 0_usize;
+    for fs in stats.values() {
+        let v = fs.variance();
+        if v.is_finite() && v >= 0.0 {
+            // count ≥ 2 is required for non-degenerate variance per
+            // FieldStats::variance contract; that contract returns 0
+            // when count < 2, which we accept (zero is a real radius
+            // when all records collide), but a variance of exactly 0
+            // is itself a degenerate length scale, so skip it.
+            if v > 0.0 {
+                sum += v;
+                n += 1;
+            }
+        }
+    }
+    if n == 0 {
+        f64::NAN
+    } else {
+        (sum / n as f64).sqrt()
+    }
+}
+
+fn compute_length_scale(
+    store: &crate::bundle::BundleStore,
+    lambda1: f64,
+    estimator: LengthScaleEstimator,
+    epsilon: f64,
+) -> f64 {
+    match estimator {
+        LengthScaleEstimator::SpectralGap => {
+            if lambda1 < epsilon {
+                f64::NAN
+            } else {
+                1.0 / lambda1.sqrt()
+            }
+        }
+        LengthScaleEstimator::WelfordRadius => welford_radius(store),
+        LengthScaleEstimator::Fixed(v) => v,
+    }
+}
+
+/// Bundle-aware HORIZON. Picks `ℓ_c` via the config's estimator (with
+/// fallback when the primary is degenerate), then computes
+/// `s_max = τ / (K · ℓ_c)`. Returns full provenance so callers can
+/// audit which estimator path produced the report — the JTBD demo on
+/// sensor data, for example, fires the fallback because λ₁ ≈ 0 and
+/// the report makes that visible.
+///
+/// Returns f64::INFINITY for `s_max` when K ≈ 0.
+pub fn horizon_with(
+    tau: f64,
+    k: f64,
+    store: &crate::bundle::BundleStore,
+    lambda1: f64,
+    config: &HorizonConfig,
+) -> HorizonResult {
+    let primary = compute_length_scale(store, lambda1, config.estimator, config.epsilon);
+    let (l_c, estimator_used, fallback_engaged) = if primary.is_finite() && primary > 0.0 {
+        (primary, config.estimator, false)
+    } else {
+        let fb = compute_length_scale(store, lambda1, config.fallback, config.epsilon);
+        if fb.is_finite() && fb > 0.0 {
+            (fb, config.fallback, true)
+        } else {
+            // Both estimators degenerate — use ℓ_c = 1.0 as the final
+            // last-resort default, matching the scalar shim's behavior.
+            // estimator_used echoes the fallback choice so the caller
+            // can see that the report is a degenerate-data signal.
+            (1.0, config.fallback, true)
+        }
+    };
+    let s_max = if k.abs() < f64::EPSILON {
+        f64::INFINITY
+    } else {
+        tau / (k * l_c)
+    };
+    HorizonResult { s_max, l_c, estimator_used, fallback_engaged }
+}
+
+/// Encoding depth classification (Theorem 8.14 — Cognitive Geometry
+/// Correspondence, 2026-05-29). Maps local curvature K and spectral
+/// gap λ₁ to one of four encoding depths from Definition 3.1 of that
+/// paper:
+///
+///   I  — Tangent:     low K, high λ₁  → easily erased (facts from books)
+///   II — Connection:  moderate K or λ₁ → skill-level persistence (practice)
+///   III— Metric:      high K, low λ₁  → resists argument (emotional beliefs)
+///   IV — Topological: K→∞ or λ₁→0   → irrecoverable (trauma, topology change)
+///
+/// This is the Laplace-Beltrami spectral hierarchy: encoding depth
+/// determines diffusion rate; deep beliefs have small λ₁ and resist
+/// the diffusion of counter-evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EncodingDepth {
+    Tangent,
+    Connection,
+    Metric,
+    Topological,
+}
+
+impl EncodingDepth {
+    /// Roman numeral label (I–IV).
+    pub fn label(self) -> &'static str {
+        match self {
+            EncodingDepth::Tangent     => "I",
+            EncodingDepth::Connection  => "II",
+            EncodingDepth::Metric      => "III",
+            EncodingDepth::Topological => "IV",
+        }
+    }
+
+    /// One-line description of the depth's erasure characteristics.
+    pub fn description(self) -> &'static str {
+        match self {
+            EncodingDepth::Tangent =>
+                "Tangent encoding — fast diffusion, low erasure energy. \
+                 Facts stored here are easily updated or forgotten.",
+            EncodingDepth::Connection =>
+                "Connection encoding — moderate erasure energy. \
+                 Skills and habits; distributed across a neighborhood, \
+                 harder to displace than facts but does not change the metric.",
+            EncodingDepth::Metric =>
+                "Metric encoding — high erasure energy; the geometry itself \
+                 has been deformed. Deep beliefs resist rational argument \
+                 because the argument operates at tangent depth while the \
+                 belief lives here.",
+            EncodingDepth::Topological =>
+                "Topological encoding — infinite erasure energy; \
+                 the manifold topology has changed. Cannot be continuously \
+                 deformed away. Trauma, foundational axioms, identity structure.",
+        }
+    }
+}
+
+/// Threshold configuration for [`encoding_depth_with`].
+///
+/// The four cuts that partition the (K, λ₁) plane into the four
+/// encoding-depth regions. The defaults reproduce the classifier
+/// shipped by Marcella in the initial Branch VII landing
+/// (Theorem 8.14 of the Cognitive Geometry Correspondence), but
+/// they are not universal — `spectral_gap` returns ~0 on
+/// non-graph-structured bundles, so the default
+/// `lambda1_topological = 0.01` cut collapses sensor-style
+/// substrates to `Topological` regardless of curvature (caught by
+/// the JTBD demo in `examples/cognitive_geometry_demo.rs`).
+///
+/// Callers that know their substrate type are expected to override.
+/// A future per-bundle calibration routine (cf. the δ recalibration
+/// 0.657 → 0.74 on the gate) will fit these from the joint
+/// (K, λ₁) distribution at bundle-load time.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct DepthConfig {
+    /// λ₁ below this → Topological. Default 0.01.
+    pub lambda1_topological: f64,
+    /// K above this → Metric. Default 0.5.
+    pub k_metric: f64,
+    /// K above this (when not Metric) → Connection. Default 0.1.
+    pub k_connection: f64,
+    /// λ₁ below this (when not Topological / Metric) → Connection.
+    /// Default 0.3.
+    pub lambda1_connection: f64,
+}
+
+impl Default for DepthConfig {
+    fn default() -> Self {
+        // Reproduces the Theorem 8.14 published thresholds, calibrated
+        // for graph-Laplacian substrates where λ₁ is a non-degenerate
+        // signal. Same as `for_graph_substrate()`.
+        Self::for_graph_substrate()
+    }
+}
+
+impl DepthConfig {
+    /// Thresholds calibrated for graph-Laplacian substrates where the
+    /// spectral gap λ₁ is a meaningful, non-degenerate quantity. These
+    /// are the published Theorem 8.14 values. Equivalent to
+    /// `DepthConfig::default()`.
+    pub fn for_graph_substrate() -> Self {
+        DepthConfig {
+            lambda1_topological: 0.01,
+            k_metric: 0.5,
+            k_connection: 0.1,
+            lambda1_connection: 0.3,
+        }
+    }
+
+    /// Thresholds calibrated for dense-vector / continuous substrates
+    /// (sensor streams, BGE embeddings, anything where the graph
+    /// Laplacian estimator returns ~0 because the connectivity isn't
+    /// graph-structured). Both λ₁ cuts are set to 0.0 so they never
+    /// trip on a non-negative λ₁ value, and classification falls
+    /// through to the K-only cascade — Tangent / Connection / Metric
+    /// based purely on local curvature.
+    ///
+    /// Pick this when `spectral_gap(store)` returns ~0 not because
+    /// the substrate is disconnected but because no sensible graph
+    /// Laplacian estimator exists for it. The JTBD demo's sensor
+    /// bundles are the canonical example.
+    pub fn for_continuous_substrate() -> Self {
+        DepthConfig {
+            lambda1_topological: 0.0,
+            k_metric: 0.5,
+            k_connection: 0.1,
+            lambda1_connection: 0.0,
+        }
+    }
+
+    /// Auto-select the right substrate-type defaults by introspecting
+    /// the bundle's spectral gap. When the gap is below `epsilon`, the
+    /// bundle is non-graph-structured (sensor / dense-vector) and the
+    /// continuous-substrate defaults apply. Otherwise the graph
+    /// defaults apply.
+    ///
+    /// This is the "works out of the box" path — consumers who don't
+    /// want to think about substrate type get correct classification
+    /// behavior either way. Equivalent to manually calling
+    /// `for_continuous_substrate()` or `for_graph_substrate()` based
+    /// on a `spectral_gap` check.
+    pub fn auto_for(store: &crate::bundle::BundleStore, epsilon: f64) -> Self {
+        let lambda1 = crate::spectral::spectral_gap(store);
+        if lambda1 < epsilon {
+            Self::for_continuous_substrate()
+        } else {
+            Self::for_graph_substrate()
+        }
+    }
+}
+
+/// Classify encoding depth from local curvature K and spectral gap λ₁,
+/// using configurable thresholds.
+///
+/// The classification cascade (in priority order):
+///   1. λ₁ < `lambda1_topological` → Topological (spectral gap collapsed)
+///   2. K > `k_metric`             → Metric      (geometry deformed)
+///   3. K > `k_connection`  OR  λ₁ < `lambda1_connection` → Connection
+///   4. else                       → Tangent     (surface, easily updated)
+pub fn encoding_depth_with(k: f64, lambda1: f64, config: &DepthConfig) -> EncodingDepth {
+    if lambda1 < config.lambda1_topological {
+        return EncodingDepth::Topological;
+    }
+    if k > config.k_metric {
+        return EncodingDepth::Metric;
+    }
+    if k > config.k_connection || lambda1 < config.lambda1_connection {
+        return EncodingDepth::Connection;
+    }
+    EncodingDepth::Tangent
+}
+
+/// Classify encoding depth using the default thresholds.
+///
+/// Backward-compatible shim over [`encoding_depth_with`] for callers
+/// that don't pass a [`DepthConfig`]. Equivalent to
+/// `encoding_depth_with(k, lambda1, &DepthConfig::default())`.
+pub fn encoding_depth(k: f64, lambda1: f64) -> EncodingDepth {
+    encoding_depth_with(k, lambda1, &DepthConfig::default())
+}
+
+// ── PERCEIVE — Theorem 8.6 (Cognitive Geometry Correspondence) ──────
+//
+// Given an accumulated rotation R that a vector v has been parallel-
+// transported through (the R_acc of Marcella's PROPRIOCEPTION /
+// COHERENCE_SIGNAL specs, or the per-segment rotation surfaced by
+// flat_transport), PERCEIVE answers two questions:
+//
+//   1. What does the system actually *perceive* after the transport?
+//      → v_perceived = R · v   (Theorem 8.6 — the perceived vector
+//                                differs from v by exactly the
+//                                accumulated rotation)
+//
+//   2. How much has the system's frame drifted from the canonical one?
+//      → bias = ‖R − I‖_F      (Frobenius norm of the deviation from
+//                                identity; zero when no rotation has
+//                                accumulated, grows monotonically with
+//                                rotation angle)
+//
+// This is the pure-math layer. R is provided by the caller; the upstream
+// path-to-R extraction lives in `src/geometry/transport.rs` (a future
+// commit surfaces R_acc on TransportResult so the verb can chain).
+// PERCEIVE itself is a single matmul + a single Frobenius norm — no
+// hidden state, no path replay, deterministic on inputs.
+
+/// Errors PERCEIVE can return when its inputs disagree on shape.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PerceiveError {
+    /// Rotation matrix length isn't `dim * dim`.
+    NonSquareRotation { dim: usize, len: usize },
+    /// Vector length doesn't match the rotation's dimension.
+    VectorDimMismatch { rotation_dim: usize, vector_len: usize },
+    /// Zero dimension (degenerate).
+    EmptyDimension,
+}
+
+impl std::fmt::Display for PerceiveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PerceiveError::NonSquareRotation { dim, len } => write!(
+                f,
+                "rotation matrix must have dim²={} entries; got {}",
+                dim * dim,
+                len
+            ),
+            PerceiveError::VectorDimMismatch { rotation_dim, vector_len } => write!(
+                f,
+                "vector length {} doesn't match rotation dim {}",
+                vector_len, rotation_dim
+            ),
+            PerceiveError::EmptyDimension => write!(f, "dim must be positive"),
+        }
+    }
+}
+
+impl std::error::Error for PerceiveError {}
+
+/// Result of [`perceive`]. Both the perceived vector and the bias
+/// scalar are reported in one call because callers typically want both
+/// (the vector to act on, the scalar to decide whether to trust it).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct PerceptionResult {
+    /// `v_perceived = R · v`. The vector the system actually sees
+    /// after the parallel transport through the accumulated rotation R.
+    pub v_perceived: Vec<f64>,
+    /// `‖R − I‖_F`. Zero when R = I (no drift); grows monotonically
+    /// with the rotation angle. Marcella's COHERENCE_SIGNAL_SPEC §3
+    /// uses this as the windowed-holonomy δ_t for the gain-gate input.
+    pub bias: f64,
+}
+
+/// PERCEIVE (Theorem 8.6): given an accumulated rotation `R` (row-major,
+/// `dim × dim`) and a vector `v` (length `dim`), compute the perceived
+/// vector `R · v` and the perception bias `‖R − I‖_F` in one pass.
+///
+/// `R` is provided by the caller — typically the accumulated rotation
+/// from a parallel-transport step (see `src/geometry/transport.rs`).
+/// PERCEIVE itself is pure: deterministic on `(R, v)`, no I/O, no
+/// hidden state. Marcella's runtime equivalent reuses the same `R_acc`
+/// that the prefix scan already produces (`COHERENCE_SIGNAL_SPEC.md §3`).
+///
+/// ### Math
+///
+/// - `v_perceived[i] = Σ_j R[i,j] · v[j]`
+/// - `bias² = Σ_{i,j} (R[i,j] − δ_{ij})²`
+///
+/// Bias is in the range `[0, 2·√dim]` for orthogonal R, with the
+/// upper bound hit by R = −I.
+///
+/// ### Errors
+///
+/// - `EmptyDimension` if `dim == 0`.
+/// - `NonSquareRotation` if `rotation.len() != dim * dim`.
+/// - `VectorDimMismatch` if `v.len() != dim`.
+pub fn perceive(
+    rotation: &[f64],
+    v: &[f64],
+    dim: usize,
+) -> Result<PerceptionResult, PerceiveError> {
+    if dim == 0 {
+        return Err(PerceiveError::EmptyDimension);
+    }
+    if rotation.len() != dim * dim {
+        return Err(PerceiveError::NonSquareRotation {
+            dim,
+            len: rotation.len(),
+        });
+    }
+    if v.len() != dim {
+        return Err(PerceiveError::VectorDimMismatch {
+            rotation_dim: dim,
+            vector_len: v.len(),
+        });
+    }
+
+    // v_perceived = R · v (row-major matmul).
+    let mut v_perceived = vec![0.0_f64; dim];
+    for i in 0..dim {
+        let mut acc = 0.0_f64;
+        let row = &rotation[i * dim..(i + 1) * dim];
+        for j in 0..dim {
+            acc += row[j] * v[j];
+        }
+        v_perceived[i] = acc;
+    }
+
+    // bias = ‖R − I‖_F = sqrt(Σ_{i,j} (R[i,j] − δ_{ij})²).
+    let bias = perception_bias(rotation, dim)?;
+
+    Ok(PerceptionResult { v_perceived, bias })
+}
+
+/// Frobenius norm of `R − I` for a `dim × dim` row-major matrix.
+///
+/// Stand-alone helper exposed so callers who only want the bias scalar
+/// (e.g. a windowed-coherence pass that doesn't need to act on any
+/// particular v) can read it without allocating a `v_perceived` they
+/// won't use. `perceive()` calls this internally.
+pub fn perception_bias(rotation: &[f64], dim: usize) -> Result<f64, PerceiveError> {
+    if dim == 0 {
+        return Err(PerceiveError::EmptyDimension);
+    }
+    if rotation.len() != dim * dim {
+        return Err(PerceiveError::NonSquareRotation {
+            dim,
+            len: rotation.len(),
+        });
+    }
+    let mut sum_sq = 0.0_f64;
+    for i in 0..dim {
+        for j in 0..dim {
+            let r_ij = rotation[i * dim + j];
+            let delta_ij = if i == j { 1.0 } else { 0.0 };
+            let d = r_ij - delta_ij;
+            sum_sq += d * d;
+        }
+    }
+    Ok(sum_sq.sqrt())
+}
+
 /// Partition function Z(β, p) = Σ exp(-β · d(p, q)) (Def 3.7).
 ///
 /// Sums over the geometric neighborhood of p (records sharing indexed field
@@ -906,5 +1434,414 @@ mod tests {
             }
             assert!(compute_kahler_decomposition(&store, &kahler_2d()).is_none());
         }
+    }
+
+    // ── DepthConfig — backward compat + override behavior ───────
+
+    /// The shipped `encoding_depth` must produce identical results to
+    /// `encoding_depth_with` called with the default config. Any drift
+    /// here breaks backward compatibility for callers using the
+    /// shipped 1-arg form.
+    #[test]
+    fn depth_default_matches_explicit_default_config() {
+        let cfg = DepthConfig::default();
+        for &(k, l) in &[
+            (0.0, 0.0),    // → Topological (λ₁ < default 0.01)
+            (0.05, 0.5),   // → Tangent
+            (0.2, 0.5),    // → Connection (k > default 0.1)
+            (0.05, 0.2),   // → Connection (λ₁ < default 0.3)
+            (0.7, 0.5),    // → Metric (k > default 0.5)
+            (10.0, 1.0),   // → Metric
+        ] {
+            assert_eq!(
+                encoding_depth(k, l),
+                encoding_depth_with(k, l, &cfg),
+                "default shim must agree with explicit default config at (K={}, λ₁={})",
+                k, l
+            );
+        }
+    }
+
+    /// The default thresholds reproduce the shipped four-region map.
+    #[test]
+    fn depth_default_thresholds_classify_canonical_cases() {
+        assert_eq!(encoding_depth(0.05, 0.005), EncodingDepth::Topological);
+        assert_eq!(encoding_depth(0.7,  0.5),   EncodingDepth::Metric);
+        assert_eq!(encoding_depth(0.2,  0.5),   EncodingDepth::Connection);
+        assert_eq!(encoding_depth(0.05, 0.5),   EncodingDepth::Tangent);
+    }
+
+    /// Lowering `lambda1_topological` lets non-graph-structured bundles
+    /// (which have λ₁ ≈ 0) escape the Topological catch-all. This is
+    /// the exact fix the JTBD demo motivated: sensor data has λ₁ ≈ 0
+    /// but is not actually topological — it's tangent.
+    #[test]
+    fn depth_override_fixes_sensor_lambda1_zero_topological_collapse() {
+        let k = 0.05;        // sensor-style low K
+        let lambda1 = 0.0;   // sensor-style λ₁ ≈ 0
+        // Default cuts say Topological:
+        assert_eq!(encoding_depth(k, lambda1), EncodingDepth::Topological);
+        // Lowering the topological cut to a numerical-noise threshold
+        // releases the classification to consider K:
+        let cfg = DepthConfig {
+            lambda1_topological: -1.0, // strictly negative → never trip
+            ..DepthConfig::default()
+        };
+        // With K < k_connection (0.1) AND λ₁ < lambda1_connection (0.3)
+        // the cascade falls to Connection — exactly the published
+        // "skill-level / distributed neighborhood" depth, which is
+        // what sensor data plausibly is. (Tangent would require
+        // λ₁ ≥ lambda1_connection, which sensor data doesn't reach.)
+        assert_eq!(
+            encoding_depth_with(k, lambda1, &cfg),
+            EncodingDepth::Connection
+        );
+    }
+
+    /// Raising `k_metric` lets high-curvature regions stay at
+    /// Connection rather than escalating to Metric. Useful when a
+    /// builder knows their substrate has elevated baseline K and
+    /// wants to reserve Metric for genuine outliers.
+    #[test]
+    fn depth_override_raises_metric_threshold() {
+        let k = 0.6;       // above default k_metric (0.5)
+        let lambda1 = 0.5; // healthy spectral gap
+        assert_eq!(encoding_depth(k, lambda1), EncodingDepth::Metric);
+        let cfg = DepthConfig { k_metric: 1.0, ..DepthConfig::default() };
+        // With k_metric raised, K=0.6 no longer trips Metric; falls
+        // through to Connection (K > k_connection=0.1).
+        assert_eq!(
+            encoding_depth_with(k, lambda1, &cfg),
+            EncodingDepth::Connection
+        );
+    }
+
+    // ── HorizonConfig — estimator selection + fallback ──────────
+
+    fn make_varied_store() -> BundleStore {
+        let schema = BundleSchema::new("horizon_test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x").with_range(10.0))
+            .fiber(FieldDef::numeric("y").with_range(10.0));
+        let mut store = BundleStore::new(schema);
+        // Records spread so per-field variance is positive — exactly
+        // the case where Welford radius is well-defined.
+        for i in 0..30 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("x".into(), Value::Float(i as f64 * 0.7));
+            r.insert("y".into(), Value::Float((i as f64).sin() * 3.0));
+            store.insert(&r);
+        }
+        store
+    }
+
+    #[test]
+    fn horizon_with_uses_spectral_gap_when_lambda1_healthy() {
+        let store = make_varied_store();
+        let cfg = HorizonConfig::default();
+        let res = horizon_with(1.0, 0.5, &store, 0.25, &cfg);
+        // ℓ_c = 1/√0.25 = 2.0; s_max = 1 / (0.5 · 2.0) = 1.0
+        assert!((res.l_c - 2.0).abs() < 1e-12, "l_c was {}", res.l_c);
+        assert!((res.s_max - 1.0).abs() < 1e-12, "s_max was {}", res.s_max);
+        assert_eq!(res.estimator_used, LengthScaleEstimator::SpectralGap);
+        assert!(!res.fallback_engaged);
+    }
+
+    #[test]
+    fn horizon_with_falls_back_to_welford_when_lambda1_zero() {
+        let store = make_varied_store();
+        let cfg = HorizonConfig::default();
+        let res = horizon_with(1.0, 0.5, &store, 0.0, &cfg);
+        // λ₁ = 0 ⇒ SpectralGap degenerate ⇒ fallback to WelfordRadius
+        // The Welford radius is sqrt(mean variance across fiber fields)
+        // — must be positive and finite for this store.
+        assert!(res.l_c.is_finite() && res.l_c > 0.0, "l_c = {}", res.l_c);
+        assert!(res.s_max.is_finite() && res.s_max > 0.0, "s_max = {}", res.s_max);
+        assert_eq!(res.estimator_used, LengthScaleEstimator::WelfordRadius);
+        assert!(res.fallback_engaged);
+        // The fallback ℓ_c is meaningfully different from 1.0 (the
+        // dumb default of the scalar shim) — that's the whole point
+        // of the calibrated path.
+        assert!((res.l_c - 1.0).abs() > 0.1,
+            "fallback must not produce ℓ_c ≈ 1.0; got {}", res.l_c);
+    }
+
+    #[test]
+    fn horizon_with_fixed_estimator_uses_provided_value() {
+        let store = make_varied_store();
+        let cfg = HorizonConfig {
+            estimator: LengthScaleEstimator::Fixed(3.5),
+            ..HorizonConfig::default()
+        };
+        // Healthy λ₁ would normally produce ℓ_c = 1/√0.25 = 2.0 via
+        // SpectralGap, but the Fixed override takes precedence.
+        let res = horizon_with(1.0, 0.5, &store, 0.25, &cfg);
+        assert!((res.l_c - 3.5).abs() < 1e-12);
+        // s_max = 1 / (0.5 · 3.5) = 0.5714...
+        assert!((res.s_max - (1.0 / (0.5 * 3.5))).abs() < 1e-12);
+        assert!(matches!(res.estimator_used, LengthScaleEstimator::Fixed(_)));
+        assert!(!res.fallback_engaged);
+    }
+
+    #[test]
+    fn horizon_with_returns_infinity_when_k_is_zero() {
+        let store = make_varied_store();
+        let cfg = HorizonConfig::default();
+        let res = horizon_with(1.0, 0.0, &store, 0.5, &cfg);
+        assert!(res.s_max.is_infinite(), "k=0 ⇒ s_max=∞, got {}", res.s_max);
+        // ℓ_c still reported even when the K-zero branch makes s_max
+        // infinite (caller can audit which estimator path ran).
+        assert!(res.l_c.is_finite() && res.l_c > 0.0);
+    }
+
+    #[test]
+    fn horizon_with_scalar_shim_agrees_when_lambda1_healthy() {
+        // When λ₁ is healthy and the estimator picks SpectralGap, the
+        // calibrated path must equal the scalar shim — backward-compat
+        // contract for the calibrated default.
+        let store = make_varied_store();
+        let cfg = HorizonConfig::default();
+        let lambda1 = 0.4;
+        let tau = 2.0;
+        let k = 0.7;
+        let res = horizon_with(tau, k, &store, lambda1, &cfg);
+        let shim = horizon(tau, k, lambda1);
+        assert!((res.s_max - shim).abs() < 1e-12,
+            "calibrated path must match shim when λ₁ healthy: {} vs {}",
+            res.s_max, shim);
+    }
+
+    #[test]
+    fn horizon_config_roundtrips_serde_json() {
+        let cfg = HorizonConfig {
+            estimator: LengthScaleEstimator::Fixed(2.71),
+            fallback: LengthScaleEstimator::WelfordRadius,
+            epsilon: 1e-7,
+        };
+        let s = serde_json::to_string(&cfg).expect("serialize");
+        let back: HorizonConfig = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(cfg, back);
+    }
+
+    #[test]
+    fn welford_radius_zero_on_uniform_data() {
+        let store = make_store_with_data(); // all-identical val=50, cat=X
+        assert!(welford_radius(&store).is_nan(),
+            "uniform data has zero variance everywhere; should be NaN");
+    }
+
+    // ── DepthConfig substrate-aware constructors ────────────────
+
+    /// `for_graph_substrate()` is identical to `Default::default()` —
+    /// the documented Theorem 8.14 thresholds. Pinning both directions
+    /// of that equivalence here so a future Default change can't drift
+    /// the named constructor.
+    #[test]
+    fn depth_for_graph_substrate_equals_default() {
+        assert_eq!(DepthConfig::for_graph_substrate(), DepthConfig::default());
+    }
+
+    /// `for_continuous_substrate()` zeroes both λ₁ cuts. Same K cuts as
+    /// the graph defaults — only the λ₁-triggered branches are changed.
+    #[test]
+    fn depth_for_continuous_substrate_zeroes_lambda1_cuts() {
+        let c = DepthConfig::for_continuous_substrate();
+        assert_eq!(c.lambda1_topological, 0.0);
+        assert_eq!(c.lambda1_connection, 0.0);
+        // K cuts unchanged from the published values.
+        let g = DepthConfig::for_graph_substrate();
+        assert_eq!(c.k_metric, g.k_metric);
+        assert_eq!(c.k_connection, g.k_connection);
+    }
+
+    /// On the continuous-substrate constructor, λ₁ ≈ 0 (sensor case)
+    /// no longer triggers Topological. Classification falls through to
+    /// the K-only cascade — the fix the JTBD demo motivated.
+    #[test]
+    fn depth_continuous_substrate_classifies_sensor_case_on_k_alone() {
+        let c = DepthConfig::for_continuous_substrate();
+        // Low K, λ₁ = 0  →  was Topological under defaults; now Tangent.
+        assert_eq!(encoding_depth_with(0.05, 0.0, &c), EncodingDepth::Tangent);
+        // Moderate K, λ₁ = 0  →  was Topological; now Connection.
+        assert_eq!(encoding_depth_with(0.2, 0.0, &c), EncodingDepth::Connection);
+        // High K, λ₁ = 0  →  was Topological; now Metric.
+        assert_eq!(encoding_depth_with(0.7, 0.0, &c), EncodingDepth::Metric);
+
+        // Sanity: the graph defaults DO call all three Topological,
+        // documenting the difference the constructor switch made.
+        let g = DepthConfig::for_graph_substrate();
+        assert_eq!(encoding_depth_with(0.05, 0.0, &g), EncodingDepth::Topological);
+        assert_eq!(encoding_depth_with(0.2,  0.0, &g), EncodingDepth::Topological);
+        assert_eq!(encoding_depth_with(0.7,  0.0, &g), EncodingDepth::Topological);
+    }
+
+    /// `auto_for(store, eps)` is a pure branch on
+    /// `spectral_gap(store) < eps`. Tested by sweeping epsilon on a
+    /// fixed fixture rather than relying on any specific fixture
+    /// having a known-low spectral gap: with a tiny epsilon the branch
+    /// goes to graph; with a huge epsilon (larger than any finite λ₁)
+    /// the branch goes to continuous. That pins the contract without
+    /// coupling to a fixture-specific λ₁ value.
+    #[test]
+    fn depth_auto_for_branches_on_epsilon() {
+        let store = make_store_with_data();
+        let lambda1 = crate::spectral::spectral_gap(&store);
+        assert!(
+            lambda1.is_finite(),
+            "fixture λ₁ must be finite for this test; got {lambda1}"
+        );
+
+        // Tiny epsilon → λ₁ is "large" → graph defaults. Pick a value
+        // strictly less than λ₁ so the branch must be `else`.
+        let tiny = (lambda1 / 2.0).max(0.0);
+        let c_graph = DepthConfig::auto_for(&store, tiny);
+        assert_eq!(
+            c_graph,
+            DepthConfig::for_graph_substrate(),
+            "λ₁={lambda1} >= eps={tiny} should select graph defaults"
+        );
+
+        // Huge epsilon → λ₁ is "tiny" → continuous defaults. Any finite
+        // non-negative λ₁ is below 1e12.
+        let huge = 1e12;
+        let c_cont = DepthConfig::auto_for(&store, huge);
+        assert_eq!(
+            c_cont,
+            DepthConfig::for_continuous_substrate(),
+            "λ₁={lambda1} < eps={huge} should select continuous defaults"
+        );
+    }
+
+    /// DepthConfig is serializable both directions (needed for HTTP
+    /// query-param echo-back on `DepthReport` so callers can audit
+    /// which thresholds the server applied).
+    #[test]
+    fn depth_config_roundtrips_serde_json() {
+        let cfg = DepthConfig {
+            lambda1_topological: 1e-9,
+            k_metric: 2.0,
+            k_connection: 0.25,
+            lambda1_connection: 0.1,
+        };
+        let s = serde_json::to_string(&cfg).expect("serialize");
+        let back: DepthConfig = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(cfg, back);
+    }
+
+    // ── PERCEIVE — Theorem 8.6 ───────────────────────────────
+
+    /// Identity rotation: the perceived vector equals the input
+    /// exactly and the bias is exactly 0. This is the canonical
+    /// "no drift" case Marcella's coherence-signal spec falls back
+    /// to when the prefix scan has accumulated no rotation.
+    #[test]
+    fn perceive_identity_is_passthrough_with_zero_bias() {
+        let id = vec![1.0, 0.0, 0.0,
+                      0.0, 1.0, 0.0,
+                      0.0, 0.0, 1.0];
+        let v = vec![1.0, 2.0, 3.0];
+        let res = perceive(&id, &v, 3).expect("identity perceive");
+        assert_eq!(res.v_perceived, v, "identity must be passthrough");
+        assert_eq!(res.bias, 0.0, "identity bias must be exactly zero");
+    }
+
+    /// 90° rotation in 2D (the canonical small example):
+    ///   R = [[0, -1],
+    ///        [1,  0]],   v = [1, 0]
+    ///   → v_perceived = [0, 1]
+    ///   → R - I = [[-1, -1], [1, -1]]
+    ///   → ‖R - I‖_F² = 1+1+1+1 = 4  →  bias = 2.0
+    /// Computed by hand; serves as the ground-truth correctness test.
+    #[test]
+    fn perceive_2d_90deg_rotation_matches_hand_computation() {
+        let r = vec![0.0, -1.0,
+                     1.0,  0.0];
+        let v = vec![1.0, 0.0];
+        let res = perceive(&r, &v, 2).expect("90deg perceive");
+        assert!((res.v_perceived[0] - 0.0).abs() < 1e-12, "v[0] = {}", res.v_perceived[0]);
+        assert!((res.v_perceived[1] - 1.0).abs() < 1e-12, "v[1] = {}", res.v_perceived[1]);
+        assert!((res.bias - 2.0).abs() < 1e-12, "bias = {} (expected 2.0)", res.bias);
+    }
+
+    /// R = -I is the maximally-rotated case for orthogonal R. The
+    /// perceived vector flips sign, and the bias hits its upper
+    /// bound 2·√dim (here √4 = 2, so bias = 4 for dim=4? wait — R - I
+    /// for R=-I is -2I, so ‖-2I‖_F = 2·√dim). For dim=3, that's
+    /// 2·√3 ≈ 3.464. Pin both endpoints.
+    #[test]
+    fn perceive_negative_identity_hits_upper_bias_bound() {
+        let neg_id = vec![-1.0, 0.0, 0.0,
+                           0.0,-1.0, 0.0,
+                           0.0, 0.0,-1.0];
+        let v = vec![1.0, -2.0, 3.0];
+        let res = perceive(&neg_id, &v, 3).expect("-I perceive");
+        // Sign flip on every component.
+        assert_eq!(res.v_perceived, vec![-1.0, 2.0, -3.0]);
+        // ‖-2I‖_F = sqrt(4 + 4 + 4) = 2√3.
+        let expected = 2.0 * (3.0_f64).sqrt();
+        assert!(
+            (res.bias - expected).abs() < 1e-12,
+            "bias = {} (expected 2√3 ≈ {})",
+            res.bias, expected
+        );
+    }
+
+    /// Error: empty dim.
+    #[test]
+    fn perceive_rejects_zero_dim() {
+        assert_eq!(perceive(&[], &[], 0), Err(PerceiveError::EmptyDimension));
+        assert_eq!(perception_bias(&[], 0), Err(PerceiveError::EmptyDimension));
+    }
+
+    /// Error: rotation isn't square.
+    #[test]
+    fn perceive_rejects_non_square_rotation() {
+        let bad = vec![1.0, 0.0, 0.0, 0.0, 1.0]; // dim 2 needs 4 entries, got 5
+        let v = vec![0.0, 0.0];
+        let err = perceive(&bad, &v, 2).unwrap_err();
+        assert_eq!(err, PerceiveError::NonSquareRotation { dim: 2, len: 5 });
+    }
+
+    /// Error: vector dim doesn't match rotation dim.
+    #[test]
+    fn perceive_rejects_vector_dim_mismatch() {
+        let r = vec![1.0, 0.0, 0.0, 1.0];
+        let v = vec![1.0, 2.0, 3.0]; // length 3 vs rotation dim 2
+        let err = perceive(&r, &v, 2).unwrap_err();
+        assert_eq!(err, PerceiveError::VectorDimMismatch { rotation_dim: 2, vector_len: 3 });
+    }
+
+    /// `perception_bias` (standalone) agrees with what `perceive`
+    /// returns. Two callers must read identical numbers for the same R.
+    #[test]
+    fn perception_bias_matches_perceive_bias_field() {
+        // Random-ish 3x3 matrix (not necessarily a rotation; the bias
+        // is well-defined for any matrix).
+        let r = vec![0.7, -0.5, 0.2,
+                     0.1,  0.9, 0.4,
+                    -0.3,  0.1, 0.8];
+        let v = vec![1.0, 0.0, 0.0];
+        let standalone = perception_bias(&r, 3).expect("bias");
+        let combined = perceive(&r, &v, 3).expect("perceive").bias;
+        assert!(
+            (standalone - combined).abs() < 1e-15,
+            "standalone {} vs combined {} disagreed",
+            standalone, combined
+        );
+    }
+
+    /// PerceptionResult round-trips through JSON. The struct is the
+    /// wire-side payload for a future PERCEIVE HTTP endpoint; pin
+    /// the round-trip now so a future serde change can't silently
+    /// break it.
+    #[test]
+    fn perception_result_roundtrips_through_json() {
+        let r = vec![0.0, -1.0, 1.0, 0.0];
+        let v = vec![1.0, 0.0];
+        let res = perceive(&r, &v, 2).expect("perceive");
+        let s = serde_json::to_string(&res).expect("serialize");
+        let back: PerceptionResult = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(res, back);
     }
 }

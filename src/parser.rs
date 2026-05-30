@@ -205,6 +205,65 @@ pub enum Statement {
         bundle: String,
         tau: f64,
     },
+    /// CAPACITY <bundle> [TOLERANCE τ] — Davis capacity C = τ/K.
+    /// Standalone verb: returns C, K, confidence, and interpretation.
+    /// τ defaults to 1.0 when not specified.
+    Capacity {
+        bundle: String,
+        tau: f64,
+    },
+    /// HORIZON <bundle> [TOLERANCE τ] — holonomy horizon s_max = τ/(K·ℓ_c).
+    /// Returns the maximum coherent context depth for this bundle's geometry.
+    /// τ defaults to 1.0; ℓ_c estimated from the spectral gap with
+    /// Welford-radius fallback when the spectral gap is degenerate
+    /// (`HorizonConfig::default()` semantics). The optional
+    /// `LENGTH_SCALE` keyword overrides the primary estimator:
+    ///   * `LENGTH_SCALE SPECTRAL_GAP`       — heat-kernel default
+    ///   * `LENGTH_SCALE WELFORD_RADIUS`     — sqrt of mean fiber variance
+    ///   * `LENGTH_SCALE FIXED <f64>`        — caller-provided constant
+    /// When `config` is `None`, the executor passes
+    /// `HorizonConfig::default()`.
+    Horizon {
+        bundle: String,
+        tau: f64,
+        config: Option<crate::curvature::HorizonConfig>,
+    },
+    /// DEPTH <bundle> [K_METRIC f64] [K_CONNECTION f64]
+    ///                 [LAMBDA1_TOPOLOGICAL f64] [LAMBDA1_CONNECTION f64]
+    /// Encoding depth classification from K and λ₁. Returns I (tangent) /
+    /// II (connection) / III (metric) / IV (topological).
+    ///
+    /// The four optional threshold keywords override `DepthConfig`
+    /// fields individually; unspecified thresholds use the published
+    /// defaults from Theorem 8.14. When `config` is `None`, the
+    /// executor passes `DepthConfig::default()` to the classifier
+    /// (byte-identical to the pre-config behavior).
+    Depth {
+        bundle: String,
+        config: Option<crate::curvature::DepthConfig>,
+    },
+    /// PERCEIVE <bundle>
+    ///   ROTATION (r00, r01, ..., r_{N²-1})  -- row-major dim²
+    ///   VECTOR   (v0, v1, ..., v_{N-1})
+    ///   [DIM N]                              -- inferred from VECTOR if omitted
+    ///
+    /// Davis PERCEIVE (Theorem 8.6 — Cognitive Geometry Correspondence).
+    /// Returns the perception bias `‖R - I‖_F` as the scalar result;
+    /// the full v_perceived vector is on the HTTP surface
+    /// (POST /v1/bundles/{name}/perceive) and Rust API
+    /// (`curvature::perceive`). GQL exposes the scalar because GQL
+    /// scalars compose with the rest of the language (e.g. comparisons,
+    /// EXPLAIN blocks); vector results are a wire-only surface.
+    ///
+    /// `dim` is optional: when omitted, taken as `vector.len()`. If
+    /// provided, the parser still validates `rotation.len() == dim * dim`
+    /// and `vector.len() == dim` at execution time (in the executor).
+    Perceive {
+        bundle: String,
+        rotation: Vec<f64>,
+        vector: Vec<f64>,
+        dim: Option<usize>,
+    },
     Geodesic {
         bundle: String,
         from_keys: Vec<(String, Literal)>,
@@ -1074,6 +1133,10 @@ impl Parser {
             "BETTI" => self.parse_betti(),
             "ENTROPY" => self.parse_entropy(),
             "FREEENERGY" => self.parse_free_energy(),
+            "CAPACITY"   => self.parse_capacity_stmt(),
+            "HORIZON"    => self.parse_horizon_stmt(),
+            "DEPTH"      => self.parse_depth_stmt(),
+            "PERCEIVE"   => self.parse_perceive_stmt(),
             "GEODESIC" => self.parse_geodesic(),
             "METRIC" => self.parse_metric_tensor(),
             "COMPLETE" => self.parse_complete(),
@@ -2166,6 +2229,213 @@ impl Parser {
             }
             other => Err(format!("expected number for tau, got {:?}", other)),
         }
+    }
+
+    /// CAPACITY <bundle> [TOLERANCE τ]
+    ///
+    /// Returns Davis capacity C = τ/K for the bundle. τ defaults to 1.0.
+    /// The TOLERANCE keyword mirrors the planned GQL_REFERENCE syntax.
+    fn parse_capacity_stmt(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let tau = if self.is_keyword("TOLERANCE") {
+            self.advance();
+            match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => { let v = *n; self.pos += 1; v }
+                other => return Err(format!("CAPACITY: expected τ after TOLERANCE, got {other:?}")),
+            }
+        } else {
+            1.0 // default: C = 1/K (τ=1 makes C dimensionless)
+        };
+        Ok(Statement::Capacity { bundle, tau })
+    }
+
+    /// HORIZON <bundle> [TOLERANCE τ]
+    ///
+    /// Returns holonomy horizon s_max = τ/(K·ℓ_c).
+    /// τ defaults to 1.0; ℓ_c estimated from spectral gap as 1/√λ₁.
+    fn parse_horizon_stmt(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let tau = if self.is_keyword("TOLERANCE") {
+            self.advance();
+            match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => { let v = *n; self.pos += 1; v }
+                other => return Err(format!("HORIZON: expected τ after TOLERANCE, got {other:?}")),
+            }
+        } else {
+            1.0
+        };
+        // Optional LENGTH_SCALE override clause.
+        let config = if self.is_keyword("LENGTH_SCALE") {
+            self.advance();
+            let kind = self.expect_word()?.to_uppercase();
+            let estimator = match kind.as_str() {
+                "SPECTRAL_GAP" => crate::curvature::LengthScaleEstimator::SpectralGap,
+                "WELFORD_RADIUS" => crate::curvature::LengthScaleEstimator::WelfordRadius,
+                "FIXED" => {
+                    let v = match self.tokens.get(self.pos) {
+                        Some(Token::Number(n)) => { let v = *n; self.pos += 1; v }
+                        other => return Err(format!(
+                            "HORIZON: LENGTH_SCALE FIXED expects a number, got {other:?}"
+                        )),
+                    };
+                    crate::curvature::LengthScaleEstimator::Fixed(v)
+                }
+                other => return Err(format!(
+                    "HORIZON: LENGTH_SCALE kind must be one of \
+                     SPECTRAL_GAP | WELFORD_RADIUS | FIXED <n>; got {other}"
+                )),
+            };
+            Some(crate::curvature::HorizonConfig {
+                estimator,
+                ..crate::curvature::HorizonConfig::default()
+            })
+        } else {
+            None
+        };
+        Ok(Statement::Horizon { bundle, tau, config })
+    }
+
+    /// DEPTH <bundle>
+    ///   [K_METRIC <f64>]            — overrides `DepthConfig::k_metric` (default 0.5)
+    ///   [K_CONNECTION <f64>]        — overrides `DepthConfig::k_connection` (default 0.1)
+    ///   [LAMBDA1_TOPOLOGICAL <f64>] — overrides `DepthConfig::lambda1_topological` (default 0.01)
+    ///   [LAMBDA1_CONNECTION <f64>]  — overrides `DepthConfig::lambda1_connection` (default 0.3)
+    ///
+    /// Returns the encoding depth classification (I–IV) based on K and λ₁.
+    /// All four threshold keywords are optional and may appear in any
+    /// order; unspecified thresholds use the published defaults from
+    /// Theorem 8.14 of the Cognitive Geometry Correspondence.
+    fn parse_depth_stmt(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let mut overrides: Option<crate::curvature::DepthConfig> = None;
+        loop {
+            let kw = if self.is_keyword("K_METRIC") {
+                "k_metric"
+            } else if self.is_keyword("K_CONNECTION") {
+                "k_connection"
+            } else if self.is_keyword("LAMBDA1_TOPOLOGICAL") {
+                "lambda1_topological"
+            } else if self.is_keyword("LAMBDA1_CONNECTION") {
+                "lambda1_connection"
+            } else {
+                break;
+            };
+            self.advance();
+            let v = match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => {
+                    let v = *n;
+                    self.pos += 1;
+                    v
+                }
+                other => {
+                    return Err(format!(
+                        "DEPTH: expected number after {} keyword, got {other:?}",
+                        kw.to_uppercase()
+                    ))
+                }
+            };
+            let cfg = overrides.get_or_insert_with(crate::curvature::DepthConfig::default);
+            match kw {
+                "k_metric" => cfg.k_metric = v,
+                "k_connection" => cfg.k_connection = v,
+                "lambda1_topological" => cfg.lambda1_topological = v,
+                "lambda1_connection" => cfg.lambda1_connection = v,
+                _ => unreachable!(),
+            }
+        }
+        Ok(Statement::Depth { bundle, config: overrides })
+    }
+
+    /// PERCEIVE <bundle>
+    ///   ROTATION (r00, r01, ..., r_{N²-1})
+    ///   VECTOR   (v0, v1, ..., v_{N-1})
+    ///   [DIM N]
+    ///
+    /// Davis PERCEIVE (Theorem 8.6 — Cognitive Geometry Correspondence).
+    /// Returns the perception bias `‖R - I‖_F` as a GQL scalar; the full
+    /// (v_perceived, bias) pair is available on the HTTP surface
+    /// POST /v1/bundles/{name}/perceive and via the Rust
+    /// `curvature::perceive` API.
+    ///
+    /// `dim` is optional: defaults to `vector.len()`. When supplied,
+    /// the executor validates `rotation.len() == dim*dim` and
+    /// `vector.len() == dim` and returns PerceiveError variants
+    /// translated into GQL execution errors. ROTATION and VECTOR may
+    /// appear in either order.
+    fn parse_perceive_stmt(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let mut rotation: Option<Vec<f64>> = None;
+        let mut vector: Option<Vec<f64>> = None;
+        let mut dim: Option<usize> = None;
+
+        loop {
+            if self.is_keyword("ROTATION") {
+                self.advance();
+                self.expect(Token::LParen)?;
+                rotation = Some(self.parse_inner_number_list()?);
+            } else if self.is_keyword("VECTOR") {
+                self.advance();
+                self.expect(Token::LParen)?;
+                vector = Some(self.parse_inner_number_list()?);
+            } else if self.is_keyword("DIM") {
+                self.advance();
+                let n = match self.tokens.get(self.pos) {
+                    Some(Token::Number(n)) => {
+                        let v = *n;
+                        self.pos += 1;
+                        v
+                    }
+                    other => {
+                        return Err(format!("PERCEIVE: expected dim integer after DIM, got {other:?}"));
+                    }
+                };
+                if n < 1.0 || n.fract() != 0.0 {
+                    return Err(format!(
+                        "PERCEIVE: DIM must be a positive integer, got {}",
+                        n
+                    ));
+                }
+                dim = Some(n as usize);
+            } else {
+                break;
+            }
+        }
+
+        let rotation = rotation.ok_or_else(|| {
+            "PERCEIVE: ROTATION (r00, r01, ...) clause is required".to_string()
+        })?;
+        let vector = vector.ok_or_else(|| {
+            "PERCEIVE: VECTOR (v0, v1, ...) clause is required".to_string()
+        })?;
+        Ok(Statement::Perceive { bundle, rotation, vector, dim })
+    }
+
+    /// Parse `(n0, n1, n2, ...)` after the opening `(` has been consumed.
+    /// Returns the inner list of f64 values; the closing `)` is consumed
+    /// when encountered. Used by PERCEIVE for ROTATION + VECTOR clauses.
+    fn parse_inner_number_list(&mut self) -> Result<Vec<f64>, String> {
+        let mut nums = Vec::new();
+        loop {
+            if matches!(self.peek(), Some(Token::RParen)) {
+                self.advance();
+                break;
+            }
+            if !nums.is_empty() {
+                self.expect(Token::Comma)?;
+            }
+            match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => {
+                    nums.push(*n);
+                    self.pos += 1;
+                }
+                other => {
+                    return Err(format!(
+                        "expected number in list, got {other:?}"
+                    ));
+                }
+            }
+        }
+        Ok(nums)
     }
 
     fn parse_geodesic(&mut self) -> Result<Statement, String> {
@@ -5047,6 +5317,68 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let f = store.free_energy(*tau);
             Ok(ExecResult::Scalar(f))
         }
+        // ── Cognitive Geometry (Branch VII — Davis 2026-05-29) ──────────────
+        Statement::Capacity { bundle, tau } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let k = store.as_heap()
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
+            Ok(ExecResult::Scalar(crate::curvature::capacity(*tau, k)))
+        }
+        Statement::Horizon { bundle, tau, config } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let heap = store.as_heap();
+            let k = heap
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
+            let lambda1 = heap
+                .map(|s| crate::spectral::spectral_gap(s))
+                .unwrap_or(0.0);
+            // The calibrated path needs a BundleStore. If we only have
+            // a mmap-overlay view (no heap), fall back to the legacy
+            // scalar shim — same behavior as before the calibrated
+            // path existed.
+            let s_max = if let Some(s) = heap {
+                let cfg = config.unwrap_or_default();
+                crate::curvature::horizon_with(*tau, k, s, lambda1, &cfg).s_max
+            } else {
+                crate::curvature::horizon(*tau, k, lambda1)
+            };
+            Ok(ExecResult::Scalar(s_max))
+        }
+        Statement::Depth { bundle, config } => {
+            let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            let k = store.as_heap()
+                .map(|s| crate::curvature::scalar_curvature(s))
+                .unwrap_or_else(|| store.curvature_stats().mean());
+            let lambda1 = store.as_heap()
+                .map(|s| crate::spectral::spectral_gap(s))
+                .unwrap_or(0.0);
+            let cfg = config.unwrap_or_default();
+            let depth = crate::curvature::encoding_depth_with(k, lambda1, &cfg);
+            let level: f64 = match depth {
+                crate::curvature::EncodingDepth::Tangent     => 1.0,
+                crate::curvature::EncodingDepth::Connection  => 2.0,
+                crate::curvature::EncodingDepth::Metric      => 3.0,
+                crate::curvature::EncodingDepth::Topological => 4.0,
+            };
+            Ok(ExecResult::Scalar(level))
+        }
+        Statement::Perceive { bundle, rotation, vector, dim } => {
+            // 404-equivalent: bundle must exist (consistent with C/H/D
+            // and the HTTP endpoint).
+            let _store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
+            // Default dim = vector length when not supplied.
+            let d = dim.unwrap_or(vector.len());
+            let res = crate::curvature::perceive(rotation, vector, d)
+                .map_err(|e| format!("PERCEIVE: {}", e))?;
+            // GQL returns the scalar bias; v_perceived is wire-only
+            // (HTTP POST). Scalar bias composes with the rest of GQL
+            // (comparisons, EXPLAIN, etc.).
+            Ok(ExecResult::Scalar(res.bias))
+        }
         Statement::RotateKey { bundle, new_seed_source } => {
             let new_seed = resolve_seed(new_seed_source)?;
             let store = engine
@@ -5301,6 +5633,141 @@ mod tests {
             parse("SPECTRAL employees").unwrap(),
             Statement::Spectral { .. }
         ));
+    }
+
+    /// Cognitive Geometry Correspondence (Branch VII — Davis 2026-05-29).
+    /// Tests that the three new GQL verbs parse correctly.
+    #[test]
+    fn parse_cognitive_geometry_verbs() {
+        // CAPACITY: default τ=1.0
+        match parse("CAPACITY sensors").unwrap() {
+            Statement::Capacity { bundle, tau } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 1.0).abs() < f64::EPSILON, "default τ should be 1.0");
+            }
+            _ => panic!("Expected Capacity"),
+        }
+        // CAPACITY: explicit τ
+        match parse("CAPACITY sensors TOLERANCE 2.5").unwrap() {
+            Statement::Capacity { bundle, tau } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 2.5).abs() < f64::EPSILON);
+            }
+            _ => panic!("Expected Capacity with TOLERANCE"),
+        }
+        // HORIZON: default τ=1.0, no config
+        match parse("HORIZON sensors").unwrap() {
+            Statement::Horizon { bundle, tau, config } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 1.0).abs() < f64::EPSILON);
+                assert!(config.is_none());
+            }
+            _ => panic!("Expected Horizon"),
+        }
+        // HORIZON: explicit τ, no config
+        match parse("HORIZON sensors TOLERANCE 3.0").unwrap() {
+            Statement::Horizon { bundle, tau, config } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 3.0).abs() < f64::EPSILON);
+                assert!(config.is_none());
+            }
+            _ => panic!("Expected Horizon with TOLERANCE"),
+        }
+        // HORIZON: LENGTH_SCALE WELFORD_RADIUS override
+        match parse("HORIZON sensors LENGTH_SCALE WELFORD_RADIUS").unwrap() {
+            Statement::Horizon { bundle, tau: _, config } => {
+                assert_eq!(bundle, "sensors");
+                let c = config.expect("LENGTH_SCALE supplied → config Some");
+                assert_eq!(c.estimator, crate::curvature::LengthScaleEstimator::WelfordRadius);
+            }
+            _ => panic!("Expected Horizon with LENGTH_SCALE"),
+        }
+        // HORIZON: LENGTH_SCALE FIXED <n> override
+        match parse("HORIZON sensors TOLERANCE 2.0 LENGTH_SCALE FIXED 3.14").unwrap() {
+            Statement::Horizon { bundle, tau, config } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 2.0).abs() < 1e-12);
+                let c = config.expect("config Some");
+                assert!(matches!(
+                    c.estimator,
+                    crate::curvature::LengthScaleEstimator::Fixed(v) if (v - 3.14).abs() < 1e-12
+                ));
+            }
+            _ => panic!("Expected Horizon with FIXED"),
+        }
+        // DEPTH: no overrides → config is None (executor will use defaults)
+        match parse("DEPTH sensors").unwrap() {
+            Statement::Depth { bundle, config } => {
+                assert_eq!(bundle, "sensors");
+                assert!(config.is_none(), "no overrides supplied → config should be None");
+            }
+            _ => panic!("Expected Depth"),
+        }
+
+        // DEPTH: single override (lambda1_topological = 0 — the JTBD-demo
+        // fix for sensor bundles where spectral_gap returns ~0)
+        match parse("DEPTH sensors LAMBDA1_TOPOLOGICAL 0").unwrap() {
+            Statement::Depth { bundle, config } => {
+                assert_eq!(bundle, "sensors");
+                let c = config.expect("override supplied → config should be Some");
+                assert!((c.lambda1_topological - 0.0).abs() < f64::EPSILON);
+                // Other fields keep defaults
+                assert!((c.k_metric - 0.5).abs() < f64::EPSILON);
+                assert!((c.k_connection - 0.1).abs() < f64::EPSILON);
+                assert!((c.lambda1_connection - 0.3).abs() < f64::EPSILON);
+            }
+            _ => panic!("Expected Depth"),
+        }
+
+        // DEPTH: all four overrides, mixed order
+        match parse(
+            "DEPTH sensors K_METRIC 2.0 LAMBDA1_CONNECTION 0.05 \
+             K_CONNECTION 0.25 LAMBDA1_TOPOLOGICAL 0.0001",
+        )
+        .unwrap()
+        {
+            Statement::Depth { bundle, config } => {
+                assert_eq!(bundle, "sensors");
+                let c = config.expect("overrides supplied");
+                assert!((c.k_metric - 2.0).abs() < 1e-12);
+                assert!((c.k_connection - 0.25).abs() < 1e-12);
+                assert!((c.lambda1_topological - 0.0001).abs() < 1e-12);
+                assert!((c.lambda1_connection - 0.05).abs() < 1e-12);
+            }
+            _ => panic!("Expected Depth"),
+        }
+    }
+
+    /// Round-trip execute for cognitive geometry verbs on a real bundle.
+    #[test]
+    fn execute_cognitive_geometry_verbs() {
+        let dir = std::env::temp_dir().join("gigi_cog_geo_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut engine = crate::engine::Engine::open(&dir).unwrap();
+
+        execute(&mut engine,
+            &parse("CREATE BUNDLE cog (x INT BASE, y FLOAT FIBER)").unwrap()
+        ).unwrap();
+        for i in 0..8 {
+            execute(&mut engine,
+                &parse(&format!("INSERT INTO cog (x, y) VALUES ({i}, {})", i as f64 * 0.5)).unwrap()
+            ).unwrap();
+        }
+
+        // CAPACITY should return a finite or infinite scalar
+        let cap = execute(&mut engine, &parse("CAPACITY cog").unwrap()).unwrap();
+        assert!(matches!(cap, ExecResult::Scalar(_)), "CAPACITY returned non-scalar");
+
+        // HORIZON should return a finite or infinite scalar
+        let hor = execute(&mut engine, &parse("HORIZON cog").unwrap()).unwrap();
+        assert!(matches!(hor, ExecResult::Scalar(_)), "HORIZON returned non-scalar");
+
+        // DEPTH should return 1.0–4.0
+        if let ExecResult::Scalar(level) = execute(&mut engine, &parse("DEPTH cog").unwrap()).unwrap() {
+            assert!(level >= 1.0 && level <= 4.0, "DEPTH level out of range: {level}");
+        } else {
+            panic!("DEPTH returned non-scalar");
+        }
     }
 
     #[test]
@@ -6758,6 +7225,113 @@ mod tests {
             }
             _ => panic!("Expected DropTrigger"),
         }
+    }
+
+    // ── PERCEIVE GQL parser ────────────────────────────────────
+
+    /// Identity rotation in 2D, vector unchanged. Verifies the
+    /// happy-path GQL syntax: PERCEIVE <bundle> ROTATION (...) VECTOR (...).
+    #[test]
+    fn gql_perceive_identity_2d() {
+        let stmt = parse(
+            "PERCEIVE my_bundle ROTATION (1.0, 0.0, 0.0, 1.0) VECTOR (3.0, 4.0)",
+        )
+        .unwrap();
+        match stmt {
+            Statement::Perceive { bundle, rotation, vector, dim } => {
+                assert_eq!(bundle, "my_bundle");
+                assert_eq!(rotation, vec![1.0, 0.0, 0.0, 1.0]);
+                assert_eq!(vector, vec![3.0, 4.0]);
+                assert_eq!(dim, None, "DIM omitted ⇒ inferred at execute time");
+            }
+            _ => panic!("Expected Perceive, got {:?}", stmt),
+        }
+    }
+
+    /// Explicit DIM keyword overrides the inference. Useful when the
+    /// rotation length encodes a dim the caller wants to validate.
+    #[test]
+    fn gql_perceive_with_explicit_dim() {
+        let stmt = parse(
+            "PERCEIVE sensors ROTATION (0.0, -1.0, 1.0, 0.0) VECTOR (1.0, 0.0) DIM 2",
+        )
+        .unwrap();
+        match stmt {
+            Statement::Perceive { dim, .. } => assert_eq!(dim, Some(2)),
+            _ => panic!("Expected Perceive"),
+        }
+    }
+
+    /// Clauses can appear in any order. Pin both orderings.
+    #[test]
+    fn gql_perceive_clause_order_flexible() {
+        // VECTOR before ROTATION
+        let a = parse(
+            "PERCEIVE b VECTOR (1.0, 2.0) ROTATION (1.0, 0.0, 0.0, 1.0)",
+        )
+        .unwrap();
+        let b = parse(
+            "PERCEIVE b ROTATION (1.0, 0.0, 0.0, 1.0) VECTOR (1.0, 2.0)",
+        )
+        .unwrap();
+        // Same parsed Statement either way.
+        match (a, b) {
+            (
+                Statement::Perceive {
+                    rotation: ra,
+                    vector: va,
+                    ..
+                },
+                Statement::Perceive {
+                    rotation: rb,
+                    vector: vb,
+                    ..
+                },
+            ) => {
+                assert_eq!(ra, rb);
+                assert_eq!(va, vb);
+            }
+            _ => panic!("Expected Perceive variants"),
+        }
+    }
+
+    /// Missing ROTATION clause is a parser error with a clear message.
+    /// The user-facing error path matters here — wrong matrix input is
+    /// the most common GQL user mistake on this verb.
+    #[test]
+    fn gql_perceive_missing_rotation_is_an_error() {
+        let err = parse("PERCEIVE b VECTOR (1.0, 0.0)").unwrap_err();
+        assert!(
+            err.contains("ROTATION"),
+            "error should mention ROTATION, got: {}",
+            err
+        );
+    }
+
+    /// Missing VECTOR clause is a parser error.
+    #[test]
+    fn gql_perceive_missing_vector_is_an_error() {
+        let err = parse("PERCEIVE b ROTATION (1.0, 0.0, 0.0, 1.0)").unwrap_err();
+        assert!(
+            err.contains("VECTOR"),
+            "error should mention VECTOR, got: {}",
+            err
+        );
+    }
+
+    /// Non-integer DIM is rejected at parse time (catches typos like
+    /// `DIM 3.5` before they reach the executor).
+    #[test]
+    fn gql_perceive_non_integer_dim_rejected() {
+        let err = parse(
+            "PERCEIVE b ROTATION (1.0, 0.0, 0.0, 1.0) VECTOR (1.0, 0.0) DIM 2.5",
+        )
+        .unwrap_err();
+        assert!(
+            err.contains("DIM"),
+            "error should mention DIM, got: {}",
+            err
+        );
     }
 
     #[test]

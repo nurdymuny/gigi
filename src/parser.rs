@@ -214,10 +214,19 @@ pub enum Statement {
     },
     /// HORIZON <bundle> [TOLERANCE τ] — holonomy horizon s_max = τ/(K·ℓ_c).
     /// Returns the maximum coherent context depth for this bundle's geometry.
-    /// τ defaults to 1.0; ℓ_c estimated from the spectral gap.
+    /// τ defaults to 1.0; ℓ_c estimated from the spectral gap with
+    /// Welford-radius fallback when the spectral gap is degenerate
+    /// (`HorizonConfig::default()` semantics). The optional
+    /// `LENGTH_SCALE` keyword overrides the primary estimator:
+    ///   * `LENGTH_SCALE SPECTRAL_GAP`       — heat-kernel default
+    ///   * `LENGTH_SCALE WELFORD_RADIUS`     — sqrt of mean fiber variance
+    ///   * `LENGTH_SCALE FIXED <f64>`        — caller-provided constant
+    /// When `config` is `None`, the executor passes
+    /// `HorizonConfig::default()`.
     Horizon {
         bundle: String,
         tau: f64,
+        config: Option<crate::curvature::HorizonConfig>,
     },
     /// DEPTH <bundle> [K_METRIC f64] [K_CONNECTION f64]
     ///                 [LAMBDA1_TOPOLOGICAL f64] [LAMBDA1_CONNECTION f64]
@@ -2232,7 +2241,35 @@ impl Parser {
         } else {
             1.0
         };
-        Ok(Statement::Horizon { bundle, tau })
+        // Optional LENGTH_SCALE override clause.
+        let config = if self.is_keyword("LENGTH_SCALE") {
+            self.advance();
+            let kind = self.expect_word()?.to_uppercase();
+            let estimator = match kind.as_str() {
+                "SPECTRAL_GAP" => crate::curvature::LengthScaleEstimator::SpectralGap,
+                "WELFORD_RADIUS" => crate::curvature::LengthScaleEstimator::WelfordRadius,
+                "FIXED" => {
+                    let v = match self.tokens.get(self.pos) {
+                        Some(Token::Number(n)) => { let v = *n; self.pos += 1; v }
+                        other => return Err(format!(
+                            "HORIZON: LENGTH_SCALE FIXED expects a number, got {other:?}"
+                        )),
+                    };
+                    crate::curvature::LengthScaleEstimator::Fixed(v)
+                }
+                other => return Err(format!(
+                    "HORIZON: LENGTH_SCALE kind must be one of \
+                     SPECTRAL_GAP | WELFORD_RADIUS | FIXED <n>; got {other}"
+                )),
+            };
+            Some(crate::curvature::HorizonConfig {
+                estimator,
+                ..crate::curvature::HorizonConfig::default()
+            })
+        } else {
+            None
+        };
+        Ok(Statement::Horizon { bundle, tau, config })
     }
 
     /// DEPTH <bundle>
@@ -5173,15 +5210,26 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .unwrap_or_else(|| store.curvature_stats().mean());
             Ok(ExecResult::Scalar(crate::curvature::capacity(*tau, k)))
         }
-        Statement::Horizon { bundle, tau } => {
+        Statement::Horizon { bundle, tau, config } => {
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
-            let k = store.as_heap()
+            let heap = store.as_heap();
+            let k = heap
                 .map(|s| crate::curvature::scalar_curvature(s))
                 .unwrap_or_else(|| store.curvature_stats().mean());
-            let lambda1 = store.as_heap()
+            let lambda1 = heap
                 .map(|s| crate::spectral::spectral_gap(s))
                 .unwrap_or(0.0);
-            Ok(ExecResult::Scalar(crate::curvature::horizon(*tau, k, lambda1)))
+            // The calibrated path needs a BundleStore. If we only have
+            // a mmap-overlay view (no heap), fall back to the legacy
+            // scalar shim — same behavior as before the calibrated
+            // path existed.
+            let s_max = if let Some(s) = heap {
+                let cfg = config.unwrap_or_default();
+                crate::curvature::horizon_with(*tau, k, s, lambda1, &cfg).s_max
+            } else {
+                crate::curvature::horizon(*tau, k, lambda1)
+            };
+            Ok(ExecResult::Scalar(s_max))
         }
         Statement::Depth { bundle, config } => {
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
@@ -5477,21 +5525,45 @@ mod tests {
             }
             _ => panic!("Expected Capacity with TOLERANCE"),
         }
-        // HORIZON: default τ=1.0
+        // HORIZON: default τ=1.0, no config
         match parse("HORIZON sensors").unwrap() {
-            Statement::Horizon { bundle, tau } => {
+            Statement::Horizon { bundle, tau, config } => {
                 assert_eq!(bundle, "sensors");
                 assert!((tau - 1.0).abs() < f64::EPSILON);
+                assert!(config.is_none());
             }
             _ => panic!("Expected Horizon"),
         }
-        // HORIZON: explicit τ
+        // HORIZON: explicit τ, no config
         match parse("HORIZON sensors TOLERANCE 3.0").unwrap() {
-            Statement::Horizon { bundle, tau } => {
+            Statement::Horizon { bundle, tau, config } => {
                 assert_eq!(bundle, "sensors");
                 assert!((tau - 3.0).abs() < f64::EPSILON);
+                assert!(config.is_none());
             }
             _ => panic!("Expected Horizon with TOLERANCE"),
+        }
+        // HORIZON: LENGTH_SCALE WELFORD_RADIUS override
+        match parse("HORIZON sensors LENGTH_SCALE WELFORD_RADIUS").unwrap() {
+            Statement::Horizon { bundle, tau: _, config } => {
+                assert_eq!(bundle, "sensors");
+                let c = config.expect("LENGTH_SCALE supplied → config Some");
+                assert_eq!(c.estimator, crate::curvature::LengthScaleEstimator::WelfordRadius);
+            }
+            _ => panic!("Expected Horizon with LENGTH_SCALE"),
+        }
+        // HORIZON: LENGTH_SCALE FIXED <n> override
+        match parse("HORIZON sensors TOLERANCE 2.0 LENGTH_SCALE FIXED 3.14").unwrap() {
+            Statement::Horizon { bundle, tau, config } => {
+                assert_eq!(bundle, "sensors");
+                assert!((tau - 2.0).abs() < 1e-12);
+                let c = config.expect("config Some");
+                assert!(matches!(
+                    c.estimator,
+                    crate::curvature::LengthScaleEstimator::Fixed(v) if (v - 3.14).abs() < 1e-12
+                ));
+            }
+            _ => panic!("Expected Horizon with FIXED"),
         }
         // DEPTH: no overrides → config is None (executor will use defaults)
         match parse("DEPTH sensors").unwrap() {

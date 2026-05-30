@@ -314,7 +314,12 @@ pub fn capacity(tau: f64, k: f64) -> f64 {
 ///   ℓ_c ≈ 1 / √λ₁
 /// From the heat kernel: on a manifold with spectral gap λ₁, correlations
 /// decay as exp(−√λ₁ · distance), so the e-folding scale is 1/√λ₁.
-/// When λ₁ = 0 (disconnected or flat), ℓ_c defaults to 1.0.
+/// When λ₁ ≈ 0 (the substrate is non-graph-structured, e.g. dense-vector
+/// sensor data), this scalar shim falls back to `ℓ_c = 1.0` — which makes
+/// the returned value numerically identical to capacity. Bundle-aware
+/// callers should use [`horizon_with`], which picks a sensible
+/// length-scale estimator (Welford radius by default) for that case
+/// and reports the estimator it used.
 ///
 /// Returns f64::INFINITY when K ≈ 0 (flat space, infinite horizon).
 pub fn horizon(tau: f64, k: f64, lambda1: f64) -> f64 {
@@ -324,9 +329,165 @@ pub fn horizon(tau: f64, k: f64, lambda1: f64) -> f64 {
     let l_c = if lambda1 > f64::EPSILON {
         1.0 / lambda1.sqrt()
     } else {
-        1.0 // default: correlation length = 1 structural unit
+        1.0 // documented fallback; see horizon_with for the calibrated path
     };
     tau / (k * l_c)
+}
+
+/// Strategy for estimating the substrate's correlation length ℓ_c used
+/// in [`horizon_with`]. The default `HorizonConfig` uses `SpectralGap`
+/// as the primary and `WelfordRadius` as the fallback when λ₁ is below
+/// `epsilon` (the JTBD demo on real sensor data lands here — sensor
+/// bundles have λ₁ ≈ 0 because their connectivity isn't graph-structured
+/// the way the default Laplacian estimator expects).
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LengthScaleEstimator {
+    /// ℓ_c = 1/√λ₁ from heat-kernel correlation length. Returns
+    /// f64::NAN when λ₁ ≤ epsilon so the caller's fallback fires.
+    SpectralGap,
+    /// ℓ_c = sqrt(mean variance across fiber FieldStats) — the Welford
+    /// characteristic length scale. Always defined when the bundle has
+    /// at least one numeric fiber field with ≥ 2 records. Independent
+    /// of the spectral gap.
+    WelfordRadius,
+    /// ℓ_c = explicit constant supplied by the caller. Useful when the
+    /// caller has an external length-scale estimate (e.g. from a domain
+    /// model) and wants to make HORIZON read from it directly.
+    Fixed(f64),
+}
+
+/// Configuration for the calibrated [`horizon_with`] path. Defaults
+/// reproduce a sensible-for-most-cases behavior: heat-kernel
+/// correlation length when the spectral gap is non-degenerate, falling
+/// back to the Welford radius otherwise.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct HorizonConfig {
+    /// Primary length-scale estimator. Default: `SpectralGap`.
+    pub estimator: LengthScaleEstimator,
+    /// Fallback when the primary returns NaN, ≤ 0, or non-finite.
+    /// Default: `WelfordRadius`.
+    pub fallback: LengthScaleEstimator,
+    /// Numerical guard: λ₁ < epsilon → SpectralGap estimator returns
+    /// NaN (triggers fallback). Default 1e-9.
+    pub epsilon: f64,
+}
+
+impl Default for HorizonConfig {
+    fn default() -> Self {
+        HorizonConfig {
+            estimator: LengthScaleEstimator::SpectralGap,
+            fallback: LengthScaleEstimator::WelfordRadius,
+            epsilon: 1e-9,
+        }
+    }
+}
+
+/// Result of a calibrated [`horizon_with`] call. The estimator that
+/// actually produced ℓ_c is reported so the caller can audit which path
+/// the report came from (the primary or the fallback).
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct HorizonResult {
+    /// s_max = τ / (K · ℓ_c). Infinite when K ≈ 0.
+    pub s_max: f64,
+    /// The correlation length actually used.
+    pub l_c: f64,
+    /// The estimator that produced `l_c`. Echoed back so the caller
+    /// can detect that the primary estimator was degenerate and the
+    /// fallback fired (i.e. `estimator_used != config.estimator`).
+    pub estimator_used: LengthScaleEstimator,
+    /// True iff the primary estimator was degenerate and the fallback
+    /// was used. Convenience for callers that want a single boolean
+    /// flag rather than comparing `estimator_used` to `config.estimator`.
+    pub fallback_engaged: bool,
+}
+
+/// Compute the Welford radius of a bundle: sqrt of the mean per-fiber-
+/// field variance, restricted to fiber FieldStats with count ≥ 2 and
+/// finite variance. Returns NaN when no such fields exist.
+fn welford_radius(store: &crate::bundle::BundleStore) -> f64 {
+    let stats = store.field_stats();
+    if stats.is_empty() {
+        return f64::NAN;
+    }
+    let mut sum = 0.0_f64;
+    let mut n = 0_usize;
+    for fs in stats.values() {
+        let v = fs.variance();
+        if v.is_finite() && v >= 0.0 {
+            // count ≥ 2 is required for non-degenerate variance per
+            // FieldStats::variance contract; that contract returns 0
+            // when count < 2, which we accept (zero is a real radius
+            // when all records collide), but a variance of exactly 0
+            // is itself a degenerate length scale, so skip it.
+            if v > 0.0 {
+                sum += v;
+                n += 1;
+            }
+        }
+    }
+    if n == 0 {
+        f64::NAN
+    } else {
+        (sum / n as f64).sqrt()
+    }
+}
+
+fn compute_length_scale(
+    store: &crate::bundle::BundleStore,
+    lambda1: f64,
+    estimator: LengthScaleEstimator,
+    epsilon: f64,
+) -> f64 {
+    match estimator {
+        LengthScaleEstimator::SpectralGap => {
+            if lambda1 < epsilon {
+                f64::NAN
+            } else {
+                1.0 / lambda1.sqrt()
+            }
+        }
+        LengthScaleEstimator::WelfordRadius => welford_radius(store),
+        LengthScaleEstimator::Fixed(v) => v,
+    }
+}
+
+/// Bundle-aware HORIZON. Picks `ℓ_c` via the config's estimator (with
+/// fallback when the primary is degenerate), then computes
+/// `s_max = τ / (K · ℓ_c)`. Returns full provenance so callers can
+/// audit which estimator path produced the report — the JTBD demo on
+/// sensor data, for example, fires the fallback because λ₁ ≈ 0 and
+/// the report makes that visible.
+///
+/// Returns f64::INFINITY for `s_max` when K ≈ 0.
+pub fn horizon_with(
+    tau: f64,
+    k: f64,
+    store: &crate::bundle::BundleStore,
+    lambda1: f64,
+    config: &HorizonConfig,
+) -> HorizonResult {
+    let primary = compute_length_scale(store, lambda1, config.estimator, config.epsilon);
+    let (l_c, estimator_used, fallback_engaged) = if primary.is_finite() && primary > 0.0 {
+        (primary, config.estimator, false)
+    } else {
+        let fb = compute_length_scale(store, lambda1, config.fallback, config.epsilon);
+        if fb.is_finite() && fb > 0.0 {
+            (fb, config.fallback, true)
+        } else {
+            // Both estimators degenerate — use ℓ_c = 1.0 as the final
+            // last-resort default, matching the scalar shim's behavior.
+            // estimator_used echoes the fallback choice so the caller
+            // can see that the report is a degenerate-data signal.
+            (1.0, config.fallback, true)
+        }
+    };
+    let s_max = if k.abs() < f64::EPSILON {
+        f64::INFINITY
+    } else {
+        tau / (k * l_c)
+    };
+    HorizonResult { s_max, l_c, estimator_used, fallback_engaged }
 }
 
 /// Encoding depth classification (Theorem 8.14 — Cognitive Geometry
@@ -1140,6 +1301,121 @@ mod tests {
             encoding_depth_with(k, lambda1, &cfg),
             EncodingDepth::Connection
         );
+    }
+
+    // ── HorizonConfig — estimator selection + fallback ──────────
+
+    fn make_varied_store() -> BundleStore {
+        let schema = BundleSchema::new("horizon_test")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x").with_range(10.0))
+            .fiber(FieldDef::numeric("y").with_range(10.0));
+        let mut store = BundleStore::new(schema);
+        // Records spread so per-field variance is positive — exactly
+        // the case where Welford radius is well-defined.
+        for i in 0..30 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("x".into(), Value::Float(i as f64 * 0.7));
+            r.insert("y".into(), Value::Float((i as f64).sin() * 3.0));
+            store.insert(&r);
+        }
+        store
+    }
+
+    #[test]
+    fn horizon_with_uses_spectral_gap_when_lambda1_healthy() {
+        let store = make_varied_store();
+        let cfg = HorizonConfig::default();
+        let res = horizon_with(1.0, 0.5, &store, 0.25, &cfg);
+        // ℓ_c = 1/√0.25 = 2.0; s_max = 1 / (0.5 · 2.0) = 1.0
+        assert!((res.l_c - 2.0).abs() < 1e-12, "l_c was {}", res.l_c);
+        assert!((res.s_max - 1.0).abs() < 1e-12, "s_max was {}", res.s_max);
+        assert_eq!(res.estimator_used, LengthScaleEstimator::SpectralGap);
+        assert!(!res.fallback_engaged);
+    }
+
+    #[test]
+    fn horizon_with_falls_back_to_welford_when_lambda1_zero() {
+        let store = make_varied_store();
+        let cfg = HorizonConfig::default();
+        let res = horizon_with(1.0, 0.5, &store, 0.0, &cfg);
+        // λ₁ = 0 ⇒ SpectralGap degenerate ⇒ fallback to WelfordRadius
+        // The Welford radius is sqrt(mean variance across fiber fields)
+        // — must be positive and finite for this store.
+        assert!(res.l_c.is_finite() && res.l_c > 0.0, "l_c = {}", res.l_c);
+        assert!(res.s_max.is_finite() && res.s_max > 0.0, "s_max = {}", res.s_max);
+        assert_eq!(res.estimator_used, LengthScaleEstimator::WelfordRadius);
+        assert!(res.fallback_engaged);
+        // The fallback ℓ_c is meaningfully different from 1.0 (the
+        // dumb default of the scalar shim) — that's the whole point
+        // of the calibrated path.
+        assert!((res.l_c - 1.0).abs() > 0.1,
+            "fallback must not produce ℓ_c ≈ 1.0; got {}", res.l_c);
+    }
+
+    #[test]
+    fn horizon_with_fixed_estimator_uses_provided_value() {
+        let store = make_varied_store();
+        let cfg = HorizonConfig {
+            estimator: LengthScaleEstimator::Fixed(3.5),
+            ..HorizonConfig::default()
+        };
+        // Healthy λ₁ would normally produce ℓ_c = 1/√0.25 = 2.0 via
+        // SpectralGap, but the Fixed override takes precedence.
+        let res = horizon_with(1.0, 0.5, &store, 0.25, &cfg);
+        assert!((res.l_c - 3.5).abs() < 1e-12);
+        // s_max = 1 / (0.5 · 3.5) = 0.5714...
+        assert!((res.s_max - (1.0 / (0.5 * 3.5))).abs() < 1e-12);
+        assert!(matches!(res.estimator_used, LengthScaleEstimator::Fixed(_)));
+        assert!(!res.fallback_engaged);
+    }
+
+    #[test]
+    fn horizon_with_returns_infinity_when_k_is_zero() {
+        let store = make_varied_store();
+        let cfg = HorizonConfig::default();
+        let res = horizon_with(1.0, 0.0, &store, 0.5, &cfg);
+        assert!(res.s_max.is_infinite(), "k=0 ⇒ s_max=∞, got {}", res.s_max);
+        // ℓ_c still reported even when the K-zero branch makes s_max
+        // infinite (caller can audit which estimator path ran).
+        assert!(res.l_c.is_finite() && res.l_c > 0.0);
+    }
+
+    #[test]
+    fn horizon_with_scalar_shim_agrees_when_lambda1_healthy() {
+        // When λ₁ is healthy and the estimator picks SpectralGap, the
+        // calibrated path must equal the scalar shim — backward-compat
+        // contract for the calibrated default.
+        let store = make_varied_store();
+        let cfg = HorizonConfig::default();
+        let lambda1 = 0.4;
+        let tau = 2.0;
+        let k = 0.7;
+        let res = horizon_with(tau, k, &store, lambda1, &cfg);
+        let shim = horizon(tau, k, lambda1);
+        assert!((res.s_max - shim).abs() < 1e-12,
+            "calibrated path must match shim when λ₁ healthy: {} vs {}",
+            res.s_max, shim);
+    }
+
+    #[test]
+    fn horizon_config_roundtrips_serde_json() {
+        let cfg = HorizonConfig {
+            estimator: LengthScaleEstimator::Fixed(2.71),
+            fallback: LengthScaleEstimator::WelfordRadius,
+            epsilon: 1e-7,
+        };
+        let s = serde_json::to_string(&cfg).expect("serialize");
+        let back: HorizonConfig = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(cfg, back);
+    }
+
+    #[test]
+    fn welford_radius_zero_on_uniform_data() {
+        let store = make_store_with_data(); // all-identical val=50, cat=X
+        assert!(welford_radius(&store).is_nan(),
+            "uniform data has zero variance everywhere; should be NaN");
     }
 
     /// DepthConfig is serializable both directions (needed for HTTP

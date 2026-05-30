@@ -36,8 +36,8 @@
 #![cfg(feature = "kahler")]
 
 use gigi::curvature::{
-    capacity, encoding_depth, encoding_depth_with, horizon, scalar_curvature, DepthConfig,
-    EncodingDepth,
+    capacity, encoding_depth, encoding_depth_with, horizon_with, scalar_curvature, DepthConfig,
+    EncodingDepth, HorizonConfig,
 };
 use gigi::spectral::spectral_gap;
 use gigi::types::{BundleSchema, FieldDef, Value};
@@ -177,14 +177,31 @@ fn report_bundle(label: &str, store: &BundleStore) -> (f64, f64, EncodingDepth) 
 
     println!();
     println!("  ┌── HORIZON s_max(τ) = τ / (K · ℓ_c) — coherent context depth");
+    // Use the calibrated path with default HorizonConfig (SpectralGap
+    // primary + WelfordRadius fallback). On sensor bundles the
+    // fallback fires because λ₁ ≈ 0.
+    let hcfg = HorizonConfig::default();
+    let first = horizon_with(taus[0], k, store, lambda1, &hcfg);
+    let estimator_note = if first.fallback_engaged {
+        format!(
+            "  (using fallback estimator `{:?}` — λ₁ ≈ 0, ℓ_c = {:.4})",
+            first.estimator_used, first.l_c
+        )
+    } else {
+        format!(
+            "  (using `{:?}` — λ₁ = {:.4}, ℓ_c = {:.4})",
+            first.estimator_used, lambda1, first.l_c
+        )
+    };
+    line("estimator", estimator_note);
     for &tau in &taus {
-        let s = horizon(tau, k, lambda1);
+        let r = horizon_with(tau, k, store, lambda1, &hcfg);
         line(
             &format!("  τ = {:>4.1}", tau),
-            if s.is_finite() {
-                format!("s_max = {:>10.2} positions", s)
+            if r.s_max.is_finite() {
+                format!("s_max = {:>10.2} positions", r.s_max)
             } else {
-                format!("s_max = ∞    (flat geometry)")
+                "s_max = ∞    (flat geometry)".to_string()
             },
         );
     }

@@ -786,6 +786,12 @@ struct CapacityReport {
 /// Response for `GET /v1/bundles/{name}/horizon` and `HORIZON` GQL verb.
 /// Holonomy horizon s_max = τ/(K·ℓ_c) (Definition 5.1 — Cognitive
 /// Geometry Correspondence). The maximum coherent context depth.
+///
+/// `estimator_used` and `fallback_engaged` report which length-scale
+/// estimator actually produced `l_c`. The default config tries
+/// SpectralGap first and falls back to WelfordRadius when λ₁ is
+/// degenerate — sensor-style bundles always hit the fallback because
+/// their connectivity isn't graph-structured.
 #[derive(Serialize)]
 struct HorizonReport {
     /// s_max = τ/(K·ℓ_c). Beyond this many positions, individual
@@ -795,10 +801,18 @@ struct HorizonReport {
     k: f64,
     /// Tolerance budget τ.
     tau: f64,
-    /// Estimated correlation length ℓ_c = 1/√λ₁.
+    /// Correlation length ℓ_c actually used (from the estimator that won).
     l_c: f64,
-    /// Spectral gap λ₁ used to estimate ℓ_c.
+    /// Spectral gap λ₁ (always reported, even when the fallback fires).
     lambda1: f64,
+    /// Which estimator produced `l_c`. Either the primary
+    /// (`config.estimator`) or the fallback when the primary was
+    /// degenerate. Strings: "spectral_gap" | "welford_radius" | {"fixed":N}.
+    estimator_used: gigi::curvature::LengthScaleEstimator,
+    /// True iff the primary estimator was degenerate and the fallback
+    /// fired. Convenience flag — equivalent to
+    /// `estimator_used != config.estimator`.
+    fallback_engaged: bool,
     /// Human-readable interpretation.
     interpretation: String,
 }
@@ -2502,11 +2516,17 @@ async fn bundle_capacity_report(
     Ok(Json(CapacityReport { capacity: c, k, tau, confidence: conf, regime, interpretation }))
 }
 
-/// `GET /v1/bundles/{name}/horizon[?tau=n]`
+/// `GET /v1/bundles/{name}/horizon[?tau=n&estimator=spectral_gap|welford_radius|fixed&fixed_value=N]`
 ///
 /// Holonomy horizon s_max = τ/(K·ℓ_c). Returns the maximum coherent
 /// context depth — beyond s_max positions, individual contributions to
 /// the accumulated frame rotation become irrecoverable.
+///
+/// `estimator` chooses the primary length-scale estimator (default:
+/// `spectral_gap`). When the primary is degenerate (λ₁ < epsilon for
+/// the heat-kernel estimator, NaN for Welford on flat bundles), the
+/// fallback (default: `welford_radius`) fires. The response echoes
+/// `estimator_used` so the caller can audit which path produced ℓ_c.
 async fn bundle_horizon_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
@@ -2520,21 +2540,70 @@ async fn bundle_horizon_report(
     let tau: f64 = params.get("tau").and_then(|s| s.parse().ok()).unwrap_or(1.0);
     let k = store.scalar_curvature();
     let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
-    let l_c = if lambda1 > f64::EPSILON { 1.0 / lambda1.sqrt() } else { 1.0 };
-    let s_max = curvature::horizon(tau, k, lambda1);
+
+    // Build HorizonConfig from query params. Default: SpectralGap +
+    // WelfordRadius fallback (which is HorizonConfig::default()).
+    let estimator = match params.get("estimator").map(|s| s.as_str()) {
+        Some("welford_radius") => curvature::LengthScaleEstimator::WelfordRadius,
+        Some("fixed") => {
+            let v: f64 = params.get("fixed_value")
+                .and_then(|s| s.parse().ok())
+                .ok_or_else(|| (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse { error: "estimator=fixed requires &fixed_value=<f64>".into() }),
+                ))?;
+            curvature::LengthScaleEstimator::Fixed(v)
+        }
+        Some("spectral_gap") | None => curvature::LengthScaleEstimator::SpectralGap,
+        Some(other) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!(
+                        "estimator must be one of: spectral_gap, welford_radius, fixed; got {other}"
+                    ),
+                }),
+            ));
+        }
+    };
+    let cfg = curvature::HorizonConfig {
+        estimator,
+        ..curvature::HorizonConfig::default()
+    };
+
+    // The calibrated path needs a heap store for the Welford radius
+    // pass. If we only have mmap+overlay, fall back to the scalar
+    // shim (same behavior as before the calibrated path existed —
+    // documented as a "degenerate when λ₁=0" limitation).
+    let (s_max, l_c, estimator_used, fallback_engaged) = if let Some(heap) = store.as_heap() {
+        let res = curvature::horizon_with(tau, k, heap, lambda1, &cfg);
+        (res.s_max, res.l_c, res.estimator_used, res.fallback_engaged)
+    } else {
+        let l_c_shim = if lambda1 > f64::EPSILON { 1.0 / lambda1.sqrt() } else { 1.0 };
+        let s = curvature::horizon(tau, k, lambda1);
+        (s, l_c_shim, curvature::LengthScaleEstimator::SpectralGap, lambda1 < f64::EPSILON)
+    };
 
     let interpretation = if s_max.is_infinite() {
         "K ≈ 0: infinite horizon. Flat geometry — all positions remain \
          individually attributable indefinitely.".to_string()
     } else {
+        let fallback_note = if fallback_engaged {
+            " [fallback estimator engaged; primary was degenerate]"
+        } else {
+            ""
+        };
         format!(
             "s_max = {s_max:.1}: coherent attribution extends {s_max:.0} positions. \
              Beyond this, accumulated frame rotation cannot be decomposed into \
-             individual contributions. (K={k:.4}, ℓ_c={l_c:.2}, τ={tau})"
+             individual contributions. (K={k:.4}, ℓ_c={l_c:.4}, τ={tau}){fallback_note}"
         )
     };
 
-    Ok(Json(HorizonReport { s_max, k, tau, l_c, lambda1, interpretation }))
+    Ok(Json(HorizonReport {
+        s_max, k, tau, l_c, lambda1,
+        estimator_used, fallback_engaged, interpretation,
+    }))
 }
 
 /// `GET /v1/bundles/{name}/depth[?k_metric=…&k_connection=…&lambda1_topological=…&lambda1_connection=…]`

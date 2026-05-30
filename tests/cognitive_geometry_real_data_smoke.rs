@@ -21,7 +21,10 @@
 
 #![cfg(feature = "kahler")]
 
-use gigi::curvature::{capacity, encoding_depth, horizon, scalar_curvature, EncodingDepth};
+use gigi::curvature::{
+    capacity, encoding_depth, horizon, horizon_with, scalar_curvature, DepthConfig,
+    EncodingDepth, HorizonConfig, LengthScaleEstimator,
+};
 use gigi::spectral::spectral_gap;
 use gigi::types::{BundleSchema, FieldDef, Value};
 use gigi::BundleStore;
@@ -184,6 +187,55 @@ fn depth_on_real_sensor_bundle_classifies_to_valid_variant() {
     assert_eq!(encoding_depth(10.0, 0.5), EncodingDepth::Metric);
     // At very low K, very high λ₁: Tangent.
     assert_eq!(encoding_depth(0.001, 1.0), EncodingDepth::Tangent);
+}
+
+#[test]
+fn horizon_with_on_sensor_bundle_fires_welford_fallback() {
+    // The exact case the JTBD demo flagged: spectral_gap on sensor
+    // bundles returns ~0, so the SpectralGap primary estimator is
+    // degenerate. The HorizonConfig default fires the WelfordRadius
+    // fallback. This test pins that contract on real data.
+    let store = build_bundle();
+    let k = scalar_curvature(&store);
+    let lambda1 = spectral_gap(&store);
+    // Sanity: sensor data exhibits the degenerate-λ₁ case.
+    assert!(
+        lambda1 < 1e-9,
+        "expected λ₁ ≈ 0 on sensor bundle, got {}",
+        lambda1
+    );
+
+    let res = horizon_with(1.0, k, &store, lambda1, &HorizonConfig::default());
+
+    // The fallback engaged because the primary was degenerate.
+    assert!(
+        res.fallback_engaged,
+        "λ₁ ≈ 0 must trigger the fallback estimator"
+    );
+    assert_eq!(res.estimator_used, LengthScaleEstimator::WelfordRadius);
+
+    // ℓ_c is finite, positive, and meaningfully different from 1.0
+    // (the dumb scalar-shim default). This is the whole point of the
+    // calibrated path — sensor bundles get a real length scale, not
+    // a fall-through identity that makes HORIZON ≡ CAPACITY.
+    assert!(res.l_c.is_finite() && res.l_c > 0.0, "l_c = {}", res.l_c);
+    assert!(
+        (res.l_c - 1.0).abs() > 1e-3,
+        "Welford ℓ_c must not be ≈ 1.0 on this fixture; got {}",
+        res.l_c
+    );
+    assert!(res.s_max.is_finite() && res.s_max > 0.0);
+
+    // Bonus: the calibrated s_max is meaningfully different from the
+    // scalar shim's degenerate value. This is the user-visible
+    // improvement — HORIZON stops being CAPACITY in disguise.
+    let shim = horizon(1.0, k, lambda1);
+    assert!(
+        (res.s_max - shim).abs() / shim.abs() > 0.01,
+        "calibrated s_max ({}) must meaningfully differ from shim ({})",
+        res.s_max,
+        shim
+    );
 }
 
 #[test]

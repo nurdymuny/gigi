@@ -385,28 +385,74 @@ impl EncodingDepth {
     }
 }
 
-/// Classify encoding depth from local curvature K and spectral gap λ₁.
+/// Threshold configuration for [`encoding_depth_with`].
 ///
-/// The classification uses a 2-D criterion:
-///   - λ₁ ≈ 0 → topological (manifold barrier, disconnected region)
-///   - high K  → metric (curvature deformation, deep belief)
-///   - moderate K with moderate λ₁ → connection (skill-level)
-///   - low K with high λ₁ → tangent (surface, easily updated)
-pub fn encoding_depth(k: f64, lambda1: f64) -> EncodingDepth {
-    // Topological: spectral gap has collapsed (disconnected or near-singular)
-    if lambda1 < 0.01 {
+/// The four cuts that partition the (K, λ₁) plane into the four
+/// encoding-depth regions. The defaults reproduce the classifier
+/// shipped by Marcella in the initial Branch VII landing
+/// (Theorem 8.14 of the Cognitive Geometry Correspondence), but
+/// they are not universal — `spectral_gap` returns ~0 on
+/// non-graph-structured bundles, so the default
+/// `lambda1_topological = 0.01` cut collapses sensor-style
+/// substrates to `Topological` regardless of curvature (caught by
+/// the JTBD demo in `examples/cognitive_geometry_demo.rs`).
+///
+/// Callers that know their substrate type are expected to override.
+/// A future per-bundle calibration routine (cf. the δ recalibration
+/// 0.657 → 0.74 on the gate) will fit these from the joint
+/// (K, λ₁) distribution at bundle-load time.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct DepthConfig {
+    /// λ₁ below this → Topological. Default 0.01.
+    pub lambda1_topological: f64,
+    /// K above this → Metric. Default 0.5.
+    pub k_metric: f64,
+    /// K above this (when not Metric) → Connection. Default 0.1.
+    pub k_connection: f64,
+    /// λ₁ below this (when not Topological / Metric) → Connection.
+    /// Default 0.3.
+    pub lambda1_connection: f64,
+}
+
+impl Default for DepthConfig {
+    fn default() -> Self {
+        DepthConfig {
+            lambda1_topological: 0.01,
+            k_metric: 0.5,
+            k_connection: 0.1,
+            lambda1_connection: 0.3,
+        }
+    }
+}
+
+/// Classify encoding depth from local curvature K and spectral gap λ₁,
+/// using configurable thresholds.
+///
+/// The classification cascade (in priority order):
+///   1. λ₁ < `lambda1_topological` → Topological (spectral gap collapsed)
+///   2. K > `k_metric`             → Metric      (geometry deformed)
+///   3. K > `k_connection`  OR  λ₁ < `lambda1_connection` → Connection
+///   4. else                       → Tangent     (surface, easily updated)
+pub fn encoding_depth_with(k: f64, lambda1: f64, config: &DepthConfig) -> EncodingDepth {
+    if lambda1 < config.lambda1_topological {
         return EncodingDepth::Topological;
     }
-    // Metric: high curvature — geometry itself is deformed
-    if k > 0.5 {
+    if k > config.k_metric {
         return EncodingDepth::Metric;
     }
-    // Connection: moderate curvature or low spectral gap — skill range
-    if k > 0.1 || lambda1 < 0.3 {
+    if k > config.k_connection || lambda1 < config.lambda1_connection {
         return EncodingDepth::Connection;
     }
-    // Tangent: low curvature, high connectivity — surface encoding
     EncodingDepth::Tangent
+}
+
+/// Classify encoding depth using the default thresholds.
+///
+/// Backward-compatible shim over [`encoding_depth_with`] for callers
+/// that don't pass a [`DepthConfig`]. Equivalent to
+/// `encoding_depth_with(k, lambda1, &DepthConfig::default())`.
+pub fn encoding_depth(k: f64, lambda1: f64) -> EncodingDepth {
+    encoding_depth_with(k, lambda1, &DepthConfig::default())
 }
 
 /// Partition function Z(β, p) = Σ exp(-β · d(p, q)) (Def 3.7).
@@ -1014,5 +1060,101 @@ mod tests {
             }
             assert!(compute_kahler_decomposition(&store, &kahler_2d()).is_none());
         }
+    }
+
+    // ── DepthConfig — backward compat + override behavior ───────
+
+    /// The shipped `encoding_depth` must produce identical results to
+    /// `encoding_depth_with` called with the default config. Any drift
+    /// here breaks backward compatibility for callers using the
+    /// shipped 1-arg form.
+    #[test]
+    fn depth_default_matches_explicit_default_config() {
+        let cfg = DepthConfig::default();
+        for &(k, l) in &[
+            (0.0, 0.0),    // → Topological (λ₁ < default 0.01)
+            (0.05, 0.5),   // → Tangent
+            (0.2, 0.5),    // → Connection (k > default 0.1)
+            (0.05, 0.2),   // → Connection (λ₁ < default 0.3)
+            (0.7, 0.5),    // → Metric (k > default 0.5)
+            (10.0, 1.0),   // → Metric
+        ] {
+            assert_eq!(
+                encoding_depth(k, l),
+                encoding_depth_with(k, l, &cfg),
+                "default shim must agree with explicit default config at (K={}, λ₁={})",
+                k, l
+            );
+        }
+    }
+
+    /// The default thresholds reproduce the shipped four-region map.
+    #[test]
+    fn depth_default_thresholds_classify_canonical_cases() {
+        assert_eq!(encoding_depth(0.05, 0.005), EncodingDepth::Topological);
+        assert_eq!(encoding_depth(0.7,  0.5),   EncodingDepth::Metric);
+        assert_eq!(encoding_depth(0.2,  0.5),   EncodingDepth::Connection);
+        assert_eq!(encoding_depth(0.05, 0.5),   EncodingDepth::Tangent);
+    }
+
+    /// Lowering `lambda1_topological` lets non-graph-structured bundles
+    /// (which have λ₁ ≈ 0) escape the Topological catch-all. This is
+    /// the exact fix the JTBD demo motivated: sensor data has λ₁ ≈ 0
+    /// but is not actually topological — it's tangent.
+    #[test]
+    fn depth_override_fixes_sensor_lambda1_zero_topological_collapse() {
+        let k = 0.05;        // sensor-style low K
+        let lambda1 = 0.0;   // sensor-style λ₁ ≈ 0
+        // Default cuts say Topological:
+        assert_eq!(encoding_depth(k, lambda1), EncodingDepth::Topological);
+        // Lowering the topological cut to a numerical-noise threshold
+        // releases the classification to consider K:
+        let cfg = DepthConfig {
+            lambda1_topological: -1.0, // strictly negative → never trip
+            ..DepthConfig::default()
+        };
+        // With K < k_connection (0.1) AND λ₁ < lambda1_connection (0.3)
+        // the cascade falls to Connection — exactly the published
+        // "skill-level / distributed neighborhood" depth, which is
+        // what sensor data plausibly is. (Tangent would require
+        // λ₁ ≥ lambda1_connection, which sensor data doesn't reach.)
+        assert_eq!(
+            encoding_depth_with(k, lambda1, &cfg),
+            EncodingDepth::Connection
+        );
+    }
+
+    /// Raising `k_metric` lets high-curvature regions stay at
+    /// Connection rather than escalating to Metric. Useful when a
+    /// builder knows their substrate has elevated baseline K and
+    /// wants to reserve Metric for genuine outliers.
+    #[test]
+    fn depth_override_raises_metric_threshold() {
+        let k = 0.6;       // above default k_metric (0.5)
+        let lambda1 = 0.5; // healthy spectral gap
+        assert_eq!(encoding_depth(k, lambda1), EncodingDepth::Metric);
+        let cfg = DepthConfig { k_metric: 1.0, ..DepthConfig::default() };
+        // With k_metric raised, K=0.6 no longer trips Metric; falls
+        // through to Connection (K > k_connection=0.1).
+        assert_eq!(
+            encoding_depth_with(k, lambda1, &cfg),
+            EncodingDepth::Connection
+        );
+    }
+
+    /// DepthConfig is serializable both directions (needed for HTTP
+    /// query-param echo-back on `DepthReport` so callers can audit
+    /// which thresholds the server applied).
+    #[test]
+    fn depth_config_roundtrips_serde_json() {
+        let cfg = DepthConfig {
+            lambda1_topological: 1e-9,
+            k_metric: 2.0,
+            k_connection: 0.25,
+            lambda1_connection: 0.1,
+        };
+        let s = serde_json::to_string(&cfg).expect("serialize");
+        let back: DepthConfig = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(cfg, back);
     }
 }

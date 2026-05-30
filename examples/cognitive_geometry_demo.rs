@@ -35,7 +35,10 @@
 
 #![cfg(feature = "kahler")]
 
-use gigi::curvature::{capacity, encoding_depth, horizon, scalar_curvature, EncodingDepth};
+use gigi::curvature::{
+    capacity, encoding_depth, encoding_depth_with, horizon, scalar_curvature, DepthConfig,
+    EncodingDepth,
+};
 use gigi::spectral::spectral_gap;
 use gigi::types::{BundleSchema, FieldDef, Value};
 use gigi::BundleStore;
@@ -312,32 +315,50 @@ fn main() {
         k_p, d_p.label(), d_p, k_v, d_v.label(), d_v
     );
 
-    header("OBSERVED ISSUE — DEPTH thresholds need bundle-type calibration");
+    header("WITHOUT OVERRIDE vs WITH OVERRIDE — DepthConfig in action");
     println!(
-        r#"  Both bundles classified as DEPTH = IV (Topological). That happens
-  because `spectral_gap` returns ~0 on sensor-style bundles
-  (their connectivity structure is not graph-like in the way the
-  default Laplacian estimator expects), and the current encoding-
-  depth classifier hard-codes the rule `λ₁ < 0.01 → Topological`.
+        r#"  The default classification collapses both bundles to IV
+  (Topological) because `spectral_gap` returns ~0 on sensor-style
+  bundles and the default rule `λ₁ < 0.01 → Topological` catches
+  them. CAPACITY and HORIZON are unaffected — they expose raw
+  geometric quantities without thresholding.
 
-  This is the bug the wave-2 follow-up was always going to surface
-  on real data. The fix is the `DepthConfig` refactor scheduled for
-  this week:
+  Builders who know their substrate type can override the
+  threshold via the new DepthConfig surface. Below: same two
+  bundles, classified with `lambda1_topological = -1.0` (so the
+  topological cut never trips, releasing the cascade to consider
+  K alone):
+"#
+    );
+    let permissive = DepthConfig {
+        lambda1_topological: -1.0,
+        ..DepthConfig::default()
+    };
+    let d_p_perm = encoding_depth_with(k_p, l_p, &permissive);
+    let d_v_perm = encoding_depth_with(k_v, l_v, &permissive);
+    line(
+        "Bundle A peaceful (was IV)",
+        format!("→ {} ({:?})", d_p_perm.label(), d_p_perm),
+    );
+    line(
+        "Bundle B volatile (was IV)",
+        format!("→ {} ({:?})", d_v_perm.label(), d_v_perm),
+    );
+    println!();
+    println!(
+        r#"  GQL form:    DEPTH <bundle> LAMBDA1_TOPOLOGICAL -1.0
+  HTTP form:   GET /v1/bundles/{{name}}/depth?lambda1_topological=-1.0
+  All four thresholds can be overridden independently and
+  optionally; unspecified ones keep the published Theorem 8.14
+  defaults. The HTTP response echoes `config_used` so the caller
+  can audit which thresholds produced the verdict.
 
-    DEPTH <bundle> WITH CONFIG (
-      lambda1_topological = …,
-      k_metric            = …,
-      k_connection        = …,
-      lambda1_connection  = …
-    )
-
-  Defaults stay where they are (so existing callers don't break),
-  but builders can override per substrate type, and a follow-up
-  per-bundle calibration routine can fit the thresholds from the
-  joint (K, λ₁) distribution at bundle-load time — the same move
-  that the δ recalibration (0.657 → 0.74) did for the gate.
-
-  CAPACITY and HORIZON are unaffected — they don't threshold; they
-  expose the raw geometric quantity to the caller."#
+  The published defaults are not wrong — they're calibrated for
+  graph-Laplacian substrates where λ₁ is a non-degenerate signal.
+  For dense-vector / continuous substrates (sensor data, BGE
+  embeddings), the per-substrate-type override is the right
+  surface. Per-bundle calibration (fitting thresholds from the
+  joint (K, λ₁) distribution at bundle-load time) is the v2
+  follow-up — same move as the δ recalibration 0.657 → 0.74."#
     );
 }

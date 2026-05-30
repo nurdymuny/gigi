@@ -820,6 +820,11 @@ struct DepthReport {
     erasure_energy: &'static str,
     /// Full description of what this depth means.
     description: &'static str,
+    /// The threshold config the classifier used. Echoed back so the
+    /// caller can audit which numbers produced the verdict — exposes
+    /// any query-param overrides the caller supplied. Defaults
+    /// (Theorem 8.14 published values) when no overrides.
+    config_used: gigi::curvature::DepthConfig,
 }
 
 #[derive(Serialize)]
@@ -2532,14 +2537,21 @@ async fn bundle_horizon_report(
     Ok(Json(HorizonReport { s_max, k, tau, l_c, lambda1, interpretation }))
 }
 
-/// `GET /v1/bundles/{name}/depth`
+/// `GET /v1/bundles/{name}/depth[?k_metric=…&k_connection=…&lambda1_topological=…&lambda1_connection=…]`
 ///
 /// Encoding depth classification from K and λ₁. Returns I (tangent,
 /// easily erased) through IV (topological, irrecoverable). Implements
 /// Theorem 8.14 of the Cognitive Geometry Correspondence.
+///
+/// All four threshold query params are optional. Unspecified ones use
+/// the `DepthConfig::default()` values from Theorem 8.14. The
+/// response echoes the `config_used` so the caller can audit which
+/// numbers produced the verdict (defaults are bit-identical to
+/// `DepthConfig::default()` when no overrides supplied).
 async fn bundle_depth_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<DepthReport>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine.bundle(&name).ok_or_else(|| {
@@ -2548,7 +2560,19 @@ async fn bundle_depth_report(
 
     let k = store.scalar_curvature();
     let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
-    let depth = curvature::encoding_depth(k, lambda1);
+
+    // Build DepthConfig, applying per-field overrides from query params.
+    // Unspecified params fall through to DepthConfig::default().
+    let mut cfg = curvature::DepthConfig::default();
+    let parse_override = |key: &str| -> Option<f64> {
+        params.get(key).and_then(|s| s.parse::<f64>().ok())
+    };
+    if let Some(v) = parse_override("k_metric") { cfg.k_metric = v; }
+    if let Some(v) = parse_override("k_connection") { cfg.k_connection = v; }
+    if let Some(v) = parse_override("lambda1_topological") { cfg.lambda1_topological = v; }
+    if let Some(v) = parse_override("lambda1_connection") { cfg.lambda1_connection = v; }
+
+    let depth = curvature::encoding_depth_with(k, lambda1, &cfg);
 
     let erasure_energy = match depth {
         curvature::EncodingDepth::Tangent     => "low",
@@ -2564,6 +2588,7 @@ async fn bundle_depth_report(
         k,
         lambda1,
         erasure_energy,
+        config_used: cfg,
     }))
 }
 
@@ -12003,7 +12028,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         // dispatcher knows where to attach.
         ProjectInvariant { bundle, .. } => Some(bundle.clone()),
         // Cognitive Geometry (Branch VII — Davis 2026-05-29)
-        Capacity { bundle, .. } | Horizon { bundle, .. } | Depth { bundle } => Some(bundle.clone()),
+        Capacity { bundle, .. } | Horizon { bundle, .. } | Depth { bundle, .. } => Some(bundle.clone()),
         // Divergence is cross-bundle; no single name
         _ => None,
     }

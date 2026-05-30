@@ -219,10 +219,19 @@ pub enum Statement {
         bundle: String,
         tau: f64,
     },
-    /// DEPTH <bundle> — encoding depth classification from K and λ₁.
-    /// Returns I (tangent) / II (connection) / III (metric) / IV (topological).
+    /// DEPTH <bundle> [K_METRIC f64] [K_CONNECTION f64]
+    ///                 [LAMBDA1_TOPOLOGICAL f64] [LAMBDA1_CONNECTION f64]
+    /// Encoding depth classification from K and λ₁. Returns I (tangent) /
+    /// II (connection) / III (metric) / IV (topological).
+    ///
+    /// The four optional threshold keywords override `DepthConfig`
+    /// fields individually; unspecified thresholds use the published
+    /// defaults from Theorem 8.14. When `config` is `None`, the
+    /// executor passes `DepthConfig::default()` to the classifier
+    /// (byte-identical to the pre-config behavior).
     Depth {
         bundle: String,
+        config: Option<crate::curvature::DepthConfig>,
     },
     Geodesic {
         bundle: String,
@@ -2227,11 +2236,54 @@ impl Parser {
     }
 
     /// DEPTH <bundle>
+    ///   [K_METRIC <f64>]            — overrides `DepthConfig::k_metric` (default 0.5)
+    ///   [K_CONNECTION <f64>]        — overrides `DepthConfig::k_connection` (default 0.1)
+    ///   [LAMBDA1_TOPOLOGICAL <f64>] — overrides `DepthConfig::lambda1_topological` (default 0.01)
+    ///   [LAMBDA1_CONNECTION <f64>]  — overrides `DepthConfig::lambda1_connection` (default 0.3)
     ///
     /// Returns the encoding depth classification (I–IV) based on K and λ₁.
+    /// All four threshold keywords are optional and may appear in any
+    /// order; unspecified thresholds use the published defaults from
+    /// Theorem 8.14 of the Cognitive Geometry Correspondence.
     fn parse_depth_stmt(&mut self) -> Result<Statement, String> {
         let bundle = self.expect_word()?;
-        Ok(Statement::Depth { bundle })
+        let mut overrides: Option<crate::curvature::DepthConfig> = None;
+        loop {
+            let kw = if self.is_keyword("K_METRIC") {
+                "k_metric"
+            } else if self.is_keyword("K_CONNECTION") {
+                "k_connection"
+            } else if self.is_keyword("LAMBDA1_TOPOLOGICAL") {
+                "lambda1_topological"
+            } else if self.is_keyword("LAMBDA1_CONNECTION") {
+                "lambda1_connection"
+            } else {
+                break;
+            };
+            self.advance();
+            let v = match self.tokens.get(self.pos) {
+                Some(Token::Number(n)) => {
+                    let v = *n;
+                    self.pos += 1;
+                    v
+                }
+                other => {
+                    return Err(format!(
+                        "DEPTH: expected number after {} keyword, got {other:?}",
+                        kw.to_uppercase()
+                    ))
+                }
+            };
+            let cfg = overrides.get_or_insert_with(crate::curvature::DepthConfig::default);
+            match kw {
+                "k_metric" => cfg.k_metric = v,
+                "k_connection" => cfg.k_connection = v,
+                "lambda1_topological" => cfg.lambda1_topological = v,
+                "lambda1_connection" => cfg.lambda1_connection = v,
+                _ => unreachable!(),
+            }
+        }
+        Ok(Statement::Depth { bundle, config: overrides })
     }
 
     fn parse_geodesic(&mut self) -> Result<Statement, String> {
@@ -5131,7 +5183,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .unwrap_or(0.0);
             Ok(ExecResult::Scalar(crate::curvature::horizon(*tau, k, lambda1)))
         }
-        Statement::Depth { bundle } => {
+        Statement::Depth { bundle, config } => {
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
             let k = store.as_heap()
                 .map(|s| crate::curvature::scalar_curvature(s))
@@ -5139,7 +5191,8 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let lambda1 = store.as_heap()
                 .map(|s| crate::spectral::spectral_gap(s))
                 .unwrap_or(0.0);
-            let depth = crate::curvature::encoding_depth(k, lambda1);
+            let cfg = config.unwrap_or_default();
+            let depth = crate::curvature::encoding_depth_with(k, lambda1, &cfg);
             let level: f64 = match depth {
                 crate::curvature::EncodingDepth::Tangent     => 1.0,
                 crate::curvature::EncodingDepth::Connection  => 2.0,
@@ -5440,9 +5493,45 @@ mod tests {
             }
             _ => panic!("Expected Horizon with TOLERANCE"),
         }
-        // DEPTH: no parameters beyond bundle name
+        // DEPTH: no overrides → config is None (executor will use defaults)
         match parse("DEPTH sensors").unwrap() {
-            Statement::Depth { bundle } => assert_eq!(bundle, "sensors"),
+            Statement::Depth { bundle, config } => {
+                assert_eq!(bundle, "sensors");
+                assert!(config.is_none(), "no overrides supplied → config should be None");
+            }
+            _ => panic!("Expected Depth"),
+        }
+
+        // DEPTH: single override (lambda1_topological = 0 — the JTBD-demo
+        // fix for sensor bundles where spectral_gap returns ~0)
+        match parse("DEPTH sensors LAMBDA1_TOPOLOGICAL 0").unwrap() {
+            Statement::Depth { bundle, config } => {
+                assert_eq!(bundle, "sensors");
+                let c = config.expect("override supplied → config should be Some");
+                assert!((c.lambda1_topological - 0.0).abs() < f64::EPSILON);
+                // Other fields keep defaults
+                assert!((c.k_metric - 0.5).abs() < f64::EPSILON);
+                assert!((c.k_connection - 0.1).abs() < f64::EPSILON);
+                assert!((c.lambda1_connection - 0.3).abs() < f64::EPSILON);
+            }
+            _ => panic!("Expected Depth"),
+        }
+
+        // DEPTH: all four overrides, mixed order
+        match parse(
+            "DEPTH sensors K_METRIC 2.0 LAMBDA1_CONNECTION 0.05 \
+             K_CONNECTION 0.25 LAMBDA1_TOPOLOGICAL 0.0001",
+        )
+        .unwrap()
+        {
+            Statement::Depth { bundle, config } => {
+                assert_eq!(bundle, "sensors");
+                let c = config.expect("overrides supplied");
+                assert!((c.k_metric - 2.0).abs() < 1e-12);
+                assert!((c.k_connection - 0.25).abs() < 1e-12);
+                assert!((c.lambda1_topological - 0.0001).abs() < 1e-12);
+                assert!((c.lambda1_connection - 0.05).abs() < 1e-12);
+            }
             _ => panic!("Expected Depth"),
         }
     }

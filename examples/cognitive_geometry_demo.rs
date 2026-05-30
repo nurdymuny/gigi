@@ -36,7 +36,7 @@
 #![cfg(feature = "kahler")]
 
 use gigi::curvature::{
-    capacity, encoding_depth, encoding_depth_with, horizon_with, scalar_curvature, DepthConfig,
+    capacity, encoding_depth_with, horizon_with, scalar_curvature, DepthConfig,
     EncodingDepth, HorizonConfig,
 };
 use gigi::spectral::spectral_gap;
@@ -207,8 +207,22 @@ fn report_bundle(label: &str, store: &BundleStore) -> (f64, f64, EncodingDepth) 
     }
 
     println!();
-    let depth = encoding_depth(k, lambda1);
+    // Use the substrate-aware constructor so the JTBD demo shows the
+    // out-of-the-box correct behavior on sensor bundles. `auto_for`
+    // inspects `spectral_gap(store)` and picks the continuous-substrate
+    // defaults (λ₁ cuts zeroed) when the graph estimator is degenerate
+    // — exactly the case the original demo flagged. Same surface call
+    // works for graph substrates too, where it falls through to the
+    // published Theorem 8.14 defaults.
+    let dcfg = DepthConfig::auto_for(store, 1e-9);
+    let dcfg_note = if dcfg == DepthConfig::for_continuous_substrate() {
+        "auto-selected `for_continuous_substrate()` (λ₁ degenerate)".to_string()
+    } else {
+        "auto-selected `for_graph_substrate()` (published Theorem 8.14)".to_string()
+    };
+    let depth = encoding_depth_with(k, lambda1, &dcfg);
     println!("  ┌── DEPTH classification");
+    line("  config", dcfg_note);
     line("  level", format!("{} ({:?})", depth.label(), depth));
     line(
         "  erasure energy",
@@ -332,21 +346,52 @@ fn main() {
         k_p, d_p.label(), d_p, k_v, d_v.label(), d_v
     );
 
-    header("WITHOUT OVERRIDE vs WITH OVERRIDE — DepthConfig in action");
+    header("RAW DEFAULTS vs `auto_for` — DepthConfig substrate selection");
     println!(
-        r#"  The default classification collapses both bundles to IV
-  (Topological) because `spectral_gap` returns ~0 on sensor-style
-  bundles and the default rule `λ₁ < 0.01 → Topological` catches
-  them. CAPACITY and HORIZON are unaffected — they expose raw
-  geometric quantities without thresholding.
+        r#"  The published Theorem 8.14 defaults (graph-Laplacian
+  thresholds) collapse both bundles to IV (Topological) because
+  `spectral_gap` returns ~0 on sensor-style substrates and the
+  default rule `λ₁ < 0.01 → Topological` catches them. CAPACITY
+  and HORIZON are unaffected — they expose raw geometric
+  quantities without thresholding.
 
-  Builders who know their substrate type can override the
-  threshold via the new DepthConfig surface. Below: same two
-  bundles, classified with `lambda1_topological = -1.0` (so the
-  topological cut never trips, releasing the cascade to consider
-  K alone):
+  The fix shipped on this branch is `DepthConfig::auto_for(store)`,
+  which inspects the bundle's spectral gap and picks the
+  continuous-substrate defaults (λ₁ cuts zeroed) when the graph
+  estimator is degenerate. The main DEPTH block above already uses
+  it. Side-by-side, the same two bundles classified under:
+
+    A. raw `DepthConfig::default()` (graph-substrate thresholds)
+    B. `DepthConfig::auto_for(store, 1e-9)` (substrate-aware)
+    C. manual per-axis override
+       (`lambda1_topological = -1.0` releases the cascade)
 "#
     );
+    let raw = DepthConfig::default();
+    let d_p_raw = encoding_depth_with(k_p, l_p, &raw);
+    let d_v_raw = encoding_depth_with(k_v, l_v, &raw);
+    line(
+        "A.  raw   peaceful",
+        format!("→ {} ({:?})", d_p_raw.label(), d_p_raw),
+    );
+    line(
+        "A.  raw   volatile",
+        format!("→ {} ({:?})", d_v_raw.label(), d_v_raw),
+    );
+
+    let auto_p = DepthConfig::auto_for(&peaceful, 1e-9);
+    let auto_v = DepthConfig::auto_for(&volatile, 1e-9);
+    let d_p_auto = encoding_depth_with(k_p, l_p, &auto_p);
+    let d_v_auto = encoding_depth_with(k_v, l_v, &auto_v);
+    line(
+        "B.  auto  peaceful",
+        format!("→ {} ({:?})", d_p_auto.label(), d_p_auto),
+    );
+    line(
+        "B.  auto  volatile",
+        format!("→ {} ({:?})", d_v_auto.label(), d_v_auto),
+    );
+
     let permissive = DepthConfig {
         lambda1_topological: -1.0,
         ..DepthConfig::default()
@@ -354,17 +399,23 @@ fn main() {
     let d_p_perm = encoding_depth_with(k_p, l_p, &permissive);
     let d_v_perm = encoding_depth_with(k_v, l_v, &permissive);
     line(
-        "Bundle A peaceful (was IV)",
+        "C.  manual peaceful",
         format!("→ {} ({:?})", d_p_perm.label(), d_p_perm),
     );
     line(
-        "Bundle B volatile (was IV)",
+        "C.  manual volatile",
         format!("→ {} ({:?})", d_v_perm.label(), d_v_perm),
     );
     println!();
     println!(
-        r#"  GQL form:    DEPTH <bundle> LAMBDA1_TOPOLOGICAL -1.0
-  HTTP form:   GET /v1/bundles/{{name}}/depth?lambda1_topological=-1.0
+        r#"  GQL forms:
+    DEPTH <bundle>                              -- raw defaults
+    DEPTH <bundle> LAMBDA1_TOPOLOGICAL -1.0     -- per-axis override
+  HTTP form:
+    GET /v1/bundles/{{name}}/depth?lambda1_topological=-1.0
+  Rust API:
+    encoding_depth_with(k, λ₁, &DepthConfig::auto_for(store, 1e-9))
+
   All four thresholds can be overridden independently and
   optionally; unspecified ones keep the published Theorem 8.14
   defaults. The HTTP response echoes `config_used` so the caller
@@ -372,10 +423,11 @@ fn main() {
 
   The published defaults are not wrong — they're calibrated for
   graph-Laplacian substrates where λ₁ is a non-degenerate signal.
-  For dense-vector / continuous substrates (sensor data, BGE
-  embeddings), the per-substrate-type override is the right
-  surface. Per-bundle calibration (fitting thresholds from the
-  joint (K, λ₁) distribution at bundle-load time) is the v2
-  follow-up — same move as the δ recalibration 0.657 → 0.74."#
+  `auto_for` picks the right substrate-type defaults by
+  introspecting `spectral_gap(store)`, so DEPTH works out of the
+  box on both substrate types. Per-bundle calibration (fitting
+  thresholds from the joint (K, λ₁) distribution at bundle-load
+  time) is the v2 follow-up — same move as the δ recalibration
+  0.657 → 0.74."#
     );
 }

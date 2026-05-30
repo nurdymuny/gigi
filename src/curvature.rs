@@ -577,11 +577,65 @@ pub struct DepthConfig {
 
 impl Default for DepthConfig {
     fn default() -> Self {
+        // Reproduces the Theorem 8.14 published thresholds, calibrated
+        // for graph-Laplacian substrates where λ₁ is a non-degenerate
+        // signal. Same as `for_graph_substrate()`.
+        Self::for_graph_substrate()
+    }
+}
+
+impl DepthConfig {
+    /// Thresholds calibrated for graph-Laplacian substrates where the
+    /// spectral gap λ₁ is a meaningful, non-degenerate quantity. These
+    /// are the published Theorem 8.14 values. Equivalent to
+    /// `DepthConfig::default()`.
+    pub fn for_graph_substrate() -> Self {
         DepthConfig {
             lambda1_topological: 0.01,
             k_metric: 0.5,
             k_connection: 0.1,
             lambda1_connection: 0.3,
+        }
+    }
+
+    /// Thresholds calibrated for dense-vector / continuous substrates
+    /// (sensor streams, BGE embeddings, anything where the graph
+    /// Laplacian estimator returns ~0 because the connectivity isn't
+    /// graph-structured). Both λ₁ cuts are set to 0.0 so they never
+    /// trip on a non-negative λ₁ value, and classification falls
+    /// through to the K-only cascade — Tangent / Connection / Metric
+    /// based purely on local curvature.
+    ///
+    /// Pick this when `spectral_gap(store)` returns ~0 not because
+    /// the substrate is disconnected but because no sensible graph
+    /// Laplacian estimator exists for it. The JTBD demo's sensor
+    /// bundles are the canonical example.
+    pub fn for_continuous_substrate() -> Self {
+        DepthConfig {
+            lambda1_topological: 0.0,
+            k_metric: 0.5,
+            k_connection: 0.1,
+            lambda1_connection: 0.0,
+        }
+    }
+
+    /// Auto-select the right substrate-type defaults by introspecting
+    /// the bundle's spectral gap. When the gap is below `epsilon`, the
+    /// bundle is non-graph-structured (sensor / dense-vector) and the
+    /// continuous-substrate defaults apply. Otherwise the graph
+    /// defaults apply.
+    ///
+    /// This is the "works out of the box" path — consumers who don't
+    /// want to think about substrate type get correct classification
+    /// behavior either way. Equivalent to manually calling
+    /// `for_continuous_substrate()` or `for_graph_substrate()` based
+    /// on a `spectral_gap` check.
+    pub fn auto_for(store: &crate::bundle::BundleStore, epsilon: f64) -> Self {
+        let lambda1 = crate::spectral::spectral_gap(store);
+        if lambda1 < epsilon {
+            Self::for_continuous_substrate()
+        } else {
+            Self::for_graph_substrate()
         }
     }
 }
@@ -1416,6 +1470,88 @@ mod tests {
         let store = make_store_with_data(); // all-identical val=50, cat=X
         assert!(welford_radius(&store).is_nan(),
             "uniform data has zero variance everywhere; should be NaN");
+    }
+
+    // ── DepthConfig substrate-aware constructors ────────────────
+
+    /// `for_graph_substrate()` is identical to `Default::default()` —
+    /// the documented Theorem 8.14 thresholds. Pinning both directions
+    /// of that equivalence here so a future Default change can't drift
+    /// the named constructor.
+    #[test]
+    fn depth_for_graph_substrate_equals_default() {
+        assert_eq!(DepthConfig::for_graph_substrate(), DepthConfig::default());
+    }
+
+    /// `for_continuous_substrate()` zeroes both λ₁ cuts. Same K cuts as
+    /// the graph defaults — only the λ₁-triggered branches are changed.
+    #[test]
+    fn depth_for_continuous_substrate_zeroes_lambda1_cuts() {
+        let c = DepthConfig::for_continuous_substrate();
+        assert_eq!(c.lambda1_topological, 0.0);
+        assert_eq!(c.lambda1_connection, 0.0);
+        // K cuts unchanged from the published values.
+        let g = DepthConfig::for_graph_substrate();
+        assert_eq!(c.k_metric, g.k_metric);
+        assert_eq!(c.k_connection, g.k_connection);
+    }
+
+    /// On the continuous-substrate constructor, λ₁ ≈ 0 (sensor case)
+    /// no longer triggers Topological. Classification falls through to
+    /// the K-only cascade — the fix the JTBD demo motivated.
+    #[test]
+    fn depth_continuous_substrate_classifies_sensor_case_on_k_alone() {
+        let c = DepthConfig::for_continuous_substrate();
+        // Low K, λ₁ = 0  →  was Topological under defaults; now Tangent.
+        assert_eq!(encoding_depth_with(0.05, 0.0, &c), EncodingDepth::Tangent);
+        // Moderate K, λ₁ = 0  →  was Topological; now Connection.
+        assert_eq!(encoding_depth_with(0.2, 0.0, &c), EncodingDepth::Connection);
+        // High K, λ₁ = 0  →  was Topological; now Metric.
+        assert_eq!(encoding_depth_with(0.7, 0.0, &c), EncodingDepth::Metric);
+
+        // Sanity: the graph defaults DO call all three Topological,
+        // documenting the difference the constructor switch made.
+        let g = DepthConfig::for_graph_substrate();
+        assert_eq!(encoding_depth_with(0.05, 0.0, &g), EncodingDepth::Topological);
+        assert_eq!(encoding_depth_with(0.2,  0.0, &g), EncodingDepth::Topological);
+        assert_eq!(encoding_depth_with(0.7,  0.0, &g), EncodingDepth::Topological);
+    }
+
+    /// `auto_for(store, eps)` is a pure branch on
+    /// `spectral_gap(store) < eps`. Tested by sweeping epsilon on a
+    /// fixed fixture rather than relying on any specific fixture
+    /// having a known-low spectral gap: with a tiny epsilon the branch
+    /// goes to graph; with a huge epsilon (larger than any finite λ₁)
+    /// the branch goes to continuous. That pins the contract without
+    /// coupling to a fixture-specific λ₁ value.
+    #[test]
+    fn depth_auto_for_branches_on_epsilon() {
+        let store = make_store_with_data();
+        let lambda1 = crate::spectral::spectral_gap(&store);
+        assert!(
+            lambda1.is_finite(),
+            "fixture λ₁ must be finite for this test; got {lambda1}"
+        );
+
+        // Tiny epsilon → λ₁ is "large" → graph defaults. Pick a value
+        // strictly less than λ₁ so the branch must be `else`.
+        let tiny = (lambda1 / 2.0).max(0.0);
+        let c_graph = DepthConfig::auto_for(&store, tiny);
+        assert_eq!(
+            c_graph,
+            DepthConfig::for_graph_substrate(),
+            "λ₁={lambda1} >= eps={tiny} should select graph defaults"
+        );
+
+        // Huge epsilon → λ₁ is "tiny" → continuous defaults. Any finite
+        // non-negative λ₁ is below 1e12.
+        let huge = 1e12;
+        let c_cont = DepthConfig::auto_for(&store, huge);
+        assert_eq!(
+            c_cont,
+            DepthConfig::for_continuous_substrate(),
+            "λ₁={lambda1} < eps={huge} should select continuous defaults"
+        );
     }
 
     /// DepthConfig is serializable both directions (needed for HTTP

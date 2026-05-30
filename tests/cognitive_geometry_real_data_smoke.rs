@@ -366,3 +366,84 @@ fn perceive_bias_grows_monotonically_with_rotation_angle() {
     assert!((last - 2.0).abs() < 1e-12,
         "bias at 90° should be 2.0; got {}", last);
 }
+
+#[test]
+fn transport_to_perceive_chain_on_real_bundle_dimensions() {
+    // End-to-end integration: run flat_transport with a magnetic bias
+    // on a synthetic but bundle-dimensioned segment, extract R_acc
+    // from TransportResult, feed it straight to perceive(). The whole
+    // point of step 4b's R_acc addition is making this chain work
+    // without a glue layer. This pins the integration contract.
+    //
+    // We use the same fiber dim (3) as the sensor smoke fixture but
+    // construct the segment + bias programmatically — flat_transport's
+    // segment dim is independent of any actual bundle's record dim;
+    // both happen to be 3 here so the "real-dim" framing holds.
+    use gigi::geometry::transport::{flat_transport, BSource, TransportSegment};
+    use gigi::geometry::forms::{ClosedTwoForm, TwoForm};
+
+    // 3D rotation about the z-axis: B = b·dx∧dy embedded in R³.
+    let b = 0.6_f64;
+    let bias_mat = vec![
+        0.0, -b,  0.0,
+        b,   0.0, 0.0,
+        0.0, 0.0, 0.0,
+    ];
+    let bias = ClosedTwoForm::new_constant(
+        TwoForm::new(bias_mat, 3).expect("antisymmetric"),
+    );
+
+    // Initial velocity in the (x,y) plane, with a nonzero z to verify
+    // it's preserved (the rotation axis is z).
+    let seg = TransportSegment::new(
+        vec![0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0],
+        vec![1.0, 0.0, 0.5],
+    )
+    .unwrap();
+    let r = flat_transport(&seg, Some(&bias), 1e-4, 5000, BSource::Override).unwrap();
+
+    // Step 4b contract: R_acc must be present on success.
+    let rotation = r.rotation.as_ref().expect("R_acc present on success");
+    assert_eq!(rotation.len(), 9, "R_acc must be dim² = 9 for dim=3");
+
+    // Step 4a contract: perceive(R, v_initial) must equal final_velocity
+    // to RK4 tolerance. This is the through-line that makes PERCEIVE a
+    // useful chain off TRANSPORT.
+    let initial_v = vec![1.0, 0.0, 0.5];
+    let res = perceive(rotation, &initial_v, 3).expect("perceive succeeds on real R_acc");
+
+    for i in 0..3 {
+        assert!(
+            (res.v_perceived[i] - r.final_velocity[i]).abs() < 1e-5,
+            "R_acc·v_initial[{}] = {} vs final_velocity[{}] = {}",
+            i, res.v_perceived[i], i, r.final_velocity[i]
+        );
+    }
+
+    // The z-component must be preserved (rotation axis).
+    assert!(
+        (res.v_perceived[2] - 0.5).abs() < 1e-12,
+        "z-axis component must be preserved on a z-axis rotation: got {}",
+        res.v_perceived[2]
+    );
+
+    // Bias must be > 0 (we DID rotate) and finite.
+    assert!(res.bias.is_finite() && res.bias > 0.0,
+        "bias must be positive and finite: {}", res.bias);
+
+    // Bias closed form for an angle θ rotation embedded in 3D:
+    // ‖R - I‖_F² = 4·(1 - cos θ).
+    // Here θ = b · T = 0.6 · (1e-4 · 5000) = 0.3 rad.
+    let theta = 0.3_f64;
+    let expected_bias = (4.0 * (1.0 - theta.cos())).sqrt();
+    assert!(
+        (res.bias - expected_bias).abs() < 1e-5,
+        "bias {} vs closed-form {} differ",
+        res.bias, expected_bias
+    );
+
+    // perception_bias agrees with perceive's bias (both read the same R).
+    let standalone = perception_bias(rotation, 3).expect("standalone bias");
+    assert!((standalone - res.bias).abs() < 1e-15);
+}

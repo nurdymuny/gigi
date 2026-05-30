@@ -2661,6 +2661,118 @@ async fn bundle_depth_report(
     }))
 }
 
+/// Request body for `POST /v1/bundles/{name}/perceive` — Davis PERCEIVE
+/// (Theorem 8.6, Branch VII Cognitive Geometry Correspondence).
+///
+/// Both `rotation` and `vector` are caller-supplied — typically extracted
+/// from a recent TRANSPORT call's `rotation` field. The bundle name is
+/// in the path for consistency with the other CG verbs (and so a future
+/// server-side rotation source can hang off it), but the math itself is
+/// determined by the request body.
+#[derive(Deserialize)]
+struct PerceiveRequest {
+    /// Accumulated rotation matrix R, row-major `dim × dim`. Must be
+    /// exactly `dim * dim` floats long.
+    rotation: Vec<f64>,
+    /// Input vector v, length `dim`. The output is `R · v`.
+    vector: Vec<f64>,
+    /// Dimension of the rotation matrix and vector.
+    dim: usize,
+}
+
+/// Response for `POST /v1/bundles/{name}/perceive`. Wraps the
+/// `PerceptionResult` from `curvature::perceive` plus the bundle name
+/// (echo-back so consumers can log/audit which substrate the verb was
+/// scoped to) and a one-line interpretation for builders.
+#[derive(Serialize)]
+struct PerceiveResponse {
+    /// `v_perceived = R · v`. The vector the system actually sees
+    /// after parallel-transport through the accumulated rotation R.
+    v_perceived: Vec<f64>,
+    /// `‖R − I‖_F`. Zero when R = I (no drift); grows monotonically
+    /// with the rotation angle. Marcella's coherence-signal δ_t.
+    bias: f64,
+    /// Dimension of the rotation / vectors, echoed back.
+    dim: usize,
+    /// Bundle name the request was scoped to.
+    bundle: String,
+    /// Builder-readable interpretation of the bias magnitude.
+    interpretation: String,
+}
+
+/// `POST /v1/bundles/{name}/perceive`
+///
+/// Davis PERCEIVE (Theorem 8.6 — Cognitive Geometry Correspondence).
+/// Given an accumulated rotation R (from a prior TRANSPORT, or
+/// caller-supplied) and an input vector v, returns:
+///
+///   v_perceived = R · v
+///   bias        = ‖R − I‖_F
+///
+/// Pure function on `(rotation, vector)` — the bundle name in the
+/// path is contextual (for logging / future server-side rotation
+/// extraction); the math doesn't read bundle state. Returns 400 on
+/// any input-shape mismatch; 404 when the bundle doesn't exist.
+async fn bundle_perceive(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<PerceiveRequest>,
+) -> Result<Json<PerceiveResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // 404 if the bundle doesn't exist. Even though PERCEIVE is pure on
+    // its inputs, callers expect the same not-found semantics as the
+    // other CG verbs.
+    {
+        let engine = state.engine.read().unwrap();
+        if engine.bundle(&name).is_none() {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+            ));
+        }
+    }
+
+    let result = curvature::perceive(&req.rotation, &req.vector, req.dim).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse { error: format!("perceive: {}", e) }),
+        )
+    })?;
+
+    // Upper-bound: bias ≤ 2·√dim for orthogonal R (hit by R = −I).
+    let max_bias = 2.0 * (req.dim as f64).sqrt();
+    let interpretation = if result.bias < 1e-9 {
+        "bias ≈ 0: no accumulated rotation. v_perceived ≡ v — the substrate has not \
+         distorted this vector along the transport path."
+            .to_string()
+    } else if result.bias < 0.1 {
+        format!(
+            "bias = {:.4}: small rotation. v_perceived is a near-trivial perturbation of v; \
+             the substrate's drift is below typical action thresholds.",
+            result.bias
+        )
+    } else if result.bias < max_bias / 2.0 {
+        format!(
+            "bias = {:.4}: moderate rotation (max possible = {:.2}). v_perceived diverges \
+             meaningfully from v — re-check before acting on the perceived value.",
+            result.bias, max_bias
+        )
+    } else {
+        format!(
+            "bias = {:.4}: large rotation (max possible = {:.2}). v_perceived has drifted \
+             substantially from v; the substrate's coherence over this path is degraded.",
+            result.bias, max_bias
+        )
+    };
+
+    Ok(Json(PerceiveResponse {
+        v_perceived: result.v_perceived,
+        bias: result.bias,
+        dim: req.dim,
+        bundle: name,
+        interpretation,
+    }))
+}
+
 /// L3.4 — Marcella consumption surface for spectral gap
 /// (consumption draft v2 §4, GIGI reply Q4).
 ///
@@ -12958,6 +13070,7 @@ async fn main() {
         .route("/v1/bundles/{name}/capacity", get(bundle_capacity_report))
         .route("/v1/bundles/{name}/horizon",  get(bundle_horizon_report))
         .route("/v1/bundles/{name}/depth",    get(bundle_depth_report))
+        .route("/v1/bundles/{name}/perceive", post(bundle_perceive))
         .route("/v1/bundles/{name}/consistency", get(consistency_check))
         .route("/v1/bundles/{name}/betti", get(betti_report))
         .route("/v1/bundles/{name}/entropy", get(entropy_report))

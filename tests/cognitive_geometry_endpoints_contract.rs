@@ -31,8 +31,9 @@
 #![cfg(feature = "kahler")]
 
 use gigi::curvature::{
-    capacity, encoding_depth, encoding_depth_with, horizon, horizon_with, scalar_curvature,
-    DepthConfig, EncodingDepth, HorizonConfig, HorizonResult, LengthScaleEstimator,
+    capacity, encoding_depth, encoding_depth_with, horizon, horizon_with, perceive,
+    perception_bias, scalar_curvature, DepthConfig, EncodingDepth, HorizonConfig, HorizonResult,
+    LengthScaleEstimator, PerceiveError, PerceptionResult,
 };
 use gigi::spectral::spectral_gap;
 use gigi::types::{BundleSchema, FieldDef, Record, Value};
@@ -291,4 +292,81 @@ fn encoding_depth_shim_matches_default_explicit() {
             "shim vs explicit default disagreed at K={k}, λ₁={l1}"
         );
     }
+}
+
+// ── PERCEIVE contract (Theorem 8.6, step 4a math layer) ────────────
+
+/// PerceptionResult is the wire-side payload for a future
+/// /v1/bundles/{name}/perceive endpoint. Pin the field set + types
+/// so the JSON shape can't drift before the endpoint lands.
+#[test]
+fn perception_result_has_expected_field_set() {
+    let r = vec![1.0, 0.0, 0.0, 1.0];
+    let v = vec![1.0, 0.0];
+    let res: PerceptionResult = perceive(&r, &v, 2).expect("perceive");
+    let _: Vec<f64> = res.v_perceived;
+    let _: f64 = res.bias;
+}
+
+/// Identity rotation: bias is exactly 0, perceived = input. This is
+/// the wire-visible "no drift" verdict callers depend on.
+#[test]
+fn perceive_identity_returns_zero_bias_passthrough() {
+    let id = vec![1.0, 0.0, 0.0,
+                  0.0, 1.0, 0.0,
+                  0.0, 0.0, 1.0];
+    let v = vec![3.0, -1.0, 4.0];
+    let res = perceive(&id, &v, 3).expect("identity");
+    assert_eq!(res.v_perceived, v);
+    assert_eq!(res.bias, 0.0);
+}
+
+/// PerceiveError variants are exhaustive — the HTTP endpoint will
+/// translate them into 400-class responses with field-specific
+/// diagnostics. Pin the variant set so a future addition forces a
+/// compile-time decision on the wire mapping.
+#[test]
+fn perceive_error_variants_pinned() {
+    // EmptyDimension
+    assert_eq!(perceive(&[], &[], 0), Err(PerceiveError::EmptyDimension));
+    // NonSquareRotation
+    assert_eq!(
+        perceive(&[1.0, 0.0, 0.0], &[0.0, 0.0], 2),
+        Err(PerceiveError::NonSquareRotation { dim: 2, len: 3 })
+    );
+    // VectorDimMismatch
+    assert_eq!(
+        perceive(&[1.0, 0.0, 0.0, 1.0], &[0.0, 0.0, 0.0], 2),
+        Err(PerceiveError::VectorDimMismatch { rotation_dim: 2, vector_len: 3 })
+    );
+    // Error type itself implements Display + Error (the HTTP layer
+    // needs both to format diagnostics).
+    let e = PerceiveError::EmptyDimension;
+    let _: String = format!("{}", e);
+    let _: &dyn std::error::Error = &e;
+}
+
+/// `perception_bias` (stand-alone) matches the bias field of `perceive`.
+/// The endpoint may call either depending on whether v is supplied; the
+/// two paths must return identical numbers for the same R.
+#[test]
+fn perception_bias_standalone_matches_combined() {
+    let r = vec![0.6, -0.8,
+                 0.8,  0.6];
+    let v = vec![1.0, 0.0];
+    let standalone = perception_bias(&r, 2).expect("bias");
+    let combined = perceive(&r, &v, 2).expect("perceive").bias;
+    assert!((standalone - combined).abs() < 1e-15);
+}
+
+/// PerceptionResult serialization round-trip — the JSON shape the HTTP
+/// endpoint will emit / the consumer will deserialize.
+#[test]
+fn perception_result_roundtrips_through_json() {
+    let r = vec![0.0, -1.0, 1.0, 0.0];
+    let v = vec![1.0, 0.0];
+    let res = perceive(&r, &v, 2).expect("perceive");
+    let json = serde_json::to_string(&res).expect("serialize");
+    let back: PerceptionResult = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(res, back);
 }

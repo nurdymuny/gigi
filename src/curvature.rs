@@ -670,6 +670,165 @@ pub fn encoding_depth(k: f64, lambda1: f64) -> EncodingDepth {
     encoding_depth_with(k, lambda1, &DepthConfig::default())
 }
 
+// ── PERCEIVE — Theorem 8.6 (Cognitive Geometry Correspondence) ──────
+//
+// Given an accumulated rotation R that a vector v has been parallel-
+// transported through (the R_acc of Marcella's PROPRIOCEPTION /
+// COHERENCE_SIGNAL specs, or the per-segment rotation surfaced by
+// flat_transport), PERCEIVE answers two questions:
+//
+//   1. What does the system actually *perceive* after the transport?
+//      → v_perceived = R · v   (Theorem 8.6 — the perceived vector
+//                                differs from v by exactly the
+//                                accumulated rotation)
+//
+//   2. How much has the system's frame drifted from the canonical one?
+//      → bias = ‖R − I‖_F      (Frobenius norm of the deviation from
+//                                identity; zero when no rotation has
+//                                accumulated, grows monotonically with
+//                                rotation angle)
+//
+// This is the pure-math layer. R is provided by the caller; the upstream
+// path-to-R extraction lives in `src/geometry/transport.rs` (a future
+// commit surfaces R_acc on TransportResult so the verb can chain).
+// PERCEIVE itself is a single matmul + a single Frobenius norm — no
+// hidden state, no path replay, deterministic on inputs.
+
+/// Errors PERCEIVE can return when its inputs disagree on shape.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PerceiveError {
+    /// Rotation matrix length isn't `dim * dim`.
+    NonSquareRotation { dim: usize, len: usize },
+    /// Vector length doesn't match the rotation's dimension.
+    VectorDimMismatch { rotation_dim: usize, vector_len: usize },
+    /// Zero dimension (degenerate).
+    EmptyDimension,
+}
+
+impl std::fmt::Display for PerceiveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PerceiveError::NonSquareRotation { dim, len } => write!(
+                f,
+                "rotation matrix must have dim²={} entries; got {}",
+                dim * dim,
+                len
+            ),
+            PerceiveError::VectorDimMismatch { rotation_dim, vector_len } => write!(
+                f,
+                "vector length {} doesn't match rotation dim {}",
+                vector_len, rotation_dim
+            ),
+            PerceiveError::EmptyDimension => write!(f, "dim must be positive"),
+        }
+    }
+}
+
+impl std::error::Error for PerceiveError {}
+
+/// Result of [`perceive`]. Both the perceived vector and the bias
+/// scalar are reported in one call because callers typically want both
+/// (the vector to act on, the scalar to decide whether to trust it).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct PerceptionResult {
+    /// `v_perceived = R · v`. The vector the system actually sees
+    /// after the parallel transport through the accumulated rotation R.
+    pub v_perceived: Vec<f64>,
+    /// `‖R − I‖_F`. Zero when R = I (no drift); grows monotonically
+    /// with the rotation angle. Marcella's COHERENCE_SIGNAL_SPEC §3
+    /// uses this as the windowed-holonomy δ_t for the gain-gate input.
+    pub bias: f64,
+}
+
+/// PERCEIVE (Theorem 8.6): given an accumulated rotation `R` (row-major,
+/// `dim × dim`) and a vector `v` (length `dim`), compute the perceived
+/// vector `R · v` and the perception bias `‖R − I‖_F` in one pass.
+///
+/// `R` is provided by the caller — typically the accumulated rotation
+/// from a parallel-transport step (see `src/geometry/transport.rs`).
+/// PERCEIVE itself is pure: deterministic on `(R, v)`, no I/O, no
+/// hidden state. Marcella's runtime equivalent reuses the same `R_acc`
+/// that the prefix scan already produces (`COHERENCE_SIGNAL_SPEC.md §3`).
+///
+/// ### Math
+///
+/// - `v_perceived[i] = Σ_j R[i,j] · v[j]`
+/// - `bias² = Σ_{i,j} (R[i,j] − δ_{ij})²`
+///
+/// Bias is in the range `[0, 2·√dim]` for orthogonal R, with the
+/// upper bound hit by R = −I.
+///
+/// ### Errors
+///
+/// - `EmptyDimension` if `dim == 0`.
+/// - `NonSquareRotation` if `rotation.len() != dim * dim`.
+/// - `VectorDimMismatch` if `v.len() != dim`.
+pub fn perceive(
+    rotation: &[f64],
+    v: &[f64],
+    dim: usize,
+) -> Result<PerceptionResult, PerceiveError> {
+    if dim == 0 {
+        return Err(PerceiveError::EmptyDimension);
+    }
+    if rotation.len() != dim * dim {
+        return Err(PerceiveError::NonSquareRotation {
+            dim,
+            len: rotation.len(),
+        });
+    }
+    if v.len() != dim {
+        return Err(PerceiveError::VectorDimMismatch {
+            rotation_dim: dim,
+            vector_len: v.len(),
+        });
+    }
+
+    // v_perceived = R · v (row-major matmul).
+    let mut v_perceived = vec![0.0_f64; dim];
+    for i in 0..dim {
+        let mut acc = 0.0_f64;
+        let row = &rotation[i * dim..(i + 1) * dim];
+        for j in 0..dim {
+            acc += row[j] * v[j];
+        }
+        v_perceived[i] = acc;
+    }
+
+    // bias = ‖R − I‖_F = sqrt(Σ_{i,j} (R[i,j] − δ_{ij})²).
+    let bias = perception_bias(rotation, dim)?;
+
+    Ok(PerceptionResult { v_perceived, bias })
+}
+
+/// Frobenius norm of `R − I` for a `dim × dim` row-major matrix.
+///
+/// Stand-alone helper exposed so callers who only want the bias scalar
+/// (e.g. a windowed-coherence pass that doesn't need to act on any
+/// particular v) can read it without allocating a `v_perceived` they
+/// won't use. `perceive()` calls this internally.
+pub fn perception_bias(rotation: &[f64], dim: usize) -> Result<f64, PerceiveError> {
+    if dim == 0 {
+        return Err(PerceiveError::EmptyDimension);
+    }
+    if rotation.len() != dim * dim {
+        return Err(PerceiveError::NonSquareRotation {
+            dim,
+            len: rotation.len(),
+        });
+    }
+    let mut sum_sq = 0.0_f64;
+    for i in 0..dim {
+        for j in 0..dim {
+            let r_ij = rotation[i * dim + j];
+            let delta_ij = if i == j { 1.0 } else { 0.0 };
+            let d = r_ij - delta_ij;
+            sum_sq += d * d;
+        }
+    }
+    Ok(sum_sq.sqrt())
+}
+
 /// Partition function Z(β, p) = Σ exp(-β · d(p, q)) (Def 3.7).
 ///
 /// Sums over the geometric neighborhood of p (records sharing indexed field
@@ -1568,5 +1727,121 @@ mod tests {
         let s = serde_json::to_string(&cfg).expect("serialize");
         let back: DepthConfig = serde_json::from_str(&s).expect("deserialize");
         assert_eq!(cfg, back);
+    }
+
+    // ── PERCEIVE — Theorem 8.6 ───────────────────────────────
+
+    /// Identity rotation: the perceived vector equals the input
+    /// exactly and the bias is exactly 0. This is the canonical
+    /// "no drift" case Marcella's coherence-signal spec falls back
+    /// to when the prefix scan has accumulated no rotation.
+    #[test]
+    fn perceive_identity_is_passthrough_with_zero_bias() {
+        let id = vec![1.0, 0.0, 0.0,
+                      0.0, 1.0, 0.0,
+                      0.0, 0.0, 1.0];
+        let v = vec![1.0, 2.0, 3.0];
+        let res = perceive(&id, &v, 3).expect("identity perceive");
+        assert_eq!(res.v_perceived, v, "identity must be passthrough");
+        assert_eq!(res.bias, 0.0, "identity bias must be exactly zero");
+    }
+
+    /// 90° rotation in 2D (the canonical small example):
+    ///   R = [[0, -1],
+    ///        [1,  0]],   v = [1, 0]
+    ///   → v_perceived = [0, 1]
+    ///   → R - I = [[-1, -1], [1, -1]]
+    ///   → ‖R - I‖_F² = 1+1+1+1 = 4  →  bias = 2.0
+    /// Computed by hand; serves as the ground-truth correctness test.
+    #[test]
+    fn perceive_2d_90deg_rotation_matches_hand_computation() {
+        let r = vec![0.0, -1.0,
+                     1.0,  0.0];
+        let v = vec![1.0, 0.0];
+        let res = perceive(&r, &v, 2).expect("90deg perceive");
+        assert!((res.v_perceived[0] - 0.0).abs() < 1e-12, "v[0] = {}", res.v_perceived[0]);
+        assert!((res.v_perceived[1] - 1.0).abs() < 1e-12, "v[1] = {}", res.v_perceived[1]);
+        assert!((res.bias - 2.0).abs() < 1e-12, "bias = {} (expected 2.0)", res.bias);
+    }
+
+    /// R = -I is the maximally-rotated case for orthogonal R. The
+    /// perceived vector flips sign, and the bias hits its upper
+    /// bound 2·√dim (here √4 = 2, so bias = 4 for dim=4? wait — R - I
+    /// for R=-I is -2I, so ‖-2I‖_F = 2·√dim). For dim=3, that's
+    /// 2·√3 ≈ 3.464. Pin both endpoints.
+    #[test]
+    fn perceive_negative_identity_hits_upper_bias_bound() {
+        let neg_id = vec![-1.0, 0.0, 0.0,
+                           0.0,-1.0, 0.0,
+                           0.0, 0.0,-1.0];
+        let v = vec![1.0, -2.0, 3.0];
+        let res = perceive(&neg_id, &v, 3).expect("-I perceive");
+        // Sign flip on every component.
+        assert_eq!(res.v_perceived, vec![-1.0, 2.0, -3.0]);
+        // ‖-2I‖_F = sqrt(4 + 4 + 4) = 2√3.
+        let expected = 2.0 * (3.0_f64).sqrt();
+        assert!(
+            (res.bias - expected).abs() < 1e-12,
+            "bias = {} (expected 2√3 ≈ {})",
+            res.bias, expected
+        );
+    }
+
+    /// Error: empty dim.
+    #[test]
+    fn perceive_rejects_zero_dim() {
+        assert_eq!(perceive(&[], &[], 0), Err(PerceiveError::EmptyDimension));
+        assert_eq!(perception_bias(&[], 0), Err(PerceiveError::EmptyDimension));
+    }
+
+    /// Error: rotation isn't square.
+    #[test]
+    fn perceive_rejects_non_square_rotation() {
+        let bad = vec![1.0, 0.0, 0.0, 0.0, 1.0]; // dim 2 needs 4 entries, got 5
+        let v = vec![0.0, 0.0];
+        let err = perceive(&bad, &v, 2).unwrap_err();
+        assert_eq!(err, PerceiveError::NonSquareRotation { dim: 2, len: 5 });
+    }
+
+    /// Error: vector dim doesn't match rotation dim.
+    #[test]
+    fn perceive_rejects_vector_dim_mismatch() {
+        let r = vec![1.0, 0.0, 0.0, 1.0];
+        let v = vec![1.0, 2.0, 3.0]; // length 3 vs rotation dim 2
+        let err = perceive(&r, &v, 2).unwrap_err();
+        assert_eq!(err, PerceiveError::VectorDimMismatch { rotation_dim: 2, vector_len: 3 });
+    }
+
+    /// `perception_bias` (standalone) agrees with what `perceive`
+    /// returns. Two callers must read identical numbers for the same R.
+    #[test]
+    fn perception_bias_matches_perceive_bias_field() {
+        // Random-ish 3x3 matrix (not necessarily a rotation; the bias
+        // is well-defined for any matrix).
+        let r = vec![0.7, -0.5, 0.2,
+                     0.1,  0.9, 0.4,
+                    -0.3,  0.1, 0.8];
+        let v = vec![1.0, 0.0, 0.0];
+        let standalone = perception_bias(&r, 3).expect("bias");
+        let combined = perceive(&r, &v, 3).expect("perceive").bias;
+        assert!(
+            (standalone - combined).abs() < 1e-15,
+            "standalone {} vs combined {} disagreed",
+            standalone, combined
+        );
+    }
+
+    /// PerceptionResult round-trips through JSON. The struct is the
+    /// wire-side payload for a future PERCEIVE HTTP endpoint; pin
+    /// the round-trip now so a future serde change can't silently
+    /// break it.
+    #[test]
+    fn perception_result_roundtrips_through_json() {
+        let r = vec![0.0, -1.0, 1.0, 0.0];
+        let v = vec![1.0, 0.0];
+        let res = perceive(&r, &v, 2).expect("perceive");
+        let s = serde_json::to_string(&res).expect("serialize");
+        let back: PerceptionResult = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(res, back);
     }
 }

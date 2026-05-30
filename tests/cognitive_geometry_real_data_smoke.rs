@@ -22,8 +22,8 @@
 #![cfg(feature = "kahler")]
 
 use gigi::curvature::{
-    capacity, encoding_depth, horizon, horizon_with, scalar_curvature, DepthConfig,
-    EncodingDepth, HorizonConfig, LengthScaleEstimator,
+    capacity, encoding_depth, horizon, horizon_with, perceive, perception_bias,
+    scalar_curvature, DepthConfig, EncodingDepth, HorizonConfig, LengthScaleEstimator,
 };
 use gigi::spectral::spectral_gap;
 use gigi::types::{BundleSchema, FieldDef, Value};
@@ -267,4 +267,102 @@ fn capacity_horizon_depth_read_consistent_k_and_lambda1() {
     assert_eq!(c, c_re);
     assert_eq!(h, h_re);
     assert_eq!(d, d_re);
+}
+
+// ── PERCEIVE — Theorem 8.6 ──────────────────────────────────────────
+//
+// Step 4a: the pure math layer. PERCEIVE = (R · v, ‖R − I‖_F). R is
+// caller-supplied. The full chain TRANSPORT → R_acc → PERCEIVE lands
+// when transport.rs surfaces R_acc on TransportResult (step 4b). These
+// smoke tests pin the math on real-bundle dimensions and on vectors
+// that represent realistic fiber values from the sensor fixture, so
+// the verb is known-good before the integration commit lands.
+
+#[test]
+fn perceive_runs_on_real_sensor_fiber_vectors() {
+    // Real sensor bundle has 3 numeric fiber fields
+    // (temperature, humidity, pressure). PERCEIVE on a vector of
+    // exactly those values from the first record must:
+    //   - return a 3-element perceived vector
+    //   - return a finite, non-negative bias
+    let records = load_sensor_records();
+    let first = &records[0];
+    let v: Vec<f64> = ["temperature", "humidity", "pressure"]
+        .iter()
+        .map(|k| match first.get(*k).expect("present") {
+            Value::Float(f) => *f,
+            Value::Integer(i) => *i as f64,
+            other => panic!("expected numeric, got {:?}", other),
+        })
+        .collect();
+    assert_eq!(v.len(), 3, "real sensor record has 3 numeric fiber fields");
+
+    // Identity rotation = no drift; PERCEIVE is passthrough.
+    let id = vec![1.0, 0.0, 0.0,
+                  0.0, 1.0, 0.0,
+                  0.0, 0.0, 1.0];
+    let res = perceive(&id, &v, 3).expect("identity perceive on real-bundle vector");
+    assert_eq!(res.v_perceived, v, "identity must be passthrough on real data");
+    assert_eq!(res.bias, 0.0, "identity bias = 0 on real data");
+
+    // A small rotation in the (temperature, humidity) plane: 2° about
+    // the pressure axis. Confirms bias is non-zero and matches the
+    // closed form 2·sin(θ/2)·√2 = sqrt(2 − 2 cos θ)·√2 for a single
+    // 2D rotation embedded in 3D. (For θ = 2° this is ~0.0494.)
+    let theta = 2.0_f64.to_radians();
+    let (c, s) = (theta.cos(), theta.sin());
+    let r = vec![ c,  -s,  0.0,
+                  s,   c,  0.0,
+                  0.0, 0.0, 1.0];
+    let res2 = perceive(&r, &v, 3).expect("rotated perceive on real-bundle vector");
+
+    // ‖R − I‖_F² = (c-1)² + s² + s² + (c-1)² + 0² + 0² + 0² + 0² + 0²
+    //            = 2(c-1)² + 2 s²
+    //            = 2(c² - 2c + 1 + s²)
+    //            = 2(1 - 2c + 1) = 4 - 4c = 4(1 - cos θ).
+    // For θ = 2°, that's 4·(1 - cos(2°)) ≈ 4·6.09e-4 ≈ 2.44e-3,
+    // so bias ≈ sqrt(2.44e-3) ≈ 0.0494.
+    let expected_bias = (4.0 * (1.0 - c)).sqrt();
+    assert!(
+        (res2.bias - expected_bias).abs() < 1e-12,
+        "real-data bias {} vs closed-form {} differ",
+        res2.bias, expected_bias
+    );
+    assert!(res2.bias > 0.0, "rotated bias must be positive");
+    assert!(res2.v_perceived.iter().all(|x| x.is_finite()),
+        "perceived vector must be finite: {:?}", res2.v_perceived);
+
+    // The perceived vector preserves the pressure component exactly
+    // (it's the rotation axis); only temperature/humidity mix.
+    assert!(
+        (res2.v_perceived[2] - v[2]).abs() < 1e-12,
+        "pressure preserved on axis-aligned rotation: {} vs {}",
+        res2.v_perceived[2], v[2]
+    );
+}
+
+#[test]
+fn perceive_bias_grows_monotonically_with_rotation_angle() {
+    // On real-bundle dimensions (3D fiber), increase rotation angle from
+    // 0 → π/2 in steps; assert bias is strictly monotonically increasing.
+    // This is the contract that lets a builder use bias as a threshold
+    // signal — if it weren't monotone, "bias > X means trust drops"
+    // wouldn't follow.
+    let mut last = -1.0_f64;
+    for deg in [0.0_f64, 1.0, 5.0, 15.0, 45.0, 90.0] {
+        let theta = deg.to_radians();
+        let (c, s) = (theta.cos(), theta.sin());
+        let r = vec![ c,  -s,  0.0,
+                      s,   c,  0.0,
+                      0.0, 0.0, 1.0];
+        let bias = perception_bias(&r, 3).expect("bias on real-bundle dim");
+        assert!(bias.is_finite(), "bias at {}° must be finite, got {}", deg, bias);
+        assert!(bias >= last - 1e-15,
+            "bias must be monotone in θ: {}° gave {} (prev {})", deg, bias, last);
+        last = bias;
+    }
+    // At π/2, bias = sqrt(4·(1−cos π/2)) = sqrt(4) = 2.0. Pin the
+    // endpoint as a numerical sanity check.
+    assert!((last - 2.0).abs() < 1e-12,
+        "bias at 90° should be 2.0; got {}", last);
 }

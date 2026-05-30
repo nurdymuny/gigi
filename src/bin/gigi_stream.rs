@@ -194,6 +194,14 @@ struct StreamState {
     /// `kahler` feature — brain endpoints are kahler-gated.
     #[cfg(feature = "kahler")]
     flow_cache: Arc<BundleFlowCache>,
+    /// Per-(bundle, field_set) materialized `(N, D)` matrices for the
+    /// vector-search brain endpoints (`intent_gate`, `confidence`,
+    /// `confidence_with_explain`). Replaces the per-request
+    /// `extract_field_samples` allocation + per-call O(N²·D) max-density
+    /// recomputation per Marcella's 2026-05-29 latency report. Same
+    /// mutation-counter invalidation as `flow_cache`.
+    #[cfg(feature = "kahler")]
+    vector_cache: Arc<gigi::vector_cache::VectorMatrixCache>,
 }
 
 /// A mutation event broadcast to all subscribers of a bundle.
@@ -279,6 +287,16 @@ impl StreamState {
             .and_then(|v| v.parse().ok())
             .unwrap_or(50_usize);
 
+        // Vector matrix cache capacity. At N=10k, D=384, each matrix
+        // is ~30 MB (data + per-row norms); 64 entries default = ~2 GB
+        // worst case. Production usually keeps one entry per active
+        // bundle, so the realistic footprint is much smaller.
+        #[cfg(feature = "kahler")]
+        let vector_cache_capacity = std::env::var("GIGI_VECTOR_CACHE_SIZE")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(64_usize);
+
         StreamState {
             engine: RwLock::new(engine),
             ready: AtomicBool::new(false),
@@ -294,6 +312,10 @@ impl StreamState {
             metrics,
             #[cfg(feature = "kahler")]
             flow_cache: Arc::new(BundleFlowCache::new(flow_cache_capacity)),
+            #[cfg(feature = "kahler")]
+            vector_cache: Arc::new(gigi::vector_cache::VectorMatrixCache::new(
+                vector_cache_capacity,
+            )),
         }
     }
 
@@ -3136,6 +3158,77 @@ fn extract_field_samples(
     Ok(samples)
 }
 
+/// Materialize a `(N, D)` matrix from a bundle, served from cache when
+/// possible. Per Marcella's 2026-05-29 `GIGI_BUG_REPORT_onfields_latency.md`:
+/// the three vector-search brain endpoints (`intent_gate`, `confidence`,
+/// `confidence_with_explain`) all need a flat numeric view of the fiber
+/// columns for KDE + nearest-record queries. Building it per request is
+/// `O(N·D)` of HashMap lookups + per-cell type validation +
+/// `Vec<Vec<f64>>` allocation; at `N=10k, D=384` that's ~30 s on its own,
+/// before any actual math runs.
+///
+/// This helper hits [`gigi::vector_cache::VectorMatrixCache`] for the
+/// cached matrix; on miss it rebuilds via [`extract_field_samples`]
+/// (reusing all its schema-validation paths) and flattens into a
+/// contiguous `Vec<f64>` for the cosine-identity hot loops. Single-flight
+/// on miss via the per-key compute lock — concurrent requests for the
+/// same `(bundle, fields)` block on one build instead of all racing.
+///
+/// Invalidation: `BundleStore::mutation_counter` — any insert/update on
+/// the bundle bumps the counter and the next request rebuilds.
+#[cfg(feature = "kahler")]
+fn materialize_matrix_cached(
+    state: &Arc<StreamState>,
+    bundle_name: &str,
+    heap: &gigi::BundleStore,
+    fields: &[String],
+) -> Result<gigi::vector_cache::CachedMatrix, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::vector_cache::{CachedMatrix, MaterializedMatrix, VectorCacheKey};
+
+    let key = VectorCacheKey::build(bundle_name, fields);
+    let counter = heap.mutation_counter();
+
+    // Hot path: cache hit + counter match → O(1) atomic refcount clone.
+    if let Some(cached) = state.vector_cache.get(&key, counter) {
+        return Ok(cached);
+    }
+
+    // Cold path: acquire per-key compute lock, double-check, build.
+    let compute_lock_arc = state.vector_cache.acquire_compute_lock(&key);
+    let _guard = match compute_lock_arc.lock() {
+        Ok(g) => g,
+        Err(p) => p.into_inner(),
+    };
+
+    // Double-check under lock — another thread may have just inserted.
+    if let Some(cached) = state.vector_cache.get(&key, counter) {
+        state.vector_cache.release_compute_lock(&key);
+        return Ok(cached);
+    }
+
+    // Build. Reuse extract_field_samples for all the existing validation
+    // (base-vs-fiber error messages, non-numeric handling, etc), then
+    // flatten into a contiguous Vec<f64> for the matrix.
+    let samples = match extract_field_samples(heap, fields) {
+        Ok(s) => s,
+        Err(e) => {
+            state.vector_cache.release_compute_lock(&key);
+            return Err(bad_request(&e));
+        }
+    };
+    let n = samples.len();
+    let d = fields.len();
+    let mut data = Vec::with_capacity(n * d);
+    for row in samples {
+        data.extend(row);
+    }
+    let matrix = Arc::new(MaterializedMatrix::new(data, n, d));
+    let cached = CachedMatrix::new(counter, matrix);
+    state.vector_cache.insert(key.clone(), cached.clone());
+    state.vector_cache.release_compute_lock(&key);
+    Ok(cached)
+}
+
 /// Which fit to use when building a generative flow from a bundle.
 /// L13.3 ships the `Diagonal` variant per Marcella's Finding 3 —
 /// anisotropic per-axis σ² instead of a single averaged scalar.
@@ -5401,9 +5494,15 @@ async fn brain_intent_gate_endpoint(
     .to_string();
 
     // ── 2. Confidence half (only if query supplied) ─────────────────
+    //
+    // Per Marcella's 2026-05-29 bug report `GIGI_BUG_REPORT_onfields_latency.md`:
+    // this used to allocate a fresh `Vec<Vec<f64>>` via `extract_field_samples`
+    // and then run `confidence_normalized`'s O(N²·D) max-density loop per
+    // request (35 s at N=10k, D=384). Now: cached `(N, D)` matrix +
+    // cached max-density per (matrix, bandwidth). Same response shape,
+    // ~200x faster.
     let query_grounding = if let Some((fields, query)) = query_pair {
-        // Extract samples (reuses existing helper).
-        let samples = extract_field_samples(heap, &fields).map_err(|e| bad_request(&e))?;
+        let cached_matrix = materialize_matrix_cached(&state, &name, heap, &fields)?;
 
         // Bandwidth: request override if positive, else derive from
         // bundle's isotropic fit (cached path — sub-µs warm).
@@ -5427,29 +5526,28 @@ async fn brain_intent_gate_endpoint(
             }
         };
 
-        let raw = gigi::geometry::kernel_density_confidence(&samples, &query, bandwidth);
-        let normalized = gigi::geometry::confidence_normalized(&samples, &query, bandwidth);
+        let raw = gigi::vector_cache::kde_raw_from_matrix(
+            &cached_matrix.matrix,
+            &query,
+            bandwidth,
+        );
+        let normalized =
+            gigi::vector_cache::kde_normalized_cached(&cached_matrix, &query, bandwidth);
 
-        // Nearest-record info (free — same pass would compute it).
-        let mut nearest_index: Option<usize> = None;
-        let mut nearest_distance = f64::INFINITY;
-        for (i, s) in samples.iter().enumerate() {
-            let d_sq: f64 = s.iter().zip(query.iter()).map(|(a, b)| (a - b).powi(2)).sum();
-            let d = d_sq.sqrt();
-            if d < nearest_distance {
-                nearest_distance = d;
-                nearest_index = Some(i);
-            }
-        }
-        if !nearest_distance.is_finite() {
-            nearest_distance = 0.0;
-        }
+        // Nearest-record info (single contiguous loop, no allocation).
+        let n_samples = cached_matrix.matrix.n;
+        let (nearest_index, nearest_distance) = if n_samples > 0 {
+            let (idx, d_sq) = cached_matrix.matrix.nearest(&query);
+            (Some(idx), d_sq.sqrt())
+        } else {
+            (None, 0.0)
+        };
 
         Some(IntentGateQueryGroundingWire {
             raw,
             normalized,
             bandwidth_used: bandwidth,
-            n_samples: samples.len(),
+            n_samples,
             nearest_record_index: nearest_index,
             nearest_distance,
         })
@@ -5529,8 +5627,11 @@ async fn brain_confidence_endpoint(
             req.fields.len()
         )));
     }
-    let samples = extract_field_samples(heap, &req.fields)
-        .map_err(|e| bad_request(&e))?;
+    // Cached matrix path — see materialize_matrix_cached docstring
+    // for the Marcella 2026-05-29 latency bug context. Same response
+    // shape as before; previously rebuilt the (N, D) matrix and the
+    // O(N²·D) max-density loop per request.
+    let cached_matrix = materialize_matrix_cached(&state, &name, heap, &req.fields)?;
     let bandwidth = match req.bandwidth {
         Some(b) if b > 0.0 => b,
         _ => {
@@ -5539,14 +5640,18 @@ async fn brain_confidence_endpoint(
             s_sq.sqrt().max(1e-9)
         }
     };
-    let raw = gigi::geometry::kernel_density_confidence(&samples, &req.query, bandwidth);
+    let raw = gigi::vector_cache::kde_raw_from_matrix(
+        &cached_matrix.matrix,
+        &req.query,
+        bandwidth,
+    );
     let normalized =
-        gigi::geometry::confidence_normalized(&samples, &req.query, bandwidth);
+        gigi::vector_cache::kde_normalized_cached(&cached_matrix, &req.query, bandwidth);
     Ok(Json(BrainConfidenceResponse {
         raw,
         normalized,
         bandwidth,
-        n_samples: samples.len(),
+        n_samples: cached_matrix.matrix.n,
     }))
 }
 
@@ -5652,9 +5757,13 @@ async fn brain_confidence_with_explain_endpoint(
         )));
     }
 
-    // Extract field samples ONCE — both ops share this.
-    let samples = extract_field_samples(heap, &req.fields)
-        .map_err(|e| bad_request(&e))?;
+    // Cached matrix path — see materialize_matrix_cached docstring
+    // for the Marcella 2026-05-29 latency bug context. KDE + normalized
+    // + nearest-record + explain-path all share one materialization;
+    // previously each request rebuilt `extract_field_samples` + ran
+    // O(N²·D) max-density + duplicated the nearest-record loop in
+    // both confidence and explain.
+    let cached_matrix = materialize_matrix_cached(&state, &name, heap, &req.fields)?;
 
     // Bandwidth: request value if positive, else derive from
     // isotropic fit (cached path — sub-µs warm).
@@ -5669,10 +5778,6 @@ async fn brain_confidence_with_explain_endpoint(
                 FitMode::Isotropic,
                 None,
             )?;
-            // The cached fit's sigma_sq is what we need; rebuild
-            // ctx via the cache (cheap closure construction).
-            // Re-fetch the cached entry directly to avoid building
-            // a flow we won't use.
             let key = CacheKey::build(&name, FitMode::Isotropic, &req.fields, None);
             let cached = state.flow_cache.get(&key, counter_at_fit).ok_or_else(|| {
                 bad_request(
@@ -5683,22 +5788,49 @@ async fn brain_confidence_with_explain_endpoint(
         }
     };
 
-    // Read counter for the response header. Use the bundle's
-    // current value (the fit may have been a cache hit at a
-    // possibly-older counter, but for the X-Bundle-Mutation-Counter
-    // header we want the *current* counter so consumers know
-    // whether their warm path is still consistent with what we
-    // just served).
+    // Header counter — current bundle state so consumers can stamp warmth.
     let counter_at_fit = heap.mutation_counter();
 
-    // Confidence (shares `samples`).
-    let confidence_raw =
-        gigi::geometry::kernel_density_confidence(&samples, &req.query, bandwidth);
+    // Confidence (matrix-cached).
+    let confidence_raw = gigi::vector_cache::kde_raw_from_matrix(
+        &cached_matrix.matrix,
+        &req.query,
+        bandwidth,
+    );
     let confidence_normalized =
-        gigi::geometry::confidence_normalized(&samples, &req.query, bandwidth);
+        gigi::vector_cache::kde_normalized_cached(&cached_matrix, &req.query, bandwidth);
 
-    // Explain (shares `samples`).
-    let exp = gigi::geometry::explain(&samples, &req.query, req.n_steps);
+    // Explain — same shape as `geometry::explain` (nearest record,
+    // linear interpolation from query to nearest in n_steps + 1
+    // points). Reuses the cached matrix's nearest() for the search;
+    // pulls the nearest row directly out of the contiguous slab and
+    // builds the path inline.
+    let n_samples = cached_matrix.matrix.n;
+    let d = cached_matrix.matrix.d;
+    let (nearest_record, nearest_index, nearest_distance, path) = if n_samples == 0
+        || req.query.is_empty()
+    {
+        (None, None, 0.0_f64, Vec::new())
+    } else {
+        let (idx, d_sq) = cached_matrix.matrix.nearest(&req.query);
+        let nearest = cached_matrix.matrix.data[idx * d..(idx + 1) * d].to_vec();
+        let n_steps = req.n_steps;
+        let path: Vec<Vec<f64>> = (0..=n_steps)
+            .map(|i| {
+                let t = if n_steps == 0 {
+                    1.0
+                } else {
+                    i as f64 / n_steps as f64
+                };
+                req.query
+                    .iter()
+                    .zip(nearest.iter())
+                    .map(|(q, x)| (1.0 - t) * q + t * x)
+                    .collect()
+            })
+            .collect();
+        (Some(nearest), Some(idx), d_sq.sqrt(), path)
+    };
 
     let accept = headers
         .get(axum::http::header::ACCEPT)
@@ -5710,13 +5842,13 @@ async fn brain_confidence_with_explain_endpoint(
             raw: confidence_raw,
             normalized: confidence_normalized,
             bandwidth,
-            query: exp.query,
-            nearest_record: exp.nearest_record,
-            nearest_index: exp.nearest_index,
-            nearest_distance: exp.nearest_distance,
-            path: exp.path,
-            n_steps: exp.n_steps,
-            n_samples: samples.len(),
+            query: req.query.clone(),
+            nearest_record,
+            nearest_index,
+            nearest_distance,
+            path,
+            n_steps: req.n_steps,
+            n_samples,
             counter_at_fit,
         },
     )

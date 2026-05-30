@@ -135,6 +135,13 @@ pub mod spectral;
 // See `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` §6.
 pub mod threshold;
 pub mod types;
+// Cached `(N, D)` matrices for the vector-search brain endpoints
+// (`intent_gate`, `confidence`, `confidence_with_explain`). Per Marcella's
+// 2026-05-29 `GIGI_BUG_REPORT_onfields_latency.md`: pre-materialize the
+// fiber column slab once and reuse it across requests instead of rebuilding
+// per call. Mutation-counter invalidated, single-flight on cache miss —
+// same architecture as `BundleFlowCache` in `gigi_stream.rs`.
+pub mod vector_cache;
 pub mod wal;
 
 pub use bundle::{

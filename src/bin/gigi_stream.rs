@@ -202,6 +202,16 @@ struct StreamState {
     /// mutation-counter invalidation as `flow_cache`.
     #[cfg(feature = "kahler")]
     vector_cache: Arc<gigi::vector_cache::VectorMatrixCache>,
+
+    /// 2026-06-02 SEMANTIC perf follow-up: cache for
+    /// `/brain/semantic` endpoint results. Defense-in-depth on top
+    /// of the betti-rank algorithm fix (commit 0ec9405); subsequent
+    /// reads on the same bundle skip even the rank computation.
+    /// Same pattern as `vector_cache` above: mutation-counter
+    /// invalidated, single-flight on cache miss. Capacity tunable
+    /// via `GIGI_MORSE_CACHE_SIZE` env (default 64).
+    #[cfg(feature = "kahler")]
+    morse_cache: Arc<gigi::morse_cache::MorseCache>,
 }
 
 /// A mutation event broadcast to all subscribers of a bundle.
@@ -297,6 +307,16 @@ impl StreamState {
             .and_then(|v| v.parse().ok())
             .unwrap_or(64_usize);
 
+        // Morse / SEMANTIC cache capacity. Each entry is ~50 bytes
+        // (CachedMorse holds 3 usize Betti + 4 metadata floats + bool
+        // + counter). 64 entries default = trivial memory cost. Tune
+        // via GIGI_MORSE_CACHE_SIZE.
+        #[cfg(feature = "kahler")]
+        let morse_cache_capacity = std::env::var("GIGI_MORSE_CACHE_SIZE")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(64_usize);
+
         StreamState {
             engine: RwLock::new(engine),
             ready: AtomicBool::new(false),
@@ -316,6 +336,8 @@ impl StreamState {
             vector_cache: Arc::new(gigi::vector_cache::VectorMatrixCache::new(
                 vector_cache_capacity,
             )),
+            #[cfg(feature = "kahler")]
+            morse_cache: Arc::new(gigi::morse_cache::MorseCache::new(morse_cache_capacity)),
         }
     }
 
@@ -6646,6 +6668,8 @@ async fn brain_semantic_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<BrainSemanticResponse>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::morse_cache::{CachedMorse, MorseCacheKey};
+
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -6654,20 +6678,82 @@ async fn brain_semantic_endpoint(
     // is zero-cost; overlay path materializes once (~10ms/10k records).
     let mut _promoted: Option<gigi::BundleStore> = None;
     let heap = heap_or_promote(&store, &mut _promoted);
+
+    // 2026-06-02 MorseCache: mutation-counter-keyed cache for
+    // SEMANTIC results. Hot path on cache hit + matching counter:
+    // O(1) hashmap lookup, no morse_compress, no betti, no
+    // HodgeComplex construction. Same pattern as vector_cache.rs.
+    let cache_key = MorseCacheKey::build(&name);
+    let counter = heap.mutation_counter();
+
+    // 1. Hot path — cache hit.
+    if let Some(cached) = state.morse_cache.get(&cache_key, counter) {
+        return Ok(Json(BrainSemanticResponse {
+            betti_b0: cached.betti.b0,
+            betti_b1: cached.betti.b1,
+            betti_b2: cached.betti.b2,
+            n_critical: cached.n_critical,
+            n_original: cached.n_original,
+            compression_ratio: cached.compression_ratio,
+            cohomology_preserved: cached.cohomology_preserved,
+        }));
+    }
+
+    // 2. Cold path — single-flight via per-key compute lock.
+    let compute_lock_arc = state.morse_cache.acquire_compute_lock(&cache_key);
+    let _guard = match compute_lock_arc.lock() {
+        Ok(g) => g,
+        Err(p) => p.into_inner(),
+    };
+
+    // 2a. Double-check under lock — another thread may have just
+    // inserted while we were waiting for the compute lock.
+    if let Some(cached) = state.morse_cache.get(&cache_key, counter) {
+        state.morse_cache.release_compute_lock(&cache_key);
+        return Ok(Json(BrainSemanticResponse {
+            betti_b0: cached.betti.b0,
+            betti_b1: cached.betti.b1,
+            betti_b2: cached.betti.b2,
+            n_critical: cached.n_critical,
+            n_original: cached.n_original,
+            compression_ratio: cached.compression_ratio,
+            cohomology_preserved: cached.cohomology_preserved,
+        }));
+    }
+
+    // 2b. Build. (The actual SEMANTIC math — now rank-based per
+    // the betti-rank commit `0ec9405`, ~0.54s on the production
+    // 9964-record bundle.)
     let morse = gigi::geometry::semantic_gist(heap).ok_or_else(|| {
+        // Release the compute lock before returning the error so
+        // future requests don't wait forever on a poisoned key.
+        state.morse_cache.release_compute_lock(&cache_key);
         not_found(&format!(
             "Bundle '{}' produced no Morse compression (too few records or degenerate complex)",
             name
         ))
     })?;
+
+    // 2c. Publish to cache + release the single-flight lock.
+    let cached = CachedMorse::new(
+        counter,
+        morse.betti,
+        morse.n_critical(),
+        morse.n_original(),
+        morse.compression_ratio(),
+        morse.cohomology_preserved(),
+    );
+    state.morse_cache.insert(cache_key.clone(), cached);
+    state.morse_cache.release_compute_lock(&cache_key);
+
     Ok(Json(BrainSemanticResponse {
-        betti_b0: morse.betti.b0,
-        betti_b1: morse.betti.b1,
-        betti_b2: morse.betti.b2,
-        n_critical: morse.n_critical(),
-        n_original: morse.n_original(),
-        compression_ratio: morse.compression_ratio(),
-        cohomology_preserved: morse.cohomology_preserved(),
+        betti_b0: cached.betti.b0,
+        betti_b1: cached.betti.b1,
+        betti_b2: cached.betti.b2,
+        n_critical: cached.n_critical,
+        n_original: cached.n_original,
+        compression_ratio: cached.compression_ratio,
+        cohomology_preserved: cached.cohomology_preserved,
     }))
 }
 

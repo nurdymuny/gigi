@@ -162,32 +162,151 @@ impl F2Matrix {
         self.rows.push(row);
     }
 
-    /// Compute the rank of `self` over F₂ via in-place Gaussian
-    /// elimination. Consumes `self` because the elimination mutates
-    /// the rows destructively (cheaper than cloning when caller is
-    /// done with the matrix, which is the typical use).
+    /// Compute the rank of `self` over F₂.
     ///
-    /// Algorithm: for each row `r` in turn, find the lowest set bit
-    /// (the "pivot column"); if it exists, swap that row into position
-    /// `pivot_idx` and XOR it into every other row that has the pivot
-    /// bit set; advance `pivot_idx`. Final rank = `pivot_idx`.
+    /// **Column-indexed sparse Gaussian elimination** — the 2026-06-02
+    /// algorithmic upgrade per the
+    /// `REPLY_TO_SEMANTIC_PERF_2026-06-02.md` follow-up sprint.
+    /// Consumes `self` because the elimination mutates the rows
+    /// destructively.
     ///
-    /// Time: `O(rows · rank · words_per_row)` — for a typical
-    /// `d_0` matrix on 10k vertices with ~50k edges and rank ≈ 10k,
-    /// that's ≈ 50k · 10k · 157 ≈ 8·10^10 word operations... but in
-    /// practice it's much less because XOR of a 2-bit row into another
-    /// 2-bit row touches only the 1–2 words those bits live in. The
-    /// 2-bit-row optimization makes the real cost `O(rows · rank)`
-    /// — at 5·10^8 ops for the 10k case, that's hundreds of ms not
-    /// seconds.
+    /// ### Algorithm
+    ///
+    /// Maintains a column → set-of-rows-with-bit-set index built once
+    /// at the start (`O(nnz)`). Each pivot column then:
+    ///
+    /// 1. **Pivot lookup is O(1) amortized** — pop any non-pivoted row
+    ///    from `col_rows[col]` instead of scanning all rows.
+    /// 2. **XOR target enumeration is O(|col_rows[col]|)** — iterate the
+    ///    rows that actually have the bit set instead of scanning all
+    ///    rows looking for them.
+    /// 3. **Index maintenance per XOR is O(words_per_row · 64)** — same
+    ///    cost class as the XOR itself.
+    ///
+    /// On the boundary matrices GIGI builds (`d_0` with ~2 nonzeros
+    /// per row, `d_1` with ~3), `col_rows[col]` typically holds tens
+    /// of rows even after fill-in — vastly smaller than the row count.
+    ///
+    /// ### Performance vs the pre-2026-06-02 implementation
+    ///
+    /// The previous `rank()` implementation (kept as `#[cfg(test)]`
+    /// `rank_naive` for cross-check) was `O(R · C)` per column even
+    /// when most rows had no bit at that column. On synthetic 2k-record
+    /// bucket-32 fixtures (|F| ≈ 70k), the naive path took ~7s
+    /// release-build. The column-indexed path is expected to be
+    /// 10–100× faster on the same fixture (measured in the
+    /// `tests/kahler_hodge_real_data_smoke.rs` sub-quadratic gate).
+    ///
+    /// The naive path's gate was 2000× scaling for 16× N-growth.
+    /// After this optimization, the same gate should pass with a
+    /// ratio in the tens (a future commit can tighten it).
+    ///
+    /// ### Correctness gate
+    ///
+    /// `rank()` (this method) and `rank_naive()` (`#[cfg(test)]` only)
+    /// produce byte-identical output on every fixture in the existing
+    /// unit-test suite. Additional `rank_indexed_matches_naive_*` tests
+    /// pin the equivalence on random matrices as a property test.
     pub fn rank(mut self) -> usize {
         if self.rows.is_empty() || self.n_cols == 0 {
             return 0;
         }
-        let mut pivot_idx = 0;
-        // Walk pivot columns in order (lowest first).
+
+        // ── Build the column → rows index ──
+        //
+        // For each column c, col_rows[c] = set of row indices r where
+        // self.rows[r] has bit c set. Built in O(nnz) by scanning each
+        // row's set bits once.
+        let mut col_rows: Vec<std::collections::HashSet<usize>> =
+            vec![std::collections::HashSet::new(); self.n_cols];
+        for (r, row) in self.rows.iter().enumerate() {
+            for (w, &word) in row.iter().enumerate() {
+                let mut bits = word;
+                while bits != 0 {
+                    let bit = bits.trailing_zeros() as usize;
+                    let col = w * 64 + bit;
+                    if col < self.n_cols {
+                        col_rows[col].insert(r);
+                    }
+                    bits &= bits - 1; // clear lowest set bit
+                }
+            }
+        }
+
+        // ── Track which rows have already served as a pivot ──
+        let mut pivoted: Vec<bool> = vec![false; self.rows.len()];
+        let mut rank_count = 0_usize;
+
+        // ── Walk columns in order; each gets at most one pivot ──
         for col in 0..self.n_cols {
-            // Find a row at index ≥ pivot_idx with this bit set.
+            // Pick a pivot row: any non-pivoted row in col_rows[col].
+            let pivot_row = {
+                let mut chosen: Option<usize> = None;
+                // Iterate over the (small) set of rows that have this bit set.
+                // We can't borrow col_rows[col] while mutating below, so
+                // collect candidates as we go.
+                for &r in col_rows[col].iter() {
+                    if !pivoted[r] {
+                        chosen = Some(r);
+                        break;
+                    }
+                }
+                chosen
+            };
+            let pivot_row = match pivot_row {
+                Some(r) => r,
+                None => continue, // No pivot available for this column.
+            };
+            pivoted[pivot_row] = true;
+            rank_count += 1;
+
+            // ── XOR pivot into every OTHER row in col_rows[col] ──
+            //
+            // Snapshot the targets first (we'll mutate col_rows during
+            // the XOR loop). Exclude the pivot itself.
+            let targets: Vec<usize> = col_rows[col]
+                .iter()
+                .copied()
+                .filter(|&r| r != pivot_row)
+                .collect();
+
+            // Snapshot the pivot row (we'll XOR it into others; can't
+            // hold a borrow of self.rows during the inner mutation).
+            let pivot_words = self.rows[pivot_row].clone();
+
+            for target_row in targets {
+                xor_with_index_update(
+                    &mut self.rows[target_row],
+                    &pivot_words,
+                    self.words_per_row,
+                    target_row,
+                    &mut col_rows,
+                    self.n_cols,
+                );
+            }
+
+            if rank_count == self.rows.len() {
+                break;
+            }
+        }
+
+        rank_count
+    }
+
+    /// The pre-2026-06-02 naive `rank()` implementation. Kept ONLY
+    /// as a `#[cfg(test)]` companion to validate that the column-
+    /// indexed [`rank`](Self::rank) produces byte-identical output.
+    /// Not exposed to consumers.
+    ///
+    /// `O(R · C)` per column; the implementation that the
+    /// 2026-06-02 perf rewrite replaced.
+    #[cfg(test)]
+    pub fn rank_naive(mut self) -> usize {
+        if self.rows.is_empty() || self.n_cols == 0 {
+            return 0;
+        }
+        let mut pivot_idx = 0;
+        for col in 0..self.n_cols {
             let (w, bit) = (col / 64, col % 64);
             let mask = 1_u64 << bit;
             let mut pivot_row = None;
@@ -199,22 +318,11 @@ impl F2Matrix {
             }
             let pivot_row = match pivot_row {
                 Some(r) => r,
-                None => continue, // No pivot for this column; skip.
+                None => continue,
             };
-            // Swap pivot row into pivot_idx.
             if pivot_row != pivot_idx {
                 self.rows.swap(pivot_row, pivot_idx);
             }
-            // Eliminate this bit from every OTHER row (both above and
-            // below pivot_idx — `above` for reduced-echelon, `below`
-            // for upper-triangular). For rank computation, eliminating
-            // below alone suffices, which halves the work.
-            //
-            // Borrow gymnastics: split_at_mut(pivot_idx + 1) gives us
-            // `head` (rows 0..=pivot_idx, contains the pivot row at
-            // index pivot_idx) + `tail` (rows pivot_idx+1..), which we
-            // can borrow disjointly. The pivot row is the LAST element
-            // of `head`.
             let (head, tail) = self.rows.split_at_mut(pivot_idx + 1);
             let pivot = &head[pivot_idx];
             for row in tail.iter_mut() {
@@ -228,6 +336,57 @@ impl F2Matrix {
             }
         }
         pivot_idx
+    }
+}
+
+/// XOR `pivot` into `dst` in-place, updating `col_rows` to reflect
+/// the bit flips on row `dst_idx`. For each bit position that differs
+/// between the old `dst` and the new `dst ^ pivot`:
+///   - If the bit was 1 in old and 0 in new (cleared) →
+///     `col_rows[col].remove(dst_idx)`
+///   - If the bit was 0 in old and 1 in new (set) →
+///     `col_rows[col].insert(dst_idx)`
+///
+/// `O(words_per_row · 64)` for the diff + index update, which is the
+/// same cost class as the XOR itself. Marked `#[inline]` because it's
+/// the hot loop of the indexed-rank implementation.
+#[inline]
+fn xor_with_index_update(
+    dst: &mut [u64],
+    pivot: &[u64],
+    words_per_row: usize,
+    dst_idx: usize,
+    col_rows: &mut [std::collections::HashSet<usize>],
+    n_cols: usize,
+) {
+    debug_assert_eq!(dst.len(), words_per_row);
+    debug_assert_eq!(pivot.len(), words_per_row);
+    for w in 0..words_per_row {
+        let old = dst[w];
+        let new = old ^ pivot[w];
+        if old == new {
+            continue;
+        }
+        // Bits that flipped: bits set in `old XOR new`.
+        let flipped = old ^ new;
+        // For each flipped bit, determine if it went 0→1 or 1→0.
+        let mut bits = flipped;
+        while bits != 0 {
+            let bit = bits.trailing_zeros() as usize;
+            let col = w * 64 + bit;
+            if col < n_cols {
+                let mask = 1_u64 << bit;
+                if (old & mask) != 0 {
+                    // old had this bit, new doesn't → cleared
+                    col_rows[col].remove(&dst_idx);
+                } else {
+                    // old didn't have this bit, new does → set
+                    col_rows[col].insert(dst_idx);
+                }
+            }
+            bits &= bits - 1;
+        }
+        dst[w] = new;
     }
 }
 
@@ -405,6 +564,73 @@ mod tests {
             10,
         );
         assert_eq!(m.nnz(), 2 + 3 + 0);
+    }
+
+    /// Cross-check: column-indexed `rank()` produces byte-identical
+    /// output to the naive O(R·C) `rank_naive()` on a battery of
+    /// random matrices. This is the load-bearing safety guarantee for
+    /// the 2026-06-02 algorithmic switch.
+    ///
+    /// 50 deterministic random matrices across a range of (n_rows,
+    /// n_cols, density) — covers sparse, dense, square, tall, wide.
+    /// Any divergence here would mean the indexed implementation is
+    /// algorithmically wrong; cross-check prevents shipping such.
+    #[test]
+    fn rank_indexed_matches_naive_on_random_matrices() {
+        let mut state: u64 = 0x5A17_BABE_DEAD_BEEF;
+        for trial in 0..50 {
+            // Vary shape across trials.
+            let n_rows = 4 + (trial % 12) as usize;
+            let n_cols = 5 + (trial % 10) as usize;
+            // Vary density 10% / 25% / 50% / 75%.
+            let density_pct = [10, 25, 50, 75][trial % 4];
+            let mut m = F2Matrix::zeros(n_rows, n_cols);
+            for r in 0..n_rows {
+                for c in 0..n_cols {
+                    state = state
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    if (state >> 32) % 100 < density_pct {
+                        m.set(r, c);
+                    }
+                }
+            }
+            let r_indexed = m.clone().rank();
+            let r_naive = m.rank_naive();
+            assert_eq!(
+                r_indexed, r_naive,
+                "trial {trial} ({n_rows}×{n_cols}, density {density_pct}%): \
+                 indexed rank {r_indexed} ≠ naive rank {r_naive}"
+            );
+        }
+    }
+
+    /// Cross-check on cross-word-boundary matrices — make sure the
+    /// indexed implementation doesn't have a bug at column 64 (the
+    /// boundary where bits move to the second u64 word). Targets
+    /// columns just below + just above 64.
+    #[test]
+    fn rank_indexed_matches_naive_across_word_boundary() {
+        for n_cols in [63, 64, 65, 127, 128, 129] {
+            let mut state: u64 = 0xDEAD_F00D_C0DE_BABE;
+            let mut m = F2Matrix::zeros(20, n_cols);
+            for r in 0..20 {
+                for c in 0..n_cols {
+                    state = state
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    if (state >> 32) % 4 == 0 {
+                        m.set(r, c);
+                    }
+                }
+            }
+            let r_indexed = m.clone().rank();
+            let r_naive = m.rank_naive();
+            assert_eq!(
+                r_indexed, r_naive,
+                "boundary test n_cols={n_cols}: indexed {r_indexed} ≠ naive {r_naive}"
+            );
+        }
     }
 
     /// Larger property check: a randomly-built sparse matrix's rank

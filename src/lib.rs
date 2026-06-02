@@ -142,6 +142,15 @@ pub mod types;
 // per call. Mutation-counter invalidated, single-flight on cache miss —
 // same architecture as `BundleFlowCache` in `gigi_stream.rs`.
 pub mod vector_cache;
+// 2026-06-02 `REPLY_TO_SEMANTIC_PERF_2026-06-02.md` follow-up: cache
+// `semantic_gist()` / `morse_compress()` results keyed by
+// `(bundle_name, mutation_counter)`. Defense-in-depth on top of the
+// `betti_rank` algorithm fix — subsequent reads on the same bundle
+// skip even the rank computation, returning the previously-computed
+// Betti tuple in O(1) hashmap-lookup time. Same architecture as
+// `vector_cache.rs` and `BundleFlowCache` in `gigi_stream.rs`.
+#[cfg(feature = "kahler")]
+pub mod morse_cache;
 pub mod wal;
 
 pub use bundle::{

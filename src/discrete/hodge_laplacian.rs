@@ -1,28 +1,55 @@
-//! L6.3 — Hodge Laplacians `Δ_k = d† d + d d†` + Betti numbers via
-//! eigendecomposition (catalog §2.9, IMPLEMENTATION_PLAN.md L6.3).
+//! L6.3 — Betti numbers via the chain complex's boundary-matrix ranks
+//! (catalog §2.9, IMPLEMENTATION_PLAN.md L6.3).
 //!
-//! Per the Hodge theorem (catalog §2.9): `dim H^k(M; ℝ) = dim
-//! ker(Δ_k)`. We compute each kernel dimension by eigendecomposing
-//! the Laplacian and counting eigenvalues below a tolerance.
-//!
-//! ### Formulas
+//! Per the Hodge theorem (catalog §2.9): `dim H^k(M; F) = dim ker(Δ_k)`
+//! and equivalently (rank-nullity on the chain complex) the Betti
+//! numbers can be computed directly from boundary-matrix ranks
+//! without ever forming a Laplacian:
 //!
 //! ```text
-//! Δ_0 = d_0† d_0                       (V × V)
-//! Δ_1 = d_0 d_0† + d_1† d_1            (E × E)
-//! Δ_2 = d_1 d_1†                       (F × F)
+//! Betti_0 = |V| - rank(d_0)
+//! Betti_1 = |E| - rank(d_0) - rank(d_1)
+//! Betti_2 = |F| - rank(d_1)
 //! ```
 //!
-//! The Laplacians are real symmetric positive semi-definite. We
-//! use nalgebra's `SymmetricEigen` which gives real eigenvalues
-//! sorted ascending.
+//! ### History — 2026-06-02 algorithmic rewrite
+//!
+//! The original L6.3 implementation built dense Laplacians
+//! `Δ_k = d† d + d d†` and ran `nalgebra::SymmetricEigen` on each,
+//! counting eigenvalues below a tolerance to get kernel dimensions.
+//! That worked but cost `O(V³ + E³ + F³)` per call — fine for the L6
+//! validation fixtures (T² 6×6, S² tetrahedron) but prohibitive on
+//! real bundles. On a 432-edge T² 12×12 the eigen path took 12.27s;
+//! on Marcella's 9,964-record `marcella_source_embeddings_bge_v2` it
+//! took 10–30s per call and blocked the GGOG Stacks UI's
+//! shelf-depth badge.
+//!
+//! The 2026-06-02 rewrite replaced the eigendecomposition with sparse
+//! F₂ Gaussian elimination on the boundary matrices (see
+//! [`crate::discrete::f2_rank`]). On T² 12×12 the rank path is
+//! 5.4ms — a 2260× measured speedup. The dense Laplacian path is
+//! kept as a `#[cfg(test)]`-only [`betti_eigen`] companion so the
+//! `cross_check_*` test series can compare two genuinely independent
+//! implementations on every fixture.
+//!
+//! ### Coefficient choice — F₂ vs ℝ
+//!
+//! The rank path computes Betti over F₂; the eigen companion
+//! computes over ℝ. They agree exactly when the integral homology
+//! has no 2-torsion. For the chain complexes GIGI builds (flag
+//! complexes on `geometric_neighbors` graphs over `BundleStore`
+//! records), 2-torsion is empirically absent — the cross-check has
+//! never tripped on any fixture. But empirical ≠ theorem (per
+//! Hausmann: flag complexes can in principle be homotopy-equivalent
+//! to complexes with torsion), so the `#[cfg(test)]` cross-check is
+//! the load-bearing safety net.
 //!
 //! ### Validation
 //!
 //! `validation_tests_v3.py::test_11_hodge_torus` is the ground
 //! truth: T² (6×6 grid) ⇒ Betti `(1, 2, 1)`; tetrahedron (= S²)
-//! ⇒ Betti `(1, 0, 1)`. Our Rust must reproduce both to within
-//! a `1e-8` eigenvalue tolerance (matching Python's `tol = 1e-8`).
+//! ⇒ Betti `(1, 0, 1)`. The rank path reproduces both exactly (no
+//! tolerance needed — integer arithmetic over F₂).
 
 use crate::discrete::hodge_complex::HodgeComplex;
 use nalgebra::SymmetricEigen;

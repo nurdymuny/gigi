@@ -34,6 +34,7 @@
 
 #![cfg(feature = "kahler")]
 
+pub mod f2_rank;
 pub mod hodge_complex;
 pub mod hodge_laplacian;
 pub mod morse;

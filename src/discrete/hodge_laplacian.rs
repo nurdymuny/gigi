@@ -49,20 +49,49 @@ impl BettiNumbers {
     }
 }
 
-/// Compute Betti numbers for a `HodgeComplex` with a given
-/// eigenvalue tolerance.
+/// Compute Betti numbers for a `HodgeComplex`. **As of commit 3 of
+/// the SEMANTIC perf fix (2026-06-02), this delegates to
+/// [`betti_rank`]** — the F₂ sparse-rank path that drops the per-call
+/// cost from `O(V³ + E³ + F³)` dense eigendecomposition to roughly
+/// `O(|E| · rank(d_0) + |F| · rank(d_1))` on bitset-row Gaussian
+/// elimination.
 ///
-/// The Python reference uses `tol = 1e-8`; we expose it so callers
-/// can tighten or loosen per their context. Eigenvalues below
-/// `tol` count as zero.
+/// The `tol` parameter is kept in the signature for backward
+/// compatibility (the prior eigendecomposition path used it to count
+/// near-zero eigenvalues) but is now **ignored** — F₂ rank is an
+/// exact integer computation, no tolerance needed.
 ///
-/// Time: `O(V³ + E³ + F³)` for the three eigendecompositions —
-/// fine for the bundles + synthetic tests at L6 scale.
-pub fn betti(hc: &HodgeComplex, tol: f64) -> BettiNumbers {
-    let nv = hc.n_vertices;
-    let ne = hc.n_edges();
-    let nf = hc.n_faces();
+/// On the chain complexes GIGI builds, F₂ Betti and ℝ Betti agree
+/// exactly (see [`betti_rank`] for the math + the empirical case for
+/// the equivalence). The `#[cfg(test)]` cross-check
+/// `cross_check_*` series in this module asserts byte-identical
+/// Betti on every fixture so any future complex that violates the
+/// equivalence trips loudly. The `betti_eigen` helper below is the
+/// kept-for-cross-check companion.
+///
+/// ### Why this was changed
+///
+/// The dense `SymmetricEigen` on three Laplacians dominated SEMANTIC
+/// endpoint latency on bundles with V ≳ 100. On T² 12×12 (144V,
+/// 432E, 288F) the eigen path took 12.27 s while the rank path took
+/// 5.4 ms — a 2260× speedup measured in
+/// `perf_timing_betti_rank_vs_eigen_on_t2_grid`. On Marcella's
+/// 9,964-record bundle the eigen path took 10–30 s per call, blocking
+/// the Stacks shelf-depth badge in the UI.
+pub fn betti(hc: &HodgeComplex, _tol: f64) -> BettiNumbers {
+    betti_rank(hc)
+}
 
+/// Eigendecomposition-based Betti — the pre-2026-06-02 implementation.
+/// Kept ONLY as a `#[cfg(test)]` cross-check companion to
+/// [`betti_rank`] (so the `cross_check_*` tests can compare both
+/// paths byte-by-byte on every fixture). Not exposed to consumers;
+/// not feature-gated separately because it's compiled out of release
+/// builds entirely.
+///
+/// Time: `O(V³ + E³ + F³)` — was prohibitive at V ≳ 1000.
+#[cfg(test)]
+fn betti_eigen(hc: &HodgeComplex, tol: f64) -> BettiNumbers {
     // Δ_0 = d_0† d_0  (V × V)
     let d0t = hc.d0.transpose();
     let l0 = &d0t * &hc.d0;
@@ -74,6 +103,7 @@ pub fn betti(hc: &HodgeComplex, tol: f64) -> BettiNumbers {
     let b1 = count_zeros(&l1, tol);
 
     // Δ_2 = d_1 d_1†  (F × F). Skip eigendecomp when F = 0.
+    let nf = hc.n_faces();
     let b2 = if nf == 0 {
         0
     } else {
@@ -81,8 +111,6 @@ pub fn betti(hc: &HodgeComplex, tol: f64) -> BettiNumbers {
         count_zeros(&l2, tol)
     };
 
-    let _ = (nv, ne); // dimensions used only for sanity; eat the
-                     // unused-binding lint.
     BettiNumbers { b0, b1, b2 }
 }
 
@@ -299,15 +327,19 @@ mod tests {
     // before flipping the contract in commit 3.
 
     fn cross_check_rank_vs_eigen(label: &str, hc: &HodgeComplex) {
-        let b_eigen = betti(hc, 1e-8);
+        // After commit 3 of the SEMANTIC perf fix, `betti()` IS the
+        // rank path. Use `betti_eigen()` (the kept-for-cross-check
+        // companion) as the comparison baseline so the test really
+        // does compare two independent implementations.
+        let b_eigen = betti_eigen(hc, 1e-8);
         let b_rank = betti_rank(hc);
         assert_eq!(
             (b_eigen.b0, b_eigen.b1, b_eigen.b2),
             (b_rank.b0, b_rank.b1, b_rank.b2),
             "[{label}] rank-path Betti diverges from eigen-path: \
              eigen=({}, {}, {}) vs rank=({}, {}, {}). F_2/R Betti \
-             equivalence broken on this fixture — investigate before \
-             flipping the contract.",
+             equivalence broken on this fixture — the eigen safety \
+             net just caught a violation; investigate.",
             b_eigen.b0, b_eigen.b1, b_eigen.b2,
             b_rank.b0, b_rank.b1, b_rank.b2
         );
@@ -420,7 +452,7 @@ mod tests {
         let rank_elapsed = t_rank.elapsed();
 
         let t_eigen = std::time::Instant::now();
-        let b_eigen = betti(&hc, 1e-8);
+        let b_eigen = betti_eigen(&hc, 1e-8);
         let eigen_elapsed = t_eigen.elapsed();
 
         println!(

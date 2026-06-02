@@ -201,6 +201,122 @@ impl HodgeComplex {
     pub fn euler_characteristic(&self) -> i64 {
         self.n_vertices as i64 - self.edges.len() as i64 + self.faces.len() as i64
     }
+
+    /// Build the F₂ representation of `d_0`: `|E| × |V|`, two bits per
+    /// row (one for each endpoint of the edge). Used by the rank-based
+    /// Betti path in `hodge_laplacian::betti_rank` (step 2 of the
+    /// SEMANTIC perf fix). Construction is `O(|E|)`.
+    pub(crate) fn d0_f2(&self) -> crate::discrete::f2_rank::F2Matrix {
+        let rows: Vec<Vec<usize>> = self
+            .edges
+            .iter()
+            .map(|&(i, j)| vec![i, j])
+            .collect();
+        let row_refs: Vec<&[usize]> = rows.iter().map(|v| v.as_slice()).collect();
+        crate::discrete::f2_rank::F2Matrix::from_index_rows(&row_refs, self.n_vertices)
+    }
+
+    /// Build the F₂ representation of `d_1`: `|F| × |E|`, three bits
+    /// per row (one for each edge of the triangular face). Construction
+    /// is `O(|F|)` using the same edge-index map as `HodgeComplex::new`.
+    pub(crate) fn d1_f2(&self) -> crate::discrete::f2_rank::F2Matrix {
+        let edge_index: std::collections::HashMap<(usize, usize), usize> = self
+            .edges
+            .iter()
+            .enumerate()
+            .map(|(idx, &(a, b))| ((a, b), idx))
+            .collect();
+        let rows: Vec<Vec<usize>> = self
+            .faces
+            .iter()
+            .map(|&(i, j, k)| {
+                let mut out = Vec::with_capacity(3);
+                for pair in [(i, j), (j, k), (i, k)] {
+                    if let Some(&e) = edge_index.get(&pair) {
+                        out.push(e);
+                    }
+                }
+                out
+            })
+            .collect();
+        let row_refs: Vec<&[usize]> = rows.iter().map(|v| v.as_slice()).collect();
+        crate::discrete::f2_rank::F2Matrix::from_index_rows(&row_refs, self.edges.len())
+    }
+}
+
+/// Sparsity instrumentation for a `HodgeComplex` — measures the
+/// actual nnz of `d_0` and `d_1` on real bundles so perf claims for
+/// the rank-based Betti path can be grounded in data, not assumption.
+///
+/// Per the Marcella 2026-06-02 SEMANTIC perf letter:
+/// > The speedup depends on the boundary matrices being sparse. That
+/// > depends on how the VR complex is constructed [...]. If ε is large
+/// > enough that the graph is nearly complete (O(n²) edges), the
+/// > boundary matrices aren't sparse and the column-reduction cost can
+/// > approach O(n³) anyway.
+///
+/// GIGI's actual complex construction is NOT a VR-on-distance — it's
+/// `geometric_neighbors`-based (records sharing an indexed-field
+/// value). So |E| can balloon on bundles with low-cardinality indexed
+/// categoricals. This helper makes the per-bundle measurement explicit
+/// so the smoke tests can pin a real number, not an assumed one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NnzReport {
+    /// Vertex count.
+    pub n_vertices: usize,
+    /// Edge count.
+    pub n_edges: usize,
+    /// Face count.
+    pub n_faces: usize,
+    /// Total set bits in `d_0` over F₂. Always equal to `2 · n_edges`
+    /// (per-row sparsity is exactly 2 by construction).
+    pub d0_nnz: usize,
+    /// Total set bits in `d_1` over F₂. Always equal to `3 · n_faces`
+    /// (per-row sparsity is exactly 3 by construction).
+    pub d1_nnz: usize,
+    /// Density of `d_0` = `d0_nnz / (n_edges · n_vertices)`. Tiny
+    /// (≈ 2/V) by construction. Sanity check: a "dense" d_0 would be
+    /// a misconfigured complex.
+    pub d0_density: f64,
+    /// Density of `d_1` = `d1_nnz / (n_faces · n_edges)`. Tiny
+    /// (≈ 3/E) by construction.
+    pub d1_density: f64,
+    /// Average number of edges per vertex. The signal for whether the
+    /// rank-based path will be fast: small values (e.g. `< 100` for a
+    /// 10k-vertex bundle) → sub-second; larger values → approaches
+    /// O(V²) and the eigendecomp wasn't *that* much worse.
+    pub edges_per_vertex: f64,
+}
+
+/// Compute the `NnzReport` for a `HodgeComplex`. `O(1)` — just reads
+/// the counts and divides; no matrix construction.
+pub fn nnz_report(hc: &HodgeComplex) -> NnzReport {
+    let nv = hc.n_vertices;
+    let ne = hc.n_edges();
+    let nf = hc.n_faces();
+    let d0_nnz = 2 * ne;
+    let d1_nnz = 3 * nf;
+    let d0_density = if nv == 0 || ne == 0 {
+        0.0
+    } else {
+        d0_nnz as f64 / (ne as f64 * nv as f64)
+    };
+    let d1_density = if ne == 0 || nf == 0 {
+        0.0
+    } else {
+        d1_nnz as f64 / (nf as f64 * ne as f64)
+    };
+    let edges_per_vertex = if nv == 0 { 0.0 } else { ne as f64 / nv as f64 };
+    NnzReport {
+        n_vertices: nv,
+        n_edges: ne,
+        n_faces: nf,
+        d0_nnz,
+        d1_nnz,
+        d0_density,
+        d1_density,
+        edges_per_vertex,
+    }
 }
 
 #[cfg(test)]

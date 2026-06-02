@@ -387,62 +387,51 @@ fn betti_rank_scales_sub_quadratically() {
         );
     }
 
-    // Scaling check. Theoretical bounds for the current F₂ GE
-    // implementation:
-    //   Pivot search: O(R) per column, R rows × C cols → O(R · C)
-    //   XOR step:     O(R) row-tests + O(C/64) per actual XOR
-    // For d_1 with R = |F| ≈ const · N and C = |E| ≈ const · N, the
-    // total is O(|F|² · |E| / 64) ≈ O(N³ / 64). That's strictly
-    // better than the eigen path's O((V+E+F)³) but NOT linear in N.
+    // Scaling check after the 2026-06-02 column-indexed pivot search
+    // optimization (#217). Per-column cost dropped from O(R·C) to
+    // O(|col_rows[col]|) for pivot selection + XOR target enumeration.
+    // On the sparse boundary matrices GIGI builds, |col_rows[col]|
+    // stays in the tens regardless of N, pushing the practical
+    // scaling close to N·log(N).
     //
-    // Empirically the 16× N-scale (128 → 2048) yields ~500× time
-    // growth. The pure-quadratic bound is 256× and pure-cubic is
-    // 4096×; we sit in the middle.
+    // EMPIRICAL NUMBERS (2026-06-02 post-#217, release build):
+    //   N= 128: 12.4 ms
+    //   N= 512: 85.0 ms
+    //   N=2048: 557  ms     (was 6.9 s pre-#217 — 12.4× speedup)
+    //   Ratio t(2048)/t(128) = 45×
     //
-    // GATE: 2000×. This catches a *true* regression (e.g. the
-    // accidental reintroduction of dense eigendecomposition, which
-    // would give ratios in the tens of thousands at this scale) but
-    // accepts the current sparse-GE cost. A future commit improving
-    // the rank algorithm (column-indexed pivot search,
-    // sparsity-preserving pivot ordering) should tighten this gate.
+    // Pre-#217 ratio was 656× at this scale; pre-betti-rank (eigen-
+    // decomposition) would have been hours on the same fixture.
     //
-    // EMPIRICAL NUMBERS (2026-06-02, release build):
-    //   N= 128: 10.5 ms
-    //   N= 512: 302  ms
-    //   N=2048: 6.9  s     (debug-build was 56s; release shaves 8×)
+    // GATE: 200×. Catches a true algorithmic regression — either
+    // (a) accidental reintroduction of the naive O(R·C) pivot search
+    // (which gave ~600× pre-#217), or (b) the dense eigendecomposition
+    // (tens of thousands). The current measured 45× sits comfortably
+    // below.
     //
-    // Extrapolating O(N³) to Marcella's 10k-record bundle: ~14 min
-    // worst-case if her indexed-categorical drives |F| like our
-    // bucket-32 fixture does. STILL dramatically faster than the
-    // eigen path (which would take hours at that scale; we measured
-    // 12.27s on T² 12×12's 432 edges). But not the sub-second we
-    // hoped for the perf-letter promise.
-    //
-    // Two factors will move this:
-    //   (a) Marcella's actual |F| may be much smaller than the
-    //       bucket-32 worst case — depends on her categorical
-    //       cardinality. MEASURE BEFORE QUOTING.
-    //   (b) A column-indexed pivot search would drop the GE step
-    //       from O(R·C) per column to O(rank-deficient rows per
-    //       column) — typically 10×-100× win on sparse boundary
-    //       matrices. That's the next algorithmic sprint (see
-    //       betti-rank-next-steps follow-up).
+    // For Marcella's 10k bundle: worst-case bucket-32 extrapolation
+    // puts the rank path at ~3s. Her actual production bundle has
+    // |E|=|F|=0 (high-cardinality indexed field), so the measured
+    // production latency is 0.54s — well under the 2s Stacks UI
+    // target. MorseCache (#216) further drops second+ calls to O(1).
     let t_smallest = times[0].3.as_nanos().max(1);
     let t_largest = times[sizes.len() - 1].3.as_nanos();
     let ratio = t_largest as f64 / t_smallest as f64;
     println!(
-        "  Scaling ratio t({}) / t({}) = {:.1}× (gate: < 2000×; \
-         theoretical pure-cubic bound for 16× N-scale: ~4096×)",
+        "  Scaling ratio t({}) / t({}) = {:.1}× (gate: < 200×; \
+         expected post-#217: ~45×; pre-#217 was ~656×)",
         sizes[sizes.len() - 1],
         sizes[0],
         ratio
     );
     assert!(
-        ratio < 2000.0,
+        ratio < 200.0,
         "betti_rank scaling regressed: measured {}× growth from \
-         N={} to N={}. The current sparse-GE empirical bound is ~500× \
-         at this scale; if you're seeing >2000× the algorithm has \
-         degraded (likely accidental reintroduction of a dense step).",
+         N={} to N={}. The post-#217 empirical bound is ~45× at this \
+         scale; if you're seeing >200× the column-indexed pivot search \
+         has degraded (likely accidental reintroduction of the naive \
+         O(R·C) per-column scan from before #217, or worse the dense \
+         eigendecomposition which would be tens of thousands).",
         ratio,
         sizes[0],
         sizes[sizes.len() - 1]

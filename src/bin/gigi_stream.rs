@@ -5798,8 +5798,46 @@ async fn brain_intent_gate_endpoint(
     };
     let config = gigi::geometry::SudokuConfig::default();
     let counter_at_fit = heap.mutation_counter();
-    let resp = gigi::geometry::solve_constraints(heap.records(), &sudoku_req, &config)
-        .map_err(|e| bad_request(&format!("{}", e)))?;
+
+    // **#210 perf fix.** When intent_gate is called with empty
+    // constraints, the SUDOKU half has no semantic value — the
+    // caller is asking purely about query-grounding (confidence
+    // half). The math primitive `solve_constraints` still has a
+    // legitimate contract for empty constraints (mass-collapsed
+    // signature view; see `identical_records_collapse_to_single
+    // _solution_with_full_mass` test). But the intent_gate
+    // endpoint can skip the full O(N) materialize + classify +
+    // mass-compute pass when it knows the consumer only wants the
+    // confidence half.
+    //
+    // Synthetic response: verdict "sat" (zero constraints are
+    // vacuously satisfied), coverage 1.0, empty collections,
+    // n_records_considered 0 (we genuinely didn't look). This is
+    // what the consumer would observe IF they cared, and it costs
+    // nanoseconds instead of seconds on a 10k-record bundle.
+    //
+    // Per Marcella's intent_gate JTBD: "given this query, should
+    // I respond? gate me on constraints + confidence." With no
+    // constraints, the gate is purely confidence-driven; SUDOKU
+    // output is moot.
+    let resp = if sudoku_req.constraints.is_empty() {
+        gigi::geometry::SudokuResponse {
+            solutions: Vec::new(),
+            near_misses: Vec::new(),
+            verdict: gigi::geometry::SudokuVerdict::Sat,
+            coverage: 1.0,
+            n_records_considered: 0,
+            selectivity: Vec::new(),
+            relaxations: Vec::new(),
+            pareto_near_misses: Vec::new(),
+            pre_flight_unsat_reason: None,
+            expanded: None,
+            gamma_trichotomy: None,
+        }
+    } else {
+        gigi::geometry::solve_constraints(heap.records(), &sudoku_req, &config)
+            .map_err(|e| bad_request(&format!("{}", e)))?
+    };
 
     // Wire-format the SUDOKU result (same helpers brain_sudoku uses).
     fn vd_to_wire(v: gigi::geometry::ViolationDetail) -> SudokuViolationWire {

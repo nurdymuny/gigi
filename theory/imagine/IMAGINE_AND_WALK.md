@@ -196,6 +196,8 @@ pub fn imagine_bridge(
 
 A Marcella embedding projected through `fin_semantics_v1` bridge into PRISM's reconciliation manifold IS an imagined record. CROSS_ATLAS_JOINS.md §4 becomes a thin wrapper over this primitive.
 
+**Important semantic-scope note (Marcella feedback #3):** `imagine_bridge` collapses the **geometric projection** but NOT the semantic pre-conditions. Before an imagined bridge record is trustworthy, the consumer must verify that the [`CROSS_ATLAS_JOINS.md`](../poincare_to_sharding/CROSS_ATLAS_JOINS.md) §4 + §7 pre-conditions hold: the shared semantic structure $S_{\mathrm{shared}}$ has been identified, the rendering map agreement between source and target atlases has been specified, and the bridge cocycle budget $\delta_{\mathrm{cocycle}}^{\mathrm{bridge}}$ has been declared and is being enforced. Geometric imagination is *necessary but not sufficient*; calling `imagine_bridge(marcella_record, prism_atlas)` without these pre-conditions in place produces a geometrically valid extrapolation that may have no semantic grounding. The provenance tag (§2) will report `delta_cocycle_observed`, but it cannot tell the consumer whether the rendering map ever made sense.
+
 ---
 
 ## 4. WALK — execute an imagined path safely
@@ -216,7 +218,16 @@ pub struct WalkConfig {
     /// Run SUDOKU pre-flight check on the endpoint constraints.
     pub sudoku_preflight: bool,
     /// Maximum K at any imagined point. Required per Marcella's
-    /// feedback #3. Default: 4.0.
+    /// feedback #3.
+    ///
+    /// **Default 4.0 = K(CP¹ Fubini-Study).** Walking into regions
+    /// of higher Gaussian curvature than complex projective space
+    /// requires explicit opt-in. CP¹ is the natural ceiling because
+    /// it is the simplest closed Kähler manifold the substrate
+    /// supports (see T3 §3.3 + L4 KahlerCurvature) and serves as
+    /// the curvature reference point in the existing test suite.
+    /// Anything more curved than CP¹ is, by construction, more
+    /// curved than the substrate has been calibrated for.
     pub max_imagined_curvature: f64,
     /// Maximum accumulated holonomy along the walked path.
     pub max_accumulated_holonomy: f64,
@@ -372,9 +383,33 @@ Both verbs project forward. They diverge near the edges of the substrate.
 | Provenance | Sample from learned density (low novelty) | Geometric extrapolation (potentially high novelty, MUST be tagged as imagined) |
 | Marcella's call | Inside-substrate prediction, e.g. next 100ms in well-populated regime | Edge-of-substrate prediction, e.g. extrapolating past corpus boundary |
 
-**Routing rule**: if the seed's local density is high (KDE estimate above threshold), FORECAST is the right call. If density is weak (approaching the L11 SELF-MONITOR's "I don't know" boundary), IMAGINE is the right call because the density gradient is dominated by sampling noise but the metric tensor is still well-defined.
+**Routing rule (computable, Marcella feedback #2 follow-up)**:
 
-Marcella's `intent_gate` should consult the density estimate to route between FORECAST and IMAGINE per request.
+```python
+density = bundle.confidence_with_explain(seed).query_grounding.normalized
+
+if density > θ_density:
+    use FORECAST  # density gradient is meaningful
+else:
+    use IMAGINE   # density too thin; rely on the metric tensor
+```
+
+**Starting value:** `θ_density = 0.5`. This matches the high-confidence cutoff used in the SUDOKU primitive spec
+([`SUDOKU_PRIMITIVE_SPEC.md`](../kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md) §example table:
+`query_grounding.normalized > 0.5` is the "sat with high confidence"
+boundary). The same threshold should be used here so Marcella's
+`intent_gate` is *consistent* across the FORECAST/IMAGINE routing
+and the SAT/refuse routing it already runs.
+
+If Gate J's refusal boundary is retuned, this `θ_density` should
+move with it. The two should be the **same number** at any point
+in time, not two independently tuned constants.
+
+The current `confidence_with_explain` endpoint surfaces
+`query_grounding.raw` and `query_grounding.normalized`; the
+normalized form is what `intent_gate` already consults for SAT
+verdicts, so reusing it for the FORECAST/IMAGINE routing requires
+no new substrate field.
 
 ---
 
@@ -401,10 +436,16 @@ Per the existing TDD discipline. All three under `theory/imagine/validation/`.
 
 **Ground truth.** Aggregate K computed on a single unsharded `BundleStore`.
 
-**Test.**
-- Same 60 synthetic records, partition into 2 charts AND 8 charts.
-- Populate halos via `imagine_halo` for both.
-- Assert `aggregate.k_sum` is identical (to within numerical precision: 1e-10).
+**Test (Marcella feedback: run CURVATURE on the SAME dataset with 2+ DIFFERENT partition cuts and assert agreement — make the partition-invariance claim explicit):**
+- Same 60 synthetic records, partition into:
+  - 2 charts (cut by PK hash mod 2)
+  - 4 charts (cut by PK hash mod 4)
+  - 8 charts (cut by PK hash mod 8)
+- Populate halos via `imagine_halo` for all three.
+- Compute `shard_curvature(bundle).aggregate.k_sum` for each.
+- Assert `k_sum_2 ≈ k_sum_4 ≈ k_sum_8` to within numerical precision (1e-10), AND each matches the direct single-shard `k_sum` on the same record set.
+
+This is the test that distinguishes the IMAGINE-with-halo recipe from the Phase D fragmentation behavior: without halos, the three partitions produced different `k_sum` values (Phase D learning); with halos, they must agree.
 
 **Circular-logic guard.** The halo construction does not consult the aggregate result; it consults only the per-chart local data + the bridge transitions. Aggregation is downstream.
 
@@ -416,7 +457,20 @@ Per the existing TDD discipline. All three under `theory/imagine/validation/`.
 
 **(a) Synthetic substrate.** Manually-constructed connection with $\mathbb{Z}_2$ monodromy at a seam. Walk a closed loop crossing the seam twice; verify holonomy with double cover is identity; without is non-trivial; lifted path commits correctly.
 
-**(b) Discourse-state seam.** The adjacency-pair transitions in conversation (question → answer OR question → repair) have sign-flip topology at the seam. The routing has a double-cover structure: a "question" state can resolve into either the "answer" branch or the "repair" branch, and the choice is the $\mathbb{Z}_2$ lift.
+**(b) Discourse-state seam (Marcella feedback #5, concrete pin).** The adjacency-pair transitions in conversation have sign-flip topology at the seam. The specific $\mathbb{Z}_2$ case to test:
+
+- **Seed state:** `act_history = ("qy",)` (a yes/no question has just been asked).
+- **Two branches at the seam:**
+  - Answer class: continuation tagged in the answer family (e.g., dialog acts `ny`, `na`, `nn`).
+  - Repair / non-answer class: continuation tagged `ab` (acknowledgment-bridge) or `%` (uninterpretable / repair).
+
+From the state `("qy",)`, these two branches form the two sheets of the double cover. The substrate's connection has $\mathbb{Z}_2$ structure at this seam: walking blindly across it lands you in *one* of the two sheets without knowing which.
+
+**Test procedure:**
+1. Construct a discourse-state substrate whose connection encodes the answer-vs-repair branching at `("qy",)`.
+2. WALK from `("qy",)` with `use_double_cover = false`: assert `UnresolvedMonodromy { seam }` is returned, with the seam ID identifying the `qy` boundary.
+3. WALK from `("qy",)` with `use_double_cover = true`: assert the path lifts to the cover, walks consistently, and the `WalkOutcome::WalkedInCover` reports a definite `monodromy_class ∈ {0, 1}` corresponding to answer vs repair.
+4. Cross-check: the substrate's known holonomy around a small loop bracketing the seam is non-trivial (Z₂) without lifting, trivial in the cover.
 
 This is Marcella's intended production test case — the discourse state IS the substrate, the adjacency pair IS the seam, and the double cover resolves which branch we're committing to *before* the routing decision propagates. The math from (a) is the same; the substrate is Marcella's live conversation state.
 

@@ -16,12 +16,18 @@ import time
 
 
 TESTS = [
-    ("T1", "t1_mayer_vietoris_betti.py",       "Mayer-Vietoris BETTI assembly"),
-    ("T2", "t2_cocycle_bound.py",              "Cocycle bound on 3-chart S^2 atlas"),
-    ("T3", "t3_sharded_curvature.py",          "Sharded CURVATURE on CP^1 FS"),
-    ("T4", "t4_sharded_holonomy.py",           "Sharded HOLONOMY w/ gauge transition"),
-    ("T5", "t5_cauchy_interlacing_lambda1.py", "Honest sharded lambda_1 bounds"),
-    ("T6", "t6_clean_finger_move.py",          "Clean Finger Move resolver analog"),
+    # Intra-atlas gates (poincare_to_sharding.md §3.1-§3.6)
+    ("T1",  "t1_mayer_vietoris_betti.py",            "Mayer-Vietoris BETTI assembly"),
+    ("T2",  "t2_cocycle_bound.py",                   "Cocycle bound on 3-chart S^2 atlas"),
+    ("T3",  "t3_sharded_curvature.py",               "Sharded CURVATURE on CP^1 FS"),
+    ("T4",  "t4_sharded_holonomy.py",                "Sharded HOLONOMY w/ gauge transition"),
+    ("T5",  "t5_cauchy_interlacing_lambda1.py",      "Honest sharded lambda_1 bounds"),
+    ("T6",  "t6_clean_finger_move.py",               "Clean Finger Move resolver analog"),
+    ("T7",  "t7_distributed_lanczos_spectral.py",    "Distributed Lanczos -- universal SPECTRAL"),
+    # Cross-atlas gates (CROSS_ATLAS_JOINS.md §5)
+    ("T8",  "t8_bridge_cocycle.py",                  "Cross-atlas bridge cocycle bound"),
+    ("T9",  "t9_cross_atlas_betti.py",               "Cross-atlas BETTI via fiber-product M-V"),
+    ("T10", "t10_cross_atlas_resolver.py",           "Cross-atlas Clean Finger Move resolver"),
 ]
 
 
@@ -58,8 +64,8 @@ def main():
     all_ok = all(ok for (_, _, _, ok, _) in results)
     print()
     if all_ok:
-        print("  ALL 6 TDD GATES GREEN.")
-        print("  poincare_to_sharding.md theory doc is unblocked.")
+        print(f"  ALL {len(TESTS)} TDD GATES GREEN.")
+        print("  poincare_to_sharding.md theory + CROSS_ATLAS_JOINS.md unblocked.")
         return 0
     else:
         n_fail = sum(1 for (_, _, _, ok, _) in results if not ok)

@@ -2951,6 +2951,12 @@ struct ImagineCoherenceRequest {
     /// derived from the bundle's `curvature_stats.mean()`.
     #[serde(default)]
     metric_curvature: Option<f64>,
+    /// Optional seed grounding density (normalized to `[0, 1]`) used
+    /// to compute the FORECAST/IMAGINE routing advisory. When present,
+    /// the response includes a `routing_advisory` block per Marcella
+    /// round-3 feedback #3. When absent, routing_advisory is `None`.
+    #[serde(default)]
+    query_grounding_normalized: Option<f64>,
 }
 
 #[cfg(feature = "imagine")]
@@ -2981,6 +2987,21 @@ struct ImagineCoherenceResponse {
     refused: bool,
     /// Human-readable refusal reason if `refused = true`.
     refusal_reason: Option<String>,
+    /// FORECAST/IMAGINE routing advisory. Present iff the request
+    /// included `query_grounding_normalized`. Per Marcella round-3
+    /// feedback #3: surfaces whether IMAGINE was the right verb to
+    /// invoke given the seed density, or whether FORECAST would have
+    /// been better. `mismatch = true` means the caller mis-routed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    routing_advisory: Option<gigi::imagine::RoutingAdvisory>,
+    /// Audit signal: present iff the caller raised
+    /// `max_imagined_curvature` above the default 4.0 trust ceiling.
+    /// Per Marcella round-3 feedback #2: refusal fires when curvature
+    /// exceeds the threshold; this fires when the threshold itself is
+    /// raised. Production callers should propagate this to their
+    /// audit log.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    threshold_drift: Option<gigi::imagine::CurvatureGateRaisedAboveDefault>,
 }
 
 /// `POST /v1/bundles/{name}/imagine_coherence`
@@ -3000,7 +3021,7 @@ async fn bundle_imagine_coherence(
     Json(req): Json<ImagineCoherenceRequest>,
 ) -> Result<Json<ImagineCoherenceResponse>, (StatusCode, Json<ErrorResponse>)> {
     use gigi::imagine::{
-        imagine_coherence_trajectory, metric_for_constant_k, WalkConfig,
+        imagine_coherence_trajectory, metric_for_constant_k, RoutingAdvisory, WalkConfig,
     };
 
     if req.starting_from.len() != req.along.len() {
@@ -3071,6 +3092,16 @@ async fn bundle_imagine_coherence(
         )
     })?;
 
+    // Marcella round-3 feedback #2: surface threshold drift if the
+    // caller raised max_imagined_curvature above the default ceiling.
+    let threshold_drift = walk_config.audit_threshold_drift();
+
+    // Marcella round-3 feedback #3: routing advisory iff the request
+    // provided a normalized grounding density.
+    let routing_advisory = req
+        .query_grounding_normalized
+        .map(RoutingAdvisory::for_imagine_invocation);
+
     let response = ImagineCoherenceResponse {
         bundle: name,
         dim: report.dim,
@@ -3082,6 +3113,8 @@ async fn bundle_imagine_coherence(
         endpoint_curvature: report.endpoint_curvature,
         refused: report.refused,
         refusal_reason: report.refusal_reason,
+        routing_advisory,
+        threshold_drift,
     };
 
     // If refused, return 422 with the report still attached so the

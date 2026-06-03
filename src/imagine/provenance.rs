@@ -126,6 +126,25 @@ impl ImaginedRecord {
             ImaginedProvenance::Bridge { .. } => "bridge",
         }
     }
+
+    /// Always true. Provided per Marcella's response-pipeline contract
+    /// (round-3 feedback #1): consumer code branching on
+    /// "imagined vs retrieved" in a response path should use a method
+    /// call rather than parsing the cite-render string or matching the
+    /// `ImaginedProvenance` enum variant. The method is the canonical
+    /// way to ask "should this record be rendered with an imagined
+    /// prefix?" — and the answer is yes, because the type only exists
+    /// for imagined records.
+    ///
+    /// Retrieved records live in different types (`crate::types::Record`,
+    /// substrate `BundleRef::records`), which do NOT expose
+    /// `is_imagined()`. The asymmetry is intentional — there is no
+    /// silent default. Pattern-matched response items can call
+    /// `.is_imagined()` only when it returns true.
+    #[inline]
+    pub fn is_imagined(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]
@@ -210,6 +229,16 @@ mod tests {
         assert_eq!(sample_geodesic_record().provenance_kind(), "geodesic");
         assert_eq!(sample_halo_record().provenance_kind(), "halo");
         assert_eq!(sample_bridge_record().provenance_kind(), "bridge");
+    }
+
+    #[test]
+    fn is_imagined_returns_true_for_every_provenance_variant() {
+        // Per Marcella round-3 feedback #1: response-path branching
+        // must be a method call, not a string parse. The method
+        // returns true for any ImaginedRecord regardless of provenance.
+        assert!(sample_geodesic_record().is_imagined());
+        assert!(sample_halo_record().is_imagined());
+        assert!(sample_bridge_record().is_imagined());
     }
 
     #[test]

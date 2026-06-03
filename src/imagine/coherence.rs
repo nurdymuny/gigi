@@ -31,6 +31,17 @@ pub struct CoherencePoint {
     pub provenance: String,
 }
 
+impl CoherencePoint {
+    /// Always true. Same contract as
+    /// `ImaginedRecord::is_imagined` — provided so the response-path
+    /// branching can be a method call rather than a string parse on
+    /// `provenance`. Per Marcella round-3 feedback #1.
+    #[inline]
+    pub fn is_imagined(&self) -> bool {
+        true
+    }
+}
+
 /// Report from `imagine_coherence_trajectory`. If `refused = true`,
 /// the trajectory was constructed but the walk would be refused at
 /// commit time; consumers should not consume the endpoint as a
@@ -293,6 +304,21 @@ mod tests {
                     "provenance must surface 'imagined:' marker per Marcella contract, got: {}",
                     point.provenance);
             assert!(point.provenance.contains("marcella_corpus"));
+        }
+    }
+
+    #[test]
+    fn coherence_point_is_imagined_returns_true() {
+        // Per Marcella round-3 feedback #1.
+        let metric = metric_for_constant_k(0.0);
+        let report = imagine_coherence_trajectory(
+            &metric, "seed", "test_bundle",
+            &[0.0, 0.0], &[0.5, 0.0], 3,
+            &WalkConfig::default(),
+        ).unwrap();
+        for point in &report.trajectory {
+            assert!(point.is_imagined(),
+                    "CoherencePoint::is_imagined must return true for response-path branching");
         }
     }
 

@@ -84,13 +84,62 @@ pub struct WalkConfig {
     pub materialize_on_success: bool,
 }
 
+impl WalkConfig {
+    /// The default `max_imagined_curvature`. 4.0 = K(CP¹ Fubini-Study),
+    /// the simplest closed Kähler manifold the substrate is calibrated
+    /// for. Anchored as a `const` so callers (and audit code) can
+    /// compare against it without re-typing the magic number.
+    pub const DEFAULT_MAX_IMAGINED_CURVATURE: f64 = 4.0;
+
+    /// If `max_imagined_curvature` has been raised above the default
+    /// trust ceiling, return the audit struct that should be logged.
+    /// Returns `None` when the threshold is at or below default — the
+    /// no-drift case.
+    ///
+    /// Per Marcella round-3 feedback #2: refusal-on-too-curved fires
+    /// when curvature exceeds the threshold, but if the threshold
+    /// itself is silently raised the trust envelope has a gap. This
+    /// method gives operations a deterministic way to detect drift:
+    /// every endpoint that consumes a `WalkConfig` should consult
+    /// `audit_threshold_drift()` and propagate the result to its
+    /// response (and/or log).
+    pub fn audit_threshold_drift(&self) -> Option<CurvatureGateRaisedAboveDefault> {
+        if self.max_imagined_curvature > Self::DEFAULT_MAX_IMAGINED_CURVATURE {
+            Some(CurvatureGateRaisedAboveDefault {
+                configured: self.max_imagined_curvature,
+                default: Self::DEFAULT_MAX_IMAGINED_CURVATURE,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+/// Audit-log signal emitted (in the response payload) when a caller
+/// has raised `max_imagined_curvature` above the default 4.0 trust
+/// ceiling. Per Marcella round-3 feedback #2, this is the sibling
+/// signal to `OverCurvatureRefused` — refusal-on-too-curved fires at
+/// commit; threshold-raised-above-default fires at config time.
+///
+/// Surfaced in `imagine_coherence` HTTP responses as
+/// `threshold_drift`. Production callers should route this to their
+/// audit log; not opt-in.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CurvatureGateRaisedAboveDefault {
+    /// The value the caller set in `WalkConfig::max_imagined_curvature`.
+    pub configured: f64,
+    /// The default trust ceiling that the caller has raised above
+    /// (`WalkConfig::DEFAULT_MAX_IMAGINED_CURVATURE`).
+    pub default: f64,
+}
+
 impl Default for WalkConfig {
     fn default() -> Self {
         Self {
             use_double_cover: true,
             sudoku_preflight: true,
             // 4.0 = K(CP^1 Fubini-Study). See doc comment above.
-            max_imagined_curvature: 4.0,
+            max_imagined_curvature: Self::DEFAULT_MAX_IMAGINED_CURVATURE,
             max_accumulated_holonomy: 0.5,
             materialize_on_success: false,
         }
@@ -124,6 +173,57 @@ mod tests {
         let back: WalkConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(back.max_imagined_curvature, c.max_imagined_curvature);
         assert_eq!(back.use_double_cover, c.use_double_cover);
+    }
+
+    #[test]
+    fn audit_threshold_drift_is_none_at_default() {
+        // Per Marcella round-3 feedback #2: no drift at default.
+        let c = WalkConfig::default();
+        assert!(c.audit_threshold_drift().is_none());
+    }
+
+    #[test]
+    fn audit_threshold_drift_is_none_when_lowered() {
+        // Lowering the threshold (more conservative) should NOT
+        // emit a drift signal -- drift fires on raised ceilings, not
+        // lowered ones.
+        let c = WalkConfig {
+            max_imagined_curvature: 2.0,
+            ..WalkConfig::default()
+        };
+        assert!(c.audit_threshold_drift().is_none());
+    }
+
+    #[test]
+    fn audit_threshold_drift_fires_when_raised_above_default() {
+        // Per Marcella round-3 feedback #2: raising the threshold
+        // silently is the trust-envelope gap. Catch it with an
+        // explicit audit signal.
+        let c = WalkConfig {
+            max_imagined_curvature: 10.0,
+            ..WalkConfig::default()
+        };
+        let drift = c.audit_threshold_drift().expect("drift must fire");
+        assert_eq!(drift.configured, 10.0);
+        assert_eq!(drift.default, 4.0);
+    }
+
+    #[test]
+    fn audit_threshold_drift_default_constant_matches_kahler_ceiling() {
+        // The constant must equal K(CP^1 FS) = 4.0 -- if this drifts,
+        // every consumer that compares against it silently breaks.
+        assert_eq!(WalkConfig::DEFAULT_MAX_IMAGINED_CURVATURE, 4.0);
+    }
+
+    #[test]
+    fn curvature_gate_raised_above_default_serde_round_trips() {
+        let drift = CurvatureGateRaisedAboveDefault {
+            configured: 7.5,
+            default: 4.0,
+        };
+        let json = serde_json::to_string(&drift).unwrap();
+        let back: CurvatureGateRaisedAboveDefault = serde_json::from_str(&json).unwrap();
+        assert_eq!(drift, back);
     }
 
     #[test]

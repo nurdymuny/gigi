@@ -417,6 +417,53 @@ Source: [`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encrypt
 
 ---
 
+## What's new — 2026-06-03 (afternoon) — sharding lands as substrate, not as compromise
+
+**Ten TDD-gated math claims, Phase A scaffold, Phase B runtime wrapper, cross-atlas joins spec — all in one afternoon.** Most databases face CAP-style trade-offs where sharding adds coordination cost. GIGI's geometric substrate inverts the cost curve: per-query cost goes *down* with shard count because every verb except SPECTRAL is sheaf-glued natively. This sprint produced the math + the engineering scaffold to prove it.
+
+The push back came from Bee's three companion papers (Davis 2026a *The Davis Manifold*, 2026b *The Geometry of Sameness*, 2026c *Smooth 4D Poincaré Conjecture*), which together establish that chart-based composition without information loss is already mathematically published. The math reads: shards are charts, transitions between shards are the connection 1-form data, cocycle bound (Davis 2026b Def 21) controls multi-hop slack, Clean Finger Move Theorem (Davis 2026c Thm 5.3) gives a constructive write-conflict resolver. The sprint operationalized that math through ten TDD gates with independent ground truths:
+
+| Gate | What it validates | Result |
+|---|---|---|
+| **T1** | Sharded BETTI exact via Mayer-Vietoris | β_n on S¹, S², T² recovered exactly from per-chart data |
+| **T2** | Cocycle bound: 0 for analytic, first-order for learned | analytic δ=1.78e-14; perturbed slope 0.924 |
+| **T3** | Sharded CURVATURE via sheafification | CP¹ Fubini-Study K=4 from each chart, charts hold 4× different raw ρ |
+| **T4** | Sharded HOLONOMY w/ non-trivial gauge transition | T² closed loop with A_L ≠ A_R on overlap, holonomy invariant |
+| **T5** | Honest sharded λ₁ bounds (NON-universal disclosure) | Universal Weyl holds; naive bound FAILS on expanders by 5-7× |
+| **T6** | Clean Finger Move conflict resolver | terminates in N/2 steps, density- and ordering-invariant |
+| **T7** | Distributed Lanczos closes the expander gap | all 7 graph cases converge to machine precision, K=25–99 |
+| **T8** | Cross-atlas bridge cocycle bound | analytic ~1e-14; perturbed slopes 0.961–1.088 |
+| **T9** | Cross-atlas BETTI via fiber-product Mayer-Vietoris | S² and T² fiber products exact via per-atlas + bridge data |
+| **T10** | Cross-atlas Clean Finger Move resolver | atlas-agnostic; terminates in N/2 across all distributions |
+
+Three of these (T2, T5, T6) were **red on first run** and caught real math errors in my initial framing — T5 in particular caught that the naive `min(per-shard λ₁)` bound is non-universal and fails on expanders, which is now disclosed honestly in `SHARDING_SPEC.md` §5.6 with `SpectralRegime::Expander` routing through distributed Lanczos (T7's universal recipe) instead. The red-then-green cycles are the most valuable receipts in the sprint.
+
+**Theory + spec ship**: [`theory/poincare_to_sharding/poincare_to_sharding.md`](theory/poincare_to_sharding/poincare_to_sharding.md) (the three-paper bridge), [`theory/poincare_to_sharding/SHARDING_SPEC.md`](theory/poincare_to_sharding/SHARDING_SPEC.md) (5-phase migration plan A→F), [`theory/poincare_to_sharding/CROSS_ATLAS_JOINS.md`](theory/poincare_to_sharding/CROSS_ATLAS_JOINS.md) (Marcella + PRISM bridge design), [`theory/kahler_upgrade/HANDOFF_TO_MARCELLA_SHARDING_2026-06-03.md`](theory/kahler_upgrade/HANDOFF_TO_MARCELLA_SHARDING_2026-06-03.md) (4000-word handoff letter with Sudoku-principle forced moves).
+
+**Phase A scaffold** ([`src/sharded/`](src/sharded/) module, behind `sharded` feature flag): `Atlas`, `ChartId`, `ShardId`, `Transition`, `ChartMetadata`, `SpectralRegime` (with `allows_naive_recipe()` / `requires_distributed_lanczos()` routing), `non_vacuity_check`, `cocycle_budget_check`, `sharded_write_resolve` (full Clean Finger Move implementation matching T6 Python validation), per-verb execution stubs with regime routing. 21 new tests, all pass.
+
+**Phase B runtime wrapper** ([`src/sharded/sharded_bundle.rs`](src/sharded/sharded_bundle.rs)): `ShardedBundle::wrap_trivial(bundle, ShardId(0))` takes any existing single-node bundle and produces a sharded form with `n_shards = 1`, byte-equivalent at runtime to the inner store. Atlas serde round-trip validated. Routing primitive (`route_pk`) in place. `inner_mut()` escape hatch lets existing code migrate incrementally. 8 new tests, all pass. **Zero regression on the 1124-test baseline; new totals 1153 with `--features "kahler sharded"`.**
+
+What this unblocks: Phase C (real multi-shard with hash partitioning + Mayer-Vietoris BETTI assembly), Phase D (Fiedler-vector partition + SPECTRAL routing), Phase E (Schur complement for expanders via T7 distributed Lanczos), Phase F (cross-atlas joins for Marcella + PRISM via T8–T10 bridge math). The math is all green; what remains is engineering on a math foundation that's already locked.
+
+**Ten new GIGI feats** surfaced during the sprint and saved in the Marcella handoff letter §7 so we don't forget: multi-window LOCAL_HOLONOMY, SELF_COHERENCE verb (metacognition as a database primitive), DHOOM-as-cross-shard-binary, GIGI Lang shard-locality query annotations, per-shard DGP chip mapping, GEODESIC_BALL retrieval verb, Marcella + PRISM bridge contract, unification conjecture operational test, Lipschitz-bounded ε-bounded O(1) point queries with metric carry, Phase F production cross-atlas via DHOOM transit.
+
+Run the math suite:
+
+```bash
+python theory/poincare_to_sharding/validation/run_all.py
+# -> ALL 10 TDD GATES GREEN, ~15s wall clock
+```
+
+Run the Rust suite:
+
+```bash
+cargo test --lib --features "kahler sharded"
+# -> 1153 passed; 0 failed; 0 ignored
+```
+
+---
+
 ## What's new — 2026-06-03 — LOCAL_HOLONOMY (5th Cognitive Geometry verb) + intent_gate perf fix + PolyForm NC license
 
 **LOCAL_HOLONOMY — the windowed-holonomy coherence signal (#200, Marcella's `COHERENCE_SIGNAL_SPEC.md §3`).** With LOCAL_HOLONOMY the Cognitive Geometry family is now **five verbs**: CAPACITY · HORIZON · DEPTH · PERCEIVE · **LOCAL_HOLONOMY**. Where PERCEIVE asks *"after parallel transport, what does the substrate see this vector as?"*, LOCAL_HOLONOMY answers the complementary question Marcella's gain gate needs: *"between time t−w and time t, how much did the cumulative frame rotate, and therefore how trustworthy is the local coherence regime?"* The math: given two cumulative rotations `R_acc,t` (current) and `R_acc,t−w` (past, w steps ago), the windowed rotation is `R_window = R_current · R_past^T`; the defect is `‖R_window − I‖_F` (gauge-invariant under simultaneous orthogonal conjugation, by the unitary invariance of the Frobenius norm); coherence is `1 − defect/(2·√dim) ∈ [0, 1]`. Pinned reference points (unit-tested with hand-computed values): identity pair → coherence 1 (perfect laminar), 30° + (30°)⁻¹ → defect √2, coherence 0.5 (moderate), I + (−I) → coherence 0 (turbulent). Ships as a math primitive in [`src/curvature.rs`](src/curvature.rs) (`local_holonomy()` → `LocalHolonomyResult`, reuses `PerceiveError` variants for HTTP error consistency), the `POST /v1/bundles/{name}/local_holonomy` HTTP endpoint (body `{ r_current, r_past, dim }`, response adds an `interpretation` field translating coherence into a builder-readable laminar/moderate/low/turbulent regime label), and an end-to-end chain test (`transport_to_local_holonomy_chain_yields_marcella_coherence`) that runs two `flat_transport` calls at different time horizons, extracts `R_acc` from each via step-4b's `TransportResult.rotation`, feeds them into `local_holonomy`, and verifies the defect against the closed-form Rodrigues prediction `sqrt(4·(1−cos θ))` to 1e-5. Production verification on v195: three live probes returned correct math to machine precision (identity → coherence 1.0; 30° composition → defect 1.4142, coherence 0.5; full response shape matches contract) — all sub-second (122–131 ms wall-clock).
@@ -739,6 +786,16 @@ As of this README the engine ships with:
 
 - **847 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract (LOCAL_HOLONOMY and PERCEIVE are feature-independent and run here too; was 680 pre-CG-verbs, +6 LOCAL_HOLONOMY, +others from Branch VII).
 - **1124 tests passing, 0 failed** with `cargo test --lib --features kahler` (+ 64 in `cargo test --bin gigi-stream --features kahler`) — adds the twelve-layer Kähler stack (L1–L12, all 12 brain primitives operational), the **five Cognitive Geometry verbs** (CAPACITY / HORIZON / DEPTH / PERCEIVE / LOCAL_HOLONOMY) end-to-end (math + HTTP + GQL parser + real-data smokes + cross-team contract pins), the SUDOKU meta-primitive (waves 3–6.2 + S3.5), SAMPLE_TRANSPORT (S4), the #107 polymorphic brain-endpoint fix, the rank-based Betti rewrite + MorseCache + column-indexed F₂ rank (`/brain/semantic` went from 10–30 s to sub-second on production-shape complexes), per-layer real-data smokes against the 20-record sensor dataset, and the six HTTP wire-gate tests verifying that every wave-3/4/5/6 field reaches the response and the Čech pre-flight + Pareto + expansion paths return correctly.
+- **1153 tests passing, 0 failed** with `cargo test --lib --features "kahler sharded"` — adds the [`src/sharded/`](src/sharded/) module (Phase A scaffold + Phase B `ShardedBundle` wrapper) behind the `sharded` feature flag. 29 new sharded tests cover `Atlas` / `ChartId` / `Transition` / `SpectralRegime` types + the `non_vacuity_check` and `cocycle_budget_check` gates + `sharded_write_resolve` Clean Finger Move resolver + `ShardedBundle::wrap_trivial` runtime wrapper with atlas serde round-trip. Feature OFF by default → zero regression for callers who haven't opted in.
+
+Plus a **separate Python TDD suite of 10 math gates** for the sharded substrate (see [`theory/poincare_to_sharding/validation/`](theory/poincare_to_sharding/validation/)):
+
+```bash
+python theory/poincare_to_sharding/validation/run_all.py
+# -> ALL 10 TDD GATES GREEN, ~15s wall clock
+```
+
+Each gate cites its claim, references its source paper (Davis 2026a / b / c, Hatcher, Horn-Johnson, Nakahara, Saad), implements ground truth + claim-under-test through INDEPENDENT paths, and documents its circular-logic guards. Three gates (T2, T5, T6) were red-then-green during development and caught real math errors before they made it into the spec.
 
 The Python validation suites independently verify the math from three
 independent angles:

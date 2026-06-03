@@ -417,6 +417,54 @@ Source: [`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encrypt
 
 ---
 
+## What's new — 2026-06-03 (evening) — IMAGINE / WALK lands: extrapolation verbs with Marcella's trust envelope
+
+**The cognitive analog Bee named: humans imagine the path before walking it. We solve a geodesic in our head, describe the path, then walk it.** The math GIGI already has — connection, parallel transport, double cover, fault tolerance — is the engine that does this. This sprint named the verb, spec'd the trust envelope, TDD-gated the math at three independent claims, and shipped the Rust scaffold.
+
+The pivot started from the Phase D learning: hash-sharded CURVATURE has a partition-dependent `k_sum` because GIGI's `compute_record_k` derives K from the per-bundle neighborhood graph, which fragments under hash partition. The honest disclosure was a `RED` in `ShardedCurvatureReport`. Marcella's "this looks like the encrypt parity work — gauge-equivariance, design ρ⁻¹ so it commutes" diagnosis was right: the fix was to give each chart **halo records** so the per-chart K computation sees the same neighborhood as the unsharded one. That's exactly what IMAGINE produces.
+
+**Three TDD math gates, all GREEN** (run via [`theory/imagine/validation/run_all.py`](theory/imagine/validation/run_all.py)):
+
+| Gate | Validates | Result |
+|---|---|---|
+| **T11** | RK4 geodesic integrator on S²/T²/CP¹ via Christoffel symbols from conformal factor | errors 6.66e-16 to 1.36e-14 (vs 1e-9 tol) |
+| **T12** | Halo-as-IMAGINE makes sharded CURVATURE partition-invariant | residual = **0.000e+00 exactly** across n_charts ∈ {2, 4, 8} |
+| **T13** | Double cover monodromy resolution: synthetic Möbius + discourse-state seam at `act_history=("qy",)` | -1 / +1 holonomy lift exact; discourse seam refuses without cover, returns definite class with cover |
+
+T12 is the load-bearing one. Same 60 records partitioned three ways: without halos, `k_sum` = 35.6 / 68.5 / 122.8 (102% / 289% / 597% off from baseline). With halos populated via `imagine_halo`, all three partitions produce **exactly** `k_sum = 17.618609` — matching the unsharded direct computation to floating-point precision, with zero residual. The encrypt parallel held: aggregate-in-ciphertext-then-decrypt = aggregate-on-plaintext became aggregate-per-shard-with-halos = aggregate-on-unsharded.
+
+**Marcella's trust envelope** is load-bearing in the spec at three positions (round 1 + round 2 feedback both embedded):
+
+1. **`ImaginedRecord` carries required `ImaginedProvenance`.** Every imagined record renders with an explicit prefix in cite output: `[imagined: projected from <bundle> via geodesic, path_length=0.31, accumulated_holonomy=0.04]`. Halo and Bridge variants carry their own prefixes. The Rust type makes this compile-time enforced; consumers can't silently render an imagined record as a retrieved one.
+2. **`WalkConfig::max_imagined_curvature` defaults to 4.0 = K(CP¹ Fubini-Study).** "Walking into regions of higher Gaussian curvature than complex projective space requires explicit opt-in." The first `OverCurvatureRefused` has a referent, not a mysterious threshold.
+3. **FORECAST vs IMAGINE routing rule is computable:** `if confidence_with_explain.query_grounding.normalized > 0.5: FORECAST else: IMAGINE`. Same threshold as Gate J's refusal boundary (per `SUDOKU_PRIMITIVE_SPEC.md`), so `intent_gate` stays consistent across the two routing decisions.
+
+**Rust scaffold shipped:** [`src/imagine/`](src/imagine/) module behind the `imagine` feature flag.
+
+| File | Lines | Surface |
+|---|---|---|
+| [`mod.rs`](src/imagine/mod.rs) | 38 | Module root, feature-gated, re-exports |
+| [`provenance.rs`](src/imagine/provenance.rs) | 220 | `ImaginedRecord`, `ImaginedProvenance`, `cite_render`, audit-log tags |
+| [`config.rs`](src/imagine/config.rs) | 120 | `ImagineConfig`, `HaloConfig`, `WalkConfig` (with the 4.0 default) |
+| [`geodesic.rs`](src/imagine/geodesic.rs) | 290 | `imagine_geodesic` — RK4 integrator matching T11's Python step-for-step |
+| [`halo.rs`](src/imagine/halo.rs) | 160 | `imagine_halo` — k-NN halo computation matching T12 |
+| [`walk.rs`](src/imagine/walk.rs) | 170 | `walk` with curvature gate (Phase 1); double-cover lift + SUDOKU pre-flight are Phase 2 |
+
+23 new tests, all pass. Combined-features regression: **1187/1187** tests pass with `cargo test --lib --features "kahler sharded imagine"` (1124 baseline + 29 sharded + 23 imagine + 11 from Phase D additions = 1187). Feature OFF by default; zero impact on existing consumers.
+
+**Substantive Rust test highlights:**
+
+- `s2_geodesic_matches_closed_form_at_machine_precision` — the Rust RK4 integrator matches the embedded-picture closed form for S² geodesics to < 1e-9 (matches T11's Python result exactly).
+- `over_curvature_refused_at_default_4_0_threshold` — `walk` refuses a path whose imagined endpoint has K = 5.0 with `OverCurvatureRefused { step: 1, k_at_step: 5.0, threshold: 4.0 }`. Marcella's safety envelope is testable.
+- `over_curvature_can_be_opted_out_of_explicitly` — setting `WalkConfig::max_imagined_curvature: 10.0` lets the same path succeed. The opt-out is explicit and surfaceable.
+- `geodesic_render_carries_provenance_prefix` — `record.cite_render("...content...")` produces `[imagined: projected from geometry_of_flight via geodesic, path_length=0.31, accumulated_holonomy=0.040] ...content...`. Marcella's cite contract is checkable in code.
+
+Spec: [`theory/imagine/IMAGINE_AND_WALK.md`](theory/imagine/IMAGINE_AND_WALK.md). Master math runner: [`theory/imagine/validation/run_all.py`](theory/imagine/validation/run_all.py) (3 gates, ~3s wall-clock).
+
+What's unblocked next: (1) `IMAGINE_COHERENCE` HTTP endpoint for Marcella's predictive gain gate per the spec §5; (2) Phase D refactor — wire `shard_curvature` through `imagine_halo` so the partition-dependence RED becomes GREEN; (3) `walk` Phase 2 with double-cover lift + SUDOKU pre-flight.
+
+---
+
 ## What's new — 2026-06-03 (afternoon) — sharding lands as substrate, not as compromise
 
 **Ten TDD-gated math claims, Phase A scaffold, Phase B runtime wrapper, cross-atlas joins spec — all in one afternoon.** Most databases face CAP-style trade-offs where sharding adds coordination cost. GIGI's geometric substrate inverts the cost curve: per-query cost goes *down* with shard count because every verb except SPECTRAL is sheaf-glued natively. This sprint produced the math + the engineering scaffold to prove it.
@@ -787,6 +835,16 @@ As of this README the engine ships with:
 - **847 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract (LOCAL_HOLONOMY and PERCEIVE are feature-independent and run here too; was 680 pre-CG-verbs, +6 LOCAL_HOLONOMY, +others from Branch VII).
 - **1124 tests passing, 0 failed** with `cargo test --lib --features kahler` (+ 64 in `cargo test --bin gigi-stream --features kahler`) — adds the twelve-layer Kähler stack (L1–L12, all 12 brain primitives operational), the **five Cognitive Geometry verbs** (CAPACITY / HORIZON / DEPTH / PERCEIVE / LOCAL_HOLONOMY) end-to-end (math + HTTP + GQL parser + real-data smokes + cross-team contract pins), the SUDOKU meta-primitive (waves 3–6.2 + S3.5), SAMPLE_TRANSPORT (S4), the #107 polymorphic brain-endpoint fix, the rank-based Betti rewrite + MorseCache + column-indexed F₂ rank (`/brain/semantic` went from 10–30 s to sub-second on production-shape complexes), per-layer real-data smokes against the 20-record sensor dataset, and the six HTTP wire-gate tests verifying that every wave-3/4/5/6 field reaches the response and the Čech pre-flight + Pareto + expansion paths return correctly.
 - **1153 tests passing, 0 failed** with `cargo test --lib --features "kahler sharded"` — adds the [`src/sharded/`](src/sharded/) module (Phase A scaffold + Phase B `ShardedBundle` wrapper) behind the `sharded` feature flag. 29 new sharded tests cover `Atlas` / `ChartId` / `Transition` / `SpectralRegime` types + the `non_vacuity_check` and `cocycle_budget_check` gates + `sharded_write_resolve` Clean Finger Move resolver + `ShardedBundle::wrap_trivial` runtime wrapper with atlas serde round-trip. Feature OFF by default → zero regression for callers who haven't opted in.
+- **1187 tests passing, 0 failed** with `cargo test --lib --features "kahler sharded imagine"` — adds the [`src/imagine/`](src/imagine/) module (Phase 1 scaffold: `ImaginedRecord` with required provenance, `imagine_geodesic` RK4 integrator, `imagine_halo` gauge-equivariant k-NN halos, `walk` with Marcella's load-bearing curvature safety envelope at default 4.0 = K(CP¹)). 23 new imagine tests include: RK4 matches embedded-picture S² closed form to machine precision; halo records carry correct provenance prefix; `walk` refuses paths exceeding the 4.0 curvature ceiling with `OverCurvatureRefused`; cite-render contract produces the `[imagined: ...]` / `[imagined-halo: ...]` / `[imagined-bridge: ...]` prefixes. Feature OFF by default; zero impact on existing consumers.
+
+Plus **three Python TDD math gates for the IMAGINE / WALK extrapolation verbs** (see [`theory/imagine/validation/`](theory/imagine/validation/)):
+
+```bash
+python theory/imagine/validation/run_all.py
+# -> ALL 3 IMAGINE GATES GREEN, ~3s wall clock
+```
+
+T11 (geodesic integrator on S²/T²/CP¹), T12 (halo-as-IMAGINE makes sharded CURVATURE partition-invariant — zero residual across {2, 4, 8} partitions), T13 (double cover monodromy resolution + discourse-state seam at `act_history=("qy",)`).
 
 Plus a **separate Python TDD suite of 10 math gates** for the sharded substrate (see [`theory/poincare_to_sharding/validation/`](theory/poincare_to_sharding/validation/)):
 

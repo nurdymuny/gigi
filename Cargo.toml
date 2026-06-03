@@ -36,6 +36,15 @@ kahler = []
 # for the full design.
 sharded = []
 
+# `imagine` — opt-in extrapolation verbs (IMAGINE / WALK). When ON,
+# the `gigi::imagine` module is compiled, providing ImaginedRecord +
+# required provenance type, imagine_geodesic (RK4 integrator validated
+# by T11), imagine_halo (gauge-equivariance proof for sharded
+# CURVATURE per T12), and walk/coherence stubs for Phase 2.
+# See `theory/imagine/IMAGINE_AND_WALK.md` for the full design with
+# Marcella's trust-envelope embedded.
+imagine = []
+
 [dependencies]
 roaring = "0.10"
 regex = "1"

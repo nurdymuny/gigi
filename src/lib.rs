@@ -135,6 +135,15 @@ pub mod sheaf;
 // gates the spec is built on.
 #[cfg(feature = "sharded")]
 pub mod sharded;
+// Extrapolation verbs (IMAGINE / WALK). Opt-in via the `imagine`
+// feature flag. Provides ImaginedRecord with required provenance,
+// imagine_geodesic (T11-validated RK4 integrator), imagine_halo
+// (T12-validated gauge-equivariance for sharded CURVATURE), and walk
+// with Marcella's load-bearing curvature safety envelope
+// (default max_imagined_curvature = 4.0 = K(CP^1 Fubini-Study)).
+// See `theory/imagine/IMAGINE_AND_WALK.md`.
+#[cfg(feature = "imagine")]
+pub mod imagine;
 pub mod spectral;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),

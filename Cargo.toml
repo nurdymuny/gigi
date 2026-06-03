@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2021"
 description = "Geometric Intrinsic Global Index — fiber-bundle database engine"
 authors = ["Bee Rosa Davis <davis@davisgeometric.com>"]
-license = "MIT"
+# PolyForm Noncommercial License 1.0.0. Not in SPDX's standard list, so
+# we reference the LICENSE file directly. Commercial use is reserved by
+# the copyright holder — see the README's "License & commercial use"
+# section for the commercial-licensing route.
+license-file = "LICENSE"
 default-run = "gigi"
 autoexamples = false
 autobenches = false

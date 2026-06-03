@@ -7,8 +7,13 @@
 > are **properties of the bundle** — they update incrementally with every
 > insert and ride along on every query response. Geometry is not a plugin.
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-blueviolet.svg)](LICENSE)
 [![Rust 2021](https://img.shields.io/badge/rust-2021-orange.svg)](Cargo.toml)
+
+> **Licensing:** GIGI is released under the **PolyForm Noncommercial License 1.0.0** —
+> free for personal use, research, education, and nonprofit/government use.
+> **Commercial use is not granted by this license** and is reserved by the
+> copyright holder under a separate commercial agreement. See [License & commercial use](#license--commercial-use) below.
 
 ```
 Davis Geometric · 2026 · Bee Rosa Davis
@@ -900,11 +905,86 @@ operator-only restore tooling — those live in private channels.
 
 ---
 
-## License
+## License & commercial use
 
-MIT. © Davis Geometric.
+**Copyright © 2025–2026 Bee Rosa Davis. All rights reserved.**
 
-The mathematical content (the fiber-bundle representation of relational
-data, the gauge encryption construction, the geometric query language, the
-DHOOM wire protocol) is the subject of provisional patents; the *code* in
-this repository is MIT-licensed.
+GIGI is released under the **[PolyForm Noncommercial License 1.0.0](LICENSE)**
+([canonical text](https://polyformproject.org/licenses/noncommercial/1.0.0)).
+
+### What's covered for free
+
+Per the PolyForm Noncommercial license, **any noncommercial purpose is a
+permitted purpose**. That explicitly includes:
+
+- **Personal use** — research, experimentation, testing for the benefit of
+  public knowledge, personal study, private entertainment, hobby projects,
+  amateur pursuits, and religious observance, *without any anticipated
+  commercial application*.
+- **Noncommercial organizations** — charitable organizations, educational
+  institutions, public research organizations, public safety or health
+  organizations, environmental protection organizations, and government
+  institutions. This applies *regardless of the source of funding* or
+  obligations resulting from the funding.
+
+The license includes a **patent license scoped to noncommercial use** —
+i.e., the patent claims listed below are licensed for use *within* the
+permitted noncommercial scope.
+
+### What's NOT covered (commercial use is reserved)
+
+Commercial use of GIGI is **not granted by the PolyForm license** and is
+reserved to the copyright holder. "Commercial" includes — but is not limited
+to — building a paid product on top of GIGI, embedding GIGI in a SaaS or
+hosted service offered to paying customers, redistributing GIGI as part of
+a commercial offering, and using GIGI inside any organization that does not
+qualify as a "noncommercial organization" under the license terms (§
+"Noncommercial Organizations" in [LICENSE](LICENSE)).
+
+If you want to use GIGI commercially, **you need a separate commercial
+license from the copyright holder.** See *Commercial licensing* below.
+
+### Patents
+
+The mathematical constructions underlying GIGI — the fiber-bundle
+representation of relational data, the curvature / spectral-gap / holonomy
+machinery, the gauge encryption suite, the DHOOM wire protocol, the
+discrete Hodge / Betti / Morse pipeline, the Cognitive Geometry verbs
+(CAPACITY / HORIZON / DEPTH / PERCEIVE), the LOCAL_HOLONOMY coherence
+signal, the SUDOKU constraint-satisfaction primitive — are the subject of
+provisional and granted patents held by the copyright holder. The PolyForm
+license grants patent rights *only for permitted (noncommercial) use*; all
+commercial patent rights are reserved.
+
+### Commercial licensing
+
+For commercial use — including product use, hosted/SaaS use, paid
+redistribution, or any use inside a for-profit organization that isn't
+covered by the "Noncommercial Organizations" definition — contact the
+copyright holder to negotiate an exclusive or non-exclusive commercial
+license.
+
+The standard commercial structure is a separate written agreement
+covering: copyright license to the relevant code, patent license to the
+relevant claims, scope (field of use, geography, exclusivity), term, and
+fees. Marcella, the Davis Geometric corporation, and any production
+deployment of GIGI on commercial substrate operate under such an
+agreement.
+
+### Compatibility note (no copyleft contamination)
+
+The PolyForm Noncommercial License is **not** a copyleft license. It does
+not contaminate derivative works in the GPL/AGPL sense. You may build on
+top of GIGI for any noncommercial purpose without any obligation to
+release your additions under PolyForm. The only requirements are the
+standard ones: include the LICENSE text (or a link to the canonical URL),
+preserve the `Required Notice:` copyright line, and stay within the
+permitted-purpose scope.
+
+### A note on prior releases
+
+Earlier iterations of this README claimed an "MIT" license. **No LICENSE
+file was ever published in this repository under MIT terms.** As of this
+commit, the licensing is explicitly PolyForm Noncommercial 1.0.0 going
+forward; any prior informal use is fact-of-the-matter whatever it was, and
+the going-forward terms are what's in LICENSE today.

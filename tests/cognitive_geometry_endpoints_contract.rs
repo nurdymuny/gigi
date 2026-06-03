@@ -31,9 +31,9 @@
 #![cfg(feature = "kahler")]
 
 use gigi::curvature::{
-    capacity, encoding_depth, encoding_depth_with, horizon, horizon_with, perceive,
-    perception_bias, scalar_curvature, DepthConfig, EncodingDepth, HorizonConfig, HorizonResult,
-    LengthScaleEstimator, PerceiveError, PerceptionResult,
+    capacity, encoding_depth, encoding_depth_with, horizon, horizon_with, local_holonomy,
+    perceive, perception_bias, scalar_curvature, DepthConfig, EncodingDepth, HorizonConfig,
+    HorizonResult, LengthScaleEstimator, LocalHolonomyResult, PerceiveError, PerceptionResult,
 };
 use gigi::spectral::spectral_gap;
 use gigi::types::{BundleSchema, FieldDef, Record, Value};
@@ -369,4 +369,107 @@ fn perception_result_roundtrips_through_json() {
     let json = serde_json::to_string(&res).expect("serialize");
     let back: PerceptionResult = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(res, back);
+}
+
+// ── LOCAL_HOLONOMY contract (Marcella COHERENCE_SIGNAL_SPEC §3) ────
+
+/// LocalHolonomyResponse is the wire-side payload for the
+/// /v1/bundles/{name}/local_holonomy endpoint. Pin the field set +
+/// types so the JSON shape can't drift before consumers (Marcella)
+/// deserialize.
+#[test]
+fn local_holonomy_result_has_expected_field_set() {
+    let identity = vec![1.0, 0.0, 0.0, 1.0];
+    let res: LocalHolonomyResult = local_holonomy(&identity, &identity, 2).expect("local_holonomy");
+    // Compile-time field-shape pin.
+    let _: Vec<f64> = res.r_window;
+    let _: f64 = res.defect;
+    let _: f64 = res.coherence;
+}
+
+/// Identity-rotation pair yields perfect coherence on the wire. The
+/// "no drift" signal the laminar-cognition consumer would observe.
+#[test]
+fn local_holonomy_identity_pair_wire_contract() {
+    let identity = vec![1.0, 0.0, 0.0,
+                         0.0, 1.0, 0.0,
+                         0.0, 0.0, 1.0];
+    let res = local_holonomy(&identity, &identity, 3).expect("local_holonomy");
+    assert_eq!(res.r_window, identity);
+    assert_eq!(res.defect, 0.0);
+    assert!((res.coherence - 1.0).abs() < 1e-12);
+}
+
+/// LocalHolonomyResult JSON round-trip — the wire layer's
+/// serialization must be bit-deterministic so consumers can rely on
+/// it.
+#[test]
+fn local_holonomy_result_roundtrips_through_json() {
+    let r1 = vec![0.0, -1.0, 1.0, 0.0];
+    let r2 = vec![1.0, 0.0, 0.0, 1.0];
+    let res = local_holonomy(&r1, &r2, 2).expect("local_holonomy");
+    let json = serde_json::to_string(&res).expect("serialize");
+    let back: LocalHolonomyResult = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(res, back);
+}
+
+/// Gauge-invariance — the LOAD-BEARING property per Marcella's §3
+/// proof. The wire response's `defect` and `coherence` MUST be
+/// invariant under simultaneous unitary conjugation of both inputs.
+/// If a future implementation breaks this, Marcella's gain gate
+/// receives a gauge-dependent signal that breaks her training.
+#[test]
+fn local_holonomy_wire_response_is_gauge_invariant() {
+    // Two unrelated 2D rotations.
+    let theta1 = 30_f64.to_radians();
+    let theta2 = 65_f64.to_radians();
+    let (c1, s1) = (theta1.cos(), theta1.sin());
+    let (c2, s2) = (theta2.cos(), theta2.sin());
+    let r_current = vec![c1, -s1, s1, c1];
+    let r_past = vec![c2, -s2, s2, c2];
+    let baseline = local_holonomy(&r_current, &r_past, 2).expect("baseline");
+
+    // Q = 50° conjugation rotation.
+    let phi = 50_f64.to_radians();
+    let (cq, sq) = (phi.cos(), phi.sin());
+    let q = [cq, -sq, sq, cq];
+    let q_t = [cq, sq, -sq, cq];
+
+    fn matmul(a: &[f64], b: &[f64]) -> [f64; 4] {
+        [
+            a[0]*b[0] + a[1]*b[2], a[0]*b[1] + a[1]*b[3],
+            a[2]*b[0] + a[3]*b[2], a[2]*b[1] + a[3]*b[3],
+        ]
+    }
+    let r_current_conj: Vec<f64> = matmul(&matmul(&q, &r_current), &q_t).into();
+    let r_past_conj: Vec<f64> = matmul(&matmul(&q, &r_past), &q_t).into();
+    let conj = local_holonomy(&r_current_conj, &r_past_conj, 2).expect("conj");
+
+    assert!(
+        (baseline.defect - conj.defect).abs() < 1e-10,
+        "wire-layer defect not gauge-invariant: baseline={} conj={}",
+        baseline.defect, conj.defect
+    );
+    assert!(
+        (baseline.coherence - conj.coherence).abs() < 1e-10,
+        "wire-layer coherence not gauge-invariant"
+    );
+}
+
+/// PerceiveError variants reused by local_holonomy — pinning the
+/// shared error enum surface so the HTTP error mapping is consistent
+/// between PERCEIVE and LOCAL_HOLONOMY.
+#[test]
+fn local_holonomy_uses_perceive_error_variants() {
+    // Empty dim.
+    assert_eq!(
+        local_holonomy(&[], &[], 0),
+        Err(PerceiveError::EmptyDimension)
+    );
+    // R_current wrong shape.
+    let r2 = vec![1.0, 0.0, 0.0, 1.0];
+    assert_eq!(
+        local_holonomy(&[1.0, 0.0, 0.0], &r2, 2),
+        Err(PerceiveError::NonSquareRotation { dim: 2, len: 3 })
+    );
 }

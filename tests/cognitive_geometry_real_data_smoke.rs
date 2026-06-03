@@ -22,8 +22,9 @@
 #![cfg(feature = "kahler")]
 
 use gigi::curvature::{
-    capacity, encoding_depth, horizon, horizon_with, perceive, perception_bias,
-    scalar_curvature, DepthConfig, EncodingDepth, HorizonConfig, LengthScaleEstimator,
+    capacity, encoding_depth, horizon, horizon_with, local_holonomy, perceive,
+    perception_bias, scalar_curvature, DepthConfig, EncodingDepth, HorizonConfig,
+    LengthScaleEstimator,
 };
 use gigi::spectral::spectral_gap;
 use gigi::types::{BundleSchema, FieldDef, Value};
@@ -365,6 +366,75 @@ fn perceive_bias_grows_monotonically_with_rotation_angle() {
     // endpoint as a numerical sanity check.
     assert!((last - 2.0).abs() < 1e-12,
         "bias at 90° should be 2.0; got {}", last);
+}
+
+#[test]
+fn transport_to_local_holonomy_chain_yields_marcella_coherence() {
+    // End-to-end integration: run TWO `flat_transport` calls — one
+    // covering [0, t-w] and one covering [0, t] — extract R_acc from
+    // each TransportResult, feed both into local_holonomy. Verify the
+    // gauge-invariant defect + coherence signal Marcella consumes.
+    use gigi::geometry::transport::{flat_transport, BSource, TransportSegment};
+    use gigi::geometry::forms::{ClosedTwoForm, TwoForm};
+
+    // Constant magnetic field in 2D for clean closed-form rotations.
+    let b = 0.4_f64;
+    let bias_mat = vec![0.0, -b,
+                         b,  0.0];
+    let bias = ClosedTwoForm::new_constant(
+        TwoForm::new(bias_mat, 2).expect("antisymmetric"),
+    );
+    let seg = TransportSegment::new(
+        vec![0.0, 0.0], vec![0.0, 0.0], vec![1.0, 0.0],
+    ).unwrap();
+
+    // Two parallel-transport runs along the same trajectory, at
+    // different time horizons. The "past" run covers [0, t-w]; the
+    // "current" run covers [0, t]. Both run from the same starting
+    // segment so R_past and R_current are cumulative rotations from
+    // the same scan — matching the Marcella prefix-scan semantics.
+    let dt = 1e-4;
+
+    // R_past: T_past = dt · 1000 = 0.1; expected rotation 0.04 rad.
+    let past = flat_transport(&seg, Some(&bias), dt, 1000, BSource::Override)
+        .expect("past transport");
+    let r_past = past.rotation.as_ref().expect("past rotation present").clone();
+
+    // R_current: T_current = dt · 1500 = 0.15; expected rotation 0.06 rad.
+    let current = flat_transport(&seg, Some(&bias), dt, 1500, BSource::Override)
+        .expect("current transport");
+    let r_current = current.rotation.as_ref().expect("current rotation present").clone();
+
+    // R_window covers the [t-w, t] window — additional time
+    // dt · 500 = 0.05; expected rotation b · 0.05 = 0.02 rad.
+    let res = local_holonomy(&r_current, &r_past, 2).expect("local_holonomy");
+
+    // Closed-form: defect for a θ-rotation in 2D embedded in R^2 is
+    // ‖R - I‖_F = sqrt(2 · (1 - cos θ)) · √2 = sqrt(4·(1 - cos θ)).
+    // (Same closed form used in the perceive_bias_grows_monotonically
+    // test.) For θ = 0.02 rad, expected defect ≈ 0.02 (small angle).
+    let theta = 0.02_f64;
+    let expected_defect = (4.0 * (1.0 - theta.cos())).sqrt();
+    assert!(
+        (res.defect - expected_defect).abs() < 1e-5,
+        "defect {} vs closed-form {} differ (θ={})",
+        res.defect, expected_defect, theta
+    );
+
+    // Coherence should be near 1 (laminar) — the rotation in this
+    // window is small.
+    assert!(
+        res.coherence > 0.98,
+        "small-rotation window must yield near-laminar coherence: got {}",
+        res.coherence
+    );
+
+    // Sanity: R_window is the rotation by 0.02 rad.
+    let (c, s) = (theta.cos(), theta.sin());
+    assert!((res.r_window[0] - c).abs() < 1e-5,
+        "R_window[0,0] = {} (expected cos(0.02) = {})", res.r_window[0], c);
+    assert!((res.r_window[1] - (-s)).abs() < 1e-5,
+        "R_window[0,1] = {} (expected -sin(0.02))", res.r_window[1]);
 }
 
 #[test]

@@ -144,6 +144,15 @@ pub mod sharded;
 // See `theory/imagine/IMAGINE_AND_WALK.md`.
 #[cfg(feature = "imagine")]
 pub mod imagine;
+// Atomic Sheaf Commits — cross-bundle ACID transactions. Phase 1:
+// 2PC with coordinator/participant recovery (gates TX1-TX5 in
+// theory/transactions/validation/). Opt-in via the `transactions`
+// feature flag. ACID is what this primitive degenerates to when you
+// ignore the geometry: full design adds cocycle preservation,
+// K-monotone, and connection-coherent invariants atop atomicity.
+// See `theory/transactions/ATOMIC_SHEAF_COMMIT_SPEC.md`.
+#[cfg(feature = "transactions")]
+pub mod transactions;
 pub mod spectral;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),

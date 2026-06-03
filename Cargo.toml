@@ -45,6 +45,17 @@ sharded = []
 # Marcella's trust-envelope embedded.
 imagine = []
 
+# `transactions` — opt-in atomic sheaf commits (cross-bundle ACID +
+# 3 GIGI-specific invariants: cocycle bound, K-monotone, connection-
+# coherent). Phase 1 ships 2PC + coordinator/participant recovery
+# (gates TX1-TX5). When ON, the `gigi::transactions` module compiles
+# with TransactionId, Coordinator, Participant, the global tx log,
+# and the BEGIN/COMMIT/ROLLBACK HTTP + GQL surface. When OFF, the
+# engine compiles and behaves exactly as before.
+# See `theory/transactions/ATOMIC_SHEAF_COMMIT_SPEC.md` for the
+# full 4-phase design.
+transactions = []
+
 [dependencies]
 roaring = "0.10"
 regex = "1"
@@ -68,7 +79,7 @@ memmap2 = "0.9"
 libc = "0.2"
 base64 = "0.22"
 instant-distance = "0.6"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "serde"] }
 # Phase B multi-tenant: HMAC-SHA256 verification of compact signed
 # tokens minted by davisgeometric.com. Engine extracts {namespace,
 # owner, exp} from each token to enforce per-tenant bundle isolation.

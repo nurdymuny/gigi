@@ -829,6 +829,128 @@ pub fn perception_bias(rotation: &[f64], dim: usize) -> Result<f64, PerceiveErro
     Ok(sum_sq.sqrt())
 }
 
+// ── LOCAL_HOLONOMY — Marcella COHERENCE_SIGNAL_SPEC §3 ─────────────
+//
+// Given two accumulated rotation matrices R_current = R_acc,t and
+// R_past = R_acc,t-w from a parallel-transport scan (the Marcella
+// runtime computes both as part of the prefix scan), LOCAL_HOLONOMY
+// returns:
+//
+//   R_window = R_current · R_past^T
+//   defect   = ‖R_window − I‖_F              (gauge-invariant per
+//                                              the unitary-invariance
+//                                              of Frobenius)
+//   coherence = 1 − defect / (2·√dim)        (in [0, 1])
+//
+// Coherence ≈ 1 means the rotations in the window [t-w, t] nearly
+// cancelled — "the geometry is agreeing with itself" (laminar
+// cognition, per the Cognitive Sonic Onset Law).
+// Coherence ≈ 0 means they compounded — "the geometry is fighting
+// itself" (turbulent cognition).
+//
+// This is the substrate-side surface of the Marcella gain-gate's
+// third proprioceptive signal A_t per `COHERENCE_SIGNAL_SPEC.md §3`.
+// The chain TRANSPORT → R_acc → LOCAL_HOLONOMY produces what the
+// runtime's gain-gate would compute from the same prefix-scan
+// outputs.
+
+/// Result of [`local_holonomy`]. Carries the windowed rotation
+/// matrix, the gauge-invariant defect, and the normalized coherence
+/// signal — Marcella consumes the latter directly into her gain
+/// gate per `COHERENCE_SIGNAL_SPEC.md §3`.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct LocalHolonomyResult {
+    /// `R_window = R_current · R_past^T`, row-major `dim × dim`. The
+    /// net rotation accumulated over the window [t-w, t].
+    pub r_window: Vec<f64>,
+    /// `‖R_window − I‖_F`. Gauge-invariant under unitary conjugation
+    /// per the proof in `COHERENCE_SIGNAL_SPEC.md §3` ("intrinsic
+    /// geometry, not coordinates"). Range: `[0, 2·√dim]`.
+    pub defect: f64,
+    /// `1 − defect / (2·√dim)` in `[0, 1]`. The normalized coherence
+    /// signal A_t. `A_t ≈ 1` → laminar (rotations cancelled);
+    /// `A_t ≈ 0` → turbulent (rotations compounded).
+    pub coherence: f64,
+}
+
+/// LOCAL_HOLONOMY — windowed-holonomy coherence over a parallel-
+/// transport window (Marcella `COHERENCE_SIGNAL_SPEC.md §3`).
+///
+/// Inputs: two accumulated rotation matrices `R_current` (at
+/// position t) and `R_past` (at position t-w), both row-major
+/// `dim × dim`. They come from the same prefix scan in Marcella's
+/// runtime; GIGI's side either receives them on the wire (HTTP body)
+/// or extracts them from a sequence of `flat_transport` calls (the
+/// rotation field shipped in step 4b).
+///
+/// Output: [`LocalHolonomyResult`] — the windowed rotation
+/// `R_current · R_past^T`, the gauge-invariant defect, and the
+/// normalized coherence `A_t ∈ [0, 1]`.
+///
+/// ### Math
+///
+/// 1. `R_window[i,j] = Σ_k R_current[i,k] · R_past[j,k]` — note the
+///    transpose: `R_past^T` makes this a matrix product where the
+///    j-index of `R_past` is summed over.
+/// 2. `defect = ‖R_window − I‖_F = sqrt(Σ (R_window[i,j] − δ_{ij})²)`
+///    — reuses [`perception_bias`] internally for consistency with
+///    PERCEIVE.
+/// 3. `coherence = 1 − defect / (2·√dim)` clamped to `[0, 1]`. The
+///    `2·√dim` denominator is the maximum value of `‖R − I‖_F` over
+///    orthogonal R (hit by R = −I).
+///
+/// ### Errors
+///
+/// - `EmptyDimension` if `dim == 0`.
+/// - `NonSquareRotation` if either matrix has length != `dim * dim`.
+pub fn local_holonomy(
+    r_current: &[f64],
+    r_past: &[f64],
+    dim: usize,
+) -> Result<LocalHolonomyResult, PerceiveError> {
+    if dim == 0 {
+        return Err(PerceiveError::EmptyDimension);
+    }
+    if r_current.len() != dim * dim {
+        return Err(PerceiveError::NonSquareRotation {
+            dim,
+            len: r_current.len(),
+        });
+    }
+    if r_past.len() != dim * dim {
+        return Err(PerceiveError::NonSquareRotation {
+            dim,
+            len: r_past.len(),
+        });
+    }
+
+    // R_window = R_current · R_past^T (row-major).
+    // (R_current · R_past^T)[i,j] = Σ_k R_current[i,k] · R_past[j,k]
+    let mut r_window = vec![0.0_f64; dim * dim];
+    for i in 0..dim {
+        for j in 0..dim {
+            let mut acc = 0.0_f64;
+            for k in 0..dim {
+                acc += r_current[i * dim + k] * r_past[j * dim + k];
+            }
+            r_window[i * dim + j] = acc;
+        }
+    }
+
+    // defect = ‖R_window − I‖_F (reuse perception_bias).
+    let defect = perception_bias(&r_window, dim)?;
+
+    // coherence = 1 − defect / max_defect, max_defect = 2·√dim.
+    let max_defect = 2.0 * (dim as f64).sqrt();
+    let coherence = (1.0 - defect / max_defect).clamp(0.0, 1.0);
+
+    Ok(LocalHolonomyResult {
+        r_window,
+        defect,
+        coherence,
+    })
+}
+
 /// Partition function Z(β, p) = Σ exp(-β · d(p, q)) (Def 3.7).
 ///
 /// Sums over the geometric neighborhood of p (records sharing indexed field
@@ -1842,6 +1964,199 @@ mod tests {
         let res = perceive(&r, &v, 2).expect("perceive");
         let s = serde_json::to_string(&res).expect("serialize");
         let back: PerceptionResult = serde_json::from_str(&s).expect("deserialize");
+        assert_eq!(res, back);
+    }
+
+    // ── LOCAL_HOLONOMY (Marcella COHERENCE_SIGNAL_SPEC §3) ───────
+
+    /// When R_current == R_past, R_window = R · R^T = I.
+    /// defect = 0, coherence = 1 (perfect alignment — rotations
+    /// cancelled completely; laminar cognition).
+    #[test]
+    fn local_holonomy_identical_rotations_yields_perfect_coherence() {
+        // R = 30° rotation in 2D.
+        let theta = 30_f64.to_radians();
+        let (c, s) = (theta.cos(), theta.sin());
+        let r = vec![c, -s, s, c];
+        let res = local_holonomy(&r, &r, 2).expect("local_holonomy");
+
+        // R_window should be the 2x2 identity.
+        assert!((res.r_window[0] - 1.0).abs() < 1e-12);
+        assert!((res.r_window[1] - 0.0).abs() < 1e-12);
+        assert!((res.r_window[2] - 0.0).abs() < 1e-12);
+        assert!((res.r_window[3] - 1.0).abs() < 1e-12);
+
+        // defect = 0; coherence = 1.
+        assert!(res.defect < 1e-12, "defect = {}", res.defect);
+        assert!((res.coherence - 1.0).abs() < 1e-12, "coh = {}", res.coherence);
+    }
+
+    /// When R_current and R_past are inverses (R_past = R_current^T
+    /// for orthogonal R), R_window = R · (R^T)^T = R · R = R²
+    /// (since orthogonal R: R^T·^T = R). For R = 30° rotation,
+    /// R² is a 60° rotation; defect = 2·sin(30°) = 1.
+    ///
+    /// Hand check: R = [[cos30, -sin30],[sin30, cos30]],
+    /// R² = [[cos60, -sin60],[sin60, cos60]] = [[0.5, -√3/2],[√3/2, 0.5]]
+    /// R² − I = [[-0.5, -√3/2],[√3/2, -0.5]]
+    /// ‖R² − I‖_F² = 0.25 + 0.75 + 0.75 + 0.25 = 2; defect = √2 ≈ 1.414
+    #[test]
+    fn local_holonomy_compose_rotations_matches_hand_calculation() {
+        let theta = 30_f64.to_radians();
+        let (c, s) = (theta.cos(), theta.sin());
+        let r_current = vec![c, -s, s, c];
+        // R_past = R_current^T (so R_window = R_current · R_past^T =
+        // R_current · R_current = R_current²).
+        let r_past = vec![c, s, -s, c];
+        let res = local_holonomy(&r_current, &r_past, 2).expect("local_holonomy");
+
+        // Expected R² = 60° rotation.
+        let two_theta = 60_f64.to_radians();
+        let (c2, s2) = (two_theta.cos(), two_theta.sin());
+        assert!((res.r_window[0] - c2).abs() < 1e-12);
+        assert!((res.r_window[1] - (-s2)).abs() < 1e-12);
+        assert!((res.r_window[2] - s2).abs() < 1e-12);
+        assert!((res.r_window[3] - c2).abs() < 1e-12);
+
+        // defect = √2 (hand-computed).
+        let expected_defect = 2.0_f64.sqrt();
+        assert!(
+            (res.defect - expected_defect).abs() < 1e-12,
+            "defect = {} (expected √2 = {})",
+            res.defect, expected_defect
+        );
+
+        // coherence = 1 - √2 / (2·√2) = 1 - 1/2 = 0.5.
+        assert!(
+            (res.coherence - 0.5).abs() < 1e-12,
+            "coh = {} (expected 0.5)",
+            res.coherence
+        );
+    }
+
+    /// 2·√dim is the upper bound for ‖R - I‖_F on orthogonal R,
+    /// hit when R_window = −I. Marcella's `‖R_window − I‖_F^max`
+    /// denominator. Coherence at this point is 0 (turbulent).
+    ///
+    /// Setup: R_current = I, R_past = −I. Then R_window = I · (−I)^T
+    /// = I · (−I) = −I (since I^T = I and (−I)^T = −I).
+    /// ‖−I − I‖_F = ‖−2I‖_F = 2·√dim. coherence = 1 − 1 = 0.
+    #[test]
+    fn local_holonomy_maximum_defect_yields_zero_coherence() {
+        let dim = 3;
+        let identity = vec![1.0, 0.0, 0.0,
+                             0.0, 1.0, 0.0,
+                             0.0, 0.0, 1.0];
+        let neg_identity = vec![-1.0,  0.0,  0.0,
+                                  0.0, -1.0,  0.0,
+                                  0.0,  0.0, -1.0];
+        let res = local_holonomy(&identity, &neg_identity, dim).expect("local_holonomy");
+
+        // R_window = -I.
+        assert_eq!(res.r_window, neg_identity);
+
+        // defect = 2·√3.
+        let expected_defect = 2.0 * (dim as f64).sqrt();
+        assert!(
+            (res.defect - expected_defect).abs() < 1e-12,
+            "defect = {} (expected 2√3 = {})",
+            res.defect, expected_defect
+        );
+
+        // coherence = 1 - defect / max_defect = 0.
+        assert!(
+            res.coherence.abs() < 1e-12,
+            "coh = {} (expected 0)",
+            res.coherence
+        );
+    }
+
+    /// Coherence is gauge-invariant per Marcella's §3 proof:
+    /// `‖Q R_window Q^T − I‖_F = ‖R_window − I‖_F` by unitary
+    /// invariance of the Frobenius norm. Practical check: rotate
+    /// both inputs by the same orthogonal Q; defect + coherence
+    /// must be unchanged.
+    #[test]
+    fn local_holonomy_is_gauge_invariant_under_orthogonal_conjugation() {
+        // Two unrelated 2D rotations.
+        let theta1 = 25_f64.to_radians();
+        let theta2 = 70_f64.to_radians();
+        let (c1, s1) = (theta1.cos(), theta1.sin());
+        let (c2, s2) = (theta2.cos(), theta2.sin());
+        let r_current = vec![c1, -s1, s1, c1];
+        let r_past = vec![c2, -s2, s2, c2];
+        let baseline = local_holonomy(&r_current, &r_past, 2).expect("baseline");
+
+        // Q = 45° rotation. Conjugate both R_current and R_past by Q:
+        //   R_current' = Q R_current Q^T
+        //   R_past'    = Q R_past Q^T
+        // Defect on (R_current', R_past') should equal defect on
+        // (R_current, R_past).
+        let phi = 45_f64.to_radians();
+        let (cq, sq) = (phi.cos(), phi.sin());
+        let q = vec![cq, -sq, sq, cq];
+
+        fn matmul_2d(a: &[f64], b: &[f64]) -> Vec<f64> {
+            vec![
+                a[0]*b[0] + a[1]*b[2], a[0]*b[1] + a[1]*b[3],
+                a[2]*b[0] + a[3]*b[2], a[2]*b[1] + a[3]*b[3],
+            ]
+        }
+        fn transpose_2d(a: &[f64]) -> Vec<f64> {
+            vec![a[0], a[2], a[1], a[3]]
+        }
+
+        let q_t = transpose_2d(&q);
+        let r_current_conj = matmul_2d(&matmul_2d(&q, &r_current), &q_t);
+        let r_past_conj = matmul_2d(&matmul_2d(&q, &r_past), &q_t);
+        let conjugated = local_holonomy(&r_current_conj, &r_past_conj, 2)
+            .expect("conjugated");
+
+        // defect must be invariant.
+        assert!(
+            (baseline.defect - conjugated.defect).abs() < 1e-10,
+            "gauge invariance broken: baseline={} conjugated={}",
+            baseline.defect, conjugated.defect
+        );
+        assert!(
+            (baseline.coherence - conjugated.coherence).abs() < 1e-10,
+            "coherence gauge invariance broken"
+        );
+    }
+
+    /// `local_holonomy` rejects empty dim + dim mismatches the same
+    /// way `perceive` does (reuses PerceiveError variants for
+    /// consistency).
+    #[test]
+    fn local_holonomy_rejects_bad_inputs() {
+        // Zero dim.
+        assert_eq!(
+            local_holonomy(&[], &[], 0),
+            Err(PerceiveError::EmptyDimension)
+        );
+        // R_current wrong size.
+        let r2 = vec![1.0, 0.0, 0.0, 1.0];
+        let r3 = vec![1.0, 0.0, 0.0, 1.0, 0.0]; // dim 2 needs 4 entries
+        assert_eq!(
+            local_holonomy(&r3, &r2, 2),
+            Err(PerceiveError::NonSquareRotation { dim: 2, len: 5 })
+        );
+        // R_past wrong size.
+        assert_eq!(
+            local_holonomy(&r2, &r3, 2),
+            Err(PerceiveError::NonSquareRotation { dim: 2, len: 5 })
+        );
+    }
+
+    /// LocalHolonomyResult round-trips through JSON — the wire-side
+    /// payload for the HTTP endpoint.
+    #[test]
+    fn local_holonomy_result_roundtrips_through_json() {
+        let r1 = vec![0.0, -1.0, 1.0, 0.0];
+        let r2 = vec![1.0, 0.0, 0.0, 1.0];
+        let res = local_holonomy(&r1, &r2, 2).expect("local_holonomy");
+        let s = serde_json::to_string(&res).expect("serialize");
+        let back: LocalHolonomyResult = serde_json::from_str(&s).expect("deserialize");
         assert_eq!(res, back);
     }
 }

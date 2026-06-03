@@ -2795,6 +2795,126 @@ async fn bundle_perceive(
     }))
 }
 
+/// Request body for `POST /v1/bundles/{name}/local_holonomy` —
+/// Marcella's COHERENCE_SIGNAL_SPEC §3 surface. Two cumulative
+/// rotation matrices (current + past-window) compose into the
+/// windowed-holonomy rotation, defect, and normalized coherence
+/// signal A_t.
+#[derive(Deserialize)]
+struct LocalHolonomyRequest {
+    /// `R_acc,t` — cumulative rotation at the current position,
+    /// row-major `dim × dim`. Length must be exactly `dim * dim`.
+    r_current: Vec<f64>,
+    /// `R_acc,t-w` — cumulative rotation at the past-window position,
+    /// row-major `dim × dim`. Length must be exactly `dim * dim`.
+    r_past: Vec<f64>,
+    /// Dimension of the rotation matrices.
+    dim: usize,
+}
+
+/// Response for `POST /v1/bundles/{name}/local_holonomy`. Echoes the
+/// `LocalHolonomyResult` from `curvature::local_holonomy` plus the
+/// bundle name (for audit) and a builder-readable interpretation of
+/// the coherence signal.
+#[derive(Serialize)]
+struct LocalHolonomyResponse {
+    /// `R_window = R_current · R_past^T` — net rotation accumulated
+    /// over the window [t-w, t], row-major `dim × dim`.
+    r_window: Vec<f64>,
+    /// `‖R_window − I‖_F` — gauge-invariant under unitary
+    /// conjugation per Marcella's §3 proof. Range: `[0, 2·√dim]`.
+    defect: f64,
+    /// `1 − defect / (2·√dim)` in `[0, 1]`. The normalized coherence
+    /// A_t. ≈ 1: laminar. ≈ 0: turbulent.
+    coherence: f64,
+    /// Dimension echoed back.
+    dim: usize,
+    /// Bundle name the request was scoped to.
+    bundle: String,
+    /// Builder-readable interpretation of the coherence magnitude.
+    interpretation: String,
+}
+
+/// `POST /v1/bundles/{name}/local_holonomy`
+///
+/// Marcella's windowed-holonomy coherence signal (per
+/// `COHERENCE_SIGNAL_SPEC.md §3`). Given two cumulative rotation
+/// matrices — `R_current = R_acc,t` and `R_past = R_acc,t-w` from
+/// the same prefix scan — returns:
+///
+///   R_window = R_current · R_past^T
+///   defect   = ‖R_window − I‖_F        (gauge-invariant)
+///   coherence = 1 − defect / (2·√dim)   (∈ [0, 1])
+///
+/// The bundle name is contextual (matches the pattern of the other
+/// PERCEIVE / CG verbs); the math is determined by the request body.
+/// Returns 404 when the bundle doesn't exist, 400 on input-shape
+/// mismatch.
+async fn bundle_local_holonomy(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<LocalHolonomyRequest>,
+) -> Result<Json<LocalHolonomyResponse>, (StatusCode, Json<ErrorResponse>)> {
+    {
+        let engine = state.engine.read().unwrap();
+        if engine.bundle(&name).is_none() {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+            ));
+        }
+    }
+
+    let result = curvature::local_holonomy(&req.r_current, &req.r_past, req.dim).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse { error: format!("local_holonomy: {}", e) }),
+        )
+    })?;
+
+    let interpretation = if result.coherence > 0.9 {
+        format!(
+            "coherence = {:.4}: laminar regime. Rotations in this window nearly \
+             cancelled — the substrate's geometry is agreeing with itself. \
+             defect = {:.4} (max {:.2}).",
+            result.coherence,
+            result.defect,
+            2.0 * (req.dim as f64).sqrt()
+        )
+    } else if result.coherence > 0.5 {
+        format!(
+            "coherence = {:.4}: moderate alignment. The geometry has measurable \
+             windowed drift but is still coherent at this scale. \
+             defect = {:.4}.",
+            result.coherence, result.defect
+        )
+    } else if result.coherence > 0.1 {
+        format!(
+            "coherence = {:.4}: low alignment. Rotations in this window are \
+             compounding meaningfully — approach the turbulent regime. \
+             defect = {:.4}.",
+            result.coherence, result.defect
+        )
+    } else {
+        format!(
+            "coherence = {:.4}: turbulent regime. The geometry is fighting \
+             itself across this window. defect = {:.4}, near the {:.2} maximum.",
+            result.coherence,
+            result.defect,
+            2.0 * (req.dim as f64).sqrt()
+        )
+    };
+
+    Ok(Json(LocalHolonomyResponse {
+        r_window: result.r_window,
+        defect: result.defect,
+        coherence: result.coherence,
+        dim: req.dim,
+        bundle: name,
+        interpretation,
+    }))
+}
+
 /// L3.4 — Marcella consumption surface for spectral gap
 /// (consumption draft v2 §4, GIGI reply Q4).
 ///
@@ -13195,6 +13315,7 @@ async fn main() {
         .route("/v1/bundles/{name}/horizon",  get(bundle_horizon_report))
         .route("/v1/bundles/{name}/depth",    get(bundle_depth_report))
         .route("/v1/bundles/{name}/perceive", post(bundle_perceive))
+        .route("/v1/bundles/{name}/local_holonomy", post(bundle_local_holonomy))
         .route("/v1/bundles/{name}/consistency", get(consistency_check))
         .route("/v1/bundles/{name}/betti", get(betti_report))
         .route("/v1/bundles/{name}/entropy", get(entropy_report))

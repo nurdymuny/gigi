@@ -185,4 +185,131 @@ mod tests {
             assert_eq!(h.provenance_kind(), "halo");
         }
     }
+
+    /// Synthetic K function matching T12's Python: K(record_i) =
+    /// mean of k smallest squared distances to other points in the
+    /// candidate set.
+    fn synthetic_k(target: &[f64], candidates: &[(String, Vec<f64>)], k: usize) -> f64 {
+        let mut dists: Vec<f64> = candidates
+            .iter()
+            .map(|(_, c)| {
+                c.iter()
+                    .zip(target.iter())
+                    .map(|(a, b)| (a - b).powi(2))
+                    .sum::<f64>()
+            })
+            .filter(|&d| d > 1e-15) // exclude self
+            .collect();
+        if dists.is_empty() {
+            return 0.0;
+        }
+        let k_eff = k.min(dists.len());
+        let n_dists = dists.len();
+        let pivot_idx = k_eff.saturating_sub(1).min(n_dists - 1);
+        dists.select_nth_unstable_by(
+            pivot_idx,
+            |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal),
+        );
+        let sum: f64 = dists.iter().take(k_eff).sum();
+        sum / (k_eff as f64)
+    }
+
+    fn hash_partition_records(
+        records: &[(String, Vec<f64>)],
+        n_charts: u32,
+    ) -> std::collections::HashMap<u32, Vec<(String, Vec<f64>)>> {
+        let mut out: std::collections::HashMap<u32, Vec<(String, Vec<f64>)>> =
+            std::collections::HashMap::new();
+        for (i, r) in records.iter().enumerate() {
+            let chart = (i as u32) % n_charts;
+            out.entry(chart).or_default().push(r.clone());
+        }
+        out
+    }
+
+    /// Rust integration test mirroring T12 Python validation:
+    /// the same dataset partitioned into 2, 4, 8 charts must produce
+    /// identical synthetic-K aggregates when halos are populated via
+    /// `imagine_halo`.
+    ///
+    /// This is the Rust-side proof that the IMAGINE pivot solves the
+    /// Phase D fragmentation finding — the encrypt-style gauge-
+    /// equivariance holds in Rust as well as in Python.
+    #[test]
+    fn halos_make_synthetic_k_sum_partition_invariant() {
+        let records = make_dataset(); // 40 records on a noisy ring
+        let k = 8;
+        let config = HaloConfig {
+            max_halo_records: 256,
+            k_neighbors: k,
+        };
+
+        // Baseline: aggregate over the full dataset
+        let baseline: f64 = records
+            .iter()
+            .map(|(_, coords)| synthetic_k(coords, &records, k))
+            .sum();
+
+        // For each partition count, compute the per-chart aggregate
+        // using chart_records UNION halo.
+        let mut partition_aggregates: Vec<(u32, f64)> = Vec::new();
+        for &n_charts in &[2u32, 4, 8] {
+            let partition = hash_partition_records(&records, n_charts);
+            let mut aggregate = 0.0_f64;
+            for (chart_id, chart_records) in &partition {
+                // Other records = everything not in this chart
+                let chart_ids: std::collections::HashSet<&String> =
+                    chart_records.iter().map(|(id, _)| id).collect();
+                let other_records: Vec<(String, Vec<f64>)> = records
+                    .iter()
+                    .filter(|(id, _)| !chart_ids.contains(id))
+                    .cloned()
+                    .collect();
+                let halo = imagine_halo(
+                    *chart_id,
+                    99,
+                    chart_records,
+                    &other_records,
+                    &config,
+                );
+                // Construct the candidate set = chart_records + halo
+                let mut candidates: Vec<(String, Vec<f64>)> = chart_records.clone();
+                for h in &halo {
+                    if let ImaginedProvenance::Halo { seed_record_id, .. } = &h.provenance {
+                        candidates.push((seed_record_id.clone(), h.coords.clone()));
+                    }
+                }
+                // Sum synthetic-K over the chart's OWN records using
+                // chart + halo as candidates
+                for (_, target_coords) in chart_records {
+                    aggregate += synthetic_k(target_coords, &candidates, k);
+                }
+            }
+            partition_aggregates.push((n_charts, aggregate));
+        }
+
+        // All three partitions must match the baseline to floating-
+        // point precision -- the T12 result reproduced in Rust.
+        for &(n_charts, agg) in &partition_aggregates {
+            assert!(
+                (agg - baseline).abs() < 1e-9,
+                "n_charts={}: aggregate {} differs from baseline {} (delta={:.2e})",
+                n_charts, agg, baseline, (agg - baseline).abs()
+            );
+        }
+        // And to each other (trivially follows but worth asserting)
+        let spread = partition_aggregates
+            .iter()
+            .map(|(_, a)| *a)
+            .fold(f64::NEG_INFINITY, f64::max)
+            - partition_aggregates
+                .iter()
+                .map(|(_, a)| *a)
+                .fold(f64::INFINITY, f64::min);
+        assert!(
+            spread < 1e-9,
+            "cross-partition spread {:.2e} exceeds 1e-9 -- gauge-equivariance broken",
+            spread,
+        );
+    }
 }

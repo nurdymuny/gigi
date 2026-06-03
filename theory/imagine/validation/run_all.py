@@ -16,9 +16,10 @@ import time
 
 
 TESTS = [
-    ("T11", "t11_geodesic_integrator.py",       "Geodesic integrator on S^2, T^2, CP^1"),
-    ("T12", "t12_halo_partition_invariance.py", "Halo-as-IMAGINE makes K partition-invariant"),
-    ("T13", "t13_double_cover_monodromy.py",    "Double cover monodromy (synthetic + discourse)"),
+    ("T11",       "t11_geodesic_integrator.py",       "Geodesic integrator on S^2, T^2, CP^1"),
+    ("T12",       "t12_halo_partition_invariance.py", "Halo-as-IMAGINE makes K partition-invariant"),
+    ("T13",       "t13_double_cover_monodromy.py",    "Double cover monodromy (synthetic + discourse)"),
+    ("T13-prod",  "t13_production_swda_seam.py",      "T13 production gate: SwDA labels ny/nn/ng/na | %/x"),
 ]
 
 

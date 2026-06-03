@@ -21,7 +21,15 @@ pub enum ImagineError {
     DimMismatch { seed: usize, direction: usize },
     #[error("imagine_geodesic currently supports dim = 2 (got {0})")]
     DimNotSupported(usize),
-    #[error("integrator diverged at step {step}: |coords| = {magnitude}")]
+    #[error(
+        "integrator diverged at step {step}: |coords| = {magnitude:.3e} \
+         exceeds 1e6 sanity bound. Most common cause: substrate metric K \
+         is too large for Phase 1's 2D conformal integrator -- check \
+         bundle.curvature_stats().mean(). For high-K bundles, pass \
+         metric_curvature explicitly (e.g. metric_curvature = 1.0) in \
+         the request to use a tame metric instead of the bundle mean. \
+         Phase 2 lifts the dim and K constraints together."
+    )]
     Diverged { step: u32, magnitude: f64 },
 }
 

@@ -122,9 +122,17 @@ separate ML stack. **Geometry is not a plugin.** It's the substrate.
 - **SQL-compatible wire** — the query language is GQL (similar shape
   to SQL but with the geometric verbs above; full grammar in
   `GQL_REFERENCE.md`). SDKs in Python and JS hide the difference.
-- **Sharding across nodes** — single-node engine right now. The
-  fiber-bundle structure should shard cleanly along base-space
-  partitions, but that work is for a later sprint.
+- **Sharding across nodes** — the **math is done and the scaffold is
+  in** (`src/sharded/` module, `sharded` feature flag, Phase A + Phase B
+  shipped 2026-06-03). Ten TDD math gates green (T1–T10) backed by
+  Davis 2026a/b/c: sheaf-glued sharded BETTI, CURVATURE, HOLONOMY,
+  Clean Finger Move write-conflict resolution, and cross-atlas joins
+  for Marcella + PRISM. `ShardedBundle::wrap_trivial(bundle, ShardId(0))`
+  is byte-equivalent to the single-node engine at `n_shards = 1`. What's
+  left: Phase C–F (hash partitioning, Fiedler-vector SPECTRAL, Schur
+  complement for expanders, cross-atlas production wiring). The
+  multi-node *engine* isn't running yet; the math foundation it rides
+  on is locked.
 
 ---
 

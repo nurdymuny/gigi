@@ -34,6 +34,9 @@ pub mod resolver;
 pub mod sharded_bundle;
 
 pub use atlas::{Atlas, ChartId, ChartMetadata, Transition};
+pub use execution::{shard_curvature, ShardedCurvatureReport, ShardedExecError};
+#[cfg(feature = "kahler")]
+pub use execution::{shard_betti_disjoint, ShardedBettiReport};
 pub use gates::{non_vacuity_check, GateError};
 pub use regime::SpectralRegime;
 pub use resolver::{sharded_write_resolve, ResolverError, ResolverTrace, WriteConflict};

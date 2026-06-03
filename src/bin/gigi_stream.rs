@@ -2915,6 +2915,192 @@ async fn bundle_local_holonomy(
     }))
 }
 
+// ============================================================================
+// IMAGINE_COHERENCE — predictive gain gate surface
+// (IMAGINE_AND_WALK.md §5; Marcella feedback round 1 #2)
+// ============================================================================
+//
+// Marcella's gain gate consumes this to make routing decisions on the
+// imagined future instead of the reactive past. LOCAL_HOLONOMY answers
+// "how coherent has the recent past been?"; IMAGINE_COHERENCE answers
+// "what will the coherence signal be if I continue along this geodesic
+// for N steps?".
+//
+// Trust envelope (Marcella feedback round 2):
+//   - max_imagined_curvature defaults to 4.0 = K(CP^1 Fubini-Study).
+//   - imagined records render with [imagined:] prefix in provenance
+//     strings.
+
+#[cfg(feature = "imagine")]
+#[derive(Deserialize)]
+struct ImagineCoherenceRequest {
+    /// Starting coordinates in the substrate's chart space.
+    starting_from: Vec<f64>,
+    /// Initial direction vector (tangent at the seed).
+    along: Vec<f64>,
+    /// Number of integrator steps to project forward. Default 3.
+    #[serde(default = "default_imagine_steps")]
+    steps: u32,
+    /// Curvature ceiling per WalkConfig. Default 4.0 = K(CP^1 FS).
+    #[serde(default)]
+    max_imagined_curvature: Option<f64>,
+    /// Accumulated-holonomy budget. Default 0.5.
+    #[serde(default)]
+    max_accumulated_holonomy: Option<f64>,
+    /// Optional explicit substrate curvature override. When absent,
+    /// derived from the bundle's `curvature_stats.mean()`.
+    #[serde(default)]
+    metric_curvature: Option<f64>,
+}
+
+#[cfg(feature = "imagine")]
+fn default_imagine_steps() -> u32 {
+    3
+}
+
+#[cfg(feature = "imagine")]
+#[derive(Serialize)]
+struct ImagineCoherenceResponse {
+    /// Bundle the request was scoped to.
+    bundle: String,
+    /// Substrate dimension (length of `starting_from` / `along`).
+    dim: usize,
+    /// Effective metric curvature used for the integration.
+    metric_curvature: f64,
+    /// The walk's safety envelope as resolved against request +
+    /// defaults.
+    max_imagined_curvature: f64,
+    max_accumulated_holonomy: f64,
+    /// Per-step trajectory points.
+    trajectory: Vec<gigi::imagine::CoherencePoint>,
+    /// Coherence at the final step.
+    endpoint_coherence: f64,
+    /// Curvature at the final step.
+    endpoint_curvature: f64,
+    /// Whether `walk` would refuse the path at commit time.
+    refused: bool,
+    /// Human-readable refusal reason if `refused = true`.
+    refusal_reason: Option<String>,
+}
+
+/// `POST /v1/bundles/{name}/imagine_coherence`
+///
+/// Marcella's predictive gain gate surface. Given a seed state and
+/// direction, project the imagined coherence forward along a geodesic
+/// for `steps` integrator steps. The substrate curvature defaults to
+/// the bundle's `curvature_stats.mean()` if not explicitly overridden.
+///
+/// Returns 404 when the bundle doesn't exist, 400 on input-shape
+/// mismatch, 422 (Unprocessable Entity) when the walk would be
+/// refused at commit time (`refused: true`, `refusal_reason` populated).
+#[cfg(feature = "imagine")]
+async fn bundle_imagine_coherence(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<ImagineCoherenceRequest>,
+) -> Result<Json<ImagineCoherenceResponse>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::imagine::{
+        imagine_coherence_trajectory, metric_for_constant_k, WalkConfig,
+    };
+
+    if req.starting_from.len() != req.along.len() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!(
+                    "starting_from (dim {}) and along (dim {}) must match",
+                    req.starting_from.len(),
+                    req.along.len()
+                ),
+            }),
+        ));
+    }
+    if req.starting_from.len() != 2 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!(
+                    "imagine_coherence Phase 1 supports dim = 2 (got {})",
+                    req.starting_from.len()
+                ),
+            }),
+        ));
+    }
+
+    // Derive substrate metric curvature: explicit override or bundle
+    // mean K. Refuse if bundle not found.
+    let (metric_k, _record_count) = {
+        let engine = state.engine.read().unwrap();
+        let bundle = engine.bundle(&name).ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!("Bundle '{}' not found", name),
+                }),
+            )
+        })?;
+        let k = req
+            .metric_curvature
+            .unwrap_or_else(|| bundle.curvature_stats().mean());
+        let n = bundle.len();
+        (k, n)
+    };
+
+    let walk_config = WalkConfig {
+        max_imagined_curvature: req.max_imagined_curvature.unwrap_or(4.0),
+        max_accumulated_holonomy: req.max_accumulated_holonomy.unwrap_or(0.5),
+        ..WalkConfig::default()
+    };
+
+    let metric = metric_for_constant_k(metric_k);
+    let report = imagine_coherence_trajectory(
+        &metric,
+        "imagine_coherence_seed",
+        &name,
+        &req.starting_from,
+        &req.along,
+        req.steps,
+        &walk_config,
+    )
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("imagine_coherence: {}", e),
+            }),
+        )
+    })?;
+
+    let response = ImagineCoherenceResponse {
+        bundle: name,
+        dim: report.dim,
+        metric_curvature: metric_k,
+        max_imagined_curvature: walk_config.max_imagined_curvature,
+        max_accumulated_holonomy: walk_config.max_accumulated_holonomy,
+        trajectory: report.trajectory,
+        endpoint_coherence: report.endpoint_coherence,
+        endpoint_curvature: report.endpoint_curvature,
+        refused: report.refused,
+        refusal_reason: report.refusal_reason,
+    };
+
+    // If refused, return 422 with the report still attached so the
+    // consumer can inspect it.
+    if response.refused {
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(ErrorResponse {
+                error: format!(
+                    "imagine_coherence refused: {}",
+                    response.refusal_reason.clone().unwrap_or_default()
+                ),
+            }),
+        ));
+    }
+
+    Ok(Json(response))
+}
+
 /// L3.4 — Marcella consumption surface for spectral gap
 /// (consumption draft v2 §4, GIGI reply Q4).
 ///
@@ -13315,7 +13501,17 @@ async fn main() {
         .route("/v1/bundles/{name}/horizon",  get(bundle_horizon_report))
         .route("/v1/bundles/{name}/depth",    get(bundle_depth_report))
         .route("/v1/bundles/{name}/perceive", post(bundle_perceive))
-        .route("/v1/bundles/{name}/local_holonomy", post(bundle_local_holonomy))
+        .route("/v1/bundles/{name}/local_holonomy", post(bundle_local_holonomy));
+
+    // IMAGINE_COHERENCE: predictive coherence trajectory along an
+    // imagined geodesic. Marcella's predictive gain gate surface per
+    // IMAGINE_AND_WALK.md §5. Feature-gated; only registered when the
+    // `imagine` feature is on.
+    #[cfg(feature = "imagine")]
+    let app = app
+        .route("/v1/bundles/{name}/imagine_coherence", post(bundle_imagine_coherence));
+
+    let app = app
         .route("/v1/bundles/{name}/consistency", get(consistency_check))
         .route("/v1/bundles/{name}/betti", get(betti_report))
         .route("/v1/bundles/{name}/entropy", get(entropy_report))

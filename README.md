@@ -461,7 +461,7 @@ T12 is the load-bearing one. Same 60 records partitioned three ways: without hal
 
 Spec: [`theory/imagine/IMAGINE_AND_WALK.md`](theory/imagine/IMAGINE_AND_WALK.md). Master math runner: [`theory/imagine/validation/run_all.py`](theory/imagine/validation/run_all.py) (3 gates, ~3s wall-clock).
 
-What's unblocked next: (1) `IMAGINE_COHERENCE` HTTP endpoint for Marcella's predictive gain gate per the spec §5; (2) Phase D refactor — wire `shard_curvature` through `imagine_halo` so the partition-dependence RED becomes GREEN; (3) `walk` Phase 2 with double-cover lift + SUDOKU pre-flight.
+What's unblocked next: (1) ~~`IMAGINE_COHERENCE` HTTP endpoint for Marcella's predictive gain gate per the spec §5~~ **shipped** at `POST /v1/bundles/{name}/imagine_coherence` — feature-gated behind `imagine`, returns full trajectory + endpoint coherence + safety-envelope refusal data, derives metric curvature from `bundle.curvature_stats().mean()` when not overridden; (2) Phase D refactor — wire `shard_curvature` through `imagine_halo` so the partition-dependence RED becomes GREEN; (3) `walk` Phase 2 with double-cover lift + SUDOKU pre-flight.
 
 ---
 

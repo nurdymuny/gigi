@@ -36,12 +36,16 @@
 
 #![cfg(feature = "imagine")]
 
+pub mod coherence;
 pub mod config;
 pub mod geodesic;
 pub mod halo;
 pub mod provenance;
 pub mod walk;
 
+pub use coherence::{
+    imagine_coherence_trajectory, metric_for_constant_k, CoherencePoint, CoherenceTrajectoryReport,
+};
 pub use config::{HaloConfig, ImagineConfig, WalkConfig};
 pub use geodesic::{imagine_geodesic, ConformalMetric, ImagineError};
 pub use halo::imagine_halo;

@@ -27,6 +27,15 @@ autobenches = false
 default = []
 kahler = []
 
+# `sharded` — opt-in atlas-cover sharding model. When ON, the new
+# `gigi::sharded` module is compiled, providing ChartId, ShardId,
+# Atlas, Transition, SpectralRegime, and the Clean Finger Move
+# write-conflict resolver. Phase A is a skeleton -- types are
+# defined but execution bodies are `todo!()` until Phase B integrates
+# with BundleStore. See `theory/poincare_to_sharding/SHARDING_SPEC.md`
+# for the full design.
+sharded = []
+
 [dependencies]
 roaring = "0.10"
 regex = "1"

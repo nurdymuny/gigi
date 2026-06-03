@@ -127,6 +127,14 @@ pub mod query;
 // See `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` §7.
 pub mod ratchet;
 pub mod sheaf;
+// Atlas-cover sharding model. Opt-in via the `sharded` feature flag.
+// Phase A: types + skeleton; execution bodies are `todo!()` /
+// NotImplementedYet errors until Phase B integrates with BundleStore.
+// See `theory/poincare_to_sharding/SHARDING_SPEC.md` for the full design
+// and `theory/poincare_to_sharding/validation/` for the 7 GREEN TDD
+// gates the spec is built on.
+#[cfg(feature = "sharded")]
+pub mod sharded;
 pub mod spectral;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),

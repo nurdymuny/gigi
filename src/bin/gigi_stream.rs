@@ -3467,10 +3467,14 @@ async fn spectral_gap_endpoint(
         )
     })?;
 
-    let snap = store
-        .as_heap()
-        .and_then(|s| s.spectral_gap_cached())
-        .ok_or_else(|| {
+    // Polymorphism gap (live-caught 2026-06-04): spectral_gap_cached
+    // lives on BundleStore (heap-only). For mmap-resident bundles
+    // `as_heap()` returns None and we'd otherwise emit a misleading
+    // "insufficient records" error. Distinguish the two cases so
+    // callers know whether to insert more data or to wait on the
+    // follow-up that threads spectral_gap through BundleRef.
+    let snap = if let Some(s) = store.as_heap() {
+        s.spectral_gap_cached().ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse {
@@ -3480,7 +3484,23 @@ async fn spectral_gap_endpoint(
                     ),
                 }),
             )
-        })?;
+        })?
+    } else {
+        // Honest signal: the substrate exists and has records, but
+        // this endpoint hasn't been ported to the polymorphic
+        // BundleRef path yet.
+        return Err((
+            StatusCode::NOT_IMPLEMENTED,
+            Json(ErrorResponse {
+                error: format!(
+                    "Bundle '{}' is mmap-resident; /spectral_gap is heap-only \
+                     pending the polymorphic-BundleRef follow-up. Workaround: \
+                     read via /v1/bundles/{}/curvature which already lifts.",
+                    name, name
+                ),
+            }),
+        ));
+    };
 
     Ok(Json(SpectralGapResponse {
         lambda_2: snap.lambda_2,

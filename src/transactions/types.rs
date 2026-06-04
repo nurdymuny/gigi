@@ -31,7 +31,9 @@ impl std::fmt::Display for TransactionId {
 /// fresh, strictly-increasing snap_id. Reads under a transaction see
 /// committed state as-of their BEGIN snap_id (snapshot isolation —
 /// Phase 2).
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+)]
 pub struct SnapshotId(pub u64);
 
 impl SnapshotId {
@@ -80,7 +82,7 @@ pub enum TransactionState {
 }
 
 /// A single pending write within a transaction's staging area.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PendingWrite {
     /// Primary key of the record being written.
     pub pk: Vec<u8>,

@@ -17,8 +17,11 @@ import time
 
 
 TESTS = [
-    ("TX1", "tx1_single_bundle_atomicity.py",  "Single-bundle atomic commit + rollback"),
-    ("TX2", "tx2_cross_bundle_atomicity.py",   "Cross-bundle 2PC + recovery (5 failure cases)"),
+    ("TX1",     "tx1_single_bundle_atomicity.py",       "Single-bundle atomic commit + rollback"),
+    ("TX2",     "tx2_cross_bundle_atomicity.py",        "Cross-bundle 2PC + recovery (5 failure cases)"),
+    ("TX6-8",   "tx6_8_snapshot_isolation.py",          "Per-tx overlay + snapshot isolation semantics"),
+    ("TX9",     "tx9_mvcc_gc.py",                       "MVCC GC: retain only versions open txs need"),
+    ("TX10",    "tx10_geometric_reads_under_tx.py",     "Geometric reads pinned to tx snapshot"),
 ]
 
 
@@ -57,7 +60,8 @@ def main():
     if all_ok:
         print(f"  ALL {len(TESTS)} TRANSACTIONS GATES GREEN.")
         print("  Phase 1 (2PC + recovery) is math-validated.")
-        print("  Rust src/transactions/ scaffold matches the Python reference contract.")
+        print("  Phase 2 (SI + overlay + MVCC GC) is math-validated.")
+        print("  Rust src/transactions/ matches the Python reference contract.")
         return 0
     else:
         n_fail = sum(1 for (_, _, _, ok, _) in results if not ok)

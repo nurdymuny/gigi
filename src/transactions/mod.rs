@@ -3,21 +3,22 @@
 //! See [`theory/transactions/ATOMIC_SHEAF_COMMIT_SPEC.md`] for the
 //! full 4-phase design.
 //!
-//! ## Phase 1 status
+//! ## Phase 1 + Phase 2 status
 //!
-//! This module ships Phase 1: 2-phase commit (2PC) with
-//! coordinator/participant failure recovery. The TDD gates that pin
-//! the contract are:
+//! - **Phase 1** (2-phase commit + coord/participant recovery):
+//!   - [`Coordinator`] / [`Participant`] / [`GlobalTransactionLog`]
+//!   - TDD: TX1 11/11, TX2 8/8 (all five failure-injection scenarios)
 //!
-//! - **TX1** — single-bundle transaction commits atomically
-//!   ([`theory/transactions/validation/tx1_single_bundle_atomicity.py`]).
-//!   GREEN: 11/11 cases.
-//! - **TX2** — cross-bundle transaction commits atomically across N
-//!   bundles, with coordinator/participant failure recovery
-//!   ([`theory/transactions/validation/tx2_cross_bundle_atomicity.py`]).
-//!   GREEN: 8/8 cases including all five failure-injection scenarios.
+//! - **Phase 2** (per-transaction overlay + snapshot isolation + MVCC GC):
+//!   - [`mvcc::MvccStore`] + [`mvcc::TransactionOverlay`]
+//!   - TDD: TX6-TX8 3/3 (SI semantics), TX9 5/5 (GC), TX10 5/5 (geometric
+//!     reads under SI). Rust mirror: 15/15 unit tests under
+//!     `transactions::mvcc::tests` mapped one-for-one to the Python gates.
 //!
-//! TX3–TX5 land as this module fills in. The Python gates are the
+//! - **Phase 3** (deadlock detection): pending.
+//! - **Phase 4** (geometric coherence Option C): pending.
+//!
+//! The Python gates under `theory/transactions/validation/` are the
 //! reference contract; the Rust types here must satisfy them.
 //!
 //! ## Why "atomic sheaf commits" not "ACID"
@@ -50,15 +51,17 @@
 
 pub mod coordinator;
 pub mod global_log;
+pub mod mvcc;
 pub mod participant;
 pub mod types;
 pub mod wal_records;
 
 pub use coordinator::{Coordinator, CoordinatorError};
 pub use global_log::{GlobalLogEntry, GlobalTransactionLog};
+pub use mvcc::{MvccStore, TransactionOverlay, Version, VersionChain};
 pub use participant::{Participant, ParticipantError, PrepareVote};
 pub use types::{
     CommitOutcome, CommitRefusalKind, IsolationLevel, PendingWrite, SnapshotId, Transaction,
-    TransactionId, TransactionState,
+    TransactionId, TransactionState, WriteOp,
 };
 pub use wal_records::{TxWalRecord, TxWalRecordKind};

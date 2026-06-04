@@ -3134,6 +3134,293 @@ async fn bundle_imagine_coherence(
     Ok(Json(response))
 }
 
+// ============================================================================
+// Sharded HTTP endpoints (feature = "sharded")
+//
+// Three primitives surface as HTTP routes per the sharded module's verb
+// table. Each route takes a bundle name and dispatches through the
+// canonical end-to-end entry points:
+//
+//   /v1/bundles/{name}/sharded/spectral_gap
+//     -> shard_lambda_1_from_bundle  (Laplacian extractor + Lanczos)
+//   /v1/bundles/{name}/sharded/curvature
+//     -> shard_curvature  (per-chart aggregation)
+//   /v1/bundles/{name}/sharded/holonomy_loop
+//     -> shard_holonomy_around_loop  (closed-loop holonomy + Mobius det)
+// ============================================================================
+
+#[cfg(feature = "sharded")]
+#[derive(serde::Deserialize)]
+struct SharededSpectralGapRequest {
+    /// Number of nearest neighbors for the k-NN graph. Default 8.
+    #[serde(default = "default_sharded_k_neighbors")]
+    k_neighbors: usize,
+    /// Maximum Lanczos iterations. Default 120.
+    #[serde(default = "default_sharded_lanczos_k_max")]
+    k_max: u32,
+}
+
+#[cfg(feature = "sharded")]
+fn default_sharded_k_neighbors() -> usize {
+    8
+}
+
+#[cfg(feature = "sharded")]
+fn default_sharded_lanczos_k_max() -> u32 {
+    120
+}
+
+#[cfg(feature = "sharded")]
+#[derive(serde::Serialize)]
+struct SharededSpectralGapResponse {
+    bundle: String,
+    lambda_1: f64,
+    iterations_used: u32,
+    converged_by_window: bool,
+    k_neighbors: usize,
+}
+
+/// `POST /v1/bundles/{name}/sharded/spectral_gap`
+///
+/// End-to-end sharded SPECTRAL: builds the k-NN Laplacian from the
+/// bundle's records, runs distributed Lanczos via the Fiedler-bisection
+/// partition, returns λ_1. No manual block extraction required.
+#[cfg(feature = "sharded")]
+async fn bundle_sharded_spectral_gap(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<SharededSpectralGapRequest>,
+) -> Result<Json<SharededSpectralGapResponse>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::sharded::{
+        shard_lambda_1_from_bundle, DistributedLanczosConfig, ShardedBundle,
+    };
+
+    // Snapshot the bundle into a heap-resident BundleStore, then wrap
+    // it as a trivial-atlas ShardedBundle so the end-to-end extractor
+    // can operate on it.
+    let store = {
+        let engine = state.engine.read().unwrap();
+        let bundle = engine.bundle(&name).ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!("Bundle '{}' not found", name),
+                }),
+            )
+        })?;
+        // Materialize records into a fresh heap-resident BundleStore
+        // so the sharded analysis can operate independently of the
+        // engine's storage backing (heap, mmap, or remote).
+        let schema = bundle.schema().clone();
+        let records: Vec<gigi::types::Record> = bundle.records().collect();
+        let mut s = gigi::bundle::BundleStore::new(schema);
+        for r in records {
+            s.insert(&r);
+        }
+        s
+    };
+    let sharded =
+        ShardedBundle::wrap_trivial(store, gigi::sharded::ShardId(0));
+
+    let config = DistributedLanczosConfig {
+        k_max: req.k_max,
+        ..Default::default()
+    };
+
+    let result = shard_lambda_1_from_bundle(&sharded, req.k_neighbors, &config).map_err(
+        |e| {
+            (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(ErrorResponse {
+                    error: format!("sharded_spectral_gap: {:?}", e),
+                }),
+            )
+        },
+    )?;
+
+    Ok(Json(SharededSpectralGapResponse {
+        bundle: name,
+        lambda_1: result.lambda_1,
+        iterations_used: result.iterations_used,
+        converged_by_window: result.converged_by_window,
+        k_neighbors: req.k_neighbors,
+    }))
+}
+
+#[cfg(feature = "sharded")]
+#[derive(serde::Deserialize)]
+struct SharededCurvatureRequest {
+    /// Number of charts to partition into. 1 = trivial atlas (single
+    /// chart, equivalent to the un-sharded bundle's curvature_stats).
+    /// Larger values hash-partition the records.
+    #[serde(default = "default_sharded_n_charts")]
+    n_charts: u32,
+}
+
+#[cfg(feature = "sharded")]
+fn default_sharded_n_charts() -> u32 {
+    1
+}
+
+#[cfg(feature = "sharded")]
+#[derive(serde::Serialize)]
+struct SharededCurvatureResponse {
+    bundle: String,
+    n_charts: u32,
+    n_records: u64,
+    mean_k: f64,
+    std_dev_k: f64,
+}
+
+/// `POST /v1/bundles/{name}/sharded/curvature`
+///
+/// Sharded CURVATURE: aggregates per-chart `CurvatureStats` across the
+/// bundle's hash-sharded charts. For `n_charts = 1`, returns the same
+/// values as the un-sharded `/curvature` endpoint.
+#[cfg(feature = "sharded")]
+async fn bundle_sharded_curvature(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<SharededCurvatureRequest>,
+) -> Result<Json<SharededCurvatureResponse>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::sharded::{shard_curvature, ShardedBundle};
+
+    if req.n_charts == 0 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "n_charts must be >= 1".into(),
+            }),
+        ));
+    }
+
+    let (schema, records) = {
+        let engine = state.engine.read().unwrap();
+        let bundle = engine.bundle(&name).ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!("Bundle '{}' not found", name),
+                }),
+            )
+        })?;
+        (bundle.schema().clone(), bundle.records().collect::<Vec<_>>())
+    };
+
+    let sharded = if req.n_charts == 1 {
+        let mut s = gigi::bundle::BundleStore::new(schema);
+        for r in records {
+            s.insert(&r);
+        }
+        ShardedBundle::wrap_trivial(s, gigi::sharded::ShardId(0))
+    } else {
+        ShardedBundle::wrap_hash_sharded(
+            schema,
+            records,
+            req.n_charts,
+            gigi::sharded::ShardId(0),
+        )
+    };
+
+    let report = shard_curvature(&sharded);
+
+    Ok(Json(SharededCurvatureResponse {
+        bundle: name,
+        n_charts: req.n_charts,
+        n_records: report.n_records(),
+        mean_k: report.mean(),
+        std_dev_k: report.std_dev(),
+    }))
+}
+
+#[cfg(feature = "sharded")]
+#[derive(serde::Deserialize)]
+struct SharededHolonomyLoopRequest {
+    /// Loop as `[(chart_id, [x, y])]` in path order. The closing
+    /// segment from the last point back to the first is implicit.
+    path: Vec<(u32, Vec<f64>)>,
+    /// Transitions: `[(from_chart, to_chart, [a00, a01, a10, a11])]`.
+    /// Missing pairs default to identity.
+    #[serde(default)]
+    transitions: Vec<(u32, u32, [f64; 4])>,
+}
+
+#[cfg(feature = "sharded")]
+#[derive(serde::Serialize)]
+struct SharededHolonomyLoopResponse {
+    bundle: String,
+    holonomy: [f64; 4],
+    det: f64,
+    /// True iff det(H) < 0 (orientation flip / Z_2 monodromy detected).
+    orientation_flipped: bool,
+}
+
+/// `POST /v1/bundles/{name}/sharded/holonomy_loop`
+///
+/// Closed-loop holonomy across chart-pair transitions. For Möbius
+/// (orientation-reversing) gauges, `det(H) = -1` and `orientation_flipped
+/// = true` per T13's Z_2 monodromy detection in a 2D fiber.
+#[cfg(feature = "sharded")]
+async fn bundle_sharded_holonomy_loop(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<SharededHolonomyLoopRequest>,
+) -> Result<Json<SharededHolonomyLoopResponse>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::sharded::{mat2x2_det, shard_holonomy_around_loop, ChartId};
+    use std::collections::HashMap;
+
+    // Bundle existence check (just for the 404 path; no data access needed)
+    {
+        let engine = state.engine.read().unwrap();
+        engine.bundle(&name).ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!("Bundle '{}' not found", name),
+                }),
+            )
+        })?;
+    }
+
+    if req.path.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "path must contain at least one point".into(),
+            }),
+        ));
+    }
+
+    // Convert path to internal form
+    let loop_pts: Vec<(ChartId, Vec<f64>)> = req
+        .path
+        .into_iter()
+        .map(|(c, p)| (ChartId(c), p))
+        .collect();
+    let mut tx: HashMap<(ChartId, ChartId), [f64; 4]> = HashMap::new();
+    for (from, to, mat) in req.transitions {
+        tx.insert((ChartId(from), ChartId(to)), mat);
+    }
+
+    let atlas = gigi::sharded::Atlas::trivial(gigi::sharded::ShardId(0));
+    let h = shard_holonomy_around_loop(&atlas, &loop_pts, &tx).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("sharded_holonomy_loop: {:?}", e),
+            }),
+        )
+    })?;
+
+    let det = mat2x2_det(&h);
+    Ok(Json(SharededHolonomyLoopResponse {
+        bundle: name,
+        holonomy: h,
+        det,
+        orientation_flipped: det < 0.0,
+    }))
+}
+
 /// L3.4 — Marcella consumption surface for spectral gap
 /// (consumption draft v2 §4, GIGI reply Q4).
 ///
@@ -13543,6 +13830,18 @@ async fn main() {
     #[cfg(feature = "imagine")]
     let app = app
         .route("/v1/bundles/{name}/imagine_coherence", post(bundle_imagine_coherence));
+
+    // Sharded SPECTRAL / CURVATURE / HOLONOMY endpoints. End-to-end
+    // wired against any bundle via shard_lambda_1_from_bundle (uses
+    // the Laplacian extractor + distributed Lanczos pipeline) and the
+    // wrap_trivial / wrap_hash_sharded / wrap_fiedler_sharded
+    // constructors. Feature-gated; only registered when the `sharded`
+    // feature is on.
+    #[cfg(feature = "sharded")]
+    let app = app
+        .route("/v1/bundles/{name}/sharded/spectral_gap", post(bundle_sharded_spectral_gap))
+        .route("/v1/bundles/{name}/sharded/curvature", post(bundle_sharded_curvature))
+        .route("/v1/bundles/{name}/sharded/holonomy_loop", post(bundle_sharded_holonomy_loop));
 
     let app = app
         .route("/v1/bundles/{name}/consistency", get(consistency_check))

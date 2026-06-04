@@ -28,6 +28,8 @@ TESTS = [
     ("T8",  "t8_bridge_cocycle.py",                  "Cross-atlas bridge cocycle bound"),
     ("T9",  "t9_cross_atlas_betti.py",               "Cross-atlas BETTI via fiber-product M-V"),
     ("T10", "t10_cross_atlas_resolver.py",           "Cross-atlas Clean Finger Move resolver"),
+    # Topology-aware partitioning (SHARDING_SPEC.md §9 Phase D)
+    ("TFP1", "tfp1_fiedler_preserves_curvature.py",  "Fiedler partition preserves K aggregation"),
 ]
 
 

@@ -23,6 +23,7 @@ TESTS = [
     ("TX9",     "tx9_mvcc_gc.py",                       "MVCC GC: retain only versions open txs need"),
     ("TX10",    "tx10_geometric_reads_under_tx.py",     "Geometric reads pinned to tx snapshot"),
     ("TX11-13", "tx11_13_deadlock_detection.py",        "Wait-for-graph cycle detection + youngest-aborts"),
+    ("TX14-18", "tx14_18_geometric_coherence.py",       "Option C MVCC geometric snapshots + commit cocycle bound"),
 ]
 
 
@@ -60,8 +61,10 @@ def main():
     print()
     if all_ok:
         print(f"  ALL {len(TESTS)} TRANSACTIONS GATES GREEN.")
-        print("  Phase 1 (2PC + recovery) is math-validated.")
-        print("  Phase 2 (SI + overlay + MVCC GC) is math-validated.")
+        print("  Phase 1 (2PC + recovery)                math-validated.")
+        print("  Phase 2 (SI + overlay + MVCC GC)        math-validated.")
+        print("  Phase 3 (deadlock detection)            math-validated.")
+        print("  Phase 4 (geometric coherence Option C)  math-validated.")
         print("  Rust src/transactions/ matches the Python reference contract.")
         return 0
     else:

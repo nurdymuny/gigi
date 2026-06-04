@@ -21,7 +21,18 @@
 //!     sub-cycles, linear-wait-is-not-a-deadlock). Rust mirror: 5/5
 //!     unit tests under `transactions::deadlock::tests`.
 //!
-//! - **Phase 4** (geometric coherence Option C): pending.
+//! - **Phase 4** (geometric coherence Option C):
+//!   - [`coherence::GeometricCoherenceEngine`] — multi-bundle MVCC
+//!     with commit-time temporal cocycle pre-flight
+//!   - TDD: TX14-TX18 5/5 (out-of-tx pre-state during open tx; post
+//!     state after commit; cocycle violation refuses without
+//!     mutating state; walker pinned at pre-snap; storage scales
+//!     linearly in open-tx count). Rust mirror: 6/6 unit tests under
+//!     `transactions::coherence::tests`.
+//!
+//! All four phases of the spec are shipped and gated. The substrate
+//! invariants of §2.1 — atomicity, cocycle preservation, K-monotone
+//! updates, connection coherence — hold at the abstraction layer.
 //!
 //! The Python gates under `theory/transactions/validation/` are the
 //! reference contract; the Rust types here must satisfy them.
@@ -54,6 +65,7 @@
 
 #![cfg(feature = "transactions")]
 
+pub mod coherence;
 pub mod coordinator;
 pub mod deadlock;
 pub mod global_log;
@@ -62,6 +74,7 @@ pub mod participant;
 pub mod types;
 pub mod wal_records;
 
+pub use coherence::{CoherenceError, GeometricCoherenceEngine};
 pub use coordinator::{Coordinator, CoordinatorError};
 pub use deadlock::{LockManager, LockOutcome, LockTxInfo};
 pub use global_log::{GlobalLogEntry, GlobalTransactionLog};

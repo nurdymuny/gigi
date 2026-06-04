@@ -51,7 +51,7 @@ you things the rows alone never could:
 
 - **Curvature κ** at a record = *"how anomalous is this row compared to
   what's nearby?"*
-- **Spectral gap λâ‚** of the whole bundle = *"how clumpy or smooth is
+- **Spectral gap λ₁** of the whole bundle = *"how clumpy or smooth is
   the data?"*
 - **Holonomy** around a categorical loop = *"does this category
   implicitly twist the values somehow?"*
@@ -79,21 +79,21 @@ the engine implements, not an aspirational future.
 | You want to… | Conventional DB | GIGI |
 |---|---|---|
 | **Insert one row** | Append to table, update indexes | Append + bump Welford field stats + mutation_counter + curvature; the bundle's geometry incrementally evolves |
-| **Look up by primary key** | B-tree (O(log N)) or hash (O(1)) | `SECTION bundle AT (id='X');` — GIGI hash G(Kâ‚,…,Kâ‚˜) → ℝ¤â‚‚⁶⁴, **always O(1)**; response also carries κ + confidence |
+| **Look up by primary key** | B-tree (O(log N)) or hash (O(1)) | `SECTION bundle AT (id='X');` — GIGI hash G(K₁,…,Kₘ) → ℝ¤₂⁶⁴, **always O(1)**; response also carries κ + confidence |
 | **`WHERE x = 5`** | Index scan or full table scan | Same O(1) GIGI hash on the addressed key; with geometric annotation per result |
 | **`WHERE x BETWEEN 10 AND 20`** | Range scan over a sorted index | `filtered_query` over the bundle; returns hits + per-hit position in the fiber |
 | **`GROUP BY region`** | Hash-grouped aggregation | `INTEGRATE field OVER bundle COVER ALL;` — aggregation = integration over a base-space cover (geometric, not relational) |
 | **`JOIN orders ON customers`** | Hash join / merge join | `PULLBACK orders ALONG customers` — pullback of one bundle along a shared base map |
 | **`COUNT(*)`, `AVG(x)`, `STDDEV(x)`** | Scan, or precomputed summary tables | Welford stats maintained incrementally on every insert — **O(1) read**, never stale |
 | **Detect anomalies / outliers** | Add a streaming pipeline + outlier model | Curvature κ already updated per insert; outliers are points where κ spikes — no separate pipeline |
-| **"How clustered is my data?"** | Run k-means or DBSCAN offline | `SPECTRAL bundle;` — Fiedler value λâ‚ from the index Laplacian, cached and incrementally refreshed |
+| **"How clustered is my data?"** | Run k-means or DBSCAN offline | `SPECTRAL bundle;` — Fiedler value λ₁ from the index Laplacian, cached and incrementally refreshed |
 | **"Are A and B related geometrically?"** | Foreign key + join | `TRANSPORT bundle FROM (id=A) TO (id=B) ON FIBER (...);` — explicit parallel transport, returns the SO(n) rotation matrix |
-| **Encrypt sensitive columns** | Column encryption — usually breaks indexes | **Gauge encryption v0.4** preserves κ, λâ‚, anomaly scores, holonomy at **native speed**. Six modes (Affine / Probabilistic / Opaque / Indexed / Isometric / Identity); SQL analytics (SUM/AVG/VAR/STDDEV exact on ciphertext via closed-form inverses); PQ-safe trusted + threshold delegation (ML-KEM-768 + Shamir K-of-N); public deterministic invariant verification (`/v1/bundles/{name}/verify_invariant`) |
+| **Encrypt sensitive columns** | Column encryption — usually breaks indexes | **Gauge encryption v0.4** preserves κ, λ₁, anomaly scores, holonomy at **native speed**. Six modes (Affine / Probabilistic / Opaque / Indexed / Isometric / Identity); SQL analytics (SUM/AVG/VAR/STDDEV exact on ciphertext via closed-form inverses); PQ-safe trusted + threshold delegation (ML-KEM-768 + Shamir K-of-N); public deterministic invariant verification (`/v1/bundles/{name}/verify_invariant`) |
 | **Add a new column** | `ALTER TABLE`, schema migration, downtime | Fiber type evolves; old records remain valid sections under the wider fiber |
 | **Restart the server** | Reload from disk, indexes rebuild from scratch | Reload from mmap snapshot in seconds; brain endpoints work polymorphically on the reloaded bundle (#107) |
 | **"Tell me how surprising this query was"** | Build a custom logging layer | Every response includes κ, KL-divergence, JS-divergence via the `dhoom` event protocol — free |
 | **"Find me an option that's close to satisfying these 5 constraints"** | Multiple WHERE queries + manual relaxation | `POST /v1/bundles/{name}/brain/sudoku` — returns solutions, near-misses with quantified relaxation cost, Pareto frontier of multi-violation alternatives, and an honest `Sat`/`Unsat`/`Unknown` verdict |
-| **"What other records are geometrically nearby?"** | Vector DB + ANN index | `POST /v1/bundles/{name}/brain/sample_transport` — curvature-bounded neighborhood (`d² ≤ Ï„`), Efraimidis-Spirakis weighted sample, returns k records with per-candidate `curvature_k` and bundle-wide confidence |
+| **"What other records are geometrically nearby?"** | Vector DB + ANN index | `POST /v1/bundles/{name}/brain/sample_transport` — curvature-bounded neighborhood (`d² ≤ τ`), Efraimidis-Spirakis weighted sample, returns k records with per-candidate `curvature_k` and bundle-wide confidence |
 
 The compounding effect: because curvature updates on every insert, you
 don't have to *decide later* to add anomaly detection — it's already
@@ -107,7 +107,7 @@ separate ML stack. **Geometry is not a plugin.** It's the substrate.
 - **Insert latency**: ~the same as a relational DB doing the same
   number of column writes. The Welford updates are O(1) per numeric
   field; the mutation_counter is a single atomic increment.
-- **Memory**: ~1.5Ã— a row-store for the same data, because the geometric
+- **Memory**: ~1.5× a row-store for the same data, because the geometric
   metadata (per-field stats, fiber index, mutation epoch) lives
   alongside the records.
 - **Cold-start after restart**: bundles reload from mmap snapshots in
@@ -127,10 +127,10 @@ about your data:
 
 | You want… | Conventional DB | GIGI |
 |---|---|---|
-| O(1) point query by composite key | Multi-column hash index | GIGI hash G : Kâ‚ Ã— … Ã— Kâ‚˜ → ℝ¤â‚‚⁶⁴ — native |
+| O(1) point query by composite key | Multi-column hash index | GIGI hash G : K₁ × … × Kₘ → ℝ¤₂⁶⁴ — native |
 | Anomaly detection | Add a streaming pipeline | Curvature κ updated per insert; outliers fall out |
-| "How clustered is this?" | Run k-means offline | Spectral gap λâ‚ from the index Laplacian |
-| Compute on encrypted data | Homomorphic encryption (~10,000Ã— slowdown) | Gauge encryption — **native speed**, geometry-preserving |
+| "How clustered is this?" | Run k-means offline | Spectral gap λ₁ from the index Laplacian |
+| Compute on encrypted data | Homomorphic encryption (~10,000× slowdown) | Gauge encryption — **native speed**, geometry-preserving |
 | Logging with semantic insight | Text logs + sampling | DHOOM events with κ, KL-div, JS-div per query |
 | NLP fiber geometry (tense, morphology, …) | Vector DB + bespoke analysis | `HOLONOMY corpus ON FIBER (f11, f12) AROUND tense_label` |
 | Long-context theorems on a substrate | "trust me" + benchmarks | Kähler-upgrade catalog with cross-team math validation matching observations to rounding precision |
@@ -147,7 +147,7 @@ The detailed dated entries that used to live here have been moved to
 - **2026-06-03 (evening) — IMAGINE / WALK** ([details](CHANGELOG.md#2026-06-03-evening--imagine--walk-lands-extrapolation-verbs-with-marcellas-trust-envelope)). Extrapolation verbs with Marcella's load-bearing trust envelope: provenance compile-time enforced, `max_imagined_curvature = 4.0 = K(CP¹ FS)` default, FORECAST/IMAGINE routing anchored to Gate J's θ_density = 0.5.
 - **2026-06-03 (afternoon) — Sharding lands as substrate** ([details](CHANGELOG.md#2026-06-03-afternoon--sharding-lands-as-substrate-not-as-compromise)). Ten TDD-gated math claims (T1–T10) + Phase A/B scaffolds; the framing flip from "sharding is a compromise" to "sharding is sheaf-glued by construction."
 - **2026-06-03 — LOCAL_HOLONOMY + intent_gate perf fix + PolyForm NC license** ([details](CHANGELOG.md#2026-06-03--local_holonomy-5th-cognitive-geometry-verb--intent_gate-perf-fix--polyform-nc-license)). 5th Cognitive Geometry verb (Marcella's gain-gate signal); ~5 s → 0 ms on empty-constraints intent_gate; license transition to PolyForm Noncommercial 1.0.0.
-- **2026-06-02 — SEMANTIC perf rewrite** ([details](CHANGELOG.md#2026-06-02--semantic-perf-rewrite-rank-based-betti)). Dense Laplacian eigendecomposition → sparse Fâ‚‚ Gaussian elimination on boundary matrices. **2260Ã— speedup** on T² 12Ã—12; MorseCache layer adds O(1) second+ reads.
+- **2026-06-02 — SEMANTIC perf rewrite** ([details](CHANGELOG.md#2026-06-02--semantic-perf-rewrite-rank-based-betti)). Dense Laplacian eigendecomposition → sparse F₂ Gaussian elimination on boundary matrices. **2260× speedup** on T² 12×12; MorseCache layer adds O(1) second+ reads.
 - **2026-05-30 — Cognitive Geometry verbs (Branch VII)** ([details](CHANGELOG.md#2026-05-30--cognitive-geometry-verbs-branch-vii)). CAPACITY · HORIZON · DEPTH · PERCEIVE — geometric scalars translated into builder-facing routing decisions.
 - **Late May 2026 — GIGI Encrypt v0.3 + v0.4** ([details](CHANGELOG.md#late-may-2026--gigi-encrypt-v03--v04-ship)). Gauge-mode completion + the full delegation family (BLS12-381 pairing PRE, ML-KEM-768 PQ, lattice K-of-N threshold) + the invariant verification layer; Zenodo paper deposited.
 - **Late May 2026 — SUDOKU + SAMPLE_TRANSPORT** ([details](CHANGELOG.md#late-may-2026--the-sudoku--sample_transport-sprint)). Constrained-inference meta-primitive verified across 24 domains + curvature-bounded neighborhood sampling.
@@ -213,18 +213,18 @@ linear. The full audit trail is in
 | `query` | GQL query execution + result shape |
 | `parser` | GQL grammar — `CREATE BUNDLE`, `SECTION`, `COVER`, `INTEGRATE`, `CURVATURE`, `SPECTRAL`, `HOLONOMY`, `TRANSPORT`, `BETTI`, `ENTROPY`, `FREEENERGY`, `GEODESIC`, … |
 | `crypto` | **GIGI Encrypt v0.4** — six gauge modes (Identity / Affine / Probabilistic / Opaque AES-GCM-SIV / Indexed AES-256-CMAC / Isometric O(k)), per-field encryption pipeline (`GaugeKey::encrypt_fiber`) |
-| `aggregate_helpers` | v0.3 — client-side closed-form aggregate inverters (SUM/AVG/VAR/STDDEV exact under Affine + Probabilistic; MIN/MAX/RANGE exact under Affine, refused under Probabilistic Ïƒ>0 with explicit `*_unchecked` opt-in) |
-| `integrity` | v0.3 — Curvature-MAC HMAC-SHA256 over the canonical Ï€_inv tuple; `InvariantTuple` + `sign_bundle` / `verify_bundle` |
+| `aggregate_helpers` | v0.3 — client-side closed-form aggregate inverters (SUM/AVG/VAR/STDDEV exact under Affine + Probabilistic; MIN/MAX/RANGE exact under Affine, refused under Probabilistic σ>0 with explicit `*_unchecked` opt-in) |
+| `integrity` | v0.3 — Curvature-MAC HMAC-SHA256 over the canonical π_inv tuple; `InvariantTuple` + `sign_bundle` / `verify_bundle` |
 | `invariant_verify` | v0.4 Sprint N — public deterministic verification with bundle-id binding; `verify_invariant_statement` returns `Verified` / `BundleMismatch` / `Rejected{field}` |
 | `credentials` | v0.4 Sprint O — HMAC-bound credentials today; BBS+ unlinkability pinned as v0.5 |
 | `invariant_ring` | v0.4 Sprint O — falsification harness for I_Aff membership; parser-by-construction proof |
-| `membership_index` | v0.4 Sprint P — geodesic-ball Mahalanobis index with dimension-aware Ï‡² threshold (table-exact for {1..5}Ã—{0.95, 0.99}, Wilson-Hilferty otherwise) |
-| `delegation`, `pairing_delegation`, `mlkem_delegation`, `lattice_delegation` | v0.3 Sprint J family — Aff(ℝ) capability composition (J.1), BLS12-381 pairing PRE (J.2), ML-KEM-768 trusted delegation (J.3), Shamir K-of-N Ã— ML-KEM threshold lattice delegation (J.4) |
-| `threshold` | v0.3 Sprint L — Shamir secret sharing over secp256k1 F_p; info-theoretic on ≤Kâˆ’1 subsets |
+| `membership_index` | v0.4 Sprint P — geodesic-ball Mahalanobis index with dimension-aware χ² threshold (table-exact for {1..5}×{0.95, 0.99}, Wilson-Hilferty otherwise) |
+| `delegation`, `pairing_delegation`, `mlkem_delegation`, `lattice_delegation` | v0.3 Sprint J family — Aff(ℝ) capability composition (J.1), BLS12-381 pairing PRE (J.2), ML-KEM-768 trusted delegation (J.3), Shamir K-of-N × ML-KEM threshold lattice delegation (J.4) |
+| `threshold` | v0.3 Sprint L — Shamir secret sharing over secp256k1 F_p; info-theoretic on ≤K−1 subsets |
 | `ledger` | v0.3 Sprint K — RFC 6962 Merkle holonomy ledger (gauge-invariant audit log) |
 | `ratchet` | v0.3 Sprint M — HKDF chain for continuous forward secrecy on the integrity key |
 | `coherence` | Field consistency / Davis field equations |
-| `curvature` | Scalar curvature K, capacity C = Ï„/K, confidence 1/(1+K) |
+| `curvature` | Scalar curvature K, capacity C = τ/K, confidence 1/(1+K) |
 | `gauge` | Structure-group transformations on the fiber |
 | `hash` | The 64-bit GIGI hash for base-space addressing |
 | `metric` | Fiber metrics (Euclidean, cosine, custom) |
@@ -248,20 +248,20 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `geometry::transport` | B-perturbed magnetic transport via RK4; cyclotron-conserving | L1.5 |
 | `geometry::hadamard` | Hadamard substructure detection + `transport_along` / `transport_inverse` | L5 |
 | `geometry::line_bundle` | `LineBundle` + Dirac integrality check (Wu-Yang) | L7.1 |
-| `geometry::quantum_cohomology` | Frobenius/WDVV composition on toy manifolds (CPâ¿, Tâ¿, S²) + Riemann-Roch capacity | L7.5 / L7.7 |
+| `geometry::quantum_cohomology` | Frobenius/WDVV composition on toy manifolds (CPⁿ, Tⁿ, S²) + Riemann-Roch capacity | L7.5 / L7.7 |
 | `geometry::toeplitz` | Berezin-Toeplitz operators with `ℝ ≥ 4 / embedding_dim` safety gate | L7.6 |
 | `geometry::moment_map` | `MomentMap` + `InfinitesimalAction`; B-symplecticity validated; `measure_conservation` integrates Hamilton's equations and reports drift of `μ_ξ` along H-flow plus the pointwise invariance residual — Noether's "if and only if" both halves | L9 |
-| `geometry::generative_flow` | `GenerativeFlow` keystone for the brain-primitives catalog: the SDE `áº‹ = -âˆ‡H dt + âˆš(2T) dW` (gradient half) and `áº‹ = Bâ»¹âˆ‡H` (Hamiltonian half) parametrized to deliver SAMPLE / FORECAST / DREAM / RECONSTRUCT as four boundary conditions on one generator. Convenience constructor `from_isotropic_gaussian()` plugs into L4's Welford stats so any bundle becomes a Friston-style generative model | L10 |
+| `geometry::generative_flow` | `GenerativeFlow` keystone for the brain-primitives catalog: the SDE `ẋ = -∇H dt + √(2T) dW` (gradient half) and `ẋ = B⁻¹∇H` (Hamiltonian half) parametrized to deliver SAMPLE / FORECAST / DREAM / RECONSTRUCT as four boundary conditions on one generator. Convenience constructor `from_isotropic_gaussian()` plugs into L4's Welford stats so any bundle becomes a Friston-style generative model | L10 |
 | `geometry::predictive_coding` | Three more brain primitives stacked on L10: `inpaint()` (constrained Langevin — lock some fields, sample the rest from the conditional density), `predict_one_step()` + `predict_one_step_natural()` (single Fisher-natural-gradient forward step — the brain's online predictive-coding update), `kernel_density_confidence()` + `confidence_normalized()` (kernel-density-estimate "I don't know" signal — separates known patients from out-of-cohort queries by 184 orders of magnitude in the demo) | L11 |
-| `geometry::attention` + `geometry::memory` | Closes the brain-primitives catalog with the attention + memory pillar. `attend()` (softmax over `-–q-x–²/2Ïƒ²` — identical to a normalized Gaussian kernel), `focus()` (top-k attended → sub-bundle), `episodic_events()` (persistent-Hâ‚€ change-point detection via elder-rule on the sorted-values MST), `semantic_gist()` (wraps `BundleStore::morse_compress` under the brain-API name) | L12 |
+| `geometry::attention` + `geometry::memory` | Closes the brain-primitives catalog with the attention + memory pillar. `attend()` (softmax over `-–q-x–²/2σ²` — identical to a normalized Gaussian kernel), `focus()` (top-k attended → sub-bundle), `episodic_events()` (persistent-H₀ change-point detection via elder-rule on the sorted-values MST), `semantic_gist()` (wraps `BundleStore::morse_compress` under the brain-API name) | L12 |
 | `geometry::bundle_stats` | One-pass Welford per-field empirical statistics — mean, std, min/max for numeric (with Bessel-corrected length-scale fallbacks for degenerate fields), value→count for categorical, component-wise mean + mean pairwise L2 length scale for Vector fields. Single source of truth for "what's a typical distance in this bundle" — feeds every Kähler-natural normalization downstream. Domain-agnostic by construction. | SUDOKU foundation |
 | `geometry::sudoku` | The SUDOKU meta-primitive — `solve_constraints()` with the honest-coverage `Sat/Unsat/Unknown` tristate. Per-violation Kähler-natural `relaxation_cost`, per-constraint `K_c` curvature + selectivity, Pareto frontier of multi-violation near-misses, data-driven `RelaxationOption` menu sorted by gain/cost, ÄŒech-style `check_constraint_holonomy()` pre-flight contradiction detection (O(C²), zero false positives), S3.5 `attempt_expansion()` for UNSAT puzzle relaxation. 41 unit tests + 6 HTTP wire-gate tests + 8 worked-example demos across 24 domains. | Waves 3–6.2, S3.5 |
-| `geometry::sample_transport` | Curvature-bounded neighborhood sampling: `sample_transport_neighborhood()` with `d² = (1-cos θ)/2 âˆˆ [0,1]` half-angle formula, Efraimidis-Spirakis weighted-sampling-without-replacement (`r^(1/w)` priorities, top-k), exp(-β·d²) kernel, per-candidate `curvature_k = 2·âˆšd²`, bundle-wide `confidence = 1/(1+κ)`. 13 geometry tests + 3 HTTP wire-gate + 4-domain worked example. | S4 |
+| `geometry::sample_transport` | Curvature-bounded neighborhood sampling: `sample_transport_neighborhood()` with `d² = (1-cos θ)/2 ∈ [0,1]` half-angle formula, Efraimidis-Spirakis weighted-sampling-without-replacement (`r^(1/w)` priorities, top-k), exp(-β·d²) kernel, per-candidate `curvature_k = 2·√d²`, bundle-wide `confidence = 1/(1+κ)`. 13 geometry tests + 3 HTTP wire-gate + 4-domain worked example. | S4 |
 | `graph::adjacency` | Dual principal/auxiliary adjacency operators | L2 |
 | `graph::commutativity` | Group-algebra-centrality commutativity classifier | L2 |
 | `cost::jacobi_estimator` | Jacobi-field cardinality bounds via Bishop / Günther | L3 |
 | `discrete::hodge_complex` | `d_0` / `d_1` operators built from cell incidence; `d² = 0` enforced | L6 |
-| `discrete::hodge_laplacian` | Î”_k = d d + dd , Betti via eigendecomposition | L6 |
+| `discrete::hodge_laplacian` | Δ_k = d d + dd , Betti via eigendecomposition | L6 |
 | `discrete::morse` | Algebraic Morse compression; preserves cohomology | L6 |
 
 ### Binaries (`src/bin/` + `examples/`)
@@ -276,7 +276,7 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `nasa_atmo` | End-to-end NASA-atmosphere demo (`examples/nasa_atmosphere.rs`) |
 | `kahler_tour` | One-run walk through every Kähler layer L1–L11 + DHOOM round-trip + PR-window endpoints, with concrete inputs / outputs / catalog refs. Requires `--features kahler`. (`examples/kahler_tour.rs`) |
 | `predictive_coding_demo` | L11 INPAINT / PREDICT / SELF-MONITOR exercised on a real `BundleStore` holding 80 synthetic MIRADOR-style PK records. The SELF-MONITOR signal cleanly separates known patients from out-of-cohort queries by **184 orders of magnitude**. Requires `--features kahler`. (`examples/predictive_coding_demo.rs`) |
-| `attention_memory_demo` | L12 ATTEND / FOCUS / EPISODIC / SEMANTIC on two real `BundleStore` scenarios: a 12-token semantic-embedding bundle (ATTEND correctly surfaces the 4 animals when queried with a cat-like embedding; FOCUS picks exactly the 3 vehicles for a vehicle-like query) and a 60-day PRISM-style transaction stream (EPISODIC detects a regime change at **1711Ã— persistence ratio**). Requires `--features kahler`. (`examples/attention_memory_demo.rs`) |
+| `attention_memory_demo` | L12 ATTEND / FOCUS / EPISODIC / SEMANTIC on two real `BundleStore` scenarios: a 12-token semantic-embedding bundle (ATTEND correctly surfaces the 4 animals when queried with a cat-like embedding; FOCUS picks exactly the 3 vehicles for a vehicle-like query) and a 60-day PRISM-style transaction stream (EPISODIC detects a regime change at **1711× persistence ratio**). Requires `--features kahler`. (`examples/attention_memory_demo.rs`) |
 
 ### Benches (`benches/`)
 
@@ -380,9 +380,9 @@ TRANSPORT corpus FROM (token_str='walk') TO (token_str='walked')
 BETTI sensors;
 
 -- Cognitive Geometry verbs (Branch VII)
--- "Can this substrate hold this interpretation?"   — CAPACITY = Ï„/K
+-- "Can this substrate hold this interpretation?"   — CAPACITY = τ/K
 CAPACITY corpus;
--- "How deep does coherent context extend?"        — HORIZON = Ï„/(K·ℝ“_c)
+-- "How deep does coherent context extend?"        — HORIZON = τ/(K·ℝ“_c)
 HORIZON corpus;
 -- "What's the erasure energy of writing here?"    — DEPTH classifier I/II/III/IV
 DEPTH corpus;
@@ -394,7 +394,7 @@ CREATE BUNDLE finance FIBER (
   amount NUMERIC ENCRYPTED,
   account TEXT ENCRYPTED INDEXED
 );
--- κ, λâ‚, anomaly detection still work — at native speed
+-- κ, λ₁, anomaly detection still work — at native speed
 ```
 
 See `GQL_REFERENCE.md` for the complete grammar (status table, complexity per verb,
@@ -409,7 +409,7 @@ pinned by [`tests/kahler_pr_window_marcella_contract.rs`](tests/)):
 
 | Endpoint | What it does | Catalog |
 |---|---|---|
-| `POST /v1/quantum_cohomology/compose` | Frobenius / WDVV composition on toy manifolds (CPâ¿, Tâ¿, S²) | §2.10 |
+| `POST /v1/quantum_cohomology/compose` | Frobenius / WDVV composition on toy manifolds (CPⁿ, Tⁿ, S²) | §2.10 |
 | `POST /v1/quantum_cohomology/capacity` | Riemann-Roch capacity — `dim H⁰(L^k)` | §2.2 |
 | `POST /v1/bundles/{name}/holonomy_debt` | Davis non-decoupling — `Quantized(n)` vs `Continuous(x)` | §E.1 |
 | `POST /v1/bundles/{name}/flat_transport` | Classical / magnetic parallel transport with `BSource` selector | §1.5 |
@@ -418,23 +418,23 @@ Plus the **Cognitive Geometry verbs** (Branch VII — builder-facing routing dec
 
 | Endpoint | What it returns | Reference |
 |---|---|---|
-| `GET  /v1/bundles/{name}/capacity` | `Ï„ / K` — can the substrate hold this interpretation? | CGC Thm 8.1 |
-| `GET  /v1/bundles/{name}/horizon` | `Ï„ / (K · ℝ“_c)` — coherent-context length before frame rotation becomes irrecoverable | CGC Thm 8.6 |
+| `GET  /v1/bundles/{name}/capacity` | `τ / K` — can the substrate hold this interpretation? | CGC Thm 8.1 |
+| `GET  /v1/bundles/{name}/horizon` | `τ / (K · ℝ“_c)` — coherent-context length before frame rotation becomes irrecoverable | CGC Thm 8.6 |
 | `GET  /v1/bundles/{name}/depth` | Erasure-energy classifier I/II/III/IV — what's the cost of writing here? | CGC Thm 8.14 |
-| `POST /v1/bundles/{name}/perceive` | `(R_acc · v,  –R_acc âˆ’ I–_F)` — what does the substrate perceive this vector as, and how much should we trust the perception? | CGC §8 step 4 |
+| `POST /v1/bundles/{name}/perceive` | `(R_acc · v,  –R_acc − I–_F)` — what does the substrate perceive this vector as, and how much should we trust the perception? | CGC §8 step 4 |
 | `POST /v1/bundles/{name}/local_holonomy` | `(R_window, defect, coherence, interpretation)` — windowed-rotation coherence signal for gain gating | COHERENCE_SIGNAL_SPEC §3 |
 
 Plus the brain-primitives surface (`POST /v1/bundles/{name}/brain/*`, content-negotiated DHOOM ↔ JSON, all polymorphic over heap and mmap+overlay bundles per #107):
 
 | Endpoint | What it returns | Layer |
 |---|---|---|
-| `/brain/sample` | Friston-FEP Langevin samples from `p âˆ exp(-H)` | L10 |
+| `/brain/sample` | Friston-FEP Langevin samples from `p ∝ exp(-H)` | L10 |
 | `/brain/dream`, `/forecast`, `/reconstruct` | SAMPLE variants under different boundary conditions | L10 |
 | `/brain/inpaint` | Constrained Langevin — lock some fields, sample the rest | L11 |
 | `/brain/predict` | Single Fisher-natural-gradient step | L11 |
 | `/brain/confidence`, `/confidence_with_explain` | Kernel-density confidence + nearest-record explain path | L11 (Marcella refuse-gate) |
 | `/brain/attend`, `/focus` | Softmax over geodesic distance + top-k sub-bundle | L12 |
-| `/brain/episodic` | Persistent-Hâ‚€ change-point detection | L12 |
+| `/brain/episodic` | Persistent-H₀ change-point detection | L12 |
 | `/brain/semantic` | Morse-compressed gist | L12 |
 | `/brain/explain` | Interpolation path to nearest known record | L12 |
 | `/brain/fit_diagnostics`, `/distance_to_fit_mean` | Σ eigenstructure + Mahalanobis distance to fit mean | wave 1 |
@@ -479,7 +479,7 @@ cd e2e && npm install && npm test
 As of this README the engine ships with:
 
 - **847 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract (LOCAL_HOLONOMY and PERCEIVE are feature-independent and run here too; was 680 pre-CG-verbs, +6 LOCAL_HOLONOMY, +others from Branch VII).
-- **1124 tests passing, 0 failed** with `cargo test --lib --features kahler` (+ 64 in `cargo test --bin gigi-stream --features kahler`) — adds the twelve-layer Kähler stack (L1–L12, all 12 brain primitives operational), the **five Cognitive Geometry verbs** (CAPACITY / HORIZON / DEPTH / PERCEIVE / LOCAL_HOLONOMY) end-to-end (math + HTTP + GQL parser + real-data smokes + cross-team contract pins), the SUDOKU meta-primitive (waves 3–6.2 + S3.5), SAMPLE_TRANSPORT (S4), the #107 polymorphic brain-endpoint fix, the rank-based Betti rewrite + MorseCache + column-indexed Fâ‚‚ rank (`/brain/semantic` went from 10–30 s to sub-second on production-shape complexes), per-layer real-data smokes against the 20-record sensor dataset, and the six HTTP wire-gate tests verifying that every wave-3/4/5/6 field reaches the response and the ÄŒech pre-flight + Pareto + expansion paths return correctly.
+- **1124 tests passing, 0 failed** with `cargo test --lib --features kahler` (+ 64 in `cargo test --bin gigi-stream --features kahler`) — adds the twelve-layer Kähler stack (L1–L12, all 12 brain primitives operational), the **five Cognitive Geometry verbs** (CAPACITY / HORIZON / DEPTH / PERCEIVE / LOCAL_HOLONOMY) end-to-end (math + HTTP + GQL parser + real-data smokes + cross-team contract pins), the SUDOKU meta-primitive (waves 3–6.2 + S3.5), SAMPLE_TRANSPORT (S4), the #107 polymorphic brain-endpoint fix, the rank-based Betti rewrite + MorseCache + column-indexed F₂ rank (`/brain/semantic` went from 10–30 s to sub-second on production-shape complexes), per-layer real-data smokes against the 20-record sensor dataset, and the six HTTP wire-gate tests verifying that every wave-3/4/5/6 field reaches the response and the ÄŒech pre-flight + Pareto + expansion paths return correctly.
 - **1153 tests passing, 0 failed** with `cargo test --lib --features "kahler sharded"` — adds the [`src/sharded/`](src/sharded/) module (Phase A scaffold + Phase B `ShardedBundle` wrapper) behind the `sharded` feature flag. 29 new sharded tests cover `Atlas` / `ChartId` / `Transition` / `SpectralRegime` types + the `non_vacuity_check` and `cocycle_budget_check` gates + `sharded_write_resolve` Clean Finger Move resolver + `ShardedBundle::wrap_trivial` runtime wrapper with atlas serde round-trip. Feature OFF by default → zero regression for callers who haven't opted in.
 - **1187 tests passing, 0 failed** with `cargo test --lib --features "kahler sharded imagine"` — adds the [`src/imagine/`](src/imagine/) module (Phase 1 scaffold: `ImaginedRecord` with required provenance, `imagine_geodesic` RK4 integrator, `imagine_halo` gauge-equivariant k-NN halos, `walk` with Marcella's load-bearing curvature safety envelope at default 4.0 = K(CP¹)). 23 new imagine tests include: RK4 matches embedded-picture S² closed form to machine precision; halo records carry correct provenance prefix; `walk` refuses paths exceeding the 4.0 curvature ceiling with `OverCurvatureRefused`; cite-render contract produces the `[imagined: ...]` / `[imagined-halo: ...]` / `[imagined-bridge: ...]` prefixes. Feature OFF by default; zero impact on existing consumers.
 
@@ -512,7 +512,7 @@ independent angles:
   DHOOM Chern round-trip).
 - `theory/post_kahler_directions/validation_tests.py` — 30/30 PASS
   across the nine post-Kähler directions (Sasaki Reeb characterization,
-  Fisher metric on Gaussians, Wasserstein Wâ‚‚, MST persistence,
+  Fisher metric on Gaussians, Wasserstein W₂, MST persistence,
   Gromov-δ closed forms, tropical fundamental theorem, dual-number
   derivatives, Connes distance on S¹, CAT(κ) comparison inequality).
 - `theory/brain_primitives/validation_tests.py` — 26/26 PASS for the
@@ -520,7 +520,7 @@ independent angles:
   harmonic energy conservation, DREAM temperature scaling, RECONSTRUCT
   MAP recovery, INPAINT conditional sampling, PREDICT natural-gradient
   step, ATTEND Gaussian-kernel softmax identity, FOCUS top-k
-  correctness, EPISODIC persistent Hâ‚€ on time slices, SEMANTIC Morse
+  correctness, EPISODIC persistent H₀ on time slices, SEMANTIC Morse
   Betti preservation, SELF-MONITOR Fisher precision decay).
 
 Every check pairs an independently-derived closed-form ground truth
@@ -539,33 +539,33 @@ quantity GIGI computes:
 
 | Quantity | Plaintext | Encrypted | Match? |
 |---|---|---|---|
-| Scalar curvature K | âœ“ | âœ“ | exact |
-| Confidence 1/(1+K) | âœ“ | âœ“ | exact |
-| Capacity C = Ï„/K | âœ“ | âœ“ | exact |
-| Spectral gap λâ‚ | âœ“ | âœ“ | exact (graph-topology invariant) |
-| Anomaly scores | âœ“ | âœ“ | exact |
-| Holonomy δÏ† | âœ“ | âœ“ | exact (gauge-invariant — including HOLONOMY ON FIBER) |
-| WHERE / range comparisons | âœ“ | âœ“ | preserved order on numeric fields |
-| SUM / AVG / VAR / STDDEV | âœ“ | âœ“ | **plaintext-exact via O(1) client-side closed-form inverse** (v0.3 `aggregate_helpers`) |
-| MIN / MAX / RANGE under Affine | âœ“ | âœ“ | exact |
-| MIN / MAX / RANGE under Probabilistic Ïƒ>0 | âœ“ | âœ— | refused at API (`BiasedUnderProbabilisticNoise`); `*_unchecked` opt-in if you accept the `Î˜(Ïƒ âˆš(2 log n) / \|a\|)` bias |
-| **Ï€_inv fingerprint** (K, λâ‚, âŸ¨HolâŸ©, Ï„, βâ‚€, βâ‚) | âœ“ | âœ“ | **publicly verifiable, no gauge key required** (v0.4 Sprint N) |
+| Scalar curvature K | ✓ | ✓ | exact |
+| Confidence 1/(1+K) | ✓ | ✓ | exact |
+| Capacity C = τ/K | ✓ | ✓ | exact |
+| Spectral gap λ₁ | ✓ | ✓ | exact (graph-topology invariant) |
+| Anomaly scores | ✓ | ✓ | exact |
+| Holonomy δφ | ✓ | ✓ | exact (gauge-invariant — including HOLONOMY ON FIBER) |
+| WHERE / range comparisons | ✓ | ✓ | preserved order on numeric fields |
+| SUM / AVG / VAR / STDDEV | ✓ | ✓ | **plaintext-exact via O(1) client-side closed-form inverse** (v0.3 `aggregate_helpers`) |
+| MIN / MAX / RANGE under Affine | ✓ | ✓ | exact |
+| MIN / MAX / RANGE under Probabilistic σ>0 | ✓ | ✗ | refused at API (`BiasedUnderProbabilisticNoise`); `*_unchecked` opt-in if you accept the `Θ(σ √(2 log n) / \|a\|)` bias |
+| **π_inv fingerprint** (K, λ₁, ⟨Hol⟩, τ, β₀, β₁) | ✓ | ✓ | **publicly verifiable, no gauge key required** (v0.4 Sprint N) |
 
 **Six v0.2 gauge modes** + **v0.3 delegation family** + **v0.4 verification**:
 
 | Layer | Primitives |
 |---|---|
 | **v0.2 gauge** | IDENTITY, AFFINE (numeric `v ↦ a·v + b`), PROBABILISTIC (Affine + i.i.d. Gaussian noise), OPAQUE (AES-256-GCM-SIV — random-access ciphertext, no equality leakage), INDEXED (AES-256-CMAC PRF — deterministic for indexed lookups, equality leaks by design), ISOMETRIC (O(k) rotation on Vector fields) |
-| **v0.3 integrity** | Curvature-MAC (HMAC-SHA256 over canonical Ï€_inv tuple; 10â»¹⁰ quantization; 4Ã— tighter than v0.3.0) |
-| **v0.3 aggregate inversion** | Client-side closed-form decoders for SUM / AVG / VAR / STDDEV exact on Affine + Probabilistic; MIN / MAX / RANGE exact on Affine; honest refusal on Probabilistic Ïƒ>0 |
+| **v0.3 integrity** | Curvature-MAC (HMAC-SHA256 over canonical π_inv tuple; 10⁻¹⁰ quantization; 4× tighter than v0.3.0) |
+| **v0.3 aggregate inversion** | Client-side closed-form decoders for SUM / AVG / VAR / STDDEV exact on Affine + Probabilistic; MIN / MAX / RANGE exact on Affine; honest refusal on Probabilistic σ>0 |
 | **v0.3 audit log** | RFC 6962 Merkle holonomy ledger (gauge-invariant) |
 | **v0.3 forward secrecy** | HKDF-chain RG-flow ratchet on the integrity key |
-| **v0.3 delegation family** | J.1 Aff(ℝ) capability composition · J.2 BLS12-381 pairing PRE (DLP_Gâ‚‚-hard, pre-quantum) · J.3 ML-KEM-768 trusted-delegatee (FIPS 203, NIST Level 3 PQ) · J.4 lattice threshold = Shamir K-of-N over F_p Ã— per-share ML-KEM (info-theoretic on ≤K-1 subsets + PQ outer layer) |
+| **v0.3 delegation family** | J.1 Aff(ℝ) capability composition · J.2 BLS12-381 pairing PRE (DLP_G₂-hard, pre-quantum) · J.3 ML-KEM-768 trusted-delegatee (FIPS 203, NIST Level 3 PQ) · J.4 lattice threshold = Shamir K-of-N over F_p × per-share ML-KEM (info-theoretic on ≤K-1 subsets + PQ outer layer) |
 | **v0.3 secret sharing** | Shamir over secp256k1 base field F_p (Sprint L); the primitive J.4 composes |
 | **v0.4 Sprint N** | Public deterministic invariant-tuple verification; `POST /v1/bundles/{name}/verify_invariant`; bundle-id binding; `Verified` / `BundleMismatch` / `Rejected{field}` verdicts |
 | **v0.4 Sprint O** | Credential-gated invariant queries (HMAC-bound today; BBS+ pinned as v0.5 unlinkability upgrade) |
-| **v0.4 Sprint Q** | K-preserving subgroup characterized as the diagonal affine group `(ℝ*)áµ ⋉ ℝáµ`; rotation-invariant `tr(Cov)/diam²` (corrects earlier `(maxâˆ’min)²` overclaim); LWE separation as hiding-vs-gauge layers. **Roadmap only** — not a shipped PQ mode |
-| **v0.4 Sprint P** | Geodesic-ball Mahalanobis membership index with dimension-aware Ï‡² threshold (table-exact for k âˆˆ {1..5} Ã— p âˆˆ {0.95, 0.99}; Wilson-Hilferty fallback elsewhere). Explicit leakage scope: not a hiding primitive |
+| **v0.4 Sprint Q** | K-preserving subgroup characterized as the diagonal affine group `(ℝ*)áµ ⋉ ℝáµ`; rotation-invariant `tr(Cov)/diam²` (corrects earlier `(max−min)²` overclaim); LWE separation as hiding-vs-gauge layers. **Roadmap only** — not a shipped PQ mode |
+| **v0.4 Sprint P** | Geodesic-ball Mahalanobis membership index with dimension-aware χ² threshold (table-exact for k ∈ {1..5} × p ∈ {0.95, 0.99}; Wilson-Hilferty fallback elsewhere). Explicit leakage scope: not a hiding primitive |
 
 **Rigor** (cross-team review-driven, locked in by tests):
 
@@ -610,11 +610,11 @@ All NIST-standardized primitives, all from the RustCrypto suite +
   [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md).
 - **sudoky-energy** (sibling project, not in this repo) — Bee Davis's
   GPU-accelerated CSP solver (U.S. Provisional Patent Feb 2026). Solves
-  the world's hardest 9Ã—9 Sudoku puzzles in 20–49 ms on a single laptop
+  the world's hardest 9×9 Sudoku puzzles in 20–49 ms on a single laptop
   GPU; **260,042 puzzles/sec** batch throughput. Shares the Davis-manifold
   machinery with GIGI's SUDOKU primitive: same `K_loc` curvature
-  scheduling signal, same `V(c) = âˆ«_{R_c} K_loc dV_g` information value
-  for ordering, same Î“ trichotomy parameter for difficulty classification,
+  scheduling signal, same `V(c) = ∫_{R_c} K_loc dV_g` information value
+  for ordering, same Γ trichotomy parameter for difficulty classification,
   same ÄŒech `HÌ†¹` holonomy obstruction for pruning. sudoky-energy solves
   canonical CSPs; GIGI's SUDOKU applies the same machinery to bundle-
   record filtering. The cross-reference is documented in
@@ -626,65 +626,65 @@ All NIST-standardized primitives, all from the RustCrypto suite +
 
 ```
 gigi/
-â”œâ”€â”€ src/                  Rust engine (single crate, 25+ modules)
-â”‚   â”œâ”€â”€ lib.rs            module roots
-â”‚   â”œâ”€â”€ bin/              5 production binaries
-â”‚   â”œâ”€â”€ geometry/         Kähler L1–L12 + the SUDOKU sprint:
-â”‚   â”‚                       L1   complex_structure, forms (J, B)
-â”‚   â”‚                       L1.5 transport (B-perturbed magnetic)
-â”‚   â”‚                       L5   hadamard
-â”‚   â”‚                       L7   line_bundle, quantum_cohomology,
-â”‚   â”‚                              toeplitz
-â”‚   â”‚                       L9   moment_map (Noether)
-â”‚   â”‚                       L10  generative_flow (Friston-FEP keystone)
-â”‚   â”‚                       L11  predictive_coding (INPAINT/PREDICT/SELF-MONITOR)
-â”‚   â”‚                       L12  attention, memory (ATTEND/FOCUS/EPISODIC/SEMANTIC)
-â”‚   â”‚                       —    bundle_stats (W3 foundation)
-â”‚   â”‚                       —    sudoku (W3–6.2 + S3.5)
-â”‚   â”‚                       —    sample_transport (S4)
-â”‚   â”œâ”€â”€ graph/            L2 adjacency + commutativity classifier
-â”‚   â”œâ”€â”€ cost/             L3 Jacobi-field cardinality estimator
-â”‚   â”œâ”€â”€ discrete/         L6 Hodge complex + Laplacian + Morse
-â”‚   â”œâ”€â”€ sheaf/            sheaf cohomology + Laplacian
-â”‚   â”œâ”€â”€ bundle.rs         Heap BundleStore + Welford field stats + mutation_counter
-â”‚   â”œâ”€â”€ mmap_bundle.rs    BundleRef / BundleMut / OverlayBundle —
-â”‚   â”‚                       polymorphic over heap and mmap+overlay (#107)
-â”‚   â””â”€â”€ …
-â”œâ”€â”€ benches/              3 cargo-bin benchmarks
-â”œâ”€â”€ examples/             nasa_atmosphere.rs; kahler_tour.rs (every
-â”‚                         Kähler layer); predictive_coding_demo.rs (L11
-â”‚                         INPAINT/PREDICT/SELF-MONITOR on 80 MIRADOR
-â”‚                         PK records); attention_memory_demo.rs (L12
-â”‚                         on a 12-token corpus + 60-day PRISM stream)
-â”œâ”€â”€ e2e/
-â”‚   â”œâ”€â”€ probes/           8 SUDOKU + SAMPLE_TRANSPORT worked examples
-â”‚   â”‚                       across 24 distinct domains + preship audit
-â”‚   â”‚                       (sudoku_six_domains_demo, sudoku_six_more_
-â”‚   â”‚                       domains_demo, sudoku_geometry_diagnostics_
-â”‚   â”‚                       demo, sudoku_expansion_demo, sudoku_at_
-â”‚   â”‚                       scale_demo, sudoku_32x32_grid_demo,
-â”‚   â”‚                       sample_transport_demo, postdeploy_smoke,
-â”‚   â”‚                       preship_audit)
-â”‚   â””â”€â”€ *.mjs             Playwright + Node integration tests
-â”œâ”€â”€ sdk/
-â”‚   â”œâ”€â”€ python/           gigi-client (pandas-aware)
-â”‚   â””â”€â”€ js/               @gigi-db/client (TS, browser + node)
-â”œâ”€â”€ dashboard/            Operator dashboard (React/Vite)
-â”œâ”€â”€ playground/           In-browser GQL REPL
-â”œâ”€â”€ theory/
-â”‚   â”œâ”€â”€ kahler_upgrade/   Kähler catalog (16/21 shipped) + impl plan +
-â”‚   â”‚                       Marcella substrate spec + 4 Python validation
-â”‚   â”‚                       suites (15/15 PASS) + cross-team correspondence +
-â”‚   â”‚                       SUDOKU_PRIMITIVE_SPEC.md (sudoky-energy cross-ref)
-â”‚   â”œâ”€â”€ post_kahler_directions/
-â”‚   â”‚                     Companion catalog: 9 post-Kähler directions
-â”‚   â”‚                       (Sasaki, info-geom, OT, persistent homology,
-â”‚   â”‚                       Gromov δ, tropical, synthetic DG, NCG, CAT(κ))
-â”‚   â”‚                       + validation_tests.py (30/30 PASS)
-â”‚   â””â”€â”€ brain_primitives/ 12 brain-like operations + 26/26 numerical checks
-â”œâ”€â”€ docs/                 Site + landing pages
-â”œâ”€â”€ demos/                Self-contained Python demos
-â””â”€â”€ *_SPEC.md             Build-ready specs (encryption, observability, …)
+├── src/                  Rust engine (single crate, 25+ modules)
+│   ├── lib.rs            module roots
+│   ├── bin/              5 production binaries
+│   ├── geometry/         Kähler L1–L12 + the SUDOKU sprint:
+│   │                       L1   complex_structure, forms (J, B)
+│   │                       L1.5 transport (B-perturbed magnetic)
+│   │                       L5   hadamard
+│   │                       L7   line_bundle, quantum_cohomology,
+│   │                              toeplitz
+│   │                       L9   moment_map (Noether)
+│   │                       L10  generative_flow (Friston-FEP keystone)
+│   │                       L11  predictive_coding (INPAINT/PREDICT/SELF-MONITOR)
+│   │                       L12  attention, memory (ATTEND/FOCUS/EPISODIC/SEMANTIC)
+│   │                       —    bundle_stats (W3 foundation)
+│   │                       —    sudoku (W3–6.2 + S3.5)
+│   │                       —    sample_transport (S4)
+│   ├── graph/            L2 adjacency + commutativity classifier
+│   ├── cost/             L3 Jacobi-field cardinality estimator
+│   ├── discrete/         L6 Hodge complex + Laplacian + Morse
+│   ├── sheaf/            sheaf cohomology + Laplacian
+│   ├── bundle.rs         Heap BundleStore + Welford field stats + mutation_counter
+│   ├── mmap_bundle.rs    BundleRef / BundleMut / OverlayBundle —
+│   │                       polymorphic over heap and mmap+overlay (#107)
+│   └── …
+├── benches/              3 cargo-bin benchmarks
+├── examples/             nasa_atmosphere.rs; kahler_tour.rs (every
+│                         Kähler layer); predictive_coding_demo.rs (L11
+│                         INPAINT/PREDICT/SELF-MONITOR on 80 MIRADOR
+│                         PK records); attention_memory_demo.rs (L12
+│                         on a 12-token corpus + 60-day PRISM stream)
+├── e2e/
+│   ├── probes/           8 SUDOKU + SAMPLE_TRANSPORT worked examples
+│   │                       across 24 distinct domains + preship audit
+│   │                       (sudoku_six_domains_demo, sudoku_six_more_
+│   │                       domains_demo, sudoku_geometry_diagnostics_
+│   │                       demo, sudoku_expansion_demo, sudoku_at_
+│   │                       scale_demo, sudoku_32x32_grid_demo,
+│   │                       sample_transport_demo, postdeploy_smoke,
+│   │                       preship_audit)
+│   └── *.mjs             Playwright + Node integration tests
+├── sdk/
+│   ├── python/           gigi-client (pandas-aware)
+│   └── js/               @gigi-db/client (TS, browser + node)
+├── dashboard/            Operator dashboard (React/Vite)
+├── playground/           In-browser GQL REPL
+├── theory/
+│   ├── kahler_upgrade/   Kähler catalog (16/21 shipped) + impl plan +
+│   │                       Marcella substrate spec + 4 Python validation
+│   │                       suites (15/15 PASS) + cross-team correspondence +
+│   │                       SUDOKU_PRIMITIVE_SPEC.md (sudoky-energy cross-ref)
+│   ├── post_kahler_directions/
+│   │                     Companion catalog: 9 post-Kähler directions
+│   │                       (Sasaki, info-geom, OT, persistent homology,
+│   │                       Gromov δ, tropical, synthetic DG, NCG, CAT(κ))
+│   │                       + validation_tests.py (30/30 PASS)
+│   └── brain_primitives/ 12 brain-like operations + 26/26 numerical checks
+├── docs/                 Site + landing pages
+├── demos/                Self-contained Python demos
+└── *_SPEC.md             Build-ready specs (encryption, observability, …)
 ```
 
 ---

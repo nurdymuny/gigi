@@ -79,7 +79,7 @@ the engine implements, not an aspirational future.
 | You want to… | Conventional DB | GIGI |
 |---|---|---|
 | **Insert one row** | Append to table, update indexes | Append + bump Welford field stats + mutation_counter + curvature; the bundle's geometry incrementally evolves |
-| **Look up by primary key** | B-tree (O(log N)) or hash (O(1)) | `SECTION bundle AT (id='X');` — GIGI hash G(Kâ‚,…,Kâ‚˜) → ℝ¤â‚‚â¶â´, **always O(1)**; response also carries κ + confidence |
+| **Look up by primary key** | B-tree (O(log N)) or hash (O(1)) | `SECTION bundle AT (id='X');` — GIGI hash G(Kâ‚,…,Kâ‚˜) → ℝ¤â‚‚⁶⁴, **always O(1)**; response also carries κ + confidence |
 | **`WHERE x = 5`** | Index scan or full table scan | Same O(1) GIGI hash on the addressed key; with geometric annotation per result |
 | **`WHERE x BETWEEN 10 AND 20`** | Range scan over a sorted index | `filtered_query` over the bundle; returns hits + per-hit position in the fiber |
 | **`GROUP BY region`** | Hash-grouped aggregation | `INTEGRATE field OVER bundle COVER ALL;` — aggregation = integration over a base-space cover (geometric, not relational) |
@@ -115,52 +115,19 @@ separate ML stack. **Geometry is not a plugin.** It's the substrate.
   (curvature reads, SUDOKU, SAMPLE_TRANSPORT) are available immediately,
   not after a warm-up.
 
-### What it doesn't do (yet)
-
-- **Cross-bundle ACID transactions** — **atomic sheaf commits Phase 1
-  shipped** (`src/transactions/` behind the `transactions` feature flag,
-  2026-06-04). 2PC with full coordinator/participant failure recovery
-  (presumed-abort, log replay, partial-notify catch-up). The framing
-  goes beyond ACID: per `theory/transactions/ATOMIC_SHEAF_COMMIT_SPEC.md`,
-  the commit preserves three substrate invariants — cocycle bound,
-  K-monotone, connection-coherent — which are the cocycle bound (Davis
-  2026b Def 21) applied to time. Phase 2 (snapshot isolation),
-  Phase 3 (deadlock detection), and Phase 4 (geometric coherence)
-  spec'd and queued.
-- **SQL-compatible wire** — the query language is GQL (similar shape
-  to SQL but with the geometric verbs above; full grammar in
-  `GQL_REFERENCE.md`). SDKs in Python and JS hide the difference.
-- **Sharding across nodes** — the **substrate is fully implemented in
-  one process**, end-to-end. `src/sharded/` module behind the `sharded`
-  feature flag, 14 TDD math gates green (T1–T10 + TFP1 + TFP2 + TFH1 +
-  TFH2) backed by Davis 2026a/b/c. Constructors: `wrap_trivial`,
-  `wrap_hash_sharded`, `wrap_fiedler_sharded` (topology-aware
-  partition that preserves the neighborhood graph K depends on).
-  Per-verb primitives: `shard_curvature`, `shard_betti_disjoint`,
-  `shard_betti_mayer_vietoris` (Fiedler-aware), `shard_holonomy_along_path`,
-  `shard_holonomy_around_loop` (Möbius `det = -1` detection), and
-  `shard_lambda_1_from_bundle` (end-to-end distributed Lanczos with
-  the substrate-side Laplacian extractor). Cross-atlas
-  (`cross_atlas_*` + `cross_atlas_betti_via_fiber_product`) wires the
-  Marcella + PRISM bridge contract. HTTP routes: `/sharded/spectral_gap`,
-  `/sharded/curvature`, `/sharded/holonomy_loop`. What's left: the
-  multi-node *engine* (per-shard processes coordinating over a network).
-  The math foundation and the single-process substrate it rides on are
-  locked.
-
 ---
 
 ## Why GIGI
 
-Conventional databases see rows. GIGI sees a section Ïƒ: B → E of a fiber
-bundle (E, B, F, Ï€, Φ): the base space B is the queryable keys, the fiber
+Conventional databases see rows. GIGI sees a section σ: B → E of a fiber
+bundle (E, B, F, π, Φ): the base space B is the queryable keys, the fiber
 F is the value schema, and every record is a point in the total space E.
 This isn't decoration — it's how the engine indexes, queries, and reasons
 about your data:
 
 | You want… | Conventional DB | GIGI |
 |---|---|---|
-| O(1) point query by composite key | Multi-column hash index | GIGI hash G : Kâ‚ Ã— … Ã— Kâ‚˜ → ℝ¤â‚‚â¶â´ — native |
+| O(1) point query by composite key | Multi-column hash index | GIGI hash G : Kâ‚ Ã— … Ã— Kâ‚˜ → ℝ¤â‚‚⁶⁴ — native |
 | Anomaly detection | Add a streaming pipeline | Curvature κ updated per insert; outliers fall out |
 | "How clustered is this?" | Run k-means offline | Spectral gap λâ‚ from the index Laplacian |
 | Compute on encrypted data | Homomorphic encryption (~10,000Ã— slowdown) | Gauge encryption — **native speed**, geometry-preserving |
@@ -283,7 +250,7 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 | `geometry::line_bundle` | `LineBundle` + Dirac integrality check (Wu-Yang) | L7.1 |
 | `geometry::quantum_cohomology` | Frobenius/WDVV composition on toy manifolds (CPâ¿, Tâ¿, S²) + Riemann-Roch capacity | L7.5 / L7.7 |
 | `geometry::toeplitz` | Berezin-Toeplitz operators with `ℝ ≥ 4 / embedding_dim` safety gate | L7.6 |
-| `geometry::moment_map` | `MomentMap` + `InfinitesimalAction`; B-symplecticity validated; `measure_conservation` integrates Hamilton's equations and reports drift of `μ_Î¾` along H-flow plus the pointwise invariance residual — Noether's "if and only if" both halves | L9 |
+| `geometry::moment_map` | `MomentMap` + `InfinitesimalAction`; B-symplecticity validated; `measure_conservation` integrates Hamilton's equations and reports drift of `μ_ξ` along H-flow plus the pointwise invariance residual — Noether's "if and only if" both halves | L9 |
 | `geometry::generative_flow` | `GenerativeFlow` keystone for the brain-primitives catalog: the SDE `áº‹ = -âˆ‡H dt + âˆš(2T) dW` (gradient half) and `áº‹ = Bâ»¹âˆ‡H` (Hamiltonian half) parametrized to deliver SAMPLE / FORECAST / DREAM / RECONSTRUCT as four boundary conditions on one generator. Convenience constructor `from_isotropic_gaussian()` plugs into L4's Welford stats so any bundle becomes a Friston-style generative model | L10 |
 | `geometry::predictive_coding` | Three more brain primitives stacked on L10: `inpaint()` (constrained Langevin — lock some fields, sample the rest from the conditional density), `predict_one_step()` + `predict_one_step_natural()` (single Fisher-natural-gradient forward step — the brain's online predictive-coding update), `kernel_density_confidence()` + `confidence_normalized()` (kernel-density-estimate "I don't know" signal — separates known patients from out-of-cohort queries by 184 orders of magnitude in the demo) | L11 |
 | `geometry::attention` + `geometry::memory` | Closes the brain-primitives catalog with the attention + memory pillar. `attend()` (softmax over `-–q-x–²/2Ïƒ²` — identical to a normalized Gaussian kernel), `focus()` (top-k attended → sub-bundle), `episodic_events()` (persistent-Hâ‚€ change-point detection via elder-rule on the sorted-values MST), `semantic_gist()` (wraps `BundleStore::morse_compress` under the brain-API name) | L12 |
@@ -443,7 +410,7 @@ pinned by [`tests/kahler_pr_window_marcella_contract.rs`](tests/)):
 | Endpoint | What it does | Catalog |
 |---|---|---|
 | `POST /v1/quantum_cohomology/compose` | Frobenius / WDVV composition on toy manifolds (CPâ¿, Tâ¿, S²) | §2.10 |
-| `POST /v1/quantum_cohomology/capacity` | Riemann-Roch capacity — `dim Hâ°(L^k)` | §2.2 |
+| `POST /v1/quantum_cohomology/capacity` | Riemann-Roch capacity — `dim H⁰(L^k)` | §2.2 |
 | `POST /v1/bundles/{name}/holonomy_debt` | Davis non-decoupling — `Quantized(n)` vs `Continuous(x)` | §E.1 |
 | `POST /v1/bundles/{name}/flat_transport` | Classical / magnetic parallel transport with `BSource` selector | §1.5 |
 
@@ -589,7 +556,7 @@ quantity GIGI computes:
 | Layer | Primitives |
 |---|---|
 | **v0.2 gauge** | IDENTITY, AFFINE (numeric `v ↦ a·v + b`), PROBABILISTIC (Affine + i.i.d. Gaussian noise), OPAQUE (AES-256-GCM-SIV — random-access ciphertext, no equality leakage), INDEXED (AES-256-CMAC PRF — deterministic for indexed lookups, equality leaks by design), ISOMETRIC (O(k) rotation on Vector fields) |
-| **v0.3 integrity** | Curvature-MAC (HMAC-SHA256 over canonical Ï€_inv tuple; 10â»¹â° quantization; 4Ã— tighter than v0.3.0) |
+| **v0.3 integrity** | Curvature-MAC (HMAC-SHA256 over canonical Ï€_inv tuple; 10â»¹⁰ quantization; 4Ã— tighter than v0.3.0) |
 | **v0.3 aggregate inversion** | Client-side closed-form decoders for SUM / AVG / VAR / STDDEV exact on Affine + Probabilistic; MIN / MAX / RANGE exact on Affine; honest refusal on Probabilistic Ïƒ>0 |
 | **v0.3 audit log** | RFC 6962 Merkle holonomy ledger (gauge-invariant) |
 | **v0.3 forward secrecy** | HKDF-chain RG-flow ratchet on the integrity key |

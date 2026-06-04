@@ -187,6 +187,24 @@ name = "brain_tour_demo"
 path = "examples/brain_tour_demo.rs"
 required-features = ["kahler"]
 
+# Sharding demo on real public data (Palmer Penguins, CC-0).
+# Reads gigi::sharded::* end-to-end on a 3-species bundle:
+# unsharded baseline → hash-shard with n=3 → check T3 invariance →
+# explicit Möbius cross-chart loop → det(H) = -1 (T13).
+[[bin]]
+name = "sharding_penguins"
+path = "examples/sharding_penguins.rs"
+required-features = ["kahler", "sharded"]
+
+# IMAGINE demo on real public data (NOAA Mauna Loa CO₂, public domain).
+# Three live trajectory shapes against a 60-month observation bundle:
+# default-budget honest refusal → constant-K calm projection → the
+# is_imagined() audit on every returned point.
+[[bin]]
+name = "imagine_co2_forward"
+path = "examples/imagine_co2_forward.rs"
+required-features = ["kahler", "imagine"]
+
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"

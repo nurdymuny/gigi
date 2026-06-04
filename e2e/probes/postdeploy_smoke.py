@@ -93,7 +93,7 @@ s, _ = call("POST", "/v1/bundles", {
         "price": "numeric", "emb": "vector(4)"
     }, "keys": ["id"]}
 })
-report(f"create {bundle_name}", s == 200, f"status={s}")
+report(f"create {bundle_name}", s in (200, 201), f"status={s}")
 
 records = [{
     "id": i, "color": ["red", "blue", "green"][i % 3],
@@ -119,7 +119,7 @@ s, body = call("POST", f"/v1/bundles/{bundle_name}/brain/sudoku",
                {"constraints": [
                    {"type": "field", "field": "color", "op": "eq", "value": "red"},
                    {"type": "field", "field": "color", "op": "eq", "value": "blue"}]})
-report("Čech pre-flight catches contradiction",
+report("Cech pre-flight catches contradiction",
        s == 200 and body.get("verdict") == "unsat"
        and body.get("n_records_considered") == 0
        and body.get("pre_flight_unsat_reason"),
@@ -133,17 +133,20 @@ report("SAMPLE_TRANSPORT on fresh bundle",
        s == 200, f"status={s}, candidates={len(body.get('candidates') or [])}, "
                  f"kappa={body.get('kappa')}")
 
-# fit_diagnostics
+# fit_diagnostics — needs >=2 scalar fields (even fiber dim, canonical
+# symplectic structure). Pair id + price.
 s, body = call("POST", f"/v1/bundles/{bundle_name}/brain/fit_diagnostics",
-               {"fields": ["price"]})
+               {"fields": ["id", "price"]})
 report("fit_diagnostics on fresh bundle",
        s == 200, f"status={s}")
 
-# confidence (Marcella's refuse-gate)
+# confidence (Marcella's refuse-gate). Same dim>=2 constraint.
 s, body = call("POST", f"/v1/bundles/{bundle_name}/brain/confidence",
-               {"fields": ["price"], "query": [200.0]})
+               {"fields": ["id", "price"], "query": [25.0, 200.0]})
+raw = body.get("raw")
+raw_str = f"{raw:.2f}" if isinstance(raw, (int, float)) else str(raw)
 report("brain/confidence on fresh bundle",
-       s == 200, f"status={s}, raw={body.get('raw'):.2f if isinstance(body.get('raw'), (int, float)) else body.get('raw')}")
+       s == 200, f"status={s}, raw={raw_str}")
 
 # 4. cleanup
 print("\n[4] Cleanup")

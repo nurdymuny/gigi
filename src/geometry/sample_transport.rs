@@ -135,17 +135,26 @@ fn fiber_d_sq(p_src: &[f64], p: &[f64]) -> f64 {
 }
 
 /// Extract the fiber projection of a record as a `Vec<f64>`.
-/// Missing or non-numeric fields project to 0.0.
+///
+/// Scalar numeric fields contribute one element; `Vector` fields
+/// contribute all of their components in order. Missing or
+/// non-numeric scalar fields project to `0.0`.
+///
+/// **Surfaced live 2026-06-04**: the previous implementation called
+/// `v.as_f64()` blindly, which silently returned `None` for
+/// `Value::Vector` and collapsed a 4-d emb into a single `0.0`.
+/// That triggered `SampleTransportError::DegenerateSrc` on every
+/// vector-fiber bundle's SAMPLE_TRANSPORT request.
 pub fn extract_fiber(record: &Record, fiber_fields: &[String]) -> Vec<f64> {
-    fiber_fields
-        .iter()
-        .map(|f| {
-            record
-                .get(f.as_str())
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0)
-        })
-        .collect()
+    let mut out: Vec<f64> = Vec::with_capacity(fiber_fields.len());
+    for f in fiber_fields {
+        match record.get(f.as_str()) {
+            Some(crate::types::Value::Vector(v)) => out.extend(v.iter().copied()),
+            Some(v) => out.push(v.as_f64().unwrap_or(0.0)),
+            None => out.push(0.0),
+        }
+    }
+    out
 }
 
 /// Weighted sampling without replacement — Efraimidis-Spirakis
@@ -275,6 +284,37 @@ mod tests {
 
     fn fiber_fields(names: &[&str]) -> Vec<String> {
         names.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// **Regression — surfaced live 2026-06-04.** `extract_fiber` used
+    /// to call `v.as_f64()` blindly, collapsing a `Value::Vector`
+    /// into `[0.0]` and breaking SAMPLE_TRANSPORT on every vector-
+    /// fiber bundle. This test pins the unpacking behavior.
+    #[test]
+    fn extract_fiber_unpacks_vector_components() {
+        let mut r: Record = HashMap::new();
+        r.insert("emb".to_string(), Value::Vector(vec![2.0, 3.0, 4.0, 5.0]));
+        let f = fiber_fields(&["emb"]);
+        let out = extract_fiber(&r, &f);
+        assert_eq!(out, vec![2.0, 3.0, 4.0, 5.0]);
+    }
+
+    #[test]
+    fn extract_fiber_concatenates_scalar_and_vector_fields() {
+        let mut r: Record = HashMap::new();
+        r.insert("price".to_string(), Value::Float(9.5));
+        r.insert("emb".to_string(), Value::Vector(vec![1.0, 2.0, 3.0]));
+        r.insert("count".to_string(), Value::Integer(7));
+        let f = fiber_fields(&["price", "emb", "count"]);
+        let out = extract_fiber(&r, &f);
+        assert_eq!(out, vec![9.5, 1.0, 2.0, 3.0, 7.0]);
+    }
+
+    #[test]
+    fn extract_fiber_missing_field_defaults_to_zero_scalar() {
+        let r: Record = HashMap::new();
+        let f = fiber_fields(&["nope"]);
+        assert_eq!(extract_fiber(&r, &f), vec![0.0]);
     }
 
     // Corpus spread across the unit circle in 2D fiber.

@@ -282,7 +282,14 @@ export class SheetsClient {
    * previously-set bearer token — the two are mutually exclusive.
    */
   setApiKey(key: string | null): void {
-    this.apiKey = key && key.length > 0 ? key : null;
+    // Trim — the davisgeometric token endpoint has historically returned
+    // keys with a trailing newline (visible in the wild as `%0A` URL-
+    // encoded on WS upgrades), which makes the engine's byte-exact
+    // `X-API-Key` comparison fail with 401 on every call. Be tolerant
+    // at the edge so the next deploy of the auth service doesn't have
+    // to be racy with this one.
+    const trimmed = key?.trim() ?? null;
+    this.apiKey = trimmed && trimmed.length > 0 ? trimmed : null;
     if (this.apiKey) this.bearerToken = null;
   }
 
@@ -291,7 +298,10 @@ export class SheetsClient {
    * Setting a token clears any previously-set API key.
    */
   setBearerToken(token: string | null): void {
-    this.bearerToken = token && token.length > 0 ? token : null;
+    // Same defensive trim as setApiKey — HMAC-signed tokens are even
+    // more newline-sensitive (a single byte breaks the signature).
+    const trimmed = token?.trim() ?? null;
+    this.bearerToken = trimmed && trimmed.length > 0 ? trimmed : null;
     if (this.bearerToken) this.apiKey = null;
   }
 

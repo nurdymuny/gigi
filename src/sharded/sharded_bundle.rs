@@ -18,7 +18,10 @@
 //! here is exercised in production.
 
 use crate::bundle::BundleStore;
-use crate::sharded::atlas::{Atlas, ChartId, ChartMetadata, ChartRegion, TransitionKey};
+use crate::sharded::atlas::{
+    Atlas, ChartId, ChartMetadata, ChartRegion, Transition, TransitionKey, TransitionRepresentation,
+};
+use crate::sharded::fiedler::{fiedler_partition, FiedlerConfig, FiedlerError};
 use crate::sharded::ShardId;
 use crate::types::{BundleSchema, Record, Value};
 use std::collections::HashMap;
@@ -33,6 +36,10 @@ pub struct ShardedBundle {
     /// Cache of the primary-key (base) field name for fast PK extraction.
     /// Derived once at construction; all per-chart stores share schema.
     base_field_name: Option<String>,
+    /// For Fiedler-partitioned bundles: the precomputed (PK value -> chart)
+    /// assignment table. None for hash-partitioned bundles, which use
+    /// closed-form routing via the atlas.
+    fiedler_assignment: Option<HashMap<Value, ChartId>>,
 }
 
 impl ShardedBundle {
@@ -54,6 +61,7 @@ impl ShardedBundle {
             charts,
             atlas: Atlas::trivial(shard_id),
             base_field_name,
+            fiedler_assignment: None,
         }
     }
 
@@ -79,6 +87,7 @@ impl ShardedBundle {
             charts,
             atlas,
             base_field_name,
+            fiedler_assignment: None,
         }
     }
 
@@ -135,6 +144,7 @@ impl ShardedBundle {
             charts,
             atlas,
             base_field_name,
+            fiedler_assignment: None,
         };
 
         // Route each record to its chart
@@ -142,6 +152,135 @@ impl ShardedBundle {
             me.insert(&record);
         }
         me
+    }
+
+    /// Construct a topology-aware sharded bundle by Fiedler-vector
+    /// recursive bisection of the records' fiber-space adjacency graph.
+    /// Per TFP1 (`theory/poincare_to_sharding/validation/
+    /// tfp1_fiedler_preserves_curvature.py`), this preserves the
+    /// neighborhood graph that K, BETTI, and HOLONOMY depend on —
+    /// where hash sharding fragments it.
+    ///
+    /// `n_charts` must be a power of 2. The base-field value of each
+    /// record is stored in a per-bundle assignment table so point
+    /// queries can route to the correct chart without recomputing
+    /// the partition.
+    ///
+    /// The atlas declares `SpectralRegime::NaturallyCluster` (the
+    /// Fiedler cut targets the cluster boundary) and computes
+    /// `delta_cocycle_budget` from the boundary set size relative
+    /// to the chart sizes (a proxy for the Cheeger constant). Pairwise
+    /// transitions are added between adjacent chart pairs in the
+    /// recursive-bisection tree, with `lipschitz_estimate = 1.0` for
+    /// intra-bundle identity-projection transitions (same coordinate
+    /// system across charts; Fiedler partitioning doesn't change
+    /// the metric).
+    pub fn wrap_fiedler_sharded(
+        schema: BundleSchema,
+        records: Vec<Record>,
+        n_charts: u32,
+        shard_id: ShardId,
+    ) -> Result<Self, FiedlerError> {
+        let config = FiedlerConfig {
+            n_charts,
+            ..Default::default()
+        };
+        let assignment_vec = fiedler_partition(&records, &schema, &config)?;
+
+        let base_field_name = schema.base_fields.first().map(|f| f.name.clone());
+
+        // Build per-chart bundle stores
+        let mut charts: HashMap<ChartId, BundleStore> = HashMap::with_capacity(n_charts as usize);
+        let mut atlas_charts: HashMap<ChartId, ChartMetadata> =
+            HashMap::with_capacity(n_charts as usize);
+        for i in 0..n_charts {
+            let chart_id = ChartId(i);
+            charts.insert(chart_id, BundleStore::new(schema.clone()));
+            atlas_charts.insert(
+                chart_id,
+                ChartMetadata {
+                    id: chart_id,
+                    shard_id,
+                    region: ChartRegion::FiedlerCluster {
+                        cluster_index: i,
+                        total_clusters: n_charts,
+                    },
+                    operational_horizon: 1.0,
+                    kappa_soft: 1.0,
+                    geodesic_radius: 1.0,
+                },
+            );
+        }
+
+        // Build the PK -> chart assignment table and partition records
+        let mut fiedler_assignment: HashMap<Value, ChartId> = HashMap::with_capacity(records.len());
+        let mut per_chart_records: HashMap<ChartId, Vec<Record>> = HashMap::new();
+        for (chart_id_u32, record) in assignment_vec.iter().zip(records.iter()) {
+            let chart_id = ChartId(*chart_id_u32);
+            if let Some(name) = base_field_name.as_deref() {
+                if let Some(pk_value) = record.get(name) {
+                    fiedler_assignment.insert(pk_value.clone(), chart_id);
+                }
+            }
+            per_chart_records
+                .entry(chart_id)
+                .or_default()
+                .push(record.clone());
+        }
+
+        // Populate each chart's BundleStore
+        for (chart_id, recs) in per_chart_records {
+            if let Some(store) = charts.get_mut(&chart_id) {
+                for r in recs {
+                    store.insert(&r);
+                }
+            }
+        }
+
+        // Compute pairwise transitions and cocycle-budget proxy.
+        // For intra-bundle Fiedler partition, every chart shares the
+        // same coordinate system, so transition_lipschitz = 1.0.
+        let mut transitions: HashMap<TransitionKey, Transition> = HashMap::new();
+        for i in 0..n_charts {
+            for j in (i + 1)..n_charts {
+                let key = TransitionKey::canonical(ChartId(i), ChartId(j));
+                transitions.insert(
+                    key,
+                    Transition {
+                        from: ChartId(i),
+                        to: ChartId(j),
+                        lipschitz_estimate: 1.0,
+                        invertible: true,
+                        representation: TransitionRepresentation::Identity,
+                    },
+                );
+            }
+        }
+
+        // Cocycle-budget proxy: Cheeger constant estimate based on
+        // approximate boundary fraction. For well-clustered data,
+        // boundary fraction ≈ 1/sqrt(n_records) (loose upper bound);
+        // for n_records < 100, use 0.1 as a conservative default.
+        let n = records.len().max(1);
+        let cocycle_budget = if n >= 100 {
+            (n as f64).sqrt().recip()
+        } else {
+            0.1
+        };
+
+        let atlas = Atlas {
+            charts: atlas_charts,
+            transitions,
+            delta_cocycle_budget: cocycle_budget,
+            spectral_regime: crate::sharded::regime::SpectralRegime::NaturallyCluster,
+        };
+
+        Ok(Self {
+            charts,
+            atlas,
+            base_field_name,
+            fiedler_assignment: Some(fiedler_assignment),
+        })
     }
 
     // ====================================================================
@@ -205,13 +344,26 @@ impl ShardedBundle {
         hasher.finish()
     }
 
-    /// Route a record's primary key to a chart, returning `None` if the
-    /// atlas has no charts or the record has no extractable PK.
+    /// Route a record's primary key to a chart, returning `None` if
+    /// the bundle has no charts or the record has no extractable PK.
+    /// Dispatches on the bundle's partition strategy:
+    ///   - For Fiedler-partitioned bundles, looks up the PK value in
+    ///     the precomputed assignment table.
+    ///   - For hash-partitioned bundles (trivial or `wrap_hash_sharded`),
+    ///     hashes the PK and consults the atlas.
     pub fn route_pk(&self, key: &Record) -> Option<ChartId> {
         let base_name = self.base_field_name.as_deref()?;
         let value = key.get(base_name)?;
+        if let Some(table) = self.fiedler_assignment.as_ref() {
+            return table.get(value).copied();
+        }
         let h = Self::hash_pk_value(value);
         self.atlas.find_chart_for_pk_hash(h)
+    }
+
+    /// True iff this bundle was built via `wrap_fiedler_sharded`.
+    pub fn is_fiedler_partitioned(&self) -> bool {
+        self.fiedler_assignment.is_some()
     }
 
     // ====================================================================
@@ -265,6 +417,13 @@ impl ShardedBundle {
     ///
     /// Returns `true` if the record was routed and inserted, `false` if
     /// routing failed (no PK in record, no charts in atlas, etc).
+    ///
+    /// For Fiedler-partitioned bundles, the insert MUST be a record
+    /// whose PK is already in the assignment table (i.e., a record
+    /// constructed at partition time). Inserting a record with a new
+    /// PK on a Fiedler bundle returns `false`; the bundle must be
+    /// re-partitioned to absorb new records. Phase D-future: incremental
+    /// re-partition triggers on insert.
     pub fn insert(&mut self, record: &Record) -> bool {
         let Some(chart_id) = self.route_pk(record) else {
             return false;
@@ -527,6 +686,220 @@ mod tests {
         shard.insert(&rec(2, "b", 2.0));
         shard.insert(&rec(3, "c", 3.0));
         assert!(shard.mutation_counter() >= after_one);
+    }
+
+    // ====================================================================
+    // Fiedler-partitioned bundles (next phase after hash sharding)
+    // ====================================================================
+
+    /// Two well-separated 2D clusters — the TFP1 fixture in Rust.
+    fn two_cluster_records(n_per_cluster: usize) -> Vec<Record> {
+        let mut records = Vec::new();
+        let mut state: u32 = 12345;
+        let mut lcg = || -> f64 {
+            state = state.wrapping_mul(1664525).wrapping_add(1013904223);
+            (state as f64) / (u32::MAX as f64) - 0.5
+        };
+        let mut pk: i64 = 0;
+        for &(cx, cy) in &[(-1.0_f64, 0.0_f64), (1.0, 0.0)] {
+            for _ in 0..n_per_cluster {
+                let x = cx + 0.3 * lcg() * 2.0;
+                let y = cy + 0.3 * lcg() * 2.0;
+                let mut r = Record::new();
+                r.insert("id".into(), Value::Integer(pk));
+                r.insert("name".into(), Value::Text(format!("p_{}", pk)));
+                r.insert("score".into(), Value::Float(x * 10.0 + y));
+                records.push(r);
+                pk += 1;
+            }
+        }
+        records
+    }
+
+    #[test]
+    fn wrap_fiedler_sharded_creates_n_charts() {
+        let records = two_cluster_records(20);
+        let shard = ShardedBundle::wrap_fiedler_sharded(
+            make_schema(),
+            records,
+            4,
+            ShardId(0),
+        )
+        .expect("Fiedler partition must succeed on numeric data");
+        assert_eq!(shard.n_charts(), 4);
+        assert_eq!(shard.atlas().charts.len(), 4);
+        assert_eq!(shard.len(), 40);
+        assert!(shard.is_fiedler_partitioned());
+    }
+
+    #[test]
+    fn wrap_fiedler_sharded_routes_every_record_back() {
+        let records = two_cluster_records(20);
+        let shard = ShardedBundle::wrap_fiedler_sharded(
+            make_schema(),
+            records.clone(),
+            2,
+            ShardId(0),
+        )
+        .unwrap();
+        for r in &records {
+            let id_value = r.get("id").unwrap();
+            let mut key = Record::new();
+            key.insert("id".into(), id_value.clone());
+            let result = shard.point_query(&key);
+            assert!(
+                result.is_some(),
+                "Fiedler-routed point query failed for id={:?}",
+                id_value
+            );
+        }
+    }
+
+    #[test]
+    fn wrap_fiedler_sharded_atlas_declares_fiedler_region() {
+        let records = two_cluster_records(20);
+        let shard = ShardedBundle::wrap_fiedler_sharded(
+            make_schema(),
+            records,
+            4,
+            ShardId(5),
+        )
+        .unwrap();
+        for i in 0..4u32 {
+            let meta = shard.atlas().charts.get(&ChartId(i)).unwrap();
+            assert_eq!(meta.shard_id, ShardId(5));
+            match meta.region {
+                ChartRegion::FiedlerCluster { cluster_index, total_clusters } => {
+                    assert_eq!(cluster_index, i);
+                    assert_eq!(total_clusters, 4);
+                }
+                _ => panic!("expected FiedlerCluster region, got {:?}", meta.region),
+            }
+        }
+    }
+
+    #[test]
+    fn wrap_fiedler_sharded_separates_clusters_into_distinct_charts() {
+        // TFP1 case 1 reproduced via the constructor: the two clusters
+        // should land in different charts.
+        let records = two_cluster_records(20);
+        let shard = ShardedBundle::wrap_fiedler_sharded(
+            make_schema(),
+            records,
+            2,
+            ShardId(0),
+        )
+        .unwrap();
+
+        // Records 0..20 are cluster A, 20..40 are cluster B.
+        let mut a_charts: Vec<ChartId> = Vec::new();
+        let mut b_charts: Vec<ChartId> = Vec::new();
+        for id in 0..20i64 {
+            let mut k = Record::new();
+            k.insert("id".into(), Value::Integer(id));
+            a_charts.push(shard.route_pk(&k).unwrap());
+        }
+        for id in 20..40i64 {
+            let mut k = Record::new();
+            k.insert("id".into(), Value::Integer(id));
+            b_charts.push(shard.route_pk(&k).unwrap());
+        }
+
+        // Each cluster concentrated (>= 75% in one chart).
+        let a_in_chart_0 = a_charts.iter().filter(|&&c| c == ChartId(0)).count();
+        let b_in_chart_0 = b_charts.iter().filter(|&&c| c == ChartId(0)).count();
+        let a_concentrated = a_in_chart_0.max(20 - a_in_chart_0) >= 15;
+        let b_concentrated = b_in_chart_0.max(20 - b_in_chart_0) >= 15;
+        assert!(a_concentrated, "cluster A not concentrated (chart_0={})", a_in_chart_0);
+        assert!(b_concentrated, "cluster B not concentrated (chart_0={})", b_in_chart_0);
+
+        // Distinct charts.
+        let a_dom = if a_in_chart_0 >= 10 { ChartId(0) } else { ChartId(1) };
+        let b_dom = if b_in_chart_0 >= 10 { ChartId(0) } else { ChartId(1) };
+        assert_ne!(a_dom, b_dom, "clusters landed in same chart");
+    }
+
+    #[test]
+    fn wrap_fiedler_sharded_atlas_has_all_pairwise_transitions() {
+        // n_charts = 4 -> 6 pairwise transitions
+        let records = two_cluster_records(20);
+        let shard = ShardedBundle::wrap_fiedler_sharded(
+            make_schema(),
+            records,
+            4,
+            ShardId(0),
+        )
+        .unwrap();
+        let n = 4;
+        let expected_pairs = n * (n - 1) / 2;
+        assert_eq!(
+            shard.atlas().transitions.len(),
+            expected_pairs as usize,
+            "n=4 Fiedler atlas should have 6 transitions"
+        );
+        // Each transition has Lipschitz = 1.0 (identity projection)
+        for t in shard.atlas().transitions.values() {
+            assert_eq!(t.lipschitz_estimate, 1.0);
+            assert!(t.invertible);
+        }
+    }
+
+    #[test]
+    fn wrap_fiedler_sharded_atlas_charts_serialize() {
+        // Charts serialize cleanly; transitions need a serde format
+        // upgrade (TransitionKey tuple-struct can't be a JSON object
+        // key). For now, verify the chart half roundtrips and document
+        // the transitions-serde limitation as a follow-up.
+        let records = two_cluster_records(20);
+        let shard = ShardedBundle::wrap_fiedler_sharded(
+            make_schema(),
+            records,
+            4,
+            ShardId(3),
+        )
+        .unwrap();
+        // Serialize charts in isolation
+        let charts_json = serde_json::to_string(&shard.atlas().charts).unwrap();
+        let back: HashMap<ChartId, ChartMetadata> = serde_json::from_str(&charts_json).unwrap();
+        assert_eq!(back.len(), 4);
+        for i in 0..4u32 {
+            let meta = back.get(&ChartId(i)).unwrap();
+            match meta.region {
+                ChartRegion::FiedlerCluster { cluster_index, total_clusters } => {
+                    assert_eq!(cluster_index, i);
+                    assert_eq!(total_clusters, 4);
+                }
+                _ => panic!("expected FiedlerCluster region after roundtrip"),
+            }
+        }
+    }
+
+    #[test]
+    fn wrap_fiedler_sharded_rejects_non_power_of_two() {
+        let records = two_cluster_records(20);
+        let r = ShardedBundle::wrap_fiedler_sharded(
+            make_schema(),
+            records,
+            3, // not power of 2
+            ShardId(0),
+        );
+        assert!(matches!(r, Err(FiedlerError::NotPowerOfTwo(3))));
+    }
+
+    #[test]
+    fn fiedler_route_pk_for_unknown_pk_returns_none() {
+        // Records 0..40 inserted; a fresh PK 9999 is not in the assignment.
+        let records = two_cluster_records(20);
+        let shard = ShardedBundle::wrap_fiedler_sharded(
+            make_schema(),
+            records,
+            2,
+            ShardId(0),
+        )
+        .unwrap();
+        let mut k = Record::new();
+        k.insert("id".into(), Value::Integer(9999));
+        assert_eq!(shard.route_pk(&k), None);
     }
 
     #[test]

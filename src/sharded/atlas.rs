@@ -33,16 +33,28 @@ pub struct ChartMetadata {
     pub geodesic_radius: f64,
 }
 
-/// Phase A placeholder for chart region. Will become a tagged enum in
-/// Phase B (BoundingBox / FiedlerCluster / IndicatorFn / etc.).
+/// What region of the manifold a chart covers.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ChartRegion {
-    /// Phase A: each chart owns records whose primary-key hash falls
-    /// into a specific bucket. Mirrors the standard relational hash
-    /// shard convention until Phase D's geometric partitioning lands.
+    /// Each chart owns records whose primary-key hash falls into a
+    /// specific bucket. The standard relational-shard convention.
     HashBucket {
         bucket_index: u32,
         n_buckets: u32,
+    },
+    /// Each chart owns one cluster from a Fiedler-vector recursive-
+    /// bisection partition. The partition preserves the neighborhood
+    /// graph that K and BETTI are computed against — see
+    /// `theory/poincare_to_sharding/validation/tfp1_fiedler_preserves_curvature.py`.
+    ///
+    /// Routing is not closed-form — it requires the precomputed
+    /// (record-pk -> chart) assignment table held by the
+    /// `ShardedBundle`. Atlases declaring this region are not
+    /// queryable by `find_chart_for_pk_hash`; use
+    /// `ShardedBundle::route_pk_fiedler` instead.
+    FiedlerCluster {
+        cluster_index: u32,
+        total_clusters: u32,
     },
     /// Placeholder for richer region types.
     Other,

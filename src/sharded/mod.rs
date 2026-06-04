@@ -27,6 +27,7 @@
 #![cfg(feature = "sharded")]
 
 pub mod atlas;
+pub mod cross_atlas;
 pub mod execution;
 pub mod fiedler;
 pub mod gates;
@@ -49,6 +50,11 @@ pub use resolver::{sharded_write_resolve, ResolverError, ResolverTrace, WriteCon
 pub use sharded_bundle::ShardedBundle;
 pub use spectral::{
     block_matvec, distributed_lanczos, DistributedLanczosConfig, DistributedLanczosResult,
+};
+pub use cross_atlas::{
+    cross_atlas_cocycle_check, cross_atlas_write_resolve, AtlasId, BridgeChartKey,
+    BridgeTransition, CrossAtlasConflict, CrossAtlasError, CrossAtlasJoin,
+    CrossAtlasResolverError, CrossAtlasResolverTrace,
 };
 
 /// Identifier for a shard (a process / machine / storage volume holding

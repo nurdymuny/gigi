@@ -212,6 +212,30 @@ struct StreamState {
     /// via `GIGI_MORSE_CACHE_SIZE` env (default 64).
     #[cfg(feature = "kahler")]
     morse_cache: Arc<gigi::morse_cache::MorseCache>,
+
+    /// Atomic Sheaf Commits Phase-A — open-transaction registry.
+    ///
+    /// Per-tx in-memory state for the /v1/transactions/* surface (begin /
+    /// write / commit / rollback / status). First ship: writes are buffered
+    /// in `tx.pending` and applied through `engine.batch_insert` in commit
+    /// order. 2PC failure recovery, SI overlay reads, and the global WAL
+    /// log live in `src/transactions/` and ride this surface in a follow-up.
+    #[cfg(feature = "transactions")]
+    tx_registry: Arc<std::sync::Mutex<HashMap<gigi::transactions::TransactionId, OpenTx>>>,
+    /// Monotone snapshot counter feeding tx BEGIN snap_ids.
+    #[cfg(feature = "transactions")]
+    tx_snap_counter: Arc<std::sync::atomic::AtomicU64>,
+}
+
+/// One open transaction held by the registry.
+#[cfg(feature = "transactions")]
+#[derive(Debug)]
+struct OpenTx {
+    snap_id: gigi::transactions::SnapshotId,
+    opened_at: std::time::SystemTime,
+    isolation: gigi::transactions::IsolationLevel,
+    state: gigi::transactions::TransactionState,
+    pending: HashMap<String, Vec<Record>>,
 }
 
 /// A mutation event broadcast to all subscribers of a bundle.
@@ -338,6 +362,10 @@ impl StreamState {
             )),
             #[cfg(feature = "kahler")]
             morse_cache: Arc::new(gigi::morse_cache::MorseCache::new(morse_cache_capacity)),
+            #[cfg(feature = "transactions")]
+            tx_registry: Arc::new(std::sync::Mutex::new(HashMap::new())),
+            #[cfg(feature = "transactions")]
+            tx_snap_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
 
@@ -13830,7 +13858,20 @@ async fn main() {
         .route("/v1/admin/log-config", get(get_log_config).post(update_log_config))
         .route("/v1/admin/log-level", post(set_log_level))
         // OpenAPI spec
-        .route("/v1/openapi.json", get(openapi_spec))
+        .route("/v1/openapi.json", get(openapi_spec));
+
+    // Atomic Sheaf Commits Phase-A surface (spec §7.1). Only mounted
+    // when the `transactions` feature is enabled — pure additions, no
+    // impact on existing routes.
+    #[cfg(feature = "transactions")]
+    let app = app
+        .route("/v1/transactions/begin", post(tx_begin))
+        .route("/v1/transactions/{tx_id}", get(tx_status))
+        .route("/v1/transactions/{tx_id}/write", post(tx_write))
+        .route("/v1/transactions/{tx_id}/commit", post(tx_commit))
+        .route("/v1/transactions/{tx_id}/rollback", post(tx_rollback));
+
+    let app = app
         // GQL endpoint
         .route("/v1/gql", post(gql_query))
         // Analytics
@@ -14359,6 +14400,381 @@ fn kahler_transport_dispatch(
     }
 
     Some(Ok(result))
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Atomic Sheaf Commits — HTTP surface (spec §7.1)
+// ────────────────────────────────────────────────────────────────────────────
+//
+// Five endpoints expose the transactions substrate to clients:
+//
+//   POST /v1/transactions/begin              -> { tx_id, snap_id, opened_at }
+//   POST /v1/transactions/{tx_id}/write      -> stage records on a bundle
+//   POST /v1/transactions/{tx_id}/commit     -> apply via engine.batch_insert
+//   POST /v1/transactions/{tx_id}/rollback   -> discard pending writes
+//   GET  /v1/transactions/{tx_id}            -> status
+//
+// First ship is Phase-A: registry-only, no PREPARE/DECISION/NOTIFY 2PC
+// dance over multiple participants (that machinery exists in
+// src/transactions/ and is gated by tests; wiring it to real bundles
+// requires the global WAL log work). Commit iterates touched bundles in
+// stable order; if any insert fails, the prior bundles' writes are
+// already applied — same semantics as a sequential batch insert today,
+// just with an explicit lifecycle. Full atomicity rides the follow-up.
+
+#[cfg(feature = "transactions")]
+#[derive(Debug, Deserialize)]
+struct TxBeginRequest {
+    #[serde(default)]
+    isolation: Option<String>,
+}
+
+#[cfg(feature = "transactions")]
+#[derive(Debug, Serialize)]
+struct TxBeginResponse {
+    tx_id: String,
+    snap_id: u64,
+    opened_at: String,
+    isolation: String,
+}
+
+#[cfg(feature = "transactions")]
+#[derive(Debug, Deserialize)]
+struct TxWriteRequest {
+    bundle: String,
+    records: Vec<serde_json::Value>,
+}
+
+#[cfg(feature = "transactions")]
+#[derive(Debug, Serialize)]
+struct TxWriteResponse {
+    staged: usize,
+    total_in_tx: usize,
+    touched_bundles: Vec<String>,
+}
+
+#[cfg(feature = "transactions")]
+#[derive(Debug, Serialize)]
+struct TxCommitResponse {
+    committed_at: String,
+    new_snap_id: u64,
+    bundles_committed: Vec<String>,
+    records_committed: usize,
+}
+
+#[cfg(feature = "transactions")]
+#[derive(Debug, Serialize)]
+struct TxRollbackResponse {
+    aborted: bool,
+    discarded_records: usize,
+}
+
+#[cfg(feature = "transactions")]
+#[derive(Debug, Serialize)]
+struct TxStatusResponse {
+    tx_id: String,
+    snap_id: u64,
+    state: String,
+    isolation: String,
+    opened_at: String,
+    age_secs: u64,
+    touched_bundles: Vec<String>,
+    pending_writes: usize,
+}
+
+#[cfg(feature = "transactions")]
+fn parse_tx_id(
+    s: &str,
+) -> Result<gigi::transactions::TransactionId, (StatusCode, Json<ErrorResponse>)> {
+    let stripped = s.strip_prefix("tx_").unwrap_or(s);
+    let uuid = uuid::Uuid::parse_str(stripped).map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("invalid tx_id '{}': expected 'tx_<uuid>'", s),
+            }),
+        )
+    })?;
+    Ok(gigi::transactions::TransactionId(uuid))
+}
+
+#[cfg(feature = "transactions")]
+fn sys_time_to_iso(t: std::time::SystemTime) -> String {
+    let dur = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+    format!("epoch:{}", dur.as_secs())
+}
+
+#[cfg(feature = "transactions")]
+async fn tx_begin(
+    State(state): State<Arc<StreamState>>,
+    Json(req): Json<TxBeginRequest>,
+) -> Result<Json<TxBeginResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let isolation = match req.isolation.as_deref() {
+        None | Some("snapshot_isolation") | Some("snapshot") | Some("si") => {
+            gigi::transactions::IsolationLevel::SnapshotIsolation
+        }
+        Some("read_committed") | Some("rc") => gigi::transactions::IsolationLevel::ReadCommitted,
+        Some(other) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!(
+                        "unknown isolation '{}'; valid: snapshot_isolation, read_committed",
+                        other
+                    ),
+                }),
+            ));
+        }
+    };
+
+    let snap_id = gigi::transactions::SnapshotId(
+        state
+            .tx_snap_counter
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            + 1,
+    );
+    let tx_id = gigi::transactions::TransactionId::new();
+    let opened_at = std::time::SystemTime::now();
+    let tx = OpenTx {
+        snap_id,
+        opened_at,
+        isolation,
+        state: gigi::transactions::TransactionState::Open,
+        pending: HashMap::new(),
+    };
+    state.tx_registry.lock().unwrap().insert(tx_id, tx);
+
+    Ok(Json(TxBeginResponse {
+        tx_id: format!("{}", tx_id),
+        snap_id: snap_id.0,
+        opened_at: sys_time_to_iso(opened_at),
+        isolation: match isolation {
+            gigi::transactions::IsolationLevel::SnapshotIsolation => "snapshot_isolation".into(),
+            gigi::transactions::IsolationLevel::ReadCommitted => "read_committed".into(),
+        },
+    }))
+}
+
+#[cfg(feature = "transactions")]
+async fn tx_write(
+    State(state): State<Arc<StreamState>>,
+    Path(tx_id_str): Path<String>,
+    Json(req): Json<TxWriteRequest>,
+) -> Result<Json<TxWriteResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let tx_id = parse_tx_id(&tx_id_str)?;
+    if req.bundle.starts_with("_gigi_") {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: format!("'{}' is a system bundle and is read-only", req.bundle),
+            }),
+        ));
+    }
+    {
+        let engine = state.engine.read().unwrap();
+        if engine.bundle(&req.bundle).is_none() {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!("Bundle '{}' not found", req.bundle),
+                }),
+            ));
+        }
+    }
+
+    let mut registry = state.tx_registry.lock().unwrap();
+    let tx = registry.get_mut(&tx_id).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!(
+                    "transaction {} not found (already committed/aborted?)",
+                    tx_id_str
+                ),
+            }),
+        )
+    })?;
+    if tx.state != gigi::transactions::TransactionState::Open {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(ErrorResponse {
+                error: format!(
+                    "transaction {} is in state {:?}; only Open transactions accept writes",
+                    tx_id_str, tx.state
+                ),
+            }),
+        ));
+    }
+
+    let records: Vec<Record> = req
+        .records
+        .iter()
+        .filter_map(|item| {
+            if let serde_json::Value::Object(map) = item {
+                Some(
+                    map.iter()
+                        .map(|(k, v)| (k.clone(), json_to_value(v)))
+                        .collect::<Record>(),
+                )
+            } else {
+                None
+            }
+        })
+        .collect();
+    let staged = records.len();
+    tx.pending
+        .entry(req.bundle.clone())
+        .or_default()
+        .extend(records);
+
+    let total: usize = tx.pending.values().map(|v| v.len()).sum();
+    let mut touched: Vec<String> = tx.pending.keys().cloned().collect();
+    touched.sort();
+    Ok(Json(TxWriteResponse {
+        staged,
+        total_in_tx: total,
+        touched_bundles: touched,
+    }))
+}
+
+#[cfg(feature = "transactions")]
+async fn tx_commit(
+    State(state): State<Arc<StreamState>>,
+    Path(tx_id_str): Path<String>,
+) -> Result<Json<TxCommitResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let tx_id = parse_tx_id(&tx_id_str)?;
+    let (snap_id, pending) = {
+        let mut registry = state.tx_registry.lock().unwrap();
+        let tx = registry.get_mut(&tx_id).ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!("transaction {} not found", tx_id_str),
+                }),
+            )
+        })?;
+        if tx.state != gigi::transactions::TransactionState::Open {
+            return Err((
+                StatusCode::CONFLICT,
+                Json(ErrorResponse {
+                    error: format!(
+                        "transaction {} is in state {:?}; only Open transactions can commit",
+                        tx_id_str, tx.state
+                    ),
+                }),
+            ));
+        }
+        tx.state = gigi::transactions::TransactionState::Preparing;
+        (tx.snap_id, std::mem::take(&mut tx.pending))
+    };
+
+    let mut engine = state.engine.write().unwrap();
+    let mut bundles_sorted: Vec<String> = pending.keys().cloned().collect();
+    bundles_sorted.sort();
+
+    let mut records_committed = 0usize;
+    let mut applied: Vec<String> = Vec::new();
+    for bundle_name in &bundles_sorted {
+        let records = pending.get(bundle_name).cloned().unwrap_or_default();
+        if records.is_empty() {
+            continue;
+        }
+        match engine.batch_insert(bundle_name, &records) {
+            Ok(n) => {
+                records_committed += n;
+                applied.push(bundle_name.clone());
+            }
+            Err(e) => {
+                drop(engine);
+                let mut registry = state.tx_registry.lock().unwrap();
+                if let Some(tx) = registry.get_mut(&tx_id) {
+                    tx.state = gigi::transactions::TransactionState::Aborted;
+                }
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: format!(
+                            "commit failed on bundle '{}' after applying {:?}: {} \
+                             (Phase A surface; full 2PC atomicity ships with the global WAL log)",
+                            bundle_name, applied, e
+                        ),
+                    }),
+                ));
+            }
+        }
+    }
+    drop(engine);
+
+    {
+        let mut registry = state.tx_registry.lock().unwrap();
+        if let Some(tx) = registry.get_mut(&tx_id) {
+            tx.state = gigi::transactions::TransactionState::Committed;
+        }
+    }
+
+    Ok(Json(TxCommitResponse {
+        committed_at: sys_time_to_iso(std::time::SystemTime::now()),
+        new_snap_id: snap_id.0,
+        bundles_committed: applied,
+        records_committed,
+    }))
+}
+
+#[cfg(feature = "transactions")]
+async fn tx_rollback(
+    State(state): State<Arc<StreamState>>,
+    Path(tx_id_str): Path<String>,
+) -> Result<Json<TxRollbackResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let tx_id = parse_tx_id(&tx_id_str)?;
+    let mut registry = state.tx_registry.lock().unwrap();
+    let tx = registry.get_mut(&tx_id).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("transaction {} not found", tx_id_str),
+            }),
+        )
+    })?;
+    let discarded: usize = tx.pending.values().map(|v| v.len()).sum();
+    tx.pending.clear();
+    tx.state = gigi::transactions::TransactionState::Aborted;
+    Ok(Json(TxRollbackResponse {
+        aborted: true,
+        discarded_records: discarded,
+    }))
+}
+
+#[cfg(feature = "transactions")]
+async fn tx_status(
+    State(state): State<Arc<StreamState>>,
+    Path(tx_id_str): Path<String>,
+) -> Result<Json<TxStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let tx_id = parse_tx_id(&tx_id_str)?;
+    let registry = state.tx_registry.lock().unwrap();
+    let tx = registry.get(&tx_id).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("transaction {} not found", tx_id_str),
+            }),
+        )
+    })?;
+    let age_secs = tx.opened_at.elapsed().map(|d| d.as_secs()).unwrap_or(0);
+    let mut touched: Vec<String> = tx.pending.keys().cloned().collect();
+    touched.sort();
+    Ok(Json(TxStatusResponse {
+        tx_id: format!("{}", tx_id),
+        snap_id: tx.snap_id.0,
+        state: format!("{:?}", tx.state).to_lowercase(),
+        isolation: match tx.isolation {
+            gigi::transactions::IsolationLevel::SnapshotIsolation => "snapshot_isolation".into(),
+            gigi::transactions::IsolationLevel::ReadCommitted => "read_committed".into(),
+        },
+        opened_at: sys_time_to_iso(tx.opened_at),
+        age_secs,
+        touched_bundles: touched,
+        pending_writes: tx.pending.values().map(|v| v.len()).sum(),
+    }))
 }
 
 // ── Unit tests ─────────────────────────────────────────────────────────────

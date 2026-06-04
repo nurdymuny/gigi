@@ -31,6 +31,8 @@ TESTS = [
     # Topology-aware partitioning (SHARDING_SPEC.md §9 Phase D)
     ("TFP1", "tfp1_fiedler_preserves_curvature.py",  "Fiedler partition preserves K aggregation"),
     ("TFP2", "tfp2_fiedler_betti_mayer_vietoris.py", "M-V BETTI on Fiedler charts vs disjoint union"),
+    ("TFH1", "tfh1_holonomy_across_fiedler_boundaries.py",
+        "Sharded HOLONOMY composing T4 across boundaries"),
 ]
 
 

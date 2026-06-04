@@ -392,12 +392,127 @@ pub fn shard_curvature_at(
 }
 
 /// HOLONOMY around a closed loop crossing chart boundaries.
-/// Phase E will compose per-chart transports via transitions per T4.
+///
+/// Phase D-future: closed-loop holonomy requires the wrap-around turn
+/// from the last segment's tangent back to the first segment's tangent.
+/// For open-path holonomy with full composition semantics, use
+/// `shard_holonomy_along_path` (TFH1 GREEN).
 pub fn shard_holonomy_around_loop(
     _atlas: &Atlas,
     _loop_points_with_charts: &[(ChartId, Vec<f64>)],
 ) -> Result<Vec<f64>, ShardedExecError> {
-    Err(ShardedExecError::NotImplementedYet { phase: "Phase E" })
+    Err(ShardedExecError::NotImplementedYet { phase: "Phase E (closed-loop wrap-around)" })
+}
+
+/// Sharded HOLONOMY along an OPEN path crossing chart boundaries.
+///
+/// Per TFH1 (`theory/poincare_to_sharding/validation/
+/// tfh1_holonomy_across_fiedler_boundaries.py`): the holonomy is
+/// the composition of per-chart parallel transport (tangent rotation
+/// along each chart's arc) with chart-pair transition rotations at
+/// every boundary crossing.
+///
+/// Phase D scope:
+/// - 2D paths only (path points are `[x, y]`).
+/// - Path = list of (chart_id, point) tuples in order.
+/// - `transitions` maps `(from_chart, to_chart) -> 2x2 rotation matrix`.
+///   Missing pairs default to identity.
+/// - Returns the 2x2 holonomy matrix as a flat 4-vector `[a00, a01, a10, a11]`
+///   in row-major order.
+///
+/// For Fiedler-partitioned bundles built via `wrap_fiedler_sharded`,
+/// all transitions are identity (intra-bundle, same coordinate system),
+/// so the holonomy collapses to the in-chart transport product. To
+/// inject non-trivial gauges (e.g. for the T4 Möbius / orientation-flip
+/// case), supply explicit transitions in the input dict.
+pub fn shard_holonomy_along_path(
+    _atlas: &Atlas,
+    path_points_with_charts: &[(ChartId, Vec<f64>)],
+    transitions: &HashMap<(ChartId, ChartId), [f64; 4]>,
+) -> Result<[f64; 4], ShardedExecError> {
+    if path_points_with_charts.len() < 2 {
+        return Ok(IDENTITY_2X2);
+    }
+    // Validate 2D
+    for (_, p) in path_points_with_charts {
+        if p.len() != 2 {
+            return Err(ShardedExecError::NotImplementedYet {
+                phase: "Phase E (N-dim holonomy; Phase D is 2D)",
+            });
+        }
+    }
+
+    // Split into per-chart arcs at boundary crossings. No duplication
+    // of boundary points — the boundary conceptually belongs to the
+    // outgoing arc.
+    let mut arcs: Vec<(ChartId, Vec<[f64; 2]>)> = Vec::new();
+    let mut current_chart = path_points_with_charts[0].0;
+    let mut current_points: Vec<[f64; 2]> =
+        vec![[path_points_with_charts[0].1[0], path_points_with_charts[0].1[1]]];
+    for (chart_id, point) in &path_points_with_charts[1..] {
+        let pt = [point[0], point[1]];
+        if *chart_id == current_chart {
+            current_points.push(pt);
+        } else {
+            arcs.push((current_chart, std::mem::take(&mut current_points)));
+            current_chart = *chart_id;
+            current_points = vec![pt];
+        }
+    }
+    arcs.push((current_chart, current_points));
+
+    let mut h = IDENTITY_2X2;
+    for i in 0..arcs.len() {
+        let (chart_id, points) = &arcs[i];
+        let r = chart_transport_2d(points);
+        h = mat2x2_mul(&r, &h);
+        if i + 1 < arcs.len() {
+            let next_chart_id = arcs[i + 1].0;
+            let t = transitions
+                .get(&(*chart_id, next_chart_id))
+                .copied()
+                .unwrap_or(IDENTITY_2X2);
+            h = mat2x2_mul(&t, &h);
+        }
+    }
+    Ok(h)
+}
+
+/// 2x2 identity matrix in row-major `[a00, a01, a10, a11]` form.
+pub const IDENTITY_2X2: [f64; 4] = [1.0, 0.0, 0.0, 1.0];
+
+/// 2x2 matrix multiplication: returns `a · b`.
+fn mat2x2_mul(a: &[f64; 4], b: &[f64; 4]) -> [f64; 4] {
+    [
+        a[0] * b[0] + a[1] * b[2],
+        a[0] * b[1] + a[1] * b[3],
+        a[2] * b[0] + a[3] * b[2],
+        a[2] * b[1] + a[3] * b[3],
+    ]
+}
+
+/// Tangent-rotation accumulator along a 2D arc. Returns identity for
+/// arcs of < 3 points (no interior turns to accumulate).
+fn chart_transport_2d(points: &[[f64; 2]]) -> [f64; 4] {
+    if points.len() < 3 {
+        return IDENTITY_2X2;
+    }
+    let mut r = IDENTITY_2X2;
+    for i in 1..(points.len() - 1) {
+        let p0 = points[i - 1];
+        let p1 = points[i];
+        let p2 = points[i + 1];
+        let t1 = (p1[0] - p0[0], p1[1] - p0[1]);
+        let t2 = (p2[0] - p1[0], p2[1] - p1[1]);
+        let a1 = t1.1.atan2(t1.0);
+        let a2 = t2.1.atan2(t2.0);
+        let theta = a2 - a1;
+        let c = theta.cos();
+        let s = theta.sin();
+        let step = [c, -s, s, c];
+        r = mat2x2_mul(&step, &r);
+    }
+    r
 }
 
 /// λ_1 of the sharded bundle's Laplacian. Routes per spectral regime;
@@ -815,5 +930,135 @@ mod tests {
         let atlas = Atlas::trivial(ShardId(0));
         let err = shard_holonomy_around_loop(&atlas, &[]);
         assert!(matches!(err, Err(ShardedExecError::NotImplementedYet { .. })));
+    }
+
+    // ----------------------------------------------------------------
+    // Sharded HOLONOMY along open paths (TFH1 Rust mirror)
+    // ----------------------------------------------------------------
+
+    fn mat_norm_diff(a: &[f64; 4], b: &[f64; 4]) -> f64 {
+        let mut sum = 0.0;
+        for i in 0..4 {
+            sum += (a[i] - b[i]).powi(2);
+        }
+        sum.sqrt()
+    }
+
+    fn rot_matrix(theta_deg: f64) -> [f64; 4] {
+        let t = theta_deg.to_radians();
+        let c = t.cos();
+        let s = t.sin();
+        [c, -s, s, c]
+    }
+
+    #[test]
+    fn holonomy_single_chart_straight_path_is_identity() {
+        let path = vec![
+            (ChartId(0), vec![0.0, 0.0]),
+            (ChartId(0), vec![1.0, 0.0]),
+            (ChartId(0), vec![2.0, 0.0]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let h = shard_holonomy_along_path(&atlas, &path, &HashMap::new()).unwrap();
+        assert!(mat_norm_diff(&h, &IDENTITY_2X2) < 1e-9);
+    }
+
+    #[test]
+    fn holonomy_two_chart_path_with_identity_transition_is_identity() {
+        let path = vec![
+            (ChartId(0), vec![0.0, 0.0]),
+            (ChartId(0), vec![1.0, 0.0]),
+            (ChartId(1), vec![2.0, 0.0]),
+            (ChartId(1), vec![3.0, 0.0]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let mut transitions = HashMap::new();
+        transitions.insert((ChartId(0), ChartId(1)), IDENTITY_2X2);
+        let h = shard_holonomy_along_path(&atlas, &path, &transitions).unwrap();
+        assert!(mat_norm_diff(&h, &IDENTITY_2X2) < 1e-9);
+    }
+
+    #[test]
+    fn holonomy_recovers_injected_gauge() {
+        // TFH1 case 3: 30-deg gauge at one boundary -> H = G
+        let g = rot_matrix(30.0);
+        let path = vec![
+            (ChartId(0), vec![0.0, 0.0]),
+            (ChartId(0), vec![1.0, 0.0]),
+            (ChartId(1), vec![2.0, 0.0]),
+            (ChartId(1), vec![3.0, 0.0]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let mut transitions = HashMap::new();
+        transitions.insert((ChartId(0), ChartId(1)), g);
+        let h = shard_holonomy_along_path(&atlas, &path, &transitions).unwrap();
+        assert!(
+            mat_norm_diff(&h, &g) < 1e-9,
+            "expected H = G, got ||H - G|| = {}",
+            mat_norm_diff(&h, &g)
+        );
+    }
+
+    #[test]
+    fn holonomy_four_chart_path_is_transition_product() {
+        // TFH1 case 4: H = T23 . T12 . T01
+        let g01 = rot_matrix(15.0);
+        let g12 = rot_matrix(45.0);
+        let g23 = rot_matrix(-30.0);
+        let expected = mat2x2_mul(&mat2x2_mul(&g23, &g12), &g01);
+
+        let path = vec![
+            (ChartId(0), vec![0.0, 0.0]),
+            (ChartId(0), vec![1.0, 0.0]),
+            (ChartId(1), vec![2.0, 0.0]),
+            (ChartId(1), vec![3.0, 0.0]),
+            (ChartId(2), vec![4.0, 0.0]),
+            (ChartId(2), vec![5.0, 0.0]),
+            (ChartId(3), vec![6.0, 0.0]),
+            (ChartId(3), vec![7.0, 0.0]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let mut transitions = HashMap::new();
+        transitions.insert((ChartId(0), ChartId(1)), g01);
+        transitions.insert((ChartId(1), ChartId(2)), g12);
+        transitions.insert((ChartId(2), ChartId(3)), g23);
+        let h = shard_holonomy_along_path(&atlas, &path, &transitions).unwrap();
+        assert!(
+            mat_norm_diff(&h, &expected) < 1e-9,
+            "4-chart path holonomy mismatch: ||H - expected|| = {}",
+            mat_norm_diff(&h, &expected)
+        );
+    }
+
+    #[test]
+    fn holonomy_three_d_path_refused() {
+        let path = vec![
+            (ChartId(0), vec![0.0, 0.0, 0.0]),
+            (ChartId(0), vec![1.0, 0.0, 0.0]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let r = shard_holonomy_along_path(&atlas, &path, &HashMap::new());
+        assert!(matches!(r, Err(ShardedExecError::NotImplementedYet { .. })));
+    }
+
+    #[test]
+    fn holonomy_too_short_path_returns_identity() {
+        let path = vec![(ChartId(0), vec![0.0, 0.0])];
+        let atlas = Atlas::trivial(ShardId(0));
+        let h = shard_holonomy_along_path(&atlas, &path, &HashMap::new()).unwrap();
+        assert_eq!(h, IDENTITY_2X2);
+    }
+
+    #[test]
+    fn closed_loop_holonomy_still_unimplemented() {
+        // Phase D-future. The wrap-around turn requires special handling.
+        let atlas = Atlas::trivial(ShardId(0));
+        let r = shard_holonomy_around_loop(&atlas, &[]);
+        match r {
+            Err(ShardedExecError::NotImplementedYet { phase }) => {
+                assert!(phase.contains("Phase E"));
+            }
+            _ => panic!("expected NotImplementedYet for closed loop"),
+        }
     }
 }

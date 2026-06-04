@@ -31,6 +31,7 @@ pub mod cross_atlas;
 pub mod execution;
 pub mod fiedler;
 pub mod gates;
+pub mod laplacian;
 pub mod regime;
 pub mod resolver;
 pub mod sharded_bundle;
@@ -55,6 +56,10 @@ pub use cross_atlas::{
     cross_atlas_cocycle_check, cross_atlas_write_resolve, AtlasId, BridgeChartKey,
     BridgeTransition, CrossAtlasConflict, CrossAtlasError, CrossAtlasJoin,
     CrossAtlasResolverError, CrossAtlasResolverTrace,
+};
+pub use laplacian::{
+    build_bundle_laplacian, shard_lambda_1_from_bundle, split_laplacian_two_way,
+    two_way_fiedler_partition_from_laplacian, LaplacianBlocks, LaplacianExtractError,
 };
 
 /// Identifier for a shard (a process / machine / storage volume holding

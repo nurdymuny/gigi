@@ -66,7 +66,7 @@ impl Default for FiedlerConfig {
 /// Integer values into a coordinate vector. Categorical and other
 /// types are skipped. Returns None if no numeric coordinates are
 /// available.
-fn extract_coords(record: &Record, schema: &BundleSchema) -> Option<Vec<f64>> {
+pub(crate) fn extract_coords(record: &Record, schema: &BundleSchema) -> Option<Vec<f64>> {
     let mut coords = Vec::new();
     for field in &schema.fiber_fields {
         match record.get(&field.name)? {
@@ -88,7 +88,7 @@ fn squared_dist(a: &[f64], b: &[f64]) -> f64 {
 }
 
 /// Build a symmetric k-NN adjacency matrix from records' fiber coords.
-fn knn_adjacency(coords: &[Vec<f64>], k: usize) -> Vec<Vec<f64>> {
+pub(crate) fn knn_adjacency(coords: &[Vec<f64>], k: usize) -> Vec<Vec<f64>> {
     let n = coords.len();
     let mut adj = vec![vec![0.0; n]; n];
     let k_eff = k.min(n.saturating_sub(1));
@@ -113,7 +113,7 @@ fn knn_adjacency(coords: &[Vec<f64>], k: usize) -> Vec<Vec<f64>> {
 }
 
 /// Combinatorial Laplacian L = D - A.
-fn laplacian(adj: &[Vec<f64>]) -> Vec<Vec<f64>> {
+pub(crate) fn laplacian(adj: &[Vec<f64>]) -> Vec<Vec<f64>> {
     let n = adj.len();
     let degrees: Vec<f64> = adj.iter().map(|row| row.iter().sum()).collect();
     let mut l = vec![vec![0.0; n]; n];
@@ -128,12 +128,15 @@ fn laplacian(adj: &[Vec<f64>]) -> Vec<Vec<f64>> {
 
 /// Find the Fiedler vector via shifted power iteration.
 ///
+/// Pub(crate) so the substrate-side Laplacian extractor can use it for
+/// 2-way bisection partitioning of arbitrary bundles.
+///
 /// Strategy: iterate `M = c·I - L` for `c` larger than the max diagonal
 /// of L. The largest eigenvalue of M corresponds to the smallest
 /// eigenvalue of L. After each step, project orthogonal to the
 /// all-ones vector (deflating the null space of L for connected
 /// graphs).
-fn fiedler_vector(l: &[Vec<f64>], max_iter: usize) -> Vec<f64> {
+pub(crate) fn fiedler_vector(l: &[Vec<f64>], max_iter: usize) -> Vec<f64> {
     let n = l.len();
     if n == 0 {
         return Vec::new();

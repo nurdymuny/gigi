@@ -28,6 +28,8 @@
 
 pub mod atlas;
 pub mod cross_atlas;
+#[cfg(feature = "kahler")]
+pub mod cross_atlas_betti;
 pub mod execution;
 pub mod fiedler;
 pub mod gates;
@@ -56,6 +58,11 @@ pub use cross_atlas::{
     cross_atlas_cocycle_check, cross_atlas_write_resolve, AtlasId, BridgeChartKey,
     BridgeTransition, CrossAtlasConflict, CrossAtlasError, CrossAtlasJoin,
     CrossAtlasResolverError, CrossAtlasResolverTrace,
+};
+#[cfg(feature = "kahler")]
+pub use cross_atlas_betti::{
+    cross_atlas_betti_via_fiber_product, CrossAtlasBettiError, CrossAtlasBettiReport,
+    CrossAtlasBridge, SimplicialAtlas,
 };
 pub use laplacian::{
     build_bundle_laplacian, shard_lambda_1_from_bundle, split_laplacian_two_way,

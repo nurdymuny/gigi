@@ -22,6 +22,7 @@ TESTS = [
     ("TX6-8",   "tx6_8_snapshot_isolation.py",          "Per-tx overlay + snapshot isolation semantics"),
     ("TX9",     "tx9_mvcc_gc.py",                       "MVCC GC: retain only versions open txs need"),
     ("TX10",    "tx10_geometric_reads_under_tx.py",     "Geometric reads pinned to tx snapshot"),
+    ("TX11-13", "tx11_13_deadlock_detection.py",        "Wait-for-graph cycle detection + youngest-aborts"),
 ]
 
 

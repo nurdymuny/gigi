@@ -15,7 +15,12 @@
 //!     reads under SI). Rust mirror: 15/15 unit tests under
 //!     `transactions::mvcc::tests` mapped one-for-one to the Python gates.
 //!
-//! - **Phase 3** (deadlock detection): pending.
+//! - **Phase 3** (deadlock detection):
+//!   - [`deadlock::LockManager`] + wait-for-graph cycle search
+//!   - TDD: TX11-TX13 3/3 (two-tx deadlock, three-tx cycle + disjoint
+//!     sub-cycles, linear-wait-is-not-a-deadlock). Rust mirror: 5/5
+//!     unit tests under `transactions::deadlock::tests`.
+//!
 //! - **Phase 4** (geometric coherence Option C): pending.
 //!
 //! The Python gates under `theory/transactions/validation/` are the
@@ -50,6 +55,7 @@
 #![cfg(feature = "transactions")]
 
 pub mod coordinator;
+pub mod deadlock;
 pub mod global_log;
 pub mod mvcc;
 pub mod participant;
@@ -57,6 +63,7 @@ pub mod types;
 pub mod wal_records;
 
 pub use coordinator::{Coordinator, CoordinatorError};
+pub use deadlock::{LockManager, LockOutcome, LockTxInfo};
 pub use global_log::{GlobalLogEntry, GlobalTransactionLog};
 pub use mvcc::{MvccStore, TransactionOverlay, Version, VersionChain};
 pub use participant::{Participant, ParticipantError, PrepareVote};

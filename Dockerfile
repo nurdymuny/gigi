@@ -8,7 +8,7 @@ COPY src/ ./src/
 COPY benches/ ./benches/
 COPY examples/ ./examples/
 COPY dashboard/ ./dashboard/
-RUN cargo build --release --features "kahler imagine sharded" --bin gigi-stream
+RUN cargo build --release --features "kahler imagine sharded transactions" --bin gigi-stream
 
 # Stage 2: Runtime
 FROM debian:trixie-slim

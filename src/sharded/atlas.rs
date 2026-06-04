@@ -98,12 +98,19 @@ pub enum TransitionRepresentation {
 ///
 /// This is the on-disk representation of "the chart-stitching data"
 /// from *Geometry of Sameness* §4 — first-class, queryable, indexed.
+///
+/// **Serde note.** `transitions` is a `HashMap<TransitionKey, Transition>`
+/// where `TransitionKey` is a tuple struct. JSON requires string keys
+/// on maps, so the field serializes as a `Vec<Transition>` (each
+/// transition carries its `from`/`to` fields, so the key is recoverable
+/// on deserialize). See [`transitions_serde`].
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Atlas {
     /// All charts in this atlas, indexed by ChartId.
     pub charts: HashMap<ChartId, ChartMetadata>,
 
     /// Pairwise overlaps. Key is canonicalized as (min_id, max_id).
+    #[serde(with = "transitions_serde")]
     pub transitions: HashMap<TransitionKey, Transition>,
 
     /// The declared cocycle slack budget. From *Geometry of Sameness*
@@ -113,6 +120,39 @@ pub struct Atlas {
     /// Per-atlas spectral regime declaration. Routes SPECTRAL queries
     /// per `SHARDING_SPEC.md` §5.6.
     pub spectral_regime: SpectralRegime,
+}
+
+/// Serde adapter: serialize `HashMap<TransitionKey, Transition>` as a
+/// `Vec<Transition>` because tuple-struct keys aren't JSON-stringable.
+/// The key is recovered on deserialize from each Transition's
+/// `from`/`to` fields via `TransitionKey::canonical`.
+mod transitions_serde {
+    use super::{Transition, TransitionKey};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::collections::HashMap;
+
+    pub fn serialize<S>(
+        map: &HashMap<TransitionKey, Transition>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let v: Vec<&Transition> = map.values().collect();
+        v.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<HashMap<TransitionKey, Transition>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: Vec<Transition> = Vec::deserialize(deserializer)?;
+        Ok(v.into_iter()
+            .map(|t| (TransitionKey::canonical(t.from, t.to), t))
+            .collect())
+    }
 }
 
 /// Canonical key for storing pairwise transitions: (min ChartId, max ChartId).
@@ -241,5 +281,104 @@ mod tests {
         assert_eq!(back.charts.len(), 1);
         assert_eq!(back.delta_cocycle_budget, 0.0);
         assert_eq!(back.spectral_regime, SpectralRegime::NaturallyCluster);
+    }
+
+    #[test]
+    fn atlas_with_transitions_serde_round_trips() {
+        // Real test of the transitions_serde adapter: build an atlas
+        // with non-empty transitions and verify JSON roundtrip.
+        let mut atlas = Atlas::new(SpectralRegime::NaturallyCluster, 0.001);
+        atlas.charts.insert(
+            ChartId(0),
+            ChartMetadata {
+                id: ChartId(0),
+                shard_id: ShardId(0),
+                region: ChartRegion::HashBucket {
+                    bucket_index: 0,
+                    n_buckets: 2,
+                },
+                operational_horizon: 1.0,
+                kappa_soft: 1.0,
+                geodesic_radius: 1.0,
+            },
+        );
+        atlas.charts.insert(
+            ChartId(1),
+            ChartMetadata {
+                id: ChartId(1),
+                shard_id: ShardId(0),
+                region: ChartRegion::HashBucket {
+                    bucket_index: 1,
+                    n_buckets: 2,
+                },
+                operational_horizon: 1.0,
+                kappa_soft: 1.0,
+                geodesic_radius: 1.0,
+            },
+        );
+        atlas.transitions.insert(
+            TransitionKey::canonical(ChartId(0), ChartId(1)),
+            Transition {
+                from: ChartId(0),
+                to: ChartId(1),
+                lipschitz_estimate: 2.5,
+                invertible: true,
+                representation: TransitionRepresentation::Identity,
+            },
+        );
+
+        let json = serde_json::to_string(&atlas).unwrap();
+        let back: Atlas = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.charts.len(), 2);
+        assert_eq!(back.transitions.len(), 1);
+        let t = back.transition(ChartId(0), ChartId(1)).unwrap();
+        assert_eq!(t.from, ChartId(0));
+        assert_eq!(t.to, ChartId(1));
+        assert_eq!(t.lipschitz_estimate, 2.5);
+        assert!(t.invertible);
+    }
+
+    #[test]
+    fn atlas_with_many_transitions_serde_round_trips() {
+        // 4-chart atlas with all 6 pairwise transitions (Fiedler-style)
+        let mut atlas = Atlas::new(SpectralRegime::NaturallyCluster, 1.0);
+        for i in 0..4u32 {
+            atlas.charts.insert(
+                ChartId(i),
+                ChartMetadata {
+                    id: ChartId(i),
+                    shard_id: ShardId(0),
+                    region: ChartRegion::Other,
+                    operational_horizon: 1.0,
+                    kappa_soft: 1.0,
+                    geodesic_radius: 1.0,
+                },
+            );
+        }
+        for i in 0..4u32 {
+            for j in (i + 1)..4u32 {
+                atlas.transitions.insert(
+                    TransitionKey::canonical(ChartId(i), ChartId(j)),
+                    Transition {
+                        from: ChartId(i),
+                        to: ChartId(j),
+                        lipschitz_estimate: 1.0 + i as f64 + 0.1 * j as f64,
+                        invertible: true,
+                        representation: TransitionRepresentation::Identity,
+                    },
+                );
+            }
+        }
+        let json = serde_json::to_string(&atlas).unwrap();
+        let back: Atlas = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.charts.len(), 4);
+        assert_eq!(back.transitions.len(), 6);
+        for i in 0..4u32 {
+            for j in (i + 1)..4u32 {
+                let t = back.transition(ChartId(i), ChartId(j)).unwrap();
+                let expected = 1.0 + i as f64 + 0.1 * j as f64;
+                assert!((t.lipschitz_estimate - expected).abs() < 1e-12);
+            }
+        }
     }
 }

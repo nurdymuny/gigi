@@ -92,15 +92,56 @@ pub struct BridgeTransition {
 /// `delta_bridge_budget` controls the cocycle slack across atlas pairs
 /// (T8 §3); `delta_asymm_budget` controls the round-trip asymmetry
 /// (`||B_{ji} ∘ B_{ij} - id||`, T8 §5).
+///
+/// **Serde note.** `bridges` uses the same `Vec<BridgeTransition>`
+/// adapter as `Atlas.transitions` for the same reason: tuple-struct
+/// keys aren't JSON-stringable. The key is recoverable from the
+/// transition's atlas/chart fields via `BridgeChartKey::canonical`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CrossAtlasJoin {
     pub atlas_a_id: AtlasId,
     pub atlas_b_id: AtlasId,
     pub atlas_a: Atlas,
     pub atlas_b: Atlas,
+    #[serde(with = "bridges_serde")]
     pub bridges: HashMap<BridgeChartKey, BridgeTransition>,
     pub delta_bridge_budget: f64,
     pub delta_asymm_budget: f64,
+}
+
+/// Serde adapter for `HashMap<BridgeChartKey, BridgeTransition>`.
+mod bridges_serde {
+    use super::{BridgeChartKey, BridgeTransition};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::collections::HashMap;
+
+    pub fn serialize<S>(
+        map: &HashMap<BridgeChartKey, BridgeTransition>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let v: Vec<&BridgeTransition> = map.values().collect();
+        v.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<HashMap<BridgeChartKey, BridgeTransition>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: Vec<BridgeTransition> = Vec::deserialize(deserializer)?;
+        Ok(v.into_iter()
+            .map(|t| {
+                (
+                    BridgeChartKey::canonical(t.from_atlas, t.from_chart, t.to_atlas, t.to_chart),
+                    t,
+                )
+            })
+            .collect())
+    }
 }
 
 impl CrossAtlasJoin {
@@ -644,7 +685,9 @@ mod tests {
     }
 
     #[test]
-    fn join_serde_round_trips() {
+    fn full_join_serde_round_trips_with_bridges() {
+        // Real serde test of the bridges_serde adapter: a CrossAtlasJoin
+        // with multiple bridges JSON-roundtrips end-to-end.
         let mut join = make_join();
         join.add_bridge(BridgeTransition {
             from_atlas: AtlasId(1),
@@ -654,16 +697,32 @@ mod tests {
             lipschitz_estimate: 1.5,
             invertible: true,
         });
-        let json = serde_json::to_string(&join.atlas_a).unwrap();
-        let back: Atlas = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.charts.len(), join.atlas_a.charts.len());
-        // BridgeTransition itself serde-roundtrips (the join's bridge
-        // HashMap has the same JSON-key issue as Atlas.transitions
-        // -- see existing follow-up note).
-        let b = join.bridges.values().next().unwrap().clone();
-        let bjson = serde_json::to_string(&b).unwrap();
-        let bback: BridgeTransition = serde_json::from_str(&bjson).unwrap();
-        assert_eq!(bback, b);
+        join.add_bridge(BridgeTransition {
+            from_atlas: AtlasId(1),
+            from_chart: ChartId(1),
+            to_atlas: AtlasId(2),
+            to_chart: ChartId(1),
+            lipschitz_estimate: 2.0,
+            invertible: false,
+        });
+        let json = serde_json::to_string(&join).unwrap();
+        let back: CrossAtlasJoin = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.atlas_a_id, join.atlas_a_id);
+        assert_eq!(back.atlas_b_id, join.atlas_b_id);
+        assert_eq!(back.delta_bridge_budget, join.delta_bridge_budget);
+        assert_eq!(back.delta_asymm_budget, join.delta_asymm_budget);
+        assert_eq!(back.bridges.len(), 2);
+        // Both bridges recoverable in canonical-key form
+        let b1 = back
+            .bridge(AtlasId(1), ChartId(0), AtlasId(2), ChartId(0))
+            .unwrap();
+        assert_eq!(b1.lipschitz_estimate, 1.5);
+        assert!(b1.invertible);
+        let b2 = back
+            .bridge(AtlasId(1), ChartId(1), AtlasId(2), ChartId(1))
+            .unwrap();
+        assert_eq!(b2.lipschitz_estimate, 2.0);
+        assert!(!b2.invertible);
     }
 
     /// Unused-import suppression — keeps SpectralRegime warning quiet

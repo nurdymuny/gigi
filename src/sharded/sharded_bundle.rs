@@ -845,11 +845,9 @@ mod tests {
     }
 
     #[test]
-    fn wrap_fiedler_sharded_atlas_charts_serialize() {
-        // Charts serialize cleanly; transitions need a serde format
-        // upgrade (TransitionKey tuple-struct can't be a JSON object
-        // key). For now, verify the chart half roundtrips and document
-        // the transitions-serde limitation as a follow-up.
+    fn wrap_fiedler_sharded_atlas_serde_round_trips_with_transitions() {
+        // Full atlas roundtrip now works thanks to the transitions_serde
+        // adapter in atlas.rs (Vec<Transition> on the wire).
         let records = two_cluster_records(20);
         let shard = ShardedBundle::wrap_fiedler_sharded(
             make_schema(),
@@ -858,12 +856,13 @@ mod tests {
             ShardId(3),
         )
         .unwrap();
-        // Serialize charts in isolation
-        let charts_json = serde_json::to_string(&shard.atlas().charts).unwrap();
-        let back: HashMap<ChartId, ChartMetadata> = serde_json::from_str(&charts_json).unwrap();
-        assert_eq!(back.len(), 4);
+        let json = serde_json::to_string(shard.atlas()).unwrap();
+        let back: Atlas = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.charts.len(), 4);
+        // The 6 pairwise transitions roundtrip cleanly now.
+        assert_eq!(back.transitions.len(), 6);
         for i in 0..4u32 {
-            let meta = back.get(&ChartId(i)).unwrap();
+            let meta = back.charts.get(&ChartId(i)).unwrap();
             match meta.region {
                 ChartRegion::FiedlerCluster { cluster_index, total_clusters } => {
                     assert_eq!(cluster_index, i);
@@ -871,6 +870,11 @@ mod tests {
                 }
                 _ => panic!("expected FiedlerCluster region after roundtrip"),
             }
+        }
+        // Every transition has lipschitz=1.0 per the constructor.
+        for t in back.transitions.values() {
+            assert_eq!(t.lipschitz_estimate, 1.0);
+            assert!(t.invertible);
         }
     }
 

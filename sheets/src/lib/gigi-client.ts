@@ -203,7 +203,10 @@ export interface SheetsClientOptions {
   apiKey?: string | null;
 }
 
-export type WebSocketFactory = (url: string) => MinimalWebSocket;
+export type WebSocketFactory = (
+  url: string,
+  protocols?: string[],
+) => MinimalWebSocket;
 
 /**
  * Minimal WebSocket surface — everything the client touches is here so
@@ -352,24 +355,43 @@ export class SheetsClient {
     return name.startsWith(prefix) ? name.slice(prefix.length) : name;
   }
 
-  /** Derive ws:// URL from the configured base URL. */
+  /** Derive ws:// URL from the configured base URL.
+   *
+   * **2026-06-04 hardening.** Credentials no longer ride in the query
+   * string. Browsers can set the `Sec-WebSocket-Protocol` header via
+   * the WebSocket constructor's `protocols` argument, so we use that
+   * instead — see `wsProtocols()`. URL access logs / Referer headers /
+   * browser history no longer carry the API key.
+   */
   wsUrl(path = "/ws"): string {
     const m = this.baseUrl.match(/^https?:\/\/(.+)$/);
     const proto = this.baseUrl.startsWith("https") ? "wss" : "ws";
     const hostPath = m ? m[1] : this.baseUrl;
-    // Browsers can't set custom headers on a WebSocket handshake, so
-    // we pass the credential as a query parameter instead. Engine
-    // accepts either api_key= (legacy/owner) or gigi_token= (tenant
-    // bearer token). Mutually exclusive — only the one we hold gets
-    // attached.
-    const sep = path.includes("?") ? "&" : "?";
+    return `${proto}://${hostPath}${path}`;
+  }
+
+  /**
+   * Subprotocols to offer to the engine on every WS upgrade. The list
+   * always includes the `gigi.v1` marker (the engine echoes this back
+   * to complete the handshake) plus exactly one credential entry:
+   *
+   *   - `gigi.apikey.<KEY>`  when an API key is set
+   *   - `gigi.bearer.<TOKEN>` when a bearer token is set
+   *
+   * The engine's `auth_middleware` parses the header and extracts the
+   * credential; the credential subprotocol is never echoed back. The
+   * order matters: we put the marker FIRST so the server's
+   * `WebSocketUpgrade::protocols(["gigi.v1"])` echo picks it
+   * deterministically.
+   */
+  wsProtocols(): string[] {
     if (this.apiKey) {
-      return `${proto}://${hostPath}${path}${sep}api_key=${encodeURIComponent(this.apiKey)}`;
+      return ["gigi.v1", `gigi.apikey.${this.apiKey}`];
     }
     if (this.bearerToken) {
-      return `${proto}://${hostPath}${path}${sep}gigi_token=${encodeURIComponent(this.bearerToken)}`;
+      return ["gigi.v1", `gigi.bearer.${this.bearerToken}`];
     }
-    return `${proto}://${hostPath}${path}`;
+    return [];
   }
 
   /**
@@ -383,7 +405,11 @@ export class SheetsClient {
     onFrame: (frame: SubscriptionFrame) => void,
     onStatus?: (status: "open" | "close" | "error") => void,
   ): Subscription {
-    const ws = this.wsFactory(this.wsUrl("/ws"));
+    const protocols = this.wsProtocols();
+    const ws =
+      protocols.length > 0
+        ? this.wsFactory(this.wsUrl("/ws"), protocols)
+        : this.wsFactory(this.wsUrl("/ws"));
     const engineBundle = this.qualifyBundleName(bundle);
     ws.addEventListener("open", () => {
       onStatus?.("open");
@@ -852,13 +878,19 @@ function normalizeSection(body: unknown): SectionResult {
   };
 }
 
-function defaultWebSocketFactory(url: string): MinimalWebSocket {
+function defaultWebSocketFactory(
+  url: string,
+  protocols?: string[],
+): MinimalWebSocket {
   const Ctor = (globalThis as { WebSocket?: typeof WebSocket }).WebSocket;
   if (!Ctor) {
     throw new SheetsClientError(
       "WebSocket is not available in this environment",
       "network_error",
     );
+  }
+  if (protocols && protocols.length > 0) {
+    return new Ctor(url, protocols) as unknown as MinimalWebSocket;
   }
   return new Ctor(url) as unknown as MinimalWebSocket;
 }

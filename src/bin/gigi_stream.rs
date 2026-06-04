@@ -1220,17 +1220,55 @@ async fn readiness_middleware(
 
 /// Middleware: API key OR per-user signed-token authentication.
 ///
-/// Accepts either:
-///   - `X-API-Key` header (HTTP) / `?api_key=...` query (WS upgrade)
-///     matching `GIGI_API_KEY` — server-internal / owner-equivalent.
+/// Accepts (in order of precedence):
+///   - `X-API-Key` header (HTTP)
+///   - `Sec-WebSocket-Protocol` subprotocol element `gigi.apikey.<KEY>` or
+///     `gigi.bearer.<TOKEN>` (WS upgrade) — preferred over query-string
+///     credentials because subprotocol values don't leak into URL access
+///     logs / browser history / Referer headers / error-reporting URL
+///     captures the way `?api_key=` does.
+///   - `?api_key=...` query (WS upgrade, **deprecated**) — kept for one
+///     transition cycle while clients move to the subprotocol path.
 ///   - `Authorization: Bearer <token>` header (HTTP) /
-///     `?gigi_token=...` query (WS upgrade) — verifies HMAC-SHA256
-///     against `GIGI_JWT_SECRET` and pulls out per-user claims.
+///     `?gigi_token=...` query (WS upgrade, **deprecated**) —
+///     verifies HMAC-SHA256 against `GIGI_JWT_SECRET`.
 ///
 /// Attaches `GigiClaims` to the request extensions so the downstream
 /// `namespace_enforcement_middleware` can gate /v1/bundles/<name>/*
 /// paths by tenant. Health endpoint is excluded so liveness probes
 /// don't need credentials.
+///
+/// **2026-06-04 hardening.** The query-string WS auth path leaked the
+/// API key to every place that logs URLs (fly edge, browser history,
+/// Referer, JS error reporters). Subprotocol headers don't carry the
+/// same exposure surface. Both paths are accepted during the transition;
+/// the query path will be removed once all clients move.
+
+/// Extract API-key / bearer-token credentials from the
+/// `Sec-WebSocket-Protocol` upgrade header. Returns `(api_key, bearer)`
+/// — at most one of each is set. Format expected from the client:
+/// `gigi.v1, gigi.apikey.<KEY>` or `gigi.v1, gigi.bearer.<TOKEN>`.
+fn extract_subprotocol_credentials(headers: &axum::http::HeaderMap) -> (Option<String>, Option<String>) {
+    let raw = match headers.get("sec-websocket-protocol").and_then(|v| v.to_str().ok()) {
+        Some(s) => s,
+        None => return (None, None),
+    };
+    let mut api_key = None;
+    let mut bearer = None;
+    for piece in raw.split(',') {
+        let p = piece.trim();
+        if let Some(rest) = p.strip_prefix("gigi.apikey.") {
+            if api_key.is_none() && !rest.is_empty() {
+                api_key = Some(rest.to_string());
+            }
+        } else if let Some(rest) = p.strip_prefix("gigi.bearer.") {
+            if bearer.is_none() && !rest.is_empty() {
+                bearer = Some(rest.to_string());
+            }
+        }
+    }
+    (api_key, bearer)
+}
 async fn auth_middleware(
     State(state): State<Arc<StreamState>>,
     mut req: Request<axum::body::Body>,
@@ -1243,6 +1281,12 @@ async fn auth_middleware(
 
     // Try API-key path first (legacy + admin). A successful match
     // grants owner-equivalent claims; the JWT path is skipped.
+    //
+    // Lookup order: X-API-Key header (HTTP), then `Sec-WebSocket-
+    // Protocol: gigi.apikey.<KEY>` (WS upgrade — preferred), then
+    // `?api_key=<KEY>` query string (WS upgrade — deprecated, kept
+    // for one transition cycle).
+    let (subproto_apikey, subproto_bearer) = extract_subprotocol_credentials(req.headers());
     let mut claims: Option<GigiClaims> = None;
     if let Some(ref expected_key) = state.api_key {
         let header_key = req
@@ -1260,7 +1304,10 @@ async fn auth_middleware(
             }
             None
         });
-        if let Some(provided) = header_key.or(query_key) {
+        if let Some(provided) = header_key
+            .or_else(|| subproto_apikey.clone())
+            .or(query_key)
+        {
             if constant_time_eq(provided.as_bytes(), expected_key.as_bytes()) {
                 claims = Some(GigiClaims::owner_via_api_key());
             } else {
@@ -1295,7 +1342,10 @@ async fn auth_middleware(
                 }
                 None
             });
-            if let Some(tok) = header_tok.or(query_tok) {
+            if let Some(tok) = header_tok
+                .or_else(|| subproto_bearer.clone())
+                .or(query_tok)
+            {
                 match verify_gigi_token(&tok, secret) {
                     Ok(c) => claims = Some(c),
                     Err(reason) => {
@@ -10911,7 +10961,16 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<StreamState>>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_ws(socket, state))
+    // Echo back the `gigi.v1` subprotocol marker if the client offered
+    // it. Browsers require the server to confirm one of the protocols
+    // they listed during the upgrade; without this, the connection
+    // closes immediately after the handshake on the subprotocol-auth
+    // path. `protocols()` picks the FIRST matching name from the
+    // client's offered list; we only ever advertise the marker (the
+    // credential subprotocols are consumed by auth_middleware, never
+    // echoed).
+    ws.protocols(["gigi.v1"])
+        .on_upgrade(move |socket| handle_ws(socket, state))
 }
 
 async fn handle_ws(socket: WebSocket, state: Arc<StreamState>) {

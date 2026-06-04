@@ -53,19 +53,22 @@ describe("SheetsClient credential trimming (regression — 2026-06-04 401 storm)
     expect(headers["x-api-key"]).not.toContain("\n");
   });
 
-  it("strips leading + trailing whitespace including \\r, \\t, spaces", () => {
+  it("strips leading + trailing whitespace from the subprotocol credential", () => {
     const client = new SheetsClient({ baseUrl: "http://localhost:3142" });
     client.setApiKey(" \t key-with-padding \r\n");
-    // Indirect: the only public observable of the stored apiKey is
-    // hasApiKey() + the headers/URL emitters. We assert the WS upgrade
-    // URL has no stray whitespace.
+    // The WS URL no longer carries the credential (subprotocol-header
+    // path). Verify the credential lives in the protocol list cleanly.
     const wsUrl = client.wsUrl("/ws");
-    // Key should appear URL-encoded without %09/%0D/%0A/%20.
-    expect(wsUrl).toContain("api_key=key-with-padding");
+    expect(wsUrl).not.toContain("api_key");
     expect(wsUrl).not.toContain("%0A");
     expect(wsUrl).not.toContain("%0D");
-    expect(wsUrl).not.toContain("%09");
-    expect(wsUrl).not.toContain("%20");
+
+    const protocols = client.wsProtocols();
+    expect(protocols).toEqual(["gigi.v1", "gigi.apikey.key-with-padding"]);
+    // No whitespace escaped into the subprotocol string either.
+    for (const p of protocols) {
+      expect(p).not.toMatch(/[\s]/);
+    }
   });
 
   it("treats a key that is all whitespace as no credential", () => {

@@ -30,6 +30,7 @@ TESTS = [
     ("T10", "t10_cross_atlas_resolver.py",           "Cross-atlas Clean Finger Move resolver"),
     # Topology-aware partitioning (SHARDING_SPEC.md §9 Phase D)
     ("TFP1", "tfp1_fiedler_preserves_curvature.py",  "Fiedler partition preserves K aggregation"),
+    ("TFP2", "tfp2_fiedler_betti_mayer_vietoris.py", "M-V BETTI on Fiedler charts vs disjoint union"),
 ]
 
 

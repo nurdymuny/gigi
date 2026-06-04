@@ -37,7 +37,7 @@ pub mod sharded_bundle;
 pub use atlas::{Atlas, ChartId, ChartMetadata, Transition};
 pub use execution::{shard_curvature, ShardedCurvatureReport, ShardedExecError};
 #[cfg(feature = "kahler")]
-pub use execution::{shard_betti_disjoint, ShardedBettiReport};
+pub use execution::{shard_betti_disjoint, shard_betti_mayer_vietoris, ShardedBettiReport};
 pub use fiedler::{fiedler_partition, FiedlerConfig, FiedlerError};
 pub use gates::{non_vacuity_check, GateError};
 pub use regime::SpectralRegime;

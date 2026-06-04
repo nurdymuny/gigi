@@ -33,6 +33,7 @@ pub mod gates;
 pub mod regime;
 pub mod resolver;
 pub mod sharded_bundle;
+pub mod spectral;
 
 pub use atlas::{Atlas, ChartId, ChartMetadata, Transition};
 pub use execution::{
@@ -46,6 +47,9 @@ pub use gates::{non_vacuity_check, GateError};
 pub use regime::SpectralRegime;
 pub use resolver::{sharded_write_resolve, ResolverError, ResolverTrace, WriteConflict};
 pub use sharded_bundle::ShardedBundle;
+pub use spectral::{
+    block_matvec, distributed_lanczos, DistributedLanczosConfig, DistributedLanczosResult,
+};
 
 /// Identifier for a shard (a process / machine / storage volume holding
 /// one or more charts).

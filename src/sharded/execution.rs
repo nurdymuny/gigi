@@ -557,13 +557,44 @@ fn chart_transport_2d(points: &[[f64; 2]]) -> [f64; 4] {
     r
 }
 
-/// λ_1 of the sharded bundle's Laplacian. Routes per spectral regime;
-/// Phase E will wire distributed Lanczos (T7) for the expander path.
-pub fn shard_lambda_1(atlas: &Atlas) -> Result<f64, ShardedExecError> {
-    if atlas.spectral_regime.requires_distributed_lanczos() {
-        return Err(ShardedExecError::ExpanderRegimeUnsupportedSpectral);
-    }
-    Err(ShardedExecError::NotImplementedYet { phase: "Phase E" })
+/// λ_1 of the sharded bundle's Laplacian via **distributed Lanczos**
+/// (T7 GREEN, ported to Rust in `src/sharded/spectral.rs`).
+///
+/// Per T7: distributed Lanczos works UNIVERSALLY across all graph
+/// classes, including expanders where the T5 naive `min(per-shard
+/// λ_1)` bound fails 5–7×. The algorithm uses only the per-shard
+/// blocks `(A_S, A_T, B)` and never reconstructs the full Laplacian.
+///
+/// This entry point accepts the Laplacian blocks externally because
+/// the substrate-side wiring (extracting the bundle's k-NN Laplacian
+/// per chart) is a separate Phase-D-future task. For now, callers
+/// supply the blocks directly — useful for unit testing and for
+/// downstream consumers (Marcella's spectral-gap endpoint).
+pub fn shard_lambda_1_blocks(
+    a_s: &[Vec<f64>],
+    a_t: &[Vec<f64>],
+    b: &[Vec<f64>],
+    size_s: usize,
+    config: &crate::sharded::spectral::DistributedLanczosConfig,
+) -> Result<crate::sharded::spectral::DistributedLanczosResult, ShardedExecError> {
+    let result = crate::sharded::spectral::distributed_lanczos(a_s, a_t, b, size_s, config);
+    Ok(result)
+}
+
+/// Legacy `shard_lambda_1(atlas)` signature retained for backwards
+/// compatibility with the Phase A skeleton. The Atlas alone is
+/// insufficient to compute λ_1 — the Laplacian blocks are needed.
+/// New callers should use `shard_lambda_1_blocks`.
+///
+/// **The Expander regime is no longer refused.** T7 proved distributed
+/// Lanczos works universally; the regime declaration now controls
+/// recipe selection (e.g., naive bound for clustered, distributed
+/// Lanczos for expander) rather than refusing computation.
+pub fn shard_lambda_1(_atlas: &Atlas) -> Result<f64, ShardedExecError> {
+    Err(ShardedExecError::NotImplementedYet {
+        phase: "use shard_lambda_1_blocks(A_S, A_T, B, size_S, config) — \
+                supply the Laplacian blocks externally per T7's contract",
+    })
 }
 
 // ============================================================================
@@ -947,17 +978,51 @@ mod tests {
     // ----------------------------------------------------------------
 
     #[test]
-    fn lambda_1_on_expander_refuses() {
+    fn lambda_1_legacy_signature_routes_to_blocks() {
+        // Legacy shard_lambda_1(atlas) returns NotImplementedYet pointing at
+        // the block-based entry point.
         let atlas = Atlas::new(SpectralRegime::Expander, 0.0);
         let err = shard_lambda_1(&atlas);
-        assert_eq!(err, Err(ShardedExecError::ExpanderRegimeUnsupportedSpectral));
+        match err {
+            Err(ShardedExecError::NotImplementedYet { phase }) => {
+                assert!(phase.contains("shard_lambda_1_blocks"));
+            }
+            _ => panic!("expected NotImplementedYet with block-based hint"),
+        }
+        // Same for clustered regime: T7 unifies the path.
+        let atlas2 = Atlas::new(SpectralRegime::NaturallyCluster, 0.0);
+        let err2 = shard_lambda_1(&atlas2);
+        assert!(matches!(err2, Err(ShardedExecError::NotImplementedYet { .. })));
     }
 
     #[test]
-    fn lambda_1_on_clustered_returns_not_implemented_in_phase_d() {
-        let atlas = Atlas::new(SpectralRegime::NaturallyCluster, 0.0);
-        let err = shard_lambda_1(&atlas);
-        assert!(matches!(err, Err(ShardedExecError::NotImplementedYet { .. })));
+    fn lambda_1_blocks_works_on_expander() {
+        // T7's expander case: K_{4,4} complete bipartite, λ_1 = 4.0.
+        // The naive T5 bound fails here. Distributed Lanczos recovers.
+        let a = 4;
+        let b = 4;
+        let n = a + b;
+        let mut l = vec![vec![0.0; n]; n];
+        for i in 0..a {
+            for j in a..n {
+                l[i][i] += 1.0;
+                l[j][j] += 1.0;
+                l[i][j] -= 1.0;
+                l[j][i] -= 1.0;
+            }
+        }
+        // Split by side
+        let a_s: Vec<Vec<f64>> = (0..a).map(|i| (0..a).map(|j| l[i][j]).collect()).collect();
+        let a_t: Vec<Vec<f64>> = (a..n).map(|i| (a..n).map(|j| l[i][j]).collect()).collect();
+        let b_mat: Vec<Vec<f64>> = (0..a).map(|i| (a..n).map(|j| l[i][j]).collect()).collect();
+        let config = crate::sharded::spectral::DistributedLanczosConfig::default();
+        let result = shard_lambda_1_blocks(&a_s, &a_t, &b_mat, a, &config).unwrap();
+        assert!(
+            (result.lambda_1 - 4.0).abs() < 1e-6,
+            "K_4,4 λ_1 = 4.0, got {} (K used = {})",
+            result.lambda_1,
+            result.iterations_used
+        );
     }
 
     #[test]

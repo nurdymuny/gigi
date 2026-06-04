@@ -33,6 +33,8 @@ TESTS = [
     ("TFP2", "tfp2_fiedler_betti_mayer_vietoris.py", "M-V BETTI on Fiedler charts vs disjoint union"),
     ("TFH1", "tfh1_holonomy_across_fiedler_boundaries.py",
         "Sharded HOLONOMY composing T4 across boundaries"),
+    ("TFH2", "tfh2_closed_loop_holonomy.py",
+        "Closed-loop holonomy with Mobius reflection detection"),
 ]
 
 

@@ -393,15 +393,57 @@ pub fn shard_curvature_at(
 
 /// HOLONOMY around a closed loop crossing chart boundaries.
 ///
-/// Phase D-future: closed-loop holonomy requires the wrap-around turn
-/// from the last segment's tangent back to the first segment's tangent.
-/// For open-path holonomy with full composition semantics, use
-/// `shard_holonomy_along_path` (TFH1 GREEN).
+/// Per TFH2 (`theory/poincare_to_sharding/validation/
+/// tfh2_closed_loop_holonomy.py`): the holonomy of a closed loop
+/// under a FLAT CONNECTION is the product of chart-transition
+/// rotations in path order, including the closing transition from
+/// `c_{n-1}` back to `c_0`. Parallel transport of a frame along a
+/// straight segment under a flat connection leaves the frame
+/// unchanged, so all in-chart contributions are identity.
+///
+/// For a closed loop with all identity transitions: H = I.
+/// For a loop crossing a Möbius (reflection) gauge once: det(H) = -1.
+/// For a loop with cocycle-satisfying transitions: H = I.
+///
+/// Phase D scope: 2D paths only, transitions provided externally as
+/// 2x2 row-major matrices. Returns the 2x2 holonomy matrix as
+/// `[a00, a01, a10, a11]`.
 pub fn shard_holonomy_around_loop(
     _atlas: &Atlas,
-    _loop_points_with_charts: &[(ChartId, Vec<f64>)],
-) -> Result<Vec<f64>, ShardedExecError> {
-    Err(ShardedExecError::NotImplementedYet { phase: "Phase E (closed-loop wrap-around)" })
+    loop_points_with_charts: &[(ChartId, Vec<f64>)],
+    transitions: &HashMap<(ChartId, ChartId), [f64; 4]>,
+) -> Result<[f64; 4], ShardedExecError> {
+    let n = loop_points_with_charts.len();
+    if n < 2 {
+        return Ok(IDENTITY_2X2);
+    }
+    // Validate 2D
+    for (_, p) in loop_points_with_charts {
+        if p.len() != 2 {
+            return Err(ShardedExecError::NotImplementedYet {
+                phase: "Phase E (N-dim closed-loop holonomy; Phase D is 2D)",
+            });
+        }
+    }
+    // Walk boundary-crossing transitions in path order including closing.
+    let mut h = IDENTITY_2X2;
+    for i in 0..n {
+        let c_from = loop_points_with_charts[i].0;
+        let c_to = loop_points_with_charts[(i + 1) % n].0;
+        if c_from != c_to {
+            let t = transitions
+                .get(&(c_from, c_to))
+                .copied()
+                .unwrap_or(IDENTITY_2X2);
+            h = mat2x2_mul(&t, &h);
+        }
+    }
+    Ok(h)
+}
+
+/// 2x2 matrix determinant: returns `a00 * a11 - a01 * a10`.
+pub fn mat2x2_det(a: &[f64; 4]) -> f64 {
+    a[0] * a[3] - a[1] * a[2]
 }
 
 /// Sharded HOLONOMY along an OPEN path crossing chart boundaries.
@@ -925,11 +967,112 @@ mod tests {
         assert!(matches!(err, Err(ShardedExecError::NotImplementedYet { .. })));
     }
 
+    // Closed-loop holonomy tests (TFH2 Rust mirror)
     #[test]
-    fn holonomy_returns_not_implemented_in_phase_d() {
+    fn closed_loop_triangle_in_one_chart_is_identity() {
+        let loop_pts = vec![
+            (ChartId(0), vec![0.0_f64, 0.0]),
+            (ChartId(0), vec![1.0, 0.0]),
+            (ChartId(0), vec![0.5, 0.866025403784]),
+        ];
         let atlas = Atlas::trivial(ShardId(0));
-        let err = shard_holonomy_around_loop(&atlas, &[]);
-        assert!(matches!(err, Err(ShardedExecError::NotImplementedYet { .. })));
+        let h = shard_holonomy_around_loop(&atlas, &loop_pts, &HashMap::new()).unwrap();
+        assert!(mat_norm_diff(&h, &IDENTITY_2X2) < 1e-9);
+    }
+
+    #[test]
+    fn closed_loop_square_across_two_charts_identity_transitions_is_identity() {
+        let loop_pts = vec![
+            (ChartId(0), vec![0.0_f64, 0.0]),
+            (ChartId(0), vec![1.0, 0.0]),
+            (ChartId(1), vec![1.0, 1.0]),
+            (ChartId(1), vec![0.0, 1.0]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let mut transitions = HashMap::new();
+        transitions.insert((ChartId(0), ChartId(1)), IDENTITY_2X2);
+        transitions.insert((ChartId(1), ChartId(0)), IDENTITY_2X2);
+        let h = shard_holonomy_around_loop(&atlas, &loop_pts, &transitions).unwrap();
+        assert!(mat_norm_diff(&h, &IDENTITY_2X2) < 1e-9);
+    }
+
+    #[test]
+    fn closed_loop_with_cocycle_transitions_is_identity() {
+        // T_{01} . T_{12} . T_{20} = I (rotations summing to 0).
+        let g01 = rot_matrix(15.0);
+        let g12 = rot_matrix(45.0);
+        let g20 = rot_matrix(-60.0);
+        let loop_pts = vec![
+            (ChartId(0), vec![1.0_f64, 0.0]),
+            (ChartId(1), vec![-0.5, 0.866025403784]),
+            (ChartId(2), vec![-0.5, -0.866025403784]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let mut transitions = HashMap::new();
+        transitions.insert((ChartId(0), ChartId(1)), g01);
+        transitions.insert((ChartId(1), ChartId(2)), g12);
+        transitions.insert((ChartId(2), ChartId(0)), g20);
+        let h = shard_holonomy_around_loop(&atlas, &loop_pts, &transitions).unwrap();
+        assert!(
+            mat_norm_diff(&h, &IDENTITY_2X2) < 1e-9,
+            "cocycle holonomy should be identity, got {:?}",
+            h
+        );
+    }
+
+    #[test]
+    fn closed_loop_with_mobius_reflection_has_det_minus_one() {
+        // Möbius gauge in 2D fiber: reflection matrix diag(1, -1), det = -1.
+        // Closed loop crossing it once -> det(H) = -1 (orientation flip).
+        let mobius = [1.0, 0.0, 0.0, -1.0];
+        let loop_pts = vec![
+            (ChartId(0), vec![1.0_f64, 0.0]),
+            (ChartId(1), vec![-0.5, 0.866025403784]),
+            (ChartId(2), vec![-0.5, -0.866025403784]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let mut transitions = HashMap::new();
+        transitions.insert((ChartId(0), ChartId(1)), mobius);
+        transitions.insert((ChartId(1), ChartId(2)), IDENTITY_2X2);
+        transitions.insert((ChartId(2), ChartId(0)), IDENTITY_2X2);
+        let h = shard_holonomy_around_loop(&atlas, &loop_pts, &transitions).unwrap();
+        let det = mat2x2_det(&h);
+        assert!(
+            (det + 1.0).abs() < 1e-9,
+            "Möbius det(H) should be -1, got {}",
+            det
+        );
+    }
+
+    #[test]
+    fn closed_loop_orientation_preserved_without_mobius() {
+        let g01 = rot_matrix(15.0);
+        let g12 = rot_matrix(45.0);
+        let g20 = rot_matrix(-60.0);
+        let loop_pts = vec![
+            (ChartId(0), vec![1.0_f64, 0.0]),
+            (ChartId(1), vec![-0.5, 0.866025403784]),
+            (ChartId(2), vec![-0.5, -0.866025403784]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let mut transitions = HashMap::new();
+        transitions.insert((ChartId(0), ChartId(1)), g01);
+        transitions.insert((ChartId(1), ChartId(2)), g12);
+        transitions.insert((ChartId(2), ChartId(0)), g20);
+        let h = shard_holonomy_around_loop(&atlas, &loop_pts, &transitions).unwrap();
+        let det = mat2x2_det(&h);
+        assert!((det - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn closed_loop_three_d_path_refused() {
+        let loop_pts = vec![
+            (ChartId(0), vec![0.0, 0.0, 0.0]),
+            (ChartId(0), vec![1.0, 0.0, 0.0]),
+        ];
+        let atlas = Atlas::trivial(ShardId(0));
+        let r = shard_holonomy_around_loop(&atlas, &loop_pts, &HashMap::new());
+        assert!(matches!(r, Err(ShardedExecError::NotImplementedYet { .. })));
     }
 
     // ----------------------------------------------------------------
@@ -1049,16 +1192,4 @@ mod tests {
         assert_eq!(h, IDENTITY_2X2);
     }
 
-    #[test]
-    fn closed_loop_holonomy_still_unimplemented() {
-        // Phase D-future. The wrap-around turn requires special handling.
-        let atlas = Atlas::trivial(ShardId(0));
-        let r = shard_holonomy_around_loop(&atlas, &[]);
-        match r {
-            Err(ShardedExecError::NotImplementedYet { phase }) => {
-                assert!(phase.contains("Phase E"));
-            }
-            _ => panic!("expected NotImplementedYet for closed loop"),
-        }
-    }
 }

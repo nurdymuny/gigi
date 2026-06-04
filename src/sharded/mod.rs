@@ -36,8 +36,8 @@ pub mod sharded_bundle;
 
 pub use atlas::{Atlas, ChartId, ChartMetadata, Transition};
 pub use execution::{
-    shard_curvature, shard_holonomy_along_path, ShardedCurvatureReport, ShardedExecError,
-    IDENTITY_2X2,
+    mat2x2_det, shard_curvature, shard_holonomy_along_path, shard_holonomy_around_loop,
+    ShardedCurvatureReport, ShardedExecError, IDENTITY_2X2,
 };
 #[cfg(feature = "kahler")]
 pub use execution::{shard_betti_disjoint, shard_betti_mayer_vietoris, ShardedBettiReport};

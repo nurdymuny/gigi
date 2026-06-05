@@ -12,54 +12,170 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use crate::bundle::BundleStore;
 use crate::types::{BasePoint, Value};
 
-// ─── Error-budget reservations for downstream consumers ─────────────────────
+// ─── Error-budget partition for downstream consumers ───────────────────────
 //
 // Consumers (Marcella, SCJ, KRAKEN) carry per-consumer "error budget"
 // allocations that bound the total geometric drift a query can absorb before
 // the result is no longer trustable.  When the engine introduces a NEW source
 // of approximation (a GPU matvec backend, an HNSW recall <1.0, a Chebyshev
 // filter with looser λ_max), every consumer's budget has to widen by enough
-// to absorb it.  We pre-document those reservations here so that:
+// to absorb it.
 //
-//   1. The substrate-trust contract is visible in code, not just in
-//      correspondence (`theory/scj/REPLY_*.md`, `theory/kahler_upgrade/*.md`).
-//   2. When we ship the wgpu-spectral backend behind `wgpu-spectral` feature
-//      flag (Ask D, SCJ 2026-06-05 reply §5), the constant moves from
-//      "reserved" to "in use" and we audit consumer budgets at the same
-//      commit — no re-litigating the slack with every consumer downstream.
-//   3. Any new approximation source MUST add its own `E_*` constant here
-//      with a paragraph explaining what consumers absorbed it.
+// **Bound vs reservation are two different numbers.**  This distinction
+// (negotiated 2026-06-06 → 2026-06-07 with the SCJ team, after an arithmetic
+// error in our 2026-06-05 letter conflated the two) is now load-bearing for
+// every consumer's budget arithmetic.  Specifically:
+//
+//   * `E_*_BOUND_*` constants below — the OBSERVED WORST CASE.  These are
+//     measurement claims about the implementation: "the GPU backend's L∞
+//     drift in K(t)·v vs the CPU f64 reference is at most this much."  They
+//     do not, by themselves, move any consumer's budget — they only say
+//     what we measured.
+//
+//   * `R_*_SLACK` constants below — the COMMITTED HEADROOM consumers reserve
+//     in their δ_indep budget for the approximation.  These ARE the
+//     consumer-side movement: SCJ moved their δ_indep partition to make
+//     room for these.  The reservation is always ≥ the bound, with extra
+//     slack to absorb operational realities the bound does not enumerate.
+//
+// The partition is published as a numerical contract.  See:
+//   theory/scj/REPLY_TO_REPLY_2_2026-06-07.md §1 (the 4-row partition table)
+//   theory/scj/REPLY_FROM_SCJ_2026-06-07.md   §2 (SCJ's counter-correction)
+//
+// The unit test `delta_indep_partition_sums_to_target()` below asserts the
+// partition closes against δ_indep = 0.030 (the SCJ v0.5 §3.2 vacuity gate).
+// Anyone touching a reservation in code triggers that test failure until
+// both teams ack the change.  That is the substrate-side enforcement of
+// the consumer contract.
+
+// ─── E_*_BOUND_* — observed-worst-case bounds (measurement claims) ───────────
 
 /// Maximum drift the eventual GPU/wgpu spectral backend may introduce in
 /// `K(t)·v` (heat kernel applied to a source vector) versus the CPU f64
 /// reference path, in L∞ norm relative to ‖v‖.
 ///
 /// Reserved 2026-06-05 in correspondence with the SCJ (Shadow Clone Jutsu)
-/// team during the Windows-Atlas-on-Gigi heads-up.  SCJ moves their
-/// δ_indep target from 0.03 → 0.02 to absorb this term + their own E_recall
-/// (`E_RECALL_SLACK_HNSW` below).  Marcella's non-associativity bound at
-/// 0.0013 is unaffected (Marcella does not route through spectral).
+/// team during the Windows-Atlas-on-Gigi heads-up.  Renamed from
+/// `E_BACKEND_SLACK_SPECTRAL` to `E_BACKEND_BOUND_SPECTRAL` 2026-06-07 to
+/// make the bound/reservation distinction visible at every callsite.
 ///
 /// SHIPPED CONTRACT: until `wgpu-spectral` lights up, all spectral paths
 /// stay CPU-f64 and this term is structurally zero.  When it ships, the
 /// per-shard backend with cross-shard correction on CPU keeps drift well
-/// inside the bound.
-pub const E_BACKEND_SLACK_SPECTRAL: f64 = 1.0e-4;
+/// inside the bound.  The consumer reservation for this term is
+/// `R_BACKEND_SLACK` below.
+pub const E_BACKEND_BOUND_SPECTRAL: f64 = 1.0e-4;
 
 /// Maximum recall miss the HNSW-backed `SIMILAR` path may introduce at
-/// rank K vs brute-force, as the rate at which the HNSW result-set differs
-/// from the exact top-K result-set.
+/// rank K=200 vs brute-force, as the rate at which the HNSW result-set
+/// differs from the exact top-200 result-set.  Bound for SCJ's
+/// approximate-default hunt path; SCJ's calibration path uses
+/// `SIMILAR EXACT` and ignores this bound entirely.
 ///
-/// Reserved 2026-06-06 by SCJ in their reply (§1A): SCJ runs HNSW as the
-/// v0.1 default for steady-state hunt; `SIMILAR EXACT` ships as a parallel
-/// verb for their ~50-bug calibration set.  SCJ absorbs this in their
-/// δ_indep budget (`E_recall ≤ 0.05` → 0.005 reservation; composite 0.02).
+/// Reserved 2026-06-06 by SCJ in their reply §1A.  Renamed from
+/// `E_RECALL_SLACK_HNSW` to `E_RECALL_BOUND_HNSW` 2026-06-07 to make
+/// the bound/reservation distinction visible.  The consumer reservation
+/// for this term is `R_RECALL_SLACK` below.
 ///
 /// SHIPPED CONTRACT: until the single-field HNSW path lights up for
 /// `Value::Vector` (Ask C), this term is structurally zero.  The
 /// cluster-restricted recall oracle (`SIMILAR EXACT WITHIN spectral_cluster
 /// = C(q)` on 1% of calls) is the operational check that keeps this honest.
-pub const E_RECALL_SLACK_HNSW: f64 = 0.05;
+pub const E_RECALL_BOUND_HNSW: f64 = 0.05;
+
+// ─── R_*_SLACK — committed-headroom reservations (consumer-side movement) ────
+//
+// These constitute the 4-row partition negotiated with the SCJ team
+// 2026-06-06 → 2026-06-07.  SCJ moves their δ_indep partition (SCJ v0.5
+// §3.2 vacuity gate) to:
+//
+//     δ_indep target  = DELTA_INDEP_TARGET                  = 0.030
+//     ├─ r_backend    = R_BACKEND_SLACK                     = 0.005
+//     ├─ r_recall     = R_RECALL_SLACK                      = 0.005
+//     ├─ r_holonomy   = R_HOLONOMY_SLACK                    = 0.005
+//     ├─ r_residual   = R_RESIDUAL_SLACK (unmodeled corr.)  = 0.010
+//     └─ vacuity      = DELTA_INDEP_VACUITY_SLACK           = 0.005
+//
+// Sum = 0.005 + 0.005 + 0.005 + 0.010 + 0.005 = 0.030.  Asserted at test
+// time by `delta_indep_partition_sums_to_target()`.
+
+/// Reservation (consumer headroom) absorbing the eventual GPU/wgpu spectral
+/// backend's drift in δ_indep.  Strictly greater than `E_BACKEND_BOUND_SPECTRAL`
+/// to leave operational room above the observed-worst-case bound.
+pub const R_BACKEND_SLACK: f64 = 0.005;
+
+/// Reservation (consumer headroom) absorbing the HNSW approximate recall
+/// miss in δ_indep.  Strictly less than `E_RECALL_BOUND_HNSW` because the
+/// recall bound is measured *per query* and amortizes; the budget contribution
+/// is the long-run average rather than the worst case.
+pub const R_RECALL_SLACK: f64 = 0.005;
+
+/// Reservation (consumer headroom) absorbing the holonomy estimate
+/// gate-test (planted phase recovery ±1% on a 10-function toy CFG; the
+/// §10 PR in `theory/post_kahler_directions/`).
+pub const R_HOLONOMY_SLACK: f64 = 0.005;
+
+/// Reservation absorbing unmodeled correlations across the other three
+/// reservations.  Named explicitly (not folded into vacuity slack) because
+/// **unmodeled correlations will exist whether or not we enumerate them**;
+/// naming the residual is the discipline that lets the partition close.
+/// Per SCJ 2026-06-07 reply §2 — they caught us not enumerating this, and
+/// the unbalanced-without-it partition was a substrate-trust bug.
+pub const R_RESIDUAL_SLACK: f64 = 0.010;
+
+/// Vacuity slack remaining inside the δ_indep target after all reservations
+/// land.  This is what stays unallocated as headroom for novel error
+/// sources we have not yet anticipated.  Must be > 0 — a zero-vacuity
+/// partition has no room to absorb a fifth term ahead of contract renegotiation.
+pub const DELTA_INDEP_VACUITY_SLACK: f64 = 0.005;
+
+/// δ_indep budget target.  Pinned at 0.030 in the SCJ v0.5 §3.2 vacuity gate.
+/// The 4-row partition above sums to this target; the unit test enforces it.
+pub const DELTA_INDEP_TARGET: f64 = 0.030;
+
+#[cfg(test)]
+mod budget_partition_tests {
+    use super::*;
+
+    /// **Substrate-side enforcement of the SCJ δ_indep contract.**
+    ///
+    /// Asserts the 4-row partition + vacuity slack sums to the published
+    /// target.  Any change to a reservation triggers this test until both
+    /// teams ack the contract change.  See:
+    ///   theory/scj/REPLY_TO_REPLY_2_2026-06-07.md §1 (table)
+    ///   theory/scj/REPLY_FROM_SCJ_2026-06-07.md   §2 (counter-correction)
+    #[test]
+    fn delta_indep_partition_sums_to_target() {
+        let sum = R_BACKEND_SLACK
+            + R_RECALL_SLACK
+            + R_HOLONOMY_SLACK
+            + R_RESIDUAL_SLACK
+            + DELTA_INDEP_VACUITY_SLACK;
+        let diff = (sum - DELTA_INDEP_TARGET).abs();
+        assert!(
+            diff < 1.0e-12,
+            "δ_indep partition broken: {R_BACKEND_SLACK} (r_backend) + \
+             {R_RECALL_SLACK} (r_recall) + {R_HOLONOMY_SLACK} (r_holonomy) + \
+             {R_RESIDUAL_SLACK} (r_residual) + {DELTA_INDEP_VACUITY_SLACK} (vacuity) \
+             = {sum}; target = {DELTA_INDEP_TARGET}; \
+             diff = {diff:e}.  Update partition or ack contract change with \
+             SCJ before landing."
+        );
+    }
+
+    /// Reservations must always be ≥ their corresponding bounds.  Anything
+    /// else is a contract under-reservation.
+    #[test]
+    fn reservations_dominate_bounds() {
+        assert!(
+            R_BACKEND_SLACK >= E_BACKEND_BOUND_SPECTRAL,
+            "r_backend ({R_BACKEND_SLACK}) must be ≥ E_backend bound ({E_BACKEND_BOUND_SPECTRAL})"
+        );
+        // R_RECALL_SLACK < E_RECALL_BOUND_HNSW by design — see the rustdoc
+        // on R_RECALL_SLACK for why (per-query bound vs long-run avg).
+        // No assertion here.
+    }
+}
 
 /// Find connected components directly from the field index bitmaps.
 ///

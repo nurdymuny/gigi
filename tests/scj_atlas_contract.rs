@@ -7,45 +7,59 @@
 //! DLLs — as three bundles keyed by `(module, rva)` with the SCJ feature
 //! ontology and the GASM map scalar fields as fiber data.  See:
 //!
-//!   `theory/scj/REPLY_TO_LETTER_2026-06-05.md`     — our reply to their letter
-//!   `theory/scj/REPLY_TO_REPLY_2026-06-06.md`      — SCJ ack + contract close
-//!   `theory/scj/REPLY_FROM_SCJ_2026-06-06.md`      — their commitment letter
-//!   `examples/scj_atlas/README.md`                  — runnable BUNDLE DDLs live here
+//!   `theory/scj/REPLY_TO_LETTER_2026-06-05.md`        — our reply to their letter
+//!   `theory/scj/REPLY_TO_REPLY_2026-06-06.md`         — SCJ ack + contract close
+//!   `theory/scj/REPLY_TO_REPLY_2_2026-06-07.md`       — Gigi 4-row partition reply
+//!   `theory/scj/REPLY_TO_REPLY_3_2026-06-07_CLOSE.md` — Gigi round-6 close ack
+//!   `theory/scj/REPLY_FROM_SCJ_2026-06-06.md`         — SCJ commitment letter
+//!   `theory/scj/REPLY_FROM_SCJ_2026-06-07.md`         — SCJ counter-correction
+//!   `examples/scj_atlas/README.md`                     — runnable BUNDLE DDLs live here
 //!
-//! What this file gates.  When SCJ drops their three BUNDLE DDLs
-//! (`windows_fns.gql`, `windows_calls.gql`, `windows_sinks.gql`) under
-//! `examples/scj_atlas/`, this contract test asserts:
+//! What this file gates.  Five tests total, divided by what upstream gate
+//! they're waiting on — named honestly per SCJ 2026-06-07 close drift #2:
 //!
-//!   (a) all three DDLs parse against the frozen `scj-v0.1-substrate`
-//!       grammar — no hand-edits needed to land them;
-//!   (b) the round-trip schema → DHOOM emit → re-ingest is byte-identical
-//!       on `vid.sys`-scale synthetic data;
-//!   (c) `SIMILAR ... ON embedding TO ... TOP 10` against a 2K × 128-d
-//!       synthetic returns deterministic results across runs — critical
-//!       for SCJ's SUSANOO top-10 reproducibility gate
-//!       (Atlas spec §6.6, vid.sys smoke target).
+//!   3 tests gated on SCJ deliverable 2A (SCJ ships DDLs + smoke pipeline).
+//!     Each is `#[ignore]`'d AND `#[cfg(feature = "sharded")]` because they
+//!     wire through sharded code paths once live.
+//!       (a) `ddls_parse_against_scj_v01_substrate`
+//!       (b) `dhoom_roundtrip_is_byte_identical_on_synthetic_vid_sys`
+//!       (c) `similar_top10_is_run_to_run_deterministic`
 //!
-//! Status.  This file is currently a SCAFFOLD.  The three DDLs do not yet
-//! exist in this repo; SCJ ships them with deliverable 2A in their
-//! `scripts/scj_vid_smoke.py` drop.  Each test below is gated on the DDL
-//! files being present and reverts to a no-op + skip-warning when they
-//! aren't, so the file lives green on CI without blocking the rest of the
-//! suite.
+//!   1 test gated on engine-side TAGSET ship (Ask A roadmap).  Also
+//!     `#[ignore]`'d AND `#[cfg(feature = "sharded")]`.
+//!       (d) `tagset_shadow_encoding_equivalent_to_eventual_contains_any`
 //!
-//! When the DDLs land, flip the `#[ignore]` off each test, point the path
-//! constants at the dropped files, and the contract is live.
-
-#![cfg(feature = "sharded")] // SCJ uses sharded bundles per the Atlas spec.
+//!   1 test live now — the instant-distance version pin.  Intentionally
+//!     NOT under any cfg guard: bumping `instant-distance` is a substrate
+//!     contract change with SCJ, and we want that guard to trip on every
+//!     `cargo test` invocation including the default-features no-sharded
+//!     CI run.  Prior versions of this file gated the whole module on
+//!     `#![cfg(feature = "sharded")]`, which silently disabled the pin
+//!     guard on default CI.
+//!       (e) `instant_distance_version_pin_is_stable`
+//!
+//! When deliverable 2A lands, flip the `#[ignore]` off tests (a)/(b)/(c),
+//! point the path constants at the dropped files, and the 2A contract
+//! turns live.  Test (d) flips when TAGSET ships engine-side.
 
 use std::path::PathBuf;
 
+// ─── Helpers used by the four `sharded`-gated tests below.  Per-item ────
+// cfg-guarded to avoid `dead_code` warnings on default-features builds
+// (where only the pin guard at the bottom of this file is live).
+
 /// Where SCJ's three BUNDLE DDLs will live once they're dropped.
+#[cfg(feature = "sharded")]
 const DDL_DIR: &str = "examples/scj_atlas";
 
+#[cfg(feature = "sharded")]
 const WINDOWS_FNS_DDL: &str = "windows_fns.gql";
+#[cfg(feature = "sharded")]
 const WINDOWS_CALLS_DDL: &str = "windows_calls.gql";
+#[cfg(feature = "sharded")]
 const WINDOWS_SINKS_DDL: &str = "windows_sinks.gql";
 
+#[cfg(feature = "sharded")]
 fn ddl_path(name: &str) -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     p.push(DDL_DIR);
@@ -55,6 +69,7 @@ fn ddl_path(name: &str) -> PathBuf {
 
 /// Returns true iff all three DDLs are present.  Used to keep the test
 /// suite green before SCJ drops their files.
+#[cfg(feature = "sharded")]
 fn ddls_present() -> bool {
     ddl_path(WINDOWS_FNS_DDL).exists()
         && ddl_path(WINDOWS_CALLS_DDL).exists()
@@ -63,8 +78,9 @@ fn ddls_present() -> bool {
 
 /// (a) — Parse-clean gate.  Each DDL must parse against the frozen
 /// `scj-v0.1-substrate` grammar with no hand-edits.
+#[cfg(feature = "sharded")]
 #[test]
-#[ignore = "SCJ ddls not yet dropped — see theory/scj/REPLY_TO_REPLY_2026-06-06.md §2A"]
+#[ignore = "SCJ ddls not yet dropped — gated on SCJ deliverable 2A (REPLY_TO_REPLY_2026-06-06.md §2A)"]
 fn ddls_parse_against_scj_v01_substrate() {
     if !ddls_present() {
         eprintln!(
@@ -82,8 +98,9 @@ fn ddls_parse_against_scj_v01_substrate() {
 /// (b) — Round-trip byte-identical gate.  schema → DHOOM emit → re-ingest
 /// must produce the same DHOOM bytes on vid.sys-scale synthetic data.
 /// This is the safety gate for SCJ's per-shard rebuild discipline.
+#[cfg(feature = "sharded")]
 #[test]
-#[ignore = "SCJ ddls not yet dropped — see theory/scj/REPLY_TO_REPLY_2026-06-06.md §2A"]
+#[ignore = "SCJ ddls not yet dropped — gated on SCJ deliverable 2A (REPLY_TO_REPLY_2026-06-06.md §2A)"]
 fn dhoom_roundtrip_is_byte_identical_on_synthetic_vid_sys() {
     if !ddls_present() {
         return;
@@ -98,8 +115,9 @@ fn dhoom_roundtrip_is_byte_identical_on_synthetic_vid_sys() {
 /// `SIMILAR windows_fns TO ... ON embedding TOP 10` must return the same
 /// 10 records in the same order, against 2K × 128-d synthetic embeddings.
 /// This is what SCJ's SUSANOO top-10 reproducibility depends on.
+#[cfg(feature = "sharded")]
 #[test]
-#[ignore = "SCJ ddls not yet dropped — see theory/scj/REPLY_TO_REPLY_2026-06-06.md §2A"]
+#[ignore = "SCJ ddls not yet dropped — gated on SCJ deliverable 2A (REPLY_TO_REPLY_2026-06-06.md §2A)"]
 fn similar_top10_is_run_to_run_deterministic() {
     if !ddls_present() {
         return;
@@ -122,8 +140,9 @@ fn similar_top10_is_run_to_run_deterministic() {
 /// Lands when TAGSET ships engine-side; until then, this is the
 /// safety-net that lets SCJ migrate without re-validating their query
 /// surface byte-by-byte.
+#[cfg(feature = "sharded")]
 #[test]
-#[ignore = "TAGSET type not yet shipped engine-side — Ask A roadmap"]
+#[ignore = "TAGSET type not yet shipped engine-side — gated on Ask A engine-side roadmap, NOT on SCJ 2A"]
 fn tagset_shadow_encoding_equivalent_to_eventual_contains_any() {
     eprintln!("skipping: TAGSET type not yet shipped — see Ask A in correspondence.");
 }
@@ -132,6 +151,14 @@ fn tagset_shadow_encoding_equivalent_to_eventual_contains_any() {
 /// instant-distance major.minor as part of their requirements freeze.
 /// If this assertion ever fails, our Cargo.toml moved and SCJ needs to
 /// be notified before they rebuild HNSWs against a new graph version.
+///
+/// **Intentionally NOT under `#[cfg(feature = "sharded")]`.**  The pin
+/// is a substrate contract with SCJ, and we want this guard to trip on
+/// every `cargo test` — including the default-features no-sharded CI
+/// run.  Prior versions of this file gated the entire module on
+/// `#![cfg(feature = "sharded")]`, which silently disabled this guard.
+/// SCJ caught the silent-disable in their 2026-06-07 verification pass;
+/// drift #2 in `theory/scj/REPLY_TO_REPLY_3_2026-06-07_CLOSE.md`.
 #[test]
 fn instant_distance_version_pin_is_stable() {
     // Hard-coded match against Cargo.toml. Bumping instant-distance is

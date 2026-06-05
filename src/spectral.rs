@@ -12,6 +12,55 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use crate::bundle::BundleStore;
 use crate::types::{BasePoint, Value};
 
+// ─── Error-budget reservations for downstream consumers ─────────────────────
+//
+// Consumers (Marcella, SCJ, KRAKEN) carry per-consumer "error budget"
+// allocations that bound the total geometric drift a query can absorb before
+// the result is no longer trustable.  When the engine introduces a NEW source
+// of approximation (a GPU matvec backend, an HNSW recall <1.0, a Chebyshev
+// filter with looser λ_max), every consumer's budget has to widen by enough
+// to absorb it.  We pre-document those reservations here so that:
+//
+//   1. The substrate-trust contract is visible in code, not just in
+//      correspondence (`theory/scj/REPLY_*.md`, `theory/kahler_upgrade/*.md`).
+//   2. When we ship the wgpu-spectral backend behind `wgpu-spectral` feature
+//      flag (Ask D, SCJ 2026-06-05 reply §5), the constant moves from
+//      "reserved" to "in use" and we audit consumer budgets at the same
+//      commit — no re-litigating the slack with every consumer downstream.
+//   3. Any new approximation source MUST add its own `E_*` constant here
+//      with a paragraph explaining what consumers absorbed it.
+
+/// Maximum drift the eventual GPU/wgpu spectral backend may introduce in
+/// `K(t)·v` (heat kernel applied to a source vector) versus the CPU f64
+/// reference path, in L∞ norm relative to ‖v‖.
+///
+/// Reserved 2026-06-05 in correspondence with the SCJ (Shadow Clone Jutsu)
+/// team during the Windows-Atlas-on-Gigi heads-up.  SCJ moves their
+/// δ_indep target from 0.03 → 0.02 to absorb this term + their own E_recall
+/// (`E_RECALL_SLACK_HNSW` below).  Marcella's non-associativity bound at
+/// 0.0013 is unaffected (Marcella does not route through spectral).
+///
+/// SHIPPED CONTRACT: until `wgpu-spectral` lights up, all spectral paths
+/// stay CPU-f64 and this term is structurally zero.  When it ships, the
+/// per-shard backend with cross-shard correction on CPU keeps drift well
+/// inside the bound.
+pub const E_BACKEND_SLACK_SPECTRAL: f64 = 1.0e-4;
+
+/// Maximum recall miss the HNSW-backed `SIMILAR` path may introduce at
+/// rank K vs brute-force, as the rate at which the HNSW result-set differs
+/// from the exact top-K result-set.
+///
+/// Reserved 2026-06-06 by SCJ in their reply (§1A): SCJ runs HNSW as the
+/// v0.1 default for steady-state hunt; `SIMILAR EXACT` ships as a parallel
+/// verb for their ~50-bug calibration set.  SCJ absorbs this in their
+/// δ_indep budget (`E_recall ≤ 0.05` → 0.005 reservation; composite 0.02).
+///
+/// SHIPPED CONTRACT: until the single-field HNSW path lights up for
+/// `Value::Vector` (Ask C), this term is structurally zero.  The
+/// cluster-restricted recall oracle (`SIMILAR EXACT WITHIN spectral_cluster
+/// = C(q)` on 1% of calls) is the operational check that keeps this honest.
+pub const E_RECALL_SLACK_HNSW: f64 = 0.05;
+
 /// Find connected components directly from the field index bitmaps.
 ///
 /// Two base points are in the same component if they share any indexed

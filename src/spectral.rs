@@ -163,17 +163,44 @@ mod budget_partition_tests {
         );
     }
 
-    /// Reservations must always be ≥ their corresponding bounds.  Anything
-    /// else is a contract under-reservation.
+    /// Asserts the single bound-vs-reservation row that actually has both
+    /// constants defined and aligned in direction: `R_BACKEND_SLACK` (the
+    /// committed budget headroom for GPU/wgpu spectral drift) must dominate
+    /// `E_BACKEND_BOUND_SPECTRAL` (the observed-worst-case bound on that
+    /// drift).
+    ///
+    /// **Why this test only covers one row of the four-row partition.**
+    /// Named explicitly per SCJ 2026-06-07 close drift #1 — the prior
+    /// name `reservations_dominate_bounds` (plural) over-promised what the
+    /// body actually enforces. The three rows NOT asserted here:
+    ///
+    /// - `R_RECALL_SLACK` (= 0.005) vs `E_RECALL_BOUND_HNSW` (= 0.05):
+    ///   the inequality is **inverted by design**. The bound is per-query
+    ///   worst case; the reservation is the long-run-average budget
+    ///   contribution. SCJ's δ_indep math sums per-query reservations,
+    ///   not per-query worst cases. Asserting `R >= E` here would
+    ///   over-reserve and fail the 4-row partition; documented in the
+    ///   rustdoc on `R_RECALL_SLACK`.
+    ///
+    /// - `R_HOLONOMY_SLACK` (= 0.005) vs `E_HOLONOMY_BOUND_*`:
+    ///   the bound constant does not yet exist. `E_HOLONOMY_BOUND_*` is
+    ///   pending the §10 PR in `theory/post_kahler_directions/` — once
+    ///   that lands with the planted-phase recovery ±1% gate-test,
+    ///   peer constant + sibling test arrive together.
+    ///   TODO(§10): add `r_holonomy_slack_dominates_e_holonomy_bound`.
+    ///
+    /// - `R_RESIDUAL_SLACK` (= 0.010) vs nothing: `r_residual` has no
+    ///   peer `E_*` by construction. It absorbs unmodeled correlations
+    ///   across the other three rows; there is no single bound to
+    ///   dominate. The 4-row partition discipline IS the assertion
+    ///   here, and that's already enforced by
+    ///   `delta_indep_partition_sums_to_target()` above.
     #[test]
-    fn reservations_dominate_bounds() {
+    fn r_backend_slack_dominates_e_backend_bound() {
         assert!(
             R_BACKEND_SLACK >= E_BACKEND_BOUND_SPECTRAL,
             "r_backend ({R_BACKEND_SLACK}) must be ≥ E_backend bound ({E_BACKEND_BOUND_SPECTRAL})"
         );
-        // R_RECALL_SLACK < E_RECALL_BOUND_HNSW by design — see the rustdoc
-        // on R_RECALL_SLACK for why (per-query bound vs long-run avg).
-        // No assertion here.
     }
 }
 

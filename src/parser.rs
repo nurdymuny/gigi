@@ -4731,6 +4731,12 @@ pub enum WeightExpr {
     Sub(Box<WeightExpr>, Box<WeightExpr>),
     Mul(Box<WeightExpr>, Box<WeightExpr>),
     Div(Box<WeightExpr>, Box<WeightExpr>),
+    /// Two-arg `min(a, b)` — closes the `min(sum, MAX_SCORE)` clip
+    /// semantic SCJ named in their 2026-06-09 letter §1.
+    Min(Box<WeightExpr>, Box<WeightExpr>),
+    /// Two-arg `max(a, b)` — symmetric partner for floor semantics
+    /// (e.g. `max(raw_score, 0)`).
+    Max(Box<WeightExpr>, Box<WeightExpr>),
 }
 
 /// Parse a tokenized WEIGHT body into a WeightExpr AST.
@@ -4808,9 +4814,36 @@ fn parse_weight_atom(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, S
         *pos += 1;
         Ok(WeightExpr::Lit(n))
     } else {
-        // Identifier (field reference).
+        // Identifier — either a field reference, or a function call if
+        // immediately followed by `(`. Two-arg `min` / `max` only in
+        // v0.1; variadic / conditional / aggregate functions are
+        // deferred (spec OQ-2).
         *pos += 1;
-        Ok(WeightExpr::Field(tok))
+        if *pos < tokens.len() && tokens[*pos] == "(" {
+            let fname = tok.to_ascii_lowercase();
+            *pos += 1; // consume '('
+            let arg1 = parse_weight_add_sub(tokens, pos)?;
+            if *pos >= tokens.len() || tokens[*pos] != "," {
+                return Err(format!(
+                    "WEIGHT: `{fname}(` expects two comma-separated args"
+                ));
+            }
+            *pos += 1; // consume ','
+            let arg2 = parse_weight_add_sub(tokens, pos)?;
+            if *pos >= tokens.len() || tokens[*pos] != ")" {
+                return Err(format!("WEIGHT: `{fname}(` expects closing ')'"));
+            }
+            *pos += 1; // consume ')'
+            match fname.as_str() {
+                "min" => Ok(WeightExpr::Min(Box::new(arg1), Box::new(arg2))),
+                "max" => Ok(WeightExpr::Max(Box::new(arg1), Box::new(arg2))),
+                other => Err(format!(
+                    "WEIGHT: unknown function `{other}` (v0.1 supports `min` and `max` only)"
+                )),
+            }
+        } else {
+            Ok(WeightExpr::Field(tok))
+        }
     }
 }
 
@@ -4843,6 +4876,12 @@ fn eval_weight(expr: &WeightExpr, row: &crate::types::Record) -> f64 {
                 eval_weight(l, row) / denom
             }
         }
+        // f64::min / f64::max follow IEEE-754 minNum/maxNum: NaN-propagating
+        // only if BOTH operands are NaN, otherwise the non-NaN wins. That
+        // matches the "clip semantic" intuition — a NaN sub-expression
+        // shouldn't poison the clip floor/ceiling.
+        WeightExpr::Min(l, r) => eval_weight(l, row).min(eval_weight(r, row)),
+        WeightExpr::Max(l, r) => eval_weight(l, row).max(eval_weight(r, row)),
     }
 }
 

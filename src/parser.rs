@@ -660,6 +660,10 @@ pub enum Statement {
         /// index selection and decryption-scope minimization. Empty
         /// `Vec` when USING is absent.
         using_fields: Vec<String>,
+        /// `DEFINE OR REPLACE PATTERN p ...` sets this to `true` —
+        /// overwrites a pre-existing pattern of the same name silently.
+        /// Without it, a name collision returns a typed error (PH6a).
+        replace: bool,
     },
     #[cfg(feature = "patterns")]
     DropPattern { name: String },
@@ -3529,10 +3533,23 @@ impl Parser {
     // identification, discourse-flow (Marcella), or any future consumer
     // that wants weighted predicate-filtered ranked queries.
 
-    /// `DEFINE PATTERN <name> AS <pred> [WEIGHT (<expr>)] [USING (<field>,...)]`.
+    /// `DEFINE [OR REPLACE] PATTERN <name> AS <pred> [WEIGHT (<expr>)] [USING (<field>,...)]`.
     /// Already consumed the leading `DEFINE` keyword.
+    ///
+    /// `OR REPLACE` (between DEFINE and PATTERN) opts the statement into
+    /// silent overwrite of any pre-existing pattern with the same name.
+    /// Without it, the collision is a typed error at execute time (PH6a).
     #[cfg(feature = "patterns")]
     fn parse_define_pattern(&mut self) -> Result<Statement, String> {
+        // Optional OR REPLACE.
+        let replace = if self.is_keyword("OR") {
+            self.advance();
+            self.expect_keyword("REPLACE")?;
+            true
+        } else {
+            false
+        };
+
         self.expect_keyword("PATTERN")?;
         let name = self.expect_word()?;
         self.expect_keyword("AS")?;
@@ -3564,6 +3581,7 @@ impl Parser {
             or_groups: Vec::new(),
             weight,
             using_fields,
+            replace,
         })
     }
 
@@ -4648,6 +4666,23 @@ pub fn filter_to_query_conditions(fc: &FilterCondition) -> Vec<crate::bundle::Qu
 
 // ── Execution ──
 
+/// Ask G — Phase 2: parsed-and-stored pattern definition that lives in
+/// the Engine's in-memory pattern registry. Built from a
+/// `Statement::DefinePattern` at execute time; consumed by `Statement::Hunt`.
+///
+/// Lifetime is tied to the Engine process; lost on restart. Phase 6
+/// graduates this into a `gigi_patterns` bundle for persistence + sharing
+/// across operators (spec §11 OQ-1).
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone)]
+pub struct PatternDef {
+    pub name: String,
+    pub pred: Vec<FilterCondition>,
+    pub or_groups: Vec<Vec<FilterCondition>>,
+    pub weight: Option<Vec<String>>,
+    pub using_fields: Vec<String>,
+}
+
 /// Execution result.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecResult {
@@ -5728,18 +5763,111 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             Err("This statement must be executed via the HTTP server endpoint".to_string())
         }
 
-        // ── Ask G — Pattern Hunt (Phase 1 = parser-only) ──
-        // Registry + executor land in Phase 2 and Phase 3 respectively.
-        // Until then the parser accepts the grammar but execution is a
-        // typed error pointing at the spec.
+        // ── Ask G — Pattern Hunt Phase 2: in-memory registry ──
+
         #[cfg(feature = "patterns")]
-        Statement::DefinePattern { .. }
-        | Statement::DropPattern { .. }
-        | Statement::ShowPatterns
-        | Statement::Hunt { .. } => {
-            Err("Pattern Hunt is parser-only in Phase 1 (Ask G). \
-                 Registry + execution land in Phase 2+. \
-                 See theory/scj/PATTERN_HUNT_SPEC_v0.1.md."
+        Statement::DefinePattern {
+            name,
+            pred,
+            or_groups,
+            weight,
+            using_fields,
+            replace,
+        } => {
+            if !replace && engine.pattern_registry.contains_key(name) {
+                return Err(format!(
+                    "Pattern '{name}' already exists; use DEFINE OR REPLACE PATTERN to overwrite."
+                ));
+            }
+            engine.pattern_registry.insert(
+                name.clone(),
+                PatternDef {
+                    name: name.clone(),
+                    pred: pred.clone(),
+                    or_groups: or_groups.clone(),
+                    weight: weight.clone(),
+                    using_fields: using_fields.clone(),
+                },
+            );
+            Ok(ExecResult::Ok)
+        }
+
+        #[cfg(feature = "patterns")]
+        Statement::DropPattern { name } => {
+            // Idempotent — silently OK when pattern absent. Mirrors
+            // DROP TABLE IF EXISTS convention.
+            engine.pattern_registry.remove(name);
+            Ok(ExecResult::Ok)
+        }
+
+        #[cfg(feature = "patterns")]
+        Statement::ShowPatterns => {
+            // One row per pattern, alphabetized for determinism.
+            let mut names: Vec<&String> = engine.pattern_registry.keys().collect();
+            names.sort();
+            let rows: Vec<crate::types::Record> = names
+                .into_iter()
+                .map(|n| {
+                    let mut record = std::collections::HashMap::new();
+                    record.insert("name".to_string(), crate::types::Value::Text(n.clone()));
+                    record
+                })
+                .collect();
+            Ok(ExecResult::Rows(rows))
+        }
+
+        #[cfg(feature = "patterns")]
+        Statement::Hunt {
+            pattern,
+            bundle,
+            excluding: _,
+            extra_on: _,
+            extra_where: _,
+            rank_by: _,
+            top: _,
+            project: _,
+        } => {
+            // Phase 2 — validate. Phase 3 — execute.
+            //
+            // 1. Pattern must exist in the registry.
+            let pat = engine
+                .pattern_registry
+                .get(pattern)
+                .ok_or_else(|| format!("Pattern '{pattern}' is not defined."))?
+                .clone();
+
+            // 2. Target bundle must exist (heap or mmap).
+            if engine.bundle(bundle).is_none() {
+                return Err(format!("Bundle '{bundle}' does not exist."));
+            }
+
+            // 3. Every USING field must be present on the bundle's schema.
+            //    Phase 2 uses heap_bundle for schema lookup; mmap-resident
+            //    schema lookup lands in a Phase 3 follow-up.
+            if let Some(store) = engine.heap_bundle(bundle) {
+                let mut field_names: std::collections::HashSet<&str> = std::collections::HashSet::new();
+                for f in &store.schema.base_fields {
+                    field_names.insert(f.name.as_str());
+                }
+                for f in &store.schema.fiber_fields {
+                    field_names.insert(f.name.as_str());
+                }
+                for using in &pat.using_fields {
+                    if !field_names.contains(using.as_str()) {
+                        return Err(format!(
+                            "Pattern '{pattern}' USES field '{using}' \
+                             which is missing from bundle '{bundle}'."
+                        ));
+                    }
+                }
+            }
+
+            // Validation passed. Execution proper (predicate filter +
+            // WEIGHT evaluation + TOP-N truncation + EXCLUDING IN
+            // bitmap difference) lands in Phase 3.
+            Err("HUNT execution lands in Phase 3. \
+                 Phase 2 validates pattern + bundle + USING fields. \
+                 See theory/scj/PATTERN_HUNT_SPEC_v0.1.md §5."
                 .to_string())
         }
     }

@@ -431,7 +431,7 @@ With the `patterns` feature off (Phases 1-5), the engine compiles and runs exact
 
 1. **Pattern registry persistence — in-memory only (v0.1) or always `gigi_patterns`-backed (v0.2)?** *Recommendation:* ship in-memory in Phase 2; the registry-to-bundle migration is Phase 6's whole job. Don't make Phase 2 wait on a bundle schema decision.
 
-2. **WEIGHT expression DSL scope.** Restricted arithmetic (`+ - * /`, parens, fields, literals, `CURVATURE`, `RESOLVE`) only in v0.1, or full `expr` chain including aggregates and conditionals? *Recommendation:* start restricted. Lift `CLASSIFY ... WHEN ... THEN ... ELSE` into WEIGHT in v0.2 if and only if SCJ's `risk_score.py` has a case that doesn't translate cleanly under the restricted DSL. Aggregates (SUM, AVG) inside WEIGHT need careful semantics (over what window?) and shouldn't ship until the use case is concrete.
+2. **WEIGHT expression DSL scope.** *Closed 2026-06-09 for the clip-semantic sub-question.* Restricted arithmetic (`+ - * /`, parens, fields, literals, `CURVATURE`, `RESOLVE`) plus two-arg `min(a, b)` / `max(a, b)` ships in v0.1. `min(sum, MAX_SCORE)` is the load-bearing use case SCJ flagged — it now works in-grammar with no consumer-side post-processing. Variadic min/max, conditional functions (`CLASSIFY ... WHEN ... THEN ... ELSE`, `IF`), and statistical aggregators (SUM, AVG inside WEIGHT) remain deferred to v0.2 — aggregates have non-trivial window semantics that need a concrete use case before the contract gets locked.
 
 3. **Anti-join key.** Base PK only (v0.1) or identity hash from ALTERNATE KEY (v0.2)? *Recommendation:* ship base PK in Phase 4. Add `EXCLUDING IN e BY identity` as a clause extension once Ask B (ALTERNATE KEY) ships. Until then, identity-stable exclusion is the consumer's problem (they can write a custom anti-join with EXISTS).
 
@@ -441,7 +441,7 @@ With the `patterns` feature off (Phases 1-5), the engine compiles and runs exact
 
 6. **`HUNT ... WITH CONFIDENCE` — what's the gate threshold and how does it compose with WEIGHT?** *Recommendation:* deferred to a follow-up sub-spec once Brain primitives expose `confidence` as a queryable scalar. The thinking: `WITH CONFIDENCE > 0.7` filters candidates whose `brain/confidence` lookup against the bundle's nearest-neighbor embedding exceeds the threshold, after WEIGHT ranking. Composes as a post-filter, not a pre-filter — confidence is expensive, you want it after the bitmap operations.
 
-7. **SCJ feedback — does the v0.1 grammar handle their full 10-weight risk_score Python today?** *Recommendation:* the appendix below shows the translation. The honest answer is: 8 of the 10 weights translate verbatim, 1 requires `CURVATURE(taint) > 0.7` (already supported), and 1 (their "function calls userspace and also accepts size param" cross-field implication) needs `CLASSIFY ... WHEN ... THEN ... ELSE` inside WEIGHT — which is what makes OQ-2 a real question rather than a hypothetical.
+7. **SCJ feedback — does the v0.1 grammar handle their full 10-weight risk_score Python today?** *Closed 2026-06-09.* SCJ's actual scorer (per their letter Appendix A, ratified after Round 10) is a flat linear sum of 10 binary fiber-field features clipped at MAX_SCORE. With `min(...)` in WEIGHT (closing OQ-2's clip sub-question), the translation is now 1:1 — no consumer-side workarounds, no cross-field synthetic columns, no CURVATURE term. See §16 for the verbatim translation.
 
 8. **What's the result envelope when HUNT returns zero candidates?** *Recommendation:* an empty result with `_score_status: AllFiltered` metadata, not a 404. Mirrors COVER's empty-result shape.
 
@@ -515,77 +515,87 @@ Phase 6 is unblocked when (a) Phases 1–5 are green for at least one release cy
 
 ## §16 — Appendix: SCJ's `risk_score.py` translated into v0.1 grammar
 
-SCJ's current Python heuristic (10 weights, anti-join against `confirmed_bugs`, top-50 over vid.sys):
+*Updated 2026-06-09 per SCJ Round 10 letter Appendix A. The earlier
+draft (Round 9 spec, kept as historical context below the v0.1 form)
+assumed `CURVATURE(taint)` and a cross-field `CLASSIFY` implication
+were in the scorer; SCJ confirmed they are not. The actual scorer is a
+flat linear sum of 10 binary fiber-field features clipped at MAX_SCORE.*
+
+SCJ's current Python heuristic — `scj/geodesic/risk_score.py`, ratified
+in their 2026-06-09 Round 10 letter as the load-bearing v0.1 reference:
 
 ```python
-# scj/geodesic/risk_score.py (sketch — actual file lives at the SCJ repo)
-def score(fn):
-    s = 0.0
-    if fn.has_alloc:               s += 3.0
-    if fn.has_arith:               s += 2.0
-    if fn.has_userloop:            s += 2.0
-    if fn.uses_untrusted_size:     s += 3.0
-    if fn.reaches_pool_alloc:      s += 4.0
-    if fn.taint_curvature > 0.7:   s += 2.0
-    if fn.calls_userspace:         s += 1.5
-    if fn.has_size_param:          s += 1.0
-    if fn.calls_userspace and fn.has_size_param:  s += 2.0   # cross-field
-    if fn.no_bounds_check:         s += 2.5
-    return s
+# 10 binary signature features → 1 score, clipped at MAX_SCORE.
+PATTERN_WEIGHTS = {
+    'cast_truncate_alloc':                3,  # integer-truncation in size arg
+    'multiply_before_alloc':              3,  # untrusted * untrusted → size
+    'shift_before_alloc':                 3,  # left-shift of untrusted → size
+    'param_times_const':                  2,  # n * sizeof(T) pattern
+    'unchecked_param_to_size':            2,  # untrusted param → alloc size
+    'mdl_shift_size':                     2,  # MDL byte-count shift pattern
+    'reaches_ExAllocatePool2':            1,  # downstream sink
+    'reaches_MmBuildMdlForNonPagedPool':  1,  # downstream sink
+    'has_probe_read':                     1,  # validates input (slight risk↑)
+    'has_probe_write':                    1,  # validates input (slight risk↑)
+}
+MAX_SCORE = 10
+AUDIT_THRESHOLD = 7  # consumer-side gate, applied AFTER HUNT
 
-# scripts/scj_hunt_hyperv.py
-candidates = [f for f in vid_funcs if matches_predicate(f)]
+def score(fn):
+    s = sum(getattr(fn, k) * w for k, w in PATTERN_WEIGHTS.items())
+    return min(s, MAX_SCORE)
+
+# scripts/scj_hunt_vid.py — replaced 1:1 by the GQL below.
+candidates = [f for f in vid_funcs if f.cast_truncate_alloc >= 0]  # passthrough predicate
 candidates = [f for f in candidates if f.pk not in confirmed_bugs_pks]
 candidates.sort(key=score, reverse=True)
 return candidates[:50]
 ```
 
-In v0.1 GQL (8 of 10 weights translate directly):
+In v0.1 GQL — verbatim, no consumer-side workaround:
 
 ```sql
-DEFINE PATTERN scj_hyperv_v1 AS
-    has_alloc = 1
-    AND (has_arith = 1 OR has_userloop = 1)
-    AND uses_untrusted_size = 1
+DEFINE PATTERN scj_vid_v01 AS
+    cast_truncate_alloc >= 0
 WEIGHT (
-    has_alloc * 3.0
-    + has_arith * 2.0
-    + has_userloop * 2.0
-    + uses_untrusted_size * 3.0
-    + reaches_pool_alloc * 4.0
-    + (CURVATURE(taint) > 0.7) * 2.0
-    + calls_userspace * 1.5
-    + has_size_param * 1.0
-    + no_bounds_check * 2.5
+    min(
+        cast_truncate_alloc                  * 3
+      + multiply_before_alloc                * 3
+      + shift_before_alloc                   * 3
+      + param_times_const                    * 2
+      + unchecked_param_to_size              * 2
+      + mdl_shift_size                       * 2
+      + reaches_ExAllocatePool2              * 1
+      + reaches_MmBuildMdlForNonPagedPool    * 1
+      + has_probe_read                       * 1
+      + has_probe_write                      * 1,
+        10
+    )
 )
-USING (has_alloc, has_arith, has_userloop, uses_untrusted_size,
-       reaches_pool_alloc, taint, calls_userspace, has_size_param, no_bounds_check);
+USING (cast_truncate_alloc, multiply_before_alloc, shift_before_alloc,
+       param_times_const, unchecked_param_to_size, mdl_shift_size,
+       reaches_ExAllocatePool2, reaches_MmBuildMdlForNonPagedPool,
+       has_probe_read, has_probe_write);
 
-HUNT scj_hyperv_v1 IN vid_funcs
+HUNT scj_vid_v01 IN vid_funcs
     EXCLUDING IN confirmed_bugs
     TOP 50
     PROJECT (name, module, _score);
 ```
 
-The one weight that does **not** translate cleanly in v0.1 is the cross-field implication `calls_userspace AND has_size_param → +2.0`. In v0.1 a consumer must work around it with a synthetic field at ingest time:
+The `AUDIT_THRESHOLD = 7` gate stays consumer-side (one `WHERE _score >= 7` post-filter, or simpler: TUI hides rows below threshold). Threshold tuning is a consumer-council concern, not a substrate concern — keeping it out of WEIGHT keeps the pattern catalog stable across threshold experiments.
 
-```sql
--- Consumer-side ingest: add a derived boolean column
--- (in their extraction pipeline, not in GQL)
-fn.userspace_and_size = fn.calls_userspace and fn.has_size_param
-```
+**The honest summary**: with `min(...)` in v0.1's grammar (closing OQ-2), `risk_score.py` translates 1:1 — no CURVATURE term, no cross-field CLASSIFY implication, no synthetic-column workaround. The orchestrator (`scj_hunt_vid.py`) collapses to a single `HUNT` statement. That's the load-bearing demonstration.
 
-Then add `+ userspace_and_size * 2.0` to the WEIGHT. This is annoying but acceptable for v0.1. v0.2 lifts `CLASSIFY ... WHEN ... THEN ... ELSE` into WEIGHT (OQ-2) and the cross-field implication writes as:
+### What ships alongside the appendix (Round 10 follow-up)
 
-```sql
-WEIGHT (
-    ... existing weights ...
-    + (CLASSIFY WHEN calls_userspace = 1 AND has_size_param = 1 THEN 2.0 ELSE 0.0)
-)
-```
+- **`min(a, b)` and `max(a, b)`** in WEIGHT expressions (closes OQ-2 clip sub-question)
+- **`_score` pinned LAST** in HTTP HUNT row JSON (SCJ §5(a)) — TUI column rendering doesn't need column-order detection
+- **EXCLUDING IN on COVER** — same anti-join semantics as HUNT (PH15)
+- **HTTP surface** — `POST /v1/bundles/{name}/hunt`, `POST /v1/patterns`, `GET /v1/patterns`, `DELETE /v1/patterns/{name}` (non-GQL clients can drive Patterns directly)
 
-at which point the translation is complete.
+### Historical Round 9 draft (deprecated)
 
-The honest summary: **v0.1 replaces 8/10 of risk_score.py verbatim, 1 with `CURVATURE`, and 1 with a consumer-side derived field. The orchestrator (`scj_hunt_hyperv.py`) collapses to one `HUNT` statement.** That's the load-bearing demonstration.
+The earlier appendix assumed the scorer included `CURVATURE(taint) > 0.7` and a cross-field implication `calls_userspace AND has_size_param → +2.0`. Per SCJ's 2026-06-09 letter, the actual scorer does neither — flat linear weighted sum with a single `min` clip is the production shape. The CURVATURE/CLASSIFY discussion remains relevant for v0.2 (different patterns, different consumer catalogs) but is not on the v0.1 critical path.
 
-— Spec authored 2026-06-06 (Gigi engine team)
+— Spec authored 2026-06-06; appendix corrected 2026-06-09 (Gigi engine team)

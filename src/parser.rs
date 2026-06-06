@@ -123,6 +123,16 @@ pub enum Statement {
         first: Option<usize>,
         skip: Option<usize>,
         all: bool,
+        /// Ask G Phase 4 follow-up (PH15): EXCLUDING IN clauses
+        /// composing with COVER. Same left-anti-join-by-base-PK
+        /// semantics as HUNT. Empty `Vec` when no EXCLUDING IN clauses
+        /// are present.
+        ///
+        /// Gated on the `patterns` feature flag — when the flag is off,
+        /// this Vec is always empty (set by the parser) and the executor
+        /// is a no-op over it.
+        #[cfg(feature = "patterns")]
+        excluding: Vec<String>,
     },
 
     // ── Aggregation ──
@@ -1942,6 +1952,8 @@ impl Parser {
         let mut first = None;
         let mut skip = None;
         let mut all = false;
+        #[cfg(feature = "patterns")]
+        let mut excluding: Vec<String> = Vec::new();
 
         // Parse optional clauses in any order
         loop {
@@ -1981,6 +1993,21 @@ impl Parser {
             } else if self.is_keyword("SKIP") {
                 self.advance();
                 skip = Some(self.parse_usize()?);
+            } else if cfg!(feature = "patterns") && self.is_keyword("EXCLUDING") {
+                // Ask G — PH15: COVER accepts the same EXCLUDING IN clause
+                // HUNT does. Behind `patterns` feature flag.
+                self.advance();
+                self.expect_keyword("IN")?;
+                #[cfg(feature = "patterns")]
+                {
+                    excluding.push(self.expect_word()?);
+                }
+                #[cfg(not(feature = "patterns"))]
+                {
+                    return Err(
+                        "EXCLUDING IN requires the `patterns` feature flag".to_string(),
+                    );
+                }
             } else {
                 break;
             }
@@ -1997,6 +2024,8 @@ impl Parser {
             first,
             skip,
             all,
+            #[cfg(feature = "patterns")]
+            excluding,
         })
     }
 
@@ -4837,6 +4866,88 @@ fn pk_key(v: &crate::types::Value) -> Option<String> {
     }
 }
 
+/// Apply an `EXCLUDING IN <bundle>...` anti-join to a row set in place.
+///
+/// For each excluded bundle, validates it exists, fetches all rows via a
+/// no-WHERE Cover, extracts the base PK value from each, and accumulates
+/// into a HashSet keyed by `pk_key()`. After the union exclusion set is
+/// built, retains only rows whose `target_pk_field` value is NOT in the
+/// set.
+///
+/// Used by both HUNT (Phase 4) and COVER (Phase 4 PH15 follow-up). Same
+/// PK-only semantics: the excluded bundle's fiber is never read, so
+/// schema mismatches between target and exclusion are harmless.
+///
+/// `target_pk_field == None` (rare: target bundle has no base field on
+/// the heap side, e.g. fully mmap'd) is a no-op — we can't filter
+/// without a PK to compare. The retain is skipped and rows pass through.
+#[cfg(feature = "patterns")]
+fn apply_excluding_in_filter(
+    engine: &mut crate::engine::Engine,
+    excluding: &[String],
+    target_pk_field: &Option<String>,
+    rows: &mut Vec<crate::types::Record>,
+) -> Result<(), String> {
+    if excluding.is_empty() {
+        return Ok(());
+    }
+    let mut exclusion_pks: std::collections::HashSet<String> =
+        std::collections::HashSet::new();
+    for excl_name in excluding {
+        if engine.bundle(excl_name).is_none() {
+            return Err(format!(
+                "EXCLUDING IN bundle '{excl_name}' does not exist."
+            ));
+        }
+        let excl_pk_field: String = engine
+            .heap_bundle(excl_name)
+            .and_then(|s| s.schema.base_fields.first().map(|f| f.name.clone()))
+            .unwrap_or_default();
+        let excl_cover = Statement::Cover {
+            bundle: excl_name.clone(),
+            on_conditions: Vec::new(),
+            where_conditions: Vec::new(),
+            or_groups: Vec::new(),
+            distinct_field: None,
+            project: None,
+            rank_by: None,
+            first: None,
+            skip: None,
+            all: true,
+            excluding: Vec::new(),
+        };
+        let excl_rows = match execute(engine, &excl_cover)? {
+            ExecResult::Rows(rs) => rs,
+            other => {
+                return Err(format!(
+                    "EXCLUDING IN inner Cover on '{excl_name}' returned non-Rows: {other:?}"
+                ));
+            }
+        };
+        for row in &excl_rows {
+            if let Some(v) = row.get(&excl_pk_field) {
+                if let Some(k) = pk_key(v) {
+                    exclusion_pks.insert(k);
+                }
+            }
+        }
+    }
+    if let Some(pk_field) = target_pk_field {
+        rows.retain(|row| {
+            if let Some(v) = row.get(pk_field) {
+                if let Some(k) = pk_key(v) {
+                    !exclusion_pks.contains(&k)
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        });
+    }
+    Ok(())
+}
+
 /// Coerce a Value to f64 for sort-key comparison. Returns None when the
 /// value can't be reduced to a number.
 #[cfg(feature = "patterns")]
@@ -5204,6 +5315,8 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             first,
             skip,
             all: _,
+            #[cfg(feature = "patterns")]
+            excluding,
         } => {
             let store = engine
                 .bundle(bundle)
@@ -5240,6 +5353,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 Some(or_qcs.as_slice())
             };
 
+            // PH15: same defer trick — when EXCLUDING IN is present, the
+            // anti-join must see the full result set (after RANK, before
+            // SKIP/FIRST) so the FIRST budget isn't spent on rows we're
+            // about to drop. NOTE: if PROJECT omits the base PK, the
+            // post-projection EXCLUDING IN can't match. v0.1 contract:
+            // include the PK in PROJECT (or omit PROJECT) when using
+            // EXCLUDING IN. Documented in spec §6.
+            #[cfg(feature = "patterns")]
+            let (eff_first_p, eff_skip_p) = if !excluding.is_empty() {
+                (None, None)
+            } else {
+                (*first, *skip)
+            };
+            #[cfg(not(feature = "patterns"))]
+            let (eff_first_p, eff_skip_p) = (*first, *skip);
+
             // Use projected query if PROJECT specified
             let results = if let Some(fields) = project {
                 let sort_refs: Vec<(&str, bool)> = rank_by
@@ -5256,8 +5385,8 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     &conditions,
                     or_ref,
                     sort_opt,
-                    *first,
-                    *skip,
+                    eff_first_p,
+                    eff_skip_p,
                     Some(&field_refs),
                 );
                 rows
@@ -5268,8 +5397,36 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     .and_then(|specs| specs.first())
                     .map(|s| (Some(s.field.as_str()), s.desc))
                     .unwrap_or((None, false));
-                store.filtered_query_ex(&conditions, or_ref, sort_by, sort_desc, *first, *skip)
+                store.filtered_query_ex(&conditions, or_ref, sort_by, sort_desc, eff_first_p, eff_skip_p)
             };
+
+            // ── PH15 — apply EXCLUDING IN anti-join (Ask G follow-up) ──
+            // Reuses the same helper HUNT uses. PK-only access; bundle
+            // schema mismatches between target and exclusion are
+            // harmless. Empty `excluding` short-circuits the helper.
+            #[cfg(feature = "patterns")]
+            let mut results = results;
+            #[cfg(feature = "patterns")]
+            {
+                let target_pk_field: Option<String> = engine
+                    .heap_bundle(bundle)
+                    .and_then(|s| s.schema.base_fields.first().map(|f| f.name.clone()));
+                apply_excluding_in_filter(engine, excluding, &target_pk_field, &mut results)?;
+
+                // Apply the deferred SKIP + FIRST after the anti-join.
+                if !excluding.is_empty() {
+                    if let Some(n) = skip {
+                        if *n < results.len() {
+                            results.drain(0..*n);
+                        } else {
+                            results.clear();
+                        }
+                    }
+                    if let Some(n) = first {
+                        results.truncate(*n);
+                    }
+                }
+            }
 
             Ok(ExecResult::Rows(results))
         }
@@ -6028,63 +6185,12 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 }
             }
 
-            // ── 4. EXCLUDING IN — left-anti-join by base PK ─────────────
-            //
-            // Phase 4 v0.1 contract: match by PK *value*. The exclusion
-            // bundle's PK field name can differ from the target's — only
-            // values are compared. Each excluded bundle contributes its
-            // full PK set; multiple EXCLUDING IN clauses union into a
-            // single exclusion set (order-independent — set union).
-            //
-            // v0.1 implementation: extract PK values via a no-WHERE COVER
-            // on each excluded bundle, render to a canonical String key
-            // (so any Value variant including Float can go in a HashSet),
-            // then filter post-COVER rows.
-            //
-            // The spec's "Roaring bitmap difference" optimization (§6.1
-            // step 3) lands in a perf follow-up; correctness ships now.
-            // v0.2 adds `EXCLUDING IN e BY identity` once Ask B (ALTERNATE
-            // KEY) ships.
-            let mut exclusion_pks: std::collections::HashSet<String> =
-                std::collections::HashSet::new();
-            for excl_name in excluding {
-                if engine.bundle(excl_name).is_none() {
-                    return Err(format!(
-                        "EXCLUDING IN bundle '{excl_name}' does not exist."
-                    ));
-                }
-                let excl_pk_field: String = engine
-                    .heap_bundle(excl_name)
-                    .and_then(|s| s.schema.base_fields.first().map(|f| f.name.clone()))
-                    .unwrap_or_default();
-                let excl_cover = Statement::Cover {
-                    bundle: excl_name.clone(),
-                    on_conditions: Vec::new(),
-                    where_conditions: Vec::new(),
-                    or_groups: Vec::new(),
-                    distinct_field: None,
-                    project: None,
-                    rank_by: None,
-                    first: None,
-                    skip: None,
-                    all: true,
-                };
-                let excl_rows = match execute(engine, &excl_cover)? {
-                    ExecResult::Rows(rs) => rs,
-                    other => {
-                        return Err(format!(
-                            "EXCLUDING IN inner Cover on '{excl_name}' returned non-Rows: {other:?}"
-                        ));
-                    }
-                };
-                for row in &excl_rows {
-                    if let Some(v) = row.get(&excl_pk_field) {
-                        if let Some(k) = pk_key(v) {
-                            exclusion_pks.insert(k);
-                        }
-                    }
-                }
-            }
+            // EXCLUDING IN handling is unified with COVER's via
+            // `apply_excluding_in_filter` (defined above). We collect
+            // the exclusion PK set up-front so the heap_bundle borrow
+            // for `base_pk_field` doesn't conflict with the inner
+            // Cover executions in the helper. Filtering happens at
+            // step 6b after the main COVER returns.
 
             // ── 5. Parse WEIGHT expression once per HUNT ────────────────
             let weight_expr: Option<WeightExpr> = match &pat.weight {
@@ -6108,6 +6214,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 first: None,
                 skip: None,
                 all: true,
+                excluding: Vec::new(),
             };
             let mut rows: Vec<crate::types::Record> = match execute(engine, &cover)? {
                 ExecResult::Rows(rs) => rs,
@@ -6118,24 +6225,8 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 }
             };
 
-            // ── 6b. Apply EXCLUDING IN anti-join ────────────────────────
-            // Drop any row whose target-bundle PK value is in the union
-            // of exclusion PK sets. Uses the canonical key from pk_key().
-            if !exclusion_pks.is_empty() {
-                if let Some(target_pk_field) = &base_pk_field {
-                    rows.retain(|row| {
-                        if let Some(v) = row.get(target_pk_field) {
-                            if let Some(k) = pk_key(v) {
-                                !exclusion_pks.contains(&k)
-                            } else {
-                                true
-                            }
-                        } else {
-                            true
-                        }
-                    });
-                }
-            }
+            // ── 6b. Apply EXCLUDING IN anti-join via shared helper ──────
+            apply_excluding_in_filter(engine, excluding, &base_pk_field, &mut rows)?;
 
             // ── 7. Evaluate WEIGHT → augment rows with `_score` ─────────
             for row in rows.iter_mut() {

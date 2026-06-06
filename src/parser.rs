@@ -4817,6 +4817,26 @@ fn eval_weight(expr: &WeightExpr, row: &crate::types::Record) -> f64 {
     }
 }
 
+/// Render a Value to a canonical String key, suitable for hashing in
+/// the EXCLUDING IN anti-join set. Each Value variant gets a unique
+/// prefix so `Integer(1)` and `Float(1.0)` and `Text("1")` are distinct
+/// — PK semantics demand exact-value equality, not numeric coercion.
+///
+/// Returns None for Null / Vector / Binary (those aren't valid PK types
+/// in this engine).
+#[cfg(feature = "patterns")]
+fn pk_key(v: &crate::types::Value) -> Option<String> {
+    use crate::types::Value;
+    match v {
+        Value::Integer(i) => Some(format!("i{i}")),
+        Value::Float(f) => Some(format!("f{f}")),
+        Value::Text(s) => Some(format!("t{s}")),
+        Value::Bool(b) => Some(format!("b{b}")),
+        Value::Timestamp(t) => Some(format!("ts{t}")),
+        Value::Null | Value::Vector(_) | Value::Binary(_) => None,
+    }
+}
+
 /// Coerce a Value to f64 for sort-key comparison. Returns None when the
 /// value can't be reduced to a number.
 #[cfg(feature = "patterns")]
@@ -6008,17 +6028,62 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 }
             }
 
-            // ── 4. EXCLUDING IN — Phase 4 territory ─────────────────────
-            // Phase 3 ships HUNT without anti-join; Phase 4 wires the
-            // Roaring bitmap difference. Don't silently ignore the
-            // clause — error explicitly so consumers can wait for Phase 4.
-            if !excluding.is_empty() {
-                return Err(format!(
-                    "EXCLUDING IN lands in Phase 4 (theory/scj/PATTERN_HUNT_SPEC_v0.1.md §6). \
-                     HUNT '{pattern}' against '{bundle}' has {} EXCLUDING IN clause(s); \
-                     drop them or wait for Phase 4 to ship the anti-join.",
-                    excluding.len()
-                ));
+            // ── 4. EXCLUDING IN — left-anti-join by base PK ─────────────
+            //
+            // Phase 4 v0.1 contract: match by PK *value*. The exclusion
+            // bundle's PK field name can differ from the target's — only
+            // values are compared. Each excluded bundle contributes its
+            // full PK set; multiple EXCLUDING IN clauses union into a
+            // single exclusion set (order-independent — set union).
+            //
+            // v0.1 implementation: extract PK values via a no-WHERE COVER
+            // on each excluded bundle, render to a canonical String key
+            // (so any Value variant including Float can go in a HashSet),
+            // then filter post-COVER rows.
+            //
+            // The spec's "Roaring bitmap difference" optimization (§6.1
+            // step 3) lands in a perf follow-up; correctness ships now.
+            // v0.2 adds `EXCLUDING IN e BY identity` once Ask B (ALTERNATE
+            // KEY) ships.
+            let mut exclusion_pks: std::collections::HashSet<String> =
+                std::collections::HashSet::new();
+            for excl_name in excluding {
+                if engine.bundle(excl_name).is_none() {
+                    return Err(format!(
+                        "EXCLUDING IN bundle '{excl_name}' does not exist."
+                    ));
+                }
+                let excl_pk_field: String = engine
+                    .heap_bundle(excl_name)
+                    .and_then(|s| s.schema.base_fields.first().map(|f| f.name.clone()))
+                    .unwrap_or_default();
+                let excl_cover = Statement::Cover {
+                    bundle: excl_name.clone(),
+                    on_conditions: Vec::new(),
+                    where_conditions: Vec::new(),
+                    or_groups: Vec::new(),
+                    distinct_field: None,
+                    project: None,
+                    rank_by: None,
+                    first: None,
+                    skip: None,
+                    all: true,
+                };
+                let excl_rows = match execute(engine, &excl_cover)? {
+                    ExecResult::Rows(rs) => rs,
+                    other => {
+                        return Err(format!(
+                            "EXCLUDING IN inner Cover on '{excl_name}' returned non-Rows: {other:?}"
+                        ));
+                    }
+                };
+                for row in &excl_rows {
+                    if let Some(v) = row.get(&excl_pk_field) {
+                        if let Some(k) = pk_key(v) {
+                            exclusion_pks.insert(k);
+                        }
+                    }
+                }
             }
 
             // ── 5. Parse WEIGHT expression once per HUNT ────────────────
@@ -6052,6 +6117,25 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     ));
                 }
             };
+
+            // ── 6b. Apply EXCLUDING IN anti-join ────────────────────────
+            // Drop any row whose target-bundle PK value is in the union
+            // of exclusion PK sets. Uses the canonical key from pk_key().
+            if !exclusion_pks.is_empty() {
+                if let Some(target_pk_field) = &base_pk_field {
+                    rows.retain(|row| {
+                        if let Some(v) = row.get(target_pk_field) {
+                            if let Some(k) = pk_key(v) {
+                                !exclusion_pks.contains(&k)
+                            } else {
+                                true
+                            }
+                        } else {
+                            true
+                        }
+                    });
+                }
+            }
 
             // ── 7. Evaluate WEIGHT → augment rows with `_score` ─────────
             for row in rows.iter_mut() {

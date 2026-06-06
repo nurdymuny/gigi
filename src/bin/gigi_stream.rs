@@ -14062,16 +14062,8 @@ async fn hunt_http(
     })?;
     match result {
         gigi::parser::ExecResult::Rows(rows) => {
-            let out: Vec<serde_json::Value> = rows
-                .into_iter()
-                .map(|row| {
-                    let mut obj = serde_json::Map::new();
-                    for (k, v) in row {
-                        obj.insert(k, pattern_value_to_json(&v));
-                    }
-                    serde_json::Value::Object(obj)
-                })
-                .collect();
+            let out: Vec<serde_json::Value> =
+                rows.into_iter().map(hunt_row_to_json).collect();
             Ok(Json(out))
         }
         _ => Err((
@@ -14083,28 +14075,29 @@ async fn hunt_http(
     }
 }
 
-/// Convert a `gigi::types::Value` to a JSON value for the HUNT response.
-/// Suffixed with `_pattern` to avoid collision with the existing
-/// `value_to_json` higher up in this binary.
+/// Build the JSON object for one HUNT result row.
+///
+/// SCJ §5(a): `_score` is always emitted LAST so TUI clients can render
+/// the score column without column-order detection. (Note: JSON object
+/// keys are semantically unordered, but real-world consumers — jq, TUI
+/// table renderers, debug logs — often respect serialization order.
+/// The `preserve_order` feature on `serde_json` makes `serde_json::Map`
+/// an order-preserving structure for exactly this reason.)
 #[cfg(feature = "patterns")]
-fn pattern_value_to_json(v: &gigi::types::Value) -> serde_json::Value {
-    use gigi::types::Value;
-    match v {
-        Value::Integer(i) => serde_json::json!(i),
-        Value::Float(f) => {
-            if f.is_finite() {
-                serde_json::json!(f)
-            } else {
-                serde_json::Value::Null
-            }
+fn hunt_row_to_json(row: gigi::types::Record) -> serde_json::Value {
+    let mut obj = serde_json::Map::new();
+    let mut score: Option<gigi::types::Value> = None;
+    for (k, v) in row {
+        if k == "_score" {
+            score = Some(v);
+        } else {
+            obj.insert(k, value_to_json(&v));
         }
-        Value::Text(s) => serde_json::Value::String(s.clone()),
-        Value::Bool(b) => serde_json::json!(b),
-        Value::Timestamp(t) => serde_json::json!(t),
-        Value::Vector(v) => serde_json::json!(v),
-        Value::Binary(b) => serde_json::json!(b),
-        Value::Null => serde_json::Value::Null,
     }
+    if let Some(s) = score {
+        obj.insert("_score".to_string(), value_to_json(&s));
+    }
+    serde_json::Value::Object(obj)
 }
 
 #[tokio::main]
@@ -15434,7 +15427,7 @@ mod tests {
     fn test_value_to_json_escapes_text_starting_with_b64() {
         // value_to_json must emit the extra prefix so the receiver decodes correctly.
         let v = Value::Text("b64:sensitive data".into());
-        let json = pattern_value_to_json(&v);
+        let json = value_to_json(&v);
         assert_eq!(
             json,
             serde_json::Value::String("b64:b64:sensitive data".into()),
@@ -15448,11 +15441,55 @@ mod tests {
         let wire = "b64:b64:user typed this literally";
         let v = json_to_value(&serde_json::Value::String(wire.into()));
         assert_eq!(v, Value::Text("b64:user typed this literally".into()));
-        let re_encoded = pattern_value_to_json(&v);
+        let re_encoded = value_to_json(&v);
         assert_eq!(
             re_encoded,
             serde_json::Value::String(wire.into()),
             "round-trip must reproduce the original escaped wire string"
+        );
+    }
+
+    /// SCJ Round 10 §5(a): `_score` must always be the LAST key in the
+    /// serialized HUNT row JSON so TUI consumers can render score columns
+    /// without inspecting the schema. Verified at the serialization layer
+    /// since JSON object key order is the contract bit on the wire.
+    #[cfg(feature = "patterns")]
+    #[test]
+    fn hunt_row_to_json_pins_score_last_when_present() {
+        let mut row = gigi::types::Record::new();
+        row.insert("_score".to_string(), Value::Float(7.5));
+        row.insert("alpha".to_string(), Value::Integer(1));
+        row.insert("zulu".to_string(), Value::Integer(2));
+        row.insert("mike".to_string(), Value::Integer(3));
+        let json = hunt_row_to_json(row);
+        let serialized = serde_json::to_string(&json).expect("serialize");
+        // Find the offset of every key; `_score` must be greatest.
+        let pos_score = serialized.find("\"_score\"").expect("_score present");
+        for k in ["alpha", "mike", "zulu"] {
+            let needle = format!("\"{k}\"");
+            let pos = serialized
+                .find(&needle)
+                .unwrap_or_else(|| panic!("{k} present"));
+            assert!(
+                pos < pos_score,
+                "`{k}` must appear before `_score` in {serialized}"
+            );
+        }
+    }
+
+    /// Absent `_score` must NOT inject one — the helper only re-orders,
+    /// never invents columns.
+    #[cfg(feature = "patterns")]
+    #[test]
+    fn hunt_row_to_json_does_not_inject_score_when_absent() {
+        let mut row = gigi::types::Record::new();
+        row.insert("alpha".to_string(), Value::Integer(1));
+        row.insert("beta".to_string(), Value::Integer(2));
+        let json = hunt_row_to_json(row);
+        let serialized = serde_json::to_string(&json).expect("serialize");
+        assert!(
+            !serialized.contains("_score"),
+            "no _score in input → no _score in output: {serialized}"
         );
     }
 

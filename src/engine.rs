@@ -395,6 +395,18 @@ pub struct Engine {
     trigger_manager: TriggerManager,
     /// Pending notifications from the last mutation (drained by caller).
     pending_notifications: Vec<Notification>,
+    /// Ask G — Pattern Hunt in-memory registry.
+    ///
+    /// Lifetime tied to the engine process; lost on restart. Mirrors the
+    /// PREPARE precedent. Phase 6 graduates this to a `gigi_patterns`
+    /// bundle for persistence + sharing across operators
+    /// (theory/scj/PATTERN_HUNT_SPEC_v0.1.md §11 OQ-1).
+    ///
+    /// Made `pub(crate)` so the parser's `execute()` function can mutate
+    /// it directly; no API leak outside the crate.
+    #[cfg(feature = "patterns")]
+    pub(crate) pattern_registry:
+        std::collections::HashMap<String, crate::parser::PatternDef>,
 }
 
 impl Engine {
@@ -479,6 +491,8 @@ impl Engine {
             query_cache: QueryCache::new(),
             trigger_manager,
             pending_notifications: Vec::new(),
+            #[cfg(feature = "patterns")]
+            pattern_registry: std::collections::HashMap::new(),
         })
     }
 
@@ -646,6 +660,8 @@ impl Engine {
             query_cache: QueryCache::new(),
             trigger_manager: TriggerManager::new(),
             pending_notifications: Vec::new(),
+            #[cfg(feature = "patterns")]
+            pattern_registry: std::collections::HashMap::new(),
         })
     }
 

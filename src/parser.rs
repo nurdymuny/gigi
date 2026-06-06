@@ -4683,6 +4683,152 @@ pub struct PatternDef {
     pub using_fields: Vec<String>,
 }
 
+/// Ask G — Phase 3: parsed WEIGHT-expression AST.
+///
+/// Built once per HUNT invocation from the raw `Vec<String>` tokens that
+/// Phase 1 stashes on `PatternDef.weight`, then evaluated against each
+/// surviving row to produce the `_score` field. NULL / missing fields
+/// coerce to 0.0 per spec §5.3; bool fields coerce to {0.0, 1.0}.
+///
+/// v0.1 surface: restricted arithmetic over fields and literals.
+/// Comparison-in-WEIGHT (`field > threshold`), `CURVATURE(...)` calls,
+/// and `CLASSIFY ... WHEN ... THEN ... ELSE` lift in v0.2 (spec §11 OQ-2).
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone)]
+pub enum WeightExpr {
+    Lit(f64),
+    Field(String),
+    Add(Box<WeightExpr>, Box<WeightExpr>),
+    Sub(Box<WeightExpr>, Box<WeightExpr>),
+    Mul(Box<WeightExpr>, Box<WeightExpr>),
+    Div(Box<WeightExpr>, Box<WeightExpr>),
+}
+
+/// Parse a tokenized WEIGHT body into a WeightExpr AST.
+/// Recursive-descent grammar: `expr := term ('+' | '-' term)*`,
+/// `term := atom ('*' | '/' atom)*`, `atom := number | ident | '(' expr ')'`.
+#[cfg(feature = "patterns")]
+fn parse_weight_expr(tokens: &[String]) -> Result<WeightExpr, String> {
+    if tokens.is_empty() {
+        return Err("Empty WEIGHT expression".to_string());
+    }
+    let mut pos: usize = 0;
+    let expr = parse_weight_add_sub(tokens, &mut pos)?;
+    if pos != tokens.len() {
+        return Err(format!(
+            "WEIGHT: unexpected trailing tokens at position {pos}: {:?}",
+            &tokens[pos..]
+        ));
+    }
+    Ok(expr)
+}
+
+#[cfg(feature = "patterns")]
+fn parse_weight_add_sub(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, String> {
+    let mut left = parse_weight_mul_div(tokens, pos)?;
+    while *pos < tokens.len() {
+        let op = tokens[*pos].as_str();
+        if op != "+" && op != "-" {
+            break;
+        }
+        *pos += 1;
+        let right = parse_weight_mul_div(tokens, pos)?;
+        left = match op {
+            "+" => WeightExpr::Add(Box::new(left), Box::new(right)),
+            "-" => WeightExpr::Sub(Box::new(left), Box::new(right)),
+            _ => unreachable!(),
+        };
+    }
+    Ok(left)
+}
+
+#[cfg(feature = "patterns")]
+fn parse_weight_mul_div(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, String> {
+    let mut left = parse_weight_atom(tokens, pos)?;
+    while *pos < tokens.len() {
+        let op = tokens[*pos].as_str();
+        if op != "*" && op != "/" {
+            break;
+        }
+        *pos += 1;
+        let right = parse_weight_atom(tokens, pos)?;
+        left = match op {
+            "*" => WeightExpr::Mul(Box::new(left), Box::new(right)),
+            "/" => WeightExpr::Div(Box::new(left), Box::new(right)),
+            _ => unreachable!(),
+        };
+    }
+    Ok(left)
+}
+
+#[cfg(feature = "patterns")]
+fn parse_weight_atom(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, String> {
+    if *pos >= tokens.len() {
+        return Err("WEIGHT: unexpected end of expression".to_string());
+    }
+    let tok = tokens[*pos].clone();
+    if tok == "(" {
+        *pos += 1;
+        let inner = parse_weight_add_sub(tokens, pos)?;
+        if *pos >= tokens.len() || tokens[*pos] != ")" {
+            return Err("WEIGHT: expected ')'".to_string());
+        }
+        *pos += 1;
+        Ok(inner)
+    } else if let Ok(n) = tok.parse::<f64>() {
+        *pos += 1;
+        Ok(WeightExpr::Lit(n))
+    } else {
+        // Identifier (field reference).
+        *pos += 1;
+        Ok(WeightExpr::Field(tok))
+    }
+}
+
+/// Evaluate a WeightExpr against a Record. NULL / missing → 0.0;
+/// Bool → {0.0, 1.0}; Integer → f64; Text/Vector/etc → 0.0.
+#[cfg(feature = "patterns")]
+fn eval_weight(expr: &WeightExpr, row: &crate::types::Record) -> f64 {
+    match expr {
+        WeightExpr::Lit(n) => *n,
+        WeightExpr::Field(name) => match row.get(name) {
+            Some(crate::types::Value::Integer(i)) => *i as f64,
+            Some(crate::types::Value::Float(f)) => *f,
+            Some(crate::types::Value::Bool(b)) => {
+                if *b {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            _ => 0.0, // Null / Text / Vector / Binary / missing → 0.0
+        },
+        WeightExpr::Add(l, r) => eval_weight(l, row) + eval_weight(r, row),
+        WeightExpr::Sub(l, r) => eval_weight(l, row) - eval_weight(r, row),
+        WeightExpr::Mul(l, r) => eval_weight(l, row) * eval_weight(r, row),
+        WeightExpr::Div(l, r) => {
+            let denom = eval_weight(r, row);
+            if denom == 0.0 {
+                f64::NAN
+            } else {
+                eval_weight(l, row) / denom
+            }
+        }
+    }
+}
+
+/// Coerce a Value to f64 for sort-key comparison. Returns None when the
+/// value can't be reduced to a number.
+#[cfg(feature = "patterns")]
+fn value_to_f64(v: &crate::types::Value) -> Option<f64> {
+    match v {
+        crate::types::Value::Integer(i) => Some(*i as f64),
+        crate::types::Value::Float(f) => Some(*f),
+        crate::types::Value::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        _ => None,
+    }
+}
+
 /// Execution result.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecResult {
@@ -5820,32 +5966,32 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::Hunt {
             pattern,
             bundle,
-            excluding: _,
+            excluding,
             extra_on: _,
             extra_where: _,
             rank_by: _,
-            top: _,
-            project: _,
+            top,
+            project,
         } => {
-            // Phase 2 — validate. Phase 3 — execute.
-            //
-            // 1. Pattern must exist in the registry.
+            // ── 1-3. Validation (same as Phase 2) ───────────────────────
             let pat = engine
                 .pattern_registry
                 .get(pattern)
                 .ok_or_else(|| format!("Pattern '{pattern}' is not defined."))?
                 .clone();
-
-            // 2. Target bundle must exist (heap or mmap).
             if engine.bundle(bundle).is_none() {
                 return Err(format!("Bundle '{bundle}' does not exist."));
             }
 
-            // 3. Every USING field must be present on the bundle's schema.
-            //    Phase 2 uses heap_bundle for schema lookup; mmap-resident
-            //    schema lookup lands in a Phase 3 follow-up.
+            // Capture the base PK field name FIRST (we'll need it for
+            // tie-breaking after the immutable engine borrow ends).
+            let base_pk_field: Option<String> = engine
+                .heap_bundle(bundle)
+                .and_then(|store| store.schema.base_fields.first().map(|f| f.name.clone()));
+
             if let Some(store) = engine.heap_bundle(bundle) {
-                let mut field_names: std::collections::HashSet<&str> = std::collections::HashSet::new();
+                let mut field_names: std::collections::HashSet<&str> =
+                    std::collections::HashSet::new();
                 for f in &store.schema.base_fields {
                     field_names.insert(f.name.as_str());
                 }
@@ -5862,13 +6008,109 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 }
             }
 
-            // Validation passed. Execution proper (predicate filter +
-            // WEIGHT evaluation + TOP-N truncation + EXCLUDING IN
-            // bitmap difference) lands in Phase 3.
-            Err("HUNT execution lands in Phase 3. \
-                 Phase 2 validates pattern + bundle + USING fields. \
-                 See theory/scj/PATTERN_HUNT_SPEC_v0.1.md §5."
-                .to_string())
+            // ── 4. EXCLUDING IN — Phase 4 territory ─────────────────────
+            // Phase 3 ships HUNT without anti-join; Phase 4 wires the
+            // Roaring bitmap difference. Don't silently ignore the
+            // clause — error explicitly so consumers can wait for Phase 4.
+            if !excluding.is_empty() {
+                return Err(format!(
+                    "EXCLUDING IN lands in Phase 4 (theory/scj/PATTERN_HUNT_SPEC_v0.1.md §6). \
+                     HUNT '{pattern}' against '{bundle}' has {} EXCLUDING IN clause(s); \
+                     drop them or wait for Phase 4 to ship the anti-join.",
+                    excluding.len()
+                ));
+            }
+
+            // ── 5. Parse WEIGHT expression once per HUNT ────────────────
+            let weight_expr: Option<WeightExpr> = match &pat.weight {
+                Some(toks) => Some(parse_weight_expr(toks)?),
+                None => None,
+            };
+
+            // ── 6. Build equivalent COVER + recursively execute ─────────
+            //
+            // Desugar: HUNT pattern IN bundle → COVER bundle WHERE pred.
+            // No PROJECT (we need every field for WEIGHT eval), no RANK BY
+            // (we sort by _score ourselves), no FIRST (we TOP-N ourselves).
+            let cover = Statement::Cover {
+                bundle: bundle.clone(),
+                on_conditions: Vec::new(),
+                where_conditions: pat.pred.clone(),
+                or_groups: pat.or_groups.clone(),
+                distinct_field: None,
+                project: None,
+                rank_by: None,
+                first: None,
+                skip: None,
+                all: true,
+            };
+            let mut rows: Vec<crate::types::Record> = match execute(engine, &cover)? {
+                ExecResult::Rows(rs) => rs,
+                other => {
+                    return Err(format!(
+                        "HUNT inner COVER returned non-Rows result: {other:?}"
+                    ));
+                }
+            };
+
+            // ── 7. Evaluate WEIGHT → augment rows with `_score` ─────────
+            for row in rows.iter_mut() {
+                let score = match &weight_expr {
+                    Some(expr) => eval_weight(expr, row),
+                    None => 0.0,
+                };
+                row.insert(
+                    "_score".to_string(),
+                    crate::types::Value::Float(score),
+                );
+            }
+
+            // ── 8. Sort: _score DESC, tie-break by base PK ASC ──────────
+            let pk_field = base_pk_field.unwrap_or_default();
+            rows.sort_by(|a, b| {
+                let sa = a.get("_score").and_then(value_to_f64).unwrap_or(0.0);
+                let sb = b.get("_score").and_then(value_to_f64).unwrap_or(0.0);
+                // DESC by score (NaN sorts to bottom per spec §10).
+                let primary = sb
+                    .partial_cmp(&sa)
+                    .unwrap_or(std::cmp::Ordering::Equal);
+                if primary != std::cmp::Ordering::Equal {
+                    return primary;
+                }
+                // ASC by base PK on ties.
+                if pk_field.is_empty() {
+                    return std::cmp::Ordering::Equal;
+                }
+                let pa = a.get(&pk_field).and_then(value_to_f64).unwrap_or(0.0);
+                let pb = b.get(&pk_field).and_then(value_to_f64).unwrap_or(0.0);
+                pa.partial_cmp(&pb).unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            // ── 9. TOP n truncation ─────────────────────────────────────
+            if let Some(n) = top {
+                rows.truncate(*n);
+            }
+
+            // ── 10. Apply user's PROJECT (if any) ───────────────────────
+            // PROJECT (a, b, _score) → return only those fields.
+            // Missing PROJECT → return all fields (including _score).
+            if let Some(fields) = project {
+                let filtered: Vec<crate::types::Record> = rows
+                    .into_iter()
+                    .map(|row| {
+                        let mut new_row = std::collections::HashMap::new();
+                        for field in fields {
+                            if let Some(v) = row.get(field) {
+                                new_row.insert(field.clone(), v.clone());
+                            }
+                        }
+                        new_row
+                    })
+                    .collect();
+                Ok(ExecResult::Rows(filtered))
+            } else {
+                Ok(ExecResult::Rows(rows))
+            }
         }
     }
 }

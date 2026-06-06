@@ -56,6 +56,17 @@ imagine = []
 # full 4-phase design.
 transactions = []
 
+# Ask G — Patterns. Per `theory/scj/PATTERN_HUNT_SPEC_v0.1.md`.
+# When ON, the `gigi::parser` module accepts DEFINE PATTERN / HUNT /
+# DROP PATTERN / SHOW PATTERNS / EXCLUDING IN. Phase 1 ships the
+# parser-only surface (gates PH1–PH4). Subsequent phases add the
+# in-memory registry, HUNT executor with WEIGHT evaluation,
+# EXCLUDING IN anti-join via Roaring bitmap difference, sharded
+# HUNT, and finally graduation onto a `gigi_patterns` bundle.
+# When OFF, the engine compiles and behaves exactly as before
+# (PH4 is enforced by Cargo's feature isolation).
+patterns = []
+
 [dependencies]
 roaring = "0.10"
 regex = "1"

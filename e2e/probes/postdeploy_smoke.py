@@ -90,7 +90,8 @@ s, _ = call("POST", "/v1/bundles", {
     "name": bundle_name,
     "schema": {"fields": {
         "id": "numeric", "color": "categorical",
-        "price": "numeric", "emb": "vector(4)"
+        "price": "numeric", "qty": "numeric",
+        "emb": "vector(4)"
     }, "keys": ["id"]}
 })
 report(f"create {bundle_name}", s in (200, 201), f"status={s}")
@@ -98,6 +99,7 @@ report(f"create {bundle_name}", s in (200, 201), f"status={s}")
 records = [{
     "id": i, "color": ["red", "blue", "green"][i % 3],
     "price": 100.0 + i * 10,
+    "qty": float(i),
     "emb": [float(i % 4), float(i % 3), float(i % 5), float(i % 7)]
 } for i in range(1, 51)]
 s, _ = call("POST", f"/v1/bundles/{bundle_name}/insert", {"records": records})
@@ -133,16 +135,17 @@ report("SAMPLE_TRANSPORT on fresh bundle",
        s == 200, f"status={s}, candidates={len(body.get('candidates') or [])}, "
                  f"kappa={body.get('kappa')}")
 
-# fit_diagnostics — needs >=2 scalar fields (even fiber dim, canonical
-# symplectic structure). Pair id + price.
+# fit_diagnostics — needs >=2 fiber-only scalar fields (even fiber dim,
+# canonical symplectic structure). 'id' is the base key, so we use
+# 'price' + 'qty' for an n=2 fiber.
 s, body = call("POST", f"/v1/bundles/{bundle_name}/brain/fit_diagnostics",
-               {"fields": ["id", "price"]})
+               {"fields": ["price", "qty"]})
 report("fit_diagnostics on fresh bundle",
        s == 200, f"status={s}")
 
-# confidence (Marcella's refuse-gate). Same dim>=2 constraint.
+# confidence (Marcella's refuse-gate). Same fiber-fields constraint.
 s, body = call("POST", f"/v1/bundles/{bundle_name}/brain/confidence",
-               {"fields": ["id", "price"], "query": [25.0, 200.0]})
+               {"fields": ["price", "qty"], "query": [200.0, 10.0]})
 raw = body.get("raw")
 raw_str = f"{raw:.2f}" if isinstance(raw, (int, float)) else str(raw)
 report("brain/confidence on fresh bundle",

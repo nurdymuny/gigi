@@ -13837,6 +13837,276 @@ async fn ttl_eviction_task(state: Arc<StreamState>) {
     }
 }
 
+// ─── Ask G — Patterns HTTP surface ──────────────────────────────────────────
+//
+// Per `theory/scj/PATTERN_HUNT_SPEC_v0.1.md` §9.2 + Bee's request to ship
+// the HTTP surface alongside the GQL one. All 5 endpoints translate JSON
+// → GQL → execute → JSON; the GQL execute path is already covered by
+// 42 pattern tests in `tests/pattern_hunt_*.rs` so correctness here is a
+// matter of translation glue.
+//
+// Gated on the `patterns` Cargo feature flag; the binary builds without
+// the feature with zero footprint.
+
+#[cfg(feature = "patterns")]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct PatternListEntry {
+    name: String,
+}
+
+#[cfg(feature = "patterns")]
+#[derive(Debug, serde::Deserialize)]
+struct DefinePatternRequest {
+    name: String,
+    /// Predicate body — the part after `AS`. Example: `"field_a = 1 AND field_b > 5"`.
+    predicate: String,
+    /// Optional WEIGHT arithmetic body. Example: `"field_a * 3 + field_b * 2"`.
+    #[serde(default)]
+    weight: Option<String>,
+    /// Optional USING field list.
+    #[serde(default)]
+    using: Vec<String>,
+    /// If true, equivalent to `DEFINE OR REPLACE PATTERN`.
+    #[serde(default)]
+    replace: bool,
+}
+
+#[cfg(feature = "patterns")]
+#[derive(Debug, serde::Deserialize)]
+struct HuntRequest {
+    pattern: String,
+    #[serde(default)]
+    excluding: Vec<String>,
+    #[serde(default)]
+    top: Option<usize>,
+    #[serde(default)]
+    project: Vec<String>,
+}
+
+/// GET /v1/patterns — list all defined patterns.
+#[cfg(feature = "patterns")]
+async fn list_patterns(
+    State(state): State<Arc<StreamState>>,
+) -> Result<Json<Vec<PatternListEntry>>, (StatusCode, Json<ErrorResponse>)> {
+    let stmt = gigi::parser::parse("SHOW PATTERNS").map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("internal parse: {e}"),
+            }),
+        )
+    })?;
+    let mut engine = state.engine.write().unwrap();
+    let result = gigi::parser::execute(&mut engine, &stmt).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("execute: {e}"),
+            }),
+        )
+    })?;
+    match result {
+        gigi::parser::ExecResult::Rows(rows) => {
+            let entries: Vec<PatternListEntry> = rows
+                .into_iter()
+                .filter_map(|row| match row.get("name") {
+                    Some(gigi::types::Value::Text(n)) => Some(PatternListEntry { name: n.clone() }),
+                    _ => None,
+                })
+                .collect();
+            Ok(Json(entries))
+        }
+        _ => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "SHOW PATTERNS unexpected result shape".to_string(),
+            }),
+        )),
+    }
+}
+
+/// POST /v1/patterns — DEFINE PATTERN.
+///
+/// Body: `{name, predicate, weight?, using?[], replace?}` — translates to
+/// `DEFINE [OR REPLACE] PATTERN <name> AS <predicate> [WEIGHT (<weight>)]
+/// [USING (<using>)]`.
+#[cfg(feature = "patterns")]
+async fn define_pattern_http(
+    State(state): State<Arc<StreamState>>,
+    Json(req): Json<DefinePatternRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
+    if req.name.is_empty() || req.predicate.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "`name` and `predicate` are required".to_string(),
+            }),
+        ));
+    }
+    let mut sql = String::new();
+    sql.push_str("DEFINE ");
+    if req.replace {
+        sql.push_str("OR REPLACE ");
+    }
+    sql.push_str("PATTERN ");
+    sql.push_str(&req.name);
+    sql.push_str(" AS ");
+    sql.push_str(&req.predicate);
+    if let Some(w) = &req.weight {
+        sql.push_str(" WEIGHT (");
+        sql.push_str(w);
+        sql.push(')');
+    }
+    if !req.using.is_empty() {
+        sql.push_str(" USING (");
+        sql.push_str(&req.using.join(", "));
+        sql.push(')');
+    }
+    let stmt = gigi::parser::parse(&sql).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("parse: {e}"),
+            }),
+        )
+    })?;
+    let mut engine = state.engine.write().unwrap();
+    gigi::parser::execute(&mut engine, &stmt).map_err(|e| {
+        (
+            StatusCode::CONFLICT,
+            Json(ErrorResponse {
+                error: format!("define: {e}"),
+            }),
+        )
+    })?;
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({"name": req.name, "ok": true})),
+    ))
+}
+
+/// DELETE /v1/patterns/{name} — DROP PATTERN.
+#[cfg(feature = "patterns")]
+async fn drop_pattern_http(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let sql = format!("DROP PATTERN {name}");
+    let stmt = gigi::parser::parse(&sql).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("parse: {e}"),
+            }),
+        )
+    })?;
+    let mut engine = state.engine.write().unwrap();
+    gigi::parser::execute(&mut engine, &stmt).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("drop: {e}"),
+            }),
+        )
+    })?;
+    Ok(Json(serde_json::json!({"name": name, "ok": true})))
+}
+
+/// POST /v1/bundles/{bundle}/hunt — execute a HUNT.
+///
+/// Body: `{pattern, excluding?[], top?, project?[]}`. Returns the rows
+/// each as a JSON object with the projected fields plus `_score`.
+#[cfg(feature = "patterns")]
+async fn hunt_http(
+    State(state): State<Arc<StreamState>>,
+    Path(bundle): Path<String>,
+    Json(req): Json<HuntRequest>,
+) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<ErrorResponse>)> {
+    if req.pattern.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "`pattern` is required".to_string(),
+            }),
+        ));
+    }
+    let mut sql = format!("HUNT {pat} IN {b}", pat = req.pattern, b = bundle);
+    for excl in &req.excluding {
+        sql.push_str(" EXCLUDING IN ");
+        sql.push_str(excl);
+    }
+    if let Some(n) = req.top {
+        sql.push_str(&format!(" TOP {n}"));
+    }
+    if !req.project.is_empty() {
+        sql.push_str(" PROJECT (");
+        sql.push_str(&req.project.join(", "));
+        sql.push(')');
+    }
+    let stmt = gigi::parser::parse(&sql).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("parse: {e}"),
+            }),
+        )
+    })?;
+    let mut engine = state.engine.write().unwrap();
+    let result = gigi::parser::execute(&mut engine, &stmt).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("hunt: {e}"),
+            }),
+        )
+    })?;
+    match result {
+        gigi::parser::ExecResult::Rows(rows) => {
+            let out: Vec<serde_json::Value> = rows
+                .into_iter()
+                .map(|row| {
+                    let mut obj = serde_json::Map::new();
+                    for (k, v) in row {
+                        obj.insert(k, pattern_value_to_json(&v));
+                    }
+                    serde_json::Value::Object(obj)
+                })
+                .collect();
+            Ok(Json(out))
+        }
+        _ => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "HUNT did not return rows".to_string(),
+            }),
+        )),
+    }
+}
+
+/// Convert a `gigi::types::Value` to a JSON value for the HUNT response.
+/// Suffixed with `_pattern` to avoid collision with the existing
+/// `value_to_json` higher up in this binary.
+#[cfg(feature = "patterns")]
+fn pattern_value_to_json(v: &gigi::types::Value) -> serde_json::Value {
+    use gigi::types::Value;
+    match v {
+        Value::Integer(i) => serde_json::json!(i),
+        Value::Float(f) => {
+            if f.is_finite() {
+                serde_json::json!(f)
+            } else {
+                serde_json::Value::Null
+            }
+        }
+        Value::Text(s) => serde_json::Value::String(s.clone()),
+        Value::Bool(b) => serde_json::json!(b),
+        Value::Timestamp(t) => serde_json::json!(t),
+        Value::Vector(v) => serde_json::json!(v),
+        Value::Binary(b) => serde_json::json!(b),
+        Value::Null => serde_json::Value::Null,
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let port = std::env::var("PORT").unwrap_or_else(|_| "3142".to_string());
@@ -13859,7 +14129,17 @@ async fn main() {
 
     let app = Router::new()
         // Health
-        .route("/v1/health", get(health))
+        .route("/v1/health", get(health));
+
+    // ── Ask G — Patterns HTTP surface ──
+    #[cfg(feature = "patterns")]
+    let app = app
+        .route("/v1/patterns", get(list_patterns))
+        .route("/v1/patterns", post(define_pattern_http))
+        .route("/v1/patterns/{name}", axum::routing::delete(drop_pattern_http))
+        .route("/v1/bundles/{name}/hunt", post(hunt_http));
+
+    let app = app
         // Bundle management
         .route("/v1/bundles", get(list_bundles))
         .route("/v1/bundles", post(create_bundle))
@@ -15154,7 +15434,7 @@ mod tests {
     fn test_value_to_json_escapes_text_starting_with_b64() {
         // value_to_json must emit the extra prefix so the receiver decodes correctly.
         let v = Value::Text("b64:sensitive data".into());
-        let json = value_to_json(&v);
+        let json = pattern_value_to_json(&v);
         assert_eq!(
             json,
             serde_json::Value::String("b64:b64:sensitive data".into()),
@@ -15168,7 +15448,7 @@ mod tests {
         let wire = "b64:b64:user typed this literally";
         let v = json_to_value(&serde_json::Value::String(wire.into()));
         assert_eq!(v, Value::Text("b64:user typed this literally".into()));
-        let re_encoded = value_to_json(&v);
+        let re_encoded = pattern_value_to_json(&v);
         assert_eq!(
             re_encoded,
             serde_json::Value::String(wire.into()),

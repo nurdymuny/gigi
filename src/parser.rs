@@ -628,6 +628,63 @@ pub enum Statement {
         /// computation (delegated to the same predicate machinery as Cover).
         where_clause: Option<Vec<FilterCondition>>,
     },
+
+    // ── Ask G: PATTERN_HUNT (per theory/scj/PATTERN_HUNT_SPEC_v0.1.md) ──
+    //
+    // Four AST variants, all behind `#[cfg(feature = "patterns")]`:
+    //
+    //   DefinePattern  — DEFINE PATTERN <name> AS <pred> [WEIGHT (...)] [USING (...)]
+    //   DropPattern    — DROP PATTERN <name>
+    //   ShowPatterns   — SHOW PATTERNS
+    //   Hunt           — HUNT <name> IN <bundle> [EXCLUDING IN <b>]* [TOP n] [PROJECT ...]
+    //
+    // Phase 1 is parser-only — these variants exist so tests can
+    // assert the grammar shape. Phase 2 wires the registry; Phase 3
+    // wires the executor; Phase 4 wires the EXCLUDING IN anti-join.
+    //
+    // `weight` is stored as a raw token list (the spec's
+    // `Option<Vec<String>>` shape) — the WeightExpr AST in §9.3 of
+    // the spec lands in Phase 3 when the evaluator is wired.
+    #[cfg(feature = "patterns")]
+    DefinePattern {
+        name: String,
+        /// AND'd predicate clauses, reusing COVER's machinery.
+        pred: Vec<FilterCondition>,
+        /// OR'd alternative predicate groups (each inner Vec is an
+        /// AND'd group; the outer Vec is the OR alternatives).
+        or_groups: Vec<Vec<FilterCondition>>,
+        /// Tokenized WEIGHT expression. `None` if WEIGHT clause is
+        /// absent. Phase 3 wires the parser-to-WeightExpr step.
+        weight: Option<Vec<String>>,
+        /// Declared fiber field touch-set, used by the planner for
+        /// index selection and decryption-scope minimization. Empty
+        /// `Vec` when USING is absent.
+        using_fields: Vec<String>,
+    },
+    #[cfg(feature = "patterns")]
+    DropPattern { name: String },
+    #[cfg(feature = "patterns")]
+    ShowPatterns,
+    #[cfg(feature = "patterns")]
+    Hunt {
+        /// Pattern name resolved at execution time via the registry.
+        pattern: String,
+        /// Target bundle.
+        bundle: String,
+        /// EXCLUDING IN clauses, in source order. Each is a bundle
+        /// name; Phase 4 wires the Roaring bitmap difference.
+        excluding: Vec<String>,
+        /// Additional ON-style filter applied to the resolved pred.
+        extra_on: Vec<FilterCondition>,
+        /// Additional WHERE-style filter applied to the resolved pred.
+        extra_where: Vec<FilterCondition>,
+        /// Override the default `RANK BY _score DESC`.
+        rank_by: Option<Vec<SortSpec>>,
+        /// TOP N truncation. None = no truncation.
+        top: Option<usize>,
+        /// PROJECT field list. `_score` is always available.
+        project: Option<Vec<String>>,
+    },
 }
 
 /// Whitelisted gauge-invariant operations. Each maps to an existing
@@ -1100,6 +1157,11 @@ impl Parser {
             "REDEFINE" => self.parse_redefine(),
             "RETRACT" => self.parse_retract(),
             "COVER" => self.parse_cover(),
+            // Ask G — Patterns (parser-only Phase 1; behind `patterns` flag).
+            #[cfg(feature = "patterns")]
+            "DEFINE" => self.parse_define_pattern(),
+            #[cfg(feature = "patterns")]
+            "HUNT" => self.parse_hunt(),
             "INTEGRATE" => self.parse_integrate(),
             "PULLBACK" => self.parse_pullback(),
             "COLLAPSE" => {
@@ -3229,6 +3291,9 @@ impl Parser {
                 Ok(Statement::ShowBundles)
             }
             "ROLES" => Ok(Statement::ShowRoles),
+            // Ask G — `SHOW PATTERNS` returns the in-process pattern registry.
+            #[cfg(feature = "patterns")]
+            "PATTERNS" => Ok(Statement::ShowPatterns),
             "PREPARED" => Ok(Statement::ShowPrepared),
             "BACKUPS" => Ok(Statement::ShowBackups),
             "SETTINGS" => Ok(Statement::ShowSettings),
@@ -3440,8 +3505,202 @@ impl Parser {
                 let bundle = self.expect_word()?;
                 Ok(Statement::DropTrigger { name, bundle })
             }
+            // Ask G — DROP PATTERN <name>.
+            #[cfg(feature = "patterns")]
+            "PATTERN" => {
+                let name = self.expect_word()?;
+                Ok(Statement::DropPattern { name })
+            }
             _ => Err(format!("Unknown DROP target: {what}")),
         }
+    }
+
+    // ─── Ask G: PATTERN_HUNT parsing (Phase 1) ────────────────────────────
+    //
+    // Per `theory/scj/PATTERN_HUNT_SPEC_v0.1.md` §3. All four methods below
+    // are gated on the `patterns` Cargo feature; the default build does
+    // not see them and the dispatcher arms for DEFINE/HUNT and the
+    // SHOW PATTERNS / DROP PATTERN extensions are themselves gated.
+    //
+    // **Domain-neutral by construction.** Nothing in here references a
+    // single consumer's vocabulary. Field names, pattern names, and bundle
+    // names are all opaque identifiers that the parser stores verbatim.
+    // The grammar serves vuln-hunt (SCJ), fraud-detection (PRISM), at-risk
+    // identification, discourse-flow (Marcella), or any future consumer
+    // that wants weighted predicate-filtered ranked queries.
+
+    /// `DEFINE PATTERN <name> AS <pred> [WEIGHT (<expr>)] [USING (<field>,...)]`.
+    /// Already consumed the leading `DEFINE` keyword.
+    #[cfg(feature = "patterns")]
+    fn parse_define_pattern(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("PATTERN")?;
+        let name = self.expect_word()?;
+        self.expect_keyword("AS")?;
+        let pred = self.parse_filter_condition_list()?;
+
+        let mut weight: Option<Vec<String>> = None;
+        let mut using_fields: Vec<String> = Vec::new();
+
+        // WEIGHT and USING are optional and can appear in either order.
+        // Loop until we see neither.
+        loop {
+            if self.is_keyword("WEIGHT") {
+                self.advance();
+                weight = Some(self.collect_paren_body_tokens()?);
+            } else if self.is_keyword("USING") {
+                self.advance();
+                using_fields = self.parse_field_list_in_parens()?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(Statement::DefinePattern {
+            name,
+            pred,
+            // OR groups land in a follow-up sub-spec; v0.1 grammar uses
+            // explicit OR inside the predicate body, parsed by
+            // parse_filter_condition_list above.
+            or_groups: Vec::new(),
+            weight,
+            using_fields,
+        })
+    }
+
+    /// `HUNT <pattern> IN <bundle> [EXCLUDING IN <b>]* [TOP <n>] [PROJECT (...)]`.
+    /// Already consumed the leading `HUNT` keyword.
+    #[cfg(feature = "patterns")]
+    fn parse_hunt(&mut self) -> Result<Statement, String> {
+        let pattern = self.expect_word()?;
+        self.expect_keyword("IN")?;
+        let bundle = self.expect_word()?;
+
+        let mut excluding: Vec<String> = Vec::new();
+        let mut top: Option<usize> = None;
+        let mut project: Option<Vec<String>> = None;
+
+        // Optional clauses, in any order. Phase 1 handles EXCLUDING IN,
+        // TOP, and PROJECT. extra_on / extra_where / rank_by are part of
+        // the spec EBNF but default to empty in Phase 1 — wiring them
+        // through is a follow-up gate that doesn't change the AST shape.
+        loop {
+            if self.is_keyword("EXCLUDING") {
+                self.advance();
+                self.expect_keyword("IN")?;
+                excluding.push(self.expect_word()?);
+            } else if self.is_keyword("TOP") {
+                self.advance();
+                match self.advance() {
+                    Some(Token::Number(n)) => top = Some(n as usize),
+                    other => {
+                        return Err(format!(
+                            "Expected number after TOP, got {other:?}"
+                        ));
+                    }
+                }
+            } else if self.is_keyword("PROJECT") {
+                self.advance();
+                project = Some(self.parse_field_list_in_parens()?);
+            } else {
+                break;
+            }
+        }
+
+        Ok(Statement::Hunt {
+            pattern,
+            bundle,
+            excluding,
+            extra_on: Vec::new(),
+            extra_where: Vec::new(),
+            rank_by: None,
+            top,
+            project,
+        })
+    }
+
+    /// Collect raw tokens between matched parentheses, returning their
+    /// canonical string forms. The opening `(` is consumed by this
+    /// function; the matching closing `)` is consumed and NOT included.
+    ///
+    /// Used by the `WEIGHT (...)` clause in DEFINE PATTERN — Phase 1
+    /// stores WEIGHT as a token list; Phase 3's evaluator does the
+    /// arithmetic-AST parse. This split lets the parser ship without
+    /// committing to the WeightExpr enum shape (spec §9.3, OQ-2).
+    #[cfg(feature = "patterns")]
+    fn collect_paren_body_tokens(&mut self) -> Result<Vec<String>, String> {
+        self.expect(Token::LParen)?;
+        let mut tokens: Vec<String> = Vec::new();
+        let mut depth: usize = 1;
+        loop {
+            let tok = self
+                .advance()
+                .ok_or_else(|| "Unexpected end of input inside (...) body".to_string())?;
+            match &tok {
+                Token::LParen => depth += 1,
+                Token::RParen => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            let rendered = match tok {
+                Token::Word(w) => w,
+                Token::Number(n) => n.to_string(),
+                Token::Str(s) => format!("'{s}'"),
+                Token::LParen => "(".to_string(),
+                Token::RParen => ")".to_string(),
+                Token::Comma => ",".to_string(),
+                Token::Eq => "=".to_string(),
+                Token::Neq => "!=".to_string(),
+                Token::Gt => ">".to_string(),
+                Token::Gte => ">=".to_string(),
+                Token::Lt => "<".to_string(),
+                Token::Lte => "<=".to_string(),
+                Token::Star => "*".to_string(),
+                Token::Slash => "/".to_string(),
+                Token::Dot => ".".to_string(),
+                Token::Colon => ":".to_string(),
+                Token::Semicolon => ";".to_string(),
+                Token::Plus => "+".to_string(),
+                Token::Minus => "-".to_string(),
+            };
+            tokens.push(rendered);
+        }
+        Ok(tokens)
+    }
+
+    /// Parse `(field1, field2, field3)` — a parenthesized, comma-separated
+    /// list of identifier names. Used by `USING (...)` in DEFINE PATTERN
+    /// and `PROJECT (...)` in HUNT. The empty list `()` is accepted.
+    #[cfg(feature = "patterns")]
+    fn parse_field_list_in_parens(&mut self) -> Result<Vec<String>, String> {
+        self.expect(Token::LParen)?;
+        let mut fields: Vec<String> = Vec::new();
+        // Empty list shortcut.
+        if matches!(self.peek(), Some(Token::RParen)) {
+            self.advance();
+            return Ok(fields);
+        }
+        loop {
+            fields.push(self.expect_word()?);
+            match self.peek() {
+                Some(Token::Comma) => {
+                    self.advance();
+                }
+                Some(Token::RParen) => {
+                    self.advance();
+                    break;
+                }
+                other => {
+                    return Err(format!(
+                        "Expected ',' or ')' in field list, got {other:?}"
+                    ));
+                }
+            }
+        }
+        Ok(fields)
     }
 
     fn parse_audit(&mut self) -> Result<Statement, String> {
@@ -5467,6 +5726,21 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         | Statement::Implications { .. }
         | Statement::SampleTransport { .. } => {
             Err("This statement must be executed via the HTTP server endpoint".to_string())
+        }
+
+        // ── Ask G — Pattern Hunt (Phase 1 = parser-only) ──
+        // Registry + executor land in Phase 2 and Phase 3 respectively.
+        // Until then the parser accepts the grammar but execution is a
+        // typed error pointing at the spec.
+        #[cfg(feature = "patterns")]
+        Statement::DefinePattern { .. }
+        | Statement::DropPattern { .. }
+        | Statement::ShowPatterns
+        | Statement::Hunt { .. } => {
+            Err("Pattern Hunt is parser-only in Phase 1 (Ask G). \
+                 Registry + execution land in Phase 2+. \
+                 See theory/scj/PATTERN_HUNT_SPEC_v0.1.md."
+                .to_string())
         }
     }
 }

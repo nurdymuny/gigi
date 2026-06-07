@@ -13881,6 +13881,36 @@ struct HuntRequest {
     top: Option<usize>,
     #[serde(default)]
     project: Vec<String>,
+    // ─── v0.2 additions (additive; old clients send none, get v0.1 shape) ─
+    /// Patterns v0.2 — when set ≥ 1, HUNT returns the verdict envelope
+    /// (sat/unsat/near_miss) instead of the bare row array. When 0 or
+    /// absent, the v0.1 array shape is preserved for backwards compat.
+    #[serde(default)]
+    near_miss_budget: Option<usize>,
+    /// Patterns v0.2 — attach `_explain` (WEIGHT decomposition tree) to
+    /// each sat row. Forces the envelope response.
+    #[serde(default)]
+    explain: bool,
+    /// Patterns v0.2 — attach `_repair_menu` to each near-miss row.
+    /// Forces the envelope response.
+    #[serde(default)]
+    include_repair_menu: bool,
+    /// Patterns v0.2 — per-field relaxation costs (default 1.0/field).
+    /// Only consulted when `include_repair_menu` is true.
+    #[serde(default)]
+    relaxation_costs: std::collections::HashMap<String, f64>,
+}
+
+#[cfg(feature = "patterns")]
+impl HuntRequest {
+    /// True iff the request opts into the v0.2 envelope. Set by any
+    /// of the v0.2 flags.
+    fn uses_v02_envelope(&self) -> bool {
+        self.near_miss_budget.is_some()
+            || self.explain
+            || self.include_repair_menu
+            || !self.relaxation_costs.is_empty()
+    }
 }
 
 /// GET /v1/patterns — list all defined patterns.
@@ -14021,7 +14051,7 @@ async fn hunt_http(
     State(state): State<Arc<StreamState>>,
     Path(bundle): Path<String>,
     Json(req): Json<HuntRequest>,
-) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     if req.pattern.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -14030,6 +14060,33 @@ async fn hunt_http(
             }),
         ));
     }
+
+    // ─── v0.2 path: full verdict envelope via hunt_v2_orchestrate ────────
+    if req.uses_v02_envelope() {
+        let args = gigi::parser::HuntV2Args {
+            pattern: req.pattern.clone(),
+            bundle: bundle.clone(),
+            excluding: req.excluding.clone(),
+            top: req.top,
+            project: if req.project.is_empty() { None } else { Some(req.project.clone()) },
+            near_miss_budget: req.near_miss_budget.unwrap_or(1),
+            explain: req.explain,
+            include_repair_menu: req.include_repair_menu,
+            relaxation_costs: req.relaxation_costs.clone(),
+        };
+        let mut engine = state.engine.write().unwrap();
+        let env = gigi::parser::hunt_v2_orchestrate(&mut engine, &args).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!("hunt v2: {e}"),
+                }),
+            )
+        })?;
+        return Ok(Json(envelope_to_json(env)));
+    }
+
+    // ─── v0.1 path: bare array of row objects (backwards compat) ────────
     let mut sql = format!("HUNT {pat} IN {b}", pat = req.pattern, b = bundle);
     for excl in &req.excluding {
         sql.push_str(" EXCLUDING IN ");
@@ -14064,7 +14121,9 @@ async fn hunt_http(
         gigi::parser::ExecResult::Rows(rows) => {
             let out: Vec<serde_json::Value> =
                 rows.into_iter().map(hunt_row_to_json).collect();
-            Ok(Json(out))
+            // v0.1 wire shape is a bare array; wrap in serde_json::Value
+            // since the handler's return type is now Json<Value>.
+            Ok(Json(serde_json::Value::Array(out)))
         }
         _ => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -14073,6 +14132,58 @@ async fn hunt_http(
             }),
         )),
     }
+}
+
+/// Patterns v0.2 — serialize a `HuntV2Envelope` to wire JSON.
+///
+/// Per spec §4.1: the envelope always carries `verdict`; the other fields
+/// are populated only when their verdict applies. `_score` stays the last
+/// key in row objects (SCJ §5(a)). When `_explain` is present it's emitted
+/// as a nested JSON tree.
+#[cfg(feature = "patterns")]
+fn envelope_to_json(env: gigi::parser::HuntV2Envelope) -> serde_json::Value {
+    let mut obj = serde_json::Map::new();
+    obj.insert("verdict".to_string(), serde_json::Value::String(env.verdict.clone()));
+
+    match env.verdict.as_str() {
+        "sat" => {
+            obj.insert(
+                "n_matches".to_string(),
+                serde_json::json!(env.n_matches.unwrap_or(0)),
+            );
+            obj.insert(
+                "rows".to_string(),
+                serde_json::Value::Array(
+                    env.rows.into_iter().map(hunt_row_to_json).collect(),
+                ),
+            );
+        }
+        "near_miss" => {
+            obj.insert(
+                "near_miss_count".to_string(),
+                serde_json::json!(env.near_miss_count.unwrap_or(0)),
+            );
+            obj.insert(
+                "near_miss_rows".to_string(),
+                serde_json::Value::Array(
+                    env.near_miss_rows
+                        .into_iter()
+                        .map(|nm| hunt_row_to_json(nm.row))
+                        .collect(),
+                ),
+            );
+        }
+        _ => {
+            if let Some(reason) = env.reason {
+                obj.insert("reason".to_string(), serde_json::Value::String(reason));
+            }
+            if let Some(pc) = env.preflight_caught {
+                obj.insert("preflight_caught".to_string(), serde_json::json!(pc));
+            }
+            obj.insert("rows".to_string(), serde_json::Value::Array(Vec::new()));
+        }
+    }
+    serde_json::Value::Object(obj)
 }
 
 /// Build the JSON object for one HUNT result row.

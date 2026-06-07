@@ -5674,6 +5674,338 @@ pub fn pattern_curvature(
     }
 }
 
+/// Patterns v0.2 wire — HUNT request shape (library-level, mirrors the HTTP body).
+///
+/// Composed from the v0.1 fields plus the four v0.2 flags. Use
+/// `near_miss_budget = 0` + all booleans false for v0.1-compatible behavior.
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone)]
+pub struct HuntV2Args {
+    pub pattern: String,
+    pub bundle: String,
+    pub excluding: Vec<String>,
+    pub top: Option<usize>,
+    pub project: Option<Vec<String>>,
+    pub near_miss_budget: usize,
+    pub explain: bool,
+    pub include_repair_menu: bool,
+    pub relaxation_costs: std::collections::HashMap<String, f64>,
+}
+
+/// One near-miss row paired with its repair menu (if requested).
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone)]
+pub struct NearMissRow {
+    pub row: crate::types::Record,
+    pub repair_menu: Option<RepairMenu>,
+}
+
+/// HUNT v0.2 response envelope.
+///
+/// One struct, three verdicts, optional sat/near-miss/unsat fields populated
+/// per verdict. Designed to serialize to the JSON wire shape per
+/// `theory/patterns/SPEC_v0.2_VERDICT.md` §4.
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone)]
+pub struct HuntV2Envelope {
+    /// `"sat" | "near_miss" | "unsat"`.
+    pub verdict: String,
+    /// Sat: top-K scored rows. NearMiss/Unsat: empty.
+    pub rows: Vec<crate::types::Record>,
+    pub n_matches: Option<usize>,
+    pub near_miss_count: Option<usize>,
+    /// Populated when verdict == near_miss. Each row carries its
+    /// `_repair_menu` JSON field when `include_repair_menu` was set.
+    pub near_miss_rows: Vec<NearMissRow>,
+    pub reason: Option<String>,
+    pub preflight_caught: Option<bool>,
+}
+
+/// Orchestrate a Patterns v0.2 HUNT into a single envelope.
+///
+/// Composes all five v0.2 primitives:
+///   - PP preflight (via compute_verdict)
+///   - VT verdict trichotomy
+///   - PE explain (when `args.explain`)
+///   - PR repair menu (when `args.include_repair_menu`)
+///   - K_P curvature (NOT included by default; opt-in via separate endpoint)
+///
+/// Branches by verdict:
+///   - **Sat**: runs the v0.1 HUNT pipeline (predicate → WEIGHT eval → sort
+///     → top-N → project). Optionally attaches `_explain` to each row.
+///   - **NearMiss**: scans for rows with 0 < violations ≤ budget. Optionally
+///     attaches `_repair_menu` to each. Applies top + project to the
+///     near-miss rows.
+///   - **Unsat**: empty rows + reason + preflight_caught flag.
+#[cfg(feature = "patterns")]
+pub fn hunt_v2_orchestrate(
+    engine: &mut crate::engine::Engine,
+    args: &HuntV2Args,
+) -> Result<HuntV2Envelope, String> {
+    // 1. Look up pattern in registry.
+    let pat = engine
+        .pattern_registry
+        .get(&args.pattern)
+        .ok_or_else(|| format!("Pattern '{}' is not defined.", args.pattern))?
+        .clone();
+    if engine.bundle(&args.bundle).is_none() {
+        return Err(format!("Bundle '{}' does not exist.", args.bundle));
+    }
+
+    // 2. Get full record set, post-exclusion. Use the existing COVER path
+    //    (no predicate) so EXCLUDING IN composes the same way v0.1 does.
+    let all_cover = Statement::Cover {
+        bundle: args.bundle.clone(),
+        on_conditions: Vec::new(),
+        where_conditions: Vec::new(),
+        or_groups: Vec::new(),
+        distinct_field: None,
+        project: None,
+        rank_by: None,
+        first: None,
+        skip: None,
+        all: true,
+        excluding: args.excluding.clone(),
+    };
+    let all_records: Vec<crate::types::Record> = match execute(engine, &all_cover)? {
+        ExecResult::Rows(rs) => rs,
+        other => {
+            return Err(format!(
+                "internal: COVER did not return rows: {other:?}"
+            ))
+        }
+    };
+
+    // 3. Compute verdict over the filtered record set.
+    let verdict = compute_verdict(&pat.pred, &all_records, args.near_miss_budget);
+
+    match verdict {
+        Verdict::Sat { n_matches } => {
+            // Run the v0.1 HUNT pipeline to get scored, sorted, top-N rows.
+            let mut hunt_sql = format!("HUNT {} IN {}", args.pattern, args.bundle);
+            for excl in &args.excluding {
+                hunt_sql.push_str(" EXCLUDING IN ");
+                hunt_sql.push_str(excl);
+            }
+            if let Some(n) = args.top {
+                hunt_sql.push_str(&format!(" TOP {n}"));
+            }
+            if let Some(proj) = &args.project {
+                hunt_sql.push_str(" PROJECT (");
+                hunt_sql.push_str(&proj.join(", "));
+                hunt_sql.push(')');
+            }
+            let stmt = parse(&hunt_sql).map_err(|e| format!("hunt sql parse: {e}"))?;
+            let mut rows = match execute(engine, &stmt)? {
+                ExecResult::Rows(rs) => rs,
+                other => return Err(format!("HUNT did not return rows: {other:?}")),
+            };
+
+            // Optional: attach _explain to each row.
+            if args.explain {
+                let weight_expr: Option<WeightExpr> = match &pat.weight {
+                    Some(toks) => Some(parse_weight_expr(toks)?),
+                    None => None,
+                };
+                if let Some(expr) = weight_expr {
+                    for row in &mut rows {
+                        let node = explain(&expr, row);
+                        let json = serde_json::to_string(&explain_node_to_json(&node))
+                            .map_err(|e| format!("explain serialize: {e}"))?;
+                        row.insert("_explain".to_string(), crate::types::Value::Text(json));
+                    }
+                }
+            }
+
+            Ok(HuntV2Envelope {
+                verdict: "sat".to_string(),
+                rows,
+                n_matches: Some(n_matches),
+                near_miss_count: None,
+                near_miss_rows: Vec::new(),
+                reason: None,
+                preflight_caught: None,
+            })
+        }
+        Verdict::NearMiss {
+            near_miss_count,
+            budget,
+        } => {
+            // Scan for near-miss rows from the already-filtered record set.
+            let qs: Vec<crate::bundle::QueryCondition> = pat
+                .pred
+                .iter()
+                .flat_map(filter_to_query_conditions)
+                .collect();
+            let mut near_miss_rows: Vec<NearMissRow> = all_records
+                .iter()
+                .filter_map(|r| {
+                    let n_viol = qs.iter().filter(|q| !q.matches(r)).count();
+                    if n_viol > 0 && n_viol <= budget {
+                        let repair_menu = if args.include_repair_menu {
+                            Some(repair_menu(
+                                &pat.pred,
+                                r,
+                                budget,
+                                &args.relaxation_costs,
+                                5,
+                            ))
+                        } else {
+                            None
+                        };
+                        let mut row = r.clone();
+                        if let Some(menu) = &repair_menu {
+                            let json = serde_json::to_string(&repair_menu_to_json(menu))
+                                .unwrap_or_else(|_| "null".to_string());
+                            row.insert("_repair_menu".to_string(), crate::types::Value::Text(json));
+                        }
+                        Some(NearMissRow { row, repair_menu })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // Apply top.
+            if let Some(n) = args.top {
+                near_miss_rows.truncate(n);
+            }
+            // Apply project (to the row inside each NearMissRow).
+            if let Some(proj) = &args.project {
+                for nm in &mut near_miss_rows {
+                    let mut projected = crate::types::Record::new();
+                    for key in proj {
+                        if let Some(v) = nm.row.get(key) {
+                            projected.insert(key.clone(), v.clone());
+                        }
+                    }
+                    nm.row = projected;
+                }
+            }
+
+            Ok(HuntV2Envelope {
+                verdict: "near_miss".to_string(),
+                rows: Vec::new(),
+                n_matches: None,
+                near_miss_count: Some(near_miss_count),
+                near_miss_rows,
+                reason: None,
+                preflight_caught: None,
+            })
+        }
+        Verdict::Unsat {
+            reason,
+            preflight_caught,
+        } => Ok(HuntV2Envelope {
+            verdict: "unsat".to_string(),
+            rows: Vec::new(),
+            n_matches: None,
+            near_miss_count: None,
+            near_miss_rows: Vec::new(),
+            reason: Some(reason),
+            preflight_caught: Some(preflight_caught),
+        }),
+    }
+}
+
+/// Helper: convert an ExplainNode to serde_json::Value for wire serialization.
+#[cfg(feature = "patterns")]
+pub fn explain_node_to_json(node: &ExplainNode) -> serde_json::Value {
+    use serde_json::json;
+    match node {
+        ExplainNode::Lit { value, contribution } => {
+            json!({ "type": "lit", "value": value, "contribution": contribution })
+        }
+        ExplainNode::Field { name, value, contribution } => {
+            json!({ "type": "field", "name": name, "value": value, "contribution": contribution })
+        }
+        ExplainNode::Add { left, right, contribution } => json!({
+            "type": "add",
+            "left": explain_node_to_json(left),
+            "right": explain_node_to_json(right),
+            "contribution": contribution,
+        }),
+        ExplainNode::Sub { left, right, contribution } => json!({
+            "type": "sub",
+            "left": explain_node_to_json(left),
+            "right": explain_node_to_json(right),
+            "contribution": contribution,
+        }),
+        ExplainNode::Mul { left, right, contribution } => json!({
+            "type": "mul",
+            "left": explain_node_to_json(left),
+            "right": explain_node_to_json(right),
+            "contribution": contribution,
+        }),
+        ExplainNode::Div { left, right, contribution } => json!({
+            "type": "div",
+            "left": explain_node_to_json(left),
+            "right": explain_node_to_json(right),
+            "contribution": contribution,
+        }),
+        ExplainNode::Min { left, right, chosen, clipped, contribution } => json!({
+            "type": "min",
+            "left": explain_node_to_json(left),
+            "right": explain_node_to_json(right),
+            "chosen": chosen,
+            "clipped": clipped,
+            "contribution": contribution,
+        }),
+        ExplainNode::Max { left, right, chosen, floored, contribution } => json!({
+            "type": "max",
+            "left": explain_node_to_json(left),
+            "right": explain_node_to_json(right),
+            "chosen": chosen,
+            "floored": floored,
+            "contribution": contribution,
+        }),
+    }
+}
+
+/// Helper: convert a RepairMenu to serde_json::Value for wire serialization.
+#[cfg(feature = "patterns")]
+pub fn repair_menu_to_json(menu: &RepairMenu) -> serde_json::Value {
+    use serde_json::json;
+    match menu {
+        RepairMenu::AlreadyMatches => json!({ "kind": "already_matches" }),
+        RepairMenu::TooFar { violations, max_flips } => json!({
+            "kind": "too_far",
+            "violations": violations,
+            "max_flips": max_flips,
+        }),
+        RepairMenu::Options(opts) => json!({
+            "kind": "options",
+            "options": opts.iter().map(|o| {
+                json!({
+                    "cost": o.cost,
+                    "flips": o.flips.iter().map(|f| json!({
+                        "field": f.field,
+                        "current": value_to_json_basic(&f.current),
+                        "target": value_to_json_basic(&f.target),
+                    })).collect::<Vec<_>>(),
+                })
+            }).collect::<Vec<_>>(),
+        }),
+    }
+}
+
+#[cfg(feature = "patterns")]
+fn value_to_json_basic(v: &crate::types::Value) -> serde_json::Value {
+    use crate::types::Value;
+    use serde_json::json;
+    match v {
+        Value::Integer(i) => json!(i),
+        Value::Float(f) if f.is_finite() => json!(f),
+        Value::Float(_) => serde_json::Value::Null,
+        Value::Text(s) => json!(s),
+        Value::Bool(b) => json!(b),
+        Value::Timestamp(t) => json!(t),
+        Value::Vector(v) => json!(v),
+        Value::Binary(b) => json!(b),
+        Value::Null => serde_json::Value::Null,
+    }
+}
+
 /// Test helper: parse a complete `DEFINE PATTERN ... WEIGHT (...)` SQL string
 /// and return its `WeightExpr`. Convenience wrapper so tests don't have to
 /// hand-build the AST for large expressions like the SCJ 10-weight scorer.

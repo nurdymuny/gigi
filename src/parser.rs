@@ -5570,6 +5570,110 @@ pub fn repair_menu(
     RepairMenu::Options(opts)
 }
 
+/// Patterns v0.2 Phase K_P — pattern curvature report.
+///
+/// Per-bundle scalar derived from the variance of the per-row
+/// neighbor-match ratio in the kNN graph over the `using` fields.
+///
+/// Interpretation:
+///   - `k_p > 0` with low n_matches: pattern picks out a localized region
+///   - `k_p == 0` with high n_matches: tautology (every neighborhood
+///      has 100% match rate)
+///   - `k_p == 0` with n_matches == 0: empty match set (convention)
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct PatternCurvature {
+    pub k_p: f64,
+    pub n_matches: usize,
+    pub n_rows: usize,
+    pub k: usize,
+}
+
+/// Hamming distance between two records over a named field set.
+/// Missing fields on either side count as a mismatch.
+#[cfg(feature = "patterns")]
+fn record_hamming(a: &crate::types::Record, b: &crate::types::Record, fields: &[String]) -> usize {
+    fields
+        .iter()
+        .filter(|f| a.get(f.as_str()) != b.get(f.as_str()))
+        .count()
+}
+
+/// Patterns v0.2 Phase K_P — compute pattern curvature.
+///
+/// Algorithm:
+///   1. Find the match set (indices of rows the predicate strictly satisfies).
+///   2. For each row, compute its kNN by Hamming distance over `fields`.
+///   3. For each row, compute the fraction of its neighbors in the match set.
+///   4. K_P = sample variance of those fractions.
+///
+/// Complexity: O(N² · |fields|) for the naive kNN scan. For Marcella-scale
+/// bundles (~10k rows) that's fine; for larger bundles the kNN should
+/// be precomputed and cached via the existing BundleStats infrastructure.
+///
+/// Returns (0.0, 0) when n_matches == 0 by convention.
+#[cfg(feature = "patterns")]
+pub fn pattern_curvature(
+    pred: &[FilterCondition],
+    records: &[crate::types::Record],
+    fields: &[String],
+    k: usize,
+) -> PatternCurvature {
+    let n_rows = records.len();
+    let qs: Vec<crate::bundle::QueryCondition> = pred
+        .iter()
+        .flat_map(filter_to_query_conditions)
+        .collect();
+    let match_set: std::collections::HashSet<usize> = (0..n_rows)
+        .filter(|i| qs.iter().all(|q| q.matches(&records[*i])))
+        .collect();
+    let n_matches = match_set.len();
+    if n_matches == 0 || n_rows == 0 {
+        return PatternCurvature {
+            k_p: 0.0,
+            n_matches: 0,
+            n_rows,
+            k,
+        };
+    }
+
+    // For each row, compute its k nearest neighbors by Hamming distance
+    // (with the row's own index excluded).
+    let k_eff = k.min(n_rows.saturating_sub(1));
+    let mut ratios = Vec::with_capacity(n_rows);
+    let mut distances: Vec<(usize, usize)> = Vec::with_capacity(n_rows);
+    for i in 0..n_rows {
+        distances.clear();
+        for j in 0..n_rows {
+            if i == j {
+                continue;
+            }
+            distances.push((j, record_hamming(&records[i], &records[j], fields)));
+        }
+        distances.sort_by_key(|t| t.1);
+        let matches_in_nbrs = distances
+            .iter()
+            .take(k_eff)
+            .filter(|(j, _)| match_set.contains(j))
+            .count();
+        let ratio = matches_in_nbrs as f64 / k_eff.max(1) as f64;
+        ratios.push(ratio);
+    }
+    let mean = ratios.iter().copied().sum::<f64>() / ratios.len() as f64;
+    let variance = ratios
+        .iter()
+        .map(|r| (r - mean).powi(2))
+        .sum::<f64>()
+        / ratios.len() as f64;
+
+    PatternCurvature {
+        k_p: variance,
+        n_matches,
+        n_rows,
+        k: k_eff,
+    }
+}
+
 /// Test helper: parse a complete `DEFINE PATTERN ... WEIGHT (...)` SQL string
 /// and return its `WeightExpr`. Convenience wrapper so tests don't have to
 /// hand-build the AST for large expressions like the SCJ 10-weight scorer.

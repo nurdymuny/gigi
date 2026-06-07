@@ -4850,7 +4850,7 @@ fn parse_weight_atom(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, S
 /// Evaluate a WeightExpr against a Record. NULL / missing → 0.0;
 /// Bool → {0.0, 1.0}; Integer → f64; Text/Vector/etc → 0.0.
 #[cfg(feature = "patterns")]
-fn eval_weight(expr: &WeightExpr, row: &crate::types::Record) -> f64 {
+pub fn eval_weight(expr: &WeightExpr, row: &crate::types::Record) -> f64 {
     match expr {
         WeightExpr::Lit(n) => *n,
         WeightExpr::Field(name) => match row.get(name) {
@@ -4882,6 +4882,220 @@ fn eval_weight(expr: &WeightExpr, row: &crate::types::Record) -> f64 {
         // shouldn't poison the clip floor/ceiling.
         WeightExpr::Min(l, r) => eval_weight(l, row).min(eval_weight(r, row)),
         WeightExpr::Max(l, r) => eval_weight(l, row).max(eval_weight(r, row)),
+    }
+}
+
+/// Patterns v0.2 Phase PE — decomposition tree for a `WeightExpr`.
+///
+/// Each variant mirrors `WeightExpr` and carries the per-node contribution
+/// to the final score. The root node's `contribution()` MUST equal
+/// `eval_weight(expr, row)` for the same `(expr, row)` pair — that
+/// invariant is the load-bearing test.
+///
+/// Wire shape: when serialized, the tree becomes a nested JSON object that
+/// TUI / debugger clients render as a per-term breakdown. See
+/// `theory/patterns/SPEC_v0.2_VERDICT.md` §6.
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone)]
+pub enum ExplainNode {
+    Lit {
+        value: f64,
+        contribution: f64,
+    },
+    Field {
+        name: String,
+        value: f64,
+        contribution: f64,
+    },
+    Add {
+        left: Box<ExplainNode>,
+        right: Box<ExplainNode>,
+        contribution: f64,
+    },
+    Sub {
+        left: Box<ExplainNode>,
+        right: Box<ExplainNode>,
+        contribution: f64,
+    },
+    Mul {
+        left: Box<ExplainNode>,
+        right: Box<ExplainNode>,
+        contribution: f64,
+    },
+    Div {
+        left: Box<ExplainNode>,
+        right: Box<ExplainNode>,
+        contribution: f64,
+    },
+    Min {
+        left: Box<ExplainNode>,
+        right: Box<ExplainNode>,
+        /// `"left"` or `"right"` — which branch's value was returned.
+        chosen: String,
+        /// True iff the cap (right) fired — i.e., the left branch wanted
+        /// a higher value than the right allowed. Canonical form
+        /// `min(value, cap)`: clipped ↔ value > cap.
+        clipped: bool,
+        contribution: f64,
+    },
+    Max {
+        left: Box<ExplainNode>,
+        right: Box<ExplainNode>,
+        chosen: String,
+        /// True iff the floor (right) fired — left was below the floor.
+        floored: bool,
+        contribution: f64,
+    },
+}
+
+#[cfg(feature = "patterns")]
+impl ExplainNode {
+    /// The numeric contribution of this node — for the root, equals the
+    /// `_score` value `eval_weight` produces.
+    pub fn contribution(&self) -> f64 {
+        match self {
+            ExplainNode::Lit { contribution, .. }
+            | ExplainNode::Field { contribution, .. }
+            | ExplainNode::Add { contribution, .. }
+            | ExplainNode::Sub { contribution, .. }
+            | ExplainNode::Mul { contribution, .. }
+            | ExplainNode::Div { contribution, .. }
+            | ExplainNode::Min { contribution, .. }
+            | ExplainNode::Max { contribution, .. } => *contribution,
+        }
+    }
+}
+
+/// Decompose a `WeightExpr` evaluation against a `Record` into a tree of
+/// per-node contributions. Patterns v0.2 §6.3.
+///
+/// Invariant: `explain(expr, row).contribution() == eval_weight(expr, row)`.
+/// Verified by `pe6_explain_full_scj_scorer_invariant` and others in
+/// `tests/pattern_v02_explain.rs`.
+#[cfg(feature = "patterns")]
+pub fn explain(expr: &WeightExpr, row: &crate::types::Record) -> ExplainNode {
+    match expr {
+        WeightExpr::Lit(v) => ExplainNode::Lit {
+            value: *v,
+            contribution: *v,
+        },
+        WeightExpr::Field(name) => {
+            // Mirror eval_weight's coercion rules so the leaf value matches.
+            let value = match row.get(name) {
+                Some(crate::types::Value::Integer(i)) => *i as f64,
+                Some(crate::types::Value::Float(f)) => *f,
+                Some(crate::types::Value::Bool(b)) => {
+                    if *b {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                }
+                _ => 0.0,
+            };
+            ExplainNode::Field {
+                name: name.clone(),
+                value,
+                contribution: value,
+            }
+        }
+        WeightExpr::Add(l, r) => {
+            let left = explain(l, row);
+            let right = explain(r, row);
+            let contribution = left.contribution() + right.contribution();
+            ExplainNode::Add {
+                left: Box::new(left),
+                right: Box::new(right),
+                contribution,
+            }
+        }
+        WeightExpr::Sub(l, r) => {
+            let left = explain(l, row);
+            let right = explain(r, row);
+            let contribution = left.contribution() - right.contribution();
+            ExplainNode::Sub {
+                left: Box::new(left),
+                right: Box::new(right),
+                contribution,
+            }
+        }
+        WeightExpr::Mul(l, r) => {
+            let left = explain(l, row);
+            let right = explain(r, row);
+            let contribution = left.contribution() * right.contribution();
+            ExplainNode::Mul {
+                left: Box::new(left),
+                right: Box::new(right),
+                contribution,
+            }
+        }
+        WeightExpr::Div(l, r) => {
+            let left = explain(l, row);
+            let right = explain(r, row);
+            // Mirror eval_weight's NaN-on-zero-denom semantics exactly.
+            let denom = right.contribution();
+            let contribution = if denom == 0.0 {
+                f64::NAN
+            } else {
+                left.contribution() / denom
+            };
+            ExplainNode::Div {
+                left: Box::new(left),
+                right: Box::new(right),
+                contribution,
+            }
+        }
+        WeightExpr::Min(l, r) => {
+            let left = explain(l, row);
+            let right = explain(r, row);
+            let lv = left.contribution();
+            let rv = right.contribution();
+            let contribution = lv.min(rv);
+            // Canonical form is `min(value, cap)`. The cap (right) fired
+            // when value (left) wanted to be higher.
+            let chosen = if lv <= rv { "left" } else { "right" };
+            let clipped = lv > rv;
+            ExplainNode::Min {
+                left: Box::new(left),
+                right: Box::new(right),
+                chosen: chosen.to_string(),
+                clipped,
+                contribution,
+            }
+        }
+        WeightExpr::Max(l, r) => {
+            let left = explain(l, row);
+            let right = explain(r, row);
+            let lv = left.contribution();
+            let rv = right.contribution();
+            let contribution = lv.max(rv);
+            let chosen = if lv >= rv { "left" } else { "right" };
+            let floored = lv < rv;
+            ExplainNode::Max {
+                left: Box::new(left),
+                right: Box::new(right),
+                chosen: chosen.to_string(),
+                floored,
+                contribution,
+            }
+        }
+    }
+}
+
+/// Test helper: parse a complete `DEFINE PATTERN ... WEIGHT (...)` SQL string
+/// and return its `WeightExpr`. Convenience wrapper so tests don't have to
+/// hand-build the AST for large expressions like the SCJ 10-weight scorer.
+///
+/// Errors if the SQL doesn't parse as a `DefinePattern` or has no WEIGHT clause.
+#[cfg(feature = "patterns")]
+pub fn parse_weight_expr_for_test(sql: &str) -> Result<WeightExpr, String> {
+    let stmt = parse(sql)?;
+    match stmt {
+        Statement::DefinePattern { weight: Some(toks), .. } => parse_weight_expr(&toks),
+        Statement::DefinePattern { weight: None, .. } => {
+            Err("DEFINE PATTERN has no WEIGHT clause".to_string())
+        }
+        other => Err(format!("expected DefinePattern, got {other:?}")),
     }
 }
 

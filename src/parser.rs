@@ -5446,6 +5446,130 @@ pub fn compute_verdict(
     }
 }
 
+/// Patterns v0.2 Phase PR — single field flip in a repair sequence.
+///
+/// `target` is the value the field would need to take to satisfy the
+/// corresponding predicate clause. For equality predicates it's the
+/// right-hand literal; for range predicates it's a representative
+/// satisfying value (the boundary, in v0.2).
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct RepairFlip {
+    pub field: String,
+    pub current: crate::types::Value,
+    pub target: crate::types::Value,
+}
+
+/// One option in the repair menu — a list of flips and their total cost.
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct RepairOption {
+    pub flips: Vec<RepairFlip>,
+    pub cost: f64,
+}
+
+/// The repair menu returned by `repair_menu`. Three shapes:
+///   - `Options(opts)`: ordered list, opts[0] is the min-cost path.
+///   - `AlreadyMatches`: the row already satisfies the predicate.
+///   - `TooFar`: the row has more violations than `max_flips` allows.
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone, PartialEq)]
+pub enum RepairMenu {
+    AlreadyMatches,
+    TooFar { violations: usize, max_flips: usize },
+    Options(Vec<RepairOption>),
+}
+
+/// Patterns v0.2 Phase PR — ordered minimum-cost flip sequence.
+///
+/// For a near-miss row, enumerate the flip sequences that would make
+/// it satisfy the predicate, sorted by total cost ascending then by
+/// flip count then lexicographic field name.
+///
+/// Costs default to 1.0 per flip; per-field overrides via `costs`.
+/// Result is capped to `top` entries.
+///
+/// v0.2 only handles equality clauses (right-hand literal is the target).
+/// Range / Contains / Matches clauses are silently skipped — repair
+/// for those needs a richer target-value enumeration (v0.3).
+#[cfg(feature = "patterns")]
+pub fn repair_menu(
+    pred: &[FilterCondition],
+    row: &crate::types::Record,
+    max_flips: usize,
+    costs: &std::collections::HashMap<String, f64>,
+    top: usize,
+) -> RepairMenu {
+    // Determine which clauses fail and what target each one wants.
+    let qs: Vec<crate::bundle::QueryCondition> = pred
+        .iter()
+        .flat_map(filter_to_query_conditions)
+        .collect();
+    let violating_qs: Vec<&crate::bundle::QueryCondition> =
+        qs.iter().filter(|q| !q.matches(row)).collect();
+
+    if violating_qs.is_empty() {
+        return RepairMenu::AlreadyMatches;
+    }
+    if violating_qs.len() > max_flips {
+        return RepairMenu::TooFar {
+            violations: violating_qs.len(),
+            max_flips,
+        };
+    }
+
+    // Collect each violating clause's (field, target) where possible.
+    // v0.2: equality clauses only. The full enumeration over satisfying
+    // values for range clauses is deferred to v0.3.
+    let mut flip_specs: Vec<(String, crate::types::Value, crate::types::Value)> = Vec::new();
+    for q in &violating_qs {
+        if let crate::bundle::QueryCondition::Eq(field, target_val) = q {
+            let current = row
+                .get(field)
+                .cloned()
+                .unwrap_or(crate::types::Value::Null);
+            flip_specs.push((field.clone(), current, target_val.clone()));
+        }
+    }
+    if flip_specs.len() < violating_qs.len() {
+        // Some violations cannot be expressed as a single flip in v0.2.
+        return RepairMenu::TooFar {
+            violations: violating_qs.len(),
+            max_flips,
+        };
+    }
+
+    // For v0.2 (equality-only), each violating clause has exactly one
+    // target value. So the canonical full-repair sequence is unique:
+    // flip every violating clause. There may be sub-sequences if
+    // max_flips > violations, but those wouldn't satisfy the predicate.
+    let total_cost: f64 = flip_specs
+        .iter()
+        .map(|(f, _, _)| costs.get(f).copied().unwrap_or(1.0))
+        .sum();
+
+    let mut sorted = flip_specs.clone();
+    sorted.sort_by(|a, b| a.0.cmp(&b.0));
+    let flips: Vec<RepairFlip> = sorted
+        .into_iter()
+        .map(|(field, current, target)| RepairFlip {
+            field,
+            current,
+            target,
+        })
+        .collect();
+
+    let option = RepairOption {
+        flips,
+        cost: total_cost,
+    };
+    let mut opts = vec![option];
+    if opts.len() > top {
+        opts.truncate(top);
+    }
+    RepairMenu::Options(opts)
+}
+
 /// Test helper: parse a complete `DEFINE PATTERN ... WEIGHT (...)` SQL string
 /// and return its `WeightExpr`. Convenience wrapper so tests don't have to
 /// hand-build the AST for large expressions like the SCJ 10-weight scorer.

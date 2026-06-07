@@ -5082,6 +5082,264 @@ pub fn explain(expr: &WeightExpr, row: &crate::types::Record) -> ExplainNode {
     }
 }
 
+/// Patterns v0.2 Phase PP — three-layer preflight verdict.
+///
+/// Per `theory/patterns/SPEC_v0.2_VERDICT.md` §3.1.5 — discovered during
+/// Python math validation:
+///
+///   - `UnsatInternal`: predicate contradicts itself (no bundle can repair).
+///     Always a verdict gate.
+///   - `UnsatStatistic`: a clause is unsatisfiable given the bundle's
+///     field stats. Verdict gate ONLY when `near_miss_budget = 0`.
+///   - `UnsatJoint`: each clause individually has support but the joint
+///     conjunction has no satisfying row. Informational — used by
+///     `verdict()` in the final unsat branch to explain *why*.
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone, PartialEq)]
+pub enum PreflightVerdict {
+    Ok,
+    UnsatInternal(String),
+    UnsatStatistic(String),
+    UnsatJoint(String),
+}
+
+#[cfg(feature = "patterns")]
+impl PreflightVerdict {
+    pub fn is_ok(&self) -> bool {
+        matches!(self, PreflightVerdict::Ok)
+    }
+
+    pub fn reason(&self) -> Option<&str> {
+        match self {
+            PreflightVerdict::Ok => None,
+            PreflightVerdict::UnsatInternal(s)
+            | PreflightVerdict::UnsatStatistic(s)
+            | PreflightVerdict::UnsatJoint(s) => Some(s.as_str()),
+        }
+    }
+}
+
+/// Helper: convert a `Literal` to f64 for numeric range comparison.
+/// Returns None for non-numeric literals.
+#[cfg(feature = "patterns")]
+fn literal_as_f64(lit: &Literal) -> Option<f64> {
+    match lit {
+        Literal::Integer(i) => Some(*i as f64),
+        Literal::Float(f) => Some(*f),
+        Literal::Bool(true) => Some(1.0),
+        Literal::Bool(false) => Some(0.0),
+        Literal::Text(_) | Literal::Null => None,
+    }
+}
+
+/// Extract `(field, op_kind, numeric_bound)` from a numeric-comparison clause.
+/// Returns `None` for non-numeric clauses (Text equalities, Contains, etc.).
+///
+/// `op_kind` is one of `">="`, `">"`, `"<="`, `"<"`, `"=="`, `"!="`.
+#[cfg(feature = "patterns")]
+fn numeric_clause_parts(c: &FilterCondition) -> Option<(&str, &'static str, f64)> {
+    match c {
+        FilterCondition::Eq(f, l) => literal_as_f64(l).map(|v| (f.as_str(), "==", v)),
+        FilterCondition::Neq(f, l) => literal_as_f64(l).map(|v| (f.as_str(), "!=", v)),
+        FilterCondition::Gt(f, l) => literal_as_f64(l).map(|v| (f.as_str(), ">", v)),
+        FilterCondition::Gte(f, l) => literal_as_f64(l).map(|v| (f.as_str(), ">=", v)),
+        FilterCondition::Lt(f, l) => literal_as_f64(l).map(|v| (f.as_str(), "<", v)),
+        FilterCondition::Lte(f, l) => literal_as_f64(l).map(|v| (f.as_str(), "<=", v)),
+        _ => None,
+    }
+}
+
+/// Pattern preflight layer 1 — internal contradiction check.
+///
+/// Detects self-contradictory predicates that no bundle row could ever
+/// satisfy, regardless of field values:
+///
+///   - Numeric range contradictions: `x >= 5 AND x < 3`
+///   - Equality contradictions: `color == 'red' AND color == 'blue'`
+///
+/// Always a verdict gate — internal contradictions cannot be repaired
+/// by flipping bundle rows.
+#[cfg(feature = "patterns")]
+pub fn preflight_internal(pred: &[FilterCondition]) -> PreflightVerdict {
+    use std::collections::HashMap;
+
+    // Group clauses by field name.
+    let mut by_field: HashMap<String, Vec<(&'static str, Option<f64>, &Literal)>> = HashMap::new();
+    for c in pred {
+        if let Some((field, op, v)) = numeric_clause_parts(c) {
+            by_field
+                .entry(field.to_string())
+                .or_default()
+                .push((op, Some(v), lit_ref(c)));
+        } else if let FilterCondition::Eq(f, l) = c {
+            by_field.entry(f.clone()).or_default().push(("==", None, l));
+        } else if let FilterCondition::Neq(f, l) = c {
+            by_field.entry(f.clone()).or_default().push(("!=", None, l));
+        }
+    }
+
+    for (field, ops) in by_field {
+        // Numeric lo/hi contradiction
+        let ge_lo: Option<f64> = ops
+            .iter()
+            .filter_map(|(op, v, _)| if matches!(*op, ">=" | ">") { *v } else { None })
+            .reduce(f64::max);
+        let le_hi: Option<f64> = ops
+            .iter()
+            .filter_map(|(op, v, _)| if matches!(*op, "<=" | "<") { *v } else { None })
+            .reduce(f64::min);
+        if let (Some(lo), Some(hi)) = (ge_lo, le_hi) {
+            if lo > hi {
+                return PreflightVerdict::UnsatInternal(format!(
+                    "internal contradiction on {field}: lo={lo}, hi={hi}"
+                ));
+            }
+        }
+
+        // Equality contradiction: two distinct equality literals
+        let eqs: Vec<&Literal> = ops
+            .iter()
+            .filter_map(|(op, _, lit)| if *op == "==" { Some(*lit) } else { None })
+            .collect();
+        if eqs.len() > 1 {
+            let first = eqs[0];
+            if eqs.iter().any(|l| !literals_eq(l, first)) {
+                return PreflightVerdict::UnsatInternal(format!(
+                    "internal contradiction on {field}: == multiple distinct values"
+                ));
+            }
+        }
+    }
+
+    PreflightVerdict::Ok
+}
+
+#[cfg(feature = "patterns")]
+fn lit_ref(c: &FilterCondition) -> &Literal {
+    // Helper for preflight_internal — extract literal from comparison ops.
+    static NULL_LIT: Literal = Literal::Null;
+    match c {
+        FilterCondition::Eq(_, l)
+        | FilterCondition::Neq(_, l)
+        | FilterCondition::Gt(_, l)
+        | FilterCondition::Gte(_, l)
+        | FilterCondition::Lt(_, l)
+        | FilterCondition::Lte(_, l) => l,
+        _ => &NULL_LIT,
+    }
+}
+
+#[cfg(feature = "patterns")]
+fn literals_eq(a: &Literal, b: &Literal) -> bool {
+    match (a, b) {
+        (Literal::Integer(x), Literal::Integer(y)) => x == y,
+        (Literal::Float(x), Literal::Float(y)) => x == y,
+        (Literal::Text(x), Literal::Text(y)) => x == y,
+        (Literal::Bool(x), Literal::Bool(y)) => x == y,
+        (Literal::Null, Literal::Null) => true,
+        _ => false,
+    }
+}
+
+/// Pattern preflight layer 2 — bundle-statistic check.
+///
+/// Detects clauses that the bundle's actual field distribution cannot
+/// satisfy (e.g. `x >= 100` against a bundle where `max(x) = 9`).
+///
+/// Verdict gate ONLY when `near_miss_budget = 0`. With a budget, near-miss
+/// may repair what statistic says is impossible, so the scan handles the
+/// verdict instead.
+///
+/// Runs `preflight_internal` first — internal contradictions always win.
+#[cfg(feature = "patterns")]
+pub fn preflight_statistic(
+    pred: &[FilterCondition],
+    records: &[crate::types::Record],
+) -> PreflightVerdict {
+    // Internal contradictions always win.
+    let internal = preflight_internal(pred);
+    if !internal.is_ok() {
+        return internal;
+    }
+
+    // For each clause, check whether ANY record in the bundle could satisfy
+    // just that clause (single-clause feasibility against actual bundle values).
+    let qs: Vec<crate::bundle::QueryCondition> = pred
+        .iter()
+        .flat_map(filter_to_query_conditions)
+        .collect();
+    for q in &qs {
+        let any_match = records.iter().any(|r| q.matches(r));
+        if !any_match {
+            return PreflightVerdict::UnsatStatistic(format!(
+                "no record satisfies {q:?}"
+            ));
+        }
+    }
+    PreflightVerdict::Ok
+}
+
+/// Pattern preflight layer 3 — joint-distribution (holonomy) check.
+///
+/// Detects predicates where each individual clause is satisfiable but
+/// the conjunction is empirically forbidden by the bundle's joint
+/// distribution. Mirrors SUDOKU's holonomy_preflight from
+/// `src/geometry/sudoku.rs` at the predicate level — a non-trivial
+/// holonomy loop on the constraint graph corresponds to "no row jointly
+/// satisfies all clauses, yet each clause has individual support."
+///
+/// Informational — `verdict()` uses this in the final unsat branch to
+/// give the operator a *why*, but it doesn't pre-empt near-miss detection.
+#[cfg(feature = "patterns")]
+pub fn preflight_holonomy(
+    pred: &[FilterCondition],
+    records: &[crate::types::Record],
+) -> PreflightVerdict {
+    // Multi-field predicates only — single-clause is layer 2's job.
+    let fields: std::collections::HashSet<&str> = pred
+        .iter()
+        .filter_map(|c| match c {
+            FilterCondition::Eq(f, _)
+            | FilterCondition::Neq(f, _)
+            | FilterCondition::Gt(f, _)
+            | FilterCondition::Gte(f, _)
+            | FilterCondition::Lt(f, _)
+            | FilterCondition::Lte(f, _) => Some(f.as_str()),
+            _ => None,
+        })
+        .collect();
+    if fields.len() < 2 {
+        return PreflightVerdict::Ok;
+    }
+
+    // Build full conjunction query from the predicate.
+    let qs: Vec<crate::bundle::QueryCondition> = pred
+        .iter()
+        .flat_map(filter_to_query_conditions)
+        .collect();
+
+    // Does ANY row satisfy the full conjunction?
+    let any_joint = records
+        .iter()
+        .any(|r| qs.iter().all(|q| q.matches(r)));
+    if any_joint {
+        return PreflightVerdict::Ok;
+    }
+
+    // Every clause must individually have support — if any clause is
+    // already unsat alone, layer 2 catches it, holonomy is silent.
+    for q in &qs {
+        if !records.iter().any(|r| q.matches(r)) {
+            return PreflightVerdict::Ok;
+        }
+    }
+
+    let field_list: Vec<&str> = fields.into_iter().collect();
+    PreflightVerdict::UnsatJoint(format!(
+        "joint distribution forbids conjunction across {field_list:?}"
+    ))
+}
+
 /// Test helper: parse a complete `DEFINE PATTERN ... WEIGHT (...)` SQL string
 /// and return its `WeightExpr`. Convenience wrapper so tests don't have to
 /// hand-build the AST for large expressions like the SCJ 10-weight scorer.

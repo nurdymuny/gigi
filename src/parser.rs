@@ -5340,6 +5340,112 @@ pub fn preflight_holonomy(
     ))
 }
 
+/// Patterns v0.2 Phase VT — HUNT verdict trichotomy.
+///
+/// Every (pattern, bundle, near_miss_budget) lands in exactly one of:
+///
+///   - `Sat`: at least one row strictly matches the predicate.
+///   - `Unsat`: provably zero matches AND no near-miss within budget.
+///     `preflight_caught` flags whether layer-1/2 preflight short-circuited
+///     (saving the scan) vs. the scan returning empty + no near-miss.
+///   - `NearMiss`: zero strict matches, but ≥1 row is within
+///     `near_miss_budget` violations of matching.
+///
+/// Per spec §4. Companion to `compute_verdict`.
+#[cfg(feature = "patterns")]
+#[derive(Debug, Clone, PartialEq)]
+pub enum Verdict {
+    Sat {
+        n_matches: usize,
+    },
+    Unsat {
+        reason: String,
+        preflight_caught: bool,
+    },
+    NearMiss {
+        near_miss_count: usize,
+        budget: usize,
+    },
+}
+
+/// Compute the verdict trichotomy for a (predicate, bundle, budget) tuple.
+///
+/// Order, per spec §4.2:
+///   1. preflight_internal — always gates. Returns Unsat with preflight_caught.
+///   2. If budget == 0: preflight_statistic. Same.
+///   3. Sat scan: any row matches strictly → Sat.
+///   4. Near-miss scan: any row has 0 < violations ≤ budget → NearMiss.
+///   5. preflight_holonomy informational pass → Unsat with reason (joint
+///      contradiction explanation if applicable, else plain "no matches").
+#[cfg(feature = "patterns")]
+pub fn compute_verdict(
+    pred: &[FilterCondition],
+    records: &[crate::types::Record],
+    near_miss_budget: usize,
+) -> Verdict {
+    // Layer 1: internal contradiction always wins.
+    let internal = preflight_internal(pred);
+    if let PreflightVerdict::UnsatInternal(reason) = &internal {
+        return Verdict::Unsat {
+            reason: reason.clone(),
+            preflight_caught: true,
+        };
+    }
+
+    // Layer 2: bundle-statistic preflight only at budget == 0.
+    if near_miss_budget == 0 {
+        let stat = preflight_statistic(pred, records);
+        if let PreflightVerdict::UnsatStatistic(reason) = &stat {
+            return Verdict::Unsat {
+                reason: reason.clone(),
+                preflight_caught: true,
+            };
+        }
+    }
+
+    // Sat scan via QueryCondition::matches (reused from v0.1 path).
+    let qs: Vec<crate::bundle::QueryCondition> = pred
+        .iter()
+        .flat_map(filter_to_query_conditions)
+        .collect();
+    let n_matches = records
+        .iter()
+        .filter(|r| qs.iter().all(|q| q.matches(r)))
+        .count();
+    if n_matches > 0 {
+        return Verdict::Sat { n_matches };
+    }
+
+    // Near-miss scan. A row is a near-miss iff it has at least one
+    // violation but no more than `near_miss_budget` of them.
+    if near_miss_budget > 0 {
+        let near_miss_count = records
+            .iter()
+            .filter(|r| {
+                let n_violations = qs.iter().filter(|q| !q.matches(r)).count();
+                n_violations > 0 && n_violations <= near_miss_budget
+            })
+            .count();
+        if near_miss_count > 0 {
+            return Verdict::NearMiss {
+                near_miss_count,
+                budget: near_miss_budget,
+            };
+        }
+    }
+
+    // True unsat. Run holonomy as an informational pass for the reason.
+    let holo = preflight_holonomy(pred, records);
+    let reason = match holo {
+        PreflightVerdict::UnsatJoint(s) => s,
+        _ => "no matches and no near-misses within budget".to_string(),
+    };
+    Verdict::Unsat {
+        reason,
+        preflight_caught: false,
+    }
+}
+
 /// Test helper: parse a complete `DEFINE PATTERN ... WEIGHT (...)` SQL string
 /// and return its `WeightExpr`. Convenience wrapper so tests don't have to
 /// hand-build the AST for large expressions like the SCJ 10-weight scorer.

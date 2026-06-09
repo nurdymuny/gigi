@@ -236,6 +236,15 @@ name = "causal_states_scan"
 path = "examples/causal_states_scan.rs"
 required-features = ["causal_states"]
 
+# Causal States Phase 4.3 — orthogonality scan (TH1 empirical evidence).
+# Writes (H[X], |Ω|) across iid Bernoulli, symmetric HMM, and Even
+# Process. Demonstrates two processes with matched H[X] can have
+# opposite |Ω|. See examples/causal_states_orthogonality.rs.
+[[bin]]
+name = "causal_states_orthogonality"
+path = "examples/causal_states_orthogonality.rs"
+required-features = ["causal_states"]
+
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"

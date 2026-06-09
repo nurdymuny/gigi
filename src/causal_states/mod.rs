@@ -376,3 +376,64 @@ pub fn commutator(
         kl: kl_val,
     })
 }
+
+// ─── Regime classifier (CV4) ─────────────────────────────────────────────
+
+/// Three-way classification of an update-commutator result. Paper §6.5.
+///
+/// - **Sofic**: synchronizing / saturating regime (the Even Process lives
+///   here). KL diverges or TV is near 1 — the operator pair is "as
+///   non-commuting as possible."
+/// - **Smooth**: non-synchronizing regime (noisy HMM at interior `(α, β)`).
+///   KL finite and TV small — closed-form expansion (paper Eq 6.4)
+///   applies.
+/// - **Borderline**: the in-between band where neither pole is clean.
+///   Reported to operators as "needs disambiguating model selection."
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Regime {
+    Sofic,
+    Smooth,
+    Borderline,
+}
+
+/// Threshold band configuration for [`classify_regime`].
+///
+/// Defaults are calibrated against the paper's §6.4 scan:
+///   - `tv_low = 0.30` — HMM smooth regime stays well below this on
+///     (α, β) ∈ (0.05, 0.45)²; sub-threshold TV with finite KL is Smooth.
+///   - `tv_high = 0.95` — Even Process at interior beliefs saturates at
+///     TV = 1; finite-KL TV near 1 still routes to Sofic.
+#[derive(Debug, Clone, Copy)]
+pub struct RegimeBands {
+    pub tv_low: f64,
+    pub tv_high: f64,
+}
+
+impl Default for RegimeBands {
+    fn default() -> Self {
+        Self {
+            tv_low: 0.30,
+            tv_high: 0.95,
+        }
+    }
+}
+
+/// Classify a [`Commutator`] result into a [`Regime`].
+///
+/// Decision rule:
+///   1. `kl == Divergent` → `Sofic`
+///   2. `tv ≥ bands.tv_high` → `Sofic`
+///   3. `tv ≤ bands.tv_low` → `Smooth`
+///   4. otherwise → `Borderline`
+pub fn classify_regime(omega: &Commutator, bands: RegimeBands) -> Regime {
+    if matches!(omega.kl, KlValue::Divergent) {
+        return Regime::Sofic;
+    }
+    if omega.tv >= bands.tv_high {
+        return Regime::Sofic;
+    }
+    if omega.tv <= bands.tv_low {
+        return Regime::Smooth;
+    }
+    Regime::Borderline
+}

@@ -227,6 +227,15 @@ name = "imagine_co2_forward"
 path = "examples/imagine_co2_forward.rs"
 required-features = ["kahler", "imagine"]
 
+# Causal States Phase 3 — empirical (α, β)-scan for the paper.
+# Generates the scatter-plot CSV + summary report. Smooth-regime closed-
+# form Eq 6.4 residual goes to machine precision; sofic anchor (Even
+# Process) lands KL Divergent at TV=1. See examples/causal_states_scan.rs.
+[[bin]]
+name = "causal_states_scan"
+path = "examples/causal_states_scan.rs"
+required-features = ["causal_states"]
+
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"

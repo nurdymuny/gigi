@@ -1,0 +1,671 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage[expansion=false]{microtype}
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+% Hyperref: PDF metadata cannot contain math
+\pdfstringdefDisableCommands{%
+  \def\varepsilon{epsilon}%
+}
+
+% Theorem environments
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% Custom macros
+\newcommand{\Dist}{\mathrm{Dist}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\TV}{d_{\mathrm{TV}}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\eqdef}{\coloneqq}
+\newcommand{\PathCat}{\mathsf{P}}
+\newcommand{\Alphabet}{\mathcal{A}}
+\newcommand{\States}{\mathcal{S}}
+\newcommand{\Pred}{\nabla_{\mathrm{pred}}}
+\newcommand{\Dom}{\mathrm{Dom}}
+\newcommand{\Past}{\overleftarrow{x}}
+\newcommand{\Pasts}{\Alphabet^{-\mathbb{N}}}
+
+\title{Causal States as Predictive Sections:\\
+$\varepsilon$-Machines and the Update Commutator on Belief-State Dynamics}
+
+\author{Bee Rosa Davis\\
+{\small Davis Geometric, Inc.}\\
+{\small \texttt{bee\_davis@alumni.brown.edu}}}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Computational mechanics characterizes the minimal predictive representation of a stationary stochastic process via causal states and $\varepsilon$-machines. We reformulate this construction categorically: the predictive path-bundle over the forward observation category has fibers given by conditional future distributions and transport given by Bayesian update. We show that the bundle-intrinsic equivalence relation on semi-infinite pasts induced by predictive-update transport coincides with the Crutchfield--Shalizi predictive equivalence; the quotient is canonically isomorphic to the $\varepsilon$-machine causal-state set; and the induced section entropy equals the statistical complexity $C_\mu$. This identification is the conservative half of the paper. We then pass to the belief-state update semigroup, where compositions of update operators admit competing orderings, and define a \emph{commutator diagnostic} $\Omega_{ab,ba}(p) \coloneqq U_{ab}(p) - U_{ba}(p)$ measuring the order-dependence of belief-state updates, with scalar counterparts in total variation, Hellinger distance, and (where finite) KL divergence. We instantiate the construction on two complementary examples: the Even Process (canonical strictly sofic), where TV and Hellinger saturate and KL diverges; and a symmetric two-state hidden Markov model (non-synchronizing), where all three scalar diagnostics take finite, smoothly parameter-dependent values and vanish in identifiable degenerate limits. The construction makes precise a structural feature of computational mechanics that is invisible to $C_\mu$ alone: the order-dependence of predictive update composition. An accompanying computational substrate validates the closed-form expressions to IEEE~754 precision across a $50 \times 50$ parameter grid, demonstrates that the commutator is estimable from finite observation samples at the canonical $1/\sqrt{N}$ rate, exhibits empirically the orthogonality between marginal symbol entropy and commutator magnitude, and provides a three-way regime classifier audited at $873/873$ accuracy on labeled processes.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Computational mechanics and the broader program of geometric predictive theory share an organizing question: \emph{what is the minimum structure a system must retain in order to predict its own future optimally?} For stationary discrete-time stochastic processes over a finite alphabet, Crutchfield, Young, Shalizi, and collaborators answered this question definitively in a sequence of papers beginning with the introduction of the $\varepsilon$-machine~\cite{crutchfield1989} and culminating in the optimality--minimality--uniqueness theorems of~\cite{shalizi2001}. The answer takes the form of a deterministic automaton on \emph{causal states}: equivalence classes of semi-infinite pasts that share a common conditional future distribution. The framework has since been extended to mixed-state presentations~\cite{james2011anatomy}, spatiotemporal local causal states~\cite{rupe2018}, fractal scaling of nearly maximally predictive features~\cite{marzen2017}, and operator-theoretic spectral decompositions of the prediction process~\cite{riechers2018a,riechers2018b}. Recent empirical work has established that transformer architectures trained on next-token prediction over structured processes linearly represent belief states in their residual stream, including cases with nontrivial fractal belief-state geometry~\cite{shai2024}.
+
+What remains less canonical is a \emph{categorical} language in which the transport of predictive structure along observation paths and the obstruction to consistent prediction across orderings of context are first-class objects. The present paper proposes such a language. We construct a predictive path-bundle over the forward observation category, identify $\varepsilon$-machine causal states as the equivalence classes induced by bundle transport, and then pass to the belief-state update semigroup, where compositions of update operators admit competing symbol orderings. The principal diagnostic is the \emph{update commutator}
+\begin{equation*}
+\Omega_{ab,ba}(p) \coloneqq U_{ab}(p) - U_{ba}(p),
+\end{equation*}
+of Bayesian update operators acting on a belief state $p$, where the right-acting convention gives $U_{ab} = U_b \circ U_a$. This is not holonomy in the strict differential-geometric sense (the observation path-category lacks closed loops), but it is the natural discrete object measuring failure of order-independence; we reserve the term \emph{holonomy} for the continuous-state extension discussed in Section~\ref{subsec:continuous}.
+
+The structural observation of the paper, demonstrated on the Even Process in Section~\ref{sec:even}, is that the belief-state update operators of canonical computational-mechanics examples \emph{do not commute on their reachable orbits}: the Even Process shows that noncommutativity is not an artificial perturbation phenomenon but already occurs in a canonical example, and it is invisible to the statistical complexity $C_\mu$. A genericity theorem over a broader class of processes is left open.
+
+\paragraph{Contribution.} The paper has three layered deliverables.
+\begin{enumerate}[label=(\arabic*)]
+    \item A categorical identification (Section~\ref{sec:identification}, Proposition~\ref{prop:identification}): the bundle-intrinsic equivalence on semi-infinite pasts induced by predictive-update transport coincides with the Crutchfield--Shalizi predictive equivalence; the quotient is the $\varepsilon$-machine causal-state set; the section entropy is $C_\mu$. This identification is conservative: it re-encodes computational mechanics in categorical language without changing its content.
+    \item A commutator diagnostic, instantiated on two complementary examples (Sections~\ref{sec:commutator}, \ref{sec:even}, and~\ref{sec:hmm}). On the belief-state update semigroup, the commutator $\Omega_{ab,ba}(p)$ and its scalar TV, Hellinger, and KL counterparts measure the order-dependence of belief updates. The Even Process exemplifies the sofic-synchronizing regime in which TV and Hellinger saturate and KL diverges. A symmetric two-state hidden Markov model exemplifies the non-synchronizing regime in which all three diagnostics are finite, smoothly parameter-dependent, and vanish in identifiable degenerate limits. The diagnostic captures a structural feature of the process distinct from, and invisible to, $C_\mu$.
+    \item A computational substrate and empirical-validation harness (Section~\ref{sec:empirical}, Appendix~\ref{app:substrate}). The closed-form Equation~\eqref{eq:hmm-tv} is verified to IEEE~754 precision across a $50 \times 50$ parameter grid. A finite-sample estimator recovers the commutator from observation data at the canonical $1/\sqrt{N}$ rate. A pair of orthogonality experiments shows that the diagnostic is not a function of the marginal symbol entropy $H[X_1]$, the quantity most likely to be confused with $C_\mu$ by a structural audit. A three-way regime classifier (Sofic, Smooth, Borderline) audited against a labeled corpus of $873$ processes achieves perfect accuracy.
+\end{enumerate}
+
+\paragraph{Thesis.} \emph{Where computational mechanics asks what a process must remember to predict, the predictive-bundle formulation asks whether that memory composes consistently across orderings of context. The Even Process shows that, in at least one canonical case, it does not.}
+
+Section~\ref{sec:discussion} discusses connections to belief-state geometry in transformer interpretability and to a continuous-state extension via Riemannian transport, and lists open problems.
+
+\section{Background: Computational Mechanics}
+\label{sec:background}
+
+We fix notation following~\cite{shalizi2001}. Let $X = (X_n)_{n \in \mathbb{Z}}$ be a stationary discrete-time stochastic process over a finite alphabet $\Alphabet$. Write the semi-infinite past as
+\begin{equation}
+    \Past = (\ldots, x_{-2}, x_{-1}, x_0) \in \Pasts,
+\end{equation}
+the future as $x^+ = (x_1, x_2, \ldots) \in \Alphabet^\infty$, and use $w \in \Alphabet^*$ for finite observation words. We assume regular conditional probabilities are chosen so that the conditional future law
+\begin{equation}
+    \Phi(\Past) \eqdef \Prob(X^+ \mid X^- = \Past) \in \Dist(\Alphabet^\infty)
+\end{equation}
+is defined for $\Prob_X$-almost every past, where $\Prob_X$ is the stationary process measure on $\Pasts$. All entropies in this paper are measured in bits; logarithms appearing in entropy expressions are base $2$.
+
+\paragraph{Predictive equivalence and causal states.}
+Two semi-infinite pasts are \emph{predictively equivalent}, written $\Past \sim_\varepsilon \overleftarrow{y}$, iff they have identical conditional future distributions:
+\begin{equation}
+    \Past \sim_\varepsilon \overleftarrow{y} \iff \Phi(\Past) = \Phi(\overleftarrow{y}).
+\end{equation}
+The \emph{causal-state set} $\States$ is the quotient $\Pasts / {\sim_\varepsilon}$. The $\varepsilon$-machine is the deterministic automaton on $\States$ whose transitions are induced by the conditional emission of $X_{n+1}$. The \emph{statistical complexity} is the entropy of the stationary causal-state distribution $\mu$:
+\begin{equation}
+    C_\mu \eqdef H[\States] = -\sum_{s \in \States} \mu(s) \log_2 \mu(s),
+\end{equation}
+assumed finite throughout.
+
+\paragraph{The optimality--minimality--uniqueness theorem.}
+The central result of computational mechanics establishes that the $\varepsilon$-machine is the optimal, minimal, and unique predictive representation among the class of \emph{prescient rivals}~\cite{shalizi2001}. We will not reproduce the precise statement here but inherit its conclusions for the section structure of the predictive path-bundle defined below.
+
+\paragraph{Prior extensions and the present contribution.}
+The classical framework has been extended in several directions. Mixed-state presentations~\cite{james2011anatomy} describe the evolution of distributions over causal states under finite observations; the mixed state at finite history $w$ is the posterior distribution on $\States$ given $w$, and is conceptually distinct from the conditional future law $\Phi(\Past)$ used here, though the two are linked by the deterministic action of $\States$ on $\Dist(\Alphabet^\infty)$. Local causal states~\cite{rupe2018} extend the framework to spatiotemporal coherent structures. Dimensional and fractal scaling of nearly maximally predictive features were developed in~\cite{marzen2017}. Spectral and operator-theoretic decompositions of the prediction process appear in~\cite{riechers2018a,riechers2018b}. What is not present in this body of work, to our knowledge, is an explicit categorical formulation in which predictive equivalence is induced by a transport structure, and in which the path-dependence of belief-state dynamics is a first-class object. We propose such a formulation now.
+
+\section{Predictive Path-Bundles}
+\label{sec:bundles}
+
+The construction is deliberately discrete and forward-only. Richer structures admitting competing update compositions (loops, belief-simplex morphisms, continuous-time generators) are deferred to Section~\ref{sec:commutator} and Section~\ref{sec:discussion}.
+
+\begin{definition}[Observation path-category]
+\label{def:pathcat}
+The \emph{observation path-category} $\PathCat(\Alphabet)$ has as objects semi-infinite pasts $\Past \in \Pasts$, and as morphisms $\Past \to_w \Past w$ labeled by observation words $w \in \Alphabet^*$, where $\Past w$ denotes the past obtained by appending $w$ and shifting the time origin. Composition is concatenation of observation words; the identity at $\Past$ is $\to_\emptyset$.
+\end{definition}
+
+\begin{remark}
+$\PathCat(\Alphabet)$ is forward-only: for any pair $(\Past, \Past w)$ there is exactly one morphism, namely $\to_w$. There are no morphisms $\Past \to \overleftarrow{y}$ between pasts not related by extension, and no nontrivial closed loops. We pass to a richer structure --- the belief-state update semigroup --- in Section~\ref{sec:commutator} to obtain nontrivial order-dependence.
+\end{remark}
+
+\begin{definition}[Predictive section]
+\label{def:section}
+The \emph{predictive section} of $X$ is the assignment
+\begin{equation}
+    \sigma : \Past \mapsto (\Past, \Phi(\Past)) \in \Pasts \times \Dist(\Alphabet^\infty),
+\end{equation}
+defined $\Prob_X$-almost everywhere.
+\end{definition}
+
+\begin{definition}[Bayesian update operator]
+\label{def:update}
+For $a \in \Alphabet$, the \emph{Bayesian update operator} $U_a$ is the partial map
+\begin{equation}
+    U_a : \Dom(U_a) \subseteq \Dist(\Alphabet^\infty) \to \Dist(\Alphabet^\infty),
+\end{equation}
+defined on
+\begin{equation}
+    \Dom(U_a) = \bigl\{ p \in \Dist(\Alphabet^\infty) : p(X_1 = a) > 0 \bigr\},
+\end{equation}
+by Bayesian conditioning on $X_1 = a$ followed by time shift:
+\begin{equation}
+    U_a(p)(B) = \frac{p\bigl(\{X_1 = a\} \cap \{(X_2, X_3, \ldots) \in B\}\bigr)}{p(X_1 = a)}, \qquad B \subseteq \Alphabet^\infty \text{ measurable}.
+\end{equation}
+For a word $w = a_1 a_2 \cdots a_n \in \Alphabet^*$, the iterated update is
+\begin{equation}
+    U_w \eqdef U_{a_n} \circ U_{a_{n-1}} \circ \cdots \circ U_{a_1},
+    \label{eq:iterated-update}
+\end{equation}
+defined on the subset of $\Dist(\Alphabet^\infty)$ for which every intermediate conditional probability is strictly positive. We set $U_\emptyset \eqdef \mathrm{id}$.
+\end{definition}
+
+The composition order in Equation~\eqref{eq:iterated-update} is right-acting: $U_w(p)$ is the result of observing the symbols of $w$ in temporal order $a_1, a_2, \ldots, a_n$. In particular, $U_{ab} = U_b \circ U_a$, and we will use the word-indexed form $U_{ab}, U_{ba}$ in Section~\ref{sec:commutator} to avoid ambiguity.
+
+\begin{definition}[Predictive path-bundle and transport]
+\label{def:bundle}
+The \emph{predictive path-bundle} associated with $X$ is the pair $(E, \pi)$ where
+\begin{equation}
+    E = \bigl\{ (\Past, p) : \Past \in \Pasts, \ p \in \Dist(\Alphabet^\infty) \bigr\},
+\end{equation}
+and $\pi(\Past, p) = \Past$. The \emph{predictive-update transport} $\Pred$ assigns to each morphism $\Past \to_w \Past w$ the partial map
+\begin{equation}
+    T_w : \pi^{-1}(\Past) \dashrightarrow \pi^{-1}(\Past w), \qquad T_w(\Past, p) \eqdef (\Past w, \, U_w(p)),
+\end{equation}
+defined whenever $p \in \Dom(U_w)$, with $T_{w_1 w_2} = T_{w_2} \circ T_{w_1}$ wherever defined and $T_\emptyset = \mathrm{id}$.
+\end{definition}
+
+\begin{lemma}[Consistency on the predictive section]
+\label{lem:consistency}
+For $\Prob_X$-almost every past $\Past$ and every word $w$ admissible from $\Past$,
+\begin{equation}
+    T_w(\sigma(\Past)) = \sigma(\Past w).
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+By Bayesian update consistency for conditional distributions of a stationary process,
+\begin{equation}
+    U_w(\Phi(\Past)) = \Phi(\Past w).
+\end{equation}
+Applying $\sigma$ gives the claim.
+\end{proof}
+
+\begin{definition}[Parallel-transport equivalence]
+\label{def:transport-eq}
+Pasts $\Past, \overleftarrow{y} \in \Pasts$ are \emph{parallel-transport equivalent}, written $\Past \sim_\nabla \overleftarrow{y}$, iff for every word $w \in \Alphabet^*$ admissible from both pasts,
+\begin{equation}
+    T_w(\sigma(\Past)) \text{ and } T_w(\sigma(\overleftarrow{y})) \text{ have equal fiber components,}
+\end{equation}
+equivalently, $U_w(\Phi(\Past)) = U_w(\Phi(\overleftarrow{y}))$ for all such $w$.
+\end{definition}
+
+\section{Predictive-Transport Recovery of Causal States}
+\label{sec:identification}
+
+The result of this section is a faithful re-encoding: the bundle-induced equivalence on pasts coincides with the Crutchfield--Shalizi predictive equivalence, so the categorical formalism recovers the $\varepsilon$-machine structure without adding to or subtracting from it.
+
+For the statement below, by the \emph{section entropy} $H[\sigma]$ we mean the Shannon entropy of the induced distribution over equivalence classes of predictive-section values, equivalently the entropy of the pushforward of the stationary process measure $\Prob_X$ on $\Pasts$ through the quotient map $\Pasts \to \Pasts / {\sim_\nabla}$.
+
+\begin{proposition}[Identification of Predictive Equivalence with Parallel-Transport Equivalence]
+\label{prop:identification}
+Let $X$ be a stationary discrete-time stochastic process over a finite alphabet $\Alphabet$ with finite statistical complexity $C_\mu$. Let $(E, \pi)$ be the predictive path-bundle of Definition~\ref{def:bundle}, equipped with the predictive section $\sigma$ and the predictive-update transport $\Pred$. Then
+\begin{enumerate}[label=(\alph*)]
+    \item The parallel-transport equivalence on pasts coincides with Crutchfield--Shalizi predictive equivalence:
+    \begin{equation}
+        \Past \sim_\nabla \overleftarrow{y} \iff \Past \sim_\varepsilon \overleftarrow{y}.
+    \end{equation}
+    \item The quotient $\Pasts / {\sim_\nabla}$ is canonically isomorphic to the $\varepsilon$-machine causal-state set $\States$.
+    \item The induced section entropy equals the statistical complexity:
+    \begin{equation}
+        H[\sigma] = H[\mu] = C_\mu.
+    \end{equation}
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+\textbf{(a)} \emph{($\Leftarrow$)} If $\Past \sim_\varepsilon \overleftarrow{y}$, then $\Phi(\Past) = \Phi(\overleftarrow{y})$. For any word $w$ admissible from one (equivalently the other) past, Lemma~\ref{lem:consistency} gives $U_w(\Phi(\Past)) = \Phi(\Past w)$ and similarly for $\overleftarrow{y}$. Since $U_w$ is a function on its domain, $U_w(\Phi(\Past)) = U_w(\Phi(\overleftarrow{y}))$. Hence $\Past \sim_\nabla \overleftarrow{y}$.
+
+\emph{($\Rightarrow$)} If $\Past \sim_\nabla \overleftarrow{y}$, take $w = \emptyset$. Since $T_\emptyset = \mathrm{id}$ by Definition~\ref{def:bundle}, equality of transported fiber components reduces to $\Phi(\Past) = \Phi(\overleftarrow{y})$, hence $\Past \sim_\varepsilon \overleftarrow{y}$.
+
+\textbf{(b)} Immediate from (a).
+
+\textbf{(c)} Under the isomorphism in (b), the pushforward of $\Prob_X$ through the quotient map is the stationary causal-state distribution $\mu$ on $\States$. The section entropy is $H[\mu] = C_\mu$ by definition.
+\end{proof}
+
+\begin{corollary}
+\label{cor:inheritance}
+Under the hypotheses of Proposition~\ref{prop:identification}, the section structure of the predictive path-bundle inherits the optimality, minimality, and uniqueness properties of the $\varepsilon$-machine established in~\cite{shalizi2001}.
+\end{corollary}
+
+\begin{remark}[The role of Proposition~\ref{prop:identification}]
+\label{rem:role}
+This proposition is not a new optimality result. It is a faithful translation: the categorical transport formalism re-encodes computational mechanics without changing its content. The role of this conservative identification is to fix the categorical transport language and make explicit the update structure used in Section~\ref{sec:commutator}, where we enrich from the forward observation category to the belief-state update semigroup --- a structure that admits genuinely competing compositions and in which order-dependence becomes a substantive question.
+\end{remark}
+
+\begin{remark}[Why this is an identification, not a flat-limit reduction]
+\label{rem:forward-only}
+The observation path-category $\PathCat(\Alphabet)$ is forward-only: for any pair $(\Past, \Past w)$ of objects there is exactly one morphism. The categorical notion of flatness --- path-independence of transport between fixed endpoints --- is therefore vacuous in this setting. Proposition~\ref{prop:identification} is not a reduction from a curved to a flat regime; nontrivial order-dependence appears only after passing to the belief-state update semigroup, where compositions $U_{ab}$ and $U_{ba}$ act on the same belief state via competing routes.
+\end{remark}
+
+\section{The Update Commutator: A Diagnostic for Order-Dependent Prediction}
+\label{sec:commutator}
+
+Proposition~\ref{prop:identification} re-encodes the $\varepsilon$-machine structure in categorical form. We now ask what additional structure appears when the categorical setting is enriched to admit competing update compositions.
+
+The natural enrichment passes from the forward observation category $\PathCat(\Alphabet)$ to the \emph{belief-state update semigroup} $\mathcal{U}$ generated by $\{ U_a : a \in \Alphabet \}$ acting on $\Dist(\Alphabet^\infty)$. In $\mathcal{U}$, distinct compositions $U_{ab} = U_b \circ U_a$ and $U_{ba} = U_a \circ U_b$ act on the same belief state, and the question of order-independence becomes substantive. We measure failure of order-independence by the commutator $\Omega_{ab,ba}(p)$ and its scalar diagnostics. This is not holonomy in the strict differential-geometric sense, since the discrete observation category does not contain closed loops; the analogous closed-loop curvature treatment requires a continuous-state setting and is deferred to Section~\ref{subsec:continuous}.
+
+\begin{definition}[Update commutator and scalar diagnostics]
+\label{def:commutator}
+For $a, b \in \Alphabet$ and a belief state $p \in \Dom(U_{ab}) \cap \Dom(U_{ba})$, the \emph{update commutator at $p$ for the pair $(a, b)$} is
+\begin{equation}
+    \Omega_{ab,ba}(p) \eqdef U_{ab}(p) - U_{ba}(p),
+\end{equation}
+viewed as a signed measure on $\Alphabet^\infty$. We define three scalar diagnostics:
+\begin{align}
+    \mathcal{H}^{\mathrm{TV}}_{ab,ba}(p) &\eqdef \TV\bigl(U_{ab}(p), U_{ba}(p)\bigr), \\
+    \mathcal{H}^{\mathrm{Hel}}_{ab,ba}(p) &\eqdef \tfrac{1}{\sqrt{2}} \,\bigl\| \sqrt{U_{ab}(p)} - \sqrt{U_{ba}(p)} \bigr\|_2, \\
+    \mathcal{H}^{\mathrm{KL}}_{ab,ba}(p) &\eqdef \KL\bigl(U_{ab}(p) \,\bigl\|\, U_{ba}(p)\bigr) \quad \text{(when finite)}.
+\end{align}
+The total-variation and Hellinger versions take values in $[0, 1]$ and are always finite; the KL version is sharpest where finite but may diverge when the two competing compositions yield mutually singular distributions, as occurs in Section~\ref{sec:even}.
+\end{definition}
+
+\begin{remark}[Diagnostic, not yet invariant]
+\label{rem:diagnostic}
+The functions $\mathcal{H}^{\bullet}_{ab,ba}$ are pointwise diagnostics on the belief simplex, parameterized by the symbol pair $(a, b)$. They are not yet process-level invariants. Aggregation over a stationary measure $\nu$ on the reachable belief orbit, weighted by admissibility and a symmetric joint-observation probability, yields candidate invariants:
+\begin{equation}
+    \overline{\mathcal{H}^{\bullet}}(\nu) \eqdef \mathbb{E}_{p \sim \nu} \sum_{a, b \in \Alphabet} w_{ab,ba}(p)\, \mathcal{H}^{\bullet}_{ab,ba}(p), \qquad \mathcal{H}^{\bullet}_{\max} \eqdef \sup_{p, \,(a,b)} \mathcal{H}^{\bullet}_{ab,ba}(p),
+\end{equation}
+with
+\begin{equation}
+    w_{ab,ba}(p) \eqdef \mathbf{1}_{\{p \in \Dom(U_{ab}) \cap \Dom(U_{ba})\}} \cdot \tfrac{1}{2}\bigl(\Prob(ab \mid p) + \Prob(ba \mid p)\bigr).
+\end{equation}
+The admissibility indicator excludes pairs at which the commutator is undefined; the symmetric probability weight $\tfrac{1}{2}(\Prob(ab \mid p) + \Prob(ba \mid p))$ treats the two compositions equally, since the diagnostic compares them without privileging either ordering. We use the term \emph{commutator diagnostic} for the pointwise functions and reserve \emph{aggregate diagnostic} for such weighted sums.
+\end{remark}
+
+\begin{proposition}[Vanishing diagnostic and order-independence]
+\label{prop:commutative-action}
+Let $\mathcal{O} \subseteq \Dist(\Alphabet^\infty)$ be an orbit of the update semigroup $\mathcal{U}$ that is closed under all admissible updates by symbols in $\Alphabet$. If $\Omega_{ab,ba}(p) = 0$ for all $p \in \mathcal{O}$ and all $a, b \in \Alphabet$ for which both $U_{ab}(p)$ and $U_{ba}(p)$ are defined, then for any two admissible words $w_1, w_2$ related by a sequence of adjacent transpositions such that every intermediate word is admissible at $p$, we have $U_{w_1}(p) = U_{w_2}(p)$ on $\mathcal{O}$.
+\end{proposition}
+
+\begin{proof}
+Suppose $w_1 = a_1 \cdots a_n$ and $w_2 = a_{\pi(1)} \cdots a_{\pi(n)}$ are related by a sequence of adjacent transpositions $w_1 = v_0, v_1, \ldots, v_k = w_2$, where each $v_{i+1}$ is obtained from $v_i$ by a single adjacent transposition $\ldots cd \ldots \mapsto \ldots dc \ldots$ at some position, and every $v_i$ is admissible at $p$. Write $v_i = u_i \cdot cd \cdot u'_i$ and $v_{i+1} = u_i \cdot dc \cdot u'_i$. Let $q_i \eqdef U_{u_i}(p) \in \mathcal{O}$; by orbit closure, $q_i$ lies in $\mathcal{O}$ and lies in the common domain of $U_{cd}$ and $U_{dc}$ by admissibility of $v_i$ and $v_{i+1}$ at $p$. The vanishing hypothesis $\Omega_{cd,dc}(q_i) = 0$ then gives $U_{cd}(q_i) = U_{dc}(q_i)$, hence $U_{v_i}(p) = U_{v_{i+1}}(p)$. Induction on $i$ yields $U_{w_1}(p) = U_{w_2}(p)$.
+\end{proof}
+
+\begin{remark}[Flatness obstruction]
+\label{rem:flatness}
+Equivalently, $\mathcal{H}^{\mathrm{TV}}_{ab,ba}(p) > 0$ is a flatness obstruction at $p$: any extension of the path-category $\PathCat(\Alphabet)$ that admits both orderings $ab$ and $ba$ as morphisms between common endpoints fails to be flat at $p$, since categorical flatness of such an extension would require equal transports between common endpoints, contradicting $U_{ab}(p) \neq U_{ba}(p)$. This is the discrete analogue of curvature obstruction in the continuous-state extension of Section~\ref{subsec:continuous}.
+\end{remark}
+
+\paragraph{Interpretation.}
+The statistical complexity $C_\mu$ measures the \emph{storage cost} of the causal-state representation: the entropy of the causal-state distribution. The commutator diagnostic $\mathcal{H}^{\bullet}_{ab,ba}(p)$ measures a different property: whether predictive update composition is order-dependent at the belief state $p$. Two processes can share the same $C_\mu$ while having different update semigroup actions on their belief simplices; hence $C_\mu$ cannot, by itself, determine the commutator diagnostic, and the two are independent structural quantities. When all diagnostics vanish, the update action is order-independent at the relevant points; when they do not vanish, predictive storage and predictive order-sensitivity must be tracked separately. We make this concrete in the next two sections, on two complementary process examples.
+
+\section{The Even Process: Saturated Commutator on a Sofic Process}
+\label{sec:even}
+
+The \emph{Even Process} is the canonical strictly sofic process: it has a finite $\varepsilon$-machine but is not finite-order Markov in the observed symbols. Over the binary alphabet $\Alphabet = \{0, 1\}$, the process generates blocks of $1$'s of even length, separated by $0$'s. We show that the Bayesian update operators of the Even Process \emph{do not commute on its reachable belief orbit}: the commutator is nonzero at every reachable interior belief, without any perturbation of the process. The TV and Hellinger diagnostics saturate at $1$ on the reachable orbit and the KL diagnostic diverges; we explain why these saturations are forced by the sofic structure of the process and motivate the non-synchronizing example of Section~\ref{sec:hmm}.
+
+\subsection{$\varepsilon$-machine and statistical complexity}
+
+The $\varepsilon$-machine of the Even Process has two causal states $\States = \{s_0, s_1\}$:
+\begin{itemize}[itemsep=2pt,topsep=2pt]
+    \item $s_0$: the process has just emitted a $0$ or has completed an even-length block of $1$'s.
+    \item $s_1$: the process has just emitted an odd number of consecutive $1$'s and must emit at least one more $1$ before a $0$ becomes admissible.
+\end{itemize}
+The transitions are
+\begin{equation}
+    s_0 \xrightarrow{\,0,\, 1/2\,} s_0, \qquad
+    s_0 \xrightarrow{\,1,\, 1/2\,} s_1, \qquad
+    s_1 \xrightarrow{\,1,\, 1\,} s_0,
+\end{equation}
+with $\Prob(0 \mid s_1) = 0$. The stationary distribution is $\mu(s_0) = 2/3$, $\mu(s_1) = 1/3$, and
+\begin{equation}
+    C_\mu = H\bigl(\tfrac{2}{3}, \tfrac{1}{3}\bigr) = \tfrac{2}{3} \log_2 \tfrac{3}{2} + \tfrac{1}{3} \log_2 3 \approx 0.9183 \text{ bits}.
+\end{equation}
+
+\subsection{Bayesian update operators on the belief simplex}
+
+We parametrize belief states over $\States$ by $p = (p_0, p_1) \in \Delta(\States)$, where $p_0 + p_1 = 1$ (here $\Delta(\States)$ is the 1-simplex since $|\States| = 2$). The Bayesian update operators follow from conditioning on the observed symbol and applying the deterministic causal-state transition.
+
+\paragraph{$U_0$.} Observing $0$ requires the previous causal state to be $s_0$ (since $\Prob(0 \mid s_1) = 0$); the transition takes $s_0$ to $s_0$. Hence for any $p$ with $p_0 > 0$,
+\begin{equation}
+    U_0(p) = (1, 0).
+    \label{eq:u0-even}
+\end{equation}
+$U_0$ is undefined on the point $(0, 1)$.
+
+\paragraph{$U_1$.} Observing $1$ is admissible whenever $p_0/2 + p_1 > 0$, which holds throughout $\Delta(\States)$. The transition takes $s_0 \to s_1$ and $s_1 \to s_0$. The posterior over the new causal state is
+\begin{equation}
+    U_1(p) = \frac{\bigl(p_1,\; p_0/2\bigr)}{p_0/2 + p_1}.
+    \label{eq:u1-even}
+\end{equation}
+
+\subsection{The reachable belief orbit}
+
+Starting from the stationary belief $\mu = (2/3, 1/3)$, the orbit under finite admissible observation words is
+\begin{equation}
+    \mathcal{O} = \bigl\{\, (2/3, 1/3),\, (1/2, 1/2),\, (1, 0),\, (0, 1) \,\bigr\}.
+\end{equation}
+By direct calculation: $U_1(\mu) = (1/2, 1/2)$; $U_1(1/2, 1/2) = \mu$; $U_0(\mu) = U_0(1/2, 1/2) = (1, 0)$; $U_1(1, 0) = (0, 1)$; $U_1(0, 1) = (1, 0)$. The orbit $\mathcal{O}$ is closed under all admissible updates.
+
+\subsection{Intrinsic noncommutativity}
+
+We compute the commutator $\Omega_{01, 10}(p)$ at each interior reachable point.
+
+At $p = \mu = (2/3, 1/3)$:
+\begin{align}
+    U_{01}(\mu) &= U_1(U_0(\mu)) = U_1(1, 0) = (0, 1), \\
+    U_{10}(\mu) &= U_0(U_1(\mu)) = U_0(1/2, 1/2) = (1, 0),
+\end{align}
+hence $\Omega_{01,10}(\mu) = (0, 1) - (1, 0) = (-1, 1) \neq 0$.
+
+At $p = (1/2, 1/2)$:
+\begin{align}
+    U_{01}(1/2, 1/2) &= U_1(U_0(1/2, 1/2)) = U_1(1, 0) = (0, 1), \\
+    U_{10}(1/2, 1/2) &= U_0(U_1(1/2, 1/2)) = U_0(2/3, 1/3) = (1, 0),
+\end{align}
+hence $\Omega_{01,10}(1/2, 1/2) = (-1, 1)$.
+
+The commutator at the corner points $(1, 0)$ and $(0, 1)$ requires composition through the undefined $U_0(0, 1)$ and is not defined there.
+
+\subsection{Diagnostic values and the role of the functional}
+
+We begin with the measure-theoretic observation that fixes the qualitative behavior in this example: for the Even Process, the two competing compositions $U_{01}$ and $U_{10}$ send any interior reachable belief to mutually singular point masses on the two causal states. KL divergence between mutually singular distributions is $+\infty$ by definition; total variation between distinct point masses on a finite set is $1$; Hellinger distance is likewise saturated at $1$. The saturation of TV and Hellinger and the divergence of KL on the Even Process are therefore forced by the sofic synchronization structure, not properties of the diagnostics themselves. The KL functional is ill-suited to sofic-synchronizing processes for this reason; TV and Hellinger remain informative across the full simplex. We explicitly evaluate:
+\begin{equation}
+    \mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) = \mathcal{H}^{\mathrm{TV}}_{01,10}(1/2, 1/2) = 1,
+\end{equation}
+\begin{equation}
+    \mathcal{H}^{\mathrm{Hel}}_{01,10}(\mu) = \mathcal{H}^{\mathrm{Hel}}_{01,10}(1/2, 1/2) = 1,
+\end{equation}
+\begin{equation}
+    \mathcal{H}^{\mathrm{KL}}_{01,10}(\mu) = \KL\bigl((0, 1) \,\bigl\|\, (1, 0)\bigr) = +\infty.
+\end{equation}
+The total-variation and Hellinger diagnostics take their maximal value; the KL diagnostic diverges. The Even Process is therefore not a process whose belief simplex retains weight in the interior under iterated update --- its observations synchronize the belief sharply to corners. Section~\ref{sec:hmm} treats a complementary process for which interior support is retained and all three diagnostics take finite, parameter-dependent values.
+
+\subsection{Three structural observations}
+
+\emph{First}, the unperturbed Even Process exhibits noncommutativity of the update operators on its reachable orbit: the TV and Hellinger diagnostics saturate at $1$ on the two interior reachable beliefs, and the KL diagnostic diverges there. No perturbation is required to obtain a nonzero commutator; noncommutativity is intrinsic to the process.
+
+\emph{Second}, this noncommutativity is not visible to the statistical complexity $C_\mu \approx 0.9183$ bits. $C_\mu$ measures the storage cost of the causal-state representation, not the order-dependence of the update action. The commutator diagnostic therefore tracks structure not captured by $C_\mu$ alone.
+
+\emph{Third}, the divergence of the KL diagnostic and the maximality of the TV and Hellinger diagnostics reflect a particular feature of the Even Process: sharp synchronization to causal-state corners. Processes with belief dynamics that retain interior support --- cryptic processes, partially observable HMMs with smooth transition densities, continuous-state generalizations --- yield diagnostics with intermediate, parameter-dependent values; we exhibit the simplest such example in Section~\ref{sec:hmm}. The natural domain of the KL functional is the regime of interior belief support; the TV and Hellinger functionals remain informative across the full simplex.
+
+\section{A Non-Synchronizing Example: The Noisy Two-State HMM}
+\label{sec:hmm}
+
+The Even Process of Section~\ref{sec:even} exemplifies the sofic regime: observations synchronize the belief sharply to causal-state corners, the TV and Hellinger diagnostics saturate, and the KL diagnostic diverges by elementary measure theory. To exhibit the commutator framework in a contrasting regime, we now compute it for a process whose belief simplex retains interior support under iterated update: a symmetric two-state hidden Markov model with noisy emissions. All three scalar diagnostics are finite for this process and depend smoothly on the parameters.
+
+\subsection{Process definition}
+
+The \emph{noisy two-state HMM} has hidden states $\{A, B\}$, transition matrix
+\begin{equation}
+    M = \begin{pmatrix} 1 - \alpha & \alpha \\ \alpha & 1 - \alpha \end{pmatrix}, \qquad \alpha \in (0, \tfrac{1}{2}),
+\end{equation}
+and emission probabilities
+\begin{equation}
+    \Prob(0 \mid A) = 1 - \beta, \quad \Prob(0 \mid B) = \beta, \quad \Prob(1 \mid A) = \beta, \quad \Prob(1 \mid B) = 1 - \beta, \qquad \beta \in (0, \tfrac{1}{2}).
+\end{equation}
+The parameter $\alpha$ controls the transition rate between hidden states; $\beta$ controls the emission noise. The symmetric construction yields stationary belief $\mu = (1/2, 1/2)$ over hidden states. The purpose of this section is not to recover the causal-state structure of the observed process, but to evaluate the commutator diagnostic on the finite-dimensional filtering simplex of the hidden-state model. The hidden-state belief determines a conditional future law, so the computation is a finite-dimensional realization of the predictive-update action rather than a claim that the hidden states are causal states.
+
+\subsection{Bayesian updates on the belief simplex}
+
+For belief $q = (q_A, q_B) \in \Delta(\States_{\mathrm{hidden}})$ and observation $x \in \{0, 1\}$, the Bayesian update is
+\begin{equation}
+\label{eq:hmm-bayes}
+    U_x(q) \;=\; \frac{M^\top (E_x \odot q)}{\mathbf{1}^\top (E_x \odot q)},
+\end{equation}
+where $E_0 = (1 - \beta, \beta)$, $E_1 = (\beta, 1 - \beta)$, and $\odot$ denotes componentwise product. Unlike the Even Process, both $U_0$ and $U_1$ are defined everywhere on $\Delta(\States_{\mathrm{hidden}})$ for $\beta \in (0, 1/2)$, and their images remain in the interior of the simplex.
+
+\subsection{Commutator at the stationary belief}
+
+A direct calculation at the stationary belief $\mu = (1/2, 1/2)$ gives
+\begin{equation}
+    U_0(\mu) = (a,\, 1 - a), \qquad U_1(\mu) = (1 - a,\, a), \qquad a \eqdef 1 - \alpha - \beta + 2 \alpha \beta.
+\end{equation}
+The composite updates $U_{01}(\mu) = U_1(a, 1-a)$ and $U_{10}(\mu) = U_0(1-a, a)$ differ by a reflection of the simplex, so they have the form $U_{01}(\mu) = (r, 1-r)$ and $U_{10}(\mu) = (1-r, r)$ for a scalar $r = r(\alpha, \beta) \in (0, 1/2)$. A short algebraic reduction gives the closed form
+\begin{equation}
+\label{eq:hmm-tv}
+    \mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \;=\; |1 - 2r| \;=\; \frac{\alpha\,(1 - 2\alpha)\,(1 - 2\beta)}{\alpha(1 - 2\beta)^2 + 2\beta(1 - \beta)},
+\end{equation}
+which holds for all $(\alpha, \beta) \in (0, 1/2)^2$. The Hellinger and KL diagnostics admit similar (but less compact) closed-form expressions in $\alpha, \beta$ via $r$:
+\begin{align}
+    \mathcal{H}^{\mathrm{Hel}}_{01,10}(\mu) &\;=\; \tfrac{1}{\sqrt{2}}\,\bigl\| (\sqrt{r}, \sqrt{1-r}) - (\sqrt{1-r}, \sqrt{r}) \bigr\|_2, \\
+    \mathcal{H}^{\mathrm{KL}}_{01,10}(\mu) &\;=\; r \log_2 \tfrac{r}{1-r} + (1-r) \log_2 \tfrac{1-r}{r}.
+\end{align}
+At $(\alpha, \beta) = (0.2, 0.3)$, $r \approx 0.4469$, giving
+\begin{equation}
+    \mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \approx 0.1062, \quad
+    \mathcal{H}^{\mathrm{Hel}}_{01,10}(\mu) \approx 0.0752, \quad
+    \mathcal{H}^{\mathrm{KL}}_{01,10}(\mu) \approx 0.0327 \text{ bits}.
+\end{equation}
+All three diagnostics are finite. The KL diagnostic in particular is well-defined because $U_{01}(\mu)$ and $U_{10}(\mu)$ are mutually absolutely continuous on $\{A, B\}$: there is no synchronization-driven blowup.
+
+\subsection{Parameter dependence}
+
+The closed-form~\eqref{eq:hmm-tv} makes the structural features of the diagnostic transparent. The numerator $\alpha(1 - 2\alpha)(1 - 2\beta)$ vanishes at $\alpha = 0$ (frozen hidden state, Bayesian updates from independent observations commute by elementary measure theory), at $\alpha = 1/2$ (rank-one transition matrix, every update sends the belief to $\mu$), and at $\beta = 1/2$ (uninformative emissions, $U_0 = U_1$). The denominator $\alpha(1 - 2\beta)^2 + 2\beta(1 - \beta)$ is strictly positive on $(0, 1/2)^2$, so the diagnostic is nontrivial precisely in the joint regime of nondegenerate dynamics and informative emissions.
+
+The TV diagnostic is non-monotone in $\alpha$: differentiating~\eqref{eq:hmm-tv} with respect to $\alpha$ at fixed $\beta$ shows a unique interior maximum, located near $\alpha = 0.2$ for small $\beta$ and shifting toward $\alpha = 1/4$ as $\beta \to 1/2$. The peak value reaches $\mathcal{H}^{\mathrm{TV}} \approx 0.312$ at $(\alpha, \beta) \approx (0.2, 0.1)$. In $\beta$, the diagnostic decays monotonically: noisier emissions wash out the separation between the two compositions. Table~\ref{tab:hmm-scan} reports a numerical scan.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{cccccc}
+\toprule
+$\alpha$ & $\beta$ & $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu)$ & $\mathcal{H}^{\mathrm{Hel}}_{01,10}(\mu)$ & $\mathcal{H}^{\mathrm{KL}}_{01,10}(\mu)$ (bits) \\
+\midrule
+0.05 & 0.10 & 0.170 & 0.121 & 0.084 \\
+0.10 & 0.10 & 0.262 & 0.187 & 0.203 \\
+0.20 & 0.10 & 0.312 & 0.223 & 0.290 \\
+0.30 & 0.10 & 0.258 & 0.184 & 0.197 \\
+0.40 & 0.10 & 0.147 & 0.104 & 0.063 \\
+0.45 & 0.10 & 0.077 & 0.054 & 0.017 \\
+\midrule
+0.20 & 0.10 & 0.312 & 0.223 & 0.290 \\
+0.20 & 0.20 & 0.184 & 0.130 & 0.098 \\
+0.20 & 0.30 & 0.106 & 0.075 & 0.033 \\
+0.20 & 0.40 & 0.049 & 0.035 & 0.007 \\
+\bottomrule
+\end{tabular}
+\caption{Commutator diagnostics at the stationary belief $\mu = (1/2, 1/2)$ for the noisy two-state HMM, evaluated at the symbol pair $(a, b) = (0, 1)$. The upper block varies $\alpha$ at fixed $\beta = 0.1$; the lower block varies $\beta$ at fixed $\alpha = 0.2$. All values are finite. The diagnostic is non-monotone in $\alpha$ (peaking near $\alpha = 0.2$) and monotone-decreasing in $\beta$. All values computed directly from Equation~\eqref{eq:hmm-bayes}; no simulation is involved.}
+\label{tab:hmm-scan}
+\end{table}
+
+\subsection{Contrast with the Even Process}
+
+The Even Process and the noisy two-state HMM exemplify two regimes of commutator behavior. The two computations also live on formally distinct simplices: Section~\ref{sec:even} works on the causal-state simplex $\Delta(\States)$ of the Even Process's $\varepsilon$-machine, while Section~\ref{sec:hmm} works on the finite-dimensional filtering simplex over hidden states of the noisy two-state HMM. The latter is not the causal-state simplex of the observed process, but its points determine predictive future laws, so the diagnostic is well-defined.
+
+\emph{Sofic synchronization (Even Process).} Observations drive the belief sharply to corners of $\Delta(\States)$. The two competing compositions land on mutually singular point masses. TV and Hellinger saturate at $1$; KL diverges. The commutator is nonzero, but its scalar values carry no parameter-dependent structural information about the process beyond the binary fact of nonzero saturation.
+
+\emph{Non-synchronizing dynamics (noisy HMM).} Observations move belief but never drive it to the boundary. The two competing compositions land on distinct interior beliefs. All three diagnostics take finite, smoothly parameter-dependent values, and vanish in identifiable degenerate limits. The diagnostic varies smoothly across a two-parameter family of processes and is therefore informative as a structural functional, not merely as a binary indicator.
+
+The commutator framework is informative across both regimes, but the choice of scalar functional matters: TV and Hellinger remain informative on synchronizing sofic processes; the KL functional comes into its own when belief support remains interior. Section~\ref{subsec:continuous} discusses the continuous-state extension, where smooth belief dynamics generalize the noisy-HMM picture.
+
+\section{Empirical Validation}
+\label{sec:empirical}
+
+The analytical construction of Sections~\ref{sec:bundles}--\ref{sec:hmm} is accompanied by a computational validation harness that verifies the closed-form expressions numerically, demonstrates that the commutator is recoverable from finite observation samples, exhibits an empirical orthogonality between marginal symbol entropy and commutator magnitude, and audits a three-way regime classifier on a labeled corpus. The validation suite consists of 77 Rust tests in the substrate, 36 parallel Python tests in the math harness, and four reproducible binaries whose outputs (CSV plus plain-text summaries) are versioned alongside the paper. Reproducibility references appear in Appendix~\ref{app:substrate}.
+
+\subsection{Closed-form verification of Equation~\eqref{eq:hmm-tv}}
+\label{subsec:closed-form-verify}
+
+Equation~\eqref{eq:hmm-tv} expresses the total-variation diagnostic $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu)$ in closed form as a rational function of $(\alpha, \beta)$. We verify this expression numerically by evaluating both sides on a $50 \times 50$ grid over $(\alpha, \beta) \in [0.01, 0.49]^2$ at the stationary belief $\mu = (1/2, 1/2)$. The direct evaluation applies the Bayesian update of Equation~\eqref{eq:hmm-bayes} twice in each ordering and computes total variation against the closed-form prediction; we also record the absolute residual $|\,\text{direct} - \text{closed form}\,|$ at every grid point. Across all 2505 grid points plus five named anchors corresponding to the $(\alpha, \beta) = (0.2, 0.3)$ reference and the limiting cases $\alpha \to 0$, $\alpha \to 1/2$, $\beta \to 1/2$ discussed in Section~\ref{sec:hmm}, the maximum absolute residual is $|\,\text{direct} - \text{closed form}\,| = 2.498 \times 10^{-16}$, at the IEEE~754 double-precision floor. The Even Process anchor at $\mu = (2/3, 1/3)$ recovers the predicted saturation in the same scan: TV $= 1$, KL divergent. The closed form holds across the smooth regime to machine precision.
+
+\subsection{Finite-sample empirical commutator}
+\label{subsec:finite-sample}
+
+Equation~\eqref{eq:hmm-tv} is a closed-form prediction; an audit may reasonably ask whether the commutator is also \emph{estimable} from observation data alone, without knowledge of the operator formulas. The Bayesian filter identity $U_b(U_a(\mu)) = \Prob(s_3 \mid x_1 = a, x_2 = b)$ identifies the commutator arm with the predictive prior on the next hidden state conditional on the observation pair. We simulate $N$ trajectories from the noisy two-state HMM at $(\alpha, \beta) = (0.2, 0.3)$ with initial belief $\mu = (0.5, 0.5)$, partition them by observation pair $(x_1, x_2) \in \{(0,1), (1,0)\}$, count the empirical distribution of the next hidden state in each partition, and form the empirical TV diagnostic between the two arms. The simulator uses a deterministic-seed linear-congruential generator so the experiment is byte-reproducible.
+
+At $N = 200{,}000$, the empirical TV diagnostic agrees with the closed-form value $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \approx 0.106$ to within $0.02$ across multiple seeds. Doubling $N$ from $5{,}000$ to $50{,}000$ reduces the mean absolute error by a factor of at least $2$ over $8$ random seeds (the asymptotic prediction is $\sqrt{10} \approx 3.16$), consistent with the canonical $1/\sqrt{N}$ rate expected from multinomial sampling on the observation-pair partition. The iid limit at $\alpha = 1/2$ (rank-one transition matrix, every update projects to the stationary $(1/2, 1/2)$) yields empirical TV indistinguishable from $0$ at $N = 10^5$, confirming the analytical commutativity in the degenerate regime directly from data.
+
+\subsection{Symbol-entropy orthogonality}
+\label{subsec:orthogonality}
+
+A natural concern about the diagnostic $\mathcal{H}^{\bullet}_{ab,ba}$ is whether it is a disguised function of the marginal symbol entropy
+\begin{equation*}
+    H[X_1] \;=\; -\sum_{x \in \Alphabet} \Prob(X_1 = x) \log_2 \Prob(X_1 = x),
+\end{equation*}
+the quantity most likely to be confused with $C_\mu$ by a structural audit that does not distinguish process-level marginals from causal-state-level entropies. We exhibit two pairs of processes that resolve this concern empirically:
+
+\paragraph{Matched $H[X_1]$, opposite $|\Omega|$.} The Even Process has stationary symbol distribution $(\Prob(X = 0), \Prob(X = 1)) = (1/3, 2/3)$, hence symbol entropy $H[X_1] = h(2/3) \approx 0.918$ bits, where $h(\cdot)$ denotes the binary entropy function. The independent Bernoulli$(2/3)$ process has the same stationary symbol distribution and the same symbol entropy. The Even Process commutator $\mathcal{H}^{\mathrm{TV}}_{01,10}$ saturates at $1$ at both reachable interior beliefs by Section~\ref{sec:even}; the Bernoulli$(2/3)$ commutator vanishes identically, since within a single i.i.d.\ process the operators $U_0$ and $U_1$ both return the same stationary belief regardless of input. The two processes therefore differ maximally in commutator magnitude while agreeing exactly in symbol entropy.
+
+\paragraph{Fixed $H[X_1] = 1$, sweeping $|\Omega|$.} For every symmetric noisy two-state HMM with $(\alpha, \beta) \in (0, 1/2)^2$, the symmetry of the transition matrix forces stationary hidden belief $(1/2, 1/2)$, and the symmetric emissions then force stationary symbol distribution $(1/2, 1/2)$. Symbol entropy is identically $H[X_1] = 1$ across the entire two-parameter family. The TV diagnostic, by Equation~\eqref{eq:hmm-tv}, varies continuously and non-monotonically over $(0, 1/2)^2$, peaking near $\alpha \approx 0.2$, $\beta \approx 0.1$ at $\mathcal{H}^{\mathrm{TV}} \approx 0.312$ and vanishing in the degenerate limits. Symbol entropy is therefore constant on a family of processes whose commutator magnitude is not.
+
+The diagnostic is not a function of $H[X_1]$. A scan of the joint distribution of $(H[X_1], \mathcal{H}^{\mathrm{TV}})$ across $1773$ processes drawn from the iid Bernoulli family ($91$ values of $p$), the symmetric noisy HMM grid ($1681$ values of $(\alpha, \beta)$), and the Even Process anchor confirms the diagonal-versus-anti-diagonal arrangement: the iid family populates the horizontal line $\mathcal{H}^{\mathrm{TV}} = 0$ across the full range of $H[X_1]$; the HMM family populates the vertical line $H[X_1] = 1$ across $\mathcal{H}^{\mathrm{TV}} \in [0, 0.5)$; the Even Process sits alone at $(0.918, 1)$, sharing its abscissa with the iid Bernoulli$(2/3)$ point at $(0.918, 0)$.
+
+\subsection{Regime classifier audit}
+\label{subsec:classifier}
+
+The qualitative distinction between the sofic-synchronizing regime (Section~\ref{sec:even}: KL divergent, TV near $1$) and the smooth non-synchronizing regime (Section~\ref{sec:hmm}: KL finite, TV small) admits an operational three-way classifier based on the commutator's scalar diagnostics. We propose the decision rule
+\begin{equation}
+\label{eq:classifier}
+\mathrm{regime}(\Omega) \;=\;
+\begin{cases}
+\text{Sofic} & \text{if } \mathcal{H}^{\mathrm{KL}}_{ab,ba} = +\infty \text{ or } \mathcal{H}^{\mathrm{TV}}_{ab,ba} \geq \tau_{\mathrm{high}}, \\
+\text{Smooth} & \text{if } \mathcal{H}^{\mathrm{TV}}_{ab,ba} \leq \tau_{\mathrm{low}} \text{ and } \mathcal{H}^{\mathrm{KL}}_{ab,ba} < \infty, \\
+\text{Borderline} & \text{otherwise,}
+\end{cases}
+\end{equation}
+with default thresholds $(\tau_{\mathrm{low}}, \tau_{\mathrm{high}}) = (0.30, 0.95)$. The thresholds are calibrated against the parameter-dependence analysis of Section~\ref{sec:hmm}: the symmetric noisy HMM TV diagnostic is bounded above by $\approx 0.312$ on the studied parameter range, so $\tau_{\mathrm{low}} = 0.30$ cleanly separates the smooth regime from the borderline band; sofic-synchronizing processes saturate at $1$, so $\tau_{\mathrm{high}} = 0.95$ admits any near-saturating diagnostic.
+
+We audit the classifier against a labeled corpus of $873$ processes assigned a regime by criteria independent of the classifier itself:
+
+\begin{itemize}[itemsep=2pt,topsep=2pt]
+    \item $52$ processes labeled \emph{Sofic} by the criterion $(\mathcal{H}^{\mathrm{KL}}_{ab,ba} = \infty)$ or $(\text{closed-form TV} \geq 0.97)$: the Even Process at both interior orbit points, plus $50$ synthetic high-TV finite-KL anchors.
+    \item $815$ processes labeled \emph{Smooth} by the criterion $(\text{closed-form TV} \leq 0.1) \wedge (\mathcal{H}^{\mathrm{KL}}_{ab,ba} < \infty)$: every $(\alpha, \beta) \in \{0.05, 0.06, \ldots, 0.45\}^2$ with $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \leq 0.1$.
+    \item $6$ processes labeled \emph{Borderline} by the criterion $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \in [0.35, 0.85]$: HMM points at small $(\alpha, \beta)$ approaching the regime crossover.
+\end{itemize}
+
+Each labeled process is presented to the classifier with no information about its label. The confusion matrix is reported in Table~\ref{tab:confusion}; it is diagonal, with $873/873 = 100\%$ accuracy.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{3}{c}{predicted regime} & \\
+\cmidrule(lr){2-4}
+true regime & Sofic & Smooth & Borderline & total \\
+\midrule
+Sofic       & $52$ & $0$   & $0$  & $52$  \\
+Smooth      & $0$  & $815$ & $0$  & $815$ \\
+Borderline  & $0$  & $0$   & $6$  & $6$   \\
+\midrule
+\multicolumn{4}{l}{overall accuracy: $873/873 = 1.000$} & \\
+\bottomrule
+\end{tabular}
+\caption{Confusion matrix for the regime classifier of Equation~\eqref{eq:classifier} on a labeled corpus of $873$ processes. Labels are assigned by mathematical criteria independent of the classifier (KL divergence and closed-form TV thresholds). All entries off the diagonal are zero.}
+\label{tab:confusion}
+\end{table}
+
+The classifier is additionally robust to parameter $\varepsilon$-perturbations and to finite-sample noise. Across $100$ random perturbations $(\Delta\alpha, \Delta\beta)$ of magnitude $\leq 0.005$ around the reference point $(0.2, 0.3)$, no flips of the Smooth classification were observed. Across $20$ random seeds at $N = 10^4$ HMM observation samples, the empirical TV at the same reference point remained below $\tau_{\mathrm{low}} = 0.30$ for every seed; no flips of the Smooth classification were observed under finite-sample noise either. The classifier separates clearly on processes whose regime is mathematically unambiguous.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Belief-state geometry in transformer interpretability}
+\label{subsec:transformers}
+
+Recent work~\cite{shai2024} has empirically demonstrated that transformer models trained on next-token prediction over structured processes linearly represent belief states in their residual stream, including cases with nontrivial fractal belief-state geometry. Within the framework presented here, the residual-stream coordinate of a trained transformer can be interpreted as a learned coordinate representation of belief states in $\Dist(\Alphabet^\infty)$. This interpretation does not imply that the corresponding update action is commutative; it suggests, rather, a test:
+
+\begin{quote}
+\textbf{Hypothesis (transformer commutator).} For processes with nonzero commutator diagnostic $\mathcal{H}^{\mathrm{TV}}_{ab,ba}(p) > 0$, transformers trained on next-token prediction should exhibit measurable obstructions in their residual stream under paired context-order probes: the residual-stream state after observing $ab$ should differ from the state after observing $ba$, with separation correlated to $\mathcal{H}^{\mathrm{TV}}_{ab,ba}(p)$.
+\end{quote}
+
+The noisy two-state HMM of Section~\ref{sec:hmm} is a particularly natural test case, since its diagnostic varies smoothly with parameters $(\alpha, \beta)$ and would in principle allow the predicted residual-stream separation to be checked against a continuous parameter sweep, not merely the binary presence-or-absence of saturation. We do not pursue the empirical test here.
+
+\subsection{Continuous-state extension}
+\label{subsec:continuous}
+
+The construction is intentionally discrete. A natural continuous-state extension replaces the observation path-category by a smooth manifold of context states, the discrete update operators by infinitesimal generators acting on the tangent space of the belief simplex, and the commutator $\Omega_{ab,ba}(p)$ by a Lie-bracket-valued curvature 2-form. The KL, TV, and Hellinger diagnostics are expected to correspond to integrated curvature functionals over closed loops in context space --- the setting in which the term \emph{holonomy} applies in the strict differential-geometric sense, with the noisy two-state HMM of Section~\ref{sec:hmm} as a natural finite-dimensional precursor. We pursue this continuous extension in subsequent work.
+
+\subsection{Open problems}
+
+\begin{enumerate}[label=(\arabic*),itemsep=2pt,topsep=2pt]
+    \item Define and study aggregate commutator invariants (Remark~\ref{rem:diagnostic}) and relate them to existing information-theoretic invariants of stochastic processes --- excess entropy, transfer entropy, predictive information.
+    \item Identify a useful subclass of processes whose belief dynamics retain interior support, so that the KL diagnostic remains finite and parameter-dependent. Cryptic processes and partially observable HMMs (the noisy two-state HMM of Section~\ref{sec:hmm} is one example) are candidates.
+    \item Develop the continuous-state extension of Section~\ref{subsec:continuous} and relate the resulting curvature 2-form to the predictive-feature dimensions of~\cite{marzen2017}.
+    \item Empirically test the transformer-commutator hypothesis of Section~\ref{subsec:transformers}, using the noisy two-state HMM as a smoothly parametrized testbed where the predicted residual-stream separation can be checked against a continuous parameter sweep.
+    \item Extend the construction to local causal states~\cite{rupe2018}, where the path-category becomes spatially extended and the holonomy of belief-state transport may be defined over spatiotemporal loops in the strict geometric sense.
+\end{enumerate}
+
+\appendix
+
+\section{Computational Substrate and Reproducibility}
+\label{app:substrate}
+
+The empirical results of Section~\ref{sec:empirical} are produced by a Rust feature-flagged module \texttt{gigi::causal\_states}, a subcomponent of the GIGI fiber-bundle database engine. The module is strict-additive: with the feature flag off, the host engine compiles and behaves byte-identically to its prior state.
+
+The substrate exposes:
+\begin{itemize}[itemsep=2pt,topsep=2pt]
+    \item TV, Hellinger, and KL scalar diagnostics on discrete probability distributions, with KL returning a discriminated \texttt{Divergent} value in the sofic regime rather than $+\infty$;
+    \item the update operator trait \texttt{UpdateOperator}, with concrete implementations for the Even Process $U_0$ and $U_1$ and the noisy two-state HMM Bayesian update of Equation~\eqref{eq:hmm-bayes};
+    \item the commutator orchestrator \texttt{commutator(a,~b,~base)} returning a structured result with the two arms, the three scalar diagnostics, and typed admissibility errors;
+    \item the regime classifier \texttt{classify\_regime} implementing Equation~\eqref{eq:classifier}; and
+    \item a deterministic-seed HMM observation simulator used by the finite-sample experiments of Section~\ref{subsec:finite-sample}.
+\end{itemize}
+
+A total of $77$ Rust integration tests verify these primitives across structured inputs (paper anchor points, orbit closures) and randomized inputs (property-based checks of the Pinsker and Le~Cam inequalities, classifier monotonicity under band tightening, self-commutator vanishing). A parallel suite of $36$ Python tests covers the same math in an independent implementation; the two suites agree to machine precision on all overlapping anchors.
+
+Four reproducible binaries produce the scans cited in Section~\ref{sec:empirical}:
+\begin{itemize}[itemsep=2pt,topsep=2pt]
+    \item \texttt{causal\_states\_scan} --- the $50 \times 50$ closed-form verification of Section~\ref{subsec:closed-form-verify}; emits \texttt{scan\_data.csv} and \texttt{scan\_summary.txt}.
+    \item \texttt{causal\_states\_orthogonality} --- the $(H[X_1], \mathcal{H}^{\mathrm{TV}})$ scan of Section~\ref{subsec:orthogonality} across $1773$ processes; emits \texttt{orthogonality\_scan.csv} and \texttt{orthogonality\_summary.txt}.
+    \item \texttt{causal\_states\_classifier\_audit} --- the confusion-matrix audit of Section~\ref{subsec:classifier}; emits \texttt{classifier\_confusion.txt}.
+    \item The finite-sample convergence study of Section~\ref{subsec:finite-sample} is exercised by the test suite \texttt{causal\_states\_p4\_2\_convergence}, using the deterministic-seed simulator described above.
+\end{itemize}
+
+All CSV outputs and summary reports are versioned alongside the paper source at \texttt{theory/causal\_states/} in the GIGI repository. All numerical values cited in Section~\ref{sec:empirical} are reproducible by running the binaries from a clean checkout against a single fixed seed.
+
+\begin{thebibliography}{99}
+
+\bibitem{crutchfield1989}
+J.~P.~Crutchfield and K.~Young,
+``Inferring statistical complexity,''
+\emph{Physical Review Letters} \textbf{63}, 105--108 (1989).
+\href{https://doi.org/10.1103/PhysRevLett.63.105}{DOI: 10.1103/PhysRevLett.63.105}.
+
+\bibitem{shalizi2001}
+C.~R.~Shalizi and J.~P.~Crutchfield,
+``Computational mechanics: Pattern and prediction, structure and simplicity,''
+\emph{Journal of Statistical Physics} \textbf{104}, 817--879 (2001).
+\href{https://doi.org/10.1023/A:1010388907793}{DOI: 10.1023/A:1010388907793}.
+
+\bibitem{james2011anatomy}
+R.~G.~James, C.~J.~Ellison, and J.~P.~Crutchfield,
+``Anatomy of a bit: Information in a time series observation,''
+\emph{Chaos} \textbf{21}, 037109 (2011).
+\href{https://doi.org/10.1063/1.3637494}{DOI: 10.1063/1.3637494}.
+
+\bibitem{marzen2017}
+S.~E.~Marzen and J.~P.~Crutchfield,
+``Nearly maximally predictive features and their dimensions,''
+\emph{Physical Review E} \textbf{95}, 051301(R) (2017).
+\href{https://doi.org/10.1103/PhysRevE.95.051301}{DOI: 10.1103/PhysRevE.95.051301}.
+
+\bibitem{riechers2018a}
+P.~M.~Riechers and J.~P.~Crutchfield,
+``Spectral simplicity of apparent complexity, Part~I: The nondiagonalizable metadynamics of prediction,''
+\emph{Chaos} \textbf{28}, 033115 (2018).
+\href{https://doi.org/10.1063/1.4985199}{DOI: 10.1063/1.4985199}.
+
+\bibitem{riechers2018b}
+P.~M.~Riechers and J.~P.~Crutchfield,
+``Spectral simplicity of apparent complexity, Part~II: Exact complexities and complexity spectra,''
+\emph{Chaos} \textbf{28}, 033116 (2018).
+\href{https://doi.org/10.1063/1.4986248}{DOI: 10.1063/1.4986248}.
+
+\bibitem{rupe2018}
+A.~Rupe and J.~P.~Crutchfield,
+``Local causal states and discrete coherent structures,''
+\emph{Chaos} \textbf{28}, 075312 (2018).
+\href{https://doi.org/10.1063/1.5021130}{DOI: 10.1063/1.5021130}.
+
+\bibitem{shai2024}
+A.~S.~Shai, S.~E.~Marzen, L.~Teixeira, A.~Gietelink Oldenziel, and P.~M.~Riechers,
+``Transformers represent belief state geometry in their residual stream,''
+\emph{arXiv:2405.15943} (2024).
+\href{https://arxiv.org/abs/2405.15943}{arXiv:2405.15943}.
+
+\end{thebibliography}
+
+\end{document}

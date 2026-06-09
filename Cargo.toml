@@ -245,6 +245,15 @@ name = "causal_states_orthogonality"
 path = "examples/causal_states_orthogonality.rs"
 required-features = ["causal_states"]
 
+# Causal States Phase 4.4 — classifier audit (confusion matrix).
+# Generates the formal regime-classifier confusion matrix on labeled
+# processes for the paper's appendix. See
+# examples/causal_states_classifier_audit.rs.
+[[bin]]
+name = "causal_states_classifier_audit"
+path = "examples/causal_states_classifier_audit.rs"
+required-features = ["causal_states"]
+
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"

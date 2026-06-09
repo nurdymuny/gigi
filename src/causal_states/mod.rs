@@ -35,6 +35,8 @@
 //! (CV3), HTTP envelope (CV4), and empirical scan (Phase 3) land in
 //! subsequent sub-phases — see `theory/causal_states/SPEC_v0.1_COMMUTATOR.md`.
 
+pub mod sim;
+
 // ─── Diagnostics (CV1) ───────────────────────────────────────────────────
 
 /// KL divergence value — finite when both distributions share support

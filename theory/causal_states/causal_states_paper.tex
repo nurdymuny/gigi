@@ -60,7 +60,7 @@ $\varepsilon$-Machines and the Update Commutator on Belief-State Dynamics}
 \maketitle
 
 \begin{abstract}
-Computational mechanics characterizes the minimal predictive representation of a stationary stochastic process via causal states and $\varepsilon$-machines. We reformulate this construction categorically: the predictive path-bundle over the forward observation category has fibers given by conditional future distributions and transport given by Bayesian update. We show that the bundle-intrinsic equivalence relation on semi-infinite pasts induced by predictive-update transport coincides with the Crutchfield--Shalizi predictive equivalence; the quotient is canonically isomorphic to the $\varepsilon$-machine causal-state set; and the induced section entropy equals the statistical complexity $C_\mu$. This identification is the conservative half of the paper. We then pass to the belief-state update semigroup, where compositions of update operators admit competing orderings, and define a \emph{commutator diagnostic} $\Omega_{ab,ba}(p) \coloneqq U_{ab}(p) - U_{ba}(p)$ measuring the order-dependence of belief-state updates, with scalar counterparts in total variation, Hellinger distance, and (where finite) KL divergence. We instantiate the construction on two complementary examples: the Even Process (canonical strictly sofic), where TV and Hellinger saturate and KL diverges; and a symmetric two-state hidden Markov model (non-synchronizing), where all three scalar diagnostics take finite, smoothly parameter-dependent values and vanish in identifiable degenerate limits. The construction makes precise a structural feature of computational mechanics that is invisible to $C_\mu$ alone: the order-dependence of predictive update composition. An accompanying computational substrate validates the closed-form expressions to IEEE~754 precision across a $50 \times 50$ parameter grid, demonstrates that the commutator is estimable from finite observation samples at the canonical $1/\sqrt{N}$ rate, exhibits empirically the orthogonality between marginal symbol entropy and commutator magnitude, and provides a three-way regime classifier audited at $873/873$ accuracy on labeled processes.
+Computational mechanics characterizes the minimal predictive representation of a stationary stochastic process via causal states and $\varepsilon$-machines. We reformulate this construction categorically: the predictive path-bundle over the forward observation category has fibers given by conditional future distributions and transport given by Bayesian update. We show that the bundle-intrinsic equivalence relation on semi-infinite pasts induced by predictive-update transport coincides with the Crutchfield--Shalizi predictive equivalence; the quotient is canonically isomorphic to the $\varepsilon$-machine causal-state set; and the induced section entropy equals the statistical complexity $C_\mu$. This identification is the conservative half of the paper. We then pass to the belief-state update semigroup, where compositions of update operators admit competing orderings, and define a \emph{commutator diagnostic} $\Omega_{ab,ba}(p) \coloneqq U_{ab}(p) - U_{ba}(p)$ measuring the order-dependence of belief-state updates, with scalar counterparts in total variation, Hellinger distance, and (where finite) KL divergence. We instantiate the construction on two complementary examples: the Even Process (canonical strictly sofic), where TV and Hellinger saturate and KL diverges; and a symmetric two-state hidden Markov model (non-synchronizing), where all three scalar diagnostics take finite, smoothly parameter-dependent values and vanish in identifiable degenerate limits. The construction makes precise a structural feature of computational mechanics that is invisible to $C_\mu$ alone: the order-dependence of predictive update composition. An accompanying computational substrate verifies the closed-form expressions to IEEE~754 precision across a $50 \times 50$ parameter grid, demonstrates that the commutator is recoverable from finite simulated trajectories at the canonical $1/\sqrt{N}$ rate, exhibits empirically that commutator magnitude is not determined by marginal symbol entropy, and includes a three-way regime classifier that reproduces the intended regime labels on all $873$ cases of a threshold-labeled corpus.
 \end{abstract}
 
 \section{Introduction}
@@ -80,7 +80,7 @@ The structural observation of the paper, demonstrated on the Even Process in Sec
 \begin{enumerate}[label=(\arabic*)]
     \item A categorical identification (Section~\ref{sec:identification}, Proposition~\ref{prop:identification}): the bundle-intrinsic equivalence on semi-infinite pasts induced by predictive-update transport coincides with the Crutchfield--Shalizi predictive equivalence; the quotient is the $\varepsilon$-machine causal-state set; the section entropy is $C_\mu$. This identification is conservative: it re-encodes computational mechanics in categorical language without changing its content.
     \item A commutator diagnostic, instantiated on two complementary examples (Sections~\ref{sec:commutator}, \ref{sec:even}, and~\ref{sec:hmm}). On the belief-state update semigroup, the commutator $\Omega_{ab,ba}(p)$ and its scalar TV, Hellinger, and KL counterparts measure the order-dependence of belief updates. The Even Process exemplifies the sofic-synchronizing regime in which TV and Hellinger saturate and KL diverges. A symmetric two-state hidden Markov model exemplifies the non-synchronizing regime in which all three diagnostics are finite, smoothly parameter-dependent, and vanish in identifiable degenerate limits. The diagnostic captures a structural feature of the process distinct from, and invisible to, $C_\mu$.
-    \item A computational substrate and empirical-validation harness (Section~\ref{sec:empirical}, Appendix~\ref{app:substrate}). The closed-form Equation~\eqref{eq:hmm-tv} is verified to IEEE~754 precision across a $50 \times 50$ parameter grid. A finite-sample estimator recovers the commutator from observation data at the canonical $1/\sqrt{N}$ rate. A pair of orthogonality experiments shows that the diagnostic is not a function of the marginal symbol entropy $H[X_1]$, the quantity most likely to be confused with $C_\mu$ by a structural audit. A three-way regime classifier (Sofic, Smooth, Borderline) audited against a labeled corpus of $873$ processes achieves perfect accuracy.
+    \item A computational substrate and empirical-validation harness (Section~\ref{sec:empirical}, Appendix~\ref{app:substrate}). The closed-form Equation~\eqref{eq:hmm-tv} is verified to IEEE~754 precision across a $50 \times 50$ parameter grid. A finite-sample estimator recovers the commutator from simulated trajectories at the canonical $1/\sqrt{N}$ rate. A pair of separation experiments shows that the diagnostic is not a function of the marginal symbol entropy $H[X_1]$, the quantity most likely to be confused with $C_\mu$ by a structural audit. A three-way regime classifier (Saturating, Smooth, Borderline) reproduces the intended labels on all $873$ cases of a threshold-labeled corpus; we present this as an implementation sanity check rather than as evidence of statistical generalization.
 \end{enumerate}
 
 \paragraph{Thesis.} \emph{Where computational mechanics asks what a process must remember to predict, the predictive-bundle formulation asks whether that memory composes consistently across orderings of context. The Even Process shows that, in at least one canonical case, it does not.}
@@ -265,8 +265,8 @@ For $a, b \in \Alphabet$ and a belief state $p \in \Dom(U_{ab}) \cap \Dom(U_{ba}
 \end{equation}
 viewed as a signed measure on $\Alphabet^\infty$. We define three scalar diagnostics:
 \begin{align}
-    \mathcal{H}^{\mathrm{TV}}_{ab,ba}(p) &\eqdef \TV\bigl(U_{ab}(p), U_{ba}(p)\bigr), \\
-    \mathcal{H}^{\mathrm{Hel}}_{ab,ba}(p) &\eqdef \tfrac{1}{\sqrt{2}} \,\bigl\| \sqrt{U_{ab}(p)} - \sqrt{U_{ba}(p)} \bigr\|_2, \\
+    \mathcal{H}^{\mathrm{TV}}_{ab,ba}(p) &\eqdef \TV\bigl(U_{ab}(p),\, U_{ba}(p)\bigr), \\
+    \mathcal{H}^{\mathrm{Hel}}_{ab,ba}(p) &\eqdef \frac{1}{\sqrt{2}} \,\left\| \sqrt{U_{ab}(p)} - \sqrt{U_{ba}(p)} \right\|_2, \\
     \mathcal{H}^{\mathrm{KL}}_{ab,ba}(p) &\eqdef \KL\bigl(U_{ab}(p) \,\bigl\|\, U_{ba}(p)\bigr) \quad \text{(when finite)}.
 \end{align}
 The total-variation and Hellinger versions take values in $[0, 1]$ and are always finite; the KL version is sharpest where finite but may diverge when the two competing compositions yield mutually singular distributions, as occurs in Section~\ref{sec:even}.
@@ -431,7 +431,7 @@ The composite updates $U_{01}(\mu) = U_1(a, 1-a)$ and $U_{10}(\mu) = U_0(1-a, a)
 \end{equation}
 which holds for all $(\alpha, \beta) \in (0, 1/2)^2$. The Hellinger and KL diagnostics admit similar (but less compact) closed-form expressions in $\alpha, \beta$ via $r$:
 \begin{align}
-    \mathcal{H}^{\mathrm{Hel}}_{01,10}(\mu) &\;=\; \tfrac{1}{\sqrt{2}}\,\bigl\| (\sqrt{r}, \sqrt{1-r}) - (\sqrt{1-r}, \sqrt{r}) \bigr\|_2, \\
+    \mathcal{H}^{\mathrm{Hel}}_{01,10}(\mu) &\;=\; \frac{1}{\sqrt{2}}\,\left\| (\sqrt{r}, \sqrt{1-r}) - (\sqrt{1-r}, \sqrt{r}) \right\|_2, \\
     \mathcal{H}^{\mathrm{KL}}_{01,10}(\mu) &\;=\; r \log_2 \tfrac{r}{1-r} + (1-r) \log_2 \tfrac{1-r}{r}.
 \end{align}
 At $(\alpha, \beta) = (0.2, 0.3)$, $r \approx 0.4469$, giving
@@ -489,14 +489,14 @@ The analytical construction of Sections~\ref{sec:bundles}--\ref{sec:hmm} is acco
 \subsection{Closed-form verification of Equation~\eqref{eq:hmm-tv}}
 \label{subsec:closed-form-verify}
 
-Equation~\eqref{eq:hmm-tv} expresses the total-variation diagnostic $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu)$ in closed form as a rational function of $(\alpha, \beta)$. We verify this expression numerically by evaluating both sides on a $50 \times 50$ grid over $(\alpha, \beta) \in [0.01, 0.49]^2$ at the stationary belief $\mu = (1/2, 1/2)$. The direct evaluation applies the Bayesian update of Equation~\eqref{eq:hmm-bayes} twice in each ordering and computes total variation against the closed-form prediction; we also record the absolute residual $|\,\text{direct} - \text{closed form}\,|$ at every grid point. Across all 2505 grid points plus five named anchors corresponding to the $(\alpha, \beta) = (0.2, 0.3)$ reference and the limiting cases $\alpha \to 0$, $\alpha \to 1/2$, $\beta \to 1/2$ discussed in Section~\ref{sec:hmm}, the maximum absolute residual is $|\,\text{direct} - \text{closed form}\,| = 2.498 \times 10^{-16}$, at the IEEE~754 double-precision floor. The Even Process anchor at $\mu = (2/3, 1/3)$ recovers the predicted saturation in the same scan: TV $= 1$, KL divergent. The closed form holds across the smooth regime to machine precision.
+Equation~\eqref{eq:hmm-tv} expresses the total-variation diagnostic $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu)$ in closed form as a rational function of $(\alpha, \beta)$. We verify this expression numerically by evaluating both sides on a $50 \times 50$ grid over $(\alpha, \beta) \in [0.01, 0.49]^2$ at the stationary belief $\mu = (1/2, 1/2)$. The direct evaluation applies the Bayesian update of Equation~\eqref{eq:hmm-bayes} twice in each ordering and computes total variation against the closed-form prediction; we also record the absolute residual $|\,\text{direct} - \text{closed form}\,|$ at every grid point. Across all $2505$ evaluated points --- the $2500$-point $50 \times 50$ grid plus five named anchors corresponding to the $(\alpha, \beta) = (0.2, 0.3)$ reference and the limiting cases $\alpha \to 0$, $\alpha \to 1/2$, $\beta \to 1/2$ discussed in Section~\ref{sec:hmm} --- the maximum absolute residual is $|\,\text{direct} - \text{closed form}\,| = 2.498 \times 10^{-16}$, at the IEEE~754 double-precision floor. The Even Process anchor at $\mu = (2/3, 1/3)$ recovers the predicted saturation in the same scan: TV $= 1$, KL divergent. The closed form holds across the smooth regime to machine precision.
 
 \subsection{Finite-sample empirical commutator}
 \label{subsec:finite-sample}
 
-Equation~\eqref{eq:hmm-tv} is a closed-form prediction; an audit may reasonably ask whether the commutator is also \emph{estimable} from observation data alone, without knowledge of the operator formulas. The Bayesian filter identity $U_b(U_a(\mu)) = \Prob(s_3 \mid x_1 = a, x_2 = b)$ identifies the commutator arm with the predictive prior on the next hidden state conditional on the observation pair. We simulate $N$ trajectories from the noisy two-state HMM at $(\alpha, \beta) = (0.2, 0.3)$ with initial belief $\mu = (0.5, 0.5)$, partition them by observation pair $(x_1, x_2) \in \{(0,1), (1,0)\}$, count the empirical distribution of the next hidden state in each partition, and form the empirical TV diagnostic between the two arms. The simulator uses a deterministic-seed linear-congruential generator so the experiment is byte-reproducible.
+Equation~\eqref{eq:hmm-tv} is a closed-form prediction; an audit may reasonably ask whether the commutator is also \emph{recoverable} from finite simulated trajectories, without invoking the operator formulas. The Bayesian filter identity $U_b(U_a(\mu)) = \Prob(s_3 \mid x_1 = a, x_2 = b)$ identifies the commutator arm with the predictive prior on the next hidden state conditional on the observation pair. We simulate $N$ trajectories from the noisy two-state HMM at $(\alpha, \beta) = (0.2, 0.3)$ with initial belief $\mu = (0.5, 0.5)$, retaining the hidden-state labels of the simulator, partition them by observation pair $(x_1, x_2) \in \{(0,1), (1,0)\}$, count the empirical distribution of the next hidden state in each partition, and form the empirical TV diagnostic between the two arms. We emphasize that this is a \emph{simulated-labeled-trajectory} estimator, not an observation-only estimator: it consumes the next-hidden-state labels emitted by the simulator. A true observation-only estimator would instead target the predictive law over future observation strings; we do not pursue that variant here. The simulator uses a deterministic-seed linear-congruential generator so the experiment is byte-reproducible.
 
-At $N = 200{,}000$, the empirical TV diagnostic agrees with the closed-form value $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \approx 0.106$ to within $0.02$ across multiple seeds. Doubling $N$ from $5{,}000$ to $50{,}000$ reduces the mean absolute error by a factor of at least $2$ over $8$ random seeds (the asymptotic prediction is $\sqrt{10} \approx 3.16$), consistent with the canonical $1/\sqrt{N}$ rate expected from multinomial sampling on the observation-pair partition. The iid limit at $\alpha = 1/2$ (rank-one transition matrix, every update projects to the stationary $(1/2, 1/2)$) yields empirical TV indistinguishable from $0$ at $N = 10^5$, confirming the analytical commutativity in the degenerate regime directly from data.
+At $N = 200{,}000$, the empirical TV diagnostic agrees with the closed-form value $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \approx 0.106$ to within $0.02$ across multiple seeds. Doubling $N$ from $5{,}000$ to $50{,}000$ reduces the mean absolute error by a factor of at least $2$ over $8$ random seeds (the asymptotic prediction is $\sqrt{10} \approx 3.16$), consistent with the canonical $1/\sqrt{N}$ rate expected from multinomial sampling on the observation-pair partition. The iid limit at $\alpha = 1/2$ (rank-one transition matrix, every update projects to the stationary $(1/2, 1/2)$) yields empirical TV indistinguishable from $0$ at $N = 10^5$, confirming the analytical commutativity in the degenerate regime directly from simulated trajectories.
 
 \subsection{Symbol-entropy orthogonality}
 \label{subsec:orthogonality}
@@ -505,7 +505,7 @@ A natural concern about the diagnostic $\mathcal{H}^{\bullet}_{ab,ba}$ is whethe
 \begin{equation*}
     H[X_1] \;=\; -\sum_{x \in \Alphabet} \Prob(X_1 = x) \log_2 \Prob(X_1 = x),
 \end{equation*}
-the quantity most likely to be confused with $C_\mu$ by a structural audit that does not distinguish process-level marginals from causal-state-level entropies. We exhibit two pairs of processes that resolve this concern empirically:
+the quantity most likely to be confused with $C_\mu$ by a structural audit that does not distinguish process-level marginals from causal-state-level entropies. We use \emph{orthogonality} operationally throughout this subsection to mean that $H[X_1]$ does not determine $\mathcal{H}^{\mathrm{TV}}_{ab,ba}$ --- not in the vector-space or statistical sense, but in the functional-determination sense: distinct values of the commutator diagnostic coexist at fixed $H[X_1]$, and conversely. We exhibit two pairs of processes that resolve this concern empirically:
 
 \paragraph{Matched $H[X_1]$, opposite $|\Omega|$.} The Even Process has stationary symbol distribution $(\Prob(X = 0), \Prob(X = 1)) = (1/3, 2/3)$, hence symbol entropy $H[X_1] = h(2/3) \approx 0.918$ bits, where $h(\cdot)$ denotes the binary entropy function. The independent Bernoulli$(2/3)$ process has the same stationary symbol distribution and the same symbol entropy. The Even Process commutator $\mathcal{H}^{\mathrm{TV}}_{01,10}$ saturates at $1$ at both reachable interior beliefs by Section~\ref{sec:even}; the Bernoulli$(2/3)$ commutator vanishes identically, since within a single i.i.d.\ process the operators $U_0$ and $U_1$ both return the same stationary belief regardless of input. The two processes therefore differ maximally in commutator magnitude while agreeing exactly in symbol entropy.
 
@@ -513,51 +513,53 @@ the quantity most likely to be confused with $C_\mu$ by a structural audit that 
 
 The diagnostic is not a function of $H[X_1]$. A scan of the joint distribution of $(H[X_1], \mathcal{H}^{\mathrm{TV}})$ across $1773$ processes drawn from the iid Bernoulli family ($91$ values of $p$), the symmetric noisy HMM grid ($1681$ values of $(\alpha, \beta)$), and the Even Process anchor confirms the diagonal-versus-anti-diagonal arrangement: the iid family populates the horizontal line $\mathcal{H}^{\mathrm{TV}} = 0$ across the full range of $H[X_1]$; the HMM family populates the vertical line $H[X_1] = 1$ across $\mathcal{H}^{\mathrm{TV}} \in [0, 0.5)$; the Even Process sits alone at $(0.918, 1)$, sharing its abscissa with the iid Bernoulli$(2/3)$ point at $(0.918, 0)$.
 
-\subsection{Regime classifier audit}
+\subsection{Regime classifier as threshold-implementation sanity check}
 \label{subsec:classifier}
 
-The qualitative distinction between the sofic-synchronizing regime (Section~\ref{sec:even}: KL divergent, TV near $1$) and the smooth non-synchronizing regime (Section~\ref{sec:hmm}: KL finite, TV small) admits an operational three-way classifier based on the commutator's scalar diagnostics. We propose the decision rule
+The qualitative distinction between the sofic-synchronizing regime (Section~\ref{sec:even}: KL divergent, TV near $1$) and the smooth non-synchronizing regime (Section~\ref{sec:hmm}: KL finite, TV small) admits an operational three-way classifier based on the commutator's scalar diagnostics. We use the labels \emph{Saturating}, \emph{Smooth}, and \emph{Borderline} for the classifier's output, reserving \emph{sofic} for the process-class meaning of Section~\ref{sec:even}: a high-TV finite-KL synthetic input is operationally saturating for the classifier but is not necessarily a sofic process in the formal sense. The decision rule is
 \begin{equation}
 \label{eq:classifier}
 \mathrm{regime}(\Omega) \;=\;
 \begin{cases}
-\text{Sofic} & \text{if } \mathcal{H}^{\mathrm{KL}}_{ab,ba} = +\infty \text{ or } \mathcal{H}^{\mathrm{TV}}_{ab,ba} \geq \tau_{\mathrm{high}}, \\
+\text{Saturating} & \text{if } \mathcal{H}^{\mathrm{KL}}_{ab,ba} = +\infty \text{ or } \mathcal{H}^{\mathrm{TV}}_{ab,ba} \geq \tau_{\mathrm{high}}, \\
 \text{Smooth} & \text{if } \mathcal{H}^{\mathrm{TV}}_{ab,ba} \leq \tau_{\mathrm{low}} \text{ and } \mathcal{H}^{\mathrm{KL}}_{ab,ba} < \infty, \\
 \text{Borderline} & \text{otherwise,}
 \end{cases}
 \end{equation}
 with default thresholds $(\tau_{\mathrm{low}}, \tau_{\mathrm{high}}) = (0.30, 0.95)$. The thresholds are calibrated against the parameter-dependence analysis of Section~\ref{sec:hmm}: the symmetric noisy HMM TV diagnostic is bounded above by $\approx 0.312$ on the studied parameter range, so $\tau_{\mathrm{low}} = 0.30$ cleanly separates the smooth regime from the borderline band; sofic-synchronizing processes saturate at $1$, so $\tau_{\mathrm{high}} = 0.95$ admits any near-saturating diagnostic.
 
-We audit the classifier against a labeled corpus of $873$ processes assigned a regime by criteria independent of the classifier itself:
+The labels and the classifier are both threshold-based on the same scalar diagnostics. Consequently, the audit reported below is not evidence that the classifier ``learned'' or discovered regimes; it verifies that the threshold implementation behaves consistently on mathematically separated regimes and reproduces the intended labels. We frame it accordingly.
+
+We construct a labeled corpus of $873$ processes whose regime is assigned by criteria deliberately separated from the classifier thresholds:
 
 \begin{itemize}[itemsep=2pt,topsep=2pt]
-    \item $52$ processes labeled \emph{Sofic} by the criterion $(\mathcal{H}^{\mathrm{KL}}_{ab,ba} = \infty)$ or $(\text{closed-form TV} \geq 0.97)$: the Even Process at both interior orbit points, plus $50$ synthetic high-TV finite-KL anchors.
+    \item $52$ processes labeled \emph{Saturating} by the criterion $(\mathcal{H}^{\mathrm{KL}}_{ab,ba} = \infty)$ or $(\text{closed-form TV} \geq 0.97)$: the Even Process at both interior orbit points, plus $50$ synthetic high-TV finite-KL anchors.
     \item $815$ processes labeled \emph{Smooth} by the criterion $(\text{closed-form TV} \leq 0.1) \wedge (\mathcal{H}^{\mathrm{KL}}_{ab,ba} < \infty)$: every $(\alpha, \beta) \in \{0.05, 0.06, \ldots, 0.45\}^2$ with $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \leq 0.1$.
     \item $6$ processes labeled \emph{Borderline} by the criterion $\mathcal{H}^{\mathrm{TV}}_{01,10}(\mu) \in [0.35, 0.85]$: HMM points at small $(\alpha, \beta)$ approaching the regime crossover.
 \end{itemize}
 
-Each labeled process is presented to the classifier with no information about its label. The confusion matrix is reported in Table~\ref{tab:confusion}; it is diagonal, with $873/873 = 100\%$ accuracy.
+Each labeled process is presented to the classifier with no information about its label. The confusion matrix is reported in Table~\ref{tab:confusion}; on this threshold-labeled corpus with deliberately separated regimes, the implementation reproduces the intended regime labels on all $873$ cases.
 
 \begin{table}[ht]
 \centering
 \begin{tabular}{lcccc}
 \toprule
-& \multicolumn{3}{c}{predicted regime} & \\
+& \multicolumn{3}{c}{predicted label} & \\
 \cmidrule(lr){2-4}
-true regime & Sofic & Smooth & Borderline & total \\
+true label & Saturating & Smooth & Borderline & total \\
 \midrule
-Sofic       & $52$ & $0$   & $0$  & $52$  \\
+Saturating  & $52$ & $0$   & $0$  & $52$  \\
 Smooth      & $0$  & $815$ & $0$  & $815$ \\
 Borderline  & $0$  & $0$   & $6$  & $6$   \\
 \midrule
-\multicolumn{4}{l}{overall accuracy: $873/873 = 1.000$} & \\
+\multicolumn{4}{l}{all $873$ cases reproduce the intended label.} & \\
 \bottomrule
 \end{tabular}
-\caption{Confusion matrix for the regime classifier of Equation~\eqref{eq:classifier} on a labeled corpus of $873$ processes. Labels are assigned by mathematical criteria independent of the classifier (KL divergence and closed-form TV thresholds). All entries off the diagonal are zero.}
+\caption{Threshold-implementation audit of the regime classifier of Equation~\eqref{eq:classifier} on a $873$-process labeled corpus. Labels are assigned by threshold criteria that are deliberately separated from the classifier thresholds, so the diagonal-only result is a sanity check that the implementation reproduces the intended labels, not a generalization claim. The labels \emph{Saturating}/\emph{Smooth}/\emph{Borderline} are classifier outputs; \emph{sofic} in the process-class sense is reserved for the Even Process of Section~\ref{sec:even}.}
 \label{tab:confusion}
 \end{table}
 
-The classifier is additionally robust to parameter $\varepsilon$-perturbations and to finite-sample noise. Across $100$ random perturbations $(\Delta\alpha, \Delta\beta)$ of magnitude $\leq 0.005$ around the reference point $(0.2, 0.3)$, no flips of the Smooth classification were observed. Across $20$ random seeds at $N = 10^4$ HMM observation samples, the empirical TV at the same reference point remained below $\tau_{\mathrm{low}} = 0.30$ for every seed; no flips of the Smooth classification were observed under finite-sample noise either. The classifier separates clearly on processes whose regime is mathematically unambiguous.
+The threshold implementation is additionally robust to parameter $\varepsilon$-perturbations and to finite-sample noise of the simulated-trajectory estimator. Across $100$ random perturbations $(\Delta\alpha, \Delta\beta)$ of magnitude $\leq 0.005$ around the reference point $(0.2, 0.3)$, no flips of the Smooth classification were observed. Across $20$ random seeds at $N = 10^4$ simulated trajectories, the empirical TV at the same reference point remained below $\tau_{\mathrm{low}} = 0.30$ for every seed; no flips of the Smooth classification were observed under finite-sample noise either. This is an implementation stability statement, not a statistical-generalization statement.
 
 \section{Discussion}
 \label{sec:discussion}

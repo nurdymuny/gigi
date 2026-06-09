@@ -274,3 +274,105 @@ pub fn hmm_closed_form_tv(alpha: f64, beta: f64) -> f64 {
     let den = alpha * (1.0 - 2.0 * beta).powi(2) + 2.0 * beta * (1.0 - beta);
     num / den
 }
+
+// ─── Commutator orchestrator (CV3) ───────────────────────────────────────
+
+/// Which of the two composition paths produced an inadmissibility.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WhichPath {
+    /// `forward = b.apply(a.apply(p))` — observation order "ab".
+    Forward,
+    /// `backward = a.apply(b.apply(p))` — observation order "ba".
+    Backward,
+}
+
+/// Errors from the commutator orchestrator.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CommutatorError {
+    /// One of the two composition paths hit an inadmissible state.
+    /// `which` identifies which path failed; `error` is the underlying
+    /// [`UpdateError`] from the offending operator application.
+    PathInadmissible {
+        which: WhichPath,
+        error: UpdateError,
+    },
+}
+
+/// Result of computing `Ω = U_a∘U_b − U_b∘U_a` on a base belief.
+///
+/// Fields are exactly what CV4's HTTP envelope serializes — see
+/// `tests/causal_states_cv3_commutator.rs::cv3_commutator_struct_shape`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Commutator {
+    /// `b.apply(a.apply(p))` — observation order "ab", right-acting
+    /// (paper Eq 3.6).
+    pub forward: Vec<f64>,
+    /// `a.apply(b.apply(p))` — observation order "ba".
+    pub backward: Vec<f64>,
+    /// Total variation `TV(forward, backward)`.
+    pub tv: f64,
+    /// Hellinger `H(forward, backward)`.
+    pub hellinger: f64,
+    /// KL divergence `KL(forward ‖ backward)` in bits, or
+    /// [`KlValue::Divergent`] when the sofic regime makes the two paths
+    /// mutually singular.
+    pub kl: KlValue,
+}
+
+/// Compute the update commutator `Ω = (U_a∘U_b)(p) vs (U_b∘U_a)(p)`.
+///
+/// Reading observation symbols left-to-right (paper Eq 3.6):
+///   - `forward  = b.apply(a.apply(p))`  ← "observe a, then b"
+///   - `backward = a.apply(b.apply(p))`  ← "observe b, then a"
+///
+/// Returns all three CV1 diagnostics on the pair. If either composition
+/// path is inadmissible, returns [`CommutatorError::PathInadmissible`]
+/// tagged with which path failed.
+///
+/// # Examples
+///
+/// Sofic regime (Even Process) saturates:
+/// ```ignore
+/// use gigi::causal_states::{commutator, EvenU0, EvenU1, KlValue};
+/// let mu = vec![2.0/3.0, 1.0/3.0];
+/// let omega = commutator(&EvenU0, &EvenU1, &mu).unwrap();
+/// assert!((omega.tv - 1.0).abs() < 1e-12);
+/// assert!(matches!(omega.kl, KlValue::Divergent));
+/// ```
+pub fn commutator(
+    a: &dyn UpdateOperator,
+    b: &dyn UpdateOperator,
+    base: &[f64],
+) -> Result<Commutator, CommutatorError> {
+    // forward = b(a(p))
+    let after_a = a.apply(base).map_err(|error| CommutatorError::PathInadmissible {
+        which: WhichPath::Forward,
+        error,
+    })?;
+    let forward = b.apply(&after_a).map_err(|error| CommutatorError::PathInadmissible {
+        which: WhichPath::Forward,
+        error,
+    })?;
+
+    // backward = a(b(p))
+    let after_b = b.apply(base).map_err(|error| CommutatorError::PathInadmissible {
+        which: WhichPath::Backward,
+        error,
+    })?;
+    let backward = a.apply(&after_b).map_err(|error| CommutatorError::PathInadmissible {
+        which: WhichPath::Backward,
+        error,
+    })?;
+
+    let tv_val = tv(&forward, &backward);
+    let hel_val = hellinger(&forward, &backward);
+    let kl_val = kl(&forward, &backward);
+
+    Ok(Commutator {
+        forward,
+        backward,
+        tv: tv_val,
+        hellinger: hel_val,
+        kl: kl_val,
+    })
+}

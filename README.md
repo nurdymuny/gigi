@@ -143,6 +143,7 @@ The detailed dated entries that used to live here have been moved to
 [CHANGELOG.md](CHANGELOG.md). Quick map of the most recent ships
 (newest first):
 
+- **2026-06-09 — Causal-states substrate + paper + gigi-notebook MVP + GGOG protocol audit closed** ([details](CHANGELOG.md#2026-06-09--causal-states--gigi-notebook--ggog-audit)). Davis (2026) *Causal States as Predictive Sections: ε-Machines and the Update Commutator on Belief-State Dynamics* shipped with the substrate (TV / Hellinger / KL scalar diagnostics + update-commutator orchestrator + Sofic/Smooth/Borderline regime classifier behind the `causal_states` feature flag); empirical scan verifies closed-form Eq 6.4 to IEEE 754 precision across 2505 grid points; orthogonality scan demonstrates `H[X₁]` does not determine `|Ω|` empirically across 1773 processes. `POST /v1/causal_states/commutator` live on `gigi-stream.fly.dev` (`HMM @ (0.2, 0.3)` returns `tv=0.10619, kl=0.0327, regime=smooth`; Even Process @ μ returns `tv=1.0, kl=divergent, regime=sofic`). `gigi-notebook` MVP at [`sdk/notebook/`](sdk/notebook/) — Jupyter kernel with GQL as the default cell language and `%%commutator` cell magic. GGOG protocol audit thread fully closed substrate-side (gigi-wasm §5a–h + §6b applied, 44/44 tests green; ggog-core landed #1, #4, #6, #7, S9, §6c; correspondence at [`theory/ggog/`](theory/ggog/)).
 - **2026-06-04 — Sharding initiative complete + atomic sheaf commits Phase 1 + Marcella SwDA WIN** ([details](CHANGELOG.md#2026-06-04--sharding-complete--atomic-sheaf-commits-phase-1--marcella-swda-win)). 14/14 sharding math gates green; cross-atlas BETTI (T9) Rust port closes the last queued item; 2PC transactions ship with all 5 failure scenarios validated; Marcella's discourse-flow probe returns CI=[+0.0434, +0.0634] on structured moves — the IMAGINE substrate earns its seat exactly where the protocol predicted.
 - **2026-06-03 (evening) — IMAGINE / WALK** ([details](CHANGELOG.md#2026-06-03-evening--imagine--walk-lands-extrapolation-verbs-with-marcellas-trust-envelope)). Extrapolation verbs with Marcella's load-bearing trust envelope: provenance compile-time enforced, `max_imagined_curvature = 4.0 = K(CP¹ FS)` default, FORECAST/IMAGINE routing anchored to Gate J's θ_density = 0.5.
 - **2026-06-03 (afternoon) — Sharding lands as substrate** ([details](CHANGELOG.md#2026-06-03-afternoon--sharding-lands-as-substrate-not-as-compromise)). Ten TDD-gated math claims (T1–T10) + Phase A/B scaffolds; the framing flip from "sharding is a compromise" to "sharding is sheaf-glued by construction."
@@ -288,6 +289,7 @@ Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are
 
 - **Python** (`sdk/python/`) — `pip install gigi-client`. Pandas-aware.
 - **JavaScript / TypeScript** (`sdk/js/`) — `@gigi-db/client`. Browser + Node.
+- **Jupyter notebook** ([`sdk/notebook/`](sdk/notebook/)) — `pip install -e .` + `python -m gigi_notebook --install` registers a "GIGI (GQL)" kernel. Default cell language is GQL (POSTed to `/v1/gql`); `%%commutator` magic POSTs to the causal-states endpoint and renders the regime-tagged result as a box-drawn table. JupyterLab / VS Code / Colab / Deepnote all host it.
 
 ### UIs
 
@@ -320,6 +322,8 @@ code so a reviewer can read the claim and the implementation in the same place:
 - [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md) — public `/schema` endpoint with `@public` / `@gated` directive policy
 - [`theory/kahler_upgrade/`](theory/kahler_upgrade/) — the Kähler upgrade catalog (16/21 items shipped through L1–L9) + per-layer implementation plan + Marcella substrate spec + Python validation suites + cross-team correspondence
 - [`theory/post_kahler_directions/`](theory/post_kahler_directions/) — companion catalog: nine **post-Kähler** geometric programs from outside the Adachi lineage (Sasaki / contact, information geometry, optimal transport / Wasserstein, persistent homology, Gromov δ-hyperbolicity, tropical geometry, synthetic DG, noncommutative geometry, CAT(κ)). Same template — claim, proof sketch, validation status, applications, implementation pointers. 30/30 numerical checks pass.
+- [`theory/causal_states/`](theory/causal_states/) — Davis (2026) *Causal States as Predictive Sections: ε-Machines and the Update Commutator on Belief-State Dynamics* (`causal_states_paper.tex` / `.pdf`) plus the empirical-validation harness: Python sibling `validation_tests.py` (36/36 green) mirrors the Rust substrate's 77 tests; `scan_data.csv` + `scan_summary.txt` verify closed-form Eq 6.4 to IEEE 754 precision across 2505 grid points; `orthogonality_scan.csv` shows `H[X₁]` does not determine `|Ω|` across 1773 processes (TH1 made operational); `classifier_confusion.txt` reports the regime-classifier audit on a 873-process threshold-labeled corpus. Substrate behind the `causal_states` feature flag at [`src/causal_states/`](src/causal_states/).
+- [`theory/ggog/`](theory/ggog/) — GGOG protocol audit correspondence (six letters in order: G1 reply → e/f reply → challenge reply → staging apply doc → shipped → ack-wired). Demonstrates the substrate / relay / app boundary discipline, the Ed25519 signing-oracle defense pattern with a 27-byte ASCII domain separator (`b"ggog/register-challenge/v1\n"`), and the AAD-from-client-identity-not-from-wire-envelope rule for DM auth-tag binding.
 
 ---
 
@@ -440,6 +444,28 @@ Plus the brain-primitives surface (`POST /v1/bundles/{name}/brain/*`, content-ne
 | `/brain/fit_diagnostics`, `/distance_to_fit_mean` | Σ eigenstructure + Mahalanobis distance to fit mean | wave 1 |
 | `/brain/sudoku` | Constrained inference — see SUDOKU section above | waves 3–6.2, S3.5 |
 | `/brain/sample_transport` | Curvature-bounded neighborhood sampling | S4 |
+
+### Causal-states HTTP endpoint (`gigi-stream`, deployed; `causal_states` feature flag)
+
+| Endpoint | What it returns | Reference |
+|---|---|---|
+| `POST /v1/causal_states/commutator` | Update commutator `Ω = (U_a ∘ U_b)(p) − (U_b ∘ U_a)(p)` on a base belief: `forward` + `backward` arms, `tv` / `hellinger` / `kl` scalar diagnostics, regime classification `sofic` / `smooth` / `borderline`. `kl` is a tagged enum — `{"kind":"finite","value":v}` in the smooth regime, `{"kind":"divergent"}` in the sofic regime. Operators: `even_u0`, `even_u1`, or `hmm` with `{alpha, beta, symbol}`. Optional `bands: {tv_low, tv_high}` override (defaults `0.30 / 0.95`). | Davis (2026) §7 |
+
+Smoke (live against `gigi-stream.fly.dev`):
+```bash
+# HMM at the paper's H5 reference point → smooth regime, TV ≈ 0.106
+curl -X POST https://gigi-stream.fly.dev/v1/causal_states/commutator \
+  -H "X-API-Key: $GIGI_API_KEY" -H "Content-Type: application/json" \
+  -d '{"a":{"kind":"hmm","alpha":0.2,"beta":0.3,"symbol":0},
+       "b":{"kind":"hmm","alpha":0.2,"beta":0.3,"symbol":1},
+       "base_belief":[0.5,0.5]}'
+
+# Even Process at μ = (2/3, 1/3) → sofic regime, KL divergent, TV = 1
+curl -X POST https://gigi-stream.fly.dev/v1/causal_states/commutator \
+  -H "X-API-Key: $GIGI_API_KEY" -H "Content-Type: application/json" \
+  -d '{"a":{"kind":"even_u0"},"b":{"kind":"even_u1"},
+       "base_belief":[0.6666666666666666,0.3333333333333333]}'
+```
 
 ### One-shot tour of every shipped Kähler layer
 
@@ -646,6 +672,12 @@ gigi/
 │   ├── cost/             L3 Jacobi-field cardinality estimator
 │   ├── discrete/         L6 Hodge complex + Laplacian + Morse
 │   ├── sheaf/            sheaf cohomology + Laplacian
+│   ├── causal_states/    update commutator substrate (Davis 2026):
+│   │                       diagnostics (TV/Hellinger/KL), operators
+│   │                       (Even Process U_0/U_1 + noisy 2-state HMM),
+│   │                       commutator orchestrator + regime classifier,
+│   │                       sim.rs (deterministic LCG + HMM simulator).
+│   │                       Behind `causal_states` feature flag.
 │   ├── bundle.rs         Heap BundleStore + Welford field stats + mutation_counter
 │   ├── mmap_bundle.rs    BundleRef / BundleMut / OverlayBundle —
 │   │                       polymorphic over heap and mmap+overlay (#107)

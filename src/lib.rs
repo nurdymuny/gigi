@@ -153,6 +153,14 @@ pub mod imagine;
 // See `theory/transactions/ATOMIC_SHEAF_COMMIT_SPEC.md`.
 #[cfg(feature = "transactions")]
 pub mod transactions;
+// Causal States v0.1 — update commutator substrate (companion to Davis
+// 2026 "Causal States as Predictive Sections"). Behind `causal_states`
+// feature flag. Provides TV / Hellinger / KL scalar diagnostics on
+// discrete distributions and the commutator computation
+// U_{ab}(p) - U_{ba}(p) for paired Bayesian updates. Math companion at
+// `theory/causal_states/validation_tests.py` (36/36 green).
+#[cfg(feature = "causal_states")]
+pub mod causal_states;
 pub mod spectral;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),

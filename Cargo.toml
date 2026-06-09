@@ -67,6 +67,17 @@ transactions = []
 # (PH4 is enforced by Cargo's feature isolation).
 patterns = []
 
+# `causal_states` — opt-in update commutator substrate. When ON, the
+# new `gigi::causal_states` module provides:
+#   - TV / Hellinger / KL scalar diagnostics on discrete distributions
+#   - Update operator trait + composition for two-step belief updates
+#   - Commutator computation U_{ab}(p) - U_{ba}(p) with regime classifier
+# Companion to Davis (2026) "Causal States as Predictive Sections."
+# Python math companion: theory/causal_states/validation_tests.py (36/36
+# green); spec at theory/causal_states/SPEC_v0.1_COMMUTATOR.md.
+# When OFF, the engine compiles and behaves exactly as before.
+causal_states = []
+
 [dependencies]
 roaring = "0.10"
 regex = "1"

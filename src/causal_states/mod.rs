@@ -37,12 +37,20 @@
 
 pub mod sim;
 
+use serde::{Deserialize, Serialize};
+
 // ─── Diagnostics (CV1) ───────────────────────────────────────────────────
 
 /// KL divergence value — finite when both distributions share support
 /// where it matters, `Divergent` when mutually singular (paper §5.4,
 /// Even Process sofic regime).
-#[derive(Debug, Clone, Copy, PartialEq)]
+///
+/// Wire form (serde with `tag = "kind"`, `content = "value"`,
+/// snake_case):
+///   - `Finite(v)`  → `{"kind": "finite", "value": v}`
+///   - `Divergent`  → `{"kind": "divergent"}`
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
 pub enum KlValue {
     Finite(f64),
     Divergent,
@@ -280,7 +288,8 @@ pub fn hmm_closed_form_tv(alpha: f64, beta: f64) -> f64 {
 // ─── Commutator orchestrator (CV3) ───────────────────────────────────────
 
 /// Which of the two composition paths produced an inadmissibility.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum WhichPath {
     /// `forward = b.apply(a.apply(p))` — observation order "ab".
     Forward,
@@ -304,7 +313,7 @@ pub enum CommutatorError {
 ///
 /// Fields are exactly what CV4's HTTP envelope serializes — see
 /// `tests/causal_states_cv3_commutator.rs::cv3_commutator_struct_shape`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Commutator {
     /// `b.apply(a.apply(p))` — observation order "ab", right-acting
     /// (paper Eq 3.6).
@@ -391,7 +400,8 @@ pub fn commutator(
 ///   applies.
 /// - **Borderline**: the in-between band where neither pole is clean.
 ///   Reported to operators as "needs disambiguating model selection."
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Regime {
     Sofic,
     Smooth,
@@ -405,7 +415,7 @@ pub enum Regime {
 ///     (α, β) ∈ (0.05, 0.45)²; sub-threshold TV with finite KL is Smooth.
 ///   - `tv_high = 0.95` — Even Process at interior beliefs saturates at
 ///     TV = 1; finite-KL TV near 1 still routes to Sofic.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct RegimeBands {
     pub tv_low: f64,
     pub tv_high: f64,

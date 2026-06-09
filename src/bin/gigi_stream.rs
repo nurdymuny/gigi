@@ -14314,6 +14314,15 @@ async fn main() {
         .route("/v1/transactions/{tx_id}/commit", post(tx_commit))
         .route("/v1/transactions/{tx_id}/rollback", post(tx_rollback));
 
+    // Causal States v0.1 — Update Commutator HTTP envelope (CV4-wire).
+    // Only mounted when the `causal_states` feature flag is enabled;
+    // strict-additive otherwise. Backs the Davis (2026) paper §7.
+    #[cfg(feature = "causal_states")]
+    let app = app.route(
+        "/v1/causal_states/commutator",
+        post(causal_states_commutator_http),
+    );
+
     let app = app
         // GQL endpoint
         .route("/v1/gql", post(gql_query))
@@ -15217,6 +15226,200 @@ async fn tx_status(
         age_secs,
         touched_bundles: touched,
         pending_writes: tx.pending.values().map(|v| v.len()).sum(),
+    }))
+}
+
+// ── Causal States v0.1 — HTTP envelope (CV4-wire) ─────────────────────────
+//
+// POST /v1/causal_states/commutator
+//
+// Wire-side surface for the Davis (2026) update-commutator substrate.
+// Computes Ω = U_a∘U_b − U_b∘U_a on a base belief and returns the three
+// scalar diagnostics plus a three-way regime classification (Saturating
+// / Smooth / Borderline). Mounted only when the `causal_states` feature
+// flag is enabled.
+//
+// Request format (operator pair + base belief + optional bands):
+//
+//   {
+//     "a":    {"kind": "hmm", "alpha": 0.2, "beta": 0.3, "symbol": 0},
+//     "b":    {"kind": "hmm", "alpha": 0.2, "beta": 0.3, "symbol": 1},
+//     "base_belief": [0.5, 0.5],
+//     "bands": {"tv_low": 0.30, "tv_high": 0.95}   // optional; defaults
+//   }
+//
+// Operator kinds: "even_u0", "even_u1", "hmm". HMM requires alpha, beta,
+// symbol ∈ {0, 1}.
+//
+// Response (success):
+//
+//   {
+//     "forward":  [0.4469, 0.5531],
+//     "backward": [0.5531, 0.4469],
+//     "tv":        0.106195,
+//     "hellinger": 0.075197,
+//     "kl":        {"kind": "finite", "value": 0.0327},
+//     "regime":    "smooth"
+//   }
+//
+// Errors return 400 with {"error": "..."} for bad input, or with an
+// additional "which" field ("forward" or "backward") when one of the
+// composition paths hit an inadmissible state.
+
+#[cfg(feature = "causal_states")]
+#[derive(Debug, Deserialize)]
+struct CommutatorRequest {
+    a: OperatorSpec,
+    b: OperatorSpec,
+    base_belief: Vec<f64>,
+    #[serde(default)]
+    bands: Option<RegimeBandsSpec>,
+}
+
+/// Wire-side discriminated union for an update operator.
+///
+/// `kind` discriminates the variant; HMM additionally carries alpha,
+/// beta, and a symbol ∈ {0, 1}.
+#[cfg(feature = "causal_states")]
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum OperatorSpec {
+    EvenU0,
+    EvenU1,
+    Hmm { alpha: f64, beta: f64, symbol: u8 },
+}
+
+#[cfg(feature = "causal_states")]
+#[derive(Debug, Deserialize)]
+struct RegimeBandsSpec {
+    tv_low: f64,
+    tv_high: f64,
+}
+
+#[cfg(feature = "causal_states")]
+#[derive(Debug, Serialize)]
+struct CommutatorResponse {
+    forward: Vec<f64>,
+    backward: Vec<f64>,
+    tv: f64,
+    hellinger: f64,
+    kl: gigi::causal_states::KlValue,
+    regime: gigi::causal_states::Regime,
+}
+
+#[cfg(feature = "causal_states")]
+fn build_operator(
+    spec: &OperatorSpec,
+) -> Result<Box<dyn gigi::causal_states::UpdateOperator>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::causal_states::{EvenU0, EvenU1, HmmUpdate};
+    match spec {
+        OperatorSpec::EvenU0 => Ok(Box::new(EvenU0)),
+        OperatorSpec::EvenU1 => Ok(Box::new(EvenU1)),
+        OperatorSpec::Hmm { alpha, beta, symbol } => {
+            if *symbol > 1 {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        error: format!(
+                            "HMM operator: symbol must be 0 or 1, got {symbol}"
+                        ),
+                    }),
+                ));
+            }
+            if !alpha.is_finite() || !beta.is_finite() {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        error: format!(
+                            "HMM operator: alpha and beta must be finite, got alpha={alpha}, beta={beta}"
+                        ),
+                    }),
+                ));
+            }
+            Ok(Box::new(HmmUpdate {
+                alpha: *alpha,
+                beta: *beta,
+                symbol: *symbol,
+            }))
+        }
+    }
+}
+
+#[cfg(feature = "causal_states")]
+async fn causal_states_commutator_http(
+    State(_state): State<Arc<StreamState>>,
+    Json(req): Json<CommutatorRequest>,
+) -> Result<Json<CommutatorResponse>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::causal_states::{classify_regime, commutator, CommutatorError, RegimeBands};
+
+    // Input validation: base belief must be a non-trivial probability vector.
+    if req.base_belief.len() != 2 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!(
+                    "base_belief must have exactly 2 entries (2-state substrate v0.1); got {}",
+                    req.base_belief.len()
+                ),
+            }),
+        ));
+    }
+    for (i, v) in req.base_belief.iter().enumerate() {
+        if !v.is_finite() || *v < 0.0 || *v > 1.0 {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!(
+                        "base_belief[{i}] = {v} is not in [0, 1] or is non-finite"
+                    ),
+                }),
+            ));
+        }
+    }
+    let sum: f64 = req.base_belief.iter().sum();
+    if (sum - 1.0).abs() > 1e-6 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!(
+                    "base_belief must sum to 1 within 1e-6, got sum = {sum}"
+                ),
+            }),
+        ));
+    }
+
+    let a_op = build_operator(&req.a)?;
+    let b_op = build_operator(&req.b)?;
+
+    let omega = commutator(a_op.as_ref(), b_op.as_ref(), &req.base_belief)
+        .map_err(|e| match e {
+            CommutatorError::PathInadmissible { which, error } => (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!(
+                        "commutator path inadmissible: which={which:?}, error={error:?}"
+                    ),
+                }),
+            ),
+        })?;
+
+    let bands = req
+        .bands
+        .map(|b| RegimeBands {
+            tv_low: b.tv_low,
+            tv_high: b.tv_high,
+        })
+        .unwrap_or_default();
+
+    let regime = classify_regime(&omega, bands);
+
+    Ok(Json(CommutatorResponse {
+        forward: omega.forward,
+        backward: omega.backward,
+        tv: omega.tv,
+        hellinger: omega.hellinger,
+        kl: omega.kl,
+        regime,
     }))
 }
 

@@ -1,0 +1,1455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>gigi-tui-mockup</title>
+<style>
+  :root {
+    --bg: #08110e;
+    --section-bg: #0a1410;
+    --pane-bg: #0d1a15;
+    --pane-bg-2: #0f1f18;
+    --frame: #163025;
+    --frame-soft: #122a20;
+    --frame-glow: #3eff8b;
+
+    --text: #b3f5cc;
+    --text-bright: #d4ffe2;
+    --text-dim: #5a8068;
+    --text-faded: #3d5a4a;
+    --text-mute: #2d4438;
+
+    --green-emph: #4eff9b;
+    --green-soft: #62d68a;
+    --amber: #ffd24e;
+    --amber-soft: #c9a445;
+    --rose: #ff8c7a;
+    --rose-soft: #c97062;
+    --code-string: #f5e08c;
+    --code-keyword: #62d68a;
+    --code-comment: #3d5a4a;
+
+    --selected: #142a20;
+    --selected-bar: #1a3528;
+    --hover: #112520;
+
+    --shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.6),
+              0 0 0 1px rgba(62, 255, 139, 0.04);
+    --shadow-glow: 0 0 0 1px rgba(62, 255, 139, 0.45),
+                   0 0 24px -2px rgba(62, 255, 139, 0.18);
+
+    --font-mono: "Berkeley Mono", "JetBrains Mono", "IBM Plex Mono",
+                 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: radial-gradient(ellipse at top, #0c1812 0%, #060c0a 70%);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.55;
+    min-height: 100vh;
+    padding: 56px 24px 80px;
+  }
+
+  /* ── Section heading (numbered + caption) ─────────────────────────── */
+  .section { max-width: 980px; margin: 0 auto 64px; }
+  .section-header { text-align: center; padding: 0 32px 18px; }
+  .section-number {
+    display: inline-block;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--frame-glow);
+    color: #062414;
+    font-weight: 700;
+    text-align: center;
+    line-height: 22px;
+    font-size: 12px;
+    margin-right: 10px;
+    vertical-align: 1px;
+  }
+  .section-title {
+    color: var(--text-bright);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .section-caption {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 12px;
+    line-height: 1.65;
+    margin: 10px auto 0;
+    max-width: 720px;
+  }
+
+  /* ── Browser-chrome window ────────────────────────────────────────── */
+  .window {
+    background: var(--section-bg);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border: 1px solid rgba(62, 255, 139, 0.08);
+  }
+  .titlebar {
+    display: flex;
+    align-items: center;
+    padding: 11px 14px;
+    background: linear-gradient(180deg, #0f1c17 0%, #0a1612 100%);
+    border-bottom: 1px solid rgba(62, 255, 139, 0.05);
+    user-select: none;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; }
+  .dot.y { background: #febc2e; }
+  .dot.g { background: #28c840; }
+  .titlebar-title {
+    flex: 1;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Inner TUI body ───────────────────────────────────────────────── */
+  .tui {
+    padding: 16px 22px 0;
+    background: var(--section-bg);
+  }
+
+  /* Top status row */
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-dim);
+    padding: 0 4px 14px;
+    font-size: 12px;
+  }
+  .status-row .left { color: var(--text); }
+  .status-row .right .sep { color: var(--text-mute); margin: 0 8px; }
+  .status-row .right .emph { color: var(--green-emph); }
+  .status-row .right .num { color: var(--text-bright); }
+  .status-row .right .teach {
+    color: var(--frame-glow);
+    font-weight: 600;
+    margin-left: 12px;
+    padding: 0 8px;
+    border: 1px solid rgba(62, 255, 139, 0.4);
+    border-radius: 3px;
+  }
+
+  /* Three-pane top row */
+  .pane-row {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr 1.5fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .pane {
+    background: var(--pane-bg);
+    border: 1px solid var(--frame);
+    border-radius: 4px;
+    padding: 10px 12px 12px;
+    position: relative;
+    min-height: 240px;
+  }
+  .pane.focused {
+    box-shadow: var(--shadow-glow);
+    border-color: var(--frame-glow);
+  }
+  .pane-title {
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .pane-title .edit-tag {
+    color: var(--frame-glow);
+    margin-left: 8px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+  }
+
+  /* Sub-tabs in the middle pane */
+  .tabs {
+    display: flex;
+    gap: 16px;
+    border-bottom: 1px dashed var(--frame-soft);
+    padding: 0 2px 6px;
+    margin: -2px 0 8px;
+  }
+  .tab {
+    color: var(--text-faded);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0 2px 4px;
+    margin-bottom: -7px;
+    border-bottom: 2px solid transparent;
+    font-weight: 600;
+  }
+  .tab.active {
+    color: var(--frame-glow);
+    border-bottom-color: var(--frame-glow);
+  }
+  .tab .count {
+    color: var(--text-mute);
+    font-weight: 400;
+    margin-left: 2px;
+  }
+  .tab.active .count { color: var(--text-dim); }
+
+  /* Bundle / pattern list rows */
+  .row {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text);
+    padding: 1px 0;
+  }
+  .row .name { color: var(--text); }
+  .row .num { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .row.dim .name, .row.dim .num { color: var(--text-faded); }
+  .row.muted .name { color: var(--text-dim); }
+
+  .pat-row {
+    color: var(--text);
+    padding: 1px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pat-row .star { color: var(--amber); }
+  .pat-row.current {
+    color: var(--text-dim);
+    position: relative;
+  }
+  .pat-row.current .marker {
+    color: var(--frame-glow);
+    font-weight: 700;
+  }
+  .pat-row.current .compiled {
+    margin-left: auto;
+    background: var(--frame-glow);
+    color: #062414;
+    padding: 1px 8px;
+    border-radius: 2px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .new-pat { color: var(--text-faded); margin-top: 8px; padding-top: 6px;
+             border-top: 1px dashed var(--frame-soft); }
+
+  /* GQL pane content */
+  .gql-code {
+    color: var(--text);
+    white-space: pre;
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .gql-code .kw { color: var(--code-keyword); font-weight: 500; }
+  .gql-code .str { color: var(--code-string); }
+  .gql-code .com { color: var(--code-comment); font-style: italic; }
+  .gql-code .num { color: var(--text-bright); }
+  .gql-stats {
+    color: var(--text-faded);
+    font-style: italic;
+    font-size: 11.5px;
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--frame-soft);
+  }
+  .gql-stats .verdict-pill {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-right: 6px;
+  }
+  .gql-stats .verdict-pill.sat {
+    background: rgba(78, 255, 155, 0.15);
+    color: var(--green-emph);
+    border: 1px solid rgba(78, 255, 155, 0.35);
+  }
+  .gql-stats .verdict-pill.near {
+    background: rgba(255, 210, 78, 0.13);
+    color: var(--amber);
+    border: 1px solid rgba(255, 210, 78, 0.3);
+  }
+  .gql-stats .verdict-pill.unsat {
+    background: rgba(255, 140, 122, 0.13);
+    color: var(--rose);
+    border: 1px solid rgba(255, 140, 122, 0.3);
+  }
+
+  /* THE KEY TEACHING WIDGET — TRANSLATE line below every GQL */
+  .translate {
+    margin-top: 8px;
+    padding: 8px 0 4px;
+    color: var(--text-dim);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .translate .label {
+    color: var(--green-soft);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    font-size: 10px;
+    margin-right: 8px;
+    background: rgba(98, 214, 138, 0.08);
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid rgba(98, 214, 138, 0.25);
+  }
+  .translate .body { font-style: italic; }
+  .translate .hint {
+    display: block;
+    color: var(--text-faded);
+    font-size: 10.5px;
+    margin-top: 4px;
+    font-style: normal;
+  }
+  .translate .hint .kbd { color: var(--frame-glow); font-weight: 600; }
+
+  /* Autocomplete dropdown */
+  .ac-cursor { background: var(--green-emph); color: #062414;
+               padding: 0 1px; animation: blink 1.05s steps(2, end) infinite; }
+  @keyframes blink { 50% { background: transparent; color: var(--text); } }
+
+  .autocomplete {
+    margin-top: 8px;
+    background: var(--pane-bg-2);
+    border: 1px solid var(--frame-glow);
+    box-shadow: 0 0 20px -4px rgba(62, 255, 139, 0.25);
+    padding: 4px 0;
+    border-radius: 3px;
+  }
+  .ac-item {
+    display: flex;
+    align-items: center;
+    padding: 2px 12px;
+    gap: 10px;
+  }
+  .ac-item.sel { background: var(--selected-bar); }
+  .ac-item .marker { color: var(--frame-glow); width: 8px; }
+  .ac-item .field { color: var(--text); }
+  .ac-item.sel .field { color: var(--text-bright); }
+  .ac-item .badge {
+    color: var(--text-dim);
+    font-size: 11px;
+    font-style: italic;
+    margin-left: auto;
+  }
+  .ac-item .pct {
+    color: var(--green-soft);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    min-width: 32px;
+    text-align: right;
+  }
+
+  /* Results panel */
+  .results-panel {
+    background: var(--pane-bg);
+    border: 1px solid var(--frame);
+    border-radius: 4px;
+    padding: 10px 14px 12px;
+    margin-bottom: 12px;
+  }
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .results-header .left {
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+  }
+  .results-header .right {
+    color: var(--text-dim);
+    font-size: 11.5px;
+  }
+  .results-header .right .kbd { color: var(--frame-glow); font-weight: 600; }
+
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  .results-table th {
+    text-align: left;
+    color: var(--text-faded);
+    font-weight: 400;
+    font-size: 11.5px;
+    padding: 3px 8px;
+    border-bottom: 1px dashed var(--frame-soft);
+  }
+  .results-table th.r { text-align: right; }
+  .results-table td {
+    padding: 2px 8px;
+    color: var(--text);
+    border-bottom: 1px solid transparent;
+  }
+  .results-table td.r { text-align: right; }
+  .results-table td.dim { color: var(--text-dim); }
+  .results-table td.score { color: var(--text-bright); font-weight: 600; }
+  .results-table tr.selected td { background: var(--selected); }
+  .results-table tr.selected td:first-child {
+    color: var(--frame-glow);
+    font-weight: 700;
+  }
+  .results-table td .star { color: var(--amber); margin-left: 6px; }
+  .results-table.stale { opacity: 0.45; }
+  .results-table.stale td { color: var(--text-dim); }
+
+  .results-marker {
+    color: var(--frame-glow);
+    font-weight: 700;
+  }
+
+  /* Bottom keyboard cue bar */
+  .keybar {
+    color: var(--text-dim);
+    font-size: 11.5px;
+    padding: 12px 4px 18px;
+    border-top: 1px solid var(--frame-soft);
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .keybar .kbd {
+    color: var(--frame-glow);
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .keybar.right { justify-content: flex-end; color: var(--text-faded); }
+
+  /* ── Inspector overlay common styling ───────────────────────────── */
+  .insp-title {
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+    margin: 14px 0 6px;
+  }
+  .insp-callout {
+    background: rgba(255, 210, 78, 0.06);
+    border-left: 3px solid var(--amber);
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 12.5px;
+    margin: 4px 0 18px;
+  }
+  .insp-callout.sat {
+    background: rgba(78, 255, 155, 0.06);
+    border-left-color: var(--green-emph);
+  }
+  .insp-callout.unsat {
+    background: rgba(255, 140, 122, 0.06);
+    border-left-color: var(--rose);
+  }
+  .insp-callout .badge {
+    color: var(--amber);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .insp-callout.sat .badge { color: var(--green-emph); }
+  .insp-callout.unsat .badge { color: var(--rose); }
+
+  .kv {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    padding: 0 6px;
+    gap: 0 14px;
+    font-size: 12.5px;
+  }
+  .kv .k { color: var(--text-dim); }
+  .kv .v { color: var(--text); }
+  .kv .v.bright { color: var(--text-bright); font-weight: 600; }
+  .kv .v.amber { color: var(--amber); }
+  .kv .v.rose { color: var(--rose); }
+  .kv .v.green { color: var(--green-emph); }
+
+  /* tree */
+  .tree { color: var(--text); padding: 6px; font-size: 12.5px; }
+  .tree .lbl { color: var(--text-dim); }
+  .tree .val { color: var(--text-bright); font-weight: 600; }
+  .tree .op { color: var(--code-keyword); }
+  .tree .ch { color: var(--text-faded); }
+  .tree .clip { color: var(--amber); font-style: italic; }
+
+  /* code excerpt */
+  .excerpt {
+    background: var(--pane-bg-2);
+    border: 1px solid var(--frame-soft);
+    border-radius: 3px;
+    padding: 10px 14px;
+    margin: 4px 0 18px;
+    font-size: 12.5px;
+    color: var(--text);
+    white-space: pre;
+  }
+  .excerpt .h { color: var(--amber); background: rgba(255, 210, 78, 0.1); }
+
+  /* repair menu list */
+  .repair-row {
+    display: grid;
+    grid-template-columns: 28px 1fr 100px 80px;
+    padding: 2px 6px;
+    color: var(--text);
+    font-size: 12.5px;
+    align-items: center;
+  }
+  .repair-row.head {
+    color: var(--text-faded);
+    font-size: 11.5px;
+    border-bottom: 1px dashed var(--frame-soft);
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+  }
+  .repair-row .rank { color: var(--text-dim); font-weight: 600; }
+  .repair-row .cost { text-align: right; color: var(--green-emph); font-weight: 600; }
+  .repair-row .flips { text-align: right; color: var(--text-dim); }
+  .repair-row.selected { background: var(--selected); }
+  .repair-row.selected .rank { color: var(--frame-glow); }
+
+  /* checklist */
+  .check { color: var(--text); font-size: 12.5px; padding: 1px 6px; }
+  .check .ok { color: var(--green-emph); }
+  .check .pending { color: var(--text-dim); }
+
+  /* small helper */
+  .nb { color: var(--text-faded); font-style: italic; font-size: 11.5px;
+        padding: 4px 6px; }
+
+  /* ─── Verb palette ─────────────────────────────────────────────── */
+  .palette { padding: 0 2px; }
+  .cat-title {
+    color: var(--text-faded);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+    margin-top: 10px;
+    margin-bottom: 4px;
+  }
+  .cat-title:first-child { margin-top: 0; }
+  .verb-row {
+    display: grid;
+    grid-template-columns: 18px 130px 1fr 48px;
+    align-items: center;
+    padding: 1.5px 6px;
+    color: var(--text);
+    font-size: 12.5px;
+    gap: 6px;
+  }
+  .verb-row.selected { background: var(--selected); }
+  .verb-row .marker { color: var(--frame-glow); font-weight: 700; }
+  .verb-row .name { color: var(--text-bright); font-weight: 600; }
+  .verb-row .desc { color: var(--text-dim); font-style: italic; font-size: 11.5px; }
+  .verb-row .badge {
+    color: var(--amber); font-size: 10px;
+    text-align: right;
+    font-style: italic;
+  }
+  .verb-row.dim .name { color: var(--text-dim); font-weight: 400; }
+
+  /* template box */
+  .tpl-box {
+    background: var(--pane-bg-2);
+    border: 1px dashed var(--frame);
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 12.5px;
+    white-space: pre;
+    margin-top: 6px;
+    border-radius: 3px;
+    line-height: 1.65;
+  }
+  .tpl-box .kw { color: var(--code-keyword); font-weight: 500; }
+  .tpl-box .opt { color: var(--text-dim); }
+  .tpl-box .placeholder { color: var(--amber); font-style: italic; }
+
+  /* ─── Teach mode ───────────────────────────────────────────────── */
+  .teach-window-tag {
+    background: rgba(62, 255, 139, 0.12);
+    color: var(--frame-glow);
+    padding: 1px 8px;
+    border-radius: 3px;
+    margin-left: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    font-size: 10.5px;
+    border: 1px solid rgba(62, 255, 139, 0.35);
+  }
+
+  .annotated {
+    background: var(--pane-bg);
+    border: 1px solid var(--frame);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin: 4px 0 18px;
+    color: var(--text);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .ann-line {
+    display: block;
+    color: var(--text-bright);
+    padding-left: 2px;
+  }
+  .ann-line .kw { color: var(--code-keyword); font-weight: 600; }
+  .ann-line .num { color: var(--text-bright); }
+  .ann-explain {
+    display: block;
+    color: var(--green-soft);
+    font-style: italic;
+    font-size: 11.5px;
+    padding: 2px 0 8px 26px;
+    position: relative;
+  }
+  .ann-explain::before {
+    content: "╰─";
+    position: absolute;
+    left: 8px;
+    color: var(--frame);
+    font-style: normal;
+  }
+
+  .teach-block {
+    background: var(--pane-bg);
+    border: 1px solid var(--frame);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+  }
+  .teach-block .teach-title {
+    color: var(--frame-glow);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .teach-block .teach-body {
+    color: var(--text);
+    font-size: 12.5px;
+    line-height: 1.65;
+  }
+  .teach-block code {
+    color: var(--text-bright);
+    background: rgba(78, 255, 155, 0.06);
+    padding: 0 4px;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+  }
+  .teach-block ul {
+    margin: 4px 0; padding-left: 20px;
+  }
+  .teach-block li { color: var(--text); margin: 3px 0; }
+  .teach-block li code { color: var(--code-keyword); }
+  .teach-block li .desc { color: var(--text-dim); font-style: italic; }
+
+  /* SUDOKU verdict-style banner for the GP inspector */
+  .verdict-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-bottom: 18px;
+    border: 1px solid;
+  }
+  .verdict-banner.near {
+    background: rgba(255, 210, 78, 0.06);
+    border-color: rgba(255, 210, 78, 0.35);
+  }
+  .verdict-banner .label {
+    color: var(--amber);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .verdict-banner .detail {
+    color: var(--text);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- ❶ STATE: Browse mode — middle pane has tabs (GP nav)                 -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div><span class="section-number">1</span><span class="section-title">Browse mode · tabbed registry · TRANSLATE shows GQL meaning in plain English</span></div>
+    <div class="section-caption">
+      The middle pane has four sub-tabs — <code>Patterns</code> (named, persistent), <code>Verbs</code> (the full GQL palette), <code>Saved</code> (your bookmarks), <code>Schema</code> (the active bundle's fields). One shell for every verb; cycle with <code>1</code>–<code>4</code>. Every GQL pane carries a <code>TRANSLATE</code> line beneath it that says what the query does in plain English — the operator learns GQL just by reading it during normal work. Cross-domain bundles (customers, sensors, experiments, sessions) make the substrate's domain-neutrality visible.
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="titlebar">
+      <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+      <div class="titlebar-title">gigi · gigi-stream.fly.dev</div>
+      <div style="width:48px"></div>
+    </div>
+    <div class="tui">
+      <div class="status-row">
+        <div class="left">gigi 0.2.1</div>
+        <div class="right">
+          <span class="emph">connected</span>
+          <span class="sep">·</span>gigi-stream <span class="num">v0.2.1</span>
+          <span class="sep">·</span><span class="num">47</span> bundles
+          <span class="sep">·</span><span class="num">27</span> verbs
+        </div>
+      </div>
+
+      <div class="pane-row">
+        <!-- BUNDLES pane -->
+        <div class="pane">
+          <div class="pane-title">BUNDLES</div>
+          <div class="row"><span class="name">customers</span><span class="num">12,408</span></div>
+          <div class="row"><span class="name">orders_q4</span><span class="num">89,231</span></div>
+          <div class="row"><span class="name">experiments_a26</span><span class="num">1,247</span></div>
+          <div class="row"><span class="name">sensors_iot</span><span class="num">4,189</span></div>
+          <div class="row"><span class="name">reviews_2026</span><span class="num">32,914</span></div>
+          <div class="row"><span class="name">sessions_july</span><span class="num">520</span></div>
+          <div class="row"><span class="name">shipments</span><span class="num">3,640</span></div>
+          <div class="row"><span class="name">icarus_traverse</span><span class="num">212</span></div>
+          <div class="row"><span class="name">jg_kv</span><span class="num">8,901</span></div>
+          <div class="row"><span class="name">marcella_sense</span><span class="num">1,820</span></div>
+          <div class="row dim"><span class="name">+ 37 more</span><span class="num"></span></div>
+        </div>
+
+        <!-- REGISTRY pane with tabs (focused) -->
+        <div class="pane focused">
+          <div class="tabs">
+            <div class="tab active">Patterns<span class="count">·8</span></div>
+            <div class="tab">Verbs<span class="count">·27</span></div>
+            <div class="tab">Saved<span class="count">·14</span></div>
+            <div class="tab">Schema<span class="count">·12</span></div>
+          </div>
+          <div class="pat-row">
+            <span>high_value_churn</span><span class="star">★</span>
+          </div>
+          <div class="pat-row">
+            <span>anomaly_signal</span><span class="star">★</span>
+          </div>
+          <div class="pat-row current">
+            <span class="marker">▶</span>
+            <span class="compiled">near_miss_conversion</span>
+          </div>
+          <div class="pat-row">
+            <span>cohort_drift</span>
+          </div>
+          <div class="pat-row">
+            <span>sensor_anomaly</span>
+          </div>
+          <div class="pat-row">
+            <span>session_at_risk</span>
+          </div>
+          <div class="pat-row">
+            <span>review_burst</span>
+          </div>
+          <div class="pat-row">
+            <span>delivery_late</span>
+          </div>
+          <div class="new-pat">+ new pattern…</div>
+        </div>
+
+        <!-- GQL pane with TRANSLATE -->
+        <div class="pane">
+          <div class="pane-title">GQL</div>
+          <div class="gql-code"><span class="kw">HUNT</span> near_miss_conversion <span class="kw">IN</span> customers
+  <span class="kw">EXCLUDING IN</span> converted_customers
+  <span class="kw">WITH NEAR_MISS_BUDGET</span> <span class="num">1</span>
+  <span class="kw">RANK BY</span> _score <span class="kw">DESC</span>
+  <span class="kw">PROJECT</span> (customer_id, last_seen, cart_value, _score)
+  <span class="kw">TOP</span> <span class="num">20</span> ;</div>
+          <div class="gql-stats">
+            <span class="verdict-pill near">◌ NEAR_MISS</span>
+            87 within budget · ran <span style="color:var(--text-bright)">41 ms</span> · K<sub>P</sub> = 0.34
+          </div>
+          <div class="translate">
+            <span class="label">TRANSLATE</span>
+            <span class="body">Find customers almost matching the <code>near_miss_conversion</code> pattern (within one field flip), drop any already in <code>converted_customers</code>, return the top 20 by score.</span>
+            <span class="hint">Press <span class="kbd">t</span> for the full clause-by-clause breakdown.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="left">RESULTS · 20 of 87 shown</div>
+          <div class="right"><span class="kbd">Enter</span>: inspect · <span class="kbd">↑↓</span> navigate · <span class="kbd">y</span> copy GQL</div>
+        </div>
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th style="width:24px"></th>
+              <th>#</th>
+              <th>customer_id</th>
+              <th>last_seen</th>
+              <th class="r">cart_value</th>
+              <th class="r">_score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="selected">
+              <td><span class="results-marker">▶</span></td>
+              <td class="dim">1</td>
+              <td>C-0001274</td>
+              <td class="dim">3d ago</td>
+              <td class="r">$1,387.50</td>
+              <td class="r score">7.5 <span class="star">★</span></td>
+            </tr>
+            <tr><td></td><td class="dim">2</td><td>C-0009941</td><td class="dim">1d ago</td><td class="r">$1,209.00</td><td class="r score">7.5</td></tr>
+            <tr><td></td><td class="dim">3</td><td>C-0002013</td><td class="dim">5d ago</td><td class="r">$ 982.30</td><td class="r score">7.0</td></tr>
+            <tr><td></td><td class="dim">4</td><td>C-0014782</td><td class="dim">2d ago</td><td class="r">$ 871.40</td><td class="r score">7.0</td></tr>
+            <tr><td></td><td class="dim">5</td><td>C-0006021</td><td class="dim">4d ago</td><td class="r">$ 642.99</td><td class="r score">6.5</td></tr>
+            <tr><td></td><td class="dim">6</td><td>C-0011902</td><td class="dim">6d ago</td><td class="r">$ 598.10</td><td class="r score">6.5</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="keybar">
+        <div><span class="kbd">q</span>quit</div>
+        <div><span class="kbd">/</span>search</div>
+        <div><span class="kbd">1-4</span>tab</div>
+        <div><span class="kbd">r</span>run</div>
+        <div><span class="kbd">e</span>edit</div>
+        <div><span class="kbd">t</span>teach</div>
+        <div><span class="kbd">s</span>save</div>
+        <div><span class="kbd">h</span>history</div>
+        <div><span class="kbd">?</span>help</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- ❷ STATE: Edit mode — autocomplete works for verbs AND fields         -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div><span class="section-number">2</span><span class="section-title">Edit mode · autocomplete spans verbs, fields, bundles, patterns</span></div>
+    <div class="section-caption">
+      Focus moves to GQL on <code>^E</code>; the autocomplete dropdown opens against whichever vocabulary fits the cursor position. At the start of a clause it lists verbs; after a verb it lists bundles or patterns; inside a <code>WHERE</code> it lists fields from the active bundle's schema with type and frequency. <code>Tab</code> cycles, <code>Enter</code> inserts. The TRANSLATE line stays live as you type — you watch the English meaning of your query update token by token.
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="titlebar">
+      <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+      <div class="titlebar-title">gigi · gigi-stream.fly.dev · EDIT</div>
+      <div style="width:48px"></div>
+    </div>
+    <div class="tui">
+      <div class="status-row">
+        <div class="left">gigi 0.2.1</div>
+        <div class="right">
+          <span class="emph">editing</span>
+          <span class="sep">·</span>customers
+          <span class="sep">·</span><span style="color:var(--amber)">unsaved</span>
+        </div>
+      </div>
+
+      <div class="pane-row">
+        <div class="pane">
+          <div class="pane-title">BUNDLES</div>
+          <div class="row"><span class="name">customers</span><span class="num">12,408</span></div>
+          <div class="row dim"><span class="name">orders_q4</span><span class="num">89,231</span></div>
+          <div class="row dim"><span class="name">experiments_a26</span><span class="num">1,247</span></div>
+          <div class="row dim"><span class="name">sensors_iot</span><span class="num">4,189</span></div>
+          <div class="row dim"><span class="name">…</span><span class="num"></span></div>
+        </div>
+
+        <div class="pane">
+          <div class="tabs">
+            <div class="tab">Patterns</div>
+            <div class="tab">Verbs</div>
+            <div class="tab">Saved</div>
+            <div class="tab active">Schema</div>
+          </div>
+          <div class="nb" style="padding-left:0; font-style:normal; color:var(--text-faded); font-size:10.5px; letter-spacing:0.1em;">CUSTOMERS · 12 fields</div>
+          <div class="row" style="margin-top:6px"><span class="name">customer_id</span><span class="num">text · pk</span></div>
+          <div class="row"><span class="name">tier</span><span class="num">cat · 3</span></div>
+          <div class="row"><span class="name">cart_value</span><span class="num">num</span></div>
+          <div class="row"><span class="name">last_seen_at</span><span class="num">ts</span></div>
+          <div class="row"><span class="name">sessions_30d</span><span class="num">num</span></div>
+          <div class="row"><span class="name">checkout_initiated</span><span class="num">bool</span></div>
+          <div class="row dim"><span class="name">…+6</span><span class="num"></span></div>
+        </div>
+
+        <div class="pane focused">
+          <div class="pane-title">GQL<span class="edit-tag">[EDIT]</span></div>
+          <div class="gql-code"><span class="kw">COVER</span> customers
+  <span class="kw">ON</span> tier = <span class="str">'premium'</span>
+  , cart_value > <span class="num">100</span>
+  <span class="kw">WHERE</span> last_se<span class="ac-cursor"> </span></div>
+
+          <div class="autocomplete">
+            <div class="ac-item sel">
+              <span class="marker">▶</span>
+              <span class="field">last_seen_at</span>
+              <span class="badge">timestamp</span>
+              <span class="pct">23%</span>
+            </div>
+            <div class="ac-item">
+              <span class="marker"></span>
+              <span class="field">last_session_id</span>
+              <span class="badge">text</span>
+              <span class="pct">18%</span>
+            </div>
+            <div class="ac-item">
+              <span class="marker"></span>
+              <span class="field">last_engaged_score</span>
+              <span class="badge">numeric</span>
+              <span class="pct">12%</span>
+            </div>
+            <div class="ac-item">
+              <span class="marker"></span>
+              <span class="field">last_seen_referrer</span>
+              <span class="badge">categorical</span>
+              <span class="pct">4.1%</span>
+            </div>
+            <div class="ac-item">
+              <span class="marker"></span>
+              <span class="field">last_promo_code</span>
+              <span class="badge">categorical</span>
+              <span class="pct">0.8%</span>
+            </div>
+          </div>
+
+          <div class="gql-code" style="margin-top:8px"><span class="kw">RANK BY</span> cart_value <span class="kw">DESC</span>
+  <span class="kw">FIRST</span> <span class="num">20</span> ;</div>
+
+          <div class="translate">
+            <span class="label">TRANSLATE</span>
+            <span class="body">Scan the <code>customers</code> bundle, keep rows where <code>tier</code> is <code>'premium'</code> AND <code>cart_value</code> &gt; 100 AND <code>last_seen_at</code> &lt;…&gt;, sort by <code>cart_value</code> highest first, return the top 20.</span>
+            <span class="hint">Autocomplete will offer comparison operators (<span class="kbd">&gt;</span> <span class="kbd">&lt;</span> <span class="kbd">=</span>) once you pick a field.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="results-panel">
+        <div class="results-header">
+          <div class="left">RESULTS · <span style="color:var(--amber)">stale</span></div>
+          <div class="right">press <span class="kbd">^R</span> to refresh</div>
+        </div>
+        <table class="results-table stale">
+          <thead><tr>
+            <th style="width:24px"></th><th>#</th>
+            <th>customer_id</th><th>last_seen</th>
+            <th class="r">cart_value</th><th class="r">_score</th>
+          </tr></thead>
+          <tbody>
+            <tr><td></td><td class="dim">1</td><td>C-0001274</td><td class="dim">3d ago</td><td class="r">$1,387.50</td><td class="r">7.5</td></tr>
+            <tr><td></td><td class="dim">2</td><td>C-0009941</td><td class="dim">1d ago</td><td class="r">$1,209.00</td><td class="r">7.5</td></tr>
+            <tr><td></td><td class="dim">…</td><td>…</td><td>…</td><td class="r">…</td><td class="r">…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="keybar">
+        <div><span class="kbd">Esc</span>cancel</div>
+        <div><span class="kbd">^R</span>run</div>
+        <div><span class="kbd">^S</span>save as pattern</div>
+        <div><span class="kbd">Tab</span>autocomplete</div>
+        <div><span class="kbd">^X</span>clear field</div>
+        <div><span class="kbd">^/</span>schema</div>
+        <div><span class="kbd">t</span>teach</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- ❸ STATE: Row inspector — HUNT case (verdict envelope + repair)        -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div><span class="section-number">3</span><span class="section-title">Inspector · the HUNT verb's result envelope</span></div>
+    <div class="section-caption">
+      <code>Enter</code> on a row opens the inspector. For <code>HUNT</code> it surfaces every v0.2 field: identity, fiber, <code>_explain</code> tree of the WEIGHT, <code>_repair_menu</code> showing the cheapest flip to sat, verdict context, cross-bundle presence, history. State ❻ below shows the SAME inspector wrapping a different verb's output (SUDOKU) — the section list adapts, the visual language doesn't change. One inspector for all verbs.
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="titlebar">
+      <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+      <div class="titlebar-title">gigi · customers :: C-0001274</div>
+      <div style="width:48px"></div>
+    </div>
+    <div class="tui" style="padding-bottom:8px">
+      <div class="status-row">
+        <div class="left">gigi 0.2.1</div>
+        <div class="right">
+          inspector · HUNT
+          <span class="sep">·</span>row 1 of 87
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">↓</span> scroll
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">y</span> copy GQL
+        </div>
+      </div>
+
+      <div class="insp-callout">
+        <div><span class="badge">Near-miss candidate</span> · one flip from sat under <code>near_miss_conversion</code> (budget k=1).</div>
+        <div style="margin-top:4px; color:var(--text-dim); font-size:12px;">
+          Pattern matched against the cart-abandonment signature catalogued in
+          <code>theory/patterns/registry/conversion.md</code>.
+        </div>
+      </div>
+
+      <div class="insp-title">IDENTITY</div>
+      <div class="kv">
+        <div class="k">Bundle</div><div class="v">customers</div>
+        <div class="k">Base PK</div><div class="v bright">C-0001274</div>
+        <div class="k">First seen</div><div class="v">2025-11-04 14:22 UTC</div>
+        <div class="k">Mutation counter</div><div class="v">2,184</div>
+        <div class="k">Identity hash</div><div class="v">7c8e…3a91</div>
+      </div>
+
+      <div class="insp-title">FIBER (8 fields)</div>
+      <div class="kv">
+        <div class="k">tier</div><div class="v">premium</div>
+        <div class="k">cart_value</div><div class="v bright">1,387.50</div>
+        <div class="k">last_seen_at</div><div class="v">3d ago · 2026-06-04 09:14 UTC</div>
+        <div class="k">sessions_30d</div><div class="v">14</div>
+        <div class="k">cart_abandons_30d</div><div class="v">2</div>
+        <div class="k">checkout_initiated</div><div class="v amber">false</div>
+        <div class="k">payment_method_on_file</div><div class="v green">true</div>
+        <div class="k">email_engagement</div><div class="v">0.71</div>
+      </div>
+
+      <div class="insp-title">SCORE · _score = 7.5 / 10  (clipped)</div>
+      <div class="excerpt">
+<span class="ch">└─</span> <span class="op">min</span>(raw=<span style="color:var(--text-bright)">11.5</span>, cap=<span style="color:var(--text-bright)">10.0</span>) · chose <span style="color:var(--amber)">left</span> · <span class="lbl" style="color:var(--amber);font-style:italic">clipped</span>
+   <span class="ch">└─</span> <span class="op">add</span> · sum = <span style="color:var(--text-bright)">7.5</span>
+      <span class="ch">├─</span> <span class="op">mul</span>: cart_value/200 × 1.0  →  <span class="val">6.9</span>
+      <span class="ch">├─</span> <span class="op">mul</span>: sessions_30d × 0.05    →  <span class="val">0.7</span>
+      <span class="ch">├─</span> <span class="op">mul</span>: cart_abandons_30d × 1  →  <span class="val">2.0</span>
+      <span class="ch">├─</span> <span class="op">field</span>: payment_method_on_file →  <span class="val">1.0</span>
+      <span class="ch">├─</span> <span class="op">mul</span>: email_engagement × 1.0  →  <span class="val">0.7</span>
+      <span class="ch">└─</span> <span class="op">mul</span>: checkout_initiated × 2  →  <span class="val">0.0</span>  <span class="lbl" style="color:var(--rose);font-style:italic">← didn't fire</span></div>
+
+      <div class="insp-title">REPAIR MENU · top 3 cheapest flips to sat</div>
+      <div class="repair-row head">
+        <div class="rank">#</div><div>flip</div><div class="cost">cost</div><div class="flips">flips</div>
+      </div>
+      <div class="repair-row selected">
+        <div class="rank">▶ 1</div>
+        <div>checkout_initiated · false → true</div>
+        <div class="cost">1.0</div>
+        <div class="flips">1</div>
+      </div>
+      <div class="repair-row">
+        <div class="rank">2</div>
+        <div>cart_value · 1387.50 → 2000.00</div>
+        <div class="cost">3.1</div>
+        <div class="flips">1</div>
+      </div>
+      <div class="repair-row">
+        <div class="rank">3</div>
+        <div>(checkout_initiated → true) + (sessions_30d ≥ 20)</div>
+        <div class="cost">1.7</div>
+        <div class="flips">2</div>
+      </div>
+      <div class="nb">↑↓ walk the menu · enter copies as SUGGEST GQL</div>
+
+      <div class="insp-title">VERDICT CONTEXT</div>
+      <div class="kv">
+        <div class="k">verdict</div><div class="v amber">near_miss</div>
+        <div class="k">strict matches</div><div class="v">0</div>
+        <div class="k">near-miss within k=1</div><div class="v bright">87</div>
+        <div class="k">would be sat at k=2</div><div class="v">412</div>
+        <div class="k">K<sub>P</sub> (this pattern, this bundle)</div><div class="v">0.34 · well-tuned</div>
+        <div class="k">preflight</div><div class="v green">ok</div>
+      </div>
+
+      <div class="insp-title">CROSS-BUNDLE PRESENCE</div>
+      <div class="check"><span class="ok">●</span> appears in <code>sessions_july</code> · 18 sessions in the last 30d</div>
+      <div class="check"><span class="ok">●</span> appears in <code>reviews_2026</code> · 3 reviews, mean rating 4.6</div>
+      <div class="check"><span class="ok">●</span> appears in <code>orders_q4</code> · 7 orders, $4,128.10 lifetime</div>
+      <div class="check"><span class="pending">○</span> not in <code>converted_customers</code> (the EXCLUDING-IN bundle of this hunt)</div>
+      <div class="check"><span class="pending">○</span> not in <code>refund_requests</code></div>
+
+      <div class="keybar" style="margin-top:18px">
+        <div><span class="kbd">↑↓</span> scroll</div>
+        <div><span class="kbd">←</span> back to results</div>
+        <div><span class="kbd">w</span> write to file</div>
+        <div><span class="kbd">y</span> copy GQL</div>
+        <div><span class="kbd">t</span> teach</div>
+        <div><span class="kbd">e</span> edit pattern</div>
+        <div><span class="kbd">r</span> run again</div>
+        <div><span class="kbd">i</span> inspect linked</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- ❹ STATE: Verbs tab — the full GQL palette as a learnable catalog     -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div><span class="section-number">4</span><span class="section-title">Verbs tab · every GQL verb in one palette · click to template</span></div>
+    <div class="section-caption">
+      Press <code>2</code> to flip the middle pane to the Verbs catalog. All 27 GQL verbs grouped by family — query, pattern, geometry, brain, sharded, transactions, schema. Selecting a verb populates the GQL pane with its template, optional clauses in <code>[brackets]</code>, placeholder slots in italic amber, plus a one-line description and a runnable example. Same workflow for COVER, BETTI, DREAM, SUDOKU, or BEGIN/COMMIT — the shell never changes shape; only the body of the query does.
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="titlebar">
+      <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+      <div class="titlebar-title">gigi · verb palette</div>
+      <div style="width:48px"></div>
+    </div>
+    <div class="tui">
+      <div class="status-row">
+        <div class="left">gigi 0.2.1</div>
+        <div class="right">
+          palette
+          <span class="sep">·</span><span class="num">27</span> verbs
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">↑↓</span> navigate
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">Enter</span> insert template
+        </div>
+      </div>
+
+      <div class="pane-row">
+        <div class="pane">
+          <div class="pane-title">BUNDLES</div>
+          <div class="row"><span class="name">customers</span><span class="num">12,408</span></div>
+          <div class="row dim"><span class="name">orders_q4</span><span class="num">89,231</span></div>
+          <div class="row dim"><span class="name">experiments_a26</span><span class="num">1,247</span></div>
+          <div class="row dim"><span class="name">…</span><span class="num"></span></div>
+        </div>
+
+        <div class="pane focused">
+          <div class="tabs">
+            <div class="tab">Patterns</div>
+            <div class="tab active">Verbs<span class="count">·27</span></div>
+            <div class="tab">Saved</div>
+            <div class="tab">Schema</div>
+          </div>
+          <div class="palette">
+            <div class="cat-title">QUERY</div>
+            <div class="verb-row"><span class="marker"></span><span class="name">COVER</span><span class="desc">scan rows + filter</span><span class="badge"></span></div>
+            <div class="verb-row selected">
+              <span class="marker">▶</span><span class="name">HUNT</span>
+              <span class="desc">named pattern + WEIGHT scoring</span><span class="badge">v0.2</span>
+            </div>
+            <div class="verb-row"><span class="marker"></span><span class="name">EXISTS</span><span class="desc">membership check / subquery</span><span class="badge"></span></div>
+
+            <div class="cat-title">PATTERN</div>
+            <div class="verb-row"><span class="marker"></span><span class="name">DEFINE PATTERN</span><span class="desc">create / replace a named pattern</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">DROP PATTERN</span><span class="desc">remove from registry</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">SHOW PATTERNS</span><span class="desc">list the registry</span><span class="badge"></span></div>
+
+            <div class="cat-title">GEOMETRY</div>
+            <div class="verb-row"><span class="marker"></span><span class="name">BETTI</span><span class="desc">topological invariants (β₀ β₁ β₂)</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">CURVATURE</span><span class="desc">Kähler / Ricci scalar</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">HOLONOMY</span><span class="desc">parallel transport around a loop</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">TRANSPORT</span><span class="desc">move a vector along a path</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">SAMPLE_TRANSPORT</span><span class="desc">stochastic path sampling</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">SPECTRAL_GAP</span><span class="desc">Laplacian λ₁</span><span class="badge"></span></div>
+
+            <div class="cat-title">BRAIN</div>
+            <div class="verb-row"><span class="marker"></span><span class="name">DREAM</span><span class="desc">sample from generative flow</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">INPAINT</span><span class="desc">fill missing fields</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">ATTEND</span><span class="desc">query-conditioned attention</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">EPISODIC</span><span class="desc">sequence / change-point memory</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">SEMANTIC</span><span class="desc">topological consolidation</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">SUDOKU</span><span class="desc">constraint satisfaction + γ-trichotomy</span><span class="badge">★</span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">PERCEIVE</span><span class="desc">embedding nearest-neighbour</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">CONFIDENCE</span><span class="desc">Marcella refuse-gate</span><span class="badge"></span></div>
+
+            <div class="cat-title">SHARDED</div>
+            <div class="verb-row"><span class="marker"></span><span class="name">SHARDED CURVATURE</span><span class="desc">multi-chart Kähler average</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">SHARDED HOLONOMY</span><span class="desc">loop across chart boundaries</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">IMAGINE COHERENCE</span><span class="desc">Phase D trajectory + audit</span><span class="badge"></span></div>
+
+            <div class="cat-title">TRANSACTIONS</div>
+            <div class="verb-row"><span class="marker"></span><span class="name">BEGIN / COMMIT</span><span class="desc">2PC + MVCC snapshot</span><span class="badge"></span></div>
+            <div class="verb-row"><span class="marker"></span><span class="name">ROLLBACK</span><span class="desc">discard staged writes</span><span class="badge"></span></div>
+
+            <div class="cat-title">SCHEMA</div>
+            <div class="verb-row dim"><span class="marker"></span><span class="name">CREATE BUNDLE</span><span class="desc">…</span><span class="badge"></span></div>
+            <div class="verb-row dim"><span class="marker"></span><span class="name">INSERT INTO</span><span class="desc">…</span><span class="badge"></span></div>
+          </div>
+        </div>
+
+        <div class="pane">
+          <div class="pane-title">GQL · template for HUNT</div>
+          <div class="tpl-box"><span class="kw">HUNT</span> <span class="placeholder">&lt;pattern&gt;</span> <span class="kw">IN</span> <span class="placeholder">&lt;bundle&gt;</span>
+<span class="opt">[ <span class="kw">EXCLUDING IN</span> <span class="placeholder">&lt;bundle&gt;</span> ]</span>
+<span class="opt">[ <span class="kw">WITH NEAR_MISS_BUDGET</span> <span class="placeholder">k</span> ]</span>
+<span class="opt">[ <span class="kw">RANK BY</span> _score <span class="kw">DESC</span> ]</span>
+<span class="opt">[ <span class="kw">PROJECT</span> (<span class="placeholder">field,…</span>) ]</span>
+<span class="opt">[ <span class="kw">TOP</span> <span class="placeholder">n</span> ]</span> ;</div>
+          <div class="translate">
+            <span class="label">DESCRIBES</span>
+            <span class="body">Run a named pattern against a bundle and return ranked rows with a sat/unsat/near-miss verdict.</span>
+          </div>
+
+          <div class="insp-title">EXAMPLE</div>
+          <div class="excerpt"><span style="color:var(--code-keyword);font-weight:600">HUNT</span> high_value_churn <span style="color:var(--code-keyword);font-weight:600">IN</span> customers
+  <span style="color:var(--code-keyword);font-weight:600">EXCLUDING IN</span> converted_customers
+  <span style="color:var(--code-keyword);font-weight:600">WITH NEAR_MISS_BUDGET</span> <span style="color:var(--text-bright)">1</span>
+  <span style="color:var(--code-keyword);font-weight:600">PROJECT</span> (customer_id, _score)
+  <span style="color:var(--code-keyword);font-weight:600">TOP</span> <span style="color:var(--text-bright)">20</span> ;</div>
+
+          <div class="nb"><span style="color:var(--frame-glow);font-weight:600">Enter</span> to insert the template into the GQL pane · <span style="color:var(--frame-glow);font-weight:600">t</span> to read the full clause guide</div>
+        </div>
+      </div>
+
+      <div class="keybar">
+        <div><span class="kbd">↑↓</span> verb</div>
+        <div><span class="kbd">PgUp/Dn</span> category</div>
+        <div><span class="kbd">Enter</span> insert template</div>
+        <div><span class="kbd">t</span> teach this verb</div>
+        <div><span class="kbd">/</span> search verbs</div>
+        <div><span class="kbd">Esc</span> back</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- ❺ STATE: TEACH mode — annotated GQL + clause-by-clause + relations    -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div><span class="section-number">5</span><span class="section-title">Teach mode · the current GQL, annotated, with relations and alternatives</span></div>
+    <div class="section-caption">
+      Press <code>t</code> from any state. The current GQL fills the top of the window with one annotation per line. Beneath it: a plain-English summary, a clause-by-clause breakdown, equivalent ways to write the same thing, and related verbs to try next. The discipline is "the operator never has to leave the tool to learn the language" — every TUI interaction is a chance to read GQL alongside its meaning. Works identically whether the operator is in <code>HUNT</code>, <code>BETTI</code>, <code>DREAM</code>, or <code>BEGIN/COMMIT</code>.
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="titlebar">
+      <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+      <div class="titlebar-title">gigi · TEACH</div>
+      <div style="width:48px"></div>
+    </div>
+    <div class="tui">
+      <div class="status-row">
+        <div class="left">gigi 0.2.1<span class="teach-window-tag">TEACH</span></div>
+        <div class="right">
+          annotated · <span class="num">HUNT</span>
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">Esc</span> back
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">y</span> copy GQL
+        </div>
+      </div>
+
+      <div class="insp-title">YOUR QUERY · annotated</div>
+      <div class="annotated">
+        <span class="ann-line"><span class="kw">HUNT</span> near_miss_conversion <span class="kw">IN</span> customers</span>
+        <span class="ann-explain">verb · run a named pattern against a target bundle, returning ranked rows</span>
+        <span class="ann-line">  <span class="kw">EXCLUDING IN</span> converted_customers</span>
+        <span class="ann-explain">anti-join clause · drop any row whose PK appears in <code style="color:var(--text-bright)">converted_customers</code></span>
+        <span class="ann-line">  <span class="kw">WITH NEAR_MISS_BUDGET</span> <span class="num">1</span></span>
+        <span class="ann-explain">v0.2 flag · keep rows that would match if 1 field were flipped — verdict becomes <code style="color:var(--text-bright)">near_miss</code></span>
+        <span class="ann-line">  <span class="kw">RANK BY</span> _score <span class="kw">DESC</span></span>
+        <span class="ann-explain">sort by the WEIGHT-computed <code style="color:var(--text-bright)">_score</code>, highest first (this is the default for HUNT; making it explicit is fine)</span>
+        <span class="ann-line">  <span class="kw">PROJECT</span> (customer_id, last_seen, cart_value, _score)</span>
+        <span class="ann-explain">keep only these columns in the output — saves bandwidth and centers the operator's attention</span>
+        <span class="ann-line">  <span class="kw">TOP</span> <span class="num">20</span> ;</span>
+        <span class="ann-explain">limit to the 20 highest-scoring rows (statement terminator is the semicolon)</span>
+      </div>
+
+      <div class="teach-block">
+        <div class="teach-title">WHAT THIS QUERY DOES</div>
+        <div class="teach-body">
+          Look at every row in <code>customers</code> that's <em>one field flip</em> away from satisfying the
+          <code>near_miss_conversion</code> pattern. Drop any of those whose PK already appears in
+          <code>converted_customers</code>. Score the survivors with the pattern's WEIGHT, sort highest-first,
+          and return the top 20 with just <code>customer_id</code>, <code>last_seen</code>, <code>cart_value</code>,
+          and the computed <code>_score</code>.
+        </div>
+      </div>
+
+      <div class="teach-block">
+        <div class="teach-title">EQUIVALENT FORMS</div>
+        <div class="teach-body">
+          <ul>
+            <li><code>COVER</code> with a custom <code>WHERE</code> and a hand-rolled sort —
+                <span class="desc">you lose the verdict envelope and the WEIGHT-derived <code>_score</code>, but it works for one-off exploration.</span></li>
+            <li><code>HUNT</code> without <code>WITH NEAR_MISS_BUDGET</code> —
+                <span class="desc">v0.1-compatible mode: returns only strict matches (verdict = <code>sat</code>).</span></li>
+            <li><code>HUNT … WITH NEAR_MISS_BUDGET 1 EXPLAIN REPAIR_MENU</code> —
+                <span class="desc">adds <code>_explain</code> per row and a flip menu per near-miss.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="teach-block">
+        <div class="teach-title">RELATED VERBS</div>
+        <div class="teach-body">
+          <ul>
+            <li><code>COVER</code> · <span class="desc">same target without scoring or patterns — the everyday "show me rows" verb</span></li>
+            <li><code>DEFINE PATTERN</code> · <span class="desc">edit the pattern this hunt resolves to — change predicate, weight, or relaxation_costs</span></li>
+            <li><code>EXISTS</code> · <span class="desc">boolean membership test, useful inside <code>WHERE NOT EXISTS (…)</code> sub-clauses</span></li>
+            <li><code>SUDOKU</code> · <span class="desc">if the pattern is constraint-shaped, SUDOKU exposes the same <code>verdict</code> / <code>repair_menu</code> on free-form constraint sets</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="teach-block">
+        <div class="teach-title">LEARN MORE</div>
+        <div class="teach-body">
+          <ul>
+            <li><code>theory/scj/PATTERN_HUNT_SPEC_v0.1.md §4</code> — v0.1 HUNT grammar</li>
+            <li><code>theory/patterns/SPEC_v0.2_VERDICT.md</code> — the v0.2 verdict envelope</li>
+            <li><span style="color:var(--frame-glow)">?</span> in any pane opens the verb's reference card · <span style="color:var(--frame-glow)">^h</span> opens recent queries</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="keybar">
+        <div><span class="kbd">Esc</span> back</div>
+        <div><span class="kbd">↑↓</span> scroll</div>
+        <div><span class="kbd">y</span> copy GQL</div>
+        <div><span class="kbd">Enter</span> edit query</div>
+        <div><span class="kbd">v</span> jump to verb in palette</div>
+        <div><span class="kbd">?</span> verb reference</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- ❻ STATE: Same inspector — different verb (SUDOKU). One UI per verb.  -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div><span class="section-number">6</span><span class="section-title">Same inspector · different verb · SUDOKU result</span></div>
+    <div class="section-caption">
+      To prove the inspector is GP: this is the SAME shell from state ❸, wrapping a SUDOKU constraint-satisfaction result instead of a HUNT row. Sections adapt — VIOLATIONS replaces FIBER, CONSTRAINT CURVATURE replaces VERDICT CONTEXT, ENERGY DESCENT replaces SCORE — but the visual language, keybinds, callout style, and TRANSLATE line are identical. Any verb that produces a verdict-shaped result reuses this layout for free. Build once, render any.
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="titlebar">
+      <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+      <div class="titlebar-title">gigi · sudoku · medical_triage :: case 0144</div>
+      <div style="width:48px"></div>
+    </div>
+    <div class="tui" style="padding-bottom:8px">
+      <div class="status-row">
+        <div class="left">gigi 0.2.1</div>
+        <div class="right">
+          inspector · SUDOKU
+          <span class="sep">·</span>case 0144
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">↓</span> scroll
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">t</span> teach
+          <span class="sep">·</span><span class="kbd" style="color:var(--frame-glow)">y</span> copy GQL
+        </div>
+      </div>
+
+      <div class="verdict-banner near">
+        <div>
+          <span class="label">VERDICT · NEAR_MISS</span>
+          <span class="detail" style="margin-left:14px">3 constraint violations · 1 repairable within energy budget 2.0</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-dim)">
+          γ-trichotomy: <span style="color:var(--amber)">near_miss</span> · holonomy preflight: <span style="color:var(--green-emph)">ok</span>
+        </div>
+      </div>
+
+      <div class="insp-title">ORIGINATING GQL</div>
+      <div class="excerpt"><span style="color:var(--code-keyword);font-weight:600">SUDOKU</span> medical_triage
+  <span style="color:var(--code-keyword);font-weight:600">USING</span> (vitals_complete, allergy_known, consent_given, route_assigned)
+  <span style="color:var(--code-keyword);font-weight:600">WITH BUDGET</span> <span style="color:var(--text-bright)">2.0</span>
+  <span style="color:var(--code-keyword);font-weight:600">INTENT</span> = <span style="color:var(--code-string)">'emergency_admit'</span> ;</div>
+      <div class="translate" style="margin: -6px 0 18px">
+        <span class="label">TRANSLATE</span>
+        <span class="body">Run constraint satisfaction over the medical_triage bundle for the intent <code>'emergency_admit'</code>, with energy budget 2.0. Tell me which constraints fail and what the cheapest repair is.</span>
+      </div>
+
+      <div class="insp-title">IDENTITY</div>
+      <div class="kv">
+        <div class="k">Bundle</div><div class="v">medical_triage</div>
+        <div class="k">Case PK</div><div class="v bright">case_0144</div>
+        <div class="k">Intent</div><div class="v">emergency_admit</div>
+        <div class="k">Energy budget</div><div class="v">2.0</div>
+        <div class="k">Submitted at</div><div class="v">2026-06-07 06:48 UTC</div>
+      </div>
+
+      <div class="insp-title">VIOLATIONS · 3 constraint failures</div>
+      <div class="kv">
+        <div class="k">vitals_complete</div><div class="v rose">false · expected true · cost 1.0</div>
+        <div class="k">allergy_known</div><div class="v rose">false · expected true · cost 0.6</div>
+        <div class="k">consent_given</div><div class="v rose">false · expected true · cost 2.5</div>
+      </div>
+      <div class="nb">route_assigned = true · satisfied</div>
+
+      <div class="insp-title">ENERGY DESCENT · what would make this sat</div>
+      <div class="excerpt">
+<span class="ch">└─</span> <span class="op">total energy</span> = <span style="color:var(--amber)">4.1</span> · budget = <span style="color:var(--text-bright)">2.0</span> · <span style="color:var(--amber);font-style:italic">over by 2.1</span>
+   <span class="ch">├─</span> drop <span class="op">consent_given</span> alone        →  −<span class="val">2.5</span>  · <span style="color:var(--green-emph);font-style:italic">sat at cost 1.6</span>
+   <span class="ch">├─</span> drop <span class="op">allergy_known</span> alone       →  −<span class="val">0.6</span>  · still over
+   <span class="ch">├─</span> drop <span class="op">vitals_complete</span> alone     →  −<span class="val">1.0</span>  · still over
+   <span class="ch">└─</span> drop <span class="op">v_c</span> + <span class="op">a_k</span>                 →  −<span class="val">1.6</span>  · still over</div>
+
+      <div class="insp-title">RELAXATION MENU · top 3 cheapest paths to sat</div>
+      <div class="repair-row head">
+        <div class="rank">#</div><div>relaxation</div><div class="cost">cost</div><div class="flips">drops</div>
+      </div>
+      <div class="repair-row selected">
+        <div class="rank">▶ 1</div>
+        <div>drop <code>consent_given</code> requirement</div>
+        <div class="cost">1.6</div>
+        <div class="flips">1</div>
+      </div>
+      <div class="repair-row">
+        <div class="rank">2</div>
+        <div>drop <code>consent_given</code> + flip <code>vitals_complete</code> → true</div>
+        <div class="cost">1.0</div>
+        <div class="flips">2</div>
+      </div>
+      <div class="repair-row">
+        <div class="rank">3</div>
+        <div>flip all three (vitals + allergy + consent) → true</div>
+        <div class="cost">0.0</div>
+        <div class="flips">3</div>
+      </div>
+      <div class="nb">cost here = leftover energy after the relaxation · lower is more compliant</div>
+
+      <div class="insp-title">CONSTRAINT CURVATURE</div>
+      <div class="kv">
+        <div class="k">K_c (constraint curvature)</div><div class="v bright">0.62</div>
+        <div class="k">γ-trichotomy</div><div class="v amber">near_miss</div>
+        <div class="k">holonomy preflight</div><div class="v green">ok · no contradictory loops</div>
+        <div class="k">pareto-optimal near-miss frontier</div><div class="v">3 options</div>
+        <div class="k">isomorphic to (domain swap)</div><div class="v">fraud_review · at_risk_student · vuln_hunt</div>
+      </div>
+
+      <div class="insp-title">CROSS-BUNDLE PRESENCE</div>
+      <div class="check"><span class="ok">●</span> referenced in <code>admit_decisions_log</code></div>
+      <div class="check"><span class="pending">○</span> not in <code>compliance_failures</code></div>
+      <div class="check"><span class="pending">○</span> not in <code>refused_intents</code></div>
+
+      <div class="keybar" style="margin-top:18px">
+        <div><span class="kbd">↑↓</span> scroll</div>
+        <div><span class="kbd">←</span> back</div>
+        <div><span class="kbd">t</span> teach SUDOKU verb</div>
+        <div><span class="kbd">y</span> copy GQL</div>
+        <div><span class="kbd">r</span> re-run with new budget</div>
+        <div><span class="kbd">e</span> edit constraints</div>
+        <div><span class="kbd">i</span> inspect linked bundles</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

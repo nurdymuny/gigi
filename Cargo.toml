@@ -78,6 +78,18 @@ patterns = []
 # When OFF, the engine compiles and behaves exactly as before.
 causal_states = []
 
+# `wish` — opt-in boundary-value-problem geodesic verb. When ON, the
+# `gigi::imagine::wish` module is compiled, providing WishConfig,
+# WishOutcome (Granted / Unreachable / Indeterminate verdict trichotomy
+# per SUDOKU §11), WishError, the SolverKind enum (Relaxation default
+# + Shooting for low-dim conjugacy), and the WishMetric2D trait used
+# by the toy validation manifolds. Implies `imagine` because wished
+# records ride on the existing ImaginedProvenance::Wished variant.
+# Spec at theory/imagine/WISH_SPEC_v0.1.md; W-math at
+# theory/imagine/validation/wish_validation.py (W1-W5 green 2026-06-10).
+# When OFF, the engine compiles and behaves exactly as before.
+wish = ["imagine"]
+
 [dependencies]
 roaring = "0.10"
 regex = "1"

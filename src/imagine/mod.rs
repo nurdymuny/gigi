@@ -44,6 +44,9 @@ pub mod provenance;
 pub mod routing;
 pub mod walk;
 
+#[cfg(feature = "wish")]
+pub mod wish;
+
 pub use coherence::{
     imagine_coherence_trajectory, metric_for_constant_k, CoherencePoint, CoherenceTrajectoryReport,
 };

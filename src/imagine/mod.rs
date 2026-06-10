@@ -52,7 +52,10 @@ pub use config::{
 };
 pub use geodesic::{imagine_geodesic, ConformalMetric, ImagineError};
 pub use halo::imagine_halo;
-pub use provenance::{ImaginedProvenance, ImaginedRecord};
+pub use provenance::{
+    ImaginedProvenance, ImaginedRecord, WishBlockReason, WishTargetProvenance,
+    WishWaypointInfo,
+};
 pub use routing::{
     route_forecast_or_imagine, RoutingAdvisory, RoutingDecision, THETA_DENSITY,
 };

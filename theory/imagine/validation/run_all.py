@@ -20,6 +20,7 @@ TESTS = [
     ("T12",       "t12_halo_partition_invariance.py", "Halo-as-IMAGINE makes K partition-invariant"),
     ("T13",       "t13_double_cover_monodromy.py",    "Double cover monodromy (synthetic + discourse)"),
     ("T13-prod",  "t13_production_swda_seam.py",      "T13 production gate: SwDA labels ny/nn/ng/na | %/x"),
+    ("W-math",    "wish_validation.py",               "WISH solver: W1-W5 (BVP relaxation + Jacobi + frontier waypoint)"),
 ]
 
 

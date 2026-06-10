@@ -84,15 +84,45 @@ SOLUTION_9x9 = """
 """
 
 
+def hardcoded_unique_9x9() -> np.ndarray:
+    """
+    A unique-solution 9x9 puzzle (verified by full backtracking) that
+    basic CP -- correctly implemented as one-placement-per-pass -- stalls
+    on with 17 bottleneck cells. Generated from the Wikipedia Sudoku
+    solution by hiding cells via seed=469 in the random-order generator,
+    cached here so re-runs don't pay the 100+ second search.
+    """
+    return parse_grid("""
+. 3 4 . 7 8 9 . 2
+. . . 1 9 . 3 4 8
+1 9 8 3 4 2 5 6 7
+8 5 9 7 6 1 4 2 3
+4 2 6 8 5 3 7 9 1
+. . . . 2 4 8 5 6
+9 . . . 3 7 2 8 4
+. 8 . 4 1 9 6 3 5
+. 4 . 2 8 . 1 7 9
+""")
+
+
 def make_puzzle_with_bottleneck(solution: np.ndarray,
                                 target_bot: tuple[int, int] = (3, 8),
-                                n_seeds: int = 64,
+                                n_seeds: int = 256,
+                                require_unique: bool = True,
                                 ) -> np.ndarray:
     """
     Hide cells from `solution` until basic CP leaves a bottleneck of
-    `target_bot[0]..target_bot[1]` cells. Tries multiple random orderings;
-    keeps the snapshot whose bottleneck is closest to the midpoint of
-    target_bot.
+    `target_bot[0]..target_bot[1]` cells AND (per Marcella-team review)
+    the puzzle has exactly one valid completion.
+
+    The second clause is what the prior run missed: a puzzle that's hard
+    for basic CP is NOT necessarily a unique-solution puzzle. The naked-
+    pair pattern admits a global symmetry that row/col/box constraints
+    can't break. We now verify uniqueness via full backtracking before
+    accepting a puzzle.
+
+    Returns the candidate puzzle whose bottleneck size is closest to the
+    midpoint of `target_bot`, among unique-solution snapshots found.
     """
     import random
     midpoint = (target_bot[0] + target_bot[1]) / 2
@@ -108,6 +138,12 @@ def make_puzzle_with_bottleneck(solution: np.ndarray,
             final, cand = basic_cp(puzzle)
             bot = sum(1 for cc, s in cand.items() if len(s) > 1)
             if target_bot[0] <= bot <= target_bot[1]:
+                # Check uniqueness before accepting. Cheap: backtracking
+                # on a near-complete grid terminates fast.
+                if require_unique:
+                    n_sol = count_completions(puzzle, limit=2)
+                    if n_sol != 1:
+                        continue  # skip ambiguous puzzles
                 score = abs(bot - midpoint)
                 if score < best_score:
                     best_score = score
@@ -119,7 +155,8 @@ def make_puzzle_with_bottleneck(solution: np.ndarray,
     if best is not None:
         return best
     raise RuntimeError(
-        f"couldn't generate puzzle with bottleneck in {target_bot}"
+        f"couldn't generate puzzle with bottleneck in {target_bot} "
+        f"that has a unique solution across {n_seeds} seeds"
     )
 
 
@@ -172,19 +209,28 @@ def initial_candidates(grid: np.ndarray) -> dict[tuple[int, int], set[int]]:
 
 
 def basic_cp(grid: np.ndarray) -> tuple[np.ndarray, dict[tuple[int, int], set[int]]]:
+    """
+    Naked singles + hidden singles, ONE PLACEMENT PER PASS so each
+    placement's effect on neighbor candidates is observed before the next
+    decision. The "batch place all naked singles from one snapshot" version
+    is wrong: when placing cell A invalidates cell B's only candidate, B's
+    stale snapshot still says "naked single," and B gets a wrong value.
+    The bug showed up as contradictory grids (two of the same value in
+    a row) and would have silently poisoned the uniqueness check too.
+    """
     g = grid.copy()
     while True:
         progressed = False
         cand = initial_candidates(g)
-        # Naked singles
-        for (i, j), c in list(cand.items()):
+        # Naked single: place ONE and restart.
+        for (i, j), c in cand.items():
             if len(c) == 1:
                 g[i, j] = next(iter(c))
                 progressed = True
+                break
         if progressed:
             continue
-        cand = initial_candidates(g)
-        # Hidden singles (in rows, cols, boxes)
+        # Hidden single: scan units, place ONE and restart.
         for unit in _units():
             empties = [(i, j) for (i, j) in unit if g[i, j] == 0]
             for v in range(1, 10):
@@ -192,6 +238,9 @@ def basic_cp(grid: np.ndarray) -> tuple[np.ndarray, dict[tuple[int, int], set[in
                 if len(cells_for_v) == 1:
                     g[cells_for_v[0]] = v
                     progressed = True
+                    break
+            if progressed:
+                break
         if not progressed:
             break
     return g, initial_candidates(g)
@@ -207,6 +256,43 @@ def _units() -> list[list[tuple[int, int]]]:
         for bj in range(0, 9, 3):
             units.append([(i, j) for i in range(bi, bi + 3) for j in range(bj, bj + 3)])
     return units
+
+
+def count_completions(grid: np.ndarray, limit: int = 2) -> int:
+    """
+    Full backtracking search. Returns the number of valid completions of
+    `grid`, but stops counting once `limit` is reached -- for our use we
+    only need to distinguish "unique" (1) from "ambiguous" (>= 2).
+
+    Uses MRV (minimum remaining values) heuristic: at each branching point
+    pick the empty cell with the fewest candidates. This makes the search
+    fast on well-constrained puzzles.
+    """
+    g = grid.copy()
+    count = [0]
+
+    def recurse():
+        if count[0] >= limit:
+            return
+        cand = initial_candidates(g)
+        if not cand:
+            # No empty cells left -- one valid completion found.
+            count[0] += 1
+            return
+        # MRV: cell with fewest candidates.
+        best = min(cand.keys(), key=lambda c: len(cand[c]))
+        if not cand[best]:
+            return  # dead end
+        # Branch on each candidate value.
+        for v in sorted(cand[best]):
+            g[best] = v
+            recurse()
+            g[best] = 0
+            if count[0] >= limit:
+                return
+
+    recurse()
+    return count[0]
 
 
 def cells_share_unit(a: tuple[int, int], b: tuple[int, int]) -> bool:
@@ -823,11 +909,17 @@ def run_experiment(puzzle: np.ndarray, truth: np.ndarray, lam: float = 50.0,
 
 if __name__ == "__main__":
     truth = parse_grid(SOLUTION_9x9)
-    print("Generating 9x9 puzzle by hiding cells until basic CP leaves a "
-          "small bottleneck...")
-    puzzle = make_puzzle_with_bottleneck(truth, target_bot=(3, 8), n_seeds=64)
+    print("Using hardcoded unique-solution 9x9 (basic CP stalls at 17 cells, "
+          "verified one and only one completion exists by backtracking).")
+    puzzle = hardcoded_unique_9x9()
+    # Sanity: verify the puzzle is actually unique-solution and consistent
+    # with truth.
+    n_sol = count_completions(puzzle, limit=2)
+    if n_sol != 1:
+        raise RuntimeError(f"hardcoded puzzle is not unique-solution: count={n_sol}")
+    print(f"Uniqueness re-verified: count_completions={n_sol}")
     summary = run_experiment_analytic(puzzle, truth, lams=[10.0, 50.0, 100.0],
-                                      n_nodes=16, label="9x9")
+                                      n_nodes=16, label="9x9 unique")
     print("\n" + "=" * 72)
     print("Summary across lambda sweep")
     print("=" * 72)

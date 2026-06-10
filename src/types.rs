@@ -390,6 +390,23 @@ pub struct BundleSchema {
     pub kahler: Option<crate::geometry::KahlerStructure>,
 }
 
+/// Find the first `Vector` field on `record` in schema fiber-declaration
+/// order, returning `(field_name, vector_components)`. Returns `None` if
+/// no fiber field on this record carries a `Value::Vector`.
+///
+/// Used by `/v1/bundles/{name}/record/{id}/vector` to surface embeddings
+/// for downstream geometric clients (e.g. Marcella's IMAGINE walk anchor).
+/// Schema-declaration order is preserved so the answer is deterministic
+/// and not at the mercy of `HashMap` iteration.
+pub fn first_vector_field(record: &Record, fiber_fields: &[FieldDef]) -> Option<(String, Vec<f64>)> {
+    for f in fiber_fields {
+        if let Some(Value::Vector(v)) = record.get(&f.name) {
+            return Some((f.name.clone(), v.clone()));
+        }
+    }
+    None
+}
+
 impl BundleSchema {
     pub fn new(name: &str) -> Self {
         Self {

@@ -2324,6 +2324,145 @@ async fn point_query(
     }
 }
 
+#[derive(serde::Serialize)]
+struct RecordVectorResponse {
+    id: serde_json::Value,
+    field: String,
+    vector: Vec<f64>,
+    dims: usize,
+}
+
+#[derive(serde::Deserialize, Default)]
+struct RecordVectorParams {
+    /// Optional explicit field name. If omitted, the first Vector field on
+    /// the record (in schema fiber_fields declaration order) is returned.
+    field: Option<String>,
+}
+
+/// GET /v1/bundles/{name}/record/{id}/vector
+///
+/// Surfaces a record's embedding vector for downstream geometric clients
+/// (Marcella's IMAGINE Phase 2 uses this to anchor `starting_from = seed_vec`
+/// so the walk direction `normalize(prompt_vec − seed_vec)` is geometrically
+/// honest instead of the placeholder `−pv̂`).
+///
+/// Only single-base-field bundles are supported (composite keys → 400).
+async fn record_vector(
+    State(state): State<Arc<StreamState>>,
+    Path((name, id)): Path<(String, String)>,
+    Query(params): Query<RecordVectorParams>,
+) -> Result<Json<ApiResponse<RecordVectorResponse>>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine.read().unwrap();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Bundle '{}' not found", name),
+            }),
+        )
+    })?;
+
+    // Composite-key bundles need /get with full key params — refuse here so the
+    // ambiguity is loud rather than silent.
+    let schema = store.schema();
+    if schema.base_fields.len() != 1 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!(
+                    "Bundle '{}' has {} base fields; /record/{{id}}/vector only supports single-base-field bundles. Use /get?{{key}}={{val}} instead.",
+                    name,
+                    schema.base_fields.len()
+                ),
+            }),
+        ));
+    }
+
+    let key_field = schema.base_fields[0].name.clone();
+    let id_field_name = schema.base_fields[0].name.clone();
+    let fiber_fields = schema.fiber_fields.clone();
+    let id_value = if let Ok(n) = id.parse::<i64>() {
+        Value::Integer(n)
+    } else if let Ok(f) = id.parse::<f64>() {
+        Value::Float(f)
+    } else {
+        Value::Text(id.clone())
+    };
+    let key: Record = std::iter::once((key_field, id_value)).collect();
+
+    let record = store.point_query(&key).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Record '{}' not found in bundle '{}'", id, name),
+            }),
+        )
+    })?;
+
+    let (field_name, vector) = match params.field.as_deref() {
+        Some(explicit) => {
+            let v = record.get(explicit).ok_or_else(|| {
+                (
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse {
+                        error: format!("Field '{}' not present on record", explicit),
+                    }),
+                )
+            })?;
+            match v {
+                Value::Vector(floats) => (explicit.to_string(), floats.clone()),
+                other => {
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse {
+                            error: format!(
+                                "Field '{}' is {} on this record, not a Vector",
+                                explicit,
+                                value_type_name(other)
+                            ),
+                        }),
+                    ));
+                }
+            }
+        }
+        None => gigi::types::first_vector_field(&record, &fiber_fields).ok_or_else(
+            || {
+                (
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse {
+                        error: format!(
+                            "No Vector field on record '{}' in bundle '{}'. Pass ?field=<name> if the embedding lives under an unusual name.",
+                            id, name
+                        ),
+                    }),
+                )
+            },
+        )?,
+    };
+
+    let dims = vector.len();
+    let id_json = match record.get(&id_field_name) {
+        Some(v) => value_to_json(v),
+        None => serde_json::Value::String(id.clone()),
+    };
+
+    let k = store.scalar_curvature();
+    Ok(Json(ApiResponse {
+        data: RecordVectorResponse {
+            id: id_json,
+            field: field_name,
+            vector,
+            dims,
+        },
+        meta: Some(MetaInfo {
+            confidence: Some(curvature::confidence(k)),
+            curvature: Some(k),
+            capacity: Some(curvature::capacity(1.0, k)),
+            count: Some(1),
+        }),
+    }))
+}
+
 async fn range_query(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
@@ -14256,6 +14395,7 @@ async fn main() {
         .route("/v1/bundles/{name}/query-stream", post(stream_query_ndjson))
         .route("/v1/bundles/{name}/stream", post(stream_ingest))
         .route("/v1/bundles/{name}/get", get(point_query))
+        .route("/v1/bundles/{name}/record/{id}/vector", get(record_vector))
         .route("/v1/bundles/{name}/range", get(range_query))
         .route("/v1/bundles/{name}/join", post(pullback_join))
         .route("/v1/bundles/{name}/aggregate", post(aggregate))

@@ -14463,6 +14463,13 @@ async fn main() {
         post(causal_states_commutator_http),
     );
 
+    // WISH v0.1 — boundary-value geodesic verb HTTP envelope (Phase 5).
+    // 2D conformally-flat demo wire (Flat/S2/CP1/Pinch); production
+    // substrate-backed metrics ship with the dim-lift. Only mounted
+    // when the `wish` feature flag is enabled.
+    #[cfg(feature = "wish")]
+    let app = app.route("/v1/wish", post(wish_http));
+
     let app = app
         // GQL endpoint
         .route("/v1/gql", post(gql_query))
@@ -15561,6 +15568,284 @@ async fn causal_states_commutator_http(
         kl: omega.kl,
         regime,
     }))
+}
+
+// ── WISH v0.1 — HTTP envelope ──────────────────────────────────────────────
+//
+// POST /v1/wish
+//
+// The boundary-value geodesic verb. Solves on a 2D conformally flat
+// manifold selected by the `metric` field of the request — `flat`,
+// `s2`, `cp1`, or `pinch` (the W4 fixture). Production substrate-backed
+// metrics land with the §3 dim-lift. The 2D demo wire is enough for
+// IMAGINE Phase 2 tooling and for the live-smoke contract probes.
+//
+// Request shape:
+//   {
+//     "seed":   [0.1, 0.0],
+//     "target": [0.5, 0.3],
+//     "metric": "s2",
+//     "max_imagined_curvature":     4.0,
+//     "max_accumulated_holonomy":   0.5,
+//     "max_arc_length":             4.0,
+//     "max_solve_ms":             250,
+//     "max_iterations":           200,
+//     "n_nodes":                    32
+//   }
+// All trust-envelope and solver fields are optional and fall back to
+// `WishConfig::default()` (matching `WISH_SPEC_v0.1.md §5`). The
+// `max_solve_ms` floor of 50 ms is enforced server-side regardless of
+// caller input — per the GIGI-team review's anti-gaming clause.
+//
+// Response (verdict trichotomy):
+//   200 Granted     -> { "verdict": "granted",      "unsat": false, ... }
+//   200 Unreachable -> { "verdict": "unreachable",  "unsat": true,  ... }
+//   200 Indeterminate -> { "verdict": "indeterminate", "unsat": null, ... }
+// The trichotomy rides on 200 because all three are well-posed answers
+// to a well-posed question. 400 is reserved for malformed requests
+// (dim mismatch, unsupported metric kind, non-finite numbers).
+
+#[cfg(feature = "wish")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WishMetricKind {
+    Flat,
+    S2,
+    Cp1,
+    Pinch {
+        #[serde(default = "default_pinch_amplitude")]
+        amplitude: f64,
+        #[serde(default = "default_pinch_sigma")]
+        sigma: f64,
+        #[serde(default = "default_pinch_center")]
+        x_center: f64,
+    },
+}
+
+#[cfg(feature = "wish")]
+fn default_pinch_amplitude() -> f64 { 0.1 }
+#[cfg(feature = "wish")]
+fn default_pinch_sigma() -> f64 { 0.15 }
+#[cfg(feature = "wish")]
+fn default_pinch_center() -> f64 { 0.5 }
+
+#[cfg(feature = "wish")]
+#[derive(Debug, Deserialize)]
+struct WishHttpRequest {
+    seed: [f64; 2],
+    target: [f64; 2],
+    #[serde(default = "default_metric_kind")]
+    metric: WishMetricKind,
+    #[serde(default)]
+    max_imagined_curvature: Option<f64>,
+    #[serde(default)]
+    max_accumulated_holonomy: Option<f64>,
+    #[serde(default)]
+    max_arc_length: Option<f64>,
+    #[serde(default)]
+    max_solve_ms: Option<u32>,
+    #[serde(default)]
+    max_iterations: Option<u32>,
+    #[serde(default)]
+    n_nodes: Option<u32>,
+    #[serde(default)]
+    grad_tol: Option<f64>,
+}
+
+#[cfg(feature = "wish")]
+fn default_metric_kind() -> WishMetricKind { WishMetricKind::Flat }
+
+#[cfg(feature = "wish")]
+#[derive(Debug, Serialize)]
+struct WishHttpResponse {
+    /// "granted" | "unreachable" | "indeterminate" — matches §10 wire pin.
+    verdict: &'static str,
+    /// SUDOKU trichotomy: false / true / null.
+    unsat: Option<bool>,
+
+    // ── Granted fields ──
+    #[serde(skip_serializing_if = "Option::is_none")]
+    capacity: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    arc_length: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    integrated_curvature: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    accumulated_holonomy: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    solver_iterations: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<Vec<Vec<f64>>>,
+
+    // ── Unreachable fields ──
+    #[serde(skip_serializing_if = "Option::is_none")]
+    frontier_waypoint: Option<Vec<f64>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    waypoint_kind: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reached_fraction: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    blocked_by: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    capacity_to_waypoint: Option<f64>,
+
+    // ── Indeterminate fields ──
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    final_residual: Option<f64>,
+}
+
+#[cfg(feature = "wish")]
+fn build_wish_config(req: &WishHttpRequest) -> gigi::imagine::wish::WishConfig {
+    use gigi::imagine::wish::{SolverKind, WishConfig};
+    let mut cfg = WishConfig::default();
+    if let Some(v) = req.max_imagined_curvature { cfg.max_imagined_curvature = v; }
+    if let Some(v) = req.max_accumulated_holonomy { cfg.max_accumulated_holonomy = v; }
+    if let Some(v) = req.max_arc_length { cfg.max_arc_length = v; }
+    if let Some(v) = req.max_solve_ms { cfg.max_solve_ms = v; }
+    if let Some(v) = req.max_iterations { cfg.max_iterations = v; }
+    if let Some(v) = req.grad_tol { cfg.grad_tol = v; }
+    if let Some(n) = req.n_nodes {
+        cfg.solver = SolverKind::Relaxation { n_nodes: n };
+    }
+    cfg
+}
+
+#[cfg(feature = "wish")]
+fn solve_with_metric(
+    kind: &WishMetricKind,
+    seed: [f64; 2],
+    target: [f64; 2],
+    cfg: &gigi::imagine::wish::WishConfig,
+) -> gigi::imagine::wish::WishOutcome {
+    use gigi::imagine::wish::{
+        relaxation_solve, CP1FubiniStudy, CurvaturePinch, S2Stereographic, T2Flat,
+    };
+    match kind {
+        WishMetricKind::Flat => relaxation_solve(&T2Flat, seed, target, cfg),
+        WishMetricKind::S2 => relaxation_solve(&S2Stereographic, seed, target, cfg),
+        WishMetricKind::Cp1 => relaxation_solve(&CP1FubiniStudy, seed, target, cfg),
+        WishMetricKind::Pinch { amplitude, sigma, x_center } => {
+            let m = CurvaturePinch {
+                amplitude: *amplitude,
+                sigma: *sigma,
+                x_center: *x_center,
+            };
+            relaxation_solve(&m, seed, target, cfg)
+        }
+    }
+}
+
+#[cfg(feature = "wish")]
+fn outcome_to_response(outcome: gigi::imagine::wish::WishOutcome) -> WishHttpResponse {
+    use gigi::imagine::wish::{IndeterminateReason, WishOutcome};
+    use gigi::imagine::provenance::WishBlockReason;
+    let block_tag = |b: WishBlockReason| -> &'static str {
+        match b {
+            WishBlockReason::Curvature => "curvature",
+            WishBlockReason::Holonomy => "holonomy",
+            WishBlockReason::ArcLength => "arc_length",
+        }
+    };
+    match outcome {
+        WishOutcome::Granted {
+            path,
+            arc_length,
+            integrated_curvature,
+            capacity,
+            accumulated_holonomy,
+            solver_iterations,
+            ..
+        } => WishHttpResponse {
+            verdict: "granted",
+            unsat: Some(false),
+            capacity: Some(capacity),
+            arc_length: Some(arc_length),
+            integrated_curvature: Some(integrated_curvature),
+            accumulated_holonomy: Some(accumulated_holonomy),
+            solver_iterations: Some(solver_iterations),
+            path: Some(path),
+            frontier_waypoint: None,
+            waypoint_kind: None,
+            reached_fraction: None,
+            blocked_by: None,
+            capacity_to_waypoint: None,
+            reason: None,
+            final_residual: None,
+        },
+        WishOutcome::Unreachable {
+            frontier_waypoint,
+            reached_fraction,
+            blocked_by,
+            capacity_to_waypoint,
+        } => WishHttpResponse {
+            verdict: "unreachable",
+            unsat: Some(true),
+            capacity: None,
+            arc_length: None,
+            integrated_curvature: None,
+            accumulated_holonomy: None,
+            solver_iterations: None,
+            path: None,
+            frontier_waypoint: Some(frontier_waypoint),
+            waypoint_kind: Some("frontier_truncation"),
+            reached_fraction: Some(reached_fraction),
+            blocked_by: Some(block_tag(blocked_by)),
+            capacity_to_waypoint: Some(capacity_to_waypoint),
+            reason: None,
+            final_residual: None,
+        },
+        WishOutcome::Indeterminate { reason } => {
+            let (tag, residual) = match reason {
+                IndeterminateReason::ConjugateLocus { at_fraction } => {
+                    ("conjugate_locus", at_fraction)
+                }
+                IndeterminateReason::NonConvergence { final_residual } => {
+                    ("non_convergence", final_residual)
+                }
+            };
+            WishHttpResponse {
+                verdict: "indeterminate",
+                unsat: None,
+                capacity: None,
+                arc_length: None,
+                integrated_curvature: None,
+                accumulated_holonomy: None,
+                solver_iterations: None,
+                path: None,
+                frontier_waypoint: None,
+                waypoint_kind: None,
+                reached_fraction: None,
+                blocked_by: None,
+                capacity_to_waypoint: None,
+                reason: Some(tag),
+                final_residual: Some(residual),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "wish")]
+async fn wish_http(
+    State(_state): State<Arc<StreamState>>,
+    Json(req): Json<WishHttpRequest>,
+) -> Result<Json<WishHttpResponse>, (StatusCode, Json<ErrorResponse>)> {
+    for (name, p) in [("seed", &req.seed), ("target", &req.target)] {
+        for v in p.iter() {
+            if !v.is_finite() {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        error: format!("{} contains non-finite value", name),
+                    }),
+                ));
+            }
+        }
+    }
+    let cfg = build_wish_config(&req);
+    let outcome = solve_with_metric(&req.metric, req.seed, req.target, &cfg);
+    Ok(Json(outcome_to_response(outcome)))
 }
 
 // ── Unit tests ─────────────────────────────────────────────────────────────

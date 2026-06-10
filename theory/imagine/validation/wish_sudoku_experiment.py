@@ -242,6 +242,70 @@ class WishGen:
     final_energy: float
 
 
+def relaxation_analytic(
+    seed: np.ndarray,
+    target: np.ndarray,
+    lam: float,
+    offsets: list[int],
+    dims: list[int],
+    pairs: list[tuple[int, int, list[tuple[int, int]]]],
+    n_nodes: int = 16,
+    max_iter: int = 500,
+    grad_tol: float = 1e-8,
+) -> WishGen:
+    """
+    Relaxation solver using the analytic gradient. Per Marcella-team review
+    note: the finite-difference scipy default makes the per-cell tau
+    differential indistinguishable from numerical noise -- the signal at the
+    4th-5th decimal of tau was below the gradient accuracy floor. The
+    analytic gradient makes the signal credible (or proves it isn't there).
+    """
+    d_state = len(seed)
+    N = n_nodes
+    # Chord init.
+    init = np.zeros((N - 1, d_state))
+    for i in range(N - 1):
+        s = (i + 1) / N
+        init[i] = (1 - s) * seed + s * target
+    z0 = init.flatten()
+
+    def eg(z):
+        return energy_and_grad_analytic(z, seed, target, lam,
+                                        offsets, dims, pairs, N)
+
+    res = minimize(
+        eg, z0, method="L-BFGS-B", jac=True,
+        options={"maxiter": max_iter, "gtol": grad_tol, "ftol": 1e-12},
+    )
+    converged = (res.status == 0)
+
+    # Unpack path; compute arc length via GL-2 quadrature on sqrt(exp(2*phi)).
+    path = np.empty((N + 1, d_state))
+    path[0] = seed
+    path[-1] = target
+    path[1:-1] = res.x.reshape(N - 1, d_state)
+    tau = 0.0
+    for i in range(N):
+        seg_d = path[i + 1] - path[i]
+        D = float(seg_d @ seg_d)
+        if D < 1e-30:
+            continue
+        seg_norm = math.sqrt(D)
+        for s in (GL2_S_MINUS, GL2_S_PLUS):
+            v_s = path[i] + s * seg_d
+            ov, _ = overlap_value_and_grad(v_s, offsets, dims, pairs)
+            tau += 0.5 * math.sqrt(1.0 + lam * ov) * seg_norm
+    return WishGen(
+        converged=converged,
+        arc_length=tau,
+        integrated_K=1.0,         # K_scalar deferred
+        capacity=tau,             # placeholder
+        iterations=int(res.nit),
+        path=path,
+        final_energy=float(res.fun),
+    )
+
+
 def relaxation_general(
     seed: np.ndarray,
     target: np.ndarray,
@@ -328,6 +392,148 @@ def softmax(v: np.ndarray) -> np.ndarray:
     return e / e.sum()
 
 
+def overlap_value_and_grad(
+    v: np.ndarray,
+    offsets: list[int],
+    dims: list[int],
+    pairs: list[tuple[int, int, list[tuple[int, int]]]],
+) -> tuple[float, np.ndarray]:
+    """
+    Joint overlap value AND its gradient w.r.t. v, both in one O(pairs) pass.
+
+    overlap(v) = sum over constrained-pair (a, b) of
+                 sum over (k_a, k_b) common-value-index pair of
+                 p_a[k_a] * p_b[k_b]
+
+    where p_a = softmax(v_a_slice).
+
+    Gradient (slice a): grad_a = p_a * (n_a - <n_a, p_a>),
+    where n_a[k_a] = sum over b paired with a, common (k_a, k_b), of p_b[k_b]
+    ("constraint pressure" on cell a's k_a-th candidate from its partners).
+
+    Why this form is right (sanity check kept in code, not just comment):
+    softmax Jacobian gives d p_a[k] / d v_a[j] = p_a[k] * (delta(j=k) - p_a[j]).
+    Plugging in and grouping by p_a[j] gives the closed form above. The
+    finite-difference cross-check in cross_check_gradient() verifies this
+    matches to ~1e-7.
+    """
+    K = len(dims)
+    ps = [softmax(v[offsets[a]:offsets[a + 1]]) for a in range(K)]
+    ns = [np.zeros(dims[a]) for a in range(K)]
+    overlap_val = 0.0
+    for (a, b, common) in pairs:
+        for (k_a, k_b) in common:
+            overlap_val += ps[a][k_a] * ps[b][k_b]
+            ns[a][k_a] += ps[b][k_b]
+            ns[b][k_b] += ps[a][k_a]
+    grad = np.zeros(len(v))
+    for a in range(K):
+        pa = ps[a]
+        na = ns[a]
+        dot = float(np.dot(na, pa))
+        grad[offsets[a]:offsets[a + 1]] = pa * (na - dot)
+    return overlap_val, grad
+
+
+def energy_and_grad_analytic(
+    z: np.ndarray,
+    seed: np.ndarray,
+    target: np.ndarray,
+    lam: float,
+    offsets: list[int],
+    dims: list[int],
+    pairs: list[tuple[int, int, list[tuple[int, int]]]],
+    n_nodes: int,
+) -> tuple[float, np.ndarray]:
+    """
+    Total energy E(z) and analytic gradient dE/dz over the interior nodes z.
+
+    Per-segment: E_seg(p, q) = 0.5 * [f(v_-) + f(v_+)] * D, where
+       d   = q - p
+       D   = d . d
+       v_s = p + s * d (GL-2 quadrature node, s in {s_-, s_+})
+       f(v) = 1 + lam * overlap(v)
+    Derivatives:
+       dE_seg/dq = 0.5 * D * (s_- * grad_f_- + s_+ * grad_f_+) + S * d
+       dE_seg/dp = 0.5 * D * ((1-s_-)*grad_f_- + (1-s_+)*grad_f_+) - S * d
+    Interior node z_k sums the q-contribution of segment (k-1, k) and the
+    p-contribution of segment (k, k+1).
+    """
+    d_state = len(seed)
+    N = n_nodes
+    path = np.empty((N + 1, d_state))
+    path[0] = seed
+    path[-1] = target
+    path[1:-1] = z.reshape(N - 1, d_state)
+
+    grad_path = np.zeros((N + 1, d_state))
+    total_E = 0.0
+
+    for i in range(N):
+        p = path[i]
+        q = path[i + 1]
+        seg_d = q - p
+        D = float(seg_d @ seg_d)
+        if D < 1e-30:
+            continue
+        v_minus = p + GL2_S_MINUS * seg_d
+        v_plus = p + GL2_S_PLUS * seg_d
+        ov_m, gov_m = overlap_value_and_grad(v_minus, offsets, dims, pairs)
+        ov_p, gov_p = overlap_value_and_grad(v_plus, offsets, dims, pairs)
+        f_m = 1.0 + lam * ov_m
+        f_p = 1.0 + lam * ov_p
+        S = f_m + f_p
+        total_E += 0.5 * S * D
+        gf_m = lam * gov_m
+        gf_p = lam * gov_p
+        dE_dq = 0.5 * D * (GL2_S_MINUS * gf_m + GL2_S_PLUS * gf_p) + S * seg_d
+        dE_dp = (0.5 * D * ((1.0 - GL2_S_MINUS) * gf_m
+                            + (1.0 - GL2_S_PLUS) * gf_p)
+                 - S * seg_d)
+        grad_path[i] += dE_dp
+        grad_path[i + 1] += dE_dq
+
+    grad_interior = grad_path[1:-1].flatten()
+    return total_E, grad_interior
+
+
+def cross_check_gradient(
+    seed: np.ndarray,
+    target: np.ndarray,
+    lam: float,
+    offsets: list[int],
+    dims: list[int],
+    pairs: list[tuple[int, int, list[tuple[int, int]]]],
+    n_nodes: int,
+    eps: float = 1e-6,
+) -> tuple[float, float]:
+    """
+    Finite-difference cross-check of the analytic gradient.
+    Returns (max_abs_diff, max_rel_diff). Should be ~1e-7 for the analytic
+    code path to be trusted.
+    """
+    d_state = len(seed)
+    # Random non-chord starting state so the gradient is nontrivial.
+    rng = np.random.default_rng(2026)
+    z = 0.5 * rng.standard_normal((n_nodes - 1) * d_state)
+    E0, g_an = energy_and_grad_analytic(z, seed, target, lam,
+                                        offsets, dims, pairs, n_nodes)
+    g_fd = np.zeros_like(z)
+    for k in range(len(z)):
+        zp = z.copy(); zp[k] += eps
+        zm = z.copy(); zm[k] -= eps
+        E_p, _ = energy_and_grad_analytic(zp, seed, target, lam,
+                                          offsets, dims, pairs, n_nodes)
+        E_m, _ = energy_and_grad_analytic(zm, seed, target, lam,
+                                          offsets, dims, pairs, n_nodes)
+        g_fd[k] = (E_p - E_m) / (2 * eps)
+    diff = g_an - g_fd
+    max_abs = float(np.max(np.abs(diff)))
+    denom = np.maximum(np.abs(g_an), np.abs(g_fd))
+    max_rel = float(np.max(np.abs(diff) / np.maximum(denom, 1e-12)))
+    return max_abs, max_rel
+
+
 def make_sudoku_metric(
     bottleneck: list[tuple[int, int]],
     candidates: dict[tuple[int, int], list[int]],
@@ -399,6 +605,139 @@ def make_sudoku_metric(
 # ============================================================================
 # Experiment.
 # ============================================================================
+
+
+def run_experiment_analytic(puzzle: np.ndarray, truth: np.ndarray,
+                            lams: list[float] = (10.0, 50.0, 100.0),
+                            n_nodes: int = 16,
+                            label: str = "9x9") -> dict:
+    """
+    Analytic-gradient version, with a lambda sweep so the coupling-strength
+    hyperparameter has empirical support (per Marcella-team review concern #3).
+    Returns a dict of {lam: (clean_correct, ties, misses)} so the caller can
+    report the breakdown honestly.
+
+    Tie-counting rule (per Marcella-team review concern #2): if the two
+    candidate tau values agree to 1e-6 (~ practical solver precision), the
+    pick is a tie and counted separately from "clean correct" -- the
+    candidate that happens to match truth gets credit, but only as a
+    tie-break, not as a signal-driven pick.
+    """
+    print("=" * 72)
+    print(f"WISH-on-Sudoku, analytic gradient ({label})")
+    print("=" * 72)
+    print_grid(puzzle)
+    final, cand = basic_cp(puzzle)
+    bottleneck = sorted([c for c, s in cand.items() if len(s) > 1])
+    print(f"\nBottleneck cells: {len(bottleneck)}")
+    for c in bottleneck:
+        print(f"  {c}: candidates={sorted(cand[c])}, truth={int(truth[c])}")
+
+    candidates: dict[tuple[int, int], list[int]] = {c: sorted(cand[c]) for c in bottleneck}
+    K = len(bottleneck)
+    dims = [len(candidates[c]) for c in bottleneck]
+    offsets = [0]
+    for k in dims:
+        offsets.append(offsets[-1] + k)
+    d = offsets[-1]
+
+    # Build constraint pairs once -- independent of lambda.
+    pairs = []
+    for a in range(K):
+        for b in range(a + 1, K):
+            if not cells_share_unit(bottleneck[a], bottleneck[b]):
+                continue
+            cand_a, cand_b = candidates[bottleneck[a]], candidates[bottleneck[b]]
+            common = [(ka, kb)
+                      for ka, va in enumerate(cand_a)
+                      for kb, vb in enumerate(cand_b) if va == vb]
+            if common:
+                pairs.append((a, b, common))
+    print(f"\nJoint state dim: {d}; constraint pairs: {len(pairs)}")
+
+    # Gradient cross-check on a representative target (cell 0, candidate 0).
+    seed = np.zeros(d)
+    target0 = seed.copy()
+    K_a = dims[0]
+    for k in range(K_a):
+        target0[offsets[0] + k] = 8.0 if k == 0 else -8.0
+    max_abs, max_rel = cross_check_gradient(
+        seed, target0, lam=50.0, offsets=offsets, dims=dims, pairs=pairs,
+        n_nodes=n_nodes,
+    )
+    print(f"\nGradient cross-check (finite-diff vs analytic, eps=1e-6):")
+    print(f"  max_abs_diff = {max_abs:.2e}, max_rel_diff = {max_rel:.2e}")
+    if max_rel > 1e-4:
+        raise RuntimeError(
+            f"Analytic gradient disagrees with finite-difference at rel={max_rel:.2e}. "
+            f"Fix the derivative before drawing conclusions."
+        )
+    print("  -> analytic gradient verified")
+
+    tie_eps = 1e-6
+    summary = {}
+    for lam in lams:
+        print(f"\n--- lambda = {lam} ---")
+        clean_correct = 0
+        ties_on_truth = 0
+        ties_against_truth = 0
+        clean_wrong = 0
+        t0 = time.time()
+        for a, cell in enumerate(bottleneck):
+            cand_list = candidates[cell]
+            K_a = dims[a]
+            results = {}
+            for k_idx, val in enumerate(cand_list):
+                tgt = seed.copy()
+                for k in range(K_a):
+                    tgt[offsets[a] + k] = 8.0 if k == k_idx else -8.0
+                out = relaxation_analytic(
+                    seed, tgt, lam=lam,
+                    offsets=offsets, dims=dims, pairs=pairs,
+                    n_nodes=n_nodes,
+                )
+                results[val] = out
+            true_val = int(truth[cell])
+            # Detect tie: all pairwise tau differences below tie_eps
+            taus = {v: r.arc_length for v, r in results.items()}
+            tau_min = min(taus.values())
+            tied = [v for v in taus if abs(taus[v] - tau_min) < tie_eps]
+            if len(tied) > 1:
+                pick = tied[0]  # iterator order, just to record
+                if true_val in tied:
+                    ties_on_truth += 1
+                    tag = "TIE_OK"
+                else:
+                    ties_against_truth += 1
+                    tag = "TIE_BAD"
+            else:
+                pick = min(taus, key=lambda v: taus[v])
+                if pick == true_val:
+                    clean_correct += 1
+                    tag = "CLEAN_OK"
+                else:
+                    clean_wrong += 1
+                    tag = "CLEAN_WRONG"
+            tau_str = ", ".join(f"{v}={taus[v]:.10f}" for v in cand_list)
+            diff = max(taus.values()) - min(taus.values())
+            print(f"  {cell}: cands={cand_list}, taus={{{tau_str}}}, "
+                  f"diff={diff:.2e}, pick={pick}, truth={true_val}: {tag}")
+        elapsed = time.time() - t0
+        total = len(bottleneck)
+        baseline = sum(1.0 / len(candidates[c]) for c in bottleneck) / total
+        clean_rate = clean_correct / total
+        print(f"  [{elapsed:.2f}s] clean_correct={clean_correct}/{total}, "
+              f"ties_on_truth={ties_on_truth}, ties_against_truth={ties_against_truth}, "
+              f"clean_wrong={clean_wrong}")
+        print(f"  clean signal rate = {clean_rate:.3f}, random baseline = {baseline:.3f}")
+        summary[lam] = dict(
+            clean_correct=clean_correct,
+            ties_on_truth=ties_on_truth,
+            ties_against_truth=ties_against_truth,
+            clean_wrong=clean_wrong,
+            elapsed=elapsed,
+        )
+    return summary
 
 
 def run_experiment(puzzle: np.ndarray, truth: np.ndarray, lam: float = 50.0,
@@ -487,8 +826,15 @@ if __name__ == "__main__":
     print("Generating 9x9 puzzle by hiding cells until basic CP leaves a "
           "small bottleneck...")
     puzzle = make_puzzle_with_bottleneck(truth, target_bot=(3, 8), n_seeds=64)
-    ok = run_experiment(puzzle, truth, lam=50.0, n_nodes=16, label="9x9")
-    if not ok:
-        print("\nWISH did not beat random baseline on 9x9 -- check coupling "
-              "lambda, n_nodes, or puzzle choice.")
-    sys.exit(0 if ok else 1)
+    summary = run_experiment_analytic(puzzle, truth, lams=[10.0, 50.0, 100.0],
+                                      n_nodes=16, label="9x9")
+    print("\n" + "=" * 72)
+    print("Summary across lambda sweep")
+    print("=" * 72)
+    print(f"  {'lambda':>8} {'clean_ok':>10} {'tie_ok':>8} {'tie_bad':>8} "
+          f"{'clean_wrong':>12} {'elapsed':>8}")
+    for lam, s in summary.items():
+        print(f"  {lam:>8.1f} {s['clean_correct']:>10} {s['ties_on_truth']:>8} "
+              f"{s['ties_against_truth']:>8} {s['clean_wrong']:>12} "
+              f"{s['elapsed']:>7.2f}s")
+    sys.exit(0)

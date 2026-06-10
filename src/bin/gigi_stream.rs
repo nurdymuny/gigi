@@ -14468,7 +14468,9 @@ async fn main() {
     // substrate-backed metrics ship with the dim-lift. Only mounted
     // when the `wish` feature flag is enabled.
     #[cfg(feature = "wish")]
-    let app = app.route("/v1/wish", post(wish_http));
+    let app = app
+        .route("/v1/wish", post(wish_http))
+        .route("/v1/bundles/{name}/wish", post(wish_bundle_http));
 
     let app = app
         // GQL endpoint
@@ -15846,6 +15848,40 @@ async fn wish_http(
     let cfg = build_wish_config(&req);
     let outcome = solve_with_metric(&req.metric, req.seed, req.target, &cfg);
     Ok(Json(outcome_to_response(outcome)))
+}
+
+/// POST /v1/bundles/{name}/wish
+///
+/// Bundle-scoped WISH. Phase 5 v0.1 verifies the bundle exists and
+/// dispatches to the same solver as the global endpoint — the metric
+/// in the request body still picks from {flat, s2, cp1, pinch}. This
+/// shape exists so consumers (Marcella's IMAGINE Phase 2 cross-check
+/// suite) can write tests against the real URL today; the dim-lift
+/// later swaps in the bundle's substrate metric (Kähler structure /
+/// `metric_at` trait) without changing the URL or the request body
+/// fields.
+#[cfg(feature = "wish")]
+async fn wish_bundle_http(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<WishHttpRequest>,
+) -> Result<Json<WishHttpResponse>, (StatusCode, Json<ErrorResponse>)> {
+    {
+        // Scope the read lock so we drop it before the (potentially
+        // slow) solver runs. The bundle handle is only consulted here
+        // for existence; substrate-metric resolution lands with the
+        // dim-lift, at which point this block grows.
+        let engine = state.engine.read().unwrap();
+        if engine.bundle(&name).is_none() {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: format!("Bundle '{}' not found", name),
+                }),
+            ));
+        }
+    }
+    wish_http(State(state), Json(req)).await
 }
 
 // ── Unit tests ─────────────────────────────────────────────────────────────

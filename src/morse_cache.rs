@@ -34,8 +34,10 @@
 //!
 //! The right invalidation event for SEMANTIC is "a record was
 //! inserted/deleted from this bundle." That's exactly what
-//! `BundleStore::mutation_counter` (file `src/bundle.rs` line 4373,
-//! `fetch_add(1, Release)` on every insert/update/delete) tracks.
+//! `BundleStore::mutation_counter` tracks — bumped via
+//! `fetch_add(1, Relaxed)` inside `BundleStore::mark_mutated()` on
+//! every insert/update/delete. (Relaxed suffices: the counter is a
+//! staleness token, needing monotonicity, not happens-before.)
 //!
 //! Wall-clock TTL would be wrong here: a read-only bundle never
 //! changes (so we shouldn't recompute on a wall-clock schedule) and

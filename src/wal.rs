@@ -9,7 +9,13 @@
 //! Op types:
 //!   0x01 = INSERT
 //!   0x02 = CREATE_BUNDLE (schema)
-//!   0xFF = CHECKPOINT (marks that all prior entries are flushed to data file)
+//!   0xFF = CHECKPOINT — two distinct jobs share this marker. The
+//!   compaction path writes one after a successful snapshot (there
+//!   it really does mean "all prior entries are in the data file");
+//!   the auto-checkpoint cadence (`Engine::maybe_checkpoint`, every
+//!   `checkpoint_interval` ops) writes one with an fsync and NO
+//!   snapshot. Recovery therefore anchors on the FIRST checkpoint —
+//!   the one whose snapshot was actually loaded — not the last.
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufWriter, Read, Seek, SeekFrom, Write};

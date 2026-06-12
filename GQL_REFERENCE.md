@@ -823,6 +823,11 @@ ATLAS ROLLBACK TO checkpoint1;
 -- Isolation levels
 ATLAS BEGIN ISOLATION FLAT;              -- serializable (K=0 in transaction space)
 ATLAS BEGIN ISOLATION CURVED;            -- read committed (some K allowed)
+
+-- Bare spellings are accepted as aliases (ATOMIC_SHEAF_COMMIT_SPEC §7.2):
+BEGIN;            -- same as ATLAS BEGIN (optional TRANSACTION keyword: BEGIN TRANSACTION)
+COMMIT;           -- same as ATLAS COMMIT
+ROLLBACK;         -- same as ATLAS ROLLBACK
 ```
 
 ### Error handling in transactions

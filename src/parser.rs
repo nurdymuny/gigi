@@ -26,6 +26,7 @@
 //!   HEALTH name → full diagnostic
 //!   EXISTS SECTION name AT k=v → existence check
 //!   ATLAS BEGIN / COMMIT / ROLLBACK → transaction control
+//!   BEGIN [TRANSACTION] / COMMIT / ROLLBACK → bare-spelling aliases
 //!
 //!   **SQL Compat (backward-compatible):**
 //!   CREATE BUNDLE → BUNDLE
@@ -1201,6 +1202,18 @@ impl Parser {
             }
             "EXISTS" => self.parse_exists(),
             "ATLAS" => self.parse_atlas(),
+            // Bare transaction-control spellings (ATOMIC_SHEAF_COMMIT_SPEC
+            // §3.5/§7.2): aliases for ATLAS BEGIN / COMMIT / ROLLBACK.
+            // Same statements, same semantics — transaction control is
+            // handled at the transport layer, not the embedded executor.
+            "BEGIN" => {
+                if self.is_keyword("TRANSACTION") {
+                    self.advance();
+                }
+                Ok(Statement::AtlasBegin)
+            }
+            "COMMIT" => Ok(Statement::AtlasCommit),
+            "ROLLBACK" => Ok(Statement::AtlasRollback),
 
             // Analytics
             "CURVATURE" => self.parse_curvature(),
@@ -8298,6 +8311,22 @@ mod tests {
         ));
         assert!(matches!(
             parse("ATLAS ROLLBACK").unwrap(),
+            Statement::AtlasRollback
+        ));
+    }
+
+    #[test]
+    fn gql_bare_transaction_verbs() {
+        // Bare spellings promised by ATOMIC_SHEAF_COMMIT_SPEC §3.5/§7.2;
+        // aliases for the ATLAS transaction-control statements.
+        assert!(matches!(parse("BEGIN").unwrap(), Statement::AtlasBegin));
+        assert!(matches!(
+            parse("BEGIN TRANSACTION").unwrap(),
+            Statement::AtlasBegin
+        ));
+        assert!(matches!(parse("COMMIT").unwrap(), Statement::AtlasCommit));
+        assert!(matches!(
+            parse("ROLLBACK").unwrap(),
             Statement::AtlasRollback
         ));
     }

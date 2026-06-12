@@ -232,7 +232,7 @@ Patterns live on the `Engine` struct alongside `query_cache` and `trigger_manage
 | **PH5** | `DEFINE PATTERN p ...; SHOW PATTERNS` returns `p` in the result set | Integration test in `tests/pattern_hunt_registry.rs` |
 | **PH6** | `DEFINE PATTERN p AS x = 1; DEFINE PATTERN p AS x = 2` errors without `OR REPLACE` and silently overwrites with it | Two-case integration test |
 | **PH7** | `HUNT p IN b` against a bundle whose fiber lacks a field in `p.using` returns a typed `PatternFieldMissing` error, not a panic | `tests/pattern_hunt_missing_field.rs` |
-| **PH8** | Pattern registry survives transaction begin/commit/abort cycles cleanly (DEFINE PATTERN is non-transactional in v0.1, like PREPARE) | Mirrors `tests/transactions_prepare.rs` shape |
+| **PH8** | Pattern registry survives transaction begin/commit/abort cycles cleanly (DEFINE PATTERN is non-transactional in v0.1, like PREPARE) | `ph8` in `tests/pattern_hunt_registry.rs` (the originally cited `tests/transactions_prepare.rs` never existed) |
 
 ---
 

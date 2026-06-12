@@ -110,10 +110,10 @@ fn main() {
     // Pull samples / stats once.
     let stats = store.field_stats();
     let mu = vec![
-        stats["ax"].sum / stats["ax"].count as f64,
-        stats["ay"].sum / stats["ay"].count as f64,
-        stats["bx"].sum / stats["bx"].count as f64,
-        stats["cy"].sum / stats["cy"].count as f64,
+        stats["ax"].mean,
+        stats["ay"].mean,
+        stats["bx"].mean,
+        stats["cy"].mean,
     ];
     let sigma_sq_per_field = vec![
         stats["ax"].variance().max(1e-3),

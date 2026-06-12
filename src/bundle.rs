@@ -734,11 +734,22 @@ pub struct KahlerCurvature {
 }
 
 /// Per-field running statistics for curvature.
+///
+/// Maintained with Welford's online algorithm: a running mean and the
+/// centered second moment `M2 = Σ(x − mean)²`. The earlier
+/// implementation kept raw `sum`/`sum_sq` accumulators and derived
+/// variance as `sum_sq/n − mean²`, which cancels catastrophically
+/// when the variance is small relative to `mean²` (e.g. sensor values
+/// clustered around a large offset). Welford is immune to that
+/// failure and costs the same O(1) per update. (Mislabel found by the
+/// GIGI Builds book panel, 2026-06-11; fixed 2026-06-12.)
 #[derive(Debug, Clone, Default)]
 pub struct FieldStats {
     pub count: u64,
-    pub sum: f64,
-    pub sum_sq: f64,
+    /// Running mean (Welford).
+    pub mean: f64,
+    /// Centered second moment `Σ(x − mean)²` (Welford).
+    pub m2: f64,
     pub min: f64,
     pub max: f64,
 }
@@ -746,23 +757,34 @@ pub struct FieldStats {
 impl FieldStats {
     pub fn update(&mut self, val: f64) {
         self.count += 1;
-        self.sum += val;
-        self.sum_sq += val * val;
         if self.count == 1 {
+            self.mean = val;
+            self.m2 = 0.0;
             self.min = val;
             self.max = val;
         } else {
+            let delta = val - self.mean;
+            self.mean += delta / self.count as f64;
+            let delta2 = val - self.mean;
+            self.m2 += delta * delta2;
             self.min = self.min.min(val);
             self.max = self.max.max(val);
         }
     }
 
+    /// Σx, derived from the Welford state (`mean · count`). Kept for
+    /// wire compatibility with the field-stats JSON shape.
+    pub fn sum(&self) -> f64 {
+        self.mean * self.count as f64
+    }
+
+    /// Population variance `M2 / n` (same semantics as the previous
+    /// `sum_sq/n − mean²`, without the cancellation).
     pub fn variance(&self) -> f64 {
         if self.count < 2 {
             return 0.0;
         }
-        let mean = self.sum / self.count as f64;
-        self.sum_sq / self.count as f64 - mean * mean
+        self.m2 / self.count as f64
     }
 
     pub fn range(&self) -> f64 {
@@ -773,6 +795,8 @@ impl FieldStats {
     }
 
     /// Merge another FieldStats into this one (for batch insert).
+    /// Parallel combination per Chan et al. (1979): exact in the mean,
+    /// numerically stable in M2.
     pub fn merge(&mut self, other: &FieldStats) {
         if other.count == 0 {
             return;
@@ -781,9 +805,13 @@ impl FieldStats {
             *self = other.clone();
             return;
         }
+        let na = self.count as f64;
+        let nb = other.count as f64;
+        let total = na + nb;
+        let delta = other.mean - self.mean;
+        self.mean += delta * nb / total;
+        self.m2 += other.m2 + delta * delta * na * nb / total;
         self.count += other.count;
-        self.sum += other.sum;
-        self.sum_sq += other.sum_sq;
         self.min = self.min.min(other.min);
         self.max = self.max.max(other.max);
     }
@@ -804,38 +832,63 @@ impl FieldStats {
 /// scoring purposes.
 #[derive(Debug, Clone, Default)]
 pub struct CurvatureStats {
-    /// Σ K(p) over all inserted records.
-    pub k_sum: f64,
-    /// Σ K(p)² over all inserted records (for variance).
-    pub k_sum_sq: f64,
     /// Number of records whose K was measured.
     pub k_count: u64,
+    /// Running mean μ_K (Welford).
+    pub k_mean: f64,
+    /// Centered second moment `Σ(K − μ_K)²` (Welford).
+    pub k_m2: f64,
 }
 
 impl CurvatureStats {
-    /// Update with a new record's curvature value.
+    /// Update with a new record's curvature value (Welford step).
     pub fn update(&mut self, k: f64) {
-        self.k_sum += k;
-        self.k_sum_sq += k * k;
         self.k_count += 1;
+        let delta = k - self.k_mean;
+        self.k_mean += delta / self.k_count as f64;
+        let delta2 = k - self.k_mean;
+        self.k_m2 += delta * delta2;
     }
 
-    /// Running mean μ_K = Σ K / N.
+    /// Running mean μ_K.
     pub fn mean(&self) -> f64 {
         if self.k_count == 0 {
             return 0.0;
         }
-        self.k_sum / self.k_count as f64
+        self.k_mean
     }
 
-    /// Running population standard deviation σ_K.
+    /// Σ K(p), derived from the Welford state (μ_K · N).
+    pub fn k_sum(&self) -> f64 {
+        self.k_mean * self.k_count as f64
+    }
+
+    /// Running population standard deviation σ_K = √(M2/N).
     pub fn std_dev(&self) -> f64 {
         if self.k_count < 2 {
             return 0.0;
         }
-        let mean = self.mean();
-        let var = self.k_sum_sq / self.k_count as f64 - mean * mean;
-        var.max(0.0).sqrt()
+        (self.k_m2 / self.k_count as f64).max(0.0).sqrt()
+    }
+
+    /// Merge another CurvatureStats into this one — parallel
+    /// combination per Chan et al. (1979). Used by sharded CURVATURE
+    /// to aggregate per-chart statistics without rescanning.
+    pub fn merge(&mut self, other: &CurvatureStats) {
+        if other.k_count == 0 {
+            return;
+        }
+        if self.k_count == 0 {
+            *self = other.clone();
+            return;
+        }
+        let na = self.k_count as f64;
+        let nb = other.k_count as f64;
+        let total = na + nb;
+        let delta = other.k_mean - self.k_mean;
+        self.k_mean += delta * nb / total;
+        self.k_m2 += other.k_m2 + delta * delta * na * nb / total;
+        self.k_count += other.k_count;
     }
 
     /// Adaptive anomaly threshold: μ_K + n_sigma · σ_K.
@@ -901,7 +954,7 @@ pub fn compute_record_k(
         if fs.count < 2 {
             continue;
         }
-        let mean = fs.sum / fs.count as f64;
+        let mean = fs.mean;
         let range = effective_range(field_def, fs);
         total += (v - mean).abs() / range;
         n += 1;
@@ -2779,7 +2832,7 @@ impl BundleStore {
             let Some(v) = record.get(&field_def.name).and_then(|v| v.as_f64()) else {
                 continue;
             };
-            let mean = fs.sum / fs.count as f64;
+            let mean = fs.mean;
             let range = effective_range(field_def, fs);
             field_devs.push((field_def.name.clone(), (v - mean).abs() / range));
         }
@@ -7136,7 +7189,7 @@ mod tests {
         let store = make_weather_bundle();
         let cs = &store.curvature_stats;
         assert!(cs.k_count >= 7320, "k_count = {}", cs.k_count);
-        assert!(cs.k_sum > 0.0, "k_sum should be positive");
+        assert!(cs.k_sum() > 0.0, "k_sum should be positive");
         assert!(cs.mean() > 0.0, "mean K should be positive");
         assert!(cs.std_dev() > 0.0, "std dev should be positive");
     }
@@ -7376,7 +7429,7 @@ mod tests {
         assert!(store.curvature_stats.k_count > 0);
         store.truncate();
         assert_eq!(store.curvature_stats.k_count, 0);
-        assert_eq!(store.curvature_stats.k_sum, 0.0);
+        assert_eq!(store.curvature_stats.k_sum(), 0.0);
     }
 
     /// AD-6.1: record_k_for returns higher K for anomaly vs normal record.

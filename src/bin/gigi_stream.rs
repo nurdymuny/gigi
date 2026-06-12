@@ -2056,7 +2056,7 @@ async fn insert_records(
                         if fs.count < 2 {
                             return None;
                         }
-                        let mean = fs.sum / fs.count as f64;
+                        let mean = fs.mean;
                         let range = fs.range().max(f64::EPSILON);
                         let field_k = (v_f - mean).abs() / range;
                         if field_k > 0.5 {
@@ -4891,7 +4891,7 @@ fn fit_diagonal_gaussian(
         if s.count == 0 {
             return Err(format!("field '{}' has no observations", f));
         }
-        mu.push(s.sum / s.count as f64);
+        mu.push(s.mean);
         sigma_sq_raw.push(s.variance().max(0.0)); // no floor yet — applied below
     }
 
@@ -5044,7 +5044,7 @@ fn fit_full_gaussian(
         if s.count == 0 {
             return Err(format!("field '{}' has no observations", f));
         }
-        mu.push(s.sum / s.count as f64);
+        mu.push(s.mean);
     }
 
     let n = fields.len();
@@ -5286,7 +5286,7 @@ fn fit_isotropic_gaussian(
         if s.count == 0 {
             return Err(format!("field '{}' has no observations", f));
         }
-        mu.push(s.sum / s.count as f64);
+        mu.push(s.mean);
         var_sum += s.variance();
         var_count += 1;
     }
@@ -10731,7 +10731,7 @@ async fn bundle_stats(
                 f.clone(),
                 serde_json::json!({
                     "count": fs.count,
-                    "sum": fs.sum,
+                    "sum": fs.sum(),
                     "min": fs.min,
                     "max": fs.max,
                     "variance": fs.variance(),

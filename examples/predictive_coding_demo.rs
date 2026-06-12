@@ -96,9 +96,9 @@ fn main() {
     let stats = store.field_stats();
     let w_stat = stats.get("weight").expect("weight stats");
     let cl_stat = stats.get("clearance").expect("clearance stats");
-    // FieldStats stores sum + count; mean = sum / count.
-    let w_mean = w_stat.sum / w_stat.count as f64;
-    let cl_mean = cl_stat.sum / cl_stat.count as f64;
+    // FieldStats maintains a Welford running mean.
+    let w_mean = w_stat.mean;
+    let cl_mean = cl_stat.mean;
     let mu = vec![w_mean, cl_mean];
     // Isotropic fit using mean of the two field variances (closest
     // matching "diagonal" assumption for the L10 isotropic helper).

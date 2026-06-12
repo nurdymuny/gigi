@@ -60,7 +60,8 @@ pub enum ShardedExecError {
 /// Sharded CURVATURE report.
 ///
 /// Per-chart `CurvatureStats` plus the aggregated stats produced by
-/// summing `(k_sum, k_sum_sq, k_count)` across charts.
+/// merging per-chart Welford states (Chan et al. parallel
+/// combination, `CurvatureStats::merge`).
 ///
 /// **Honest scope note.** T3 §3.3 validates that K is a pointwise
 /// scalar invariant on a manifold — same point → same K, regardless
@@ -123,9 +124,7 @@ pub fn shard_curvature(bundle: &ShardedBundle) -> ShardedCurvatureReport {
     for (chart_id, _meta) in bundle.atlas().charts.iter() {
         if let Some(store) = bundle.chart_store(*chart_id) {
             let stats = store.curvature_stats.clone();
-            aggregate.k_sum += stats.k_sum;
-            aggregate.k_sum_sq += stats.k_sum_sq;
-            aggregate.k_count += stats.k_count;
+            aggregate.merge(&stats);
             per_chart.insert(*chart_id, stats);
         }
     }
@@ -658,11 +657,11 @@ mod tests {
                 .sum::<u64>(),
             "aggregate count must equal sum of per-chart counts"
         );
-        // k_sum and k_sum_sq sum semantics
-        let sum_k: f64 = report.per_chart.values().map(|s| s.k_sum).sum();
+        // derived k_sum preserves sum semantics under the Chan merge
+        let sum_k: f64 = report.per_chart.values().map(|s| s.k_sum()).sum();
         assert!(
-            (report.aggregate.k_sum - sum_k).abs() < 1e-9,
-            "aggregate k_sum != sum of per-chart k_sum"
+            (report.aggregate.k_sum() - sum_k).abs() < 1e-9,
+            "aggregate k_sum() != sum of per-chart k_sum()"
         );
     }
 
@@ -712,14 +711,16 @@ mod tests {
         // graph fragments. We document this here rather than asserting
         // equality. Phase E will revisit when topology-aware partitions
         // land.
-        let k_sum_difference = (report_2.aggregate.k_sum - report_8.aggregate.k_sum).abs();
+        let k_sum_difference =
+            (report_2.aggregate.k_sum() - report_8.aggregate.k_sum()).abs();
         // For 60 records and the synthetic data here, the typical
         // difference is in the range [0.5, 20.0]. We assert it's
         // FINITE and the partition-dependent variation is bounded by
         // an order of magnitude of the smaller value -- documenting the
         // honest behavior.
         assert!(k_sum_difference.is_finite());
-        let smaller = report_2.aggregate.k_sum.abs().min(report_8.aggregate.k_sum.abs());
+        let smaller =
+            report_2.aggregate.k_sum().abs().min(report_8.aggregate.k_sum().abs());
         assert!(
             k_sum_difference < 10.0 * (smaller + 1e-6),
             "Phase D k_sum partition variance is bounded by ~10x the smaller value \
@@ -736,13 +737,15 @@ mod tests {
         for r in synthetic_records(20) {
             inner_store.insert(&r);
         }
-        let direct_k_sum = inner_store.curvature_stats.k_sum;
+        let direct_k_sum = inner_store.curvature_stats.k_sum();
         let direct_k_count = inner_store.curvature_stats.k_count;
 
         let shard = ShardedBundle::wrap_trivial(inner_store, ShardId(0));
         let report = shard_curvature(&shard);
 
-        assert_eq!(report.aggregate.k_sum, direct_k_sum);
+        // Trivial atlas = one chart; the merge clones the single
+        // chart's stats, so the derived sum is bit-identical.
+        assert_eq!(report.aggregate.k_sum(), direct_k_sum);
         assert_eq!(report.aggregate.k_count, direct_k_count);
     }
 

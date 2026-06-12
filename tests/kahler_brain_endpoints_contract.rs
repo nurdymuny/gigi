@@ -660,8 +660,8 @@ fn pr_window_3_all_use_isotropic_gaussian_fit() {
     // wrap in GenerativeFlow with isotropic-Gaussian gradient.
     let store = make_bundle();
     let stats = store.field_stats();
-    let mu_x = stats["x"].sum / stats["x"].count as f64;
-    let mu_y = stats["y"].sum / stats["y"].count as f64;
+    let mu_x = stats["x"].mean;
+    let mu_y = stats["y"].mean;
     let var_avg = 0.5 * (stats["x"].variance() + stats["y"].variance());
 
     let b = ClosedTwoForm::new_constant(
@@ -701,8 +701,8 @@ fn diagonal_fit_produces_distinct_per_axis_variances() {
     }
     let stats = store.field_stats();
     let mu = vec![
-        stats["x"].sum / stats["x"].count as f64,
-        stats["y"].sum / stats["y"].count as f64,
+        stats["x"].mean,
+        stats["y"].mean,
     ];
     let sigma_sq_per_field = vec![
         stats["x"].variance().max(1e-12),

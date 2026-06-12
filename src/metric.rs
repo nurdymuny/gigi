@@ -117,7 +117,7 @@ pub fn metric_tensor(store: &BundleStore) -> MetricTensorInfo {
             if var < f64::EPSILON {
                 return None;
             }
-            let mean = fs.sum / fs.count as f64;
+            let mean = fs.mean;
             let std = var.sqrt();
             Some((idx, f.name.clone(), mean, std))
         })
@@ -332,10 +332,10 @@ pub fn kl_divergence_ref(
         let sa = &stats_a[field];
         let sb = &stats_b[field];
 
-        let mu_a = sa.sum / sa.count as f64;
-        let mu_b = sb.sum / sb.count as f64;
-        let var_a = (sa.sum_sq / sa.count as f64 - mu_a * mu_a).max(1e-12);
-        let var_b = (sb.sum_sq / sb.count as f64 - mu_b * mu_b).max(1e-12);
+        let mu_a = sa.mean;
+        let mu_b = sb.mean;
+        let var_a = sa.variance().max(1e-12);
+        let var_b = sb.variance().max(1e-12);
 
         // KL(a‖b) for Gaussian
         let kl_ab = 0.5

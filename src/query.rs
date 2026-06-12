@@ -616,10 +616,12 @@ mod tests {
     fn tdd_10_6_selectivity_range() {
         let est = CostEstimator::default();
         let mut field_stats = HashMap::new();
+        // mean 50, population variance ~833.3 (uniform [0,100]) —
+        // same distribution the old sum/sum_sq literal encoded.
         field_stats.insert("temp".to_string(), FieldStats {
             count: 1000,
-            sum: 50000.0,
-            sum_sq: 3333333.0,
+            mean: 50.0,
+            m2: 833333.0,
             min: 0.0,
             max: 100.0,
         });

@@ -6665,6 +6665,17 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 let all: Vec<crate::types::Record> = store.records().collect();
                 let mut row = HashMap::new();
                 for m in measures {
+                    // COUNT(*) counts records, not per-field non-null values.
+                    if matches!(m.func, AggFunc::Count) && m.field == "*" {
+                        let field_name = m.alias.as_ref().cloned().unwrap_or_else(|| {
+                            format!("{}_{}", m.func_name(), m.field)
+                        });
+                        row.insert(
+                            field_name,
+                            crate::types::Value::Float(all.len() as f64),
+                        );
+                        continue;
+                    }
                     let vals: Vec<f64> = all
                         .iter()
                         .filter_map(|r| r.get(&m.field))
@@ -8145,6 +8156,78 @@ mod tests {
             }
             _ => panic!("Expected Integrate"),
         }
+    }
+
+    /// Regression: COUNT(*) in INTEGRATE...MEASURE returned 0 because the
+    /// executor filtered records by `r.get("*")` (always None) before
+    /// counting. Found by the GIGI Builds book harness for chapter 1
+    /// (151-record stations bundle: sum_temp and avg_temp correct,
+    /// count_* = 0).
+    #[test]
+    fn gql_integrate_count_star_returns_record_count() {
+        use crate::engine::Engine;
+        use crate::types::{BundleSchema, FieldDef, Record, Value};
+
+        let dir = std::env::temp_dir().join("gigi_integrate_count_star_regression");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut engine = Engine::open(&dir).unwrap();
+        engine
+            .create_bundle(
+                BundleSchema::new("stations")
+                    .base(FieldDef::categorical("station_id"))
+                    .fiber(FieldDef::numeric("temp").with_range(100.0)),
+            )
+            .unwrap();
+        for i in 0..151 {
+            let mut r = Record::new();
+            r.insert("station_id".into(), Value::Text(format!("s{i:03}")));
+            r.insert("temp".into(), Value::Float(20.0 + (i % 7) as f64 * 0.1));
+            engine.insert("stations", &r).unwrap();
+        }
+
+        let stmt =
+            parse("INTEGRATE stations MEASURE SUM(temp), AVG(temp), COUNT(*)").unwrap();
+        let result = execute(&mut engine, &stmt).unwrap();
+        let rows = match result {
+            ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1);
+        let row = &rows[0];
+        let count_star = row
+            .get("count_*")
+            .expect("count_* column missing from row");
+        assert_eq!(
+            count_star,
+            &Value::Float(151.0),
+            "COUNT(*) should be 151, got {count_star:?}"
+        );
+        // SUM/AVG must remain correct after the fix. 151 records with
+        // temp = 20.0 + (i % 7) * 0.1: 21 full mod-7 cycles (deviation
+        // sum 2.1 each = 44.1) plus i%7=0..3 (0.6) = 44.7; plus
+        // 151 * 20.0 = 3020 ⇒ expected sum 3064.7, avg ≈ 20.296.
+        let expected_sum = 3064.7;
+        match row.get("sum_temp") {
+            Some(Value::Float(v)) => {
+                assert!(
+                    (*v - expected_sum).abs() < 0.001,
+                    "sum_temp = {v}, expected ≈ {expected_sum}"
+                );
+            }
+            other => panic!("sum_temp missing or wrong type: {other:?}"),
+        }
+        match row.get("avg_temp") {
+            Some(Value::Float(v)) => {
+                let expected_avg = expected_sum / 151.0;
+                assert!(
+                    (*v - expected_avg).abs() < 0.001,
+                    "avg_temp = {v}, expected ≈ {expected_avg}"
+                );
+            }
+            other => panic!("avg_temp missing or wrong type: {other:?}"),
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

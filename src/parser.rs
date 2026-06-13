@@ -6632,23 +6632,74 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
 
             if let Some(gb_field) = over {
-                let agg_field = measures.first().map(|m| m.field.as_str()).unwrap_or("*");
+                // Prefer a real field for SUM/AVG/MIN/MAX; fall back to "*"
+                // only when every measure is COUNT(*).
+                let agg_field = measures
+                    .iter()
+                    .map(|m| m.field.as_str())
+                    .find(|f| *f != "*")
+                    .unwrap_or("*");
+
+                // If any measure is COUNT(*), count every record per
+                // group independent of any field's nullness — this is the
+                // SQL semantics agg_result.count cannot give us, because
+                // agg_result.count tracks records with a non-null
+                // agg_field only.
+                let needs_count_star = measures
+                    .iter()
+                    .any(|m| matches!(m.func, AggFunc::Count) && m.field == "*");
+                let count_by_group: HashMap<crate::types::Value, usize> =
+                    if needs_count_star {
+                        let mut m = HashMap::new();
+                        if let Some(s) = store.as_heap() {
+                            for rec in s.records() {
+                                if let Some(k) = rec.get(gb_field) {
+                                    *m.entry(k.clone()).or_insert(0usize) += 1;
+                                }
+                            }
+                        }
+                        m
+                    } else {
+                        HashMap::new()
+                    };
 
                 let groups = match store.as_heap() {
                     Some(s) => crate::aggregation::group_by(s, gb_field, agg_field),
                     None => HashMap::new(),
                 };
+
+                // When COUNT(*) is requested, iterate count_by_group's
+                // keys (the superset that includes groups where the
+                // chosen agg_field is null for every record). Otherwise
+                // use groups' keys for backwards-compatible output.
+                let group_keys: Vec<crate::types::Value> = if needs_count_star {
+                    count_by_group.keys().cloned().collect()
+                } else {
+                    groups.keys().cloned().collect()
+                };
+                let zero_agg = crate::aggregation::AggResult {
+                    count: 0,
+                    sum: 0.0,
+                    sum_sq: 0.0,
+                    min: 0.0,
+                    max: 0.0,
+                };
+
                 let mut rows = Vec::new();
-                for (key, agg_result) in &groups {
+                for key in &group_keys {
+                    let agg_result = groups.get(key).unwrap_or(&zero_agg);
                     let mut row = HashMap::new();
                     row.insert(gb_field.clone(), key.clone());
                     for m in measures {
-                        let val = match m.func {
-                            AggFunc::Count => agg_result.count as f64,
-                            AggFunc::Sum => agg_result.sum,
-                            AggFunc::Avg => agg_result.avg(),
-                            AggFunc::Min => agg_result.min,
-                            AggFunc::Max => agg_result.max,
+                        let val = match (&m.func, m.field.as_str()) {
+                            (AggFunc::Count, "*") => {
+                                *count_by_group.get(key).unwrap_or(&0) as f64
+                            }
+                            (AggFunc::Count, _) => agg_result.count as f64,
+                            (AggFunc::Sum, _) => agg_result.sum,
+                            (AggFunc::Avg, _) => agg_result.avg(),
+                            (AggFunc::Min, _) => agg_result.min,
+                            (AggFunc::Max, _) => agg_result.max,
                         };
                         let field_name = m
                             .alias
@@ -8227,6 +8278,153 @@ mod tests {
             }
             other => panic!("avg_temp missing or wrong type: {other:?}"),
         }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Regression: COUNT(*) in INTEGRATE ... OVER ... MEASURE returned
+    /// zero rows on populated bundles, because the executor passed "*"
+    /// as agg_field to group_by, which skipped every record (rec.get("*")
+    /// is always None). Three subtests covering the failure modes:
+    /// (1) COUNT(*) alone — single measure with no real field;
+    /// (2) COUNT(*) MIXED with SUM/AVG — COUNT(*) must count every
+    ///     record in each group, not just records with non-null agg_field;
+    /// (3) COUNT(*) when some records have null agg_field — COUNT(*)
+    ///     still reflects the whole group.
+    #[test]
+    fn gql_integrate_over_count_star_returns_records_per_group() {
+        use crate::engine::Engine;
+        use crate::types::{BundleSchema, FieldDef, Record, Value};
+
+        let dir = std::env::temp_dir()
+            .join("gigi_integrate_over_count_star_regression");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut engine = Engine::open(&dir).unwrap();
+        engine
+            .create_bundle(
+                BundleSchema::new("sales")
+                    .base(FieldDef::categorical("id"))
+                    .fiber(FieldDef::categorical("region"))
+                    .fiber(FieldDef::numeric("amount").with_range(1000.0)),
+            )
+            .unwrap();
+        // 6 north + 4 south + 2 east = 12 records.
+        let layout = [("north", 6), ("south", 4), ("east", 2)];
+        let mut next_id = 0;
+        for (region, n) in &layout {
+            for j in 0..*n {
+                let mut r = Record::new();
+                r.insert("id".into(), Value::Text(format!("r{next_id:03}")));
+                r.insert("region".into(), Value::Text((*region).into()));
+                r.insert(
+                    "amount".into(),
+                    Value::Float(100.0 + j as f64 * 10.0),
+                );
+                engine.insert("sales", &r).unwrap();
+                next_id += 1;
+            }
+        }
+
+        let into_map =
+            |rs: Vec<Record>| -> std::collections::HashMap<String, Record> {
+                rs.into_iter()
+                    .map(|r| {
+                        let key = match r.get("region") {
+                            Some(Value::Text(s)) => s.clone(),
+                            other => panic!("unexpected region key: {other:?}"),
+                        };
+                        (key, r)
+                    })
+                    .collect()
+            };
+
+        // (1) Single COUNT(*) measure — agg_field falls back to "*".
+        let stmt = parse("INTEGRATE sales OVER region MEASURE COUNT(*)")
+            .unwrap();
+        let rows = match execute(&mut engine, &stmt).unwrap() {
+            ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(
+            rows.len(),
+            3,
+            "expected one row per region, got {}",
+            rows.len()
+        );
+        let by_region = into_map(rows);
+        for (region, expected) in &layout {
+            let row = by_region
+                .get(*region)
+                .unwrap_or_else(|| panic!("missing region {region}"));
+            assert_eq!(
+                row.get("count_*"),
+                Some(&Value::Float(*expected as f64)),
+                "COUNT(*) wrong for region {region}",
+            );
+        }
+
+        // (2) Mixed measures — COUNT(*) must still count every record
+        //     even when a different field drives SUM/AVG.
+        let stmt = parse(
+            "INTEGRATE sales OVER region MEASURE COUNT(*), SUM(amount), AVG(amount)",
+        )
+        .unwrap();
+        let rows = match execute(&mut engine, &stmt).unwrap() {
+            ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 3, "expected 3 region rows in mixed-measure");
+        let by_region = into_map(rows);
+        for (region, expected_n) in &layout {
+            let row = by_region
+                .get(*region)
+                .unwrap_or_else(|| panic!("missing region {region}"));
+            assert_eq!(
+                row.get("count_*"),
+                Some(&Value::Float(*expected_n as f64)),
+                "COUNT(*) wrong for region {region} in mixed-measure",
+            );
+            let expected_sum: f64 =
+                (0..*expected_n).map(|j| 100.0 + j as f64 * 10.0).sum();
+            match row.get("sum_amount") {
+                Some(Value::Float(v)) => assert!(
+                    (*v - expected_sum).abs() < 0.001,
+                    "SUM(amount) for {region}: {v} vs expected {expected_sum}"
+                ),
+                other => panic!("sum_amount missing for {region}: {other:?}"),
+            }
+            match row.get("avg_amount") {
+                Some(Value::Float(v)) => assert!(
+                    (*v - expected_sum / *expected_n as f64).abs() < 0.001,
+                    "AVG(amount) wrong for {region}",
+                ),
+                other => panic!("avg_amount missing for {region}: {other:?}"),
+            }
+        }
+
+        // (3) A record with explicit null in the agg_field still gets
+        //     counted by COUNT(*) in its group.
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Text("rNULL".into()));
+        r.insert("region".into(), Value::Text("east".into()));
+        r.insert("amount".into(), Value::Null);
+        engine.insert("sales", &r).unwrap();
+
+        let stmt = parse(
+            "INTEGRATE sales OVER region MEASURE COUNT(*), SUM(amount)",
+        )
+        .unwrap();
+        let rows = match execute(&mut engine, &stmt).unwrap() {
+            ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        let by_region = into_map(rows);
+        let east = by_region.get("east").expect("east row missing");
+        assert_eq!(
+            east.get("count_*"),
+            Some(&Value::Float(3.0)),
+            "east COUNT(*) must include the null-amount record (2 + 1 = 3)",
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 

@@ -59,21 +59,31 @@ pub fn fiber_integral(store: &BundleStore, field: &str) -> AggResult {
 /// GROUP BY via base space partition (Thm 5.2).
 ///
 /// Returns map from group_value → AggResult for the aggregated field.
+///
+/// When `agg_field == "*"` the function counts every record in each
+/// group regardless of any field's nullness, skipping sum/min/max
+/// updates (they have no meaning without a value field). This is the
+/// path COUNT(*) uses when no other measure picks a real agg field.
 pub fn group_by(
     store: &BundleStore,
     group_field: &str,
     agg_field: &str,
 ) -> HashMap<Value, AggResult> {
     let mut groups: HashMap<Value, AggResult> = HashMap::new();
+    let count_only = agg_field == "*";
 
     for rec in store.records() {
         let group_val = match rec.get(group_field) {
             Some(v) => v.clone(),
             None => continue,
         };
-        let agg_val = match rec.get(agg_field).and_then(|v| v.as_f64()) {
-            Some(v) => v,
-            None => continue,
+        let agg_val = if count_only {
+            0.0
+        } else {
+            match rec.get(agg_field).and_then(|v| v.as_f64()) {
+                Some(v) => v,
+                None => continue,
+            }
         };
 
         let entry = groups.entry(group_val).or_insert(AggResult {
@@ -84,10 +94,12 @@ pub fn group_by(
             max: f64::NEG_INFINITY,
         });
         entry.count += 1;
-        entry.sum += agg_val;
-        entry.sum_sq += agg_val * agg_val;
-        entry.min = entry.min.min(agg_val);
-        entry.max = entry.max.max(agg_val);
+        if !count_only {
+            entry.sum += agg_val;
+            entry.sum_sq += agg_val * agg_val;
+            entry.min = entry.min.min(agg_val);
+            entry.max = entry.max.max(agg_val);
+        }
     }
     groups
 }

@@ -23,7 +23,7 @@
 //! `as_dense_buffer` for the buffer introspection wire surface.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 
 use super::dense_link_buffer::DenseLinkBuffer;
 use super::edge_connection::EdgeConnection;
@@ -103,6 +103,169 @@ pub fn clear() {
         .lock()
         .expect("gauge registry mutex poisoned");
     g.clear();
+    let mut s = su2_mut_registry()
+        .lock()
+        .expect("su2 mut registry mutex poisoned");
+    s.clear();
+}
+
+
+/// Remove a single named field from both registry maps without
+/// clobbering the rest. III.5 tests use this to tear down their own
+/// fixtures at the end of a test without disturbing parallel tests'
+/// state on the singleton registries.
+pub fn remove(name: &str) {
+    {
+        let mut g = registry()
+            .lock()
+            .expect("gauge registry mutex poisoned");
+        g.remove(name);
+    }
+    let mut s = su2_mut_registry()
+        .lock()
+        .expect("su2 mut registry mutex poisoned");
+    s.remove(name);
+}
+
+// ───────────────────────── SU(2) mutability escape ─────────────────────────
+//
+// Group-erasure note (Bee's locked decision D4 for Part III gate III.5).
+// `register` + `get` above stay on the `Arc<dyn GaugeFieldHandle>` read-only
+// surface (group erasure holds for PLAQUETTE / Q_SURROGATE / SHOW). The
+// `register_su2` + `get_su2_mut` pair below adds an SU(2)-named, concrete-
+// typed mutable escape used only by `GIBBS_SAMPLE`. Future SU(3) heatbath
+// will ship a sibling `register_su3` / `get_su3_mut` in parallel; the surface
+// stays symmetric. The escape is honest: the Kennedy–Pendleton kernel is
+// SU(2)-specific, so an SU(2)-named accessor at this boundary is engineering
+// (not a hack).
+//
+// `register_su2(field)` populates BOTH maps from the same source of truth —
+// the `Arc<Mutex<SU2GaugeField>>` goes into the SU(2)-mut map; a snapshot
+// `Arc<SU2GaugeField>` (which impls `GaugeFieldHandle`) goes into the dyn
+// read map so `get(name)` keeps working byte-identically. After GIBBS_SAMPLE
+// mutates the SU(2)-mut copy it calls `refresh_dyn_from_su2_mut(name)` to
+// publish a fresh snapshot into the dyn map — read-after-write coherence on
+// the dyn surface is restored at the gibbs-sample epilogue, not per edge.
+
+fn su2_mut_registry() -> &'static Mutex<HashMap<String, Arc<Mutex<SU2GaugeField>>>> {
+    static REG: OnceLock<Mutex<HashMap<String, Arc<Mutex<SU2GaugeField>>>>> = OnceLock::new();
+    REG.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Register an `SU2GaugeField` under its `name` with the mutable surface
+/// `GIBBS_SAMPLE` needs. Populates both the SU(2)-mut map and the existing
+/// dyn read map (with a snapshot clone) so `get` and `get_su2_mut` see the
+/// same name. Overwrites any previous registration under the same name.
+pub fn register_su2(field: SU2GaugeField) {
+    let name = field.name.clone();
+    // 1. Snapshot the field into the dyn read map (so `get(name)` keeps
+    //    returning a `GaugeFieldHandle` byte-identically).
+    let snapshot: Arc<dyn GaugeFieldHandle> = Arc::new(field.clone());
+    {
+        let mut g = registry()
+            .lock()
+            .expect("gauge registry mutex poisoned");
+        g.insert(name.clone(), snapshot);
+    }
+    // 2. Park the mutable copy in the SU(2)-mut map.
+    let mut s = su2_mut_registry()
+        .lock()
+        .expect("su2 mut registry mutex poisoned");
+    s.insert(name, Arc::new(Mutex::new(field)));
+}
+
+/// Look up the SU(2) mutable handle for `name`. Returns `Some(guard)` with
+/// the inner Mutex already locked so the caller has direct `&mut
+/// SU2GaugeField` access for the duration of the guard. SU(2)-named on
+/// purpose — group-erasure escape for the heatbath kernel only (Bee's
+/// locked decision D4).
+///
+/// The guard's lifetime is tied to a static `Arc<Mutex<_>>` stored in the
+/// SU(2)-mut registry; we leak a `'static` lifetime via the `Arc` so the
+/// caller can hold the guard across the gibbs-sample sweep loop.
+pub fn get_su2_mut(name: &str) -> Option<Arc<Mutex<SU2GaugeField>>> {
+    let s = su2_mut_registry()
+        .lock()
+        .expect("su2 mut registry mutex poisoned");
+    s.get(name).cloned()
+}
+
+/// Re-publish the latest `SU2GaugeField` state from the SU(2)-mut map into
+/// the dyn read map. `GIBBS_SAMPLE` calls this once after its sweep loop so
+/// `get(name)` returns a fresh snapshot of the post-mutation buffer (the
+/// dyn surface stays read-after-write coherent at the verb boundary). Noop
+/// when `name` is not present in the SU(2)-mut map.
+pub fn refresh_dyn_from_su2_mut(name: &str) {
+    let snapshot = {
+        let s = su2_mut_registry()
+            .lock()
+            .expect("su2 mut registry mutex poisoned");
+        match s.get(name) {
+            Some(arc) => {
+                let guard = arc.lock().expect("su2 field mutex poisoned");
+                guard.clone()
+            }
+            None => return,
+        }
+    };
+    let mut g = registry()
+        .lock()
+        .expect("gauge registry mutex poisoned");
+    g.insert(name.to_string(), Arc::new(snapshot));
+}
+
+/// Re-publish a locally-held `Arc<Mutex<SU2GaugeField>>` into BOTH the
+/// SU(2)-mut map and the dyn read map. `GIBBS_SAMPLE` uses this instead
+/// of `refresh_dyn_from_su2_mut` when it wants to be robust against a
+/// parallel `clear()` that might wipe the SU(2)-mut entry mid-sweep:
+/// the local Arc keeps the field alive, this function re-inserts it
+/// into both maps under the same name so subsequent lookups land on
+/// the post-sweep state.
+pub fn republish_su2(name: &str, field_arc: Arc<Mutex<SU2GaugeField>>) {
+    let snapshot = {
+        let guard = field_arc.lock().expect("su2 field mutex poisoned");
+        guard.clone()
+    };
+    {
+        let mut s = su2_mut_registry()
+            .lock()
+            .expect("su2 mut registry mutex poisoned");
+        s.insert(name.to_string(), field_arc);
+    }
+    let mut g = registry()
+        .lock()
+        .expect("gauge registry mutex poisoned");
+    g.insert(name.to_string(), Arc::new(snapshot));
+}
+
+// `MutexGuard` re-export silencer — the public alias is what the spec
+// calls out (`MutexGuard<SU2GaugeField>`); we expose `Arc<Mutex<…>>`
+// instead because `MutexGuard` is non-`'static` and cannot escape the
+// scope that locked the Mutex. The Arc-wrapped form gives the same access
+// pattern (lock inside the caller) with a lifetime the registry can hand
+// out.
+#[allow(dead_code)]
+type _Su2GuardAliasHint<'a> = MutexGuard<'a, SU2GaugeField>;
+
+/// Process-wide test serialization mutex. Every gauge test that calls
+/// `clear()` (the entire module does) holds this lock for its duration
+/// so the lattice + gauge singletons don't get mid-test-clobbered by a
+/// parallel `clear()` in another module. The mutex itself does NOT
+/// participate in production code paths; production callers (parser,
+/// HTTP routes) interact with the registries through their normal
+/// `register` / `get` surface without touching this lock.
+///
+/// `cfg(any(test, feature = "halcyon"))` so integration tests in
+/// `tests/halcyon_part_iii_*.rs` (which live in a separate crate from
+/// the lib) can reach the same mutex when they need to coexist with
+/// in-process gauge tests during a single `cargo test` invocation.
+#[cfg(any(test, feature = "halcyon"))]
+pub fn test_serial_lock() -> std::sync::MutexGuard<'static, ()> {
+    use std::sync::Mutex;
+    static M: OnceLock<Mutex<()>> = OnceLock::new();
+    M.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// Snapshot every registered gauge field for compaction. The engine's

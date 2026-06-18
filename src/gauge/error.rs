@@ -43,6 +43,13 @@ pub enum GaugeFieldError {
     /// A materialized buffer's flat-length does not match
     /// `n_edges * repr_dim` for the bound lattice.
     BufferShapeMismatch { expected: usize, got: usize },
+    /// `GIBBS_SAMPLE … MEASURE (…)` requested an observable whose
+    /// implementation needs an E field that Part IV will introduce
+    /// (`HTotal`, `GaussResidualMax`, `EdgeKinetic`, `VertexGauss`,
+    /// `Energy`). Display contains both "Part IV" and "E field" so
+    /// the III.5 red-test and the upstream parser / HTTP layer can
+    /// match either token.
+    PartIvObservableNotReady(&'static str),
 }
 
 impl std::fmt::Display for GaugeFieldError {
@@ -71,6 +78,13 @@ impl std::fmt::Display for GaugeFieldError {
             GaugeFieldError::BufferShapeMismatch { expected, got } => write!(
                 f,
                 "gauge: buffer shape mismatch (expected {expected} f64s, got {got})"
+            ),
+            GaugeFieldError::PartIvObservableNotReady(name) => write!(
+                f,
+                "gauge: observable {name} needs an E field that Part IV will introduce \
+                 (GIBBS_SAMPLE Part III ships SU(2)-substrate observables only — \
+                 MeanPlaquette and QSurrogate). Part IV adds the E-field tangent-space \
+                 machinery this verb composes against."
             ),
         }
     }

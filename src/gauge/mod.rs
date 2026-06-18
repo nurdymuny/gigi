@@ -70,6 +70,8 @@ pub mod staple;
 pub mod heatbath_haar;
 #[cfg(feature = "gauge")]
 pub mod kennedy_pendleton;
+#[cfg(feature = "gauge")]
+pub mod gibbs_sample;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -100,6 +102,8 @@ pub use staple::{build_edge_face_incidence, staple_sum_at_edge, EdgeFaceIncidenc
 pub use heatbath_haar::sample_haar_sqrt_rejection;
 #[cfg(feature = "gauge")]
 pub use kennedy_pendleton::{sample_kp_x0, sample_su2_link};
+#[cfg(feature = "gauge")]
+pub use gibbs_sample::{gibbs_sample, GibbsSampleDiagnostics, GibbsSampleResponse, ObservableId};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

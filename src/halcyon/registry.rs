@@ -53,4 +53,124 @@ mod tests {
         let got = get("buckyball").expect("buckyball was just registered");
         assert_eq!(got, bb);
     }
+
+    /// TDD-HAL-I.8 — executor + SHOW LATTICE round-trip.
+    /// Declare a lattice via the shorthand form; issue SHOW LATTICE
+    /// name; re-parse the SHOW output's `gql` column; assert
+    /// structural equality with the original.
+    #[test]
+    fn tdd_hal_i_8_lattice_register_and_show() {
+        use crate::engine::Engine;
+        use crate::parser;
+        use crate::types::Value;
+
+        clear();
+        // Use an isolated name to avoid colliding with other tests
+        // racing for the singleton registry.
+        let name = "tdd_hal_i_8_bb";
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = Engine::open(dir.path()).expect("engine open");
+
+        // 1. Declare via shorthand. Executor materializes via
+        // truncated_icosahedron::buckyball() and renames.
+        let decl = format!(
+            "LATTICE {name} FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';"
+        );
+        let stmt = parser::parse(&decl).expect("parse LATTICE decl");
+        match parser::execute(&mut engine, &stmt).expect("exec LATTICE decl") {
+            parser::ExecResult::Ok => {}
+            other => panic!("expected Ok, got {other:?}"),
+        }
+
+        // 2. SHOW LATTICE name; — read out the registered lattice.
+        let show = format!("SHOW LATTICE {name};");
+        let stmt = parser::parse(&show).expect("parse SHOW LATTICE");
+        let rows = match parser::execute(&mut engine, &stmt)
+            .expect("exec SHOW LATTICE")
+        {
+            parser::ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1, "SHOW LATTICE returns exactly one row");
+        let row = &rows[0];
+        let gql_emitted = match row.get("gql") {
+            Some(Value::Text(s)) => s.clone(),
+            other => panic!("missing/wrong-typed gql column: {other:?}"),
+        };
+
+        // 3. Round-trip — re-parse the emitted GQL via the Lattice
+        //    algebra's own from_gql (the canonical re-emit
+        //    parser).
+        let lat = super::super::lattice::Lattice::from_gql(&gql_emitted)
+            .expect("re-parse SHOW output");
+        assert_eq!(lat.name, name);
+        assert_eq!(lat.n_vertices, 60);
+        assert_eq!(lat.n_edges(), 90);
+        assert_eq!(lat.n_faces(), 32);
+        assert_eq!(lat.topology.as_deref(), Some("S2"));
+
+        // 4. Structural equality with the registered lattice
+        //    (after the rename — the buckyball constructor names
+        //    itself "buckyball" by default; the executor rebinds
+        //    to the declared name).
+        let registered = get(name).expect("registered lattice");
+        assert_eq!(lat, registered);
+    }
+
+    /// Bit-identity contract: re-emitting an explicit-form
+    /// declaration through SHOW LATTICE produces the same canonical
+    /// re-emit body twice in a row.
+    #[test]
+    fn tdd_hal_i_8_explicit_form_round_trip() {
+        use crate::engine::Engine;
+        use crate::parser;
+        use crate::types::Value;
+
+        clear();
+        let name = "tdd_hal_i_8_explicit";
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = Engine::open(dir.path()).expect("engine open");
+        let decl = format!(
+            "LATTICE {name} \
+             VERTICES 4 \
+             EDGES ((0,1),(1,2),(2,0)) \
+             FACES ((0,1,2));"
+        );
+        let stmt = parser::parse(&decl).expect("parse explicit LATTICE");
+        parser::execute(&mut engine, &stmt).expect("exec explicit LATTICE");
+
+        let show = format!("SHOW LATTICE {name};");
+        let stmt = parser::parse(&show).expect("parse SHOW LATTICE");
+        let rows = match parser::execute(&mut engine, &stmt)
+            .expect("exec SHOW LATTICE")
+        {
+            parser::ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        let gql_first = match rows[0].get("gql") {
+            Some(Value::Text(s)) => s.clone(),
+            other => panic!("missing/wrong gql: {other:?}"),
+        };
+
+        // Round-trip the emitted form back through the parser +
+        // executor.
+        let stmt = parser::parse(&gql_first).expect("re-parse SHOW output");
+        parser::execute(&mut engine, &stmt).expect("re-exec re-parsed LATTICE");
+
+        // Issue SHOW LATTICE again — the canonical form is
+        // bit-identical to the first emission.
+        let stmt = parser::parse(&show).expect("parse SHOW LATTICE 2");
+        let rows = match parser::execute(&mut engine, &stmt)
+            .expect("exec SHOW LATTICE 2")
+        {
+            parser::ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        let gql_second = match rows[0].get("gql") {
+            Some(Value::Text(s)) => s.clone(),
+            other => panic!("missing/wrong gql: {other:?}"),
+        };
+        assert_eq!(gql_first, gql_second);
+    }
 }

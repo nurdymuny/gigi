@@ -38,6 +38,12 @@
 #[derive(Debug, Clone)]
 pub struct SmallRng {
     state: u64,
+    /// Observational counter — incremented once per `uniform()` call.
+    /// Does NOT participate in state evolution (byte-identity is
+    /// preserved). Exposed via `draws()` so the III.4 KP draw-count
+    /// test can assert exactly `4 · n_attempts` uniforms consumed per
+    /// `sample_kp_x0` call.
+    draws: u64,
 }
 
 impl SmallRng {
@@ -48,6 +54,7 @@ impl SmallRng {
     pub fn seed_from_u64(seed: u64) -> Self {
         Self {
             state: seed.max(1),
+            draws: 0,
         }
     }
 
@@ -64,7 +71,15 @@ impl SmallRng {
 
     /// Uniform in `[0, 1)`. Same conversion as the canonical impl.
     pub fn uniform(&mut self) -> f64 {
+        self.draws = self.draws.wrapping_add(1);
         (self.next_u64() >> 11) as f64 / ((1u64 << 53) as f64)
+    }
+
+    /// Total `uniform()` calls observed since construction. Reset is
+    /// not provided — tests should clone or capture a baseline and
+    /// subtract.
+    pub fn draws(&self) -> u64 {
+        self.draws
     }
 }
 

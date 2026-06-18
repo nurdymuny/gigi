@@ -66,6 +66,10 @@ pub mod plaquette;
 pub mod q_surrogate;
 #[cfg(feature = "gauge")]
 pub mod staple;
+#[cfg(feature = "gauge")]
+pub mod heatbath_haar;
+#[cfg(feature = "gauge")]
+pub mod kennedy_pendleton;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -92,6 +96,10 @@ pub use plaquette::{plaquette_mean, plaquette_per_face, plaquette_sum};
 pub use q_surrogate::q_surrogate;
 #[cfg(feature = "gauge")]
 pub use staple::{build_edge_face_incidence, staple_sum_at_edge, EdgeFaceIncidence};
+#[cfg(feature = "gauge")]
+pub use heatbath_haar::sample_haar_sqrt_rejection;
+#[cfg(feature = "gauge")]
+pub use kennedy_pendleton::{sample_kp_x0, sample_su2_link};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

@@ -41,3 +41,4 @@
 //!   left-associative; `h ← qmul(h, U_e^s)` per edge).
 
 pub mod lattice;
+pub mod truncated_icosahedron;

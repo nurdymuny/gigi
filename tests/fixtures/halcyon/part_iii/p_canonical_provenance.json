@@ -15,7 +15,7 @@
   "n_sweeps_post_thermal": 1948,
   "rng": "gigi::gauge::marsaglia_haar::SmallRng (xorshift64*)",
   "algorithm": "Kennedy-Pendleton SU(2) heatbath with sqrt-rejection Haar fallback",
-  "harvest_commit": "<fill in with the SHA of the TDD-HAL-III.8a commit once it lands>",
+  "harvest_commit": "6a52efc8034ae6c732334f71d04c46b63c06a542",
   "purpose": "Canonical reference for Part III gate III.8b. Cross-binding bit-identity with Halcyon NumPy PCG64 is impossible by design (locked decision 1); intra-GIGI bit-identity at fixed seed is the bit-id contract.",
   "note": "Bee's locked decision D1: gate III.8b writes its envelope assertion against this GIGI-internal reference, not Halcyon's hand-rolled 3*sem_chain+0.02 envelope."
 }

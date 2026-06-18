@@ -1,0 +1,68 @@
+{
+  "source_npz": "davis-wilson-lattice/inertia_damping/reports/run_20260617_110642/final_state.npz",
+  "source_trajectory_json": "davis-wilson-lattice/inertia_damping/reports/run_20260617_110642/trajectory.json",
+  "code_commit_sha": "74b960fa6d5f52fb47a76b80c938aeadc8a89762",
+  "wall_time_seconds": 2764.6589970588684,
+  "gauge_group": "SU(2)",
+  "geometry": "truncated icosahedron (buckyball)",
+  "n_vertices": 60,
+  "n_edges": 90,
+  "n_faces": 32,
+  "beta": 2.5,
+  "dt": 0.02,
+  "seed": 20260617,
+  "n_thermalization_sweeps": 200,
+  "n_steps": 1000,
+  "measure_every": 20,
+  "heatbath_canonical_beta": 2.5,
+  "heatbath_canonical_n_thermalization": 500,
+  "P_history_first_5": [
+    0.5426113439388448,
+    0.5173687823091988,
+    0.41317549357450434,
+    0.48389833441444485,
+    0.5317682776624736
+  ],
+  "P_history_last_5": [
+    0.5408182625768829,
+    0.5856910857231477,
+    0.5242251427049772,
+    0.5848973115661047,
+    0.5321861586241329
+  ],
+  "P_history_len": 2048,
+  "gauss_history_first": [
+    20.0,
+    7.494005416219807e-16
+  ],
+  "gauss_history_last": [
+    1000.0,
+    4.9682480351975755e-15
+  ],
+  "gauss_history_shape": [
+    50,
+    2
+  ],
+  "sector_classifier_state": "{\"available\": true, \"verdict\": \"NOT_APPLICABLE\", \"reason\": \"natural Q_surrogate dispersion at beta = 2.5 does not populate all 3 bands; classifier is meaningless here\", \"real_accuracy_threshold\": 0.8, \"null_alpha_threshold\": 0.05}",
+  "quaternion_convention": {
+    "layout": "scalar-first (q0, q1, q2, q3); q0 is the scalar (cosine half-angle) component",
+    "matrix_form": "A = q0*I + i*(q1*sigma_x + q2*sigma_y + q3*sigma_z); Re Tr A = 2*q0; det A = q0^2 + q1^2 + q2^2 + q3^2 = 1 for SU(2)",
+    "product_rule": "qmul(a, b): c0 = a0*b0 - dot(a_vec, b_vec); c_vec = a0*b_vec + b0*a_vec - cross(a_vec, b_vec)",
+    "conjugate": "qconj(a) = (a0, -a1, -a2, -a3); equals matrix dagger",
+    "exp_convention": "_matrix_exp_su2_q((0, v)) returns (cos|v|, sin|v| * v_hat) for v_hat = v/|v|; represents exp(i v.sigma). Here |v| absorbs the standard half-angle: exp(i theta n.sigma/2) = cos(theta/2)*I + i*sin(theta/2)*(n.sigma), so |v| = theta/2 when reading off the rotation angle theta. Equivalently q0 = cos(theta/2), q_vec = sin(theta/2)*n_hat for an SU(2) rotation by angle theta about axis n_hat.",
+    "dtype": "f64",
+    "compose_order": "left-action: drift multiplies U_e on the LEFT: U_new = exp(i*g^2*dt*E_vec.sigma) . U_e. Face holonomy accumulates LEFT-TO-RIGHT in cyclic face order: U_f = U_e0^s0 . U_e1^s1 . ... . U_ek^sk (multiplication left-associative; for (e,s) in face[1:]: h = qmul(h, U_e^s))."
+  },
+  "source_files_for_convention": [
+    "davis-wilson-lattice/validation/matter_sector/su2_gauge_higgs.py:71-77 (qmul definition)",
+    "davis-wilson-lattice/validation/matter_sector/su2_gauge_higgs.py:80-84 (qconj definition)",
+    "davis-wilson-lattice/validation/matter_sector/su2_gauge_higgs.py:91-92 (qnorm definition)",
+    "davis-wilson-lattice/validation/matter_sector/su2_gauge_higgs.py:95-102 (q_to_matrix: A = a0*I + i*sum(a_k*sigma_k))",
+    "davis-wilson-lattice/inertia_damping/buckyball_action.py:7-13 (storage shape (E,4))",
+    "davis-wilson-lattice/inertia_damping/buckyball_action.py:108-126 (face_holonomy left-to-right product order)",
+    "davis-wilson-lattice/inertia_damping/buckyball_action.py:139-148 (_quat_to_matrix_torch shows full 2x2 mapping)",
+    "davis-wilson-lattice/inertia_damping/symplectic_integrator.py:276-290 (_matrix_exp_su2_q: cos|v|*I + i*sin|v|*v_hat.sigma)",
+    "davis-wilson-lattice/inertia_damping/buckyball_integrator.py:680-698 (_drift: U_new = matrix_exp((0, +g^2*dt*e_vec)) . U_e \u2014 LEFT-multiply)",
+    "davis-wilson-lattice/inertia_damping/buckyball_heatbath.py:1-41 (heatbath conventions match action)"
+  ]
+}

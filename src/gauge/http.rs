@@ -31,7 +31,7 @@
 //! Halcyon's substring matches (`SEED`, `SU(2)`, `not declared`) land on
 //! a uniform shape. Internal storage failures map to 500.
 
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -462,6 +462,181 @@ async fn gauge_field_get(
     }))
 }
 
+// ── TDD-HAL-III.7 — Read-only Part III verb routes ─────────────
+//
+// `PLAQUETTE` (III.1), `Q_SURROGATE` (III.2), and a batched
+// `observables` endpoint that fans out to both. **No** dedicated
+// `gibbs_sample` route (locked decision D5): GIBBS_SAMPLE remains
+// reachable only through `POST /v1/gql` (parser::execute); the
+// route-table-absence is the load-bearing receipt the test suite
+// asserts at gate III.7.
+//
+// Group-erasure note (locked decision D6/D7): the handlers below
+// take the read-only `Arc<dyn GaugeFieldHandle>` from
+// `gauge::registry::get` and call the III.1 / III.2 library
+// functions, which already dispatch on `handle.group()`. JSON
+// envelopes carry no group label — only the `Vec<f64>` / scalar
+// `f64` shapes change when U(1) / SU(3) / Z(N) ships.
+
+/// Query string for `GET /v1/gauge_field/{name}/plaquette?reduction=…`.
+/// Mirrors the `PlaquetteReduction` enum tags (`per_face` / `mean` /
+/// `sum`). Default `mean` so a bare GET returns the canonical scalar
+/// the Halcyon mock surfaces.
+#[derive(Deserialize)]
+pub struct PlaquetteQuery {
+    #[serde(default = "default_reduction")]
+    pub reduction: String,
+}
+
+fn default_reduction() -> String {
+    "mean".to_string()
+}
+
+/// Per-face envelope: `{"reduction": "per_face", "values": [...]}`.
+/// Mirrors the JSON shape the GQL `SELECT PLAQUETTE OF U;` executor
+/// arm emits (locked decision D7 — `per_face` is `Vec<f64>` of length
+/// `F`, q0 column only).
+#[derive(Serialize)]
+pub struct PlaquettePerFaceEnvelope {
+    pub reduction: &'static str,
+    pub values: Vec<f64>,
+}
+
+/// Scalar reduction envelope: `{"reduction": "mean"|"sum", "value": …}`.
+#[derive(Serialize)]
+pub struct PlaquetteScalarEnvelope {
+    pub reduction: &'static str,
+    pub value: f64,
+}
+
+/// Either envelope shape, tagged at the JSON level by the `reduction`
+/// field. Axum routing is one handler per URI; the per-face / scalar
+/// split is inside the body, not in the route.
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum PlaquetteEnvelope {
+    PerFace(PlaquettePerFaceEnvelope),
+    Scalar(PlaquetteScalarEnvelope),
+}
+
+/// Resolve `(handle, lattice)` for the named field. Returns a flat 400
+/// + typed-error Display on either of the two failure modes (field not
+/// declared, lattice gone) so the same `not declared` substring anchor
+/// from Part II keeps working.
+fn resolve_field_and_lattice(
+    name: &str,
+) -> Result<(std::sync::Arc<dyn gauge_registry::GaugeFieldHandle>, Lattice), (StatusCode, Json<ErrorEnvelope>)>
+{
+    let handle = gauge_registry::get(name).ok_or_else(|| {
+        bad_request(GaugeFieldError::FieldNotDeclared(name.to_string()).to_string())
+    })?;
+    let lat = lattice_registry::get(handle.lattice_name()).ok_or_else(|| {
+        bad_request(
+            GaugeFieldError::LatticeNotDeclared(handle.lattice_name().to_string()).to_string(),
+        )
+    })?;
+    Ok((handle, lat))
+}
+
+async fn plaquette_get(
+    Path(name): Path<String>,
+    Query(q): Query<PlaquetteQuery>,
+) -> Result<Json<PlaquetteEnvelope>, (StatusCode, Json<ErrorEnvelope>)> {
+    let (handle, lat) = resolve_field_and_lattice(&name)?;
+    match q.reduction.to_ascii_lowercase().as_str() {
+        "per_face" => {
+            let values = super::plaquette::plaquette_per_face(handle.as_ref(), &lat)
+                .map_err(|e| bad_request(e.to_string()))?;
+            Ok(Json(PlaquetteEnvelope::PerFace(PlaquettePerFaceEnvelope {
+                reduction: "per_face",
+                values,
+            })))
+        }
+        "mean" => {
+            let value = super::plaquette::plaquette_mean(handle.as_ref(), &lat)
+                .map_err(|e| bad_request(e.to_string()))?;
+            Ok(Json(PlaquetteEnvelope::Scalar(PlaquetteScalarEnvelope {
+                reduction: "mean",
+                value,
+            })))
+        }
+        "sum" => {
+            let value = super::plaquette::plaquette_sum(handle.as_ref(), &lat)
+                .map_err(|e| bad_request(e.to_string()))?;
+            Ok(Json(PlaquetteEnvelope::Scalar(PlaquetteScalarEnvelope {
+                reduction: "sum",
+                value,
+            })))
+        }
+        other => Err(bad_request(format!(
+            "gauge: unknown plaquette reduction '{other}' (expected per_face / mean / sum)"
+        ))),
+    }
+}
+
+/// Scalar `Q_SURROGATE` envelope: `{"value": …}`. Mirrors the Halcyon
+/// mock JSON shape byte-for-byte at the JSON level (locked decision D6).
+#[derive(Serialize)]
+pub struct QSurrogateEnvelope {
+    pub value: f64,
+}
+
+async fn q_surrogate_get(
+    Path(name): Path<String>,
+) -> Result<Json<QSurrogateEnvelope>, (StatusCode, Json<ErrorEnvelope>)> {
+    let (handle, lat) = resolve_field_and_lattice(&name)?;
+    let value = super::q_surrogate::q_surrogate(handle.as_ref(), &lat)
+        .map_err(|e| bad_request(e.to_string()))?;
+    Ok(Json(QSurrogateEnvelope { value }))
+}
+
+/// Body for `POST /v1/gauge_field/{name}/observables`. Read-only
+/// despite the verb (II.6c clarification: POST without side effect is
+/// the consumer-safe batched-read pattern — accepts a JSON list of
+/// observable identifiers in the request body, returns one JSON key
+/// per identifier in the response).
+#[derive(Deserialize)]
+pub struct ObservablesBatchRequest {
+    pub observables: Vec<String>,
+}
+
+async fn observables_post(
+    Path(name): Path<String>,
+    Json(req): Json<ObservablesBatchRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorEnvelope>)> {
+    let (handle, lat) = resolve_field_and_lattice(&name)?;
+    let mut out = serde_json::Map::with_capacity(req.observables.len());
+    for obs in req.observables {
+        match obs.to_ascii_lowercase().as_str() {
+            "mean_plaquette" => {
+                let v = super::plaquette::plaquette_mean(handle.as_ref(), &lat)
+                    .map_err(|e| bad_request(e.to_string()))?;
+                out.insert(
+                    "mean_plaquette".to_string(),
+                    serde_json::Value::from(v),
+                );
+            }
+            "sum_plaquette" => {
+                let v = super::plaquette::plaquette_sum(handle.as_ref(), &lat)
+                    .map_err(|e| bad_request(e.to_string()))?;
+                out.insert("sum_plaquette".to_string(), serde_json::Value::from(v));
+            }
+            "q_surrogate" => {
+                let v = super::q_surrogate::q_surrogate(handle.as_ref(), &lat)
+                    .map_err(|e| bad_request(e.to_string()))?;
+                out.insert("q_surrogate".to_string(), serde_json::Value::from(v));
+            }
+            other => {
+                return Err(bad_request(format!(
+                    "gauge: unknown observable '{other}' (expected mean_plaquette / \
+                     sum_plaquette / q_surrogate)"
+                )));
+            }
+        }
+    }
+    Ok(Json(serde_json::Value::Object(out)))
+}
+
 /// Build the LATTICE + GAUGE_FIELD HTTP router. The gigi-stream binary
 /// merges this into its main app; the test harness drives the same
 /// router directly via `tower::ServiceExt::oneshot` (no listener).
@@ -478,6 +653,11 @@ async fn gauge_field_get(
 /// — they hit the global lattice + gauge registries (in-memory path)
 /// or the module-global engine handle (durable path) — so any concrete
 /// `S: Clone + Send + Sync + 'static` works.
+///
+/// TDD-HAL-III.7 additions: `PLAQUETTE` + `Q_SURROGATE` + batched
+/// `observables` routes wired alongside the II.6 declaration surface.
+/// **No** dedicated `gibbs_sample` route (locked decision D5) — the
+/// route table is the load-bearing receipt.
 pub fn build_router<S>() -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
@@ -487,4 +667,11 @@ where
         .route("/v1/lattice/{name}", get(lattice_get))
         .route("/v1/gauge_field", post(gauge_field_create))
         .route("/v1/gauge_field/{name}", get(gauge_field_get))
+        // TDD-HAL-III.7 read-only verb routes.
+        .route("/v1/gauge_field/{name}/plaquette", get(plaquette_get))
+        .route(
+            "/v1/gauge_field/{name}/observables/q_surrogate",
+            get(q_surrogate_get),
+        )
+        .route("/v1/gauge_field/{name}/observables", post(observables_post))
 }

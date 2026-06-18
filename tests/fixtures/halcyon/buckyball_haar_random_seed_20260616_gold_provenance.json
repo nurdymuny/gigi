@@ -6,7 +6,7 @@
   "n_edges": 90,
   "repr_dim": 4,
   "group": "SU(2)",
-  "harvest_commit": "17cd395c0d39f5eb5df87baf7ca751114f9850b2",
+  "harvest_commit": "4691d9cd2e552bcbcdd8c210612a30c788dee55d",
   "purpose": "GIGI-internal regression sentinel - flags if the RNG, the Marsaglia algorithm, or the per-edge draw order changes",
   "note": "Bee's locked decision 1: NumPy PCG64 mock-vs-live byte equality was dropped at the CSPRNG decision. This gold is intra-GIGI only."
 }

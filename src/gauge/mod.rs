@@ -42,6 +42,15 @@ pub mod group_element;
 pub mod edge_connection;
 #[cfg(feature = "gauge")]
 pub mod holonomy;
+#[cfg(feature = "gauge")]
+pub mod group;
+#[cfg(feature = "gauge")]
+pub mod dense_link_buffer;
+
+#[cfg(feature = "gauge")]
+pub use dense_link_buffer::{DenseLinkBuffer, GaugeFieldError};
+#[cfg(feature = "gauge")]
+pub use group::Group;
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

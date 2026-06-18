@@ -161,6 +161,17 @@ pub mod transactions;
 // `theory/causal_states/validation_tests.py` (36/36 green).
 #[cfg(feature = "causal_states")]
 pub mod causal_states;
+// Halcyon — Davis Wilson Lattice substrate. Part I (this sprint):
+// LATTICE verb (graph topology + face-cycle table) + generalized
+// HOLONOMY walker reading per-edge SU(2) connections through an
+// EdgeConnection trait. Group-erased at the trait level (the only
+// group implementation that ships is SU(2); U(1) and Z_N compile
+// but panic at use site). Opt-in via the `halcyon` feature flag.
+// See `HALCYON_PART_I_GATES.md` for the gate breakdown and
+// `theory/halcyon/HALCYON_PART_I_IMPLEMENTATION_LOG.md` for the
+// per-gate receipts.
+#[cfg(feature = "halcyon")]
+pub mod halcyon;
 pub mod spectral;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),

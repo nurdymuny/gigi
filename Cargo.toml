@@ -78,6 +78,15 @@ patterns = []
 # When OFF, the engine compiles and behaves exactly as before.
 causal_states = []
 
+# `halcyon` — opt-in Davis Wilson Lattice substrate. Part I (this
+# sprint): LATTICE verb (graph topology + face-cycle table) +
+# generalized HOLONOMY walker reading per-edge SU(2) connections
+# through an EdgeConnection trait. Group-erased at the trait level
+# (the only group implementation that ships is SU(2); U(1) and Z_N
+# compile but panic at use site). When OFF the engine compiles and
+# behaves exactly as before. See `HALCYON_PART_I_GATES.md`.
+halcyon = []
+
 # `wish` — opt-in boundary-value-problem geodesic verb. When ON, the
 # `gigi::imagine::wish` module is compiled, providing WishConfig,
 # WishOutcome (Granted / Unreachable / Indeterminate verdict trichotomy

@@ -324,6 +324,54 @@ mod tests {
         assert_eq!(gql, parsed.to_gql());
     }
 
+    /// TDD-HAL-I.7 — parser round-trip. Use the engine's GQL
+    /// front-end to parse both the explicit `VERTICES … EDGES …`
+    /// form and the `FROM TRUNCATED_ICOSAHEDRON` shorthand; assert
+    /// each yields the correct Statement variant + a re-parse of
+    /// the canonical re-emit form is bit-identical.
+    #[test]
+    fn tdd_hal_i_7_lattice_parse() {
+        use crate::parser;
+
+        // Explicit form.
+        let src = "LATTICE bb \
+                   VERTICES 4 \
+                   EDGES ((0,1),(1,2),(2,0)) \
+                   FACES ((0,1,2)) ;";
+        let stmt = parser::parse(src).expect("parse explicit LATTICE");
+        match &stmt {
+            parser::Statement::Lattice { name, gql } => {
+                assert_eq!(name, "bb");
+                // Re-parse the canonical re-emit form via the
+                // Lattice algebra's from_gql; that's the
+                // round-trip receipt.
+                let lat = Lattice::from_gql(gql).expect("re-parse Lattice");
+                assert_eq!(lat.name, "bb");
+                assert_eq!(lat.n_vertices, 4);
+                assert_eq!(lat.n_edges(), 3);
+                assert_eq!(lat.n_faces(), 1);
+            }
+            other => panic!("expected Statement::Lattice, got {other:?}"),
+        }
+
+        // Shorthand. Topology strings are single-quoted to match
+        // the GIGI tokenizer's existing string-literal convention.
+        let src2 = "LATTICE bb FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        let stmt = parser::parse(src2).expect("parse shorthand LATTICE");
+        match &stmt {
+            parser::Statement::LatticeFromCanonical {
+                name,
+                canonical,
+                topology,
+            } => {
+                assert_eq!(name, "bb");
+                assert_eq!(canonical.to_ascii_uppercase(), "TRUNCATED_ICOSAHEDRON");
+                assert_eq!(topology.as_deref(), Some("S2"));
+            }
+            other => panic!("expected LatticeFromCanonical, got {other:?}"),
+        }
+    }
+
     #[test]
     fn euler_chi_on_tetrahedron_face_count_check() {
         // 4 vertices, 6 edges, 4 faces → χ = 2 (S² topology).

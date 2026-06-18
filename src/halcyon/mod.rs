@@ -45,3 +45,4 @@ pub mod truncated_icosahedron;
 pub mod group_element;
 pub mod edge_connection;
 pub mod holonomy;
+pub mod registry;

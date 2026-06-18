@@ -700,6 +700,47 @@ pub enum Statement {
         /// PROJECT field list. `_score` is always available.
         project: Option<Vec<String>>,
     },
+
+    // ── HALCYON Part I: LATTICE verb. Behind the `halcyon` feature
+    //    flag so the default-feature build's surface is byte-identical
+    //    to the pre-Halcyon engine. The explicit form ships V/E/F by
+    //    enumeration; the shorthand form names a canonical graph
+    //    constructor (only `TRUNCATED_ICOSAHEDRON` at launch).
+    //
+    //    Stored as a string body the executor hands to
+    //    `crate::halcyon::lattice::Lattice::from_gql` (and the
+    //    shorthand form to `truncated_icosahedron::buckyball`). This
+    //    keeps the parser surface narrow — the Lattice algebra owns
+    //    its own canonical re-emit form.
+    /// `LATTICE name VERTICES n EDGES (…) FACES (…) [TOPOLOGY "S"];`
+    #[cfg(feature = "halcyon")]
+    Lattice {
+        /// User-facing lattice name (the `ident` after `LATTICE`).
+        name: String,
+        /// Verbatim GQL re-emit body (canonical form). The executor
+        /// rebuilds the `Lattice` via `from_gql` so the parser and
+        /// the Lattice algebra share one round-trip contract.
+        gql: String,
+    },
+    /// `LATTICE name FROM TRUNCATED_ICOSAHEDRON [TOPOLOGY "S"];`
+    ///
+    /// Names a canonical graph constructor. Only
+    /// `TRUNCATED_ICOSAHEDRON` is wired at launch; future canonical
+    /// graphs (cubic-lattice / hexagonal / …) extend by adding
+    /// constructor names here.
+    #[cfg(feature = "halcyon")]
+    LatticeFromCanonical {
+        /// User-facing lattice name.
+        name: String,
+        /// Canonical graph identifier (UPPER_SNAKE; e.g.
+        /// `TRUNCATED_ICOSAHEDRON`).
+        canonical: String,
+        /// Optional topology hint.
+        topology: Option<String>,
+    },
+    /// `SHOW LATTICE name;`
+    #[cfg(feature = "halcyon")]
+    ShowLattice { name: String },
 }
 
 /// Whitelisted gauge-invariant operations. Each maps to an existing
@@ -1177,6 +1218,10 @@ impl Parser {
             "DEFINE" => self.parse_define_pattern(),
             #[cfg(feature = "patterns")]
             "HUNT" => self.parse_hunt(),
+            // HALCYON Part I — LATTICE verb. Feature-gated so the
+            // default build's reserved-keyword surface is unchanged.
+            #[cfg(feature = "halcyon")]
+            "LATTICE" => self.parse_lattice(),
             "INTEGRATE" => self.parse_integrate(),
             "PULLBACK" => self.parse_pullback(),
             "COLLAPSE" => {
@@ -2039,6 +2084,138 @@ impl Parser {
             all,
             #[cfg(feature = "patterns")]
             excluding,
+        })
+    }
+
+    // ── HALCYON Part I: LATTICE verb (feature-gated) ──
+
+    /// Parse a `LATTICE` statement (explicit or canonical-shorthand
+    /// form). Closes the parser-surface half of TDD-HAL-I.7. The
+    /// executor (`Statement::Lattice` / `Statement::LatticeFromCanonical`
+    /// arms in `execute`) drives `crate::halcyon` from here.
+    ///
+    /// Grammar (per `HALCYON_PART_I_GATES.md` Part I scope):
+    ///
+    /// ```ebnf
+    /// lattice_stmt
+    ///   : "LATTICE" ident "VERTICES" integer
+    ///       "EDGES" "(" edge_list ")"
+    ///       [ "FACES" "(" face_list ")" ]
+    ///       [ "TOPOLOGY" string ]
+    ///       ";"
+    ///   | "LATTICE" ident "FROM" canonical_id
+    ///       [ "TOPOLOGY" string ]
+    ///       ";"
+    ///   ;
+    /// ```
+    #[cfg(feature = "halcyon")]
+    fn parse_lattice(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        // Shorthand: LATTICE name FROM CANONICAL_ID [TOPOLOGY "..."];
+        if self.is_keyword("FROM") {
+            self.advance();
+            let canonical = self.expect_word()?;
+            let topology = if self.is_keyword("TOPOLOGY") {
+                self.advance();
+                match self.advance() {
+                    Some(Token::Str(s)) => Some(s),
+                    other => return Err(format!("Expected TOPOLOGY string, got {other:?}")),
+                }
+            } else {
+                None
+            };
+            // Optional trailing semicolon — same lenience as the
+            // rest of the parser.
+            if matches!(self.peek(), Some(Token::Semicolon)) {
+                self.advance();
+            }
+            return Ok(Statement::LatticeFromCanonical {
+                name,
+                canonical,
+                topology,
+            });
+        }
+
+        // Explicit form: LATTICE name VERTICES n EDGES ((u,v),…)
+        //   [FACES ((v0,v1,…),…)] [TOPOLOGY "S"];
+        self.expect_keyword("VERTICES")?;
+        let n_vertices = self.expect_usize()?;
+
+        self.expect_keyword("EDGES")?;
+        self.expect(Token::LParen)?;
+        let mut edges: Vec<(usize, usize)> = Vec::new();
+        loop {
+            if matches!(self.peek(), Some(Token::RParen)) {
+                break;
+            }
+            if !edges.is_empty() {
+                self.expect(Token::Comma)?;
+            }
+            self.expect(Token::LParen)?;
+            let u = self.expect_usize()?;
+            self.expect(Token::Comma)?;
+            let v = self.expect_usize()?;
+            self.expect(Token::RParen)?;
+            edges.push((u, v));
+        }
+        self.expect(Token::RParen)?;
+
+        let mut faces: Vec<Vec<usize>> = Vec::new();
+        if self.is_keyword("FACES") {
+            self.advance();
+            self.expect(Token::LParen)?;
+            loop {
+                if matches!(self.peek(), Some(Token::RParen)) {
+                    break;
+                }
+                if !faces.is_empty() {
+                    self.expect(Token::Comma)?;
+                }
+                self.expect(Token::LParen)?;
+                let mut face: Vec<usize> = Vec::new();
+                loop {
+                    if matches!(self.peek(), Some(Token::RParen)) {
+                        break;
+                    }
+                    if !face.is_empty() {
+                        self.expect(Token::Comma)?;
+                    }
+                    face.push(self.expect_usize()?);
+                }
+                self.expect(Token::RParen)?;
+                faces.push(face);
+            }
+            self.expect(Token::RParen)?;
+        }
+
+        let topology = if self.is_keyword("TOPOLOGY") {
+            self.advance();
+            match self.advance() {
+                Some(Token::Str(s)) => Some(s),
+                other => return Err(format!("Expected TOPOLOGY string, got {other:?}")),
+            }
+        } else {
+            None
+        };
+
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+
+        // Build the canonical GQL re-emit body via the Lattice
+        // algebra's `to_gql`; the executor reads it back through
+        // `from_gql`. One round-trip contract, owned by the
+        // Lattice module.
+        let lat = crate::halcyon::lattice::Lattice::new(
+            name.clone(),
+            n_vertices,
+            edges,
+            faces,
+            topology,
+        );
+        Ok(Statement::Lattice {
+            name,
+            gql: lat.to_gql(),
         })
     }
 
@@ -3392,6 +3569,12 @@ impl Parser {
                 self.expect_keyword("ON")?;
                 let bundle = self.expect_word()?;
                 Ok(Statement::ShowComments { bundle })
+            }
+            // HALCYON Part I — `SHOW LATTICE name`.
+            #[cfg(feature = "halcyon")]
+            "LATTICE" => {
+                let name = self.expect_word()?;
+                Ok(Statement::ShowLattice { name })
             }
             _ => Err(format!("Unknown SHOW target: {what}")),
         }
@@ -7538,6 +7721,81 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             } else {
                 Ok(ExecResult::Rows(rows))
             }
+        }
+
+        // ── HALCYON Part I: LATTICE executor arms ──
+        //
+        // Explicit `LATTICE name VERTICES … EDGES … FACES … TOPOLOGY …;`
+        // — the parser packs the canonical GQL re-emit form into
+        // `gql`; the executor round-trips it through
+        // `Lattice::from_gql` and registers under the lattice's
+        // name.
+        #[cfg(feature = "halcyon")]
+        Statement::Lattice { name: _name, gql } => {
+            let lat = crate::halcyon::lattice::Lattice::from_gql(gql)
+                .map_err(|e| format!("LATTICE re-parse failed: {e}"))?;
+            crate::halcyon::registry::register(lat);
+            Ok(ExecResult::Ok)
+        }
+
+        // Shorthand: `LATTICE name FROM TRUNCATED_ICOSAHEDRON
+        // [TOPOLOGY "S"];`. Only `TRUNCATED_ICOSAHEDRON` is wired
+        // at launch — see `HALCYON_PART_I_GATES.md` Part I scope.
+        #[cfg(feature = "halcyon")]
+        Statement::LatticeFromCanonical {
+            name,
+            canonical,
+            topology,
+        } => {
+            let mut lat = match canonical.to_ascii_uppercase().as_str() {
+                "TRUNCATED_ICOSAHEDRON" => {
+                    crate::halcyon::truncated_icosahedron::buckyball()
+                }
+                other => {
+                    return Err(format!(
+                        "Unknown canonical lattice constructor: '{other}'. \
+                         Part I ships only TRUNCATED_ICOSAHEDRON."
+                    ));
+                }
+            };
+            // Rename to the user-supplied name, override topology
+            // hint if one was supplied. Buckyball's default
+            // topology is `"S2"` — leave that intact unless the
+            // statement overrides it.
+            lat.name = name.clone();
+            if let Some(t) = topology {
+                lat.topology = Some(t.clone());
+            }
+            crate::halcyon::registry::register(lat);
+            Ok(ExecResult::Ok)
+        }
+
+        // `SHOW LATTICE name;` — emit the registered lattice's
+        // canonical GQL form on the single returned row's `gql`
+        // column. The integration test in `src/halcyon/registry.rs`
+        // round-trips this through `parse_gql` and verifies
+        // structural equality.
+        #[cfg(feature = "halcyon")]
+        Statement::ShowLattice { name } => {
+            let lat = crate::halcyon::registry::get(name)
+                .ok_or_else(|| format!("Lattice '{name}' is not registered"))?;
+            let gql = lat.to_gql();
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert("name".to_string(), crate::types::Value::Text(lat.name));
+            record.insert("gql".to_string(), crate::types::Value::Text(gql));
+            record.insert(
+                "n_vertices".to_string(),
+                crate::types::Value::Integer(lat.n_vertices as i64),
+            );
+            record.insert(
+                "n_edges".to_string(),
+                crate::types::Value::Integer(lat.edges.len() as i64),
+            );
+            record.insert(
+                "n_faces".to_string(),
+                crate::types::Value::Integer(lat.faces.len() as i64),
+            );
+            Ok(ExecResult::Rows(vec![record]))
         }
     }
 }

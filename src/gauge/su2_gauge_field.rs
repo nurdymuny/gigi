@@ -99,6 +99,42 @@ impl SU2GaugeField {
             init_seed: seed,
         })
     }
+
+    /// **Test-only sugar** — build an `SU2GaugeField` from a
+    /// pre-materialized `DenseLinkBuffer`, bypassing the INIT
+    /// routines `new` runs. Used by the TDD-HAL-II.7 gold-walker
+    /// gate to load the Part I gold quaternion fixture directly
+    /// into a field (the fixture is a frozen reference state, not
+    /// the output of an INIT routine).
+    ///
+    /// Production code MUST go through `SU2GaugeField::new` with a
+    /// `GaugeFieldInit` clause so the init recipe is recorded in
+    /// the field's metadata and the executor / persistence layer
+    /// can round-trip the declaration through SHOW. This factory
+    /// is hidden from rustdoc to discourage production use.
+    ///
+    /// Gated on `#[doc(hidden)]` rather than `#[cfg(test)]` because
+    /// the TDD-HAL-II.7 gate is an integration test (separate
+    /// crate from the library) — `#[cfg(test)]` items are invisible
+    /// across that boundary. The Halcyon spec section 6 marks this
+    /// constructor as test-only sugar; production callers are
+    /// expected to use `new`.
+    #[doc(hidden)]
+    pub fn from_buffer(
+        name: String,
+        lattice_name: String,
+        buffer: DenseLinkBuffer,
+        init_kind: GaugeFieldInit,
+        init_seed: Option<u64>,
+    ) -> Self {
+        Self {
+            name,
+            lattice_name,
+            buffer,
+            init_kind,
+            init_seed,
+        }
+    }
 }
 
 impl EdgeConnection for SU2GaugeField {

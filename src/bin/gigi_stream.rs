@@ -14472,6 +14472,20 @@ async fn main() {
         .route("/v1/wish", post(wish_http))
         .route("/v1/bundles/{name}/wish", post(wish_bundle_http));
 
+    // TDD-HAL-II.6 — LATTICE + GAUGE_FIELD HTTP surface. The four
+    // routes (POST /v1/lattice, GET /v1/lattice/{name}, POST
+    // /v1/gauge_field, GET /v1/gauge_field/{name}) are built by
+    // `gigi::gauge::http::build_router()` so the same router shape
+    // serves the in-process test harness (tests/halcyon_part_ii_http.rs)
+    // and the gigi-stream binary without duplication. Routes are
+    // stateless — the lattice + gauge registries are process
+    // singletons that the handlers thread through directly. Halcyon's
+    // mock-to-live swap (the production consumer) parses the JSON
+    // envelope `{"group": "SU(2)", "repr_dim": 4, "n_edges": 90,
+    // "data": [[…],…]}` per Bee's locked decision 4.
+    #[cfg(feature = "gauge")]
+    let app = app.merge(gigi::gauge::http::build_router());
+
     let app = app
         // GQL endpoint
         .route("/v1/gql", post(gql_query))

@@ -669,6 +669,7 @@ dependencies = [
  "group",
  "hkdf",
  "hmac",
+ "http-body-util",
  "hybrid-array",
  "instant-distance",
  "kem",
@@ -689,6 +690,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "tower",
  "tower-http",
  "uuid",
 ]

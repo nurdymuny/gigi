@@ -56,6 +56,8 @@ pub mod su2_gauge_field;
 pub mod registry;
 #[cfg(feature = "gauge")]
 pub mod persistence;
+#[cfg(feature = "gauge")]
+pub mod http;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;

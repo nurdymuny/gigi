@@ -297,3 +297,10 @@ required-features = ["causal_states"]
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"
+# In-process axum router driving for the TDD-HAL-II.6 HTTP gate. Tower
+# is already a transitive dep through axum; surfacing it directly gives
+# the test crate `tower::ServiceExt::oneshot`. `http-body-util` lets the
+# same test collect the response body without spinning up a real
+# listener.
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

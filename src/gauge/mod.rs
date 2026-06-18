@@ -46,11 +46,15 @@ pub mod holonomy;
 pub mod group;
 #[cfg(feature = "gauge")]
 pub mod dense_link_buffer;
+#[cfg(feature = "gauge")]
+pub mod marsaglia_haar;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::{DenseLinkBuffer, GaugeFieldError};
 #[cfg(feature = "gauge")]
 pub use group::Group;
+#[cfg(feature = "gauge")]
+pub use marsaglia_haar::haar_random_su2;
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

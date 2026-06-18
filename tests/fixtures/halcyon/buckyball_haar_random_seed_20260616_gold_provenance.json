@@ -1,0 +1,12 @@
+{
+  "source": "gigi::gauge::dense_link_buffer::DenseLinkBuffer::new_haar",
+  "seed": 20260616,
+  "rng": "gigi::gauge::marsaglia_haar::SmallRng (xorshift64*, mirrored from gigi::geometry::generative_flow::SmallRng)",
+  "algorithm": "Marsaglia 4-uniforms-with-rejection",
+  "n_edges": 90,
+  "repr_dim": 4,
+  "group": "SU(2)",
+  "harvest_commit": "17cd395c0d39f5eb5df87baf7ca751114f9850b2",
+  "purpose": "GIGI-internal regression sentinel - flags if the RNG, the Marsaglia algorithm, or the per-edge draw order changes",
+  "note": "Bee's locked decision 1: NumPy PCG64 mock-vs-live byte equality was dropped at the CSPRNG decision. This gold is intra-GIGI only."
+}

@@ -744,6 +744,48 @@ pub enum Statement {
     /// `SHOW LATTICE name;`
     #[cfg(feature = "lattice")]
     ShowLattice { name: String },
+
+    // ── GAUGE_FIELD verb (gated by `gauge` feature). Closes TDD-HAL-II.5.
+    //    Group-erased connection over a declared LATTICE. The parser
+    //    accepts every variant `Group` knows about (SU(2)/SU(3)/U(1)/Z(N));
+    //    the executor proceeds only for `Group::SU2` and returns
+    //    `GaugeFieldError::UnsupportedGroup` for the rest (Bee's locked
+    //    decision 6).
+    /// `GAUGE_FIELD name ON LATTICE lat GROUP <g> INIT <init> [PERSIST];`
+    #[cfg(feature = "gauge")]
+    GaugeField {
+        /// User-facing field name (the `ident` after `GAUGE_FIELD`).
+        name: String,
+        /// Name of the lattice this field is bound to.
+        lattice: String,
+        /// Structure-group tag (Bee's locked decision 6 — group-erased
+        /// storage). Only `Group::SU2` proceeds to construction at
+        /// launch; the others are accepted syntactically and rejected
+        /// at executor time with `GaugeFieldError::UnsupportedGroup`.
+        group: crate::gauge::Group,
+        /// Initialization recipe — `IDENTITY` / `HAAR_RANDOM` /
+        /// `FROM <ident>`.
+        init: crate::gauge::GaugeFieldInit,
+        /// Optional Haar seed (mandatory for `HAAR_RANDOM` per Bee's
+        /// locked decision 1; the parser accepts a missing seed and the
+        /// executor surfaces `GaugeFieldError::SeedRequired` so the
+        /// error path stays uniform).
+        seed: Option<u64>,
+        /// `PERSIST` keyword → durable via `engine.declare_gauge_field_durable`.
+        /// Default (no keyword) registers in-memory only.
+        persist: bool,
+    },
+    /// `SHOW GAUGE_FIELD name [BUFFER];`
+    #[cfg(feature = "gauge")]
+    ShowGaugeField {
+        /// Gauge-field name to introspect.
+        name: String,
+        /// `BUFFER` keyword → include the full `(n_edges, repr_dim)`
+        /// quaternion matrix in the result row's `data` column. Without
+        /// `BUFFER` the row carries only metadata
+        /// (name/lattice/group/repr_dim/n_edges/init_kind/init_seed).
+        with_buffer: bool,
+    },
 }
 
 /// Whitelisted gauge-invariant operations. Each maps to an existing
@@ -1227,6 +1269,11 @@ impl Parser {
             // Lattice substrate is the first consumer).
             #[cfg(feature = "lattice")]
             "LATTICE" => self.parse_lattice(),
+            // GAUGE_FIELD verb. Feature-gated on `gauge` so the default
+            // build's reserved-keyword surface is unchanged. Closes
+            // TDD-HAL-II.5 (parser + executor).
+            #[cfg(feature = "gauge")]
+            "GAUGE_FIELD" => self.parse_gauge_field(),
             "INTEGRATE" => self.parse_integrate(),
             "PULLBACK" => self.parse_pullback(),
             "COLLAPSE" => {
@@ -2222,6 +2269,130 @@ impl Parser {
             name,
             gql: lat.to_gql(),
         })
+    }
+
+    // ── GAUGE_FIELD verb (gated by `gauge` feature) ──
+
+    /// Parse a `GAUGE_FIELD` statement. Closes the parser half of
+    /// TDD-HAL-II.5. The executor (`Statement::GaugeField` arm in
+    /// `execute`) drives `crate::gauge::SU2GaugeField::new` +
+    /// `crate::gauge::registry::register` (in-memory) or
+    /// `engine.declare_gauge_field_durable` (PERSIST) from here.
+    ///
+    /// Grammar (per `GIGI_HALCYON_LATTICE_PRIMITIVES_SPRINT_SPEC.md`
+    /// §3.P0.2, with the PERSIST extension from Bee's locked decision 3):
+    ///
+    /// ```ebnf
+    /// gauge_field_stmt =
+    ///   "GAUGE_FIELD" ident "ON" "LATTICE" ident "GROUP" group_label
+    ///   "INIT" init_clause [ "PERSIST" ] ";"
+    /// group_label = "SU(2)" | "SU(3)" | "U(1)" | "Z(" int ")"
+    /// init_clause = "IDENTITY"
+    ///             | "HAAR_RANDOM" [ "SEED" int ]
+    ///             | "FROM" ident
+    /// ```
+    ///
+    /// The parser accepts every `Group` variant syntactically — group
+    /// erasure (Bee's locked decision 6) routes the non-SU(2) error
+    /// path through the executor's `GaugeFieldError::UnsupportedGroup`
+    /// arm so the failure has a stable `Display` impl Halcyon's G2.D
+    /// regex anchor can match.
+    #[cfg(feature = "gauge")]
+    fn parse_gauge_field(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        self.expect_keyword("LATTICE")?;
+        let lattice = self.expect_word()?;
+        self.expect_keyword("GROUP")?;
+        let group = self.parse_group_label()?;
+        self.expect_keyword("INIT")?;
+        let (init, seed) = self.parse_init_clause()?;
+        let persist = if self.is_keyword("PERSIST") {
+            self.advance();
+            true
+        } else {
+            false
+        };
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::GaugeField {
+            name,
+            lattice,
+            group,
+            init,
+            seed,
+            persist,
+        })
+    }
+
+    /// Parse a `group_label` per the GAUGE_FIELD EBNF. The lexer
+    /// already split `SU(2)` into `Word("SU"), LParen, Number(2),
+    /// RParen` so we just reconstruct the variant.
+    #[cfg(feature = "gauge")]
+    fn parse_group_label(&mut self) -> Result<crate::gauge::Group, String> {
+        let head = self.expect_word()?;
+        match head.to_ascii_uppercase().as_str() {
+            "SU" => {
+                self.expect(Token::LParen)?;
+                let n = self.expect_usize()?;
+                self.expect(Token::RParen)?;
+                match n {
+                    2 => Ok(crate::gauge::Group::SU2),
+                    3 => Ok(crate::gauge::Group::SU3),
+                    other => Err(format!(
+                        "GROUP SU({other}) not recognized (Part II ships SU(2)/SU(3) as group tags)"
+                    )),
+                }
+            }
+            "U" => {
+                self.expect(Token::LParen)?;
+                let n = self.expect_usize()?;
+                self.expect(Token::RParen)?;
+                match n {
+                    1 => Ok(crate::gauge::Group::U1),
+                    other => Err(format!(
+                        "GROUP U({other}) not recognized (only U(1) is a recognized tag)"
+                    )),
+                }
+            }
+            "Z" => {
+                self.expect(Token::LParen)?;
+                let n = self.expect_usize()?;
+                self.expect(Token::RParen)?;
+                Ok(crate::gauge::Group::ZN { n: n as u32 })
+            }
+            other => Err(format!(
+                "Expected group label (SU(2)/SU(3)/U(1)/Z(N)), got '{other}'"
+            )),
+        }
+    }
+
+    /// Parse an `init_clause` per the GAUGE_FIELD EBNF.
+    #[cfg(feature = "gauge")]
+    fn parse_init_clause(
+        &mut self,
+    ) -> Result<(crate::gauge::GaugeFieldInit, Option<u64>), String> {
+        let head = self.expect_word()?;
+        match head.to_ascii_uppercase().as_str() {
+            "IDENTITY" => Ok((crate::gauge::GaugeFieldInit::Identity, None)),
+            "HAAR_RANDOM" => {
+                let seed = if self.is_keyword("SEED") {
+                    self.advance();
+                    Some(self.expect_usize()? as u64)
+                } else {
+                    None
+                };
+                Ok((crate::gauge::GaugeFieldInit::HaarRandom, seed))
+            }
+            "FROM" => {
+                let src = self.expect_word()?;
+                Ok((crate::gauge::GaugeFieldInit::FromField(src), None))
+            }
+            other => Err(format!(
+                "Expected init clause (IDENTITY / HAAR_RANDOM / FROM), got '{other}'"
+            )),
+        }
     }
 
     // ── GQL: INTEGRATE (aggregation) ──
@@ -3581,6 +3752,20 @@ impl Parser {
             "LATTICE" => {
                 let name = self.expect_word()?;
                 Ok(Statement::ShowLattice { name })
+            }
+            // `SHOW GAUGE_FIELD name [BUFFER]` — gated on `gauge`.
+            // Closes the SHOW half of TDD-HAL-II.5. Without `BUFFER`
+            // the row carries only metadata; with `BUFFER` the row
+            // additionally carries the full (n_edges, repr_dim)
+            // matrix in the `data` column.
+            #[cfg(feature = "gauge")]
+            "GAUGE_FIELD" => {
+                let name = self.expect_word()?;
+                let with_buffer = self.is_keyword("BUFFER");
+                if with_buffer {
+                    self.advance();
+                }
+                Ok(Statement::ShowGaugeField { name, with_buffer })
             }
             _ => Err(format!("Unknown SHOW target: {what}")),
         }
@@ -7803,6 +7988,196 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             );
             Ok(ExecResult::Rows(vec![record]))
         }
+
+        // ── GAUGE_FIELD executor arms (gated on `gauge` feature) ──
+        //
+        // `GAUGE_FIELD name ON LATTICE lat GROUP G INIT … [PERSIST];`
+        // closes the executor half of TDD-HAL-II.5. Bee's locked
+        // decisions wired through:
+        //   1. (CSPRNG / bit-identity) — `SU2GaugeField::new` calls
+        //      `DenseLinkBuffer::new_haar` which runs the Marsaglia
+        //      sampler through GIGI's own SmallRng (xorshift64*); same
+        //      seed → byte-identical buffer.
+        //   3. (PERSIST routing) — explicit `PERSIST` keyword routes to
+        //      `engine.declare_gauge_field_durable`; default routes to
+        //      the in-memory `gauge::registry::register`.
+        //   5. (typed errors) — every failure mode surfaces as a
+        //      `GaugeFieldError` Display string; Halcyon's G2.D regex
+        //      anchor `SU\(2\)` matches against
+        //      `UnsupportedGroup(group).to_string()`.
+        //   6. (group erasure) — the parser accepts every Group
+        //      variant; non-SU(2) variants fail here with
+        //      `UnsupportedGroup`.
+        #[cfg(feature = "gauge")]
+        Statement::GaugeField {
+            name,
+            lattice,
+            group,
+            init,
+            seed,
+            persist,
+        } => {
+            use crate::gauge::{GaugeFieldError, GaugeFieldInit, Group, SU2GaugeField};
+
+            // 1. Resolve the bound lattice. The `LatticeNotDeclared`
+            //    Display contains the literal "not declared" so the
+            //    Halcyon G2.B regex anchor `not declared` matches.
+            let lat = crate::lattice::registry::get(lattice).ok_or_else(|| {
+                GaugeFieldError::LatticeNotDeclared(lattice.clone()).to_string()
+            })?;
+
+            // 2. Group-erasure dispatch — only SU(2) proceeds to
+            //    construction at launch. Bee's locked decision 6.
+            if !matches!(group, Group::SU2) {
+                return Err(GaugeFieldError::UnsupportedGroup(*group).to_string());
+            }
+
+            // 3. Resolve `INIT FROM other` if requested — clone the
+            //    source field's buffer + metadata. Otherwise hand off
+            //    to `SU2GaugeField::new` directly.
+            let field = match init {
+                GaugeFieldInit::FromField(src) => {
+                    let src_handle =
+                        crate::gauge::registry::get(src).ok_or_else(|| {
+                            GaugeFieldError::FieldNotDeclared(src.clone()).to_string()
+                        })?;
+                    // Source must live on the same lattice (the
+                    // walker reads through the bound lattice's edge
+                    // ids; a foreign-lattice clone would silently
+                    // mis-index).
+                    if src_handle.lattice_name() != lat.name {
+                        return Err(format!(
+                            "gauge: INIT FROM source '{}' lives on lattice '{}', \
+                             not '{}'",
+                            src,
+                            src_handle.lattice_name(),
+                            lat.name
+                        ));
+                    }
+                    let src_buf = src_handle.as_dense_buffer().clone();
+                    SU2GaugeField {
+                        name: name.clone(),
+                        lattice_name: lat.name.clone(),
+                        buffer: src_buf,
+                        init_kind: GaugeFieldInit::FromField(src.clone()),
+                        init_seed: None,
+                    }
+                }
+                _ => SU2GaugeField::new(name.clone(), &lat, init.clone(), *seed)
+                    .map_err(|e| e.to_string())?,
+            };
+
+            let handle: std::sync::Arc<dyn crate::gauge::registry::GaugeFieldHandle> =
+                std::sync::Arc::new(field);
+
+            // 4. Persistence routing — PERSIST keyword takes the
+            //    durable path through the engine (Bee's locked
+            //    decision 3); the default declaration is in-memory.
+            if *persist {
+                engine
+                    .declare_gauge_field_durable(handle)
+                    .map_err(|e| format!("gauge: PERSIST failed: {e}"))?;
+            } else {
+                crate::gauge::registry::register(handle);
+            }
+            Ok(ExecResult::Ok)
+        }
+
+        // `SHOW GAUGE_FIELD name [BUFFER];` — emit the registered
+        // gauge field's metadata (and optionally the full
+        // `(n_edges, repr_dim)` buffer) as a single-row result. The
+        // BUFFER form materializes the JSON envelope's `data` field
+        // (Bee's locked decision 4) as a row-major Vec<Vec<f64>>.
+        #[cfg(feature = "gauge")]
+        Statement::ShowGaugeField { name, with_buffer } => {
+            let handle = crate::gauge::registry::get(name).ok_or_else(|| {
+                crate::gauge::GaugeFieldError::FieldNotDeclared(name.clone()).to_string()
+            })?;
+            let buf = handle.as_dense_buffer();
+            let (kind, init_seed) = handle.init_metadata();
+            let init_kind = match &kind {
+                crate::gauge::GaugeFieldInit::Identity => "IDENTITY",
+                crate::gauge::GaugeFieldInit::HaarRandom => "HAAR_RANDOM",
+                crate::gauge::GaugeFieldInit::FromField(_) => "FROM_FIELD",
+            };
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "name".into(),
+                crate::types::Value::Text(handle.name().to_string()),
+            );
+            record.insert(
+                "lattice".into(),
+                crate::types::Value::Text(handle.lattice_name().to_string()),
+            );
+            record.insert(
+                "group".into(),
+                crate::types::Value::Text(handle.group().label().to_string()),
+            );
+            record.insert(
+                "repr_dim".into(),
+                crate::types::Value::Integer(buf.repr_dim as i64),
+            );
+            record.insert(
+                "n_edges".into(),
+                crate::types::Value::Integer(buf.n_edges as i64),
+            );
+            record.insert(
+                "init_kind".into(),
+                crate::types::Value::Text(init_kind.to_string()),
+            );
+            record.insert(
+                "init_seed".into(),
+                match init_seed {
+                    Some(s) => crate::types::Value::Integer(s as i64),
+                    None => crate::types::Value::Null,
+                },
+            );
+            // FROM_FIELD source name (round-trips through SHOW for
+            // declarations cloned from another field).
+            if let crate::gauge::GaugeFieldInit::FromField(src) = &kind {
+                record.insert(
+                    "init_from".into(),
+                    crate::types::Value::Text(src.clone()),
+                );
+            }
+            if *with_buffer {
+                // Row-major (n_edges, repr_dim) packed into a
+                // Vec<Value::Vector>. The HTTP surface (II.6) lifts
+                // this into the JSON envelope's `data` field.
+                let mut rows: Vec<crate::types::Value> =
+                    Vec::with_capacity(buf.n_edges);
+                let d = buf.repr_dim;
+                for e in 0..buf.n_edges {
+                    let slice = &buf.data[e * d..(e + 1) * d];
+                    rows.push(crate::types::Value::Vector(slice.to_vec()));
+                }
+                record.insert(
+                    "data".into(),
+                    crate::types::Value::Vector(
+                        // Flatten row-major into a single Vector so
+                        // the existing `Value` surface stays
+                        // unchanged. `repr_dim` + `n_edges` recover
+                        // shape.
+                        buf.data.clone(),
+                    ),
+                );
+                // Also expose the per-row split for callers that
+                // want it without re-chunking. Stored under
+                // `data_rows` as a Vec-of-Vectors via repeated
+                // Vector entries is not representable in the flat
+                // Value enum, so we expose `data_flat_len` as the
+                // sanity-check companion.
+                let _ = rows; // keep the row split logic alive for
+                              // future structural columns; today the
+                              // flat representation is the single
+                              // wire format.
+                record.insert(
+                    "data_flat_len".into(),
+                    crate::types::Value::Integer((buf.n_edges * d) as i64),
+                );
+            }
+            Ok(ExecResult::Rows(vec![record]))
+        }
     }
 }
 
@@ -10288,6 +10663,308 @@ mod tests {
                 assert!((angle - 0.785).abs() < 1e-9);
             }
             other => panic!("Expected TransportRotation, got {other:?}"),
+        }
+    }
+
+    // ─── TDD-HAL-II.5 — GAUGE_FIELD parser + executor ───────────────
+    //
+    // Closes the parser + embedded-executor half of GAUGE_FIELD
+    // declaration. Bee's locked decisions wired through:
+    //   1. (CSPRNG / intra-binding bit-identity) — SU2GaugeField::new
+    //      runs the Marsaglia sampler through GIGI's SmallRng, so
+    //      `INIT HAAR_RANDOM SEED N` produces a buffer determined
+    //      entirely by the seed.
+    //   3. (PERSIST routing) — `PERSIST` keyword routes the executor
+    //      through `engine.declare_gauge_field_durable`; without it
+    //      the registration is in-memory.
+    //   5. (typed errors) — every failure mode surfaces as a
+    //      `GaugeFieldError` Display string; Halcyon's regex anchors
+    //      `SU\(2\)` / `SEED` / `not declared` all match.
+    //   6. (group erasure) — the parser accepts SU(2)/SU(3)/U(1)/Z(N)
+    //      syntactically; only Group::SU2 proceeds to construction.
+
+    /// TDD-HAL-II.5: `GAUGE_FIELD U ON LATTICE buckyball GROUP SU(2)
+    /// INIT IDENTITY;` parses into the expected Statement::GaugeField
+    /// shape (the red anchor for the gate).
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_ii_5_gauge_field_parse_identity() {
+        let stmt = parse(
+            "GAUGE_FIELD U ON LATTICE buckyball GROUP SU(2) INIT IDENTITY;",
+        )
+        .expect("parse GAUGE_FIELD identity");
+        match stmt {
+            Statement::GaugeField {
+                name,
+                lattice,
+                group,
+                init,
+                seed,
+                persist,
+            } => {
+                assert_eq!(name, "U");
+                assert_eq!(lattice, "buckyball");
+                assert_eq!(group, crate::gauge::Group::SU2);
+                assert_eq!(init, crate::gauge::GaugeFieldInit::Identity);
+                assert_eq!(seed, None);
+                assert!(!persist);
+            }
+            other => panic!("Expected Statement::GaugeField, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-II.5: HAAR_RANDOM with SEED + PERSIST round-trips
+    /// through the parser into the expected Statement::GaugeField
+    /// shape.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_ii_5_gauge_field_parse_haar_with_seed() {
+        let stmt = parse(
+            "GAUGE_FIELD U ON LATTICE buckyball GROUP SU(2) \
+             INIT HAAR_RANDOM SEED 20260616 PERSIST;",
+        )
+        .expect("parse GAUGE_FIELD haar + persist");
+        match stmt {
+            Statement::GaugeField {
+                name,
+                lattice,
+                group,
+                init,
+                seed,
+                persist,
+            } => {
+                assert_eq!(name, "U");
+                assert_eq!(lattice, "buckyball");
+                assert_eq!(group, crate::gauge::Group::SU2);
+                assert_eq!(init, crate::gauge::GaugeFieldInit::HaarRandom);
+                assert_eq!(seed, Some(20260616));
+                assert!(persist);
+            }
+            other => panic!("Expected Statement::GaugeField, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-II.5: `INIT FROM other_field` round-trips into a
+    /// `GaugeFieldInit::FromField("other_field")` variant. The source
+    /// is resolved by name at executor time.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_ii_5_gauge_field_parse_from_field() {
+        let stmt = parse(
+            "GAUGE_FIELD U2 ON LATTICE buckyball GROUP SU(2) INIT FROM other_field;",
+        )
+        .expect("parse GAUGE_FIELD INIT FROM");
+        match stmt {
+            Statement::GaugeField {
+                name,
+                lattice,
+                group,
+                init,
+                seed,
+                persist,
+            } => {
+                assert_eq!(name, "U2");
+                assert_eq!(lattice, "buckyball");
+                assert_eq!(group, crate::gauge::Group::SU2);
+                assert_eq!(
+                    init,
+                    crate::gauge::GaugeFieldInit::FromField("other_field".into())
+                );
+                assert_eq!(seed, None);
+                assert!(!persist);
+            }
+            other => panic!("Expected Statement::GaugeField, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-II.5: declare a lattice, then a gauge field on top of
+    /// it; the executor materializes the SU2GaugeField and registers
+    /// it in `gauge::registry`, where `get(name)` returns Some.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_ii_5_gauge_field_executor_registers() {
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl = "LATTICE tdd_hal_ii_5_a FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        let stmt = parse(lat_decl).expect("parse LATTICE");
+        execute(&mut engine, &stmt).expect("exec LATTICE");
+
+        let g_decl = "GAUGE_FIELD U_tdd_ii_5_a ON LATTICE tdd_hal_ii_5_a \
+                      GROUP SU(2) INIT HAAR_RANDOM SEED 20260616;";
+        let stmt = parse(g_decl).expect("parse GAUGE_FIELD");
+        match execute(&mut engine, &stmt).expect("exec GAUGE_FIELD") {
+            ExecResult::Ok => {}
+            other => panic!("expected Ok, got {other:?}"),
+        }
+
+        let got = crate::gauge::registry::get("U_tdd_ii_5_a").expect("registered");
+        assert_eq!(got.name(), "U_tdd_ii_5_a");
+        assert_eq!(got.lattice_name(), "tdd_hal_ii_5_a");
+        assert_eq!(got.group(), crate::gauge::Group::SU2);
+        let (kind, seed) = got.init_metadata();
+        assert_eq!(kind, crate::gauge::GaugeFieldInit::HaarRandom);
+        assert_eq!(seed, Some(20260616));
+    }
+
+    /// TDD-HAL-II.5: declaring a gauge field on a lattice that was
+    /// never declared surfaces a typed error whose Display matches
+    /// Halcyon's G2.B regex anchor `not declared`.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_ii_5_gauge_field_executor_lattice_not_declared() {
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let g_decl = "GAUGE_FIELD U_tdd_ii_5_b ON LATTICE never_declared \
+                      GROUP SU(2) INIT IDENTITY;";
+        let stmt = parse(g_decl).expect("parse GAUGE_FIELD");
+        let err = execute(&mut engine, &stmt).expect_err("expected error");
+        assert!(
+            err.contains("not declared"),
+            "Display must contain 'not declared', got: {err}"
+        );
+    }
+
+    /// TDD-HAL-II.5: `INIT HAAR_RANDOM` without a SEED clause parses
+    /// (the seed is a parser-level Option) but the executor fails
+    /// with a typed `SeedRequired` error whose Display contains the
+    /// literal "SEED" (Halcyon's `match="SEED"` anchor).
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_ii_5_gauge_field_executor_seed_required() {
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl = "LATTICE tdd_hal_ii_5_c FROM TRUNCATED_ICOSAHEDRON;";
+        let stmt = parse(lat_decl).expect("parse LATTICE");
+        execute(&mut engine, &stmt).expect("exec LATTICE");
+
+        let g_decl = "GAUGE_FIELD U_tdd_ii_5_c ON LATTICE tdd_hal_ii_5_c \
+                      GROUP SU(2) INIT HAAR_RANDOM;";
+        let stmt = parse(g_decl).expect("parse GAUGE_FIELD haar no-seed");
+        let err = execute(&mut engine, &stmt).expect_err("expected seed-required error");
+        assert!(
+            err.to_uppercase().contains("SEED"),
+            "Display must contain 'SEED', got: {err}"
+        );
+    }
+
+    /// TDD-HAL-II.5: `GROUP U(1)` parses syntactically but the
+    /// executor fails with `UnsupportedGroup` whose Display contains
+    /// the literal `SU(2)` — Halcyon's G2.D regex anchor `SU\(2\)`.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_ii_5_gauge_field_executor_unsupported_group() {
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl = "LATTICE tdd_hal_ii_5_d FROM TRUNCATED_ICOSAHEDRON;";
+        let stmt = parse(lat_decl).expect("parse LATTICE");
+        execute(&mut engine, &stmt).expect("exec LATTICE");
+
+        let g_decl = "GAUGE_FIELD U_tdd_ii_5_d ON LATTICE tdd_hal_ii_5_d \
+                      GROUP U(1) INIT IDENTITY;";
+        let stmt = parse(g_decl).expect("parse U(1)");
+        let err = execute(&mut engine, &stmt).expect_err("expected unsupported-group error");
+        assert!(
+            err.contains("SU(2)"),
+            "Display must contain 'SU(2)', got: {err}"
+        );
+    }
+
+    /// TDD-HAL-II.5: `SHOW GAUGE_FIELD U;` (no BUFFER) returns a
+    /// single-row result whose metadata columns round-trip the
+    /// original GAUGE_FIELD declaration. `SHOW GAUGE_FIELD U BUFFER;`
+    /// additionally carries the full (n_edges × repr_dim) buffer in
+    /// the `data` column.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_ii_5_show_gauge_field() {
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl = "LATTICE tdd_hal_ii_5_e FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        let stmt = parse(lat_decl).expect("parse LATTICE");
+        execute(&mut engine, &stmt).expect("exec LATTICE");
+
+        let g_decl = "GAUGE_FIELD U_tdd_ii_5_e ON LATTICE tdd_hal_ii_5_e \
+                      GROUP SU(2) INIT HAAR_RANDOM SEED 20260616;";
+        let stmt = parse(g_decl).expect("parse GAUGE_FIELD");
+        execute(&mut engine, &stmt).expect("exec GAUGE_FIELD");
+
+        // SHOW (no BUFFER) — metadata only.
+        let show = "SHOW GAUGE_FIELD U_tdd_ii_5_e;";
+        let stmt = parse(show).expect("parse SHOW GAUGE_FIELD");
+        let rows = match execute(&mut engine, &stmt).expect("exec SHOW") {
+            ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1);
+        let r = &rows[0];
+        match r.get("name") {
+            Some(crate::types::Value::Text(s)) => assert_eq!(s, "U_tdd_ii_5_e"),
+            other => panic!("missing/wrong name column: {other:?}"),
+        }
+        match r.get("lattice") {
+            Some(crate::types::Value::Text(s)) => assert_eq!(s, "tdd_hal_ii_5_e"),
+            other => panic!("missing/wrong lattice column: {other:?}"),
+        }
+        match r.get("group") {
+            Some(crate::types::Value::Text(s)) => assert_eq!(s, "SU(2)"),
+            other => panic!("missing/wrong group column: {other:?}"),
+        }
+        match r.get("repr_dim") {
+            Some(crate::types::Value::Integer(n)) => assert_eq!(*n, 4),
+            other => panic!("missing/wrong repr_dim column: {other:?}"),
+        }
+        match r.get("n_edges") {
+            Some(crate::types::Value::Integer(n)) => assert_eq!(*n, 90),
+            other => panic!("missing/wrong n_edges column: {other:?}"),
+        }
+        match r.get("init_kind") {
+            Some(crate::types::Value::Text(s)) => assert_eq!(s, "HAAR_RANDOM"),
+            other => panic!("missing/wrong init_kind column: {other:?}"),
+        }
+        match r.get("init_seed") {
+            Some(crate::types::Value::Integer(n)) => assert_eq!(*n, 20260616),
+            other => panic!("missing/wrong init_seed column: {other:?}"),
+        }
+        // No BUFFER form does not carry the data column.
+        assert!(r.get("data").is_none(), "metadata-only SHOW must omit data");
+
+        // SHOW … BUFFER — same metadata + the full row-major
+        // (n_edges × repr_dim) buffer.
+        let show_buf = "SHOW GAUGE_FIELD U_tdd_ii_5_e BUFFER;";
+        let stmt = parse(show_buf).expect("parse SHOW GAUGE_FIELD BUFFER");
+        let rows = match execute(&mut engine, &stmt).expect("exec SHOW BUFFER") {
+            ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1);
+        let r = &rows[0];
+        match r.get("data") {
+            Some(crate::types::Value::Vector(v)) => assert_eq!(v.len(), 90 * 4),
+            other => panic!("missing/wrong data column: {other:?}"),
+        }
+        match r.get("data_flat_len") {
+            Some(crate::types::Value::Integer(n)) => assert_eq!(*n, 360),
+            other => panic!("missing/wrong data_flat_len column: {other:?}"),
         }
     }
 }

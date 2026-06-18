@@ -67,6 +67,15 @@ pub use group::Group;
 pub use marsaglia_haar::haar_random_su2;
 #[cfg(feature = "gauge")]
 pub use su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
+// SHOW GAUGE_FIELD introspection surface — the executor
+// (`parser::execute` Statement::ShowGaugeField arm) reaches into
+// `registry::GaugeFieldHandle` and the underlying `DenseLinkBuffer`
+// to materialize the metadata + buffer columns. Re-exporting the
+// handle trait at the module surface lets external code (the HTTP
+// route in II.6, the Halcyon cross-binding test) build SHOW-shaped
+// responses without naming the registry submodule directly.
+#[cfg(feature = "gauge")]
+pub use registry::GaugeFieldHandle;
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

@@ -52,6 +52,8 @@ pub mod dense_link_buffer;
 pub mod marsaglia_haar;
 #[cfg(feature = "gauge")]
 pub mod su2_gauge_field;
+#[cfg(feature = "gauge")]
+pub mod registry;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;

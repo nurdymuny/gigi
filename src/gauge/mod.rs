@@ -62,6 +62,8 @@ pub mod http;
 pub mod engine_handle;
 #[cfg(feature = "gauge")]
 pub mod plaquette;
+#[cfg(feature = "gauge")]
+pub mod q_surrogate;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -84,6 +86,8 @@ pub use su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
 pub use registry::GaugeFieldHandle;
 #[cfg(feature = "gauge")]
 pub use plaquette::{plaquette_mean, plaquette_per_face, plaquette_sum};
+#[cfg(feature = "gauge")]
+pub use q_surrogate::q_surrogate;
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

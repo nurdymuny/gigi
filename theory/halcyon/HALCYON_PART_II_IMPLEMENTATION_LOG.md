@@ -1,6 +1,6 @@
 # HALCYON Part II — Implementation Log
 
-**Companion to:** `HALCYON_PART_I_GATES.md` section PART II, `HALCYON_TO_GIGI_REPLY_2026-06-17.md` section Q2/A2.
+**Companion to:** `HALCYON_PART_I_GATES.md` section PART II, `HALCYON_TO_GIGI_REPLY_2026-06-17.md` section Q2/A2, `HALCYON_TO_GIGI_REPLY_2026-06-17.md` (verification verdict + architectural asks that drive the 2026-06-18 reframe below).
 **Format:** one entry per closed gate (TDD-HAL-II.N) — gate id, red test path, files edited, green criterion + receipt (the `cargo test` pass line), commit SHA.
 
 The Part II pass criterion (quoted verbatim from `HALCYON_PART_I_GATES.md`):
@@ -269,11 +269,56 @@ The closing entry records:
 
 ---
 
-## What is deferred
+## HTTP-as-consumer-surface (architectural framing)
+
+Reframe added 2026-06-18 after Halcyon's cross-team verification verdict (workflow `wyqh19me8`) and Bee's belt-and-suspenders call. II.6 and II.6b shipped both the HTTP surface and the HTTP×durable `persist:true` path; this section names which of those is the canonical declarer and which is defensive code, so a future audit doesn't re-derive the gap.
+
+- **Canonical declarer/mutator surface = embedded GQL (PyO3 / CFFI binding).** Any consumer that crosses a restart boundary or runs the heavy mutation verbs declares + persists through the embedded binding, not over HTTP. The load-bearing reason is performance: the production wall on Halcyon's Stage 2 + Stage 3 sweep is ~46 min on O(10^6) per-edge updates per run; an HTTP round-trip per sweep plus the JSON tax would dominate that envelope and break the performance contract Part I and Part II both ship against.
+- **HTTP surface = consumer-facing canonical.** `GET` routes (`/v1/lattice/<name>`, `/v1/gauge_field/<name>/buffer`) are the introspect / SHOW channel. `POST` routes (`/v1/lattice`, `/v1/gauge_field`) declare-ephemeral-by-default — the in-memory `gauge::registry::register` / `lattice::registry::register` path, no WAL write. This is the path documented in II.6's receipt ("HTTP surface uses the in-memory registry path (default per Bee's locked decision 3)") and it is the canonical path for HTTP consumers.
+- **HTTP × `persist:true` (II.6b) is defensive, not canonical.** The durable POST path is wired end-to-end so a hypothetical future consumer that needs HTTP-declare-across-restart isn't blocked on rework. It is not the path Halcyon's mock-to-live swap will use, and it is not the path Marcella's gauge-corpus reader uses. Belt-and-suspenders per Bee 2026-06-18: keep the code, name the framing.
+- **Marcella's gauge-corpus query pattern is read-only.** Marcella's GQL channel against the gauge substrate is `SHOW` / `HOLONOMY` / `PLAQUETTE` / `MEASURE` — the read channel. HTTP-read is HTTP-safe by construction (no mutation, no persistence gap). The split is: Halcyon declares + persists the corpus via the embedded binding; Marcella reads that corpus over HTTP. The Solves Vol 4 mass-gap chapter consumes a frozen persisted corpus, not a reader-side HTTP-declare.
+- **Part III `GIBBS_SAMPLE` is pre-committed embedded-only.** The heatbath sweep is a heavy mutation verb (O(10^6) per-edge updates per run, the body of the 46-min production wall). It will not get an HTTP route in Part III. Naming this now closes the door before any future Marcella read-pattern accidentally pulls `GIBBS_SAMPLE` into the HTTP surface and re-opens the persistence gap II.4b closed. Same reasoning will apply to any other heavy mutation verb that lands in Parts III–IV; `SYMPLECTIC_FLOW` is the obvious next candidate.
+- **Future-audit anchor.** This section is the authoritative answer to "why does HTTP-declare default to ephemeral and why isn't `GIBBS_SAMPLE` in the HTTP surface." Per Halcyon's letter: closes the gap as a design point rather than leaving it open as an apparent regression risk every future audit re-derives. Any auditor reading the HTTP routes and noticing the ephemeral default should land here.
+
+---
+
+## Cross-team verification verdict (2026-06-18)
+
+The Halcyon side ran a four-lens verification of Part II's HTTP-vs-durable shape against the davis-wilson-map repo (workflow `wyqh19me8`). Verdict: **`HALCYON_AFFECTED_NONBLOCKING`** — Part II declared done.
+
+Per-lens read (quoted from the verification workflow):
+
+| Lens | Verdict | Why |
+| --- | --- | --- |
+| TDD scaffold | `NOT_AFFECTED` | All 34 tests run intra-process against `MockGIGIClient`. Zero matches for `http`/`requests`/`subprocess`/`PERSIST` in `gigi_client/`. The contract is same-process bit-identity, which is independent of HTTP-vs-durable. |
+| Production orchestrator | `NOT_AFFECTED` | `run_validation_report.py` cold-starts from `identity_links()` every run, writes one `final_state.npz` sidecar, exits. The gauge field never crosses a restart boundary. |
+| Marcella + Solves narrative | `NONBLOCKING` | Marcella GQL channel is read-only (`HOLONOMY` / `PLAQUETTE` / `MEASURE`) — HTTP-read is HTTP-safe by construction. Halcyon declares + persists embedded; Marcella reads over HTTP. Solves Vol 4 wants a frozen persisted corpus, not reader-side HTTP-declare. |
+| 3 smaller follow-ups | `NONBLOCKING` | `test_G2_A` is the intended cross-engine pin for `INIT FROM` byte-equality, latent until the live-binding swap. Author-email drift and `sudoku.rs:228` patent citation don't touch any Halcyon surface. |
+
+Two architectural asks back at GIGI from the same letter, both addressed by this reframe:
+
+1. Reframe II.6 / II.6b HTTP surface as a design decision (consumer-only canonical, declare-durable available defensively), not a deferred TODO. → Addressed by the section above and by the "Not deferred (decided)" subsection below.
+2. Confirm `GIBBS_SAMPLE`-over-HTTP is intentionally off the Part II / III surface. → Confirmed in the section above; restated in "Not deferred (decided)" below.
+
+Live-binding commitment recorded for the record: when the Halcyon mock-to-live swap happens, the binding will be embedded PyO3 / CFFI, not HTTP. The `gigi_client/client.py` `Protocol` shape is RPC-agnostic (structural typing, not an HTTP stub), so no rework is required on the Halcyon side when the binding swaps.
+
+---
+
+## What is deferred / what is not deferred
+
+### Not deferred (decided)
+
+The 2026-06-18 reframe (section "HTTP-as-consumer-surface" above) promotes the following from "looks deferred" to "decided design point." These are not TODO items; they are the canonical shape of the Part II surface:
+
+- **HTTP-declare-ephemeral-by-default is a design decision, not a TODO.** `POST /v1/lattice` and `POST /v1/gauge_field` route to the in-memory registries by design. The canonical declarer for any consumer that crosses a restart boundary is the embedded GQL binding (PyO3 / CFFI), not HTTP. Performance is load-bearing (the ~46-min production wall on O(10^6) per-edge updates would not survive HTTP round-trips + JSON tax).
+- **HTTP × `persist:true` (II.6b) is wired but defensive, not canonical.** The durable POST path is shipped end-to-end so a future consumer that needs HTTP-declare-across-restart isn't blocked on rework. It is not the path Halcyon's mock-to-live swap will use. Belt-and-suspenders per Bee 2026-06-18.
+- **`GIBBS_SAMPLE`-over-HTTP is intentionally off the Part III surface.** Heavy mutation verb on the production hot path; same persistence-gap reasoning that pushed declare to the embedded binding pushes the heatbath sweep there a fortiori. No HTTP route is planned in Part III. Same default extends to any further heavy mutation verbs in Parts III–IV (e.g. `SYMPLECTIC_FLOW`) unless an explicit need surfaces.
+
+### Deferred (still TODO)
 
 - **`LATTICE PERSIST` keyword + durable lattice declarations at the parser surface.** Part II shipped `GAUGE_FIELD` PERSIST + WAL persistence (II.4b exposes the durable path as `Engine::declare_lattice_durable` / `Engine::declare_gauge_field_durable` methods); the analogous `LATTICE PERSIST` parser surface is the obvious follow-up. The plumbing underneath is already live.
 - **Verb math for SU(3), U(1), Z(N).** Part II ships the storage layer and the SU(2) verb. The typed `GaugeFieldError::UnsupportedGroup(Group)` error variant is the surface the future-group work flips to live: new struct + new `read_element` arm + new `Group` arm in `materialize_field` / `marsaglia_haar` (or per-group prior).
-- **Part III primitives: `PLAQUETTE`, `Q_SURROGATE`, `GIBBS_SAMPLE` (heatbath sweep).** Separate sprint per `HALCYON_PART_I_GATES.md` section PART III. Blocker on Part II is now cleared.
+- **Part III primitives: `PLAQUETTE`, `Q_SURROGATE`, `GIBBS_SAMPLE` (heatbath sweep).** Separate sprint per `HALCYON_PART_I_GATES.md` section PART III. Blocker on Part II is now cleared. Per the decision above, `GIBBS_SAMPLE` will be embedded-only; no HTTP route in scope.
 - **Part IV: `SYMPLECTIC_FLOW` with covariant Gauss projection.** Separate sprint per `HALCYON_PART_I_GATES.md` section PART IV.
 
 ---

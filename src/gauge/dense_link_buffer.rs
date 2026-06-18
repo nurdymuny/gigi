@@ -12,38 +12,10 @@
 //! programming-error path because the typed-error gate above keeps
 //! such buffers from ever being constructed.
 
+use super::error::GaugeFieldError;
 use super::group::Group;
 use super::group_element::GroupElement;
 use super::marsaglia_haar::{haar_random_su2, SmallRng};
-
-/// Typed error for buffer construction.
-///
-/// Lifted from `unimplemented_for_group!` (panic) to a return value
-/// because the GAUGE_FIELD declaration path needs to surface
-/// "unsupported group" as a normal user error (Bee's locked decision 5,
-/// Halcyon G2.D regex anchor). Inner math (`compose`, `inverse`) keeps
-/// the Part-I panic — reaching it from a well-typed buffer would be a
-/// programming error.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GaugeFieldError {
-    /// Group variant compiles but has no live math at launch.
-    UnsupportedGroup(Group),
-}
-
-impl std::fmt::Display for GaugeFieldError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GaugeFieldError::UnsupportedGroup(g) => write!(
-                f,
-                "gauge: group {} is not implemented (Part II ships SU(2) math only; \
-                 future groups land as separate EdgeConnection impls per the group-erasure plan)",
-                g.label()
-            ),
-        }
-    }
-}
-
-impl std::error::Error for GaugeFieldError {}
 
 /// Group-erased dense link buffer. Shape `(n_edges, repr_dim)`
 /// row-major. `group` is the per-buffer tag; every row decodes into

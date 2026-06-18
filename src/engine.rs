@@ -465,6 +465,18 @@ impl Engine {
             Self::replay_triggers(&wal_path, &mut trigger_manager)?;
         }
 
+        // TDD-HAL-II.4b: Replay durable lattice + gauge field
+        // declarations from WAL. Done after the main `do_replay` pass
+        // so the lattice and gauge-field registries are rebuilt
+        // deterministically from the WAL byte stream alone (clear →
+        // re-register every declaration in WAL order). Two-pass: first
+        // pass restores lattices (gauge fields depend on them), second
+        // pass restores gauge fields.
+        #[cfg(feature = "gauge")]
+        if replay && wal_path.exists() {
+            Self::replay_gauge_substrate(&wal_path)?;
+        }
+
         // WAL byte count from file metadata
         let wal_byte_count = if wal_path.exists() {
             fs::metadata(&wal_path).map(|m| m.len()).unwrap_or(0)
@@ -638,6 +650,17 @@ impl Engine {
         } else {
             0
         };
+
+        // TDD-HAL-II.4b: rebuild lattice + gauge registries on mmap
+        // open the same way the heap-mode `open_inner` path does. The
+        // registries are process singletons; mmap mode replaying the
+        // bundle WAL but skipping the gauge substrate would silently
+        // leave fields missing.
+        #[cfg(feature = "gauge")]
+        if wal_path.exists() {
+            Self::replay_gauge_substrate(&wal_path)?;
+        }
+
         let wal = WalWriter::open(&wal_path)?;
 
         Ok(Self {
@@ -768,6 +791,12 @@ impl Engine {
                 }
                 // Feature #9: Trigger WAL entries are handled post-replay by the engine
                 WalEntry::CreateTrigger { .. } | WalEntry::DropTrigger(_) => {}
+                // TDD-HAL-II.4b: lattice + gauge-field WAL entries are
+                // handled post-replay by `replay_gauge_substrate` so we
+                // can fail loudly on a malformed entry instead of
+                // panicking inside this generic closure.
+                #[cfg(feature = "gauge")]
+                WalEntry::LatticeDeclare { .. } | WalEntry::GaugeFieldDeclare { .. } => {}
             }
             Ok(())
         })?;
@@ -776,6 +805,73 @@ impl Engine {
         let total: usize = bundles.values().map(|s| s.len()).sum();
         eprintln!("  WAL replay complete: {entry_count} entries, {total} records in {elapsed:.1}s");
         Ok(entry_count)
+    }
+
+    /// TDD-HAL-II.4b: Replay durable lattice + gauge field WAL entries
+    /// into the process-singleton `lattice::registry` and
+    /// `gauge::registry`. Called from `open_inner` after the main
+    /// bundle replay so the gauge registry is rebuilt deterministically
+    /// from disk.
+    ///
+    /// The function clears both registries first — this is the
+    /// "every `Engine::open` starts from a clean registry" contract.
+    /// In-memory (non-durable) declarations are NOT preserved across
+    /// restart by design (Bee's locked decision 3); only the durable
+    /// path round-trips.
+    ///
+    /// Two passes are required because gauge fields name their
+    /// lattice by string and the materialize helper needs the lattice
+    /// in the registry to look up edge count. First pass installs
+    /// every `LatticeDeclare`; second pass installs every
+    /// `GaugeFieldDeclare`.
+    #[cfg(feature = "gauge")]
+    fn replay_gauge_substrate(wal_path: &Path) -> io::Result<()> {
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        // Pass 1 — lattices.
+        let mut reader = WalReader::open(wal_path)?;
+        reader.replay(|entry| {
+            if let WalEntry::LatticeDeclare { gql } = entry {
+                let lat = crate::lattice::Lattice::from_gql(&gql).map_err(|e| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("WAL LatticeDeclare parse error: {e}"),
+                    )
+                })?;
+                crate::lattice::registry::register(lat);
+            }
+            Ok(())
+        })?;
+
+        // Pass 2 — gauge fields. Resolution: look up lattice by name
+        // in the registry (already populated by Pass 1).
+        let mut reader = WalReader::open(wal_path)?;
+        reader.replay(|entry| {
+            if let WalEntry::GaugeFieldDeclare {
+                name,
+                lattice_name,
+                group,
+                init_kind,
+                init_seed,
+            } = entry
+            {
+                let lat = crate::lattice::registry::get(&lattice_name).ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!(
+                            "WAL GaugeFieldDeclare references unknown lattice '{lattice_name}'"
+                        ),
+                    )
+                })?;
+                let handle = crate::gauge::persistence::materialize_field(
+                    name, &lat, group, init_kind, init_seed,
+                )?;
+                crate::gauge::registry::register(handle);
+            }
+            Ok(())
+        })?;
+        Ok(())
     }
 
     /// Feature #9: Replay trigger WAL entries into the TriggerManager.
@@ -1185,6 +1281,61 @@ impl Engine {
         Ok(self.trigger_manager.drop_trigger(name))
     }
 
+    /// TDD-HAL-II.4b: durable LATTICE declaration. Writes a
+    /// `WalEntry::LatticeDeclare` to the WAL + installs the lattice in
+    /// the in-process registry. Restart replays the WAL entry through
+    /// `Lattice::from_gql` and re-registers, so the user sees the same
+    /// `SHOW LATTICE name` result before and after restart.
+    ///
+    /// Bee's locked decision 3: the PERSIST keyword surface that
+    /// chooses between this method and the in-memory
+    /// `lattice::registry::register` lands at the parser/executor layer
+    /// in II.5. At II.4b the durable path is exposed as a method only.
+    #[cfg(feature = "gauge")]
+    pub fn declare_lattice_durable(
+        &mut self,
+        lat: crate::lattice::Lattice,
+    ) -> io::Result<()> {
+        // Order matters: WAL append before in-process registration so
+        // a crash between the two leaves a recoverable state (replay
+        // re-installs the lattice; the in-process registry catches up
+        // on next `Engine::open`).
+        self.wal.log_lattice_declare(&lat.to_gql())?;
+        crate::lattice::registry::register(lat);
+        self.maybe_checkpoint()?;
+        Ok(())
+    }
+
+    /// TDD-HAL-II.4b: durable GAUGE_FIELD declaration. Writes a
+    /// `WalEntry::GaugeFieldDeclare` (metadata-only — Bee's locked
+    /// decision 1) + installs the handle in
+    /// `gauge::registry`. Restart re-materializes the field via
+    /// `persistence::materialize_field` and re-registers, so the
+    /// post-restart buffer is byte-identical to the pre-restart one.
+    ///
+    /// The lattice the field is bound to MUST already be durable
+    /// (declared via `declare_lattice_durable`); replay walks the WAL
+    /// in declaration order and the lattice declare must precede the
+    /// gauge-field declare. Compaction's emit loop preserves this
+    /// ordering invariant (lattice → gauge field → checkpoint).
+    #[cfg(feature = "gauge")]
+    pub fn declare_gauge_field_durable(
+        &mut self,
+        handle: std::sync::Arc<dyn crate::gauge::registry::GaugeFieldHandle>,
+    ) -> io::Result<()> {
+        let (kind, seed) = handle.init_metadata();
+        self.wal.log_gauge_field_declare(
+            handle.name(),
+            handle.lattice_name(),
+            handle.group(),
+            &kind,
+            seed,
+        )?;
+        crate::gauge::registry::register(handle);
+        self.maybe_checkpoint()?;
+        Ok(())
+    }
+
     /// Filtered query dispatching to both heap and mmap bundles.
     pub fn filtered_query(
         &self,
@@ -1572,6 +1723,16 @@ impl Engine {
 
     /// Compact the WAL to schema-only entries (called after snapshot files
     /// have been written). Requires `&mut self` (write lock).
+    ///
+    /// Emit order (dependency-correct, see TDD-HAL-II.4b decision
+    /// points):
+    ///   1. `CreateBundle*`
+    ///   2. `CreateTrigger*`
+    ///   3. `LatticeDeclare*` (gauge feature)
+    ///   4. `GaugeFieldDeclare*` (gauge feature) — must come AFTER
+    ///      `LatticeDeclare` because replay's pass-2 looks the lattice
+    ///      up by name.
+    ///   5. `Checkpoint`
     pub fn compact_wal_to_schemas(&mut self) -> io::Result<()> {
         let wal_path = self.data_dir.join("gigi.wal");
         let tmp_path = self.data_dir.join("gigi.wal.tmp");
@@ -1595,6 +1756,26 @@ impl Engine {
                     }
                 };
                 new_wal.log_create_trigger(&tdef.name, &bundle, &tdef.channel, &op_str, filter_str.as_deref())?;
+            }
+            // TDD-HAL-II.4b: re-emit durable lattice + gauge-field
+            // declarations so they survive WAL compaction. Lattices
+            // first (gauge fields depend on their lattice being in the
+            // registry at replay pass 2 time).
+            #[cfg(feature = "gauge")]
+            {
+                for lat in crate::lattice::registry::all() {
+                    new_wal.log_lattice_declare(&lat.to_gql())?;
+                }
+                for handle in crate::gauge::registry::all() {
+                    let (kind, seed) = handle.init_metadata();
+                    new_wal.log_gauge_field_declare(
+                        handle.name(),
+                        handle.lattice_name(),
+                        handle.group(),
+                        &kind,
+                        seed,
+                    )?;
+                }
             }
             new_wal.log_checkpoint()?;
             new_wal.sync()?;
@@ -1757,6 +1938,13 @@ impl Engine {
         }
 
         // Compact WAL to schema-only (no insert entries).
+        // TDD-HAL-II.4b: emit order matches `compact_wal_to_schemas`
+        // exactly — schemas → triggers → lattices → gauge fields →
+        // checkpoint. This site and `compact_wal_to_schemas` are
+        // pre-existing duplication (trigger pattern); both must emit
+        // the same surface or compaction would silently lose the
+        // gauge substrate when the snapshot path is hit instead of
+        // the explicit `compact_wal_to_schemas` path.
         let wal_path = self.data_dir.join("gigi.wal");
         let tmp_path = self.data_dir.join("gigi.wal.tmp");
         {
@@ -1779,6 +1967,22 @@ impl Engine {
                     }
                 };
                 new_wal.log_create_trigger(&tdef.name, &bundle, &tdef.channel, &op_str, filter_str.as_deref())?;
+            }
+            #[cfg(feature = "gauge")]
+            {
+                for lat in crate::lattice::registry::all() {
+                    new_wal.log_lattice_declare(&lat.to_gql())?;
+                }
+                for handle in crate::gauge::registry::all() {
+                    let (kind, seed) = handle.init_metadata();
+                    new_wal.log_gauge_field_declare(
+                        handle.name(),
+                        handle.lattice_name(),
+                        handle.group(),
+                        &kind,
+                        seed,
+                    )?;
+                }
             }
             new_wal.log_checkpoint()?;
             new_wal.sync()?;

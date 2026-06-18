@@ -31,6 +31,15 @@ const OP_DROP_BUNDLE: u8 = 0x05;
 const OP_MEASUREMENT_OVERRIDE: u8 = 0x06;
 const OP_CREATE_TRIGGER: u8 = 0x07;
 const OP_DROP_TRIGGER: u8 = 0x08;
+// TDD-HAL-II.4b: lattice + gauge-field durability ops. Gated on the
+// `gauge` feature; the no-default-features build never emits or reads
+// these bytes (the writer methods don't exist; the reader's match arm
+// returns `Unknown WAL op` if a stray gauge-built WAL is opened by a
+// no-default-features binary, which is the right loud-failure behavior).
+#[cfg(feature = "gauge")]
+const OP_LATTICE_DECLARE: u8 = 0x09;
+#[cfg(feature = "gauge")]
+const OP_GAUGE_FIELD_DECLARE: u8 = 0x0A;
 const OP_CHECKPOINT: u8 = 0xFF;
 
 /// CRC32 (Castagnoli) — simple polynomial checksum for integrity.
@@ -160,6 +169,77 @@ impl WalWriter {
         self.write_entry(OP_DROP_TRIGGER, &payload)
     }
 
+    /// TDD-HAL-II.4b: log a LATTICE durable declaration. Payload is
+    /// the canonical GQL re-emit form of the Lattice (the same string
+    /// `Lattice::to_gql` produces). Replay uses `Lattice::from_gql` to
+    /// reconstruct, so the WAL round-trip is bit-identical to the
+    /// declaration the user wrote.
+    #[cfg(feature = "gauge")]
+    pub fn log_lattice_declare(&mut self, gql: &str) -> io::Result<()> {
+        let mut payload = Vec::new();
+        write_string(&mut payload, gql);
+        self.write_entry(OP_LATTICE_DECLARE, &payload)
+    }
+
+    /// TDD-HAL-II.4b: log a GAUGE_FIELD durable declaration. Variant
+    /// is metadata-only per Bee's locked decision 1: re-running the
+    /// init recipe at replay produces a byte-identical buffer. Mutated
+    /// buffers (post-HEATBATH_SWEEP) are a P1 follow-up via a
+    /// separate `GAUGE_FIELD_CHECKPOINT` op; II.4b targets declaration
+    /// durability only.
+    ///
+    /// Payload format:
+    ///   - name (string)
+    ///   - lattice_name (string)
+    ///   - group_tag (u8) — 0x01 = SU2, 0x02 = SU3, 0x03 = U1, 0x04 = ZN
+    ///   - if group_tag == ZN: modulus n (u32 LE)
+    ///   - init_tag (u8) — 0x01 = Identity, 0x02 = HaarRandom, 0x03 = FromField
+    ///   - if init_tag == HaarRandom: seed_present (u8) + optional u64 LE
+    ///   - if init_tag == FromField: source name (string)
+    ///   - if init_tag == Identity: nothing (seed_present = 0 always)
+    #[cfg(feature = "gauge")]
+    pub fn log_gauge_field_declare(
+        &mut self,
+        name: &str,
+        lattice_name: &str,
+        group: crate::gauge::Group,
+        init_kind: &crate::gauge::GaugeFieldInit,
+        init_seed: Option<u64>,
+    ) -> io::Result<()> {
+        let mut payload = Vec::new();
+        write_string(&mut payload, name);
+        write_string(&mut payload, lattice_name);
+        match group {
+            crate::gauge::Group::SU2 => payload.push(0x01),
+            crate::gauge::Group::SU3 => payload.push(0x02),
+            crate::gauge::Group::U1 => payload.push(0x03),
+            crate::gauge::Group::ZN { n } => {
+                payload.push(0x04);
+                payload.extend_from_slice(&n.to_le_bytes());
+            }
+        }
+        match init_kind {
+            crate::gauge::GaugeFieldInit::Identity => {
+                payload.push(0x01);
+            }
+            crate::gauge::GaugeFieldInit::HaarRandom => {
+                payload.push(0x02);
+                match init_seed {
+                    Some(s) => {
+                        payload.push(1);
+                        payload.extend_from_slice(&s.to_le_bytes());
+                    }
+                    None => payload.push(0),
+                }
+            }
+            crate::gauge::GaugeFieldInit::FromField(src) => {
+                payload.push(0x03);
+                write_string(&mut payload, src);
+            }
+        }
+        self.write_entry(OP_GAUGE_FIELD_DECLARE, &payload)
+    }
+
     /// Sync the WAL to disk (fsync).
     pub fn sync(&mut self) -> io::Result<()> {
         self.writer.flush()?;
@@ -232,6 +312,30 @@ pub enum WalEntry {
     },
     /// Feature #9: Drop a trigger by name.
     DropTrigger(String),
+    /// TDD-HAL-II.4b: durable LATTICE declaration. Payload is the
+    /// canonical GQL re-emit form; replay parses it via
+    /// `Lattice::from_gql` and installs the result in
+    /// `lattice::registry`.
+    #[cfg(feature = "gauge")]
+    LatticeDeclare {
+        /// Canonical GQL re-emit (whitespace-stable, see
+        /// `Lattice::to_gql`).
+        gql: String,
+    },
+    /// TDD-HAL-II.4b: durable GAUGE_FIELD declaration. Metadata-only
+    /// (Bee's locked decision 1) — buffer is re-materialized via
+    /// `SU2GaugeField::new(name, lattice, init_kind, init_seed)` at
+    /// replay time, which produces a byte-identical buffer for the
+    /// SU(2)+Haar+seed path and an identity buffer for the Identity
+    /// path.
+    #[cfg(feature = "gauge")]
+    GaugeFieldDeclare {
+        name: String,
+        lattice_name: String,
+        group: crate::gauge::Group,
+        init_kind: crate::gauge::GaugeFieldInit,
+        init_seed: Option<u64>,
+    },
 }
 
 impl WalReader {
@@ -386,6 +490,75 @@ impl WalReader {
                 let mut offset = 0;
                 let name = read_string(payload, &mut offset)?;
                 Ok(Some(WalEntry::DropTrigger(name)))
+            }
+            #[cfg(feature = "gauge")]
+            OP_LATTICE_DECLARE => {
+                let mut offset = 0;
+                let gql = read_string(payload, &mut offset)?;
+                Ok(Some(WalEntry::LatticeDeclare { gql }))
+            }
+            #[cfg(feature = "gauge")]
+            OP_GAUGE_FIELD_DECLARE => {
+                let mut offset = 0;
+                let name = read_string(payload, &mut offset)?;
+                let lattice_name = read_string(payload, &mut offset)?;
+                let group_tag = payload[offset];
+                offset += 1;
+                let group = match group_tag {
+                    0x01 => crate::gauge::Group::SU2,
+                    0x02 => crate::gauge::Group::SU3,
+                    0x03 => crate::gauge::Group::U1,
+                    0x04 => {
+                        let n = u32::from_le_bytes(
+                            payload[offset..offset + 4].try_into().unwrap(),
+                        );
+                        offset += 4;
+                        crate::gauge::Group::ZN { n }
+                    }
+                    bad => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!("unknown gauge group tag: {bad:#x}"),
+                        ))
+                    }
+                };
+                let init_tag = payload[offset];
+                offset += 1;
+                let (init_kind, init_seed) = match init_tag {
+                    0x01 => (crate::gauge::GaugeFieldInit::Identity, None),
+                    0x02 => {
+                        let seed_present = payload[offset];
+                        offset += 1;
+                        let seed = if seed_present == 1 {
+                            let s = u64::from_le_bytes(
+                                payload[offset..offset + 8].try_into().unwrap(),
+                            );
+                            offset += 8;
+                            Some(s)
+                        } else {
+                            None
+                        };
+                        let _ = offset; // silence trailing-offset lint
+                        (crate::gauge::GaugeFieldInit::HaarRandom, seed)
+                    }
+                    0x03 => {
+                        let src = read_string(payload, &mut offset)?;
+                        (crate::gauge::GaugeFieldInit::FromField(src), None)
+                    }
+                    bad => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!("unknown gauge init tag: {bad:#x}"),
+                        ))
+                    }
+                };
+                Ok(Some(WalEntry::GaugeFieldDeclare {
+                    name,
+                    lattice_name,
+                    group,
+                    init_kind,
+                    init_seed,
+                }))
             }
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,

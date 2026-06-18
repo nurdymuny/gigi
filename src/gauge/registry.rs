@@ -95,13 +95,27 @@ pub fn get(name: &str) -> Option<Arc<dyn GaugeFieldHandle>> {
 }
 
 /// Clear the registry. Test/executor convenience — the persistence
-/// gate (II.4b) carries its own durable handle and does not call
-/// `clear()` mid-flight.
+/// gate (II.4b) calls `clear()` at every `Engine::open` so the WAL
+/// replay starts from an empty registry and reconstructs the durable
+/// set deterministically.
 pub fn clear() {
     let mut g = registry()
         .lock()
         .expect("gauge registry mutex poisoned");
     g.clear();
+}
+
+/// Snapshot every registered gauge field for compaction. The engine's
+/// `compact_wal_to_schemas` re-emits one `WalEntry::GaugeFieldDeclare`
+/// per snapshot entry so the durable field set survives WAL rewrite.
+/// The handle returned here is the same `Arc` the registry holds;
+/// callers use it for read-only access (`init_metadata`, `name`,
+/// `lattice_name`, `as_dense_buffer`).
+pub fn all() -> Vec<Arc<dyn GaugeFieldHandle>> {
+    let g = registry()
+        .lock()
+        .expect("gauge registry mutex poisoned");
+    g.values().cloned().collect()
 }
 
 #[cfg(test)]

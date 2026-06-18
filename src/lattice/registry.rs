@@ -33,11 +33,22 @@ pub fn get(name: &str) -> Option<Lattice> {
     g.get(name).cloned()
 }
 
-/// Clear the registry. Test-only convenience.
-#[cfg(test)]
+/// Clear the registry. Convenience for tests + for the engine's
+/// `do_replay` path which rebuilds the registry from WAL on every
+/// `Engine::open` (TDD-HAL-II.4b durability gate).
 pub fn clear() {
     let mut g = registry().lock().expect("lattice registry mutex poisoned");
     g.clear();
+}
+
+/// Snapshot every registered Lattice for compaction. The engine's
+/// `compact_wal_to_schemas` re-emits one `WalEntry::LatticeDeclare`
+/// per snapshot entry so the durable lattice set survives WAL rewrite.
+/// Ordering is unspecified — the gauge-field emit consults the
+/// resolved name, not iteration order.
+pub fn all() -> Vec<Lattice> {
+    let g = registry().lock().expect("lattice registry mutex poisoned");
+    g.values().cloned().collect()
 }
 
 #[cfg(test)]

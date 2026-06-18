@@ -4,6 +4,44 @@
 //! altering the base space or geometric invariants.
 //!
 //! Implements Definitions 5a.1–5a.2, Theorem 5a.1.
+//!
+//! ── Gauge primitives (group-erased connection algebra) ──
+//!
+//! Behind the `gauge` Cargo feature (which depends on `lattice`):
+//!
+//! - `group_element` — `GroupElement` enum (`SU(2)` ships with math;
+//!   `U(1)` / `Z_N` compile but panic at use site).
+//! - `edge_connection` — object-safe `EdgeConnection` trait the
+//!   generalized walker reads per-edge group elements through.
+//! - `holonomy` — `walk_loop(lattice, edges, conn)`: composes per-
+//!   edge `GroupElement`s along a signed edge list and returns the
+//!   accumulated holonomy. Identity-on-every-face when the connection
+//!   is identity-on-every-edge.
+//!
+//! These pieces were originally shipped under the `halcyon` namespace
+//! (Davis Wilson Lattice substrate, Part I) but are general-purpose
+//! gauge-theory primitives — Halcyon is just their first consumer.
+//! The `halcyon` composite feature pulls in `lattice + gauge` and the
+//! Halcyon-specific bit-identity integration test in `tests/`.
+//!
+//! Quaternion convention (pinned from the Halcyon harvest phase, see
+//! `tests/fixtures/halcyon/buckyball_gold_provenance.json`):
+//!
+//! - Scalar-first layout `(q0, q1, q2, q3)` with `q0 = cos(θ/2)`.
+//! - Matrix form `A = q0·I + i·(q1·σ_x + q2·σ_y + q3·σ_z)`.
+//!   `Re Tr A = 2·q0`, `det A = q0² + q1² + q2² + q3² = 1`.
+//! - Product rule (left-action): `c0 = a0·b0 - a·b`,
+//!   `c_vec = a0·b_vec + b0·a_vec - a × b`.
+//! - Conjugate: `qconj(a) = (a0, -a1, -a2, -a3)`.
+//! - Face-holonomy composition is **left-to-right** in cyclic face
+//!   order: `U_f = U_e0^s0 · U_e1^s1 · … · U_ek^sk`.
+
+#[cfg(feature = "gauge")]
+pub mod group_element;
+#[cfg(feature = "gauge")]
+pub mod edge_connection;
+#[cfg(feature = "gauge")]
+pub mod holonomy;
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

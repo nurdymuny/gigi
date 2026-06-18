@@ -13,7 +13,7 @@
 
 use super::edge_connection::EdgeConnection;
 use super::group_element::GroupElement;
-use super::lattice::{EdgeId, EdgeOrientation, Lattice, VertexId};
+use crate::lattice::{EdgeId, EdgeOrientation, Lattice, VertexId};
 
 /// Walk an edge-list loop on a lattice against a connection.
 /// Returns the accumulated `GroupElement` (the face holonomy when
@@ -59,7 +59,7 @@ pub fn face_edges(lattice: &Lattice, face_index: usize) -> Vec<(EdgeId, EdgeOrie
 #[cfg(test)]
 mod tests {
     use super::super::edge_connection::test_support::FixedEdgeConnection;
-    use super::super::truncated_icosahedron::buckyball;
+    use crate::lattice::topology::truncated_icosahedron::buckyball;
     use super::*;
 
     fn assert_su2_identity(g: GroupElement, tol: f64, ctx: &str) {

@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use super::lattice::Lattice;
+use super::Lattice;
 
 /// Global registry. Singleton; the engine is single-tenant per
 /// process for Part I.
@@ -22,27 +22,27 @@ fn registry() -> &'static Mutex<HashMap<String, Lattice>> {
 /// Register a Lattice under its `name`. Overwrites any previous
 /// registration with the same name.
 pub fn register(lat: Lattice) {
-    let mut g = registry().lock().expect("halcyon registry mutex poisoned");
+    let mut g = registry().lock().expect("lattice registry mutex poisoned");
     g.insert(lat.name.clone(), lat);
 }
 
 /// Look up a Lattice by name. Returns a clone for round-trip
 /// stability — the caller never sees the in-registry Mutex guard.
 pub fn get(name: &str) -> Option<Lattice> {
-    let g = registry().lock().expect("halcyon registry mutex poisoned");
+    let g = registry().lock().expect("lattice registry mutex poisoned");
     g.get(name).cloned()
 }
 
 /// Clear the registry. Test-only convenience.
 #[cfg(test)]
 pub fn clear() {
-    let mut g = registry().lock().expect("halcyon registry mutex poisoned");
+    let mut g = registry().lock().expect("lattice registry mutex poisoned");
     g.clear();
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::truncated_icosahedron::buckyball;
+    use super::super::topology::truncated_icosahedron::buckyball;
     use super::*;
 
     #[test]
@@ -102,7 +102,7 @@ mod tests {
         // 3. Round-trip — re-parse the emitted GQL via the Lattice
         //    algebra's own from_gql (the canonical re-emit
         //    parser).
-        let lat = super::super::lattice::Lattice::from_gql(&gql_emitted)
+        let lat = super::super::Lattice::from_gql(&gql_emitted)
             .expect("re-parse SHOW output");
         assert_eq!(lat.name, name);
         assert_eq!(lat.n_vertices, 60);

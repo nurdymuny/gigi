@@ -20,7 +20,7 @@
 //! programming error and is caught by the walker's `compose` panic).
 
 use super::group_element::GroupElement;
-use super::lattice::{EdgeId, EdgeOrientation};
+use crate::lattice::{EdgeId, EdgeOrientation};
 
 /// Object-safe trait the walker reads through.
 pub trait EdgeConnection {

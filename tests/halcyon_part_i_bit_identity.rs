@@ -28,11 +28,11 @@
 use std::fs;
 use std::path::PathBuf;
 
-use gigi::halcyon::edge_connection::EdgeConnection;
-use gigi::halcyon::group_element::GroupElement;
-use gigi::halcyon::holonomy::walk_loop;
-use gigi::halcyon::lattice::{EdgeId, EdgeOrientation};
-use gigi::halcyon::truncated_icosahedron::{
+use gigi::gauge::edge_connection::EdgeConnection;
+use gigi::gauge::group_element::GroupElement;
+use gigi::gauge::holonomy::walk_loop;
+use gigi::lattice::{EdgeId, EdgeOrientation};
+use gigi::lattice::topology::truncated_icosahedron::{
     buckyball_with_signed_faces, signed_face_to_walker,
 };
 

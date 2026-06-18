@@ -31,7 +31,7 @@
 //! `face_signed_edges()` returns the `(edge_index, sign)` cycle
 //! per face that matches Halcyon's `graph.faces[f]`.
 
-use super::lattice::{EdgeOrientation, Lattice, VertexId};
+use crate::lattice::{EdgeOrientation, Lattice, VertexId};
 
 /// Golden ratio. `phi = (1 + √5) / 2`.
 fn phi() -> f64 {

@@ -701,19 +701,22 @@ pub enum Statement {
         project: Option<Vec<String>>,
     },
 
-    // ── HALCYON Part I: LATTICE verb. Behind the `halcyon` feature
-    //    flag so the default-feature build's surface is byte-identical
-    //    to the pre-Halcyon engine. The explicit form ships V/E/F by
-    //    enumeration; the shorthand form names a canonical graph
-    //    constructor (only `TRUNCATED_ICOSAHEDRON` at launch).
+    // ── LATTICE verb. Behind the `lattice` Cargo feature so the
+    //    default-feature build's surface is byte-identical to the
+    //    pre-LATTICE engine. General-purpose graph-topology primitive
+    //    (Halcyon's Davis Wilson Lattice substrate is the first
+    //    consumer but the type is not Halcyon-specific). The explicit
+    //    form ships V/E/F by enumeration; the shorthand form names a
+    //    canonical graph constructor (only `TRUNCATED_ICOSAHEDRON` at
+    //    launch).
     //
     //    Stored as a string body the executor hands to
-    //    `crate::halcyon::lattice::Lattice::from_gql` (and the
-    //    shorthand form to `truncated_icosahedron::buckyball`). This
-    //    keeps the parser surface narrow — the Lattice algebra owns
-    //    its own canonical re-emit form.
+    //    `crate::lattice::Lattice::from_gql` (and the shorthand form
+    //    to `crate::lattice::topology::truncated_icosahedron::buckyball`).
+    //    This keeps the parser surface narrow — the Lattice algebra
+    //    owns its own canonical re-emit form.
     /// `LATTICE name VERTICES n EDGES (…) FACES (…) [TOPOLOGY "S"];`
-    #[cfg(feature = "halcyon")]
+    #[cfg(feature = "lattice")]
     Lattice {
         /// User-facing lattice name (the `ident` after `LATTICE`).
         name: String,
@@ -728,7 +731,7 @@ pub enum Statement {
     /// `TRUNCATED_ICOSAHEDRON` is wired at launch; future canonical
     /// graphs (cubic-lattice / hexagonal / …) extend by adding
     /// constructor names here.
-    #[cfg(feature = "halcyon")]
+    #[cfg(feature = "lattice")]
     LatticeFromCanonical {
         /// User-facing lattice name.
         name: String,
@@ -739,7 +742,7 @@ pub enum Statement {
         topology: Option<String>,
     },
     /// `SHOW LATTICE name;`
-    #[cfg(feature = "halcyon")]
+    #[cfg(feature = "lattice")]
     ShowLattice { name: String },
 }
 
@@ -1218,9 +1221,11 @@ impl Parser {
             "DEFINE" => self.parse_define_pattern(),
             #[cfg(feature = "patterns")]
             "HUNT" => self.parse_hunt(),
-            // HALCYON Part I — LATTICE verb. Feature-gated so the
-            // default build's reserved-keyword surface is unchanged.
-            #[cfg(feature = "halcyon")]
+            // LATTICE verb. Feature-gated on `lattice` so the default
+            // build's reserved-keyword surface is unchanged. General-
+            // purpose graph-topology primitive (Halcyon's Davis Wilson
+            // Lattice substrate is the first consumer).
+            #[cfg(feature = "lattice")]
             "LATTICE" => self.parse_lattice(),
             "INTEGRATE" => self.parse_integrate(),
             "PULLBACK" => self.parse_pullback(),
@@ -2087,12 +2092,12 @@ impl Parser {
         })
     }
 
-    // ── HALCYON Part I: LATTICE verb (feature-gated) ──
+    // ── LATTICE verb (gated by `lattice` feature) ──
 
     /// Parse a `LATTICE` statement (explicit or canonical-shorthand
     /// form). Closes the parser-surface half of TDD-HAL-I.7. The
     /// executor (`Statement::Lattice` / `Statement::LatticeFromCanonical`
-    /// arms in `execute`) drives `crate::halcyon` from here.
+    /// arms in `execute`) drives `crate::lattice` from here.
     ///
     /// Grammar (per `HALCYON_PART_I_GATES.md` Part I scope):
     ///
@@ -2108,7 +2113,7 @@ impl Parser {
     ///       ";"
     ///   ;
     /// ```
-    #[cfg(feature = "halcyon")]
+    #[cfg(feature = "lattice")]
     fn parse_lattice(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
         // Shorthand: LATTICE name FROM CANONICAL_ID [TOPOLOGY "..."];
@@ -2206,7 +2211,7 @@ impl Parser {
         // algebra's `to_gql`; the executor reads it back through
         // `from_gql`. One round-trip contract, owned by the
         // Lattice module.
-        let lat = crate::halcyon::lattice::Lattice::new(
+        let lat = crate::lattice::Lattice::new(
             name.clone(),
             n_vertices,
             edges,
@@ -3570,8 +3575,9 @@ impl Parser {
                 let bundle = self.expect_word()?;
                 Ok(Statement::ShowComments { bundle })
             }
-            // HALCYON Part I — `SHOW LATTICE name`.
-            #[cfg(feature = "halcyon")]
+            // `SHOW LATTICE name` — gated on the `lattice` feature
+            // (general primitive; first consumer is Halcyon).
+            #[cfg(feature = "lattice")]
             "LATTICE" => {
                 let name = self.expect_word()?;
                 Ok(Statement::ShowLattice { name })
@@ -7723,25 +7729,25 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }
         }
 
-        // ── HALCYON Part I: LATTICE executor arms ──
+        // ── LATTICE executor arms (gated on `lattice` feature) ──
         //
         // Explicit `LATTICE name VERTICES … EDGES … FACES … TOPOLOGY …;`
         // — the parser packs the canonical GQL re-emit form into
         // `gql`; the executor round-trips it through
         // `Lattice::from_gql` and registers under the lattice's
         // name.
-        #[cfg(feature = "halcyon")]
+        #[cfg(feature = "lattice")]
         Statement::Lattice { name: _name, gql } => {
-            let lat = crate::halcyon::lattice::Lattice::from_gql(gql)
+            let lat = crate::lattice::Lattice::from_gql(gql)
                 .map_err(|e| format!("LATTICE re-parse failed: {e}"))?;
-            crate::halcyon::registry::register(lat);
+            crate::lattice::registry::register(lat);
             Ok(ExecResult::Ok)
         }
 
         // Shorthand: `LATTICE name FROM TRUNCATED_ICOSAHEDRON
         // [TOPOLOGY "S"];`. Only `TRUNCATED_ICOSAHEDRON` is wired
         // at launch — see `HALCYON_PART_I_GATES.md` Part I scope.
-        #[cfg(feature = "halcyon")]
+        #[cfg(feature = "lattice")]
         Statement::LatticeFromCanonical {
             name,
             canonical,
@@ -7749,7 +7755,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         } => {
             let mut lat = match canonical.to_ascii_uppercase().as_str() {
                 "TRUNCATED_ICOSAHEDRON" => {
-                    crate::halcyon::truncated_icosahedron::buckyball()
+                    crate::lattice::topology::truncated_icosahedron::buckyball()
                 }
                 other => {
                     return Err(format!(
@@ -7766,18 +7772,18 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             if let Some(t) = topology {
                 lat.topology = Some(t.clone());
             }
-            crate::halcyon::registry::register(lat);
+            crate::lattice::registry::register(lat);
             Ok(ExecResult::Ok)
         }
 
         // `SHOW LATTICE name;` — emit the registered lattice's
         // canonical GQL form on the single returned row's `gql`
-        // column. The integration test in `src/halcyon/registry.rs`
+        // column. The integration test in `src/lattice/registry.rs`
         // round-trips this through `parse_gql` and verifies
         // structural equality.
-        #[cfg(feature = "halcyon")]
+        #[cfg(feature = "lattice")]
         Statement::ShowLattice { name } => {
-            let lat = crate::halcyon::registry::get(name)
+            let lat = crate::lattice::registry::get(name)
                 .ok_or_else(|| format!("Lattice '{name}' is not registered"))?;
             let gql = lat.to_gql();
             let mut record: crate::types::Record = std::collections::HashMap::new();

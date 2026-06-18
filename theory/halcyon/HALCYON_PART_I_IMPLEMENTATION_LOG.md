@@ -167,3 +167,59 @@ The closing entry records:
 - **The walker still reads through a synthetic dense Vec-backed connection** (`UFinalConnection` in the I.6 test). Part II's `SU2GaugeField` ships the production-grade dense buffer with the group-erased layout (`Group::SU(N)|U(1)|Z(N)` tag + `[(n_edges, repr_dim)]` storage); the `EdgeConnection` impl on it is one ~30-line file once the gauge field type lands.
 - **Persistence.** The `registry` module is an in-process `Mutex<HashMap>`; a `BundleStore`-grade persistence layer is a Part-II follow-up alongside the gauge field.
 - **HTTP surface.** `LATTICE` / `SHOW LATTICE` are wired through the GQL parser + executor but not through `gigi-server`. The Part-II gauge field will pick the same pattern up for the HTTP wire.
+
+---
+
+### Namespace correction (post-ship)
+
+Caught immediately after the Part-I ship — before the refactor was pushed to a remote — that the implementation had packed general-purpose primitives into a Halcyon-named folder. `Lattice`, the LATTICE registry, the truncated-icosahedron / buckyball constructor, `GroupElement`, `EdgeConnection`, and the `walk_loop` walker are all *general* graph-topology / gauge-theory primitives. Halcyon's Davis Wilson Lattice substrate is their first consumer, but the types themselves are not Halcyon-specific (the truncated icosahedron is a fullerene; the walker is a generic group-erased holonomy composer). Bee called the mis-namespacing out and asked for a refactor before the push.
+
+**Refactor performed:**
+
+- **Files moved (`git mv` so history follows):**
+  - `src/halcyon/lattice.rs` → `src/lattice/mod.rs`
+  - `src/halcyon/registry.rs` → `src/lattice/registry.rs`
+  - `src/halcyon/truncated_icosahedron.rs` → `src/lattice/topology/truncated_icosahedron.rs`
+  - `src/halcyon/group_element.rs` → `src/gauge/group_element.rs`
+  - `src/halcyon/edge_connection.rs` → `src/gauge/edge_connection.rs`
+  - `src/halcyon/holonomy.rs` → `src/gauge/holonomy.rs`
+  - `src/gauge.rs` (existing schema-migration `GaugeTransform` enum) → `src/gauge/mod.rs` (now also declares the connection-algebra submodules).
+  - `src/halcyon/mod.rs` → deleted; nothing legitimately Halcyon-specific remained.
+
+- **New layout:**
+  - `src/lattice/` — graph-topology primitive + registry + canonical-graph constructors under `topology/`.
+  - `src/gauge/` — schema-migration `GaugeTransform` *and* the group-erased connection algebra (`group_element`, `edge_connection`, `holonomy`).
+  - `tests/halcyon_part_i_bit_identity.rs` — unchanged location (integration tests are repo-level, not module-tree-coupled); imports rewired to `gigi::lattice::*` / `gigi::gauge::*`.
+  - `tests/fixtures/halcyon/` — unchanged (the heatbath gold fixtures are Halcyon-specific provenance).
+
+- **`Cargo.toml` feature split:**
+  - `lattice = []` — enables `gigi::lattice` and the LATTICE GQL verb (general).
+  - `gauge = ["lattice"]` — enables `gigi::gauge::{group_element, edge_connection, holonomy}` (depends on lattice because the walker reads edges + orientations off a `Lattice`).
+  - `halcyon = ["lattice", "gauge"]` — composite, additionally arms the Halcyon-specific bit-identity integration test against the U_final / face-holonomy gold fixtures.
+
+- **`cfg` gates re-pointed:** the `Statement::Lattice` / `LatticeFromCanonical` / `ShowLattice` variants in `src/parser.rs` and their executor arms are now gated on `lattice` (the general primitive). The `tests/halcyon_part_i_bit_identity.rs` integration test stays gated on `halcyon` (the composite that names the specific gold fixture).
+
+- **Test names unchanged.** Every `tdd_hal_i_*` test keeps its name — the names are anchored to the spec gates in `HALCYON_PART_I_GATES.md`, not to module paths. Only the `mod` paths the tests live under changed.
+
+**Receipts (cargo test passes across every feature flag combination, post-refactor):**
+
+```
+cargo test --no-default-features --lib
+test result: ok. 852 passed; 0 failed; 0 ignored; 0 measured
+
+cargo test --features lattice --lib
+test result: ok. 860 passed; 0 failed; 0 ignored; 0 measured
+
+cargo test --features gauge --lib
+test result: ok. 871 passed; 0 failed; 0 ignored; 0 measured
+
+cargo test --features halcyon --lib
+test result: ok. 871 passed; 0 failed; 0 ignored; 0 measured
+
+cargo test --features halcyon --test halcyon_part_i_bit_identity
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured
+```
+
+The no-feature build still matches the pre-Halcyon baseline (852 / 0). The `lattice` feature adds the 8 lattice-module tests (round-trip + registry + parser + topology). The `gauge` feature adds the 11 gauge-algebra tests (group_element + edge_connection + holonomy). The composite `halcyon` adds no new lib tests beyond what `gauge` already pulls in (the only Halcyon-specific test is the integration test in `tests/`).
+
+No commit in the refactor carries a `Co-Authored-By: Claude` footer; the refactor lands as a single commit authored solely by Bee Rosa Davis per `feedback_no_ai_coauthor.md`.

@@ -78,14 +78,33 @@ patterns = []
 # When OFF, the engine compiles and behaves exactly as before.
 causal_states = []
 
-# `halcyon` — opt-in Davis Wilson Lattice substrate. Part I (this
-# sprint): LATTICE verb (graph topology + face-cycle table) +
-# generalized HOLONOMY walker reading per-edge SU(2) connections
-# through an EdgeConnection trait. Group-erased at the trait level
-# (the only group implementation that ships is SU(2); U(1) and Z_N
-# compile but panic at use site). When OFF the engine compiles and
-# behaves exactly as before. See `HALCYON_PART_I_GATES.md`.
-halcyon = []
+# `lattice` — opt-in graph-topology primitive (vertices + signed
+# edges + face-cycle table + topology hint). General-purpose; Halcyon's
+# Davis Wilson Lattice substrate is the first consumer but the type
+# is not Halcyon-specific. Enables `gigi::lattice` (with the in-memory
+# registry + canonical-graph constructors like the truncated icosahedron
+# / buckyball) and the `LATTICE` GQL verb in `src/parser.rs`. When OFF
+# the engine compiles and behaves exactly as before. See
+# `HALCYON_PART_I_GATES.md` for the originating gate breakdown.
+lattice = []
+#
+# `gauge` — opt-in group-erased connection algebra: `GroupElement`
+# (SU(2) ships with math; U(1) / Z_N compile but panic at use site),
+# `EdgeConnection` trait, and the generalized `walk_loop` holonomy
+# walker. Lives in `gigi::gauge` alongside the existing schema-
+# migration `GaugeTransform`. Depends on `lattice` because the walker
+# reads edges + orientations off a `Lattice`. General gauge-theory
+# primitive — not Halcyon-specific.
+gauge = ["lattice"]
+#
+# `halcyon` — composite feature for the Halcyon Davis Wilson Lattice
+# substrate. Pulls in `lattice + gauge` (the general primitives) and
+# additionally enables the Halcyon-specific bit-identity integration
+# test against the U_final / face-holonomy gold fixtures under
+# `tests/fixtures/halcyon/`. See `HALCYON_PART_I_GATES.md` Part I scope
+# and `theory/halcyon/HALCYON_PART_I_IMPLEMENTATION_LOG.md` for the
+# per-gate receipts.
+halcyon = ["lattice", "gauge"]
 
 # `wish` — opt-in boundary-value-problem geodesic verb. When ON, the
 # `gigi::imagine::wish` module is compiled, providing WishConfig,

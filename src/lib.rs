@@ -53,6 +53,13 @@ pub mod lattice_delegation;
 pub mod dhoom;
 pub mod edge;
 pub mod engine;
+// Gauge transformations (Schema Migrations §5a) + gauge-theory
+// connection primitives. The `gauge` Cargo feature additionally
+// pulls in `group_element`, `edge_connection`, and `holonomy` —
+// general-purpose group-erased connection algebra. Halcyon's Davis
+// Wilson Lattice substrate is the first consumer (see the `halcyon`
+// composite feature which enables `lattice + gauge` together and
+// the bit-identity integration test in `tests/`).
 pub mod gauge;
 // Kähler-geometry substrate (catalog.md §1, the generator
 // 𝒢 = (M, g, J, ∇, B, Γ)). Gated by the `kahler` feature so the
@@ -161,17 +168,18 @@ pub mod transactions;
 // `theory/causal_states/validation_tests.py` (36/36 green).
 #[cfg(feature = "causal_states")]
 pub mod causal_states;
-// Halcyon — Davis Wilson Lattice substrate. Part I (this sprint):
-// LATTICE verb (graph topology + face-cycle table) + generalized
-// HOLONOMY walker reading per-edge SU(2) connections through an
-// EdgeConnection trait. Group-erased at the trait level (the only
-// group implementation that ships is SU(2); U(1) and Z_N compile
-// but panic at use site). Opt-in via the `halcyon` feature flag.
-// See `HALCYON_PART_I_GATES.md` for the gate breakdown and
-// `theory/halcyon/HALCYON_PART_I_IMPLEMENTATION_LOG.md` for the
-// per-gate receipts.
-#[cfg(feature = "halcyon")]
-pub mod halcyon;
+// Lattice — graph-topology primitive (vertices + signed edges +
+// face-cycle table + topology hint). General-purpose; Halcyon's
+// Davis Wilson Lattice substrate is the first consumer but the type
+// is not Halcyon-specific. Opt-in via the `lattice` Cargo feature.
+// The LATTICE verb in src/parser.rs (Statement::Lattice /
+// LatticeFromCanonical / ShowLattice) is gated on the same feature.
+// See `HALCYON_PART_I_GATES.md` for the originating gate breakdown
+// and `theory/halcyon/HALCYON_PART_I_IMPLEMENTATION_LOG.md` for the
+// per-gate receipts (Halcyon-Part-I shipped this primitive plus the
+// gauge-side connection algebra now living in `src/gauge/`).
+#[cfg(feature = "lattice")]
+pub mod lattice;
 pub mod spectral;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),

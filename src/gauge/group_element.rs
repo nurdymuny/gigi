@@ -11,7 +11,7 @@
 //! Quaternion convention is the one pinned in
 //! `tests/fixtures/halcyon/buckyball_gold_provenance.json` (scalar-
 //! first `(q0, q1, q2, q3)` with `q0 = cos(θ/2)`); see the module
-//! docstring on `halcyon::mod` for the full product and exponent
+//! docstring on `gauge::mod` for the full product and exponent
 //! rules.
 
 /// Group-erased element of a structure group. Only `SU2` has
@@ -121,7 +121,7 @@ impl GroupElement {
 #[cold]
 fn unimplemented_for_group(group: &'static str) -> ! {
     panic!(
-        "halcyon::group_element: math for group {group} is not implemented (Part I only ships SU(2); see HALCYON_PART_I_GATES.md Part II scope)"
+        "gauge::group_element: math for group {group} is not implemented (Part I only ships SU(2); see HALCYON_PART_I_GATES.md Part II scope)"
     );
 }
 

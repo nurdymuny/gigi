@@ -1,5 +1,22 @@
 //! `Lattice` — graph topology with incidence + face-cycle tables.
 //!
+//! Behind the `lattice` Cargo feature. General-purpose graph-topology
+//! primitive: vertices + signed edges + face-cycle table + an
+//! optional topology hint string. Halcyon's Davis Wilson Lattice
+//! substrate is the first consumer, but the type is not Halcyon-
+//! specific — it's the discrete-manifold base any subsequent gauge-
+//! field module (this engine's `gauge` feature, or downstream
+//! callers) attaches a connection to.
+//!
+//! Submodules:
+//!
+//! - `registry` — in-memory `LATTICE`-keyed registry the executor
+//!   materializes declared lattices into; `SHOW LATTICE name` reads
+//!   back through it.
+//! - `topology` — canonical-graph constructors (buckyball / future
+//!   cubic / hexagonal / …) that produce a `Lattice` ready for the
+//!   `LATTICE name FROM CANONICAL_ID` GQL shorthand.
+//!
 //! Closes TDD-HAL-I.1 (storage round-trip). The canonical
 //! serialization is the GQL re-emit form of `LATTICE`; a `Lattice`
 //! parses back from its own emitted form bit-identical (modulo
@@ -22,6 +39,9 @@
 //! - `topology` — optional hint string (`"S2"`, `"T2"`, `"R3"`, …).
 //!   Free-form per the spec; the engine does not interpret it in
 //!   Part I beyond round-tripping.
+
+pub mod registry;
+pub mod topology;
 
 use std::fmt;
 

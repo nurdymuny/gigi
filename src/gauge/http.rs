@@ -37,6 +37,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 
+use super::engine_handle as gauge_engine_handle;
 use super::error::GaugeFieldError;
 use super::group::Group;
 use super::registry as gauge_registry;
@@ -82,6 +83,14 @@ pub struct LatticeCreateRequest {
     /// verbatim — the engine does not interpret it.
     #[serde(default)]
     pub topology_hint: Option<String>,
+    /// TDD-HAL-II.6b: opt-in durable persistence. When `true` the
+    /// handler routes through `engine.declare_lattice_durable` (WAL-
+    /// logged before in-process registration). When `false` or
+    /// omitted, the existing II.6 in-memory-only path runs (Bee's
+    /// locked decision 3: persistence is opt-in; default stays
+    /// in-memory so existing II.6 clients are unchanged).
+    #[serde(default)]
+    pub persist: bool,
 }
 
 /// Wire envelope for a Lattice. Round-trips through `GET /v1/lattice/{name}`.
@@ -127,7 +136,36 @@ async fn lattice_create(
         lat.topology = Some(hint);
     }
     let view = LatticeView::from_lattice(&lat);
-    lattice_registry::register(lat);
+
+    if req.persist {
+        // TDD-HAL-II.6b durable path: WAL-log the declaration before
+        // installing in the in-process registry, via the engine handle
+        // installed by `gigi_stream::main` (or the test harness's
+        // `engine_handle::install`). On crash between log + register
+        // the next Engine::open replays the WAL entry and re-installs.
+        let lat_name = lat.name.clone();
+        let outcome = gauge_engine_handle::with_engine_mut(|engine| {
+            engine.declare_lattice_durable(lat)
+        });
+        match outcome {
+            Some(Ok(())) => {
+                gauge_engine_handle::mark_lattice_durable(&lat_name);
+            }
+            Some(Err(e)) => {
+                return Err(internal(format!(
+                    "gauge: durable lattice declaration failed: {}",
+                    e.kind()
+                )));
+            }
+            None => {
+                return Err(internal(
+                    "gauge: no engine handle installed; cannot honor persist:true",
+                ));
+            }
+        }
+    } else {
+        lattice_registry::register(lat);
+    }
     Ok((StatusCode::OK, Json(view)))
 }
 
@@ -169,6 +207,14 @@ pub struct GaugeFieldCreateRequest {
     /// accepts `"SU2"` for symmetry with code-style constants).
     pub group: String,
     pub init: InitSpec,
+    /// TDD-HAL-II.6b: opt-in durable persistence. When `true` the
+    /// handler routes through `engine.declare_gauge_field_durable`
+    /// (WAL-logged metadata before in-process registration). Default
+    /// `false` keeps the II.6 in-memory-only behavior. `persist: true`
+    /// against an in-memory lattice fails fast at declaration time
+    /// rather than at replay time (see handler dispatch).
+    #[serde(default)]
+    pub persist: bool,
 }
 
 #[derive(Serialize)]
@@ -312,7 +358,54 @@ async fn gauge_field_create(
     let init_seed_back = field.init_seed;
     let handle: std::sync::Arc<dyn gauge_registry::GaugeFieldHandle> =
         std::sync::Arc::new(field);
-    gauge_registry::register(handle);
+
+    if req.persist {
+        // TDD-HAL-II.6b gate (e): persisting a gauge field on a non-
+        // durable lattice would resurrect orphaned on the next reopen
+        // (the WAL has a GaugeFieldDeclare but no LatticeDeclare for
+        // its base topology, so Pass 2 of replay_gauge_substrate
+        // fails to resolve the lattice). Fail fast at declaration.
+        if !gauge_engine_handle::is_lattice_durable(&lat.name) {
+            return Err(bad_request(format!(
+                "gauge: lattice '{}' is not durably persisted; \
+                 declare it with persist:true first before persisting a \
+                 gauge field on it",
+                lat.name
+            )));
+        }
+        // FROM_FIELD + persist=true is rejected because the WAL
+        // replay path in `persistence::materialize_field` cannot
+        // re-resolve the source field from metadata alone (the
+        // source's full buffer is not in the WAL — Bee's locked
+        // decision 1: metadata-only WAL variant). P1 follow-up.
+        if matches!(handle.init_metadata().0, GaugeFieldInit::FromField(_)) {
+            return Err(bad_request(
+                "gauge: INIT FROM_FIELD with persist:true is not yet \
+                 supported (WAL replay cannot re-resolve the source \
+                 field from declaration metadata alone); declare \
+                 the source HAAR_RANDOM/IDENTITY first or omit persist",
+            ));
+        }
+        let outcome = gauge_engine_handle::with_engine_mut(|engine| {
+            engine.declare_gauge_field_durable(handle.clone())
+        });
+        match outcome {
+            Some(Ok(())) => {}
+            Some(Err(e)) => {
+                return Err(internal(format!(
+                    "gauge: durable gauge-field declaration failed: {}",
+                    e.kind()
+                )));
+            }
+            None => {
+                return Err(internal(
+                    "gauge: no engine handle installed; cannot honor persist:true",
+                ));
+            }
+        }
+    } else {
+        gauge_registry::register(handle);
+    }
 
     Ok((
         StatusCode::OK,
@@ -374,16 +467,16 @@ async fn gauge_field_get(
 /// router directly via `tower::ServiceExt::oneshot` (no listener).
 ///
 /// The router carries no state — the lattice + gauge registries are
-/// process singletons (mirrors `lattice::registry` / `gauge::registry`),
-/// so the HTTP surface threads through them directly. State threading
-/// becomes a refactor concern once persistence land on the BundleStore
-/// path that's already wired through `engine.declare_gauge_field_durable`
-/// (II.4b).
+/// process singletons (mirrors `lattice::registry` / `gauge::registry`)
+/// and the engine handle used by II.6b's `persist:true` branch is
+/// installed via `gauge::engine_handle::install` (option-b
+/// module-global), so the HTTP surface threads through them directly.
 ///
 /// Generic in the host app's `State` type so the gigi-stream binary
 /// (which has `Router<Arc<StreamState>>`) can `merge` this in without
 /// state-type juggling. The handlers themselves don't read host state
-/// — they hit the global lattice + gauge registries — so any concrete
+/// — they hit the global lattice + gauge registries (in-memory path)
+/// or the module-global engine handle (durable path) — so any concrete
 /// `S: Clone + Send + Sync + 'static` works.
 pub fn build_router<S>() -> Router<S>
 where

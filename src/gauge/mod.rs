@@ -58,6 +58,8 @@ pub mod registry;
 pub mod persistence;
 #[cfg(feature = "gauge")]
 pub mod http;
+#[cfg(feature = "gauge")]
+pub mod engine_handle;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;

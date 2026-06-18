@@ -159,7 +159,12 @@ fn verify_gigi_token(token: &str, secret: &str) -> Result<GigiClaims, &'static s
 }
 
 struct StreamState {
-    engine: RwLock<Engine>,
+    /// `Arc<RwLock<Engine>>` (lifted from `RwLock<Engine>` for
+    /// TDD-HAL-II.6b) so the gauge HTTP surface can share the same
+    /// engine via `gauge::engine_handle::install`. `Arc` derefs through
+    /// to `RwLock`, so every existing `state.engine.read()/.write()`
+    /// call site keeps working unchanged.
+    engine: Arc<RwLock<Engine>>,
     /// True once WAL replay is complete and engine is ready for queries.
     ready: AtomicBool,
     /// Per-bundle broadcast channels for subscriptions
@@ -342,7 +347,7 @@ impl StreamState {
             .unwrap_or(64_usize);
 
         StreamState {
-            engine: RwLock::new(engine),
+            engine: Arc::new(RwLock::new(engine)),
             ready: AtomicBool::new(false),
             channels: RwLock::new(HashMap::new()),
             dashboard_tx: broadcast::channel(4096).0,
@@ -14483,6 +14488,21 @@ async fn main() {
     // mock-to-live swap (the production consumer) parses the JSON
     // envelope `{"group": "SU(2)", "repr_dim": 4, "n_edges": 90,
     // "data": [[…],…]}` per Bee's locked decision 4.
+    //
+    // TDD-HAL-II.6b: install the engine handle into the gauge
+    // engine_handle module-global so the `persist:true` branch of
+    // POST /v1/lattice and POST /v1/gauge_field can reach the same
+    // `Engine` the rest of the binary writes through. The handle is
+    // a clone of `state.engine` (lifted to `Arc<RwLock<Engine>>` for
+    // this purpose); all other handlers continue to dereference
+    // `state.engine` exactly as before. Install runs once, at
+    // startup; tests reset with `engine_handle::clear_for_test()`.
+    #[cfg(feature = "gauge")]
+    {
+        if let Err(e) = gigi::gauge::engine_handle::install(Arc::clone(&state.engine)) {
+            eprintln!("WARNING: gauge engine_handle install failed: {e}");
+        }
+    }
     #[cfg(feature = "gauge")]
     let app = app.merge(gigi::gauge::http::build_router());
 

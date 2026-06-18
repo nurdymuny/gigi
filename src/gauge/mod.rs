@@ -72,6 +72,8 @@ pub mod heatbath_haar;
 pub mod kennedy_pendleton;
 #[cfg(feature = "gauge")]
 pub mod gibbs_sample;
+#[cfg(feature = "gauge")]
+pub mod observables;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -104,6 +106,8 @@ pub use heatbath_haar::sample_haar_sqrt_rejection;
 pub use kennedy_pendleton::{sample_kp_x0, sample_su2_link};
 #[cfg(feature = "gauge")]
 pub use gibbs_sample::{gibbs_sample, GibbsSampleDiagnostics, GibbsSampleResponse, ObservableId};
+#[cfg(feature = "gauge")]
+pub use observables::PlaquetteReduction;
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

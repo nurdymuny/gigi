@@ -786,6 +786,64 @@ pub enum Statement {
         /// (name/lattice/group/repr_dim/n_edges/init_kind/init_seed).
         with_buffer: bool,
     },
+
+    // ── PLAQUETTE / Q_SURROGATE projections (gated by `gauge`).
+    //    Closes TDD-HAL-III.6 parser half. SELECT-level desugaring of
+    //    the two gauge-substrate observables: PLAQUETTE OF U reduces
+    //    to `gauge::plaquette_{per_face,mean,sum}` depending on the
+    //    surrounding aggregate (locked decision D7), Q_SURROGATE OF U
+    //    reduces to `gauge::q_surrogate` (scalar f64, locked decision
+    //    D6). The grammar is group-agnostic; the executor dispatches
+    //    through `handle.group()` (locked decision D4 group-erasure
+    //    surface).
+    /// `SELECT [MEAN|SUM]? PLAQUETTE OF name;`
+    #[cfg(feature = "gauge")]
+    SelectPlaquette {
+        /// Gauge-field name the plaquette walks against.
+        field: String,
+        /// Which reduction the SELECT projection asked for.
+        reduction: crate::gauge::PlaquetteReduction,
+    },
+    /// `SELECT Q_SURROGATE OF name;`
+    #[cfg(feature = "gauge")]
+    SelectQSurrogate {
+        /// Gauge-field name the angular accumulator walks against.
+        field: String,
+    },
+
+    // ── GIBBS_SAMPLE verb (gated by `gauge`). Closes TDD-HAL-III.6
+    //    parser + executor half. Group-agnostic Statement variant;
+    //    the executor matches `handle.group()` to dispatch into
+    //    `gauge::gibbs_sample` (SU(2) at launch). Future SU(3) /
+    //    U(1) heatbaths ship by extending the executor group-match,
+    //    not by changing the grammar.
+    /// `GIBBS_SAMPLE name BETA β [N_SWEEPS n] [MEASURE_EVERY m]
+    ///  [MEASURE (obs_list)] [SEED s];`
+    #[cfg(feature = "gauge")]
+    GibbsSample {
+        /// Gauge-field name to sweep against (mutated in-place via the
+        /// SU(2)-mut registry escape, locked decision D4).
+        field: String,
+        /// Inverse temperature β. Echoed back in the response
+        /// diagnostics block.
+        beta: f64,
+        /// Number of sweeps to run. Defaults to 1 when the optional
+        /// `N_SWEEPS` clause is omitted (matches the Halcyon mock).
+        n_sweeps: usize,
+        /// Measurement cadence. Defaults to 1 when omitted. `0`
+        /// disables the measurement epilogue entirely.
+        measure_every: usize,
+        /// Observable list. Empty when the optional `MEASURE (…)`
+        /// clause is omitted. The parser emits the group-agnostic
+        /// `ObservableId` enum; the executor lowers each tag to its
+        /// SU(2) primitive.
+        measure: Vec<crate::gauge::ObservableId>,
+        /// Optional seed. `None` parses successfully and the executor
+        /// surfaces `GaugeFieldError::SeedRequired` (locked decision
+        /// 1 — intra-binding bit-identity is the contract; every
+        /// GIBBS_SAMPLE call must commit to a seed).
+        seed: Option<u64>,
+    },
 }
 
 /// Whitelisted gauge-invariant operations. Each maps to an existing
@@ -1249,7 +1307,24 @@ impl Parser {
             // SQL compat
             "CREATE" => self.parse_create_bundle(),
             "INSERT" => self.parse_sql_insert(),
-            "SELECT" => self.parse_sql_select(),
+            "SELECT" => {
+                // TDD-HAL-III.6: PLAQUETTE / Q_SURROGATE projection
+                // desugaring. The classic `parse_sql_select` requires
+                // a `FROM bundle` clause; the gauge-substrate forms
+                // (`SELECT PLAQUETTE OF U;`, `SELECT MEAN(PLAQUETTE OF
+                // U);`, `SELECT SUM(PLAQUETTE OF U);`, `SELECT
+                // Q_SURROGATE OF U;`) intercept here so we can emit
+                // dedicated `Statement::SelectPlaquette` /
+                // `Statement::SelectQSurrogate` variants and leave the
+                // bundle-SELECT path untouched.
+                #[cfg(feature = "gauge")]
+                {
+                    if let Some(stmt) = self.try_parse_gauge_select()? {
+                        return Ok(stmt);
+                    }
+                }
+                self.parse_sql_select()
+            }
 
             // GQL native
             "BUNDLE" => self.parse_bundle(),
@@ -1274,6 +1349,15 @@ impl Parser {
             // TDD-HAL-II.5 (parser + executor).
             #[cfg(feature = "gauge")]
             "GAUGE_FIELD" => self.parse_gauge_field(),
+            // GIBBS_SAMPLE verb. Closes TDD-HAL-III.6 (parser +
+            // executor). Group-agnostic Statement variant; the
+            // executor dispatches into `gauge::gibbs_sample` for
+            // SU(2). The /v1/gql HTTP route reaches GIBBS_SAMPLE
+            // through this parser arm — that is the documented soft
+            // edge (locked decision D5); the 46-minute thermalization
+            // wall self-enforces.
+            #[cfg(feature = "gauge")]
+            "GIBBS_SAMPLE" => self.parse_gibbs_sample(),
             "INTEGRATE" => self.parse_integrate(),
             "PULLBACK" => self.parse_pullback(),
             "COLLAPSE" => {
@@ -2393,6 +2477,234 @@ impl Parser {
                 "Expected init clause (IDENTITY / HAAR_RANDOM / FROM), got '{other}'"
             )),
         }
+    }
+
+    /// Parse a `GIBBS_SAMPLE` statement. Closes the parser half of
+    /// TDD-HAL-III.6. The executor (`Statement::GibbsSample` arm in
+    /// `execute`) drives `crate::gauge::gibbs_sample::gibbs_sample`
+    /// for SU(2) and returns a Rows envelope carrying the field name +
+    /// measurement_history + diagnostics block from here.
+    ///
+    /// Grammar (per `GIGI_HALCYON_LATTICE_PRIMITIVES_SPRINT_SPEC.md`
+    /// §P1.1, with the Q5 rename to `Q_SURROGATE`):
+    ///
+    /// ```ebnf
+    /// gibbs_sample_stmt =
+    ///   "GIBBS_SAMPLE" ident
+    ///   "BETA" number
+    ///   [ "N_SWEEPS" integer ]
+    ///   [ "MEASURE_EVERY" integer ]
+    ///   [ "MEASURE" "(" observable_list ")" ]
+    ///   [ "SEED" integer ]
+    ///   ";" ;
+    /// observable_list = observable { "," observable } ;
+    /// observable = "MEAN" "(" "PLAQUETTE" ")"
+    ///            | "Q_SURROGATE"
+    ///            | "H_TOTAL" | "GAUSS_RESIDUAL_MAX" | "EDGE_KINETIC"
+    ///            | "VERTEX_GAUSS" | "ENERGY" ;
+    /// ```
+    ///
+    /// Group erasure (Bee's locked decision D4): the grammar accepts
+    /// every group; the executor routes to `gibbs_sample` only for
+    /// SU(2). The optional `N_SWEEPS` / `MEASURE_EVERY` clauses default
+    /// to 1 each (matches the Halcyon mock); a missing `MEASURE` clause
+    /// emits an empty `Vec<ObservableId>`. Missing `SEED` parses
+    /// successfully — the executor surfaces
+    /// `GaugeFieldError::SeedRequired` so the typed-error contract
+    /// stays uniform with GAUGE_FIELD INIT HAAR_RANDOM.
+    #[cfg(feature = "gauge")]
+    fn parse_gibbs_sample(&mut self) -> Result<Statement, String> {
+        let field = self.expect_word()?;
+        self.expect_keyword("BETA")?;
+        let beta = self.expect_f64()?;
+        let mut n_sweeps: usize = 1;
+        let mut measure_every: usize = 1;
+        let mut measure: Vec<crate::gauge::ObservableId> = Vec::new();
+        let mut seed: Option<u64> = None;
+
+        // Optional clauses may appear in any order. The Halcyon mock
+        // and III.5 contract assume the canonical order BETA → N_SWEEPS
+        // → MEASURE_EVERY → MEASURE → SEED, but the parser accepts any
+        // permutation of the suffix clauses so HTTP round-trips through
+        // hand-edited GQL stay forgiving.
+        loop {
+            if self.is_keyword("N_SWEEPS") {
+                self.advance();
+                n_sweeps = self.expect_usize()?;
+            } else if self.is_keyword("MEASURE_EVERY") {
+                self.advance();
+                measure_every = self.expect_usize()?;
+            } else if self.is_keyword("MEASURE") {
+                self.advance();
+                self.expect(Token::LParen)?;
+                measure = self.parse_observable_list()?;
+                self.expect(Token::RParen)?;
+            } else if self.is_keyword("SEED") {
+                self.advance();
+                seed = Some(self.expect_usize()? as u64);
+            } else {
+                break;
+            }
+        }
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::GibbsSample {
+            field,
+            beta,
+            n_sweeps,
+            measure_every,
+            measure,
+            seed,
+        })
+    }
+
+    /// Parse an observable list — comma-separated entries inside
+    /// `MEASURE (…)`. Each entry desugars to an `ObservableId` enum
+    /// tag; pre-Part-IV variants parse successfully and the executor
+    /// (or the III.5 primitive) surfaces a typed
+    /// `PartIvObservableNotReady` error at sweep time.
+    #[cfg(feature = "gauge")]
+    fn parse_observable_list(&mut self) -> Result<Vec<crate::gauge::ObservableId>, String> {
+        let mut out = Vec::new();
+        loop {
+            out.push(self.parse_observable()?);
+            if matches!(self.peek(), Some(Token::Comma)) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        Ok(out)
+    }
+
+    /// Parse a single observable. The two SU(2)-substrate observables
+    /// (`MEAN(PLAQUETTE)` and `Q_SURROGATE`) lower to
+    /// `ObservableId::MeanPlaquette` / `ObservableId::QSurrogate`. The
+    /// remaining Part-IV variants (`H_TOTAL`, `GAUSS_RESIDUAL_MAX`,
+    /// `EDGE_KINETIC`, `VERTEX_GAUSS`, `ENERGY`) parse so the upstream
+    /// regex anchors can match on the typed error string the executor
+    /// surfaces.
+    #[cfg(feature = "gauge")]
+    fn parse_observable(&mut self) -> Result<crate::gauge::ObservableId, String> {
+        let head = self.expect_word()?;
+        match head.to_ascii_uppercase().as_str() {
+            "MEAN" => {
+                self.expect(Token::LParen)?;
+                let inner = self.expect_word()?;
+                self.expect(Token::RParen)?;
+                if !inner.eq_ignore_ascii_case("PLAQUETTE") {
+                    return Err(format!(
+                        "Expected MEAN(PLAQUETTE), got MEAN({inner})"
+                    ));
+                }
+                Ok(crate::gauge::ObservableId::MeanPlaquette)
+            }
+            "Q_SURROGATE" => Ok(crate::gauge::ObservableId::QSurrogate),
+            "H_TOTAL" => Ok(crate::gauge::ObservableId::HTotal),
+            "GAUSS_RESIDUAL_MAX" => Ok(crate::gauge::ObservableId::GaussResidualMax),
+            "EDGE_KINETIC" => Ok(crate::gauge::ObservableId::EdgeKinetic),
+            "VERTEX_GAUSS" => Ok(crate::gauge::ObservableId::VertexGauss),
+            "ENERGY" => Ok(crate::gauge::ObservableId::Energy),
+            other => Err(format!(
+                "Expected observable (MEAN(PLAQUETTE) / Q_SURROGATE / H_TOTAL / \
+                 GAUSS_RESIDUAL_MAX / EDGE_KINETIC / VERTEX_GAUSS / ENERGY), got '{other}'"
+            )),
+        }
+    }
+
+    /// Consume a numeric token (integer or float) and return it as
+    /// `f64`. The expect_usize helper rejects fractional inputs; BETA
+    /// at GIBBS_SAMPLE accepts any non-negative real.
+    #[cfg(feature = "gauge")]
+    fn expect_f64(&mut self) -> Result<f64, String> {
+        match self.advance() {
+            Some(Token::Number(n)) => Ok(n),
+            Some(Token::Word(w)) => w
+                .parse::<f64>()
+                .map_err(|_| format!("Expected number, got '{w}'")),
+            other => Err(format!("Expected number, got {other:?}")),
+        }
+    }
+
+    /// TDD-HAL-III.6: try to parse a gauge-substrate SELECT projection
+    /// (`SELECT PLAQUETTE OF U;`, `SELECT MEAN(PLAQUETTE OF U);`,
+    /// `SELECT SUM(PLAQUETTE OF U);`, `SELECT Q_SURROGATE OF U;`)
+    /// before falling through to the bundle-shaped `parse_sql_select`.
+    /// Returns `Ok(None)` when the next token is not a gauge-prefixed
+    /// keyword (so the caller falls through to the classic SELECT
+    /// path); `Ok(Some(stmt))` on a successful gauge SELECT; `Err` on
+    /// a malformed gauge SELECT.
+    ///
+    /// Lookahead is one token deep — we peek `PLAQUETTE` /
+    /// `Q_SURROGATE` directly, and one token past `MEAN` / `SUM` to
+    /// distinguish `MEAN(field)` (classic agg) from
+    /// `MEAN(PLAQUETTE OF U)` (gauge projection). The peek is
+    /// non-consuming so the fall-through path sees the full token
+    /// stream unchanged.
+    #[cfg(feature = "gauge")]
+    fn try_parse_gauge_select(&mut self) -> Result<Option<Statement>, String> {
+        let head = match self.peek() {
+            Some(Token::Word(w)) => w.to_ascii_uppercase(),
+            _ => return Ok(None),
+        };
+        let red = match head.as_str() {
+            "PLAQUETTE" => {
+                self.advance();
+                self.expect_keyword("OF")?;
+                let field = self.expect_word()?;
+                if matches!(self.peek(), Some(Token::Semicolon)) {
+                    self.advance();
+                }
+                return Ok(Some(Statement::SelectPlaquette {
+                    field,
+                    reduction: crate::gauge::PlaquetteReduction::PerFace,
+                }));
+            }
+            "Q_SURROGATE" => {
+                self.advance();
+                self.expect_keyword("OF")?;
+                let field = self.expect_word()?;
+                if matches!(self.peek(), Some(Token::Semicolon)) {
+                    self.advance();
+                }
+                return Ok(Some(Statement::SelectQSurrogate { field }));
+            }
+            "MEAN" => crate::gauge::PlaquetteReduction::Mean,
+            "SUM" => crate::gauge::PlaquetteReduction::Sum,
+            _ => return Ok(None),
+        };
+        // Two-token lookahead through MEAN(/SUM( … so we can distinguish
+        // a gauge projection (PLAQUETTE inside the parens) from a
+        // classic aggregate (field-name inside the parens).
+        let saved_pos = self.pos;
+        self.advance(); // consume MEAN/SUM
+        if !matches!(self.peek(), Some(Token::LParen)) {
+            self.pos = saved_pos;
+            return Ok(None);
+        }
+        self.advance(); // consume LParen
+        let is_gauge = matches!(
+            self.peek(),
+            Some(Token::Word(w)) if w.eq_ignore_ascii_case("PLAQUETTE")
+        );
+        if !is_gauge {
+            // Classic aggregate — rewind and let parse_sql_select see
+            // it.
+            self.pos = saved_pos;
+            return Ok(None);
+        }
+        self.advance(); // consume PLAQUETTE
+        self.expect_keyword("OF")?;
+        let field = self.expect_word()?;
+        self.expect(Token::RParen)?;
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Some(Statement::SelectPlaquette {
+            field,
+            reduction: red,
+        }))
     }
 
     // ── GQL: INTEGRATE (aggregation) ──
@@ -8178,6 +8490,163 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }
             Ok(ExecResult::Rows(vec![record]))
         }
+
+        // ── TDD-HAL-III.6 — SELECT PLAQUETTE OF U projection ────────
+        // Three reductions (per-face / mean / sum) lower to the III.1
+        // primitives. The per-face form returns a Vec<f64> of length
+        // F packed into a Value::Vector; the mean / sum reductions
+        // return a Value::Float scalar. Both wire shapes carry the
+        // `reduction` label so JSON consumers can disambiguate
+        // without re-reading the GQL source.
+        #[cfg(feature = "gauge")]
+        Statement::SelectPlaquette { field, reduction } => {
+            use crate::gauge::PlaquetteReduction;
+            let handle = crate::gauge::registry::get(field).ok_or_else(|| {
+                crate::gauge::GaugeFieldError::FieldNotDeclared(field.clone()).to_string()
+            })?;
+            let lat = crate::lattice::registry::get(handle.lattice_name()).ok_or_else(
+                || {
+                    crate::gauge::GaugeFieldError::LatticeNotDeclared(
+                        handle.lattice_name().to_string(),
+                    )
+                    .to_string()
+                },
+            )?;
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "field".into(),
+                crate::types::Value::Text(field.clone()),
+            );
+            record.insert(
+                "reduction".into(),
+                crate::types::Value::Text(reduction.label().to_string()),
+            );
+            match reduction {
+                PlaquetteReduction::PerFace => {
+                    let v = crate::gauge::plaquette_per_face(handle.as_ref(), &lat)
+                        .map_err(|e| e.to_string())?;
+                    record.insert(
+                        "n_faces".into(),
+                        crate::types::Value::Integer(v.len() as i64),
+                    );
+                    record.insert("per_face".into(), crate::types::Value::Vector(v));
+                }
+                PlaquetteReduction::Mean => {
+                    let m = crate::gauge::plaquette_mean(handle.as_ref(), &lat)
+                        .map_err(|e| e.to_string())?;
+                    record.insert("value".into(), crate::types::Value::Float(m));
+                }
+                PlaquetteReduction::Sum => {
+                    let s = crate::gauge::plaquette_sum(handle.as_ref(), &lat)
+                        .map_err(|e| e.to_string())?;
+                    record.insert("value".into(), crate::types::Value::Float(s));
+                }
+            }
+            Ok(ExecResult::Rows(vec![record]))
+        }
+
+        // ── TDD-HAL-III.6 — SELECT Q_SURROGATE OF U projection ──────
+        // Scalar f64 (locked decision D6 — mirrors the Halcyon mock
+        // byte-for-byte at the JSON level).
+        #[cfg(feature = "gauge")]
+        Statement::SelectQSurrogate { field } => {
+            let handle = crate::gauge::registry::get(field).ok_or_else(|| {
+                crate::gauge::GaugeFieldError::FieldNotDeclared(field.clone()).to_string()
+            })?;
+            let lat = crate::lattice::registry::get(handle.lattice_name()).ok_or_else(
+                || {
+                    crate::gauge::GaugeFieldError::LatticeNotDeclared(
+                        handle.lattice_name().to_string(),
+                    )
+                    .to_string()
+                },
+            )?;
+            let q = crate::gauge::q_surrogate(handle.as_ref(), &lat)
+                .map_err(|e| e.to_string())?;
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "field".into(),
+                crate::types::Value::Text(field.clone()),
+            );
+            record.insert("value".into(), crate::types::Value::Float(q));
+            Ok(ExecResult::Rows(vec![record]))
+        }
+
+        // ── TDD-HAL-III.6 — GIBBS_SAMPLE executor arm ───────────────
+        // Group-erasure dispatch (locked decision D4): handle.group()
+        // matches `Group::SU2` and routes into `gauge::gibbs_sample`.
+        // Future SU(3) Cabibbo-Marinari heatbath ships
+        // `gauge::gibbs_sample_su3` and adds a new arm here without
+        // touching the grammar. The response is a single-row Rows
+        // envelope carrying `field`, `seed`, `beta`,
+        // `n_sweeps_completed`, and one column per measured
+        // observable (`mean_plaquette`, `q_surrogate`, …) as a
+        // `Value::Vector` of measurement-chain f64s.
+        #[cfg(feature = "gauge")]
+        Statement::GibbsSample {
+            field,
+            beta,
+            n_sweeps,
+            measure_every,
+            measure,
+            seed,
+        } => {
+            // 1. Resolve the field through the dyn surface so the
+            //    typed `FieldNotDeclared` Display anchors before we
+            //    touch the SU(2)-mut handle.
+            let handle = crate::gauge::registry::get(field).ok_or_else(|| {
+                crate::gauge::GaugeFieldError::FieldNotDeclared(field.clone()).to_string()
+            })?;
+            // 2. Group-erasure dispatch — only SU(2) proceeds to the
+            //    heatbath kernel.
+            if !matches!(handle.group(), crate::gauge::Group::SU2) {
+                return Err(crate::gauge::GaugeFieldError::UnsupportedGroup(
+                    handle.group(),
+                )
+                .to_string());
+            }
+            // 3. Drive the III.5 primitive. SeedRequired surfaces as
+            //    the typed error string the upstream regex anchors
+            //    expect ("SEED" substring).
+            let resp = crate::gauge::gibbs_sample(
+                field,
+                *beta,
+                *n_sweeps,
+                *measure_every,
+                measure.clone(),
+                *seed,
+            )
+            .map_err(|e| e.to_string())?;
+            // 4. Lower the response into a Rows envelope. One row
+            //    per call; per-observable measurement chains live
+            //    under the observable's `label()` column.
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "field".into(),
+                crate::types::Value::Text(resp.field.clone()),
+            );
+            record.insert(
+                "seed".into(),
+                crate::types::Value::Integer(resp.diagnostics.seed as i64),
+            );
+            record.insert(
+                "beta".into(),
+                crate::types::Value::Float(resp.diagnostics.beta),
+            );
+            record.insert(
+                "n_sweeps_completed".into(),
+                crate::types::Value::Integer(
+                    resp.diagnostics.n_sweeps_completed as i64,
+                ),
+            );
+            for (obs, chain) in &resp.measurement_history {
+                record.insert(
+                    obs.label().to_string(),
+                    crate::types::Value::Vector(chain.clone()),
+                );
+            }
+            Ok(ExecResult::Rows(vec![record]))
+        }
     }
 }
 
@@ -10966,5 +11435,239 @@ mod tests {
             Some(crate::types::Value::Integer(n)) => assert_eq!(*n, 360),
             other => panic!("missing/wrong data_flat_len column: {other:?}"),
         }
+    }
+
+    // ─── TDD-HAL-III.6 — GIBBS_SAMPLE + PLAQUETTE + Q_SURROGATE GQL ──
+    //
+    // Closes the parser + embedded-executor half of Part III's three
+    // user-facing verbs. Bee's locked decisions wired through:
+    //   D3 (sequential edge order) — III.5 owns; we only exercise the
+    //       handle round-trip here.
+    //   D4 (registry mutability)   — `gibbs_sample` reaches into the
+    //       SU(2)-mut registry through `get_su2_mut(name)`; the parser
+    //       arm stays group-agnostic.
+    //   D5 (/v1/gql soft-edge)     — the parser arm is the documented
+    //       reach-path; HTTP route-table enforcement is the
+    //       complementary half (Part IV+).
+    //   D6 (Q_SURROGATE shape)     — scalar f64 in the Rows envelope.
+    //   D7 (PLAQUETTE shape)       — per_face = Vec<f64> of length F;
+    //       mean / sum reductions return scalar f64.
+
+    /// TDD-HAL-III.6: parser accepts the full GIBBS_SAMPLE form
+    /// (`BETA β N_SWEEPS n MEASURE_EVERY m MEASURE (…) SEED s`) and
+    /// emits a Statement::GibbsSample with every field populated.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iii_6_parse_gibbs_sample_full_form() {
+        let stmt = parse(
+            "GIBBS_SAMPLE U BETA 2.5 N_SWEEPS 200 MEASURE_EVERY 1 \
+             MEASURE (MEAN(PLAQUETTE), Q_SURROGATE) SEED 20260616;",
+        )
+        .expect("parse GIBBS_SAMPLE full form");
+        match stmt {
+            Statement::GibbsSample {
+                field,
+                beta,
+                n_sweeps,
+                measure_every,
+                measure,
+                seed,
+            } => {
+                assert_eq!(field, "U");
+                assert_eq!(beta, 2.5);
+                assert_eq!(n_sweeps, 200);
+                assert_eq!(measure_every, 1);
+                assert_eq!(
+                    measure,
+                    vec![
+                        crate::gauge::ObservableId::MeanPlaquette,
+                        crate::gauge::ObservableId::QSurrogate,
+                    ]
+                );
+                assert_eq!(seed, Some(20260616));
+            }
+            other => panic!("Expected Statement::GibbsSample, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-III.6: parser accepts the minimal GIBBS_SAMPLE form
+    /// (`BETA β SEED s`) and defaults `n_sweeps = 1`,
+    /// `measure_every = 1`, `measure = []`.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iii_6_parse_gibbs_sample_minimal() {
+        let stmt = parse("GIBBS_SAMPLE U BETA 2.5 SEED 1;")
+            .expect("parse GIBBS_SAMPLE minimal");
+        match stmt {
+            Statement::GibbsSample {
+                field,
+                beta,
+                n_sweeps,
+                measure_every,
+                measure,
+                seed,
+            } => {
+                assert_eq!(field, "U");
+                assert_eq!(beta, 2.5);
+                assert_eq!(n_sweeps, 1);
+                assert_eq!(measure_every, 1);
+                assert!(measure.is_empty());
+                assert_eq!(seed, Some(1));
+            }
+            other => panic!("Expected Statement::GibbsSample, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-III.6: parser desugars the three SELECT PLAQUETTE
+    /// projection shapes into distinct PlaquetteReduction variants.
+    /// `SELECT PLAQUETTE OF U;` → PerFace.
+    /// `SELECT MEAN(PLAQUETTE OF U);` → Mean.
+    /// `SELECT SUM(PLAQUETTE OF U);` → Sum.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iii_6_parse_plaquette_reductions() {
+        let per = parse("SELECT PLAQUETTE OF U;").expect("parse PLAQUETTE per-face");
+        match per {
+            Statement::SelectPlaquette { field, reduction } => {
+                assert_eq!(field, "U");
+                assert_eq!(reduction, crate::gauge::PlaquetteReduction::PerFace);
+            }
+            other => panic!("Expected SelectPlaquette PerFace, got {other:?}"),
+        }
+        let mean = parse("SELECT MEAN(PLAQUETTE OF U);").expect("parse MEAN(PLAQUETTE)");
+        match mean {
+            Statement::SelectPlaquette { field, reduction } => {
+                assert_eq!(field, "U");
+                assert_eq!(reduction, crate::gauge::PlaquetteReduction::Mean);
+            }
+            other => panic!("Expected SelectPlaquette Mean, got {other:?}"),
+        }
+        let sum = parse("SELECT SUM(PLAQUETTE OF U);").expect("parse SUM(PLAQUETTE)");
+        match sum {
+            Statement::SelectPlaquette { field, reduction } => {
+                assert_eq!(field, "U");
+                assert_eq!(reduction, crate::gauge::PlaquetteReduction::Sum);
+            }
+            other => panic!("Expected SelectPlaquette Sum, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-III.6: end-to-end smoke — declare a buckyball lattice,
+    /// register a GAUGE_FIELD U INIT IDENTITY on top, then execute
+    /// GIBBS_SAMPLE for 5 sweeps measuring MEAN(PLAQUETTE) every
+    /// sweep. The response row carries a 5-entry measurement chain
+    /// under `MeanPlaquette` plus the seed echo in diagnostics.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iii_6_execute_gibbs_sample_smoke() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl =
+            "LATTICE tdd_hal_iii_6_smoke FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        let stmt = parse(lat_decl).expect("parse LATTICE");
+        execute(&mut engine, &stmt).expect("exec LATTICE");
+
+        let g_decl = "GAUGE_FIELD U_iii_6_smoke ON LATTICE tdd_hal_iii_6_smoke \
+                      GROUP SU(2) INIT IDENTITY;";
+        let stmt = parse(g_decl).expect("parse GAUGE_FIELD");
+        execute(&mut engine, &stmt).expect("exec GAUGE_FIELD");
+
+        // GIBBS_SAMPLE through the parser → registry must be SU(2)-mut
+        // so the III.5 sweep can lock the field. The GAUGE_FIELD arm
+        // registers through `register` (Arc<dyn>); we need
+        // `register_su2` for the mutable handle. Re-publish into the
+        // SU(2)-mut registry explicitly, naming the lattice to match
+        // the LATTICE declaration above so `gibbs_sample`'s lattice
+        // lookup hits the right entry.
+        let handle = crate::gauge::registry::get("U_iii_6_smoke").expect("dyn handle");
+        assert_eq!(handle.lattice_name(), "tdd_hal_iii_6_smoke");
+        let lat = crate::lattice::registry::get("tdd_hal_iii_6_smoke")
+            .expect("declared lattice");
+        let su2 = crate::gauge::SU2GaugeField::new(
+            "U_iii_6_smoke".into(),
+            &lat,
+            crate::gauge::GaugeFieldInit::Identity,
+            None,
+        )
+        .expect("identity init");
+        crate::gauge::registry::register_su2(su2);
+
+        let sample = "GIBBS_SAMPLE U_iii_6_smoke BETA 2.5 N_SWEEPS 5 MEASURE_EVERY 1 \
+                      MEASURE (MEAN(PLAQUETTE)) SEED 20260616;";
+        let stmt = parse(sample).expect("parse GIBBS_SAMPLE");
+        let rows = match execute(&mut engine, &stmt).expect("exec GIBBS_SAMPLE") {
+            ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1);
+        let r = &rows[0];
+        match r.get("field") {
+            Some(crate::types::Value::Text(s)) => assert_eq!(s, "U_iii_6_smoke"),
+            other => panic!("missing/wrong field column: {other:?}"),
+        }
+        match r.get("seed") {
+            Some(crate::types::Value::Integer(n)) => assert_eq!(*n, 20260616),
+            other => panic!("missing/wrong seed column: {other:?}"),
+        }
+        match r.get("n_sweeps_completed") {
+            Some(crate::types::Value::Integer(n)) => assert_eq!(*n, 5),
+            other => panic!("missing/wrong n_sweeps_completed: {other:?}"),
+        }
+        let label = crate::gauge::ObservableId::MeanPlaquette.label();
+        match r.get(label) {
+            Some(crate::types::Value::Vector(v)) => assert_eq!(
+                v.len(),
+                5,
+                "MeanPlaquette chain length must match n_sweeps/measure_every"
+            ),
+            other => panic!("missing/wrong {label} column: {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-III.6: parser accepts a SEED-less GIBBS_SAMPLE form,
+    /// but the executor surfaces the typed `SeedRequired` error whose
+    /// Display contains the literal "SEED" (locked decision 1 — every
+    /// GIBBS_SAMPLE call must commit to a seed for intra-binding
+    /// bit-identity).
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iii_6_execute_gibbs_sample_no_seed_errors() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl =
+            "LATTICE tdd_hal_iii_6_noseed FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        let stmt = parse(lat_decl).expect("parse LATTICE");
+        execute(&mut engine, &stmt).expect("exec LATTICE");
+
+        let bb = crate::lattice::topology::truncated_icosahedron::buckyball();
+        let su2 = crate::gauge::SU2GaugeField::new(
+            "U_iii_6_noseed".into(),
+            &bb,
+            crate::gauge::GaugeFieldInit::Identity,
+            None,
+        )
+        .expect("identity init");
+        crate::gauge::registry::register_su2(su2);
+
+        // SEED omitted; parser accepts, executor must fail.
+        let sample = "GIBBS_SAMPLE U_iii_6_noseed BETA 2.5 N_SWEEPS 5 \
+                      MEASURE_EVERY 1 MEASURE (MEAN(PLAQUETTE));";
+        let stmt = parse(sample).expect("parse GIBBS_SAMPLE no-seed");
+        let err =
+            execute(&mut engine, &stmt).expect_err("expected seed-required error");
+        assert!(
+            err.to_uppercase().contains("SEED"),
+            "Display must contain 'SEED', got: {err}"
+        );
     }
 }

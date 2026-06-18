@@ -64,6 +64,8 @@ pub mod engine_handle;
 pub mod plaquette;
 #[cfg(feature = "gauge")]
 pub mod q_surrogate;
+#[cfg(feature = "gauge")]
+pub mod staple;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -88,6 +90,8 @@ pub use registry::GaugeFieldHandle;
 pub use plaquette::{plaquette_mean, plaquette_per_face, plaquette_sum};
 #[cfg(feature = "gauge")]
 pub use q_surrogate::q_surrogate;
+#[cfg(feature = "gauge")]
+pub use staple::{build_edge_face_incidence, staple_sum_at_edge, EdgeFaceIncidence};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

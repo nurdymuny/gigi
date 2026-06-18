@@ -126,6 +126,51 @@ impl Lattice {
         self.n_vertices as i64 - self.n_edges() as i64 + self.n_faces() as i64
     }
 
+    /// Build the per-edge → list-of-`(face_idx, position_in_face)`
+    /// incidence table.
+    ///
+    /// For each edge `e`, the returned `inc[e]` enumerates every
+    /// face that contains `e`; `position_in_face` is the index `i`
+    /// such that the face's vertex-cycle pair
+    /// `(faces[face_idx][i], faces[face_idx][(i+1) % n])` resolves
+    /// to `e` under `resolve_edge`. Closed-surface invariant: on
+    /// any closed-surface lattice (e.g. `TOPOLOGY "S2"`) every edge
+    /// appears in exactly 2 faces.
+    ///
+    /// The result is opt-in / one-shot — we deliberately do NOT
+    /// store it on `Lattice` so the `to_gql` round-trip stays
+    /// byte-identical (the incidence is derived, not declared).
+    /// Callers in `gauge::staple` re-export this as
+    /// `EdgeFaceIncidence` (the type alias is just `Vec<Vec<(usize,
+    /// usize)>>`); the gate-III.3 staple-sum walker hoists the
+    /// result out of any inner loop. Iterates faces in ascending
+    /// `face_idx` order so the per-edge entry list is deterministic
+    /// (the load-bearing ordering for the Halcyon-mirrored staple
+    /// reduction downstream).
+    ///
+    /// Cost: `O(F · k)` (`k` = max face perimeter; ~32 · 6 = 192
+    /// entries on the buckyball).
+    pub fn build_edge_face_incidence(&self) -> Vec<Vec<(usize, usize)>> {
+        let n_edges = self.n_edges();
+        let mut inc: Vec<Vec<(usize, usize)>> =
+            (0..n_edges).map(|_| Vec::new()).collect();
+        for fidx in 0..self.n_faces() {
+            let face = &self.faces[fidx];
+            let n = face.len();
+            for pos in 0..n {
+                let a = face[pos];
+                let b = face[(pos + 1) % n];
+                let (eid, _orient) = self
+                    .resolve_edge(a, b)
+                    .unwrap_or_else(|| panic!(
+                        "build_edge_face_incidence: face {fidx} pair ({a},{b}) at pos {pos} is not an edge"
+                    ));
+                inc[eid].push((fidx, pos));
+            }
+        }
+        inc
+    }
+
     /// Resolve a face's consecutive vertex pair `(a, b)` to the edge
     /// index + orientation. Returns `None` if the pair is not an
     /// edge of the lattice in either direction.

@@ -60,6 +60,8 @@ pub mod persistence;
 pub mod http;
 #[cfg(feature = "gauge")]
 pub mod engine_handle;
+#[cfg(feature = "gauge")]
+pub mod plaquette;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -80,6 +82,8 @@ pub use su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
 // responses without naming the registry submodule directly.
 #[cfg(feature = "gauge")]
 pub use registry::GaugeFieldHandle;
+#[cfg(feature = "gauge")]
+pub use plaquette::{plaquette_mean, plaquette_per_face, plaquette_sum};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

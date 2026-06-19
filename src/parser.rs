@@ -8808,35 +8808,26 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     .map_err(|e| e.to_string())?,
             };
 
-            // TDD-HAL-V.0b — declaration must populate BOTH the dyn
-            // read map AND the SU(2)-mut sibling map. Pre-fix this arm
-            // only landed in the dyn map, so downstream mutators
-            // (GIBBS_SAMPLE / SYMPLECTIC_FLOW / future SNAPSHOT verbs)
-            // could not find the field via `get_su2_mut` and every
-            // declare-then-mutate flow had to work around it with a
-            // manual `register_su2(...)` re-park (Halcyon Part IV HTTP
-            // test scaffold, Part V P-1 production receipt).
-            //
-            // Snapshot `field` BEFORE moving it into the Arc so the
-            // persist path still gets the same `Arc<dyn GaugeFieldHandle>`
-            // it always handed to `declare_gauge_field_durable`.
-            let field_snapshot = field.clone();
-            let handle: std::sync::Arc<dyn crate::gauge::registry::GaugeFieldHandle> =
-                std::sync::Arc::new(field);
-
-            // 4. Persistence routing — PERSIST keyword takes the
-            //    durable path through the engine (Bee's locked
-            //    decision 3); the default declaration is in-memory.
-            //    The SU(2)-mut re-park happens in BOTH branches so the
-            //    field is mutator-ready regardless of persistence.
+            // Declaration must populate BOTH the dyn read map AND the
+            // SU(2)-mut sibling map so downstream mutators (GIBBS_SAMPLE
+            // / SYMPLECTIC_FLOW / SNAPSHOT) can find the field via
+            // `get_su2_mut`. `register_su2` already covers both maps
+            // (see src/gauge/registry.rs:160-176), so the non-PERSIST
+            // branch is a single call. The PERSIST branch still needs
+            // the Arc<dyn> handle for `declare_gauge_field_durable` and
+            // a separate `register_su2(field_snapshot)` afterwards for
+            // the SU(2)-mut sibling.
             if *persist {
+                let field_snapshot = field.clone();
+                let handle: std::sync::Arc<dyn crate::gauge::registry::GaugeFieldHandle> =
+                    std::sync::Arc::new(field);
                 engine
                     .declare_gauge_field_durable(handle)
                     .map_err(|e| format!("gauge: PERSIST failed: {e}"))?;
+                crate::gauge::registry::register_su2(field_snapshot);
             } else {
-                crate::gauge::registry::register(handle);
+                crate::gauge::registry::register_su2(field);
             }
-            crate::gauge::registry::register_su2(field_snapshot);
             Ok(ExecResult::Ok)
         }
 

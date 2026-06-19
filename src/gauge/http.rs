@@ -364,16 +364,14 @@ async fn gauge_field_create(
     let n_edges = field.buffer.n_edges;
     let init_kind_str = init_kind_label(&field.init_kind);
     let init_seed_back = field.init_seed;
-    // TDD-HAL-V.0b — snapshot BEFORE moving into the Arc so the SU(2)-
-    // mut sibling map can be populated alongside the dyn read map.
-    // Pre-fix this handler only landed in the dyn map; downstream
-    // mutators (GIBBS_SAMPLE / SYMPLECTIC_FLOW) could not find the
-    // field via `get_su2_mut`. Part V P-1 production receipt surfaced
-    // it via HTTP 500 "source field U_p1 is not declared".
-    let field_snapshot = field.clone();
-    let handle: std::sync::Arc<dyn gauge_registry::GaugeFieldHandle> =
-        std::sync::Arc::new(field);
 
+    // Declaration must populate BOTH the dyn read map AND the SU(2)-mut
+    // sibling map so downstream mutators (GIBBS_SAMPLE / SYMPLECTIC_FLOW
+    // / SNAPSHOT) can find the field via `get_su2_mut`. `register_su2`
+    // already covers both maps (see src/gauge/registry.rs:160-176), so
+    // the non-persist branch is a single call. The persist branch still
+    // needs an Arc<dyn> for `declare_gauge_field_durable` plus a separate
+    // `register_su2(field_snapshot)` afterwards for the SU(2)-mut sibling.
     if req.persist {
         // TDD-HAL-II.6b gate (e): persisting a gauge field on a non-
         // durable lattice would resurrect orphaned on the next reopen
@@ -393,7 +391,7 @@ async fn gauge_field_create(
         // re-resolve the source field from metadata alone (the
         // source's full buffer is not in the WAL — Bee's locked
         // decision 1: metadata-only WAL variant). P1 follow-up.
-        if matches!(handle.init_metadata().0, GaugeFieldInit::FromField(_)) {
+        if matches!(field.init_kind, GaugeFieldInit::FromField(_)) {
             return Err(bad_request(
                 "gauge: INIT FROM_FIELD with persist:true is not yet \
                  supported (WAL replay cannot re-resolve the source \
@@ -401,6 +399,9 @@ async fn gauge_field_create(
                  the source HAAR_RANDOM/IDENTITY first or omit persist",
             ));
         }
+        let field_snapshot = field.clone();
+        let handle: std::sync::Arc<dyn gauge_registry::GaugeFieldHandle> =
+            std::sync::Arc::new(field);
         let outcome = gauge_engine_handle::with_engine_mut(|engine| {
             engine.declare_gauge_field_durable(handle.clone())
         });
@@ -418,15 +419,10 @@ async fn gauge_field_create(
                 ));
             }
         }
+        gauge_registry::register_su2(field_snapshot);
     } else {
-        gauge_registry::register(handle);
+        gauge_registry::register_su2(field);
     }
-    // TDD-HAL-V.0b — re-park into the SU(2)-mut sibling map so
-    // GIBBS_SAMPLE / SYMPLECTIC_FLOW can lock the field via
-    // `get_su2_mut` without a downstream manual workaround. Done in
-    // both persist and non-persist branches; the snapshot is the same
-    // source of truth handed to either the engine or the dyn registry.
-    gauge_registry::register_su2(field_snapshot);
 
     Ok((
         StatusCode::OK,

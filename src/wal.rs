@@ -40,7 +40,177 @@ const OP_DROP_TRIGGER: u8 = 0x08;
 const OP_LATTICE_DECLARE: u8 = 0x09;
 #[cfg(feature = "gauge")]
 const OP_GAUGE_FIELD_DECLARE: u8 = 0x0A;
+// TDD-HAL-V.1: durable post-thermalization buffer snapshot for an
+// already-declared GAUGE_FIELD. Spec — HALCYON_PART_V_SNAPSHOT_GATES.md
+// §3 (P0) + Bee's locked decision D-V-A (explicit little-endian).
+//
+// Payload (all multi-byte fields little-endian, per D-V-A):
+//   [u32 name_len][name_bytes]
+//   [u8  group_tag]   SU2=0x01, SU3=0x02, U1=0x03, ZN=0x04(+u32 n)
+//   [32 sha256_bytes] SHA-256 over the LE-encoded buffer bytes only;
+//                     the same hash is the citation handle returned to
+//                     the caller and the WAL-write receipt (D-V-C).
+//   [u32 buf_len]     # of f64 entries (NOT byte count)
+//   [buf_len * 8 buffer_bytes]   each f64 written via f64::to_le_bytes
+//
+// For SU(2) on the buckyball (90 edges × 4 floats/edge) the buffer
+// portion alone is exactly 90*4*8 = 2880 bytes (matches spec §0). The
+// total entry adds the 4-byte name-length prefix, name UTF-8, 1 group
+// tag, 32 SHA bytes, and the 4-byte buffer length — about 41 bytes of
+// framing for a single-character field name like "U".
+//
+// Replay (P1, follow-up gate) re-derives SHA-256 from the LE buffer
+// bytes and compares against the payload's `sha256` field — that's the
+// canonical citation handle and the integrity check both. The same
+// hash lands in the WAL entry AND the Rows envelope returned to the
+// caller (per locked decision D-V-C).
+#[cfg(feature = "gauge")]
+const OP_GAUGE_FIELD_SNAPSHOT: u8 = 0x0B;
 const OP_CHECKPOINT: u8 = 0xFF;
+
+/// TDD-HAL-V.1: payload of a `OP_GAUGE_FIELD_SNAPSHOT` (0x0B) WAL
+/// entry. Captures the post-thermalization link buffer of an already-
+/// declared `GAUGE_FIELD` so the field survives a `gigi-stream`
+/// restart (HALCYON_PART_V_SNAPSHOT_GATES.md §3, P0).
+///
+/// Encoding is explicit little-endian (Bee's locked decision D-V-A)
+/// so the WAL is portable across architectures (x86_64 / aarch64).
+/// `sha256` is computed over the LE-encoded `buffer` bytes — that is
+/// the citation handle the Solves Vol. 4 chapter cites (D-V-C).
+#[cfg(feature = "gauge")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct GaugeFieldSnapshotPayload {
+    /// The declared field's name. Must match a previously-declared
+    /// `GAUGE_FIELD` at replay time (orphan-snapshot rejection lands
+    /// in V.2; this struct is the wire format only).
+    pub name: String,
+    /// The group tag carried for validation. Replay (P1) errors loudly
+    /// if it disagrees with the declared field's group — catches the
+    /// snapshot-against-wrong-field bug.
+    pub group: crate::gauge::Group,
+    /// Row-major `(n_edges, repr_dim)` f64 buffer. For SU(2) on the
+    /// buckyball this is 90 × 4 = 360 entries → 2880 bytes after
+    /// LE encoding (spec §0).
+    pub buffer: Vec<f64>,
+    /// SHA-256 of the LE-encoded buffer bytes. Computed at encode
+    /// time, re-verified at decode time. Same hash returned to the
+    /// caller as the citation handle (D-V-C).
+    pub sha256: [u8; 32],
+}
+
+#[cfg(feature = "gauge")]
+impl GaugeFieldSnapshotPayload {
+    /// Construct from a buffer; computes the SHA-256 over LE bytes.
+    pub fn from_buffer(name: String, group: crate::gauge::Group, buffer: Vec<f64>) -> Self {
+        let sha256 = Self::compute_buffer_sha256(&buffer);
+        Self {
+            name,
+            group,
+            buffer,
+            sha256,
+        }
+    }
+
+    /// SHA-256 over the canonical LE encoding of the buffer (each f64
+    /// written via `f64::to_le_bytes`). This is the citation handle.
+    pub fn compute_buffer_sha256(buffer: &[f64]) -> [u8; 32] {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        for v in buffer {
+            hasher.update(v.to_le_bytes());
+        }
+        hasher.finalize().into()
+    }
+
+    /// Serialize to little-endian bytes per locked decision D-V-A.
+    pub fn to_le_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(
+            4 + self.name.len() + 1 + 4 /* possible zn n */ + 32 + 4 + self.buffer.len() * 8,
+        );
+        // name (length-prefixed)
+        out.extend_from_slice(&(self.name.len() as u32).to_le_bytes());
+        out.extend_from_slice(self.name.as_bytes());
+        // group tag (matches OP_GAUGE_FIELD_DECLARE encoding for symmetry)
+        match self.group {
+            crate::gauge::Group::SU2 => out.push(0x01),
+            crate::gauge::Group::SU3 => out.push(0x02),
+            crate::gauge::Group::U1 => out.push(0x03),
+            crate::gauge::Group::ZN { n } => {
+                out.push(0x04);
+                out.extend_from_slice(&n.to_le_bytes());
+            }
+        }
+        // sha256 (raw 32 bytes; not length-prefixed — fixed width)
+        out.extend_from_slice(&self.sha256);
+        // buffer (length-prefixed entry count, then LE f64 bytes)
+        out.extend_from_slice(&(self.buffer.len() as u32).to_le_bytes());
+        for v in &self.buffer {
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        out
+    }
+
+    /// Parse from little-endian bytes (mirror of `to_le_bytes`).
+    /// Does not verify the SHA-256 against the buffer — that's the
+    /// replay path's job (V.2). This decoder accepts the bytes as
+    /// written and surfaces any structural error as `InvalidData`.
+    pub fn from_le_bytes(data: &[u8]) -> io::Result<Self> {
+        let mut offset = 0usize;
+        let name = read_string(data, &mut offset)?;
+        if offset >= data.len() {
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "group tag"));
+        }
+        let group_tag = data[offset];
+        offset += 1;
+        let group = match group_tag {
+            0x01 => crate::gauge::Group::SU2,
+            0x02 => crate::gauge::Group::SU3,
+            0x03 => crate::gauge::Group::U1,
+            0x04 => {
+                if offset + 4 > data.len() {
+                    return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "ZN modulus"));
+                }
+                let n = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap());
+                offset += 4;
+                crate::gauge::Group::ZN { n }
+            }
+            bad => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("unknown gauge group tag: {bad:#x}"),
+                ));
+            }
+        };
+        if offset + 32 > data.len() {
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "sha256"));
+        }
+        let mut sha256 = [0u8; 32];
+        sha256.copy_from_slice(&data[offset..offset + 32]);
+        offset += 32;
+        if offset + 4 > data.len() {
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "buffer len"));
+        }
+        let buf_len =
+            u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
+        offset += 4;
+        if offset + buf_len * 8 > data.len() {
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "buffer bytes"));
+        }
+        let mut buffer = Vec::with_capacity(buf_len);
+        for _ in 0..buf_len {
+            let v = f64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
+            offset += 8;
+            buffer.push(v);
+        }
+        let _ = offset; // silence trailing-offset lint
+        Ok(Self {
+            name,
+            group,
+            buffer,
+            sha256,
+        })
+    }
+}
 
 /// CRC32 (Castagnoli) — simple polynomial checksum for integrity.
 fn crc32(data: &[u8]) -> u32 {
@@ -240,6 +410,21 @@ impl WalWriter {
         self.write_entry(OP_GAUGE_FIELD_DECLARE, &payload)
     }
 
+    /// TDD-HAL-V.1: log a post-thermalization GAUGE_FIELD buffer
+    /// snapshot. Payload is the explicit little-endian encoding of
+    /// `GaugeFieldSnapshotPayload` per locked decision D-V-A; the
+    /// payload's `sha256` field is computed over the LE buffer bytes
+    /// at construction time and is the citation handle the replay
+    /// path re-verifies against (D-V-C).
+    #[cfg(feature = "gauge")]
+    pub fn log_gauge_field_snapshot(
+        &mut self,
+        payload: &GaugeFieldSnapshotPayload,
+    ) -> io::Result<()> {
+        let bytes = payload.to_le_bytes();
+        self.write_entry(OP_GAUGE_FIELD_SNAPSHOT, &bytes)
+    }
+
     /// Sync the WAL to disk (fsync).
     pub fn sync(&mut self) -> io::Result<()> {
         self.writer.flush()?;
@@ -336,6 +521,13 @@ pub enum WalEntry {
         init_kind: crate::gauge::GaugeFieldInit,
         init_seed: Option<u64>,
     },
+    /// TDD-HAL-V.1: durable post-thermalization buffer snapshot for an
+    /// already-declared `GAUGE_FIELD`. Payload is the LE-encoded
+    /// `GaugeFieldSnapshotPayload`; replay (P1, follow-up gate) installs
+    /// `payload.buffer` into the live handle after re-deriving SHA-256
+    /// from the LE bytes and comparing against `payload.sha256`.
+    #[cfg(feature = "gauge")]
+    GaugeFieldSnapshot(GaugeFieldSnapshotPayload),
 }
 
 impl WalReader {
@@ -559,6 +751,11 @@ impl WalReader {
                     init_kind,
                     init_seed,
                 }))
+            }
+            #[cfg(feature = "gauge")]
+            OP_GAUGE_FIELD_SNAPSHOT => {
+                let payload = GaugeFieldSnapshotPayload::from_le_bytes(payload)?;
+                Ok(Some(WalEntry::GaugeFieldSnapshot(payload)))
             }
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -1452,5 +1649,113 @@ mod tests {
 
         let _ = fs::remove_file(&wal_path);
         let _ = fs::remove_dir(dir);
+    }
+
+    /// TDD-HAL-V.1: GaugeFieldSnapshotPayload round-trips byte-identically
+    /// through explicit little-endian encode/decode (Bee's locked decision
+    /// D-V-A). Buffer is a 90-edge × 4-component SU(2) buckyball-sized
+    /// identity field (q0=1, q1=q2=q3=0 per edge); SHA-256 is initialized
+    /// to zeros for this structural-only check (the SHA-recompute gate is
+    /// `tdd_hal_v_1_snapshot_payload_sha256_recomputed`).
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_1_snapshot_payload_le_roundtrip() {
+        // 90 edges × 4 floats per edge = 360 entries (SU(2) identity).
+        let mut buffer = Vec::with_capacity(90 * 4);
+        for _ in 0..90 {
+            buffer.push(1.0);
+            buffer.push(0.0);
+            buffer.push(0.0);
+            buffer.push(0.0);
+        }
+        let payload = GaugeFieldSnapshotPayload {
+            name: "U".to_string(),
+            group: crate::gauge::Group::SU2,
+            buffer: buffer.clone(),
+            sha256: [0u8; 32],
+        };
+        let bytes = payload.to_le_bytes();
+        let decoded = GaugeFieldSnapshotPayload::from_le_bytes(&bytes).unwrap();
+        // Strict equality on every field — Vec<f64> equality is exact
+        // here because the buffer is constructed from bit-identical
+        // f64 literals (1.0, 0.0) and the LE encoding round-trip
+        // preserves all 64 bits.
+        assert_eq!(decoded.name, "U");
+        assert_eq!(decoded.group, crate::gauge::Group::SU2);
+        assert_eq!(decoded.sha256, [0u8; 32]);
+        assert_eq!(decoded.buffer.len(), 360);
+        assert_eq!(decoded.buffer, buffer);
+        // And the whole struct (PartialEq is bit-exact on f64).
+        assert_eq!(decoded, payload);
+    }
+
+    /// TDD-HAL-V.1: serialized payload size for the SU(2) buckyball
+    /// snapshot matches the spec's 2880-byte buffer plus the documented
+    /// framing. Buffer-only contribution is 90 × 4 × 8 = 2880 bytes
+    /// (spec §0). The total entry framing is name_len_prefix(4) +
+    /// name_bytes(1 for "U") + group_tag(1) + sha256(32) +
+    /// buffer_len_prefix(4) = 42 framing bytes, total 2922.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_1_snapshot_payload_size_buckyball() {
+        let buffer = vec![0.0f64; 90 * 4]; // SU(2) on the buckyball
+        let payload = GaugeFieldSnapshotPayload {
+            name: "U".to_string(),
+            group: crate::gauge::Group::SU2,
+            buffer,
+            sha256: [0u8; 32],
+        };
+        let bytes = payload.to_le_bytes();
+        // Buffer-only contribution: 360 entries × 8 bytes/entry = 2880.
+        // This is the spec's headline number — the rest is framing.
+        let buffer_bytes = 90 * 4 * 8;
+        assert_eq!(buffer_bytes, 2880);
+        // Framing: 4 (name len) + 1 ("U") + 1 (group tag SU2) + 32 (sha256)
+        //         + 4 (buffer length count) = 42 bytes.
+        let framing = 4 + "U".len() + 1 + 32 + 4;
+        assert_eq!(framing, 42);
+        assert_eq!(bytes.len(), framing + buffer_bytes);
+        assert_eq!(bytes.len(), 2922);
+    }
+
+    /// TDD-HAL-V.1: SHA-256 of the buffer bytes is recomputable at
+    /// decode time and must agree with the payload's `sha256` field
+    /// when the buffer is intact (Bee's locked decision D-V-C: the
+    /// same SHA-256 is the citation handle in the WAL entry AND the
+    /// Rows envelope returned to the caller). This gate catches a bug
+    /// where the payload's sha256 disagrees with the actual buffer.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_1_snapshot_payload_sha256_recomputed() {
+        // Realistic thermalized-ish buffer: 360 distinct f64 values.
+        let buffer: Vec<f64> = (0..(90 * 4))
+            .map(|i| (i as f64) * 0.001 + 0.123_456_789)
+            .collect();
+        // Construct via the canonical helper so sha256 is the SHA over
+        // the LE-encoded buffer.
+        let payload =
+            GaugeFieldSnapshotPayload::from_buffer("U".to_string(), crate::gauge::Group::SU2, buffer.clone());
+        // Sanity: the stored sha256 is not the zero hash.
+        assert_ne!(payload.sha256, [0u8; 32]);
+
+        // Round-trip via LE bytes.
+        let bytes = payload.to_le_bytes();
+        let decoded = GaugeFieldSnapshotPayload::from_le_bytes(&bytes).unwrap();
+        assert_eq!(decoded.buffer, buffer);
+        assert_eq!(decoded.sha256, payload.sha256);
+
+        // Re-derive SHA-256 from the decoded buffer's LE bytes; this is
+        // exactly what the replay path will do. Must match the stored
+        // SHA byte-for-byte.
+        let recomputed = GaugeFieldSnapshotPayload::compute_buffer_sha256(&decoded.buffer);
+        assert_eq!(
+            recomputed, decoded.sha256,
+            "SHA-256 recomputed at decode time must match payload.sha256"
+        );
+
+        // The hash is also stable across two independent computations on
+        // the same buffer (sanity check the helper is deterministic).
+        let again = GaugeFieldSnapshotPayload::compute_buffer_sha256(&buffer);
+        assert_eq!(again, payload.sha256);
     }
 }

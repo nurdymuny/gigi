@@ -795,8 +795,14 @@ impl Engine {
                 // handled post-replay by `replay_gauge_substrate` so we
                 // can fail loudly on a malformed entry instead of
                 // panicking inside this generic closure.
+                // TDD-HAL-V.1: same treatment for the snapshot op —
+                // the post-replay path will install the buffer in V.2.
+                // Here we just acknowledge the variant so this match
+                // stays exhaustive.
                 #[cfg(feature = "gauge")]
-                WalEntry::LatticeDeclare { .. } | WalEntry::GaugeFieldDeclare { .. } => {}
+                WalEntry::LatticeDeclare { .. }
+                | WalEntry::GaugeFieldDeclare { .. }
+                | WalEntry::GaugeFieldSnapshot(_) => {}
             }
             Ok(())
         })?;

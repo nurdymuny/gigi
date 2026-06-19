@@ -84,6 +84,8 @@ pub mod project_gauss;
 pub mod wilson_force;
 #[cfg(feature = "gauge")]
 pub mod lie_exp;
+#[cfg(feature = "gauge")]
+pub mod symplectic_flow;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -131,6 +133,11 @@ pub use project_gauss::{project_gauss, ProjectGaussConfig, ProjectGaussDiagnosti
 pub use wilson_force::{apply_force_kick, wilson_force_per_edge};
 #[cfg(feature = "gauge")]
 pub use lie_exp::{drift_step, matrix_exp_su2_q};
+#[cfg(feature = "gauge")]
+pub use symplectic_flow::{
+    symplectic_flow, SymplecticFlowConfig, SymplecticFlowDiagnostics,
+    SymplecticFlowResponse,
+};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

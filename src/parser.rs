@@ -8753,6 +8753,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // Shorthand: `LATTICE name FROM TRUNCATED_ICOSAHEDRON
         // [TOPOLOGY "S"];`. Only `TRUNCATED_ICOSAHEDRON` is wired
         // at launch — see `HALCYON_PART_I_GATES.md` Part I scope.
+        //
+        // TDD-HAL-V.4: when the `gauge` feature is on, the canonical
+        // lattice declaration routes through `declare_lattice_durable`
+        // so a downstream `GAUGE_FIELD … PERSIST` (and the SNAPSHOT
+        // chain it gates) survives engine close + reopen. The V.4
+        // smoke gate's failure mode without this fix is:
+        //   GAUGE_FIELD PERSIST writes its WAL entry referencing
+        //   `buckyball` ⇒ engine close ⇒ engine reopen ⇒ WAL replay
+        //   Pass 2 fails with "GaugeFieldDeclare references unknown
+        //   lattice 'buckyball'" because Pass 1 (lattice declares)
+        //   walked an empty set.
+        // With `gauge` off the in-memory `register` path stays —
+        // the no-default-features build cannot reach the durable arm
+        // because `declare_lattice_durable` is itself gated on
+        // `gauge`. Optionality contract: 852/0 byte-identical stays
+        // intact.
         #[cfg(feature = "lattice")]
         Statement::LatticeFromCanonical {
             name,
@@ -8778,7 +8794,21 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             if let Some(t) = topology {
                 lat.topology = Some(t.clone());
             }
-            crate::lattice::registry::register(lat);
+            #[cfg(feature = "gauge")]
+            {
+                // Durable path — WAL-log the declaration so the
+                // snapshot smoke gate (V.4) round-trips through
+                // close + reopen. `declare_lattice_durable` writes
+                // the lattice's canonical GQL form to the WAL and
+                // installs it in the in-process registry.
+                engine
+                    .declare_lattice_durable(lat)
+                    .map_err(|e| format!("lattice: durable declaration failed: {e}"))?;
+            }
+            #[cfg(not(feature = "gauge"))]
+            {
+                crate::lattice::registry::register(lat);
+            }
             Ok(ExecResult::Ok)
         }
 

@@ -72,6 +72,7 @@ Closes Q2 from the engine-owner reply: don't generalize to arbitrary structure g
 - `bundle/gauge_field.rs::SU2GaugeField` implements `EdgeConnection`. The Part I walker reads through it.
 - Unit test: `GAUGE_FIELD U_t ON LATTICE buckyball GROUP SU(2) INIT IDENTITY` followed by `SELECT HOLONOMY OF U_t ON LOOP (face_0_edges)` returns identity to FP64 epsilon. Repeat with `INIT HAAR_RANDOM SEED 20260616` and confirm the holonomy is NOT identity (sanity that the storage and the walker both see the same U).
 - Cross-check against Halcyon's `inertia_damping/buckyball_action.py::identity_links` and `inertia_damping/buckyball_heatbath.py::sample_haar_link`. Bit-identical at the same seed, same OS, same BLAS — per `HALCYON_TO_GIGI_REPLY_2026-06-17.md § A2`.
+- **Cross-engine contract pin (Halcyon-side).** `inertia_damping/test_gigi_part_ii_gauge_field.py::test_G2_A_identity_field_round_trip` is the receipt for INIT FROM byte-equality across the engine boundary: `declare → introspect → declare FROM_FIELD → introspect → bit-equal`. Its enforcement power is *contingent on the live-binding swap* in `gigi_client/mock.py` — until Halcyon imports the embedded PyO3 binding in place of `MockGIGIClient`, the test pins the contract against the Python kernel mock, not the Rust engine. That's expected and named here (per the post-Part-II completeness-critic finding) so the cross-engine coverage is not implicit. When the swap lands, no test rewrite is required.
 
 ### Pass criterion
 

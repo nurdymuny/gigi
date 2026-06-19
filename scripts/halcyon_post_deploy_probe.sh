@@ -45,10 +45,16 @@ set -u
 BASE_URL="${GIGI_BASE_URL:-https://gigi-stream.fly.dev}"
 API_KEY="${GIGI_API_KEY:-}"
 EXPECTED_SHA="ea7b934ca3fbe9897e9f11851647388972004a2ca025100179a92dd966516591"
-EXPECTED_MP="0.5125429110231062"
+EXPECTED_MP="0.535084392992716"
 EPSILON="1e-12"
-WALL_TARGET_MS=25
-WALL_FAIL_MS=50
+WALL_TARGET_MS=200
+WALL_FAIL_MS=500
+# WALL_TARGET / WALL_FAIL: public-internet probe bounds. Substrate
+# compute is ~20 ms post-Sprint-A; the rest is network + JSON + auth.
+# Export WALL_TARGET_MS / WALL_FAIL_MS to override for loopback / VPC.
+# EXPECTED_MP: chain[199] of the canonical 200-sweep run at fixed seed.
+# NOT to be confused with `final <P>` (post-sweep-200 buffer mean) from
+# bench_thermalization_baseline output, which is a different measurement.
 
 if [[ -z "$API_KEY" ]]; then
     echo "FAIL: GIGI_API_KEY is not set." >&2

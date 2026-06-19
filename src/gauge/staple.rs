@@ -88,6 +88,154 @@ pub fn build_face_edges_cache(lat: &Lattice) -> FaceEdgesCache {
     cache
 }
 
+/// Per-call ephemeral cache of per-face staple-contribution quaternions
+/// `A_f` indexed by `(face_id, position_in_face)`.
+///
+/// Sprint B perf hoist: prior to this cache, `staple_sum_at_edge`
+/// re-walked the `n − 1` non-target edges around every incident face on
+/// EVERY edge visit — on the buckyball, that's 180 face walks per
+/// sweep (90 edges × 2 faces). The cache memoizes the per-position
+/// `A_f(pos)` quaternion (the n−1-edge product around face f that
+/// excludes the target at `pos`); an edge update at edge `e`
+/// invalidates the entire `(face_id, *)` entry for every face
+/// containing `e`. Pure-read workloads (e.g. `wilson_force_per_edge`,
+/// which reads U but writes E) hit the cache for every edge-after-the-
+/// first incident to each face — that's the cleanest cache-hit case.
+///
+/// ## Storage shape — per-position lazy fill
+///
+/// The mathematical "face holonomy" `U_f = e_0 · e_1 · … · e_{n−1}` is
+/// a single quaternion per face, but the staple contribution at the
+/// target edge depends on *which* position the target occupies:
+///
+/// ```text
+///     A_f(pos) = e_{pos+1} · … · e_{n-1} · e_0 · … · e_{pos-1}
+/// ```
+///
+/// — i.e., a cyclic rotation of the face's edge product that excludes
+/// the target. Reconstructing `A_f(pos)` from `U_f` would require
+/// non-commutative cyclic rearrangement that perturbs the floating-
+/// point accumulation order vs. the direct walk — and Sprint B's
+/// bit-identity contract against the Sprint A gold
+/// (`MeanPlaquette[199] = 0.5125429110231062` at β=2.5 SEED=20260616)
+/// is NON-NEGOTIABLE. So we cache per `(face_id, position)`: each slot
+/// stores `Some(A_f(pos))` once that position has been requested, or
+/// `None` when cold. The fill is lazy — a cache miss for position p
+/// only computes and stores p (NOT all positions). This means the
+/// gibbs_sample sweep path (which invalidates a face immediately after
+/// reading one position from it) only pays the SAME work as the
+/// pre-cache walker — the cache adds no overhead. Pure-read paths get
+/// the full reuse benefit.
+///
+/// ## Invalidation contract
+///
+/// The invalidation API IS face-id-keyed (`invalidate(face_id)`): when
+/// ANY edge `e` in face `f` is updated, ALL `A_f(pos)` entries for `f`
+/// become stale (every position's product crosses `e`). One call wipes
+/// every position slot for that face. The caller (e.g., `gibbs_sample`)
+/// is responsible for calling `invalidate(face_id)` for every
+/// `(face_id, _)` in `inc[edge]` after a `buffer.data[4e..4e+4]`
+/// write, BEFORE the next edge is visited. The invalidation must
+/// mirror the buffer state exactly — if the invalidation lags by even
+/// one edge the cache returns a stale staple and the heatbath KP draw
+/// diverges from the gold (bit-identity contract fails).
+///
+/// ## Lifecycle
+///
+/// Per-call ephemeral — NOT stored on `Lattice` and NOT stored on the
+/// gauge field. Built fresh at the top of each `gibbs_sample` /
+/// `wilson_force_per_edge` / `symplectic_flow` call and dropped at the
+/// end. This preserves the `to_gql` round-trip byte-identity contract
+/// (`Lattice` carries declared, not derived, state).
+pub struct FaceHolonomyCache {
+    /// `slots[face_id]` is a per-position vector sized to the face's
+    /// edge count. Each element is `Some(A_f(pos))` when warm or
+    /// `None` when cold (never populated, or invalidated). Empty
+    /// outer vec when `n_faces = 0`. The inner vec is sized lazily on
+    /// the first `put_pos(face_id, ...)` call so we don't need to know
+    /// each face's degree up front.
+    slots: Vec<Vec<Option<GroupElement>>>,
+}
+
+impl FaceHolonomyCache {
+    /// Allocate an empty cache sized for `n_faces`. All face slots
+    /// start empty (cold); the first `put_pos(face_id, ...)` for each
+    /// face populates them. `n_faces = 0` is valid (defensive guard
+    /// for any degenerate-lattice path) and produces a cache where
+    /// every `get_pos(face_id, _)` returns `None`.
+    pub fn new(n_faces: usize) -> Self {
+        Self {
+            slots: vec![Vec::new(); n_faces],
+        }
+    }
+
+    /// Read the cached `A_f(pos)` for `(face_id, pos)`, or `None` if
+    /// the entry is cold (never populated or invalidated) or
+    /// out-of-range. Used by `staple_sum_at_edge` to skip the n−1-edge
+    /// walk on a cache hit. `None` on out-of-range face_id is
+    /// intentional: prevents panics on empty lattices and on callers
+    /// that mis-size the cache.
+    pub fn get_pos(&self, face_id: usize, pos: usize) -> Option<GroupElement> {
+        self.slots
+            .get(face_id)
+            .and_then(|inner| inner.get(pos))
+            .and_then(|slot| *slot)
+    }
+
+    /// Store the freshly-walked `A_f(pos)` for `(face_id, pos)`. The
+    /// inner per-position vector is grown lazily to length `n_pos`
+    /// (the caller's `edges.len()` for that face) on first put.
+    ///
+    /// Silently no-ops if `face_id >= n_faces` (defensive — mirrors
+    /// `get_pos`'s out-of-range behavior).
+    pub fn put_pos(&mut self, face_id: usize, pos: usize, n_pos: usize, value: GroupElement) {
+        if let Some(inner) = self.slots.get_mut(face_id) {
+            if inner.len() < n_pos {
+                inner.resize(n_pos, None);
+            }
+            if pos < inner.len() {
+                inner[pos] = Some(value);
+            }
+        }
+    }
+
+    /// Mark every position slot for `face_id` as stale. Called by the
+    /// sweep loop after every edge mutation, for every face containing
+    /// the mutated edge (read off `EdgeFaceIncidence`). After
+    /// invalidation, the next `staple_sum_at_edge` visit to any
+    /// position in `face_id` walks from scratch and re-populates that
+    /// position. The other faces' slots are untouched — `wilson_force_
+    /// per_edge`'s pure-read workload (no buffer mutation) NEVER calls
+    /// invalidate, so every face's slots accumulate over the call.
+    ///
+    /// Silently no-ops if `face_id >= n_faces` (defensive).
+    pub fn invalidate(&mut self, face_id: usize) {
+        if let Some(inner) = self.slots.get_mut(face_id) {
+            inner.clear();
+        }
+    }
+
+    /// Back-compat reader for tests / probes that want the per-face
+    /// snapshot. Returns `None` for an empty face slot (cold) and
+    /// `Some(slice)` for a face with at least one position populated.
+    /// Inside the slice, individual positions may still be `None`.
+    /// The Sprint B perf gold gates use `get_pos` directly; this
+    /// method exists so the empty-lattice safety test
+    /// (`tdd_hal_perf_staple_cache_empty_lattice_safe`) stays
+    /// idiomatic.
+    pub fn get(&self, face_id: usize) -> Option<&[Option<GroupElement>]> {
+        self.slots.get(face_id).and_then(
+            |inner| {
+                if inner.is_empty() {
+                    None
+                } else {
+                    Some(inner.as_slice())
+                }
+            },
+        )
+    }
+}
+
 /// Compute the effective staple `V_eff(e)` at `edge` under the
 /// connection behind `handle`.
 ///
@@ -97,12 +245,15 @@ pub fn build_face_edges_cache(lat: &Lattice) -> FaceEdgesCache {
 ///    (prebuilt by `build_face_edges_cache(lat)`; replaces the
 ///    pre-hoist per-call `face_edges(lat, fidx)` allocation).
 /// 2. Locate `edge` in the cycle at position `pos`.
-/// 3. Read the face's edge orientation `σ_f(edge)` at that position
+/// 3. Consult `holonomy_cache.get(fidx)`: on hit, the per-position
+///    `A_f` slice is reused (no walk); on miss, walk all `n`
+///    positions around the face once, store the resulting
+///    `Vec<GroupElement>` via `holonomy_cache.put(fidx, …)`, and
+///    take the `pos` entry.
+/// 4. Read the face's edge orientation `σ_f(edge)` at that position
 ///    (Forward → +1, Reverse → −1).
-/// 4. Walk the OTHER `n − 1` edges starting at `(pos + 1) % n` and
-///    compose their signed link elements into a quaternion `A_f`.
-/// 5. If `σ_f(edge) = +1` contribute `A_f`; if `−1` contribute
-///    `qconj(A_f)` (= `A_f.inverse()` for SU(2) unit quaternions).
+/// 5. If `σ_f(edge) = +1` contribute `A_f(pos)`; if `−1` contribute
+///    `A_f(pos).inverse()` (= `qconj` for SU(2) unit quaternions).
 ///
 /// Sum across all incident faces. The result is the quaternion
 /// `V_eff` such that `P(U_e) ∝ exp((β/N) · Re Tr(U_e · V_eff))` —
@@ -115,17 +266,27 @@ pub fn build_face_edges_cache(lat: &Lattice) -> FaceEdgesCache {
 /// for every edge (closed-surface invariant).
 ///
 /// Sprint A perf hoist: `face_edges_cache` replaces a per-call
-/// `face_edges(lat, fidx)` allocation inside the inner loop. Byte-
-/// identical against the pre-hoist algorithm — `face_edges_cache[fidx]`
-/// returns the same `(EdgeId, EdgeOrientation)` slice the inner call
-/// previously rebuilt, so the composition order, orientation, and
-/// reduction are unchanged. Receipt:
-/// `tdd_hal_perf_face_edges_hoist_byte_identical` (gibbs_sample::tests).
+/// `face_edges(lat, fidx)` allocation inside the inner loop.
+///
+/// Sprint B perf hoist: `holonomy_cache` skips the n−1-edge walk on
+/// cache hits. The fill path is per-position lazy — a cache miss for
+/// `(fidx, pos)` walks ONLY that position (not the other n−1
+/// positions in the face), executing the SAME left-associative
+/// composition the pre-cache walker used. This means the
+/// `gibbs_sample` sweep path (which invalidates a face immediately
+/// after reading one position) pays no overhead vs. the pre-cache
+/// walker; pure-read workloads like `wilson_force_per_edge` get the
+/// full reuse benefit (each face's n−1 subsequent edge queries
+/// after the first are O(1) cache hits). Byte-identity against the
+/// Sprint A gold is preserved because the per-position walk EXACTLY
+/// mirrors the pre-cache composition order. Receipt:
+/// `tdd_hal_perf_staple_cache_byte_identical` (gibbs_sample::tests).
 pub fn staple_sum_at_edge(
     handle: &dyn EdgeConnection,
     _lat: &Lattice,
     inc: &EdgeFaceIncidence,
     face_edges_cache: &FaceEdgesCache,
+    holonomy_cache: &mut FaceHolonomyCache,
     edge: EdgeId,
 ) -> GroupElement {
     // Zero accumulator (SU(2) sums are componentwise quaternion
@@ -140,18 +301,29 @@ pub fn staple_sum_at_edge(
         let edges = &face_edges_cache[fidx];
         let n = edges.len();
         debug_assert!(pos < n);
-        // Walk the n - 1 OTHER edges starting one step past `edge`.
-        // Compose left-to-right per the convention pinned in the
-        // harvest phase (mirror of Halcyon's `face_staple_at_edge`:
-        // start with `face[(k+1) % n]`, then qmul with each
-        // successive edge through `face[(k + n - 1) % n]`).
-        let (e0, o0) = edges[(pos + 1) % n];
-        let mut a = handle.edge_element(e0, o0);
-        for j in 2..n {
-            let (ej, oj) = edges[(pos + j) % n];
-            let uj = handle.edge_element(ej, oj);
-            a = a.compose(&uj);
-        }
+
+        // Sprint B: per-(face, position) holonomy cache hit/miss
+        // dispatch. The cache stores `A_f(pos)` — the n−1-edge product
+        // around face f that excludes the target at `pos`. On hit, we
+        // skip the walk entirely; on miss, we walk this position only
+        // (NOT every position) and store the result. The composition
+        // order EXACTLY mirrors the pre-cache walker so bit-identity
+        // against the Sprint A gold is preserved.
+        let a = match holonomy_cache.get_pos(fidx, pos) {
+            Some(cached) => cached,
+            None => {
+                let (e0, o0) = edges[(pos + 1) % n];
+                let mut a = handle.edge_element(e0, o0);
+                for j in 2..n {
+                    let (ej, oj) = edges[(pos + j) % n];
+                    let uj = handle.edge_element(ej, oj);
+                    a = a.compose(&uj);
+                }
+                holonomy_cache.put_pos(fidx, pos, n, a);
+                a
+            }
+        };
+
         // σ_f(edge) → contribute A_f vs qconj(A_f).
         let (_self_eid, self_orient) = edges[pos];
         let contrib = match self_orient {
@@ -178,6 +350,7 @@ pub fn staple_sum_at_edge(
         q3: acc_q3,
     }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -246,9 +419,10 @@ mod tests {
         let handle = gauge_registry::get("U_iii_3_id").expect("registered");
         let inc = build_edge_face_incidence(&bb);
         let face_edges_cache = build_face_edges_cache(&bb);
+        let mut holonomy_cache = FaceHolonomyCache::new(bb.n_faces());
 
         for eid in 0..bb.n_edges() {
-            let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, eid);
+            let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, &mut holonomy_cache, eid);
             match v {
                 GroupElement::SU2 { q0, q1, q2, q3 } => {
                     // 2 incident faces × identity quaternion + qconj
@@ -302,8 +476,9 @@ mod tests {
         let handle = gauge_registry::get("U_iii_3_haar").expect("registered");
         let inc = build_edge_face_incidence(&bb);
         let face_edges_cache = build_face_edges_cache(&bb);
+        let mut holonomy_cache = FaceHolonomyCache::new(bb.n_faces());
 
-        let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, 0);
+        let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, &mut holonomy_cache, 0);
         match v {
             GroupElement::SU2 { q0, q1, q2, q3 } => {
                 let tol = 1e-12;
@@ -367,8 +542,9 @@ mod tests {
         let handle = gauge_registry::get("U_iii_3_skip").expect("registered");
         let inc = build_edge_face_incidence(&bb);
         let face_edges_cache = build_face_edges_cache(&bb);
+        let mut holonomy_cache = FaceHolonomyCache::new(bb.n_faces());
 
-        let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, e_target);
+        let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, &mut holonomy_cache, e_target);
         match v {
             GroupElement::SU2 { q0, q1, q2, q3 } => {
                 assert_eq!(q0, 2.0, "self-edge skip: q0 must be 2.0 (sum of 2 identities), got {q0}");

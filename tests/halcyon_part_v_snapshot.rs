@@ -237,3 +237,281 @@ fn tdd_hal_v_1_snapshot_writes_and_replays() {
     gauge_registry::clear();
     gauge_registry::clear_e_registry();
 }
+
+// ───────────────────────── V.5 failure-mode helpers ─────────────────────────
+//
+// The two failure-mode gates below (V.2 checksum rejection, V.3 orphan
+// rejection) drive the same end-to-end path as V.4 — `parser::execute`
+// against a temp data dir — and then surgically rewrite the on-disk WAL
+// bytes between engine close and reopen. The rejection has to fire from
+// `Engine::open`'s `replay_gauge_substrate` pass, NOT from the WAL
+// reader's CRC32 check, so every byte-surgery test that mutates payload
+// content must recompute the CRC tail before re-running `Engine::open`.
+//
+// The unit-test cousins in `src/engine.rs` (`tdd_hal_v_3_replay_*`) cover
+// the same matrix at the in-process level; this file's job is the same
+// matrix at the integration-test boundary — the surface a separate crate
+// would exercise. The redundancy is load-bearing: integration-level
+// rejection proves the `From<WalError> for io::Error` lowering survives
+// the lib → integration-test boundary.
+
+/// CRC32 (Castagnoli) — mirror of `wal::crc32` for the byte-surgery
+/// failure-mode gates. The implementation is identical to the one in
+/// `src/wal.rs`; replicated here because `crc32` is a private function
+/// in the WAL module and the failure-mode gates need to recompute it
+/// after rewriting payload bytes so the WAL reader's CRC32 check
+/// doesn't trip before the V.3 replay-pass checks we actually want to
+/// exercise.
+fn crc32_for_test(data: &[u8]) -> u32 {
+    let mut crc: u32 = 0xFFFF_FFFF;
+    for &byte in data {
+        crc ^= byte as u32;
+        for _ in 0..8 {
+            if crc & 1 != 0 {
+                crc = (crc >> 1) ^ 0x82F6_3B78;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    !crc
+}
+
+/// Locate the first WAL entry whose op byte equals `op_target`. Returns
+/// `(entry_start, entry_end_excl, payload_start, payload_end_excl)` —
+/// the layout the V.5 failure-mode gates need to either rewrite payload
+/// bytes (then recompute CRC over `[entry_start..entry_end)` and write
+/// it into `[entry_end..entry_end+4)`) or strike out the OP byte.
+///
+/// Mirrors the private helper of the same shape in `src/engine.rs`;
+/// generalised over the op byte so V.5 can locate both the snapshot
+/// entry (0x0B) and the declare entry (0x0A) without code duplication.
+fn locate_wal_entry(bytes: &[u8], op_target: u8) -> Option<(usize, usize, usize, usize)> {
+    let mut offset = 0usize;
+    while offset + 4 <= bytes.len() {
+        let total_len =
+            u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap()) as usize;
+        let entry_start = offset + 4;
+        let entry_end = entry_start + total_len; // op + payload (no CRC)
+        if entry_end + 4 > bytes.len() {
+            return None;
+        }
+        let op = bytes[entry_start];
+        if op == op_target {
+            return Some((entry_start, entry_end, entry_start + 1, entry_end));
+        }
+        offset = entry_end + 4; // skip CRC tail
+    }
+    None
+}
+
+/// Drive the V.4 four-statement block (LATTICE FROM TRUNCATED_ICOSAHEDRON
+/// → GAUGE_FIELD U IDENTITY PERSIST → GIBBS_SAMPLE → SNAPSHOT PERSIST)
+/// against the engine at `data_path`. Used by both failure-mode gates so
+/// the WAL on disk is in the same shape V.4 produces before each gate
+/// performs its byte-surgery step. Caller is responsible for the serial
+/// lock and the registry resets.
+fn run_v4_chain_then_close(data_path: &std::path::Path) {
+    let mut engine = Engine::open(data_path).expect("engine open");
+    lattice_registry::clear();
+    gauge_registry::clear();
+    gauge_registry::clear_e_registry();
+
+    let stmt = parse("LATTICE buckyball FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';")
+        .expect("parse LATTICE FROM TRUNCATED_ICOSAHEDRON");
+    let _ = execute(&mut engine, &stmt).expect("exec LATTICE");
+
+    let stmt = parse(
+        "GAUGE_FIELD U ON LATTICE buckyball GROUP SU(2) INIT IDENTITY PERSIST;",
+    )
+    .expect("parse GAUGE_FIELD PERSIST");
+    let _ = execute(&mut engine, &stmt).expect("exec GAUGE_FIELD PERSIST");
+
+    let stmt = parse(
+        "GIBBS_SAMPLE U BETA 2.5 N_SWEEPS 10 MEASURE_EVERY 1 \
+         MEASURE (MEAN(PLAQUETTE)) SEED 20260616;",
+    )
+    .expect("parse GIBBS_SAMPLE");
+    let _ = execute(&mut engine, &stmt).expect("exec GIBBS_SAMPLE");
+
+    let stmt = parse("SNAPSHOT GAUGE_FIELD U PERSIST;")
+        .expect("parse SNAPSHOT GAUGE_FIELD U PERSIST");
+    let _ = execute(&mut engine, &stmt).expect("exec SNAPSHOT PERSIST");
+
+    drop(engine);
+}
+
+/// TDD-HAL-V.5: checksum-rejection gate — corrupt one byte of the
+/// snapshot payload's buffer portion in the on-disk WAL, recompute the
+/// entry's CRC, reopen the engine; the replay pass must re-derive
+/// SHA-256 over the corrupted buffer, see disagreement with the
+/// payload's stored hash, and surface `WalError::SnapshotChecksumMismatch`
+/// with `name = "U"`.
+#[test]
+fn tdd_hal_v_2_snapshot_checksum_rejection() {
+    let _serial = gauge_registry::test_serial_lock();
+
+    // 1. Temp data dir — same shape as V.4 so the resulting WAL is the
+    //    one V.4 produces.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let data_path = dir.path().to_path_buf();
+
+    // 2. Drive the V.4 chain to populate the WAL with one LATTICE +
+    //    one GAUGE_FIELD_DECLARE + GIBBS_SAMPLE residue + one
+    //    GAUGE_FIELD_SNAPSHOT entry, then close the engine.
+    run_v4_chain_then_close(&data_path);
+
+    // 3. Wipe registries — the rejection has to come from replay
+    //    against a corrupted WAL, not from leftover in-process state.
+    lattice_registry::clear();
+    gauge_registry::clear();
+    gauge_registry::clear_e_registry();
+
+    // 4. Locate the snapshot entry (op = 0x0B) and flip one byte of the
+    //    buffer portion. Payload layout (D-V-A):
+    //      [u32 name_len][name_bytes][u8 group_tag][32 sha256]
+    //      [u32 buf_len][buf_len*8 buffer_bytes]
+    //    so the buffer starts at:
+    //      payload_start + 4 + name_len + 1 + 32 + 4
+    //    For name = "U" (len 1) the buffer starts at payload_start + 42.
+    //    We pick the LE byte at the middle of the buffer (offset
+    //    180 * 8 = 1440 bytes in, which is the first byte of the 180th
+    //    f64) and XOR it with 0xFF — a guaranteed-mutation that
+    //    perturbs both the SHA-256 input and the f64's value.
+    let wal_path = data_path.join("gigi.wal");
+    let mut bytes = std::fs::read(&wal_path).expect("read WAL");
+    let (entry_start, entry_end, payload_start, _payload_end) =
+        locate_wal_entry(&bytes, 0x0B).expect("snapshot entry in WAL");
+    let name_len = u32::from_le_bytes(
+        bytes[payload_start..payload_start + 4].try_into().unwrap(),
+    ) as usize;
+    let buffer_start = payload_start + 4 + name_len + 1 + 32 + 4;
+    let buf_byte_count = 90 * 4 * 8; // 90 edges * 4 quat components * 8 bytes/f64
+    let corrupt_byte_idx = buffer_start + buf_byte_count / 2;
+    assert!(
+        corrupt_byte_idx < entry_end,
+        "corruption index must land inside the payload range — \
+         layout assumption broken (buffer too small?)"
+    );
+    bytes[corrupt_byte_idx] ^= 0xFF;
+    // Recompute the entry's CRC so the WAL reader's CRC32 check passes
+    // — the rejection we want to catch is the SHA-256 mismatch in the
+    // V.3 replay pass, not the CRC32 in the WAL reader.
+    let new_crc = crc32_for_test(&bytes[entry_start..entry_end]);
+    bytes[entry_end..entry_end + 4].copy_from_slice(&new_crc.to_le_bytes());
+    std::fs::write(&wal_path, &bytes).expect("write corrupted WAL");
+
+    // 5. Reopen — must surface `WalError::SnapshotChecksumMismatch`
+    //    through the `From<WalError> for io::Error` lowering. The
+    //    Display impl carries the field name and the "SHA-256" tag,
+    //    which is what an integration caller would match on.
+    let err = match Engine::open(&data_path) {
+        Ok(_) => panic!(
+            "checksum mismatch on snapshot payload must surface \
+             WalError::SnapshotChecksumMismatch — Engine::open returned Ok"
+        ),
+        Err(e) => e,
+    };
+    let msg = err.to_string();
+    assert!(
+        msg.contains("'U'") && msg.contains("SHA-256"),
+        "Engine::open error must name field 'U' and the SHA-256 \
+         rejection category (D-V-C citation contract), got: {msg}"
+    );
+
+    // Cleanup — leave the singletons clean for the next test.
+    lattice_registry::clear();
+    gauge_registry::clear();
+    gauge_registry::clear_e_registry();
+}
+
+/// TDD-HAL-V.5: orphan-rejection gate — zero the OP byte of the
+/// `OP_GAUGE_FIELD_DECLARE` (0x0A) entry for `U` in the on-disk WAL
+/// (effectively deleting it from replay; the reader sees an "Unknown
+/// WAL op" on op = 0x00 and bails before the snapshot pass walks the
+/// declare into the registry). On reopen, the V.3 snapshot pass must
+/// find no registered field named `U` and surface
+/// `WalError::OrphanedSnapshot("U")`.
+///
+/// Implementation note: we DON'T delete the entry (that would re-index
+/// every downstream entry's length-prefix offset and we'd have to
+/// re-stream the WAL). Instead we strike the OP byte and recompute the
+/// CRC. The replay path consumes entries sequentially; an unknown OP
+/// returns an `io::Error::Other`-shaped error from `WalReader::read_one`
+/// which the engine's `replay_gauge_substrate` surfaces — but ONLY if
+/// the snapshot pass is the one that hits it. The cleanest path is to
+/// zero the declare's OP byte AND truncate the WAL right after the
+/// declare's CRC tail, then write the snapshot back as the next entry.
+/// That is too invasive for an integration test; the simpler approach
+/// (still load-bearing) is to corrupt the declare's OP byte to an
+/// unknown value (0x00) AND recompute its CRC. The WAL reader will
+/// surface `Unknown WAL op: 0x0` before the snapshot pass runs at all.
+/// That tests "WAL reader rejects unknown op", not "snapshot pass
+/// rejects orphan". To exercise the orphan-pass path specifically, we
+/// instead REPLACE the declare's OP byte with a SECOND `OP_LATTICE_DECLARE`
+/// (0x09) targeted at a name the snapshot's declare looked-up would
+/// miss — but the lattice decoder will reject the gauge-shaped payload.
+/// Cleanest: truncate the file to the byte range covering only
+/// (LATTICE + GIBBS_SAMPLE residue + SNAPSHOT) — i.e. skip the gauge
+/// declare entirely. We compute the byte range by locating the gauge
+/// declare entry's [4-byte length-prefix..entry_end + 4) span and
+/// splicing it out of the byte vector, then writing the rest back.
+#[test]
+fn tdd_hal_v_3_snapshot_orphan_rejection() {
+    let _serial = gauge_registry::test_serial_lock();
+
+    // 1. Temp data dir + V.4 chain to populate the WAL.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let data_path = dir.path().to_path_buf();
+    run_v4_chain_then_close(&data_path);
+
+    // 2. Wipe in-process registries — the rejection has to come from
+    //    replay against a hand-edited WAL, not from in-process state.
+    lattice_registry::clear();
+    gauge_registry::clear();
+    gauge_registry::clear_e_registry();
+
+    // 3. Read the WAL and splice out the `OP_GAUGE_FIELD_DECLARE`
+    //    (0x0A) entry — its length prefix, op + payload, and CRC tail
+    //    all go. The remaining entries (LATTICE + GIBBS_SAMPLE residue
+    //    + SNAPSHOT) replay against a registry that never received the
+    //    GAUGE_FIELD declare; the snapshot pass then trips the orphan
+    //    check because no handle is registered for name "U".
+    let wal_path = data_path.join("gigi.wal");
+    let bytes = std::fs::read(&wal_path).expect("read WAL");
+    let (entry_start, entry_end, _payload_start, _payload_end) =
+        locate_wal_entry(&bytes, 0x0A).expect("gauge declare entry in WAL");
+    // The length-prefix sits at [entry_start - 4 .. entry_start); the
+    // CRC tail sits at [entry_end .. entry_end + 4). Splice out the
+    // whole [entry_start - 4 .. entry_end + 4) range.
+    let splice_start = entry_start - 4;
+    let splice_end = entry_end + 4;
+    let mut spliced = Vec::with_capacity(bytes.len() - (splice_end - splice_start));
+    spliced.extend_from_slice(&bytes[..splice_start]);
+    spliced.extend_from_slice(&bytes[splice_end..]);
+    std::fs::write(&wal_path, &spliced).expect("write spliced WAL");
+
+    // 4. Reopen — the snapshot replay pass must find no registered
+    //    handle for "U" and surface `WalError::OrphanedSnapshot("U")`
+    //    through the `From<WalError> for io::Error` lowering. The
+    //    Display impl carries the field name and the word "orphan",
+    //    which is the integration-level match surface.
+    let err = match Engine::open(&data_path) {
+        Ok(_) => panic!(
+            "missing gauge-field declare with a surviving snapshot must \
+             surface WalError::OrphanedSnapshot — Engine::open returned Ok"
+        ),
+        Err(e) => e,
+    };
+    let msg = err.to_string();
+    assert!(
+        msg.contains("'U'") && msg.contains("orphan"),
+        "Engine::open error must name field 'U' and the orphan \
+         rejection category, got: {msg}"
+    );
+
+    // Cleanup.
+    lattice_registry::clear();
+    gauge_registry::clear();
+    gauge_registry::clear_e_registry();
+}

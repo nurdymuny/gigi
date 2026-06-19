@@ -294,6 +294,26 @@ name = "causal_states_classifier_audit"
 path = "examples/causal_states_classifier_audit.rs"
 required-features = ["causal_states"]
 
+# Local profile of GIBBS_SAMPLE β=2.5 N_SWEEPS=200 SEED=20260616 on the
+# truncated-icosahedron buckyball. Times the production sweep plus three
+# micro-benches (staple walker, KP draw, mutex lock) so the per-phase
+# cost breakdown is legible. Run with:
+#   cargo run --release --features halcyon --example bench_thermalization
+[[example]]
+name = "bench_thermalization"
+path = "examples/bench_thermalization.rs"
+required-features = ["halcyon"]
+
+# Sprint A baseline harness for the face_edges + measurement_history hoist.
+# 3 warmup + 5 timed iterations of GIBBS_SAMPLE β=2.5 N_SWEEPS=200
+# SEED=20260616 on the buckyball; reports wall-clock mean/min plus the
+# final MeanPlaquette[199] checksum used for the bit-identity receipt. Run:
+#   cargo run --release --features halcyon --example bench_thermalization_baseline
+[[example]]
+name = "bench_thermalization_baseline"
+path = "examples/bench_thermalization_baseline.rs"
+required-features = ["halcyon"]
+
 [dev-dependencies]
 rand = "0.8"
 tempfile = "3"

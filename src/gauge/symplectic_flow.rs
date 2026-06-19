@@ -79,7 +79,7 @@ use super::plaquette::plaquette_mean;
 use super::project_gauss::{project_gauss, ProjectGaussConfig};
 use super::q_surrogate::q_surrogate;
 use super::registry::{get_su2_e_mut, get_su2_mut, republish_su2, GaugeFieldHandle};
-use super::staple::{build_edge_face_incidence, EdgeFaceIncidence};
+use super::staple::{build_edge_face_incidence, build_face_edges_cache, EdgeFaceIncidence};
 use super::su2_gauge_field::SU2GaugeField;
 use super::wilson_force::{apply_force_kick, wilson_force_per_edge};
 use crate::lattice::{registry as lattice_registry, Lattice};
@@ -276,6 +276,7 @@ pub fn symplectic_flow(
     let lat = lattice_registry::get(&lattice_name)
         .ok_or_else(|| GaugeFieldError::LatticeNotDeclared(lattice_name.clone()))?;
     let edge_face_inc = build_edge_face_incidence(&lat);
+    let face_edges_cache = build_face_edges_cache(&lat);
     let vertex_edge_inc = build_vertex_edge_incidence(&lat);
 
     // SU(2) Wilson-action coupling: g² = (2·N) / β = 4 / β.
@@ -293,12 +294,12 @@ pub fn symplectic_flow(
             // ── KDK leapfrog body ──
             //
             // K: F0 from U (current).
-            let f0 = wilson_force_per_edge(&*u_guard, &lat, &edge_face_inc, config.beta)?;
+            let f0 = wilson_force_per_edge(&*u_guard, &lat, &edge_face_inc, &face_edges_cache, config.beta)?;
             apply_force_kick(&mut *e_guard, &f0, dt_half)?;
             // D: U_new = exp(dt · g² · E) · U.
             drift_step(&mut *u_guard, &*e_guard, config.dt, g2)?;
             // K: F1 from U (new).
-            let f1 = wilson_force_per_edge(&*u_guard, &lat, &edge_face_inc, config.beta)?;
+            let f1 = wilson_force_per_edge(&*u_guard, &lat, &edge_face_inc, &face_edges_cache, config.beta)?;
             apply_force_kick(&mut *e_guard, &f1, dt_half)?;
             // PROJECT_GAUSS (per-step, IV-D locked).
             if let Some(pg_cfg) = config.project_gauss {

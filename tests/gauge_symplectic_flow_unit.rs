@@ -40,6 +40,7 @@
 use gigi::gauge::{
     apply_force_kick,
     build_edge_face_incidence,
+    build_face_edges_cache,
     drift_step,
     e_field::{EFieldInit, SU2EField},
     gibbs_sample,
@@ -285,6 +286,7 @@ fn tdd_hal_iv_6_sympflow_kdk_order() {
     thermalize_pair("U_iv6_kdk_ref", "E_iv6_kdk_ref");
     let bb = buckyball();
     let inc = build_edge_face_incidence(&bb);
+    let fec = build_face_edges_cache(&bb);
     let vinc = gigi::gauge::build_vertex_edge_incidence(&bb);
     let g2 = 4.0 / beta;
     let u_arc = get_su2_mut("U_iv6_kdk_ref").expect("U");
@@ -295,13 +297,13 @@ fn tdd_hal_iv_6_sympflow_kdk_order() {
         for _ in 0..n_steps {
             // K: F0 from U → E += dt/2 · F0
             let f0 =
-                wilson_force_per_edge(&*u_guard, &bb, &inc, beta).expect("F0");
+                wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, beta).expect("F0");
             apply_force_kick(&mut *e_guard, &f0, dt / 2.0).expect("kick 0");
             // D: U_new = exp(dt·E) · U
             drift_step(&mut *u_guard, &*e_guard, dt, g2).expect("drift");
             // K: F1 from U_new → E += dt/2 · F1
             let f1 =
-                wilson_force_per_edge(&*u_guard, &bb, &inc, beta).expect("F1");
+                wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, beta).expect("F1");
             apply_force_kick(&mut *e_guard, &f1, dt / 2.0).expect("kick 1");
             // PROJECT_GAUSS
             gigi::gauge::project_gauss(

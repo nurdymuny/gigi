@@ -47,6 +47,19 @@ use crate::lattice::{EdgeId, EdgeOrientation, Lattice};
 /// appears in exactly 2 faces.
 pub type EdgeFaceIncidence = Vec<Vec<(usize /* face_idx */, usize /* position_in_face */)>>;
 
+/// Per-face → prebuilt edge cycle (one `(EdgeId, EdgeOrientation)`
+/// entry per vertex pair around the face). This is the cached result
+/// of `holonomy::face_edges(lat, fidx)` for every face on the
+/// lattice; callers hoist it out of any sweep loop so the staple
+/// walker does not re-allocate per (face, edge) slot.
+///
+/// Sprint A perf hoist: the pre-hoist `staple_sum_at_edge` called
+/// `face_edges(lat, fidx)` inside its inner loop, allocating a fresh
+/// `Vec<(EdgeId, EdgeOrientation)>` per visit (~36 000 allocations
+/// per GIBBS_SAMPLE β=2.5 N_SWEEPS=200 on the buckyball). The cache
+/// prebuilds 32 vecs once and reuses them across the full sweep.
+pub type FaceEdgesCache = Vec<Vec<(EdgeId, EdgeOrientation)>>;
+
 /// Build the per-edge → list-of-`(face_idx, position_in_face)`
 /// incidence table for `lat`. Thin re-export over
 /// `Lattice::build_edge_face_incidence` so callers in the gauge crate
@@ -59,12 +72,30 @@ pub fn build_edge_face_incidence(lat: &Lattice) -> EdgeFaceIncidence {
     lat.build_edge_face_incidence()
 }
 
+/// Build the per-face edge-cycle cache for `lat`. One
+/// `Vec<(EdgeId, EdgeOrientation)>` per face, indexed by `face_idx`,
+/// containing the same data `face_edges(lat, fidx)` returns. Callers
+/// pass `&FaceEdgesCache` into `staple_sum_at_edge` so the walker
+/// reads `face_edges_cache[fidx]` instead of re-resolving the face's
+/// vertex pairs on every visit. Built once per lattice; reused across
+/// every sweep / leapfrog step.
+pub fn build_face_edges_cache(lat: &Lattice) -> FaceEdgesCache {
+    let n_faces = lat.n_faces();
+    let mut cache: FaceEdgesCache = Vec::with_capacity(n_faces);
+    for fidx in 0..n_faces {
+        cache.push(face_edges(lat, fidx));
+    }
+    cache
+}
+
 /// Compute the effective staple `V_eff(e)` at `edge` under the
 /// connection behind `handle`.
 ///
 /// For each face `f` incident to `edge` (read off `inc[edge]`):
 ///
-/// 1. Resolve the face's edge cycle via `face_edges(lat, fidx)`.
+/// 1. Look up the face's edge cycle in `face_edges_cache[fidx]`
+///    (prebuilt by `build_face_edges_cache(lat)`; replaces the
+///    pre-hoist per-call `face_edges(lat, fidx)` allocation).
 /// 2. Locate `edge` in the cycle at position `pos`.
 /// 3. Read the face's edge orientation `σ_f(edge)` at that position
 ///    (Forward → +1, Reverse → −1).
@@ -82,10 +113,19 @@ pub fn build_edge_face_incidence(lat: &Lattice) -> EdgeFaceIncidence {
 /// `qconj(I) = I`, so `V_eff(e) = (k, 0, 0, 0)` where `k` is the
 /// number of incident faces. On a closed surface this is `(2, 0, 0, 0)`
 /// for every edge (closed-surface invariant).
+///
+/// Sprint A perf hoist: `face_edges_cache` replaces a per-call
+/// `face_edges(lat, fidx)` allocation inside the inner loop. Byte-
+/// identical against the pre-hoist algorithm — `face_edges_cache[fidx]`
+/// returns the same `(EdgeId, EdgeOrientation)` slice the inner call
+/// previously rebuilt, so the composition order, orientation, and
+/// reduction are unchanged. Receipt:
+/// `tdd_hal_perf_face_edges_hoist_byte_identical` (gibbs_sample::tests).
 pub fn staple_sum_at_edge(
     handle: &dyn EdgeConnection,
-    lat: &Lattice,
+    _lat: &Lattice,
     inc: &EdgeFaceIncidence,
+    face_edges_cache: &FaceEdgesCache,
     edge: EdgeId,
 ) -> GroupElement {
     // Zero accumulator (SU(2) sums are componentwise quaternion
@@ -97,7 +137,7 @@ pub fn staple_sum_at_edge(
     let mut acc_q3 = 0.0_f64;
 
     for &(fidx, pos) in &inc[edge] {
-        let edges = face_edges(lat, fidx);
+        let edges = &face_edges_cache[fidx];
         let n = edges.len();
         debug_assert!(pos < n);
         // Walk the n - 1 OTHER edges starting one step past `edge`.
@@ -205,9 +245,10 @@ mod tests {
         gauge_registry::register(Arc::new(field));
         let handle = gauge_registry::get("U_iii_3_id").expect("registered");
         let inc = build_edge_face_incidence(&bb);
+        let face_edges_cache = build_face_edges_cache(&bb);
 
         for eid in 0..bb.n_edges() {
-            let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, eid);
+            let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, eid);
             match v {
                 GroupElement::SU2 { q0, q1, q2, q3 } => {
                     // 2 incident faces × identity quaternion + qconj
@@ -260,8 +301,9 @@ mod tests {
         gauge_registry::register(Arc::new(field));
         let handle = gauge_registry::get("U_iii_3_haar").expect("registered");
         let inc = build_edge_face_incidence(&bb);
+        let face_edges_cache = build_face_edges_cache(&bb);
 
-        let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, 0);
+        let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, 0);
         match v {
             GroupElement::SU2 { q0, q1, q2, q3 } => {
                 let tol = 1e-12;
@@ -324,8 +366,9 @@ mod tests {
         gauge_registry::register(Arc::new(field));
         let handle = gauge_registry::get("U_iii_3_skip").expect("registered");
         let inc = build_edge_face_incidence(&bb);
+        let face_edges_cache = build_face_edges_cache(&bb);
 
-        let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, e_target);
+        let v = staple_sum_at_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, e_target);
         match v {
             GroupElement::SU2 { q0, q1, q2, q3 } => {
                 assert_eq!(q0, 2.0, "self-edge skip: q0 must be 2.0 (sum of 2 identities), got {q0}");

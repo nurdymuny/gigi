@@ -41,7 +41,7 @@ use super::error::GaugeFieldError;
 use super::group::Group;
 use super::group_element::GroupElement;
 use super::registry::GaugeFieldHandle;
-use super::staple::{staple_sum_at_edge, EdgeFaceIncidence};
+use super::staple::{staple_sum_at_edge, EdgeFaceIncidence, FaceEdgesCache};
 use crate::lattice::{EdgeOrientation, Lattice};
 
 /// Raw quaternion product (scalar-first, Hamilton convention).
@@ -79,8 +79,10 @@ fn project_lie(q: [f64; 4]) -> [f64; 4] {
 /// `handle` is the SU(2) gauge field; the kernel reaches through the
 /// `EdgeConnection` surface to read each link in Forward orientation
 /// (the canonical `U_e`). `inc` is the cached edge-face incidence
-/// from III.3; the caller hoists it out of any leapfrog sweep loop
-/// (the kernel does NOT rebuild it).
+/// from III.3 and `face_edges_cache` is the per-face edge-cycle
+/// cache from Sprint A's perf hoist — both are hoisted out of any
+/// leapfrog sweep loop by the caller (the kernel does NOT rebuild
+/// them).
 ///
 /// Returns one `[0, F_x, F_y, F_z]` Lie row per edge, in
 /// `0..lat.n_edges()` order. The q0 slot is zeroed by `project_lie`
@@ -97,6 +99,7 @@ pub fn wilson_force_per_edge(
     handle: &dyn GaugeFieldHandle,
     lat: &Lattice,
     inc: &EdgeFaceIncidence,
+    face_edges_cache: &FaceEdgesCache,
     beta: f64,
 ) -> Result<Vec<[f64; 4]>, GaugeFieldError> {
     match handle.group() {
@@ -123,7 +126,7 @@ pub fn wilson_force_per_edge(
                 "wilson_force_per_edge: handle.group() == SU2 but edge_element returned non-SU2"
             ),
         };
-        let sigma = match staple_sum_at_edge(conn, lat, inc, eid) {
+        let sigma = match staple_sum_at_edge(conn, lat, inc, face_edges_cache, eid) {
             GroupElement::SU2 { q0, q1, q2, q3 } => [q0, q1, q2, q3],
             _ => unreachable!(
                 "wilson_force_per_edge: staple_sum_at_edge returned non-SU2"
@@ -188,7 +191,7 @@ mod tests {
     use super::*;
     use crate::gauge::e_field::{EFieldInit, SU2EField};
     use crate::gauge::registry as gauge_registry;
-    use crate::gauge::staple::build_edge_face_incidence;
+    use crate::gauge::staple::{build_edge_face_incidence, build_face_edges_cache};
     use crate::gauge::su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
     use crate::lattice::registry as lattice_registry;
     use crate::lattice::topology::truncated_icosahedron::buckyball;
@@ -217,9 +220,10 @@ mod tests {
         gauge_registry::register(Arc::new(field));
         let handle = gauge_registry::get("U_iv4_unit_id").expect("registered");
         let inc = build_edge_face_incidence(&bb);
+        let face_edges_cache = build_face_edges_cache(&bb);
 
         let f =
-            wilson_force_per_edge(handle.as_ref(), &bb, &inc, 2.5).unwrap();
+            wilson_force_per_edge(handle.as_ref(), &bb, &inc, &face_edges_cache, 2.5).unwrap();
         assert_eq!(f.len(), bb.n_edges());
         for (eid, row) in f.iter().enumerate() {
             assert_eq!(

@@ -111,7 +111,10 @@ pub use plaquette::{plaquette_mean, plaquette_per_face, plaquette_sum};
 #[cfg(feature = "gauge")]
 pub use q_surrogate::q_surrogate;
 #[cfg(feature = "gauge")]
-pub use staple::{build_edge_face_incidence, staple_sum_at_edge, EdgeFaceIncidence};
+pub use staple::{
+    build_edge_face_incidence, build_face_edges_cache, staple_sum_at_edge,
+    EdgeFaceIncidence, FaceEdgesCache,
+};
 #[cfg(feature = "gauge")]
 pub use heatbath_haar::sample_haar_sqrt_rejection;
 #[cfg(feature = "gauge")]

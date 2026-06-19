@@ -22,6 +22,7 @@
 use gigi::gauge::{
     apply_force_kick,
     build_edge_face_incidence,
+    build_face_edges_cache,
     e_field::{EFieldInit, SU2EField},
     registry::{
         clear as clear_gauge, clear_e_registry, register_su2, register_su2_e,
@@ -60,8 +61,9 @@ fn tdd_hal_iv_4_wilson_force_identity_links_zero() {
         gigi::gauge::registry::get_su2_mut("U_iv4_id").expect("registered");
     let u_guard = u_arc.lock().expect("u mutex poisoned");
     let inc = build_edge_face_incidence(&bb);
+    let fec = build_face_edges_cache(&bb);
 
-    let f = wilson_force_per_edge(&*u_guard, &bb, &inc, 2.5)
+    let f = wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, 2.5)
         .expect("identity force must succeed");
 
     assert_eq!(f.len(), bb.n_edges(), "force is per-edge");
@@ -100,8 +102,9 @@ fn tdd_hal_iv_4_wilson_force_thermalized_finite() {
         gigi::gauge::registry::get_su2_mut("U_iv4_haar").expect("registered");
     let u_guard = u_arc.lock().expect("u mutex poisoned");
     let inc = build_edge_face_incidence(&bb);
+    let fec = build_face_edges_cache(&bb);
 
-    let f = wilson_force_per_edge(&*u_guard, &bb, &inc, 2.5)
+    let f = wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, 2.5)
         .expect("haar force must succeed");
 
     for (eid, row) in f.iter().enumerate() {
@@ -149,8 +152,9 @@ fn tdd_hal_iv_4_wilson_force_q0_zero() {
         gigi::gauge::registry::get_su2_mut("U_iv4_q0").expect("registered");
     let u_guard = u_arc.lock().expect("u mutex poisoned");
     let inc = build_edge_face_incidence(&bb);
+    let fec = build_face_edges_cache(&bb);
 
-    let f = wilson_force_per_edge(&*u_guard, &bb, &inc, 2.5).unwrap();
+    let f = wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, 2.5).unwrap();
 
     for (eid, row) in f.iter().enumerate() {
         assert_eq!(
@@ -186,9 +190,10 @@ fn tdd_hal_iv_4_wilson_force_coefficient_beta_minus_4() {
         gigi::gauge::registry::get_su2_mut("U_iv4_coef").expect("registered");
     let u_guard = u_arc.lock().expect("u mutex poisoned");
     let inc = build_edge_face_incidence(&bb);
+    let fec = build_face_edges_cache(&bb);
 
-    let f_low = wilson_force_per_edge(&*u_guard, &bb, &inc, 2.5).unwrap();
-    let f_high = wilson_force_per_edge(&*u_guard, &bb, &inc, 5.0).unwrap();
+    let f_low = wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, 2.5).unwrap();
+    let f_high = wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, 5.0).unwrap();
 
     let tol = 1e-12_f64;
     for eid in 0..bb.n_edges() {
@@ -227,9 +232,10 @@ fn tdd_hal_iv_4_apply_force_kick_q0_zero_invariant() {
     let u_arc =
         gigi::gauge::registry::get_su2_mut("U_iv4_kick").expect("registered");
     let inc = build_edge_face_incidence(&bb);
+    let fec = build_face_edges_cache(&bb);
     let f = {
         let u_guard = u_arc.lock().expect("u mutex poisoned");
-        wilson_force_per_edge(&*u_guard, &bb, &inc, 2.5).unwrap()
+        wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, 2.5).unwrap()
     };
 
     let e_field = SU2EField::new(
@@ -285,9 +291,10 @@ fn tdd_hal_iv_4_dt_halving_4_to_1_scaling() {
     let u_arc =
         gigi::gauge::registry::get_su2_mut("U_iv4_dt").expect("registered");
     let inc = build_edge_face_incidence(&bb);
+    let fec = build_face_edges_cache(&bb);
     let f = {
         let u_guard = u_arc.lock().expect("u mutex poisoned");
-        wilson_force_per_edge(&*u_guard, &bb, &inc, 2.5).unwrap()
+        wilson_force_per_edge(&*u_guard, &bb, &inc, &fec, 2.5).unwrap()
     };
 
     let mk_e = |tag: &str| -> SU2EField {

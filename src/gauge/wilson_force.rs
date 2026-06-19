@@ -41,7 +41,7 @@ use super::error::GaugeFieldError;
 use super::group::Group;
 use super::group_element::GroupElement;
 use super::registry::GaugeFieldHandle;
-use super::staple::{staple_sum_at_edge, EdgeFaceIncidence, FaceEdgesCache, FaceHolonomyCache};
+use super::staple::{staple_sum_at_edge, EdgeFaceIncidence, FaceEdgesCache};
 use crate::lattice::{EdgeOrientation, Lattice};
 
 /// Raw quaternion product (scalar-first, Hamilton convention).
@@ -114,15 +114,8 @@ pub fn wilson_force_per_edge(
     // leapfrog's second-order symplectic accuracy.
     let coeff = -beta / 8.0_f64;
     let n_edges = lat.n_edges();
-    let n_faces = lat.n_faces();
     let mut out: Vec<[f64; 4]> = Vec::with_capacity(n_edges);
     let conn: &dyn EdgeConnection = handle;
-    // Sprint B perf hoist: per-face A_f(pos) cache, scoped to one
-    // wilson_force_per_edge call. The U buffer is NEVER mutated inside
-    // this loop (the K step reads U and writes E), so EVERY face fill
-    // is reused across all 5–6 edges incident to that face — pure-read
-    // workload, the cleanest cache-hit case in the gauge stack.
-    let mut holonomy_cache = FaceHolonomyCache::new(n_faces);
     for eid in 0..n_edges {
         // U[e] in canonical Forward orientation (the kernel never
         // needs the inverse — Σ_e already carries the orientation
@@ -133,14 +126,7 @@ pub fn wilson_force_per_edge(
                 "wilson_force_per_edge: handle.group() == SU2 but edge_element returned non-SU2"
             ),
         };
-        let sigma = match staple_sum_at_edge(
-            conn,
-            lat,
-            inc,
-            face_edges_cache,
-            &mut holonomy_cache,
-            eid,
-        ) {
+        let sigma = match staple_sum_at_edge(conn, lat, inc, face_edges_cache, eid) {
             GroupElement::SU2 { q0, q1, q2, q3 } => [q0, q1, q2, q3],
             _ => unreachable!(
                 "wilson_force_per_edge: staple_sum_at_edge returned non-SU2"

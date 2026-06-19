@@ -24,9 +24,7 @@ use gigi::gauge::group_element::GroupElement;
 use gigi::gauge::kennedy_pendleton::sample_su2_link;
 use gigi::gauge::marsaglia_haar::SmallRng;
 use gigi::gauge::registry as gauge_registry;
-use gigi::gauge::staple::{
-    build_edge_face_incidence, build_face_edges_cache, staple_sum_at_edge, FaceHolonomyCache,
-};
+use gigi::gauge::staple::{build_edge_face_incidence, build_face_edges_cache, staple_sum_at_edge};
 use gigi::gauge::su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
 use gigi::lattice::registry as lattice_registry;
 use gigi::lattice::topology::truncated_icosahedron::buckyball;
@@ -117,13 +115,8 @@ fn main() {
     {
         let field = field_arc.lock().expect("field lock");
         for _ in 0..N_SWEEPS {
-            // Sub-bench pattern: pure-read sweep (no field mutation
-            // inside the loop) — the per-face holonomy cache stays warm
-            // for all 5–6 edges incident to each face. This is the
-            // best-case Sprint B perf hoist scenario.
-            let mut hc = FaceHolonomyCache::new(lat.n_faces());
             for e in 0..n_edges {
-                let v = staple_sum_at_edge(&*field, &lat, &inc, &fec, &mut hc, e);
+                let v = staple_sum_at_edge(&*field, &lat, &inc, &fec, e);
                 if let GroupElement::SU2 { q0, .. } = v {
                     // Sum into a sink so the optimizer cannot DCE the call.
                     staple_sink_q0 += q0;

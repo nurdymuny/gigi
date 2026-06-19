@@ -91,6 +91,57 @@ impl DenseLinkBuffer {
         }
     }
 
+    /// Build an all-zero buffer (no group identity injected).
+    ///
+    /// Used by the SU(2) E-field primitive (TDD-HAL-IV.1) where each
+    /// row is a quaternion-packed Lie-algebra vector with `q0 = 0`
+    /// (the identity component of a tangent vector is zero by
+    /// definition). For `Group::SU2` the buffer is `(n_edges, 4)`
+    /// row-major. Future U(1)/SU(3)/Z(N) E-fields will land beside
+    /// `SU2EField` as separate structs; this constructor only knows
+    /// about repr_dim, so it is group-agnostic at the storage layer.
+    pub fn new_zero(group: Group, n_edges: usize) -> Result<Self, GaugeFieldError> {
+        let repr_dim = group.repr_dim();
+        match group {
+            Group::SU2 => Ok(Self {
+                group,
+                n_edges,
+                repr_dim,
+                data: vec![0.0_f64; n_edges * repr_dim],
+            }),
+            other => Err(GaugeFieldError::UnsupportedGroup(other)),
+        }
+    }
+
+    /// Write a row to the buffer with the `q0 = 0` Lie-algebra
+    /// invariant forced at the write boundary.
+    ///
+    /// Used by `SU2EField` writers: `q[0]` is silently zeroed before
+    /// the row is stored, regardless of what the caller passed in.
+    /// This is the q0=0 invariant enforced at every mutation entry
+    /// point (Bee's locked decision IV-C).
+    pub fn write_lie_row(&mut self, edge: usize, mut q: [f64; 4]) {
+        let base = self.repr_dim * edge;
+        q[0] = 0.0;
+        self.data[base] = q[0];
+        self.data[base + 1] = q[1];
+        self.data[base + 2] = q[2];
+        self.data[base + 3] = q[3];
+    }
+
+    /// Read a Lie-algebra row as a 4-tuple `(0, q1, q2, q3)`.
+    /// Companion to `write_lie_row`; the q0 slot is guaranteed zero
+    /// by the write-side invariant (no defensive zeroing here).
+    pub fn read_lie_row(&self, edge: usize) -> [f64; 4] {
+        let base = self.repr_dim * edge;
+        [
+            self.data[base],
+            self.data[base + 1],
+            self.data[base + 2],
+            self.data[base + 3],
+        ]
+    }
+
     /// Decode the row at `edge` into a `GroupElement`.
     ///
     /// Only `Group::SU2` has live math at launch. Other arms panic

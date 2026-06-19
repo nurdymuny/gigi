@@ -26,6 +26,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 
 use super::dense_link_buffer::DenseLinkBuffer;
+use super::e_field::{EFieldHandle, SU2EField};
 use super::edge_connection::EdgeConnection;
 use super::group::Group;
 use super::su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
@@ -255,17 +256,88 @@ type _Su2GuardAliasHint<'a> = MutexGuard<'a, SU2GaugeField>;
 /// HTTP routes) interact with the registries through their normal
 /// `register` / `get` surface without touching this lock.
 ///
-/// `cfg(any(test, feature = "halcyon"))` so integration tests in
-/// `tests/halcyon_part_iii_*.rs` (which live in a separate crate from
-/// the lib) can reach the same mutex when they need to coexist with
-/// in-process gauge tests during a single `cargo test` invocation.
-#[cfg(any(test, feature = "halcyon"))]
+/// `cfg(any(test, feature = "halcyon", feature = "gauge"))` so
+/// integration tests in `tests/halcyon_part_iii_*.rs` and
+/// `tests/gauge_e_field_unit.rs` (which live in a separate crate
+/// from the lib) can reach the same mutex when they need to coexist
+/// with in-process gauge tests during a single `cargo test`
+/// invocation.
+#[cfg(any(test, feature = "halcyon", feature = "gauge"))]
 pub fn test_serial_lock() -> std::sync::MutexGuard<'static, ()> {
     use std::sync::Mutex;
     static M: OnceLock<Mutex<()>> = OnceLock::new();
     M.get_or_init(|| Mutex::new(()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+// ───────────────────────── SU(2) E-field sibling registry ─────────────────────────
+//
+// Closes the storage half of TDD-HAL-IV.1. The E field's lifecycle is
+// distinct from the U field's — E is a tangent-space (Lie-algebra)
+// object with no group inverse and no face-walk semantics, so it does
+// not impl `EdgeConnection` and is not stored behind the
+// `GaugeFieldHandle` dyn surface. Instead it gets its own sibling
+// registry slot here (`register_su2_e` / `get_su2_e_mut` /
+// `clear_e_registry`) parallel to the SU(2) mut escape above.
+//
+// Group-erasure note (Bee's locked decision IV-B): a future
+// `U1EField` / `SU3EField` would ship sibling `register_u1_e` /
+// `register_su3_e` functions alongside this one; the storage pattern
+// stays. Cross-group composition (e.g. SU(2) U with U(1) E) is not
+// in scope; each E field is a sibling of exactly one gauge field.
+
+fn su2_e_registry() -> &'static Mutex<HashMap<String, Arc<Mutex<SU2EField>>>> {
+    static REG: OnceLock<Mutex<HashMap<String, Arc<Mutex<SU2EField>>>>> =
+        OnceLock::new();
+    REG.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Register an `SU2EField` under its `name`. Overwrites any previous
+/// registration with the same name (second registration wins).
+pub fn register_su2_e(field_arc: Arc<Mutex<SU2EField>>) {
+    let name = {
+        let guard = field_arc.lock().expect("e field mutex poisoned");
+        guard.name.clone()
+    };
+    let mut s = su2_e_registry()
+        .lock()
+        .expect("su2 e registry mutex poisoned");
+    s.insert(name, field_arc);
+}
+
+/// Look up the SU(2) E-field handle for `name`. Returns a read-only
+/// `Arc<dyn EFieldHandle>` snapshot built from the registered field's
+/// current state at call time. The dyn surface is the SHOW E_FIELD /
+/// HTTP introspection path; mutation lands through `get_su2_e_mut`.
+pub fn get_su2_e(name: &str) -> Option<Arc<dyn EFieldHandle>> {
+    let s = su2_e_registry()
+        .lock()
+        .expect("su2 e registry mutex poisoned");
+    s.get(name).map(|arc| {
+        let guard = arc.lock().expect("e field mutex poisoned");
+        Arc::new(guard.clone()) as Arc<dyn EFieldHandle>
+    })
+}
+
+/// Look up the mutable SU(2) E-field handle for `name`. Returns the
+/// `Arc<Mutex<_>>` the registry holds; the caller locks it for the
+/// duration of the mutation window (mirrors `get_su2_mut`).
+pub fn get_su2_e_mut(name: &str) -> Option<Arc<Mutex<SU2EField>>> {
+    let s = su2_e_registry()
+        .lock()
+        .expect("su2 e registry mutex poisoned");
+    s.get(name).cloned()
+}
+
+/// Clear the SU(2) E-field registry. Test convenience — the
+/// persistence gate (Part IV future) will call this at every
+/// `Engine::open` so the WAL replay starts from an empty registry.
+pub fn clear_e_registry() {
+    let mut s = su2_e_registry()
+        .lock()
+        .expect("su2 e registry mutex poisoned");
+    s.clear();
 }
 
 /// Snapshot every registered gauge field for compaction. The engine's

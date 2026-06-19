@@ -50,6 +50,18 @@ pub enum GaugeFieldError {
     /// the III.5 red-test and the upstream parser / HTTP layer can
     /// match either token.
     PartIvObservableNotReady(&'static str),
+    /// `E_FIELD ON U` referenced a U field that the registry does
+    /// not know. Distinct from `FieldNotDeclared` so the parser can
+    /// surface a Part-IV-shaped error to the user.
+    EFieldNotDeclared(String),
+    /// `INIT FROM_FIELD other_e` tried to clone an E field that is
+    /// bound to a different lattice than the U field this new E is
+    /// being attached to. `e_lattice` is the lattice the source E
+    /// lives on; `u_lattice` is the lattice the target U lives on.
+    EFieldSourceMismatch {
+        e_lattice: String,
+        u_lattice: String,
+    },
 }
 
 impl std::fmt::Display for GaugeFieldError {
@@ -85,6 +97,19 @@ impl std::fmt::Display for GaugeFieldError {
                  (GIBBS_SAMPLE Part III ships SU(2)-substrate observables only — \
                  MeanPlaquette and QSurrogate). Part IV adds the E-field tangent-space \
                  machinery this verb composes against."
+            ),
+            GaugeFieldError::EFieldNotDeclared(name) => write!(
+                f,
+                "gauge: E field '{name}' is not declared (DECLARE the E_FIELD before referencing it)"
+            ),
+            GaugeFieldError::EFieldSourceMismatch {
+                e_lattice,
+                u_lattice,
+            } => write!(
+                f,
+                "gauge: E source-lattice mismatch (source E lives on lattice '{e_lattice}', \
+                 target U lives on lattice '{u_lattice}' — INIT FROM_FIELD requires the \
+                 source E's bound lattice to match the target U's bound lattice)"
             ),
         }
     }

@@ -74,6 +74,8 @@ pub mod kennedy_pendleton;
 pub mod gibbs_sample;
 #[cfg(feature = "gauge")]
 pub mod observables;
+#[cfg(feature = "gauge")]
+pub mod e_field;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -108,6 +110,8 @@ pub use kennedy_pendleton::{sample_kp_x0, sample_su2_link};
 pub use gibbs_sample::{gibbs_sample, GibbsSampleDiagnostics, GibbsSampleResponse, ObservableId};
 #[cfg(feature = "gauge")]
 pub use observables::PlaquetteReduction;
+#[cfg(feature = "gauge")]
+pub use e_field::{EFieldHandle, EFieldInit, SU2EField};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

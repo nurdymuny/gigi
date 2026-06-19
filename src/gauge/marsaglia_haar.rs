@@ -119,6 +119,46 @@ pub fn haar_random_su2(rng: &mut SmallRng) -> [f64; 4] {
     [x1, x2, x3 * factor, x4 * factor]
 }
 
+/// Draw one Maxwell–Boltzmann SU(2) tangent vector from `rng` packed
+/// as a quaternion with `q0 = 0`.
+///
+/// E ∈ su(2) lives in the imaginary-quaternion tangent direction, so
+/// the canonical packing is `(0, g_1·σ, g_2·σ, g_3·σ)` where the `g_k`
+/// are independent standard normals and `σ = sqrt(1 / (β · dim/2))`.
+/// For SU(2) `dim = 3`, so `dim/2 = 1.5` and `σ = sqrt(1 / (β · 1.5))`
+/// — the Halcyon canonical_sigma packing (mirrored from the Python
+/// reference at `davis-wilson-lattice/inertia_damping/`).
+///
+/// Standard normals are produced via Box–Muller from two uniforms per
+/// pair: `g = sqrt(-2·ln u1) · cos(2π·u2)` and the same with `sin`
+/// for the second. We draw two pairs per call (four uniforms) and
+/// use the first three results — the fourth is consumed to keep the
+/// per-edge RNG-state advance fixed (bit-identity invariant: every
+/// edge consumes the same number of uniforms regardless of which g_k
+/// we keep).
+pub fn maxwell_boltzmann_su2(rng: &mut SmallRng, beta: f64) -> [f64; 4] {
+    let sigma = (1.0 / (beta * 1.5)).sqrt();
+    // Pair 1: yields g1, g2.
+    let u1 = rng.uniform().max(f64::MIN_POSITIVE);
+    let u2 = rng.uniform();
+    let r1 = (-2.0 * u1.ln()).sqrt();
+    let theta1 = 2.0 * std::f64::consts::PI * u2;
+    let g1 = r1 * theta1.cos();
+    let g2 = r1 * theta1.sin();
+    // Pair 2: yields g3; the second standard normal is consumed but
+    // discarded — fixed RNG-state advance per edge so different β
+    // values still share the same draw cadence and the bit-identity
+    // contract (A2 row 1) holds.
+    let u3 = rng.uniform().max(f64::MIN_POSITIVE);
+    let u4 = rng.uniform();
+    let r2 = (-2.0 * u3.ln()).sqrt();
+    let theta2 = 2.0 * std::f64::consts::PI * u4;
+    let g3 = r2 * theta2.cos();
+    let _g4_discarded = r2 * theta2.sin();
+
+    [0.0, sigma * g1, sigma * g2, sigma * g3]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

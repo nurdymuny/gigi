@@ -29,7 +29,7 @@
   "rng": "gigi::gauge::marsaglia_haar::SmallRng (xorshift64*)",
   "algorithm": "KDK leapfrog + Tikhonov CG Gauss projection per step",
   "profile": "release",
-  "harvest_commit": "<fill in with the SHA of the TDD-HAL-IV.9 commit once it lands>",
+  "harvest_commit": "60231605cf2239d42a81717bf3c865e08033fb76",
   "purpose": "Part IV gold-gate canonical reference. Cross-binding bit-identity with Halcyon NumPy PCG64 is impossible by design (locked decision 1, inherited); intra-GIGI bit-identity at fixed seeds is the bit-id contract.",
   "note": "Locked decision IV-A pins the production tikhonov default to 1e-14; IV-D pins per-step projection cadence; IV-E pins the CG preconditioner to NONE. The harvest must run under --release; debug-profile re-harvests would land a different fixture and break IV.10."
 }

@@ -12128,6 +12128,66 @@ async fn gql_query(
         _ => {}
     }
 
+    // Halcyon Part V P-1 — §2.5 drop-bug fix.
+    //
+    // Gauge-feature statements (LATTICE / GAUGE_FIELD / GIBBS_SAMPLE
+    // / E_FIELD / SYMPLECTIC_FLOW / SHOW (E_FIELD | GAUGE_FIELD |
+    // LATTICE) / SELECT (PLAQUETTE | Q_SURROGATE | H_TOTAL |
+    // GAUSS_RESIDUAL_MAX) / LATTICE FROM TRUNCATED_ICOSAHEDRON) have
+    // no single bundle binding, so `get_bundle_name(&stmt)` below
+    // returns `None` and the default early-return drops the
+    // statement on the floor with a `{"status":"ok"}` envelope.
+    // The helper in `gigi::halcyon_gql_dispatch` is the testable
+    // boundary that dispatches through `parser::execute` for any
+    // gauge-feature variant; the response is lowered through the
+    // same `exec_result_to_response` envelope the bundle-aware
+    // path uses, so JSON shape stays uniform across both surfaces.
+    //
+    // The dedicated /v1/gauge_field/* + /v1/lattice/* + /v1/e_field/*
+    // routes in `src/gauge/http.rs` are unaffected — they continue to
+    // expose the same read-only surface they already shipped (Part
+    // II.6 / III.7 / IV.8). This fix re-enables the universal /v1/gql
+    // reach-through so Halcyon's SNAPSHOT verb (Part V P0.2) and
+    // every future gauge statement land without a per-statement HTTP
+    // route.
+    #[cfg(feature = "gauge")]
+    {
+        if let Some(result) =
+            gigi::halcyon_gql_dispatch::try_dispatch_gauge_statement(&state.engine, &stmt)
+        {
+            let dur = t0.elapsed().as_micros() as u64;
+            let stmt_type = gql_stmt_type_name(&stmt);
+            let (status, resp) = match result {
+                Ok(r) => exec_result_to_response(r),
+                Err(e) => {
+                    let ev = state.logger.query_error(
+                        &req_id, query, dur, "ExecError", &e, 500,
+                    );
+                    state.logger.emit(ev);
+                    state.metrics.record_query(dur, stmt_type, false, true);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": e})),
+                    );
+                }
+            };
+            let slow = dur >= state.logger.slow_threshold_us();
+            let ev = state.logger.query_complete(
+                &req_id, "gql", stmt_type, query, dur, 0, dur,
+                &[], 0, 0, 0, 0, false, None, None,
+            );
+            state.logger.emit(ev);
+            if slow {
+                let ev2 = state.logger.query_slow(
+                    &req_id, stmt_type, query, dur, false, false, "gauge dispatch",
+                );
+                state.logger.emit(ev2);
+            }
+            state.metrics.record_query(dur, stmt_type, slow, false);
+            return (status, resp);
+        }
+    }
+
     let bundle_name = match get_bundle_name(&stmt) {
         Some(name) => name,
         None => {

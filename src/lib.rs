@@ -206,6 +206,19 @@ pub mod vector_cache;
 pub mod morse_cache;
 pub mod wal;
 
+// Halcyon Part V P-1 — `/v1/gql` dispatch helper for gauge-feature
+// statements. Closes the §2.5 drop bug: the binary `gql_query` used
+// to early-return `{"status":"ok"}` for LATTICE / GAUGE_FIELD /
+// GIBBS_SAMPLE / E_FIELD / SYMPLECTIC_FLOW / SHOW E_FIELD /
+// SELECT H_TOTAL / SELECT GAUSS_RESIDUAL_MAX / SELECT PLAQUETTE /
+// SELECT Q_SURROGATE / SHOW (GAUGE_FIELD | LATTICE) /
+// LATTICE FROM TRUNCATED_ICOSAHEDRON. This module is the testable
+// boundary the binary now consults BEFORE the bundle-name
+// extraction. Same `gauge` feature gate as the Statement variants it
+// dispatches through.
+#[cfg(feature = "gauge")]
+pub mod halcyon_gql_dispatch;
+
 pub use bundle::{
     detect_base_geometry, BaseGeometry, BundleStats, BundleStore, QueryCondition, QueryPlan,
     TransactionOp, TransactionResult, VectorMetric,

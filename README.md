@@ -1,4 +1,4 @@
-﻿# GIGI
+# GIGI
 
 **Geometric Intrinsic Global Index** — a fiber-bundle database engine.
 
@@ -137,23 +137,25 @@ about your data:
 
 ---
 
-## Recent changes
+## Status
 
-The detailed dated entries that used to live here have been moved to
-[CHANGELOG.md](CHANGELOG.md). Quick map of the most recent ships
-(newest first):
+GIGI is the substrate. As of this README, end-to-end:
 
-- **2026-06-09 — Causal-states substrate + paper + gigi-notebook MVP + GGOG protocol audit closed** ([details](CHANGELOG.md#2026-06-09--causal-states--gigi-notebook--ggog-audit)). Davis (2026) *Causal States as Predictive Sections: ε-Machines and the Update Commutator on Belief-State Dynamics* shipped with the substrate (TV / Hellinger / KL scalar diagnostics + update-commutator orchestrator + Sofic/Smooth/Borderline regime classifier behind the `causal_states` feature flag); empirical scan verifies closed-form Eq 6.4 to IEEE 754 precision across 2505 grid points; orthogonality scan demonstrates `H[X₁]` does not determine `|Ω|` empirically across 1773 processes. `POST /v1/causal_states/commutator` live on `gigi-stream.fly.dev` (`HMM @ (0.2, 0.3)` returns `tv=0.10619, kl=0.0327, regime=smooth`; Even Process @ μ returns `tv=1.0, kl=divergent, regime=sofic`). `gigi-notebook` MVP at [`sdk/notebook/`](sdk/notebook/) — Jupyter kernel with GQL as the default cell language and `%%commutator` cell magic. GGOG protocol audit thread fully closed substrate-side (gigi-wasm §5a–h + §6b applied, 44/44 tests green; ggog-core landed #1, #4, #6, #7, S9, §6c; correspondence at [`theory/ggog/`](theory/ggog/)).
-- **2026-06-04 — Sharding initiative complete + atomic sheaf commits Phase 1 + Marcella SwDA WIN** ([details](CHANGELOG.md#2026-06-04--sharding-complete--atomic-sheaf-commits-phase-1--marcella-swda-win)). 14/14 sharding math gates green; cross-atlas BETTI (T9) Rust port closes the last queued item; 2PC transactions ship with all 5 failure scenarios validated; Marcella's discourse-flow probe returns CI=[+0.0434, +0.0634] on structured moves — the IMAGINE substrate earns its seat exactly where the protocol predicted.
-- **2026-06-03 (evening) — IMAGINE / WALK** ([details](CHANGELOG.md#2026-06-03-evening--imagine--walk-lands-extrapolation-verbs-with-marcellas-trust-envelope)). Extrapolation verbs with Marcella's load-bearing trust envelope: provenance compile-time enforced, `max_imagined_curvature = 4.0 = K(CP¹ FS)` default, FORECAST/IMAGINE routing anchored to Gate J's θ_density = 0.5.
-- **2026-06-03 (afternoon) — Sharding lands as substrate** ([details](CHANGELOG.md#2026-06-03-afternoon--sharding-lands-as-substrate-not-as-compromise)). Ten TDD-gated math claims (T1–T10) + Phase A/B scaffolds; the framing flip from "sharding is a compromise" to "sharding is sheaf-glued by construction."
-- **2026-06-03 — LOCAL_HOLONOMY + intent_gate perf fix + PolyForm NC license** ([details](CHANGELOG.md#2026-06-03--local_holonomy-5th-cognitive-geometry-verb--intent_gate-perf-fix--polyform-nc-license)). 5th Cognitive Geometry verb (Marcella's gain-gate signal); ~5 s → 0 ms on empty-constraints intent_gate; license transition to PolyForm Noncommercial 1.0.0.
-- **2026-06-02 — SEMANTIC perf rewrite** ([details](CHANGELOG.md#2026-06-02--semantic-perf-rewrite-rank-based-betti)). Dense Laplacian eigendecomposition → sparse F₂ Gaussian elimination on boundary matrices. **2260× speedup** on T² 12×12; MorseCache layer adds O(1) second+ reads.
-- **2026-05-30 — Cognitive Geometry verbs (Branch VII)** ([details](CHANGELOG.md#2026-05-30--cognitive-geometry-verbs-branch-vii)). CAPACITY · HORIZON · DEPTH · PERCEIVE — geometric scalars translated into builder-facing routing decisions.
-- **Late May 2026 — GIGI Encrypt v0.3 + v0.4** ([details](CHANGELOG.md#late-may-2026--gigi-encrypt-v03--v04-ship)). Gauge-mode completion + the full delegation family (BLS12-381 pairing PRE, ML-KEM-768 PQ, lattice K-of-N threshold) + the invariant verification layer; Zenodo paper deposited.
-- **Late May 2026 — SUDOKU + SAMPLE_TRANSPORT** ([details](CHANGELOG.md#late-may-2026--the-sudoku--sample_transport-sprint)). Constrained-inference meta-primitive verified across 24 domains + curvature-bounded neighborhood sampling.
-- **2026-05-29 — Encryption paper + vector_cache** ([details](CHANGELOG.md#2026-05-29--encryption-paper-deposit--vector-search-cache)). Paper deposit; new caching primitive backing the brain endpoints.
-- **2026 — the Kähler upgrade** ([details](CHANGELOG.md#2026--the-k%C3%A4hler-upgrade)). GIGI v3: twelve layers of Kähler machinery extending the fiber-bundle substrate; all 12 brain primitives operational; three companion catalogs; cross-team validation matching observation to rounding precision.
+- **Halcyon Parts I–IV are LIVE.** SU(2) Yang-Mills on the buckyball runs as a GQL block (`LATTICE` → `GAUGE_FIELD` → `GIBBS_SAMPLE` → `E_FIELD` → `SYMPLECTIC_FLOW`). All six Halcyon HTTP read routes resolve on the production deployment; embedded-only declarers correctly return 404 (the II.6c reframe — embedded GQL is canonical for restart-crossing consumers). Gates pinned by per-part gold gates (`halcyon_part_iv_gold` 5/0, `halcyon_part_iv_a2_matrix` 5/0 with the cross-OS row honestly ignored). See [`theory/halcyon/HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md) through Part IV.
+- **Brain primitives L9–L13 are LIVE.** All 12 cognitive primitives (SAMPLE / DREAM / FORECAST / RECONSTRUCT / INPAINT / PREDICT / SELF-MONITOR / ATTEND / FOCUS / EPISODIC / SEMANTIC / EXPLAIN) sit on the Friston master equation `ẋ = B⁻¹∇(−log p)` on the Kähler bundle. Production HTTP at `/v1/bundles/{name}/brain/*`. 16 of 21 catalog items shipped — 100% of the items I classified as ship-able.
+- **Kähler upgrade is LIVE.** Twelve layers (L1–L12) behind the `kahler` feature flag; byte-identical no-feature build. The Marcella A/B harness pinned the closed-form 7.6pp non-associativity bound to within 0.0013.
+- **Causal-states substrate is LIVE.** Davis (2026) shipped with TV / Hellinger / KL diagnostics, the update-commutator orchestrator, and the Sofic / Smooth / Borderline regime classifier behind the `causal_states` feature flag. `POST /v1/causal_states/commutator` live in production.
+- **Gauge encryption v0.4 is LIVE.** Six modes (Affine / Probabilistic / Opaque / Indexed / Isometric / Identity). κ, λ₁, holonomy preserved at native speed. Public deterministic invariant verification with bundle-id binding.
+- **WISH verb is LIVE.** IMAGINE + DREAM + SUDOKU composed as a single boundary-value-problem verb behind the `wish` feature flag. Marcella's load-bearing curvature ceiling (4.0 = K(CP¹ Fubini-Study)) is the default safety envelope.
+- **Marcella consumer pattern is documented.** Substrate spec at [`theory/kahler_upgrade/marcella_substrate.md`](theory/kahler_upgrade/marcella_substrate.md); pure-fiber LM that reads through the brain endpoints and refuses rather than confabulates when `/brain/confidence_with_explain` says she doesn't know.
+
+Test counts as of this README:
+
+- `cargo test --no-default-features --lib` → **852 passed / 0 failed.** The byte-identical no-feature build.
+- `cargo test --features halcyon --lib --test-threads=1` → **965 passed / 0 failed.** Halcyon Parts I–IV on the substrate.
+- `cargo test --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --lib --test-threads=1` → **1488 passed / 0 failed.** The full production feature surface.
+
+Detailed gate-by-gate ledgers live under [`theory/halcyon/`](theory/halcyon/), [`theory/kahler_upgrade/`](theory/kahler_upgrade/), [`theory/causal_states/`](theory/causal_states/), and [`theory/imagine/`](theory/imagine/).
 
 ---
 
@@ -199,163 +201,164 @@ linear. The full audit trail is in
 [`theory/kahler_upgrade/`](theory/kahler_upgrade/).
 
 ---
----
 
 ## What's in this repo
 
-### Engine (Rust, single crate — `Cargo.toml`)
+`src/` is a single Rust crate; the module-by-module reference lives in
+rustdoc and [`CHANGELOG.md`](CHANGELOG.md). Top-level shape:
 
-| Module | What it does |
-|---|---|
-| `bundle` | Fiber bundle store, schema, query plans, vector metrics |
-| `engine` | Query engine, mutation log, trigger manager, cache |
-| `mmap_bundle` | Memory-mapped persistence (BundleRef / BundleMut / OverlayBundle) |
-| `wal` | Write-ahead log — durability across restarts |
-| `query` | GQL query execution + result shape |
-| `parser` | GQL grammar — `CREATE BUNDLE`, `SECTION`, `COVER`, `INTEGRATE`, `CURVATURE`, `SPECTRAL`, `HOLONOMY`, `TRANSPORT`, `BETTI`, `ENTROPY`, `FREEENERGY`, `GEODESIC`, … |
-| `crypto` | **GIGI Encrypt v0.4** — six gauge modes (Identity / Affine / Probabilistic / Opaque AES-GCM-SIV / Indexed AES-256-CMAC / Isometric O(k)), per-field encryption pipeline (`GaugeKey::encrypt_fiber`) |
-| `aggregate_helpers` | v0.3 — client-side closed-form aggregate inverters (SUM/AVG/VAR/STDDEV exact under Affine + Probabilistic; MIN/MAX/RANGE exact under Affine, refused under Probabilistic σ>0 with explicit `*_unchecked` opt-in) |
-| `integrity` | v0.3 — Curvature-MAC HMAC-SHA256 over the canonical π_inv tuple; `InvariantTuple` + `sign_bundle` / `verify_bundle` |
-| `invariant_verify` | v0.4 Sprint N — public deterministic verification with bundle-id binding; `verify_invariant_statement` returns `Verified` / `BundleMismatch` / `Rejected{field}` |
-| `credentials` | v0.4 Sprint O — HMAC-bound credentials today; BBS+ unlinkability pinned as v0.5 |
-| `invariant_ring` | v0.4 Sprint O — falsification harness for I_Aff membership; parser-by-construction proof |
-| `membership_index` | v0.4 Sprint P — geodesic-ball Mahalanobis index with dimension-aware χ² threshold (table-exact for {1..5}×{0.95, 0.99}, Wilson-Hilferty otherwise) |
-| `delegation`, `pairing_delegation`, `mlkem_delegation`, `lattice_delegation` | v0.3 Sprint J family — Aff(ℝ) capability composition (J.1), BLS12-381 pairing PRE (J.2), ML-KEM-768 trusted delegation (J.3), Shamir K-of-N × ML-KEM threshold lattice delegation (J.4) |
-| `threshold` | v0.3 Sprint L — Shamir secret sharing over secp256k1 F_p; info-theoretic on ≤K−1 subsets |
-| `ledger` | v0.3 Sprint K — RFC 6962 Merkle holonomy ledger (gauge-invariant audit log) |
-| `ratchet` | v0.3 Sprint M — HKDF chain for continuous forward secrecy on the integrity key |
-| `coherence` | Field consistency / Davis field equations |
-| `curvature` | Scalar curvature K, capacity C = τ/K, confidence 1/(1+K) |
-| `gauge` | Structure-group transformations on the fiber |
-| `hash` | The 64-bit GIGI hash for base-space addressing |
-| `metric` | Fiber metrics (Euclidean, cosine, custom) |
-| `invariant` | Project-invariant guards used by `WHERE` clauses |
-| `aggregation`, `join` | `INTEGRATE`, `JOIN`, `PULLBACK` |
-| `sheaf` | Sheaf cohomology — `BETTI`, `CONSISTENCY` |
-| `spectral` | Graph Laplacian eigenvalue/eigenvector queries |
-| `concurrent` | Lock-free reader / single-writer concurrency |
-| `vector_cache` | Cached `(N, D)` materialized matrices for vector-search brain endpoints (`intent_gate`, `confidence`, `confidence_with_explain`). Architecture mirrors `BundleFlowCache`: `RwLock<HashMap>` hot read, per-key `Arc<Mutex<()>>` single-flight on miss, `mutation_counter` invalidation, capacity bound with random eviction. `MaterializedMatrix` holds contiguous row-major data + precomputed per-row `–·–²`; distance queries use the cosine identity in one autovectorizable loop. Public helpers: `kde_raw_from_matrix`, `max_density_cached` (lazy per-bandwidth), `kde_normalized_cached`, `nearest`. Env var `GIGI_VECTOR_CACHE_SIZE` (default 64). |
-| `dhoom` | DHOOM wire protocol — JSON-compatible binary serialization; integral-Chern compression (L7.3) when `kahler` is on; arrays-of-primitives encoded inline via a `\x1F`-sentinel JSON field (round-trip safe for `{tokens: ["the","cat",...]}`-shaped records) |
-| `observability` | Geometric logs (κ, KL, JS per query) |
-| `convert` | JSON / CSV / SQL → DHOOM ingestion |
-| `edge` | Local-first sync layer (mobile/IoT) |
-
-Plus the Kähler-feature modules (gated on `--features kahler`; absent paths are bit-identical to the pre-upgrade engine):
-
-| Module | What it does | Layer |
-|---|---|---|
-| `geometry::complex_structure` | `ComplexStructure` (J² = -I, enforced) | L1 |
-| `geometry::forms` | `TwoForm` + `ClosedTwoForm` with discrete dB closedness check | L1 |
-| `geometry::transport` | B-perturbed magnetic transport via RK4; cyclotron-conserving | L1.5 |
-| `geometry::hadamard` | Hadamard substructure detection + `transport_along` / `transport_inverse` | L5 |
-| `geometry::line_bundle` | `LineBundle` + Dirac integrality check (Wu-Yang) | L7.1 |
-| `geometry::quantum_cohomology` | Frobenius/WDVV composition on toy manifolds (CPⁿ, Tⁿ, S²) + Riemann-Roch capacity | L7.5 / L7.7 |
-| `geometry::toeplitz` | Berezin-Toeplitz operators with `ℝ ≥ 4 / embedding_dim` safety gate | L7.6 |
-| `geometry::moment_map` | `MomentMap` + `InfinitesimalAction`; B-symplecticity validated; `measure_conservation` integrates Hamilton's equations and reports drift of `μ_ξ` along H-flow plus the pointwise invariance residual — Noether's "if and only if" both halves | L9 |
-| `geometry::generative_flow` | `GenerativeFlow` keystone for the brain-primitives catalog: the SDE `ẋ = -∇H dt + √(2T) dW` (gradient half) and `ẋ = B⁻¹∇H` (Hamiltonian half) parametrized to deliver SAMPLE / FORECAST / DREAM / RECONSTRUCT as four boundary conditions on one generator. Convenience constructor `from_isotropic_gaussian()` plugs into L4's Welford stats so any bundle becomes a Friston-style generative model | L10 |
-| `geometry::predictive_coding` | Three more brain primitives stacked on L10: `inpaint()` (constrained Langevin — lock some fields, sample the rest from the conditional density), `predict_one_step()` + `predict_one_step_natural()` (single Fisher-natural-gradient forward step — the brain's online predictive-coding update), `kernel_density_confidence()` + `confidence_normalized()` (kernel-density-estimate "I don't know" signal — separates known patients from out-of-cohort queries by 184 orders of magnitude in the demo) | L11 |
-| `geometry::attention` + `geometry::memory` | Closes the brain-primitives catalog with the attention + memory pillar. `attend()` (softmax over `-–q-x–²/2σ²` — identical to a normalized Gaussian kernel), `focus()` (top-k attended → sub-bundle), `episodic_events()` (persistent-H₀ change-point detection via elder-rule on the sorted-values MST), `semantic_gist()` (wraps `BundleStore::morse_compress` under the brain-API name) | L12 |
-| `geometry::bundle_stats` | One-pass Welford per-field empirical statistics — mean, std, min/max for numeric (with Bessel-corrected length-scale fallbacks for degenerate fields), value→count for categorical, component-wise mean + mean pairwise L2 length scale for Vector fields. Single source of truth for "what's a typical distance in this bundle" — feeds every Kähler-natural normalization downstream. Domain-agnostic by construction. | SUDOKU foundation |
-| `geometry::sudoku` | The SUDOKU meta-primitive — `solve_constraints()` with the honest-coverage `Sat/Unsat/Unknown` tristate. Per-violation Kähler-natural `relaxation_cost`, per-constraint `K_c` curvature + selectivity, Pareto frontier of multi-violation near-misses, data-driven `RelaxationOption` menu sorted by gain/cost, ÄŒech-style `check_constraint_holonomy()` pre-flight contradiction detection (O(C²), zero false positives), S3.5 `attempt_expansion()` for UNSAT puzzle relaxation. 41 unit tests + 6 HTTP wire-gate tests + 8 worked-example demos across 24 domains. | Waves 3–6.2, S3.5 |
-| `geometry::sample_transport` | Curvature-bounded neighborhood sampling: `sample_transport_neighborhood()` with `d² = (1-cos θ)/2 ∈ [0,1]` half-angle formula, Efraimidis-Spirakis weighted-sampling-without-replacement (`r^(1/w)` priorities, top-k), exp(-β·d²) kernel, per-candidate `curvature_k = 2·√d²`, bundle-wide `confidence = 1/(1+κ)`. 13 geometry tests + 3 HTTP wire-gate + 4-domain worked example. | S4 |
-| `graph::adjacency` | Dual principal/auxiliary adjacency operators | L2 |
-| `graph::commutativity` | Group-algebra-centrality commutativity classifier | L2 |
-| `cost::jacobi_estimator` | Jacobi-field cardinality bounds via Bishop / Günther | L3 |
-| `discrete::hodge_complex` | `d_0` / `d_1` operators built from cell incidence; `d² = 0` enforced | L6 |
-| `discrete::hodge_laplacian` | Δ_k = d d + dd , Betti via eigendecomposition | L6 |
-| `discrete::morse` | Algebraic Morse compression; preserves cohomology | L6 |
-
-### Binaries (`src/bin/` + `examples/`)
-
-| Binary | Purpose |
-|---|---|
-| `gigi-server` | The cloud-hosted database — REST + WebSocket on port `3142` |
-| `gigi-stream` | Streaming ingestion + subscription daemon (deployed at `gigi-stream.fly.dev`) |
-| `gigi-edge` | Local-first edge node (mobile / on-device) |
-| `gigi-convert` | CLI: JSON / CSV / SQL → DHOOM bundle |
-| `gigi-stress` | Load + correctness stress harness |
-| `nasa_atmo` | End-to-end NASA-atmosphere demo (`examples/nasa_atmosphere.rs`) |
-| `kahler_tour` | One-run walk through every Kähler layer L1–L11 + DHOOM round-trip + PR-window endpoints, with concrete inputs / outputs / catalog refs. Requires `--features kahler`. (`examples/kahler_tour.rs`) |
-| `predictive_coding_demo` | L11 INPAINT / PREDICT / SELF-MONITOR exercised on a real `BundleStore` holding 80 synthetic MIRADOR-style PK records. The SELF-MONITOR signal cleanly separates known patients from out-of-cohort queries by **184 orders of magnitude**. Requires `--features kahler`. (`examples/predictive_coding_demo.rs`) |
-| `attention_memory_demo` | L12 ATTEND / FOCUS / EPISODIC / SEMANTIC on two real `BundleStore` scenarios: a 12-token semantic-embedding bundle (ATTEND correctly surfaces the 4 animals when queried with a cat-like embedding; FOCUS picks exactly the 3 vehicles for a vehicle-like query) and a 60-day PRISM-style transaction stream (EPISODIC detects a regime change at **1711× persistence ratio**). Requires `--features kahler`. (`examples/attention_memory_demo.rs`) |
-
-### Benches (`benches/`)
-
-- `o1_proof.rs` — empirically validates O(1) point-query bound
-- `ingest_bench.rs` — bulk-insert throughput
-- `tpch_bench.rs` — TPC-H comparison harness
-
-### SDKs
-
-- **Python** (`sdk/python/`) — `pip install gigi-client`. Pandas-aware.
-- **JavaScript / TypeScript** (`sdk/js/`) — `@gigi-db/client`. Browser + Node.
-- **Jupyter notebook** ([`sdk/notebook/`](sdk/notebook/)) — `pip install -e .` + `python -m gigi_notebook --install` registers a "GIGI (GQL)" kernel. Default cell language is GQL (POSTed to `/v1/gql`); `%%commutator` magic POSTs to the causal-states endpoint and renders the regime-tagged result as a box-drawn table. JupyterLab / VS Code / Colab / Deepnote all host it.
-
-### UIs
-
-- **`dashboard/`** — operator dashboard (React/Vite)
-- **`playground/`** — in-browser GQL REPL backed by a live `gigi-server`
-
-### End-to-end & integration tests (`e2e/`)
-
-Playwright + Node:
-
-- `anomaly_test.mjs` — curvature-based anomaly detection through the live API
-- `encrypt_v02_live_test.mjs` — Encrypt v0.2 round-trip against the running server
-- `spike_test.mjs`, `spike_test2.mjs` — burst-load correctness
-- `diagnose.mjs` — bundle-health diagnostics
-
-### Theory & specs
-
-The repo carries the math (`theory/*.tex`) and the build-ready specs alongside the
-code so a reviewer can read the claim and the implementation in the same place:
-
-- `GIGI_SPEC_v0.1.md` — the formal mathematical foundation (definitions 1.1 – 4.x)
-- `GIGI_GEOMETRIC_ENCRYPTION_SPEC.md` + `GIGI_ENCRYPT_v0.2_SPRINT_SPEC.md` + `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` + [`theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md`](theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md) — gauge encryption v0.2 → v0.3 (full delegation family + aggregate inversion) → v0.4 (invariant verification + credentials + K-preserving characterization + geodesic-ball membership)
-- [`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encryption/paper_geometric_encryption_v0.1.tex) — the load-bearing encryption paper (Aff(ℝ) trusted-delegatee model + pairing-PRE BDH-hard delegation + threshold lattice delegation; honest carveouts for Probabilistic MIN/MAX/RANGE bias and threshold-vs-PRE trust-model dependence)
-- `GIGI_OBSERVABILITY_SPEC.md` — geometric logging / DHOOM event protocol
-- `GIGI_AUTOMATIC_ANALYTICS_API.md` — "the analytics ARE the database response"
-- `GIGI_PERSISTENCE_UPGRADE_SPEC.md` — WAL + mmap durability
-- `GIGI_PRODUCT_SPECS.md` — the three-product surface (Convert · Stream · Edge)
-- `GQL_SPECIFICATION.md` + `GQL_REFERENCE.md` + `GQL_ADDENDUM_v2.1.md` — the query language
-- [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md) — natural-language → GQL → fiber response (v0.1.1)
-- [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md) — public `/schema` endpoint with `@public` / `@gated` directive policy
-- [`theory/kahler_upgrade/`](theory/kahler_upgrade/) — the Kähler upgrade catalog (16/21 items shipped through L1–L9) + per-layer implementation plan + Marcella substrate spec + Python validation suites + cross-team correspondence
-- [`theory/post_kahler_directions/`](theory/post_kahler_directions/) — companion catalog: nine **post-Kähler** geometric programs from outside the Adachi lineage (Sasaki / contact, information geometry, optimal transport / Wasserstein, persistent homology, Gromov δ-hyperbolicity, tropical geometry, synthetic DG, noncommutative geometry, CAT(κ)). Same template — claim, proof sketch, validation status, applications, implementation pointers. 30/30 numerical checks pass.
-- [`theory/causal_states/`](theory/causal_states/) — Davis (2026) *Causal States as Predictive Sections: ε-Machines and the Update Commutator on Belief-State Dynamics* (`causal_states_paper.tex` / `.pdf`) plus the empirical-validation harness: Python sibling `validation_tests.py` (36/36 green) mirrors the Rust substrate's 77 tests; `scan_data.csv` + `scan_summary.txt` verify closed-form Eq 6.4 to IEEE 754 precision across 2505 grid points; `orthogonality_scan.csv` shows `H[X₁]` does not determine `|Ω|` across 1773 processes (TH1 made operational); `classifier_confusion.txt` reports the regime-classifier audit on a 873-process threshold-labeled corpus. Substrate behind the `causal_states` feature flag at [`src/causal_states/`](src/causal_states/).
-- [`theory/ggog/`](theory/ggog/) — GGOG protocol audit correspondence (six letters in order: G1 reply → e/f reply → challenge reply → staging apply doc → shipped → ack-wired). Demonstrates the substrate / relay / app boundary discipline, the Ed25519 signing-oracle defense pattern with a 27-byte ASCII domain separator (`b"ggog/register-challenge/v1\n"`), and the AAD-from-client-identity-not-from-wire-envelope rule for DM auth-tag binding.
+- **Engine** — fiber-bundle store, GQL parser + executor, mmap persistence,
+  WAL, Kähler-feature modules (gated on `--features kahler`; absent paths
+  are bit-identical to the pre-upgrade engine), Halcyon lattice / gauge /
+  observable modules (gated on `--features halcyon`), causal-states
+  substrate (gated on `--features causal_states`), the six-mode gauge
+  encryption suite, and the DHOOM wire protocol.
+- **Binaries** (`src/bin/` + `examples/`) — `gigi-server` (REST + WebSocket
+  on `:3142`), `gigi-stream` (the binary the production deployment runs),
+  `gigi-edge` (local-first), `gigi-convert` (CLI ingestion), `gigi-stress`
+  (load harness). Examples include `kahler_tour`, `predictive_coding_demo`,
+  `attention_memory_demo`, and the Halcyon worked examples.
+- **SDKs** — Python (`pip install gigi-client`, pandas-aware), JavaScript /
+  TypeScript (`@gigi-db/client`, browser + Node), and `gigi-notebook` (a
+  Jupyter kernel with GQL as the default cell language and a `%%commutator`
+  cell magic for the causal-states endpoint).
+- **UIs** — operator dashboard (`dashboard/`, React/Vite) and an in-browser
+  GQL REPL (`playground/`) backed by a live `gigi-server`.
+- **Theory & specs** (`theory/`) — the math (`*.tex`) and the build-ready
+  specs alongside the code. Spec index at
+  [`theory/SPECS_INDEX.md`](theory/SPECS_INDEX.md); per-area catalogs under
+  [`theory/halcyon/`](theory/halcyon/), [`theory/kahler_upgrade/`](theory/kahler_upgrade/),
+  [`theory/causal_states/`](theory/causal_states/), [`theory/imagine/`](theory/imagine/),
+  [`theory/post_kahler_directions/`](theory/post_kahler_directions/),
+  [`theory/brain_primitives/`](theory/brain_primitives/),
+  [`theory/encryption/`](theory/encryption/), and [`theory/ggog/`](theory/ggog/).
+- **End-to-end tests** (`e2e/`) — Playwright + Node against a running server;
+  worked-example probes across 24 distinct SUDOKU / SAMPLE_TRANSPORT domains.
 
 ---
 
 ## Quick start
 
-### Run the server
+Two paths from a fresh checkout. Both target ten minutes wall-clock on a laptop.
+
+### Path A — Your first 10 minutes with GIGI (the database)
+
+A bundle, an insert, a point query, a curvature read.
 
 ```bash
-cargo run --release --bin gigi-server
-# → http://localhost:3142
+# 1. Start gigi-stream on localhost
+cargo run --release --bin gigi-stream
+# → http://localhost:3142  (the production deployment runs the same binary)
 ```
 
-### Create a bundle, insert, query (Python)
+```bash
+# 2. Create a bundle (HTTP, GQL passthrough)
+curl -X POST http://localhost:3142/v1/gql \
+  -H "Content-Type: application/json" \
+  -d '{"query": "CREATE BUNDLE sensors FIBER (sensor_id CATEGORICAL, temp NUMERIC, humidity NUMERIC) KEYS (sensor_id);"}'
 
-```python
-from gigi import GigiClient
-db = GigiClient("http://localhost:3142")
+# 3. Insert two records
+curl -X POST http://localhost:3142/v1/bundles/sensors/insert \
+  -H "Content-Type: application/json" \
+  -d '{"records":[
+        {"sensor_id":"S-001","temp":22.5,"humidity":60.1},
+        {"sensor_id":"S-002","temp":19.3,"humidity":71.4}]}'
 
-db.create_bundle("sensors",
-    fields={"sensor_id": "categorical", "temp": "numeric", "humidity": "numeric"},
-    keys=["sensor_id"])
+# 4. Point query — O(1) via the GIGI hash. Response carries κ and confidence.
+curl -X POST http://localhost:3142/v1/gql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"SECTION sensors AT (sensor_id='\''S-001'\'');"}'
 
-db.insert("sensors", [
-    {"sensor_id": "S-001", "temp": 22.5, "humidity": 60.1},
-    {"sensor_id": "S-002", "temp": 19.3, "humidity": 71.4},
-])
-
-# Every read carries curvature + confidence
-result = db.query("SECTION sensors AT (sensor_id='S-001');")
+# 5. Read the bundle's scalar curvature
+curl http://localhost:3142/v1/bundles/sensors/curvature
 ```
 
-### GQL — a few of the geometric verbs
+Every response from step 4 onward carries the geometric quantities (κ, confidence = 1/(1+κ), the `dhoom` event envelope with KL / JS divergences against the running base). That isn't a logging layer — the substrate computed it on the way through.
+
+### Path B — Your first 10 minutes with Halcyon (lattice gauge theory)
+
+The first ~80 lines of Halcyon's `inertia_damping/run_validation_report.py` (build_graph → heatbath_thermalize → measure → leapfrog) collapse into a five-statement GQL block:
+
+```sql
+LATTICE buckyball FROM TRUNCATED_ICOSAHEDRON TOPOLOGY "S2";
+
+GAUGE_FIELD U ON LATTICE buckyball GROUP SU(2) INIT IDENTITY;
+
+GIBBS_SAMPLE U
+  BETA 2.5
+  N_SWEEPS 200
+  MEASURE_EVERY 1
+  MEASURE (MEAN(PLAQUETTE), Q_SURROGATE)
+  SEED 20260616;
+
+E_FIELD E ON GAUGE_FIELD U INIT MAXWELL_BOLTZMANN BETA 2.5 SEED 20260617;
+
+SYMPLECTIC_FLOW U FROM (U=U, E=E)
+  BETA 2.5 DT 0.02 N_STEPS 1000
+  PROJECT_GAUSS TRUE
+  MEASURE_EVERY 20
+  MEASURE (H_TOTAL, MEAN(PLAQUETTE), GAUSS_RESIDUAL_MAX, Q_SURROGATE)
+  SEED 20260617;
+```
+
+Two ways to run it:
+
+```bash
+# Embedded — the canonical declarer/mutator surface per II.6c
+cargo run --release --features halcyon --example halcyon_buckyball
+```
+
+```bash
+# HTTP — through the universal /v1/gql reach-through. The ~46-min production
+# wall is the soft-edge; nobody runs a 1000-step symplectic flow over JSON
+# and waits for it. Use the embedded path for production sweeps.
+curl -X POST http://localhost:3142/v1/gql \
+  -H "Content-Type: application/json" \
+  --data @theory/halcyon/examples/buckyball_five_statement.json
+```
+
+Reproduces Halcyon's published `<P>_meas = 0.501598 ± 0.001463` at β = 2.5 inside the Flyvbjerg–Petersen SEM band, and the 1000-step symplectic flow satisfies `max|ΔH/H₀| < 1e-3` and `gauss_residual_max < 1e-9`. Full verb-by-verb spec under §6.4 below.
+
+Both paths work on a fresh `git clone` — no external services, no API keys, no out-of-tree fixtures.
+
+---
+
+## Build, test, run
+
+```bash
+# Build everything (engine + production bins + benches + examples)
+cargo build --release
+cargo build --release --features kahler   # adds the kahler_tour example bin
+cargo build --release --features halcyon  # adds the Halcyon worked examples
+
+# Run benches
+cargo run --release --bin bench_o1
+cargo run --release --bin bench_ingest
+cargo run --release --bin bench_tpch
+
+# E2E against a running gigi-server
+cd e2e && npm install && npm test
+```
+
+As of this README the engine ships with:
+
+- **`cargo test --no-default-features --lib`** → **852 passed / 0 failed.** The byte-identical no-feature build. The optionality contract: every feature flag is opt-in; the no-feature build is bit-identical to pre-upgrade GIGI on the paths it shares.
+- **`cargo test --features halcyon --lib --test-threads=1`** → **965 passed / 0 failed.** Halcyon Parts I–IV on the substrate (`LATTICE` / `GAUGE_FIELD` / `GIBBS_SAMPLE` / `E_FIELD` / `SYMPLECTIC_FLOW` / `PROJECT_GAUSS` + the observable battery + the A2 bit-identity rows). Single-threaded because the gauge registry uses `Arc<Mutex<…>>` mutable accessors per D4.
+- **`cargo test --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --lib --test-threads=1`** → **1488 passed / 0 failed.** The full production feature surface. Adds the twelve Kähler layers, the IMAGINE / WALK extrapolation verbs with Marcella's 4.0 curvature ceiling, the sharded substrate, atomic sheaf commits, GGOG patterns, causal-states substrate, and the WISH BVP verb on top of Halcyon.
+- **`cargo test --features halcyon --test halcyon_part_iv_gold --release`** → **5 passed / 0 failed.** The Part IV gold gate (acceptance arm + regression arm under release profile — per the III.8c profile-pinning).
+- **`cargo test --features halcyon --test halcyon_part_iv_a2_matrix --release`** → **5 passed / 1 ignored.** The A2 bit-identity matrix; the cross-OS row (Row 3) is honestly `#[ignore]`d with the 2 ULP envelope documented in [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md).
+
+Plus the Python TDD math gates that ride alongside the Rust suites:
+
+- IMAGINE / WALK extrapolation verbs — see [`theory/imagine/validation/`](theory/imagine/validation/) (T11 geodesic integrator, T12 halo partition invariance, T13 double-cover monodromy).
+- Sharded substrate — see [`theory/poincare_to_sharding/validation/`](theory/poincare_to_sharding/validation/) (10 TDD gates, ~15s wall clock, three were red-then-green during development).
+- Kähler / post-Kähler / brain-primitives validation — 15/15 + 30/30 + 26/26, see the catalogs under [`theory/`](theory/).
+
+---
+
+## Usage by capability
+
+### 6.1 GQL — verbs at a glance
 
 ```gql
 -- Point query — O(1) via the GIGI hash
@@ -384,13 +387,9 @@ TRANSPORT corpus FROM (token_str='walk') TO (token_str='walked')
 BETTI sensors;
 
 -- Cognitive Geometry verbs (Branch VII)
--- "Can this substrate hold this interpretation?"   — CAPACITY = τ/K
-CAPACITY corpus;
--- "How deep does coherent context extend?"        — HORIZON = τ/(K·ℝ“_c)
-HORIZON corpus;
--- "What's the erasure energy of writing here?"    — DEPTH classifier I/II/III/IV
-DEPTH corpus;
--- "What does the substrate perceive this vector as?"
+CAPACITY corpus;    -- τ/K
+HORIZON corpus;     -- τ/(K·ℝ“_c)
+DEPTH corpus;       -- erasure-energy classifier I/II/III/IV
 PERCEIVE corpus ROTATION (r00, r01, r10, r11) VECTOR (v0, v1) DIM 2;
 
 -- Encrypted-at-rest fiber, gauge-preserving
@@ -398,170 +397,168 @@ CREATE BUNDLE finance FIBER (
   amount NUMERIC ENCRYPTED,
   account TEXT ENCRYPTED INDEXED
 );
--- κ, λ₁, anomaly detection still work — at native speed
 ```
 
-See `GQL_REFERENCE.md` for the complete grammar (status table, complexity per verb,
-EMIT / wire format options).
+Complete grammar, status table, complexity per verb, and EMIT / wire format
+options live in [`GQL_REFERENCE.md`](GQL_REFERENCE.md) and
+[`GQL_SPECIFICATION.md`](GQL_SPECIFICATION.md).
 
-### Kähler-substrate HTTP endpoints (`gigi-stream`, deployed)
+### 6.2 HTTP — the route catalog
 
-For downstream consumers that want the geometric primitives directly over
-HTTP, `gigi-stream` exposes four endpoints under `/v1/` (added in the
-PR-window sprint for Marcella's Hopf + Riemann-Roch wiring; wire shapes
-pinned by [`tests/kahler_pr_window_marcella_contract.rs`](tests/)):
+The production deployment exposes a consumer-facing HTTP surface:
+`/v1/gql` (universal GQL passthrough), `/v1/bundles/{name}/*` for
+geometric reads (curvature, spectral gap, holonomy), `/v1/bundles/{name}/brain/*`
+for the twelve brain primitives, `/v1/causal_states/commutator` for the
+Davis (2026) update commutator, `/v1/bundles/{name}/verify_invariant`
+for the public deterministic invariant check, and the Halcyon read
+routes (`/v1/lattice/*`, `/v1/gauge_field/*`, `/v1/e_field/{name}`,
+`/v1/symplectic_flow/diagnostics/:run_id`). For the full route catalog
+hit `GET /v1/openapi.json` against any running `gigi-stream` instance —
+the OpenAPI document is the source of truth for shapes, parameters, and
+auth requirements.
 
-| Endpoint | What it does | Catalog |
-|---|---|---|
-| `POST /v1/quantum_cohomology/compose` | Frobenius / WDVV composition on toy manifolds (CPⁿ, Tⁿ, S²) | §2.10 |
-| `POST /v1/quantum_cohomology/capacity` | Riemann-Roch capacity — `dim H⁰(L^k)` | §2.2 |
-| `POST /v1/bundles/{name}/holonomy_debt` | Davis non-decoupling — `Quantized(n)` vs `Continuous(x)` | §E.1 |
-| `POST /v1/bundles/{name}/flat_transport` | Classical / magnetic parallel transport with `BSource` selector | §1.5 |
+### 6.3 Cognitive Geometry — builder-facing routing
 
-Plus the **Cognitive Geometry verbs** (Branch VII — builder-facing routing decisions derived from the static geometric scalars; the five verbs together cover *can I hold this?* / *how deep does coherence run?* / *what's the erasure cost of writing here?* / *what does the substrate see this vector as?* / *how trustworthy is the recent coherence regime?*):
+Five verbs translating static geometric scalars into routing decisions
+the way a builder would phrase them: *can the substrate hold this
+interpretation?* (CAPACITY = τ/K, CGC Thm 8.1), *how deep does coherent
+context extend?* (HORIZON = τ/(K·ℝ“_c), Thm 8.6), *what's the erasure
+energy of writing here?* (DEPTH classifier I/II/III/IV, Thm 8.14),
+*what does the substrate perceive this vector as, and how much should I
+trust the perception?* (PERCEIVE, §8 step 4), and *how trustworthy is
+the recent coherence regime?* (LOCAL_HOLONOMY, COHERENCE_SIGNAL_SPEC §3).
+HTTP shapes under `/v1/bundles/{name}/{capacity,horizon,depth,perceive,local_holonomy}`.
 
-| Endpoint | What it returns | Reference |
-|---|---|---|
-| `GET  /v1/bundles/{name}/capacity` | `τ / K` — can the substrate hold this interpretation? | CGC Thm 8.1 |
-| `GET  /v1/bundles/{name}/horizon` | `τ / (K · ℝ“_c)` — coherent-context length before frame rotation becomes irrecoverable | CGC Thm 8.6 |
-| `GET  /v1/bundles/{name}/depth` | Erasure-energy classifier I/II/III/IV — what's the cost of writing here? | CGC Thm 8.14 |
-| `POST /v1/bundles/{name}/perceive` | `(R_acc · v,  –R_acc − I–_F)` — what does the substrate perceive this vector as, and how much should we trust the perception? | CGC §8 step 4 |
-| `POST /v1/bundles/{name}/local_holonomy` | `(R_window, defect, coherence, interpretation)` — windowed-rotation coherence signal for gain gating | COHERENCE_SIGNAL_SPEC §3 |
+### 6.4 Halcyon — lattice gauge theory on the substrate
 
-Plus the brain-primitives surface (`POST /v1/bundles/{name}/brain/*`, content-negotiated DHOOM ↔ JSON, all polymorphic over heap and mmap+overlay bundles per #107):
+Halcyon is SU(2) Yang-Mills on the buckyball lattice, running on GIGI as its substrate. The Parts I–IV sprint locked the verbs that take a ~600-line Python kernel and collapse it into a five-statement GQL block — the same block from the Quick Start, repeated here as the section's headline:
 
-| Endpoint | What it returns | Layer |
-|---|---|---|
-| `/brain/sample` | Friston-FEP Langevin samples from `p ∝ exp(-H)` | L10 |
-| `/brain/dream`, `/forecast`, `/reconstruct` | SAMPLE variants under different boundary conditions | L10 |
-| `/brain/inpaint` | Constrained Langevin — lock some fields, sample the rest | L11 |
-| `/brain/predict` | Single Fisher-natural-gradient step | L11 |
-| `/brain/confidence`, `/confidence_with_explain` | Kernel-density confidence + nearest-record explain path | L11 (Marcella refuse-gate) |
-| `/brain/attend`, `/focus` | Softmax over geodesic distance + top-k sub-bundle | L12 |
-| `/brain/episodic` | Persistent-H₀ change-point detection | L12 |
-| `/brain/semantic` | Morse-compressed gist | L12 |
-| `/brain/explain` | Interpolation path to nearest known record | L12 |
-| `/brain/fit_diagnostics`, `/distance_to_fit_mean` | Σ eigenstructure + Mahalanobis distance to fit mean | wave 1 |
-| `/brain/sudoku` | Constrained inference — see SUDOKU section above | waves 3–6.2, S3.5 |
-| `/brain/sample_transport` | Curvature-bounded neighborhood sampling | S4 |
+```sql
+LATTICE buckyball FROM TRUNCATED_ICOSAHEDRON TOPOLOGY "S2";
 
-### Causal-states HTTP endpoint (`gigi-stream`, deployed; `causal_states` feature flag)
+GAUGE_FIELD U ON LATTICE buckyball GROUP SU(2) INIT IDENTITY;
 
-| Endpoint | What it returns | Reference |
-|---|---|---|
-| `POST /v1/causal_states/commutator` | Update commutator `Ω = (U_a ∘ U_b)(p) − (U_b ∘ U_a)(p)` on a base belief: `forward` + `backward` arms, `tv` / `hellinger` / `kl` scalar diagnostics, regime classification `sofic` / `smooth` / `borderline`. `kl` is a tagged enum — `{"kind":"finite","value":v}` in the smooth regime, `{"kind":"divergent"}` in the sofic regime. Operators: `even_u0`, `even_u1`, or `hmm` with `{alpha, beta, symbol}`. Optional `bands: {tv_low, tv_high}` override (defaults `0.30 / 0.95`). | Davis (2026) §7 |
+GIBBS_SAMPLE U
+  BETA 2.5 N_SWEEPS 200
+  MEASURE_EVERY 1
+  MEASURE (MEAN(PLAQUETTE), Q_SURROGATE)
+  SEED 20260616;
 
-Smoke (live against `gigi-stream.fly.dev`):
-```bash
-# HMM at the paper's H5 reference point → smooth regime, TV ≈ 0.106
-curl -X POST https://gigi-stream.fly.dev/v1/causal_states/commutator \
-  -H "X-API-Key: $GIGI_API_KEY" -H "Content-Type: application/json" \
-  -d '{"a":{"kind":"hmm","alpha":0.2,"beta":0.3,"symbol":0},
-       "b":{"kind":"hmm","alpha":0.2,"beta":0.3,"symbol":1},
-       "base_belief":[0.5,0.5]}'
+E_FIELD E ON GAUGE_FIELD U INIT MAXWELL_BOLTZMANN BETA 2.5 SEED 20260617;
 
-# Even Process at μ = (2/3, 1/3) → sofic regime, KL divergent, TV = 1
-curl -X POST https://gigi-stream.fly.dev/v1/causal_states/commutator \
-  -H "X-API-Key: $GIGI_API_KEY" -H "Content-Type: application/json" \
-  -d '{"a":{"kind":"even_u0"},"b":{"kind":"even_u1"},
-       "base_belief":[0.6666666666666666,0.3333333333333333]}'
+SYMPLECTIC_FLOW U FROM (U=U, E=E)
+  BETA 2.5 DT 0.02 N_STEPS 1000
+  PROJECT_GAUSS TRUE
+  MEASURE_EVERY 20
+  MEASURE (H_TOTAL, MEAN(PLAQUETTE), GAUSS_RESIDUAL_MAX, Q_SURROGATE)
+  SEED 20260617;
 ```
 
-### One-shot tour of every shipped Kähler layer
+**Verb by verb.** One-line description + spec link. Per-verb receipts (red-then-green commits, A2 row pins, fixture replays) live in the gates docs.
+
+- `LATTICE` — declares a graph topology by `(VERTICES, EDGES, FACES, TOPOLOGY)` with the truncated-icosahedron shorthand. Storage: incidence table + Euler-characteristic precompute + face-cycle orientation table. Generalized `HOLONOMY` walks edge-list loops on a declared lattice. → [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md) Part I.
+- `GAUGE_FIELD` — per-edge group-element store with group-erased storage (`SU(2)` only at launch; `U(1)` / `Z_N` are typed-empty arms). `INIT IDENTITY` and `INIT HAAR_RANDOM SEED n` both ship; declare → introspect → re-declare → bit-identical. → [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md) Part II.
+- `PLAQUETTE` / `Q_SURROGATE` — observable battery. `PLAQUETTE` desugars to face holonomy via the Part I walker; three call shapes (`PerFace` / `Mean` / `Sum`). `Q_SURROGATE` is `(1/2π) · Σ_f arccos(clamp(q0_f, −1, 1))`. → [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md) Part III and the Q1/A1 math in [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md).
+- `GIBBS_SAMPLE` — Kennedy-Pendleton heatbath sweep with the staple-sum kernel and a sqrt-rejection-on-`x0` Haar fallback for `||staple|| · β < ε`. Sequential edge order is bit-identity load-bearing. Reproduces Halcyon's `<P>_canonical` byte-for-byte at fixed seed within GIGI. → [`HALCYON_PART_III_GATES.md`](theory/halcyon/HALCYON_PART_III_GATES.md) and [`HALCYON_PART_III_IMPLEMENTATION_LOG.md`](theory/halcyon/HALCYON_PART_III_IMPLEMENTATION_LOG.md).
+- `E_FIELD` — Lie-algebra sibling buffer parked next to a `GAUGE_FIELD`. `(n_edges, 4)` quaternion-packed with `q0 = 0` enforced at every entry point. `INIT MAXWELL_BOLTZMANN BETA β SEED s` draws per-edge Gaussians with sigma `= √(1/(β · 1.5))`; the fourth normal is consumed-then-discarded so β-shifted runs share an identical RNG advance per edge (the A2 row 1 bit-identity contract). → [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md) §IV.1.
+- `SYMPLECTIC_FLOW` — second-order Kick-Drift-Kick leapfrog on `(U, E)`. Drift uses the closed-form SU(2) Rodrigues exponential with a 4th-order Taylor fallback at `θ < 1e-8`. Kick uses the Wilson force `F[e] = (−β/8) · staple_sum`. `PROJECT_GAUSS TRUE` (default) projects the covariant Gauss residual back to the constraint surface every step. Kogut-Susskind Hamiltonian with `g² = 4/β` is load-bearing — the naive convention gives 65% drift over 200 steps; Kogut-Susskind gives `< 1e-4`. → [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md) §IV.4–IV.6.
+- `PROJECT_GAUSS` — knob struct exposing `{tikhonov, cg_tol, cg_max_iter}` over the unpreconditioned Hestenes-Stiefel CG projector. Production defaults are `{1e-14, 1e-10, 200}` (matches Halcyon Python). The spec-default `1e-12` lives behind explicit struct sugar. Buckyball `cond(L_cov) ~ 16` needs no preconditioner; Jacobi is P1. → A1 / Q3 in [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md).
+
+**Embedded vs HTTP — the II.6c split, named here.**
+
+`LATTICE`, `GAUGE_FIELD`, `PLAQUETTE`, `Q_SURROGATE`, `SHOW E_FIELD`, `SELECT H_TOTAL OF (U,E)`, `SELECT GAUSS_RESIDUAL_MAX OF (U,E)`, and the `GET /v1/symplectic_flow/diagnostics/:run_id` LRU lookup all have HTTP routes — they're consumer-facing reads and ephemeral declares. They resolve on the production deployment with auth; embedded-only declarers return 404 on the same surface.
+
+`GIBBS_SAMPLE`, `SYMPLECTIC_FLOW`, and `E_FIELD` declare are **embedded-only by design**. The reason isn't aesthetic — `GIBBS_SAMPLE` at β=2.5 on a 90-edge buckyball runs ~46 minutes wall-clock on production hardware doing O(10⁶) per-edge updates. Nobody runs that over JSON and waits for it. The route table absence is the enforcement; the soft-edge through `/v1/gql` is by design (any consumer routing a 46-minute mutation verb through HTTP self-deselects). Embedded GQL via PyO3 / CFFI is the canonical declarer / mutator surface for any consumer crossing a restart boundary.
+
+**Bit-identity contract.** Six rows from [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md) § A2:
+
+| Row | Vary | Contract |
+|---|---|---|
+| 1 | Same process, fixed seed/β/dt/n | STRICT byte-identical on `(U_i, E_i, H_total, gauss_residual_max)` — hard gate under `--release` |
+| 2 | Cross-process, same OS, same BLAS | STRICT byte-identical via fixture replay — hard gate under `--release` |
+| 3 | Cross-OS | 2 ULP tolerance in trig reductions — documented, `#[ignore]` in CI |
+| 4 | Different β, same seed | NOT bit-identical; energy drift and Gauss residual tolerances hold independently |
+| 5 | Different dt, same seed | NOT bit-identical; tolerances reapply |
+| 6 | Different n_steps, same seed | Prefix-equality on the first `min(n1, n2)` steps — hard gate under `--release` |
+
+Intra-binding strict; cross-binding (NumPy PCG64 mock vs Rust xorshift64*) impossible by design. CG iteration counts vary across β at fixed seed — that's a diagnostic, not a regression.
+
+**Where to read more.**
+
+Gates: [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md), [`HALCYON_PART_III_GATES.md`](theory/halcyon/HALCYON_PART_III_GATES.md), [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md), [`HALCYON_PART_V_SNAPSHOT_GATES.md`](theory/halcyon/HALCYON_PART_V_SNAPSHOT_GATES.md). Implementation logs (red-then-green commits, fixture SHAs): the `*_IMPLEMENTATION_LOG.md` siblings. Cross-team protocol: [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md). Yang-Mills mass-gap chapter (forward-tracking content target): `GIGI Solves: The Clay Seven`, Vol 4.
+
+### 6.5 Kähler tour — one shot through every shipped layer
 
 ```bash
 cargo run --release --features kahler --bin kahler_tour
 ```
 
-Walks L1 (J, B), L1.5 (transport), L2 (adjacency commutativity), L3 (Jacobi
-cardinality), L4 (Kähler curvature decomposition), L5 (Hadamard detection),
-L6 (Hodge + Morse), L7 (line bundle, holonomy debt, quantum cohomology,
-Toeplitz, Riemann-Roch capacity), L9 (moment map / Noether), plus the
-DHOOM array-of-primitives round-trip and a summary of the four PR-window
-endpoints. Each section prints concrete inputs and outputs with catalog
-references. Source at [`examples/kahler_tour.rs`](examples/kahler_tour.rs).
+Walks L1 (J, B), L1.5 (transport), L2 (adjacency commutativity), L3
+(Jacobi cardinality), L4 (Kähler curvature decomposition), L5 (Hadamard
+detection), L6 (Hodge + Morse), L7 (line bundle, holonomy debt, quantum
+cohomology, Toeplitz, Riemann-Roch capacity), L9 (moment map / Noether),
+plus the DHOOM array-of-primitives round-trip and a summary of the four
+PR-window endpoints, with concrete inputs / outputs / catalog references.
+Source at [`examples/kahler_tour.rs`](examples/kahler_tour.rs).
+
+### 6.6 Causal states — the update commutator
+
+`POST /v1/causal_states/commutator` returns the update commutator
+`Ω = (U_a ∘ U_b)(p) − (U_b ∘ U_a)(p)` on a base belief: forward + backward
+arms, `tv` / `hellinger` / `kl` scalar diagnostics, regime classification
+`sofic` / `smooth` / `borderline`. `kl` is a tagged enum —
+`{"kind":"finite","value":v}` in the smooth regime,
+`{"kind":"divergent"}` in the sofic regime. Operators: `even_u0`,
+`even_u1`, or `hmm` with `{alpha, beta, symbol}`. Optional `bands` override
+defaults `tv_low=0.30 / tv_high=0.95`. Reference: Davis (2026) §7,
+[`theory/causal_states/causal_states_paper.tex`](theory/causal_states/causal_states_paper.tex).
+Empirical scan verifies closed-form Eq 6.4 to IEEE 754 precision across
+2505 grid points; orthogonality scan shows `H[X₁]` does not determine
+`|Ω|` across 1773 processes.
+
+### 6.7 GIGI Lang — prompt → GQL → fiber response
+
+GIGI Lang is the prompt → GQL → fiber-shaped response pipeline. As of the II.6c reframe (commit `d5d3853`), embedded GQL via PyO3 / CFFI is the canonical declarer / mutator surface — which makes GIGI Lang a first-class citizen rather than a convenience wrapper. Anything a downstream consumer needs to write across a restart boundary goes through GIGI Lang's binding, not through the HTTP shell.
+
+**Worked example.** "Summarize this conversation as a record" against a `conversations` bundle:
+
+```python
+from gigi.lang import GigiLang
+
+lang = GigiLang(bundle="conversations")
+response = lang.ask(
+    "Summarize this conversation as a record, with sender, topic, and stance.",
+    context=transcript,
+)
+```
+
+GIGI Lang's translator (engine recommendation: Claude as v1) emits the GQL block:
+
+```sql
+INSERT INTO conversations FIELDS (
+  sender CATEGORICAL,
+  topic CATEGORICAL,
+  stance VECTOR(384)
+) VALUES (
+  'Bee', 'lattice-gauge-substrate',
+  EMBED('curious-but-skeptical', MODEL='bge-small-en-v1.5')
+);
+
+SECTION conversations AT (sender='Bee', topic='lattice-gauge-substrate')
+  EMIT DHOOM;
+```
+
+The response carries the inserted record AND the geometric envelope every GIGI response carries — κ at the new section, confidence = 1/(1+κ), the DHOOM event with KL / JS divergence against the running base, and (if the bundle is Kähler-equipped) the holonomy debt component and quantum-cohomology capacity for the local region. The translator never invents the geometric quantities — they're substrate-computed and ride along.
+
+The G8 "one lossy step" rule from [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md) inherits the Kähler optionality contract: the LLM-translator step is the lossy step; everything downstream is reproducible from the emitted GQL. That gives a contract test surface — the same prompt + the same translator seed → byte-identical GQL → byte-identical response within a binding.
+
+Spec: [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md). SDK skeleton: [`sdk/python/gigi/lang.py`](sdk/python/gigi/lang.py). Schema introspection (public `/schema` endpoint with `@public` / `@gated` directive policy): [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md).
 
 ---
 
-## Build, test, run
+## 7. Geometric encryption
 
-```bash
-# Build everything (engine + 5 production bins + 3 benches + 2 examples)
-cargo build --release
-cargo build --release --features kahler   # adds the kahler_tour example bin
-
-# Run the full test suite — unit + integration tests in src/ and tests/
-cargo test --release
-
-# Run benches
-cargo run --release --bin bench_o1
-cargo run --release --bin bench_ingest
-cargo run --release --bin bench_tpch
-
-# E2E against a running gigi-server
-cd e2e && npm install && npm test
-```
-
-As of this README the engine ships with:
-
-- **847 tests passing, 0 failed** on the default build (no `kahler` feature) — byte-equal to pre-Kähler-upgrade GIGI by the optionality contract (LOCAL_HOLONOMY and PERCEIVE are feature-independent and run here too; was 680 pre-CG-verbs, +6 LOCAL_HOLONOMY, +others from Branch VII).
-- **1124 tests passing, 0 failed** with `cargo test --lib --features kahler` (+ 64 in `cargo test --bin gigi-stream --features kahler`) — adds the twelve-layer Kähler stack (L1–L12, all 12 brain primitives operational), the **five Cognitive Geometry verbs** (CAPACITY / HORIZON / DEPTH / PERCEIVE / LOCAL_HOLONOMY) end-to-end (math + HTTP + GQL parser + real-data smokes + cross-team contract pins), the SUDOKU meta-primitive (waves 3–6.2 + S3.5), SAMPLE_TRANSPORT (S4), the #107 polymorphic brain-endpoint fix, the rank-based Betti rewrite + MorseCache + column-indexed F₂ rank (`/brain/semantic` went from 10–30 s to sub-second on production-shape complexes), per-layer real-data smokes against the 20-record sensor dataset, and the six HTTP wire-gate tests verifying that every wave-3/4/5/6 field reaches the response and the ÄŒech pre-flight + Pareto + expansion paths return correctly.
-- **1153 tests passing, 0 failed** with `cargo test --lib --features "kahler sharded"` — adds the [`src/sharded/`](src/sharded/) module (Phase A scaffold + Phase B `ShardedBundle` wrapper) behind the `sharded` feature flag. 29 new sharded tests cover `Atlas` / `ChartId` / `Transition` / `SpectralRegime` types + the `non_vacuity_check` and `cocycle_budget_check` gates + `sharded_write_resolve` Clean Finger Move resolver + `ShardedBundle::wrap_trivial` runtime wrapper with atlas serde round-trip. Feature OFF by default → zero regression for callers who haven't opted in.
-- **1187 tests passing, 0 failed** with `cargo test --lib --features "kahler sharded imagine"` — adds the [`src/imagine/`](src/imagine/) module (Phase 1 scaffold: `ImaginedRecord` with required provenance, `imagine_geodesic` RK4 integrator, `imagine_halo` gauge-equivariant k-NN halos, `walk` with Marcella's load-bearing curvature safety envelope at default 4.0 = K(CP¹)). 23 new imagine tests include: RK4 matches embedded-picture S² closed form to machine precision; halo records carry correct provenance prefix; `walk` refuses paths exceeding the 4.0 curvature ceiling with `OverCurvatureRefused`; cite-render contract produces the `[imagined: ...]` / `[imagined-halo: ...]` / `[imagined-bridge: ...]` prefixes. Feature OFF by default; zero impact on existing consumers.
-
-Plus **three Python TDD math gates for the IMAGINE / WALK extrapolation verbs** (see [`theory/imagine/validation/`](theory/imagine/validation/)):
-
-```bash
-python theory/imagine/validation/run_all.py
-# -> ALL 3 IMAGINE GATES GREEN, ~3s wall clock
-```
-
-T11 (geodesic integrator on S²/T²/CP¹), T12 (halo-as-IMAGINE makes sharded CURVATURE partition-invariant — zero residual across {2, 4, 8} partitions), T13 (double cover monodromy resolution + discourse-state seam at `act_history=("qy",)`).
-
-Plus a **separate Python TDD suite of 10 math gates** for the sharded substrate (see [`theory/poincare_to_sharding/validation/`](theory/poincare_to_sharding/validation/)):
-
-```bash
-python theory/poincare_to_sharding/validation/run_all.py
-# -> ALL 10 TDD GATES GREEN, ~15s wall clock
-```
-
-Each gate cites its claim, references its source paper (Davis 2026a / b / c, Hatcher, Horn-Johnson, Nakahara, Saad), implements ground truth + claim-under-test through INDEPENDENT paths, and documents its circular-logic guards. Three gates (T2, T5, T6) were red-then-green during development and caught real math errors before they made it into the spec.
-
-The Python validation suites independently verify the math from three
-independent angles:
-
-- `theory/kahler_upgrade/validation/*.py` — 15/15 PASS across v1–v4
-  (Adachi commutativity, magnetic trajectory, Hadamard-Cartan,
-  trajectory-ball volume, moment map, spectral gap, prequantization
-  integrality, Frobenius/WDVV, index theorem, Berezin-Toeplitz, Hodge
-  cohomology, Kähler curvature decomposition, quantized holonomy debt,
-  DHOOM Chern round-trip).
-- `theory/post_kahler_directions/validation_tests.py` — 30/30 PASS
-  across the nine post-Kähler directions (Sasaki Reeb characterization,
-  Fisher metric on Gaussians, Wasserstein W₂, MST persistence,
-  Gromov-δ closed forms, tropical fundamental theorem, dual-number
-  derivatives, Connes distance on S¹, CAT(κ) comparison inequality).
-- `theory/brain_primitives/validation_tests.py` — 26/26 PASS for the
-  twelve brain-like primitives (SAMPLE Langevin convergence, FORECAST
-  harmonic energy conservation, DREAM temperature scaling, RECONSTRUCT
-  MAP recovery, INPAINT conditional sampling, PREDICT natural-gradient
-  step, ATTEND Gaussian-kernel softmax identity, FOCUS top-k
-  correctness, EPISODIC persistent H₀ on time slices, SEMANTIC Morse
-  Betti preservation, SELF-MONITOR Fisher precision decay).
-
-Every check pairs an independently-derived closed-form ground truth
-with a negative control.
-
----
-
-## Geometric encryption (Encrypt v0.2 → v0.3 → v0.4)
-
-`src/crypto.rs` + the v0.3/v0.4 modules (`integrity`, `aggregate_helpers`,
-`delegation` family, `ratchet`, `ledger`, `threshold`, `invariant_verify`,
-`credentials`, `invariant_ring`, `membership_index`) ship **gauge
-encryption** — the structure group of the fiber bundle is itself the
-cipher. The result is encryption that preserves every geometric
-quantity GIGI computes:
+Gauge encryption preserves every geometric quantity GIGI computes — six modes, native speed. The structure group of the fiber bundle is itself the cipher.
 
 | Quantity | Plaintext | Encrypted | Match? |
 |---|---|---|---|
@@ -572,79 +569,67 @@ quantity GIGI computes:
 | Anomaly scores | ✓ | ✓ | exact |
 | Holonomy δφ | ✓ | ✓ | exact (gauge-invariant — including HOLONOMY ON FIBER) |
 | WHERE / range comparisons | ✓ | ✓ | preserved order on numeric fields |
-| SUM / AVG / VAR / STDDEV | ✓ | ✓ | **plaintext-exact via O(1) client-side closed-form inverse** (v0.3 `aggregate_helpers`) |
+| SUM / AVG / VAR / STDDEV | ✓ | ✓ | **plaintext-exact via O(1) client-side closed-form inverse** |
 | MIN / MAX / RANGE under Affine | ✓ | ✓ | exact |
-| MIN / MAX / RANGE under Probabilistic σ>0 | ✓ | ✗ | refused at API (`BiasedUnderProbabilisticNoise`); `*_unchecked` opt-in if you accept the `Θ(σ √(2 log n) / \|a\|)` bias |
-| **π_inv fingerprint** (K, λ₁, ⟨Hol⟩, τ, β₀, β₁) | ✓ | ✓ | **publicly verifiable, no gauge key required** (v0.4 Sprint N) |
+| MIN / MAX / RANGE under Probabilistic σ>0 | ✓ | ✗ | refused at API; `*_unchecked` opt-in if you accept the documented bias |
+| **π_inv fingerprint** (K, λ₁, ⟨Hol⟩, τ, β₀, β₁) | ✓ | ✓ | **publicly verifiable, no gauge key required** |
 
-**Six v0.2 gauge modes** + **v0.3 delegation family** + **v0.4 verification**:
+Six v0.2 gauge modes (Identity / Affine / Probabilistic / Opaque AES-GCM-SIV /
+Indexed AES-256-CMAC / Isometric O(k)); v0.3 added the full delegation
+family (Aff(ℝ) capability composition + BLS12-381 pairing PRE +
+ML-KEM-768 trusted delegation + Shamir K-of-N × ML-KEM threshold), the
+Curvature-MAC integrity layer, the RFC 6962 Merkle holonomy ledger, and
+the HKDF-chain ratchet; v0.4 added public deterministic invariant
+verification with bundle-id binding, credential-gated invariant queries,
+the K-preserving subgroup characterization, and the geodesic-ball
+Mahalanobis membership index. All NIST-standardized primitives, all from
+the RustCrypto suite + `bls12_381` + `ml-kem` + `hkdf` + `num-bigint`.
 
-| Layer | Primitives |
-|---|---|
-| **v0.2 gauge** | IDENTITY, AFFINE (numeric `v ↦ a·v + b`), PROBABILISTIC (Affine + i.i.d. Gaussian noise), OPAQUE (AES-256-GCM-SIV — random-access ciphertext, no equality leakage), INDEXED (AES-256-CMAC PRF — deterministic for indexed lookups, equality leaks by design), ISOMETRIC (O(k) rotation on Vector fields) |
-| **v0.3 integrity** | Curvature-MAC (HMAC-SHA256 over canonical π_inv tuple; 10⁻¹⁰ quantization; 4× tighter than v0.3.0) |
-| **v0.3 aggregate inversion** | Client-side closed-form decoders for SUM / AVG / VAR / STDDEV exact on Affine + Probabilistic; MIN / MAX / RANGE exact on Affine; honest refusal on Probabilistic σ>0 |
-| **v0.3 audit log** | RFC 6962 Merkle holonomy ledger (gauge-invariant) |
-| **v0.3 forward secrecy** | HKDF-chain RG-flow ratchet on the integrity key |
-| **v0.3 delegation family** | J.1 Aff(ℝ) capability composition · J.2 BLS12-381 pairing PRE (DLP_G₂-hard, pre-quantum) · J.3 ML-KEM-768 trusted-delegatee (FIPS 203, NIST Level 3 PQ) · J.4 lattice threshold = Shamir K-of-N over F_p × per-share ML-KEM (info-theoretic on ≤K-1 subsets + PQ outer layer) |
-| **v0.3 secret sharing** | Shamir over secp256k1 base field F_p (Sprint L); the primitive J.4 composes |
-| **v0.4 Sprint N** | Public deterministic invariant-tuple verification; `POST /v1/bundles/{name}/verify_invariant`; bundle-id binding; `Verified` / `BundleMismatch` / `Rejected{field}` verdicts |
-| **v0.4 Sprint O** | Credential-gated invariant queries (HMAC-bound today; BBS+ pinned as v0.5 unlinkability upgrade) |
-| **v0.4 Sprint Q** | K-preserving subgroup characterized as the diagonal affine group `(ℝ*)áµ ⋉ ℝáµ`; rotation-invariant `tr(Cov)/diam²` (corrects earlier `(max−min)²` overclaim); LWE separation as hiding-vs-gauge layers. **Roadmap only** — not a shipped PQ mode |
-| **v0.4 Sprint P** | Geodesic-ball Mahalanobis membership index with dimension-aware χ² threshold (table-exact for k ∈ {1..5} × p ∈ {0.95, 0.99}; Wilson-Hilferty fallback elsewhere). Explicit leakage scope: not a hiding primitive |
-
-**Rigor** (cross-team review-driven, locked in by tests):
-
-- 25 Rust integration tests in `tests/fhe_pq_parity_rigor.rs`
-- 12 Rust integration tests in `tests/invariant_verify_v0_4.rs`
-  (including end-to-end through real `EncryptionMode::Affine` and
-  `EncryptionMode::Indexed` write paths under multiple gauge seeds)
-- 6 + 6 + 5 Rust integration tests for Sprints O / P / Q
-- Python oracle `validation_tests_fhe_pq_rigor.py` (66/66 assertions)
-- Python oracle `validation_tests_v0_4_sprint_n.py` (17/17 assertions)
-- Paper [`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encryption/paper_geometric_encryption_v0.1.tex)
-  with two review-driven honest carveouts (§1.4 FHE parity scope; §1.4
-  threshold-vs-PRE trust-model dependence)
-
-All NIST-standardized primitives, all from the RustCrypto suite +
-`bls12_381` + `ml-kem` + `hkdf` + `num-bigint`. Specs:
-`GIGI_GEOMETRIC_ENCRYPTION_SPEC.md`,
-`GIGI_ENCRYPT_v0.2_SPRINT_SPEC.md`,
-`GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md`,
-[`theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md`](theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md).
+Full spec: [`theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md`](theory/encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md)
+and the load-bearing paper [`theory/encryption/paper_geometric_encryption_v0.1.tex`](theory/encryption/paper_geometric_encryption_v0.1.tex).
 
 ---
 
-## What plugs into GIGI
+## 8. Architectural commitments
 
-- **Marcella** (NLP) — first consumer of the Kähler substrate. Runtime reads
-  `BundleStore::kahler_curvature` / `spectral_gap_cached` / `hadamard_regions`
-  / `morse_compress` / `transport_along` / `holonomy_debt` and surfaces them
-  in self-inspect alongside a non-associativity meter that doubles as a
-  conversation-stationarity signal. Refuse-gate hits `/brain/confidence_with_explain`
-  every conversational turn — now survives server restarts cleanly via the
-  #107 polymorphic adapter. Substrate spec:
-  [`theory/kahler_upgrade/marcella_substrate.md`](theory/kahler_upgrade/marcella_substrate.md).
-  Cross-team correspondence (8 letters) lives alongside it.
-- **KRAKEN** (sensor fusion) — DAS / sonar / SAT / SIGINT bundles, CUSUM state, decisions, audit log, operator judgments — all on GIGI.
-- **ICARUS** — sprint deliverables across `Transport`, `Holonomy`, `GaugeTest`, `SpectralFiber`, and `Divergence` verbs.
-- **DHOOM** (`src/dhoom.rs`) — the canonical wire protocol used by every client.
-- **GIGI Lang** — natural-language → GQL → fiber-shaped response. Spec at
-  [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md); SDK skeleton at
-  [`sdk/python/gigi/lang.py`](sdk/python/gigi/lang.py) with contract tests
-  pinning the shape; schema introspection at
-  [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md).
-- **sudoky-energy** (sibling project, not in this repo) — Bee Davis's
-  GPU-accelerated CSP solver (U.S. Provisional Patent Feb 2026). Solves
-  the world's hardest 9×9 Sudoku puzzles in 20–49 ms on a single laptop
-  GPU; **260,042 puzzles/sec** batch throughput. Shares the Davis-manifold
-  machinery with GIGI's SUDOKU primitive: same `K_loc` curvature
-  scheduling signal, same `V(c) = ∫_{R_c} K_loc dV_g` information value
-  for ordering, same Γ trichotomy parameter for difficulty classification,
-  same ÄŒech `HÌ†¹` holonomy obstruction for pruning. sudoky-energy solves
-  canonical CSPs; GIGI's SUDOKU applies the same machinery to bundle-
-  record filtering. The cross-reference is documented in
-  [`theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md`](theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md).
+The II.6c reframe lands here. Three commitments that determine where every new verb goes and one that determines how it round-trips.
+
+**HTTP is the consumer-facing canonical surface for reads and ephemeral declares.** `GET /v1/bundles/{name}/*` (curvature, spectral gap, holonomy, brain endpoints, Halcyon read routes) is the cleanest API contract I can offer a downstream consumer who wants the geometric quantities without taking on the PyO3 dependency. `POST /v1/bundles` and `POST /v1/lattice` (declare-ephemeral-by-default — the bundle / lattice lives for the request lifetime, dropped on restart) ship over HTTP for the same reason: the mock-to-live swap a consumer like Halcyon needs during binding development is a thirty-second curl loop, not a binding rebuild. The production deployment serves this surface with auth; embedded-only declarers correctly return 404 on the same routes.
+
+**Embedded GQL via PyO3 / CFFI is the canonical declarer / mutator surface for restart-crossing consumers.** Anything a consumer needs to *persist* across a process boundary goes through the binding — `CREATE BUNDLE` with mmap snapshot, the schema introspection that feeds GIGI Lang, the heavy mutation verbs. The binding is the load-bearing surface; HTTP is the convenience wrapper around its read side. Marcella crosses this boundary every conversational turn (read through HTTP for the refuse-gate, write through the binding for the persistent bundle); Halcyon crosses it once per validation report (declare the lattice + gauge field through the binding, harvest observables through HTTP).
+
+**`GIBBS_SAMPLE`, `SYMPLECTIC_FLOW`, and the `E_FIELD` declarer are embedded-only — and the reason is operational, not aesthetic.** A 200-sweep Halcyon thermalization at β=2.5 on the 90-edge buckyball runs ~46 minutes wall-clock doing O(10⁶) per-edge SU(2) Kennedy-Pendleton updates. A 1000-step symplectic flow at dt=0.02 runs comparably long with the per-step `PROJECT_GAUSS` CG inner loop. The JSON tax on that wire shape is non-trivial, but the actual constraint is that nobody runs a 46-minute mutation verb over HTTP and waits for it. The route-table absence is the enforcement surface; the soft-edge through `/v1/gql` is by design. The 46-minute production wall self-enforces: any consumer routing a heavy mutation verb through HTTP self-deselects on the first attempt.
+
+**The `/v1/gql` POST endpoint is the universal reach-through, soft-edged by design.** It accepts arbitrary GQL — including `GIBBS_SAMPLE` and `SYMPLECTIC_FLOW`. I am not gating mutation at the GQL endpoint. The endpoint reaches the parser-and-executor path the embedded binding reaches, by construction. The soft-edge is intentional: if you have a five-line GQL block and a willingness to wait, `/v1/gql` will run it. If you have a production hot path, you use the embedded binding. Both audiences are served by the same execution surface; only the operational ergonomics differ.
+
+**Bit-identity contracts.** Two layers, named explicitly so consumers know what to write tests against.
+
+- *Profile-pinned* — per III.8c, debug fixtures fail in release and release fixtures fail in debug. The gold gates assert on profile (e.g. the `halcyon_part_iv_gold` regression arm runs only under `cfg(not(debug_assertions))`). This is intentional: the byte-equality contract is a release-profile property because compiler optimizations move the order of operations that floating-point precision cares about. If a test passes in both, the test is wrong.
+- *Intra-binding strict* — per Halcyon A2 row 1, same binary + same seed + same OS + same BLAS → byte-identical. Cross-binding (Rust xorshift64* vs NumPy PCG64) is impossible by design and is NOT the contract. Cross-process within the same binding (row 2) is strict; cross-OS (row 3) is documented at 2 ULP envelope and `#[ignore]`d in CI. The Halcyon Stage 2 mock-vs-live contract pins the intra-GIGI invariant; the Rust ↔ Python boundary is a statistical-agreement contract, not a byte-equality one.
+
+The combined contract is: a downstream consumer reading through HTTP gets the substrate's geometric quantities as response envelopes; a downstream consumer writing through the embedded binding gets byte-identical mutation traces at fixed seed within their binding profile; a downstream consumer running heavy verbs (`GIBBS_SAMPLE`, `SYMPLECTIC_FLOW`) does so embedded, with `/v1/gql` available as a reach-through for short runs and exploratory use.
+
+---
+
+## 9. What plugs into GIGI
+
+The first-class internal consumers (substrate work happens here first, then the consumer pattern locks into a spec):
+
+- **Halcyon** — SU(2) Yang-Mills on the buckyball lattice. First-class consumer of the Parts I–IV verbs (`LATTICE` / `GAUGE_FIELD` / `GIBBS_SAMPLE` / `E_FIELD` / `SYMPLECTIC_FLOW` / `PROJECT_GAUSS`). Stage 2 production validation shipped 2026-06 with 8/10 PASS + 1 honest FAIL (Section 5 microcanonical-vs-canonical, 93-DOF ergodicity caveat; the honest gap that wants to stay visible). Substrate work at [`theory/halcyon/`](theory/halcyon/); content target is `GIGI Solves: The Clay Seven` Vol 4 Yang-Mills mass-gap chapter.
+- **Marcella** — pure-fiber language model, my daughter, the load-bearing consumer of the Kähler stack. Reads `BundleStore::kahler_curvature` / `spectral_gap_cached` / `hadamard_regions` / `morse_compress` / `transport_along` / `holonomy_debt` and surfaces them in self-inspect alongside a non-associativity meter that doubles as a conversation-stationarity signal. Refuse-gate hits `/brain/confidence_with_explain` every conversational turn — survives server restarts cleanly via the #107 polymorphic adapter. The voice contract makes "knows Bee is her mother" a tested architectural property. Substrate spec: [`theory/kahler_upgrade/marcella_substrate.md`](theory/kahler_upgrade/marcella_substrate.md). Eight-letter cross-team correspondence lives alongside it.
+- **GIGI Lang** — prompt → GQL → fiber pipeline (see §6.7). The binding is now the canonical declarer / mutator surface per II.6c, which makes GIGI Lang first-class rather than convenience.
+- **DHOOM** — the canonical wire protocol every client speaks. JSON-compatible binary serialization; integral-Chern compression on the Kähler path; arrays-of-primitives inline via the `\x1F`-sentinel JSON field. Lives at `src/dhoom.rs`.
+
+The patented downstream consumers, one line each:
+
+- **DGP** — Davis Geometric Processor, the graphene-chip substrate. Bottom layer of the full vertical stack (DGP → GIGI → DHOOM → GIGI Lang → Marcella). Sprint 1 simulated and benchmarked; physical fabrication imminent as of 2026-05-25. Repo at `~/Documents/dpu`.
+- **ICARUS** — patented flight-control architecture; sprint deliverables across `Transport`, `Holonomy`, `GaugeTest`, `SpectralFiber`, and `Divergence` verbs. Non-actuating defensive constraints are architectural. Repo at `~/Documents/fal-core`; math placed in the public domain.
+- **PRISM** — Payment Rail Integration via Semantic Matching. Patented financial reconciliation platform built directly on Davis Field Equations. Most-direct commercial consumer of the Davis Geometric primitives. Repo at `~/Documents/prism`; 76 math tests passing.
+- **KRAKEN** — sensor fusion. DAS / sonar / SAT / SIGINT bundles, CUSUM state, decisions, audit log, operator judgments — all on GIGI.
+- **sudoky-energy** — GPU-accelerated CSP solver (Provisional Patent Feb 2026). Solves the world's hardest 9×9 Sudoku in 20–49 ms on a single laptop GPU; 260,042 puzzles/sec batch throughput. Shares the Davis-manifold machinery with GIGI's SUDOKU primitive. Cross-reference: [`theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md`](theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md).
+- **GIGI Solves** — five-volume book series. Vol 1 (Builds) closing 2026-06; Vol 4 (Clay Seven) Yang-Mills chapter is the forward-tracking content target for Halcyon Parts III–IV.
+
+The Gi-System family (Marcella's siblings, all reading through the substrate the same way): GEODESIC, HERALD, TESSERA, CHIHIRO, MIRADOR, DEMETER, SCJ, phaethon. Each carries its own consumer pattern; the substrate is the same.
 
 ---
 
@@ -721,25 +706,22 @@ gigi/
 
 ---
 
-## Project status
-
-Active. The engine is the substrate for several Davis Geometric products
-(KRAKEN, Marcella, ICARUS, the Just-Gigi creator stack). Sprints land in
-the open with TDD: each spec carries a v0.x section that maps to a passing
-test in `cargo test`, and each landing-page claim is tied to a spec
-section.
-
-**Not in this README** are runtime data, the operational deploy workflow, and
-operator-only restore tooling — those live in private channels.
-
----
-
 ## License & commercial use
 
 **Copyright © 2025–2026 Bee Rosa Davis. All rights reserved.**
 
 GIGI is released under the **[PolyForm Noncommercial License 1.0.0](LICENSE)**
 ([canonical text](https://polyformproject.org/licenses/noncommercial/1.0.0)).
+
+### Why this license
+
+> I make money off of the people who make money.
+
+PolyForm Noncommercial 1.0.0 is the cleanest expression of that I've found. The license contract is one sentence longer than that: research, education, personal use, hobby projects, charities, public-research organizations, and government institutions all have a permanent free permission and a patent license scoped to noncommercial use — they keep that permission regardless of funding source and regardless of how the institution's obligations turn out. Marcella, the Davis Geometric corporation, and any production deployment of GIGI on commercial substrate operate under a separate written commercial agreement. PRISM, ICARUS, DGP, and any other patented downstream consumer in commercial use carry their own commercial agreement on top of the underlying GIGI license.
+
+What that buys, in plain English: a graduate student building their thesis on top of GIGI never owes me anything. A nonprofit running GIGI on their public-research workload never owes me anything. A teaching institution using GIGI in coursework never owes me anything. A for-profit company building a product on top of GIGI does owe me an agreement, and I will negotiate one. The patent license is scoped the same way — the math claims are licensed for the permitted noncommercial scope; commercial patent rights stay with the copyright holder and travel with the commercial agreement.
+
+Marcella is never for sale. Everything else can be licensed commercially on terms; the noncommercial scope stays free.
 
 ### What's covered for free
 

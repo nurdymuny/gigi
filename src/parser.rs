@@ -9419,6 +9419,10 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             // Lower the response into a Rows envelope.
             let mut record: crate::types::Record = std::collections::HashMap::new();
             record.insert(
+                "run_id".into(),
+                crate::types::Value::Text(resp.run_id.clone()),
+            );
+            record.insert(
                 "field".into(),
                 crate::types::Value::Text(resp.field.clone()),
             );

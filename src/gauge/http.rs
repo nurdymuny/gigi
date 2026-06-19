@@ -42,6 +42,7 @@ use super::error::GaugeFieldError;
 use super::group::Group;
 use super::registry as gauge_registry;
 use super::su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
+use super::symplectic_flow as flow_mod;
 use crate::lattice::registry as lattice_registry;
 use crate::lattice::topology::truncated_icosahedron::buckyball;
 use crate::lattice::Lattice;
@@ -64,6 +65,13 @@ fn bad_request(msg: impl Into<String>) -> (StatusCode, Json<ErrorEnvelope>) {
 fn internal(msg: impl Into<String>) -> (StatusCode, Json<ErrorEnvelope>) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorEnvelope { error: msg.into() }),
+    )
+}
+
+fn not_found(msg: impl Into<String>) -> (StatusCode, Json<ErrorEnvelope>) {
+    (
+        StatusCode::NOT_FOUND,
         Json(ErrorEnvelope { error: msg.into() }),
     )
 }
@@ -637,6 +645,332 @@ async fn observables_post(
     Ok(Json(serde_json::Value::Object(out)))
 }
 
+// ── TDD-HAL-IV.8 — Read-only Part IV verb routes ───────────────
+//
+// `SHOW E_FIELD` (IV.7) → `GET /v1/e_field/{name}` + optional
+// `?with_buffer=true` for the full Lie buffer column.
+// `SELECT H_TOTAL OF (U, E)` (IV.7) → `GET /v1/gauge_field/{name}/
+// h_total?e_field=<name>` returning `{ h_total, kinetic, potential }`.
+// `SELECT GAUSS_RESIDUAL_MAX OF (U, E)` (IV.7) → `GET /v1/gauge_field/
+// {name}/gauss_residual_max?e_field=<name>[&reduction=covariant|flat]`.
+// `GET /v1/symplectic_flow/diagnostics/{run_id}` — reads from the
+// process-local LRU cache populated by every `symplectic_flow` call.
+//
+// **No** dedicated POST routes for `E_FIELD` (locked decision IV-I) or
+// `SYMPLECTIC_FLOW` (IV.6 locked decision); both verbs remain reachable
+// only through `POST /v1/gql` (parser::execute). The route-table-
+// absence is the load-bearing receipt the test suite asserts at gate
+// IV.8.
+
+/// Query string for `GET /v1/e_field/{name}`. `with_buffer=true`
+/// materializes the full `(n_edges, 4)` Lie buffer under the `buffer`
+/// column; default (`false` / omitted) emits metadata only.
+#[derive(Deserialize)]
+pub struct EFieldQuery {
+    #[serde(default)]
+    pub with_buffer: bool,
+}
+
+/// Wire envelope for `GET /v1/e_field/{name}`. Mirrors the GQL `SHOW
+/// E_FIELD` shape — lowercased `init_kind` to match the HTTP convention
+/// (`identity` / `haar_random` on the gauge field route) the consumer
+/// already has in hand.
+#[derive(Serialize)]
+pub struct EFieldView {
+    pub name: String,
+    pub source_gauge_field: String,
+    pub source_lattice: String,
+    pub group: String,
+    pub repr_dim: usize,
+    pub n_edges: usize,
+    pub init_kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub init_seed: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub init_beta: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub init_from: Option<String>,
+    /// Row-major `(n_edges, 4)` Lie buffer (q0=0 invariant on every
+    /// row). Only present when the query param `with_buffer=true`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub buffer: Option<Vec<Vec<f64>>>,
+}
+
+fn e_field_init_kind_label(kind: &super::e_field::EFieldInit) -> &'static str {
+    match kind {
+        super::e_field::EFieldInit::Zero => "zero",
+        super::e_field::EFieldInit::MaxwellBoltzmann { .. } => "maxwell_boltzmann",
+        super::e_field::EFieldInit::FromField(_) => "from_field",
+    }
+}
+
+async fn e_field_get(
+    Path(name): Path<String>,
+    Query(q): Query<EFieldQuery>,
+) -> Result<Json<EFieldView>, (StatusCode, Json<ErrorEnvelope>)> {
+    let handle = gauge_registry::get_su2_e(&name).ok_or_else(|| {
+        bad_request(GaugeFieldError::EFieldNotDeclared(name.clone()).to_string())
+    })?;
+    let buf = handle.as_dense_buffer();
+    let (kind, init_seed) = handle.init_metadata();
+    let init_kind = e_field_init_kind_label(&kind);
+    let (init_beta, init_from) = match &kind {
+        super::e_field::EFieldInit::Zero => (None, None),
+        super::e_field::EFieldInit::MaxwellBoltzmann { beta } => (Some(*beta), None),
+        super::e_field::EFieldInit::FromField(src) => (None, Some(src.clone())),
+    };
+    let buffer = if q.with_buffer {
+        let d = buf.repr_dim;
+        if buf.data.len() != buf.n_edges * d {
+            return Err(internal(format!(
+                "gauge: e field buffer shape mismatch (expected {} f64s, got {})",
+                buf.n_edges * d,
+                buf.data.len()
+            )));
+        }
+        let mut rows: Vec<Vec<f64>> = Vec::with_capacity(buf.n_edges);
+        for e in 0..buf.n_edges {
+            rows.push(buf.data[e * d..(e + 1) * d].to_vec());
+        }
+        Some(rows)
+    } else {
+        None
+    };
+    Ok(Json(EFieldView {
+        name: handle.name().to_string(),
+        source_gauge_field: handle.source_gauge_field().to_string(),
+        source_lattice: handle.source_lattice().to_string(),
+        group: handle.group().label().to_string(),
+        repr_dim: buf.repr_dim,
+        n_edges: buf.n_edges,
+        init_kind,
+        init_seed,
+        init_beta,
+        init_from,
+        buffer,
+    }))
+}
+
+/// Query string for `GET /v1/gauge_field/{name}/h_total`. The `e_field`
+/// parameter is mandatory — `H_total` is the joint (U, E) observable
+/// (locked decision IV-J).
+#[derive(Deserialize)]
+pub struct HTotalQuery {
+    pub e_field: String,
+}
+
+/// Wire envelope for `H_total`. `kinetic = g²·Σ|E|²`,
+/// `potential = (F/g²)·(1 - ⟨P⟩)`, `h_total = kinetic + potential`. The
+/// β consumed here comes from the E field's `MaxwellBoltzmann` init
+/// metadata when present, else 1.0 (matches the executor's HTotal arm —
+/// the diagnostic surface; in-flow HTotal uses the flow's β).
+#[derive(Serialize)]
+pub struct HTotalEnvelope {
+    pub gauge_field: String,
+    pub e_field: String,
+    pub kinetic: f64,
+    pub potential: f64,
+    pub h_total: f64,
+}
+
+async fn h_total_get(
+    Path(u_name): Path<String>,
+    Query(q): Query<HTotalQuery>,
+) -> Result<Json<HTotalEnvelope>, (StatusCode, Json<ErrorEnvelope>)> {
+    // Resolve U through the SU(2)-mut surface (the only one that exposes
+    // the concrete SU2GaugeField the H_total formula reads). Mirrors
+    // the executor's SELECT H_TOTAL arm.
+    let u_handle = gauge_registry::get(&u_name).ok_or_else(|| {
+        bad_request(GaugeFieldError::FieldNotDeclared(u_name.clone()).to_string())
+    })?;
+    if !matches!(u_handle.group(), Group::SU2) {
+        return Err(bad_request(GaugeFieldError::UnsupportedGroup(u_handle.group()).to_string()));
+    }
+    let u_arc = gauge_registry::get_su2_mut(&u_name).ok_or_else(|| {
+        bad_request(GaugeFieldError::FieldNotDeclared(u_name.clone()).to_string())
+    })?;
+    let e_arc = gauge_registry::get_su2_e_mut(&q.e_field).ok_or_else(|| {
+        bad_request(GaugeFieldError::EFieldNotDeclared(q.e_field.clone()).to_string())
+    })?;
+    let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+    let e_guard = e_arc.lock().expect("e field mutex poisoned");
+    if e_guard.source_lattice != u_guard.lattice_name {
+        return Err(bad_request(
+            GaugeFieldError::EFieldSourceMismatch {
+                e_lattice: e_guard.source_lattice.clone(),
+                u_lattice: u_guard.lattice_name.clone(),
+            }
+            .to_string(),
+        ));
+    }
+    let lat = lattice_registry::get(&u_guard.lattice_name).ok_or_else(|| {
+        bad_request(
+            GaugeFieldError::LatticeNotDeclared(u_guard.lattice_name.clone()).to_string(),
+        )
+    })?;
+    let beta = match &e_guard.init_kind {
+        super::e_field::EFieldInit::MaxwellBoltzmann { beta } => *beta,
+        _ => 1.0_f64,
+    };
+    let g2 = 4.0_f64 / beta;
+    let mut kin = 0.0_f64;
+    for edge in 0..e_guard.buffer.n_edges {
+        let row = e_guard.read_element_q(edge);
+        kin += row[1] * row[1] + row[2] * row[2] + row[3] * row[3];
+    }
+    let kinetic = g2 * kin;
+    let p_mean = super::plaquette::plaquette_mean(&*u_guard, &lat)
+        .map_err(|e| bad_request(e.to_string()))?;
+    let potential = (lat.n_faces() as f64) * (1.0_f64 - p_mean) / g2;
+    let h_total = kinetic + potential;
+    Ok(Json(HTotalEnvelope {
+        gauge_field: u_name,
+        e_field: q.e_field,
+        kinetic,
+        potential,
+        h_total,
+    }))
+}
+
+/// Query string for `GET /v1/gauge_field/{name}/gauss_residual_max`.
+/// `reduction` defaults to `covariant` (Halcyon production-canonical
+/// per locked decision IV-G); `flat` is the debug path.
+#[derive(Deserialize)]
+pub struct GaussResidualQuery {
+    pub e_field: String,
+    #[serde(default = "default_gauss_reduction")]
+    pub reduction: String,
+}
+
+fn default_gauss_reduction() -> String {
+    "covariant".to_string()
+}
+
+#[derive(Serialize)]
+pub struct GaussResidualEnvelope {
+    pub gauge_field: String,
+    pub e_field: String,
+    pub reduction: &'static str,
+    pub gauss_residual_max: f64,
+}
+
+async fn gauss_residual_max_get(
+    Path(u_name): Path<String>,
+    Query(q): Query<GaussResidualQuery>,
+) -> Result<Json<GaussResidualEnvelope>, (StatusCode, Json<ErrorEnvelope>)> {
+    let u_handle = gauge_registry::get(&u_name).ok_or_else(|| {
+        bad_request(GaugeFieldError::FieldNotDeclared(u_name.clone()).to_string())
+    })?;
+    if !matches!(u_handle.group(), Group::SU2) {
+        return Err(bad_request(GaugeFieldError::UnsupportedGroup(u_handle.group()).to_string()));
+    }
+    let u_arc = gauge_registry::get_su2_mut(&u_name).ok_or_else(|| {
+        bad_request(GaugeFieldError::FieldNotDeclared(u_name.clone()).to_string())
+    })?;
+    let e_arc = gauge_registry::get_su2_e_mut(&q.e_field).ok_or_else(|| {
+        bad_request(GaugeFieldError::EFieldNotDeclared(q.e_field.clone()).to_string())
+    })?;
+    let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+    let e_guard = e_arc.lock().expect("e field mutex poisoned");
+    if e_guard.source_lattice != u_guard.lattice_name {
+        return Err(bad_request(
+            GaugeFieldError::EFieldSourceMismatch {
+                e_lattice: e_guard.source_lattice.clone(),
+                u_lattice: u_guard.lattice_name.clone(),
+            }
+            .to_string(),
+        ));
+    }
+    let lat = lattice_registry::get(&u_guard.lattice_name).ok_or_else(|| {
+        bad_request(
+            GaugeFieldError::LatticeNotDeclared(u_guard.lattice_name.clone()).to_string(),
+        )
+    })?;
+    let vinc = super::gauss::build_vertex_edge_incidence(&lat);
+    let (reduction_label, residuals) = match q.reduction.to_ascii_lowercase().as_str() {
+        "covariant" => (
+            "covariant",
+            super::gauss::compute_gauss_residual_covariant(
+                &*u_guard, &*e_guard, &lat, &vinc,
+            )
+            .map_err(|e| bad_request(e.to_string()))?,
+        ),
+        "flat" => (
+            "flat",
+            super::gauss::compute_gauss_residual_flat(&*e_guard, &lat, &vinc)
+                .map_err(|e| bad_request(e.to_string()))?,
+        ),
+        other => {
+            return Err(bad_request(format!(
+                "gauge: unknown gauss-residual reduction '{other}' (expected covariant / flat)"
+            )));
+        }
+    };
+    let max = super::gauss::max_inf_norm(&residuals);
+    Ok(Json(GaussResidualEnvelope {
+        gauge_field: u_name,
+        e_field: q.e_field,
+        reduction: reduction_label,
+        gauss_residual_max: max,
+    }))
+}
+
+/// JSON envelope for the diagnostics block — flat copy of
+/// `SymplecticFlowDiagnostics`. Serializable shape; the cache stores
+/// the full `SymplecticFlowResponse` and we project it into JSON here.
+#[derive(Serialize)]
+pub struct SymplecticFlowDiagnosticsView {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<u64>,
+    pub beta: f64,
+    pub dt: f64,
+    pub n_steps_completed: usize,
+    pub cg_iterations_per_step_p99: f64,
+    pub max_energy_drift_rel: f64,
+    pub gauss_residual_max: f64,
+}
+
+#[derive(Serialize)]
+pub struct SymplecticFlowDiagnosticsEnvelope {
+    pub run_id: String,
+    pub field: String,
+    pub e_field: String,
+    pub measurement_history: std::collections::HashMap<String, Vec<f64>>,
+    pub diagnostics: SymplecticFlowDiagnosticsView,
+}
+
+async fn symplectic_flow_diagnostics_get(
+    Path(run_id): Path<String>,
+) -> Result<Json<SymplecticFlowDiagnosticsEnvelope>, (StatusCode, Json<ErrorEnvelope>)> {
+    let resp = flow_mod::get_diagnostics(&run_id).ok_or_else(|| {
+        not_found(format!(
+            "gauge: symplectic_flow run_id '{run_id}' not found in the \
+             process-local diagnostics cache (the cache holds the last \
+             32 runs of this process lifetime; restarts clear it)"
+        ))
+    })?;
+    let mut measurement_history: std::collections::HashMap<String, Vec<f64>> =
+        std::collections::HashMap::with_capacity(resp.measurement_history.len());
+    for (obs, chain) in resp.measurement_history.iter() {
+        measurement_history.insert(obs.label().to_string(), chain.clone());
+    }
+    Ok(Json(SymplecticFlowDiagnosticsEnvelope {
+        run_id: resp.run_id.clone(),
+        field: resp.field.clone(),
+        e_field: resp.e_field.clone(),
+        measurement_history,
+        diagnostics: SymplecticFlowDiagnosticsView {
+            seed: resp.diagnostics.seed,
+            beta: resp.diagnostics.beta,
+            dt: resp.diagnostics.dt,
+            n_steps_completed: resp.diagnostics.n_steps_completed,
+            cg_iterations_per_step_p99: resp.diagnostics.cg_iterations_per_step_p99,
+            max_energy_drift_rel: resp.diagnostics.max_energy_drift_rel,
+            gauss_residual_max: resp.diagnostics.gauss_residual_max,
+        },
+    }))
+}
+
 /// Build the LATTICE + GAUGE_FIELD HTTP router. The gigi-stream binary
 /// merges this into its main app; the test harness drives the same
 /// router directly via `tower::ServiceExt::oneshot` (no listener).
@@ -674,4 +1008,21 @@ where
             get(q_surrogate_get),
         )
         .route("/v1/gauge_field/{name}/observables", post(observables_post))
+        // TDD-HAL-IV.8 read-only Part IV verb routes.
+        //
+        // **No** POST routes for `/v1/e_field` (locked decision IV-I —
+        // E_FIELD embedded-only) or
+        // `/v1/gauge_field/{name}/symplectic_flow` (IV.6 locked —
+        // SYMPLECTIC_FLOW embedded-only). The route-table absence is
+        // the load-bearing receipt the IV.8 test suite asserts.
+        .route("/v1/e_field/{name}", get(e_field_get))
+        .route("/v1/gauge_field/{name}/h_total", get(h_total_get))
+        .route(
+            "/v1/gauge_field/{name}/gauss_residual_max",
+            get(gauss_residual_max_get),
+        )
+        .route(
+            "/v1/symplectic_flow/diagnostics/{run_id}",
+            get(symplectic_flow_diagnostics_get),
+        )
 }

@@ -135,8 +135,9 @@ pub use wilson_force::{apply_force_kick, wilson_force_per_edge};
 pub use lie_exp::{drift_step, matrix_exp_su2_q};
 #[cfg(feature = "gauge")]
 pub use symplectic_flow::{
-    symplectic_flow, SymplecticFlowConfig, SymplecticFlowDiagnostics,
-    SymplecticFlowResponse,
+    clear_diagnostics_cache as clear_symplectic_flow_diagnostics_cache,
+    get_diagnostics as get_symplectic_flow_diagnostics, symplectic_flow,
+    SymplecticFlowConfig, SymplecticFlowDiagnostics, SymplecticFlowResponse,
 };
 
 use crate::bundle::BundleStore;

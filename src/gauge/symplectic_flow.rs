@@ -64,7 +64,8 @@
 //! buckyball_integrator.py::leapfrog_step` (the KDK body) +
 //! `buckyball_action.py::compute_hamiltonian` (the H_total reduction).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Mutex, OnceLock};
 
 use super::e_field::SU2EField;
 use super::error::GaugeFieldError;
@@ -133,6 +134,11 @@ pub struct SymplecticFlowDiagnostics {
 /// `diagnostics`) plus the E-field name on a sibling slot.
 #[derive(Debug, Clone)]
 pub struct SymplecticFlowResponse {
+    /// Server-generated stable id for this run. Populated unconditionally
+    /// by `symplectic_flow` and used as the key for the process-local
+    /// diagnostics LRU (`GET /v1/symplectic_flow/diagnostics/{run_id}`).
+    /// UUID v4 string. Stable across re-reads of the same response.
+    pub run_id: String,
     /// Echoes the `u_name` argument.
     pub field: String,
     /// Echoes the `e_name` argument.
@@ -143,6 +149,81 @@ pub struct SymplecticFlowResponse {
     pub measurement_history: HashMap<ObservableId, Vec<f64>>,
     /// Flow diagnostics block.
     pub diagnostics: SymplecticFlowDiagnostics,
+}
+
+// ── Process-local diagnostics LRU ──────────────────────────────────
+//
+// Capacity 32. The HTTP `GET /v1/symplectic_flow/diagnostics/{run_id}`
+// handler reads from this cache; restarts intentionally clear it.
+// Matches Bee's locked decision IV-H — "HTTP is consumer-facing
+// canonical for read": clients fetch the last N runs they kicked off
+// in this process lifetime. No `lru` crate dep — a VecDeque-backed
+// FIFO is enough because the access pattern is "last N runs", not
+// "most-recently-accessed". When capacity is hit we drop the oldest
+// front entry.
+
+const DIAGNOSTICS_CACHE_CAPACITY: usize = 32;
+
+#[derive(Debug)]
+struct DiagnosticsCache {
+    order: VecDeque<String>,
+    by_id: HashMap<String, SymplecticFlowResponse>,
+}
+
+impl DiagnosticsCache {
+    fn new() -> Self {
+        Self {
+            order: VecDeque::with_capacity(DIAGNOSTICS_CACHE_CAPACITY),
+            by_id: HashMap::with_capacity(DIAGNOSTICS_CACHE_CAPACITY),
+        }
+    }
+
+    fn insert(&mut self, run_id: String, resp: SymplecticFlowResponse) {
+        // If the cache already holds this id (vanishingly unlikely with
+        // UUID v4 but we honor the invariant for determinism in tests
+        // that mock the id), refresh in place — drop the old position
+        // and push to the back.
+        if self.by_id.contains_key(&run_id) {
+            self.order.retain(|k| k != &run_id);
+        } else if self.by_id.len() >= DIAGNOSTICS_CACHE_CAPACITY {
+            // Evict the oldest entry.
+            if let Some(oldest) = self.order.pop_front() {
+                self.by_id.remove(&oldest);
+            }
+        }
+        self.order.push_back(run_id.clone());
+        self.by_id.insert(run_id, resp);
+    }
+
+    fn get(&self, run_id: &str) -> Option<SymplecticFlowResponse> {
+        self.by_id.get(run_id).cloned()
+    }
+}
+
+fn diagnostics_cache() -> &'static Mutex<DiagnosticsCache> {
+    static C: OnceLock<Mutex<DiagnosticsCache>> = OnceLock::new();
+    C.get_or_init(|| Mutex::new(DiagnosticsCache::new()))
+}
+
+/// Look up a previously-completed `SymplecticFlowResponse` by its
+/// server-generated `run_id`. Returns `None` when the id is unknown
+/// (never registered, or evicted past capacity). Used by the HTTP
+/// `GET /v1/symplectic_flow/diagnostics/{run_id}` handler.
+pub fn get_diagnostics(run_id: &str) -> Option<SymplecticFlowResponse> {
+    let c = diagnostics_cache()
+        .lock()
+        .expect("symplectic flow diagnostics cache mutex poisoned");
+    c.get(run_id)
+}
+
+/// Clear the process-local diagnostics LRU. Test convenience — the
+/// HTTP harness clears between tests so per-test fixtures land into a
+/// known-empty cache.
+pub fn clear_diagnostics_cache() {
+    let mut c = diagnostics_cache()
+        .lock()
+        .expect("symplectic flow diagnostics cache mutex poisoned");
+    *c = DiagnosticsCache::new();
 }
 
 /// Run `n_steps` KDK leapfrog steps on `(U, E)` at inverse temperature
@@ -286,7 +367,13 @@ pub fn symplectic_flow(
         max_inf_norm(&r)
     };
 
-    Ok(SymplecticFlowResponse {
+    // Generate a stable run_id and park the response in the diagnostics
+    // LRU before returning so the HTTP read path can resolve it. UUID v4
+    // is the canonical choice — collision-resistant without the caller
+    // having to compute a hash of (seed, β, dt, n_steps, timestamp).
+    let run_id = uuid::Uuid::new_v4().to_string();
+    let response = SymplecticFlowResponse {
+        run_id: run_id.clone(),
         field: u_name.to_string(),
         e_field: e_name.to_string(),
         measurement_history: history,
@@ -299,7 +386,14 @@ pub fn symplectic_flow(
             max_energy_drift_rel,
             gauss_residual_max,
         },
-    })
+    };
+    {
+        let mut c = diagnostics_cache()
+            .lock()
+            .expect("symplectic flow diagnostics cache mutex poisoned");
+        c.insert(run_id, response.clone());
+    }
+    Ok(response)
 }
 
 /// Dispatch an `ObservableId` to its E-aware implementation. Reverses

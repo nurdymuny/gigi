@@ -844,6 +844,89 @@ pub enum Statement {
         /// GIBBS_SAMPLE call must commit to a seed).
         seed: Option<u64>,
     },
+
+    // ── Part IV / TDD-HAL-IV.7 — E_FIELD + SYMPLECTIC_FLOW + SHOW
+    //    E_FIELD + SELECT H_TOTAL + SELECT GAUSS_RESIDUAL_MAX.
+    //    All gated on `gauge`. Group-agnostic Statement shape; the
+    //    executor matches on `handle.group()` and dispatches to the
+    //    SU(2) sibling kernels (locked decision IV-B).
+    /// `E_FIELD name ON GAUGE_FIELD U INIT <init> [SEED s];`
+    #[cfg(feature = "gauge")]
+    EField {
+        /// User-facing E-field name (the `ident` after `E_FIELD`).
+        name: String,
+        /// Name of the U gauge field this E binds to.
+        source_gauge_field: String,
+        /// Initialization recipe — `ZERO` / `MAXWELL_BOLTZMANN BETA β`
+        /// / `FROM other_e`.
+        init: crate::gauge::EFieldInit,
+        /// Optional seed (mandatory for `MAXWELL_BOLTZMANN` per IV-B;
+        /// the parser accepts a missing seed and the executor surfaces
+        /// `GaugeFieldError::SeedRequired`).
+        seed: Option<u64>,
+    },
+    /// `SYMPLECTIC_FLOW U FROM (U=U, E=E) BETA β DT dt N_STEPS n
+    /// [PROJECT_GAUSS <clause>] [MEASURE_EVERY m] [MEASURE (obs_list)]
+    /// [SEED s];`
+    #[cfg(feature = "gauge")]
+    SymplecticFlow {
+        /// Output / read-back field name (the `ident` after
+        /// `SYMPLECTIC_FLOW`). Mirrors the Halcyon mock shape — the
+        /// flow mutates the SOURCE U in place and `field` is the
+        /// echo'd name in the response.
+        field: String,
+        /// Name of the U field paired in the FROM clause.
+        e_field: String,
+        /// Inverse temperature β.
+        beta: f64,
+        /// KDK step size.
+        dt: f64,
+        /// Number of leapfrog steps.
+        n_steps: usize,
+        /// Optional Gauss projection cadence. `Some(cfg)` enables per-
+        /// step projection (production-canonical, IV-D); `None`
+        /// disables projection entirely. `PROJECT_GAUSS TRUE` yields
+        /// `Some(ProjectGaussConfig::default())`; `PROJECT_GAUSS
+        /// FALSE` yields `None`; struct-literal sugar yields
+        /// `Some(cfg)` with the named fields overridden.
+        project_gauss: Option<crate::gauge::ProjectGaussConfig>,
+        /// Measurement cadence. Defaults to 1 when omitted. `0`
+        /// disables the measurement epilogue entirely.
+        measure_every: usize,
+        /// Observable list. Empty when the optional `MEASURE (…)`
+        /// clause is omitted.
+        measure: Vec<crate::gauge::ObservableId>,
+        /// Optional seed (echoed in diagnostics; reserved for
+        /// stochastic kernels Part V+ might add).
+        seed: Option<u64>,
+    },
+    /// `SHOW E_FIELD name [BUFFER];`
+    #[cfg(feature = "gauge")]
+    ShowEField {
+        /// E-field name to introspect.
+        name: String,
+        /// `BUFFER` keyword → include the full `(n_edges, 4)` Lie
+        /// buffer in the response.
+        with_buffer: bool,
+    },
+    /// `SELECT H_TOTAL OF (U, E);`
+    #[cfg(feature = "gauge")]
+    SelectHTotal {
+        /// Name of the gauge field U.
+        gauge_field: String,
+        /// Name of the E field E.
+        e_field: String,
+    },
+    /// `SELECT GAUSS_RESIDUAL_MAX OF (U, E);`
+    #[cfg(feature = "gauge")]
+    SelectGaussResidualMax {
+        /// Name of the gauge field U.
+        gauge_field: String,
+        /// Name of the E field E.
+        e_field: String,
+        /// Reduction (Covariant / Flat). Defaults to Covariant.
+        reduction: crate::gauge::GaussReduction,
+    },
 }
 
 /// Whitelisted gauge-invariant operations. Each maps to an existing
@@ -1049,6 +1132,10 @@ enum Token {
     Str(String),
     LParen,
     RParen,
+    /// `{` — struct-literal opener (TDD-HAL-IV.7 PROJECT_GAUSS sugar).
+    LBrace,
+    /// `}` — struct-literal closer (TDD-HAL-IV.7 PROJECT_GAUSS sugar).
+    RBrace,
     Comma,
     Eq,
     Neq, // != or <>
@@ -1085,6 +1172,14 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
             }
             ')' => {
                 tokens.push(Token::RParen);
+                i += 1;
+            }
+            '{' => {
+                tokens.push(Token::LBrace);
+                i += 1;
+            }
+            '}' => {
+                tokens.push(Token::RBrace);
                 i += 1;
             }
             ',' => {
@@ -1166,6 +1261,29 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                             i += 1;
                         }
                     }
+                    // Scientific-notation suffix `e[±]N` / `E[±]N`
+                    // (TDD-HAL-IV.7 PROJECT_GAUSS sugar — `1e-12`,
+                    // `1.5e10`, etc.). We require at least one digit
+                    // after the optional sign so plain `1e` doesn't
+                    // greedily eat an identifier.
+                    if i < chars.len() && (chars[i] == 'e' || chars[i] == 'E') {
+                        let exp_start = i;
+                        let mut j = i + 1;
+                        if j < chars.len() && (chars[j] == '+' || chars[j] == '-') {
+                            j += 1;
+                        }
+                        if j < chars.len() && chars[j].is_ascii_digit() {
+                            i = j;
+                            while i < chars.len() && chars[i].is_ascii_digit() {
+                                i += 1;
+                            }
+                        } else {
+                            // No digits after `e` — back out and let
+                            // the alphabetic arm tokenize `e…` as a
+                            // word.
+                            let _ = exp_start;
+                        }
+                    }
                     let s: String = chars[start..i].iter().collect();
                     let n: f64 = s.parse().map_err(|_| format!("Invalid number: {s}"))?;
                     tokens.push(Token::Number(n));
@@ -1183,6 +1301,20 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                     i += 1;
                     while i < chars.len() && chars[i].is_ascii_digit() {
                         i += 1;
+                    }
+                }
+                // Scientific-notation suffix `e[±]N` / `E[±]N`
+                // (TDD-HAL-IV.7 PROJECT_GAUSS sugar).
+                if i < chars.len() && (chars[i] == 'e' || chars[i] == 'E') {
+                    let mut j = i + 1;
+                    if j < chars.len() && (chars[j] == '+' || chars[j] == '-') {
+                        j += 1;
+                    }
+                    if j < chars.len() && chars[j].is_ascii_digit() {
+                        i = j;
+                        while i < chars.len() && chars[i].is_ascii_digit() {
+                            i += 1;
+                        }
                     }
                 }
                 let s: String = chars[start..i].iter().collect();
@@ -1358,6 +1490,14 @@ impl Parser {
             // wall self-enforces.
             #[cfg(feature = "gauge")]
             "GIBBS_SAMPLE" => self.parse_gibbs_sample(),
+            // E_FIELD / SYMPLECTIC_FLOW verbs. Closes TDD-HAL-IV.7
+            // (parser + executor). Group-agnostic Statement variants;
+            // the executor matches on `handle.group()` and dispatches
+            // to SU(2) sibling kernels (locked decision IV-B).
+            #[cfg(feature = "gauge")]
+            "E_FIELD" => self.parse_e_field(),
+            #[cfg(feature = "gauge")]
+            "SYMPLECTIC_FLOW" => self.parse_symplectic_flow(),
             "INTEGRATE" => self.parse_integrate(),
             "PULLBACK" => self.parse_pullback(),
             "COLLAPSE" => {
@@ -2627,6 +2767,237 @@ impl Parser {
         }
     }
 
+    /// Parse an `E_FIELD` declaration. Closes the parser half of the
+    /// E_FIELD verb shipped at TDD-HAL-IV.7.
+    ///
+    /// Grammar:
+    ///
+    /// ```ebnf
+    /// e_field_stmt = "E_FIELD" ident "ON" "GAUGE_FIELD" ident
+    ///                "INIT" e_field_init ";" ;
+    /// e_field_init = "ZERO"
+    ///              | "MAXWELL_BOLTZMANN" "BETA" number [ "SEED" integer ]
+    ///              | "FROM" ident ;
+    /// ```
+    ///
+    /// Group erasure (Bee's locked decision IV-B): the parser stays
+    /// group-agnostic; the executor matches on the U field's
+    /// `handle.group()` and dispatches to the SU(2) `SU2EField` kernel.
+    /// Future U(1)/SU(3) E-fields will land as sibling structs with
+    /// their own executor arms; the grammar does not change.
+    #[cfg(feature = "gauge")]
+    fn parse_e_field(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        self.expect_keyword("GAUGE_FIELD")?;
+        let source_gauge_field = self.expect_word()?;
+        self.expect_keyword("INIT")?;
+        let (init, seed) = self.parse_e_field_init()?;
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::EField {
+            name,
+            source_gauge_field,
+            init,
+            seed,
+        })
+    }
+
+    /// Parse an `e_field_init` per the IV.7 EBNF.
+    #[cfg(feature = "gauge")]
+    fn parse_e_field_init(
+        &mut self,
+    ) -> Result<(crate::gauge::EFieldInit, Option<u64>), String> {
+        let head = self.expect_word()?;
+        match head.to_ascii_uppercase().as_str() {
+            "ZERO" => Ok((crate::gauge::EFieldInit::Zero, None)),
+            "MAXWELL_BOLTZMANN" => {
+                self.expect_keyword("BETA")?;
+                let beta = self.expect_f64()?;
+                let seed = if self.is_keyword("SEED") {
+                    self.advance();
+                    Some(self.expect_usize()? as u64)
+                } else {
+                    None
+                };
+                Ok((
+                    crate::gauge::EFieldInit::MaxwellBoltzmann { beta },
+                    seed,
+                ))
+            }
+            "FROM" => {
+                let src = self.expect_word()?;
+                Ok((crate::gauge::EFieldInit::FromField(src), None))
+            }
+            other => Err(format!(
+                "Expected E_FIELD init clause (ZERO / MAXWELL_BOLTZMANN BETA β / FROM ident), got '{other}'"
+            )),
+        }
+    }
+
+    /// Parse a `SYMPLECTIC_FLOW` statement. Closes the parser half of
+    /// TDD-HAL-IV.7.
+    ///
+    /// Grammar:
+    ///
+    /// ```ebnf
+    /// sympflow_stmt =
+    ///   "SYMPLECTIC_FLOW" ident "FROM" "(" "U" "=" ident "," "E" "=" ident ")"
+    ///   "BETA" number "DT" number "N_STEPS" integer
+    ///   [ "PROJECT_GAUSS" project_gauss_clause ]
+    ///   [ "MEASURE_EVERY" integer ]
+    ///   [ "MEASURE" "(" observable_list ")" ]
+    ///   [ "SEED" integer ]
+    ///   ";" ;
+    /// ```
+    ///
+    /// `BETA`/`DT`/`N_STEPS` are mandatory; the rest are optional and
+    /// may appear in any order after `N_STEPS` (Halcyon mock-friendly).
+    /// `PROJECT_GAUSS` defaults to `None` (no projection) when the
+    /// clause is omitted — but production callers should pass
+    /// `PROJECT_GAUSS TRUE` (cfg defaults) explicitly per IV-D.
+    #[cfg(feature = "gauge")]
+    fn parse_symplectic_flow(&mut self) -> Result<Statement, String> {
+        let field = self.expect_word()?;
+        self.expect_keyword("FROM")?;
+        self.expect(Token::LParen)?;
+        // U=<ident>, E=<ident>. The `field` ident on the LHS is the
+        // SYMPLECTIC_FLOW output name; the U= and E= bindings inside
+        // the FROM clause name the two state fields the flow reads +
+        // mutates. Matches the Halcyon mock shape.
+        self.expect_keyword("U")?;
+        self.expect(Token::Eq)?;
+        let _u_binding = self.expect_word()?;
+        self.expect(Token::Comma)?;
+        self.expect_keyword("E")?;
+        self.expect(Token::Eq)?;
+        let e_field = self.expect_word()?;
+        self.expect(Token::RParen)?;
+
+        self.expect_keyword("BETA")?;
+        let beta = self.expect_f64()?;
+        self.expect_keyword("DT")?;
+        let dt = self.expect_f64()?;
+        self.expect_keyword("N_STEPS")?;
+        let n_steps = self.expect_usize()?;
+
+        let mut project_gauss: Option<crate::gauge::ProjectGaussConfig> = None;
+        let mut measure_every: usize = 1;
+        let mut measure: Vec<crate::gauge::ObservableId> = Vec::new();
+        let mut seed: Option<u64> = None;
+
+        loop {
+            if self.is_keyword("PROJECT_GAUSS") {
+                self.advance();
+                project_gauss = self.parse_project_gauss_clause()?;
+            } else if self.is_keyword("MEASURE_EVERY") {
+                self.advance();
+                measure_every = self.expect_usize()?;
+            } else if self.is_keyword("MEASURE") {
+                self.advance();
+                self.expect(Token::LParen)?;
+                measure = self.parse_observable_list()?;
+                self.expect(Token::RParen)?;
+            } else if self.is_keyword("SEED") {
+                self.advance();
+                seed = Some(self.expect_usize()? as u64);
+            } else {
+                break;
+            }
+        }
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::SymplecticFlow {
+            field,
+            e_field,
+            beta,
+            dt,
+            n_steps,
+            project_gauss,
+            measure_every,
+            measure,
+            seed,
+        })
+    }
+
+    /// Parse a `project_gauss_clause` per the IV.7 EBNF.
+    ///
+    /// ```ebnf
+    /// project_gauss_clause = "TRUE" | "FALSE"
+    ///                      | "{" project_gauss_kv ("," project_gauss_kv)* "}" ;
+    /// project_gauss_kv     = ("tikhonov" | "cg_tol" | "cg_max_iter")
+    ///                        ":" number_or_int ;
+    /// ```
+    ///
+    /// `TRUE` returns `Some(ProjectGaussConfig::default())`; `FALSE`
+    /// returns `None`; struct-literal sugar returns a config with the
+    /// named fields overridden against `Default` (per IV-A: tikhonov
+    /// 1e-14, cg_tol 1e-10, cg_max_iter 200). Unspecified fields keep
+    /// their defaults — the spec-shape 1e-12 tikhonov is reachable via
+    /// `PROJECT_GAUSS { tikhonov: 1e-12 }`.
+    ///
+    /// The lexer emits `LBrace` / `RBrace` tokens; the keys
+    /// (`tikhonov` / `cg_tol` / `cg_max_iter`) are words followed by a
+    /// `Colon` and a numeric literal. Matches how Halcyon's mock
+    /// generates the GQL string.
+    #[cfg(feature = "gauge")]
+    fn parse_project_gauss_clause(
+        &mut self,
+    ) -> Result<Option<crate::gauge::ProjectGaussConfig>, String> {
+        // Peek for TRUE / FALSE / struct-literal opening token.
+        if self.is_keyword("TRUE") {
+            self.advance();
+            return Ok(Some(crate::gauge::ProjectGaussConfig::default()));
+        }
+        if self.is_keyword("FALSE") {
+            self.advance();
+            return Ok(None);
+        }
+        // Struct-literal form: `{ key: value, … }`.
+        match self.peek() {
+            Some(Token::LBrace) => {
+                self.advance();
+            }
+            other => {
+                return Err(format!(
+                    "Expected PROJECT_GAUSS clause (TRUE / FALSE / {{ … }}), got {other:?}"
+                ))
+            }
+        }
+        let mut cfg = crate::gauge::ProjectGaussConfig::default();
+        loop {
+            let key = self.expect_word()?;
+            self.expect(Token::Colon)?;
+            let val = self.expect_f64()?;
+            match key.as_str() {
+                "tikhonov" => cfg.tikhonov = val,
+                "cg_tol" => cfg.cg_tol = val,
+                "cg_max_iter" => {
+                    if val < 0.0 || val.fract() != 0.0 {
+                        return Err(format!(
+                            "PROJECT_GAUSS cg_max_iter must be a non-negative integer, got {val}"
+                        ));
+                    }
+                    cfg.cg_max_iter = val as usize;
+                }
+                other => {
+                    return Err(format!(
+                        "Unknown PROJECT_GAUSS field '{other}' (allowed: tikhonov / cg_tol / cg_max_iter)"
+                    ))
+                }
+            }
+            if matches!(self.peek(), Some(Token::Comma)) {
+                self.advance();
+                continue;
+            }
+            break;
+        }
+        self.expect(Token::RBrace)?;
+        Ok(Some(cfg))
+    }
+
     /// TDD-HAL-III.6: try to parse a gauge-substrate SELECT projection
     /// (`SELECT PLAQUETTE OF U;`, `SELECT MEAN(PLAQUETTE OF U);`,
     /// `SELECT SUM(PLAQUETTE OF U);`, `SELECT Q_SURROGATE OF U;`)
@@ -2669,6 +3040,47 @@ impl Parser {
                     self.advance();
                 }
                 return Ok(Some(Statement::SelectQSurrogate { field }));
+            }
+            // TDD-HAL-IV.7: `SELECT H_TOTAL OF (U, E);` — joint
+            // observable on the (U, E) pair. Lowers to the
+            // Part-IV-aware E-aware Hamiltonian computation at the
+            // executor.
+            "H_TOTAL" => {
+                self.advance();
+                self.expect_keyword("OF")?;
+                self.expect(Token::LParen)?;
+                let u = self.expect_word()?;
+                self.expect(Token::Comma)?;
+                let e = self.expect_word()?;
+                self.expect(Token::RParen)?;
+                if matches!(self.peek(), Some(Token::Semicolon)) {
+                    self.advance();
+                }
+                return Ok(Some(Statement::SelectHTotal {
+                    gauge_field: u,
+                    e_field: e,
+                }));
+            }
+            // TDD-HAL-IV.7: `SELECT GAUSS_RESIDUAL_MAX OF (U, E);` —
+            // joint observable on the (U, E) pair. Default reduction
+            // is `Covariant`; explicit `Flat` reduction is reserved
+            // for future use (debug-only / P1).
+            "GAUSS_RESIDUAL_MAX" => {
+                self.advance();
+                self.expect_keyword("OF")?;
+                self.expect(Token::LParen)?;
+                let u = self.expect_word()?;
+                self.expect(Token::Comma)?;
+                let e = self.expect_word()?;
+                self.expect(Token::RParen)?;
+                if matches!(self.peek(), Some(Token::Semicolon)) {
+                    self.advance();
+                }
+                return Ok(Some(Statement::SelectGaussResidualMax {
+                    gauge_field: u,
+                    e_field: e,
+                    reduction: crate::gauge::GaussReduction::Covariant,
+                }));
             }
             "MEAN" => crate::gauge::PlaquetteReduction::Mean,
             "SUM" => crate::gauge::PlaquetteReduction::Sum,
@@ -4078,6 +4490,21 @@ impl Parser {
                     self.advance();
                 }
                 Ok(Statement::ShowGaugeField { name, with_buffer })
+            }
+            // `SHOW E_FIELD name [BUFFER]` — gated on `gauge`. Closes
+            // the SHOW half of TDD-HAL-IV.7. Without `BUFFER` the row
+            // carries only metadata (name/source_gauge_field/
+            // source_lattice/group/n_edges/init_kind/init_seed); with
+            // `BUFFER` the row additionally carries the full
+            // `(n_edges, 4)` Lie buffer in the `data` column.
+            #[cfg(feature = "gauge")]
+            "E_FIELD" => {
+                let name = self.expect_word()?;
+                let with_buffer = self.is_keyword("BUFFER");
+                if with_buffer {
+                    self.advance();
+                }
+                Ok(Statement::ShowEField { name, with_buffer })
             }
             _ => Err(format!("Unknown SHOW target: {what}")),
         }
@@ -8647,6 +9074,401 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }
             Ok(ExecResult::Rows(vec![record]))
         }
+
+        // ── TDD-HAL-IV.7 — E_FIELD declaration ──────────────────────
+        //
+        // Group-erasure dispatch (locked decision IV-B): the parser is
+        // group-agnostic; we resolve the source U through the dyn read
+        // registry, match `handle.group()`, and dispatch into the
+        // SU(2) sibling kernel for now. Future U(1)/SU(3) E fields
+        // land as new executor arms with their own EField constructors.
+        //
+        // The new SU2EField is wrapped in `Arc<Mutex<_>>` and registered
+        // via `register_su2_e`; subsequent SYMPLECTIC_FLOW / SHOW E_FIELD
+        // / SELECT H_TOTAL invocations read through that handle.
+        #[cfg(feature = "gauge")]
+        Statement::EField {
+            name,
+            source_gauge_field,
+            init,
+            seed,
+        } => {
+            use crate::gauge::{GaugeFieldError, Group, SU2EField};
+            // 1. Resolve the source U through the dyn surface so the
+            //    typed `FieldNotDeclared` Display anchors before we
+            //    touch the E constructor.
+            let u_handle = crate::gauge::registry::get(source_gauge_field).ok_or_else(
+                || {
+                    GaugeFieldError::FieldNotDeclared(source_gauge_field.clone())
+                        .to_string()
+                },
+            )?;
+            // 2. Group-erasure dispatch — only SU(2) proceeds.
+            if !matches!(u_handle.group(), Group::SU2) {
+                return Err(GaugeFieldError::UnsupportedGroup(u_handle.group()).to_string());
+            }
+            // 3. Construct the SU(2) E field. The constructor performs
+            //    the FromField lookup itself (registry handle resolution)
+            //    so we hand off `init` directly. SeedRequired /
+            //    EFieldNotDeclared / EFieldSourceMismatch surface as
+            //    typed errors.
+            let e_field = SU2EField::new(
+                name.clone(),
+                u_handle.as_ref(),
+                init.clone(),
+                *seed,
+            )
+            .map_err(|e| e.to_string())?;
+            // 4. Park it in the SU(2) E-field sibling registry.
+            crate::gauge::registry::register_su2_e(std::sync::Arc::new(
+                std::sync::Mutex::new(e_field),
+            ));
+            Ok(ExecResult::Ok)
+        }
+
+        // ── TDD-HAL-IV.7 — SHOW E_FIELD ───────────────────────────────
+        //
+        // Without BUFFER: metadata-only row (name / source_gauge_field /
+        // source_lattice / group / n_edges / init_kind / init_seed).
+        // With BUFFER: same metadata + the full `(n_edges, 4)` Lie
+        // buffer in the `data` column (q0=0 invariant on every row).
+        #[cfg(feature = "gauge")]
+        Statement::ShowEField { name, with_buffer } => {
+            use crate::gauge::EFieldInit;
+            let handle = crate::gauge::registry::get_su2_e(name).ok_or_else(|| {
+                crate::gauge::GaugeFieldError::EFieldNotDeclared(name.clone()).to_string()
+            })?;
+            let buf = handle.as_dense_buffer();
+            let (init, init_seed) = handle.init_metadata();
+            let init_kind = match &init {
+                EFieldInit::Zero => "ZERO",
+                EFieldInit::MaxwellBoltzmann { .. } => "MAXWELL_BOLTZMANN",
+                EFieldInit::FromField(_) => "FROM_FIELD",
+            };
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "name".into(),
+                crate::types::Value::Text(handle.name().to_string()),
+            );
+            record.insert(
+                "source_gauge_field".into(),
+                crate::types::Value::Text(handle.source_gauge_field().to_string()),
+            );
+            record.insert(
+                "source_lattice".into(),
+                crate::types::Value::Text(handle.source_lattice().to_string()),
+            );
+            record.insert(
+                "group".into(),
+                crate::types::Value::Text(handle.group().label().to_string()),
+            );
+            record.insert(
+                "n_edges".into(),
+                crate::types::Value::Integer(buf.n_edges as i64),
+            );
+            record.insert(
+                "init_kind".into(),
+                crate::types::Value::Text(init_kind.to_string()),
+            );
+            record.insert(
+                "init_seed".into(),
+                match init_seed {
+                    Some(s) => crate::types::Value::Integer(s as i64),
+                    None => crate::types::Value::Null,
+                },
+            );
+            // Round-trip the MAXWELL_BOLTZMANN β and FROM_FIELD source
+            // name through SHOW for declarations that need them.
+            match &init {
+                EFieldInit::MaxwellBoltzmann { beta } => {
+                    record.insert(
+                        "init_beta".into(),
+                        crate::types::Value::Float(*beta),
+                    );
+                }
+                EFieldInit::FromField(src) => {
+                    record.insert(
+                        "init_from".into(),
+                        crate::types::Value::Text(src.clone()),
+                    );
+                }
+                EFieldInit::Zero => {}
+            }
+            if *with_buffer {
+                record.insert(
+                    "data".into(),
+                    crate::types::Value::Vector(buf.data.clone()),
+                );
+                record.insert(
+                    "data_flat_len".into(),
+                    crate::types::Value::Integer((buf.n_edges * buf.repr_dim) as i64),
+                );
+            }
+            Ok(ExecResult::Rows(vec![record]))
+        }
+
+        // ── TDD-HAL-IV.7 — SELECT H_TOTAL OF (U, E) ──────────────────
+        //
+        // E-aware Hamiltonian read. Reverses Part III's
+        // PartIvObservableNotReady stub at the SELECT-projection layer
+        // (locked decision IV-J). Returns a scalar f64. We DO NOT
+        // mutate state — both handles are read-only.
+        #[cfg(feature = "gauge")]
+        Statement::SelectHTotal {
+            gauge_field,
+            e_field,
+        } => {
+            use crate::gauge::{GaugeFieldError, Group};
+            // Resolve U handle through dyn surface.
+            let u_handle = crate::gauge::registry::get(gauge_field).ok_or_else(|| {
+                GaugeFieldError::FieldNotDeclared(gauge_field.clone()).to_string()
+            })?;
+            if !matches!(u_handle.group(), Group::SU2) {
+                return Err(GaugeFieldError::UnsupportedGroup(u_handle.group()).to_string());
+            }
+            // Resolve E handle through the SU(2) E sibling registry.
+            let e_arc = crate::gauge::registry::get_su2_e_mut(e_field).ok_or_else(|| {
+                GaugeFieldError::EFieldNotDeclared(e_field.clone()).to_string()
+            })?;
+            // SELECT H_TOTAL needs a concrete SU2GaugeField, not a dyn
+            // handle (the Hamiltonian formula reads U through the
+            // concrete buffer). We resolve through the SU(2)-mut map
+            // for symmetry with SYMPLECTIC_FLOW; this is a read-only
+            // path (no buffer mutation), but the mut handle is the
+            // only one that exposes the concrete SU2GaugeField.
+            let u_arc = crate::gauge::registry::get_su2_mut(gauge_field).ok_or_else(
+                || GaugeFieldError::FieldNotDeclared(gauge_field.clone()).to_string(),
+            )?;
+            let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+            let e_guard = e_arc.lock().expect("e field mutex poisoned");
+            // Sanity: the two handles must share a lattice (locked
+            // decision IV-B + IV-J — joint observables on (U, E) only
+            // make sense when both bind to the same lattice).
+            if e_guard.source_lattice != u_guard.lattice_name {
+                return Err(GaugeFieldError::EFieldSourceMismatch {
+                    e_lattice: e_guard.source_lattice.clone(),
+                    u_lattice: u_guard.lattice_name.clone(),
+                }
+                .to_string());
+            }
+            let lat = crate::lattice::registry::get(&u_guard.lattice_name)
+                .ok_or_else(|| {
+                    GaugeFieldError::LatticeNotDeclared(u_guard.lattice_name.clone())
+                        .to_string()
+                })?;
+            // Drive the symplectic_flow module's H_total helper through
+            // the public re-export `select_h_total`. We compute the
+            // Hamiltonian inline here using the same formulae the
+            // symplectic_flow's `observe` arm uses (the inline call
+            // keeps the module surface narrow — no need to publish a
+            // module-level `compute_hamiltonian` just for this verb).
+            //
+            // The formula (Halcyon Kogut-Susskind, g²=4/β):
+            //   H = K + V
+            //   K = g² · Σ_e |E_vec|²
+            //   V = (F/g²) · (1 - ⟨P⟩)
+            let beta_default: f64 = {
+                // We need a β to evaluate H_total. The Halcyon
+                // convention pins β at the E field's init metadata
+                // when MaxwellBoltzmann; for Zero/FromField we use a
+                // sentinel 1.0 so the read still completes. Halcyon's
+                // production flow ALWAYS measures H_total inside
+                // SYMPLECTIC_FLOW where β is the call's β; the
+                // SELECT-projection path is the diagnostic surface
+                // ("show me the current H given the field's natural
+                // β").
+                match &e_guard.init_kind {
+                    crate::gauge::EFieldInit::MaxwellBoltzmann { beta } => *beta,
+                    _ => 1.0_f64,
+                }
+            };
+            let g2 = 4.0_f64 / beta_default;
+            let mut kin = 0.0_f64;
+            for edge in 0..e_guard.buffer.n_edges {
+                let row = e_guard.read_element_q(edge);
+                kin += row[1] * row[1] + row[2] * row[2] + row[3] * row[3];
+            }
+            let kin = g2 * kin;
+            let p_mean = crate::gauge::plaquette_mean(&*u_guard, &lat)
+                .map_err(|e| e.to_string())?;
+            let s_w = (lat.n_faces() as f64) * (1.0_f64 - p_mean) / g2;
+            let h_total = kin + s_w;
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "gauge_field".into(),
+                crate::types::Value::Text(gauge_field.clone()),
+            );
+            record.insert(
+                "e_field".into(),
+                crate::types::Value::Text(e_field.clone()),
+            );
+            record.insert("value".into(), crate::types::Value::Float(h_total));
+            Ok(ExecResult::Rows(vec![record]))
+        }
+
+        // ── TDD-HAL-IV.7 — SELECT GAUSS_RESIDUAL_MAX OF (U, E) ────────
+        //
+        // Joint observable on (U, E). Default reduction is Covariant
+        // (Halcyon production-canonical); Flat reduction is reserved
+        // for future debug paths.
+        #[cfg(feature = "gauge")]
+        Statement::SelectGaussResidualMax {
+            gauge_field,
+            e_field,
+            reduction,
+        } => {
+            use crate::gauge::{GaugeFieldError, GaussReduction, Group};
+            let u_handle = crate::gauge::registry::get(gauge_field).ok_or_else(|| {
+                GaugeFieldError::FieldNotDeclared(gauge_field.clone()).to_string()
+            })?;
+            if !matches!(u_handle.group(), Group::SU2) {
+                return Err(GaugeFieldError::UnsupportedGroup(u_handle.group()).to_string());
+            }
+            let e_arc = crate::gauge::registry::get_su2_e_mut(e_field).ok_or_else(|| {
+                GaugeFieldError::EFieldNotDeclared(e_field.clone()).to_string()
+            })?;
+            let u_arc = crate::gauge::registry::get_su2_mut(gauge_field).ok_or_else(
+                || GaugeFieldError::FieldNotDeclared(gauge_field.clone()).to_string(),
+            )?;
+            let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+            let e_guard = e_arc.lock().expect("e field mutex poisoned");
+            if e_guard.source_lattice != u_guard.lattice_name {
+                return Err(GaugeFieldError::EFieldSourceMismatch {
+                    e_lattice: e_guard.source_lattice.clone(),
+                    u_lattice: u_guard.lattice_name.clone(),
+                }
+                .to_string());
+            }
+            let lat = crate::lattice::registry::get(&u_guard.lattice_name)
+                .ok_or_else(|| {
+                    GaugeFieldError::LatticeNotDeclared(u_guard.lattice_name.clone())
+                        .to_string()
+                })?;
+            let vinc = crate::gauge::build_vertex_edge_incidence(&lat);
+            let residuals = match reduction {
+                GaussReduction::Covariant => {
+                    crate::gauge::compute_gauss_residual_covariant(
+                        &*u_guard, &*e_guard, &lat, &vinc,
+                    )
+                    .map_err(|e| e.to_string())?
+                }
+                GaussReduction::Flat => crate::gauge::compute_gauss_residual_flat(
+                    &*e_guard, &lat, &vinc,
+                )
+                .map_err(|e| e.to_string())?,
+            };
+            let max = crate::gauge::max_inf_norm(&residuals);
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "gauge_field".into(),
+                crate::types::Value::Text(gauge_field.clone()),
+            );
+            record.insert(
+                "e_field".into(),
+                crate::types::Value::Text(e_field.clone()),
+            );
+            record.insert(
+                "reduction".into(),
+                crate::types::Value::Text(reduction.label().to_string()),
+            );
+            record.insert("value".into(), crate::types::Value::Float(max));
+            Ok(ExecResult::Rows(vec![record]))
+        }
+
+        // ── TDD-HAL-IV.7 — SYMPLECTIC_FLOW executor arm ──────────────
+        //
+        // Group-erasure dispatch (locked decision IV-B): handle.group()
+        // matches `Group::SU2` and routes into
+        // `gauge::symplectic_flow`. Future SU(3) Cabibbo-Marinari flow
+        // ships `gauge::symplectic_flow_su3` and adds a new arm here
+        // without touching the grammar.
+        #[cfg(feature = "gauge")]
+        Statement::SymplecticFlow {
+            field,
+            e_field,
+            beta,
+            dt,
+            n_steps,
+            project_gauss,
+            measure_every,
+            measure,
+            seed,
+        } => {
+            use crate::gauge::{
+                GaugeFieldError, Group, SymplecticFlowConfig,
+            };
+            // Resolve the U handle through the dyn surface for the
+            // group-erasure dispatch. The SU(2)-mut handle is acquired
+            // inside `symplectic_flow` via `get_su2_mut`.
+            let u_handle = crate::gauge::registry::get(field).ok_or_else(|| {
+                GaugeFieldError::FieldNotDeclared(field.clone()).to_string()
+            })?;
+            if !matches!(u_handle.group(), Group::SU2) {
+                return Err(GaugeFieldError::UnsupportedGroup(u_handle.group()).to_string());
+            }
+            let config = SymplecticFlowConfig {
+                beta: *beta,
+                dt: *dt,
+                n_steps: *n_steps,
+                project_gauss: *project_gauss,
+                measure_every: *measure_every,
+                measure: measure.clone(),
+            };
+            let resp = crate::gauge::symplectic_flow(field, e_field, config, *seed)
+                .map_err(|e| e.to_string())?;
+            // Lower the response into a Rows envelope.
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "field".into(),
+                crate::types::Value::Text(resp.field.clone()),
+            );
+            record.insert(
+                "e_field".into(),
+                crate::types::Value::Text(resp.e_field.clone()),
+            );
+            record.insert(
+                "seed".into(),
+                match resp.diagnostics.seed {
+                    Some(s) => crate::types::Value::Integer(s as i64),
+                    None => crate::types::Value::Null,
+                },
+            );
+            record.insert(
+                "beta".into(),
+                crate::types::Value::Float(resp.diagnostics.beta),
+            );
+            record.insert(
+                "dt".into(),
+                crate::types::Value::Float(resp.diagnostics.dt),
+            );
+            record.insert(
+                "n_steps_completed".into(),
+                crate::types::Value::Integer(
+                    resp.diagnostics.n_steps_completed as i64,
+                ),
+            );
+            record.insert(
+                "cg_iterations_per_step_p99".into(),
+                crate::types::Value::Float(
+                    resp.diagnostics.cg_iterations_per_step_p99,
+                ),
+            );
+            record.insert(
+                "max_energy_drift_rel".into(),
+                crate::types::Value::Float(resp.diagnostics.max_energy_drift_rel),
+            );
+            record.insert(
+                "gauss_residual_max".into(),
+                crate::types::Value::Float(resp.diagnostics.gauss_residual_max),
+            );
+            for (obs, chain) in &resp.measurement_history {
+                record.insert(
+                    obs.label().to_string(),
+                    crate::types::Value::Vector(chain.clone()),
+                );
+            }
+            Ok(ExecResult::Rows(vec![record]))
+        }
     }
 }
 
@@ -11669,5 +12491,369 @@ mod tests {
             err.to_uppercase().contains("SEED"),
             "Display must contain 'SEED', got: {err}"
         );
+    }
+
+    // ─── TDD-HAL-IV.7 — E_FIELD / SYMPLECTIC_FLOW / SHOW E_FIELD /
+    //     SELECT H_TOTAL / SELECT GAUSS_RESIDUAL_MAX GQL surface ────
+    //
+    // Closes the parser + embedded-executor half of the Part IV
+    // user-facing verbs. Bee's locked decisions wired through:
+    //   IV-A — PROJECT_GAUSS struct-literal sugar with named-field
+    //          overrides against the Halcyon production defaults
+    //          (tikhonov=1e-14, cg_tol=1e-10, cg_max_iter=200).
+    //   IV-B — Sibling SU2EField; parser stays group-agnostic, the
+    //          executor matches on `handle.group()` and dispatches
+    //          into the SU(2) E-field sibling kernels.
+    //   IV-D — PROJECT_GAUSS TRUE → per-step projection cadence
+    //          (default config); PROJECT_GAUSS FALSE → None (skip).
+    //   IV-I — E_FIELD is embedded-only at this gate; no HTTP route.
+    //   IV-J — SELECT H_TOTAL OF (U, E) is the positive-case anchor
+    //          (reverses Part III's PartIvObservableNotReady stub at
+    //          the SELECT layer). The gibbs_sample stub stays in
+    //          place because GIBBS_SAMPLE has no E.
+
+    /// TDD-HAL-IV.7: parser accepts `E_FIELD E ON GAUGE_FIELD U INIT
+    /// ZERO;` and emits a `Statement::EField` with init=Zero, seed=None.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iv_7_parse_e_field_zero() {
+        let stmt = parse("E_FIELD E ON GAUGE_FIELD U INIT ZERO;")
+            .expect("parse E_FIELD ZERO");
+        match stmt {
+            Statement::EField {
+                name,
+                source_gauge_field,
+                init,
+                seed,
+            } => {
+                assert_eq!(name, "E");
+                assert_eq!(source_gauge_field, "U");
+                assert_eq!(init, crate::gauge::EFieldInit::Zero);
+                assert_eq!(seed, None);
+            }
+            other => panic!("Expected Statement::EField Zero, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-IV.7: parser accepts `E_FIELD E ON GAUGE_FIELD U INIT
+    /// MAXWELL_BOLTZMANN BETA 2.5 SEED 20260617;` and emits a
+    /// `Statement::EField` carrying the β and seed.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iv_7_parse_e_field_mb_seed() {
+        let stmt = parse(
+            "E_FIELD E ON GAUGE_FIELD U INIT MAXWELL_BOLTZMANN BETA 2.5 SEED 20260617;",
+        )
+        .expect("parse E_FIELD MAXWELL_BOLTZMANN");
+        match stmt {
+            Statement::EField {
+                name,
+                source_gauge_field,
+                init,
+                seed,
+            } => {
+                assert_eq!(name, "E");
+                assert_eq!(source_gauge_field, "U");
+                assert_eq!(
+                    init,
+                    crate::gauge::EFieldInit::MaxwellBoltzmann { beta: 2.5 }
+                );
+                assert_eq!(seed, Some(20260617));
+            }
+            other => panic!("Expected Statement::EField MB, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-IV.7: parser accepts `E_FIELD E2 ON GAUGE_FIELD U INIT
+    /// FROM other_e;` and emits a `Statement::EField` with
+    /// init=FromField("other_e").
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iv_7_parse_e_field_from() {
+        let stmt = parse("E_FIELD E2 ON GAUGE_FIELD U INIT FROM other_e;")
+            .expect("parse E_FIELD FROM");
+        match stmt {
+            Statement::EField {
+                name,
+                source_gauge_field,
+                init,
+                seed,
+            } => {
+                assert_eq!(name, "E2");
+                assert_eq!(source_gauge_field, "U");
+                assert_eq!(
+                    init,
+                    crate::gauge::EFieldInit::FromField("other_e".into())
+                );
+                assert_eq!(seed, None);
+            }
+            other => panic!("Expected Statement::EField FromField, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-IV.7: parser accepts the full SYMPLECTIC_FLOW form with
+    /// PROJECT_GAUSS TRUE (default config), measure cadence, observable
+    /// list, and seed.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iv_7_parse_sympflow_full() {
+        let stmt = parse(
+            "SYMPLECTIC_FLOW U FROM (U=U, E=E) BETA 2.5 DT 0.02 N_STEPS 1000 \
+             PROJECT_GAUSS TRUE MEASURE_EVERY 20 \
+             MEASURE (H_TOTAL, MEAN(PLAQUETTE), GAUSS_RESIDUAL_MAX, Q_SURROGATE) \
+             SEED 20260617;",
+        )
+        .expect("parse SYMPLECTIC_FLOW full");
+        match stmt {
+            Statement::SymplecticFlow {
+                field,
+                e_field,
+                beta,
+                dt,
+                n_steps,
+                project_gauss,
+                measure_every,
+                measure,
+                seed,
+            } => {
+                assert_eq!(field, "U");
+                assert_eq!(e_field, "E");
+                assert_eq!(beta, 2.5);
+                assert_eq!(dt, 0.02);
+                assert_eq!(n_steps, 1000);
+                assert_eq!(
+                    project_gauss,
+                    Some(crate::gauge::ProjectGaussConfig::default())
+                );
+                let default = crate::gauge::ProjectGaussConfig::default();
+                let cfg = project_gauss.expect("PROJECT_GAUSS TRUE → Some(default)");
+                assert_eq!(cfg.tikhonov, default.tikhonov);
+                assert_eq!(cfg.cg_tol, default.cg_tol);
+                assert_eq!(cfg.cg_max_iter, default.cg_max_iter);
+                assert_eq!(measure_every, 20);
+                assert_eq!(
+                    measure,
+                    vec![
+                        crate::gauge::ObservableId::HTotal,
+                        crate::gauge::ObservableId::MeanPlaquette,
+                        crate::gauge::ObservableId::GaussResidualMax,
+                        crate::gauge::ObservableId::QSurrogate,
+                    ]
+                );
+                assert_eq!(seed, Some(20260617));
+            }
+            other => panic!("Expected Statement::SymplecticFlow, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-IV.7: parser accepts the struct-literal PROJECT_GAUSS
+    /// override (`{ tikhonov: 1e-12, cg_max_iter: 500 }`) and merges
+    /// the named fields against `ProjectGaussConfig::default()`:
+    /// tikhonov=1e-12 (overridden), cg_max_iter=500 (overridden),
+    /// cg_tol=1e-10 (default).
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iv_7_parse_sympflow_struct_override() {
+        let stmt = parse(
+            "SYMPLECTIC_FLOW U FROM (U=U, E=E) BETA 2.5 DT 0.02 N_STEPS 10 \
+             PROJECT_GAUSS { tikhonov: 1e-12, cg_max_iter: 500 } SEED 1;",
+        )
+        .expect("parse SYMPLECTIC_FLOW struct override");
+        match stmt {
+            Statement::SymplecticFlow {
+                project_gauss,
+                ..
+            } => {
+                let cfg =
+                    project_gauss.expect("struct-literal PROJECT_GAUSS → Some(cfg)");
+                assert_eq!(cfg.tikhonov, 1e-12, "tikhonov overridden to 1e-12");
+                assert_eq!(cfg.cg_max_iter, 500, "cg_max_iter overridden to 500");
+                assert_eq!(
+                    cfg.cg_tol, 1e-10,
+                    "cg_tol kept at Halcyon production default"
+                );
+            }
+            other => panic!("Expected Statement::SymplecticFlow, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-IV.7: parser accepts `PROJECT_GAUSS FALSE` and emits
+    /// `project_gauss = None` (skip projection).
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iv_7_parse_sympflow_project_false() {
+        let stmt = parse(
+            "SYMPLECTIC_FLOW U FROM (U=U, E=E) BETA 2.5 DT 0.02 N_STEPS 1 \
+             PROJECT_GAUSS FALSE SEED 1;",
+        )
+        .expect("parse SYMPLECTIC_FLOW PROJECT_GAUSS FALSE");
+        match stmt {
+            Statement::SymplecticFlow { project_gauss, .. } => {
+                assert!(
+                    project_gauss.is_none(),
+                    "PROJECT_GAUSS FALSE → None (skip projection)"
+                );
+            }
+            other => panic!("Expected Statement::SymplecticFlow, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-IV.7: end-to-end smoke — declare a buckyball lattice +
+    /// GAUGE_FIELD U INIT IDENTITY + thermalize (one Gibbs sweep at
+    /// β=2.5) + declare E_FIELD E + run SYMPLECTIC_FLOW for 5 steps
+    /// measuring four observables every step. The response row carries
+    /// 5-entry chains for each requested observable.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iv_7_executor_e_field_then_sympflow() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+        crate::gauge::registry::clear_e_registry();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        // Declare a buckyball lattice and a U gauge field on top.
+        let lat_decl =
+            "LATTICE tdd_hal_iv_7_smoke FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        execute(&mut engine, &parse(lat_decl).expect("parse LATTICE"))
+            .expect("exec LATTICE");
+        let g_decl =
+            "GAUGE_FIELD U_iv_7_smoke ON LATTICE tdd_hal_iv_7_smoke \
+             GROUP SU(2) INIT IDENTITY;";
+        execute(&mut engine, &parse(g_decl).expect("parse GAUGE_FIELD"))
+            .expect("exec GAUGE_FIELD");
+        // The GAUGE_FIELD arm registers through the dyn `register`; the
+        // SYMPLECTIC_FLOW path needs the SU(2)-mut handle. Republish.
+        let bb = crate::lattice::registry::get("tdd_hal_iv_7_smoke")
+            .expect("declared lattice");
+        let u_field = crate::gauge::SU2GaugeField::new(
+            "U_iv_7_smoke".into(),
+            &bb,
+            crate::gauge::GaugeFieldInit::Identity,
+            None,
+        )
+        .expect("identity init");
+        crate::gauge::registry::register_su2(u_field);
+
+        // Thermalize one Gibbs sweep so the field has non-identity
+        // plaquette holonomies. The SYMPLECTIC_FLOW gold-gate
+        // (IV.10) drives this on a longer chain; for the smoke we
+        // just need the field to move off the trivial start.
+        let gibbs = "GIBBS_SAMPLE U_iv_7_smoke BETA 2.5 N_SWEEPS 1 \
+                     MEASURE_EVERY 0 SEED 20260617;";
+        execute(&mut engine, &parse(gibbs).expect("parse GIBBS_SAMPLE"))
+            .expect("exec GIBBS_SAMPLE");
+
+        // Declare the E field via the parser + executor.
+        let e_decl = "E_FIELD E_iv_7_smoke ON GAUGE_FIELD U_iv_7_smoke \
+                      INIT MAXWELL_BOLTZMANN BETA 2.5 SEED 20260617;";
+        execute(&mut engine, &parse(e_decl).expect("parse E_FIELD"))
+            .expect("exec E_FIELD");
+
+        // Drive SYMPLECTIC_FLOW for 5 steps with per-step projection.
+        let flow = "SYMPLECTIC_FLOW U_iv_7_smoke \
+                    FROM (U=U_iv_7_smoke, E=E_iv_7_smoke) \
+                    BETA 2.5 DT 0.02 N_STEPS 5 PROJECT_GAUSS TRUE \
+                    MEASURE_EVERY 1 \
+                    MEASURE (H_TOTAL, MEAN(PLAQUETTE), GAUSS_RESIDUAL_MAX, Q_SURROGATE) \
+                    SEED 20260617;";
+        let stmt = parse(flow).expect("parse SYMPLECTIC_FLOW");
+        let rows = match execute(&mut engine, &stmt).expect("exec SYMPLECTIC_FLOW") {
+            ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1);
+        let r = &rows[0];
+        match r.get("field") {
+            Some(crate::types::Value::Text(s)) => assert_eq!(s, "U_iv_7_smoke"),
+            other => panic!("missing/wrong field column: {other:?}"),
+        }
+        match r.get("e_field") {
+            Some(crate::types::Value::Text(s)) => assert_eq!(s, "E_iv_7_smoke"),
+            other => panic!("missing/wrong e_field column: {other:?}"),
+        }
+        match r.get("n_steps_completed") {
+            Some(crate::types::Value::Integer(n)) => assert_eq!(*n, 5),
+            other => panic!("missing/wrong n_steps_completed: {other:?}"),
+        }
+        for obs in [
+            crate::gauge::ObservableId::HTotal,
+            crate::gauge::ObservableId::MeanPlaquette,
+            crate::gauge::ObservableId::GaussResidualMax,
+            crate::gauge::ObservableId::QSurrogate,
+        ] {
+            let label = obs.label();
+            match r.get(label) {
+                Some(crate::types::Value::Vector(v)) => assert_eq!(
+                    v.len(),
+                    5,
+                    "{label} chain length must equal n_steps/measure_every"
+                ),
+                other => panic!("missing/wrong {label} column: {other:?}"),
+            }
+        }
+    }
+
+    /// TDD-HAL-IV.7: `SELECT H_TOTAL OF (U, E);` now reverses the
+    /// Part III stub at the SELECT-projection layer (locked decision
+    /// IV-J). The positive case returns a finite f64; no
+    /// PartIvObservableNotReady error.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_iv_7_executor_select_h_total_now_works() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+        crate::gauge::registry::clear_e_registry();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl =
+            "LATTICE tdd_hal_iv_7_hsel FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        execute(&mut engine, &parse(lat_decl).expect("parse LATTICE"))
+            .expect("exec LATTICE");
+        let g_decl =
+            "GAUGE_FIELD U_iv_7_hsel ON LATTICE tdd_hal_iv_7_hsel \
+             GROUP SU(2) INIT IDENTITY;";
+        execute(&mut engine, &parse(g_decl).expect("parse GAUGE_FIELD"))
+            .expect("exec GAUGE_FIELD");
+        // Republish under the SU(2)-mut registry so the SELECT
+        // H_TOTAL executor can lock the U handle.
+        let bb = crate::lattice::registry::get("tdd_hal_iv_7_hsel")
+            .expect("declared lattice");
+        let u_field = crate::gauge::SU2GaugeField::new(
+            "U_iv_7_hsel".into(),
+            &bb,
+            crate::gauge::GaugeFieldInit::Identity,
+            None,
+        )
+        .expect("identity init");
+        crate::gauge::registry::register_su2(u_field);
+
+        let e_decl = "E_FIELD E_iv_7_hsel ON GAUGE_FIELD U_iv_7_hsel \
+                      INIT MAXWELL_BOLTZMANN BETA 2.5 SEED 20260617;";
+        execute(&mut engine, &parse(e_decl).expect("parse E_FIELD"))
+            .expect("exec E_FIELD");
+
+        let select = "SELECT H_TOTAL OF (U_iv_7_hsel, E_iv_7_hsel);";
+        let stmt = parse(select).expect("parse SELECT H_TOTAL");
+        let rows = match execute(&mut engine, &stmt).expect("exec SELECT H_TOTAL") {
+            ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1);
+        let r = &rows[0];
+        match r.get("value") {
+            Some(crate::types::Value::Float(h)) => {
+                assert!(
+                    h.is_finite(),
+                    "SELECT H_TOTAL must return a finite f64 (post-IV-J reversal); got {h}"
+                );
+            }
+            other => panic!("missing/wrong value column: {other:?}"),
+        }
     }
 }

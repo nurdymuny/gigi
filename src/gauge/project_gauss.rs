@@ -69,7 +69,7 @@ use crate::lattice::{EdgeOrientation, Lattice};
 /// defaults `{ tikhonov: 1e-14, cg_tol: 1e-10, cg_max_iter: 200 }`.
 /// The 1e-12 spec default is reachable via an explicit struct literal
 /// (`ProjectGaussConfig { tikhonov: 1e-12, .. }`).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ProjectGaussConfig {
     /// Tikhonov regularization weight added to `D · D^T` before CG.
     /// Default `1e-14` matches Halcyon Python production.

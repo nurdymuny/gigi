@@ -119,7 +119,7 @@ pub use kennedy_pendleton::{sample_kp_x0, sample_su2_link};
 #[cfg(feature = "gauge")]
 pub use gibbs_sample::{gibbs_sample, GibbsSampleDiagnostics, GibbsSampleResponse, ObservableId};
 #[cfg(feature = "gauge")]
-pub use observables::PlaquetteReduction;
+pub use observables::{GaussReduction, PlaquetteReduction};
 #[cfg(feature = "gauge")]
 pub use e_field::{EFieldHandle, EFieldInit, SU2EField};
 #[cfg(feature = "gauge")]

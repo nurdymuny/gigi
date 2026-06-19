@@ -56,3 +56,32 @@ impl PlaquetteReduction {
         }
     }
 }
+
+/// Reduction tag for `SELECT GAUSS_RESIDUAL_MAX OF (U, E)` (TDD-HAL-IV.7).
+///
+/// `Covariant` (default) dispatches to
+/// `gauge::compute_gauss_residual_covariant`; `Flat` dispatches to
+/// `gauge::compute_gauss_residual_flat`. The wire envelope carries the
+/// `reduction` label so JSON consumers can disambiguate without
+/// re-reading the GQL source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GaussReduction {
+    /// Covariant divergence `∂_e (U_e · E_e · U_e^†)` per vertex
+    /// (Halcyon production-canonical). Default for SELECT
+    /// GAUSS_RESIDUAL_MAX.
+    Covariant,
+    /// Flat divergence `∂_e E_e` per vertex — the no-parallel-transport
+    /// debug shape. Strictly P1 today; lands here so the parser surface
+    /// is stable when the executor exposes it.
+    Flat,
+}
+
+impl GaussReduction {
+    /// Stable label used in the JSON wire envelope (`reduction` field).
+    pub fn label(&self) -> &'static str {
+        match self {
+            GaussReduction::Covariant => "covariant",
+            GaussReduction::Flat => "flat",
+        }
+    }
+}

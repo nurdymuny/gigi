@@ -927,6 +927,36 @@ pub enum Statement {
         /// Reduction (Covariant / Flat). Defaults to Covariant.
         reduction: crate::gauge::GaussReduction,
     },
+
+    // ── Part V / TDD-HAL-V.2 — SNAPSHOT GAUGE_FIELD verb ────────────
+    //
+    // Closes the parser + embedded-executor half of the durable
+    // post-thermalization buffer snapshot path
+    // (HALCYON_PART_V_SNAPSHOT_GATES.md §3 + Bee's locked decisions
+    // D-V-A/B/C/D ratified 2026-06-19). Group-agnostic Statement
+    // variant; the executor dispatches into
+    // `engine.snapshot_gauge_field_durable` which writes a
+    // `WalEntry::GaugeFieldSnapshot` and returns the SHA-256 +
+    // WAL offset back as the citation handle.
+    /// `SNAPSHOT GAUGE_FIELD name PERSIST;`
+    ///
+    /// `persist` is always `true` at this gate — bare
+    /// `SNAPSHOT GAUGE_FIELD U;` parse-errors per locked decision D-V-D
+    /// ("expected PERSIST"). The field is here so the future
+    /// `TRANSIENT` variant (deferred per spec §6) can flip the bit
+    /// without grammar surgery.
+    #[cfg(feature = "gauge")]
+    Snapshot {
+        /// Gauge-field name to snapshot. Must resolve through
+        /// `gauge_registry::get` at executor time; an undeclared name
+        /// surfaces `GaugeFieldError::FieldNotDeclared` so callers see
+        /// a stable "is not declared" Display string.
+        name: String,
+        /// Always `true` at V.2. Reserved for the future TRANSIENT
+        /// variant (spec §6) so the existing PERSIST-call sites stay
+        /// byte-identical when TRANSIENT lands.
+        persist: bool,
+    },
 }
 
 /// Whitelisted gauge-invariant operations. Each maps to an existing
@@ -1498,6 +1528,14 @@ impl Parser {
             "E_FIELD" => self.parse_e_field(),
             #[cfg(feature = "gauge")]
             "SYMPLECTIC_FLOW" => self.parse_symplectic_flow(),
+            // SNAPSHOT verb. Closes TDD-HAL-V.2 (parser + executor).
+            // Grammar:
+            //   SNAPSHOT GAUGE_FIELD ident PERSIST ;
+            // PERSIST is REQUIRED per Bee's locked decision D-V-D so
+            // every caller is already explicit — when TRANSIENT lands
+            // later (spec §6) zero existing SNAPSHOT call drifts.
+            #[cfg(feature = "gauge")]
+            "SNAPSHOT" => self.parse_snapshot(),
             "INTEGRATE" => self.parse_integrate(),
             "PULLBACK" => self.parse_pullback(),
             "COLLAPSE" => {
@@ -2547,6 +2585,48 @@ impl Parser {
             init,
             seed,
             persist,
+        })
+    }
+
+    /// Parse a `SNAPSHOT GAUGE_FIELD name PERSIST;` statement. Closes
+    /// the parser half of TDD-HAL-V.2. The executor
+    /// (`Statement::Snapshot` arm in `execute`) drives
+    /// `engine.snapshot_gauge_field_durable(name)` which writes the WAL
+    /// entry + returns the SHA-256 citation handle.
+    ///
+    /// Grammar (per `HALCYON_PART_V_SNAPSHOT_GATES.md` §3.P0.2 +
+    /// Bee's locked decision D-V-D ratified 2026-06-19):
+    ///
+    /// ```ebnf
+    /// snapshot_stmt = "SNAPSHOT" "GAUGE_FIELD" ident "PERSIST" ";"
+    /// ```
+    ///
+    /// PERSIST is REQUIRED, not optional. Bare
+    /// `SNAPSHOT GAUGE_FIELD U;` parse-errors with a message that
+    /// names the missing keyword so the TRANSIENT variant (deferred to
+    /// a future sprint per spec §6) can ship without flipping any
+    /// existing call site.
+    #[cfg(feature = "gauge")]
+    fn parse_snapshot(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("GAUGE_FIELD")?;
+        let name = self.expect_word()?;
+        // PERSIST is required per Bee's locked decision D-V-D. The
+        // error string names the deferred TRANSIENT variant so the
+        // grammar's future shape is visible at the failure site.
+        if !self.is_keyword("PERSIST") {
+            return Err(format!(
+                "SNAPSHOT GAUGE_FIELD {name}: expected PERSIST \
+                 (TRANSIENT variant deferred to future sprint per \
+                 HALCYON_PART_V_SNAPSHOT_GATES.md §6)"
+            ));
+        }
+        self.advance();
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::Snapshot {
+            name,
+            persist: true,
         })
     }
 
@@ -9482,6 +9562,74 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }
             Ok(ExecResult::Rows(vec![record]))
         }
+
+        // ── TDD-HAL-V.2 — SNAPSHOT GAUGE_FIELD name PERSIST ────────
+        //
+        // Group-erasure dispatch (locked decision D-V-D mirrors the
+        // II.5/III.6/IV.7 pattern): the parser is group-agnostic; we
+        // resolve U through the dyn read registry, validate
+        // `Group::SU2`, copy the buffer, and hand off to
+        // `engine.snapshot_gauge_field_durable`. That helper computes
+        // the SHA-256 over the LE-encoded buffer bytes (D-V-C — same
+        // hash lands in the WAL and in the response envelope) and
+        // appends a `WalEntry::GaugeFieldSnapshot` to the WAL.
+        //
+        // The response is a single-row Rows envelope carrying the
+        // citation fields the Solves Vol. 4 chapter needs:
+        //   { field, n_edges, repr_dim, sha256 (hex), wal_offset }.
+        #[cfg(feature = "gauge")]
+        Statement::Snapshot { name, persist: _ } => {
+            use crate::gauge::{GaugeFieldError, Group};
+            // 1. Resolve the U handle through the dyn surface. The
+            //    `FieldNotDeclared` Display contains the literal
+            //    "is not declared" substring the red test asserts.
+            let handle = crate::gauge::registry::get(name).ok_or_else(|| {
+                GaugeFieldError::FieldNotDeclared(name.clone()).to_string()
+            })?;
+            // 2. Group-erasure dispatch — only SU(2) proceeds at this
+            //    gate. The future SU(3) / U(1) snapshots ship as new
+            //    arms here (the WAL op already supports every group
+            //    tag per V.1's LE encoding).
+            if !matches!(handle.group(), Group::SU2) {
+                return Err(GaugeFieldError::UnsupportedGroup(handle.group()).to_string());
+            }
+            let buf = handle.as_dense_buffer();
+            let n_edges = buf.n_edges;
+            let repr_dim = buf.repr_dim;
+            // 3. Hand off to the engine. The engine method does the
+            //    SHA-256 + WAL-write + offset bookkeeping and returns
+            //    the citation handle. The buffer clone is one
+            //    `Vec<f64>` of length `n_edges * repr_dim` (2880 bytes
+            //    of `f64` data for SU(2) on the buckyball).
+            let buffer = buf.data.clone();
+            let resp = engine
+                .snapshot_gauge_field_durable(name, handle.group(), buffer)
+                .map_err(|e| format!("gauge: SNAPSHOT PERSIST failed: {e}"))?;
+            // 4. Lower into the Rows envelope. SHA-256 is emitted as
+            //    lowercase hex (the canonical citation form).
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "field".into(),
+                crate::types::Value::Text(name.clone()),
+            );
+            record.insert(
+                "n_edges".into(),
+                crate::types::Value::Integer(n_edges as i64),
+            );
+            record.insert(
+                "repr_dim".into(),
+                crate::types::Value::Integer(repr_dim as i64),
+            );
+            record.insert(
+                "sha256".into(),
+                crate::types::Value::Text(resp.sha256),
+            );
+            record.insert(
+                "wal_offset".into(),
+                crate::types::Value::Integer(resp.wal_offset as i64),
+            );
+            Ok(ExecResult::Rows(vec![record]))
+        }
     }
 }
 
@@ -12868,5 +13016,221 @@ mod tests {
             }
             other => panic!("missing/wrong value column: {other:?}"),
         }
+    }
+
+    // ─── TDD-HAL-V.2 — SNAPSHOT GAUGE_FIELD U PERSIST ───────────────
+    //
+    // Closes the parser + embedded-executor half of the durable
+    // post-thermalization buffer snapshot path (Part V P0). Bee's
+    // locked decisions wired through:
+    //   D-V-A — WAL op encoding is explicit little-endian (the V.1
+    //          payload's `to_le_bytes` already enforces this; the
+    //          executor builds the payload via `from_buffer` which
+    //          mints the SHA-256 over the same LE bytes).
+    //   D-V-B — `/v1/gql` is the only HTTP entry point (the
+    //          `try_dispatch_gauge_statement` 14-arm match catches
+    //          `Statement::Snapshot` so SNAPSHOT lands here instead
+    //          of dropping through the bundle-aware path).
+    //   D-V-C — SHA-256 over the LE buffer bytes is the citation
+    //          handle; the same hash lands in the WAL entry AND the
+    //          Rows envelope returned to the caller.
+    //   D-V-D — PERSIST is REQUIRED (not the default). Bare
+    //          `SNAPSHOT GAUGE_FIELD U;` parse-errors so the future
+    //          TRANSIENT variant ships without flipping any existing
+    //          call site.
+
+    /// TDD-HAL-V.2: `SNAPSHOT GAUGE_FIELD U PERSIST;` parses into the
+    /// expected Statement::Snapshot shape with `persist = true` (the
+    /// red anchor for the gate).
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_2_parse_snapshot_with_persist() {
+        let stmt = parse("SNAPSHOT GAUGE_FIELD U PERSIST;")
+            .expect("parse SNAPSHOT PERSIST");
+        match stmt {
+            Statement::Snapshot { name, persist } => {
+                assert_eq!(name, "U");
+                assert!(persist);
+            }
+            other => panic!("Expected Statement::Snapshot, got {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-V.2: bare `SNAPSHOT GAUGE_FIELD U;` (no PERSIST clause)
+    /// parse-errors per Bee's locked decision D-V-D. The error must
+    /// mention "PERSIST" so the future TRANSIENT variant can ship
+    /// without flipping any existing call site.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_2_parse_snapshot_bare_rejected() {
+        let err = parse("SNAPSHOT GAUGE_FIELD U;")
+            .expect_err("bare SNAPSHOT GAUGE_FIELD must parse-error");
+        assert!(
+            err.contains("PERSIST"),
+            "parse error must name the missing PERSIST keyword, got: {err}"
+        );
+    }
+
+    /// TDD-HAL-V.2: end-to-end smoke — declare a buckyball lattice,
+    /// register a GAUGE_FIELD U INIT IDENTITY on top, run a few
+    /// thermalization sweeps, then execute SNAPSHOT GAUGE_FIELD U
+    /// PERSIST. The response row carries `field`, `n_edges` (90 for
+    /// SU(2) on the buckyball), `repr_dim` (4), the SHA-256 hex, and
+    /// the post-write WAL offset.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_2_executor_snapshot_succeeds() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl =
+            "LATTICE tdd_hal_v_2_smoke FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        execute(&mut engine, &parse(lat_decl).expect("parse LATTICE"))
+            .expect("exec LATTICE");
+
+        let g_decl =
+            "GAUGE_FIELD U_v_2_smoke ON LATTICE tdd_hal_v_2_smoke \
+             GROUP SU(2) INIT IDENTITY;";
+        execute(&mut engine, &parse(g_decl).expect("parse GAUGE_FIELD"))
+            .expect("exec GAUGE_FIELD");
+
+        // Thermalization: GIBBS_SAMPLE mutates the buffer so the
+        // snapshot captures non-identity state.
+        let sample = "GIBBS_SAMPLE U_v_2_smoke BETA 2.5 N_SWEEPS 5 SEED 20260616;";
+        execute(&mut engine, &parse(sample).expect("parse GIBBS_SAMPLE"))
+            .expect("exec GIBBS_SAMPLE");
+
+        let snap = "SNAPSHOT GAUGE_FIELD U_v_2_smoke PERSIST;";
+        let stmt = parse(snap).expect("parse SNAPSHOT");
+        let rows = match execute(&mut engine, &stmt).expect("exec SNAPSHOT") {
+            ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1, "SNAPSHOT must return one row");
+        let r = &rows[0];
+        match r.get("field") {
+            Some(crate::types::Value::Text(s)) => assert_eq!(s, "U_v_2_smoke"),
+            other => panic!("missing/wrong field column: {other:?}"),
+        }
+        match r.get("n_edges") {
+            Some(crate::types::Value::Integer(n)) => assert_eq!(
+                *n, 90,
+                "buckyball has 90 edges"
+            ),
+            other => panic!("missing/wrong n_edges column: {other:?}"),
+        }
+        match r.get("repr_dim") {
+            Some(crate::types::Value::Integer(d)) => assert_eq!(
+                *d, 4,
+                "SU(2) repr_dim is 4"
+            ),
+            other => panic!("missing/wrong repr_dim column: {other:?}"),
+        }
+        match r.get("sha256") {
+            Some(crate::types::Value::Text(hex)) => {
+                assert_eq!(hex.len(), 64, "SHA-256 hex is 64 chars");
+                assert!(
+                    hex.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
+                    "SHA-256 hex must be lowercase, got: {hex}"
+                );
+            }
+            other => panic!("missing/wrong sha256 column: {other:?}"),
+        }
+        match r.get("wal_offset") {
+            Some(crate::types::Value::Integer(o)) => {
+                assert!(*o > 0, "wal_offset must be positive after write");
+            }
+            other => panic!("missing/wrong wal_offset column: {other:?}"),
+        }
+    }
+
+    /// TDD-HAL-V.2: SNAPSHOT against an undeclared field surfaces the
+    /// typed `FieldNotDeclared` Display so the regex anchor
+    /// "is not declared" matches.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_2_executor_snapshot_undeclared_field() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let snap = "SNAPSHOT GAUGE_FIELD nonexistent PERSIST;";
+        let stmt = parse(snap).expect("parse SNAPSHOT");
+        let err = execute(&mut engine, &stmt)
+            .expect_err("undeclared field must surface FieldNotDeclared");
+        assert!(
+            err.contains("'nonexistent'") && err.contains("is not declared"),
+            "error must say `field 'nonexistent' is not declared`, got: {err}"
+        );
+    }
+
+    /// TDD-HAL-V.2: SNAPSHOT twice against the same IDENTITY buffer
+    /// returns the same SHA-256 both times. The identity buffer is
+    /// deterministic by construction, so the citation handle is
+    /// content-addressed: equal buffer bytes → equal SHA-256.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_2_executor_snapshot_sha256_deterministic() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut engine = crate::engine::Engine::open(dir.path()).expect("engine open");
+
+        let lat_decl =
+            "LATTICE tdd_hal_v_2_det FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
+        execute(&mut engine, &parse(lat_decl).expect("parse LATTICE"))
+            .expect("exec LATTICE");
+        let g_decl =
+            "GAUGE_FIELD U_v_2_det ON LATTICE tdd_hal_v_2_det \
+             GROUP SU(2) INIT IDENTITY;";
+        execute(&mut engine, &parse(g_decl).expect("parse GAUGE_FIELD"))
+            .expect("exec GAUGE_FIELD");
+
+        let snap = "SNAPSHOT GAUGE_FIELD U_v_2_det PERSIST;";
+        let stmt = parse(snap).expect("parse SNAPSHOT");
+
+        let rows_a = match execute(&mut engine, &stmt).expect("exec SNAPSHOT #1") {
+            ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        let rows_b = match execute(&mut engine, &stmt).expect("exec SNAPSHOT #2") {
+            ExecResult::Rows(r) => r,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        let sha_a = match rows_a[0].get("sha256") {
+            Some(crate::types::Value::Text(s)) => s.clone(),
+            other => panic!("missing/wrong sha256 in #1: {other:?}"),
+        };
+        let sha_b = match rows_b[0].get("sha256") {
+            Some(crate::types::Value::Text(s)) => s.clone(),
+            other => panic!("missing/wrong sha256 in #2: {other:?}"),
+        };
+        assert_eq!(
+            sha_a, sha_b,
+            "IDENTITY buffer SHA-256 must be deterministic across SNAPSHOT calls"
+        );
+        // The two SNAPSHOTs land at consecutive WAL offsets — a
+        // necessary (but not sufficient) sign that both calls wrote.
+        let off_a = match rows_a[0].get("wal_offset") {
+            Some(crate::types::Value::Integer(n)) => *n,
+            other => panic!("missing wal_offset in #1: {other:?}"),
+        };
+        let off_b = match rows_b[0].get("wal_offset") {
+            Some(crate::types::Value::Integer(n)) => *n,
+            other => panic!("missing wal_offset in #2: {other:?}"),
+        };
+        assert!(
+            off_b > off_a,
+            "second SNAPSHOT must land at a higher WAL offset; got {off_a} → {off_b}"
+        );
     }
 }

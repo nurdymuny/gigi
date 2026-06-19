@@ -409,6 +409,37 @@ pub struct Engine {
         std::collections::HashMap<String, crate::parser::PatternDef>,
 }
 
+/// TDD-HAL-V.2: response shape for
+/// `Engine::snapshot_gauge_field_durable`. `sha256` is the lowercase
+/// hex encoding of the SHA-256 over the LE-encoded buffer bytes
+/// (Bee's locked decision D-V-C — same hash lands in the WAL and in
+/// the citation envelope). `wal_offset` is the post-write
+/// `WalWriter::entry_count`, a stable monotonically-increasing handle
+/// the future V.3 replay-restoration gate can cite without reaching
+/// into WAL internals.
+#[cfg(feature = "gauge")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct SnapshotResponse {
+    /// Lowercase hex of SHA-256 over the LE-encoded buffer bytes.
+    pub sha256: String,
+    /// Post-write WAL entry count.
+    pub wal_offset: u64,
+}
+
+/// Lowercase hex encoding of a 32-byte SHA-256 digest. Inline helper
+/// so we don't pull in the `hex` crate for this single call site; the
+/// canonical citation form per spec §3.P0.3 is lowercase.
+#[cfg(feature = "gauge")]
+fn hex_encode(bytes: &[u8; 32]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(64);
+    for &b in bytes {
+        out.push(HEX[(b >> 4) as usize] as char);
+        out.push(HEX[(b & 0x0F) as usize] as char);
+    }
+    out
+}
+
 impl Engine {
     /// Open or create a database at the given directory.
     ///
@@ -1340,6 +1371,46 @@ impl Engine {
         crate::gauge::registry::register(handle);
         self.maybe_checkpoint()?;
         Ok(())
+    }
+
+    /// TDD-HAL-V.2: durable post-thermalization buffer snapshot for an
+    /// already-declared `GAUGE_FIELD`. Computes the canonical SHA-256
+    /// over the LE-encoded buffer bytes (Bee's locked decision D-V-C —
+    /// the same hash lands in the WAL and in the response envelope as
+    /// the citation handle), then appends a
+    /// `WalEntry::GaugeFieldSnapshot` via
+    /// `WalWriter::log_gauge_field_snapshot`.
+    ///
+    /// Returns a `SnapshotResponse { sha256, wal_offset }` so the
+    /// executor can lower into a single-row Rows envelope. The
+    /// `wal_offset` is the post-write `WalWriter::entry_count` — a
+    /// stable monotonically-increasing handle the future replay-
+    /// restoration gate (V.3) can cite without reaching into WAL
+    /// internals.
+    #[cfg(feature = "gauge")]
+    pub fn snapshot_gauge_field_durable(
+        &mut self,
+        name: &str,
+        group: crate::gauge::Group,
+        buffer: Vec<f64>,
+    ) -> io::Result<SnapshotResponse> {
+        // Build the payload — this computes SHA-256 over the LE-encoded
+        // buffer bytes at construction time (locked decision D-V-A +
+        // D-V-C). The payload is the wire format the WAL writer
+        // expects.
+        let payload = crate::wal::GaugeFieldSnapshotPayload::from_buffer(
+            name.to_string(),
+            group,
+            buffer,
+        );
+        let sha256 = payload.sha256;
+        self.wal.log_gauge_field_snapshot(&payload)?;
+        let wal_offset = self.wal.entry_count();
+        self.maybe_checkpoint()?;
+        Ok(SnapshotResponse {
+            sha256: hex_encode(&sha256),
+            wal_offset,
+        })
     }
 
     /// Filtered query dispatching to both heap and mmap bundles.

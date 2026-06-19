@@ -212,6 +212,95 @@ impl GaugeFieldSnapshotPayload {
     }
 }
 
+/// TDD-HAL-V.3: typed errors for the WAL replay path. Lifted out of the
+/// `io::Error::new(InvalidData, …)` string soup so the snapshot-restore
+/// gate has a structurally-checkable surface: integration tests match on
+/// the variant, not on a substring of the Display impl.
+///
+/// Three variants land here for V.3:
+///
+/// - `OrphanedSnapshot(name)` — a `OP_GAUGE_FIELD_SNAPSHOT` entry for
+///   `name` was seen during replay but no preceding
+///   `OP_GAUGE_FIELD_DECLARE` for the same name reached the registry.
+///   The replay aborts loudly rather than installing a buffer on top of
+///   an undeclared field (where would the lattice come from?).
+/// - `SnapshotGroupMismatch { name, expected, found }` — the snapshot
+///   payload's group tag disagrees with the declared field's group. This
+///   catches "snapshot against wrong field" corruption — e.g. a buffer
+///   captured against a U(1) field somehow landing on an SU(2) field.
+/// - `SnapshotChecksumMismatch { name }` — the SHA-256 the replay re-
+///   derives from the LE-encoded buffer bytes disagrees with the
+///   payload's stored `sha256`. The same hash is the citation handle
+///   (Bee's locked decision D-V-C), so a mismatch means either the
+///   buffer bytes or the sha256 field corrupted in flight; replay
+///   refuses to install a buffer the citation no longer addresses.
+///
+/// The `From<WalError> for io::Error` impl below preserves the existing
+/// `replay_gauge_substrate -> io::Result<()>` surface so the engine's
+/// open path doesn't need a typed-error refactor for V.3.
+#[cfg(feature = "gauge")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WalError {
+    /// `OP_GAUGE_FIELD_SNAPSHOT` for an unknown field — no preceding
+    /// `OP_GAUGE_FIELD_DECLARE` for the same name reached the registry.
+    OrphanedSnapshot(String),
+    /// Snapshot payload's group tag disagrees with the declared field's
+    /// group. Catches snapshot-against-wrong-field corruption.
+    SnapshotGroupMismatch {
+        /// Name of the field at replay time.
+        name: String,
+        /// Group of the declared field (from the registry handle).
+        expected: crate::gauge::Group,
+        /// Group tag carried in the snapshot payload (from the WAL).
+        found: crate::gauge::Group,
+    },
+    /// Re-derived SHA-256 disagrees with the payload's stored hash.
+    SnapshotChecksumMismatch {
+        /// Name of the field whose snapshot failed checksum verification.
+        name: String,
+    },
+}
+
+#[cfg(feature = "gauge")]
+impl std::fmt::Display for WalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WalError::OrphanedSnapshot(name) => write!(
+                f,
+                "WAL OP_GAUGE_FIELD_SNAPSHOT for field '{name}' has no preceding \
+                 OP_GAUGE_FIELD_DECLARE — orphan snapshot, replay refuses to install"
+            ),
+            WalError::SnapshotGroupMismatch {
+                name,
+                expected,
+                found,
+            } => write!(
+                f,
+                "WAL OP_GAUGE_FIELD_SNAPSHOT for field '{name}' carries group {} \
+                 but the declared field is {} — snapshot-against-wrong-field",
+                found.label(),
+                expected.label(),
+            ),
+            WalError::SnapshotChecksumMismatch { name } => write!(
+                f,
+                "WAL OP_GAUGE_FIELD_SNAPSHOT for field '{name}' fails SHA-256 \
+                 re-derivation against payload.sha256 — buffer or hash \
+                 corrupted in flight"
+            ),
+        }
+    }
+}
+
+#[cfg(feature = "gauge")]
+impl std::error::Error for WalError {}
+
+#[cfg(feature = "gauge")]
+impl From<WalError> for io::Error {
+    fn from(e: WalError) -> Self {
+        io::Error::new(io::ErrorKind::InvalidData, e.to_string())
+    }
+}
+
 /// CRC32 (Castagnoli) — simple polynomial checksum for integrity.
 fn crc32(data: &[u8]) -> u32 {
     let mut crc: u32 = 0xFFFF_FFFF;

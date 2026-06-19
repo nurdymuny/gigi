@@ -135,6 +135,41 @@ impl SU2GaugeField {
             init_seed,
         }
     }
+
+    /// TDD-HAL-V.3: install `new_buffer` into `self.buffer.data` in
+    /// place. Used by the WAL `OP_GAUGE_FIELD_SNAPSHOT` replay arm
+    /// after `Engine::open` has rebuilt the field via the metadata-only
+    /// `GAUGE_FIELD_DECLARE` pass — the snapshot payload's buffer
+    /// overwrites the freshly-materialized identity / Haar state with
+    /// the post-thermalization state that was captured before close.
+    ///
+    /// Validates `new_buffer.len() == self.buffer.n_edges *
+    /// self.buffer.repr_dim` and rejects with
+    /// `GaugeFieldError::BufferShapeMismatch` if the wire data ever
+    /// disagrees with the field's declared shape (defense in depth
+    /// against a malformed payload that slipped past the SHA-256 gate
+    /// upstream). Group identity is the WAL replay's job — the snapshot
+    /// payload's group tag is checked against `handle.group()` before
+    /// this method is reached (see `WalError::SnapshotGroupMismatch`).
+    ///
+    /// Idempotent — multiple snapshot entries for the same field
+    /// replay last-write-wins, which is the semantics callers want
+    /// (every `SNAPSHOT GAUGE_FIELD U PERSIST` overwrites the previous
+    /// snapshot's buffer in place).
+    pub fn replace_buffer(
+        &mut self,
+        new_buffer: Vec<f64>,
+    ) -> Result<(), GaugeFieldError> {
+        let expected = self.buffer.n_edges * self.buffer.repr_dim;
+        if new_buffer.len() != expected {
+            return Err(GaugeFieldError::BufferShapeMismatch {
+                expected,
+                got: new_buffer.len(),
+            });
+        }
+        self.buffer.data = new_buffer;
+        Ok(())
+    }
 }
 
 impl EdgeConnection for SU2GaugeField {

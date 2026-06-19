@@ -883,6 +883,14 @@ impl Engine {
 
         // Pass 2 — gauge fields. Resolution: look up lattice by name
         // in the registry (already populated by Pass 1).
+        //
+        // For SU(2) fields we also populate the SU(2)-mut registry via
+        // `register_su2` (mirrors the parser-side fix from commit
+        // 9c5b614). That keeps `get_su2_mut(name)` working after a
+        // restart, which is what the V.3 snapshot-replay pass below
+        // needs: it acquires the mut handle, calls `replace_buffer`,
+        // and republishes through `republish_su2` to keep the dyn
+        // surface coherent with the post-restoration state.
         let mut reader = WalReader::open(wal_path)?;
         reader.replay(|entry| {
             if let WalEntry::GaugeFieldDeclare {
@@ -902,9 +910,101 @@ impl Engine {
                     )
                 })?;
                 let handle = crate::gauge::persistence::materialize_field(
-                    name, &lat, group, init_kind, init_seed,
+                    name.clone(),
+                    &lat,
+                    group,
+                    init_kind.clone(),
+                    init_seed,
                 )?;
                 crate::gauge::registry::register(handle);
+                // Dual-register the SU(2)-mut handle so V.3 snapshot
+                // replay (Pass 3 below) and post-restart GIBBS_SAMPLE
+                // can both reach the field. Non-SU(2) groups skip this
+                // — they don't have a mut surface yet.
+                if matches!(group, crate::gauge::Group::SU2) {
+                    let field = crate::gauge::su2_gauge_field::SU2GaugeField::new(
+                        name,
+                        &lat,
+                        init_kind,
+                        init_seed,
+                    )
+                    .map_err(|e| {
+                        io::Error::new(io::ErrorKind::InvalidData, e.to_string())
+                    })?;
+                    crate::gauge::registry::register_su2(field);
+                }
+            }
+            Ok(())
+        })?;
+
+        // Pass 3 — snapshot restoration (TDD-HAL-V.3).
+        //
+        // Walks every `OP_GAUGE_FIELD_SNAPSHOT` in WAL order. For each
+        // entry we:
+        //   1. Decode the LE-encoded payload (already done by the WAL
+        //      reader; `WalEntry::GaugeFieldSnapshot(payload)` carries
+        //      the parsed `GaugeFieldSnapshotPayload`).
+        //   2. Resolve the field handle via the dyn read registry. A
+        //      missing handle is an orphan snapshot — abort with
+        //      `WalError::OrphanedSnapshot(name)`.
+        //   3. Compare the declared field's group against the snapshot
+        //      payload's group tag. Mismatch is
+        //      `WalError::SnapshotGroupMismatch { expected, found }`.
+        //   4. Re-derive SHA-256 from the decoded buffer's LE bytes
+        //      (the canonical citation handle per locked decision
+        //      D-V-C) and compare against `payload.sha256`. Mismatch is
+        //      `WalError::SnapshotChecksumMismatch { name }`.
+        //   5. Install the buffer in place via
+        //      `SU2GaugeField::replace_buffer`, then republish through
+        //      both registries so the dyn read surface and the SU(2)-
+        //      mut surface stay coherent with the post-restoration
+        //      state.
+        //
+        // Idempotency: multiple snapshot entries for the same field
+        // replay last-write-wins (each `replace_buffer` overwrites
+        // `self.buffer.data` in place; subsequent entries overwrite
+        // their predecessor's bytes).
+        let mut reader = WalReader::open(wal_path)?;
+        reader.replay(|entry| {
+            if let WalEntry::GaugeFieldSnapshot(payload) = entry {
+                // 2. Resolve handle through the dyn read registry.
+                let handle = crate::gauge::registry::get(&payload.name)
+                    .ok_or_else(|| crate::wal::WalError::OrphanedSnapshot(payload.name.clone()))?;
+                // 3. Group-tag agreement.
+                let expected_group = handle.group();
+                if expected_group != payload.group {
+                    return Err(crate::wal::WalError::SnapshotGroupMismatch {
+                        name: payload.name.clone(),
+                        expected: expected_group,
+                        found: payload.group,
+                    }
+                    .into());
+                }
+                // 4. SHA-256 re-derivation (citation-handle integrity).
+                let derived = crate::wal::GaugeFieldSnapshotPayload::compute_buffer_sha256(
+                    &payload.buffer,
+                );
+                if derived != payload.sha256 {
+                    return Err(crate::wal::WalError::SnapshotChecksumMismatch {
+                        name: payload.name.clone(),
+                    }
+                    .into());
+                }
+                // 5. Install the buffer in place via the SU(2)-mut
+                //    handle, then republish to keep both registries
+                //    coherent.
+                if let Some(field_arc) = crate::gauge::registry::get_su2_mut(&payload.name) {
+                    {
+                        let mut guard =
+                            field_arc.lock().expect("su2 field mutex poisoned");
+                        guard
+                            .replace_buffer(payload.buffer)
+                            .map_err(|e| {
+                                io::Error::new(io::ErrorKind::InvalidData, e.to_string())
+                            })?;
+                    }
+                    crate::gauge::registry::republish_su2(&payload.name, field_arc);
+                }
             }
             Ok(())
         })?;
@@ -5114,6 +5214,430 @@ mod tests {
              (was the bug — heap-only bundles were skipped)"
         );
 
+        cleanup(&dir);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TDD-HAL-V.3 — Replay restoration + WalError variants + replace_buffer
+    //
+    // Spec: theory/halcyon/HALCYON_PART_V_SNAPSHOT_GATES.md §3 (P1).
+    // Locked decisions:
+    //   D-V-A — explicit little-endian WAL encoding (the SHA-recompute
+    //           pass at replay time relies on exact LE bytes).
+    //   D-V-C — SHA-256 over LE buffer bytes is the citation handle;
+    //           replay re-derives it and rejects mismatch as
+    //           `WalError::SnapshotChecksumMismatch`.
+    //
+    // Four red tests:
+    //   1. Byte-identity round trip — declare LATTICE + GAUGE_FIELD,
+    //      thermalize via GIBBS_SAMPLE, SNAPSHOT, drop engine, reopen,
+    //      verify the SU(2)-mut handle's buffer is byte-identical to
+    //      the pre-close state.
+    //   2. Orphan snapshot — hand-build a WAL with
+    //      OP_GAUGE_FIELD_SNAPSHOT but no preceding
+    //      OP_GAUGE_FIELD_DECLARE; replay rejects with
+    //      `WalError::OrphanedSnapshot`.
+    //   3. Group mismatch — snapshot an SU(2) field, corrupt the
+    //      payload's group byte to U(1) in the WAL on disk (recompute
+    //      CRC); replay rejects with `WalError::SnapshotGroupMismatch`.
+    //   4. Checksum mismatch — snapshot, flip one byte of the buffer
+    //      portion of the payload (recompute CRC so the WAL reader
+    //      doesn't trip first); replay re-derives SHA, sees mismatch,
+    //      rejects with `WalError::SnapshotChecksumMismatch`.
+    //
+    // All four tests acquire `gauge::registry::test_serial_lock()` so
+    // they don't interleave with parallel gauge tests on the process-
+    // global lattice + gauge registries.
+
+    /// CRC32 (Castagnoli) — local copy of `wal::crc32` for the byte-
+    /// surgery WAL tests below. The implementation is identical to the
+    /// one in `src/wal.rs`; replicated here because `crc32` is a
+    /// private function in the WAL module. This is test-only code.
+    #[cfg(feature = "gauge")]
+    fn crc32_for_test(data: &[u8]) -> u32 {
+        let mut crc: u32 = 0xFFFF_FFFF;
+        for &byte in data {
+            crc ^= byte as u32;
+            for _ in 0..8 {
+                if crc & 1 != 0 {
+                    crc = (crc >> 1) ^ 0x82F6_3B78;
+                } else {
+                    crc >>= 1;
+                }
+            }
+        }
+        !crc
+    }
+
+    /// Locate the first `OP_GAUGE_FIELD_SNAPSHOT` (0x0B) entry's
+    /// payload-byte range inside a raw WAL file. Returns
+    /// `(entry_start, entry_end_excl, payload_start, payload_end_excl)`
+    /// where `entry_*` covers `[op_byte..crc)` (the CRC-checked range)
+    /// and `payload_*` covers the inner payload bytes (excludes op
+    /// byte). The CRC tail itself is at `[entry_end_excl ..
+    /// entry_end_excl + 4)`.
+    #[cfg(feature = "gauge")]
+    fn locate_snapshot_entry(bytes: &[u8]) -> Option<(usize, usize, usize, usize)> {
+        let mut offset = 0usize;
+        while offset + 4 <= bytes.len() {
+            let total_len = u32::from_le_bytes(
+                bytes[offset..offset + 4].try_into().unwrap(),
+            ) as usize;
+            let entry_start = offset + 4;
+            let entry_end = entry_start + total_len; // op + payload (no CRC)
+            if entry_end + 4 > bytes.len() {
+                return None;
+            }
+            let op = bytes[entry_start];
+            if op == 0x0B {
+                // payload covers [entry_start+1 .. entry_end)
+                return Some((entry_start, entry_end, entry_start + 1, entry_end));
+            }
+            offset = entry_end + 4; // skip CRC tail
+        }
+        None
+    }
+
+    /// TDD-HAL-V.3: byte-identity round trip — declare a buckyball
+    /// LATTICE + GAUGE_FIELD U IDENTITY PERSIST via the engine's
+    /// durable path, run a few thermalization sweeps (so the snapshot
+    /// captures a non-identity state), SNAPSHOT, drop the engine,
+    /// reopen on the same data directory. The replay pass restores
+    /// the buffer from the WAL, and the post-restart SU(2)-mut
+    /// handle's buffer must be byte-identical to the pre-close state.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_3_replay_snapshot_byte_identity() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = test_dir("hal_v_3_byte_identity");
+        cleanup(&dir);
+
+        let pre_close_buffer: Vec<f64>;
+        let lat_name = "bb_v_3_bi";
+        let field_name = "U_v_3_bi";
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            // 1. Declare buckyball lattice durably (low-level path so
+            //    the LATTICE statement lands in the WAL — the parser-
+            //    level LATTICE FROM TRUNCATED_ICOSAHEDRON variant only
+            //    writes to the in-memory registry).
+            let mut bb = crate::lattice::topology::truncated_icosahedron::buckyball();
+            bb.name = lat_name.into();
+            engine
+                .declare_lattice_durable(bb.clone())
+                .expect("declare lattice durable");
+            // 2. Declare GAUGE_FIELD U IDENTITY PERSIST.
+            let field = crate::gauge::SU2GaugeField::new(
+                field_name.into(),
+                &bb,
+                crate::gauge::GaugeFieldInit::Identity,
+                None,
+            )
+            .expect("identity init");
+            engine
+                .declare_gauge_field_durable(std::sync::Arc::new(field.clone()))
+                .expect("declare gauge field durable");
+            // Mirror the parser-side dual-register so GIBBS_SAMPLE
+            // can find the SU(2)-mut handle (this is the same pattern
+            // commit 9c5b614 wired into the parser arm).
+            crate::gauge::registry::register_su2(field);
+            // 3. Thermalize via the SNAPSHOT executor's prerequisite
+            //    verb — the parser-level GIBBS_SAMPLE arm walks
+            //    `get_su2_mut` directly.
+            let sweep = crate::parser::parse(&format!(
+                "GIBBS_SAMPLE {field_name} BETA 2.5 N_SWEEPS 5 SEED 20260616;"
+            ))
+            .expect("parse GIBBS_SAMPLE");
+            crate::parser::execute(&mut engine, &sweep).expect("exec GIBBS_SAMPLE");
+            // 4. Capture pre-close buffer state.
+            let arc = crate::gauge::registry::get_su2_mut(field_name)
+                .expect("SU(2)-mut handle must exist post-sweep");
+            pre_close_buffer = arc.lock().unwrap().buffer.data.clone();
+            // Sanity: thermalized buffer is not the identity vector.
+            assert!(
+                pre_close_buffer.iter().any(|x| (*x - 1.0).abs() > 1e-12 && x.abs() > 1e-12),
+                "thermalized buffer must not be identity"
+            );
+            // 5. SNAPSHOT GAUGE_FIELD U PERSIST via the executor.
+            let snap = crate::parser::parse(&format!(
+                "SNAPSHOT GAUGE_FIELD {field_name} PERSIST;"
+            ))
+            .expect("parse SNAPSHOT");
+            crate::parser::execute(&mut engine, &snap).expect("exec SNAPSHOT");
+            // engine drops at end of scope — WAL is flushed via
+            // `WalWriter::sync` inside the engine's maybe_checkpoint /
+            // explicit sync paths.
+        }
+
+        // Wipe the in-process registries so we know reopen rebuilt
+        // from the WAL alone — not from leftover state.
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        // Reopen.
+        {
+            let _engine = Engine::open(&dir).expect("reopen engine");
+            let arc = crate::gauge::registry::get_su2_mut(field_name)
+                .expect(
+                    "SU(2)-mut handle must be restored by replay",
+                );
+            let post_open_buffer = arc.lock().unwrap().buffer.data.clone();
+            assert_eq!(
+                post_open_buffer.len(),
+                pre_close_buffer.len(),
+                "buffer length must match pre-close"
+            );
+            assert_eq!(
+                post_open_buffer, pre_close_buffer,
+                "post-replay buffer must be byte-identical to pre-close state"
+            );
+        }
+
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+        cleanup(&dir);
+    }
+
+    /// TDD-HAL-V.3: orphan snapshot — hand-build a WAL whose only
+    /// gauge entry is `OP_GAUGE_FIELD_SNAPSHOT` for field `U_orphan`
+    /// (no preceding `OP_GAUGE_FIELD_DECLARE`). Engine::open must
+    /// surface `WalError::OrphanedSnapshot("U_orphan")` and refuse to
+    /// install the buffer.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_3_replay_orphan_snapshot() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = test_dir("hal_v_3_orphan");
+        cleanup(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        // Hand-write a WAL with one OP_GAUGE_FIELD_SNAPSHOT entry and
+        // nothing else. The payload's buffer is a valid 90×4 identity
+        // buffer so SHA-256 verification passes; the rejection has to
+        // come from the orphan-handle check alone.
+        let wal_path = dir.join("gigi.wal");
+        let mut buffer = Vec::with_capacity(90 * 4);
+        for _ in 0..90 {
+            buffer.push(1.0);
+            buffer.push(0.0);
+            buffer.push(0.0);
+            buffer.push(0.0);
+        }
+        let payload = crate::wal::GaugeFieldSnapshotPayload::from_buffer(
+            "U_orphan".to_string(),
+            crate::gauge::Group::SU2,
+            buffer,
+        );
+        {
+            let mut writer = crate::wal::WalWriter::open(&wal_path).unwrap();
+            writer.log_gauge_field_snapshot(&payload).unwrap();
+            writer.sync().unwrap();
+        }
+
+        // Engine::open replays the WAL — the snapshot pass must
+        // surface the orphan error through the io::Error path.
+        let err = match Engine::open(&dir) {
+            Ok(_) => panic!("orphan snapshot must surface WalError::OrphanedSnapshot"),
+            Err(e) => e,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("U_orphan") && msg.contains("orphan"),
+            "error must name the orphan field and the orphan category, got: {msg}"
+        );
+
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+        cleanup(&dir);
+    }
+
+    /// TDD-HAL-V.3: group mismatch — declare an SU(2) field, snapshot
+    /// it, then surgically rewrite the group tag byte in the WAL's
+    /// snapshot payload to U(1) (0x03) and recompute the CRC so the
+    /// WAL reader doesn't trip first. Replay must surface
+    /// `WalError::SnapshotGroupMismatch` because the registered
+    /// handle's group disagrees with the payload's group tag.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_3_replay_group_mismatch() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = test_dir("hal_v_3_group_mismatch");
+        cleanup(&dir);
+
+        let lat_name = "bb_v_3_gm";
+        let field_name = "U_v_3_gm";
+
+        // 1. Set up the WAL with a real SU(2) snapshot via the
+        //    durable engine path so LATTICE + GAUGE_FIELD + SNAPSHOT
+        //    all land in the WAL.
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let mut bb =
+                crate::lattice::topology::truncated_icosahedron::buckyball();
+            bb.name = lat_name.into();
+            engine
+                .declare_lattice_durable(bb.clone())
+                .expect("declare lattice durable");
+            let field = crate::gauge::SU2GaugeField::new(
+                field_name.into(),
+                &bb,
+                crate::gauge::GaugeFieldInit::Identity,
+                None,
+            )
+            .expect("identity init");
+            engine
+                .declare_gauge_field_durable(std::sync::Arc::new(field.clone()))
+                .expect("declare gauge field durable");
+            crate::gauge::registry::register_su2(field);
+            let snap = crate::parser::parse(&format!(
+                "SNAPSHOT GAUGE_FIELD {field_name} PERSIST;"
+            ))
+            .expect("parse SNAPSHOT");
+            crate::parser::execute(&mut engine, &snap).expect("exec SNAPSHOT");
+        }
+
+        // 2. Surgically rewrite the group-tag byte. The snapshot
+        //    payload layout is:
+        //      [u32 name_len][name_bytes][u8 group_tag][32 sha256]…
+        //    So group_tag lives at payload_start + 4 + name_len.
+        let wal_path = dir.join("gigi.wal");
+        let mut bytes = fs::read(&wal_path).unwrap();
+        let (entry_start, entry_end, payload_start, _payload_end) =
+            locate_snapshot_entry(&bytes).expect("snapshot entry in WAL");
+        let name_len = u32::from_le_bytes(
+            bytes[payload_start..payload_start + 4].try_into().unwrap(),
+        ) as usize;
+        let group_tag_idx = payload_start + 4 + name_len;
+        // Sanity: it's currently SU(2) (0x01).
+        assert_eq!(bytes[group_tag_idx], 0x01, "group tag must currently be SU(2)");
+        bytes[group_tag_idx] = 0x03; // U(1)
+        // Recompute CRC over [entry_start..entry_end) and write it
+        // back at [entry_end..entry_end+4).
+        let new_crc = crc32_for_test(&bytes[entry_start..entry_end]);
+        bytes[entry_end..entry_end + 4].copy_from_slice(&new_crc.to_le_bytes());
+        fs::write(&wal_path, &bytes).unwrap();
+
+        // 3. Wipe registries, reopen — must surface group mismatch.
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+        let err = match Engine::open(&dir) {
+            Ok(_) => panic!("group mismatch must surface WalError::SnapshotGroupMismatch"),
+            Err(e) => e,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("U_v_3_gm") && msg.contains("SU(2)") && msg.contains("U(1)"),
+            "error must name the field and both groups, got: {msg}"
+        );
+
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+        cleanup(&dir);
+    }
+
+    /// TDD-HAL-V.3: checksum mismatch — declare + snapshot an SU(2)
+    /// field, then surgically flip one byte of the buffer portion of
+    /// the WAL's snapshot payload and recompute the entry's CRC.
+    /// Replay re-derives SHA-256 over the corrupted buffer, sees
+    /// mismatch against the payload's stored hash, and rejects with
+    /// `WalError::SnapshotChecksumMismatch`.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_3_replay_checksum_mismatch() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = test_dir("hal_v_3_checksum");
+        cleanup(&dir);
+
+        let lat_name = "bb_v_3_cs";
+        let field_name = "U_v_3_cs";
+
+        // 1. Real SU(2) snapshot in the WAL via the durable engine
+        //    path (parser LATTICE FROM TRUNCATED_ICOSAHEDRON is
+        //    in-memory only — we need declare_lattice_durable so the
+        //    LATTICE entry lands in the WAL alongside the GAUGE_FIELD
+        //    and SNAPSHOT entries).
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let mut bb =
+                crate::lattice::topology::truncated_icosahedron::buckyball();
+            bb.name = lat_name.into();
+            engine
+                .declare_lattice_durable(bb.clone())
+                .expect("declare lattice durable");
+            let field = crate::gauge::SU2GaugeField::new(
+                field_name.into(),
+                &bb,
+                crate::gauge::GaugeFieldInit::Identity,
+                None,
+            )
+            .expect("identity init");
+            engine
+                .declare_gauge_field_durable(std::sync::Arc::new(field.clone()))
+                .expect("declare gauge field durable");
+            crate::gauge::registry::register_su2(field);
+            let sweep = crate::parser::parse(&format!(
+                "GIBBS_SAMPLE {field_name} BETA 2.5 N_SWEEPS 3 SEED 20260616;"
+            ))
+            .expect("parse GIBBS_SAMPLE");
+            crate::parser::execute(&mut engine, &sweep)
+                .expect("exec GIBBS_SAMPLE");
+            let snap = crate::parser::parse(&format!(
+                "SNAPSHOT GAUGE_FIELD {field_name} PERSIST;"
+            ))
+            .expect("parse SNAPSHOT");
+            crate::parser::execute(&mut engine, &snap).expect("exec SNAPSHOT");
+        }
+
+        // 2. Flip one byte of the buffer. Payload layout:
+        //      [u32 name_len][name_bytes][u8 group_tag][32 sha256]
+        //      [u32 buf_len][buf_len*8 buffer_bytes]
+        //    Buffer starts at:
+        //      payload_start + 4 + name_len + 1 + 32 + 4
+        let wal_path = dir.join("gigi.wal");
+        let mut bytes = fs::read(&wal_path).unwrap();
+        let (entry_start, entry_end, payload_start, _payload_end) =
+            locate_snapshot_entry(&bytes).expect("snapshot entry in WAL");
+        let name_len = u32::from_le_bytes(
+            bytes[payload_start..payload_start + 4].try_into().unwrap(),
+        ) as usize;
+        let buffer_start = payload_start + 4 + name_len + 1 + 32 + 4;
+        // Flip the very first byte of the buffer (least-significant byte
+        // of the first f64). XOR with 0xFF is a cheap guaranteed mutation.
+        bytes[buffer_start] ^= 0xFF;
+        // Recompute CRC so the WAL reader's integrity check passes —
+        // the checksum gate we want to catch is the SHA-256 one inside
+        // the V.3 replay pass, not the CRC32 in the WAL reader.
+        let new_crc = crc32_for_test(&bytes[entry_start..entry_end]);
+        bytes[entry_end..entry_end + 4].copy_from_slice(&new_crc.to_le_bytes());
+        fs::write(&wal_path, &bytes).unwrap();
+
+        // 3. Wipe + reopen — must surface SHA-256 mismatch.
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+        let err = match Engine::open(&dir) {
+            Ok(_) => panic!("checksum mismatch must surface WalError::SnapshotChecksumMismatch"),
+            Err(e) => e,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("U_v_3_cs") && msg.contains("SHA-256"),
+            "error must name the field and the SHA-256 category, got: {msg}"
+        );
+
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
         cleanup(&dir);
     }
 }

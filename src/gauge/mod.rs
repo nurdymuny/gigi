@@ -78,6 +78,8 @@ pub mod observables;
 pub mod e_field;
 #[cfg(feature = "gauge")]
 pub mod gauss;
+#[cfg(feature = "gauge")]
+pub mod project_gauss;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -119,6 +121,8 @@ pub use gauss::{
     build_vertex_edge_incidence, compute_gauss_residual_covariant,
     compute_gauss_residual_flat, max_inf_norm, VertexEdgeIncidence,
 };
+#[cfg(feature = "gauge")]
+pub use project_gauss::{project_gauss, ProjectGaussConfig, ProjectGaussDiagnostics};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

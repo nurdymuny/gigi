@@ -4824,6 +4824,8 @@ impl Parser {
                 Token::Str(s) => format!("'{s}'"),
                 Token::LParen => "(".to_string(),
                 Token::RParen => ")".to_string(),
+                Token::LBrace => "{".to_string(),
+                Token::RBrace => "}".to_string(),
                 Token::Comma => ",".to_string(),
                 Token::Eq => "=".to_string(),
                 Token::Neq => "!=".to_string(),

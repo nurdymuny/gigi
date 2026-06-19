@@ -349,7 +349,15 @@ fn tdd_hal_iii_8b_c_gibbs_sample_short_run_in_process_reproducible() {
 /// identity vs Halcyon's NumPy PCG64 mock is impossible by design
 /// (locked decision 1) and explicitly out of scope; the provenance
 /// side-car documents that drop.
+///
+/// **Profile pin (TDD-HAL-III.8c).** This test asserts byte-identical
+/// reproducibility against the III.8a canonical fixture. Release-profile
+/// FMA + reassociation accumulate ~1 ULP across 2048 sweeps, so this
+/// test runs only under --release (where it matches the release-harvested
+/// fixture) and is `#[ignore]`d in debug. Run via:
+/// `cargo test --features halcyon --test halcyon_part_iii_gold --release`.
 #[test]
+#[cfg_attr(debug_assertions, ignore)]
 fn tdd_hal_iii_8b_d_production_thermalization_pass_criterion() {
     let _g = gigi::gauge::registry::test_serial_lock();
     clear_registries();

@@ -1,0 +1,35 @@
+{
+  "source": "gigi::gauge::symplectic_flow (driven through gigi::parser::execute Statement::SymplecticFlow)",
+  "beta": 2.5,
+  "dt": 0.02,
+  "n_steps": 1000,
+  "measure_every": 20,
+  "measure": [
+    "H_TOTAL",
+    "MEAN(PLAQUETTE)",
+    "GAUSS_RESIDUAL_MAX",
+    "Q_SURROGATE"
+  ],
+  "project_gauss": {
+    "enabled": true,
+    "cadence": "per_leapfrog_step",
+    "tikhonov": 1e-14,
+    "cg_tol": 1e-10,
+    "cg_max_iter": 200,
+    "preconditioner": "none"
+  },
+  "init_U": "IDENTITY",
+  "init_E": "MAXWELL_BOLTZMANN",
+  "lattice": "TRUNCATED_ICOSAHEDRON (buckyball: V=60, E=90, F=32)",
+  "topology": "S2",
+  "group": "SU(2)",
+  "seed": 20260617,
+  "thermalization_sweeps": 200,
+  "thermalization_seed": 20260616,
+  "rng": "gigi::gauge::marsaglia_haar::SmallRng (xorshift64*)",
+  "algorithm": "KDK leapfrog + Tikhonov CG Gauss projection per step",
+  "profile": "release",
+  "harvest_commit": "<fill in with the SHA of the TDD-HAL-IV.9 commit once it lands>",
+  "purpose": "Part IV gold-gate canonical reference. Cross-binding bit-identity with Halcyon NumPy PCG64 is impossible by design (locked decision 1, inherited); intra-GIGI bit-identity at fixed seeds is the bit-id contract.",
+  "note": "Locked decision IV-A pins the production tikhonov default to 1e-14; IV-D pins per-step projection cadence; IV-E pins the CG preconditioner to NONE. The harvest must run under --release; debug-profile re-harvests would land a different fixture and break IV.10."
+}

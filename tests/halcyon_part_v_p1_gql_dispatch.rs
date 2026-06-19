@@ -193,24 +193,15 @@ async fn tdd_hal_v_0_gql_dispatches_gauge_statements() {
     assert_eq!(env["name"], "U");
     assert_eq!(env["lattice"], "bb");
 
-    // Republish through `register_su2` so GIBBS_SAMPLE can lock the
-    // SU(2)-mut handle for the heatbath kernel (D4 fix-up — see the
-    // III.8b harness + Part IV HTTP test's `declare_identity_fixture`).
-    // The current `Statement::GaugeField` executor arm in
-    // `src/parser.rs` only registers in the dyn read map; the SU(2)-
-    // mut sibling map is populated only by `register_su2`. This is a
-    // pre-existing latent gap on both the `/v1/gauge_field` POST
-    // route AND the parser arm; the same workaround is the standard
-    // pattern in tests/halcyon_part_iv_http.rs:131-141.
-    let lat = lattice_registry::get("bb").expect("bb registered above");
-    let su2 = gigi::gauge::SU2GaugeField::new(
-        "U".into(),
-        &lat,
-        gigi::gauge::GaugeFieldInit::Identity,
-        None,
-    )
-    .expect("identity init");
-    gauge_registry::register_su2(su2);
+    // TDD-HAL-V.0b — the manual `register_su2` workaround is GONE.
+    // The fix at the `Statement::GaugeField` executor arm in
+    // `src/parser.rs` (and the sibling POST /v1/gauge_field handler in
+    // `src/gauge/http.rs`) now populates BOTH the dyn read map AND the
+    // SU(2)-mut sibling map at declaration time, so GIBBS_SAMPLE finds
+    // U via `get_su2_mut` without a downstream re-park. Removing the
+    // workaround is the load-bearing part of the RED→GREEN flip: this
+    // test fails BEFORE the fix with "U is not declared" at the
+    // gibbs-sample call site below.
 
     // ── Step 4 ── POST /v1/gql `GIBBS_SAMPLE U BETA 2.5 N_SWEEPS 10
     //              MEASURE_EVERY 1 MEASURE (MEAN(PLAQUETTE)) SEED
@@ -256,6 +247,22 @@ async fn tdd_hal_v_0_gql_dispatches_gauge_statements() {
             "MeanPlaquette[{i}] must be finite, got {v}"
         );
     }
+    // TDD-HAL-V.0b receipt: the sweep must have MUTATED U. If GAUGE_FIELD
+    // had only landed in the dyn read map (pre-fix state) then either
+    //   (a) GIBBS_SAMPLE errors with "U is not declared" because
+    //       `get_su2_mut` returns None, OR
+    //   (b) some upstream fallback runs against a fresh identity buffer
+    //       and the mean-plaquette chain stays pinned at 1.0.
+    // Either way, the post-fix invariant is: at least one entry of the
+    // 10-element chain is strictly less than 1.0 (Kennedy-Pendleton drift
+    // off identity at β=2.5 is overwhelmingly likely on the first sweep).
+    let drifted = chain.iter().any(|v| *v < 1.0 - 1e-9);
+    assert!(
+        drifted,
+        "GIBBS_SAMPLE must have mutated U_p1: every MeanPlaquette entry is \
+         pinned at 1.0 ({chain:?}); proves the heatbath kernel never saw \
+         a mutable U handle (pre-fix dual-registration gap)"
+    );
 
     // ── Step 5 ── POST /v1/gql `SELECT PLAQUETTE OF U;` — must return
     //              Rows with a per-face Vector of length F=32.
@@ -278,15 +285,26 @@ async fn tdd_hal_v_0_gql_dispatches_gauge_statements() {
          carry all 32 entries"
     );
     // After the GIBBS_SAMPLE above, the U field is no longer
-    // identity, so per-face values may have drifted off 1.0. Just
-    // assert finiteness — the wire shape is the load-bearing
-    // dispatch receipt.
+    // identity, so per-face values must have drifted off 1.0. Finiteness
+    // is necessary but not sufficient — the read path must pick up the
+    // POST-Gibbs state. If GAUGE_FIELD declaration only landed in the
+    // dyn read map and GIBBS_SAMPLE worked against a separate mut copy
+    // that was never re-published, this read would still show all 1.0.
     for (i, v) in per_face.iter().enumerate() {
         assert!(
             v.is_finite(),
             "per_face[{i}] must be finite, got {v}"
         );
     }
+    let post_gibbs_drifted = per_face.iter().any(|v| (*v - 1.0).abs() > 1e-9);
+    assert!(
+        post_gibbs_drifted,
+        "SELECT PLAQUETTE per_face must reflect the POST-Gibbs state: \
+         all 32 face values are pinned at 1.0 ({per_face:?}); proves \
+         the dyn read map never saw the mutated U (pre-fix dual-\
+         registration gap means refresh_dyn_from_su2_mut had no entry \
+         to publish from)"
+    );
 
     // ── Negative receipt ── a NON-gauge statement (SHOW BUNDLES is
     //                       the canonical bundle-aware verb) must

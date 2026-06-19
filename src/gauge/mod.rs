@@ -82,6 +82,8 @@ pub mod gauss;
 pub mod project_gauss;
 #[cfg(feature = "gauge")]
 pub mod wilson_force;
+#[cfg(feature = "gauge")]
+pub mod lie_exp;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -127,6 +129,8 @@ pub use gauss::{
 pub use project_gauss::{project_gauss, ProjectGaussConfig, ProjectGaussDiagnostics};
 #[cfg(feature = "gauge")]
 pub use wilson_force::{apply_force_kick, wilson_force_per_edge};
+#[cfg(feature = "gauge")]
+pub use lie_exp::{drift_step, matrix_exp_su2_q};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

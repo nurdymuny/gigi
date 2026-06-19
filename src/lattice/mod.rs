@@ -171,6 +171,40 @@ impl Lattice {
         inc
     }
 
+    /// Build the per-vertex → list-of-`(edge_id, orientation)`
+    /// incidence table.
+    ///
+    /// For each vertex `v`, the returned `inc[v]` enumerates every
+    /// edge that touches `v`; `orientation` records whether `v` is
+    /// the head (`Forward` — the `b` end of `edges[i] = (a, b)`) or
+    /// the tail (`Reverse` — the `a` end). On a degree-k graph every
+    /// vertex has exactly `k` incident entries; on the buckyball
+    /// (truncated icosahedron) every vertex has exactly 3.
+    ///
+    /// The result is opt-in / one-shot — we deliberately do NOT
+    /// store it on `Lattice` so the `to_gql` round-trip stays
+    /// byte-identical (the incidence is derived, not declared).
+    /// Callers in `gauge::gauss` re-export this as
+    /// `VertexEdgeIncidence` (the type alias is just
+    /// `Vec<Vec<(EdgeId, EdgeOrientation)>>`); the IV.2 Gauss-
+    /// divergence operator hoists the result out of any inner loop.
+    /// Iterates edges in ascending `edge_id` order so the per-vertex
+    /// entry list is deterministic (load-bearing for the A2 row 1
+    /// bit-identity contract on the IV.10 symplectic flow).
+    ///
+    /// Cost: `O(E)` (one pass over the edge list).
+    ///
+    /// Handshake-lemma invariant: `Σ_v inc[v].len() == 2 * n_edges()`.
+    pub fn build_vertex_edge_incidence(&self) -> Vec<Vec<(EdgeId, EdgeOrientation)>> {
+        let mut inc: Vec<Vec<(EdgeId, EdgeOrientation)>> =
+            (0..self.n_vertices).map(|_| Vec::new()).collect();
+        for (eid, &(u, v)) in self.edges.iter().enumerate() {
+            inc[u].push((eid, EdgeOrientation::Reverse));
+            inc[v].push((eid, EdgeOrientation::Forward));
+        }
+        inc
+    }
+
     /// Resolve a face's consecutive vertex pair `(a, b)` to the edge
     /// index + orientation. Returns `None` if the pair is not an
     /// edge of the lattice in either direction.

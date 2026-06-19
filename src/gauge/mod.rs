@@ -76,6 +76,8 @@ pub mod gibbs_sample;
 pub mod observables;
 #[cfg(feature = "gauge")]
 pub mod e_field;
+#[cfg(feature = "gauge")]
+pub mod gauss;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -112,6 +114,11 @@ pub use gibbs_sample::{gibbs_sample, GibbsSampleDiagnostics, GibbsSampleResponse
 pub use observables::PlaquetteReduction;
 #[cfg(feature = "gauge")]
 pub use e_field::{EFieldHandle, EFieldInit, SU2EField};
+#[cfg(feature = "gauge")]
+pub use gauss::{
+    build_vertex_edge_incidence, compute_gauss_residual_covariant,
+    compute_gauss_residual_flat, max_inf_norm, VertexEdgeIncidence,
+};
 
 use crate::bundle::BundleStore;
 use crate::types::{FieldDef, FieldType, Record, Value};

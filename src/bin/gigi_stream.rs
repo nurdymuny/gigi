@@ -4601,138 +4601,75 @@ struct CachedFit {
     variance_ratio: f64,
 }
 
+/// Thin wrapper around the generic
+/// [`gigi::caches::single_flight::SingleFlightCache`] (extracted
+/// 2026-06-20, workflow `w2n0fgqkk`). Behavior is byte-identical to
+/// the prior hand-rolled implementation:
+///
+/// - `RwLock<HashMap>` hot path, lock-free read on hit.
+/// - Per-key `Mutex<()>` single-flight on cache miss.
+/// - Mutation-counter invalidation (caller passes
+///   `BundleStore::mutation_counter()` on every call).
+/// - Random FIFO-on-iteration eviction at capacity.
+///
+/// The `counter_at_fit` field is retained on [`CachedFit`] for
+/// backward compatibility with existing diagnostic call sites but is
+/// no longer consulted for invalidation — the cache's `(V, u64)`
+/// tuple is the source of truth.
 #[cfg(feature = "kahler")]
 pub struct BundleFlowCache {
-    inner: std::sync::RwLock<std::collections::HashMap<CacheKey, CachedFit>>,
-    /// Per-key compute locks for single-flight deduplication on cache
-    /// miss. Per Marcella's 2026-05-27 check #1a: without this, N
-    /// concurrent cache misses on the same key all perform the full
-    /// (~3s at n=384) fit computation, only the last winning the
-    /// race; N-1 of those are wasted CPU.
-    ///
-    /// Pattern: cache miss → acquire per-key lock (blocks if another
-    /// thread holds it) → re-check main cache (the prior holder may
-    /// have just inserted) → if still missing, compute + insert + drop
-    /// the lock. Other waiters re-check on acquire and find the entry.
-    ///
-    /// The Arc<Mutex<()>> holds the actual lock; the outer Mutex
-    /// guards the map structure itself. Map mutations are brief
-    /// (Mutex::lock + HashMap::entry); only the actual fit work
-    /// holds the inner per-key Mutex.
-    compute_locks: std::sync::Mutex<
-        std::collections::HashMap<CacheKey, std::sync::Arc<std::sync::Mutex<()>>>,
-    >,
-    max_entries: usize,
+    inner: gigi::caches::single_flight::SingleFlightCache<CacheKey, CachedFit>,
 }
 
 #[cfg(feature = "kahler")]
 impl BundleFlowCache {
     pub fn new(max_entries: usize) -> Self {
         BundleFlowCache {
-            inner: std::sync::RwLock::new(std::collections::HashMap::new()),
-            compute_locks: std::sync::Mutex::new(std::collections::HashMap::new()),
-            max_entries: max_entries.max(1),
+            inner: gigi::caches::single_flight::SingleFlightCache::new(max_entries),
         }
     }
 
     /// Single-flight: acquire (or create) the per-key compute lock.
-    /// Returns an Arc<Mutex<()>> the caller holds for the duration of
-    /// the compute. Subsequent callers with the same key BLOCK on
-    /// this Mutex until the first releases it — at which point they
-    /// re-check the main cache and (if a fit was inserted) skip the
-    /// compute.
-    ///
-    /// The outer Mutex on `compute_locks` is held only briefly to
-    /// look up or insert the per-key Arc. The actual compute happens
-    /// under the per-key Mutex, with the outer Mutex released. So
-    /// concurrent cold misses on DIFFERENT keys do not contend.
+    /// See `SingleFlightCache::acquire_compute_lock` for the contract.
     fn acquire_compute_lock(
         &self,
         key: &CacheKey,
     ) -> std::sync::Arc<std::sync::Mutex<()>> {
-        let mut locks = match self.compute_locks.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        locks
-            .entry(key.clone())
-            .or_insert_with(|| std::sync::Arc::new(std::sync::Mutex::new(())))
-            .clone()
+        self.inner.acquire_compute_lock(key)
     }
 
-    /// Release the per-key compute lock entry from the lookup map.
-    /// Called by the thread that successfully computed + inserted,
-    /// after dropping its hold on the per-key Mutex. Other waiters
-    /// will find their queued lock acquire succeed and then re-check
-    /// the main cache — finding the entry — and skip recompute.
+    /// Release the per-key compute lock entry.
     fn release_compute_lock(&self, key: &CacheKey) {
-        let mut locks = match self.compute_locks.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        locks.remove(key);
+        self.inner.release_compute_lock(key);
     }
 
-    /// Hot path lookup. Returns Some only if the cached fit's
-    /// counter still matches the bundle's current counter — i.e.
-    /// no inserts have happened since the fit was computed.
+    /// Hot path lookup. Returns Some only if the entry's stored
+    /// counter matches `current_counter`.
     fn get(&self, key: &CacheKey, current_counter: u64) -> Option<CachedFit> {
-        let map = match self.inner.read() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        let entry = map.get(key)?;
-        if entry.counter_at_fit == current_counter {
-            Some(entry.clone())
-        } else {
-            None
-        }
+        self.inner.get(key, current_counter)
     }
 
     fn insert(&self, key: CacheKey, fit: CachedFit) {
-        let _ = self.insert_with_eviction_hint(key, fit);
+        let counter = fit.counter_at_fit;
+        let _ = self.inner.insert(key, fit, counter);
     }
 
-    /// Insert variant that reports whether an eviction happened —
-    /// used by callers that want to record the eviction in metrics.
+    /// Insert variant that reports whether an eviction happened.
     /// Returns true iff an entry was evicted to make room.
     fn insert_with_eviction_hint(&self, key: CacheKey, fit: CachedFit) -> bool {
-        let mut map = match self.inner.write() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        let mut evicted = false;
-        if map.len() >= self.max_entries {
-            // Random eviction: drop any one entry. Acceptable for
-            // v1 — LRU is a follow-up if hit-rate telemetry warrants.
-            if let Some(k) = map.keys().next().cloned() {
-                map.remove(&k);
-                evicted = true;
-            }
-        }
-        map.insert(key, fit);
-        evicted
+        let counter = fit.counter_at_fit;
+        self.inner.insert(key, fit, counter)
     }
 
-    /// Number of entries currently held. Exposed for diagnostics
-    /// (the future fit_diagnostics endpoint surfaces this).
+    /// Number of entries currently held.
     pub fn len(&self) -> usize {
-        let map = match self.inner.read() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        map.len()
+        self.inner.len()
     }
 
-    /// Drop all cached fits. Called when global invalidation is
-    /// desired (engine reload, schema migration, etc.).
+    /// Drop all cached fits.
     #[allow(dead_code)]
     pub fn clear(&self) {
-        let mut map = match self.inner.write() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        map.clear();
+        self.inner.clear();
     }
 }
 

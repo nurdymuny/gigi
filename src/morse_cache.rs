@@ -47,8 +47,7 @@
 #![cfg(feature = "kahler")]
 
 use crate::discrete::BettiNumbers;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 /// Cache key. A bundle is uniquely identified by name within an
 /// engine; the per-entry `counter_at_build` (stored in `CachedMorse`)
@@ -122,14 +121,23 @@ impl CachedMorse {
 /// The cache itself. One instance held in `StreamState`, shared via
 /// `Arc` across all worker threads.
 ///
+/// Thin wrapper around the generic
+/// [`crate::caches::single_flight::SingleFlightCache`] (extracted
+/// 2026-06-20, workflow `w2n0fgqkk`). Behavior is byte-identical to
+/// the prior hand-rolled implementation. [`CachedMorse`] is `Copy`,
+/// so `V: Clone` is auto-satisfied at zero atomic-refcount cost — the
+/// hit path returns the value by value, no indirection.
+///
+/// The `counter_at_build` field on [`CachedMorse`] is retained for
+/// backward compatibility but no longer consulted for invalidation;
+/// the cache's `(V, u64)` tuple is the source of truth.
+///
 /// Capacity: bounded by `max_entries` with random eviction on full
 /// (same policy as `VectorMatrixCache` and `BundleFlowCache`). Tune
 /// via `GIGI_MORSE_CACHE_SIZE` env var (default 64, set in
 /// `StreamState::new`).
 pub struct MorseCache {
-    inner: RwLock<HashMap<MorseCacheKey, CachedMorse>>,
-    compute_locks: Mutex<HashMap<MorseCacheKey, Arc<Mutex<()>>>>,
-    max_entries: usize,
+    inner: crate::caches::single_flight::SingleFlightCache<MorseCacheKey, CachedMorse>,
 }
 
 impl MorseCache {
@@ -137,95 +145,46 @@ impl MorseCache {
     /// 1 is clamped to 1.
     pub fn new(max_entries: usize) -> Self {
         MorseCache {
-            inner: RwLock::new(HashMap::new()),
-            compute_locks: Mutex::new(HashMap::new()),
-            max_entries: max_entries.max(1),
+            inner: crate::caches::single_flight::SingleFlightCache::new(max_entries),
         }
     }
 
     /// Acquire (or create) the per-key single-flight compute lock.
-    /// The caller holds the returned `Arc<Mutex<()>>` for the
-    /// duration of the morse-compress build.
     pub fn acquire_compute_lock(&self, key: &MorseCacheKey) -> Arc<Mutex<()>> {
-        let mut locks = match self.compute_locks.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        locks
-            .entry(key.clone())
-            .or_insert_with(|| Arc::new(Mutex::new(())))
-            .clone()
+        self.inner.acquire_compute_lock(key)
     }
 
-    /// Drop the per-key compute-lock entry. Called by the thread
-    /// that successfully published a CachedMorse, after releasing
-    /// its hold on the per-key Mutex.
+    /// Drop the per-key compute-lock entry.
     pub fn release_compute_lock(&self, key: &MorseCacheKey) {
-        let mut locks = match self.compute_locks.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        locks.remove(key);
+        self.inner.release_compute_lock(key);
     }
 
-    /// Hot-path lookup. Returns `Some(cached)` only if the cached
-    /// entry's `counter_at_build` matches `current_counter` — i.e.
-    /// no mutations have happened to this bundle since the entry was
-    /// built.
+    /// Hot-path lookup. Returns `Some(cached)` only if the entry's
+    /// stored counter matches `current_counter`.
     pub fn get(&self, key: &MorseCacheKey, current_counter: u64) -> Option<CachedMorse> {
-        let map = match self.inner.read() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        let entry = map.get(key)?;
-        if entry.counter_at_build == current_counter {
-            Some(*entry)
-        } else {
-            None
-        }
+        self.inner.get(key, current_counter)
     }
 
     /// Insert a freshly-built CachedMorse. Returns `true` iff an
-    /// eviction happened to make room. Same FIFO-on-iteration-order
-    /// eviction policy as `VectorMatrixCache`.
+    /// eviction happened to make room.
     pub fn insert(&self, key: MorseCacheKey, cached: CachedMorse) -> bool {
-        let mut map = match self.inner.write() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        let mut evicted = false;
-        if map.len() >= self.max_entries {
-            if let Some(k) = map.keys().next().cloned() {
-                map.remove(&k);
-                evicted = true;
-            }
-        }
-        map.insert(key, cached);
-        evicted
+        let counter = cached.counter_at_build;
+        self.inner.insert(key, cached, counter)
     }
 
     /// Number of cached entries. Diagnostic.
     pub fn len(&self) -> usize {
-        let map = match self.inner.read() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        map.len()
+        self.inner.len()
     }
 
     /// Whether the cache is empty. Diagnostic.
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.inner.is_empty()
     }
 
-    /// Drop all cached entries. Called on engine reload, schema
-    /// migration, or other coarse invalidation events.
+    /// Drop all cached entries.
     pub fn clear(&self) {
-        let mut map = match self.inner.write() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        map.clear();
+        self.inner.clear();
     }
 }
 

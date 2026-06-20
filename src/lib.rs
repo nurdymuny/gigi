@@ -12,6 +12,13 @@ pub mod aggregation;
 // O(1) client post-processing. See `src/aggregate_helpers.rs`.
 pub mod aggregate_helpers;
 pub mod bundle;
+// 2026-06-20 cache consolidation (workflow w2n0fgqkk): generic
+// `SingleFlightCache<K, V>` extracted from three independent
+// reimplementations of the same correctness-critical pattern
+// (BundleFlowCache, VectorMatrixCache, MorseCache). See
+// `src/caches/single_flight.rs` for the audit history and the
+// load-bearing semantics the generic preserves.
+pub mod caches;
 pub mod coherence;
 pub mod concurrent;
 pub mod convert;

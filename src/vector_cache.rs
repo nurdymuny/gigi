@@ -317,24 +317,26 @@ pub fn kde_normalized_cached(cached: &CachedMatrix, query: &[f64], bandwidth: f6
 
 /// Per-StreamState cache mapping `(bundle, fields)` → materialized matrix.
 ///
-/// Concurrency:
+/// Thin wrapper around the generic
+/// [`crate::caches::single_flight::SingleFlightCache`] (extracted
+/// 2026-06-20, workflow `w2n0fgqkk`). Behavior is byte-identical to the
+/// prior hand-rolled implementation:
 ///
-/// - `inner` is an `RwLock<HashMap<…>>`. The hot path takes a read guard,
-///   does a hashmap `get`, compares the mutation counter, and returns an
-///   `Arc` clone of the matrix. Sub-microsecond on cache hit.
+/// - `RwLock<HashMap>` hot path, lock-free read on hit (atomic-refcount
+///   `CachedMatrix` clone).
+/// - Per-key `Mutex<()>` single-flight on cache miss.
+/// - Mutation-counter invalidation via the cache's `(V, u64)` tuple.
+/// - Random FIFO-on-iteration eviction at capacity.
 ///
-/// - `compute_locks` is a `Mutex<HashMap<Key, Arc<Mutex<()>>>>`. On cache
-///   miss, the calling thread acquires (or creates) the per-key
-///   `Arc<Mutex<()>>` and holds it for the duration of the materialization.
-///   Other concurrent misses on the same key block on this lock; when the
-///   first thread inserts and releases, waiters re-check the main cache and
-///   find the entry. This avoids N concurrent threads each doing an O(N * D)
-///   materialization for the same key. (Mirrors `BundleFlowCache`'s pattern
-///   from `gigi_stream.rs`.)
+/// The secondary `max_density_by_bw` per-bandwidth cache stays on the
+/// value type ([`CachedMatrix`]) — it's tied to the matrix lifetime,
+/// not the single-flight pattern, and lives outside the generic.
+///
+/// The `counter_at_build` field on [`CachedMatrix`] is retained for
+/// backward compatibility but no longer consulted for invalidation; the
+/// cache's `(V, u64)` tuple is the source of truth.
 pub struct VectorMatrixCache {
-    inner: RwLock<HashMap<VectorCacheKey, CachedMatrix>>,
-    compute_locks: Mutex<HashMap<VectorCacheKey, Arc<Mutex<()>>>>,
-    max_entries: usize,
+    inner: crate::caches::single_flight::SingleFlightCache<VectorCacheKey, CachedMatrix>,
 }
 
 impl VectorMatrixCache {
@@ -342,9 +344,7 @@ impl VectorMatrixCache {
     /// capacity).
     pub fn new(max_entries: usize) -> Self {
         VectorMatrixCache {
-            inner: RwLock::new(HashMap::new()),
-            compute_locks: Mutex::new(HashMap::new()),
-            max_entries: max_entries.max(1),
+            inner: crate::caches::single_flight::SingleFlightCache::new(max_entries),
         }
     }
 
@@ -352,86 +352,40 @@ impl VectorMatrixCache {
     /// materialization. Caller holds the returned `Arc<Mutex<()>>` for the
     /// duration of the matrix build.
     pub fn acquire_compute_lock(&self, key: &VectorCacheKey) -> Arc<Mutex<()>> {
-        let mut locks = match self.compute_locks.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        locks
-            .entry(key.clone())
-            .or_insert_with(|| Arc::new(Mutex::new(())))
-            .clone()
+        self.inner.acquire_compute_lock(key)
     }
 
-    /// Drop the per-key compute-lock entry from the lookup map. Called by
-    /// the thread that successfully built + inserted, after it has released
-    /// its hold on the per-key Mutex.
+    /// Drop the per-key compute-lock entry from the lookup map.
     pub fn release_compute_lock(&self, key: &VectorCacheKey) {
-        let mut locks = match self.compute_locks.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        locks.remove(key);
+        self.inner.release_compute_lock(key);
     }
 
     /// Hot-path lookup. Returns `Some(cached)` only if the cached matrix's
-    /// counter matches `current_counter` — i.e. no mutations have happened
-    /// since the matrix was built.
+    /// counter matches `current_counter`.
     pub fn get(&self, key: &VectorCacheKey, current_counter: u64) -> Option<CachedMatrix> {
-        let map = match self.inner.read() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        let entry = map.get(key)?;
-        if entry.counter_at_build == current_counter {
-            Some(entry.clone())
-        } else {
-            None
-        }
+        self.inner.get(key, current_counter)
     }
 
     /// Insert a freshly-built matrix. Returns `true` iff an eviction
     /// happened to make room.
     pub fn insert(&self, key: VectorCacheKey, cached: CachedMatrix) -> bool {
-        let mut map = match self.inner.write() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        let mut evicted = false;
-        if map.len() >= self.max_entries {
-            // Random eviction (FIFO-on-iteration-order); LRU is a follow-up
-            // if hit-rate telemetry warrants it. Same policy as
-            // BundleFlowCache.
-            if let Some(k) = map.keys().next().cloned() {
-                map.remove(&k);
-                evicted = true;
-            }
-        }
-        map.insert(key, cached);
-        evicted
+        let counter = cached.counter_at_build;
+        self.inner.insert(key, cached, counter)
     }
 
     /// Number of matrices currently cached. Diagnostic.
     pub fn len(&self) -> usize {
-        let map = match self.inner.read() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        map.len()
+        self.inner.len()
     }
 
     /// Whether the cache is empty. Diagnostic / clippy-friendliness.
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.inner.is_empty()
     }
 
-    /// Drop all cached matrices. Called on engine reload, schema migration,
-    /// or other coarse invalidation events.
+    /// Drop all cached matrices.
     pub fn clear(&self) {
-        let mut map = match self.inner.write() {
-            Ok(g) => g,
-            Err(p) => p.into_inner(),
-        };
-        map.clear();
+        self.inner.clear();
     }
 }
 

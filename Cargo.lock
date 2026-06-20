@@ -681,6 +681,7 @@ dependencies = [
  "num-traits",
  "rand 0.8.5",
  "rand_core 0.6.4",
+ "rayon",
  "regex",
  "reqwest",
  "roaring",

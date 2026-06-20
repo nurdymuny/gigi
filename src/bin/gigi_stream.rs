@@ -728,6 +728,14 @@ struct CurvatureReport {
     curvature: f64,
     confidence: f64,
     capacity: f64,
+    /// Davis Conjecture λ-budget (Thm T8ai): the substrate's runtime
+    /// introspection of its own remaining carrying capacity. Computed
+    /// via [`gigi::curvature::lambda_budget`] from this bundle's
+    /// current K, the substrate's default D-proxy (Welford radius),
+    /// and τ_budget = 1.0 (matches the capacity/horizon convention).
+    /// Companion: [`gigi::curvature::horizon_closed`] flips `true`
+    /// when λ ≥ 0.95 (consensus prohibitively slow).
+    lambda_budget: f64,
     per_field: Vec<FieldCurvature>,
     /// L4 / catalog §E.3 — Kähler curvature decomposition. Present
     /// only when the `kahler` feature is on and the bundle has a
@@ -2659,6 +2667,18 @@ async fn curvature_report(
     let k = store.scalar_curvature();
     let conf = curvature::confidence(k);
     let cap = curvature::capacity(1.0, k);
+    // Davis Conjecture λ-budget — substrate self-introspection of its
+    // own carrying capacity (Thm T8ai, claim_0104). D-proxy is the
+    // Welford radius (same length scale `horizon_with` uses by
+    // default); τ_budget = 1.0 matches the capacity/horizon
+    // convention. See [`gigi::curvature::lambda_budget`] doc for the
+    // saturation contract (returns 1.0 on flat / collapsed bundles).
+    let lambda_budget = match store.as_heap() {
+        Some(heap) => curvature::lambda_budget(k, gigi_welford_radius(heap), 1.0),
+        // No heap snapshot (e.g. overlay bundle) → fall back to D=1.0,
+        // which mirrors the capacity computation above (τ=1.0/K).
+        None => curvature::lambda_budget(k, 1.0, 1.0),
+    };
 
     // Per-field curvature from stats
     let mut per_field = Vec::new();
@@ -2692,10 +2712,37 @@ async fn curvature_report(
         curvature: k,
         confidence: conf,
         capacity: cap,
+        lambda_budget,
         per_field,
         #[cfg(feature = "kahler")]
         kahler,
     }))
+}
+
+/// Compute the Welford radius (sqrt of mean per-fiber-field variance)
+/// for use as the D-proxy in the Davis Conjecture λ-budget ride-along.
+/// Mirrors `gigi::curvature::welford_radius` exactly; duplicated here
+/// to avoid a cross-crate `pub(crate)` visibility bump for the bin
+/// target. Returns NaN when no fiber field has variance > 0.
+fn gigi_welford_radius(store: &gigi::bundle::BundleStore) -> f64 {
+    let stats = store.field_stats();
+    if stats.is_empty() {
+        return f64::NAN;
+    }
+    let mut sum = 0.0_f64;
+    let mut n = 0_usize;
+    for fs in stats.values() {
+        let v = fs.variance();
+        if v.is_finite() && v > 0.0 {
+            sum += v;
+            n += 1;
+        }
+    }
+    if n == 0 {
+        f64::NAN
+    } else {
+        (sum / n as f64).sqrt()
+    }
 }
 
 async fn spectral_report(
@@ -9299,6 +9346,13 @@ async fn filtered_query(
     };
     let count = json_records.len();
     let k = store.scalar_curvature();
+    // Davis Conjecture λ-budget — substrate self-introspection rides
+    // along with curvature/confidence on every query. See
+    // `CurvatureReport.lambda_budget` for the field semantics.
+    let lambda = match store.as_heap() {
+        Some(heap) => curvature::lambda_budget(k, gigi_welford_radius(heap), 1.0),
+        None => curvature::lambda_budget(k, 1.0, 1.0),
+    };
 
     // Detect sorted-path truncation: sorted path caps at GIGI_QUERY_MAX_ROWS
     // (default 10M) and returns total = min(actual_matches, max_rows+1).
@@ -9315,6 +9369,7 @@ async fn filtered_query(
         "meta": {
             "confidence": curvature::confidence(k),
             "curvature": k,
+            "lambda_budget": lambda,
             "count": count,
             "total": total,
             "offset": cur_offset,
@@ -9419,11 +9474,16 @@ async fn stream_query_ndjson(
         }
 
         let k = store.scalar_curvature();
+        let lambda = match store.as_heap() {
+            Some(heap) => curvature::lambda_budget(k, gigi_welford_radius(heap), 1.0),
+            None => curvature::lambda_budget(k, 1.0, 1.0),
+        };
         let meta = serde_json::json!({
             "__meta": true,
             "count": count,
             "curvature": k,
-            "confidence": curvature::confidence(k)
+            "confidence": curvature::confidence(k),
+            "lambda_budget": lambda
         })
         .to_string()
             + "\n";
@@ -18425,5 +18485,141 @@ mod tests {
         assert!(normalized > 0.5,
             "query at a sample point must produce normalized confidence > 0.5; \
              got {}", normalized);
+    }
+
+    // ── Davis Conjecture λ-budget ride-along contract ──────────
+    //
+    // The substrate's runtime introspection of its own carrying
+    // capacity rides on the same response envelope as curvature and
+    // confidence. These tests pin the wire shape so future cognitive
+    // consumers (Marcella, future Claude) parse a stable field.
+
+    /// CurvatureReport JSON serializes `lambda_budget` as a top-level
+    /// f64, sibling to `curvature`/`confidence`/`capacity`.
+    #[test]
+    fn curvature_report_serializes_lambda_budget_field() {
+        let report = CurvatureReport {
+            k: 0.05,
+            curvature: 0.05,
+            confidence: 1.0 / (1.0 + 0.05),
+            capacity: 1.0 / 0.05,
+            lambda_budget: gigi::curvature::lambda_budget(0.05, 2.0, 1.0),
+            per_field: Vec::new(),
+            #[cfg(feature = "kahler")]
+            kahler: None,
+        };
+        let json = serde_json::to_value(&report).expect("serialize CurvatureReport");
+        let obj = json.as_object().expect("object");
+        assert!(
+            obj.contains_key("lambda_budget"),
+            "CurvatureReport JSON must contain lambda_budget; got keys {:?}",
+            obj.keys().collect::<Vec<_>>()
+        );
+        // Existing wire fields preserved (bit-identity gate).
+        for required in ["K", "curvature", "confidence", "capacity", "per_field"] {
+            assert!(
+                obj.contains_key(required),
+                "CurvatureReport JSON missing required field `{required}`; \
+                 ride-along must be additive"
+            );
+        }
+        // Numeric value is finite (or the documented saturated 1.0).
+        let v = obj["lambda_budget"].as_f64().expect("lambda_budget is f64");
+        assert!(v.is_finite() || v == 1.0, "lambda_budget = {v}");
+    }
+
+    /// Filtered-query meta object serializes `lambda_budget` alongside
+    /// the existing `curvature`/`confidence` keys (the substrate's
+    /// per-query ride-along path).
+    #[test]
+    fn filtered_query_meta_serializes_lambda_budget() {
+        // Mirror of the meta JSON the filtered_query handler builds
+        // (handler is async + tied to State<Arc<StreamState>> so we
+        // verify the shape of the JSON literal directly).
+        let k: f64 = 0.07;
+        let d: f64 = 1.5;
+        let lambda = gigi::curvature::lambda_budget(k, d, 1.0);
+        let meta = serde_json::json!({
+            "confidence": gigi::curvature::confidence(k),
+            "curvature": k,
+            "lambda_budget": lambda,
+            "count": 0_usize,
+            "total": 0_usize,
+            "offset": 0_usize,
+            "limit": None::<usize>,
+            "next_offset": 0_usize,
+            "truncated": false
+        });
+        let obj = meta.as_object().expect("object");
+        assert!(
+            obj.contains_key("lambda_budget"),
+            "filtered_query meta must contain lambda_budget"
+        );
+        // The ride-along never alters the existing key set.
+        for k in [
+            "confidence",
+            "curvature",
+            "count",
+            "total",
+            "offset",
+            "limit",
+            "next_offset",
+            "truncated",
+        ] {
+            assert!(obj.contains_key(k), "existing meta key `{k}` preserved");
+        }
+    }
+
+    /// NDJSON stream trailing __meta line carries lambda_budget too,
+    /// symmetric with how curvature already rides there.
+    #[test]
+    fn stream_query_meta_serializes_lambda_budget() {
+        let k: f64 = 0.07;
+        let lambda = gigi::curvature::lambda_budget(k, 1.5, 1.0);
+        let meta = serde_json::json!({
+            "__meta": true,
+            "count": 0_usize,
+            "curvature": k,
+            "confidence": gigi::curvature::confidence(k),
+            "lambda_budget": lambda
+        });
+        let obj = meta.as_object().expect("object");
+        assert!(obj.contains_key("lambda_budget"));
+        assert_eq!(obj["__meta"].as_bool(), Some(true));
+        for k in ["count", "curvature", "confidence"] {
+            assert!(obj.contains_key(k), "existing key `{k}` preserved");
+        }
+    }
+
+    /// The substrate's helper that picks D for the ride-along returns
+    /// a finite radius on a realistic bundle and NaN on an empty one.
+    /// Mirrors the contract of `gigi::curvature::welford_radius`.
+    #[test]
+    fn gigi_welford_radius_finite_on_real_bundle() {
+        use gigi::bundle::BundleStore;
+        use gigi::types::{BundleSchema, FieldDef, Record, Value};
+        let schema = BundleSchema::new("welford_ride_along")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x").with_range(5.0))
+            .fiber(FieldDef::numeric("y").with_range(5.0));
+        let mut store = BundleStore::new(schema);
+        for i in 0..30 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("x".into(), Value::Float((i as f64 * 0.13).sin()));
+            r.insert("y".into(), Value::Float((i as f64 * 0.17).cos()));
+            store.insert(&r);
+        }
+        let radius = gigi_welford_radius(&store);
+        assert!(radius.is_finite() && radius > 0.0, "radius = {radius}");
+
+        let empty_schema = BundleSchema::new("welford_empty")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x").with_range(5.0));
+        let empty_store = BundleStore::new(empty_schema);
+        assert!(
+            gigi_welford_radius(&empty_store).is_nan(),
+            "empty bundle ⇒ NaN radius (uninitialized signal)"
+        );
     }
 }

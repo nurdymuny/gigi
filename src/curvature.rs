@@ -301,6 +301,89 @@ pub fn capacity(tau: f64, k: f64) -> f64 {
     tau / k
 }
 
+/// Davis Conjecture λ-budget (Thm T8ai, `field_equations_semantic_coherence`
+/// claim_0104):
+///
+/// ```text
+///     λ = 1 − τ_budget / (K_max · D²)
+/// ```
+///
+/// The substrate's runtime introspection of its own remaining carrying
+/// capacity. λ is the consensus convergence rate (spectral gap /
+/// contraction rate); the paper describes it as bounded in `[0, 1]`,
+/// but the algebraic form is unbounded below — for `τ > K·D²` the
+/// equation evaluates negative. **This function does NOT clamp.** It
+/// returns the raw equation so consumers can see the saturation
+/// signal directly, and reach for [`horizon_closed`] for the
+/// operational closure decision.
+///
+/// # Inputs
+/// - `k_max`: maximum local scalar curvature on the manifold. In the
+///   GIGI runtime, [`scalar_curvature`] is the per-snapshot supremum
+///   proxy and is the source the ride-along sites use today.
+/// - `d`: manifold diameter / geodesic span of the base space. The
+///   substrate's default proxy is the [`welford_radius`] (correlation
+///   length); callers with a graph-diameter or geodesic estimate may
+///   pass it directly.
+/// - `tau_budget`: tolerance budget — acceptable holonomy slack.
+///   Problem-dependent; gigi's substrate default is 1.0 (matching the
+///   capacity/horizon convention). WISH's `max_accumulated_holonomy =
+///   0.5` is the alternate anchor for reasoning-critical bundles.
+///
+/// # Edge cases
+/// - `k_max = 0` (flat manifold) → returns `1.0` (saturated; infinite
+///   carrying capacity, horizon fully open). Matches the limit
+///   `λ → 1` as `K → 0`.
+/// - `d = 0` (collapsed manifold) → returns `1.0` (no geometric
+///   extent → no path-length consumption of budget).
+/// - `tau_budget = 0` (zero tolerance) → returns `1.0` (paper: "tight
+///   budget forces rapid agreement").
+/// - Negative `k_max` or `d` (rounding noise from upstream) → treated
+///   as their magnitudes. The paper assumes positive K and D; engine
+///   inputs may include small negative values from finite-precision
+///   subtraction.
+/// - `NaN` in any input → propagates `NaN` so consumers can detect
+///   uninitialized bundles (e.g. [`welford_radius`] returns `NaN` on
+///   empty stats).
+///
+/// # Honest caveat
+/// The paper's worked-example column for this equation does not
+/// numerically match the verbatim formula (e.g. K=0.05, D=2, τ=0.5
+/// evaluates to −1.5, not the stated 0.75). The implementation
+/// follows the verbatim equation as written in claim_0104. A
+/// follow-up paper-review task can reconcile.
+pub fn lambda_budget(k_max: f64, d: f64, tau_budget: f64) -> f64 {
+    if k_max.is_nan() || d.is_nan() || tau_budget.is_nan() {
+        return f64::NAN;
+    }
+    let k_abs = k_max.abs();
+    let d_abs = d.abs();
+    let denom = k_abs * d_abs * d_abs;
+    if denom < f64::EPSILON {
+        // K=0 or D=0 → saturated; horizon fully open.
+        return 1.0;
+    }
+    1.0 - tau_budget / denom
+}
+
+/// Operational threshold for `horizon_closed`: when λ meets or exceeds
+/// this value, consensus is considered prohibitively slow (the mixing
+/// time `T_mix = log(1/ε)/log(1/λ)` becomes large). The paper does not
+/// mandate a specific numerical threshold; 0.95 is the working default
+/// per claim_0104's "if λ > 0.95, consensus is slow" guidance.
+pub const HORIZON_CLOSURE_THRESHOLD: f64 = 0.95;
+
+/// Companion to [`lambda_budget`]: returns `true` when the operational
+/// holonomy horizon is effectively closed (consensus prohibitively
+/// slow). `NaN` inputs return `false` (unknown is not closed; consumers
+/// detect NaN separately if they need to distinguish).
+pub fn horizon_closed(lambda: f64) -> bool {
+    if lambda.is_nan() {
+        return false;
+    }
+    lambda >= HORIZON_CLOSURE_THRESHOLD
+}
+
 /// Holonomy horizon (Def 5.1 — Cognitive Geometry Correspondence, 2026-05-29):
 /// s_max = τ / (K · ℓ_c)
 ///
@@ -405,7 +488,12 @@ pub struct HorizonResult {
 /// Compute the Welford radius of a bundle: sqrt of the mean per-fiber-
 /// field variance, restricted to fiber FieldStats with count ≥ 2 and
 /// finite variance. Returns NaN when no such fields exist.
-fn welford_radius(store: &crate::bundle::BundleStore) -> f64 {
+///
+/// Visibility: `pub(crate)` so that the substrate's HTTP ride-along
+/// (Davis Conjecture λ-budget, `gigi_stream::filtered_query`) can use
+/// the same length-scale estimator that `horizon_with` uses by default
+/// — keeps λ and HORIZON reading the same D-proxy on every bundle.
+pub(crate) fn welford_radius(store: &crate::bundle::BundleStore) -> f64 {
     let stats = store.field_stats();
     if stats.is_empty() {
         return f64::NAN;

@@ -44,13 +44,27 @@ Questions back-and-forth (resolved unless flagged OPEN):
   wrapper. Reply 2 §10. Resolved (engine commits to ~250-400 LOC lift
   before A2 starts).
 - **Q4** (GIGI→AURORA): aurora_crate repo location + gigi-feature-flag vs
-  separate host binary for deploy. Reply 2 §11. **OPEN.**
+  separate host binary for deploy. **Answer (2026-06-21): Q4b — separate
+  host binary; gigi's `Cargo.toml` stays clean.** `aurora/` is its own
+  workspace, links gigi as a pinned dep. Makes AURORA the canonical
+  example of the downstream-crate pattern (Halcyon is the special-three
+  feature-flag pattern; everyone else follows AURORA). Resolved.
 - **Q5** (GIGI→AURORA): `aurora_crate::init()` lifecycle in host-binary
-  `main()`; eager-vs-lazy registration; WAL replay ordering. Reply 2 §11.
-  **OPEN.**
+  `main()`; eager-vs-lazy registration; WAL replay ordering. **Answer
+  (2026-06-21): eager `init()` at top of `main()`, no lazy anything.**
+  `hamiltonian_registry` exposes a public `register()` API; AURORA's
+  `main()` calls it once at startup with their `ShallowWater` factory.
+  No thread-local magic, no auto-registration. Resolved.
 - **Q6** (GIGI→AURORA): binary-stability contract on the
   `HamiltonianHandle` trait surface; pinned-vs-floating gigi dep;
-  stability annotation. Reply 2 §11. **OPEN.**
+  stability annotation. **Answer (2026-06-21): AURORA confirms gigi
+  grows a stability annotation convention because of them — that
+  framing is accurate and appropriate.** The convention itself is our
+  design work to specify; tracked as a Phase 2 deliverable alongside
+  `hamiltonian_registry.rs`. AURORA is the first external pinned
+  consumer; the convention extends `docs/STABILITY_GUARANTEES.md` from
+  feature-flag stability (already covered) to trait-surface stability
+  (new). Resolved.
 
 ## Status board
 
@@ -64,9 +78,10 @@ Questions back-and-forth (resolved unless flagged OPEN):
 | CC-2 registry-dispatch refactor | replace static match arm with `lattice::registry::get_constructor()`; ~110–175 LOC | Phase 1 (lifted from "optional" into A1 sprint) | **ACCEPTED** (Reply 2 §3) | — |
 | `topology_hint` const table | `src/lattice/topology/hints.rs` reserves `S2/CUBED_SPHERE`, `S2/TRUNCATED_ICOSAHEDRON`; ~30 LOC | Phase 1 | accepted | — |
 | A3-workaround | six flat scalar names: `kelvin_holonomies_eq/n30/s30`, `c_field_min/max/mean`; gate via `COVER WHERE refusal_reason IS NULL` | Phase 1 | **ACCEPTED** (Reply 2 §9; zero engine LOC) | — |
-| CC-1 `hamiltonian_registry` | new `src/gauge/hamiltonian_registry.rs`; trait-object factory; WAL `HamiltonianDeclare` metadata-only | Phase 2 (gated on Q4/Q5/Q6) | **ACCEPTED** (Reply 2 §2) | — |
-| A2 — four-trait refactor + `ShallowWater` | `HamiltonianForce` / `HamiltonianDrift` / `ProjectionOperator` / `EnergyDecomposition`; generic `State`; `project_constraint` + `PROJECT_GAUSS` sugar; free-form energy map; group-agnostic `KogutSusskind { beta }` | Phase 2 | **ACCEPTED** with hot-path constraint: trait-object dispatch off integrator inner loop, generic over concrete `H: HamiltonianForce + HamiltonianDrift` | — |
-| Q3 — DEC operator surface | `src/lattice/metric.rs` + `src/lattice/dec/` (NEW); `d_0`, `delta_0`, `hodge_star_k` as free functions consuming `LatticeWithMetric`; ~250–400 LOC | Phase 2 (lands before AURORA's `HamiltonianForce` impl) | **ACCEPTED** (Reply 2 §10) | — |
+| CC-1 `hamiltonian_registry` | new `src/gauge/hamiltonian_registry.rs`; trait-object factory; WAL `HamiltonianDeclare` metadata-only; eager `register()` per Q5; downstream-crate pattern per Q4b | Phase 2 (**UNBLOCKED 2026-06-21**, gated on AURORA's `ShallowWater` factory sketch arriving) | **ACCEPTED** (Reply 2 §2) | — |
+| A2 — four-trait refactor + `ShallowWater` | `HamiltonianForce` / `HamiltonianDrift` / `ProjectionOperator` / `EnergyDecomposition`; generic `State`; `project_constraint` + `PROJECT_GAUSS` sugar; free-form energy map; group-agnostic `KogutSusskind { beta }` | Phase 2 (**UNBLOCKED 2026-06-21**) | **ACCEPTED** with hot-path constraint: trait-object dispatch off integrator inner loop, generic over concrete `H: HamiltonianForce + HamiltonianDrift` | — |
+| Q3 — DEC operator surface | `src/lattice/metric.rs` + `src/lattice/dec/` (NEW); `d_0`, `delta_0`, `hodge_star_k` as free functions consuming `LatticeWithMetric`; ~250–400 LOC | Phase 2 (lands before AURORA's `HamiltonianForce` impl, **UNBLOCKED 2026-06-21**) | **ACCEPTED** (Reply 2 §10) | — |
+| Stability annotation convention (Q6) | NEW: extend `docs/STABILITY_GUARANTEES.md` from feature-flag stability to trait-surface stability; spec the marker (likely `#[stable(since = "0.1.x")]` proc-macro attribute or trait-doc convention); attach to `HamiltonianFactory` + `HamiltonianForce`/`HamiltonianDrift`/`ProjectionOperator`/`EnergyDecomposition` | Phase 2 (gigi-side design work, parallel with `hamiltonian_registry.rs`) | **OWNED** (gigi-side per AURORA Q6 confirmation 2026-06-21) | — |
 | A3-extension — `[TYPE; N]` arrays | DSL lift | Phase 3 (general purpose) | accepted, not started | — |
 | A3-extension — inline structs + `__` desugar | DSL lift; `kelvin_holonomies__eq` long-form, flat names as legacy aliases | Phase 3 (general purpose) | **ACCEPTED** convention (Reply 2 §6) | — |
 | A3 SMOKE GATE | full Williamson Test 2 on C48, `casimir_pv_l2 < 1e-6` over 10 days, three Kelvin holonomies match analytical | Phase 3 (joint) | gated on Phase 2 | — |

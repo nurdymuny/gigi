@@ -8775,16 +8775,24 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             canonical,
             topology,
         } => {
-            let mut lat = match canonical.to_ascii_uppercase().as_str() {
-                "TRUNCATED_ICOSAHEDRON" => {
-                    crate::lattice::topology::truncated_icosahedron::buckyball()
-                }
-                other => {
-                    return Err(format!(
-                        "Unknown canonical lattice constructor: '{other}'. \
-                         Part I ships only TRUNCATED_ICOSAHEDRON."
-                    ));
-                }
+            let mut lat = {
+                let canonical_upper = canonical.to_ascii_uppercase();
+                let constructor = crate::lattice::registry::get_constructor(
+                    &canonical_upper,
+                )
+                .ok_or_else(|| {
+                    format!(
+                        "Unknown canonical lattice constructor: '{canonical}'. \
+                         Phase 1 ships TRUNCATED_ICOSAHEDRON and CUBED_SPHERE."
+                    )
+                })?;
+                let args = crate::lattice::registry::ConstructorArgs::default();
+                let lwm = constructor(&args).map_err(|e| {
+                    format!(
+                        "lattice constructor for '{canonical}' failed: {e:?}"
+                    )
+                })?;
+                lwm.lattice().clone()
             };
             // Rename to the user-supplied name, override topology
             // hint if one was supplied. Buckyball's default

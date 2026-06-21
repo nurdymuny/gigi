@@ -76,9 +76,9 @@ Questions back-and-forth (resolved unless flagged OPEN):
 | `ea50585` split | lift lattice/gauge out of halcyon namespace | shipped | **DONE** | commit `ea50585` |
 | First AURORA receipt | Williamson Test 2 step 0 against `gigi-stream.fly.dev` | shipped | **DONE** | `refusal_reason = None`, forward Euler refuses at step 2 |
 | Signed-face promotion (CC-4) | `Lattice::signed_face_orientations()`; 23 LOC additive lift in `src/lattice/mod.rs` (well under the ~80–100 LOC budget); 3 RED-first integration tests in `tests/aurora_signed_face_orientations.rs` (211 LOC) | Phase 0 (lands first) | **DONE** | commit `ca589eb` — RED→GREEN, 3/3 passing; no-default-features 870/0 byte-identical; halcyon 996/0; kahler 1150/0; `halcyon_part_iv_gold` 4/0+1-pre-existing-ignored, bit-identity IV.10/III.8b/V.* contracts intact |
-| A1 — `CUBED_SPHERE` | parameterized PANEL_SIZE; calls promoted signed-face surface; constructor returns `LatticeWithMetric` | Phase 1 | greenlit, gated on Phase 0 | — |
-| CC-2 registry-dispatch refactor | replace static match arm with `lattice::registry::get_constructor()`; ~110–175 LOC | Phase 1 (lifted from "optional" into A1 sprint) | **ACCEPTED** (Reply 2 §3) | — |
-| `topology_hint` const table | `src/lattice/topology/hints.rs` reserves `S2/CUBED_SPHERE`, `S2/TRUNCATED_ICOSAHEDRON`; ~30 LOC | Phase 1 | accepted | — |
+| A1 — `CUBED_SPHERE` | parameterized PANEL_SIZE; calls promoted signed-face surface; constructor returns `LatticeWithMetric`; new `src/lattice/topology/cubed_sphere.rs` (590 LOC incl. 9 in-module tests) + `tests/aurora_cubed_sphere_construction.rs` (8 RED-first tests) + minimal `src/lattice/metric.rs` wrapper (195 LOC, NO DEC methods — Phase 2 owns those) | Phase 1 | **DONE** | commit `TBD` — combinatorics V=6C²+2, E=12C², F=6C², χ=2 exact at C=1,2,3; total cell area = 4π within 1e-10 at C=4; 15/15 AURORA integration tests pass; no-default-features 870/0; halcyon 1020/0; kahler 1150/0; `halcyon_part_iv_gold` 4/0+1-pre-existing-ignored, bit-identity IV.10/III.8b/V.* contracts intact |
+| CC-2 registry-dispatch refactor | additive `lattice::registry::get_constructor(&str) -> Option<Constructor>` surface with `Constructor = fn(&ConstructorArgs) -> Result<LatticeWithMetric, ConstructorError>`; lazy `init_builtin_constructors()` via `OnceLock` registers both `TRUNCATED_ICOSAHEDRON` (wrapping existing `buckyball()`) and `CUBED_SPHERE`; +175 LOC in `src/lattice/registry.rs` + `tests/aurora_lattice_registry_dispatch.rs` (4 RED-first tests including bit-identity guard). Parser-executor switch at `src/parser.rs:8773-8813` deferrable to tiny Phase 1b follow-up; bit-identity preserved with both paths in parallel | Phase 1 (lifted from "optional" into A1 sprint) | **DONE** | commit `TBD` — `test_registry_dispatched_buckyball_bit_identical_to_direct` passes via `PartialEq` + `to_gql()` re-emission; all 7 new in-module tests + 10/10 existing `tdd_hal_i_8_*` registry tests green |
+| `topology_hint` const table | `src/lattice/topology/hints.rs` (NEW, 101 LOC incl. 5 in-module tests) reserves `S2/CUBED_SPHERE`, `S2/TRUNCATED_ICOSAHEDRON` symmetrically via `TOPOLOGY_HINTS: &[(&str, &str)]`; case-insensitive `lookup()` + verbose alias `topology_hint_for()`; unknown identifier returns `None` (never silent default) + `tests/aurora_topology_hint_table.rs` (3 RED-first tests) | Phase 1 | **DONE** | commit `TBD` — 3/3 AURORA integration tests + 5/5 in-module tests pass; symmetrically registered for both Phase 1 topologies; extension protocol documented in module doc-comment |
 | A3-workaround | six flat scalar names: `kelvin_holonomies_eq/n30/s30`, `c_field_min/max/mean`; gate via `COVER WHERE refusal_reason IS NULL` | Phase 1 | **ACCEPTED** (Reply 2 §9; zero engine LOC) | — |
 | CC-1 `hamiltonian_registry` | new `src/gauge/hamiltonian_registry.rs`; trait-object factory; WAL `HamiltonianDeclare` metadata-only; eager `register()` per Q5; downstream-crate pattern per Q4b | Phase 2 (**UNBLOCKED 2026-06-21**, gated on AURORA's `ShallowWater` factory sketch arriving) | **ACCEPTED** (Reply 2 §2) | — |
 | A2 — four-trait refactor + `ShallowWater` | `HamiltonianForce` / `HamiltonianDrift` / `ProjectionOperator` / `EnergyDecomposition`; generic `State`; `project_constraint` + `PROJECT_GAUSS` sugar; free-form energy map; group-agnostic `KogutSusskind { beta }` | Phase 2 (**UNBLOCKED 2026-06-21**) | **ACCEPTED** with hot-path constraint: trait-object dispatch off integrator inner loop, generic over concrete `H: HamiltonianForce + HamiltonianDrift` | — |
@@ -258,15 +258,23 @@ All six CC items resolved in Reply 2. Summary:
   - `theory/aurora/GIGI_TO_AURORA_2026-06-19_v0_1_REPLY.md` (initial).
   - `theory/aurora/GIGI_TO_AURORA_2026-06-19_v0_1_REPLY_2.md` (post-AURORA-decisions).
 - Bee greenlit: Phase 0 (CC-4) landed; Phase 1 unblocked.
-- Sprint slot: Phase 0 closed (see `AURORA_PHASE_0_IMPL_LOG.md`); receipt
-  commit hash to be backfilled into the status-board row once the focused
-  Phase 0 commit lands.
+- Sprint slot: Phase 0 closed (see `AURORA_PHASE_0_IMPL_LOG.md`, commit
+  `ca589eb`, hash backfilled at `21557ce`); Phase 1 closed (see
+  `AURORA_PHASE_1_IMPL_LOG.md`); receipt commit hashes for the A1 + CC-2
+  + topology_hint rows to be backfilled once the focused Phase 1 commit
+  lands.
 - AURORA-side blocking pressure: P-1 shipped; first receipt validated;
   Phase 0 (CC-4) **shipped** as a true additive lift (23 LOC,
   no-default-features 870/0 byte-identical, halcyon 996/0, kahler 1150/0,
   `halcyon_part_iv_gold` bit-identity gate clean); Phase 1 (A1 + CC-2 +
-  A3-workaround) unblocked **now**; Phase 2 (A2 + CC-1 + Q3 DEC module)
-  gated on AURORA's `ShallowWater` factory sketch.
+  topology_hint + minimal `LatticeWithMetric` wrapper) **shipped** as a
+  fully additive sprint (~736 production LOC + 305 integration test LOC;
+  no-default-features 870/0, halcyon 1020/0, kahler 1150/0, 15/15 new
+  AURORA integration tests, `halcyon_part_iv_gold` bit-identity gate
+  still clean; `test_registry_dispatched_buckyball_bit_identical_to_direct`
+  proves the CC-2 surface is zero-bit-drift on the existing buckyball
+  path); Phase 2 (A2 + CC-1 + Q3 DEC module + stability annotation
+  convention) gated on AURORA's `ShallowWater` factory sketch.
 
 ## References
 

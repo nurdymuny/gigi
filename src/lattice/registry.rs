@@ -10,6 +10,7 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
+use super::metric::LatticeWithMetric;
 use super::Lattice;
 
 /// Global registry. Singleton; the engine is single-tenant per
@@ -49,6 +50,155 @@ pub fn clear() {
 pub fn all() -> Vec<Lattice> {
     let g = registry().lock().expect("lattice registry mutex poisoned");
     g.values().cloned().collect()
+}
+
+// ── CC-2 constructor-dispatch surface ─────────────────────────────────
+//
+// The instance registry above stores fully-realized `Lattice` values
+// the executor materialized. The *constructor* registry below is the
+// CC-2 dispatch surface: a lazily-initialized table from canonical
+// constructor identifier (`"TRUNCATED_ICOSAHEDRON"`, `"CUBED_SPHERE"`,
+// …) to a `fn` pointer that produces a fresh [`LatticeWithMetric`]. The
+// two registries are intentionally separate — instances are
+// per-process state the engine WAL-replays into; constructors are
+// pure functions of their `ConstructorArgs`.
+//
+// The CC-2 refactor is *additive*: the GQL `LATTICE name FROM
+// CANONICAL_ID` executor arm in `src/parser.rs` continues to use its
+// hard-coded match for Phase 1 so the bit-identity contract on the
+// buckyball constructor cannot regress while the two paths coexist.
+// Downstream callers (Halcyon's CUBED_SPHERE consumer, the AURORA
+// `aurora_lattice_registry_dispatch` byte-equality guards) reach the
+// constructors through [`get_constructor`].
+
+/// Arguments handed to every constructor. New per-topology parameters
+/// land here as additional `Option` fields so adding a knob never
+/// breaks existing constructors.
+///
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+/// Breaking changes only on minor version bumps (0.x → 0.(x+1)).
+/// Patch versions (0.x.y → 0.x.(y+1)) are non-breaking on this surface.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ConstructorArgs {
+    /// Cubed-sphere panel resolution `C` (cells per panel side).
+    /// Defaults to `1` when `None` (the degenerate cube case). The
+    /// constructor validates `1 <= C <= 256`.
+    pub panel_size: Option<usize>,
+}
+
+/// Constructor-side error. Carries the canonical id at the call site so
+/// the caller need not stitch it back on.
+///
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConstructorError {
+    /// `panel_size` (or another per-topology argument) was outside the
+    /// constructor's accepted range.
+    InvalidArgument(String),
+}
+
+impl std::fmt::Display for ConstructorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConstructorError::InvalidArgument(msg) => {
+                write!(f, "invalid constructor argument: {msg}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ConstructorError {}
+
+/// Function-pointer type of every registered constructor. Constructors
+/// take a shared `&ConstructorArgs` so adding new arg fields is a
+/// non-breaking change for existing constructors.
+pub type Constructor =
+    fn(&ConstructorArgs) -> Result<LatticeWithMetric, ConstructorError>;
+
+/// Lazy table from canonical-id (upper-case) to constructor `fn`.
+/// Populated by [`init_builtin_constructors`] at first access.
+fn constructors() -> &'static HashMap<&'static str, Constructor> {
+    static TABLE: OnceLock<HashMap<&'static str, Constructor>> = OnceLock::new();
+    TABLE.get_or_init(init_builtin_constructors)
+}
+
+/// Idempotently register the Phase 1 built-in constructors. Called from
+/// inside [`constructors`]; exposed `pub` so out-of-tree callers can
+/// assert the table is materialized (the result is identical to calling
+/// [`get_constructor`] on a known key).
+pub fn init_builtin_constructors() -> HashMap<&'static str, Constructor> {
+    let mut t: HashMap<&'static str, Constructor> = HashMap::new();
+    t.insert("TRUNCATED_ICOSAHEDRON", build_truncated_icosahedron as Constructor);
+    t.insert("CUBED_SPHERE", build_cubed_sphere as Constructor);
+    t
+}
+
+/// Resolve a canonical constructor identifier to its constructor `fn`.
+///
+/// Lookup is case-insensitive — `"cubed_sphere"`, `"Cubed_Sphere"` and
+/// `"CUBED_SPHERE"` all resolve to the same constructor. Unknown
+/// identifiers return `None`; no silent default is provided, so a typo
+/// surfaces immediately rather than dispatching to the wrong topology.
+///
+/// Phase 1 built-ins (registered by [`init_builtin_constructors`]):
+///
+/// - `TRUNCATED_ICOSAHEDRON` — wraps
+///   [`crate::lattice::topology::truncated_icosahedron::buckyball`] in a
+///   zero-metric [`LatticeWithMetric`]. Phase 1 does not assign a real
+///   metric to the buckyball; Phase 2 owns that.
+/// - `CUBED_SPHERE` — calls
+///   [`crate::lattice::topology::cubed_sphere::cubed_sphere`] with
+///   `panel_size` from [`ConstructorArgs`] (default `1`, validated
+///   `1..=256`).
+///
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+/// Breaking changes only on minor version bumps (0.x → 0.(x+1)).
+/// Patch versions (0.x.y → 0.x.(y+1)) are non-breaking on this surface.
+pub fn get_constructor(canonical: &str) -> Option<Constructor> {
+    let needle = canonical.to_ascii_uppercase();
+    constructors().get(needle.as_str()).copied()
+}
+
+/// CC-2 wrapper around the existing
+/// [`crate::lattice::topology::truncated_icosahedron::buckyball`]
+/// constructor. Zero-metric Phase 1 placeholder — the buckyball gets a
+/// real metric in Phase 2 when DEC operators land.
+///
+/// The existing `buckyball()` and `buckyball_with_signed_faces()`
+/// public functions remain unchanged; this wrapper dispatches into
+/// `buckyball()` so byte-identical equality with the legacy executor
+/// path is straightforward to assert.
+fn build_truncated_icosahedron(
+    _args: &ConstructorArgs,
+) -> Result<LatticeWithMetric, ConstructorError> {
+    let lat = crate::lattice::topology::truncated_icosahedron::buckyball();
+    Ok(LatticeWithMetric::from_lattice_and_metric(
+        lat,
+        Vec::new(),
+        Vec::new(),
+        None,
+    ))
+}
+
+/// CC-2 wrapper around
+/// [`crate::lattice::topology::cubed_sphere::cubed_sphere`]. Reads
+/// `panel_size` from [`ConstructorArgs`] (default `1`), validates
+/// `1 <= C <= 256`, then delegates. The wrapper supplies the
+/// default name `"cubed_sphere"`; the parser executor renames before
+/// registering.
+fn build_cubed_sphere(
+    args: &ConstructorArgs,
+) -> Result<LatticeWithMetric, ConstructorError> {
+    let c = args.panel_size.unwrap_or(1);
+    if !(1..=256).contains(&c) {
+        return Err(ConstructorError::InvalidArgument(format!(
+            "CUBED_SPHERE: panel_size must be in 1..=256, got {c}"
+        )));
+    }
+    Ok(crate::lattice::topology::cubed_sphere::cubed_sphere(
+        "cubed_sphere",
+        c,
+    ))
 }
 
 #[cfg(test)]
@@ -183,5 +333,101 @@ mod tests {
             other => panic!("missing/wrong gql: {other:?}"),
         };
         assert_eq!(gql_first, gql_second);
+    }
+
+    // ── CC-2 constructor-dispatch tests ──────────────────────────────
+
+    /// CC-2 bit-identity guard: the registry-dispatched
+    /// TRUNCATED_ICOSAHEDRON constructor produces a `Lattice` byte-equal
+    /// to the legacy `buckyball()` direct path.
+    #[test]
+    fn cc2_truncated_icosahedron_via_registry_matches_direct() {
+        let ctor = get_constructor("TRUNCATED_ICOSAHEDRON")
+            .expect("TRUNCATED_ICOSAHEDRON registered");
+        let lwm = ctor(&ConstructorArgs::default())
+            .expect("buckyball constructor returns Ok");
+        let direct = buckyball();
+        assert_eq!(lwm.lattice(), &direct);
+        // Phase 1 zero-metric placeholder for the buckyball.
+        assert!(lwm.cell_areas().is_empty());
+        assert!(lwm.edge_lengths().is_empty());
+        assert!(lwm.dual_face_areas().is_none());
+    }
+
+    /// CC-2: CUBED_SPHERE constructor wires through with the default
+    /// panel size (C = 1, the degenerate cube). 6 faces, 8 vertices,
+    /// 12 edges; Euler χ = 2.
+    #[test]
+    fn cc2_cubed_sphere_via_registry_default_panel_size() {
+        let ctor = get_constructor("CUBED_SPHERE")
+            .expect("CUBED_SPHERE registered");
+        let lwm = ctor(&ConstructorArgs::default())
+            .expect("cubed_sphere with default panel_size");
+        let lat = lwm.lattice();
+        assert_eq!(lat.n_faces(), 6);
+        assert_eq!(lat.n_vertices, 8);
+        assert_eq!(lat.n_edges(), 12);
+        assert_eq!(lat.topology.as_deref(), Some("S2"));
+    }
+
+    /// CC-2: CUBED_SPHERE constructor with an explicit panel size of
+    /// `C = 3` produces the locked combinatorial counts F = 54, V = 56,
+    /// E = 108.
+    #[test]
+    fn cc2_cubed_sphere_via_registry_panel_size_three() {
+        let ctor = get_constructor("CUBED_SPHERE")
+            .expect("CUBED_SPHERE registered");
+        let args = ConstructorArgs { panel_size: Some(3) };
+        let lwm = ctor(&args).expect("cubed_sphere with C = 3");
+        let lat = lwm.lattice();
+        assert_eq!(lat.n_faces(), 6 * 3 * 3);
+        assert_eq!(lat.n_vertices, 6 * 3 * 3 + 2);
+        assert_eq!(lat.n_edges(), 12 * 3 * 3);
+    }
+
+    /// CC-2: lookup is case-insensitive on the canonical id.
+    #[test]
+    fn cc2_get_constructor_is_case_insensitive() {
+        assert!(get_constructor("truncated_icosahedron").is_some());
+        assert!(get_constructor("Truncated_Icosahedron").is_some());
+        assert!(get_constructor("TRUNCATED_ICOSAHEDRON").is_some());
+        assert!(get_constructor("cubed_sphere").is_some());
+        assert!(get_constructor("Cubed_Sphere").is_some());
+        assert!(get_constructor("CUBED_SPHERE").is_some());
+    }
+
+    /// CC-2: unknown canonical ids return `None`, never a silent
+    /// default.
+    #[test]
+    fn cc2_get_constructor_unknown_returns_none() {
+        assert!(get_constructor("NOPE").is_none());
+        assert!(get_constructor("").is_none());
+        assert!(get_constructor("cube").is_none());
+    }
+
+    /// CC-2: CUBED_SPHERE rejects out-of-range panel sizes.
+    #[test]
+    fn cc2_cubed_sphere_rejects_out_of_range_panel_size() {
+        let ctor = get_constructor("CUBED_SPHERE").unwrap();
+        let too_big = ConstructorArgs { panel_size: Some(257) };
+        assert!(matches!(
+            ctor(&too_big),
+            Err(ConstructorError::InvalidArgument(_))
+        ));
+        let zero = ConstructorArgs { panel_size: Some(0) };
+        assert!(matches!(
+            ctor(&zero),
+            Err(ConstructorError::InvalidArgument(_))
+        ));
+    }
+
+    /// CC-2: `init_builtin_constructors` is idempotent in shape — every
+    /// successful materialization contains exactly the Phase 1 keys.
+    #[test]
+    fn cc2_init_builtin_constructors_lists_phase1_keys() {
+        let t = init_builtin_constructors();
+        assert_eq!(t.len(), 2);
+        assert!(t.contains_key("TRUNCATED_ICOSAHEDRON"));
+        assert!(t.contains_key("CUBED_SPHERE"));
     }
 }

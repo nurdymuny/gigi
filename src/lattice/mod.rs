@@ -40,8 +40,11 @@
 //!   Free-form per the spec; the engine does not interpret it in
 //!   Part I beyond round-tripping.
 
+pub mod metric;
 pub mod registry;
 pub mod topology;
+
+pub use metric::LatticeWithMetric;
 
 use std::fmt;
 

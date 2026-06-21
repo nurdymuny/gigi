@@ -12,5 +12,17 @@
 //!   (not Halcyon-specific); Halcyon's heatbath fixtures index
 //!   against this exact construction order, which is why the
 //!   indexing matters here.
+//!
+//! Side modules:
+//!
+//! - `hints` — canonical (CANONICAL_ID → topology-hint) lookup table.
+//!   Metadata-only registry consulted by callers that need to know the
+//!   topology of a constructor without instantiating it. Future
+//!   topologies extend the table by adding a single row.
 
+pub mod cubed_sphere;
+pub mod hints;
 pub mod truncated_icosahedron;
+
+pub use cubed_sphere::cubed_sphere;
+pub use hints::topology_hint_for;

@@ -489,19 +489,39 @@ fn run_one_direction(
     let dt_half = 0.5_f64 * dt;
     let t_segment = (n as f64) * dt;
 
-    // Direction sign: forward sweeps β from start → start + ramp·T;
-    // reversed sweeps the opposite direction (same path, reversed
-    // parameterization). Both runs start from the same snapshot, so
-    // the reversal is purely in the ramp slope.
-    let dir_sign = match direction {
-        Direction::Forward => 1.0_f64,
-        Direction::Reversed => -1.0_f64,
+    // CC-LT-7 (HALCYON reply 2 §B.1, line 118): `γ⁻¹` is NOT a
+    // separately declared loop. The substrate computes the reversed
+    // walk by traversing `loop_edges` time-reversed in the executor.
+    // The PARAMETER-SPACE ramp is the SAME in both directions —
+    // h_forward and h_reversed differ in the SPATIAL loop traversal,
+    // not the temporal ramp.
+    //
+    // Per H_geom = ½(H[γ] - H[γ⁻¹]) (REPLY_2 §3.1 line 25): for the
+    // antisymmetric primary observable to be non-trivial under loop
+    // reversal, H[γ⁻¹] must be the holonomy of the REVERSED loop on
+    // the same final U state, not the holonomy of the same loop with
+    // a reversed ramp.
+    let walk_edges: Vec<(EdgeId, EdgeOrientation)> = match direction {
+        Direction::Forward => loop_edges.to_vec(),
+        Direction::Reversed => loop_edges
+            .iter()
+            .rev()
+            .map(|&(eid, orient)| {
+                let flipped = match orient {
+                    EdgeOrientation::Forward => EdgeOrientation::Reverse,
+                    EdgeOrientation::Reverse => EdgeOrientation::Forward,
+                };
+                (eid, flipped)
+            })
+            .collect(),
     };
 
     // Initial loop-closure holonomy (read once before any KDK step).
-    let h_start = {
+    // Kept for parity with the diagnostics surface; not used in the
+    // h_scalar reduction per the spec definition H[γ] = q0(walk(γ, U_end)).
+    let _h_start = {
         let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
-        walk_loop(lat, loop_edges, &*u_guard)
+        walk_loop(lat, &walk_edges, &*u_guard)
     };
 
     let mut tracking_error_q = 0.0_f64;
@@ -517,8 +537,8 @@ fn run_one_direction(
             // accumulation as a phase prefactor handled in step 4 of
             // the design pseudocode; the gauge action only sees β_W).
             let phase = (s as f64) / (n as f64);
-            let q_ref = dir_sign * cfg.ramp_rate_q * (phase * t_segment);
-            let beta_ref = beta_start + dir_sign * cfg.ramp_rate_beta_w * (phase * t_segment);
+            let q_ref = cfg.ramp_rate_q * (phase * t_segment);
+            let beta_ref = beta_start + cfg.ramp_rate_beta_w * (phase * t_segment);
             let q_t = q_ref;
             let beta_t = beta_ref;
 
@@ -589,13 +609,19 @@ fn run_one_direction(
     }
 
     // Final loop-closure holonomy + reduce to real scalar.
+    //
+    // Per VI.3 GC₂ alignment with the spec text (HALCYON_PART_VI_GATES.md
+    // §GC₂: "verify H[γ] = F₀ · Area(γ)" + REPLY_2 line 167:
+    // "H_geom = ½(H[γ_unit] − H[γ_unit⁻¹])"), H[γ] is the holonomy of
+    // the spatial loop γ on the post-flow U, NOT the change between
+    // start- and end-of-segment loop holonomies. The previous
+    // `h_end · h_start^-1` form vanishes identically on a static
+    // connection and would make GC₂'s area-law contract untestable.
     let h_end = {
         let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
-        walk_loop(lat, loop_edges, &*u_guard)
+        walk_loop(lat, &walk_edges, &*u_guard)
     };
-    // H[γ] = trace_su2(h_end · h_start^-1) reduced to q0 (real scalar).
-    let h_combined = h_end.compose(&h_start.inverse());
-    let h_scalar = reduce_su2_to_scalar(h_combined);
+    let h_scalar = reduce_su2_to_scalar(h_end);
     if !h_scalar.is_finite() {
         return Err(LoopTransportError::NonFiniteAtSubstep {
             seed,

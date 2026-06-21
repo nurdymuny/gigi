@@ -363,33 +363,6 @@ pub enum StorageMode {
     Mmap,
 }
 
-/// Replay strategy for the main bundle-store WAL pass.
-///
-/// `Engine::open` uses `Parallel` by default — the per-bundle drain
-/// runs on a rayon thread pool, cutting cold-start replay from
-/// O(minutes) on a multi-thousand-bundle deploy to O(seconds) on
-/// modern hardware. The two modes are bit-identity equivalent (see
-/// `tests/wal_replay_parallel.rs` for the gate); `Sequential` is
-/// retained primarily so that gate can A/B-compare the two paths
-/// against the same on-disk WAL.
-///
-/// `Sequential` reproduces the pre-2026-06-20 single-thread streaming
-/// behaviour exactly. Pick it when bisecting a state divergence to
-/// the replay path or when diagnosing a parallel-only regression
-/// without rebuilding without the rayon dependency.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ReplayMode {
-    /// Single-threaded streaming replay (pre-2026-06-20 default).
-    /// Preserved as the A/B reference for the bit-identity gate.
-    Sequential,
-    /// Per-bundle parallel drain on a rayon thread pool (2026-06-20
-    /// default). The three gauge passes inside `replay_gauge_substrate`
-    /// remain sequential at the pass-boundary level — within each
-    /// pass entries are drained on the rayon pool, between passes a
-    /// full join enforces the lattice → field → snapshot dependency.
-    Parallel,
-}
-
 /// The persistent database engine.
 pub struct Engine {
     /// Data directory for WAL and data files.
@@ -485,36 +458,17 @@ impl Engine {
     ///   Phase 3 — Incremental: WAL entries after the checkpoint (post-snapshot
     ///             inserts/updates/deletes) are applied on top of the snapshot.
     pub fn open(data_dir: &Path) -> io::Result<Self> {
-        Self::open_inner(data_dir, true, ReplayMode::Parallel)
-    }
-
-    /// Open the engine and replay the WAL using the given strategy.
-    ///
-    /// Production callers should prefer `open` — it picks the
-    /// fastest mode (`Parallel`) and the two modes are bit-identity
-    /// equivalent on a well-formed WAL. This constructor exists so
-    /// the parallel-replay bit-identity regression test
-    /// (`tests/wal_replay_parallel.rs`) can drive both paths against
-    /// the same on-disk WAL inside a single test binary.
-    pub fn open_with_replay_mode(
-        data_dir: &Path,
-        replay_mode: ReplayMode,
-    ) -> io::Result<Self> {
-        Self::open_inner(data_dir, true, replay_mode)
+        Self::open_inner(data_dir, true)
     }
 
     /// Open the engine without replaying the WAL. The engine is empty but
     /// ready to accept new writes. Call `replay_wal()` separately to load
     /// existing data. Used for early HTTP bind during startup.
     pub fn open_empty(data_dir: &Path) -> io::Result<Self> {
-        Self::open_inner(data_dir, false, ReplayMode::Parallel)
+        Self::open_inner(data_dir, false)
     }
 
-    fn open_inner(
-        data_dir: &Path,
-        replay: bool,
-        replay_mode: ReplayMode,
-    ) -> io::Result<Self> {
+    fn open_inner(data_dir: &Path, replay: bool) -> io::Result<Self> {
         fs::create_dir_all(data_dir)?;
 
         // Set restrictive permissions on data directory (Unix only: owner rwx only)
@@ -532,17 +486,8 @@ impl Engine {
         let mut replay_entry_count: u64 = 0;
 
         if replay && wal_path.exists() {
-            replay_entry_count = match replay_mode {
-                ReplayMode::Sequential => {
-                    Self::do_replay(&wal_path, data_dir, &mut bundles, &mut schemas)?
-                }
-                ReplayMode::Parallel => Self::do_replay_parallel(
-                    &wal_path,
-                    data_dir,
-                    &mut bundles,
-                    &mut schemas,
-                )?,
-            };
+            replay_entry_count =
+                Self::do_replay(&wal_path, data_dir, &mut bundles, &mut schemas)?;
         }
 
         // Feature #9: Replay trigger definitions from WAL
@@ -602,7 +547,7 @@ impl Engine {
         if !wal_path.exists() {
             return Ok(());
         }
-        let entry_count = Self::do_replay_parallel(
+        let entry_count = Self::do_replay(
             &wal_path,
             &self.data_dir,
             &mut self.bundles,
@@ -896,236 +841,6 @@ impl Engine {
         let elapsed = start.elapsed().as_secs_f64();
         let total: usize = bundles.values().map(|s| s.len()).sum();
         eprintln!("  WAL replay complete: {entry_count} entries, {total} records in {elapsed:.1}s");
-        Ok(entry_count)
-    }
-
-    /// Per-bundle parallel WAL replay (default `Engine::open` path).
-    ///
-    /// Behaviourally equivalent to `do_replay` — bit-identity is
-    /// enforced by `tests/wal_replay_parallel.rs`. The performance
-    /// shape is different: the dominant cost (record-level Insert /
-    /// Update / Delete) is drained per-bundle on a rayon thread pool
-    /// instead of one entry at a time on the WAL scanner thread.
-    ///
-    /// Two-phase scheme:
-    ///
-    ///   PARTITION (serial) — one WalReader scan. Bundle lifecycle
-    ///   (`CreateBundle` / `DropBundle`), schema mutations, snapshot
-    ///   loading on the first `Checkpoint`, and per-bundle record-op
-    ///   queues are built here. The lifecycle work itself stays
-    ///   serial because cross-bundle ordering between create / drop /
-    ///   first-checkpoint matters for snapshot eligibility — but
-    ///   this phase does no per-record work, so it scales with the
-    ///   number of *entries*, not the number of *records inserted*.
-    ///
-    ///   DRAIN (parallel) — per-bundle queues are moved out of the
-    ///   `bundles` HashMap into a `Vec<(name, BundleStore, queue)>`
-    ///   so each rayon worker holds an owned `&mut BundleStore` with
-    ///   no shared state. Workers replay their queue in WAL-arrival
-    ///   order (intra-bundle order is preserved by the queue's
-    ///   insertion order). After the join, stores are folded back
-    ///   into the HashMap.
-    ///
-    /// Determinism: intra-bundle WAL order is preserved (single
-    /// scanner pushes in order; single drainer pops in order); cross-
-    /// bundle independence (no non-gauge entry touches another
-    /// bundle's state) means parallel interleaving across bundles is
-    /// observationally identical to any serial interleaving
-    /// consistent with intra-bundle order. The first-checkpoint
-    /// snapshot load runs during PARTITION (i.e. before per-bundle
-    /// drain), so a bundle's queue is empty at snapshot-eligibility
-    /// time iff its store was empty at first-checkpoint time in the
-    /// serial scheme — preserving the `store.is_empty()` predicate
-    /// exactly.
-    fn do_replay_parallel(
-        wal_path: &Path,
-        data_dir: &Path,
-        bundles: &mut HashMap<String, BundleStore>,
-        schemas: &mut HashMap<String, BundleSchema>,
-    ) -> io::Result<u64> {
-        use rayon::prelude::*;
-
-        let snapshots_dir = data_dir.join("snapshots");
-        let mut snapshots_loaded = false;
-        let mut entry_count: u64 = 0;
-        let start = std::time::Instant::now();
-
-        let mut reader = WalReader::open(wal_path)?;
-        eprintln!("  WAL replay starting (parallel)...");
-
-        // Per-bundle queues of record-mutation entries (Insert /
-        // Update / Delete / MeasurementOverride). The HashMap key is
-        // the bundle name; entries are pushed in WAL-arrival order
-        // and drained in that order on the rayon pool below.
-        let mut queues: HashMap<String, Vec<WalEntry>> = HashMap::new();
-
-        reader.replay(|entry| {
-            entry_count += 1;
-            if entry_count.is_multiple_of(100_000) {
-                let elapsed = start.elapsed().as_secs_f64();
-                let rate = entry_count as f64 / elapsed;
-                let queued: usize = queues.values().map(|q| q.len()).sum();
-                eprintln!(
-                    "  WAL replay (partition): {entry_count} entries — {queued} queued — {rate:.0} entries/s"
-                );
-            }
-            match entry {
-                WalEntry::CreateBundle(schema) => {
-                    // `or_insert_with` semantics: a duplicate
-                    // CreateBundle for an extant name is a no-op on
-                    // the store (and the queue stays attached). The
-                    // schema map IS replaced — matches do_replay.
-                    bundles
-                        .entry(schema.name.clone())
-                        .or_insert_with(|| BundleStore::new(schema.clone()));
-                    schemas.insert(schema.name.clone(), schema);
-                }
-                WalEntry::Checkpoint if !snapshots_loaded => {
-                    snapshots_loaded = true;
-                    if snapshots_dir.exists() {
-                        // Snapshot eligibility predicate matches
-                        // do_replay's `store.is_empty()` at this
-                        // point in WAL order because no record-op
-                        // entries have been drained yet — the
-                        // PARTITION pass only enqueues them, it
-                        // doesn't apply them. So `store.is_empty()`
-                        // here AND `queues.get(name).map(|q|
-                        // q.is_empty()).unwrap_or(true)` together
-                        // mirror the serial predicate exactly.
-                        for (name, store) in bundles.iter_mut() {
-                            if !store.is_empty() {
-                                continue;
-                            }
-                            if !queues.get(name).map(|q| q.is_empty()).unwrap_or(true) {
-                                continue;
-                            }
-                            let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
-                            if !snap_path.exists() {
-                                continue;
-                            }
-                            match load_dhoom_snapshot(&snap_path) {
-                                Ok(records) => {
-                                    let n = records.len();
-                                    store.batch_insert(&records);
-                                    eprintln!("  Loaded snapshot {name}: {n} records from DHOOM");
-                                }
-                                Err(e) => {
-                                    eprintln!("  WARNING: failed to load snapshot {name}: {e}");
-                                }
-                            }
-                        }
-                    }
-                }
-                WalEntry::Checkpoint => {}
-                WalEntry::Insert { ref bundle_name, .. }
-                | WalEntry::Update { ref bundle_name, .. }
-                | WalEntry::Delete { ref bundle_name, .. }
-                | WalEntry::MeasurementOverride { ref bundle_name, .. } => {
-                    // Mirror do_replay's `if let Some(_) =
-                    // bundles.get_mut(name)` guard: an Insert /
-                    // Update / Delete / Override against a name with
-                    // no live bundle is silently dropped. We
-                    // approximate that by only enqueuing when the
-                    // bundle currently exists in `bundles`. The
-                    // parallel drain then never sees a dangling
-                    // entry.
-                    if bundles.contains_key(bundle_name) {
-                        queues
-                            .entry(bundle_name.clone())
-                            .or_default()
-                            .push(entry);
-                    }
-                }
-                WalEntry::DropBundle(bundle_name) => {
-                    // do_replay's `bundles.remove(name)` discards
-                    // every record applied prior. In our scheme the
-                    // pending queue carries those record-ops, so we
-                    // discard it alongside the store. A subsequent
-                    // CreateBundle of the same name starts fresh on
-                    // both surfaces.
-                    bundles.remove(&bundle_name);
-                    schemas.remove(&bundle_name);
-                    queues.remove(&bundle_name);
-                }
-                // Feature #9: Trigger WAL entries are handled
-                // post-replay by the engine — identical to do_replay.
-                WalEntry::CreateTrigger { .. } | WalEntry::DropTrigger(_) => {}
-                // TDD-HAL-II.4b / V.1: lattice / gauge-field / snapshot
-                // entries are handled by `replay_gauge_substrate` so
-                // we can fail loudly on a malformed entry instead of
-                // panicking inside this generic match arm. Acknowledge
-                // them here so the match stays exhaustive.
-                #[cfg(feature = "gauge")]
-                WalEntry::LatticeDeclare { .. }
-                | WalEntry::GaugeFieldDeclare { .. }
-                | WalEntry::GaugeFieldSnapshot(_) => {}
-            }
-            Ok(())
-        })?;
-
-        // Hand the per-bundle queues to the rayon pool. We must move
-        // the `BundleStore`s out of `bundles` so each worker holds an
-        // owned `&mut BundleStore` (no shared HashMap, no per-entry
-        // locking). After the parallel join the stores are moved back.
-        let partition_elapsed = start.elapsed().as_secs_f64();
-        eprintln!(
-            "  WAL replay (partition done): {entry_count} entries, {} bundles, {} total queued, {:.1}s",
-            bundles.len(),
-            queues.values().map(|q| q.len()).sum::<usize>(),
-            partition_elapsed
-        );
-
-        // Drain `bundles` into an owned tuple list `[(name, store,
-        // queue)]`. The queue may be missing for bundles with no
-        // record-ops (snapshot-only / empty bundles); in that case
-        // we just hand the worker an empty Vec, which is a no-op.
-        let mut work: Vec<(String, BundleStore, Vec<WalEntry>)> = bundles
-            .drain()
-            .map(|(name, store)| {
-                let queue = queues.remove(&name).unwrap_or_default();
-                (name, store, queue)
-            })
-            .collect();
-
-        work.par_iter_mut().for_each(|(_name, store, queue)| {
-            for entry in queue.drain(..) {
-                match entry {
-                    WalEntry::Insert { record, .. } => {
-                        store.insert(&record);
-                    }
-                    WalEntry::Update { key, patches, .. } => {
-                        store.update(&key, &patches);
-                    }
-                    WalEntry::Delete { key, .. } => {
-                        store.delete(&key);
-                    }
-                    WalEntry::MeasurementOverride {
-                        field,
-                        key,
-                        new_measured_value,
-                        ..
-                    } => {
-                        let mut patches = Record::new();
-                        patches.insert(field, Value::Float(new_measured_value));
-                        store.update(&key, &patches);
-                    }
-                    // Other variants never reach the queue
-                    // (PARTITION drops them upstream).
-                    _ => {}
-                }
-            }
-        });
-
-        // Fold the stores back into the engine's HashMap.
-        for (name, store, _empty_queue) in work {
-            bundles.insert(name, store);
-        }
-
-        let elapsed = start.elapsed().as_secs_f64();
-        let total: usize = bundles.values().map(|s| s.len()).sum();
-        eprintln!(
-            "  WAL replay complete (parallel): {entry_count} entries, {total} records in {elapsed:.1}s"
-        );
         Ok(entry_count)
     }
 

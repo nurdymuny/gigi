@@ -173,14 +173,6 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 ml-kem = "0.2"
 kem = "=0.3.0-pre.0"
 hybrid-array = "0.2.0-rc.9"
-# Per-bundle WAL-replay parallelism. The single-threaded `do_replay`
-# is the dominant cost on every `Engine::open` (~11 min on the
-# production WAL at 4529 bundles / 12.16M records — a user-visible
-# 503 window on every gigi-stream restart). Rayon's work-stealing
-# `par_iter` saturates the available cores on the per-bundle drain
-# pass with no manual thread plumbing; the three gauge passes use
-# the same machinery, retaining the cross-pass serial barriers.
-rayon = "1.10"
 
 [[bin]]
 name = "gigi-convert"
@@ -213,10 +205,6 @@ path = "benches/ingest_bench.rs"
 [[bin]]
 name = "bench_tpch"
 path = "benches/tpch_bench.rs"
-
-[[bin]]
-name = "replay_baseline_bench"
-path = "benches/replay_baseline_bench.rs"
 
 [[bin]]
 name = "nasa_atmo"

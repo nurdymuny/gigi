@@ -18,7 +18,7 @@
 //!   the one whose snapshot was actually loaded — not the last.
 
 use std::fs::{File, OpenOptions};
-use std::io::{self, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{self, BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use crate::types::{BundleSchema, FieldDef, FieldType, Record, Value};
@@ -543,19 +543,8 @@ impl WalWriter {
 }
 
 /// WAL reader — replays entries from a log file.
-///
-/// The underlying `File` is wrapped in a `BufReader` so the three
-/// `read_exact` calls per entry (length, payload, CRC) coalesce into
-/// roughly one 8 KB OS read instead of three syscalls. On the
-/// production WAL (4529 bundles, 12.16M records, ~660 s sequential
-/// replay) this saves a measurable fraction of cold-start wall time;
-/// on the fixture bench it's worth ~10–20 %. No semantic change —
-/// `BufReader<File>` implements `Read` and `Seek` with the exact
-/// same signatures, and the `seek(SeekFrom::Start(0))` at the top of
-/// `read_all` / `replay` invalidates the internal buffer so each
-/// scan starts at offset 0 with an empty buffer.
 pub struct WalReader {
-    file: BufReader<File>,
+    file: File,
 }
 
 /// A single WAL entry.
@@ -633,7 +622,7 @@ pub enum WalEntry {
 impl WalReader {
     /// Open an existing WAL file for reading.
     pub fn open(path: &Path) -> io::Result<Self> {
-        let file = BufReader::new(File::open(path)?);
+        let file = File::open(path)?;
         Ok(Self { file })
     }
 

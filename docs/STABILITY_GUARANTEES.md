@@ -48,6 +48,106 @@ underneath is not in question; the surface is.
 | `sharded`         | Research-grade          | Atlas-cover sharding (ChartId, ShardId, Atlas, Transition, SpectralRegime, Clean Finger Move). Types defined; execution bodies are `todo!()` until Phase B. 13 test gates passing on the API skeleton (Penguins T13 cross-chart loop included). | Experimentation only. Pin a commit hash before depending on it.                    |
 | `patterns`        | Research-grade          | DEFINE PATTERN / HUNT / DROP PATTERN / SHOW PATTERNS / EXCLUDING IN. Phase 1 ships parser-only — grammar stable, executor incomplete. | Experimentation only. Pin a commit hash before depending on it.                    |
 
+## Trait-surface stability
+
+Feature-flag stability covers the HTTP surface and the bundle-of-code
+that ships behind a `--features` toggle. It does not cover individual
+Rust `pub trait` surfaces that downstream crates implement against —
+the kind of surface a library-dep consumer pins to a specific commit.
+
+The first such consumer is AURORA (`~/Documents/aurora`, the
+shallow-water atmospheric-dynamics Gi-System linking gigi as a library
+dep, not a feature flag in-tree). When AURORA implements the
+`HamiltonianFactory` trait to ship a `ShallowWater` Hamiltonian, gigi
+owes them a binary-stability contract on what that trait surface can
+look like across versions. The convention below grew out of AURORA's
+2026-06-21 reply 2 §3 ask for exactly that contract.
+
+### The EVOLVING marker
+
+Every `pub trait` (and a few load-bearing `pub` structs that downstream
+crates implement against, like `LatticeWithMetric`) carries a doc
+comment of this exact shape:
+
+```rust
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+/// Breaking changes only on minor version bumps (0.x → 0.(x+1)).
+/// Patch versions (0.x.y → 0.x.(y+1)) are non-breaking on this surface.
+```
+
+This is the pre-1.0 trait-surface analogue of `research-with-caveats`.
+Three rules:
+
+1. **Patch versions are non-breaking.** A bump from `0.1.5` to `0.1.6`
+   never removes a method, never tightens a signature (parameter list,
+   return type, where-clauses), never narrows a `where Self: Trait`
+   bound. Method bodies may change; new methods with default impls may
+   be added.
+2. **Minor versions may break.** A bump from `0.1.x` to `0.2.0` may
+   reshape the trait surface. Breaking changes are called out in
+   `CHANGELOG.md` against the version that ships them.
+3. **EVOLVING graduates at the `0.1.0` tag.** Until then, the surface
+   is still being shaped against real downstream consumers. After
+   tagging, traits are reclassified into production-stable or
+   research-grade with the same vocabulary the feature-flag tiers use.
+
+There is no `#[stable(since = ...)]` machinery. Rust's `#[stable]` is
+`rustc`-internal and not available to library crates. The doc-comment
+convention plus changelog discipline plus semver is what actually works
+for downstream pinning.
+
+### Currently annotated
+
+As of commit `f62e46c` (Phase 1 AURORA topology sprint):
+
+| Surface | File | Notes |
+|---|---|---|
+| `LatticeWithMetric` | `src/lattice/metric.rs` | Phase 1 minimal wrapper. Phase 2 DEC operators consume it as free functions. |
+| `lattice::registry::get_constructor` | `src/lattice/registry.rs` | Constructor-dispatch surface. CC-2 refactor lifted from "optional" into Phase 1. |
+| `lattice::topology::cubed_sphere::cubed_sphere` | `src/lattice/topology/cubed_sphere.rs` | A1 constructor. |
+
+### Scheduled for annotation when they land
+
+Phase 2 trait surfaces (gated on AURORA's `ShallowWater` factory
+skeleton arriving):
+
+| Surface | File | Notes |
+|---|---|---|
+| `HamiltonianFactory` | `src/gauge/hamiltonian_registry.rs` (NEW) | Trait-object factory for downstream-crate Hamiltonian registration. |
+| `HamiltonianForce` | `src/gauge/action.rs` (post A2 refactor) | One of the four A2 sub-traits the integrator generics over. |
+| `HamiltonianDrift` | `src/gauge/action.rs` | A2 sub-trait. |
+| `ProjectionOperator` | `src/gauge/action.rs` | A2 sub-trait (constraint projection: Gauss law, divergence-free, etc.). |
+| `EnergyDecomposition` | `src/gauge/action.rs` | A2 sub-trait (free-form energy map). |
+
+The annotation goes on with the implementation; no item ships without
+the comment.
+
+### Halcyon-internal surfaces are out of scope
+
+Halcyon is one of the special-three feature-flag-in-tree Gi-Systems;
+its `Hamiltonian::KogutSusskind { beta }` enum variant and its
+`SYMPLECTIC_FLOW` integrator internals are NOT downstream-consumed
+trait surfaces. Refactors of in-tree feature-gated code do not require
+the EVOLVING marker because the consumer (Halcyon) lands atomically
+with the producer (gigi) in the same commit. The marker is specifically
+for surfaces that a downstream-crate consumer (AURORA today; ICARUS
+later) pins against.
+
+### What downstream consumers should do
+
+1. Pin gigi by commit hash in your `Cargo.toml`:
+   ```toml
+   gigi = { path = "../gigi" }                          # local dev
+   gigi = { git = "https://github.com/davisgeometric/gigi", rev = "<sha>" }  # CI/prod
+   ```
+2. Capture an integration test against the trait surfaces you
+   implement. When you bump the pin, run those tests first. A test
+   failure means the surface moved — that is the EVOLVING contract.
+3. When `0.1.0` tags, re-read this document. Traits will be
+   reclassified into the existing tier vocabulary; what was EVOLVING
+   becomes production-stable or research-grade with the same semver
+   commitments the feature-flag tiers carry.
+
 ## Per-endpoint stability
 
 The endpoint table below is the practical view: which routes you can

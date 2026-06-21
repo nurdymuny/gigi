@@ -86,6 +86,8 @@ pub mod wilson_force;
 pub mod lie_exp;
 #[cfg(feature = "gauge")]
 pub mod symplectic_flow;
+#[cfg(feature = "gauge")]
+pub mod loop_transport;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;

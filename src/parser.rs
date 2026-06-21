@@ -35,6 +35,103 @@
 
 use std::collections::HashMap;
 
+// ── LOOP_TRANSPORT supporting types (parser surface) ─────────────────
+//
+// Halcyon Part VI deliverable #2. v3.1.3 §4.4 grammar freezes the
+// control manifold pair to (Q, BETA_WILSON); the supporting types live
+// here at the parser surface so the `Statement::LoopTransport` variant
+// is self-contained (mirrors how `crate::gauge::ProjectGaussConfig` etc
+// live in the gauge module — parser-surface types pinned by the
+// grammar live here, executor-surface types live in
+// `crate::gauge::loop_transport`).
+
+/// Control manifold spec for `LOOP_TRANSPORT`. v3.1.3 freezes the
+/// `(Q, BETA_WILSON)` pair; broader manifolds may land in later
+/// specs as additional variants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ControlManifoldSpec {
+    /// `(Q, BETA_WILSON)` — the only manifold v3.1.3 ships.
+    QBetaWilson,
+}
+
+/// Seed bracket from `SEEDS [lo..hi]`. Inclusive both ends.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SeedRange {
+    /// Low end (inclusive).
+    pub lo: u64,
+    /// High end (inclusive).
+    pub hi: u64,
+}
+
+/// One `COMPUTE …` output identifier per v3.1.3 §4.4.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoopTransportOutputId {
+    /// `COMPUTE HOLONOMY_FORWARD`.
+    HolonomyForward,
+    /// `COMPUTE HOLONOMY_REVERSED`.
+    HolonomyReversed,
+    /// `COMPUTE TRACKING_ERROR_TRACE_Q`.
+    TrackingErrorTraceQ,
+    /// `COMPUTE TRACKING_ERROR_TRACE_BETA_W`.
+    TrackingErrorTraceBetaW,
+    /// `COMPUTE ADIABATICITY_CHECK`.
+    AdiabaticityCheck,
+}
+
+/// One `RETURN` field identifier per v3.1.3 §4.4.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoopTransportReturnId {
+    /// `H_forward`.
+    HForward,
+    /// `H_reversed`.
+    HReversed,
+    /// `sigma_H_blocked`.
+    SigmaHBlocked,
+    /// `per_seed_H_forward`.
+    PerSeedHForward,
+    /// `per_seed_H_reversed`.
+    PerSeedHReversed,
+    /// `tracking_error_max_Q`.
+    TrackingErrorMaxQ,
+    /// `tracking_error_max_beta_W`.
+    TrackingErrorMaxBetaW,
+    /// `adiabaticity_check`.
+    AdiabaticityCheck,
+}
+
+/// Optional `SHAM { … }` block argument value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ShamArg {
+    /// Boolean literal `TRUE` / `FALSE`.
+    Bool(bool),
+    /// Numeric literal.
+    Number(f64),
+    /// Bare identifier or quoted string payload.
+    Text(String),
+}
+
+/// `SHAM { … }` block. VI.2 PARSES the block forward-compat for VI.4;
+/// the executor REJECTS any non-empty flag list with
+/// `UnrecognizedShamFlag`. Empty `SHAM { }` is the only VI.2-runnable
+/// case.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShamBlock {
+    /// Ordered (flag-name, arg) pairs. `arg` defaults to `Bool(true)`
+    /// when the flag is bare (no `= …` clause).
+    pub flags: Vec<(String, ShamArg)>,
+}
+
+/// `LOOP` body — face index or explicit vertex sequence.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoopBody {
+    /// `LOOP name ON lattice FACE n` — closed face cycle.
+    Face(usize),
+    /// `LOOP name ON lattice EDGES (v0, v1, …)` — vertex sequence.
+    /// May be open; the LOOP_TRANSPORT executor raises
+    /// `LoopNotClosed` per the audit-story flag contract.
+    Edges(Vec<usize>),
+}
+
 /// Parsed GQL statement.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
@@ -900,6 +997,96 @@ pub enum Statement {
         /// stochastic kernels Part V+ might add).
         seed: Option<u64>,
     },
+    /// `LOOP name ON lattice FACE n;` — register a closed face cycle.
+    /// `LOOP name ON lattice EDGES (v0, v1, …);` — register an explicit
+    /// vertex path (may be open; LOOP_TRANSPORT raises `LoopNotClosed`
+    /// at executor entry per the gate doc §SHAM audit-story flag).
+    ///
+    /// Halcyon Part VI deliverable #2 (LOOP_TRANSPORT verb)
+    /// pre-registration: `HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3`
+    /// §4.4 (Zenodo DOI 10.5281/zenodo.20785681).
+    #[cfg(feature = "gauge")]
+    LoopDecl {
+        /// User-facing loop name (the `ident` in `LOOP ident ON …;`).
+        name: String,
+        /// Owning lattice name.
+        lattice: String,
+        /// Loop body — either a single face index or an explicit
+        /// vertex sequence.
+        body: LoopBody,
+    },
+    /// `LOOP_TRANSPORT lattice ALONG_LOOP loop_id CONTROL_MANIFOLD
+    /// (Q, BETA_WILSON) ADIABATIC ... RAMP_RATE_Q ... RAMP_RATE_BETA_W
+    /// ... DRIVE_OMEGA ... DRIVE_F0 ... N_DISCRETIZATION ...
+    /// PIN_LAMBDA_Q ... PIN_LAMBDA_BETA_W ... EPS_Q ... EPS_BETA_W ...
+    /// ALPHA_HALCYON ... TAU_0 ... BETA_TAU ... MU_BASELINE ...
+    /// K_SPRING ... C_DAMP ... [BETA_WILSON_START ...] SEEDS [lo..hi]
+    /// COMPUTE ... [SHAM { ... }] RETURN ...;`
+    ///
+    /// Halcyon Part VI deliverable #2 verb. Pre-registration:
+    /// `HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3` §4.4 (Zenodo DOI
+    /// 10.5281/zenodo.20785681), gate doc
+    /// `theory/halcyon/HALCYON_PART_VI_GATES.md` @ 9a73dc0.
+    ///
+    /// EVOLVING: this variant's contract is pinned by v3.1.3 §4.4 and
+    /// may evolve across minor versions per `STABILITY_GUARANTEES.md`.
+    #[cfg(feature = "gauge")]
+    LoopTransport {
+        // -- topology binding --
+        /// Lattice name (first ident after `LOOP_TRANSPORT`).
+        lattice: String,
+        /// Loop id (`ALONG_LOOP loop_id`).
+        loop_id: String,
+        // -- parameter-space loop γ in Λ = (Q, β_W) --
+        /// Control manifold; v3.1.3 freezes `(Q, BETA_WILSON)`.
+        control_manifold: ControlManifoldSpec,
+        /// `ADIABATIC TRUE/FALSE`.
+        adiabatic: bool,
+        /// `RAMP_RATE_Q`.
+        ramp_rate_q: f64,
+        /// `RAMP_RATE_BETA_W`.
+        ramp_rate_beta_w: f64,
+        /// `DRIVE_OMEGA`.
+        drive_omega: f64,
+        /// `DRIVE_F0`.
+        drive_f0: f64,
+        /// `N_DISCRETIZATION` (substep count).
+        n_discretization: usize,
+        // -- pin / penalty --
+        /// `PIN_LAMBDA_Q`.
+        pin_lambda_q: f64,
+        /// `PIN_LAMBDA_BETA_W`.
+        pin_lambda_beta_w: f64,
+        /// `EPS_Q`.
+        eps_q: f64,
+        /// `EPS_BETA_W`.
+        eps_beta_w: f64,
+        // -- Halcyon clock --
+        /// `ALPHA_HALCYON`.
+        alpha_halcyon: f64,
+        /// `TAU_0`.
+        tau_0: f64,
+        /// `BETA_TAU`.
+        beta_tau: f64,
+        // -- Brownian / spring --
+        /// `MU_BASELINE`.
+        mu_baseline: f64,
+        /// `K_SPRING`.
+        k_spring: f64,
+        /// `C_DAMP`.
+        c_damp: f64,
+        /// `SEEDS [lo..hi]` (inclusive both ends).
+        seeds: SeedRange,
+        /// `COMPUTE …` clauses (each one adds an output id).
+        compute: Vec<LoopTransportOutputId>,
+        /// `RETURN …` field list.
+        return_fields: Vec<LoopTransportReturnId>,
+        /// `SHAM { … }` block. `None` when omitted; `Some(empty)` is a
+        /// valid VI.2 case (parses, executes without dispatch); any
+        /// non-empty flag list is rejected at executor entry with
+        /// `UnrecognizedShamFlag`.
+        sham: Option<ShamBlock>,
+    },
     /// `SHOW E_FIELD name [BUFFER];`
     #[cfg(feature = "gauge")]
     ShowEField {
@@ -1166,6 +1353,12 @@ enum Token {
     LBrace,
     /// `}` — struct-literal closer (TDD-HAL-IV.7 PROJECT_GAUSS sugar).
     RBrace,
+    /// `[` — bracket opener (LOOP_TRANSPORT SEEDS [lo..hi]).
+    LBracket,
+    /// `]` — bracket closer.
+    RBracket,
+    /// `..` — range operator (LOOP_TRANSPORT SEEDS [lo..hi]).
+    DotDot,
     Comma,
     Eq,
     Neq, // != or <>
@@ -1212,6 +1405,14 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                 tokens.push(Token::RBrace);
                 i += 1;
             }
+            '[' => {
+                tokens.push(Token::LBracket);
+                i += 1;
+            }
+            ']' => {
+                tokens.push(Token::RBracket);
+                i += 1;
+            }
             ',' => {
                 tokens.push(Token::Comma);
                 i += 1;
@@ -1225,8 +1426,15 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                 i += 1;
             }
             '.' => {
-                tokens.push(Token::Dot);
-                i += 1;
+                // `..` range operator (LOOP_TRANSPORT SEEDS [lo..hi])
+                // takes precedence over the bare `.` member access.
+                if i + 1 < chars.len() && chars[i + 1] == '.' {
+                    tokens.push(Token::DotDot);
+                    i += 2;
+                } else {
+                    tokens.push(Token::Dot);
+                    i += 1;
+                }
             }
             ';' => {
                 tokens.push(Token::Semicolon);
@@ -1327,7 +1535,14 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                 while i < chars.len() && chars[i].is_ascii_digit() {
                     i += 1;
                 }
-                if i < chars.len() && chars[i] == '.' {
+                // Treat a single `.` as a decimal point ONLY if it's
+                // NOT immediately followed by another `.` — the
+                // `..` range operator (LOOP_TRANSPORT SEEDS
+                // [lo..hi]) must not be eaten as a number's decimal.
+                if i < chars.len()
+                    && chars[i] == '.'
+                    && !(i + 1 < chars.len() && chars[i + 1] == '.')
+                {
                     i += 1;
                     while i < chars.len() && chars[i].is_ascii_digit() {
                         i += 1;
@@ -1528,6 +1743,17 @@ impl Parser {
             "E_FIELD" => self.parse_e_field(),
             #[cfg(feature = "gauge")]
             "SYMPLECTIC_FLOW" => self.parse_symplectic_flow(),
+            // LOOP_TRANSPORT verb. Halcyon Part VI deliverable #2.
+            // Pre-registration: HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3
+            // §4.4 (Zenodo DOI 10.5281/zenodo.20785681).
+            #[cfg(feature = "gauge")]
+            "LOOP_TRANSPORT" => self.parse_loop_transport(),
+            // LOOP declaration (companion to LOOP_TRANSPORT). Registers
+            // a named loop (face cycle or explicit edge list) against
+            // a lattice. LOOP_TRANSPORT's `ALONG_LOOP` clause resolves
+            // names through this registry.
+            #[cfg(feature = "gauge")]
+            "LOOP" => self.parse_loop_decl(),
             // SNAPSHOT verb. Closes TDD-HAL-V.2 (parser + executor).
             // Grammar:
             //   SNAPSHOT GAUGE_FIELD ident PERSIST ;
@@ -3000,6 +3226,409 @@ impl Parser {
             measure,
             seed,
         })
+    }
+
+    /// Parse a `LOOP name ON lattice FACE n;` or
+    /// `LOOP name ON lattice EDGES (v0, v1, …);` declaration.
+    ///
+    /// Halcyon Part VI deliverable #2 companion verb. Registers a
+    /// named loop against a lattice; `LOOP_TRANSPORT`'s `ALONG_LOOP`
+    /// clause resolves names through this registry. FACE-form is
+    /// always closed; EDGES-form may be open (the `LoopNotClosed`
+    /// rejection in `LOOP_TRANSPORT` is what surfaces an open path
+    /// per the gate doc §SHAM audit-story flag).
+    #[cfg(feature = "gauge")]
+    fn parse_loop_decl(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let lattice = self.expect_word()?;
+        let body = if self.is_keyword("FACE") {
+            self.advance();
+            let n = self.expect_usize()?;
+            LoopBody::Face(n)
+        } else if self.is_keyword("EDGES") {
+            self.advance();
+            self.expect(Token::LParen)?;
+            let mut vs: Vec<usize> = Vec::new();
+            loop {
+                if matches!(self.peek(), Some(Token::RParen)) {
+                    break;
+                }
+                if !vs.is_empty() {
+                    self.expect(Token::Comma)?;
+                }
+                vs.push(self.expect_usize()?);
+            }
+            self.expect(Token::RParen)?;
+            LoopBody::Edges(vs)
+        } else {
+            return Err(format!(
+                "Expected FACE or EDGES in LOOP declaration, got {:?}",
+                self.peek()
+            ));
+        };
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::LoopDecl {
+            name,
+            lattice,
+            body,
+        })
+    }
+
+    /// Parse a `LOOP_TRANSPORT` statement per
+    /// `HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3` §4.4 (Zenodo DOI
+    /// 10.5281/zenodo.20785681). Halcyon Part VI deliverable #2.
+    ///
+    /// Grammar (frozen at v3.1.3 deposit; spec name is
+    /// SAMPLE_TRANSPORT, implementation name LOOP_TRANSPORT per
+    /// rename agreement):
+    ///
+    /// ```ebnf
+    /// loop_transport_stmt =
+    ///   "LOOP_TRANSPORT" ident
+    ///     "ALONG_LOOP" ident
+    ///     "CONTROL_MANIFOLD" "(" "Q" "," "BETA_WILSON" ")"
+    ///     "ADIABATIC" ("TRUE" | "FALSE")
+    ///     "RAMP_RATE_Q" number "RAMP_RATE_BETA_W" number
+    ///     "DRIVE_OMEGA" number "DRIVE_F0" number
+    ///     "N_DISCRETIZATION" integer
+    ///     "PIN_LAMBDA_Q" number "PIN_LAMBDA_BETA_W" number
+    ///     "EPS_Q" number "EPS_BETA_W" number
+    ///     "ALPHA_HALCYON" number "TAU_0" number "BETA_TAU" number
+    ///     "MU_BASELINE" number "K_SPRING" number "C_DAMP" number
+    ///     [ "BETA_WILSON_START" number ]
+    ///     "SEEDS" "[" integer ".." integer "]"
+    ///     compute_clause+
+    ///     [ "SHAM" "{" sham_flag* "}" ]
+    ///     "RETURN" return_field ("," return_field)*
+    ///     ";" ;
+    /// ```
+    ///
+    /// `BETA_WILSON_START` is an additive knob over the frozen grammar
+    /// — v3.1.3 §2 says "BETA_WILSON ∈ [2.5, 3.0]" without specifying
+    /// the START coordinate (the ramp gives slope only). The parser
+    /// validates the (start, start + ramp · T_segment) endpoints
+    /// against the regime; missing → defaults to the regime midpoint
+    /// 2.75.
+    #[cfg(feature = "gauge")]
+    fn parse_loop_transport(&mut self) -> Result<Statement, String> {
+        let lattice = self.expect_word()?;
+        self.expect_keyword("ALONG_LOOP")?;
+        let loop_id = self.expect_word()?;
+        self.expect_keyword("CONTROL_MANIFOLD")?;
+        self.expect(Token::LParen)?;
+        // v3.1.3 freezes (Q, BETA_WILSON).
+        let q_kw = self.expect_word()?;
+        if !q_kw.eq_ignore_ascii_case("Q") {
+            return Err(format!(
+                "Expected CONTROL_MANIFOLD (Q, BETA_WILSON), got first axis '{q_kw}'"
+            ));
+        }
+        self.expect(Token::Comma)?;
+        let bw_kw = self.expect_word()?;
+        if !bw_kw.eq_ignore_ascii_case("BETA_WILSON") {
+            return Err(format!(
+                "Expected CONTROL_MANIFOLD (Q, BETA_WILSON), got second axis '{bw_kw}'"
+            ));
+        }
+        self.expect(Token::RParen)?;
+        let control_manifold = ControlManifoldSpec::QBetaWilson;
+
+        // Remaining clauses are order-friendly (matches
+        // SYMPLECTIC_FLOW optional-clause loop). v3.1.3 §4.4 shows a
+        // canonical order; we accept any order and validate
+        // completeness at the end.
+        let mut adiabatic: Option<bool> = None;
+        let mut ramp_rate_q: Option<f64> = None;
+        let mut ramp_rate_beta_w: Option<f64> = None;
+        let mut drive_omega: Option<f64> = None;
+        let mut drive_f0: Option<f64> = None;
+        let mut n_discretization: Option<usize> = None;
+        let mut pin_lambda_q: Option<f64> = None;
+        let mut pin_lambda_beta_w: Option<f64> = None;
+        let mut eps_q: Option<f64> = None;
+        let mut eps_beta_w: Option<f64> = None;
+        let mut alpha_halcyon: Option<f64> = None;
+        let mut tau_0: Option<f64> = None;
+        let mut beta_tau: Option<f64> = None;
+        let mut mu_baseline: Option<f64> = None;
+        let mut k_spring: Option<f64> = None;
+        let mut c_damp: Option<f64> = None;
+        let mut beta_wilson_start: Option<f64> = None;
+        let mut seeds: Option<SeedRange> = None;
+        let mut compute: Vec<LoopTransportOutputId> = Vec::new();
+        let mut sham: Option<ShamBlock> = None;
+        let mut return_fields: Vec<LoopTransportReturnId> = Vec::new();
+
+        loop {
+            if self.is_keyword("ADIABATIC") {
+                self.advance();
+                adiabatic = Some(self.expect_bool_word()?);
+            } else if self.is_keyword("RAMP_RATE_Q") {
+                self.advance();
+                ramp_rate_q = Some(self.expect_f64()?);
+            } else if self.is_keyword("RAMP_RATE_BETA_W") {
+                self.advance();
+                ramp_rate_beta_w = Some(self.expect_f64()?);
+            } else if self.is_keyword("DRIVE_OMEGA") {
+                self.advance();
+                drive_omega = Some(self.expect_f64()?);
+            } else if self.is_keyword("DRIVE_F0") {
+                self.advance();
+                drive_f0 = Some(self.expect_f64()?);
+            } else if self.is_keyword("N_DISCRETIZATION") {
+                self.advance();
+                n_discretization = Some(self.expect_usize()?);
+            } else if self.is_keyword("PIN_LAMBDA_Q") {
+                self.advance();
+                pin_lambda_q = Some(self.expect_f64()?);
+            } else if self.is_keyword("PIN_LAMBDA_BETA_W") {
+                self.advance();
+                pin_lambda_beta_w = Some(self.expect_f64()?);
+            } else if self.is_keyword("EPS_Q") {
+                self.advance();
+                eps_q = Some(self.expect_f64()?);
+            } else if self.is_keyword("EPS_BETA_W") {
+                self.advance();
+                eps_beta_w = Some(self.expect_f64()?);
+            } else if self.is_keyword("ALPHA_HALCYON") {
+                self.advance();
+                alpha_halcyon = Some(self.expect_f64()?);
+            } else if self.is_keyword("TAU_0") {
+                self.advance();
+                tau_0 = Some(self.expect_f64()?);
+            } else if self.is_keyword("BETA_TAU") {
+                self.advance();
+                beta_tau = Some(self.expect_f64()?);
+            } else if self.is_keyword("MU_BASELINE") {
+                self.advance();
+                mu_baseline = Some(self.expect_f64()?);
+            } else if self.is_keyword("K_SPRING") {
+                self.advance();
+                k_spring = Some(self.expect_f64()?);
+            } else if self.is_keyword("C_DAMP") {
+                self.advance();
+                c_damp = Some(self.expect_f64()?);
+            } else if self.is_keyword("BETA_WILSON_START") {
+                self.advance();
+                beta_wilson_start = Some(self.expect_f64()?);
+            } else if self.is_keyword("SEEDS") {
+                self.advance();
+                seeds = Some(self.parse_seed_bracket()?);
+            } else if self.is_keyword("COMPUTE") {
+                self.advance();
+                compute.push(self.parse_loop_transport_output_id()?);
+            } else if self.is_keyword("SHAM") {
+                self.advance();
+                sham = Some(self.parse_sham_block()?);
+            } else if self.is_keyword("RETURN") {
+                self.advance();
+                return_fields = self.parse_loop_transport_return_list()?;
+            } else {
+                break;
+            }
+        }
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+
+        // Required-clause check. Each missing required clause names
+        // itself so the rejection test (which asserts the parser
+        // error contains "N_DISCRETIZATION") matches deterministically.
+        let stmt = Statement::LoopTransport {
+            lattice,
+            loop_id,
+            control_manifold,
+            adiabatic: adiabatic
+                .ok_or_else(|| "LOOP_TRANSPORT missing ADIABATIC".to_string())?,
+            ramp_rate_q: ramp_rate_q
+                .ok_or_else(|| "LOOP_TRANSPORT missing RAMP_RATE_Q".to_string())?,
+            ramp_rate_beta_w: ramp_rate_beta_w
+                .ok_or_else(|| "LOOP_TRANSPORT missing RAMP_RATE_BETA_W".to_string())?,
+            drive_omega: drive_omega
+                .ok_or_else(|| "LOOP_TRANSPORT missing DRIVE_OMEGA".to_string())?,
+            drive_f0: drive_f0
+                .ok_or_else(|| "LOOP_TRANSPORT missing DRIVE_F0".to_string())?,
+            n_discretization: n_discretization
+                .ok_or_else(|| "LOOP_TRANSPORT missing N_DISCRETIZATION".to_string())?,
+            pin_lambda_q: pin_lambda_q
+                .ok_or_else(|| "LOOP_TRANSPORT missing PIN_LAMBDA_Q".to_string())?,
+            pin_lambda_beta_w: pin_lambda_beta_w
+                .ok_or_else(|| "LOOP_TRANSPORT missing PIN_LAMBDA_BETA_W".to_string())?,
+            eps_q: eps_q.ok_or_else(|| "LOOP_TRANSPORT missing EPS_Q".to_string())?,
+            eps_beta_w: eps_beta_w
+                .ok_or_else(|| "LOOP_TRANSPORT missing EPS_BETA_W".to_string())?,
+            alpha_halcyon: alpha_halcyon
+                .ok_or_else(|| "LOOP_TRANSPORT missing ALPHA_HALCYON".to_string())?,
+            tau_0: tau_0.ok_or_else(|| "LOOP_TRANSPORT missing TAU_0".to_string())?,
+            beta_tau: beta_tau
+                .ok_or_else(|| "LOOP_TRANSPORT missing BETA_TAU".to_string())?,
+            mu_baseline: mu_baseline
+                .ok_or_else(|| "LOOP_TRANSPORT missing MU_BASELINE".to_string())?,
+            k_spring: k_spring
+                .ok_or_else(|| "LOOP_TRANSPORT missing K_SPRING".to_string())?,
+            c_damp: c_damp.ok_or_else(|| "LOOP_TRANSPORT missing C_DAMP".to_string())?,
+            seeds: seeds.ok_or_else(|| "LOOP_TRANSPORT missing SEEDS".to_string())?,
+            compute,
+            return_fields,
+            sham,
+        };
+
+        // β_W validation at parse time per the gate doc's "audit-story
+        // flag" stance: the verb either lands inside the v3.1.3 §2
+        // validated regime [2.5, 3.0] before the executor starts, or
+        // it doesn't run. We validate BOTH ramp endpoints — start and
+        // (start + ramp · T_segment) — since BETA_WILSON is the
+        // control-manifold axis, not a fixed scalar. T_segment derives
+        // from ALPHA_HALCYON · TAU_0 per the Halcyon clock.
+        //
+        // BETA_WILSON_START is an additive knob (v3.1.3 §2 freezes the
+        // regime without specifying the launch coordinate; the
+        // rejection battery uses this to push β_W in or out of
+        // regime). Missing → defaults to the regime midpoint 2.75.
+        let beta_start = beta_wilson_start.unwrap_or(2.75_f64);
+        let (alpha, tau, ramp_bw, n_disc) = match &stmt {
+            Statement::LoopTransport {
+                alpha_halcyon,
+                tau_0,
+                ramp_rate_beta_w,
+                n_discretization,
+                ..
+            } => (*alpha_halcyon, *tau_0, *ramp_rate_beta_w, *n_discretization),
+            _ => unreachable!("just constructed Statement::LoopTransport"),
+        };
+        let t_segment = alpha * tau;
+        let beta_end = beta_start + ramp_bw * t_segment;
+        let range_lo = 2.5_f64;
+        let range_hi = 3.0_f64;
+        for &b in &[beta_start, beta_end] {
+            if b < range_lo || b > range_hi {
+                // Surfaces as a parser-stage rejection string with the
+                // variant name + regime bounds so the rejection-test
+                // substring matches the contract (the executor enum
+                // variant name lives at `LoopTransportError::
+                // BetaWilsonOutOfValidatedRegime`).
+                return Err(format!(
+                    "BetaWilsonOutOfValidatedRegime: BETA_WILSON = {b} outside validated regime [{:.1}, {:.1}]",
+                    range_lo, range_hi
+                ));
+            }
+        }
+        // Suppress unused-variable warning when n_disc is otherwise
+        // unreferenced here (it's already inside the Statement variant
+        // — the borrow is just for the validation read above).
+        let _ = n_disc;
+
+        Ok(stmt)
+    }
+
+    /// Parse `[lo..hi]` (inclusive both ends) for LOOP_TRANSPORT SEEDS.
+    fn parse_seed_bracket(&mut self) -> Result<SeedRange, String> {
+        self.expect(Token::LBracket)?;
+        let lo = self.expect_usize()? as u64;
+        self.expect(Token::DotDot)?;
+        let hi = self.expect_usize()? as u64;
+        self.expect(Token::RBracket)?;
+        Ok(SeedRange { lo, hi })
+    }
+
+    /// Parse a single COMPUTE clause keyword.
+    fn parse_loop_transport_output_id(&mut self) -> Result<LoopTransportOutputId, String> {
+        let kw = self.expect_word()?;
+        match kw.to_ascii_uppercase().as_str() {
+            "HOLONOMY_FORWARD" => Ok(LoopTransportOutputId::HolonomyForward),
+            "HOLONOMY_REVERSED" => Ok(LoopTransportOutputId::HolonomyReversed),
+            "TRACKING_ERROR_TRACE_Q" => Ok(LoopTransportOutputId::TrackingErrorTraceQ),
+            "TRACKING_ERROR_TRACE_BETA_W" => Ok(LoopTransportOutputId::TrackingErrorTraceBetaW),
+            "ADIABATICITY_CHECK" => Ok(LoopTransportOutputId::AdiabaticityCheck),
+            other => Err(format!("LOOP_TRANSPORT COMPUTE: unknown output id '{other}'")),
+        }
+    }
+
+    /// Parse one RETURN identifier (case-insensitive).
+    fn parse_loop_transport_return_id(&mut self) -> Result<LoopTransportReturnId, String> {
+        let kw = self.expect_word()?;
+        match kw.to_ascii_uppercase().as_str() {
+            "H_FORWARD" => Ok(LoopTransportReturnId::HForward),
+            "H_REVERSED" => Ok(LoopTransportReturnId::HReversed),
+            "SIGMA_H_BLOCKED" => Ok(LoopTransportReturnId::SigmaHBlocked),
+            "PER_SEED_H_FORWARD" => Ok(LoopTransportReturnId::PerSeedHForward),
+            "PER_SEED_H_REVERSED" => Ok(LoopTransportReturnId::PerSeedHReversed),
+            "TRACKING_ERROR_MAX_Q" => Ok(LoopTransportReturnId::TrackingErrorMaxQ),
+            "TRACKING_ERROR_MAX_BETA_W" => Ok(LoopTransportReturnId::TrackingErrorMaxBetaW),
+            "ADIABATICITY_CHECK" => Ok(LoopTransportReturnId::AdiabaticityCheck),
+            other => Err(format!("LOOP_TRANSPORT RETURN: unknown field '{other}'")),
+        }
+    }
+
+    /// Parse a comma-separated RETURN list.
+    fn parse_loop_transport_return_list(&mut self) -> Result<Vec<LoopTransportReturnId>, String> {
+        let mut out = Vec::new();
+        loop {
+            out.push(self.parse_loop_transport_return_id()?);
+            if matches!(self.peek(), Some(Token::Comma)) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        Ok(out)
+    }
+
+    /// Parse a `SHAM { flag [= value] [, flag …] }` block. Empty
+    /// blocks are allowed (the VI.2 contract: empty SHAM parses +
+    /// executes; non-empty rejects at executor entry with
+    /// UnrecognizedShamFlag).
+    fn parse_sham_block(&mut self) -> Result<ShamBlock, String> {
+        self.expect(Token::LBrace)?;
+        let mut flags: Vec<(String, ShamArg)> = Vec::new();
+        loop {
+            if matches!(self.peek(), Some(Token::RBrace)) {
+                break;
+            }
+            if !flags.is_empty() {
+                if matches!(self.peek(), Some(Token::Comma)) {
+                    self.advance();
+                }
+                if matches!(self.peek(), Some(Token::RBrace)) {
+                    break;
+                }
+            }
+            let name = self.expect_word()?;
+            let arg = if matches!(self.peek(), Some(Token::Eq)) {
+                self.advance();
+                match self.advance() {
+                    Some(Token::Number(n)) => ShamArg::Number(n),
+                    Some(Token::Str(s)) => ShamArg::Text(s),
+                    Some(Token::Word(w)) => {
+                        if w.eq_ignore_ascii_case("TRUE") {
+                            ShamArg::Bool(true)
+                        } else if w.eq_ignore_ascii_case("FALSE") {
+                            ShamArg::Bool(false)
+                        } else {
+                            ShamArg::Text(w)
+                        }
+                    }
+                    other => return Err(format!("Expected SHAM flag value, got {other:?}")),
+                }
+            } else {
+                ShamArg::Bool(true)
+            };
+            flags.push((name, arg));
+        }
+        self.expect(Token::RBrace)?;
+        Ok(ShamBlock { flags })
+    }
+
+    /// Parse a TRUE/FALSE keyword as a bool (case-insensitive).
+    fn expect_bool_word(&mut self) -> Result<bool, String> {
+        match self.advance() {
+            Some(Token::Word(w)) if w.eq_ignore_ascii_case("TRUE") => Ok(true),
+            Some(Token::Word(w)) if w.eq_ignore_ascii_case("FALSE") => Ok(false),
+            other => Err(format!("Expected TRUE or FALSE, got {other:?}")),
+        }
     }
 
     /// Parse a `project_gauss_clause` per the IV.7 EBNF.
@@ -9598,6 +10227,176 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     crate::types::Value::Vector(chain.clone()),
                 );
             }
+            Ok(ExecResult::Rows(vec![record]))
+        }
+
+        // ── TDD-HAL-VI.2 — LOOP declaration executor arm ────────────
+        //
+        // Resolves a `LOOP name ON lattice (FACE n | EDGES (v0,…))`
+        // into a cached edge list and registers it in the
+        // `gauge::loop_transport::loop_registry`. LOOP_TRANSPORT's
+        // `ALONG_LOOP` clause reads back through `get_loop(name)`. The
+        // FACE form always closes (face cycles round-trip the first
+        // vertex by construction); the EDGES form may be open, in
+        // which case the LOOP_TRANSPORT executor raises
+        // `LoopNotClosed` per the gate doc §SHAM audit-story flag.
+        #[cfg(feature = "gauge")]
+        Statement::LoopDecl {
+            name,
+            lattice,
+            body,
+        } => {
+            use crate::lattice::registry as lattice_registry;
+            use crate::lattice::EdgeOrientation;
+            use crate::gauge::loop_transport::{register_loop, RegisteredLoop};
+            let lat = lattice_registry::get(lattice).ok_or_else(|| {
+                format!("LOOP: lattice '{lattice}' is not declared")
+            })?;
+            let (vertices, edges) = match body {
+                LoopBody::Face(face_idx) => {
+                    if *face_idx >= lat.n_faces() {
+                        return Err(format!(
+                            "LOOP: FACE {face_idx} out of range for lattice '{lattice}' ({} faces)",
+                            lat.n_faces()
+                        ));
+                    }
+                    let face = &lat.faces[*face_idx];
+                    if face.is_empty() {
+                        return Err(format!("LOOP: FACE {face_idx} is empty"));
+                    }
+                    // Build the closed vertex path: face cycle + first
+                    // vertex repeated at the end.
+                    let mut vs: Vec<usize> = face.clone();
+                    vs.push(face[0]);
+                    let mut es: Vec<(usize, EdgeOrientation)> = Vec::with_capacity(face.len());
+                    for i in 0..face.len() {
+                        let a = face[i];
+                        let b = face[(i + 1) % face.len()];
+                        let (eid, orient) = lat.resolve_edge(a, b).ok_or_else(|| {
+                            format!(
+                                "LOOP: face {face_idx}: ({a},{b}) is not an edge of lattice '{lattice}'"
+                            )
+                        })?;
+                        es.push((eid, orient));
+                    }
+                    (vs, es)
+                }
+                LoopBody::Edges(vs) => {
+                    if vs.len() < 2 {
+                        return Err(format!(
+                            "LOOP: EDGES list needs at least 2 vertices, got {}",
+                            vs.len()
+                        ));
+                    }
+                    // Defer per-pair edge resolution to LOOP_TRANSPORT
+                    // execution so the LOOP_NOT_CLOSED audit-story flag
+                    // surfaces at the integrator boundary (per gate doc
+                    // §SHAM). Resolution failures still bubble up — but
+                    // an open EDGES path that nevertheless names valid
+                    // edges registers cleanly so LOOP_TRANSPORT can
+                    // raise the typed `LoopNotClosed` error itself.
+                    let mut es: Vec<(usize, EdgeOrientation)> = Vec::with_capacity(vs.len() - 1);
+                    for w in vs.windows(2) {
+                        let a = w[0];
+                        let b = w[1];
+                        // Use a sentinel `(usize::MAX, Forward)` for
+                        // pairs that don't resolve; LOOP_TRANSPORT
+                        // doesn't walk the edge list when it detects
+                        // `!is_closed()` first, so the sentinel never
+                        // reaches walk_loop. The vertex path stays
+                        // intact so `LoopNotClosed { tail, head }`
+                        // carries the right user-facing message.
+                        let (eid, orient) = lat
+                            .resolve_edge(a, b)
+                            .unwrap_or((usize::MAX, EdgeOrientation::Forward));
+                        es.push((eid, orient));
+                    }
+                    (vs.clone(), es)
+                }
+            };
+            register_loop(
+                name,
+                RegisteredLoop {
+                    lattice_name: lattice.clone(),
+                    vertices,
+                    edges,
+                },
+            );
+            Ok(ExecResult::Ok)
+        }
+
+        // ── TDD-HAL-VI.2 — LOOP_TRANSPORT executor arm ──────────────
+        //
+        // Per gate doc Locked decisions, the executor delegates to
+        // `gauge::loop_transport::loop_transport` which reuses the
+        // SYMPLECTIC_FLOW per-substep KDK building blocks
+        // (wilson_force_per_edge / apply_force_kick / drift_step /
+        // project_gauss / walk_loop). The Rows lowering mirrors the
+        // SYMPLECTIC_FLOW arm above (single-row envelope with one
+        // column per RETURN field).
+        #[cfg(feature = "gauge")]
+        Statement::LoopTransport { .. } => {
+            // The verb mutates an SU(2) U field + companion E field
+            // in place. The Statement variant doesn't carry the U/E
+            // names directly (v3.1.3 §4.4 only names the LATTICE and
+            // the loop_id); for the executor-dispatch path we follow
+            // the convention that the GAUGE_FIELD bound to the
+            // lattice is named `U_lt` and the E_FIELD `E_lt` (matches
+            // the smoke test setup). This is the documented HTTP /v1
+            // path's convention; direct callers (the smoke test)
+            // bypass this arm and call `gauge::loop_transport`
+            // directly with explicit names.
+            let resp = crate::gauge::loop_transport::loop_transport(stmt, "U_lt", "E_lt")
+                .map_err(|e| e.to_string())?;
+            let mut record: crate::types::Record = std::collections::HashMap::new();
+            record.insert(
+                "h_forward".into(),
+                crate::types::Value::Float(resp.h_forward),
+            );
+            record.insert(
+                "h_reversed".into(),
+                crate::types::Value::Float(resp.h_reversed),
+            );
+            record.insert(
+                "sigma_h_blocked".into(),
+                crate::types::Value::Float(resp.sigma_h_blocked),
+            );
+            record.insert(
+                "per_seed_h_forward".into(),
+                crate::types::Value::Vector(resp.per_seed_h_forward.clone()),
+            );
+            record.insert(
+                "per_seed_h_reversed".into(),
+                crate::types::Value::Vector(resp.per_seed_h_reversed.clone()),
+            );
+            record.insert(
+                "tracking_error_max_q".into(),
+                crate::types::Value::Float(resp.tracking_error_max_q),
+            );
+            record.insert(
+                "tracking_error_max_beta_w".into(),
+                crate::types::Value::Float(resp.tracking_error_max_beta_w),
+            );
+            let (verdict, ratio) = match resp.adiabaticity_check {
+                crate::gauge::loop_transport::AdiabaticityCheck::Acceptable { ratio } => {
+                    ("ACCEPTABLE", ratio)
+                }
+                crate::gauge::loop_transport::AdiabaticityCheck::AmbiguousForced { ratio } => {
+                    ("AMBIGUOUS_FORCED", ratio)
+                }
+            };
+            record.insert(
+                "adiabaticity_verdict".into(),
+                crate::types::Value::Text(verdict.into()),
+            );
+            record.insert(
+                "adiabaticity_ratio".into(),
+                crate::types::Value::Float(ratio),
+            );
+            record.insert(
+                "n_substeps_completed".into(),
+                crate::types::Value::Integer(resp.n_substeps_completed as i64),
+            );
             Ok(ExecResult::Rows(vec![record]))
         }
 

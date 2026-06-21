@@ -2,7 +2,7 @@
 
 **Companion to:** `theory/halcyon/HALCYON_PART_I_GATES.md`, `theory/halcyon/HALCYON_PART_IV_GATES.md` (the IV.6 gold-gate shape Part VI mirrors), `theory/halcyon/GIGI_TO_HALCYON_2026-06-20_SAMPLE_TRANSPORT_REPLY.md` (v1 scope review, commit `302ce1a`), and `theory/halcyon/GIGI_TO_HALCYON_2026-06-21_SAMPLE_TRANSPORT_REPLY_2.md` (v2 against v3.1.3, commit `baac7f2`).
 
-**The contract being implemented:** `HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3.md` at commit `44c70b1` in `nurdymuny/davis-wilson-map` (Zenodo DOI imminent). v3.1.3 is the canonical pre-registered protocol; this gate doc says exactly what gigi must ship to satisfy it.
+**The contract being implemented:** `HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3.md` at commit `44c70b1` in `nurdymuny/davis-wilson-map`, git-tagged `spec-v3.1.3-zenodo-20785681`, Zenodo DOI `10.5281/zenodo.20785681` (minted 2026-06-21). v3.1.3 is the canonical pre-registered protocol; this gate doc says exactly what gigi must ship to satisfy it.
 
 **Voice:** first-person, mine (Bee). Sober register. I spec the algorithm here, not the prose around it.
 
@@ -103,12 +103,14 @@ v3.1.3 §5 specifies five science-gate sham controls (with S₄ folded into the 
 
 S₄ (reversed-loop sign-flip) is **not a sham flag** — it's folded into the primary observable: `H_geom = ½(H[γ] − H[γ⁻¹])` is built into the verb's return tuple (`per_seed_H_forward` + `per_seed_H_reversed`) and Halcyon's orchestrator computes `H_geom` Python-side from those.
 
-**Audit-story shams (OPEN — Halcyon to enumerate).** Halcyon's `PENDING_FROM_GIGI.md` references "5 science-gate + 2 audit-story" sham flags = 7 total. I count 5 science (the table above) but the 2 audit-story shams aren't enumerated in v3.1.3 §5 or §7 as I read them. Two possibilities:
+**Audit-story shams (RESOLVED 2026-06-21 per Halcyon's read of this gate doc).** Halcyon clarified that the "5 + 2 = 7" framing in their original `PENDING_FROM_GIGI` was their own confusion — the 2 audit-story flags came from their v1 reply §D.1 as substrate-internal contracts, not Halcyon-side asks. The Halcyon orchestrator never sets them and the v3.1.3 verdict logic never reads them. The 5 science-gate flags drafted above are complete from Halcyon's perspective; the 2 audit-story flags are gigi's discretion.
 
-1. They're implementation diagnostics that confirm the substrate isn't lying about its internals (per-substep state dump, deterministic-replay assertion, etc.). These wouldn't gate verdict but would gate auditor confidence.
-2. They're in a v3.1.3 section I haven't found yet, or they're elaborated in a Halcyon-side companion doc not yet sent.
+I'll ship both as part of VI.3 because the cost is small and they complete the audit story:
 
-Resolution: Halcyon writes back with the 2 audit-story shams enumerated. They land in this gate doc as a follow-up Edit before the SHAM block implementation begins. Sprint B discipline says don't guess; this stays OPEN.
+| Audit-story flag | Implementation (verb-side) | Contract |
+|---|---|---|
+| `EMPTY_LOOP` | substitutes the loop with a single-point degenerate cycle (no transport substeps fire) | Runtime companion to GC₄ — orchestrator-side assertion that the verb returns `H = 0` byte-for-byte when handed an empty loop, not via cancellation of forward-vs-reverse but by the integrator running zero substeps. Distinct from `DEGENERATE_LOOP` (which has zero area but non-empty edge traversal). |
+| `OPEN_LOOP` | substitutes the loop with a non-closed path (last vertex ≠ first vertex) | Parser-rejection contract — the parser refuses with `LoopTransportError::LoopNotClosed { tail, head }` before the executor entry. This is a parser test, not a runtime verb test; it lives in `tests/halcyon_part_vi_parser_rejections.rs` alongside the β_W out-of-range rejection. |
 
 **SHAM block grammar.** The `SHAM { ... }` block is nested inside the `LOOP_TRANSPORT` clause list. Within the block, each flag is a `KEY = VALUE` line where keys are the flag names above; the parser arm validates against a closed enum of recognized flags and errors on unknown keys. Multiple flags in one block compose; the verb runs once per sham-flag combination Halcyon's orchestrator requests.
 
@@ -187,11 +189,15 @@ The AURORA Phase 1–2 work (Phases 0/1/1b/2 at commits `ca589eb` / `f62e46c` / 
 - Hot-path discipline: trait-object dispatch off the integrator inner loop.
 - Implementation reuses `SYMPLECTIC_FLOW` per-substep building blocks (KDK skeleton, wilson_force_per_edge, drift_step, project_gauss). Reuse path keeps bit-identity inheritance from IV.10 clean.
 
+### Resolved by Halcyon's 2026-06-21 read of this gate doc
+
+- **The 2 audit-story shams** — RESOLVED. Halcyon clarified the "5 + 2 = 7" framing was their own confusion (`SHAM_EMPTY_LOOP` + `SHAM_OPEN_LOOP` come from their v1 reply §D.1 as substrate-internal contracts, not Halcyon-side asks). The orchestrator never sets them and the v3.1.3 verdict logic never reads them. The 5 science-gate flags drafted in §SHAM are complete from Halcyon's perspective; the 2 audit-story flags are my discretion. Shipping both as part of VI.3 per the table added to §SHAM (cheap to add, completes the audit story, `OPEN_LOOP` lands as parser-rejection test not runtime flag).
+- **CC-LT-1 verb dispatch shape** — RESOLVED. Halcyon confirmed closed-enum default; no pushback. Parser arm uses a closed enum for the loop-shape and CONTROL_MANIFOLD pair dispatch.
+- **GC₅ convergence bracket** — RESOLVED. Default per v3.1.3 §7.4 is correct. Halcyon confirmed the 1% threshold does not move; if convergence is naturally slower at the canonical regime, I extend the bracket or patch the verb's numerical method, both substrate-side decisions. Threshold stays.
+
 ### OPEN (resolution before code lands)
 
-- **The 2 audit-story shams** referenced in Halcyon's `PENDING_FROM_GIGI.md` (`5 science-gate + 2 audit-story` = 7 total). v3.1.3 §5 lists 5 science + S₄-folded; I do not see the 2 audit-story shams enumerated. Halcyon enumerates them in a reply, or they get added to v3.1.4 as a deposit amendment. Either way they land in this gate doc as a follow-up Edit before VI.3 begins.
-- **CC-LT-1 verb dispatch shape** — Halcyon's read on closed-enum vs open-registry for the parser arm. Closed enum is the default if no preference arrives by VI.2 GREEN.
-- **GC₅ test fixture scope** — which loop sizes, which seeds for the convergence-bracket assertion. Default per v3.1.3 §7.4: γ_unit at the canonical 8 seeds, `N_discretization ∈ {1000, 2000, 4000, 8000, 16000}` (5-point bracket). Halcyon pushback welcome on widening the bracket if 1% is too tight a science-value gate for the canonical regime.
+(none — all three pre-implementation gates closed by Halcyon's 2026-06-21 read)
 
 ### Deferred (not in Part VI scope; later or never)
 
@@ -208,6 +214,6 @@ This gate doc commits at a date earlier than the LOOP_TRANSPORT implementation d
 
 The Sprint B revert lesson is the meta-discipline: gates first, then code. The IV.10 gold gate caught a perf-win commit that would have invisibly broken the science. Part VI inherits the same defense via VI.B1.
 
-The v3.1.3 pre-registration deposit at commit `44c70b1` (Zenodo DOI when minted) is the public commitment. Whatever Halcyon's `run_holonomy_battery.py` returns when it runs against this verb is the falsification result, regardless of whether the result is POSITIVE / NULL / AMBIGUOUS, and regardless of whether I prefer one outcome to another.
+The v3.1.3 pre-registration deposit at commit `44c70b1`, git-tagged `spec-v3.1.3-zenodo-20785681`, Zenodo DOI `10.5281/zenodo.20785681` (minted 2026-06-21) is the public commitment. Whatever Halcyon's `run_holonomy_battery.py` returns when it runs against this verb is the falsification result, regardless of whether the result is POSITIVE / NULL / AMBIGUOUS, and regardless of whether I prefer one outcome to another.
 
 — Bee, 2026-06-21

@@ -205,6 +205,30 @@ impl Lattice {
         inc
     }
 
+    /// Returns each face's edge cycle with signed orientations
+    /// relative to the canonical edge direction.
+    pub fn signed_face_orientations(&self) -> Vec<Vec<(EdgeId, EdgeOrientation)>> {
+        let mut out: Vec<Vec<(EdgeId, EdgeOrientation)>> =
+            Vec::with_capacity(self.n_faces());
+        for fidx in 0..self.n_faces() {
+            let face = &self.faces[fidx];
+            let n = face.len();
+            let mut cycle: Vec<(EdgeId, EdgeOrientation)> = Vec::with_capacity(n);
+            for pos in 0..n {
+                let a = face[pos];
+                let b = face[(pos + 1) % n];
+                let (eid, orient) = self
+                    .resolve_edge(a, b)
+                    .unwrap_or_else(|| panic!(
+                        "signed_face_orientations: face {fidx} pair ({a},{b}) at pos {pos} is not an edge"
+                    ));
+                cycle.push((eid, orient));
+            }
+            out.push(cycle);
+        }
+        out
+    }
+
     /// Resolve a face's consecutive vertex pair `(a, b)` to the edge
     /// index + orientation. Returns `None` if the pair is not an
     /// edge of the lattice in either direction.

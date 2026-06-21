@@ -73,7 +73,7 @@ Questions back-and-forth (resolved unless flagged OPEN):
 | P-1 (dispatch) | bugfix on `/v1/gql` | shipped | **DONE** | commit `5b555ce` |
 | `ea50585` split | lift lattice/gauge out of halcyon namespace | shipped | **DONE** | commit `ea50585` |
 | First AURORA receipt | Williamson Test 2 step 0 against `gigi-stream.fly.dev` | shipped | **DONE** | `refusal_reason = None`, forward Euler refuses at step 2 |
-| Signed-face promotion (CC-4) | `Lattice::signed_face_orientations()`; ~80–100 LOC standalone PR | Phase 0 (lands first) | **GREENLIT** (engine commitment in Reply 2 §5; bit-identity risk = 0) | — |
+| Signed-face promotion (CC-4) | `Lattice::signed_face_orientations()`; 23 LOC additive lift in `src/lattice/mod.rs` (well under the ~80–100 LOC budget); 3 RED-first integration tests in `tests/aurora_signed_face_orientations.rs` (211 LOC) | Phase 0 (lands first) | **DONE** (commit hash TBD — backfill post-commit) | TBD (RED→GREEN, 3/3 passing; no-default-features 870/0 byte-identical; halcyon 996/0; kahler 1150/0; `halcyon_part_iv_gold` 4/0+1-pre-existing-ignored, bit-identity IV.10/III.8b/V.* contracts intact) |
 | A1 — `CUBED_SPHERE` | parameterized PANEL_SIZE; calls promoted signed-face surface; constructor returns `LatticeWithMetric` | Phase 1 | greenlit, gated on Phase 0 | — |
 | CC-2 registry-dispatch refactor | replace static match arm with `lattice::registry::get_constructor()`; ~110–175 LOC | Phase 1 (lifted from "optional" into A1 sprint) | **ACCEPTED** (Reply 2 §3) | — |
 | `topology_hint` const table | `src/lattice/topology/hints.rs` reserves `S2/CUBED_SPHERE`, `S2/TRUNCATED_ICOSAHEDRON`; ~30 LOC | Phase 1 | accepted | — |
@@ -255,12 +255,16 @@ All six CC items resolved in Reply 2. Summary:
 - Reply letters sent:
   - `theory/aurora/GIGI_TO_AURORA_2026-06-19_v0_1_REPLY.md` (initial).
   - `theory/aurora/GIGI_TO_AURORA_2026-06-19_v0_1_REPLY_2.md` (post-AURORA-decisions).
-- Bee greenlit: pending on Phase 0 (CC-4 promotion) kickoff.
-- Sprint slot: not assigned.
+- Bee greenlit: Phase 0 (CC-4) landed; Phase 1 unblocked.
+- Sprint slot: Phase 0 closed (see `AURORA_PHASE_0_IMPL_LOG.md`); receipt
+  commit hash to be backfilled into the status-board row once the focused
+  Phase 0 commit lands.
 - AURORA-side blocking pressure: P-1 shipped; first receipt validated;
-  Phase 0 (CC-4) engine-side standalone; Phase 1 (A1 + CC-2 + A3-workaround)
-  unblocked once Phase 0 lands; Phase 2 (A2 + CC-1 + Q3 DEC module) gated
-  on Q4/Q5/Q6 answers from AURORA.
+  Phase 0 (CC-4) **shipped** as a true additive lift (23 LOC,
+  no-default-features 870/0 byte-identical, halcyon 996/0, kahler 1150/0,
+  `halcyon_part_iv_gold` bit-identity gate clean); Phase 1 (A1 + CC-2 +
+  A3-workaround) unblocked **now**; Phase 2 (A2 + CC-1 + Q3 DEC module)
+  gated on AURORA's `ShallowWater` factory sketch.
 
 ## References
 

@@ -212,6 +212,11 @@ mod helpers {
         Statement::LoopTransport {
             lattice: lattice.into(),
             loop_id: loop_id.into(),
+            // WISH ASK 5 ride-along: GC-acceptance gold fixture pins
+            // the historical (U_lt, E_lt) names — keeps the bit-
+            // identity contract on this fixture intact.
+            gauge_field_name: "U_lt".into(),
+            e_field_name: "E_lt".into(),
             control_manifold: ControlManifoldSpec::QBetaWilson,
             adiabatic: true,
             ramp_rate_q: 0.04,

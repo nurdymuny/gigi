@@ -67,6 +67,12 @@ fn halcyon_vi_2_grammar_accepts_full_v3_1_3_source() {
         Statement::LoopTransport {
             lattice,
             loop_id,
+            // WISH ASK 5 ride-along: parser fills these with the
+            // historical defaults when the GAUGE_FIELD / E_FIELD
+            // clauses are omitted (which the canonical v3.1.3 source
+            // does).
+            gauge_field_name: _,
+            e_field_name: _,
             control_manifold,
             adiabatic,
             ramp_rate_q,

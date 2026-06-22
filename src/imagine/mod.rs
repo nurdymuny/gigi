@@ -40,12 +40,23 @@ pub mod coherence;
 pub mod config;
 pub mod geodesic;
 pub mod halo;
+pub mod observables;
+pub mod path_registry;
 pub mod provenance;
 pub mod routing;
 pub mod walk;
 
 #[cfg(feature = "wish")]
 pub mod wish;
+
+pub use observables::{
+    evaluate_canonical as evaluate_observable_canonical, is_canonical as is_canonical_observable,
+    trapezoidal_integrate as integrate_observable_along, ObservableError, CANONICAL_NAMES,
+};
+pub use path_registry::{
+    bind as bind_path, clear as clear_paths, get as get_path, list as list_paths,
+    unbind as unbind_path, BoundPath, PathSource,
+};
 
 pub use coherence::{
     imagine_coherence_trajectory, metric_for_constant_k, CoherencePoint, CoherenceTrajectoryReport,

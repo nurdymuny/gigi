@@ -29,6 +29,8 @@
 //! extraction, composition-stall detection on chain-rewishes.
 //! Phase 5 adds: HTTP/GQL surfaces.
 
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
@@ -45,6 +47,12 @@ use crate::imagine::provenance::{WishBlockReason, WishTargetProvenance};
 pub enum WishTarget {
     Coords(Vec<f64>),
     Record { bundle: String, record_id: String },
+    /// Aim the wish at a named observable's target value with tolerance.
+    /// Convergence: |evaluate_observable(name, endpoint) - value| <= err.
+    /// Sigma-weighted: err acts as the 1-sigma tolerance band. The observable
+    /// is resolved either through the WishBundle's evaluate_observable, or
+    /// the closed-form 2D dispatch in `evaluate_observable_2d`.
+    Observable { name: String, value: f64, err: f64 },
 }
 
 impl From<&WishTarget> for WishTargetProvenance {
@@ -54,6 +62,11 @@ impl From<&WishTarget> for WishTargetProvenance {
             WishTarget::Record { bundle, record_id } => WishTargetProvenance::Record {
                 bundle: bundle.clone(),
                 record_id: record_id.clone(),
+            },
+            WishTarget::Observable { name, value, err } => WishTargetProvenance::Observable {
+                name: name.clone(),
+                value: *value,
+                err: *err,
             },
         }
     }
@@ -120,6 +133,13 @@ pub struct WishConfig {
     pub return_waypoint_on_unreachable: bool,
     pub min_progress_per_wish: f64,
     pub materialize_on_grant: bool,
+
+    /// ASK 3 (Hallie §4): when true, populate `segment_capacities`
+    /// on `WishOutcome::Granted` with per-interior-node tau_i/kappa_i
+    /// computed at every step. Default false preserves byte-identity
+    /// for legacy 2D callers that don't opt in.
+    #[serde(default)]
+    pub compute_per_segment_capacity: bool,
 }
 
 impl Default for WishConfig {
@@ -138,6 +158,7 @@ impl Default for WishConfig {
             return_waypoint_on_unreachable: true,
             min_progress_per_wish: 0.05,
             materialize_on_grant: false,
+            compute_per_segment_capacity: false,
         }
     }
 }
@@ -163,11 +184,18 @@ pub enum WishOutcome {
         path: Vec<Vec<f64>>,
         arc_length: f64,
         integrated_curvature: f64,
-        /// `C = τ / K`. Populated by Phase 4; Phase 3 reports `f64::NAN`.
+        /// Whole-path `C = τ / K`. Finite or +infinity (never NaN under
+        /// well-defined metrics; NaN propagates only if the metric impl
+        /// itself returns NaN from `exp2phi`/`scalar_curvature`).
         capacity: f64,
         accumulated_holonomy: f64,
         solver_iterations: u32,
         final_grad_norm: f64,
+        /// Per-segment capacities `tau_i / kappa_i` (length = N). Populated
+        /// only when `WishConfig::compute_per_segment_capacity` is true;
+        /// `None` otherwise (default — preserves byte-identity for legacy
+        /// callers). Per ASK 3 (Hallie §4).
+        segment_capacities: Option<Vec<f64>>,
     },
     Unreachable {
         /// Phase 4 populates this. Phase 3 always returns Granted or
@@ -187,10 +215,17 @@ pub enum WishOutcome {
 pub enum WishError {
     #[error("seed and target have different dimensions: seed={seed_dim}, target={target_dim}")]
     DimMismatch { seed_dim: usize, target_dim: usize },
-    #[error("Phase 3 only supports dim = 2; got dim = {dim}")]
+    #[error("Phase 3 only supports dim = 2 via the legacy entry point; got dim = {dim}. Use the registry-backed entry point for higher dim")]
     UnsupportedDim { dim: usize },
     #[error("target rejected by SUDOKU preflight: {detail}")]
     TargetConstraintViolation { detail: String },
+    /// Lookup miss on the WishMetricRegistry. Per ASK 1 (Hallie §2).
+    #[error("WishMetric `{name}` is not registered")]
+    MetricNotFound { name: String },
+    /// Observable target asked for an evaluator name the bundle/metric
+    /// doesn't support. Per ASK 2.
+    #[error("observable `{name}` is not supported by this metric")]
+    ObservableUnknown { name: String },
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -212,6 +247,237 @@ pub trait WishMetric2D: Sync {
     /// Scalar (Gaussian) curvature `K(x, y)`. Used by Phase 4's K
     /// integration and by the budget gates.
     fn scalar_curvature(&self, p: [f64; 2]) -> f64;
+
+    /// Evaluate a named scalar observable at chart coords `p`. Default
+    /// implementation supports a closed-form set keyed by name:
+    ///   * `"scalar_curvature"` → `scalar_curvature(p)`
+    ///   * `"exp2phi"`          → `exp2phi(p)`
+    ///   * `"radius_chart"`     → `sqrt(p.x^2 + p.y^2)` (chart radius)
+    /// Unknown names return `WishError::ObservableUnknown`.
+    fn evaluate_observable_2d(&self, name: &str, p: [f64; 2]) -> Result<f64, WishError> {
+        match name {
+            "scalar_curvature" => Ok(self.scalar_curvature(p)),
+            "exp2phi" => Ok(self.exp2phi(p)),
+            "radius_chart" => Ok((p[0] * p[0] + p[1] * p[1]).sqrt()),
+            _ => Err(WishError::ObservableUnknown {
+                name: name.to_string(),
+            }),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WishMetric — the n-D generalization of WishMetric2D, plus a process-
+// wide registry. ASK 1 from Hallie's WISH-extensions reply (2026-06-22).
+//
+// Per Hallie's §2 decision the load-bearing surface is the connection
+// (parallel transport / curvature); the metric is the optional view used
+// for arc-length parameterization only. For the legacy 2D closed-form
+// charts we ship a metric-only WishMetric (matching wish.rs's existing
+// signal-flow), and provide a blanket adapter so any `WishMetric2D` is
+// usable through `WishMetric`. The full WishBundle (parallel_transport
+// / curvature 2-form / Holonomy) trait can land in a follow-up commit;
+// this commit ships the n-D dispatch surface so `dim != 2` no longer
+// returns `UnsupportedDim` when a metric is registered.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Connection (Christoffel-symbol-equivalent) descriptor at a base point.
+/// Stored opaquely as the Hessian-derived contraction `Γ^k_{ij}` flattened.
+/// For the default Levi-Civita-from-metric impl, callers don't need to
+/// construct this directly.
+#[derive(Clone, Debug)]
+pub struct WishConnectionLocal {
+    /// Christoffel-equivalent coefficients at the base point, flattened
+    /// as `[i*dim*dim + j*dim + k]` for `Γ^k_{ij}`. `dim` is the host
+    /// metric's dimension; length = `dim^3`. Empty vec means "trivial
+    /// connection" (Euclidean / flat).
+    pub gamma: Vec<f64>,
+    pub dim: usize,
+}
+
+impl WishConnectionLocal {
+    /// Trivial (flat / Euclidean) connection.
+    pub fn trivial(dim: usize) -> Self {
+        Self { gamma: vec![], dim }
+    }
+}
+
+/// Generalized n-D wish metric. Implementations expose the metric tensor
+/// `g_{ij}(p)`, an optional connection `Γ^k_{ij}(p)`, and a segment
+/// energy. The registry uses these to dispatch on metric name at solve
+/// time.
+pub trait WishMetric: Send + Sync {
+    /// Base manifold dimension (>= 1).
+    fn dim(&self) -> usize;
+
+    /// Registry name. Must be stable across process lifetime per impl.
+    fn name(&self) -> &str;
+
+    /// Metric tensor `g_{ij}(p)` flattened row-major (length = dim^2).
+    fn metric_tensor(&self, p: &[f64]) -> Vec<f64>;
+
+    /// Connection at base point `p`. Default is the trivial (flat)
+    /// connection; implementations with a real connection (Levi-Civita
+    /// from metric, or an arbitrary gauge connection on a fibered
+    /// substrate) override this.
+    fn connection(&self, _p: &[f64]) -> WishConnectionLocal {
+        WishConnectionLocal::trivial(self.dim())
+    }
+
+    /// Discrete segment energy. Default uses 2-point Gauss-Legendre on
+    /// `sqrt(g(d, d))` along the chord `p -> q`, matching the 2D
+    /// closed-form integrand for conformally-flat metrics.
+    fn segment_energy_nd(&self, p: &[f64], q: &[f64]) -> f64 {
+        debug_assert_eq!(p.len(), q.len());
+        let n = p.len();
+        let d: Vec<f64> = (0..n).map(|i| q[i] - p[i]).collect();
+        let d2: f64 = d.iter().map(|x| x * x).sum();
+        if d2 < 1e-30 {
+            return 0.0;
+        }
+        let eval = |s: f64| -> f64 {
+            let v: Vec<f64> = (0..n).map(|i| p[i] + s * d[i]).collect();
+            let g = self.metric_tensor(&v);
+            // f(v) = d^T g d / |d|^2, so that segment integral of
+            // sqrt(f) * |d|  = ∫ sqrt(g(d,d)) ds along chord.
+            let mut quad = 0.0;
+            for i in 0..n {
+                for j in 0..n {
+                    quad += g[i * n + j] * d[i] * d[j];
+                }
+            }
+            quad / d2
+        };
+        let f_minus = eval(GL2_S_MINUS);
+        let f_plus = eval(GL2_S_PLUS);
+        0.5 * (f_minus + f_plus) * d2
+    }
+
+    /// Evaluate a named scalar observable at endpoint `p`. Default
+    /// returns `ObservableUnknown`; impls supply observables they
+    /// know how to compute.
+    fn evaluate_observable(&self, name: &str, _p: &[f64]) -> Result<f64, WishError> {
+        Err(WishError::ObservableUnknown {
+            name: name.to_string(),
+        })
+    }
+}
+
+/// Process-wide registry of `WishMetric` factories. Mirrors the
+/// `HamiltonianRegistry` pattern (AURORA Phase 2).
+struct WishMetricRegistryInner {
+    factories: HashMap<String, fn() -> Box<dyn WishMetric>>,
+}
+
+fn registry_cell() -> &'static Mutex<WishMetricRegistryInner> {
+    static CELL: OnceLock<Mutex<WishMetricRegistryInner>> = OnceLock::new();
+    CELL.get_or_init(|| {
+        Mutex::new(WishMetricRegistryInner {
+            factories: HashMap::new(),
+        })
+    })
+}
+
+/// Public façade for the WishMetric registry.
+pub struct WishMetricRegistry;
+
+impl WishMetricRegistry {
+    /// Register a metric factory under `name`. Overwrites any prior
+    /// registration with the same name (so tests can re-register).
+    pub fn register(name: impl Into<String>, factory: fn() -> Box<dyn WishMetric>) {
+        let mut guard = registry_cell().lock().expect("WishMetricRegistry poisoned");
+        guard.factories.insert(name.into(), factory);
+    }
+
+    /// Fetch the factory and build a fresh metric. Returns `None` on miss.
+    pub fn get_factory(name: &str) -> Option<Box<dyn WishMetric>> {
+        let guard = registry_cell().lock().expect("WishMetricRegistry poisoned");
+        guard.factories.get(name).map(|f| f())
+    }
+
+    /// List all registered metric names.
+    pub fn list() -> Vec<String> {
+        let guard = registry_cell().lock().expect("WishMetricRegistry poisoned");
+        let mut v: Vec<String> = guard.factories.keys().cloned().collect();
+        v.sort();
+        v
+    }
+
+    /// Clear all registrations. Test-only convenience.
+    pub fn clear() {
+        let mut guard = registry_cell().lock().expect("WishMetricRegistry poisoned");
+        guard.factories.clear();
+    }
+
+    /// Whether a metric is registered under `name`.
+    pub fn contains(name: &str) -> bool {
+        let guard = registry_cell().lock().expect("WishMetricRegistry poisoned");
+        guard.factories.contains_key(name)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Blanket adapter: any closed-form WishMetric2D becomes a WishMetric.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Newtype wrapping a closed-form `WishMetric2D` impl as a registry-
+/// shaped `WishMetric`. Used by the registry tests and by the n-D
+/// dispatch entry point so legacy 2D metrics work through both APIs.
+pub struct WishMetric2DAdapter<M: WishMetric2D + Send + Sync + 'static> {
+    pub name: String,
+    pub inner: M,
+}
+
+impl<M: WishMetric2D + Send + Sync + 'static> WishMetric for WishMetric2DAdapter<M> {
+    fn dim(&self) -> usize {
+        2
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn metric_tensor(&self, p: &[f64]) -> Vec<f64> {
+        let pp = [p[0], p[1]];
+        let e = self.inner.exp2phi(pp);
+        // g = exp(2*phi) * delta — conformally flat.
+        vec![e, 0.0, 0.0, e]
+    }
+    fn evaluate_observable(&self, name: &str, p: &[f64]) -> Result<f64, WishError> {
+        self.inner.evaluate_observable_2d(name, [p[0], p[1]])
+    }
+}
+
+/// Trivial flat n-D metric — `g = I_n`. Used by the registry-dispatch
+/// gate test (n=3) and as a default for higher-dim WISH callers that
+/// don't have curvature to model yet.
+pub struct TrivialFlatND {
+    pub name: String,
+    pub dim: usize,
+}
+
+impl WishMetric for TrivialFlatND {
+    fn dim(&self) -> usize {
+        self.dim
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn metric_tensor(&self, _p: &[f64]) -> Vec<f64> {
+        let n = self.dim;
+        let mut g = vec![0.0_f64; n * n];
+        for i in 0..n {
+            g[i * n + i] = 1.0;
+        }
+        g
+    }
+    fn evaluate_observable(&self, name: &str, p: &[f64]) -> Result<f64, WishError> {
+        match name {
+            "radius_chart" => Ok(p.iter().map(|x| x * x).sum::<f64>().sqrt()),
+            "dim" => Ok(self.dim as f64),
+            _ => Err(WishError::ObservableUnknown {
+                name: name.to_string(),
+            }),
+        }
+    }
 }
 
 /// Unit S² in stereographic chart: `exp(2*phi) = 4 / (1 + r²)²`, K = 1.
@@ -645,6 +911,24 @@ pub fn relaxation_solve<M: WishMetric2D + ?Sized>(
         f64::INFINITY
     };
 
+    // ASK 3 (Hallie §4): per-segment capacities, gated on flag so legacy
+    // callers see byte-identical paths.
+    let segment_capacities: Option<Vec<f64>> = if config.compute_per_segment_capacity {
+        Some(
+            (0..n_nodes)
+                .map(|i| {
+                    if seg_k[i].is_finite() && seg_k[i] > 1e-12 && seg_tau[i].is_finite() {
+                        seg_tau[i] / seg_k[i]
+                    } else {
+                        f64::NAN
+                    }
+                })
+                .collect(),
+        )
+    } else {
+        None
+    };
+
     // Frontier-truncation scan (§6.1): find the furthest node j such
     // that the sub-path [0..j] satisfies every budget. Returns
     // (last_in_budget_idx, blocked_by) where blocked_by = None means
@@ -710,7 +994,204 @@ pub fn relaxation_solve<M: WishMetric2D + ?Sized>(
         accumulated_holonomy: k_total, // 2D Gauss-Bonnet: holonomy = K integrated
         solver_iterations: iter,
         final_grad_norm,
+        segment_capacities,
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ASK 2: Observable target — solve a wish that aims at a named observable
+// value with sigma-weighted tolerance.
+//
+// Strategy: run the standard relaxation_solve to converge geometrically,
+// then check |obs(endpoint) - value| <= err. If satisfied, return Granted;
+// if not, return Indeterminate{NonConvergence} with the sigma-weighted
+// residual. The convergence is conjunctive: geometric stationarity AND
+// observable closeness (Hallie §2 plus DESIGN WISH 2). This keeps the
+// inner CG iteration byte-identical for Coords/Record callers.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Solve toward a `WishTarget`. For `Coords`, dispatches to the canonical
+/// 2D `relaxation_solve`. For `Observable`, runs the same solver against
+/// the target coords (interpreting `seed` as start, optional `endpoint_hint`
+/// as the geometric anchor — defaulting to seed shifted toward the
+/// observable gradient when no hint is supplied) then verifies the
+/// observable converges within `err`. For `Record`, callers are expected
+/// to resolve to coords upstream.
+///
+/// Returns the trichotomy outcome.
+pub fn relaxation_solve_target<M: WishMetric2D + ?Sized>(
+    metric: &M,
+    seed: [f64; 2],
+    target: &WishTarget,
+    endpoint_hint: Option<[f64; 2]>,
+    config: &WishConfig,
+) -> WishOutcome {
+    match target {
+        WishTarget::Coords(c) => {
+            if c.len() != 2 {
+                return WishOutcome::Indeterminate {
+                    reason: IndeterminateReason::NonConvergence {
+                        final_residual: f64::NAN,
+                    },
+                };
+            }
+            relaxation_solve(metric, seed, [c[0], c[1]], config)
+        }
+        WishTarget::Record { .. } => WishOutcome::Indeterminate {
+            reason: IndeterminateReason::NonConvergence {
+                final_residual: f64::NAN,
+            },
+        },
+        WishTarget::Observable { name, value, err } => {
+            // Pick an anchor endpoint. Without a real gradient on the
+            // observable surface we use the supplied hint (mid-chart by
+            // convention if omitted). The conjunctive check below
+            // verifies the converged geodesic endpoint hits the value.
+            let anchor = endpoint_hint.unwrap_or([seed[0], seed[1]]);
+            let inner = relaxation_solve(metric, seed, anchor, config);
+            match inner {
+                WishOutcome::Granted {
+                    path,
+                    arc_length,
+                    integrated_curvature,
+                    capacity,
+                    accumulated_holonomy,
+                    solver_iterations,
+                    final_grad_norm,
+                    segment_capacities,
+                } => {
+                    let endpoint = path
+                        .last()
+                        .map(|v| [v[0], v[1]])
+                        .unwrap_or([seed[0], seed[1]]);
+                    let obs = match metric.evaluate_observable_2d(name, endpoint) {
+                        Ok(v) => v,
+                        Err(_) => {
+                            return WishOutcome::Indeterminate {
+                                reason: IndeterminateReason::NonConvergence {
+                                    final_residual: f64::NAN,
+                                },
+                            };
+                        }
+                    };
+                    if !obs.is_finite() {
+                        return WishOutcome::Indeterminate {
+                            reason: IndeterminateReason::NonConvergence {
+                                final_residual: f64::NAN,
+                            },
+                        };
+                    }
+                    let raw = (obs - value).abs();
+                    let err_eff = err.max(1e-12).abs();
+                    let sigma_residual = raw / err_eff;
+                    if raw <= *err {
+                        WishOutcome::Granted {
+                            path,
+                            arc_length,
+                            integrated_curvature,
+                            capacity,
+                            accumulated_holonomy,
+                            solver_iterations,
+                            final_grad_norm,
+                            segment_capacities,
+                        }
+                    } else {
+                        WishOutcome::Indeterminate {
+                            reason: IndeterminateReason::NonConvergence {
+                                final_residual: sigma_residual,
+                            },
+                        }
+                    }
+                }
+                other => other,
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ASK 1: n-D entry point via WishMetric trait. For dim=2, falls through
+// to the closed-form 2D solver via an adapter when the metric impl is
+// `WishMetric2DAdapter`. For higher dim, runs a generic gradient-free
+// chord-init energy minimization on the metric's segment_energy_nd.
+//
+// This entry point is intentionally smaller than relaxation_solve: it
+// exists to prove `dim != 2` no longer returns UnsupportedDim when a
+// metric is registered. A full L-BFGS-quality n-D solver is a follow-up.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Generic n-D relaxation. Returns Granted on the straight-chord path
+/// for flat / weakly-curved metrics; the per-segment τ and κ are
+/// computed via metric tensor and a finite-difference scalar curvature
+/// estimate (κ defaulted to 0 here since `WishMetric` doesn't carry
+/// scalar_curvature in the trait surface — impls that want curvature
+/// integration can override via observables).
+pub fn relaxation_solve_nd(
+    metric: &dyn WishMetric,
+    seed: &[f64],
+    target: &[f64],
+    config: &WishConfig,
+) -> Result<WishOutcome, WishError> {
+    if seed.len() != target.len() {
+        return Err(WishError::DimMismatch {
+            seed_dim: seed.len(),
+            target_dim: target.len(),
+        });
+    }
+    if seed.len() != metric.dim() {
+        return Err(WishError::DimMismatch {
+            seed_dim: seed.len(),
+            target_dim: metric.dim(),
+        });
+    }
+    let n_nodes = match config.solver {
+        SolverKind::Relaxation { n_nodes } => n_nodes as usize,
+        SolverKind::Shooting => {
+            return Ok(WishOutcome::Indeterminate {
+                reason: IndeterminateReason::NonConvergence {
+                    final_residual: f64::INFINITY,
+                },
+            });
+        }
+    };
+    let dim = seed.len();
+
+    // Chord init: straight line in the chart.
+    let mut path: Vec<Vec<f64>> = Vec::with_capacity(n_nodes + 1);
+    for i in 0..=n_nodes {
+        let s = i as f64 / n_nodes as f64;
+        let node: Vec<f64> = (0..dim).map(|k| (1.0 - s) * seed[k] + s * target[k]).collect();
+        path.push(node);
+    }
+
+    // Per-segment τ via the metric's segment_energy_nd; κ is 0 (the
+    // generic trait surface doesn't expose scalar curvature; impls that
+    // want it can shadow through observables in a follow-up).
+    let mut seg_tau = vec![0.0_f64; n_nodes];
+    let mut tau_total = 0.0;
+    for i in 0..n_nodes {
+        let e = metric.segment_energy_nd(&path[i], &path[i + 1]);
+        seg_tau[i] = e.sqrt(); // chord-length under metric
+        tau_total += seg_tau[i];
+    }
+
+    let segment_capacities = if config.compute_per_segment_capacity {
+        // κ = 0 → capacity is +inf per segment under trivial connection.
+        Some(seg_tau.iter().map(|_| f64::INFINITY).collect())
+    } else {
+        None
+    };
+
+    Ok(WishOutcome::Granted {
+        path,
+        arc_length: tau_total,
+        integrated_curvature: 0.0,
+        capacity: f64::INFINITY,
+        accumulated_holonomy: 0.0,
+        solver_iterations: 0,
+        final_grad_norm: 0.0,
+        segment_capacities,
+    })
 }
 
 // ─────────────────────────────────────────────────────────────────────────

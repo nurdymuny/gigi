@@ -131,6 +131,11 @@ fn build_canonical_lt_stmt() -> Statement {
     Statement::LoopTransport {
         lattice: "halcyon_canonical_buckyball".into(),
         loop_id: "gamma_unit_in_Q_beta_W".into(),
+        // WISH ASK 5 ride-along: these are the historical default
+        // names. The bit-identity gold gate uses the explicit-default
+        // path so the canonical fixture stays byte-identical.
+        gauge_field_name: "U_lt".into(),
+        e_field_name: "E_lt".into(),
         control_manifold: ControlManifoldSpec::QBetaWilson,
         adiabatic: true,
         ramp_rate_q: 0.04,

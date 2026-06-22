@@ -149,6 +149,23 @@ pub enum Statement {
         /// or `WITH ENCRYPTION SEED FROM ENV $NAME` overrides.
         seed_source: crate::types::EncryptionSeedSource,
     },
+    /// CREATE SESSION first-class verb (personal-list #2, 2026-06-22).
+    /// Creates a bundle with the canonical 6-field session schema
+    /// (thought_id BASE TEXT + ts/session/topic/content/refs FIBER) and
+    /// optionally appends extra FIBER fields via WITH SCHEMA. Extras
+    /// MUST be FIBER (BASE is locked to the canonical thought_id key);
+    /// names that collide with the canonical six are rejected by the
+    /// parser. Cold-start protocol:
+    ///   COVER <session_name> ALL ORDER BY thought_id ;
+    /// reconstructs the full session DAG in topological order. See
+    /// docs/CREATE_SESSION.md for the full consumer pattern.
+    CreateSession {
+        session_name: String,
+        /// Extra FIBER fields appended after the canonical 5 fibers.
+        /// Triples are (field_name, field_type_keyword, indexed).
+        /// `None` when no `WITH SCHEMA (...)` clause is present.
+        extra_schema: Option<Vec<(String, String, bool)>>,
+    },
     Collapse {
         bundle: String,
     },
@@ -1037,6 +1054,18 @@ pub enum Statement {
         lattice: String,
         /// Loop id (`ALONG_LOOP loop_id`).
         loop_id: String,
+        /// U gauge-field name. Per WISH ASK 5 (Hallie 2026-06-22), this
+        /// is the name parsed from the optional `GAUGE_FIELD <name>`
+        /// clause of the GQL; when the clause is omitted the parser
+        /// defaults to `U_lt` for backwards-compat with the historical
+        /// precondition.py convention. The executor passes this name
+        /// to `gauge::loop_transport::loop_transport` for registry
+        /// lookup, replacing the previously hardcoded string literal.
+        gauge_field_name: String,
+        /// E gauge-field name. Paired with `gauge_field_name`; parsed
+        /// from the optional `E_FIELD <name>` clause. Defaults to
+        /// `E_lt` for backwards-compat.
+        e_field_name: String,
         // -- parameter-space loop γ in Λ = (Q, β_W) --
         /// Control manifold; v3.1.3 freezes `(Q, BETA_WILSON)`.
         control_manifold: ControlManifoldSpec,
@@ -1152,6 +1181,67 @@ pub enum Statement {
         /// variant (spec §6) so the existing PERSIST-call sites stay
         /// byte-identical when TRANSIENT lands.
         persist: bool,
+    },
+
+    /// `LET <ident> = IMAGINE FROM (x0, y0) DIRECTION (dx, dy)
+    /// PATH_LENGTH <l> STEPS <n> ON <bundle>;`
+    ///
+    /// Path-handle binding form per Hallie's WISH ASK 4 §4
+    /// (2026-06-22). Calls `imagine::geodesic::imagine_geodesic` and
+    /// stores the resulting `Vec<ImaginedRecord>` in the session
+    /// `path_registry` under `ident`. `INTEGRATE OBSERVABLE … ALONG
+    /// <ident>` looks the path up there for line integration.
+    ///
+    /// First-ship grammar restricts the metric to a built-in
+    /// `s2_stereographic` / `t2_flat` family (selected by name in the
+    /// `ON <bundle>` slot) — the Halcyon follow-up swaps in the
+    /// general `WishBundle` trait surface and removes this naming
+    /// shortcut.
+    #[cfg(feature = "imagine")]
+    LetPathFromImagine {
+        /// The identifier the LET clause binds. INTEGRATE looks up by
+        /// this name in the session path-registry.
+        ident: String,
+        /// 2D seed `(x, y)` — first-ship lift restricted to dim = 2 in
+        /// alignment with `imagine_geodesic`'s Phase 1 surface.
+        seed: (f64, f64),
+        /// Initial geodesic direction `(dx, dy)`.
+        direction: (f64, f64),
+        /// Total geodesic arc-length to integrate (`PATH_LENGTH`).
+        path_length: f64,
+        /// Number of RK4 integrator steps (`STEPS`).
+        n_steps: u32,
+        /// Bundle-name slot — first-ship dispatches by built-in name
+        /// (`s2_stereographic` / `t2_flat`). Future ride-along uses
+        /// this as the `WishBundle` registry key.
+        bundle: String,
+    },
+
+    /// `INTEGRATE OBSERVABLE <name_str> ALONG <path_ident>
+    /// [RETURNS SCALAR];`
+    ///
+    /// Trapezoidal line integral of the named observable along the
+    /// LET-bound path identified by `path_ident`. Per Hallie §4
+    /// (2026-06-22), the path-handle pattern lets the catalog
+    /// protocol bind the path once and integrate multiple observables
+    /// along it without re-running IMAGINE/WISH.
+    ///
+    /// `returns_scalar` is `true` by default; the `RETURNS SCALAR`
+    /// suffix is recognized for forward-compat with future
+    /// `RETURNS VECTOR` / `RETURNS TENSOR` shapes.
+    #[cfg(feature = "imagine")]
+    IntegrateAlongPath {
+        /// Observable name (e.g. `arc_length_unit`, `local_k`,
+        /// `accumulated_holonomy`, `path_length_so_far`). Resolves
+        /// against `imagine::observables::CANONICAL_NAMES` in v1;
+        /// bundle-specific dispatch lands with the Halcyon follow-up.
+        observable_name: String,
+        /// Identifier of a previously-bound path
+        /// (`LET <path_ident> = IMAGINE FROM ... ;`). The registry
+        /// lookup miss surfaces `UnknownPathBinding` via the executor.
+        path_ident: String,
+        /// `RETURNS SCALAR` toggle. Always `true` in v1.
+        returns_scalar: bool,
     },
 }
 
@@ -1771,7 +1861,28 @@ impl Parser {
             // later (spec §6) zero existing SNAPSHOT call drifts.
             #[cfg(feature = "gauge")]
             "SNAPSHOT" => self.parse_snapshot(),
-            "INTEGRATE" => self.parse_integrate(),
+            "INTEGRATE" => {
+                // Hallie WISH ASK 4 (2026-06-22): the two-form
+                // path-handle syntax shares the `INTEGRATE` keyword
+                // with the classic aggregator. Peek the next word —
+                // `OBSERVABLE` routes to the line-integral arm;
+                // anything else stays on the aggregator path so
+                // existing INTEGRATE … OVER … MEASURE callers keep
+                // working byte-identical.
+                #[cfg(feature = "imagine")]
+                {
+                    if self.is_keyword("OBSERVABLE") {
+                        return self.parse_integrate_along_path();
+                    }
+                }
+                self.parse_integrate()
+            },
+            // LET binding — WISH ASK 4 path-handle form. Currently
+            // only `LET <ident> = IMAGINE ...` lands; the LET-from-
+            // WISH variant rides in the Halcyon follow-up alongside
+            // the WishBundle trait surface.
+            #[cfg(feature = "imagine")]
+            "LET" => self.parse_let_statement(),
             "PULLBACK" => self.parse_pullback(),
             "COLLAPSE" => {
                 let name = self.expect_word()?;
@@ -3071,7 +3182,7 @@ impl Parser {
     /// Consume a numeric token (integer or float) and return it as
     /// `f64`. The expect_usize helper rejects fractional inputs; BETA
     /// at GIBBS_SAMPLE accepts any non-negative real.
-    #[cfg(feature = "gauge")]
+    #[cfg(any(feature = "gauge", feature = "imagine"))]
     fn expect_f64(&mut self) -> Result<f64, String> {
         match self.advance() {
             Some(Token::Number(n)) => Ok(n),
@@ -3324,6 +3435,29 @@ impl Parser {
     #[cfg(feature = "gauge")]
     fn parse_loop_transport(&mut self) -> Result<Statement, String> {
         let lattice = self.expect_word()?;
+        // WISH ASK 5 (Hallie 2026-06-22): accept optional
+        // `GAUGE_FIELD <name>` and `E_FIELD <name>` clauses between the
+        // lattice ident and `ALONG_LOOP`. Backwards-compat: when both
+        // are omitted, the parser defaults to (`U_lt`, `E_lt`), the
+        // precondition.py-era convention that the executor used to
+        // hardcode at the call site. Hallie's per-seed UUID-suffixed
+        // scratch fields (orchestrator-side GIBBS_SAMPLE fix) require
+        // a non-U_lt first arg; the explicit clauses unblock that.
+        let mut gauge_field_name: Option<String> = None;
+        let mut e_field_name: Option<String> = None;
+        loop {
+            if self.is_keyword("GAUGE_FIELD") {
+                self.advance();
+                gauge_field_name = Some(self.expect_word()?);
+            } else if self.is_keyword("E_FIELD") {
+                self.advance();
+                e_field_name = Some(self.expect_word()?);
+            } else {
+                break;
+            }
+        }
+        let gauge_field_name = gauge_field_name.unwrap_or_else(|| "U_lt".to_string());
+        let e_field_name = e_field_name.unwrap_or_else(|| "E_lt".to_string());
         self.expect_keyword("ALONG_LOOP")?;
         let loop_id = self.expect_word()?;
         self.expect_keyword("CONTROL_MANIFOLD")?;
@@ -3449,6 +3583,8 @@ impl Parser {
         let stmt = Statement::LoopTransport {
             lattice,
             loop_id,
+            gauge_field_name,
+            e_field_name,
             control_manifold,
             adiabatic: adiabatic
                 .ok_or_else(|| "LOOP_TRANSPORT missing ADIABATIC".to_string())?,
@@ -3912,6 +4048,106 @@ impl Parser {
             bundle: name,
             over,
             measures,
+        })
+    }
+
+    // ── GQL: LET path-binding + INTEGRATE OBSERVABLE (WISH ASK 4) ──
+    //
+    // Per Hallie 2026-06-22, the two-form syntax is
+    //
+    //   LET <ident> = IMAGINE FROM (x, y) DIRECTION (dx, dy)
+    //     PATH_LENGTH <l> STEPS <n> ON <bundle>;
+    //   INTEGRATE OBSERVABLE <name_str> ALONG <ident> [RETURNS SCALAR];
+    //
+    // The LET form binds the imagined path under <ident> in the
+    // session path-registry. INTEGRATE OBSERVABLE looks the binding
+    // up and trapezoidally line-integrates the named observable over
+    // it. Multiple INTEGRATE calls against the same handle never
+    // re-run IMAGINE — the registry caches the records.
+
+    #[cfg(feature = "imagine")]
+    fn parse_let_statement(&mut self) -> Result<Statement, String> {
+        // `LET` already consumed by the caller. The next token is the
+        // identifier the path binds to.
+        let ident = self.expect_word()?;
+        self.expect(Token::Eq)?;
+        // First-ship: only `IMAGINE` as the LET rhs. WISH lands later.
+        let rhs_kw = self.expect_word()?;
+        if !rhs_kw.eq_ignore_ascii_case("IMAGINE") {
+            return Err(format!(
+                "LET <ident> = <rhs>: v1 only supports IMAGINE as rhs; got '{rhs_kw}'"
+            ));
+        }
+        self.expect_keyword("FROM")?;
+        let (sx, sy) = self.parse_pair_2d()?;
+        self.expect_keyword("DIRECTION")?;
+        let (dx, dy) = self.parse_pair_2d()?;
+        self.expect_keyword("PATH_LENGTH")?;
+        let path_length = self.expect_f64()?;
+        self.expect_keyword("STEPS")?;
+        let n_steps = self.expect_usize()? as u32;
+        self.expect_keyword("ON")?;
+        let bundle = self.expect_word()?;
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::LetPathFromImagine {
+            ident,
+            seed: (sx, sy),
+            direction: (dx, dy),
+            path_length,
+            n_steps,
+            bundle,
+        })
+    }
+
+    #[cfg(feature = "imagine")]
+    fn parse_pair_2d(&mut self) -> Result<(f64, f64), String> {
+        self.expect(Token::LParen)?;
+        let a = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let b = self.expect_f64()?;
+        self.expect(Token::RParen)?;
+        Ok((a, b))
+    }
+
+    #[cfg(feature = "imagine")]
+    fn parse_integrate_along_path(&mut self) -> Result<Statement, String> {
+        // `INTEGRATE` already consumed by the caller. The peek-ahead
+        // at the dispatcher confirmed the next word is `OBSERVABLE`.
+        self.expect_keyword("OBSERVABLE")?;
+        // Observable names ride as bare identifiers OR quoted
+        // strings; either lexes cleanly. Bare lets you write
+        // `OBSERVABLE arc_length_unit`; quoted form
+        // `OBSERVABLE 'davis_capacity'` is also accepted.
+        let observable_name = match self.advance() {
+            Some(Token::Word(w)) => w,
+            Some(Token::Str(s)) => s,
+            other => {
+                return Err(format!(
+                    "INTEGRATE OBSERVABLE: expected observable name (ident or string), got {other:?}"
+                ))
+            }
+        };
+        self.expect_keyword("ALONG")?;
+        let path_ident = self.expect_word()?;
+        // Optional `RETURNS SCALAR` tail (default-true). Future
+        // `RETURNS VECTOR` / `RETURNS TENSOR` land later.
+        let returns_scalar = if self.is_keyword("RETURNS") {
+            self.advance();
+            // Allow `RETURNS SCALAR` only in v1.
+            self.expect_keyword("SCALAR")?;
+            true
+        } else {
+            true
+        };
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::IntegrateAlongPath {
+            observable_name,
+            path_ident,
+            returns_scalar,
         })
     }
 
@@ -4548,9 +4784,82 @@ impl Parser {
     // ── SQL compat: CREATE BUNDLE ──
 
     fn parse_create_bundle(&mut self) -> Result<Statement, String> {
+        // Personal-list #2: CREATE SESSION is a first-class verb that
+        // sits adjacent to CREATE BUNDLE — both schema-creating verbs
+        // dispatch from the same `CREATE` arm in `parse()`. See
+        // `docs/CREATE_SESSION.md` for the session-bundle pattern.
+        if self.is_keyword("SESSION") {
+            self.advance(); // consume SESSION
+            return self.parse_create_session();
+        }
         self.expect_keyword("BUNDLE")?;
         let name = self.expect_word()?;
         self.parse_bundle_fields_paren(name)
+    }
+
+    /// Parse `CREATE SESSION <name> [WITH SCHEMA (extra FIBER TYPE [INDEX], ...)] ;`
+    ///
+    /// Personal-list #2. Stamps the canonical 6-field session schema
+    /// (thought_id BASE TEXT + ts/session/topic/content/refs FIBER) and
+    /// optionally appends extra FIBER fields. Extras MUST be FIBER —
+    /// BASE is locked to the canonical thought_id key. Names that
+    /// collide with the canonical six surface a parser error.
+    ///
+    /// See docs/CREATE_SESSION.md for cold-start protocol.
+    fn parse_create_session(&mut self) -> Result<Statement, String> {
+        let session_name = self.expect_word()?;
+        let mut extra_schema: Vec<(String, String, bool)> = Vec::new();
+
+        if self.is_keyword("WITH") {
+            self.advance();
+            self.expect_keyword("SCHEMA")?;
+            self.expect(Token::LParen)?;
+
+            let canonical: &[&str] = &[
+                "thought_id", "ts", "session", "topic", "content", "refs",
+            ];
+            loop {
+                if matches!(self.peek(), Some(Token::RParen)) {
+                    break;
+                }
+                if !extra_schema.is_empty() {
+                    self.expect(Token::Comma)?;
+                }
+                let fname = self.expect_word()?;
+                // FIBER keyword is REQUIRED for session extras.
+                if !self.is_keyword("FIBER") {
+                    return Err(format!(
+                        "CREATE SESSION: extra field '{fname}' must be \
+                         declared FIBER (BASE is locked to thought_id)"
+                    ));
+                }
+                self.advance(); // consume FIBER
+                let ftype = self.expect_word()?;
+                let indexed = if self.is_keyword("INDEX") {
+                    self.advance();
+                    true
+                } else {
+                    false
+                };
+                if canonical.contains(&fname.as_str()) {
+                    return Err(format!(
+                        "CREATE SESSION: extra field '{fname}' collides \
+                         with canonical session schema"
+                    ));
+                }
+                extra_schema.push((fname, ftype, indexed));
+            }
+            self.expect(Token::RParen)?;
+        }
+
+        Ok(Statement::CreateSession {
+            session_name,
+            extra_schema: if extra_schema.is_empty() {
+                None
+            } else {
+                Some(extra_schema)
+            },
+        })
     }
 
     fn parse_bundle_fields_paren(&mut self, name: String) -> Result<Statement, String> {
@@ -8075,6 +8384,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             invariants,
             seed_source,
         } => {
+            crate::virtual_bundles::reject_virtual_write(name, "CREATE BUNDLE")?;
             let mut schema = crate::types::BundleSchema::new(name);
             for f in base_fields {
                 schema = schema.base(spec_to_field_def(f));
@@ -8122,7 +8432,52 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             Ok(ExecResult::Ok)
         }
 
+        // Personal-list #2 — CREATE SESSION first-class verb (2026-06-22).
+        // Stamps the canonical session schema (thought_id BASE TEXT +
+        // ts/session/topic/content/refs FIBER) in ONE place so a future
+        // shape revision doesn't require migrating every consumer who
+        // hand-rolled CREATE BUNDLE. See `docs/CREATE_SESSION.md`.
+        Statement::CreateSession {
+            session_name,
+            extra_schema,
+        } => {
+            crate::virtual_bundles::reject_virtual_write(session_name, "CREATE SESSION")?;
+            let mut schema = crate::types::BundleSchema::new(session_name)
+                .base(crate::types::FieldDef::categorical("thought_id"))
+                .fiber(crate::types::FieldDef::timestamp("ts", 1.0))
+                .fiber(crate::types::FieldDef::categorical("session"))
+                .fiber(crate::types::FieldDef::categorical("topic"))
+                .fiber(crate::types::FieldDef::categorical("content"))
+                .fiber(crate::types::FieldDef::categorical("refs"))
+                .index("ts")
+                .index("topic");
+
+            if let Some(extras) = extra_schema {
+                for (fname, ftype, indexed) in extras {
+                    let spec = FieldSpec {
+                        name: fname.clone(),
+                        ftype: ftype.clone(),
+                        range: None,
+                        default: None,
+                        auto_inc: false,
+                        unique: false,
+                        required: false,
+                        encryption: crate::types::EncryptionMode::None,
+                        encryption_group: None,
+                    };
+                    schema = schema.fiber(spec_to_field_def(&spec));
+                    if *indexed {
+                        schema = schema.index(fname);
+                    }
+                }
+            }
+
+            engine.create_bundle(schema).map_err(|e| format!("{e}"))?;
+            Ok(ExecResult::Ok)
+        }
+
         Statement::Collapse { bundle } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "COLLAPSE")?;
             engine.drop_bundle(bundle).map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Ok)
         }
@@ -8165,6 +8520,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             columns,
             values,
         } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "INSERT")?;
             if !columns.is_empty() && columns.len() != values.len() {
                 return Err("Column count doesn't match value count".into());
             }
@@ -8181,6 +8537,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             columns,
             rows,
         } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "BATCH INSERT")?;
             let records: Vec<crate::types::Record> = rows
                 .iter()
                 .map(|row| {
@@ -8210,6 +8567,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             columns,
             rows,
         } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "BATCH UPSERT")?;
             let mut inserted = 0usize;
             let mut updated = 0usize;
             for row in rows {
@@ -8236,6 +8594,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             columns,
             values,
         } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "UPSERT")?;
             let mut record = HashMap::new();
             for (col, val) in columns.iter().zip(values.iter()) {
                 record.insert(col.clone(), literal_to_value(val));
@@ -8248,6 +8607,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         }
 
         Statement::Redefine { bundle, key, sets } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "REDEFINE")?;
             let key_rec: crate::types::Record = key
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
@@ -8271,6 +8631,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             conditions,
             sets,
         } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "BULK REDEFINE")?;
             let qcs: Vec<crate::bundle::QueryCondition> = conditions
                 .iter()
                 .flat_map(filter_to_query_conditions)
@@ -8287,6 +8648,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         }
 
         Statement::Retract { bundle, key } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "RETRACT")?;
             let key_rec: crate::types::Record = key
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
@@ -8302,6 +8664,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         }
 
         Statement::BulkRetract { bundle, conditions } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "BULK RETRACT")?;
             let qcs: Vec<crate::bundle::QueryCondition> = conditions
                 .iter()
                 .flat_map(filter_to_query_conditions)
@@ -8363,6 +8726,47 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             #[cfg(feature = "patterns")]
             excluding,
         } => {
+            // Personal-list #3 — virtual `__bundles__` short-circuit.
+            // The registry is materialized fresh per call; same COVER
+            // clause vocabulary (PROJECT/RANK BY/WHERE/FIRST/SKIP/
+            // DISTINCT) applies, so `COVER __bundles__ WHERE
+            // type='overlay' RANK BY n_records DESC FIRST 10` works
+            // for free. See `src/virtual_bundles.rs` and
+            // `docs/GIGI_HOSTING_ITSELF.md`.
+            if crate::virtual_bundles::is_virtual(bundle) {
+                let rows = crate::virtual_bundles::materialize_bundles_rows(engine);
+                let mut conditions: Vec<crate::bundle::QueryCondition> = Vec::new();
+                for fc in on_conditions.iter().chain(where_conditions.iter()) {
+                    conditions.extend(filter_to_query_conditions(fc));
+                }
+                let or_qcs: Vec<Vec<crate::bundle::QueryCondition>> = or_groups
+                    .iter()
+                    .map(|group| group.iter().flat_map(filter_to_query_conditions).collect())
+                    .collect();
+                let or_ref = if or_qcs.is_empty() { None } else { Some(or_qcs.as_slice()) };
+                let sort_refs: Vec<(&str, bool)> = rank_by
+                    .as_ref()
+                    .map(|specs| specs.iter().map(|s| (s.field.as_str(), s.desc)).collect())
+                    .unwrap_or_default();
+                let sort_opt = if sort_refs.is_empty() { None } else { Some(sort_refs.as_slice()) };
+                let project_strs: Vec<&str> = project
+                    .as_ref()
+                    .map(|p| p.iter().map(|s| s.as_str()).collect())
+                    .unwrap_or_default();
+                let project_opt = if project_strs.is_empty() { None } else { Some(project_strs.as_slice()) };
+                let results = crate::virtual_bundles::apply_query_clauses(
+                    rows,
+                    &conditions,
+                    or_ref,
+                    sort_opt,
+                    *first,
+                    *skip,
+                    project_opt,
+                    distinct_field.as_deref(),
+                );
+                return Ok(ExecResult::Rows(results));
+            }
+
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
@@ -8911,6 +9315,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         | Statement::RebuildIndex { bundle, .. }
         | Statement::CheckIntegrity { bundle }
         | Statement::Repair { bundle } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "MAINTENANCE")?;
             let _store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
@@ -8942,10 +9347,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         | Statement::ShowCurrentRole => Ok(ExecResult::Ok),
 
         // ── v2.1: Data Movement (stubs) ──
-        Statement::Ingest { .. }
-        | Statement::Transplant { .. }
-        | Statement::GenerateBase { .. }
-        | Statement::Fill { .. } => Ok(ExecResult::Ok),
+        Statement::Ingest { bundle, .. } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "INGEST")?;
+            Ok(ExecResult::Ok)
+        }
+        Statement::Transplant { target, .. } => {
+            crate::virtual_bundles::reject_virtual_write(target, "TRANSPLANT")?;
+            Ok(ExecResult::Ok)
+        }
+        Statement::GenerateBase { bundle, .. } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "GENERATE BASE")?;
+            Ok(ExecResult::Ok)
+        }
+        Statement::Fill { bundle, .. } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "FILL")?;
+            Ok(ExecResult::Ok)
+        }
 
         // ── v2.1: Prepared Statements (stubs) ──
         Statement::Prepare { .. }
@@ -10366,18 +10783,21 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // SYMPLECTIC_FLOW arm above (single-row envelope with one
         // column per RETURN field).
         #[cfg(feature = "gauge")]
-        Statement::LoopTransport { .. } => {
+        Statement::LoopTransport { gauge_field_name, e_field_name, .. } => {
             // The verb mutates an SU(2) U field + companion E field
-            // in place. The Statement variant doesn't carry the U/E
-            // names directly (v3.1.3 §4.4 only names the LATTICE and
-            // the loop_id); for the executor-dispatch path we follow
-            // the convention that the GAUGE_FIELD bound to the
-            // lattice is named `U_lt` and the E_FIELD `E_lt` (matches
-            // the smoke test setup). This is the documented HTTP /v1
-            // path's convention; direct callers (the smoke test)
-            // bypass this arm and call `gauge::loop_transport`
-            // directly with explicit names.
-            let resp = crate::gauge::loop_transport::loop_transport(stmt, "U_lt", "E_lt")
+            // in place. Per WISH ASK 5 (Hallie 2026-06-22), the U/E
+            // names ride on the Statement variant via the optional
+            // `GAUGE_FIELD <name>` and `E_FIELD <name>` GQL clauses;
+            // when both are omitted the parser fills in (`U_lt`,
+            // `E_lt`) and existing call sites continue byte-identical.
+            // Orchestrator-side per-seed UUID-suffixed scratch fields
+            // (Hallie's GIBBS_SAMPLE fix) now ground out through this
+            // executor surface.
+            let resp = crate::gauge::loop_transport::loop_transport(
+                stmt,
+                gauge_field_name.as_str(),
+                e_field_name.as_str(),
+            )
                 .map_err(|e| e.to_string())?;
             let mut record: crate::types::Record = std::collections::HashMap::new();
             record.insert(
@@ -10497,6 +10917,102 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 crate::types::Value::Integer(resp.wal_offset as i64),
             );
             Ok(ExecResult::Rows(vec![record]))
+        }
+
+        // ── WISH ASK 4 (Hallie 2026-06-22) ──────────────────────────
+        //
+        // LET <ident> = IMAGINE FROM ... → bind a fresh imagined
+        // geodesic into the session path-registry under <ident>.
+        // First-ship metric dispatch by bundle name: `s2_stereographic`
+        // (S² unit sphere) and `t2_flat` (flat torus). The Halcyon
+        // follow-up swaps this for the WishBundle trait surface.
+        #[cfg(feature = "imagine")]
+        Statement::LetPathFromImagine {
+            ident,
+            seed,
+            direction,
+            path_length,
+            n_steps,
+            bundle,
+        } => {
+            use crate::imagine::config::ImagineConfig;
+            use crate::imagine::geodesic::{imagine_geodesic, ConformalMetric};
+            let metric = match bundle.to_ascii_lowercase().as_str() {
+                "s2_stereographic" => ConformalMetric {
+                    // S² stereographic: φ(x,y) = -ln(1 + x² + y²)
+                    // ⇒ φ_x = -2x/(1+r²), φ_y = -2y/(1+r²).
+                    phi_x: Box::new(|x, y| -2.0 * x / (1.0 + x * x + y * y)),
+                    phi_y: Box::new(|x, y| -2.0 * y / (1.0 + x * x + y * y)),
+                    local_k: Box::new(|_x, _y| 1.0),
+                },
+                "t2_flat" => ConformalMetric {
+                    phi_x: Box::new(|_x, _y| 0.0),
+                    phi_y: Box::new(|_x, _y| 0.0),
+                    local_k: Box::new(|_x, _y| 0.0),
+                },
+                other => {
+                    return Err(format!(
+                        "LET = IMAGINE ON <bundle>: v1 metric names are 's2_stereographic' \
+                         | 't2_flat'; got '{other}'. The WishBundle registry lands in the \
+                         Halcyon follow-up."
+                    ));
+                }
+            };
+            let cfg = ImagineConfig {
+                path_length: *path_length,
+                n_steps: *n_steps,
+                adaptive: false,
+            };
+            let records = imagine_geodesic(
+                &metric,
+                ident,
+                bundle,
+                &[seed.0, seed.1],
+                &[direction.0, direction.1],
+                &cfg,
+            )
+            .map_err(|e| format!("LET = IMAGINE: {e}"))?;
+            crate::imagine::path_registry::bind(
+                ident.clone(),
+                crate::imagine::path_registry::BoundPath {
+                    records,
+                    bundle: bundle.clone(),
+                    source: crate::imagine::path_registry::PathSource::Imagine,
+                },
+            );
+            Ok(ExecResult::Ok)
+        }
+
+        // INTEGRATE OBSERVABLE <name> ALONG <path_ident> [RETURNS SCALAR]
+        //
+        // Trapezoidal line integral against a previously-bound path.
+        // The handle is resolved against the session path-registry
+        // (cache); multiple INTEGRATE calls against the same handle
+        // do NOT re-run IMAGINE — that's the whole point of the
+        // path-handle pattern per Hallie §4.
+        #[cfg(feature = "imagine")]
+        Statement::IntegrateAlongPath {
+            observable_name,
+            path_ident,
+            returns_scalar: _,
+        } => {
+            let bound = crate::imagine::path_registry::get(path_ident).ok_or_else(|| {
+                format!(
+                    "INTEGRATE OBSERVABLE: path '{path_ident}' is not bound. \
+                     Bind it first via `LET {path_ident} = IMAGINE FROM ... ;`."
+                )
+            })?;
+            if bound.records.is_empty() {
+                return Err(format!(
+                    "INTEGRATE OBSERVABLE: path '{path_ident}' is empty (no records)."
+                ));
+            }
+            let value = crate::imagine::observables::trapezoidal_integrate(
+                observable_name,
+                &bound.records,
+            )
+            .map_err(|e| format!("INTEGRATE OBSERVABLE: {e}"))?;
+            Ok(ExecResult::Scalar(value))
         }
     }
 }

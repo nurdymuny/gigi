@@ -504,6 +504,16 @@ fn destructure<'a>(stmt: &'a Statement) -> Result<LtConfig<'a>, LoopTransportErr
         Statement::LoopTransport {
             lattice,
             loop_id,
+            // WISH ASK 5 ride-along: the U/E names now live on the
+            // Statement variant. This destructure only consumes the
+            // fields the action-body still uses (the u_name / e_name
+            // params on `loop_transport()` already accept the names
+            // explicitly, so `gauge_field_name` / `e_field_name` are
+            // intentionally absorbed by the `..` below to avoid
+            // duplicating the registry-lookup path through two
+            // surfaces).
+            gauge_field_name: _,
+            e_field_name: _,
             control_manifold,
             adiabatic,
             ramp_rate_q,

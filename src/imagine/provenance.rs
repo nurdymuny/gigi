@@ -43,6 +43,9 @@ pub enum WishTargetProvenance {
     Coords(Vec<f64>),
     /// The wish targeted a record in some bundle.
     Record { bundle: String, record_id: String },
+    /// The wish targeted a named observable's value within tolerance.
+    /// Per WISH ASK 2 (Hallie 2026-06-22).
+    Observable { name: String, value: f64, err: f64 },
 }
 
 /// Which budget refused a wish, used by the waypoint cite-render and
@@ -252,6 +255,9 @@ fn render_target_label(target: &WishTargetProvenance) -> String {
                 let parts: Vec<String> = c.iter().map(|x| format!("{:.2}", x)).collect();
                 format!("coords[{}]", parts.join(", "))
             }
+        }
+        WishTargetProvenance::Observable { name, value, err } => {
+            format!("observable:{}={:.4}±{:.4}", name, value, err)
         }
     }
 }

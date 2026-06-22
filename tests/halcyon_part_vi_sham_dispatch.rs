@@ -137,6 +137,11 @@ mod helpers {
         Statement::LoopTransport {
             lattice: lattice.into(),
             loop_id: loop_id.into(),
+            // WISH ASK 5 ride-along: SHAM dispatch fixture stays on
+            // the historical default names (smoke test pins U_lt /
+            // E_lt; no scratch fields here).
+            gauge_field_name: "U_lt".into(),
+            e_field_name: "E_lt".into(),
             control_manifold: ControlManifoldSpec::QBetaWilson,
             adiabatic: true,
             ramp_rate_q: 0.04,

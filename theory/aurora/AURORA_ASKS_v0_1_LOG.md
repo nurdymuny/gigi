@@ -9,6 +9,8 @@ v0.1 spec + `williamson_test2_scaffold.py` scaffold).
 - `theory/aurora/GIGI_TO_AURORA_2026-06-19_v0_1_REPLY_2.md` (engine acceptance + Q3 answer + Q4/Q5/Q6).
 - `theory/aurora/GIGI_TO_AURORA_2026-06-21_Q4_Q5_Q6_RESOLVED.md` (engine acknowledgment of AURORA's Q4b/Q5/Q6 answers; commit `c06f073`).
 - `theory/aurora/AURORA_TO_GIGI_REPLY2_2026-06-21.md` (AURORA reply 2: Q4a path-dep detail, Q5a explicit init() code shape, **Q6b correction — doc-comment + changelog convention, not `#[stable]` proc-macro which is rustc-internal**).
+- `theory/aurora/AURORA_TO_GIGI_REPLY3_2026-06-22.md` (AURORA reply 3: **Phase 2 COMPLETE 22/22 TDD green + aurora-server binary live**; KDK non-separability finding on ShallowWater Stormer-Verlet vs forward Euler (7× WORSE Casimir drift, structural not truncation); 3 open questions back at GIGI (Q1 SYMPLECTIC_FLOW KDK-vs-Lie-Poisson, Q2 Engine::open minimal config, Q3 stability marker confirmation); Williamson Test 5 starting in parallel with B1-B8 TDD gates).
+- `theory/aurora/GIGI_TO_AURORA_REPLY4_2026-06-22.md` (engine reply 4: Q3 ✓ shipped at 59cdad5; Q2 ✓ answered with tempdir + open_empty pattern (optional Engine::open_memory() constructor offered); Q1 substrate-side admission — trait surface at 59cdad5 was implicitly separable-Hamiltonian, KDK finding is correct, Lie-Poisson trait surface design opened; two questions back at AURORA on bracket evaluator shape and ordering of trait-surface-extension vs concrete-bracket-spec; substrate queue empty pending AURORA reply on §5).
 
 **First AURORA receipt**: Williamson Test 2 step 0 against
 `gigi-stream.fly.dev`, `refusal_reason = None`, mass/energy diagnostics

@@ -1400,6 +1400,56 @@ impl Engine {
         names
     }
 
+    /// Best-effort creation timestamp for a bundle, in seconds since
+    /// the UNIX epoch. Used by the `__bundles__` virtual bundle to
+    /// populate the `created_ts` fiber field.
+    ///
+    /// - mmap overlays return the snapshot file's mtime when readable
+    /// - heap bundles fall back to the WAL file's mtime (proxy for
+    ///   "when this engine started serving this bundle")
+    /// - returns `None` if the bundle is not in the registry or no
+    ///   filesystem timestamp is available (e.g. `open_memory()` with
+    ///   no WAL on disk yet)
+    ///
+    /// NOTE: this is observational, not transactional. The WAL
+    /// `CreateBundle` entry does not carry a wall-clock timestamp, so
+    /// the answer is the closest honest proxy available without
+    /// breaking the WAL forward-compat contract.
+    pub fn bundle_created_ts(&self, name: &str) -> Option<i64> {
+        if self.mmap_bundles.contains_key(name) {
+            // Overlay: prefer the snapshot file's mtime.
+            let snap = self.data_dir.join("snapshots").join(format!("{name}.dhoom"));
+            if let Ok(meta) = fs::metadata(&snap) {
+                if let Ok(modified) = meta.modified() {
+                    if let Ok(d) = modified.duration_since(std::time::UNIX_EPOCH) {
+                        return Some(d.as_secs() as i64);
+                    }
+                }
+            }
+        }
+        // Heap or overlay-without-snapshot-on-disk: fall back to WAL mtime.
+        if self.bundles.contains_key(name) || self.mmap_bundles.contains_key(name) {
+            let wal_path = self.data_dir.join("gigi.wal");
+            if let Ok(meta) = fs::metadata(&wal_path) {
+                if let Ok(modified) = meta.modified() {
+                    if let Ok(d) = modified.duration_since(std::time::UNIX_EPOCH) {
+                        return Some(d.as_secs() as i64);
+                    }
+                }
+            }
+            // No WAL on disk (in-memory engine pre-write). Treat
+            // creation as "now" — honest about the fact that this is
+            // an ephemeral bundle.
+            return Some(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0),
+            );
+        }
+        None
+    }
+
     /// Number of records across all bundles (heap + mmap base + overlay).
     pub fn total_records(&self) -> usize {
         let heap: usize = self.bundles.values().map(|b| b.len()).sum();

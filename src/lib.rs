@@ -195,6 +195,10 @@ pub mod spectral;
 // See `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` §6.
 pub mod threshold;
 pub mod types;
+// Personal-list #3 (2026-06-22) — `__bundles__` virtual bundle that
+// exposes the live engine registry as a queryable bundle. Read-only;
+// materialized fresh on every `COVER __bundles__` call.
+pub mod virtual_bundles;
 // Cached `(N, D)` matrices for the vector-search brain endpoints
 // (`intent_gate`, `confidence`, `confidence_with_explain`). Per Marcella's
 // 2026-05-29 `GIGI_BUG_REPORT_onfields_latency.md`: pre-materialize the

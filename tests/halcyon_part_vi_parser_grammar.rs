@@ -88,6 +88,7 @@ fn halcyon_vi_2_grammar_accepts_full_v3_1_3_source() {
             compute,
             return_fields,
             sham,
+            beta_wilson_start: _,
         } => {
             assert_eq!(lattice, "lattice");
             assert_eq!(loop_id, "loop_id");

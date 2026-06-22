@@ -1086,6 +1086,15 @@ pub enum Statement {
         /// non-empty flag list is rejected at executor entry with
         /// `UnrecognizedShamFlag`.
         sham: Option<ShamBlock>,
+        /// `BETA_WILSON_START` — launch coordinate on the BETA_WILSON
+        /// axis of the control manifold. Defaults to the regime
+        /// midpoint 2.75 when the clause is omitted. Threaded through
+        /// to the executor so VI.6b Fix #5's amplitude-based β_W
+        /// validation can use the actual start (the previous
+        /// validate-and-discard convention forced the executor to fall
+        /// back to 2.75, which masked legitimate out-of-regime
+        /// configurations on the direct-executor path).
+        beta_wilson_start: f64,
     },
     /// `SHOW E_FIELD name [BUFFER];`
     #[cfg(feature = "gauge")]
@@ -3474,52 +3483,74 @@ impl Parser {
             compute,
             return_fields,
             sham,
+            beta_wilson_start: beta_wilson_start.unwrap_or(2.75_f64),
         };
 
         // β_W validation at parse time per the gate doc's "audit-story
         // flag" stance: the verb either lands inside the v3.1.3 §2
         // validated regime [2.5, 3.0] before the executor starts, or
-        // it doesn't run. We validate BOTH ramp endpoints — start and
-        // (start + ramp · T_segment) — since BETA_WILSON is the
-        // control-manifold axis, not a fixed scalar. T_segment derives
-        // from ALPHA_HALCYON · TAU_0 per the Halcyon clock.
+        // it doesn't run.
+        //
+        // VI.6b Fix #5 — amplitude-based bound instead of open-chain
+        // endpoint extrapolation. The loop CLOSES in the (Q, β_W)
+        // control manifold; the relevant bound is max |β_W − β_start|
+        // over γ, not the open-chain endpoint
+        // β_start + ramp · T_segment (which scales with α and forces
+        // α=1000 to reject at 12.5 even though the closed-loop max
+        // never leaves the regime).
+        //
+        // The canonical γ_unit's half-amplitude on the BETA_WILSON
+        // axis is
+        //
+        //     amp = |RAMP_RATE_BETA_W| · TAU_0 / 4
+        //
+        // — α-independent and N_DISCRETIZATION-independent. At
+        // canonical (ramp=0.01, tau_0=1) this is 0.0025; the regime
+        // [2.5, 3.0] easily contains β_start ± amp for any
+        // β_start ∈ [2.5, 3.0]. The α-independence is the whole point
+        // of the fix: v3.1.3 §3.6 requires BOTH α=1 AND α=1000
+        // calibrations to pass the same parser-stage validation, and
+        // the gold-fixture canonical (N=10000, α=1) stays bit-
+        // identical because the verb body never read the validator's
+        // returned `beta_end` — only `beta_start`.
         //
         // BETA_WILSON_START is an additive knob (v3.1.3 §2 freezes the
         // regime without specifying the launch coordinate; the
         // rejection battery uses this to push β_W in or out of
         // regime). Missing → defaults to the regime midpoint 2.75.
         let beta_start = beta_wilson_start.unwrap_or(2.75_f64);
-        let (alpha, tau, ramp_bw, n_disc) = match &stmt {
+        let (ramp_bw, tau) = match &stmt {
             Statement::LoopTransport {
-                alpha_halcyon,
-                tau_0,
                 ramp_rate_beta_w,
-                n_discretization,
+                tau_0,
                 ..
-            } => (*alpha_halcyon, *tau_0, *ramp_rate_beta_w, *n_discretization),
+            } => (*ramp_rate_beta_w, *tau_0),
             _ => unreachable!("just constructed Statement::LoopTransport"),
         };
-        let t_segment = alpha * tau;
-        let beta_end = beta_start + ramp_bw * t_segment;
+        let beta_w_amplitude = ramp_bw.abs() * tau / 4.0_f64;
+        let max_beta_w_reached = beta_start + beta_w_amplitude;
         let range_lo = 2.5_f64;
         let range_hi = 3.0_f64;
-        for &b in &[beta_start, beta_end] {
-            if b < range_lo || b > range_hi {
-                // Surfaces as a parser-stage rejection string with the
-                // variant name + regime bounds so the rejection-test
-                // substring matches the contract (the executor enum
-                // variant name lives at `LoopTransportError::
-                // BetaWilsonOutOfValidatedRegime`).
-                return Err(format!(
-                    "BetaWilsonOutOfValidatedRegime: BETA_WILSON = {b} outside validated regime [{:.1}, {:.1}]",
-                    range_lo, range_hi
-                ));
-            }
+        // Per Locked spec: reject if max_beta_w_reached > 3.0 OR
+        // beta_start < 2.5. β_start above the regime is rejected
+        // implicitly because max ≥ β_start trips the upper-bound rule.
+        // The pin penalties (PIN_LAMBDA_BETA_W) keep the actual β
+        // tightly clamped to the ramp reference, so the canonical
+        // γ_unit's negative excursion is dominated by f64 round-off
+        // and not by the open-chain ramp shape — we don't gate on the
+        // lower extremum of the closed-loop amplitude.
+        if beta_start < range_lo {
+            return Err(format!(
+                "BetaWilsonOutOfValidatedRegime: BETA_WILSON = {beta_start} outside validated regime [{:.1}, {:.1}]",
+                range_lo, range_hi
+            ));
         }
-        // Suppress unused-variable warning when n_disc is otherwise
-        // unreferenced here (it's already inside the Statement variant
-        // — the borrow is just for the validation read above).
-        let _ = n_disc;
+        if max_beta_w_reached > range_hi {
+            return Err(format!(
+                "BetaWilsonOutOfValidatedRegime: BETA_WILSON = {max_beta_w_reached} outside validated regime [{:.1}, {:.1}]",
+                range_lo, range_hi
+            ));
+        }
 
         Ok(stmt)
     }

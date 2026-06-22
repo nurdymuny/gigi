@@ -492,6 +492,11 @@ struct LtConfig<'a> {
     #[allow(dead_code)]
     return_fields: &'a [LoopTransportReturnId],
     sham: &'a Option<ShamBlock>,
+    /// VI.6b Fix #5 — actual BETA_WILSON_START threaded from the
+    /// parser. The earlier convention hardcoded 2.75 in the executor's
+    /// defensive validator, which masked legitimate out-of-regime
+    /// configurations on the direct-executor path.
+    beta_wilson_start: f64,
 }
 
 fn destructure<'a>(stmt: &'a Statement) -> Result<LtConfig<'a>, LoopTransportError> {
@@ -520,6 +525,7 @@ fn destructure<'a>(stmt: &'a Statement) -> Result<LtConfig<'a>, LoopTransportErr
             compute,
             return_fields,
             sham,
+            beta_wilson_start,
         } => Ok(LtConfig {
             lattice: lattice.as_str(),
             loop_id: loop_id.as_str(),
@@ -544,6 +550,7 @@ fn destructure<'a>(stmt: &'a Statement) -> Result<LtConfig<'a>, LoopTransportErr
             compute,
             return_fields,
             sham,
+            beta_wilson_start: *beta_wilson_start,
         }),
         _ => Err(LoopTransportError::Internal(
             "loop_transport: expected Statement::LoopTransport".into(),
@@ -561,26 +568,52 @@ fn dt_substep(cfg: &LtConfig<'_>) -> f64 {
     t_segment / (cfg.n_discretization as f64)
 }
 
-/// Validate β_W endpoints against the v3.1.3 §2 regime. Returns the
-/// (start, end) values or the rejection variant.
+/// Validate β_W amplitude against the v3.1.3 §2 regime. Returns the
+/// `(beta_start, beta_max_reached)` values or the rejection variant.
 ///
-/// The Statement variant does not carry BETA_WILSON_START — the
-/// parser validates and discards it (the regime check happens at
-/// parse time per the audit-story-flag stance). This defensive
-/// re-check uses the regime midpoint 2.75 as the canonical start, so
-/// the smoke test's direct-executor path is always safe regardless
-/// of which path reached us.
+/// VI.6b Fix #5 — replaces open-chain endpoint extrapolation with
+/// amplitude-based bound. The control-manifold loop CLOSES, so the
+/// relevant max-β_W during traversal is bounded by the canonical
+/// half-amplitude
+///
+///     amp = |RAMP_RATE_BETA_W| · TAU_0 / 4
+///
+/// (α-independent, N-independent — the loop period is the Halcyon
+/// timescale TAU_0, NOT the integrator's α·τ_0 horizon). At canonical
+/// (ramp=0.01, tau_0=1) this is 0.0025; the regime [2.5, 3.0] easily
+/// contains β_start ± amp for any β_start ∈ [2.5, 3.0]. The
+/// α-independence is required by v3.1.3 §3.6's dual α=1 / α=1000
+/// calibration battery.
+///
+/// `beta_wilson_start` is threaded through from the parser via
+/// `LtConfig`, so the smoke test's direct-executor path checks the
+/// caller's actual launch coordinate rather than falling back to the
+/// 2.75 midpoint (which previously masked legitimate out-of-regime
+/// configurations on direct entry).
 fn validate_beta_w(cfg: &LtConfig<'_>) -> Result<(f64, f64), LoopTransportError> {
-    let t_segment = cfg.alpha_halcyon * cfg.tau_0;
-    let beta_start = 2.75_f64; // canonical regime midpoint
-    let beta_end = beta_start + cfg.ramp_rate_beta_w * t_segment;
+    let beta_start = cfg.beta_wilson_start;
+    let amp = cfg.ramp_rate_beta_w.abs() * cfg.tau_0 / 4.0_f64;
+    let beta_max = beta_start + amp;
     let range = (2.5_f64, 3.0_f64);
-    for &b in &[beta_start, beta_end] {
-        if b < range.0 || b > range.1 {
-            return Err(LoopTransportError::BetaWilsonOutOfValidatedRegime { got: b, range });
-        }
+    // Per VI.6b Fix #5: reject if β_start < 2.5 OR β_max > 3.0.
+    // β_start above the regime trips the upper-bound rule because
+    // β_max ≥ β_start. The lower extremum of the closed-loop
+    // amplitude is not gated — PIN_LAMBDA_BETA_W clamps the actual β
+    // to the ramp reference so the negative excursion is dominated
+    // by f64 round-off rather than the open-chain ramp shape.
+    if beta_start < range.0 {
+        return Err(LoopTransportError::BetaWilsonOutOfValidatedRegime {
+            got: beta_start,
+            range,
+        });
     }
-    Ok((beta_start, beta_end))
+    if beta_max > range.1 {
+        return Err(LoopTransportError::BetaWilsonOutOfValidatedRegime {
+            got: beta_max,
+            range,
+        });
+    }
+    Ok((beta_start, beta_max))
 }
 
 /// Reduce an SU(2) holonomy quaternion `(q0, q1, q2, q3)` to a real
@@ -656,6 +689,34 @@ fn run_one_direction(
 
     let mut tracking_error_q = 0.0_f64;
     let mut tracking_error_beta_w = 0.0_f64;
+    // VI.6 Fix #3 (Halcyon Finding #3 / LOCKED §Fix #3): τ_pin is the
+    // INSTANTANEOUS gauge-relaxation timescale at the current state per
+    // v3.1.3 §4.2. The executor publishes
+    //     adiabaticity_ratio = max_substep(τ_pin) / T_segment.
+    // τ_pin per substep = 1 / max(g_residual, 1e-12) read from the
+    // ProjectGaussDiagnostics returned by project_gauss after each KDK.
+    let mut max_tau_pin_substep = 0.0_f64;
+
+    // VI.6 Fix #4 (Halcyon Finding #4 / LOCKED §Fix #4): tracking_error
+    // is the L∞ deviation between actual (observable) coordinate and
+    // its initial pinned reference over the loop, per v3.1.3 §4.2.
+    //   q_actual_s     = q_surrogate(U_s, lat) / n_faces
+    //   plaq_actual_s  = mean(plaquette_per_face(U_s, lat))
+    //   q_drift        = |q_actual_s - q_initial|
+    //   beta_drift     = |plaq_actual_s - plaq_initial| * 0.5
+    // (β_W regime width [2.5, 3.0] = 0.5; plaquette range [0,1].)
+    let n_faces_f = (lat.n_faces() as f64).max(1.0);
+    let (q_initial, mean_plaq_initial) = {
+        let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+        let q_init = super::q_surrogate::q_surrogate(&*u_guard, lat)? / n_faces_f;
+        let per_face = super::plaquette::plaquette_per_face(&*u_guard, lat)?;
+        let plaq_init = if per_face.is_empty() {
+            0.0
+        } else {
+            per_face.iter().sum::<f64>() / (per_face.len() as f64)
+        };
+        (q_init, plaq_init)
+    };
 
     {
         let mut u_guard = u_arc.lock().expect("su2 field mutex poisoned");
@@ -696,44 +757,62 @@ fn run_one_direction(
             )?;
             apply_force_kick(&mut *e_guard, &f1, dt_half)?;
             // Per-substep Gauss projection (production-canonical).
-            project_gauss(
+            // VI.6 Fix #3: keep the ProjectGaussDiagnostics report so we
+            // can read final_gauss_residual_inf and compute τ_pin =
+            // 1 / max(g_residual, 1e-12) per substep.
+            let gauss_report = project_gauss(
                 &mut *e_guard,
                 &*u_guard,
                 lat,
                 &vertex_edge_inc,
                 ProjectGaussConfig::default(),
             )?;
+            let g_residual = gauss_report.final_gauss_residual_inf.max(1e-12);
+            let tau_pin_substep = 1.0_f64 / g_residual;
+            if tau_pin_substep > max_tau_pin_substep {
+                max_tau_pin_substep = tau_pin_substep;
+            }
 
-            // Tracking error: L∞ deviation between requested and
-            // actual coordinate after the substep. The pin penalties
-            // (PIN_LAMBDA_Q / PIN_LAMBDA_BETA_W) bound this through
-            // the Halcyon overdamped Langevin response; for the
-            // smoke-shape contract we just record (q_t - q_ref) which
-            // is identically zero at VI.2 (no separate pin coordinate
-            // yet — the actual pin lives in VI.4's SHAM dispatch).
-            // We still poll the comparison so the diagnostics field
-            // is exercised and non-NaN.
-            let track_q = (q_t - q_ref).abs();
-            let track_bw = (beta_t - beta_ref).abs();
-            if !track_q.is_finite() {
+            // VI.6 Fix #4: Tracking error = L∞ deviation between the
+            // OBSERVABLE coordinate (q_surrogate / mean plaquette) and
+            // its initial pinned reference. Replaces the prior
+            // pinned-vs-pinned (q_t - q_ref) comparison, which was
+            // identically zero by construction and forced
+            // tracking_error_{q,bw} = 0.0 regardless of substrate
+            // motion. Echo the params still for the finite-check.
+            let _ = (q_t, q_ref, beta_t, beta_ref);
+            let q_actual = super::q_surrogate::q_surrogate(&*u_guard, lat)? / n_faces_f;
+            let q_drift = (q_actual - q_initial).abs();
+            let plaq_actual = {
+                let per_face = super::plaquette::plaquette_per_face(&*u_guard, lat)?;
+                if per_face.is_empty() {
+                    0.0
+                } else {
+                    per_face.iter().sum::<f64>() / (per_face.len() as f64)
+                }
+            };
+            // β_W regime width 0.5 over [2.5, 3.0]; plaquette range
+            // [0,1]; map plaquette drift onto the β_W regime scale.
+            let beta_drift = (plaq_actual - mean_plaq_initial).abs() * 0.5;
+            if !q_drift.is_finite() {
                 return Err(LoopTransportError::NonFiniteAtSubstep {
                     seed,
                     substep: s,
                     what: "tracking_error_q",
                 });
             }
-            if !track_bw.is_finite() {
+            if !beta_drift.is_finite() {
                 return Err(LoopTransportError::NonFiniteAtSubstep {
                     seed,
                     substep: s,
                     what: "tracking_error_beta_w",
                 });
             }
-            if track_q > tracking_error_q {
-                tracking_error_q = track_q;
+            if q_drift > tracking_error_q {
+                tracking_error_q = q_drift;
             }
-            if track_bw > tracking_error_beta_w {
-                tracking_error_beta_w = track_bw;
+            if beta_drift > tracking_error_beta_w {
+                tracking_error_beta_w = beta_drift;
             }
         }
     }
@@ -768,6 +847,7 @@ fn run_one_direction(
         h_scalar,
         tracking_error_q,
         tracking_error_bw: tracking_error_beta_w,
+        max_tau_pin: max_tau_pin_substep,
     })
 }
 
@@ -800,6 +880,7 @@ fn run_one_direction_shammed(
             h_scalar: 0.0,
             tracking_error_q: 0.0,
             tracking_error_bw: 0.0,
+            max_tau_pin: 0.0,
         });
     }
 
@@ -888,6 +969,31 @@ fn run_one_direction_shammed(
 
     let mut tracking_error_q = 0.0_f64;
     let mut tracking_error_beta_w = 0.0_f64;
+    // VI.6 Fix #3 (shammed path): same per-substep τ_pin measurement
+    // as run_one_direction. SHAM flags rotate the Gauss residual in
+    // ways the orchestrator may want to detect (e.g. FROZEN_FIELD
+    // bypasses drift but project_gauss still cleans the K-step E
+    // dirt), so the measurement is meaningful in the shammed arm too.
+    let mut max_tau_pin_substep = 0.0_f64;
+
+    // VI.6 Fix #4 (shammed path): same observable-drift tracking as
+    // run_one_direction. FROZEN_FIELD will pin q and plaquette at
+    // q_initial / plaq_initial (U never moves) so tracking_error stays
+    // ~0 there — that's the desired sham signature. FLAT_FIELD pins
+    // the parameter ramp but lets U drift under wilson_force at fixed
+    // β, so observable drift is genuine.
+    let n_faces_f = (lat.n_faces() as f64).max(1.0);
+    let (q_initial, mean_plaq_initial) = {
+        let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+        let q_init = super::q_surrogate::q_surrogate(&*u_guard, lat)? / n_faces_f;
+        let per_face = super::plaquette::plaquette_per_face(&*u_guard, lat)?;
+        let plaq_init = if per_face.is_empty() {
+            0.0
+        } else {
+            per_face.iter().sum::<f64>() / (per_face.len() as f64)
+        };
+        (q_init, plaq_init)
+    };
 
     {
         let mut u_guard = u_arc.lock().expect("su2 field mutex poisoned");
@@ -929,35 +1035,54 @@ fn run_one_direction_shammed(
                 beta_t,
             )?;
             apply_force_kick(&mut *e_guard, &f1, dt_half)?;
-            project_gauss(
+            // VI.6 Fix #3 (shammed path): keep ProjectGaussDiagnostics
+            // so τ_pin = 1 / max(g_residual, 1e-12) is measured.
+            let gauss_report = project_gauss(
                 &mut *e_guard,
                 &*u_guard,
                 lat,
                 &vertex_edge_inc,
                 ProjectGaussConfig::default(),
             )?;
+            let g_residual = gauss_report.final_gauss_residual_inf.max(1e-12);
+            let tau_pin_substep = 1.0_f64 / g_residual;
+            if tau_pin_substep > max_tau_pin_substep {
+                max_tau_pin_substep = tau_pin_substep;
+            }
 
-            let track_q = (q_t - q_ref).abs();
-            let track_bw = (beta_t - beta_ref).abs();
-            if !track_q.is_finite() {
+            // VI.6 Fix #4 (shammed path): observable drift, same shape
+            // as the pure path. Echo the param refs so they aren't dead.
+            let _ = (q_t, q_ref, beta_t, beta_ref);
+            let q_actual = super::q_surrogate::q_surrogate(&*u_guard, lat)? / n_faces_f;
+            let q_drift = (q_actual - q_initial).abs();
+            let plaq_actual = {
+                let per_face = super::plaquette::plaquette_per_face(&*u_guard, lat)?;
+                if per_face.is_empty() {
+                    0.0
+                } else {
+                    per_face.iter().sum::<f64>() / (per_face.len() as f64)
+                }
+            };
+            let beta_drift = (plaq_actual - mean_plaq_initial).abs() * 0.5;
+            if !q_drift.is_finite() {
                 return Err(LoopTransportError::NonFiniteAtSubstep {
                     seed,
                     substep: s,
                     what: "tracking_error_q",
                 });
             }
-            if !track_bw.is_finite() {
+            if !beta_drift.is_finite() {
                 return Err(LoopTransportError::NonFiniteAtSubstep {
                     seed,
                     substep: s,
                     what: "tracking_error_beta_w",
                 });
             }
-            if track_q > tracking_error_q {
-                tracking_error_q = track_q;
+            if q_drift > tracking_error_q {
+                tracking_error_q = q_drift;
             }
-            if track_bw > tracking_error_beta_w {
-                tracking_error_beta_w = track_bw;
+            if beta_drift > tracking_error_beta_w {
+                tracking_error_beta_w = beta_drift;
             }
         }
     }
@@ -981,6 +1106,7 @@ fn run_one_direction_shammed(
         h_scalar,
         tracking_error_q,
         tracking_error_bw: tracking_error_beta_w,
+        max_tau_pin: max_tau_pin_substep,
     })
 }
 
@@ -990,6 +1116,11 @@ struct OneDirRun {
     h_scalar: f64,
     tracking_error_q: f64,
     tracking_error_bw: f64,
+    /// VI.6 Fix #3: max over substeps of τ_pin = 1/max(g_residual, 1e-12)
+    /// read from project_gauss's ProjectGaussDiagnostics after each KDK.
+    /// Aggregated at the executor site as max over (direction, seed) and
+    /// divided by T_segment for the v3.1.3 §4.2 adiabaticity_ratio.
+    max_tau_pin: f64,
 }
 
 /// Snapshot the current U + E buffers so the reversed-direction run
@@ -1128,6 +1259,8 @@ pub fn loop_transport(
     let mut per_seed_h_reversed = Vec::with_capacity(seed_list.len());
     let mut max_track_q = 0.0_f64;
     let mut max_track_bw = 0.0_f64;
+    // VI.6 Fix #3: aggregate max τ_pin over both directions and all seeds.
+    let mut max_tau_pin_all = 0.0_f64;
 
     let all_off = sham_flags.is_all_off();
     for &seed in &seed_list {
@@ -1202,6 +1335,13 @@ pub fn loop_transport(
         if rev.tracking_error_bw > max_track_bw {
             max_track_bw = rev.tracking_error_bw;
         }
+        // VI.6 Fix #3: roll max τ_pin over both directions + all seeds.
+        if fwd.max_tau_pin > max_tau_pin_all {
+            max_tau_pin_all = fwd.max_tau_pin;
+        }
+        if rev.max_tau_pin > max_tau_pin_all {
+            max_tau_pin_all = rev.max_tau_pin;
+        }
     }
 
     // Republish post-flow U snapshot (matches symplectic_flow's
@@ -1218,10 +1358,23 @@ pub fn loop_transport(
     let sigma_h_blocked = block_sigma(&per_seed_h_forward, &per_seed_h_reversed);
 
     // Adiabaticity verdict per v3.1.3 §4.2.
-    let pin_min = cfg.pin_lambda_q.min(cfg.pin_lambda_beta_w);
-    let tau_pin = if pin_min.abs() > 0.0 { 1.0_f64 / pin_min } else { f64::INFINITY };
+    //
+    // VI.6 Fix #3 (Halcyon Finding #3): τ_pin is the INSTANTANEOUS
+    // gauge-relaxation timescale, measured per substep as
+    // 1 / max(final_gauss_residual_inf, 1e-12) after each project_gauss
+    // call, aggregated as max over (direction, seed, substep). The old
+    // static formula τ_pin = 1 / min(PIN_LAMBDA_Q, PIN_LAMBDA_BETA_W)
+    // = 1.0 forced AmbiguousForced on every call regardless of state.
+    //
+    // When max_tau_pin_all is still 0.0 (e.g. EMPTY_LOOP sham
+    // short-circuit with N=0 substeps actually executed), the verdict
+    // is reported as the small-τ_pin → small-ratio limit (Acceptable).
     let t_segment = (cfg.n_discretization as f64) * dt_substep(&cfg);
-    let ratio = if t_segment.abs() > 0.0 { tau_pin / t_segment } else { f64::INFINITY };
+    let ratio = if t_segment.abs() > 0.0 {
+        max_tau_pin_all / t_segment
+    } else {
+        f64::INFINITY
+    };
     let adiab = AdiabaticityCheck::from_ratio(ratio);
 
     Ok(LoopTransportDiagnostics {

@@ -173,6 +173,7 @@ mod helpers {
                 LoopTransportReturnId::AdiabaticityCheck,
             ],
             sham,
+            beta_wilson_start: 2.75,
         }
     }
 

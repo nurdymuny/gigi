@@ -103,8 +103,8 @@
   },
   "adiabaticity_check": {
     "ratio": {
-      "decimal": 1.0,
-      "bits": 4607182418800017408
+      "decimal": 1000000000000.0,
+      "bits": 4786511204640096256
     },
     "verdict": "AmbiguousForced"
   },

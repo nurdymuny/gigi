@@ -1317,3 +1317,334 @@ field; all seven locked Part VI test suites stay GREEN; the
 α=1000 calibration arm of the v3.1.3 §3.6 protocol is
 unblocked at the parser. **LoC added across all three
 fixes: 218** (Fix #5: 111, Fix #3: 51, Fix #4: 56).
+
+---
+
+## VI.6a — Finding #1 closure via signed arccos reduction (Option A coordinated workflow)
+
+### Summary
+
+VI.6a closes Halcyon's diagnostic Finding #1 — "FORWARD and REVERSED
+return bit-identical h_scalar at the thermalized state, so the
+antisymmetric primary observable H_geom = ½(H[γ] − H[γ⁻¹]) is
+structurally dead." Root cause was the abelianized scalar projection
+`reduce_su2_to_scalar` returning plain `q0`, which is direction-blind
+by SU(2) construction since `q0(g) = cos(θ/2) = q0(g⁻¹)` (cos is even
+in θ).
+
+Fix #1 replaces the reduction with the signed Wilson-loop angle
+
+  h_scalar = sign(q1 + q2 + q3) · arccos(clamp(q0, −1, 1))
+
+(boundary convention: `sign(0) → +1`, so identity holonomy returns
+`+1 · arccos(1) = 0` unambiguously). Under SU(2) inversion
+`g → g⁻¹ = (q0, −q1, −q2, −q3)`, `arccos(q0)` is preserved while the
+axis-sum sign flips, so the signed projection flips sign — exactly the
+antisymmetry v3.1.3 §3.1's H_geom requires.
+
+Per Halcyon's 2026-06-21 disposition, Option A was carried as a
+single coordinated workflow because Fix #1 alters the projection's
+numerical contract:
+
+1. **Fix #1** to `src/gauge/loop_transport.rs::reduce_su2_to_scalar`.
+2. **GC₁–GC₄ recalibration** to the new projection (GC₅/GC₆ untouched).
+3. **VI.5 gold fixture regen** (`loop_transport_canonical.json`) to
+   capture the new per-seed `h_forward` / `h_reversed` values.
+4. **Un-`#[ignore]` Finding #1** in
+   `halcyon_part_vi_6_semantic_thermalized.rs` and confirm GREEN.
+5. **Projection convention paragraph** (this impl-log section's
+   final subsection) — the audit-trail artifact Halcyon explicitly
+   requested.
+
+Outcome: 4 passed + 1 ignored (Finding #2, orchestrator-owned) in
+`halcyon_part_vi_6_semantic_thermalized`; GC battery 6/6 GREEN under
+recalibrated assertions; VI.5 fixture re-captured and both
+`vi_f_a_acceptance_arm` + `vi_f_b_regression_arm_release_byte_identity`
+PASS; IV.10 bit-identity intact at 4/0 + 1 ignored
+(`reduce_su2_to_scalar` is not called from `symplectic_flow.rs`).
+No v3.1.4 amendment required.
+
+### Fix #1 receipt — `reduce_su2_to_scalar`
+
+- **File**: `src/gauge/loop_transport.rs`
+- **Function**: `reduce_su2_to_scalar`
+- **LOC range after**: 619–696 (doc comment 619–680, fn body 681–696)
+- **LoC changed**: 67 (4 → ~62 line doc-comment expansion + 4-line
+  body replacement)
+- **Internal unit tests touched**: none (only
+  `adiabaticity_threshold_at_0_1` exists in the module's `tests` mod;
+  it exercises `AdiabaticityCheck::from_ratio`, independent of the
+  reducer)
+- **Build verification**: `cargo build --features halcyon --lib`
+  clean in 4.82s; 5 pre-existing warnings, 0 new
+
+Body (after):
+
+```rust
+fn reduce_su2_to_scalar(g: super::group_element::GroupElement) -> f64 {
+    use super::group_element::GroupElement;
+    match g {
+        GroupElement::SU2 { q0, q1, q2, q3 } => {
+            let theta = q0.clamp(-1.0, 1.0).acos();
+            let axis_sum = q1 + q2 + q3;
+            let sign = if axis_sum == 0.0 { 1.0 } else { axis_sum.signum() };
+            sign * theta
+        }
+        _ => f64::NAN,
+    }
+}
+```
+
+Math: for SU(2) element `g = q0 + q1·i + q2·j + q3·k` with
+`q0 = cos(θ/2)` and `(q1, q2, q3) = sin(θ/2)·n̂`, `arccos(q0)` recovers
+the unsigned half-rotation angle `θ/2`. The axis-sum
+`q1 + q2 + q3 = sin(θ/2) · (n_x + n_y + n_z)` carries the rotation-axis
+direction; its sign is the SU(2)-inversion-flipping component of the
+scalar projection.
+
+### GC₁–GC₄ recalibration receipt
+
+File: `tests/halcyon_part_vi_gc_acceptance.rs`. LoC delta ≈ +73 net
+(mostly audit-trail docstring expansions; the assertion-body shifts
+are −17/+9 net). Fixtures, helpers, gauge-field construction, loop
+registration, and integrator-driver parameters are all unchanged.
+
+**GC₁ `gc1_flat_connection_returns_zero`** (lines 319–381):
+- Old: `(1.0 - h).abs() < 1e-12` for both `h_forward` and `h_reversed`
+  (expected q0 = 1 under plain reduction); ±1 sanity check
+  `|h| ≤ 1.0 + tol`.
+- New: `h.abs() < 1e-14` for both (signed arccos: identity → +1 ·
+  arccos(1) = 0.0 bit-exactly in IEEE-754; the axis_sum==0 fallback
+  contributes a multiplier of +1.0 onto the zero-magnitude angle).
+  Dropped the ±1 sanity check (`h` is now an angle ∈ [−π, π]).
+  Tolerance tightened from 1e-12 to 1e-14 because identity → 0 is
+  bit-exact.
+
+**GC₂ `gc2_abelian_area_law`** (lines 386–487):
+- Old: `theta_mag = 2.0 * h.acos()` recovers full θ from q0 = cos(θ/2);
+  compare against `signed_count * theta_0` (full Wilson area law).
+- New: direct comparison `(h - 0.5 * theta_expected).abs() /
+  |0.5 * theta_expected| < 0.01`. Under signed arccos, `h_forward` IS
+  the signed half-angle θ/2 (the σ_z-embedded U(1) face yields
+  axis_sum = sin(F₀·Area/2), so the signed projection equals
+  F₀·Area/2 with the correct sign). The prediction is now HALF the
+  full Wilson area-law θ — same physics, different convention.
+  Comment block updated to name the new convention.
+
+**GC₃ `gc3_reversed_loop_antisymmetrizes`** (lines 498–552, renamed
+from `gc3_reversed_loop_inverts`):
+- Old: `(h_fwd - h_rev).abs() / |h_fwd| < 0.01` — under plain q0 this
+  was trivially zero because the reduction is direction-blind.
+- New: `(h_fwd + h_rev).abs() / |h_fwd| < 0.01` — antisymmetry, not
+  invariance. The signed arccos definition forces `h_rev = -h_fwd`
+  under SU(2) inversion, and this antisymmetry IS the property
+  v3.1.3 §3.1's `H_geom = ½(H[γ] − H[γ⁻¹])` needs to be structurally
+  non-trivial. Docstring rewritten to cite Finding #1 closure.
+
+**GC₄ `gc4_zero_size_loop_returns_zero`** (lines 560–589):
+- Old: `(1.0 - h).abs() < 1e-12` for both directions (expected q0 = 1
+  for the degenerate out-and-back loop's identity holonomy).
+- New: `h.abs() < 1e-14` for both. Same mechanism as GC₁: the
+  degenerate loop returns SU(2) identity, signed arccos returns 0.0
+  bit-exactly. Tolerance tightened to machine ε.
+
+**GC₅ + GC₆**: untouched. GC₅'s convergence ratio
+`|H(16k) − H(8k)| / |H(8k)|` is invariant under any deterministic
+per-call reduction. GC₆'s gauge-conjugation comparison was verified
+to still PASS at 1e-12 — for the global-gauge axis-aligned transform
+the helper uses, both `q0` and the axis 3-vector are conjugated
+identically across the before/after pair, preserving the sign of the
+axis-sum in the equality check.
+
+**GC battery final**: 6/6 PASS in 192.33s (debug build); no
+ignored, no regressions.
+
+### VI.5 fixture regen receipt
+
+- **Fixture**:
+  `tests/fixtures/halcyon/part_vi/loop_transport_canonical.json`
+- **Old size**: 2264 bytes; **new size**: 1940 bytes (the
+  `"0.0"`/`"0"` stringification is shorter than `"1.0"`/
+  `"4607182418800017408"`)
+- **`spec_sha256` unchanged**:
+  `7b89736acaf38e37e5358d82443763dfee26e5bb174a14fc099dc1040ccee741`
+  (no spec text drift; only captured numerical values changed)
+- **Capture command**:
+  `cargo test --features halcyon --release --test halcyon_part_vi_bit_identity_gold -- --test-threads=1 --ignored vi_5_capture_fixture --nocapture`
+- **Capture time**: 12.91s
+
+Fields that changed (deliberate, per Halcyon's Option A authorization):
+
+| Field | Old | New |
+|---|---|---|
+| `per_seed_h_forward_decimal[0..8]` | `1.0` × 8 | `0.0` × 8 |
+| `per_seed_h_forward_bits[0..8]` | `4607182418800017408` × 8 | `0` × 8 |
+| `per_seed_h_reversed_decimal[0..8]` | `1.0` × 8 | `0.0` × 8 |
+| `per_seed_h_reversed_bits[0..8]` | `4607182418800017408` × 8 | `0` × 8 |
+| `h_forward_mean.decimal` | `1.0` | `0.0` |
+| `h_forward_mean.bits` | `4607182418800017408` | `0` |
+| `h_reversed_mean.decimal` | `1.0` | `0.0` |
+| `h_reversed_mean.bits` | `4607182418800017408` | `0` |
+
+Fields that did NOT change:
+- `sigma_h_blocked = {decimal: 0.0, bits: 0}` — substrate is
+  deterministic per `(U_id, E_id)`, so per-seed variance is zero before
+  AND after Fix #1.
+- `tracking_error_max_q / _beta_w = {0.0, 0}` — integrator-path
+  pin-error envelope, untouched by the reducer.
+- `adiabaticity_check.ratio = {1e12, AmbiguousForced}` — the
+  substrate-only capture's saturation sentinel (no GIBBS_SAMPLE
+  thermalization in the capture path); VI.6b's bracket on this field
+  is retained (`vi_5_keep_adiab_bracket = true`).
+- `n_substeps_completed`, lattice counts, config block, seeds[]:
+  unchanged.
+
+Per-seed bit-identity observation: all 8 seeds return exactly 0.0,
+because the substrate-only capture runs LOOP_TRANSPORT against the
+IDENTITY-init field configuration `U_id`, where `walk_loop`
+deterministically returns the SU(2) identity `(1, 0, 0, 0)` regardless
+of seed. Per-seed variance in production comes from orchestrator-side
+`GIBBS_SAMPLE U_lt SEED <per_seed>` upstream of the verb (Halcyon
+disposition on Finding #2), not from the verb itself.
+
+Acceptance arm `vi_f_a_acceptance_arm`: PASS in 99.59s (debug).
+Regression arm `vi_f_b_regression_arm_release_byte_identity`: PASS in
+13.79s (release). Byte-identity under release confirmed.
+
+### Un-`#[ignore]` Finding #1 receipt
+
+File: `tests/halcyon_part_vi_6_semantic_thermalized.rs`. Stripped the
+`#[ignore = "Option A coordinated workflow — …"]` attribute from
+`vi_6_finding_1_forward_reverse_differ_at_thermalized`. Rewrote the
+docstring from "EXPECTED FAILURE" to "EXPECTED PASS (VI.6a closure)"
+naming the signed arccos formula and the SU(2)-inversion sign-flip
+that delivers the antisymmetry. Test body unchanged.
+
+Live run (`cargo test --features halcyon --test halcyon_part_vi_6_semantic_thermalized -- --test-threads=1`):
+
+```
+running 5 tests
+test vi_6_finding_1_forward_reverse_differ_at_thermalized ... ok
+test vi_6_finding_2_seeds_produce_variance ... ignored, Orchestrator responsibility …
+test vi_6_finding_3_tau_pin_is_measured_not_placeholder ... ok
+test vi_6_finding_4_tracking_error_is_measured_not_placeholder ... ok
+test vi_6_finding_5_alpha_1000_parses_cleanly ... ok
+
+test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 5.97s
+```
+
+Finding #2 stays `#[ignore]` — Halcyon-owned orchestrator
+responsibility (per-seed thermalization between LOOP_TRANSPORT calls),
+not a substrate bug.
+
+### Abelianized scalar projection convention (the audit artifact)
+
+**The reduction.** For an SU(2) holonomy quaternion `(q0, q1, q2, q3)`
+emitted by `walk_loop`, the scalar projection consumed by
+`LoopTransportDiagnostics::h_forward` / `h_reversed` is
+
+  h_scalar = sign(q1 + q2 + q3) · arccos(clamp(q0, −1, 1))
+
+with the boundary convention `sign(0) → +1` (identity holonomy
+returns `+1 · arccos(1) = 0` unambiguously).
+
+**Mathematical meaning.** `arccos(q0)` recovers the unsigned
+half-rotation angle θ/2 from `q0 = cos(θ/2)`. The axis-sum
+`q1 + q2 + q3 = sin(θ/2) · (n_x + n_y + n_z)` carries the rotation-axis
+direction; its sign flips under SU(2) group inversion
+`q → q⁻¹ = (q0, −q1, −q2, −q3)`. So h_scalar is the *signed*
+Wilson-loop angle, antisymmetric under spatial loop reversal.
+
+Note on the half-angle convention: `arccos(cos(θ/2)) = θ/2` is the
+mathematical half-rotation angle, which is the natural quantity in the
+SU(2) double-cover picture. GIGI's `q0` IS already `cos(θ/2)` (the
+real part of the unit quaternion); no factor-of-2 normalization is
+applied. The Halcyon-team Python reference's `arccos(Re tr)` sees the
+trace `Re tr = 2·cos(θ/2)` for SU(2), so their arccos absorbs the 2×
+normalization upstream; the comparison value matches modulo a factor
+of 2 in the trace convention.
+
+**Why this convention.** v3.1.3 §3.1 defines the primary observable
+`H_geom = ½(H[γ] − H[γ⁻¹])` abstractly. For H_geom to be non-trivial,
+the scalar projection must flip sign under group inversion. Plain
+`q0 = cos(θ/2)` is **even** in θ — `q0(g) = q0(g⁻¹)` because cos is
+even — so the antisymmetric combination is identically zero by
+construction, and the v3.1.3 §3 verdict gates would never see
+direction. Signed arccos restores the antisymmetry that the spec's
+primary observable requires.
+
+**Convention parity with Halcyon-team Python reference.** Matches
+`sign(Im tr) · arccos(Re tr)` for a single SU(2) element via the
+identity
+
+  Im(tr(g)) / 2 = sin(θ/2) · (axis component)
+
+For the σ_z embedding used in GC₂, this reduces to `sign(q3)`, which
+generalizes to `sign(q1 + q2 + q3)` for arbitrary axis orientations on
+the buckyball / cubed-sphere lattices used in v3.1.3.
+
+**Implementation reference.** `src/gauge/loop_transport.rs::reduce_su2_to_scalar`.
+This is the **only** call site; `src/gauge/symplectic_flow.rs` and
+`tests/halcyon_part_iv_gold.rs` do **not** invoke this reducer, so
+IV.10 bit-identity is structurally insulated from Fix #1 (confirmed
+by direct grep + green run: IV.10 stays 4/0 + 1 ignored).
+
+**Test fixture reference.**
+`tests/fixtures/halcyon/part_vi/loop_transport_canonical.json` was
+re-captured under this convention at the VI.6a ship commit. The
+per-seed `h_forward` / `h_reversed` / `h_forward_mean` /
+`h_reversed_mean` decimal+bits slots all changed deliberately, from
+the OLD plain-q0 reduction (identity → 1.0) to the NEW signed-arccos
+reduction (identity → 0.0). `sigma_h_blocked` and `tracking_error_*`
+fields are unaffected. The `adiabaticity_check.ratio` bracket from
+VI.6b is retained — Fix #1 does not touch Gauss-residual measurement,
+so that field still varies between substrate-only capture and
+Halcyon's live GIBBS_SAMPLE orchestrator pipeline, independent of the
+projection convention.
+
+**Audit interpretation.** The v3.1.3 §3 POSITIVE / NULL / AMBIGUOUS
+verdict gates operate on `H_geom` abstractly. The projection convention
+determines the *numerical values* of `h_forward` / `h_reversed` /
+`H_geom`, but **not** the gate logic. POSITIVE / NULL / AMBIGUOUS
+thresholds remain at the v3.1.3 §3 values; only the scale of the
+numbers fed into them changed (half-angle θ/2 rather than full angle θ
+under the old recovery formula, and now structurally sign-flipping
+rather than direction-blind).
+
+**No v3.1.4 amendment required.** Per Halcyon's explicit disposition
+on Option A: "Option A as a separate workflow (Fix #1 + GC test
+updates + VI.5 regen)" — the projection convention is a substrate
+implementation detail living below v3.1.3's gate abstraction. The
+v3.1.3 SPEC text and `spec_sha256` are unchanged.
+
+### Cross-references
+
+- **VI.6b** — additive measurements (Fixes #3 + #4 + #5):
+  commit `3f7d42e`.
+- **VI.5** — bit-identity per-seed gold fixture: commit `90d1697`
+  (fixture re-captured at the VI.6a ship commit under the signed
+  arccos convention; spec_sha256 unchanged).
+- **VI.3** — GC₁–GC₆ acceptance battery: commit `1d2bd39` (GC₁–GC₄
+  recalibrated in VI.6a; GC₅/GC₆ untouched).
+- **VI.2** — `LOOP_TRANSPORT` verb grammar + executor:
+  commit `777c7ad`.
+- **v3.1.3 SPEC** — `HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3.md`
+  at commit `44c70b1`, Zenodo DOI `10.5281/zenodo.20785681`,
+  `spec_sha256` =
+  `7b89736acaf38e37e5358d82443763dfee26e5bb174a14fc099dc1040ccee741`.
+- **Halcyon diagnostic 2026-06-21** — five-finding battery that
+  produced the Option A / Option B split.
+- **Halcyon disposition 2026-06-21** — "Option A as a separate
+  workflow (Fix #1 + GC test updates + VI.5 regen) — when you fire
+  it, please add one small artifact: a short note in
+  HALCYON_PART_VI_IMPLEMENTATION_LOG.md naming the abelianized
+  scalar projection convention explicitly."
+
+**VI.6a receipt-chain summary:** Fix #1 (signed arccos reduction,
+LoC 67) → GC₁–GC₄ recalibration (LoC ≈ +73) → VI.5 fixture regen
+(8 decimal+bits field-pairs changed; spec_sha256 stable) → Finding #1
+un-ignored (4 passed + 1 ignored in
+`halcyon_part_vi_6_semantic_thermalized`) → projection convention
+paragraph (this section, audit artifact for Halcyon). All seven
+locked Part VI test suites GREEN; IV.10 bit-identity intact at 4/0 +
+1 ignored; no v3.1.4 amendment required.

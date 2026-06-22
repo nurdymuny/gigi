@@ -617,13 +617,80 @@ fn validate_beta_w(cfg: &LtConfig<'_>) -> Result<(f64, f64), LoopTransportError>
 }
 
 /// Reduce an SU(2) holonomy quaternion `(q0, q1, q2, q3)` to a real
-/// scalar — q0 = cos(θ/2), the Wilson-loop-style real part of the
-/// trace divided by N=2. Matches `holonomy.rs` left-to-right compose
+/// scalar — the **signed Wilson-loop angle** θ/2 with axis-sign
 /// convention.
+///
+/// # Reduction
+///
+/// ```text
+///     h_scalar = sign(q1 + q2 + q3) · arccos(clamp(q0, -1, 1))
+/// ```
+///
+/// with the boundary convention `sign(0) → +1` (so identity holonomy,
+/// `(1, 0, 0, 0)`, maps unambiguously to `+1 · arccos(1) = 0.0`).
+///
+/// # Mathematical content
+///
+/// `arccos(q0)` recovers the unsigned half-rotation angle θ/2 from the
+/// SU(2) parameterization q0 = cos(θ/2). The axis-sum `q1 + q2 + q3`
+/// carries the direction of the rotation axis as a 3-vector projected
+/// onto (1, 1, 1); its sign determines the orientation of the rotation
+/// in the SU(2) double cover. The product is therefore the *signed*
+/// Wilson-loop angle, **antisymmetric under SU(2) group inversion**:
+///
+/// Under g → g⁻¹ = (q0, −q1, −q2, −q3):
+///   * `arccos(q0)` is preserved (q0 is even under inversion),
+///   * `sign(q1 + q2 + q3)` flips,
+///   * → `reduce_su2_to_scalar(g⁻¹) = −reduce_su2_to_scalar(g)`.
+///
+/// This is the antisymmetry that
+/// `HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3 §3.1`'s primary
+/// observable `H_geom = ½ · (H[γ] − H[γ⁻¹])` requires to be
+/// **structurally non-trivial under spatial loop reversal**. The
+/// previous reduction `h_scalar = q0 = cos(θ/2)` was even in θ
+/// (`q0(g) = q0(g⁻¹)`), forcing `H_geom ≡ 0` by construction — see
+/// Halcyon team Finding #1 (FORWARD == REVERSED at thermalized state)
+/// for the falsification chain that motivated this change.
+///
+/// # Convention parity
+///
+/// Matches the Halcyon-team Python reference `sign(Im tr) · arccos(Re
+/// tr)` for a single SU(2) element via `Im(tr(g))/2 = sin(θ/2) ·
+/// axis_component`. For the σ_z embedding used in GC₂ this reduces to
+/// `sign(q3)`; for arbitrary axis orientations on the buckyball /
+/// cubed-sphere lattices it generalizes to the axis-sum sign used
+/// here. (GIGI's `q0` is already `cos(θ/2)` without the factor of 2
+/// that Python's `Re(tr) = 2 cos(θ/2)` carries, so `arccos` here
+/// returns the mathematical half-angle directly.)
+///
+/// # Call sites
+///
+/// Only invoked from `loop_transport`'s forward / reversed walk
+/// (lines ~833 and ~1094 of this file). `symplectic_flow.rs` and the
+/// IV.10 KDK measurement battery do **not** call this reducer, so
+/// Part IV's bit-identity gold is unaffected by this convention.
+///
+/// # Audit trail
+///
+/// See the "Abelianized scalar projection convention (VI.6a)" section
+/// of `theory/halcyon/HALCYON_PART_VI_IMPLEMENTATION_LOG.md` for the
+/// full convention paragraph, the v3.1.3 §3 gate interpretation
+/// (gates operate on `H_geom` abstractly; projection convention
+/// determines numerical values but not gate logic), and the deliberate
+/// VI.5 gold-fixture regen this change required.
 fn reduce_su2_to_scalar(g: super::group_element::GroupElement) -> f64 {
     use super::group_element::GroupElement;
     match g {
-        GroupElement::SU2 { q0, .. } => q0,
+        GroupElement::SU2 { q0, q1, q2, q3 } => {
+            let theta = q0.clamp(-1.0, 1.0).acos();
+            let axis_sum = q1 + q2 + q3;
+            let sign = if axis_sum == 0.0 {
+                1.0
+            } else {
+                axis_sum.signum()
+            };
+            sign * theta
+        }
         _ => f64::NAN,
     }
 }

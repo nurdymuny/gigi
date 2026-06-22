@@ -320,6 +320,13 @@ mod helpers {
 /// by LOOP_TRANSPORT is the SU(2) identity to machine ε on any closed
 /// loop, regardless of shape. We test 4 fixtures: a unit face, the
 /// reversed unit face, a small-area face, and a degenerate out-and-back.
+///
+/// VI.6a recalibration: under the signed-arccos reduction
+/// `h_scalar = sign(q1+q2+q3) · arccos(clamp(q0, -1, 1))` (with the
+/// boundary convention sign(0) → +1), identity holonomy
+/// (q0=1, q1=q2=q3=0) maps to `+1 · arccos(1) = 0.0` bit-exactly.
+/// The assertion target therefore changes from `q0 = 1` to
+/// `h_scalar = 0` and the tolerance tightens to machine ε (1e-14).
 #[test]
 fn gc1_flat_connection_returns_zero() {
     helpers::cleanup();
@@ -346,26 +353,23 @@ fn gc1_flat_connection_returns_zero() {
         helpers::register_edges_loop("gamma_degenerate", "bb", &[v0, v1, v0]);
     }
 
-    let tol = 1e-12_f64;
+    let tol = 1e-14_f64;
     for loop_id in ["gamma_unit", "gamma_reversed", "gamma_small_area", "gamma_degenerate"] {
         let stmt = helpers::build_lt_stmt("bb", loop_id, 100, 20_260_616, 20_260_616, 1.0, 0.01);
         let diag: LoopTransportDiagnostics =
             loop_transport(&stmt, "U_gc1", "E_gc1").expect("runs");
+        // Under VI.6a's signed-arccos reduction, identity holonomy
+        // (q0=1, q1=q2=q3=0) maps to sign(0)·arccos(1) = +1·0 = 0.0
+        // bit-exactly. h_scalar is now an angle θ ∈ [-π, π], no longer
+        // bounded by ±1, so the prior ±1 sanity check is dropped.
         assert!(
-            diag.h_forward.abs() <= 1.0 + tol,
-            "GC1 [{loop_id}] h_forward must be a valid SU(2) scalar: got {}",
-            diag.h_forward
-        );
-        // On a flat connection, holonomy is identity ⇒ q0 = 1.0 ⇒
-        // 1 - h_forward should be ≤ tol.
-        assert!(
-            (1.0 - diag.h_forward).abs() < tol,
-            "GC1 [{loop_id}] flat connection must give h_forward = 1.0 (identity); got {}",
+            diag.h_forward.abs() < tol,
+            "GC1 [{loop_id}] flat connection must give h_forward = 0.0 (identity → signed arccos = sign(0)·arccos(1) = 0); got {}",
             diag.h_forward
         );
         assert!(
-            (1.0 - diag.h_reversed).abs() < tol,
-            "GC1 [{loop_id}] flat connection must give h_reversed = 1.0; got {}",
+            diag.h_reversed.abs() < tol,
+            "GC1 [{loop_id}] flat connection must give h_reversed = 0.0; got {}",
             diag.h_reversed
         );
     }
@@ -383,6 +387,15 @@ fn gc1_flat_connection_returns_zero() {
 /// of edge angles around the face (with orientation signs). For a
 /// pentagonal face on the buckyball, this is 5·θ₀ (if all forward) or
 /// the appropriate signed sum.
+///
+/// VI.6a recalibration: `h_scalar = sign(q1+q2+q3) · arccos(q0)` IS
+/// already the signed half-rotation angle θ/2 of the SU(2) Wilson loop
+/// (q0 = cos(θ/2), so arccos(q0) = θ/2 unsigned; axis-sum sign carries
+/// direction). The closed-form prediction is therefore F₀·Area/2 —
+/// HALF the literal "F₀·Area" of the abstract spec — and the test
+/// compares h_forward directly to θ_expected/2 (no `2·acos(q0)`
+/// recovery step). Matches Halcyon Python ref sign(Im tr)·arccos(Re tr)
+/// where GIGI's q0 is already cos(θ/2) (no factor of 2 normalization).
 #[test]
 fn gc2_abelian_area_law() {
     helpers::cleanup();
@@ -432,14 +445,17 @@ fn gc2_abelian_area_law() {
     // edge carries the same angle θ₀, the signed-sum around an oriented
     // face is Σ_e (orient_sign(e) · θ₀) where orient_sign(±1) is what
     // walk_loop reads off the LATTICE incidence. The expected holonomy
-    // angle on that face is therefore θ_expected = (n_forward − n_reverse) · θ₀.
+    // angle on that face is therefore θ_expected = F₀·Area =
+    // (n_forward − n_reverse) · θ₀.
     //
-    // This is GC2's area-law prediction made operationally consistent
-    // with the verb's actual loop traversal: instead of asking "what
-    // ideal Stokes integral does this construction realise", we ask
-    // "what does the verb measure given the construction we shipped".
-    // The 1% gate then bounds verb implementation error against the
-    // closed-form signed-sum prediction.
+    // Under VI.6a's signed-arccos reduction, walk_loop on a σ_z-embedded
+    // U(1) face returns (cos(F₀·Area/2), 0, 0, sin(F₀·Area/2)), so
+    // axis_sum = sin(F₀·Area/2) and
+    //   h_scalar = sign(sin(F₀·Area/2)) · arccos(cos(F₀·Area/2)) = F₀·Area/2
+    // with the correct sign. h_scalar IS the signed half-angle (Wilson
+    // loop angle, not twice it). The closed-form prediction is therefore
+    // θ_expected/2, and we compare h_forward directly — no `2·acos(q0)`
+    // recovery step.
     for loop_id in ["gamma_small", "gamma_unit", "gamma_large"] {
         let reg = gigi::gauge::loop_transport::get_loop(loop_id)
             .expect("loop registered");
@@ -448,7 +464,7 @@ fn gc2_abelian_area_law() {
         for &(_eid, orient) in &reg.edges {
             signed_count += orient.sign() as i64;
         }
-        let theta_expected = (signed_count as f64) * theta_0;
+        let theta_expected = (signed_count as f64) * theta_0;  // unchanged: this is F₀·Area
 
         // Use a near-zero alpha_halcyon so the integrator essentially
         // does not perturb the underlying Abelian connection. The Wilson
@@ -460,17 +476,13 @@ fn gc2_abelian_area_law() {
         // bit-close to U_init within the f64 envelope.
         let stmt = helpers::build_lt_stmt("bb", loop_id, 1, 20_260_616, 20_260_616, 1e-12, 0.0);
         let diag = loop_transport(&stmt, "U_gc2", "E_gc2").expect("runs");
-        let h = diag.h_forward.clamp(-1.0, 1.0);
-        // Holonomy q0 = cos(θ/2) ⇒ θ = ±2·arccos(q0). Sign chosen to
-        // match the signed-sum prediction.
-        let theta_mag = 2.0_f64 * h.acos();
-        let theta_actual = if theta_expected >= 0.0 { theta_mag } else { -theta_mag };
-        let rel_err = (theta_actual - theta_expected).abs()
-            / theta_expected.abs().max(1e-30);
+        let h = diag.h_forward;
+        // h_scalar IS the signed half-angle (Wilson loop angle, not twice it).
+        let half_expected = 0.5_f64 * theta_expected;
+        let rel_err = (h - half_expected).abs() / half_expected.abs().max(1e-30);
         assert!(
             rel_err < 0.01,
-            "GC2 [{loop_id}] area law: signed-count={signed_count}, expected θ={theta_expected}, \
-             got θ={theta_actual} (rel err {rel_err})"
+            "GC2 [{loop_id}] half-angle area law: signed-count={signed_count}, expected θ/2={half_expected}, got h={h} (rel err {rel_err})"
         );
     }
 }
@@ -479,15 +491,19 @@ fn gc2_abelian_area_law() {
 
 /// GC₃ — For an arbitrary non-trivial SU(2) connection, the holonomy
 /// of the reversed loop must be the inverse of the forward holonomy.
-/// In the SU(2) q0 reduction, inverse ⇒ same q0 (cos(−θ/2) = cos(θ/2)),
-/// so we instead test the full quaternion product by walking the loop
-/// directly. The LOOP_TRANSPORT verb already returns the inverse
-/// composition `h_end · h_start⁻¹` reduced to its scalar part; we
-/// check that h_forward and h_reversed agree (q0(g) = q0(g⁻¹) for SU(2))
-/// across 3 random connections — and that the per-seed signs are
-/// consistent.
+///
+/// VI.6a recalibration: under the signed-arccos reduction
+/// `h_scalar = sign(q1+q2+q3) · arccos(q0)`, group inversion
+/// g → g⁻¹ = (q0, −q1, −q2, −q3) preserves q0 (so arccos(q0) is
+/// preserved) while flipping the axis-sum sign — so h_rev = −h_fwd.
+/// This is the antisymmetry v3.1.3 §3.1's H_geom = ½(H[γ] − H[γ⁻¹])
+/// requires to be structurally non-trivial: under the prior plain-q0
+/// reduction H_geom collapsed identically to zero because cos is even
+/// in θ, masking Finding #1 (FORWARD == REVERSED at thermalized state).
+/// We now assert |h_fwd + h_rev| / |h_fwd| < 1% across 3 random
+/// connections.
 #[test]
-fn gc3_reversed_loop_inverts() {
+fn gc3_reversed_loop_antisymmetrizes() {
     let seeds: [u64; 3] = [20_260_616, 20_260_617, 20_260_618];
     for seed in seeds {
         helpers::cleanup();
@@ -522,15 +538,15 @@ fn gc3_reversed_loop_inverts() {
         let h_fwd = loop_transport(&stmt_fwd, "U_gc3", "E_gc3").expect("fwd");
         let h_rev = loop_transport(&stmt_rev, "U_gc3", "E_gc3").expect("rev");
 
-        // For SU(2): the q0 component is invariant under inversion
-        // (cos(θ/2) = cos(-θ/2)). So |h_fwd.h_forward - h_rev.h_forward|
-        // / |h_fwd.h_forward| should be < 1%.
+        // Under VI.6a's signed-arccos reduction, h_rev = −h_fwd (group
+        // inversion negates q1,q2,q3 → flips axis_sum sign while
+        // preserving q0, so the signed arccos flips sign). Assertion is
+        // the ANTISYMMETRY: |h_fwd + h_rev| / |h_fwd| < 1%.
         let denom = h_fwd.h_forward.abs().max(1e-12);
-        let rel_err = (h_fwd.h_forward - h_rev.h_forward).abs() / denom;
+        let antisym_err = (h_fwd.h_forward + h_rev.h_forward).abs() / denom;
         assert!(
-            rel_err < 0.01,
-            "GC3 [seed={seed}] reversed q0 must equal forward q0 (cos invariance): \
-             h_fwd={}, h_rev={}, rel_err={rel_err}",
+            antisym_err < 0.01,
+            "GC3 [seed={seed}] reversed loop must antisymmetrize: h_rev = -h_fwd to 1% (signed arccos flips under SU(2) inversion); h_fwd={}, h_rev={}, sum_rel_err={antisym_err}",
             h_fwd.h_forward,
             h_rev.h_forward,
         );
@@ -540,9 +556,14 @@ fn gc3_reversed_loop_inverts() {
 // ── GC₄ ── Zero-size loop returns zero ──────────────────────────────
 
 /// GC₄ — A degenerate loop bounding zero area (out-and-back along a
-/// single edge) must give holonomy identity (q0 = 1) to machine ε,
+/// single edge) must give holonomy identity to machine ε,
 /// because U · U⁻¹ = I exactly under floating-point IEEE-754
 /// composition with the SU(2) conjugate.
+///
+/// VI.6a recalibration: identity holonomy (q0=1, q1=q2=q3=0) maps
+/// under signed arccos to sign(0)·arccos(1) = +1·0 = 0.0 bit-exactly
+/// (axis-sum-zero boundary convention). The assertion target is
+/// therefore h_scalar = 0 (not q0 = 1) to machine ε.
 #[test]
 fn gc4_zero_size_loop_returns_zero() {
     helpers::cleanup();
@@ -562,13 +583,13 @@ fn gc4_zero_size_loop_returns_zero() {
     let diag = loop_transport(&stmt, "U_gc4", "E_gc4").expect("runs");
     let tol = 1e-14_f64;
     assert!(
-        (1.0 - diag.h_forward).abs() < tol,
-        "GC4 degenerate loop must yield identity (q0=1) to machine ε; got h_forward={}",
+        diag.h_forward.abs() < tol,
+        "GC4 degenerate loop must yield 0 (identity → signed arccos = 0) to machine ε; got h_forward={}",
         diag.h_forward
     );
     assert!(
-        (1.0 - diag.h_reversed).abs() < tol,
-        "GC4 degenerate loop reversed must yield identity to machine ε; got h_reversed={}",
+        diag.h_reversed.abs() < tol,
+        "GC4 degenerate loop reversed must yield 0 to machine ε; got h_reversed={}",
         diag.h_reversed
     );
 }

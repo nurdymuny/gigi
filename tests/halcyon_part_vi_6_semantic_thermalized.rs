@@ -175,29 +175,23 @@ fn get_vec_f64<'a>(rec: &'a gigi::types::Record, key: &str) -> &'a Vec<f64> {
 
 // ── Finding #1 ────────────────────────────────────────────────────
 
-/// VI.6 Finding #1 — FORWARD and REVERSED return bit-identical
-/// h_scalar against the canonical thermalized U_lt. The antisymmetric
-/// primary observable H_geom = ½(H_fwd - H_rev) is structurally dead.
+/// VI.6 Finding #1 — FORWARD and REVERSED must differ at the
+/// canonical thermalized state. The antisymmetric primary observable
+/// H_geom = ½(H_fwd - H_rev) must be structurally non-trivial under
+/// spatial loop reversal.
 ///
-/// EXPECTED FAILURE: |h_forward - h_reversed| < 1e-10 (in fact
-/// bit-identical at 0.9459016107…). Root cause: GIBBS_SAMPLE does
-/// not persist the thermalized U back into the registered U_lt that
-/// LOOP_TRANSPORT reads; LOOP_TRANSPORT sees U_lt = INIT IDENTITY
-/// regardless of seed/sweeps, so H[γ] = H[γ⁻¹] = identity.
+/// EXPECTED PASS (VI.6a closure): |h_forward - h_reversed| > 1e-10.
+/// The signed arccos reduction
 ///
-/// VI.6b LOCKED: Option A (signed arccos reduction + abelianized
-/// scalar projection) is a separate coordinated workflow — it
-/// requires GC₁-GC₄ test re-calibration + VI.5 gold fixture regen +
-/// the projection-convention doc Halcyon asked for. Marked
-/// `#[ignore]` here until that workflow lands.
+///   h_scalar = sign(q1 + q2 + q3) · arccos(clamp(q0, -1, 1))
+///
+/// in src/gauge/loop_transport.rs::reduce_su2_to_scalar flips sign
+/// under SU(2) group inversion (q → q⁻¹ = (q0, -q1, -q2, -q3)
+/// preserves q0 but negates axis_sum), so a non-identity thermalized
+/// holonomy yields h_reversed = -h_forward up to integrator noise.
+/// Closes Finding #1 (Option A coordinated workflow: Fix #1 + GC₁-GC₄
+/// recalibration + VI.5 fixture regen + projection convention doc).
 #[test]
-#[ignore = "Option A coordinated workflow — signed arccos \
-            reduction + GC₁-GC₄ test updates + VI.5 gold fixture \
-            regen + projection convention doc. The current plain-q0 \
-            reduction is structurally direction-blind by SU(2) \
-            construction (q0(g) == q0(g⁻¹) since cos(θ/2) is even). \
-            v3.1.3 §3.1's antisymmetric primary observable H_geom \
-            needs a direction-sensitive scalar; see VI.6b impl log."]
 fn vi_6_finding_1_forward_reverse_differ_at_thermalized() {
     let (mut engine, _dir) = setup_thermalized_canonical();
 

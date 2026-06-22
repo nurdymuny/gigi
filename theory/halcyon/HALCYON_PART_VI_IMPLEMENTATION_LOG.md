@@ -385,3 +385,145 @@ All 14 VI.2 tests still pass against the VI.3-patched `loop_transport.rs`. Parse
 - **VI.4 — SHAM `{ ... }` block real dispatch.** Replaces VI.2's `UnrecognizedShamFlag` rejection with 5 science + 2 audit flags per gate doc §SHAM table.
 - **VI.5 — Bit-identity gold fixture.** Per-seed canonical run frozen under `--release` at v3.1.3 §4.4 parameter pack, `SEEDS [20260616..20260623]`, `ALPHA_HALCYON = 1.0`. VI.3 proves correctness; VI.5 freezes the per-seed numerical fingerprint future commits must not perturb. Helpers in `tests/halcyon_part_vi_gc_acceptance.rs` were written for promotion to `tests/common/halcyon_gc_fixtures.rs` without signature change.
 - **Halcyon fires v3.1.3 protocol at α=1 and α=1000.** VI.3 GREEN is the unblock. Sidecar capture per §7.2 + stopping rule per §3.3 are now operationally available.
+
+## VI.4 — SHAM `{ ... }` Block Real Dispatch
+
+### Scope
+
+VI.4 replaces VI.2's blanket `UnrecognizedShamFlag` rejection with typed
+per-flag dispatch for the 6 in-runtime SHAM flag names (5 science + 1
+audit-story; OPEN_LOOP stays at the VI.2 parser entry as `LoopNotClosed`).
+
+Pre-registration: HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3 §5 (Zenodo
+DOI 10.5281/zenodo.20785681). Gate doc: `theory/halcyon/HALCYON_PART_VI_GATES.md`
+@ 9a73dc0 §SHAM (Bee-approved).
+
+### The 6 dispatched flags
+
+| Flag | Verb-side action | Gate column (v3.1.3 §5) |
+|---|---|---|
+| `FLAT_FIELD` | κ_Q ≡ 0; β pinned at `beta_start` across all substeps | `|H_S₁| < 2σ_S₁` AND `< 1e-10` |
+| `ALPHA_ZERO` | `α_halcyon = 0` ⇒ `dt = 0`; KDK is a no-op | `|H_S₂| < 1e-10` (load-bearing) |
+| `MASS_BASELINE_SCALED` | echo overridden μ ∈ {0.1, 1.0, 10.0}; orchestrator does the baseline subtraction | substrate accepts canonical μ; orchestrator owns POSITIVE-branch invariance |
+| `DEGENERATE_LOOP` | substitute γ_unit with out-and-back on the first edge (zero-area cycle) | `|H_S₅| < 2σ_S₅` AND `< 1e-10` |
+| `FROZEN_FIELD` | skip every `drift_step`; U is static across substeps | `|H_S₆| < 2σ_S₆` AND `< 1e-10` |
+| `EMPTY_LOOP` | runtime short-circuit before any cache build; H = 0 byte-for-byte | GC₄ runtime companion: literal +0.0 across the diagnostics envelope |
+
+### Implementation — split-inner-loop dispatch
+
+The hot-path discipline VI.3 settled on (no per-substep trait dispatch)
+generalizes to VI.4 via a split-inner-loop pattern:
+
+1. `ShamFlags::from_block(&ShamBlock)` resolves the typed flags once
+   at executor entry. Unknown names → `UnrecognizedShamFlag` (preserves
+   VI.2's regression contract). `MASS_BASELINE_SCALED` requires
+   `ShamArg::Number(n)` with `n ∈ {0.1, 1.0, 10.0}`; otherwise a new
+   `InvalidShamArg { flag, expected, got }` variant fires.
+
+2. Top-level dispatch in `loop_transport()` reads `flags.is_all_off()`:
+   - **all-off** → routes through the UNTOUCHED `run_one_direction`
+     (the byte-for-byte VI.3 verb body — IV.10 gold + VI.3 GC battery
+     inheritance is preserved by code-identity, not by numerical luck).
+   - **any flag set** → routes through `run_one_direction_shammed`,
+     a sibling function with the same KDK skeleton but conditional
+     branches woven in (EMPTY_LOOP top-of-function short-circuit;
+     ALPHA_ZERO α-override + dt recompute; FLAT_FIELD ramp freeze;
+     FROZEN_FIELD drift skip; DEGENERATE_LOOP edge substitution).
+
+3. `n_substeps_completed` is overridden to `0` in the diagnostics
+   envelope when `EMPTY_LOOP` is set; per-seed arrays are length-preserved
+   with literal +0.0 entries (yielding `mean = 0.0`, `block_sigma = 0.0`
+   byte-for-byte).
+
+### Zero-cost-when-off contract (load-bearing)
+
+The structural invariant that protects IV.10 + VI.3:
+
+- `ShamFlags::default().is_all_off() == true`.
+- Empty `SHAM { }` block parses to `ShamBlock { flags: vec![] }` →
+  `ShamFlags::default()` → routes to `run_one_direction` (pure).
+- No SHAM clause → `None` → `ShamFlags::default()` → routes to
+  `run_one_direction` (pure).
+
+The bit-identity test
+`halcyon_vi_4_sham_empty_is_byte_identical_to_no_sham` runs both paths
+back-to-back and asserts every f64 in the diagnostics envelope matches
+via `to_bits()`. Any future drift in the all-off path trips this test
+before it reaches the IV.10 gold or VI.3 GC battery.
+
+### Verification matrix
+
+| Check | Command | Result |
+|---|---|---|
+| **VI.4 SHAM dispatch tests** | `cargo test --features halcyon --test halcyon_part_vi_sham_dispatch -- --test-threads=1` | **9 passed; 0 failed; 0 ignored** in 4.14s (5 science flags + EMPTY_LOOP + bit-identity guard + 2 rejection regressions) |
+| **VI.3 GC battery (zero-cost-when-off inheritance)** | `cargo test --features halcyon --test halcyon_part_vi_gc_acceptance -- --test-threads=1` | **6 passed; 0 failed; 0 ignored** in 185.42s (GC₁–GC₆ unchanged) |
+| **IV.10 gold fixture (bit-identity kill criterion)** | `cargo test --features halcyon --test halcyon_part_iv_gold -- --test-threads=1` | **4 passed; 0 failed; 1 ignored** in 3.84s (byte-for-byte preserved) |
+| **VI.2 parser + executor smoke (locked 14)** | three test files concatenated | **3 + 5 + 6 = 14 passed; 0 failed** |
+
+**Bit-identity kill criterion HOLDS.** Part IV kernels untouched
+(`symplectic_flow.rs`, `wilson_force.rs`, `project_gauss.rs`,
+`holonomy.rs`). `run_one_direction` is byte-for-byte the VI.3 body.
+
+### Closing receipts (VI.4)
+
+- **9/9 SHAM dispatch tests green** on first GREEN-phase run (no
+  RED-after-GREEN regressions).
+- **6/6 VI.3 GC tests still green** — the zero-cost-when-off split
+  routes the no-sham + empty-sham paths through `run_one_direction`
+  byte-for-byte.
+- **4/0 + 1 ignored IV.10 gold preserved** — no perturbation to the
+  Part IV inherited surface.
+- **14/14 VI.2 tests still green** — the parser surface is unchanged;
+  the executor's blanket rejection became typed dispatch (unknown names
+  still rejected with the same variant).
+- **New error variant:** `LoopTransportError::InvalidShamArg { flag,
+  expected, got }` for off-grid `MASS_BASELINE_SCALED` μ values.
+- **`#[allow(dead_code)]` removed from `LtConfig::mu_baseline`** —
+  the field is live now via `MASS_BASELINE_SCALED` dispatch.
+- **No modification** to `src/gauge/symplectic_flow.rs`,
+  `wilson_force.rs`, `project_gauss.rs`, `holonomy.rs`.
+
+### Cross-references — precedent chain
+
+- **Gate doc:** `theory/halcyon/HALCYON_PART_VI_GATES.md` @ commit
+  `9a73dc0` (Bee-approved). §SHAM defines all 7 flag names + their
+  v3.1.3 §5 gate thresholds.
+- **VI.2 ship:** commit `777c7ad`. Parser accepts `SHAM { … }`
+  forward-compatibly; executor rejects every non-empty flag list
+  with `LoopTransportError::UnrecognizedShamFlag`. The empty-SHAM
+  path already routed through `run_one_direction` unchanged — VI.4
+  preserves that boundary by code-identity.
+- **VI.3 ship:** commit `1d2bd39`. GC₁–GC₆ acceptance battery
+  + two verb correctness patches. VI.4 inherits `run_one_direction`
+  byte-for-byte; the GC battery acts as the zero-cost-when-off
+  regression guard alongside the bit-identity test.
+- **v3.1.3 SPEC:** `HALCYON_FALSIFICATION_BATTERY_SPEC_v3.1.3.md`
+  @ commit `44c70b1` in `nurdymuny/davis-wilson-map`, git-tagged
+  `spec-v3.1.3-zenodo-20785681`, Zenodo DOI
+  **10.5281/zenodo.20785681** (minted 2026-06-21). §5 enumerates
+  the per-flag gate thresholds; §3.4 the anti-fishing rule;
+  §4.4 the canonical 8-seed pack `[20260616..20260623]`.
+- **OPEN_LOOP** (audit-parser flag) stays enforced at the VI.2
+  parser entry as `LoopTransportError::LoopNotClosed`; VI.4 does
+  not touch it. That keeps the 7-flag gate doc table covered:
+  5 science (FLAT_FIELD, ALPHA_ZERO, MASS_BASELINE_SCALED,
+  DEGENERATE_LOOP, FROZEN_FIELD) + 1 audit-runtime (EMPTY_LOOP)
+  in `loop_transport.rs` + 1 audit-parser (OPEN_LOOP) in
+  `parser.rs`.
+
+### What's next (after VI.4)
+
+- **VI.5 — per-seed gold fixture.** Captures byte-for-byte canonical
+  values across (no-sham + science-sham + audit-sham) so future
+  commits cannot perturb the canonical numerics silently. The
+  fixture freezes the per-seed numerical fingerprint for each of
+  the 6 dispatched flag modes under `--release` at v3.1.3 §4.4
+  parameter pack (`ALPHA_HALCYON = 1.0`, seeds
+  `[20260616..20260623]`), promoting the test helpers in
+  `tests/halcyon_part_vi_sham_dispatch.rs` to
+  `tests/common/halcyon_gc_fixtures.rs` without signature change.
+- **Halcyon's `run_holonomy_battery.py`** can now call each science
+  sham flag directly and receive deterministic-vs-stochastic verdicts
+  per v3.1.3 §5.
+- **v3.1.3 §3.4 anti-fishing rule** (consistent-sign across sham
+  branches) becomes operative on the substrate side.

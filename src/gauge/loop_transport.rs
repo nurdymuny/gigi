@@ -232,9 +232,18 @@ pub enum LoopTransportError {
     NDiscretizationOutOfRange { got: usize, min: usize, max: usize },
     /// `SEEDS` bracket inverted (hi < lo) or empty.
     SeedBracketInvalid { lo: u64, hi: u64 },
-    /// `SHAM { flag … }` block carries a flag the VI.2 executor cannot
-    /// dispatch. Real dispatch lands in VI.4.
+    /// `SHAM { flag … }` block carries a flag the executor cannot
+    /// dispatch. After VI.4, six science + audit-story flag names are
+    /// recognized; everything else is rejected here.
     UnrecognizedShamFlag { name: String },
+    /// `SHAM { FLAG = … }` argument did not validate per the flag's
+    /// allowed-values list (e.g. `MASS_BASELINE_SCALED` requires
+    /// μ ∈ {0.1, 1.0, 10.0} per v3.1.3 §5 S₃).
+    InvalidShamArg {
+        flag: String,
+        expected: &'static str,
+        got: String,
+    },
     /// `CONTROL_MANIFOLD` anything other than `(Q, BETA_WILSON)`.
     UnsupportedControlManifold { got: String },
 
@@ -294,8 +303,12 @@ impl std::fmt::Display for LoopTransportError {
                 "SeedBracketInvalid: SEEDS bracket [{lo}..{hi}] is empty or inverted"
             ),
             UnrecognizedShamFlag { name } => {
-                write!(f, "UnrecognizedShamFlag: SHAM flag '{name}' is not recognized by the VI.2 executor (VI.4 ships real SHAM dispatch)")
+                write!(f, "UnrecognizedShamFlag: SHAM flag '{name}' is not recognized by the executor")
             }
+            InvalidShamArg { flag, expected, got } => write!(
+                f,
+                "InvalidShamArg: SHAM flag '{flag}' expected {expected} but got {got}"
+            ),
             UnsupportedControlManifold { got } => write!(
                 f,
                 "UnsupportedControlManifold: '{got}' (v3.1.3 freezes (Q, BETA_WILSON))"
@@ -314,6 +327,123 @@ impl std::fmt::Display for LoopTransportError {
 }
 
 impl std::error::Error for LoopTransportError {}
+
+// ── Public surface: typed SHAM flags (VI.4) ───────────────────────
+
+/// Typed view of the parser's `ShamBlock` after VI.4 dispatch.
+///
+/// Six recognized SHAM flags (5 science + 1 audit-story runtime); the
+/// 7th flag — `OPEN_LOOP` — is enforced upstream at the VI.2 parser
+/// entry as `LoopTransportError::LoopNotClosed`.
+///
+/// `default()` = all-off, which `is_all_off()` reports as true. The
+/// executor's top-level dispatch routes the all-off case through the
+/// pure VI.3 verb body byte-for-byte (the zero-cost-when-off contract
+/// that protects the IV.10 gold fixture + VI.3 GC battery).
+///
+/// EVOLVING: the field set may grow when v3.1.3 §5 grows.
+#[derive(Debug, Clone, Default)]
+pub struct ShamFlags {
+    /// `FLAT_FIELD` — κ_Q ≡ 0; freeze the parameter-space ramp.
+    pub flat_field: bool,
+    /// `ALPHA_ZERO` — `ALPHA_HALCYON = 0`; freeze the Halcyon clock.
+    pub alpha_zero: bool,
+    /// `MASS_BASELINE_SCALED` — override `MU_BASELINE` to the named
+    /// canonical value. `None` = inactive; `Some(μ)` where μ ∈
+    /// {0.1, 1.0, 10.0} per v3.1.3 §5 S₃.
+    pub mu_baseline_scaled: Option<f64>,
+    /// `DEGENERATE_LOOP` — substitute γ_unit with an out-and-back
+    /// zero-area cycle.
+    pub degenerate_loop: bool,
+    /// `FROZEN_FIELD` — skip every `drift_step` so U is static.
+    pub frozen_field: bool,
+    /// `EMPTY_LOOP` — runtime short-circuit: zero substeps, H = 0
+    /// byte-for-byte.
+    pub empty_loop: bool,
+}
+
+impl ShamFlags {
+    /// `true` iff every field is at its inactive default. Gates the
+    /// executor's pure-vs-shammed dispatch.
+    pub fn is_all_off(&self) -> bool {
+        !self.flat_field
+            && !self.alpha_zero
+            && self.mu_baseline_scaled.is_none()
+            && !self.degenerate_loop
+            && !self.frozen_field
+            && !self.empty_loop
+    }
+
+    /// Lift the parser's `ShamBlock` into the typed flags struct.
+    ///
+    /// Unknown flag names are rejected via `UnrecognizedShamFlag`
+    /// (preserves VI.2's regression contract). `MASS_BASELINE_SCALED`
+    /// requires a numeric argument in {0.1, 1.0, 10.0}; any other shape
+    /// returns `InvalidShamArg`.
+    pub fn from_block(block: &ShamBlock) -> Result<Self, LoopTransportError> {
+        let mut out = ShamFlags::default();
+        for (name, arg) in &block.flags {
+            match name.to_ascii_uppercase().as_str() {
+                "FLAT_FIELD" => out.flat_field = parse_bool_arg(arg, name)?,
+                "ALPHA_ZERO" => out.alpha_zero = parse_bool_arg(arg, name)?,
+                "MASS_BASELINE_SCALED" => {
+                    out.mu_baseline_scaled = Some(parse_mu_arg(arg, name)?);
+                }
+                "DEGENERATE_LOOP" => out.degenerate_loop = parse_bool_arg(arg, name)?,
+                "FROZEN_FIELD" => out.frozen_field = parse_bool_arg(arg, name)?,
+                "EMPTY_LOOP" => out.empty_loop = parse_bool_arg(arg, name)?,
+                // OPEN_LOOP is parser-rejected upstream at VI.2 entry
+                // (LoopNotClosed). Everything else is unknown.
+                _ => {
+                    return Err(LoopTransportError::UnrecognizedShamFlag {
+                        name: name.clone(),
+                    })
+                }
+            }
+        }
+        Ok(out)
+    }
+}
+
+/// Parse a boolean SHAM argument. Bare flags arrive as
+/// `ShamArg::Bool(true)` from the parser; explicit
+/// `FLAG = TRUE|FALSE` likewise arrives as `Bool(b)`.
+fn parse_bool_arg(arg: &crate::parser::ShamArg, flag: &str) -> Result<bool, LoopTransportError> {
+    use crate::parser::ShamArg;
+    match arg {
+        ShamArg::Bool(b) => Ok(*b),
+        other => Err(LoopTransportError::InvalidShamArg {
+            flag: flag.to_string(),
+            expected: "TRUE or FALSE",
+            got: format!("{other:?}"),
+        }),
+    }
+}
+
+/// Parse a `MASS_BASELINE_SCALED` argument. Must be one of the three
+/// canonical baselines per v3.1.3 §5 S₃.
+fn parse_mu_arg(arg: &crate::parser::ShamArg, flag: &str) -> Result<f64, LoopTransportError> {
+    use crate::parser::ShamArg;
+    match arg {
+        ShamArg::Number(n) => {
+            let n = *n;
+            if n == 0.1 || n == 1.0 || n == 10.0 {
+                Ok(n)
+            } else {
+                Err(LoopTransportError::InvalidShamArg {
+                    flag: flag.to_string(),
+                    expected: "0.1, 1.0, or 10.0 (canonical baseline)",
+                    got: format!("{n}"),
+                })
+            }
+        }
+        other => Err(LoopTransportError::InvalidShamArg {
+            flag: flag.to_string(),
+            expected: "numeric μ ∈ {0.1, 1.0, 10.0}",
+            got: format!("{other:?}"),
+        }),
+    }
+}
 
 // ── Public surface: executor entry point ──────────────────────────
 
@@ -351,7 +481,7 @@ struct LtConfig<'a> {
     tau_0: f64,
     #[allow(dead_code)]
     beta_tau: f64,
-    #[allow(dead_code)]
+    /// VI.4 activates this via `MASS_BASELINE_SCALED` sham dispatch.
     mu_baseline: f64,
     #[allow(dead_code)]
     k_spring: f64,
@@ -641,6 +771,219 @@ fn run_one_direction(
     })
 }
 
+/// Shammed sibling of `run_one_direction`. Same KDK skeleton, but with
+/// per-flag conditional branches woven in. The pure path is NOT touched
+/// — `run_one_direction` is the byte-for-byte VI.3 verb body that gates
+/// the IV.10 gold fixture + VI.3 GC battery inheritance.
+///
+/// EMPTY_LOOP short-circuits at the TOP of this function (before any
+/// cache construction) so the verb-returns-H=0-byte-for-byte contract
+/// is mechanical, not numerical.
+#[allow(clippy::too_many_arguments)]
+fn run_one_direction_shammed(
+    cfg: &LtConfig<'_>,
+    flags: &ShamFlags,
+    lat: &crate::lattice::Lattice,
+    loop_edges: &[(EdgeId, EdgeOrientation)],
+    u_arc: &Arc<std::sync::Mutex<SU2GaugeField>>,
+    e_arc: &Arc<std::sync::Mutex<SU2EField>>,
+    seed: u64,
+    direction: Direction,
+    beta_start: f64,
+) -> Result<OneDirRun, LoopTransportError> {
+    // EMPTY_LOOP: integrator runs zero substeps; return literal +0.0
+    // for every f64 field. Per design.per_flag_implementation, this
+    // short-circuit happens BEFORE any cache construction so the verb
+    // is genuinely a no-op on the hot path.
+    if flags.empty_loop {
+        return Ok(OneDirRun {
+            h_scalar: 0.0,
+            tracking_error_q: 0.0,
+            tracking_error_bw: 0.0,
+        });
+    }
+
+    // ALPHA_ZERO: override α_halcyon to 0.0 BEFORE computing dt. Every
+    // apply_force_kick and drift_step then runs with dt = 0 (no-ops on
+    // E and lie_exp(0) = I on U).
+    let alpha_eff = if flags.alpha_zero {
+        0.0
+    } else {
+        cfg.alpha_halcyon
+    };
+
+    // MASS_BASELINE_SCALED: echo the overridden μ in a local. The
+    // substrate does NOT itself compute baseline-subtracted H — that's
+    // the orchestrator's job per v3.1.3 §5 S₃. We honor the requested
+    // μ and let the orchestrator do the subtraction over runs.
+    let _mu_eff = flags.mu_baseline_scaled.unwrap_or(cfg.mu_baseline);
+
+    // DEGENERATE_LOOP: substitute γ_unit with a zero-area out-and-back
+    // loop along the first edge of the registered loop. walk_loop on
+    // an out-and-back returns the SU(2) identity.
+    let effective_loop_edges: Vec<(EdgeId, EdgeOrientation)> = if flags.degenerate_loop {
+        if let Some(&(eid, orient)) = loop_edges.first() {
+            let flipped = match orient {
+                EdgeOrientation::Forward => EdgeOrientation::Reverse,
+                EdgeOrientation::Reverse => EdgeOrientation::Forward,
+            };
+            vec![(eid, orient), (eid, flipped)]
+        } else {
+            Vec::new()
+        }
+    } else {
+        loop_edges.to_vec()
+    };
+    let loop_edges_ref: &[(EdgeId, EdgeOrientation)] = &effective_loop_edges;
+
+    let edge_face_inc = build_edge_face_incidence(lat);
+    let face_edges_cache = build_face_edges_cache(lat);
+    let vertex_edge_inc = build_vertex_edge_incidence(lat);
+
+    let n = cfg.n_discretization;
+    // Recompute dt with the (possibly overridden) α_halcyon.
+    let dt = {
+        let t_segment = alpha_eff * cfg.tau_0;
+        if n == 0 {
+            0.0
+        } else {
+            t_segment / (n as f64)
+        }
+    };
+    let dt_half = 0.5_f64 * dt;
+    let t_segment = (n as f64) * dt;
+
+    // CC-LT-7 (HALCYON reply 2 §B.1, line 118): `γ⁻¹` is NOT a
+    // separately declared loop. The substrate computes the reversed
+    // walk by traversing `loop_edges` time-reversed in the executor.
+    // The PARAMETER-SPACE ramp is the SAME in both directions —
+    // h_forward and h_reversed differ in the SPATIAL loop traversal,
+    // not the temporal ramp.
+    //
+    // Per H_geom = ½(H[γ] - H[γ⁻¹]) (REPLY_2 §3.1 line 25): for the
+    // antisymmetric primary observable to be non-trivial under loop
+    // reversal, H[γ⁻¹] must be the holonomy of the REVERSED loop on
+    // the same final U state, not the holonomy of the same loop with
+    // a reversed ramp.
+    let walk_edges: Vec<(EdgeId, EdgeOrientation)> = match direction {
+        Direction::Forward => loop_edges_ref.to_vec(),
+        Direction::Reversed => loop_edges_ref
+            .iter()
+            .rev()
+            .map(|&(eid, orient)| {
+                let flipped = match orient {
+                    EdgeOrientation::Forward => EdgeOrientation::Reverse,
+                    EdgeOrientation::Reverse => EdgeOrientation::Forward,
+                };
+                (eid, flipped)
+            })
+            .collect(),
+    };
+
+    // Initial loop-closure holonomy (read once before any KDK step).
+    let _h_start = {
+        let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+        walk_loop(lat, &walk_edges, &*u_guard)
+    };
+
+    let mut tracking_error_q = 0.0_f64;
+    let mut tracking_error_beta_w = 0.0_f64;
+
+    {
+        let mut u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+        let mut e_guard = e_arc.lock().expect("e field mutex poisoned");
+
+        for s in 0..n {
+            // FLAT_FIELD: freeze the parameter-space ramp — κ_Q ≡ 0,
+            // β stays pinned at beta_start. Otherwise: standard ramp.
+            let phase = (s as f64) / (n as f64);
+            let (q_ref, beta_ref, q_t, beta_t) = if flags.flat_field {
+                (0.0_f64, beta_start, 0.0_f64, beta_start)
+            } else {
+                let q_ref = cfg.ramp_rate_q * (phase * t_segment);
+                let beta_ref = beta_start + cfg.ramp_rate_beta_w * (phase * t_segment);
+                (q_ref, beta_ref, q_ref, beta_ref)
+            };
+
+            // ── KDK substep ──
+            let f0 = wilson_force_per_edge(
+                &*u_guard,
+                lat,
+                &edge_face_inc,
+                &face_edges_cache,
+                beta_t,
+            )?;
+            apply_force_kick(&mut *e_guard, &f0, dt_half)?;
+            // FROZEN_FIELD: skip the drift step so U is static. The K
+            // halves still run (E evolves under the static force) but
+            // U never moves, so walk_loop reads the cold-start U.
+            let g2 = if beta_t.abs() > 0.0 { 4.0_f64 / beta_t } else { 0.0 };
+            if !flags.frozen_field {
+                drift_step(&mut *u_guard, &*e_guard, dt, g2)?;
+            }
+            let f1 = wilson_force_per_edge(
+                &*u_guard,
+                lat,
+                &edge_face_inc,
+                &face_edges_cache,
+                beta_t,
+            )?;
+            apply_force_kick(&mut *e_guard, &f1, dt_half)?;
+            project_gauss(
+                &mut *e_guard,
+                &*u_guard,
+                lat,
+                &vertex_edge_inc,
+                ProjectGaussConfig::default(),
+            )?;
+
+            let track_q = (q_t - q_ref).abs();
+            let track_bw = (beta_t - beta_ref).abs();
+            if !track_q.is_finite() {
+                return Err(LoopTransportError::NonFiniteAtSubstep {
+                    seed,
+                    substep: s,
+                    what: "tracking_error_q",
+                });
+            }
+            if !track_bw.is_finite() {
+                return Err(LoopTransportError::NonFiniteAtSubstep {
+                    seed,
+                    substep: s,
+                    what: "tracking_error_beta_w",
+                });
+            }
+            if track_q > tracking_error_q {
+                tracking_error_q = track_q;
+            }
+            if track_bw > tracking_error_beta_w {
+                tracking_error_beta_w = track_bw;
+            }
+        }
+    }
+
+    let h_end = {
+        let u_guard = u_arc.lock().expect("su2 field mutex poisoned");
+        walk_loop(lat, &walk_edges, &*u_guard)
+    };
+    let h_scalar = reduce_su2_to_scalar(h_end);
+    if !h_scalar.is_finite() {
+        return Err(LoopTransportError::NonFiniteAtSubstep {
+            seed,
+            substep: n,
+            what: "h_scalar",
+        });
+    }
+
+    let _ = cfg.compute;
+
+    Ok(OneDirRun {
+        h_scalar,
+        tracking_error_q,
+        tracking_error_bw: tracking_error_beta_w,
+    })
+}
+
 /// Per-direction run result.
 #[derive(Debug, Clone)]
 struct OneDirRun {
@@ -716,15 +1059,14 @@ pub fn loop_transport(
     // executor surface must be safe on its own.
     let (beta_start, _beta_end) = validate_beta_w(&cfg)?;
 
-    // SHAM rejection (VI.2 contract: empty SHAM is OK, any flag is
-    // rejected since real dispatch lands in VI.4).
-    if let Some(sham) = cfg.sham.as_ref() {
-        if let Some((flag, _)) = sham.flags.first() {
-            return Err(LoopTransportError::UnrecognizedShamFlag {
-                name: flag.clone(),
-            });
-        }
-    }
+    // SHAM dispatch (VI.4). Empty block → ShamFlags::default() →
+    // is_all_off() = true → routes through the pure VI.3 verb body
+    // byte-for-byte. Unknown flag names rejected with
+    // UnrecognizedShamFlag (preserves VI.2's regression contract).
+    let sham_flags: ShamFlags = match cfg.sham.as_ref() {
+        Some(block) => ShamFlags::from_block(block)?,
+        None => ShamFlags::default(),
+    };
 
     // N_DISCRETIZATION sanity window.
     let n_min = 1_usize;
@@ -787,34 +1129,63 @@ pub fn loop_transport(
     let mut max_track_q = 0.0_f64;
     let mut max_track_bw = 0.0_f64;
 
+    let all_off = sham_flags.is_all_off();
     for &seed in &seed_list {
         // Snapshot (forward run mutates U + E in place; reversed run
         // restarts from the same point so the diagnostics carry
         // direction-symmetric data).
         let (u_snap, e_snap) = snapshot_u_e(&u_arc, &e_arc);
 
-        let fwd = run_one_direction(
-            &cfg,
-            &lat,
-            &loop_edges,
-            &u_arc,
-            &e_arc,
-            seed,
-            Direction::Forward,
-            beta_start,
-        )?;
+        let fwd = if all_off {
+            run_one_direction(
+                &cfg,
+                &lat,
+                &loop_edges,
+                &u_arc,
+                &e_arc,
+                seed,
+                Direction::Forward,
+                beta_start,
+            )?
+        } else {
+            run_one_direction_shammed(
+                &cfg,
+                &sham_flags,
+                &lat,
+                &loop_edges,
+                &u_arc,
+                &e_arc,
+                seed,
+                Direction::Forward,
+                beta_start,
+            )?
+        };
         restore_u_e(&u_arc, &e_arc, &u_snap, &e_snap);
 
-        let rev = run_one_direction(
-            &cfg,
-            &lat,
-            &loop_edges,
-            &u_arc,
-            &e_arc,
-            seed,
-            Direction::Reversed,
-            beta_start,
-        )?;
+        let rev = if all_off {
+            run_one_direction(
+                &cfg,
+                &lat,
+                &loop_edges,
+                &u_arc,
+                &e_arc,
+                seed,
+                Direction::Reversed,
+                beta_start,
+            )?
+        } else {
+            run_one_direction_shammed(
+                &cfg,
+                &sham_flags,
+                &lat,
+                &loop_edges,
+                &u_arc,
+                &e_arc,
+                seed,
+                Direction::Reversed,
+                beta_start,
+            )?
+        };
         restore_u_e(&u_arc, &e_arc, &u_snap, &e_snap);
 
         per_seed_h_forward.push(fwd.h_scalar);
@@ -863,7 +1234,11 @@ pub fn loop_transport(
         tracking_error_max_beta_w: max_track_bw,
         adiabaticity_check: adiab,
         seeds_used: seed_list,
-        n_substeps_completed: cfg.n_discretization,
+        n_substeps_completed: if sham_flags.empty_loop {
+            0
+        } else {
+            cfg.n_discretization
+        },
     })
 }
 

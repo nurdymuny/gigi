@@ -86,6 +86,8 @@ pub fn try_dispatch_gauge_statement(
             | Statement::SelectHTotal { .. }
             | Statement::SelectGaussResidualMax { .. }
             | Statement::Snapshot { .. }
+            | Statement::LoopDecl { .. }
+            | Statement::LoopTransport { .. }
     );
 
     if !matches_gauge_family {

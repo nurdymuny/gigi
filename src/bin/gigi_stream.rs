@@ -749,6 +749,83 @@ struct CurvatureReport {
     kahler: Option<KahlerCurvatureReport>,
 }
 
+/// Davis Conjecture λ-budget ride-along envelope (Thm T8ai, claim_0104).
+///
+/// Generic wrapper that flattens `inner`'s fields at the JSON top level
+/// (via `#[serde(flatten)]`) and adds a sibling `lambda_budget: f64`
+/// key. Used by every kahler-gated `/v1/bundles/{name}/brain/*`
+/// endpoint so cognitive consumers (Marcella, claude_substrate_v0,
+/// future LLM consumers) can read the substrate's runtime carrying
+/// capacity off any brain response — matching the convention already
+/// shipped on `CurvatureReport.lambda_budget`.
+///
+/// Backwards-compatible: existing clients that don't look for
+/// `lambda_budget` see no semantic change (no field renamed/removed;
+/// only an additive top-level key).
+#[cfg(feature = "kahler")]
+#[derive(Serialize)]
+struct ResponseWithLambda<T: Serialize> {
+    #[serde(flatten)]
+    inner: T,
+    /// Davis Conjecture λ-budget — substrate's current carrying
+    /// capacity for this bundle, computed at response time from K
+    /// (curvature), D (Welford radius), τ = 1.0. Safe default of 1.0
+    /// (no-horizon) on missing / empty / NaN inputs so the hot brain
+    /// path never emits NaN on the wire.
+    lambda_budget: f64,
+}
+
+/// Compute the Davis Conjecture λ-budget for a bundle by name on the
+/// hot brain path. Mirrors `/v1/bundles/{name}/curvature`'s compute
+/// path (k = scalar_curvature, D = Welford radius, τ = 1.0) but
+/// resolves the bundle from `state` and coalesces every degenerate
+/// input to the safe default `1.0`. Returns `1.0` if the bundle is
+/// missing, empty, or has no usable variance signal — never NaN.
+///
+/// Cost: O(1) given the bundle's existing curvature + Welford state
+/// (~few hundred ns). Brain primitives are called per-turn by
+/// cognitive consumers; the lib helper
+/// [`gigi::curvature::lambda_budget_for_bundle`] guarantees no NaN
+/// poisoning.
+#[cfg(feature = "kahler")]
+fn lambda_budget_for_bundle(state: &Arc<StreamState>, bundle_name: &str) -> f64 {
+    let engine = state.engine.read().unwrap();
+    let bundle_ref = match engine.bundle(bundle_name) {
+        Some(b) => b,
+        // Missing bundle → safe default. The handler will surface the
+        // 404 separately; we never panic on the ride-along path.
+        None => return 1.0,
+    };
+    lambda_budget_for_bundle_ref(&bundle_ref)
+}
+
+/// Compute λ-budget directly from an already-resolved `BundleRef`.
+///
+/// Some brain handlers hold an engine read guard for the duration of
+/// their compute and would deadlock if `lambda_budget_for_bundle`
+/// re-acquired the same RwLock. Those handlers call this variant with
+/// the BundleRef they already have.
+#[cfg(feature = "kahler")]
+fn lambda_budget_for_bundle_ref(bundle_ref: &gigi::BundleRef<'_>) -> f64 {
+    // Mirror `curvature_report`'s heap/overlay split: only heap-backed
+    // bundles expose a concrete `BundleStore` for the lib helper.
+    // Overlay bundles fall back to D = 1.0 + helper's NaN-coalesce.
+    match bundle_ref.as_heap() {
+        Some(store) => gigi::curvature::lambda_budget_for_bundle(store),
+        None => {
+            // Overlay path: use the BundleRef's k-mean from
+            // CurvatureStats + unit-D fallback. Safe-default 1.0 on NaN.
+            let k = bundle_ref.curvature_stats().mean();
+            let raw = gigi::curvature::lambda_budget(k, 1.0, 1.0);
+            if raw.is_nan() {
+                1.0
+            } else {
+                raw
+            }
+        }
+    }
+}
+
 /// L4 — serialized Kähler curvature decomposition. Mirrors
 /// `gigi::bundle::KahlerCurvature` for the HTTP response shape.
 #[cfg(feature = "kahler")]
@@ -5393,18 +5470,25 @@ async fn brain_sample_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    // Davis Conjecture λ-budget ride-along (Thm T8ai, claim_0104).
+    // Reuse the engine read guard already held above to avoid a
+    // re-entrant RwLock acquisition.
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainSampleResponse {
-            samples,
-            fit_mean: ctx.mu,
-            fit_sigma_sq: ctx.sigma_sq,
-            fit_sigma_sq_per_field: ctx.sigma_sq_per_field,
-            fit_sigma_sq_per_field_raw: ctx.sigma_sq_per_field_raw,
-            fit_sigma_floor_used: ctx.effective_floor,
-            fit_floored_indices: ctx.floored_indices,
-            fit_mode_used,
+        ResponseWithLambda {
+            inner: BrainSampleResponse {
+                samples,
+                fit_mean: ctx.mu,
+                fit_sigma_sq: ctx.sigma_sq,
+                fit_sigma_sq_per_field: ctx.sigma_sq_per_field,
+                fit_sigma_sq_per_field_raw: ctx.sigma_sq_per_field_raw,
+                fit_sigma_floor_used: ctx.effective_floor,
+                fit_floored_indices: ctx.floored_indices,
+                fit_mode_used,
+            },
+            lambda_budget,
         },
     )
 }
@@ -5579,26 +5663,30 @@ async fn brain_fit_diagnostics_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainFitDiagnosticsResponse {
-            fit_mode_used,
-            dim: req.fields.len(),
-            fit_mean: fit_mean_vec,
-            fit_mean_norm,
-            variance_per_dim_raw: (*cached.sigma_sq_per_field_raw).clone(),
-            variance_per_dim_effective: (*cached.sigma_sq_per_field).clone(),
-            variance_floor_used: cached.effective_floor,
-            floored_diagonal_indices: (*cached.floored_indices).clone(),
-            variance_ratio: cached.variance_ratio,
-            eigenvalues_raw,
-            eigenvalues_effective,
-            eigenvalue_floor_used: cached.eigenvalue_floor_used,
-            n_floored_eigenvalues: cached.floored_eigenvalue_count,
-            condition_number: cached.condition_number,
-            counter_at_fit,
-            cache_hit: cache_hit_initial,
+        ResponseWithLambda {
+            inner: BrainFitDiagnosticsResponse {
+                fit_mode_used,
+                dim: req.fields.len(),
+                fit_mean: fit_mean_vec,
+                fit_mean_norm,
+                variance_per_dim_raw: (*cached.sigma_sq_per_field_raw).clone(),
+                variance_per_dim_effective: (*cached.sigma_sq_per_field).clone(),
+                variance_floor_used: cached.effective_floor,
+                floored_diagonal_indices: (*cached.floored_indices).clone(),
+                variance_ratio: cached.variance_ratio,
+                eigenvalues_raw,
+                eigenvalues_effective,
+                eigenvalue_floor_used: cached.eigenvalue_floor_used,
+                n_floored_eigenvalues: cached.floored_eigenvalue_count,
+                condition_number: cached.condition_number,
+                counter_at_fit,
+                cache_hit: cache_hit_initial,
+            },
+            lambda_budget,
         },
     )
 }
@@ -5789,16 +5877,20 @@ async fn brain_distance_to_fit_mean_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainDistanceToFitMeanResponse {
-            fit_mean,
-            target_distances,
-            target_percentiles,
-            distance_distribution: distribution,
-            fit_mode_used,
-            counter_at_fit,
+        ResponseWithLambda {
+            inner: BrainDistanceToFitMeanResponse {
+                fit_mean,
+                target_distances,
+                target_percentiles,
+                distance_distribution: distribution,
+                fit_mode_used,
+                counter_at_fit,
+            },
+            lambda_budget,
         },
     )
 }
@@ -6004,7 +6096,15 @@ async fn brain_sample_transport_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
-    negotiated_brain_response(accept, counter_at_fit, resp_body)
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
+    negotiated_brain_response(
+        accept,
+        counter_at_fit,
+        ResponseWithLambda {
+            inner: resp_body,
+            lambda_budget,
+        },
+    )
 }
 
 // ── End S4: SAMPLE_TRANSPORT ─────────────────────────────────────────────
@@ -6482,22 +6582,26 @@ async fn brain_sudoku_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainSudokuResponse {
-            solutions: solutions_wire,
-            near_misses: near_misses_wire,
-            verdict,
-            coverage: resp.coverage,
-            n_records_considered: resp.n_records_considered,
-            selectivity: selectivity_wire,
-            relaxations: relaxations_wire,
-            pareto_near_misses: pareto_wire,
-            counter_at_fit,
-            pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
-            expanded: expanded_wire,
-            gamma_trichotomy: resp.gamma_trichotomy.map(Into::into),
+        ResponseWithLambda {
+            inner: BrainSudokuResponse {
+                solutions: solutions_wire,
+                near_misses: near_misses_wire,
+                verdict,
+                coverage: resp.coverage,
+                n_records_considered: resp.n_records_considered,
+                selectivity: selectivity_wire,
+                relaxations: relaxations_wire,
+                pareto_near_misses: pareto_wire,
+                counter_at_fit,
+                pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
+                expanded: expanded_wire,
+                gamma_trichotomy: resp.gamma_trichotomy.map(Into::into),
+            },
+            lambda_budget,
         },
     )
 }
@@ -6842,23 +6946,27 @@ async fn brain_intent_gate_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainIntentGateResponse {
-            verdict,
-            coverage: resp.coverage,
-            n_records_considered: resp.n_records_considered,
-            solutions: solutions_wire,
-            near_misses: near_misses_wire,
-            selectivity: selectivity_wire,
-            relaxations: relaxations_wire,
-            pareto_near_misses: pareto_wire,
-            pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
-            expanded: expanded_wire,
-            gamma_trichotomy: resp.gamma_trichotomy.map(Into::into),
-            query_grounding,
-            counter_at_fit,
+        ResponseWithLambda {
+            inner: BrainIntentGateResponse {
+                verdict,
+                coverage: resp.coverage,
+                n_records_considered: resp.n_records_considered,
+                solutions: solutions_wire,
+                near_misses: near_misses_wire,
+                selectivity: selectivity_wire,
+                relaxations: relaxations_wire,
+                pareto_near_misses: pareto_wire,
+                pre_flight_unsat_reason: resp.pre_flight_unsat_reason,
+                expanded: expanded_wire,
+                gamma_trichotomy: resp.gamma_trichotomy.map(Into::into),
+                query_grounding,
+                counter_at_fit,
+            },
+            lambda_budget,
         },
     )
 }
@@ -6895,7 +7003,7 @@ async fn brain_confidence_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainConfidenceRequest>,
-) -> Result<Json<BrainConfidenceResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ResponseWithLambda<BrainConfidenceResponse>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -6931,11 +7039,15 @@ async fn brain_confidence_endpoint(
     );
     let normalized =
         gigi::vector_cache::kde_normalized_cached(&cached_matrix, &req.query, bandwidth);
-    Ok(Json(BrainConfidenceResponse {
-        raw,
-        normalized,
-        bandwidth,
-        n_samples: cached_matrix.matrix.n,
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
+    Ok(Json(ResponseWithLambda {
+        inner: BrainConfidenceResponse {
+            raw,
+            normalized,
+            bandwidth,
+            n_samples: cached_matrix.matrix.n,
+        },
+        lambda_budget,
     }))
 }
 
@@ -7119,21 +7231,25 @@ async fn brain_confidence_with_explain_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainConfidenceWithExplainResponse {
-            raw: confidence_raw,
-            normalized: confidence_normalized,
-            bandwidth,
-            query: req.query.clone(),
-            nearest_record,
-            nearest_index,
-            nearest_distance,
-            path,
-            n_steps: req.n_steps,
-            n_samples,
-            counter_at_fit,
+        ResponseWithLambda {
+            inner: BrainConfidenceWithExplainResponse {
+                raw: confidence_raw,
+                normalized: confidence_normalized,
+                bandwidth,
+                query: req.query.clone(),
+                nearest_record,
+                nearest_index,
+                nearest_distance,
+                path,
+                n_steps: req.n_steps,
+                n_samples,
+                counter_at_fit,
+            },
+            lambda_budget,
         },
     )
 }
@@ -7171,7 +7287,7 @@ async fn brain_attend_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainAttendRequest>,
-) -> Result<Json<BrainAttendResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ResponseWithLambda<BrainAttendResponse>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -7210,11 +7326,15 @@ async fn brain_attend_endpoint(
             (weights, indices)
         }
     };
-    Ok(Json(BrainAttendResponse {
-        weights,
-        indices,
-        bandwidth,
-        n_samples: samples.len(),
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
+    Ok(Json(ResponseWithLambda {
+        inner: BrainAttendResponse {
+            weights,
+            indices,
+            bandwidth,
+            n_samples: samples.len(),
+        },
+        lambda_budget,
     }))
 }
 
@@ -7282,7 +7402,7 @@ async fn brain_episodic_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainEpisodicRequest>,
-) -> Result<Json<BrainEpisodicResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ResponseWithLambda<BrainEpisodicResponse>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -7422,12 +7542,16 @@ async fn brain_episodic_endpoint(
             persistence_ratio: e.persistence_ratio,
         })
         .collect();
-    Ok(Json(BrainEpisodicResponse {
-        events: wire,
-        n_records: values.len(),
-        threshold_used: req.min_persistence_ratio,
-        filter_applied: filter.map(|(field, value)| EpisodicFilterEcho { field, value }),
-        gap_floor_epsilon_used: epsilon,
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
+    Ok(Json(ResponseWithLambda {
+        inner: BrainEpisodicResponse {
+            events: wire,
+            n_records: values.len(),
+            threshold_used: req.min_persistence_ratio,
+            filter_applied: filter.map(|(field, value)| EpisodicFilterEcho { field, value }),
+            gap_floor_epsilon_used: epsilon,
+        },
+        lambda_budget,
     }))
 }
 
@@ -7504,7 +7628,7 @@ async fn brain_explain_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<BrainExplainRequest>,
-) -> Result<Json<BrainExplainResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ResponseWithLambda<BrainExplainResponse>>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine.read().unwrap();
     let store = engine
         .bundle(&name)
@@ -7523,14 +7647,18 @@ async fn brain_explain_endpoint(
     let samples = extract_field_samples(heap, &req.fields)
         .map_err(|e| bad_request(&e))?;
     let exp = gigi::geometry::explain(&samples, &req.query, req.n_steps);
-    Ok(Json(BrainExplainResponse {
-        query: exp.query,
-        nearest_record: exp.nearest_record,
-        nearest_index: exp.nearest_index,
-        nearest_distance: exp.nearest_distance,
-        path: exp.path,
-        n_steps: exp.n_steps,
-        n_samples: samples.len(),
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
+    Ok(Json(ResponseWithLambda {
+        inner: BrainExplainResponse {
+            query: exp.query,
+            nearest_record: exp.nearest_record,
+            nearest_index: exp.nearest_index,
+            nearest_distance: exp.nearest_distance,
+            path: exp.path,
+            n_steps: exp.n_steps,
+            n_samples: samples.len(),
+        },
+        lambda_budget,
     }))
 }
 
@@ -7557,7 +7685,7 @@ struct BrainSemanticResponse {
 async fn brain_semantic_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
-) -> Result<Json<BrainSemanticResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<ResponseWithLambda<BrainSemanticResponse>>, (StatusCode, Json<ErrorResponse>)> {
     use gigi::morse_cache::{CachedMorse, MorseCacheKey};
 
     let engine = state.engine.read().unwrap();
@@ -7578,14 +7706,18 @@ async fn brain_semantic_endpoint(
 
     // 1. Hot path — cache hit.
     if let Some(cached) = state.morse_cache.get(&cache_key, counter) {
-        return Ok(Json(BrainSemanticResponse {
-            betti_b0: cached.betti.b0,
-            betti_b1: cached.betti.b1,
-            betti_b2: cached.betti.b2,
-            n_critical: cached.n_critical,
-            n_original: cached.n_original,
-            compression_ratio: cached.compression_ratio,
-            cohomology_preserved: cached.cohomology_preserved,
+        let lambda_budget = lambda_budget_for_bundle_ref(&store);
+        return Ok(Json(ResponseWithLambda {
+            inner: BrainSemanticResponse {
+                betti_b0: cached.betti.b0,
+                betti_b1: cached.betti.b1,
+                betti_b2: cached.betti.b2,
+                n_critical: cached.n_critical,
+                n_original: cached.n_original,
+                compression_ratio: cached.compression_ratio,
+                cohomology_preserved: cached.cohomology_preserved,
+            },
+            lambda_budget,
         }));
     }
 
@@ -7600,14 +7732,18 @@ async fn brain_semantic_endpoint(
     // inserted while we were waiting for the compute lock.
     if let Some(cached) = state.morse_cache.get(&cache_key, counter) {
         state.morse_cache.release_compute_lock(&cache_key);
-        return Ok(Json(BrainSemanticResponse {
-            betti_b0: cached.betti.b0,
-            betti_b1: cached.betti.b1,
-            betti_b2: cached.betti.b2,
-            n_critical: cached.n_critical,
-            n_original: cached.n_original,
-            compression_ratio: cached.compression_ratio,
-            cohomology_preserved: cached.cohomology_preserved,
+        let lambda_budget = lambda_budget_for_bundle_ref(&store);
+        return Ok(Json(ResponseWithLambda {
+            inner: BrainSemanticResponse {
+                betti_b0: cached.betti.b0,
+                betti_b1: cached.betti.b1,
+                betti_b2: cached.betti.b2,
+                n_critical: cached.n_critical,
+                n_original: cached.n_original,
+                compression_ratio: cached.compression_ratio,
+                cohomology_preserved: cached.cohomology_preserved,
+            },
+            lambda_budget,
         }));
     }
 
@@ -7636,14 +7772,18 @@ async fn brain_semantic_endpoint(
     state.morse_cache.insert(cache_key.clone(), cached);
     state.morse_cache.release_compute_lock(&cache_key);
 
-    Ok(Json(BrainSemanticResponse {
-        betti_b0: cached.betti.b0,
-        betti_b1: cached.betti.b1,
-        betti_b2: cached.betti.b2,
-        n_critical: cached.n_critical,
-        n_original: cached.n_original,
-        compression_ratio: cached.compression_ratio,
-        cohomology_preserved: cached.cohomology_preserved,
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
+    Ok(Json(ResponseWithLambda {
+        inner: BrainSemanticResponse {
+            betti_b0: cached.betti.b0,
+            betti_b1: cached.betti.b1,
+            betti_b2: cached.betti.b2,
+            n_critical: cached.n_critical,
+            n_original: cached.n_original,
+            compression_ratio: cached.compression_ratio,
+            cohomology_preserved: cached.cohomology_preserved,
+        },
+        lambda_budget,
     }))
 }
 
@@ -8302,16 +8442,20 @@ async fn brain_dream_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainDreamResponse {
-            trajectory,
-            fit_mean: ctx.mu,
-            fit_sigma_sq: ctx.sigma_sq,
-            temperature_used: req.temperature,
-            mean_dist_from_mean: mean_d,
-            max_dist_from_mean: max_d,
+        ResponseWithLambda {
+            inner: BrainDreamResponse {
+                trajectory,
+                fit_mean: ctx.mu,
+                fit_sigma_sq: ctx.sigma_sq,
+                temperature_used: req.temperature,
+                mean_dist_from_mean: mean_d,
+                max_dist_from_mean: max_d,
+            },
+            lambda_budget,
         },
     )
 }
@@ -8399,13 +8543,17 @@ async fn brain_forecast_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainForecastResponse {
-            trajectory,
-            fit_mean: ctx.mu,
-            fit_sigma_sq: ctx.sigma_sq,
+        ResponseWithLambda {
+            inner: BrainForecastResponse {
+                trajectory,
+                fit_mean: ctx.mu,
+                fit_sigma_sq: ctx.sigma_sq,
+            },
+            lambda_budget,
         },
     )
 }
@@ -8504,13 +8652,17 @@ async fn brain_reconstruct_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainReconstructResponse {
-            result,
-            fit_mean: ctx.mu,
-            descent_distance,
+        ResponseWithLambda {
+            inner: BrainReconstructResponse {
+                result,
+                fit_mean: ctx.mu,
+                descent_distance,
+            },
+            lambda_budget,
         },
     )
 }
@@ -8619,14 +8771,18 @@ async fn brain_inpaint_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainInpaintResponse {
-            result,
-            locked_indices: req.locked_indices,
-            fit_mean: ctx.mu,
-            fit_sigma_sq: ctx.sigma_sq,
+        ResponseWithLambda {
+            inner: BrainInpaintResponse {
+                result,
+                locked_indices: req.locked_indices,
+                fit_mean: ctx.mu,
+                fit_sigma_sq: ctx.sigma_sq,
+            },
+            lambda_budget,
         },
     )
 }
@@ -8712,14 +8868,18 @@ async fn brain_predict_endpoint(
     let accept = headers
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok());
+    let lambda_budget = lambda_budget_for_bundle_ref(&store);
     negotiated_brain_response(
         accept,
         counter_at_fit,
-        BrainPredictResponse {
-            next_state,
-            fit_mean: ctx.mu,
-            fit_sigma_sq: ctx.sigma_sq,
-            step_size,
+        ResponseWithLambda {
+            inner: BrainPredictResponse {
+                next_state,
+                fit_mean: ctx.mu,
+                fit_sigma_sq: ctx.sigma_sq,
+                step_size,
+            },
+            lambda_budget,
         },
     )
 }

@@ -366,6 +366,56 @@ pub fn lambda_budget(k_max: f64, d: f64, tau_budget: f64) -> f64 {
     1.0 - tau_budget / denom
 }
 
+/// Davis Conjecture λ-budget computed directly from a [`BundleStore`].
+///
+/// Mirrors the `/v1/bundles/{name}/curvature` compute path so brain
+/// primitive handlers (and any other ride-along site) can read the
+/// substrate's runtime carrying capacity with a single call:
+///
+///   k         = [`scalar_curvature(store)`]
+///   d         = [`welford_radius(store)`] (NaN → fall back to 1.0)
+///   τ_budget  = 1.0 (substrate default; matches capacity/horizon)
+///
+/// # Safe-default contract
+///
+/// Unlike the bare [`lambda_budget`] primitive (which propagates NaN
+/// from upstream Welford on empty bundles), this helper coalesces every
+/// degenerate input to the saturated default `1.0` (no-horizon, fully
+/// open). Brain primitives are called per-turn by Marcella and
+/// `claude_substrate_v0`; a NaN ride-along would poison every JSON
+/// response on a freshly-created bundle. Returning 1.0 lets cognitive
+/// consumers treat the field as "horizon fully open" until the bundle
+/// accumulates enough records for a real estimate.
+///
+/// # Examples
+/// ```
+/// use gigi::bundle::BundleStore;
+/// use gigi::types::{BundleSchema, FieldDef};
+/// let schema = BundleSchema::new("empty")
+///     .base(FieldDef::numeric("id"))
+///     .fiber(FieldDef::numeric("x"));
+/// let store = BundleStore::new(schema);
+/// // Empty bundle → safe default, never NaN.
+/// assert_eq!(gigi::curvature::lambda_budget_for_bundle(&store), 1.0);
+/// ```
+pub fn lambda_budget_for_bundle(store: &crate::bundle::BundleStore) -> f64 {
+    let k = scalar_curvature(store);
+    let d = welford_radius(store);
+    // Mirror the existing `gigi_stream::curvature_report` fallback: when
+    // the bundle has no usable variance signal (empty / collapsed /
+    // overlay), fall back to D = 1.0 so the equation is still defined.
+    let d_proxy = if d.is_finite() && d > 0.0 { d } else { 1.0 };
+    let raw = lambda_budget(k, d_proxy, 1.0);
+    // Safe-default coalesce: hot brain path must never see NaN on the
+    // wire. Saturation (raw == 1.0 when K=0 or D=0) is already handled
+    // by lambda_budget itself; we just guard the NaN arm here.
+    if raw.is_nan() {
+        1.0
+    } else {
+        raw
+    }
+}
+
 /// Operational threshold for `horizon_closed`: when λ meets or exceeds
 /// this value, consensus is considered prohibitively slow (the mixing
 /// time `T_mix = log(1/ε)/log(1/λ)` becomes large). The paper does not

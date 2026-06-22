@@ -119,6 +119,11 @@ halcyon = ["lattice", "gauge"]
 wish = ["imagine"]
 
 [dependencies]
+# `tempfile` promoted from dev-dependency to normal dependency for
+# `Engine::open_memory()` (AURORA Phase 3, 2026-06-22). The constructor
+# owns a `tempfile::TempDir` so dev/CI/aurora-server harnesses can spin
+# up persistence-free engines without their own tempdir boilerplate.
+tempfile = "3"
 roaring = "0.10"
 regex = "1"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
@@ -316,7 +321,9 @@ required-features = ["halcyon"]
 
 [dev-dependencies]
 rand = "0.8"
-tempfile = "3"
+# `tempfile` is declared under `[dependencies]` (see comment there);
+# kept available to dev-dep contexts automatically via cargo's
+# dependency resolution — no separate dev-dep entry needed.
 # In-process axum router driving for the TDD-HAL-II.6 HTTP gate. Tower
 # is already a transitive dep through axum; surfacing it directly gives
 # the test crate `tower::ServiceExt::oneshot`. `http-body-util` lets the

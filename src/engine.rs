@@ -407,6 +407,17 @@ pub struct Engine {
     #[cfg(feature = "patterns")]
     pub(crate) pattern_registry:
         std::collections::HashMap<String, crate::parser::PatternDef>,
+    /// Owned tempdir for `Engine::open_memory()` instances. `None` for
+    /// file-backed engines created via `open()` / `open_empty()` /
+    /// `open_mmap()`. When `Some`, the tempdir backing `data_dir` is
+    /// removed automatically when this `Engine` is dropped (via
+    /// `tempfile::TempDir`'s `Drop` impl). No manual cleanup required.
+    ///
+    /// Placed last in the struct so Rust's field-drop order tears down
+    /// every other resource (notably `wal: WalWriter`) BEFORE the
+    /// tempdir is removed — important on Windows where open file
+    /// handles block directory removal.
+    _tempdir: Option<tempfile::TempDir>,
 }
 
 /// TDD-HAL-V.2: response shape for
@@ -466,6 +477,24 @@ impl Engine {
     /// existing data. Used for early HTTP bind during startup.
     pub fn open_empty(data_dir: &Path) -> io::Result<Self> {
         Self::open_inner(data_dir, false)
+    }
+
+    /// Open an Engine backed by an in-memory tempdir. The tempdir
+    /// is created at construction and removed when the returned
+    /// Engine is dropped. No WAL replay. No persistence between
+    /// runs. Suitable for dev, CI, tests, and aurora-server-style
+    /// host binaries that have no persistence needs.
+    ///
+    /// AURORA Phase 3 (Rory 2026-06-22 §1): replaces the
+    /// `tempdir() + Engine::open_empty(td.path())?` boilerplate that
+    /// appeared in every test harness and CI job. The tempdir is
+    /// owned by the Engine and cleaned up automatically via
+    /// `tempfile::TempDir`'s `Drop` impl — no manual `td.close()`.
+    pub fn open_memory() -> io::Result<Self> {
+        let td = tempfile::tempdir()?;
+        let mut engine = Self::open_empty(td.path())?;
+        engine._tempdir = Some(td);
+        Ok(engine)
     }
 
     fn open_inner(data_dir: &Path, replay: bool) -> io::Result<Self> {
@@ -536,6 +565,7 @@ impl Engine {
             pending_notifications: Vec::new(),
             #[cfg(feature = "patterns")]
             pattern_registry: std::collections::HashMap::new(),
+            _tempdir: None,
         })
     }
 
@@ -716,6 +746,7 @@ impl Engine {
             pending_notifications: Vec::new(),
             #[cfg(feature = "patterns")]
             pattern_registry: std::collections::HashMap::new(),
+            _tempdir: None,
         })
     }
 
@@ -841,6 +872,12 @@ impl Engine {
                 // here so the match stays exhaustive.
                 #[cfg(feature = "gauge")]
                 WalEntry::HamiltonianDeclare { .. } => {}
+                // AURORA Phase 3: INTEGRATOR_CHOICE is audit-only —
+                // records which integrator path SYMPLECTIC_FLOW
+                // selected per invocation. Replay does not re-execute;
+                // the entry is consumed by post-hoc diagnostics tools.
+                #[cfg(feature = "gauge")]
+                WalEntry::IntegratorChoice { .. } => {}
             }
             Ok(())
         })?;

@@ -485,6 +485,248 @@ fn wilson_action(
     Ok((lat.n_faces() as f64) * (1.0_f64 - p_mean) / g2)
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// AURORA Phase 3 — capability-dispatched `SYMPLECTIC_FLOW`
+//
+// The function above (`symplectic_flow`) is the SU(2) Kogut-Susskind
+// path, hard-pinned by the IV.10 and VI.5 gold gates (byte-identical
+// kill criteria). It MUST NOT change.
+//
+// `symplectic_flow_dispatch` below is the Phase-3 capability dispatcher
+// that AURORA's `ShallowWaterFactory` (non-separable Hamiltonian, KDK
+// fails by construction) flows through. It reads `factory.capabilities()`
+// from the `HamiltonianRegistry` and picks:
+//   - bracket_step path        (if poisson_bracket && handle implements
+//                               HamiltonianPoissonBracket via the
+//                               as_poisson_bracket() override)
+//   - Stormer-Verlet KDK path  (if force_drift, generic over the trait)
+//   - NoIntegrationPath error  (neither flag set)
+//
+// Projection runs after EITHER path (per AURORA reply 4 §8 open Q
+// answer: Projection is independent of integrator choice). The WAL
+// records exactly one IntegratorChoice event per invocation.
+// ─────────────────────────────────────────────────────────────────────
+
+use super::action::{HamiltonianCapabilities, HamiltonianHandle};
+use super::hamiltonian_registry as ham_registry;
+use crate::wal::WalWriter;
+
+/// Phase-3 dispatch path discriminant. Carried as a local in
+/// `symplectic_flow_dispatch` so the per-step match is a stable enum
+/// rather than two trait-object hops. Maps 1:1 to the `path` field of
+/// the `WalEntry::IntegratorChoice` audit record.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntegratorPath {
+    /// `HamiltonianPoissonBracket::bracket_step` — single-step
+    /// structure-preserving advance for non-separable Hamiltonians
+    /// (shallow water, etc.).
+    LiePoissonBracket,
+    /// Stormer-Verlet kick-drift-kick — the production-canonical
+    /// separable-Hamiltonian path (Kogut-Susskind et al.).
+    StormerVerletKdk,
+}
+
+impl IntegratorPath {
+    /// Stable string discriminant for the WAL `path` field.
+    pub fn wal_tag(self) -> &'static str {
+        match self {
+            IntegratorPath::LiePoissonBracket => "bracket_step",
+            IntegratorPath::StormerVerletKdk => "stormer_verlet_kdk",
+        }
+    }
+}
+
+/// Pick the integrator path for one `SYMPLECTIC_FLOW` invocation.
+///
+/// Pure function — no I/O, no registry locks, no WAL emission. Useful
+/// in tests that want to assert dispatch without driving the full flow.
+pub fn pick_integrator_path(
+    factory_name: &str,
+    caps: HamiltonianCapabilities,
+    handle: &dyn HamiltonianHandle,
+) -> Result<IntegratorPath, GaugeFieldError> {
+    let bracket_impl_present = handle.as_poisson_bracket().is_some();
+    match (caps.poisson_bracket, caps.force_drift) {
+        (true, _) if bracket_impl_present => Ok(IntegratorPath::LiePoissonBracket),
+        // Capability declares bracket but the handle doesn't actually
+        // implement it — fall back to KDK rather than panic. Robust to
+        // declaration / implementation drift.
+        (true, true) => Ok(IntegratorPath::StormerVerletKdk),
+        (false, true) => Ok(IntegratorPath::StormerVerletKdk),
+        // Capability declares only bracket, handle doesn't implement it,
+        // and there's no force_drift fallback: nothing to do.
+        (true, false) => Err(GaugeFieldError::NoIntegrationPath {
+            factory: factory_name.to_string(),
+            force_drift: false,
+            poisson_bracket: true,
+        }),
+        (false, false) => Err(GaugeFieldError::NoIntegrationPath {
+            factory: factory_name.to_string(),
+            force_drift: false,
+            poisson_bracket: false,
+        }),
+    }
+}
+
+/// Diagnostics for one capability-dispatched `symplectic_flow_dispatch`
+/// invocation. Smaller than `SymplecticFlowDiagnostics` because the
+/// generic path doesn't share the SU(2)-specific reductions (Gauss
+/// residual etc. only make sense for Kogut-Susskind).
+#[derive(Debug, Clone)]
+pub struct SymplecticFlowDispatchDiagnostics {
+    pub path: IntegratorPath,
+    pub factory_name: String,
+    pub handle_name: String,
+    pub n_steps_completed: usize,
+    /// `max_i |H[i] - H[0]| / |H[0]|` over the energy chain when
+    /// `EnergyDecomposition::evaluate()`'s `htotal` key is published;
+    /// `0.0` otherwise. Substrate compares against `RECEIPT_TOL`
+    /// post-flow (1e-3 for energy drift) outside this fn.
+    pub max_energy_drift_rel: f64,
+}
+
+/// Phase-3 capability-dispatched `SYMPLECTIC_FLOW`. Reads
+/// `factory.capabilities()` from the registry and picks
+/// bracket_step / Stormer-Verlet-KDK / error.
+///
+/// `factory_name` must be registered via
+/// `gauge::hamiltonian_registry::register` (Q5 eager-init).
+/// `handle_name` is a free-form audit-only label that lands in the
+/// `WalEntry::IntegratorChoice` payload — it does NOT key any
+/// registry. `state` is mutated in place along the chosen integrator's
+/// vector field.
+///
+/// Per AURORA reply 4 §8: Projection runs after the integration step
+/// regardless of which path was selected (Projection is independent of
+/// integrator choice). The Casimir/energy drift receipt check is the
+/// substrate's responsibility, exercised post-flow by comparing the
+/// returned `max_energy_drift_rel` against `RECEIPT_TOL`.
+///
+/// IMPORTANT: this fn does NOT touch the SU(2) U/E registries; it
+/// operates on group-erased state per the AURORA Phase 2 trait
+/// surface contract (`&mut [f64]`).
+///
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+pub fn symplectic_flow_dispatch(
+    factory_name: &str,
+    params: &HashMap<String, f64>,
+    state: &mut Vec<f64>,
+    n_steps: usize,
+    dt: f64,
+    project: bool,
+    handle_name: &str,
+    wal_writer: Option<&mut WalWriter>,
+) -> Result<SymplecticFlowDispatchDiagnostics, GaugeFieldError> {
+    // ── Resolve factory + caps + build handle ──
+    let (caps, handle): (HamiltonianCapabilities, Box<dyn HamiltonianHandle>) =
+        ham_registry::with_factory(factory_name, |factory| -> Result<_, GaugeFieldError> {
+            let caps = factory.capabilities();
+            let handle = factory.from_params(params).map_err(|fe| {
+                GaugeFieldError::BracketPhysics(super::action::BracketPhysicsError::Other(
+                    format!("factory '{factory_name}' from_params failed: {fe}"),
+                ))
+            })?;
+            Ok((caps, handle))
+        })
+        .ok_or_else(|| GaugeFieldError::HamiltonianFactoryNotRegistered(factory_name.to_string()))??;
+
+    // ── Pick the integrator path BEFORE any side effect ──
+    let path = pick_integrator_path(factory_name, caps, handle.as_ref())?;
+
+    // ── WAL audit — one entry per invocation, after dispatch resolves ──
+    if let Some(writer) = wal_writer {
+        writer
+            .log_integrator_choice(path.wal_tag(), factory_name, handle_name)
+            .map_err(|e| {
+                GaugeFieldError::BracketPhysics(super::action::BracketPhysicsError::Other(
+                    format!("WAL log_integrator_choice failed: {e}"),
+                ))
+            })?;
+    }
+
+    // ── Capture initial energy for the drift receipt ──
+    let h0 = energy_htotal(handle.as_ref(), state)?;
+    let mut h_max_rel = 0.0_f64;
+    let h0_abs = h0.abs();
+
+    // ── Integrator loop ──
+    for _s in 0..n_steps {
+        match path {
+            IntegratorPath::LiePoissonBracket => {
+                let pb = handle.as_poisson_bracket().expect(
+                    "dispatch invariant: LiePoissonBracket path implies as_poisson_bracket()",
+                );
+                pb.bracket_step(state, dt)?;
+            }
+            IntegratorPath::StormerVerletKdk => {
+                // KDK on a group-erased state buffer. The trait surface
+                // ships `force(state) -> Vec<f64>` and `drift(state, dt)
+                // -> Vec<f64>`; we compose them into kick-drift-kick.
+                //
+                // The integrator owns NO state — every call returns a
+                // fresh Vec; we assign back into `state` between steps.
+                let dt_half = dt / 2.0_f64;
+                let f0 = handle.force(state);
+                kick_inplace(state, &f0, dt_half);
+                let drifted = handle.drift(state, dt);
+                *state = drifted;
+                let f1 = handle.force(state);
+                kick_inplace(state, &f1, dt_half);
+            }
+        }
+
+        if project {
+            // Projection is independent of integrator path (Rory's open
+            // Q answer). Substrate runs it after EITHER path.
+            handle.project_constraint(state).map_err(|pe| {
+                GaugeFieldError::BracketPhysics(super::action::BracketPhysicsError::Other(
+                    format!("project_constraint failed: {pe}"),
+                ))
+            })?;
+        }
+
+        // Track drift relative to H[0] for the receipt envelope. We
+        // sample every step rather than every-N for simplicity — the
+        // generic dispatcher is not on the IV.10 critical path.
+        if h0_abs > 0.0 {
+            let h = energy_htotal(handle.as_ref(), state)?;
+            let d = ((h - h0) / h0).abs();
+            if d > h_max_rel {
+                h_max_rel = d;
+            }
+        }
+    }
+
+    Ok(SymplecticFlowDispatchDiagnostics {
+        path,
+        factory_name: factory_name.to_string(),
+        handle_name: handle_name.to_string(),
+        n_steps_completed: n_steps,
+        max_energy_drift_rel: h_max_rel,
+    })
+}
+
+/// Read the `"htotal"` energy key, or fall back to 0.0 if absent.
+/// Diagnostic-only; the substrate's receipt referee owns the tolerance.
+fn energy_htotal(handle: &dyn HamiltonianHandle, state: &[f64]) -> Result<f64, GaugeFieldError> {
+    let map = handle.evaluate(state).map_err(|ee| {
+        GaugeFieldError::BracketPhysics(super::action::BracketPhysicsError::Other(format!(
+            "EnergyDecomposition::evaluate failed: {ee}"
+        )))
+    })?;
+    Ok(map.get("htotal").copied().unwrap_or(0.0))
+}
+
+/// In-place momentum kick: `state[i] += force[i] * dt_half` for the
+/// overlap of the two buffers. If `force.len() != state.len()` (e.g.
+/// the impl returns a momentum-only buffer), only the prefix is updated.
+fn kick_inplace(state: &mut [f64], force: &[f64], dt_half: f64) {
+    let n = state.len().min(force.len());
+    for i in 0..n {
+        state[i] += force[i] * dt_half;
+    }
+}
+
 /// 99th-percentile of a usize slice, returned as f64. Empty → 0.0.
 fn p99_usize(v: &[usize]) -> f64 {
     if v.is_empty() {

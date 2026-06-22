@@ -26,10 +26,11 @@
 //! Part-I panic — reaching it from a well-typed buffer is a
 //! programming error, not a user error.
 
+use super::action::BracketPhysicsError;
 use super::group::Group;
 
 /// Typed error surface for GAUGE_FIELD construction.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GaugeFieldError {
     /// `INIT HAAR_RANDOM` declared without a SEED clause.
     SeedRequired,
@@ -62,6 +63,31 @@ pub enum GaugeFieldError {
         e_lattice: String,
         u_lattice: String,
     },
+    /// AURORA Phase 3 — a `HamiltonianFactory` resolved by name
+    /// declares neither `force_drift` nor `poisson_bracket`. The
+    /// `SYMPLECTIC_FLOW` dispatcher has no admissible path and
+    /// refuses to advance.
+    NoIntegrationPath {
+        factory: String,
+        force_drift: bool,
+        poisson_bracket: bool,
+    },
+    /// AURORA Phase 3 — `HamiltonianPoissonBracket::bracket_step`
+    /// returned a physics-invalidity error (negative depth, CFL
+    /// breach, …). Distinct from a Casimir-drift Refusal: drift is
+    /// the substrate's receipt responsibility post-flow.
+    BracketPhysics(BracketPhysicsError),
+    /// AURORA Phase 3 — a `HamiltonianFactory` registered name
+    /// could not be resolved at dispatch time. Distinct from
+    /// `FieldNotDeclared` so consumers can surface a Phase-3-shaped
+    /// error to the user.
+    HamiltonianFactoryNotRegistered(String),
+}
+
+impl From<BracketPhysicsError> for GaugeFieldError {
+    fn from(err: BracketPhysicsError) -> Self {
+        GaugeFieldError::BracketPhysics(err)
+    }
 }
 
 impl std::fmt::Display for GaugeFieldError {
@@ -110,6 +136,25 @@ impl std::fmt::Display for GaugeFieldError {
                 "gauge: E source-lattice mismatch (source E lives on lattice '{e_lattice}', \
                  target U lives on lattice '{u_lattice}' — INIT FROM_FIELD requires the \
                  source E's bound lattice to match the target U's bound lattice)"
+            ),
+            GaugeFieldError::NoIntegrationPath {
+                factory,
+                force_drift,
+                poisson_bracket,
+            } => write!(
+                f,
+                "gauge: hamiltonian factory '{factory}' declares no integration path \
+                 (capabilities: force_drift={force_drift}, poisson_bracket={poisson_bracket}) \
+                 — SYMPLECTIC_FLOW has no admissible advance"
+            ),
+            GaugeFieldError::BracketPhysics(inner) => write!(
+                f,
+                "gauge: Lie-Poisson bracket step refused: {inner}"
+            ),
+            GaugeFieldError::HamiltonianFactoryNotRegistered(name) => write!(
+                f,
+                "gauge: hamiltonian factory '{name}' is not registered \
+                 (call gauge::hamiltonian_registry::register before SYMPLECTIC_FLOW)"
             ),
         }
     }

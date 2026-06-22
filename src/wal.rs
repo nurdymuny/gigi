@@ -74,6 +74,16 @@ const OP_GAUGE_FIELD_SNAPSHOT: u8 = 0x0B;
 // must explicitly re-register at startup per the AURORA Q5 contract.
 #[cfg(feature = "gauge")]
 const OP_HAMILTONIAN_DECLARE: u8 = 0x0C;
+// AURORA Phase 3: audit trail for SYMPLECTIC_FLOW integrator dispatch.
+// Emitted ONCE per flow invocation (not per step) — the dispatch is
+// invariant across steps within one invocation. Payload is a flat
+// (path, factory_name, handle_name) triple; replay tools attribute
+// energy/Casimir drift to the integrator family that produced it.
+// Forward-stable: `path` is a `String` discriminant (e.g.
+// `"bracket_step"`, `"stormer_verlet_kdk"`) so new integrator
+// families append without breaking existing replay.
+#[cfg(feature = "gauge")]
+const OP_INTEGRATOR_CHOICE: u8 = 0x0D;
 const OP_CHECKPOINT: u8 = 0xFF;
 
 /// TDD-HAL-V.1: payload of a `OP_GAUGE_FIELD_SNAPSHOT` (0x0B) WAL
@@ -548,6 +558,30 @@ impl WalWriter {
         self.write_entry(OP_HAMILTONIAN_DECLARE, &payload)
     }
 
+    /// AURORA Phase 3: log an `INTEGRATOR_CHOICE` record. Emitted once
+    /// per `SYMPLECTIC_FLOW` invocation, after capability dispatch
+    /// resolves and before the integrator loop opens. Diagnostic only —
+    /// replay does not re-execute (per the same forward-compat policy
+    /// as `HamiltonianDeclare`).
+    ///
+    /// Payload format (all multi-byte fields little-endian):
+    ///   [u32 path_len][path_bytes]
+    ///   [u32 factory_name_len][factory_name_bytes]
+    ///   [u32 handle_name_len][handle_name_bytes]
+    #[cfg(feature = "gauge")]
+    pub fn log_integrator_choice(
+        &mut self,
+        path: &str,
+        factory_name: &str,
+        handle_name: &str,
+    ) -> io::Result<()> {
+        let mut payload = Vec::new();
+        write_string(&mut payload, path);
+        write_string(&mut payload, factory_name);
+        write_string(&mut payload, handle_name);
+        self.write_entry(OP_INTEGRATOR_CHOICE, &payload)
+    }
+
     /// Sync the WAL to disk (fsync).
     pub fn sync(&mut self) -> io::Result<()> {
         self.writer.flush()?;
@@ -663,6 +697,19 @@ pub enum WalEntry {
         kind_tag: String,
         group_tag: String,
         registered_at: u64,
+    },
+    /// AURORA Phase 3: which integrator path `SYMPLECTIC_FLOW`
+    /// selected for one invocation. Emitted once at flow entry,
+    /// after capability dispatch and before the integrator loop.
+    /// `path` is a discriminant string (`"bracket_step"` |
+    /// `"stormer_verlet_kdk"`); new families append without breaking
+    /// existing replay (forward-compat skip-unknown applies on
+    /// older binaries).
+    #[cfg(feature = "gauge")]
+    IntegratorChoice {
+        path: String,
+        factory_name: String,
+        handle_name: String,
     },
 }
 
@@ -913,6 +960,18 @@ impl WalReader {
                     kind_tag,
                     group_tag,
                     registered_at,
+                }))
+            }
+            #[cfg(feature = "gauge")]
+            OP_INTEGRATOR_CHOICE => {
+                let mut offset = 0;
+                let path = read_string(payload, &mut offset)?;
+                let factory_name = read_string(payload, &mut offset)?;
+                let handle_name = read_string(payload, &mut offset)?;
+                Ok(Some(WalEntry::IntegratorChoice {
+                    path,
+                    factory_name,
+                    handle_name,
                 }))
             }
             _ => Err(io::Error::new(

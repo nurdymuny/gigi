@@ -35,6 +35,28 @@
 //! separate workflow (SYMPLECTIC_FLOW stays as-is with its hardcoded
 //! SU(2) Kogut-Susskind path under the IV.10 / VI bit-identity gates).
 //!
+//! ── Separability gap (Phase 3) ──
+//!
+//! Per AURORA reply 4 §8: Stormer-Verlet KDK assumes a *separable*
+//! Hamiltonian `H(q, p) = T(p) + V(q)`. AURORA's `ShallowWater` is
+//! non-separable (vorticity flux couples height and momentum through
+//! the same vector-invariant term), and the KDK split produces a
+//! 7x WORSE Casimir drift than forward Euler on that physics — failure
+//! by construction, not by truncation. The structure-preserving fix is
+//! a Lie-Poisson bracket integrator that advances state along the
+//! skew-symmetric bracket directly.
+//!
+//! This trait surface admits both separable (KDK) and non-separable
+//! (Lie-Poisson) integration paths via the
+//! `HamiltonianFactory::capabilities()` method. A factory declares
+//! `HamiltonianCapabilities { force_drift, poisson_bracket }` and
+//! `SYMPLECTIC_FLOW` dispatches: the `force_drift` path consumes
+//! `HamiltonianForce + HamiltonianDrift`; the `poisson_bracket` path
+//! consumes `HamiltonianPoissonBracket::bracket_step`. Existing
+//! factories (`KogutSusskindFactory` et al.) inherit the default
+//! `{ force_drift: true, poisson_bracket: false }` and continue
+//! dispatching through KDK byte-identically.
+//!
 //! ── Stability ──
 //!
 //! Every pub item in this module carries the EVOLVING marker per
@@ -155,6 +177,66 @@ impl std::fmt::Display for ProjectionError {
 
 impl std::error::Error for ProjectionError {}
 
+/// Lie-Poisson bracket-step physics-invalidity error surface.
+///
+/// Emitted by `HamiltonianPoissonBracket::bracket_step` when the
+/// proposed advance violates a physics precondition (negative depth,
+/// CFL breach, etc.). Casimir drift is NOT a `BracketPhysicsError` —
+/// that is the substrate's receipt responsibility (compare
+/// `evaluate()` before/after `bracket_step` against `RECEIPT_TOL`).
+///
+/// AURORA reply 3 (2026-06-22) established that Stormer-Verlet KDK
+/// fails BY CONSTRUCTION on non-separable Hamiltonians (shallow-water
+/// produces 7x worse Casimir drift than forward Euler). The
+/// Lie-Poisson integrator is the structure-preserving alternative;
+/// this error enum is its physics-precondition surface.
+///
+/// Derives `PartialEq` but NOT `Eq` — two variants carry `f64`
+/// fields. This is the only deviation from `FactoryError` /
+/// `EnergyError` / `ProjectionError`, which all derive `Eq` because
+/// their numeric fields are `u32` / `usize` / `&'static str` / `String`.
+///
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+/// Breaking changes only on minor version bumps (0.x → 0.(x+1)).
+/// Patch versions (0.x.y → 0.x.(y+1)) are non-breaking on this surface.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BracketPhysicsError {
+    /// Cell depth went non-positive at grid index `(i, j)`, last
+    /// observed value `h`. Shallow-water bracket step refuses to
+    /// continue (would propagate NaN through `1/h` divisions).
+    NegativeDepth { i: usize, j: usize, h: f64 },
+    /// CFL stability breach — the proposed step's Courant number
+    /// exceeded the integrator's admissible ceiling.
+    CflViolation { courant: f64, max_courant: f64 },
+    /// Free-form physics-invalidity reason that does not fit either
+    /// of the structured variants above. Carries a downstream-owned
+    /// message (substrate refuses, does not translate).
+    Other(String),
+}
+
+impl std::fmt::Display for BracketPhysicsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BracketPhysicsError::NegativeDepth { i, j, h } => write!(
+                f,
+                "bracket physics: negative depth at (i, j)=({i}, {j}), h={h:e}"
+            ),
+            BracketPhysicsError::CflViolation {
+                courant,
+                max_courant,
+            } => write!(
+                f,
+                "bracket physics: CFL violation: courant={courant} > max={max_courant}"
+            ),
+            BracketPhysicsError::Other(reason) => {
+                write!(f, "bracket physics: {reason}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for BracketPhysicsError {}
+
 // ─────────────────────────────────────────────────────────────────────
 // Sub-traits
 // ─────────────────────────────────────────────────────────────────────
@@ -183,6 +265,42 @@ pub trait HamiltonianDrift {
     /// Advance state by `dt` along the drift vector field. Returned
     /// `Vec<f64>` has the same layout as `state`.
     fn drift(&self, state: &[f64], dt: f64) -> Vec<f64>;
+}
+
+/// Lie-Poisson bracket integrator for non-separable Hamiltonians.
+///
+/// Single-step structure-preserving advance for Hamiltonians whose
+/// canonical (q, p) split does not exist — e.g. shallow water, where
+/// the Stormer-Verlet KDK path fails BY CONSTRUCTION (AURORA reply 3,
+/// 2026-06-22: KDK produced 7x worse Casimir drift than forward Euler
+/// on the ShallowWater factory).
+///
+/// The consumer owns the bracket-preserving integration internals
+/// (skew-symmetric vorticity flux, consistent divergence, vector-
+/// invariant momentum). The substrate calls `bracket_step` from the
+/// `SYMPLECTIC_FLOW` loop, then independently checks Casimir drift
+/// via `EnergyDecomposition::evaluate()` before/after the step —
+/// same referee contract as the existing Stormer-Verlet KDK path.
+///
+/// `bracket_step` returns `Err(BracketPhysicsError)` ONLY for physics
+/// invalidity (negative depth, CFL breach). It does NOT check Casimir
+/// drift — that is the substrate's receipt responsibility, exercised
+/// against `RECEIPT_TOL` outside the bracket implementation.
+///
+/// Object-safe: `&self` + `&mut [f64]` + `f64` -> `Result<()>` carries
+/// no `Self` in return position and no associated types, so
+/// `Box<dyn HamiltonianPoissonBracket>` is constructible.
+///
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+/// Breaking changes only on minor version bumps (0.x → 0.(x+1)).
+/// Patch versions (0.x.y → 0.x.(y+1)) are non-breaking on this surface.
+pub trait HamiltonianPoissonBracket: HamiltonianHandle {
+    /// Advance `state` by one Lie-Poisson bracket step of duration
+    /// `dt`. Returns `Ok(())` on physics-valid completion;
+    /// `Err(BracketPhysicsError)` on negative depth / CFL breach /
+    /// other physics invalidity. Casimir drift is checked by the
+    /// substrate outside this call.
+    fn bracket_step(&self, state: &mut [f64], dt: f64) -> Result<(), BracketPhysicsError>;
 }
 
 /// Constraint projection: in-place projection of `state` back onto the
@@ -230,6 +348,41 @@ pub trait EnergyDecomposition {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Capabilities
+// ─────────────────────────────────────────────────────────────────────
+
+/// Declarative summary of which integration paths a `HamiltonianFactory`
+/// supports. Read by `SYMPLECTIC_FLOW` at dispatch time to pick between
+/// the Stormer-Verlet KDK path (separable Hamiltonians) and the
+/// Lie-Poisson `bracket_step` path (non-separable Hamiltonians).
+///
+/// Both flags MAY be `true` simultaneously: a factory that supports both
+/// integration paths exposes `force_drift: true` to keep comparative
+/// receipt tests + diagnostic gates (e.g. AURORA A17/A18) operational,
+/// and `poisson_bracket: true` to opt-in to the structure-preserving
+/// integrator for non-separable physics.
+///
+/// At least one flag MUST be `true` for a factory to be usable by
+/// `SYMPLECTIC_FLOW`; the dispatcher errors if a factory declares neither
+/// integration path.
+///
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+/// Breaking changes only on minor version bumps (0.x → 0.(x+1)).
+/// Patch versions (0.x.y → 0.x.(y+1)) are non-breaking on this surface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HamiltonianCapabilities {
+    /// Factory's `HamiltonianHandle` supports the Stormer-Verlet
+    /// kick-drift-kick path via `HamiltonianForce` + `HamiltonianDrift`.
+    /// Required for A17/A18 KDK diagnostic gates.
+    pub force_drift: bool,
+    /// Factory's `HamiltonianHandle` additionally implements
+    /// `HamiltonianPoissonBracket` and prefers the Lie-Poisson
+    /// `bracket_step` path for non-separable Hamiltonians (e.g.
+    /// shallow-water vorticity flux).
+    pub poisson_bracket: bool,
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Super-trait + factory
 // ─────────────────────────────────────────────────────────────────────
 
@@ -262,6 +415,23 @@ pub trait HamiltonianHandle:
     + Sync
     + std::fmt::Debug
 {
+    /// Downcast to a Lie-Poisson bracket integrator if this Hamiltonian
+    /// supplies one. Default returns `None`, so every existing handle
+    /// (Kogut-Susskind et al.) keeps working unmodified — only handles
+    /// that implement `HamiltonianPoissonBracket` override this method
+    /// to return `Some(self)`.
+    ///
+    /// `SYMPLECTIC_FLOW` uses this together with
+    /// `HamiltonianFactory::capabilities()` to pick the integrator path:
+    /// the factory declares a capability, the handle proves the impl,
+    /// and the dispatcher checks BOTH before taking the bracket path
+    /// (if a factory lies about capabilities, the dispatcher falls back
+    /// to the KDK path rather than panicking).
+    ///
+    /// Stability: EVOLVING until gigi 0.1.0 tag.
+    fn as_poisson_bracket(&self) -> Option<&dyn HamiltonianPoissonBracket> {
+        None
+    }
 }
 
 /// Factory that constructs a concrete `HamiltonianHandle` from a
@@ -297,4 +467,27 @@ pub trait HamiltonianFactory: Send + Sync {
         &self,
         params: &HashMap<String, f64>,
     ) -> Result<Box<dyn HamiltonianHandle>, FactoryError>;
+
+    /// Declare which integration paths this factory's handles support.
+    ///
+    /// Default returns `{ force_drift: true, poisson_bracket: false }`
+    /// — the Stormer-Verlet KDK path that every pre-Phase-3 factory
+    /// (e.g. `KogutSusskindFactory`) already implements via
+    /// `HamiltonianForce` + `HamiltonianDrift`. Existing factories
+    /// inherit this default and continue to dispatch through the KDK
+    /// path with byte-identical behaviour.
+    ///
+    /// Factories whose handles implement `HamiltonianPoissonBracket`
+    /// (the non-separable Lie-Poisson path, e.g. AURORA's
+    /// `ShallowWaterFactory` after Phase 3) override this method to
+    /// return `{ force_drift: true, poisson_bracket: true }`. Keeping
+    /// `force_drift: true` preserves the A17/A18 KDK diagnostic gates
+    /// and permits comparative receipt tests (KDK Casimir drift vs
+    /// bracket Casimir drift) on the same handle.
+    fn capabilities(&self) -> HamiltonianCapabilities {
+        HamiltonianCapabilities {
+            force_drift: true,
+            poisson_bracket: false,
+        }
+    }
 }

@@ -80,9 +80,9 @@ Questions back-and-forth (resolved unless flagged OPEN):
 | CC-2 registry-dispatch refactor | additive `lattice::registry::get_constructor(&str) -> Option<Constructor>` surface with `Constructor = fn(&ConstructorArgs) -> Result<LatticeWithMetric, ConstructorError>`; lazy `init_builtin_constructors()` via `OnceLock` registers both `TRUNCATED_ICOSAHEDRON` (wrapping existing `buckyball()`) and `CUBED_SPHERE`; +175 LOC in `src/lattice/registry.rs` + `tests/aurora_lattice_registry_dispatch.rs` (4 RED-first tests including bit-identity guard). Parser-executor switch at `src/parser.rs:8773-8813` deferrable to tiny Phase 1b follow-up; bit-identity preserved with both paths in parallel | Phase 1 (lifted from "optional" into A1 sprint) | **DONE** | commit `f62e46c` — `test_registry_dispatched_buckyball_bit_identical_to_direct` passes via `PartialEq` + `to_gql()` re-emission; all 7 new in-module tests + 10/10 existing `tdd_hal_i_8_*` registry tests green |
 | `topology_hint` const table | `src/lattice/topology/hints.rs` (NEW, 101 LOC incl. 5 in-module tests) reserves `S2/CUBED_SPHERE`, `S2/TRUNCATED_ICOSAHEDRON` symmetrically via `TOPOLOGY_HINTS: &[(&str, &str)]`; case-insensitive `lookup()` + verbose alias `topology_hint_for()`; unknown identifier returns `None` (never silent default) + `tests/aurora_topology_hint_table.rs` (3 RED-first tests) | Phase 1 | **DONE** | commit `f62e46c` — 3/3 AURORA integration tests + 5/5 in-module tests pass; symmetrically registered for both Phase 1 topologies; extension protocol documented in module doc-comment |
 | A3-workaround | six flat scalar names: `kelvin_holonomies_eq/n30/s30`, `c_field_min/max/mean`; gate via `COVER WHERE refusal_reason IS NULL` | Phase 1 | **ACCEPTED** (Reply 2 §9; zero engine LOC) | — |
-| CC-1 `hamiltonian_registry` | new `src/gauge/hamiltonian_registry.rs`; trait-object factory; WAL `HamiltonianDeclare` metadata-only; eager `register()` per Q5; downstream-crate pattern per Q4b | Phase 2 (**UNBLOCKED 2026-06-21**, gated on AURORA's `ShallowWater` factory sketch arriving) | **ACCEPTED** (Reply 2 §2) | — |
-| A2 — four-trait refactor + `ShallowWater` | `HamiltonianForce` / `HamiltonianDrift` / `ProjectionOperator` / `EnergyDecomposition`; generic `State`; `project_constraint` + `PROJECT_GAUSS` sugar; free-form energy map; group-agnostic `KogutSusskind { beta }` | Phase 2 (**UNBLOCKED 2026-06-21**) | **ACCEPTED** with hot-path constraint: trait-object dispatch off integrator inner loop, generic over concrete `H: HamiltonianForce + HamiltonianDrift` | — |
-| Q3 — DEC operator surface | `src/lattice/metric.rs` + `src/lattice/dec/` (NEW); `d_0`, `delta_0`, `hodge_star_k` as free functions consuming `LatticeWithMetric`; ~250–400 LOC | Phase 2 (lands before AURORA's `HamiltonianForce` impl, **UNBLOCKED 2026-06-21**) | **ACCEPTED** (Reply 2 §10) | — |
+| CC-1 `hamiltonian_registry` | new `src/gauge/hamiltonian_registry.rs` (203 LOC): `OnceLock<Mutex<HashMap<String, Box<dyn HamiltonianFactory>>>>` storage; public `register(name, factory, wal_writer, registered_at)` + `with_factory(name, closure)` + `contains` + `list_registered` + `clear`; `RegistryError { DuplicateName, WalEmitFailed }`; WAL `HamiltonianDeclare` (op `0x0C`) metadata-only with `[name, kind_tag, group_tag, registered_at]` payload; eager `register()` per Q5 (empty registry until host binary explicitly registers; `test_registry_eager_init_no_auto_populate` verifies); downstream-crate pattern per Q4b; first-write-wins on duplicate names. WAL replay handling deferred (engine acknowledges variant as no-op; Q5 eager-init contract makes this safe) | Phase 2 (**UNBLOCKED 2026-06-21**, gated on AURORA's `ShallowWater` factory sketch arriving) | **DONE** | commit `TBD` — 7/7 AURORA integration tests in `tests/aurora_phase_2_hamiltonian_registry.rs` (register/with_factory round-trip, duplicate-name rejection, unknown-name None, kind_tag round-trip, WAL emission round-trip via `WalReader::read_all`, eager-init no-auto-populate, list_registered triples); no-default-features 870/0 byte-identical, halcyon 1031/0, kahler 1150/0, `halcyon_part_iv_gold` 4/0+1-pre-existing-ignored, `halcyon_part_vi_bit_identity_gold` 3/0+0-ignored under `--include-ignored` (VI byte-identity intact by construction — `symplectic_flow.rs` untouched); EVOLVING stability markers per commit `1e13252` on every public item; integrator-generic-over-`H` refactor + KogutSusskind lift + WAL replay materialization all deferred to a later workflow with its own bit-identity discipline |
+| A2 — four-trait refactor + `ShallowWater` | new `src/gauge/action.rs` (300 LOC): `HamiltonianForce` / `HamiltonianDrift` / `ProjectionOperator` / `EnergyDecomposition` four sub-traits unified by `HamiltonianHandle: Send + Sync + Debug` super-trait; `HamiltonianFactory` with `kind_tag() -> &'static str` + `group_tag() -> &'static str` + `from_params(&HashMap<String, f64>) -> Result<Box<dyn HamiltonianHandle>, FactoryError>`; group-agnostic by construction (trait methods speak only in `&[f64]` / `&mut [f64]` / `Vec<f64>` / `BTreeMap<String, f64>` so AURORA's `group_tag = "R"` compiles alongside future SU(2)/SU(3) impls); object-safe (no associated types leak, State erased to flat `&[f64]` buffer at trait boundary); `project_constraint<L: LatticeWithMetric>(&self, &L, &mut [f64]) -> Result<(), ProjectionError>` is the `PROJECT_GAUSS` sugar; `evaluate(&[f64]) -> BTreeMap<String, f64>` with `energy_keys() -> &'static [&'static str]` static contract; `FactoryError { MissingParam, InvalidParam, UnsupportedGroup }` + `EnergyError` + `ProjectionError` enums. **Trait surface only — integrator refactor of `symplectic_flow.rs` to be generic over concrete `H: HamiltonianForce + HamiltonianDrift` is DEFERRED to a later workflow** with its own RED→GREEN cycle against IV.10 + VI bit-identity gates (those gates remain byte-identical in this sprint because `symplectic_flow.rs` was not touched). KogutSusskind lift to `HamiltonianFactory` impl also deferred (natural pairing with the integrator refactor) | Phase 2 (**UNBLOCKED 2026-06-21**) | **DONE** (trait surface only; integrator refactor + KogutSusskind lift DEFERRED) | commit `TBD` — 6/6 AURORA integration tests in `tests/aurora_phase_2_trait_surface.rs` (factory trait shape, HamiltonianHandle sub-trait bounds, deterministic 7-key EnergyDecomposition matching AURORA's `casimir_energy/mass/pv_l1/pv_l2 + kelvin_eq/n30/s30` contract, NoOpHamiltonian compiles, MockShallowWaterFactory signature alignment with AURORA's downstream stub, typed `FactoryError::MissingParam` on missing `g`); no-default-features 870/0 byte-identical, halcyon 1031/0, kahler 1150/0, `halcyon_part_iv_gold` 4/0+1-pre-existing-ignored, `halcyon_part_vi_bit_identity_gold` 3/0+0-ignored under `--include-ignored`; EVOLVING stability markers per commit `1e13252` on all six pub traits + three error enums; hot-path constraint satisfied by construction (registry stores `Box<dyn HamiltonianFactory>`, factory `from_params` returns `Box<dyn HamiltonianHandle>` — boxed handle is the extent of trait-object cost; integrator generic-over-`H` enforces the cold inner loop in the deferred refactor); one follow-up letter queued to AURORA covering 7 minor signature deltas (Debug bound, State→`&[f64]` erasure, HashMap→BTreeMap, String keys, drop `&Grid` param, `wal_writer + registered_at` on register, `with_factory` closure pattern) — net ~20–25 LOC AURORA-side rework |
+| Q3 — DEC operator surface | `src/lattice/metric.rs` (Phase 1, untouched) + `src/lattice/dec/` (NEW, Phase 2: `mod.rs` 82 LOC, `d.rs` 96 LOC, `codifferential.rs` 170 LOC, `hodge.rs` 184 LOC); `d_0` (Form0→Form1, pure combinatorics), `delta_1` (Form1→Form0; the math correct name for the status-board's `delta_0`, the codifferential adjoint of `d_0` on a 2-manifold), `hodge_star_0/1/2` (vertex-area / barycentric-edge-ratio / cell-area-inverse weighting) as free functions consuming `&LatticeWithMetric`; barycentric dual-edge formula `l_e^* = (A_{v-}^* + A_{v+}^*) / (2*l_e)` computed inline so no new accessor on the wrapper (Phase 3 upgrade path documented in `codifferential.rs`); `DecError { LengthMismatch, CellAreasMissing, EdgeLengthsMissing, DualFaceAreasMissing }` with `&'static str` surface labels for diagnostics; +1 line `pub mod dec;` in `src/lattice/mod.rs`; 487 LOC `tests/aurora_dec_operators.rs` integration suite | Phase 2 (lands before AURORA's `HamiltonianForce` impl, **UNBLOCKED 2026-06-21**) | **DONE** | commit `TBD` — 20/20 AURORA integration tests (19 under `--features halcyon`, 20 under `--features halcyon,kahler` including cross-module sign-pin vs `discrete::hodge_complex`); identities verified: `d_0(const) = 0` bit-identical, `delta_1 ∘ d_0(const) = 0` exact (algebraic identity, not convergence), `hodge_star_2(1)[c] = 1/cell_areas[c]` elementwise, `hodge_star_0(1)[v] = A_v^*` elementwise + sum=4π within 1e-10, `hodge_star_1(1)` full-symmetry on C=1, structured errors on all length/missing-metric failure paths, `d_0` sign convention matches `HodgeComplex::d0`; no-default-features 870/0 byte-identical, halcyon 1030/0 (+10 new in-module unit tests), kahler 1150/0, `halcyon_part_iv_gold` 4/0+1-pre-existing-ignored bit-identity gate intact; EVOLVING stability markers per commit `1e13252` on all five public fns + `DecError`; `metric.rs` and `discrete/hodge_complex.rs` untouched (additivity contract held) |
 | Stability annotation convention (Q6) | extend `docs/STABILITY_GUARANTEES.md` from feature-flag stability to trait-surface stability; **convention shape settled per AURORA reply 2 §3 (2026-06-21):** doc-comment + changelog discipline + semver (`/// Stability: EVOLVING until gigi 0.1.0 tag.` + minor-bump-breaks + patch-non-breaking); my earlier `#[stable(since = "0.1.x")]` proc-macro draft was wrong — that attribute is rustc-internal, not available to library crates. Attach the EVOLVING doc-comment to `HamiltonianFactory` + `HamiltonianForce`/`HamiltonianDrift`/`ProjectionOperator`/`EnergyDecomposition` when they land. | Phase 2 (gigi-side design work, parallel with `hamiltonian_registry.rs`) | **OWNED** (gigi-side per AURORA Q6 confirmation 2026-06-21); shape locked per AURORA reply 2 | — |
 | A3-extension — `[TYPE; N]` arrays | DSL lift | Phase 3 (general purpose) | accepted, not started | — |
 | A3-extension — inline structs + `__` desugar | DSL lift; `kelvin_holonomies__eq` long-form, flat names as legacy aliases | Phase 3 (general purpose) | **ACCEPTED** convention (Reply 2 §6) | — |
@@ -260,9 +260,14 @@ All six CC items resolved in Reply 2. Summary:
 - Bee greenlit: Phase 0 (CC-4) landed; Phase 1 unblocked.
 - Sprint slot: Phase 0 closed (see `AURORA_PHASE_0_IMPL_LOG.md`, commit
   `ca589eb`, hash backfilled at `21557ce`); Phase 1 closed (see
-  `AURORA_PHASE_1_IMPL_LOG.md`); receipt commit hashes for the A1 + CC-2
-  + topology_hint rows to be backfilled once the focused Phase 1 commit
-  lands.
+  `AURORA_PHASE_1_IMPL_LOG.md`, commit `f62e46c`); Phase 1b closed
+  (parser-executor switch from static match arm to registry lookup at
+  commit `1091dd5`); Phase 2 DEC operator surface closed (see
+  `AURORA_PHASE_2_DEC_IMPL_LOG.md`, commit `TBD`); Phase 2 trait
+  surface + CC-1 hamiltonian registry closed (see
+  `AURORA_PHASE_2_TRAIT_REGISTRY_IMPL_LOG.md`, commit `TBD`); receipt
+  commit hashes for the Q3 + CC-1 + A2 rows to be backfilled once
+  the focused Phase 2 commits land.
 - AURORA-side blocking pressure: P-1 shipped; first receipt validated;
   Phase 0 (CC-4) **shipped** as a true additive lift (23 LOC,
   no-default-features 870/0 byte-identical, halcyon 996/0, kahler 1150/0,
@@ -273,8 +278,43 @@ All six CC items resolved in Reply 2. Summary:
   AURORA integration tests, `halcyon_part_iv_gold` bit-identity gate
   still clean; `test_registry_dispatched_buckyball_bit_identical_to_direct`
   proves the CC-2 surface is zero-bit-drift on the existing buckyball
-  path); Phase 2 (A2 + CC-1 + Q3 DEC module + stability annotation
-  convention) gated on AURORA's `ShallowWater` factory sketch.
+  path); Phase 2 DEC operator surface (Q3) **shipped** as a fully
+  additive sprint (532 LOC across `src/lattice/dec/{mod,d,codifferential,hodge}.rs`
+  + 1-line `pub mod dec;` in `src/lattice/mod.rs` + 487 LOC `tests/aurora_dec_operators.rs`;
+  no-default-features 870/0 byte-identical, halcyon 1030/0 (+10 in-module
+  unit tests), kahler 1150/0, 20/20 AURORA integration tests under
+  halcyon+kahler (19/0 under halcyon alone, cross-module sign-pin skipped),
+  `halcyon_part_iv_gold` bit-identity gate intact; `metric.rs` and
+  `discrete/hodge_complex.rs` untouched; barycentric dual-edge formula
+  computed inline, Phase 3 circumcentric-dual upgrade path documented;
+  EVOLVING stability markers on all five public fns + `DecError` per
+  commit `1e13252`); Phase 2 trait surface + registry (A2 four-trait
+  `src/gauge/action.rs` + CC-1 `src/gauge/hamiltonian_registry.rs` +
+  WAL `HamiltonianDeclare` op `0x0C`) **shipped** as a fully additive
+  sprint (503 LOC across two new gauge files + 75 LOC in `src/wal.rs`
+  + 4 LOC in `src/gauge/mod.rs` + ~5 LOC engine replay match-arm +
+  473 LOC across two new integration test files;
+  no-default-features 870/0 byte-identical, halcyon 1031/0, kahler
+  1150/0, `halcyon_part_iv_gold` bit-identity gate intact,
+  `halcyon_part_vi_bit_identity_gold` 3/0 under `--include-ignored`
+  intact, 13/13 AURORA integration tests pass; group-agnostic by
+  construction — AURORA's `group_tag = "R"` ShallowWater compiles
+  against the same trait surface as future SU(2) `KogutSusskind`;
+  object-safe — State erased to `&[f64]` buffer at trait boundary;
+  Q5 eager-init contract verified — registry empty until host binary
+  explicitly registers; EVOLVING markers on all six pub traits + four
+  error enums + five public registry fns per commit `1e13252`; one
+  follow-up letter queued to AURORA on 7 minor signature deltas;
+  `symplectic_flow.rs` + `wilson_force.rs` + `loop_transport.rs` +
+  `project_gauss.rs` + `holonomy.rs` all untouched — integrator
+  refactor to generic-over-`H`, KogutSusskind lift to
+  `HamiltonianFactory` impl, and WAL replay materialization of
+  `HamiltonianDeclare` all **deferred to a later workflow** with
+  their own bit-identity discipline against IV.10 + VI gates). All
+  named asks closed; remaining AURORA-side work is implementing
+  `ShallowWaterFactory: HamiltonianFactory` against the published
+  trait surface and running a full Williamson Test 2 against
+  `gigi-stream.fly.dev`.
 
 ## References
 
@@ -284,6 +324,22 @@ All six CC items resolved in Reply 2. Summary:
   on CC-1..6 + design pins + Q3.
 - `theory/aurora/GIGI_TO_AURORA_2026-06-19_v0_1_REPLY_2.md` — engine
   acceptance + Q3 answer + Q4/Q5/Q6 back to AURORA.
+- `theory/aurora/AURORA_PHASE_0_IMPL_LOG.md` — Phase 0 CC-4 lift
+  (`signed_face_orientations()` promotion at commit `ca589eb`).
+- `theory/aurora/AURORA_PHASE_1_IMPL_LOG.md` — Phase 1 sprint
+  (A1 + CC-2 + topology_hint + minimal `LatticeWithMetric` wrapper at
+  commit `f62e46c`).
+- `theory/aurora/AURORA_PHASE_2_DEC_IMPL_LOG.md` — Phase 2 Q3 DEC
+  operator surface (`src/lattice/dec/` module: `d_0`, `delta_1`,
+  `hodge_star_0/1/2`, `DecError`; commit `TBD`).
+- `theory/aurora/AURORA_PHASE_2_TRAIT_REGISTRY_IMPL_LOG.md` — Phase 2
+  trait surface + CC-1 hamiltonian registry (`src/gauge/action.rs`
+  four sub-traits + `HamiltonianHandle` + `HamiltonianFactory`;
+  `src/gauge/hamiltonian_registry.rs` register/with_factory/contains/
+  list_registered/clear + `RegistryError`; WAL `OP_HAMILTONIAN_DECLARE
+  = 0x0C` variant; group-agnostic by construction; integrator
+  refactor + KogutSusskind lift + WAL replay materialization
+  explicitly deferred; commit `TBD`).
 - `theory/halcyon/HALCYON_REQUEST_2026-06-19_SNAPSHOT_EVERY.md` — pattern
   this log mirrors.
 - `theory/halcyon/GIGI_TO_HALCYON_REPLY_2026-06-19.md` — Halcyon Part V

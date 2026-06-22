@@ -834,6 +834,13 @@ impl Engine {
                 WalEntry::LatticeDeclare { .. }
                 | WalEntry::GaugeFieldDeclare { .. }
                 | WalEntry::GaugeFieldSnapshot(_) => {}
+                // AURORA Phase 2: HAMILTONIAN_DECLARE is metadata-only
+                // audit/introspection; replay handling is deferred to a
+                // follow-up workflow (host binaries explicitly re-
+                // register at startup per the Q5 contract). Acknowledge
+                // here so the match stays exhaustive.
+                #[cfg(feature = "gauge")]
+                WalEntry::HamiltonianDeclare { .. } => {}
             }
             Ok(())
         })?;

@@ -66,6 +66,14 @@ const OP_GAUGE_FIELD_DECLARE: u8 = 0x0A;
 // caller (per locked decision D-V-C).
 #[cfg(feature = "gauge")]
 const OP_GAUGE_FIELD_SNAPSHOT: u8 = 0x0B;
+// AURORA Phase 2: durable HAMILTONIAN_DECLARE record. Metadata-only
+// (name, kind_tag, group_tag, registered_at). Emitted by
+// `gauge::hamiltonian_registry::register()` when a `WalWriter` is
+// supplied. Replay handling is OUT OF SCOPE for the Phase 2 workflow —
+// the entry is persisted as audit / introspection, and host binaries
+// must explicitly re-register at startup per the AURORA Q5 contract.
+#[cfg(feature = "gauge")]
+const OP_HAMILTONIAN_DECLARE: u8 = 0x0C;
 const OP_CHECKPOINT: u8 = 0xFF;
 
 /// TDD-HAL-V.1: payload of a `OP_GAUGE_FIELD_SNAPSHOT` (0x0B) WAL
@@ -514,6 +522,32 @@ impl WalWriter {
         self.write_entry(OP_GAUGE_FIELD_SNAPSHOT, &bytes)
     }
 
+    /// AURORA Phase 2: log a HAMILTONIAN_DECLARE record. Metadata-only
+    /// — `(name, kind_tag, group_tag, registered_at)`. Replay handling
+    /// is deferred to a follow-up workflow; this is currently audit /
+    /// introspection only.
+    ///
+    /// Payload format (all multi-byte fields little-endian):
+    ///   [u32 name_len][name_bytes]
+    ///   [u32 kind_tag_len][kind_tag_bytes]
+    ///   [u32 group_tag_len][group_tag_bytes]
+    ///   [u64 registered_at]
+    #[cfg(feature = "gauge")]
+    pub fn log_hamiltonian_declare(
+        &mut self,
+        name: &str,
+        kind_tag: &str,
+        group_tag: &str,
+        registered_at: u64,
+    ) -> io::Result<()> {
+        let mut payload = Vec::new();
+        write_string(&mut payload, name);
+        write_string(&mut payload, kind_tag);
+        write_string(&mut payload, group_tag);
+        payload.extend_from_slice(&registered_at.to_le_bytes());
+        self.write_entry(OP_HAMILTONIAN_DECLARE, &payload)
+    }
+
     /// Sync the WAL to disk (fsync).
     pub fn sync(&mut self) -> io::Result<()> {
         self.writer.flush()?;
@@ -617,6 +651,19 @@ pub enum WalEntry {
     /// from the LE bytes and comparing against `payload.sha256`.
     #[cfg(feature = "gauge")]
     GaugeFieldSnapshot(GaugeFieldSnapshotPayload),
+    /// AURORA Phase 2: durable HAMILTONIAN_DECLARE record. Metadata-
+    /// only — declares that a `HamiltonianFactory` named `name`
+    /// (with `kind_tag` / `group_tag`) was registered at
+    /// `registered_at`. Replay handling is deferred to a follow-up
+    /// workflow; the host binary must explicitly re-register at
+    /// startup per the AURORA Q5 contract.
+    #[cfg(feature = "gauge")]
+    HamiltonianDeclare {
+        name: String,
+        kind_tag: String,
+        group_tag: String,
+        registered_at: u64,
+    },
 }
 
 impl WalReader {
@@ -845,6 +892,28 @@ impl WalReader {
             OP_GAUGE_FIELD_SNAPSHOT => {
                 let payload = GaugeFieldSnapshotPayload::from_le_bytes(payload)?;
                 Ok(Some(WalEntry::GaugeFieldSnapshot(payload)))
+            }
+            #[cfg(feature = "gauge")]
+            OP_HAMILTONIAN_DECLARE => {
+                let mut offset = 0;
+                let name = read_string(payload, &mut offset)?;
+                let kind_tag = read_string(payload, &mut offset)?;
+                let group_tag = read_string(payload, &mut offset)?;
+                if offset + 8 > payload.len() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "HAMILTONIAN_DECLARE registered_at",
+                    ));
+                }
+                let registered_at = u64::from_le_bytes(
+                    payload[offset..offset + 8].try_into().unwrap(),
+                );
+                Ok(Some(WalEntry::HamiltonianDeclare {
+                    name,
+                    kind_tag,
+                    group_tag,
+                    registered_at,
+                }))
             }
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,

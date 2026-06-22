@@ -88,6 +88,10 @@ pub mod lie_exp;
 pub mod symplectic_flow;
 #[cfg(feature = "gauge")]
 pub mod loop_transport;
+#[cfg(feature = "gauge")]
+pub mod action;
+#[cfg(feature = "gauge")]
+pub mod hamiltonian_registry;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;

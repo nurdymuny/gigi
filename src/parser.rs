@@ -5873,8 +5873,11 @@ impl Parser {
                 Token::Str(s) => format!("'{s}'"),
                 Token::LParen => "(".to_string(),
                 Token::RParen => ")".to_string(),
+                Token::LBracket => "[".to_string(),
+                Token::RBracket => "]".to_string(),
                 Token::LBrace => "{".to_string(),
                 Token::RBrace => "}".to_string(),
+                Token::DotDot => "..".to_string(),
                 Token::Comma => ",".to_string(),
                 Token::Eq => "=".to_string(),
                 Token::Neq => "!=".to_string(),
@@ -8568,24 +8571,26 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             rows,
         } => {
             crate::virtual_bundles::reject_virtual_write(bundle, "BATCH UPSERT")?;
-            let mut inserted = 0usize;
-            let mut updated = 0usize;
-            for row in rows {
-                let record: crate::types::Record = if columns.is_empty() {
-                    row.iter()
-                        .enumerate()
-                        .map(|(i, v)| (format!("_{i}"), literal_to_value(v)))
-                        .collect()
-                } else {
-                    columns.iter().zip(row.iter())
-                        .map(|(c, v)| (c.clone(), literal_to_value(v)))
-                        .collect()
-                };
-                let mut store = engine
-                    .bundle_mut(bundle)
-                    .ok_or_else(|| format!("No bundle: {bundle}"))?;
-                if store.upsert(&record) { updated += 1; } else { inserted += 1; }
-            }
+            let records: Vec<crate::types::Record> = rows
+                .iter()
+                .map(|row| {
+                    if columns.is_empty() {
+                        row.iter()
+                            .enumerate()
+                            .map(|(i, v)| (format!("_{i}"), literal_to_value(v)))
+                            .collect()
+                    } else {
+                        columns
+                            .iter()
+                            .zip(row.iter())
+                            .map(|(c, v)| (c.clone(), literal_to_value(v)))
+                            .collect()
+                    }
+                })
+                .collect();
+            let (inserted, updated) = engine
+                .batch_upsert(bundle, &records)
+                .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Scalar(inserted as f64 + updated as f64))
         }
 
@@ -8599,10 +8604,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             for (col, val) in columns.iter().zip(values.iter()) {
                 record.insert(col.clone(), literal_to_value(val));
             }
-            let mut store = engine
-                .bundle_mut(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            store.upsert(&record);
+            engine
+                .upsert(bundle, &record)
+                .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Ok)
         }
 
@@ -8640,10 +8644,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
                 .collect();
-            let mut store = engine
-                .bundle_mut(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let matched = store.bulk_update(&qcs, &patches);
+            let matched = engine
+                .bulk_update(bundle, &qcs, &patches)
+                .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Count(matched))
         }
 
@@ -8669,10 +8672,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .iter()
                 .flat_map(filter_to_query_conditions)
                 .collect();
-            let mut store = engine
-                .bundle_mut(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            let deleted = store.bulk_delete(&qcs);
+            let deleted = engine
+                .bulk_delete(bundle, &qcs)
+                .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Count(deleted))
         }
 

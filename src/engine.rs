@@ -569,6 +569,29 @@ impl Engine {
         })
     }
 
+    fn is_wal_crc_mismatch(error: &io::Error) -> bool {
+        error.kind() == io::ErrorKind::InvalidData
+            && error.to_string().contains("WAL CRC mismatch")
+    }
+
+    fn finish_wal_replay_prefix(
+        result: io::Result<()>,
+        context: &str,
+        entries_applied: u64,
+    ) -> io::Result<()> {
+        match result {
+            Ok(()) => Ok(()),
+            Err(e) if Self::is_wal_crc_mismatch(&e) => {
+                eprintln!(
+                    "  WARNING: {context} stopped at corrupted WAL tail after \
+                     {entries_applied} valid entries; preserving valid prefix"
+                );
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// Replay the WAL from disk into this engine's in-memory state.
     /// Call this after `open_empty()` to load existing data.
     /// Logs progress every 100K entries to stderr.
@@ -611,7 +634,9 @@ impl Engine {
 
         if wal_path.exists() {
             let mut reader = WalReader::open(&wal_path)?;
-            reader.replay(|entry| {
+            let mut entries_applied = 0u64;
+            let replay_result = reader.replay(|entry| {
+                entries_applied += 1;
                 match &entry {
                     WalEntry::CreateBundle(schema) => {
                         schemas.insert(schema.name.clone(), schema.clone());
@@ -630,7 +655,12 @@ impl Engine {
                     }
                 }
                 Ok(())
-            })?;
+            });
+            Self::finish_wal_replay_prefix(
+                replay_result,
+                "mmap schema/overlay WAL scan",
+                entries_applied,
+            )?;
         }
 
         // Phase 2: Open each .dhoom as MmapBundle, wrap in OverlayBundle.
@@ -769,7 +799,7 @@ impl Engine {
         let mut reader = WalReader::open(wal_path)?;
         eprintln!("  WAL replay starting...");
 
-        reader.replay(|entry| {
+        let replay_result = reader.replay(|entry| {
             entry_count += 1;
             if entry_count.is_multiple_of(100_000) {
                 let elapsed = start.elapsed().as_secs_f64();
@@ -880,7 +910,8 @@ impl Engine {
                 WalEntry::IntegratorChoice { .. } => {}
             }
             Ok(())
-        })?;
+        });
+        Self::finish_wal_replay_prefix(replay_result, "bundle WAL replay", entry_count)?;
 
         let elapsed = start.elapsed().as_secs_f64();
         let total: usize = bundles.values().map(|s| s.len()).sum();
@@ -912,7 +943,9 @@ impl Engine {
 
         // Pass 1 — lattices.
         let mut reader = WalReader::open(wal_path)?;
-        reader.replay(|entry| {
+        let mut entries_applied = 0u64;
+        let replay_result = reader.replay(|entry| {
+            entries_applied += 1;
             if let WalEntry::LatticeDeclare { gql } = entry {
                 let lat = crate::lattice::Lattice::from_gql(&gql).map_err(|e| {
                     io::Error::new(
@@ -923,7 +956,12 @@ impl Engine {
                 crate::lattice::registry::register(lat);
             }
             Ok(())
-        })?;
+        });
+        Self::finish_wal_replay_prefix(
+            replay_result,
+            "gauge lattice WAL replay",
+            entries_applied,
+        )?;
 
         // Pass 2 — gauge fields. Resolution: look up lattice by name
         // in the registry (already populated by Pass 1).
@@ -936,7 +974,9 @@ impl Engine {
         // and republishes through `republish_su2` to keep the dyn
         // surface coherent with the post-restoration state.
         let mut reader = WalReader::open(wal_path)?;
-        reader.replay(|entry| {
+        let mut entries_applied = 0u64;
+        let replay_result = reader.replay(|entry| {
+            entries_applied += 1;
             if let WalEntry::GaugeFieldDeclare {
                 name,
                 lattice_name,
@@ -979,7 +1019,12 @@ impl Engine {
                 }
             }
             Ok(())
-        })?;
+        });
+        Self::finish_wal_replay_prefix(
+            replay_result,
+            "gauge field WAL replay",
+            entries_applied,
+        )?;
 
         // Pass 3 — snapshot restoration (TDD-HAL-V.3).
         //
@@ -1009,7 +1054,9 @@ impl Engine {
         // `self.buffer.data` in place; subsequent entries overwrite
         // their predecessor's bytes).
         let mut reader = WalReader::open(wal_path)?;
-        reader.replay(|entry| {
+        let mut entries_applied = 0u64;
+        let replay_result = reader.replay(|entry| {
+            entries_applied += 1;
             if let WalEntry::GaugeFieldSnapshot(payload) = entry {
                 // 2. Resolve handle through the dyn read registry.
                 let handle = crate::gauge::registry::get(&payload.name)
@@ -1051,14 +1098,21 @@ impl Engine {
                 }
             }
             Ok(())
-        })?;
+        });
+        Self::finish_wal_replay_prefix(
+            replay_result,
+            "gauge snapshot WAL replay",
+            entries_applied,
+        )?;
         Ok(())
     }
 
     /// Feature #9: Replay trigger WAL entries into the TriggerManager.
     fn replay_triggers(wal_path: &Path, tm: &mut TriggerManager) -> io::Result<()> {
         let mut reader = WalReader::open(wal_path)?;
-        reader.replay(|entry| {
+        let mut entries_applied = 0u64;
+        let replay_result = reader.replay(|entry| {
+            entries_applied += 1;
             match entry {
                 WalEntry::CreateTrigger {
                     name,
@@ -1089,7 +1143,8 @@ impl Engine {
                 _ => {}
             }
             Ok(())
-        })?;
+        });
+        Self::finish_wal_replay_prefix(replay_result, "trigger WAL replay", entries_applied)?;
         Ok(())
     }
 
@@ -1122,6 +1177,84 @@ impl Engine {
         self.pending_notifications.extend(notifs);
         self.maybe_checkpoint()?;
         Ok(())
+    }
+
+    fn key_for_record(&self, bundle_name: &str, record: &Record) -> io::Result<Record> {
+        let schema = self.schemas.get(bundle_name).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Bundle '{}' not found", bundle_name),
+            )
+        })?;
+        Ok(schema
+            .base_fields
+            .iter()
+            .map(|field| {
+                (
+                    field.name.clone(),
+                    record.get(&field.name).cloned().unwrap_or(Value::Null),
+                )
+            })
+            .collect())
+    }
+
+    fn non_key_patches_for_record(&self, bundle_name: &str, record: &Record) -> io::Result<Record> {
+        let schema = self.schemas.get(bundle_name).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Bundle '{}' not found", bundle_name),
+            )
+        })?;
+        Ok(record
+            .iter()
+            .filter(|(name, _)| !schema.base_fields.iter().any(|field| field.name == **name))
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect())
+    }
+
+    /// Upsert a record through durable WAL entries.
+    ///
+    /// Returns true when a new record was inserted and false when an
+    /// existing record was updated.
+    pub fn upsert(&mut self, bundle_name: &str, record: &Record) -> io::Result<bool> {
+        let key = self.key_for_record(bundle_name, record)?;
+        if self.point_query(bundle_name, &key)?.is_some() {
+            let patches = self.non_key_patches_for_record(bundle_name, record)?;
+            let updated = self.update(bundle_name, &key, &patches)?;
+            if updated {
+                Ok(false)
+            } else {
+                Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    format!("Record disappeared during upsert in '{}'", bundle_name),
+                ))
+            }
+        } else {
+            self.insert(bundle_name, record)?;
+            Ok(true)
+        }
+    }
+
+    /// Batch upsert records through durable WAL entries.
+    ///
+    /// Returns (inserted, updated).
+    pub fn batch_upsert(&mut self, bundle_name: &str, records: &[Record]) -> io::Result<(usize, usize)> {
+        if self.bundle(bundle_name).is_none() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Bundle '{}' not found", bundle_name),
+            ));
+        }
+        let mut inserted = 0usize;
+        let mut updated = 0usize;
+        for record in records {
+            if self.upsert(bundle_name, record)? {
+                inserted += 1;
+            } else {
+                updated += 1;
+            }
+        }
+        Ok((inserted, updated))
     }
 
     /// Extract a deterministic primary-key string from a record for dedup/tombstone purposes.
@@ -1181,6 +1314,36 @@ impl Engine {
         Ok(updated)
     }
 
+    /// Bulk update all matching records through one WAL update per record.
+    pub fn bulk_update(
+        &mut self,
+        bundle_name: &str,
+        conditions: &[QueryCondition],
+        patches: &Record,
+    ) -> io::Result<usize> {
+        let matching_keys: Vec<Record> = {
+            let store = self.bundle(bundle_name).ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::NotFound,
+                    format!("Bundle '{}' not found", bundle_name),
+                )
+            })?;
+            store
+                .records()
+                .filter(|record| crate::bundle::matches_filter(record, conditions, None))
+                .map(|record| self.key_for_record(bundle_name, &record))
+                .collect::<io::Result<Vec<_>>>()?
+        };
+
+        let mut updated = 0usize;
+        for key in &matching_keys {
+            if self.update(bundle_name, key, patches)? {
+                updated += 1;
+            }
+        }
+        Ok(updated)
+    }
+
     /// Delete a record by key.
     pub fn delete(&mut self, bundle_name: &str, key: &Record) -> io::Result<bool> {
         self.wal.log_delete(bundle_name, key)?;
@@ -1202,6 +1365,35 @@ impl Engine {
             self.pending_notifications.extend(notifs);
         }
         self.maybe_checkpoint()?;
+        Ok(deleted)
+    }
+
+    /// Bulk delete all matching records through one WAL delete per record.
+    pub fn bulk_delete(
+        &mut self,
+        bundle_name: &str,
+        conditions: &[QueryCondition],
+    ) -> io::Result<usize> {
+        let matching_keys: Vec<Record> = {
+            let store = self.bundle(bundle_name).ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::NotFound,
+                    format!("Bundle '{}' not found", bundle_name),
+                )
+            })?;
+            store
+                .records()
+                .filter(|record| crate::bundle::matches_filter(record, conditions, None))
+                .map(|record| self.key_for_record(bundle_name, &record))
+                .collect::<io::Result<Vec<_>>>()?
+        };
+
+        let mut deleted = 0usize;
+        for key in &matching_keys {
+            if self.delete(bundle_name, key)? {
+                deleted += 1;
+            }
+        }
         Ok(deleted)
     }
 
@@ -1794,6 +1986,163 @@ impl Engine {
     /// loads each DHOOM snapshot for bundles with 0 WAL records.
     pub fn snapshot(&mut self) -> io::Result<usize> {
         self.snapshot_with_chunk_size(50_000)
+    }
+
+    /// Timeout-aware streaming snapshot for admin/API callers.
+    ///
+    /// Unlike `cow_snapshot_with_report`, this keeps the heap-mode snapshot
+    /// path streaming and avoids cloning every record before encoding. WAL
+    /// compaction only runs after every non-empty heap bundle snapshots cleanly.
+    pub fn snapshot_with_report(&mut self) -> io::Result<SnapshotReport> {
+        self.snapshot_with_chunk_size_report(
+            50_000,
+            self.compaction_policy.per_bundle_timeout_secs,
+        )
+    }
+
+    /// Timeout-aware variant of `snapshot_with_chunk_size`.
+    ///
+    /// A timed-out bundle leaves its prior `.dhoom` file untouched and prevents
+    /// WAL compaction for this cycle, preserving data that may still be
+    /// WAL-resident.
+    pub fn snapshot_with_chunk_size_report(
+        &mut self,
+        chunk_size: usize,
+        per_bundle_timeout_secs: Option<u64>,
+    ) -> io::Result<SnapshotReport> {
+        let snapshots_dir = self.data_dir.join("snapshots");
+        fs::create_dir_all(&snapshots_dir)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&snapshots_dir, fs::Permissions::from_mode(0o700));
+        }
+
+        let budget = per_bundle_timeout_secs.map(std::time::Duration::from_secs);
+        let mut report = SnapshotReport {
+            bundles: Vec::new(),
+            total_records_written: 0,
+            timed_out_bundles: Vec::new(),
+        };
+
+        for (name, store) in &self.bundles {
+            let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+            let tmp_path = snapshots_dir.join(format!("{name}.dhoom.tmp"));
+
+            let count = store.len();
+            if count == 0 {
+                continue;
+            }
+
+            eprintln!(
+                "  Snapshot streaming: {name} ({count} records, chunk_size={chunk_size}{})...",
+                budget.map_or(String::new(), |b| format!(", budget={}s", b.as_secs()))
+            );
+
+            let start = std::time::Instant::now();
+            let mut timed_out = false;
+            let inner = (|| -> io::Result<usize> {
+                let schema = self.schemas.get(name.as_str());
+                let arith_key = schema.and_then(|s| {
+                    if s.base_fields.len() == 1
+                        && matches!(s.base_fields[0].field_type, crate::types::FieldType::Numeric)
+                    {
+                        Some(s.base_fields[0].name.clone())
+                    } else {
+                        None
+                    }
+                });
+
+                let file = fs::File::create(&tmp_path)?;
+                let buf = io::BufWriter::new(file);
+                let mut encoder =
+                    crate::dhoom::StreamingDhoomEncoder::new(buf, name, chunk_size);
+
+                if let Some(ref key_field) = arith_key {
+                    let mut recs: Vec<serde_json::Value> = Vec::new();
+                    for rec in store.records() {
+                        if let Some(b) = budget {
+                            if start.elapsed() > b {
+                                timed_out = true;
+                                return Ok(0);
+                            }
+                        }
+                        recs.push(record_to_serde_json(&rec));
+                    }
+                    recs.sort_by(|a, b| {
+                        let va = a
+                            .get(key_field)
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(i64::MAX);
+                        let vb = b
+                            .get(key_field)
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(i64::MAX);
+                        va.cmp(&vb)
+                    });
+                    for rec in &recs {
+                        if let Some(b) = budget {
+                            if start.elapsed() > b {
+                                timed_out = true;
+                                return Ok(0);
+                            }
+                        }
+                        encoder.push(rec.clone())?;
+                    }
+                } else {
+                    for rec in store.records() {
+                        if let Some(b) = budget {
+                            if start.elapsed() > b {
+                                timed_out = true;
+                                return Ok(0);
+                            }
+                        }
+                        encoder.push_record(&rec)?;
+                    }
+                }
+
+                encoder.finish()?;
+                Ok(count)
+            })();
+
+            if timed_out {
+                let _ = fs::remove_file(&tmp_path);
+                let elapsed = start.elapsed().as_secs();
+                eprintln!(
+                    "  Snapshot TIMED OUT on bundle '{name}' after {elapsed}s. \
+                     Partial .tmp removed; WAL compaction skipped."
+                );
+                report.timed_out_bundles.push(name.clone());
+                report.bundles.push(SnapshotBundleOutcome {
+                    bundle_name: name.clone(),
+                    result: Err(elapsed),
+                });
+                continue;
+            }
+
+            match inner {
+                Ok(n) => {
+                    fs::rename(&tmp_path, &snap_path)?;
+                    report.total_records_written += n;
+                    report.bundles.push(SnapshotBundleOutcome {
+                        bundle_name: name.clone(),
+                        result: Ok(n),
+                    });
+                    eprintln!("  Snapshot written: {name} ({n} records)");
+                }
+                Err(e) => {
+                    let _ = fs::remove_file(&tmp_path);
+                    return Err(e);
+                }
+            }
+        }
+
+        if report.timed_out_bundles.is_empty() {
+            self.compact_wal_to_schemas()?;
+        }
+
+        Ok(report)
     }
 
     // ── CoW Snapshot (Feature #3) ─────────────────────────────────────────
@@ -2616,6 +2965,118 @@ mod tests {
             key.insert("id".into(), Value::Integer(42));
             let result = engine.point_query("employees", &key).unwrap().unwrap();
             assert_eq!(result.get("name"), Some(&Value::Text("Emp_42".into())));
+        }
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn engine_wal_replay_preserves_valid_prefix_on_crc_tail() {
+        use std::io::Write as _;
+
+        let dir = test_dir("replay_crc_tail");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("employees")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("name"));
+            engine.create_bundle(schema).unwrap();
+
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(7));
+            rec.insert("name".into(), Value::Text("Grace".into()));
+            engine.insert("employees", &rec).unwrap();
+            engine.checkpoint().unwrap();
+        }
+
+        {
+            let mut wal = fs::OpenOptions::new()
+                .append(true)
+                .open(dir.join("gigi.wal"))
+                .unwrap();
+            wal.write_all(&1u32.to_le_bytes()).unwrap();
+            wal.write_all(&[0xFF]).unwrap();
+            wal.write_all(&0u32.to_le_bytes()).unwrap();
+            wal.sync_all().unwrap();
+        }
+
+        {
+            let engine = Engine::open(&dir).unwrap();
+            assert_eq!(engine.total_records(), 1);
+
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(7));
+            let result = engine.point_query("employees", &key).unwrap().unwrap();
+            assert_eq!(result.get("name"), Some(&Value::Text("Grace".into())));
+        }
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn durable_upsert_and_bulk_helpers_replay() {
+        let dir = test_dir("durable_gql_helpers");
+        cleanup(&dir);
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("durable")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("name"))
+                .fiber(FieldDef::categorical("status"));
+            engine.create_bundle(schema).unwrap();
+
+            let mut rec1 = Record::new();
+            rec1.insert("id".into(), Value::Integer(1));
+            rec1.insert("name".into(), Value::Text("alpha".into()));
+            rec1.insert("status".into(), Value::Text("open".into()));
+            assert!(engine.upsert("durable", &rec1).unwrap());
+
+            let mut rec1_update = rec1.clone();
+            rec1_update.insert("name".into(), Value::Text("alpha-v2".into()));
+            assert!(!engine.upsert("durable", &rec1_update).unwrap());
+
+            let mut rec2 = Record::new();
+            rec2.insert("id".into(), Value::Integer(2));
+            rec2.insert("name".into(), Value::Text("beta".into()));
+            rec2.insert("status".into(), Value::Text("open".into()));
+            let mut rec3 = Record::new();
+            rec3.insert("id".into(), Value::Integer(3));
+            rec3.insert("name".into(), Value::Text("gamma".into()));
+            rec3.insert("status".into(), Value::Text("closed".into()));
+            assert_eq!(
+                engine.batch_upsert("durable", &[rec2, rec3]).unwrap(),
+                (2, 0)
+            );
+
+            let mut patches = Record::new();
+            patches.insert("status".into(), Value::Text("done".into()));
+            let open = [QueryCondition::Eq("status".into(), Value::Text("open".into()))];
+            assert_eq!(engine.bulk_update("durable", &open, &patches).unwrap(), 2);
+
+            let closed = [QueryCondition::Eq("status".into(), Value::Text("closed".into()))];
+            assert_eq!(engine.bulk_delete("durable", &closed).unwrap(), 1);
+            engine.checkpoint().unwrap();
+        }
+
+        {
+            let engine = Engine::open(&dir).unwrap();
+            let mut key1 = Record::new();
+            key1.insert("id".into(), Value::Integer(1));
+            let row1 = engine.point_query("durable", &key1).unwrap().unwrap();
+            assert_eq!(row1.get("name"), Some(&Value::Text("alpha-v2".into())));
+            assert_eq!(row1.get("status"), Some(&Value::Text("done".into())));
+
+            let mut key2 = Record::new();
+            key2.insert("id".into(), Value::Integer(2));
+            let row2 = engine.point_query("durable", &key2).unwrap().unwrap();
+            assert_eq!(row2.get("status"), Some(&Value::Text("done".into())));
+
+            let mut key3 = Record::new();
+            key3.insert("id".into(), Value::Integer(3));
+            assert!(engine.point_query("durable", &key3).unwrap().is_none());
         }
 
         cleanup(&dir);

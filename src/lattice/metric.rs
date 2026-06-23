@@ -54,6 +54,18 @@ pub struct LatticeWithMetric {
     /// (e.g. cubed-sphere); None means downstream consumers must
     /// compute it themselves or refuse.
     dual_face_areas: Option<Vec<f64>>,
+    /// 3D Cartesian unit-sphere coordinates of each vertex, in
+    /// vertex-id order. Populated by topology constructors that
+    /// natively compute 3D positions (cubed-sphere, buckyball);
+    /// empty for constructors that don't (e.g. the explicit
+    /// `LATTICE name VERTICES n EDGES … FACES …` declaration form,
+    /// which only describes combinatorial topology). Consumers that
+    /// require positions check `.is_empty()` and refuse gracefully.
+    ///
+    /// AURORA Reply 6 ask — unblocks Williamson T2 initial conditions
+    /// on the cubed-sphere DEC bracket_step gate (lat/lon derived
+    /// locally via phi = arcsin(z), lambda = atan2(y, x)).
+    vertex_positions: Vec<(f64, f64, f64)>,
 }
 
 impl LatticeWithMetric {
@@ -76,7 +88,20 @@ impl LatticeWithMetric {
             cell_areas,
             edge_lengths,
             dual_face_areas,
+            vertex_positions: Vec::new(),
         }
+    }
+
+    /// Attach 3D unit-sphere Cartesian coordinates to this lattice,
+    /// returning the wrapper by value for builder-style chaining.
+    /// Used by topology constructors that natively compute vertex
+    /// positions (cubed-sphere, buckyball); explicit-declaration
+    /// lattices leave this empty.
+    ///
+    /// Stability: EVOLVING until gigi 0.1.0 tag.
+    pub fn with_vertex_positions(mut self, positions: Vec<(f64, f64, f64)>) -> Self {
+        self.vertex_positions = positions;
+        self
     }
 
     /// Borrow the underlying combinatorial [`Lattice`]. The bridge to
@@ -106,6 +131,23 @@ impl LatticeWithMetric {
     /// commit to a dual mesh.
     pub fn dual_face_areas(&self) -> Option<&[f64]> {
         self.dual_face_areas.as_deref()
+    }
+
+    /// 3D unit-sphere coordinates of each vertex, in vertex-id order.
+    ///
+    /// Returns the per-vertex Cartesian position (x, y, z) on the unit
+    /// sphere. For cubed-sphere lattices, these are the normalized
+    /// gnomonic projections computed by `build_vertex_table`. For
+    /// truncated_icosahedron / buckyball lattices, the fullerene cage
+    /// coordinates. Constructors that do not compute 3D positions
+    /// return an empty slice.
+    ///
+    /// Consumers can compute (lat, lon) locally via
+    /// `phi = arcsin(z)`, `lambda = atan2(y, x)`.
+    ///
+    /// Stability: EVOLVING until gigi 0.1.0 tag.
+    pub fn vertex_positions(&self) -> &[(f64, f64, f64)] {
+        &self.vertex_positions
     }
 }
 

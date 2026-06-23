@@ -155,12 +155,22 @@ pub fn cubed_sphere(name: &str, panel_size: usize) -> LatticeWithMetric {
     let cell_areas = compute_cell_areas(&lattice, &vertex_coords);
     let edge_lengths = compute_edge_lengths(&lattice, &vertex_coords);
 
+    // 5. AURORA Reply 6: forward the gnomonic-projection unit-sphere
+    //    positions out through the LatticeWithMetric so consumers
+    //    (Williamson T2 IC projection, etc.) don't have to duplicate
+    //    the projection table.
+    let positions: Vec<(f64, f64, f64)> = vertex_coords
+        .iter()
+        .map(|c| (c[0], c[1], c[2]))
+        .collect();
+
     LatticeWithMetric::from_lattice_and_metric(
         lattice,
         cell_areas,
         edge_lengths,
         None,
     )
+    .with_vertex_positions(positions)
 }
 
 /// Canonical ordering for an undirected edge key. The forward direction

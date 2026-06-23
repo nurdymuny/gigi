@@ -351,6 +351,24 @@ pub fn buckyball() -> Lattice {
     buckyball_with_signed_faces().lattice
 }
 
+/// AURORA Reply 6: 60 unit-sphere Cartesian coordinates for the
+/// buckyball, in vertex-id order. Computed by L2-normalizing the
+/// raw fullerene-cage vertices from `build_vertices`. Surfaced so
+/// the registry wrapper can attach them to `LatticeWithMetric` via
+/// `with_vertex_positions`, unblocking downstream consumers that
+/// need 3D positions (lat/lon, edge midpoints, face centers).
+///
+/// Stability: EVOLVING until gigi 0.1.0 tag.
+pub fn buckyball_unit_sphere_positions() -> Vec<(f64, f64, f64)> {
+    build_vertices()
+        .iter()
+        .map(|v| {
+            let n = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+            (v[0] / n, v[1] / n, v[2] / n)
+        })
+        .collect()
+}
+
 /// Translate Halcyon's per-face `(edge_idx, sign)` cycle to the
 /// substrate's `(EdgeId, EdgeOrientation)` form. `sign = +1`
 /// → Forward; `sign = -1` → Reverse.

@@ -172,12 +172,19 @@ fn build_truncated_icosahedron(
     _args: &ConstructorArgs,
 ) -> Result<LatticeWithMetric, ConstructorError> {
     let lat = crate::lattice::topology::truncated_icosahedron::buckyball();
+    // AURORA Reply 6: attach the 60 unit-sphere fullerene-cage
+    // coordinates so downstream DEC consumers can project analytical
+    // initial conditions onto buckyball vertices/edges/faces without
+    // recomputing the cage geometry locally.
+    let positions =
+        crate::lattice::topology::truncated_icosahedron::buckyball_unit_sphere_positions();
     Ok(LatticeWithMetric::from_lattice_and_metric(
         lat,
         Vec::new(),
         Vec::new(),
         None,
-    ))
+    )
+    .with_vertex_positions(positions))
 }
 
 /// CC-2 wrapper around

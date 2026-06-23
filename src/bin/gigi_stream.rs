@@ -11808,19 +11808,36 @@ async fn serve_dashboard() -> impl IntoResponse {
 ///
 /// Safe to call while the server is running.  Takes a write lock for the duration.
 async fn admin_snapshot(State(state): State<Arc<StreamState>>) -> impl IntoResponse {
-    let mut engine = state.engine.write().unwrap();
-    match engine.snapshot() {
-        Ok(total) => (
+    let snapshot = tokio::task::spawn_blocking(move || {
+        let mut engine = state.engine.write().unwrap();
+        engine.snapshot_with_report()
+    })
+    .await;
+
+    match snapshot {
+        Ok(Ok(report)) if report.timed_out_bundles.is_empty() => (
             StatusCode::OK,
             Json(serde_json::json!({
                 "status": "ok",
-                "total_records_snapshotted": total,
+                "total_records_snapshotted": report.total_records_written,
                 "message": "DHOOM snapshots written; WAL compacted to schema-only."
             })),
         ),
-        Err(e) => (
+        Ok(Ok(report)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": "Snapshot timed out before WAL compaction",
+                "total_records_snapshotted": report.total_records_written,
+                "timed_out_bundles": report.timed_out_bundles,
+            })),
+        ),
+        Ok(Err(e)) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({ "error": format!("Snapshot failed: {e}") })),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": format!("Snapshot task failed: {e}") })),
         ),
     }
 }
@@ -11987,7 +12004,7 @@ async fn gql_query(
     };
 
     // Helper: emit query.complete and update metrics for early-return paths.
-    // Called by all the match arms that don't go through execute_gql_on_store.
+    // Called by all the match arms that don't go through the bundle-aware path.
     let emit_quick = |stmt_type: &'static str, dur: u64, is_err: bool| {
         let slow = dur >= state.logger.slow_threshold_us();
         let ev = state.logger.query_complete(
@@ -12371,20 +12388,17 @@ async fn gql_query(
 
     if needs_write {
         let mut engine = state.engine.write().unwrap();
-        let mut store = match engine.bundle_mut(&bundle_name) {
-            Some(s) => s,
-            None => {
-                let dur = t0.elapsed().as_micros() as u64;
-                let ev = state.logger.query_error(&req_id, query, dur, "BundleNotFound", &format!("No bundle: {bundle_name}"), 404);
-                state.logger.emit(ev);
-                state.metrics.record_query(dur, stmt_type, false, true);
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")})),
-                )
-            }
-        };
-        let result = execute_gql_on_store(&mut store, &stmt);
+        if engine.bundle(&bundle_name).is_none() {
+            let dur = t0.elapsed().as_micros() as u64;
+            let ev = state.logger.query_error(&req_id, query, dur, "BundleNotFound", &format!("No bundle: {bundle_name}"), 404);
+            state.logger.emit(ev);
+            state.metrics.record_query(dur, stmt_type, false, true);
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")})),
+            );
+        }
+        let result = execute_gql_on_engine(&mut engine, &stmt);
         let dur = t0.elapsed().as_micros() as u64;
         let (status, resp) = match result {
             Ok(r) => exec_result_to_response(r),
@@ -12448,9 +12462,9 @@ async fn gql_query(
     }
 }
 
-/// Execute a GQL statement that needs mutable access to a BundleStore.
-fn execute_gql_on_store(
-    store: &mut gigi::mmap_bundle::BundleMut<'_>,
+/// Execute a GQL statement that mutates bundle data through Engine WAL paths.
+fn execute_gql_on_engine(
+    engine: &mut gigi::engine::Engine,
     stmt: &gigi::parser::Statement,
 ) -> Result<gigi::parser::ExecResult, String> {
     use gigi::bundle::QueryCondition as QC;
@@ -12458,50 +12472,69 @@ fn execute_gql_on_store(
 
     match stmt {
         Statement::Insert {
-            columns, values, ..
+            bundle, columns, values
         } => {
             let mut record = std::collections::HashMap::new();
             for (c, v) in columns.iter().zip(values.iter()) {
                 record.insert(c.clone(), literal_to_value(v));
             }
-            store.insert(&record);
+            engine.insert(bundle, &record).map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Ok)
         }
         Statement::SectionUpsert {
-            columns, values, ..
+            bundle, columns, values, ..
         } => {
             let mut record = std::collections::HashMap::new();
             for (c, v) in columns.iter().zip(values.iter()) {
                 record.insert(c.clone(), literal_to_value(v));
             }
-            store.upsert(&record);
+            engine.upsert(bundle, &record).map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Ok)
         }
-        Statement::BatchInsert { columns, rows, .. } => {
+        Statement::BatchInsert { bundle, columns, rows } => {
             let records: Vec<gigi::types::Record> = rows
                 .iter()
                 .map(|row| {
-                    columns
-                        .iter()
-                        .zip(row.iter())
-                        .map(|(c, v)| (c.clone(), literal_to_value(v)))
-                        .collect()
+                    if columns.is_empty() {
+                        row.iter()
+                            .enumerate()
+                            .map(|(i, v)| (format!("_{i}"), literal_to_value(v)))
+                            .collect()
+                    } else {
+                        columns
+                            .iter()
+                            .zip(row.iter())
+                            .map(|(c, v)| (c.clone(), literal_to_value(v)))
+                            .collect()
+                    }
                 })
                 .collect();
-            store.batch_insert(&records);
+            engine
+                .batch_insert(bundle, &records)
+                .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Ok)
         }
-        Statement::BatchSectionUpsert { columns, rows, .. } => {
-            let mut inserted = 0usize;
-            let mut updated = 0usize;
-            for row in rows {
-                let record: gigi::types::Record = columns
-                    .iter()
-                    .zip(row.iter())
-                    .map(|(c, v)| (c.clone(), literal_to_value(v)))
-                    .collect();
-                if store.upsert(&record) { updated += 1; } else { inserted += 1; }
-            }
+        Statement::BatchSectionUpsert { bundle, columns, rows } => {
+            let records: Vec<gigi::types::Record> = rows
+                .iter()
+                .map(|row| {
+                    if columns.is_empty() {
+                        row.iter()
+                            .enumerate()
+                            .map(|(i, v)| (format!("_{i}"), literal_to_value(v)))
+                            .collect()
+                    } else {
+                        columns
+                            .iter()
+                            .zip(row.iter())
+                            .map(|(c, v)| (c.clone(), literal_to_value(v)))
+                            .collect()
+                    }
+                })
+                .collect();
+            let (inserted, updated) = engine
+                .batch_upsert(bundle, &records)
+                .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Rows(vec![{
                 let mut r = gigi::types::Record::new();
                 r.insert("inserted".to_string(), gigi::types::Value::Integer(inserted as i64));
@@ -12509,7 +12542,7 @@ fn execute_gql_on_store(
                 r
             }]))
         }
-        Statement::Redefine { key, sets, .. } => {
+        Statement::Redefine { bundle, key, sets } => {
             let key_rec: gigi::types::Record = key
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
@@ -12518,41 +12551,50 @@ fn execute_gql_on_store(
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
                 .collect();
-            if store.update(&key_rec, &patches) {
+            if engine
+                .update(bundle, &key_rec, &patches)
+                .map_err(|e| format!("{e}"))?
+            {
                 Ok(ExecResult::Ok)
             } else {
                 Err("Record not found".into())
             }
         }
         Statement::BulkRedefine {
-            conditions, sets, ..
+            bundle, conditions, sets, ..
         } => {
             let qcs: Vec<QC> = conditions.iter().flat_map(|fc| gigi::parser::filter_to_query_conditions(fc)).collect();
             let patches: gigi::types::Record = sets
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
                 .collect();
-            let n = store.bulk_update(&qcs, &patches);
+            let n = engine
+                .bulk_update(bundle, &qcs, &patches)
+                .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Count(n))
         }
-        Statement::Retract { key, .. } => {
+        Statement::Retract { bundle, key } => {
             let key_rec: gigi::types::Record = key
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
                 .collect();
-            if store.delete(&key_rec) {
+            if engine
+                .delete(bundle, &key_rec)
+                .map_err(|e| format!("{e}"))?
+            {
                 Ok(ExecResult::Ok)
             } else {
                 Err("Record not found".into())
             }
         }
-        Statement::BulkRetract { conditions, .. } => {
+        Statement::BulkRetract { bundle, conditions } => {
             let qcs: Vec<QC> = conditions.iter().flat_map(|fc| gigi::parser::filter_to_query_conditions(fc)).collect();
-            let n = store.bulk_delete(&qcs);
+            let n = engine
+                .bulk_delete(bundle, &qcs)
+                .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Count(n))
         }
-        // For read-only ops via mutable ref, delegate
-        _ => execute_gql_on_store_read(&store.as_ref(), stmt, None),
+        _ => Ok(ExecResult::Ok),
     }
 }
 
@@ -16144,6 +16186,7 @@ mod tests {
     use gigi::engine::Engine;
     use gigi::types::{BundleSchema, FieldDef, FieldType};
     use std::path::Path;
+    use std::sync::{Mutex, OnceLock};
 
     fn tmp_dir(tag: &str) -> std::path::PathBuf {
         std::env::temp_dir().join(format!("gigi_stream_test_{tag}"))
@@ -16151,6 +16194,22 @@ mod tests {
 
     fn cleanup(dir: &Path) {
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    fn stream_env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    async fn post_gql_for_test(state: Arc<StreamState>, query: &str) -> StatusCode {
+        gql_query(
+            State(state),
+            axum::http::HeaderMap::new(),
+            Json(serde_json::json!({ "query": query })),
+        )
+        .await
+        .into_response()
+        .status()
     }
 
     // ── BundleFlowCache contract tests (S1 wave 1 §A) ──────────
@@ -16573,6 +16632,59 @@ mod tests {
         // Verify value_to_json produces b64: prefix when serialising
         let out = value_to_json(result.get("payload").unwrap());
         assert_eq!(out, serde_json::Value::String(b64_str));
+
+        cleanup(&dir);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn http_gql_insert_and_batch_insert_are_wal_logged() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("http_gql_wal");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+
+        {
+            let (logger, _ingester) = Logger::new(LogConfig::default(), "http-gql-wal-test");
+            let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+            state.ready.store(true, Ordering::Release);
+
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "CREATE BUNDLE http_wal (id INT BASE, label TEXT FIBER);",
+                )
+                .await,
+                StatusCode::OK
+            );
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "INSERT INTO http_wal (id, label) VALUES (1, 'one');",
+                )
+                .await,
+                StatusCode::OK
+            );
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "SECTIONS http_wal (id, label) (2, 'two'), (3, 'three');",
+                )
+                .await,
+                StatusCode::OK
+            );
+
+            state.engine.write().unwrap().checkpoint().unwrap();
+        }
+
+        {
+            let engine = Engine::open(&dir).unwrap();
+            for (id, label) in [(1, "one"), (2, "two"), (3, "three")] {
+                let mut key = Record::new();
+                key.insert("id".into(), Value::Integer(id));
+                let row = engine.point_query("http_wal", &key).unwrap().unwrap();
+                assert_eq!(row.get("label"), Some(&Value::Text(label.into())));
+            }
+        }
 
         cleanup(&dir);
     }

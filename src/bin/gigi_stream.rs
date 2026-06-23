@@ -12421,6 +12421,41 @@ async fn gql_query(
         }
         state.metrics.record_query(dur, stmt_type, slow, false);
         (status, resp)
+    } else if gigi::virtual_bundles::is_virtual(&bundle_name) {
+        // Virtual-bundle short-circuit (`__bundles__` etc): the registry
+        // is materialized fresh per call by `parser::execute`, which has
+        // the dispatch at `src/parser.rs:8738` for `Statement::Cover` on
+        // virtual names. We hold a write lock only briefly because
+        // `materialize_bundles_rows` itself takes `&Engine`; the `&mut`
+        // requirement comes from the function signature on the executor,
+        // not the operation. Read-only semantics preserved: writes against
+        // a virtual bundle are rejected upstream by
+        // `reject_virtual_write` in the parser's Insert/Upsert/etc arms.
+        let mut engine = state.engine.write().unwrap();
+        let result = gigi::parser::execute(&mut engine, &stmt);
+        drop(engine);
+        let dur = t0.elapsed().as_micros() as u64;
+        let (status, resp) = match result {
+            Ok(r) => exec_result_to_response(r),
+            Err(e) => {
+                let ev = state.logger.query_error(&req_id, query, dur, "VirtualBundleExecError", &e, 500);
+                state.logger.emit(ev);
+                state.metrics.record_query(dur, stmt_type, false, true);
+                return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e})));
+            }
+        };
+        let slow = dur >= state.logger.slow_threshold_us();
+        let ev = state.logger.query_complete(
+            &req_id, "gql", stmt_type, query, dur, 0, dur,
+            &[bundle_name.clone()], 0, 0, 0, 0, false, None, None,
+        );
+        state.logger.emit(ev);
+        if slow {
+            let ev2 = state.logger.query_slow(&req_id, stmt_type, query, dur, false, false, "virtual bundle read path");
+            state.logger.emit(ev2);
+        }
+        state.metrics.record_query(dur, stmt_type, slow, false);
+        (status, resp)
     } else {
         let engine = state.engine.read().unwrap();
         let store = match engine.bundle(&bundle_name) {

@@ -275,3 +275,65 @@ Mirroring `§8` of the gates doc:
 - **`papers/solves_vol4_ym_mass_gap.tex` Appendix A.4 — the public-receipt verifier promotes from 30-second thermalization to sub-100ms cached read** against the production substrate. After `verify_canonical_receipt.py --snapshot` runs once against `gigi-stream.fly.dev`, the canonical thermalized buffer lives in the production WAL. Subsequent verification calls skip thermalization and just read the cached buffer via the existing `GET /v1/gauge_field/halcyon_canonical_U/plaquette?reduction=mean` route.
 - **Citation handle = snapshot SHA-256.** The chapter currently cites the Halcyon JSON's commit hash + the GIGI deploy hash. With Part V, the canonical adds a third hash — the SHA-256 of the thermalized buffer itself, computed over the LE-encoded f64 bytes per **D-V-C**. That's a state-level fingerprint independent of code commits or deploys, and is the strongest publicly-citable receipt the architecture can offer.
 - **Marcella's gauge-corpus reader gets a stable corpus.** Already named as read-only in the Part II audit. With persistent thermalized fields, her geometric channel can query a stable corpus instead of triggering thermalization on every read. Off-critical-path but real, and the SHA-256 citation handle means the corpus has a verifiable identity that survives engine restarts.
+
+---
+
+## 2026-06-26 amendment — orphan snapshot policy: hard-reject → graceful-skip
+
+**Commit:** `d592313` — `gigi(durability): orphan gauge snapshot → skip + warn instead of hard-fail`.
+
+**Why this is a Part V amendment:** TDD-HAL-V.3 (gate above, original spec) ratified three replay-time rejection paths — `OrphanedSnapshot`, `SnapshotGroupMismatch`, `SnapshotChecksumMismatch`. The original semantic was *all three hard-reject the entire `Engine::open` call*. After today's production incident the orphan branch was flipped to a graceful skip (warn + return `Ok(())` on the missing-handle case, leave the orphan field unregistered). The other two corruption checks (group mismatch, SHA-256 checksum mismatch) remain hard-reject — those genuinely indicate WAL byte corruption or operator error.
+
+**Trigger (2026-06-26 incident chain on `gigi-stream.fly.dev`):**
+
+1. Boot snapshot writer wedged on `marcella_source_embeddings_bge_v2` (~30 min hang). 3c9047d's `spawn_blocking` hardening covered the `POST /v1/admin/snapshot` path; the boot path at `src/bin/gigi_stream.rs:15237` called the no-timeout sibling `engine.snapshot()` instead of `snapshot_with_report()`, so the boot wedged indefinitely.
+2. `91dced1` shipped a `GIGI_SKIP_BOOT_SNAPSHOT=1` env-var escape valve + switched the boot path to `snapshot_with_report()` + added stale-`.tmp` cleanup. Production booted on heap (~15GB RSS).
+3. Heap-mode RSS + Marcella `IMAGINE` Phase 2 traffic OOM-killed the machine at ~14 min uptime (`exit_code 137`).
+4. The wedged-then-OOM-killed prior boot left an orphan `OP_GAUGE_FIELD_SNAPSHOT` for field `U_v` in the gauge WAL — a snapshot entry whose preceding `OP_GAUGE_FIELD_DECLARE` was never flushed.
+5. The auto-restart's fast-mmap path (`Engine::open_mmap`) replayed the WAL, hit the orphan, returned `WalError::OrphanedSnapshot("U_v")`, fell back to *full heap replay* (`src/bin/gigi_stream.rs:15209`), and would have OOM-killed again on the same 14-min cycle.
+
+**Architectural read:** the original V.3 design treated *any* missing-handle case as corruption. Today's incident proved that **an orphan can also be an availability hazard arising from legitimate WAL truncation** (Codex's WAL durability prefix-preservation does not preserve the order-invariant `DECLARE → SNAPSHOT` pairing when the tail truncates between them). Refusing the install is still correct (no silent corruption), but cascading to heap replay was the wrong recovery — the orphan's bytes are *not* installed either way; the question is whether the rest of the WAL can be processed.
+
+**Change applied in `d592313`:**
+
+```rust
+// src/engine.rs — gauge snapshot replay (Pass 3), inside the replay closure
+let handle = match crate::gauge::registry::get(&payload.name) {
+    Some(h) => h,
+    None => {
+        eprintln!(
+            "WARNING: gauge field WAL has snapshot for '{}' \
+             with no preceding OP_GAUGE_FIELD_DECLARE — \
+             skipping orphan snapshot (field unavailable). \
+             Boot continues on mmap fast path.",
+            payload.name
+        );
+        return Ok(());
+    }
+};
+// group/sha checks unchanged — those stay hard-reject
+```
+
+**Test update — `tdd_hal_v_3_replay_orphan_snapshot`:** revised to assert the new graceful semantic. The test now hand-builds a WAL with one `OP_GAUGE_FIELD_SNAPSHOT` for `U_orphan` and no declare, calls `Engine::open(&dir)`, and asserts:
+- `Engine::open` succeeds (`expect("orphan snapshot must be SKIPPED, not hard-error")`)
+- `gauge::registry::get("U_orphan").is_none()` (orphan field stays unregistered after the skip)
+
+**Sibling V.3 tests verified intact at the same commit:**
+
+```
+running 4 tests
+test engine::tests::tdd_hal_v_3_replay_checksum_mismatch ... ok
+test engine::tests::tdd_hal_v_3_replay_snapshot_byte_identity ... ok
+test engine::tests::tdd_hal_v_3_replay_orphan_snapshot ... ok       (← revised)
+test engine::tests::tdd_hal_v_3_replay_group_mismatch ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 1034 filtered out
+```
+
+**Recovery primitive sketched (not yet implemented):** `POST /v1/admin/gauge/repair` — given a field name, write a synthetic `OP_GAUGE_FIELD_DECLARE` matching the orphan snapshot's group tag, so the next replay can install the buffer. Captured here as a follow-up; the orphan-skip alone restores boot availability, and the orphan field's bytes are still in the WAL when the repair primitive lands.
+
+**Two related commits shipped in the same incident response (named here so the V.3 history is complete):**
+
+- `91dced1` — boot snapshot escape valve + timeout-aware default (`engine.snapshot()` → `engine.snapshot_with_report()`) + stale-`.tmp` cleanup at `src/bin/gigi_stream.rs:15234-15290`. Does not modify a Part V gate but is the precondition that revealed the orphan path (without it, production never reached the second restart).
+- `a190a72` — IMAGINE coherence Phase 2 (n-D integrator + tame-metric fallback). The Marcella endpoint that drove the load that exposed the OOM cascade. Independent of Part V but named here because the incident chain is otherwise hard to read.
+
+**Production receipt at the closing commit `d592313`:** `flyctl status` reports `1 total, 1 passing` on `gigi-stream.fly.dev` v228 (image `gigi-stream:deployment-01KW2DMMGB10V4A73TT3WYXD02`) — first clean fly-health-check pass of the day. Fast-mmap path completes within fly's smoke-check window. RSS stays at ~200MB (mmap) instead of the ~15GB heap-mode footprint that OOM-killed v226 and v227.

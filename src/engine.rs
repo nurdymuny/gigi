@@ -2089,7 +2089,32 @@ impl Engine {
             let start = std::time::Instant::now();
             let mut timed_out = false;
             let inner = (|| -> io::Result<usize> {
+                // ── 2026-06-26 INCIDENT — high-dim sort bypass ────────────────────
+                // Identical motivation as the non-report variant below
+                // (see snapshot_with_chunk_size). The timeout-aware sibling
+                // ALSO took the Vec<serde_json::Value> sort path, and the
+                // `if let Some(b) = budget` timeout checks only fire BETWEEN
+                // records — not while serde_json::Value allocations stall
+                // the allocator on a 9964 × 384-dim bundle. The budget
+                // elapsed silently and the snapshot still wedged.
+                //
+                // Fix: same conditional bypass — when high-dim, stream
+                // records directly via push_record. Bit-identical for
+                // small bundles (count ≤ 1000 AND est_bytes_per_record
+                // ≤ 1024).
+                //
+                // See theory/sudoku/SUDOKU_FINDING_1_ENCODER_HANG.md.
+                const SORT_BYPASS_RECORD_COUNT: usize = 1000;
+                const SORT_BYPASS_BYTES_PER_RECORD: usize = 1024;
+                const FIELD_BYTES_ESTIMATE: usize = 8;
+
                 let schema = self.schemas.get(name.as_str());
+                let est_bytes_per_record = schema
+                    .map(|s| s.base_fields.len().saturating_mul(FIELD_BYTES_ESTIMATE))
+                    .unwrap_or(0);
+                let should_bypass_sort = count > SORT_BYPASS_RECORD_COUNT
+                    || est_bytes_per_record > SORT_BYPASS_BYTES_PER_RECORD;
+
                 let arith_key = schema.and_then(|s| {
                     if s.base_fields.len() == 1
                         && matches!(s.base_fields[0].field_type, crate::types::FieldType::Numeric)
@@ -2105,7 +2130,7 @@ impl Engine {
                 let mut encoder =
                     crate::dhoom::StreamingDhoomEncoder::new(buf, name, chunk_size);
 
-                if let Some(ref key_field) = arith_key {
+                if let (Some(ref key_field), false) = (arith_key.as_ref(), should_bypass_sort) {
                     let mut recs: Vec<serde_json::Value> = Vec::new();
                     for rec in store.records() {
                         if let Some(b) = budget {
@@ -2137,6 +2162,12 @@ impl Engine {
                         encoder.push(rec.clone())?;
                     }
                 } else {
+                    if should_bypass_sort && arith_key.is_some() {
+                        eprintln!(
+                            "  Snapshot streaming: {name} (high-dim sort bypass active; \
+                             {count} records, ~{est_bytes_per_record}B/record est.)"
+                        );
+                    }
                     for rec in store.records() {
                         if let Some(b) = budget {
                             if start.elapsed() > b {
@@ -2550,9 +2581,40 @@ impl Engine {
 
             eprintln!("  Snapshot streaming: {name} ({count} records, chunk_size={chunk_size})…");
             {
+                // ── 2026-06-26 INCIDENT — high-dim sort bypass ────────────────────
+                // gigi-stream.fly.dev v228 hung indefinitely inside the
+                // StreamingDhoomEncoder while snapshotting Marcella's
+                // `marcella_source_embeddings_bge_v2` bundle (9964 records
+                // × 384-dim BGE embeddings). Root cause: the arithmetic-key
+                // sort path below builds a Vec<serde_json::Value> of ALL
+                // records BEFORE encoding, routing ~3.8M heap allocations
+                // through serde_json::json! on every Vector element. The
+                // encoder appeared "hung" because there is no per-record
+                // budget check during the Vec-collection phase.
+                //
+                // Fix (ITEM 4 of the SUDOKU 8-item workflow): when the
+                // bundle is "high-dim" by either record count or estimated
+                // per-record bytes, skip the sort entirely and stream
+                // records directly via the native push_record path.
+                // detect_arithmetic() only samples; random storage order
+                // is fine for high-dim bundles where sort cost is
+                // catastrophic. Small/low-dim bundles continue down the
+                // existing sort path bit-identically.
+                //
+                // See theory/sudoku/SUDOKU_FINDING_1_ENCODER_HANG.md.
+                const SORT_BYPASS_RECORD_COUNT: usize = 1000;
+                const SORT_BYPASS_BYTES_PER_RECORD: usize = 1024;
+                const FIELD_BYTES_ESTIMATE: usize = 8;
+
                 // Collect and sort by arithmetic key field so detect_arithmetic()
                 // sees a uniform sequence regardless of storage iteration order.
                 let schema = self.schemas.get(name.as_str());
+                let est_bytes_per_record = schema
+                    .map(|s| s.base_fields.len().saturating_mul(FIELD_BYTES_ESTIMATE))
+                    .unwrap_or(0);
+                let should_bypass_sort = count > SORT_BYPASS_RECORD_COUNT
+                    || est_bytes_per_record > SORT_BYPASS_BYTES_PER_RECORD;
+
                 let arith_key = schema.and_then(|s| {
                     if s.base_fields.len() == 1
                         && matches!(s.base_fields[0].field_type, crate::types::FieldType::Numeric)
@@ -2568,7 +2630,7 @@ impl Engine {
                 let mut encoder =
                     crate::dhoom::StreamingDhoomEncoder::new(buf, name, chunk_size);
 
-                if let Some(ref key_field) = arith_key {
+                if let (Some(ref key_field), false) = (arith_key.as_ref(), should_bypass_sort) {
                     // Buffer → sort → encode (guarantees arithmetic
                     // detection on the sample). The arithmetic-sort
                     // path needs to inspect `id` numerically, so we
@@ -2588,6 +2650,12 @@ impl Engine {
                         encoder.push(rec.clone())?;
                     }
                 } else {
+                    if should_bypass_sort && arith_key.is_some() {
+                        eprintln!(
+                            "  Snapshot streaming: {name} (high-dim sort bypass active; \
+                             {count} records, ~{est_bytes_per_record}B/record est.)"
+                        );
+                    }
                     // **#112 — native Record path.** Skips the
                     // per-record `serde_json::Value` allocation on the
                     // streaming encoder hot path.

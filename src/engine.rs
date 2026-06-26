@@ -680,6 +680,7 @@ impl Engine {
         let mut heap_bundles: HashMap<String, BundleStore> = HashMap::new();
         for (name, schema) in &schemas {
             let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
+            let prev_path = snapshots_dir.join(format!("{name}.dhoom.prev"));
             if snapshots_dir.exists() && snap_path.exists() {
                 // ITEM 3 (a)-bucket: GRACEFUL-SKIP on per-bundle .dhoom
                 // failures. A corrupt/truncated/0-byte snapshot for ONE
@@ -691,27 +692,79 @@ impl Engine {
                 // and `replay_gauge_substrate` (line 752) — both are
                 // HARD-REJECT and propagate. See
                 // theory/sudoku/SUDOKU_FINDING_3_MMAP_TRIAGE.md.
-                match MmapBundle::open(&snap_path) {
+                //
+                // ITEM 6 — two-version rotation. Try .dhoom first; if it
+                // fails for parse-shaped reasons (InvalidData /
+                // UnexpectedEof / 0-byte file), fall back to .dhoom.prev
+                // before dropping to heap. Operational errors
+                // (PermissionDenied, etc.) skip the .prev fallback so
+                // the operator sees the original error in the warning.
+                let primary_open = MmapBundle::open(&snap_path);
+                match primary_open {
                     Ok(mmap) => {
                         let n = mmap.len();
                         let overlay = OverlayBundle::new(mmap, schema.clone());
                         eprintln!("  Mmap opened: {name} ({n} records)");
                         mmap_bundles.insert(name.clone(), overlay);
                     }
-                    Err(e) => {
-                        // ITEM-3-MMAP-SKIP marker — grep-able tag the
-                        // engine_open_mmap_orphan test pins against.
-                        // Format MUST stay stable:
-                        //   "ITEM-3-MMAP-SKIP bundle={name} err={e}".
-                        eprintln!(
-                            "  WARNING: ITEM-3-MMAP-SKIP bundle={name} err={e} — falling back to heap"
-                        );
-                        heap_bundles.insert(name.clone(), BundleStore::new(schema.clone()));
+                    Err(primary_err) => {
+                        let parse_shaped = matches!(
+                            primary_err.kind(),
+                            io::ErrorKind::InvalidData | io::ErrorKind::UnexpectedEof
+                        ) || fs::metadata(&snap_path)
+                            .map(|m| m.len() == 0)
+                            .unwrap_or(false);
+
+                        if parse_shaped && prev_path.exists() {
+                            match MmapBundle::open(&prev_path) {
+                                Ok(mmap) => {
+                                    let n = mmap.len();
+                                    let overlay =
+                                        OverlayBundle::new(mmap, schema.clone());
+                                    eprintln!(
+                                        "  WARNING: mmap open failed for {name}: {primary_err} \
+                                         — loaded .dhoom.prev ({n} records). \
+                                         The .dhoom file is corrupt; previous generation served."
+                                    );
+                                    mmap_bundles.insert(name.clone(), overlay);
+                                }
+                                Err(prev_err) => {
+                                    // ITEM-3-MMAP-SKIP marker — grep-able
+                                    // tag the engine_open_mmap_orphan test
+                                    // pins against. Format MUST stay stable:
+                                    //   "ITEM-3-MMAP-SKIP bundle={name} err={e}".
+                                    eprintln!(
+                                        "  WARNING: ITEM-3-MMAP-SKIP bundle={name} err={primary_err}; \
+                                         .dhoom.prev also failed: {prev_err} — falling back to heap"
+                                    );
+                                    heap_bundles.insert(
+                                        name.clone(),
+                                        BundleStore::new(schema.clone()),
+                                    );
+                                }
+                            }
+                        } else {
+                            // ITEM-3-MMAP-SKIP marker — grep-able tag the
+                            // engine_open_mmap_orphan test pins against.
+                            // Format MUST stay stable:
+                            //   "ITEM-3-MMAP-SKIP bundle={name} err={e}".
+                            eprintln!(
+                                "  WARNING: ITEM-3-MMAP-SKIP bundle={name} err={primary_err} — falling back to heap"
+                            );
+                            heap_bundles
+                                .insert(name.clone(), BundleStore::new(schema.clone()));
+                        }
                     }
                 }
             } else {
-                // No snapshot on disk for this schema. Create a heap-only
-                // BundleStore so subsequent WAL inserts find a target.
+                // No .dhoom on disk for this schema. Note we do NOT try
+                // .dhoom.prev here:
+                //   - The rotation algorithm only writes .prev as a side
+                //     effect of replacing an existing .dhoom, so if .dhoom
+                //     never existed .prev shouldn't either.
+                //   - If .dhoom was manually deleted by an operator,
+                //     loading .prev would silently undo that.
+                // Subsequent WAL inserts (Phase 3) populate the heap store.
                 eprintln!("  Heap-only (no snapshot): {name}");
                 heap_bundles.insert(name.clone(), BundleStore::new(schema.clone()));
             }
@@ -2131,6 +2184,100 @@ impl Engine {
         )
     }
 
+    /// Atomic two-version snapshot rotation (ITEM 6).
+    ///
+    /// Replaces the previous single `fs::rename(&tmp_path, &snap_path)` step
+    /// at the five snapshot-write sites with a rotation that preserves the
+    /// prior generation as `.dhoom.prev`. The boot path
+    /// (`Engine::open_mmap`) falls back to `.prev` if the latest `.dhoom`
+    /// is unreadable (0-byte / parse failure), so a wedged write cannot
+    /// strand a bundle.
+    ///
+    /// Algorithm:
+    ///
+    /// 1. fsync the `.dhoom.tmp` file. `StreamingDhoomEncoder::finish()`
+    ///    flushed the BufWriter to the OS page cache; without this step
+    ///    the page-cache contents can be reordered after the rename
+    ///    metadata reaches disk, leaving a `.dhoom` whose directory
+    ///    entry is durable but whose contents are truncated to zero
+    ///    after a power loss.
+    ///
+    /// 2. Rename `.dhoom.tmp` to `.dhoom.new`. Same-directory rename is
+    ///    atomic on every supported filesystem (NTFS, ext4, xfs, apfs).
+    ///
+    /// 3. If `.dhoom` exists, rename it to `.dhoom.prev`. `fs::rename`
+    ///    overwrites the destination atomically on both Windows and Unix,
+    ///    so any stale `.prev` from an earlier cycle is replaced.
+    ///
+    /// 4. Rename `.dhoom.new` to `.dhoom`. After this rename returns,
+    ///    readers that open `snap_path` see the new generation.
+    ///
+    /// 5. On Unix, fsync the snapshots directory so the rename metadata
+    ///    is durable. NTFS metadata journaling makes the rename durable
+    ///    on return, so this step is compiled out on Windows.
+    ///
+    /// Crash invariants:
+    ///
+    /// - Crash between (2) and (3): `.dhoom` (prior gen) + `.dhoom.new`
+    ///   (next gen) both on disk. Boot reads `.dhoom`. Next snapshot
+    ///   overwrites `.dhoom.new` via the tmp -> .new rename.
+    /// - Crash between (3) and (4): `.dhoom.prev` (prior gen) + `.dhoom.new`
+    ///   (next gen) on disk, no `.dhoom`. Boot path's read-side fallback
+    ///   (no `.dhoom` -> heap-only, NOT `.prev` silently — see
+    ///   `Engine::open_mmap` Phase 2) treats this as missing snapshot;
+    ///   the next snapshot recovers.
+    /// - Crash after (4): durable. Boot reads `.dhoom` cleanly.
+    fn rotate_snapshot(
+        snapshots_dir: &Path,
+        snap_path: &Path,
+        tmp_path: &Path,
+    ) -> io::Result<()> {
+        // 1. fsync the tmp file's contents before renaming. Unix only —
+        //    on Windows / NTFS, opening an arbitrary path for read +
+        //    sync_all can race with the file-creation handle's lazy
+        //    close (PermissionDenied via FILE_SHARE_DELETE semantics on
+        //    older NTFS versions). NTFS metadata journaling makes the
+        //    rename itself durable on return, so we rely on that.
+        #[cfg(unix)]
+        {
+            if let Ok(f) = fs::File::open(tmp_path) {
+                let _ = f.sync_all();
+            }
+        }
+
+        // 2. tmp -> .new (atomic same-dir rename).
+        let new_path = snap_path.with_extension("dhoom.new");
+        fs::rename(tmp_path, &new_path)?;
+
+        // 3. If a current generation exists, rotate it to .prev. fs::rename
+        //    overwrites the destination on both Windows and Unix, so any
+        //    stale .prev is replaced atomically.
+        if snap_path.exists() {
+            let prev_path = snap_path.with_extension("dhoom.prev");
+            fs::rename(snap_path, &prev_path)?;
+        }
+
+        // 4. Promote .new -> .dhoom.
+        fs::rename(&new_path, snap_path)?;
+
+        // 5. fsync the snapshots directory on Unix so the rename metadata
+        //    is durable. Windows / NTFS metadata journaling already makes
+        //    the rename durable on return; opening a directory handle for
+        //    sync_all is not a supported pattern on Windows.
+        #[cfg(unix)]
+        {
+            if let Ok(d) = fs::File::open(snapshots_dir) {
+                let _ = d.sync_all();
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = snapshots_dir; // silence unused on Windows
+        }
+
+        Ok(())
+    }
+
     /// Timeout-aware variant of `snapshot_with_chunk_size`.
     ///
     /// A timed-out bundle leaves its prior `.dhoom` file untouched and prevents
@@ -2285,7 +2432,7 @@ impl Engine {
 
             match inner {
                 Ok(n) => {
-                    fs::rename(&tmp_path, &snap_path)?;
+                    Self::rotate_snapshot(&snapshots_dir, &snap_path, &tmp_path)?;
                     report.total_records_written += n;
                     report.bundles.push(SnapshotBundleOutcome {
                         bundle_name: name.clone(),
@@ -2483,7 +2630,7 @@ impl Engine {
 
             match inner {
                 Ok(n) => {
-                    fs::rename(&tmp_path, &snap_path)?;
+                    Self::rotate_snapshot(&snapshots_dir, &snap_path, &tmp_path)?;
                     report.total_records_written += n;
                     report.bundles.push(SnapshotBundleOutcome {
                         bundle_name: bdc.name.clone(),
@@ -2752,7 +2899,7 @@ impl Engine {
                 eprintln!("  Snapshot written: {name} ({count} records)");
             }
 
-            fs::rename(&tmp_path, &snap_path)?;
+            Self::rotate_snapshot(&snapshots_dir, &snap_path, &tmp_path)?;
             total_records += count;
         }
 
@@ -2923,7 +3070,7 @@ impl Engine {
                 encoder.finish()?;
             }
 
-            fs::rename(&tmp_path, &snap_path)?;
+            Self::rotate_snapshot(&snapshots_dir, &snap_path, &tmp_path)?;
 
             // Open new mmap base and rebase the overlay
             let new_base = MmapBundle::open(&snap_path)?;
@@ -2983,7 +3130,7 @@ impl Engine {
                 }
                 encoder.finish()?;
             }
-            fs::rename(&tmp_path, &snap_path)?;
+            Self::rotate_snapshot(&snapshots_dir, &snap_path, &tmp_path)?;
             eprintln!("  Heap snapshot: {name} ({} records)", records.len());
         }
 

@@ -681,6 +681,16 @@ impl Engine {
         for (name, schema) in &schemas {
             let snap_path = snapshots_dir.join(format!("{name}.dhoom"));
             if snapshots_dir.exists() && snap_path.exists() {
+                // ITEM 3 (a)-bucket: GRACEFUL-SKIP on per-bundle .dhoom
+                // failures. A corrupt/truncated/0-byte snapshot for ONE
+                // bundle must not wedge the whole engine — the schema is
+                // still in the WAL, so we degrade that single bundle to a
+                // heap-only store and let post-checkpoint WAL inserts
+                // re-populate it. Real WAL/checksum corruption is caught
+                // upstream by `finish_wal_replay_prefix` (line 659-663)
+                // and `replay_gauge_substrate` (line 752) — both are
+                // HARD-REJECT and propagate. See
+                // theory/sudoku/SUDOKU_FINDING_3_MMAP_TRIAGE.md.
                 match MmapBundle::open(&snap_path) {
                     Ok(mmap) => {
                         let n = mmap.len();
@@ -689,8 +699,12 @@ impl Engine {
                         mmap_bundles.insert(name.clone(), overlay);
                     }
                     Err(e) => {
+                        // ITEM-3-MMAP-SKIP marker — grep-able tag the
+                        // engine_open_mmap_orphan test pins against.
+                        // Format MUST stay stable:
+                        //   "ITEM-3-MMAP-SKIP bundle={name} err={e}".
                         eprintln!(
-                            "  WARNING: mmap open failed for {name}: {e} — falling back to heap"
+                            "  WARNING: ITEM-3-MMAP-SKIP bundle={name} err={e} — falling back to heap"
                         );
                         heap_bundles.insert(name.clone(), BundleStore::new(schema.clone()));
                     }

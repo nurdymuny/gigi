@@ -1066,9 +1066,27 @@ impl Engine {
         let replay_result = reader.replay(|entry| {
             entries_applied += 1;
             if let WalEntry::GaugeFieldSnapshot(payload) = entry {
-                // 2. Resolve handle through the dyn read registry.
-                let handle = crate::gauge::registry::get(&payload.name)
-                    .ok_or_else(|| crate::wal::WalError::OrphanedSnapshot(payload.name.clone()))?;
+                // 2. Resolve handle through the dyn read registry. When the
+                // declare is missing (orphan snapshot — usually a partial
+                // WAL from a wedged or OOM-killed prior boot), skip the
+                // snapshot with a warning instead of aborting the entire
+                // mmap-open path. Skipping keeps the boot on the
+                // low-memory mmap fast path; the orphan field stays
+                // unavailable until POST /v1/admin/gauge/repair writes a
+                // synthetic declare.
+                let handle = match crate::gauge::registry::get(&payload.name) {
+                    Some(h) => h,
+                    None => {
+                        eprintln!(
+                            "WARNING: gauge field WAL has snapshot for '{}' \
+                             with no preceding OP_GAUGE_FIELD_DECLARE — \
+                             skipping orphan snapshot (field unavailable). \
+                             Boot continues on mmap fast path.",
+                            payload.name
+                        );
+                        return Ok(());
+                    }
+                };
                 // 3. Group-tag agreement.
                 let expected_group = handle.group();
                 if expected_group != payload.group {
@@ -5984,11 +6002,15 @@ mod tests {
         cleanup(&dir);
     }
 
-    /// TDD-HAL-V.3: orphan snapshot — hand-build a WAL whose only
-    /// gauge entry is `OP_GAUGE_FIELD_SNAPSHOT` for field `U_orphan`
-    /// (no preceding `OP_GAUGE_FIELD_DECLARE`). Engine::open must
-    /// surface `WalError::OrphanedSnapshot("U_orphan")` and refuse to
-    /// install the buffer.
+    /// TDD-HAL-V.3 (revised 2026-06-26): orphan snapshot — hand-build a WAL
+    /// whose only gauge entry is `OP_GAUGE_FIELD_SNAPSHOT` for field
+    /// `U_orphan` (no preceding `OP_GAUGE_FIELD_DECLARE`). Engine::open
+    /// must SKIP the orphan snapshot with a warning + complete successfully,
+    /// leaving the orphan field unregistered so callers see "field unknown"
+    /// rather than the entire boot failing. This is the availability
+    /// trade-off shipped after the 2026-06-26 production incident where a
+    /// wedged-then-OOM-killed prior boot left an orphan U_v snapshot that
+    /// would have forced fall-back to full heap replay (~15GB RSS → OOM).
     #[cfg(feature = "gauge")]
     #[test]
     fn tdd_hal_v_3_replay_orphan_snapshot() {
@@ -6000,10 +6022,6 @@ mod tests {
         cleanup(&dir);
         fs::create_dir_all(&dir).unwrap();
 
-        // Hand-write a WAL with one OP_GAUGE_FIELD_SNAPSHOT entry and
-        // nothing else. The payload's buffer is a valid 90×4 identity
-        // buffer so SHA-256 verification passes; the rejection has to
-        // come from the orphan-handle check alone.
         let wal_path = dir.join("gigi.wal");
         let mut buffer = Vec::with_capacity(90 * 4);
         for _ in 0..90 {
@@ -6023,17 +6041,16 @@ mod tests {
             writer.sync().unwrap();
         }
 
-        // Engine::open replays the WAL — the snapshot pass must
-        // surface the orphan error through the io::Error path.
-        let err = match Engine::open(&dir) {
-            Ok(_) => panic!("orphan snapshot must surface WalError::OrphanedSnapshot"),
-            Err(e) => e,
-        };
-        let msg = err.to_string();
+        // Engine::open replays the WAL — the snapshot pass must SKIP the
+        // orphan (logging a warning) and return successfully. The orphan
+        // field stays unregistered.
+        let engine = Engine::open(&dir)
+            .expect("orphan snapshot must be SKIPPED, not hard-error");
         assert!(
-            msg.contains("U_orphan") && msg.contains("orphan"),
-            "error must name the orphan field and the orphan category, got: {msg}"
+            crate::gauge::registry::get("U_orphan").is_none(),
+            "skipped orphan field must remain unregistered"
         );
+        drop(engine);
 
         crate::lattice::registry::clear();
         crate::gauge::registry::clear();

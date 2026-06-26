@@ -15233,16 +15233,59 @@ async fn main() {
             // Phase 2: Snapshot heap bundles to DHOOM files + compact WAL
             let total = engine.total_records();
             if total > 0 {
-                eprintln!("WAL replay complete ({total} records). Snapshotting to DHOOM…");
-                if let Err(e) = engine.snapshot() {
-                    eprintln!("Post-replay snapshot failed: {e}");
-                    // Non-fatal: we keep running on heap. Mmap upgrade skipped.
+                if std::env::var("GIGI_SKIP_BOOT_SNAPSHOT").is_ok() {
+                    eprintln!(
+                        "WAL replay complete ({total} records). \
+                         GIGI_SKIP_BOOT_SNAPSHOT set — skipping post-replay snapshot. \
+                         Engine ready on heap (no mmap upgrade this boot)."
+                    );
                     init_system_bundles(&mut engine);
                     init_app_bundles(&mut engine);
                     drop(engine);
                     replay_state.ready.store(true, Ordering::Release);
-                    eprintln!("Engine ready — running on heap (snapshot failed)");
                     return;
+                }
+
+                eprintln!("WAL replay complete ({total} records). Snapshotting to DHOOM…");
+
+                let snapshots_dir = data_dir_for_replay.join("snapshots");
+                if let Ok(entries) = std::fs::read_dir(&snapshots_dir) {
+                    for ent in entries.flatten() {
+                        let path = ent.path();
+                        if path.extension().map_or(false, |e| e == "tmp") {
+                            if let Ok(meta) = ent.metadata() {
+                                if meta.len() == 0 {
+                                    let _ = std::fs::remove_file(&path);
+                                    eprintln!(
+                                        "Cleaned stale 0-byte snapshot tmp: {}",
+                                        path.display()
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                match engine.snapshot_with_report() {
+                    Ok(report) => {
+                        if !report.timed_out_bundles.is_empty() {
+                            eprintln!(
+                                "Post-replay snapshot completed with {} timed-out bundle(s): {:?}. \
+                                 Data preserved in WAL; will retry next compaction cycle.",
+                                report.timed_out_bundles.len(),
+                                report.timed_out_bundles
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Post-replay snapshot failed: {e}");
+                        init_system_bundles(&mut engine);
+                        init_app_bundles(&mut engine);
+                        drop(engine);
+                        replay_state.ready.store(true, Ordering::Release);
+                        eprintln!("Engine ready — running on heap (snapshot failed)");
+                        return;
+                    }
                 }
                 eprintln!("DHOOM snapshot written. Reopening in mmap mode…");
             }

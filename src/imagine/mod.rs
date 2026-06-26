@@ -59,7 +59,8 @@ pub use path_registry::{
 };
 
 pub use coherence::{
-    imagine_coherence_trajectory, metric_for_constant_k, CoherencePoint, CoherenceTrajectoryReport,
+    imagine_coherence_trajectory, imagine_coherence_trajectory_phase_2, integrate_geodesic_phase_2,
+    metric_for_constant_k, CoherencePoint, CoherenceTrajectoryReport, K_MAX_PHASE2, K_TAME_PHASE2,
 };
 pub use config::{
     CurvatureGateRaisedAboveDefault, HaloConfig, ImagineConfig, WalkConfig,

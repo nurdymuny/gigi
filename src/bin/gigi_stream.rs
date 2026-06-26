@@ -3317,7 +3317,10 @@ struct ImagineCoherenceResponse {
     bundle: String,
     /// Substrate dimension (length of `starting_from` / `along`).
     dim: usize,
-    /// Effective metric curvature used for the integration.
+    /// Effective metric curvature used for the integration. When
+    /// `metric_substituted` is `Some`, this is the substituted (tame)
+    /// K, NOT the original bundle K (which is recoverable via
+    /// `metric_substituted.original_metric_curvature`).
     metric_curvature: f64,
     /// The walk's safety envelope as resolved against request +
     /// defaults.
@@ -3348,6 +3351,37 @@ struct ImagineCoherenceResponse {
     /// audit log.
     #[serde(skip_serializing_if = "Option::is_none")]
     threshold_drift: Option<gigi::imagine::CurvatureGateRaisedAboveDefault>,
+    /// Phase 2 audit: present iff the tame-metric fallback engaged for
+    /// this call. Absent (omitted via `skip_serializing_if`) when the
+    /// call ran on the literal substrate metric (the Phase-1-equivalent
+    /// path) — so consumers that don't know about Phase 2 see no new
+    /// key on the wire. When present, names the substitution so the
+    /// consumer can audit which trajectories were integrated on a
+    /// tamed geometry instead of the substrate's literal K.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metric_substituted: Option<MetricSubstitution>,
+}
+
+/// Phase 2 metric-substitution audit envelope. Surfaced as the
+/// `metric_substituted` field on [`ImagineCoherenceResponse`] when the
+/// tame-metric fallback engages. Marcella's confidence routing reads
+/// this to decide whether to downgrade the imagined trajectory's
+/// trust before consumption.
+#[cfg(feature = "imagine")]
+#[derive(Serialize)]
+struct MetricSubstitution {
+    /// Stable machine-readable tag. v0.2 ships exactly one value:
+    /// `"high_k_auto_tame"`. Future tags append.
+    reason: String,
+    /// The bundle K mean that triggered the fallback. Always the
+    /// literal substrate K (`bundle.curvature_stats().mean()`), even
+    /// if the caller passed an explicit override — in which case the
+    /// fallback is bypassed and this field is not produced.
+    original_metric_curvature: f64,
+    /// The K actually fed to the integrator (v0.2 always `1.0`).
+    substituted_metric_curvature: f64,
+    /// The K_MAX threshold the original exceeded. v0.2 ships `10.0`.
+    k_max_threshold: f64,
 }
 
 /// `POST /v1/bundles/{name}/imagine_coherence`
@@ -3367,9 +3401,11 @@ async fn bundle_imagine_coherence(
     Json(req): Json<ImagineCoherenceRequest>,
 ) -> Result<Json<ImagineCoherenceResponse>, (StatusCode, Json<ErrorResponse>)> {
     use gigi::imagine::{
-        imagine_coherence_trajectory, metric_for_constant_k, RoutingAdvisory, WalkConfig,
+        imagine_coherence_trajectory, imagine_coherence_trajectory_phase_2,
+        metric_for_constant_k, RoutingAdvisory, WalkConfig, K_MAX_PHASE2, K_TAME_PHASE2,
     };
 
+    // ─── Step 1: dim-pair consistency (400) ───────────────────────────────
     if req.starting_from.len() != req.along.len() {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -3382,21 +3418,24 @@ async fn bundle_imagine_coherence(
             }),
         ));
     }
-    if req.starting_from.len() != 2 {
+
+    // ─── Step 2: Phase 2 dim floor (was the Phase 1 dim==2 guard) ────────
+    // Phase 2 supports dim >= 1. dim < 1 still refused.
+    let dim = req.starting_from.len();
+    if dim < 1 {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
                 error: format!(
-                    "imagine_coherence Phase 1 supports dim = 2 (got {})",
-                    req.starting_from.len()
+                    "imagine_coherence Phase 2 requires dim >= 1 (got {})",
+                    dim
                 ),
             }),
         ));
     }
 
-    // Derive substrate metric curvature: explicit override or bundle
-    // mean K. Refuse if bundle not found.
-    let (metric_k, _record_count) = {
+    // ─── Step 3: bundle lookup + raw K derivation (404 unchanged) ────────
+    let (bundle_k_mean, _record_count) = {
         let engine = state.engine.read().unwrap();
         let bundle = engine.bundle(&name).ok_or_else(|| {
             (
@@ -3406,12 +3445,33 @@ async fn bundle_imagine_coherence(
                 }),
             )
         })?;
-        let k = req
-            .metric_curvature
-            .unwrap_or_else(|| bundle.curvature_stats().mean());
-        let n = bundle.len();
-        (k, n)
+        (bundle.curvature_stats().mean(), bundle.len())
     };
+
+    // ─── Step 4: tame-metric fallback decision (Phase 2 D2) ──────────────
+    //
+    // The fallback engages when bundle K mean is too high AND the caller
+    // did NOT pass an explicit override. Explicit overrides bypass the
+    // fallback unconditionally — the consumer has declared the geometry
+    // they want.
+    let explicit_k = req.metric_curvature;
+    let raw_k = explicit_k.unwrap_or(bundle_k_mean);
+    let auto_fallback = explicit_k.is_none() && raw_k.abs() > K_MAX_PHASE2;
+
+    let (metric_k, metric_substituted): (f64, Option<MetricSubstitution>) =
+        if auto_fallback {
+            (
+                K_TAME_PHASE2,
+                Some(MetricSubstitution {
+                    reason: "high_k_auto_tame".to_string(),
+                    original_metric_curvature: bundle_k_mean,
+                    substituted_metric_curvature: K_TAME_PHASE2,
+                    k_max_threshold: K_MAX_PHASE2,
+                }),
+            )
+        } else {
+            (raw_k, None)
+        };
 
     let walk_config = WalkConfig {
         max_imagined_curvature: req.max_imagined_curvature.unwrap_or(4.0),
@@ -3419,21 +3479,54 @@ async fn bundle_imagine_coherence(
         ..WalkConfig::default()
     };
 
-    let metric = metric_for_constant_k(metric_k);
-    let report = imagine_coherence_trajectory(
-        &metric,
-        "imagine_coherence_seed",
-        &name,
-        &req.starting_from,
-        &req.along,
-        req.steps,
-        &walk_config,
-    )
-    .map_err(|e| {
+    // ─── Step 5: WAL audit (only when the fallback actually engages) ─────
+    if auto_fallback {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let mut engine = state.engine.write().unwrap();
+        let _ = engine.log_imagine_fallback(&name, bundle_k_mean, K_TAME_PHASE2, now_ms);
+        // Failure to log is non-fatal at this layer — the trajectory
+        // still computes correctly and the consumer sees
+        // `metric_substituted` in the HTTP envelope. We deliberately
+        // do NOT fail the request on WAL hiccups (matches the
+        // existing pattern for HamiltonianDeclare audits — log is
+        // diagnostic).
+    }
+
+    // ─── Step 6: integrator dispatch ─────────────────────────────────────
+    //
+    // dim == 2 AND no fallback engaged → Phase 1 path (bit-identical).
+    // Anything else → Phase 2 closed-form constant-K integrator.
+    let report_result = if dim == 2 && !auto_fallback {
+        let metric = metric_for_constant_k(metric_k);
+        imagine_coherence_trajectory(
+            &metric,
+            "imagine_coherence_seed",
+            &name,
+            &req.starting_from,
+            &req.along,
+            req.steps,
+            &walk_config,
+        )
+    } else {
+        imagine_coherence_trajectory_phase_2(
+            "imagine_coherence_seed",
+            &name,
+            &req.starting_from,
+            &req.along,
+            req.steps,
+            metric_k,
+            &walk_config,
+        )
+    };
+
+    let report = report_result.map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("imagine_coherence: {}", e),
+                error: format!("imagine_coherence Phase 2: {}", e),
             }),
         )
     })?;
@@ -3461,6 +3554,7 @@ async fn bundle_imagine_coherence(
         refusal_reason: report.refusal_reason,
         routing_advisory,
         threshold_drift,
+        metric_substituted,
     };
 
     // If refused, return 422 with the report still attached so the

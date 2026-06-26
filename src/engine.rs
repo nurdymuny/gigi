@@ -908,6 +908,14 @@ impl Engine {
                 // the entry is consumed by post-hoc diagnostics tools.
                 #[cfg(feature = "gauge")]
                 WalEntry::IntegratorChoice { .. } => {}
+                // IMAGINE coherence Phase 2: IMAGINE_FALLBACK is
+                // audit-only — records when the tame-metric fallback
+                // engaged for an `imagine_coherence` request. Replay
+                // does not re-execute the decision; the entry is
+                // consumed by post-hoc diagnostics tools (Marcella's
+                // confidence routing, operator dashboards).
+                #[cfg(feature = "imagine")]
+                WalEntry::ImagineFallback { .. } => {}
             }
             Ok(())
         });
@@ -1741,6 +1749,26 @@ impl Engine {
     /// in declaration order and the lattice declare must precede the
     /// gauge-field declare. Compaction's emit loop preserves this
     /// ordering invariant (lattice → gauge field → checkpoint).
+    /// IMAGINE coherence Phase 2: log an `IMAGINE_FALLBACK` audit
+    /// record. Called by the `bundle_imagine_coherence` HTTP handler
+    /// when the tame-metric fallback engages for a high-K bundle.
+    /// Metadata-only — replay does not re-execute the decision; the
+    /// entry exists for post-hoc diagnostics (Marcella's confidence
+    /// routing, operator dashboards).
+    #[cfg(feature = "imagine")]
+    pub fn log_imagine_fallback(
+        &mut self,
+        bundle: &str,
+        original_k: f64,
+        substituted_k: f64,
+        timestamp_ms: u64,
+    ) -> io::Result<()> {
+        self.wal
+            .log_imagine_fallback(bundle, original_k, substituted_k, timestamp_ms)?;
+        self.maybe_checkpoint()?;
+        Ok(())
+    }
+
     #[cfg(feature = "gauge")]
     pub fn declare_gauge_field_durable(
         &mut self,

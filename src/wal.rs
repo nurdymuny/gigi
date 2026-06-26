@@ -84,6 +84,25 @@ const OP_HAMILTONIAN_DECLARE: u8 = 0x0C;
 // families append without breaking existing replay.
 #[cfg(feature = "gauge")]
 const OP_INTEGRATOR_CHOICE: u8 = 0x0D;
+// IMAGINE coherence Phase 2: durable audit when the tame-metric
+// fallback engages on a high-K bundle. Emitted by the
+// `bundle_imagine_coherence` HTTP handler when
+// `bundle.curvature_stats().mean()` exceeds the Phase 2 threshold and
+// the caller did NOT pass an explicit `metric_curvature` override.
+//
+// Payload (all multi-byte fields little-endian):
+//   [u32 bundle_name_len][bundle_name UTF-8 bytes]
+//   [f64 original_k]
+//   [f64 substituted_k]
+//   [u64 timestamp_ms]
+//
+// Forward-compat: replay reads back into
+// `WalEntry::ImagineFallback { bundle, original_k, substituted_k,
+// timestamp_ms }`. Older binaries that don't recognize 0x0E hit the
+// trailing `Unknown WAL op` match arm — but the loud failure is the
+// right behavior for an unknown opcode (matches the gauge ops policy).
+#[cfg(feature = "imagine")]
+const OP_IMAGINE_FALLBACK: u8 = 0x0E;
 const OP_CHECKPOINT: u8 = 0xFF;
 
 /// TDD-HAL-V.1: payload of a `OP_GAUGE_FIELD_SNAPSHOT` (0x0B) WAL
@@ -582,6 +601,37 @@ impl WalWriter {
         self.write_entry(OP_INTEGRATOR_CHOICE, &payload)
     }
 
+    /// IMAGINE coherence Phase 2: log an `IMAGINE_FALLBACK` record.
+    /// Emitted by the `bundle_imagine_coherence` HTTP handler when the
+    /// tame-metric fallback engages (bundle K mean exceeds the
+    /// configured threshold and the caller did not pass an explicit
+    /// `metric_curvature` override). Diagnostic only — replay does not
+    /// re-execute the fallback decision; the audit is for downstream
+    /// consumers (Marcella's confidence routing, operator dashboards)
+    /// to know which trajectories were integrated on a substituted
+    /// geometry instead of the literal substrate metric.
+    ///
+    /// Payload format (all multi-byte fields little-endian):
+    ///   [u32 bundle_name_len][bundle_name_bytes]
+    ///   [f64 original_k]
+    ///   [f64 substituted_k]
+    ///   [u64 timestamp_ms]
+    #[cfg(feature = "imagine")]
+    pub fn log_imagine_fallback(
+        &mut self,
+        bundle: &str,
+        original_k: f64,
+        substituted_k: f64,
+        timestamp_ms: u64,
+    ) -> io::Result<()> {
+        let mut payload = Vec::new();
+        write_string(&mut payload, bundle);
+        payload.extend_from_slice(&original_k.to_le_bytes());
+        payload.extend_from_slice(&substituted_k.to_le_bytes());
+        payload.extend_from_slice(&timestamp_ms.to_le_bytes());
+        self.write_entry(OP_IMAGINE_FALLBACK, &payload)
+    }
+
     /// Sync the WAL to disk (fsync).
     pub fn sync(&mut self) -> io::Result<()> {
         self.writer.flush()?;
@@ -710,6 +760,18 @@ pub enum WalEntry {
         path: String,
         factory_name: String,
         handle_name: String,
+    },
+    /// IMAGINE coherence Phase 2: durable audit when the tame-metric
+    /// fallback engages. Records the bundle name, the original K mean
+    /// that triggered the fallback, the substituted (tame) K actually
+    /// fed to the integrator, and a unix millisecond timestamp.
+    /// Diagnostic only — replay does not re-execute the decision.
+    #[cfg(feature = "imagine")]
+    ImagineFallback {
+        bundle: String,
+        original_k: f64,
+        substituted_k: f64,
+        timestamp_ms: u64,
     },
 }
 
@@ -972,6 +1034,34 @@ impl WalReader {
                     path,
                     factory_name,
                     handle_name,
+                }))
+            }
+            #[cfg(feature = "imagine")]
+            OP_IMAGINE_FALLBACK => {
+                let mut offset = 0;
+                let bundle = read_string(payload, &mut offset)?;
+                if offset + 24 > payload.len() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "IMAGINE_FALLBACK payload truncated",
+                    ));
+                }
+                let original_k = f64::from_le_bytes(
+                    payload[offset..offset + 8].try_into().unwrap(),
+                );
+                offset += 8;
+                let substituted_k = f64::from_le_bytes(
+                    payload[offset..offset + 8].try_into().unwrap(),
+                );
+                offset += 8;
+                let timestamp_ms = u64::from_le_bytes(
+                    payload[offset..offset + 8].try_into().unwrap(),
+                );
+                Ok(Some(WalEntry::ImagineFallback {
+                    bundle,
+                    original_k,
+                    substituted_k,
+                    timestamp_ms,
                 }))
             }
             _ => Err(io::Error::new(

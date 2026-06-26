@@ -62,3 +62,6 @@ target-test/
 
 # One-off backups
 src/sheaf_old_backup.bak
+
+# Local deploy backups — large tarballs, never commit
+.deploy-backups/

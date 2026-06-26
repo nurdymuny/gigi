@@ -713,6 +713,14 @@ impl Engine {
                         ob.insert(record);
                     } else if let Some(store) = heap_bundles.get_mut(bundle_name) {
                         store.insert(record);
+                    } else {
+                        eprintln!(
+                            "WARNING: mmap-open WAL Insert targets unknown \
+                             bundle '{}' (neither mmap nor heap store) — \
+                             skipping orphan record. Boot continues on mmap \
+                             fast path.",
+                            bundle_name
+                        );
                     }
                 }
                 WalEntry::Update { bundle_name, key, patches } => {
@@ -720,6 +728,14 @@ impl Engine {
                         ob.update(key, patches);
                     } else if let Some(store) = heap_bundles.get_mut(bundle_name) {
                         store.update(key, patches);
+                    } else {
+                        eprintln!(
+                            "WARNING: mmap-open WAL Update targets unknown \
+                             bundle '{}' (neither mmap nor heap store) — \
+                             skipping orphan patch. Boot continues on mmap \
+                             fast path.",
+                            bundle_name
+                        );
                     }
                 }
                 WalEntry::Delete { bundle_name, key } => {
@@ -730,6 +746,14 @@ impl Engine {
                         // BundleStore::delete takes &Record directly
                         // (mirrors the slow-path do_replay handler).
                         store.delete(key);
+                    } else {
+                        eprintln!(
+                            "WARNING: mmap-open WAL Delete targets unknown \
+                             bundle '{}' (neither mmap nor heap store) — \
+                             skipping orphan delete. Boot continues on mmap \
+                             fast path.",
+                            bundle_name
+                        );
                     }
                 }
                 _ => {}
@@ -847,6 +871,17 @@ impl Engine {
                 } => {
                     if let Some(store) = bundles.get_mut(&bundle_name) {
                         store.insert(&record);
+                    } else {
+                        // Orphan insert: OP_CREATE_BUNDLE was never synced
+                        // (wedge between create + first insert). Skip
+                        // visibly so operators see the WAL discontinuity
+                        // instead of records silently vanishing.
+                        eprintln!(
+                            "WARNING: WAL Insert targets unknown bundle '{}' \
+                             (no preceding OP_CREATE_BUNDLE) — skipping \
+                             orphan record. Boot continues.",
+                            bundle_name
+                        );
                     }
                 }
                 WalEntry::Update {
@@ -856,11 +891,25 @@ impl Engine {
                 } => {
                     if let Some(store) = bundles.get_mut(&bundle_name) {
                         store.update(&key, &patches);
+                    } else {
+                        eprintln!(
+                            "WARNING: WAL Update targets unknown bundle '{}' \
+                             (no preceding OP_CREATE_BUNDLE) — skipping \
+                             orphan patch. Boot continues.",
+                            bundle_name
+                        );
                     }
                 }
                 WalEntry::Delete { bundle_name, key } => {
                     if let Some(store) = bundles.get_mut(&bundle_name) {
                         store.delete(&key);
+                    } else {
+                        eprintln!(
+                            "WARNING: WAL Delete targets unknown bundle '{}' \
+                             (no preceding OP_CREATE_BUNDLE) — skipping \
+                             orphan delete. Boot continues.",
+                            bundle_name
+                        );
                     }
                 }
                 WalEntry::DropBundle(bundle_name) => {
@@ -879,6 +928,13 @@ impl Engine {
                         let mut patches = Record::new();
                         patches.insert(field, Value::Float(new_measured_value));
                         store.update(&key, &patches);
+                    } else {
+                        eprintln!(
+                            "WARNING: WAL MeasurementOverride targets unknown \
+                             bundle '{}' (no preceding OP_CREATE_BUNDLE) — \
+                             skipping orphan override. Boot continues.",
+                            bundle_name
+                        );
                     }
                 }
                 // Feature #9: Trigger WAL entries are handled post-replay by the engine
@@ -993,14 +1049,29 @@ impl Engine {
                 init_seed,
             } = entry
             {
-                let lat = crate::lattice::registry::get(&lattice_name).ok_or_else(|| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!(
-                            "WAL GaugeFieldDeclare references unknown lattice '{lattice_name}'"
-                        ),
-                    )
-                })?;
+                // Graceful-skip pattern (mirror of OP_GAUGE_FIELD_SNAPSHOT
+                // orphan handling at d592313, line 1077-1089 below). If
+                // the declare references a lattice that never got durably
+                // committed — for example a wedge between
+                // OP_LATTICE_DECLARE and OP_GAUGE_FIELD_DECLARE syncs —
+                // log a WARNING and skip this field. The boot keeps going
+                // on the mmap fast path; the field stays unavailable until
+                // POST /v1/admin/gauge/repair (or an explicit re-declare)
+                // lands a synthetic OP_LATTICE_DECLARE.
+                let lat = match crate::lattice::registry::get(&lattice_name) {
+                    Some(l) => l,
+                    None => {
+                        eprintln!(
+                            "WARNING: gauge field WAL declares '{}' against \
+                             unknown lattice '{}' (no preceding \
+                             OP_LATTICE_DECLARE) — skipping orphan field \
+                             declare (field unavailable). Boot continues on \
+                             mmap fast path.",
+                            name, lattice_name
+                        );
+                        return Ok(());
+                    }
+                };
                 let handle = crate::gauge::persistence::materialize_field(
                     name.clone(),
                     &lat,
@@ -6307,5 +6378,230 @@ mod tests {
         crate::lattice::registry::clear();
         crate::gauge::registry::clear();
         cleanup(&dir);
+    }
+
+    // ── ITEM 2 of SUDOKU 8-item — graceful-skip pattern across all WAL op pairings ──
+    //
+    // The patches below convert four previously-silent WAL replay paths
+    // (heap Insert/Update/Delete/MeasurementOverride) and three previously-
+    // silent mmap-open paths (Insert/Update/Delete) into VISIBLE graceful
+    // skips — they log a WARNING line, then continue the boot. Pre-patch
+    // these silently dropped orphan ops. The OP_GAUGE_FIELD_DECLARE -> orphan
+    // -lattice pairing's pre-patch was a HARD-REJECT and is converted to
+    // graceful skip in Pass 2 of `replay_gauge_substrate`, mirroring the
+    // existing OP_GAUGE_FIELD_SNAPSHOT orphan-skip from d592313.
+
+    /// TDD-HAL-V.3 extension — Pass 2 of replay_gauge_substrate now treats
+    /// a `OP_GAUGE_FIELD_DECLARE` whose lattice is missing as a graceful
+    /// skip (matching the snapshot orphan path), instead of hard-rejecting
+    /// with InvalidData. Real corruption (bad WAL CRC, structural decode
+    /// errors) still hard-rejects upstream.
+    #[cfg(feature = "gauge")]
+    #[test]
+    fn tdd_hal_v_3_replay_orphan_gauge_field_declare_graceful_skip() {
+        let _g = crate::gauge::registry::test_serial_lock();
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+
+        let dir = test_dir("hal_v_3_orphan_field_declare");
+        cleanup(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let wal_path = dir.join("gigi.wal");
+        // Hand-craft a WAL containing a sole OP_GAUGE_FIELD_DECLARE that
+        // references lattice `L_missing` — no preceding OP_LATTICE_DECLARE.
+        // Pre-patch this would hard-reject Engine::open with InvalidData.
+        // Post-patch it is a graceful skip (WARNING emitted).
+        {
+            let mut writer = crate::wal::WalWriter::open(&wal_path).unwrap();
+            writer
+                .log_gauge_field_declare(
+                    "U_orphan_declare",
+                    "L_missing",
+                    crate::gauge::Group::SU2,
+                    &crate::gauge::GaugeFieldInit::Identity,
+                    None,
+                )
+                .expect("log_gauge_field_declare succeeds — the WAL writer is happy; the runtime check is what we're testing");
+            writer.sync().unwrap();
+        }
+
+        // Engine::open must complete without error and the orphan field
+        // stays unregistered. Pre-patch this raised InvalidData inside
+        // replay_gauge_substrate.
+        let engine = Engine::open(&dir)
+            .expect("orphan field declare must be SKIPPED, not hard-error");
+        assert!(
+            crate::gauge::registry::get("U_orphan_declare").is_none(),
+            "skipped orphan field must remain unregistered"
+        );
+        drop(engine);
+
+        crate::lattice::registry::clear();
+        crate::gauge::registry::clear();
+        cleanup(&dir);
+    }
+
+    /// ITEM 2 — heap-mode replay: OP_INSERT with no preceding
+    /// OP_CREATE_BUNDLE logs a WARNING and is skipped. The boot keeps
+    /// going.
+    #[test]
+    fn wal_orphan_ops_heap_insert_without_create_bundle_warns_and_skips() {
+        let dir = test_dir("wal_orphan_heap_insert");
+        cleanup(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let wal_path = dir.join("gigi.wal");
+        {
+            let mut writer = crate::wal::WalWriter::open(&wal_path).unwrap();
+            // Orphan insert into b_missing — no CreateBundle ever logged.
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(1));
+            writer.log_insert("b_missing", &rec).unwrap();
+            writer.sync().unwrap();
+        }
+
+        // Engine::open must SUCCEED (the panic-on-error pre-patch path
+        // would just leave `if let Some(store)` silently dropping the
+        // record; the new branch emits a WARNING but still returns Ok).
+        let engine = Engine::open(&dir)
+            .expect("orphan insert must NOT wedge boot");
+        assert!(
+            !engine.bundles.contains_key("b_missing"),
+            "orphan-target bundle must not have been materialized"
+        );
+    }
+
+    /// ITEM 2 — heap-mode replay: OP_UPDATE with no preceding
+    /// OP_CREATE_BUNDLE logs a WARNING and is skipped.
+    #[test]
+    fn wal_orphan_ops_heap_update_without_create_bundle_warns_and_skips() {
+        let dir = test_dir("wal_orphan_heap_update");
+        cleanup(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let wal_path = dir.join("gigi.wal");
+        {
+            let mut writer = crate::wal::WalWriter::open(&wal_path).unwrap();
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(7));
+            let mut patches = Record::new();
+            patches.insert("x".into(), Value::Float(2.0));
+            writer.log_update("b_missing", &key, &patches).unwrap();
+            writer.sync().unwrap();
+        }
+
+        let engine = Engine::open(&dir)
+            .expect("orphan update must NOT wedge boot");
+        assert!(
+            !engine.bundles.contains_key("b_missing"),
+            "orphan-target bundle must not have been materialized"
+        );
+    }
+
+    /// ITEM 2 — heap-mode replay: OP_DELETE with no preceding
+    /// OP_CREATE_BUNDLE logs a WARNING and is skipped.
+    #[test]
+    fn wal_orphan_ops_heap_delete_without_create_bundle_warns_and_skips() {
+        let dir = test_dir("wal_orphan_heap_delete");
+        cleanup(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let wal_path = dir.join("gigi.wal");
+        {
+            let mut writer = crate::wal::WalWriter::open(&wal_path).unwrap();
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(3));
+            writer.log_delete("b_missing", &key).unwrap();
+            writer.sync().unwrap();
+        }
+
+        let engine = Engine::open(&dir)
+            .expect("orphan delete must NOT wedge boot");
+        assert!(
+            !engine.bundles.contains_key("b_missing"),
+            "orphan-target bundle must not have been materialized"
+        );
+    }
+
+    /// ITEM 2 — heap-mode replay: OP_MEASUREMENT_OVERRIDE with no
+    /// preceding OP_CREATE_BUNDLE logs a WARNING and is skipped.
+    #[test]
+    fn wal_orphan_ops_heap_measurement_override_without_create_bundle_warns_and_skips() {
+        let dir = test_dir("wal_orphan_heap_mo");
+        cleanup(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let wal_path = dir.join("gigi.wal");
+        {
+            let mut writer = crate::wal::WalWriter::open(&wal_path).unwrap();
+            let mut key = Record::new();
+            key.insert("id".into(), Value::Integer(42));
+            writer
+                .log_measurement_override(
+                    "b_missing",
+                    "f",
+                    &key,
+                    0.0,  // old_completed_value
+                    1.0,  // old_confidence
+                    1.0,  // new_measured_value
+                    0,    // timestamp
+                )
+                .unwrap();
+            writer.sync().unwrap();
+        }
+
+        let engine = Engine::open(&dir)
+            .expect("orphan measurement override must NOT wedge boot");
+        assert!(
+            !engine.bundles.contains_key("b_missing"),
+            "orphan-target bundle must not have been materialized"
+        );
+    }
+
+    /// ITEM 2 — heap-mode replay: orphan insert followed by a valid
+    /// create+insert. The orphan is skipped, the valid bundle materializes
+    /// with exactly the inserted record. Verifies skip != drop the rest
+    /// of the WAL.
+    #[test]
+    fn wal_orphan_ops_heap_orphan_insert_does_not_block_valid_create_bundle() {
+        let dir = test_dir("wal_orphan_heap_mixed");
+        cleanup(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let wal_path = dir.join("gigi.wal");
+        {
+            let mut writer = crate::wal::WalWriter::open(&wal_path).unwrap();
+            // Orphan first
+            let mut rec = Record::new();
+            rec.insert("id".into(), Value::Integer(1));
+            writer.log_insert("b_missing", &rec).unwrap();
+            // Then valid create + insert
+            let schema = BundleSchema::new("b_ok")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::numeric("v"));
+            writer.log_create_bundle(&schema).unwrap();
+            let mut valid_rec = Record::new();
+            valid_rec.insert("id".into(), Value::Integer(99));
+            valid_rec.insert("v".into(), Value::Float(3.14));
+            writer.log_insert("b_ok", &valid_rec).unwrap();
+            writer.sync().unwrap();
+        }
+
+        let engine = Engine::open(&dir)
+            .expect("mixed-stream WAL must boot");
+        assert!(
+            !engine.bundles.contains_key("b_missing"),
+            "orphan-target bundle must not have been materialized"
+        );
+        let ok_bundle = engine
+            .bundles
+            .get("b_ok")
+            .expect("valid bundle must be materialized");
+        assert_eq!(
+            ok_bundle.len(),
+            1,
+            "valid bundle must hold exactly the post-orphan insert"
+        );
     }
 }

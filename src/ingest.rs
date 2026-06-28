@@ -162,6 +162,12 @@ pub enum IngestError {
     EngineError(String),
     /// The NPZ archive contained zero `.npy` members.
     EmptyArchive(PathBuf),
+    /// The INGEST target bundle does not exist and auto-create was
+    /// disabled (or failed) — caller should create the bundle first.
+    /// Surfaced under ergonomics #5 (2026-06-28) to replace the
+    /// misleading wrapped engine error when an INGEST targets a
+    /// non-existent bundle.
+    TargetBundleNotFound { bundle: String },
 }
 
 impl std::fmt::Display for IngestError {
@@ -181,6 +187,10 @@ impl std::fmt::Display for IngestError {
             ),
             IngestError::EngineError(msg) => write!(f, "INGEST: engine error: {msg}"),
             IngestError::EmptyArchive(p) => write!(f, "INGEST: NPZ archive is empty: {}", p.display()),
+            IngestError::TargetBundleNotFound { bundle } => write!(
+                f,
+                "INGEST: destination bundle '{bundle}' does not exist — create the bundle first via 'CREATE BUNDLE {bundle} ...' or pass --auto-create to infer schema from the source"
+            ),
         }
     }
 }
@@ -206,13 +216,25 @@ impl From<io::Error> for IngestError {
 /// auto-create the bundle if missing, or to validate against an
 /// existing bundle.
 #[derive(Debug, Clone)]
-struct InferredFieldSchema {
+pub struct InferredFieldSchema {
     name: String,
     field_type: FieldType,
     is_base: bool,
 }
 
 impl InferredFieldSchema {
+    /// Construct a numeric base-or-fiber inferred field. Exposed for
+    /// the integration test that exercises the `TargetBundleNotFound`
+    /// error path (ergonomics #5, 2026-06-28).
+    #[doc(hidden)]
+    pub fn numeric(name: &str, is_base: bool) -> Self {
+        InferredFieldSchema {
+            name: name.to_string(),
+            field_type: FieldType::Numeric,
+            is_base,
+        }
+    }
+
     fn type_label(&self) -> String {
         match &self.field_type {
             FieldType::Numeric => "Numeric".to_string(),
@@ -334,7 +356,7 @@ fn ingest_npz(
         });
     }
 
-    let bundle_created = ensure_bundle_compatible(engine, target_bundle, &inferred)?;
+    let bundle_created = ensure_bundle_compatible(engine, target_bundle, &inferred, true)?;
 
     // Stream records: for each array, iterate outermost axis and emit
     // a record per slice. We accumulate into a Vec<Record> of size
@@ -420,10 +442,16 @@ fn flush_batch(
 /// Ensure the target bundle either exists with a compatible schema or
 /// can be auto-created from the inferred fields. Returns `true` if the
 /// bundle was created in this call, `false` if it pre-existed.
+///
+/// When `allow_auto_create` is `false` and the bundle does not exist,
+/// returns `IngestError::TargetBundleNotFound` instead of silently
+/// creating the bundle (ergonomics #5, 2026-06-28). The existing GQL
+/// surface keeps `allow_auto_create = true` for backwards compatibility.
 fn ensure_bundle_compatible(
     engine: &mut Engine,
     target_bundle: &str,
     inferred: &[InferredFieldSchema],
+    allow_auto_create: bool,
 ) -> Result<bool, IngestError> {
     if engine.bundle(target_bundle).is_some() {
         // Bundle exists — validate the inferred schema is a subset of
@@ -470,6 +498,13 @@ fn ensure_bundle_compatible(
         }
         Ok(false)
     } else {
+        // Bundle missing: either auto-create or surface the typed
+        // TargetBundleNotFound error per `allow_auto_create`.
+        if !allow_auto_create {
+            return Err(IngestError::TargetBundleNotFound {
+                bundle: target_bundle.to_string(),
+            });
+        }
         // Auto-create from inferred.
         let mut schema = BundleSchema::new(target_bundle);
         for inf in inferred {
@@ -503,6 +538,20 @@ fn ensure_bundle_compatible(
             .map_err(|e| IngestError::EngineError(format!("create_bundle: {e}")))?;
         Ok(true)
     }
+}
+
+/// Test-only entry point that surfaces the `allow_auto_create=false`
+/// path so the integration test can observe `TargetBundleNotFound`
+/// without changing the public INGEST surface (ergonomics #5,
+/// 2026-06-28). The GQL surface always passes `true`.
+#[doc(hidden)]
+pub fn ensure_bundle_compatible_for_test(
+    engine: &mut Engine,
+    target_bundle: &str,
+    inferred: &[InferredFieldSchema],
+    allow_auto_create: bool,
+) -> Result<bool, IngestError> {
+    ensure_bundle_compatible(engine, target_bundle, inferred, allow_auto_create)
 }
 
 /// Loose type compatibility — used when validating that an existing

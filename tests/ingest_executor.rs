@@ -395,3 +395,31 @@ fn test_ingest_npz_virtual_bundle_rejected() {
         "expected virtual-bundle reject, got: {err}"
     );
 }
+
+#[test]
+fn test_ingest_nonexistent_bundle_clear_error() {
+    // Ergonomics #5 (2026-06-28): when the INGEST target bundle is
+    // missing and auto-create is disabled, the caller gets a typed
+    // `TargetBundleNotFound` variant whose Display message names both
+    // the missing bundle and the remedy. Exercised via the
+    // `ensure_bundle_compatible_for_test` doc-hidden helper because the
+    // GQL surface keeps `allow_auto_create = true` for backwards
+    // compatibility.
+    use gigi::ingest::{ensure_bundle_compatible_for_test, InferredFieldSchema};
+    let (mut engine, _dir) = open_engine();
+    let inferred = vec![InferredFieldSchema::numeric("x", true)];
+    let err = ensure_bundle_compatible_for_test(
+        &mut engine,
+        "no_such_bundle",
+        &inferred,
+        /*allow_auto_create=*/ false,
+    )
+    .expect_err("must reject missing bundle when auto-create disabled");
+    assert!(
+        matches!(err, IngestError::TargetBundleNotFound { ref bundle } if bundle == "no_such_bundle"),
+        "expected TargetBundleNotFound, got: {err}"
+    );
+    let msg = err.to_string();
+    assert!(msg.contains("no_such_bundle"), "msg missing bundle name: {msg}");
+    assert!(msg.contains("CREATE BUNDLE"), "msg missing remedy hint: {msg}");
+}

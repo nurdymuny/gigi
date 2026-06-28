@@ -3013,13 +3013,28 @@ impl Parser {
         })
     }
 
-    /// Parse a `group_label` per the GAUGE_FIELD EBNF. The lexer
-    /// already split `SU(2)` into `Word("SU"), LParen, Number(2),
-    /// RParen` so we just reconstruct the variant.
+    /// Parse a `group_label` per the GAUGE_FIELD EBNF. Accepts both the
+    /// canonical parenthesized forms (`SU(2)`, `SU(3)`, `U(1)`, `Z(N)`)
+    /// and bare synonyms (`SU2`, `SU3`, `U1`). Z requires an explicit N
+    /// — bare `ZN` is rejected because no canonical modulus exists. The
+    /// HTTP layer at `src/gauge/http.rs` carries the same synonym matrix
+    /// (ergonomics #4, 2026-06-28).
     #[cfg(feature = "gauge")]
     fn parse_group_label(&mut self) -> Result<crate::gauge::Group, String> {
         let head = self.expect_word()?;
-        match head.to_ascii_uppercase().as_str() {
+        let up = head.to_ascii_uppercase();
+        match up.as_str() {
+            // ── Bare synonyms (ergonomics #4) ──
+            "SU2" => Ok(crate::gauge::Group::SU2),
+            "SU3" => Ok(crate::gauge::Group::SU3),
+            "U1" => Ok(crate::gauge::Group::U1),
+            // Bare `ZN` cannot construct a concrete modulus — keep this
+            // as an explicit error, mirroring the HTTP behaviour where
+            // Z(N) must specify the integer.
+            "ZN" => Err(
+                "Bare 'ZN' requires a modulus — use 'Z(<n>)'".to_string(),
+            ),
+            // ── Parenthesized canonical forms (existing behaviour) ──
             "SU" => {
                 self.expect(Token::LParen)?;
                 let n = self.expect_usize()?;
@@ -3050,7 +3065,7 @@ impl Parser {
                 Ok(crate::gauge::Group::ZN { n: n as u32 })
             }
             other => Err(format!(
-                "Expected group label (SU(2)/SU(3)/U(1)/Z(N)), got '{other}'"
+                "Expected group label (SU(2)/SU2/SU(3)/SU3/U(1)/U1/Z(N)), got '{other}'"
             )),
         }
     }

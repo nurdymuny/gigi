@@ -215,3 +215,84 @@ fn test_su3_registry_round_trip() {
     let guard = mut_handle.lock().expect("lock");
     assert_eq!(guard.name, "U_su3_reg");
 }
+
+/// Parser ergonomics #4 (2026-06-28): the GAUGE_FIELD parser accepts
+/// bare group synonyms (`SU2`, `SU3`, `U1`) as equivalent to their
+/// canonical parenthesized forms (`SU(2)`, `SU(3)`, `U(1)`). This test
+/// pins both forms produce the same `Group` variant in the parsed
+/// `Statement::GaugeField` AST node, which is the surface programmatic
+/// callers (and the GQL surface) observe.
+#[test]
+fn test_parser_accepts_su3_synonym() {
+    use gigi::parser::{parse, Statement};
+
+    let stmt_paren =
+        parse("GAUGE_FIELD U ON LATTICE bb GROUP SU(3) INIT IDENTITY;")
+            .expect("SU(3) parses");
+    let stmt_bare =
+        parse("GAUGE_FIELD U ON LATTICE bb GROUP SU3 INIT IDENTITY;")
+            .expect("SU3 (bare) parses");
+
+    let group_paren = match &stmt_paren {
+        Statement::GaugeField { group, .. } => *group,
+        other => panic!("expected GaugeField, got {other:?}"),
+    };
+    let group_bare = match &stmt_bare {
+        Statement::GaugeField { group, .. } => *group,
+        other => panic!("expected GaugeField, got {other:?}"),
+    };
+    assert_eq!(group_paren, Group::SU3, "SU(3) → Group::SU3");
+    assert_eq!(group_bare, Group::SU3, "SU3 → Group::SU3");
+    assert_eq!(group_paren, group_bare, "both forms yield the same group");
+}
+
+/// Parser ergonomics #4 (2026-06-28): SU2 synonym mirror of the SU3
+/// test above. Pins that the synonym path doesn't accidentally collapse
+/// every short token onto the same group.
+#[test]
+fn test_parser_accepts_su2_synonym() {
+    use gigi::parser::{parse, Statement};
+
+    let stmt_paren =
+        parse("GAUGE_FIELD U ON LATTICE bb GROUP SU(2) INIT IDENTITY;")
+            .expect("SU(2) parses");
+    let stmt_bare =
+        parse("GAUGE_FIELD U ON LATTICE bb GROUP SU2 INIT IDENTITY;")
+            .expect("SU2 (bare) parses");
+
+    let group_paren = match &stmt_paren {
+        Statement::GaugeField { group, .. } => *group,
+        _ => panic!("expected GaugeField"),
+    };
+    let group_bare = match &stmt_bare {
+        Statement::GaugeField { group, .. } => *group,
+        _ => panic!("expected GaugeField"),
+    };
+    assert_eq!(group_paren, Group::SU2);
+    assert_eq!(group_bare, Group::SU2);
+}
+
+/// Parser ergonomics #4 (2026-06-28): bare `ZN` without a modulus is
+/// rejected with a clear error directing the user to `Z(<n>)`. The
+/// canonical `Z(2)` path still parses fine.
+#[test]
+fn test_parser_rejects_bare_zn_without_modulus() {
+    use gigi::parser::parse;
+
+    let err = parse("GAUGE_FIELD U ON LATTICE bb GROUP ZN INIT IDENTITY;")
+        .expect_err("bare ZN must be rejected");
+    assert!(
+        err.contains("ZN") && err.contains("Z(") && err.contains("modulus"),
+        "expected ZN-needs-modulus message, got: {err}"
+    );
+
+    // Z(2) still works.
+    let ok = parse("GAUGE_FIELD U ON LATTICE bb GROUP Z(2) INIT IDENTITY;")
+        .expect("Z(2) parses");
+    match ok {
+        gigi::parser::Statement::GaugeField { group, .. } => {
+            assert_eq!(group, Group::ZN { n: 2 });
+        }
+        _ => panic!("expected GaugeField"),
+    }
+}

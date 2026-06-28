@@ -905,6 +905,332 @@ pub fn spectral_fiber_modes(store: &BundleStore, fiber_fields: &[&str], modes: u
     result
 }
 
+// ─── SPECTRAL_GAUGE — Phase 1 (Halcyon, 2026-06-28) ────────────────────────
+//
+// Fiber-weighted spectral gap λ₁ of the gauge-weighted graph Laplacian L_A.
+//
+// HONEST FRAMING (per math lens corrections in HALCYON_BRIDGE_TRILOGY,
+// cfeb5c5): L_A's spectrum is globally gauge-invariant, but the per-edge
+// trace weight Re Tr(U_e)/N is only LOCALLY gauge-covariant. This verb
+// returns the fiber-weighted spectral gap — NOT the strict Yang-Mills
+// mass gap. Halcyon understands the distinction; the function is the
+// usable substrate primitive a downstream Wilson-mass-gap pipeline can
+// build on.
+//
+// Phase 1 ships the dense nalgebra::SymmetricEigen path for small graphs
+// (buckyball-scale, V ≤ ~10k vertices). Phase 2 (NOT in this commit) will
+// add the Lanczos sparse path + FULL mode (k smallest eigenvalues) — the
+// `eigenvalues: Option<Vec<f64>>` field and `PhaseNotImplemented` variant
+// pre-wire those hooks.
+
+/// Result of SPECTRAL_GAUGE.
+///
+/// Carries the gauge-weighted spectral gap, the count of records
+/// successfully decoded into the Laplacian, and which group was actually
+/// used (group inference may have promoted the parser's `None` to a
+/// specific tag). The `eigenvalues` field is `None` in Phase 1; Phase 2's
+/// FULL mode will populate it.
+#[derive(Debug, Clone)]
+#[cfg(feature = "gauge")]
+pub struct SpectralGaugeResult {
+    /// λ₁ — smallest nonzero eigenvalue of the fiber-weighted Laplacian.
+    pub gap: f64,
+    /// `None` in Phase 1; Phase 2 FULL mode will populate with the
+    /// first `LIMIT k` eigenvalues sorted ascending.
+    pub eigenvalues: Option<Vec<f64>>,
+    /// Number of records (edges) that contributed to L_A. Each record
+    /// is one edge weighted by its reconstructed group element.
+    pub n_records_used: usize,
+    /// The group that was actually used — either passed in or inferred
+    /// from `fiber_fields.len()` at exec time.
+    pub group_used: crate::gauge::Group,
+}
+
+/// Errors surfaced by SPECTRAL_GAUGE Phase 1.
+///
+/// Every variant carries enough context for a CLI / HTTP envelope to
+/// render an actionable message; the Display impls below intentionally
+/// repeat key names + counts so a developer can fix the call site
+/// without having to grep for the variant.
+#[derive(Debug)]
+#[cfg(feature = "gauge")]
+pub enum SpectralGaugeError {
+    /// The named bundle does not exist on the engine.
+    BundleNotFound(String),
+    /// The bundle exists but has zero records (no edges to weight).
+    EmptyBundle { bundle: String },
+    /// The base schema does not carry the `vertex_a` / `vertex_b`
+    /// endpoint columns Halcyon's lattice contract requires.
+    MissingEndpointFields { bundle: String, a: String, b: String },
+    /// The number of fiber fields passed does not match the chosen
+    /// group's representation dimension (e.g. 5 columns with GROUP
+    /// SU(2) — SU(2) requires exactly 4).
+    FiberArityMismatch {
+        group: &'static str,
+        expected: usize,
+        actual: usize,
+    },
+    /// GROUP was omitted and `fiber_fields.len()` is not one of the
+    /// canonical widths (1 → U(1), 4 → SU(2), 18 → SU(3)).
+    AmbiguousGroupInference(usize),
+    /// FULL mode requested — Phase 1 does not implement it. Phase 2
+    /// ships the Lanczos sparse k-eigenvalue path.
+    PhaseNotImplemented {
+        phase: &'static str,
+        description: &'static str,
+    },
+}
+
+#[cfg(feature = "gauge")]
+impl std::fmt::Display for SpectralGaugeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SpectralGaugeError::BundleNotFound(name) => {
+                write!(f, "SPECTRAL_GAUGE: bundle '{name}' not found")
+            }
+            SpectralGaugeError::EmptyBundle { bundle } => {
+                write!(f, "SPECTRAL_GAUGE: bundle '{bundle}' has zero records (no edges to weight)")
+            }
+            SpectralGaugeError::MissingEndpointFields { bundle, a, b } => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: bundle '{bundle}' missing edge endpoint fields {a}/{b} — \
+                     Halcyon schema requires explicit vertex_a/vertex_b in base_fields"
+                )
+            }
+            SpectralGaugeError::FiberArityMismatch { group, expected, actual } => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: fiber arity {actual} does not match group {group} \
+                     (expected {expected})"
+                )
+            }
+            SpectralGaugeError::AmbiguousGroupInference(n) => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: GROUP required when fiber width is ambiguous \
+                     (got {n} fields; canonical widths are 1 → U(1), 4 → SU(2), 18 → SU(3))"
+                )
+            }
+            SpectralGaugeError::PhaseNotImplemented { phase, description } => {
+                write!(f, "SPECTRAL_GAUGE: {phase} not yet implemented — {description}")
+            }
+        }
+    }
+}
+
+#[cfg(feature = "gauge")]
+impl std::error::Error for SpectralGaugeError {}
+
+/// Infer a `Group` from the fiber arity per the SPECTRAL_GAUGE spec
+/// table: 1 → U(1), 4 → SU(2), 18 → SU(3). Any other width is
+/// ambiguous (8 in particular is reserved for SU(3) Gell-Mann tangent
+/// basis in Phase 2, but the dense Phase 1 path needs the raw 3×3 form).
+#[cfg(feature = "gauge")]
+pub fn infer_group_from_arity(n: usize) -> Result<crate::gauge::Group, SpectralGaugeError> {
+    match n {
+        1 => Ok(crate::gauge::Group::U1),
+        4 => Ok(crate::gauge::Group::SU2),
+        18 => Ok(crate::gauge::Group::SU3),
+        other => Err(SpectralGaugeError::AmbiguousGroupInference(other)),
+    }
+}
+
+/// Compute the per-edge trace weight `w_e = Re Tr(U_e) / N` from the
+/// fiber values of a single record. The packing convention matches the
+/// `gigi::gauge::Group` representation table:
+///
+/// * SU(2) — 4 floats `(q0, q1, q2, q3)` (scalar-first quaternion).
+///   For unit quaternions, `Re Tr(U) = 2·q0` and `N=2`, so `w_e = q0`.
+/// * SU(3) — 18 floats `[re_00, im_00, re_01, im_01, …, re_22, im_22]`
+///   (row-major 3×3 complex matrix with interleaved real/imag pairs).
+///   `Re Tr = re_00 + re_11 + re_22` (indices 0, 8, 16) and `N=3`.
+/// * U(1) — 1 float θ. `U = e^{iθ}` acts on ℂ¹, so `Re Tr / N = cos(θ)`.
+/// * Z_N — 1 float k packed as f64. `U = e^{2πi·k/n}`, so weight is
+///   `cos(2π·k/n)`.
+#[cfg(feature = "gauge")]
+pub fn re_trace_over_n(fiber: &[f64], group: crate::gauge::Group) -> f64 {
+    use crate::gauge::Group;
+    match group {
+        Group::SU2 => {
+            // Quaternion (q0, q1, q2, q3) — Re Tr / N = q0 for unit quat.
+            // Defensive against under-arity: zero fiber → zero weight.
+            fiber.first().copied().unwrap_or(0.0)
+        }
+        Group::SU3 => {
+            // Interleaved 18-float row-major 3×3 complex; diagonal real
+            // parts at offsets 0 (re_00), 8 (re_11), 16 (re_22).
+            let d0 = fiber.first().copied().unwrap_or(0.0);
+            let d1 = fiber.get(8).copied().unwrap_or(0.0);
+            let d2 = fiber.get(16).copied().unwrap_or(0.0);
+            (d0 + d1 + d2) / 3.0
+        }
+        Group::U1 => fiber.first().copied().unwrap_or(0.0).cos(),
+        Group::ZN { n } => {
+            // Discrete index packed as f64; round to nearest integer to
+            // tolerate FP serialization drift, then map to angle.
+            let k = fiber.first().copied().unwrap_or(0.0).round();
+            let n_f = n as f64;
+            if n_f <= 0.0 {
+                return 1.0;
+            }
+            let theta = 2.0 * std::f64::consts::PI * k / n_f;
+            theta.cos()
+        }
+    }
+}
+
+/// SPECTRAL_GAUGE Phase 1 — compute the fiber-weighted spectral gap λ₁
+/// of L_A.
+///
+/// Reads `bundle` records, reconstructs the per-edge group element U_e
+/// from `fiber_fields`, computes trace weights w_e = Re Tr(U_e)/N,
+/// builds the dense weighted graph Laplacian L_A, and returns its
+/// smallest nonzero eigenvalue via nalgebra::SymmetricEigen.
+///
+/// HONEST FRAMING: L_A's spectrum is globally gauge-invariant, but the
+/// per-edge weight Re Tr(U_e)/N is only locally gauge-covariant. This
+/// returns the fiber-weighted spectral gap — NOT the strict Yang-Mills
+/// mass gap. See HALCYON_BRIDGE_TRILOGY notes (cfeb5c5).
+///
+/// `full = true` returns `SpectralGaugeError::PhaseNotImplemented`
+/// (Phase 2 ships the Lanczos sparse k-eigenvalue path).
+///
+/// Negative-weight edges are physically meaningful (anti-aligned
+/// holonomy → negative `Re Tr`); the resulting symmetric Laplacian is
+/// real but is NOT guaranteed positive semidefinite under those
+/// configurations. The "smallest nonzero" eigenvalue may legitimately
+/// be negative in heavily anti-correlated regimes — this is the honest
+/// physics, surfaced verbatim rather than clamped.
+#[cfg(feature = "gauge")]
+pub fn spectral_gauge_gap(
+    engine: &crate::engine::Engine,
+    bundle: &str,
+    fiber_fields: &[String],
+    group: crate::gauge::Group,
+    full: bool,
+    _limit: Option<usize>,
+) -> Result<SpectralGaugeResult, SpectralGaugeError> {
+    // ── Step 0: FULL mode → Phase 2 stub. Surface the typed error so
+    //   callers get an exact phase tag plus what they get today (the
+    //   gap-only return value). _limit is intentionally unused in
+    //   Phase 1; Phase 2 reads it for the Lanczos k-eigenvalue path.
+    if full {
+        return Err(SpectralGaugeError::PhaseNotImplemented {
+            phase: "Phase 2",
+            description: "FULL mode (k eigenvalues + Lanczos sparse) ships in Phase 2 \
+                          — Phase 1 dense path returns only the gap λ₁",
+        });
+    }
+
+    // ── Step 1: Resolve the bundle. Use the typed BundleNotFound
+    //   variant rather than the silent-zero fallback the unweighted
+    //   SPECTRAL verb uses — Halcyon explicitly wants the typed error.
+    let bundle_ref = engine
+        .bundle(bundle)
+        .ok_or_else(|| SpectralGaugeError::BundleNotFound(bundle.to_string()))?;
+    let store = bundle_ref.as_heap().ok_or_else(|| {
+        SpectralGaugeError::BundleNotFound(format!("{bundle} (not heap-resident)"))
+    })?;
+
+    // ── Step 2: Validate fiber arity matches the group's repr_dim.
+    let expected = group.repr_dim();
+    if fiber_fields.len() != expected {
+        return Err(SpectralGaugeError::FiberArityMismatch {
+            group: group.label(),
+            expected,
+            actual: fiber_fields.len(),
+        });
+    }
+
+    // ── Step 3: Confirm vertex_a / vertex_b are in base_fields.
+    let endpoint_a = "vertex_a";
+    let endpoint_b = "vertex_b";
+    let has_a = store.schema.base_fields.iter().any(|f| f.name == endpoint_a);
+    let has_b = store.schema.base_fields.iter().any(|f| f.name == endpoint_b);
+    if !has_a || !has_b {
+        return Err(SpectralGaugeError::MissingEndpointFields {
+            bundle: bundle.to_string(),
+            a: endpoint_a.to_string(),
+            b: endpoint_b.to_string(),
+        });
+    }
+
+    // ── Step 4: Single pass through records building (i, j, w_e).
+    //   Vertex indexing is dense: each unique vertex id gets a compact
+    //   0..V row index on first sight.
+    let mut vertex_idx: HashMap<i64, usize> = HashMap::new();
+    let mut edges: Vec<(usize, usize, f64)> = Vec::new();
+    let mut n_records_used = 0usize;
+
+    for rec in store.records() {
+        let va = rec.get(endpoint_a).and_then(|v| v.as_i64()).unwrap_or(0);
+        let vb = rec.get(endpoint_b).and_then(|v| v.as_i64()).unwrap_or(0);
+        let next_a = vertex_idx.len();
+        let i = *vertex_idx.entry(va).or_insert(next_a);
+        let next_b = vertex_idx.len();
+        let j = *vertex_idx.entry(vb).or_insert(next_b);
+
+        // Pack fiber columns into a fixed-arity slice for re_trace_over_n.
+        let fiber: Vec<f64> = fiber_fields
+            .iter()
+            .map(|f| rec.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
+            .collect();
+
+        let w_e = re_trace_over_n(&fiber, group);
+        edges.push((i, j, w_e));
+        n_records_used += 1;
+    }
+
+    let v_count = vertex_idx.len();
+    if v_count < 2 {
+        return Err(SpectralGaugeError::EmptyBundle {
+            bundle: bundle.to_string(),
+        });
+    }
+
+    // ── Step 5: Assemble dense Laplacian L_A as nalgebra DMatrix<f64>.
+    //   Standard combinatorial Laplacian on the weighted graph:
+    //     L[i,i] = Σ_e∋i w_e
+    //     L[i,j] = -w_e for edge (i,j)
+    //   Symmetric by construction: both off-diagonals get the same
+    //   decrement; both diagonals get the same increment.
+    let mut l = nalgebra::DMatrix::<f64>::zeros(v_count, v_count);
+    for &(i, j, w) in &edges {
+        if i == j {
+            continue; // skip self-loops
+        }
+        l[(i, j)] -= w;
+        l[(j, i)] -= w;
+        l[(i, i)] += w;
+        l[(j, j)] += w;
+    }
+
+    // ── Step 6: Eigendecomposition (symmetric, real spectrum).
+    let eigen = nalgebra::SymmetricEigen::new(l);
+    let mut vals: Vec<f64> = eigen.eigenvalues.iter().copied().collect();
+    vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    // ── Step 7: Smallest nonzero eigenvalue. For a connected graph
+    //   the smallest eigenvalue is ≈ 0 (within FP noise); λ₁ is the
+    //   next one. For disconnected: there are k zero eigenvalues for
+    //   k components — λ₁ is still defined as the first eigenvalue
+    //   above the tolerance.
+    let tol = 1e-9_f64;
+    let gap = vals
+        .iter()
+        .find(|&&v| v.abs() > tol)
+        .copied()
+        .unwrap_or(0.0);
+
+    Ok(SpectralGaugeResult {
+        gap,
+        eigenvalues: None, // Phase 1: gap only. Phase 2 fills this.
+        n_records_used,
+        group_used: group,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

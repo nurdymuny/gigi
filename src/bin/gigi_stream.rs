@@ -13204,6 +13204,76 @@ fn execute_gql_on_store_read(
                 .collect();
             Ok(ExecResult::Rows(rows))
         }
+        // SPECTRAL_GAUGE bundle ON FIBER (...) [GROUP <g>] [FULL [LIMIT k]]
+        //
+        // Halcyon Phase 1 (2026-06-28): fiber-weighted graph Laplacian
+        // λ₁ via dense nalgebra SymmetricEigen. FULL mode returns a
+        // typed PhaseNotImplemented error pointing at Phase 2 (Lanczos
+        // sparse). Engine is required to resolve the bundle name with
+        // the typed BundleNotFound error rather than the silent-zero
+        // fallback the unweighted SPECTRAL verb uses.
+        //
+        // HONEST FRAMING: the returned `gap` is the spectral gap of
+        // the gauge-weighted Laplacian L_A — globally gauge-invariant
+        // in its spectrum, but the per-edge trace weight is only
+        // locally gauge-covariant. This is NOT the strict Yang-Mills
+        // mass gap. Halcyon understands the distinction.
+        #[cfg(feature = "gauge")]
+        Statement::SpectralGauge { bundle, fiber_fields, group, full, limit } => {
+            let eng = engine.ok_or_else(|| {
+                "SPECTRAL_GAUGE requires an Engine handle in the executor context".to_string()
+            })?;
+
+            // Infer group at exec time when not specified. Same arity
+            // table the parser would use, just at a different layer
+            // so programmatic callers of the function ALSO get the
+            // same inference behaviour.
+            let resolved_group = match group {
+                Some(g) => *g,
+                None => match fiber_fields.len() {
+                    1 => gigi::gauge::Group::U1,
+                    4 => gigi::gauge::Group::SU2,
+                    18 => gigi::gauge::Group::SU3,
+                    other => return Err(format!(
+                        "SPECTRAL_GAUGE: GROUP required when fiber width is ambiguous \
+                         (got {} fields; canonical widths are 1/4/18)",
+                        other
+                    )),
+                },
+            };
+
+            // Read-only engine borrow — the eigendecomposition does
+            // not mutate any state.
+            let eng_guard = eng.read().unwrap();
+            let result = gigi::spectral::spectral_gauge_gap(
+                &eng_guard,
+                bundle,
+                fiber_fields,
+                resolved_group,
+                *full,
+                *limit,
+            )
+            .map_err(|e| e.to_string())?;
+
+            // Single-row result envelope mirrors the SPECTRAL_FIBER
+            // pattern — gap / n_records_used / group_used. Phase 2's
+            // eigenvalues vector will add a second row block.
+            let mut row = gigi::types::Record::new();
+            row.insert("gap".to_string(), gigi::types::Value::Float(result.gap));
+            row.insert(
+                "n_records_used".to_string(),
+                gigi::types::Value::Integer(result.n_records_used as i64),
+            );
+            row.insert(
+                "group_used".to_string(),
+                gigi::types::Value::Text(result.group_used.label().to_string()),
+            );
+            Ok(ExecResult::Rows(vec![row]))
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::SpectralGauge { .. } => {
+            Err("SPECTRAL_GAUGE requires the `gauge` feature to be enabled".to_string())
+        }
         // TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER (f1, f2, ...)
         //
         // L1.5.3 extension (catalog §1.2, consumption draft v2 §2):
@@ -13578,6 +13648,9 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         // Fiber-geometric analytics (Sprint 2)
         HolonomyFiber { bundle, .. } => Some(bundle.clone()),
         SpectralFiber { bundle, .. } => Some(bundle.clone()),
+        // Halcyon Phase 1 (2026-06-28): SPECTRAL_GAUGE is a single-bundle
+        // read; expose the bundle name so the dispatcher can attach.
+        SpectralGauge { bundle, .. } => Some(bundle.clone()),
         Transport { bundle, .. } => Some(bundle.clone()),
         TransportRotation { bundle, .. } => Some(bundle.clone()),
         SampleTransport { bundle, .. } => Some(bundle.clone()),
@@ -13622,6 +13695,7 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Ricci { .. }          => "RICCI",
         Curvature { .. }      => "CURVATURE",
         Spectral { .. }       => "SPECTRAL",
+        SpectralGauge { .. }  => "SPECTRAL_GAUGE",
         CreateBundle { .. }   => "CREATE_BUNDLE",
         Collapse { .. }       => "DROP_BUNDLE",
         RotateKey { .. }      => "ROTATE_KEY",

@@ -296,3 +296,26 @@ fn test_parser_rejects_bare_zn_without_modulus() {
         _ => panic!("expected GaugeField"),
     }
 }
+
+/// Parser ergonomics #4 + SPECTRAL_GAUGE (2026-06-28): the SU3 bare
+/// synonym also threads through the new SPECTRAL_GAUGE verb arm, not
+/// just GAUGE_FIELD. Pins parser-side parity in the SPECTRAL_GAUGE
+/// context surfaced when gigi flagged the asymmetry during
+/// bridge-trilogy review.
+#[test]
+fn test_su3_parser_accepts_both_su3_and_parenthesized() {
+    use gigi::parser::{parse, Statement};
+
+    let bare = gigi::parser::parse("SPECTRAL_GAUGE b ON FIBER (a) GROUP SU3").expect("bare SU3");
+    let paren = parse("SPECTRAL_GAUGE b ON FIBER (a) GROUP SU(3)").expect("SU(3)");
+    let g_bare = match bare {
+        Statement::SpectralGauge { group, .. } => group,
+        other => panic!("expected SpectralGauge, got {other:?}"),
+    };
+    let g_paren = match paren {
+        Statement::SpectralGauge { group, .. } => group,
+        other => panic!("expected SpectralGauge, got {other:?}"),
+    };
+    assert_eq!(g_bare, Some(Group::SU3));
+    assert_eq!(g_paren, Some(Group::SU3));
+}

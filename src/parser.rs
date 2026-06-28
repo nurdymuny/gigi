@@ -529,6 +529,37 @@ pub enum Statement {
         fiber_fields: Vec<String>,
         modes: usize,
     },
+    /// SPECTRAL_GAUGE bundle ON FIBER (f1, f2, ...) [GROUP <label>]
+    ///                                              [FULL [LIMIT k]]
+    ///
+    /// Halcyon Phase 1: fiber-weighted graph Laplacian λ₁. Distinct
+    /// from SPECTRAL (unweighted) and SPECTRAL_FIBER (PCA of fiber
+    /// vectors) — this verb builds L_A from per-edge group-element
+    /// trace weights and returns the spectral gap of that L_A.
+    ///
+    /// HONEST FRAMING: L_A's spectrum is globally gauge-invariant
+    /// but Re Tr(U_e)/N is only locally gauge-covariant — this is
+    /// the fiber-weighted spectral gap, NOT the strict Yang-Mills
+    /// mass gap. See HALCYON_BRIDGE_TRILOGY (cfeb5c5) for the math
+    /// lens that pins this distinction.
+    SpectralGauge {
+        bundle: String,
+        fiber_fields: Vec<String>,
+        /// `None` → infer from `fiber_fields.len()` at exec time
+        /// (1 → U(1), 4 → SU(2), 18 → SU(3); else error).
+        #[cfg(feature = "gauge")]
+        group: Option<crate::gauge::Group>,
+        /// Stub field when the `gauge` feature is OFF so the variant
+        /// still compiles. The parser rejects the GROUP clause without
+        /// the feature, so this stays `None` for no-feature builds.
+        #[cfg(not(feature = "gauge"))]
+        group: Option<()>,
+        /// Phase 1: FULL mode returns PhaseNotImplemented stub.
+        full: bool,
+        /// LIMIT k after FULL — Phase 2 will use this to size the
+        /// Lanczos k-eigenvalue request.
+        limit: Option<usize>,
+    },
     // ── Ricci curvature (per-edge) ──
     Ricci {
         bundle: String,
@@ -1935,6 +1966,10 @@ impl Parser {
             // Analytics
             "CURVATURE" => self.parse_curvature(),
             "SPECTRAL" => self.parse_spectral(),
+            // Halcyon Phase 1 (2026-06-28): SPECTRAL_GAUGE is its own
+            // top-level verb, distinct from SPECTRAL ON FIBER. Same
+            // namespace pattern as SPECTRAL_FIBER's reuse of SPECTRAL.
+            "SPECTRAL_GAUGE" => self.parse_spectral_gauge(),
             "CONSISTENCY" => self.parse_consistency(),
             "BETTI" => self.parse_betti(),
             "ENTROPY" => self.parse_entropy(),
@@ -4285,6 +4320,70 @@ impl Parser {
             false
         };
         Ok(Statement::Spectral { bundle: name, full })
+    }
+
+    /// Halcyon SPECTRAL_GAUGE — fiber-weighted spectral gap λ₁.
+    ///
+    /// Grammar:
+    ///   SPECTRAL_GAUGE bundle ON FIBER (f1, f2, ..., fK)
+    ///     [GROUP SU(2)|SU(3)|U(1)|Z(N)]
+    ///     [FULL [LIMIT k]]
+    ///     ;
+    ///
+    /// The ON FIBER clause is mandatory — without it the verb cannot
+    /// weight edges. GROUP is optional: when omitted, the executor
+    /// infers it from `fiber_fields.len()` (1 → U(1), 4 → SU(2),
+    /// 18 → SU(3); else error). FULL [LIMIT k] is parsed today;
+    /// Phase 1 returns a typed PhaseNotImplemented error pointing at
+    /// the Phase 2 Lanczos sparse path.
+    fn parse_spectral_gauge(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        self.expect_keyword("FIBER")?;
+        self.expect(Token::LParen)?;
+        let fiber_fields = self.parse_inner_word_list()?;
+        if fiber_fields.is_empty() {
+            return Err("SPECTRAL_GAUGE requires at least one fiber field".to_string());
+        }
+
+        // Optional GROUP clause.
+        #[cfg(feature = "gauge")]
+        let group: Option<crate::gauge::Group> = if self.is_keyword("GROUP") {
+            self.advance();
+            Some(self.parse_group_label()?)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "gauge"))]
+        let group: Option<()> = if self.is_keyword("GROUP") {
+            return Err(
+                "SPECTRAL_GAUGE GROUP clause requires the `gauge` feature".to_string()
+            );
+        } else {
+            None
+        };
+
+        // Optional FULL [LIMIT k] clause.
+        let (full, limit) = if self.is_keyword("FULL") {
+            self.advance();
+            let k = if self.is_keyword("LIMIT") {
+                self.advance();
+                Some(self.expect_usize()?)
+            } else {
+                None
+            };
+            (true, k)
+        } else {
+            (false, None)
+        };
+
+        Ok(Statement::SpectralGauge {
+            bundle,
+            fiber_fields,
+            group,
+            full,
+            limit,
+        })
     }
 
     fn parse_consistency(&mut self) -> Result<Statement, String> {
@@ -9752,6 +9851,75 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let info = store.metric_tensor();
             let cond = if info.condition_number.is_finite() { info.condition_number } else { -1.0 };
             Ok(ExecResult::Scalar(cond))
+        }
+        // SPECTRAL_GAUGE Phase 1 (Halcyon 2026-06-28) — fiber-weighted
+        // spectral gap λ₁ of the gauge-weighted graph Laplacian L_A.
+        //
+        // Routed through the parser executor (not HTTP-only) because
+        // it operates entirely on read-side data — no WAL writes, no
+        // mutable engine borrow needed. The HTTP envelope wraps the
+        // returned ExecResult::Rows shape directly.
+        //
+        // HONEST FRAMING: L_A's spectrum is globally gauge-invariant,
+        // but the per-edge weight Re Tr(U_e)/N is only locally
+        // gauge-covariant. This returns the fiber-weighted spectral
+        // gap, NOT the strict Yang-Mills mass gap. See cfeb5c5 and
+        // HALCYON_BRIDGE_TRILOGY for the math lens that pins it.
+        Statement::SpectralGauge {
+            bundle,
+            fiber_fields,
+            group,
+            full,
+            limit,
+        } => {
+            #[cfg(feature = "gauge")]
+            {
+                // Group inference at exec time: a `None` group from
+                // the parser maps to the canonical-arity table.
+                let resolved_group = match group {
+                    Some(g) => *g,
+                    None => crate::spectral::infer_group_from_arity(fiber_fields.len())
+                        .map_err(|e| e.to_string())?,
+                };
+                let result = crate::spectral::spectral_gauge_gap(
+                    engine,
+                    bundle,
+                    fiber_fields,
+                    resolved_group,
+                    *full,
+                    *limit,
+                )
+                .map_err(|e| e.to_string())?;
+
+                // Return structured rows so the HTTP envelope can
+                // serialize gap / group_used / n_records_used. Matches
+                // the SPECTRAL_FIBER pattern (Marcella's existing
+                // calling convention). When Phase 2 fills the
+                // eigenvalues vector, additional rows will follow.
+                let mut row = crate::types::Record::new();
+                row.insert(
+                    "gap".to_string(),
+                    crate::types::Value::Float(result.gap),
+                );
+                row.insert(
+                    "n_records_used".to_string(),
+                    crate::types::Value::Integer(result.n_records_used as i64),
+                );
+                row.insert(
+                    "group_used".to_string(),
+                    crate::types::Value::Text(result.group_used.label().to_string()),
+                );
+                Ok(ExecResult::Rows(vec![row]))
+            }
+            #[cfg(not(feature = "gauge"))]
+            {
+                // Suppress unused-variable warnings when gauge is off.
+                let _ = (bundle, fiber_fields, group, full, limit, engine);
+                Err(
+                    "SPECTRAL_GAUGE requires the `gauge` feature to be enabled"
+                        .to_string()
+                )
+            }
         }
         Statement::HolonomyFiber { .. }
         | Statement::LocalHolonomy { .. }

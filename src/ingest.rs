@@ -356,7 +356,12 @@ fn ingest_npz(
         });
     }
 
-    let bundle_created = ensure_bundle_compatible(engine, target_bundle, &inferred, true)?;
+    // GQL surface preserves auto-create-by-default. A future
+    // NO_AUTO_CREATE keyword on the INGEST AST will flip this to
+    // `false`; until then, every INGEST that arrives via the parser
+    // still auto-creates the bundle from inferred schema.
+    let bundle_created =
+        ensure_bundle_compatible(engine, target_bundle, &inferred, /*allow_auto_create=*/ true)?;
 
     // Stream records: for each array, iterate outermost axis and emit
     // a record per slice. We accumulate into a Vec<Record> of size

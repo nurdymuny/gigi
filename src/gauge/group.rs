@@ -26,9 +26,14 @@ pub enum Group {
     /// `q0² + q1² + q2² + q3² = 1`. The only variant with implemented
     /// math at launch.
     SU2,
-    /// SU(3): 9 f64s per edge (3×3 complex matrix flattened — exact
-    /// real layout is fixed in a later gate). Compiles; constructors
-    /// return `GroupNotImplemented`.
+    /// SU(3): 18 f64s per edge (3×3 complex matrix flattened in
+    /// row-major order with interleaved real/imag pairs:
+    /// `[re_00, im_00, re_01, im_01, re_02, im_02,
+    ///   re_10, im_10, re_11, im_11, re_12, im_12,
+    ///   re_20, im_20, re_21, im_21, re_22, im_22]`).
+    /// Pinned by Halcyon ITEM 3.1 §3.1 — 144 bytes per link matches
+    /// Bee's `inertia_damping/gauge_heatbath_gpu.py` reference
+    /// conventions.
     SU3,
     /// U(1): 1 f64 per edge (angle θ). Compiles; constructors return
     /// `GroupNotImplemented`.
@@ -43,13 +48,14 @@ impl Group {
     /// Floats per edge in the dense buffer for this group.
     ///
     /// - `SU2 = 4` (quaternion)
-    /// - `SU3 = 9` (3×3 flattened)
+    /// - `SU3 = 18` (3×3 complex matrix as 9 interleaved real/imag
+    ///   pairs — Halcyon ITEM 3.1 representation)
     /// - `U1 = 1` (angle)
     /// - `ZN = 1` (discrete index as f64)
     pub fn repr_dim(self) -> usize {
         match self {
             Group::SU2 => 4,
-            Group::SU3 => 9,
+            Group::SU3 => 18,
             Group::U1 => 1,
             Group::ZN { .. } => 1,
         }
@@ -74,11 +80,15 @@ mod tests {
     use super::*;
 
     /// TDD-HAL-II.1: `repr_dim` is the per-edge float count for every
-    /// group variant (SU(2)=4, SU(3)=9, U(1)=1, Z(N)=1).
+    /// group variant (SU(2)=4, SU(3)=18, U(1)=1, Z(N)=1).
+    ///
+    /// SU(3) was bumped from 9 to 18 by Halcyon ITEM 3.1 to carry the
+    /// 3×3 complex matrix as interleaved real/imag f64 pairs (Bee's
+    /// `inertia_damping/gauge_heatbath_gpu.py` representation).
     #[test]
     fn tdd_hal_ii_1_group_repr_dim() {
         assert_eq!(Group::SU2.repr_dim(), 4);
-        assert_eq!(Group::SU3.repr_dim(), 9);
+        assert_eq!(Group::SU3.repr_dim(), 18);
         assert_eq!(Group::U1.repr_dim(), 1);
         assert_eq!(Group::ZN { n: 5 }.repr_dim(), 1);
     }

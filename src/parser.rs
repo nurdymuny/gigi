@@ -10110,7 +10110,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             seed,
             persist,
         } => {
-            use crate::gauge::{GaugeFieldError, GaugeFieldInit, Group, SU2GaugeField};
+            use crate::gauge::{
+                GaugeFieldError, GaugeFieldInit, Group, SU2GaugeField, SU3GaugeField,
+            };
 
             // 1. Resolve the bound lattice. The `LatticeNotDeclared`
             //    Display contains the literal "not declared" so the
@@ -10119,68 +10121,124 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 GaugeFieldError::LatticeNotDeclared(lattice.clone()).to_string()
             })?;
 
-            // 2. Group-erasure dispatch — only SU(2) proceeds to
-            //    construction at launch. Bee's locked decision 6.
-            if !matches!(group, Group::SU2) {
-                return Err(GaugeFieldError::UnsupportedGroup(*group).to_string());
-            }
-
-            // 3. Resolve `INIT FROM other` if requested — clone the
-            //    source field's buffer + metadata. Otherwise hand off
-            //    to `SU2GaugeField::new` directly.
-            let field = match init {
-                GaugeFieldInit::FromField(src) => {
-                    let src_handle =
-                        crate::gauge::registry::get(src).ok_or_else(|| {
-                            GaugeFieldError::FieldNotDeclared(src.clone()).to_string()
-                        })?;
-                    // Source must live on the same lattice (the
-                    // walker reads through the bound lattice's edge
-                    // ids; a foreign-lattice clone would silently
-                    // mis-index).
-                    if src_handle.lattice_name() != lat.name {
-                        return Err(format!(
-                            "gauge: INIT FROM source '{}' lives on lattice '{}', \
-                             not '{}'",
-                            src,
-                            src_handle.lattice_name(),
-                            lat.name
-                        ));
+            // 2. Group-erasure dispatch — SU(2) and SU(3) ship live
+            //    math (the latter via Halcyon ITEM 3.1 Phase 1, read-
+            //    only ingest scope). U(1) and Z(N) still surface
+            //    `UnsupportedGroup`. Bee's locked decision 6 — the
+            //    group tag is named, the construction path is group-
+            //    specific, but the read surface (Arc<dyn
+            //    GaugeFieldHandle>) stays group-erased.
+            match group {
+                Group::SU2 => {
+                    let field = match init {
+                        GaugeFieldInit::FromField(src) => {
+                            let src_handle = crate::gauge::registry::get(src)
+                                .ok_or_else(|| {
+                                    GaugeFieldError::FieldNotDeclared(src.clone()).to_string()
+                                })?;
+                            if src_handle.lattice_name() != lat.name {
+                                return Err(format!(
+                                    "gauge: INIT FROM source '{}' lives on lattice '{}', \
+                                     not '{}'",
+                                    src,
+                                    src_handle.lattice_name(),
+                                    lat.name
+                                ));
+                            }
+                            if src_handle.group() != Group::SU2 {
+                                return Err(format!(
+                                    "gauge: INIT FROM source '{}' is {} but target is SU(2)",
+                                    src,
+                                    src_handle.group().label()
+                                ));
+                            }
+                            let src_buf = src_handle.as_dense_buffer().clone();
+                            SU2GaugeField {
+                                name: name.clone(),
+                                lattice_name: lat.name.clone(),
+                                buffer: src_buf,
+                                init_kind: GaugeFieldInit::FromField(src.clone()),
+                                init_seed: None,
+                            }
+                        }
+                        _ => SU2GaugeField::new(name.clone(), &lat, init.clone(), *seed)
+                            .map_err(|e| e.to_string())?,
+                    };
+                    if *persist {
+                        let field_snapshot = field.clone();
+                        let handle: std::sync::Arc<
+                            dyn crate::gauge::registry::GaugeFieldHandle,
+                        > = std::sync::Arc::new(field);
+                        engine
+                            .declare_gauge_field_durable(handle)
+                            .map_err(|e| format!("gauge: PERSIST failed: {e}"))?;
+                        crate::gauge::registry::register_su2(field_snapshot);
+                    } else {
+                        crate::gauge::registry::register_su2(field);
                     }
-                    let src_buf = src_handle.as_dense_buffer().clone();
-                    SU2GaugeField {
-                        name: name.clone(),
-                        lattice_name: lat.name.clone(),
-                        buffer: src_buf,
-                        init_kind: GaugeFieldInit::FromField(src.clone()),
-                        init_seed: None,
-                    }
+                    Ok(ExecResult::Ok)
                 }
-                _ => SU2GaugeField::new(name.clone(), &lat, init.clone(), *seed)
-                    .map_err(|e| e.to_string())?,
-            };
-
-            // Declaration must populate BOTH the dyn read map AND the
-            // SU(2)-mut sibling map so downstream mutators (GIBBS_SAMPLE
-            // / SYMPLECTIC_FLOW / SNAPSHOT) can find the field via
-            // `get_su2_mut`. `register_su2` already covers both maps
-            // (see src/gauge/registry.rs:160-176), so the non-PERSIST
-            // branch is a single call. The PERSIST branch still needs
-            // the Arc<dyn> handle for `declare_gauge_field_durable` and
-            // a separate `register_su2(field_snapshot)` afterwards for
-            // the SU(2)-mut sibling.
-            if *persist {
-                let field_snapshot = field.clone();
-                let handle: std::sync::Arc<dyn crate::gauge::registry::GaugeFieldHandle> =
-                    std::sync::Arc::new(field);
-                engine
-                    .declare_gauge_field_durable(handle)
-                    .map_err(|e| format!("gauge: PERSIST failed: {e}"))?;
-                crate::gauge::registry::register_su2(field_snapshot);
-            } else {
-                crate::gauge::registry::register_su2(field);
+                Group::SU3 => {
+                    // Halcyon ITEM 3.1 Phase 1: SU(3) declaration arm
+                    // mirrors SU(2) exactly. Construction goes through
+                    // SU3GaugeField::new; registration goes through
+                    // register_su3 (which populates both the dyn map
+                    // and the SU(3)-mut sibling map ready for Phase 2's
+                    // Cabibbo–Marinari heatbath). Phase 1 ships read-
+                    // only ingest only — no mutation verbs touch SU(3)
+                    // fields yet.
+                    let field = match init {
+                        GaugeFieldInit::FromField(src) => {
+                            let src_handle = crate::gauge::registry::get(src)
+                                .ok_or_else(|| {
+                                    GaugeFieldError::FieldNotDeclared(src.clone()).to_string()
+                                })?;
+                            if src_handle.lattice_name() != lat.name {
+                                return Err(format!(
+                                    "gauge: INIT FROM source '{}' lives on lattice '{}', \
+                                     not '{}'",
+                                    src,
+                                    src_handle.lattice_name(),
+                                    lat.name
+                                ));
+                            }
+                            if src_handle.group() != Group::SU3 {
+                                return Err(format!(
+                                    "gauge: INIT FROM source '{}' is {} but target is SU(3)",
+                                    src,
+                                    src_handle.group().label()
+                                ));
+                            }
+                            let src_buf = src_handle.as_dense_buffer().clone();
+                            SU3GaugeField::from_buffer(
+                                name.clone(),
+                                lat.name.clone(),
+                                src_buf,
+                                GaugeFieldInit::FromField(src.clone()),
+                                None,
+                            )
+                        }
+                        _ => SU3GaugeField::new(name.clone(), &lat, init.clone(), *seed)
+                            .map_err(|e| e.to_string())?,
+                    };
+                    if *persist {
+                        let field_snapshot = field.clone();
+                        let handle: std::sync::Arc<
+                            dyn crate::gauge::registry::GaugeFieldHandle,
+                        > = std::sync::Arc::new(field);
+                        engine
+                            .declare_gauge_field_durable(handle)
+                            .map_err(|e| format!("gauge: PERSIST failed: {e}"))?;
+                        crate::gauge::registry::register_su3(field_snapshot);
+                    } else {
+                        crate::gauge::registry::register_su3(field);
+                    }
+                    Ok(ExecResult::Ok)
+                }
+                Group::U1 | Group::ZN { .. } => {
+                    Err(GaugeFieldError::UnsupportedGroup(*group).to_string())
+                }
             }
-            Ok(ExecResult::Ok)
         }
 
         // `SHOW GAUGE_FIELD name [BUFFER];` — emit the registered

@@ -30,6 +30,7 @@ use super::e_field::{EFieldHandle, SU2EField};
 use super::edge_connection::EdgeConnection;
 use super::group::Group;
 use super::su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
+use super::su3_gauge_field::SU3GaugeField;
 
 /// Object-safe handle the registry stores. Extends `EdgeConnection`
 /// so the walker can read through it directly; the metadata accessors
@@ -53,6 +54,31 @@ pub trait GaugeFieldHandle: EdgeConnection + Send + Sync {
 }
 
 impl GaugeFieldHandle for SU2GaugeField {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn lattice_name(&self) -> &str {
+        &self.lattice_name
+    }
+    fn group(&self) -> Group {
+        self.buffer.group
+    }
+    fn init_metadata(&self) -> (GaugeFieldInit, Option<u64>) {
+        (self.init_kind.clone(), self.init_seed)
+    }
+    fn as_dense_buffer(&self) -> &DenseLinkBuffer {
+        &self.buffer
+    }
+}
+
+/// Halcyon ITEM 3.1 Phase 1: `SU3GaugeField` impls the same
+/// object-safe handle so the registry, SHOW GAUGE_FIELD path, and
+/// HTTP routes treat it identically to `SU2GaugeField`. The walker
+/// reads through `&dyn GaugeFieldHandle` (which is also
+/// `&dyn EdgeConnection`); group dispatch happens only at the
+/// observable-reduction layer (e.g. plaquette dispatching on
+/// `handle.group()`).
+impl GaugeFieldHandle for SU3GaugeField {
     fn name(&self) -> &str {
         &self.name
     }
@@ -108,10 +134,14 @@ pub fn clear() {
         .lock()
         .expect("su2 mut registry mutex poisoned");
     s.clear();
+    let mut s3 = su3_mut_registry()
+        .lock()
+        .expect("su3 mut registry mutex poisoned");
+    s3.clear();
 }
 
 
-/// Remove a single named field from both registry maps without
+/// Remove a single named field from all registry maps without
 /// clobbering the rest. III.5 tests use this to tear down their own
 /// fixtures at the end of a test without disturbing parallel tests'
 /// state on the singleton registries.
@@ -122,10 +152,16 @@ pub fn remove(name: &str) {
             .expect("gauge registry mutex poisoned");
         g.remove(name);
     }
-    let mut s = su2_mut_registry()
+    {
+        let mut s = su2_mut_registry()
+            .lock()
+            .expect("su2 mut registry mutex poisoned");
+        s.remove(name);
+    }
+    let mut s3 = su3_mut_registry()
         .lock()
-        .expect("su2 mut registry mutex poisoned");
-    s.remove(name);
+        .expect("su3 mut registry mutex poisoned");
+    s3.remove(name);
 }
 
 // ───────────────────────── SU(2) mutability escape ─────────────────────────
@@ -247,6 +283,114 @@ pub fn republish_su2(name: &str, field_arc: Arc<Mutex<SU2GaugeField>>) {
 // out.
 #[allow(dead_code)]
 type _Su2GuardAliasHint<'a> = MutexGuard<'a, SU2GaugeField>;
+
+// ───────────────────────── SU(3) mutability escape ─────────────────────────
+//
+// Halcyon ITEM 3.1 Phase 1 sibling to the SU(2) mutability escape above.
+// `register` + `get` stay on the `Arc<dyn GaugeFieldHandle>` read-only
+// surface (group erasure holds for PLAQUETTE / SHOW). The
+// `register_su3` + `get_su3_mut` pair below adds an SU(3)-named,
+// concrete-typed mutable escape that the Phase 2 Cabibbo–Marinari
+// heatbath kernel will consume. Phase 1 scope is READ-ONLY INGEST —
+// the mutability surface ships now for API symmetry (and so persistence
+// WAL replay can install a snapshot buffer via
+// `SU3GaugeField::replace_buffer`), but no Phase 1 code path mutates.
+
+fn su3_mut_registry() -> &'static Mutex<HashMap<String, Arc<Mutex<SU3GaugeField>>>> {
+    static REG: OnceLock<Mutex<HashMap<String, Arc<Mutex<SU3GaugeField>>>>> = OnceLock::new();
+    REG.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Register an `SU3GaugeField` under its `name` with the mutable
+/// surface the Phase 2 Cabibbo–Marinari kernel will need. Populates
+/// both the SU(3)-mut map and the existing dyn read map (with a
+/// snapshot clone) so `get` and `get_su3_mut` see the same name.
+/// Overwrites any previous registration under the same name.
+pub fn register_su3(field: SU3GaugeField) {
+    let name = field.name.clone();
+    // 1. Snapshot the field into the dyn read map (so `get(name)` keeps
+    //    returning a `GaugeFieldHandle` byte-identically).
+    let snapshot: Arc<dyn GaugeFieldHandle> = Arc::new(field.clone());
+    {
+        let mut g = registry()
+            .lock()
+            .expect("gauge registry mutex poisoned");
+        g.insert(name.clone(), snapshot);
+    }
+    // 2. Park the mutable copy in the SU(3)-mut map.
+    let mut s = su3_mut_registry()
+        .lock()
+        .expect("su3 mut registry mutex poisoned");
+    s.insert(name, Arc::new(Mutex::new(field)));
+}
+
+/// Look up the SU(3) mutable handle for `name`. Returns the
+/// `Arc<Mutex<SU3GaugeField>>` the registry holds; the caller locks
+/// it for the duration of the mutation window (mirrors
+/// `get_su2_mut`). SU(3)-named on purpose — group-erasure escape for
+/// the Phase 2 Cabibbo–Marinari heatbath kernel only (Bee's locked
+/// decision D4).
+///
+/// Phase 1 scope is read-only ingest; this accessor ships now for API
+/// symmetry and for the persistence WAL replay arm that installs a
+/// post-thermalization snapshot via
+/// `SU3GaugeField::replace_buffer`.
+pub fn get_su3_mut(name: &str) -> Option<Arc<Mutex<SU3GaugeField>>> {
+    let s = su3_mut_registry()
+        .lock()
+        .expect("su3 mut registry mutex poisoned");
+    s.get(name).cloned()
+}
+
+/// Re-publish the latest `SU3GaugeField` state from the SU(3)-mut map
+/// into the dyn read map. Phase 2 Cabibbo–Marinari will call this once
+/// after its sweep loop so `get(name)` returns a fresh snapshot of the
+/// post-mutation buffer (the dyn surface stays read-after-write
+/// coherent at the verb boundary). Noop when `name` is not present in
+/// the SU(3)-mut map.
+pub fn refresh_dyn_from_su3_mut(name: &str) {
+    let snapshot = {
+        let s = su3_mut_registry()
+            .lock()
+            .expect("su3 mut registry mutex poisoned");
+        match s.get(name) {
+            Some(arc) => {
+                let guard = arc.lock().expect("su3 field mutex poisoned");
+                guard.clone()
+            }
+            None => return,
+        }
+    };
+    let mut g = registry()
+        .lock()
+        .expect("gauge registry mutex poisoned");
+    g.insert(name.to_string(), Arc::new(snapshot));
+}
+
+/// Re-publish a locally-held `Arc<Mutex<SU3GaugeField>>` into BOTH
+/// the SU(3)-mut map and the dyn read map. Phase 2 Cabibbo–Marinari
+/// will use this instead of `refresh_dyn_from_su3_mut` when it wants
+/// to be robust against a parallel `clear()` that might wipe the
+/// SU(3)-mut entry mid-sweep (mirror of `republish_su2`).
+pub fn republish_su3(name: &str, field_arc: Arc<Mutex<SU3GaugeField>>) {
+    let snapshot = {
+        let guard = field_arc.lock().expect("su3 field mutex poisoned");
+        guard.clone()
+    };
+    {
+        let mut s = su3_mut_registry()
+            .lock()
+            .expect("su3 mut registry mutex poisoned");
+        s.insert(name.to_string(), field_arc);
+    }
+    let mut g = registry()
+        .lock()
+        .expect("gauge registry mutex poisoned");
+    g.insert(name.to_string(), Arc::new(snapshot));
+}
+
+#[allow(dead_code)]
+type _Su3GuardAliasHint<'a> = MutexGuard<'a, SU3GaugeField>;
 
 /// Process-wide test serialization mutex. Every gauge test that calls
 /// `clear()` (the entire module does) holds this lock for its duration

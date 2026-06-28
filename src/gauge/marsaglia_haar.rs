@@ -119,6 +119,188 @@ pub fn haar_random_su2(rng: &mut SmallRng) -> [f64; 4] {
     [x1, x2, x3 * factor, x4 * factor]
 }
 
+/// Local complex-f64 micro-struct for the Haar SU(3) sampler.
+///
+/// Kept private so the SU(3) ingest path does not pull in `num_complex`
+/// or `nalgebra::Complex<f64>` (optionality contract per Bee's locked
+/// decision 7 — the `gauge` feature must not pull in extra crates for
+/// a hot-loop sampler). Stack-allocated, `Copy`, mul/add/sub/conj
+/// inline — same allocation discipline as `haar_random_su2`'s 4-tuple.
+#[derive(Debug, Clone, Copy)]
+struct C64 {
+    re: f64,
+    im: f64,
+}
+
+impl C64 {
+    #[inline]
+    fn zero() -> Self {
+        Self { re: 0.0, im: 0.0 }
+    }
+    #[inline]
+    fn new(re: f64, im: f64) -> Self {
+        Self { re, im }
+    }
+    #[inline]
+    fn add(self, other: Self) -> Self {
+        Self {
+            re: self.re + other.re,
+            im: self.im + other.im,
+        }
+    }
+    #[inline]
+    fn sub(self, other: Self) -> Self {
+        Self {
+            re: self.re - other.re,
+            im: self.im - other.im,
+        }
+    }
+    #[inline]
+    fn mul(self, other: Self) -> Self {
+        Self {
+            re: self.re * other.re - self.im * other.im,
+            im: self.re * other.im + self.im * other.re,
+        }
+    }
+    #[inline]
+    fn conj(self) -> Self {
+        Self {
+            re: self.re,
+            im: -self.im,
+        }
+    }
+    /// `|z|² = re² + im²`.
+    #[inline]
+    fn norm_sq(self) -> f64 {
+        self.re * self.re + self.im * self.im
+    }
+    /// `|z| = sqrt(re² + im²)`.
+    #[inline]
+    fn abs(self) -> f64 {
+        self.norm_sq().sqrt()
+    }
+    #[inline]
+    fn scale(self, s: f64) -> Self {
+        Self {
+            re: self.re * s,
+            im: self.im * s,
+        }
+    }
+}
+
+/// Box–Muller pair: returns two independent standard normals from two
+/// uniforms. Mirrors the pattern `maxwell_boltzmann_su2` uses
+/// (clamp `u1` away from zero to avoid `ln(0)`).
+#[inline]
+fn box_muller_pair(rng: &mut SmallRng) -> (f64, f64) {
+    let u1 = rng.uniform().max(f64::MIN_POSITIVE);
+    let u2 = rng.uniform();
+    let r = (-2.0 * u1.ln()).sqrt();
+    let theta = 2.0 * std::f64::consts::PI * u2;
+    (r * theta.cos(), r * theta.sin())
+}
+
+/// Draw one Haar-uniform SU(3) element using the Mezzadri 2007
+/// algorithm: complex Ginibre matrix → modified Gram–Schmidt QR →
+/// diagonal phase normalization → projection onto SU(3) by rotating
+/// column 0 by `conj(det(Q))`.
+///
+/// Returns the 3×3 unitary matrix as 18 f64s in the row-major
+/// interleaved-pairs layout pinned by `GroupElement::SU3`:
+/// `[re_00, im_00, re_01, im_01, re_02, im_02,
+///   re_10, im_10, re_11, im_11, re_12, im_12,
+///   re_20, im_20, re_21, im_21, re_22, im_22]`.
+///
+/// **RNG cadence**: 18 uniforms per call (9 Box–Muller pairs = 18
+/// uniforms; no rejection sampling). This is **fixed** — unlike
+/// `haar_random_su2` which can consume a variable number of uniforms
+/// due to (x1,x2) and (x3,x4) rejection loops, the Mezzadri SU(3)
+/// algorithm is rejection-free. The per-edge advance count is
+/// constant, which simplifies the bit-identity contract for Phase 2
+/// heatbath integrations.
+///
+/// **Det normalization** (step 4): the projection `U(3) → SU(3)` is
+/// done by multiplying column 0 by `conj(det(Q))`, NOT by dividing
+/// every entry by `det(Q)^(1/3)`. Cube roots have three branches and
+/// the branch choice is not bit-identical across compilers; the
+/// single-column phase rotation is branch-free and preserves Haar
+/// measure on SU(3) (Mezzadri 2007 §6, Diaconis–Forrester 2017 §2.1).
+pub fn haar_random_su3(rng: &mut SmallRng) -> [f64; 18] {
+    // STEP 1: 3×3 complex Ginibre matrix. 9 complex Gaussians = 18
+    // standard normals = 9 Box–Muller pairs.
+    let mut z: [[C64; 3]; 3] = [[C64::zero(); 3]; 3];
+    for i in 0..3 {
+        for j in 0..3 {
+            let (re, im) = box_muller_pair(rng);
+            z[i][j] = C64::new(re, im);
+        }
+    }
+
+    // STEP 2: Modified Gram–Schmidt QR on the columns of Z.
+    // After this, Q[*][k] is the k-th unitary basis column, and the
+    // diagonal of R is real-positive by construction.
+    let mut q: [[C64; 3]; 3] = [[C64::zero(); 3]; 3];
+    for k in 0..3 {
+        // v = Z[:, k]
+        let mut v: [C64; 3] = [z[0][k], z[1][k], z[2][k]];
+        // Subtract projections on prior Q columns.
+        for j in 0..k {
+            // r_jk = <Q[:, j], v> = Σ_i conj(Q[i, j]) · v[i]
+            let mut r_jk = C64::zero();
+            for i in 0..3 {
+                r_jk = r_jk.add(q[i][j].conj().mul(v[i]));
+            }
+            // v -= r_jk · Q[:, j]
+            for i in 0..3 {
+                v[i] = v[i].sub(r_jk.mul(q[i][j]));
+            }
+        }
+        // r_kk = sqrt(<v, v>.re) — real-positive by construction.
+        let vnorm_sq = v[0].norm_sq() + v[1].norm_sq() + v[2].norm_sq();
+        let r_kk = vnorm_sq.sqrt();
+        // Q[:, k] = v / r_kk
+        let inv = 1.0 / r_kk;
+        for i in 0..3 {
+            q[i][k] = v[i].scale(inv);
+        }
+    }
+
+    // STEP 3: Mezzadri phase normalization. Modified Gram–Schmidt above
+    // already yields R[k][k] real-positive, so Λ = I and this step is
+    // a no-op. Kept as a comment-anchor so the algorithm reads as
+    // canonical Mezzadri 2007 and a future swap-in (e.g. nalgebra QR
+    // with arbitrary diagonal phases) is correct by construction.
+
+    // STEP 4: Project U(3) → SU(3) by det(Q) ∈ U(1) on column 0.
+    // det via Laplace expansion on row 0.
+    let m00 = q[1][1].mul(q[2][2]).sub(q[1][2].mul(q[2][1]));
+    let m01 = q[1][0].mul(q[2][2]).sub(q[1][2].mul(q[2][0]));
+    let m02 = q[1][0].mul(q[2][1]).sub(q[1][1].mul(q[2][0]));
+    let det = q[0][0]
+        .mul(m00)
+        .sub(q[0][1].mul(m01))
+        .add(q[0][2].mul(m02));
+    // |det(Q)| = 1 in exact arithmetic since Q is unitary; defensively
+    // normalize so any sub-ULP drift in |det| does not propagate.
+    let det_abs = det.abs().max(f64::MIN_POSITIVE);
+    let phase = det.scale(1.0 / det_abs);
+    let phase_conj = phase.conj();
+    // Multiply column 0 by conj(det(Q)) so det(Q_new) = 1.
+    for i in 0..3 {
+        q[i][0] = q[i][0].mul(phase_conj);
+    }
+
+    // STEP 5: Pack into [f64; 18] interleaved row-major.
+    let mut out = [0.0_f64; 18];
+    for i in 0..3 {
+        for j in 0..3 {
+            out[6 * i + 2 * j] = q[i][j].re;
+            out[6 * i + 2 * j + 1] = q[i][j].im;
+        }
+    }
+    out
+}
+
 /// Draw one Maxwell–Boltzmann SU(2) tangent vector from `rng` packed
 /// as a quaternion with `q0 = 0`.
 ///
@@ -191,6 +373,99 @@ mod tests {
                 "Haar draw not unit-norm: q = {:?}, |q|^2 = {}",
                 q,
                 n2
+            );
+        }
+    }
+
+    // ───────────────────── Haar SU(3) tests ─────────────────────
+
+    /// Halcyon ITEM 3.1: two `SmallRng`s seeded identically produce
+    /// byte-identical Haar SU(3) streams (intra-binding bit-identity
+    /// — same contract as `tdd_hal_ii_2_haar_same_seed_byte_equal`).
+    #[test]
+    fn haar_su3_same_seed_byte_equal() {
+        let mut a = SmallRng::seed_from_u64(20260626);
+        let mut b = SmallRng::seed_from_u64(20260626);
+        for _ in 0..50 {
+            let ma = haar_random_su3(&mut a);
+            let mb = haar_random_su3(&mut b);
+            assert_eq!(ma, mb, "Haar SU(3) draws must be byte-identical under same seed");
+        }
+    }
+
+    /// Halcyon ITEM 3.1: every Haar SU(3) draw is unitary
+    /// (`U U† = I` to FP64 tolerance ~1e-12).
+    #[test]
+    fn haar_su3_unitary() {
+        let mut rng = SmallRng::seed_from_u64(20260626);
+        for sample in 0..100 {
+            let m = haar_random_su3(&mut rng);
+            // Compute U · U† using the same SU(3) primitives the engine
+            // dispatches on (compose + inverse) to keep this test
+            // honest about the production code path.
+            let u = crate::gauge::group_element::GroupElement::SU3(m);
+            let u_dag = u.inverse();
+            let prod = u.compose(&u_dag);
+            let id = crate::gauge::group_element::GroupElement::su3_identity();
+            match (prod, id) {
+                (
+                    crate::gauge::group_element::GroupElement::SU3(p),
+                    crate::gauge::group_element::GroupElement::SU3(i),
+                ) => {
+                    for k in 0..18 {
+                        assert!(
+                            (p[k] - i[k]).abs() < 1e-12,
+                            "sample {sample}, index {k}: |U U† − I| = {} >= 1e-12",
+                            (p[k] - i[k]).abs()
+                        );
+                    }
+                }
+                _ => panic!("expected SU3 variants"),
+            }
+        }
+    }
+
+    /// Halcyon ITEM 3.1: every Haar SU(3) draw has `|det(U) − 1| < 1e-10`.
+    /// Det normalization via the Mezzadri column-0 rotation must land
+    /// in this tolerance; cube-root would not (branch ambiguity).
+    #[test]
+    fn haar_su3_special_unitary() {
+        let mut rng = SmallRng::seed_from_u64(20260626);
+        for sample in 0..100 {
+            let m = haar_random_su3(&mut rng);
+            // Inline det via Laplace expansion on row 0 (same shape as
+            // the projector inside haar_random_su3).
+            // Row 0 entries:
+            let a00 = (m[0], m[1]);
+            let a01 = (m[2], m[3]);
+            let a02 = (m[4], m[5]);
+            // Row 1:
+            let a10 = (m[6], m[7]);
+            let a11 = (m[8], m[9]);
+            let a12 = (m[10], m[11]);
+            // Row 2:
+            let a20 = (m[12], m[13]);
+            let a21 = (m[14], m[15]);
+            let a22 = (m[16], m[17]);
+            // Complex multiply helpers (inline).
+            let cmul = |x: (f64, f64), y: (f64, f64)| -> (f64, f64) {
+                (x.0 * y.0 - x.1 * y.1, x.0 * y.1 + x.1 * y.0)
+            };
+            let csub = |x: (f64, f64), y: (f64, f64)| -> (f64, f64) {
+                (x.0 - y.0, x.1 - y.1)
+            };
+            let cadd = |x: (f64, f64), y: (f64, f64)| -> (f64, f64) {
+                (x.0 + y.0, x.1 + y.1)
+            };
+            let m00 = csub(cmul(a11, a22), cmul(a12, a21));
+            let m01 = csub(cmul(a10, a22), cmul(a12, a20));
+            let m02 = csub(cmul(a10, a21), cmul(a11, a20));
+            let det = cadd(csub(cmul(a00, m00), cmul(a01, m01)), cmul(a02, m02));
+            let drift = ((det.0 - 1.0).powi(2) + det.1.powi(2)).sqrt();
+            assert!(
+                drift < 1e-10,
+                "sample {sample}: |det(U) - 1| = {drift} >= 1e-10 (det = {:?})",
+                det
             );
         }
     }

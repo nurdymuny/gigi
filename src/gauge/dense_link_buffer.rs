@@ -15,7 +15,7 @@
 use super::error::GaugeFieldError;
 use super::group::Group;
 use super::group_element::GroupElement;
-use super::marsaglia_haar::{haar_random_su2, SmallRng};
+use super::marsaglia_haar::{haar_random_su2, haar_random_su3, SmallRng};
 
 /// Group-erased dense link buffer. Shape `(n_edges, repr_dim)`
 /// row-major. `group` is the per-buffer tag; every row decodes into
@@ -32,8 +32,11 @@ impl DenseLinkBuffer {
     /// Build an identity-everywhere buffer.
     ///
     /// For `Group::SU2`: every row is `(1, 0, 0, 0)` (scalar-first
-    /// quaternion identity). For every other group: returns
-    /// `Err(GaugeFieldError::UnsupportedGroup(_))`.
+    /// quaternion identity). For `Group::SU3`: every row is the
+    /// interleaved-pairs encoding of `I_3 = diag(1, 1, 1)` — real
+    /// diagonal entries at row-offsets 0, 8, 16 are 1.0, every other
+    /// slot is 0.0 (Halcyon ITEM 3.1 §3.1 representation). For every
+    /// other group: returns `Err(GaugeFieldError::UnsupportedGroup(_))`.
     pub fn new_identity(group: Group, n_edges: usize) -> Result<Self, GaugeFieldError> {
         let repr_dim = group.repr_dim();
         match group {
@@ -41,6 +44,24 @@ impl DenseLinkBuffer {
                 let mut data = vec![0.0_f64; n_edges * repr_dim];
                 for i in 0..n_edges {
                     data[repr_dim * i] = 1.0;
+                }
+                Ok(Self {
+                    group,
+                    n_edges,
+                    repr_dim,
+                    data,
+                })
+            }
+            Group::SU3 => {
+                // Halcyon ITEM 3.1: I_3 in interleaved row-major layout.
+                // Real diagonal entries live at offsets 0, 8, 16 within
+                // the 18-f64 per-link slot.
+                let mut data = vec![0.0_f64; n_edges * repr_dim];
+                for i in 0..n_edges {
+                    let base = repr_dim * i;
+                    data[base] = 1.0; // re_00
+                    data[base + 8] = 1.0; // re_11
+                    data[base + 16] = 1.0; // re_22
                 }
                 Ok(Self {
                     group,
@@ -79,6 +100,29 @@ impl DenseLinkBuffer {
                     data[base + 1] = q[1];
                     data[base + 2] = q[2];
                     data[base + 3] = q[3];
+                }
+                Ok(Self {
+                    group,
+                    n_edges,
+                    repr_dim,
+                    data,
+                })
+            }
+            Group::SU3 => {
+                // Halcyon ITEM 3.1: Mezzadri 2007 (complex Ginibre + QR
+                // + det normalization). Per-edge RNG cadence is FIXED
+                // at 18 uniforms (no rejection), which preserves the
+                // bit-identity contract Bee's locked decision 1
+                // demands. Same SmallRng (xorshift64*) as SU(2) so the
+                // optionality contract (decision 7) holds — no extra
+                // dependency for the SU(3) sampler.
+                let mut rng = SmallRng::seed_from_u64(seed);
+                let mut data = vec![0.0_f64; n_edges * repr_dim];
+                for edge in 0..n_edges {
+                    let m = haar_random_su3(&mut rng);
+                    let base = repr_dim * edge;
+                    // repr_dim == 18 for SU(3); copy the 18 f64s.
+                    data[base..base + 18].copy_from_slice(&m);
                 }
                 Ok(Self {
                     group,
@@ -144,11 +188,12 @@ impl DenseLinkBuffer {
 
     /// Decode the row at `edge` into a `GroupElement`.
     ///
-    /// Only `Group::SU2` has live math at launch. Other arms panic
-    /// because reaching them from a well-typed buffer is a
-    /// programming error — the `new_*` constructors above return
-    /// `Err` for non-SU2 groups, so no such buffer can be observed
-    /// here. Bee's locked decision 6.
+    /// `Group::SU2` and `Group::SU3` have live math at launch (the
+    /// latter via Halcyon ITEM 3.1 Phase 1). Other arms panic because
+    /// reaching them from a well-typed buffer is a programming error
+    /// — the `new_*` constructors above return `Err` for unsupported
+    /// groups, so no such buffer can be observed here. Bee's locked
+    /// decision 6.
     pub fn read_element(&self, edge: usize) -> GroupElement {
         let base = self.repr_dim * edge;
         match self.group {
@@ -158,12 +203,16 @@ impl DenseLinkBuffer {
                 q2: self.data[base + 2],
                 q3: self.data[base + 3],
             },
+            Group::SU3 => {
+                // Halcyon ITEM 3.1: copy 18 f64s into the fixed-size
+                // array the SU3 variant wraps. Interleaved row-major
+                // real/imag pairs (same layout the writers emit).
+                let mut m = [0.0_f64; 18];
+                m.copy_from_slice(&self.data[base..base + 18]);
+                GroupElement::SU3(m)
+            }
             Group::U1 => panic!(
                 "read_element not implemented for Group::U1 - Part II ships SU(2) math only; \
-                 future groups ship as separate EdgeConnection impls per group-erasure plan"
-            ),
-            Group::SU3 => panic!(
-                "read_element not implemented for Group::SU3 - Part II ships SU(2) math only; \
                  future groups ship as separate EdgeConnection impls per group-erasure plan"
             ),
             Group::ZN { .. } => panic!(
@@ -217,15 +266,12 @@ mod tests {
         }
     }
 
-    /// Non-SU2 constructors return the typed error (not a panic) so
-    /// the GAUGE_FIELD declaration path can surface it to the user.
-    /// Bee's locked decision 5.
+    /// Non-implemented constructors return the typed error (not a
+    /// panic) so the GAUGE_FIELD declaration path can surface it to
+    /// the user. Bee's locked decision 5. Halcyon ITEM 3.1 lifts the
+    /// SU(3) gate — only U(1) and Z(N) still error.
     #[test]
-    fn tdd_hal_ii_1_identity_rejects_non_su2_groups() {
-        assert_eq!(
-            DenseLinkBuffer::new_identity(Group::SU3, 10).unwrap_err(),
-            GaugeFieldError::UnsupportedGroup(Group::SU3)
-        );
+    fn tdd_hal_ii_1_identity_rejects_unimplemented_groups() {
         assert_eq!(
             DenseLinkBuffer::new_identity(Group::U1, 10).unwrap_err(),
             GaugeFieldError::UnsupportedGroup(Group::U1)
@@ -234,6 +280,29 @@ mod tests {
             DenseLinkBuffer::new_identity(Group::ZN { n: 5 }, 10).unwrap_err(),
             GaugeFieldError::UnsupportedGroup(Group::ZN { n: 5 })
         );
+    }
+
+    /// Halcyon ITEM 3.1: SU(3) identity buffer now constructs cleanly
+    /// — gate lifted from "unsupported" to live math.
+    #[test]
+    fn su3_identity_buffer_constructs() {
+        let buf = DenseLinkBuffer::new_identity(Group::SU3, 10).unwrap();
+        assert_eq!(buf.group, Group::SU3);
+        assert_eq!(buf.n_edges, 10);
+        assert_eq!(buf.repr_dim, 18);
+        assert_eq!(buf.data.len(), 180);
+        // Identity layout check: re_00=1, re_11=1, re_22=1, all others 0.
+        for edge in 0..10 {
+            let base = 18 * edge;
+            assert_eq!(buf.data[base], 1.0);
+            assert_eq!(buf.data[base + 8], 1.0);
+            assert_eq!(buf.data[base + 16], 1.0);
+            for off in 0..18 {
+                if off != 0 && off != 8 && off != 16 {
+                    assert_eq!(buf.data[base + off], 0.0, "off={off}");
+                }
+            }
+        }
     }
 
     /// Display impl must contain the group's stable label so the
@@ -281,10 +350,9 @@ mod tests {
         );
     }
 
-    /// TDD-HAL-II.2: `new_haar` on a non-SU2 group returns the
-    /// typed error (not a panic) so the GAUGE_FIELD declaration
-    /// path can surface it to the user (Bee's locked decision 5,
-    /// Halcyon G2.D regex anchor).
+    /// TDD-HAL-II.2: `new_haar` on a still-unimplemented group returns
+    /// the typed error. Halcyon ITEM 3.1 lifts the SU(3) gate — only
+    /// U(1) and Z(N) still error here.
     #[test]
     fn tdd_hal_ii_2_dense_buffer_haar_unsupported_group() {
         assert_eq!(
@@ -292,13 +360,22 @@ mod tests {
             GaugeFieldError::UnsupportedGroup(Group::U1)
         );
         assert_eq!(
-            DenseLinkBuffer::new_haar(Group::SU3, 90, 0).unwrap_err(),
-            GaugeFieldError::UnsupportedGroup(Group::SU3)
-        );
-        assert_eq!(
             DenseLinkBuffer::new_haar(Group::ZN { n: 7 }, 90, 0).unwrap_err(),
             GaugeFieldError::UnsupportedGroup(Group::ZN { n: 7 })
         );
+    }
+
+    /// Halcyon ITEM 3.1: SU(3) Haar buffer constructs deterministically
+    /// — same seed → byte-identical buffer (Mezzadri 2007).
+    #[test]
+    fn su3_haar_buffer_constructs_reproducibly() {
+        let a = DenseLinkBuffer::new_haar(Group::SU3, 90, 20260626).unwrap();
+        let b = DenseLinkBuffer::new_haar(Group::SU3, 90, 20260626).unwrap();
+        assert_eq!(a.group, Group::SU3);
+        assert_eq!(a.n_edges, 90);
+        assert_eq!(a.repr_dim, 18);
+        assert_eq!(a.data.len(), 90 * 18);
+        assert_eq!(a.data, b.data);
     }
 
     /// TDD-HAL-II.2: every row of a Haar buffer is unit-norm in

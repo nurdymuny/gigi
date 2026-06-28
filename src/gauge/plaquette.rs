@@ -29,6 +29,7 @@
 //! function to a `PLAQUETTE U OVER L` GQL statement + an HTTP route;
 //! III.1 is the pure library primitive the rest of Part III consumes.
 
+use super::edge_connection::EdgeConnection;
 use super::error::GaugeFieldError;
 use super::group::Group;
 use super::group_element::GroupElement;
@@ -67,6 +68,37 @@ pub fn plaquette_per_face(
                     ),
                 };
                 out.push(q0);
+            }
+            Ok(out)
+        }
+        Group::SU3 => {
+            // Halcyon ITEM 3.1 Phase 1: SU(3) plaquette reduction is
+            // Re Tr(U_f) / 3 over the per-face holonomy. The
+            // group-erased `walk_loop` seeds with `su2_identity()`
+            // and would panic on the first SU(3) compose (mixed-
+            // variant), so we walk inline with the SU(3) identity
+            // seed. Composition is via the same `GroupElement::compose`
+            // surface — only the seed changes.
+            let n_faces = lat.n_faces();
+            let mut out = Vec::with_capacity(n_faces);
+            let conn: &dyn EdgeConnection = handle;
+            for fidx in 0..n_faces {
+                let edges = face_edges(lat, fidx);
+                let mut h = GroupElement::su3_identity();
+                for &(eid, orient) in &edges {
+                    let u = conn.edge_element(eid, orient);
+                    h = h.compose(&u);
+                }
+                let pv = match h {
+                    GroupElement::SU3(m) => {
+                        // Diagonal real parts at indices 0, 8, 16.
+                        (m[0] + m[8] + m[16]) / 3.0
+                    }
+                    _ => unreachable!(
+                        "plaquette_per_face: SU(3) handle returned non-SU3 GroupElement"
+                    ),
+                };
+                out.push(pv);
             }
             Ok(out)
         }

@@ -32,6 +32,7 @@ use crate::lattice::Lattice;
 use super::group::Group;
 use super::registry::GaugeFieldHandle;
 use super::su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
+use super::su3_gauge_field::SU3GaugeField;
 
 /// Re-materialize a gauge field handle from a WAL declaration tuple.
 ///
@@ -65,10 +66,26 @@ pub fn materialize_field(
              declaration tuple alone — the source field must be \
              resolved at executor time. This is a P1 follow-up.",
         )),
-        (Group::SU3, _) | (Group::U1, _) | (Group::ZN { .. }, _) => Err(io::Error::new(
+        // Halcyon ITEM 3.1 Phase 1: SU(3) replay through the same
+        // metadata-only path SU(2) uses. Same byte-identity contract
+        // (intra-binding bit-identity per Bee's locked decision 1) —
+        // the Mezzadri Haar sampler is deterministic per seed.
+        (Group::SU3, GaugeFieldInit::Identity)
+        | (Group::SU3, GaugeFieldInit::HaarRandom) => {
+            let field = SU3GaugeField::new(name, lattice, init_kind, init_seed)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+            Ok(Arc::new(field))
+        }
+        (Group::SU3, GaugeFieldInit::FromField(_)) => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "FROM_FIELD SU(3) gauge fields cannot be replayed through the WAL \
+             declaration tuple alone — the source field must be \
+             resolved at executor time (same constraint as SU(2)).",
+        )),
+        (Group::U1, _) | (Group::ZN { .. }, _) => Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!(
-                "WAL gauge-field replay only supports SU(2) at launch; got {}",
+                "WAL gauge-field replay supports SU(2) and SU(3); got {}",
                 group.label()
             ),
         )),

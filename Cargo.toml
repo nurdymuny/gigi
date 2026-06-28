@@ -327,6 +327,18 @@ name = "bench_thermalization_baseline"
 path = "examples/bench_thermalization_baseline.rs"
 required-features = ["halcyon"]
 
+# Perfect-Identity Corollary 4.2 — IGS GNSS Earth-geodesic transport.
+# Parallel-transports an SU(2) frame around the great-circle triangle
+# formed by IGS stations PIE1 / KOKB / ALGO on a cubed-sphere (C=32) and
+# compares the holonomy rotation angle against Girard's analytic excess
+# A/R². Writes papers/perfect_identity/empirical/gnss_geodesic_results.json.
+# Run with:
+#   cargo run --release --features lattice --example gnss_geodesic
+[[example]]
+name = "gnss_geodesic"
+path = "examples/gnss_geodesic.rs"
+required-features = ["lattice"]
+
 [dev-dependencies]
 rand = "0.8"
 # `tempfile` is declared under `[dependencies]` (see comment there);

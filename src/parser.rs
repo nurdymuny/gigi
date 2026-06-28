@@ -9481,9 +9481,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         | Statement::ShowSession
         | Statement::ShowCurrentRole => Ok(ExecResult::Ok),
 
-        // ── v2.1: Data Movement (stubs) ──
-        Statement::Ingest { bundle, .. } => {
+        // ── v2.1: Data Movement ──
+        // Halcyon ITEM 3.2 — INGEST executor. The parser arm is now
+        // wired through `crate::ingest::execute_ingest`, which reads
+        // the source file (Phase 1: NPZ only) and streams records
+        // into the engine via `batch_insert`. The virtual-bundle
+        // reject guard stays first so the read-only-bundle policy is
+        // uniform across every write verb. See `src/ingest.rs` for
+        // the format, mapping policy, and error envelope.
+        Statement::Ingest { bundle, source, format } => {
             crate::virtual_bundles::reject_virtual_write(bundle, "INGEST")?;
+            let fmt = crate::ingest::IngestFormat::from_name(format)
+                .map_err(|e| e.to_string())?;
+            let source_path = std::path::PathBuf::from(source);
+            let _stats =
+                crate::ingest::execute_ingest(engine, bundle, &source_path, fmt)
+                    .map_err(|e| e.to_string())?;
             Ok(ExecResult::Ok)
         }
         Statement::Transplant { target, .. } => {

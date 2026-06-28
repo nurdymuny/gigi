@@ -103,6 +103,14 @@ pub mod hash;
 // (`record_hash`) for byte-level tamper-evidence per spec §3.8.
 // See `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` §3.
 pub mod integrity;
+// Halcyon ITEM 3.2 — INGEST executor. Reads NumPy NPZ archives and
+// maps outermost-axis slices into Records that the engine ingests via
+// `batch_insert`. Phase 1 ships NPZ-only with a generic
+// auto-array-to-records mapping (HDF5/JSONL/CSV deferred to Phase 2,
+// EXPLICIT_SCHEMA parser surface deferred to a follow-up sprint).
+// See `src/ingest.rs` module docs and `tests/ingest_executor.rs`
+// for the contract.
+pub mod ingest;
 pub mod invariant;
 // GIGI Encrypt v0.4 — Sprint N (Invariant Consistency Verification).
 // Public deterministic verification that a prover's claimed invariant

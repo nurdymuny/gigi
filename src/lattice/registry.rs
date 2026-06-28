@@ -84,6 +84,19 @@ pub struct ConstructorArgs {
     /// Defaults to `1` when `None` (the degenerate cube case). The
     /// constructor validates `1 <= C <= 256`.
     pub panel_size: Option<usize>,
+    /// CUBIC lattice size `L` (per-axis vertex count). Defaults to
+    /// `1` when `None` (the degenerate point case). The constructor
+    /// validates `1 <= L <= 1024`.
+    pub l: Option<usize>,
+    /// CUBIC lattice dimension `D` (2, 3, or 4 supported in Phase 1).
+    /// Defaults to `2` when `None` (the flat 2-torus). The constructor
+    /// validates `1 <= D <= 4`.
+    pub dim: Option<usize>,
+    /// CUBIC boundary condition. `Some(true)` (or `None`, the default)
+    /// = PERIODIC; `Some(false)` = OPEN. Phase 1 ships PERIODIC only;
+    /// OPEN routes to the cubic constructor's deferred-to-Phase-2
+    /// assertion.
+    pub periodic: Option<bool>,
 }
 
 /// Constructor-side error. Carries the canonical id at the call site so
@@ -130,6 +143,7 @@ pub fn init_builtin_constructors() -> HashMap<&'static str, Constructor> {
     let mut t: HashMap<&'static str, Constructor> = HashMap::new();
     t.insert("TRUNCATED_ICOSAHEDRON", build_truncated_icosahedron as Constructor);
     t.insert("CUBED_SPHERE", build_cubed_sphere as Constructor);
+    t.insert("CUBIC", build_cubic as Constructor);
     t
 }
 
@@ -150,6 +164,12 @@ pub fn init_builtin_constructors() -> HashMap<&'static str, Constructor> {
 ///   [`crate::lattice::topology::cubed_sphere::cubed_sphere`] with
 ///   `panel_size` from [`ConstructorArgs`] (default `1`, validated
 ///   `1..=256`).
+/// - `CUBIC` — calls [`crate::lattice::topology::cubic::cubic`] with
+///   `l` / `dim` / `periodic` from [`ConstructorArgs`] (defaults `l=1`,
+///   `dim=2`, `periodic=true`). Validated `1 <= L <= 1024` and
+///   `1 <= D <= 4`. Halcyon §3.3 substrate (4D pure-gauge target:
+///   L=12, D=4 → V=20736, E=82944, F=124416). PERIODIC only in Phase
+///   1; OPEN is deferred to Phase 2 by the underlying constructor.
 ///
 /// Stability: EVOLVING until gigi 0.1.0 tag.
 /// Breaking changes only on minor version bumps (0.x → 0.(x+1)).
@@ -206,6 +226,35 @@ fn build_cubed_sphere(
         "cubed_sphere",
         c,
     ))
+}
+
+/// CC-2 wrapper around [`crate::lattice::topology::cubic::cubic`].
+/// Reads `l` / `dim` / `periodic` from [`ConstructorArgs`] (defaults
+/// `l=1`, `dim=2`, `periodic=true`), validates `1 <= L <= 1024` and
+/// `1 <= D <= 4`, then delegates. The wrapper supplies the default
+/// name `"cubic"`; the parser executor renames before registering.
+///
+/// Phase 1 scope: PERIODIC only. The underlying `cubic()` constructor
+/// panics on `periodic = false` with a deferred-to-Phase-2 message;
+/// this wrapper does NOT short-circuit that panic into an
+/// `InvalidArgument` because the test gate `test_open_boundary_not_yet_supported`
+/// asserts the panic propagates as-is. Phase 2 will lift the
+/// PERIODIC-only restriction in the constructor itself.
+fn build_cubic(args: &ConstructorArgs) -> Result<LatticeWithMetric, ConstructorError> {
+    let l = args.l.unwrap_or(1);
+    let d = args.dim.unwrap_or(2);
+    let periodic = args.periodic.unwrap_or(true);
+    if !(1..=1024).contains(&l) {
+        return Err(ConstructorError::InvalidArgument(format!(
+            "CUBIC: L must be in 1..=1024, got {l}"
+        )));
+    }
+    if !(1..=4).contains(&d) {
+        return Err(ConstructorError::InvalidArgument(format!(
+            "CUBIC: DIM must be in 1..=4 (Phase 1 ships 2D/3D/4D), got {d}"
+        )));
+    }
+    Ok(crate::lattice::topology::cubic::cubic("cubic", l, d, periodic))
 }
 
 #[cfg(test)]
@@ -384,7 +433,7 @@ mod tests {
     fn cc2_cubed_sphere_via_registry_panel_size_three() {
         let ctor = get_constructor("CUBED_SPHERE")
             .expect("CUBED_SPHERE registered");
-        let args = ConstructorArgs { panel_size: Some(3) };
+        let args = ConstructorArgs { panel_size: Some(3), ..Default::default() };
         let lwm = ctor(&args).expect("cubed_sphere with C = 3");
         let lat = lwm.lattice();
         assert_eq!(lat.n_faces(), 6 * 3 * 3);
@@ -416,12 +465,12 @@ mod tests {
     #[test]
     fn cc2_cubed_sphere_rejects_out_of_range_panel_size() {
         let ctor = get_constructor("CUBED_SPHERE").unwrap();
-        let too_big = ConstructorArgs { panel_size: Some(257) };
+        let too_big = ConstructorArgs { panel_size: Some(257), ..Default::default() };
         assert!(matches!(
             ctor(&too_big),
             Err(ConstructorError::InvalidArgument(_))
         ));
-        let zero = ConstructorArgs { panel_size: Some(0) };
+        let zero = ConstructorArgs { panel_size: Some(0), ..Default::default() };
         assert!(matches!(
             ctor(&zero),
             Err(ConstructorError::InvalidArgument(_))
@@ -433,8 +482,9 @@ mod tests {
     #[test]
     fn cc2_init_builtin_constructors_lists_phase1_keys() {
         let t = init_builtin_constructors();
-        assert_eq!(t.len(), 2);
+        assert_eq!(t.len(), 3);
         assert!(t.contains_key("TRUNCATED_ICOSAHEDRON"));
         assert!(t.contains_key("CUBED_SPHERE"));
+        assert!(t.contains_key("CUBIC"));
     }
 }

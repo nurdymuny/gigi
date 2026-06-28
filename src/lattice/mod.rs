@@ -490,10 +490,12 @@ mod tests {
                 name,
                 canonical,
                 topology,
+                params,
             } => {
                 assert_eq!(name, "bb");
                 assert_eq!(canonical.to_ascii_uppercase(), "TRUNCATED_ICOSAHEDRON");
                 assert_eq!(topology.as_deref(), Some("S2"));
+                assert!(params.is_empty(), "no FROM-parameters on this shape");
             }
             other => panic!("expected LatticeFromCanonical, got {other:?}"),
         }

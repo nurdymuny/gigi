@@ -839,12 +839,20 @@ pub enum Statement {
         /// the Lattice algebra share one round-trip contract.
         gql: String,
     },
-    /// `LATTICE name FROM TRUNCATED_ICOSAHEDRON [TOPOLOGY "S"];`
+    /// `LATTICE name FROM CANONICAL_ID [KEY=VALUE …] [TOPOLOGY "S"];`
     ///
-    /// Names a canonical graph constructor. Only
-    /// `TRUNCATED_ICOSAHEDRON` is wired at launch; future canonical
-    /// graphs (cubic-lattice / hexagonal / …) extend by adding
-    /// constructor names here.
+    /// Names a canonical graph constructor. Phase 1 ships
+    /// `TRUNCATED_ICOSAHEDRON`, `CUBED_SPHERE`, and `CUBIC` (Halcyon
+    /// §3.3 substrate). Future canonical graphs extend by adding
+    /// constructor names to the registry.
+    ///
+    /// Optional `KEY=VALUE` pairs after the canonical id carry
+    /// per-constructor parameters (e.g. `L=12 DIM=4 PERIODIC` for
+    /// `CUBIC`). Bare-word flags like `PERIODIC` / `OPEN` are stored
+    /// here as `("PERIODIC", Literal::Bool(true))` /
+    /// `("OPEN", Literal::Bool(true))` and translated by the
+    /// executor's per-constructor argument mapper. `KEY=VALUE` pairs
+    /// stop at `TOPOLOGY` or at the trailing semicolon.
     #[cfg(feature = "lattice")]
     LatticeFromCanonical {
         /// User-facing lattice name.
@@ -854,6 +862,10 @@ pub enum Statement {
         canonical: String,
         /// Optional topology hint.
         topology: Option<String>,
+        /// Per-constructor parameters, in source order. Empty for
+        /// the historical no-parameter shape (e.g. `LATTICE foo FROM
+        /// TRUNCATED_ICOSAHEDRON;`).
+        params: Vec<(String, Literal)>,
     },
     /// `SHOW LATTICE name;`
     #[cfg(feature = "lattice")]
@@ -2771,10 +2783,34 @@ impl Parser {
     #[cfg(feature = "lattice")]
     fn parse_lattice(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
-        // Shorthand: LATTICE name FROM CANONICAL_ID [TOPOLOGY "..."];
+        // Shorthand: LATTICE name FROM CANONICAL_ID [KEY=VALUE …]
+        //   [PERIODIC|OPEN] [TOPOLOGY "..."];
+        //
+        // KEY=VALUE pairs (e.g. `L=12 DIM=4`) and bare-word flags
+        // (`PERIODIC` / `OPEN`) accumulate into `params` in source
+        // order. Parsing stops at `TOPOLOGY` or at `;`. Bare-word
+        // flags are stored as `(KEYWORD, Literal::Bool(true))` and
+        // translated to the right `ConstructorArgs` field by the
+        // executor's per-constructor argument mapper.
         if self.is_keyword("FROM") {
             self.advance();
             let canonical = self.expect_word()?;
+            let mut params: Vec<(String, Literal)> = Vec::new();
+            loop {
+                if self.is_keyword("TOPOLOGY") || self.at_end() {
+                    break;
+                }
+                // Read either `KEY=VALUE` or a bare flag word.
+                let key = self.expect_word()?;
+                if matches!(self.peek(), Some(Token::Eq)) {
+                    self.advance();
+                    let val = self.parse_literal()?;
+                    params.push((key, val));
+                } else {
+                    // Bare flag (e.g. `PERIODIC` / `OPEN`).
+                    params.push((key, Literal::Bool(true)));
+                }
+            }
             let topology = if self.is_keyword("TOPOLOGY") {
                 self.advance();
                 match self.advance() {
@@ -2793,6 +2829,7 @@ impl Parser {
                 name,
                 canonical,
                 topology,
+                params,
             });
         }
 
@@ -8373,6 +8410,102 @@ fn resolve_seed(
     }
 }
 
+/// Map the parser's per-constructor `(KEY, Literal)` parameter list
+/// to a typed [`crate::lattice::registry::ConstructorArgs`]. Each
+/// canonical constructor owns its own subset of `ConstructorArgs`
+/// fields and rejects unknown keys here so a typo (e.g. `LATICE`
+/// instead of `LATTICE`) surfaces with the canonical id attached.
+///
+/// `canonical_upper` is the already-upper-cased canonical id (the
+/// executor upper-cases once for case-insensitive lookup and reuses
+/// the buffer here).
+#[cfg(feature = "lattice")]
+fn lattice_params_to_constructor_args(
+    canonical_upper: &str,
+    params: &[(String, Literal)],
+) -> Result<crate::lattice::registry::ConstructorArgs, String> {
+    use crate::lattice::registry::ConstructorArgs;
+
+    let mut args = ConstructorArgs::default();
+    if params.is_empty() {
+        return Ok(args);
+    }
+
+    // Helper: coerce a literal to a `usize`, rejecting negatives /
+    // floats / non-integers with a key-attributed error message.
+    let as_usize = |key: &str, lit: &Literal| -> Result<usize, String> {
+        match lit {
+            Literal::Integer(n) if *n >= 0 => Ok(*n as usize),
+            Literal::Integer(n) => Err(format!(
+                "lattice FROM {canonical_upper}: {key} must be >= 0, got {n}"
+            )),
+            other => Err(format!(
+                "lattice FROM {canonical_upper}: {key} must be an integer, got {other:?}"
+            )),
+        }
+    };
+
+    match canonical_upper {
+        "CUBIC" => {
+            for (raw_key, val) in params {
+                let key = raw_key.to_ascii_uppercase();
+                match key.as_str() {
+                    "L" => args.l = Some(as_usize(&key, val)?),
+                    "DIM" | "D" => args.dim = Some(as_usize(&key, val)?),
+                    "PERIODIC" => args.periodic = Some(true),
+                    "OPEN" => args.periodic = Some(false),
+                    _ => {
+                        return Err(format!(
+                            "lattice FROM CUBIC: unknown parameter '{raw_key}' \
+                             (expected L=<int>, DIM=<int>, PERIODIC, or OPEN)"
+                        ));
+                    }
+                }
+            }
+            if args.l.is_none() {
+                return Err(
+                    "lattice FROM CUBIC: missing required parameter L=<int>".to_string(),
+                );
+            }
+            if args.dim.is_none() {
+                return Err(
+                    "lattice FROM CUBIC: missing required parameter DIM=<int>".to_string(),
+                );
+            }
+        }
+        "CUBED_SPHERE" => {
+            for (raw_key, val) in params {
+                let key = raw_key.to_ascii_uppercase();
+                match key.as_str() {
+                    "PANEL_SIZE" | "C" => args.panel_size = Some(as_usize(&key, val)?),
+                    _ => {
+                        return Err(format!(
+                            "lattice FROM CUBED_SPHERE: unknown parameter '{raw_key}' \
+                             (expected PANEL_SIZE=<int> or C=<int>)"
+                        ));
+                    }
+                }
+            }
+        }
+        "TRUNCATED_ICOSAHEDRON" => {
+            if !params.is_empty() {
+                return Err(format!(
+                    "lattice FROM TRUNCATED_ICOSAHEDRON: takes no parameters \
+                     (got {} key=value pair{})",
+                    params.len(),
+                    if params.len() == 1 { "" } else { "s" }
+                ));
+            }
+        }
+        _ => {
+            // Unknown canonical id with params attached — let the
+            // executor's `get_constructor()` produce the canonical
+            // "unknown canonical lattice constructor" error.
+        }
+    }
+    Ok(args)
+}
+
 /// Execute a parsed statement against an Engine.
 pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<ExecResult, String> {
     match stmt {
@@ -9853,6 +9986,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             name,
             canonical,
             topology,
+            params,
         } => {
             let mut lat = {
                 let canonical_upper = canonical.to_ascii_uppercase();
@@ -9862,10 +9996,18 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .ok_or_else(|| {
                     format!(
                         "Unknown canonical lattice constructor: '{canonical}'. \
-                         Phase 1 ships TRUNCATED_ICOSAHEDRON and CUBED_SPHERE."
+                         Phase 1 ships TRUNCATED_ICOSAHEDRON, CUBED_SPHERE, and CUBIC."
                     )
                 })?;
-                let args = crate::lattice::registry::ConstructorArgs::default();
+                // Translate the parser's `(KEY, Literal)` parameter
+                // list into the typed [`ConstructorArgs`] surface.
+                // Per-constructor knob keys are validated here so a
+                // typo (e.g. `LATTIC` instead of `LATTICE`) surfaces
+                // with the canonical id context attached.
+                let args = lattice_params_to_constructor_args(
+                    &canonical_upper,
+                    params,
+                )?;
                 let lwm = constructor(&args).map_err(|e| {
                     format!(
                         "lattice constructor for '{canonical}' failed: {e:?}"

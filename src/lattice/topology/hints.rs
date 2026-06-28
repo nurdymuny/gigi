@@ -30,8 +30,16 @@
 ///
 /// Add new topologies here. Keep the list sorted alphabetically by key
 /// so the diff for a new entry is a one-line insertion.
+///
+/// CUBIC note: this table is parameterless metadata, so the entry
+/// stores the `D`-torus "family" hint `"T^D"`. The instantiated
+/// lattice carries the fully-resolved per-(L,D) topology string (e.g.
+/// `"CUBIC_L12_D4"`) stamped by the constructor at build time —
+/// callers needing the resolved value read it off the `Lattice` after
+/// construction; callers needing only the family hint use this table.
 const TOPOLOGY_HINTS: &[(&str, &str)] = &[
     ("CUBED_SPHERE", "S2"),
+    ("CUBIC", "T^D"),
     ("TRUNCATED_ICOSAHEDRON", "S2"),
 ];
 

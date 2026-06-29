@@ -204,6 +204,14 @@ pub mod causal_states;
 // gauge-side connection algebra now living in `src/gauge/`).
 #[cfg(feature = "lattice")]
 pub mod lattice;
+// Higher Betti numbers + π_1 fundamental-group presentation on
+// lattice cell complexes — Phase 1 home for the BETTI ORDER k and
+// PI_1 verbs. Gated on the `lattice` feature (the kernel operates
+// on `crate::lattice::Lattice`). The locked gauge modules are NOT
+// touched — this is a pure algebraic-topology kernel that lives
+// next to spectral.rs.
+#[cfg(feature = "lattice")]
+pub mod topology;
 pub mod spectral;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),

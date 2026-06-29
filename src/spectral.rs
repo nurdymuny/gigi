@@ -522,6 +522,19 @@ pub fn spectral_capacity(store: &BundleStore) -> f64 {
 ///
 /// Caveat: These are graph-theoretic Betti numbers computed from the 1-skeleton
 /// (field index graph), NOT topological Betti numbers from persistent homology/TDA.
+///
+/// For higher Betti numbers (β_k, k ≥ 2) on a [`crate::lattice::Lattice`] cell
+/// complex — i.e. the topological β_k rather than this graph-theoretic
+/// surface — call [`crate::topology::betti_topological`] directly.
+/// The two functions are intentionally distinct: this one operates on the
+/// BundleStore field-index graph (the existing pre-Halcyon surface); the
+/// topology kernel operates on declared `Lattice` cell complexes (the
+/// Halcyon § BETTI ORDER k / PI_1 surface introduced 2026-06-29).
+#[cfg(feature = "lattice")]
+pub use crate::topology::{
+    betti_topological as higher_betti, pi_1_presentation, Pi1Presentation, TopologyError,
+};
+
 pub fn betti_numbers(store: &BundleStore) -> (usize, usize) {
     let n = store.len();
     if n == 0 {

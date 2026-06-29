@@ -148,6 +148,7 @@ GIGI is the substrate. As of this README, end-to-end:
 - **Gauge encryption v0.4 is LIVE.** Six modes (Affine / Probabilistic / Opaque / Indexed / Isometric / Identity). κ, λ₁, holonomy preserved at native speed. Public deterministic invariant verification with bundle-id binding.
 - **WISH verb is LIVE.** IMAGINE + DREAM + SUDOKU composed as a single boundary-value-problem verb behind the `wish` feature flag. Marcella's load-bearing curvature ceiling (4.0 = K(CP¹ Fubini-Study)) is the default safety envelope.
 - **Marcella consumer pattern is documented.** Substrate spec at [`theory/kahler_upgrade/marcella_substrate.md`](theory/kahler_upgrade/marcella_substrate.md); pure-fiber LM that reads through the brain endpoints and refuses rather than confabulates when `/brain/confidence_with_explain` says she doesn't know.
+- **Bridge Trilogy + SPECTRAL_GAUGE Phase 1 + Yang-Mills topology verbs are LIVE (2026-06-28).** Three substrate items unblock Halcyon's 4D SU(3) pipeline: `LATTICE … FROM CUBIC L=N DIM=K PERIODIC` declares n-D cubic lattices (L=12 D=4 gives 20736 vertices / 82944 edges / 124416 plaquettes); `INGEST bundle FROM 'file.npz' FORMAT NPZ` reads NumPy arrays via the `npyz` crate; `GROUP SU(3)` is a first-class structure group (raw 3×3 complex storage, 144 B / link, Mezzadri 2007 Haar). On top: `SPECTRAL_GAUGE bundle ON FIBER (q0..)` returns the fiber-weighted spectral gap λ₁ of the gauge-covariant Laplacian; `CHERN_CLASS … ORDER 2` returns the discrete instanton number via the Lüscher 1982 clover construction; `PONTRYAGIN … ORDER 1` returns p₁ (= 2·c₂ for SU(N)); `PI_1 lattice` returns the fundamental-group rank via spanning-tree + face-relator construction; `OBSTRUCTION bundle` returns the principal-bundle section-existence class; `BETTI … ORDER k` extends Betti to the cell complex. The December L=12 D=4 SU(3) harvest gets a one-line `CHERN_CLASS ensemble ORDER 2;` topological-sector readout once Halcyon regenerates configs. See [`theory/halcyon/HALCYON_BRIDGE_TRILOGY_2026-06-28_SHIPPED.md`](theory/halcyon/HALCYON_BRIDGE_TRILOGY_2026-06-28_SHIPPED.md), [`theory/halcyon/SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md`](theory/halcyon/SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md), and [`theory/halcyon/YANG_MILLS_TOPOLOGY_VERBS_SHIPPED_2026-06-28.md`](theory/halcyon/YANG_MILLS_TOPOLOGY_VERBS_SHIPPED_2026-06-28.md).
 
 Test counts as of this README:
 
@@ -385,6 +386,20 @@ TRANSPORT corpus FROM (token_str='walk') TO (token_str='walked')
 
 -- Betti numbers — sheaf cohomology
 BETTI sensors;
+BETTI sensors ORDER 1;  -- explicit β_k via the cell complex (Phase 1: k ∈ {0, 1})
+
+-- Yang-Mills topology verbs (2026-06-28). Discrete Chern-Weil integration,
+-- π_1 fundamental group, principal-bundle section-existence obstruction.
+CHERN_CLASS gauge_bundle ORDER 2;       -- instanton number Q ∈ ℤ (Lüscher clover)
+PONTRYAGIN gauge_bundle ORDER 1;        -- p_1 = 2·c_2 for SU(N)
+PI_1 my_lattice;                         -- rank of π_1 (spanning tree + face relators)
+OBSTRUCTION gauge_bundle;                -- principal-bundle section sector
+SPECTRAL_GAUGE gauge_bundle ON FIBER (q0, q1, q2, q3);  -- fiber-weighted Laplacian gap
+
+-- Bridge Trilogy verbs (2026-06-28). 4D cubic + NPZ ingest + SU(3) ingest.
+LATTICE my_4d FROM CUBIC L=12 DIM=4 PERIODIC;
+INGEST configs_bundle FROM 'harvest_L12_beta6.0_run1.npz' FORMAT NPZ;
+GAUGE_FIELD U_4d ON LATTICE my_4d GROUP SU(3) INIT HAAR SEED 42;
 
 -- Cognitive Geometry verbs (Branch VII)
 CAPACITY corpus;    -- τ/K
@@ -486,6 +501,12 @@ Intra-binding strict; cross-binding (NumPy PCG64 mock vs Rust xorshift64*) impos
 **Where to read more.**
 
 Gates: [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md), [`HALCYON_PART_III_GATES.md`](theory/halcyon/HALCYON_PART_III_GATES.md), [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md), [`HALCYON_PART_V_SNAPSHOT_GATES.md`](theory/halcyon/HALCYON_PART_V_SNAPSHOT_GATES.md). Implementation logs (red-then-green commits, fixture SHAs): the `*_IMPLEMENTATION_LOG.md` siblings. Cross-team protocol: [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md). Yang-Mills mass-gap chapter (forward-tracking content target): `GIGI Solves: The Clay Seven`, Vol 4.
+
+**The Bridge Trilogy + Yang-Mills topology layer (2026-06-28).** Three substrate items unblock the 4D SU(3) pipeline, then five verbs read topological invariants off the resulting bundles.
+
+The trilogy itself — `LATTICE … FROM CUBIC L=N DIM=K PERIODIC` (n-D cubic primitive: L=12 D=4 gives 20736 vertices / 82944 directed links / 124416 plaquettes, matching Halcyon's December harvest dimensions), `INGEST bundle FROM 'file.npz' FORMAT NPZ` (real ingest executor via the `npyz` crate; SU(3) configs of shape `(L, L, L, L, 9)` complex flatten cleanly to per-link records), and `GAUGE_FIELD … GROUP SU(3) INIT …` (raw 3×3 complex storage = 144 B per link, Mezzadri 2007 Haar for `INIT HAAR`, conjugate-transpose inverse, 3×3 matmul compose, `Re Tr(U)/3` plaquette reduction). Phase 1 scope is read-only ingest. Phase 2 (Cabibbo-Marinari heatbath, `SU3EField` tangent space, SU(3) Wilson force, symplectic flow) ships when Halcyon needs gigi to compute SU(3) configs in-house instead of ingesting them — currently they regenerate via `lattice/gauge_heatbath_gpu.py` on a GPU machine and `INGEST` the result. See [`HALCYON_BRIDGE_TRILOGY_2026-06-28_SHIPPED.md`](theory/halcyon/HALCYON_BRIDGE_TRILOGY_2026-06-28_SHIPPED.md).
+
+The topology verbs — `SPECTRAL_GAUGE bundle ON FIBER (…) [GROUP …]` returns λ₁ of the fiber-weighted Laplacian L_A (dense `nalgebra::SymmetricEigen` Phase 1 for bundles up to ~1000 vertices; Lanczos sparse + `FULL` k-eigenvalue mode is the named Phase 2 ship). `CHERN_CLASS bundle ORDER 2` returns the discrete instanton number Q ∈ ℤ via Lüscher 1982 clover discretization — one integer per gauge configuration, classifying the topological sector for the mass-gap argument. `PONTRYAGIN bundle ORDER 1` returns p₁ (= 2·c₂ for SU(N), Lüscher sign convention pinned). `PI_1 lattice_name` returns the rank of the fundamental group via BFS spanning tree + face-relator construction (Massey Ch IV §5). `OBSTRUCTION bundle_name` returns the principal-bundle section-existence class (= rounded c₂ for SU(N) on 4D, rounded c₁ for U(1) on 2D). `BETTI bundle ORDER k` extends BETTI to cell-complex β_k via integer-SNF on boundary maps. The TDD audit trail is preserved in git history (`tests(X): RED …` commits precede `impl(X): GREEN …` for each concept). See [`SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md`](theory/halcyon/SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md) and [`YANG_MILLS_TOPOLOGY_VERBS_SHIPPED_2026-06-28.md`](theory/halcyon/YANG_MILLS_TOPOLOGY_VERBS_SHIPPED_2026-06-28.md).
 
 ### 6.5 Kähler tour — one shot through every shipped layer
 

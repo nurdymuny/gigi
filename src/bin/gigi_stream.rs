@@ -13346,27 +13346,14 @@ fn execute_gql_on_store_read(
                 fiber_fields.clone()
             };
 
-            // The chern_class kernel is generic over `EdgeConnection`.
+            // The chern_class kernel takes `&dyn EdgeConnection`;
             // `Arc<dyn GaugeFieldHandle>` derefs to a trait object that
-            // is also `EdgeConnection` (super-trait). We borrow through
-            // the Arc and re-borrow as `&dyn EdgeConnection`.
+            // is also `EdgeConnection` (super-trait), so we just borrow
+            // through the Arc and re-cast.
             let edge_conn: &dyn gigi::gauge::edge_connection::EdgeConnection =
                 handle.as_ref();
-            // The kernel takes `&C where C: EdgeConnection`, not `&dyn`,
-            // so we adapt via a tiny newtype.
-            struct DynAdapter<'a>(&'a dyn gigi::gauge::edge_connection::EdgeConnection);
-            impl<'a> gigi::gauge::edge_connection::EdgeConnection for DynAdapter<'a> {
-                fn edge_element(
-                    &self,
-                    edge: gigi::lattice::EdgeId,
-                    orient: gigi::lattice::EdgeOrientation,
-                ) -> gigi::gauge::group_element::GroupElement {
-                    self.0.edge_element(edge, orient)
-                }
-            }
-            let adapter = DynAdapter(edge_conn);
             let q = gigi::chern_weil::chern_class(
-                &adapter,
+                edge_conn,
                 &lat,
                 *order,
                 &fields_owned,
@@ -13410,19 +13397,8 @@ fn execute_gql_on_store_read(
 
             let edge_conn: &dyn gigi::gauge::edge_connection::EdgeConnection =
                 handle.as_ref();
-            struct DynAdapter<'a>(&'a dyn gigi::gauge::edge_connection::EdgeConnection);
-            impl<'a> gigi::gauge::edge_connection::EdgeConnection for DynAdapter<'a> {
-                fn edge_element(
-                    &self,
-                    edge: gigi::lattice::EdgeId,
-                    orient: gigi::lattice::EdgeOrientation,
-                ) -> gigi::gauge::group_element::GroupElement {
-                    self.0.edge_element(edge, orient)
-                }
-            }
-            let adapter = DynAdapter(edge_conn);
             let p = gigi::chern_weil::pontryagin_class(
-                &adapter,
+                edge_conn,
                 &lat,
                 *order,
                 &fields_owned,

@@ -171,22 +171,9 @@ pub fn try_dispatch_topology_statement(
             fiber_fields,
             group,
         } => {
-            let handle = crate::gauge::registry::get(bundle).ok_or_else(|| {
-                format!(
-                    "CHERN_CLASS: gauge field '{}' not declared (use \
-                     GAUGE_FIELD {} ON LATTICE ... first)",
-                    bundle, bundle
-                )
-            })?;
-            let lattice_name = handle.lattice_name().to_string();
-            let lat = crate::lattice::registry::get(&lattice_name).ok_or_else(|| {
-                format!(
-                    "CHERN_CLASS: lattice '{}' bound to gauge field '{}' not \
-                     found (was it declared?)",
-                    lattice_name, bundle
-                )
-            })?;
-            let resolved_group = group.unwrap_or_else(|| handle.group());
+            let (handle, lat, detected_group) =
+                resolve_gauge_field_and_lattice(bundle, "CHERN_CLASS")?;
+            let resolved_group = group.unwrap_or(detected_group);
             let fields_owned: Vec<String> = if fiber_fields.is_empty() {
                 canonical_fiber_fields(resolved_group)
             } else {
@@ -212,22 +199,9 @@ pub fn try_dispatch_topology_statement(
             fiber_fields,
             group,
         } => {
-            let handle = crate::gauge::registry::get(bundle).ok_or_else(|| {
-                format!(
-                    "PONTRYAGIN: gauge field '{}' not declared (use \
-                     GAUGE_FIELD {} ON LATTICE ... first)",
-                    bundle, bundle
-                )
-            })?;
-            let lattice_name = handle.lattice_name().to_string();
-            let lat = crate::lattice::registry::get(&lattice_name).ok_or_else(|| {
-                format!(
-                    "PONTRYAGIN: lattice '{}' bound to gauge field '{}' not \
-                     found (was it declared?)",
-                    lattice_name, bundle
-                )
-            })?;
-            let resolved_group = group.unwrap_or_else(|| handle.group());
+            let (handle, lat, detected_group) =
+                resolve_gauge_field_and_lattice(bundle, "PONTRYAGIN")?;
+            let resolved_group = group.unwrap_or(detected_group);
             let fields_owned: Vec<String> = if fiber_fields.is_empty() {
                 canonical_fiber_fields(resolved_group)
             } else {
@@ -267,32 +241,78 @@ pub fn try_dispatch_topology_statement(
         // Two-path dispatch: prefer the engine bundle store (the path
         // INGEST-declared configs follow), fall back to the gauge-field
         // path that computes c_2 directly through chern_weil::chern_class.
+        //
+        // Math-parity contract (Phase 1):
+        //   - Bundle path returns `res.class as f64` — an integer sector
+        //     produced by `obstruction.rs::round_with_tolerance(witness,
+        //     0.25)`.
+        //   - Gauge-field path computes `c_2` directly. To converge with
+        //     the bundle path bit-identically when the underlying physics
+        //     is the same, the fallback applies the same rounding rule
+        //     here (see OBSTRUCTION_QUANT_TOL below — mirrors the value
+        //     in `obstruction.rs:58`; the kernel module is locked so the
+        //     constant is duplicated with a cross-ref comment).
+        //
+        // Semantic-divergence note (the second math lens concern):
+        //   The bundle path returns a structured `ObstructionResult` with
+        //   `kind` / `has_obstruction` / `witness` / `class` fields. The
+        //   gauge-field path returns only the bare scalar. Until Phase 2
+        //   lands a unified `obstruction_with_default_from_gauge_field`
+        //   entry point, downstream consumers that need the structured
+        //   shape must use INGEST (the bundle path). The scalar values
+        //   converge; the structured metadata does not. Documented at
+        //   the call-site rather than in the wire envelope because
+        //   `ExecResult::Scalar` carries no metadata slot.
         Statement::Obstruction { bundle } => {
             // First try the engine bundle store. `obstruction_with_default`
             // does its own bundle lookup and returns BundleNotFound if
             // the name doesn't resolve.
-            let bundle_path = {
-                let eng = engine
-                    .read()
-                    .map_err(|e| format!("OBSTRUCTION: engine lock poisoned: {}", e))?;
-                crate::obstruction::obstruction_with_default(&eng, bundle)
+            //
+            // Engine-lock errors (`PoisonError`) fall through to the
+            // gauge-field path: a poisoned bundle lock should not mask
+            // a healthy gauge-field result if the caller's name resolves
+            // there. Only `UnsupportedObstruction` (group/dim pair is
+            // explicitly out of scope) is surfaced eagerly; `ChernWeil` /
+            // `LatticeMissing` from the bundle path also fall through so
+            // the gauge-field path can still answer.
+            let bundle_path = match engine.read() {
+                Ok(eng) => Some(crate::obstruction::obstruction_with_default(&eng, bundle)),
+                Err(_) => None,
             };
-            match bundle_path {
-                Ok(res) => return Ok(ExecResult::Scalar(res.class as f64)),
-                // The bundle was found but the (group, base_dim) pair
-                // is unsupported — surface that as a typed error.
-                Err(e @ crate::obstruction::ObstructionError::UnsupportedObstruction { .. }) => {
-                    return Err(format!("OBSTRUCTION: {}", e));
+            if let Some(res) = bundle_path {
+                match res {
+                    Ok(r) => return Ok(ExecResult::Scalar(r.class as f64)),
+                    // The bundle was found but the (group, base_dim) pair
+                    // is unsupported — surface that as a typed error.
+                    Err(
+                        e @ crate::obstruction::ObstructionError::UnsupportedObstruction { .. },
+                    ) => {
+                        return Err(format!("OBSTRUCTION: {}", e));
+                    }
+                    // Bundle not found (or any other recoverable error)
+                    // — fall through to the gauge-field registry path.
+                    Err(_) => {}
                 }
-                // Bundle not found — fall through to the gauge-field
-                // registry path.
-                Err(crate::obstruction::ObstructionError::BundleNotFound(_)) => {}
-                Err(e) => return Err(format!("OBSTRUCTION: {}", e)),
             }
 
-            // Gauge-field path: bundle didn't resolve, try the gauge
-            // registry. This is the path GAUGE_FIELD-only declarations
-            // (no INGEST) take.
+            // Gauge-field path: bundle didn't resolve (or lock was
+            // poisoned), try the gauge registry. This is the path
+            // GAUGE_FIELD-only declarations (no INGEST) take.
+            //
+            // TODO Phase 2: route the gauge-field path through a unified
+            // `obstruction::obstruction_with_default_from_gauge_field(handle)`
+            // entry point so both paths produce a structured
+            // `ObstructionResult` (kind / has_obstruction / witness /
+            // class). Named blocking precondition: that helper must
+            // infer base_dim from the bound lattice's dim rather than
+            // the bundle-name prefix heuristic, since gauge-field
+            // declarations carry a lattice handle directly.
+            //
+            // The error message is custom (not the shared
+            // `resolve_gauge_field_and_lattice` text) because OBSTRUCTION
+            // has two valid registries to point at (INGEST → bundle,
+            // GAUGE_FIELD → gauge registry) and the unresolved case
+            // should name both corrective verbs.
             let handle = crate::gauge::registry::get(bundle).ok_or_else(|| {
                 format!(
                     "OBSTRUCTION: no bundle or gauge field named '{}' \
@@ -325,13 +345,32 @@ pub fn try_dispatch_topology_statement(
                 Some(g),
             )
             .map_err(|e| format!("OBSTRUCTION: {}", e))?;
-            Ok(ExecResult::Scalar(q))
+            // Apply the same round-to-integer rule the bundle path uses
+            // through `obstruction.rs::round_with_tolerance(_, 0.25)`.
+            // Without this, identity-field 2D SU(N) lands at 0.0 on both
+            // paths but a cooled-but-not-fully-thermalized config lands
+            // at the raw witness here and at the quantized integer over
+            // there. Quantizing here closes the divergence.
+            let class = quantize_obstruction_witness(q);
+            Ok(ExecResult::Scalar(class as f64))
         }
 
         // ── BETTI bundle ORDER Some(k) ────────────────────────────────
         // Lattice registry first (the parser stores the lattice name in
         // the `bundle` field for the ORDER path), then engine bundle
         // fallback for the legacy β_0/β_1 graph path.
+        //
+        // Math-divergence note (third math lens concern):
+        //   The two paths are NOT interchangeable when ∂_2 has nontrivial
+        //   rank. The lattice path computes β_k from the cell complex
+        //   (uses ∂_2 and ∂_3 boundary maps); the bundle path returns
+        //   β_0 + β_1 from the field-index graph's pure Euler-characteristic
+        //   reduction (V − E + β_0, no faces). When a lattice carries
+        //   2-cells, cell-complex β_1 = graph β_1 only if rank(∂_2) = 0;
+        //   cell-complex β_0 always equals graph β_0 of the 1-skeleton.
+        //   This dispatcher prefers the lattice path so no double-source
+        //   ambiguity arises in practice — but maintainers extending the
+        //   bundle fallback should know the two paths can disagree.
         #[cfg(feature = "lattice")]
         Statement::Betti {
             bundle,
@@ -345,7 +384,11 @@ pub fn try_dispatch_topology_statement(
             // Lattice didn't resolve — fall back to the bundle store
             // for the legacy graph β path. Only k ∈ {0, 1} is supported
             // through the bundle path (the bundle stores a field-index
-            // graph, not a cell complex).
+            // graph, not a cell complex; β_k for k ≥ 2 requires
+            // ∂_2 / ∂_3 boundary-rank arithmetic the graph path can't
+            // express, and even for k ∈ {0, 1} the graph β only matches
+            // cell-complex β when ∂_2 has rank 0 — i.e. the lattice has
+            // no 2-cells).
             let eng = engine
                 .read()
                 .map_err(|e| format!("BETTI: engine lock poisoned: {}", e))?;
@@ -408,4 +451,78 @@ fn canonical_fiber_fields(group: crate::gauge::Group) -> Vec<String> {
         crate::gauge::Group::U1 => vec!["theta".into()],
         crate::gauge::Group::ZN { .. } => vec!["k".into()],
     }
+}
+
+/// OBSTRUCTION quantization tolerance. Mirrors the private constant
+/// `OBSTRUCTION_QUANT_TOL` at `src/obstruction.rs:58`. The kernel module
+/// is locked (per the route-handler fix scope), so the value is
+/// duplicated here with a cross-reference rather than re-exported.
+///
+/// Provenance is documented in the kernel's docstring: 0.25 is the
+/// empirical envelope where the Phase 1 calibrated SU(N) signature
+/// lands on the synthetic single-instanton seed; it is a gate
+/// threshold, NOT a topological convergence criterion. Phase 2's
+/// Lüscher 16-plaquette clover charge will let the tolerance tighten
+/// to ~0.05 on thermalized configs.
+const OBSTRUCTION_QUANT_TOL: f64 = 0.25;
+
+/// Round an OBSTRUCTION witness scalar to the integer sector the bundle
+/// path would produce. Mirrors `obstruction.rs::round_with_tolerance`
+/// at the locked kernel boundary so the gauge-field fallback path in
+/// `try_dispatch_topology_statement` converges bit-identically with
+/// the bundle path on (gauge_field, lattice) pairs that name the same
+/// physical configuration through both registries.
+///
+/// The tolerance argument is currently unused (the kernel helper at
+/// `obstruction.rs:517` ignores it too — it's documented as a
+/// quantization-gap diagnostic for the structured `ObstructionResult`
+/// path, not as a thresholded rounding rule). Keeping the parameter
+/// preserves the kernel's signature for the Phase 2 unification.
+fn quantize_obstruction_witness(q: f64) -> i64 {
+    let _ = OBSTRUCTION_QUANT_TOL; // see docstring — kept for parity
+    q.round() as i64
+}
+
+/// Resolve a gauge-field name to (handle, bound lattice, group) in one
+/// shot, with a verb-tagged error message that names the missing
+/// registry + the corrective verb. Shared by `CHERN_CLASS`,
+/// `PONTRYAGIN`, and the `OBSTRUCTION` gauge-field fallback path so
+/// the per-variant arms drop ~12 lines of registry-resolve prelude.
+///
+/// `verb` is the leading token of the GQL statement
+/// (`"CHERN_CLASS"` / `"PONTRYAGIN"` / `"OBSTRUCTION"`) so error
+/// messages carry the same verb the caller typed.
+///
+/// The returned handle is the same `Arc<dyn GaugeFieldHandle>` the
+/// registry stores; callers borrow `handle.as_ref()` to get a
+/// `&dyn EdgeConnection` for the kernel calls (`GaugeFieldHandle`
+/// has `EdgeConnection` as a supertrait, so `as_ref()` coerces).
+fn resolve_gauge_field_and_lattice(
+    name: &str,
+    verb: &str,
+) -> Result<
+    (
+        std::sync::Arc<dyn crate::gauge::registry::GaugeFieldHandle>,
+        crate::lattice::Lattice,
+        crate::gauge::Group,
+    ),
+    String,
+> {
+    let handle = crate::gauge::registry::get(name).ok_or_else(|| {
+        format!(
+            "{}: gauge field '{}' not declared (use GAUGE_FIELD {} ON \
+             LATTICE ... first)",
+            verb, name, name
+        )
+    })?;
+    let lattice_name = handle.lattice_name().to_string();
+    let lat = crate::lattice::registry::get(&lattice_name).ok_or_else(|| {
+        format!(
+            "{}: lattice '{}' bound to gauge field '{}' not found \
+             (was it declared?)",
+            verb, lattice_name, name
+        )
+    })?;
+    let group = handle.group();
+    Ok((handle, lat, group))
 }

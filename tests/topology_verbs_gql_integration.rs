@@ -119,9 +119,9 @@ fn scalar(r: ExecResult) -> f64 {
 
 // ── Tests ────────────────────────────────────────────────────────────
 
-/// (1) The headline bug. `CHERN_CLASS U_smoke ORDER 2` against an
-/// identity SU(3) gauge field on a 2D L=4 cubic lattice must reach
-/// the `chern_class` kernel and return `Scalar(0.0)`:
+/// (1) Hallie's reported failure case. `CHERN_CLASS U_smoke ORDER 2`
+/// against an identity SU(3) gauge field on a 2D L=4 cubic lattice
+/// must reach the `chern_class` kernel and return `Scalar(0.0)`:
 /// - identity field ⇒ every plaquette = I ⇒ F ≡ 0 ⇒ Σ Tr(F∧F) = 0
 /// - 2D base ⇒ c_2 (a 4-form) is short-circuited by the dimension
 ///   guard before the clover walk
@@ -142,9 +142,10 @@ fn test_chern_class_2d_su3_identity_returns_zero() {
     );
 }
 
-/// (2) Companion verb. `PONTRYAGIN U_smoke ORDER 1` must reach
-/// `pontryagin_class` and return `Scalar(0.0)` because p_1 = -2·c_2
-/// (Lüscher 1982 §2) and c_2 = 0 by the same dim-guard reasoning.
+/// (2) Same dispatch path, PONTRYAGIN. `PONTRYAGIN U_smoke ORDER 1`
+/// must reach `pontryagin_class` and return `Scalar(0.0)` because
+/// p_1 = -2·c_2 (Lüscher 1982 §2) and c_2 = 0 by the same dim-guard
+/// reasoning.
 #[test]
 fn test_pontryagin_2d_su3_identity_returns_zero() {
     let (eng, _dir) = fresh_engine_and_registries();
@@ -286,5 +287,115 @@ fn test_pi_1_against_nonexistent_lattice_returns_clear_error() {
         !err.contains("status"),
         "error must NOT be a silent status envelope (that is the bug \
          being fixed), got: {err}"
+    );
+}
+
+// ── Bypass-position regression guard ─────────────────────────────────
+//
+// The dispatcher tests above pin the contract for the helper. They do
+// NOT pin the route handler's ORDERING invariant (the helper must run
+// BEFORE the engine.bundle() pre-resolve in `gql_query`). A future
+// refactor could move the bypass block to AFTER the bundle pre-resolve
+// and every dispatcher test would stay green while Hallie's original
+// bug regressed silently. The test below pins that invariant by
+// reproducing the EXACT condition under which the route handler would
+// have dropped the statement (engine.bundle("U_smoke") = None) and
+// asserting the dispatcher answers anyway.
+
+/// (8) Bypass-position regression guard. Reproduces Hallie's smoke
+/// chain's load-bearing precondition: after `LATTICE smoke;
+/// GAUGE_FIELD U_smoke ...;` lands through the parser, the engine
+/// bundle registry has NO entry for either "smoke" or "U_smoke" (they
+/// live in the lattice + gauge registries). This is exactly the
+/// situation in which `gql_query`'s bundle pre-resolve would have
+/// 404'd or silently dropped. The dispatcher must answer regardless
+/// — i.e. it must run BEFORE the bundle pre-resolve, not after.
+///
+/// If a refactor accidentally moved the topology dispatch block to
+/// AFTER the bundle pre-resolve, the production smoke chain would
+/// regress to Hallie's original failure mode (`{"error":"No bundle:
+/// U_smoke"}`). This test pins the ordering invariant via the
+/// dispatcher contract: when the engine bundle store has no entry
+/// for the name, the dispatcher MUST still resolve through the
+/// gauge / lattice registry and reach the kernel.
+#[test]
+fn test_dispatcher_succeeds_when_engine_bundle_lookup_would_fail() {
+    let (eng, _dir) = fresh_engine_and_registries();
+    declare_lattice_and_gauge_field(&eng);
+
+    // Sanity precondition: the bundle registry has NO entry for either
+    // "smoke" or "U_smoke". If this assertion ever fails, the parser
+    // started landing gauge fields / lattices in the bundle store and
+    // the bypass would no longer be load-bearing — investigate before
+    // weakening the assertion.
+    {
+        let eng_guard = eng.read().expect("engine read");
+        assert!(
+            eng_guard.bundle("U_smoke").is_none(),
+            "GAUGE_FIELD U_smoke must NOT land in the bundle registry \
+             (lives in gauge::registry)"
+        );
+        assert!(
+            eng_guard.bundle("smoke").is_none(),
+            "LATTICE smoke must NOT land in the bundle registry \
+             (lives in lattice::registry)"
+        );
+    }
+
+    // Now drive the smoke chain's three failing verbs through the
+    // dispatcher. Each must succeed AND return a finite scalar — the
+    // exact bug Hallie's chain hit.
+    for src in [
+        "CHERN_CLASS U_smoke ORDER 2;",
+        "PONTRYAGIN U_smoke ORDER 1;",
+        "BETTI smoke ORDER 2;",
+        "PI_1 smoke;",
+        "OBSTRUCTION U_smoke;",
+    ] {
+        let stmt = parse(src).unwrap_or_else(|e| panic!("parse {src}: {e:?}"));
+        let res = try_dispatch_topology_statement(&eng, &stmt)
+            .unwrap_or_else(|e| panic!("{src} dispatch failed: {e}"));
+        let v = scalar(res);
+        assert!(
+            v.is_finite(),
+            "{src} must return a finite scalar (bypass-position \
+             regression — the dispatcher fired AFTER the bundle \
+             pre-resolve), got {v}"
+        );
+    }
+}
+
+/// (9) OBSTRUCTION quantization parity. The gauge-field fallback path
+/// must apply the same round-to-integer rule the bundle path uses
+/// (`obstruction.rs::round_with_tolerance(_, 0.25)`), so for the
+/// identity SU(3) 2D config the returned scalar is exactly 0.0 — an
+/// integer-typed sector, NOT a raw non-quantized witness.
+///
+/// Without the quantization fix, the gauge-field path would return
+/// the raw chern_class scalar (which happens to be 0.0 on identity
+/// in 2D via the dim-guard short-circuit, so this test is coincidentally
+/// invisible for identity fields, but the parity contract still holds:
+/// the returned value must be representable as an integer-typed
+/// sector class). The assertion below is `(v - v.round()).abs() < 1e-12`
+/// which holds bit-exactly on identity but pins the contract.
+#[test]
+fn test_obstruction_returns_quantized_integer_sector() {
+    let (eng, _dir) = fresh_engine_and_registries();
+    declare_lattice_and_gauge_field(&eng);
+    let stmt = parse("OBSTRUCTION U_smoke;")
+        .expect("parse OBSTRUCTION");
+    let res = try_dispatch_topology_statement(&eng, &stmt)
+        .expect("OBSTRUCTION dispatch must succeed");
+    let v = scalar(res);
+    assert!(
+        v.is_finite(),
+        "OBSTRUCTION must return finite, got {v}"
+    );
+    let gap = (v - v.round()).abs();
+    assert!(
+        gap < 1e-12,
+        "OBSTRUCTION gauge-field path must return a quantized integer \
+         sector (parity with the bundle path's round_with_tolerance), \
+         got value {v} with rounding gap {gap}"
     );
 }

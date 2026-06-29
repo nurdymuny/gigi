@@ -12529,6 +12529,27 @@ async fn gql_query(
         }
     }
 
+    // ── Bundle pre-resolve ─────────────────────────────────────────────
+    //
+    // By the time we reach this point, every dispatch block above has
+    // declined the statement. The remaining variants ALL expect a
+    // bundle binding the route handler can pre-resolve:
+    //
+    //   - The gauge dispatch block (`try_dispatch_gauge_statement`,
+    //     ~line 12421) handles LATTICE / GAUGE_FIELD / GIBBS_SAMPLE /
+    //     E_FIELD / SYMPLECTIC_FLOW / SELECT (PLAQUETTE | Q_SURROGATE |
+    //     H_TOTAL | GAUSS_RESIDUAL_MAX) / SHOW (LATTICE | E_FIELD |
+    //     GAUGE_FIELD) / LATTICE FROM TRUNCATED_ICOSAHEDRON / SNAPSHOT /
+    //     LOOP / LOOP_TRANSPORT.
+    //   - The topology dispatch block (`try_dispatch_topology_statement`,
+    //     ~line 12484) handles CHERN_CLASS / PONTRYAGIN / PI_1 /
+    //     OBSTRUCTION / BETTI ORDER k.
+    //
+    // Any new variant whose "bundle" field is NOT a registered bundle
+    // (e.g. a gauge-field name or a lattice name) must be added to the
+    // appropriate dispatch block above — adding the kernel logic to
+    // `execute_gql_on_store_read` alone will land in the dead-code
+    // arms there and never fire from the HTTP path.
     let bundle_name = match get_bundle_name(&stmt) {
         Some(name) => name,
         None => {
@@ -13155,6 +13176,19 @@ fn execute_gql_on_store_read(
             let k = store.scalar_curvature();
             Ok(ExecResult::Scalar(if k.abs() < 1e-10 { 0.0 } else { k }))
         }
+        // ── BETTI / PI_1 / OBSTRUCTION: UNREACHABLE from gql_query ─────
+        //
+        // The HTTP route handler routes these variants through
+        // `halcyon_gql_dispatch::try_dispatch_topology_statement` BEFORE
+        // the bundle pre-resolve (see the special-case block at
+        // `gql_query` line ~12484). The arms below are dead code from
+        // the HTTP path but kept for direct programmatic callers of
+        // `execute_gql_on_store_read` that supply a pre-resolved
+        // BundleStore — they should not be deleted without also
+        // auditing every `execute_gql_with_exists` / `execute_gql_on_engine`
+        // call site. Maintainer warning: a topology-kernel fix landed
+        // here will NOT affect production traffic unless the dispatcher
+        // in `src/halcyon_gql_dispatch.rs` is updated to match.
         Statement::Betti { bundle: _, order } => {
             // Default (legacy) path: order = None returns β_0 + β_1 from the
             // field-index graph. ORDER k path delegates to the cell-complex
@@ -13171,6 +13205,15 @@ fn execute_gql_on_store_read(
                     // For Phase 1: the lattice lookup from bundle metadata
                     // is not yet shipped. Fall back to graph betti for k<=1
                     // and return NotImplemented-style error for k>=2.
+                    //
+                    // Math-divergence note: graph β_k equals cell-complex β_k
+                    // only when ∂_2 has rank 0 (no 2-cells in the lattice).
+                    // The dispatcher in `halcyon_gql_dispatch.rs` prefers
+                    // the lattice path which uses real ∂_2 boundary-rank
+                    // arithmetic, so this arm is unreachable from production
+                    // traffic — but a direct caller hitting this arm with a
+                    // lattice-carrying bundle will get a different (graph)
+                    // answer than the cell-complex β_k.
                     let (b0, b1) = store.betti_numbers();
                     match *k {
                         0 => Ok(ExecResult::Scalar(b0 as f64)),
@@ -13188,6 +13231,8 @@ fn execute_gql_on_store_read(
         Statement::Pi1 { lattice } => {
             // PI_1 operates on a Lattice (1-skeleton) — looked up by name
             // from the lattice registry. Returns rank as scalar.
+            //
+            // UNREACHABLE from gql_query (see banner above).
             #[cfg(feature = "lattice")]
             {
                 match gigi::lattice::registry::get(lattice) {
@@ -13207,6 +13252,8 @@ fn execute_gql_on_store_read(
         Statement::Obstruction { bundle } => {
             // OBSTRUCTION returns the integer characteristic-class sector
             // (Phase 1: Scalar of `class` field from ObstructionResult).
+            //
+            // UNREACHABLE from gql_query (see banner above).
             match engine {
                 Some(eng_lock) => {
                     let eng = eng_lock.read().map_err(|e| format!("engine lock: {}", e))?;
@@ -13450,6 +13497,14 @@ fn execute_gql_on_store_read(
         // documented in `src/chern_weil.rs`; the SIGNED clover sum is
         // used when non-zero, the ABS-SUM fallback fires on synthetic
         // single-axis abelian fixtures (witness-only).
+        //
+        // UNREACHABLE from gql_query — see the dead-code banner above
+        // the BETTI / PI_1 / OBSTRUCTION arms. The HTTP route handler
+        // dispatches this variant through
+        // `halcyon_gql_dispatch::try_dispatch_topology_statement` BEFORE
+        // the bundle pre-resolve, so this arm only fires for direct
+        // programmatic callers of `execute_gql_on_store_read`. Kernel
+        // fixes must update BOTH this arm and the dispatcher.
         #[cfg(feature = "gauge")]
         Statement::ChernClass { bundle, order, fiber_fields, group } => {
             let handle = gigi::gauge::registry::get(bundle).ok_or_else(|| {
@@ -13502,6 +13557,11 @@ fn execute_gql_on_store_read(
         //
         // Halcyon Phase 1: p_1 = 2 · c_2 for SU(N). Delegates to
         // chern_weil::pontryagin_class which delegates to chern_class.
+        //
+        // UNREACHABLE from gql_query — same banner as the ChernClass
+        // arm above. Production traffic for this variant flows through
+        // `try_dispatch_topology_statement` in
+        // `src/halcyon_gql_dispatch.rs`.
         #[cfg(feature = "gauge")]
         Statement::Pontryagin { bundle, order, fiber_fields, group } => {
             let handle = gigi::gauge::registry::get(bundle).ok_or_else(|| {

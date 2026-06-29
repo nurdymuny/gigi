@@ -322,6 +322,27 @@ pub enum Statement {
     },
     Betti {
         bundle: String,
+        /// Optional `ORDER k` clause. When `None`, returns the legacy
+        /// (β_0 + β_1) scalar from the field-index graph (backwards-compat).
+        /// When `Some(k)`, returns the cell-complex β_k of the bundle's
+        /// underlying lattice via `crate::topology::betti_topological`.
+        order: Option<usize>,
+    },
+    /// PI_1 lattice_name;
+    ///
+    /// Returns the rank of the fundamental group π_1 of the named lattice's
+    /// 1-skeleton (= rank of abelianization H_1 = β_1). Phase 1 returns a
+    /// Scalar(rank as f64). Backend: `crate::topology::pi_1_presentation`.
+    Pi1 {
+        lattice: String,
+    },
+    /// OBSTRUCTION bundle_name;
+    ///
+    /// Returns the integer characteristic-class sector (c_2 for SU(N) on 4D
+    /// or c_1 for U(1) on 2D) of the named bundle. Phase 1 returns
+    /// Scalar(class as f64). Backend: `crate::obstruction::obstruction`.
+    Obstruction {
+        bundle: String,
     },
     Entropy {
         bundle: String,
@@ -2013,6 +2034,12 @@ impl Parser {
             "PONTRYAGIN" => self.parse_pontryagin(),
             "CONSISTENCY" => self.parse_consistency(),
             "BETTI" => self.parse_betti(),
+            // Yang-Mills topology verbs (2026-06-29): π_1 + OBSTRUCTION.
+            // PI_1 lives in the lattice-topology namespace (operates on
+            // Lattice, not BundleStore); OBSTRUCTION operates on a bundle's
+            // gauge field via the Chern_2 / c_1 sign per src/obstruction.rs.
+            "PI_1" => self.parse_pi_1(),
+            "OBSTRUCTION" => self.parse_obstruction(),
             "ENTROPY" => self.parse_entropy(),
             "FREEENERGY" => self.parse_free_energy(),
             "CAPACITY"   => self.parse_capacity_stmt(),
@@ -4538,7 +4565,34 @@ impl Parser {
 
     fn parse_betti(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
-        Ok(Statement::Betti { bundle: name })
+        let order = if self.is_keyword("ORDER") {
+            self.advance();
+            Some(self.expect_usize()?)
+        } else {
+            None
+        };
+        Ok(Statement::Betti { bundle: name, order })
+    }
+
+    /// PI_1 lattice_name;
+    ///
+    /// Returns the rank of π_1 (= rank of abelianization H_1 = β_1) of the
+    /// named lattice's 1-skeleton. Phase 1 returns a Scalar(rank). Future
+    /// phases may return the full presentation (generators + relators) via
+    /// ExecResult::Rows.
+    fn parse_pi_1(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        Ok(Statement::Pi1 { lattice: name })
+    }
+
+    /// OBSTRUCTION bundle_name;
+    ///
+    /// Returns the integer characteristic-class sector (c_2 for SU(N) on 4D
+    /// or c_1 for U(1) on 2D) of the named bundle. Phase 1: Scalar(class as f64).
+    /// Companion fields (has_obstruction, witness) deferred to Phase 2 Rows shape.
+    fn parse_obstruction(&mut self) -> Result<Statement, String> {
+        let name = self.expect_word()?;
+        Ok(Statement::Obstruction { bundle: name })
     }
 
     fn parse_entropy(&mut self) -> Result<Statement, String> {
@@ -9841,7 +9895,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             Ok(ExecResult::Ok)
         }
 
-        Statement::Betti { bundle } => {
+        Statement::Betti { bundle, .. } => {
             let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{}' not found", bundle))?;
             let (b0, b1) = store.betti_numbers();
             Ok(ExecResult::Scalar(b0 as f64 + b1 as f64))
@@ -11615,6 +11669,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             .map_err(|e| format!("INTEGRATE OBSERVABLE: {e}"))?;
             Ok(ExecResult::Scalar(value))
         }
+        // Yang-Mills topology verbs (2026-06-29): PI_1 + OBSTRUCTION live
+        // in the production streaming executor (src/bin/gigi_stream.rs)
+        // because PI_1 needs the lattice registry and OBSTRUCTION needs
+        // the live Engine. The in-process executor here returns an
+        // explicit not-supported error rather than silently producing
+        // wrong results.
+        Statement::Pi1 { lattice: _ } => Err(
+            "PI_1 dispatch lives in the streaming executor (production HTTP path), \
+             not the in-process execute() — call gigi::topology::pi_1_presentation \
+             directly from Rust API or POST /v1/gql against gigi-stream.".to_string()
+        ),
+        Statement::Obstruction { bundle: _ } => Err(
+            "OBSTRUCTION dispatch lives in the streaming executor (production HTTP path), \
+             not the in-process execute() — call gigi::obstruction::obstruction directly \
+             from Rust API or POST /v1/gql against gigi-stream.".to_string()
+        ),
     }
 }
 

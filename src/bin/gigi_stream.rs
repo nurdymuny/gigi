@@ -13082,9 +13082,68 @@ fn execute_gql_on_store_read(
             let k = store.scalar_curvature();
             Ok(ExecResult::Scalar(if k.abs() < 1e-10 { 0.0 } else { k }))
         }
-        Statement::Betti { .. } => {
-            let (b0, b1) = store.betti_numbers();
-            Ok(ExecResult::Scalar(b0 as f64 + b1 as f64))
+        Statement::Betti { bundle: _, order } => {
+            // Default (legacy) path: order = None returns β_0 + β_1 from the
+            // field-index graph. ORDER k path delegates to the cell-complex
+            // β_k via crate::topology::betti_topological — needs the Lattice,
+            // not the BundleStore. The lattice lookup uses the bundle's
+            // _gigi_lattice metadata if present; else falls back to the
+            // legacy graph path with a warning.
+            match order {
+                None => {
+                    let (b0, b1) = store.betti_numbers();
+                    Ok(ExecResult::Scalar(b0 as f64 + b1 as f64))
+                }
+                Some(k) => {
+                    // For Phase 1: the lattice lookup from bundle metadata
+                    // is not yet shipped. Fall back to graph betti for k<=1
+                    // and return NotImplemented-style error for k>=2.
+                    let (b0, b1) = store.betti_numbers();
+                    match *k {
+                        0 => Ok(ExecResult::Scalar(b0 as f64)),
+                        1 => Ok(ExecResult::Scalar(b1 as f64)),
+                        _ => Err(format!(
+                            "BETTI ORDER {} on a bundle requires the bundle's \
+                             lattice metadata (not yet shipped). Use the \
+                             in-process API: crate::topology::betti_topological(&lattice, {}).",
+                            k, k
+                        )),
+                    }
+                }
+            }
+        }
+        Statement::Pi1 { lattice } => {
+            // PI_1 operates on a Lattice (1-skeleton) — looked up by name
+            // from the lattice registry. Returns rank as scalar.
+            #[cfg(feature = "lattice")]
+            {
+                match gigi::lattice::registry::get(lattice) {
+                    Some(lat) => {
+                        let pres = gigi::topology::pi_1_presentation(&lat);
+                        Ok(ExecResult::Scalar(pres.rank as f64))
+                    }
+                    None => Err(format!("No lattice: {}", lattice)),
+                }
+            }
+            #[cfg(not(feature = "lattice"))]
+            {
+                let _ = lattice;
+                Err("PI_1 requires the `lattice` feature".to_string())
+            }
+        }
+        Statement::Obstruction { bundle } => {
+            // OBSTRUCTION returns the integer characteristic-class sector
+            // (Phase 1: Scalar of `class` field from ObstructionResult).
+            match engine {
+                Some(eng_lock) => {
+                    let eng = eng_lock.read().map_err(|e| format!("engine lock: {}", e))?;
+                    match gigi::obstruction::obstruction_with_default(&eng, bundle) {
+                        Ok(res) => Ok(ExecResult::Scalar(res.class as f64)),
+                        Err(e) => Err(format!("OBSTRUCTION: {}", e)),
+                    }
+                }
+                None => Err("OBSTRUCTION requires engine context (not available in this dispatch path)".to_string()),
+            }
         }
         Statement::Entropy { .. } => {
             let s = store.entropy();

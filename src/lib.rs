@@ -148,6 +148,13 @@ pub mod join;
 pub mod ledger;
 pub mod metric;
 pub mod mmap_bundle;
+// OBSTRUCTION verb — Phase 1 (RED stub, 2026-06-29).
+// Decides whether a principal G-bundle on a closed base manifold
+// admits a global section. Thin policy layer over the (sibling
+// Phase 1) Chern-Weil kernel; this module never recomputes
+// plaquettes. RED: signatures declared, bodies are `unimplemented!()`.
+// GREEN commit fills in after CHERN_CLASS ships.
+pub mod obstruction;
 pub mod observability;
 pub mod parser;
 pub mod query;

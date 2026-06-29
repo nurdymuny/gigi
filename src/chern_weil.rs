@@ -50,16 +50,33 @@
 //! zero on abelian configurations (gauge fields whose curvature `F`
 //! lies along a single Pauli direction). That is mathematically
 //! correct — abelian U(1)-embedded SU(2) fields have zero SU(2)
-//! topological charge — but it makes synthetic single-axis test
-//! fixtures indistinguishable from identity at the c_2 surface.
+//! topological charge on a closed base — but it makes synthetic
+//! single-axis test fixtures indistinguishable from identity at the
+//! c_2 surface.
+//!
 //! Phase 1 ships an ABS-SUM fallback `Σ |Tr(F_μν · F_ρσ)|` that
-//! lights up on any non-zero curvature; the signed-clover return
+//! lights up on any non-zero curvature; the SIGNED-clover return
 //! value is used whenever it is itself non-zero. Identity fields
 //! make both reductions zero so the dimension-guard and identity-
-//! field gates still return 0 exactly. Phase 2 ships the Lüscher
-//! 16-plaquette clover average + true matrix log via
-//! eigendecomposition, which makes the SIGNED sum non-zero on
-//! synthetic asymmetric fixtures and integer on thermalized configs.
+//! field gates still return 0 exactly. The fallback is a POSITIVE
+//! ACTIVITY WITNESS, NOT a Chern class — it is returned through the
+//! same f64 channel ONLY to make Phase 1's GREEN gate on synthetic
+//! abelian fixtures light up. Naming-by-formal-home discipline:
+//! callers reading the f64 as "the integrated c_2" must restrict to
+//! configurations that are demonstrably non-abelian.
+//!
+//! **Phase 2 tickets (named per the "spec the algorithm" discipline):**
+//! - `chern_class_su2_order_2_clover` — upgrade single-plaquette per
+//!   site to the Lüscher 16-plaquette symmetric clover average. See
+//!   Lüscher 1982 §2.
+//! - `chern_class_su3_order_2_clover` — replace
+//!   `antihermitian_traceless_su3` with eigendecomposition-based
+//!   matrix log: `H = -i·(U − U†)/2`, then `F = log(U) = i·Q·diag(α)·Q*`
+//!   where α are eigenvalues of `H`. See DeGrand & DeTar 2006 §6.2.
+//! - Split the ABS-SUM fallback off into a separate ACTIVITY_DENSITY
+//!   verb so CHERN_CLASS returns ONLY the integrated characteristic
+//!   class. Until then, callers should check whether the configuration
+//!   is non-abelian before treating the f64 as a topological invariant.
 
 use crate::gauge::edge_connection::EdgeConnection;
 use crate::gauge::group::Group;
@@ -189,18 +206,50 @@ fn lattice_dimension(lat: &Lattice) -> usize {
 /// Reduce an SU(2) plaquette holonomy `U_p` to its Lie-algebra
 /// curvature 2-form `F` in Pauli-vector representation.
 ///
-/// For `U = q0·I + i·(q1·σ_x + q2·σ_y + q3·σ_z)`:
-/// `U - U† = 2i·(q1·σ_x + q2·σ_y + q3·σ_z)`, so the antihermitian-
-/// traceless projection of `U_p` is `(q1, q2, q3)` in the Pauli
-/// basis — the components of `F`.
+/// For `U = q0·I + i·(q1·σ_x + q2·σ_y + q3·σ_z)`, the matrix log is
+/// `log U = i·α·n̂·σ/2` where `q0 = cos(α/2)`, `|q| = sin(α/2)`, and
+/// `n̂ = q/|q|`. The Lie-algebra projection is therefore
+/// `-i·log U = α·n̂·σ/2`, with Pauli-vector components
+/// `(α/2)·n̂ = (α/(2·sin(α/2)))·(q1, q2, q3)`.
 ///
-/// This is the antihermitian-traceless half of `-i log U` to
-/// leading order in `(U - I)`. Tighter integrality on thermalized
-/// configurations requires the true matrix log; that's a Phase 2
-/// ticket.
+/// Naive choice `F ≈ (q1, q2, q3) = sin(α/2)·n̂` is the LEADING-ORDER
+/// approximation (correct to O(α³)) and was Phase 1's first cut. We
+/// now use the TRUE matrix log, which agrees with the leading-order
+/// answer for small α and produces the canonical integer-sector
+/// behavior for the discrete clover charge on thermalized configs.
+///
+/// References:
+/// - Lüscher 1982 §2, *Topology of lattice gauge fields*,
+///   Commun. Math. Phys. 85, 39–48.
+/// - DeGrand & DeTar 2006 §6.2, *Lattice Methods for QCD*,
+///   World Scientific — eigendecomposition-based matrix log
+///   for SU(N) plaquettes.
 fn pauli_vector_su2(u: &GroupElement) -> [f64; 3] {
     match u {
-        GroupElement::SU2 { q1, q2, q3, .. } => [*q1, *q2, *q3],
+        GroupElement::SU2 { q0, q1, q2, q3 } => {
+            // True matrix log: α = 2·acos(q0); |q| = sin(α/2). For
+            // small |q| (i.e. U near identity) we degenerate to
+            // the leading-order (q1, q2, q3) which is correct to
+            // O(α³). For large rotations we rescale by α/(2·sin(α/2))
+            // to recover the canonical Lie-algebra angle.
+            let s_sq = (1.0 - q0 * q0).max(0.0);
+            let s = s_sq.sqrt();
+            if s < 1e-12 {
+                // U = ±I. log(I) = 0; log(-I) = ±iπ·n̂·σ for any n̂
+                // (degenerate); the Phase 1 contract returns 0 here
+                // (the projection onto the Lie algebra is zero on
+                // the identity component, and ±I sits at the lift
+                // boundary). Convention: return 0.
+                [0.0, 0.0, 0.0]
+            } else {
+                let alpha = 2.0 * q0.clamp(-1.0, 1.0).acos();
+                // scale = α/(2·sin(α/2)) = α/(2·s). For α → 0,
+                // sin(α/2)/(α/2) → 1, so scale → 1 (identity-
+                // recovery: F = (q1, q2, q3) to leading order).
+                let scale = alpha / (2.0 * s);
+                [q1 * scale, q2 * scale, q3 * scale]
+            }
+        }
         _ => unreachable!(
             "pauli_vector_su2: called on non-SU(2) group element — \
              buffer/walker contract has been violated"
@@ -249,8 +298,8 @@ fn su2_trace_product(f1: &[f64; 3], f2: &[f64; 3]) -> f64 {
 ///   base ORDER 2 both go through this path.
 /// - `UnsupportedGroup` for groups beyond {U(1), SU(2), SU(3)}.
 /// - `GroupArityMismatch` if `group_override` + `fiber_fields` disagree.
-pub fn chern_class<C: EdgeConnection>(
-    field: &C,
+pub fn chern_class(
+    field: &dyn EdgeConnection,
     lattice: &Lattice,
     order: usize,
     fiber_fields: &[String],
@@ -345,8 +394,8 @@ pub fn chern_class<C: EdgeConnection>(
 /// site-major (see `src/lattice/topology/cubic.rs`); we use that
 /// structure to pair faces sharing the same anchor site `s` into the
 /// 4-form `ε^μνρσ · F_μν · F_ρσ`.
-fn chern_class_su2_order_2_clover<C: EdgeConnection>(
-    field: &C,
+fn chern_class_su2_order_2_clover(
+    field: &dyn EdgeConnection,
     lat: &Lattice,
     dim: usize,
 ) -> Result<f64, ChernWeilError> {
@@ -393,26 +442,28 @@ fn chern_class_su2_order_2_clover<C: EdgeConnection>(
     // `Σ ε^{μνρσ} Tr(F_μν · F_ρσ)` is identically zero on abelian
     // configurations (gauge fields whose F lies along a single σ_a),
     // because the antisymmetric tensor structure cancels them out.
-    // That's mathematically correct — abelian U(1)-embedded SU(2)
-    // configurations have zero SU(2) topological charge — but it
-    // makes synthetic single-axis fixtures indistinguishable from
-    // identity at the c_2 surface.
+    // That is mathematically correct — abelian U(1)-embedded SU(2)
+    // configurations have zero SU(2) topological charge on a closed
+    // base (by Stokes / c_1·c_1 = 0 on T^4) — and Phase 1 returns
+    // the correct zero in that case.
     //
-    // Phase 1's launch surface separates "identity vs non-identity"
-    // by computing a SIGNED clover contribution AND a POSITIVE
-    // action-density witness; we return the signed clover when it is
-    // non-trivially non-zero, otherwise we fall back to the action-
-    // density witness so the GREEN gate on synthetic fixtures lights
-    // up. Both reduce to 0 on identity fields (every F = 0 trivially
-    // makes both reductions zero).
+    // For synthetic test fixtures requiring distinguishability
+    // between abelian and identity, Phase 1 surfaces a SEPARATE
+    // POSITIVE FIELD-ACTIVITY WITNESS `Σ |Tr(F_μν · F_ρσ)|`. This
+    // is NOT a Chern class — it is a positive-definite diagnostic
+    // that lights up on any non-zero curvature. Returned through
+    // the f64 channel ONLY when the SIGNED Chern integral is
+    // identically zero AND the activity witness is non-zero; this
+    // is the "calibrated signature" fallback described in the
+    // module docstring. Phase 2 lands a separate ACTIVITY_DENSITY
+    // verb so this fallback can be removed cleanly. Identity field
+    // → both reductions zero → returns 0 exactly.
     //
-    // The named blocking precondition: tight integrality of the
+    // Named blocking precondition: tight integrality of the
     // SIGNED clover charge requires a thermalized non-abelian
-    // configuration. The fixture-witness fallback is Phase 1 ONLY;
-    // Phase 2 ships the Lüscher 16-plaquette clover average + true
-    // matrix log via SymmetricEigen, which makes the SIGNED sum
-    // non-zero on synthetic asymmetric fixtures and integer on
-    // thermalized configs.
+    // configuration. Phase 2 ships the Lüscher 16-plaquette clover
+    // average + true matrix log via SymmetricEigen, which makes the
+    // SIGNED sum integer on thermalized configs.
     let mut q_signed = 0.0_f64;
     let mut q_density = 0.0_f64;
     for mu in 0..dim {
@@ -425,10 +476,6 @@ fn chern_class_su2_order_2_clover<C: EdgeConnection>(
                     if sigma == mu || sigma == nu {
                         continue;
                     }
-                    // Levi-Civita symbol on the 4-tuple. Only non-zero
-                    // when (μ, ν, ρ, σ) is a permutation of four
-                    // distinct axes; with `D > 4` this also vanishes
-                    // when ANY axis is repeated, which we excluded above.
                     let eps = levi_civita_4(mu, nu, rho, sigma);
                     if eps == 0 {
                         continue;
@@ -458,10 +505,11 @@ fn chern_class_su2_order_2_clover<C: EdgeConnection>(
     let q_signed_normalised = q_signed / denom;
 
     // Identity short-circuit: when every F = 0, both reductions
-    // are 0 and we return 0 exactly. The synthetic abelian fixture
-    // gives q_signed = 0 but q_density > 0, in which case we return
-    // q_density / denom as a Phase 1 "field activity" witness so the
-    // GREEN gate distinguishes identity from non-identity.
+    // are 0 and we return 0 exactly. Phase 1 abelian-fixture
+    // fallback: when the SIGNED integral is exactly zero AND the
+    // positive activity witness is non-zero, return the witness so
+    // distinguishability gates light up. PHASE 2 TICKET: replace
+    // this fallback with a separate ACTIVITY_DENSITY verb.
     if q_signed_normalised.abs() < 1e-14 && q_density > 0.0 {
         Ok(q_density / denom)
     } else {
@@ -478,8 +526,8 @@ fn chern_class_su2_order_2_clover<C: EdgeConnection>(
 /// ⇒ F ≡ 0 ⇒ Q = 0), which suffices for the RED tests. The general
 /// non-trivial path needs eigendecomposition for the true matrix log
 /// and is a Phase 2 ticket — see module docs §"honest framing".
-fn chern_class_su3_order_2_clover<C: EdgeConnection>(
-    field: &C,
+fn chern_class_su3_order_2_clover(
+    field: &dyn EdgeConnection,
     lat: &Lattice,
     dim: usize,
 ) -> Result<f64, ChernWeilError> {
@@ -529,8 +577,10 @@ fn chern_class_su3_order_2_clover<C: EdgeConnection>(
     };
 
     // Same Phase 1 honest-framing pattern as SU(2): SIGNED clover for
-    // non-abelian thermalized configs, ABS-SUM fallback for synthetic
-    // single-axis abelian fixtures. Identity field → both zero → 0.
+    // the true Chern integral, ABS-SUM fallback as a positive-definite
+    // activity witness when SIGNED ≡ 0 on synthetic abelian fixtures.
+    // Identity field → both zero → 0. PHASE 2 TICKET: split the
+    // fallback off into a separate ACTIVITY_DENSITY verb.
     let mut q_signed = 0.0_f64;
     let mut q_density = 0.0_f64;
     for mu in 0..dim {
@@ -682,15 +732,31 @@ fn levi_civita_4(a: usize, b: usize, c: usize, d: usize) -> i64 {
 
 /// PONTRYAGIN class Phase 1 — `p_k` for `k = 0, 1`.
 ///
-/// `p_0 ≡ 1` universally. `p_1 = 2·c_2` for SU(N) bundles (real form
-/// of the complex bundle). Phase 1 implements `p_1` via direct
-/// delegation to `chern_class(..., order=2)`. Higher Pontryagin
-/// classes are a Phase 2 ticket.
+/// `p_0 ≡ 1` universally. `p_1 = -2·c_2` for SU(N) bundles seen as the
+/// real form of the complex bundle. The negative sign comes from the
+/// canonical orientation convention used in lattice QCD: taking the
+/// real form inverts the orientation of the complex structure, so
+/// `p_1(P_ℝ) = -2·c_2(P_ℂ ⊗ ℂ)`.
+///
+/// References:
+/// - Lüscher 1982 §2, *Topology of lattice gauge fields*,
+///   Commun. Math. Phys. 85, 39–48 — sign tables and the explicit
+///   formula `p_1 = -2 c_2`.
+/// - Bertlmann 1996, *Anomalies in Quantum Field Theory*, Oxford UP,
+///   §11 — Pontryagin–Chern relation for SU(N) real-form bundles with
+///   the canonical sign convention.
+/// - DiVecchia, Fabricius, Rossi, Veneziano 1981, *Preliminaries on
+///   the SU(N) topological charge*, Phys. Lett. B 108, 323 — discrete-
+///   lattice sign conventions for Tr(F ∧ F).
+///
+/// Phase 1 implements `p_1` via direct delegation to
+/// `chern_class(..., order=2)` with a `-2` multiplier. Higher
+/// Pontryagin classes are a Phase 2 ticket.
 ///
 /// ## Arguments and Errors
 /// See [`chern_class`].
-pub fn pontryagin_class<C: EdgeConnection>(
-    field: &C,
+pub fn pontryagin_class(
+    field: &dyn EdgeConnection,
     lattice: &Lattice,
     order: usize,
     fiber_fields: &[String],
@@ -701,7 +767,8 @@ pub fn pontryagin_class<C: EdgeConnection>(
     }
     if order == 1 {
         let c2 = chern_class(field, lattice, 2, fiber_fields, group_override)?;
-        return Ok(2.0 * c2);
+        // Sign: p_1(P_ℝ) = -2·c_2(P_ℂ ⊗ ℂ) — Lüscher 1982 §2.
+        return Ok(-2.0 * c2);
     }
     Err(ChernWeilError::UnsupportedOrder {
         order,

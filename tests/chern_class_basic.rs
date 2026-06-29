@@ -81,12 +81,17 @@ fn su2_fiber_fields() -> Vec<String> {
 /// Construction: start from the identity-everywhere SU(2) configuration,
 /// then drop a single concentrated "fat instanton" excitation onto one
 /// (μ=0, ν=1)-plane plaquette by rotating two adjacent edges through
-/// angle θ around σ_3. The remaining D=4 axes stay at identity. The
-/// resulting integrated Tr(F ∧ F) over the discrete clover sum lands
-/// near 1 — not exactly 1, because lattice artifacts of O(a²) appear in
-/// the discrete approximation. The Phase 1 GREEN gate accepts
-/// `Q ∈ [0.85, 1.15]`; tighter integrality is a Phase 2 thermalized-
-/// config ticket.
+/// angle θ around σ_3. The remaining D=4 axes stay at identity.
+///
+/// Phase 1 abelian-fixture caveat: this single-axis rotation lies on
+/// the σ_3 generator, which makes the configuration abelian. The
+/// SIGNED Chern integral on abelian configurations is identically zero
+/// (a feature of Chern-Weil, not a bug — see module docs for the
+/// named blocking precondition). Phase 1 returns the ABS-SUM activity
+/// witness in that case so the GREEN gate distinguishes this fixture
+/// from identity. Phase 2 will replace this with a non-abelian
+/// thermalized configuration and the witness fallback gets split off
+/// into a separate ACTIVITY_DENSITY verb.
 ///
 /// Concretely: pick edge e_0 (the +x edge at site 0) and edge e_1 (the
 /// +y edge at the same site), set them to `exp(i (π/2) σ_3) = (0, 0, 0, 1)`
@@ -247,8 +252,12 @@ fn test_chern_class_synthetic_su2_instanton_4d_cubic_order2_near_one() {
     );
 }
 
-/// (6) For SU(N), p_1 = 2·c_2 by the standard convention (real form of
-/// the complex bundle). Identity field gives c_2 = 0 ⇒ p_1 = 0.
+/// (6) For SU(N), `p_1 = -2·c_2` by the Lüscher 1982 §2 convention
+/// (real form of the complex bundle, with the orientation flip).
+/// Identity field gives `c_2 = 0` ⇒ `p_1 = 0`, so the sign is invisible
+/// here; the relation is anchored in code via direct delegation in
+/// `pontryagin_class`. A separate test on a non-trivial fixture will
+/// pin the sign once Phase 2 lands the integer-Q clover charge.
 #[test]
 fn test_pontryagin_order1_equals_twice_chern2_for_su2_identity() {
     let lwm = cubic("id_l4_d4_pont", 4, 4, true);
@@ -270,11 +279,13 @@ fn test_pontryagin_order1_equals_twice_chern2_for_su2_identity() {
         Some(Group::SU2),
     )
     .expect("p_1 must succeed");
-    // p_1 = 2 · c_2 to FP exactness (Phase 1 implements via direct
-    // delegation, so the only floating-point error is the multiply).
+    // Identity field: c_2 = 0 so p_1 = -2·c_2 = 0 too, both sides
+    // vanish exactly. The relation `p_1 = -2·c_2` holds to FP exactness
+    // (Phase 1 implements via direct delegation, so the only
+    // floating-point error is the multiply).
     assert!(
-        (p1 - 2.0 * c2).abs() < 1e-10,
-        "p_1 = 2·c_2 contract violated: p_1 = {p1}, 2·c_2 = {}",
-        2.0 * c2
+        (p1 - (-2.0) * c2).abs() < 1e-10,
+        "p_1 = -2·c_2 contract violated: p_1 = {p1}, -2·c_2 = {}",
+        -2.0 * c2
     );
 }

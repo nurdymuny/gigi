@@ -122,20 +122,290 @@ pub fn try_dispatch_gauge_statement(
 /// `topology::pi_1_presentation`, `obstruction::obstruction_with_default`)
 /// without ever touching the bundle registry.
 ///
-/// **RED-PHASE STUB** — the GREEN commit will replace this body with
-/// the per-variant dispatch logic that consults
-/// `gigi::gauge::registry` / `gigi::lattice::registry` / the engine
-/// bundle store as appropriate. For now this returns
-/// `Err("try_dispatch_topology_statement: not implemented")` so the
-/// integration tests at `tests/topology_verbs_gql_integration.rs`
-/// compile but every assertion lands on a failing-Err branch.
+/// ── Dispatch table ────────────────────────────────────────────────────
+///
+/// - `CHERN_CLASS bundle ORDER k`: resolves `bundle` through
+///   `gigi::gauge::registry::get` (the "bundle" name in the parser is
+///   the gauge-field name), then looks up the bound lattice through
+///   `gigi::lattice::registry::get(handle.lattice_name())`, then calls
+///   `chern_weil::chern_class` with the gauge field handle as the
+///   `EdgeConnection` impl.
+/// - `PONTRYAGIN bundle ORDER k`: same shape, delegates to
+///   `chern_weil::pontryagin_class`.
+/// - `PI_1 lattice`: resolves `lattice` through
+///   `gigi::lattice::registry::get`, calls
+///   `topology::pi_1_presentation`, returns `pres.rank` as `Scalar`.
+/// - `BETTI bundle ORDER Some(k)`: prefers the lattice registry
+///   (`bundle` is the lattice name in the parser), calling
+///   `topology::betti_topological` on the cell complex; falls back to
+///   the engine bundle store for `k ∈ {0, 1}` (legacy graph β path).
+///   `order = None` is not handled here — the legacy bundle path in
+///   `gigi_stream.rs::execute_gql_on_store_read` still handles that.
+/// - `OBSTRUCTION bundle`: tries the engine bundle store first (the
+///   path INGEST-declared configs follow); if no bundle by that name,
+///   falls through to the gauge-field path that resolves the field +
+///   lattice from the registries and computes c_2 directly through
+///   `chern_weil::chern_class`. This lets `GAUGE_FIELD U ON LATTICE l`
+///   targets reach the kernel even when no bundle named `U` exists.
+///
+/// ── Why a Result instead of Option<Result> ────────────────────────────
+///
+/// The caller (`gql_query`) gates this with a pattern match on the 5
+/// topology Statement variants — by the time this function is invoked,
+/// the variant is already known to be a topology verb, so the internal
+/// catch-all branch is a true error path, not a "not my variant"
+/// signal. Returning `Result` keeps the call site simpler than the
+/// `Option<Result>` shape `try_dispatch_gauge_statement` uses.
 pub fn try_dispatch_topology_statement(
     engine: &RwLock<Engine>,
     stmt: &Statement,
 ) -> Result<ExecResult, String> {
-    // RED phase: signature pinned for the integration tests to call,
-    // but the dispatch logic does not exist yet. Suppress unused-arg
-    // warnings without changing the contract.
-    let _ = (engine, stmt);
-    Err("try_dispatch_topology_statement: not implemented (RED phase)".to_string())
+    match stmt {
+        // ── CHERN_CLASS bundle ORDER k ────────────────────────────────
+        // `bundle` here is the gauge-field name from `GAUGE_FIELD <name>
+        // ON LATTICE ... GROUP ...`. Resolve through gauge::registry,
+        // not engine.bundle().
+        Statement::ChernClass {
+            bundle,
+            order,
+            fiber_fields,
+            group,
+        } => {
+            let handle = crate::gauge::registry::get(bundle).ok_or_else(|| {
+                format!(
+                    "CHERN_CLASS: gauge field '{}' not declared (use \
+                     GAUGE_FIELD {} ON LATTICE ... first)",
+                    bundle, bundle
+                )
+            })?;
+            let lattice_name = handle.lattice_name().to_string();
+            let lat = crate::lattice::registry::get(&lattice_name).ok_or_else(|| {
+                format!(
+                    "CHERN_CLASS: lattice '{}' bound to gauge field '{}' not \
+                     found (was it declared?)",
+                    lattice_name, bundle
+                )
+            })?;
+            let resolved_group = group.unwrap_or_else(|| handle.group());
+            let fields_owned: Vec<String> = if fiber_fields.is_empty() {
+                canonical_fiber_fields(resolved_group)
+            } else {
+                fiber_fields.clone()
+            };
+            let edge_conn: &dyn crate::gauge::edge_connection::EdgeConnection =
+                handle.as_ref();
+            let q = crate::chern_weil::chern_class(
+                edge_conn,
+                &lat,
+                *order,
+                &fields_owned,
+                Some(resolved_group),
+            )
+            .map_err(|e| e.to_string())?;
+            Ok(ExecResult::Scalar(q))
+        }
+
+        // ── PONTRYAGIN bundle ORDER k ─────────────────────────────────
+        Statement::Pontryagin {
+            bundle,
+            order,
+            fiber_fields,
+            group,
+        } => {
+            let handle = crate::gauge::registry::get(bundle).ok_or_else(|| {
+                format!(
+                    "PONTRYAGIN: gauge field '{}' not declared (use \
+                     GAUGE_FIELD {} ON LATTICE ... first)",
+                    bundle, bundle
+                )
+            })?;
+            let lattice_name = handle.lattice_name().to_string();
+            let lat = crate::lattice::registry::get(&lattice_name).ok_or_else(|| {
+                format!(
+                    "PONTRYAGIN: lattice '{}' bound to gauge field '{}' not \
+                     found (was it declared?)",
+                    lattice_name, bundle
+                )
+            })?;
+            let resolved_group = group.unwrap_or_else(|| handle.group());
+            let fields_owned: Vec<String> = if fiber_fields.is_empty() {
+                canonical_fiber_fields(resolved_group)
+            } else {
+                fiber_fields.clone()
+            };
+            let edge_conn: &dyn crate::gauge::edge_connection::EdgeConnection =
+                handle.as_ref();
+            let p = crate::chern_weil::pontryagin_class(
+                edge_conn,
+                &lat,
+                *order,
+                &fields_owned,
+                Some(resolved_group),
+            )
+            .map_err(|e| e.to_string())?;
+            Ok(ExecResult::Scalar(p))
+        }
+
+        // ── PI_1 lattice ──────────────────────────────────────────────
+        // `lattice` is the lattice name. The lattice registry is the
+        // only source of truth — no bundle fallback (PI_1 has no
+        // concept of a bundle store).
+        #[cfg(feature = "lattice")]
+        Statement::Pi1 { lattice } => {
+            let lat = crate::lattice::registry::get(lattice).ok_or_else(|| {
+                format!(
+                    "PI_1: lattice '{}' not declared (use LATTICE {} \
+                     FROM ... first)",
+                    lattice, lattice
+                )
+            })?;
+            let pres = crate::topology::pi_1_presentation(&lat);
+            Ok(ExecResult::Scalar(pres.rank as f64))
+        }
+
+        // ── OBSTRUCTION bundle ────────────────────────────────────────
+        // Two-path dispatch: prefer the engine bundle store (the path
+        // INGEST-declared configs follow), fall back to the gauge-field
+        // path that computes c_2 directly through chern_weil::chern_class.
+        Statement::Obstruction { bundle } => {
+            // First try the engine bundle store. `obstruction_with_default`
+            // does its own bundle lookup and returns BundleNotFound if
+            // the name doesn't resolve.
+            let bundle_path = {
+                let eng = engine
+                    .read()
+                    .map_err(|e| format!("OBSTRUCTION: engine lock poisoned: {}", e))?;
+                crate::obstruction::obstruction_with_default(&eng, bundle)
+            };
+            match bundle_path {
+                Ok(res) => return Ok(ExecResult::Scalar(res.class as f64)),
+                // The bundle was found but the (group, base_dim) pair
+                // is unsupported — surface that as a typed error.
+                Err(e @ crate::obstruction::ObstructionError::UnsupportedObstruction { .. }) => {
+                    return Err(format!("OBSTRUCTION: {}", e));
+                }
+                // Bundle not found — fall through to the gauge-field
+                // registry path.
+                Err(crate::obstruction::ObstructionError::BundleNotFound(_)) => {}
+                Err(e) => return Err(format!("OBSTRUCTION: {}", e)),
+            }
+
+            // Gauge-field path: bundle didn't resolve, try the gauge
+            // registry. This is the path GAUGE_FIELD-only declarations
+            // (no INGEST) take.
+            let handle = crate::gauge::registry::get(bundle).ok_or_else(|| {
+                format!(
+                    "OBSTRUCTION: no bundle or gauge field named '{}' \
+                     (use INGEST ... or GAUGE_FIELD {} ON LATTICE ... first)",
+                    bundle, bundle
+                )
+            })?;
+            let lattice_name = handle.lattice_name().to_string();
+            let lat = crate::lattice::registry::get(&lattice_name).ok_or_else(|| {
+                format!(
+                    "OBSTRUCTION: lattice '{}' bound to gauge field '{}' not \
+                     found (was it declared?)",
+                    lattice_name, bundle
+                )
+            })?;
+            let g = handle.group();
+            let fields_owned = canonical_fiber_fields(g);
+            let edge_conn: &dyn crate::gauge::edge_connection::EdgeConnection =
+                handle.as_ref();
+            // Phase 1 OBSTRUCTION semantics: report the appropriate
+            // characteristic-class witness as a finite scalar. The
+            // chern_class kernel applies the same dimension guard as
+            // the bundle path (c_2 on D<4 ⇒ 0.0), so a 2D base + an
+            // identity SU(N) field both short-circuit to 0.
+            let q = crate::chern_weil::chern_class(
+                edge_conn,
+                &lat,
+                2,
+                &fields_owned,
+                Some(g),
+            )
+            .map_err(|e| format!("OBSTRUCTION: {}", e))?;
+            Ok(ExecResult::Scalar(q))
+        }
+
+        // ── BETTI bundle ORDER Some(k) ────────────────────────────────
+        // Lattice registry first (the parser stores the lattice name in
+        // the `bundle` field for the ORDER path), then engine bundle
+        // fallback for the legacy β_0/β_1 graph path.
+        #[cfg(feature = "lattice")]
+        Statement::Betti {
+            bundle,
+            order: Some(k),
+        } => {
+            if let Some(lat) = crate::lattice::registry::get(bundle) {
+                let b = crate::topology::betti_topological(&lat, *k)
+                    .map_err(|e| format!("BETTI: {}", e))?;
+                return Ok(ExecResult::Scalar(b as f64));
+            }
+            // Lattice didn't resolve — fall back to the bundle store
+            // for the legacy graph β path. Only k ∈ {0, 1} is supported
+            // through the bundle path (the bundle stores a field-index
+            // graph, not a cell complex).
+            let eng = engine
+                .read()
+                .map_err(|e| format!("BETTI: engine lock poisoned: {}", e))?;
+            let store = eng.bundle(bundle).ok_or_else(|| {
+                format!(
+                    "BETTI ORDER {}: no lattice or bundle named '{}' \
+                     (use LATTICE {} FROM ... first, or INGEST a bundle)",
+                    k, bundle, bundle
+                )
+            })?;
+            let (b0, b1) = store.betti_numbers();
+            match *k {
+                0 => Ok(ExecResult::Scalar(b0 as f64)),
+                1 => Ok(ExecResult::Scalar(b1 as f64)),
+                other => Err(format!(
+                    "BETTI ORDER {} requires a registered lattice — the \
+                     bundle path only supports k ∈ {{0, 1}}",
+                    other
+                )),
+            }
+        }
+
+        // Catch-all. The route handler gates this function on a 5-arm
+        // pattern match so this branch is unreachable from production —
+        // it only fires when programmatic callers invoke the dispatcher
+        // with an unexpected variant.
+        _ => Err(format!(
+            "try_dispatch_topology_statement: not a topology variant \
+             (got {:?})",
+            std::mem::discriminant(stmt)
+        )),
+    }
+}
+
+/// Canonical fiber-field name list for a gauge group. Lifted from
+/// `src/bin/gigi_stream.rs::canonical_fiber_fields` so the dispatcher
+/// can synthesize the same default fiber list as the legacy executor
+/// arms when the caller omits `ON FIBER`.
+///
+/// SU(2): `["q0", "q1", "q2", "q3"]` — quaternion scalar-first.
+/// SU(3): `["m00_re", "m00_im", ..., "m22_re", "m22_im"]` — 9 complex
+/// entries row-major, 18 floats total.
+/// U(1): `["theta"]`.
+/// Z(N): `["k"]`.
+fn canonical_fiber_fields(group: crate::gauge::Group) -> Vec<String> {
+    match group {
+        crate::gauge::Group::SU2 => {
+            vec!["q0".into(), "q1".into(), "q2".into(), "q3".into()]
+        }
+        crate::gauge::Group::SU3 => {
+            let mut out = Vec::with_capacity(18);
+            for i in 0..3 {
+                for j in 0..3 {
+                    out.push(format!("m{i}{j}_re"));
+                    out.push(format!("m{i}{j}_im"));
+                }
+            }
+            out
+        }
+        crate::gauge::Group::U1 => vec!["theta".into()],
+        crate::gauge::Group::ZN { .. } => vec!["k".into()],
+    }
 }

@@ -12456,6 +12456,79 @@ async fn gql_query(
         }
     }
 
+    // Halcyon Bridge Trilogy follow-up — topology-verb route-handler bypass.
+    //
+    // Hallie's smoke chain (2026-06-28, gigi-stream a1c9c57) caught
+    // the 5 topology verbs (CHERN_CLASS / PONTRYAGIN / BETTI ORDER k /
+    // PI_1 / OBSTRUCTION) dropping at the bundle pre-resolve below:
+    // `get_bundle_name(&stmt)` returns the gauge-field-or-lattice name
+    // (`U_smoke` for CHERN/PONT/OBSTRUCTION, `smoke` for BETTI/PI_1),
+    // none of which live in the engine bundle store. The pre-resolve
+    // then 404s with `{"error":"No bundle: <name>"}` or, when the
+    // bundle-name extraction returns `None`, drops the statement with
+    // a silent `{"status":"ok"}` envelope.
+    //
+    // Fix: dispatch the 5 variants through
+    // `halcyon_gql_dispatch::try_dispatch_topology_statement` BEFORE
+    // the bundle pre-resolve. The helper consults
+    // `gigi::gauge::registry` (CHERN_CLASS / PONTRYAGIN), the engine
+    // bundle store + the gauge registry (OBSTRUCTION two-path),
+    // `gigi::lattice::registry` (PI_1 / BETTI ORDER), reaching the
+    // kernels (`chern_weil::chern_class`, `chern_weil::pontryagin_class`,
+    // `topology::pi_1_presentation`, `obstruction::obstruction_with_default`,
+    // `topology::betti_topological`) directly.
+    //
+    // `BETTI` with `order = None` is NOT routed here — it falls
+    // through to the legacy bundle path which returns `β_0 + β_1`
+    // from the field-index graph.
+    #[cfg(feature = "gauge")]
+    {
+        let is_topology_verb = matches!(
+            &stmt,
+            gigi::parser::Statement::ChernClass { .. }
+                | gigi::parser::Statement::Pontryagin { .. }
+                | gigi::parser::Statement::Pi1 { .. }
+                | gigi::parser::Statement::Obstruction { .. }
+                | gigi::parser::Statement::Betti { order: Some(_), .. }
+        );
+        if is_topology_verb {
+            let result = gigi::halcyon_gql_dispatch::try_dispatch_topology_statement(
+                &state.engine,
+                &stmt,
+            );
+            let dur = t0.elapsed().as_micros() as u64;
+            let stmt_type = gql_stmt_type_name(&stmt);
+            let (status, resp) = match result {
+                Ok(r) => exec_result_to_response(r),
+                Err(e) => {
+                    let ev = state.logger.query_error(
+                        &req_id, query, dur, "ExecError", &e, 500,
+                    );
+                    state.logger.emit(ev);
+                    state.metrics.record_query(dur, stmt_type, false, true);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": e})),
+                    );
+                }
+            };
+            let slow = dur >= state.logger.slow_threshold_us();
+            let ev = state.logger.query_complete(
+                &req_id, "gql", stmt_type, query, dur, 0, dur,
+                &[], 0, 0, 0, 0, false, None, None,
+            );
+            state.logger.emit(ev);
+            if slow {
+                let ev2 = state.logger.query_slow(
+                    &req_id, stmt_type, query, dur, false, false, "topology dispatch",
+                );
+                state.logger.emit(ev2);
+            }
+            state.metrics.record_query(dur, stmt_type, slow, false);
+            return (status, resp);
+        }
+    }
+
     let bundle_name = match get_bundle_name(&stmt) {
         Some(name) => name,
         None => {

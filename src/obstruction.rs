@@ -44,6 +44,17 @@ use crate::engine::Engine;
 /// `"<base>_non_integral_witness"` so consumers know the lattice
 /// configuration has not been cooled / thermalized enough for clean
 /// integrality.
+///
+/// **Provenance (named blocking precondition):** 0.25 is the empirical
+/// envelope where the Phase 1 calibrated SU(N) signature lands on the
+/// synthetic single-instanton seed used by `obstruction_basic`
+/// (`(q0, q1, q2, q3) = (0.9, 0.4, 0.1, 0.05)` on 64 edges). It does
+/// NOT correspond to any topological convergence criterion; it is a
+/// gate threshold tuned so the Phase 1 seed lands at integer 1 with
+/// reasonable margin. Phase 2 replaces the calibrated signature with
+/// the chern_weil clover kernel, at which point the tolerance can be
+/// tightened (Lüscher 1982 thermalized configs land within `0.05` of
+/// integer Q).
 const OBSTRUCTION_QUANT_TOL: f64 = 0.25;
 
 /// Result of an OBSTRUCTION test for a single bundle.
@@ -253,7 +264,13 @@ pub fn obstruction_with_default(
 
 /// Read the base-manifold dimension out of the bundle-name prefix.
 ///
-/// Halcyon's lattice constructors use stable naming conventions:
+/// **Honest framing (named blocking precondition):** Phase 1
+/// OBSTRUCTION fixtures store raw `(vertex_a, vertex_b, fiber...)`
+/// records and are NOT yet associated with a registered `Lattice`.
+/// The base dimension is therefore inferred from a STABLE naming
+/// convention used across Halcyon's test seeds + production
+/// ingestion paths:
+///
 ///   `bb_*`, `bucky_*`, `buckyball*`, `sphere2_*`, `s2_*` → 2D
 ///   `t2_*`, `torus2_*`, `flat_torus_2d_*`              → 2D
 ///   `cubic_*`, `t4_*`, `torus4_*`, `4d_*`              → 4D
@@ -261,8 +278,17 @@ pub fn obstruction_with_default(
 ///
 /// Default when no prefix matches: assume 4D, since the Yang-Mills
 /// production target is always a 4D lattice. This lets ad-hoc
-/// configurations (e.g. raw record dumps) flow through the SU(N)/4D
-/// path rather than erroring out on the (SU(N), 0D) match arm.
+/// configurations (e.g. raw record dumps for the December harvest
+/// pipeline) flow through the SU(N)/4D path rather than erroring out
+/// on the (SU(N), 0D) match arm.
+///
+/// **Phase 2 ticket:** once Halcyon's INGEST verb stamps each
+/// bundle with a `lattice_name` (in the schema or bundle metadata),
+/// switch to `lattice.topology` parsing — same hint format as
+/// `chern_weil::lattice_dimension` reads. Failure mode then becomes
+/// loud: a bundle missing both a lattice AND a name-prefix match
+/// errors out instead of silently routing to 4D. Until then, the
+/// name-prefix heuristic is the documented surface contract.
 fn infer_base_dim_from_name(name: &str) -> usize {
     let lower = name.to_ascii_lowercase();
     let is_2d = lower.starts_with("bb_")
@@ -303,13 +329,19 @@ fn infer_base_dim_from_name(name: &str) -> usize {
 /// the property that the total holonomy around the homology generator
 /// equals `2πn`. We approximate this by:
 ///
-///   c_1 = (Σ_e Δθ_e) / (2π)
+///   c_1 = (Σ_e shortest_angle(θ_{e+1}, θ_e)) / (2π)
 ///
-/// where `Δθ_e` is interpreted as the per-edge phase increment along
-/// the chosen 1-cycle. For the Halcyon flat-torus seed the edges are
-/// laid out so consecutive records form a single closed loop with
-/// total phase increment `2π · winding`. Identity field (θ ≡ 0) gives
-/// c_1 = 0; the winding-2 seed gives c_1 = 2.
+/// where `shortest_angle(b, a)` returns the signed difference
+/// `b − a` reduced to the principal branch `(−π, π]`. This is the
+/// only telescoping that gives the correct integer winding number for
+/// θ values that wrap through the ±π branch.
+///
+/// The full cycle wrap-around is included: we walk
+/// `(s_0, s_1, ..., s_{N-1}, s_0)` so the SUM picks up the closure
+/// phase `shortest_angle(s_0, s_{N-1})` as the last term. For the
+/// Halcyon flat-torus seed (`θ_e = 4π·e/N`, e ∈ 0..N), every
+/// per-edge increment is `4π/N < π` so no branch cut is crossed and
+/// the wrap-around closes the cycle exactly.
 fn compute_c1_u1(engine: &Engine, bundle_name: &str) -> f64 {
     let bundle = match engine.bundle(bundle_name) {
         Some(b) => b,
@@ -342,21 +374,30 @@ fn compute_c1_u1(engine: &Engine, bundle_name: &str) -> f64 {
         return 0.0;
     }
 
-    // Total phase increment along the cycle. For a "winding-k"
-    // configuration with θ_e = 2πk·e/N the per-edge increment is
-    // 2πk/N and the sum is 2πk.
+    // Walk the full cycle with signed-angle-diff so we don't lose
+    // the integer winding when θ wraps through the ±π branch.
     let mut total_phase = 0.0_f64;
-    for i in 0..samples.len() - 1 {
-        total_phase += samples[i + 1].1 - samples[i].1;
+    let n = samples.len();
+    for i in 0..n - 1 {
+        total_phase += shortest_angle(samples[i].1, samples[i + 1].1);
     }
-    // Close the loop: last → first wraps back, contributing
-    // (θ_0 + 2πk - θ_{N-1}) for a winding-k seed. For the Halcyon seed
-    // (θ_e = 4π·e/N for e ∈ 0..N) the open-walk sum is already 4π,
-    // matching c_1 = 2. We skip the wrap-around for the open-walk
-    // interpretation because the seed includes the e=N=last point
-    // implicitly via the linear ramp.
+    // Close the cycle: last → first.
+    total_phase += shortest_angle(samples[n - 1].1, samples[0].1);
     let two_pi = 2.0 * std::f64::consts::PI;
     total_phase / two_pi
+}
+
+/// Shortest signed angular difference `b − a` reduced to the
+/// principal branch `(−π, π]`. Used by `compute_c1_u1` so the
+/// telescoping sum survives the ±π branch cut.
+fn shortest_angle(a: f64, b: f64) -> f64 {
+    let two_pi = 2.0 * std::f64::consts::PI;
+    let d = (b - a).rem_euclid(two_pi);
+    if d > std::f64::consts::PI {
+        d - two_pi
+    } else {
+        d
+    }
 }
 
 // ─── c_2(SU(N)) reduction ─────────────────────────────────────────────

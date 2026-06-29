@@ -24,6 +24,15 @@ pub mod concurrent;
 pub mod convert;
 pub mod crypto;
 pub mod curvature;
+// Halcyon CHERN_CLASS + PONTRYAGIN — Chern-Weil discrete integration
+// of characteristic classes (c_k, p_k) on a `Lattice` cell complex.
+// Phase 1 ships ORDER 0/1/2 with the clover topological-charge
+// construction for SU(2) on 4D bases. Gated on the `gauge` feature
+// because the kernel composes plaquette holonomies through the
+// `EdgeConnection` surface and projects them via `GroupElement`
+// arithmetic. References: Lüscher 1982; Cohen Ch 3 §6.
+#[cfg(feature = "gauge")]
+pub mod chern_weil;
 // GIGI Encrypt v0.3 — Sprint J (Aff(ℝ) capability delegation).
 // Composes two GaugeKeys' Affine / Isometric / Identity transforms
 // into a per-field capability the proxy applies on ciphertext, never

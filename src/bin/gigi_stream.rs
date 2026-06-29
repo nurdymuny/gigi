@@ -12879,6 +12879,37 @@ fn bundle_gql_stats(store: &gigi::mmap_bundle::BundleRef<'_>) -> gigi::parser::G
     }
 }
 
+/// Canonical fiber-field name list for a gauge group. Used by
+/// CHERN_CLASS / PONTRYAGIN when the caller omits the `ON FIBER`
+/// clause — the executor synthesizes the canonical names from the
+/// group's representation.
+///
+/// SU(2): `["q0", "q1", "q2", "q3"]` — quaternion scalar-first.
+/// SU(3): `["m00_re", "m00_im", ..., "m22_re", "m22_im"]` — 9 complex
+/// entries row-major, 18 floats total.
+/// U(1): `["theta"]`.
+/// Z(N): `["k"]`.
+#[cfg(feature = "gauge")]
+fn canonical_fiber_fields(group: gigi::gauge::Group) -> Vec<String> {
+    match group {
+        gigi::gauge::Group::SU2 => {
+            vec!["q0".into(), "q1".into(), "q2".into(), "q3".into()]
+        }
+        gigi::gauge::Group::SU3 => {
+            let mut out = Vec::with_capacity(18);
+            for i in 0..3 {
+                for j in 0..3 {
+                    out.push(format!("m{i}{j}_re"));
+                    out.push(format!("m{i}{j}_im"));
+                }
+            }
+            out
+        }
+        gigi::gauge::Group::U1 => vec!["theta".into()],
+        gigi::gauge::Group::ZN { .. } => vec!["k".into()],
+    }
+}
+
 fn execute_gql_on_store_read(
     store: &gigi::mmap_bundle::BundleRef<'_>,
     stmt: &gigi::parser::Statement,
@@ -13274,6 +13305,136 @@ fn execute_gql_on_store_read(
         Statement::SpectralGauge { .. } => {
             Err("SPECTRAL_GAUGE requires the `gauge` feature to be enabled".to_string())
         }
+        // CHERN_CLASS bundle ORDER <k> [ON FIBER (...)] [GROUP <g>]
+        //
+        // Halcyon Phase 1 (2026-06-29): discrete Chern-Weil integration
+        // over the gauge field bound to `bundle`. Resolves the gauge
+        // field via the in-process registry, the lattice via the same
+        // registry, then calls `chern_weil::chern_class`. Returns a
+        // Scalar with the (near-)integer characteristic class.
+        //
+        // HONEST FRAMING: Phase 1 ships SU(2) ORDER 2 on a 4D cubic
+        // base. Identity and abelian-fixture short-circuits are
+        // documented in `src/chern_weil.rs`; the SIGNED clover sum is
+        // used when non-zero, the ABS-SUM fallback fires on synthetic
+        // single-axis abelian fixtures (witness-only).
+        #[cfg(feature = "gauge")]
+        Statement::ChernClass { bundle, order, fiber_fields, group } => {
+            let handle = gigi::gauge::registry::get(bundle).ok_or_else(|| {
+                format!(
+                    "CHERN_CLASS: gauge field '{}' not declared (use \
+                     GAUGE_FIELD {} ON LATTICE ... first)",
+                    bundle, bundle
+                )
+            })?;
+            let lattice_name = handle.lattice_name().to_string();
+            let lat = gigi::lattice::registry::get(&lattice_name).ok_or_else(|| {
+                format!(
+                    "CHERN_CLASS: lattice '{}' bound to gauge field '{}' not \
+                     found (was it declared?)",
+                    lattice_name, bundle
+                )
+            })?;
+
+            // Resolve the canonical fiber list from the field's group
+            // when the caller didn't specify ON FIBER. Same arity table
+            // as SPECTRAL_GAUGE so the contract stays uniform.
+            let resolved_group = group.unwrap_or_else(|| handle.group());
+            let fields_owned: Vec<String> = if fiber_fields.is_empty() {
+                canonical_fiber_fields(resolved_group)
+            } else {
+                fiber_fields.clone()
+            };
+
+            // The chern_class kernel is generic over `EdgeConnection`.
+            // `Arc<dyn GaugeFieldHandle>` derefs to a trait object that
+            // is also `EdgeConnection` (super-trait). We borrow through
+            // the Arc and re-borrow as `&dyn EdgeConnection`.
+            let edge_conn: &dyn gigi::gauge::edge_connection::EdgeConnection =
+                handle.as_ref();
+            // The kernel takes `&C where C: EdgeConnection`, not `&dyn`,
+            // so we adapt via a tiny newtype.
+            struct DynAdapter<'a>(&'a dyn gigi::gauge::edge_connection::EdgeConnection);
+            impl<'a> gigi::gauge::edge_connection::EdgeConnection for DynAdapter<'a> {
+                fn edge_element(
+                    &self,
+                    edge: gigi::lattice::EdgeId,
+                    orient: gigi::lattice::EdgeOrientation,
+                ) -> gigi::gauge::group_element::GroupElement {
+                    self.0.edge_element(edge, orient)
+                }
+            }
+            let adapter = DynAdapter(edge_conn);
+            let q = gigi::chern_weil::chern_class(
+                &adapter,
+                &lat,
+                *order,
+                &fields_owned,
+                Some(resolved_group),
+            )
+            .map_err(|e| e.to_string())?;
+            Ok(ExecResult::Scalar(q))
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::ChernClass { .. } => {
+            Err("CHERN_CLASS requires the `gauge` feature to be enabled".to_string())
+        }
+        // PONTRYAGIN bundle ORDER <k> [ON FIBER (...)] [GROUP <g>]
+        //
+        // Halcyon Phase 1: p_1 = 2 · c_2 for SU(N). Delegates to
+        // chern_weil::pontryagin_class which delegates to chern_class.
+        #[cfg(feature = "gauge")]
+        Statement::Pontryagin { bundle, order, fiber_fields, group } => {
+            let handle = gigi::gauge::registry::get(bundle).ok_or_else(|| {
+                format!(
+                    "PONTRYAGIN: gauge field '{}' not declared (use \
+                     GAUGE_FIELD {} ON LATTICE ... first)",
+                    bundle, bundle
+                )
+            })?;
+            let lattice_name = handle.lattice_name().to_string();
+            let lat = gigi::lattice::registry::get(&lattice_name).ok_or_else(|| {
+                format!(
+                    "PONTRYAGIN: lattice '{}' bound to gauge field '{}' not \
+                     found (was it declared?)",
+                    lattice_name, bundle
+                )
+            })?;
+
+            let resolved_group = group.unwrap_or_else(|| handle.group());
+            let fields_owned: Vec<String> = if fiber_fields.is_empty() {
+                canonical_fiber_fields(resolved_group)
+            } else {
+                fiber_fields.clone()
+            };
+
+            let edge_conn: &dyn gigi::gauge::edge_connection::EdgeConnection =
+                handle.as_ref();
+            struct DynAdapter<'a>(&'a dyn gigi::gauge::edge_connection::EdgeConnection);
+            impl<'a> gigi::gauge::edge_connection::EdgeConnection for DynAdapter<'a> {
+                fn edge_element(
+                    &self,
+                    edge: gigi::lattice::EdgeId,
+                    orient: gigi::lattice::EdgeOrientation,
+                ) -> gigi::gauge::group_element::GroupElement {
+                    self.0.edge_element(edge, orient)
+                }
+            }
+            let adapter = DynAdapter(edge_conn);
+            let p = gigi::chern_weil::pontryagin_class(
+                &adapter,
+                &lat,
+                *order,
+                &fields_owned,
+                Some(resolved_group),
+            )
+            .map_err(|e| e.to_string())?;
+            Ok(ExecResult::Scalar(p))
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::Pontryagin { .. } => {
+            Err("PONTRYAGIN requires the `gauge` feature to be enabled".to_string())
+        }
         // TRANSPORT bundle FROM (key=val) TO (key=val) ON FIBER (f1, f2, ...)
         //
         // L1.5.3 extension (catalog §1.2, consumption draft v2 §2):
@@ -13651,6 +13812,8 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         // Halcyon Phase 1 (2026-06-28): SPECTRAL_GAUGE is a single-bundle
         // read; expose the bundle name so the dispatcher can attach.
         SpectralGauge { bundle, .. } => Some(bundle.clone()),
+        ChernClass { bundle, .. } => Some(bundle.clone()),
+        Pontryagin { bundle, .. } => Some(bundle.clone()),
         Transport { bundle, .. } => Some(bundle.clone()),
         TransportRotation { bundle, .. } => Some(bundle.clone()),
         SampleTransport { bundle, .. } => Some(bundle.clone()),
@@ -13696,6 +13859,8 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Curvature { .. }      => "CURVATURE",
         Spectral { .. }       => "SPECTRAL",
         SpectralGauge { .. }  => "SPECTRAL_GAUGE",
+        ChernClass { .. }     => "CHERN_CLASS",
+        Pontryagin { .. }     => "PONTRYAGIN",
         CreateBundle { .. }   => "CREATE_BUNDLE",
         Collapse { .. }       => "DROP_BUNDLE",
         RotateKey { .. }      => "ROTATE_KEY",

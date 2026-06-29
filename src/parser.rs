@@ -560,6 +560,41 @@ pub enum Statement {
         /// Lanczos k-eigenvalue request.
         limit: Option<usize>,
     },
+    /// CHERN_CLASS bundle ORDER <k> [ON FIBER (...)] [GROUP <label>]
+    ///
+    /// Halcyon Phase 1: Chern-Weil discrete integration of `c_k` on
+    /// the gauge field bound to `bundle`. Returns
+    /// `ExecResult::Scalar(f64)` — the (near-)integer characteristic
+    /// class value for the given ORDER. See `src/chern_weil.rs` for
+    /// the Lüscher-1982 clover construction + the Phase 1 honest-
+    /// framing caveats (signed clover on thermalized configs;
+    /// abs-sum fallback on synthetic abelian fixtures).
+    ChernClass {
+        bundle: String,
+        order: usize,
+        fiber_fields: Vec<String>,
+        /// `None` → infer from `fiber_fields.len()` at exec time
+        /// (1 → U(1), 4 → SU(2), 18 → SU(3); else error).
+        #[cfg(feature = "gauge")]
+        group: Option<crate::gauge::Group>,
+        #[cfg(not(feature = "gauge"))]
+        group: Option<()>,
+    },
+    /// PONTRYAGIN bundle ORDER <k> [ON FIBER (...)] [GROUP <label>]
+    ///
+    /// Halcyon Phase 1: Pontryagin class `p_k` of the real form of
+    /// the complex SU(N) bundle. For SU(N), `p_1 = 2 · c_2`. Phase 1
+    /// implements ORDER 1 only by delegating to `chern_class(.,
+    /// order=2)`. Returns `ExecResult::Scalar(f64)`.
+    Pontryagin {
+        bundle: String,
+        order: usize,
+        fiber_fields: Vec<String>,
+        #[cfg(feature = "gauge")]
+        group: Option<crate::gauge::Group>,
+        #[cfg(not(feature = "gauge"))]
+        group: Option<()>,
+    },
     // ── Ricci curvature (per-edge) ──
     Ricci {
         bundle: String,
@@ -1970,6 +2005,12 @@ impl Parser {
             // top-level verb, distinct from SPECTRAL ON FIBER. Same
             // namespace pattern as SPECTRAL_FIBER's reuse of SPECTRAL.
             "SPECTRAL_GAUGE" => self.parse_spectral_gauge(),
+            // Halcyon Phase 1 (2026-06-29): CHERN_CLASS / PONTRYAGIN
+            // top-level verbs. Discrete Chern-Weil integration over a
+            // gauge field's plaquette holonomies. Same namespace
+            // pattern as SPECTRAL_GAUGE.
+            "CHERN_CLASS" => self.parse_chern_class(),
+            "PONTRYAGIN" => self.parse_pontryagin(),
             "CONSISTENCY" => self.parse_consistency(),
             "BETTI" => self.parse_betti(),
             "ENTROPY" => self.parse_entropy(),
@@ -4383,6 +4424,101 @@ impl Parser {
             group,
             full,
             limit,
+        })
+    }
+
+    /// Halcyon CHERN_CLASS — Chern-Weil discrete integration.
+    ///
+    /// Grammar:
+    ///   CHERN_CLASS bundle ORDER <k>
+    ///     [ON FIBER (f1, f2, ..., fK)]
+    ///     [GROUP SU(2)|SU(3)|U(1)|Z(N)]
+    ///     ;
+    ///
+    /// ORDER is mandatory. ON FIBER and GROUP are optional — when
+    /// omitted, the executor infers the canonical fiber field list
+    /// and group from the bundle's gauge-field metadata. Phase 1
+    /// implements ORDER 0/1/2 (ORDER 3+ returns the typed
+    /// `UnsupportedOrder` error).
+    fn parse_chern_class(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ORDER")?;
+        let order = self.expect_usize()?;
+
+        // Optional ON FIBER clause.
+        let fiber_fields = if self.is_keyword("ON") {
+            self.advance();
+            self.expect_keyword("FIBER")?;
+            self.expect(Token::LParen)?;
+            self.parse_inner_word_list()?
+        } else {
+            Vec::new()
+        };
+
+        // Optional GROUP clause.
+        #[cfg(feature = "gauge")]
+        let group: Option<crate::gauge::Group> = if self.is_keyword("GROUP") {
+            self.advance();
+            Some(self.parse_group_label()?)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "gauge"))]
+        let group: Option<()> = if self.is_keyword("GROUP") {
+            return Err(
+                "CHERN_CLASS GROUP clause requires the `gauge` feature".to_string()
+            );
+        } else {
+            None
+        };
+
+        Ok(Statement::ChernClass {
+            bundle,
+            order,
+            fiber_fields,
+            group,
+        })
+    }
+
+    /// Halcyon PONTRYAGIN — Pontryagin class p_k via delegation to
+    /// CHERN_CLASS ORDER 2 (Phase 1 implements ORDER 1 only).
+    ///
+    /// Grammar: identical to CHERN_CLASS.
+    fn parse_pontryagin(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ORDER")?;
+        let order = self.expect_usize()?;
+
+        let fiber_fields = if self.is_keyword("ON") {
+            self.advance();
+            self.expect_keyword("FIBER")?;
+            self.expect(Token::LParen)?;
+            self.parse_inner_word_list()?
+        } else {
+            Vec::new()
+        };
+
+        #[cfg(feature = "gauge")]
+        let group: Option<crate::gauge::Group> = if self.is_keyword("GROUP") {
+            self.advance();
+            Some(self.parse_group_label()?)
+        } else {
+            None
+        };
+        #[cfg(not(feature = "gauge"))]
+        let group: Option<()> = if self.is_keyword("GROUP") {
+            return Err(
+                "PONTRYAGIN GROUP clause requires the `gauge` feature".to_string()
+            );
+        } else {
+            None
+        };
+
+        Ok(Statement::Pontryagin {
+            bundle,
+            order,
+            fiber_fields,
+            group,
         })
     }
 
@@ -9917,6 +10053,73 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 let _ = (bundle, fiber_fields, group, full, limit, engine);
                 Err(
                     "SPECTRAL_GAUGE requires the `gauge` feature to be enabled"
+                        .to_string()
+                )
+            }
+        }
+        // Halcyon Phase 1 (2026-06-29) — CHERN_CLASS dispatch.
+        //
+        // The chern_class kernel reads through an `EdgeConnection` (the
+        // gauge-field handle on the bundle) and a `Lattice`. Phase 1
+        // requires the bundle to be a heap-resident gauge field; the
+        // parser-internal executor (this arm) only surfaces a typed
+        // error if the bundle is absent. The full handle / lattice
+        // resolution lives in the HTTP server's executor
+        // (`src/bin/gigi_stream.rs`), where the bundle subsystem owns
+        // the GaugeFieldRegistry. See the Halcyon design notes (DESIGN A).
+        Statement::ChernClass {
+            bundle,
+            order,
+            fiber_fields,
+            group,
+        } => {
+            #[cfg(feature = "gauge")]
+            {
+                let _ = (engine, bundle, order, fiber_fields, group);
+                // The full implementation lives in
+                // `src/bin/gigi_stream.rs`'s executor where the gauge
+                // field handle is reachable through the bundle
+                // subsystem. The parser-internal `execute` is used
+                // primarily by tests and tooling — surfacing a clear
+                // "use the streaming executor" message keeps the
+                // single-source-of-truth contract intact.
+                Err(
+                    "CHERN_CLASS dispatch lives in the streaming executor \
+                     (gigi-stream); the parser-internal execute() does not \
+                     own the gauge field registry handle"
+                        .to_string()
+                )
+            }
+            #[cfg(not(feature = "gauge"))]
+            {
+                let _ = (engine, bundle, order, fiber_fields, group);
+                Err(
+                    "CHERN_CLASS requires the `gauge` feature to be enabled"
+                        .to_string()
+                )
+            }
+        }
+        Statement::Pontryagin {
+            bundle,
+            order,
+            fiber_fields,
+            group,
+        } => {
+            #[cfg(feature = "gauge")]
+            {
+                let _ = (engine, bundle, order, fiber_fields, group);
+                Err(
+                    "PONTRYAGIN dispatch lives in the streaming executor \
+                     (gigi-stream); the parser-internal execute() does not \
+                     own the gauge field registry handle"
+                        .to_string()
+                )
+            }
+            #[cfg(not(feature = "gauge"))]
+            {
+                let _ = (engine, bundle, order, fiber_fields, group);
+                Err(
+                    "PONTRYAGIN requires the `gauge` feature to be enabled"
                         .to_string()
                 )
             }

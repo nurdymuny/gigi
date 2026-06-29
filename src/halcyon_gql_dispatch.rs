@@ -104,3 +104,38 @@ pub fn try_dispatch_gauge_statement(
     let mut eng = engine.write().expect("engine lock poisoned");
     Some(execute(&mut eng, stmt))
 }
+
+/// Halcyon Bridge Trilogy follow-up — topology-verb route-handler bypass.
+///
+/// Hallie's smoke chain (2026-06-28, gigi-stream a1c9c57) caught a
+/// pre-resolve drop bug in `src/bin/gigi_stream.rs::gql_query`: the
+/// bundle-name extraction at the top of the route handler fires
+/// BEFORE the executor is dispatched, so the 5 topology verbs
+/// (CHERN_CLASS / PONTRYAGIN / BETTI ORDER k / PI_1 / OBSTRUCTION)
+/// hit either `{"error":"No bundle: <gauge-field-or-lattice>"}` (when
+/// `get_bundle_name(&stmt)` returns the gauge/lattice name) or a
+/// silent `{"status":"ok"}` envelope (when it returns `None`). The
+/// fix mirrors `try_dispatch_gauge_statement`: a special-case dispatch
+/// the route handler consults BEFORE the bundle pre-resolve, so the
+/// topology verbs reach their kernels (`chern_weil::chern_class`,
+/// `chern_weil::pontryagin_class`, `topology::betti_topological`,
+/// `topology::pi_1_presentation`, `obstruction::obstruction_with_default`)
+/// without ever touching the bundle registry.
+///
+/// **RED-PHASE STUB** — the GREEN commit will replace this body with
+/// the per-variant dispatch logic that consults
+/// `gigi::gauge::registry` / `gigi::lattice::registry` / the engine
+/// bundle store as appropriate. For now this returns
+/// `Err("try_dispatch_topology_statement: not implemented")` so the
+/// integration tests at `tests/topology_verbs_gql_integration.rs`
+/// compile but every assertion lands on a failing-Err branch.
+pub fn try_dispatch_topology_statement(
+    engine: &RwLock<Engine>,
+    stmt: &Statement,
+) -> Result<ExecResult, String> {
+    // RED phase: signature pinned for the integration tests to call,
+    // but the dispatch logic does not exist yet. Suppress unused-arg
+    // warnings without changing the contract.
+    let _ = (engine, stmt);
+    Err("try_dispatch_topology_statement: not implemented (RED phase)".to_string())
+}

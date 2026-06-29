@@ -390,6 +390,15 @@ BETTI sensors ORDER 1;  -- explicit β_k via the cell complex (Phase 1: k ∈ {0
 
 -- Yang-Mills topology verbs (2026-06-28). Discrete Chern-Weil integration,
 -- π_1 fundamental group, principal-bundle section-existence obstruction.
+-- All five verbs answer end-to-end through /v1/gql against a declared lattice
+-- + gauge field (verified on production 2026-06-28 late):
+--   LATTICE smoke FROM CUBIC L=4 DIM=2 PERIODIC;
+--   GAUGE_FIELD U_smoke ON LATTICE smoke GROUP SU(3) INIT IDENTITY;
+--   CHERN_CLASS U_smoke ORDER 2;        → {"value": 0.0}
+--   PONTRYAGIN U_smoke ORDER 1;         → {"value": -0.0}
+--   BETTI smoke ORDER 2;                → {"value": 1.0}   (β_2(T²) = 1)
+--   PI_1 smoke;                          → {"value": 2.0}   (π_1(T²) = ℤ², rank 2)
+--   OBSTRUCTION U_smoke;                 → {"value": 0.0}
 CHERN_CLASS gauge_bundle ORDER 2;       -- instanton number Q ∈ ℤ (Lüscher clover)
 PONTRYAGIN gauge_bundle ORDER 1;        -- p_1 = 2·c_2 for SU(N)
 PI_1 my_lattice;                         -- rank of π_1 (spanning tree + face relators)
@@ -397,6 +406,9 @@ OBSTRUCTION gauge_bundle;                -- principal-bundle section sector
 SPECTRAL_GAUGE gauge_bundle ON FIBER (q0, q1, q2, q3);  -- fiber-weighted Laplacian gap
 
 -- Bridge Trilogy verbs (2026-06-28). 4D cubic + NPZ ingest + SU(3) ingest.
+-- The LATTICE → GAUGE_FIELD → CHERN_CLASS bridge is live end-to-end on
+-- production (see smoke chain above): LATTICE declares the base, GAUGE_FIELD
+-- declares the bundle, CHERN_CLASS reads the instanton sector.
 LATTICE my_4d FROM CUBIC L=12 DIM=4 PERIODIC;
 INGEST configs_bundle FROM 'harvest_L12_beta6.0_run1.npz' FORMAT NPZ;
 GAUGE_FIELD U_4d ON LATTICE my_4d GROUP SU(3) INIT HAAR SEED 42;

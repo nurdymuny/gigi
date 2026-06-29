@@ -308,12 +308,72 @@ added 5 inline `#[cfg(test)]` unit tests.
 - **IMAGINE Phase 2** (regression check for Marcella): still serves
   HTTP 200 with 5-step 384-dim trajectory on `marcella_fiber_embeddings`.
 
+## Route-handler bypass fix (Halcyon discovery 2026-06-28-evening)
+
+Hallie ran the smoke chain against a freshly-built local
+`target/release/gigi-stream.exe` (a1c9c57, full features) and caught a
+load-bearing gap: CHERN_CLASS, PONTRYAGIN, and BETTI ORDER all returned
+`{"error":"No bundle: U_smoke"}` even though the gauge field and lattice
+were correctly registered. PI_1 + OBSTRUCTION appeared to succeed but only
+because they were tail statements in a multi-statement chain — the HTTP
+response was the envelope of the first statement (the LATTICE / GAUGE_FIELD
+declaration), not the verb result.
+
+**Root cause.** In `src/bin/gigi_stream.rs` the `gql_query` handler did
+`engine.bundle(&bundle_name)` *before* dispatching to the executor. For
+CHERN_CLASS / PONTRYAGIN the "name" is a gauge field, for BETTI ORDER and
+PI_1 it is a lattice, and for OBSTRUCTION it can be either. None of these
+live in the bundle registry, so the pre-resolve fired a 404 before the
+arm at `gigi::gauge::registry::get` / `gigi::lattice::registry::get` had a
+chance to answer.
+
+**Fix.** A new `try_dispatch_topology_statement` block in
+`src/halcyon_gql_dispatch.rs` runs *before* the bundle pre-resolve. The
+block mirrors the pre-existing special-case pattern (ShowBundles,
+Collapse, RotateKey, Divergence) and resolves the five topology verbs
+against the gauge and lattice registries directly. `Statement::Betti`
+with `order = None` still routes through the bundle path (the legacy
+graph β₀+β₁ entry).
+
+The executor arms in `execute_gql_on_store_read` are now unreachable from
+the HTTP path; they carry dead-code banners that name the production
+dispatch path so future maintainers do not silently edit the wrong
+location.
+
+**TDD discipline.** RED commit `31a0122` lands seven failing integration
+tests in `tests/topology_verbs_gql_integration.rs`. GREEN commit
+`553a6c9` adds the dispatcher and makes them pass. Revised commit
+`059a2c2` applies the math/engineering/voice lens fixes (quantization
+parity on the OBSTRUCTION two-path, HTTP-bypass-position regression test,
+dead-code banners, helper deduplication). All 14 locked gates plus the new
+9-test integration file stay green at every commit.
+
+**Live smoke chain on production** (image
+`deployment-01KWA96VEXTWEZD97VD60AJPJH`, deployed 2026-06-28 late):
+
+```
+LATTICE smoke FROM CUBIC L=4 DIM=2 PERIODIC;          → {"status":"ok"}
+GAUGE_FIELD U_smoke ON LATTICE smoke GROUP SU(3) INIT IDENTITY;
+                                                      → {"status":"ok"}
+CHERN_CLASS U_smoke ORDER 2;                          → {"value": 0.0}
+PONTRYAGIN U_smoke ORDER 1;                           → {"value": -0.0}
+BETTI smoke ORDER 2;                                  → {"value": 1.0}  (β_2(T²) = 1)
+PI_1 smoke;                                           → {"value": 2.0}  (π_1(T²) = ℤ², rank 2)
+OBSTRUCTION U_smoke;                                  → {"value": 0.0}
+```
+
+End-to-end the LATTICE → GAUGE_FIELD → CHERN_CLASS / PONTRYAGIN / BETTI /
+PI_1 / OBSTRUCTION bridge now answers through the dispatcher with the
+mathematically correct values for the trivial-bundle 2D-SU(3) identity
+case.
+
 ## claude_substrate_v0
 
-Restored from `.deploy-backups/2026-06-28-evening/claude_substrate_v0.export.json`
+Restored from `.deploy-backups/2026-06-28-late/claude_substrate_v0.import_payload.json`
 via the same pattern documented in `SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md`:
-20 records re-imported via `CREATE BUNDLE` + 20 column-aware `INSERT INTO`
-statements. The bundle remains heap-only fragile under
+20 records (t001–t020) re-imported via `POST /v1/bundles` + a single
+`POST /v1/bundles/claude_substrate_v0/insert` batch with the correct
+`keys: ["thought_id"]` schema. The bundle remains heap-only fragile under
 `GIGI_SKIP_BOOT_SNAPSHOT=1` until the snapshot wedge is fixed; the durability
 ticket stays open.
 

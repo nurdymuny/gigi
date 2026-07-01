@@ -992,6 +992,17 @@ pub enum SpectralGaugeError {
         phase: &'static str,
         description: &'static str,
     },
+    /// WHERE clause was supplied but no records survived the filter,
+    /// so the adjacency graph has zero edges. Distinct from
+    /// `EmptyBundle` (which fires when the bundle itself is empty) —
+    /// this variant lets callers distinguish "you filtered too
+    /// aggressively" from "the bundle has no data". Introduced 2026-06-30
+    /// alongside SPECTRAL_GAUGE ... WHERE for Hallie's sectoral
+    /// workflow (Ask 4).
+    EmptySubgraph {
+        where_clause: String,
+        message: String,
+    },
 }
 
 #[cfg(feature = "gauge")]
@@ -1027,6 +1038,13 @@ impl std::fmt::Display for SpectralGaugeError {
             }
             SpectralGaugeError::PhaseNotImplemented { phase, description } => {
                 write!(f, "SPECTRAL_GAUGE: {phase} not yet implemented — {description}")
+            }
+            SpectralGaugeError::EmptySubgraph { where_clause, message } => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: filter WHERE {where_clause} matched zero \
+                     records — empty subgraph, cannot build Laplacian ({message})"
+                )
             }
         }
     }
@@ -1123,6 +1141,7 @@ pub fn spectral_gauge_gap(
     group: crate::gauge::Group,
     full: bool,
     _limit: Option<usize>,
+    filter: Option<&[crate::bundle::QueryCondition]>,
 ) -> Result<SpectralGaugeResult, SpectralGaugeError> {
     // ── Step 0: FULL mode → Phase 2 stub. Surface the typed error so
     //   callers get an exact phase tag plus what they get today (the
@@ -1177,6 +1196,19 @@ pub fn spectral_gauge_gap(
     let mut n_records_used = 0usize;
 
     for rec in store.records() {
+        // WHERE clause guard — kernel-side filter matches how
+        // QueryCondition is used elsewhere in the engine (streaming
+        // filter, not materialized subset). Records that fail any
+        // condition are silently skipped so the adjacency graph is
+        // built only from the filtered subset. Missing-field predicates
+        // return false → those records are excluded (same safe-fallback
+        // COVER/LOAD use).
+        if let Some(conds) = filter {
+            if !conds.iter().all(|c| c.matches(&rec)) {
+                continue;
+            }
+        }
+
         let va = rec.get(endpoint_a).and_then(|v| v.as_i64()).unwrap_or(0);
         let vb = rec.get(endpoint_b).and_then(|v| v.as_i64()).unwrap_or(0);
         let next_a = vertex_idx.len();
@@ -1197,6 +1229,27 @@ pub fn spectral_gauge_gap(
 
     let v_count = vertex_idx.len();
     if v_count < 2 {
+        // Distinguish "filter matched nothing" from "bundle is empty":
+        // when the caller passed a filter and it excluded every record,
+        // surface EmptySubgraph with the failing predicate list so the
+        // caller can see which condition to relax. Without a filter,
+        // stick to the original EmptyBundle error (bundle is genuinely
+        // empty of edges).
+        if let Some(conds) = filter {
+            let where_clause = conds
+                .iter()
+                .map(|c| format!("{c:?}"))
+                .collect::<Vec<_>>()
+                .join(" AND ");
+            let message = format!(
+                "bundle '{bundle}' has records but none satisfy the filter — \
+                 relax or remove the WHERE clause to include more edges"
+            );
+            return Err(SpectralGaugeError::EmptySubgraph {
+                where_clause,
+                message,
+            });
+        }
         return Err(SpectralGaugeError::EmptyBundle {
             bundle: bundle.to_string(),
         });

@@ -637,6 +637,15 @@ pub enum Statement {
         /// LIMIT k after FULL — Phase 2 will use this to size the
         /// Lanczos k-eigenvalue request.
         limit: Option<usize>,
+        /// Optional WHERE clause for sectoral filtering (Ask 4).
+        /// Empty vec = no filter (backwards compatible with every
+        /// existing caller). Records that fail any condition are
+        /// skipped in the adjacency graph build; the Laplacian is
+        /// then eigendecomposed on the filtered subgraph. Same
+        /// FilterCondition AST COVER/LOAD use — converted to
+        /// QueryCondition at exec time via
+        /// `filter_to_query_conditions`.
+        where_conditions: Vec<FilterCondition>,
     },
     /// CHERN_CLASS bundle ORDER <k> [ON FIBER (...)] [GROUP <label>]
     ///
@@ -4557,6 +4566,20 @@ impl Parser {
     /// the Phase 2 Lanczos sparse path.
     fn parse_spectral_gauge(&mut self) -> Result<Statement, String> {
         let bundle = self.expect_word()?;
+
+        // Optional WHERE clause — parsed BEFORE ON FIBER so the grammar
+        // reads left-to-right: filter subset first, then declare fiber.
+        // Reuses parse_filter_condition_list() which already handles
+        // Eq/Neq/Gt/Gte/Lt/Lte/In/NotIn/Contains/Between + AND combinator.
+        // Same routine COVER and LOAD call, so semantics are identical
+        // to COVER WHERE.
+        let where_conditions = if self.is_keyword("WHERE") {
+            self.advance();
+            self.parse_filter_condition_list()?
+        } else {
+            Vec::new()
+        };
+
         self.expect_keyword("ON")?;
         self.expect_keyword("FIBER")?;
         self.expect(Token::LParen)?;
@@ -4602,6 +4625,7 @@ impl Parser {
             group,
             full,
             limit,
+            where_conditions,
         })
     }
 
@@ -10406,6 +10430,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             group,
             full,
             limit,
+            where_conditions,
         } => {
             #[cfg(feature = "gauge")]
             {
@@ -10416,6 +10441,20 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     None => crate::spectral::infer_group_from_arity(fiber_fields.len())
                         .map_err(|e| e.to_string())?,
                 };
+
+                // Flatten WHERE clause via the existing helper — same
+                // path COVER/LOAD use so semantics match exactly.
+                let query_conditions: Vec<crate::bundle::QueryCondition> =
+                    where_conditions
+                        .iter()
+                        .flat_map(|fc| filter_to_query_conditions(fc))
+                        .collect();
+                let filter_opt = if query_conditions.is_empty() {
+                    None
+                } else {
+                    Some(query_conditions.as_slice())
+                };
+
                 let result = crate::spectral::spectral_gauge_gap(
                     engine,
                     bundle,
@@ -10423,6 +10462,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     resolved_group,
                     *full,
                     *limit,
+                    filter_opt,
                 )
                 .map_err(|e| e.to_string())?;
 
@@ -10449,7 +10489,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             #[cfg(not(feature = "gauge"))]
             {
                 // Suppress unused-variable warnings when gauge is off.
-                let _ = (bundle, fiber_fields, group, full, limit, engine);
+                let _ = (bundle, fiber_fields, group, full, limit, where_conditions, engine);
                 Err(
                     "SPECTRAL_GAUGE requires the `gauge` feature to be enabled"
                         .to_string()

@@ -13429,7 +13429,7 @@ fn execute_gql_on_store_read(
         // locally gauge-covariant. This is NOT the strict Yang-Mills
         // mass gap. Halcyon understands the distinction.
         #[cfg(feature = "gauge")]
-        Statement::SpectralGauge { bundle, fiber_fields, group, full, limit } => {
+        Statement::SpectralGauge { bundle, fiber_fields, group, full, limit, where_conditions } => {
             let eng = engine.ok_or_else(|| {
                 "SPECTRAL_GAUGE requires an Engine handle in the executor context".to_string()
             })?;
@@ -13452,6 +13452,21 @@ fn execute_gql_on_store_read(
                 },
             };
 
+            // Flatten WHERE clause to QueryCondition[] via the same
+            // helper COVER/LOAD use — semantics identical to COVER
+            // WHERE. Empty vec → filter_opt=None → zero behaviour
+            // change on the locked gates.
+            let query_conditions: Vec<gigi::bundle::QueryCondition> =
+                where_conditions
+                    .iter()
+                    .flat_map(|fc| gigi::parser::filter_to_query_conditions(fc))
+                    .collect();
+            let filter_opt = if query_conditions.is_empty() {
+                None
+            } else {
+                Some(query_conditions.as_slice())
+            };
+
             // Read-only engine borrow — the eigendecomposition does
             // not mutate any state.
             let eng_guard = eng.read().unwrap();
@@ -13462,6 +13477,7 @@ fn execute_gql_on_store_read(
                 resolved_group,
                 *full,
                 *limit,
+                filter_opt,
             )
             .map_err(|e| e.to_string())?;
 

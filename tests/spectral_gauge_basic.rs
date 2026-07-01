@@ -93,7 +93,7 @@ fn test_identity_field_returns_zero_gap_on_single_node() {
     insert_edge(&mut engine, "tiny", 0, 0, su2_field_names(), &id);
 
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let err = spectral_gauge_gap(&engine, "tiny", &fiber_fields, Group::SU2, false, None)
+    let err = spectral_gauge_gap(&engine, "tiny", &fiber_fields, Group::SU2, false, None, None)
         .expect_err("single-vertex graph should not yield a gap");
     assert!(
         matches!(err, SpectralGaugeError::EmptyBundle { .. }),
@@ -117,7 +117,7 @@ fn test_identity_field_returns_unweighted_gap_on_connected_graph() {
     }
 
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let result = spectral_gauge_gap(&engine, "ring6", &fiber_fields, Group::SU2, false, None)
+    let result = spectral_gauge_gap(&engine, "ring6", &fiber_fields, Group::SU2, false, None, None)
         .expect("ring should give a gap");
     let expected = 2.0 * (1.0 - (2.0 * std::f64::consts::PI / n as f64).cos());
     assert!(
@@ -148,7 +148,7 @@ fn test_random_gauge_field_returns_finite_positive_gap() {
     }
 
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let result = spectral_gauge_gap(&engine, "ring10_haar", &fiber_fields, Group::SU2, false, None)
+    let result = spectral_gauge_gap(&engine, "ring10_haar", &fiber_fields, Group::SU2, false, None, None)
         .expect("ring should give a gap");
     assert!(result.gap.is_finite(), "gap must be finite, got {}", result.gap);
     assert!(!result.gap.is_nan(), "gap must not be NaN");
@@ -209,7 +209,7 @@ fn test_fiber_arity_mismatch_against_explicit_group() {
     insert_edge(&mut engine, "mismatch", 0, 1, &fields, &id);
 
     let fiber_fields: Vec<String> = fields.iter().map(|s| s.to_string()).collect();
-    let err = spectral_gauge_gap(&engine, "mismatch", &fiber_fields, Group::SU2, false, None)
+    let err = spectral_gauge_gap(&engine, "mismatch", &fiber_fields, Group::SU2, false, None, None)
         .expect_err("5 fields with SU(2) should mismatch");
     match err {
         SpectralGaugeError::FiberArityMismatch { group, expected, actual } => {
@@ -226,7 +226,7 @@ fn test_fiber_arity_mismatch_against_explicit_group() {
 fn test_bundle_not_found_returns_typed_error() {
     let engine = Engine::open_memory().expect("memory engine");
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let err = spectral_gauge_gap(&engine, "no_such_bundle", &fiber_fields, Group::SU2, false, None)
+    let err = spectral_gauge_gap(&engine, "no_such_bundle", &fiber_fields, Group::SU2, false, None, None)
         .expect_err("nonexistent bundle should error");
     assert!(
         matches!(err, SpectralGaugeError::BundleNotFound(ref name) if name.contains("no_such_bundle")),
@@ -249,7 +249,7 @@ fn test_missing_endpoint_fields_returns_typed_error() {
     engine.create_bundle(schema).expect("create");
 
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let err = spectral_gauge_gap(&engine, "no_endpoints", &fiber_fields, Group::SU2, false, None)
+    let err = spectral_gauge_gap(&engine, "no_endpoints", &fiber_fields, Group::SU2, false, None, None)
         .expect_err("missing endpoints should error");
     match err {
         SpectralGaugeError::MissingEndpointFields { ref bundle, ref a, ref b } => {
@@ -274,7 +274,7 @@ fn test_full_mode_returns_phase_not_implemented_stub() {
     }
 
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let err = spectral_gauge_gap(&engine, "ring4", &fiber_fields, Group::SU2, true, None)
+    let err = spectral_gauge_gap(&engine, "ring4", &fiber_fields, Group::SU2, true, None, None)
         .expect_err("FULL mode should not be implemented");
     match err {
         SpectralGaugeError::PhaseNotImplemented { phase, description } => {
@@ -301,7 +301,7 @@ fn test_full_mode_with_limit_still_returns_phase_not_implemented() {
     }
 
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let err = spectral_gauge_gap(&engine, "ring4_limit", &fiber_fields, Group::SU2, true, Some(5))
+    let err = spectral_gauge_gap(&engine, "ring4_limit", &fiber_fields, Group::SU2, true, Some(5), None)
         .expect_err("FULL LIMIT should still error in Phase 1");
     assert!(matches!(err, SpectralGaugeError::PhaseNotImplemented { .. }));
 }

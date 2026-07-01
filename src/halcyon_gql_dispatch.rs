@@ -579,6 +579,80 @@ pub fn try_dispatch_topology_statement(
     }
 }
 
+/// Halcyon follow-up (2026-07-01) — INGEST route-handler bypass.
+///
+/// Hallie's afternoon smoke chain against gigi-stream v233 caught the
+/// same pre-resolve drop bug that killed the topology verbs on 2026-06-28
+/// (fixed by 553a6c9 + this file's `try_dispatch_topology_statement`).
+/// Firing:
+///
+/// ```text
+/// INGEST su2_L4_obc_verify FROM '..._L4/raw_U_configs.npz'
+///     FORMAT NPZ AS GAUGE_FIELD GROUP SU(2) ON LATTICE l4_obc_verify;
+/// ```
+///
+/// returned `HTTP 404 {"error":"No bundle: su2_L4_obc_verify"}` because
+/// `src/bin/gigi_stream.rs::gql_query` calls `engine.bundle(&target_name)`
+/// BEFORE the INGEST executor arm runs. INGEST is a bundle-CREATOR — the
+/// executor's job is to materialize the bundle from the NPZ header when
+/// the name is fresh (see `src/ingest.rs::execute_ingest` and
+/// `ingest.rs:417-422` where `ensure_bundle_compatible(..., allow_auto_create=true)`
+/// fires). The pre-resolve wall stops that from ever happening.
+///
+/// This dispatcher mirrors `try_dispatch_topology_statement`. The route
+/// handler calls it BEFORE the bundle pre-resolve so `Statement::Ingest`
+/// reaches `parser::execute` (which delegates to `crate::ingest::execute_ingest`
+/// or `execute_ingest_as_gauge_field` per the `as_gauge_field` clause)
+/// without the pre-resolve dropping the request.
+///
+/// ── Dispatch contract ────────────────────────────────────────────────
+///
+/// - `INGEST <bundle> FROM <src> FORMAT NPZ [AS GAUGE_FIELD GROUP <g>
+///   ON LATTICE <l>]` where `<bundle>` is a fresh name → the executor
+///   auto-creates the bundle from the NPZ header, returns `ExecResult::Ok`.
+/// - Same statement where `<bundle>` already exists with compatible
+///   schema → the executor appends records, returns `ExecResult::Ok`.
+/// - Same statement where the NPZ source file does not exist → the
+///   executor returns `IngestError::FileNotFound`, surfaced here as an
+///   `Err(String)`. Critically, the error message MUST NOT be the
+///   legacy `"No bundle: <name>"` envelope — that is the specific bug
+///   being fixed. Any INGEST-executor-produced error string is proof
+///   the pre-resolve wall was bypassed.
+///
+/// ── RED-phase stub ────────────────────────────────────────────────────
+///
+/// Today this returns `Err("try_dispatch_ingest_statement: not
+/// implemented (RED phase)")`. The GREEN commit will replace the body
+/// with a call through to `parser::execute` (which already handles both
+/// the auto-create case and the append case correctly). The tests in
+/// `tests/ingest_gql_bypass_basic.rs` compile against this stub and
+/// fail — that's the RED signal.
+///
+/// Route-handler wiring: the caller in `src/bin/gigi_stream.rs::gql_query`
+/// pattern-matches on `Statement::Ingest` BEFORE the bundle pre-resolve
+/// block (~line 12530, right after the topology-verb bypass block
+/// closes) and forwards to this dispatcher when the match hits.
+pub fn try_dispatch_ingest_statement(
+    engine: &RwLock<Engine>,
+    stmt: &Statement,
+) -> Result<ExecResult, String> {
+    // RED-phase stub. Keep the engine borrow live so the signature is
+    // stable across the GREEN transition — the GREEN body will need a
+    // write lock (parser::execute takes `&mut Engine`).
+    let _ = engine;
+    match stmt {
+        Statement::Ingest { .. } => Err(
+            "try_dispatch_ingest_statement: not implemented (RED phase)"
+                .to_string(),
+        ),
+        _ => Err(format!(
+            "try_dispatch_ingest_statement: not an INGEST variant \
+             (got {:?})",
+            std::mem::discriminant(stmt)
+        )),
+    }
+}
+
 /// Canonical fiber-field name list for a gauge group. Lifted from
 /// `src/bin/gigi_stream.rs::canonical_fiber_fields` so the dispatcher
 /// can synthesize the same default fiber list as the legacy executor

@@ -822,9 +822,9 @@ mod tests {
     #[test]
     fn lattice_dimension_from_cubic_hint() {
         use crate::lattice::topology::cubic::cubic;
-        let lwm = cubic("c4_4", 4, 4, true);
+        let lwm = cubic("c4_4", 4, 4, true, None);
         assert_eq!(lattice_dimension(lwm.lattice()), 4);
-        let lwm2 = cubic("c4_2", 4, 2, true);
+        let lwm2 = cubic("c4_2", 4, 2, true, None);
         assert_eq!(lattice_dimension(lwm2.lattice()), 2);
     }
 

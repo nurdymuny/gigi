@@ -97,7 +97,7 @@ fn su2_fiber_fields() -> Vec<String> {
 /// +y edge at the same site), set them to `exp(i (π/2) σ_3) = (0, 0, 0, 1)`
 /// in quaternion convention. All other edges stay at the identity.
 fn synthetic_su2_instanton_4d_cubic(l: usize) -> (Lattice, SU2GaugeField) {
-    let lwm = cubic("instanton_l4_d4", l, 4, true);
+    let lwm = cubic("instanton_l4_d4", l, 4, true, None);
     let lat = lwm.lattice().clone();
     let n_edges = lat.n_edges();
     // Start from identity, then write a Z-rotation on two edges. The
@@ -181,7 +181,7 @@ fn test_chern_class_identity_buckyball_su2_order2_is_zero_by_dim() {
 /// every F is the zero 2-form, Q = (1/32π²) Σ Tr(F∧F) = 0 exactly.
 #[test]
 fn test_chern_class_identity_4d_cubic_su2_order2_is_zero() {
-    let lwm = cubic("id_l4_d4", 4, 4, true);
+    let lwm = cubic("id_l4_d4", 4, 4, true, None);
     let lat = lwm.lattice().clone();
     let field = identity_su2_field("U_id_4d", &lat);
     let result = chern_class(
@@ -260,7 +260,7 @@ fn test_chern_class_synthetic_su2_instanton_4d_cubic_order2_near_one() {
 /// pin the sign once Phase 2 lands the integer-Q clover charge.
 #[test]
 fn test_pontryagin_order1_equals_twice_chern2_for_su2_identity() {
-    let lwm = cubic("id_l4_d4_pont", 4, 4, true);
+    let lwm = cubic("id_l4_d4_pont", 4, 4, true, None);
     let lat = lwm.lattice().clone();
     let field = identity_su2_field("U_id_4d_pont", &lat);
     let c2 = chern_class(

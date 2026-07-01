@@ -93,10 +93,19 @@ pub struct ConstructorArgs {
     /// validates `1 <= D <= 4`.
     pub dim: Option<usize>,
     /// CUBIC boundary condition. `Some(true)` (or `None`, the default)
-    /// = PERIODIC; `Some(false)` = OPEN. Phase 1 ships PERIODIC only;
-    /// OPEN routes to the cubic constructor's deferred-to-Phase-2
-    /// assertion.
+    /// = PERIODIC; `Some(false)` = fully OPEN. Phase 1 ships PERIODIC
+    /// plus single-axis OBC (via `obc_axis`); fully-open (`Some(false)`
+    /// with `obc_axis = None`) routes to the cubic constructor's
+    /// deferred-to-Phase-2 assertion.
     pub periodic: Option<bool>,
+    /// CUBIC single-axis open-boundary. `None` (default) = fully
+    /// periodic on every axis. `Some(k)` with `k ∈ 0..dim` = axis `k`
+    /// is open (wrap edges and boundary-crossing plaquettes at the
+    /// `L-1` slice are omitted); all other axes remain periodic.
+    /// Vertex count is unchanged. Required for Hallie's SU(2) 4D L=24
+    /// β=2.3 OBC sectoral SPECTRAL_GAUGE workflow (`LATTICE l24 FROM
+    /// CUBIC L=24 DIM=4 OBC AXIS 0;`).
+    pub obc_axis: Option<usize>,
 }
 
 /// Constructor-side error. Carries the canonical id at the call site so
@@ -244,6 +253,7 @@ fn build_cubic(args: &ConstructorArgs) -> Result<LatticeWithMetric, ConstructorE
     let l = args.l.unwrap_or(1);
     let d = args.dim.unwrap_or(2);
     let periodic = args.periodic.unwrap_or(true);
+    let obc_axis = args.obc_axis;
     if !(1..=1024).contains(&l) {
         return Err(ConstructorError::InvalidArgument(format!(
             "CUBIC: L must be in 1..=1024, got {l}"
@@ -254,7 +264,16 @@ fn build_cubic(args: &ConstructorArgs) -> Result<LatticeWithMetric, ConstructorE
             "CUBIC: DIM must be in 1..=4 (Phase 1 ships 2D/3D/4D), got {d}"
         )));
     }
-    Ok(crate::lattice::topology::cubic::cubic("cubic", l, d, periodic))
+    if let Some(k) = obc_axis {
+        if k >= d {
+            return Err(ConstructorError::InvalidArgument(format!(
+                "CUBIC: OBC AXIS {k} out of range for DIM={d} (must be 0..{d})"
+            )));
+        }
+    }
+    Ok(crate::lattice::topology::cubic::cubic(
+        "cubic", l, d, periodic, obc_axis,
+    ))
 }
 
 #[cfg(test)]

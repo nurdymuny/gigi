@@ -36,35 +36,74 @@
 //! `lattice::dec` owns the dual mesh for arbitrary `D`).
 //!
 //! Topology hint convention: `"CUBIC_L{L}_D{D}"` for periodic
-//! (default), `"CUBIC_L{L}_D{D}_OPEN"` for open. The "CUBIC" prefix
-//! is registered in [`super::hints`]; the full per-(L,D) hint is
-//! generated at construction time and stored on the [`Lattice`].
+//! (default), `"CUBIC_L{L}_D{D}_OPEN"` for fully-open (deferred to
+//! Phase 2), and `"CUBIC_L{L}_D{D}_OBC_AXIS{k}"` for single-axis
+//! open-boundary — periodic on all axes EXCEPT axis `k`. The "CUBIC"
+//! prefix is registered in [`super::hints`]; the full per-(L,D) hint
+//! is generated at construction time and stored on the [`Lattice`].
 //!
-//! Phase 1 scope: PERIODIC only. OPEN boundary conditions are
-//! deferred to Phase 2 (assertion in the constructor enforces this).
+//! Phase 1 scope: PERIODIC + single-axis OBC (Hallie's SU(2) 4D L=24
+//! β=2.3 OBC sectoral SPECTRAL_GAUGE workflow). Fully-open boundary
+//! conditions (`periodic = false` with no OBC axis) are still deferred
+//! to Phase 2 (assertion in the constructor enforces this).
 
 use crate::lattice::metric::LatticeWithMetric;
 use crate::lattice::{Lattice, VertexId};
 
 /// Construct an `L^D` D-dimensional cubic lattice with unit-cube
-/// metric. PERIODIC only in Phase 1; OPEN panics with a
-/// "deferred to Phase 2" message.
+/// metric. Phase 1 supports PERIODIC (default) and single-axis OBC
+/// (via `obc_axis = Some(k)`); fully-open (`periodic = false` with
+/// `obc_axis = None`) still panics with the deferred-to-Phase-2
+/// message.
 ///
-/// Combinatorics (PERIODIC):
+/// Combinatorics (PERIODIC, `obc_axis = None`):
 ///
 /// - `V = L^D`
 /// - `E = L^D · D` (directed; each site has `D` outgoing edges, one
 ///   per axis)
 /// - `F = L^D · D·(D-1)/2` (one square plaquette per (site, axis-pair))
 ///
-/// Panics if `l < 1`, `d < 1`, or `periodic == false`.
-pub fn cubic(name: &str, l: usize, d: usize, periodic: bool) -> LatticeWithMetric {
+/// Combinatorics (single-axis OBC, `obc_axis = Some(k)` with
+/// `k ∈ 0..D`) — periodic on every axis EXCEPT axis `k`:
+///
+/// - `V = L^D` (open BC keeps sites; only wrap connectivity is
+///   removed)
+/// - `E = L^D · D − L^(D-1)` (drops one wrap edge per axis-k
+///   boundary site — the `L^(D-1)` sites at coordinate `c_k = L-1`)
+/// - `F = L^D · D·(D-1)/2 − (D-1) · L^(D-1)` (drops one boundary
+///   plaquette per axis-pair `(a, b)` that touches axis `k`, at every
+///   axis-k boundary site — there are `D-1` such pairs)
+///
+/// Examples:
+///
+/// - `L=4, D=2, OBC AXIS 0`: `V=16`, `E=32-4=28`, `F=16-4=12`.
+/// - `L=24, D=4, OBC AXIS 0`: `V=331776`, `E=24^4·4 − 24^3`, and
+///   `F=24^4·6 − 3·24^3`. This is Hallie's Halcyon workflow substrate.
+///
+/// Panics if `l < 1`, `d < 1`, `obc_axis = Some(k)` with `k >= d`,
+/// or (`periodic == false` AND `obc_axis == None`).
+pub fn cubic(
+    name: &str,
+    l: usize,
+    d: usize,
+    periodic: bool,
+    obc_axis: Option<usize>,
+) -> LatticeWithMetric {
     assert!(l >= 1, "cubic: L must be >= 1 (got {l})");
     assert!(d >= 1, "cubic: D must be >= 1 (got {d})");
+    // Validate obc_axis against dimension before we do anything else.
+    if let Some(k) = obc_axis {
+        assert!(
+            k < d,
+            "cubic: OBC AXIS {k} out of range for DIM={d} (must be 0..{d})"
+        );
+    }
+    // Fully-open boundary (periodic = false AND no OBC axis named)
+    // stays deferred to Phase 2; single-axis OBC is the Phase 1 path.
     assert!(
-        periodic,
-        "cubic: OPEN boundary deferred to Phase 2 (got periodic = false). \
-         Phase 1 ships PERIODIC only — re-issue with periodic = true."
+        periodic || obc_axis.is_some(),
+        "cubic: OPEN boundary deferred to Phase 2 (got periodic = false, obc_axis = None). \
+         Phase 1 ships PERIODIC + single-axis OBC — pass obc_axis = Some(k) instead."
     );
 
     // `n_vertices = L^D`. Compute as usize.pow(d as u32) once; we'll
@@ -107,29 +146,54 @@ pub fn cubic(name: &str, l: usize, d: usize, periodic: bool) -> LatticeWithMetri
     // ── Edges: axis-major then site-major ────────────────────────────
     //
     // For axis a ∈ 0..D, push L^D edges (s → s + ê_a) in site id
-    // order. Total directed edges = L^D · D.
+    // order. Total directed edges = L^D · D on PERIODIC.
+    //
+    // OBC AXIS k skip: when a == k AND c[k] == L-1, the (s → s+ê_a)
+    // edge would wrap through the open boundary; drop it. That drops
+    // exactly L^(D-1) wrap edges — one per axis-k boundary site.
     let mut edges: Vec<(VertexId, VertexId)> = Vec::with_capacity(n_vertices * d);
     for a in 0..d {
         for s in 0..n_vertices {
             let c = coords_of(s);
+            if let Some(k) = obc_axis {
+                if a == k && c[k] == l - 1 {
+                    continue;
+                }
+            }
             let c2 = shift_plus(&c, a);
             edges.push((s, site_of(&c2)));
         }
     }
-    debug_assert_eq!(edges.len(), n_vertices * d);
+    // Sanity in the PERIODIC case only — the OBC path removes an
+    // exact-known count of wrap edges enforced by the asserts below.
+    #[cfg(debug_assertions)]
+    if obc_axis.is_none() {
+        debug_assert_eq!(edges.len(), n_vertices * d);
+    }
 
     // ── Faces: (a, b)-major (lex over pairs a < b) then site-major ──
     //
     // C(D, 2) = D·(D-1)/2 pairs of distinct axes. For each pair (a, b)
     // and each site s, emit the 4-cycle [s, s+ê_a, s+ê_a+ê_b, s+ê_b]
     // counter-clockwise in the (a, b) plane.
+    //
+    // OBC AXIS k skip: when either axis in the pair is the open axis
+    // AND the anchor coordinate for that axis is L-1, this plaquette
+    // would wrap through the open boundary; drop it. That drops one
+    // boundary plaquette per axis-pair (a, b) that touches axis k, at
+    // every axis-k boundary site — (D-1) · L^(D-1) faces total.
     let n_pairs = d * d.saturating_sub(1) / 2;
-    let n_faces = n_vertices * n_pairs;
-    let mut faces: Vec<Vec<VertexId>> = Vec::with_capacity(n_faces);
+    let n_faces_periodic = n_vertices * n_pairs;
+    let mut faces: Vec<Vec<VertexId>> = Vec::with_capacity(n_faces_periodic);
     for a in 0..d {
         for b in (a + 1)..d {
             for s in 0..n_vertices {
                 let c = coords_of(s);
+                if let Some(k) = obc_axis {
+                    if (a == k && c[a] == l - 1) || (b == k && c[b] == l - 1) {
+                        continue;
+                    }
+                }
                 let c_a = shift_plus(&c, a);
                 let mut c_ab = c_a.clone();
                 c_ab[b] = (c_ab[b] + 1) % l;
@@ -138,15 +202,21 @@ pub fn cubic(name: &str, l: usize, d: usize, periodic: bool) -> LatticeWithMetri
             }
         }
     }
-    debug_assert_eq!(faces.len(), n_faces);
+    #[cfg(debug_assertions)]
+    if obc_axis.is_none() {
+        debug_assert_eq!(faces.len(), n_faces_periodic);
+    }
 
-    let topology = if periodic {
-        format!("CUBIC_L{l}_D{d}")
-    } else {
-        // Unreachable in Phase 1 (the !periodic branch panics above).
-        // Kept for the Phase 2 path so the format string is wired.
-        format!("CUBIC_L{l}_D{d}_OPEN")
+    let topology = match obc_axis {
+        // PERIODIC (Phase 1 default).
+        None => format!("CUBIC_L{l}_D{d}"),
+        // Single-axis OBC — carry the axis index so downstream verbs
+        // (BETTI, CHERN_CLASS, SPECTRAL_GAUGE) can dispatch on it.
+        Some(k) => format!("CUBIC_L{l}_D{d}_OBC_AXIS{k}"),
     };
+
+    let n_edges_actual = edges.len();
+    let n_faces_actual = faces.len();
 
     let lattice = Lattice::new(
         name.to_string(),
@@ -158,9 +228,10 @@ pub fn cubic(name: &str, l: usize, d: usize, periodic: bool) -> LatticeWithMetri
 
     // Trivial unit-cube metric: every edge length and every face area
     // is `1.0`. Dual face areas left `None` (Phase 1 — Phase 2
-    // `lattice::dec` owns the dual mesh).
-    let cell_areas = vec![1.0; n_faces];
-    let edge_lengths = vec![1.0; n_vertices * d];
+    // `lattice::dec` owns the dual mesh). Vector sizes track the
+    // actual (possibly OBC-reduced) edge / face counts.
+    let cell_areas = vec![1.0; n_faces_actual];
+    let edge_lengths = vec![1.0; n_edges_actual];
 
     LatticeWithMetric::from_lattice_and_metric(lattice, cell_areas, edge_lengths, None)
 }
@@ -173,11 +244,11 @@ mod tests {
 
     /// D=2, L=4 matches flat-torus-2d combinatorics exactly:
     /// V=16, E=32, F=16, χ(T²)=0. The cubic constructor is the
-    /// generalization; flat_torus_2d(n) is `cubic("name", n, 2, true)`
+    /// generalization; flat_torus_2d(n) is `cubic("name", n, 2, true, None)`
     /// modulo edge-ordering convention.
     #[test]
     fn test_d2_l4_matches_flat_torus_combinatorics() {
-        let lwm = cubic("c2_4", 4, 2, true);
+        let lwm = cubic("c2_4", 4, 2, true, None);
         let lat = lwm.lattice();
 
         assert_eq!(lat.n_vertices, 16, "V = 4² = 16");
@@ -217,7 +288,7 @@ mod tests {
     /// degree 2·D=6 (six nearest neighbours on the cubic 3-torus).
     #[test]
     fn test_d3_l4_combinatorics() {
-        let lwm = cubic("c3_4", 4, 3, true);
+        let lwm = cubic("c3_4", 4, 3, true, None);
         let lat = lwm.lattice();
 
         assert_eq!(lat.n_vertices, 64, "V = 4³ = 64");
@@ -248,7 +319,7 @@ mod tests {
     /// Every vertex has degree 2·D=8.
     #[test]
     fn test_d4_l12_combinatorics() {
-        let lwm = cubic("c4_12", 12, 4, true);
+        let lwm = cubic("c4_12", 12, 4, true, None);
         let lat = lwm.lattice();
 
         assert_eq!(lat.n_vertices, 20_736, "V = 12^4 = 20736");
@@ -283,7 +354,7 @@ mod tests {
     #[test]
     fn test_vertex_degree_uniform_for_periodic() {
         for &(l, d) in &[(2usize, 2usize), (3, 2), (4, 3), (3, 4), (5, 3)] {
-            let lwm = cubic("c", l, d, true);
+            let lwm = cubic("c", l, d, true, None);
             let lat = lwm.lattice();
             let mut degree = vec![0usize; lat.n_vertices];
             for &(a, b) in &lat.edges {
@@ -301,12 +372,15 @@ mod tests {
         }
     }
 
-    /// Phase 1 scope: OPEN boundary panics with the deferred-to-Phase-2
-    /// message. Phase 2 will implement the open-boundary path; until
-    /// then this assertion keeps the contract honest.
+    /// Phase 1 scope: fully-open boundary (`periodic = false` AND
+    /// `obc_axis = None`) still panics with the deferred-to-Phase-2
+    /// message. Phase 2 will implement the fully-open path; until then
+    /// this assertion keeps the contract honest. Single-axis OBC now
+    /// SHIPS (Phase 1 addition for Hallie's sectoral SPECTRAL_GAUGE
+    /// workflow) — see `tests/lattice_obc_basic.rs` for that path.
     #[test]
     #[should_panic(expected = "OPEN boundary deferred to Phase 2")]
     fn test_open_boundary_not_yet_supported() {
-        let _ = cubic("open_cube", 4, 3, false);
+        let _ = cubic("open_cube", 4, 3, false, None);
     }
 }

@@ -56,7 +56,7 @@ fn test_betti_order_2_buckyball_returns_one() {
 /// β_2(T²) = 1 on the 4×4 flat torus (CUBIC L=4 D=2).
 #[test]
 fn test_betti_order_2_flat_torus_returns_one() {
-    let lwm = cubic("t2_4", 4, 2, true);
+    let lwm = cubic("t2_4", 4, 2, true, None);
     let lat = lwm.lattice();
     let b2 = betti_topological(lat, 2)
         .expect("betti_topological order=2 on T² should succeed");
@@ -72,7 +72,7 @@ fn test_betti_order_2_flat_torus_returns_one() {
 /// T^D Betti pattern: β_k = C(D, k), so β_2(T⁴) = C(4,2) = 6.
 #[test]
 fn test_betti_order_2_4d_cubic_l4_returns_six() {
-    let lwm = cubic("c4_4", 4, 4, true);
+    let lwm = cubic("c4_4", 4, 4, true, None);
     let lat = lwm.lattice();
     let b2 = betti_topological(lat, 2)
         .expect("betti_topological order=2 on T⁴ L=4 should succeed");
@@ -106,7 +106,7 @@ fn test_betti_euler_characteristic_consistency() {
     );
 
     // T² L=4: χ = 0 = 1 - 2 + 1.
-    let lwm = cubic("t2_4", 4, 2, true);
+    let lwm = cubic("t2_4", 4, 2, true, None);
     let t2 = lwm.lattice();
     let b0_t2 = betti_topological(t2, 0)
         .expect("β_0(T²) should succeed");
@@ -146,7 +146,7 @@ fn test_pi_1_buckyball_is_trivial() {
 /// π_1(T² L=4) is ℤ² (rank 2). The 4×4 flat torus has β_1 = 2.
 #[test]
 fn test_pi_1_flat_torus_2d_l4_is_z2() {
-    let lwm = cubic("t2_4", 4, 2, true);
+    let lwm = cubic("t2_4", 4, 2, true, None);
     let lat = lwm.lattice();
     let pres: Pi1Presentation = pi_1_presentation(lat);
     assert_eq!(
@@ -165,7 +165,7 @@ fn test_pi_1_flat_torus_2d_l4_is_z2() {
 /// π_1(T⁴ L=4) is ℤ⁴ (rank 4). The 4D 4-torus has β_1 = 4.
 #[test]
 fn test_pi_1_4d_cubic_l4_is_z4() {
-    let lwm = cubic("c4_4", 4, 4, true);
+    let lwm = cubic("c4_4", 4, 4, true, None);
     let lat = lwm.lattice();
     let pres: Pi1Presentation = pi_1_presentation(lat);
     assert_eq!(
@@ -198,7 +198,7 @@ fn test_pi_1_presentation_has_face_count_relators() {
     );
 
     // T² L=4: F = 16 faces → 16 relators.
-    let t2_lwm = cubic("t2_4", 4, 2, true);
+    let t2_lwm = cubic("t2_4", 4, 2, true, None);
     let t2 = t2_lwm.lattice();
     let t2_pres = pi_1_presentation(t2);
     assert_eq!(
@@ -211,7 +211,7 @@ fn test_pi_1_presentation_has_face_count_relators() {
     );
 
     // T⁴ L=4: F = 4⁴ · C(4,2) = 256 · 6 = 1536 faces → 1536 relators.
-    let t4_lwm = cubic("c4_4", 4, 4, true);
+    let t4_lwm = cubic("c4_4", 4, 4, true, None);
     let t4 = t4_lwm.lattice();
     let t4_pres = pi_1_presentation(t4);
     assert_eq!(

@@ -752,7 +752,7 @@ mod tests {
 
     #[test]
     fn betti_t2_4x4_b0_b1_b2() {
-        let lwm = cubic("t2_4_test", 4, 2, true);
+        let lwm = cubic("t2_4_test", 4, 2, true, None);
         let lat = lwm.lattice();
         assert_eq!(betti_topological(lat, 0).unwrap(), 1);
         assert_eq!(betti_topological(lat, 1).unwrap(), 2);

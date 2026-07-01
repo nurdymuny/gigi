@@ -2903,8 +2903,38 @@ impl Parser {
                 if self.is_keyword("TOPOLOGY") || self.at_end() {
                     break;
                 }
-                // Read either `KEY=VALUE` or a bare flag word.
+                // Read either `KEY=VALUE`, `OBC AXIS <int>`, or a
+                // bare flag word.
                 let key = self.expect_word()?;
+                // Three-token sequence `OBC AXIS <int>` — the single
+                // exception to the KEY=VALUE / bare-flag pattern.
+                // Emits one params entry keyed `"OBC_AXIS"` with the
+                // integer axis index. Any other `OBC …` sequence
+                // errors out downstream at `resolve_constructor_args`
+                // as "unknown parameter".
+                if key.eq_ignore_ascii_case("OBC")
+                    && matches!(
+                        self.peek(),
+                        Some(Token::Word(w)) if w.eq_ignore_ascii_case("AXIS")
+                    )
+                {
+                    // Consume "AXIS".
+                    self.advance();
+                    // Require an integer literal for the axis index.
+                    let axis_lit = self.parse_literal()?;
+                    match &axis_lit {
+                        Literal::Integer(n) if *n >= 0 => {
+                            params.push(("OBC_AXIS".to_string(), axis_lit));
+                        }
+                        other => {
+                            return Err(format!(
+                                "LATTICE FROM CUBIC: OBC AXIS requires a \
+                                 non-negative integer, got {other:?}"
+                            ));
+                        }
+                    }
+                    continue;
+                }
                 if matches!(self.peek(), Some(Token::Eq)) {
                     self.advance();
                     let val = self.parse_literal()?;
@@ -8758,10 +8788,12 @@ fn lattice_params_to_constructor_args(
                     "DIM" | "D" => args.dim = Some(as_usize(&key, val)?),
                     "PERIODIC" => args.periodic = Some(true),
                     "OPEN" => args.periodic = Some(false),
+                    "OBC_AXIS" => args.obc_axis = Some(as_usize(&key, val)?),
                     _ => {
                         return Err(format!(
                             "lattice FROM CUBIC: unknown parameter '{raw_key}' \
-                             (expected L=<int>, DIM=<int>, PERIODIC, or OPEN)"
+                             (expected L=<int>, DIM=<int>, PERIODIC, OPEN, or \
+                             OBC AXIS <int>)"
                         ));
                     }
                 }
@@ -8774,6 +8806,20 @@ fn lattice_params_to_constructor_args(
             if args.dim.is_none() {
                 return Err(
                     "lattice FROM CUBIC: missing required parameter DIM=<int>".to_string(),
+                );
+            }
+            // Composition guard: fully-open (OPEN) and single-axis
+            // OBC together are ambiguous — the OBC AXIS form implies
+            // periodic on every other axis, while OPEN was the
+            // deferred fully-open flag. Reject the combo so users
+            // pick one clear form. This is the guard the RED test
+            // `test_lattice_parse_obc_and_open_together_errors` asserts.
+            if args.obc_axis.is_some() && args.periodic == Some(false) {
+                return Err(
+                    "lattice FROM CUBIC: cannot combine OPEN and OBC AXIS \
+                     — pick one (OBC AXIS <k> is the Phase 1 supported form; \
+                     fully-open is deferred to Phase 2)"
+                        .to_string(),
                 );
             }
         }

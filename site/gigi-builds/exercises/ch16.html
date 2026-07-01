@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 16: The Verifier Without Decryption — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 16</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 16</p>
+    <h1>The Verifier Without Decryption</h1>
+    <p class="partline"><span class="sw" style="background: var(--red)"></span>Part VI — Gauge Encryption · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">The exercises for this chapter are Carol's clipboard, weaponized. Every build should produce a <code>VerifyResult</code> you can paste into a test log  —  a <code>Verified</code> payload, a named <code>Rejected</code> field with a delta, or a <code>BundleMismatch</code> caught before <code>InvariantTuple::compute</code> ever fires. The receipt class is the three-armed enum from <code>src/invariant_verify.rs</code>, not prose.</p>
+  <article class="ex" id="e16-1"><h2><span class="eid" style="background: var(--red)">E16.1</span>Reproduce the three anchor tests cold</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Check out the engine at the Sprint N commit, run <code>cargo test -p gigi --lib invariant_verify</code> on a fresh clone with no other tests selected, and capture the three test names that fire from <code>src/invariant_verify.rs</code>.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A green log showing <code>honest_claim_verifies</code>, <code>tampered_k_is_rejected</code>, and <code>bundle_mismatch_caught_before_tuple_check</code> all passing  —  the same three I anchored against BLD-CH16-VERIFY-TEST-HONEST, BLD-CH16-VERIFY-TEST-TAMPER, BLD-CH16-VERIFY-TEST-MISMATCH in § 16.7.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Run the same fixtures under <code>cargo test --release</code> and confirm the verdicts are bitwise-identical to the debug build  —  the f64 walk should not drift across optimization levels.</p></div></article><article class="ex" id="e16-2"><h2><span class="eid" style="background: var(--red)">E16.2</span>Instrument the per-field walk with a forensic logger</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Fork <code>verify_invariant_statement</code> into a sibling <code>verify_invariant_statement_traced</code> that emits one line per slot  —  <code>k</code>, <code>lambda1</code>, <code>holonomy_mean</code>, <code>record_count</code>, <code>beta_0</code>, <code>beta_1</code>  —  recording claimed, computed, delta, and whether the slot tripped.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A trace from <code>tiny_bundle()</code> where the honest path emits six <code>ok</code> lines in canonical fingerprint order, and a tampered \(\beta_0\) run emits three <code>ok</code> lines (<code>k</code>, <code>lambda1</code>, <code>holonomy_mean</code>), then <code>record_count</code> <code>ok</code>, then <code>beta_0</code> <code>rejected</code>  —  and <em>no</em> line for <code>beta_1</code>, proving the FIFO short-circuit from § 16.4 fires.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Tamper \(K\) and \(\beta_1\) simultaneously and confirm the trace stops at \(K\)  —  the report names the first miss, never the worst one.</p></div></article><article class="ex" id="e16-3"><h2><span class="eid" style="background: var(--red)">E16.3</span>Stress the \(10^{-10}\) tolerance against gauge drift</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Take a <code>tiny_bundle()</code>, push it through each of the v0.2 gauge modes, and recompute \(\pi_{\mathrm{inv}}\) across all of them. Record the worst-case relative delta on the three f64 slots (\(K\), \(\lambda_1\), \(\overline{\mathrm{Hol}}\)).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A three-row table of worst-case deltas confirming the \(\sim 10^{-11}\) relative drift I cited in the <code>InvariantTolerances::default()</code> doc-comment, with every f64 verdict still <code>Verified</code> at the default \(10^{-10}\) tolerance. If any row exceeds \(10^{-10}\), that is a bug  —  file it.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Tighten the tolerance to \(10^{-12}\) and show which gauge mode breaks first  —  the failing field is the gauge mode's numerical weak link.</p></div></article><article class="ex" id="e16-4"><h2><span class="eid" style="background: var(--red)">E16.4</span>Forge a colliding-\(K\) tamper and confirm the full tuple catches it</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Construct two bundles with the same \(K\) (within \(10^{-10}\)) but different \(\beta_0\)  —  the BLD-CH16-HONESTY-CONCEPT-2 scenario where “an adversary can construct a different distribution that shares the same K.” Submit each as a claim against the other.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p><code>VerifyResult::Rejected{field: "beta_0", …}</code> on both directions  —  the curvature scalar alone would have let the forgery through, but the full canonical walk catches it on the integer slot. This is the receipt the honest-disclosure section in § 16.8 is paying off.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Try to construct a bundle that collides on all three f64 slots simultaneously and report whether \(\beta_0\) or \(\beta_1\) catches it  —  empirical pressure on the open collision-resistance question.</p></div></article><article class="ex" id="e16-5"><h2><span class="eid" style="background: var(--red)">E16.5</span>Refute the API by trying to slip in a gauge key</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Read <code>verify_invariant_statement</code>'s signature at <code>src/invariant_verify.rs:162--173</code> and attempt to add a <code>key: GaugeKey</code> parameter. Patch the signature, see what the compiler says, and document the cascade of breakages.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The patch refuses to compile cleanly against the existing call sites  —  the verifier API has no key-shaped hole because the contract from § 16.3 (“Verifier never receives the gauge key”) is enforced by the absence of a parameter, not by a runtime check. Write up the compiler errors as the receipt.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Revert the patch and add a one-line <code>compile_fail</code> doctest to the module that pins this property  —  a key-bearing signature must never type-check against the public entry point.</p></div></article><article class="ex" id="e16-6"><h2><span class="eid" style="background: var(--red)">E16.6</span>Replay Carol's Appendix A.11 worked example end-to-end</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Construct an <code>InvariantStatement</code> with the published Appendix A.11 claim  —  \(K = 0.142\), \(\lambda_1 = 1.83\), \(\overline{\mathrm{Hol}} = 0.667\), \(\tau = 40\), \(\beta_0 = 2\), \(\beta_1 = 2\)  —  and run it against a bundle pinned to those values. Then run the tamper branch by mutating the underlying record so that recomputed \(K\) becomes \(0.151\).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Branch one: <code>Verified{computed}</code> surfacing the full six-tuple. Branch two: <code>Rejected{field: "k", claimed: 0.142, computed: 0.151, delta: 0.009}</code>  —  the exact verbatim verdict from <code>theory/encryption/paper_geometric_encryption_v0.1.tex:2008--2022</code> that I quoted in § 16.6.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Vary the tamper magnitude from \(10^{-11}\) up through \(10^{-8}\) and chart where the verdict flips from <code>Verified</code> to <code>Rejected</code>  —  the transition is the tolerance boundary in practice.</p></div></article><article class="ex" id="e16-7"><h2><span class="eid" style="background: var(--red)">E16.7</span>Benchmark the Gap 1 fence against the walk</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Time <code>verify_invariant_statement</code> on three workloads: (a) matching bundle id, honest claim  —  the full walk runs; (b) mismatched bundle id, honest tuple  —  the early return fires; (c) matching bundle id, \(K\)-tampered claim  —  the walk fires and exits on slot one. Use <code>criterion</code> or a hand-rolled <code>Instant::elapsed()</code> over 10\,000 iterations.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A three-bar chart showing case (b) at constant-time bundle-id length, case (c) at roughly one-sixth of case (a)'s walk cost  —  empirical evidence that the Gap 1 fix from § 16.5 saves the tuple computation, and that the FIFO short-circuit saves the downstream slots.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Push the bundle-id length to 1\,KiB and confirm case (b) remains \(O(n)\) on string length and never enters <code>InvariantTuple::compute</code>  —  the fence in front of the arithmetic stays in front of the arithmetic.</p></div></article>
+  <div class="pager"><a href="ch15.html">← Chapter 15 exercises</a><a href="ch17.html">Chapter 17 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

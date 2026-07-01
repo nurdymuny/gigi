@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 2: Sections, Not Rows — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 02</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 2</p>
+    <h1>Sections, Not Rows</h1>
+    <p class="partline"><span class="sw" style="background: var(--blue)"></span>Part I — The Shape of Data · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">The chapter's spirit: every claim it makes about \(\sigma_0\), \(\delta\), and fiber widening has a harness behind it. Your exercises rerun that harness, vary it, and break it on purpose  —  the receipts you produce should look like the chapter's BLD-SEC-* lines.</p>
+  <article class="ex" id="e2-1"><h2><span class="eid" style="background: var(--blue)">E2.1</span>Reproduce the worked example</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Check out gigi at <code>66f18a0</code>, stand up a <code>sensors</code> bundle with the prologue's key and the chapter's three defaults (<code>temperature</code>=20.0, <code>humidity</code>=40.0, <code>status</code>=<code>ok</code>), insert the two session records, and call <code>deviation_norm</code> on each.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your stdout matches the BLD-SEC-WORKED-TDD block byte for byte: <code>s-001 -&gt; deviation_norm = 0</code> and <code>s-002 -&gt; deviation_norm = 2</code>. Archive your harness next to <code>harvest/book_ch2_worked_example.rs</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Insert a record with all three fields deviating, confirm \(\|\delta\|=3\), and explain in one log line why TDD-1.4 is not also pinned by the spec.</p></div></article><article class="ex" id="e2-2"><h2><span class="eid" style="background: var(--blue)">E2.2</span>Instrument the absent-section convention</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Add a unit test against <code>src/bundle.rs:2893-2904</code> that calls <code>deviation_norm</code> on a <code>BasePoint</code> never inserted, then on the same point after inserting the schema's defaults verbatim. Both should return 0; the engine must distinguish them somewhere else.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A passing test <code>tdd_devnorm_absent_vs_default_zero</code> that asserts <code>get_fiber(bp).is_none()</code> for the first case and <code>is_some()</code> for the second  —  proving an empty bar and a played-as-written bar share a norm but not a storage state.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a Prometheus counter on <code>get_fiber</code> miss-vs-hit and scrape <code>/v1/metrics</code> to show the two cases diverge in the gauge.</p></div></article><article class="ex" id="e2-3"><h2><span class="eid" style="background: var(--blue)">E2.3</span>Replay fiber widening on your own bundle</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Take any non-sensors bundle you have lying around (or stand up a fresh <code>orders</code>), insert a few records, then call <code>add_field</code> (<code>src/bundle.rs:3727-3755</code>) with a new column and a declared default. Read every old record back.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The widened <code>zero_section()</code> prints with the new coordinate appended; every pre-widening record reads back at exactly that default on the new field; <code>deviation_norm</code> for those records is unchanged. Capture the before/after as a single log block in the BLD-SEC-WIDENING format.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Time the <code>add_field</code> call against \(N\in\{10^3, 10^5, 10^6\}\) stored records and plot the \(O(N)\) in-memory extension. I claimed it ships as an eager linear pass  —  show me your slope.</p></div></article><article class="ex" id="e2-4"><h2><span class="eid" style="background: var(--blue)">E2.4</span>Benchmark the DHOOM dividend against the histogram</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run the chapter's employee dataset (the ten records I measured for BLD-SEC-HISTOGRAM, modal defaults) and a second dataset where <em>every</em> field has a declared default matching a near-universal mode  —  e.g.\ an IoT bundle whose status is <code>ok</code> 99% of the time. Encode both with <code>dhoom::encode_json</code> and compute bytes-saved-per-record.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Two histograms of \(\|\delta\|\), two compression ratios, and one sentence that names which dataset's measure concentrates near \(\sigma_0\). The employee numbers should reproduce my \(\{2:7, 3:3\}\) histogram.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find or synthesize a dataset where the deviation-norm histogram is flat across \(0,\ldots,k\) and confirm DHOOM stops paying  —  the formalism still holds, the dividend does not.</p></div></article><article class="ex" id="e2-5"><h2><span class="eid" style="background: var(--blue)">E2.5</span>Refute (or confirm) that DHOOM calls <code>zero_section</code></h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Grep <code>src/dhoom.rs</code> for any reference to <code>zero_section</code>, then trace how the encoder actually picks its per-document baseline. Write the trace up as a one-page note.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your grep matches my 2026-06-12 result (no hits) or has changed since  —  either way, name the function in <code>dhoom.rs</code> that selects the modal value written to the header, and cite the file:line. If the spec's line 37 has been wired up since I checked, that's the receipt; if not, the trace is.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Open a PR that adds a feature-flagged path <code>dhoom::encode_json_against_schema</code> which uses the declared \(\sigma_0\) as the baseline, and measure the byte delta on the employee dataset versus the data-derived baseline.</p></div></article><article class="ex" id="e2-6"><h2><span class="eid" style="background: var(--blue)">E2.6</span>Stress-test the section contract</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Forge a record whose stored key disagrees with the <code>BasePoint</code> it's filed under  —  bypass the public <code>Store</code> API and write directly through whatever the lowest-level insert path exposes in <code>src/storage/types.rs</code>. Then call <code>integrity::scan</code> (or whatever the engine's audit hook is named at your SHA).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The audit flags the violation as a \(\pi \circ \sigma \neq \mathrm{id}_B\) failure with the exact base point in the log line. If the engine currently accepts the corrupted insert silently, that itself is the receipt  —  file an issue citing Definition 1.2.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a debug-mode invariant check that runs <code>\(\pi \circ \sigma\)</code> on every <code>put</code> and panics on disagreement; show the new test catches your forged record.</p></div></article><article class="ex" id="e2-7"><h2><span class="eid" style="background: var(--blue)">E2.7</span>Wire the three verbs to one Store</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>On a bundle you control, hit each of <code>SECTION</code>, <code>NEAR</code>, <code>HOLONOMY</code>, and <code>CURVATURE</code> on <code>src/bin/gigi_stream.rs</code> against the same base point. Verbs without implementations should return a clean error; verbs with implementations should return values traceable to a method on the underlying <code>Store</code>.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A table of {verb, HTTP status, response shape, backing <code>Store</code> method}  —  four rows, with the unimplemented verbs honestly marked. This is the engineering version of the chapter's claim that those verbs “stand on” the four definitions.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Pick the cheapest unimplemented verb on your SHA, wire a stub that returns \(\|\delta\|\) for <code>CURVATURE</code> as a placeholder, and document why that's wrong  —  second differences, not first  —  in the doc comment.</p></div></article>
+  <div class="pager"><a href="ch01.html">← Chapter 1 exercises</a><a href="ch03.html">Chapter 3 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

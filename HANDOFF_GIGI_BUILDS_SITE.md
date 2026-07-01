@@ -65,6 +65,21 @@ GIGI chapter, here's the page with a live demo; questions → contact me."
    SVG for a real screenshot of the demo (`mesh-preview.png` slot is noted in
    a comment); OG/social meta tags + og-image; favicon.
 
+## UPDATE 2026-07-01 (later): exercise pages are DONE
+
+All 126 exercises (18 chapters x 7) are published at
+`site/gigi-builds/exercises/` — a hub (`index.html`) plus `ch01.html` ..
+`ch18.html`, generated from the book's LaTeX source (Bee shared the
+`gigi_builds` source folder via Google Drive) by
+`scripts/build_exercise_pages.py`. The main page links them (nav item,
+"126 exercises are online" in the Builds lede, and every chapter card's
+"exercises →" tag). Faithful conversion: Build/Receipt/Bonus segments,
+KaTeX (CDN) for inline math, code spans keep literal `--` so commands
+copy-paste correctly, Čech/verb/ref handled. The book .tex sources are
+NOT committed — only the generated exercise HTML is. To regenerate:
+`python3 scripts/build_exercise_pages.py <chapters_dir> site/gigi-builds/exercises`.
+Deploy step 4 above now includes the `exercises/` subfolder.
+
 ## Facts the next session will want
 
 - Book: *GIGI Builds — The Fiber-Bundle Database: A Working Engineer's Guide

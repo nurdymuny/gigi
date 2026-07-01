@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 10: The Brain on the Wire — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 10</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 10</p>
+    <h1>The Brain on the Wire</h1>
+    <p class="partline"><span class="sw" style="background: var(--yellow)"></span>Part III — The Signals That Run While You Sleep · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">These are wire-level builds against the eleven kahler-gated endpoints in <code>src/bin/gigi_stream.rs</code> (PR windows 2 and 3, lines 14576-14601 and 14608-14678). The receipt class is a verbatim diff against one of the BLD-CH10-* receipts I shipped in <code>CLAIMS_LEDGER.json</code>, or a new ledger entry of the same shape; the substrate is the 40-record anisotropic fiber of BLD-CH10-BUNDLE unless an exercise says otherwise. Build with <code>--features kahler</code>; if you forget, the routes are not there and the test will tell you.</p>
+  <article class="ex" id="e10-1"><h2><span class="eid" style="background: var(--yellow)">E10.1</span>Reproduce the dream wander</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Re-run <code>examples/brain_tour_demo.rs</code> §4 on the 40-record BLD-CH10-BUNDLE, sweeping \(T \in {1, 2, 4, 8}\) with the SAMPLE/DREAM Langevin walker (1500 burn-in, \(dt=0.01\), seed 42), and tabulate max wander distance from \(\mu\) per temperature.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>At \(T=4\) you must hit BLD-CH10-DREAM's \(15.64\); the \(T=1\) column reproduces the SAMPLE spread; the four-row table is committed to <code>theory/brain_primitives/dream_temperature_sweep.txt</code> with the seed printed in the header.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Fit \(\sqrt{T}\) scaling to your four rows; report the residual and whether it widens at \(T=8\) as the walker leaves the typical set.</p></div></article><article class="ex" id="e10-2"><h2><span class="eid" style="background: var(--yellow)">E10.2</span>Stress CONFIDENCE on the 184-OOM gap</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>examples/predictive_coding_demo.rs</code> (the 80-patient PK cohort) and binary-search the weight axis between 78\,kg and 300\,kg for the patient mass at which <code>normalized</code> drops below Marcella's refuse-gate threshold (\(10^{-2}\) in the demo).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A single number \(w^*\), the kg value where the gate flips known \(\to\) unknown, and the two flanking <code>normalized</code> values; the in-cohort end of your sweep reproduces BLD-CH10-184-OOM's <code>0.929</code> at 78\,kg / 4.7\,L/h to four decimals.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Repeat at clearance fixed to \(4.5\)\,L/h vs \(0.1\)\,L/h; the two \(w^*\) values should disagree because the kernel is two-dimensional, and the size of the disagreement is the bandwidth talking.</p></div></article><article class="ex" id="e10-3"><h2><span class="eid" style="background: var(--yellow)">E10.3</span>Instrument FORECAST conservation</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Hit <code>POST /v1/bundles/{name}/brain/forecast</code> on BLD-CH10-BUNDLE from start \((3,0,5,10)\) and capture \(H(x_t)\) at \(t \in {0, 500, 1000, 2000, 10000}\) by querying the bundle's negative log-density at each returned point. Plot \(H(t) - H(0)\).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Reproduce the BLD-CH10 step-500 and step-1000 coordinates from §10.3 to three decimals, and a log line <code>|H(t)-H(0)|/|H(0)| &lt; 1e-3</code> at \(t=10000\); fail loudly if the symplectic integrator has drifted off-shell.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Halve \(dt\) and check that the drift drops by the right power of the step (Euler vs leapfrog will give you different answers; the demo uses leapfrog).</p></div></article><article class="ex" id="e10-4"><h2><span class="eid" style="background: var(--yellow)">E10.4</span>Refute the FOCUS-as-ATTEND-truncation shortcut</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Write a 50-line client that calls <code>brain/attend</code> on a query the demo doesn't ship  —  pick one halfway between the two clusters of BLD-CH10-BUNDLE  —  and compare <code>argpartition</code> of the returned \(\alpha_i\) at \(k=3\) against the top-3 weights from FOCUS's local-only implementation in <code>examples/brain_tour_demo.rs</code> §9.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A table of three indices and three weights from each side, identical up to floating-point on the in-cluster query, and a documented divergence (or absence thereof) on the between-clusters query; commit the writeup as <code>theory/brain_primitives/focus_vs_attend_top3.md</code>. This is the contract gap I named in §10.10  —  you are the test cohort.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find a query where ATTEND's full distribution is bimodal and the FOCUS truncation loses the second mode; that is the reason FOCUS does not yet have a route.</p></div></article><article class="ex" id="e10-5"><h2><span class="eid" style="background: var(--yellow)">E10.5</span>Extend EPISODIC to a smooth bundle</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Build a 40-record bundle with no cluster jump  —  a single Gaussian blob, same 4D anisotropic \(\sigma^2\)  —  and call <code>brain/episodic</code> against it.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p><code>events_found: 0</code> returned by the endpoint; the absence of a top_gap field (or a <code>null</code>) committed to your ledger, contrasted against BLD-CH10-EPISODIC's <code>186.2x persistence_ratio</code> on the two-cluster bundle. Same verb, same code path, opposite verdict  —  that's the refusal in §10.8 made into a test.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Sweep cluster separation from 0 to the BLD-CH10-BUNDLE gap and record the persistence ratio at which the verb starts naming the event; report the elbow.</p></div></article><article class="ex" id="e10-6"><h2><span class="eid" style="background: var(--yellow)">E10.6</span>Wire EXPLAIN into a path renderer</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Call <code>brain/explain</code> with <code>n_steps=4</code> on query \((15,15,15,5)\) against BLD-CH10-BUNDLE; ship a 30-line script that emits the five returned path points as an SVG polyline projected onto the \((bx, cy)\) plane.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The SVG opens, the middle waypoint sits at \((7.66, 7.35, 8.92, 2.07)\) to two decimals (BLD-CH10-EXPLAIN), and <code>nearest_idx=13</code> is annotated at the line's endpoint. Commit the SVG to <code>theory/brain_primitives/explain_path.svg</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Re-run with <code>n_steps=16</code> and overlay both polylines; the geodesic shape should be preserved while the sampling thickens. EXPLAIN is reusing FORECAST's integrator  —  the overlay is the receipt that it's the same machinery.</p></div></article><article class="ex" id="e10-7"><h2><span class="eid" style="background: var(--yellow)">E10.7</span>Benchmark PREDICT's \(\epsilon\)-floor against rank deficiency</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Build a degenerate 40-record bundle where one fiber axis has \(\sigma^2 &lt; 10^{-6}\) (collapse one coordinate to constant plus noise). Call <code>brain/predict</code> at <code>fit_mode="diagonal"</code> from state \((5,5,5,5)\) with and without the <code>predictive_coding.rs:121</code> default \(\epsilon=10^{-3}\) floor.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Two response bodies side-by-side: the floored response steps finitely along the rank-deficient axis (matches the spirit of BLD-CH10-PREDICT's \(5 \to 5.0333\) on the wide \(cy\) axis), and the un-floored response either explodes the step or NaNs. Committed as <code>theory/brain_primitives/predict_epsilon_floor_demo.txt</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find the smallest \(\epsilon\) that still produces a finite step on your degenerate axis; that number is the engine's honesty budget on rank deficiency, and Marcella will eventually want to know it.</p></div></article>
+  <div class="pager"><a href="ch09.html">← Chapter 9 exercises</a><a href="ch11.html">Chapter 11 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

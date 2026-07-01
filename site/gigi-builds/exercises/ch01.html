@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 1: The Phone Book and the Moon — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 01</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 1</p>
+    <h1>The Phone Book and the Moon</h1>
+    <p class="partline"><span class="sw" style="background: var(--blue)"></span>Part I — The Shape of Data · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">The spirit of this chapter's exercises is to plant your own moon and watch the storage layer notice things  —  every build below produces a receipt that lines up against one I already shipped in this chapter (BLD-DAYONE-16, BLD-CH1-WORKED-KAPPA, BLD-CH1-INTEGRATE-DRIFT, BLD-COST-MEM, BLD-COST-INSERT, BLD-COST-COLD, BLD-TESTS-1373).</p>
+  <article class="ex" id="e1-1"><h2><span class="eid" style="background: var(--blue)">E1.1</span>Reproduce the s151 receipt</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Stand up a <code>stations</code> bundle with one categorical base field and one numeric fiber field, insert 150 readings on the gentle plain \([20.0, 20.6]\), then insert <code>s151</code> at \(500.0\), exactly as I did.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Two harness lines that match BLD-CH1-WORKED-KAPPA within f64 tolerance: pre-spike \(\kappa = 0.000040\) on a typical reading with <code>compute_anomalies(3 sigma)</code> returning zero records, and post-spike \(\kappa = 4.7653\) on <code>s151</code> with the typical reading's \(\kappa\) rising to \(0.031728\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Walk the sigma threshold from \(1.0\) to \(5.0\) in steps and plot flagged-count vs. threshold  —  the only knob this detector has, made legible.</p></div></article><article class="ex" id="e1-2"><h2><span class="eid" style="background: var(--blue)">E1.2</span>Instrument the Welford six-liner</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Add a microbenchmark to <code>tests/welford_correctness.rs</code> (or a sibling file under <code>benches/</code>) that times the <code>FieldStats::update</code> else branch at <code>src/bundle.rs:766--771</code> over \(10^6\) inserts on a single numeric fiber field.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A printed ns/op number and a passing <code>field_stats_welford_matches_offline</code> alongside it  —  the incremental update still pins to the batch reference under the load you just put on it.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Diff against a deliberately-broken naive two-pass mean/variance to confirm the numerical-stability win Welford was chosen for.</p></div></article><article class="ex" id="e1-3"><h2><span class="eid" style="background: var(--blue)">E1.3</span>Replay the INTEGRATE drift</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run the two GQL spellings from BLD-CH1-INTEGRATE-DRIFT verbatim against your bundle: first <code>INTEGRATE temp OVER stations COVER ALL;</code> (the README cell), then <code>INTEGRATE stations MEASURE SUM(temp), AVG(temp);</code> (what the parser at <code>src/parser.rs:2047--2099</code> actually accepts).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The first returns <code>execution error: No bundle: temp</code>; the second returns a <code>Rows([...])</code> whose <code>sum_temp</code> ends in the lower-order f64 bits \(\ldots987\) given \(150\) readings near \(20.3\) plus one \(500.0\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a third spelling that supplies both <code>OVER</code> and <code>MEASURE</code> in a single statement; report whether the trailing-token discard Chapter 7 owns swallows your clause silently or errors.</p></div></article><article class="ex" id="e1-4"><h2><span class="eid" style="background: var(--blue)">E1.4</span>Benchmark the \(1.5\times\) memory bill</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Load the same 150-row <code>stations</code> corpus into your favorite row-store (Postgres works) and into GIGI; measure resident-set size of each after the load settles.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A ratio printed against BLD-COST-MEM. If your number lands within \(\pm 20\%\) of \(1.5\times\), you have reproduced the README's premium for materializing the second fundamental form alongside the data.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Scale to \(10^4\) and \(10^6\) rows and plot the ratio  —  the metadata is a fixed pile of accumulators per field, so the ratio should drift toward \(1.0\) as the row count dominates.</p></div></article><article class="ex" id="e1-5"><h2><span class="eid" style="background: var(--blue)">E1.5</span>Time the cold start</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Kill the engine after E1.1's bundle is loaded, then reopen against the mmap snapshot written by <code>src/storage/snapshot.rs</code>. Run <code>compute_anomalies(3 sigma)</code> as the first call after reopen  —  no warmup, no batch job.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Wall-clock from process start to the <code>s151</code> row appearing in the anomaly list, in seconds, matched against BLD-COST-COLD. The brain endpoints must answer polymorphically against the reloaded bundle on the first request, not the tenth.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Confirm by inspection of the snapshot file that the curvature estimator state is on disk  —  not re-derived from the records at warmup.</p></div></article><article class="ex" id="e1-6"><h2><span class="eid" style="background: var(--blue)">E1.6</span>Stress the gauge transformation reading</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Extend E1.1's harness with a knob that injects \(k\) wild readings (\(500.0\)) at random base points and records the post-injection \(\kappa\) at one fixed typical record.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A printed table of \(k\) vs. that fixed record's \(\kappa\), for \(k \in \{1, 2, 5, 10, 25\}\), demonstrating that \(\kappa\) at a fixed base point is a function of the global \(\mu_K, \sigma_K\) (the section-under-gauge-shift reading from the chapter). The \(k=1\) row should land on \(0.031728\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Plot the typical-record \(\kappa\) alongside the flagged count from <code>compute_anomalies</code>  —  the moment the wild readings start outvoting the plain, the detector's verdict flips, and the plot shows you where.</p></div></article><article class="ex" id="e1-7"><h2><span class="eid" style="background: var(--blue)">E1.7</span>Wire a section verb that returns its own \(\kappa\)</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Issue <code>SECTION stations AT (station_id='s151');</code> against the live engine and capture the full response, including the per-result geometric annotation the day-one table promises on row two.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A response payload that carries both the fiber values and the per-record \(\kappa\) and confidence  —  one round trip, no separate aggregation call, no log-scraping. Diff the \(\kappa\) in this response against the \(4.7653\) from E1.1's <code>compute_anomalies</code> output; they should be the same number to f64 precision, because they came from the same <code>compute_record_k</code> at <code>src/bundle.rs:933--967</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Issue the same <code>SECTION</code> against a typical station and confirm the \(\kappa\) matches the pre-spike \(0.000040\)  —  the address didn't grow, and the geometry rode along for free.</p></div></article>
+  <div class="pager"><span></span><a href="ch02.html">Chapter 2 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

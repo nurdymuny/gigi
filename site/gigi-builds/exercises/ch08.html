@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 8: The Engine&#x27;s Opinion: Interoception — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 08</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 8</p>
+    <h1>The Engine's Opinion: Interoception</h1>
+    <p class="partline"><span class="sw" style="background: var(--yellow)"></span>Part III — The Signals That Run While You Sleep · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">These are running-statistics exercises: you instrument the engine's interoceptive channel, replay its Welford and \(\kappa\) receipts, and stress the contract at both ends of the \(n\)-axis. The receipt class is a Prometheus scrape, a passing test, or a printed line that matches one of my BLD-CH8-* numbers within floating-point grain.</p>
+  <article class="ex" id="e8-1"><h2><span class="eid" style="background: var(--yellow)">E8.1</span>Reproduce the two-record formality</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Stand up a fresh sensors bundle, write the prologue's two records (S-001 at temp 22.5/humidity 60.1; S-002 at temp 19.3/humidity 71.4), and dump <code>FieldStats</code> for both numeric fibers plus <code>scalar_curvature(bundle)</code>.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your run prints <code>K(S-001) = K(S-002) = 0.0442500000</code>, <code>confidence = 0.9576250898</code>, and <code>scalar_curvature(bundle) = 0.2500000000</code>  —  byte-identical to <code>BLD-CH8-KAPPA-2REC</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a third record at the midpoint \((20.9, 65.75)\) and show that the bundle's scalar curvature drops off \(0.25\) exactly because \(\mathrm{Var}/\mathrm{range}^2\) is no longer on its two-symmetric-points limit.</p></div></article><article class="ex" id="e8-2"><h2><span class="eid" style="background: var(--yellow)">E8.2</span>Replay the 100K calibration</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Generate 100{,}000 synthetic sensor records with temperature \(\sim \mathcal{N}(22.5, 1.0)\), write them through <code>BundleStore::insert</code>, then point-query one record near the mean and one record at \(\mu + 3\sigma\) and read <code>confidence</code> off the response meta.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Typical record returns \(\kappa \approx 7.5\times 10^{-7}\) with confidence \(\approx 1.0\); the \(3\sigma\) record returns \(\kappa \approx 6.1 \times 10^{-2}\) with confidence \(\approx 0.9423\)  —  matching <code>BLD-CH8-KAPPA-100K</code> to three significant figures.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Plot \(\kappa\) as a function of \(|x - \mu|/\sigma\) and check the five-orders-of-magnitude spread the chapter claims is enough headroom to route on.</p></div></article><article class="ex" id="e8-3"><h2><span class="eid" style="background: var(--yellow)">E8.3</span>Stress Welford against the naive accumulator</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run the <code>BLD-CH8-WELFORD-100M</code> regime  —  100{,}000{,}000 values, each near \(10^{8}\)  —  through two accumulators side by side: the Welford pair \((\mu, M_2)\) from <code>src/bundle.rs:747-787</code> and a naive \((\Sigma x, \Sigma x^2)\) that computes variance as \(\Sigma x^2 / n - (\Sigma x / n)^2\).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Welford mean within \(1.5\times 10^{-2}\) and variance within \(1.8\times 10^{-4}\) of the closed form (commit b30cc99 territory); the naive accumulator returns variance that is negative, zero, or off by sixteen significant digits. Print both side by side as a single log line.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Reproduce the 5.87 ns/op figure  —  single-thread, release profile  —  and post the timing as a comment on the <code>ch8_welford_100M</code> harness entry if your number disagrees.</p></div></article><article class="ex" id="e8-4"><h2><span class="eid" style="background: var(--yellow)">E8.4</span>Time the 22-nanosecond opinion</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Replicate the <code>BLD-CH8-INSERT-COST</code> three-way benchmark from <code>harvest/book_ch8_interoception.rs</code>: time <code>FieldStats::update</code> alone, then <code>BundleStore::insert</code> alone, then insert with <code>record_k_for</code> and <code>confidence</code> riding along. Release profile, single thread, same 100K-record workload.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Three numbers in the same shape as the chapter: A on the order of 10 ns/op, B on the order of 800 ns/op, C \(-\) B \(\approx 22\) ns/op. Append your CPU model and the C \(-\) B delta to the receipt file.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Push the delta below 22 ns/op by inlining the confidence map next to the \(\kappa\) accessor and show the optimization is loss-less against <code>BLD-CH8-KAPPA-100K</code>.</p></div></article><article class="ex" id="e8-5"><h2><span class="eid" style="background: var(--yellow)">E8.5</span>Forge the gameable counterexample</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Construct bundles A and B from <code>BLD-CH8-K-GAMEABLE</code>: A is a 1{,}000-record uniform AP on \([0,1]\); B is a 100{,}000-record two-point distribution at \(\{0, 1\}\) with weight \(p\) solving \(p(1-p) = K_A\). Run both through <code>scalar_curvature</code> and print the agreement.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>\(|K_A - K_B| \le 3.2\times 10^{-6}\) as in the chapter, with A's mean near \(0.5\) and B's mean near \(0.092\). A single test that asserts \(K\) alone cannot distinguish them.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Shrink the gap to machine epsilon by increasing \(n_B\) and re-tuning \(p\), then extend the harness to compute \(\lambda_1\) on each bundle and show the spectrum <em>does</em> separate them  —  a head-start on the Chapter 9 invariant.</p></div></article><article class="ex" id="e8-6"><h2><span class="eid" style="background: var(--yellow)">E8.6</span>Wire the <code>CONFIDENCE</code> verb</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Behind the <code>kahler</code> feature flag, call the <code>CONFIDENCE</code> brain verb registered at <code>src/bin/gigi_stream.rs:14576-14601</code> against a bundle of your choosing. Compare the verb's return against the <code>confidence</code> field on a <code>POST /v1/profile</code> response for the same bundle.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Both surfaces return the same scalar to the last bit, with the verb's payload exposing the contributing <code>FieldStats</code> (count, mean, \(M_2\), range) so an audit consumer can re-derive \(\kappa\) themselves.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a Prometheus counter that scrapes <code>CONFIDENCE</code> once per minute on a long-running bundle and watch it converge as \(n\) grows  —  the named-verb analog of putting in the season.</p></div></article><article class="ex" id="e8-7"><h2><span class="eid" style="background: var(--yellow)">E8.7</span>Refute the never-stale claim</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Try to construct a write pattern  —  interleaved INSERTs, concurrent readers, schema reloads, anything  —  that returns a row whose <code>confidence</code> field reflects a \(\kappa\) computed from <code>FieldStats</code> older than the last committed write to that bundle.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Either a failing test that exhibits the stale read (with the row, the expected \(\kappa\), and the actual \(\kappa\) printed side by side  —  file it against the README's “O(1) read, never stale” claim), or a passing adversarial test that proves you tried and the engine kept the contract.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>If you find a stale read, isolate whether it is in the accessor on <code>src/curvature.rs:36-38</code> or in the <code>FieldStats</code> update path on <code>src/bundle.rs:747-787</code>, and propose the smallest patch that closes it.</p></div></article>
+  <div class="pager"><a href="ch07.html">← Chapter 7 exercises</a><a href="ch09.html">Chapter 9 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

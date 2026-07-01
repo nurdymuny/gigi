@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 13: The Single-Node Tour, with Theorems — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 13</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 13</p>
+    <h1>The Single-Node Tour, with Theorems</h1>
+    <p class="partline"><span class="sw" style="background: var(--violet)"></span>Part V — The Theorem · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">The spirit of this chapter's exercises is single-node-first: every build starts on the trivial atlas where the sharded answer must equal the unsharded one bit-for-bit, then widens the cut until the geometry costs you something the receipt can name. The receipts you produce will be Rust test passes against <code>src/sharded/execution.rs</code>, byte-equality assertions against <code>wrap_trivial</code>, and live numbers off <code>examples/sharding_penguins.rs</code> that you compare against my BLD-CH13-PENGUIN-LIVE-OUTPUT.</p>
+  <article class="ex" id="e13-1"><h2><span class="eid" style="background: var(--violet)">E13.1</span>Reproduce the penguin walk end-to-end</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>cargo run --release --features kahler,sharded --example sharding_penguins</code> on a clean checkout and capture all three blocks of output  —  unsharded baseline, three-chart hash sharding, Möbius holonomy  —  into a single log file.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your log shows \(K_{\text{global}} = 0.128159\) on Run [1], \(|K_{\text{sharded}} - K_{\text{unsharded}}| = 2.1076 \times 10^{-3}\) (relative 1.64%) on Run [2], and \(\det(H) = -1.000\) with <code>orientation_flipped = true</code> on Run [3]; diff against the verbatim numbers in BLD-CH13-PENGUIN-LIVE-OUTPUT and confirm zero drift.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Re-run with <code>--features sharded</code> only (drop <code>kahler</code>) and watch which output blocks degrade to typed refusals at the Kähler-gate boundary.</p></div></article><article class="ex" id="e13-2"><h2><span class="eid" style="background: var(--violet)">E13.2</span>Instrument the trivial-atlas identity test</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Fork <code>shard_curvature_on_trivial_atlas_matches_inner_store</code> at <code>src/sharded/execution.rs:734-750</code>, parameterize it over record counts \(n \in \{1, 20, 200, 2000\}\), and emit the wall-clock cost of the <code>wrap_trivial</code> path versus the direct <code>BundleStore</code> path.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A passing test <code>shard_curvature_trivial_byte_identical_across_sizes</code> that asserts <code>assert_eq!</code> on <code>k_sum</code> and <code>k_count</code> for every \(n\), plus a printed table showing the wrap overhead stays below a constant factor of the direct path  —  the engine charges nothing for the option that chapter 1 promised.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Insert one NaN record and confirm both paths return the same NaN-poisoned aggregate, not different ones.</p></div></article><article class="ex" id="e13-3"><h2><span class="eid" style="background: var(--violet)">E13.3</span>Refute T2 by perturbing the stereographic atlas</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Take <code>theory/poincare_to_sharding/validation/t2_cocycle_bound.py</code> and sweep the perturbation magnitude \(\varepsilon\) across \(\{10^{-4}, 10^{-3}, 10^{-2}, 10^{-1}\}\) on the three-chart stereographic atlas \((N, S, E)\) on \(S^2\), fitting the log-log regression slope of \(\delta_{\text{cocycle}}\) versus \(\varepsilon\).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your fitted slope lands within \(\pm 0.05\) of my \(0.924\) figure from BLD-CH13-T2-RECEIPT; the analytic-atlas baseline (no perturbation) returns a max discrepancy below \(10^{-13}\) across 200 triple-overlap samples, matching my \(1.78 \times 10^{-14}\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Push \(\varepsilon\) to \(1.0\) and observe where first-order linearity breaks  —  the bound stops being honest before the manifold does.</p></div></article><article class="ex" id="e13-4"><h2><span class="eid" style="background: var(--violet)">E13.4</span>Forge a Fiedler-sharded penguin run</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Edit <code>examples/sharding_penguins.rs</code> to swap the <code>wrap_hash_sharded</code> call for <code>wrap_fiedler_sharded</code> (the constructor exercised at <code>src/sharded/sharded_bundle.rs:782</code>) and rerun the three-chart curvature aggregation on the same forty-five records.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your \(|K_{\text{sharded}} - K_{\text{unsharded}}|\) drops below the \(2.1076 \times 10^{-3}\) hash-partition number, ideally toward the analytic floor T3 names; the per-chart species concentration printout shows Adelie/Chinstrap/Gentoo landing in distinct charts at \(\geq 75\%\) concentration, matching the test contract at <code>:782</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Compute the K-drift collapse ratio against the hash baseline and pin it as a numerical lower bound for the spec recommendation the demo prints twice but does not execute.</p></div></article><article class="ex" id="e13-5"><h2><span class="eid" style="background: var(--violet)">E13.5</span>Stress the Möbius holonomy carry</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Walk <code>shard_holonomy_around_loop</code> at <code>src/sharded/execution.rs:410</code> around a four-chart closed path whose transitions compose to (a) the identity, (b) a single Möbius reflection, (c) a double Möbius reflection.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Case (a) lands \(\det(H) = +1.000\) and <code>orientation_flipped = false</code>; case (b) lands \(\det(H) = -1.000\) and <code>orientation_flipped = true</code> (mirroring the BLD-CH13-PENGUIN Möbius result); case (c) lands \(\det(H) = +1.000\) again  —  the \(\mathbb{Z}_2\) closes. Cross-check against <code>holonomy_four_chart_path_is_transition_product</code> at <code>:1214</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Inject a non-trivial gauge generator \(h(x) = x\) as in <code>t4_sharded_holonomy.py</code> and confirm the round-trip phase still lands within \(10^{-4}\) of \(e^{-i} = 0.540343 - 0.841534j\).</p></div></article><article class="ex" id="e13-6"><h2><span class="eid" style="background: var(--violet)">E13.6</span>Replay T1 BETTI on the three named fixtures</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>shard_betti_mayer_vietoris</code> (Kähler-gated, <code>src/sharded/execution.rs:201</code>) against the three fixtures from BLD-CH13-T1-RECEIPT  —  \(S^1\) as two arcs, \(S^2\) as two half-tetrahedra, \(T^2\) on a \(3 \times 3\) strip cover  —  and record per-chart Betti vectors alongside the assembled global Betti.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Per-chart Bettis disagree with global Bettis on every fixture (the arc has \(\beta_1 = 0\) but \(S^1\) has \(\beta_1 = 1\)); the Mayer-Vietoris assembly returns integer-equal ground truth for all three, and <code>mv_betti_correction_recovers_truth_at_four_charts</code> at <code>:910</code> plus the eight-chart variant at <code>:925</code> both pass.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a fourth fixture  —  the Klein bottle on a four-strip cover  —  and confirm the assembly recovers \(\beta_0 = 1, \beta_1 = 1, \beta_2 = 0\) over \(\mathbb{Z}_2\) coefficients.</p></div></article><article class="ex" id="e13-7"><h2><span class="eid" style="background: var(--violet)">E13.7</span>Benchmark the n_charts fork</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Hit the live <code>/v1/bundles/{name}/sharded/curvature</code> endpoint (mounted at <code>src/bin/gigi_stream.rs:14496-14506</code>) with <code>n_charts \(\in \{1, 2, 4, 8, 16\}\)</code> on a synthetic 1000-record bundle, and instrument the wall-clock and the returned \(K\)-mean at each setting.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A scrape table where \(n_{\text{charts}} = 1\) returns the byte-identical answer the trivial-atlas branch promises and the higher-\(n\) runs drift by a bounded percentage you name; the fork at <code>:3527-3540</code> is the only difference between the two code paths, and your numbers prove the single-node branch costs zero extra.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Wire a Prometheus counter for which branch the fork took and watch the ratio as you sweep traffic  —  the trivial atlas should dominate the small-bundle regime.</p></div></article>
+  <div class="pager"><a href="ch12.html">← Chapter 12 exercises</a><a href="ch14.html">Chapter 14 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

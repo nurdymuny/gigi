@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 4: Anatomy of a BundleStore — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 04</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 4</p>
+    <h1>Anatomy of a BundleStore</h1>
+    <p class="partline"><span class="sw" style="background: var(--aqua)"></span>Part II — The Engine Room · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">These exercises wind your own odometers. Every build here lands a thirteen-row insert path on a real bundle, watches a Welford accumulator update against a value Bee can hand-check, or perturbs the storage-detect heuristic until the ground flips under your feet. The receipt class is verbatim-numeric: a log line, an <code>X-Bundle-Mutation-Counter</code> value, a <code>storage_mode</code> string, an integer comparison that decides whether a cache hits.</p>
+  <article class="ex" id="e4-1"><h2><span class="eid" style="background: var(--aqua)">E4.1</span>Reproduce the worked hero insert</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Drive <code>BundleStore</code> through 50 well-behaved temperature readings, then insert <code>temp=35.5</code>; capture <code>mutation_counter</code>, the pre-insert <code>FieldStats</code>, the per-record \(K\) from <code>compute_record_k</code>, and the post-insert <code>(count, mean, m2)</code> for both <code>field_stats</code> and <code>curvature_stats</code>.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A harness whose verbatim block matches mine to the printed decimal  —  <code>mean=20.5922</code>, <code>m2=228.7369</code>, <code>k_mean=0.004752</code>, <code>k_m2=0.022189</code>  —  as archived at <code>harvest/book_ch4_worked_example.rs</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Permute the order of the 50 seed inserts and confirm the final <code>(mean, m2)</code> is byte-identical: Welford is commutative as a monoid, and your test is the receipt.</p></div></article><article class="ex" id="e4-2"><h2><span class="eid" style="background: var(--aqua)">E4.2</span>Refute the naive variance formula at a 1e8 offset</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run two accumulators side-by-side on the offset block from page 13  —  \(\texttt{offset}=10^8\), values \(\{0.1, 0.2, 0.3, 0.5\}\)  —  where one uses my repaired Welford from <code>src/bundle.rs:747-771</code> and the other the pre-<code>b30cc99</code> naive <code>sum_sq/n - (sum/n)\^{}2</code> form.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A log showing the Welford branch within one part per billion of the exact \(0.021875\) (BLD-ANATOMY-WORKED-WELFORD), while the naive branch returns a number dominated by f64 round-off at \(4\times 10^{16}\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Sweep the offset by powers of ten and plot the absolute error of each branch  —  find the offset at which the naive form's variance estimate first crosses the true variance.</p></div></article><article class="ex" id="e4-3"><h2><span class="eid" style="background: var(--aqua)">E4.3</span>Stress the storage auto-detect at the 32nd insert</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Construct three single-integer-keyed bundles  —  one with keys <code>0..32</code>, one with keys <code>i*i+7</code>, one with 31 consecutive integers plus a single stray at <code>999</code>  —  and assert <code>store.storage_mode()</code> after the 32nd insert.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The three strings <code>sequential</code>, <code>hashed</code>, <code>hybrid</code> matching BLD-ANATOMY-WORKED-STORAGE; the hybrid bundle's flatness ratio computed by hand to \(30/31 = 0.968\), inside the \((0.95, 1.0)\) window from <code>detect_base_geometry</code> at <code>src/bundle.rs:526</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Keep feeding the hybrid bundle strays until the overflow ratio crosses \(0.05\) and watch row 13's promotion fire; record the exact insert at which <code>storage_mode</code> flips from <code>hybrid</code> to <code>hashed</code>.</p></div></article><article class="ex" id="e4-4"><h2><span class="eid" style="background: var(--aqua)">E4.4</span>Benchmark the O(1) curvature accessor ceiling</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Load a bundle with \(10\,000\) records, then time thirty thousand reads across <code>curvature_stats</code>' mean, standard deviation, and threshold accessors. Repeat at \(10^5\) and \(10^6\) records.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A wall-clock total at or under my \(12\,\mu s\) on the \(10^4\) run (BLD-ANATOMY-WORKED-BUDGET), and a per-call cost that does not scale with record count  —  proving the accessor depends on field count, not \(n\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a fourth size at \(10^7\) records and confirm <code>ad_7_2_stats_access_is_o1</code>'s five-millisecond budget for ten thousand calls still clears on your machine.</p></div></article><article class="ex" id="e4-5"><h2><span class="eid" style="background: var(--aqua)">E4.5</span>Wire a counter-compare cache against <code>X-Bundle-Mutation-Counter</code></h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Stand up a small cache in front of any derived bundle quantity (a SEMANTIC call, a vector-cache lookup, anything you choose); store <code>counter_at_build</code> alongside the value; on read, scrape <code>X-Bundle-Mutation-Counter</code> from the brain endpoint response header and compare.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A test that (a) hits cold, (b) hits warm on a second call with no inserts, (c) misses after one POST insert because the header value advanced by exactly one  —  matching the contract in <code>mutation_counter_contract</code> at <code>src/bundle.rs:4974</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a 100-record <code>batch_insert</code> and verify the header advances by one, not one hundred  —  the batch-bump guard at <code>src/bundle.rs:1176</code> from <code>mutation_counter_bumps_on_batch_insert</code>.</p></div></article><article class="ex" id="e4-6"><h2><span class="eid" style="background: var(--aqua)">E4.6</span>Forge the EXPLAIN-vs-executor divergence</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Find the IsNull-on-indexed-field corner the chapter calls out: write a query whose EXPLAIN output classes a predicate as <code>filter</code> while <code>filtered_query_ex</code> actually serves it from the bitmap.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>An EXPLAIN response whose plan line reads <code>filter</code> on that predicate, paired with a timing measurement showing the execution time matches <code>index_scan</code>, not a residual filter  —  demonstrating the <code>QueryPlan</code> struct (<code>engine.rs:4372-4394</code>) is descriptive, not operational.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>File the divergence as a third entry in Chapter 7's status-table corrections list  —  a book that checks its claims against the engine occasionally repairs the engine.</p></div></article><article class="ex" id="e4-7"><h2><span class="eid" style="background: var(--aqua)">E4.7</span>Instrument the trigger delivery gap</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Issue <code>CREATE TRIGGER</code> via GQL, perform a mutation that fires it, then inspect <code>engine.pending_notifications</code> directly through an in-process handle.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A test showing the notification accumulates in <code>pending_notifications</code> but never reaches any HTTP route, WebSocket, or external consumer  —  the "last meter unwired" finding at <code>engine.rs:1160</code>, with the WAL persistence of the trigger definition itself verified by restart.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Sketch a 50-line consumer that drains <code>pending_notifications</code> to stdout and propose it as the missing meter  —  prompt to spec, not yet code.</p></div></article>
+  <div class="pager"><a href="ch03.html">← Chapter 3 exercises</a><a href="ch05.html">Chapter 5 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

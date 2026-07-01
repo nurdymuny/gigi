@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 6: DHOOM: The Wire Format That Knows the Zero Section — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 06</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 6</p>
+    <h1>DHOOM: The Wire Format That Knows the Zero Section</h1>
+    <p class="partline"><span class="sw" style="background: var(--aqua)"></span>Part II — The Engine Room · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">The chapter's experiments are byte-level: you will run the shipped encoder/decoder, count bytes, hex-dump sentinels, and prove the format does what BLD-DHOOM-* claims it does. Receipts are wire bytes and passing test names, not prose.</p>
+  <article class="ex" id="e6-1"><h2><span class="eid" style="background: var(--aqua)">E6.1</span>Reproduce the 292-to-113</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Pull <code>gigi</code> at <code>b3f7d90</code>, locate <code>test_roundtrip_sensors</code> in <code>src/dhoom.rs</code> (around line 2128), and write a tiny harness that loads the same three-record fixture, runs <code>encode()</code> and <code>serde_json::to_string()</code> on it, and prints <code>(json_bytes, dhoom_bytes, ratio)</code>.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Harness output reads <code>292, 113, 2.58</code> and the four-line accounting in the chapter (88+5+5+15 = 113) reproduces line-for-line; the harness also asserts <code>decode(encode(d)) == d</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Mutate one of the three records' <code>unit</code> from <code>celsius</code> to <code>kelvin</code> and watch the encoder demote the <code>|celsius</code> default  —  record the new ratio.</p></div></article><article class="ex" id="e6-2"><h2><span class="eid" style="background: var(--aqua)">E6.2</span>Stress the majority gate</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Generate fiber fixtures of \(N \in \{2, 3, 5, 11, 99\}\) records where exactly \(\lceil N/2 \rceil\) share a value in one column and the rest disagree. Run the shipped encoder on each and diff the resulting header.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The column gets promoted to a <code>|</code> default at \(\lceil N/2 \rceil + 1\) matches and stays plain at \(\lceil N/2 \rceil\), exactly as <code>src/dhoom.rs</code> lines 1079–1084 (BLD-MODCAT-DEFAULT-FREQ-ORDER) require. Save the headers as a fixture file.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Build a three-default fiber and verify the headers are sorted by descending match-count (frequency sort at line 1135).</p></div></article><article class="ex" id="e6-3"><h2><span class="eid" style="background: var(--aqua)">E6.3</span>Hexdump the sentinel</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Forge the three-row <code>posts</code> fiber from the sentinel section  —  distinct <code>tags</code> arrays per row, embedded commas in some of them  —  encode it, write the bytes to disk, and <code>xxd</code> the first cell.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Bytes <code>22 1f 5b 22 22 ...</code> appear in the dump, matching the chapter's hex panel byte-for-byte (BLD-DHOOM-X1F-SENTINEL). The <code>0x1F</code> is the second byte of the cell.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Replace one row's tags with a constant array shared across all three rows and watch the sentinel <em>vanish</em>  —  the encoder promotes the array to a header default and bypasses the inline path. The hexdump now contains no <code>0x1F</code> anywhere.</p></div></article><article class="ex" id="e6-4"><h2><span class="eid" style="background: var(--aqua)">E6.4</span>Replay the UTF-8 storm</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Check out <code>52b99bc</code> (the trigger commit, before the hotfix), build it, and run my regression fixtures  —  <code>café123</code>, <code>naïve42</code>, the CJK and emoji cases  —  through <code>parse_string_pattern</code>.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The pre-hotfix build panics with a UTF-8 boundary error on at least one of the fixtures, exactly as the comment at <code>src/dhoom.rs:281-288</code> memorializes. Re-checkout <code>fcc74fa</code>, rerun, and the panic is replaced by a clean arithmetic refusal or a <code>T-001</code>-style suffix split; my regression test now passes.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a five-byte variation-selector emoji case to the regression and confirm the fix survives. Open a PR with the new fixture.</p></div></article><article class="ex" id="e6-5"><h2><span class="eid" style="background: var(--aqua)">E6.5</span>Benchmark the streaming encoder against the schema lock</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Build a synthetic bundle of 50{,}000 records where the <em>first</em> 100 records share modal value <code>X</code> on one column and the remaining 49{,}900 share modal value <code>Y</code>. Pipe it through <code>StreamingDhoomEncoder</code> (one of its four call-sites in <code>src/engine.rs</code>) and measure (a) elapsed time, (b) total wire bytes, (c) deviation-cell count on the column.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The header pins <code>column|X</code> from the 100-record sample; the remaining 49{,}900 records each pay a <code>:Y</code> deviation cell. Wire bytes equal \(\text{header} + 49{,}900 \cdot \text{len}(\text{:Y}) + \text{baseline}\) to the byte. Record the number in your harness output.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Pre-sort the bundle so <code>Y</code> dominates the first chunk and rerun  —  the deviation count flips, the wire shrinks, and you have just paid the price the chapter quotes for the streaming encoder's schema lock.</p></div></article><article class="ex" id="e6-6"><h2><span class="eid" style="background: var(--aqua)">E6.6</span>Refute interning on a column it cannot help</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Construct a fiber where the <code>status</code> column has \(N = 9\) records, \(D = 3\) distinct strings, but the strings are so short (<code>a</code>, <code>b</code>, <code>c</code>) that pool + indices exceed 90% of the raw bytes. Encode and inspect the header.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The header carries plain <code>status</code>  —  no <code>&amp;</code> sigil, no pool line on row two  —  because <code>detect_interned</code> (BLD-MODCAT-INTERNED-GATE, <code>src/dhoom.rs</code> 1430–1489) refused itself. Diff against a fiber of nine longer strings (<code>completed</code>/<code>pending</code>/<code>failed</code>) and watch <code>&amp;</code> reappear with the pool line <code>&amp;status[...]</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Sweep distinct-count \(D\) from 2 to \(\lceil N/3 \rceil\) and plot the bytes saved against \(D\); mark the crossover where the 90% rule first fires.</p></div></article><article class="ex" id="e6-7"><h2><span class="eid" style="background: var(--aqua)">E6.7</span>Time the Chern rider against its asserted floor</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>cargo test --features kahler --test dhoom_wire_savings -- --nocapture</code> and capture the four assertions plus the medium- and high-dimensional savings deltas.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The output prints compression ratios 1.33, 5.33, and 21.33\(\times\) at dimensions 2, 4, 8 against asserted floors of 1, 5, and 10\(\times\), plus 17.6% and 18.1% improvements with the 0.181 absolute floor cleared (BLD-DHOOM-WIRE-TEST-MEASURED). Median <code>dhoom_wire_savings</code> elapsed time sits near 0.82\,s on release.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Bisect: re-run with <code>--no-default-features --features kahler</code> and confirm the default-build dhoom unit median (0.28\,s) is unchanged by the Chern path's added tests  —  the rider rides for free on the no-feature build.</p></div></article>
+  <div class="pager"><a href="ch05.html">← Chapter 5 exercises</a><a href="ch07.html">Chapter 7 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

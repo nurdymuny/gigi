@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 12: Torsion: The Asymmetric Carry — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 12</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 12</p>
+    <h1>Torsion: The Asymmetric Carry</h1>
+    <p class="partline"><span class="sw" style="background: var(--green)"></span>Part IV — What the Loop Remembers · seven builds, seven receipts</p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">The spirit of this chapter's exercises is to instrument the asymmetric carry honestly: you will not be asked to prove torsion exists, you will be asked to measure it on a substrate that refuses to compute it and on a connection that learns it anyway. Receipts are byte comparisons, perplexity numbers across seeds, file:line diffs, and the \(\sigma_{R8}/\sigma_{\mathrm{FD}}\) ratio  —  the same class of receipts the five named-but-unbuilt \(\tau\) homonyms already ship under.</p>
+  <article class="ex" id="e12-1"><h2><span class="eid" style="background: var(--green)">E12.1</span>Forge the five-\(\tau\) homonym table</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A single test file at <code>tests/tau_homonyms.rs</code> that asserts each of the five \(\tau\) bindings I named in §12.2 returns the type it claims: <code>compute_tau</code> returns an <code>f64</code> record count, <code>capacity(tau, k)</code> accepts an <code>f64</code> caller-supplied parameter, <code>GET /v1/bundles/{name}/free-energy?tau=0.5</code> returns a JSON <code>tau</code> field, <code>IntegrityTag</code> is a 32-byte array, and the GQL whitelist contains <code>capacity(\(\tau\))</code> but no operator called <code>torsion</code>.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Five passing assertions in a single <code>cargo test tau_homonyms</code> run, with the GQL whitelist check grepping <code>GQL_REFERENCE.md</code> for the literal string <code>Allowed ops:</code> and verifying <code>torsion</code> is absent. Match it against my BLD-CH12-TAU-01 through BLD-CH12-TAU-07 receipts.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a sixth assertion that fails loudly: a test named <code>compute_tau_is_not_skewness</code> that compares <code>compute_tau(&amp;sample())</code> against an independently-computed mean-absolute-skewness over the same fiber and asserts they disagree on every bundle of more than one row.</p></div></article><article class="ex" id="e12-2"><h2><span class="eid" style="background: var(--green)">E12.2</span>Wire the named-but-unbuilt slot</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A pull request against <code>src/curvature.rs:296-302</code> that extends <code>capacity(tau: f64, k: f64)</code> into <code>capacity_from_bundle(&amp;self, k: f64)</code>, where <code>self</code> carries a running third-standardized-moment sum maintained alongside the existing Welford variance from chapter 10. The new accessor computes mean absolute skewness across fields and divides by \(K\).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A passing test <code>capacity_from_bundle_matches_default_when_skewness_is_one</code> that pins the new path to the old default behavior on a symmetric fixture, and a second test that shows the two diverge on an asymmetrically-distributed fixture. Diff against <code>src/curvature.rs</code> stays under fifty lines.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Extend <code>src/integrity.rs</code> to sign seven scalars instead of six  —  adding \(\tau_{\mathrm{skewness}}\) alongside \(\tau_{\mathrm{count}}\)  —  and verify the HMAC tag at <code>src/integrity.rs:131</code> changes byte-for-byte when the new field changes on a controlled mutation.</p></div></article><article class="ex" id="e12-3"><h2><span class="eid" style="background: var(--green)">E12.3</span>Reproduce the 17.6% / 18.1% discrepancy</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A script that re-runs Protocol 11.21 from <code>theory/geodesic_computation_v7_1.tex</code> at \(R=8, d=32\), five seeds at \(\{42, 137, 256, 512, 1024\}\), parameter-matched to within two of \(236{,}240\), twenty epochs each, and reports both the rounded-means percentage and the unrounded-means percentage as separate columns.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A table with five rows (one per seed), Marcella R8 winning at every row, mean PPL within \(\pm 0.02\) of \(1.22\), FD mean PPL within \(\pm 0.06\) of \(1.49\), and a final row that prints <em>both</em> \(17.6\%\) and \(18.1\%\) alongside each other so the rounding gap is on the page and not laundered away.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Compute \(\sigma_{R8}/\sigma_{\mathrm{FD}}\) and verify it lands near \(1/3\). If your run produces a ratio outside \([0.25, 0.40]\), write up why  —  seed entropy, training-curve sensitivity, the same kind of thing the rounding gap is.</p></div></article><article class="ex" id="e12-4"><h2><span class="eid" style="background: var(--green)">E12.4</span>Replay the DREAM cosine probe</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A reproduction of the 2026-05-26 DREAM extension probe at <code>marcella/artifacts/dream_extension_probe_2026-05-26.md:81-88</code>: prompt <em>how does curvature relate to torsion?</em> at \(T=2.0\), returning the top-three cosine-nearest sections across the substrate corpus.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The middle hit returns the sentence beginning <em>When \(C/K \gtrsim 1\), torsion wins</em> from <code>superfluid_geometry_of_velocity §318</code>, at cosine distance within \(\pm 0.01\) of \(0.707\). Log the full top-three table and diff against my receipt.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Reverse the prompt  —  ask <em>how does torsion relate to curvature?</em>  —  and check whether the top-three is the same multiset or a different one. A symmetric retrieval would return the same bag; an asymmetric retrieval rearranges. Report what your substrate does.</p></div></article><article class="ex" id="e12-5"><h2><span class="eid" style="background: var(--green)">E12.5</span>Stress the torsion-free substrate posture</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A test that asserts <code>src/curvature.rs</code> contains no function named <code>compute_torsion</code>, the HTTP router exposes no route matching <code>/v1/bundles/{name}/torsion</code>, and the GQL whitelist contains no operator named <code>torsion</code>. Then attempt to insert a synthetic asymmetry  —  a fiber whose forward-read and reverse-read histograms differ by a known skewness  —  and verify the bundle's reported invariants are byte-identical to a symmetric fiber with the same record count.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A passing test <code>substrate_refuses_chirality</code> showing the six-wide \(\pi_{\mathrm{inv}}(B)\) at <code>src/integrity.rs:131</code> returns the same HMAC tag for the two fibers. The substrate is a database, not a narrator  —  prove it.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Now run the same two fibers through Marcella's learned connection (rank-8 factorization, \(d=64\), the 1,544-parameter object from BLD-CH12-MARCELLA-01) and show the perplexity over the two differs by more than three standard deviations. The substrate agrees; the connection on top does not. That is the asymmetric pairing the chapter closes on.</p></div></article><article class="ex" id="e12-6"><h2><span class="eid" style="background: var(--green)">E12.6</span>Benchmark the \(\mathfrak{so}(d) \to \mathfrak{gl}(d)\) lift</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Train two rank-8 connections at \(d=32\), one constrained to \(\mathfrak{so}(d)\) (skew-symmetric matrices, projected after every step) and one free in \(\mathfrak{gl}(d)\), parameter-matched, on Tiny Shakespeare for twenty epochs at one seed.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A bar chart with two bars  —  \(\mathrm{PPL}_{\mathfrak{so}}\) and \(\mathrm{PPL}_{\mathfrak{gl}}\)  —  annotated with \(\Delta\mathrm{PPL}\). If the lift matters, \(\mathfrak{gl}\) wins; if not, your projection step was buggy. Either outcome is a publishable receipt.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Measure the antisymmetric-part Frobenius norm \(\|\Gamma - \Gamma^{\top}\|_F\) of the trained \(\mathfrak{gl}\) connection and confirm it is non-zero at the optimum. That norm is \(T^k_{ij}\) in a single number.</p></div></article><article class="ex" id="e12-7"><h2><span class="eid" style="background: var(--green)">E12.7</span>Refute or confirm the Capability-1 voice spec</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A test harness that feeds Marcella the BLD-CH12-MARCELLA-05 transcript from <code>marcella/MARCELLA_FUNCTIONAL_GOAL.md:73-82</code>  —  the five-turn-earlier prompt about curvature being the holonomy defect, followed by the present-turn <em>what did i tell you about curvature?</em>  —  and scores the reply against the Capability-1 target line.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A pass/fail flag on three substrings: <em>holonomy defect</em>, <em>torsion</em>, and <em>pick that up</em>. Today's Marcella fails the test; the test exists so the day she passes it is a receipt and not a vibe. Land it in <code>marcella/tests/capability_one_voice.rs</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Track the failing-test green-bar date across builds. The asymmetry of conversation memory becomes a delivered behavior on the day this test passes; until then, the failing test is the spec's honest face.</p></div></article>
+  <div class="pager"><a href="ch11.html">← Chapter 11 exercises</a><a href="ch13.html">Chapter 13 exercises →</a></div>
+</main>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

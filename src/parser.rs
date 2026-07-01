@@ -132,6 +132,46 @@ pub enum LoopBody {
     Edges(Vec<usize>),
 }
 
+/// Optional GAUGE_FIELD interpretation clause on INGEST.
+///
+/// Present when the user wrote `AS GAUGE_FIELD GROUP <g> ON LATTICE <l>`
+/// after the FORMAT clause. Absent (`None` on the parent
+/// Statement::Ingest) restores the generic AUTO_GENERIC array policy
+/// (backwards compat).
+///
+/// Ordering matches the surface grammar:
+///   AS GAUGE_FIELD GROUP <group> ON LATTICE <lattice_name>
+///
+/// - `group`         — one of Group::{SU2, SU3, U1, ZN{n}} resolved via
+///                     the existing `parse_group_label()` helper.
+/// - `lattice_name`  — name of a previously-declared lattice looked up
+///                     via `crate::lattice::registry::get(...)` at
+///                     execute time. Absent lookup → LatticeNotFound.
+///
+/// Halcyon L=24 Concept 2 (2026-07-01). Gated on `feature = "gauge"`
+/// because `crate::gauge::Group` requires the gauge feature; when the
+/// feature is off the `Statement::Ingest.as_gauge_field` field
+/// unconditionally holds `Option<()>` (always `None`) so the AST
+/// surface stays stable.
+#[cfg(feature = "gauge")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GaugeFieldInterpretation {
+    pub group: crate::gauge::Group,
+    pub lattice_name: String,
+}
+
+/// Placeholder stand-in for `GaugeFieldInterpretation` when the `gauge`
+/// feature is disabled. Existence is uninhabitable — the parser never
+/// constructs one because `AS GAUGE_FIELD` requires `parse_group_label`
+/// which is only present under `feature = "gauge"`. Keeping the type
+/// name available under both feature configurations lets the AST field
+/// on `Statement::Ingest` be declared once.
+#[cfg(not(feature = "gauge"))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GaugeFieldInterpretation {
+    pub lattice_name: String,
+}
+
 /// Parsed GQL statement.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
@@ -694,6 +734,11 @@ pub enum Statement {
         bundle: String,
         source: String,
         format: String,
+        /// Optional GAUGE_FIELD interpretation clause. `None` → generic
+        /// AUTO_GENERIC policy (unchanged from Phase 1). `Some(...)` →
+        /// canonical field emission tied to a group + lattice.
+        /// Halcyon L=24 Concept 2 (2026-07-01).
+        as_gauge_field: Option<GaugeFieldInterpretation>,
     },
     Transplant {
         source: String,
@@ -6752,10 +6797,38 @@ impl Parser {
         };
         self.expect_keyword("FORMAT")?;
         let format = self.expect_word()?;
+
+        // Optional GAUGE_FIELD interpretation clause. Full tail must be
+        // present when introduced by AS — partial parses error clearly
+        // so the user sees "expected GROUP after AS GAUGE_FIELD" instead
+        // of a mystery statement-termination error.
+        //
+        // Halcyon L=24 Concept 2 (2026-07-01). The interpretation
+        // clause depends on `crate::gauge::Group` so we only accept it
+        // when the `gauge` Cargo feature is enabled. Without the
+        // feature `AS` at this position is an unexpected token surfaced
+        // by the caller.
+        #[cfg(feature = "gauge")]
+        let as_gauge_field = if self.is_keyword("AS") {
+            self.advance();
+            self.expect_keyword("GAUGE_FIELD")?;
+            self.expect_keyword("GROUP")?;
+            let group = self.parse_group_label()?;
+            self.expect_keyword("ON")?;
+            self.expect_keyword("LATTICE")?;
+            let lattice_name = self.expect_word()?;
+            Some(GaugeFieldInterpretation { group, lattice_name })
+        } else {
+            None
+        };
+        #[cfg(not(feature = "gauge"))]
+        let as_gauge_field: Option<GaugeFieldInterpretation> = None;
+
         Ok(Statement::Ingest {
             bundle,
             source,
             format,
+            as_gauge_field,
         })
     }
 
@@ -9839,14 +9912,31 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // reject guard stays first so the read-only-bundle policy is
         // uniform across every write verb. See `src/ingest.rs` for
         // the format, mapping policy, and error envelope.
-        Statement::Ingest { bundle, source, format } => {
+        Statement::Ingest { bundle, source, format, as_gauge_field } => {
             crate::virtual_bundles::reject_virtual_write(bundle, "INGEST")?;
             let fmt = crate::ingest::IngestFormat::from_name(format)
                 .map_err(|e| e.to_string())?;
             let source_path = std::path::PathBuf::from(source);
-            let _stats =
+            #[cfg(feature = "gauge")]
+            let _stats = match as_gauge_field {
+                None => crate::ingest::execute_ingest(engine, bundle, &source_path, fmt)
+                    .map_err(|e| e.to_string())?,
+                Some(interp) => crate::ingest::execute_ingest_as_gauge_field(
+                    engine,
+                    bundle,
+                    &source_path,
+                    fmt,
+                    interp.group,
+                    &interp.lattice_name,
+                )
+                .map_err(|e| e.to_string())?,
+            };
+            #[cfg(not(feature = "gauge"))]
+            let _stats = {
+                let _ = as_gauge_field; // Always None under !gauge
                 crate::ingest::execute_ingest(engine, bundle, &source_path, fmt)
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e| e.to_string())?
+            };
             Ok(ExecResult::Ok)
         }
         Statement::Transplant { target, .. } => {
@@ -13334,10 +13424,12 @@ mod tests {
                 bundle,
                 source,
                 format,
+                as_gauge_field,
             } => {
                 assert_eq!(bundle, "sensors");
                 assert_eq!(source, "data.csv");
                 assert_eq!(format, "CSV");
+                assert!(as_gauge_field.is_none(), "no AS clause → None");
             }
             _ => panic!("Expected Ingest"),
         }

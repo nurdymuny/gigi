@@ -168,6 +168,39 @@ pub enum IngestError {
     /// misleading wrapped engine error when an INGEST targets a
     /// non-existent bundle.
     TargetBundleNotFound { bundle: String },
+    // ── Halcyon L=24 Concept 2 (2026-07-01): GAUGE_FIELD interpretation errors ──
+    /// The named lattice was not found in `lattice::registry`.
+    /// Surfaced by the GAUGE_FIELD interpretation path.
+    LatticeNotFound { name: String },
+    /// The innermost NPZ axis width does not match `Group::repr_dim()`.
+    /// `expected` is `group.repr_dim()`; `got` is `shape[shape.len()-1]`.
+    FiberWidthMismatch {
+        group: &'static str,
+        expected: usize,
+        got: usize,
+    },
+    /// The array's rank does not match `1 (config) + 1 (mu) + D (sites)
+    /// + 1 (fiber)` for a lattice of dimension `D`.
+    AxisCountMismatch {
+        expected_ndim: usize,
+        got_ndim: usize,
+        lattice_dim: usize,
+    },
+    /// A site-axis extent in the array does not equal the reference L
+    /// (Phase 1 CUBIC lattices are L-uniform; a non-uniform site axis
+    /// is the clearest error to surface). `axis_index` is 2..2+D
+    /// (0-based on the NPZ shape).
+    SiteAxisExtentMismatch {
+        axis_index: usize,
+        expected_l: usize,
+        got: u64,
+    },
+    /// The mu (direction) axis extent does not equal `lattice.dim`.
+    DirectionAxisMismatch { expected_d: usize, got: u64 },
+    /// NPZ archive contains more than one array member — the
+    /// GAUGE_FIELD interpretation requires a single named array (same
+    /// convention as Hallie's harvest output).
+    MultiArrayNotAllowedForGaugeField { got: usize },
 }
 
 impl std::fmt::Display for IngestError {
@@ -190,6 +223,31 @@ impl std::fmt::Display for IngestError {
             IngestError::TargetBundleNotFound { bundle } => write!(
                 f,
                 "INGEST: destination bundle '{bundle}' does not exist — create the bundle first via 'CREATE BUNDLE {bundle} ...' or pass --auto-create to infer schema from the source"
+            ),
+            // ── Halcyon L=24 Concept 2 (2026-07-01) ──
+            IngestError::LatticeNotFound { name } => write!(
+                f,
+                "INGEST: lattice `{name}` not found — declare it with LATTICE ... FROM CUBIC ...; before INGEST"
+            ),
+            IngestError::FiberWidthMismatch { group, expected, got } => write!(
+                f,
+                "INGEST: GAUGE_FIELD width mismatch for group `{group}`: expected innermost axis of width {expected}, got {got}"
+            ),
+            IngestError::AxisCountMismatch { expected_ndim, got_ndim, lattice_dim } => write!(
+                f,
+                "INGEST: GAUGE_FIELD axis-count mismatch: lattice dim={lattice_dim} implies array ndim = 1 + 1 + {lattice_dim} + 1 = {expected_ndim}, got ndim={got_ndim}"
+            ),
+            IngestError::SiteAxisExtentMismatch { axis_index, expected_l, got } => write!(
+                f,
+                "INGEST: GAUGE_FIELD site-axis {axis_index} extent mismatch: expected L={expected_l}, got {got}"
+            ),
+            IngestError::DirectionAxisMismatch { expected_d, got } => write!(
+                f,
+                "INGEST: GAUGE_FIELD direction-axis extent mismatch: expected D={expected_d}, got {got}"
+            ),
+            IngestError::MultiArrayNotAllowedForGaugeField { got } => write!(
+                f,
+                "INGEST: GAUGE_FIELD interpretation requires a single-array NPZ; archive contained {got} members"
             ),
         }
     }
@@ -572,6 +630,298 @@ fn types_compatible(existing: &FieldType, inferred: &FieldType) -> bool {
         (FieldType::Vector { dims: a }, FieldType::Vector { dims: b }) => a == b,
         _ => false,
     }
+}
+
+// ─── Halcyon L=24 Concept 2 (2026-07-01) ───
+//
+// INGEST ... AS GAUGE_FIELD GROUP <g> ON LATTICE <l>
+//
+// Interpretation clause that turns Halcyon's harvest NPZ (shape
+// `(n_configs, D, L, L, ..., L, repr_dim)`) into a bundle whose
+// records carry canonical base fields (config_id, mu, site_x/y/z/t)
+// and canonical fiber fields per group (SU(2)=q0..q3,
+// SU(3)=re_00..im_22, U(1)=theta, Z(N)=index). Each fiber component is
+// its OWN Numeric column so SPECTRAL_GAUGE ON FIBER (q0, q1, q2, q3)
+// can read them directly.
+//
+// Emits one record per (config_id, mu, site) tuple. Total records =
+// n_configs * D * L^D.
+
+/// Canonical fiber column names for `Group::SU2` — scalar-first
+/// quaternion, matches `src/gauge/su2_gauge_field.rs`.
+#[cfg(feature = "gauge")]
+pub const SU2_FIBER_NAMES: [&str; 4] = ["q0", "q1", "q2", "q3"];
+
+/// Canonical fiber column names for `Group::SU3` — 3x3 complex matrix
+/// flattened row-major with interleaved (re, im) pairs, matches
+/// `Group::SU3` doc at `src/gauge/group.rs`.
+#[cfg(feature = "gauge")]
+pub const SU3_FIBER_NAMES: [&str; 18] = [
+    "re_00", "im_00", "re_01", "im_01", "re_02", "im_02",
+    "re_10", "im_10", "re_11", "im_11", "re_12", "im_12",
+    "re_20", "im_20", "re_21", "im_21", "re_22", "im_22",
+];
+
+/// Canonical fiber column name for `Group::U1` — single angle.
+#[cfg(feature = "gauge")]
+pub const U1_FIBER_NAMES: [&str; 1] = ["theta"];
+
+/// Canonical fiber column name for `Group::ZN { .. }` — discrete
+/// index carried as f64 (per `Group::repr_dim()` note).
+#[cfg(feature = "gauge")]
+pub const ZN_FIBER_NAMES: [&str; 1] = ["index"];
+
+/// Canonical site-axis names, truncated to the lattice dimension.
+/// Full list is `[site_x, site_y, site_z, site_t]`; Phase 1 lattice
+/// dims are 1..=4 so a `&SITE_AXIS_NAMES[..D]` slice is always valid.
+pub const SITE_AXIS_NAMES: [&str; 4] = ["site_x", "site_y", "site_z", "site_t"];
+
+/// Return the canonical fiber-name slice for a group. Length always
+/// equals `group.repr_dim()`. Available under `feature = "gauge"`.
+#[cfg(feature = "gauge")]
+pub fn canonical_fiber_names(group: crate::gauge::Group) -> &'static [&'static str] {
+    match group {
+        crate::gauge::Group::SU2 => &SU2_FIBER_NAMES,
+        crate::gauge::Group::SU3 => &SU3_FIBER_NAMES,
+        crate::gauge::Group::U1 => &U1_FIBER_NAMES,
+        crate::gauge::Group::ZN { .. } => &ZN_FIBER_NAMES,
+    }
+}
+
+/// Recover the lattice dimension `D` from a `Lattice`'s topology hint.
+///
+/// The CUBIC constructor stamps `"CUBIC_L{L}_D{D}"` (or
+/// `"..._OPEN"` for open BCs) on `lattice.topology`. Parsing D back
+/// out lets the GAUGE_FIELD interpretation path route the NPZ axes
+/// without adding a new `dim` field to the `Lattice` struct. If the
+/// topology hint isn't a CUBIC form or D can't be parsed, returns
+/// `None` and the caller surfaces a `LatticeNotFound`-style error.
+///
+/// Halcyon L=24 Concept 2 (2026-07-01).
+#[cfg(feature = "gauge")]
+fn cubic_dim_from_topology(topology: &str) -> Option<usize> {
+    // Strip trailing "_OPEN" if present (Concept 1 OBC variants).
+    let stripped = topology.strip_suffix("_OPEN").unwrap_or(topology);
+    // Expect prefix "CUBIC_L{L}_D{D}"; parse D.
+    if !stripped.starts_with("CUBIC_L") {
+        return None;
+    }
+    // Locate the "_D" segment after the "L{L}".
+    let idx = stripped.find("_D")?;
+    let d_tail = &stripped[idx + 2..];
+    d_tail.parse::<usize>().ok()
+}
+
+/// Recover the per-axis vertex count `L` from a `Lattice`'s topology
+/// hint (same convention as `cubic_dim_from_topology`).
+#[cfg(feature = "gauge")]
+fn cubic_l_from_topology(topology: &str) -> Option<usize> {
+    let stripped = topology.strip_suffix("_OPEN").unwrap_or(topology);
+    if !stripped.starts_with("CUBIC_L") {
+        return None;
+    }
+    // Extract characters between "CUBIC_L" and "_D".
+    let after_l = &stripped["CUBIC_L".len()..];
+    let end = after_l.find("_D")?;
+    after_l[..end].parse::<usize>().ok()
+}
+
+/// GAUGE_FIELD-interpretation INGEST. Called by the parser when
+/// `AS GAUGE_FIELD GROUP <g> ON LATTICE <l>` is present on the INGEST
+/// statement. Reads a single NPZ array of shape
+/// `(n_configs, D, L, L, ..., L, group.repr_dim())` and emits one
+/// record per (config_id, mu, site_tuple) point with canonical
+/// base + fiber fields.
+///
+/// Backwards compat: this is a distinct entry point; the AUTO_GENERIC
+/// `execute_ingest` path is untouched.
+///
+/// Halcyon L=24 Concept 2 (2026-07-01).
+#[cfg(feature = "gauge")]
+pub fn execute_ingest_as_gauge_field(
+    engine: &mut Engine,
+    target_bundle: &str,
+    source_path: &Path,
+    format: IngestFormat,
+    group: crate::gauge::Group,
+    lattice_name: &str,
+) -> Result<IngestStats, IngestError> {
+    if !source_path.exists() {
+        return Err(IngestError::FileNotFound(source_path.to_path_buf()));
+    }
+    let bytes_read = std::fs::metadata(source_path).map(|m| m.len()).unwrap_or(0);
+
+    // Resolve lattice — its `D` (recovered from the topology hint)
+    // drives every shape assertion below.
+    let lattice = crate::lattice::registry::get(lattice_name).ok_or_else(|| {
+        IngestError::LatticeNotFound { name: lattice_name.to_string() }
+    })?;
+    let topology = lattice.topology.as_deref().ok_or_else(|| IngestError::EngineError(
+        format!("lattice `{lattice_name}` carries no topology hint; GAUGE_FIELD interpretation requires a CUBIC lattice")
+    ))?;
+    let d = cubic_dim_from_topology(topology).ok_or_else(|| IngestError::EngineError(format!(
+        "lattice `{lattice_name}` topology hint `{topology}` is not a CUBIC form; GAUGE_FIELD interpretation requires CUBIC"
+    )))?;
+    let l_from_hint = cubic_l_from_topology(topology);
+
+    match format {
+        IngestFormat::Npz => ingest_npz_as_gauge_field(
+            engine,
+            target_bundle,
+            source_path,
+            bytes_read,
+            group,
+            d,
+            l_from_hint,
+        ),
+    }
+}
+
+/// GAUGE_FIELD-interpretation NPZ reader. See
+/// `execute_ingest_as_gauge_field` for surface semantics.
+#[cfg(feature = "gauge")]
+fn ingest_npz_as_gauge_field(
+    engine: &mut Engine,
+    target_bundle: &str,
+    source_path: &Path,
+    bytes_read: u64,
+    group: crate::gauge::Group,
+    d: usize,
+    l_from_hint: Option<usize>,
+) -> Result<IngestStats, IngestError> {
+    // Open the archive, require exactly one array member (the harvest
+    // convention). Multi-array archives error clearly.
+    let mut archive = npyz::npz::NpzArchive::open(source_path)
+        .map_err(|e| IngestError::FormatError(format!(
+            "open NPZ {}: {e}", source_path.display()
+        )))?;
+    let names: Vec<String> = archive.array_names().map(|s| s.to_string()).collect();
+    if names.is_empty() {
+        return Err(IngestError::EmptyArchive(source_path.to_path_buf()));
+    }
+    if names.len() != 1 {
+        return Err(IngestError::MultiArrayNotAllowedForGaugeField { got: names.len() });
+    }
+    let entry = archive
+        .by_name(&names[0])
+        .map_err(|e| IngestError::FormatError(format!("read array `{}`: {e}", names[0])))?
+        .ok_or_else(|| IngestError::FormatError(format!(
+            "NPZ member `{}` listed but not retrievable", names[0]
+        )))?;
+    let shape: Vec<u64> = entry.shape().to_vec();
+
+    // Shape validation. Expected ndim = 1 (config) + 1 (mu) + D (sites) + 1 (fiber).
+    let expected_ndim = 1 + 1 + d + 1;
+    if shape.len() != expected_ndim {
+        return Err(IngestError::AxisCountMismatch {
+            expected_ndim,
+            got_ndim: shape.len(),
+            lattice_dim: d,
+        });
+    }
+    // Direction axis extent equals D.
+    if shape[1] != d as u64 {
+        return Err(IngestError::DirectionAxisMismatch {
+            expected_d: d,
+            got: shape[1],
+        });
+    }
+    // Per-axis L uniformity. The reference L is taken from the
+    // topology hint when available; otherwise from the first site axis.
+    let l_ref = l_from_hint.unwrap_or(shape[2] as usize);
+    for (i, axis_ext) in shape[2..2 + d].iter().enumerate() {
+        if *axis_ext as usize != l_ref {
+            return Err(IngestError::SiteAxisExtentMismatch {
+                axis_index: 2 + i,
+                expected_l: l_ref,
+                got: *axis_ext,
+            });
+        }
+    }
+    // Fiber width = group.repr_dim().
+    let expected_fiber = group.repr_dim();
+    let got_fiber = *shape.last().unwrap() as usize;
+    if got_fiber != expected_fiber {
+        return Err(IngestError::FiberWidthMismatch {
+            group: group.label(),
+            expected: expected_fiber,
+            got: got_fiber,
+        });
+    }
+
+    // Decode as flat Vec<f64> in row-major (NPZ default). Total len
+    // = n_configs * D * L^D * repr_dim.
+    let data: Vec<f64> = entry
+        .into_vec::<f64>()
+        .map_err(|e| IngestError::FormatError(format!("decode as f64: {e}")))?;
+    let n_configs = shape[0] as usize;
+    let expected_len = n_configs * d * l_ref.pow(d as u32) * expected_fiber;
+    if data.len() != expected_len {
+        return Err(IngestError::FormatError(format!(
+            "GAUGE_FIELD data length {} != product {}", data.len(), expected_len
+        )));
+    }
+
+    // Build inferred schema — canonical base + fiber fields.
+    let mut inferred: Vec<InferredFieldSchema> = Vec::new();
+    inferred.push(InferredFieldSchema::numeric("config_id", /*is_base=*/ true));
+    inferred.push(InferredFieldSchema::numeric("mu", /*is_base=*/ true));
+    for i in 0..d {
+        inferred.push(InferredFieldSchema::numeric(SITE_AXIS_NAMES[i], true));
+    }
+    let fiber_names = canonical_fiber_names(group);
+    for name in fiber_names {
+        inferred.push(InferredFieldSchema::numeric(name, /*is_base=*/ false));
+    }
+    let bundle_created = ensure_bundle_compatible(
+        engine, target_bundle, &inferred, /*allow_auto_create=*/ true,
+    )?;
+
+    // Stream records in row-major order matching the NPZ layout.
+    // Shape = [n_configs, D, L, L, ..., L, fiber]. Site coordinates
+    // are decoded row-major (site_x is most-significant).
+    let mut batch: Vec<Record> = Vec::with_capacity(INGEST_BATCH_SIZE.min(64));
+    let mut records_emitted: usize = 0;
+    let ln = l_ref.pow(d as u32); // sites per (config, mu)
+
+    for config_id in 0..n_configs {
+        for mu in 0..d {
+            for site_flat in 0..ln {
+                // Decode site_flat into per-axis coordinates in
+                // row-major order (site_x most-significant).
+                let mut site = [0usize; 4];
+                let mut rem = site_flat;
+                for axis in (0..d).rev() {
+                    site[axis] = rem % l_ref;
+                    rem /= l_ref;
+                }
+                let base = ((config_id * d + mu) * ln + site_flat) * expected_fiber;
+                let slice = &data[base..base + expected_fiber];
+
+                let mut record: Record = Record::new();
+                record.insert("config_id".to_string(), Value::Integer(config_id as i64));
+                record.insert("mu".to_string(), Value::Integer(mu as i64));
+                for axis in 0..d {
+                    record.insert(
+                        SITE_AXIS_NAMES[axis].to_string(),
+                        Value::Integer(site[axis] as i64),
+                    );
+                }
+                for (i, name) in fiber_names.iter().enumerate() {
+                    record.insert((*name).to_string(), Value::Float(slice[i]));
+                }
+                batch.push(record);
+
+                if batch.len() >= INGEST_BATCH_SIZE {
+                    flush_batch(engine, target_bundle, &mut batch, &mut records_emitted)?;
+                }
+            }
+        }
+    }
+    if !batch.is_empty() {
+        flush_batch(engine, target_bundle, &mut batch, &mut records_emitted)?;
+    }
+    Ok(IngestStats { records_emitted, bundle_created, bytes_read })
 }
 
 #[cfg(test)]

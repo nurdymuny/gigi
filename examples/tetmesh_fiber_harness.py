@@ -349,19 +349,19 @@ def load_and_query(server, tets, refined, events, ids, roots):
         # point query on the fiber: O(1)
         "SECTION tets AT id = 't00000';",
         # spec query 3: reachable classifier state per refinement level.
-        # Two engine caveats found while validating (2026-07-01 build):
-        #   - count(*) and count(<text-or-key-field>) silently return an
-        #     empty result set; count over a NUMERIC fiber field works.
-        #   - two min() measures over DIFFERENT fields in one INTEGRATE
-        #     both return the first field's value; keep one min() per
-        #     statement until that's fixed.
-        "INTEGRATE tets OVER classifier_cell MEASURE count(q_vol), "
-        "min(q_vol);",
+        # count(*) and multi-field min() in one statement exercise the
+        # 2026-07-01 INTEGRATE fixes (group_by_measures): previously
+        # count(*) silently returned empty and every min() aliased the
+        # first field's value.
+        "INTEGRATE tets OVER classifier_cell MEASURE count(*), "
+        "min(min_dihedral), min(q_vol);",
         # spec query 4: shape-quality descent curve across levels
-        "INTEGRATE tets OVER level MEASURE min(q_vol);",
-        "INTEGRATE tets OVER level MEASURE min(d_bad);",
+        "INTEGRATE tets OVER level MEASURE count(*), min(q_vol), "
+        "min(d_bad);",
+        # global aggregation (no OVER) — also part of the same fix
+        "INTEGRATE tets MEASURE count(*), min(q_vol), max(max_dihedral);",
         # audit trail: events per scheme/level
-        "INTEGRATE tet_refine_events OVER level MEASURE count(level);",
+        "INTEGRATE tet_refine_events OVER level MEASURE count(*);",
         # geometric ride-alongs on the bundle itself
         "HEALTH tets;",
     ]

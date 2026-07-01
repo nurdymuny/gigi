@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Mesh That Audits Itself — GIGI tetmesh build</title>
+<style>
+  :root {
+    --surface-1: #1a1a19;        /* dark chart surface (validated) */
+    --panel: rgba(26, 26, 25, 0.88);
+    --border: #33322f;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8a897f;
+    --series-1: #3987e5;         /* classifier cell C0 — blue  */
+    --series-2: #199e70;         /* classifier cell C1 — aqua  */
+    --series-3: #c98500;         /* classifier cell C2 — yellow */
+    --grid: #33322f;
+  }
+  html, body { margin: 0; height: 100%; background: var(--surface-1);
+    font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text-primary); overflow: hidden; }
+  #scene { position: absolute; inset: 0; }
+  .panel { position: absolute; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(6px); }
+  #hdr { top: 14px; left: 14px; max-width: 380px; }
+  #hdr h1 { margin: 0 0 2px; font-size: 15px; font-weight: 650; }
+  #hdr p { margin: 0; color: var(--text-secondary); font-size: 12px; }
+  #hdr .src { color: var(--text-muted); font-size: 11px; margin-top: 6px; }
+  #controls { top: 14px; right: 14px; width: 240px; }
+  .ctl-row { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
+  .ctl-row label { color: var(--text-secondary); font-size: 12px; flex: 0 0 62px; }
+  .seg { display: flex; gap: 4px; }
+  .seg button { background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+    border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; min-width: 34px; }
+  .seg button.on { background: #2a2a28; color: var(--text-primary); border-color: #4a4945; }
+  input[type=range] { flex: 1; accent-color: var(--series-1); }
+  .chk { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 12px; }
+  #legend { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .lg-row { display: flex; align-items: center; gap: 7px; margin: 3px 0; font-size: 12px; }
+  .chip { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 10px; }
+  .lg-name { color: var(--text-secondary); flex: 1; }
+  .lg-count { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  #telemetry { bottom: 14px; left: 14px; width: 300px; }
+  #telemetry h2 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-bottom: 10px; }
+  .tile .v { font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .tile .k { font-size: 11px; color: var(--text-muted); }
+  #curve text { font: 10px system-ui, sans-serif; fill: var(--text-secondary); }
+  #curve .val { fill: var(--text-primary); font-weight: 600; }
+  details { margin-top: 8px; }
+  summary { color: var(--text-muted); font-size: 11px; cursor: pointer; }
+  table { border-collapse: collapse; margin-top: 6px; width: 100%; font-size: 11px; }
+  th, td { text-align: right; padding: 2px 6px; color: var(--text-secondary);
+    border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  #tip { position: absolute; pointer-events: none; display: none; z-index: 10;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; max-width: 230px; }
+  #tip .t-class { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+  #tip .t-kv { color: var(--text-secondary); margin-top: 3px; }
+  #tip .t-kv b { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+
+<div class="panel" id="hdr">
+  <h1>The Mesh That Audits Itself</h1>
+  <p>unit_cube_384 (Kuhn triangulation) under naive longest-edge bisection,
+     refined where the mesh meets a spherical feature. Each tetrahedron is
+     colored by its classifier cell — the sign-invariant CAD cell of its
+     dihedral tuple modulo S<sub>4</sub>.</p>
+  <p class="src">GIGI_TETMESH_SPEC_v0.6 · <i>GIGI Builds</i> chapter draft · drag to orbit, hover a tet for its fiber</p>
+</div>
+
+<div class="panel" id="controls">
+  <div class="ctl-row"><label>Level</label><div class="seg" id="levels"></div></div>
+  <div class="ctl-row"><label>Explode</label><input id="explode" type="range" min="0" max="60" value="18"></div>
+  <div class="ctl-row"><label></label><span class="chk"><input id="cut" type="checkbox"> cutaway (y &lt; ½)</span></div>
+  <div class="ctl-row"><label></label><span class="chk"><input id="spin" type="checkbox" checked> auto-rotate</span></div>
+  <div id="legend"></div>
+</div>
+
+<div class="panel" id="telemetry">
+  <h2>REFINEMENT TELEMETRY — the Experiment C instrument</h2>
+  <div class="tiles">
+    <div class="tile"><div class="v" id="t-tets">–</div><div class="k">tetrahedra</div></div>
+    <div class="tile"><div class="v" id="t-cells">–</div><div class="k">classifier cells reached</div></div>
+    <div class="tile"><div class="v" id="t-qvol">–</div><div class="k">min q_vol</div></div>
+    <div class="tile"><div class="v" id="t-dbad">–</div><div class="k">min d_bad</div></div>
+  </div>
+  <svg id="curve" width="272" height="132" role="img" aria-label="min q_vol by refinement level"></svg>
+  <details><summary>Data table</summary><table id="dtable"></table></details>
+</div>
+
+<div id="tip"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ---------------------------------------------------------------- mesh math
+// Ports of examples/tetmesh_fiber_harness.py — same conventions throughout.
+const N = 4, LEVELS = 3, EPS_MIN = 0.2, EPS_VOL = 0.1;
+const BALL_C = [0.5, 0.5, 0.5], BALL_R = 0.32;   // the "feature" driving AMR
+
+const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const norm = a => Math.hypot(a[0], a[1], a[2]);
+const PAIRS = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
+
+function kuhnMesh(n) {
+  const tets = [], h = 1 / n;
+  const perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+  for (let ix = 0; ix < n; ix++) for (let iy = 0; iy < n; iy++) for (let iz = 0; iz < n; iz++)
+    for (const p of perms) {
+      const v = [[ix*h, iy*h, iz*h]];
+      for (const ax of p) { const q = v[v.length-1].slice(); q[ax] += h; v.push(q); }
+      tets.push(v);
+    }
+  return tets;
+}
+
+// fiber data: dihedrals (outward normals, alpha = acos(-ni.nj)), q_vol, d_bad
+function tetFiber(v) {
+  const normals = [];
+  for (let i = 0; i < 4; i++) {
+    const idx = [0,1,2,3].filter(j => j !== i);
+    const [a, b, c] = [v[idx[0]], v[idx[1]], v[idx[2]]];
+    let nrm = cross(sub(b,a), sub(c,a));
+    const L = norm(nrm); nrm = nrm.map(x => x/L);
+    if (dot(nrm, sub(v[i], a)) > 0) nrm = nrm.map(x => -x);
+    normals.push(nrm);
+  }
+  const alpha = [];
+  for (let i = 0; i < 4; i++) for (let j = i+1; j < 4; j++)
+    alpha.push(Math.acos(Math.max(-1, Math.min(1, -dot(normals[i], normals[j])))));
+  alpha.sort((a, b) => a - b);                    // S4-invariant canonical order
+  const e = [sub(v[1],v[0]), sub(v[2],v[0]), sub(v[3],v[0])];
+  const vol = Math.abs(dot(e[0], cross(e[1], e[2]))) / 6;
+  const lens = PAIRS.map(([a,b]) => norm(sub(v[b], v[a])));
+  const L = Math.sqrt(lens.reduce((s,x) => s + x*x, 0) / 6);
+  const qVol = 6 * vol / L**3;
+  const dBad = Math.max(0, Math.min(alpha[0] - EPS_MIN, (Math.PI - EPS_MIN) - alpha[5], qVol - EPS_VOL));
+  return { alpha, qVol, dBad, vol, key: alpha.map(a => a.toFixed(5)).join(',') };
+}
+
+function bisectLongest(v) {
+  const lens = PAIRS.map(([a,b]) => norm(sub(v[b], v[a])));
+  const [a, b] = PAIRS[lens.indexOf(Math.max(...lens))];
+  const m = [(v[a][0]+v[b][0])/2, (v[a][1]+v[b][1])/2, (v[a][2]+v[b][2])/2];
+  const c1 = v.map((p,i) => i === a ? m : p), c2 = v.map((p,i) => i === b ? m : p);
+  return [c1, c2];
+}
+
+const nearBall = v => v.some(p => Math.abs(norm(sub(p, BALL_C)) - BALL_R) < 0.09);
+
+// build all levels: refine tets whose vertices straddle the sphere surface
+const classLabel = new Map();                     // dihedral key -> C0, C1, ...
+function labelOf(key) {
+  if (!classLabel.has(key)) classLabel.set(key, 'C' + classLabel.size);
+  return classLabel.get(key);
+}
+const levels = [kuhnMesh(N).map(v => ({ v, f: null }))];
+for (let l = 1; l <= LEVELS; l++) {
+  const next = [];
+  for (const t of levels[l-1]) {
+    if (nearBall(t.v)) bisectLongest(t.v).forEach(v => next.push({ v }));
+    else next.push({ v: t.v });
+  }
+  levels.push(next);
+}
+const telemetry = levels.map((tets, l) => {
+  let qMin = Infinity, dMin = Infinity; const counts = new Map();
+  for (const t of tets) {
+    t.f = tetFiber(t.v); t.cls = labelOf(t.f.key);
+    qMin = Math.min(qMin, t.f.qVol); dMin = Math.min(dMin, t.f.dBad);
+    counts.set(t.cls, (counts.get(t.cls) || 0) + 1);
+  }
+  return { level: l, n: tets.length, counts, qMin, dMin };
+});
+
+// ---------------------------------------------------------------- three.js
+const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+const SERIES = [css('--series-1'), css('--series-2'), css('--series-3'),
+                '#9085e9', '#e66767', '#d55181'];   // fallbacks beyond 3 classes
+const colorOf = cls => SERIES[+cls.slice(1) % SERIES.length];
+
+const el = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+el.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(css('--surface-1'));
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.01, 50);
+camera.position.set(1.85, 1.45, 2.05);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0.5, 0.45, 0.5);
+controls.autoRotate = true; controls.autoRotateSpeed = 0.9;
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x404038, 1.1));
+const dir = new THREE.DirectionalLight(0xffffff, 1.4); dir.position.set(2.5, 4, 1.5);
+scene.add(dir);
+const dir2 = new THREE.DirectionalLight(0xffffff, 0.4); dir2.position.set(-2, -1, -2.5);
+scene.add(dir2);
+
+// faint unit-cube frame for spatial reference (recessive, like a grid)
+const frame = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+  new THREE.LineBasicMaterial({ color: css('--grid'), transparent: true, opacity: 0.9 }));
+frame.position.set(0.5, 0.5, 0.5);
+scene.add(frame);
+
+const FACES = [[1,2,3],[0,3,2],[0,1,3],[0,2,1]];   // outward-wound face of vertex i
+let meshGroup = null, pickMeta = [];
+
+function buildLevel(l, explode, cutaway) {
+  if (meshGroup) { meshGroup.traverse(o => o.geometry && o.geometry.dispose()); scene.remove(meshGroup); }
+  meshGroup = new THREE.Group(); pickMeta = [];
+  const byClass = new Map();
+  for (const t of levels[l]) {
+    const c = t.v.reduce((s,p) => [s[0]+p[0]/4, s[1]+p[1]/4, s[2]+p[2]/4], [0,0,0]);
+    if (cutaway && c[1] > 0.5) continue;
+    if (!byClass.has(t.cls)) byClass.set(t.cls, { pos: [], meta: [] });
+    const g = byClass.get(t.cls), s = 1 - explode;
+    const vv = t.v.map(p => [c[0]+(p[0]-c[0])*s, c[1]+(p[1]-c[1])*s, c[2]+(p[2]-c[2])*s]);
+    for (const f of FACES) for (const i of f) g.pos.push(...vv[i]);
+    g.meta.push(t);
+  }
+  for (const [cls, g] of [...byClass.entries()].sort()) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
+    geo.computeVertexNormals();                     // non-indexed -> flat faces
+    const mat = new THREE.MeshStandardMaterial({
+      color: colorOf(cls), flatShading: true, roughness: 0.55, metalness: 0.05 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.userData = { cls, meta: g.meta };
+    meshGroup.add(mesh);
+    pickMeta.push(mesh);
+  }
+  scene.add(meshGroup);
+}
+
+// ---------------------------------------------------------------- UI state
+let curLevel = LEVELS;
+const segEl = document.getElementById('levels');
+for (let l = 0; l <= LEVELS; l++) {
+  const b = document.createElement('button');
+  b.textContent = 'L' + l;
+  b.onclick = () => { curLevel = l; refresh(); };
+  segEl.appendChild(b);
+}
+const explodeEl = document.getElementById('explode'), cutEl = document.getElementById('cut');
+explodeEl.oninput = refresh; cutEl.onchange = refresh;
+document.getElementById('spin').onchange = e => controls.autoRotate = e.target.checked;
+
+function fmt(x, d = 4) { return x.toFixed(d); }
+
+function refresh() {
+  buildLevel(curLevel, explodeEl.value / 100, cutEl.checked);
+  [...segEl.children].forEach((b, i) => b.classList.toggle('on', i === curLevel));
+  const t = telemetry[curLevel];
+  document.getElementById('t-tets').textContent = t.n.toLocaleString();
+  document.getElementById('t-cells').textContent = t.counts.size;
+  document.getElementById('t-qvol').textContent = fmt(t.qMin);
+  document.getElementById('t-dbad').textContent = fmt(t.dMin);
+  document.getElementById('legend').innerHTML =
+    [...t.counts.entries()].sort().map(([cls, n]) =>
+      `<div class="lg-row"><span class="chip" style="background:${colorOf(cls)}"></span>` +
+      `<span class="lg-name">classifier cell ${cls}</span><span class="lg-count">${n.toLocaleString()}</span></div>`
+    ).join('');
+  drawCurve();
+  drawTable();
+}
+
+// descent curve: single series (min q_vol). A flat line is the headline
+// result — the shape-quality floor holding under refinement — so the
+// y-window is fixed wide (0 -> sliver threshold to well-formed) with
+// labeled gridlines, points are labeled selectively (only where the
+// value changes), and the flatness is annotated by name.
+function drawCurve() {
+  const svg = document.getElementById('curve');
+  const W = 272, H = 132, m = { l: 40, r: 14, t: 30, b: 20 };
+  const lo = 0.0, hi = 0.6;
+  const x = l => m.l + (W - m.l - m.r) * l / LEVELS;
+  const y = q => m.t + (H - m.t - m.b) * (1 - (q - lo) / (hi - lo));
+  let s = `<text x="${m.l}" y="11">min q_vol by refinement level</text>`;
+  for (const g of [0.1, 0.3, 0.5]) {
+    s += `<line x1="${m.l}" x2="${W-m.r}" y1="${y(g)}" y2="${y(g)}" stroke="var(--grid)" stroke-width="1"/>`;
+    s += `<text x="${m.l - 5}" y="${y(g) + 3}" text-anchor="end">${g.toFixed(1)}</text>`;
+  }
+  s += `<text x="${m.l + 3}" y="${y(EPS_VOL) - 4}" fill="var(--text-muted)">sliver threshold</text>`;
+  s += `<polyline fill="none" stroke="var(--series-1)" stroke-width="2" points="` +
+       telemetry.map(t => `${x(t.level)},${y(t.qMin)}`).join(' ') + `"/>`;
+  telemetry.forEach((t, i) => {
+    const cx = x(t.level), cy = y(t.qMin);
+    if (t.level === curLevel)
+      s += `<circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="var(--text-secondary)" stroke-width="1.5"/>`;
+    s += `<circle cx="${cx}" cy="${cy}" r="4" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/>`;
+    // selective direct labels: first point + any point whose value moved
+    if (i === 0 || Math.abs(t.qMin - telemetry[i-1].qMin) > 5e-4)
+      s += `<text class="val" x="${cx}" y="${cy - 10}" text-anchor="middle">${t.qMin.toFixed(3)}</text>`;
+    s += `<text x="${cx}" y="${H - 6}" text-anchor="middle">L${t.level}</text>`;
+  });
+  const flat = Math.max(...telemetry.map(t => t.qMin)) - Math.min(...telemetry.map(t => t.qMin)) < 5e-3;
+  if (flat)
+    s += `<text x="${W - m.r}" y="${y(telemetry[0].qMin) + 30}" text-anchor="end" fill="var(--text-muted)">floor holds — bounded classes (Maubach)</text>`;
+  svg.innerHTML = s;
+}
+
+function drawTable() {
+  document.getElementById('dtable').innerHTML =
+    `<tr><th>level</th><th>tets</th><th>cells</th><th>min q_vol</th><th>min d_bad</th></tr>` +
+    telemetry.map(t =>
+      `<tr><td>L${t.level}</td><td>${t.n.toLocaleString()}</td><td>${t.counts.size}</td>` +
+      `<td>${fmt(t.qMin)}</td><td>${fmt(t.dMin)}</td></tr>`).join('');
+}
+
+// ---------------------------------------------------------------- tooltip
+const tip = document.getElementById('tip');
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+renderer.domElement.addEventListener('pointermove', ev => {
+  ptr.set(ev.clientX / innerWidth * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(pickMeta, false)[0];
+  if (!hit) { tip.style.display = 'none'; return; }
+  const t = hit.object.userData.meta[Math.floor(hit.faceIndex / 4)];
+  const a = t.f.alpha;
+  tip.innerHTML =
+    `<div class="t-class"><span class="chip" style="background:${colorOf(t.cls)}"></span>classifier cell ${t.cls}</div>` +
+    `<div class="t-kv">q_vol <b>${fmt(t.f.qVol)}</b> · d_bad <b>${fmt(t.f.dBad)}</b></div>` +
+    `<div class="t-kv">dihedrals <b>${(a[0]*180/Math.PI).toFixed(1)}°–${(a[5]*180/Math.PI).toFixed(1)}°</b></div>` +
+    `<div class="t-kv">volume <b>${t.f.vol.toExponential(2)}</b></div>`;
+  tip.style.display = 'block';
+  tip.style.left = Math.min(ev.clientX + 14, innerWidth - 240) + 'px';
+  tip.style.top = Math.min(ev.clientY + 14, innerHeight - 110) + 'px';
+});
+renderer.domElement.addEventListener('pointerleave', () => tip.style.display = 'none');
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+refresh();
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+</script>
+</body>
+</html>

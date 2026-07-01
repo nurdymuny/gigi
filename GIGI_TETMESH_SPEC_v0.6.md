@@ -3,8 +3,8 @@
 **Version:** 0.6
 **Author:** Bee Davis — Davis Geometric
 **Date:** July 2026
-**Status:** companion note — published standalone
-**Provenance:** This material was drafted as the tetrahedral-mesh case study for *The Geometry of Flight* (Davis 2026, ISBN 979-8-1983-7541-3) — the chapter that walks the fiber-bundle substrate from abstract definition to a working engineering payload — and was cut in the final edit for length. It is published here as a standalone spec, updated against the current GIGI engine. Readers who want the substrate story behind it (the Davis Field Equation, bundles, curvature-as-first-class-state) should start with the book; this note assumes that background and gets straight to the mesh.
+**Status:** chapter draft — published as a standalone spec until the book ships
+**Book placement:** *GIGI Builds* (Vol 1 of the *GIGI Solves* series) — the tetrahedral-mesh build: **"The Mesh That Audits Itself."** Like every build in the book, it runs on a stock GIGI instance and ships its receipts: the validation harness in this repository (`examples/tetmesh_fiber_harness.py`) regenerates every number in the appendix, and the companion visualization (`examples/tetmesh_visual.html`) renders the build in the browser. Readers who want the substrate story underneath (the Davis Field Equation, bundles, curvature-as-first-class-state) can go one shelf over to *The Geometry of Flight* (Davis 2026, ISBN 979-8-1983-7541-3); this chapter assumes that background and gets straight to the mesh.
 
 **Changes from v0.5:** generalized from a single-recipient handoff draft to a standalone companion note; all GQL examples rewritten in actual GQL (`COVER` / `SECTION AT` / `INTEGRATE`) and executed against a live `gigi-stream` build; per-tet fiber record flattened to GIGI's flat fiber schema, with matrices carried as `vector(n)` fields; the refinement audit trail modeled as a typed events bundle plus materialized `(root, level)` ancestry instead of graph-pattern traversal; `unit_cube_512` corrected to `unit_cube_384` (a Kuhn triangulation has $6n^3$ tets — 512 is not attainable); validation harness added (`examples/tetmesh_fiber_harness.py`) with measured results in the appendix.
 
@@ -127,7 +127,7 @@ INTEGRATE tets OVER level MEASURE min(d_bad);
 INTEGRATE tet_refine_events OVER level MEASURE count(level);
 ```
 
-The last three are the empirical instrument for the subdivision-reduction program: they produce the reachable classifier state and the shape-quality descent curve directly from mesh telemetry. (Two current-engine caveats, found while validating: `count(*)` and `count` over text/key fields silently return an empty result set — count over a numeric fiber field instead; and two `min()` measures over different fields in one `INTEGRATE` currently return the first field's value for both — keep one `min()` per statement until that is fixed.)
+The last three are the empirical instrument for the subdivision-reduction program: they produce the reachable classifier state and the shape-quality descent curve directly from mesh telemetry. (Validating this chapter surfaced three `INTEGRATE` defects in the engine — `count(*)` and `count` over text/key fields silently returned an empty result set, multiple same-function measures over different fields all returned the first field's value, and the global no-`OVER` form always returned empty. All three were fixed in the engine alongside this spec — 2026-07-01, `aggregation::group_by_measures` — so on current builds the queries above run as written, including `count(*)` and mixed multi-field measures in one statement. On older builds, count over a numeric fiber field and keep one `min()` per statement.)
 
 ## 4. Reference dataset
 
@@ -211,6 +211,7 @@ Apply Maubach or Traxler bisection to the same mesh, same 5 levels. Over the 5-l
 
 - This spec (`GIGI_TETMESH_SPEC_v0.6.md`)
 - The validation harness (`examples/tetmesh_fiber_harness.py`) — mesh generation, full fiber computation, math validation, live load-and-query against a local GIGI instance
+- The companion visualization (`examples/tetmesh_visual.html`) — three.js rendering of the Kuhn mesh, the bisection cycle, and the descent-curve telemetry; self-contained, open in any browser
 - The `gigi_tetmesh_ref_v0.6` dataset (the structured mesh regenerable from the harness; unstructured meshes ship as data)
 - Four experiment scripts (A–D) as GQL + Jupyter
 - One-page quickstart on loading a mesh into GIGI (`docs/GETTING_STARTED.md`, Track 3)
@@ -273,4 +274,5 @@ v0.6 — generalization and engine validation (this version):
 - Fiber record flattened to GIGI's flat fiber schema; matrices carried as `vector(n)` fields; PSD certificate flattened to `psd_*` fields with `psd_mode` discriminator.
 - `unit_cube_512` corrected to `unit_cube_384`: a Kuhn triangulation of an $n^3$ grid has $6n^3$ tets, and $6n^3 = 512$ has no integer solution.
 - Experiment A validated end-to-end; Experiment C annotated with the structured-mesh negative-control result (period-3 Kuhn cycle, three classes).
-- Validation-receipt appendix added, including two current-engine caveats on `INTEGRATE` (`count(*)`/text-field count returns empty; multiple `min()` measures alias the first field).
+- Validation-receipt appendix added. Validation surfaced three `INTEGRATE` engine defects (`count(*)`/text-field count returned empty; multiple same-function measures aliased the first field; global no-`OVER` form returned empty) — all fixed in the engine alongside this version via `aggregation::group_by_measures`.
+- Reframed as a chapter draft for *GIGI Builds* (*GIGI Solves* Vol 1); companion three.js visualization added (`examples/tetmesh_visual.html`).

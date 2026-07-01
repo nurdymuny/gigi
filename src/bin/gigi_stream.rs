@@ -13185,59 +13185,58 @@ fn execute_gql_on_store_read(
             Ok(ExecResult::Rows(results))
         }
         Statement::Integrate { over, measures, .. } => {
+            // One accumulator per measure — a shared single-field
+            // accumulator makes every measure return the first field's
+            // value, and drops whole groups when that field is `*` or
+            // non-numeric. Uses BundleRef::records(), so it works for
+            // both heap & mmap stores.
+            let fields: Vec<&str> = measures.iter().map(|m| m.field.as_str()).collect();
+            let measure_value =
+                |m: &gigi::parser::MeasureSpec, agg: &gigi::aggregation::AggResult| {
+                    match m.func {
+                        gigi::parser::AggFunc::Count => {
+                            gigi::types::Value::Float(agg.count as f64)
+                        }
+                        gigi::parser::AggFunc::Sum => gigi::types::Value::Float(agg.sum),
+                        gigi::parser::AggFunc::Avg => gigi::types::Value::Float(agg.avg()),
+                        // min/max sentinels mean "no numeric values seen"
+                        // (empty group or non-numeric field) — surface as
+                        // null instead of serializing an infinity.
+                        gigi::parser::AggFunc::Min if agg.min.is_finite() => {
+                            gigi::types::Value::Float(agg.min)
+                        }
+                        gigi::parser::AggFunc::Max if agg.max.is_finite() => {
+                            gigi::types::Value::Float(agg.max)
+                        }
+                        _ => gigi::types::Value::Null,
+                    }
+                };
+            let measure_name = |m: &gigi::parser::MeasureSpec| {
+                m.alias
+                    .clone()
+                    .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field))
+            };
             if let Some(gb_field) = over {
-                let agg_field = measures.first().map(|m| m.field.as_str()).unwrap_or("*");
-                // Inline group_by using BundleRef::records() — works for both heap & mmap
-                let mut groups: std::collections::HashMap<gigi::types::Value, gigi::aggregation::AggResult> =
-                    std::collections::HashMap::new();
-                for rec in store.records() {
-                    let group_val = match rec.get(gb_field) {
-                        Some(v) => v.clone(),
-                        None => continue,
-                    };
-                    let agg_val = match rec.get(agg_field).and_then(|v| v.as_f64()) {
-                        Some(v) => v,
-                        None => continue,
-                    };
-                    let entry = groups
-                        .entry(group_val)
-                        .or_insert(gigi::aggregation::AggResult {
-                            count: 0,
-                            sum: 0.0,
-                            sum_sq: 0.0,
-                            min: f64::INFINITY,
-                            max: f64::NEG_INFINITY,
-                        });
-                    entry.count += 1;
-                    entry.sum += agg_val;
-                    entry.sum_sq += agg_val * agg_val;
-                    entry.min = entry.min.min(agg_val);
-                    entry.max = entry.max.max(agg_val);
-                }
+                let groups =
+                    gigi::aggregation::group_by_measures(store.records(), gb_field, &fields);
                 let mut rows = Vec::new();
-                for (key, agg_result) in &groups {
+                for (key, aggs) in &groups {
                     let mut row = std::collections::HashMap::new();
                     row.insert(gb_field.clone(), key.clone());
-                    for m in measures {
-                        let val = match m.func {
-                            gigi::parser::AggFunc::Count => agg_result.count as f64,
-                            gigi::parser::AggFunc::Sum => agg_result.sum,
-                            gigi::parser::AggFunc::Avg => agg_result.avg(),
-                            gigi::parser::AggFunc::Min => agg_result.min,
-                            gigi::parser::AggFunc::Max => agg_result.max,
-                        };
-                        row.insert(
-                            m.alias
-                                .clone()
-                                .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field)),
-                            gigi::types::Value::Float(val),
-                        );
+                    for (m, agg) in measures.iter().zip(aggs) {
+                        row.insert(measure_name(m), measure_value(m, agg));
                     }
                     rows.push(row);
                 }
                 Ok(ExecResult::Rows(rows))
             } else {
-                Ok(ExecResult::Rows(vec![]))
+                // Global aggregation — single row over every record.
+                let aggs = gigi::aggregation::integrate_measures(store.records(), &fields);
+                let mut row = std::collections::HashMap::new();
+                for (m, agg) in measures.iter().zip(&aggs) {
+                    row.insert(measure_name(m), measure_value(m, agg));
+                }
+                Ok(ExecResult::Rows(vec![row]))
             }
         }
         Statement::Curvature { .. } => {

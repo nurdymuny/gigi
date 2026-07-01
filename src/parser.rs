@@ -9682,130 +9682,49 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
 
+            // One accumulator per measure (group_by_measures) — a shared
+            // single-field accumulator makes every measure return the
+            // first field's value, and COUNT over `*` / non-numeric
+            // fields silently drops records.
+            let fields: Vec<&str> = measures.iter().map(|m| m.field.as_str()).collect();
+            let measure_value =
+                |m: &MeasureSpec, agg: &crate::aggregation::AggResult| match m.func {
+                    AggFunc::Count => crate::types::Value::Float(agg.count as f64),
+                    AggFunc::Sum => crate::types::Value::Float(agg.sum),
+                    AggFunc::Avg => crate::types::Value::Float(agg.avg()),
+                    // min/max sentinels mean "no numeric values seen"
+                    // (empty group or non-numeric field) — surface as
+                    // null instead of serializing an infinity.
+                    AggFunc::Min if agg.min.is_finite() => crate::types::Value::Float(agg.min),
+                    AggFunc::Max if agg.max.is_finite() => crate::types::Value::Float(agg.max),
+                    _ => crate::types::Value::Null,
+                };
+            let measure_name = |m: &MeasureSpec| {
+                m.alias
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field))
+            };
+
             if let Some(gb_field) = over {
-                // Prefer a real field for SUM/AVG/MIN/MAX; fall back to "*"
-                // only when every measure is COUNT(*).
-                let agg_field = measures
-                    .iter()
-                    .map(|m| m.field.as_str())
-                    .find(|f| *f != "*")
-                    .unwrap_or("*");
-
-                // If any measure is COUNT(*), count every record per
-                // group independent of any field's nullness — this is the
-                // SQL semantics agg_result.count cannot give us, because
-                // agg_result.count tracks records with a non-null
-                // agg_field only.
-                let needs_count_star = measures
-                    .iter()
-                    .any(|m| matches!(m.func, AggFunc::Count) && m.field == "*");
-                let count_by_group: HashMap<crate::types::Value, usize> =
-                    if needs_count_star {
-                        let mut m = HashMap::new();
-                        if let Some(s) = store.as_heap() {
-                            for rec in s.records() {
-                                if let Some(k) = rec.get(gb_field) {
-                                    *m.entry(k.clone()).or_insert(0usize) += 1;
-                                }
-                            }
-                        }
-                        m
-                    } else {
-                        HashMap::new()
-                    };
-
-                let groups = match store.as_heap() {
-                    Some(s) => crate::aggregation::group_by(s, gb_field, agg_field),
-                    None => HashMap::new(),
-                };
-
-                // When COUNT(*) is requested, iterate count_by_group's
-                // keys (the superset that includes groups where the
-                // chosen agg_field is null for every record). Otherwise
-                // use groups' keys for backwards-compatible output.
-                let group_keys: Vec<crate::types::Value> = if needs_count_star {
-                    count_by_group.keys().cloned().collect()
-                } else {
-                    groups.keys().cloned().collect()
-                };
-                let zero_agg = crate::aggregation::AggResult {
-                    count: 0,
-                    sum: 0.0,
-                    sum_sq: 0.0,
-                    min: 0.0,
-                    max: 0.0,
-                };
-
+                let groups =
+                    crate::aggregation::group_by_measures(store.records(), gb_field, &fields);
                 let mut rows = Vec::new();
-                for key in &group_keys {
-                    let agg_result = groups.get(key).unwrap_or(&zero_agg);
+                for (key, aggs) in &groups {
                     let mut row = HashMap::new();
                     row.insert(gb_field.clone(), key.clone());
-                    for m in measures {
-                        let val = match (&m.func, m.field.as_str()) {
-                            (AggFunc::Count, "*") => {
-                                *count_by_group.get(key).unwrap_or(&0) as f64
-                            }
-                            (AggFunc::Count, _) => agg_result.count as f64,
-                            (AggFunc::Sum, _) => agg_result.sum,
-                            (AggFunc::Avg, _) => agg_result.avg(),
-                            (AggFunc::Min, _) => agg_result.min,
-                            (AggFunc::Max, _) => agg_result.max,
-                        };
-                        let field_name = m
-                            .alias
-                            .as_ref()
-                            .cloned()
-                            .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field));
-                        row.insert(field_name, crate::types::Value::Float(val));
+                    for (m, agg) in measures.iter().zip(aggs) {
+                        row.insert(measure_name(m), measure_value(m, agg));
                     }
                     rows.push(row);
                 }
                 Ok(ExecResult::Rows(rows))
             } else {
-                // Global aggregation — no OVER
-                let all: Vec<crate::types::Record> = store.records().collect();
+                // Global aggregation — single row over every record.
+                let aggs = crate::aggregation::integrate_measures(store.records(), &fields);
                 let mut row = HashMap::new();
-                for m in measures {
-                    // COUNT(*) counts records, not per-field non-null values.
-                    if matches!(m.func, AggFunc::Count) && m.field == "*" {
-                        let field_name = m.alias.as_ref().cloned().unwrap_or_else(|| {
-                            format!("{}_{}", m.func_name(), m.field)
-                        });
-                        row.insert(
-                            field_name,
-                            crate::types::Value::Float(all.len() as f64),
-                        );
-                        continue;
-                    }
-                    let vals: Vec<f64> = all
-                        .iter()
-                        .filter_map(|r| r.get(&m.field))
-                        .filter_map(|v| match v {
-                            crate::types::Value::Integer(n) => Some(*n as f64),
-                            crate::types::Value::Float(f) => Some(*f),
-                            _ => None,
-                        })
-                        .collect();
-                    let val = match m.func {
-                        AggFunc::Count => vals.len() as f64,
-                        AggFunc::Sum => vals.iter().sum(),
-                        AggFunc::Avg => {
-                            if vals.is_empty() {
-                                0.0
-                            } else {
-                                vals.iter().sum::<f64>() / vals.len() as f64
-                            }
-                        }
-                        AggFunc::Min => vals.iter().cloned().fold(f64::INFINITY, f64::min),
-                        AggFunc::Max => vals.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
-                    };
-                    let field_name = m
-                        .alias
-                        .as_ref()
-                        .cloned()
-                        .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field));
-                    row.insert(field_name, crate::types::Value::Float(val));
+                for (m, agg) in measures.iter().zip(&aggs) {
+                    row.insert(measure_name(m), measure_value(m, agg));
                 }
                 Ok(ExecResult::Rows(vec![row]))
             }

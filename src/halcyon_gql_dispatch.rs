@@ -161,35 +161,176 @@ pub fn try_dispatch_topology_statement(
     stmt: &Statement,
 ) -> Result<ExecResult, String> {
     match stmt {
-        // ── CHERN_CLASS bundle ORDER k ────────────────────────────────
-        // `bundle` here is the gauge-field name from `GAUGE_FIELD <name>
-        // ON LATTICE ... GROUP ...`. Resolve through gauge::registry,
-        // not engine.bundle().
+        // ── CHERN_CLASS bundle ORDER k (Concept 3, 2026-07-01) ───────
+        // Two-path resolver:
+        //   Path A — gauge field target (backwards-compat):
+        //     `bundle` resolves through `gauge::registry`. The gauge
+        //     field carries its lattice binding via `handle.lattice_name()`,
+        //     so an explicit `ON LATTICE` clause is a conflict error.
+        //     PER / INTO_COLUMN are only valid on bundle targets and
+        //     error here as well. Returns `Scalar(f64)`.
+        //   Path B — bundle target (new):
+        //     `bundle` resolves through `engine.bundle()`. `ON LATTICE
+        //     <name>` is REQUIRED (bundle records supply the fiber; the
+        //     lattice supplies the cell complex). Returns `Rows` —
+        //     one row per PER group, or one row total when PER is omitted.
+        //     INTO_COLUMN writes q_rounded back to the source bundle.
         Statement::ChernClass {
             bundle,
             order,
             fiber_fields,
             group,
+            lattice,
+            per_field,
+            into_column,
         } => {
-            let (handle, lat, detected_group) =
-                resolve_gauge_field_and_lattice(bundle, "CHERN_CLASS")?;
-            let resolved_group = group.unwrap_or(detected_group);
+            let gauge_hit = crate::gauge::registry::get(bundle);
+            let bundle_hit = engine
+                .read()
+                .map(|e| e.bundle(bundle).is_some())
+                .unwrap_or(false);
+
+            // Guard: ON LATTICE on a gauge-field target conflicts with
+            // the field's own lattice binding.
+            if gauge_hit.is_some() && lattice.is_some() {
+                return Err(format!(
+                    "CHERN_CLASS: gauge field '{}' already carries a lattice \
+                     binding via GAUGE_FIELD ... ON LATTICE; the explicit \
+                     ON LATTICE clause here is a conflict",
+                    bundle
+                ));
+            }
+
+            // ── Path A: gauge field target ────────────────────────────
+            if let Some(handle) = gauge_hit {
+                if per_field.is_some() || into_column.is_some() {
+                    return Err(format!(
+                        "CHERN_CLASS: PER / INTO_COLUMN are only valid on \
+                         bundle targets (gauge field '{}' has no per-record \
+                         grouping — use INGEST-declared bundles for the PER \
+                         path)",
+                        bundle
+                    ));
+                }
+                let lat_name = handle.lattice_name().to_string();
+                let lat = crate::lattice::registry::get(&lat_name).ok_or_else(|| {
+                    format!(
+                        "CHERN_CLASS: lattice '{}' bound to gauge field '{}' \
+                         not found (was it declared?)",
+                        lat_name, bundle
+                    )
+                })?;
+                let detected = handle.group();
+                let resolved_group = group.unwrap_or(detected);
+                let fields_owned: Vec<String> = if fiber_fields.is_empty() {
+                    canonical_fiber_fields(resolved_group)
+                } else {
+                    fiber_fields.clone()
+                };
+                let edge_conn: &dyn crate::gauge::edge_connection::EdgeConnection =
+                    handle.as_ref();
+                let q = crate::chern_weil::chern_class(
+                    edge_conn,
+                    &lat,
+                    *order,
+                    &fields_owned,
+                    Some(resolved_group),
+                )
+                .map_err(|e| e.to_string())?;
+                return Ok(ExecResult::Scalar(q));
+            }
+
+            // ── Path B: bundle target ─────────────────────────────────
+            if !bundle_hit {
+                return Err(format!(
+                    "CHERN_CLASS: '{}' not declared — neither a GAUGE_FIELD \
+                     nor a bundle by that name (declare via GAUGE_FIELD {} \
+                     ON LATTICE ..., or CREATE BUNDLE {} first)",
+                    bundle, bundle, bundle
+                ));
+            }
+            let lat_name = lattice.as_ref().ok_or_else(|| format!(
+                "CHERN_CLASS on bundle '{}' requires ON LATTICE <name> — \
+                 bundle records supply fiber, lattice supplies cell complex",
+                bundle
+            ))?;
+            let lat = crate::lattice::registry::get(lat_name).ok_or_else(|| {
+                format!(
+                    "CHERN_CLASS: lattice '{}' not found (use LATTICE {} \
+                     FROM ... first)",
+                    lat_name, lat_name
+                )
+            })?;
+
+            // Resolve group from override or from fiber arity.
+            let resolved_group = match group {
+                Some(g) => *g,
+                None => crate::chern_weil::infer_group_from_fiber_arity(
+                    fiber_fields.len(),
+                )
+                .map_err(|e| e.to_string())?,
+            };
             let fields_owned: Vec<String> = if fiber_fields.is_empty() {
                 canonical_fiber_fields(resolved_group)
             } else {
                 fiber_fields.clone()
             };
-            let edge_conn: &dyn crate::gauge::edge_connection::EdgeConnection =
-                handle.as_ref();
-            let q = crate::chern_weil::chern_class(
-                edge_conn,
+
+            // Snapshot records once. Read guard released after collect —
+            // the write path (INTO_COLUMN) re-acquires below.
+            let all_records: Vec<crate::types::Record> = {
+                let eng = engine
+                    .read()
+                    .map_err(|e| format!("CHERN_CLASS: engine lock poisoned: {}", e))?;
+                let bref = eng.bundle(bundle).unwrap();
+                bref.records().collect()
+            };
+
+            // No PER: single scalar wrapped in one Row so bundle-path
+            // envelope shape is uniform with the PER path.
+            if per_field.is_none() {
+                let adapter = bundle_edge_connection::BundleEdgeConnectionAdapter::new(
+                    &all_records,
+                    &lat,
+                    resolved_group,
+                    &fields_owned,
+                )?;
+                let q = crate::chern_weil::chern_class(
+                    &adapter,
+                    &lat,
+                    *order,
+                    &fields_owned,
+                    Some(resolved_group),
+                )
+                .map_err(|e| e.to_string())?;
+                let mut row = crate::types::Record::new();
+                row.insert(
+                    format!("chern_class_{}", order),
+                    crate::types::Value::Float(q),
+                );
+                row.insert(
+                    "q_rounded".into(),
+                    crate::types::Value::Integer(q.round() as i64),
+                );
+                return Ok(ExecResult::Rows(vec![row]));
+            }
+
+            // PER path — group records by <field>, one chern per group.
+            let pf = per_field.as_ref().unwrap();
+            let rows = compute_chern_per_group(
+                &all_records,
                 &lat,
-                *order,
+                resolved_group,
                 &fields_owned,
-                Some(resolved_group),
-            )
-            .map_err(|e| e.to_string())?;
-            Ok(ExecResult::Scalar(q))
+                *order,
+                pf,
+            )?;
+
+            // INTO_COLUMN — write q_rounded back to the bundle.
+            if let Some(col) = into_column {
+                write_q_rounded_back(engine, bundle, pf, col, &rows)?;
+            }
+            Ok(ExecResult::Rows(rows))
         }
 
         // ── PONTRYAGIN bundle ORDER k ─────────────────────────────────
@@ -525,4 +666,344 @@ fn resolve_gauge_field_and_lattice(
     })?;
     let group = handle.group();
     Ok((handle, lat, group))
+}
+
+// ── Concept 3 (2026-07-01) — CHERN_CLASS bundle-target helpers ─────────
+
+/// Group bundle records by `per_field`, compute chern_class per group,
+/// return one `Rows` entry per group in ascending key order.
+///
+/// Grouping cost: O(N) with `BTreeMap` for stable ascending output
+/// order (Hallie's L=24 workflow reads config 0..499 in that order for
+/// the sectoral split, so the row order matters here).
+fn compute_chern_per_group(
+    all_records: &[crate::types::Record],
+    lattice: &crate::lattice::Lattice,
+    group: crate::gauge::Group,
+    fiber_fields: &[String],
+    order: usize,
+    per_field: &str,
+) -> Result<Vec<crate::types::Record>, String> {
+    use crate::types::{Record, Value};
+    use std::collections::BTreeMap;
+
+    let mut groups: BTreeMap<Value, Vec<Record>> = BTreeMap::new();
+    for rec in all_records {
+        let key = rec.get(per_field).cloned().ok_or_else(|| {
+            format!(
+                "CHERN_CLASS PER {}: record missing field '{}'",
+                per_field, per_field
+            )
+        })?;
+        groups.entry(key).or_default().push(rec.clone());
+    }
+
+    let mut rows: Vec<Record> = Vec::with_capacity(groups.len());
+    for (key, group_records) in groups {
+        let adapter = bundle_edge_connection::BundleEdgeConnectionAdapter::new(
+            &group_records,
+            lattice,
+            group,
+            fiber_fields,
+        )?;
+        let q = crate::chern_weil::chern_class(
+            &adapter,
+            lattice,
+            order,
+            fiber_fields,
+            Some(group),
+        )
+        .map_err(|e| {
+            format!(
+                "CHERN_CLASS PER {} (key={:?}): {}",
+                per_field, key, e
+            )
+        })?;
+        let q_rounded = q.round() as i64;
+
+        let mut row = Record::new();
+        row.insert(per_field.to_string(), key);
+        row.insert(format!("chern_class_{}", order), Value::Float(q));
+        row.insert("q_rounded".into(), Value::Integer(q_rounded));
+        rows.push(row);
+    }
+    Ok(rows)
+}
+
+/// Write each row's `q_rounded` back to the bundle as the target BASE
+/// column. Requires `into_column` to be a declared BASE field on the
+/// bundle (Phase 1 policy: caller pre-declares via `ALTER BUNDLE ...
+/// ADD BASE <col> INT`).
+fn write_q_rounded_back(
+    engine: &std::sync::RwLock<crate::engine::Engine>,
+    bundle_name: &str,
+    per_field: &str,
+    into_column: &str,
+    rows: &[crate::types::Record],
+) -> Result<(), String> {
+    use crate::bundle::QueryCondition;
+    use crate::types::{Record, Value};
+
+    let mut eng = engine
+        .write()
+        .map_err(|e| format!("CHERN_CLASS INTO_COLUMN: engine lock poisoned: {}", e))?;
+
+    let store = eng.heap_bundle_mut(bundle_name).ok_or_else(|| {
+        format!(
+            "CHERN_CLASS INTO_COLUMN: bundle '{}' is not a heap bundle \
+             (mmap overlays are read-only in Phase 1)",
+            bundle_name
+        )
+    })?;
+
+    if !store
+        .schema
+        .base_fields
+        .iter()
+        .any(|f| f.name == *into_column)
+    {
+        return Err(format!(
+            "CHERN_CLASS INTO_COLUMN: '{}' is not a declared BASE field on \
+             bundle '{}' (declare via ALTER BUNDLE {} ADD BASE {} INT before \
+             INTO_COLUMN)",
+            into_column, bundle_name, bundle_name, into_column
+        ));
+    }
+
+    for row in rows {
+        let key_val = row.get(per_field).ok_or_else(|| {
+            format!(
+                "CHERN_CLASS INTO_COLUMN: row missing per_field '{}'",
+                per_field
+            )
+        })?.clone();
+        let q_rounded = row
+            .get("q_rounded")
+            .cloned()
+            .unwrap_or(Value::Integer(0));
+
+        let cond = QueryCondition::Eq(per_field.to_string(), key_val);
+        let mut patch = Record::new();
+        patch.insert(into_column.to_string(), q_rounded);
+        // bulk_update handles field_stats + mutation_counter.
+        let _n = store.bulk_update(&[cond], &patch);
+        // Empty groups (`_n == 0`) are a soft signal — we already had a
+        // row for this key, so records exist; but pattern-matches on
+        // extra base fields (like `q_rounded` itself, if the row's
+        // `per_field` value fires the schema's Null default) may
+        // legitimately land 0 in a re-key edge case. Left silent for
+        // Phase 1 — Phase 2 owns telemetry on this path.
+    }
+    Ok(())
+}
+
+// ── Bundle edge-connection adapter (Concept 3, 2026-07-01) ───────────
+
+/// Read-only `EdgeConnection` backed by a slice of bundle records.
+/// The adapter builds a dense `Vec<GroupElement>` keyed by `edge_id`
+/// at construction time so `edge_element` is O(1) per call.
+///
+/// Record layout the adapter expects (Concept 2's INGEST emitters
+/// produce this shape):
+///   * `config_id INT BASE`  — record set membership (adapter callers
+///     PRE-GROUP by this field, so the adapter sees one config's worth)
+///   * `mu INT BASE`         — direction, 0..D-1
+///   * `site_x INT BASE`     — site coord, 0..L-1
+///   * `site_y INT BASE`     — same (present when D>=2)
+///   * `site_z INT BASE`     — same (present when D>=3)
+///   * `site_t INT BASE`     — same (present when D>=4)
+///   * fiber columns per `fiber_fields`
+///
+/// Sites missing from the record set default to the identity element
+/// for the group — matching the `FixedEdgeConnection` default.
+pub(super) mod bundle_edge_connection {
+    use crate::gauge::edge_connection::EdgeConnection;
+    use crate::gauge::group_element::GroupElement;
+    use crate::gauge::Group;
+    use crate::lattice::{EdgeId, EdgeOrientation, Lattice};
+    use crate::types::{Record, Value};
+
+    pub struct BundleEdgeConnectionAdapter {
+        edges: Vec<GroupElement>,
+        identity: GroupElement,
+    }
+
+    impl BundleEdgeConnectionAdapter {
+        pub fn new(
+            records: &[Record],
+            lattice: &Lattice,
+            group: Group,
+            fiber_fields: &[String],
+        ) -> Result<Self, String> {
+            let identity = group_identity(group)?;
+            let n_edges = lattice.edges.len();
+            let mut edges = vec![identity; n_edges];
+
+            // Determine cubic dim from the topology tag ("CUBIC_L{L}_D{D}"
+            // optionally followed by "_OBC{k}" for the single-OBC-axis
+            // shape Concept 1 ships). For non-cubic lattices we still
+            // try to accept records but only when `mu` + `site_*` map
+            // to a valid edge (falling back to resolve_edge for lookup).
+            let (side, dim) = cubic_side_and_dim(lattice);
+
+            for rec in records {
+                // Skip records missing `mu` (the fiber-only rows the
+                // ingest emitters might produce — Phase 1 requires the
+                // full edge label; skip silently for identity default).
+                let mu = match rec.get("mu") {
+                    Some(Value::Integer(i)) => *i as usize,
+                    _ => continue,
+                };
+                if dim > 0 && mu >= dim {
+                    continue;
+                }
+                let sx = get_int(rec, "site_x").unwrap_or(0);
+                let sy = get_int(rec, "site_y").unwrap_or(0);
+                let sz = get_int(rec, "site_z").unwrap_or(0);
+                let st = get_int(rec, "site_t").unwrap_or(0);
+
+                let (src, tgt) = match (side, dim) {
+                    (Some(l), d) if d >= 1 => {
+                        let src = flatten_site(l, d, [sx as usize, sy as usize, sz as usize, st as usize]);
+                        let mut tcoord = [sx as usize, sy as usize, sz as usize, st as usize];
+                        tcoord[mu] = (tcoord[mu] + 1) % l;
+                        let tgt = flatten_site(l, d, tcoord);
+                        (src, tgt)
+                    }
+                    _ => continue,
+                };
+
+                let (eid, _orient) = match lattice.resolve_edge(src, tgt) {
+                    Some(pair) => pair,
+                    None => continue, // edge dropped by OBC — skip cleanly
+                };
+                let ge = match read_group_element(group, rec, fiber_fields) {
+                    Ok(g) => g,
+                    Err(_) => continue,
+                };
+                if eid < edges.len() {
+                    edges[eid] = ge;
+                }
+            }
+            Ok(Self { edges, identity })
+        }
+    }
+
+    impl EdgeConnection for BundleEdgeConnectionAdapter {
+        fn edge_element(&self, edge: EdgeId, orientation: EdgeOrientation) -> GroupElement {
+            let canonical = self.edges.get(edge).copied().unwrap_or(self.identity);
+            match orientation {
+                EdgeOrientation::Forward => canonical,
+                EdgeOrientation::Reverse => canonical.inverse(),
+            }
+        }
+    }
+
+    fn group_identity(group: Group) -> Result<GroupElement, String> {
+        match group {
+            Group::SU2 => Ok(GroupElement::su2_identity()),
+            Group::SU3 => Ok(GroupElement::su3_identity()),
+            Group::U1 => Ok(GroupElement::U1 { theta: 0.0 }),
+            other => Err(format!(
+                "BundleEdgeConnectionAdapter: unsupported group {:?}",
+                other
+            )),
+        }
+    }
+
+    fn get_int(rec: &Record, field: &str) -> Option<i64> {
+        match rec.get(field) {
+            Some(Value::Integer(i)) => Some(*i),
+            Some(Value::Float(f)) => Some(*f as i64),
+            _ => None,
+        }
+    }
+
+    /// Parse the CUBIC topology tag on `lattice` and return (L, D) if
+    /// it's a cubic lattice, else (None, 0). Accepts both `CUBIC_L{L}_D{D}`
+    /// (periodic) and `CUBIC_L{L}_D{D}_OBC{k}` (single-OBC-axis).
+    fn cubic_side_and_dim(lattice: &Lattice) -> (Option<usize>, usize) {
+        let tag = match &lattice.topology {
+            Some(t) => t.as_str(),
+            None => return (None, 0),
+        };
+        if !tag.starts_with("CUBIC_L") {
+            return (None, 0);
+        }
+        // Parse L
+        let rest = &tag["CUBIC_L".len()..];
+        let l_end = rest
+            .char_indices()
+            .find(|(_, c)| !c.is_ascii_digit())
+            .map(|(i, _)| i)
+            .unwrap_or(rest.len());
+        let l: usize = match rest[..l_end].parse() {
+            Ok(v) => v,
+            Err(_) => return (None, 0),
+        };
+        // Parse D after "_D"
+        let after_l = &rest[l_end..];
+        if !after_l.starts_with("_D") {
+            return (None, 0);
+        }
+        let rest = &after_l["_D".len()..];
+        let d_end = rest
+            .char_indices()
+            .find(|(_, c)| !c.is_ascii_digit())
+            .map(|(i, _)| i)
+            .unwrap_or(rest.len());
+        let d: usize = match rest[..d_end].parse() {
+            Ok(v) => v,
+            Err(_) => return (None, 0),
+        };
+        (Some(l), d)
+    }
+
+    fn flatten_site(l: usize, d: usize, coords: [usize; 4]) -> usize {
+        // Row-major site indexing v(c_0, c_1, …, c_{D-1}) = Σ c_k · L^k.
+        let mut s = 0usize;
+        let mut stride = 1usize;
+        for k in 0..d {
+            s += coords[k] * stride;
+            stride *= l;
+        }
+        s
+    }
+
+    fn read_group_element(
+        group: Group,
+        rec: &Record,
+        fiber: &[String],
+    ) -> Result<GroupElement, String> {
+        let mut comps: Vec<f64> = Vec::with_capacity(fiber.len());
+        for f in fiber {
+            match rec.get(f) {
+                Some(Value::Float(x)) => comps.push(*x),
+                Some(Value::Integer(i)) => comps.push(*i as f64),
+                _ => return Err(format!(
+                    "adapter: fiber field '{}' missing or not numeric",
+                    f
+                )),
+            }
+        }
+        match group {
+            Group::SU2 if comps.len() == 4 => Ok(GroupElement::SU2 {
+                q0: comps[0],
+                q1: comps[1],
+                q2: comps[2],
+                q3: comps[3],
+            }),
+            Group::SU3 if comps.len() == 18 => {
+                let mut m = [0.0_f64; 18];
+                m.copy_from_slice(&comps);
+                Ok(GroupElement::SU3(m))
+            }
+            Group::U1 if comps.len() == 1 => Ok(GroupElement::U1 { theta: comps[0] }),
+            other => Err(format!(
+                "adapter: fiber arity {} does not match group {:?}",
+                comps.len(),
+                other
+            )),
+        }
+    }
 }

@@ -206,6 +206,23 @@ pub enum Statement {
         /// `None` when no `WITH SCHEMA (...)` clause is present.
         extra_schema: Option<Vec<(String, String, bool)>>,
     },
+    /// ALTER BUNDLE <name> ADD BASE <field> <TYPE>;
+    ///
+    /// Concept 3 dep (2026-07-01) — mini schema evolution for the
+    /// CHERN_CLASS INTO_COLUMN write-back path. Appends a new BASE
+    /// field to the bundle schema and migrates existing records to
+    /// carry the field as `Value::Null`. Phase 1 restrictions:
+    ///   * only ADD BASE — no DROP, no ALTER FIBER, no rename
+    ///   * heap bundles only — overlay/mmap targets error
+    ///   * <TYPE> ∈ {INT, INTEGER, TEXT, FLOAT, REAL, BOOL, TIMESTAMP}
+    /// Adding a base field re-keys every record (the base-point hash
+    /// includes every base field), so the storage is snapshotted and
+    /// re-inserted under the new schema.
+    AlterBundleAddBase {
+        bundle: String,
+        field_name: String,
+        field_type: String,
+    },
     Collapse {
         bundle: String,
     },
@@ -640,6 +657,26 @@ pub enum Statement {
         group: Option<crate::gauge::Group>,
         #[cfg(not(feature = "gauge"))]
         group: Option<()>,
+        /// Concept 3 (2026-07-01, Ask 2): `ON LATTICE <name>` clause.
+        /// Required when `bundle` names a BundleStore rather than a
+        /// gauge::registry handle (bundle records supply the fiber;
+        /// lattice supplies the cell complex). Forbidden — a conflict
+        /// error — when `bundle` names a gauge field (the field
+        /// already carries a lattice binding via `handle.lattice_name()`).
+        lattice: Option<String>,
+        /// Concept 3 (2026-07-01, Ask 3): `PER <field>` clause. Groups
+        /// bundle records by <field>, computes chern_class per group,
+        /// returns Rows [{<field>, chern_class_<k>, q_rounded}]. When
+        /// `None`, the result envelope is Scalar (gauge-field target
+        /// path — backwards-compat) or a single-Row Rows envelope
+        /// (bundle target path).
+        per_field: Option<String>,
+        /// Concept 3 (2026-07-01, Ask 3): `INTO_COLUMN <col>` clause.
+        /// After PER grouping, writes the rounded integer sector back
+        /// to the source bundle as a new base-field value. Requires
+        /// `per_field` to be `Some` (parse-time error otherwise).
+        /// Opt-in — omit for read-only Rows output.
+        into_column: Option<String>,
     },
     /// PONTRYAGIN bundle ORDER <k> [ON FIBER (...)] [GROUP <label>]
     ///
@@ -1948,6 +1985,7 @@ impl Parser {
 
             // GQL native
             "BUNDLE" => self.parse_bundle(),
+            "ALTER" => self.parse_alter_bundle(),
             "SECTION" => self.parse_section(),
             "SECTIONS" => self.parse_sections(),
             "REDEFINE" => self.parse_redefine(),
@@ -2250,6 +2288,30 @@ impl Parser {
             adjacencies,
             invariants,
             seed_source,
+        })
+    }
+
+    /// ALTER BUNDLE <name> ADD BASE <field> <TYPE>[;]
+    ///
+    /// Concept 3 dep (2026-07-01, Ask 3): mini schema evolution for the
+    /// CHERN_CLASS INTO_COLUMN write-back path. Phase 1 shape is one
+    /// verb only — `ADD BASE`. DROP / ALTER FIBER / rename are Phase 2.
+    fn parse_alter_bundle(&mut self) -> Result<Statement, String> {
+        // The dispatch already consumed `ALTER`. Expect BUNDLE next.
+        self.expect_keyword("BUNDLE")?;
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ADD")?;
+        self.expect_keyword("BASE")?;
+        let field_name = self.expect_word()?;
+        let field_type = self.expect_word()?;
+        // Optional trailing semicolon — lenient like the rest.
+        if matches!(self.peek(), Some(Token::Semicolon)) {
+            self.advance();
+        }
+        Ok(Statement::AlterBundleAddBase {
+            bundle,
+            field_name,
+            field_type,
         })
     }
 
@@ -2984,6 +3046,20 @@ impl Parser {
                     self.advance();
                     let val = self.parse_literal()?;
                     params.push((key, val));
+                } else if key.eq_ignore_ascii_case("OBC")
+                    && self.is_keyword("AXIS")
+                {
+                    // Concept 1 (2026-07-01, Ask 1) — `OBC AXIS <k>` sugar.
+                    // Lower the two-token phrase to two params so the
+                    // per-constructor mapper sees:
+                    //   ("OBC",      Bool(true))    — flag (informational)
+                    //   ("OBC_AXIS", Integer(k))    — the axis id
+                    // The `OBC` param is soaked without effect by the
+                    // CUBIC mapper — the axis is what matters.
+                    self.advance(); // consume AXIS
+                    let axis = self.expect_usize()?;
+                    params.push((key, Literal::Bool(true)));
+                    params.push(("OBC_AXIS".into(), Literal::Integer(axis as i64)));
                 } else {
                     // Bare flag (e.g. `PERIODIC` / `OPEN`).
                     params.push((key, Literal::Bool(true)));
@@ -4531,11 +4607,19 @@ impl Parser {
 
     /// Halcyon CHERN_CLASS — Chern-Weil discrete integration.
     ///
-    /// Grammar:
+    /// Grammar (Concept 3 extended, 2026-07-01):
+    ///
     ///   CHERN_CLASS bundle ORDER <k>
     ///     [ON FIBER (f1, f2, ..., fK)]
+    ///     [ON LATTICE <name>]        -- required for bundle targets
     ///     [GROUP SU(2)|SU(3)|U(1)|Z(N)]
+    ///     [PER <field>]              -- new: group records by <field>
+    ///     [INTO_COLUMN <col>]        -- new: write q_rounded back
     ///     ;
+    ///
+    /// Clause order after `ORDER k` is free — the parser loops until
+    /// it finds a non-clause token. `INTO_COLUMN` without `PER` is
+    /// rejected at parse time (nothing to write per-group otherwise).
     ///
     /// ORDER is mandatory. ON FIBER and GROUP are optional — when
     /// omitted, the executor infers the canonical fiber field list
@@ -4547,38 +4631,93 @@ impl Parser {
         self.expect_keyword("ORDER")?;
         let order = self.expect_usize()?;
 
-        // Optional ON FIBER clause.
-        let fiber_fields = if self.is_keyword("ON") {
-            self.advance();
-            self.expect_keyword("FIBER")?;
-            self.expect(Token::LParen)?;
-            self.parse_inner_word_list()?
-        } else {
-            Vec::new()
-        };
-
-        // Optional GROUP clause.
+        let mut fiber_fields: Vec<String> = Vec::new();
+        let mut lattice: Option<String> = None;
+        let mut per_field: Option<String> = None;
+        let mut into_column: Option<String> = None;
         #[cfg(feature = "gauge")]
-        let group: Option<crate::gauge::Group> = if self.is_keyword("GROUP") {
-            self.advance();
-            Some(self.parse_group_label()?)
-        } else {
-            None
-        };
+        let mut group: Option<crate::gauge::Group> = None;
         #[cfg(not(feature = "gauge"))]
-        let group: Option<()> = if self.is_keyword("GROUP") {
+        let mut group: Option<()> = None;
+
+        loop {
+            if self.is_keyword("ON") {
+                self.advance();
+                if self.is_keyword("FIBER") {
+                    self.advance();
+                    self.expect(Token::LParen)?;
+                    if !fiber_fields.is_empty() {
+                        return Err("CHERN_CLASS: duplicate ON FIBER clause".into());
+                    }
+                    fiber_fields = self.parse_inner_word_list()?;
+                } else if self.is_keyword("LATTICE") {
+                    self.advance();
+                    if lattice.is_some() {
+                        return Err("CHERN_CLASS: duplicate ON LATTICE clause".into());
+                    }
+                    lattice = Some(self.expect_word()?);
+                } else {
+                    return Err(
+                        "CHERN_CLASS: expected FIBER or LATTICE after ON".into(),
+                    );
+                }
+                continue;
+            }
+            if self.is_keyword("GROUP") {
+                self.advance();
+                #[cfg(feature = "gauge")]
+                {
+                    if group.is_some() {
+                        return Err("CHERN_CLASS: duplicate GROUP clause".into());
+                    }
+                    group = Some(self.parse_group_label()?);
+                }
+                #[cfg(not(feature = "gauge"))]
+                {
+                    return Err(
+                        "CHERN_CLASS GROUP clause requires the `gauge` feature".into(),
+                    );
+                }
+                continue;
+            }
+            if self.is_keyword("PER") {
+                self.advance();
+                if per_field.is_some() {
+                    return Err("CHERN_CLASS: duplicate PER clause".into());
+                }
+                per_field = Some(self.expect_word()?);
+                continue;
+            }
+            if self.is_keyword("INTO_COLUMN") {
+                self.advance();
+                if into_column.is_some() {
+                    return Err("CHERN_CLASS: duplicate INTO_COLUMN clause".into());
+                }
+                into_column = Some(self.expect_word()?);
+                continue;
+            }
+            break;
+        }
+
+        // Parse-time guard: INTO_COLUMN needs PER to define what to
+        // write. Nothing sensible to do with a single-row Scalar/Rows.
+        if into_column.is_some() && per_field.is_none() {
             return Err(
-                "CHERN_CLASS GROUP clause requires the `gauge` feature".to_string()
+                "CHERN_CLASS: INTO_COLUMN requires PER <field> — the rounded \
+                 sector is written into <col> per group and needs a grouping \
+                 key"
+                    .into(),
             );
-        } else {
-            None
-        };
+        }
 
         Ok(Statement::ChernClass {
             bundle,
             order,
             fiber_fields,
             group,
+            lattice,
+            per_field,
+            into_column,
         })
     }
 
@@ -9041,6 +9180,76 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             Ok(ExecResult::Ok)
         }
 
+        // ALTER BUNDLE <name> ADD BASE <field> <TYPE>;
+        //
+        // Concept 3 dep (2026-07-01) — mini schema evolution. Appends
+        // a new BASE field to the schema and re-keys every existing
+        // record (base-point hash includes every base field, so the
+        // storage must be rebuilt under the extended schema). Heap
+        // bundles only in Phase 1; overlay/mmap targets reject with a
+        // clear error.
+        Statement::AlterBundleAddBase {
+            bundle,
+            field_name,
+            field_type,
+        } => {
+            crate::virtual_bundles::reject_virtual_write(bundle, "ALTER BUNDLE")?;
+
+            // Snapshot records under the CURRENT schema before we
+            // mutate anything — reconstruct needs the old schema.
+            let (existing_records, mut new_schema) = {
+                let store = engine.heap_bundle(bundle).ok_or_else(|| {
+                    format!(
+                        "ALTER BUNDLE: '{}' is not a heap bundle (overlay / \
+                         mmap targets are read-only in Phase 1)",
+                        bundle
+                    )
+                })?;
+                // Reject duplicate column names — a fiber field with the
+                // same name would create a Record::insert collision when
+                // reconstruct fires.
+                if store.schema.base_fields.iter().any(|f| f.name == *field_name)
+                    || store.schema.fiber_fields.iter().any(|f| f.name == *field_name)
+                {
+                    return Err(format!(
+                        "ALTER BUNDLE {} ADD BASE {}: field '{}' already \
+                         exists on the schema",
+                        bundle, field_name, field_name
+                    ));
+                }
+                let recs: Vec<crate::types::Record> = store.records().collect();
+                (recs, store.schema.clone())
+            };
+            // Build the new FieldDef using the same type mapper as
+            // CREATE BUNDLE. Unknown types fall back to Categorical —
+            // same lenience as the existing parser.
+            let new_field = {
+                let spec = FieldSpec {
+                    name: field_name.clone(),
+                    ftype: field_type.clone(),
+                    range: None,
+                    default: None,
+                    auto_inc: false,
+                    unique: false,
+                    required: false,
+                    encryption: crate::types::EncryptionMode::None,
+                    encryption_group: None,
+                };
+                spec_to_field_def(&spec)
+            };
+            new_schema.base_fields.push(new_field);
+
+            // Drop the current bundle + recreate under the extended
+            // schema, then bulk-insert every record. The new base
+            // field defaults to Value::Null on every existing record.
+            engine.drop_bundle(bundle).map_err(|e| format!("{e}"))?;
+            engine.create_bundle(new_schema).map_err(|e| format!("{e}"))?;
+            for rec in existing_records {
+                engine.insert(bundle, &rec).map_err(|e| format!("{e}"))?;
+            }
+            Ok(ExecResult::Ok)
+        }
+
         Statement::ShowBundles => {
             let infos: Vec<GqlBundleInfo> = engine
                 .bundle_names()
@@ -10262,10 +10471,13 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             order,
             fiber_fields,
             group,
+            lattice,
+            per_field,
+            into_column,
         } => {
             #[cfg(feature = "gauge")]
             {
-                let _ = (engine, bundle, order, fiber_fields, group);
+                let _ = (engine, bundle, order, fiber_fields, group, lattice, per_field, into_column);
                 // The full implementation lives in
                 // `src/bin/gigi_stream.rs`'s executor where the gauge
                 // field handle is reachable through the bundle
@@ -10282,7 +10494,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }
             #[cfg(not(feature = "gauge"))]
             {
-                let _ = (engine, bundle, order, fiber_fields, group);
+                let _ = (engine, bundle, order, fiber_fields, group, lattice, per_field, into_column);
                 Err(
                     "CHERN_CLASS requires the `gauge` feature to be enabled"
                         .to_string()

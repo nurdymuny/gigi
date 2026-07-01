@@ -619,14 +619,23 @@ pub fn try_dispatch_topology_statement(
 ///   being fixed. Any INGEST-executor-produced error string is proof
 ///   the pre-resolve wall was bypassed.
 ///
-/// ── RED-phase stub ────────────────────────────────────────────────────
+/// ── GREEN implementation ──────────────────────────────────────────────
 ///
-/// Today this returns `Err("try_dispatch_ingest_statement: not
-/// implemented (RED phase)")`. The GREEN commit will replace the body
-/// with a call through to `parser::execute` (which already handles both
-/// the auto-create case and the append case correctly). The tests in
-/// `tests/ingest_gql_bypass_basic.rs` compile against this stub and
-/// fail — that's the RED signal.
+/// The dispatcher acquires the engine write lock and forwards
+/// `Statement::Ingest` to `parser::execute`, which delegates to
+/// `crate::ingest::execute_ingest` (plain INGEST) or
+/// `execute_ingest_as_gauge_field` (AS GAUGE_FIELD variant). Both
+/// executor paths call `ensure_bundle_compatible(..., allow_auto_create=true)`
+/// so a fresh bundle name materializes from the NPZ header instead of
+/// erroring out. When the bundle already exists with a compatible
+/// schema, the executor appends records.
+///
+/// Errors from the INGEST executor (`IngestError::FileNotFound`,
+/// `IngestError::LatticeNotFound`, schema-mismatch, etc.) surface as
+/// `Err(String)` here — the caller re-raises them as HTTP 500 through
+/// the route handler's standard `ExecError` envelope. Critically, none
+/// of those error strings contain `"No bundle: <name>"` — that string
+/// is the specific signature of the pre-resolve wall bug being fixed.
 ///
 /// Route-handler wiring: the caller in `src/bin/gigi_stream.rs::gql_query`
 /// pattern-matches on `Statement::Ingest` BEFORE the bundle pre-resolve
@@ -636,15 +645,18 @@ pub fn try_dispatch_ingest_statement(
     engine: &RwLock<Engine>,
     stmt: &Statement,
 ) -> Result<ExecResult, String> {
-    // RED-phase stub. Keep the engine borrow live so the signature is
-    // stable across the GREEN transition — the GREEN body will need a
-    // write lock (parser::execute takes `&mut Engine`).
-    let _ = engine;
     match stmt {
-        Statement::Ingest { .. } => Err(
-            "try_dispatch_ingest_statement: not implemented (RED phase)"
-                .to_string(),
-        ),
+        Statement::Ingest { .. } => {
+            // parser::execute takes `&mut Engine`, so the dispatcher
+            // needs a write lock. The INGEST executor drives
+            // engine.create_bundle (auto-create) or batch_insert
+            // (append) — both mutate the engine's bundle store, so a
+            // write lock is the right acquisition anyway.
+            let mut eng = engine
+                .write()
+                .map_err(|e| format!("INGEST: engine lock poisoned: {}", e))?;
+            execute(&mut eng, stmt)
+        }
         _ => Err(format!(
             "try_dispatch_ingest_statement: not an INGEST variant \
              (got {:?})",

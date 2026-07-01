@@ -12529,6 +12529,75 @@ async fn gql_query(
         }
     }
 
+    // ── INGEST bypass (Halcyon 2026-07-01 follow-up) ──────────────────
+    //
+    // Hallie's afternoon smoke chain against gigi-stream v233 caught
+    // the SAME pre-resolve drop bug that killed the topology verbs on
+    // 2026-06-28 (fixed above by `try_dispatch_topology_statement`).
+    // Firing:
+    //
+    //     LATTICE l4_obc_verify FROM CUBIC L=4 DIM=4 OBC AXIS 0;
+    //     INGEST su2_L4_obc_verify FROM '..._L4/raw_U_configs.npz'
+    //         FORMAT NPZ AS GAUGE_FIELD GROUP SU(2) ON LATTICE l4_obc_verify;
+    //
+    // returned HTTP 404 `{"error":"No bundle: su2_L4_obc_verify"}`
+    // because `get_bundle_name(&stmt)` returns `Some("su2_L4_obc_verify")`
+    // for `Statement::Ingest` and the pre-resolve below then 404s
+    // before the INGEST executor gets to run. INGEST is a bundle-
+    // CREATOR (not consumer) — the executor at
+    // `src/ingest.rs::execute_ingest` calls
+    // `ensure_bundle_compatible(..., allow_auto_create=true)`
+    // (ingest.rs:417-422) to materialize the bundle from the NPZ
+    // header when the name is fresh. The pre-resolve wall stops that
+    // from ever happening.
+    //
+    // Fix mirrors the topology bypass: dispatch `Statement::Ingest`
+    // through `halcyon_gql_dispatch::try_dispatch_ingest_statement`
+    // BEFORE the bundle pre-resolve. The helper acquires a write
+    // lock and forwards to `parser::execute`, which delegates to
+    // `crate::ingest::execute_ingest` (plain INGEST) or
+    // `execute_ingest_as_gauge_field` (AS GAUGE_FIELD variant).
+    #[cfg(feature = "gauge")]
+    {
+        let is_ingest = matches!(&stmt, gigi::parser::Statement::Ingest { .. });
+        if is_ingest {
+            let result = gigi::halcyon_gql_dispatch::try_dispatch_ingest_statement(
+                &state.engine,
+                &stmt,
+            );
+            let dur = t0.elapsed().as_micros() as u64;
+            let stmt_type = gql_stmt_type_name(&stmt);
+            let (status, resp) = match result {
+                Ok(r) => exec_result_to_response(r),
+                Err(e) => {
+                    let ev = state.logger.query_error(
+                        &req_id, query, dur, "ExecError", &e, 500,
+                    );
+                    state.logger.emit(ev);
+                    state.metrics.record_query(dur, stmt_type, false, true);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": e})),
+                    );
+                }
+            };
+            let slow = dur >= state.logger.slow_threshold_us();
+            let ev = state.logger.query_complete(
+                &req_id, "gql", stmt_type, query, dur, 0, dur,
+                &[], 0, 0, 0, 0, false, None, None,
+            );
+            state.logger.emit(ev);
+            if slow {
+                let ev2 = state.logger.query_slow(
+                    &req_id, stmt_type, query, dur, false, false, "ingest dispatch",
+                );
+                state.logger.emit(ev2);
+            }
+            state.metrics.record_query(dur, stmt_type, slow, false);
+            return (status, resp);
+        }
+    }
+
     // ── Bundle pre-resolve ─────────────────────────────────────────────
     //
     // By the time we reach this point, every dispatch block above has
@@ -12544,9 +12613,13 @@ async fn gql_query(
     //   - The topology dispatch block (`try_dispatch_topology_statement`,
     //     ~line 12484) handles CHERN_CLASS / PONTRYAGIN / PI_1 /
     //     OBSTRUCTION / BETTI ORDER k.
+    //   - The INGEST dispatch block (`try_dispatch_ingest_statement`,
+    //     ~line 12531) handles INGEST (fresh bundle names — the
+    //     executor auto-creates the bundle from the NPZ header).
     //
     // Any new variant whose "bundle" field is NOT a registered bundle
-    // (e.g. a gauge-field name or a lattice name) must be added to the
+    // (e.g. a gauge-field name or a lattice name), OR any variant that
+    // is a bundle CREATOR rather than consumer, must be added to the
     // appropriate dispatch block above — adding the kernel logic to
     // `execute_gql_on_store_read` alone will land in the dead-code
     // arms there and never fire from the HTTP path.

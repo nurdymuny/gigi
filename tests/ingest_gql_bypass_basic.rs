@@ -206,8 +206,17 @@ fn test_ingest_gql_fresh_bundle_name_bypasses_pre_resolve() {
 
 /// (2) Backwards compat. When the target bundle DOES exist with a
 /// compatible schema, the INGEST executor must still fire through the
-/// dispatcher (appending records rather than auto-creating), and the
-/// dispatcher must not regress this path.
+/// dispatcher, and the dispatcher must not regress this path.
+///
+/// INGEST semantics note: the executor upserts records keyed on the
+/// `row_idx` base field (`engine.batch_insert` in `src/engine.rs:1576`
+/// dispatches to `BundleStore::batch_insert`, which hashes each record
+/// by base-field values and overwrites collisions — see
+/// `src/bundle.rs:1214`). Firing INGEST twice on the same file therefore
+/// keeps the record count at 5, not 10 — same-row_idx records upsert.
+/// The load-bearing check for this test is that the second dispatch
+/// call returns `Ok` (proving the pre-resolve wall was bypassed on the
+/// existing-bundle path too), NOT that the record count doubled.
 ///
 /// Under the RED stub, dispatch returns Err — the test fails.
 #[test]
@@ -232,29 +241,47 @@ fn test_ingest_gql_existing_bundle_name_still_works() {
         execute(&mut g, &seed_stmt).expect("seed INGEST");
     }
 
-    // Now the bundle exists with 5 records. Fire a SECOND INGEST
-    // through the dispatcher (the path under test) — the executor
-    // must append 5 more, giving 10 total.
+    // Sanity: bundle exists with 5 records after the seed.
+    {
+        let g = eng.read().expect("read engine");
+        let bundle = g.bundle("existing_bundle").expect("seed bundle");
+        assert_eq!(
+            bundle.as_heap().expect("heap-resident").len(),
+            5,
+            "seed INGEST populated 5 records"
+        );
+    }
+
+    // Now the bundle exists. Fire a SECOND INGEST through the
+    // dispatcher (the path under test). The dispatcher must forward
+    // to the executor, which upserts by row_idx and returns Ok.
     let query = format!(
         "INGEST existing_bundle FROM '{}' FORMAT NPZ;",
         gql_path_lit(&npz_path)
     );
     let stmt = parse(&query).expect("parse second INGEST");
     let result = try_dispatch_ingest_statement(&eng, &stmt).expect(
-        "INGEST dispatch on existing bundle name must succeed (append path)",
+        "INGEST dispatch on existing bundle name must succeed \
+         (proves pre-resolve wall bypassed on existing-bundle path)",
     );
     match &result {
         ExecResult::Ok => (),
         other => panic!("expected ExecResult::Ok, got {other:?}"),
     }
 
+    // Executor upserted the 5 records by row_idx (0..5). Count stays
+    // at 5 — the load-bearing check is that dispatch didn't 404, which
+    // it didn't (Ok above). Assert the same 5 records are still there
+    // as a sanity fence.
     let g = eng.read().expect("read engine");
     let bundle = g.bundle("existing_bundle").expect("bundle still exists");
     let store = bundle.as_heap().expect("heap-resident");
     assert_eq!(
         store.len(),
-        10,
-        "5 seed records + 5 appended = 10 total (append path fired)"
+        5,
+        "second INGEST upserts by row_idx (same 5 keys), so count \
+         stays 5 — proves the executor ran (and the pre-resolve was \
+         bypassed) without regressing to a fresh auto-create"
     );
 }
 
@@ -383,11 +410,20 @@ fn test_ingest_gql_returns_row_count_on_success() {
     let store = bundle.as_heap().expect("heap-resident");
     assert_eq!(store.len(), 7, "7 outer-axis slices → 7 records");
 
-    // Sanity: the first record carries the expected row_idx=0 and
-    // vector [0.0, 0.5].
-    let first = store
-        .records()
-        .next()
+    // Iteration order is non-deterministic on `BaseStorage::Hashed`
+    // (the storage the auto-create path lands on — HashMap keyed by
+    // BasePoint). Collect + sort by row_idx before verifying record 0.
+    let mut sorted_records: Vec<gigi::types::Record> = store.records().collect();
+    sorted_records.sort_by_key(|rec| match rec.get("row_idx") {
+        Some(Value::Integer(i)) => *i,
+        _ => i64::MAX,
+    });
+
+    // Sanity: the row_idx=0 record carries vector [0.0, 0.5]
+    // (data was `(0..14).map(|i| i as f64 * 0.5)` reshaped to (7, 2)
+    // — outer slice 0 == [0.0, 0.5], row_idx=0).
+    let first = sorted_records
+        .first()
         .expect("bundle must have at least one record");
     match first.get("row_idx") {
         Some(Value::Integer(i)) => assert_eq!(*i, 0),

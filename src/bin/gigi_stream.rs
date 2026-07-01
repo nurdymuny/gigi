@@ -12818,6 +12818,11 @@ fn execute_gql_on_engine(
                 .map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Count(n))
         }
+        // ALTER BUNDLE ADD BASE — schema evolution. The parser executor at
+        // src/parser.rs:9216 owns the snapshot + drop + recreate + re-insert
+        // dance; we delegate here rather than duplicate that logic so the
+        // in-process test path and the HTTP route stay bit-identical.
+        Statement::AlterBundleAddBase { .. } => gigi::parser::execute(engine, stmt),
         _ => Ok(ExecResult::Ok),
     }
 }

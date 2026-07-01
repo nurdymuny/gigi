@@ -12572,6 +12572,7 @@ async fn gql_query(
             | gigi::parser::Statement::BulkRedefine { .. }
             | gigi::parser::Statement::Retract { .. }
             | gigi::parser::Statement::BulkRetract { .. }
+            | gigi::parser::Statement::AlterBundleAddBase { .. }
     );
 
     if needs_write {
@@ -14017,7 +14018,8 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         | AuditShow { bundle, .. }
         | Ingest { bundle, .. }
         | GenerateBase { bundle, .. } | Fill { bundle, .. }
-        | Iterate { bundle, .. } => Some(bundle.clone()),
+        | Iterate { bundle, .. }
+        | AlterBundleAddBase { bundle, .. } => Some(bundle.clone()),
         Pullback { left, .. } | Join { left, .. } => Some(left.clone()),
         Transplant { source, .. } => Some(source.clone()),
         DropPolicy { bundle, .. } | DropTrigger { bundle, .. } => Some(bundle.clone()),

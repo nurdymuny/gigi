@@ -126,6 +126,39 @@ fn test_cubic_default_still_periodic() {
     assert_eq!(lat.topology.as_deref(), Some("CUBIC_L12_D4"));
 }
 
+/// L=24 D=4 OBC AXIS 0 — assert the ABSOLUTE cell counts, not just the
+/// DIFF from PERIODIC. This is the sanity gate the review flagged:
+/// PERIODIC E = D · L^D = 4 · 24^4 = 1_327_104; drop L^(D-1) = 13_824
+/// wrap edges → OBC E = 1_313_280. PERIODIC F = C(D,2) · L^D
+/// = 6 · 24^4 = 1_990_656; drop (D-1) · L^(D-1) = 3 · 13_824 = 41_472
+/// boundary plaquettes → OBC F = 1_949_184. Vertices unchanged at
+/// L^D = 331_776.
+///
+/// A dimensional slip that stated the counts as `E = 68_928` /
+/// `F = 82_944` (missing a factor of L on the periodic base) would be
+/// caught here — those numbers are L^(D-1) accounting where L^D was
+/// intended, and cannot survive this assertion.
+#[test]
+fn test_cubic_obc_axis_0_l24_d4_absolute_counts() {
+    let lwm = cubic("l24_obc0_absolute", 24, 4, true, Some(0));
+    let lat = lwm.lattice();
+
+    assert_eq!(
+        lat.n_vertices, 331_776,
+        "V = 24^4 = 331_776 (OBC keeps sites)"
+    );
+    assert_eq!(
+        lat.n_edges(),
+        1_313_280,
+        "E_obc = D·L^D − L^(D−1) = 4·24^4 − 24^3 = 1_327_104 − 13_824 = 1_313_280"
+    );
+    assert_eq!(
+        lat.n_faces(),
+        1_949_184,
+        "F_obc = C(D,2)·L^D − (D−1)·L^(D−1) = 6·24^4 − 3·24^3 = 1_990_656 − 41_472 = 1_949_184"
+    );
+}
+
 /// OBC AXIS >= DIM must error (out-of-range axis index).
 #[test]
 #[should_panic(expected = "OBC AXIS")]

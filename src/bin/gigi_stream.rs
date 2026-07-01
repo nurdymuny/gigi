@@ -13531,15 +13531,15 @@ fn execute_gql_on_store_read(
             per_field: _per_field,
             into_column: _into_column,
         } => {
-            // NOTE (parity contract, Concept 3 2026-07-01): this
-            // dead-code arm only fires from direct programmatic
-            // callers of `execute_gql_on_store_read`, NOT from
-            // production /v1/gql traffic (which routes through
-            // `try_dispatch_topology_statement`). Concept 3's
-            // bundle-target / PER / INTO_COLUMN semantics live in
-            // the dispatcher; this arm keeps the pre-existing
-            // gauge-field-target path for callers that already had
-            // a fully-populated `Statement::ChernClass` in hand.
+            // NOTE (parity contract): this dead-code arm only fires
+            // from direct programmatic callers of
+            // `execute_gql_on_store_read`, NOT from production /v1/gql
+            // traffic (which routes through
+            // `try_dispatch_topology_statement`). The bundle-target /
+            // PER / INTO_COLUMN semantics live in the dispatcher; this
+            // arm keeps the pre-existing gauge-field-target path for
+            // callers that already had a fully-populated
+            // `Statement::ChernClass` in hand.
             // If the caller supplies any of the new clauses here,
             // we surface a specific "route via dispatcher" error
             // rather than silently ignoring them.

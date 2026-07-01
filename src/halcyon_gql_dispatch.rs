@@ -161,7 +161,7 @@ pub fn try_dispatch_topology_statement(
     stmt: &Statement,
 ) -> Result<ExecResult, String> {
     match stmt {
-        // ── CHERN_CLASS bundle ORDER k (Concept 3, 2026-07-01) ───────
+        // ── CHERN_CLASS bundle ORDER k (bundle-target resolver) ───────
         // Two-path resolver:
         //   Path A — gauge field target (backwards-compat):
         //     `bundle` resolves through `gauge::registry`. The gauge
@@ -189,6 +189,21 @@ pub fn try_dispatch_topology_statement(
                 .read()
                 .map(|e| e.bundle(bundle).is_some())
                 .unwrap_or(false);
+
+            // Ambiguity guard: name resolves in BOTH gauge::registry and
+            // the bundle store. Rather than silently prefer Path A, we
+            // surface both matches so the caller renames one — the two
+            // paths have different semantics (gauge field carries its
+            // own lattice; bundle target requires ON LATTICE + PER).
+            if gauge_hit.is_some() && bundle_hit {
+                return Err(format!(
+                    "CHERN_CLASS: name '{}' resolves as BOTH a gauge field \
+                     (via GAUGE_FIELD ... ON LATTICE) AND a bundle (via \
+                     CREATE BUNDLE {}) — rename one so the target is \
+                     unambiguous",
+                    bundle, bundle
+                ));
+            }
 
             // Guard: ON LATTICE on a gauge-field target conflicts with
             // the field's own lattice binding.
@@ -668,14 +683,13 @@ fn resolve_gauge_field_and_lattice(
     Ok((handle, lat, group))
 }
 
-// ── Concept 3 (2026-07-01) — CHERN_CLASS bundle-target helpers ─────────
+// ── CHERN_CLASS bundle-target helpers (PER + INTO_COLUMN) ─────────────
 
 /// Group bundle records by `per_field`, compute chern_class per group,
 /// return one `Rows` entry per group in ascending key order.
 ///
-/// Grouping cost: O(N) with `BTreeMap` for stable ascending output
-/// order (Hallie's L=24 workflow reads config 0..499 in that order for
-/// the sectoral split, so the row order matters here).
+/// Grouping cost: O(N) with `BTreeMap`. Ascending-key iteration order
+/// is part of the contract — downstream sectoral splits rely on it.
 fn compute_chern_per_group(
     all_records: &[crate::types::Record],
     lattice: &crate::lattice::Lattice,
@@ -797,13 +811,13 @@ fn write_q_rounded_back(
     Ok(())
 }
 
-// ── Bundle edge-connection adapter (Concept 3, 2026-07-01) ───────────
+// ── Bundle edge-connection adapter ────────────────────────────────────
 
 /// Read-only `EdgeConnection` backed by a slice of bundle records.
 /// The adapter builds a dense `Vec<GroupElement>` keyed by `edge_id`
 /// at construction time so `edge_element` is O(1) per call.
 ///
-/// Record layout the adapter expects (Concept 2's INGEST emitters
+/// Record layout the adapter expects (INGEST AS GAUGE_FIELD emitters
 /// produce this shape):
 ///   * `config_id INT BASE`  — record set membership (adapter callers
 ///     PRE-GROUP by this field, so the adapter sees one config's worth)
@@ -840,8 +854,8 @@ pub(super) mod bundle_edge_connection {
             let mut edges = vec![identity; n_edges];
 
             // Determine cubic dim from the topology tag ("CUBIC_L{L}_D{D}"
-            // optionally followed by "_OBC{k}" for the single-OBC-axis
-            // shape Concept 1 ships). For non-cubic lattices we still
+            // optionally followed by "_OBC_AXIS{k}" for the single-OBC-axis
+            // shape). For non-cubic lattices we still
             // try to accept records but only when `mu` + `site_*` map
             // to a valid edge (falling back to resolve_edge for lookup).
             let (side, dim) = cubic_side_and_dim(lattice);
@@ -921,7 +935,7 @@ pub(super) mod bundle_edge_connection {
 
     /// Parse the CUBIC topology tag on `lattice` and return (L, D) if
     /// it's a cubic lattice, else (None, 0). Accepts both `CUBIC_L{L}_D{D}`
-    /// (periodic) and `CUBIC_L{L}_D{D}_OBC{k}` (single-OBC-axis).
+    /// (periodic) and `CUBIC_L{L}_D{D}_OBC_AXIS{k}` (single-OBC-axis).
     fn cubic_side_and_dim(lattice: &Lattice) -> (Option<usize>, usize) {
         let tag = match &lattice.topology {
             Some(t) => t.as_str(),

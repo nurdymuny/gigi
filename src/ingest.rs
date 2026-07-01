@@ -168,7 +168,7 @@ pub enum IngestError {
     /// misleading wrapped engine error when an INGEST targets a
     /// non-existent bundle.
     TargetBundleNotFound { bundle: String },
-    // ── Halcyon L=24 Concept 2 (2026-07-01): GAUGE_FIELD interpretation errors ──
+    // ── GAUGE_FIELD interpretation errors (feature = "gauge") ──
     /// The named lattice was not found in `lattice::registry`.
     /// Surfaced by the GAUGE_FIELD interpretation path.
     LatticeNotFound { name: String },
@@ -198,8 +198,8 @@ pub enum IngestError {
     /// The mu (direction) axis extent does not equal `lattice.dim`.
     DirectionAxisMismatch { expected_d: usize, got: u64 },
     /// NPZ archive contains more than one array member — the
-    /// GAUGE_FIELD interpretation requires a single named array (same
-    /// convention as Hallie's harvest output).
+    /// GAUGE_FIELD interpretation requires a single named-array NPZ
+    /// (no multi-member archive).
     MultiArrayNotAllowedForGaugeField { got: usize },
 }
 
@@ -224,7 +224,7 @@ impl std::fmt::Display for IngestError {
                 f,
                 "INGEST: destination bundle '{bundle}' does not exist — create the bundle first via 'CREATE BUNDLE {bundle} ...' or pass --auto-create to infer schema from the source"
             ),
-            // ── Halcyon L=24 Concept 2 (2026-07-01) ──
+            // ── GAUGE_FIELD interpretation errors (feature = "gauge") ──
             IngestError::LatticeNotFound { name } => write!(
                 f,
                 "INGEST: lattice `{name}` not found — declare it with LATTICE ... FROM CUBIC ...; before INGEST"
@@ -632,11 +632,11 @@ fn types_compatible(existing: &FieldType, inferred: &FieldType) -> bool {
     }
 }
 
-// ─── Halcyon L=24 Concept 2 (2026-07-01) ───
+// ─── GAUGE_FIELD interpretation for INGEST (feature = "gauge") ───
 //
 // INGEST ... AS GAUGE_FIELD GROUP <g> ON LATTICE <l>
 //
-// Interpretation clause that turns Halcyon's harvest NPZ (shape
+// Interpretation clause that turns a harvest NPZ (shape
 // `(n_configs, D, L, L, ..., L, repr_dim)`) into a bundle whose
 // records carry canonical base fields (config_id, mu, site_x/y/z/t)
 // and canonical fiber fields per group (SU(2)=q0..q3,
@@ -697,11 +697,31 @@ pub fn canonical_fiber_names(group: crate::gauge::Group) -> &'static [&'static s
 /// topology hint isn't a CUBIC form or D can't be parsed, returns
 /// `None` and the caller surfaces a `LatticeNotFound`-style error.
 ///
-/// Halcyon L=24 Concept 2 (2026-07-01).
+/// Strip any recognized OBC / OPEN suffix so the caller can parse the
+/// core `CUBIC_L{L}_D{D}` shape uniformly. Recognized suffixes:
+///   `_OPEN`             — fully-open (Phase 2 deferred)
+///   `_OBC_AXIS{k}`      — single-axis open boundary
+#[cfg(feature = "gauge")]
+fn strip_obc_suffix(topology: &str) -> &str {
+    // Fully-open suffix.
+    if let Some(rest) = topology.strip_suffix("_OPEN") {
+        return rest;
+    }
+    // Single-axis OBC suffix `_OBC_AXIS{k}` — locate the marker then
+    // check the tail is all digits.
+    if let Some(idx) = topology.rfind("_OBC_AXIS") {
+        let tail = &topology[idx + "_OBC_AXIS".len()..];
+        if !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()) {
+            return &topology[..idx];
+        }
+    }
+    topology
+}
+
+/// Part of the GAUGE_FIELD interpretation path (feature = "gauge").
 #[cfg(feature = "gauge")]
 fn cubic_dim_from_topology(topology: &str) -> Option<usize> {
-    // Strip trailing "_OPEN" if present (Concept 1 OBC variants).
-    let stripped = topology.strip_suffix("_OPEN").unwrap_or(topology);
+    let stripped = strip_obc_suffix(topology);
     // Expect prefix "CUBIC_L{L}_D{D}"; parse D.
     if !stripped.starts_with("CUBIC_L") {
         return None;
@@ -716,7 +736,7 @@ fn cubic_dim_from_topology(topology: &str) -> Option<usize> {
 /// hint (same convention as `cubic_dim_from_topology`).
 #[cfg(feature = "gauge")]
 fn cubic_l_from_topology(topology: &str) -> Option<usize> {
-    let stripped = topology.strip_suffix("_OPEN").unwrap_or(topology);
+    let stripped = strip_obc_suffix(topology);
     if !stripped.starts_with("CUBIC_L") {
         return None;
     }
@@ -736,7 +756,7 @@ fn cubic_l_from_topology(topology: &str) -> Option<usize> {
 /// Backwards compat: this is a distinct entry point; the AUTO_GENERIC
 /// `execute_ingest` path is untouched.
 ///
-/// Halcyon L=24 Concept 2 (2026-07-01).
+/// GAUGE_FIELD interpretation for INGEST (feature = "gauge").
 #[cfg(feature = "gauge")]
 pub fn execute_ingest_as_gauge_field(
     engine: &mut Engine,

@@ -148,7 +148,7 @@ pub enum LoopBody {
 ///                     via `crate::lattice::registry::get(...)` at
 ///                     execute time. Absent lookup → LatticeNotFound.
 ///
-/// Halcyon L=24 Concept 2 (2026-07-01). Gated on `feature = "gauge"`
+/// GAUGE_FIELD interpretation for INGEST. Gated on `feature = "gauge"`
 /// because `crate::gauge::Group` requires the gauge feature; when the
 /// feature is off the `Statement::Ingest.as_gauge_field` field
 /// unconditionally holds `Option<()>` (always `None`) so the AST
@@ -208,10 +208,11 @@ pub enum Statement {
     },
     /// ALTER BUNDLE <name> ADD BASE <field> <TYPE>;
     ///
-    /// Concept 3 dep (2026-07-01) — mini schema evolution for the
-    /// CHERN_CLASS INTO_COLUMN write-back path. Appends a new BASE
-    /// field to the bundle schema and migrates existing records to
-    /// carry the field as `Value::Null`. Phase 1 restrictions:
+    /// Append-only BASE schema evolution — the surface CHERN_CLASS
+    /// INTO_COLUMN needs to declare a `q_rounded` column before the
+    /// write-back path can populate it. Appends a new BASE field to
+    /// the bundle schema and migrates existing records to carry the
+    /// field as `Value::Null`. Phase 1 restrictions:
     ///   * only ADD BASE — no DROP, no ALTER FIBER, no rename
     ///   * heap bundles only — overlay/mmap targets error
     ///   * <TYPE> ∈ {INT, INTEGER, TEXT, FLOAT, REAL, BOOL, TIMESTAMP}
@@ -666,25 +667,25 @@ pub enum Statement {
         group: Option<crate::gauge::Group>,
         #[cfg(not(feature = "gauge"))]
         group: Option<()>,
-        /// Concept 3 (2026-07-01, Ask 2): `ON LATTICE <name>` clause.
-        /// Required when `bundle` names a BundleStore rather than a
-        /// gauge::registry handle (bundle records supply the fiber;
-        /// lattice supplies the cell complex). Forbidden — a conflict
-        /// error — when `bundle` names a gauge field (the field
-        /// already carries a lattice binding via `handle.lattice_name()`).
+        /// `ON LATTICE <name>` clause — required when `bundle` names a
+        /// BundleStore rather than a gauge::registry handle (bundle
+        /// records supply the fiber; lattice supplies the cell complex).
+        /// Forbidden — a conflict error — when `bundle` names a gauge
+        /// field (the field already carries a lattice binding via
+        /// `handle.lattice_name()`).
         lattice: Option<String>,
-        /// Concept 3 (2026-07-01, Ask 3): `PER <field>` clause. Groups
-        /// bundle records by <field>, computes chern_class per group,
-        /// returns Rows [{<field>, chern_class_<k>, q_rounded}]. When
-        /// `None`, the result envelope is Scalar (gauge-field target
-        /// path — backwards-compat) or a single-Row Rows envelope
-        /// (bundle target path).
+        /// `PER <field>` clause — groups bundle records by <field>,
+        /// computes chern_class per group, returns Rows
+        /// [{<field>, chern_class_<k>, q_rounded}]. When `None`, the
+        /// result envelope is Scalar (gauge-field target path —
+        /// backwards-compat) or a single-Row Rows envelope (bundle
+        /// target path).
         per_field: Option<String>,
-        /// Concept 3 (2026-07-01, Ask 3): `INTO_COLUMN <col>` clause.
-        /// After PER grouping, writes the rounded integer sector back
-        /// to the source bundle as a new base-field value. Requires
-        /// `per_field` to be `Some` (parse-time error otherwise).
-        /// Opt-in — omit for read-only Rows output.
+        /// `INTO_COLUMN <col>` clause — after PER grouping, writes the
+        /// rounded integer sector back to the source bundle as a new
+        /// base-field value. Requires `per_field` to be `Some`
+        /// (parse-time error otherwise). Opt-in — omit for read-only
+        /// Rows output.
         into_column: Option<String>,
     },
     /// PONTRYAGIN bundle ORDER <k> [ON FIBER (...)] [GROUP <label>]
@@ -783,7 +784,7 @@ pub enum Statement {
         /// Optional GAUGE_FIELD interpretation clause. `None` → generic
         /// AUTO_GENERIC policy (unchanged from Phase 1). `Some(...)` →
         /// canonical field emission tied to a group + lattice.
-        /// Halcyon L=24 Concept 2 (2026-07-01).
+        /// See `GaugeFieldInterpretation` (feature = "gauge").
         as_gauge_field: Option<GaugeFieldInterpretation>,
     },
     Transplant {
@@ -2302,9 +2303,10 @@ impl Parser {
 
     /// ALTER BUNDLE <name> ADD BASE <field> <TYPE>[;]
     ///
-    /// Concept 3 dep (2026-07-01, Ask 3): mini schema evolution for the
-    /// CHERN_CLASS INTO_COLUMN write-back path. Phase 1 shape is one
-    /// verb only — `ADD BASE`. DROP / ALTER FIBER / rename are Phase 2.
+    /// Append-only BASE schema evolution — used by the CHERN_CLASS
+    /// INTO_COLUMN write-back path to declare `q_rounded` before it
+    /// gets populated. Phase 1 shape is one verb only — `ADD BASE`.
+    /// DROP / ALTER FIBER / rename are Phase 2.
     fn parse_alter_bundle(&mut self) -> Result<Statement, String> {
         // The dispatch already consumed `ALTER`. Expect BUNDLE next.
         self.expect_keyword("BUNDLE")?;
@@ -3058,9 +3060,9 @@ impl Parser {
                 } else if key.eq_ignore_ascii_case("OBC")
                     && self.is_keyword("AXIS")
                 {
-                    // Concept 1 (2026-07-01, Ask 1) — `OBC AXIS <k>` sugar.
-                    // Lower the two-token phrase to two params so the
-                    // per-constructor mapper sees:
+                    // `OBC AXIS <k>` sugar (single-axis open boundary
+                    // conditions). Lower the two-token phrase to two
+                    // params so the per-constructor mapper sees:
                     //   ("OBC",      Bool(true))    — flag (informational)
                     //   ("OBC_AXIS", Integer(k))    — the axis id
                     // The `OBC` param is soaked without effect by the
@@ -4631,7 +4633,7 @@ impl Parser {
 
     /// Halcyon CHERN_CLASS — Chern-Weil discrete integration.
     ///
-    /// Grammar (Concept 3 extended, 2026-07-01):
+    /// Grammar (bundle-target + PER + INTO_COLUMN extension):
     ///
     ///   CHERN_CLASS bundle ORDER <k>
     ///     [ON FIBER (f1, f2, ..., fK)]
@@ -6966,11 +6968,11 @@ impl Parser {
         // so the user sees "expected GROUP after AS GAUGE_FIELD" instead
         // of a mystery statement-termination error.
         //
-        // Halcyon L=24 Concept 2 (2026-07-01). The interpretation
-        // clause depends on `crate::gauge::Group` so we only accept it
-        // when the `gauge` Cargo feature is enabled. Without the
-        // feature `AS` at this position is an unexpected token surfaced
-        // by the caller.
+        // GAUGE_FIELD interpretation for INGEST (feature = "gauge").
+        // The interpretation clause depends on `crate::gauge::Group` so
+        // we only accept it when the `gauge` Cargo feature is enabled.
+        // Without the feature `AS` at this position is an unexpected
+        // token surfaced by the caller.
         #[cfg(feature = "gauge")]
         let as_gauge_field = if self.is_keyword("AS") {
             self.advance();
@@ -9206,12 +9208,11 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
 
         // ALTER BUNDLE <name> ADD BASE <field> <TYPE>;
         //
-        // Concept 3 dep (2026-07-01) — mini schema evolution. Appends
-        // a new BASE field to the schema and re-keys every existing
-        // record (base-point hash includes every base field, so the
-        // storage must be rebuilt under the extended schema). Heap
-        // bundles only in Phase 1; overlay/mmap targets reject with a
-        // clear error.
+        // Append-only BASE schema evolution — appends a new BASE field
+        // to the schema and re-keys every existing record (base-point
+        // hash includes every base field, so the storage must be rebuilt
+        // under the extended schema). Heap bundles only in Phase 1;
+        // overlay/mmap targets reject with a clear error.
         Statement::AlterBundleAddBase {
             bundle,
             field_name,

@@ -104,6 +104,9 @@
     display: flex; justify-content: space-between; align-items: baseline;
     color: #dfe5fa; font-size: 13.5px; font-weight: 700; }
   .cover-art .c-author em { color: #8f9bcd; font-weight: 400; font-style: normal; font-size: 11.5px; }
+  /* real photo mode — img fills the tilted frame */
+  .cover-art--photo { background: #0b0e1c; }
+  .cover-art--photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .cover figcaption { text-align: center; color: #8f9bcd; font-size: 12.5px; margin-top: 16px; }
 
   /* ---------- receipts strip ---------- */
@@ -141,6 +144,13 @@
   .ch { background: #fff; border: 1px solid var(--line); border-left-width: 5px;
     border-radius: 10px; padding: 16px 18px 14px; }
   .ch .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  /* clickable chapter card (used by the web extra) */
+  a.ch { display: block; text-decoration: none; color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  a.ch:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(23,22,26,0.10); }
+  a.ch:hover .arrow { transform: translateX(3px); }
+  a.ch .arrow { display: inline-block; color: var(--yellow); font-weight: 900;
+    margin-left: 4px; transition: transform 0.15s ease; }
   .ch h4 { margin: 3px 0 6px; font-size: 16.5px; line-height: 1.3; }
   .ch p { margin: 0; color: var(--ink-2); font-size: 14px; }
   .ch .tags { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
@@ -225,7 +235,6 @@
     <ul>
       <li><a href="#book">The Book</a></li>
       <li><a href="#builds">The Builds</a></li>
-      <li><a href="#missing">The Missing Chapter</a></li>
       <li><a href="#database">GIGI, the Database</a></li>
       <li><a href="#author">Author</a></li>
       <li><a href="#contact">Contact</a></li>
@@ -255,47 +264,8 @@
 
   <div class="wrap">
     <figure class="cover" aria-label="Book cover">
-      <div class="cover-art">
-        <div class="spine" aria-hidden="true"></div>
-        <div class="c-title">
-          <div class="t1">GIGI<br>BUILDS</div>
-          <div class="t2">The Fiber-Bundle Database: a working engineer&rsquo;s guide from schema to shard</div>
-        </div>
-        <!-- the embedded window: swap this SVG for the real cover photo -->
-        <div class="window">
-          <svg viewBox="0 0 240 130" role="img" aria-label="Illustration: an engineer and her bird on the surface of the moon">
-            <rect width="240" height="130" fill="#0d1122"/>
-            <circle cx="196" cy="26" r="14" fill="#e8ecff"/>
-            <circle cx="191" cy="23" r="4" fill="#c6cdea"/>
-            <path d="M0 96 Q60 78 120 92 T240 88 L240 130 L0 130 Z" fill="#26304f"/>
-            <ellipse cx="60" cy="104" rx="12" ry="4" fill="#1c2440"/>
-            <ellipse cx="170" cy="112" rx="16" ry="5" fill="#1c2440"/>
-            <!-- tiny engineer -->
-            <g transform="translate(104,64)">
-              <circle cx="0" cy="0" r="7" fill="#f5c89b"/>
-              <path d="M-7 -1 Q0 -12 7 -1 Z" fill="#3d2a55"/>
-              <rect x="-6" y="7" width="12" height="17" rx="5" fill="#4a3aa7"/>
-              <line x1="-6" y1="24" x2="-6" y2="32" stroke="#f5c89b" stroke-width="3"/>
-              <line x1="6" y1="24" x2="6" y2="32" stroke="#f5c89b" stroke-width="3"/>
-            </g>
-            <!-- the bird -->
-            <g transform="translate(140,58)">
-              <ellipse cx="0" cy="0" rx="7" ry="5.5" fill="#eda100"/>
-              <circle cx="5" cy="-4" r="3.6" fill="#eda100"/>
-              <circle cx="6.2" cy="-4.6" r="0.9" fill="#17161a"/>
-              <path d="M8.5 -3.6 L12 -2.8 L8.5 -1.8 Z" fill="#e34948"/>
-              <path d="M-2 -1 Q-8 -6 -4 2 Z" fill="#c98500"/>
-              <line x1="0" y1="5.5" x2="0" y2="9" stroke="#17161a" stroke-width="1.1"/>
-            </g>
-            <!-- wireframe tet rising like a monument -->
-            <g stroke="#2a78d6" stroke-width="1.4" fill="none" opacity="0.9">
-              <path d="M36 92 L66 84 L52 44 Z"/>
-              <path d="M36 92 L52 44 L28 62 Z"/>
-              <path d="M28 62 L66 84" stroke-dasharray="3 3" opacity="0.6"/>
-            </g>
-          </svg>
-        </div>
-        <div class="c-author"><span>BEE ROSA DAVIS</span><em>2026</em></div>
+      <div class="cover-art cover-art--photo">
+        <img src="cover.png" alt="GIGI Builds — book cover: Bee Davis with Bird, title over an illustrated portrait">
       </div>
       <figcaption>First edition · ISBN 9798181715820</figcaption>
     </figure>
@@ -307,21 +277,12 @@
       <p class="byline">by Bee Rosa Davis · Davis Geometric · 2026</p>
       <blockquote class="quote">&ldquo;The engine carries the whole tuple in memory on every operation; the rows are a shadow it casts.&rdquo;</blockquote>
       <div class="cta-row">
-        <a class="btn btn-yellow" href="#book">Get the book</a>
+        <a class="btn btn-yellow" href="https://www.amazon.com/dp/B0H5FMP996" target="_blank" rel="noopener">Get the book</a>
         <a class="btn btn-ghost" href="https://github.com/nurdymuny/gigi">Clone the engine</a>
-        <a class="btn btn-ghost" href="#missing">Read the missing chapter</a>
       </div>
     </div>
   </div>
 </header>
-
-<div class="receipts" role="note" aria-label="The receipts contract">
-  <div class="wrap">
-    <span><strong>The contract:</strong> every claim in the book ties to a file path, a test count, or a live endpoint.</span>
-    <span class="pill">test result: <span class="ok">ok. 1373 passed; 0 failed</span> — 46.36s</span>
-    <span class="pill">curl https://gigi-stream.fly.dev/v1/health</span>
-  </div>
-</div>
 
 <section id="book">
   <div class="wrap">
@@ -361,7 +322,7 @@
     <div class="part">
       <div class="part-head">
         <span class="roman" style="background: var(--blue)">I</span>
-        <h3>The Shape of Data</h3><span class="count">chapters 1–3</span>
+        <h3>The Shape of Data</h3><span class="count">chapters 1–3 · +1 web extra</span>
       </div>
       <div class="chapters">
         <article class="ch" style="border-left-color: var(--blue)">
@@ -379,6 +340,11 @@
           <p>Thirty lines of mixer, three gates, one birthday bound: the O(1) address that doesn&rsquo;t grow, and the claim that matters at 3&nbsp;a.m.</p>
           <div class="tags"><span class="tag">exercises</span><span class="tag">O(1) hashing</span></div>
         </article>
+        <a class="ch" href="the-mesh-that-audits-itself.html" style="border-left-color: var(--yellow)">
+          <span class="n">Web extra</span><h4>The Mesh That Audits Itself <span class="arrow" aria-hidden="true">&rarr;</span></h4>
+          <p>A tetrahedral mesh as a fibered object: every tet carries certified shape data, so adaptive refinement leaves a queryable audit trail. Not in the printed book — more bonus chapters will land here.</p>
+          <div class="tags"><span class="tag">interactive demo</span><span class="tag">spec &amp; harness on GitHub</span></div>
+        </a>
       </div>
     </div>
 
@@ -524,49 +490,6 @@
   </div>
 </section>
 
-<section id="missing">
-  <div class="wrap">
-    <span class="stamp">Web exclusive · didn&rsquo;t fit in print</span>
-    <p class="eyebrow">The missing chapter</p>
-    <h2>The Mesh That Audits Itself</h2>
-    <p class="lede">Every book cuts a chapter. This is ours — the tetrahedral-mesh build, published here in full: a mesh whose every tetrahedron carries a fiber of certified shape data, so adaptive refinement leaves a queryable audit trail instead of a mystery.</p>
-
-    <div class="missing-grid">
-      <a class="demo-frame" href="the-mesh-that-audits-itself.html" aria-label="Open the interactive demo: the mesh that audits itself">
-        <!-- swap for a real screenshot if preferred: <img src="mesh-preview.png" alt="..."> -->
-        <svg viewBox="0 0 640 400" role="img" aria-label="Preview of the interactive tetrahedral mesh demo">
-          <rect width="640" height="400" fill="#1a1a19"/>
-          <g transform="translate(320,210) scale(1.6)">
-            <g stroke-width="1" >
-              <polygon points="-90,60 0,95 0,10 -70,-30" fill="#2a5f9e" stroke="#1a1a19"/>
-              <polygon points="0,95 90,55 70,-35 0,10" fill="#3987e5" stroke="#1a1a19"/>
-              <polygon points="-70,-30 0,10 70,-35 0,-80" fill="#4d99ea" stroke="#1a1a19"/>
-              <polygon points="-38,-12 0,4 28,-16 -4,-38" fill="#199e70" stroke="#1a1a19"/>
-              <polygon points="6,40 40,26 30,-6 2,10" fill="#c98500" stroke="#1a1a19"/>
-              <polygon points="-45,32 -12,46 -6,16 -34,4" fill="#199e70" stroke="#1a1a19"/>
-            </g>
-          </g>
-          <text x="320" y="368" text-anchor="middle" fill="#c3c2b7"
-            font-family="system-ui, sans-serif" font-size="17" font-weight="600">▶ open the live demo — orbit, scrub levels, hover a tet</text>
-        </svg>
-      </a>
-      <div class="missing-copy">
-        <h3>What&rsquo;s in the build</h3>
-        <ul>
-          <li><strong>The spec</strong> — a tetrahedral mesh as a fibered object: dihedral vectors, angular Gram matrices with PSD certificates, a semi-algebraic shape classifier, and a sliver set you can measure distance to.</li>
-          <li><strong>The harness</strong> — generates the mesh, validates every identity numerically, loads 5,760 fibers into a live GIGI instance, and runs the audit queries in real GQL.</li>
-          <li><strong>The receipts</strong> — exactly one classifier cell on the structured mesh, Regge deficits at machine zero, and Maubach&rsquo;s bounded-class theorem showing up live in the telemetry.</li>
-        </ul>
-        <div class="cta-row" style="margin-top: 18px;">
-          <a class="btn btn-yellow" href="the-mesh-that-audits-itself.html">Open the interactive demo</a>
-          <a class="btn btn-ghost" href="https://github.com/nurdymuny/gigi/blob/main/GIGI_TETMESH_SPEC_v0.6.md">Read the spec</a>
-          <a class="btn btn-ghost" href="https://github.com/nurdymuny/gigi/blob/main/examples/tetmesh_fiber_harness.py">Run the harness</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <section id="database">
   <div class="wrap">
     <p class="eyebrow">GIGI, the database</p>
@@ -614,52 +537,18 @@ curl https://gigi-stream.fly.dev/v1/health</code></pre>
       <!-- Swap each SVG for <img src="bee-1.jpg" alt="..."> etc. -->
       <figure class="pol">
         <div class="ph">
-          <svg viewBox="0 0 100 100" role="img" aria-label="Placeholder illustration: Bee at the whiteboard">
-            <rect width="100" height="100" fill="#101426"/>
-            <rect x="18" y="20" width="64" height="42" rx="3" fill="#e8ecff"/>
-            <path d="M26 50 Q38 30 50 42 T74 34" fill="none" stroke="#2a78d6" stroke-width="2.5"/>
-            <circle cx="50" cy="78" r="10" fill="#f5c89b"/>
-            <path d="M40 76 Q50 62 60 76 Z" fill="#3d2a55"/>
-          </svg>
+          <img src="bee-1.jpg" alt="Bee reaching for a book with Bird perched on the shelf">
         </div>
-        <figcaption>photo slot · bee-1.jpg</figcaption>
       </figure>
       <figure class="pol">
         <div class="ph">
-          <svg viewBox="0 0 100 100" role="img" aria-label="Placeholder illustration: Bird the parrot">
-            <rect width="100" height="100" fill="#101426"/>
-            <circle cx="50" cy="30" r="12" fill="#e8ecff"/>
-            <g transform="translate(50,62)">
-              <ellipse rx="16" ry="13" fill="#eda100"/>
-              <circle cx="11" cy="-9" r="8" fill="#eda100"/>
-              <circle cx="13.5" cy="-10.5" r="2" fill="#17161a"/>
-              <path d="M19 -8 L27 -6 L19 -3 Z" fill="#e34948"/>
-              <path d="M-5 -2 Q-18 -12 -9 5 Z" fill="#c98500"/>
-              <line x1="-3" y1="13" x2="-3" y2="20" stroke="#17161a" stroke-width="2"/>
-              <line x1="4" y1="13" x2="4" y2="20" stroke="#17161a" stroke-width="2"/>
-            </g>
-          </svg>
+          <img src="bee-2.jpg" alt="Portrait of Bee with Bird on her head">
         </div>
-        <figcaption>photo slot · bee-2.jpg</figcaption>
       </figure>
       <figure class="pol">
         <div class="ph">
-          <svg viewBox="0 0 100 100" role="img" aria-label="Placeholder illustration: Bee and Bird on the moon">
-            <rect width="100" height="100" fill="#101426"/>
-            <circle cx="76" cy="20" r="9" fill="#e8ecff"/>
-            <path d="M0 78 Q30 66 60 74 T100 72 L100 100 L0 100 Z" fill="#26304f"/>
-            <circle cx="42" cy="58" r="8" fill="#f5c89b"/>
-            <path d="M34 56 Q42 44 50 56 Z" fill="#3d2a55"/>
-            <rect x="36" y="66" width="12" height="14" rx="5" fill="#4a3aa7"/>
-            <g transform="translate(62,64)">
-              <ellipse rx="7" ry="5.5" fill="#eda100"/>
-              <circle cx="5" cy="-4" r="3.5" fill="#eda100"/>
-              <circle cx="6" cy="-4.5" r="0.9" fill="#17161a"/>
-              <path d="M8.5 -3.5 L12 -2.7 L8.5 -1.8 Z" fill="#e34948"/>
-            </g>
-          </svg>
+          <img src="bee-3.jpg" alt="Bee holding a cup of coffee in the park with Bird on her shoulder">
         </div>
-        <figcaption>photo slot · bee-3.jpg</figcaption>
       </figure>
     </div>
   </div>

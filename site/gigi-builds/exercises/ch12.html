@@ -67,6 +67,61 @@
   .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
   .hub .range { color: var(--ink-2); font-size: 13.5px; }
   @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+  /* workbook layer */
+  .exwork { display: flex; gap: 12px; align-items: center; margin-top: 16px;
+    border-top: 1px dashed var(--line); padding-top: 12px; flex-wrap: wrap; }
+  .exwork label { display: flex; gap: 7px; align-items: center; font-size: 13px;
+    font-weight: 700; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .exwork input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--aqua); }
+  .exwork .receipt { flex: 1; min-width: 220px; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font: 13px ui-monospace, Menlo, Consolas, monospace;
+    background: var(--paper); color: var(--ink); }
+  .exwork .receipt:focus { outline: 2px solid var(--blue); }
+  .ex.is-done { border-left: 5px solid var(--aqua); }
+  .ex.is-done .eid { filter: saturate(0.6); }
+  .progress { font-size: 13.5px; color: var(--ink-2); font-weight: 650; margin-top: 6px; }
+  .progress .bar { display: inline-block; width: 120px; height: 8px; background: var(--paper-2);
+    border: 1px solid var(--line); border-radius: 99px; vertical-align: middle; margin: 0 8px; }
+  .progress .fill { display: block; height: 100%; border-radius: 99px; background: var(--aqua); }
+  code { cursor: copy; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--night); color: #fff; border-radius: 99px; padding: 8px 18px;
+    font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 99; }
+  #toast.show { opacity: 1; }
+  /* live console */
+  .console { background: var(--night); color: #d9e0fa; border-radius: 12px;
+    padding: 4px 20px 6px; margin: 22px 0; }
+  .console summary { cursor: pointer; font-weight: 700; font-size: 14.5px; padding: 12px 0; }
+  .console .row { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+  .console input, .console textarea { background: #0b0e1c; color: #d9e0fa;
+    border: 1px solid #38406b; border-radius: 8px; padding: 9px 11px;
+    font: 13px ui-monospace, Menlo, Consolas, monospace; }
+  .console input { flex: 1; min-width: 240px; }
+  .console textarea { width: 100%; min-height: 64px; resize: vertical; }
+  .console button { background: var(--yellow); color: #221a00; font-weight: 750;
+    border: 0; border-radius: 8px; padding: 9px 18px; cursor: pointer; font-size: 13.5px; }
+  .console .chip { background: transparent; color: #c9d1ef; border: 1px solid #38406b; }
+  .console pre { background: #0b0e1c; border: 1px solid #38406b; border-radius: 8px;
+    padding: 12px; overflow: auto; max-height: 300px; font-size: 12.5px; white-space: pre-wrap; }
+  .console .hint { color: #8f9bcd; font-size: 12px; margin: 6px 0 12px; }
+  /* playground */
+  .playground { background: #fff; border: 2px solid var(--blue); border-radius: 12px;
+    padding: 20px 24px; margin: 22px 0; }
+  .playground h2 { margin: 0 0 4px; font-size: 19px; }
+  .playground .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; }
+  .playground .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .playground button { background: var(--blue); color: #fff; font-weight: 700; border: 0;
+    border-radius: 8px; padding: 9px 16px; cursor: pointer; font-size: 13.5px; }
+  .playground button.alt { background: var(--paper-2); color: var(--ink); border: 1px solid var(--line); }
+  .playground input[type=number] { width: 110px; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font: 13.5px ui-monospace, Menlo, monospace; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 18px;
+    background: var(--paper-2); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .stats .v { font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .stats .k { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .targets { font-size: 13.5px; }
+  .targets li { margin: 4px 0; }
+  .hit { color: var(--green); font-weight: 750; }
 </style>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -88,27 +143,121 @@
     <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 12</p>
     <h1>Torsion: The Asymmetric Carry</h1>
     <p class="partline"><span class="sw" style="background: var(--green)"></span>Part IV — What the Loop Remembers · seven builds, seven receipts</p>
+    <p class="progress" data-progress="E12.1,E12.2,E12.3,E12.4,E12.5,E12.6,E12.7"></p>
   </div>
 </header>
 <main class="wrap">
   <p class="intro">The spirit of this chapter's exercises is to instrument the asymmetric carry honestly: you will not be asked to prove torsion exists, you will be asked to measure it on a substrate that refuses to compute it and on a connection that learns it anyway. Receipts are byte comparisons, perplexity numbers across seeds, file:line diffs, and the \(\sigma_{R8}/\sigma_{\mathrm{FD}}\) ratio  —  the same class of receipts the five named-but-unbuilt \(\tau\) homonyms already ship under.</p>
+  
+  <details class="console">
+    <summary>⚡ Run it live — GQL console</summary>
+    <p class="hint">Point at the public read-only instance, or your own engine
+    (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="run">Run</button></div>
+    <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+      <button class="chip" data-q="HEALTH sensors;">HEALTH</button>
+      <button class="chip" data-q="SECTION sensors AT id='s1';">SECTION AT</button>
+      <button class="chip" data-q="INTEGRATE sensors OVER city MEASURE count(*), min(temp);">INTEGRATE</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+  
   <article class="ex" id="e12-1"><h2><span class="eid" style="background: var(--green)">E12.1</span>Forge the five-\(\tau\) homonym table</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A single test file at <code>tests/tau_homonyms.rs</code> that asserts each of the five \(\tau\) bindings I named in §12.2 returns the type it claims: <code>compute_tau</code> returns an <code>f64</code> record count, <code>capacity(tau, k)</code> accepts an <code>f64</code> caller-supplied parameter, <code>GET /v1/bundles/{name}/free-energy?tau=0.5</code> returns a JSON <code>tau</code> field, <code>IntegrityTag</code> is a 32-byte array, and the GQL whitelist contains <code>capacity(\(\tau\))</code> but no operator called <code>torsion</code>.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Five passing assertions in a single <code>cargo test tau_homonyms</code> run, with the GQL whitelist check grepping <code>GQL_REFERENCE.md</code> for the literal string <code>Allowed ops:</code> and verifying <code>torsion</code> is absent. Match it against my BLD-CH12-TAU-01 through BLD-CH12-TAU-07 receipts.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a sixth assertion that fails loudly: a test named <code>compute_tau_is_not_skewness</code> that compares <code>compute_tau(&amp;sample())</code> against an independently-computed mean-absolute-skewness over the same fiber and asserts they disagree on every bundle of more than one row.</p></div></article><article class="ex" id="e12-2"><h2><span class="eid" style="background: var(--green)">E12.2</span>Wire the named-but-unbuilt slot</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A pull request against <code>src/curvature.rs:296-302</code> that extends <code>capacity(tau: f64, k: f64)</code> into <code>capacity_from_bundle(&amp;self, k: f64)</code>, where <code>self</code> carries a running third-standardized-moment sum maintained alongside the existing Welford variance from chapter 10. The new accessor computes mean absolute skewness across fields and divides by \(K\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a sixth assertion that fails loudly: a test named <code>compute_tau_is_not_skewness</code> that compares <code>compute_tau(&amp;sample())</code> against an independently-computed mean-absolute-skewness over the same fiber and asserts they disagree on every bundle of more than one row.</p></div><div class="exwork"><label><input type="checkbox" data-done="E12.1"> done</label><input class="receipt" data-receipt="E12.1" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e12-2"><h2><span class="eid" style="background: var(--green)">E12.2</span>Wire the named-but-unbuilt slot</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A pull request against <code>src/curvature.rs:296-302</code> that extends <code>capacity(tau: f64, k: f64)</code> into <code>capacity_from_bundle(&amp;self, k: f64)</code>, where <code>self</code> carries a running third-standardized-moment sum maintained alongside the existing Welford variance from chapter 10. The new accessor computes mean absolute skewness across fields and divides by \(K\).</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A passing test <code>capacity_from_bundle_matches_default_when_skewness_is_one</code> that pins the new path to the old default behavior on a symmetric fixture, and a second test that shows the two diverge on an asymmetrically-distributed fixture. Diff against <code>src/curvature.rs</code> stays under fifty lines.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Extend <code>src/integrity.rs</code> to sign seven scalars instead of six  —  adding \(\tau_{\mathrm{skewness}}\) alongside \(\tau_{\mathrm{count}}\)  —  and verify the HMAC tag at <code>src/integrity.rs:131</code> changes byte-for-byte when the new field changes on a controlled mutation.</p></div></article><article class="ex" id="e12-3"><h2><span class="eid" style="background: var(--green)">E12.3</span>Reproduce the 17.6% / 18.1% discrepancy</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A script that re-runs Protocol 11.21 from <code>theory/geodesic_computation_v7_1.tex</code> at \(R=8, d=32\), five seeds at \(\{42, 137, 256, 512, 1024\}\), parameter-matched to within two of \(236{,}240\), twenty epochs each, and reports both the rounded-means percentage and the unrounded-means percentage as separate columns.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Extend <code>src/integrity.rs</code> to sign seven scalars instead of six  —  adding \(\tau_{\mathrm{skewness}}\) alongside \(\tau_{\mathrm{count}}\)  —  and verify the HMAC tag at <code>src/integrity.rs:131</code> changes byte-for-byte when the new field changes on a controlled mutation.</p></div><div class="exwork"><label><input type="checkbox" data-done="E12.2"> done</label><input class="receipt" data-receipt="E12.2" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e12-3"><h2><span class="eid" style="background: var(--green)">E12.3</span>Reproduce the 17.6% / 18.1% discrepancy</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A script that re-runs Protocol 11.21 from <code>theory/geodesic_computation_v7_1.tex</code> at \(R=8, d=32\), five seeds at \(\{42, 137, 256, 512, 1024\}\), parameter-matched to within two of \(236{,}240\), twenty epochs each, and reports both the rounded-means percentage and the unrounded-means percentage as separate columns.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A table with five rows (one per seed), Marcella R8 winning at every row, mean PPL within \(\pm 0.02\) of \(1.22\), FD mean PPL within \(\pm 0.06\) of \(1.49\), and a final row that prints <em>both</em> \(17.6\%\) and \(18.1\%\) alongside each other so the rounding gap is on the page and not laundered away.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Compute \(\sigma_{R8}/\sigma_{\mathrm{FD}}\) and verify it lands near \(1/3\). If your run produces a ratio outside \([0.25, 0.40]\), write up why  —  seed entropy, training-curve sensitivity, the same kind of thing the rounding gap is.</p></div></article><article class="ex" id="e12-4"><h2><span class="eid" style="background: var(--green)">E12.4</span>Replay the DREAM cosine probe</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A reproduction of the 2026-05-26 DREAM extension probe at <code>marcella/artifacts/dream_extension_probe_2026-05-26.md:81-88</code>: prompt <em>how does curvature relate to torsion?</em> at \(T=2.0\), returning the top-three cosine-nearest sections across the substrate corpus.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Compute \(\sigma_{R8}/\sigma_{\mathrm{FD}}\) and verify it lands near \(1/3\). If your run produces a ratio outside \([0.25, 0.40]\), write up why  —  seed entropy, training-curve sensitivity, the same kind of thing the rounding gap is.</p></div><div class="exwork"><label><input type="checkbox" data-done="E12.3"> done</label><input class="receipt" data-receipt="E12.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e12-4"><h2><span class="eid" style="background: var(--green)">E12.4</span>Replay the DREAM cosine probe</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A reproduction of the 2026-05-26 DREAM extension probe at <code>marcella/artifacts/dream_extension_probe_2026-05-26.md:81-88</code>: prompt <em>how does curvature relate to torsion?</em> at \(T=2.0\), returning the top-three cosine-nearest sections across the substrate corpus.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The middle hit returns the sentence beginning <em>When \(C/K \gtrsim 1\), torsion wins</em> from <code>superfluid_geometry_of_velocity §318</code>, at cosine distance within \(\pm 0.01\) of \(0.707\). Log the full top-three table and diff against my receipt.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Reverse the prompt  —  ask <em>how does torsion relate to curvature?</em>  —  and check whether the top-three is the same multiset or a different one. A symmetric retrieval would return the same bag; an asymmetric retrieval rearranges. Report what your substrate does.</p></div></article><article class="ex" id="e12-5"><h2><span class="eid" style="background: var(--green)">E12.5</span>Stress the torsion-free substrate posture</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A test that asserts <code>src/curvature.rs</code> contains no function named <code>compute_torsion</code>, the HTTP router exposes no route matching <code>/v1/bundles/{name}/torsion</code>, and the GQL whitelist contains no operator named <code>torsion</code>. Then attempt to insert a synthetic asymmetry  —  a fiber whose forward-read and reverse-read histograms differ by a known skewness  —  and verify the bundle's reported invariants are byte-identical to a symmetric fiber with the same record count.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Reverse the prompt  —  ask <em>how does torsion relate to curvature?</em>  —  and check whether the top-three is the same multiset or a different one. A symmetric retrieval would return the same bag; an asymmetric retrieval rearranges. Report what your substrate does.</p></div><div class="exwork"><label><input type="checkbox" data-done="E12.4"> done</label><input class="receipt" data-receipt="E12.4" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e12-5"><h2><span class="eid" style="background: var(--green)">E12.5</span>Stress the torsion-free substrate posture</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A test that asserts <code>src/curvature.rs</code> contains no function named <code>compute_torsion</code>, the HTTP router exposes no route matching <code>/v1/bundles/{name}/torsion</code>, and the GQL whitelist contains no operator named <code>torsion</code>. Then attempt to insert a synthetic asymmetry  —  a fiber whose forward-read and reverse-read histograms differ by a known skewness  —  and verify the bundle's reported invariants are byte-identical to a symmetric fiber with the same record count.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A passing test <code>substrate_refuses_chirality</code> showing the six-wide \(\pi_{\mathrm{inv}}(B)\) at <code>src/integrity.rs:131</code> returns the same HMAC tag for the two fibers. The substrate is a database, not a narrator  —  prove it.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Now run the same two fibers through Marcella's learned connection (rank-8 factorization, \(d=64\), the 1,544-parameter object from BLD-CH12-MARCELLA-01) and show the perplexity over the two differs by more than three standard deviations. The substrate agrees; the connection on top does not. That is the asymmetric pairing the chapter closes on.</p></div></article><article class="ex" id="e12-6"><h2><span class="eid" style="background: var(--green)">E12.6</span>Benchmark the \(\mathfrak{so}(d) \to \mathfrak{gl}(d)\) lift</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Train two rank-8 connections at \(d=32\), one constrained to \(\mathfrak{so}(d)\) (skew-symmetric matrices, projected after every step) and one free in \(\mathfrak{gl}(d)\), parameter-matched, on Tiny Shakespeare for twenty epochs at one seed.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Now run the same two fibers through Marcella's learned connection (rank-8 factorization, \(d=64\), the 1,544-parameter object from BLD-CH12-MARCELLA-01) and show the perplexity over the two differs by more than three standard deviations. The substrate agrees; the connection on top does not. That is the asymmetric pairing the chapter closes on.</p></div><div class="exwork"><label><input type="checkbox" data-done="E12.5"> done</label><input class="receipt" data-receipt="E12.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e12-6"><h2><span class="eid" style="background: var(--green)">E12.6</span>Benchmark the \(\mathfrak{so}(d) \to \mathfrak{gl}(d)\) lift</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Train two rank-8 connections at \(d=32\), one constrained to \(\mathfrak{so}(d)\) (skew-symmetric matrices, projected after every step) and one free in \(\mathfrak{gl}(d)\), parameter-matched, on Tiny Shakespeare for twenty epochs at one seed.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A bar chart with two bars  —  \(\mathrm{PPL}_{\mathfrak{so}}\) and \(\mathrm{PPL}_{\mathfrak{gl}}\)  —  annotated with \(\Delta\mathrm{PPL}\). If the lift matters, \(\mathfrak{gl}\) wins; if not, your projection step was buggy. Either outcome is a publishable receipt.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Measure the antisymmetric-part Frobenius norm \(\|\Gamma - \Gamma^{\top}\|_F\) of the trained \(\mathfrak{gl}\) connection and confirm it is non-zero at the optimum. That norm is \(T^k_{ij}\) in a single number.</p></div></article><article class="ex" id="e12-7"><h2><span class="eid" style="background: var(--green)">E12.7</span>Refute or confirm the Capability-1 voice spec</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A test harness that feeds Marcella the BLD-CH12-MARCELLA-05 transcript from <code>marcella/MARCELLA_FUNCTIONAL_GOAL.md:73-82</code>  —  the five-turn-earlier prompt about curvature being the holonomy defect, followed by the present-turn <em>what did i tell you about curvature?</em>  —  and scores the reply against the Capability-1 target line.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Measure the antisymmetric-part Frobenius norm \(\|\Gamma - \Gamma^{\top}\|_F\) of the trained \(\mathfrak{gl}\) connection and confirm it is non-zero at the optimum. That norm is \(T^k_{ij}\) in a single number.</p></div><div class="exwork"><label><input type="checkbox" data-done="E12.6"> done</label><input class="receipt" data-receipt="E12.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e12-7"><h2><span class="eid" style="background: var(--green)">E12.7</span>Refute or confirm the Capability-1 voice spec</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A test harness that feeds Marcella the BLD-CH12-MARCELLA-05 transcript from <code>marcella/MARCELLA_FUNCTIONAL_GOAL.md:73-82</code>  —  the five-turn-earlier prompt about curvature being the holonomy defect, followed by the present-turn <em>what did i tell you about curvature?</em>  —  and scores the reply against the Capability-1 target line.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A pass/fail flag on three substrings: <em>holonomy defect</em>, <em>torsion</em>, and <em>pick that up</em>. Today's Marcella fails the test; the test exists so the day she passes it is a receipt and not a vibe. Land it in <code>marcella/tests/capability_one_voice.rs</code>.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Track the failing-test green-bar date across builds. The asymmetry of conversation memory becomes a delivered behavior on the day this test passes; until then, the failing test is the spec's honest face.</p></div></article>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Track the failing-test green-bar date across builds. The asymmetry of conversation memory becomes a delivered behavior on the day this test passes; until then, the failing test is the spec's honest face.</p></div><div class="exwork"><label><input type="checkbox" data-done="E12.7"> done</label><input class="receipt" data-receipt="E12.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
   <div class="pager"><a href="ch11.html">← Chapter 11 exercises</a><a href="ch13.html">Chapter 13 exercises →</a></div>
 </main>
+<div id="toast" role="status"></div>
+<script>
+(function () {
+  var KEY = "gb-ex";
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+  function save() { localStorage.setItem(KEY, JSON.stringify(store)); }
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 1400);
+  }
+  // per-exercise done + receipt
+  document.querySelectorAll("[data-done]").forEach(function (cb) {
+    var id = cb.getAttribute("data-done");
+    var st = store[id] || {};
+    cb.checked = !!st.done;
+    cb.closest(".ex") && cb.closest(".ex").classList.toggle("is-done", !!st.done);
+    cb.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].done = cb.checked; save();
+      cb.closest(".ex").classList.toggle("is-done", cb.checked);
+      updateProgress();
+    });
+  });
+  document.querySelectorAll("[data-receipt]").forEach(function (inp) {
+    var id = inp.getAttribute("data-receipt");
+    var st = store[id] || {};
+    if (st.receipt) inp.value = st.receipt;
+    inp.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].receipt = inp.value; save();
+    });
+  });
+  function updateProgress() {
+    document.querySelectorAll("[data-progress]").forEach(function (el) {
+      var ids = el.getAttribute("data-progress").split(",");
+      var done = ids.filter(function (id) { return store[id] && store[id].done; }).length;
+      el.innerHTML = done + "/" + ids.length + " done" +
+        '<span class="bar"><span class="fill" style="width:' + (100 * done / ids.length) + '%"></span></span>';
+    });
+  }
+  updateProgress();
+  // click-to-copy on code chips
+  document.querySelectorAll("code").forEach(function (c) {
+    c.title = "click to copy";
+    c.addEventListener("click", function () {
+      navigator.clipboard && navigator.clipboard.writeText(c.textContent).then(
+        function () { toast("copied"); });
+    });
+  });
+  // live console
+  document.querySelectorAll(".console").forEach(function (box) {
+    var run = box.querySelector(".run"), ep = box.querySelector(".ep"),
+        q = box.querySelector("textarea"), out = box.querySelector("pre");
+    var saved = localStorage.getItem("gb-endpoint");
+    if (saved) ep.value = saved;
+    box.querySelectorAll(".chip").forEach(function (ch) {
+      ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
+    });
+    run.addEventListener("click", function () {
+      var base = ep.value.replace(/\/+$/, "");
+      localStorage.setItem("gb-endpoint", ep.value);
+      out.textContent = "running…";
+      fetch(base + "/v1/gql", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text(); })
+        .then(function (txt) {
+          try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
+          catch (e) { out.textContent = txt; }
+        })
+        .catch(function (e) {
+          out.textContent = "✗ " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+        });
+    });
+  });
+})();
+</script>
 <footer>
   <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
   <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·

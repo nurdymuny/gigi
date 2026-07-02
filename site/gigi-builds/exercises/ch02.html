@@ -67,6 +67,61 @@
   .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
   .hub .range { color: var(--ink-2); font-size: 13.5px; }
   @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+  /* workbook layer */
+  .exwork { display: flex; gap: 12px; align-items: center; margin-top: 16px;
+    border-top: 1px dashed var(--line); padding-top: 12px; flex-wrap: wrap; }
+  .exwork label { display: flex; gap: 7px; align-items: center; font-size: 13px;
+    font-weight: 700; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .exwork input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--aqua); }
+  .exwork .receipt { flex: 1; min-width: 220px; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font: 13px ui-monospace, Menlo, Consolas, monospace;
+    background: var(--paper); color: var(--ink); }
+  .exwork .receipt:focus { outline: 2px solid var(--blue); }
+  .ex.is-done { border-left: 5px solid var(--aqua); }
+  .ex.is-done .eid { filter: saturate(0.6); }
+  .progress { font-size: 13.5px; color: var(--ink-2); font-weight: 650; margin-top: 6px; }
+  .progress .bar { display: inline-block; width: 120px; height: 8px; background: var(--paper-2);
+    border: 1px solid var(--line); border-radius: 99px; vertical-align: middle; margin: 0 8px; }
+  .progress .fill { display: block; height: 100%; border-radius: 99px; background: var(--aqua); }
+  code { cursor: copy; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--night); color: #fff; border-radius: 99px; padding: 8px 18px;
+    font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 99; }
+  #toast.show { opacity: 1; }
+  /* live console */
+  .console { background: var(--night); color: #d9e0fa; border-radius: 12px;
+    padding: 4px 20px 6px; margin: 22px 0; }
+  .console summary { cursor: pointer; font-weight: 700; font-size: 14.5px; padding: 12px 0; }
+  .console .row { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+  .console input, .console textarea { background: #0b0e1c; color: #d9e0fa;
+    border: 1px solid #38406b; border-radius: 8px; padding: 9px 11px;
+    font: 13px ui-monospace, Menlo, Consolas, monospace; }
+  .console input { flex: 1; min-width: 240px; }
+  .console textarea { width: 100%; min-height: 64px; resize: vertical; }
+  .console button { background: var(--yellow); color: #221a00; font-weight: 750;
+    border: 0; border-radius: 8px; padding: 9px 18px; cursor: pointer; font-size: 13.5px; }
+  .console .chip { background: transparent; color: #c9d1ef; border: 1px solid #38406b; }
+  .console pre { background: #0b0e1c; border: 1px solid #38406b; border-radius: 8px;
+    padding: 12px; overflow: auto; max-height: 300px; font-size: 12.5px; white-space: pre-wrap; }
+  .console .hint { color: #8f9bcd; font-size: 12px; margin: 6px 0 12px; }
+  /* playground */
+  .playground { background: #fff; border: 2px solid var(--blue); border-radius: 12px;
+    padding: 20px 24px; margin: 22px 0; }
+  .playground h2 { margin: 0 0 4px; font-size: 19px; }
+  .playground .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; }
+  .playground .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .playground button { background: var(--blue); color: #fff; font-weight: 700; border: 0;
+    border-radius: 8px; padding: 9px 16px; cursor: pointer; font-size: 13.5px; }
+  .playground button.alt { background: var(--paper-2); color: var(--ink); border: 1px solid var(--line); }
+  .playground input[type=number] { width: 110px; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font: 13.5px ui-monospace, Menlo, monospace; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 18px;
+    background: var(--paper-2); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .stats .v { font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .stats .k { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .targets { font-size: 13.5px; }
+  .targets li { margin: 4px 0; }
+  .hit { color: var(--green); font-weight: 750; }
 </style>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -88,27 +143,121 @@
     <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 2</p>
     <h1>Sections, Not Rows</h1>
     <p class="partline"><span class="sw" style="background: var(--blue)"></span>Part I — The Shape of Data · seven builds, seven receipts</p>
+    <p class="progress" data-progress="E2.1,E2.2,E2.3,E2.4,E2.5,E2.6,E2.7"></p>
   </div>
 </header>
 <main class="wrap">
   <p class="intro">The chapter's spirit: every claim it makes about \(\sigma_0\), \(\delta\), and fiber widening has a harness behind it. Your exercises rerun that harness, vary it, and break it on purpose  —  the receipts you produce should look like the chapter's BLD-SEC-* lines.</p>
+  
+  <details class="console">
+    <summary>⚡ Run it live — GQL console</summary>
+    <p class="hint">Point at the public read-only instance, or your own engine
+    (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="run">Run</button></div>
+    <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+      <button class="chip" data-q="HEALTH sensors;">HEALTH</button>
+      <button class="chip" data-q="SECTION sensors AT id='s1';">SECTION AT</button>
+      <button class="chip" data-q="INTEGRATE sensors OVER city MEASURE count(*), min(temp);">INTEGRATE</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+  
   <article class="ex" id="e2-1"><h2><span class="eid" style="background: var(--blue)">E2.1</span>Reproduce the worked example</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Check out gigi at <code>66f18a0</code>, stand up a <code>sensors</code> bundle with the prologue's key and the chapter's three defaults (<code>temperature</code>=20.0, <code>humidity</code>=40.0, <code>status</code>=<code>ok</code>), insert the two session records, and call <code>deviation_norm</code> on each.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your stdout matches the BLD-SEC-WORKED-TDD block byte for byte: <code>s-001 -&gt; deviation_norm = 0</code> and <code>s-002 -&gt; deviation_norm = 2</code>. Archive your harness next to <code>harvest/book_ch2_worked_example.rs</code>.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Insert a record with all three fields deviating, confirm \(\|\delta\|=3\), and explain in one log line why TDD-1.4 is not also pinned by the spec.</p></div></article><article class="ex" id="e2-2"><h2><span class="eid" style="background: var(--blue)">E2.2</span>Instrument the absent-section convention</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Add a unit test against <code>src/bundle.rs:2893-2904</code> that calls <code>deviation_norm</code> on a <code>BasePoint</code> never inserted, then on the same point after inserting the schema's defaults verbatim. Both should return 0; the engine must distinguish them somewhere else.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Insert a record with all three fields deviating, confirm \(\|\delta\|=3\), and explain in one log line why TDD-1.4 is not also pinned by the spec.</p></div><div class="exwork"><label><input type="checkbox" data-done="E2.1"> done</label><input class="receipt" data-receipt="E2.1" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e2-2"><h2><span class="eid" style="background: var(--blue)">E2.2</span>Instrument the absent-section convention</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Add a unit test against <code>src/bundle.rs:2893-2904</code> that calls <code>deviation_norm</code> on a <code>BasePoint</code> never inserted, then on the same point after inserting the schema's defaults verbatim. Both should return 0; the engine must distinguish them somewhere else.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A passing test <code>tdd_devnorm_absent_vs_default_zero</code> that asserts <code>get_fiber(bp).is_none()</code> for the first case and <code>is_some()</code> for the second  —  proving an empty bar and a played-as-written bar share a norm but not a storage state.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a Prometheus counter on <code>get_fiber</code> miss-vs-hit and scrape <code>/v1/metrics</code> to show the two cases diverge in the gauge.</p></div></article><article class="ex" id="e2-3"><h2><span class="eid" style="background: var(--blue)">E2.3</span>Replay fiber widening on your own bundle</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Take any non-sensors bundle you have lying around (or stand up a fresh <code>orders</code>), insert a few records, then call <code>add_field</code> (<code>src/bundle.rs:3727-3755</code>) with a new column and a declared default. Read every old record back.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a Prometheus counter on <code>get_fiber</code> miss-vs-hit and scrape <code>/v1/metrics</code> to show the two cases diverge in the gauge.</p></div><div class="exwork"><label><input type="checkbox" data-done="E2.2"> done</label><input class="receipt" data-receipt="E2.2" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e2-3"><h2><span class="eid" style="background: var(--blue)">E2.3</span>Replay fiber widening on your own bundle</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Take any non-sensors bundle you have lying around (or stand up a fresh <code>orders</code>), insert a few records, then call <code>add_field</code> (<code>src/bundle.rs:3727-3755</code>) with a new column and a declared default. Read every old record back.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The widened <code>zero_section()</code> prints with the new coordinate appended; every pre-widening record reads back at exactly that default on the new field; <code>deviation_norm</code> for those records is unchanged. Capture the before/after as a single log block in the BLD-SEC-WIDENING format.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Time the <code>add_field</code> call against \(N\in\{10^3, 10^5, 10^6\}\) stored records and plot the \(O(N)\) in-memory extension. I claimed it ships as an eager linear pass  —  show me your slope.</p></div></article><article class="ex" id="e2-4"><h2><span class="eid" style="background: var(--blue)">E2.4</span>Benchmark the DHOOM dividend against the histogram</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run the chapter's employee dataset (the ten records I measured for BLD-SEC-HISTOGRAM, modal defaults) and a second dataset where <em>every</em> field has a declared default matching a near-universal mode  —  e.g.\ an IoT bundle whose status is <code>ok</code> 99% of the time. Encode both with <code>dhoom::encode_json</code> and compute bytes-saved-per-record.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Time the <code>add_field</code> call against \(N\in\{10^3, 10^5, 10^6\}\) stored records and plot the \(O(N)\) in-memory extension. I claimed it ships as an eager linear pass  —  show me your slope.</p></div><div class="exwork"><label><input type="checkbox" data-done="E2.3"> done</label><input class="receipt" data-receipt="E2.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e2-4"><h2><span class="eid" style="background: var(--blue)">E2.4</span>Benchmark the DHOOM dividend against the histogram</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run the chapter's employee dataset (the ten records I measured for BLD-SEC-HISTOGRAM, modal defaults) and a second dataset where <em>every</em> field has a declared default matching a near-universal mode  —  e.g.\ an IoT bundle whose status is <code>ok</code> 99% of the time. Encode both with <code>dhoom::encode_json</code> and compute bytes-saved-per-record.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Two histograms of \(\|\delta\|\), two compression ratios, and one sentence that names which dataset's measure concentrates near \(\sigma_0\). The employee numbers should reproduce my \(\{2:7, 3:3\}\) histogram.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find or synthesize a dataset where the deviation-norm histogram is flat across \(0,\ldots,k\) and confirm DHOOM stops paying  —  the formalism still holds, the dividend does not.</p></div></article><article class="ex" id="e2-5"><h2><span class="eid" style="background: var(--blue)">E2.5</span>Refute (or confirm) that DHOOM calls <code>zero_section</code></h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Grep <code>src/dhoom.rs</code> for any reference to <code>zero_section</code>, then trace how the encoder actually picks its per-document baseline. Write the trace up as a one-page note.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find or synthesize a dataset where the deviation-norm histogram is flat across \(0,\ldots,k\) and confirm DHOOM stops paying  —  the formalism still holds, the dividend does not.</p></div><div class="exwork"><label><input type="checkbox" data-done="E2.4"> done</label><input class="receipt" data-receipt="E2.4" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e2-5"><h2><span class="eid" style="background: var(--blue)">E2.5</span>Refute (or confirm) that DHOOM calls <code>zero_section</code></h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Grep <code>src/dhoom.rs</code> for any reference to <code>zero_section</code>, then trace how the encoder actually picks its per-document baseline. Write the trace up as a one-page note.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your grep matches my 2026-06-12 result (no hits) or has changed since  —  either way, name the function in <code>dhoom.rs</code> that selects the modal value written to the header, and cite the file:line. If the spec's line 37 has been wired up since I checked, that's the receipt; if not, the trace is.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Open a PR that adds a feature-flagged path <code>dhoom::encode_json_against_schema</code> which uses the declared \(\sigma_0\) as the baseline, and measure the byte delta on the employee dataset versus the data-derived baseline.</p></div></article><article class="ex" id="e2-6"><h2><span class="eid" style="background: var(--blue)">E2.6</span>Stress-test the section contract</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Forge a record whose stored key disagrees with the <code>BasePoint</code> it's filed under  —  bypass the public <code>Store</code> API and write directly through whatever the lowest-level insert path exposes in <code>src/storage/types.rs</code>. Then call <code>integrity::scan</code> (or whatever the engine's audit hook is named at your SHA).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Open a PR that adds a feature-flagged path <code>dhoom::encode_json_against_schema</code> which uses the declared \(\sigma_0\) as the baseline, and measure the byte delta on the employee dataset versus the data-derived baseline.</p></div><div class="exwork"><label><input type="checkbox" data-done="E2.5"> done</label><input class="receipt" data-receipt="E2.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e2-6"><h2><span class="eid" style="background: var(--blue)">E2.6</span>Stress-test the section contract</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Forge a record whose stored key disagrees with the <code>BasePoint</code> it's filed under  —  bypass the public <code>Store</code> API and write directly through whatever the lowest-level insert path exposes in <code>src/storage/types.rs</code>. Then call <code>integrity::scan</code> (or whatever the engine's audit hook is named at your SHA).</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The audit flags the violation as a \(\pi \circ \sigma \neq \mathrm{id}_B\) failure with the exact base point in the log line. If the engine currently accepts the corrupted insert silently, that itself is the receipt  —  file an issue citing Definition 1.2.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a debug-mode invariant check that runs <code>\(\pi \circ \sigma\)</code> on every <code>put</code> and panics on disagreement; show the new test catches your forged record.</p></div></article><article class="ex" id="e2-7"><h2><span class="eid" style="background: var(--blue)">E2.7</span>Wire the three verbs to one Store</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>On a bundle you control, hit each of <code>SECTION</code>, <code>NEAR</code>, <code>HOLONOMY</code>, and <code>CURVATURE</code> on <code>src/bin/gigi_stream.rs</code> against the same base point. Verbs without implementations should return a clean error; verbs with implementations should return values traceable to a method on the underlying <code>Store</code>.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a debug-mode invariant check that runs <code>\(\pi \circ \sigma\)</code> on every <code>put</code> and panics on disagreement; show the new test catches your forged record.</p></div><div class="exwork"><label><input type="checkbox" data-done="E2.6"> done</label><input class="receipt" data-receipt="E2.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e2-7"><h2><span class="eid" style="background: var(--blue)">E2.7</span>Wire the three verbs to one Store</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>On a bundle you control, hit each of <code>SECTION</code>, <code>NEAR</code>, <code>HOLONOMY</code>, and <code>CURVATURE</code> on <code>src/bin/gigi_stream.rs</code> against the same base point. Verbs without implementations should return a clean error; verbs with implementations should return values traceable to a method on the underlying <code>Store</code>.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A table of {verb, HTTP status, response shape, backing <code>Store</code> method}  —  four rows, with the unimplemented verbs honestly marked. This is the engineering version of the chapter's claim that those verbs “stand on” the four definitions.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Pick the cheapest unimplemented verb on your SHA, wire a stub that returns \(\|\delta\|\) for <code>CURVATURE</code> as a placeholder, and document why that's wrong  —  second differences, not first  —  in the doc comment.</p></div></article>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Pick the cheapest unimplemented verb on your SHA, wire a stub that returns \(\|\delta\|\) for <code>CURVATURE</code> as a placeholder, and document why that's wrong  —  second differences, not first  —  in the doc comment.</p></div><div class="exwork"><label><input type="checkbox" data-done="E2.7"> done</label><input class="receipt" data-receipt="E2.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
   <div class="pager"><a href="ch01.html">← Chapter 1 exercises</a><a href="ch03.html">Chapter 3 exercises →</a></div>
 </main>
+<div id="toast" role="status"></div>
+<script>
+(function () {
+  var KEY = "gb-ex";
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+  function save() { localStorage.setItem(KEY, JSON.stringify(store)); }
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 1400);
+  }
+  // per-exercise done + receipt
+  document.querySelectorAll("[data-done]").forEach(function (cb) {
+    var id = cb.getAttribute("data-done");
+    var st = store[id] || {};
+    cb.checked = !!st.done;
+    cb.closest(".ex") && cb.closest(".ex").classList.toggle("is-done", !!st.done);
+    cb.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].done = cb.checked; save();
+      cb.closest(".ex").classList.toggle("is-done", cb.checked);
+      updateProgress();
+    });
+  });
+  document.querySelectorAll("[data-receipt]").forEach(function (inp) {
+    var id = inp.getAttribute("data-receipt");
+    var st = store[id] || {};
+    if (st.receipt) inp.value = st.receipt;
+    inp.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].receipt = inp.value; save();
+    });
+  });
+  function updateProgress() {
+    document.querySelectorAll("[data-progress]").forEach(function (el) {
+      var ids = el.getAttribute("data-progress").split(",");
+      var done = ids.filter(function (id) { return store[id] && store[id].done; }).length;
+      el.innerHTML = done + "/" + ids.length + " done" +
+        '<span class="bar"><span class="fill" style="width:' + (100 * done / ids.length) + '%"></span></span>';
+    });
+  }
+  updateProgress();
+  // click-to-copy on code chips
+  document.querySelectorAll("code").forEach(function (c) {
+    c.title = "click to copy";
+    c.addEventListener("click", function () {
+      navigator.clipboard && navigator.clipboard.writeText(c.textContent).then(
+        function () { toast("copied"); });
+    });
+  });
+  // live console
+  document.querySelectorAll(".console").forEach(function (box) {
+    var run = box.querySelector(".run"), ep = box.querySelector(".ep"),
+        q = box.querySelector("textarea"), out = box.querySelector("pre");
+    var saved = localStorage.getItem("gb-endpoint");
+    if (saved) ep.value = saved;
+    box.querySelectorAll(".chip").forEach(function (ch) {
+      ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
+    });
+    run.addEventListener("click", function () {
+      var base = ep.value.replace(/\/+$/, "");
+      localStorage.setItem("gb-endpoint", ep.value);
+      out.textContent = "running…";
+      fetch(base + "/v1/gql", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text(); })
+        .then(function (txt) {
+          try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
+          catch (e) { out.textContent = txt; }
+        })
+        .catch(function (e) {
+          out.textContent = "✗ " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+        });
+    });
+  });
+})();
+</script>
 <footer>
   <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
   <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·

@@ -80,6 +80,29 @@ NOT committed — only the generated exercise HTML is. To regenerate:
 `python3 scripts/build_exercise_pages.py <chapters_dir> site/gigi-builds/exercises`.
 Deploy step 4 above now includes the `exercises/` subfolder.
 
+## UPDATE 2026-07-02: exercise pages are now INTERACTIVE
+
+Per Bee's original ask ("interactive like the mesh demo"), the exercise
+pages now carry a working layer, all verified headless end-to-end:
+- **Workbook**: every one of the 126 exercises has a done-checkbox and a
+  paste-your-receipt field, persisted in localStorage (`gb-ex` key);
+  chapter pages show an n/7 progress bar and the hub shows per-chapter
+  badges. Done cards get an aqua edge.
+- **Live GQL console** on every chapter page: endpoint field (defaults
+  to the public instance, which serves `access-control-allow-origin: *`;
+  or a local engine started with `GIGI_CORS_ORIGIN=*`), quick-fill
+  chips, POST to `/v1/gql`, pretty-printed response.
+- **Click-to-copy** on every code chip, with a toast.
+- **Chapter 1 playground**: the curvature odometer — the engine's
+  Welford + per-record kappa math ported to JS. Reproduces the book's
+  BLD-CH1-WORKED-KAPPA receipts in-browser: kappa(s151) = 4.7652 vs book
+  4.7653, typical-reading kappa = 0.03177 vs book 0.031728; targets
+  flip to green checkmarks when hit.
+- Pattern for more playgrounds: add an entry to `PLAYGROUNDS` in
+  `scripts/build_exercise_pages.py` (keyed by chapter number) and
+  regenerate. Natural next candidates: ch3 (GIGI hash / birthday-bound
+  collision demo, port `src/hash.rs`), ch9 (spectral-gap toy graph).
+
 ## Facts the next session will want
 
 - Book: *GIGI Builds — The Fiber-Bundle Database: A Working Engineer's Guide

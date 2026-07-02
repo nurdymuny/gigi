@@ -67,6 +67,61 @@
   .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
   .hub .range { color: var(--ink-2); font-size: 13.5px; }
   @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+  /* workbook layer */
+  .exwork { display: flex; gap: 12px; align-items: center; margin-top: 16px;
+    border-top: 1px dashed var(--line); padding-top: 12px; flex-wrap: wrap; }
+  .exwork label { display: flex; gap: 7px; align-items: center; font-size: 13px;
+    font-weight: 700; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .exwork input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--aqua); }
+  .exwork .receipt { flex: 1; min-width: 220px; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font: 13px ui-monospace, Menlo, Consolas, monospace;
+    background: var(--paper); color: var(--ink); }
+  .exwork .receipt:focus { outline: 2px solid var(--blue); }
+  .ex.is-done { border-left: 5px solid var(--aqua); }
+  .ex.is-done .eid { filter: saturate(0.6); }
+  .progress { font-size: 13.5px; color: var(--ink-2); font-weight: 650; margin-top: 6px; }
+  .progress .bar { display: inline-block; width: 120px; height: 8px; background: var(--paper-2);
+    border: 1px solid var(--line); border-radius: 99px; vertical-align: middle; margin: 0 8px; }
+  .progress .fill { display: block; height: 100%; border-radius: 99px; background: var(--aqua); }
+  code { cursor: copy; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--night); color: #fff; border-radius: 99px; padding: 8px 18px;
+    font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 99; }
+  #toast.show { opacity: 1; }
+  /* live console */
+  .console { background: var(--night); color: #d9e0fa; border-radius: 12px;
+    padding: 4px 20px 6px; margin: 22px 0; }
+  .console summary { cursor: pointer; font-weight: 700; font-size: 14.5px; padding: 12px 0; }
+  .console .row { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+  .console input, .console textarea { background: #0b0e1c; color: #d9e0fa;
+    border: 1px solid #38406b; border-radius: 8px; padding: 9px 11px;
+    font: 13px ui-monospace, Menlo, Consolas, monospace; }
+  .console input { flex: 1; min-width: 240px; }
+  .console textarea { width: 100%; min-height: 64px; resize: vertical; }
+  .console button { background: var(--yellow); color: #221a00; font-weight: 750;
+    border: 0; border-radius: 8px; padding: 9px 18px; cursor: pointer; font-size: 13.5px; }
+  .console .chip { background: transparent; color: #c9d1ef; border: 1px solid #38406b; }
+  .console pre { background: #0b0e1c; border: 1px solid #38406b; border-radius: 8px;
+    padding: 12px; overflow: auto; max-height: 300px; font-size: 12.5px; white-space: pre-wrap; }
+  .console .hint { color: #8f9bcd; font-size: 12px; margin: 6px 0 12px; }
+  /* playground */
+  .playground { background: #fff; border: 2px solid var(--blue); border-radius: 12px;
+    padding: 20px 24px; margin: 22px 0; }
+  .playground h2 { margin: 0 0 4px; font-size: 19px; }
+  .playground .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; }
+  .playground .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .playground button { background: var(--blue); color: #fff; font-weight: 700; border: 0;
+    border-radius: 8px; padding: 9px 16px; cursor: pointer; font-size: 13.5px; }
+  .playground button.alt { background: var(--paper-2); color: var(--ink); border: 1px solid var(--line); }
+  .playground input[type=number] { width: 110px; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font: 13.5px ui-monospace, Menlo, monospace; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 18px;
+    background: var(--paper-2); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .stats .v { font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .stats .k { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .targets { font-size: 13.5px; }
+  .targets li { margin: 4px 0; }
+  .hit { color: var(--green); font-weight: 750; }
 </style>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -88,27 +143,121 @@
     <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 10</p>
     <h1>The Brain on the Wire</h1>
     <p class="partline"><span class="sw" style="background: var(--yellow)"></span>Part III — The Signals That Run While You Sleep · seven builds, seven receipts</p>
+    <p class="progress" data-progress="E10.1,E10.2,E10.3,E10.4,E10.5,E10.6,E10.7"></p>
   </div>
 </header>
 <main class="wrap">
   <p class="intro">These are wire-level builds against the eleven kahler-gated endpoints in <code>src/bin/gigi_stream.rs</code> (PR windows 2 and 3, lines 14576-14601 and 14608-14678). The receipt class is a verbatim diff against one of the BLD-CH10-* receipts I shipped in <code>CLAIMS_LEDGER.json</code>, or a new ledger entry of the same shape; the substrate is the 40-record anisotropic fiber of BLD-CH10-BUNDLE unless an exercise says otherwise. Build with <code>--features kahler</code>; if you forget, the routes are not there and the test will tell you.</p>
+  
+  <details class="console">
+    <summary>⚡ Run it live — GQL console</summary>
+    <p class="hint">Point at the public read-only instance, or your own engine
+    (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="run">Run</button></div>
+    <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+      <button class="chip" data-q="HEALTH sensors;">HEALTH</button>
+      <button class="chip" data-q="SECTION sensors AT id='s1';">SECTION AT</button>
+      <button class="chip" data-q="INTEGRATE sensors OVER city MEASURE count(*), min(temp);">INTEGRATE</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+  
   <article class="ex" id="e10-1"><h2><span class="eid" style="background: var(--yellow)">E10.1</span>Reproduce the dream wander</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Re-run <code>examples/brain_tour_demo.rs</code> §4 on the 40-record BLD-CH10-BUNDLE, sweeping \(T \in {1, 2, 4, 8}\) with the SAMPLE/DREAM Langevin walker (1500 burn-in, \(dt=0.01\), seed 42), and tabulate max wander distance from \(\mu\) per temperature.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>At \(T=4\) you must hit BLD-CH10-DREAM's \(15.64\); the \(T=1\) column reproduces the SAMPLE spread; the four-row table is committed to <code>theory/brain_primitives/dream_temperature_sweep.txt</code> with the seed printed in the header.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Fit \(\sqrt{T}\) scaling to your four rows; report the residual and whether it widens at \(T=8\) as the walker leaves the typical set.</p></div></article><article class="ex" id="e10-2"><h2><span class="eid" style="background: var(--yellow)">E10.2</span>Stress CONFIDENCE on the 184-OOM gap</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>examples/predictive_coding_demo.rs</code> (the 80-patient PK cohort) and binary-search the weight axis between 78\,kg and 300\,kg for the patient mass at which <code>normalized</code> drops below Marcella's refuse-gate threshold (\(10^{-2}\) in the demo).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Fit \(\sqrt{T}\) scaling to your four rows; report the residual and whether it widens at \(T=8\) as the walker leaves the typical set.</p></div><div class="exwork"><label><input type="checkbox" data-done="E10.1"> done</label><input class="receipt" data-receipt="E10.1" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e10-2"><h2><span class="eid" style="background: var(--yellow)">E10.2</span>Stress CONFIDENCE on the 184-OOM gap</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>examples/predictive_coding_demo.rs</code> (the 80-patient PK cohort) and binary-search the weight axis between 78\,kg and 300\,kg for the patient mass at which <code>normalized</code> drops below Marcella's refuse-gate threshold (\(10^{-2}\) in the demo).</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A single number \(w^*\), the kg value where the gate flips known \(\to\) unknown, and the two flanking <code>normalized</code> values; the in-cohort end of your sweep reproduces BLD-CH10-184-OOM's <code>0.929</code> at 78\,kg / 4.7\,L/h to four decimals.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Repeat at clearance fixed to \(4.5\)\,L/h vs \(0.1\)\,L/h; the two \(w^*\) values should disagree because the kernel is two-dimensional, and the size of the disagreement is the bandwidth talking.</p></div></article><article class="ex" id="e10-3"><h2><span class="eid" style="background: var(--yellow)">E10.3</span>Instrument FORECAST conservation</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Hit <code>POST /v1/bundles/{name}/brain/forecast</code> on BLD-CH10-BUNDLE from start \((3,0,5,10)\) and capture \(H(x_t)\) at \(t \in {0, 500, 1000, 2000, 10000}\) by querying the bundle's negative log-density at each returned point. Plot \(H(t) - H(0)\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Repeat at clearance fixed to \(4.5\)\,L/h vs \(0.1\)\,L/h; the two \(w^*\) values should disagree because the kernel is two-dimensional, and the size of the disagreement is the bandwidth talking.</p></div><div class="exwork"><label><input type="checkbox" data-done="E10.2"> done</label><input class="receipt" data-receipt="E10.2" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e10-3"><h2><span class="eid" style="background: var(--yellow)">E10.3</span>Instrument FORECAST conservation</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Hit <code>POST /v1/bundles/{name}/brain/forecast</code> on BLD-CH10-BUNDLE from start \((3,0,5,10)\) and capture \(H(x_t)\) at \(t \in {0, 500, 1000, 2000, 10000}\) by querying the bundle's negative log-density at each returned point. Plot \(H(t) - H(0)\).</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Reproduce the BLD-CH10 step-500 and step-1000 coordinates from §10.3 to three decimals, and a log line <code>|H(t)-H(0)|/|H(0)| &lt; 1e-3</code> at \(t=10000\); fail loudly if the symplectic integrator has drifted off-shell.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Halve \(dt\) and check that the drift drops by the right power of the step (Euler vs leapfrog will give you different answers; the demo uses leapfrog).</p></div></article><article class="ex" id="e10-4"><h2><span class="eid" style="background: var(--yellow)">E10.4</span>Refute the FOCUS-as-ATTEND-truncation shortcut</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Write a 50-line client that calls <code>brain/attend</code> on a query the demo doesn't ship  —  pick one halfway between the two clusters of BLD-CH10-BUNDLE  —  and compare <code>argpartition</code> of the returned \(\alpha_i\) at \(k=3\) against the top-3 weights from FOCUS's local-only implementation in <code>examples/brain_tour_demo.rs</code> §9.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Halve \(dt\) and check that the drift drops by the right power of the step (Euler vs leapfrog will give you different answers; the demo uses leapfrog).</p></div><div class="exwork"><label><input type="checkbox" data-done="E10.3"> done</label><input class="receipt" data-receipt="E10.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e10-4"><h2><span class="eid" style="background: var(--yellow)">E10.4</span>Refute the FOCUS-as-ATTEND-truncation shortcut</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Write a 50-line client that calls <code>brain/attend</code> on a query the demo doesn't ship  —  pick one halfway between the two clusters of BLD-CH10-BUNDLE  —  and compare <code>argpartition</code> of the returned \(\alpha_i\) at \(k=3\) against the top-3 weights from FOCUS's local-only implementation in <code>examples/brain_tour_demo.rs</code> §9.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A table of three indices and three weights from each side, identical up to floating-point on the in-cluster query, and a documented divergence (or absence thereof) on the between-clusters query; commit the writeup as <code>theory/brain_primitives/focus_vs_attend_top3.md</code>. This is the contract gap I named in §10.10  —  you are the test cohort.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find a query where ATTEND's full distribution is bimodal and the FOCUS truncation loses the second mode; that is the reason FOCUS does not yet have a route.</p></div></article><article class="ex" id="e10-5"><h2><span class="eid" style="background: var(--yellow)">E10.5</span>Extend EPISODIC to a smooth bundle</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Build a 40-record bundle with no cluster jump  —  a single Gaussian blob, same 4D anisotropic \(\sigma^2\)  —  and call <code>brain/episodic</code> against it.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find a query where ATTEND's full distribution is bimodal and the FOCUS truncation loses the second mode; that is the reason FOCUS does not yet have a route.</p></div><div class="exwork"><label><input type="checkbox" data-done="E10.4"> done</label><input class="receipt" data-receipt="E10.4" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e10-5"><h2><span class="eid" style="background: var(--yellow)">E10.5</span>Extend EPISODIC to a smooth bundle</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Build a 40-record bundle with no cluster jump  —  a single Gaussian blob, same 4D anisotropic \(\sigma^2\)  —  and call <code>brain/episodic</code> against it.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p><code>events_found: 0</code> returned by the endpoint; the absence of a top_gap field (or a <code>null</code>) committed to your ledger, contrasted against BLD-CH10-EPISODIC's <code>186.2x persistence_ratio</code> on the two-cluster bundle. Same verb, same code path, opposite verdict  —  that's the refusal in §10.8 made into a test.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Sweep cluster separation from 0 to the BLD-CH10-BUNDLE gap and record the persistence ratio at which the verb starts naming the event; report the elbow.</p></div></article><article class="ex" id="e10-6"><h2><span class="eid" style="background: var(--yellow)">E10.6</span>Wire EXPLAIN into a path renderer</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Call <code>brain/explain</code> with <code>n_steps=4</code> on query \((15,15,15,5)\) against BLD-CH10-BUNDLE; ship a 30-line script that emits the five returned path points as an SVG polyline projected onto the \((bx, cy)\) plane.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Sweep cluster separation from 0 to the BLD-CH10-BUNDLE gap and record the persistence ratio at which the verb starts naming the event; report the elbow.</p></div><div class="exwork"><label><input type="checkbox" data-done="E10.5"> done</label><input class="receipt" data-receipt="E10.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e10-6"><h2><span class="eid" style="background: var(--yellow)">E10.6</span>Wire EXPLAIN into a path renderer</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Call <code>brain/explain</code> with <code>n_steps=4</code> on query \((15,15,15,5)\) against BLD-CH10-BUNDLE; ship a 30-line script that emits the five returned path points as an SVG polyline projected onto the \((bx, cy)\) plane.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The SVG opens, the middle waypoint sits at \((7.66, 7.35, 8.92, 2.07)\) to two decimals (BLD-CH10-EXPLAIN), and <code>nearest_idx=13</code> is annotated at the line's endpoint. Commit the SVG to <code>theory/brain_primitives/explain_path.svg</code>.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Re-run with <code>n_steps=16</code> and overlay both polylines; the geodesic shape should be preserved while the sampling thickens. EXPLAIN is reusing FORECAST's integrator  —  the overlay is the receipt that it's the same machinery.</p></div></article><article class="ex" id="e10-7"><h2><span class="eid" style="background: var(--yellow)">E10.7</span>Benchmark PREDICT's \(\epsilon\)-floor against rank deficiency</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Build a degenerate 40-record bundle where one fiber axis has \(\sigma^2 &lt; 10^{-6}\) (collapse one coordinate to constant plus noise). Call <code>brain/predict</code> at <code>fit_mode="diagonal"</code> from state \((5,5,5,5)\) with and without the <code>predictive_coding.rs:121</code> default \(\epsilon=10^{-3}\) floor.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Re-run with <code>n_steps=16</code> and overlay both polylines; the geodesic shape should be preserved while the sampling thickens. EXPLAIN is reusing FORECAST's integrator  —  the overlay is the receipt that it's the same machinery.</p></div><div class="exwork"><label><input type="checkbox" data-done="E10.6"> done</label><input class="receipt" data-receipt="E10.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e10-7"><h2><span class="eid" style="background: var(--yellow)">E10.7</span>Benchmark PREDICT's \(\epsilon\)-floor against rank deficiency</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Build a degenerate 40-record bundle where one fiber axis has \(\sigma^2 &lt; 10^{-6}\) (collapse one coordinate to constant plus noise). Call <code>brain/predict</code> at <code>fit_mode="diagonal"</code> from state \((5,5,5,5)\) with and without the <code>predictive_coding.rs:121</code> default \(\epsilon=10^{-3}\) floor.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Two response bodies side-by-side: the floored response steps finitely along the rank-deficient axis (matches the spirit of BLD-CH10-PREDICT's \(5 \to 5.0333\) on the wide \(cy\) axis), and the un-floored response either explodes the step or NaNs. Committed as <code>theory/brain_primitives/predict_epsilon_floor_demo.txt</code>.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find the smallest \(\epsilon\) that still produces a finite step on your degenerate axis; that number is the engine's honesty budget on rank deficiency, and Marcella will eventually want to know it.</p></div></article>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Find the smallest \(\epsilon\) that still produces a finite step on your degenerate axis; that number is the engine's honesty budget on rank deficiency, and Marcella will eventually want to know it.</p></div><div class="exwork"><label><input type="checkbox" data-done="E10.7"> done</label><input class="receipt" data-receipt="E10.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
   <div class="pager"><a href="ch09.html">← Chapter 9 exercises</a><a href="ch11.html">Chapter 11 exercises →</a></div>
 </main>
+<div id="toast" role="status"></div>
+<script>
+(function () {
+  var KEY = "gb-ex";
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+  function save() { localStorage.setItem(KEY, JSON.stringify(store)); }
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 1400);
+  }
+  // per-exercise done + receipt
+  document.querySelectorAll("[data-done]").forEach(function (cb) {
+    var id = cb.getAttribute("data-done");
+    var st = store[id] || {};
+    cb.checked = !!st.done;
+    cb.closest(".ex") && cb.closest(".ex").classList.toggle("is-done", !!st.done);
+    cb.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].done = cb.checked; save();
+      cb.closest(".ex").classList.toggle("is-done", cb.checked);
+      updateProgress();
+    });
+  });
+  document.querySelectorAll("[data-receipt]").forEach(function (inp) {
+    var id = inp.getAttribute("data-receipt");
+    var st = store[id] || {};
+    if (st.receipt) inp.value = st.receipt;
+    inp.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].receipt = inp.value; save();
+    });
+  });
+  function updateProgress() {
+    document.querySelectorAll("[data-progress]").forEach(function (el) {
+      var ids = el.getAttribute("data-progress").split(",");
+      var done = ids.filter(function (id) { return store[id] && store[id].done; }).length;
+      el.innerHTML = done + "/" + ids.length + " done" +
+        '<span class="bar"><span class="fill" style="width:' + (100 * done / ids.length) + '%"></span></span>';
+    });
+  }
+  updateProgress();
+  // click-to-copy on code chips
+  document.querySelectorAll("code").forEach(function (c) {
+    c.title = "click to copy";
+    c.addEventListener("click", function () {
+      navigator.clipboard && navigator.clipboard.writeText(c.textContent).then(
+        function () { toast("copied"); });
+    });
+  });
+  // live console
+  document.querySelectorAll(".console").forEach(function (box) {
+    var run = box.querySelector(".run"), ep = box.querySelector(".ep"),
+        q = box.querySelector("textarea"), out = box.querySelector("pre");
+    var saved = localStorage.getItem("gb-endpoint");
+    if (saved) ep.value = saved;
+    box.querySelectorAll(".chip").forEach(function (ch) {
+      ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
+    });
+    run.addEventListener("click", function () {
+      var base = ep.value.replace(/\/+$/, "");
+      localStorage.setItem("gb-endpoint", ep.value);
+      out.textContent = "running…";
+      fetch(base + "/v1/gql", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text(); })
+        .then(function (txt) {
+          try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
+          catch (e) { out.textContent = txt; }
+        })
+        .catch(function (e) {
+          out.textContent = "✗ " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+        });
+    });
+  });
+})();
+</script>
 <footer>
   <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
   <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·

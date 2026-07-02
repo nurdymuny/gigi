@@ -255,6 +255,61 @@ CSS = """
   .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
   .hub .range { color: var(--ink-2); font-size: 13.5px; }
   @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+  /* workbook layer */
+  .exwork { display: flex; gap: 12px; align-items: center; margin-top: 16px;
+    border-top: 1px dashed var(--line); padding-top: 12px; flex-wrap: wrap; }
+  .exwork label { display: flex; gap: 7px; align-items: center; font-size: 13px;
+    font-weight: 700; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .exwork input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--aqua); }
+  .exwork .receipt { flex: 1; min-width: 220px; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font: 13px ui-monospace, Menlo, Consolas, monospace;
+    background: var(--paper); color: var(--ink); }
+  .exwork .receipt:focus { outline: 2px solid var(--blue); }
+  .ex.is-done { border-left: 5px solid var(--aqua); }
+  .ex.is-done .eid { filter: saturate(0.6); }
+  .progress { font-size: 13.5px; color: var(--ink-2); font-weight: 650; margin-top: 6px; }
+  .progress .bar { display: inline-block; width: 120px; height: 8px; background: var(--paper-2);
+    border: 1px solid var(--line); border-radius: 99px; vertical-align: middle; margin: 0 8px; }
+  .progress .fill { display: block; height: 100%; border-radius: 99px; background: var(--aqua); }
+  code { cursor: copy; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--night); color: #fff; border-radius: 99px; padding: 8px 18px;
+    font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 99; }
+  #toast.show { opacity: 1; }
+  /* live console */
+  .console { background: var(--night); color: #d9e0fa; border-radius: 12px;
+    padding: 4px 20px 6px; margin: 22px 0; }
+  .console summary { cursor: pointer; font-weight: 700; font-size: 14.5px; padding: 12px 0; }
+  .console .row { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+  .console input, .console textarea { background: #0b0e1c; color: #d9e0fa;
+    border: 1px solid #38406b; border-radius: 8px; padding: 9px 11px;
+    font: 13px ui-monospace, Menlo, Consolas, monospace; }
+  .console input { flex: 1; min-width: 240px; }
+  .console textarea { width: 100%; min-height: 64px; resize: vertical; }
+  .console button { background: var(--yellow); color: #221a00; font-weight: 750;
+    border: 0; border-radius: 8px; padding: 9px 18px; cursor: pointer; font-size: 13.5px; }
+  .console .chip { background: transparent; color: #c9d1ef; border: 1px solid #38406b; }
+  .console pre { background: #0b0e1c; border: 1px solid #38406b; border-radius: 8px;
+    padding: 12px; overflow: auto; max-height: 300px; font-size: 12.5px; white-space: pre-wrap; }
+  .console .hint { color: #8f9bcd; font-size: 12px; margin: 6px 0 12px; }
+  /* playground */
+  .playground { background: #fff; border: 2px solid var(--blue); border-radius: 12px;
+    padding: 20px 24px; margin: 22px 0; }
+  .playground h2 { margin: 0 0 4px; font-size: 19px; }
+  .playground .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; }
+  .playground .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .playground button { background: var(--blue); color: #fff; font-weight: 700; border: 0;
+    border-radius: 8px; padding: 9px 16px; cursor: pointer; font-size: 13.5px; }
+  .playground button.alt { background: var(--paper-2); color: var(--ink); border: 1px solid var(--line); }
+  .playground input[type=number] { width: 110px; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font: 13.5px ui-monospace, Menlo, monospace; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 18px;
+    background: var(--paper-2); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .stats .v { font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .stats .k { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .targets { font-size: 13.5px; }
+  .targets li { margin: 4px 0; }
+  .hit { color: var(--green); font-weight: 750; }
 """
 
 KATEX = """
@@ -263,6 +318,91 @@ KATEX = """
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
   onload="renderMathInElement(document.body, {delimiters: [{left: '\\\\(', right: '\\\\)', display: false}]});"></script>
 """
+
+
+
+# Per-chapter interactive playgrounds, injected below the console.
+# Ch 1: the curvature odometer from E1.1/E1.6, running the engine's own
+# math in the browser — Welford stats (src/bundle.rs:758-771) and
+# per-record kappa = mean_f |v - mu_before| / range (src/bundle.rs:933-967,
+# declared-range normalisation per effective_range).
+PLAYGROUNDS = {
+    1: """
+  <div class="playground">
+    <h2>🌡️ Try it here first — the curvature odometer</h2>
+    <p class="sub">This is E1.1 running in your browser with the engine's exact math:
+    Welford running stats + per-record \\(\\kappa = |v-\\mu|/R\\) with declared range
+    \\(R\\). Plant the plain, drop the spike, watch the odometer notice. Then go
+    reproduce it in Rust for the real receipt.</p>
+    <div class="row">
+      <button id="pg-plain">Insert 150 plain readings [20.0–20.6]</button>
+      <button id="pg-spike">Insert s151 = 500.0</button>
+      <label>custom value <input type="number" id="pg-val" value="42" step="any"></label>
+      <button class="alt" id="pg-insert">insert</button>
+      <button class="alt" id="pg-reset">reset</button>
+    </div>
+    <div class="stats">
+      <div><div class="v" id="pg-n">0</div><div class="k">records</div></div>
+      <div><div class="v" id="pg-mean">–</div><div class="k">mean (Welford)</div></div>
+      <div><div class="v" id="pg-sigma">–</div><div class="k">σ</div></div>
+      <div><div class="v" id="pg-klast">–</div><div class="k">κ at insert (prior stats)</div></div>
+      <div><div class="v" id="pg-kspike">–</div><div class="k">κ of s151 now</div></div>
+      <div><div class="v" id="pg-ktyp">–</div><div class="k">κ of a typical reading (20.3)</div></div>
+      <div><div class="v" id="pg-flag">0</div><div class="k">flagged at 3σ</div></div>
+    </div>
+    <ul class="targets">
+      <li id="t-spike">◻ book receipt: κ(s151) = 4.7653 (BLD-CH1-WORKED-KAPPA)</li>
+      <li id="t-typ">◻ book receipt: typical reading's κ rises to ≈ 0.0317 after the spike</li>
+    </ul>
+  </div>
+  <script>
+  (function () {
+    var R = 100.0;   // declared RANGE, per the worked example
+    var st, vals, lastK;
+    function reset() { st = { n: 0, mean: 0, m2: 0 }; vals = []; lastK = null; draw(); }
+    function kappa(v) { return st.n < 2 ? 0 : Math.abs(v - st.mean) / R; }
+    function insert(v) {
+      lastK = kappa(v);                       // stats BEFORE the record
+      st.n += 1;
+      if (st.n === 1) { st.mean = v; st.m2 = 0; }
+      else { var d = v - st.mean; st.mean += d / st.n; st.m2 += d * (v - st.mean); }
+      vals.push(v);
+      draw();
+    }
+    function draw() {
+      var sigma = st.n > 1 ? Math.sqrt(st.m2 / (st.n - 1)) : 0;
+      var flagged = st.n > 1 ? vals.filter(function (v) {
+        return Math.abs(v - st.mean) > 3 * sigma; }).length : 0;
+      function set(id, txt) { document.getElementById(id).textContent = txt; }
+      set("pg-n", st.n);
+      set("pg-mean", st.n ? st.mean.toFixed(4) : "–");
+      set("pg-sigma", st.n > 1 ? sigma.toFixed(4) : "–");
+      set("pg-klast", lastK === null ? "–" : lastK.toFixed(6));
+      var kSpike = (st.n > 1 && vals.indexOf(500.0) >= 0) ? kappa(500.0) : null;
+      set("pg-kspike", kSpike === null ? "–" : kSpike.toFixed(6));
+      set("pg-ktyp", st.n > 1 ? kappa(20.3).toFixed(6) : "–");
+      set("pg-flag", flagged);
+      var tS = document.getElementById("t-spike"), tT = document.getElementById("t-typ");
+      if (kSpike !== null && Math.abs(kSpike - 4.7653) < 0.01) {
+        tS.classList.add("hit"); tS.textContent = "✓ book receipt hit: κ(s151) ≈ " + kSpike.toFixed(4) + " (book: 4.7653) — the engine recomputes κ against current stats when you SECTION the record";
+      }
+      if (st.n > 150 && Math.abs(kappa(20.3) - 0.0317) < 0.002) {
+        tT.classList.add("hit"); tT.textContent = "✓ book receipt hit: typical κ ≈ " + kappa(20.3).toFixed(6) + " (book: 0.031728)";
+      }
+    }
+    document.getElementById("pg-plain").addEventListener("click", function () {
+      for (var i = 0; i < 150; i++) insert(20.0 + 0.6 * i / 149);
+    });
+    document.getElementById("pg-spike").addEventListener("click", function () { insert(500.0); });
+    document.getElementById("pg-insert").addEventListener("click", function () {
+      insert(parseFloat(document.getElementById("pg-val").value) || 0);
+    });
+    document.getElementById("pg-reset").addEventListener("click", reset);
+    reset();
+  })();
+  </script>
+""",
+}
 
 
 def page(title_text, body_html, crumbs):
@@ -283,6 +423,82 @@ def page(title_text, body_html, crumbs):
   </div>
 </nav>
 {body_html}
+<div id="toast" role="status"></div>
+<script>
+(function () {{
+  var KEY = "gb-ex";
+  var store = {{}};
+  try {{ store = JSON.parse(localStorage.getItem(KEY) || "{{}}"); }} catch (e) {{}}
+  function save() {{ localStorage.setItem(KEY, JSON.stringify(store)); }}
+  function toast(msg) {{
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._h); t._h = setTimeout(function () {{ t.classList.remove("show"); }}, 1400);
+  }}
+  // per-exercise done + receipt
+  document.querySelectorAll("[data-done]").forEach(function (cb) {{
+    var id = cb.getAttribute("data-done");
+    var st = store[id] || {{}};
+    cb.checked = !!st.done;
+    cb.closest(".ex") && cb.closest(".ex").classList.toggle("is-done", !!st.done);
+    cb.addEventListener("change", function () {{
+      store[id] = store[id] || {{}}; store[id].done = cb.checked; save();
+      cb.closest(".ex").classList.toggle("is-done", cb.checked);
+      updateProgress();
+    }});
+  }});
+  document.querySelectorAll("[data-receipt]").forEach(function (inp) {{
+    var id = inp.getAttribute("data-receipt");
+    var st = store[id] || {{}};
+    if (st.receipt) inp.value = st.receipt;
+    inp.addEventListener("change", function () {{
+      store[id] = store[id] || {{}}; store[id].receipt = inp.value; save();
+    }});
+  }});
+  function updateProgress() {{
+    document.querySelectorAll("[data-progress]").forEach(function (el) {{
+      var ids = el.getAttribute("data-progress").split(",");
+      var done = ids.filter(function (id) {{ return store[id] && store[id].done; }}).length;
+      el.innerHTML = done + "/" + ids.length + " done" +
+        '<span class="bar"><span class="fill" style="width:' + (100 * done / ids.length) + '%"></span></span>';
+    }});
+  }}
+  updateProgress();
+  // click-to-copy on code chips
+  document.querySelectorAll("code").forEach(function (c) {{
+    c.title = "click to copy";
+    c.addEventListener("click", function () {{
+      navigator.clipboard && navigator.clipboard.writeText(c.textContent).then(
+        function () {{ toast("copied"); }});
+    }});
+  }});
+  // live console
+  document.querySelectorAll(".console").forEach(function (box) {{
+    var run = box.querySelector(".run"), ep = box.querySelector(".ep"),
+        q = box.querySelector("textarea"), out = box.querySelector("pre");
+    var saved = localStorage.getItem("gb-endpoint");
+    if (saved) ep.value = saved;
+    box.querySelectorAll(".chip").forEach(function (ch) {{
+      ch.addEventListener("click", function () {{ q.value = ch.getAttribute("data-q"); }});
+    }});
+    run.addEventListener("click", function () {{
+      var base = ep.value.replace(/\/+$/, "");
+      localStorage.setItem("gb-endpoint", ep.value);
+      out.textContent = "running…";
+      fetch(base + "/v1/gql", {{ method: "POST", headers: {{ "Content-Type": "application/json" }},
+        body: JSON.stringify({{ query: q.value }}) }})
+        .then(function (r) {{ return r.text(); }})
+        .then(function (txt) {{
+          try {{ out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }}
+          catch (e) {{ out.textContent = txt; }}
+        }})
+        .catch(function (e) {{
+          out.textContent = "✗ " + e + "\\n\\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+        }});
+    }});
+  }});
+}})();
+</script>
 <footer>
   <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
   <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
@@ -309,7 +525,12 @@ def main():
             cards.append(
                 f'<article class="ex" id="{eid.lower().replace(".", "-")}">'
                 f'<h2><span class="eid" style="background: var({color})">{eid}</span>'
-                f"{tex_to_html(etitle)}</h2>{render_body(body)}</article>"
+                f"{tex_to_html(etitle)}</h2>{render_body(body)}"
+                f'<div class="exwork">'
+                f'<label><input type="checkbox" data-done="{eid}"> done</label>'
+                f'<input class="receipt" data-receipt="{eid}" '
+                f'placeholder="paste your receipt — the number, the test line, the error…"></div>'
+                f"</article>"
             )
         prev_link = (
             f'<a href="ch{ch-1:02d}.html">← Chapter {ch-1} exercises</a>'
@@ -319,16 +540,36 @@ def main():
             f'<a href="ch{ch+1:02d}.html">Chapter {ch+1} exercises →</a>'
             if ch < 18 else '<a href="index.html">All chapters →</a>'
         )
+        eids = ",".join(b[0] for b in blocks)
+        console = f"""
+  <details class="console">
+    <summary>⚡ Run it live — GQL console</summary>
+    <p class="hint">Point at the public read-only instance, or your own engine
+    (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="run">Run</button></div>
+    <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+      <button class="chip" data-q="HEALTH sensors;">HEALTH</button>
+      <button class="chip" data-q="SECTION sensors AT id='s1';">SECTION AT</button>
+      <button class="chip" data-q="INTEGRATE sensors OVER city MEASURE count(*), min(temp);">INTEGRATE</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>"""
         body_html = f"""
 <header class="page">
   <div class="wrap">
     <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter {ch}</p>
     <h1>{tex_to_html(title)}</h1>
     <p class="partline"><span class="sw" style="background: var({color})"></span>Part {roman} — {html.escape(ptitle)} · seven builds, seven receipts</p>
+    <p class="progress" data-progress="{eids}"></p>
   </div>
 </header>
 <main class="wrap">
   <p class="intro">{tex_to_html(intro)}</p>
+  {console}
+  {PLAYGROUNDS.get(ch, "")}
   {''.join(cards)}
   <div class="pager">{prev_link}{next_link}</div>
 </main>"""
@@ -339,11 +580,13 @@ def main():
     cards = []
     for ch, (title, intro, blocks) in chapters.items():
         roman, ptitle, color = part_of(ch)
+        eids = ",".join(b[0] for b in blocks)
         cards.append(
             f'<a href="ch{ch:02d}.html" style="border-left-color: var({color})">'
             f'<span class="n">Part {roman} · Chapter {ch}</span>'
             f"<h3>{tex_to_html(title)}</h3>"
-            f'<span class="range">{blocks[0][0]}–{blocks[-1][0]} · 7 exercises</span></a>'
+            f'<span class="range">{blocks[0][0]}–{blocks[-1][0]} · 7 exercises · '
+            f'<span class="progress" style="margin:0" data-progress="{eids}"></span></span></a>'
         )
     body_html = f"""
 <header class="page">

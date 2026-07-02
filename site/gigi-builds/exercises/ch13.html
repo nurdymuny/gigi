@@ -67,6 +67,61 @@
   .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
   .hub .range { color: var(--ink-2); font-size: 13.5px; }
   @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+  /* workbook layer */
+  .exwork { display: flex; gap: 12px; align-items: center; margin-top: 16px;
+    border-top: 1px dashed var(--line); padding-top: 12px; flex-wrap: wrap; }
+  .exwork label { display: flex; gap: 7px; align-items: center; font-size: 13px;
+    font-weight: 700; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .exwork input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--aqua); }
+  .exwork .receipt { flex: 1; min-width: 220px; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font: 13px ui-monospace, Menlo, Consolas, monospace;
+    background: var(--paper); color: var(--ink); }
+  .exwork .receipt:focus { outline: 2px solid var(--blue); }
+  .ex.is-done { border-left: 5px solid var(--aqua); }
+  .ex.is-done .eid { filter: saturate(0.6); }
+  .progress { font-size: 13.5px; color: var(--ink-2); font-weight: 650; margin-top: 6px; }
+  .progress .bar { display: inline-block; width: 120px; height: 8px; background: var(--paper-2);
+    border: 1px solid var(--line); border-radius: 99px; vertical-align: middle; margin: 0 8px; }
+  .progress .fill { display: block; height: 100%; border-radius: 99px; background: var(--aqua); }
+  code { cursor: copy; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--night); color: #fff; border-radius: 99px; padding: 8px 18px;
+    font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 99; }
+  #toast.show { opacity: 1; }
+  /* live console */
+  .console { background: var(--night); color: #d9e0fa; border-radius: 12px;
+    padding: 4px 20px 6px; margin: 22px 0; }
+  .console summary { cursor: pointer; font-weight: 700; font-size: 14.5px; padding: 12px 0; }
+  .console .row { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+  .console input, .console textarea { background: #0b0e1c; color: #d9e0fa;
+    border: 1px solid #38406b; border-radius: 8px; padding: 9px 11px;
+    font: 13px ui-monospace, Menlo, Consolas, monospace; }
+  .console input { flex: 1; min-width: 240px; }
+  .console textarea { width: 100%; min-height: 64px; resize: vertical; }
+  .console button { background: var(--yellow); color: #221a00; font-weight: 750;
+    border: 0; border-radius: 8px; padding: 9px 18px; cursor: pointer; font-size: 13.5px; }
+  .console .chip { background: transparent; color: #c9d1ef; border: 1px solid #38406b; }
+  .console pre { background: #0b0e1c; border: 1px solid #38406b; border-radius: 8px;
+    padding: 12px; overflow: auto; max-height: 300px; font-size: 12.5px; white-space: pre-wrap; }
+  .console .hint { color: #8f9bcd; font-size: 12px; margin: 6px 0 12px; }
+  /* playground */
+  .playground { background: #fff; border: 2px solid var(--blue); border-radius: 12px;
+    padding: 20px 24px; margin: 22px 0; }
+  .playground h2 { margin: 0 0 4px; font-size: 19px; }
+  .playground .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; }
+  .playground .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .playground button { background: var(--blue); color: #fff; font-weight: 700; border: 0;
+    border-radius: 8px; padding: 9px 16px; cursor: pointer; font-size: 13.5px; }
+  .playground button.alt { background: var(--paper-2); color: var(--ink); border: 1px solid var(--line); }
+  .playground input[type=number] { width: 110px; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font: 13.5px ui-monospace, Menlo, monospace; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 18px;
+    background: var(--paper-2); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .stats .v { font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .stats .k { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .targets { font-size: 13.5px; }
+  .targets li { margin: 4px 0; }
+  .hit { color: var(--green); font-weight: 750; }
 </style>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -88,27 +143,121 @@
     <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 13</p>
     <h1>The Single-Node Tour, with Theorems</h1>
     <p class="partline"><span class="sw" style="background: var(--violet)"></span>Part V — The Theorem · seven builds, seven receipts</p>
+    <p class="progress" data-progress="E13.1,E13.2,E13.3,E13.4,E13.5,E13.6,E13.7"></p>
   </div>
 </header>
 <main class="wrap">
   <p class="intro">The spirit of this chapter's exercises is single-node-first: every build starts on the trivial atlas where the sharded answer must equal the unsharded one bit-for-bit, then widens the cut until the geometry costs you something the receipt can name. The receipts you produce will be Rust test passes against <code>src/sharded/execution.rs</code>, byte-equality assertions against <code>wrap_trivial</code>, and live numbers off <code>examples/sharding_penguins.rs</code> that you compare against my BLD-CH13-PENGUIN-LIVE-OUTPUT.</p>
+  
+  <details class="console">
+    <summary>⚡ Run it live — GQL console</summary>
+    <p class="hint">Point at the public read-only instance, or your own engine
+    (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="run">Run</button></div>
+    <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+      <button class="chip" data-q="HEALTH sensors;">HEALTH</button>
+      <button class="chip" data-q="SECTION sensors AT id='s1';">SECTION AT</button>
+      <button class="chip" data-q="INTEGRATE sensors OVER city MEASURE count(*), min(temp);">INTEGRATE</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+  
   <article class="ex" id="e13-1"><h2><span class="eid" style="background: var(--violet)">E13.1</span>Reproduce the penguin walk end-to-end</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>cargo run --release --features kahler,sharded --example sharding_penguins</code> on a clean checkout and capture all three blocks of output  —  unsharded baseline, three-chart hash sharding, Möbius holonomy  —  into a single log file.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your log shows \(K_{\text{global}} = 0.128159\) on Run [1], \(|K_{\text{sharded}} - K_{\text{unsharded}}| = 2.1076 \times 10^{-3}\) (relative 1.64%) on Run [2], and \(\det(H) = -1.000\) with <code>orientation_flipped = true</code> on Run [3]; diff against the verbatim numbers in BLD-CH13-PENGUIN-LIVE-OUTPUT and confirm zero drift.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Re-run with <code>--features sharded</code> only (drop <code>kahler</code>) and watch which output blocks degrade to typed refusals at the Kähler-gate boundary.</p></div></article><article class="ex" id="e13-2"><h2><span class="eid" style="background: var(--violet)">E13.2</span>Instrument the trivial-atlas identity test</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Fork <code>shard_curvature_on_trivial_atlas_matches_inner_store</code> at <code>src/sharded/execution.rs:734-750</code>, parameterize it over record counts \(n \in \{1, 20, 200, 2000\}\), and emit the wall-clock cost of the <code>wrap_trivial</code> path versus the direct <code>BundleStore</code> path.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Re-run with <code>--features sharded</code> only (drop <code>kahler</code>) and watch which output blocks degrade to typed refusals at the Kähler-gate boundary.</p></div><div class="exwork"><label><input type="checkbox" data-done="E13.1"> done</label><input class="receipt" data-receipt="E13.1" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e13-2"><h2><span class="eid" style="background: var(--violet)">E13.2</span>Instrument the trivial-atlas identity test</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Fork <code>shard_curvature_on_trivial_atlas_matches_inner_store</code> at <code>src/sharded/execution.rs:734-750</code>, parameterize it over record counts \(n \in \{1, 20, 200, 2000\}\), and emit the wall-clock cost of the <code>wrap_trivial</code> path versus the direct <code>BundleStore</code> path.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A passing test <code>shard_curvature_trivial_byte_identical_across_sizes</code> that asserts <code>assert_eq!</code> on <code>k_sum</code> and <code>k_count</code> for every \(n\), plus a printed table showing the wrap overhead stays below a constant factor of the direct path  —  the engine charges nothing for the option that chapter 1 promised.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Insert one NaN record and confirm both paths return the same NaN-poisoned aggregate, not different ones.</p></div></article><article class="ex" id="e13-3"><h2><span class="eid" style="background: var(--violet)">E13.3</span>Refute T2 by perturbing the stereographic atlas</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Take <code>theory/poincare_to_sharding/validation/t2_cocycle_bound.py</code> and sweep the perturbation magnitude \(\varepsilon\) across \(\{10^{-4}, 10^{-3}, 10^{-2}, 10^{-1}\}\) on the three-chart stereographic atlas \((N, S, E)\) on \(S^2\), fitting the log-log regression slope of \(\delta_{\text{cocycle}}\) versus \(\varepsilon\).</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Insert one NaN record and confirm both paths return the same NaN-poisoned aggregate, not different ones.</p></div><div class="exwork"><label><input type="checkbox" data-done="E13.2"> done</label><input class="receipt" data-receipt="E13.2" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e13-3"><h2><span class="eid" style="background: var(--violet)">E13.3</span>Refute T2 by perturbing the stereographic atlas</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Take <code>theory/poincare_to_sharding/validation/t2_cocycle_bound.py</code> and sweep the perturbation magnitude \(\varepsilon\) across \(\{10^{-4}, 10^{-3}, 10^{-2}, 10^{-1}\}\) on the three-chart stereographic atlas \((N, S, E)\) on \(S^2\), fitting the log-log regression slope of \(\delta_{\text{cocycle}}\) versus \(\varepsilon\).</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your fitted slope lands within \(\pm 0.05\) of my \(0.924\) figure from BLD-CH13-T2-RECEIPT; the analytic-atlas baseline (no perturbation) returns a max discrepancy below \(10^{-13}\) across 200 triple-overlap samples, matching my \(1.78 \times 10^{-14}\).</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Push \(\varepsilon\) to \(1.0\) and observe where first-order linearity breaks  —  the bound stops being honest before the manifold does.</p></div></article><article class="ex" id="e13-4"><h2><span class="eid" style="background: var(--violet)">E13.4</span>Forge a Fiedler-sharded penguin run</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Edit <code>examples/sharding_penguins.rs</code> to swap the <code>wrap_hash_sharded</code> call for <code>wrap_fiedler_sharded</code> (the constructor exercised at <code>src/sharded/sharded_bundle.rs:782</code>) and rerun the three-chart curvature aggregation on the same forty-five records.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Push \(\varepsilon\) to \(1.0\) and observe where first-order linearity breaks  —  the bound stops being honest before the manifold does.</p></div><div class="exwork"><label><input type="checkbox" data-done="E13.3"> done</label><input class="receipt" data-receipt="E13.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e13-4"><h2><span class="eid" style="background: var(--violet)">E13.4</span>Forge a Fiedler-sharded penguin run</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Edit <code>examples/sharding_penguins.rs</code> to swap the <code>wrap_hash_sharded</code> call for <code>wrap_fiedler_sharded</code> (the constructor exercised at <code>src/sharded/sharded_bundle.rs:782</code>) and rerun the three-chart curvature aggregation on the same forty-five records.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Your \(|K_{\text{sharded}} - K_{\text{unsharded}}|\) drops below the \(2.1076 \times 10^{-3}\) hash-partition number, ideally toward the analytic floor T3 names; the per-chart species concentration printout shows Adelie/Chinstrap/Gentoo landing in distinct charts at \(\geq 75\%\) concentration, matching the test contract at <code>:782</code>.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Compute the K-drift collapse ratio against the hash baseline and pin it as a numerical lower bound for the spec recommendation the demo prints twice but does not execute.</p></div></article><article class="ex" id="e13-5"><h2><span class="eid" style="background: var(--violet)">E13.5</span>Stress the Möbius holonomy carry</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Walk <code>shard_holonomy_around_loop</code> at <code>src/sharded/execution.rs:410</code> around a four-chart closed path whose transitions compose to (a) the identity, (b) a single Möbius reflection, (c) a double Möbius reflection.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Compute the K-drift collapse ratio against the hash baseline and pin it as a numerical lower bound for the spec recommendation the demo prints twice but does not execute.</p></div><div class="exwork"><label><input type="checkbox" data-done="E13.4"> done</label><input class="receipt" data-receipt="E13.4" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e13-5"><h2><span class="eid" style="background: var(--violet)">E13.5</span>Stress the Möbius holonomy carry</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Walk <code>shard_holonomy_around_loop</code> at <code>src/sharded/execution.rs:410</code> around a four-chart closed path whose transitions compose to (a) the identity, (b) a single Möbius reflection, (c) a double Möbius reflection.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Case (a) lands \(\det(H) = +1.000\) and <code>orientation_flipped = false</code>; case (b) lands \(\det(H) = -1.000\) and <code>orientation_flipped = true</code> (mirroring the BLD-CH13-PENGUIN Möbius result); case (c) lands \(\det(H) = +1.000\) again  —  the \(\mathbb{Z}_2\) closes. Cross-check against <code>holonomy_four_chart_path_is_transition_product</code> at <code>:1214</code>.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Inject a non-trivial gauge generator \(h(x) = x\) as in <code>t4_sharded_holonomy.py</code> and confirm the round-trip phase still lands within \(10^{-4}\) of \(e^{-i} = 0.540343 - 0.841534j\).</p></div></article><article class="ex" id="e13-6"><h2><span class="eid" style="background: var(--violet)">E13.6</span>Replay T1 BETTI on the three named fixtures</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>shard_betti_mayer_vietoris</code> (Kähler-gated, <code>src/sharded/execution.rs:201</code>) against the three fixtures from BLD-CH13-T1-RECEIPT  —  \(S^1\) as two arcs, \(S^2\) as two half-tetrahedra, \(T^2\) on a \(3 \times 3\) strip cover  —  and record per-chart Betti vectors alongside the assembled global Betti.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Inject a non-trivial gauge generator \(h(x) = x\) as in <code>t4_sharded_holonomy.py</code> and confirm the round-trip phase still lands within \(10^{-4}\) of \(e^{-i} = 0.540343 - 0.841534j\).</p></div><div class="exwork"><label><input type="checkbox" data-done="E13.5"> done</label><input class="receipt" data-receipt="E13.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e13-6"><h2><span class="eid" style="background: var(--violet)">E13.6</span>Replay T1 BETTI on the three named fixtures</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run <code>shard_betti_mayer_vietoris</code> (Kähler-gated, <code>src/sharded/execution.rs:201</code>) against the three fixtures from BLD-CH13-T1-RECEIPT  —  \(S^1\) as two arcs, \(S^2\) as two half-tetrahedra, \(T^2\) on a \(3 \times 3\) strip cover  —  and record per-chart Betti vectors alongside the assembled global Betti.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Per-chart Bettis disagree with global Bettis on every fixture (the arc has \(\beta_1 = 0\) but \(S^1\) has \(\beta_1 = 1\)); the Mayer-Vietoris assembly returns integer-equal ground truth for all three, and <code>mv_betti_correction_recovers_truth_at_four_charts</code> at <code>:910</code> plus the eight-chart variant at <code>:925</code> both pass.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a fourth fixture  —  the Klein bottle on a four-strip cover  —  and confirm the assembly recovers \(\beta_0 = 1, \beta_1 = 1, \beta_2 = 0\) over \(\mathbb{Z}_2\) coefficients.</p></div></article><article class="ex" id="e13-7"><h2><span class="eid" style="background: var(--violet)">E13.7</span>Benchmark the n_charts fork</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Hit the live <code>/v1/bundles/{name}/sharded/curvature</code> endpoint (mounted at <code>src/bin/gigi_stream.rs:14496-14506</code>) with <code>n_charts \(\in \{1, 2, 4, 8, 16\}\)</code> on a synthetic 1000-record bundle, and instrument the wall-clock and the returned \(K\)-mean at each setting.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a fourth fixture  —  the Klein bottle on a four-strip cover  —  and confirm the assembly recovers \(\beta_0 = 1, \beta_1 = 1, \beta_2 = 0\) over \(\mathbb{Z}_2\) coefficients.</p></div><div class="exwork"><label><input type="checkbox" data-done="E13.6"> done</label><input class="receipt" data-receipt="E13.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e13-7"><h2><span class="eid" style="background: var(--violet)">E13.7</span>Benchmark the n_charts fork</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Hit the live <code>/v1/bundles/{name}/sharded/curvature</code> endpoint (mounted at <code>src/bin/gigi_stream.rs:14496-14506</code>) with <code>n_charts \(\in \{1, 2, 4, 8, 16\}\)</code> on a synthetic 1000-record bundle, and instrument the wall-clock and the returned \(K\)-mean at each setting.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A scrape table where \(n_{\text{charts}} = 1\) returns the byte-identical answer the trivial-atlas branch promises and the higher-\(n\) runs drift by a bounded percentage you name; the fork at <code>:3527-3540</code> is the only difference between the two code paths, and your numbers prove the single-node branch costs zero extra.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Wire a Prometheus counter for which branch the fork took and watch the ratio as you sweep traffic  —  the trivial atlas should dominate the small-bundle regime.</p></div></article>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Wire a Prometheus counter for which branch the fork took and watch the ratio as you sweep traffic  —  the trivial atlas should dominate the small-bundle regime.</p></div><div class="exwork"><label><input type="checkbox" data-done="E13.7"> done</label><input class="receipt" data-receipt="E13.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
   <div class="pager"><a href="ch12.html">← Chapter 12 exercises</a><a href="ch14.html">Chapter 14 exercises →</a></div>
 </main>
+<div id="toast" role="status"></div>
+<script>
+(function () {
+  var KEY = "gb-ex";
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+  function save() { localStorage.setItem(KEY, JSON.stringify(store)); }
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 1400);
+  }
+  // per-exercise done + receipt
+  document.querySelectorAll("[data-done]").forEach(function (cb) {
+    var id = cb.getAttribute("data-done");
+    var st = store[id] || {};
+    cb.checked = !!st.done;
+    cb.closest(".ex") && cb.closest(".ex").classList.toggle("is-done", !!st.done);
+    cb.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].done = cb.checked; save();
+      cb.closest(".ex").classList.toggle("is-done", cb.checked);
+      updateProgress();
+    });
+  });
+  document.querySelectorAll("[data-receipt]").forEach(function (inp) {
+    var id = inp.getAttribute("data-receipt");
+    var st = store[id] || {};
+    if (st.receipt) inp.value = st.receipt;
+    inp.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].receipt = inp.value; save();
+    });
+  });
+  function updateProgress() {
+    document.querySelectorAll("[data-progress]").forEach(function (el) {
+      var ids = el.getAttribute("data-progress").split(",");
+      var done = ids.filter(function (id) { return store[id] && store[id].done; }).length;
+      el.innerHTML = done + "/" + ids.length + " done" +
+        '<span class="bar"><span class="fill" style="width:' + (100 * done / ids.length) + '%"></span></span>';
+    });
+  }
+  updateProgress();
+  // click-to-copy on code chips
+  document.querySelectorAll("code").forEach(function (c) {
+    c.title = "click to copy";
+    c.addEventListener("click", function () {
+      navigator.clipboard && navigator.clipboard.writeText(c.textContent).then(
+        function () { toast("copied"); });
+    });
+  });
+  // live console
+  document.querySelectorAll(".console").forEach(function (box) {
+    var run = box.querySelector(".run"), ep = box.querySelector(".ep"),
+        q = box.querySelector("textarea"), out = box.querySelector("pre");
+    var saved = localStorage.getItem("gb-endpoint");
+    if (saved) ep.value = saved;
+    box.querySelectorAll(".chip").forEach(function (ch) {
+      ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
+    });
+    run.addEventListener("click", function () {
+      var base = ep.value.replace(/\/+$/, "");
+      localStorage.setItem("gb-endpoint", ep.value);
+      out.textContent = "running…";
+      fetch(base + "/v1/gql", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text(); })
+        .then(function (txt) {
+          try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
+          catch (e) { out.textContent = txt; }
+        })
+        .catch(function (e) {
+          out.textContent = "✗ " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+        });
+    });
+  });
+})();
+</script>
 <footer>
   <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
   <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·

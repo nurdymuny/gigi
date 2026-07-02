@@ -134,13 +134,13 @@
 <nav aria-label="Site">
   <div class="wrap">
     <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
-    <span class="crumbs"><a href="index.html">exercises</a> · chapter 01</span>
+    <span class="crumbs"><a href="../index.html#builds">chapters</a> · chapter 01</span>
   </div>
 </nav>
 
 <header class="page">
   <div class="wrap">
-    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 1</p>
+    <p class="eyebrow"><a href="../index.html#builds" style="text-decoration:none; color:inherit;">Chapters</a> · Chapter 1</p>
     <h1>The Phone Book and the Moon</h1>
     <p class="partline"><span class="sw" style="background: var(--blue)"></span>Part I — The Shape of Data · seven builds, seven receipts</p>
     <p class="progress" data-progress="E1.1,E1.2,E1.3,E1.4,E1.5,E1.6,E1.7"></p>
@@ -254,7 +254,7 @@
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Plot the typical-record \(\kappa\) alongside the flagged count from <code>compute_anomalies</code>  —  the moment the wild readings start outvoting the plain, the detector's verdict flips, and the plot shows you where.</p></div><div class="exwork"><label><input type="checkbox" data-done="E1.6"> done</label><input class="receipt" data-receipt="E1.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e1-7"><h2><span class="eid" style="background: var(--blue)">E1.7</span>Wire a section verb that returns its own \(\kappa\)</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Issue <code>SECTION stations AT station_id='s151';</code> against the live engine and capture the full response, including the per-result geometric annotation the day-one table promises on row two.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A response payload that carries both the fiber values and the per-record \(\kappa\) and confidence  —  one round trip, no separate aggregation call, no log-scraping. Diff the \(\kappa\) in this response against the \(4.7653\) from E1.1's <code>compute_anomalies</code> output; they should be the same number to f64 precision, because they came from the same <code>compute_record_k</code> at <code>src/bundle.rs:933--967</code>.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Issue the same <code>SECTION</code> against a typical station and confirm the \(\kappa\) matches the pre-spike \(0.000040\)  —  the address didn't grow, and the geometry rode along for free.</p></div><div class="exwork"><label><input type="checkbox" data-done="E1.7"> done</label><input class="receipt" data-receipt="E1.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
-  <div class="pager"><a href="index.html">← All chapters</a><a href="ch02.html">Chapter 2 exercises →</a></div>
+  <div class="pager"><a href="../index.html#builds">← All chapters</a><a href="ch02.html">Chapter 2 exercises →</a></div>
 </main>
 <div id="toast" role="status"></div>
 <script>

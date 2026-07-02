@@ -13415,7 +13415,7 @@ fn execute_gql_on_store_read(
             };
             Ok(ExecResult::Rows(results))
         }
-        Statement::Integrate { over, measures, jackknife_along, .. } => {
+        Statement::Integrate { over, measures, jackknife_along, jackknife_skip, .. } => {
             // Validate the group-by field and every measure field against
             // the schema ('*' is COUNT(*) and always legal) — same
             // rationale as the Cover-arm validation above.
@@ -13448,6 +13448,7 @@ fn execute_gql_on_store_read(
                     store.records(),
                     over.as_deref(),
                     order_field,
+                    *jackknife_skip,
                     &specs,
                 )?;
                 return Ok(ExecResult::Rows(rows));

@@ -306,6 +306,7 @@ pub fn jackknife_rows<I>(
     records: I,
     over: Option<&str>,
     order_field: &str,
+    skip_first: usize,
     measures: &[(String, String)],
 ) -> Result<Vec<crate::types::Record>, String>
 where
@@ -335,6 +336,19 @@ where
     let mut rows = Vec::new();
     for (group_val, mut series) in groups {
         series.sort_by(|a, b| a.0.cmp(&b.0));
+        // SKIP FIRST n — thermalization cut, applied AFTER ordering so
+        // "first" means first along the chain, not insertion order.
+        if skip_first > 0 {
+            if skip_first >= series.len() {
+                return Err(format!(
+                    "SKIP FIRST {skip_first} discards every sample \
+                     (group has {} ordered samples); JACKKNIFE needs at \
+                     least 4 remaining",
+                    series.len()
+                ));
+            }
+            series.drain(..skip_first);
+        }
         let mut row: crate::types::Record = Map::new();
         if let Some(g) = over {
             row.insert(g.to_string(), group_val);
@@ -353,8 +367,13 @@ where
                 None => {
                     return Err(format!(
                         "JACKKNIFE needs at least 4 ordered samples of '{field}' \
-                         per group; got {}",
-                        samples.len()
+                         per group; got {}{}",
+                        samples.len(),
+                        if skip_first > 0 {
+                            format!(" (after SKIP FIRST {skip_first})")
+                        } else {
+                            String::new()
+                        }
                     ));
                 }
             }
@@ -617,6 +636,65 @@ mod tests {
         let eb = jackknife(&[5.0; 100]).unwrap();
         assert_eq!(eb.err, 0.0);
         assert_eq!(eb.mean, 5.0);
+    }
+
+    /// Build one record with an order field and a value field.
+    fn rec(order: i64, v: f64) -> crate::types::Record {
+        let mut r = crate::types::Record::new();
+        r.insert("sweep".into(), Value::Integer(order));
+        r.insert("x".into(), Value::Float(v));
+        r
+    }
+
+    /// SKIP FIRST is a thermalization cut: with a hot burn-in at the
+    /// head of the chain, the uncut mean is biased and the cut result
+    /// must equal a jackknife over exactly the clean tail.
+    #[test]
+    fn test_jackknife_skip_first_cuts_burn_in() {
+        let mut s: u64 = 7;
+        let mut next = move || {
+            s ^= s >> 12;
+            s ^= s << 25;
+            s ^= s >> 27;
+            (s.wrapping_mul(0x2545F4914F6CDD1D) >> 11) as f64 / (1u64 << 53) as f64 - 0.5
+        };
+        let n_burn = 200usize;
+        let n_total = 1200usize;
+        let values: Vec<f64> = (0..n_total)
+            .map(|i| if i < n_burn { 50.0 + next() } else { next() })
+            .collect();
+        // insertion order shuffled-ish (reverse) to prove the cut is
+        // applied along the ORDER field, not arrival order
+        let records: Vec<_> =
+            (0..n_total).rev().map(|i| rec(i as i64, values[i])).collect();
+        let measures = vec![("x".to_string(), "x".to_string())];
+
+        let uncut =
+            jackknife_rows(records.clone(), None, "sweep", 0, &measures).unwrap();
+        let uncut_mean = uncut[0]["x"].as_f64().unwrap();
+        assert!(
+            uncut_mean > 5.0,
+            "burn-in should bias the uncut mean, got {uncut_mean}"
+        );
+
+        let cut =
+            jackknife_rows(records, None, "sweep", n_burn, &measures).unwrap();
+        let cut_mean = cut[0]["x"].as_f64().unwrap();
+        let clean = jackknife(&values[n_burn..]).unwrap();
+        assert_eq!(
+            cut_mean, clean.mean,
+            "cut result must equal a jackknife over exactly the clean tail"
+        );
+        assert!(cut_mean.abs() < 0.1, "clean-tail mean near 0, got {cut_mean}");
+    }
+
+    /// A cut that discards everything is a loud error, not an empty row.
+    #[test]
+    fn test_jackknife_skip_first_all_is_error() {
+        let records: Vec<_> = (0..10).map(|i| rec(i, i as f64)).collect();
+        let measures = vec![("x".to_string(), "x".to_string())];
+        let err = jackknife_rows(records, None, "sweep", 10, &measures).unwrap_err();
+        assert!(err.contains("discards every sample"), "{err}");
     }
 
     #[test]

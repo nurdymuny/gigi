@@ -1,21 +1,14 @@
-//! INGEST NPZ dtype auto-detect — RED tests (Concept C).
+//! INGEST NPZ dtype auto-detect.
 //!
-//! The current NPZ readers in `src/ingest.rs` hardcode `into_vec::<f64>()`
-//! at both the AUTO_GENERIC path (~line 378) and the GAUGE_FIELD path
-//! (~line 875). That forces every `.npy` member to be interpreted as
-//! float64. Harvest pipelines that write float32 (to halve disk footprint
-//! for large lattices — Halcyon's L=24 harvest is ~10.6 GB f32 vs
-//! ~21 GB f64) currently error out.
+//! The NPZ readers in `src/ingest.rs` read the `.npy` header dtype and
+//! branch on element type: f64 members are read as-is; f32 members are
+//! read as f32 then upconverted element-wise to f64 (mathematically
+//! lossless — every f32 value has an exact f64 representation). Any
+//! other element type surfaces `IngestError::FormatError` naming both
+//! the observed dtype and the supported set (float32, float64).
 //!
-//! Concept C ships automatic dtype detection: read the `.npy` header,
-//! branch on `dtype`, upconvert f32 → f64 (mathematically lossless — every
-//! f32 value has an exact f64 representation), keep f64 as-is, and reject
-//! any other numeric dtype with a message naming the observed dtype and
-//! the supported set.
-//!
-//! Every test in this file is expected to FAIL on the current tree
-//! EXCEPT `test_ingest_npz_f64_unchanged`, which is the backward-compat
-//! anchor that MUST continue to pass at both RED and GREEN.
+//! `test_ingest_npz_f64_unchanged` is the backward-compat anchor for
+//! the pre-existing f64 path.
 
 use std::fs::File;
 use std::io::BufWriter;
@@ -114,16 +107,14 @@ fn open_engine() -> (Engine, tempfile::TempDir) {
     (engine, dir)
 }
 
-// ── Concept C tests ────────────────────────────────────────────────
+// ── dtype auto-detect tests ────────────────────────────────────────
 
 /// f32 NPZ auto-upconverts to f64 on the AUTO_GENERIC INGEST path.
 /// The reader reads the `.npy` dtype header, sees f32, upconverts every
 /// element to f64, and lands records with the exact expected values.
 ///
 /// Values are all exactly representable in f32 (small integers), so
-/// f32 → f64 cast is bit-exact. This test fails at RED because the
-/// current reader calls `into_vec::<f64>()` unconditionally and npyz
-/// returns a dtype mismatch error.
+/// f32 → f64 cast is bit-exact.
 #[test]
 fn test_ingest_npz_f32_upconverts_to_f64() {
     let (mut engine, _dir) = open_engine();
@@ -135,7 +126,7 @@ fn test_ingest_npz_f32_upconverts_to_f64() {
     write_test_npz_f32(&path, "f32_arr", &[5, 4], &data_f32);
 
     let stats =
-        execute_ingest(&mut engine, "f32_bundle", &path, IngestFormat::Npz)
+        execute_ingest(&mut engine, "f32_bundle", &path, IngestFormat::Npz, None)
             .expect("INGEST succeeds on f32 NPZ with auto-detect + upconvert");
 
     assert_eq!(stats.records_emitted, 5, "5 outer-axis slices");
@@ -191,7 +182,7 @@ fn test_ingest_npz_f64_unchanged() {
     let data: Vec<f64> = (0..20).map(|i| (i as f64) * 0.1 + 1.234567890123).collect();
     write_test_npz_f64(&path, "f64_arr", &[5, 4], &data);
 
-    let stats = execute_ingest(&mut engine, "f64_bundle", &path, IngestFormat::Npz)
+    let stats = execute_ingest(&mut engine, "f64_bundle", &path, IngestFormat::Npz, None)
         .expect("INGEST succeeds on f64 NPZ (backward compat)");
     assert_eq!(stats.records_emitted, 5);
 
@@ -231,7 +222,7 @@ fn test_ingest_npz_int32_errors_with_dtype_name() {
     let data: Vec<i32> = (0..12).collect();
     write_test_npz_i32(&path, "i32_arr", &[3, 4], &data);
 
-    let err = execute_ingest(&mut engine, "i32_bundle", &path, IngestFormat::Npz)
+    let err = execute_ingest(&mut engine, "i32_bundle", &path, IngestFormat::Npz, None)
         .expect_err("INGEST must reject int32 with a dtype-aware error");
     let msg = err.to_string();
     let low = msg.to_ascii_lowercase();
@@ -254,14 +245,11 @@ fn test_ingest_npz_int32_errors_with_dtype_name() {
     }
 }
 
-/// Concept-A + Concept-C combined: SU(2) f32 NPZ on an OBC L=4 D=2 lattice
-/// runs through INGEST AS GAUGE_FIELD, upconverts f32 → f64, AND emits
-/// vertex_a/vertex_b via lattice adjacency (Concept A) with the OBC-wrap
-/// records omitted. This is the end-to-end shape that Hallie's L=24
-/// harvest actually needs — the f32 payload plus the vertex fields.
-///
-/// Fails at RED because BOTH concept A (vertex_a/vertex_b) and concept C
-/// (f32 upconvert) are still missing; once both land, this test passes.
+/// Combined dtype auto-detect + vertex-emission: SU(2) f32 NPZ on an
+/// OBC L=4 D=2 lattice runs through INGEST AS GAUGE_FIELD, upconverts
+/// f32 to f64, AND emits vertex_a/vertex_b via lattice adjacency with
+/// the OBC-wrap records omitted. Exercises the full stack: dtype
+/// branch, lattice adjacency lookup, and OBC record omission.
 #[cfg(feature = "lattice")]
 #[test]
 fn test_ingest_npz_f32_gauge_field_su2_full_chain() {
@@ -293,9 +281,7 @@ fn test_ingest_npz_f32_gauge_field_su2_full_chain() {
         &data,
     );
 
-    // OBC lattice on axis 0. Uses Concept 1's `OBC AXIS <k>` grammar,
-    // which is already landed and is a locked prerequisite for the
-    // full-chain shape.
+    // OBC lattice on axis 0 via the `OBC AXIS <k>` grammar.
     let decl = format!(
         "LATTICE l4_obc_dtype FROM CUBIC L={l} DIM={d} OBC AXIS 0;"
     );
@@ -312,6 +298,7 @@ fn test_ingest_npz_f32_gauge_field_su2_full_chain() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_obc_dtype",
+        None,
     )
     .expect("INGEST AS GAUGE_FIELD succeeds on f32 SU(2) NPZ over OBC lattice");
 
@@ -335,14 +322,14 @@ fn test_ingest_npz_f32_gauge_field_su2_full_chain() {
         .iter()
         .map(|f| f.name.clone())
         .collect();
-    // Concept A: base = [config_id, mu, site_x, site_y, vertex_a, vertex_b].
+    // Base fields = [config_id, mu, site_x, site_y, vertex_a, vertex_b].
     assert!(
         base_names.contains(&"vertex_a".to_string()),
-        "Concept A: base includes vertex_a; got {base_names:?}"
+        "base fields include vertex_a; got {base_names:?}"
     );
     assert!(
         base_names.contains(&"vertex_b".to_string()),
-        "Concept A: base includes vertex_b; got {base_names:?}"
+        "base fields include vertex_b; got {base_names:?}"
     );
 
     // Every record should carry a q0 = 1.0 (identity), with the value

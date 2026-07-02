@@ -175,6 +175,7 @@ fn test_ingest_periodic_l4_d2_su2_emits_vertex_ab() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_periodic_ab",
+        None,
     )
     .expect("INGEST AS GAUGE_FIELD succeeds");
 
@@ -243,6 +244,7 @@ fn test_ingest_obc_l4_d2_su2_axis0_omits_boundary_records() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_obc_ax0",
+        None,
     )
     .expect("INGEST AS GAUGE_FIELD succeeds on OBC lattice");
 
@@ -300,6 +302,7 @@ fn test_ingest_obc_l4_d4_su2_axis0_absolute_record_count() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_d4_obc_ax0",
+        None,
     )
     .expect("INGEST AS GAUGE_FIELD succeeds on L=4 D=4 OBC lattice");
 
@@ -336,6 +339,7 @@ fn test_vertex_a_matches_site_of_coords() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_periodic_va",
+        None,
     )
     .expect("ingest");
 
@@ -392,6 +396,7 @@ fn test_vertex_b_matches_shift_plus() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_periodic_vb",
+        None,
     )
     .expect("ingest");
 
@@ -455,6 +460,7 @@ fn test_ingest_periodic_wraps_via_vertex_b() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_periodic_wrap",
+        None,
     )
     .expect("ingest");
 
@@ -521,6 +527,7 @@ fn test_ingest_su3_also_emits_vertex_ab() {
         IngestFormat::Npz,
         Group::SU3,
         "l4_su3_ab",
+        None,
     )
     .expect("SU(3) ingest");
 
@@ -569,6 +576,7 @@ fn test_spectral_gauge_reads_vertex_ab_directly() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_e2e",
+        None,
     )
     .expect("ingest");
 

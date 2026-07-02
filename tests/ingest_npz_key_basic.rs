@@ -1,4 +1,4 @@
-//! INGEST NPZ KEY <name> — RED-phase integration tests (Concept B).
+//! INGEST NPZ KEY <name> — integration tests.
 //!
 //! Pins the parser + executor contract for the `KEY <name>` clause on
 //! `INGEST ... FORMAT NPZ ...`. The clause names a single member of a
@@ -19,9 +19,9 @@
 //!   rest of the archive's members are ignored.
 //! - `KEY` absent + multi-member archive: preserved historical behavior
 //!   (generic path emits multi-array records; the `AS GAUGE_FIELD` path
-//!   errors with `MultiArrayNotAllowedForGaugeField`). This RED file
-//!   exercises the generic path only — `AS GAUGE_FIELD` coverage lives
-//!   in the concept-A file.
+//!   errors with `MultiArrayNotAllowedForGaugeField`). This file
+//!   exercises the generic path only; `AS GAUGE_FIELD` coverage lives
+//!   in the vertex-emission test file.
 //! - `KEY` absent + single-member archive: backward-compatible — the one
 //!   member is used automatically.
 //! - `KEY <name>` names a member not in the archive: hard error naming

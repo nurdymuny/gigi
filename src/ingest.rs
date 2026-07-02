@@ -881,7 +881,13 @@ fn obc_axis_from_topology(topology: &str) -> Option<usize> {
 /// `site_of(&[c0, c1, ..., c_{D-1}]) = ((c0 * L + c1) * L + c2) ... + c_{D-1}`,
 /// i.e. `c0` (site_x) is most-significant. Matches the site-flat
 /// decomposition in `ingest_npz_as_gauge_field`, so the encoded
-/// vertex ids align with the per-record `site_*` fields.
+/// vertex ids align with the per-record `site_*` fields within a
+/// bundle. NOTE: this is not the same integer as `Lattice::VertexId`,
+/// which uses column-major (`stride[k] = L^k`, `c0` least-significant).
+/// Consumers that need lattice-native ids must remap via the site
+/// fields or a lookup, not by casting `vertex_a`/`vertex_b` directly.
+/// SPECTRAL_GAUGE tolerates this by treating the endpoints as opaque
+/// keys and dense-remapping into 0..V internally.
 #[cfg(feature = "gauge")]
 fn site_of_row_major(coords: &[usize], l: usize) -> usize {
     let mut s = 0usize;
@@ -1095,7 +1101,7 @@ fn ingest_npz_as_gauge_field(
     // = n_configs * D * L^D * repr_dim. On-disk dtype is auto-detected
     // (f32 upconverts to f64 element-wise; f64 reads as-is); any other
     // dtype errors with the dtype name and the supported set.
-    let data: Vec<f64> = decode_npy_as_f64(entry, &names[0])?;
+    let data: Vec<f64> = decode_npy_as_f64(entry, &selected_name)?;
     let n_configs = shape[0] as usize;
     let expected_len = n_configs * d * l_ref.pow(d as u32) * expected_fiber;
     if data.len() != expected_len {

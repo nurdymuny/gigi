@@ -72,8 +72,7 @@
     #telemetry .tiles { grid-template-columns: 1fr 1fr; gap: 4px 10px; }
   }
   @media (max-width: 480px) {
-    #controls { display: none; }
-    #telemetry { left: 10px; right: 10px; width: auto; max-width: none; }
+    #controls, #telemetry { display: none; }
   }
 </style>
 </head>
@@ -82,11 +81,16 @@
 
 <div class="panel" id="hdr">
   <h1>The Mesh That Audits Itself</h1>
-  <p>A cube sliced into 384 tetrahedra (Kuhn&rsquo;s slicing). Wherever the mesh
-     meets a sphere hidden inside, we cut the longest edge in half and repeat.
-     Each little tetrahedron is colored by its <b>shape family</b> &mdash; the
+  <p>Picture a cube of clay sliced into 384 identical little pyramids &mdash;
+     that&rsquo;s <i>Kuhn&rsquo;s slicing</i>. Now imagine a sphere hidden inside the
+     cube. Wherever a pyramid touches the sphere, we cut its longest edge in
+     half and repeat &mdash; like a mapmaker adding detail only where the
+     coastline is jagged. The tetrahedra hugging the sphere get tiny; the
+     ones out in the corners stay big and lazy.</p>
+  <p>Each tetrahedron is colored by its <b>shape family</b> &mdash; the
      pattern its six inside-angles make, once you stop caring which corner
-     you labeled first.</p>
+     you labeled first. Two tets pointing different directions but sharing
+     the same angles belong to the same family.</p>
   <p class="src">Bonus chapter &middot; <i>GIGI Builds</i> &middot; drag to spin &middot; hover a tetrahedron to see its data</p>
 </div>
 

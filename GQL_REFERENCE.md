@@ -1611,7 +1611,7 @@ GAUGE VERIFY sensors;
 
 ---
 
-## XII. Bulk Import/Export — INGEST ✅ (NPZ, CSV) · EMIT ❌
+## XII. Bulk Import/Export — INGEST ✅ (NPZ, CSV) · EMIT CSV ✅ (gated)
 
 ### INGEST — Bulk import from files ✅
 
@@ -1645,14 +1645,27 @@ exists, the inferred schema must be compatible.
 > Unsupported formats are refused with the supported list; unsupported
 > clauses are refused by the trailing-token guard.
 
-### EMIT TO — Bulk export ❌ (not implemented)
+### EMIT TO — CSV export ✅ (gated on GIGI_EMIT_DIR)
 
-`COVER … EMIT CSV TO 'file.csv';` does not parse — the trailing-token
-guard refuses the `EMIT` clause loudly rather than running the COVER
-and silently dropping the export. Until an exporter lands, the shortest
-real path to CSV is the HTTP surface: `POST /v1/gql` returns rows as
-JSON, and any JSON→CSV step (jq, python, a spreadsheet import) finishes
-the job.
+```sql
+COVER sensors ALL                                EMIT CSV TO 'exports/rows.csv';
+COVER sensors ON city='Moscow' WHERE temp < -20  EMIT CSV TO 'moscow_cold.csv';
+INTEGRATE sensors OVER city MEASURE count(*), avg(temp)
+                                                 EMIT CSV TO 'city_stats.csv';
+SHOW FIELDS ON sensors                           EMIT CSV TO 'schema.csv';
+```
+
+`EMIT CSV TO '<path>'` is a suffix on any rows-producing statement. It
+executes only when the engine's environment sets `GIGI_EMIT_DIR`, and
+the path must be relative with no `..` — files land strictly inside
+that directory, so a public server that never sets the variable can
+never be talked into writing files. Without the gate the statement is
+refused loudly (the error names the knob) and the inner statement does
+NOT run. Cells containing commas/quotes/newlines are RFC-4180 quoted;
+columns are the sorted union of row keys; the receipt is a NOTICE with
+the row count and resolved path. Only CSV is accepted (JSON rows are
+what the HTTP surface already returns). Enforced by `tests/emit_csv.rs`
+and `tests/gql_reference_truth.rs`.
 
 ## XIII. Generate Series & Fill
 

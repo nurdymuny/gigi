@@ -150,13 +150,17 @@ fn known_gaps_error_loudly() {
     }
 }
 
-/// Section XII honesty: EMIT is documented ❌ and must refuse loudly —
-/// the COVER must NOT run with the export silently dropped.
+/// Section XII: EMIT CSV parses and executes, but only behind the
+/// GIGI_EMIT_DIR gate — on an engine without the gate (every default
+/// server) it must refuse loudly and name the knob, never run the
+/// inner statement with the export silently dropped. The full export
+/// contract is enforced in tests/emit_csv.rs.
 #[test]
-fn emit_clause_refused_loudly() {
+fn emit_without_gate_refused_loudly() {
     let dir = tempfile::tempdir().unwrap();
     let mut e = seeded_engine(dir.path());
+    std::env::remove_var("GIGI_EMIT_DIR");
     let err = run(&mut e, "COVER sensors ALL EMIT CSV TO 'x.csv';")
-        .expect_err("EMIT is not implemented and must error");
-    assert!(err.contains("EMIT"), "error should name the refused clause: {err}");
+        .expect_err("EMIT without GIGI_EMIT_DIR must error");
+    assert!(err.contains("GIGI_EMIT_DIR"), "error should name the knob: {err}");
 }

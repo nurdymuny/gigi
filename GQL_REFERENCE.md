@@ -44,6 +44,7 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | COVER (all variants) | ✅ | Range, filtered, ranked, paginated |
 | INTEGRATE | ✅ | Aggregation (COUNT/SUM/AVG/MIN/MAX, incl. COUNT(*)) |
 | INTEGRATE … WITH JACKKNIFE ALONG f | ✅ | Autocorrelation-honest error bars on avg() — mean ± err, τ_int, n_eff, blocked-jackknife cross-check |
+| SHOW FIELDS ON b | ✅ | One row per field: name, kind (base/fiber), type, indexed, range — DESCRIBE gives counts, this gives names |
 | HAVING | ❌ | Not implemented — rejected loudly (was listed ✅; caught by tests/gql_reference_truth.rs) |
 | FIBER / TRANSPORT (window) | ❌ | Not implemented — rejected loudly (was listed ✅) |
 | PULLBACK | ✅ | Joins |

@@ -84,6 +84,8 @@ fn documented_features_execute() {
         "INTEGRATE sensors MEASURE avg(temp) WITH JACKKNIFE ALONG wind;",
         // thermalization cut: drop the first n ordered samples per group
         "INTEGRATE sensors MEASURE avg(temp) WITH JACKKNIFE ALONG wind SKIP FIRST 1;",
+        // information schema: field names/kinds/types as rows
+        "SHOW FIELDS ON sensors;",
     ];
     let mut failures = Vec::new();
     for stmt in works {

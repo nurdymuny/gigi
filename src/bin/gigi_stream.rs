@@ -164,6 +164,13 @@ struct StreamState {
     /// engine via `gauge::engine_handle::install`. `Arc` derefs through
     /// to `RwLock`, so every existing `state.engine.read()/.write()`
     /// call site keeps working unchanged.
+    ///
+    /// Acquire through `engine_read()` / `engine_write()`, not
+    /// `.read().unwrap()`: a panic in one handler poisons the lock, and
+    /// unwrapping the poison turns every subsequent request into a
+    /// panic cascade — one bug becomes a dead server. The WAL is the
+    /// durability story; recovering the guard and continuing to serve
+    /// beats dying (unwrap triage, audit 2026-07-02).
     engine: Arc<RwLock<Engine>>,
     /// True once WAL replay is complete and engine is ready for queries.
     ready: AtomicBool,
@@ -300,6 +307,20 @@ struct DashboardEvent {
 }
 
 impl StreamState {
+    /// Poison-proof engine read lock — see the field doc on `engine`.
+    fn engine_read(&self) -> std::sync::RwLockReadGuard<'_, Engine> {
+        self.engine
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// Poison-proof engine write lock — see the field doc on `engine`.
+    fn engine_write(&self) -> std::sync::RwLockWriteGuard<'_, Engine> {
+        self.engine
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
     fn new(logger: Logger, metrics: Arc<Metrics>) -> Self {
         let api_key = std::env::var("GIGI_API_KEY").ok();
         let jwt_secret = std::env::var("GIGI_JWT_SECRET").ok();
@@ -409,12 +430,12 @@ impl StreamState {
 
     fn get_or_create_channel(&self, bundle: &str) -> broadcast::Sender<SubscriptionEvent> {
         {
-            let channels = self.channels.read().unwrap();
+            let channels = self.channels.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(tx) = channels.get(bundle) {
                 return tx.clone();
             }
         }
-        let mut channels = self.channels.write().unwrap();
+        let mut channels = self.channels.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let (tx, _rx) = broadcast::channel(1024);
         channels.insert(bundle.to_string(), tx.clone());
         tx
@@ -822,7 +843,7 @@ struct ResponseWithLambda<T: Serialize> {
 /// poisoning.
 #[cfg(feature = "kahler")]
 fn lambda_budget_for_bundle(state: &Arc<StreamState>, bundle_name: &str) -> f64 {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let bundle_ref = match engine.bundle(bundle_name) {
         Some(b) => b,
         // Missing bundle → safe default. The handler will surface the
@@ -1645,7 +1666,7 @@ async fn rate_limit_middleware(
     let window = std::time::Duration::from_secs(state.rate_window_secs);
 
     {
-        let mut tracker = state.rate_tracker.write().unwrap();
+        let mut tracker = state.rate_tracker.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let entries = tracker.entry(ip).or_default();
 
         // Remove expired entries
@@ -1893,7 +1914,7 @@ async fn list_bundles(
     // of Phase B — the sheets client also filters, but a hand-crafted
     // HTTP request can't bypass this filter.
     let claims = req.extensions().get::<GigiClaims>().cloned();
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let infos: Vec<BundleInfo> = engine
         .bundle_names()
         .iter()
@@ -2009,7 +2030,7 @@ async fn create_bundle(
 
     let field_count = req.schema.fields.len();
     let bundle_name_clone = req.name.clone();
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     engine.create_bundle(schema).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -2046,7 +2067,7 @@ async fn drop_bundle(
 
     // Capture stats before drop for the audit event
     let (records_before, bytes_before) = {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         if let Some(store) = engine.bundle(&name) {
             let recs = store.len() as u64;
             let bytes = recs * 64; // same heuristic used by estimate_bytes
@@ -2056,7 +2077,7 @@ async fn drop_bundle(
         }
     };
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     match engine.drop_bundle(&name) {
         Ok(true) => {
             drop(engine);
@@ -2094,7 +2115,7 @@ async fn insert_records(
             Json(ErrorResponse { error: format!("'{}' is a system bundle and is read-only", name) }),
         ));
     }
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
 
     // Get schema info (borrow released after block)
     let (key_name_opt, has_created_at, has_updated_at) = {
@@ -2320,7 +2341,7 @@ async fn stream_ingest(
 
     // Check bundle exists before reading body
     {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         if engine.bundle(&name).is_none() {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -2367,7 +2388,7 @@ async fn stream_ingest(
     }
 
     // WAL-logged batch insert
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let inserted = engine.batch_insert(&name, &records).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -2415,7 +2436,7 @@ async fn point_query(
     Path(name): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -2490,7 +2511,7 @@ async fn record_vector(
     Path((name, id)): Path<(String, String)>,
     Query(params): Query<RecordVectorParams>,
 ) -> Result<Json<ApiResponse<RecordVectorResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -2606,7 +2627,7 @@ async fn range_query(
     Path(name): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<Vec<serde_json::Value>>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -2654,7 +2675,7 @@ async fn pullback_join(
     Path(name): Path<String>,
     Json(req): Json<JoinRequest>,
 ) -> Result<Json<ApiResponse<Vec<serde_json::Value>>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let left = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -2709,7 +2730,7 @@ async fn aggregate(
     Path(name): Path<String>,
     Json(req): Json<AggregateRequest>,
 ) -> Result<Json<AggResult>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -2779,7 +2800,7 @@ async fn curvature_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<CurvatureReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -2874,7 +2895,7 @@ async fn spectral_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<SpectralReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -2907,7 +2928,7 @@ async fn bundle_capacity_report(
     Path(name): Path<String>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<CapacityReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
     })?;
@@ -2948,7 +2969,7 @@ async fn bundle_horizon_report(
     Path(name): Path<String>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<HorizonReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
     })?;
@@ -3038,7 +3059,7 @@ async fn bundle_depth_report(
     Path(name): Path<String>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<DepthReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
     })?;
@@ -3138,7 +3159,7 @@ async fn bundle_perceive(
     // its inputs, callers expect the same not-found semantics as the
     // other CG verbs.
     {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         if engine.bundle(&name).is_none() {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -3250,7 +3271,7 @@ async fn bundle_local_holonomy(
     Json(req): Json<LocalHolonomyRequest>,
 ) -> Result<Json<LocalHolonomyResponse>, (StatusCode, Json<ErrorResponse>)> {
     {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         if engine.bundle(&name).is_none() {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -3484,7 +3505,7 @@ async fn bundle_imagine_coherence(
 
     // ─── Step 3: bundle lookup + raw K derivation (404 unchanged) ────────
     let (bundle_k_mean, _record_count) = {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         let bundle = engine.bundle(&name).ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -3533,7 +3554,7 @@ async fn bundle_imagine_coherence(
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0);
-        let mut engine = state.engine.write().unwrap();
+        let mut engine = state.engine_write();
         let _ = engine.log_imagine_fallback(&name, bundle_k_mean, K_TAME_PHASE2, now_ms);
         // Failure to log is non-fatal at this layer — the trajectory
         // still computes correctly and the consumer sees
@@ -3687,7 +3708,7 @@ async fn bundle_sharded_spectral_gap(
     // it as a trivial-atlas ShardedBundle so the end-to-end extractor
     // can operate on it.
     let store = {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         let bundle = engine.bundle(&name).ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -3783,7 +3804,7 @@ async fn bundle_sharded_curvature(
     }
 
     let (schema, records) = {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         let bundle = engine.bundle(&name).ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -3859,7 +3880,7 @@ async fn bundle_sharded_holonomy_loop(
 
     // Bundle existence check (just for the 404 path; no data access needed)
     {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         engine.bundle(&name).ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -3945,7 +3966,7 @@ async fn spectral_gap_endpoint(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<SpectralGapResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -4128,7 +4149,7 @@ async fn verify_invariant_endpoint(
     Path(name): Path<String>,
     Json(req): Json<VerifyInvariantRequest>,
 ) -> Result<Json<VerifyInvariantResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -4382,7 +4403,7 @@ async fn holonomy_debt_endpoint(
     Path(name): Path<String>,
     Json(req): Json<HolonomyDebtRequest>,
 ) -> Result<Json<HolonomyDebtResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -4487,7 +4508,7 @@ async fn flat_transport_endpoint(
     Json(req): Json<FlatTransportRequest>,
 ) -> Result<Json<FlatTransportResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Bundle lookup — must exist; used for dim coherence check.
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let _store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -5575,7 +5596,7 @@ async fn brain_sample_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainSampleRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -5742,7 +5763,7 @@ async fn brain_fit_diagnostics_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainFitDiagnosticsRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -5915,7 +5936,7 @@ async fn brain_distance_to_fit_mean_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainDistanceToFitMeanRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -6163,7 +6184,7 @@ async fn brain_sample_transport_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainSampleTransportRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -6583,7 +6604,7 @@ async fn brain_sudoku_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainSudokuRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -6848,7 +6869,7 @@ async fn brain_intent_gate_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainIntentGateRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -7146,7 +7167,7 @@ async fn brain_confidence_endpoint(
     Path(name): Path<String>,
     Json(req): Json<BrainConfidenceRequest>,
 ) -> Result<Json<ResponseWithLambda<BrainConfidenceResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -7279,7 +7300,7 @@ async fn brain_confidence_with_explain_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainConfidenceWithExplainRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -7430,7 +7451,7 @@ async fn brain_attend_endpoint(
     Path(name): Path<String>,
     Json(req): Json<BrainAttendRequest>,
 ) -> Result<Json<ResponseWithLambda<BrainAttendResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -7545,7 +7566,7 @@ async fn brain_episodic_endpoint(
     Path(name): Path<String>,
     Json(req): Json<BrainEpisodicRequest>,
 ) -> Result<Json<ResponseWithLambda<BrainEpisodicResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -7771,7 +7792,7 @@ async fn brain_explain_endpoint(
     Path(name): Path<String>,
     Json(req): Json<BrainExplainRequest>,
 ) -> Result<Json<ResponseWithLambda<BrainExplainResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -7830,7 +7851,7 @@ async fn brain_semantic_endpoint(
 ) -> Result<Json<ResponseWithLambda<BrainSemanticResponse>>, (StatusCode, Json<ErrorResponse>)> {
     use gigi::morse_cache::{CachedMorse, MorseCacheKey};
 
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -8531,7 +8552,7 @@ async fn brain_dream_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainDreamRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -8648,7 +8669,7 @@ async fn brain_forecast_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainForecastRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -8750,7 +8771,7 @@ async fn brain_reconstruct_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainReconstructRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -8865,7 +8886,7 @@ async fn brain_inpaint_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainInpaintRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -8975,7 +8996,7 @@ async fn brain_predict_endpoint(
     headers: axum::http::HeaderMap,
     Json(req): Json<BrainPredictRequest>,
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine
         .bundle(&name)
         .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
@@ -9031,7 +9052,7 @@ async fn consistency_check(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9098,7 +9119,7 @@ async fn betti_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<BettiReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9118,7 +9139,7 @@ async fn entropy_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<EntropyReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9145,7 +9166,7 @@ async fn free_energy_report(
     Query(params): Query<FreeEnergyQuery>,
 ) -> Result<Json<FreeEnergyReport>, (StatusCode, Json<ErrorResponse>)> {
     let tau = params.tau.unwrap_or(1.0);
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9178,7 +9199,7 @@ async fn geodesic_report(
     Path(name): Path<String>,
     Json(req): Json<GeodesicRequest>,
 ) -> Result<Json<GeodesicReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9202,7 +9223,7 @@ async fn metric_tensor_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<MetricTensorReport>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9235,7 +9256,7 @@ async fn divergence_handler(
     State(state): State<Arc<StreamState>>,
     Json(req): Json<DivergenceRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store_a = engine.bundle(&req.from).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9277,7 +9298,7 @@ async fn bundle_anomalies(
     Path(name): Path<String>,
     Json(req): Json<AnomalyRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9336,7 +9357,7 @@ async fn bundle_health(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9397,7 +9418,7 @@ async fn predict_volatility(
     Path(name): Path<String>,
     Json(req): Json<PredictRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9455,7 +9476,7 @@ async fn field_anomalies(
     Path(name): Path<String>,
     Json(req): Json<FieldAnomalyRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9556,7 +9577,7 @@ async fn filtered_query(
     Path(name): Path<String>,
     Json(req): Json<FilteredQueryRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9710,7 +9731,7 @@ async fn stream_query_ndjson(
     let bundle_name = name.clone();
 
     tokio::task::spawn_blocking(move || {
-        let engine = arc.engine.read().unwrap();
+        let engine = arc.engine_read();
         let store = match engine.bundle(&bundle_name) {
             Some(s) => s,
             None => {
@@ -9819,7 +9840,7 @@ async fn list_all_records(
     Path(name): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<Vec<serde_json::Value>>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9860,7 +9881,7 @@ async fn get_by_path(
     State(state): State<Arc<StreamState>>,
     Path((name, field, value)): Path<(String, String, String)>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9927,7 +9948,7 @@ async fn patch_by_path(
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -9974,7 +9995,7 @@ async fn delete_by_path(
     let mut key = Record::new();
     key.insert(field, val);
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10030,7 +10051,7 @@ async fn bulk_update_records(
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10075,7 +10096,7 @@ async fn upsert_records(
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10112,7 +10133,7 @@ async fn count_records(
     Path(name): Path<String>,
     Json(req): Json<FilteredQueryRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10141,7 +10162,7 @@ async fn exists_records(
     Path(name): Path<String>,
     Json(req): Json<FilteredQueryRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10168,7 +10189,7 @@ async fn distinct_values(
     State(state): State<Arc<StreamState>>,
     Path((name, field)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10200,7 +10221,7 @@ async fn bulk_delete_records(
         .map(condition_spec_to_query_condition)
         .collect();
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10236,7 +10257,7 @@ async fn truncate_bundle(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10260,7 +10281,7 @@ async fn get_schema(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10322,7 +10343,7 @@ async fn increment_field(
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10357,7 +10378,7 @@ async fn drop_field(
     Path(name): Path<String>,
     Json(req): Json<DropFieldRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10405,7 +10426,7 @@ async fn add_field(
             encryption_group: None,
     };
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10430,7 +10451,7 @@ async fn add_index(
     Path(name): Path<String>,
     Json(req): Json<AddIndexRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10454,7 +10475,7 @@ async fn export_bundle(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10485,7 +10506,7 @@ async fn export_dhoom(
 ) -> Result<axum::response::Response, (StatusCode, Json<ErrorResponse>)> {
     use axum::response::IntoResponse;
 
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10529,7 +10550,7 @@ async fn import_bundle(
         })
         .collect();
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     // Route through engine.batch_insert() so every record is WAL-logged before
     // the response is sent.  The previous direct store.batch_insert() bypassed
     // the WAL entirely, causing data loss on server restart.
@@ -10573,7 +10594,7 @@ async fn ingest_dhoom(
 
     // Bundle must exist before we read the body
     {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         if engine.bundle(&name).is_none() {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -10621,7 +10642,7 @@ async fn ingest_dhoom(
 
     // Snapshot the schema for type-coercion validation (read lock — before parse).
     let schema_snapshot: BundleSchema = {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         engine.bundle(&name).unwrap().schema().clone()
     };
 
@@ -10724,7 +10745,7 @@ async fn ingest_dhoom(
     }
 
     // WAL-logged batch insert
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let inserted = engine.batch_insert(&name, &records).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -10789,7 +10810,7 @@ async fn update_records_v2(
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10926,7 +10947,7 @@ async fn delete_records_v2(
         .map(|(k, v)| (k.clone(), json_to_value(v)))
         .collect();
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -10999,7 +11020,7 @@ async fn bundle_stats(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -11067,7 +11088,7 @@ async fn explain_query(
     Path(name): Path<String>,
     Json(req): Json<ExplainRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -11126,7 +11147,7 @@ async fn execute_transaction(
     Path(name): Path<String>,
     Json(req): Json<TransactionRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -11671,7 +11692,7 @@ async fn handle_ws_command(
 
             // Verify bundle exists
             {
-                let engine = state.engine.read().unwrap();
+                let engine = state.engine_read();
                 if engine.bundle(&bundle_name).is_none() {
                     return format!("ERROR: Bundle '{}' not found", bundle_name);
                 }
@@ -11724,7 +11745,7 @@ async fn handle_ws_command(
 
             match dhoom::decode_legacy(dhoom_data) {
                 Ok(parsed) => {
-                    let mut engine = state.engine.write().unwrap();
+                    let mut engine = state.engine_write();
                     if let Some(mut store) = engine.bundle_mut(bundle_name) {
                         let mut inserted_records = Vec::new();
                         for dhoom_record in &parsed.records {
@@ -11777,7 +11798,7 @@ async fn handle_ws_command(
                 rest.trim()
             };
 
-            let engine = state.engine.read().unwrap();
+            let engine = state.engine_read();
             if let Some(store) = engine.bundle(bundle_name) {
                 if let Some(pos) = where_pos {
                     let condition = &rest[pos + 7..].trim();
@@ -11826,7 +11847,7 @@ async fn handle_ws_command(
                 return "ERROR: RANGE requires WHERE clause".to_string();
             };
 
-            let engine = state.engine.read().unwrap();
+            let engine = state.engine_read();
             if let Some(store) = engine.bundle(bundle_name) {
                 if let Some(pos) = where_pos {
                     let condition = &rest[pos + 7..].trim();
@@ -11864,7 +11885,7 @@ async fn handle_ws_command(
             }
             let target = parts[1].trim();
             let bundle_name = target.split('.').next().unwrap_or(target);
-            let engine = state.engine.read().unwrap();
+            let engine = state.engine_read();
             if let Some(store) = engine.bundle(bundle_name) {
                 let k = store.scalar_curvature();
                 format!(
@@ -11883,7 +11904,7 @@ async fn handle_ws_command(
                 return "ERROR: CONSISTENCY requires bundle name".to_string();
             }
             let bundle_name = parts[1].trim();
-            let engine = state.engine.read().unwrap();
+            let engine = state.engine_read();
             if engine.bundle(bundle_name).is_some() {
                 "CONSISTENCY h1=0 cocycles=0".to_string()
             } else {
@@ -11951,7 +11972,7 @@ async fn serve_dashboard() -> impl IntoResponse {
 /// Safe to call while the server is running.  Takes a write lock for the duration.
 async fn admin_snapshot(State(state): State<Arc<StreamState>>) -> impl IntoResponse {
     let snapshot = tokio::task::spawn_blocking(move || {
-        let mut engine = state.engine.write().unwrap();
+        let mut engine = state.engine_write();
         engine.snapshot_with_report()
     })
     .await;
@@ -12390,13 +12411,13 @@ async fn gql_query(
                 let gk = gigi::crypto::GaugeKey::derive(&seed, &schema.fiber_fields);
                 schema.gauge_key = Some(gk);
             }
-            let mut engine = state.engine.write().unwrap();
+            let mut engine = state.engine_write();
             engine.create_bundle(schema).unwrap();
             emit_quick("CREATE_BUNDLE", t0.elapsed().as_micros() as u64, false);
             return (StatusCode::OK, Json(serde_json::json!({"status": "ok"})));
         }
         gigi::parser::Statement::ShowBundles => {
-            let engine = state.engine.read().unwrap();
+            let engine = state.engine_read();
             let list: Vec<serde_json::Value> = engine
                 .bundle_names()
                 .iter()
@@ -12413,7 +12434,7 @@ async fn gql_query(
             return (StatusCode::OK, Json(serde_json::json!({"bundles": list})));
         }
         gigi::parser::Statement::Collapse { bundle } => {
-            let mut engine = state.engine.write().unwrap();
+            let mut engine = state.engine_write();
             if engine.drop_bundle(bundle).unwrap_or(false) {
                 emit_quick("DROP_BUNDLE", t0.elapsed().as_micros() as u64, false);
                 return (StatusCode::OK, Json(serde_json::json!({"status": "ok"})));
@@ -12463,7 +12484,7 @@ async fn gql_query(
                     }
                 },
             };
-            let mut engine = state.engine.write().unwrap();
+            let mut engine = state.engine_write();
             let store = match engine.heap_bundle_mut(bundle) {
                 Some(s) => s,
                 None => {
@@ -12530,7 +12551,7 @@ async fn gql_query(
         }
         // Cross-bundle: KL divergence between two bundles
         gigi::parser::Statement::Divergence { bundle_a, bundle_b } => {
-            let engine = state.engine.read().unwrap();
+            let engine = state.engine_read();
             let store_a = match engine.bundle(bundle_a) {
                 Some(s) => s,
                 None => {
@@ -12847,7 +12868,7 @@ async fn gql_query(
     );
 
     if needs_write {
-        let mut engine = state.engine.write().unwrap();
+        let mut engine = state.engine_write();
         if engine.bundle(&bundle_name).is_none() {
             let dur = t0.elapsed().as_micros() as u64;
             let ev = state.logger.query_error(&req_id, query, dur, "BundleNotFound", &format!("No bundle: {bundle_name}"), 404);
@@ -12891,7 +12912,7 @@ async fn gql_query(
         // not the operation. Read-only semantics preserved: writes against
         // a virtual bundle are rejected upstream by
         // `reject_virtual_write` in the parser's Insert/Upsert/etc arms.
-        let mut engine = state.engine.write().unwrap();
+        let mut engine = state.engine_write();
         let result = gigi::parser::execute(&mut engine, &stmt);
         drop(engine);
         let dur = t0.elapsed().as_micros() as u64;
@@ -12917,7 +12938,7 @@ async fn gql_query(
         state.metrics.record_query(dur, stmt_type, slow, false);
         (status, resp)
     } else {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         let store = match engine.bundle(&bundle_name) {
             Some(s) => s,
             None => {
@@ -13123,7 +13144,7 @@ fn execute_gql_with_exists(
                 ExecResult::Rows(rows) => rows,
                 other => return Ok(other),
             };
-            let engine_read = engine.read().unwrap();
+            let engine_read = engine.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             let filtered: Vec<gigi::types::Record> = rows.into_iter().filter(|row| {
                 exists_conds.iter().all(|fc| {
                     if let FilterCondition::Exists { cover_bundle, where_conds } = fc {
@@ -13681,7 +13702,7 @@ fn execute_gql_on_store_read(
                     }).collect();
                     let rows = if let Some(rb) = restrict_bundle {
                         if let Some(eng) = engine {
-                            let engine_read = eng.read().unwrap();
+                            let engine_read = eng.read().unwrap_or_else(std::sync::PoisonError::into_inner);
                             if let Some(rs) = engine_read.bundle(rb) {
                                 let restrict_bps: std::collections::HashSet<gigi::types::BasePoint> = rs.all_base_points();
                                 let filtered: Vec<gigi::types::Record> = rows.into_iter().filter(|r| {
@@ -13815,7 +13836,7 @@ fn execute_gql_on_store_read(
 
             // Read-only engine borrow — the eigendecomposition does
             // not mutate any state.
-            let eng_guard = eng.read().unwrap();
+            let eng_guard = eng.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             let result = gigi::spectral::spectral_gauge_gap(
                 &eng_guard,
                 bundle,
@@ -14551,7 +14572,7 @@ async fn vector_search_handler(
     Path(name): Path<String>,
     Json(req): Json<VectorSearchRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let engine = state.engine.read().unwrap();
+    let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -15146,7 +15167,7 @@ async fn log_bundle_writer(
         }
 
         // Write into the engine — best-effort, never panic the writer task.
-        let mut engine = state.engine.write().unwrap();
+        let mut engine = state.engine_write();
         if let Err(e) = engine.insert(bundle_name, &record) {
             eprintln!("[observability] insert into {bundle_name} failed: {e}");
         }
@@ -15189,7 +15210,7 @@ async fn ttl_eviction_task(state: Arc<StreamState>) {
                 Value::Integer(cutoff_us),
             )];
             let deleted = {
-                let mut engine = state.engine.write().unwrap();
+                let mut engine = state.engine_write();
                 if let Some(mut store) = engine.bundle_mut(bundle) {
                     if let Some(heap) = store.as_heap_mut() {
                         heap.bulk_delete(&cond)
@@ -15305,7 +15326,7 @@ async fn list_patterns(
             }),
         )
     })?;
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let result = gigi::parser::execute(&mut engine, &stmt).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -15379,7 +15400,7 @@ async fn define_pattern_http(
             }),
         )
     })?;
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     gigi::parser::execute(&mut engine, &stmt).map_err(|e| {
         (
             StatusCode::CONFLICT,
@@ -15409,7 +15430,7 @@ async fn drop_pattern_http(
             }),
         )
     })?;
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     gigi::parser::execute(&mut engine, &stmt).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -15453,7 +15474,7 @@ async fn hunt_http(
             include_repair_menu: req.include_repair_menu,
             relaxation_costs: req.relaxation_costs.clone(),
         };
-        let mut engine = state.engine.write().unwrap();
+        let mut engine = state.engine_write();
         let env = gigi::parser::hunt_v2_orchestrate(&mut engine, &args).map_err(|e| {
             (
                 StatusCode::BAD_REQUEST,
@@ -15487,7 +15508,7 @@ async fn hunt_http(
             }),
         )
     })?;
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let result = gigi::parser::execute(&mut engine, &stmt).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
@@ -16047,7 +16068,7 @@ async fn main() {
                 Ok(mmap_engine) => {
                     let total = mmap_engine.total_records();
                     {
-                        let mut eng = replay_state.engine.write().unwrap();
+                        let mut eng = replay_state.engine_write();
                         *eng = mmap_engine;
                         init_system_bundles(&mut eng);
                         init_app_bundles(&mut eng);
@@ -16073,7 +16094,7 @@ async fn main() {
 
         // ── Step 3: Slow path — heap replay + snapshot write + mmap open ─────────
         {
-            let mut engine = replay_state.engine.write().unwrap();
+            let mut engine = replay_state.engine_write();
             let wal_t0 = std::time::Instant::now();
             if let Err(e) = engine.replay_wal() {
                 eprintln!("WAL replay error: {e}");
@@ -16155,7 +16176,7 @@ async fn main() {
         match Engine::open_mmap(&data_dir_for_replay) {
             Ok(mmap_engine) => {
                 let total = mmap_engine.total_records();
-                let mut engine = replay_state.engine.write().unwrap();
+                let mut engine = replay_state.engine_write();
                 *engine = mmap_engine;
                 init_system_bundles(&mut engine);
                 init_app_bundles(&mut engine);
@@ -16171,7 +16192,7 @@ async fn main() {
             Err(e) => {
                 eprintln!("Mmap reopen failed: {e} — keeping heap engine");
                 // init on the existing heap engine (which has replay data)
-                let mut eng = replay_state.engine.write().unwrap();
+                let mut eng = replay_state.engine_write();
                 init_system_bundles(&mut eng);
                 init_app_bundles(&mut eng);
             }
@@ -16468,7 +16489,7 @@ async fn tx_begin(
         state: gigi::transactions::TransactionState::Open,
         pending: HashMap::new(),
     };
-    state.tx_registry.lock().unwrap().insert(tx_id, tx);
+    state.tx_registry.lock().unwrap_or_else(std::sync::PoisonError::into_inner).insert(tx_id, tx);
 
     Ok(Json(TxBeginResponse {
         tx_id: format!("{}", tx_id),
@@ -16497,7 +16518,7 @@ async fn tx_write(
         ));
     }
     {
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         if engine.bundle(&req.bundle).is_none() {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -16508,7 +16529,7 @@ async fn tx_write(
         }
     }
 
-    let mut registry = state.tx_registry.lock().unwrap();
+    let mut registry = state.tx_registry.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let tx = registry.get_mut(&tx_id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -16570,7 +16591,7 @@ async fn tx_commit(
 ) -> Result<Json<TxCommitResponse>, (StatusCode, Json<ErrorResponse>)> {
     let tx_id = parse_tx_id(&tx_id_str)?;
     let (snap_id, pending) = {
-        let mut registry = state.tx_registry.lock().unwrap();
+        let mut registry = state.tx_registry.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let tx = registry.get_mut(&tx_id).ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
@@ -16594,7 +16615,7 @@ async fn tx_commit(
         (tx.snap_id, std::mem::take(&mut tx.pending))
     };
 
-    let mut engine = state.engine.write().unwrap();
+    let mut engine = state.engine_write();
     let mut bundles_sorted: Vec<String> = pending.keys().cloned().collect();
     bundles_sorted.sort();
 
@@ -16612,7 +16633,7 @@ async fn tx_commit(
             }
             Err(e) => {
                 drop(engine);
-                let mut registry = state.tx_registry.lock().unwrap();
+                let mut registry = state.tx_registry.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
                 if let Some(tx) = registry.get_mut(&tx_id) {
                     tx.state = gigi::transactions::TransactionState::Aborted;
                 }
@@ -16632,7 +16653,7 @@ async fn tx_commit(
     drop(engine);
 
     {
-        let mut registry = state.tx_registry.lock().unwrap();
+        let mut registry = state.tx_registry.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(tx) = registry.get_mut(&tx_id) {
             tx.state = gigi::transactions::TransactionState::Committed;
         }
@@ -16652,7 +16673,7 @@ async fn tx_rollback(
     Path(tx_id_str): Path<String>,
 ) -> Result<Json<TxRollbackResponse>, (StatusCode, Json<ErrorResponse>)> {
     let tx_id = parse_tx_id(&tx_id_str)?;
-    let mut registry = state.tx_registry.lock().unwrap();
+    let mut registry = state.tx_registry.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let tx = registry.get_mut(&tx_id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -16676,7 +16697,7 @@ async fn tx_status(
     Path(tx_id_str): Path<String>,
 ) -> Result<Json<TxStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
     let tx_id = parse_tx_id(&tx_id_str)?;
-    let registry = state.tx_registry.lock().unwrap();
+    let registry = state.tx_registry.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let tx = registry.get(&tx_id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
@@ -17196,7 +17217,7 @@ async fn wish_bundle_http(
         // slow) solver runs. The bundle handle is only consulted here
         // for existence; substrate-metric resolution lands with the
         // dim-lift, at which point this block grows.
-        let engine = state.engine.read().unwrap();
+        let engine = state.engine_read();
         if engine.bundle(&name).is_none() {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -17705,7 +17726,7 @@ mod tests {
                 StatusCode::OK
             );
 
-            state.engine.write().unwrap().checkpoint().unwrap();
+            state.engine_write().checkpoint().unwrap();
         }
 
         {

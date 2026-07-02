@@ -108,6 +108,31 @@ details.gql pre { background: #131312; border: 1px solid var(--line);
   font: 12.5px/1.5 ui-monospace, Menlo, monospace; color: var(--ink-2);
   white-space: pre-wrap; }
 
+/* Baseline "lives in GIGI as data" intro block — the tetmesh demo
+   scopes its equivalent to #gigiwork, but the extras don't have that
+   panel; give the class a free-standing rule so every extra can drop
+   the block in as a first child of <main class="wrap"> and get the
+   same warm, small-caps register. */
+.gw-intro {
+  font-size: 13px; line-height: 1.65;
+  color: var(--ink-2);
+  margin: 22px 0 26px;
+  padding: 16px 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--yellow);
+  border-radius: 8px;
+}
+.gw-intro p { margin: 0; }
+.gw-intro p + p { margin-top: 10px; }
+.gw-intro b { color: var(--ink); font-weight: 650; }
+.gw-intro code {
+  background: var(--panel-2); border: 1px solid var(--line);
+  color: var(--ink); border-radius: 4px;
+  padding: 0 5px;
+  font: 11.5px ui-monospace, Menlo, Consolas, monospace;
+}
+
 /* GQL cheatsheet + per-query gloss — the same landmarks the tetmesh
    demo carries so the panels feel like one family. WX.wireConsole
    auto-injects a `.gq-legend` under the summary and a `.gloss` block

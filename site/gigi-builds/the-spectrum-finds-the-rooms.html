@@ -21,17 +21,28 @@
 <header class="page"><div class="wrap">
   <p class="eyebrow">Web extra · not in the printed book · Part III territory</p>
   <h1>The Spectrum Finds the Rooms</h1>
-  <p class="lede">Seventy-two nodes, three communities — and <em>nobody laid this graph
-  out</em>. The 3D coordinates you are looking at are the graph's own Laplacian
-  eigenvectors, recomputed live every time you touch the slider. When the bridges
-  are thick the spectrum sees one room and the constellation huddles; cut them and
-  λ₁ collapses toward zero while the three communities physically tear apart —
-  the layout isn't illustrating the math, the layout <em>is</em> the math.</p>
+  <p class="lede">Picture three rooms full of people, connected by a few open doors. Now imagine each person hums, and their hum is shaped by who they can reach through those doors. The three coordinates you are looking at are those hums &mdash; the graph&rsquo;s three quietest standing waves, called its <b>Laplacian eigenvectors</b> &mdash; recomputed live every time you touch the slider. When the doors are wide open the whole crowd hums as one room and the constellation huddles; slam most of the doors shut and the second-quietest hum &mdash; called <b>&lambda;&#8321;</b>, the <b>spectral gap</b> or <b>Fiedler value</b> &mdash; collapses toward zero, and the three rooms physically tear apart on screen. The layout isn&rsquo;t illustrating the math; the layout <em>is</em> the math.</p>
 </div></header>
 
 <main class="wrap">
+  <div class="gw-intro">
+    <p><b>The constellation above lives in GIGI as data.</b> Every node
+    becomes one record &mdash; 72 in total, 24 per community &mdash; and every
+    edge becomes a relation between two records. Each node record carries
+    five fields: <code>id</code>, <code>community</code> (A, B, or C),
+    <code>degree</code> (how many neighbors it currently has),
+    <code>x_spec</code> (its coordinate along the graph&rsquo;s second-quietest
+    vibration), and <code>bridge_incident</code> (0 = interior, 1 = touches a
+    cross-community edge).</p>
+    <p>Because GIGI is a <b>fiber-bundle database</b>, the bundle&rsquo;s
+    curvature (&kappa;) and the connectivity gap ride along with every read
+    &mdash; no sidecar service to compute them. When you drag the slider or
+    hit "Cut every bridge", the layout below is recomputed from the graph
+    itself, and the readout on the right shows the same connectivity number
+    the engine&rsquo;s <code>SPECTRAL</code> verb returns for any live bundle.</p>
+  </div>
   <div class="stage" id="stage">
-    <div class="hud"><b>layout = eigenvectors 1, 2, 3 of the graph Laplacian</b> · recomputed live (Jacobi, 72×72)</div>
+    <div class="hud"><b>layout = the graph&rsquo;s three quietest standing waves (eigenvectors 1, 2, 3 of the graph Laplacian)</b> · recomputed live (Jacobi, 72&times;72)</div>
     <div class="corner">drag to orbit · wheel to zoom</div>
   </div>
   <div class="controls" id="controls"></div>
@@ -43,11 +54,7 @@
     <span><span class="sw" style="background:#c98500"></span>bridge edge</span>
   </div>
 
-  <p class="note">This is what the engine's <code>SPECTRAL</code> verb is measuring when
-  it reports the gap. λ₁ near zero means "this bundle's relation graph is about to
-  disconnect" — communities that barely talk — and the same eigenvectors that
-  detect it are good coordinates for <em>seeing</em> it, which is the whole idea of
-  spectral embedding. Watch the moment you drag to one bridge per pair: the rooms
+  <p class="note">The number the engine&rsquo;s <code>SPECTRAL</code> verb reports &mdash; how loud that second-quietest hum is, the <b>spectral gap</b> &lambda;&#8321; &mdash; is a connectivity thermometer. &lambda;&#8321; near zero means "this bundle&rsquo;s relation graph is about to disconnect" &mdash; communities that barely talk &mdash; and the same hums that detect it turn out to be good coordinates for <em>seeing</em> it, which is the whole idea of drawing a graph at its own spectral embedding. Watch the moment you drag to one bridge per pair: the rooms
   are already visibly separate while λ₁ is still nonzero. The spectrum hears the
   wall before the wall is finished.</p>
 

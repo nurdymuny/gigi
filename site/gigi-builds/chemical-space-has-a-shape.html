@@ -22,16 +22,27 @@
 <header class="page"><div class="wrap">
   <p class="eyebrow">Web extra · not in the printed book · Part II territory</p>
   <h1>Chemical Space Has a Shape</h1>
-  <p class="lede">Two thousand two hundred molecules as sections of a bundle — molecular
-  weight, logP, and polar surface area as three numeric fibers, drawn as three
-  coordinates. A row-store sees 2,200 rows; a fiber bundle sees a <em>shape</em>: the
-  drug-like core, the fragment corner, the greasy tail, and a dozen points that sit
-  nowhere at all. Every dot's brightness is its κ — the corpus itself prices how
-  strange each molecule is. Then a <code>COVER</code> clause carves a slab out of space
-  and you can watch exactly which geometry a one-line query buys.</p>
+  <p class="lede">Picture a shoebox with 2,200 pinpricks of light floating inside &mdash; each pinprick is one molecule, and the three walls it hangs between are how heavy it is, how oily it is, and how much of its skin is polar. Those three readings &mdash; molecular weight, logP, and polar surface area &mdash; are the molecule&rsquo;s <b>numeric fibers</b>, the little bundle of numbers each row carries. A row-store sees 2,200 rows; a fiber bundle sees a <em>shape</em>: the drug-like core packed tight in the middle, the fragment corner down low, the greasy tail out along one wall, and a dozen points that sit nowhere at all. Each dot&rsquo;s brightness is its <b>curvature (&kappa;)</b> &mdash; how far from the crowd&rsquo;s center of gravity that molecule lives &mdash; so the corpus itself prices how strange each molecule is. Then a <code>COVER</code> clause carves a slab out of the box and you can watch exactly which geometry a one-line query buys.</p>
 </div></header>
 
 <main class="wrap">
+  <div class="gw-intro">
+    <p><b>Every dot in the cube above is one row in GIGI.</b> The <code>chembl</code>
+    bundle holds 2,200 records &mdash; one per molecule &mdash; keyed by
+    <code>chembl_id</code> (the ChEMBL-style handle like <code>CHX-0042</code>) and
+    carrying three numeric readings per row: <code>mw</code> (molecular weight in
+    daltons), <code>logp</code> (how greasy vs. how water-friendly), and
+    <code>tpsa</code> (polar surface area, in square &aring;ngstr&ouml;ms). Twelve of
+    those rows are planted troublemakers &mdash; the red dots you can see wandering
+    the empty corners.</p>
+    <p>Because GIGI is a <b>fiber-bundle database</b>, the corpus&rsquo;s own shape
+    rides along with every read: each row&rsquo;s curvature (&kappa;) &mdash; how
+    far it sits from where the crowd lives &mdash; is computed against the other
+    2,199, no sidecar service asked. The queries below let you carve slabs out of
+    that cube with a one-line <code>COVER</code> and watch the slab&rsquo;s average
+    &kappa; tell you whether you cut through the drug-like core or slid out along
+    a greasy edge.</p>
+  </div>
   <div class="stage" id="stage">
     <div class="hud"><b>x</b> molecular weight · <b>y</b> logP · <b>z</b> TPSA ·
       brightness = κ against the corpus · red = the twelve weirdest</div>
@@ -53,8 +64,7 @@
   <details class="gql">
     <summary>The same thing in GQL — run it against an engine</summary>
     <p class="hint">Create the bundle on your own engine (start it with
-    <code>GIGI_CORS_ORIGIN=*</code> for browser access — dev only), insert a few
-    sections, and the COVER/INTEGRATE statements below are the queries the buttons
+    <code>GIGI_CORS_ORIGIN=*</code> for browser access — dev only), insert a few rows &mdash; <b>sections</b>, one per molecule &mdash;, and the COVER/INTEGRATE statements below are the queries the buttons
     above are imitating.</p>
     <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
     <button class="wx run">Run</button></div>

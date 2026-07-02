@@ -32,13 +32,20 @@
 <header class="page"><div class="wrap">
   <p class="eyebrow">Web extra · not in the printed book · Part VI territory</p>
   <h1>Noise to Everyone Else</h1>
-  <p class="lede">Four letters, each its own little bundle, each wearing its own gauge.
-  On the left: your frame, key in hand — the fibers read <em>GIGI</em>. On the right:
-  the wire — the same bytes every eavesdropper gets, each letter independently
-  tumbled through its epoch's SO(3) gauge. Advance the ratchet and the wire
-  re-scrambles; revoke your key and watch letters go dark <em>in your own view</em> —
-  forward secrecy isn't a permission bit here, it's geometry you can no longer
-  undo. And through all of it, the verifier's invariants never flinch.</p>
+  <p class="lede">Picture four little constellations of dots &mdash; one per letter &mdash;
+  spelling <em>GIGI</em> in your own frame, then imagine each constellation
+  independently spun and shifted in 3D before it hits the wire, the way you
+  might tumble a handful of pebbles in a jar. On the left: your frame, key in
+  hand &mdash; the tumblings undo and the fibers read <em>GIGI</em>. On the
+  right: the wire &mdash; the same bytes every eavesdropper gets, each letter
+  still wearing its rotation-and-shift (the <b>SO(3) gauge</b> &mdash; a
+  private, per-letter reorientation in 3D). Advance the <b>ratchet</b>
+  (roll every letter to a fresh gauge, one full round of re-scrambling on the
+  wire) and the wire re-tumbles; revoke your key and watch letters go dark
+  <em>in your own view</em> &mdash; <b>forward secrecy</b> (once a round is
+  past, no future key can walk backward into it) isn't a permission bit here,
+  it's geometry you can no longer undo. And through all of it, the verifier's
+  invariants never flinch.</p>
 </div></header>
 
 <main class="wrap">
@@ -52,6 +59,24 @@
   <div class="controls" id="controls"></div>
   <div class="stats" id="stats"></div>
 
+  <div class="gw-intro">
+    <p><b>The four letters above live in GIGI as four little bundles &mdash;
+    one point-cloud per letter, four in total, spelling <em>GIGI</em> in
+    dots.</b> Each letter carries the same handful of fields:
+    <code>letter</code> (which glyph &mdash; G, I, G, I),
+    <code>points</code> (the raw dot positions in the letter's own frame),
+    <code>epoch</code> (which round of scrambling this cloud is currently
+    wearing), <code>claimed_sum_d2</code> (the pairwise-distance fingerprint
+    stamped at sealing time), and <code>color</code> (just so your eye can
+    tell G #1 from G #3).</p>
+    <p>Because GIGI is a <b>fiber-bundle database</b>, the scrambling isn't
+    a lock bolted on top &mdash; it's a rotation-and-shift the fiber is
+    literally wearing, and it rides along with every read. That's why
+    Carol's clipboard below can verify each letter <em>without ever holding
+    a key</em>: the fingerprint she recomputes on the wire cloud has to
+    match the one stamped at sealing, because the scrambling can't stretch
+    distances &mdash; only tumble them.</p>
+  </div>
   <div class="verify">
     <h3>Carol's clipboard — invariants recomputed on the WIRE cloud, no key involved</h3>
     <p class="sub">per-letter pairwise-distance tuple, claimed at sealing time vs recomputed on the scrambled bytes · gauges are isometries, so these agree at every epoch — that's what lets her verify without reading</p>
@@ -62,8 +87,7 @@
   pane is not "access denied" — it is the honest best anyone can do with the old
   key, which is to undo the gauges up to the revocation epoch and stare at the
   composition of everything after. There is no server deciding to withhold the
-  letters; the letters are simply no longer <em>anywhere</em> in the old frame. That's
-  the RG-flow ratchet of Chapter 15, and the reason the book calls the chapter
+  letters; the letters are simply no longer <em>anywhere</em> in the old frame. That's the one-way tumbling chain &mdash; the <b>RG-flow ratchet</b>, a sequence of rotate-and-shifts you can compose forward but not undo without every key along the way &mdash; of Chapter 15, and the reason the book calls the chapter
   "The Geometry Is the Encryption" rather than "The Geometry Helps".</p>
 
   <details class="gql">

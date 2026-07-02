@@ -27,16 +27,31 @@
 <header class="page"><div class="wrap">
   <p class="eyebrow">Web extra · not in the printed book · Part VII territory</p>
   <h1>The Weather on a Sphere That Notices</h1>
-  <p class="lede">Four hundred and eighty weather stations streaming readings onto a globe,
-  and no monitoring job anywhere. Every insert is priced at the door — κ = |v − μ|/R
-  against that station's own running statistics — so an anomaly isn't something a
-  nightly batch <em>finds</em>, it's something the storage layer <em>notices</em>, mid-insert,
-  while the write is still warm. Break a station and watch it bloom.</p>
+  <p class="lede">Picture four hundred and eighty weather stations scattered across a globe, each one quietly
+  remembering what its own normal feels like &mdash; the average temperature it sees, and how far its
+  readings usually wander. Every new reading gets priced at the door against that memory: how far
+  is this from usual, in units of the range we said to expect? That price is the station's <em>curvature</em>
+  (&kappa;), and it's stamped onto the record while the write is still warm &mdash; no nightly batch, no
+  monitoring job. Break a station and watch it bloom.</p>
 </div></header>
 
 <main class="wrap">
+  <div class="gw-intro">
+    <p><b>The globe above lives in GIGI as data.</b> Every one of the 480 weather
+    stations becomes one record in the <code>stations</code> bundle &mdash; keyed
+    by <code>station_id</code>, with a latitude ring <code>band</code> the engine
+    indexes for fast group-by, plus <code>lat</code>, <code>lon</code>, and the
+    latest <code>temp</code> reading. Each fresh reading is a write against that
+    station's own row.</p>
+    <p>Because GIGI is a <b>fiber-bundle database</b>, every write also carries
+    the reading's local surprise &mdash; curvature (&kappa;), the distance from
+    what this station usually sees &mdash; and updates a running mean and spread
+    the storage layer keeps for it. No monitoring job, no threshold config: when
+    you break a station or scrub the bloom threshold, the log below shows the
+    real GQL query GIGI answered.</p>
+  </div>
   <div class="stage" id="stage">
-    <div class="hud"><b>480 stations</b> · one Welford accumulator each · κ = |v − μ|/R, R = 60 declared</div>
+    <div class="hud"><b>480 stations</b> · each keeps its own running mean and spread (a Welford accumulator, updated one reading at a time) · κ = |v − μ|/R, R = 60 declared</div>
     <div class="corner">drag to orbit · wheel to zoom</div>
   </div>
   <div class="controls" id="controls"></div>
@@ -52,8 +67,7 @@
   station is. Its dot blooms because its own history prices its own readings — the
   fleet needs no fleet-wide scan, no threshold config per station, no cron. That is
   the Part VII story: the keeper reads receipts the engine already wrote. And when
-  you heal the station, watch how long the bloom takes to fade — Welford never
-  forgets, so μ walks back slowly. Whether that memory is a feature or a bug is
+  you heal the station, watch how long the bloom takes to fade — the running mean never throws an old reading away &mdash; Welford keeps them all folded in &mdash; so μ walks back slowly. Whether that memory is a feature or a bug is
   E8.7's argument, and this globe is a good place to have it.</p>
 
   <details class="gql">

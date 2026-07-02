@@ -21,15 +21,28 @@
 <header class="page"><div class="wrap">
   <p class="eyebrow">Web extra · not in the printed book · Part IV territory</p>
   <h1>The Loop That Remembers</h1>
-  <p class="lede">A curved landscape — one hill, one hollow — and a frame carried
-  around a loop by honest parallel transport: at every step the arrow is
-  re-projected onto the surface and never once told to turn. It turns anyway.
-  The angle it comes home rotated by is the curvature the loop enclosed, and this
-  page computes both sides of that equation <em>independently</em> — the transport by
-  walking, the integral by integrating — and shows you the receipt.</p>
+  <p class="lede">Picture a curved landscape &mdash; one hill, one hollow &mdash; and a tiny arrow lying flat on the ground. You walk it around a loop, and at every step you press it back down onto the surface so it stays flat, but you never once twist it by hand. This step-and-flatten walk is called <b>parallel transport</b>. Do it honestly and the arrow still comes home rotated &mdash; the angle it turned by is the curvature the loop enclosed, and this page computes both sides of that equation <em>independently</em>: the transport by walking, the integral by integrating, and shows you the receipt.</p>
 </div></header>
 
 <main class="wrap">
+  <div class="gw-intro">
+    <p><b>The whole terrain above lives in GIGI as data.</b> The surface is one
+    hill and one hollow &mdash; a bump and a dip in an otherwise flat sheet
+    &mdash; and every point of it becomes one record, indexed by its
+    <code>(x, z)</code> footprint. Each record carries the fields the picture
+    is painted from: <code>h</code> (height above the sheet),
+    <code>kappa</code> (curvature &mdash; positive orange on the hilltop,
+    negative violet on the skirt and saddle), <code>normal</code> (which way
+    the ground faces at that spot), and, once you drag a loop over it,
+    <code>holonomy_debt</code> (how far a carried arrow rotates by the time
+    it walks back to where it started).</p>
+    <p>Because GIGI is a <b>fiber-bundle database</b>, the curvature
+    (&kappa;) and its confidence ride along with every read &mdash; no
+    sidecar service to compute them. Walking the loop and integrating the
+    curvature underneath it are two different calculations that share no
+    code; the queries below show both sides of that equation printing the
+    same number, which is what Gauss&ndash;Bonnet has always promised.</p>
+  </div>
   <div class="stage" id="stage">
     <div class="hud"><b>surface color = Gaussian curvature</b> · orange positive (hilltop) ·
       violet negative (the skirt &amp; saddle) · drag the white loop to move it</div>
@@ -37,14 +50,14 @@
   </div>
   <div class="controls" id="controls"></div>
   <div class="stats" id="stats"></div>
-  <div class="gb" id="gb">transport the frame to print the Gauss–Bonnet receipt</div>
+  <div class="gb" id="gb">transport the frame to print the receipt &mdash; the <b>Gauss&ndash;Bonnet</b> check that walked rotation equals integrated curvature</div>
 
   <p class="note">Two things to try. First: shrink the loop onto flat ground far from
   the hill — the deficit dies, because flat transport is trivial (the first of
   Chapter 11's five named call sites). Second, the sneaky one: <em>grow</em> the loop
   until it swallows the hill entirely, skirt and all. The deficit heads back toward
   zero — a bump's positive summit and negative skirt cancel exactly, so a loop that
-  encloses <em>all</em> of it remembers nothing. Holonomy is not "did I walk near
+  encloses <em>all</em> of it remembers nothing. The arrow&rsquo;s come-home rotation has a name &mdash; <b>holonomy</b>, the memory a loop keeps of the curvature it swept over. Holonomy is not "did I walk near
   something curved"; it is a signed ledger of exactly what the loop surrounds.
   In the engine the loop is a cycle of shards and this ledger is
   <code>holonomy_debt</code> — same math, less scenery.</p>

@@ -277,8 +277,10 @@ fn test_ingest_su2_synthetic_l4_canonical_field_names() {
             "mu".to_string(),
             "site_x".to_string(),
             "site_y".to_string(),
+            "vertex_a".to_string(),
+            "vertex_b".to_string(),
         ],
-        "base fields = config_id, mu, site_x, site_y"
+        "base fields = config_id, mu, site_x, site_y, vertex_a, vertex_b"
     );
 
     let fiber_names: Vec<String> = store
@@ -653,8 +655,9 @@ fn test_ingest_gauge_field_auto_creates_bundle_with_canonical_schema() {
 
     let bundle = engine.bundle("auto_bundle").expect("bundle exists");
     let store = bundle.as_heap().expect("heap-resident");
-    // 4 base fields (config_id, mu, site_x, site_y) + 4 fiber fields (q0..q3).
-    assert_eq!(store.schema.base_fields.len(), 4);
+    // 6 base fields (config_id, mu, site_x, site_y, vertex_a, vertex_b)
+    // + 4 fiber fields (q0..q3).
+    assert_eq!(store.schema.base_fields.len(), 6);
     assert_eq!(store.schema.fiber_fields.len(), 4);
 }
 

@@ -877,27 +877,21 @@ fn obc_axis_from_topology(topology: &str) -> Option<usize> {
     }
 }
 
-/// Row-major site encoding used by the GAUGE_FIELD ingest emitter:
-/// `site_of(&[c0, c1, ..., c_{D-1}]) = ((c0 * L + c1) * L + c2) ... + c_{D-1}`,
-/// i.e. `c0` (site_x) is most-significant. Matches the site-flat
-/// decomposition in `ingest_npz_as_gauge_field`, so the encoded
-/// vertex ids align with the per-record `site_*` fields within a
-/// bundle. NOTE: this is not the same integer as `Lattice::VertexId`,
-/// which uses column-major (`stride[k] = L^k`, `c0` least-significant).
-/// Consumers that need lattice-native ids must remap via the site
-/// fields or a lookup, not by casting `vertex_a`/`vertex_b` directly.
-/// SPECTRAL_GAUGE tolerates this by treating the endpoints as opaque
-/// keys and dense-remapping into 0..V internally.
+/// Column-major site encoding used by the GAUGE_FIELD ingest emitter:
+/// `site_of(&[c0, c1, ..., c_{D-1}], L) = sum_k c_k * L^k`, i.e. `c0`
+/// (site_x) is least-significant. Matches `Lattice::VertexId`
+/// numbering for the cubic constructor, so the `vertex_a` / `vertex_b`
+/// integer values stamped on each ingested record equal
+/// `lattice.site_of(coords)` for the same coords and L. Thin wrapper
+/// around `crate::lattice::topology::site_of_column_major`, kept as a
+/// module-local name so callsites inside `ingest_npz_as_gauge_field`
+/// stay short.
 #[cfg(feature = "gauge")]
-fn site_of_row_major(coords: &[usize], l: usize) -> usize {
-    let mut s = 0usize;
-    for &c in coords {
-        s = s * l + c;
-    }
-    s
+fn site_of_column_major(coords: &[usize], l: usize) -> usize {
+    crate::lattice::topology::site_of_column_major(coords, l)
 }
 
-/// Row-major shift-by-+1 along axis `a`, modulo `L`. Callers detect
+/// Shift-by-+1 along axis `a`, modulo `L`. Callers detect
 /// wrap edges by comparing the original `coords[a] == L - 1` before
 /// invoking this helper; the modulo here is what PERIODIC lattices
 /// consume unchanged.
@@ -1112,9 +1106,12 @@ fn ingest_npz_as_gauge_field(
 
     // Build inferred schema — canonical base + fiber fields.
     // Base fields carry (config_id, mu, site_*..., vertex_a, vertex_b).
-    // The vertex_a / vertex_b endpoints are computed per record from
-    // the lattice's row-major adjacency, giving SPECTRAL_GAUGE the edge
-    // set it consumes without a separate site-decoding fallback.
+    // The vertex_a / vertex_b endpoints are computed per record with
+    // the lattice's column-major site encoding (`stride[k] = L^k`),
+    // matching `Lattice::VertexId` numbering. This gives SPECTRAL_GAUGE
+    // the edge set it consumes without a separate site-decoding
+    // fallback, and lets future verbs look up records by
+    // `lattice.vertex(vertex_a)` directly.
     let mut inferred: Vec<InferredFieldSchema> = Vec::new();
     inferred.push(InferredFieldSchema::numeric("config_id", /*is_base=*/ true));
     inferred.push(InferredFieldSchema::numeric("mu", /*is_base=*/ true));
@@ -1167,13 +1164,16 @@ fn ingest_npz_as_gauge_field(
                 let base = ((config_id * d + mu) * ln + site_flat) * expected_fiber;
                 let slice = &data[base..base + expected_fiber];
 
-                // vertex_a / vertex_b from the row-major site encoding
-                // + shift-by-+1 along mu. On PERIODIC lattices, the
-                // shift wraps modulo L, matching the lattice's own
-                // edge (s → site_of(shift_plus(coords, mu))).
+                // vertex_a / vertex_b from the column-major site
+                // encoding + shift-by-+1 along mu. Values equal
+                // `lattice.site_of(coords)` for the same coords and L,
+                // so `vertex_a` and `vertex_b` are the lattice's own
+                // `VertexId` integers. On PERIODIC lattices the shift
+                // wraps modulo L, matching the lattice's own edge
+                // (s → site_of(shift_plus(coords, mu))).
                 let coords = &site[..d];
-                let vertex_a = site_of_row_major(coords, l_ref);
-                let vertex_b = site_of_row_major(&shift_plus(coords, mu, l_ref), l_ref);
+                let vertex_a = site_of_column_major(coords, l_ref);
+                let vertex_b = site_of_column_major(&shift_plus(coords, mu, l_ref), l_ref);
 
                 let mut record: Record = Record::new();
                 record.insert("config_id".to_string(), Value::Integer(config_id as i64));

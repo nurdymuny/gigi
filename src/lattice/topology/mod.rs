@@ -35,3 +35,23 @@ pub mod truncated_icosahedron;
 pub use cubed_sphere::cubed_sphere;
 pub use cubic::cubic;
 pub use hints::topology_hint_for;
+
+/// Column-major site encoding for cubic lattices: `site_of(&[c0, c1,
+/// ..., c_{D-1}], L) = sum_k c_k * L^k`, i.e. `c0` (site_x) is
+/// least-significant. Matches the private encoding used inside
+/// `cubic::cubic` (see the `site_of` closure there) and therefore
+/// coincides with `Lattice::VertexId` numbering for the cubic
+/// constructor. Callers that need to convert (config, coords) tuples
+/// to lattice-native vertex ids — including the GAUGE_FIELD ingest
+/// emitter, which stamps `vertex_a` / `vertex_b` on each record —
+/// should route through this helper so the integer values stay
+/// aligned with `lattice.vertex(id)` and `lattice.resolve_edge(a,b)`.
+pub fn site_of_column_major(coords: &[usize], l: usize) -> usize {
+    let mut s = 0usize;
+    let mut stride = 1usize;
+    for &c in coords {
+        s += c * stride;
+        stride *= l;
+    }
+    s
+}

@@ -93,6 +93,61 @@ use crate::types::{BundleSchema, FieldDef, FieldType, Record, Value};
 /// budget).
 const INGEST_BATCH_SIZE: usize = 10_000;
 
+/// Decode an `NpyFile` as a flat `Vec<f64>`, auto-detecting the on-disk
+/// dtype from the `.npy` header.
+///
+/// - `float64` (`<f8` / `>f8` / `|f8`) is read directly as `f64`.
+/// - `float32` (`<f4` / `>f4` / `|f4`) is read as `f32` and cast to `f64`
+///   element-wise. The cast is mathematically lossless: every finite
+///   `f32` has an exact `f64` representation (24-bit mantissa fits inside
+///   f64's 53-bit mantissa; f32's exponent range is a strict subset of
+///   f64's).
+/// - Any other dtype returns [`IngestError::FormatError`] naming the
+///   observed dtype string AND the supported set (`float32`, `float64`)
+///   so the caller can adjust their pipeline.
+///
+/// `array_name` is threaded through error messages purely for
+/// disambiguation when the reader is called inside a loop over
+/// multi-member archives; it has no semantic effect.
+fn decode_npy_as_f64<R: io::Read>(
+    entry: npyz::NpyFile<R>,
+    array_name: &str,
+) -> Result<Vec<f64>, IngestError> {
+    let dtype = entry.dtype();
+    match &dtype {
+        npyz::DType::Plain(ts) => match ts.type_char() {
+            npyz::TypeChar::Float => match ts.size_field() {
+                8 => entry.into_vec::<f64>().map_err(|e| {
+                    IngestError::FormatError(format!(
+                        "decode array `{array_name}` as f64: {e}"
+                    ))
+                }),
+                4 => {
+                    let raw = entry.into_vec::<f32>().map_err(|e| {
+                        IngestError::FormatError(format!(
+                            "decode array `{array_name}` as f32: {e}"
+                        ))
+                    })?;
+                    Ok(raw.into_iter().map(|x| x as f64).collect())
+                }
+                other => Err(IngestError::FormatError(format!(
+                    "INGEST NPZ: array `{array_name}` has unsupported dtype `{ts}` \
+                     (float width {other} bytes); expected float32 or float64"
+                ))),
+            },
+            _ => Err(IngestError::FormatError(format!(
+                "INGEST NPZ: array `{array_name}` has unsupported dtype `{ts}`; \
+                 expected float32 or float64"
+            ))),
+        },
+        other => Err(IngestError::FormatError(format!(
+            "INGEST NPZ: array `{array_name}` has non-scalar dtype `{}`; \
+             expected float32 or float64",
+            other.descr()
+        ))),
+    }
+}
+
 /// Format-specific entry points. Phase 1 ships NPZ only; HDF5/JSONL
 /// land as additional variants in a follow-up sprint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -436,9 +491,7 @@ fn ingest_npz(
                 "array `{name}` has zero-rank shape; INGEST requires at least one axis",
             )));
         }
-        let data: Vec<f64> = entry
-            .into_vec::<f64>()
-            .map_err(|e| IngestError::FormatError(format!("decode array `{name}` as f64: {e}")))?;
+        let data: Vec<f64> = decode_npy_as_f64(entry, name)?;
         buffers.push(ArrayBuf { name: name.clone(), shape, data });
     }
 
@@ -1039,10 +1092,10 @@ fn ingest_npz_as_gauge_field(
     }
 
     // Decode as flat Vec<f64> in row-major (NPZ default). Total len
-    // = n_configs * D * L^D * repr_dim.
-    let data: Vec<f64> = entry
-        .into_vec::<f64>()
-        .map_err(|e| IngestError::FormatError(format!("decode as f64: {e}")))?;
+    // = n_configs * D * L^D * repr_dim. On-disk dtype is auto-detected
+    // (f32 upconverts to f64 element-wise; f64 reads as-is); any other
+    // dtype errors with the dtype name and the supported set.
+    let data: Vec<f64> = decode_npy_as_f64(entry, &names[0])?;
     let n_configs = shape[0] as usize;
     let expected_len = n_configs * d * l_ref.pow(d as u32) * expected_fiber;
     if data.len() != expected_len {

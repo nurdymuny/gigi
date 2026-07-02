@@ -1,0 +1,59 @@
+# CI — engine tests + SDK smoke against a real booted server.
+#
+# The old full pipeline (docker build, fly deploy) lives in
+# ci.yml.disabled and is deploy-side; this workflow is the correctness
+# gate: if the engine's promises or either SDK's contract drift, a PR
+# goes red before a reader's afternoon does.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Engine tests (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: cargo test (default features)
+        run: cargo test --release
+      - name: cargo check (gauge feature)
+        run: cargo check --release --features gauge
+
+  sdk-smoke:
+    name: SDK smoke (python + js vs live server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: python SDK deps (REST-only — websockets intentionally absent)
+        run: pip install requests
+      - name: boot server + run both SDKs end-to-end
+        run: ./scripts/sdk_smoke.sh

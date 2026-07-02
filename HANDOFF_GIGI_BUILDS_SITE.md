@@ -103,6 +103,37 @@ pages now carry a working layer, all verified headless end-to-end:
   regenerate. Natural next candidates: ch3 (GIGI hash / birthday-bound
   collision demo, port `src/hash.rs`), ch9 (spectral-gap toy graph).
 
+## UPDATE 2026-07-02 (later): every chapter page has a visual instrument
+
+Bee asked for visualizations on all the exercise pages, each different,
+building on one another *within each Part* (resetting at Part boundaries).
+
+- All 18 live in ONE new file: `site/gigi-builds/exercises/viz.js`.
+  Each chapter page carries exactly one added line, just before `</body>`:
+  `<script defer src="viz.js" data-ch="N"></script>`. That's the entire
+  footprint in the HTML — the panel builds its own DOM, injects its own
+  CSS (`.gbviz*` classes only), and mounts itself before the first
+  `article.ex`. Hand-edit the pages freely; nothing else references it.
+- Do NOT regenerate pages from `build_exercise_pages.py` without
+  re-adding the script line (the generator doesn't know about it yet;
+  porting it into the generator is a nice-to-have).
+- Part arcs: I readings→stalks→addresses (ch1–3), II one record through
+  the machine (ch4–7), III signals→spectrum→wire (ch8–10), IV
+  holonomy→torsion (ch11–12), V shard equality→honest error bars
+  (ch13–14), VI gauge→verifier→ratchet (ch15–17), VII keeper's console
+  (ch18). Each panel says "Builds on the Chapter N instrument" when it
+  continues an arc.
+- All math is real where the engine has math: Welford/κ (R=100, stats
+  before the record), Jacobi eigensolver for λ₁ + Fiedler coloring,
+  blocked errors at 2τ (the WITH JACKKNIFE story, φ=0.8 → τ=4.5),
+  gauge-invariant distance tuples at the 1e-10 grain. Deterministic
+  seeded PRNG everywhere; no Date.now/Math.random.
+- Only network touch in all 18: ch18's click-gated "Ping the real
+  engine" button → POST /v1/public/gql `HEALTH tetmesh_demo;` (response
+  is a flat JSON object; the panel prints its keys).
+- Headless-verified (Playwright, network blocked, all 18: panel mounts,
+  canvas paints, first button clicks clean, zero console errors).
+
 ## Facts the next session will want
 
 - Book: *GIGI Builds — The Fiber-Bundle Database: A Working Engineer's Guide

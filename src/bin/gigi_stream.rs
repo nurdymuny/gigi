@@ -12139,6 +12139,13 @@ fn validate_public_stmt(
         S::Cover { bundle, .. } => bundle_ok(bundle),
         S::Integrate { bundle, .. } => bundle_ok(bundle),
         S::Select { bundle, .. } => bundle_ok(bundle),
+        // Read-only analytics verbs — compute derived geometry from
+        // existing records, never mutate. Same threat surface as
+        // Integrate (a caller can already probe bundle shape via
+        // aggregates); adding these lets the demo pages fire the
+        // verb the reader is looking at instead of a stand-in.
+        S::Curvature { bundle, .. } => bundle_ok(bundle),
+        S::Spectral { bundle, .. } => bundle_ok(bundle),
         // Everything else — writes, admin, non-whitelisted analytics — is
         // refused. The error is generic on purpose (don't leak the shape of
         // the verb enum to anonymous callers).
@@ -19911,11 +19918,28 @@ mod tests {
             "HEALTH stations;",
             "SECTION stations AT station_id='s151';",
             "INTEGRATE stations MEASURE SUM(temp), AVG(temp);",
+            // Analytics verbs added when the web-extras started firing
+            // the actual verb their demo is showcasing.
+            "CURVATURE stations;",
+            "SPECTRAL stations;",
         ] {
             let s = parse_or_panic(q);
             assert!(
                 validate_public_stmt(&s, &allow).is_ok(),
                 "expected `{q}` to pass"
+            );
+        }
+    }
+
+    #[test]
+    fn public_validate_analytics_rejected_when_bundle_not_allowlisted() {
+        let allow = allowlist(&["stations"]);
+        for q in ["CURVATURE tetmesh_demo;", "SPECTRAL secret_stuff;"] {
+            let s = parse_or_panic(q);
+            let err = validate_public_stmt(&s, &allow).unwrap_err();
+            assert!(
+                err.contains("is not exposed"),
+                "expected bundle-refusal on `{q}`, got: {err}"
             );
         }
     }

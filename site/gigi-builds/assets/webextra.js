@@ -194,6 +194,8 @@
       return "INTEGRATE — aggregate across all of " + m[1] + ": " + m[2];
     if ((m = s.match(/^CURVATURE\s+(\w+)$/i)))
       return "CURVATURE — the bundle-wide κ readout for " + m[1];
+    if ((m = s.match(/^SPECTRAL\s+(\w+)$/i)))
+      return "SPECTRAL — the connectivity gap (λ₁) for " + m[1];
     if ((m = s.match(/^BUNDLE\s+(\w+)/i)))
       return "BUNDLE — the schema declaration for " + m[1] + " (base + fiber shape)";
     return "a query GIGI understands";

@@ -1,5 +1,15 @@
 # HANDOFF — GIGI Builds companion site + tetmesh chapter
 
+> **HISTORY SQUASHED 2026-07-02.** Main was rewritten as a single root
+> commit (Bee's call — public-repo cleanup). If your clone predates the
+> squash: commit or stash any WIP, then
+> `git fetch origin && git checkout main && git reset --hard origin/main`
+> and re-apply your WIP on top (`git stash pop` / cherry-pick from your
+> old local commits — they are still in your reflog). Do NOT plain-push
+> from a pre-squash clone; git will tell you to pull, and a merge would
+> resurrect the old history.
+
+
 **From:** remote (cloud) Claude Code session, 2026-07-01
 **To:** local desktop Claude Code session on Bee's machine
 **Branch with all work:** `claude/spec-review-generalize-13d0c2` (pushed to `nurdymuny/gigi`)

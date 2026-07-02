@@ -316,6 +316,11 @@ pub enum Statement {
         /// `WITH JACKKNIFE ALONG <field>` — order samples by this field and
         /// attach autocorrelation-honest error bars to each avg() measure.
         jackknife_along: Option<String>,
+        /// `… SKIP FIRST n` — thermalization cut: drop the first n ordered
+        /// samples (per group) before the error analysis. A Monte Carlo
+        /// chain's burn-in biases both the mean and tau_int; the standard
+        /// remedy is to cut it, so the verb offers the standard remedy.
+        jackknife_skip: usize,
     },
 
     // ── Joins ──
@@ -4484,6 +4489,7 @@ impl Parser {
         // The order field defines chain/time order; without one, an
         // autocorrelation time is meaningless, so it is required.
         let mut jackknife_along = None;
+        let mut jackknife_skip = 0usize;
         if self.is_keyword("WITH") {
             self.advance();
             self.expect_keyword("JACKKNIFE")?;
@@ -4497,6 +4503,12 @@ impl Parser {
             }
             self.advance();
             jackknife_along = Some(self.expect_word()?);
+            // Optional thermalization cut: SKIP FIRST n
+            if self.is_keyword("SKIP") {
+                self.advance();
+                self.expect_keyword("FIRST")?;
+                jackknife_skip = self.expect_usize()?;
+            }
         }
 
         Ok(Statement::Integrate {
@@ -4504,6 +4516,7 @@ impl Parser {
             over,
             measures,
             jackknife_along,
+            jackknife_skip,
         })
     }
 
@@ -10005,6 +10018,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             over,
             measures,
             jackknife_along,
+            jackknife_skip,
         } => {
             let store = engine
                 .bundle(bundle)
@@ -10016,6 +10030,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     store.records(),
                     over.as_deref(),
                     order_field,
+                    *jackknife_skip,
                     &specs,
                 )?;
                 return Ok(ExecResult::Rows(rows));
@@ -13110,6 +13125,30 @@ mod tests {
         // ALONG is mandatory — autocorrelation needs an ordering
         let err = parse("INTEGRATE runs MEASURE avg(x) WITH JACKKNIFE;").unwrap_err();
         assert!(err.contains("ALONG"), "got: {err}");
+        // SKIP FIRST n is the optional thermalization cut, default 0
+        let stmt = parse(
+            "INTEGRATE runs MEASURE avg(x) WITH JACKKNIFE ALONG sweep SKIP FIRST 500;",
+        )
+        .unwrap();
+        match stmt {
+            Statement::Integrate { jackknife_along, jackknife_skip, .. } => {
+                assert_eq!(jackknife_along.as_deref(), Some("sweep"));
+                assert_eq!(jackknife_skip, 500);
+            }
+            _ => panic!("Expected Integrate"),
+        }
+        let stmt =
+            parse("INTEGRATE runs MEASURE avg(x) WITH JACKKNIFE ALONG sweep;").unwrap();
+        match stmt {
+            Statement::Integrate { jackknife_skip, .. } => assert_eq!(jackknife_skip, 0),
+            _ => panic!("Expected Integrate"),
+        }
+        // SKIP without FIRST is refused, not silently swallowed
+        let err = parse(
+            "INTEGRATE runs MEASURE avg(x) WITH JACKKNIFE ALONG sweep SKIP 500;",
+        )
+        .unwrap_err();
+        assert!(err.contains("FIRST"), "got: {err}");
         // non-avg measures are refused with an explanation
         let specs = jackknife_measure_specs(&[MeasureSpec {
             func: AggFunc::Max,

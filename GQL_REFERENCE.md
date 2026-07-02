@@ -746,6 +746,10 @@ INTEGRATE chain MEASURE avg(plaquette) WITH JACKKNIFE ALONG sweep;
 
 -- per group: one error bar per coupling
 INTEGRATE runs OVER beta MEASURE avg(plaquette) WITH JACKKNIFE ALONG sweep;
+
+-- thermalization cut: drop the first 500 ordered samples (per group)
+-- before the analysis — burn-in biases both the mean and tau_int
+INTEGRATE chain MEASURE avg(plaquette) WITH JACKKNIFE ALONG sweep SKIP FIRST 500;
 ```
 
 Each `avg(f)` measure returns six columns: `avg_f` (mean), `avg_f_err`
@@ -756,10 +760,13 @@ under-sampled), `avg_f_tau_int` (integrated autocorrelation time,
 initial-positive-sequence window), and `avg_f_n_eff` (= n / 2·τ_int).
 
 `ALONG <field>` is required — it defines chain order; autocorrelation is
-undefined without one. Only `avg()` measures are supported (an error bar is
-an estimate of the uncertainty of a mean); anything else is refused with an
-explanation. Validated against AR(1) with known τ_int in
-`src/aggregation.rs` tests and end-to-end in `tests/gql_reference_truth.rs`.
+undefined without one. `SKIP FIRST n` is optional (default 0) and is applied
+AFTER ordering, so "first" means first along the chain, not insertion order;
+a cut that discards all of a group's samples is a loud error. Only `avg()`
+measures are supported (an error bar is an estimate of the uncertainty of a
+mean); anything else is refused with an explanation. Validated against AR(1)
+with known τ_int and a planted burn-in in `src/aggregation.rs` tests and
+end-to-end in `tests/gql_reference_truth.rs`.
 
 ---
 

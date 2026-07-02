@@ -30,6 +30,7 @@ fn seeded_engine(dir: &std::path::Path) -> Engine {
         "SECTION sensors (id='s2', city='Moscow', temp=-25.5, wind=8.5);",
         "SECTION sensors (id='s3', city='Lagos', temp=31.0, wind=2.0);",
         "SECTION sensors (id='s4', city='Lagos', temp=29.5, wind=3.5);",
+        "SECTION sensors (id='s5', city='Lagos', temp=30.2, wind=4.1);",
         "BUNDLE cities BASE (city TEXT) FIBER (region TEXT);",
         "SECTION cities (city='Moscow', region='EU');",
         "SECTION cities (city='Lagos', region='AF');",
@@ -81,6 +82,8 @@ fn documented_features_execute() {
         "HEALTH sensors;",
         // this audit's addition (global form: needs >= 4 ordered samples)
         "INTEGRATE sensors MEASURE avg(temp) WITH JACKKNIFE ALONG wind;",
+        // thermalization cut: drop the first n ordered samples per group
+        "INTEGRATE sensors MEASURE avg(temp) WITH JACKKNIFE ALONG wind SKIP FIRST 1;",
     ];
     let mut failures = Vec::new();
     for stmt in works {

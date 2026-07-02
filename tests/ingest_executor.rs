@@ -228,11 +228,13 @@ fn test_ingest_npz_file_not_found() {
 
 #[test]
 fn test_ingest_npz_unsupported_format() {
-    let err = IngestFormat::from_name("CSV").expect_err("unsupported");
+    // CSV graduated to a supported format (feat/csv-ingest); JSON is
+    // still the canary for the refusal path.
+    let err = IngestFormat::from_name("JSON").expect_err("unsupported");
     match err {
         IngestError::FormatNotSupported { requested, supported } => {
-            assert_eq!(requested, "CSV");
-            assert_eq!(supported, vec!["NPZ".to_string()]);
+            assert_eq!(requested, "JSON");
+            assert_eq!(supported, vec!["NPZ".to_string(), "CSV".to_string()]);
         }
         other => panic!("expected FormatNotSupported, got {other:?}"),
     }

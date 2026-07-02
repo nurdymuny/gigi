@@ -689,7 +689,7 @@ fn test_ingest_gauge_field_existing_bundle_compat_check() {
     // Pre-create the bundle with the canonical schema INGEST would
     // infer. Every field is Numeric — the emitter uses scalar Numeric
     // for both base and fiber columns so SPECTRAL_GAUGE ON FIBER can
-    // read them directly. vertex_a / vertex_b carry the row-major
+    // read them directly. vertex_a / vertex_b carry the column-major
     // edge endpoints the ingest emitter attaches from the lattice.
     let schema = BundleSchema::new("pre_bundle")
         .base(FieldDef::numeric("config_id"))

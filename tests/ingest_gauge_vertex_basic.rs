@@ -321,7 +321,7 @@ fn test_ingest_obc_l4_d4_su2_axis0_absolute_record_count() {
 
 // ── Test 4: vertex_a = site_of(coords) ─────────────────────────────
 
-/// Sample records and confirm vertex_a matches the row-major
+/// Sample records and confirm vertex_a matches the column-major
 /// site_of(site_coords) that the lattice uses. The ingest executor and
 /// the lattice must agree on the same coord ↔ site encoding.
 #[test]

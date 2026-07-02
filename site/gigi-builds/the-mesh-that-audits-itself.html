@@ -101,6 +101,14 @@
 
   /* GIGI at work — lives inside .left-col below #hdr */
   #gigiwork { flex: 0 0 auto; }
+  #gigiwork .gw-intro { font-size: 11.5px; color: var(--text-secondary); line-height: 1.55;
+    margin: 4px 0 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  #gigiwork .gw-intro p { margin: 0; }
+  #gigiwork .gw-intro p + p { margin-top: 6px; }
+  #gigiwork .gw-intro b { color: var(--text-primary); font-weight: 650; }
+  #gigiwork .gw-intro code { background: #101010; border: 1px solid var(--border);
+    color: var(--text-primary); padding: 0 4px; border-radius: 4px;
+    font: 10.5px ui-monospace, Menlo, Consolas, monospace; }
   #gigiwork .gw-head { display: flex; justify-content: space-between; align-items: center; }
   #gigiwork h2 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary);
     letter-spacing: 0.08em; }
@@ -176,6 +184,19 @@
     <button id="gigi-toggle" aria-expanded="true" aria-controls="gigi-body" title="collapse this panel">–</button>
   </div>
   <div id="gigi-body">
+  <div class="gw-intro">
+    <p><b>The whole tetmesh above lives in GIGI as data.</b> Every tetrahedron
+    becomes one record &mdash; 5,760 in total, one per tet across all four
+    refinement levels. Each record carries eight fields: <code>id</code>,
+    <code>level</code>, <code>shape_family</code>, <code>obtuse_class</code>,
+    <code>q_vol</code> (0 = flat sliver, 1 = perfectly regular),
+    <code>d_bad</code> (sliver margin), and the smallest + largest of its six
+    inside-angles.</p>
+    <p>Because GIGI is a <b>fiber-bundle database</b>, the bundle&rsquo;s
+    curvature (&kappa;) and confidence ride along with every read &mdash;
+    no sidecar service to compute them. When you scrub a level or hover a
+    tet, the log below shows the real GQL query GIGI answered.</p>
+  </div>
   <div class="grow">
     <span class="dot" id="gigi-dot" aria-hidden="true"></span>
     <input id="gigi-ep" value="https://gigi-stream.fly.dev" aria-label="GIGI engine address">

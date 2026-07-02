@@ -127,7 +127,7 @@ fn test_ingest_npz_small_float64_array_creates_bundle() {
     write_test_npz_single(&path, "small", &[10, 4], &data);
 
     let stats =
-        execute_ingest(&mut engine, "small_bundle", &path, IngestFormat::Npz)
+        execute_ingest(&mut engine, "small_bundle", &path, IngestFormat::Npz, None)
             .expect("ingest succeeds");
     assert_eq!(stats.records_emitted, 10, "10 outer-axis slices");
     assert!(stats.bundle_created, "bundle auto-created when missing");
@@ -170,6 +170,7 @@ fn test_ingest_npz_with_existing_compatible_bundle() {
         "compat_bundle",
         &path,
         IngestFormat::Npz,
+        None,
     )
     .expect("ingest succeeds");
     assert_eq!(stats.records_emitted, 5);
@@ -201,6 +202,7 @@ fn test_ingest_npz_with_existing_conflicting_bundle() {
         "conflict_bundle",
         &path,
         IngestFormat::Npz,
+        None,
     )
     .expect_err("should fail on incompatible schema");
     match err {
@@ -216,7 +218,7 @@ fn test_ingest_npz_with_existing_conflicting_bundle() {
 fn test_ingest_npz_file_not_found() {
     let (mut engine, _dir) = open_engine();
     let phantom = PathBuf::from("does-not-exist-anywhere.npz");
-    let err = execute_ingest(&mut engine, "ghost", &phantom, IngestFormat::Npz)
+    let err = execute_ingest(&mut engine, "ghost", &phantom, IngestFormat::Npz, None)
         .expect_err("missing file");
     match err {
         IngestError::FileNotFound(p) => assert_eq!(p, phantom),
@@ -255,6 +257,7 @@ fn test_ingest_npz_4d_array_record_count() {
         "halcyon_smoke_bundle",
         &path,
         IngestFormat::Npz,
+        None,
     )
     .expect("ingest succeeds");
 
@@ -320,6 +323,10 @@ fn test_ingest_parser_end_to_end() {
 
 #[test]
 fn test_ingest_multi_array_npz() {
+    // Multi-member archives require an explicit KEY selection now.
+    // Passing `KEY b` restricts the ingest to the `b` array's 3 outer
+    // slices; `a`'s slices are not emitted and `a` does not appear on
+    // the auto-inferred schema.
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
     let path = tmp.path().join("multi.npz");
@@ -334,18 +341,22 @@ fn test_ingest_multi_array_npz() {
         ],
     );
 
-    let stats =
-        execute_ingest(&mut engine, "multi_bundle", &path, IngestFormat::Npz)
-            .expect("ingest succeeds");
-    // 2 outer slices in `a` + 3 outer slices in `b` = 5 records.
-    assert_eq!(stats.records_emitted, 5);
+    let stats = execute_ingest(
+        &mut engine,
+        "multi_bundle",
+        &path,
+        IngestFormat::Npz,
+        Some("b"),
+    )
+    .expect("ingest succeeds");
+    // 3 outer slices in `b`, none from `a`.
+    assert_eq!(stats.records_emitted, 3);
     assert!(stats.bundle_created);
 
     let bundle = engine.bundle("multi_bundle").expect("bundle exists");
     let store = bundle.as_heap().expect("heap-resident");
-    assert_eq!(store.len(), 5);
+    assert_eq!(store.len(), 3);
 
-    // Schema should carry row_idx + array_name + a + b.
     let all_names: Vec<String> = store
         .schema
         .base_fields
@@ -354,20 +365,38 @@ fn test_ingest_multi_array_npz() {
         .map(|f| f.name.clone())
         .collect();
     assert!(all_names.contains(&"row_idx".to_string()));
-    assert!(all_names.contains(&"array_name".to_string()));
-    assert!(all_names.contains(&"a".to_string()));
     assert!(all_names.contains(&"b".to_string()));
+    assert!(!all_names.contains(&"a".to_string()));
+}
 
-    // Verify array_name distribution.
-    let mut name_counts: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
-    for rec in store.records() {
-        if let Some(Value::Text(s)) = rec.get("array_name") {
-            *name_counts.entry(s.clone()).or_insert(0) += 1;
+/// Multi-member archive with no KEY clause is rejected up front so the
+/// caller sees the exact members they have to choose between.
+#[test]
+fn test_ingest_multi_array_without_key_errors() {
+    let (mut engine, _dir) = open_engine();
+    let tmp = tempfile::tempdir().expect("tempdir for fixture");
+    let path = tmp.path().join("multi_no_key.npz");
+
+    let a: Vec<f64> = (0..6).map(|i| i as f64).collect();
+    let b: Vec<f64> = (0..9).map(|i| -(i as f64)).collect();
+    write_test_npz_multi(
+        &path,
+        &[
+            ("a", &[2, 3], &a),
+            ("b", &[3, 3], &b),
+        ],
+    );
+
+    let err = execute_ingest(&mut engine, "no_key_bundle", &path, IngestFormat::Npz, None)
+        .expect_err("multi-array without KEY must error");
+    match err {
+        IngestError::MultiArrayRequiresKey { got, members } => {
+            assert_eq!(got, 2);
+            assert!(members.contains(&"a".to_string()));
+            assert!(members.contains(&"b".to_string()));
         }
+        other => panic!("expected MultiArrayRequiresKey, got {other:?}"),
     }
-    assert_eq!(name_counts.get("a").copied().unwrap_or(0), 2);
-    assert_eq!(name_counts.get("b").copied().unwrap_or(0), 3);
 }
 
 #[test]

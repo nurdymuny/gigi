@@ -161,11 +161,13 @@ fn test_ingest_gauge_field_parser_accepts_full_tail() {
             bundle,
             source,
             format,
+            key,
             as_gauge_field,
         } => {
             assert_eq!(bundle, "b");
             assert_eq!(source, "/tmp/x.npz");
             assert_eq!(format, "NPZ");
+            assert!(key.is_none(), "no KEY clause → None");
             let interp = as_gauge_field.expect("GAUGE_FIELD interpretation clause present");
             assert_eq!(interp.group, Group::SU2);
             assert_eq!(interp.lattice_name, "l4");
@@ -228,6 +230,7 @@ fn test_ingest_su2_synthetic_l4_records_correct_count() {
         IngestFormat::Npz,
         Group::SU2,
         "l4",
+        None,
     )
     .expect("INGEST AS GAUGE_FIELD succeeds on well-shaped SU(2) NPZ");
 
@@ -257,6 +260,7 @@ fn test_ingest_su2_synthetic_l4_canonical_field_names() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_names",
+        None,
     )
     .expect("ingest");
 
@@ -347,6 +351,7 @@ fn test_ingest_su3_synthetic_l4_records_field_names() {
         IngestFormat::Npz,
         Group::SU3,
         "l4_su3",
+        None,
     )
     .expect("SU(3) ingest");
 
@@ -383,6 +388,7 @@ fn test_ingest_u1_synthetic_l4_theta_field() {
         IngestFormat::Npz,
         Group::U1,
         "l4_u1",
+        None,
     )
     .expect("U(1) ingest");
 
@@ -414,6 +420,7 @@ fn test_ingest_zn_synthetic_l4_index_field() {
         IngestFormat::Npz,
         Group::ZN { n: 5 },
         "l4_zn",
+        None,
     )
     .expect("Z(N) ingest");
 
@@ -449,6 +456,7 @@ fn test_ingest_fiber_width_mismatch_errors_clearly() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_bad_fiber",
+        None,
     )
     .expect_err("fiber width mismatch must error");
     match err {
@@ -476,6 +484,7 @@ fn test_ingest_lattice_not_found_errors() {
         IngestFormat::Npz,
         Group::SU2,
         "not_a_lattice",
+        None,
     )
     .expect_err("undeclared lattice must error");
     match err {
@@ -506,6 +515,7 @@ fn test_ingest_axis_count_mismatch_errors() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_bad_ndim",
+        None,
     )
     .expect_err("axis-count mismatch must error");
     match err {
@@ -536,6 +546,7 @@ fn test_ingest_direction_axis_mismatch_errors() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_bad_mu",
+        None,
     )
     .expect_err("direction axis mismatch must error");
     match err {
@@ -567,6 +578,7 @@ fn test_ingest_site_axis_extent_mismatch_errors() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_bad_site",
+        None,
     )
     .expect_err("non-uniform site axis must error");
     match err {
@@ -587,7 +599,7 @@ fn test_ingest_generic_still_works_without_as_clause() {
     let data: Vec<f64> = (0..12).map(|i| i as f64).collect();
     write_test_npz_single(&path, "generic", &[3, 4], &data);
 
-    let stats = execute_ingest(&mut engine, "generic_bundle", &path, IngestFormat::Npz)
+    let stats = execute_ingest(&mut engine, "generic_bundle", &path, IngestFormat::Npz, None)
         .expect("generic ingest still works");
     assert_eq!(stats.records_emitted, 3);
     assert!(stats.bundle_created);
@@ -619,6 +631,7 @@ fn test_ingest_gauge_field_multi_array_rejected() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_multi",
+        None,
     )
     .expect_err("multi-array NPZ must be rejected for GAUGE_FIELD");
     match err {
@@ -649,6 +662,7 @@ fn test_ingest_gauge_field_auto_creates_bundle_with_canonical_schema() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_auto",
+        None,
     )
     .expect("ingest");
     assert!(stats.bundle_created, "bundle was auto-created");
@@ -697,6 +711,7 @@ fn test_ingest_gauge_field_existing_bundle_compat_check() {
         IngestFormat::Npz,
         Group::SU2,
         "l4_pre",
+        None,
     )
     .expect("ingest into existing compatible bundle");
     assert!(!stats.bundle_created, "existing compatible bundle reused");

@@ -153,6 +153,7 @@ fn test_halcyon_l24_workflow_e2e_all_four_concepts() {
             IngestFormat::Npz,
             Group::SU2,
             "l4_obc",
+            None,
         )
         .expect("INGEST AS GAUGE_FIELD succeeds on OBC lattice");
         // OBC AXIS 0 omits records whose (mu = 0, site_x = L - 1). One

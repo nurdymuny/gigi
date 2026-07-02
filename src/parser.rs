@@ -781,6 +781,13 @@ pub enum Statement {
         bundle: String,
         source: String,
         format: String,
+        /// Optional `KEY <name>` clause naming exactly one member of a
+        /// multi-array NPZ archive. When `Some(name)`, the executor
+        /// restricts ingest to that member and ignores every other
+        /// member's slices. When `None` on a multi-array archive the
+        /// executor errors with a message that names the available
+        /// members and cites the `KEY <name>` remedy.
+        key: Option<String>,
         /// Optional GAUGE_FIELD interpretation clause. `None` → generic
         /// AUTO_GENERIC policy (unchanged from Phase 1). `Some(...)` →
         /// canonical field emission tied to a group + lattice.
@@ -6963,6 +6970,19 @@ impl Parser {
         self.expect_keyword("FORMAT")?;
         let format = self.expect_word()?;
 
+        // Optional `KEY <name>` clause selects one member of a
+        // multi-array NPZ archive. Placement is fixed here — between
+        // FORMAT and the optional AS GAUGE_FIELD tail — so the parser
+        // stays unambiguous: `KEY` is a source-structure sub-clause of
+        // FORMAT, while `AS` opens interpretation. Backward compat:
+        // absent `KEY` on a single-array archive is unchanged.
+        let key: Option<String> = if self.is_keyword("KEY") {
+            self.advance();
+            Some(self.expect_word()?)
+        } else {
+            None
+        };
+
         // Optional GAUGE_FIELD interpretation clause. Full tail must be
         // present when introduced by AS — partial parses error clearly
         // so the user sees "expected GROUP after AS GAUGE_FIELD" instead
@@ -6993,6 +7013,7 @@ impl Parser {
             bundle,
             source,
             format,
+            key,
             as_gauge_field,
         })
     }
@@ -10146,14 +10167,15 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // reject guard stays first so the read-only-bundle policy is
         // uniform across every write verb. See `src/ingest.rs` for
         // the format, mapping policy, and error envelope.
-        Statement::Ingest { bundle, source, format, as_gauge_field } => {
+        Statement::Ingest { bundle, source, format, key, as_gauge_field } => {
             crate::virtual_bundles::reject_virtual_write(bundle, "INGEST")?;
             let fmt = crate::ingest::IngestFormat::from_name(format)
                 .map_err(|e| e.to_string())?;
             let source_path = std::path::PathBuf::from(source);
+            let key_str: Option<&str> = key.as_deref();
             #[cfg(feature = "gauge")]
             let _stats = match as_gauge_field {
-                None => crate::ingest::execute_ingest(engine, bundle, &source_path, fmt)
+                None => crate::ingest::execute_ingest(engine, bundle, &source_path, fmt, key_str)
                     .map_err(|e| e.to_string())?,
                 Some(interp) => crate::ingest::execute_ingest_as_gauge_field(
                     engine,
@@ -10162,13 +10184,14 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     fmt,
                     interp.group,
                     &interp.lattice_name,
+                    key_str,
                 )
                 .map_err(|e| e.to_string())?,
             };
             #[cfg(not(feature = "gauge"))]
             let _stats = {
                 let _ = as_gauge_field; // Always None under !gauge
-                crate::ingest::execute_ingest(engine, bundle, &source_path, fmt)
+                crate::ingest::execute_ingest(engine, bundle, &source_path, fmt, key_str)
                     .map_err(|e| e.to_string())?
             };
             Ok(ExecResult::Ok)
@@ -13677,11 +13700,13 @@ mod tests {
                 bundle,
                 source,
                 format,
+                key,
                 as_gauge_field,
             } => {
                 assert_eq!(bundle, "sensors");
                 assert_eq!(source, "data.csv");
                 assert_eq!(format, "CSV");
+                assert!(key.is_none(), "no KEY clause → None");
                 assert!(as_gauge_field.is_none(), "no AS clause → None");
             }
             _ => panic!("Expected Ingest"),

@@ -201,6 +201,17 @@ pub enum IngestError {
     /// GAUGE_FIELD interpretation requires a single named-array NPZ
     /// (no multi-member archive).
     MultiArrayNotAllowedForGaugeField { got: usize },
+    /// NPZ archive holds more than one member and the caller did not
+    /// pass a `KEY <name>` clause selecting exactly one. Emitted from
+    /// the generic and GAUGE_FIELD paths alike so multi-array archives
+    /// never silently promote all members. `members` is preserved so
+    /// the display can name the exact array names the caller must
+    /// choose between.
+    MultiArrayRequiresKey { got: usize, members: Vec<String> },
+    /// The caller passed `KEY <name>` but no member of the archive
+    /// carries that name. `members` lists the actual archive member
+    /// names so the caller can correct the KEY in one shot.
+    KeyNotInArchive { requested: String, members: Vec<String> },
 }
 
 impl std::fmt::Display for IngestError {
@@ -247,7 +258,17 @@ impl std::fmt::Display for IngestError {
             ),
             IngestError::MultiArrayNotAllowedForGaugeField { got } => write!(
                 f,
-                "INGEST: GAUGE_FIELD interpretation requires a single-array NPZ; archive contained {got} members"
+                "INGEST: GAUGE_FIELD interpretation requires a single-array NPZ; archive contained {got} members — add KEY <name> to select one"
+            ),
+            IngestError::MultiArrayRequiresKey { got, members } => write!(
+                f,
+                "INGEST NPZ: archive contains {got} arrays; add KEY <name> clause to select one — available: [{}]",
+                members.join(", ")
+            ),
+            IngestError::KeyNotInArchive { requested, members } => write!(
+                f,
+                "INGEST NPZ: KEY '{requested}' not in archive — available: [{}]",
+                members.join(", ")
             ),
         }
     }
@@ -309,11 +330,19 @@ impl InferredFieldSchema {
 /// `Statement::Ingest` arm. Reads the source file according to the
 /// requested format, maps it to records via the auto-generic policy,
 /// and streams the records into `engine` via `batch_insert`.
+///
+/// `key` selects a single named member of a multi-array NPZ archive.
+/// When `Some(name)`, only that member's slices become records.
+/// When `None` and the archive holds more than one member the executor
+/// errors with `MultiArrayRequiresKey` naming every available member
+/// so the caller can add exactly the KEY clause they omitted.
+/// Backwards compat: single-member archives ignore `key = None`.
 pub fn execute_ingest(
     engine: &mut Engine,
     target_bundle: &str,
     source_path: &Path,
     format: IngestFormat,
+    key: Option<&str>,
 ) -> Result<IngestStats, IngestError> {
     if !source_path.exists() {
         return Err(IngestError::FileNotFound(source_path.to_path_buf()));
@@ -323,28 +352,61 @@ pub fn execute_ingest(
         .unwrap_or(0);
 
     match format {
-        IngestFormat::Npz => ingest_npz(engine, target_bundle, source_path, bytes_read),
+        IngestFormat::Npz => ingest_npz(engine, target_bundle, source_path, bytes_read, key),
     }
 }
 
 /// NPZ-specific reader: opens the archive, enumerates `.npy` members,
-/// and emits records per member's outermost axis.
+/// and emits records per member's outermost axis. `key` restricts
+/// ingestion to a single named member; when `None` on a multi-member
+/// archive the reader errors with `MultiArrayRequiresKey`.
 fn ingest_npz(
     engine: &mut Engine,
     target_bundle: &str,
     source_path: &Path,
     bytes_read: u64,
+    key: Option<&str>,
 ) -> Result<IngestStats, IngestError> {
     let mut archive = npyz::npz::NpzArchive::open(source_path)
         .map_err(|e| IngestError::FormatError(format!("open NPZ {}: {e}", source_path.display())))?;
 
-    let array_names: Vec<String> = archive.array_names().map(|s| s.to_string()).collect();
-    if array_names.is_empty() {
+    let all_names: Vec<String> = archive.array_names().map(|s| s.to_string()).collect();
+    if all_names.is_empty() {
         return Err(IngestError::EmptyArchive(source_path.to_path_buf()));
     }
 
-    // Multi-array vs single-array: when there's more than one member
-    // we tag each record with `array_name` so callers can demux.
+    // Resolve which member names actually feed the ingest. When `key`
+    // is `Some(name)`, restrict to that single member (error if absent).
+    // When `key` is `None`, require single-member (else surface
+    // `MultiArrayRequiresKey` so the caller sees exactly which members
+    // they must choose between).
+    let array_names: Vec<String> = match key {
+        Some(k) => {
+            if all_names.iter().any(|n| n == k) {
+                vec![k.to_string()]
+            } else {
+                return Err(IngestError::KeyNotInArchive {
+                    requested: k.to_string(),
+                    members: all_names,
+                });
+            }
+        }
+        None => {
+            if all_names.len() > 1 {
+                return Err(IngestError::MultiArrayRequiresKey {
+                    got: all_names.len(),
+                    members: all_names,
+                });
+            }
+            all_names.clone()
+        }
+    };
+
+    // Every archive that reaches this point contributes a single
+    // member (KEY-selected or the sole member of a single-array
+    // archive). `multi_array` is retained so the schema-inference tail
+    // stays reachable if the KEY policy is loosened later, but is
+    // currently always false.
     let multi_array = array_names.len() > 1;
 
     // First pass: read all arrays into in-memory float buffers so we
@@ -798,6 +860,12 @@ fn shift_plus(coords: &[usize], a: usize, l: usize) -> Vec<usize> {
 /// `execute_ingest` path is untouched.
 ///
 /// GAUGE_FIELD interpretation for INGEST (feature = "gauge").
+///
+/// `key` selects a single NPZ member for interpretation. When `None`
+/// on a multi-member archive, `MultiArrayNotAllowedForGaugeField`
+/// fires — canonical GAUGE_FIELD schema still requires one U-array
+/// per file. Backwards compat is preserved: single-member archives
+/// still work when `key = None`.
 #[cfg(feature = "gauge")]
 pub fn execute_ingest_as_gauge_field(
     engine: &mut Engine,
@@ -806,11 +874,46 @@ pub fn execute_ingest_as_gauge_field(
     format: IngestFormat,
     group: crate::gauge::Group,
     lattice_name: &str,
+    key: Option<&str>,
 ) -> Result<IngestStats, IngestError> {
     if !source_path.exists() {
         return Err(IngestError::FileNotFound(source_path.to_path_buf()));
     }
     let bytes_read = std::fs::metadata(source_path).map(|m| m.len()).unwrap_or(0);
+
+    // NPZ member selection precedes lattice resolution: a caller who
+    // forgot KEY on a multi-array archive should see the KEY-remedy
+    // message even when the lattice name is bogus, so the fix is one
+    // edit rather than two round trips.
+    match format {
+        IngestFormat::Npz => {
+            let archive = npyz::npz::NpzArchive::open(source_path)
+                .map_err(|e| IngestError::FormatError(format!(
+                    "open NPZ {}: {e}", source_path.display()
+                )))?;
+            let all_names: Vec<String> = archive.array_names().map(|s| s.to_string()).collect();
+            if all_names.is_empty() {
+                return Err(IngestError::EmptyArchive(source_path.to_path_buf()));
+            }
+            match key {
+                Some(k) => {
+                    if !all_names.iter().any(|n| n == k) {
+                        return Err(IngestError::KeyNotInArchive {
+                            requested: k.to_string(),
+                            members: all_names,
+                        });
+                    }
+                }
+                None => {
+                    if all_names.len() != 1 {
+                        return Err(IngestError::MultiArrayNotAllowedForGaugeField {
+                            got: all_names.len(),
+                        });
+                    }
+                }
+            }
+        }
+    }
 
     // Resolve lattice — its `D` (recovered from the topology hint)
     // drives every shape assertion below.
@@ -836,6 +939,7 @@ pub fn execute_ingest_as_gauge_field(
             d,
             l_from_hint,
             obc_axis,
+            key,
         ),
     }
 }
@@ -852,25 +956,46 @@ fn ingest_npz_as_gauge_field(
     d: usize,
     l_from_hint: Option<usize>,
     obc_axis: Option<usize>,
+    key: Option<&str>,
 ) -> Result<IngestStats, IngestError> {
-    // Open the archive, require exactly one array member (the harvest
-    // convention). Multi-array archives error clearly.
+    // Open the archive. Selection policy:
+    //  - `key = Some(name)`: use exactly that member (error if absent).
+    //  - `key = None`      : require a single-member archive (else
+    //                        `MultiArrayNotAllowedForGaugeField` fires
+    //                        with the observed member count).
     let mut archive = npyz::npz::NpzArchive::open(source_path)
         .map_err(|e| IngestError::FormatError(format!(
             "open NPZ {}: {e}", source_path.display()
         )))?;
-    let names: Vec<String> = archive.array_names().map(|s| s.to_string()).collect();
-    if names.is_empty() {
+    let all_names: Vec<String> = archive.array_names().map(|s| s.to_string()).collect();
+    if all_names.is_empty() {
         return Err(IngestError::EmptyArchive(source_path.to_path_buf()));
     }
-    if names.len() != 1 {
-        return Err(IngestError::MultiArrayNotAllowedForGaugeField { got: names.len() });
-    }
+    let selected_name: String = match key {
+        Some(k) => {
+            if all_names.iter().any(|n| n == k) {
+                k.to_string()
+            } else {
+                return Err(IngestError::KeyNotInArchive {
+                    requested: k.to_string(),
+                    members: all_names,
+                });
+            }
+        }
+        None => {
+            if all_names.len() != 1 {
+                return Err(IngestError::MultiArrayNotAllowedForGaugeField {
+                    got: all_names.len(),
+                });
+            }
+            all_names[0].clone()
+        }
+    };
     let entry = archive
-        .by_name(&names[0])
-        .map_err(|e| IngestError::FormatError(format!("read array `{}`: {e}", names[0])))?
+        .by_name(&selected_name)
+        .map_err(|e| IngestError::FormatError(format!("read array `{}`: {e}", selected_name)))?
         .ok_or_else(|| IngestError::FormatError(format!(
-            "NPZ member `{}` listed but not retrievable", names[0]
+            "NPZ member `{}` listed but not retrievable", selected_name
         )))?;
     let shape: Vec<u64> = entry.shape().to_vec();
 

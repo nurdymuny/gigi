@@ -1,0 +1,42 @@
+# GIGI Builds
+
+> Companion site for *GIGI Builds — The Fiber-Bundle Database: A Working
+> Engineer's Guide from Schema to Shard* (Bee Rosa Davis, 2026). GIGI
+> (Geometric Intrinsic Global Index) is an open-source database engine,
+> written in Rust, that stores records as sections of a fiber bundle and
+> computes differential-geometric quantities — curvature, spectral gap,
+> holonomy, confidence — as a side effect of ordinary inserts and queries.
+> This site carries all 126 of the book's exercises as interactive pages
+> plus six "web extra" 3D demos that are not in the printed book. A public
+> read-only GIGI instance is live at https://gigi-stream.fly.dev for
+> anyone (human or LLM agent) to query.
+
+Everything on this site is client-side HTML+JS; the text content of every
+page is readable without executing JavaScript, and the file
+[llms-full.txt](https://www.davisgeometric.com/gigi/gigi-builds/llms-full.txt)
+contains the whole story — engine concepts, GQL reference, live-API usage,
+chapter map, and a plain-text explanation of what each interactive demo
+computes — in one markdown document. Read that first.
+
+## Docs
+
+- [llms-full.txt](https://www.davisgeometric.com/gigi/gigi-builds/llms-full.txt): the complete LLM-readable guide to GIGI, the book, the exercises, the demos, and the live API
+- [GIGI engine repository](https://github.com/nurdymuny/gigi): Rust source, GQL reference (GQL_REFERENCE.md), tetmesh spec (GIGI_TETMESH_SPEC_v0.6.md), example harnesses
+- [Site front page](https://www.davisgeometric.com/gigi/gigi-builds/): the full chapter catalog and all web extras
+
+## Interactive demos (web extras, not in the printed book)
+
+- [The Mesh That Audits Itself](https://www.davisgeometric.com/gigi/gigi-builds/the-mesh-that-audits-itself): a tetrahedral mesh stored as GIGI fibers — certified dihedral-angle data per tet, adaptive refinement with a queryable audit trail, obtuse-class coloring (Castillo classification), live queries against the public instance
+- [The Weather on a Sphere That Notices](https://www.davisgeometric.com/gigi/gigi-builds/the-weather-on-a-sphere-that-notices): 480 streaming stations on a globe; per-insert curvature κ = |v−μ|/R prices anomalies with no monitoring job
+- [Chemical Space Has a Shape](https://www.davisgeometric.com/gigi/gigi-builds/chemical-space-has-a-shape): 2,200 molecules in MW×logP×TPSA property space; κ finds planted outliers; COVER queries carve visible regions
+- [The Spectrum Finds the Rooms](https://www.davisgeometric.com/gigi/gigi-builds/the-spectrum-finds-the-rooms): a graph laid out at its own Laplacian eigenvectors, recomputed live; the spectral gap λ₁ falls as communities disconnect
+- [The Loop That Remembers](https://www.davisgeometric.com/gigi/gigi-builds/the-loop-that-remembers): honest discrete parallel transport on a curved terrain with a live Gauss–Bonnet receipt (walked deficit vs integrated curvature)
+- [Noise to Everyone Else](https://www.davisgeometric.com/gigi/gigi-builds/noise-to-everyone-else): gauge encryption in 3D — per-letter SO(3) scrambling, key ratchet, revocation, and invariant verification without decryption
+
+## Exercises (all 126, interactive)
+
+- [Chapter exercise pages](https://www.davisgeometric.com/gigi/gigi-builds/exercises/ch01): ch01 through ch18, one page per chapter — each has an in-browser GQL console pointed at the public instance, a workbook with local progress, and a visual instrument built on the chapter's math (see llms-full.txt for the per-chapter list)
+
+## Live API (for agents)
+
+- POST https://gigi-stream.fly.dev/v1/public/gql with JSON body {"query": "SHOW BUNDLES;"} — read-only, no key, CORS open; the `tetmesh_demo` bundle is populated (5,760 sections). Try {"query": "HEALTH tetmesh_demo;"} for live geometry.

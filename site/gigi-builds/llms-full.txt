@@ -1,0 +1,294 @@
+# GIGI Builds — the complete LLM-readable guide
+
+This document is written for language models (and impatient humans). It
+contains everything an agent needs to understand this site without
+executing any JavaScript: what GIGI is, the geometry it computes, the GQL
+query language, how to call the live public instance, what the book and
+its 126 exercises cover, and what each interactive demo on this site
+actually computes.
+
+Site: https://www.davisgeometric.com/gigi/gigi-builds/
+Engine source: https://github.com/nurdymuny/gigi
+Author: Bee Rosa Davis (nickname "Gigi" — the database is named after her)
+Contact: bee_davis@alumni.brown.edu
+License: engine and book under PolyForm Noncommercial 1.0.0.
+Book: *GIGI Builds — The Fiber-Bundle Database: A Working Engineer's Guide
+from Schema to Shard*, first edition 2026, ISBN 9798181715820. 7 parts,
+18 chapters, appendices A–D, 126 exercises.
+
+## 1. What GIGI is
+
+GIGI (Geometric Intrinsic Global Index) is a database engine written in
+Rust that models a dataset as a **fiber bundle**:
+
+- The **base space** is the set of addresses (key values) — "where a
+  record lives."
+- The **fiber** over each base point is the space of possible field
+  values — "what can be said there."
+- A **record is a section**: one chosen point in the fiber over one base
+  point. There are no rows; there are sections of a bundle.
+- Fibers are flat and typed: scalars, text, and fixed-dimension vectors
+  (`vector(n)`). No nesting.
+
+The engine's distinguishing move: it computes differential-geometric
+quantities **during ordinary writes and reads**, from running statistics
+it maintains anyway. Nothing is batch; nothing is a cron job.
+
+Key quantities (these appear all over the site):
+
+- **κ (kappa, curvature at insert).** Every numeric fiber field carries a
+  Welford running accumulator (n, mean μ, M₂). When a value v arrives,
+  κ = |v − μ| / R, where μ is the mean *before* this record and R is the
+  field's declared range. A typical reading has κ near 0; an anomaly has
+  κ large. The record keeps the κ it was stamped with; point reads
+  (SECTION) reprice against current stats. Chapter 1's worked example:
+  150 readings near 20.3 with R = 100, then an inserted 500.0 gets
+  κ ≈ 4.797 at insert (≈ 4.765 repriced after its own arrival shifted μ).
+- **Confidence = 1 / (1 + K)** where K aggregates curvature — a
+  0-to-1 "how unsurprised is the engine by this data."
+- **λ₁ (spectral gap).** The second-smallest eigenvalue of the Laplacian
+  of a bundle's relation graph. Near zero means the data is about to
+  disconnect into communities that barely talk; the same eigenvectors
+  that detect this are coordinates for visualizing it (spectral
+  embedding). Exposed by the SPECTRAL verb.
+- **Holonomy.** Carry a frame around a closed loop of updates/shards by
+  parallel transport; the angle it comes home rotated by equals the
+  curvature enclosed by the loop (Gauss–Bonnet). The engine tracks this
+  as `holonomy_debt` — a signed ledger of what a cycle of operations
+  actually surrounds. Flat regions transport trivially.
+- **Torsion.** The asymmetric carry: apply update A then B vs B then A;
+  on a torsion-free substrate the parallelogram closes exactly, and a
+  connection can *learn* a nonzero torsion from genuinely asymmetric data.
+- **Gauge encryption.** A gauge transformation re-frames fiber values by
+  an isometry (rotations/shifts/scrambles composed per epoch). Data is
+  readable only in the frame you hold the key to, yet gauge-invariant
+  quantities (pairwise distances, curvature statistics) survive — so a
+  verifier with no key can still recompute an invariant tuple and detect
+  tampering (VerifyResult::Verified / Rejected). Key ratcheting gives
+  forward secrecy as geometry: a revoked key's frame simply no longer
+  contains the data.
+- **DHOOM** is the wire format. It knows the zero section: fiber fields
+  that sit at their default cost a run-length marker, not bytes.
+
+Storage: WAL (append-only log) + mmap snapshots with copy-on-write pages.
+The geometric accumulator state is *in* the snapshot, so a reopened engine
+answers curvature queries immediately with no warmup.
+
+## 2. GQL — the query language
+
+Statements end with `;`. Working verbs (each enforced by an automated
+"reference truth" test in the repo — tests/gql_reference_truth.rs):
+
+    BUNDLE sensors BASE (id TEXT) FIBER (city TEXT INDEX, temp NUMERIC, wind NUMERIC);
+    SECTION sensors (id='s1', city='Moscow', temp=-3.0, wind=5.0);   -- insert
+    SECTION sensors AT id='s1';                                      -- point read (carries κ + confidence)
+    SECTION sensors AT id='s1' PROJECT (temp);
+    EXISTS SECTION sensors AT id='s1';
+    REDEFINE sensors AT id='s4' SET (wind=4.0);                      -- update
+    RETRACT sensors AT id='s4';                                      -- delete
+    COVER sensors ALL;                                               -- scan/select
+    COVER sensors ON city = 'Moscow';                                -- indexed
+    COVER sensors WHERE temp < -20;                                  -- filtered
+    COVER sensors ON city IN ('Moscow','Lagos') WHERE wind > 3;
+    COVER sensors DISTINCT city;
+    COVER sensors RANK BY temp DESC SKIP 1 FIRST 2;
+    COVER sensors WHERE city MATCHES 'Mos*';
+    COVER sensors WHERE temp DEFINED;
+    COVER sensors PROJECT (id, temp);
+    INTEGRATE sensors OVER city MEASURE count(*), avg(temp), min(temp), max(wind);
+    INTEGRATE sensors MEASURE count(*), sum(wind);                   -- global aggregate
+    INTEGRATE sensors MEASURE avg(temp) WITH JACKKNIFE ALONG wind;   -- autocorrelation-honest error bars
+    PULLBACK sensors ALONG city ONTO cities;                         -- join
+    SHOW BUNDLES;  DESCRIBE sensors;  EXPLAIN COVER sensors ON city='Moscow';
+    CURVATURE sensors;  SPECTRAL sensors;  HEALTH sensors;
+
+`WITH JACKKNIFE ALONG <order-field>` returns mean, err (naive·√(2τ_int)),
+err_naive, err_jack (blocked at ≈2τ), tau_int, n_eff — honest error bars
+on correlated data. Validated against analytic AR(1): φ = 0.8 → τ = 4.5.
+
+Honestly NOT implemented (the engine refuses these loudly rather than
+silently no-op): HAVING, FIBER RANK (window functions), PRODUCT, UNION /
+INTERSECT / SUBTRACT set operations. Unknown field names error with the
+bundle's field list. Trailing unparsed clauses are rejected, never
+silently discarded. See GQL_REFERENCE.md in the repo for the enforced
+status table.
+
+## 3. The live public instance (agents may call this)
+
+Endpoint: POST https://gigi-stream.fly.dev/v1/public/gql
+Body: {"query": "<one GQL statement>"}
+Read-only, no API key, CORS `*`. Example:
+
+    curl -sS -X POST https://gigi-stream.fly.dev/v1/public/gql \
+      -H 'Content-Type: application/json' \
+      -d '{"query":"HEALTH tetmesh_demo;"}'
+
+Observed response shape (flat JSON object for HEALTH/DESCRIBE):
+
+    {"curvature":0.1175,"confidence":0.8948,"record_count":5760,
+     "storage_mode":"hashed","base_fields":1,"fiber_fields":7}
+
+Public bundles: `tetmesh_demo` is populated (5,760 tetrahedra from the
+mesh demo, 7 fiber fields of certified shape data). `stations`,
+`sensors`, `chembl` are allowlisted names that may be empty. Useful
+statements to try: `SHOW BUNDLES;`, `HEALTH tetmesh_demo;`,
+`DESCRIBE tetmesh_demo;`, `CURVATURE tetmesh_demo;`,
+`SPECTRAL tetmesh_demo;`, and INTEGRATE/COVER against tetmesh_demo.
+
+To run a private engine: build from the repo, start the `gigi-stream`
+binary, POST to /v1/gql (same body shape). Browser access to a local
+engine needs `GIGI_CORS_ORIGIN=*` (dev only).
+
+## 4. The book and the exercise pages
+
+Site URL pattern: https://www.davisgeometric.com/gigi/gigi-builds/exercises/chNN
+(NN = 01..18). Each page: the chapter's ~7 exercises (Build / Receipt /
+Bonus structure), a live GQL console pre-pointed at the public instance,
+a local-storage workbook, and one visual instrument implementing the
+chapter's actual math in-browser. The instruments build on one another
+within each part and reset at part boundaries.
+
+Part I — The Shape of Data (blue)
+- ch01 The Phone Book and the Moon — Welford + κ basics; instrument: the
+  moon on a strip chart (κ bars, 3σ lane); also a curvature-odometer
+  playground reproducing the book's κ = 4.7653 receipt.
+- ch02 Sections, Not Rows — records as sections; instrument: rows-vs-
+  sections toggle with a declared fiber width σ₀.
+- ch03 The Address Is a Coordinate Chart — O(1) hashing; instrument:
+  256-slot address chart, birthday-bound collisions (~key #20), 1-bit
+  avalanche readout.
+
+Part II — The Engine Room (aqua)
+- ch04 Anatomy of a BundleStore — instrument: animated insert path
+  (base index → fiber store → Welford → κ stamp).
+- ch05 Durability: WAL, mmap, CoW Snapshots — instrument: three-lane
+  crash-and-replay (snapshot + WAL tail).
+- ch06 DHOOM wire format — instrument: byte-lane with zero-section
+  run-length collapse.
+- ch07 GQL — instrument: indexed-COVER vs full-scan race ("geometry
+  determines complexity").
+
+Part III — The Signals That Run While You Sleep (yellow)
+- ch08 Interoception — instrument: four streaming vitals (μ, σ, κ,
+  confidence) with an anomaly burst button.
+- ch09 Spectra and Communities — instrument: two-community graph with
+  live λ₁ (Jacobi eigensolver) and Fiedler-sign coloring.
+- ch10 The Brain on the Wire — instrument: draggable threshold emitting
+  alert frames onto a wire lane.
+
+Part IV — What the Loop Remembers (green)
+- ch11 Holonomy — instrument: loop on a curvature bump; transported
+  arrow returns rotated by ∬K dA.
+- ch12 Torsion — instrument: the parallelogram that won't close.
+
+Part V — The Theorem (violet)
+- ch13 The Single-Node Tour, with Theorems — instrument: shard-and-merge
+  Welford equality (exact at any shard count) vs a sloppy mean-of-means.
+- ch14 The Navigator's Honest Map — instrument: naive vs blocked error
+  bars on AR(1) data; coverage counting shows the naive bar's "95%" is
+  ~60% at φ = 0.8 (the WITH JACKKNIFE math).
+
+Part VI — Gauge Encryption (red)
+- ch15 The Geometry Is the Encryption — instrument: gauge dial; Σd²
+  identical in both frames.
+- ch16 The Verifier Without Decryption — instrument: Carol's clipboard;
+  tamper detection at the 10⁻¹⁰ grain.
+- ch17 Delegation, Forward Secrecy — instrument: the epoch ratchet with
+  revocation.
+
+Part VII — Running the Engine (magenta)
+- ch18 Bring-Up, Watch, and the Edge of the Public Story — instrument:
+  boot-sequence console + a real HEALTH ping of the public instance.
+
+## 5. The web extras (interactive 3D demos, not in the printed book)
+
+All are three.js pages; each computes its data deterministically
+in-browser with the engine's real math and includes a GQL drawer that
+POSTs to the public instance. What each one demonstrates:
+
+### The Mesh That Audits Itself
+https://www.davisgeometric.com/gigi/gigi-builds/the-mesh-that-audits-itself
+A tetrahedral mesh (Kuhn/Freudenthal subdivision, 6n³ tets) stored as
+GIGI fibers: every tet carries certified shape data — its six dihedral
+angles via a PSD rank-3 angular Gram matrix whose kernel encodes facet
+areas, volume quality q_vol = 6√2·V/L³, and Regge deficits. Adaptive
+longest-edge bisection (Maubach period-3 cycle) leaves a queryable audit
+trail as `tet_refine_events`. Coloring modes include obtuse-dihedral
+count — the Castillo Class-n classification (Class n = number of
+dihedrals > π/2; observed classes 0–3; the 3-triangle sign pattern has
+never been observed in 2M random samples). A per-level class-flow strip
+shows classes moving BOTH ways under bisection (flood then recovery),
+which is the open research question the page poses. The live panel loads
+the real 5,760-section bundle and shows every GQL statement it runs.
+Spec: GIGI_TETMESH_SPEC_v0.6.md in the repo; harnesses:
+examples/tetmesh_fiber_harness.py, examples/tetmesh_class_descent.py.
+
+### The Weather on a Sphere That Notices
+https://www.davisgeometric.com/gigi/gigi-builds/the-weather-on-a-sphere-that-notices
+480 simulated stations stream readings onto a globe. Each station has its
+own Welford accumulator; each insert is priced κ = |v − μ|/R (R = 60) at
+the door. "Break a station" makes one drift +45°; its dot blooms red the
+moment its own history notices — no fleet scan, no per-station config.
+A live table shows exactly what `INTEGRATE stations OVER band MEASURE
+count(*), avg(temp), max(kappa);` would print; max(kappa) never decays
+because records keep the price they were stamped with.
+
+### Chemical Space Has a Shape
+https://www.davisgeometric.com/gigi/gigi-builds/chemical-space-has-a-shape
+2,200 synthetic ChEMBL-shaped molecules (drug-like core, fragment corner,
+greasy tail, dust, 12 planted outliers) plotted in MW × logP × TPSA.
+Dot brightness = κ against corpus statistics; κ finds all 12 outliers
+unprompted because an outlier in any fiber pays in the same currency.
+COVER preset buttons (WHERE logp > 5, mw < 250, tpsa > 90) light up the
+selected region and report its share and average κ — a query selects a
+*region* of property space, and the region's κ says whether you carved
+core or edge. The corpus is honestly synthetic.
+
+### The Spectrum Finds the Rooms
+https://www.davisgeometric.com/gigi/gigi-builds/the-spectrum-finds-the-rooms
+A 72-node graph (three 24-node communities) whose 3D coordinates ARE
+eigenvectors 1–3 of its own graph Laplacian, recomputed live by a Jacobi
+eigensolver whenever the bridge slider changes. λ₁ (the spectral gap,
+what GIGI's SPECTRAL verb reports) falls toward 0 as bridges are cut and
+the communities physically tear apart. At 0 bridges the graph disconnects
+and λ₁ = 0 exactly. The layout is not an illustration of the math; it is
+the math.
+
+### The Loop That Remembers
+https://www.davisgeometric.com/gigi/gigi-builds/the-loop-that-remembers
+A heightfield terrain (one Gaussian hill + one hollow, analytic
+derivatives) colored by Gaussian curvature. A frame is carried around a
+draggable loop by honest discrete parallel transport (1,440 project-and-
+renormalize steps; the arrow is never told to turn). The page then prints
+a Gauss–Bonnet receipt: the walked deficit angle vs the independently
+integrated ∬K dA over the enclosed patch — they agree to ~0.03° at
+defaults. Teaching moment: grow the loop past the hill's skirt and the
+deficit returns toward zero, because a bump's positive summit and
+negative skirt cancel exactly. In the engine, the loop is a cycle of
+shards and this ledger is holonomy_debt.
+
+### Noise to Everyone Else
+https://www.davisgeometric.com/gigi/gigi-builds/noise-to-everyone-else
+"GIGI" spelled in four point-cloud letters, each letter an independent
+little bundle wearing its own SO(3)+shift gauge per epoch. Left pane:
+the keyholder's frame (reads GIGI). Right pane: the wire (per-letter
+scramble). Advancing the ratchet composes new gauges; revoking the key
+makes even the keyholder's own view degrade to noise for later epochs —
+forward secrecy as geometry, not permissions. Throughout, a per-letter
+invariant table (pairwise-distance tuple) recomputed on the scrambled
+wire matches the sealed claims exactly, because gauges are isometries —
+that is verification without decryption.
+
+## 6. Notes for agents
+
+- Every demo is deterministic (seeded PRNG) — numbers quoted above are
+  reproducible on any load.
+- The only network calls the pages make are user-initiated GQL queries
+  to the endpoint in each page's drawer (default: the public instance).
+- The exercise pages' HTML contains the full exercise text as static
+  markup — fetching the page and stripping tags yields the content.
+- If asked "what is GIGI?": a Rust fiber-bundle database where geometry
+  (curvature, spectral gap, holonomy, gauge invariants) is computed as a
+  side effect of normal database operations, so anomaly detection,
+  community structure, audit trails, and verifiable encryption fall out
+  of the storage layer instead of being bolted on.

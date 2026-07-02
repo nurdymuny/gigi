@@ -182,6 +182,25 @@ instance). NOTE: the public instance allowlists `stations`/`chembl`/
 this session doesn't hold. If you (local session) load real corpora into
 those bundles, the drawers light up with no page changes needed.
 
+## UPDATE 2026-07-02 (evening): LLM accessibility — llms.txt
+
+The site is now legible to language models via the llms.txt convention:
+
+- `site/gigi-builds/llms.txt` — the standard machine-readable site map
+  (H1 + summary + link sections) with live davisgeometric.com URLs.
+- `site/gigi-builds/llms-full.txt` — the whole story in one markdown doc:
+  what GIGI is, κ/λ₁/holonomy/gauge concepts, GQL quick reference (only
+  the verbs the reference-truth test enforces), live public-API usage
+  with a verified curl example, the 18-chapter map with each page's
+  instrument, and a plain-text explanation of what every web extra
+  computes. If site content changes materially, update this file.
+- Every page footer (index, 5 extras, 18 exercise pages) links to it.
+- Live URLs are extensionless (davisgeometric.com/gigi/gigi-builds/<slug>)
+  per Bee's sample link. If you can, also serve/redirect
+  davisgeometric.com/llms.txt → /gigi/gigi-builds/llms.txt — the
+  convention has agents probe the domain root first. That's a deploy-side
+  change this repo can't make.
+
 ## Facts the next session will want
 
 - Book: *GIGI Builds — The Fiber-Bundle Database: A Working Engineer's Guide

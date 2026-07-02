@@ -27,7 +27,7 @@
   #hdr h1 { margin: 0 0 2px; font-size: 15px; font-weight: 650; }
   #hdr p { margin: 0; color: var(--text-secondary); font-size: 12px; }
   #hdr .src { color: var(--text-muted); font-size: 11px; margin-top: 6px; }
-  #controls { top: 14px; right: 14px; width: 240px; }
+  #controls { bottom: 14px; left: 14px; width: 240px; }
   .ctl-row { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
   .ctl-row label { color: var(--text-secondary); font-size: 12px; flex: 0 0 62px; }
   .seg { display: flex; gap: 4px; }
@@ -41,7 +41,7 @@
   .chip { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 10px; }
   .lg-name { color: var(--text-secondary); flex: 1; }
   .lg-count { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-  #telemetry { bottom: 14px; left: 14px; width: 300px; }
+  #telemetry { top: 14px; right: 14px; width: 300px; }
   #telemetry h2 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-bottom: 10px; }
   .tile .v { font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
@@ -99,7 +99,7 @@
 </div>
 
 <div class="panel" id="telemetry">
-  <h2>What refinement did</h2>
+  <h2>The mesh, at this level</h2>
   <div class="tiles">
     <div class="tile"><div class="v" id="t-tets">–</div><div class="k">tetrahedra</div></div>
     <div class="tile"><div class="v" id="t-cells">–</div><div class="k">shape families found</div></div>

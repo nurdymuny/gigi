@@ -10,7 +10,17 @@ Exports:
 """
 
 from .client import GigiClient, GigiError, BundleNotFound, AuthError
-from .subscriber import GigiSubscriber, SubscriptionEvent
+
+# The subscriber needs the optional `websockets` dependency. A user who
+# only wants the REST client must not need it — importing the package
+# used to raise ImportError here, which made `pip install requests` +
+# copy-the-sdk workflows (and CI smoke tests) fail before the first
+# request. Found by scripts/sdk_smoke.py.
+try:
+    from .subscriber import GigiSubscriber, SubscriptionEvent
+except ImportError:  # websockets not installed — REST-only mode
+    GigiSubscriber = None  # type: ignore[assignment]
+    SubscriptionEvent = None  # type: ignore[assignment]
 
 __version__ = "0.5.0"
 __all__ = [

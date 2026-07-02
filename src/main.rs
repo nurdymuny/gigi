@@ -193,6 +193,7 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
 
     match result {
         ExecResult::Ok => println!("OK"),
+        ExecResult::Notice(msg) => println!("NOTICE: {msg}"),
         ExecResult::Rows(rows) => {
             if rows.is_empty() {
                 println!("(0 rows)");

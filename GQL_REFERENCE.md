@@ -70,7 +70,7 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | EXPLAIN / TRANSLATE SQL | ✅ | |
 | COMPLETE / PROPAGATE / SUGGEST_ADJACENCY | ⚠️ | Parsed; sheaf module built but not wired |
 | CREATE/DROP TRIGGER | ⚠️ | Parsed; TriggerManager built but not wired |
-| INVALIDATE CACHE / COMPACT / ANALYZE / VACUUM / REBUILD INDEX | ⚠️ | Parsed; no-op |
+| INVALIDATE CACHE / COMPACT / ANALYZE / VACUUM / REBUILD INDEX | ⚠️ | Parsed; no-op — returns a NOTICE saying so (never a bare ok) |
 | SHOW INDEXES / SHOW TRIGGERS / etc. | ⚠️ | Parsed; no-op |
 | WEAVE / UNWEAVE ROLE | ❌ | 501 |
 | GRANT / REVOKE / POLICY | ❌ | 501 |

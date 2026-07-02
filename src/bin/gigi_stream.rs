@@ -14330,7 +14330,13 @@ fn execute_gql_on_store_read(
             };
             Ok(ExecResult::Rows(result_rows))
         }
-        _ => Ok(ExecResult::Ok),
+        // Anything unmatched parsed fine but has no handler on this path.
+        // A bare "ok" here is success theater — say what didn't happen.
+        _ => Ok(ExecResult::Notice(
+            "statement parsed and validated, but this verb performs no \
+             work on this server path yet — nothing was executed"
+                .to_string(),
+        )),
     }
 }
 
@@ -14443,6 +14449,12 @@ fn exec_result_to_response(
     use gigi::parser::ExecResult::*;
     match result {
         Ok => (StatusCode::OK, Json(serde_json::json!({"status": "ok"}))),
+        // Parsed + validated but intentionally did nothing — an honest
+        // 200 with the reason, so "ok" alone never implies work happened.
+        Notice(msg) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"status": "ok", "notice": msg})),
+        ),
         Rows(rows) => {
             let json_rows: Vec<serde_json::Value> =
                 rows.iter().map(|r| record_to_json(r)).collect();

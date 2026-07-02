@@ -2068,7 +2068,11 @@ impl Parser {
             Some(Token::Word(w)) if w.eq_ignore_ascii_case("true") => Ok(Literal::Bool(true)),
             Some(Token::Word(w)) if w.eq_ignore_ascii_case("false") => Ok(Literal::Bool(false)),
             Some(Token::Word(w)) if w.eq_ignore_ascii_case("null") => Ok(Literal::Null),
-            other => Err(format!("Expected literal, got {other:?}")),
+            other => Err(format!(
+                "Expected a value here (number, 'text', TRUE/FALSE, or NULL), \
+                 found {}",
+                token_or_end(other.as_ref())
+            )),
         }
     }
 
@@ -9248,6 +9252,12 @@ pub enum ExecResult {
     /// decryption is performed during evaluation; see
     /// `crate::invariant::evaluate`.
     Invariants(Vec<(String, f64)>),
+    /// The statement parsed and validated but intentionally did nothing —
+    /// a stub or not-yet-implemented admin verb. Plain `Ok` here would be
+    /// success theater (audit 2026-07-02: a user who runs COMPACT and
+    /// sees "ok" believes something was compacted). The string says
+    /// exactly what did NOT happen.
+    Notice(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -10371,7 +10381,11 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // ── v2.1: Constraints (stubs) ──
         Statement::GaugeConstrain { .. }
         | Statement::GaugeUnconstrain { .. }
-        | Statement::ShowConstraints { .. } => Ok(ExecResult::Ok),
+        | Statement::ShowConstraints { .. } => Ok(ExecResult::Notice(
+            "gauge-constraint statements parse but are not enforced yet — \
+             no constraint was stored or applied"
+                .to_string(),
+        )),
 
         // ── v2.1: Maintenance ──
         Statement::Compact { bundle, .. }
@@ -10384,7 +10398,19 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let _store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            Ok(ExecResult::Ok)
+            let verb = match stmt {
+                Statement::Compact { .. } => "COMPACT",
+                Statement::Analyze { .. } => "ANALYZE",
+                Statement::Vacuum { .. } => "VACUUM",
+                Statement::RebuildIndex { .. } => "REBUILD",
+                Statement::CheckIntegrity { .. } => "CHECK",
+                _ => "REPAIR",
+            };
+            Ok(ExecResult::Notice(format!(
+                "{verb} parsed and the bundle '{bundle}' exists, but \
+                 maintenance verbs are not implemented yet — nothing was \
+                 changed on disk"
+            )))
         }
 
         Statement::StorageInfo { bundle } => {
@@ -10409,7 +10435,11 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         | Statement::Reset { .. }
         | Statement::ShowSettings
         | Statement::ShowSession
-        | Statement::ShowCurrentRole => Ok(ExecResult::Ok),
+        | Statement::ShowCurrentRole => Ok(ExecResult::Notice(
+            "session settings are not implemented — this statement had no \
+             effect"
+                .to_string(),
+        )),
 
         // ── v2.1: Data Movement ──
         // Halcyon ITEM 3.2 — INGEST executor. The parser arm is now

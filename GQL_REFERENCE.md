@@ -1611,84 +1611,48 @@ GAUGE VERIFY sensors;
 
 ---
 
-## XII. Bulk Import/Export ✅
+## XII. Bulk Import/Export — INGEST ✅ (NPZ, CSV) · EMIT ❌
 
-### INGEST — Bulk import from files
+### INGEST — Bulk import from files ✅
 
-```sql
--- CSV import
-INGEST sensors FROM 'data.csv' FORMAT CSV;
-INGEST sensors FROM 'data.csv' FORMAT CSV
-  HEADER TRUE
-  DELIMITER ','
-  NULL_VALUE 'NA'
-  SKIP 1;
-
--- JSON import
-INGEST sensors FROM 'data.json' FORMAT JSON;
-INGEST sensors FROM 'data.jsonl' FORMAT JSONL;
-
--- DHOOM (native)
-INGEST sensors FROM 'data.dhoom' FORMAT DHOOM;
-
--- SQL dump
-INGEST sensors FROM 'dump.sql' FORMAT SQL;
-
--- From stdin
-INGEST sensors FROM STDIN FORMAT CSV;
-INGEST sensors FROM STDIN FORMAT JSONL;
-
--- From URL
-INGEST sensors FROM 'https://api.nasa.gov/power/...' FORMAT JSON
-  PATH 'properties.parameter';
-
--- With transformation on ingest
-INGEST sensors FROM 'raw.csv' FORMAT CSV
-  MAP (
-    temperature -> temp,
-    relative_humidity -> humidity,
-    wind_speed -> wind
-  )
-  FILTER (WHERE temp DEFINED AND humidity DEFINED);
-
--- Response:
--- INGEST COMPLETE: 7320 sections stored
--- rejected: 12 (constraint violations)
--- anomalies_detected: 47
--- curvature_after: 0.0346
--- elapsed: 28ms (256K sections/sec)
-```
-
-### EMIT TO — Bulk export to files ✅
+What ships today (enforced end-to-end by `tests/ingest_executor.rs` and
+`tests/ingest_csv_basic.rs`):
 
 ```sql
--- Full export
-COVER sensors ALL EMIT CSV TO 'export.csv';
-COVER sensors ALL EMIT JSON TO 'export.json';
-COVER sensors ALL EMIT DHOOM TO 'export.dhoom';
+-- NumPy archive: one record per outer-axis slice, vector fibers
+INGEST harvest FROM 'links.npz' FORMAT NPZ;
+INGEST harvest FROM 'links.npz' FORMAT NPZ KEY links_su3;  -- pick one member
 
--- Filtered export
-COVER sensors ON city = 'Moscow' WHERE temp < -25
-  EMIT CSV TO 'moscow_cold.csv';
-
--- Export with geometric metadata
-COVER sensors ALL
-  EMIT CSV TO 'export_with_meta.csv'
-  WITH CURVATURE, CONFIDENCE;
-
--- Export to stdout
-COVER sensors ON region = 'EU' EMIT CSV TO STDOUT;
-COVER sensors ON region = 'EU' EMIT JSONL TO STDOUT;
-
--- Export aggregation results
-INTEGRATE sensors OVER city MEASURE avg(temp), count(*)
-  EMIT CSV TO 'city_stats.csv';
-
--- DHOOM export = complete geometric backup (schema + data + metadata)
-COVER sensors ALL EMIT DHOOM TO 'full_backup.dhoom';
+-- CSV: header row names the fields, one record per data row
+INGEST stations FROM 'stations.csv' FORMAT CSV;
+INGEST chembl   FROM 'molecules.csv' FORMAT CSV KEY chembl_id;
 ```
 
----
+CSV policy: the base key is the `KEY <col>` column, or the FIRST column
+when no KEY is given. Column types are inferred from the data — a column
+whose every non-empty value is numeric becomes NUMERIC, everything else
+CATEGORICAL (numbers in a mixed column are stored as text so the column
+stays one type). Quoted fields and embedded commas are handled. Loud
+errors: KEY names a missing column (lists the header), header with no
+data rows, empty base-key cell (row number named). If the target bundle
+does not exist it is auto-created from the inferred schema; if it
+exists, the inferred schema must be compatible.
+
+> **Status correction (audit 2026-07-02):** the richer INGEST sugar this
+> section used to show — `HEADER`/`DELIMITER`/`NULL_VALUE`/`SKIP`
+> options, `FORMAT JSON/JSONL/DHOOM/SQL`, `FROM STDIN`, `FROM <url>`,
+> `MAP (...)` renames, `FILTER (...)` — is design spec, NOT implemented.
+> Unsupported formats are refused with the supported list; unsupported
+> clauses are refused by the trailing-token guard.
+
+### EMIT TO — Bulk export ❌ (not implemented)
+
+`COVER … EMIT CSV TO 'file.csv';` does not parse — the trailing-token
+guard refuses the `EMIT` clause loudly rather than running the COVER
+and silently dropping the export. Until an exporter lands, the shortest
+real path to CSV is the HTTP surface: `POST /v1/gql` returns rows as
+JSON, and any JSON→CSV step (jq, python, a spreadsheet import) finishes
+the job.
 
 ## XIII. Generate Series & Fill
 

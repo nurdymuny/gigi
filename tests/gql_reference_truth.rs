@@ -149,3 +149,14 @@ fn known_gaps_error_loudly() {
         }
     }
 }
+
+/// Section XII honesty: EMIT is documented ❌ and must refuse loudly —
+/// the COVER must NOT run with the export silently dropped.
+#[test]
+fn emit_clause_refused_loudly() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut e = seeded_engine(dir.path());
+    let err = run(&mut e, "COVER sensors ALL EMIT CSV TO 'x.csv';")
+        .expect_err("EMIT is not implemented and must error");
+    assert!(err.contains("EMIT"), "error should name the refused clause: {err}");
+}

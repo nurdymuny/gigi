@@ -15,13 +15,15 @@
 //! |        |                  | arrays. Each archive member becomes a       |
 //! |        |                  | named record stream (one record per         |
 //! |        |                  | outer-axis slice).                          |
+//! | `CSV`  | `.csv`           | Header row names the fields; one record per |
+//! |        |                  | data row. Base key = `KEY <col>` or the     |
+//! |        |                  | first column. Numeric-unless-proven-        |
+//! |        |                  | otherwise column typing; quoted fields and  |
+//! |        |                  | embedded commas via `dhoom::csv_to_records`.|
 //!
-//! HDF5, JSONL, and CSV are deferred to Phase 2. CSV/JSON already have
-//! readers in `src/convert.rs` that the next sprint will wire through
-//! an `IngestFormat` enum extension. The 3.2 surface is intentionally
-//! narrow: NPZ only, because that's the format Halcyon's harvest
-//! pipeline emits and the §3.2 commitment is to land THAT path
-//! end-to-end first.
+//! HDF5 and JSONL are deferred. JSON already has readers in
+//! `src/convert.rs` that a later sprint can wire through the same
+//! `IngestFormat` extension point CSV used.
 //!
 //! # Record mapping policy (Phase 1 — `AUTO_GENERIC`)
 //!
@@ -154,6 +156,10 @@ fn decode_npy_as_f64<R: io::Read>(
 pub enum IngestFormat {
     /// NumPy zip archive (`.npz`).
     Npz,
+    /// Comma-separated values with a header row (`.csv`). One record
+    /// per data row; the KEY clause (or, absent one, the FIRST column)
+    /// names the base key; column types are inferred from the data.
+    Csv,
 }
 
 impl IngestFormat {
@@ -166,9 +172,10 @@ impl IngestFormat {
     pub fn from_name(name: &str) -> Result<Self, IngestError> {
         match name.to_ascii_uppercase().as_str() {
             "NPZ" => Ok(IngestFormat::Npz),
+            "CSV" => Ok(IngestFormat::Csv),
             other => Err(IngestError::FormatNotSupported {
                 requested: other.to_string(),
-                supported: vec!["NPZ".to_string()],
+                supported: vec!["NPZ".to_string(), "CSV".to_string()],
             }),
         }
     }
@@ -267,6 +274,9 @@ pub enum IngestError {
     /// carries that name. `members` lists the actual archive member
     /// names so the caller can correct the KEY in one shot.
     KeyNotInArchive { requested: String, members: Vec<String> },
+    /// `INGEST … FORMAT CSV KEY <col>` named a column the header row
+    /// does not contain.
+    KeyNotInCsv { requested: String, columns: Vec<String> },
 }
 
 impl std::fmt::Display for IngestError {
@@ -324,6 +334,12 @@ impl std::fmt::Display for IngestError {
                 f,
                 "INGEST NPZ: KEY '{requested}' not in archive — available: [{}]",
                 members.join(", ")
+            ),
+            IngestError::KeyNotInCsv { requested, columns } => write!(
+                f,
+                "INGEST CSV: KEY '{requested}' is not a column of the CSV — \
+                 header row has: [{}]",
+                columns.join(", ")
             ),
         }
     }
@@ -408,6 +424,7 @@ pub fn execute_ingest(
 
     match format {
         IngestFormat::Npz => ingest_npz(engine, target_bundle, source_path, bytes_read, key),
+        IngestFormat::Csv => ingest_csv(engine, target_bundle, source_path, bytes_read, key),
     }
 }
 
@@ -600,6 +617,137 @@ fn ingest_npz(
         bundle_created,
         bytes_read,
     })
+}
+
+
+/// CSV entry point — one record per data row.
+///
+/// Policy (documented in GQL_REFERENCE.md):
+/// - The header row names the fields, in order.
+/// - The base key is the `KEY <col>` clause if present, else the FIRST
+///   column. An empty base-key cell is a loud per-row error.
+/// - Column types are inferred from the data: a column whose every
+///   non-empty value is numeric becomes Numeric; everything else
+///   becomes Categorical (numbers in a mixed column are stored as
+///   their text form, so the column stays one type).
+/// - Reuses `crate::dhoom::csv_to_records` (quoted fields, type
+///   coercion) — one CSV dialect across the whole engine.
+fn ingest_csv(
+    engine: &mut Engine,
+    target_bundle: &str,
+    source_path: &Path,
+    bytes_read: u64,
+    key: Option<&str>,
+) -> Result<IngestStats, IngestError> {
+    let text = std::fs::read_to_string(source_path).map_err(|e| {
+        IngestError::FormatError(format!("read CSV {}: {e}", source_path.display()))
+    })?;
+    let (rows, columns) =
+        crate::dhoom::csv_to_records(&text).map_err(IngestError::FormatError)?;
+    if columns.is_empty() || columns.iter().all(|c| c.is_empty()) {
+        return Err(IngestError::FormatError(
+            "CSV has no usable header row — the first line must name the fields"
+                .to_string(),
+        ));
+    }
+    if rows.is_empty() {
+        return Err(IngestError::FormatError(
+            "CSV has a header but no data rows — nothing to ingest".to_string(),
+        ));
+    }
+
+    let base_col = match key {
+        Some(k) => {
+            if columns.iter().any(|c| c == k) {
+                k.to_string()
+            } else {
+                return Err(IngestError::KeyNotInCsv {
+                    requested: k.to_string(),
+                    columns,
+                });
+            }
+        }
+        None => columns[0].clone(),
+    };
+
+    // Column type inference: numeric unless a non-empty, non-numeric
+    // value shows up. Empty cells and nulls don't vote.
+    let mut is_numeric: Vec<bool> = vec![true; columns.len()];
+    for row in &rows {
+        let Some(obj) = row.as_object() else { continue };
+        for (ci, col) in columns.iter().enumerate() {
+            match obj.get(col) {
+                None | Some(serde_json::Value::Null) => {}
+                Some(serde_json::Value::Number(_)) => {}
+                Some(serde_json::Value::String(sv)) if sv.is_empty() => {}
+                Some(_) => is_numeric[ci] = false,
+            }
+        }
+    }
+
+    let inferred: Vec<InferredFieldSchema> = columns
+        .iter()
+        .enumerate()
+        .map(|(ci, c)| InferredFieldSchema {
+            name: c.clone(),
+            field_type: if is_numeric[ci] {
+                FieldType::Numeric
+            } else {
+                FieldType::Categorical
+            },
+            is_base: *c == base_col,
+        })
+        .collect();
+    let bundle_created =
+        ensure_bundle_compatible(engine, target_bundle, &inferred, /*allow_auto_create=*/ true)?;
+
+    let mut records_emitted: usize = 0;
+    let mut batch: Vec<Record> = Vec::with_capacity(INGEST_BATCH_SIZE.min(64));
+    for (ri, row) in rows.iter().enumerate() {
+        let obj = row.as_object().ok_or_else(|| {
+            IngestError::FormatError(format!("CSV row {} did not parse as a record", ri + 1))
+        })?;
+        let mut rec: Record = Record::new();
+        for (ci, col) in columns.iter().enumerate() {
+            let jv = obj.get(col).unwrap_or(&serde_json::Value::Null);
+            let val = if is_numeric[ci] {
+                match jv {
+                    serde_json::Value::Number(n) => match n.as_i64() {
+                        Some(i) => Value::Integer(i),
+                        None => Value::Float(n.as_f64().unwrap_or(f64::NAN)),
+                    },
+                    _ => Value::Null,
+                }
+            } else {
+                match jv {
+                    serde_json::Value::Null => Value::Null,
+                    serde_json::Value::String(sv) if sv.is_empty() => Value::Null,
+                    serde_json::Value::String(sv) => Value::Text(sv.clone()),
+                    serde_json::Value::Bool(b) => Value::Text(b.to_string()),
+                    serde_json::Value::Number(n) => Value::Text(n.to_string()),
+                    other => Value::Text(other.to_string()),
+                }
+            };
+            if *col == base_col && matches!(val, Value::Null) {
+                return Err(IngestError::FormatError(format!(
+                    "CSV row {}: base-key column '{}' is empty — every record \
+                     needs an address",
+                    ri + 1,
+                    base_col
+                )));
+            }
+            rec.insert(col.clone(), val);
+        }
+        batch.push(rec);
+        if batch.len() >= INGEST_BATCH_SIZE {
+            flush_batch(engine, target_bundle, &mut batch, &mut records_emitted)?;
+        }
+    }
+    if !batch.is_empty() {
+        flush_batch(engine, target_bundle, &mut batch, &mut records_emitted)?;
+    }
+
+    Ok(IngestStats { records_emitted, bundle_created, bytes_read })
 }
 
 /// Drain `batch` into `engine.batch_insert` and tally records.
@@ -939,6 +1087,13 @@ pub fn execute_ingest_as_gauge_field(
     // message even when the lattice name is bogus, so the fix is one
     // edit rather than two round trips.
     match format {
+        IngestFormat::Csv => {
+            return Err(IngestError::FormatError(
+                "INGEST … AS GAUGE_FIELD requires FORMAT NPZ — a gauge \
+                 field is a shaped array, and CSV carries no shape"
+                    .to_string(),
+            ));
+        }
         IngestFormat::Npz => {
             let archive = npyz::npz::NpzArchive::open(source_path)
                 .map_err(|e| IngestError::FormatError(format!(
@@ -983,6 +1138,7 @@ pub fn execute_ingest_as_gauge_field(
     let obc_axis = obc_axis_from_topology(topology);
 
     match format {
+        IngestFormat::Csv => unreachable!("rejected above before lattice resolution"),
         IngestFormat::Npz => ingest_npz_as_gauge_field(
             engine,
             target_bundle,
@@ -1211,14 +1367,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn format_from_name_npz_only() {
+    fn format_from_name_known_set() {
         assert_eq!(IngestFormat::from_name("NPZ").unwrap(), IngestFormat::Npz);
         assert_eq!(IngestFormat::from_name("npz").unwrap(), IngestFormat::Npz);
-        let err = IngestFormat::from_name("CSV").unwrap_err();
+        assert_eq!(IngestFormat::from_name("CSV").unwrap(), IngestFormat::Csv);
+        assert_eq!(IngestFormat::from_name("csv").unwrap(), IngestFormat::Csv);
+        let err = IngestFormat::from_name("JSON").unwrap_err();
         match err {
             IngestError::FormatNotSupported { requested, supported } => {
-                assert_eq!(requested, "CSV");
-                assert_eq!(supported, vec!["NPZ".to_string()]);
+                assert_eq!(requested, "JSON");
+                assert_eq!(supported, vec!["NPZ".to_string(), "CSV".to_string()]);
             }
             other => panic!("expected FormatNotSupported, got {other:?}"),
         }

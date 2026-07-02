@@ -173,6 +173,40 @@
              tone: function (cls) { v.className = "v" + (cls ? " " + cls : ""); } };
   };
 
+  /* Plain-english gloss for a GQL statement. Same rules the tetmesh
+     demo uses; kept here so every web extra has the identical mapping
+     between verbs and reader-facing sentences. */
+  WX.gqlGloss = function (q) {
+    var s = String(q || "").trim().replace(/;$/, "").trim(), m;
+    if (/^SHOW\s+BUNDLES$/i.test(s))
+      return "SHOW BUNDLES — asks the engine: what bundles do you have?";
+    if ((m = s.match(/^HEALTH\s+(\w+)$/i)))
+      return "HEALTH — quick vitals on " + m[1] + ": record count, curvature (κ), confidence";
+    if ((m = s.match(/^SECTION\s+(\w+)\s+AT\s+(\w+)\s*=\s*['"]?([^'"]+)['"]?$/i)))
+      return "SECTION AT — the O(1) lookup: fetch " + m[1] + " where " + m[2] + "=" + m[3];
+    if ((m = s.match(/^COVER\s+(\w+)\s+ON\s+(\w+)\s*=\s*([\w.]+)$/i)))
+      return "COVER — the range scan: every " + m[1] + " record where " + m[2] + " = " + m[3];
+    if ((m = s.match(/^COVER\s+(\w+)\s+WHERE\s+(.+)$/i)))
+      return "COVER — the range scan: every " + m[1] + " record where " + m[2];
+    if ((m = s.match(/^INTEGRATE\s+(\w+)\s+OVER\s+(\w+)\s+MEASURE\s+(.+)$/i)))
+      return "INTEGRATE — group " + m[1] + " by " + m[2] + ", compute " + m[3] + " per group";
+    if ((m = s.match(/^INTEGRATE\s+(\w+)\s+MEASURE\s+(.+)$/i)))
+      return "INTEGRATE — aggregate across all of " + m[1] + ": " + m[2];
+    if ((m = s.match(/^CURVATURE\s+(\w+)$/i)))
+      return "CURVATURE — the bundle-wide κ readout for " + m[1];
+    if ((m = s.match(/^BUNDLE\s+(\w+)/i)))
+      return "BUNDLE — the schema declaration for " + m[1] + " (base + fiber shape)";
+    return "a query GIGI understands";
+  };
+
+  var LEGEND_HTML =
+    'Each query below is a real GQL statement GIGI just answered. ' +
+    '<b>SHOW</b> = list what\'s stored · ' +
+    '<b>HEALTH</b> = vitals · ' +
+    '<b>SECTION AT</b> = O(1) lookup · ' +
+    '<b>COVER</b> = range scan · ' +
+    '<b>INTEGRATE</b> = group + aggregate.';
+
   /* GQL drawer wiring — same behavior as the exercise-page consoles */
   WX.wireConsole = function (root) {
     root.querySelectorAll("details.gql").forEach(function (box) {
@@ -181,8 +215,32 @@
       if (!run) return;
       var saved = localStorage.getItem("gb-endpoint");
       if (saved) ep.value = saved;
+      // one-time chrome: dashed legend up top + italic gloss above the
+      // response. Idempotent — safe on re-wire.
+      if (!box.querySelector(".gq-legend")) {
+        var legend = document.createElement("div");
+        legend.className = "gq-legend";
+        legend.innerHTML = LEGEND_HTML;
+        var summary = box.querySelector("summary");
+        (summary && summary.nextSibling)
+          ? box.insertBefore(legend, summary.nextSibling)
+          : box.appendChild(legend);
+      }
+      var gloss = box.querySelector(".gloss");
+      if (!gloss) {
+        gloss = document.createElement("div");
+        gloss.className = "gloss";
+        gloss.setAttribute("aria-live", "polite");
+        out.parentNode.insertBefore(gloss, out);
+      }
+      function refreshGloss() { gloss.textContent = WX.gqlGloss(q.value); }
+      refreshGloss();
+      q.addEventListener("input", refreshGloss);
       box.querySelectorAll(".chip").forEach(function (ch) {
-        ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
+        ch.addEventListener("click", function () {
+          q.value = ch.getAttribute("data-q");
+          refreshGloss();
+        });
       });
       function go() {
         var base = ep.value.replace(/\/+$/, "");

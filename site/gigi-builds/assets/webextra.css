@@ -9,6 +9,16 @@
   --blue: #3987e5; --aqua: #199e70; --yellow: #c98500; --orange: #d95926;
   --red: #e66767; --magenta: #d55181; --violet: #9085e9;
   --accent: var(--yellow);
+  /* Aliases so extras + tetmesh demo (the-mesh-that-audits-itself.html)
+     share one palette vocabulary. Any tweak lands once. */
+  --surface-1: var(--surface);
+  --border: var(--line);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-2);
+  --text-muted: var(--ink-3);
+  --series-1: var(--blue);
+  --series-2: var(--aqua);
+  --series-3: var(--yellow);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -97,6 +107,28 @@ details.gql pre { background: #131312; border: 1px solid var(--line);
   border-radius: 8px; padding: 12px 14px; overflow: auto; max-height: 320px;
   font: 12.5px/1.5 ui-monospace, Menlo, monospace; color: var(--ink-2);
   white-space: pre-wrap; }
+
+/* GQL cheatsheet + per-query gloss — the same landmarks the tetmesh
+   demo carries so the panels feel like one family. WX.wireConsole
+   auto-injects a `.gq-legend` under the summary and a `.gloss` block
+   under the chip row; both get styled here. */
+details.gql .gq-legend {
+  font-size: 10.5px; color: var(--ink-3);
+  margin: 10px 0 2px; padding: 6px 8px;
+  border: 1px dashed var(--line); border-radius: 6px;
+  line-height: 1.55;
+}
+details.gql .gq-legend b {
+  color: var(--ink-2); font-weight: 650;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10px;
+}
+details.gql .gloss {
+  display: block; font-size: 11px; color: var(--ink-2);
+  font-style: italic; line-height: 1.5;
+  margin: 6px 0 8px; padding: 4px 8px;
+  border-left: 2px solid var(--line);
+}
+details.gql .gloss:empty { display: none; }
 
 footer.wx { color: var(--ink-3); font-size: 13px; padding: 28px 0 46px; }
 footer.wx a { color: var(--ink-2); }

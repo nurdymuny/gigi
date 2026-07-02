@@ -13408,7 +13408,7 @@ fn execute_gql_on_store_read(
             };
             Ok(ExecResult::Rows(results))
         }
-        Statement::Integrate { over, measures, .. } => {
+        Statement::Integrate { over, measures, jackknife_along, .. } => {
             // Validate the group-by field and every measure field against
             // the schema ('*' is COUNT(*) and always legal) — same
             // rationale as the Cover-arm validation above.
@@ -13419,6 +13419,9 @@ fn execute_gql_on_store_read(
                 if let Some(gb) = over {
                     referenced.push(gb.as_str());
                 }
+                if let Some(of) = jackknife_along {
+                    referenced.push(of.as_str());
+                }
                 for f in referenced {
                     if !known.iter().any(|k| k == f) {
                         return Err(format!(
@@ -13428,6 +13431,19 @@ fn execute_gql_on_store_read(
                         ));
                     }
                 }
+            }
+            // WITH JACKKNIFE ALONG <order>: autocorrelation-honest error
+            // bars on avg() measures — the evidence-grade path for Monte
+            // Carlo chains and time series.
+            if let Some(order_field) = jackknife_along {
+                let specs = gigi::parser::jackknife_measure_specs(measures)?;
+                let rows = gigi::aggregation::jackknife_rows(
+                    store.records(),
+                    over.as_deref(),
+                    order_field,
+                    &specs,
+                )?;
+                return Ok(ExecResult::Rows(rows));
             }
             // One accumulator per measure — a shared single-field
             // accumulator makes every measure return the first field's

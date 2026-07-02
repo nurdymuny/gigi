@@ -192,6 +192,178 @@ fn accumulate_measures(aggs: &mut [AggResult], rec: &crate::types::Record, field
     }
 }
 
+/// Autocorrelation-honest error bar for a mean over an ORDERED sample
+/// sequence (Monte Carlo chains, time series).
+///
+/// The naive standard error sqrt(var/n) assumes independent samples;
+/// correlated chains violate that and the naive bar is always too small —
+/// flattering, and wrong. This computes:
+///
+/// - `tau_int`: integrated autocorrelation time, 1/2 + Σ ρ(k), summed with
+///   an initial-positive-sequence window (stop at the first non-positive
+///   autocorrelation, capped at n/4). For iid data τ ≈ 0.5.
+/// - `n_eff = n / (2 τ_int)`: effective independent sample count.
+/// - `err = err_naive · sqrt(2 τ_int)`: the autocorrelation-corrected bar.
+/// - `err_jack`: delete-one-block jackknife error with block length
+///   ceil(2 τ_int) — a second, independent estimate; if the two disagree
+///   badly the chain is under-sampled and neither should be trusted.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrorBar {
+    pub mean: f64,
+    pub err: f64,
+    pub err_naive: f64,
+    pub err_jack: f64,
+    pub tau_int: f64,
+    pub n_eff: f64,
+    pub n: usize,
+    pub blocks: usize,
+}
+
+/// Compute an [`ErrorBar`] for the mean of `samples`, which must already be
+/// in chain/time order. Returns None for fewer than 4 samples (no
+/// meaningful error estimate exists).
+pub fn jackknife(samples: &[f64]) -> Option<ErrorBar> {
+    let n = samples.len();
+    if n < 4 {
+        return None;
+    }
+    let nf = n as f64;
+    let mean = samples.iter().sum::<f64>() / nf;
+    let dev: Vec<f64> = samples.iter().map(|x| x - mean).collect();
+    let c0 = dev.iter().map(|d| d * d).sum::<f64>() / nf;
+    if c0 <= 0.0 {
+        // constant series: exact mean, zero error
+        return Some(ErrorBar {
+            mean,
+            err: 0.0,
+            err_naive: 0.0,
+            err_jack: 0.0,
+            tau_int: 0.5,
+            n_eff: nf,
+            n,
+            blocks: n,
+        });
+    }
+
+    // integrated autocorrelation time, initial-positive-sequence window
+    let mut tau_int = 0.5;
+    let max_lag = n / 4;
+    for k in 1..=max_lag {
+        let ck = dev[..n - k]
+            .iter()
+            .zip(&dev[k..])
+            .map(|(a, b)| a * b)
+            .sum::<f64>()
+            / nf;
+        let rho = ck / c0;
+        if rho <= 0.0 {
+            break;
+        }
+        tau_int += rho;
+    }
+
+    let var = c0 * nf / (nf - 1.0); // unbiased sample variance
+    let err_naive = (var / nf).sqrt();
+    let err = err_naive * (2.0 * tau_int).sqrt();
+    let n_eff = nf / (2.0 * tau_int);
+
+    // blocked jackknife on the mean, block length ~ 2 tau_int
+    let block_len = ((2.0 * tau_int).ceil() as usize).clamp(1, n / 4);
+    let blocks = n / block_len;
+    let used = blocks * block_len;
+    let total: f64 = samples[..used].iter().sum();
+    let mut jack_means = Vec::with_capacity(blocks);
+    for b in 0..blocks {
+        let block_sum: f64 = samples[b * block_len..(b + 1) * block_len].iter().sum();
+        jack_means.push((total - block_sum) / (used - block_len) as f64);
+    }
+    let jbar = jack_means.iter().sum::<f64>() / blocks as f64;
+    let jvar = jack_means.iter().map(|m| (m - jbar).powi(2)).sum::<f64>()
+        * (blocks as f64 - 1.0)
+        / blocks as f64;
+    let err_jack = jvar.sqrt();
+
+    Some(ErrorBar {
+        mean,
+        err,
+        err_naive,
+        err_jack,
+        tau_int,
+        n_eff,
+        n,
+        blocks,
+    })
+}
+
+/// Execute `INTEGRATE ... MEASURE avg(f), ... WITH JACKKNIFE ALONG order` —
+/// shared by both query executors.
+///
+/// `measures` is (output_column_base, field). Records are grouped by
+/// `over` (if any), ordered within each group by `order_field`, and each
+/// measure gets a full [`ErrorBar`]: `<base>`, `<base>_err`,
+/// `<base>_err_naive`, `<base>_err_jack`, `<base>_tau_int`, `<base>_n_eff`.
+pub fn jackknife_rows<I>(
+    records: I,
+    over: Option<&str>,
+    order_field: &str,
+    measures: &[(String, String)],
+) -> Result<Vec<crate::types::Record>, String>
+where
+    I: IntoIterator<Item = crate::types::Record>,
+{
+    use std::collections::HashMap as Map;
+    // group -> ordered list of (order_value, one sample per measure)
+    let mut groups: Map<Value, Vec<(Value, Vec<Option<f64>>)>> = Map::new();
+    for rec in records {
+        let group_val = match over {
+            Some(g) => match rec.get(g) {
+                Some(v) => v.clone(),
+                None => continue,
+            },
+            None => Value::Null,
+        };
+        let Some(order_val) = rec.get(order_field).cloned() else {
+            continue;
+        };
+        let samples: Vec<Option<f64>> = measures
+            .iter()
+            .map(|(_, f)| rec.get(f.as_str()).and_then(|v| v.as_f64()))
+            .collect();
+        groups.entry(group_val).or_default().push((order_val, samples));
+    }
+
+    let mut rows = Vec::new();
+    for (group_val, mut series) in groups {
+        series.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut row: crate::types::Record = Map::new();
+        if let Some(g) = over {
+            row.insert(g.to_string(), group_val);
+        }
+        for (mi, (base, field)) in measures.iter().enumerate() {
+            let samples: Vec<f64> = series.iter().filter_map(|(_, s)| s[mi]).collect();
+            match jackknife(&samples) {
+                Some(eb) => {
+                    row.insert(base.clone(), Value::Float(eb.mean));
+                    row.insert(format!("{base}_err"), Value::Float(eb.err));
+                    row.insert(format!("{base}_err_naive"), Value::Float(eb.err_naive));
+                    row.insert(format!("{base}_err_jack"), Value::Float(eb.err_jack));
+                    row.insert(format!("{base}_tau_int"), Value::Float(eb.tau_int));
+                    row.insert(format!("{base}_n_eff"), Value::Float(eb.n_eff));
+                }
+                None => {
+                    return Err(format!(
+                        "JACKKNIFE needs at least 4 ordered samples of '{field}' \
+                         per group; got {}",
+                        samples.len()
+                    ));
+                }
+            }
+        }
+        rows.push(row);
+    }
+    Ok(rows)
+}
+
 /// Filtered GROUP BY — aggregate only records matching conditions (Sprint 2).
 pub fn filtered_group_by(
     store: &BundleStore,
@@ -376,6 +548,75 @@ mod tests {
         assert_eq!(aggs[0].count, 100);
         assert!((aggs[1].min - 40000.0).abs() < 0.01);
         assert!((aggs[2].max - 99.0).abs() < 0.01);
+    }
+
+    /// iid samples: tau_int ≈ 0.5, corrected bar ≈ naive bar, and the
+    /// blocked jackknife agrees with both.
+    #[test]
+    fn test_jackknife_iid() {
+        // xorshift64* — same PRNG family the engine uses; fixed seed
+        let mut s: u64 = 0x9E3779B97F4A7C15;
+        let mut next = move || {
+            s ^= s >> 12;
+            s ^= s << 25;
+            s ^= s >> 27;
+            (s.wrapping_mul(0x2545F4914F6CDD1D) >> 11) as f64 / (1u64 << 53) as f64
+        };
+        let samples: Vec<f64> = (0..20_000).map(|_| next() - 0.5).collect();
+        let eb = jackknife(&samples).unwrap();
+        assert!((eb.mean).abs() < 0.01, "mean {}", eb.mean);
+        assert!(eb.tau_int < 0.7, "iid tau_int should be ~0.5, got {}", eb.tau_int);
+        let ratio = eb.err / eb.err_naive;
+        assert!((0.9..1.25).contains(&ratio), "err/naive {}", ratio);
+        let jratio = eb.err_jack / eb.err;
+        assert!((0.7..1.4).contains(&jratio), "jack/err {}", jratio);
+    }
+
+    /// AR(1) with phi = 0.8 has analytic tau_int = (1+phi)/(2(1-phi)) = 4.5;
+    /// the corrected bar must be ~3x the naive bar (sqrt(2*4.5) = 3.0) and
+    /// the jackknife must agree with the corrected bar, not the naive one.
+    #[test]
+    fn test_jackknife_ar1_known_tau() {
+        let phi = 0.8f64;
+        let mut s: u64 = 42;
+        let mut next = move || {
+            s ^= s >> 12;
+            s ^= s << 25;
+            s ^= s >> 27;
+            (s.wrapping_mul(0x2545F4914F6CDD1D) >> 11) as f64 / (1u64 << 53) as f64 - 0.5
+        };
+        let mut x = 0.0f64;
+        let samples: Vec<f64> = (0..100_000)
+            .map(|_| {
+                x = phi * x + next();
+                x
+            })
+            .collect();
+        let eb = jackknife(&samples).unwrap();
+        assert!(
+            (3.2..6.0).contains(&eb.tau_int),
+            "AR(1) phi=0.8 tau_int should be near 4.5, got {}",
+            eb.tau_int
+        );
+        let inflation = eb.err / eb.err_naive;
+        assert!(
+            (2.4..3.6).contains(&inflation),
+            "err inflation should be near 3.0, got {inflation}"
+        );
+        let jratio = eb.err_jack / eb.err;
+        assert!(
+            (0.6..1.5).contains(&jratio),
+            "jackknife should agree with corrected bar, got ratio {jratio}"
+        );
+        assert!(eb.n_eff < 20_000.0, "n_eff must be far below n, got {}", eb.n_eff);
+    }
+
+    #[test]
+    fn test_jackknife_too_few_samples() {
+        assert!(jackknife(&[1.0, 2.0, 3.0]).is_none());
+        let eb = jackknife(&[5.0; 100]).unwrap();
+        assert_eq!(eb.err, 0.0);
+        assert_eq!(eb.mean, 5.0);
     }
 
     #[test]

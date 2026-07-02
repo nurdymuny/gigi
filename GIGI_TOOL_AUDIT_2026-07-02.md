@@ -127,6 +127,27 @@ INTEGRATE stations OVER city MEASURE count(*), avg(temp);  → correct, unchange
 
 ---
 
+## Continued (same day): P0 and P3.1 shipped
+
+- **`tests/gql_reference_truth.rs`** — the table that confesses, automated.
+  One statement per ✅ row of GQL_REFERENCE.md executed against a real
+  engine; a second test asserts every known gap errors LOUDLY instead of
+  no-oping. Its first run caught four more falsely-✅ rows: `PRODUCT`,
+  `UNION`, `INTERSECT`, `SUBTRACT` do not parse. The reference table now
+  carries honest ❌ rows for HAVING, FIBER window verbs, and set ops, plus
+  a note that the table is CI-enforced.
+- **`INTEGRATE … MEASURE avg(f) WITH JACKKNIFE ALONG order`** — the
+  evidence-grade error-bar verb (P3.1). Returns mean, autocorrelation-
+  corrected error (naive · √(2τ_int)), naive error, blocked-jackknife
+  cross-check, τ_int, and n_eff, per group or global. Statistical core in
+  `aggregation.rs` (`jackknife`, `jackknife_rows`), validated against AR(1)
+  with known τ_int = 4.5 in unit tests AND end-to-end over HTTP: an 8,000-
+  sample φ=0.8 chain measured τ_int = 4.265, error inflation 2.921 vs the
+  analytic 3.0, jackknife bar consistent. Refusals teach: non-avg measures
+  and missing ALONG both explain themselves.
+- **Executor parity**: unknown-field validation added to the embedded
+  `parser.rs` Cover arm (was gigi-stream only) — caught by the truth test.
+
 ## The one-paragraph verdict
 
 The engine's core loop — insert, address, aggregate, geometric ride-alongs —

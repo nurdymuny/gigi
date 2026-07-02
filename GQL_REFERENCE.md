@@ -28,6 +28,12 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | ⚠️ Parsed | Accepted by parser, silently does nothing |
 | ❌ 501 | Returns HTTP 501 Not Implemented |
 
+> **This table is enforced.** `tests/gql_reference_truth.rs` runs one
+> statement per ✅ row against a real engine and fails CI when a row and
+> the engine disagree — the table has to produce a receipt like everything
+> else. Unknown fields, unsupported clauses, and trailing input now error
+> loudly instead of returning silently wrong answers (audit 2026-07-02).
+
 | Feature | Status | Notes |
 |---|---|---|
 | BUNDLE / GAUGE / COLLAPSE / LENS | ✅ | Full schema operations |
@@ -36,9 +42,12 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | RETRACT / BULK RETRACT | ✅ | Delete operations |
 | SECTION AT / EXISTS SECTION | ✅ | O(1) point queries |
 | COVER (all variants) | ✅ | Range, filtered, ranked, paginated |
-| INTEGRATE | ✅ | Aggregation with FILTER, HAVING |
-| FIBER / TRANSPORT (window) | ✅ | Window functions |
-| PULLBACK / PRODUCT | ✅ | Joins |
+| INTEGRATE | ✅ | Aggregation (COUNT/SUM/AVG/MIN/MAX, incl. COUNT(*)) |
+| INTEGRATE … WITH JACKKNIFE ALONG f | ✅ | Autocorrelation-honest error bars on avg() — mean ± err, τ_int, n_eff, blocked-jackknife cross-check |
+| HAVING | ❌ | Not implemented — rejected loudly (was listed ✅; caught by tests/gql_reference_truth.rs) |
+| FIBER / TRANSPORT (window) | ❌ | Not implemented — rejected loudly (was listed ✅) |
+| PULLBACK | ✅ | Joins |
+| PRODUCT / UNION / INTERSECT / SUBTRACT | ❌ | Not implemented — rejected loudly (were listed ✅) |
 | ATLAS (transactions) | ✅ | BEGIN / COMMIT / ROLLBACK |
 | SHOW BUNDLES / DESCRIBE | ✅ | |
 | CURVATURE / RICCI / SPECTRAL | ✅ | |
@@ -724,11 +733,43 @@ INTEGRATE sensors OVER city MEASURE
   count(*) FILTER (WHERE CONFIDENCE() < 0.95) AS low_confidence_count;
 ```
 
+### Error bars for correlated samples — WITH JACKKNIFE ✅
+
+Monte Carlo chains and time series produce *correlated* samples; the naive
+standard error `sqrt(var/n)` assumes independence and is always too small on
+correlated data — flattering, and wrong. `WITH JACKKNIFE` returns
+evidence-grade error bars:
+
+```gql
+-- global: mean plaquette over a whole chain, ordered by sweep number
+INTEGRATE chain MEASURE avg(plaquette) WITH JACKKNIFE ALONG sweep;
+
+-- per group: one error bar per coupling
+INTEGRATE runs OVER beta MEASURE avg(plaquette) WITH JACKKNIFE ALONG sweep;
+```
+
+Each `avg(f)` measure returns six columns: `avg_f` (mean), `avg_f_err`
+(autocorrelation-corrected bar = naive · √(2·τ_int)), `avg_f_err_naive`,
+`avg_f_err_jack` (delete-one-block jackknife with block length ≈ 2·τ_int — an
+independent cross-check; if it disagrees badly with `_err`, the chain is
+under-sampled), `avg_f_tau_int` (integrated autocorrelation time,
+initial-positive-sequence window), and `avg_f_n_eff` (= n / 2·τ_int).
+
+`ALONG <field>` is required — it defines chain order; autocorrelation is
+undefined without one. Only `avg()` measures are supported (an error bar is
+an estimate of the uncertainty of a mean); anything else is refused with an
+explanation. Validated against AR(1) with known τ_int in
+`src/aggregation.rs` tests and end-to-end in `tests/gql_reference_truth.rs`.
+
 ---
 
-## VI. Window Functions — FIBER Operations ✅
+## VI. Window Functions — FIBER Operations ❌ (not implemented)
 
 SQL window functions = GQL fiber operations. Named for what they geometrically ARE.
+
+> **Status correction (audit 2026-07-02):** the FIBER verbs below do not
+> currently parse — `FIBER RANK …` returns `Unknown statement: FIBER`. The
+> section is kept as the design spec for when they land.
 
 ```sql
 FIBER RANK sensors OVER city RANK BY date;                              -- ROW_NUMBER

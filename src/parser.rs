@@ -313,6 +313,9 @@ pub enum Statement {
         bundle: String,
         over: Option<String>,
         measures: Vec<MeasureSpec>,
+        /// `WITH JACKKNIFE ALONG <field>` — order samples by this field and
+        /// attach autocorrelation-honest error bars to each avg() measure.
+        jackknife_along: Option<String>,
     },
 
     // ── Joins ──
@@ -4376,10 +4379,30 @@ impl Parser {
             }
         }
 
+        // WITH JACKKNIFE ALONG <order_field> — evidence-grade error bars.
+        // The order field defines chain/time order; without one, an
+        // autocorrelation time is meaningless, so it is required.
+        let mut jackknife_along = None;
+        if self.is_keyword("WITH") {
+            self.advance();
+            self.expect_keyword("JACKKNIFE")?;
+            if !self.is_keyword("ALONG") {
+                return Err(
+                    "WITH JACKKNIFE requires ALONG <order_field> — the field that \
+                     defines sample order (e.g. sweep number or timestamp); \
+                     autocorrelation is undefined without an ordering"
+                        .to_string(),
+                );
+            }
+            self.advance();
+            jackknife_along = Some(self.expect_word()?);
+        }
+
         Ok(Statement::Integrate {
             bundle: name,
             over,
             measures,
+            jackknife_along,
         })
     }
 
@@ -7370,6 +7393,36 @@ impl Parser {
     }
 }
 
+/// Validate measures for `WITH JACKKNIFE` and produce (column_base, field)
+/// specs. Error bars are defined for means; other aggregates are refused
+/// with a message that says so rather than silently degrading.
+pub fn jackknife_measure_specs(
+    measures: &[MeasureSpec],
+) -> Result<Vec<(String, String)>, String> {
+    if measures.is_empty() {
+        return Err("WITH JACKKNIFE requires at least one avg(...) measure".into());
+    }
+    measures
+        .iter()
+        .map(|m| {
+            if !matches!(m.func, AggFunc::Avg) {
+                return Err(format!(
+                    "WITH JACKKNIFE currently applies to avg(...) measures only; \
+                     '{}({})' is not supported (an error bar is an estimate of \
+                     the uncertainty of a mean)",
+                    m.func_name(),
+                    m.field
+                ));
+            }
+            let base = m
+                .alias
+                .clone()
+                .unwrap_or_else(|| format!("avg_{}", m.field));
+            Ok((base, m.field.clone()))
+        })
+        .collect()
+}
+
 /// Parse a GQL statement string into a Statement AST.
 pub fn parse(input: &str) -> Result<Statement, String> {
     let tokens = tokenize(input)?;
@@ -9606,6 +9659,39 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
 
+            // Validate referenced fields against the schema — parity with
+            // the gigi-stream executor. A typo'd field must error with the
+            // real field list, never silently match nothing.
+            {
+                let known = store.field_names();
+                let mut referenced: Vec<&str> = Vec::new();
+                referenced.extend(
+                    on_conditions
+                        .iter()
+                        .chain(where_conditions.iter())
+                        .chain(or_groups.iter().flatten())
+                        .filter_map(|c| c.field_name()),
+                );
+                if let Some(fields) = project {
+                    referenced.extend(fields.iter().map(|s| s.as_str()));
+                }
+                if let Some(specs) = rank_by {
+                    referenced.extend(specs.iter().map(|s| s.field.as_str()));
+                }
+                if let Some(f) = distinct_field {
+                    referenced.push(f.as_str());
+                }
+                for f in referenced {
+                    if !known.iter().any(|k| k == f) {
+                        return Err(format!(
+                            "Unknown field '{}' — this bundle's fields are: {}",
+                            f,
+                            known.join(", ")
+                        ));
+                    }
+                }
+            }
+
             // Handle DISTINCT
             if let Some(field) = distinct_field {
                 let vals = store.distinct(field);
@@ -9720,10 +9806,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             bundle,
             over,
             measures,
+            jackknife_along,
         } => {
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
+
+            if let Some(order_field) = jackknife_along {
+                let specs = jackknife_measure_specs(measures)?;
+                let rows = crate::aggregation::jackknife_rows(
+                    store.records(),
+                    over.as_deref(),
+                    order_field,
+                    &specs,
+                )?;
+                return Ok(ExecResult::Rows(rows));
+            }
 
             // One accumulator per measure (group_by_measures) — a shared
             // single-field accumulator makes every measure return the
@@ -12681,6 +12779,7 @@ mod tests {
                 bundle,
                 over,
                 measures,
+                ..
             } => {
                 assert_eq!(bundle, "sensors");
                 assert_eq!(over, Some("city".into()));
@@ -12718,6 +12817,31 @@ mod tests {
             }
             _ => panic!("Expected Cover"),
         }
+    }
+
+    #[test]
+    fn gql_integrate_with_jackknife() {
+        let stmt =
+            parse("INTEGRATE runs OVER beta MEASURE avg(plaquette) WITH JACKKNIFE ALONG sweep;")
+                .unwrap();
+        match stmt {
+            Statement::Integrate { jackknife_along, over, measures, .. } => {
+                assert_eq!(jackknife_along.as_deref(), Some("sweep"));
+                assert_eq!(over.as_deref(), Some("beta"));
+                assert_eq!(measures.len(), 1);
+            }
+            _ => panic!("Expected Integrate"),
+        }
+        // ALONG is mandatory — autocorrelation needs an ordering
+        let err = parse("INTEGRATE runs MEASURE avg(x) WITH JACKKNIFE;").unwrap_err();
+        assert!(err.contains("ALONG"), "got: {err}");
+        // non-avg measures are refused with an explanation
+        let specs = jackknife_measure_specs(&[MeasureSpec {
+            func: AggFunc::Max,
+            field: "x".into(),
+            alias: None,
+        }]);
+        assert!(specs.unwrap_err().contains("avg"));
     }
 
     #[test]

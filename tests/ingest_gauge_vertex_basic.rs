@@ -132,17 +132,22 @@ fn open_engine() -> (Engine, tempfile::TempDir) {
     (engine, dir)
 }
 
-/// Row-major site_of: coords → flat site index. Matches the ingest
-/// executor's own site encoding (site_x most-significant).
+/// Column-major site_of: coords → flat site index. Matches the
+/// lattice's own VertexId numbering (site_x least-significant, stride 1;
+/// stride[k] = L^k). The ingest executor is required to align its
+/// vertex_a / vertex_b encoding with this scheme.
 fn site_of(coords: &[usize], l: usize) -> usize {
     let mut s = 0usize;
+    let mut stride = 1usize;
     for &c in coords {
-        s = s * l + c;
+        s += c * stride;
+        stride *= l;
     }
     s
 }
 
-/// Row-major shift-by-+1 along axis `a`, modulo L.
+/// Shift-by-+1 along axis `a`, modulo L. Encoding-agnostic (operates on
+/// coord tuples, not flat indices).
 fn shift_plus(coords: &[usize], a: usize, l: usize) -> Vec<usize> {
     let mut out = coords.to_vec();
     out[a] = (out[a] + 1) % l;
@@ -438,8 +443,9 @@ fn test_vertex_b_matches_shift_plus() {
 // ── Test 6: PERIODIC wraps via vertex_b ────────────────────────────
 
 /// The PERIODIC record at (mu = 0, site_x = L-1, site_y = 0) has
-/// vertex_b at (0, 0) — i.e. site 0 in row-major encoding. This is the
-/// wrap edge that OBC would omit; PERIODIC keeps it and wraps.
+/// vertex_b at (0, 0) — i.e. site 0 under the lattice's column-major
+/// encoding. This is the wrap edge that OBC would omit; PERIODIC keeps
+/// it and wraps.
 #[test]
 fn test_ingest_periodic_wraps_via_vertex_b() {
     let (mut engine, _dir) = open_engine();

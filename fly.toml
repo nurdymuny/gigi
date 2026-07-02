@@ -33,6 +33,18 @@ primary_region = "iad"
   # acceptable for chat-shape metadata.
   GIGI_APP_BUNDLES = '''[{"name":"jg_kv","seed_env":"JG_KV_ENCRYPTION_SEED","base":[{"name":"key","type":"text"}],"fiber":[{"name":"kind","type":"text","indexed":true},{"name":"payload","type":"text","encrypted":"opaque"},{"name":"expires_at","type":"timestamp","indexed":true},{"name":"updated_at","type":"timestamp","indexed":true}]}]'''
 
+  # Public-read bundle allowlist. Bundles named here are readable via
+  # POST /v1/public/gql WITHOUT an api key, under the strict read-verb
+  # whitelist in validate_public_stmt (SHOW BUNDLES, HEALTH, SECTION,
+  # DESCRIBE, EXISTS SECTION, COVER, INTEGRATE, SELECT). Writes, admin
+  # verbs, and non-listed bundles still 401. The GIGI Builds exercise
+  # pages hit this endpoint from the browser — no key handoff needed.
+  #
+  # UNSET or empty ⇒ the /v1/public/gql route is not registered at all
+  # (kill switch — remove this line and redeploy to disable public
+  # access instantly).
+  GIGI_PUBLIC_BUNDLES = "stations,sensors,chembl"
+
 [http_service]
   internal_port = 3142
   force_https = true

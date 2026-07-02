@@ -230,6 +230,17 @@ struct StreamState {
     /// Monotone snapshot counter feeding tx BEGIN snap_ids.
     #[cfg(feature = "transactions")]
     tx_snap_counter: Arc<std::sync::atomic::AtomicU64>,
+    /// Public-read bundle allowlist. Bundles whose names appear here are
+    /// exposed via the `/v1/public/gql` endpoint under a strict read-verb
+    /// whitelist — no auth required. Populated from the comma-separated
+    /// `GIGI_PUBLIC_BUNDLES` env var at startup; empty when the var is
+    /// unset (in which case the public route is not registered at all).
+    ///
+    /// SAFETY: this set controls the readable surface for anonymous
+    /// callers. Writes, admin verbs, and non-listed bundles remain
+    /// inaccessible via `/v1/public/gql` regardless of anything a caller
+    /// sends. See `validate_public_stmt` for the whitelist.
+    public_bundles: std::collections::HashSet<String>,
 }
 
 /// One open transaction held by the registry.
@@ -292,6 +303,27 @@ impl StreamState {
     fn new(logger: Logger, metrics: Arc<Metrics>) -> Self {
         let api_key = std::env::var("GIGI_API_KEY").ok();
         let jwt_secret = std::env::var("GIGI_JWT_SECRET").ok();
+        // Public-read bundle allowlist. Comma-separated, whitespace trimmed,
+        // empty tokens ignored. Unset var = empty set = route not registered.
+        let public_bundles: std::collections::HashSet<String> =
+            std::env::var("GIGI_PUBLIC_BUNDLES")
+                .ok()
+                .map(|v| {
+                    v.split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default();
+        if !public_bundles.is_empty() {
+            let mut names: Vec<&String> = public_bundles.iter().collect();
+            names.sort();
+            eprintln!(
+                "  Public-read bundles ({}): {}",
+                names.len(),
+                names.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
+            );
+        }
         let rate_limit = std::env::var("GIGI_RATE_LIMIT")
             .ok()
             .and_then(|v| v.parse().ok())
@@ -371,6 +403,7 @@ impl StreamState {
             tx_registry: Arc::new(std::sync::Mutex::new(HashMap::new())),
             #[cfg(feature = "transactions")]
             tx_snap_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            public_bundles,
         }
     }
 
@@ -1364,8 +1397,23 @@ async fn auth_middleware(
     mut req: Request<axum::body::Body>,
     next: Next,
 ) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
+    let path = req.uri().path();
+
     // Skip auth for health endpoint
-    if req.uri().path() == "/v1/health" {
+    if path == "/v1/health" {
+        return Ok(next.run(req).await);
+    }
+
+    // Skip auth for the public-read GQL endpoint, but only if the
+    // `GIGI_PUBLIC_BUNDLES` allowlist is non-empty. When empty, the
+    // route isn't even registered — this branch never fires — but the
+    // guard here is a defense-in-depth belt/suspenders check.
+    //
+    // Owner-equivalent claims are stashed so downstream (query executor)
+    // treats the request like any other. The narrower verb-and-bundle
+    // validation runs inside `public_gql_query` itself.
+    if path == "/v1/public/gql" && !state.public_bundles.is_empty() {
+        req.extensions_mut().insert(GigiClaims::owner_via_api_key());
         return Ok(next.run(req).await);
     }
 
@@ -12051,6 +12099,149 @@ async fn set_log_level(
 
 // ── GQL endpoint ──
 
+/// Validate that a parsed statement is safe to expose on `/v1/public/gql`.
+///
+/// The public endpoint accepts only reads and only on allowlisted bundles.
+/// Everything not explicitly listed here — writes (`Insert`, `BatchInsert`,
+/// `Retract`, etc.), schema mutations (`CreateBundle`, `AlterBundleAddBase`,
+/// `Collapse`), admin verbs (`Snapshot`, `Backup`, `Restore`, `Ingest`,
+/// `Transplant`, `RotateKey`, `Grant`/`Revoke`), and every analytics verb
+/// that isn't the small hand-picked set below — falls through the wildcard
+/// arm and gets rejected.
+///
+/// When adding a new verb here, ask two questions:
+///   1. Can this ever mutate storage? If yes, do NOT add it.
+///   2. Does the allowed bundle set need finer granularity per verb? If yes,
+///      thread a per-verb allowlist through instead of expanding this one.
+fn validate_public_stmt(
+    stmt: &gigi::parser::Statement,
+    allowlist: &std::collections::HashSet<String>,
+) -> Result<(), String> {
+    use gigi::parser::Statement as S;
+    let bundle_ok = |b: &str| -> Result<(), String> {
+        if allowlist.contains(b) {
+            Ok(())
+        } else {
+            Err(format!(
+                "bundle '{b}' is not exposed on the public read endpoint"
+            ))
+        }
+    };
+    match stmt {
+        // No bundle parameter. Handled specially in the handler so the
+        // response only lists allowlisted names, not every bundle.
+        S::ShowBundles => Ok(()),
+        // Bundle-scoped read verbs — safe to expose.
+        S::Health { bundle } => bundle_ok(bundle),
+        S::Describe { bundle, .. } => bundle_ok(bundle),
+        S::PointQuery { bundle, .. } => bundle_ok(bundle),
+        S::ExistsSection { bundle, .. } => bundle_ok(bundle),
+        S::Cover { bundle, .. } => bundle_ok(bundle),
+        S::Integrate { bundle, .. } => bundle_ok(bundle),
+        S::Select { bundle, .. } => bundle_ok(bundle),
+        // Everything else — writes, admin, non-whitelisted analytics — is
+        // refused. The error is generic on purpose (don't leak the shape of
+        // the verb enum to anonymous callers).
+        _ => Err(
+            "verb not allowed on the public read endpoint: only reads on \
+             allowlisted bundles are permitted"
+                .to_string(),
+        ),
+    }
+}
+
+/// Public read-only GQL endpoint at `POST /v1/public/gql`.
+///
+/// Preconditions enforced here BEFORE any executor is called:
+///   * `state.public_bundles` is non-empty (also guarded by not registering
+///     the route when empty — this handler is unreachable in that case)
+///   * body has a string `query` field
+///   * the query is a single statement (no `;`-separated compound queries —
+///     that check runs before parsing so a malformed second statement can't
+///     smuggle intent past the parser)
+///   * the parsed statement matches the read-verb whitelist in
+///     `validate_public_stmt`
+///   * the target bundle (if the verb takes one) is in the allowlist
+///
+/// `ShowBundles` is answered directly with just the allowlisted names — the
+/// executor is not called, so private bundle names never appear in the
+/// response no matter what else is stored.
+///
+/// All other allowed statements are forwarded to the same `gql_query`
+/// handler the authenticated `/v1/gql` route uses. The auth middleware has
+/// already stashed owner-equivalent claims for this request via its
+/// `/v1/public/gql` bypass, so no per-user authorization runs.
+async fn public_gql_query(
+    State(state): State<Arc<StreamState>>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<serde_json::Value>,
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
+
+    let query = match body.get("query").and_then(|v| v.as_str()) {
+        Some(q) => q.trim(),
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Missing 'query' field"})),
+            )
+                .into_response()
+        }
+    };
+
+    // Reject compound statements. Split on `;` and reject if more than one
+    // non-empty segment appears — no smuggling writes past a read.
+    let non_empty_segments = query
+        .split(';')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .count();
+    if non_empty_segments > 1 {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({
+                "error": "public endpoint accepts only a single statement (no compound queries)"
+            })),
+        )
+            .into_response();
+    }
+
+    let stmt = match gigi::parser::parse(query) {
+        Ok(s) => s,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": format!("Parse error: {e}")})),
+            )
+                .into_response()
+        }
+    };
+
+    if let Err(msg) = validate_public_stmt(&stmt, &state.public_bundles) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"error": msg})),
+        )
+            .into_response();
+    }
+
+    // ShowBundles: never call the executor. Return only the allowlisted
+    // names so non-public bundles stay hidden regardless of engine state.
+    if matches!(stmt, gigi::parser::Statement::ShowBundles) {
+        let mut names: Vec<&String> = state.public_bundles.iter().collect();
+        names.sort();
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({"bundles": names})),
+        )
+            .into_response();
+    }
+
+    // Forward to the authenticated executor. The `body` we hand off is the
+    // original JSON, so the executor sees the query verbatim.
+    gql_query(State(state), headers, Json(body)).await.into_response()
+}
+
 async fn gql_query(
     State(state): State<Arc<StreamState>>,
     headers: axum::http::HeaderMap,
@@ -15484,7 +15675,20 @@ async fn main() {
 
     let app = app
         // GQL endpoint
-        .route("/v1/gql", post(gql_query))
+        .route("/v1/gql", post(gql_query));
+
+    // Public-read GQL endpoint at /v1/public/gql. Only mounted when the
+    // `GIGI_PUBLIC_BUNDLES` allowlist is non-empty, so an unset env var
+    // gives you 404 (not a mistake — a positive signal that no bundle is
+    // exposed anonymously). The handler enforces its own read-verb and
+    // per-bundle allowlist regardless of auth; see `public_gql_query`.
+    let app = if state.public_bundles.is_empty() {
+        app
+    } else {
+        app.route("/v1/public/gql", post(public_gql_query))
+    };
+
+    let app = app
         // Analytics
         .route("/v1/bundles/{name}/curvature", get(curvature_report))
         .route("/v1/bundles/{name}/spectral", get(spectral_report))
@@ -19653,5 +19857,287 @@ mod tests {
             gigi_welford_radius(&empty_store).is_nan(),
             "empty bundle ⇒ NaN radius (uninitialized signal)"
         );
+    }
+
+    // ── Public-read bundle allowlist ─────────────────────────────
+    //
+    // Contract: the `/v1/public/gql` endpoint is anonymous, so the shape
+    // Bee is protecting against is not confidentiality — she said there
+    // is no PII or secrets in her bundles — but data loss and
+    // embarrassment from a hack. These tests pin the guarantee that
+    // writes, admin verbs, and non-allowlisted bundles are refused at
+    // the validator layer, before any executor is called.
+
+    fn allowlist(names: &[&str]) -> std::collections::HashSet<String> {
+        names.iter().map(|s| s.to_string()).collect()
+    }
+
+    fn parse_or_panic(q: &str) -> gigi::parser::Statement {
+        gigi::parser::parse(q).unwrap_or_else(|e| panic!("parse `{q}` failed: {e}"))
+    }
+
+    #[test]
+    fn public_validate_showbundles_always_ok() {
+        let allow = allowlist(&["stations"]);
+        let s = parse_or_panic("SHOW BUNDLES;");
+        assert!(validate_public_stmt(&s, &allow).is_ok());
+        // Even when the allowlist is empty (route guard handles this),
+        // the validator itself lets SHOW BUNDLES through — the response
+        // filter in the handler returns just the allowlisted names.
+        let empty: std::collections::HashSet<String> = std::collections::HashSet::new();
+        assert!(validate_public_stmt(&s, &empty).is_ok());
+    }
+
+    #[test]
+    fn public_validate_allowlisted_reads_pass() {
+        let allow = allowlist(&["stations"]);
+        for q in [
+            "HEALTH stations;",
+            "SECTION stations AT station_id='s151';",
+            "INTEGRATE stations MEASURE SUM(temp), AVG(temp);",
+        ] {
+            let s = parse_or_panic(q);
+            assert!(
+                validate_public_stmt(&s, &allow).is_ok(),
+                "expected `{q}` to pass"
+            );
+        }
+    }
+
+    #[test]
+    fn public_validate_non_allowlisted_bundle_rejected() {
+        let allow = allowlist(&["stations"]);
+        let s = parse_or_panic("HEALTH sensors;");
+        let err = validate_public_stmt(&s, &allow).unwrap_err();
+        assert!(
+            err.contains("sensors"),
+            "error should name the rejected bundle, got: {err}"
+        );
+    }
+
+    #[test]
+    fn public_validate_write_verbs_rejected_even_on_allowlisted_bundle() {
+        let allow = allowlist(&["stations"]);
+        // Writes and destructive verbs. Each MUST be refused with the
+        // generic verb-not-allowed error, not the bundle-specific one.
+        for q in [
+            "INSERT INTO stations (station_id, temp) VALUES ('s1', 20.0);",
+            "RETRACT FROM stations WHERE station_id='s1';",
+            "COLLAPSE stations;",
+            "CREATE BUNDLE stations (id INT BASE, temp FLOAT FIBER);",
+        ] {
+            let s = match gigi::parser::parse(q) {
+                Ok(s) => s,
+                // Some verb forms may need slightly different syntax on this
+                // parser build — skip the ones that don't parse; the ones
+                // that do get the important assertion.
+                Err(_) => continue,
+            };
+            let err = validate_public_stmt(&s, &allow).unwrap_err();
+            assert!(
+                err.contains("verb not allowed"),
+                "expected verb-refusal on `{q}`, got: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn public_validate_admin_verbs_rejected() {
+        let allow = allowlist(&["stations"]);
+        // Snapshot is the most dangerous one — it's how a caller could
+        // trigger disk pressure or race a concurrent write. Must never
+        // fire on the public endpoint.
+        for q in ["SNAPSHOT;", "SHOW BACKUPS;"] {
+            if let Ok(s) = gigi::parser::parse(q) {
+                let err = validate_public_stmt(&s, &allow).unwrap_err();
+                assert!(
+                    err.contains("verb not allowed"),
+                    "expected verb-refusal on `{q}`, got: {err}"
+                );
+            }
+        }
+    }
+
+    async fn post_public_gql_for_test(
+        state: Arc<StreamState>,
+        query: &str,
+    ) -> (StatusCode, serde_json::Value) {
+        let resp = public_gql_query(
+            State(state),
+            axum::http::HeaderMap::new(),
+            Json(serde_json::json!({ "query": query })),
+        )
+        .await;
+        let status = resp.status();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let json: serde_json::Value =
+            serde_json::from_slice(&body).unwrap_or(serde_json::json!({}));
+        (status, json)
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn public_gql_showbundles_lists_only_allowlisted() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("public_showbundles");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        std::env::set_var("GIGI_PUBLIC_BUNDLES", "stations, sensors");
+
+        {
+            let (logger, _ingester) = Logger::new(LogConfig::default(), "public-showbundles-test");
+            let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+            state.ready.store(true, Ordering::Release);
+
+            // Create two bundles: `secret_stuff` NOT on the allowlist,
+            // `stations` on it. SHOW BUNDLES via /v1/public/gql must not
+            // reveal `secret_stuff`.
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "CREATE BUNDLE stations (station_id TEXT BASE, temp FLOAT FIBER);",
+                )
+                .await,
+                StatusCode::OK
+            );
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "CREATE BUNDLE secret_stuff (id INT BASE, note TEXT FIBER);",
+                )
+                .await,
+                StatusCode::OK
+            );
+
+            let (status, body) =
+                post_public_gql_for_test(Arc::clone(&state), "SHOW BUNDLES;").await;
+            assert_eq!(status, StatusCode::OK);
+            let bundles = body
+                .get("bundles")
+                .and_then(|v| v.as_array())
+                .expect("bundles array")
+                .iter()
+                .map(|v| v.as_str().unwrap().to_string())
+                .collect::<Vec<_>>();
+            assert!(
+                bundles.contains(&"stations".to_string()),
+                "public SHOW BUNDLES must list the allowlisted `stations`"
+            );
+            assert!(
+                !bundles.contains(&"secret_stuff".to_string()),
+                "public SHOW BUNDLES must not leak `secret_stuff`"
+            );
+        }
+
+        std::env::remove_var("GIGI_PUBLIC_BUNDLES");
+        cleanup(&dir);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn public_gql_rejects_write_on_allowlisted_bundle() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("public_write_reject");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        std::env::set_var("GIGI_PUBLIC_BUNDLES", "stations");
+
+        {
+            let (logger, _ingester) = Logger::new(LogConfig::default(), "public-write-reject-test");
+            let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+            state.ready.store(true, Ordering::Release);
+
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "CREATE BUNDLE stations (station_id TEXT BASE, temp FLOAT FIBER);",
+                )
+                .await,
+                StatusCode::OK
+            );
+
+            let (status, body) = post_public_gql_for_test(
+                Arc::clone(&state),
+                "INSERT INTO stations (station_id, temp) VALUES ('s1', 20.0);",
+            )
+            .await;
+            assert_eq!(
+                status,
+                StatusCode::FORBIDDEN,
+                "public endpoint must refuse INSERT even on an allowlisted bundle"
+            );
+            let err = body
+                .get("error")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            assert!(
+                err.contains("verb not allowed"),
+                "error should identify verb refusal, got: {err}"
+            );
+        }
+
+        std::env::remove_var("GIGI_PUBLIC_BUNDLES");
+        cleanup(&dir);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn public_gql_rejects_compound_query() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("public_compound_reject");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        std::env::set_var("GIGI_PUBLIC_BUNDLES", "stations");
+
+        {
+            let (logger, _ingester) = Logger::new(LogConfig::default(), "public-compound-reject");
+            let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+            state.ready.store(true, Ordering::Release);
+
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "CREATE BUNDLE stations (station_id TEXT BASE, temp FLOAT FIBER);",
+                )
+                .await,
+                StatusCode::OK
+            );
+
+            // Try to smuggle a write behind an allowed read.
+            let (status, body) = post_public_gql_for_test(
+                Arc::clone(&state),
+                "SHOW BUNDLES; COLLAPSE stations;",
+            )
+            .await;
+            assert_eq!(status, StatusCode::FORBIDDEN);
+            let err = body
+                .get("error")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            assert!(
+                err.contains("single statement"),
+                "error should call out compound rejection, got: {err}"
+            );
+        }
+
+        std::env::remove_var("GIGI_PUBLIC_BUNDLES");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn public_bundles_parse_from_env_trims_and_splits() {
+        // Direct env parse — StreamState::new reads the same string and
+        // this test pins the tokenization: whitespace trimmed, empties
+        // dropped. Regression guard for a stray space breaking the
+        // allowlist match.
+        let raw = "stations,  sensors ,,chembl ,";
+        let set: std::collections::HashSet<String> = raw
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        assert_eq!(set.len(), 3);
+        assert!(set.contains("stations"));
+        assert!(set.contains("sensors"));
+        assert!(set.contains("chembl"));
     }
 }

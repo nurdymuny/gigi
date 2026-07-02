@@ -746,6 +746,47 @@ fn cubic_l_from_topology(topology: &str) -> Option<usize> {
     after_l[..end].parse::<usize>().ok()
 }
 
+/// Recover the OBC axis index `k` from a `Lattice`'s topology hint.
+/// Returns `Some(k)` when the hint carries `_OBC_AXIS{k}` and `None`
+/// otherwise (PERIODIC). The axis index is used by the GAUGE_FIELD
+/// ingest path to omit records whose (mu, coords) would wrap across
+/// the open boundary.
+#[cfg(feature = "gauge")]
+fn obc_axis_from_topology(topology: &str) -> Option<usize> {
+    let idx = topology.rfind("_OBC_AXIS")?;
+    let tail = &topology[idx + "_OBC_AXIS".len()..];
+    if !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()) {
+        tail.parse::<usize>().ok()
+    } else {
+        None
+    }
+}
+
+/// Row-major site encoding used by the GAUGE_FIELD ingest emitter:
+/// `site_of(&[c0, c1, ..., c_{D-1}]) = ((c0 * L + c1) * L + c2) ... + c_{D-1}`,
+/// i.e. `c0` (site_x) is most-significant. Matches the site-flat
+/// decomposition in `ingest_npz_as_gauge_field`, so the encoded
+/// vertex ids align with the per-record `site_*` fields.
+#[cfg(feature = "gauge")]
+fn site_of_row_major(coords: &[usize], l: usize) -> usize {
+    let mut s = 0usize;
+    for &c in coords {
+        s = s * l + c;
+    }
+    s
+}
+
+/// Row-major shift-by-+1 along axis `a`, modulo `L`. Callers detect
+/// wrap edges by comparing the original `coords[a] == L - 1` before
+/// invoking this helper; the modulo here is what PERIODIC lattices
+/// consume unchanged.
+#[cfg(feature = "gauge")]
+fn shift_plus(coords: &[usize], a: usize, l: usize) -> Vec<usize> {
+    let mut out = coords.to_vec();
+    out[a] = (out[a] + 1) % l;
+    out
+}
+
 /// GAUGE_FIELD-interpretation INGEST. Called by the parser when
 /// `AS GAUGE_FIELD GROUP <g> ON LATTICE <l>` is present on the INGEST
 /// statement. Reads a single NPZ array of shape
@@ -783,6 +824,7 @@ pub fn execute_ingest_as_gauge_field(
         "lattice `{lattice_name}` topology hint `{topology}` is not a CUBIC form; GAUGE_FIELD interpretation requires CUBIC"
     )))?;
     let l_from_hint = cubic_l_from_topology(topology);
+    let obc_axis = obc_axis_from_topology(topology);
 
     match format {
         IngestFormat::Npz => ingest_npz_as_gauge_field(
@@ -793,6 +835,7 @@ pub fn execute_ingest_as_gauge_field(
             group,
             d,
             l_from_hint,
+            obc_axis,
         ),
     }
 }
@@ -808,6 +851,7 @@ fn ingest_npz_as_gauge_field(
     group: crate::gauge::Group,
     d: usize,
     l_from_hint: Option<usize>,
+    obc_axis: Option<usize>,
 ) -> Result<IngestStats, IngestError> {
     // Open the archive, require exactly one array member (the harvest
     // convention). Multi-array archives error clearly.
@@ -883,12 +927,18 @@ fn ingest_npz_as_gauge_field(
     }
 
     // Build inferred schema — canonical base + fiber fields.
+    // Base fields carry (config_id, mu, site_*..., vertex_a, vertex_b).
+    // The vertex_a / vertex_b endpoints are computed per record from
+    // the lattice's row-major adjacency, giving SPECTRAL_GAUGE the edge
+    // set it consumes without a separate site-decoding fallback.
     let mut inferred: Vec<InferredFieldSchema> = Vec::new();
     inferred.push(InferredFieldSchema::numeric("config_id", /*is_base=*/ true));
     inferred.push(InferredFieldSchema::numeric("mu", /*is_base=*/ true));
     for i in 0..d {
         inferred.push(InferredFieldSchema::numeric(SITE_AXIS_NAMES[i], true));
     }
+    inferred.push(InferredFieldSchema::numeric("vertex_a", /*is_base=*/ true));
+    inferred.push(InferredFieldSchema::numeric("vertex_b", /*is_base=*/ true));
     let fiber_names = canonical_fiber_names(group);
     for name in fiber_names {
         inferred.push(InferredFieldSchema::numeric(name, /*is_base=*/ false));
@@ -900,6 +950,12 @@ fn ingest_npz_as_gauge_field(
     // Stream records in row-major order matching the NPZ layout.
     // Shape = [n_configs, D, L, L, ..., L, fiber]. Site coordinates
     // are decoded row-major (site_x is most-significant).
+    //
+    // OBC AXIS k semantics: when the lattice hint carries `_OBC_AXIS{k}`,
+    // records whose mu = k AND coords[k] = L - 1 are the wrap edges the
+    // lattice's own edge constructor drops. Those records are omitted
+    // entirely from the ingested bundle so its record set matches the
+    // lattice edge set exactly.
     let mut batch: Vec<Record> = Vec::with_capacity(INGEST_BATCH_SIZE.min(64));
     let mut records_emitted: usize = 0;
     let ln = l_ref.pow(d as u32); // sites per (config, mu)
@@ -915,8 +971,25 @@ fn ingest_npz_as_gauge_field(
                     site[axis] = rem % l_ref;
                     rem /= l_ref;
                 }
+
+                // OBC omission: drop records that would wrap across
+                // the open boundary. Everything else stays.
+                if let Some(k) = obc_axis {
+                    if mu == k && site[k] == l_ref - 1 {
+                        continue;
+                    }
+                }
+
                 let base = ((config_id * d + mu) * ln + site_flat) * expected_fiber;
                 let slice = &data[base..base + expected_fiber];
+
+                // vertex_a / vertex_b from the row-major site encoding
+                // + shift-by-+1 along mu. On PERIODIC lattices, the
+                // shift wraps modulo L, matching the lattice's own
+                // edge (s → site_of(shift_plus(coords, mu))).
+                let coords = &site[..d];
+                let vertex_a = site_of_row_major(coords, l_ref);
+                let vertex_b = site_of_row_major(&shift_plus(coords, mu, l_ref), l_ref);
 
                 let mut record: Record = Record::new();
                 record.insert("config_id".to_string(), Value::Integer(config_id as i64));
@@ -927,6 +1000,8 @@ fn ingest_npz_as_gauge_field(
                         Value::Integer(site[axis] as i64),
                     );
                 }
+                record.insert("vertex_a".to_string(), Value::Integer(vertex_a as i64));
+                record.insert("vertex_b".to_string(), Value::Integer(vertex_b as i64));
                 for (i, name) in fiber_names.iter().enumerate() {
                     record.insert((*name).to_string(), Value::Float(slice[i]));
                 }

@@ -155,11 +155,17 @@ fn test_halcyon_l24_workflow_e2e_all_four_concepts() {
             "l4_obc",
         )
         .expect("INGEST AS GAUGE_FIELD succeeds on OBC lattice");
-        let expected_records = n_configs * d * l.pow(d as u32);
+        // OBC AXIS 0 omits records whose (mu = 0, site_x = L - 1). One
+        // dropped per (config, boundary site on axis 0): L^(D-1) per
+        // config. Ingested record set then equals the lattice edge set
+        // exactly (28 edges per config × n_configs).
+        let periodic = n_configs * d * l.pow(d as u32);
+        let dropped = n_configs * l.pow((d - 1) as u32);
+        let expected_records = periodic - dropped;
         assert_eq!(
             stats.records_emitted, expected_records,
-            "records = n_configs * D * L^D = {} * {} * {}^{} = {}",
-            n_configs, d, l, d, expected_records
+            "OBC records = n_configs * (D * L^D - L^(D-1)) = {} * ({} * {}^{} - {}^{}) = {}",
+            n_configs, d, l, d, l, d - 1, expected_records
         );
         assert!(stats.bundle_created, "bundle auto-created from canonical schema");
     }

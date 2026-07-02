@@ -141,6 +141,21 @@
   #glog span { font-size: 10.5px; }
   #glog .ok { color: #6fe3ae; }
   #glog .sim { color: var(--text-muted); font-style: italic; }
+
+  /* class-flow strip: obtuse-class composition per level (standalone add-on) */
+  #classflow { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+  #classflow .cf-title { font-size: 11px; color: var(--text-muted); margin-bottom: 6px;
+    letter-spacing: 0.04em; text-transform: uppercase; }
+  #classflow .cf-row { display: flex; align-items: center; gap: 8px; margin: 4px 0;
+    background: none; border: 0; padding: 2px; width: 100%; cursor: pointer;
+    border-radius: 6px; }
+  #classflow .cf-row:hover { background: #2a2a28; }
+  #classflow .cf-row.cur { outline: 1.5px solid var(--text-secondary); }
+  #classflow .cf-lab { font: 11px ui-monospace, Menlo, Consolas, monospace;
+    color: var(--text-secondary); flex: 0 0 22px; text-align: left; }
+  #classflow .cf-bar { flex: 1; display: flex; gap: 2px; height: 11px; }
+  #classflow .cf-seg { border-radius: 2px; min-width: 2px; }
+  #classflow .cf-cap { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -238,6 +253,7 @@
     <div class="ctl-row"><label></label><span class="chk"><input id="cut" type="checkbox"> hide top half</span></div>
     <div class="ctl-row"><label></label><span class="chk"><input id="spin" type="checkbox" checked> auto-rotate</span></div>
     <div id="legend"></div>
+    <div id="classflow" aria-label="obtuse-class composition per refinement level"></div>
   </div>
 </div>
 
@@ -3933,6 +3949,148 @@ void main() {
  * Copyright 2010-2023 Three.js Authors
  * SPDX-License-Identifier: MIT
  */
+</script>
+<script>
+// Class-flow strip — standalone add-on, intentionally separate from the
+// bundled module so page polish and mesh math can evolve independently.
+// Recomputes the same deterministic mesh (Kuhn n=4, sphere r=0.32,
+// band 0.09, 3 longest-edge refinement passes) and shows the obtuse-class
+// composition of every level as one stacked bar per level. This is the
+// research question made glanceable: does cutting lower the class?
+(function () {
+  var N = 4, LEVELS = 3, C = [0.5, 0.5, 0.5], R = 0.32, BAND = 0.09;
+  var PAIRS = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
+  function sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
+  function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+  function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+  function nrm(a){return Math.hypot(a[0],a[1],a[2]);}
+
+  function kuhn() {
+    var t = [], h = 1 / N,
+        perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+    for (var x = 0; x < N; x++) for (var y = 0; y < N; y++) for (var z = 0; z < N; z++)
+      for (var p = 0; p < 6; p++) {
+        var v = [[x*h, y*h, z*h]];
+        for (var k = 0; k < 3; k++) {
+          var q = v[v.length-1].slice(); q[perms[p][k]] += h; v.push(q);
+        }
+        t.push(v);
+      }
+    return t;
+  }
+  function obtuseLabel(v) {
+    var normals = [];
+    for (var i = 0; i < 4; i++) {
+      var idx = [0,1,2,3].filter(function (j) { return j !== i; });
+      var a = v[idx[0]], b = v[idx[1]], c = v[idx[2]];
+      var n = cross(sub(b,a), sub(c,a)), L = nrm(n);
+      n = [n[0]/L, n[1]/L, n[2]/L];
+      if (dot(n, sub(v[i], a)) > 0) n = [-n[0],-n[1],-n[2]];
+      normals.push(n);
+    }
+    var ob = [];
+    for (var e = 0; e < 6; e++) {
+      var pr = PAIRS[e],
+          f = [0,1,2,3].filter(function (k) { return k !== pr[0] && k !== pr[1]; }),
+          ang = Math.acos(Math.max(-1, Math.min(1, -dot(normals[f[0]], normals[f[1]]))));
+      if (ang > Math.PI / 2 + 1e-12) ob.push(pr);
+    }
+    var n2 = ob.length;
+    if (n2 === 0) return 'Class 0';
+    if (n2 === 1) return 'Class 1';
+    if (n2 === 2) {
+      var shared = ob[0].some(function (x) { return ob[1].indexOf(x) >= 0; });
+      return shared ? 'Class 2 · adjacent' : 'Class 2 · opposite';
+    }
+    if (n2 === 3) {
+      var cnt = {};
+      ob.forEach(function (e2) { cnt[e2[0]] = (cnt[e2[0]]||0)+1; cnt[e2[1]] = (cnt[e2[1]]||0)+1; });
+      var mx = Math.max.apply(null, Object.keys(cnt).map(function (k) { return cnt[k]; }));
+      if (mx === 3) return 'Class 3 · star';
+      if (Object.keys(cnt).length === 3) return 'Class 3 · triangle';
+      return 'Class 3 · path';
+    }
+    return 'Class ' + n2;
+  }
+  function bisect(v) {
+    var best = 0, bl = -1;
+    for (var e = 0; e < 6; e++) {
+      var l = nrm(sub(v[PAIRS[e][1]], v[PAIRS[e][0]]));
+      if (l > bl) { bl = l; best = e; }
+    }
+    var a = PAIRS[best][0], b = PAIRS[best][1],
+        m = [(v[a][0]+v[b][0])/2, (v[a][1]+v[b][1])/2, (v[a][2]+v[b][2])/2],
+        c1 = v.slice(), c2 = v.slice();
+    c1[a] = m; c2[b] = m;
+    return [c1, c2];
+  }
+  function nearBall(v) {
+    return v.some(function (p) { return Math.abs(nrm(sub(p, C)) - R) < BAND; });
+  }
+
+  var ORDER = ['Class 0','Class 1','Class 2 · adjacent','Class 2 · opposite',
+               'Class 3 · star','Class 3 · path','Class 3 · triangle'];
+  var COLOR = {'Class 0':'#199e70','Class 1':'#3987e5','Class 2 · adjacent':'#c98500',
+               'Class 2 · opposite':'#d95926','Class 3 · star':'#e66767',
+               'Class 3 · path':'#d55181','Class 3 · triangle':'#9085e9'};
+
+  var cur = kuhn(), comp = [];
+  for (var l = 0; l <= LEVELS; l++) {
+    var counts = {};
+    cur.forEach(function (v) {
+      var lab = obtuseLabel(v);
+      counts[lab] = (counts[lab] || 0) + 1;
+    });
+    comp.push({ counts: counts, total: cur.length });
+    if (l < LEVELS)
+      cur = cur.reduce(function (acc, v) {
+        if (nearBall(v)) { var cs = bisect(v); acc.push(cs[0], cs[1]); }
+        else acc.push(v);
+        return acc;
+      }, []);
+  }
+
+  var box = document.getElementById('classflow');
+  if (!box) return;
+  var html = '<div class="cf-title">Obtuse classes, level by level</div>';
+  comp.forEach(function (c, l) {
+    var segs = ORDER.filter(function (k) { return c.counts[k]; }).map(function (k) {
+      var n3 = c.counts[k], pct = (100 * n3 / c.total);
+      return '<span class="cf-seg" style="flex:' + pct.toFixed(3) +
+             ';background:' + (COLOR[k] || '#fff') + '" title="' + k + ': ' +
+             n3.toLocaleString() + ' of ' + c.total.toLocaleString() + '"></span>';
+    }).join('');
+    html += '<button type="button" class="cf-row" data-cf-level="' + l +
+            '" aria-label="jump to level ' + l + '">' +
+            '<span class="cf-lab">L' + l + '</span>' +
+            '<span class="cf-bar">' + segs + '</span></button>';
+  });
+  html += '<div class="cf-cap">Green = no obtuse angles. The first cut floods L1 with ' +
+          'blue (one obtuse angle each); the next cut turns most of them green ' +
+          'again — the class moves <em>both ways</em> under cutting, which is ' +
+          'exactly the open question. Click a bar to jump to that level.</div>';
+  box.innerHTML = html;
+
+  var levelBtns = document.querySelectorAll('#levels button');
+  function highlight() {
+    var on = 0;
+    levelBtns.forEach(function (b, i) { if (b.classList.contains('on')) on = i; });
+    box.querySelectorAll('.cf-row').forEach(function (r, i) {
+      r.classList.toggle('cur', i === on);
+    });
+  }
+  box.querySelectorAll('.cf-row').forEach(function (r) {
+    r.addEventListener('click', function () {
+      var i = +r.getAttribute('data-cf-level');
+      if (levelBtns[i]) levelBtns[i].click();
+      highlight();
+    });
+  });
+  document.getElementById('levels').addEventListener('click', function () {
+    setTimeout(highlight, 0);
+  });
+  highlight();
+})();
 </script>
 </body>
 </html>

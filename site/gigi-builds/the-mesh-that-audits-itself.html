@@ -23,11 +23,25 @@
   #scene { position: absolute; inset: 0; }
   .panel { position: absolute; background: var(--panel); border: 1px solid var(--border);
     border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(6px); box-sizing: border-box; }
-  #hdr { top: 14px; left: 14px; max-width: 380px; }
-  #hdr h1 { margin: 0 0 2px; font-size: 15px; font-weight: 650; }
-  #hdr p { margin: 0; color: var(--text-secondary); font-size: 12px; }
-  #hdr .src { color: var(--text-muted); font-size: 11px; margin-top: 6px; }
-  #controls { bottom: 14px; left: 14px; width: 240px; }
+  #hdr { top: 14px; left: 14px; bottom: 14px; width: 400px; max-width: none;
+    display: flex; flex-direction: column; overflow-y: auto; }
+  #hdr h1 { margin: 0 0 6px; font-size: 17px; font-weight: 650; }
+  #hdr p { margin: 8px 0 0; color: var(--text-secondary); font-size: 12.5px; line-height: 1.5; }
+  #hdr .lede { color: var(--text-primary); font-size: 13px; font-style: italic; margin-top: 2px; }
+  #hdr .src { color: var(--text-muted); font-size: 11px; margin-top: auto; padding-top: 12px; }
+  #hdr .try { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+  #hdr .try-h { color: var(--text-secondary); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; font-weight: 700; margin-bottom: 4px; }
+  #hdr .try ul { color: var(--text-secondary); font-size: 12px; margin: 0;
+    padding-left: 18px; line-height: 1.55; }
+  #hdr .try li { margin: 3px 0; }
+  #hdr .try b { color: var(--text-primary); font-weight: 600; }
+  .right-col { position: absolute; top: 14px; right: 14px; width: 320px;
+    display: flex; flex-direction: column; gap: 12px;
+    max-height: calc(100vh - 28px); overflow-y: auto; }
+  .right-col .panel { position: relative; top: auto; right: auto; bottom: auto; left: auto;
+    width: 100%; }
+  #controls { }
   .ctl-row { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
   .ctl-row label { color: var(--text-secondary); font-size: 12px; flex: 0 0 62px; }
   .seg { display: flex; gap: 4px; }
@@ -41,7 +55,6 @@
   .chip { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 10px; }
   .lg-name { color: var(--text-secondary); flex: 1; }
   .lg-count { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-  #telemetry { top: 14px; right: 14px; width: 300px; }
   #telemetry h2 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-bottom: 10px; }
   .tile .v { font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
@@ -63,16 +76,22 @@
   #tip .t-class { display: flex; align-items: center; gap: 6px; font-weight: 600; }
   #tip .t-kv { color: var(--text-secondary); margin-top: 3px; }
   #tip .t-kv b { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
-  /* narrow screens: keep panels inside the viewport, park controls under the header */
-  @media (max-width: 720px) {
-    #hdr { left: 10px; right: 10px; max-width: none; }
-    #controls { top: auto; bottom: 10px; right: 10px; left: auto; width: calc(50% - 15px); max-width: 220px; }
-    #telemetry { left: 10px; right: auto; bottom: 10px; width: calc(50% - 15px); max-width: 300px; }
+  /* narrow screens: stack — header, then 3D scene, then two cards side-by-side below */
+  @media (max-width: 820px) {
+    html, body { overflow: auto; height: auto; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    #hdr { order: 1; position: static; width: auto; max-width: none; margin: 10px; height: auto;
+      overflow-y: visible; display: block; }
+    #scene { order: 2; height: 55vh; min-height: 320px; position: relative; inset: auto;
+      margin: 0 10px; border-radius: 10px; }
+    .right-col { order: 3; position: static; width: auto; max-height: none;
+      margin: 10px; flex-direction: row; gap: 10px; overflow-y: visible; }
+    .right-col .panel { flex: 1 1 0; min-width: 0; }
     #telemetry #curve { width: 100%; height: auto; }
     #telemetry .tiles { grid-template-columns: 1fr 1fr; gap: 4px 10px; }
   }
   @media (max-width: 480px) {
-    #controls, #telemetry { display: none; }
+    .right-col { display: none; }
   }
 </style>
 </head>
@@ -81,39 +100,54 @@
 
 <div class="panel" id="hdr">
   <h1>The Mesh That Audits Itself</h1>
+  <p class="lede">A chapter from <i>GIGI Builds</i> that didn&rsquo;t fit in print &mdash;
+     playable in your browser.</p>
   <p>Picture a cube of clay sliced into 384 identical little pyramids &mdash;
      that&rsquo;s <i>Kuhn&rsquo;s slicing</i>. Now imagine a sphere hidden inside the
      cube. Wherever a pyramid touches the sphere, we cut its longest edge in
      half and repeat &mdash; like a mapmaker adding detail only where the
      coastline is jagged. The tetrahedra hugging the sphere get tiny; the
      ones out in the corners stay big and lazy.</p>
-  <p>Each tetrahedron is colored by its <b>shape family</b> &mdash; the
-     pattern its six inside-angles make, once you stop caring which corner
-     you labeled first. Two tets pointing different directions but sharing
-     the same angles belong to the same family.</p>
-  <p class="src">Bonus chapter &middot; <i>GIGI Builds</i> &middot; drag to spin &middot; hover a tetrahedron to see its data</p>
-</div>
-
-<div class="panel" id="controls">
-  <div class="ctl-row"><label>Level</label><div class="seg" id="levels"></div></div>
-  <div class="ctl-row"><label>Explode</label><input id="explode" type="range" min="0" max="60" value="18"></div>
-  <div class="ctl-row"><label></label><span class="chk"><input id="cut" type="checkbox"> hide top half</span></div>
-  <div class="ctl-row"><label></label><span class="chk"><input id="spin" type="checkbox" checked> auto-rotate</span></div>
-  <div id="legend"></div>
-</div>
-
-<div class="panel" id="telemetry">
-  <h2>The mesh, at this level</h2>
-  <div class="tiles">
-    <div class="tile"><div class="v" id="t-tets">–</div><div class="k">tetrahedra</div></div>
-    <div class="tile"><div class="v" id="t-cells">–</div><div class="k">shape families found</div></div>
-    <div class="tile" title="0 = flat sliver, 1 = perfectly regular tet"><div class="v" id="t-qvol">–</div><div class="k">worst tet quality</div></div>
-    <div class="tile" title="how far the worst tet is from being a sliver — bigger is safer"><div class="v" id="t-dbad">–</div><div class="k">sliver margin (worst)</div></div>
+  <p>Each tetrahedron is colored by its <b>shape family</b> &mdash; the pattern
+     its six inside-angles make, once you stop caring which corner you labeled
+     first. Two tets pointing different directions but sharing the same angles
+     belong to the same family.</p>
+  <p>That&rsquo;s the &ldquo;audit&rdquo; part. Every tetrahedron carries its
+     shape data with it &mdash; family, quality, sliver margin &mdash; so when
+     you ask the mesh &ldquo;is anything bad in here?&rdquo; it answers on the
+     spot. No separate analysis pass, no offline check.</p>
+  <div class="try">
+    <div class="try-h">Try it</div>
+    <ul>
+      <li>Click <b>L0 &rarr; L3</b> to watch cuts happen wherever the sphere hides.</li>
+      <li>Toggle <b>hide top half</b> to peek at what refinement did inside.</li>
+      <li>Drag to spin. Hover any tetrahedron for its exact shape data.</li>
+    </ul>
   </div>
-  <div class="chart-title">worst tet quality across refinement levels</div>
-  <svg id="curve" viewBox="0 0 272 132" preserveAspectRatio="xMidYMid meet" role="img" aria-label="worst tet quality across refinement levels"></svg>
-  <p class="chart-cap">Flat line = quality holds through all four cuts. Maubach&rsquo;s rule promises the blue line can&rsquo;t drop below the yellow one; if it ever did, the theorem broke.</p>
-  <details><summary>the raw numbers</summary><table id="dtable"></table></details>
+  <p class="src">Bonus chapter &middot; <i>GIGI Builds</i></p>
+</div>
+
+<div class="right-col">
+  <div class="panel" id="telemetry">
+    <h2>The mesh, at this level</h2>
+    <div class="tiles">
+      <div class="tile"><div class="v" id="t-tets">–</div><div class="k">tetrahedra</div></div>
+      <div class="tile"><div class="v" id="t-cells">–</div><div class="k">shape families found</div></div>
+      <div class="tile" title="0 = flat sliver, 1 = perfectly regular tet"><div class="v" id="t-qvol">–</div><div class="k">worst tet quality</div></div>
+      <div class="tile" title="how far the worst tet is from being a sliver — bigger is safer"><div class="v" id="t-dbad">–</div><div class="k">sliver margin (worst)</div></div>
+    </div>
+    <div class="chart-title">worst tet quality across refinement levels</div>
+    <svg id="curve" viewBox="0 0 272 132" preserveAspectRatio="xMidYMid meet" role="img" aria-label="worst tet quality across refinement levels"></svg>
+    <p class="chart-cap">Flat line = quality holds through all four cuts. Maubach&rsquo;s rule promises the blue line can&rsquo;t drop below the yellow one; if it ever did, the theorem broke.</p>
+    <details><summary>the raw numbers</summary><table id="dtable"></table></details>
+  </div>
+  <div class="panel" id="controls">
+    <div class="ctl-row"><label>Level</label><div class="seg" id="levels"></div></div>
+    <div class="ctl-row"><label>Explode</label><input id="explode" type="range" min="0" max="60" value="18"></div>
+    <div class="ctl-row"><label></label><span class="chk"><input id="cut" type="checkbox"> hide top half</span></div>
+    <div class="ctl-row"><label></label><span class="chk"><input id="spin" type="checkbox" checked> auto-rotate</span></div>
+    <div id="legend"></div>
+  </div>
 </div>
 
 <div id="tip"></div>

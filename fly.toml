@@ -43,7 +43,7 @@ primary_region = "iad"
   # UNSET or empty ⇒ the /v1/public/gql route is not registered at all
   # (kill switch — remove this line and redeploy to disable public
   # access instantly).
-  GIGI_PUBLIC_BUNDLES = "stations,sensors,chembl"
+  GIGI_PUBLIC_BUNDLES = "stations,sensors,chembl,tetmesh_demo"
 
 [http_service]
   internal_port = 3142

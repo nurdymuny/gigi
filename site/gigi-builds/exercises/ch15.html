@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter 15: The Geometry Is the Encryption — GIGI Builds exercises</title>
+<style>
+  :root {
+    --ink: #17161a; --ink-2: #52514e; --ink-3: #807f76;
+    --paper: #faf7f0; --paper-2: #f1ecdf; --night: #101426; --line: #dcd5c4;
+    --blue: #2a78d6; --aqua: #1baf7a; --yellow: #eda100; --green: #008300;
+    --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--blue); }
+  a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 0.86em;
+    overflow-wrap: anywhere; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 54px; max-width: 1080px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav .crumbs { color: #c9d1ef; font-size: 13.5px; margin-left: auto; }
+  nav .crumbs a { color: #c9d1ef; text-decoration: none; }
+  nav .crumbs a:hover { color: #fff; }
+  header.page { padding: 46px 0 10px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -0.015em;
+    margin: 8px 0 6px; }
+  .partline { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px;
+    color: var(--ink-2); font-weight: 650; }
+  .partline .sw { width: 12px; height: 12px; border-radius: 4px; }
+  .intro { color: var(--ink-2); font-size: 16.5px; max-width: 46em; }
+  .ex { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 26px; margin: 18px 0; }
+  .ex h2 { display: flex; align-items: baseline; gap: 12px; font-size: 19px;
+    margin: 0 0 10px; line-height: 1.3; }
+  .ex .eid { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    font-weight: 700; color: #fff; border-radius: 7px; padding: 3px 9px; flex: 0 0 auto; }
+  .seg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; margin-top: 12px; }
+  .seg p { margin: 0; font-size: 15px; }
+  .seglabel { font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.08em; padding-top: 3px; }
+  .seg-build .seglabel { color: var(--blue); }
+  .seg-receipt .seglabel { color: var(--aqua); }
+  .seg-bonus .seglabel { color: var(--ink-3); }
+  .pager { display: flex; justify-content: space-between; gap: 14px; margin: 40px 0 12px; }
+  .pager a { text-decoration: none; font-weight: 650; font-size: 14.5px;
+    border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 16px; }
+  footer { color: var(--ink-3); font-size: 13px; padding: 26px 0 44px; }
+  /* hub */
+  .hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px; margin: 26px 0 40px; }
+  .hub a { display: block; background: #fff; border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 10px; padding: 15px 18px;
+    text-decoration: none; color: var(--ink); }
+  .hub a:hover { border-color: var(--ink-3); }
+  .hub .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  .hub h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
+  .hub .range { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 620px) { .seg { grid-template-columns: 1fr; gap: 2px; } }
+  /* workbook layer */
+  .exwork { display: flex; gap: 12px; align-items: center; margin-top: 16px;
+    border-top: 1px dashed var(--line); padding-top: 12px; flex-wrap: wrap; }
+  .exwork label { display: flex; gap: 7px; align-items: center; font-size: 13px;
+    font-weight: 700; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .exwork input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--aqua); }
+  .exwork .receipt { flex: 1; min-width: 220px; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font: 13px ui-monospace, Menlo, Consolas, monospace;
+    background: var(--paper); color: var(--ink); }
+  .exwork .receipt:focus { outline: 2px solid var(--blue); }
+  .ex.is-done { border-left: 5px solid var(--aqua); }
+  .ex.is-done .eid { filter: saturate(0.6); }
+  .progress { font-size: 13.5px; color: var(--ink-2); font-weight: 650; margin-top: 6px; }
+  .progress .bar { display: inline-block; width: 120px; height: 8px; background: var(--paper-2);
+    border: 1px solid var(--line); border-radius: 99px; vertical-align: middle; margin: 0 8px; }
+  .progress .fill { display: block; height: 100%; border-radius: 99px; background: var(--aqua); }
+  code { cursor: copy; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--night); color: #fff; border-radius: 99px; padding: 8px 18px;
+    font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 99; }
+  #toast.show { opacity: 1; }
+  /* live console */
+  .console { background: var(--night); color: #d9e0fa; border-radius: 12px;
+    padding: 4px 20px 6px; margin: 22px 0; }
+  .console summary { cursor: pointer; font-weight: 700; font-size: 14.5px; padding: 12px 0; }
+  .console .row { display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+  .console input, .console textarea { background: #0b0e1c; color: #d9e0fa;
+    border: 1px solid #38406b; border-radius: 8px; padding: 9px 11px;
+    font: 13px ui-monospace, Menlo, Consolas, monospace; }
+  .console input { flex: 1; min-width: 240px; }
+  .console textarea { width: 100%; min-height: 64px; resize: vertical; }
+  .console button { background: var(--yellow); color: #221a00; font-weight: 750;
+    border: 0; border-radius: 8px; padding: 9px 18px; cursor: pointer; font-size: 13.5px; }
+  .console .chip { background: transparent; color: #c9d1ef; border: 1px solid #38406b; }
+  .console pre { background: #0b0e1c; border: 1px solid #38406b; border-radius: 8px;
+    padding: 12px; overflow: auto; max-height: 300px; font-size: 12.5px; white-space: pre-wrap; }
+  .console .hint { color: #8f9bcd; font-size: 12px; margin: 6px 0 12px; }
+  /* playground */
+  .playground { background: #fff; border: 2px solid var(--blue); border-radius: 12px;
+    padding: 20px 24px; margin: 22px 0; }
+  .playground h2 { margin: 0 0 4px; font-size: 19px; }
+  .playground .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; }
+  .playground .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  .playground button { background: var(--blue); color: #fff; font-weight: 700; border: 0;
+    border-radius: 8px; padding: 9px 16px; cursor: pointer; font-size: 13.5px; }
+  .playground button.alt { background: var(--paper-2); color: var(--ink); border: 1px solid var(--line); }
+  .playground input[type=number] { width: 110px; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font: 13.5px ui-monospace, Menlo, monospace; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 18px;
+    background: var(--paper-2); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .stats .v { font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .stats .k { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .targets { font-size: 13.5px; }
+  .targets li { margin: 4px 0; }
+  .hit { color: var(--green); font-weight: 750; }
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}]});"></script>
+
+</head>
+<body>
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="../index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <span class="crumbs"><a href="index.html">exercises</a> · chapter 15</span>
+  </div>
+</nav>
+
+<header class="page">
+  <div class="wrap">
+    <p class="eyebrow"><a href="index.html" style="text-decoration:none; color:inherit;">Exercises</a> · Chapter 15</p>
+    <h1>The Geometry Is the Encryption</h1>
+    <p class="partline"><span class="sw" style="background: var(--red)"></span>Part VI — Gauge Encryption · seven builds, seven receipts</p>
+    <p class="progress" data-progress="E15.1,E15.2,E15.3,E15.4,E15.5,E15.6,E15.7"></p>
+  </div>
+</header>
+<main class="wrap">
+  <p class="intro">The chapter's exercises are gauge-invariance receipts on real bytes  —  instrument the five modes, reproduce the six-slot tuple under a rotation, forge an attacker who tries to slide under the \(10^{-10}\) grain, and benchmark the cost of the inverse-shift at the client. Receipt class is byte-equality after gauge, drift below quantization, and HMAC verify/refuse on tampered bundles.</p>
+  
+  <details class="console">
+    <summary>Run it live — GQL console</summary>
+    <p class="hint">Point at the public read-only instance (no key needed) or your own engine
+    (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="run">Run</button></div>
+    <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+      <button class="chip" data-q="HEALTH sensors;">HEALTH</button>
+      <button class="chip" data-q="SECTION sensors AT id='s1';">SECTION AT</button>
+      <button class="chip" data-q="INTEGRATE sensors OVER city MEASURE count(*), min(temp);">INTEGRATE</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+  
+  <article class="ex" id="e15-1"><h2><span class="eid" style="background: var(--red)">E15.1</span>Reproduce the six-slot invariant under a per-field affine rotation</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Write an integration test that loads any nondegenerate numeric bundle, computes <code>InvariantTuple</code> via <code>src/integrity.rs:130-145</code>, then re-encrypts every field with a fresh <code>FieldTransform::Affine {scale, offset}</code> pair sampled per column (\(a_i \neq 0\)), and re-reads the tuple from the gauged bundle.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The three <code>u64</code> slots (<code>record_count</code>, <code>beta_0</code>, <code>beta_1</code>) are bit-identical, and the three <code>f64</code> slots (\(K\), \(\lambda_1\), <code>holonomy_mean</code>) agree to relative error \(&lt;10^{-10}\)  —  the same grain <code>quantize_f64</code> uses at <code>src/integrity.rs:51-66</code>. Asserts pass; this is the empirical leg of my Theorem 3.6 in Davis 2026.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Sweep \(|a_i|\) across \([10^{-3}, 10^{3}]\) and plot the post-gauge drift of \(K\) versus the magnitude of the scale factor. The drift floor is the quantizer; if you see it rise, you found a numerical issue worth filing.</p></div><div class="exwork"><label><input type="checkbox" data-done="E15.1"> done</label><input class="receipt" data-receipt="E15.1" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e15-2"><h2><span class="eid" style="background: var(--red)">E15.2</span>Refute the off-diagonal gauge on a covariance-bearing bundle</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Forge a hand-rolled <code>FieldTransform</code> variant that takes a \(2\times 2\) block \(A\) with \(A_{12} \neq 0\) instead of two scalars, apply it to a bundle whose columns have nonzero \(\mathrm{Cov}(v_i, v_j)\), and recompute the per-field \(K\)-vector.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The post-gauge \(K_i\) disagrees with the plaintext \(K_i\) on the constructed bundle  —  the explicit witness for the necessity half of Proposition 3.7. Log the disagreement to a fixture and tag it as the canonical "why the engine has no \(k\times k\) slot at <code>src/crypto.rs:Affine</code>" receipt.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Try the pure rotation case \(A = O \in O(2)\). Confirm \(\mathrm{tr}(\mathrm{Cov})\) survives while the per-field ratio breaks  —  the trace-vs-ratio asymmetry I called out in the proposition closer.</p></div><div class="exwork"><label><input type="checkbox" data-done="E15.2"> done</label><input class="receipt" data-receipt="E15.2" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e15-3"><h2><span class="eid" style="background: var(--red)">E15.3</span>Stress the Curvature-MAC against Eve's sub-grain edit</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Reproduce my Appendix A.12 worked example end-to-end: mint a tag \(t = \mathrm{HMAC\text{-}SHA256}_{k_{\mathrm{int}}}(\mathrm{canonical\_bytes}(\pi_{\mathrm{inv}}))\) via <code>sign</code> at <code>src/integrity.rs:218-230</code>, ship the bundle plus tag, then have a sibling process flip bits in record 7's age field at three perturbation magnitudes: \(10^{-12}\) (sub-grain), \(10^{-9}\) (above grain), \(10^{-3}\) (gross).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p><code>verify</code> at <code>src/integrity.rs:243-253</code> returns <code>true</code> on the \(10^{-12}\) edit, <code>false</code> on the \(10^{-9}\) edit, and <code>false</code> on the \(10^{-3}\) edit. Three test cases, three assertions, one of them deliberately the honest miss. The honest miss is the receipt that the Holonomy ledger is doing complementary work and is not redundant.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Time the verify path on a 1M-record bundle. It should be flat in record count  —  the HMAC reads 52 bytes, not the bundle.</p></div><div class="exwork"><label><input type="checkbox" data-done="E15.3"> done</label><input class="receipt" data-receipt="E15.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e15-4"><h2><span class="eid" style="background: var(--red)">E15.4</span>Instrument the five-mode count across three surfaces</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Write a CI check that parses the variant list from <code>src/types.rs:180-199</code> (excluding <code>None</code>), the mode rows from <code>GIGI_API.md:1579-1587</code>, and the row count of Table 1 in <code>theory/encryption/paper_geometric_encryption_v0.1.tex:983-1002</code>, then asserts all three return the set \(\{\)<code>Affine</code>, <code>Opaque</code>, <code>Indexed</code>, <code>Probabilistic</code>, <code>Isometric</code>\(\}\).</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A failing test the day any future contributor adds a sixth mode to one surface without touching the other two  —  the same drift that produced the chapter 1 five-not-six error caught at parse time instead of in the corrigendum.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Wire the check into the pre-commit hook so the three surfaces cannot diverge between commits.</p></div><div class="exwork"><label><input type="checkbox" data-done="E15.4"> done</label><input class="receipt" data-receipt="E15.4" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e15-5"><h2><span class="eid" style="background: var(--red)">E15.5</span>Benchmark the AFFINE workhorse's twelve aggregates</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>On a 100k-record numeric bundle, run all twelve \(\rho\)-equivariant aggregates from my §3.3 (SUM, AVG, MIN, MAX, VAR, STDDEV, RANGE, MEDIAN, QUANTILE, ARGMIN, ARGMAX, COUNT) on plaintext and on the AFFINE-gauged ciphertext. Apply the client-side \(\rho_g^{-1}\) inversion per aggregate.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Twelve pairs of returned scalars equal to within \(10^{-10}\). The server-side timing is within \(\pm5\%\) of plaintext  —  the receipt that AFFINE costs nothing at native speed  —  and the client-side inverse is \(O(1)\) per query, measured. The 24 unit tests in <code>src/aggregate_helpers.rs</code> are the regression net; this exercise adds the timing receipt those tests do not.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Repeat on a 10M-record bundle. The client-inverse cost stays flat; the server cost scales linearly. If either changes shape, you found the implementation drift Theorem 3.3 clause (c) forbids.</p></div><div class="exwork"><label><input type="checkbox" data-done="E15.5"> done</label><input class="receipt" data-receipt="E15.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e15-6"><h2><span class="eid" style="background: var(--red)">E15.6</span>Extend ISOMETRIC: verify the kNN graph survives rotation</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Declare a <code>GROUP</code> of three numeric fields under <code>ENCRYPTED ISOMETRIC</code>, build the all-pairs distance matrix and its \(k\)-nearest-neighbour adjacency on plaintext, then on ciphertext via the \(O \in O(3)\) gauge derived by <code>derive_orthogonal_matrix</code> at <code>src/crypto.rs</code>.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The two adjacency matrices are bit-identical at every \(k \in \{1, 3, 5, 10\}\). Distances themselves agree to \(10^{-12}\)  —  ISOMETRIC's invariant ring is the distance ring, and this is the empirical demonstration that \(\lambda_1\) and the Fiedler partition land identically on plaintext and ciphertext.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Replace \(O\) with a non-orthogonal invertible matrix you forged by hand. Watch the kNN adjacency drift and file the diff as the “why ISOMETRIC type-checks the GROUP declaration” receipt.</p></div><div class="exwork"><label><input type="checkbox" data-done="E15.6"> done</label><input class="receipt" data-receipt="E15.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e15-7"><h2><span class="eid" style="background: var(--red)">E15.7</span>Wire the constant-time verify into a timing harness</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Submit one million forged tags to <code>verify</code> at <code>src/integrity.rs:243-253</code>, varying how many leading bytes of each forgery match the real tag. Record per-call wall-time at nanosecond resolution.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The distribution of verify-times is statistically indistinguishable across the leading-match-count groups (Kolmogorov-Smirnov \(p &gt; 0.05\)). The receipt that <code>mac.verify_slice</code> is doing the constant-time compare the doc-comment promised, not the naive short-circuit a byte-by-byte loop would have done.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Swap <code>verify_slice</code> for a hand-rolled <code>==</code> on the tag bytes and rerun. The KS test should now reject; you have just measured the side channel the constant-time compare closes.</p></div><div class="exwork"><label><input type="checkbox" data-done="E15.7"> done</label><input class="receipt" data-receipt="E15.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
+  <div class="pager"><a href="ch14.html">← Chapter 14 exercises</a><a href="ch16.html">Chapter 16 exercises →</a></div>
+</main>
+<div id="toast" role="status"></div>
+<script>
+(function () {
+  var KEY = "gb-ex";
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+  function save() { localStorage.setItem(KEY, JSON.stringify(store)); }
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 1400);
+  }
+  // per-exercise done + receipt
+  document.querySelectorAll("[data-done]").forEach(function (cb) {
+    var id = cb.getAttribute("data-done");
+    var st = store[id] || {};
+    cb.checked = !!st.done;
+    cb.closest(".ex") && cb.closest(".ex").classList.toggle("is-done", !!st.done);
+    cb.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].done = cb.checked; save();
+      cb.closest(".ex").classList.toggle("is-done", cb.checked);
+      updateProgress();
+    });
+  });
+  document.querySelectorAll("[data-receipt]").forEach(function (inp) {
+    var id = inp.getAttribute("data-receipt");
+    var st = store[id] || {};
+    if (st.receipt) inp.value = st.receipt;
+    inp.addEventListener("change", function () {
+      store[id] = store[id] || {}; store[id].receipt = inp.value; save();
+    });
+  });
+  function updateProgress() {
+    document.querySelectorAll("[data-progress]").forEach(function (el) {
+      var ids = el.getAttribute("data-progress").split(",");
+      var done = ids.filter(function (id) { return store[id] && store[id].done; }).length;
+      el.innerHTML = done + "/" + ids.length + " done" +
+        '<span class="bar"><span class="fill" style="width:' + (100 * done / ids.length) + '%"></span></span>';
+    });
+  }
+  updateProgress();
+  // click-to-copy on code chips
+  document.querySelectorAll("code").forEach(function (c) {
+    c.title = "click to copy";
+    c.addEventListener("click", function () {
+      navigator.clipboard && navigator.clipboard.writeText(c.textContent).then(
+        function () { toast("copied"); });
+    });
+  });
+  // live console
+  document.querySelectorAll(".console").forEach(function (box) {
+    var run = box.querySelector(".run"), ep = box.querySelector(".ep"),
+        q = box.querySelector("textarea"), out = box.querySelector("pre");
+    var saved = localStorage.getItem("gb-endpoint");
+    if (saved) ep.value = saved;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyEl = box.querySelector(".apikey");
+    if (apiKeyEl && savedKey) apiKeyEl.value = savedKey;
+    box.querySelectorAll(".chip").forEach(function (ch) {
+      ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
+    });
+    run.addEventListener("click", function () {
+      var base = ep.value.replace(/\/+$/, "");
+      localStorage.setItem("gb-endpoint", ep.value);
+      if (apiKeyEl) localStorage.setItem("gb-apikey", apiKeyEl.value);
+      out.textContent = "running…";
+      fetch(base + "/v1/public/gql", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text().then(function (txt) { return { ok: r.ok, status: r.status, txt: txt }; }); })
+        .then(function (res) {
+          if (!res.ok) { out.textContent = "error: HTTP " + res.status + "\n\n" + res.txt; return; }
+          try { out.textContent = JSON.stringify(JSON.parse(res.txt), null, 2); }
+          catch (e) { out.textContent = res.txt; }
+        })
+        .catch(function (e) {
+          out.textContent = "error: " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only).";
+        });
+    });
+  });
+})();
+</script>
+<footer>
+  <div class="wrap">From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis · engine at
+  <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> ·
+  questions → <a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></div>
+</footer>
+</body>
+</html>

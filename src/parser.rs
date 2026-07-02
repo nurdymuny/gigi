@@ -313,6 +313,9 @@ pub enum Statement {
         bundle: String,
         over: Option<String>,
         measures: Vec<MeasureSpec>,
+        /// `WITH JACKKNIFE ALONG <field>` — order samples by this field and
+        /// attach autocorrelation-honest error bars to each avg() measure.
+        jackknife_along: Option<String>,
     },
 
     // ── Joins ──
@@ -1622,6 +1625,21 @@ pub enum FilterCondition {
         cover_bundle: String,
         where_conds: Vec<FilterCondition>,
     },
+}
+
+impl FilterCondition {
+    /// The field this condition filters on, when it names one directly.
+    /// `Exists` filters on a subquery, not a field of the outer bundle.
+    pub fn field_name(&self) -> Option<&str> {
+        use FilterCondition::*;
+        match self {
+            Eq(f, _) | Neq(f, _) | Gt(f, _) | Gte(f, _) | Lt(f, _) | Lte(f, _)
+            | In(f, _) | NotIn(f, _) | Contains(f, _) | StartsWith(f, _)
+            | EndsWith(f, _) | Matches(f, _) | Void(f) | Defined(f)
+            | Between(f, _, _) => Some(f),
+            Exists { .. } => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -4368,10 +4386,30 @@ impl Parser {
             }
         }
 
+        // WITH JACKKNIFE ALONG <order_field> — evidence-grade error bars.
+        // The order field defines chain/time order; without one, an
+        // autocorrelation time is meaningless, so it is required.
+        let mut jackknife_along = None;
+        if self.is_keyword("WITH") {
+            self.advance();
+            self.expect_keyword("JACKKNIFE")?;
+            if !self.is_keyword("ALONG") {
+                return Err(
+                    "WITH JACKKNIFE requires ALONG <order_field> — the field that \
+                     defines sample order (e.g. sweep number or timestamp); \
+                     autocorrelation is undefined without an ordering"
+                        .to_string(),
+                );
+            }
+            self.advance();
+            jackknife_along = Some(self.expect_word()?);
+        }
+
         Ok(Statement::Integrate {
             bundle: name,
             over,
             measures,
+            jackknife_along,
         })
     }
 
@@ -7376,6 +7414,36 @@ impl Parser {
     }
 }
 
+/// Validate measures for `WITH JACKKNIFE` and produce (column_base, field)
+/// specs. Error bars are defined for means; other aggregates are refused
+/// with a message that says so rather than silently degrading.
+pub fn jackknife_measure_specs(
+    measures: &[MeasureSpec],
+) -> Result<Vec<(String, String)>, String> {
+    if measures.is_empty() {
+        return Err("WITH JACKKNIFE requires at least one avg(...) measure".into());
+    }
+    measures
+        .iter()
+        .map(|m| {
+            if !matches!(m.func, AggFunc::Avg) {
+                return Err(format!(
+                    "WITH JACKKNIFE currently applies to avg(...) measures only; \
+                     '{}({})' is not supported (an error bar is an estimate of \
+                     the uncertainty of a mean)",
+                    m.func_name(),
+                    m.field
+                ));
+            }
+            let base = m
+                .alias
+                .clone()
+                .unwrap_or_else(|| format!("avg_{}", m.field));
+            Ok((base, m.field.clone()))
+        })
+        .collect()
+}
+
 /// Parse a GQL statement string into a Statement AST.
 pub fn parse(input: &str) -> Result<Statement, String> {
     let tokens = tokenize(input)?;
@@ -7383,6 +7451,34 @@ pub fn parse(input: &str) -> Result<Statement, String> {
     let stmt = parser.parse()?;
     if matches!(parser.peek(), Some(Token::Semicolon)) {
         parser.advance();
+    }
+    // Anything still unconsumed is a clause this statement's parser did not
+    // understand. Discarding it silently meant e.g. `... HAVING avg(x) > 5`
+    // ran WITHOUT the HAVING and reported success — a silent wrong answer.
+    // Refuse instead, and show what was ignored.
+    let mut trailing: Vec<String> = Vec::new();
+    while let Some(tok) = parser.peek() {
+        if matches!(tok, Token::Semicolon) {
+            parser.advance();
+            continue;
+        }
+        trailing.push(match tok {
+            Token::Word(w) => w.clone(),
+            other => format!("{other:?}"),
+        });
+        if trailing.len() >= 6 {
+            trailing.push("…".to_string());
+            break;
+        }
+        parser.advance();
+    }
+    if !trailing.is_empty() {
+        return Err(format!(
+            "Statement parsed, but this trailing input is not a supported \
+             clause and was NOT executed: '{}'. Remove it, or check the GQL \
+             reference for the supported form of this statement.",
+            trailing.join(" ")
+        ));
     }
     Ok(stmt)
 }
@@ -9584,6 +9680,39 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
 
+            // Validate referenced fields against the schema — parity with
+            // the gigi-stream executor. A typo'd field must error with the
+            // real field list, never silently match nothing.
+            {
+                let known = store.field_names();
+                let mut referenced: Vec<&str> = Vec::new();
+                referenced.extend(
+                    on_conditions
+                        .iter()
+                        .chain(where_conditions.iter())
+                        .chain(or_groups.iter().flatten())
+                        .filter_map(|c| c.field_name()),
+                );
+                if let Some(fields) = project {
+                    referenced.extend(fields.iter().map(|s| s.as_str()));
+                }
+                if let Some(specs) = rank_by {
+                    referenced.extend(specs.iter().map(|s| s.field.as_str()));
+                }
+                if let Some(f) = distinct_field {
+                    referenced.push(f.as_str());
+                }
+                for f in referenced {
+                    if !known.iter().any(|k| k == f) {
+                        return Err(format!(
+                            "Unknown field '{}' — this bundle's fields are: {}",
+                            f,
+                            known.join(", ")
+                        ));
+                    }
+                }
+            }
+
             // Handle DISTINCT
             if let Some(field) = distinct_field {
                 let vals = store.distinct(field);
@@ -9698,135 +9827,66 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             bundle,
             over,
             measures,
+            jackknife_along,
         } => {
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
 
+            if let Some(order_field) = jackknife_along {
+                let specs = jackknife_measure_specs(measures)?;
+                let rows = crate::aggregation::jackknife_rows(
+                    store.records(),
+                    over.as_deref(),
+                    order_field,
+                    &specs,
+                )?;
+                return Ok(ExecResult::Rows(rows));
+            }
+
+            // One accumulator per measure (group_by_measures) — a shared
+            // single-field accumulator makes every measure return the
+            // first field's value, and COUNT over `*` / non-numeric
+            // fields silently drops records.
+            let fields: Vec<&str> = measures.iter().map(|m| m.field.as_str()).collect();
+            let measure_value =
+                |m: &MeasureSpec, agg: &crate::aggregation::AggResult| match m.func {
+                    AggFunc::Count => crate::types::Value::Float(agg.count as f64),
+                    AggFunc::Sum => crate::types::Value::Float(agg.sum),
+                    AggFunc::Avg => crate::types::Value::Float(agg.avg()),
+                    // min/max sentinels mean "no numeric values seen"
+                    // (empty group or non-numeric field) — surface as
+                    // null instead of serializing an infinity.
+                    AggFunc::Min if agg.min.is_finite() => crate::types::Value::Float(agg.min),
+                    AggFunc::Max if agg.max.is_finite() => crate::types::Value::Float(agg.max),
+                    _ => crate::types::Value::Null,
+                };
+            let measure_name = |m: &MeasureSpec| {
+                m.alias
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field))
+            };
+
             if let Some(gb_field) = over {
-                // Prefer a real field for SUM/AVG/MIN/MAX; fall back to "*"
-                // only when every measure is COUNT(*).
-                let agg_field = measures
-                    .iter()
-                    .map(|m| m.field.as_str())
-                    .find(|f| *f != "*")
-                    .unwrap_or("*");
-
-                // If any measure is COUNT(*), count every record per
-                // group independent of any field's nullness — this is the
-                // SQL semantics agg_result.count cannot give us, because
-                // agg_result.count tracks records with a non-null
-                // agg_field only.
-                let needs_count_star = measures
-                    .iter()
-                    .any(|m| matches!(m.func, AggFunc::Count) && m.field == "*");
-                let count_by_group: HashMap<crate::types::Value, usize> =
-                    if needs_count_star {
-                        let mut m = HashMap::new();
-                        if let Some(s) = store.as_heap() {
-                            for rec in s.records() {
-                                if let Some(k) = rec.get(gb_field) {
-                                    *m.entry(k.clone()).or_insert(0usize) += 1;
-                                }
-                            }
-                        }
-                        m
-                    } else {
-                        HashMap::new()
-                    };
-
-                let groups = match store.as_heap() {
-                    Some(s) => crate::aggregation::group_by(s, gb_field, agg_field),
-                    None => HashMap::new(),
-                };
-
-                // When COUNT(*) is requested, iterate count_by_group's
-                // keys (the superset that includes groups where the
-                // chosen agg_field is null for every record). Otherwise
-                // use groups' keys for backwards-compatible output.
-                let group_keys: Vec<crate::types::Value> = if needs_count_star {
-                    count_by_group.keys().cloned().collect()
-                } else {
-                    groups.keys().cloned().collect()
-                };
-                let zero_agg = crate::aggregation::AggResult {
-                    count: 0,
-                    sum: 0.0,
-                    sum_sq: 0.0,
-                    min: 0.0,
-                    max: 0.0,
-                };
-
+                let groups =
+                    crate::aggregation::group_by_measures(store.records(), gb_field, &fields);
                 let mut rows = Vec::new();
-                for key in &group_keys {
-                    let agg_result = groups.get(key).unwrap_or(&zero_agg);
+                for (key, aggs) in &groups {
                     let mut row = HashMap::new();
                     row.insert(gb_field.clone(), key.clone());
-                    for m in measures {
-                        let val = match (&m.func, m.field.as_str()) {
-                            (AggFunc::Count, "*") => {
-                                *count_by_group.get(key).unwrap_or(&0) as f64
-                            }
-                            (AggFunc::Count, _) => agg_result.count as f64,
-                            (AggFunc::Sum, _) => agg_result.sum,
-                            (AggFunc::Avg, _) => agg_result.avg(),
-                            (AggFunc::Min, _) => agg_result.min,
-                            (AggFunc::Max, _) => agg_result.max,
-                        };
-                        let field_name = m
-                            .alias
-                            .as_ref()
-                            .cloned()
-                            .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field));
-                        row.insert(field_name, crate::types::Value::Float(val));
+                    for (m, agg) in measures.iter().zip(aggs) {
+                        row.insert(measure_name(m), measure_value(m, agg));
                     }
                     rows.push(row);
                 }
                 Ok(ExecResult::Rows(rows))
             } else {
-                // Global aggregation — no OVER
-                let all: Vec<crate::types::Record> = store.records().collect();
+                // Global aggregation — single row over every record.
+                let aggs = crate::aggregation::integrate_measures(store.records(), &fields);
                 let mut row = HashMap::new();
-                for m in measures {
-                    // COUNT(*) counts records, not per-field non-null values.
-                    if matches!(m.func, AggFunc::Count) && m.field == "*" {
-                        let field_name = m.alias.as_ref().cloned().unwrap_or_else(|| {
-                            format!("{}_{}", m.func_name(), m.field)
-                        });
-                        row.insert(
-                            field_name,
-                            crate::types::Value::Float(all.len() as f64),
-                        );
-                        continue;
-                    }
-                    let vals: Vec<f64> = all
-                        .iter()
-                        .filter_map(|r| r.get(&m.field))
-                        .filter_map(|v| match v {
-                            crate::types::Value::Integer(n) => Some(*n as f64),
-                            crate::types::Value::Float(f) => Some(*f),
-                            _ => None,
-                        })
-                        .collect();
-                    let val = match m.func {
-                        AggFunc::Count => vals.len() as f64,
-                        AggFunc::Sum => vals.iter().sum(),
-                        AggFunc::Avg => {
-                            if vals.is_empty() {
-                                0.0
-                            } else {
-                                vals.iter().sum::<f64>() / vals.len() as f64
-                            }
-                        }
-                        AggFunc::Min => vals.iter().cloned().fold(f64::INFINITY, f64::min),
-                        AggFunc::Max => vals.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
-                    };
-                    let field_name = m
-                        .alias
-                        .as_ref()
-                        .cloned()
-                        .unwrap_or_else(|| format!("{}_{}", m.func_name(), m.field));
-                    row.insert(field_name, crate::types::Value::Float(val));
+                for (m, agg) in measures.iter().zip(&aggs) {
+                    row.insert(measure_name(m), measure_value(m, agg));
                 }
                 Ok(ExecResult::Rows(vec![row]))
             }
@@ -12742,6 +12802,7 @@ mod tests {
                 bundle,
                 over,
                 measures,
+                ..
             } => {
                 assert_eq!(bundle, "sensors");
                 assert_eq!(over, Some("city".into()));
@@ -12753,6 +12814,57 @@ mod tests {
             }
             _ => panic!("Expected Integrate"),
         }
+    }
+
+    /// Trailing input after a complete statement must be rejected, not
+    /// silently discarded — the discard made `... HAVING avg(x) > 5` run
+    /// without the HAVING and report success.
+    #[test]
+    fn gql_trailing_tokens_rejected() {
+        let err = parse("COVER sensors WHERE temp > 1 BANANA NONSENSE;").unwrap_err();
+        assert!(err.contains("trailing"), "got: {err}");
+        assert!(err.contains("BANANA"), "got: {err}");
+        let err = parse("INTEGRATE s OVER c MEASURE avg(t) HAVING avg(t) > 5;").unwrap_err();
+        assert!(err.contains("HAVING"), "got: {err}");
+        // a clean statement (with or without semicolon) still parses
+        parse("COVER sensors WHERE temp > 1;").unwrap();
+        parse("COVER sensors WHERE temp > 1").unwrap();
+    }
+
+    #[test]
+    fn filter_condition_field_name_accessor() {
+        let stmt = parse("COVER sensors WHERE temp > 1;").unwrap();
+        match stmt {
+            Statement::Cover { where_conditions, .. } => {
+                assert_eq!(where_conditions[0].field_name(), Some("temp"));
+            }
+            _ => panic!("Expected Cover"),
+        }
+    }
+
+    #[test]
+    fn gql_integrate_with_jackknife() {
+        let stmt =
+            parse("INTEGRATE runs OVER beta MEASURE avg(plaquette) WITH JACKKNIFE ALONG sweep;")
+                .unwrap();
+        match stmt {
+            Statement::Integrate { jackknife_along, over, measures, .. } => {
+                assert_eq!(jackknife_along.as_deref(), Some("sweep"));
+                assert_eq!(over.as_deref(), Some("beta"));
+                assert_eq!(measures.len(), 1);
+            }
+            _ => panic!("Expected Integrate"),
+        }
+        // ALONG is mandatory — autocorrelation needs an ordering
+        let err = parse("INTEGRATE runs MEASURE avg(x) WITH JACKKNIFE;").unwrap_err();
+        assert!(err.contains("ALONG"), "got: {err}");
+        // non-avg measures are refused with an explanation
+        let specs = jackknife_measure_specs(&[MeasureSpec {
+            func: AggFunc::Max,
+            field: "x".into(),
+            alias: None,
+        }]);
+        assert!(specs.unwrap_err().contains("avg"));
     }
 
     #[test]

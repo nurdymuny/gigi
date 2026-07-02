@@ -25,6 +25,11 @@
 //! green throughout Phase 1b. This file's tests cover the parser-side
 //! routing: the LATTICE GQL verb reaches the registry, and CUBED_SPHERE
 //! is constructable through it.
+//!
+//! Gated on the `lattice` feature — `gigi::lattice` is configured out of
+//! the default build, so without this gate a plain `cargo test` on a
+//! fresh clone fails to compile.
+#![cfg(feature = "lattice")]
 
 use gigi::engine::Engine;
 use gigi::lattice::Lattice;

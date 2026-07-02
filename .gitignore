@@ -31,6 +31,9 @@ check_errors*.txt
 # Local images / scratch
 *.jpg
 *.png
+# Site assets (published on davisgeometric.com) — exempt from the global image ignore
+!site/**/*.jpg
+!site/**/*.png
 
 # Python test scripts
 gigi_math_tests*.py

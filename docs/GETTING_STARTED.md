@@ -367,14 +367,14 @@ snapshot sync at startup. Skip it for local runs.
 ### 3. Start the server
 
 ```bash
-cargo run --release --bin gigi_stream
+cargo run --release --bin gigi-stream
 ```
 
 Or, if you built with features:
 
 ```bash
 cargo run --release --features "kahler halcyon imagine wish transactions" \
-  --bin gigi_stream
+  --bin gigi-stream
 ```
 
 The server binds on `0.0.0.0:$PORT`. First-time startup creates

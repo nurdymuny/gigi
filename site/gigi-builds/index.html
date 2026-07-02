@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GIGI Builds — the companion site to the book</title>
+<meta name="description" content="GIGI Builds: The Fiber-Bundle Database — a working engineer's guide from schema to shard, by Bee Rosa Davis. Every build in the book, plus the chapter that didn't fit in print.">
+<style>
+  /* ============================================================
+     GIGI Builds companion site — self-contained, no build step.
+     Drop this folder in at davisgeometric.com/gigi/gigi-builds.
+
+     Swappable assets (all optional; page is complete without them):
+       cover.png   — real book cover; replaces the CSS cover mock
+                     (see .cover-art comment below)
+       bee-1.jpg / bee-2.jpg / bee-3.jpg — author photos for the
+                     polaroid frames in #author (see figure tags)
+     ============================================================ */
+  :root {
+    --ink: #17161a;            /* primary text on paper */
+    --ink-2: #52514e;          /* secondary text */
+    --ink-3: #807f76;          /* muted */
+    --paper: #faf7f0;          /* warm page */
+    --paper-2: #f1ecdf;        /* warm panel */
+    --night: #101426;          /* hero sky */
+    --night-2: #1a2036;        /* hero panel */
+    --star: #e8ecff;
+    --blue: #2a78d6;  --aqua: #1baf7a;  --yellow: #eda100;
+    --green: #008300; --violet: #4a3aa7; --red: #e34948; --magenta: #d55181;
+    --line: #dcd5c4;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  h1, h2, h3 { line-height: 1.15; font-weight: 750; letter-spacing: -0.015em; }
+  a { color: var(--blue); }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    font-weight: 700; color: var(--ink-3); }
+
+  /* ---------- nav ---------- */
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(16,20,38,0.92);
+    backdrop-filter: blur(8px); border-bottom: 1px solid #2a3050; }
+  nav .wrap { display: flex; align-items: center; gap: 20px; height: 54px; }
+  .brand { color: #fff; font-weight: 800; text-decoration: none; font-size: 15px;
+    display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff, #b9c4e8 45%, #6c7dbb); }
+  nav ul { display: flex; gap: 4px; list-style: none; margin: 0 0 0 auto; padding: 0; flex-wrap: wrap; }
+  nav ul a { color: #c9d1ef; text-decoration: none; font-size: 13.5px; padding: 6px 10px;
+    border-radius: 8px; }
+  nav ul a:hover { background: #262e4e; color: #fff; }
+
+  /* ---------- hero ---------- */
+  header.hero { background:
+      radial-gradient(1100px 500px at 78% -10%, #232c52 0%, transparent 60%),
+      var(--night);
+    color: #eef1fb; overflow: hidden; position: relative; }
+  .hero .wrap { display: grid; grid-template-columns: 340px 1fr; gap: 56px;
+    padding: 72px 22px 84px; align-items: center; position: relative; }
+  .stars { position: absolute; inset: 0; pointer-events: none; }
+  .hero h1 { font-size: clamp(34px, 5vw, 52px); margin: 10px 0 6px; color: #fff; }
+  .hero .sub { font-size: clamp(17px, 2vw, 21px); color: #c4cdf0; max-width: 34em; margin: 0 0 8px; }
+  .hero .byline { color: #8f9bcd; font-size: 15px; margin: 0 0 26px; }
+  .hero .quote { border-left: 3px solid var(--yellow); padding: 2px 0 2px 14px;
+    color: #dfe5fa; font-family: Georgia, "Times New Roman", serif; font-style: italic;
+    font-size: 17px; max-width: 30em; margin: 0 0 30px; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 12px 20px; border-radius: 10px; font-weight: 700;
+    text-decoration: none; font-size: 15px; border: 2px solid transparent; }
+  .btn-yellow { background: var(--yellow); color: #221a00; }
+  .btn-yellow:hover { background: #ffb61a; }
+  .btn-ghost { border-color: #4a5580; color: #dfe5fa; }
+  .btn-ghost:hover { background: #232b4d; }
+
+  /* ---------- the cover mock ----------
+     A faithful stand-in built in CSS/SVG. To use the real cover art,
+     replace the inner markup of .cover-art with:
+        <img src="cover.png" alt="GIGI Builds book cover">
+     and the tilt/shadow frame stays. */
+  .cover { perspective: 1100px; justify-self: center; }
+  .cover-art { width: 300px; aspect-ratio: 6 / 9; border-radius: 10px; position: relative;
+    background: linear-gradient(168deg, #182042 0%, #101426 55%, #0b0e1c 100%);
+    box-shadow: 24px 32px 60px rgba(0,0,0,0.55), 0 0 0 1px #2c355e inset;
+    transform: rotateY(-9deg) rotateX(2deg);
+    transition: transform 0.5s ease; overflow: hidden; }
+  .cover:hover .cover-art { transform: rotateY(-3deg) rotateX(0.5deg); }
+  .cover-art .spine { position: absolute; left: 0; top: 0; bottom: 0; width: 14px;
+    background: linear-gradient(90deg, rgba(0,0,0,0.55), transparent); }
+  .cover-art .c-title { position: absolute; top: 26px; left: 26px; right: 26px; color: #fff; }
+  .cover-art .c-title .t1 { font-size: 34px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.02; }
+  .cover-art .c-title .t2 { margin-top: 10px; font-size: 12.5px; color: #aeb9e4; line-height: 1.45; }
+  /* the "embedded photo" window — the depth trick from the print cover */
+  .cover-art .window { position: absolute; left: 26px; right: 26px; top: 46%; height: 34%;
+    border-radius: 8px; overflow: hidden;
+    box-shadow: 0 0 0 3px #0b0e1c, 0 0 0 5px var(--yellow),
+                inset 0 10px 24px rgba(0,0,0,0.55); }
+  .cover-art .window svg { display: block; width: 100%; height: 100%; }
+  .cover-art .c-author { position: absolute; left: 26px; right: 26px; bottom: 20px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    color: #dfe5fa; font-size: 13.5px; font-weight: 700; }
+  .cover-art .c-author em { color: #8f9bcd; font-weight: 400; font-style: normal; font-size: 11.5px; }
+  /* real photo mode — img fills the tilted frame */
+  .cover-art--photo { background: #0b0e1c; }
+  .cover-art--photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .cover figcaption { text-align: center; color: #8f9bcd; font-size: 12.5px; margin-top: 16px; }
+
+  /* ---------- receipts strip ---------- */
+  .receipts { background: var(--night-2); color: #cfd7f4; border-top: 1px solid #2a3050; }
+  .receipts .wrap { display: flex; gap: 28px; flex-wrap: wrap; align-items: center;
+    padding: 18px 22px; font-size: 14px; }
+  .receipts strong { color: #fff; }
+  .receipts .pill { background: #101426; border: 1px solid #38406b; border-radius: 999px;
+    padding: 5px 14px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .receipts .ok { color: #6fe3ae; }
+
+  /* ---------- sections ---------- */
+  section { padding: 72px 0; }
+  section h2 { font-size: clamp(26px, 3.4vw, 36px); margin: 6px 0 10px; }
+  .lede { color: var(--ink-2); font-size: 17.5px; max-width: 46em; }
+
+  /* the moon paragraph */
+  .moon-card { display: grid; grid-template-columns: 132px 1fr; gap: 26px; align-items: center;
+    background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px 30px; margin-top: 30px; }
+  .moon-card svg { width: 132px; height: 132px; }
+  .moon-card p { margin: 0; font-size: 16.5px; }
+  .moon-card p + p { margin-top: 10px; }
+
+  /* ---------- chapter catalog ---------- */
+  .part { margin-top: 42px; }
+  .part-head { display: flex; align-items: baseline; gap: 14px; }
+  .part-head .roman { font-family: Georgia, serif; font-size: 26px; font-weight: 700;
+    color: #fff; width: 52px; height: 52px; border-radius: 12px; display: flex;
+    align-items: center; justify-content: center; flex: 0 0 52px; }
+  .part-head h3 { margin: 0; font-size: 21px; }
+  .part-head .count { color: var(--ink-3); font-size: 13.5px; }
+  .chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 14px; margin-top: 16px; }
+  .ch { background: #fff; border: 1px solid var(--line); border-left-width: 5px;
+    border-radius: 10px; padding: 16px 18px 14px; }
+  .ch .n { font-family: Georgia, serif; color: var(--ink-3); font-size: 13px; }
+  /* clickable chapter card (used by the web extra) */
+  a.ch { display: block; text-decoration: none; color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  a.ch:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(23,22,26,0.10); }
+  a.ch:hover .arrow { transform: translateX(3px); }
+  a.ch .arrow { display: inline-block; color: var(--yellow); font-weight: 900;
+    margin-left: 4px; transition: transform 0.15s ease; }
+  .ch h4 { margin: 3px 0 6px; font-size: 16.5px; line-height: 1.3; }
+  .ch p { margin: 0; color: var(--ink-2); font-size: 14px; }
+  .ch .tags { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 11.5px; font-weight: 700; color: var(--ink-2); background: var(--paper-2);
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; }
+
+  /* ---------- missing chapter feature ---------- */
+  #missing { background: var(--night); color: #e8ecfb; position: relative; overflow: hidden; }
+  #missing .eyebrow { color: #8f9bcd; }
+  #missing h2 { color: #fff; }
+  #missing .lede { color: #c4cdf0; }
+  .missing-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 44px;
+    margin-top: 34px; align-items: center; }
+  .demo-frame { border-radius: var(--radius); overflow: hidden; border: 1px solid #38406b;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5); background: #1a1a19; }
+  .demo-frame img { width: 100%; display: block; }
+  .missing-copy h3 { color: #fff; font-size: 22px; margin: 0 0 10px; }
+  .missing-copy p { color: #c4cdf0; font-size: 15.5px; }
+  .missing-copy ul { color: #c4cdf0; font-size: 15px; padding-left: 20px; }
+  .missing-copy li { margin: 6px 0; }
+  .stamp { display: inline-block; transform: rotate(-3deg); border: 2px solid var(--yellow);
+    color: var(--yellow); border-radius: 8px; padding: 4px 12px; font-weight: 800;
+    font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; }
+
+  /* ---------- database promo ---------- */
+  .ops { width: 100%; border-collapse: collapse; margin-top: 28px; background: #fff;
+    border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; font-size: 14.5px; }
+  .ops th, .ops td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .ops th { background: var(--paper-2); font-size: 13px; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--ink-2); }
+  .ops tr:last-child td { border-bottom: none; }
+  .ops td:first-child { font-weight: 650; }
+  .ops code { background: var(--paper-2); border-radius: 5px; padding: 1px 6px; font-size: 13px; }
+  .quickstart { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 34px; }
+  .quickstart pre { background: var(--night); color: #d9e0fa; border-radius: var(--radius);
+    padding: 20px 22px; overflow-x: auto; margin: 0; font-size: 13.5px; line-height: 1.7; }
+  .quickstart pre .c { color: #8f9bcd; }
+  .quickstart .side h3 { margin: 0 0 8px; font-size: 19px; }
+  .quickstart .side p { color: var(--ink-2); font-size: 15px; }
+
+  /* ---------- author ---------- */
+  #author { background: var(--paper-2); }
+  .author-grid { display: grid; grid-template-columns: 1fr 380px; gap: 48px; align-items: center; }
+  .polaroids { display: flex; justify-content: center; }
+  .pol { background: #fff; padding: 10px 10px 30px; border: 1px solid var(--line);
+    box-shadow: 0 12px 28px rgba(23,22,26,0.18); flex: 0 0 148px; width: 148px; margin: 0; }
+  .pol + .pol { margin-left: -26px; }
+  .pol:nth-child(1) { transform: rotate(-5deg) translateY(8px); }
+  .pol:nth-child(2) { transform: rotate(2.5deg); z-index: 1; }
+  .pol:nth-child(3) { transform: rotate(6deg) translateY(12px); }
+  .pol .ph { aspect-ratio: 1; background: var(--night); border-radius: 3px; overflow: hidden; }
+  .pol .ph img, .pol .ph svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pol figcaption { font-family: Georgia, serif; font-style: italic; font-size: 12.5px;
+    color: var(--ink-2); text-align: center; margin-top: 9px; }
+  #author blockquote { font-family: Georgia, serif; font-style: italic; font-size: 17px;
+    color: var(--ink-2); border-left: 3px solid var(--aqua); margin: 22px 0 0; padding: 2px 0 2px 16px; }
+
+  /* ---------- footer ---------- */
+  footer { background: var(--night); color: #8f9bcd; font-size: 13.5px; }
+  footer .wrap { padding: 44px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+  footer h3 { color: #fff; font-size: 15px; margin: 0 0 8px; }
+  footer a { color: #c9d1ef; }
+  footer p { margin: 6px 0; }
+
+  @media (max-width: 900px) {
+    .hero .wrap, .missing-grid, .author-grid, .quickstart, footer .wrap { grid-template-columns: 1fr; }
+    .cover { order: -1; }
+    .moon-card { grid-template-columns: 1fr; }
+    .polaroids { flex-wrap: wrap; gap: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .cover-art, .cover:hover .cover-art { transform: none; transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav aria-label="Site">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+    <ul>
+      <li><a href="#book">The Book</a></li>
+      <li><a href="#builds">The Builds</a></li>
+      <li><a href="exercises/index.html">Exercises</a></li>
+      <li><a href="#database">GIGI, the Database</a></li>
+      <li><a href="#author">Author</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <svg class="stars" aria-hidden="true" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMid slice">
+    <g fill="#e8ecff">
+      <circle cx="140" cy="80" r="1.6"/><circle cx="320" cy="140" r="1.1"/>
+      <circle cx="560" cy="60" r="1.4"/><circle cx="760" cy="120" r="1"/>
+      <circle cx="940" cy="70" r="1.7"/><circle cx="1100" cy="180" r="1.2"/>
+      <circle cx="220" cy="300" r="1"/><circle cx="80" cy="480" r="1.3"/>
+      <circle cx="1010" cy="380" r="1.1"/><circle cx="1160" cy="520" r="1.5"/>
+      <circle cx="660" cy="560" r="1"/><circle cx="420" cy="600" r="1.3"/>
+    </g>
+    <!-- a quiet crater moon in the corner -->
+    <g transform="translate(1080,60)">
+      <circle r="44" fill="#26304f"/>
+      <circle r="44" fill="none" stroke="#38406b" stroke-width="1.5"/>
+      <circle cx="-12" cy="-8" r="9" fill="#1c2440"/>
+      <circle cx="16" cy="10" r="6" fill="#1c2440"/>
+      <circle cx="4" cy="-22" r="4" fill="#1c2440"/>
+    </g>
+  </svg>
+
+  <div class="wrap">
+    <figure class="cover" aria-label="Book cover">
+      <div class="cover-art cover-art--photo">
+        <img src="cover.png" alt="GIGI Builds — book cover: Bee Davis with Bird, title over an illustrated portrait">
+      </div>
+      <figcaption>First edition · ISBN 9798181715820</figcaption>
+    </figure>
+
+    <div>
+      <p class="eyebrow">Companion site to the book</p>
+      <h1>GIGI Builds</h1>
+      <p class="sub">The fiber-bundle database: a working engineer&rsquo;s guide from schema to shard — eighteen chapters, every one of them ending in an experiment you can run tonight.</p>
+      <p class="byline">by Bee Rosa Davis · Davis Geometric · 2026</p>
+      <blockquote class="quote">&ldquo;The engine carries the whole tuple in memory on every operation; the rows are a shadow it casts.&rdquo;</blockquote>
+      <div class="cta-row">
+        <a class="btn btn-yellow" href="https://www.amazon.com/dp/B0H5FMP996" target="_blank" rel="noopener">Get the book</a>
+        <a class="btn btn-ghost" href="https://github.com/nurdymuny/gigi">Clone the engine</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="book">
+  <div class="wrap">
+    <p class="eyebrow">The book</p>
+    <h2>An afternoon to read. Under a minute to run.</h2>
+    <p class="lede">In 1970 we flattened data into tables and spent fifty years bolting the shape back on with sidecars — a search service for the proximity we discarded, a graph database for the adjacency, a vector store for the geometry, a lineage tool for the provenance. <em>GIGI Builds</em> is the ask to look under the table: your data has a literal shape — curvature you can measure, holes you can count, loops that remember — and a database that stores the shape alongside the rows.</p>
+
+    <div class="moon-card">
+      <svg viewBox="0 0 132 132" role="img" aria-label="A phone book transforming into the moon">
+        <circle cx="88" cy="56" r="34" fill="#e9e2cf" stroke="#b9b09a" stroke-width="2"/>
+        <circle cx="76" cy="46" r="8" fill="#d8cfb6"/>
+        <circle cx="98" cy="64" r="5" fill="#d8cfb6"/>
+        <circle cx="86" cy="72" r="3.5" fill="#d8cfb6"/>
+        <g transform="translate(14,74) rotate(-8)">
+          <rect width="44" height="34" rx="3" fill="#fff" stroke="#b9b09a" stroke-width="2"/>
+          <line x1="6" y1="9" x2="38" y2="9" stroke="#b9b09a" stroke-width="2"/>
+          <line x1="6" y1="17" x2="38" y2="17" stroke="#b9b09a" stroke-width="2"/>
+          <line x1="6" y1="25" x2="26" y2="25" stroke="#b9b09a" stroke-width="2"/>
+        </g>
+        <path d="M52 84 Q64 76 70 66" fill="none" stroke="#eda100" stroke-width="2.5" stroke-dasharray="4 4" marker-end="none"/>
+      </svg>
+      <div>
+        <p><strong>The phone book and the moon.</strong> A phone book is an index with stuff at each name — that&rsquo;s every relational database ever shipped. Now imagine the index isn&rsquo;t a flat list but the surface of the moon: terrain under every point, craters, and the strange fact that walking a closed loop can leave you facing a new direction. GIGI treats your database like the moon. The rows are still there — every query returns what Postgres would — but every response also carries the geometry, free, because the substrate computed it on the way through.</p>
+        <p>Seven parts climb the generator <code>G = (M, g, J, ∇, B, Γ)</code> one piece at a time — from the O(1) address to gauge encryption to running the engine in production. Chapters end with exercises. Claims end with receipts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="builds" style="padding-top: 20px;">
+  <div class="wrap">
+    <p class="eyebrow">The builds</p>
+    <h2>Seven parts. Eighteen chapters. Every one runs.</h2>
+    <p class="lede">Each chapter is a build: the prose walks the idea, the code is in the repo, and the exercises reproduce the receipts. Here is the full map — and all <a href="exercises/index.html">126 exercises are online</a>.</p>
+
+    <!-- Part I -->
+    <div class="part">
+      <div class="part-head">
+        <span class="roman" style="background: var(--blue)">I</span>
+        <h3>The Shape of Data</h3><span class="count">chapters 1–3 · +1 web extra</span>
+      </div>
+      <div class="chapters">
+        <article class="ch" style="border-left-color: var(--blue)">
+          <span class="n">Chapter 1</span><h4>The Phone Book and the Moon</h4>
+          <p>Sixteen operations, side by side: the stack you already run against the moon you could be standing on — and the bill, including what GIGI will not do for you.</p>
+          <div class="tags"><a class="tag" href="exercises/ch01.html" style="text-decoration:none">exercises →</a><span class="tag">side-by-side ops</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--blue)">
+          <span class="n">Chapter 2</span><h4>Sections, Not Rows</h4>
+          <p>A record is a section of a bundle. Three dividends follow — starting with migration without ceremony and ending with questions about shape becoming well-posed.</p>
+          <div class="tags"><a class="tag" href="exercises/ch02.html" style="text-decoration:none">exercises →</a><span class="tag">definitions 1.1–1.4</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--blue)">
+          <span class="n">Chapter 3</span><h4>The Address Is a Coordinate Chart</h4>
+          <p>Thirty lines of mixer, three gates, one birthday bound: the O(1) address that doesn&rsquo;t grow, and the claim that matters at 3&nbsp;a.m.</p>
+          <div class="tags"><a class="tag" href="exercises/ch03.html" style="text-decoration:none">exercises →</a><span class="tag">O(1) hashing</span></div>
+        </article>
+        <a class="ch" href="the-mesh-that-audits-itself.html" style="border-left-color: var(--yellow)">
+          <span class="n">Web extra</span><h4>The Mesh That Audits Itself <span class="arrow" aria-hidden="true">&rarr;</span></h4>
+          <p>A tetrahedral mesh as a fibered object: every tet carries certified shape data, so adaptive refinement leaves a queryable audit trail. Not in the printed book — more bonus chapters will land here.</p>
+          <div class="tags"><span class="tag">interactive demo</span><span class="tag">spec &amp; harness on GitHub</span></div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Part II -->
+    <div class="part">
+      <div class="part-head">
+        <span class="roman" style="background: var(--aqua)">II</span>
+        <h3>The Engine Room</h3><span class="count">chapters 4–7</span>
+      </div>
+      <div class="chapters">
+        <article class="ch" style="border-left-color: var(--aqua)">
+          <span class="n">Chapter 4</span><h4>Anatomy of a BundleStore</h4>
+          <p>The insert path step by step, the accumulators that replace your cron job, and the epoch counter that makes caching honest.</p>
+          <div class="tags"><a class="tag" href="exercises/ch04.html" style="text-decoration:none">exercises →</a><span class="tag">Welford stats</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--aqua)">
+          <span class="n">Chapter 5</span><h4>Durability: WAL, mmap &amp; CoW Snapshots</h4>
+          <p>The logbook and the chart room — plus war stories from the commit log, including the record that was counted twice, twice.</p>
+          <div class="tags"><a class="tag" href="exercises/ch05.html" style="text-decoration:none">exercises →</a><span class="tag">war stories</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--aqua)">
+          <span class="n">Chapter 6</span><h4>DHOOM: The Wire Format That Knows the Zero Section</h4>
+          <p>A stenographer who knows the speaker: eight sigils, interned pools, and elision machinery that only sends departures from the schema.</p>
+          <div class="tags"><a class="tag" href="exercises/ch06.html" style="text-decoration:none">exercises →</a><span class="tag">wire format</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--aqua)">
+          <span class="n">Chapter 7</span><h4>GQL: A Language Where Geometry Determines Complexity</h4>
+          <p>Seven principles, a verbatim session, the complexity contract with its one load-bearing word — and the table that confesses.</p>
+          <div class="tags"><a class="tag" href="exercises/ch07.html" style="text-decoration:none">exercises →</a><span class="tag">query language</span></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- Part III -->
+    <div class="part">
+      <div class="part-head">
+        <span class="roman" style="background: var(--yellow)">III</span>
+        <h3>The Signals That Run While You Sleep</h3><span class="count">chapters 8–10</span>
+      </div>
+      <div class="chapters">
+        <article class="ch" style="border-left-color: var(--yellow)">
+          <span class="n">Chapter 8</span><h4>The Engine&rsquo;s Opinion: Interoception</h4>
+          <p>Curvature κ in three voices; the map from κ to confidence; the price of having an opinion — and when that opinion is gameable.</p>
+          <div class="tags"><a class="tag" href="exercises/ch08.html" style="text-decoration:none">exercises →</a><span class="tag">anomaly detection</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--yellow)">
+          <span class="n">Chapter 9</span><h4>Spectra and Communities</h4>
+          <p>The spectral gap in three voices, Cheeger&rsquo;s bridge over the Maine, Ollivier–Ricci — and expander honesty when the spectrum is a wall of noise.</p>
+          <div class="tags"><a class="tag" href="exercises/ch09.html" style="text-decoration:none">exercises →</a><span class="tag">clustering, free</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--yellow)">
+          <span class="n">Chapter 10</span><h4>The Brain on the Wire</h4>
+          <p>Eleven brain verbs — SAMPLE, FORECAST, DREAM, RECONSTRUCT, INPAINT, PREDICT, ATTEND, EPISODIC, SEMANTIC, EXPLAIN — and CONFIDENCE, the verb that refuses.</p>
+          <div class="tags"><a class="tag" href="exercises/ch10.html" style="text-decoration:none">exercises →</a><span class="tag">brain verbs</span></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- Part IV -->
+    <div class="part">
+      <div class="part-head">
+        <span class="roman" style="background: var(--green)">IV</span>
+        <h3>What the Loop Remembers</h3><span class="count">chapters 11–12</span>
+      </div>
+      <div class="chapters">
+        <article class="ch" style="border-left-color: var(--green)">
+          <span class="n">Chapter 11</span><h4>Holonomy: What the Loop Remembers</h4>
+          <p>Carry meaning around a closed loop and watch it come back rotated. Gauss–Bonnet on a discrete loop, holonomy debt, and an audit ledger the geometry agrees with.</p>
+          <div class="tags"><a class="tag" href="exercises/ch11.html" style="text-decoration:none">exercises →</a><span class="tag">the ledger</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--green)">
+          <span class="n">Chapter 12</span><h4>Torsion: The Asymmetric Carry</h4>
+          <p>Cartan 1922, the connection that refuses to commute, the four (or five) homonyms of τ — and the empirical receipt Marcella carries.</p>
+          <div class="tags"><a class="tag" href="exercises/ch12.html" style="text-decoration:none">exercises →</a><span class="tag">open slot, named</span></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- Part V -->
+    <div class="part">
+      <div class="part-head">
+        <span class="roman" style="background: var(--violet)">V</span>
+        <h3>The Theorem</h3><span class="count">chapters 13–14</span>
+      </div>
+      <div class="chapters">
+        <article class="ch" style="border-left-color: var(--violet)">
+          <span class="n">Chapter 13</span><h4>The Single-Node Tour, with Theorems</h4>
+          <p>T1–T4 on one node: Betti numbers assembled from per-chart pieces, gauges canceling around closed loops — and a penguin walk through baseline, shard, monodromy.</p>
+          <div class="tags"><a class="tag" href="exercises/ch13.html" style="text-decoration:none">exercises →</a><span class="tag">T1–T4</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--violet)">
+          <span class="n">Chapter 14</span><h4>The Navigator&rsquo;s Honest Map</h4>
+          <p>The universal bound that always holds, the naive bound that fails, distributed Lanczos as the fix — and an engine that abstains rather than lies.</p>
+          <div class="tags"><a class="tag" href="exercises/ch14.html" style="text-decoration:none">exercises →</a><span class="tag">T5–T7, sharding</span></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- Part VI -->
+    <div class="part">
+      <div class="part-head">
+        <span class="roman" style="background: var(--red)">VI</span>
+        <h3>Gauge Encryption</h3><span class="count">chapters 15–17</span>
+      </div>
+      <div class="chapters">
+        <article class="ch" style="border-left-color: var(--red)">
+          <span class="n">Chapter 15</span><h4>The Geometry Is the Encryption</h4>
+          <p>Five modes, not six — the honest correction. The equivariance theorem, the affine invariant ring, and the Curvature-MAC.</p>
+          <div class="tags"><a class="tag" href="exercises/ch15.html" style="text-decoration:none">exercises →</a><span class="tag">five modes</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--red)">
+          <span class="n">Chapter 16</span><h4>The Verifier Without Decryption</h4>
+          <p>Carol holds no key and audits the bundle anyway: the verifier API, canonical fingerprint order, and the three anchor tests.</p>
+          <div class="tags"><a class="tag" href="exercises/ch16.html" style="text-decoration:none">exercises →</a><span class="tag">0-decrypt audit</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--red)">
+          <span class="n">Chapter 17</span><h4>Delegation, Forward Secrecy &amp; What&rsquo;s Not PQ-Safe Yet</h4>
+          <p>Four seals from Aff(R) to lattice K-of-N threshold, the RG-flow ratchet for per-write forward secrecy — and the honest limit, stated plainly.</p>
+          <div class="tags"><a class="tag" href="exercises/ch17.html" style="text-decoration:none">exercises →</a><span class="tag">ML-KEM-768</span></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- Part VII -->
+    <div class="part">
+      <div class="part-head">
+        <span class="roman" style="background: var(--magenta)">VII</span>
+        <h3>Running the Engine</h3><span class="count">chapter 18 + appendices</span>
+      </div>
+      <div class="chapters">
+        <article class="ch" style="border-left-color: var(--magenta)">
+          <span class="n">Chapter 18</span><h4>Bring-Up, Watch, and the Edge of the Public Story</h4>
+          <p>One process, five binaries, one verb. The 503 contract, cold-start self-heal, the geometric column no other logbook has — and Marcella as the headline live customer.</p>
+          <div class="tags"><a class="tag" href="exercises/ch18.html" style="text-decoration:none">exercises →</a><span class="tag">production</span></div>
+        </article>
+        <article class="ch" style="border-left-color: var(--magenta)">
+          <span class="n">Appendices A–D</span><h4>Every Verb in One Room</h4>
+          <p>The full HTTP API, a glossary mapping geometric terms to engine analogues, the citation index — and the math companion: one generator, eight constructions, three open problems.</p>
+          <div class="tags"><span class="tag">reference</span></div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="database">
+  <div class="wrap">
+    <p class="eyebrow">GIGI, the database</p>
+    <h2>A conventional database stores rows. GIGI stores the geometry rows live on.</h2>
+    <p class="lede">GIGI (Geometric Intrinsic Global Index) is a fiber-bundle database engine, written in Rust, free for noncommercial use. Curvature, spectral connectivity, holonomy, and confidence update incrementally on every insert and ride along on every query — no sidecar services, no quarterly batch job.</p>
+
+    <table class="ops">
+      <caption class="eyebrow" style="text-align:left; padding: 0 0 10px;">Day one, side by side</caption>
+      <thead><tr><th scope="col">You want to…</th><th scope="col">Conventional stack</th><th scope="col">GIGI</th></tr></thead>
+      <tbody>
+        <tr><td>Look up by key</td><td>B-tree, O(log N)</td><td><code>SECTION b AT (id='X')</code> — O(1), response carries κ + confidence</td></tr>
+        <tr><td>Detect anomalies</td><td>Streaming pipeline + outlier model</td><td>Curvature κ already updated per insert — outliers are where κ spikes</td></tr>
+        <tr><td>&ldquo;How clustered is my data?&rdquo;</td><td>Run k-means offline</td><td><code>SPECTRAL b</code> — Fiedler value λ₁, cached, incrementally refreshed</td></tr>
+        <tr><td>Join two tables</td><td>Hash join</td><td><code>PULLBACK orders ALONG customers</code> — a pullback of bundles</td></tr>
+        <tr><td>Encrypt analytics columns</td><td>Column encryption breaks the indexes</td><td>Gauge encryption preserves κ, λ₁, anomaly scores at native speed</td></tr>
+      </tbody>
+    </table>
+
+    <div class="quickstart">
+      <pre><code><span class="c"># clone tonight — the book's standing offer</span>
+git clone https://github.com/nurdymuny/gigi
+cd gigi &amp;&amp; cargo build --release
+PORT=3142 ./target/release/gigi-stream
+
+<span class="c"># or just poke the public instance</span>
+curl https://gigi-stream.fly.dev/v1/health</code></pre>
+      <div class="side">
+        <h3>Free to read, run &amp; teach</h3>
+        <p>The engine and the book ship under PolyForm Noncommercial 1.0.0: personal use, research, teaching, and running every experiment in every chapter are all permitted purposes. Commercial licensing is reserved.</p>
+        <p style="font-family: Georgia, serif; font-style: italic;">&ldquo;I make money off of the people who make money; everyone else reads, runs the experiments, and teaches.&rdquo;</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="author">
+  <div class="wrap author-grid">
+    <div>
+      <p class="eyebrow">The author</p>
+      <h2>Bee Rosa Davis</h2>
+      <p class="lede">Founder of Davis Geometric, an independent research lab applying differential geometry, fiber-bundle theory, and spectral methods to AI interpretability, plasma physics, pharmacokinetics, agriculture, financial reconciliation, and national security. Brown University alum, NASA engineer, holder of the patents this book cites by number — and author of <em>The Geometry of Flight</em>, the substrate story underneath this one.</p>
+      <blockquote>&ldquo;Every receipt this book prints is a receipt the reader can produce.&rdquo;</blockquote>
+    </div>
+    <div class="polaroids" aria-label="Photos of the author">
+      <!-- Swap each SVG for <img src="bee-1.jpg" alt="..."> etc. -->
+      <figure class="pol">
+        <div class="ph">
+          <img src="bee-1.jpg" alt="Bee reaching for a book with Bird perched on the shelf">
+        </div>
+      </figure>
+      <figure class="pol">
+        <div class="ph">
+          <img src="bee-2.jpg" alt="Portrait of Bee with Bird on her head">
+        </div>
+      </figure>
+      <figure class="pol">
+        <div class="ph">
+          <img src="bee-3.jpg" alt="Bee holding a cup of coffee in the park with Bird on her shoulder">
+        </div>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<footer id="contact">
+  <div class="wrap">
+    <div>
+      <h3>Questions about a build?</h3>
+      <p>Found a bug in a receipt? Ran an experiment past the edge of a chapter? That&rsquo;s the whole point — write me.</p>
+      <p><a href="mailto:bee_davis@alumni.brown.edu">bee_davis@alumni.brown.edu</a></p>
+      <p><a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> · <a href="https://davisgeometric.com">davisgeometric.com</a></p>
+    </div>
+    <div>
+      <h3>Davis Geometric</h3>
+      <p><em>GIGI Builds</em>, first edition, 2026 · ISBN 9798181715820 · independently published.</p>
+      <p>Engine and book released under PolyForm Noncommercial 1.0.0. Constructions protected by U.S. Provisional Patent App. No. 64/045,889 and related filings.</p>
+      <p>© 2026 Bee Rosa Davis. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

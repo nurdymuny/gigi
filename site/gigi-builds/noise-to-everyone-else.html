@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noise to Everyone Else — GIGI Builds web extra</title>
+<link rel="stylesheet" href="assets/webextra.css">
+<style>:root { --accent: var(--red); }
+  .split { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    background: var(--line); pointer-events: none; }
+  .vlabel { position: absolute; top: 12px; font-size: 12.5px; font-weight: 700;
+    color: var(--ink-2); pointer-events: none; text-shadow: 0 1px 3px #000; }
+  .vlabel.l { left: 16px; } .vlabel.r { left: calc(50% + 16px); }
+  .verify { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; margin: 14px 0; overflow-x: auto; }
+  .verify h3 { margin: 0 0 2px; font-size: 14.5px; }
+  .verify .sub { color: var(--ink-3); font-size: 12.5px; margin: 0 0 8px; }
+  .verify table { border-collapse: collapse; font: 12.5px ui-monospace, Menlo, monospace;
+    color: var(--ink-2); width: 100%; }
+  .verify td, .verify th { text-align: right; padding: 3px 16px 3px 0; white-space: nowrap; }
+  .verify th { color: var(--ink-3); font-weight: 600; border-bottom: 1px solid var(--line); }
+  .verify td:first-child, .verify th:first-child { text-align: left; }
+  .verify td.ok { color: var(--aqua); font-weight: 700; }
+</style>
+</head>
+<body>
+<nav class="wx"><div class="wrap">
+  <a class="brand" href="index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+  <span class="crumbs"><a href="index.html#builds">chapters</a> · web extra</span>
+</div></nav>
+
+<header class="page"><div class="wrap">
+  <p class="eyebrow">Web extra · not in the printed book · Part VI territory</p>
+  <h1>Noise to Everyone Else</h1>
+  <p class="lede">Four letters, each its own little bundle, each wearing its own gauge.
+  On the left: your frame, key in hand — the fibers read <em>GIGI</em>. On the right:
+  the wire — the same bytes every eavesdropper gets, each letter independently
+  tumbled through its epoch's SO(3) gauge. Advance the ratchet and the wire
+  re-scrambles; revoke your key and watch letters go dark <em>in your own view</em> —
+  forward secrecy isn't a permission bit here, it's geometry you can no longer
+  undo. And through all of it, the verifier's invariants never flinch.</p>
+</div></header>
+
+<main class="wrap">
+  <div class="stage" id="stage">
+    <div class="split" aria-hidden="true"></div>
+    <div class="vlabel l" id="lbl-l">your frame — key at epoch 0</div>
+    <div class="vlabel r">the wire — what everyone else sees</div>
+    <div class="hud"><b>same 4 point-clouds in both panes</b> · left = gauges you can undo, undone · right = fully composed</div>
+    <div class="corner">drag to orbit · wheel to zoom</div>
+  </div>
+  <div class="controls" id="controls"></div>
+  <div class="stats" id="stats"></div>
+
+  <div class="verify">
+    <h3>Carol's clipboard — invariants recomputed on the WIRE cloud, no key involved</h3>
+    <p class="sub">per-letter pairwise-distance tuple, claimed at sealing time vs recomputed on the scrambled bytes · gauges are isometries, so these agree at every epoch — that's what lets her verify without reading</p>
+    <table id="vtable" aria-label="per-letter invariant verification"></table>
+  </div>
+
+  <p class="note">The part worth sitting with: after you hit <em>revoke</em>, the left
+  pane is not "access denied" — it is the honest best anyone can do with the old
+  key, which is to undo the gauges up to the revocation epoch and stare at the
+  composition of everything after. There is no server deciding to withhold the
+  letters; the letters are simply no longer <em>anywhere</em> in the old frame. That's
+  the RG-flow ratchet of Chapter 17, and the reason the book calls the chapter
+  "The Geometry Is the Encryption" rather than "The Geometry Helps".</p>
+
+  <details class="gql">
+    <summary>The same thing in GQL — run it against an engine</summary>
+    <p class="hint">The gauge modes live behind the <code>gauge</code> feature; the
+    invariant-tuple verify path is Chapter 16's <code>VerifyResult</code>. The public
+    read-only instance will happily show you a live bundle's geometry riding along.</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="wx run">Run</button></div>
+    <textarea aria-label="GQL statement">HEALTH tetmesh_demo;</textarea>
+    <div class="row">
+      <button class="chip" data-q="HEALTH tetmesh_demo;">HEALTH (live bundle)</button>
+      <button class="chip" data-q="CURVATURE tetmesh_demo;">CURVATURE</button>
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+</main>
+
+<footer class="wx"><div class="wrap">
+  From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis ·
+  more web extras: <a href="the-mesh-that-audits-itself.html">the mesh that audits itself</a> ·
+  engine at <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>
+</div></footer>
+
+<script src="assets/three.min.js"></script>
+<script src="assets/webextra.js"></script>
+<script>
+(function () {
+  "use strict";
+  var rng = WX.mulberry32(1717);
+
+  /* ---------- the plaintext: "GIGI" in dots ---------- */
+  var FONT = {
+    G: ["01110", "10001", "10000", "10111", "10001", "10001", "01110"],
+    I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"]
+  };
+  var LETTERS = ["G", "I", "G", "I"];
+  var LCOLORS = [0x3987e5, 0x199e70, 0x9085e9, 0xd55181];
+  function letterCloud(ch) {
+    var rows = FONT[ch], pts = [];
+    for (var r = 0; r < 7; r++) for (var c = 0; c < 5; c++) {
+      if (rows[r][c] !== "1") continue;
+      for (var d = 0; d < 4; d++)
+        pts.push(new THREE.Vector3(
+          (c - 2) * 0.16 + (rng() - 0.5) * 0.09,
+          (3 - r) * 0.16 + (rng() - 0.5) * 0.09,
+          (rng() - 0.5) * 0.12));
+    }
+    return pts;
+  }
+  var clouds = LETTERS.map(letterCloud);
+  var offsets = [-1.05, -0.35, 0.35, 1.05]; // letter baselines in x
+
+  function invariant(pts) {
+    var sum2 = 0;
+    for (var i = 0; i < pts.length; i++) for (var j = i + 1; j < pts.length; j++)
+      sum2 += pts[i].distanceToSquared(pts[j]);
+    return sum2;
+  }
+  var claimed = clouds.map(invariant);
+
+  /* ---------- gauges: one chain per letter ---------- */
+  var epoch = 0, keyEpoch = 0, revokedAt = null;
+  var chains = [[], [], [], []]; // chains[letter][e] = Matrix4 for epoch e (e >= 1)
+  function newGauge() {
+    var q = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+      rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2));
+    var t = new THREE.Vector3((rng() - 0.5) * 0.7, (rng() - 0.5) * 0.7, (rng() - 0.5) * 0.7);
+    return new THREE.Matrix4().compose(t, q, new THREE.Vector3(1, 1, 1));
+  }
+  function advance() {
+    epoch++;
+    chains.forEach(function (ch) { ch[epoch] = newGauge(); });
+    if (revokedAt === null) keyEpoch = epoch; // holding the current key
+  }
+  // residual transform a viewer with key at epoch k still can't undo
+  function residual(letter, k) {
+    var m = new THREE.Matrix4();
+    for (var e = k + 1; e <= epoch; e++) m.premultiply(chains[letter][e]);
+    return m;
+  }
+
+  /* ---------- scene: two panes in one scene ---------- */
+  var stage = WX.stage(document.getElementById("stage"),
+    { width: 1120, height: 560, label: "Two views of gauge-encrypted point clouds: keyholder frame and wire frame" });
+  var orbit = WX.orbit(stage, { dist: 4.2, theta: Math.PI / 2, phi: 1.35,
+    minDist: 2.4, maxDist: 9,
+    minTheta: Math.PI / 2 - 0.55, maxTheta: Math.PI / 2 + 0.55 });
+  var PANE = 1.55; // x offset of each pane center
+
+  var pointObjs = []; // {letter, side, geo, base}
+  function mkPoints(letter, side) {
+    var pts = clouds[letter];
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pts.length * 3), 3));
+    var obj = WX.dots(geo, { size: 0.055, color: LCOLORS[letter] });
+    stage.scene.add(obj);
+    pointObjs.push({ letter: letter, side: side, geo: geo });
+    return obj;
+  }
+  for (var L = 0; L < 4; L++) { mkPoints(L, -1); mkPoints(L, +1); }
+
+  var wireClouds = [null, null, null, null]; // current wire-space points per letter
+  function refresh() {
+    pointObjs.forEach(function (po) {
+      var pts = clouds[po.letter];
+      var k = po.side < 0 ? keyEpoch : -1; // wire pane: undo nothing (k=-1 → all epochs composed... but residual starts at k+1=0; chains start at 1)
+      var m = residual(po.letter, po.side < 0 ? keyEpoch : 0);
+      var pa = po.geo.getAttribute("position");
+      var out = [];
+      for (var i = 0; i < pts.length; i++) {
+        var p = pts[i].clone().applyMatrix4(m);
+        out.push(p);
+        pa.setXYZ(i, p.x + offsets[po.letter] * 0.62 + po.side * PANE, p.y, p.z);
+      }
+      pa.needsUpdate = true;
+      po.geo.computeBoundingSphere();
+      if (po.side > 0) wireClouds[po.letter] = out;
+    });
+    // verification table: recompute invariants on the wire clouds
+    var html = "<tr><th>letter</th><th>points</th><th>claimed Σd²</th><th>recomputed on wire</th><th>verdict</th></tr>";
+    for (var L2 = 0; L2 < 4; L2++) {
+      var got = invariant(wireClouds[L2]);
+      var ok = Math.abs(got - claimed[L2]) <= 1e-9 * claimed[L2];
+      html += "<tr><td>" + LETTERS[L2] + " #" + (L2 + 1) + "</td><td>" + clouds[L2].length +
+        "</td><td>" + claimed[L2].toFixed(6) + "</td><td>" + got.toFixed(6) +
+        "</td><td class=\"" + (ok ? "ok" : "") + "\">" +
+        (ok ? "✓ Verified" : "✗ Rejected") + "</td></tr>";
+    }
+    document.getElementById("vtable").innerHTML = html;
+    // labels + readouts
+    var readable = 0;
+    for (var L3 = 0; L3 < 4; L3++) if (keyEpoch >= epoch) readable++;
+    document.getElementById("lbl-l").textContent =
+      "your frame — key at epoch " + keyEpoch +
+      (revokedAt !== null ? " (revoked after " + revokedAt + ")" : "");
+    rd.ep.set(epoch); rd.key.set(keyEpoch);
+    rd.read.set(keyEpoch >= epoch ? "all 4" : "none — old key");
+    rd.read.tone(keyEpoch >= epoch ? "good" : "hot");
+    stage.kick();
+  }
+
+  /* ---------- controls ---------- */
+  var controls = document.getElementById("controls"), statsRow = document.getElementById("stats");
+  var rd = { ep: WX.readout("wire epoch"), key: WX.readout("your key's epoch"),
+             read: WX.readout("letters you can read") };
+  [rd.ep, rd.key, rd.read].forEach(function (r) { statsRow.appendChild(r.el); });
+
+  var bRevoke, bSteal;
+  controls.appendChild(WX.button("Advance the ratchet (new gauges)", function () {
+    advance(); refresh();
+  }));
+  bRevoke = WX.button("Revoke my key here", function () {
+    revokedAt = epoch; keyEpoch = epoch;
+    advance(); refresh();
+    bRevoke.disabled = true; bSteal.disabled = false;
+  });
+  controls.appendChild(bRevoke);
+  bSteal = WX.button("Re-key me (delegation seal)", function () {
+    revokedAt = null; keyEpoch = epoch; refresh();
+    bRevoke.disabled = false; bSteal.disabled = true;
+  }, true);
+  bSteal.disabled = true;
+  controls.appendChild(bSteal);
+  controls.appendChild(WX.button("reset", function () {
+    epoch = 0; keyEpoch = 0; revokedAt = null;
+    chains = [[], [], [], []];
+    bRevoke.disabled = false; bSteal.disabled = true;
+    refresh();
+  }, true));
+
+  advance(); // start at epoch 1 so the wire is scrambled on load
+  refresh();
+  WX.wireConsole(document);
+})();
+</script>
+</body>
+</html>

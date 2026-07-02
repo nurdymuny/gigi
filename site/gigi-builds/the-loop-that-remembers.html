@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Loop That Remembers — GIGI Builds web extra</title>
+<link rel="stylesheet" href="assets/webextra.css">
+<style>:root { --accent: var(--aqua); }
+  .gb { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 18px; margin: 14px 0; font: 13.5px ui-monospace, Menlo, monospace;
+    color: var(--ink-2); }
+  .gb b.ok { color: var(--aqua); } .gb b.miss { color: var(--red); }
+</style>
+</head>
+<body>
+<nav class="wx"><div class="wrap">
+  <a class="brand" href="index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+  <span class="crumbs"><a href="index.html#builds">chapters</a> · web extra</span>
+</div></nav>
+
+<header class="page"><div class="wrap">
+  <p class="eyebrow">Web extra · not in the printed book · Part IV territory</p>
+  <h1>The Loop That Remembers</h1>
+  <p class="lede">A curved landscape — one hill, one hollow — and a frame carried
+  around a loop by honest parallel transport: at every step the arrow is
+  re-projected onto the surface and never once told to turn. It turns anyway.
+  The angle it comes home rotated by is the curvature the loop enclosed, and this
+  page computes both sides of that equation <em>independently</em> — the transport by
+  walking, the integral by integrating — and shows you the receipt.</p>
+</div></header>
+
+<main class="wrap">
+  <div class="stage" id="stage">
+    <div class="hud"><b>surface color = Gaussian curvature</b> · orange positive (hilltop) ·
+      violet negative (the skirt &amp; saddle) · drag the white loop to move it</div>
+    <div class="corner">drag empty space to orbit · wheel to zoom</div>
+  </div>
+  <div class="controls" id="controls"></div>
+  <div class="stats" id="stats"></div>
+  <div class="gb" id="gb">transport the frame to print the Gauss–Bonnet receipt</div>
+
+  <p class="note">Two things to try. First: shrink the loop onto flat ground far from
+  the hill — the deficit dies, because flat transport is trivial (the first of
+  Chapter 11's five named call sites). Second, the sneaky one: <em>grow</em> the loop
+  until it swallows the hill entirely, skirt and all. The deficit heads back toward
+  zero — a bump's positive summit and negative skirt cancel exactly, so a loop that
+  encloses <em>all</em> of it remembers nothing. Holonomy is not "did I walk near
+  something curved"; it is a signed ledger of exactly what the loop surrounds.
+  In the engine the loop is a cycle of shards and this ledger is
+  <code>holonomy_debt</code> — same math, less scenery.</p>
+
+  <details class="gql">
+    <summary>The same thing in GQL — run it against an engine</summary>
+    <p class="hint">Holonomy rides along per bundle; <code>CURVATURE</code> prints the κ
+    ledger the deficit is built from. The tetmesh bundle is live on the public
+    instance right now.</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="wx run">Run</button></div>
+    <textarea aria-label="GQL statement">CURVATURE tetmesh_demo;</textarea>
+    <div class="row">
+      <button class="chip" data-q="CURVATURE tetmesh_demo;">CURVATURE (live bundle)</button>
+      <button class="chip" data-q="HEALTH tetmesh_demo;">HEALTH</button>
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+</main>
+
+<footer class="wx"><div class="wrap">
+  From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis ·
+  more web extras: <a href="the-mesh-that-audits-itself.html">the mesh that audits itself</a> ·
+  engine at <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>
+</div></footer>
+
+<script src="assets/three.min.js"></script>
+<script src="assets/webextra.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- the surface: one bump + one hollow, analytic ---------- */
+  var A = 0.9, S = 0.55;
+  var BUMP = { x: -0.5, z: 0.0, a: 1.0 }, DIP = { x: 0.95, z: 0.55, a: -0.55 };
+  function parts(x, z) {
+    // h and exact first/second derivatives, summed over the two Gaussians
+    var h = 0, hx = 0, hz = 0, hxx = 0, hzz = 0, hxz = 0;
+    [BUMP, DIP].forEach(function (c) {
+      var dx = x - c.x, dz = z - c.z, s2 = S * S;
+      var g = A * c.a * Math.exp(-(dx * dx + dz * dz) / (2 * s2));
+      h += g;
+      hx += -dx / s2 * g; hz += -dz / s2 * g;
+      hxx += (dx * dx / (s2 * s2) - 1 / s2) * g;
+      hzz += (dz * dz / (s2 * s2) - 1 / s2) * g;
+      hxz += dx * dz / (s2 * s2) * g;
+    });
+    return { h: h, hx: hx, hz: hz, hxx: hxx, hzz: hzz, hxz: hxz };
+  }
+  function H(x, z) { return parts(x, z).h; }
+  function K(x, z) {
+    var p = parts(x, z);
+    var w = 1 + p.hx * p.hx + p.hz * p.hz;
+    return (p.hxx * p.hzz - p.hxz * p.hxz) / (w * w);
+  }
+  function normalAt(x, z) {
+    var p = parts(x, z);
+    return new THREE.Vector3(-p.hx, 1, -p.hz).normalize();
+  }
+  function surf(x, z, lift) {
+    return new THREE.Vector3(x, H(x, z) + (lift || 0), z);
+  }
+
+  /* ---------- scene ---------- */
+  var stage = WX.stage(document.getElementById("stage"),
+    { width: 1120, height: 620, label: "Curved terrain with a loop and a parallel-transported frame" });
+  var orbit = WX.orbit(stage, { dist: 4.6, theta: 1.0, phi: 1.05, minDist: 2, maxDist: 10 });
+
+  var SEG = 96, EXT = 2.0;
+  var terrainGeo = new THREE.PlaneGeometry(2 * EXT, 2 * EXT, SEG, SEG);
+  terrainGeo.rotateX(-Math.PI / 2); // xz plane, y up
+  var terrainColors = new Float32Array(terrainGeo.getAttribute("position").count * 3);
+  terrainGeo.setAttribute("color", new THREE.BufferAttribute(terrainColors, 3));
+  var terrain = new THREE.Mesh(terrainGeo, new THREE.MeshBasicMaterial(
+    { vertexColors: true, side: THREE.DoubleSide }));
+  stage.scene.add(terrain);
+  var wire = null;
+  function rebuildWire() {
+    if (wire) { stage.scene.remove(wire); wire.geometry.dispose(); }
+    wire = new THREE.LineSegments(new THREE.WireframeGeometry(terrainGeo),
+      new THREE.LineBasicMaterial({ color: 0x2a2a28, transparent: true, opacity: 0.5 }));
+    stage.scene.add(wire);
+  }
+
+  var NEG = new THREE.Color(0x9085e9), MID = new THREE.Color(0x35342f),
+      POS = new THREE.Color(0xd95926);
+  function rebuildTerrain() {
+    var pa = terrainGeo.getAttribute("position");
+    var kmax = 0.001, ks = new Float64Array(pa.count);
+    for (var i = 0; i < pa.count; i++) {
+      var x = pa.getX(i), z = pa.getZ(i);
+      pa.setY(i, H(x, z));
+      ks[i] = K(x, z);
+      if (Math.abs(ks[i]) > kmax) kmax = Math.abs(ks[i]);
+    }
+    for (var i = 0; i < pa.count; i++) {
+      var t = ks[i] / kmax; // [-1, 1]
+      var col = t >= 0 ? MID.clone().lerp(POS, Math.min(1, t))
+                       : MID.clone().lerp(NEG, Math.min(1, -t));
+      terrainColors[i * 3] = col.r; terrainColors[i * 3 + 1] = col.g;
+      terrainColors[i * 3 + 2] = col.b;
+    }
+    pa.needsUpdate = true;
+    terrainGeo.getAttribute("color").needsUpdate = true;
+    terrainGeo.computeBoundingSphere();
+    rebuildWire();
+    stage.kick();
+  }
+
+  /* ---------- the loop ---------- */
+  var loopC = { x: -0.15, z: -0.05 }, loopR = 0.65;
+  var LOOP_PTS = 128;
+  var loopGeo = new THREE.BufferGeometry();
+  loopGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array((LOOP_PTS + 1) * 3), 3));
+  var loopLine = new THREE.Line(loopGeo, new THREE.LineBasicMaterial({ color: 0xe8e6e0 }));
+  stage.scene.add(loopLine);
+  var centerDot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0xe8e6e0 }));
+  stage.scene.add(centerDot);
+
+  function redrawLoop() {
+    var pa = loopGeo.getAttribute("position");
+    for (var i = 0; i <= LOOP_PTS; i++) {
+      var a = i / LOOP_PTS * Math.PI * 2;
+      var p = surf(loopC.x + loopR * Math.cos(a), loopC.z + loopR * Math.sin(a), 0.015);
+      pa.setXYZ(i, p.x, p.y, p.z);
+    }
+    pa.needsUpdate = true;
+    loopGeo.computeBoundingSphere();
+    centerDot.position.copy(surf(loopC.x, loopC.z, 0.02));
+    stage.kick();
+  }
+
+  /* ---------- transport + the two independent numbers ---------- */
+  var STEPS = 1440;
+  function transportPath() {
+    // discrete Levi-Civita: project the carried vector onto each new
+    // tangent plane, renormalize; record the whole path for animation
+    var path = [], vecs = [];
+    var a0 = 0;
+    var start = { x: loopC.x + loopR, z: loopC.z };
+    var n0 = normalAt(start.x, start.z);
+    var v = new THREE.Vector3(0, 0, 1).sub(n0.clone().multiplyScalar(n0.z)).normalize();
+    var v0 = v.clone();
+    for (var i = 0; i <= STEPS; i++) {
+      // minus on z: counterclockwise as seen from the surface normal (+y),
+      // the orientation Gauss–Bonnet's sign convention assumes
+      var a = i / STEPS * Math.PI * 2;
+      var x = loopC.x + loopR * Math.cos(a), z = loopC.z - loopR * Math.sin(a);
+      var n = normalAt(x, z);
+      v = v.clone().sub(n.clone().multiplyScalar(v.dot(n))).normalize();
+      path.push(surf(x, z, 0.03)); vecs.push(v.clone());
+    }
+    var vf = vecs[STEPS];
+    var deficit = Math.atan2(v0.clone().cross(vf).dot(n0), v0.dot(vf));
+    return { path: path, vecs: vecs, v0: v0, deficit: deficit };
+  }
+  function enclosedK() {
+    // ∬ K dA over the surface patch above the parameter disk
+    var sum = 0, M = 64;
+    var step = 2 * loopR / M;
+    for (var ix = 0; ix < M; ix++) for (var iz = 0; iz < M; iz++) {
+      var x = loopC.x - loopR + (ix + 0.5) * step;
+      var z = loopC.z - loopR + (iz + 0.5) * step;
+      var dx = x - loopC.x, dz = z - loopC.z;
+      if (dx * dx + dz * dz > loopR * loopR) continue;
+      var p = parts(x, z);
+      var area = Math.sqrt(1 + p.hx * p.hx + p.hz * p.hz);
+      sum += K(x, z) * area * step * step;
+    }
+    return sum;
+  }
+
+  var arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(), 0.5, 0x199e70, 0.14, 0.07);
+  stage.scene.add(arrow);
+  var ghost = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(), 0.5, 0x85827a, 0.14, 0.07);
+  stage.scene.add(ghost);
+
+  var rd = { def: WX.readout("transported deficit"), enc: WX.readout("enclosed ∬K dA"),
+             diff: WX.readout("disagreement") };
+  var gb = document.getElementById("gb");
+  var anim = null; // {path, vecs, i}
+
+  function placeIdle() {
+    var t = transportPath();
+    arrow.position.copy(t.path[0]); arrow.setDirection(t.vecs[0]);
+    ghost.position.copy(t.path[0]); ghost.setDirection(t.v0);
+    var enc = enclosedK();
+    rd.enc.set((enc * 180 / Math.PI).toFixed(2) + "°");
+    rd.def.set("–"); rd.diff.set("–"); rd.diff.tone("");
+    gb.textContent = "transport the frame to print the Gauss–Bonnet receipt";
+    stage.kick();
+  }
+
+  function runTransport() {
+    var t = transportPath();
+    ghost.position.copy(t.path[0]); ghost.setDirection(t.v0);
+    anim = { t: t, i: 0 };
+    stage.kick();
+  }
+
+  var ANIM_FRAMES = 80;
+  stage.onTick(function () {
+    if (!anim) return;
+    anim.i = Math.min(ANIM_FRAMES, anim.i + 1);
+    var idx = Math.round(STEPS * anim.i / ANIM_FRAMES);
+    arrow.position.copy(anim.t.path[idx]);
+    arrow.setDirection(anim.t.vecs[idx]);
+    if (anim.i >= ANIM_FRAMES) {
+      var defDeg = anim.t.deficit * 180 / Math.PI;
+      var enc = enclosedK(), encDeg = enc * 180 / Math.PI;
+      var diff = Math.abs(defDeg - encDeg);
+      rd.def.set(defDeg.toFixed(2) + "°");
+      rd.def.tone(Math.abs(defDeg) > 2 ? "hot" : "good");
+      rd.enc.set(encDeg.toFixed(2) + "°");
+      rd.diff.set(diff.toFixed(2) + "°");
+      rd.diff.tone(diff < 2 ? "good" : "hot");
+      gb.innerHTML = "walked deficit <b class=\"" + (diff < 2 ? "ok" : "miss") + "\">" +
+        defDeg.toFixed(2) + "°</b> vs integrated curvature <b class=\"" +
+        (diff < 2 ? "ok" : "miss") + "\">" + encDeg.toFixed(2) + "°</b> — " +
+        (diff < 2 ? "Gauss–Bonnet holds; two computations that share no code agree"
+                  : "large loop + coarse grid — shrink the loop and they reconverge");
+      anim = null;
+    }
+  });
+
+  /* ---------- drag the loop ---------- */
+  var ray = new THREE.Raycaster(), draggingLoop = false;
+  var el = stage.renderer.domElement;
+  function pick(e) {
+    var r = el.getBoundingClientRect();
+    var mouse = new THREE.Vector2(
+      ((e.clientX - r.left) / r.width) * 2 - 1,
+      -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(mouse, stage.camera);
+    var hit = ray.intersectObject(terrain)[0];
+    return hit ? hit.point : null;
+  }
+  el.addEventListener("pointerdown", function (e) {
+    var p = pick(e);
+    if (p && Math.hypot(p.x - loopC.x, p.z - loopC.z) < loopR + 0.15) {
+      draggingLoop = true; orbit.enabled = false;
+    }
+  });
+  el.addEventListener("pointermove", function (e) {
+    if (!draggingLoop) return;
+    var p = pick(e);
+    if (p) {
+      loopC.x = Math.max(-1.6, Math.min(1.6, p.x));
+      loopC.z = Math.max(-1.6, Math.min(1.6, p.z));
+      redrawLoop(); placeIdle();
+    }
+  });
+  window.addEventListener("pointerup", function () {
+    draggingLoop = false; orbit.enabled = true;
+  });
+
+  /* ---------- controls ---------- */
+  var controls = document.getElementById("controls"), statsRow = document.getElementById("stats");
+  [rd.def, rd.enc, rd.diff].forEach(function (r) { statsRow.appendChild(r.el); });
+  controls.appendChild(WX.button("Transport the frame around the loop", runTransport));
+  controls.appendChild(WX.slider("loop radius", 0.25, 1.5, 0.05, loopR,
+    function (v) { return v.toFixed(2); },
+    function (v) { loopR = v; redrawLoop(); placeIdle(); }).el);
+  controls.appendChild(WX.slider("terrain height A", 0, 1.4, 0.05, A,
+    function (v) { return v.toFixed(2); },
+    function (v) { A = v; rebuildTerrain(); redrawLoop(); placeIdle(); }).el);
+
+  rebuildTerrain(); redrawLoop(); placeIdle();
+  WX.wireConsole(document);
+})();
+</script>
+</body>
+</html>

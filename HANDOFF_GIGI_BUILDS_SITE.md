@@ -134,6 +134,54 @@ building on one another *within each Part* (resetting at Part boundaries).
 - Headless-verified (Playwright, network blocked, all 18: panel mounts,
   canvas paints, first button clicks clean, zero console errors).
 
+## UPDATE 2026-07-02 (later still): five 3D web extras, one per Part II–VII-ish
+
+Bee asked for 4–5 more "not in the book" 3D demos alongside the tetmesh one.
+Five shipped, each a sibling page of the-mesh-that-audits-itself.html:
+
+- `the-weather-on-a-sphere-that-notices.html` (Part VII card) — 480 stations
+  streaming onto a globe, per-insert κ against each station's own Welford
+  stats (R=60), break/heal a rogue station, and a live table of exactly
+  what `INTEGRATE stations OVER band` would print (max(kappa) never
+  decays — records keep their price; intentional).
+- `chemical-space-has-a-shape.html` (Part II card) — 2,200 synthetic
+  ChEMBL-shaped molecules in MW×logP×TPSA space, κ brightness, COVER
+  preset slabs, fly-to-weirdest tour. Corpus honestly labeled synthetic.
+- `the-spectrum-finds-the-rooms.html` (Part III card) — 72-node graph whose
+  3D layout IS eigenvectors 1–3 of its Laplacian, recomputed live (Jacobi)
+  as you cut/add bridges; λ₁ readout; eigenvector sign-flip stabilization
+  against the previous frame.
+- `the-loop-that-remembers.html` (Part IV card) — heightfield terrain with
+  analytic Gaussian curvature coloring, draggable loop, real discrete
+  parallel transport (project + renormalize, 1440 steps), and a live
+  Gauss–Bonnet receipt: walked deficit vs independently integrated ∬K dA
+  (agrees to ~0.03° at defaults; loop traversal is CCW-from-normal so the
+  signs match — don't "simplify" the minus in the z parameterization).
+- `noise-to-everyone-else.html` (Part VI card) — "GIGI" as four point-cloud
+  letters, each gauge-scrambled per epoch (SO(3)+shift), keyholder pane vs
+  wire pane, ratchet/revoke/re-key, and Carol's per-letter invariant table
+  verifying on the wire cloud at 1e-9 relative.
+
+Shared infra in `site/gigi-builds/assets/`:
+- `three.min.js` — three 0.160.1, esbuild-bundled IIFE exposing window.THREE.
+  All five pages reference it relatively; NO CDN anywhere.
+- `webextra.css` — dark chrome (validated palette on #1a1a19).
+- `webextra.js` — window.WX helpers: mulberry32, stage (renderer+rAF loop
+  that pauses offscreen), orbit (custom, no addons; supports theta clamps),
+  button/slider/readout, dots (round-sprite Points), wireConsole (same GQL
+  drawer behavior as the exercise pages, POSTs /v1/public/gql).
+
+Index.html: five new "Web extra" cards (yellow left border, same pattern as
+the mesh card) added to Parts II, III, IV, VI, VII grids; part-head counts
+updated to "+1 web extra". The Part I mesh card untouched.
+
+All demos are deterministic (seeded), offline-capable; the only network
+touches are the click-driven GQL drawers (default endpoint the public
+instance). NOTE: the public instance allowlists `stations`/`chembl`/
+`sensors` but only `tetmesh_demo` has data — writes need the API key, which
+this session doesn't hold. If you (local session) load real corpora into
+those bundles, the drawers light up with no page changes needed.
+
 ## Facts the next session will want
 
 - Book: *GIGI Builds — The Fiber-Bundle Database: A Working Engineer's Guide

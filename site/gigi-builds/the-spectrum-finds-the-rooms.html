@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Spectrum Finds the Rooms — GIGI Builds web extra</title>
+<link rel="stylesheet" href="assets/webextra.css">
+<style>:root { --accent: var(--yellow); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; color: var(--ink-2);
+    font-size: 13px; margin: 10px 0 0; }
+  .legend .sw { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+    margin-right: 6px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<nav class="wx"><div class="wrap">
+  <a class="brand" href="index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+  <span class="crumbs"><a href="index.html#builds">chapters</a> · web extra</span>
+</div></nav>
+
+<header class="page"><div class="wrap">
+  <p class="eyebrow">Web extra · not in the printed book · Part III territory</p>
+  <h1>The Spectrum Finds the Rooms</h1>
+  <p class="lede">Seventy-two nodes, three communities — and <em>nobody laid this graph
+  out</em>. The 3D coordinates you are looking at are the graph's own Laplacian
+  eigenvectors, recomputed live every time you touch the slider. When the bridges
+  are thick the spectrum sees one room and the constellation huddles; cut them and
+  λ₁ collapses toward zero while the three communities physically tear apart —
+  the layout isn't illustrating the math, the layout <em>is</em> the math.</p>
+</div></header>
+
+<main class="wrap">
+  <div class="stage" id="stage">
+    <div class="hud"><b>layout = eigenvectors 1, 2, 3 of the graph Laplacian</b> · recomputed live (Jacobi, 72×72)</div>
+    <div class="corner">drag to orbit · wheel to zoom</div>
+  </div>
+  <div class="controls" id="controls"></div>
+  <div class="stats" id="stats"></div>
+  <div class="legend">
+    <span><span class="sw" style="background:#3987e5"></span>community A</span>
+    <span><span class="sw" style="background:#d55181"></span>community B</span>
+    <span><span class="sw" style="background:#199e70"></span>community C</span>
+    <span><span class="sw" style="background:#c98500"></span>bridge edge</span>
+  </div>
+
+  <p class="note">This is what the engine's <code>SPECTRAL</code> verb is measuring when
+  it reports the gap. λ₁ near zero means "this bundle's relation graph is about to
+  disconnect" — communities that barely talk — and the same eigenvectors that
+  detect it are good coordinates for <em>seeing</em> it, which is the whole idea of
+  spectral embedding. Watch the moment you drag to one bridge per pair: the rooms
+  are already visibly separate while λ₁ is still nonzero. The spectrum hears the
+  wall before the wall is finished.</p>
+
+  <details class="gql">
+    <summary>The same thing in GQL — run it against an engine</summary>
+    <p class="hint">Point at the public read-only instance (no key needed) or your own
+    engine (start with <code>GIGI_CORS_ORIGIN=*</code> — dev only). <code>SPECTRAL</code>
+    rides along on any bundle; the tetmesh bundle is live right now.</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="wx run">Run</button></div>
+    <textarea aria-label="GQL statement">SPECTRAL tetmesh_demo;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SPECTRAL tetmesh_demo;">SPECTRAL (live bundle)</button>
+      <button class="chip" data-q="HEALTH tetmesh_demo;">HEALTH</button>
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+</main>
+
+<footer class="wx"><div class="wrap">
+  From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis ·
+  more web extras: <a href="the-mesh-that-audits-itself.html">the mesh that audits itself</a> ·
+  engine at <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>
+</div></footer>
+
+<script src="assets/three.min.js"></script>
+<script src="assets/webextra.js"></script>
+<script>
+(function () {
+  "use strict";
+  var rng = WX.mulberry32(9);
+  var N = 72, C = 24; // 3 communities of 24
+
+  /* ---------- graph ---------- */
+  var baseEdges = [];
+  for (var g = 0; g < 3; g++) {
+    var off = g * C;
+    for (var i = 0; i < C; i++) {
+      baseEdges.push([off + i, off + (i + 1) % C]);
+      if (i % 3 === 0) baseEdges.push([off + i, off + (i + 5) % C]);
+      if (i % 7 === 0) baseEdges.push([off + i, off + (i + 11) % C]);
+    }
+  }
+  // bridge pool: 10 candidates per community pair
+  var bridgePool = [];
+  [[0, 1], [1, 2], [0, 2]].forEach(function (pr) {
+    for (var k = 0; k < 10; k++)
+      bridgePool.push([pr[0] * C + Math.floor(rng() * C),
+                       pr[1] * C + Math.floor(rng() * C)]);
+  });
+  var perPair = 6;
+  function edges() {
+    var out = baseEdges.slice();
+    for (var p = 0; p < 3; p++)
+      for (var k = 0; k < perPair; k++) out.push(bridgePool[p * 10 + k]);
+    return out;
+  }
+
+  /* ---------- Jacobi eigensolver (symmetric) ---------- */
+  function eigs(A, n) {
+    var M = new Float64Array(n * n), V = new Float64Array(n * n);
+    for (var i = 0; i < n; i++) {
+      V[i * n + i] = 1;
+      for (var j = 0; j < n; j++) M[i * n + j] = A[i * n + j];
+    }
+    for (var sweep = 0; sweep < 30; sweep++) {
+      var off = 0;
+      for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++)
+        off += M[i * n + j] * M[i * n + j];
+      if (off < 1e-10) break;
+      for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++) {
+        var mij = M[i * n + j];
+        if (Math.abs(mij) < 1e-13) continue;
+        var theta = (M[j * n + j] - M[i * n + i]) / (2 * mij);
+        var t = (theta >= 0 ? 1 : -1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+        var c = 1 / Math.sqrt(t * t + 1), s = t * c;
+        for (var k = 0; k < n; k++) {
+          var mik = M[i * n + k], mjk = M[j * n + k];
+          M[i * n + k] = c * mik - s * mjk; M[j * n + k] = s * mik + c * mjk;
+        }
+        for (var k = 0; k < n; k++) {
+          var mki = M[k * n + i], mkj = M[k * n + j];
+          M[k * n + i] = c * mki - s * mkj; M[k * n + j] = s * mki + c * mkj;
+          var vki = V[k * n + i], vkj = V[k * n + j];
+          V[k * n + i] = c * vki - s * vkj; V[k * n + j] = s * vki + c * vkj;
+        }
+      }
+    }
+    var order = [];
+    for (var i = 0; i < n; i++) order.push(i);
+    order.sort(function (a, b) { return M[a * n + a] - M[b * n + b]; });
+    return {
+      value: function (k) { return M[order[k] * n + order[k]]; },
+      vector: function (k) {
+        var idx = order[k], v = new Float64Array(n);
+        for (var r = 0; r < n; r++) v[r] = V[r * n + idx];
+        return v;
+      }
+    };
+  }
+
+  function embed() {
+    var E = edges();
+    var L = new Float64Array(N * N);
+    E.forEach(function (e) {
+      L[e[0] * N + e[0]]++; L[e[1] * N + e[1]]++;
+      L[e[0] * N + e[1]]--; L[e[1] * N + e[0]]--;
+    });
+    var eig = eigs(L, N);
+    var l1 = eig.value(1);
+    var vs = [eig.vector(1), eig.vector(2), eig.vector(3)];
+    // normalize each axis to unit RMS, add deterministic node jitter so
+    // fully-collapsed communities still read as star clusters
+    var out = [];
+    var scale = vs.map(function (v) {
+      var s = 0;
+      for (var i = 0; i < N; i++) s += v[i] * v[i];
+      return Math.sqrt(s / N) || 1;
+    });
+    for (var i = 0; i < N; i++)
+      out.push(new THREE.Vector3(
+        vs[0][i] / scale[0] * 1.1 + jitter[i].x,
+        vs[1][i] / scale[1] * 1.1 + jitter[i].y,
+        vs[2][i] / scale[2] * 1.1 + jitter[i].z));
+    return { pos: out, l1: l1, edges: E };
+  }
+  var jitter = [];
+  for (var i = 0; i < N; i++)
+    jitter.push({ x: (rng() - 0.5) * 0.07, y: (rng() - 0.5) * 0.07, z: (rng() - 0.5) * 0.07 });
+
+  /* ---------- scene ---------- */
+  var stage = WX.stage(document.getElementById("stage"),
+    { width: 1120, height: 620, label: "Graph drawn at its own spectral embedding coordinates" });
+  var orbit = WX.orbit(stage, { dist: 4.6, theta: 0.7, phi: 1.25, minDist: 1.8, maxDist: 10 });
+
+  var COLORS = [0x3987e5, 0xd55181, 0x199e70];
+  var nodeGeo = new THREE.SphereGeometry(0.045, 12, 8);
+  var nodes = [];
+  for (var i = 0; i < N; i++) {
+    var m = new THREE.Mesh(nodeGeo,
+      new THREE.MeshBasicMaterial({ color: COLORS[Math.floor(i / C)] }));
+    stage.scene.add(m); nodes.push(m);
+  }
+  var edgeGeo = new THREE.BufferGeometry();
+  var maxEdges = baseEdges.length + 30;
+  edgeGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(maxEdges * 6), 3));
+  edgeGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(maxEdges * 6), 3));
+  var lines = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial(
+    { vertexColors: true, transparent: true, opacity: 0.55 }));
+  stage.scene.add(lines);
+
+  var current = [], target = [], lerpT = 1, curEdges = [];
+  for (var i = 0; i < N; i++) { current.push(new THREE.Vector3()); target.push(new THREE.Vector3()); }
+  var prevAxes = null;
+
+  var rd = { l1: WX.readout("λ₁ (spectral gap)"), e: WX.readout("edges"),
+             b: WX.readout("bridges per pair") };
+  function recompute() {
+    var r = embed();
+    // stabilize eigenvector sign flips against the previous frame
+    if (prevAxes) {
+      ["x", "y", "z"].forEach(function (ax) {
+        var dot = 0;
+        for (var i = 0; i < N; i++) dot += r.pos[i][ax] * prevAxes[i][ax];
+        if (dot < 0) for (var i = 0; i < N; i++) r.pos[i][ax] *= -1;
+      });
+    }
+    prevAxes = r.pos.map(function (p) { return p.clone(); });
+    for (var i = 0; i < N; i++) {
+      current[i].copy(nodes[i].position);
+      target[i].copy(r.pos[i]);
+    }
+    lerpT = 0; curEdges = r.edges;
+    rd.l1.set(r.l1.toFixed(4));
+    rd.l1.tone(r.l1 < 0.15 ? "hot" : "good");
+    rd.e.set(r.edges.length);
+    rd.b.set(perPair);
+    stage.kick();
+  }
+
+  function drawEdges() {
+    var pa = edgeGeo.getAttribute("position"), ca = edgeGeo.getAttribute("color");
+    var bridge = new THREE.Color(0xc98500), plain = new THREE.Color(0x4a4842);
+    curEdges.forEach(function (e, i) {
+      var a = nodes[e[0]].position, b = nodes[e[1]].position;
+      pa.setXYZ(i * 2, a.x, a.y, a.z); pa.setXYZ(i * 2 + 1, b.x, b.y, b.z);
+      var isBridge = Math.floor(e[0] / C) !== Math.floor(e[1] / C);
+      var col = isBridge ? bridge : plain;
+      ca.setXYZ(i * 2, col.r, col.g, col.b); ca.setXYZ(i * 2 + 1, col.r, col.g, col.b);
+    });
+    edgeGeo.setDrawRange(0, curEdges.length * 2);
+    pa.needsUpdate = true; ca.needsUpdate = true;
+  }
+
+  stage.onTick(function () {
+    if (lerpT < 1) {
+      lerpT = Math.min(1, lerpT + 0.035);
+      var e = 1 - Math.pow(1 - lerpT, 3);
+      for (var i = 0; i < N; i++)
+        nodes[i].position.copy(current[i]).lerp(target[i], e);
+      drawEdges();
+    }
+  });
+
+  /* ---------- controls ---------- */
+  var controls = document.getElementById("controls"), statsRow = document.getElementById("stats");
+  [rd.l1, rd.e, rd.b].forEach(function (r) { statsRow.appendChild(r.el); });
+  var sl = WX.slider("bridges per community pair", 0, 10, 1, perPair,
+    function (v) { return v; },
+    function (v) { perPair = v; recompute(); });
+  controls.appendChild(sl.el);
+  controls.appendChild(WX.button("Cut every bridge", function () {
+    perPair = 0; sl.input.value = 0; sl.out.textContent = "0"; recompute();
+  }));
+  controls.appendChild(WX.button("Wire the rooms shut", function () {
+    perPair = 10; sl.input.value = 10; sl.out.textContent = "10"; recompute();
+  }, true));
+
+  // first layout: start nodes at target immediately
+  (function init() {
+    var r = embed();
+    prevAxes = r.pos.map(function (p) { return p.clone(); });
+    for (var i = 0; i < N; i++) nodes[i].position.copy(r.pos[i]);
+    curEdges = r.edges; drawEdges();
+    rd.l1.set(r.l1.toFixed(4)); rd.l1.tone(r.l1 < 0.15 ? "hot" : "good");
+    rd.e.set(r.edges.length); rd.b.set(perPair);
+  })();
+
+  WX.wireConsole(document);
+})();
+</script>
+</body>
+</html>

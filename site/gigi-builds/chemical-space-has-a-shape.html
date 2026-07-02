@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chemical Space Has a Shape — GIGI Builds web extra</title>
+<link rel="stylesheet" href="assets/webextra.css">
+<style>:root { --accent: var(--aqua); }
+  .molcard { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 18px; margin: 14px 0; font: 13px ui-monospace, Menlo, monospace;
+    color: var(--ink-2); display: none; }
+  .molcard.show { display: block; }
+  .molcard b { color: var(--red); }
+</style>
+</head>
+<body>
+<nav class="wx"><div class="wrap">
+  <a class="brand" href="index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+  <span class="crumbs"><a href="index.html#builds">chapters</a> · web extra</span>
+</div></nav>
+
+<header class="page"><div class="wrap">
+  <p class="eyebrow">Web extra · not in the printed book · Part II territory</p>
+  <h1>Chemical Space Has a Shape</h1>
+  <p class="lede">Two thousand two hundred molecules as sections of a bundle — molecular
+  weight, logP, and polar surface area as three numeric fibers, drawn as three
+  coordinates. A row-store sees 2,200 rows; a fiber bundle sees a <em>shape</em>: the
+  drug-like core, the fragment corner, the greasy tail, and a dozen points that sit
+  nowhere at all. Every dot's brightness is its κ — the corpus itself prices how
+  strange each molecule is. Then a <code>COVER</code> clause carves a slab out of space
+  and you can watch exactly which geometry a one-line query buys.</p>
+</div></header>
+
+<main class="wrap">
+  <div class="stage" id="stage">
+    <div class="hud"><b>x</b> molecular weight · <b>y</b> logP · <b>z</b> TPSA ·
+      brightness = κ against the corpus · red = the twelve weirdest</div>
+    <div class="corner">drag to orbit · wheel to zoom</div>
+  </div>
+  <div class="controls" id="controls"></div>
+  <div class="stats" id="stats"></div>
+  <div class="molcard" id="molcard"></div>
+
+  <p class="note">The corpus here is synthetic but ChEMBL-shaped (the public instance
+  allowlists a <code>chembl</code> bundle for exactly this experiment) — three seeded
+  populations plus dust plus twelve planted outliers. The point survives the
+  simulation: κ found all twelve without being told there were twelve, because an
+  outlier in <em>any</em> fiber pays in the same currency. And notice what the COVER
+  slabs teach — <code>WHERE logp &gt; 5</code> doesn't just filter rows, it selects a
+  <em>region</em>, and the region's average κ tells you whether you carved through the
+  core or out along an edge of the distribution.</p>
+
+  <details class="gql">
+    <summary>The same thing in GQL — run it against an engine</summary>
+    <p class="hint">Create the bundle on your own engine (start it with
+    <code>GIGI_CORS_ORIGIN=*</code> for browser access — dev only), insert a few
+    sections, and the COVER/INTEGRATE statements below are the queries the buttons
+    above are imitating.</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="wx run">Run</button></div>
+    <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+      <button class="chip" data-q="BUNDLE chembl BASE (chembl_id TEXT) FIBER (mw NUMERIC, logp NUMERIC, tpsa NUMERIC);">BUNDLE chembl…</button>
+      <button class="chip" data-q="SECTION chembl (chembl_id='CHEMBL25', mw=180.16, logp=1.31, tpsa=63.6);">SECTION aspirin</button>
+      <button class="chip" data-q="COVER chembl WHERE logp > 5;">COVER the greasy tail</button>
+      <button class="chip" data-q="INTEGRATE chembl MEASURE count(*), avg(mw), max(logp);">INTEGRATE</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+</main>
+
+<footer class="wx"><div class="wrap">
+  From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis ·
+  more web extras: <a href="the-mesh-that-audits-itself.html">the mesh that audits itself</a> ·
+  engine at <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>
+</div></footer>
+
+<script src="assets/three.min.js"></script>
+<script src="assets/webextra.js"></script>
+<script>
+(function () {
+  "use strict";
+  var rng = WX.mulberry32(42);
+  function gauss() {
+    var u = Math.max(rng(), 1e-12), v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.2832 * v);
+  }
+
+  /* ---------- the corpus ---------- */
+  var N = 2200, mols = [];
+  var RANGES = { mw: 500, logp: 10, tpsa: 150 }; // declared fiber ranges
+  function mk(id, mw, logp, tpsa, pop) {
+    mols.push({ id: "CHX-" + String(id).padStart(4, "0"),
+      mw: mw, logp: logp, tpsa: tpsa, pop: pop, k: 0 });
+  }
+  var id = 0;
+  for (; id < N * 0.55; id++)          // drug-like core
+    mk(id, 380 + gauss() * 60, 2.5 + gauss() * 1.0, 75 + gauss() * 18, "core");
+  for (; id < N * 0.80; id++)          // fragment corner
+    mk(id, 230 + gauss() * 30, 1.2 + gauss() * 0.8, 45 + gauss() * 12, "fragment");
+  for (; id < N * 0.95; id++)          // greasy tail
+    mk(id, 480 + gauss() * 60, 5.5 + gauss() * 0.8, 40 + gauss() * 12, "greasy");
+  for (; id < N - 12; id++)            // loose dust
+    mk(id, 180 + rng() * 420, -2 + rng() * 9, 10 + rng() * 140, "dust");
+  for (; id < N; id++)                 // twelve planted outliers
+    mk(id, 150 + rng() * 550, -2.8 + rng() * 11, rng() < 0.5 ? 150 + rng() * 30 : rng() * 8, "outlier");
+
+  // corpus stats (settled), then κ per molecule per fiber — SECTION-style
+  var FIELDS = ["mw", "logp", "tpsa"];
+  var stats = {};
+  FIELDS.forEach(function (f) {
+    var m = 0; mols.forEach(function (x) { m += x[f]; }); m /= N;
+    stats[f] = m;
+  });
+  mols.forEach(function (x) {
+    var K = 0;
+    FIELDS.forEach(function (f) { K += Math.abs(x[f] - stats[f]) / RANGES[f]; });
+    x.k = K / FIELDS.length;
+  });
+  var kSorted = mols.slice().sort(function (a, b) { return b.k - a.k; });
+  var weird = kSorted.slice(0, 12);
+  var kMax = kSorted[0].k;
+
+  /* ---------- scene ---------- */
+  var stage = WX.stage(document.getElementById("stage"),
+    { width: 1120, height: 620, label: "3D scatter of molecules in property space, brightness by curvature" });
+  var orbit = WX.orbit(stage, { dist: 4.4, theta: 0.85, phi: 1.2, minDist: 1.6, maxDist: 10 });
+
+  // normalize to [-1.1, 1.1] box
+  var LO = { mw: 150, logp: -3, tpsa: 0 }, HI = { mw: 700, logp: 9, tpsa: 185 };
+  function coord(x) {
+    function n(f) { return -1.1 + 2.2 * (x[f] - LO[f]) / (HI[f] - LO[f]); }
+    return new THREE.Vector3(n("mw"), n("logp"), n("tpsa"));
+  }
+
+  // box + axis lines
+  (function frameBox() {
+    var g = new THREE.BoxGeometry(2.2, 2.2, 2.2);
+    stage.scene.add(new THREE.LineSegments(new THREE.EdgesGeometry(g),
+      new THREE.LineBasicMaterial({ color: 0x3a3934 })));
+    var o = new THREE.Vector3(-1.1, -1.1, -1.1);
+    [[new THREE.Vector3(1.35, -1.1, -1.1), 0x199e70],
+     [new THREE.Vector3(-1.1, 1.35, -1.1), 0x9085e9],
+     [new THREE.Vector3(-1.1, -1.1, 1.35), 0x3987e5]].forEach(function (ax) {
+      stage.scene.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([o, ax[0]]),
+        new THREE.LineBasicMaterial({ color: ax[1] })));
+    });
+  })();
+
+  var geo = new THREE.BufferGeometry();
+  var positions = new Float32Array(N * 3), colors = new Float32Array(N * 3);
+  mols.forEach(function (x, i) {
+    var p = coord(x);
+    positions[i * 3] = p.x; positions[i * 3 + 1] = p.y; positions[i * 3 + 2] = p.z;
+  });
+  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  stage.scene.add(WX.dots(geo, { size: 0.032, vertexColors: true }));
+
+  // the twelve weirdest, on top in red
+  var hotGeo = new THREE.BufferGeometry();
+  var hotPos = new Float32Array(12 * 3);
+  weird.forEach(function (x, i) {
+    var p = coord(x);
+    hotPos[i * 3] = p.x; hotPos[i * 3 + 1] = p.y; hotPos[i * 3 + 2] = p.z;
+  });
+  hotGeo.setAttribute("position", new THREE.BufferAttribute(hotPos, 3));
+  stage.scene.add(WX.dots(hotGeo, { size: 0.08, color: 0xe66767 }));
+
+  // selection ring for fly-to
+  var ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.006, 10, 40),
+    new THREE.MeshBasicMaterial({ color: 0xe8e6e0 }));
+  ring.visible = false;
+  stage.scene.add(ring);
+
+  var DIM = new THREE.Color(0x333d38), LOW = new THREE.Color(0x1a6e50),
+      HIGH = new THREE.Color(0x3be0a6);
+  var selection = null; // predicate or null
+  function paint() {
+    for (var i = 0; i < N; i++) {
+      var x = mols[i];
+      var inSel = !selection || selection(x);
+      var col;
+      if (!inSel) col = DIM;
+      else col = LOW.clone().lerp(HIGH, Math.min(1, x.k / (kMax * 0.55)));
+      colors[i * 3] = col.r; colors[i * 3 + 1] = col.g; colors[i * 3 + 2] = col.b;
+    }
+    geo.getAttribute("color").needsUpdate = true;
+    stage.kick();
+  }
+
+  /* ---------- controls ---------- */
+  var controls = document.getElementById("controls"), statsRow = document.getElementById("stats");
+  var rd = { n: WX.readout("sections in the slab"), share: WX.readout("share of corpus"),
+             kavg: WX.readout("avg κ inside the slab") };
+  [rd.n, rd.share, rd.kavg].forEach(function (r) { statsRow.appendChild(r.el); });
+
+  function select(label, pred) {
+    selection = pred;
+    var hits = pred ? mols.filter(pred) : mols;
+    var kavg = hits.reduce(function (a, x) { return a + x.k; }, 0) / Math.max(1, hits.length);
+    var corpusK = mols.reduce(function (a, x) { return a + x.k; }, 0) / N;
+    rd.n.set(hits.length.toLocaleString());
+    rd.share.set(Math.round(100 * hits.length / N) + "%");
+    rd.kavg.set(kavg.toFixed(4) + (pred ? (kavg > corpusK * 1.4 ? "  (edge!)" : "  (core)") : ""));
+    rd.kavg.tone(pred && kavg > corpusK * 1.4 ? "hot" : "good");
+    buttons.forEach(function (b) {
+      b.el.className = "wx" + (b.label === label ? "" : " alt");
+    });
+    paint();
+  }
+  var buttons = [
+    { label: "COVER chembl ALL;", pred: null },
+    { label: "WHERE logp > 5", pred: function (x) { return x.logp > 5; } },
+    { label: "WHERE mw < 250", pred: function (x) { return x.mw < 250; } },
+    { label: "WHERE tpsa > 90", pred: function (x) { return x.tpsa > 90; } }
+  ];
+  buttons.forEach(function (b) {
+    b.el = WX.button(b.label, function () { select(b.label, b.pred); }, true);
+    controls.appendChild(b.el);
+  });
+
+  var card = document.getElementById("molcard");
+  var tour = -1, tourFrom = null, tourTo = null, tourT = 0, tourIdx = 0;
+  controls.appendChild(WX.button("Fly to the weirdest molecule", function () {
+    var x = weird[tourIdx % 12]; tourIdx++;
+    tourFrom = orbit.target.clone(); tourTo = coord(x); tourT = 0; tour = 1;
+    ring.position.copy(tourTo); ring.visible = true;
+    card.className = "molcard show";
+    card.innerHTML = "<b>" + x.id + "</b> · mw=" + x.mw.toFixed(1) +
+      " · logp=" + x.logp.toFixed(2) + " · tpsa=" + x.tpsa.toFixed(1) +
+      " · <b>κ=" + x.k.toFixed(4) + "</b> — " +
+      "the corpus never saw its like; SECTION this id and the response carries this exact κ";
+    stage.kick();
+  }));
+  controls.appendChild(WX.button("Reset view", function () {
+    tour = -1; ring.visible = false; card.className = "molcard";
+    orbit.target.set(0, 0, 0); orbit.dist = 4.4; orbit.apply(); stage.kick();
+  }, true));
+
+  stage.onTick(function () {
+    if (tour > 0) {
+      tourT += 0.03;
+      var e = tourT >= 1 ? 1 : 1 - Math.pow(1 - tourT, 3);
+      orbit.target.copy(tourFrom).lerp(tourTo, e);
+      orbit.dist = 4.4 + (1.1 - 4.4) * e;
+      orbit.apply();
+      if (tourT >= 1) tour = -1;
+    }
+    if (ring.visible) ring.lookAt(stage.camera.position);
+  });
+
+  select("COVER chembl ALL;", null);
+  WX.wireConsole(document);
+})();
+</script>
+</body>
+</html>

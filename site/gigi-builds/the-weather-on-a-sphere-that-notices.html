@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Weather on a Sphere That Notices — GIGI Builds web extra</title>
+<link rel="stylesheet" href="assets/webextra.css">
+<style>:root { --accent: var(--magenta); }
+  .bands { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; margin: 14px 0; overflow-x: auto; }
+  .bands h3 { margin: 0 0 2px; font-size: 14.5px; }
+  .bands .sub { color: var(--ink-3); font-size: 12.5px; margin: 0 0 8px; }
+  .bands table { border-collapse: collapse; font: 12.5px ui-monospace, Menlo, monospace;
+    color: var(--ink-2); width: 100%; }
+  .bands td, .bands th { text-align: right; padding: 3px 14px 3px 0; white-space: nowrap; }
+  .bands th { color: var(--ink-3); font-weight: 600; border-bottom: 1px solid var(--line); }
+  .bands td:first-child, .bands th:first-child { text-align: left; }
+  .bands td.hot { color: var(--red); font-weight: 700; }
+</style>
+</head>
+<body>
+<nav class="wx"><div class="wrap">
+  <a class="brand" href="index.html"><span class="dot" aria-hidden="true"></span>GIGI&nbsp;Builds</a>
+  <span class="crumbs"><a href="index.html#builds">chapters</a> · web extra</span>
+</div></nav>
+
+<header class="page"><div class="wrap">
+  <p class="eyebrow">Web extra · not in the printed book · Part VII territory</p>
+  <h1>The Weather on a Sphere That Notices</h1>
+  <p class="lede">Four hundred and eighty weather stations streaming readings onto a globe,
+  and no monitoring job anywhere. Every insert is priced at the door — κ = |v − μ|/R
+  against that station's own running statistics — so an anomaly isn't something a
+  nightly batch <em>finds</em>, it's something the storage layer <em>notices</em>, mid-insert,
+  while the write is still warm. Break a station and watch it bloom.</p>
+</div></header>
+
+<main class="wrap">
+  <div class="stage" id="stage">
+    <div class="hud"><b>480 stations</b> · one Welford accumulator each · κ = |v − μ|/R, R = 60 declared</div>
+    <div class="corner">drag to orbit · wheel to zoom</div>
+  </div>
+  <div class="controls" id="controls"></div>
+  <div class="stats" id="stats"></div>
+
+  <div class="bands">
+    <h3>What <code>INTEGRATE stations OVER band MEASURE count(*), avg(temp), max(kappa);</code> prints</h3>
+    <p class="sub">recomputed live from the same accumulators the dots are drawn from — the legend and the engine cannot disagree</p>
+    <table id="bandtable" aria-label="per-latitude-band aggregates"></table>
+  </div>
+
+  <p class="note">The trick worth staring at: nobody told the globe where the broken
+  station is. Its dot blooms because its own history prices its own readings — the
+  fleet needs no fleet-wide scan, no threshold config per station, no cron. That is
+  the Part VII story: the keeper reads receipts the engine already wrote. And when
+  you heal the station, watch how long the bloom takes to fade — Welford never
+  forgets, so μ walks back slowly. Whether that memory is a feature or a bug is
+  E8.7's argument, and this globe is a good place to have it.</p>
+
+  <details class="gql">
+    <summary>The same thing in GQL — run it against an engine</summary>
+    <p class="hint">The public instance allowlists a <code>stations</code> bundle but ships it
+    empty — create it on your own engine (start with <code>GIGI_CORS_ORIGIN=*</code> for
+    browser access, dev only) with the statements below, then the INTEGRATE matches
+    the table above in shape.</p>
+    <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <button class="wx run">Run</button></div>
+    <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
+    <div class="row">
+      <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
+      <button class="chip" data-q="BUNDLE stations BASE (station_id TEXT) FIBER (band TEXT INDEX, lat NUMERIC, lon NUMERIC, temp NUMERIC);">BUNDLE stations…</button>
+      <button class="chip" data-q="SECTION stations (station_id='st-042', band='30N-60N', lat=47.2, lon=-122.5, temp=11.8);">SECTION insert</button>
+      <button class="chip" data-q="INTEGRATE stations OVER band MEASURE count(*), avg(temp);">INTEGRATE OVER band</button>
+      <button class="chip" data-q="HEALTH stations;">HEALTH</button>
+    </div>
+    <pre aria-live="polite">—</pre>
+  </details>
+</main>
+
+<footer class="wx"><div class="wrap">
+  From <em>GIGI Builds</em> (2026) · © Bee Rosa Davis ·
+  more web extras: <a href="the-mesh-that-audits-itself.html">the mesh that audits itself</a> ·
+  engine at <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>
+</div></footer>
+
+<script src="assets/three.min.js"></script>
+<script src="assets/webextra.js"></script>
+<script>
+(function () {
+  "use strict";
+  var rng = WX.mulberry32(20260702);
+  var reduceMotion = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- stations ---------- */
+  var N = 480, R_DECL = 60;
+  var stations = [];
+  // 14 cluster centers, then stations scattered around them + loose dust
+  var centers = [];
+  for (var c = 0; c < 14; c++)
+    centers.push({ lat: (rng() * 150 - 75) * Math.PI / 180, lon: rng() * 2 * Math.PI });
+  for (var i = 0; i < N; i++) {
+    var lat, lon;
+    if (i % 5 === 4) { // dust
+      lat = Math.asin(rng() * 2 - 1) * 0.9; lon = rng() * 2 * Math.PI;
+    } else {
+      var ct = centers[i % centers.length];
+      lat = ct.lat + (rng() - 0.5) * 0.35;
+      lon = ct.lon + (rng() - 0.5) * 0.5;
+      lat = Math.max(-1.45, Math.min(1.45, lat));
+    }
+    var latDeg = lat * 180 / Math.PI;
+    var band = latDeg > 60 ? "60N-90N" : latDeg > 30 ? "30N-60N" : latDeg > 0 ? "0-30N"
+             : latDeg > -30 ? "0-30S" : latDeg > -60 ? "30S-60S" : "60S-90S";
+    stations.push({
+      id: "st-" + String(i).padStart(3, "0"),
+      lat: lat, lon: lon, band: band,
+      base: 28 * Math.cos(lat) - 2 + (rng() - 0.5) * 4, // climate by latitude
+      phase: rng() * Math.PI * 2,
+      st: { n: 0, mean: 0, m2: 0 },
+      k: 0, temp: 0
+    });
+  }
+  var BANDS = ["60N-90N", "30N-60N", "0-30N", "0-30S", "30S-60S", "60S-90S"];
+  var rogue = null, rogueRamp = 0, totalRecords = 0, flagThr = 0.5;
+  // per-band aggregates over ALL records — the exact numbers INTEGRATE
+  // OVER band would print (note max(kappa) never decays: records keep
+  // the price they were stamped with)
+  var bandAgg = {};
+  BANDS.forEach(function (b) { bandAgg[b] = { n: 0, sum: 0, kmax: 0 }; });
+
+  function insert(s, v) {
+    var k = s.st.n < 2 ? 0 : Math.abs(v - s.st.mean) / R_DECL;
+    s.st.n += 1;
+    if (s.st.n === 1) { s.st.mean = v; s.st.m2 = 0; }
+    else { var d = v - s.st.mean; s.st.mean += d / s.st.n; s.st.m2 += d * (v - s.st.mean); }
+    s.k = k; s.temp = v; totalRecords++;
+    var a = bandAgg[s.band];
+    a.n++; a.sum += v; if (k > a.kmax) a.kmax = k;
+  }
+
+  var simT = 0;
+  function stepSim() {
+    simT++;
+    for (var i = 0; i < stations.length; i++) {
+      if ((i + simT) % 3 !== 0) continue; // ~160 inserts per step
+      var s = stations[i];
+      var v = s.base + 1.6 * Math.sin(simT / 240 + s.phase) + (rng() - 0.5) * 1.8;
+      if (s === rogue) { v += rogueRamp; }
+      insert(s, v);
+    }
+    if (rogue && rogueRamp < 45) rogueRamp += 0.5; // κ tops out near 0.75, well past the bloom threshold
+  }
+  // seed history so κ is meaningful from the first frame
+  for (var w = 0; w < 60; w++) stepSim();
+
+  /* ---------- scene ---------- */
+  var stage = WX.stage(document.getElementById("stage"),
+    { width: 1120, height: 620, label: "Rotating globe of weather stations, dot color shows curvature at insert" });
+  var orbit = WX.orbit(stage, { dist: 3.1, phi: 1.25, theta: 0.4, minDist: 1.8, maxDist: 7 });
+
+  // globe body + graticule
+  stage.scene.add(new THREE.Mesh(
+    new THREE.SphereGeometry(0.985, 48, 32),
+    new THREE.MeshBasicMaterial({ color: 0x1d1f26 })));
+  (function graticule() {
+    var mat = new THREE.LineBasicMaterial({ color: 0x33363f });
+    for (var latd = -60; latd <= 60; latd += 30) {
+      var r = Math.cos(latd * Math.PI / 180), y = Math.sin(latd * Math.PI / 180);
+      var pts = [];
+      for (var a = 0; a <= 96; a++)
+        pts.push(new THREE.Vector3(r * Math.cos(a / 96 * 2 * Math.PI), y, r * Math.sin(a / 96 * 2 * Math.PI)));
+      stage.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
+    }
+    for (var lond = 0; lond < 360; lond += 30) {
+      var pts2 = [], l = lond * Math.PI / 180;
+      for (var a2 = 0; a2 <= 96; a2++) {
+        var ph = -Math.PI / 2 + a2 / 96 * Math.PI;
+        pts2.push(new THREE.Vector3(Math.cos(ph) * Math.cos(l), Math.sin(ph), Math.cos(ph) * Math.sin(l)));
+      }
+      stage.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), mat));
+    }
+  })();
+
+  function pos(s, r) {
+    return new THREE.Vector3(
+      r * Math.cos(s.lat) * Math.cos(s.lon),
+      r * Math.sin(s.lat),
+      r * Math.cos(s.lat) * Math.sin(s.lon));
+  }
+
+  // base layer: all stations, vertex-colored by κ (sequential blue ramp)
+  var geo = new THREE.BufferGeometry();
+  var positions = new Float32Array(N * 3), colors = new Float32Array(N * 3);
+  stations.forEach(function (s, i) {
+    var p = pos(s, 1.005);
+    positions[i * 3] = p.x; positions[i * 3 + 1] = p.y; positions[i * 3 + 2] = p.z;
+  });
+  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  var points = WX.dots(geo, { size: 0.034, vertexColors: true });
+  stage.scene.add(points);
+
+  // hot layer: flagged stations, drawn bigger and red
+  var hotGeo = new THREE.BufferGeometry();
+  hotGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  var hotPts = WX.dots(hotGeo, { size: 0.095, color: 0xe66767, opacity: 0.9 });
+  stage.scene.add(hotPts);
+
+  var CALM = new THREE.Color(0x2f5680), WARM = new THREE.Color(0x5da3f5);
+  function paint() {
+    var hotCount = 0, hotArr = hotGeo.getAttribute("position");
+    var kmax = 0, kmaxId = "–";
+    for (var i = 0; i < N; i++) {
+      var s = stations[i];
+      if (s.k > kmax) { kmax = s.k; kmaxId = s.id; }
+      var t = Math.min(1, s.k / flagThr);
+      var col = CALM.clone().lerp(WARM, t);
+      colors[i * 3] = col.r; colors[i * 3 + 1] = col.g; colors[i * 3 + 2] = col.b;
+      if (s.k > flagThr) {
+        var p = pos(s, 1.01);
+        hotArr.setXYZ(hotCount++, p.x, p.y, p.z);
+      }
+    }
+    hotGeo.setDrawRange(0, hotCount);
+    hotArr.needsUpdate = true;
+    geo.getAttribute("color").needsUpdate = true;
+    return { hot: hotCount, kmax: kmax, kmaxId: kmaxId };
+  }
+
+  /* ---------- INTEGRATE table ---------- */
+  var tbl = document.getElementById("bandtable");
+  function renderBands() {
+    var html = "<tr><th>band</th><th>count(*)</th><th>avg(temp)</th><th>max(kappa)</th></tr>";
+    BANDS.forEach(function (b) {
+      var a = bandAgg[b];
+      html += "<tr><td>" + b + "</td><td>" + a.n.toLocaleString() + "</td><td>" +
+        (a.n ? (a.sum / a.n).toFixed(2) : "–") + "</td><td class=\"" +
+        (a.kmax > flagThr ? "hot" : "") + "\">" + a.kmax.toFixed(4) + "</td></tr>";
+    });
+    tbl.innerHTML = html;
+  }
+
+  /* ---------- controls + readouts ---------- */
+  var controls = document.getElementById("controls"), statsRow = document.getElementById("stats");
+  var rd = { rec: WX.readout("records absorbed"), hot: WX.readout("blooming (κ > thr)"),
+             kmax: WX.readout("hottest κ right now"), rog: WX.readout("broken station") };
+  [rd.rec, rd.hot, rd.kmax, rd.rog].forEach(function (r) { statsRow.appendChild(r.el); });
+
+  var streaming = !reduceMotion;
+  var bStream = WX.button(streaming ? "Pause" : "Stream", function () {
+    streaming = !streaming;
+    bStream.textContent = streaming ? "Pause" : "Stream";
+    stage.kick();
+  });
+  var bBreak = WX.button("Break a station", function () {
+    rogue = stations[Math.floor(rng() * N)]; rogueRamp = 4;
+    bBreak.disabled = true; bHeal.disabled = false;
+  });
+  var bHeal = WX.button("Heal it", function () {
+    rogue = null; rogueRamp = 0;
+    bBreak.disabled = false; bHeal.disabled = true;
+  }, true);
+  bHeal.disabled = true;
+  var sl = WX.slider("bloom threshold κ", 0.1, 1.5, 0.05, flagThr,
+    function (v) { return v.toFixed(2); },
+    function (v) { flagThr = v; });
+  controls.appendChild(bStream); controls.appendChild(bBreak);
+  controls.appendChild(bHeal); controls.appendChild(sl.el);
+
+  /* ---------- tick ---------- */
+  var frame = 0;
+  stage.onTick(function () {
+    frame++;
+    if (streaming) {
+      stepSim();
+      if (!reduceMotion) { orbit.theta += 0.0012; orbit.apply(); }
+    }
+    var res = paint();
+    if (frame % 20 === 0 || !streaming) renderBands();
+    rd.rec.set(totalRecords.toLocaleString());
+    rd.hot.set(res.hot); rd.hot.tone(res.hot ? "hot" : "good");
+    rd.kmax.set(res.kmax.toFixed(4) + " (" + res.kmaxId + ")");
+    rd.kmax.tone(res.kmax > flagThr ? "hot" : "");
+    rd.rog.set(rogue ? rogue.id + " (+" + rogueRamp.toFixed(1) + "°)" : "none");
+    rd.rog.tone(rogue ? "hot" : "");
+  });
+  renderBands();
+
+  WX.wireConsole(document);
+})();
+</script>
+</body>
+</html>

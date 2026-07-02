@@ -1690,6 +1690,69 @@ enum Token {
     Minus,
 }
 
+impl Token {
+    /// Human-readable rendering for error messages. Debug formatting
+    /// (`Some(RParen)`) leaks parser internals at the exact moment a
+    /// learner is most confused; every parse error goes through here
+    /// or `token_or_end` instead.
+    fn human(&self) -> String {
+        match self {
+            Token::Word(w) => format!("'{w}'"),
+            Token::Number(n) => format!("number {n}"),
+            Token::Str(s) => {
+                if s.len() > 24 {
+                    format!("string '{}…'", &s[..24])
+                } else {
+                    format!("string '{s}'")
+                }
+            }
+            Token::LParen => "'('".to_string(),
+            Token::RParen => "')'".to_string(),
+            Token::LBrace => "'{'".to_string(),
+            Token::RBrace => "'}'".to_string(),
+            Token::LBracket => "'['".to_string(),
+            Token::RBracket => "']'".to_string(),
+            Token::DotDot => "'..'".to_string(),
+            Token::Comma => "','".to_string(),
+            Token::Eq => "'='".to_string(),
+            Token::Neq => "'!='".to_string(),
+            Token::Gt => "'>'".to_string(),
+            Token::Gte => "'>='".to_string(),
+            Token::Lt => "'<'".to_string(),
+            Token::Lte => "'<='".to_string(),
+            Token::Star => "'*'".to_string(),
+            Token::Slash => "'/'".to_string(),
+            Token::Dot => "'.'".to_string(),
+            Token::Colon => "':'".to_string(),
+            Token::Semicolon => "';'".to_string(),
+            Token::Plus => "'+'".to_string(),
+            Token::Minus => "'-'".to_string(),
+        }
+    }
+
+    /// Bare text of the token as it would appear in the statement —
+    /// used to reconstruct a "near: …" snippet for error context.
+    fn source_ish(&self) -> String {
+        match self {
+            Token::Word(w) => w.clone(),
+            Token::Number(n) => format!("{n}"),
+            Token::Str(s) => format!("'{s}'"),
+            other => other
+                .human()
+                .trim_matches('\'')
+                .to_string(),
+        }
+    }
+}
+
+/// `None` at this point always means the statement ran out of tokens.
+fn token_or_end(t: Option<&Token>) -> String {
+    match t {
+        Some(tok) => tok.human(),
+        None => "end of statement".to_string(),
+    }
+}
+
 fn tokenize(input: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
     let chars: Vec<char> = input.chars().collect();
@@ -1936,14 +1999,20 @@ impl Parser {
     fn expect_word(&mut self) -> Result<String, String> {
         match self.advance() {
             Some(Token::Word(w)) => Ok(w),
-            other => Err(format!("Expected identifier, got {other:?}")),
+            other => Err(format!(
+                "Expected a name here, found {}",
+                token_or_end(other.as_ref())
+            )),
         }
     }
 
     fn expect_keyword(&mut self, kw: &str) -> Result<(), String> {
         match self.advance() {
             Some(Token::Word(w)) if w.eq_ignore_ascii_case(kw) => Ok(()),
-            other => Err(format!("Expected '{kw}', got {other:?}")),
+            other => Err(format!(
+                "Expected the keyword {kw} here, found {}",
+                token_or_end(other.as_ref())
+            )),
         }
     }
 
@@ -1952,7 +2021,11 @@ impl Parser {
         if t.as_ref() == Some(&expected) {
             Ok(())
         } else {
-            Err(format!("Expected {expected:?}, got {t:?}"))
+            Err(format!(
+                "Expected {} here, found {}",
+                expected.human(),
+                token_or_end(t.as_ref())
+            ))
         }
     }
 
@@ -1966,7 +2039,10 @@ impl Parser {
             Some(Token::Word(w)) => w
                 .parse()
                 .map_err(|_| format!("Expected positive integer, got '{w}'")),
-            other => Err(format!("Expected positive integer, got {other:?}")),
+            other => Err(format!(
+                "Expected a positive integer here, found {}",
+                token_or_end(other.as_ref())
+            )),
         }
     }
 
@@ -2242,7 +2318,19 @@ impl Parser {
             // Feature #6: Cache invalidation
             "INVALIDATE" => self.parse_invalidate_cache(),
 
-            _ => Err(format!("Unknown statement: {first}")),
+            _ => {
+                let upper = first.to_ascii_uppercase();
+                match closest_verb(&upper) {
+                    Some(s) => Err(format!(
+                        "Unknown statement: '{first}' — did you mean '{s}'?"
+                    )),
+                    None => Err(format!(
+                        "Unknown statement: '{first}'. Statements start with a \
+                         GQL verb (COVER, SECTION, INTEGRATE, …) — see \
+                         GQL_REFERENCE.md for the full list."
+                    )),
+                }
+            }
         }
     }
 
@@ -3531,7 +3619,10 @@ impl Parser {
             Some(Token::Word(w)) => w
                 .parse::<f64>()
                 .map_err(|_| format!("Expected number, got '{w}'")),
-            other => Err(format!("Expected number, got {other:?}")),
+            other => Err(format!(
+                "Expected a number here, found {}",
+                token_or_end(other.as_ref())
+            )),
         }
     }
 
@@ -3725,8 +3816,8 @@ impl Parser {
             LoopBody::Edges(vs)
         } else {
             return Err(format!(
-                "Expected FACE or EDGES in LOOP declaration, got {:?}",
-                self.peek()
+                "Expected FACE or EDGES in LOOP declaration, found {}",
+                token_or_end(self.peek())
             ));
         };
         if matches!(self.peek(), Some(Token::Semicolon)) {
@@ -4136,7 +4227,10 @@ impl Parser {
         match self.advance() {
             Some(Token::Word(w)) if w.eq_ignore_ascii_case("TRUE") => Ok(true),
             Some(Token::Word(w)) if w.eq_ignore_ascii_case("FALSE") => Ok(false),
-            other => Err(format!("Expected TRUE or FALSE, got {other:?}")),
+            other => Err(format!(
+                "Expected TRUE or FALSE here, found {}",
+                token_or_end(other.as_ref())
+            )),
         }
     }
 
@@ -5014,7 +5108,10 @@ impl Parser {
                 self.pos += 1;
                 Ok(Statement::FreeEnergy { bundle: name, tau })
             }
-            other => Err(format!("expected number for tau, got {:?}", other)),
+            other => Err(format!(
+                "expected a number for tau, found {}",
+                token_or_end(other)
+            )),
         }
     }
 
@@ -7457,10 +7554,77 @@ pub fn jackknife_measure_specs(
 }
 
 /// Parse a GQL statement string into a Statement AST.
+/// Verbs offered as "did you mean" suggestions for a misspelled first
+/// word. Deliberately the always-available surface (no feature-gated
+/// verbs) so a suggestion never points at a statement the running build
+/// refuses to parse. tests::suggestable_verbs_all_dispatch keeps this
+/// list honest against the dispatch match.
+const SUGGESTABLE_VERBS: &[&str] = &[
+    "BUNDLE", "SECTION", "SECTIONS", "COVER", "INTEGRATE", "PULLBACK",
+    "REDEFINE", "RETRACT", "EXISTS", "SHOW", "DESCRIBE", "EXPLAIN",
+    "CURVATURE", "SPECTRAL", "HEALTH", "CONSISTENCY", "BETTI", "ENTROPY",
+    "GEODESIC", "METRIC", "COMPLETE", "PROPAGATE", "DIVERGENCE",
+    "HOLONOMY", "TRANSPORT", "GAUGE", "GRANT", "REVOKE", "POLICY",
+    "DROP", "AUDIT", "COMPACT", "ANALYZE", "VACUUM", "REBUILD", "CHECK",
+    "REPAIR", "STORAGE", "SET", "RESET", "INGEST", "TRANSPLANT",
+    "GENERATE", "FILL", "PREPARE", "EXECUTE", "DEALLOCATE", "BACKUP",
+    "RESTORE", "VERIFY", "COMMENT", "ITERATE", "INVALIDATE",
+    "BEGIN", "COMMIT", "ROLLBACK",
+];
+
+/// Byte-wise Levenshtein distance — verbs are ASCII.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let (a, b) = (a.as_bytes(), b.as_bytes());
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut cur = vec![0usize; b.len() + 1];
+    for (i, &ca) in a.iter().enumerate() {
+        cur[0] = i + 1;
+        for (j, &cb) in b.iter().enumerate() {
+            let sub = prev[j] + usize::from(ca != cb);
+            cur[j + 1] = sub.min(prev[j + 1] + 1).min(cur[j] + 1);
+        }
+        std::mem::swap(&mut prev, &mut cur);
+    }
+    prev[b.len()]
+}
+
+/// Closest known verb within a small edit distance, if any.
+fn closest_verb(upper: &str) -> Option<&'static str> {
+    let budget = if upper.len() <= 4 { 1 } else { 2 };
+    SUGGESTABLE_VERBS
+        .iter()
+        .map(|v| (edit_distance(upper, v), *v))
+        // d == 0 means the verb exists but its dispatch arm didn't fire
+        // (a feature-gated verb on a build without that feature) —
+        // suggesting a statement back to itself helps nobody.
+        .filter(|(d, _)| *d >= 1 && *d <= budget)
+        .min_by_key(|(d, _)| *d)
+        .map(|(_, v)| v)
+}
+
 pub fn parse(input: &str) -> Result<Statement, String> {
     let tokens = tokenize(input)?;
     let mut parser = Parser::new(tokens);
-    let stmt = parser.parse()?;
+    let stmt = match parser.parse() {
+        Ok(s) => s,
+        Err(e) => {
+            // Point at where parsing stopped: the last few tokens the
+            // parser consumed before it gave up. Token indices beat
+            // nothing, but a snippet beats an index.
+            let end = parser.pos.min(parser.tokens.len());
+            let start = end.saturating_sub(5);
+            let snippet = parser.tokens[start..end]
+                .iter()
+                .map(Token::source_ish)
+                .collect::<Vec<_>>()
+                .join(" ");
+            return Err(if snippet.is_empty() {
+                e
+            } else {
+                format!("{e} (near: \"{}{snippet} ◀\")", if start > 0 { "… " } else { "" })
+            });
+        }
+    };
     if matches!(parser.peek(), Some(Token::Semicolon)) {
         parser.advance();
     }
@@ -7474,10 +7638,7 @@ pub fn parse(input: &str) -> Result<Statement, String> {
             parser.advance();
             continue;
         }
-        trailing.push(match tok {
-            Token::Word(w) => w.clone(),
-            other => format!("{other:?}"),
-        });
+        trailing.push(tok.source_ish());
         if trailing.len() >= 6 {
             trailing.push("…".to_string());
             break;
@@ -7669,8 +7830,12 @@ fn parse_weight_expr(tokens: &[String]) -> Result<WeightExpr, String> {
     let expr = parse_weight_add_sub(tokens, &mut pos)?;
     if pos != tokens.len() {
         return Err(format!(
-            "WEIGHT: unexpected trailing tokens at position {pos}: {:?}",
-            &tokens[pos..]
+            "WEIGHT: unexpected trailing tokens at position {pos}: {}",
+            tokens[pos..]
+                .iter()
+                .map(Token::human)
+                .collect::<Vec<_>>()
+                .join(" ")
         ));
     }
     Ok(expr)
@@ -12202,6 +12367,81 @@ fn filter_columns(record: crate::types::Record, columns: &[SelectCol]) -> crate:
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── error-UX guarantees ──
+
+    /// Every verb we are willing to suggest must actually dispatch —
+    /// a "did you mean 'X'?" that then answers "Unknown statement: X"
+    /// would be worse than no suggestion at all.
+    #[test]
+    fn suggestable_verbs_all_dispatch() {
+        for v in SUGGESTABLE_VERBS {
+            let err = parse(&format!("{v} zzz_not_real zzz;"))
+                .err()
+                .unwrap_or_default();
+            // The verb itself must dispatch; recursive verbs (EXPLAIN)
+            // may still report the garbage INNER token as unknown.
+            assert!(
+                !err.contains(&format!("Unknown statement: '{v}")),
+                "'{v}' is in SUGGESTABLE_VERBS but the dispatcher does \
+                 not recognize it (error was: {err})"
+            );
+        }
+    }
+
+    #[test]
+    fn edit_distance_basics() {
+        assert_eq!(edit_distance("COVER", "COVER"), 0);
+        assert_eq!(edit_distance("COVERR", "COVER"), 1);
+        assert_eq!(edit_distance("INTEGRAT", "INTEGRATE"), 1);
+        assert_eq!(edit_distance("XYZZY", "COVER"), 5);
+    }
+
+    #[test]
+    fn misspelled_verb_suggests() {
+        let err = parse("COVERR sensors ALL;").unwrap_err();
+        assert!(err.contains("did you mean 'COVER'"), "{err}");
+        let err = parse("integrat sensors MEASURE count(*);").unwrap_err();
+        assert!(err.contains("did you mean 'INTEGRATE'"), "{err}");
+    }
+
+    #[test]
+    fn hopeless_verb_points_at_reference() {
+        let err = parse("FROBNICATE sensors;").unwrap_err();
+        assert!(err.contains("GQL_REFERENCE"), "{err}");
+        assert!(!err.contains("did you mean"), "{err}");
+    }
+
+    /// Parse errors must never leak Rust debug formatting of parser
+    /// internals — `Some(RParen)` is meaningless to a GQL user.
+    #[test]
+    fn no_debug_internals_in_parse_errors() {
+        let bad = [
+            "BUNDLE b BASE (id TEXT FIBER (x NUMERIC);", // unbalanced
+            "SECTION sensors (id='a' city='b');",        // missing comma
+            "CURVATURE ;",                               // missing name
+            "COVER sensors RANK BY ;",                   // dangling clause
+            "INTEGRATE sensors MEASURE avg( ;",          // open paren
+        ];
+        for stmt in bad {
+            if let Err(e) = parse(stmt) {
+                for leak in ["Some(", "None)", "Word(", "RParen", "LParen", "Semicolon"] {
+                    assert!(
+                        !e.contains(leak),
+                        "debug leak {leak:?} in error for {stmt:?}: {e}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Errors carry a where — the token snippet the parser stopped at.
+    #[test]
+    fn parse_errors_carry_near_context() {
+        let err = parse("COVER sensors RANK BY ;").unwrap_err();
+        assert!(err.contains("(near:"), "{err}");
+        assert!(err.contains("RANK BY"), "{err}");
+    }
 
     // ── SQL compat tests (existing) ──
 

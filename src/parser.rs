@@ -10501,11 +10501,51 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::Backup { .. }
         | Statement::Restore { .. }
         | Statement::VerifyBackup { .. }
-        | Statement::ShowBackups => Ok(ExecResult::Ok),
+        | Statement::ShowBackups => Ok(ExecResult::Notice(
+            "backup/restore statements are not implemented yet — no backup \
+             was touched"
+                .to_string(),
+        )),
 
         // ── v2.1: Information Schema ──
-        Statement::ShowFields { bundle }
-        | Statement::ShowIndexes { bundle }
+        // SHOW FIELDS is real: one row per field, in schema order —
+        // the answer to "what is this bundle's shape?" without reading
+        // the bundle's creation statement. DESCRIBE gives the counts;
+        // this gives the names.
+        Statement::ShowFields { bundle } => {
+            let store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+            let schema = store.schema();
+            let mut rows = Vec::new();
+            let mut push = |fd: &crate::types::FieldDef, kind: &str| {
+                let mut row = crate::types::Record::new();
+                row.insert("field".into(), crate::types::Value::Text(fd.name.clone()));
+                row.insert("kind".into(), crate::types::Value::Text(kind.into()));
+                row.insert(
+                    "type".into(),
+                    crate::types::Value::Text(format!("{:?}", fd.field_type)),
+                );
+                row.insert(
+                    "indexed".into(),
+                    crate::types::Value::Bool(
+                        schema.indexed_fields.iter().any(|f| f == &fd.name),
+                    ),
+                );
+                if let Some(r) = fd.range {
+                    row.insert("range".into(), crate::types::Value::Float(r));
+                }
+                rows.push(row);
+            };
+            for fd in &schema.base_fields {
+                push(fd, "base");
+            }
+            for fd in &schema.fiber_fields {
+                push(fd, "fiber");
+            }
+            Ok(ExecResult::Rows(rows))
+        }
+        Statement::ShowIndexes { bundle }
         | Statement::ShowMorphisms { bundle }
         | Statement::ShowTriggers { bundle }
         | Statement::ShowStatistics { bundle }
@@ -10514,14 +10554,26 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let _store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
-            Ok(ExecResult::Ok)
+            Ok(ExecResult::Notice(
+                "this SHOW variant is not implemented yet — the bundle \
+                 exists, but no rows were produced. SHOW FIELDS ON <bundle> \
+                 and DESCRIBE <bundle> are the implemented introspection \
+                 statements"
+                    .to_string(),
+            ))
         }
 
         // ── v2.1: Comments (stub) ──
-        Statement::CommentOn { .. } => Ok(ExecResult::Ok),
+        Statement::CommentOn { .. } => Ok(ExecResult::Notice(
+            "COMMENT ON is not implemented yet — the comment was not stored"
+                .to_string(),
+        )),
 
         // ── v2.1: Recursive (stub) ──
-        Statement::Iterate { .. } => Ok(ExecResult::Ok),
+        Statement::Iterate { .. } => Ok(ExecResult::Notice(
+            "ITERATE is not implemented yet — nothing was executed"
+                .to_string(),
+        )),
 
         // ── v2.1: Triggers — now wired to engine (Feature #9) ──
         Statement::CreateTrigger {

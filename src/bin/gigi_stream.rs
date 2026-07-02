@@ -14330,6 +14330,38 @@ fn execute_gql_on_store_read(
             };
             Ok(ExecResult::Rows(result_rows))
         }
+        // SHOW FIELDS ON <bundle> — one row per field in schema order,
+        // same shape as the embedded executor's arm.
+        Statement::ShowFields { .. } => {
+            let schema = store.schema();
+            let mut rows = Vec::new();
+            let mut push = |fd: &gigi::types::FieldDef, kind: &str| {
+                let mut row = gigi::types::Record::new();
+                row.insert("field".into(), gigi::types::Value::Text(fd.name.clone()));
+                row.insert("kind".into(), gigi::types::Value::Text(kind.into()));
+                row.insert(
+                    "type".into(),
+                    gigi::types::Value::Text(format!("{:?}", fd.field_type)),
+                );
+                row.insert(
+                    "indexed".into(),
+                    gigi::types::Value::Bool(
+                        schema.indexed_fields.iter().any(|f| f == &fd.name),
+                    ),
+                );
+                if let Some(r) = fd.range {
+                    row.insert("range".into(), gigi::types::Value::Float(r));
+                }
+                rows.push(row);
+            };
+            for fd in &schema.base_fields {
+                push(fd, "base");
+            }
+            for fd in &schema.fiber_fields {
+                push(fd, "fiber");
+            }
+            Ok(ExecResult::Rows(rows))
+        }
         // Anything unmatched parsed fine but has no handler on this path.
         // A bare "ok" here is success theater — say what didn't happen.
         _ => Ok(ExecResult::Notice(

@@ -60,3 +60,31 @@ fn session_stubs_return_notice() {
         other => panic!("SET must return Notice, got {other:?}"),
     }
 }
+
+#[test]
+fn show_fields_returns_real_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut e = Engine::open(dir.path()).unwrap();
+    let ast = parser::parse(
+        "BUNDLE sensors BASE (id TEXT) FIBER (city TEXT INDEX, temp NUMERIC);",
+    )
+    .unwrap();
+    parser::execute(&mut e, &ast).unwrap();
+
+    let ast = parser::parse("SHOW FIELDS ON sensors;").unwrap();
+    match parser::execute(&mut e, &ast).unwrap() {
+        ExecResult::Rows(rows) => {
+            assert_eq!(rows.len(), 3, "id + city + temp");
+            let by_name = |n: &str| {
+                rows.iter()
+                    .find(|r| r["field"] == gigi::types::Value::Text(n.into()))
+                    .unwrap_or_else(|| panic!("no row for field {n}"))
+            };
+            assert_eq!(by_name("id")["kind"], gigi::types::Value::Text("base".into()));
+            assert_eq!(by_name("temp")["kind"], gigi::types::Value::Text("fiber".into()));
+            assert_eq!(by_name("city")["indexed"], gigi::types::Value::Bool(true));
+            assert_eq!(by_name("temp")["indexed"], gigi::types::Value::Bool(false));
+        }
+        other => panic!("SHOW FIELDS must return rows, got {other:?}"),
+    }
+}

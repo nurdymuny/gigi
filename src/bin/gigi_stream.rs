@@ -16200,6 +16200,34 @@ async fn main() {
 
         replay_state.ready.store(true, Ordering::Release);
         eprintln!("Engine ready — all endpoints active");
+        // First contact: a ready flip nobody can act on is a wall.
+        // Print the door and three things to try. GIGI_QUIET=1 mutes
+        // it for log-scraping deployments.
+        if std::env::var("GIGI_QUIET").is_err() {
+            let port_hint =
+                std::env::var("PORT").unwrap_or_else(|_| "3142".to_string());
+            let auth_hint = if std::env::var("GIGI_API_KEY").is_ok() {
+                " -H 'X-Api-Key: <your key>'"
+            } else {
+                ""
+            };
+            eprintln!();
+            eprintln!("  GIGI is listening on http://localhost:{port_hint}");
+            eprintln!();
+            eprintln!("  Try it:");
+            eprintln!("    curl -s http://localhost:{port_hint}/v1/health");
+            eprintln!(
+                "    curl -s{auth_hint} -X POST http://localhost:{port_hint}/v1/gql \\"
+            );
+            eprintln!("      -H 'Content-Type: application/json' -d '{{\"query\":\"SHOW BUNDLES;\"}}'");
+            eprintln!(
+                "    curl -s{auth_hint} -X POST http://localhost:{port_hint}/v1/gql \\"
+            );
+            eprintln!("      -H 'Content-Type: application/json' -d '{{\"query\":\"SHOW FIELDS ON <bundle>;\"}}'");
+            eprintln!();
+            eprintln!("  Language reference: GQL_REFERENCE.md · book & live demos: https://davisgeometric.com/gigi/gigi-builds/");
+            eprintln!();
+        }
 
         // Background: upload snapshots + WAL to Tigris after slow-path write
         if let Ok(bucket) = std::env::var("TIGRIS_BUCKET_NAME") {

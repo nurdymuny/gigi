@@ -323,6 +323,20 @@ pub enum Statement {
         jackknife_skip: usize,
     },
 
+    /// `<rows-statement> EMIT CSV TO 'file.csv'` — run the inner
+    /// statement and write its rows as CSV. Parsed as a suffix at the
+    /// top level so it composes with COVER and INTEGRATE without
+    /// touching their shapes. Execution is gated on `GIGI_EMIT_DIR`
+    /// (files land strictly inside that directory) so a public server
+    /// can never be talked into writing arbitrary paths.
+    Emit {
+        inner: Box<Statement>,
+        /// Output format — only "CSV" today; validated at parse time.
+        format: String,
+        /// Relative path under GIGI_EMIT_DIR.
+        path: String,
+    },
+
     // ── Joins ──
     Pullback {
         left: String,
@@ -7622,7 +7636,7 @@ fn closest_verb(upper: &str) -> Option<&'static str> {
 pub fn parse(input: &str) -> Result<Statement, String> {
     let tokens = tokenize(input)?;
     let mut parser = Parser::new(tokens);
-    let stmt = match parser.parse() {
+    let mut stmt = match parser.parse() {
         Ok(s) => s,
         Err(e) => {
             // Point at where parsing stopped: the last few tokens the
@@ -7642,6 +7656,29 @@ pub fn parse(input: &str) -> Result<Statement, String> {
             });
         }
     };
+    // Optional `EMIT <FORMAT> TO '<path>'` suffix — composes with any
+    // rows-producing statement (COVER, INTEGRATE, SHOW FIELDS, …).
+    if matches!(parser.peek(), Some(Token::Word(w)) if w.eq_ignore_ascii_case("EMIT")) {
+        parser.advance();
+        let format = parser.expect_word()?.to_ascii_uppercase();
+        if format != "CSV" {
+            return Err(format!(
+                "EMIT supports FORMAT CSV only (got '{format}'); JSON rows \
+                 are what the HTTP surface already returns"
+            ));
+        }
+        parser.expect_keyword("TO")?;
+        let path = match parser.advance() {
+            Some(Token::Str(s)) => s,
+            other => {
+                return Err(format!(
+                    "EMIT … TO expects a quoted file path, found {}",
+                    token_or_end(other.as_ref())
+                ))
+            }
+        };
+        stmt = Statement::Emit { inner: Box::new(stmt), format, path };
+    }
     if matches!(parser.peek(), Some(Token::Semicolon)) {
         parser.advance();
     }
@@ -9412,8 +9449,99 @@ fn lattice_params_to_constructor_args(
 }
 
 /// Execute a parsed statement against an Engine.
+/// Escape one CSV cell: quote when it contains a comma, quote, or
+/// newline; double any embedded quotes (RFC 4180).
+fn csv_cell(v: &crate::types::Value) -> String {
+    let s = match v {
+        crate::types::Value::Null => String::new(),
+        other => format!("{other}"),
+    };
+    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s
+    }
+}
+
+/// Serialize rows as CSV. Columns are the union of all row keys,
+/// sorted for determinism; absent values are empty cells.
+fn rows_to_csv(rows: &[crate::types::Record]) -> String {
+    let mut cols: Vec<&str> = {
+        let mut set: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
+        for r in rows {
+            for k in r.keys() {
+                set.insert(k.as_str());
+            }
+        }
+        set.into_iter().collect()
+    };
+    cols.sort_unstable();
+    let mut out = String::new();
+    out.push_str(&cols.join(","));
+    out.push('\n');
+    for r in rows {
+        let line: Vec<String> = cols
+            .iter()
+            .map(|c| r.get(*c).map(csv_cell).unwrap_or_default())
+            .collect();
+        out.push_str(&line.join(","));
+        out.push('\n');
+    }
+    out
+}
+
+/// Resolve the EMIT output path under GIGI_EMIT_DIR, refusing escapes.
+/// The env gate is the whole security story: a server that never sets
+/// GIGI_EMIT_DIR can never be talked into writing files.
+fn emit_target(path: &str) -> Result<std::path::PathBuf, String> {
+    let dir = std::env::var("GIGI_EMIT_DIR").map_err(|_| {
+        "EMIT is disabled on this engine: set GIGI_EMIT_DIR=<directory> to \
+         enable it — exported files are written inside that directory only. \
+         (Over HTTP, prefer requesting the rows and saving client-side.)"
+            .to_string()
+    })?;
+    let p = std::path::Path::new(path);
+    if p.is_absolute()
+        || p.components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return Err(format!(
+            "EMIT path '{path}' must be relative, without '..' — files land \
+             inside GIGI_EMIT_DIR"
+        ));
+    }
+    Ok(std::path::Path::new(&dir).join(p))
+}
+
 pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<ExecResult, String> {
     match stmt {
+        // ── Export ──
+        Statement::Emit { inner, format: _, path } => {
+            let target = emit_target(path)?;
+            let rows = match execute(engine, inner)? {
+                ExecResult::Rows(rows) => rows,
+                other => {
+                    return Err(format!(
+                        "EMIT needs a statement that returns rows (COVER, \
+                         INTEGRATE, SHOW FIELDS, …); this one returned {other:?}"
+                    ))
+                }
+            };
+            let n = rows.len();
+            let csv = rows_to_csv(&rows);
+            if let Some(parent) = target.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("EMIT: create {}: {e}", parent.display()))?;
+            }
+            std::fs::write(&target, csv)
+                .map_err(|e| format!("EMIT: write {}: {e}", target.display()))?;
+            Ok(ExecResult::Notice(format!(
+                "EMIT CSV: wrote {n} row{} to {}",
+                if n == 1 { "" } else { "s" },
+                target.display()
+            )))
+        }
+
         // ── Schema ──
         Statement::CreateBundle {
             name,

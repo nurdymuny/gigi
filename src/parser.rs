@@ -1617,6 +1617,21 @@ pub enum FilterCondition {
     },
 }
 
+impl FilterCondition {
+    /// The field this condition filters on, when it names one directly.
+    /// `Exists` filters on a subquery, not a field of the outer bundle.
+    pub fn field_name(&self) -> Option<&str> {
+        use FilterCondition::*;
+        match self {
+            Eq(f, _) | Neq(f, _) | Gt(f, _) | Gte(f, _) | Lt(f, _) | Lte(f, _)
+            | In(f, _) | NotIn(f, _) | Contains(f, _) | StartsWith(f, _)
+            | EndsWith(f, _) | Matches(f, _) | Void(f) | Defined(f)
+            | Between(f, _, _) => Some(f),
+            Exists { .. } => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SortSpec {
     pub field: String,
@@ -7363,6 +7378,34 @@ pub fn parse(input: &str) -> Result<Statement, String> {
     if matches!(parser.peek(), Some(Token::Semicolon)) {
         parser.advance();
     }
+    // Anything still unconsumed is a clause this statement's parser did not
+    // understand. Discarding it silently meant e.g. `... HAVING avg(x) > 5`
+    // ran WITHOUT the HAVING and reported success — a silent wrong answer.
+    // Refuse instead, and show what was ignored.
+    let mut trailing: Vec<String> = Vec::new();
+    while let Some(tok) = parser.peek() {
+        if matches!(tok, Token::Semicolon) {
+            parser.advance();
+            continue;
+        }
+        trailing.push(match tok {
+            Token::Word(w) => w.clone(),
+            other => format!("{other:?}"),
+        });
+        if trailing.len() >= 6 {
+            trailing.push("…".to_string());
+            break;
+        }
+        parser.advance();
+    }
+    if !trailing.is_empty() {
+        return Err(format!(
+            "Statement parsed, but this trailing input is not a supported \
+             clause and was NOT executed: '{}'. Remove it, or check the GQL \
+             reference for the supported form of this statement.",
+            trailing.join(" ")
+        ));
+    }
     Ok(stmt)
 }
 
@@ -12648,6 +12691,32 @@ mod tests {
                 assert!(matches!(measures[1].func, AggFunc::Count));
             }
             _ => panic!("Expected Integrate"),
+        }
+    }
+
+    /// Trailing input after a complete statement must be rejected, not
+    /// silently discarded — the discard made `... HAVING avg(x) > 5` run
+    /// without the HAVING and report success.
+    #[test]
+    fn gql_trailing_tokens_rejected() {
+        let err = parse("COVER sensors WHERE temp > 1 BANANA NONSENSE;").unwrap_err();
+        assert!(err.contains("trailing"), "got: {err}");
+        assert!(err.contains("BANANA"), "got: {err}");
+        let err = parse("INTEGRATE s OVER c MEASURE avg(t) HAVING avg(t) > 5;").unwrap_err();
+        assert!(err.contains("HAVING"), "got: {err}");
+        // a clean statement (with or without semicolon) still parses
+        parse("COVER sensors WHERE temp > 1;").unwrap();
+        parse("COVER sensors WHERE temp > 1").unwrap();
+    }
+
+    #[test]
+    fn filter_condition_field_name_accessor() {
+        let stmt = parse("COVER sensors WHERE temp > 1;").unwrap();
+        match stmt {
+            Statement::Cover { where_conditions, .. } => {
+                assert_eq!(where_conditions[0].field_name(), Some("temp"));
+            }
+            _ => panic!("Expected Cover"),
         }
     }
 

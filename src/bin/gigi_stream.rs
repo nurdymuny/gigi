@@ -13128,6 +13128,39 @@ fn execute_gql_on_store_read(
             skip,
             ..
         } => {
+            // Validate every referenced field against the schema up front.
+            // Unknown fields used to fail silently (a typo'd WHERE matched
+            // nothing; a typo'd PROJECT column just vanished), which is
+            // indistinguishable from "no data" — the worst kind of wrong.
+            {
+                let known = store.field_names();
+                let mut referenced: Vec<&str> = Vec::new();
+                referenced.extend(
+                    on_conditions
+                        .iter()
+                        .chain(where_conditions.iter())
+                        .chain(or_groups.iter().flatten())
+                        .filter_map(|c| c.field_name()),
+                );
+                if let Some(fields) = project {
+                    referenced.extend(fields.iter().map(|s| s.as_str()));
+                }
+                if let Some(specs) = rank_by {
+                    referenced.extend(specs.iter().map(|s| s.field.as_str()));
+                }
+                if let Some(f) = distinct_field {
+                    referenced.push(f.as_str());
+                }
+                for f in referenced {
+                    if !known.iter().any(|k| k == f) {
+                        return Err(format!(
+                            "Unknown field '{}' — this bundle's fields are: {}",
+                            f,
+                            known.join(", ")
+                        ));
+                    }
+                }
+            }
             if let Some(field) = distinct_field {
                 let vals = store.distinct(field);
                 let rows: Vec<gigi::types::Record> = vals
@@ -13185,6 +13218,26 @@ fn execute_gql_on_store_read(
             Ok(ExecResult::Rows(results))
         }
         Statement::Integrate { over, measures, .. } => {
+            // Validate the group-by field and every measure field against
+            // the schema ('*' is COUNT(*) and always legal) — same
+            // rationale as the Cover-arm validation above.
+            {
+                let known = store.field_names();
+                let mut referenced: Vec<&str> =
+                    measures.iter().map(|m| m.field.as_str()).filter(|f| *f != "*").collect();
+                if let Some(gb) = over {
+                    referenced.push(gb.as_str());
+                }
+                for f in referenced {
+                    if !known.iter().any(|k| k == f) {
+                        return Err(format!(
+                            "Unknown field '{}' — this bundle's fields are: {}",
+                            f,
+                            known.join(", ")
+                        ));
+                    }
+                }
+            }
             // One accumulator per measure — a shared single-field
             // accumulator makes every measure return the first field's
             // value, and drops whole groups when that field is `*` or

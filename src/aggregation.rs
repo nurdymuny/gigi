@@ -28,7 +28,12 @@ impl AggResult {
             return 0.0;
         }
         let n = self.count as f64;
-        (self.sum_sq / n) - (self.sum / n).powi(2)
+        // The sum-of-squares form suffers catastrophic cancellation when
+        // mean^2 >> variance (e.g. values ~1e6 with spread ~1e-2) and can
+        // dip below zero in floating point, which would turn stddev() into
+        // NaN. Clamp at zero; FieldStats uses Welford's m2 and is the
+        // preferred accumulator when incremental update is available.
+        ((self.sum_sq / n) - (self.sum / n).powi(2)).max(0.0)
     }
     pub fn stddev(&self) -> f64 {
         self.variance().sqrt()

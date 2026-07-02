@@ -7046,6 +7046,18 @@ impl Parser {
         };
         #[cfg(not(feature = "gauge"))]
         let as_gauge_field: Option<GaugeFieldInterpretation> = None;
+        #[cfg(not(feature = "gauge"))]
+        if self.is_keyword("AS") {
+            // Without this branch the AS tail reaches the trailing-token
+            // rejection and the user gets a generic "unsupported clause"
+            // error; say the real reason instead.
+            return Err(
+                "INGEST ... AS GAUGE_FIELD requires a build with the 'gauge' \
+                 feature (cargo build --features gauge); this build parses \
+                 INGEST without the interpretation clause"
+                    .to_string(),
+            );
+        }
 
         Ok(Statement::Ingest {
             bundle,

@@ -211,6 +211,14 @@ fn test_ingest_npz_key_selects_named_array() {
 /// bound for `AS GAUGE_FIELD` interpretation. The error string must
 /// name the number of members observed AND suggest KEY <name> as the
 /// remedy so the caller can add exactly the clause they omitted.
+///
+/// Gated on `gauge`: the statement uses the `AS GAUGE_FIELD` tail, which
+/// only parses under that feature. Pre-gate, the default build passed
+/// this test by accident — the parser silently discarded the AS tail and
+/// the assertion was satisfied by the *generic* ingest path, not the
+/// GAUGE_FIELD one it claims to test. The parser now refuses the tail
+/// without the feature (clear error) instead of discarding it.
+#[cfg(feature = "gauge")]
 #[test]
 fn test_ingest_npz_key_absent_multi_array_errors() {
     let (mut engine, _dir) = open_engine();

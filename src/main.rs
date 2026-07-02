@@ -5,7 +5,6 @@
 //!   gigi --dir <path>       Use specified data directory
 //!   gigi -e "QUERY"         Execute a single query and exit
 
-use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 
 use gigi::engine::Engine;
@@ -91,33 +90,43 @@ fn main() {
     println!("GIGI v0.3 — Geometric Intrinsic Global Index");
     println!("Type .help for commands, .quit to exit.\n");
 
-    let stdin = io::stdin();
-    let mut stdout = io::stdout();
+    // rustyline: arrow-key editing, ↑/↓ history, Ctrl-C clears the
+    // line, Ctrl-D exits. History persists next to the data so each
+    // database remembers its own conversation.
+    let mut rl = match rustyline::DefaultEditor::new() {
+        Ok(rl) => rl,
+        Err(e) => {
+            eprintln!("Could not initialize line editor: {e}");
+            std::process::exit(1);
+        }
+    };
+    let history_path = data_dir.join(".gigi_history");
+    let _ = rl.load_history(&history_path); // absent on first run — fine
 
     loop {
-        print!("gigi> ");
-        let _ = stdout.flush();
-
-        let mut line = String::new();
-        match stdin.lock().read_line(&mut line) {
-            Ok(0) => break, // EOF
-            Ok(_) => {}
+        match rl.readline("gigi> ") {
+            Ok(line) => {
+                let line = line.trim().to_string();
+                if line.is_empty() {
+                    continue;
+                }
+                let _ = rl.add_history_entry(&line);
+                match execute_line(&mut engine, &line) {
+                    Ok(true) => break, // quit signal
+                    Ok(false) => {}
+                    Err(e) => eprintln!("Error: {e}"),
+                }
+            }
+            Err(rustyline::error::ReadlineError::Interrupted) => continue, // Ctrl-C: new prompt
+            Err(rustyline::error::ReadlineError::Eof) => break,            // Ctrl-D: exit
             Err(e) => {
                 eprintln!("Read error: {e}");
                 break;
             }
         }
-
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-
-        match execute_line(&mut engine, line) {
-            Ok(true) => break, // quit signal
-            Ok(false) => {}
-            Err(e) => eprintln!("Error: {e}"),
-        }
+    }
+    if let Err(e) = rl.save_history(&history_path) {
+        eprintln!("(could not save history: {e})");
     }
 }
 

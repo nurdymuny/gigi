@@ -186,6 +186,7 @@ hybrid-array = "0.2.0-rc.9"
 # tight: we only ship file-reading; serialization features (complex,
 # half, derive) are off.
 npyz = { version = "0.8", default-features = false, features = ["npz"] }
+rustyline = "14"
 
 [[bin]]
 name = "gigi-convert"

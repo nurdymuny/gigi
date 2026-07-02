@@ -105,8 +105,8 @@
     padding: 12px; overflow: auto; max-height: 300px; font-size: 12.5px; white-space: pre-wrap; }
   .console .hint { color: #8f9bcd; font-size: 12px; margin: 6px 0 12px; }
   /* playground */
-  .playground { background: #fff; border: 2px solid var(--blue); border-radius: 12px;
-    padding: 20px 24px; margin: 22px 0; }
+  .playground { background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--blue);
+    border-radius: 12px; padding: 20px 24px; margin: 22px 0; }
   .playground h2 { margin: 0 0 4px; font-size: 19px; }
   .playground .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; }
   .playground .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
@@ -150,23 +150,24 @@
   <p class="intro">The spirit of this chapter's exercises is to plant your own moon and watch the storage layer notice things  —  every build below produces a receipt that lines up against one I already shipped in this chapter (BLD-DAYONE-16, BLD-CH1-WORKED-KAPPA, BLD-CH1-INTEGRATE-DRIFT, BLD-COST-MEM, BLD-COST-INSERT, BLD-COST-COLD, BLD-TESTS-1373).</p>
   
   <details class="console">
-    <summary>⚡ Run it live — GQL console</summary>
-    <p class="hint">Point at the public read-only instance, or your own engine
+    <summary>Run it live — GQL console</summary>
+    <p class="hint">Point at the public instance (paste an api key if needed) or your own engine
     (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
     <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <input class="apikey" placeholder="api key (if needed)" aria-label="API key" style="max-width:180px">
     <button class="run">Run</button></div>
     <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
     <div class="row">
       <button class="chip" data-q="SHOW BUNDLES;">SHOW BUNDLES</button>
-      <button class="chip" data-q="HEALTH sensors;">HEALTH</button>
-      <button class="chip" data-q="SECTION sensors AT id='s1';">SECTION AT</button>
-      <button class="chip" data-q="INTEGRATE sensors OVER city MEASURE count(*), min(temp);">INTEGRATE</button>
+      <button class="chip" data-q="HEALTH stations;">HEALTH</button>
+      <button class="chip" data-q="SECTION stations AT (station_id='s151');">SECTION AT</button>
+      <button class="chip" data-q="INTEGRATE stations MEASURE SUM(temp), AVG(temp);">INTEGRATE</button>
     </div>
     <pre aria-live="polite">—</pre>
   </details>
   
   <div class="playground">
-    <h2>🌡️ Try it here first — the curvature odometer</h2>
+    <h2>Try it here first — the curvature odometer</h2>
     <p class="sub">This is E1.1 running in your browser with the engine's exact math:
     Welford running stats + per-record \(\kappa = |v-\mu|/R\) with declared range
     \(R\). Plant the plain, drop the spike, watch the odometer notice. Then go
@@ -221,10 +222,10 @@
       set("pg-flag", flagged);
       var tS = document.getElementById("t-spike"), tT = document.getElementById("t-typ");
       if (kSpike !== null && Math.abs(kSpike - 4.7653) < 0.01) {
-        tS.classList.add("hit"); tS.textContent = "✓ book receipt hit: κ(s151) ≈ " + kSpike.toFixed(4) + " (book: 4.7653) — the engine recomputes κ against current stats when you SECTION the record";
+        tS.classList.add("hit"); tS.textContent = "hit — κ(s151) ≈ " + kSpike.toFixed(4) + " (book: 4.7653) — the engine recomputes κ against current stats when you SECTION the record";
       }
       if (st.n > 150 && Math.abs(kappa(20.3) - 0.0317) < 0.002) {
-        tT.classList.add("hit"); tT.textContent = "✓ book receipt hit: typical κ ≈ " + kappa(20.3).toFixed(6) + " (book: 0.031728)";
+        tT.classList.add("hit"); tT.textContent = "hit — typical κ ≈ " + kappa(20.3).toFixed(6) + " (book: 0.031728)";
       }
     }
     document.getElementById("pg-plain").addEventListener("click", function () {
@@ -246,7 +247,7 @@
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Diff against a deliberately-broken naive two-pass mean/variance to confirm the numerical-stability win Welford was chosen for.</p></div><div class="exwork"><label><input type="checkbox" data-done="E1.2"> done</label><input class="receipt" data-receipt="E1.2" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e1-3"><h2><span class="eid" style="background: var(--blue)">E1.3</span>Replay the INTEGRATE drift</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Run the two GQL spellings from BLD-CH1-INTEGRATE-DRIFT verbatim against your bundle: first <code>INTEGRATE temp OVER stations COVER ALL;</code> (the README cell), then <code>INTEGRATE stations MEASURE SUM(temp), AVG(temp);</code> (what the parser at <code>src/parser.rs:2047--2099</code> actually accepts).</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The first returns <code>execution error: No bundle: temp</code>; the second returns a <code>Rows([...])</code> whose <code>sum_temp</code> ends in the lower-order f64 bits \(\ldots987\) given \(150\) readings near \(20.3\) plus one \(500.0\).</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a third spelling that supplies both <code>OVER</code> and <code>MEASURE</code> in a single statement; report whether the trailing-token discard Chapter 7 owns swallows your clause silently or errors.</p></div><div class="exwork"><label><input type="checkbox" data-done="E1.3"> done</label><input class="receipt" data-receipt="E1.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e1-4"><h2><span class="eid" style="background: var(--blue)">E1.4</span>Benchmark the \(1.5\times\) memory bill</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Load the same 150-row <code>stations</code> corpus into your favorite row-store (Postgres works) and into GIGI; measure resident-set size of each after the load settles.</p></div>
-<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A ratio printed against BLD-COST-MEM. If your number lands within \(\pm 20\%\) of \(1.5\times\), you have reproduced the README's premium for materializing the second fundamental form alongside the data.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A ratio printed against BLD-COST-MEM. If your number lands within \(\pm 20\%\) of \(1.5\times\), you have reproduced the README's premium for keeping the curvature bookkeeping alongside the data (what the paper calls the <i>second fundamental form</i>).</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Scale to \(10^4\) and \(10^6\) rows and plot the ratio  —  the metadata is a fixed pile of accumulators per field, so the ratio should drift toward \(1.0\) as the row count dominates.</p></div><div class="exwork"><label><input type="checkbox" data-done="E1.4"> done</label><input class="receipt" data-receipt="E1.4" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e1-5"><h2><span class="eid" style="background: var(--blue)">E1.5</span>Time the cold start</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Kill the engine after E1.1's bundle is loaded, then reopen against the mmap snapshot written by <code>src/storage/snapshot.rs</code>. Run <code>compute_anomalies(3 sigma)</code> as the first call after reopen  —  no warmup, no batch job.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Wall-clock from process start to the <code>s151</code> row appearing in the anomaly list, in seconds, matched against BLD-COST-COLD. The brain endpoints must answer polymorphically against the reloaded bundle on the first request, not the tenth.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Confirm by inspection of the snapshot file that the curvature estimator state is on disk  —  not re-derived from the records at warmup.</p></div><div class="exwork"><label><input type="checkbox" data-done="E1.5"> done</label><input class="receipt" data-receipt="E1.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e1-6"><h2><span class="eid" style="background: var(--blue)">E1.6</span>Stress the gauge transformation reading</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Extend E1.1's harness with a knob that injects \(k\) wild readings (\(500.0\)) at random base points and records the post-injection \(\kappa\) at one fixed typical record.</p></div>
@@ -254,7 +255,7 @@
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Plot the typical-record \(\kappa\) alongside the flagged count from <code>compute_anomalies</code>  —  the moment the wild readings start outvoting the plain, the detector's verdict flips, and the plot shows you where.</p></div><div class="exwork"><label><input type="checkbox" data-done="E1.6"> done</label><input class="receipt" data-receipt="E1.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e1-7"><h2><span class="eid" style="background: var(--blue)">E1.7</span>Wire a section verb that returns its own \(\kappa\)</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Issue <code>SECTION stations AT (station_id='s151');</code> against the live engine and capture the full response, including the per-result geometric annotation the day-one table promises on row two.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A response payload that carries both the fiber values and the per-record \(\kappa\) and confidence  —  one round trip, no separate aggregation call, no log-scraping. Diff the \(\kappa\) in this response against the \(4.7653\) from E1.1's <code>compute_anomalies</code> output; they should be the same number to f64 precision, because they came from the same <code>compute_record_k</code> at <code>src/bundle.rs:933--967</code>.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Issue the same <code>SECTION</code> against a typical station and confirm the \(\kappa\) matches the pre-spike \(0.000040\)  —  the address didn't grow, and the geometry rode along for free.</p></div><div class="exwork"><label><input type="checkbox" data-done="E1.7"> done</label><input class="receipt" data-receipt="E1.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
-  <div class="pager"><span></span><a href="ch02.html">Chapter 2 exercises →</a></div>
+  <div class="pager"><a href="index.html">← All chapters</a><a href="ch02.html">Chapter 2 exercises →</a></div>
 </main>
 <div id="toast" role="status"></div>
 <script>
@@ -311,22 +312,37 @@
         q = box.querySelector("textarea"), out = box.querySelector("pre");
     var saved = localStorage.getItem("gb-endpoint");
     if (saved) ep.value = saved;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyInit = box.querySelector(".apikey");
+    if (apiKeyInit && savedKey) apiKeyInit.value = savedKey;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyEl = box.querySelector(".apikey");
+    if (apiKeyEl && savedKey) apiKeyEl.value = savedKey;
     box.querySelectorAll(".chip").forEach(function (ch) {
       ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
     });
     run.addEventListener("click", function () {
       var base = ep.value.replace(/\/+$/, "");
       localStorage.setItem("gb-endpoint", ep.value);
+      if (apiKeyInit) localStorage.setItem("gb-apikey", apiKeyInit.value);
+      if (apiKeyEl) localStorage.setItem("gb-apikey", apiKeyEl.value);
       out.textContent = "running…";
-      fetch(base + "/v1/gql", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q.value }) })
-        .then(function (r) { return r.text(); })
-        .then(function (txt) {
-          try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
-          catch (e) { out.textContent = txt; }
+      var headers = { "Content-Type": "application/json" };
+      var apiKeyEl = box.querySelector(".apikey");
+      if (apiKeyEl && apiKeyEl.value.trim()) headers["x-api-key"] = apiKeyEl.value.trim();
+      fetch(base + "/v1/gql", { method: "POST", headers: headers, body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text().then(function (txt) { return { ok: r.ok, status: r.status, txt: txt }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            var hint = res.status === 401 ? "\n\nThis endpoint needs an api key — paste yours in the box above." : "";
+            out.textContent = "error: HTTP " + res.status + "\n\n" + res.txt + hint;
+            return;
+          }
+          try { out.textContent = JSON.stringify(JSON.parse(res.txt), null, 2); }
+          catch (e) { out.textContent = res.txt; }
         })
         .catch(function (e) {
-          out.textContent = "✗ " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+          out.textContent = "error: " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only).";
         });
     });
   });

@@ -150,10 +150,11 @@
   <p class="intro">The five constructions in this chapter  —  four delegation seals, the RG-flow ratchet, and the Čech threshold layer underneath J.4  —  all ship in <code>src/</code> today with named tests and line-counted modules; the right way to read them is to build against them. Each experiment below produces a receipt: a passing test, a timing number, a forged-share rejection, a ratchet step you can plot.</p>
   
   <details class="console">
-    <summary>⚡ Run it live — GQL console</summary>
-    <p class="hint">Point at the public read-only instance, or your own engine
+    <summary>Run it live — GQL console</summary>
+    <p class="hint">Point at the public instance (paste an api key if needed) or your own engine
     (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
     <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <input class="apikey" placeholder="api key (if needed)" aria-label="API key" style="max-width:180px">
     <button class="run">Run</button></div>
     <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
     <div class="row">
@@ -168,13 +169,13 @@
   <article class="ex" id="e17-1"><h2><span class="eid" style="background: var(--red)">E17.1</span>Reproduce the zero-decrypt round-trip on <code>src/delegation.rs</code></h2><div class="seg seg-build"><span class="seglabel">Build</span><p>I shipped the \(\mathrm{Aff}(\mathbb{R})\) seal (J) in <code>src/delegation.rs</code> at lines 122–178; write a test that builds a <code>DelegationCapability</code> between two <code>GaugeKey</code>s, applies <code>apply_to_value</code> to a 64-field ciphertext row, and asserts Bob's de-affine pass recovers Alice's plaintext byte-for-byte.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p><code>cargo test</code> on a new <code>tests/delegation_e17_1.rs</code> passes and the assertion log shows the messenger's <code>alpha.mul_mod(*w, q).add_mod(*beta, q)</code> step never touched key material from either endpoint (verify by counting key references  —  zero on the messenger's side).</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a <code>NotClosed</code> field to the source chart and confirm <code>build</code> refuses with <code>DelegationError</code> rather than silently succeeding.</p></div><div class="exwork"><label><input type="checkbox" data-done="E17.1"> done</label><input class="receipt" data-receipt="E17.1" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e17-2"><h2><span class="eid" style="background: var(--red)">E17.2</span>Forge a J/J collusion break and time it</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Theorem 4.7.1 says a colluding messenger-and-Bob recover Alice's gauge in \(O(1)\) algebra. Write a small Rust binary that, given two \((w, \alpha w + \beta)\) pairs and Bob's secret, solves the linear system and prints \((\alpha, \beta)\).</p></div>
-<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The binary completes in under one millisecond on a single core and prints the same \((\alpha,\beta)\) that <code>DelegationCapability::build</code> returned in E17.1  —  proving the limitation I named in §the book is real, fast, and exactly why J ships alongside three other seals.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The binary completes in under one millisecond on a single core and prints the same \((\alpha,\beta)\) that <code>DelegationCapability::build</code> returned in E17.1  —  proving the limitation I named for J is real, fast, and exactly why J ships alongside three other seals.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Repeat the attack against J.2 in <code>src/pairing_delegation.rs</code>; show that the equivalent two-pair recovery requires a discrete log in \(G_2\) rather than a \(2{\times}2\) linear solve.</p></div><div class="exwork"><label><input type="checkbox" data-done="E17.2"> done</label><input class="receipt" data-receipt="E17.2" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e17-3"><h2><span class="eid" style="background: var(--red)">E17.3</span>Benchmark the four-seal envelope on the same payload</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Take a 4\,KiB ciphertext row, run it through each of the four seals (<code>src/delegation.rs</code>, <code>src/pairing_delegation.rs</code>, <code>src/mlkem_delegation.rs</code>, <code>src/lattice_delegation.rs</code>) with the common <code>DelegationCapability</code> envelope, and record per-call latency over 10\,000 iterations.</p></div>
-<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A four-row table whose ratios roughly match the heuristic I gave in §the book: affine in hundreds of nanoseconds, pairing in hundreds of microseconds, ML-KEM-768 encap with \(\geq\)1088-byte ciphertext check, and J.4 paying the Shamir-split-plus-five-ML-KEM-wraps tax. Publish as a CSV alongside the existing module unit tests.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A four-row table whose ratios roughly match the heuristic I gave earlier: affine in hundreds of nanoseconds, pairing in hundreds of microseconds, ML-KEM-768 encap with \(\geq\)1088-byte ciphertext check, and J.4 paying the Shamir-split-plus-five-ML-KEM-wraps tax. Publish as a CSV alongside the existing module unit tests.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Plot the four points on a security-axis vs.\ throughput-axis chart and decide  —  on paper  —  which seal you would deploy for a 1\,kHz write channel where Bob is an HSM.</p></div><div class="exwork"><label><input type="checkbox" data-done="E17.3"> done</label><input class="receipt" data-receipt="E17.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e17-4"><h2><span class="eid" style="background: var(--red)">E17.4</span>Stress the Čech cocycle on a \(3\)-of-\(5\) Shamir set</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Using the <code>ShamirShare</code> schema at <code>src/threshold.rs:42--66</code>, generate five shares of a 32-byte master key over \(\mathbb{F}_p\) with \(p = 2^{256}-2^{32}-977\). Then mutate one share's <code>value</code> field by a single byte without recomputing the <code>auth_tag</code>. Attempt Lagrange-at-zero reconstruction with the three-of-five quorum that includes the mutated share.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The reconstructor rejects the share at the HMAC-SHA256 cocycle-authentication step (Theorem 6.2) before the polynomial interpolation runs; with three honest shares, \(K\) is recovered exactly. Capture both code paths in one test.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Repeat with \(K{-}1 = 2\) honest shares only; confirm the conditional distribution of \(K\) is statistically indistinguishable from uniform over \(\mathbb{F}_p\) across \(10^{5}\) samples.</p></div><div class="exwork"><label><input type="checkbox" data-done="E17.4"> done</label><input class="receipt" data-receipt="E17.4" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e17-5"><h2><span class="eid" style="background: var(--red)">E17.5</span>Instrument the Sprint M ratchet against a no-ratchet baseline</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Wire a counter that records the HKDF-chain step inside the RG-flow ratchet for every write on a \(10^{4}\)-row batch. Run the same batch with the ratchet disabled and capture per-write latency plus the six gauge-invariant scalars from <code>src/integrity.rs</code> (\(K\), \(\lambda_1\), capacity, \(\langle\mathrm{Hol}\rangle\), \(\beta_0\), \(\beta_1\)) at the start and end of each batch.</p></div>
-<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A two-column timing CSV plus a passing assertion that the six scalars at the end of the ratcheted batch still satisfy the Hadamard non-vacuity certificate \(\kappa_{\mathrm{soft}} - 2R^{*}\varepsilon(L^{*}) &gt; 0\) that I named in §the book. The ratchet must advance the gauge without tearing the certificate.</p></div>
+<div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A two-column timing CSV plus a passing assertion that the six scalars at the end of the ratcheted batch still satisfy the Hadamard non-vacuity certificate \(\kappa_{\mathrm{soft}} - 2R^{*}\varepsilon(L^{*}) &gt; 0\) that I named. The ratchet must advance the gauge without tearing the certificate.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Compromise the post-batch key material and confirm that no offline replay of the captured wire bytes recovers earlier-write plaintext  —  the river has the wax.</p></div><div class="exwork"><label><input type="checkbox" data-done="E17.5"> done</label><input class="receipt" data-receipt="E17.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e17-6"><h2><span class="eid" style="background: var(--red)">E17.6</span>Refute a forged ML-KEM envelope at the size gate</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>The decap path in <code>src/mlkem_delegation.rs</code> rejects any KEM ciphertext that is not exactly 1088 bytes. Construct three malformed envelopes  —  one short, one long, one exactly 1088 bytes but bit-flipped  —  and feed them to the decap entry point.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>The short and long envelopes return the size-gate error before the AEAD runs; the bit-flipped envelope fails authentication inside AES-256-GCM-SIV. Three distinct error variants, no plaintext leaks in any path.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add a fuzz harness over the envelope shape and let it run overnight against the 315-line module; report any input that produces a non-error return without valid plaintext.</p></div><div class="exwork"><label><input type="checkbox" data-done="E17.6"> done</label><input class="receipt" data-receipt="E17.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e17-7"><h2><span class="eid" style="background: var(--red)">E17.7</span>Wire the holonomy ledger to witness a delegation chain</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Construct a three-link delegation chain across three charts using any combination of J/J.2/J.3/J.4. Telescope-sum the per-link holonomy deltas into the ledger using the test pattern at <code>tests/ledger_v0_3.rs:111</code>, and emit the resulting six-scalar passport.</p></div>
@@ -239,22 +240,37 @@
         q = box.querySelector("textarea"), out = box.querySelector("pre");
     var saved = localStorage.getItem("gb-endpoint");
     if (saved) ep.value = saved;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyInit = box.querySelector(".apikey");
+    if (apiKeyInit && savedKey) apiKeyInit.value = savedKey;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyEl = box.querySelector(".apikey");
+    if (apiKeyEl && savedKey) apiKeyEl.value = savedKey;
     box.querySelectorAll(".chip").forEach(function (ch) {
       ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
     });
     run.addEventListener("click", function () {
       var base = ep.value.replace(/\/+$/, "");
       localStorage.setItem("gb-endpoint", ep.value);
+      if (apiKeyInit) localStorage.setItem("gb-apikey", apiKeyInit.value);
+      if (apiKeyEl) localStorage.setItem("gb-apikey", apiKeyEl.value);
       out.textContent = "running…";
-      fetch(base + "/v1/gql", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q.value }) })
-        .then(function (r) { return r.text(); })
-        .then(function (txt) {
-          try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
-          catch (e) { out.textContent = txt; }
+      var headers = { "Content-Type": "application/json" };
+      var apiKeyEl = box.querySelector(".apikey");
+      if (apiKeyEl && apiKeyEl.value.trim()) headers["x-api-key"] = apiKeyEl.value.trim();
+      fetch(base + "/v1/gql", { method: "POST", headers: headers, body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text().then(function (txt) { return { ok: r.ok, status: r.status, txt: txt }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            var hint = res.status === 401 ? "\n\nThis endpoint needs an api key — paste yours in the box above." : "";
+            out.textContent = "error: HTTP " + res.status + "\n\n" + res.txt + hint;
+            return;
+          }
+          try { out.textContent = JSON.stringify(JSON.parse(res.txt), null, 2); }
+          catch (e) { out.textContent = res.txt; }
         })
         .catch(function (e) {
-          out.textContent = "✗ " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+          out.textContent = "error: " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only).";
         });
     });
   });

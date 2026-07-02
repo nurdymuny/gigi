@@ -150,10 +150,11 @@
   <p class="intro">The keeper's chapter earns keeper's experiments: every build below produces a receipt an operator could hand to her relief shift  —  a captured 503 body, a Prometheus scrape value, a stderr line from <code>init_app_bundles</code>, a measured ready-flip latency. Treat the chapter's BLD-CH18-* receipts as the baselines you are matching or beating.</p>
   
   <details class="console">
-    <summary>⚡ Run it live — GQL console</summary>
-    <p class="hint">Point at the public read-only instance, or your own engine
+    <summary>Run it live — GQL console</summary>
+    <p class="hint">Point at the public instance (paste an api key if needed) or your own engine
     (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
     <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <input class="apikey" placeholder="api key (if needed)" aria-label="API key" style="max-width:180px">
     <button class="run">Run</button></div>
     <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
     <div class="row">
@@ -171,16 +172,16 @@
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A log showing the exact request at which both loops cross from 503 to 200, with the request indices written to the same line. If the middleware and the health handler ever disagree in the same instant  —  one returning 200 while the other returns 503  —  you have caught an <code>Acquire</code>/<code>Release</code> ordering bug. The chapter promises they flip together; verify it.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Replace <code>Ordering::Acquire</code> with <code>Ordering::Relaxed</code> in a local fork, rerun, and write up whether the disagreement window opens on your hardware.</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.2"> done</label><input class="receipt" data-receipt="E18.2" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e18-3"><h2><span class="eid" style="background: var(--magenta)">E18.3</span>Wire the geometric column into a real Grafana panel</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Stand up Prometheus against <code>http://localhost:3142/v1/metrics</code> (Accept: text/plain) at a 15-second scrape, then build a Grafana dashboard with three panels: average <code>holonomy_norm</code> over the last 5 minutes, count of bundles whose <code>k_global</code> sits outside their published 2\(\sigma\) band, and the <code>geometric.k_global IS NULL</code> rate computed off the JSON <code>/v1/bundles/{name}/health</code> surface for a single named bundle.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A screenshot of the dashboard with all three panels populated against a running engine that has at least one IMAGINE or <code>flat_transport</code> call in-flight, plus the PromQL for each panel committed alongside the dashboard JSON. The third panel must be non-zero exactly when you bypass the substrate  —  prove that by running a query through a non-geometric path and watching the rate climb.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add an alert rule that fires when <code>k_global</code> for any bundle exceeds its <code>threshold_3sigma</code> from the per-bundle health endpoint; trigger it by deliberately ingesting an out-of-band record.</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.3"> done</label><input class="receipt" data-receipt="E18.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e18-4"><h2><span class="eid" style="background: var(--magenta)">E18.4</span>Stress the <code>seed_env</code> footgun, then close it</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Reproduce the destructive path I named in §the book: deploy a <code>GIGI_APP_BUNDLES</code> manifest with one encrypted bundle whose <code>seed_env</code> points at an unset variable, write a record, restart the engine without setting the variable, and confirm the prior ciphertext is unrecoverable. Then patch <code>init_app_bundles</code> to gate the fallback behind a <code>GIGI_STRICT_SEEDS=1</code> env flag that turns the stderr warning into a fatal boot error.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Add an alert rule that fires when <code>k_global</code> for any bundle exceeds its <code>threshold_3sigma</code> from the per-bundle health endpoint; trigger it by deliberately ingesting an out-of-band record.</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.3"> done</label><input class="receipt" data-receipt="E18.3" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e18-4"><h2><span class="eid" style="background: var(--magenta)">E18.4</span>Stress the <code>seed_env</code> footgun, then close it</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Reproduce the destructive path I named: deploy a <code>GIGI_APP_BUNDLES</code> manifest with one encrypted bundle whose <code>seed_env</code> points at an unset variable, write a record, restart the engine without setting the variable, and confirm the prior ciphertext is unrecoverable. Then patch <code>init_app_bundles</code> to gate the fallback behind a <code>GIGI_STRICT_SEEDS=1</code> env flag that turns the stderr warning into a fatal boot error.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>Two stderr captures from the same machine: the first showing the original <code>[app-bundles]</code> warning with <code>SET THE SECRET FOR PRODUCTION</code> in caps, the second showing the new strict-mode boot refusal. A passing test in <code>tests/</code> that asserts strict mode refuses to start when any manifest entry has <code>seed_env</code> naming an unset variable.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Wire the strict-mode fork into the <code>ci.yml.disabled</code> pipeline (still disabled) so future-me sees the safeguard the day I turn CI back on.</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.4"> done</label><input class="receipt" data-receipt="E18.4" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e18-5"><h2><span class="eid" style="background: var(--magenta)">E18.5</span>Replay a volume-loss cold start using only the public surface</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>On a staging machine, force a snapshot rotation so the background <code>tigris_push</code> (BLD-CH18-TIGRIS-PUSH-BG) fires; confirm the bucket contents from outside. Then destroy the local <code>/data</code> mount, restart the process, and ride the cold-start path I shipped (BLD-CH18-TIGRIS-PULL): Tigris pull, WAL replay, snapshot write, mmap reopen, ready-flip.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A wall-clock table comparing warm restart (from E18.1) against this cold-start replay, with the three sub-phases broken out from <code>/v1/health</code> polling alone  —  no SSH into the machine, only <code>/v1/health</code> and <code>/v1/metrics</code>. The 13 GB heap \(\rightarrow\) 200 MB RSS drop (gigi_stream.rs:14744–14745) must show up in your scrape; record the two RSS values.</p></div>
-<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Run E18.5 with a deliberately fat bucket and measure how close you come to the 900-second <code>grace_period</code> I set in <code>fly.toml</code>. Report the safety margin.</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.5"> done</label><input class="receipt" data-receipt="E18.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e18-6"><h2><span class="eid" style="background: var(--magenta)">E18.6</span>Time the SIGTERM graceful-shutdown contract</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A driver that opens \(N\) slow in-flight requests against <code>/v1/query</code> (use a SELECT that scans a large bundle) while a second process sends <code>SIGTERM</code> to <code>gigi-stream</code>. Verify the engine stops accepting new connections immediately, lets every in-flight request finish, flushes the WAL, closes the mmap, and exits zero  —  exactly the four-step contract from §the book.</p></div>
+<div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Run E18.5 with a deliberately fat bucket and measure how close you come to the 900-second <code>grace_period</code> I set in <code>fly.toml</code>. Report the safety margin.</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.5"> done</label><input class="receipt" data-receipt="E18.5" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e18-6"><h2><span class="eid" style="background: var(--magenta)">E18.6</span>Time the SIGTERM graceful-shutdown contract</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>A driver that opens \(N\) slow in-flight requests against <code>/v1/query</code> (use a SELECT that scans a large bundle) while a second process sends <code>SIGTERM</code> to <code>gigi-stream</code>. Verify the engine stops accepting new connections immediately, lets every in-flight request finish, flushes the WAL, closes the mmap, and exits zero  —  exactly the four-step contract.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A captured exit code (must be 0), counts of completed vs. refused requests during the shutdown window (refused must be the new ones, completed must be the in-flight ones), and a final WAL byte count matching the last accepted record. No 503s should arrive between SIGTERM and exit  —  the engine closes the door, it does not foghorn on the way out.</p></div>
 <div class="seg seg-bonus"><span class="seglabel">Bonus</span><p>Wire this exercise behind <code>flyctl machine stop</code> against a staging machine and confirm the Fly rolling-deploy strategy never drops a client request mid-handoff to the new machine.</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.6"> done</label><input class="receipt" data-receipt="E18.6" placeholder="paste your receipt — the number, the test line, the error…"></div></article><article class="ex" id="e18-7"><h2><span class="eid" style="background: var(--magenta)">E18.7</span>Refute the geometric column on a different substrate</h2><div class="seg seg-build"><span class="seglabel">Build</span><p>Pick any non-geometric database you already have (Postgres, DuckDB, a vector store, your choice) and try to populate the same eight non-null slots of <code>GeometricFields</code>  —  <code>k_global</code> through <code>jensen_shannon</code>  —  for a single write event. You may compute the curvature scalars however the substrate allows.</p></div>
 <div class="seg seg-receipt"><span class="seglabel">Receipt</span><p>A short writeup of what you could and could not emit, and what scaffolding you had to bolt on outside the substrate to produce the column. If you could produce all eight without leaning on a sidecar that re-implements bundle algebra, file a bug against my chapter  —  I claimed the column required the substrate, and you have refuted me. Otherwise, the writeup is the receipt that the column is the substrate's, not the logger's.
 
-% End of Part VII — main matter of GIGI BUILDS complete.</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.7"> done</label><input class="receipt" data-receipt="E18.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
+</p></div><div class="exwork"><label><input type="checkbox" data-done="E18.7"> done</label><input class="receipt" data-receipt="E18.7" placeholder="paste your receipt — the number, the test line, the error…"></div></article>
   <div class="pager"><a href="ch17.html">← Chapter 17 exercises</a><a href="index.html">All chapters →</a></div>
 </main>
 <div id="toast" role="status"></div>
@@ -238,22 +239,37 @@
         q = box.querySelector("textarea"), out = box.querySelector("pre");
     var saved = localStorage.getItem("gb-endpoint");
     if (saved) ep.value = saved;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyInit = box.querySelector(".apikey");
+    if (apiKeyInit && savedKey) apiKeyInit.value = savedKey;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyEl = box.querySelector(".apikey");
+    if (apiKeyEl && savedKey) apiKeyEl.value = savedKey;
     box.querySelectorAll(".chip").forEach(function (ch) {
       ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
     });
     run.addEventListener("click", function () {
       var base = ep.value.replace(/\/+$/, "");
       localStorage.setItem("gb-endpoint", ep.value);
+      if (apiKeyInit) localStorage.setItem("gb-apikey", apiKeyInit.value);
+      if (apiKeyEl) localStorage.setItem("gb-apikey", apiKeyEl.value);
       out.textContent = "running…";
-      fetch(base + "/v1/gql", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q.value }) })
-        .then(function (r) { return r.text(); })
-        .then(function (txt) {
-          try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
-          catch (e) { out.textContent = txt; }
+      var headers = { "Content-Type": "application/json" };
+      var apiKeyEl = box.querySelector(".apikey");
+      if (apiKeyEl && apiKeyEl.value.trim()) headers["x-api-key"] = apiKeyEl.value.trim();
+      fetch(base + "/v1/gql", { method: "POST", headers: headers, body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text().then(function (txt) { return { ok: r.ok, status: r.status, txt: txt }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            var hint = res.status === 401 ? "\n\nThis endpoint needs an api key — paste yours in the box above." : "";
+            out.textContent = "error: HTTP " + res.status + "\n\n" + res.txt + hint;
+            return;
+          }
+          try { out.textContent = JSON.stringify(JSON.parse(res.txt), null, 2); }
+          catch (e) { out.textContent = res.txt; }
         })
         .catch(function (e) {
-          out.textContent = "✗ " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+          out.textContent = "error: " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only).";
         });
     });
   });

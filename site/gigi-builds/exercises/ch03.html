@@ -150,10 +150,11 @@
   <p class="intro">These are bench-and-harness exercises: the chapter ships four tests, one avalanche measurement, one O(1) bench, one worked walk, and one named gap, and every experiment below is either a re-run, an extension, or a stress of one of those. Receipts you produce should look like the chapter's own  —  a passing test name, a numeric line from a harness, a ratio against a baseline, or a delta against the published BLD-* ledger entries.</p>
   
   <details class="console">
-    <summary>⚡ Run it live — GQL console</summary>
-    <p class="hint">Point at the public read-only instance, or your own engine
+    <summary>Run it live — GQL console</summary>
+    <p class="hint">Point at the public instance (paste an api key if needed) or your own engine
     (start it with <code style="cursor:text">GIGI_CORS_ORIGIN=*</code> for browser access — dev only).</p>
     <div class="row"><input class="ep" value="https://gigi-stream.fly.dev" aria-label="engine endpoint">
+    <input class="apikey" placeholder="api key (if needed)" aria-label="API key" style="max-width:180px">
     <button class="run">Run</button></div>
     <textarea aria-label="GQL statement">SHOW BUNDLES;</textarea>
     <div class="row">
@@ -237,22 +238,37 @@
         q = box.querySelector("textarea"), out = box.querySelector("pre");
     var saved = localStorage.getItem("gb-endpoint");
     if (saved) ep.value = saved;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyInit = box.querySelector(".apikey");
+    if (apiKeyInit && savedKey) apiKeyInit.value = savedKey;
+    var savedKey = localStorage.getItem("gb-apikey");
+    var apiKeyEl = box.querySelector(".apikey");
+    if (apiKeyEl && savedKey) apiKeyEl.value = savedKey;
     box.querySelectorAll(".chip").forEach(function (ch) {
       ch.addEventListener("click", function () { q.value = ch.getAttribute("data-q"); });
     });
     run.addEventListener("click", function () {
       var base = ep.value.replace(/\/+$/, "");
       localStorage.setItem("gb-endpoint", ep.value);
+      if (apiKeyInit) localStorage.setItem("gb-apikey", apiKeyInit.value);
+      if (apiKeyEl) localStorage.setItem("gb-apikey", apiKeyEl.value);
       out.textContent = "running…";
-      fetch(base + "/v1/gql", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q.value }) })
-        .then(function (r) { return r.text(); })
-        .then(function (txt) {
-          try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
-          catch (e) { out.textContent = txt; }
+      var headers = { "Content-Type": "application/json" };
+      var apiKeyEl = box.querySelector(".apikey");
+      if (apiKeyEl && apiKeyEl.value.trim()) headers["x-api-key"] = apiKeyEl.value.trim();
+      fetch(base + "/v1/gql", { method: "POST", headers: headers, body: JSON.stringify({ query: q.value }) })
+        .then(function (r) { return r.text().then(function (txt) { return { ok: r.ok, status: r.status, txt: txt }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            var hint = res.status === 401 ? "\n\nThis endpoint needs an api key — paste yours in the box above." : "";
+            out.textContent = "error: HTTP " + res.status + "\n\n" + res.txt + hint;
+            return;
+          }
+          try { out.textContent = JSON.stringify(JSON.parse(res.txt), null, 2); }
+          catch (e) { out.textContent = res.txt; }
         })
         .catch(function (e) {
-          out.textContent = "✗ " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only). The public instance allows browser calls but is read-only.";
+          out.textContent = "error: " + e + "\n\nIf you are pointing at your own engine, start it with GIGI_CORS_ORIGIN=* (dev only).";
         });
     });
   });

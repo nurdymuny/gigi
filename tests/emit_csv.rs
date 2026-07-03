@@ -67,7 +67,14 @@ fn emit_csv_gate_export_and_traversal() {
     // Phase 3 — traversal and absolute paths are refused.
     let err = run(&mut e, "COVER sensors ALL EMIT CSV TO '../escape.csv';").unwrap_err();
     assert!(err.contains("relative"), "{err}");
-    let err = run(&mut e, "COVER sensors ALL EMIT CSV TO '/tmp/abs.csv';").unwrap_err();
+    // The fixture must be absolute ON THE RUNNING PLATFORM: '/tmp/x'
+    // has no drive prefix, so Windows' Path::is_absolute() says false,
+    // the refusal never fires, and join() escapes the emit dir — the
+    // phase was vacuous-and-escaping on Windows. (emit_target's
+    // treatment of rootless/drive-relative paths on Windows is a
+    // separate, deferred finding; prod is Linux.)
+    let abs = if cfg!(windows) { "C:/tmp/abs.csv" } else { "/tmp/abs.csv" };
+    let err = run(&mut e, &format!("COVER sensors ALL EMIT CSV TO '{abs}';")).unwrap_err();
     assert!(err.contains("relative"), "{err}");
 
     // Phase 4 — non-rows statements refuse EMIT with an explanation.

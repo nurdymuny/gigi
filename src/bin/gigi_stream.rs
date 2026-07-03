@@ -17806,6 +17806,130 @@ mod tests {
         cleanup(&dir);
     }
 
+    /// Like `post_gql_for_test`, but returns the JSON body too —
+    /// needed when the assertion is about WHAT came back, not just
+    /// the status code. Mirrors `post_public_gql_for_test`.
+    async fn post_gql_body_for_test(
+        state: Arc<StreamState>,
+        query: &str,
+    ) -> (StatusCode, serde_json::Value) {
+        let resp = gql_query(
+            State(state),
+            axum::http::HeaderMap::new(),
+            Json(serde_json::json!({ "query": query })),
+        )
+        .await
+        .into_response();
+        let status = resp.status();
+        let body = axum::body::to_bytes(resp.into_body(), 1 << 20).await.unwrap();
+        let json: serde_json::Value =
+            serde_json::from_slice(&body).unwrap_or(serde_json::json!({}));
+        (status, json)
+    }
+
+    /// EMIT over GQL — route-handler dispatch contract.
+    ///
+    /// `Statement::Emit` had no arm in `get_bundle_name`, so the bundle
+    /// pre-resolve fell to `_ => None` and the early-return answered
+    /// `{"status":"ok"}` without executing anything: the inner
+    /// statement was dropped AND no file was written. Success theater —
+    /// the same class as the topology-verb (553a6c9), INGEST, and
+    /// ALTER BUNDLE (3bafea1 + 9dc177b) route-handler bypass bugs.
+    ///
+    /// Contract pinned here (both phases in ONE test because
+    /// GIGI_EMIT_DIR is process-global and the module's env lock is
+    /// held for the duration):
+    ///   - gate closed (GIGI_EMIT_DIR unset): the request reaches the
+    ///     parser executor and comes back with the GIGI_EMIT_DIR gate
+    ///     error — NOT a bare ok.
+    ///   - gate open: a real emit — the receipt notice comes back AND
+    ///     the CSV lands inside GIGI_EMIT_DIR carrying the inserted
+    ///     row, which proves the inner COVER executed.
+    #[tokio::test(flavor = "current_thread")]
+    async fn http_gql_emit_dispatches_through_parser_executor() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("http_gql_emit");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        std::env::remove_var("GIGI_EMIT_DIR");
+
+        {
+            let (logger, _ingester) = Logger::new(LogConfig::default(), "http-gql-emit-test");
+            let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+            state.ready.store(true, Ordering::Release);
+
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "CREATE BUNDLE emit_probe (id INT BASE, label TEXT FIBER);",
+                )
+                .await,
+                StatusCode::OK
+            );
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    "INSERT INTO emit_probe (id, label) VALUES (1, 'row-one');",
+                )
+                .await,
+                StatusCode::OK
+            );
+
+            // Phase A — gate closed. A bare {"status":"ok"} here is the
+            // bug: 200, nothing executed, nothing written.
+            let (status_a, body_a) = post_gql_body_for_test(
+                Arc::clone(&state),
+                "COVER emit_probe ALL EMIT CSV TO 'probe.csv';",
+            )
+            .await;
+            assert_ne!(
+                body_a,
+                serde_json::json!({"status": "ok"}),
+                "EMIT must not be answered with a bare ok — that is the \
+                 success-theater bug (status {status_a})"
+            );
+            let err = body_a.get("error").and_then(|v| v.as_str()).unwrap_or("");
+            assert!(
+                err.contains("GIGI_EMIT_DIR"),
+                "gate-closed EMIT must surface the GIGI_EMIT_DIR gate \
+                 error, got status {status_a} body {body_a}"
+            );
+
+            // Phase B — gate open. The inner COVER must execute and its
+            // row must land in the CSV.
+            let out = tmp_dir("http_gql_emit_out");
+            cleanup(&out);
+            std::fs::create_dir_all(&out).unwrap();
+            std::env::set_var("GIGI_EMIT_DIR", &out);
+            let (status_b, body_b) = post_gql_body_for_test(
+                Arc::clone(&state),
+                "COVER emit_probe ALL EMIT CSV TO 'probe.csv';",
+            )
+            .await;
+            assert_eq!(
+                status_b,
+                StatusCode::OK,
+                "gate-open EMIT must succeed: {body_b}"
+            );
+            let notice = body_b.get("notice").and_then(|v| v.as_str()).unwrap_or("");
+            assert!(
+                notice.contains("wrote 1 row"),
+                "gate-open EMIT must return the emit receipt, got {body_b}"
+            );
+            let csv = std::fs::read_to_string(out.join("probe.csv"))
+                .expect("EMIT must write the CSV inside GIGI_EMIT_DIR");
+            assert!(
+                csv.contains("row-one"),
+                "the inner COVER must have executed — its row lands in \
+                 the CSV, got: {csv}"
+            );
+            std::env::remove_var("GIGI_EMIT_DIR");
+            cleanup(&out);
+        }
+
+        cleanup(&dir);
+    }
+
     // ── §8.5 Interop Fixture — binary voice note ingest + replay ──────────
     //
     // These three tests map exactly to the §8.5 pass criteria:

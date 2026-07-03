@@ -122,3 +122,111 @@ Identical to the 2026-07-02 reference values. Phase 2 path intact.
 - The one gate flake (`chern_class_bundle_target_basic`, 1/11 on first group run, 7 clean re-runs) is documented in the gate section above; environmental, this Windows box.
 - Post-deploy `/v1/gql` without a key still 401s; the API key path works throughout.
 - No `Co-Authored-By` footer anywhere on `8244907..HEAD` — grep gate 0 before push, re-run including this doc's commit before the final push.
+
+---
+
+# Hardening trio — same-day follow-up merge (2026-07-03, second deploy)
+
+The three deferred rows in the review table above are exactly what this follow-up ships: the `GIGI_INGEST_DIR` gate (row 1), the `emit_target` Windows path-shape escapes (row 2), and the vacuous `explain_kappa` invariant (row 3). Six commits cherry-picked from `worktree-wf_8c6cd101-1dc-2` onto `bc1d038`, zero conflicts (`src/parser.rs` auto-merged — main's morning fixes sat at `Token::human`/`parse_weight_expr`, the trio's at `emit_target`; distinct regions).
+
+## SHAs
+
+| original (branch) | merged (main) | subject |
+|---|---|---|
+| `96ba912` | `6b77fff` | tests(pathguard): RED — emit_target escape matrix (drive-prefix, rooted, UNC, .., symlink) |
+| `e1c8300` | `f2c60af` | impl(pathguard): GREEN — component-screen + canonical containment; emit_target swapped |
+| `bf07967` | `046e9f8` | tests(ingest-gate): RED — GIGI_INGEST_DIR gate + containment attack matrix |
+| `2ec93c2` | `f37c089` | impl(ingest-gate): GREEN — fail-closed GIGI_INGEST_DIR gate via shared pathguard |
+| `d59e453` | `5e72f62` | tests(explain-kappa): RED — sum-to-total invariant asserted unconditionally |
+| `ff26bf6` | `2706513` | impl(explain-kappa): GREEN — record_kappa stamped on every EXPLAIN row from compute_record_k |
+
+Co-Authored-By grep over `bc1d038..HEAD` (full `%B` bodies): 0 matches.
+
+## pathguard design (`src/pathguard.rs` — one guard for both knobs)
+
+`contain(root_env, user_path, must_exist)`, two layers in order:
+
+1. **Component-level lexical screen, BEFORE joining.** Any `Prefix` (drive/UNC), `RootDir`, or `ParentDir` component rejects outright; `CurDir` is stripped as noise; a path with no remaining components is rejected. This kills `C:file` and `\rooted` — the two Windows shapes `Path::is_absolute()` misses and `Path::join` silently promotes to a full path replacement — plus `/rooted`, `\\server\share`, and `../x`, uniformly on every platform.
+2. **Canonical verification, canonical-to-canonical only.** After joining onto the root, `fs::canonicalize` both sides and require `starts_with` — symlinks and junctions cannot tunnel out, and Windows `\\?\` verbatim prefixes are a non-issue because canonical compares against canonical. Read mode (`must_exist=true`, INGEST) canonicalizes the candidate itself; write mode (EMIT) creates parent dirs, checks the canonical PARENT, and returns the uncanonicalized join so receipts keep the operator's spelling.
+
+`emit_target` now delegates to `contain("GIGI_EMIT_DIR", …)` with the error-message contract unchanged (unset names the knob; every lexical rejection keeps the "must be relative" wording) — `tests/emit_csv.rs` needed zero edits, and the `152de57` platform-absolute fixture is retained (a drive-prefixed path is exactly what the Prefix screen rejects). **The pre-merge Windows failure of emit_csv phase 3 is gone: `emit_csv` 1/1 on this Windows box** — the deferred-row-2 workaround is now enforced product behavior.
+
+## GIGI_INGEST_DIR contract (`src/ingest.rs::resolve_ingest_source`)
+
+Fail-closed, same posture as Postgres `pg_read_server_files` / MySQL `secure_file_priv`: unset ⇒ INGEST from server-side files is disabled engine-wide; set ⇒ source paths are RELATIVE to the root, component-screened and canonically verified through the shared pathguard. Single chokepoint before ANY source-path open — both entry points (`execute_ingest` AUTO_GENERIC and `execute_ingest_as_gauge_field`) resolve through it, and the gauge path resolves BEFORE lattice/bundle work. `fly.toml` now carries `GIGI_INGEST_DIR = "/data/ingest"` under `[env]` — the December harvest pipeline keeps its capability, bounded to the volume directory it already writes into. Probe Q2 below proves the env landed behaviorally: the live containment error names `/data/ingest`.
+
+**INGEST error-shape contract change (intentional):** an absolute source like `/tmp/nonexistent.npz` now returns the containment error BEFORE any filesystem access — the morning probe P8's `INGEST: source file not found: /tmp/nope.npz` shape is superseded. `file not found` is now reserved for paths legal under the root but absent (and carries the resolved candidate). Halcyon notified with exact error strings: `GIGI_TO_HALCYON_REPLY_2026-07-03_INGEST_DIR.md`.
+
+## explain_kappa invariant
+
+`explain_record_k` (src/bundle.rs) rebuilds the record's fiber values in `fiber_fields` order and calls `compute_record_k` — the total path insert-time pricing runs — stamping the result as a constant `record_kappa` field on every decomposition row. The response certifies its own invariant: mean(kappa column) == record_kappa, cross-checking the decomposition loop against the total loop on every EXPLAIN; `tests/explain_kappa.rs` asserts it unconditionally (tolerance 1e-9, deferred-row-3 closed). Single chokepoint in bundle.rs — the embedded executor and the server arm inherit it with zero dispatch edits.
+
+## Attack matrix
+
+- `tests/pathguard_escapes.rs`: 16 test fns — 14 runnable on Windows (junction case live), 12 on Linux (symlink case live); unset/empty root, `..`, rooted, drive-prefix, UNC, backslash-rooted, CurDir stripping, missing-file IO shape, unresolvable root, symlink/junction tunnel, error-names-path-and-root.
+- `tests/ingest_dir_gate.rs`: 1 test × 6 phases (gate closed; absolute-outside; relative-inside succeeds; `..` traversal; missing-under-root keeps file-not-found; link-out-of-root refused) — process-global env, single-test pattern like emit_csv.
+
+## Gates (all green before deploy, this Windows box)
+
+| gate | result |
+|---|---|
+| `cargo check --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --bin gigi-stream` | PASS |
+| `cargo test --no-default-features --lib` | 911 / 0 |
+| `pathguard_escapes` | 14 / 0 (Windows; junction live) |
+| no-feature group (`emit_csv` 1, `ingest_executor` 11, `ingest_csv_basic` 6, `ingest_jsonl_basic` 3, `noop_notices` 4, `timestamp_ergonomics` 6, `gql_reference_truth` 3) | 34 / 0 |
+| `ingest_dir_gate` | 1 / 0 (6 phases) |
+| `explain_kappa` (no feature cfg; runs in the default group) | 3 / 0 |
+| halcyon group (`ingest_as_gauge_field` 18, `ingest_gauge_vertex` 8, `ingest_npz_key` 4, `ingest_npz_dtype` 4, `ingest_gql_bypass` 5, `halcyon_l24_workflow_e2e` 1, `spectral_gauge` 21, `spectral_gauge_where` 7, `chern_class` 6, `chern_class_bundle_target` 11, `betti_pi1` 8, `obstruction` 5, `topology_verbs_gql_integration` 9, `halcyon_part_iv_gold` 4 + 1 pre-existing ignore, `aurora_lie_poisson_trait` 12) | 123 / 0 |
+| `imagine_coherence_phase2` (kahler+imagine) | 10 / 0 |
+| `cubic_lattice` + `lattice_obc_basic` (lattice) | 17 / 0 |
+| `davis_conjecture_lambda_brain_ridealong` (kahler) | 25 / 0 |
+| bin `http_gql_emit` | 1 / 0 |
+
+No gate-fix commits needed; no flakes this round (`chern_class_bundle_target_basic` 11/11 first try). KNOWN NON-GATE, unchanged: `pattern_hunt_parser::ph3_and_or_combinators_parse` under `--features patterns` — pre-existing DEFINE PATTERN OR combinator bug, queued separately, not touched here.
+
+## Deploy
+
+- Image: `registry.fly.io/gigi-stream:deployment-01KWM7S0SKS47P0ZEBXX4GP519` (digest `sha256:392996d8…`, 63 MB), release v244.
+- `flyctl status`: machine `683961dbe9ee38` (iad) running `gigi-stream:deployment-01KWM7S0SKS47P0ZEBXX4GP519`, version 244, started, 1/1 checks passing — authoritative tag check.
+- `/v1/health` post-boot: `{"status":"ok","bundles":5046,"total_records":13001312}` at uptime 135 s — identical to the morning post-boot baseline (same heap-only delta: the morning's probe fixtures + `claude_substrate_v0`, restored below).
+
+## Live probes on the deployed image
+
+| id | query | status | body head | pass |
+|---|---|---|---|---|
+| Q1 | `LATTICE l4_hard_0703 FROM CUBIC L=4 DIM=2 OBC AXIS 0;` | 200 | `{"status":"ok"}` | PASS |
+| Q2 | `INGEST qx FROM '/tmp/nonexistent.npz' FORMAT NPZ AS GAUGE_FIELD GROUP SU(2) ON LATTICE l4_hard_0703;` | 500 | `{"error":"INGEST: path '/tmp/nonexistent.npz' escapes containment root '/data/ingest': absolute paths are not allowed; use a path relative to the root"}` — containment BEFORE file access, names the prod root; not file-not-found, not `No bundle: qx` | PASS |
+| Q3 | `INGEST qy FROM '../escape.csv' FORMAT CSV;` | 500 | `{"error":"INGEST: path '../escape.csv' escapes containment root '/data/ingest': '..' components are not allowed"}` — lexical ParentDir screen, live | PASS |
+| Q4a | `COVER claude_substrate_v0 ALL EMIT CSV TO '../pwn.csv';` | 500 | `{"error":"EMIT is disabled on this engine: set GIGI_EMIT_DIR=<directory> …"}` — RootUnset precedes the lexical screen in `contain()`, so with the knob unset on prod BOTH emit probes return the fail-closed gate error; the escape path is pinned by `pathguard_escapes`/`emit_csv` locally and by Q3 live through the same shared guard | PASS (fail-closed dominates) |
+| Q4b | `COVER claude_substrate_v0 ALL EMIT CSV TO 'ok.csv';` | 500 | same gate error — GIGI_EMIT_DIR intentionally unset on prod | PASS |
+| Q5 | `EXPLAIN SECTION kappa_probe_0703 AT id='moon';` (fresh 2-fiber bundle, 4 sections, one outlier) | 200 | `{"rows":[{…"field":"temp","kappa":0.561,"record_kappa":0.281,…},{…"field":"wind","kappa":0.000999…,"record_kappa":0.281,…}]}` — `record_kappa` on EVERY row, constant, and mean(0.561, 0.000999…)/2 = 0.281 exactly: the invariant surfaces live | PASS |
+| Q6a | `SHOW FIELDS ON claude_substrate_v0;` | 200 | 6 real field rows | PASS |
+| Q6b | `INGEST pz FROM 'a.npz' FORMAT NPZ JUNKTOKEN;` | 400 | `Parse error: … trailing input is not a supported clause and was NOT executed: 'JUNKTOKEN'` | PASS |
+| Q6c | `INTEGRATE nonexistent MEASURE avg(x) WITH JACKKNIFE ALONG t SKIP FIRST 5;` | 404 | `{"error":"No bundle: nonexistent"}` — parser accepted, executor resolved | PASS |
+
+Probe fixtures created on prod: `l4_hard_0703`, `kappa_probe_0703`, `marcella_sanity_0703` — heap-only, will vanish on the next redeploy.
+
+## Marcella sanity (IMAGINE Phase 2)
+
+`POST /v1/bundles/marcella_sanity_0703/imagine_coherence` with `{"dim":4,"steps":3,"starting_from":[0,0,0,0],"along":[1,0,0,0]}` (bundle created fresh first):
+
+```
+200: dim=4, trajectory=seed+3 steps, coherence=1.0 at every step,
+     defect=0.0 (float-eps 5.55e-17 at step 3), max_imagined_curvature=4.0 (FS ceiling),
+     max_accumulated_holonomy=0.5, refused=false
+```
+
+Identical to the 2026-07-02 and 2026-07-03-morning reference values. Phase 2 path intact.
+
+## claude_substrate_v0
+
+- Wiped by this redeploy as expected (heap-only fragility, unchanged).
+- Restored: `CREATE BUNDLE claude_substrate_v0 (…documented schema…)` then `POST /v1/bundles/claude_substrate_v0/import`. Note for the next restore: the import endpoint takes `{"records":[…]}` — the backup file `.deploy-backups/2026-06-29-morning/claude_substrate_v0_backup.json` is a COVER response (`{"rows":[…]}`), so wrap `rows` as `records` before posting (the raw file 422s with "missing field `records`").
+- Import result: `{"status":"imported","count":20,"total":20}`; `COVER claude_substrate_v0 ALL;` → 20 rows. No fingerprint collapse. A live pre-deploy export (45,647 bytes, byte-identical size to the 06-29 backup) was taken before the deploy as insurance; live state had not drifted from the backup.
+- Still fragile until the snapshot wedge is fixed; `/v1/admin/snapshot` intentionally not triggered (unchanged posture).
+
+## Notes (hardening trio)
+
+- Q4's expectation in the ship order said "escape rejection" for `'../pwn.csv'`; the deployed code's actual (and correct) precedence is RootUnset-first — fail-closed dominates every other answer when the knob is unset. Recorded here so the next probe round expects the gate error until GIGI_EMIT_DIR is set on prod.
+- `gql_reference_truth` counts 3 tests in this round's run (the morning table said 6 — suite composition changed upstream of this merge; 3/3 green is the current truth).
+- No `Co-Authored-By` footer anywhere on `bc1d038..HEAD`; grep re-run including this doc's commit before the final push.

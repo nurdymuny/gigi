@@ -12865,6 +12865,10 @@ async fn gql_query(
             | gigi::parser::Statement::Retract { .. }
             | gigi::parser::Statement::BulkRetract { .. }
             | gigi::parser::Statement::AlterBundleAddBase { .. }
+            // EMIT writes a file through the parser executor, which
+            // takes `&mut Engine`; route it down the write path where
+            // execute_gql_on_engine delegates to parser::execute.
+            | gigi::parser::Statement::Emit { .. }
     );
 
     if needs_write {
@@ -13115,6 +13119,13 @@ fn execute_gql_on_engine(
         // dance; we delegate here rather than duplicate that logic so the
         // in-process test path and the HTTP route stay bit-identical.
         Statement::AlterBundleAddBase { .. } => gigi::parser::execute(engine, stmt),
+        // EMIT — delegate to the parser executor, which owns the
+        // GIGI_EMIT_DIR gate, the path-escape refusal, and the CSV
+        // serialization (src/parser.rs emit_target / rows_to_csv), and
+        // executes the inner statement. Same delegation shape as
+        // AlterBundleAddBase so the HTTP path and the in-process path
+        // stay bit-identical.
+        Statement::Emit { .. } => gigi::parser::execute(engine, stmt),
         _ => Ok(ExecResult::Ok),
     }
 }
@@ -14465,6 +14476,11 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         DropPolicy { bundle, .. } | DropTrigger { bundle, .. } => Some(bundle.clone()),
         CreateTrigger { bundle, .. } => Some(bundle.clone()),
         Explain { inner } => get_bundle_name(inner),
+        // EMIT wraps a rows-producing statement; the bundle binding is
+        // the inner statement's. Without this arm the pre-resolve fell
+        // to `_ => None` and the route answered a bare ok without
+        // executing anything (success theater).
+        Emit { inner, .. } => get_bundle_name(inner),
         // Fiber-geometric analytics (Sprint 2)
         HolonomyFiber { bundle, .. } => Some(bundle.clone()),
         SpectralFiber { bundle, .. } => Some(bundle.clone()),

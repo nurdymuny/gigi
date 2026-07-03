@@ -1324,6 +1324,14 @@ impl Engine {
 
     /// Insert a record into a named bundle.
     pub fn insert(&mut self, bundle_name: &str, record: &Record) -> io::Result<()> {
+        // TIMESTAMP coercion before the WAL, so replay sees the same
+        // normalized record the store does.
+        let coerced = match self.schemas.get(bundle_name) {
+            Some(schema) => crate::types::coerce_record_to_schema(schema, record)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?,
+            None => None,
+        };
+        let record = coerced.as_ref().unwrap_or(record);
         self.wal.log_insert(bundle_name, record)?;
         if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.insert(record);
@@ -1574,6 +1582,29 @@ impl Engine {
 
     /// Batch insert — single WAL flush + single checkpoint check for N records.
     pub fn batch_insert(&mut self, bundle_name: &str, records: &[Record]) -> io::Result<usize> {
+        // TIMESTAMP coercion for the whole batch, before the WAL.
+        let coerced_batch: Option<Vec<Record>> = match self.schemas.get(bundle_name) {
+            Some(schema) => {
+                let mut out: Option<Vec<Record>> = None;
+                for (i, record) in records.iter().enumerate() {
+                    let patched = crate::types::coerce_record_to_schema(schema, record)
+                        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+                    match (patched, &mut out) {
+                        (Some(p), Some(v)) => v.push(p),
+                        (Some(p), None) => {
+                            let mut v: Vec<Record> = records[..i].to_vec();
+                            v.push(p);
+                            out = Some(v);
+                        }
+                        (None, Some(v)) => v.push(record.clone()),
+                        (None, None) => {}
+                    }
+                }
+                out
+            }
+            None => None,
+        };
+        let records: &[Record] = coerced_batch.as_deref().unwrap_or(records);
         // WAL: log all records first (sequential writes, single flush)
         for record in records {
             self.wal.log_insert(bundle_name, record)?;

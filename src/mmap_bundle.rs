@@ -707,6 +707,12 @@ impl OverlayBundle {
         limit: Option<usize>,
         offset: Option<usize>,
     ) -> Vec<Record> {
+        // TIMESTAMP ergonomics — same rewrite the heap store applies;
+        // the direct mmap scan below must see coerced literals too.
+        let coerced =
+            crate::bundle::coerce_conditions_to_schema(self.schema(), conditions);
+        let conditions: &[QueryCondition] = coerced.as_deref().unwrap_or(conditions);
+
         let pk_field = self.pk_field();
 
         // Phase 1: Query overlay (has indexes → fast).

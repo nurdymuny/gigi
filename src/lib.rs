@@ -226,6 +226,9 @@ pub mod spectral;
 // an HMAC-SHA256 auth tag binding it to (bundle_id, share_index, holder.pubkey).
 // See `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` §6.
 pub mod threshold;
+// Time ergonomics (2026-07-02): ISO 8601 ⇄ epoch-ms translation for
+// TIMESTAMP fields — dates people can type, dependency-free.
+pub mod timefmt;
 pub mod types;
 // Personal-list #3 (2026-06-22) — `__bundles__` virtual bundle that
 // exposes the live engine registry as a queryable bundle. Read-only;

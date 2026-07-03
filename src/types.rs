@@ -106,6 +106,53 @@ impl std::hash::Hash for Value {
     }
 }
 
+/// TIMESTAMP write ergonomics: coerce incoming values for
+/// timestamp-typed fields — epoch-ms integers/floats wrap to
+/// `Value::Timestamp`, ISO 8601 text parses to one, and text that
+/// isn't a date is a loud error (never stored as a string that will
+/// silently compare as a type tag forever after). Returns
+/// `Ok(None)` when the record needs no changes, so the hot path
+/// stays clone-free.
+pub fn coerce_record_to_schema(
+    schema: &BundleSchema,
+    record: &Record,
+) -> Result<Option<Record>, String> {
+    let mut patched: Option<Record> = None;
+    for fd in schema.base_fields.iter().chain(schema.fiber_fields.iter()) {
+        if fd.field_type != FieldType::Timestamp {
+            continue;
+        }
+        let Some(v) = record.get(&fd.name) else { continue };
+        let new = match v {
+            Value::Timestamp(_) | Value::Null => continue,
+            Value::Integer(n) => Value::Timestamp(*n),
+            Value::Float(f) => Value::Timestamp(*f as i64),
+            Value::Text(s) => match crate::timefmt::parse_iso_ms(s) {
+                Some(ms) => Value::Timestamp(ms),
+                None => {
+                    return Err(format!(
+                        "field '{}' is TIMESTAMP but '{s}' is not a date — \
+                         accepted forms: 2026-07-02, 2026-07-02 14:30, \
+                         2026-07-02T14:30:05Z, or epoch milliseconds",
+                        fd.name
+                    ))
+                }
+            },
+            other => {
+                return Err(format!(
+                    "field '{}' is TIMESTAMP; got {other} — expected a date \
+                     string or epoch milliseconds",
+                    fd.name
+                ))
+            }
+        };
+        patched
+            .get_or_insert_with(|| record.clone())
+            .insert(fd.name.clone(), new);
+    }
+    Ok(patched)
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

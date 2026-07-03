@@ -149,12 +149,13 @@ GIGI is the substrate. As of this README, end-to-end:
 - **WISH verb is LIVE.** IMAGINE + DREAM + SUDOKU composed as a single boundary-value-problem verb behind the `wish` feature flag. Marcella's load-bearing curvature ceiling (4.0 = K(CP¹ Fubini-Study)) is the default safety envelope.
 - **Marcella consumer pattern is documented.** Substrate spec at [`theory/kahler_upgrade/marcella_substrate.md`](theory/kahler_upgrade/marcella_substrate.md); pure-fiber LM that reads through the brain endpoints and refuses rather than confabulates when `/brain/confidence_with_explain` says she doesn't know.
 - **Bridge Trilogy + SPECTRAL_GAUGE Phase 1 + Yang-Mills topology verbs are LIVE (2026-06-28).** Three substrate items unblock Halcyon's 4D SU(3) pipeline: `LATTICE … FROM CUBIC L=N DIM=K PERIODIC` declares n-D cubic lattices (L=12 D=4 gives 20736 vertices / 82944 edges / 124416 plaquettes); `INGEST bundle FROM 'file.npz' FORMAT NPZ` reads NumPy arrays via the `npyz` crate; `GROUP SU(3)` is a first-class structure group (raw 3×3 complex storage, 144 B / link, Mezzadri 2007 Haar). On top: `SPECTRAL_GAUGE bundle ON FIBER (q0..)` returns the fiber-weighted spectral gap λ₁ of the gauge-covariant Laplacian; `CHERN_CLASS … ORDER 2` returns the discrete instanton number via the Lüscher 1982 clover construction; `PONTRYAGIN … ORDER 1` returns p₁ (= 2·c₂ for SU(N)); `PI_1 lattice` returns the fundamental-group rank via spanning-tree + face-relator construction; `OBSTRUCTION bundle` returns the principal-bundle section-existence class; `BETTI … ORDER k` extends Betti to the cell complex. The December L=12 D=4 SU(3) harvest gets a one-line `CHERN_CLASS ensemble ORDER 2;` topological-sector readout once Halcyon regenerates configs. See [`theory/halcyon/HALCYON_BRIDGE_TRILOGY_2026-06-28_SHIPPED.md`](theory/halcyon/HALCYON_BRIDGE_TRILOGY_2026-06-28_SHIPPED.md), [`theory/halcyon/SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md`](theory/halcyon/SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md), and [`theory/halcyon/YANG_MILLS_TOPOLOGY_VERBS_SHIPPED_2026-06-28.md`](theory/halcyon/YANG_MILLS_TOPOLOGY_VERBS_SHIPPED_2026-06-28.md).
+- **Halcyon L=24 OBC substrate + the sixteen-feature engine batch + the hardening trio are LIVE (2026-07-01 → 2026-07-03).** 2026-07-01 — four grammar extensions unblock Halcyon's SU(2) 4D L=24 β=2.3 open-boundary sectoral workflow: `LATTICE … FROM CUBIC L=N DIM=K OBC AXIS <k>` (wrap edges + boundary-crossing plaquettes omitted along the named axis; vertex set stays L^D — L=24 D=4 gives 331,776 vertices / 1,313,280 edges / 1,949,184 plaquettes), `INGEST … FORMAT NPZ [KEY <member>] AS GAUGE_FIELD GROUP <g> ON LATTICE <l>` (one-step NPZ → gauge-field bundle: canonical per-group fiber names, `vertex_a` / `vertex_b` base fields from the lattice's own column-major site numbering, OBC wrap records omitted so the record set equals the lattice edge set, f32 upconverts exactly to f64), `CHERN_CLASS … PER <field> INTO_COLUMN <col>` (per-configuration topological sectors, written back through the new append-only `ALTER BUNDLE … ADD BASE <field> <type>`), and `SPECTRAL_GAUGE … WHERE <cond> …` (sector-stratified gaps). 2026-07-03 — the sixteen-feature batch: human parse errors (token names, near-context, did-you-mean) + trailing-token rejection (a parsed statement with leftover input refuses instead of silently discarding it); `INTEGRATE … WITH JACKKNIFE ALONG <field> [SKIP FIRST n]` evidence-grade error bars with a thermalization cut; no-op statements return an explicit notice instead of a bare ok; `SHOW FIELDS ON b` returns real rows; poison-proof locks (a panicked handler no longer wedges the server); `INGEST FORMAT CSV` / `FORMAT JSONL`; `EMIT CSV TO 'f.csv'`; `EXPLAIN SECTION … AT …` per-field κ decomposition; `TIMESTAMP` field type + ISO-8601 literals + `NOW`; the `gigi` CLI (`gigi doctor`, rustyline REPL, `-f script.gql`) and the gigi-stream first-contact banner — plus the same-day review fixes (patterns-feature compile break, multibyte-safe error truncation and ISO-timestamp parsing, `Statement::Emit` dispatched over HTTP, TIMESTAMP coercion on the update path). 2026-07-03, second deploy — the hardening trio: `src/pathguard.rs` shared containment (component screen rejects absolute / drive-prefixed / UNC / `..` shapes before joining; canonical-to-canonical compare defeats symlink and junction tunnels), the fail-closed `GIGI_INGEST_DIR` gate on every file-reading INGEST format (unset ⇒ server-side file reads are disabled; prod pins `/data/ingest`), `GIGI_EMIT_DIR` routed through the same guard, and `record_kappa` stamped constant on every EXPLAIN row (mean of the per-field κ column == the record's total κ from `compute_record_k` — the response certifies its own invariant). Known residuals, named: `DEFINE PATTERN … OR` does not parse (pre-existing, queued); `EMIT` wrapping a bundle-less statement (e.g. `SHOW BUNDLES … EMIT CSV`) still returns ok without emitting (queued). See [`theory/halcyon/HALCYON_L24_OBC_WORKFLOW_UNBLOCKED_2026-06-29.md`](theory/halcyon/HALCYON_L24_OBC_WORKFLOW_UNBLOCKED_2026-06-29.md) and [`theory/halcyon/DEPLOY_2026-07-03_SIXTEEN_FEATS.md`](theory/halcyon/DEPLOY_2026-07-03_SIXTEEN_FEATS.md).
 
-Test counts as of this README:
+Test counts, dated to their last full run:
 
-- `cargo test --no-default-features --lib` → **852 passed / 0 failed.** The byte-identical no-feature build.
-- `cargo test --features halcyon --lib --test-threads=1` → **965 passed / 0 failed.** Halcyon Parts I–IV on the substrate.
-- `cargo test --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --lib --test-threads=1` → **1488 passed / 0 failed.** The full production feature surface.
+- `cargo test --no-default-features --lib` → **911 passed / 0 failed** (2026-07-03 pre-deploy gate). The byte-identical no-feature build.
+- `cargo test --features halcyon --lib --test-threads=1` → **965 passed / 0 failed** (2026-06-28). Halcyon Parts I–IV on the substrate.
+- `cargo test --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --lib --test-threads=1` → **1488 passed / 0 failed** (2026-06-28). The full production feature surface.
 
 Detailed gate-by-gate ledgers live under [`theory/halcyon/`](theory/halcyon/), [`theory/kahler_upgrade/`](theory/kahler_upgrade/), [`theory/causal_states/`](theory/causal_states/), and [`theory/imagine/`](theory/imagine/).
 
@@ -214,11 +215,20 @@ rustdoc and [`CHANGELOG.md`](CHANGELOG.md). Top-level shape:
   observable modules (gated on `--features halcyon`), causal-states
   substrate (gated on `--features causal_states`), the six-mode gauge
   encryption suite, and the DHOOM wire protocol.
-- **Binaries** (`src/bin/` + `examples/`) — `gigi-server` (REST + WebSocket
-  on `:3142`), `gigi-stream` (the binary the production deployment runs),
-  `gigi-edge` (local-first), `gigi-convert` (CLI ingestion), `gigi-stress`
-  (load harness). Examples include `kahler_tour`, `predictive_coding_demo`,
-  `attention_memory_demo`, and the Halcyon worked examples.
+- **Binaries** (`src/main.rs` + `src/bin/` + `examples/`) — `gigi` (the
+  interactive CLI, and the `default-run` target so plain `cargo run` lands
+  here: a rustyline REPL with arrow-key editing and per-database history,
+  `-e "QUERY"` one-shot execution, `-f script.gql` for files of
+  ;-separated statements with `--keep-going` to continue past errors, and
+  `gigi doctor [--dir p]` — a health report that opens the engine, replays
+  the WAL, and inventories bundles and geometry; exit 0 healthy, 1
+  warnings, 2 failures), `gigi-server` (REST + WebSocket on `:3142`), `gigi-stream`
+  (the binary the production deployment runs; prints a first-contact
+  banner — listening URL + three curl lines to try — when the engine goes
+  ready, muted by `GIGI_QUIET=1`), `gigi-edge` (local-first),
+  `gigi-convert` (CLI ingestion), `gigi-stress` (load harness). Examples
+  include `kahler_tour`, `predictive_coding_demo`, `attention_memory_demo`,
+  and the Halcyon worked examples.
 - **SDKs** — Python (`pip install gigi-client`, pandas-aware), JavaScript /
   TypeScript (`@gigi-db/client`, browser + Node), and `gigi-notebook` (a
   Jupyter kernel with GQL as the default cell language and a `%%commutator`
@@ -341,11 +351,11 @@ cargo run --release --bin bench_tpch
 cd e2e && npm install && npm test
 ```
 
-As of this README the engine ships with:
+As of this README the engine ships with (counts dated to their last full run):
 
-- **`cargo test --no-default-features --lib`** → **852 passed / 0 failed.** The byte-identical no-feature build. The optionality contract: every feature flag is opt-in; the no-feature build is bit-identical to pre-upgrade GIGI on the paths it shares.
-- **`cargo test --features halcyon --lib --test-threads=1`** → **965 passed / 0 failed.** Halcyon Parts I–IV on the substrate (`LATTICE` / `GAUGE_FIELD` / `GIBBS_SAMPLE` / `E_FIELD` / `SYMPLECTIC_FLOW` / `PROJECT_GAUSS` + the observable battery + the A2 bit-identity rows). Single-threaded because the gauge registry uses `Arc<Mutex<…>>` mutable accessors per D4.
-- **`cargo test --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --lib --test-threads=1`** → **1488 passed / 0 failed.** The full production feature surface. Adds the twelve Kähler layers, the IMAGINE / WALK extrapolation verbs with Marcella's 4.0 curvature ceiling, the sharded substrate, atomic sheaf commits, GGOG patterns, causal-states substrate, and the WISH BVP verb on top of Halcyon.
+- **`cargo test --no-default-features --lib`** → **911 passed / 0 failed** (2026-07-03 pre-deploy gate). The byte-identical no-feature build. The optionality contract: every feature flag is opt-in; the no-feature build is bit-identical to pre-upgrade GIGI on the paths it shares.
+- **`cargo test --features halcyon --lib --test-threads=1`** → **965 passed / 0 failed** (2026-06-28). Halcyon Parts I–IV on the substrate (`LATTICE` / `GAUGE_FIELD` / `GIBBS_SAMPLE` / `E_FIELD` / `SYMPLECTIC_FLOW` / `PROJECT_GAUSS` + the observable battery + the A2 bit-identity rows). Single-threaded because the gauge registry uses `Arc<Mutex<…>>` mutable accessors per D4.
+- **`cargo test --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --lib --test-threads=1`** → **1488 passed / 0 failed** (2026-06-28). The full production feature surface. Adds the twelve Kähler layers, the IMAGINE / WALK extrapolation verbs with Marcella's 4.0 curvature ceiling, the sharded substrate, atomic sheaf commits, GGOG patterns, causal-states substrate, and the WISH BVP verb on top of Halcyon. The 2026-07-01→03 waves ride the per-suite gates in [`theory/halcyon/DEPLOY_2026-07-03_SIXTEEN_FEATS.md`](theory/halcyon/DEPLOY_2026-07-03_SIXTEEN_FEATS.md) (INGEST family 39/0, spectral + topology 67/0, pathguard escape matrix 14/0 on Windows, lattice OBC 17/0, plus the no-feature groups).
 - **`cargo test --features halcyon --test halcyon_part_iv_gold --release`** → **5 passed / 0 failed.** The Part IV gold gate (acceptance arm + regression arm under release profile — per the III.8c profile-pinning).
 - **`cargo test --features halcyon --test halcyon_part_iv_a2_matrix --release`** → **5 passed / 1 ignored.** The A2 bit-identity matrix; the cross-OS row (Row 3) is honestly `#[ignore]`d with the 2 ULP envelope documented in [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md).
 
@@ -354,6 +364,15 @@ Plus the Python TDD math gates that ride alongside the Rust suites:
 - IMAGINE / WALK extrapolation verbs — see [`theory/imagine/validation/`](theory/imagine/validation/) (T11 geodesic integrator, T12 halo partition invariance, T13 double-cover monodromy).
 - Sharded substrate — see [`theory/poincare_to_sharding/validation/`](theory/poincare_to_sharding/validation/) (10 TDD gates, ~15s wall clock, three were red-then-green during development).
 - Kähler / post-Kähler / brain-primitives validation — 15/15 + 30/30 + 26/26, see the catalogs under [`theory/`](theory/).
+
+### Environment gates (fail-closed)
+
+Two verb families touch the server's filesystem. Each is disabled until its root directory is set, and every path is confined to that root by the shared guard in [`src/pathguard.rs`](src/pathguard.rs): a component-level screen rejects absolute, drive-prefixed, UNC, and `..` forms before any filesystem access, then a canonical-to-canonical containment check refuses symlink and junction tunnels out of the root.
+
+- **`GIGI_INGEST_DIR`** — gates every file-reading `INGEST` format (NPZ / CSV / JSONL). Unset ⇒ `INGEST` from server-side files errors engine-wide — the same posture as Postgres `pg_read_server_files` / MySQL `secure_file_priv`. Set ⇒ source paths in `INGEST … FROM '<p>'` resolve relative to the root. Production sets `GIGI_INGEST_DIR = "/data/ingest"` in [`fly.toml`](fly.toml): the December harvest pipeline keeps its NPZ capability, bounded to the volume directory it already writes into.
+- **`GIGI_EMIT_DIR`** — gates `… EMIT CSV TO 'file.csv'`. Unset ⇒ EMIT errors and names the knob; exported files land only inside the root. Production leaves it unset — HTTP consumers request the rows and save client-side.
+
+`GIGI_QUIET=1` mutes the first-contact banner `gigi-stream` prints when the engine goes ready (listening URL + three curl lines to try).
 
 ---
 
@@ -413,6 +432,30 @@ LATTICE my_4d FROM CUBIC L=12 DIM=4 PERIODIC;
 INGEST configs_bundle FROM 'harvest_L12_beta6.0_run1.npz' FORMAT NPZ;
 GAUGE_FIELD U_4d ON LATTICE my_4d GROUP SU(3) INIT HAAR SEED 42;
 
+-- L=24 OBC layer (2026-07-01). Open boundary along one axis (wrap edges +
+-- boundary-crossing plaquettes omitted), one-step NPZ → gauge-field bundle,
+-- per-config sector write-back, append-only schema evolution,
+-- sector-stratified spectral gaps:
+LATTICE l24 FROM CUBIC L=24 DIM=4 OBC AXIS 0;
+INGEST su2_configs FROM 'raw_U_configs.npz' FORMAT NPZ KEY U
+  AS GAUGE_FIELD GROUP SU(2) ON LATTICE l24;
+ALTER BUNDLE su2_configs ADD BASE q_rounded INT;
+CHERN_CLASS su2_configs ORDER 2 ON LATTICE l24 GROUP SU(2)
+  PER config_id INTO_COLUMN q_rounded;
+SPECTRAL_GAUGE su2_configs WHERE q_rounded = 0
+  ON FIBER (q0, q1, q2, q3) GROUP SU(2);
+
+-- Engine batch (2026-07-03). Evidence-grade error bars, schema
+-- introspection, CSV in/out, per-field curvature decomposition, time as
+-- a first-class type:
+INTEGRATE runs MEASURE avg(plaquette) WITH JACKKNIFE ALONG sweep SKIP FIRST 500;
+SHOW FIELDS ON sensors;                  -- one real row per field (field/kind/type/indexed)
+EXPLAIN SECTION sensors AT sensor_id='S-001';    -- per-field κ + constant record_kappa
+INGEST sensors FROM 'readings.csv' FORMAT CSV;   -- header row, inferred types; JSONL too (KEY <col> required)
+COVER sensors ALL EMIT CSV TO 'sensors.csv';     -- fail-closed on GIGI_EMIT_DIR
+CREATE BUNDLE events (id TEXT BASE, at TIMESTAMP FIBER);
+COVER events WHERE at <= NOW;            -- ISO-8601 literals and NOW are timestamps
+
 -- Cognitive Geometry verbs (Branch VII)
 CAPACITY corpus;    -- τ/K
 HORIZON corpus;     -- τ/(K·ℝ“_c)
@@ -425,6 +468,13 @@ CREATE BUNDLE finance FIBER (
   account TEXT ENCRYPTED INDEXED
 );
 ```
+
+Two parser-wide behaviors ride under every verb (2026-07-03): parse errors
+name the offending token with near-context and a did-you-mean for a
+misspelled first verb, and input left over after a complete statement is
+refused with an explicit trailing-token error instead of being silently
+discarded. Statements that perform no work (unimplemented SHOW variants,
+COMPACT, …) return an explicit notice instead of a bare ok.
 
 Complete grammar, status table, complexity per verb, and EMIT / wire format
 options live in [`GQL_REFERENCE.md`](GQL_REFERENCE.md) and
@@ -519,6 +569,15 @@ Gates: [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md), [`HA
 The trilogy itself — `LATTICE … FROM CUBIC L=N DIM=K PERIODIC` (n-D cubic primitive: L=12 D=4 gives 20736 vertices / 82944 directed links / 124416 plaquettes, matching Halcyon's December harvest dimensions), `INGEST bundle FROM 'file.npz' FORMAT NPZ` (real ingest executor via the `npyz` crate; SU(3) configs of shape `(L, L, L, L, 9)` complex flatten cleanly to per-link records), and `GAUGE_FIELD … GROUP SU(3) INIT …` (raw 3×3 complex storage = 144 B per link, Mezzadri 2007 Haar for `INIT HAAR`, conjugate-transpose inverse, 3×3 matmul compose, `Re Tr(U)/3` plaquette reduction). Phase 1 scope is read-only ingest. Phase 2 (Cabibbo-Marinari heatbath, `SU3EField` tangent space, SU(3) Wilson force, symplectic flow) ships when Halcyon needs gigi to compute SU(3) configs in-house instead of ingesting them — currently they regenerate via `lattice/gauge_heatbath_gpu.py` on a GPU machine and `INGEST` the result. See [`HALCYON_BRIDGE_TRILOGY_2026-06-28_SHIPPED.md`](theory/halcyon/HALCYON_BRIDGE_TRILOGY_2026-06-28_SHIPPED.md).
 
 The topology verbs — `SPECTRAL_GAUGE bundle ON FIBER (…) [GROUP …]` returns λ₁ of the fiber-weighted Laplacian L_A (dense `nalgebra::SymmetricEigen` Phase 1 for bundles up to ~1000 vertices; Lanczos sparse + `FULL` k-eigenvalue mode is the named Phase 2 ship). `CHERN_CLASS bundle ORDER 2` returns the discrete instanton number Q ∈ ℤ via Lüscher 1982 clover discretization — one integer per gauge configuration, classifying the topological sector for the mass-gap argument. `PONTRYAGIN bundle ORDER 1` returns p₁ (= 2·c₂ for SU(N), Lüscher sign convention pinned). `PI_1 lattice_name` returns the rank of the fundamental group via BFS spanning tree + face-relator construction (Massey Ch IV §5). `OBSTRUCTION bundle_name` returns the principal-bundle section-existence class (= rounded c₂ for SU(N) on 4D, rounded c₁ for U(1) on 2D). `BETTI bundle ORDER k` extends BETTI to cell-complex β_k via integer-SNF on boundary maps. The TDD audit trail is preserved in git history (`tests(X): RED …` commits precede `impl(X): GREEN …` for each concept). See [`SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md`](theory/halcyon/SPECTRAL_GAUGE_PHASE1_SHIPPED_2026-06-28.md) and [`YANG_MILLS_TOPOLOGY_VERBS_SHIPPED_2026-06-28.md`](theory/halcyon/YANG_MILLS_TOPOLOGY_VERBS_SHIPPED_2026-06-28.md).
+
+**The L=24 OBC layer (2026-07-01).** Four grammar extensions unblock Halcyon's SU(2) 4D L=24 β=2.3 open-boundary sectoral workflow; they compose into one Q-sector-by-Q-sector chain (declare → ingest → classify → stratify).
+
+- `LATTICE … FROM CUBIC L=N DIM=K OBC AXIS <k>` opens the boundary along one axis: edges wrapping axis k and plaquettes crossing its boundary are omitted; the vertex set stays L^D. L=24 D=4 OBC AXIS 0 gives V = 331,776 (unchanged), E = 1,313,280, F = 1,949,184 — down from the periodic 1,327,104 / 1,990,656. Multi-axis OBC (`PERIODIC AXES (…) OBC AXIS …`) is deferred to Phase 2; `OPEN` (fully-open) cannot combine with `OBC AXIS`.
+- `INGEST <bundle> FROM '<file.npz>' FORMAT NPZ [KEY <member>] AS GAUGE_FIELD GROUP <g> ON LATTICE <l>` turns a raw NPZ archive into a gauge-field bundle in one step. Axes decode as (config_id, mu, site_*, fiber); fiber columns take the canonical per-group names (`q0..q3` SU(2), `re_00..im_22` SU(3), `theta` U(1)); every record carries `vertex_a` / `vertex_b` base fields computed with the lattice's own column-major site numbering; records that would wrap across the OBC boundary are omitted, so the record set equals the lattice edge set by construction. `KEY <member>` selects one array out of a multi-array archive. f32 sources upconvert exactly to f64 (24-bit mantissa fits inside 53); unsupported dtypes error by name. Since 2026-07-03, server-side sources resolve relative to the fail-closed `GIGI_INGEST_DIR` (unset ⇒ disabled; prod pins `/data/ingest` — see the environment gates under Build, test, run).
+- `CHERN_CLASS <bundle> ORDER 2 [ON LATTICE <l>] [GROUP <g>] [PER <field>] [INTO_COLUMN <col>]` reads the instanton sector per record group (`PER config_id` = one Q per configuration) and writes the rounded sector back into a column declared by the new append-only `ALTER BUNDLE <b> ADD BASE <field> <type>` (heap bundles only in Phase 1; `INTO_COLUMN` without `PER` is rejected at parse time — nothing to write per group otherwise).
+- `SPECTRAL_GAUGE <bundle> WHERE <cond> ON FIBER (…) [GROUP <g>]` runs the fiber-weighted Laplacian gap on the sector-filtered subset. WHERE reuses COVER's condition grammar, so filter semantics are identical.
+
+Route-handler parity rode along: INGEST, ALTER BUNDLE, and the topology verbs dispatch before bundle pre-resolve, so the same statements answer over `/v1/gql`. See [`HALCYON_L24_OBC_WORKFLOW_UNBLOCKED_2026-06-29.md`](theory/halcyon/HALCYON_L24_OBC_WORKFLOW_UNBLOCKED_2026-06-29.md).
 
 ### 6.5 Kähler tour — one shot through every shipped layer
 
@@ -672,6 +731,7 @@ The Gi-System family (Marcella's siblings, all reading through the substrate the
 gigi/
 ├── src/                  Rust engine (single crate, 25+ modules)
 │   ├── lib.rs            module roots
+│   ├── main.rs           `gigi` CLI — rustyline REPL / -e / -f / doctor
 │   ├── bin/              5 production binaries
 │   ├── geometry/         Kähler L1–L12 + the SUDOKU sprint:
 │   │                       L1   complex_structure, forms (J, B)
@@ -699,6 +759,8 @@ gigi/
 │   ├── bundle.rs         Heap BundleStore + Welford field stats + mutation_counter
 │   ├── mmap_bundle.rs    BundleRef / BundleMut / OverlayBundle —
 │   │                       polymorphic over heap and mmap+overlay (#107)
+│   ├── pathguard.rs      shared path containment — the GIGI_INGEST_DIR /
+│   │                       GIGI_EMIT_DIR fail-closed gates
 │   └── …
 ├── benches/              3 cargo-bin benchmarks
 ├── examples/             nasa_atmosphere.rs; kahler_tour.rs (every

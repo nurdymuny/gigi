@@ -100,23 +100,67 @@ Statements end with `;`. Working verbs (each enforced by an automated
     INTEGRATE sensors MEASURE avg(temp) WITH JACKKNIFE ALONG wind;   -- autocorrelation-honest error bars
     PULLBACK sensors ALONG city ONTO cities;                         -- join
     SHOW BUNDLES;  DESCRIBE sensors;  EXPLAIN COVER sensors ON city='Moscow';
-    SHOW FIELDS ON sensors;                        -- one row per field: name/kind/type/indexed
-    EXPLAIN SECTION sensors AT id='s1';            -- per-field kappa decomposition (why this price)
+    SHOW FIELDS ON sensors;                        -- one row per field: field/kind/type/indexed
+    EXPLAIN SECTION sensors AT id='s1';            -- per-field kappa rows, loudest first (why this price);
+    --   each row also carries record_kappa — the record's total κ, constant
+    --   across its rows (the mean of the per-field kappas equals it)
     CURVATURE sensors;  SPECTRAL sensors;  HEALTH sensors;
     INGEST sensors FROM 'rows.csv' FORMAT CSV;     -- also NPZ; JSONL (KEY required, vectors ride)
-    COVER sensors ALL EMIT CSV TO 'out.csv';       -- export; gated on GIGI_EMIT_DIR
+    COVER sensors ALL EMIT CSV TO 'out.csv';       -- export; gated on GIGI_EMIT_DIR; works over HTTP too
     -- TIMESTAMP fields accept '2026-07-02', '2026-07-02T14:30:05Z', epoch ms, and NOW;
-    -- comparisons against date strings mean what they say
+    -- comparisons against date strings mean what they say; coercion applies
+    -- on REDEFINE updates as well as inserts
 
 `WITH JACKKNIFE ALONG <order-field>` returns mean, err (naive·√(2τ_int)),
 err_naive, err_jack (blocked at ≈2τ), tau_int, n_eff — honest error bars
 on correlated data. Validated against analytic AR(1): φ = 0.8 → τ = 4.5.
+An optional `SKIP FIRST n` drops the first n samples (thermalization cut)
+before the estimate.
+
+Lattice-gauge and topology verbs (feature-gated builds; the substrate
+under the Yang-Mills work):
+
+    LATTICE hyp FROM CUBIC L=24 DIM=4 OBC AXIS 3;
+    -- open boundary on one axis: wrap edges and their plaquettes are
+    -- omitted, not zeroed — the record set equals the lattice edge set
+    INGEST links FROM 'links.npz' FORMAT NPZ KEY links
+      AS GAUGE_FIELD GROUP SU2 ON LATTICE hyp;
+    -- NPZ link arrays land as canonical fibers (q0..q3 for SU(2),
+    -- re_00..im_22 for SU(3), theta for U(1)) plus vertex_a/vertex_b
+    -- INT base fields; f32 upconverts to f64, other dtypes error by name
+    CHERN_CLASS links ORDER 2 ON LATTICE hyp GROUP SU2;   -- second Chern number (Lüscher clover)
+    SPECTRAL_GAUGE links WHERE beta > 2.0 ON FIBER (q0, q1, q2, q3) GROUP SU2;
+    -- fiber-weighted spectral gap; WHERE subsets records first (sector
+    -- stratification), same semantics as COVER WHERE
+    ALTER BUNDLE links ADD BASE tag TEXT;                 -- append-only schema
+    -- evolution: old records remain valid sections under the wider base
+
+Server-side file I/O is fail-closed. INGEST from a file requires
+`GIGI_INGEST_DIR` (unset → "INGEST from a server-side file requires
+GIGI_INGEST_DIR to be set; set it to the directory that ingest sources
+live under"); EMIT requires `GIGI_EMIT_DIR` (unset → "EMIT is disabled
+on this engine: set GIGI_EMIT_DIR=<directory> to enable it — exported
+files are written inside that directory only. (Over HTTP, prefer
+requesting the rows and saving client-side.)"). Both gates
+share one containment check: paths must be relative — no absolute paths,
+no drive/UNC prefixes, no `..` components — and the resolved path is
+canonically compared against the root, so symlinks and junctions cannot
+escape it. The public instance sets `GIGI_INGEST_DIR=/data/ingest`.
+
+Parse errors are written for humans: token names, the text near the
+failure, and a did-you-mean when a known verb is close (multibyte text
+is truncated safely). Statements that turn out to be no-ops answer
+`{"status": "ok", "notice": "..."}` instead of a silent ok. A
+panicked handler cannot take the server down: locks are poison-proof.
 
 Honestly NOT implemented (the engine refuses these loudly rather than
 silently no-op): HAVING, FIBER RANK (window functions), PRODUCT, UNION /
 INTERSECT / SUBTRACT set operations. Unknown field names error with the
 bundle's field list. Trailing unparsed clauses are rejected, never
-silently discarded. See GQL_REFERENCE.md in the repo for the enforced
+silently discarded. Known residuals with fixes queued: DEFINE PATTERN's
+OR combinator does not parse, and EMIT wrapped around a bundle-less
+statement (e.g. `SHOW BUNDLES ... EMIT CSV`) still returns ok without
+writing a file. See GQL_REFERENCE.md in the repo for the enforced
 status table.
 
 ## 3. The live public instance (agents may call this)
@@ -144,6 +188,14 @@ statements to try: `SHOW BUNDLES;`, `HEALTH tetmesh_demo;`,
 To run a private engine: build from the repo, start the `gigi-stream`
 binary, POST to /v1/gql (same body shape). Browser access to a local
 engine needs `GIGI_CORS_ORIGIN=*` (dev only).
+
+There is also a local CLI: the `gigi` binary opens an interactive REPL
+(rustyline — arrow-key editing, per-database history, Ctrl-C clears the
+line); `gigi -f script.gql` runs a statement file; `gigi doctor` prints
+a health report (disk inventory, a full WAL-replay open, bundle
+geometry; exit 0 healthy, 1 warnings, 2 failures). The `gigi-stream`
+server binary prints a first-contact banner when the engine goes ready
+(listening URL + curl lines to try; `GIGI_QUIET=1` mutes it).
 
 ## 4. The book and the exercise pages
 

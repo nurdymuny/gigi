@@ -994,7 +994,9 @@ or none do.
 
 **What it does:** evaluates a GIGI Query Language statement. GQL is the
 high-level surface for CREATE BUNDLE, INSERT, SELECT, LATTICE,
-GAUGE_FIELD, GIBBS_SAMPLE, SNAPSHOT, and every other declarative verb.
+GAUGE_FIELD, GIBBS_SAMPLE, SNAPSHOT, INGEST, EMIT, the topology verbs
+(CHERN_CLASS, SPECTRAL_GAUGE, PI_1, OBSTRUCTION), and every other
+declarative verb.
 
 **Request body:**
 
@@ -1005,12 +1007,33 @@ GAUGE_FIELD, GIBBS_SAMPLE, SNAPSHOT, and every other declarative verb.
 **Response (200):** shape depends on the statement.
 
 ```json
-{ "status": "ok", "result": { /* statement-specific */ } }
+{ "status": "ok" }
 ```
+
+- `{"status": "ok"}` — statement executed, nothing to return.
+- `{"status": "ok", "notice": "<message>"}` — the statement parsed and
+  validated but either intentionally did nothing or has a receipt to
+  report; the notice says which. A bare `"ok"` never implies work
+  happened when the engine knows it didn't.
+- `{"rows": [...], "count": N}` — rows-producing statements (COVER,
+  INTEGRATE, SHOW FIELDS, EXPLAIN SECTION, …).
+- `{"value": ...}` — scalar results; `{"affected": N}` — counts.
 
 **Errors:**
 - `400` — parse error (body includes parser message).
 - `404` — referenced bundle missing.
+
+Parse errors are human-readable: they name the offending token, show
+near-context, and suggest the closest verb for a misspelled first word
+(`Unknown statement: 'COVERR' — did you mean 'COVER'?`; with no close
+match the error points at `GQL_REFERENCE.md`). Trailing input after a
+complete statement is refused rather than silently discarded:
+
+```
+Statement parsed, but this trailing input is not a supported clause
+and was NOT executed: '<tokens>'. Remove it, or check the GQL
+reference for the supported form of this statement.
+```
 
 **Halcyon canonical chain — Yang-Mills thermalization:**
 
@@ -1034,6 +1057,171 @@ curl -X POST http://localhost:3142/v1/gql \
 GQL is the only path that reaches every embedded-only verb (E_FIELD,
 SYMPLECTIC_FLOW); the REST routes for the same primitives are
 read-only.
+
+## GQL: server-side file ingest — INGEST
+
+```
+INGEST <bundle> FROM '<path>' FORMAT CSV|NPZ|JSONL [KEY <name>]
+  [AS GAUGE_FIELD GROUP <group> ON LATTICE <lattice>];
+```
+
+**What it does:** reads a file on the server's filesystem into a
+bundle, inferring or extending the schema from the source.
+
+- `FORMAT NPZ` — NumPy archive. `KEY <name>` selects one array from a
+  multi-array archive; omitting KEY on a multi-array archive is an
+  error that lists the member names. `f32` data upconverts to `f64`;
+  unsupported dtypes error by name.
+- `FORMAT CSV` — header row required; column types are inferred.
+  Optional `KEY <col>` names the base-key column (default: the first
+  column).
+- `FORMAT JSONL` — one JSON object per line; array values land as
+  first-class vector fibers. `KEY <col>` is **required** — it names
+  the base-key column, since JSON objects carry no reliable column
+  order.
+- `AS GAUGE_FIELD GROUP <g> ON LATTICE <l>` interprets an NPZ array as
+  a lattice gauge field: canonical fiber names per group (`q0..q3` for
+  SU(2), `re_00..im_22` for SU(3), `theta` for U(1)), plus `vertex_a` /
+  `vertex_b` INT base fields derived from the lattice's column-major
+  `site_of`. On an OBC lattice, wrap-edge records are omitted — the
+  record set equals the lattice edge set.
+
+**Path containment (fail-closed):** every file-reading INGEST format is
+gated on the `GIGI_INGEST_DIR` env var. When it is unset, INGEST
+refuses:
+
+```
+INGEST from a server-side file requires GIGI_INGEST_DIR to be set;
+set it to the directory that ingest sources live under
+```
+
+When set, the source path must resolve inside that directory
+(canonical-to-canonical compare; drive/UNC prefixes, absolute paths,
+`..` components, and symlink/junction tunnels out of the root are all
+refused). Lexical escape errors carry the shape (prefixed `INGEST: `
+on this verb):
+
+```
+INGEST: path '<path>' escapes containment root '<root>': <reason>
+```
+
+A symlink or junction inside the root that resolves outside it is
+refused as `resolved path '<path>' is not under containment root
+'<root>'`.
+
+The production deployment (`fly.toml`) sets
+`GIGI_INGEST_DIR=/data/ingest`.
+
+## GQL: structured export — EMIT
+
+```
+<rows-statement> EMIT CSV TO '<relative-path>';
+```
+
+**What it does:** suffix on any rows-producing statement (COVER,
+INTEGRATE, SHOW FIELDS, …). Serializes the rows as CSV (columns are
+the sorted union of row keys) and writes the file inside
+`GIGI_EMIT_DIR`. Success returns a notice receipt:
+
+```json
+{ "status": "ok", "notice": "EMIT CSV: wrote 42 rows to /data/emit/out.csv" }
+```
+
+**Gate (fail-closed):** `GIGI_EMIT_DIR` unset refuses with:
+
+```
+EMIT is disabled on this engine: set GIGI_EMIT_DIR=<directory> to
+enable it — exported files are written inside that directory only.
+(Over HTTP, prefer requesting the rows and saving client-side.)
+```
+
+The path must be relative and contained; escapes refuse with:
+
+```
+EMIT path '<path>' must be relative, without '..' — files land
+inside GIGI_EMIT_DIR
+```
+
+Known residual: EMIT wrapping a bundle-less statement (e.g.
+`SHOW BUNDLES … EMIT CSV TO 'x.csv'`) still returns ok without
+emitting; fix queued.
+
+## GQL: cubic / OBC lattices and topology verbs
+
+```
+LATTICE l24 FROM CUBIC L=24 DIM=3 OBC AXIS 2;
+CHERN_CLASS U ORDER 2 ON LATTICE l24 GROUP SU(3);
+SPECTRAL_GAUGE U WHERE sector = 1 ON FIBER (q0, q1, q2, q3) GROUP SU(2);
+ALTER BUNDLE U ADD BASE q_rounded INT;
+```
+
+- `LATTICE <name> FROM CUBIC L=<int> DIM=<int> [PERIODIC]
+  [OBC AXIS <k>] [TOPOLOGY '<string>'];` — `OBC AXIS <k>` opens the
+  boundary along axis `k` (edge/plaquette omission at the wall).
+  `PERIODIC` is the default. Fully-open boundaries (`OPEN`) are
+  deferred to Phase 2 — the flag parses but fails at execution, and
+  cannot be combined with `OBC AXIS`.
+- `CHERN_CLASS <bundle> ORDER <n>` takes its clauses in any order
+  after ORDER: `ON FIBER (<fields>)` or `ON LATTICE <l>`,
+  `GROUP <g>`, `PER <field>`, `INTO_COLUMN <col>`. `INTO_COLUMN`
+  writes the per-record result back into a base column (declare it
+  first with ALTER BUNDLE).
+- `SPECTRAL_GAUGE <bundle> [WHERE <conditions>] ON FIBER (<fields>)
+  [GROUP <g>] [FULL [LIMIT k]];` — the optional WHERE clause
+  stratifies the spectrum to a sector; conditions use the same
+  grammar as COVER WHERE.
+- `ALTER BUNDLE <bundle> ADD BASE <field> <type>;` — append-only
+  schema evolution. Phase 1 is ADD BASE only (no DROP, no ALTER
+  FIBER, no rename); heap bundles only. Type names map exactly as in
+  CREATE BUNDLE: `INT`/`INTEGER`/`NUMERIC`/`FLOAT`/`REAL`/`DOUBLE` →
+  numeric, `TEXT`/`VARCHAR`/`STRING`/`CATEGORICAL`/`BOOL`/`BOOLEAN` →
+  categorical, `TIMESTAMP`/`DATETIME`/`DATE` → timestamp; unrecognized
+  names fall back to categorical. Existing records carry the new
+  field as null.
+
+## GQL: evidence-grade error bars — WITH JACKKNIFE
+
+```
+INTEGRATE runs MEASURE avg(x) WITH JACKKNIFE ALONG sweep SKIP FIRST 500;
+```
+
+**What it does:** attaches autocorrelation-honest jackknife error bars
+to each `avg()` measure. `ALONG <field>` is mandatory — it orders the
+samples; omitting it errors with:
+
+```
+WITH JACKKNIFE requires ALONG <order_field> — the field that defines
+sample order (e.g. sweep number or timestamp); autocorrelation is
+undefined without an ordering
+```
+
+`SKIP FIRST n` is the optional thermalization cut (drop the first `n`
+ordered samples before analysis; default 0).
+
+## GQL: introspection — SHOW FIELDS / EXPLAIN SECTION
+
+```
+SHOW FIELDS ON demo;
+EXPLAIN SECTION demo AT id=1;
+```
+
+- `SHOW FIELDS ON <bundle>;` returns one real row per field (`field`,
+  `kind`, `type`, `indexed`, plus `range` when the field has one); a
+  missing bundle errors with `No bundle: <name>`.
+- `EXPLAIN SECTION <bundle> AT <key>=<value> [PROJECT (<fields>)];` returns
+  the per-field curvature (kappa) decomposition of one record,
+  loudest-first. Each row also carries `record_kappa` — constant per
+  record, equal to the record's total κ; the mean of the per-field
+  kappas equals `record_kappa`.
+
+## GQL: TIMESTAMP and NOW
+
+`TIMESTAMP` is a first-class field type in CREATE BUNDLE and ALTER
+BUNDLE. Value positions accept ISO-8601 literals (`'2026-07-02'`,
+`'2026-07-02T14:30:05Z'`) or epoch-ms integers; `NOW` evaluates to the
+current epoch-ms integer. Coercion to epoch-ms applies at the
+write/compare boundary on both the insert and update paths, so
+comparisons against date strings work in WHERE clauses.
 
 ---
 
@@ -1256,6 +1444,9 @@ along an imagined geodesic. Marcella's predictive-gain gate.
 
 Phase 1 ships the parser-only surface; the in-memory registry executes
 DEFINE / DROP / SHOW. Executor phases (HUNT, EXCLUDING IN) follow.
+
+Known limitation: the `OR` combinator in `DEFINE PATTERN … OR …` does
+not parse (pre-existing; fix queued). `AND` combinators work.
 
 ## `GET /v1/patterns` `[read]`
 
@@ -1627,3 +1818,11 @@ curl https://gigi-stream.fly.dev/v1/metrics | head
   bypass `GIGI_QUERY_MAX_ROWS`.
 - Set `GIGI_CORS_ORIGIN=*` for local development; pin to your
   application origin in production.
+- Engine locks are poison-proof: a request handler that panics fails
+  that one request; it no longer poisons the shared lock and takes the
+  rest of the server down with it.
+- Server-side file I/O over GQL is fail-closed: `INGEST FROM '<file>'`
+  requires `GIGI_INGEST_DIR` and `EMIT CSV TO` requires
+  `GIGI_EMIT_DIR`; both refuse with an explicit error when unset and
+  contain all paths inside the configured directory when set. The
+  production deployment uses `/data/ingest`.

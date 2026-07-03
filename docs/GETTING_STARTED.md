@@ -359,7 +359,13 @@ is unset, all endpoints are open.
 Other env vars: `GIGI_JWT_SECRET` (JWT verification for multi-tenant),
 `GIGI_APP_BUNDLES` (JSON manifest of bundles to create on startup),
 `GIGI_QUERY_MAX_ROWS` (per-query row cap), `GIGI_CORS_ORIGIN` (set to
-`*` for dev or a domain for production). The S3 sync block
+`*` for dev or a domain for production). Two are fail-closed gates for
+GQL file I/O: `GIGI_INGEST_DIR` (server-side
+`INGEST <bundle> FROM '<file>' ...` refuses unless this is set; source
+files must live under this directory) and `GIGI_EMIT_DIR`
+(`... EMIT CSV TO '<file>'` refuses unless this is set; exports land
+inside this directory). Leave both unset if you don't need server-side
+file I/O — that is the safe default. The S3 sync block
 (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`,
 `AWS_REGION`, `BUCKET_NAME`) is only needed for Fly.io-style Tigris
 snapshot sync at startup. Skip it for local runs.
@@ -461,7 +467,24 @@ Stop the server (`Ctrl+C`), restart with the same command, and rerun
 step 7. The data should still be there. Snapshots in `$GIGI_DATA_DIR`
 are mmap-loaded in seconds on restart.
 
-### 9. Find the API reference for everything else
+### 9. Try the local CLI
+
+The same build produces `gigi` (the default binary), a local shell
+that opens the data directory directly — no server required:
+
+```bash
+./target/release/gigi --dir $HOME/gigi_data          # interactive REPL (line editing + history)
+./target/release/gigi -e "SHOW BUNDLES;"             # run one statement and exit
+./target/release/gigi -f script.gql                  # run a file of ;-separated statements
+./target/release/gigi doctor --dir $HOME/gigi_data   # health report: WAL, replay, bundles, geometry
+```
+
+`gigi doctor` is the offline checkup — it opens the engine (a full WAL
+replay), probes the data directory, and reports ok/warn/FAIL per check
+(exit 0 healthy, 1 warnings, 2 failures). `gigi -f` stops at the first
+error unless you add `--keep-going`.
+
+### 10. Find the API reference for everything else
 
 ```bash
 curl http://localhost:3142/v1/openapi.json

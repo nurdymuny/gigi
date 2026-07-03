@@ -8,6 +8,72 @@ For a compact summary of the most recent ships, see
 
 ---
 
+## 2026-07-03 (later) — hardening trio: pathguard containment, fail-closed GIGI_INGEST_DIR, EXPLAIN record_kappa invariant
+
+**One containment guard for every file-touching knob.** New module [`src/pathguard.rs`](src/pathguard.rs): `contain(root_env, user_path, must_exist)` with two layers in order. First a component-level lexical screen **before** joining — any drive/UNC prefix, rooted path, or `..` component rejects outright (this kills `C:file` and `\rooted`, the two Windows shapes `Path::is_absolute()` misses and `Path::join` silently promotes). Then canonical-to-canonical verification — both sides run through `fs::canonicalize` and the candidate must `starts_with` the root, so symlinks and junctions cannot tunnel out. Lexical rejections render as `path '<path>' escapes containment root '<root>': <reason>`; a symlink/junction that resolves outside renders as `resolved path '<path>' is not under containment root '<root>'`. Attack matrix: [`tests/pathguard_escapes.rs`](tests/pathguard_escapes.rs) (16 test fns: unset/empty root, `..`, rooted, drive-prefix, UNC, backslash-rooted, symlink/junction tunnel, error-names-path-and-root).
+
+**`GIGI_INGEST_DIR` — fail-closed gate on ALL file-reading INGEST formats (NPZ, CSV, JSONL).** Same posture as Postgres `pg_read_server_files` / MySQL `secure_file_priv`: unset ⇒ INGEST from server-side files is disabled engine-wide (the error reads `INGEST from a server-side file requires GIGI_INGEST_DIR to be set; set it to the directory that ingest sources live under`); set ⇒ source paths are relative to the root and resolve through the shared pathguard. Single chokepoint before any source-path open — both entry points (generic ingest and `AS GAUGE_FIELD`) resolve through it, and the gauge path resolves before any lattice/bundle work. Prod `fly.toml` sets `GIGI_INGEST_DIR = "/data/ingest"`, so the December harvest pipeline keeps its capability bounded to the volume directory it already writes into. Intentional error-shape change: an absolute source path now returns the containment error **before** any filesystem access; `file not found` is reserved for paths legal under the root but absent. `GIGI_EMIT_DIR` (EMIT CSV) now routes through the same guard with its error contract unchanged.
+
+**`EXPLAIN SECTION AT` rows now carry `record_kappa`.** `explain_record_k` rebuilds the record's fiber values in `fiber_fields` order and calls `compute_record_k` — the same total-path pricing that runs at insert — stamping the result as a constant `record_kappa` on every decomposition row. The response certifies its own invariant: mean of the per-field `kappa` column == `record_kappa`, cross-checking the decomposition loop against the total loop on every EXPLAIN ([`tests/explain_kappa.rs`](tests/explain_kappa.rs) asserts it unconditionally at 1e-9).
+
+Gates: 911/0 no-feature lib; `pathguard_escapes` 14/0 (Windows, junction case live); `ingest_dir_gate` 1/0 (6 phases); halcyon group 123/0. Production deploy: v244, containment errors witnessed live (absolute path and `../` traversal both refused naming `/data/ingest`). Full receipts: [`theory/halcyon/DEPLOY_2026-07-03_SIXTEEN_FEATS.md`](theory/halcyon/DEPLOY_2026-07-03_SIXTEEN_FEATS.md) (hardening-trio section).
+
+---
+
+## 2026-07-03 — sixteen-feature batch merged + five review fixes: parser UX, JACKKNIFE, CSV/JSONL round trip, TIMESTAMP, CLI
+
+**A 34-commit feature batch authored by a parallel session, merged and then adversarially reviewed the same day.** The batch widens the everyday surface of the engine:
+
+| Feature | Surface |
+|---|---|
+| Human parse errors | Errors name the offending token, show near-context, and suggest did-you-mean corrections. Trailing-token rejection: a statement that parses but has leftover input is refused with an explicit error naming the trailing token — no more silent acceptance. |
+| `WITH JACKKNIFE ALONG <field> [SKIP FIRST n]` | Evidence-grade error bars on INTEGRATE. `ALONG` is mandatory (autocorrelation needs an ordering field); `SKIP FIRST n` is the thermalization cut (default 0). |
+| `ExecResult::Notice` | No-op statements announce themselves in the response instead of returning a bare ok. |
+| `SHOW FIELDS ON b` | Returns one real row per field (`field`, `kind`, `type`, `indexed`; `range` when set) instead of a stub. |
+| Poison-proof locks | A panicked handler no longer poisons the server's locks — one bad request cannot kill the server. |
+| `INGEST … FORMAT CSV` / `FORMAT JSONL` | CSV: header row, inferred types; optional `KEY <col>` picks the base-key column (default: first column). JSONL: one object per line, `KEY <col>` required (JSON objects carry no column order), arrays land as first-class vector fibers. |
+| `EMIT CSV TO 'file.csv'` | The export half of the round trip — a suffix on any rows-producing statement. Fail-closed on `GIGI_EMIT_DIR` (unset ⇒ `EMIT is disabled on this engine: set GIGI_EMIT_DIR=<directory> to enable it — …`). |
+| `EXPLAIN SECTION <b> AT <k>=<v>` | Per-field kappa decomposition, loudest-first. |
+| `TIMESTAMP` field type | ISO-8601 literals (`'2026-07-02'`, `'2026-07-02T14:30:05Z'`), `NOW` (lands as epoch-ms), time-ordered WHERE comparisons. |
+| CLI | `gigi doctor` (health report), rustyline REPL (history, editing, sane interrupts), `gigi -f script.gql` (runnable statement files), first-contact boot banner. |
+| Tooling | `examples/seed_demo_bundles.py` (bit-exact loader for the site's public bundles); CI running engine tests + SDK smoke against a real booted server. |
+
+**Five confirmed review findings, fixed in locked order (TDD where behavioral):** (1) BLOCKER — `patterns` feature did not compile (`parse_weight_expr` mapped `Token::human` over a `&[String]` slice); (2) `Token::human` truncated string tokens at a raw byte offset — multibyte UTF-8 straddling byte 24 panicked the error path, now char-boundary safe; (3) `timefmt::parse_iso_ms` byte-sliced its input — multibyte input to a TIMESTAMP field panicked the write handler, now rejected cleanly; (4) `Statement::Emit` had no server dispatch arm, so `/v1/gql` answered `{"status":"ok"}` without executing — now dispatched through the parser executor; (5) TIMESTAMP coercion covered insert paths but not `Engine::update` — a REDEFINE could store raw text in a TIMESTAMP field, now coerced on the update path too.
+
+**Known issues (pre-existing, queued):** the `DEFINE PATTERN … OR` combinator does not parse (unmasked when finding 1 made the `patterns` feature compile again); EMIT wrapping a bundle-less inner statement (e.g. `SHOW BUNDLES … EMIT CSV`) still returns ok without emitting — all single-bundle inners (COVER, INTEGRATE, SHOW FIELDS, …) dispatch correctly.
+
+Gates: 911/0 no-feature lib; the full Dockerfile feature-combo `cargo check` is now a permanent gate; ten live probes green on the deployed image. Production deploy: v243. Full receipts: [`theory/halcyon/DEPLOY_2026-07-03_SIXTEEN_FEATS.md`](theory/halcyon/DEPLOY_2026-07-03_SIXTEEN_FEATS.md).
+
+---
+
+## 2026-07-01 — Halcyon L=24 OBC substrate: open-boundary lattices + NPZ gauge-field INGEST + topology verb upgrades
+
+**Four grammar extensions that unblock the SU(2) 4D L=24 β=2.3 open-boundary sectoral SPECTRAL_GAUGE workflow** — the December harvest pipeline's Q-sector-by-Q-sector sweep now runs as a single verb chain on the engine.
+
+**`LATTICE l24 FROM CUBIC L=24 DIM=4 OBC AXIS 0;`** — open boundary conditions on cubic lattices. With `OBC AXIS <k>`, edges wrapping the boundary in axis `k` are omitted from `edges` and plaquettes crossing it are omitted from `faces`; vertex count stays L^D. For L=24 D=4 OBC AXIS 0:
+
+| quantity | count | vs periodic |
+|---|---|---|
+| V | 331,776 | unchanged |
+| E | 1,313,280 | 1,327,104 − 13,824 |
+| F | 1,949,184 | 1,990,656 − 41,472 |
+
+`PERIODIC` stays the default (backwards compatible). The explicit multi-axis form (`PERIODIC AXES (1,2,3) OBC AXIS 0`) is deferred to Phase 2 — only the single-OBC-axis case ships here, and `OPEN` (fully-open) cannot combine with `OBC AXIS`.
+
+**`INGEST b FROM 'f.npz' FORMAT NPZ [KEY <name>] AS GAUGE_FIELD GROUP <g> ON LATTICE <l>;`** — NPZ → gauge-field bundle in one step. The interpretation clause materializes canonical fiber names per group (SU(2) → `q0..q3`, SU(3) → `re_00, im_00, …, re_22, im_22`, U(1) → `theta`) and emits `vertex_a`/`vertex_b` INT base fields via the lattice's column-major `site_of` numbering — the record set equals the lattice edge set, so OBC wrap-edge records are omitted to match. `KEY <name>` selects a member array from a multi-array NPZ. Dtype auto-detect: f32 upconverts to f64; unsupported dtypes error by name. Without the clause, INGEST stays generic-array (backwards compatible).
+
+**`CHERN_CLASS <name> ORDER <k> [ON LATTICE <l>] [ON FIBER (…)] [GROUP <g>] [PER <field>] [INTO_COLUMN <col>];`** — bundle target (ingested bundles, not just GAUGE_FIELD-created ones), per-configuration stratification via `PER <field>`, and integer projections written back as a column via `INTO_COLUMN`.
+
+**`SPECTRAL_GAUGE b WHERE <predicate> ON FIBER (…) GROUP <g>;`** — sector stratification: the WHERE clause filters records before the fiber-weighted Laplacian is built, so λ₁ runs sector by sector over the CHERN_CLASS projections.
+
+**`ALTER BUNDLE b ADD BASE <field> <type>;`** — append-only schema evolution; existing records remain valid sections under the widened base.
+
+Route-handler fix in the same wave: INGEST, ALTER BUNDLE, and the topology verbs now dispatch **before** the bundle pre-resolve, so a fresh bundle name over `/v1/gql` no longer 404s at the pre-resolve wall.
+
+Gates: INGEST family 39/0 (`as_gauge_field` 18, `gauge_vertex` 8, `npz_key` 4, `npz_dtype` 4, `gql_bypass` 5); spectral + topology 67/0; `halcyon_l24_workflow_e2e` 1/0. Spec + receipts: [`theory/halcyon/HALCYON_L24_OBC_WORKFLOW_UNBLOCKED_2026-06-29.md`](theory/halcyon/HALCYON_L24_OBC_WORKFLOW_UNBLOCKED_2026-06-29.md).
+
+---
+
 ## 2026-06-04 — sharding complete + atomic sheaf commits Phase 1 + Marcella SwDA WIN
 
 **Sharding initiative end-to-end.** All 14 math gates green (T1–T10 + TFP1 + TFP2 + TFH1 + TFH2), Rust scaffold and HTTP routes shipped, deployed to production at v199 with `kahler imagine sharded` features ON. The cross-atlas BETTI (T9) Rust port closes the last queued item — fiber-product Mayer-Vietoris via vertex-identification + union-find + the existing F₂ rank pipeline.

@@ -24,6 +24,15 @@ computes — in one markdown document. Read that first.
 - [GIGI engine repository](https://github.com/nurdymuny/gigi): Rust source, GQL reference (GQL_REFERENCE.md), tetmesh spec (GIGI_TETMESH_SPEC_v0.6.md), example harnesses
 - [Site front page](https://www.davisgeometric.com/gigi/gigi-builds/): the full chapter catalog and all web extras
 
+## Engine surface shipped 2026-07-01 → 2026-07-03
+
+Full grammar and exact error strings are in llms-full.txt §2–3.
+
+- Lattice-gauge topology verbs: `LATTICE ... FROM CUBIC L=24 DIM=4 OBC AXIS 3` (single-axis open boundary — wrap edges omitted), `INGEST ... FORMAT NPZ KEY <name> AS GAUGE_FIELD GROUP SU2|SU3|U1 ON LATTICE l`, `CHERN_CLASS ... ORDER 2`, `SPECTRAL_GAUGE` with WHERE sector stratification, `ALTER BUNDLE ... ADD BASE` (append-only schema evolution)
+- Data round trip: `INGEST FORMAT CSV|JSONL|NPZ` in, `EMIT CSV TO 'file.csv'` out — both fail-closed behind containment gates (`GIGI_INGEST_DIR` / `GIGI_EMIT_DIR`; unset means disabled, and paths cannot escape the configured root)
+- Query surface: `WITH JACKKNIFE ALONG <field> [SKIP FIRST n]` autocorrelation-honest error bars, `EXPLAIN SECTION` per-field κ rows carrying `record_kappa`, `SHOW FIELDS ON b`, TIMESTAMP fields with ISO-8601 literals and `NOW`
+- Ergonomics: human parse errors (token names, near-context, did-you-mean), trailing-token rejection, notice responses for no-op statements, poison-proof locks, and a `gigi` CLI (rustyline REPL, `doctor` health report, `-f script.gql`)
+
 ## Interactive demos (web extras, not in the printed book)
 
 - [The Mesh That Audits Itself](https://www.davisgeometric.com/gigi/gigi-builds/the-mesh-that-audits-itself): a tetrahedral mesh stored as GIGI fibers — certified dihedral-angle data per tet, adaptive refinement with a queryable audit trail, obtuse-class coloring (Castillo classification), live queries against the public instance

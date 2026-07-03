@@ -99,15 +99,20 @@ pub fn parse_iso_ms(s: &str) -> Option<i64> {
             }
             seg.parse().ok()
         };
-        hh = tnum(&rest[0..2])?;
-        mi = tnum(&rest[3..5])?;
-        let mut tail = &rest[5..];
+        // Boundary-safe slicing: `.get(..)` returns None when the range
+        // lands inside a multibyte char, where a raw `&rest[a..b]`
+        // panics. The segments are supposed to be ASCII digits — tnum
+        // rejects anything else — but the SLICE itself must not crash
+        // on multibyte input first.
+        hh = tnum(rest.get(0..2)?)?;
+        mi = tnum(rest.get(3..5)?)?;
+        let mut tail = rest.get(5..)?;
         if let Some(t) = tail.strip_prefix(':') {
             if t.len() < 2 {
                 return None;
             }
-            ss = tnum(&t[0..2])?;
-            tail = &t[2..];
+            ss = tnum(t.get(0..2)?)?;
+            tail = t.get(2..)?;
             if let Some(frac) = tail.strip_prefix('.') {
                 if frac.is_empty() || frac.len() > 3 || !frac.bytes().all(|c| c.is_ascii_digit())
                 {
@@ -195,6 +200,26 @@ mod tests {
             "2026-07-02TT12:00", // typo
             "",
             "now",
+        ] {
+            assert!(parse_iso_ms(bad).is_none(), "{bad:?} should be refused");
+        }
+    }
+
+    /// Multibyte bytes where ASCII digits are expected must be refused
+    /// (`None`), not panic. The old code byte-sliced the time part
+    /// (`&rest[3..5]`, `&t[0..2]`), so a multibyte char straddling a
+    /// slice boundary panicked the write handler — e.g. '€' (3 bytes)
+    /// in the minutes or seconds position.
+    #[test]
+    fn multibyte_time_parts_are_refused_not_panics() {
+        for bad in [
+            "2026-07-02T12:€",    // '€' spans the minutes slice → old panic
+            "2026-07-02T12:€0",   // same, with a trailing digit
+            "2026-07-02T12:34:€", // '€' spans the seconds slice → old panic
+            "2026-07-02T12:34:€5",
+            "2026-07-02 12:я5", // 2-byte char inside the minute pair
+            "2026-07-02T🦀0:00", // emoji in the hour pair
+            "2026-07-02Tяя:00",
         ] {
             assert!(parse_iso_ms(bad).is_none(), "{bad:?} should be refused");
         }

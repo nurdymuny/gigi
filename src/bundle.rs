@@ -41,6 +41,122 @@ pub enum QueryCondition {
     Between(String, Value, Value),
 }
 
+/// Coerce a comparison literal aimed at a TIMESTAMP field into
+/// `Value::Timestamp`. Integers/floats are taken as epoch-ms; text is
+/// parsed as ISO 8601. `None` = no rewrite needed (already a timestamp,
+/// or unparseable — the executor validates loudly before we get here).
+fn ts_literal(v: &Value) -> Option<Value> {
+    match v {
+        Value::Integer(n) => Some(Value::Timestamp(*n)),
+        Value::Float(f) => Some(Value::Timestamp(*f as i64)),
+        Value::Text(s) => crate::timefmt::parse_iso_ms(s).map(Value::Timestamp),
+        _ => None,
+    }
+}
+
+/// Rewrite condition literals for TIMESTAMP-typed fields so that
+/// `WHERE ts > '2026-07-01'` and `WHERE ts > 1782950400000` both mean
+/// what they say. Without this, `Value::Timestamp` vs `Integer`/`Text`
+/// falls through to type-tag ordering and the comparison is silently
+/// constant — the silent-wrong-answer class (audit 2026-07-02).
+/// Returns `None` when the schema has no timestamp fields or nothing
+/// needed rewriting, so the hot path stays allocation-free.
+pub fn coerce_conditions_to_schema(
+    schema: &crate::types::BundleSchema,
+    conds: &[QueryCondition],
+) -> Option<Vec<QueryCondition>> {
+    let is_ts = |f: &str| {
+        schema
+            .base_fields
+            .iter()
+            .chain(schema.fiber_fields.iter())
+            .any(|fd| fd.name == f && fd.field_type == crate::types::FieldType::Timestamp)
+    };
+    if !schema
+        .base_fields
+        .iter()
+        .chain(schema.fiber_fields.iter())
+        .any(|fd| fd.field_type == crate::types::FieldType::Timestamp)
+    {
+        return None;
+    }
+    let mut changed = false;
+    let out: Vec<QueryCondition> = conds
+        .iter()
+        .map(|c| {
+            let rewrite_one = |f: &str, v: &Value| -> Option<Value> {
+                if is_ts(f) { ts_literal(v) } else { None }
+            };
+            match c {
+                QueryCondition::Eq(f, v) => rewrite_one(f, v)
+                    .map(|nv| QueryCondition::Eq(f.clone(), nv)),
+                QueryCondition::Neq(f, v) => rewrite_one(f, v)
+                    .map(|nv| QueryCondition::Neq(f.clone(), nv)),
+                QueryCondition::Gt(f, v) => rewrite_one(f, v)
+                    .map(|nv| QueryCondition::Gt(f.clone(), nv)),
+                QueryCondition::Gte(f, v) => rewrite_one(f, v)
+                    .map(|nv| QueryCondition::Gte(f.clone(), nv)),
+                QueryCondition::Lt(f, v) => rewrite_one(f, v)
+                    .map(|nv| QueryCondition::Lt(f.clone(), nv)),
+                QueryCondition::Lte(f, v) => rewrite_one(f, v)
+                    .map(|nv| QueryCondition::Lte(f.clone(), nv)),
+                QueryCondition::Between(f, lo, hi) => {
+                    if is_ts(f) {
+                        let nlo = ts_literal(lo);
+                        let nhi = ts_literal(hi);
+                        if nlo.is_some() || nhi.is_some() {
+                            Some(QueryCondition::Between(
+                                f.clone(),
+                                nlo.unwrap_or_else(|| lo.clone()),
+                                nhi.unwrap_or_else(|| hi.clone()),
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                QueryCondition::In(f, vs) => {
+                    if is_ts(f) && vs.iter().any(|v| ts_literal(v).is_some()) {
+                        Some(QueryCondition::In(
+                            f.clone(),
+                            vs.iter()
+                                .map(|v| ts_literal(v).unwrap_or_else(|| v.clone()))
+                                .collect(),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                QueryCondition::NotIn(f, vs) => {
+                    if is_ts(f) && vs.iter().any(|v| ts_literal(v).is_some()) {
+                        Some(QueryCondition::NotIn(
+                            f.clone(),
+                            vs.iter()
+                                .map(|v| ts_literal(v).unwrap_or_else(|| v.clone()))
+                                .collect(),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+            .map(|nc| {
+                changed = true;
+                nc
+            })
+            .unwrap_or_else(|| c.clone())
+        })
+        .collect();
+    if changed {
+        Some(out)
+    } else {
+        None
+    }
+}
+
 impl QueryCondition {
     /// Check whether a record matches this condition.
     pub fn matches(&self, record: &Record) -> bool {
@@ -2162,6 +2278,24 @@ impl BundleStore {
         limit: Option<usize>,
         offset: Option<usize>,
     ) -> Vec<Record> {
+        // TIMESTAMP ergonomics: rewrite literals aimed at timestamp
+        // fields so '2026-07-01' and epoch-ms integers compare as time,
+        // not as type tags. No-op (no allocation) without ts fields.
+        let coerced = coerce_conditions_to_schema(&self.schema, conditions);
+        let conditions: &[QueryCondition] = coerced.as_deref().unwrap_or(conditions);
+        let coerced_or: Option<Vec<Vec<QueryCondition>>> = or_conditions.map(|groups| {
+            groups
+                .iter()
+                .map(|g| {
+                    coerce_conditions_to_schema(&self.schema, g).unwrap_or_else(|| g.to_vec())
+                })
+                .collect()
+        });
+        let or_conditions: Option<&[Vec<QueryCondition>]> = match &coerced_or {
+            Some(g) => Some(g.as_slice()),
+            None => None,
+        };
+
         // Phase 1: Partition into indexed (Eq/In/IsNull) and residual predicates
         let (indexed, residual) = self.partition_conditions(conditions);
 

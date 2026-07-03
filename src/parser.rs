@@ -2082,6 +2082,12 @@ impl Parser {
             Some(Token::Word(w)) if w.eq_ignore_ascii_case("true") => Ok(Literal::Bool(true)),
             Some(Token::Word(w)) if w.eq_ignore_ascii_case("false") => Ok(Literal::Bool(false)),
             Some(Token::Word(w)) if w.eq_ignore_ascii_case("null") => Ok(Literal::Null),
+            // NOW — current time as epoch ms. Lands as an Integer
+            // literal; timestamp-field coercion turns it into a
+            // Value::Timestamp at the write/compare boundary.
+            Some(Token::Word(w)) if w.eq_ignore_ascii_case("now") => {
+                Ok(Literal::Integer(crate::timefmt::now_ms()))
+            }
             other => Err(format!(
                 "Expected a value here (number, 'text', TRUE/FALSE, or NULL), \
                  found {}",
@@ -7730,7 +7736,12 @@ pub fn spec_to_field_def(spec: &FieldSpec) -> crate::types::FieldDef {
             crate::types::FieldDef::categorical(&spec.name)
         }
         "BOOL" | "BOOLEAN" => crate::types::FieldDef::categorical(&spec.name),
-        "TIMESTAMP" => crate::types::FieldDef::numeric(&spec.name),
+        // Real timestamps: epoch-ms storage, ISO 8601 in and out. The
+        // range default (one day) prices kappa in days-off-pattern; an
+        // explicit RANGE(ms) overrides it below.
+        "TIMESTAMP" | "DATETIME" | "DATE" => {
+            crate::types::FieldDef::timestamp(&spec.name, 86_400_000.0)
+        }
         _ => crate::types::FieldDef::categorical(&spec.name),
     };
     if let Some(r) = spec.range {

@@ -473,7 +473,15 @@ fn execute_line(engine: &mut Engine, line: &str) -> Result<bool, String> {
                 for row in &rows {
                     let vals: Vec<String> = cols
                         .iter()
-                        .map(|c| row.get(c).map_or("NULL".into(), |v| format!("{v}")))
+                        .map(|c| {
+                            row.get(c).map_or("NULL".into(), |v| match v {
+                                // epoch millis are for machines
+                                gigi::types::Value::Timestamp(ms) => {
+                                    gigi::timefmt::format_iso_ms(*ms)
+                                }
+                                other => format!("{other}"),
+                            })
+                        })
                         .collect();
                     println!("{}", vals.join(" | "));
                 }

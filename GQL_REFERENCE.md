@@ -771,6 +771,34 @@ end-to-end in `tests/gql_reference_truth.rs`.
 
 ---
 
+### Time you can type — TIMESTAMP fields ✅
+
+```gql
+BUNDLE events BASE (id TEXT) FIBER (kind TEXT INDEX, at TIMESTAMP);
+
+SECTION events (id='e1', kind='deploy', at='2026-06-30');          -- date
+SECTION events (id='e2', kind='alert',  at='2026-07-01T14:30:05Z');-- datetime
+SECTION events (id='e3', kind='deploy', at=1782950400000);         -- epoch ms
+SECTION events (id='e4', kind='ping',   at=NOW);                   -- the clock
+
+COVER events WHERE at > '2026-07-01';
+COVER events WHERE at <= NOW;
+```
+
+`TIMESTAMP` (aliases `DATETIME`, `DATE`) stores epoch milliseconds and
+accepts what a person types: `YYYY-MM-DD`, optional `[ T]HH:MM[:SS[.mmm]]`,
+optional `Z` — UTC only. Writes normalize before the WAL (replay sees the
+same record), comparisons against date strings and epoch integers both
+mean what they say, and a string that is not a date is a loud error that
+teaches the accepted forms — never stored as text that would compare as
+a type tag forever after. `NOW` is the current time as epoch ms and works
+anywhere a value does. The CLI renders timestamps as ISO 8601; the wire
+keeps raw epoch ms. κ range default: one day (`RANGE(ms)` overrides), so
+curvature on a timestamp field prices days-off-pattern.
+Enforced end-to-end by `tests/timestamp_ergonomics.rs`.
+
+---
+
 ## VI. Window Functions — FIBER Operations ❌ (not implemented)
 
 SQL window functions = GQL fiber operations. Named for what they geometrically ARE.

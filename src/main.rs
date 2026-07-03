@@ -17,9 +17,11 @@ fn main() {
     let mut script_file: Option<PathBuf> = None;
     let mut keep_going = false;
 
+    let mut doctor = false;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
+            "doctor" => doctor = true,
             "--dir" | "-d" => {
                 i += 1;
                 if i < args.len() {
@@ -57,6 +59,7 @@ fn main() {
                 println!("  gigi -e \"QUERY\"         Execute a single query and exit");
                 println!("  gigi -f script.gql      Run a file of ;-separated statements");
                 println!("  gigi -f s.gql -k        …continuing past errors (--keep-going)");
+                println!("  gigi doctor [--dir p]   Health report: WAL, replay, bundles, geometry");
                 println!();
                 println!("GQL Statements:");
                 println!("  CREATE BUNDLE name (field TYPE [BASE|FIBER] [INDEX], ...)");
@@ -78,6 +81,10 @@ fn main() {
             }
         }
         i += 1;
+    }
+
+    if doctor {
+        std::process::exit(run_doctor(&data_dir));
     }
 
     let mut engine = match Engine::open(&data_dir) {
@@ -145,6 +152,134 @@ fn main() {
     }
     if let Err(e) = rl.save_history(&history_path) {
         eprintln!("(could not save history: {e})");
+    }
+}
+
+/// `gigi doctor` — the keeper's checkup. Opens the engine (a full WAL
+/// replay is the deepest health check there is), inventories the disk,
+/// and prices every bundle's geometry. Exit codes: 0 healthy, 1 has
+/// warnings, 2 something failed.
+fn run_doctor(data_dir: &std::path::Path) -> i32 {
+    let mut warns = 0usize;
+    let mut fails = 0usize;
+    let ok = |msg: &str| println!("  ok    {msg}");
+    println!("gigi doctor — {}", data_dir.display());
+    println!("  ver   gigi {}", env!("CARGO_PKG_VERSION"));
+
+    // 1. data dir exists / is writable
+    if !data_dir.exists() {
+        println!("  FAIL  data dir does not exist (a fresh `gigi --dir` here would create it)");
+        return 2;
+    }
+    let probe = data_dir.join(".doctor_probe");
+    match std::fs::write(&probe, b"rx") {
+        Ok(()) => {
+            let _ = std::fs::remove_file(&probe);
+            ok("data dir is writable");
+        }
+        Err(e) => {
+            println!("  FAIL  data dir not writable: {e}");
+            fails += 1;
+        }
+    }
+
+    // 2. disk inventory: WAL, leftover temp files, everything else
+    let wal = data_dir.join("gigi.wal");
+    match std::fs::metadata(&wal) {
+        Ok(m) => ok(&format!("gigi.wal present ({} bytes)", m.len())),
+        Err(_) => {
+            println!("  warn  no gigi.wal — empty database, or the data dir is wrong");
+            warns += 1;
+        }
+    }
+    if data_dir.join("gigi.wal.tmp").exists() {
+        println!(
+            "  warn  gigi.wal.tmp exists — an interrupted snapshot/compaction \
+             left it behind; the engine ignores it, safe to delete"
+        );
+        warns += 1;
+    }
+    let mut other_files = 0usize;
+    let mut other_bytes = 0u64;
+    if let Ok(rd) = std::fs::read_dir(data_dir) {
+        for entry in rd.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name == "gigi.wal" || name == ".gigi_history" {
+                continue;
+            }
+            if let Ok(m) = entry.metadata() {
+                if m.is_file() {
+                    other_files += 1;
+                    other_bytes += m.len();
+                }
+            }
+        }
+    }
+    if other_files > 0 {
+        ok(&format!(
+            "{other_files} snapshot/aux file(s), {other_bytes} bytes total"
+        ));
+    }
+
+    // 3. the deep check: open the engine (replays the WAL)
+    let t0 = std::time::Instant::now();
+    let engine = match Engine::open(data_dir) {
+        Ok(e) => e,
+        Err(e) => {
+            println!("  FAIL  engine open / WAL replay failed: {e}");
+            println!("doctor: 1 failure — the database does not open");
+            return 2;
+        }
+    };
+    ok(&format!(
+        "engine opens clean — WAL replay in {:.1?}",
+        t0.elapsed()
+    ));
+
+    // 4. per-bundle geometry: counts, curvature, confidence sanity
+    let names: Vec<String> = engine.bundle_names().iter().map(|s| s.to_string()).collect();
+    if names.is_empty() {
+        println!("  warn  no bundles yet (fine for a fresh database)");
+        warns += 1;
+    }
+    for name in &names {
+        let Some(store) = engine.bundle(name) else { continue };
+        let k = store
+            .as_heap()
+            .map(gigi::curvature::scalar_curvature)
+            .unwrap_or_else(|| store.curvature_stats().mean());
+        let conf = gigi::curvature::confidence(k);
+        let mut line = format!(
+            "bundle '{name}': {} records, K={k:.4}, confidence={conf:.3}",
+            store.len()
+        );
+        if !k.is_finite() || !conf.is_finite() {
+            line.push_str("  <- non-finite geometry");
+            println!("  FAIL  {line}");
+            fails += 1;
+        } else if store.len() == 0 {
+            line.push_str("  (empty)");
+            println!("  warn  {line}");
+            warns += 1;
+        } else {
+            ok(&line);
+        }
+    }
+
+    match (fails, warns) {
+        (0, 0) => {
+            println!("doctor: healthy");
+            0
+        }
+        (0, w) => {
+            println!("doctor: {w} warning(s), nothing broken");
+            1
+        }
+        (f, w) => {
+            println!("doctor: {f} failure(s), {w} warning(s)");
+            2
+        }
     }
 }
 

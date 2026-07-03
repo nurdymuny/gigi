@@ -1087,8 +1087,15 @@ pub fn compute_record_k(
 /// WHY a record is priced the way it is instead of just quoting the
 /// price. One row per participating numeric fiber field:
 /// value, mean, sigma, range, kappa (=|v−μ|/R, this field's
-/// contribution), and z (=|v−μ|/σ, the classical score) — sorted
-/// loudest first. The record's κ is the mean of the kappa column.
+/// contribution), z (=|v−μ|/σ, the classical score), and record_kappa
+/// (the record's κ from [`compute_record_k`], constant across rows) —
+/// sorted loudest first.
+///
+/// The response certifies its own invariant: mean(kappa column) ==
+/// record_kappa. `record_kappa` is NOT derived from these rows — it is
+/// recomputed through [`compute_record_k`], the total path insert-time
+/// pricing runs, so the two loops cross-check each other on every
+/// EXPLAIN (tests/explain_kappa.rs asserts it unconditionally).
 pub fn explain_record_k(
     field_stats: &HashMap<String, FieldStats>,
     record: &Record,
@@ -1126,6 +1133,19 @@ pub fn explain_record_k(
         let kb = b.get("kappa").and_then(|v| v.as_f64()).unwrap_or(0.0);
         kb.total_cmp(&ka)
     });
+    // Stamp the record's κ from the independent total path. Fiber
+    // values are rebuilt in fiber_fields order — exactly how insert-
+    // time pricing sees them; Null stands in for absent fields and is
+    // skipped by compute_record_k the same way the row loop above
+    // skipped them.
+    let fiber_vals: Vec<Value> = fiber_fields
+        .iter()
+        .map(|fd| record.get(&fd.name).cloned().unwrap_or(Value::Null))
+        .collect();
+    let record_kappa = compute_record_k(field_stats, &fiber_vals, fiber_fields);
+    for row in rows.iter_mut() {
+        row.insert("record_kappa".into(), Value::Float(record_kappa));
+    }
     rows
 }
 

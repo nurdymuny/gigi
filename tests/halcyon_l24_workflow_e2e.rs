@@ -34,6 +34,9 @@ use gigi::types::Value;
 use npyz::npz::NpzWriter;
 use npyz::WriterBuilder;
 
+// GIGI_INGEST_DIR gate: sources are root-relative now.
+mod common;
+
 /// Write a single-array NPZ with the given shape and row-major data.
 /// Same shape as the harvest emitter: (n_configs, D, L, L, ..., L, repr_dim).
 fn write_test_npz_single(path: &Path, array_name: &str, shape: &[u64], data: &[f64]) {
@@ -149,7 +152,7 @@ fn test_halcyon_l24_workflow_e2e_all_four_concepts() {
         let stats = execute_ingest_as_gauge_field(
             &mut eng,
             "test_su2_l4",
-            &npz_path,
+            &common::ingest_rel(&npz_path),
             IngestFormat::Npz,
             Group::SU2,
             "l4_obc",

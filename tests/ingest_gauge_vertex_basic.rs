@@ -38,6 +38,9 @@ use gigi::types::Value;
 use npyz::npz::NpzWriter;
 use npyz::WriterBuilder;
 
+// GIGI_INGEST_DIR gate: sources are root-relative now.
+mod common;
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /// Write a single-array NPZ file at `path`. Same writer path as the
@@ -176,7 +179,7 @@ fn test_ingest_periodic_l4_d2_su2_emits_vertex_ab() {
     let stats = execute_ingest_as_gauge_field(
         &mut engine,
         "su2_periodic_ab",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_periodic_ab",
@@ -245,7 +248,7 @@ fn test_ingest_obc_l4_d2_su2_axis0_omits_boundary_records() {
     let stats = execute_ingest_as_gauge_field(
         &mut engine,
         "su2_obc_ax0",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_obc_ax0",
@@ -303,7 +306,7 @@ fn test_ingest_obc_l4_d4_su2_axis0_absolute_record_count() {
     let stats = execute_ingest_as_gauge_field(
         &mut engine,
         "su2_l4_d4_obc",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_d4_obc_ax0",
@@ -340,7 +343,7 @@ fn test_vertex_a_matches_site_of_coords() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "su2_va",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_periodic_va",
@@ -397,7 +400,7 @@ fn test_vertex_b_matches_shift_plus() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "su2_vb",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_periodic_vb",
@@ -462,7 +465,7 @@ fn test_ingest_periodic_wraps_via_vertex_b() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "su2_wrap",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_periodic_wrap",
@@ -529,7 +532,7 @@ fn test_ingest_su3_also_emits_vertex_ab() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "su3_ab_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU3,
         "l4_su3_ab",
@@ -578,7 +581,7 @@ fn test_spectral_gauge_reads_vertex_ab_directly() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "su2_e2e",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_e2e",

@@ -79,6 +79,9 @@ use gigi::types::{FieldType, Value};
 use npyz::npz::NpzWriter;
 use npyz::WriterBuilder;
 
+// GIGI_INGEST_DIR gate: sources are root-relative now.
+mod common;
+
 // ── Fixtures ─────────────────────────────────────────────────────────
 
 /// Build a fresh `Engine` in a tempdir + a clean `RwLock` around it,
@@ -128,11 +131,11 @@ fn write_test_npz_single(
     npz.zip_writer().finish().expect("finish zip");
 }
 
-/// Escape a filesystem path for embedding in a GQL string literal.
-/// Windows paths carry `\` which the GQL parser reads as escape
-/// sequences; normalize to forward slashes.
+/// Rewrite a fixture path for embedding in a GQL string literal:
+/// GIGI_INGEST_DIR-relative (the gate refuses absolute forms) and
+/// forward-slash (Windows `\` would read as escape sequences).
 fn gql_path_lit(p: &Path) -> String {
-    p.to_string_lossy().replace('\\', "/")
+    common::ingest_rel_str(p)
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -297,6 +300,10 @@ fn test_ingest_gql_existing_bundle_name_still_works() {
 #[test]
 fn test_ingest_gql_missing_file_returns_executor_error_not_no_bundle() {
     let (eng, _dir) = fresh_engine_and_registries();
+
+    // Root exported so the phantom (relative, in-root) path exercises
+    // the executor's FileNotFound arm, not the unset-gate arm.
+    common::ensure_ingest_root();
 
     // Deliberately point at a phantom path.
     let query =

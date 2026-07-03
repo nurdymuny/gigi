@@ -10,6 +10,13 @@ primary_region = "iad"
 [env]
   PORT = "3142"
   GIGI_DATA_DIR = "/data"
+  # INGEST source containment root (fail-closed: without this, INGEST
+  # from server-side files is disabled engine-wide). Source paths in
+  # `INGEST … FROM '<p>'` are RELATIVE to this directory; absolute /
+  # '..' / drive-prefixed forms are rejected before any file access.
+  # The harvest pipeline drops its NPZ files under /data/ingest on the
+  # mounted volume — capability kept, bounded.
+  GIGI_INGEST_DIR = "/data/ingest"
   # Tigris S3 snapshot store — AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
   # AWS_ENDPOINT_URL_S3, AWS_REGION, and BUCKET_NAME are already set as Fly secrets
   # by `flyctl storage create`. TIGRIS_BUCKET_NAME here matches Fly's BUCKET_NAME secret.

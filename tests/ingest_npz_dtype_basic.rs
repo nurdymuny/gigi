@@ -21,6 +21,9 @@ use gigi::types::{FieldType, Value};
 use npyz::npz::NpzWriter;
 use npyz::WriterBuilder;
 
+// GIGI_INGEST_DIR gate: sources are root-relative now.
+mod common;
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /// Write a single-array f32 NPZ. Same writer surface as the existing
@@ -125,9 +128,14 @@ fn test_ingest_npz_f32_upconverts_to_f64() {
     let data_f32: Vec<f32> = (0..20).map(|i| i as f32).collect();
     write_test_npz_f32(&path, "f32_arr", &[5, 4], &data_f32);
 
-    let stats =
-        execute_ingest(&mut engine, "f32_bundle", &path, IngestFormat::Npz, None)
-            .expect("INGEST succeeds on f32 NPZ with auto-detect + upconvert");
+    let stats = execute_ingest(
+        &mut engine,
+        "f32_bundle",
+        &common::ingest_rel(&path),
+        IngestFormat::Npz,
+        None,
+    )
+    .expect("INGEST succeeds on f32 NPZ with auto-detect + upconvert");
 
     assert_eq!(stats.records_emitted, 5, "5 outer-axis slices");
     assert!(stats.bundle_created);
@@ -182,8 +190,14 @@ fn test_ingest_npz_f64_unchanged() {
     let data: Vec<f64> = (0..20).map(|i| (i as f64) * 0.1 + 1.234567890123).collect();
     write_test_npz_f64(&path, "f64_arr", &[5, 4], &data);
 
-    let stats = execute_ingest(&mut engine, "f64_bundle", &path, IngestFormat::Npz, None)
-        .expect("INGEST succeeds on f64 NPZ (backward compat)");
+    let stats = execute_ingest(
+        &mut engine,
+        "f64_bundle",
+        &common::ingest_rel(&path),
+        IngestFormat::Npz,
+        None,
+    )
+    .expect("INGEST succeeds on f64 NPZ (backward compat)");
     assert_eq!(stats.records_emitted, 5);
 
     let bundle = engine.bundle("f64_bundle").expect("bundle exists");
@@ -222,8 +236,14 @@ fn test_ingest_npz_int32_errors_with_dtype_name() {
     let data: Vec<i32> = (0..12).collect();
     write_test_npz_i32(&path, "i32_arr", &[3, 4], &data);
 
-    let err = execute_ingest(&mut engine, "i32_bundle", &path, IngestFormat::Npz, None)
-        .expect_err("INGEST must reject int32 with a dtype-aware error");
+    let err = execute_ingest(
+        &mut engine,
+        "i32_bundle",
+        &common::ingest_rel(&path),
+        IngestFormat::Npz,
+        None,
+    )
+    .expect_err("INGEST must reject int32 with a dtype-aware error");
     let msg = err.to_string();
     let low = msg.to_ascii_lowercase();
     assert!(
@@ -294,7 +314,7 @@ fn test_ingest_npz_f32_gauge_field_su2_full_chain() {
     let stats = execute_ingest_as_gauge_field(
         &mut engine,
         "su2_f32_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_obc_dtype",

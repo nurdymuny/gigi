@@ -42,6 +42,9 @@ use gigi::types::Value;
 use npyz::npz::NpzWriter;
 use npyz::WriterBuilder;
 
+// GIGI_INGEST_DIR gate: sources are root-relative now.
+mod common;
+
 /// Write a multi-array NPZ file with the given (name, shape, data) list.
 fn write_test_npz_multi(
     path: &Path,
@@ -138,7 +141,7 @@ fn test_ingest_npz_key_selects_named_array() {
         ],
     );
 
-    let path_str = path.to_string_lossy().replace('\\', "/");
+    let path_str = common::ingest_rel_str(&path);
     let stmt_src = format!(
         "INGEST key_selected_bundle FROM '{}' FORMAT NPZ KEY U;",
         path_str
@@ -237,7 +240,7 @@ fn test_ingest_npz_key_absent_multi_array_errors() {
         ],
     );
 
-    let path_str = path.to_string_lossy().replace('\\', "/");
+    let path_str = common::ingest_rel_str(&path);
     // Direct executor call via GQL — no KEY clause. Expect a clear
     // error naming the observed member count AND mentioning KEY.
     let stmt_src = format!(
@@ -271,7 +274,7 @@ fn test_ingest_npz_key_absent_single_array_works() {
     let data: Vec<f64> = (0..12).map(|i| i as f64).collect();
     write_test_npz_single(&path, "the_only_one", &[3, 4], &data);
 
-    let path_str = path.to_string_lossy().replace('\\', "/");
+    let path_str = common::ingest_rel_str(&path);
     let stmt_src = format!(
         "INGEST single_compat_bundle FROM '{}' FORMAT NPZ;",
         path_str
@@ -323,7 +326,7 @@ fn test_ingest_npz_key_unknown_array_name_errors() {
         ],
     );
 
-    let path_str = path.to_string_lossy().replace('\\', "/");
+    let path_str = common::ingest_rel_str(&path);
     // Typo: `u_gauge` instead of `U`.
     let stmt_src = format!(
         "INGEST typo_bundle FROM '{}' FORMAT NPZ KEY u_gauge;",

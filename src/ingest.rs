@@ -75,6 +75,18 @@
 //! `batch_insert` call. For larger arrays peak RSS is bounded by
 //! `BATCH_SIZE × slice_bytes` plus npyz's own read buffer.
 //!
+//! # Source containment (2026-07-03 hardening)
+//!
+//! Every source-path open is gated behind `GIGI_INGEST_DIR` via
+//! `resolve_ingest_source` — the same fail-closed posture as
+//! Postgres `pg_read_server_files` / MySQL `secure_file_priv`. Unset
+//! ⇒ INGEST from server-side files is disabled. Set ⇒ source paths
+//! are RELATIVE to that root; absolute / drive-prefixed / UNC / `..`
+//! forms are rejected before any filesystem access, and the resolved
+//! file must canonically sit under the canonical root (symlinks and
+//! junctions cannot tunnel out). See `src/pathguard.rs` and
+//! `tests/ingest_dir_gate.rs`.
+//!
 //! # Locked posture
 //!
 //! This module compiles UNCONDITIONALLY (no feature flag) because it
@@ -212,8 +224,19 @@ pub struct IngestStats {
 /// at the GQL surface.
 #[derive(Debug)]
 pub enum IngestError {
-    /// The source file does not exist on disk.
+    /// The source file does not exist on disk (under GIGI_INGEST_DIR;
+    /// carries the resolved candidate path).
     FileNotFound(PathBuf),
+    /// GIGI_INGEST_DIR is not set (or empty) — INGEST reads server-side
+    /// files only from under an explicitly allowlisted root, fail
+    /// closed (cf. Postgres pg_read_server_files, MySQL
+    /// secure_file_priv).
+    IngestDirUnset,
+    /// The source path was refused by the containment guard: absolute /
+    /// drive-prefixed / '..' forms, or a path that canonically resolves
+    /// outside GIGI_INGEST_DIR (symlink/junction). `detail` is the
+    /// pathguard message, which names the offending path and the root.
+    SourceNotContained { detail: String },
     /// The requested format is not in the supported set.
     FormatNotSupported {
         requested: String,
@@ -293,6 +316,12 @@ impl std::fmt::Display for IngestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             IngestError::FileNotFound(p) => write!(f, "INGEST: source file not found: {}", p.display()),
+            IngestError::IngestDirUnset => write!(
+                f,
+                "INGEST from a server-side file requires GIGI_INGEST_DIR to be set; \
+                 set it to the directory that ingest sources live under"
+            ),
+            IngestError::SourceNotContained { detail } => write!(f, "INGEST: {detail}"),
             IngestError::FormatNotSupported { requested, supported } => write!(
                 f,
                 "INGEST: format `{}` not supported (Phase 1 supports: {})",
@@ -407,10 +436,41 @@ impl InferredFieldSchema {
     }
 }
 
+/// Gate every server-side source read behind GIGI_INGEST_DIR — the
+/// single chokepoint called before ANY source-path open (NPZ, CSV,
+/// JSONL, and the GAUGE_FIELD interpretation alike).
+///
+/// Unset → [`IngestError::IngestDirUnset`], fail closed. Set → the
+/// path must be RELATIVE to the root; `crate::pathguard::contain`
+/// component-screens it (no absolute / drive / UNC / '..' forms, all
+/// rejected before any filesystem access) and then canonically
+/// verifies the resolved file sits under the canonical root
+/// (symlink/junction defense). A missing file under the root keeps the
+/// existing [`IngestError::FileNotFound`] contract, now carrying the
+/// resolved candidate path.
+fn resolve_ingest_source(path: &str) -> Result<PathBuf, IngestError> {
+    use crate::pathguard::PathGuardError;
+    crate::pathguard::contain("GIGI_INGEST_DIR", path, /*must_exist=*/ true).map_err(|e| {
+        match e {
+            PathGuardError::RootUnset { .. } => IngestError::IngestDirUnset,
+            PathGuardError::Io { path, source } if source.kind() == io::ErrorKind::NotFound => {
+                IngestError::FileNotFound(path)
+            }
+            other => IngestError::SourceNotContained {
+                detail: other.to_string(),
+            },
+        }
+    })
+}
+
 /// Public entry point — called by `parser::execute` for the
 /// `Statement::Ingest` arm. Reads the source file according to the
 /// requested format, maps it to records via the auto-generic policy,
 /// and streams the records into `engine` via `batch_insert`.
+///
+/// The source path is resolved through [`resolve_ingest_source`]
+/// first: relative to GIGI_INGEST_DIR, contained, fail-closed when the
+/// root is unset.
 ///
 /// `key` selects a single named member of a multi-array NPZ archive.
 /// When `Some(name)`, only that member's slices become records.
@@ -425,9 +485,8 @@ pub fn execute_ingest(
     format: IngestFormat,
     key: Option<&str>,
 ) -> Result<IngestStats, IngestError> {
-    if !source_path.exists() {
-        return Err(IngestError::FileNotFound(source_path.to_path_buf()));
-    }
+    let resolved = resolve_ingest_source(&source_path.to_string_lossy())?;
+    let source_path = resolved.as_path();
     let bytes_read = std::fs::metadata(source_path)
         .map(|m| m.len())
         .unwrap_or(0);
@@ -1276,9 +1335,10 @@ pub fn execute_ingest_as_gauge_field(
     lattice_name: &str,
     key: Option<&str>,
 ) -> Result<IngestStats, IngestError> {
-    if !source_path.exists() {
-        return Err(IngestError::FileNotFound(source_path.to_path_buf()));
-    }
+    // Same GIGI_INGEST_DIR chokepoint as the AUTO_GENERIC entry point —
+    // no source-path open happens on either path without containment.
+    let resolved = resolve_ingest_source(&source_path.to_string_lossy())?;
+    let source_path = resolved.as_path();
     let bytes_read = std::fs::metadata(source_path).map(|m| m.len()).unwrap_or(0);
 
     // NPZ member selection precedes lattice resolution: a caller who

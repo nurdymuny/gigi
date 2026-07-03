@@ -9,15 +9,19 @@ use gigi::engine::Engine;
 use gigi::parser::{self, ExecResult};
 use gigi::types::Value;
 
+mod common;
+
 fn run(e: &mut Engine, stmt: &str) -> Result<ExecResult, String> {
     let ast = parser::parse(stmt)?;
     parser::execute(e, &ast)
 }
 
+/// Writes the fixture under the tempdir and returns the GIGI_INGEST_DIR-
+/// relative source string the gated INGEST verb requires.
 fn write_csv(dir: &std::path::Path, name: &str, body: &str) -> String {
     let p = dir.join(name);
     std::fs::write(&p, body).unwrap();
-    p.display().to_string()
+    common::ingest_rel_str(&p)
 }
 
 #[test]

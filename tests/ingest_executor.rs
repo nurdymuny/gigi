@@ -40,6 +40,11 @@ use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 use npyz::npz::NpzWriter;
 use npyz::WriterBuilder;
 
+// GIGI_INGEST_DIR gate (2026-07-03): sources resolve relative to the
+// allowlisted root. `common::ingest_rel` exports the root (Once, to
+// the system temp dir) and relativizes each tempdir fixture path.
+mod common;
+
 /// Write a single-array NPZ file to `path`. The array has the given
 /// shape and elements stored in row-major (C) order. Pure Rust — uses
 /// the `npyz` crate that the executor itself depends on, so the
@@ -126,9 +131,14 @@ fn test_ingest_npz_small_float64_array_creates_bundle() {
     let data: Vec<f64> = (0..40).map(|i| i as f64).collect();
     write_test_npz_single(&path, "small", &[10, 4], &data);
 
-    let stats =
-        execute_ingest(&mut engine, "small_bundle", &path, IngestFormat::Npz, None)
-            .expect("ingest succeeds");
+    let stats = execute_ingest(
+        &mut engine,
+        "small_bundle",
+        &common::ingest_rel(&path),
+        IngestFormat::Npz,
+        None,
+    )
+    .expect("ingest succeeds");
     assert_eq!(stats.records_emitted, 10, "10 outer-axis slices");
     assert!(stats.bundle_created, "bundle auto-created when missing");
     assert!(stats.bytes_read > 0, "bytes_read populated from file size");
@@ -168,7 +178,7 @@ fn test_ingest_npz_with_existing_compatible_bundle() {
     let stats = execute_ingest(
         &mut engine,
         "compat_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         None,
     )
@@ -200,7 +210,7 @@ fn test_ingest_npz_with_existing_conflicting_bundle() {
     let err = execute_ingest(
         &mut engine,
         "conflict_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         None,
     )
@@ -217,11 +227,19 @@ fn test_ingest_npz_with_existing_conflicting_bundle() {
 #[test]
 fn test_ingest_npz_file_not_found() {
     let (mut engine, _dir) = open_engine();
+    // A missing file INSIDE the ingest root keeps the FileNotFound
+    // contract; the error now carries the RESOLVED candidate (where the
+    // gate actually looked, under GIGI_INGEST_DIR).
+    common::ensure_ingest_root();
     let phantom = PathBuf::from("does-not-exist-anywhere.npz");
     let err = execute_ingest(&mut engine, "ghost", &phantom, IngestFormat::Npz, None)
         .expect_err("missing file");
     match err {
-        IngestError::FileNotFound(p) => assert_eq!(p, phantom),
+        IngestError::FileNotFound(p) => assert!(
+            p.to_string_lossy().ends_with("does-not-exist-anywhere.npz"),
+            "carries the resolved candidate under the root: {}",
+            p.display()
+        ),
         other => panic!("expected FileNotFound, got {other:?}"),
     }
 }
@@ -260,7 +278,7 @@ fn test_ingest_npz_4d_array_record_count() {
     let stats = execute_ingest(
         &mut engine,
         "halcyon_smoke_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         None,
     )
@@ -308,9 +326,9 @@ fn test_ingest_parser_end_to_end() {
     let data: Vec<f64> = (0..20).map(|i| i as f64).collect();
     write_test_npz_single(&path, "parser_e2e", &[5, 4], &data);
 
-    // GQL string literal needs forward slashes on Windows so the
-    // parser's Token::Str round-trip is portable.
-    let path_str = path.to_string_lossy().replace('\\', "/");
+    // Root-relative forward-slash source string: portable in the GQL
+    // literal AND contained under GIGI_INGEST_DIR.
+    let path_str = common::ingest_rel_str(&path);
     let stmt_src = format!(
         "INGEST e2e_bundle FROM '{}' FORMAT NPZ;",
         path_str
@@ -349,7 +367,7 @@ fn test_ingest_multi_array_npz() {
     let stats = execute_ingest(
         &mut engine,
         "multi_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Some("b"),
     )
@@ -392,8 +410,14 @@ fn test_ingest_multi_array_without_key_errors() {
         ],
     );
 
-    let err = execute_ingest(&mut engine, "no_key_bundle", &path, IngestFormat::Npz, None)
-        .expect_err("multi-array without KEY must error");
+    let err = execute_ingest(
+        &mut engine,
+        "no_key_bundle",
+        &common::ingest_rel(&path),
+        IngestFormat::Npz,
+        None,
+    )
+    .expect_err("multi-array without KEY must error");
     match err {
         IngestError::MultiArrayRequiresKey { got, members } => {
             assert_eq!(got, 2);
@@ -409,7 +433,10 @@ fn test_ingest_npz_virtual_bundle_rejected() {
     // INGEST into the reserved `__bundles__` virtual bundle must
     // fail at the parser entry, BEFORE the executor touches the
     // file. This ensures the read-only-virtual-bundle policy is
-    // uniform across every write verb.
+    // uniform across every write verb. The path stays ABSOLUTE on
+    // purpose: reaching the GIGI_INGEST_DIR gate would produce a
+    // containment error instead, so the virtual-bundle wording below
+    // also pins that the reject fires first.
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
     let path = tmp.path().join("virt.npz");

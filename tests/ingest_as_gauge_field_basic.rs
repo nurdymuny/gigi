@@ -50,6 +50,9 @@ use gigi::types::Value;
 use npyz::npz::NpzWriter;
 use npyz::WriterBuilder;
 
+// GIGI_INGEST_DIR gate: sources are root-relative now.
+mod common;
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /// Write a single-array NPZ file to `path`. The array has the given
@@ -226,7 +229,7 @@ fn test_ingest_su2_synthetic_l4_records_correct_count() {
     let stats = execute_ingest_as_gauge_field(
         &mut engine,
         "su2_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4",
@@ -256,7 +259,7 @@ fn test_ingest_su2_synthetic_l4_canonical_field_names() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "su2_names_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_names",
@@ -347,7 +350,7 @@ fn test_ingest_su3_synthetic_l4_records_field_names() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "su3_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU3,
         "l4_su3",
@@ -384,7 +387,7 @@ fn test_ingest_u1_synthetic_l4_theta_field() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "u1_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::U1,
         "l4_u1",
@@ -416,7 +419,7 @@ fn test_ingest_zn_synthetic_l4_index_field() {
     execute_ingest_as_gauge_field(
         &mut engine,
         "zn_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::ZN { n: 5 },
         "l4_zn",
@@ -452,7 +455,7 @@ fn test_ingest_fiber_width_mismatch_errors_clearly() {
     let err = execute_ingest_as_gauge_field(
         &mut engine,
         "bad_fiber_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_bad_fiber",
@@ -480,7 +483,7 @@ fn test_ingest_lattice_not_found_errors() {
     let err = execute_ingest_as_gauge_field(
         &mut engine,
         "bad_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "not_a_lattice",
@@ -511,7 +514,7 @@ fn test_ingest_axis_count_mismatch_errors() {
     let err = execute_ingest_as_gauge_field(
         &mut engine,
         "bad_ndim_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_bad_ndim",
@@ -542,7 +545,7 @@ fn test_ingest_direction_axis_mismatch_errors() {
     let err = execute_ingest_as_gauge_field(
         &mut engine,
         "bad_mu_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_bad_mu",
@@ -574,7 +577,7 @@ fn test_ingest_site_axis_extent_mismatch_errors() {
     let err = execute_ingest_as_gauge_field(
         &mut engine,
         "bad_site_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_bad_site",
@@ -599,8 +602,14 @@ fn test_ingest_generic_still_works_without_as_clause() {
     let data: Vec<f64> = (0..12).map(|i| i as f64).collect();
     write_test_npz_single(&path, "generic", &[3, 4], &data);
 
-    let stats = execute_ingest(&mut engine, "generic_bundle", &path, IngestFormat::Npz, None)
-        .expect("generic ingest still works");
+    let stats = execute_ingest(
+        &mut engine,
+        "generic_bundle",
+        &common::ingest_rel(&path),
+        IngestFormat::Npz,
+        None,
+    )
+    .expect("generic ingest still works");
     assert_eq!(stats.records_emitted, 3);
     assert!(stats.bundle_created);
 }
@@ -627,7 +636,7 @@ fn test_ingest_gauge_field_multi_array_rejected() {
     let err = execute_ingest_as_gauge_field(
         &mut engine,
         "multi_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_multi",
@@ -658,7 +667,7 @@ fn test_ingest_gauge_field_auto_creates_bundle_with_canonical_schema() {
     let stats = execute_ingest_as_gauge_field(
         &mut engine,
         "auto_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_auto",
@@ -707,7 +716,7 @@ fn test_ingest_gauge_field_existing_bundle_compat_check() {
     let stats = execute_ingest_as_gauge_field(
         &mut engine,
         "pre_bundle",
-        &path,
+        &common::ingest_rel(&path),
         IngestFormat::Npz,
         Group::SU2,
         "l4_pre",

@@ -100,7 +100,13 @@ Statements end with `;`. Working verbs (each enforced by an automated
     INTEGRATE sensors MEASURE avg(temp) WITH JACKKNIFE ALONG wind;   -- autocorrelation-honest error bars
     PULLBACK sensors ALONG city ONTO cities;                         -- join
     SHOW BUNDLES;  DESCRIBE sensors;  EXPLAIN COVER sensors ON city='Moscow';
+    SHOW FIELDS ON sensors;                        -- one row per field: name/kind/type/indexed
+    EXPLAIN SECTION sensors AT id='s1';            -- per-field kappa decomposition (why this price)
     CURVATURE sensors;  SPECTRAL sensors;  HEALTH sensors;
+    INGEST sensors FROM 'rows.csv' FORMAT CSV;     -- also NPZ; JSONL (KEY required, vectors ride)
+    COVER sensors ALL EMIT CSV TO 'out.csv';       -- export; gated on GIGI_EMIT_DIR
+    -- TIMESTAMP fields accept '2026-07-02', '2026-07-02T14:30:05Z', epoch ms, and NOW;
+    -- comparisons against date strings mean what they say
 
 `WITH JACKKNIFE ALONG <order-field>` returns mean, err (naive·√(2τ_int)),
 err_naive, err_jack (blocked at ≈2τ), tau_int, n_eff — honest error bars

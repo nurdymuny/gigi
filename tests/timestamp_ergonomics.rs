@@ -134,6 +134,44 @@ fn now_literal_is_current_epoch_ms() {
     }
 }
 
+/// The coercion chokepoint must cover the update path, not just the
+/// insert paths. REDEFINE drives `Engine::update`; before the fix an
+/// update stored raw `Text` in a TIMESTAMP field — silently constant
+/// under every time comparison from then on (type-tag ordering), the
+/// exact disease the feature exists to cure.
+#[test]
+fn update_coerces_iso_string_to_timestamp_not_text() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut e = seeded(dir.path());
+    run(
+        &mut e,
+        "REDEFINE events AT id='e1' SET (at='2026-07-04T09:15:00Z');",
+    )
+    .unwrap();
+    match run(&mut e, "SECTION events AT id='e1';").unwrap() {
+        ExecResult::Rows(rows) => {
+            assert_eq!(
+                rows[0]["at"],
+                Value::Timestamp(
+                    gigi::timefmt::parse_iso_ms("2026-07-04T09:15:00Z").unwrap()
+                ),
+                "updated form must be the coerced Timestamp, not raw Text"
+            );
+        }
+        other => panic!("expected rows, got {other:?}"),
+    }
+    // And the update path refuses garbage just as loudly as insert.
+    let err = run(
+        &mut e,
+        "REDEFINE events AT id='e1' SET (at='next tuesday');",
+    )
+    .unwrap_err();
+    assert!(
+        err.contains("not a date"),
+        "update must refuse garbage dates, not store them: {err}"
+    );
+}
+
 #[test]
 fn survives_wal_replay() {
     let dir = tempfile::tempdir().unwrap();

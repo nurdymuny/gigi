@@ -3,6 +3,13 @@
 //! The decomposition rows must come from the exact loop
 //! compute_record_k runs: the mean of the kappa column equals the
 //! record's kappa, and the loudest field sorts first.
+//!
+//! The invariant is asserted UNCONDITIONALLY (2026-07-03 hardening):
+//! every EXPLAIN row carries `record_kappa` — the record's κ computed
+//! by compute_record_k, the INDEPENDENT total path — and
+//! mean(kappa column) must equal it. The cross-check runs on every
+//! test execution; if either loop drifts (field skip policy, range
+//! normalization, stats source), this fails.
 
 use gigi::engine::Engine;
 use gigi::parser::{self, ExecResult};
@@ -49,20 +56,37 @@ fn explain_names_the_guilty_field() {
             );
             // z-score present and huge for the guilty field
             assert!(rows[0]["z"].as_f64().unwrap() > 10.0);
-            // decomposition must average to the record's kappa exactly —
-            // same loop, same numbers (SECTION reprices vs current stats)
-            let recomputed = (k_temp + k_wind) / 2.0;
-            match run(&mut e, "SECTION st AT id='moon';").unwrap() {
-                ExecResult::Rows(rec) => {
-                    if let Some(kcol) = rec[0].get("_kappa").and_then(|v| v.as_f64()) {
-                        assert!(
-                            (kcol - recomputed).abs() < 1e-9,
-                            "EXPLAIN mean {recomputed} vs SECTION κ {kcol}"
-                        );
-                    } // if the point read doesn't carry κ, the decomposition stands alone
-                }
-                other => panic!("expected rows, got {other:?}"),
+
+            // ── The invariant, asserted unconditionally ─────────────
+            // Every row carries record_kappa: the record's κ from
+            // compute_record_k (the total path pricing runs at insert
+            // time), NOT derived from these rows — so this cross-checks
+            // two implementations of the same loop against each other.
+            // mean(kappa column) == record_kappa. Tolerance 1e-9: the
+            // two sides are identical f64 arithmetic differing only in
+            // summation order (schema order vs loudest-first), so the
+            // drift bound is a few ULPs at κ ≈ O(1); 1e-9 sits ~7
+            // orders of magnitude above that while still failing on
+            // any real divergence (a dropped field costs O(κ/n)).
+            let record_kappa = rows[0]
+                .get("record_kappa")
+                .and_then(|v| v.as_f64())
+                .expect("every EXPLAIN row carries record_kappa (the compute_record_k total)");
+            for row in &rows {
+                let rk = row
+                    .get("record_kappa")
+                    .and_then(|v| v.as_f64())
+                    .expect("record_kappa present on every row");
+                assert!(
+                    (rk - record_kappa).abs() < 1e-12,
+                    "record_kappa is one number stamped on all rows: {rk} vs {record_kappa}"
+                );
             }
+            let mean_of_rows = (k_temp + k_wind) / 2.0;
+            assert!(
+                (mean_of_rows - record_kappa).abs() < 1e-9,
+                "decomposition mean {mean_of_rows} must equal the record's κ {record_kappa}"
+            );
         }
         other => panic!("expected decomposition rows, got {other:?}"),
     }

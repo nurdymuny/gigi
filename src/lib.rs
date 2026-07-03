@@ -157,6 +157,13 @@ pub mod mmap_bundle;
 pub mod obstruction;
 pub mod observability;
 pub mod parser;
+// Env-rooted path containment (2026-07-03 hardening): the single
+// guard for statement-driven file access — GIGI_EMIT_DIR writes
+// (emit_target) and GIGI_INGEST_DIR reads (ingest::resolve_ingest_source).
+// Component-level lexical screen before joining, then canonical-to-
+// canonical containment verification. See `src/pathguard.rs` docs and
+// `tests/pathguard_escapes.rs` for the attack matrix it must survive.
+pub mod pathguard;
 pub mod query;
 // GIGI Encrypt v0.3 — Sprint M (Continuous RG-flow ratchet).
 // Per-write KDF chain g_{t+1} = HKDF-SHA256(g_t, record_bytes || t).

@@ -9517,24 +9517,28 @@ fn rows_to_csv(rows: &[crate::types::Record]) -> String {
 /// Resolve the EMIT output path under GIGI_EMIT_DIR, refusing escapes.
 /// The env gate is the whole security story: a server that never sets
 /// GIGI_EMIT_DIR can never be talked into writing files.
+///
+/// Containment is `crate::pathguard::contain` (write mode): component
+/// screen kills the two Windows shapes the old `is_absolute()` check
+/// missed (`C:file` drive-relative, `\rooted`) plus UNC, and the
+/// canonical parent check refuses symlink/junction tunnels out of the
+/// root. Error-message contract is unchanged: unset names the knob,
+/// every lexical rejection keeps the "must be relative" wording.
 fn emit_target(path: &str) -> Result<std::path::PathBuf, String> {
-    let dir = std::env::var("GIGI_EMIT_DIR").map_err(|_| {
-        "EMIT is disabled on this engine: set GIGI_EMIT_DIR=<directory> to \
-         enable it — exported files are written inside that directory only. \
-         (Over HTTP, prefer requesting the rows and saving client-side.)"
-            .to_string()
-    })?;
-    let p = std::path::Path::new(path);
-    if p.is_absolute()
-        || p.components()
-            .any(|c| matches!(c, std::path::Component::ParentDir))
-    {
-        return Err(format!(
+    use crate::pathguard::PathGuardError;
+    crate::pathguard::contain("GIGI_EMIT_DIR", path, /*must_exist=*/ false).map_err(|e| match e {
+        PathGuardError::RootUnset { .. } => {
+            "EMIT is disabled on this engine: set GIGI_EMIT_DIR=<directory> to \
+             enable it — exported files are written inside that directory only. \
+             (Over HTTP, prefer requesting the rows and saving client-side.)"
+                .to_string()
+        }
+        PathGuardError::Escape { .. } => format!(
             "EMIT path '{path}' must be relative, without '..' — files land \
              inside GIGI_EMIT_DIR"
-        ));
-    }
-    Ok(std::path::Path::new(&dir).join(p))
+        ),
+        other => format!("EMIT path '{path}': {other}"),
+    })
 }
 
 pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<ExecResult, String> {

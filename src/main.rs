@@ -14,6 +14,8 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let mut data_dir = PathBuf::from("gigi_data");
     let mut exec_query: Option<String> = None;
+    let mut script_file: Option<PathBuf> = None;
+    let mut keep_going = false;
 
     let mut i = 1;
     while i < args.len() {
@@ -36,6 +38,16 @@ fn main() {
                     std::process::exit(1);
                 }
             }
+            "-f" | "--file" => {
+                i += 1;
+                if i < args.len() {
+                    script_file = Some(PathBuf::from(&args[i]));
+                } else {
+                    eprintln!("Error: -f requires a file path");
+                    std::process::exit(1);
+                }
+            }
+            "--keep-going" | "-k" => keep_going = true,
             "--help" | "-h" => {
                 println!("GIGI — Geometric Intrinsic Global Index");
                 println!();
@@ -43,6 +55,8 @@ fn main() {
                 println!("  gigi                    Start interactive REPL");
                 println!("  gigi --dir <path>       Use specified data directory");
                 println!("  gigi -e \"QUERY\"         Execute a single query and exit");
+                println!("  gigi -f script.gql      Run a file of ;-separated statements");
+                println!("  gigi -f s.gql -k        …continuing past errors (--keep-going)");
                 println!();
                 println!("GQL Statements:");
                 println!("  CREATE BUNDLE name (field TYPE [BASE|FIBER] [INDEX], ...)");
@@ -86,6 +100,10 @@ fn main() {
         return;
     }
 
+    if let Some(path) = script_file {
+        std::process::exit(run_script(&mut engine, &path, keep_going));
+    }
+
     // Interactive REPL
     println!("GIGI v0.3 — Geometric Intrinsic Global Index");
     println!("Type .help for commands, .quit to exit.\n");
@@ -127,6 +145,103 @@ fn main() {
     }
     if let Err(e) = rl.save_history(&history_path) {
         eprintln!("(could not save history: {e})");
+    }
+}
+
+/// Split a GQL script into statements on `;`, respecting single-quoted
+/// strings and `--` line comments. Returns (starting_line_number, text)
+/// pairs so errors can point at the file, not the void.
+fn split_script(src: &str) -> Vec<(usize, String)> {
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    let mut cur_start_line = 1usize;
+    let mut line_no = 1usize;
+    let mut in_str = false;
+    let mut in_comment = false;
+    let mut chars = src.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\n' {
+            line_no += 1;
+            in_comment = false;
+            cur.push(' ');
+            continue;
+        }
+        if in_comment {
+            continue;
+        }
+        if !in_str && c == '-' && chars.peek() == Some(&'-') {
+            chars.next();
+            in_comment = true;
+            continue;
+        }
+        if c == '\'' {
+            in_str = !in_str;
+        }
+        if c == ';' && !in_str {
+            cur.push(';');
+            if !cur.trim().is_empty() {
+                out.push((cur_start_line, cur.trim().to_string()));
+            }
+            cur.clear();
+            cur_start_line = line_no;
+            continue;
+        }
+        if cur.trim().is_empty() && !c.is_whitespace() {
+            cur_start_line = line_no;
+        }
+        cur.push(c);
+    }
+    if !cur.trim().is_empty() {
+        out.push((cur_start_line, cur.trim().to_string()));
+    }
+    out
+}
+
+/// Run a `.gql` script: every statement in order, errors tagged with
+/// file:line. Stops at the first error unless `keep_going`. Returns a
+/// process exit code (number of failed statements, capped at 1 when
+/// stopping early).
+fn run_script(engine: &mut Engine, path: &std::path::Path, keep_going: bool) -> i32 {
+    let src = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Cannot read {}: {e}", path.display());
+            return 1;
+        }
+    };
+    let statements = split_script(&src);
+    if statements.is_empty() {
+        eprintln!("{}: no statements found", path.display());
+        return 1;
+    }
+    let total = statements.len();
+    let mut failed = 0usize;
+    for (idx, (line_no, stmt)) in statements.iter().enumerate() {
+        match execute_line(engine, stmt) {
+            Ok(_) => {}
+            Err(e) => {
+                failed += 1;
+                eprintln!(
+                    "{}:{}: statement {}/{} failed:\n  {}\n  -> {e}",
+                    path.display(),
+                    line_no,
+                    idx + 1,
+                    total,
+                    stmt
+                );
+                if !keep_going {
+                    eprintln!("(stopping — pass --keep-going to continue past errors)");
+                    return 1;
+                }
+            }
+        }
+    }
+    if failed == 0 {
+        println!("{}: {total} statement(s) OK", path.display());
+        0
+    } else {
+        eprintln!("{}: {failed}/{total} statement(s) failed", path.display());
+        1
     }
 }
 

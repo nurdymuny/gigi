@@ -1450,6 +1450,16 @@ impl Engine {
         key: &Record,
         patches: &Record,
     ) -> io::Result<bool> {
+        // TIMESTAMP coercion before the WAL, same as the insert path —
+        // an update is a write path too. Without this, a REDEFINE with
+        // an ISO string stores raw Text in a TIMESTAMP field (and WAL
+        // replay re-applies the raw form).
+        let coerced = match self.schemas.get(bundle_name) {
+            Some(schema) => crate::types::coerce_record_to_schema(schema, patches)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?,
+            None => None,
+        };
+        let patches = coerced.as_ref().unwrap_or(patches);
         self.wal.log_update(bundle_name, key, patches)?;
         let updated = if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.update(key, patches)

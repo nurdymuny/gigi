@@ -160,6 +160,11 @@ pub enum IngestFormat {
     /// per data row; the KEY clause (or, absent one, the FIRST column)
     /// names the base key; column types are inferred from the data.
     Csv,
+    /// Newline-delimited JSON (`.jsonl` / `.ndjson`): one object per
+    /// line. Same key/typing policy as CSV — KEY names the base column,
+    /// else the first key of the first object; numeric unless proven
+    /// otherwise.
+    Jsonl,
 }
 
 impl IngestFormat {
@@ -173,9 +178,14 @@ impl IngestFormat {
         match name.to_ascii_uppercase().as_str() {
             "NPZ" => Ok(IngestFormat::Npz),
             "CSV" => Ok(IngestFormat::Csv),
+            "JSONL" | "NDJSON" => Ok(IngestFormat::Jsonl),
             other => Err(IngestError::FormatNotSupported {
                 requested: other.to_string(),
-                supported: vec!["NPZ".to_string(), "CSV".to_string()],
+                supported: vec![
+                    "NPZ".to_string(),
+                    "CSV".to_string(),
+                    "JSONL".to_string(),
+                ],
             }),
         }
     }
@@ -425,6 +435,7 @@ pub fn execute_ingest(
     match format {
         IngestFormat::Npz => ingest_npz(engine, target_bundle, source_path, bytes_read, key),
         IngestFormat::Csv => ingest_csv(engine, target_bundle, source_path, bytes_read, key),
+        IngestFormat::Jsonl => ingest_jsonl(engine, target_bundle, source_path, bytes_read, key),
     }
 }
 
@@ -737,6 +748,194 @@ fn ingest_csv(
                 )));
             }
             rec.insert(col.clone(), val);
+        }
+        batch.push(rec);
+        if batch.len() >= INGEST_BATCH_SIZE {
+            flush_batch(engine, target_bundle, &mut batch, &mut records_emitted)?;
+        }
+    }
+    if !batch.is_empty() {
+        flush_batch(engine, target_bundle, &mut batch, &mut records_emitted)?;
+    }
+
+    Ok(IngestStats { records_emitted, bundle_created, bytes_read })
+}
+
+
+/// JSONL entry point — one record per line, one JSON object per record.
+///
+/// Policy:
+/// - `KEY <col>` is REQUIRED: JSON objects carry no reliable column
+///   order, so "the first column" is not a thing we can promise.
+/// - Types are inferred from the data with JSON's own types: a column
+///   of numbers is Numeric, strings/bools are Categorical (numbers in
+///   a mixed column are stored as text), and an array of numbers is a
+///   Vector fiber — consistent length required, so embeddings ingest
+///   as first-class vectors.
+/// - Loud errors: missing/invalid JSON on a line (line number named),
+///   KEY absent from an object, vector length drift, nested objects.
+fn ingest_jsonl(
+    engine: &mut Engine,
+    target_bundle: &str,
+    source_path: &Path,
+    bytes_read: u64,
+    key: Option<&str>,
+) -> Result<IngestStats, IngestError> {
+    let Some(base_col) = key else {
+        return Err(IngestError::FormatError(
+            "INGEST … FORMAT JSONL requires KEY <column>: JSON objects have \
+             no reliable column order, so the base key must be named"
+                .to_string(),
+        ));
+    };
+    let text = std::fs::read_to_string(source_path).map_err(|e| {
+        IngestError::FormatError(format!("read JSONL {}: {e}", source_path.display()))
+    })?;
+
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    enum Kind {
+        Unknown,
+        Numeric,
+        Categorical,
+        Vector(usize),
+    }
+
+    let mut objs: Vec<(usize, serde_json::Map<String, serde_json::Value>)> = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let v: serde_json::Value = serde_json::from_str(line).map_err(|e| {
+            IngestError::FormatError(format!("JSONL line {}: invalid JSON: {e}", i + 1))
+        })?;
+        match v {
+            serde_json::Value::Object(m) => objs.push((i + 1, m)),
+            other => {
+                return Err(IngestError::FormatError(format!(
+                    "JSONL line {}: expected an object, got {other}",
+                    i + 1
+                )))
+            }
+        }
+    }
+    if objs.is_empty() {
+        return Err(IngestError::FormatError(
+            "JSONL has no records — nothing to ingest".to_string(),
+        ));
+    }
+    if !objs.iter().any(|(_, m)| m.contains_key(base_col)) {
+        let mut cols: Vec<&str> =
+            objs.iter().flat_map(|(_, m)| m.keys().map(|k| k.as_str())).collect();
+        cols.sort_unstable();
+        cols.dedup();
+        return Err(IngestError::KeyNotInCsv {
+            requested: base_col.to_string(),
+            columns: cols.into_iter().map(str::to_string).collect(),
+        });
+    }
+
+    // Column discovery + type inference across every object.
+    let mut kinds: std::collections::BTreeMap<String, Kind> =
+        std::collections::BTreeMap::new();
+    for (line_no, m) in &objs {
+        for (k, v) in m {
+            let entry = kinds.entry(k.clone()).or_insert(Kind::Unknown);
+            let seen = match v {
+                serde_json::Value::Null => continue,
+                serde_json::Value::Number(_) => Kind::Numeric,
+                serde_json::Value::String(_) | serde_json::Value::Bool(_) => {
+                    Kind::Categorical
+                }
+                serde_json::Value::Array(a) => {
+                    if a.iter().all(|x| x.is_number()) {
+                        Kind::Vector(a.len())
+                    } else {
+                        return Err(IngestError::FormatError(format!(
+                            "JSONL line {line_no}: field '{k}' is an array with \
+                             non-numeric elements — only numeric vectors ingest"
+                        )));
+                    }
+                }
+                serde_json::Value::Object(_) => {
+                    return Err(IngestError::FormatError(format!(
+                        "JSONL line {line_no}: field '{k}' is a nested object — \
+                         GIGI fibers are flat; flatten before ingest"
+                    )))
+                }
+            };
+            *entry = match (*entry, seen) {
+                (Kind::Unknown, s) => s,
+                (k, Kind::Unknown) => k, // unreachable: nulls `continue` above
+                (Kind::Numeric, Kind::Numeric) => Kind::Numeric,
+                (Kind::Categorical, Kind::Numeric)
+                | (Kind::Numeric, Kind::Categorical)
+                | (Kind::Categorical, Kind::Categorical) => Kind::Categorical,
+                (Kind::Vector(d1), Kind::Vector(d2)) if d1 == d2 => Kind::Vector(d1),
+                (Kind::Vector(d1), Kind::Vector(d2)) => {
+                    return Err(IngestError::FormatError(format!(
+                        "JSONL line {line_no}: vector field '{k}' changed length \
+                         ({d1} then {d2}) — vector fibers have one declared dim"
+                    )))
+                }
+                (Kind::Vector(_), _) | (_, Kind::Vector(_)) => {
+                    return Err(IngestError::FormatError(format!(
+                        "JSONL line {line_no}: field '{k}' mixes vectors and \
+                         scalars — pick one"
+                    )))
+                }
+            };
+        }
+    }
+
+    let inferred: Vec<InferredFieldSchema> = kinds
+        .iter()
+        .map(|(name, kind)| InferredFieldSchema {
+            name: name.clone(),
+            field_type: match kind {
+                Kind::Numeric => FieldType::Numeric,
+                Kind::Vector(d) => FieldType::Vector { dims: *d },
+                _ => FieldType::Categorical,
+            },
+            is_base: name == base_col,
+        })
+        .collect();
+    let bundle_created =
+        ensure_bundle_compatible(engine, target_bundle, &inferred, /*allow_auto_create=*/ true)?;
+
+    let mut records_emitted: usize = 0;
+    let mut batch: Vec<Record> = Vec::with_capacity(INGEST_BATCH_SIZE.min(64));
+    for (line_no, m) in &objs {
+        let mut rec: Record = Record::new();
+        for (k, kind) in &kinds {
+            let jv = m.get(k).unwrap_or(&serde_json::Value::Null);
+            let val = match (kind, jv) {
+                (_, serde_json::Value::Null) => Value::Null,
+                (Kind::Numeric, serde_json::Value::Number(n)) => match n.as_i64() {
+                    Some(i) => Value::Integer(i),
+                    None => Value::Float(n.as_f64().unwrap_or(f64::NAN)),
+                },
+                (Kind::Vector(_), serde_json::Value::Array(a)) => Value::Vector(
+                    a.iter().map(|x| x.as_f64().unwrap_or(f64::NAN)).collect(),
+                ),
+                (Kind::Categorical, serde_json::Value::String(sv)) => {
+                    Value::Text(sv.clone())
+                }
+                (Kind::Categorical, serde_json::Value::Bool(b)) => {
+                    Value::Text(b.to_string())
+                }
+                (Kind::Categorical, serde_json::Value::Number(n)) => {
+                    Value::Text(n.to_string())
+                }
+                _ => Value::Null,
+            };
+            if k == base_col && matches!(val, Value::Null) {
+                return Err(IngestError::FormatError(format!(
+                    "JSONL line {line_no}: base-key field '{base_col}' is \
+                     null/absent — every record needs an address"
+                )));
+            }
+            rec.insert(k.clone(), val);
         }
         batch.push(rec);
         if batch.len() >= INGEST_BATCH_SIZE {
@@ -1087,10 +1286,10 @@ pub fn execute_ingest_as_gauge_field(
     // message even when the lattice name is bogus, so the fix is one
     // edit rather than two round trips.
     match format {
-        IngestFormat::Csv => {
+        IngestFormat::Csv | IngestFormat::Jsonl => {
             return Err(IngestError::FormatError(
                 "INGEST … AS GAUGE_FIELD requires FORMAT NPZ — a gauge \
-                 field is a shaped array, and CSV carries no shape"
+                 field is a shaped array, and CSV/JSONL carry no shape"
                     .to_string(),
             ));
         }
@@ -1138,7 +1337,9 @@ pub fn execute_ingest_as_gauge_field(
     let obc_axis = obc_axis_from_topology(topology);
 
     match format {
-        IngestFormat::Csv => unreachable!("rejected above before lattice resolution"),
+        IngestFormat::Csv | IngestFormat::Jsonl => {
+            unreachable!("rejected above before lattice resolution")
+        }
         IngestFormat::Npz => ingest_npz_as_gauge_field(
             engine,
             target_bundle,
@@ -1372,11 +1573,16 @@ mod tests {
         assert_eq!(IngestFormat::from_name("npz").unwrap(), IngestFormat::Npz);
         assert_eq!(IngestFormat::from_name("CSV").unwrap(), IngestFormat::Csv);
         assert_eq!(IngestFormat::from_name("csv").unwrap(), IngestFormat::Csv);
-        let err = IngestFormat::from_name("JSON").unwrap_err();
+        assert_eq!(IngestFormat::from_name("JSONL").unwrap(), IngestFormat::Jsonl);
+        assert_eq!(IngestFormat::from_name("ndjson").unwrap(), IngestFormat::Jsonl);
+        let err = IngestFormat::from_name("HDF5").unwrap_err();
         match err {
             IngestError::FormatNotSupported { requested, supported } => {
-                assert_eq!(requested, "JSON");
-                assert_eq!(supported, vec!["NPZ".to_string(), "CSV".to_string()]);
+                assert_eq!(requested, "HDF5");
+                assert_eq!(
+                    supported,
+                    vec!["NPZ".to_string(), "CSV".to_string(), "JSONL".to_string()]
+                );
             }
             other => panic!("expected FormatNotSupported, got {other:?}"),
         }

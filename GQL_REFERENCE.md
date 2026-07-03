@@ -1611,7 +1611,7 @@ GAUGE VERIFY sensors;
 
 ---
 
-## XII. Bulk Import/Export — INGEST ✅ (NPZ, CSV) · EMIT CSV ✅ (gated)
+## XII. Bulk Import/Export — INGEST ✅ (NPZ, CSV, JSONL) · EMIT CSV ✅ (gated)
 
 ### INGEST — Bulk import from files ✅
 
@@ -1626,6 +1626,11 @@ INGEST harvest FROM 'links.npz' FORMAT NPZ KEY links_su3;  -- pick one member
 -- CSV: header row names the fields, one record per data row
 INGEST stations FROM 'stations.csv' FORMAT CSV;
 INGEST chembl   FROM 'molecules.csv' FORMAT CSV KEY chembl_id;
+
+-- JSONL / NDJSON: one object per line; KEY is required (JSON objects
+-- have no column order). Numeric arrays become Vector fibers, so
+-- embeddings ingest as first-class vectors.
+INGEST docs FROM 'embeddings.jsonl' FORMAT JSONL KEY doc_id;
 ```
 
 CSV policy: the base key is the `KEY <col>` column, or the FIRST column
@@ -1640,7 +1645,7 @@ exists, the inferred schema must be compatible.
 
 > **Status correction (audit 2026-07-02):** the richer INGEST sugar this
 > section used to show — `HEADER`/`DELIMITER`/`NULL_VALUE`/`SKIP`
-> options, `FORMAT JSON/JSONL/DHOOM/SQL`, `FROM STDIN`, `FROM <url>`,
+> options, `FORMAT JSON/DHOOM/SQL`, `FROM STDIN`, `FROM <url>`,
 > `MAP (...)` renames, `FILTER (...)` — is design spec, NOT implemented.
 > Unsupported formats are refused with the supported list; unsupported
 > clauses are refused by the trailing-token guard.

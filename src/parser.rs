@@ -1720,7 +1720,17 @@ impl Token {
             Token::Number(n) => format!("number {n}"),
             Token::Str(s) => {
                 if s.len() > 24 {
-                    format!("string '{}…'", &s[..24])
+                    // Truncate on a char boundary — a raw `&s[..24]`
+                    // panics when byte 24 lands inside a multibyte
+                    // char, turning a parse error into a crash. Take
+                    // every char that STARTS before byte 24 (identical
+                    // to the old rendering for ASCII).
+                    let head: String = s
+                        .char_indices()
+                        .take_while(|(i, _)| *i < 24)
+                        .map(|(_, c)| c)
+                        .collect();
+                    format!("string '{head}…'")
                 } else {
                     format!("string '{s}'")
                 }

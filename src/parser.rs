@@ -7894,11 +7894,14 @@ fn parse_weight_expr(tokens: &[String]) -> Result<WeightExpr, String> {
     let mut pos: usize = 0;
     let expr = parse_weight_add_sub(tokens, &mut pos)?;
     if pos != tokens.len() {
+        // These tokens are already plain strings (Phase 1 stashes the raw
+        // `Vec<String>` on `PatternDef.weight`), not `Token`s — quote and
+        // join directly rather than mapping `Token::human`.
         return Err(format!(
             "WEIGHT: unexpected trailing tokens at position {pos}: {}",
             tokens[pos..]
                 .iter()
-                .map(Token::human)
+                .map(|t| format!("'{t}'"))
                 .collect::<Vec<_>>()
                 .join(" ")
         ));

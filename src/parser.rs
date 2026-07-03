@@ -10494,9 +10494,56 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }))
         }
 
-        Statement::Explain { inner: _ } => {
-            // Query plan introspection — placeholder
-            Ok(ExecResult::Ok)
+        Statement::Explain { inner } => {
+            // EXPLAIN SECTION b AT key — WHY is this record priced the
+            // way it is: per-field κ decomposition from the exact loop
+            // compute_record_k runs (audit follow-up: the engine knew,
+            // it just didn't say).
+            if let Statement::PointQuery { bundle, .. } = &**inner {
+                let rows = match execute(engine, inner)? {
+                    ExecResult::Rows(rows) if !rows.is_empty() => rows,
+                    ExecResult::Rows(_) => {
+                        return Err(format!(
+                            "EXPLAIN: no section at that key in '{bundle}'"
+                        ))
+                    }
+                    other => {
+                        return Err(format!(
+                            "EXPLAIN: point read returned {other:?}, expected a record"
+                        ))
+                    }
+                };
+                let store = engine
+                    .bundle(bundle)
+                    .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                let Some(heap) = store.as_heap() else {
+                    return Ok(ExecResult::Notice(
+                        "EXPLAIN κ needs heap-resident field statistics; this \
+                         bundle is mmap-backed — HEALTH gives the aggregate view"
+                            .to_string(),
+                    ));
+                };
+                let explain = crate::bundle::explain_record_k(
+                    &heap.field_stats,
+                    &rows[0],
+                    &heap.schema.fiber_fields,
+                );
+                if explain.is_empty() {
+                    return Ok(ExecResult::Notice(
+                        "no numeric fiber fields with enough history (need \
+                         ≥2 records per field) to decompose κ yet"
+                            .to_string(),
+                    ));
+                }
+                return Ok(ExecResult::Rows(explain));
+            }
+            // Plan-level EXPLAIN for scans lives on the server path.
+            Ok(ExecResult::Notice(
+                "the embedded engine explains point reads — try EXPLAIN \
+                 SECTION <bundle> AT <key>='<v>'; for the per-field κ \
+                 breakdown"
+                    .to_string(),
+            ))
         }
 
         Statement::AtlasBegin | Statement::AtlasCommit | Statement::AtlasRollback => {

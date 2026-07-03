@@ -771,6 +771,23 @@ end-to-end in `tests/gql_reference_truth.rs`.
 
 ---
 
+### EXPLAIN the κ — why is this record priced that way? ✅
+
+```gql
+EXPLAIN SECTION stations AT station_id='st-042';
+-- field | value | mean   | sigma | range | kappa  | z
+-- temp  | 500.0 | 20.3…  | 0.17… | 100   | 4.797  | 2760.3
+-- wind  | 5.5   | 5.45   | 0.29  | 50    | 0.001  | 0.17
+```
+
+`EXPLAIN` wrapped around a point read returns the per-field
+decomposition of the record's κ — the SAME loop `compute_record_k`
+runs, exported as rows, loudest field first. The record's κ is the
+mean of the `kappa` column; `z` is the classical |v−μ|/σ for
+cross-checking against textbook anomaly scores. A missing record is a
+loud error; a bundle without enough history says so. Works on both the
+embedded engine and gigi-stream. Enforced by `tests/explain_kappa.rs`.
+
 ### Time you can type — TIMESTAMP fields ✅
 
 ```gql

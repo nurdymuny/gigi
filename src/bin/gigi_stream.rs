@@ -14351,6 +14351,42 @@ fn execute_gql_on_store_read(
             };
             Ok(ExecResult::Rows(result_rows))
         }
+        // EXPLAIN SECTION b AT key — per-field κ decomposition, same
+        // rows as the embedded executor. Plan-level EXPLAIN for other
+        // inners keeps its existing handling elsewhere.
+        Statement::Explain { inner } if matches!(&**inner, Statement::PointQuery { .. }) => {
+            let rows = match execute_gql_on_store_read(store, inner, engine)? {
+                ExecResult::Rows(rows) if !rows.is_empty() => rows,
+                ExecResult::Rows(_) => {
+                    return Err("EXPLAIN: no section at that key".to_string())
+                }
+                other => {
+                    return Err(format!(
+                        "EXPLAIN: point read returned {other:?}, expected a record"
+                    ))
+                }
+            };
+            let Some(heap) = store.as_heap() else {
+                return Ok(ExecResult::Notice(
+                    "EXPLAIN κ needs heap-resident field statistics; this \
+                     bundle is mmap-backed — HEALTH gives the aggregate view"
+                        .to_string(),
+                ));
+            };
+            let explain = gigi::bundle::explain_record_k(
+                &heap.field_stats,
+                &rows[0],
+                &heap.schema.fiber_fields,
+            );
+            if explain.is_empty() {
+                return Ok(ExecResult::Notice(
+                    "no numeric fiber fields with enough history (need ≥2 \
+                     records per field) to decompose κ yet"
+                        .to_string(),
+                ));
+            }
+            Ok(ExecResult::Rows(explain))
+        }
         // SHOW FIELDS ON <bundle> — one row per field in schema order,
         // same shape as the embedded executor's arm.
         Statement::ShowFields { .. } => {

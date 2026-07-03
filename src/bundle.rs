@@ -1082,6 +1082,53 @@ pub fn compute_record_k(
     }
 }
 
+/// Per-field decomposition of [`compute_record_k`] — the SAME loop over
+/// the SAME stats, exported as rows, so `EXPLAIN SECTION … AT …` can say
+/// WHY a record is priced the way it is instead of just quoting the
+/// price. One row per participating numeric fiber field:
+/// value, mean, sigma, range, kappa (=|v−μ|/R, this field's
+/// contribution), and z (=|v−μ|/σ, the classical score) — sorted
+/// loudest first. The record's κ is the mean of the kappa column.
+pub fn explain_record_k(
+    field_stats: &HashMap<String, FieldStats>,
+    record: &Record,
+    fiber_fields: &[crate::types::FieldDef],
+) -> Vec<Record> {
+    let mut rows: Vec<Record> = Vec::new();
+    for field_def in fiber_fields {
+        let Some(v) = record.get(&field_def.name).and_then(|v| v.as_f64()) else {
+            continue;
+        };
+        let Some(fs) = field_stats.get(&field_def.name) else {
+            continue;
+        };
+        if fs.count < 2 {
+            continue;
+        }
+        let mean = fs.mean;
+        let range = effective_range(field_def, fs);
+        let sigma = fs.variance().sqrt();
+        let kappa = (v - mean).abs() / range;
+        let mut row = Record::new();
+        row.insert("field".into(), Value::Text(field_def.name.clone()));
+        row.insert("value".into(), Value::Float(v));
+        row.insert("mean".into(), Value::Float(mean));
+        row.insert("sigma".into(), Value::Float(sigma));
+        row.insert("range".into(), Value::Float(range));
+        row.insert("kappa".into(), Value::Float(kappa));
+        if sigma > 0.0 {
+            row.insert("z".into(), Value::Float((v - mean).abs() / sigma));
+        }
+        rows.push(row);
+    }
+    rows.sort_by(|a, b| {
+        let ka = a.get("kappa").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let kb = b.get("kappa").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        kb.total_cmp(&ka)
+    });
+    rows
+}
+
 impl BundleStore {
     /// Create a new empty bundle. Always starts in Hashed mode;
     /// auto-detects flat base geometry after 32 inserts and switches if K=0.

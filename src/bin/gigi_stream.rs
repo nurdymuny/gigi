@@ -17946,6 +17946,94 @@ mod tests {
         cleanup(&dir);
     }
 
+    /// Bundle-less EMIT over GQL — route-handler dispatch contract.
+    ///
+    /// 7a23aba gave `get_bundle_name` an `Emit { inner }` arm that
+    /// recurses into the inner statement — which covers every inner
+    /// that binds a bundle. An inner WITHOUT a bundle binding
+    /// (SHOW BUNDLES, …) still resolves to None, and the bundle
+    /// pre-resolve's None arm answered a bare `{"status":"ok"}`
+    /// without executing anything: same success-theater class, one
+    /// recursion level deeper.
+    ///
+    /// Contract pinned here (both phases in ONE test because
+    /// GIGI_EMIT_DIR is process-global and the module's env lock is
+    /// held for the duration):
+    ///   - gate closed (GIGI_EMIT_DIR unset): the request reaches the
+    ///     parser executor and comes back with the GIGI_EMIT_DIR gate
+    ///     error — NOT a bare ok.
+    ///   - gate open: the inner SHOW BUNDLES actually executes; it
+    ///     returns `ExecResult::Bundles`, which EMIT answers with its
+    ///     typed rows-shape error ("EMIT needs a statement that
+    ///     returns rows…"). Still not a bare ok — the executor spoke,
+    ///     nothing was silently dropped.
+    #[tokio::test(flavor = "current_thread")]
+    async fn http_gql_emit_bundleless_inner_dispatches_through_parser_executor() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("http_gql_emit_bundleless");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        std::env::remove_var("GIGI_EMIT_DIR");
+
+        {
+            let (logger, _ingester) =
+                Logger::new(LogConfig::default(), "http-gql-emit-bundleless-test");
+            let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+            state.ready.store(true, Ordering::Release);
+
+            // Phase A — gate closed. A bare {"status":"ok"} here is the
+            // bug: 200, nothing executed, nothing written.
+            let (status_a, body_a) = post_gql_body_for_test(
+                Arc::clone(&state),
+                "SHOW BUNDLES EMIT CSV TO 'x.csv';",
+            )
+            .await;
+            assert_ne!(
+                body_a,
+                serde_json::json!({"status": "ok"}),
+                "bundle-less EMIT must not be answered with a bare ok — \
+                 that is the success-theater bug (status {status_a})"
+            );
+            let err_a = body_a.get("error").and_then(|v| v.as_str()).unwrap_or("");
+            assert!(
+                err_a.contains("GIGI_EMIT_DIR"),
+                "gate-closed bundle-less EMIT must surface the \
+                 GIGI_EMIT_DIR gate error, got status {status_a} body {body_a}"
+            );
+
+            // Phase B — gate open. The inner SHOW BUNDLES must reach
+            // the executor: it returns ExecResult::Bundles, and EMIT
+            // answers with its typed rows-shape error. Proves the
+            // inner statement executed rather than being dropped.
+            let out = tmp_dir("http_gql_emit_bundleless_out");
+            cleanup(&out);
+            std::fs::create_dir_all(&out).unwrap();
+            std::env::set_var("GIGI_EMIT_DIR", &out);
+            let (status_b, body_b) = post_gql_body_for_test(
+                Arc::clone(&state),
+                "SHOW BUNDLES EMIT CSV TO 'x.csv';",
+            )
+            .await;
+            assert_ne!(
+                body_b,
+                serde_json::json!({"status": "ok"}),
+                "gate-open bundle-less EMIT must not be a bare ok \
+                 (status {status_b})"
+            );
+            let err_b = body_b.get("error").and_then(|v| v.as_str()).unwrap_or("");
+            assert!(
+                err_b.contains("EMIT needs a statement that returns rows"),
+                "gate-open SHOW BUNDLES EMIT must execute the inner \
+                 statement and answer EMIT's rows-shape error, got \
+                 status {status_b} body {body_b}"
+            );
+            std::env::remove_var("GIGI_EMIT_DIR");
+            cleanup(&out);
+        }
+
+        cleanup(&dir);
+    }
+
     // ── §8.5 Interop Fixture — binary voice note ingest + replay ──────────
     //
     // These three tests map exactly to the §8.5 pass criteria:

@@ -6507,7 +6507,8 @@ impl Parser {
     // identification, discourse-flow (Marcella), or any future consumer
     // that wants weighted predicate-filtered ranked queries.
 
-    /// `DEFINE [OR REPLACE] PATTERN <name> AS <pred> [WEIGHT (<expr>)] [USING (<field>,...)]`.
+    /// `DEFINE [OR REPLACE] PATTERN <name> AS <pred> [OR <pred>]*
+    /// [WEIGHT (<expr>)] [USING (<field>,...)]`.
     /// Already consumed the leading `DEFINE` keyword.
     ///
     /// `OR REPLACE` (between DEFINE and PATTERN) opts the statement into
@@ -6529,6 +6530,19 @@ impl Parser {
         self.expect_keyword("AS")?;
         let pred = self.parse_filter_condition_list()?;
 
+        // OR groups — the same statement-level surface COVER uses
+        // (see the `OR` arm in `parse_cover`): each `OR` after the base
+        // predicate opens a new AND-chained alternative. A row matches
+        // when the base pred matches OR any group matches. Execution
+        // needs no new machinery: HUNT desugars into COVER and hands
+        // `or_groups` through untouched (executor arm for
+        // `Statement::Hunt`), and COVER already evaluates OR groups.
+        let mut or_groups: Vec<Vec<FilterCondition>> = Vec::new();
+        while self.is_keyword("OR") {
+            self.advance();
+            or_groups.push(self.parse_filter_condition_list()?);
+        }
+
         let mut weight: Option<Vec<String>> = None;
         let mut using_fields: Vec<String> = Vec::new();
 
@@ -6549,10 +6563,7 @@ impl Parser {
         Ok(Statement::DefinePattern {
             name,
             pred,
-            // OR groups land in a follow-up sub-spec; v0.1 grammar uses
-            // explicit OR inside the predicate body, parsed by
-            // parse_filter_condition_list above.
-            or_groups: Vec::new(),
+            or_groups,
             weight,
             using_fields,
             replace,

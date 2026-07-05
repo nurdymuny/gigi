@@ -12845,6 +12845,45 @@ async fn gql_query(
     let bundle_name = match get_bundle_name(&stmt) {
         Some(name) => name,
         None => {
+            // Bundle-less EMIT (inner SHOW BUNDLES, …): the Emit arm in
+            // `get_bundle_name` recurses into the inner statement
+            // (7a23aba), so an inner with no bundle binding resolves to
+            // None and lands here. Answering the bare ok would drop the
+            // statement on the floor — the same success-theater bug the
+            // with-bundle Emit arm closed, one recursion level deeper.
+            // Route it through the parser executor like the write path
+            // does: `parser::execute` owns the GIGI_EMIT_DIR gate and
+            // the inner statement. There is no bundle to pre-resolve,
+            // so no existence check applies.
+            if matches!(stmt, gigi::parser::Statement::Emit { .. }) {
+                let stmt_type = gql_stmt_type_name(&stmt);
+                let mut engine = state.engine_write();
+                let result = execute_gql_on_engine(&mut engine, &stmt);
+                let dur = t0.elapsed().as_micros() as u64;
+                let (status, resp) = match result {
+                    Ok(r) => exec_result_to_response(r),
+                    Err(e) => {
+                        let ev = state.logger.query_error(&req_id, query, dur, "ExecError", &e, 500);
+                        state.logger.emit(ev);
+                        state.metrics.record_query(dur, stmt_type, false, true);
+                        return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e})));
+                    }
+                };
+                let slow = dur >= state.logger.slow_threshold_us();
+                let ev = state.logger.query_complete(
+                    &req_id, "gql", stmt_type, query, dur, 0, dur,
+                    &[], 0, 0, 0, 0, false, None, None,
+                );
+                state.logger.emit(ev);
+                if slow {
+                    let ev2 = state.logger.query_slow(&req_id, stmt_type, query, dur, false, false, "write path");
+                    state.logger.emit(ev2);
+                }
+                state.metrics.record_query(dur, stmt_type, slow, false);
+                return (status, resp);
+            }
+            // Every other bundle-less statement keeps its batch
+            // semantics: acknowledged ok, nothing to execute here.
             emit_quick("OTHER", t0.elapsed().as_micros() as u64, false);
             return (StatusCode::OK, Json(serde_json::json!({"status": "ok"})));
         }

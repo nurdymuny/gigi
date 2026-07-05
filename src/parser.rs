@@ -6532,11 +6532,14 @@ impl Parser {
 
         // OR groups — the same statement-level surface COVER uses
         // (see the `OR` arm in `parse_cover`): each `OR` after the base
-        // predicate opens a new AND-chained alternative. A row matches
-        // when the base pred matches OR any group matches. Execution
-        // needs no new machinery: HUNT desugars into COVER and hands
-        // `or_groups` through untouched (executor arm for
-        // `Statement::Hunt`), and COVER already evaluates OR groups.
+        // predicate opens a new AND-chained alternative. Evaluation is
+        // COVER's documented composition (GIGI_API.md, `matches_filter`
+        // in src/bundle.rs): a row matches when the base pred matches
+        // AND at least one OR group matches — NOT boolean OR across the
+        // whole predicate. Execution needs no new machinery: HUNT
+        // desugars into COVER and hands `or_groups` through untouched
+        // (executor arm for `Statement::Hunt`), and COVER already
+        // evaluates OR groups.
         let mut or_groups: Vec<Vec<FilterCondition>> = Vec::new();
         while self.is_keyword("OR") {
             self.advance();

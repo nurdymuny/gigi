@@ -563,6 +563,68 @@ class GigiClient:
         """
         return self._get(f"/v1/bundles/{bundle}/spectral")
 
+    def capacity(self, bundle: str, *, tau: Optional[float] = None) -> Dict[str, Any]:
+        """
+        Davis capacity C = τ/K for the bundle.
+
+        τ is the tolerance budget — how much error the caller can absorb
+        before the answer stops being useful. Server default: τ = 1.0.
+
+        Returns dict with: capacity, k, tau, plus regime interpretation.
+        """
+        params: Dict[str, Any] = {}
+        if tau is not None:
+            params["tau"] = tau
+        return self._get(f"/v1/bundles/{bundle}/capacity", params=params)
+
+    def horizon(
+        self,
+        bundle: str,
+        *,
+        tau: Optional[float] = None,
+        estimator: Optional[str] = None,
+        fixed_value: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """
+        Predictive horizon s_max = τ/(K·ℓ_c) — how far ahead the bundle's
+        current geometry supports seeing, in units of the correlation
+        length ℓ_c.
+
+        estimator: "spectral_gap" (default; ℓ_c = 1/√λ₁ with fallback),
+        "welford_radius", or "fixed" (requires fixed_value).
+
+        Returns dict with: s_max, k, tau, l_c, lambda1, and estimator
+        provenance.
+        """
+        params: Dict[str, Any] = {}
+        if tau is not None:
+            params["tau"] = tau
+        if estimator is not None:
+            params["estimator"] = estimator
+        if fixed_value is not None:
+            params["fixed_value"] = fixed_value
+        return self._get(f"/v1/bundles/{bundle}/horizon", params=params)
+
+    def local_holonomy(
+        self,
+        bundle: str,
+        r_current: List[float],
+        r_past: List[float],
+        dim: int,
+    ) -> Dict[str, Any]:
+        """
+        Windowed holonomy defect between two rotation frames.
+
+        r_current / r_past are row-major dim×dim rotation matrices
+        (length exactly dim*dim). The server computes
+        R_window = R_current · R_pastᵀ and reports its Frobenius defect.
+
+        Returns dict with: defect, coherence, interpretation — coherence
+        near 1 = laminar (rotations nearly cancel), near 0 = turbulent.
+        """
+        body = {"r_current": r_current, "r_past": r_past, "dim": dim}
+        return self._post(f"/v1/bundles/{bundle}/local_holonomy", body)
+
     def consistency(self, bundle: str) -> Dict[str, Any]:
         """
         Check Čech cohomology H¹ — holonomy-based consistency check.

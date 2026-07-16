@@ -379,9 +379,11 @@ fn mean_spacing_ratio(sorted_vals: &[f64], trim_frac: f64) -> f64 {
 ///
 /// ESTIMATOR NOTE (2026-07-16 investigation receipt): the gate is the
 /// MEAN over 4 fixed-seed graphs because the single-graph r̃ estimator
-/// at V = 512 has seed-to-seed scatter σ ≈ 0.02 (measured cos-weight
-/// values across seeds 20260716/1/2/3/4: 0.5613, 0.5129, 0.5120,
-/// 0.5254, 0.5559 — 5-seed mean 0.5335, i.e. ON the GOE anchor). A
+/// at V = 512 has seed-to-seed scatter σ ≈ 0.02 (shipped-fixture
+/// cos-weight values across seeds 20260716/1/2/3/4: 0.5567, 0.5165,
+/// 0.5151, 0.5207, 0.5465 — 5-seed mean 0.5311, σ = 0.0192, i.e. ON
+/// the GOE anchor; the earlier-quoted set with mean 0.5335 came from
+/// an intermediate fixture during the investigation). A
 /// single-seed ±0.03 window is a ~1.5σ criterion that fails ~13% of
 /// seeds under CORRECT physics. Averaging 4 fixed seeds shrinks the
 /// estimator σ to ≈ 0.01, making ±0.03 a ≈3σ gate. This is variance

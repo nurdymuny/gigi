@@ -108,12 +108,15 @@ Class separation is total: every magnetic seed exceeds every
 cos-weight seed.
 
 **Estimator receipt (investigation, not tolerance-tuning).** The first
-run used a single seed (20260716) and measured cos-weight r̃ = 0.5613 —
-outside ±0.03. Per the tranche rules the tolerance was NOT widened;
-diagnosis (5 seeds + trim sweep + degree sweep) showed single-graph
-r̃ scatter at V = 512 is σ ≈ 0.02 with the 5-seed mean 0.5335 ≈ the
-GOE anchor — i.e. the physics was right and a single-seed ±0.03 window
-is a ~1.5σ criterion that fails ~13% of seeds under CORRECT physics.
+run (an intermediate fixture during the investigation) measured
+single-seed cos-weight r̃ = 0.5613 at seed 20260716 — outside ±0.03.
+Per the tranche rules the tolerance was NOT widened; diagnosis
+(5 seeds + trim sweep + degree sweep) showed single-graph r̃ scatter
+at V = 512 is σ ≈ 0.02. Under the shipped fixture the 5-seed
+replication (seeds 20260716/1/2/3/4) gives 0.5567, 0.5165, 0.5151,
+0.5207, 0.5465 — mean 0.5311, σ = 0.0192, ≈ the GOE anchor — i.e. the
+physics was right and a single-seed ±0.03 window is a ~1.5σ criterion
+that fails ~13% of seeds under CORRECT physics.
 The gate was therefore made the mean over 4 fixed seeds (σ_mean ≈
 0.01, ±0.03 ≈ 3σ), anchors and tolerance unchanged. Per-seed values
 are printed by the test (`-- --nocapture`) and recorded above.

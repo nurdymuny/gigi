@@ -508,6 +508,11 @@ pub enum Statement {
     },
     Explain {
         inner: Box<Statement>,
+        /// `VECTOR (v0..v383)` / `VECTOR (f1, f2, …)` — assemble the
+        /// named scalar fibers into one virtual vector and emit a
+        /// kappa_v row (Marcella EXPLAIN-family ask 1). None for every
+        /// non-SECTION inner.
+        vector: Option<crate::explain::ExplainVectorSpec>,
     },
 
     // ── Transaction ──
@@ -1696,6 +1701,53 @@ pub struct MeasureSpec {
     pub func: AggFunc,
     pub field: String,
     pub alias: Option<String>,
+}
+
+/// Expand `v0..v383`-style range sugar: both endpoints must share the
+/// same non-empty… well, possibly empty… textual prefix and carry a
+/// numeric suffix; the expansion is inclusive both ends with unpadded
+/// rendering (`v0, v1, …`). Zero-padded families (`f001..f010`) should
+/// use the explicit list form — padding is NOT preserved.
+fn expand_field_range(lo: &str, hi: &str) -> Result<Vec<String>, String> {
+    fn split_suffix(name: &str) -> Option<(&str, &str)> {
+        // Names are ASCII words per the tokenizer, so byte math is
+        // safe: ds = first byte of the trailing digit run.
+        let ds = name
+            .rfind(|c: char| !c.is_ascii_digit())
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        if ds == name.len() {
+            return None; // no numeric suffix
+        }
+        Some((&name[..ds], &name[ds..]))
+    }
+    let (lp, ls) = split_suffix(lo)
+        .ok_or_else(|| format!("VECTOR range: '{lo}' has no numeric suffix to expand"))?;
+    let (hp, hs) = split_suffix(hi)
+        .ok_or_else(|| format!("VECTOR range: '{hi}' has no numeric suffix to expand"))?;
+    if lp != hp {
+        return Err(format!(
+            "VECTOR range: endpoint prefixes differ ('{lp}' vs '{hp}') — \
+             a range expands over one field family like v0..v383"
+        ));
+    }
+    let a: u64 = ls
+        .parse()
+        .map_err(|_| format!("VECTOR range: bad numeric suffix '{ls}'"))?;
+    let b: u64 = hs
+        .parse()
+        .map_err(|_| format!("VECTOR range: bad numeric suffix '{hs}'"))?;
+    if a > b {
+        return Err(format!("VECTOR range: {lo}..{hi} is descending"));
+    }
+    if b - a > 100_000 {
+        return Err(format!(
+            "VECTOR range: {lo}..{hi} expands to {} fields — refusing \
+             (limit 100001)",
+            b - a + 1
+        ));
+    }
+    Ok((a..=b).map(|i| format!("{lp}{i}")).collect())
 }
 
 // ── Tokenizer ──
@@ -5651,9 +5703,88 @@ impl Parser {
     // ── GQL: EXPLAIN ──
 
     fn parse_explain(&mut self) -> Result<Statement, String> {
+        // EXPLAIN SECTION <b> AT … has its own grammar (VECTOR clause;
+        // Marcella EXPLAIN-family). Anything else — including the
+        // insert form EXPLAIN SECTION b (…) — keeps the generic wrap.
+        if self.is_keyword("SECTION") {
+            let save = self.pos;
+            self.advance(); // SECTION
+            let _bundle = self.expect_word()?;
+            let is_point = self.is_keyword("AT");
+            self.pos = save;
+            if is_point {
+                return self.parse_explain_section();
+            }
+        }
         let inner = self.parse()?;
         Ok(Statement::Explain {
             inner: Box::new(inner),
+            vector: None,
+        })
+    }
+
+    /// EXPLAIN SECTION <bundle> AT k=v[, …] [VECTOR (…)] [PROJECT (…)]
+    fn parse_explain_section(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("SECTION")?;
+        let bundle = self.expect_word()?;
+        self.expect_keyword("AT")?;
+        let key = self.parse_kv_pairs()?;
+        let mut vector = None;
+        if self.is_keyword("VECTOR") {
+            self.advance();
+            self.expect(Token::LParen)?;
+            vector = Some(self.parse_explain_vector_list()?);
+        }
+        let mut project = None;
+        if self.is_keyword("PROJECT") {
+            self.advance();
+            project = Some(self.parse_name_list()?);
+        }
+        Ok(Statement::Explain {
+            inner: Box::new(Statement::PointQuery {
+                bundle,
+                key,
+                project,
+            }),
+            vector,
+        })
+    }
+
+    /// The inside of `VECTOR ( … )` — comma-separated fiber names with
+    /// `lo..hi` range sugar (`v0..v383` expands over the shared prefix
+    /// + numeric suffix, inclusive both ends, unpadded rendering).
+    /// Consumes the closing `)`.
+    fn parse_explain_vector_list(
+        &mut self,
+    ) -> Result<crate::explain::ExplainVectorSpec, String> {
+        let mut fields: Vec<String> = Vec::new();
+        let mut label_parts: Vec<String> = Vec::new();
+        loop {
+            if matches!(self.peek(), Some(Token::RParen)) {
+                self.advance();
+                break;
+            }
+            if !label_parts.is_empty() {
+                self.expect(Token::Comma)?;
+            }
+            let first = self.expect_word()?;
+            if matches!(self.peek(), Some(Token::DotDot)) {
+                self.advance();
+                let last = self.expect_word()?;
+                let expanded = expand_field_range(&first, &last)?;
+                label_parts.push(format!("{first}..{last}"));
+                fields.extend(expanded);
+            } else {
+                label_parts.push(first.clone());
+                fields.push(first);
+            }
+        }
+        if fields.is_empty() {
+            return Err("VECTOR (…) needs at least one fiber field".to_string());
+        }
+        Ok(crate::explain::ExplainVectorSpec {
+            label: format!("vector({})", label_parts.join(",")),
+            fields,
         })
     }
 
@@ -10678,14 +10809,14 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }))
         }
 
-        Statement::Explain { inner } => {
+        Statement::Explain { inner, vector } => {
             // EXPLAIN SECTION b AT key — WHY is this record priced the
             // way it is: per-field κ decomposition from the exact loop
             // compute_record_k runs (audit follow-up: the engine knew,
             // it just didn't say). Shared executor: crate::explain
             // (same rows on the embedded and server paths; misses are
             // typed NOT_FOUND naming key + bundle, per the Marcella
-            // error-contract ask 5a).
+            // error-contract ask 5a; vector κ rows per ask 1).
             if let Statement::PointQuery {
                 bundle,
                 key,
@@ -10704,6 +10835,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     bundle,
                     &key_rec,
                     project.as_deref(),
+                    vector.as_ref(),
                 );
             }
             // Plan-level EXPLAIN for scans lives on the server path.
@@ -14049,11 +14181,34 @@ mod tests {
     fn gql_explain() {
         let stmt = parse("EXPLAIN COVER sensors ON city = 'Moscow'").unwrap();
         match stmt {
-            Statement::Explain { inner } => {
+            Statement::Explain { inner, vector } => {
                 assert!(matches!(*inner, Statement::Cover { .. }));
+                assert!(vector.is_none());
             }
             _ => panic!("Expected Explain"),
         }
+    }
+
+    #[test]
+    fn gql_explain_section_vector_clause() {
+        // Range sugar + explicit list, mixed, expand in clause order.
+        let stmt =
+            parse("EXPLAIN SECTION st AT id='a' VECTOR (v0..v2, extra)").unwrap();
+        match stmt {
+            Statement::Explain { inner, vector } => {
+                assert!(matches!(*inner, Statement::PointQuery { .. }));
+                let spec = vector.expect("VECTOR clause parsed");
+                assert_eq!(spec.label, "vector(v0..v2,extra)");
+                assert_eq!(spec.fields, vec!["v0", "v1", "v2", "extra"]);
+            }
+            _ => panic!("Expected Explain"),
+        }
+    }
+
+    #[test]
+    fn gql_explain_vector_range_rejects_mismatched_prefixes() {
+        let err = parse("EXPLAIN SECTION st AT id='a' VECTOR (v0..w3)").unwrap_err();
+        assert!(err.contains("prefixes differ"), "{err}");
     }
 
     #[test]

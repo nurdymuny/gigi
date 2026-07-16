@@ -14450,7 +14450,9 @@ fn execute_gql_on_store_read(
         // the blanket 500 (Marcella error-contract ask 5a). Plan-level
         // EXPLAIN for other inners keeps its existing handling
         // elsewhere.
-        Statement::Explain { inner } if matches!(&**inner, Statement::PointQuery { .. }) => {
+        Statement::Explain { inner, vector }
+            if matches!(&**inner, Statement::PointQuery { .. }) =>
+        {
             let Statement::PointQuery {
                 bundle,
                 key,
@@ -14468,6 +14470,7 @@ fn execute_gql_on_store_read(
                 bundle,
                 &key_rec,
                 project.as_deref(),
+                vector.as_ref(),
             )
         }
         // SHOW FIELDS ON <bundle> — one row per field in schema order,
@@ -14547,7 +14550,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         Transplant { source, .. } => Some(source.clone()),
         DropPolicy { bundle, .. } | DropTrigger { bundle, .. } => Some(bundle.clone()),
         CreateTrigger { bundle, .. } => Some(bundle.clone()),
-        Explain { inner } => get_bundle_name(inner),
+        Explain { inner, .. } => get_bundle_name(inner),
         // EMIT wraps a rows-producing statement; the bundle binding is
         // the inner statement's. Without this arm the pre-resolve fell
         // to `_ => None` and the route answered a bare ok without

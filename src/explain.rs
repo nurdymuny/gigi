@@ -69,11 +69,24 @@ fn no_section_error(bundle: &str, key: &Record) -> String {
     )
 }
 
+fn mmap_decline_notice() -> ExecResult {
+    ExecResult::Notice(
+        "EXPLAIN κ needs heap-resident field statistics; this \
+         bundle is mmap-backed — HEALTH gives the aggregate view"
+            .to_string(),
+    )
+}
+
+fn no_numeric_notice_text() -> &'static str {
+    "no numeric fiber fields with enough history (need \
+     ≥2 records per field) to decompose κ yet"
+}
+
 /// Execute `EXPLAIN SECTION <bundle> AT <key> [VECTOR (…)]
 /// [PROJECT (…)]` against a resolved store. Returns the per-field κ
 /// decomposition rows from [`explain_record_k`] — the exact loop
 /// `compute_record_k` runs — plus the ADDITIVE vector rows
-/// (kind='vector', see [`vector_rows`]).
+/// (kind='vector').
 ///
 /// Misses are typed: `Err(NOT_FOUND: …)` naming key and bundle.
 pub fn execute_explain_section(
@@ -89,29 +102,194 @@ pub fn execute_explain_section(
     if let Some(fields) = project {
         rec.retain(|k, _| fields.iter().any(|f| f == k));
     }
-
-    let Some(heap) = store.as_heap() else {
-        return Ok(ExecResult::Notice(
-            "EXPLAIN κ needs heap-resident field statistics; this \
-             bundle is mmap-backed — HEALTH gives the aggregate view"
-                .to_string(),
-        ));
+    let Some(mut ex) = Explainer::new(store, vector)? else {
+        return Ok(mmap_decline_notice());
     };
-    let stats: &HashMap<String, FieldStats> = &heap.field_stats;
-    let fiber_fields = &heap.schema.fiber_fields;
-
-    let mut rows = explain_record_k(stats, &rec, fiber_fields);
-    let record_kappa = record_kappa_of(&rows, stats, &rec, fiber_fields);
-    let vrows = vector_rows(store, &rec, fiber_fields, vector, record_kappa)?;
-    if rows.is_empty() && vrows.is_empty() {
-        return Ok(ExecResult::Notice(
-            "no numeric fiber fields with enough history (need \
-             ≥2 records per field) to decompose κ yet"
-                .to_string(),
-        ));
+    let rows = ex.explain_one(&rec)?;
+    if rows.is_empty() {
+        return Ok(ExecResult::Notice(no_numeric_notice_text().to_string()));
     }
-    rows.extend(vrows);
     Ok(ExecResult::Rows(rows))
+}
+
+/// Execute the batch form `EXPLAIN SECTION <bundle> AT <field> IN
+/// (v1, …, vn) [VECTOR (…)] [PROJECT (…)]` (Marcella EXPLAIN-family
+/// ask 2).
+///
+/// Contract:
+///   - grouped rows, INPUT order (the caller's list is the contract);
+///     each group is one record's full EXPLAIN output with the key
+///     value stamped as a discriminator column (`<field>` → value) on
+///     EVERY row of the group;
+///   - a missing key emits ONE typed miss entry (kind='miss', names
+///     key value + bundle) — the batch never fails wholesale and
+///     never silently skips;
+///   - a found record with nothing to decompose emits ONE kind='empty'
+///     note row (groups are never invisible);
+///   - one store resolution / one engine read-lock for the whole
+///     batch (the caller holds the lock across this call); vector
+///     contexts (mu_v, R_cos — bundle-level) are computed once and
+///     shared across groups via the Explainer cache.
+pub fn execute_explain_batch(
+    store: &BundleRef<'_>,
+    bundle: &str,
+    field: &str,
+    values: &[Value],
+    project: Option<&[String]>,
+    vector: Option<&ExplainVectorSpec>,
+) -> Result<ExecResult, String> {
+    let Some(mut ex) = Explainer::new(store, vector)? else {
+        return Ok(mmap_decline_notice());
+    };
+    let mut out: Vec<Record> = Vec::new();
+    for val in values {
+        let mut key = Record::new();
+        key.insert(field.to_string(), val.clone());
+        let Some(mut rec) = store.point_query(&key) else {
+            let mut row = Record::new();
+            row.insert(field.to_string(), val.clone());
+            row.insert("kind".into(), Value::Text("miss".into()));
+            row.insert(
+                "miss".into(),
+                Value::Text(format!(
+                    "no section at {field}={} in bundle '{bundle}'",
+                    render_value(val)
+                )),
+            );
+            out.push(row);
+            continue;
+        };
+        if let Some(fields) = project {
+            rec.retain(|k, _| fields.iter().any(|f| f == k));
+        }
+        let mut rows = ex.explain_one(&rec)?;
+        if rows.is_empty() {
+            let mut row = Record::new();
+            row.insert(field.to_string(), val.clone());
+            row.insert("kind".into(), Value::Text("empty".into()));
+            row.insert(
+                "note".into(),
+                Value::Text(no_numeric_notice_text().to_string()),
+            );
+            out.push(row);
+            continue;
+        }
+        for r in rows.iter_mut() {
+            r.insert(field.to_string(), val.clone());
+        }
+        out.extend(rows);
+    }
+    Ok(ExecResult::Rows(out))
+}
+
+/// Shared per-statement explainer: resolves the stats source once,
+/// validates the VECTOR clause once, and caches the bundle-level
+/// vector contexts so a batch computes mu_v / R_cos once per target,
+/// not once per key.
+struct Explainer<'a> {
+    store: &'a BundleRef<'a>,
+    stats: std::borrow::Cow<'a, HashMap<String, FieldStats>>,
+    fiber_fields: &'a [FieldDef],
+    spec: Option<&'a ExplainVectorSpec>,
+    /// Bundle-level vector contexts, keyed `<label-or-field>#<dim>` —
+    /// mu and R_cos are properties of the bundle, computed once per
+    /// statement. `None` caches "no context" (e.g. fewer than 2
+    /// defined cosines) so the scans don't rerun either.
+    ctx_cache: HashMap<String, Option<VectorContext>>,
+}
+
+impl<'a> Explainer<'a> {
+    /// `Ok(None)` = the store declines (mmap-backed; heap-resident
+    /// field statistics required — ask 5b will lift this).
+    fn new(
+        store: &'a BundleRef<'a>,
+        spec: Option<&'a ExplainVectorSpec>,
+    ) -> Result<Option<Self>, String> {
+        let fiber_fields: &'a [FieldDef] = &store.schema().fiber_fields;
+        // Typos are loud even when every key misses: validate the
+        // clause against the schema up front.
+        if let Some(spec) = spec {
+            validate_vector_spec(spec, fiber_fields)?;
+        }
+        let Some(heap) = store.as_heap() else {
+            return Ok(None);
+        };
+        Ok(Some(Self {
+            store,
+            stats: std::borrow::Cow::Borrowed(&heap.field_stats),
+            fiber_fields,
+            spec,
+            ctx_cache: HashMap::new(),
+        }))
+    }
+
+    /// One record's full EXPLAIN output: scalar rows (explain_record_k,
+    /// unchanged) + additive vector rows, record_kappa stamped on all.
+    fn explain_one(&mut self, rec: &Record) -> Result<Vec<Record>, String> {
+        let mut rows = explain_record_k(&self.stats, rec, self.fiber_fields);
+        let record_kappa = record_kappa_of(&rows, &self.stats, rec, self.fiber_fields);
+        let vrows = self.vector_rows(rec, record_kappa)?;
+        rows.extend(vrows);
+        Ok(rows)
+    }
+
+    /// The ADDITIVE vector rows for one explained record:
+    ///   (a) one row per fiber field carrying `Value::Vector` on the
+    ///       target record (automatic — no clause needed);
+    ///   (b) one row for the `VECTOR (…)` scalar-family clause,
+    ///       labeled with the clause as written.
+    fn vector_rows(&mut self, target: &Record, record_kappa: f64) -> Result<Vec<Record>, String> {
+        let mut out = Vec::new();
+
+        // (a) true Value::Vector fiber fields, schema order.
+        for fd in self.fiber_fields {
+            let Some(Value::Vector(tv)) = target.get(&fd.name) else {
+                continue;
+            };
+            let dim = tv.len();
+            let name = fd.name.clone();
+            let extract = move |rec: &Record| match rec.get(&name) {
+                Some(Value::Vector(v)) if v.len() == dim => Some(v.clone()),
+                _ => None,
+            };
+            let cache_key = format!("{}#{dim}", fd.name);
+            if let Some(ctx) = self.context_for(cache_key, dim, &extract) {
+                if let Some(row) = kappa_v_row(&fd.name, tv, ctx, record_kappa) {
+                    out.push(row);
+                }
+            }
+        }
+
+        // (b) explicit scalar-family clause (validated in `new`).
+        if let Some(spec) = self.spec {
+            let dim = spec.fields.len();
+            let fields = spec.fields.clone();
+            let extract = move |rec: &Record| assemble_family(rec, &fields);
+            let cache_key = format!("{}#{dim}", spec.label);
+            if let Some(tv) = assemble_family(target, &spec.fields) {
+                if let Some(ctx) = self.context_for(cache_key, dim, &extract) {
+                    if let Some(row) = kappa_v_row(&spec.label, &tv, ctx, record_kappa) {
+                        out.push(row);
+                    }
+                }
+            }
+        }
+
+        Ok(out)
+    }
+
+    fn context_for(
+        &mut self,
+        cache_key: String,
+        dim: usize,
+        extract: &dyn Fn(&Record) -> Option<Vec<f64>>,
+    ) -> Option<&VectorContext> {
+        let store = self.store;
+        self.ctx_cache
+            .entry(cache_key)
+            .or_insert_with(|| build_vector_context(store, dim, extract))
+            .as_ref()
+    }
 }
 
 /// The record's κ (compute_record_k, the LOCKED total path over scalar
@@ -293,70 +471,27 @@ fn assemble_family(rec: &Record, fields: &[String]) -> Option<Vec<f64>> {
     Some(v)
 }
 
-/// The ADDITIVE vector rows for one explained record:
-///   (a) one row per fiber field carrying `Value::Vector` on the
-///       target record (automatic — no clause needed);
-///   (b) one row for the `VECTOR (…)` scalar-family clause, labeled
-///       with the clause as written (e.g. `vector(v0..v383)`).
-fn vector_rows(
-    store: &BundleRef<'_>,
-    target: &Record,
+/// Typos are loud: every field named by a `VECTOR (…)` clause must be
+/// a scalar numeric fiber field of the schema. (Data-level sparsity is
+/// not a typo — records that can't assemble the full vector are simply
+/// skipped from the passes and get no row.)
+fn validate_vector_spec(
+    spec: &ExplainVectorSpec,
     fiber_fields: &[FieldDef],
-    spec: Option<&ExplainVectorSpec>,
-    record_kappa: f64,
-) -> Result<Vec<Record>, String> {
-    let mut out = Vec::new();
-
-    // (a) true Value::Vector fiber fields, schema order.
-    for fd in fiber_fields {
-        let Some(Value::Vector(tv)) = target.get(&fd.name) else {
-            continue;
+) -> Result<(), String> {
+    for f in &spec.fields {
+        let Some(fd) = fiber_fields.iter().find(|fd| &fd.name == f) else {
+            return Err(format!("VECTOR: '{f}' is not a fiber field of this bundle"));
         };
-        let dim = tv.len();
-        let name = fd.name.clone();
-        let extract = move |rec: &Record| match rec.get(&name) {
-            Some(Value::Vector(v)) if v.len() == dim => Some(v.clone()),
-            _ => None,
-        };
-        if let Some(ctx) = build_vector_context(store, dim, &extract) {
-            if let Some(row) = kappa_v_row(&fd.name, tv, &ctx, record_kappa) {
-                out.push(row);
-            }
-        }
-    }
-
-    // (b) explicit scalar-family clause.
-    if let Some(spec) = spec {
-        // Typos are loud: every named field must be a numeric fiber
-        // field of this schema. (Data-level sparsity is not a typo —
-        // records that can't assemble the full vector are skipped.)
-        for f in &spec.fields {
-            let Some(fd) = fiber_fields.iter().find(|fd| &fd.name == f) else {
+        match fd.field_type {
+            FieldType::Numeric | FieldType::Timestamp => {}
+            ref other => {
                 return Err(format!(
-                    "VECTOR: '{f}' is not a fiber field of this bundle"
-                ));
-            };
-            match fd.field_type {
-                FieldType::Numeric | FieldType::Timestamp => {}
-                ref other => {
-                    return Err(format!(
-                        "VECTOR: field '{f}' is not numeric (type {other:?}) — \
-                         the clause assembles scalar numeric fibers"
-                    ))
-                }
-            }
-        }
-        let dim = spec.fields.len();
-        let fields = spec.fields.clone();
-        let extract = move |rec: &Record| assemble_family(rec, &fields);
-        if let Some(ctx) = build_vector_context(store, dim, &extract) {
-            if let Some(tv) = assemble_family(target, &spec.fields) {
-                if let Some(row) = kappa_v_row(&spec.label, &tv, &ctx, record_kappa) {
-                    out.push(row);
-                }
+                    "VECTOR: field '{f}' is not numeric (type {other:?}) — \
+                     the clause assembles scalar numeric fibers"
+                ))
             }
         }
     }
-
-    Ok(out)
+    Ok(())
 }

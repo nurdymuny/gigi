@@ -513,6 +513,11 @@ pub enum Statement {
         /// kappa_v row (Marcella EXPLAIN-family ask 1). None for every
         /// non-SECTION inner.
         vector: Option<crate::explain::ExplainVectorSpec>,
+        /// `AT <field> IN (v1, …, vn)` — batch keys (field, values):
+        /// one EXPLAIN group per value, discriminator column stamped,
+        /// per-key typed miss rows (ask 2). None = single-key form
+        /// (the inner PointQuery carries the key).
+        batch: Option<(String, Vec<Literal>)>,
     },
 
     // ── Transaction ──
@@ -5720,15 +5725,36 @@ impl Parser {
         Ok(Statement::Explain {
             inner: Box::new(inner),
             vector: None,
+            batch: None,
         })
     }
 
     /// EXPLAIN SECTION <bundle> AT k=v[, …] [VECTOR (…)] [PROJECT (…)]
+    /// EXPLAIN SECTION <bundle> AT <field> IN (v1, …, vn) [VECTOR (…)] [PROJECT (…)]
     fn parse_explain_section(&mut self) -> Result<Statement, String> {
         self.expect_keyword("SECTION")?;
         let bundle = self.expect_word()?;
         self.expect_keyword("AT")?;
-        let key = self.parse_kv_pairs()?;
+        // Disambiguate the batch form by peeking past the field name.
+        let save = self.pos;
+        let first_field = self.expect_word()?;
+        let (key, batch) = if self.is_keyword("IN") {
+            self.advance();
+            self.expect(Token::LParen)?;
+            let mut vals = Vec::new();
+            loop {
+                vals.push(self.parse_literal()?);
+                if matches!(self.peek(), Some(Token::RParen)) {
+                    break;
+                }
+                self.expect(Token::Comma)?;
+            }
+            self.expect(Token::RParen)?;
+            (Vec::new(), Some((first_field, vals)))
+        } else {
+            self.pos = save;
+            (self.parse_kv_pairs()?, None)
+        };
         let mut vector = None;
         if self.is_keyword("VECTOR") {
             self.advance();
@@ -5747,6 +5773,7 @@ impl Parser {
                 project,
             }),
             vector,
+            batch,
         })
     }
 
@@ -10809,14 +10836,19 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             }))
         }
 
-        Statement::Explain { inner, vector } => {
+        Statement::Explain {
+            inner,
+            vector,
+            batch,
+        } => {
             // EXPLAIN SECTION b AT key — WHY is this record priced the
             // way it is: per-field κ decomposition from the exact loop
             // compute_record_k runs (audit follow-up: the engine knew,
             // it just didn't say). Shared executor: crate::explain
             // (same rows on the embedded and server paths; misses are
             // typed NOT_FOUND naming key + bundle, per the Marcella
-            // error-contract ask 5a; vector κ rows per ask 1).
+            // error-contract ask 5a; vector κ rows per ask 1; batch
+            // form with per-key miss rows per ask 2).
             if let Statement::PointQuery {
                 bundle,
                 key,
@@ -10826,6 +10858,18 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 let store = engine
                     .bundle(bundle)
                     .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                if let Some((field, lits)) = batch {
+                    let values: Vec<crate::types::Value> =
+                        lits.iter().map(literal_to_value).collect();
+                    return crate::explain::execute_explain_batch(
+                        &store,
+                        bundle,
+                        field,
+                        &values,
+                        project.as_deref(),
+                        vector.as_ref(),
+                    );
+                }
                 let key_rec: crate::types::Record = key
                     .iter()
                     .map(|(k, v)| (k.clone(), literal_to_value(v)))
@@ -14181,9 +14225,10 @@ mod tests {
     fn gql_explain() {
         let stmt = parse("EXPLAIN COVER sensors ON city = 'Moscow'").unwrap();
         match stmt {
-            Statement::Explain { inner, vector } => {
+            Statement::Explain { inner, vector, batch } => {
                 assert!(matches!(*inner, Statement::Cover { .. }));
                 assert!(vector.is_none());
+                assert!(batch.is_none());
             }
             _ => panic!("Expected Explain"),
         }
@@ -14195,11 +14240,39 @@ mod tests {
         let stmt =
             parse("EXPLAIN SECTION st AT id='a' VECTOR (v0..v2, extra)").unwrap();
         match stmt {
-            Statement::Explain { inner, vector } => {
+            Statement::Explain { inner, vector, batch } => {
                 assert!(matches!(*inner, Statement::PointQuery { .. }));
                 let spec = vector.expect("VECTOR clause parsed");
                 assert_eq!(spec.label, "vector(v0..v2,extra)");
                 assert_eq!(spec.fields, vec!["v0", "v1", "v2", "extra"]);
+                assert!(batch.is_none());
+            }
+            _ => panic!("Expected Explain"),
+        }
+    }
+
+    #[test]
+    fn gql_explain_section_batch_in_list() {
+        let stmt =
+            parse("EXPLAIN SECTION st AT id IN ('a', 'b', 42) VECTOR (v0..v1)").unwrap();
+        match stmt {
+            Statement::Explain { inner, vector, batch } => {
+                let (field, vals) = batch.expect("IN (…) parsed as batch");
+                assert_eq!(field, "id");
+                assert_eq!(
+                    vals,
+                    vec![
+                        Literal::Text("a".into()),
+                        Literal::Text("b".into()),
+                        Literal::Integer(42),
+                    ]
+                );
+                assert!(vector.is_some());
+                // Batch leaves the inner PointQuery key empty.
+                match *inner {
+                    Statement::PointQuery { ref key, .. } => assert!(key.is_empty()),
+                    _ => panic!("Expected PointQuery inner"),
+                }
             }
             _ => panic!("Expected Explain"),
         }

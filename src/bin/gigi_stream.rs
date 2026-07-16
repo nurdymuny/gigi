@@ -14450,9 +14450,11 @@ fn execute_gql_on_store_read(
         // the blanket 500 (Marcella error-contract ask 5a). Plan-level
         // EXPLAIN for other inners keeps its existing handling
         // elsewhere.
-        Statement::Explain { inner, vector }
-            if matches!(&**inner, Statement::PointQuery { .. }) =>
-        {
+        Statement::Explain {
+            inner,
+            vector,
+            batch,
+        } if matches!(&**inner, Statement::PointQuery { .. }) => {
             let Statement::PointQuery {
                 bundle,
                 key,
@@ -14461,6 +14463,18 @@ fn execute_gql_on_store_read(
             else {
                 unreachable!("guarded by the match arm");
             };
+            if let Some((field, lits)) = batch {
+                let values: Vec<gigi::types::Value> =
+                    lits.iter().map(literal_to_value).collect();
+                return gigi::explain::execute_explain_batch(
+                    store,
+                    bundle,
+                    field,
+                    &values,
+                    project.as_deref(),
+                    vector.as_ref(),
+                );
+            }
             let key_rec: gigi::types::Record = key
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))

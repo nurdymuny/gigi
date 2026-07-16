@@ -69,14 +69,6 @@ fn no_section_error(bundle: &str, key: &Record) -> String {
     )
 }
 
-fn mmap_decline_notice() -> ExecResult {
-    ExecResult::Notice(
-        "EXPLAIN κ needs heap-resident field statistics; this \
-         bundle is mmap-backed — HEALTH gives the aggregate view"
-            .to_string(),
-    )
-}
-
 fn no_numeric_notice_text() -> &'static str {
     "no numeric fiber fields with enough history (need \
      ≥2 records per field) to decompose κ yet"
@@ -102,9 +94,7 @@ pub fn execute_explain_section(
     if let Some(fields) = project {
         rec.retain(|k, _| fields.iter().any(|f| f == k));
     }
-    let Some(mut ex) = Explainer::new(store, vector)? else {
-        return Ok(mmap_decline_notice());
-    };
+    let mut ex = Explainer::new(store, vector)?;
     let rows = ex.explain_one(&rec)?;
     if rows.is_empty() {
         return Ok(ExecResult::Notice(no_numeric_notice_text().to_string()));
@@ -138,9 +128,7 @@ pub fn execute_explain_batch(
     project: Option<&[String]>,
     vector: Option<&ExplainVectorSpec>,
 ) -> Result<ExecResult, String> {
-    let Some(mut ex) = Explainer::new(store, vector)? else {
-        return Ok(mmap_decline_notice());
-    };
+    let mut ex = Explainer::new(store, vector)?;
     let mut out: Vec<Record> = Vec::new();
     for val in values {
         let mut key = Record::new();
@@ -199,28 +187,36 @@ struct Explainer<'a> {
 }
 
 impl<'a> Explainer<'a> {
-    /// `Ok(None)` = the store declines (mmap-backed; heap-resident
-    /// field statistics required — ask 5b will lift this).
     fn new(
         store: &'a BundleRef<'a>,
         spec: Option<&'a ExplainVectorSpec>,
-    ) -> Result<Option<Self>, String> {
+    ) -> Result<Self, String> {
         let fiber_fields: &'a [FieldDef] = &store.schema().fiber_fields;
         // Typos are loud even when every key misses: validate the
         // clause against the schema up front.
         if let Some(spec) = spec {
             validate_vector_spec(spec, fiber_fields)?;
         }
-        let Some(heap) = store.as_heap() else {
-            return Ok(None);
+        // Field statistics (ask 5b): heap bundles carry them
+        // precomputed (borrowed, zero-copy). mmap-backed bundles
+        // (OverlayBundle) compute them ON DEMAND — one O(N) scan over
+        // the mmap base on first access, Welford-merged with the
+        // overlay's live stats; cached in memory inside the overlay,
+        // NOTHING persisted. O(N) per first EXPLAIN is accepted:
+        // EXPLAIN is a diagnostic verb. This used to be an
+        // `as_heap()`-or-decline gate; the polymorphic accessor was
+        // already there.
+        let stats = match store.as_heap() {
+            Some(heap) => std::borrow::Cow::Borrowed(&heap.field_stats),
+            None => std::borrow::Cow::Owned(store.field_stats()),
         };
-        Ok(Some(Self {
+        Ok(Self {
             store,
-            stats: std::borrow::Cow::Borrowed(&heap.field_stats),
+            stats,
             fiber_fields,
             spec,
             ctx_cache: HashMap::new(),
-        }))
+        })
     }
 
     /// One record's full EXPLAIN output: scalar rows (explain_record_k,

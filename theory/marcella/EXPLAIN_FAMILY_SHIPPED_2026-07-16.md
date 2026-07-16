@@ -191,12 +191,59 @@ export re-verified count 20.
   not in the ask text, but the alternative (an invisible group) violates the
   spirit of the no-silent-skip ruling. Documented in the executor doc
   comments; the letter covers misses only, since the empty case cannot occur
-  on v2 (all 392 fibers numeric with count ≥ 2).
-- `EXPLAIN SECTION b (…)` (insert form) now fails at parse with a clear error
-  instead of parsing and Notice-ing at execution. EXPLAIN of an insert was
-  always nonsense; the executor Notice for non-PointQuery inners (EXPLAIN
-  COVER …) is unchanged.
+  on v2 (every one of its 385 numeric fibers has count ≥ 2).
+- `EXPLAIN SECTION b (…)` (insert form) still parses — the AT-peek resets
+  and the statement falls through to the generic EXPLAIN wrap — and keeps
+  the pre-existing executor behavior for non-`SECTION AT` inners: a Notice
+  pointing at the AT form; the wrapped insert is never executed. (An earlier
+  revision of this report claimed the insert form now fails at parse; that
+  was wrong — corrected 2026-07-16 after post-ship adversarial review. Live
+  check: `EXPLAIN SECTION <missing-bundle> (k=1)` ⇒ typed 404 `No bundle`,
+  no write.)
 - Everything else matches the ask text and rulings.
+
+## Known edges (post-ship adversarial review, 2026-07-16)
+
+- **kappa_v is not bounded by 1**: the denominator is the observed
+  max − min of (1 − cos), not min-shifted, so a record sitting at or above
+  the whole observed spread lands kappa_v ≥ 1 — by design, and pinned by the
+  √5−1 and (√17−1)/3 anchors. Read it as multiples-of-spread; the scalar
+  kappa's ≤ 1 intuition does not transfer.
+- Degenerate all-identical-vector bundles can report kappa_v as O(1)
+  floating-point noise instead of 0 (sum/N mean rounding one ulp off, then
+  the EPSILON-floored R_cos amplifies it). The scalar path is immune
+  (Welford mean of identical inserts is exact). Cannot occur on real
+  embedding bundles; noted as an untested edge.
+- The `sqrt(x·x) == x` identity behind the exact-zero anchor holds for
+  normal-range x; subnormal squares (x ≲ 2⁻⁵¹¹) can violate it. Real vector
+  norms are in-regime.
+- The batch discriminator stamp and miss/empty-row columns (`kind`, `miss`,
+  `note`) would collide with EXPLAIN's own column names if a key field were
+  literally named `field`, `kappa`, `kind`, … — absurd key names, unguarded.
+
+## Post-ship verification (2026-07-16, ship pass)
+
+Independent re-verification on merged main (origin/main = b2dba04, local
+main fast-forwarded) and live prod (image
+deployment-01KXPKGW1EMGBK8CB8ZDZ76ZJS, release v248, health ok):
+
+- Full gate suite re-run green in one pass, zero DLL-flake retries: fence 3;
+  new suites 6/8/6/4; lib 915; no-feature nine 49; halcyon spectral
+  12+21+7+12 + magnetic 9; halcyon ingest/topology/gold/aurora 95; imagine
+  10; davis_conjecture 25; lattice 7+10; patterns 15.
+- M1–M8 re-probed fresh: M2 record_kappa 0.11960424188019436 and M3 vector
+  row (kappa_v 0.809031525423029, cos 0.6932827623533859, n 9964)
+  byte-identical to the pre-push receipts; M4 typed 404 naming key + bundle;
+  M5 groups 385/385/1 in input order with one typed miss row; M6 verified on
+  a SECOND real key (`anchor_id='vm_gauge_opener'`: ingested_at kappa
+  0.26741976590977573, canonical kappa 0.0 with range floored to
+  f64::EPSILON, record_kappa 0.13370988295488787 == mean(0.2674…, 0)/2
+  exactly — the invariant live on mmap); M7 substrate heap shape unchanged
+  (single ts fiber, kappa == record_kappa); M8 step-0 coherence 1.0 exactly,
+  endpoint_coherence 0.967302575205829 after 3 steps, refused=false,
+  high_k_auto_tame audit present.
+- claude_substrate_v0: 20/20 records live (t001..t020), matching the
+  pre-deploy backup count.
 
 ## Commits (this branch, base 87b6700)
 

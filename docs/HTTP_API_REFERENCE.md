@@ -1203,16 +1203,43 @@ ordered samples before analysis; default 0).
 ```
 SHOW FIELDS ON demo;
 EXPLAIN SECTION demo AT id=1;
+EXPLAIN SECTION demo AT id=1 VECTOR (v0..v383);
+EXPLAIN SECTION demo AT id IN (1, 2, 3);
 ```
 
 - `SHOW FIELDS ON <bundle>;` returns one real row per field (`field`,
   `kind`, `type`, `indexed`, plus `range` when the field has one); a
   missing bundle errors with `No bundle: <name>`.
-- `EXPLAIN SECTION <bundle> AT <key>=<value> [PROJECT (<fields>)];` returns
-  the per-field curvature (kappa) decomposition of one record,
-  loudest-first. Each row also carries `record_kappa` — constant per
-  record, equal to the record's total κ; the mean of the per-field
-  kappas equals `record_kappa`.
+- `EXPLAIN SECTION <bundle> AT <key>=<value> [VECTOR (…)] [PROJECT
+  (<fields>)];` returns the per-field curvature (kappa) decomposition of
+  one record, loudest-first. Each row also carries `record_kappa` —
+  constant per record, equal to the record's total κ; the mean of the
+  per-field **scalar** kappas equals `record_kappa` (vector rows are
+  excluded from that invariant).
+- A missing key is a typed miss: **404**
+  `{"error":"EXPLAIN: no section at <key>='<value>' in bundle '<b>'"}`.
+  (Plain `SECTION AT` keeps its silent `200 {"rows":[],"count":0}` miss
+  shape; only EXPLAIN's miss is loud.)
+- `VECTOR (v0..v383)` (range sugar) / `VECTOR (f1, f2, …)` (explicit
+  list; mixable) assembles the named scalar fibers into one virtual
+  vector and appends ONE additive row tagged `kind:"vector"`:
+  `kappa_v = |1 − cos(v, mu_v)| / R_cos`, where `mu_v` is the
+  per-component bundle mean and `R_cos` the observed max − min of
+  (1 − cos), EPSILON-floored — both computed on demand in the same call.
+  The row carries `cos`, `one_minus_cos`, `r_cos`, `dim`, `n`. kappa_v
+  does **not** participate in `record_kappa` and is not bounded by 1.
+  True `Value::Vector` fiber fields get the row automatically (no
+  clause needed).
+- `AT <field> IN (v1, …, vn)` — batch form: grouped rows in the caller's
+  input order, each group one record's full EXPLAIN output with the key
+  value stamped as a discriminator column on every row. A missing key
+  emits one `kind:"miss"` row naming the key and bundle instead of
+  failing the batch; found-but-undecomposable records emit one
+  `kind:"empty"` note row. One engine read-lock spans the batch.
+- mmap-backed bundles no longer decline: per-field stats are computed on
+  demand (one O(N) scan on first access, cached in memory until restart,
+  nothing persisted). VECTOR contexts cost O(N) per vector target per
+  statement. EXPLAIN is a diagnostic verb; that price is accepted.
 
 ## GQL: TIMESTAMP and NOW
 

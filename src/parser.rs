@@ -667,6 +667,16 @@ pub enum Statement {
         /// LIMIT k after FULL — the k smallest eigenvalues (`None`
         /// with FULL = all of them; k > V clamps; k = 0 errors).
         limit: Option<usize>,
+        /// `MODE MAGNETIC` (Phase 2, 2026-07-16) — assemble the
+        /// complex Hermitian MAGNETIC Laplacian from U(1) phases
+        /// instead of the real cos-weight Laplacian. The record
+        /// (vertex_a, vertex_b, θ) carries θ for the a → b direction:
+        /// L[a][b] = −e^{+iθ}, L[b][a] = −e^{−iθ}, diag = deg (unit
+        /// weights). U(1)-only this phase — the executor rejects
+        /// other groups with a typed error. MAGNETIC is the only
+        /// user-facing MODE (R1: dense/sparse solver choice stays
+        /// internal).
+        magnetic: bool,
         /// Optional WHERE clause for sectoral filtering (Ask 4).
         /// Empty vec = no filter (backwards compatible with every
         /// existing caller). Records that fail any condition are
@@ -4751,11 +4761,14 @@ impl Parser {
         Ok(Statement::Spectral { bundle: name, full, limit })
     }
 
-    /// Halcyon SPECTRAL_GAUGE — fiber-weighted spectral gap λ₁.
+    /// Halcyon SPECTRAL_GAUGE — fiber-weighted spectral gap λ₁ /
+    /// spectrum.
     ///
     /// Grammar:
-    ///   SPECTRAL_GAUGE bundle ON FIBER (f1, f2, ..., fK)
+    ///   SPECTRAL_GAUGE bundle [WHERE pred [AND pred]*]
+    ///     ON FIBER (f1, f2, ..., fK)
     ///     [GROUP SU(2)|SU(3)|U(1)|Z(N)]
+    ///     [MODE MAGNETIC]
     ///     [FULL [LIMIT k]]
     ///     ;
     ///
@@ -4807,6 +4820,25 @@ impl Parser {
             None
         };
 
+        // Optional MODE clause (Phase 2, 2026-07-16). MAGNETIC is the
+        // only user-facing mode this phase — the spec §6 dense/sparse
+        // selector stays internal (reconciliation R1), so anything
+        // else here is rejected with a message naming MAGNETIC.
+        let magnetic = if self.is_keyword("MODE") {
+            self.advance();
+            let word = self.expect_word()?;
+            if !word.eq_ignore_ascii_case("MAGNETIC") {
+                return Err(format!(
+                    "SPECTRAL_GAUGE MODE: only MAGNETIC is a user-facing mode \
+                     this phase (got '{word}') — the dense/sparse solver \
+                     choice is internal per the Phase-2 reconciliation"
+                ));
+            }
+            true
+        } else {
+            false
+        };
+
         // Optional FULL [LIMIT k] clause.
         let (full, limit) = if self.is_keyword("FULL") {
             self.advance();
@@ -4827,6 +4859,7 @@ impl Parser {
             group,
             full,
             limit,
+            magnetic,
             where_conditions,
         })
     }
@@ -11044,6 +11077,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             group,
             full,
             limit,
+            magnetic,
             where_conditions,
         } => {
             #[cfg(feature = "gauge")]
@@ -11076,6 +11110,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     resolved_group,
                     *full,
                     *limit,
+                    *magnetic,
                     filter_opt,
                 )
                 .map_err(|e| e.to_string())?;
@@ -11116,7 +11151,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             #[cfg(not(feature = "gauge"))]
             {
                 // Suppress unused-variable warnings when gauge is off.
-                let _ = (bundle, fiber_fields, group, full, limit, where_conditions, engine);
+                let _ = (bundle, fiber_fields, group, full, limit, magnetic, where_conditions, engine);
                 Err(
                     "SPECTRAL_GAUGE requires the `gauge` feature to be enabled"
                         .to_string()

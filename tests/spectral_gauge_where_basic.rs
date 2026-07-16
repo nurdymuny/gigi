@@ -415,6 +415,7 @@ fn test_spectral_gauge_where_q_rounded_sector_matches_halcyon_workflow() {
             group,
             full,
             limit,
+            magnetic,
             where_conditions,
         } => {
             assert_eq!(bundle, "su2_L24_seed702");
@@ -422,6 +423,7 @@ fn test_spectral_gauge_where_q_rounded_sector_matches_halcyon_workflow() {
             assert_eq!(group, Some(Group::SU2));
             assert!(!full);
             assert_eq!(limit, None);
+            assert!(!magnetic, "no MODE clause parses with magnetic = false");
             assert_eq!(where_conditions.len(), 1, "one WHERE predicate expected");
             match where_conditions[0].clone() {
                 FilterCondition::Eq(field, Literal::Integer(v)) => {

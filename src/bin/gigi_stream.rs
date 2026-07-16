@@ -13870,7 +13870,7 @@ fn execute_gql_on_store_read(
         // locally gauge-covariant. This is NOT the strict Yang-Mills
         // mass gap. Halcyon understands the distinction.
         #[cfg(feature = "gauge")]
-        Statement::SpectralGauge { bundle, fiber_fields, group, full, limit, where_conditions } => {
+        Statement::SpectralGauge { bundle, fiber_fields, group, full, limit, magnetic, where_conditions } => {
             let eng = engine.ok_or_else(|| {
                 "SPECTRAL_GAUGE requires an Engine handle in the executor context".to_string()
             })?;
@@ -13918,6 +13918,7 @@ fn execute_gql_on_store_read(
                 resolved_group,
                 *full,
                 *limit,
+                *magnetic,
                 filter_opt,
             )
             .map_err(|e| e.to_string())?;

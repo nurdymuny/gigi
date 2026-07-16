@@ -1067,6 +1067,12 @@ pub enum SpectralGaugeError {
     /// carried for the envelope. Reconciliation R2: an honest error
     /// beats a rushed eigensolver.
     SparseUnavailable { v_count: usize, threshold: usize },
+    /// MODE MAGNETIC with a non-U(1) group. A U(1) fiber is a scalar
+    /// phase e^{iθ} per edge, which drops straight into the complex
+    /// Hermitian magnetic Laplacian; SU(2)/SU(3)/Z(N) links would need
+    /// matrix-valued (vector-bundle) magnetic Laplacians — a later
+    /// phase. Introduced with Concept B (2026-07-16).
+    MagneticRequiresU1 { group: &'static str },
 }
 
 #[cfg(feature = "gauge")]
@@ -1125,6 +1131,14 @@ impl std::fmt::Display for SpectralGaugeError {
                      4096) — the sparse Lanczos arm ships in Phase 2.1; until then \
                      run FULL on a smaller (sectoral / downsampled) subgraph, or \
                      drop FULL for the λ₁-only gap"
+                )
+            }
+            SpectralGaugeError::MagneticRequiresU1 { group } => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: MODE MAGNETIC requires GROUP U(1) in this \
+                     phase (matrix-valued magnetic Laplacians are a later phase); \
+                     got GROUP {group}"
                 )
             }
         }
@@ -1209,7 +1223,7 @@ pub fn spectral_gauge_gap(
     limit: Option<usize>,
     filter: Option<&[crate::bundle::QueryCondition]>,
 ) -> Result<SpectralGaugeResult, SpectralGaugeError> {
-    spectral_gauge_spectrum(engine, bundle, fiber_fields, group, full, limit, filter)
+    spectral_gauge_spectrum(engine, bundle, fiber_fields, group, full, limit, false, filter)
 }
 
 /// SPECTRAL_GAUGE core — fiber-weighted graph Laplacian spectrum.
@@ -1221,10 +1235,25 @@ pub fn spectral_gauge_gap(
 /// when `full` is set, the `LIMIT k` smallest eigenvalues sorted
 /// ascending ALGEBRAIC (R3; all of them when `limit` is `None`).
 ///
+/// MODE MAGNETIC (`magnetic = true`, U(1) only this phase): instead of
+/// the real cos-weight Laplacian, assemble the complex Hermitian
+/// MAGNETIC Laplacian with unit edge weights |e^{iθ}| = 1.
+///
+/// ORIENTATION CONVENTION (Hallie's flux generator must match): the
+/// record (vertex_a = a, vertex_b = b, θ) carries θ for the a → b
+/// direction, so
+///   L[a][b] = −e^{+iθ},   L[b][a] = −e^{−iθ}   (Hermitian conjugates)
+///   L[a][a] += 1,          L[b][b] += 1          (unit weights)
+/// A Hermitian matrix has a REAL spectrum — the wire format stays
+/// `Vec<f64>`. Non-U(1) groups with `magnetic = true` return
+/// [`SpectralGaugeError::MagneticRequiresU1`].
+///
 /// HONEST FRAMING: L_A's spectrum is globally gauge-invariant, but the
 /// per-edge weight Re Tr(U_e)/N is only locally gauge-covariant. This
 /// returns the fiber-weighted spectral gap — NOT the strict Yang-Mills
-/// mass gap. See HALCYON_BRIDGE_TRILOGY notes (cfeb5c5).
+/// mass gap. See HALCYON_BRIDGE_TRILOGY notes (cfeb5c5). (The magnetic
+/// spectrum IS fully gauge-invariant per flux sector on U(1) — the
+/// spectrum depends on θ only through cycle fluxes.)
 ///
 /// FULL is dense-only this phase: `full = true` on a graph with more
 /// than [`SPECTRAL_DENSE_MAX_V`] vertices returns
@@ -1233,12 +1262,15 @@ pub fn spectral_gauge_gap(
 /// [`SpectralGaugeError::InvalidLimit`]; `limit > V` clamps to V.
 ///
 /// Negative-weight edges are physically meaningful (anti-aligned
-/// holonomy → negative `Re Tr`); the resulting symmetric Laplacian is
-/// real but is NOT guaranteed positive semidefinite under those
-/// configurations. The "smallest nonzero" eigenvalue may legitimately
-/// be negative in heavily anti-correlated regimes — this is the honest
-/// physics, surfaced verbatim rather than clamped.
+/// holonomy → negative `Re Tr`); the resulting symmetric cos-weight
+/// Laplacian is real but is NOT guaranteed positive semidefinite under
+/// those configurations. The "smallest nonzero" eigenvalue may
+/// legitimately be negative in heavily anti-correlated regimes — this
+/// is the honest physics, surfaced verbatim rather than clamped. (The
+/// magnetic Laplacian, by contrast, is PSD: it is a sum of per-edge
+/// PSD blocks [[1, −e^{iθ}], [−e^{−iθ}, 1]].)
 #[cfg(feature = "gauge")]
+#[allow(clippy::too_many_arguments)]
 pub fn spectral_gauge_spectrum(
     engine: &crate::engine::Engine,
     bundle: &str,
@@ -1246,6 +1278,7 @@ pub fn spectral_gauge_spectrum(
     group: crate::gauge::Group,
     full: bool,
     limit: Option<usize>,
+    magnetic: bool,
     filter: Option<&[crate::bundle::QueryCondition]>,
 ) -> Result<SpectralGaugeResult, SpectralGaugeError> {
     // ── Step 0: LIMIT bounds. k = 0 is meaningless (an empty FULL
@@ -1254,6 +1287,14 @@ pub fn spectral_gauge_spectrum(
         if let Some(0) = limit {
             return Err(SpectralGaugeError::InvalidLimit { got: 0 });
         }
+    }
+
+    // ── Step 0b: MODE MAGNETIC group gate. U(1) phases are scalars;
+    //   matrix-valued magnetic Laplacians are a later phase.
+    if magnetic && group != crate::gauge::Group::U1 {
+        return Err(SpectralGaugeError::MagneticRequiresU1 {
+            group: group.label(),
+        });
     }
 
     // ── Step 1: Resolve the bundle. Use the typed BundleNotFound
@@ -1323,8 +1364,16 @@ pub fn spectral_gauge_spectrum(
             .map(|f| rec.get(f.as_str()).and_then(|v| v.as_f64()).unwrap_or(0.0))
             .collect();
 
-        let w_e = re_trace_over_n(&fiber, group);
-        edges.push((i, j, w_e));
+        // Edge payload depends on the mode: the cos-weight path stores
+        // w_e = Re Tr(U_e)/N (U(1): cos θ); MODE MAGNETIC stores the
+        // raw θ itself — the phase enters the Hermitian assembly as
+        // e^{±iθ} with unit magnitude, NOT as a real weight.
+        let payload = if magnetic {
+            fiber.first().copied().unwrap_or(0.0)
+        } else {
+            re_trace_over_n(&fiber, group)
+        };
+        edges.push((i, j, payload));
         n_records_used += 1;
     }
 
@@ -1369,26 +1418,56 @@ pub fn spectral_gauge_spectrum(
         });
     }
 
-    // ── Step 5: Assemble dense Laplacian L_A as nalgebra DMatrix<f64>.
-    //   Standard combinatorial Laplacian on the weighted graph:
+    // ── Step 5 + 6: Assemble the Laplacian and eigendecompose.
+    //
+    //   Default (cos-weight) mode — real symmetric combinatorial
+    //   Laplacian on the weighted graph:
     //     L[i,i] = Σ_e∋i w_e
     //     L[i,j] = -w_e for edge (i,j)
     //   Symmetric by construction: both off-diagonals get the same
     //   decrement; both diagonals get the same increment.
-    let mut l = nalgebra::DMatrix::<f64>::zeros(v_count, v_count);
-    for &(i, j, w) in &edges {
-        if i == j {
-            continue; // skip self-loops
+    //
+    //   MODE MAGNETIC (U(1)) — complex Hermitian magnetic Laplacian
+    //   with unit edge weights. Orientation convention: the record
+    //   (vertex_a = a, vertex_b = b, θ) carries θ for a → b, so
+    //     L[a][b] -= e^{+iθ},  L[b][a] -= e^{−iθ}  (conjugate pair)
+    //     L[a][a] += 1,        L[b][b] += 1
+    //   Both triangles are written as exact conjugates, so the matrix
+    //   is Hermitian by construction and nalgebra's SymmetricEigen
+    //   (which runs the conjugate-inner-product Householder
+    //   tridiagonalization for Complex<f64>) returns the REAL
+    //   spectrum. Verified against the C_3 uniform-flux closed form
+    //   2 − 2cos((Φ + 2πk)/3) in tests/spectral_magnetic_basic.rs.
+    let mut vals: Vec<f64> = if magnetic {
+        use nalgebra::Complex;
+        let mut l = nalgebra::DMatrix::<Complex<f64>>::zeros(v_count, v_count);
+        let one = Complex::new(1.0, 0.0);
+        for &(i, j, theta) in &edges {
+            if i == j {
+                continue; // skip self-loops
+            }
+            let phase = Complex::new(theta.cos(), theta.sin());
+            l[(i, j)] -= phase;
+            l[(j, i)] -= phase.conj();
+            l[(i, i)] += one;
+            l[(j, j)] += one;
         }
-        l[(i, j)] -= w;
-        l[(j, i)] -= w;
-        l[(i, i)] += w;
-        l[(j, j)] += w;
-    }
-
-    // ── Step 6: Eigendecomposition (symmetric, real spectrum).
-    let eigen = nalgebra::SymmetricEigen::new(l);
-    let mut vals: Vec<f64> = eigen.eigenvalues.iter().copied().collect();
+        let eigen = nalgebra::SymmetricEigen::new(l);
+        eigen.eigenvalues.iter().copied().collect()
+    } else {
+        let mut l = nalgebra::DMatrix::<f64>::zeros(v_count, v_count);
+        for &(i, j, w) in &edges {
+            if i == j {
+                continue; // skip self-loops
+            }
+            l[(i, j)] -= w;
+            l[(j, i)] -= w;
+            l[(i, i)] += w;
+            l[(j, j)] += w;
+        }
+        let eigen = nalgebra::SymmetricEigen::new(l);
+        eigen.eigenvalues.iter().copied().collect()
+    };
     vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     // ── Step 7: Smallest nonzero eigenvalue. For a connected graph

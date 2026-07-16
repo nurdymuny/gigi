@@ -69,6 +69,11 @@ pub mod lattice_delegation;
 pub mod dhoom;
 pub mod edge;
 pub mod engine;
+// EXPLAIN SECTION … AT — shared executor (embedded + server read
+// path) for the per-record κ decomposition, the vector-κ rows, the
+// batch form, and the typed NOT_FOUND miss contract. Marcella
+// EXPLAIN-family asks, 2026-07-16.
+pub mod explain;
 // Gauge transformations (Schema Migrations §5a) + gauge-theory
 // connection primitives. The `gauge` Cargo feature additionally
 // pulls in `group_element`, `edge_connection`, and `holonomy` —

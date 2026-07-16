@@ -12927,10 +12927,11 @@ async fn gql_query(
         let (status, resp) = match result {
             Ok(r) => exec_result_to_response(r),
             Err(e) => {
-                let ev = state.logger.query_error(&req_id, query, dur, "ExecError", &e, 500);
+                let (class, status, body) = exec_error_to_response(&e);
+                let ev = state.logger.query_error(&req_id, query, dur, class, &e, status.as_u16());
                 state.logger.emit(ev);
                 state.metrics.record_query(dur, stmt_type, false, true);
-                return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e})));
+                return (status, body);
             }
         };
         let slow = dur >= state.logger.slow_threshold_us();
@@ -12962,10 +12963,12 @@ async fn gql_query(
         let (status, resp) = match result {
             Ok(r) => exec_result_to_response(r),
             Err(e) => {
-                let ev = state.logger.query_error(&req_id, query, dur, "VirtualBundleExecError", &e, 500);
+                let (class, status, body) = exec_error_to_response(&e);
+                let class = if class == "ExecError" { "VirtualBundleExecError" } else { class };
+                let ev = state.logger.query_error(&req_id, query, dur, class, &e, status.as_u16());
                 state.logger.emit(ev);
                 state.metrics.record_query(dur, stmt_type, false, true);
-                return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e})));
+                return (status, body);
             }
         };
         let slow = dur >= state.logger.slow_threshold_us();
@@ -13000,10 +13003,11 @@ async fn gql_query(
         let (status, resp) = match result {
             Ok(r) => exec_result_to_response(r),
             Err(e) => {
-                let ev = state.logger.query_error(&req_id, query, dur, "ExecError", &e, 500);
+                let (class, status, body) = exec_error_to_response(&e);
+                let ev = state.logger.query_error(&req_id, query, dur, class, &e, status.as_u16());
                 state.logger.emit(ev);
                 state.metrics.record_query(dur, stmt_type, false, true);
-                return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e})));
+                return (status, body);
             }
         };
         let slow = dur >= state.logger.slow_threshold_us();
@@ -14440,40 +14444,31 @@ fn execute_gql_on_store_read(
             Ok(ExecResult::Rows(result_rows))
         }
         // EXPLAIN SECTION b AT key — per-field κ decomposition, same
-        // rows as the embedded executor. Plan-level EXPLAIN for other
-        // inners keeps its existing handling elsewhere.
+        // rows as the embedded executor (both arms delegate to
+        // gigi::explain). Misses are typed NOT_FOUND naming key +
+        // bundle — gql_query maps the sentinel to HTTP 404 instead of
+        // the blanket 500 (Marcella error-contract ask 5a). Plan-level
+        // EXPLAIN for other inners keeps its existing handling
+        // elsewhere.
         Statement::Explain { inner } if matches!(&**inner, Statement::PointQuery { .. }) => {
-            let rows = match execute_gql_on_store_read(store, inner, engine)? {
-                ExecResult::Rows(rows) if !rows.is_empty() => rows,
-                ExecResult::Rows(_) => {
-                    return Err("EXPLAIN: no section at that key".to_string())
-                }
-                other => {
-                    return Err(format!(
-                        "EXPLAIN: point read returned {other:?}, expected a record"
-                    ))
-                }
+            let Statement::PointQuery {
+                bundle,
+                key,
+                project,
+            } = &**inner
+            else {
+                unreachable!("guarded by the match arm");
             };
-            let Some(heap) = store.as_heap() else {
-                return Ok(ExecResult::Notice(
-                    "EXPLAIN κ needs heap-resident field statistics; this \
-                     bundle is mmap-backed — HEALTH gives the aggregate view"
-                        .to_string(),
-                ));
-            };
-            let explain = gigi::bundle::explain_record_k(
-                &heap.field_stats,
-                &rows[0],
-                &heap.schema.fiber_fields,
-            );
-            if explain.is_empty() {
-                return Ok(ExecResult::Notice(
-                    "no numeric fiber fields with enough history (need ≥2 \
-                     records per field) to decompose κ yet"
-                        .to_string(),
-                ));
-            }
-            Ok(ExecResult::Rows(explain))
+            let key_rec: gigi::types::Record = key
+                .iter()
+                .map(|(k, v)| (k.clone(), literal_to_value(v)))
+                .collect();
+            gigi::explain::execute_explain_section(
+                store,
+                bundle,
+                &key_rec,
+                project.as_deref(),
+            )
         }
         // SHOW FIELDS ON <bundle> — one row per field in schema order,
         // same shape as the embedded executor's arm.
@@ -14622,6 +14617,29 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Explain { .. }        => "EXPLAIN",
         Join { .. } | Pullback { .. } => "JOIN",
         _                     => "OTHER",
+    }
+}
+
+/// Map an executor error string to an HTTP response. Executor errors
+/// carrying the typed `NOT_FOUND: ` sentinel (`gigi::explain`) mean
+/// "the record you addressed does not exist" — those become 404s with
+/// the sentinel stripped, mirroring the REST section-fetch handler's
+/// `Record '<id>' not found in bundle '<name>'` shape. Everything else
+/// keeps the blanket 500 mapping (a real internal fault).
+/// (`error_class`, `status`, body) so the callers' logging stays
+/// uniform.
+fn exec_error_to_response(e: &str) -> (&'static str, StatusCode, Json<serde_json::Value>) {
+    match e.strip_prefix(gigi::explain::NOT_FOUND_PREFIX) {
+        Some(msg) => (
+            "NotFound",
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": msg})),
+        ),
+        None => (
+            "ExecError",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e})),
+        ),
     }
 }
 

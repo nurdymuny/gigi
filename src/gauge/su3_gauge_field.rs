@@ -85,6 +85,11 @@ impl SU3GaugeField {
             GaugeFieldInit::FromField(src) => {
                 return Err(GaugeFieldError::FieldNotDeclared(src.clone()));
             }
+            GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform => {
+                // INIT FLUX is a U(1) bundle materialization
+                // (gauge::u1_flux) — never an SU(3) link buffer.
+                return Err(GaugeFieldError::FluxInitRequiresU1(Group::SU3));
+            }
         };
         Ok(Self {
             name,

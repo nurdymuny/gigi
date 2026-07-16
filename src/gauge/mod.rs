@@ -94,6 +94,8 @@ pub mod loop_transport;
 pub mod action;
 #[cfg(feature = "gauge")]
 pub mod hamiltonian_registry;
+#[cfg(feature = "gauge")]
+pub mod u1_flux;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;

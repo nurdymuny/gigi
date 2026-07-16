@@ -41,6 +41,18 @@ pub enum GaugeFieldInit {
     /// field (resolved by name at executor time, not at construction
     /// time; this struct only records the source-field name).
     FromField(String),
+    /// `INIT FLUX RANDOM SEED <n>` — U(1)-only per-edge phase init
+    /// (2026-07-16): θ_k = 2π·uniform_k from the house xorshift64*
+    /// SmallRng, edge order 0..n_edges. Materializes a theta BUNDLE
+    /// (`gauge::u1_flux`), never a DenseLinkBuffer — the SU(2)/SU(3)
+    /// constructors reject it with `FluxInitRequiresU1`. The seed
+    /// rides on `Statement::GaugeField::seed` like HAAR_RANDOM's.
+    FluxRandom,
+    /// `INIT FLUX UNIFORM <phi>` — U(1)-only constant per-edge phase.
+    /// phi rides on `Statement::GaugeField::phi` (NOT in this enum) so
+    /// the enum keeps its `Eq` derive. Same bundle-materialization
+    /// path as `FluxRandom`.
+    FluxUniform,
 }
 
 /// SU(2) gauge field bound to a declared lattice.
@@ -89,6 +101,13 @@ impl SU2GaugeField {
             }
             GaugeFieldInit::FromField(src) => {
                 return Err(GaugeFieldError::FieldNotDeclared(src.clone()));
+            }
+            GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform => {
+                // INIT FLUX is a U(1) bundle materialization
+                // (gauge::u1_flux) — it never constructs a link
+                // buffer. Reaching this constructor with a flux init
+                // means the executor's U(1) gate was bypassed.
+                return Err(GaugeFieldError::FluxInitRequiresU1(Group::SU2));
             }
         };
         Ok(Self {

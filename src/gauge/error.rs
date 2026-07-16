@@ -82,6 +82,10 @@ pub enum GaugeFieldError {
     /// `FieldNotDeclared` so consumers can surface a Phase-3-shaped
     /// error to the user.
     HamiltonianFactoryNotRegistered(String),
+    /// `INIT FLUX …` routed to a non-U(1) construction path
+    /// (2026-07-16). Flux is a per-edge U(1) phase materialized as a
+    /// theta bundle; SU(2)/SU(3)/Z(N) links are not scalar phases.
+    FluxInitRequiresU1(Group),
 }
 
 impl From<BracketPhysicsError> for GaugeFieldError {
@@ -155,6 +159,13 @@ impl std::fmt::Display for GaugeFieldError {
                 f,
                 "gauge: hamiltonian factory '{name}' is not registered \
                  (call gauge::hamiltonian_registry::register before SYMPLECTIC_FLOW)"
+            ),
+            GaugeFieldError::FluxInitRequiresU1(g) => write!(
+                f,
+                "gauge: INIT FLUX requires GROUP U(1) this phase (got {}) — \
+                 flux is a per-edge U(1) phase materialized as a theta bundle; \
+                 SU(2)/SU(3)/Z(N) links are not scalar phases",
+                g.label()
             ),
         }
     }

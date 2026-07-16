@@ -532,6 +532,19 @@ impl WalWriter {
                 payload.push(0x03);
                 write_string(&mut payload, src);
             }
+            // INIT FLUX (2026-07-16): U(1)-only bundle materialization —
+            // PERSIST is rejected at declaration, so a flux init can
+            // never legitimately reach the WAL declaration encoder. No
+            // byte tag is allocated (the WAL format is unchanged);
+            // surface a typed refusal instead of writing a corrupt entry.
+            crate::gauge::GaugeFieldInit::FluxRandom
+            | crate::gauge::GaugeFieldInit::FluxUniform => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "INIT FLUX gauge fields are not WAL-persistable (the \
+                     materialized theta bundle is the durable artifact)",
+                ));
+            }
         }
         self.write_entry(OP_GAUGE_FIELD_DECLARE, &payload)
     }

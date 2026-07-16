@@ -82,6 +82,17 @@ pub fn materialize_field(
              declaration tuple alone — the source field must be \
              resolved at executor time (same constraint as SU(2)).",
         )),
+        // INIT FLUX (2026-07-16) is a U(1)-only bundle materialization;
+        // PERSIST is rejected at declaration, so no WAL declaration
+        // tuple can legitimately carry a flux init for SU(2)/SU(3).
+        (Group::SU2, GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform)
+        | (Group::SU3, GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform) => {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "INIT FLUX gauge fields are U(1) bundle materializations and are \
+                 never WAL-declared (PERSIST is rejected at declaration)",
+            ))
+        }
         (Group::U1, _) | (Group::ZN { .. }, _) => Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!(

@@ -1120,10 +1120,17 @@ pub enum Statement {
         /// Optional Haar seed (mandatory for `HAAR_RANDOM` per Bee's
         /// locked decision 1; the parser accepts a missing seed and the
         /// executor surfaces `GaugeFieldError::SeedRequired` so the
-        /// error path stays uniform).
+        /// error path stays uniform). `INIT FLUX RANDOM SEED <n>` rides
+        /// the same slot (there the parser enforces the seed — flux
+        /// reproducibility is contractual).
         seed: Option<u64>,
+        /// `INIT FLUX UNIFORM <phi>` phase value (2026-07-16). `None`
+        /// for every other init. Carried beside the init enum (like
+        /// `seed`) so `GaugeFieldInit` keeps its `Eq` derive.
+        phi: Option<f64>,
         /// `PERSIST` keyword → durable via `engine.declare_gauge_field_durable`.
-        /// Default (no keyword) registers in-memory only.
+        /// Default (no keyword) registers in-memory only. Rejected for
+        /// INIT FLUX (the materialized bundle is the durable artifact).
         persist: bool,
     },
     /// `SHOW GAUGE_FIELD name [BUFFER];`
@@ -3359,48 +3366,88 @@ impl Parser {
     /// `engine.declare_gauge_field_durable` (PERSIST) from here.
     ///
     /// Grammar (per `GIGI_HALCYON_LATTICE_PRIMITIVES_SPRINT_SPEC.md`
-    /// §3.P0.2, with the PERSIST extension from Bee's locked decision 3):
+    /// §3.P0.2, with the PERSIST extension from Bee's locked decision 3
+    /// and the 2026-07-16 clause-order relaxation + INIT FLUX):
     ///
     /// ```ebnf
-    /// gauge_field_stmt =
-    ///   "GAUGE_FIELD" ident "ON" "LATTICE" ident "GROUP" group_label
-    ///   "INIT" init_clause [ "PERSIST" ] ";"
+    /// gauge_field_stmt = "GAUGE_FIELD" ident gauge_field_clause* ";"
+    /// gauge_field_clause = "ON" "LATTICE" ident
+    ///                    | "GROUP" group_label
+    ///                    | "INIT" init_clause
+    ///                    | "PERSIST"
     /// group_label = "SU(2)" | "SU(3)" | "U(1)" | "Z(" int ")"
     /// init_clause = "IDENTITY"
     ///             | "HAAR_RANDOM" [ "SEED" int ]
     ///             | "FROM" ident
+    ///             | "FLUX" ( "RANDOM" "SEED" int | "UNIFORM" number )
     /// ```
+    ///
+    /// ON LATTICE / GROUP / INIT are each required exactly once, in
+    /// ANY order (Hallie's flux generator emits
+    /// `GAUGE_FIELD f GROUP U(1) INIT FLUX RANDOM SEED n ON LATTICE l;`
+    /// — GROUP first, lattice at the tail — while the Part-II canonical
+    /// `ON LATTICE … GROUP … INIT …` order keeps parsing unchanged).
+    /// Duplicate clauses are parse errors.
     ///
     /// The parser accepts every `Group` variant syntactically — group
     /// erasure (Bee's locked decision 6) routes the non-SU(2) error
     /// path through the executor's `GaugeFieldError::UnsupportedGroup`
     /// arm so the failure has a stable `Display` impl Halcyon's G2.D
-    /// regex anchor can match.
+    /// regex anchor can match. (INIT FLUX inverts this one gate: it is
+    /// U(1)-only, and the executor rejects the OTHER groups.)
     #[cfg(feature = "gauge")]
     fn parse_gauge_field(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
-        self.expect_keyword("ON")?;
-        self.expect_keyword("LATTICE")?;
-        let lattice = self.expect_word()?;
-        self.expect_keyword("GROUP")?;
-        let group = self.parse_group_label()?;
-        self.expect_keyword("INIT")?;
-        let (init, seed) = self.parse_init_clause()?;
-        let persist = if self.is_keyword("PERSIST") {
-            self.advance();
-            true
-        } else {
-            false
-        };
+        let mut lattice: Option<String> = None;
+        let mut group: Option<crate::gauge::Group> = None;
+        let mut init: Option<(crate::gauge::GaugeFieldInit, Option<u64>, Option<f64>)> = None;
+        let mut persist = false;
+        loop {
+            if self.is_keyword("ON") {
+                if lattice.is_some() {
+                    return Err("GAUGE_FIELD: duplicate ON LATTICE clause".to_string());
+                }
+                self.advance();
+                self.expect_keyword("LATTICE")?;
+                lattice = Some(self.expect_word()?);
+            } else if self.is_keyword("GROUP") {
+                if group.is_some() {
+                    return Err("GAUGE_FIELD: duplicate GROUP clause".to_string());
+                }
+                self.advance();
+                group = Some(self.parse_group_label()?);
+            } else if self.is_keyword("INIT") {
+                if init.is_some() {
+                    return Err("GAUGE_FIELD: duplicate INIT clause".to_string());
+                }
+                self.advance();
+                init = Some(self.parse_init_clause()?);
+            } else if self.is_keyword("PERSIST") {
+                self.advance();
+                persist = true;
+            } else {
+                break;
+            }
+        }
         if matches!(self.peek(), Some(Token::Semicolon)) {
             self.advance();
         }
+        let lattice = lattice
+            .ok_or_else(|| "GAUGE_FIELD: missing ON LATTICE <name> clause".to_string())?;
+        let group = group
+            .ok_or_else(|| "GAUGE_FIELD: missing GROUP <label> clause".to_string())?;
+        let (init, seed, phi) = init.ok_or_else(|| {
+            "GAUGE_FIELD: missing INIT clause \
+             (IDENTITY / HAAR_RANDOM / FROM / FLUX)"
+                .to_string()
+        })?;
         Ok(Statement::GaugeField {
             name,
             lattice,
             group,
             init,
             seed,
+            phi,
             persist,
         })
     }
@@ -3504,14 +3551,17 @@ impl Parser {
         }
     }
 
-    /// Parse an `init_clause` per the GAUGE_FIELD EBNF.
+    /// Parse an `init_clause` per the GAUGE_FIELD EBNF. Returns
+    /// `(init, seed, phi)` — seed rides beside HAAR_RANDOM / FLUX
+    /// RANDOM, phi beside FLUX UNIFORM (the enum stays payload-free so
+    /// it keeps `Eq`).
     #[cfg(feature = "gauge")]
     fn parse_init_clause(
         &mut self,
-    ) -> Result<(crate::gauge::GaugeFieldInit, Option<u64>), String> {
+    ) -> Result<(crate::gauge::GaugeFieldInit, Option<u64>, Option<f64>), String> {
         let head = self.expect_word()?;
         match head.to_ascii_uppercase().as_str() {
-            "IDENTITY" => Ok((crate::gauge::GaugeFieldInit::Identity, None)),
+            "IDENTITY" => Ok((crate::gauge::GaugeFieldInit::Identity, None, None)),
             "HAAR_RANDOM" => {
                 let seed = if self.is_keyword("SEED") {
                     self.advance();
@@ -3519,14 +3569,45 @@ impl Parser {
                 } else {
                     None
                 };
-                Ok((crate::gauge::GaugeFieldInit::HaarRandom, seed))
+                Ok((crate::gauge::GaugeFieldInit::HaarRandom, seed, None))
             }
             "FROM" => {
                 let src = self.expect_word()?;
-                Ok((crate::gauge::GaugeFieldInit::FromField(src), None))
+                Ok((crate::gauge::GaugeFieldInit::FromField(src), None, None))
+            }
+            // INIT FLUX (2026-07-16, U(1)-only at the executor):
+            //   FLUX RANDOM SEED <n>  — seeded i.i.d. θ ~ U[0, 2π)
+            //   FLUX UNIFORM <phi>    — constant phase per edge
+            // SEED is MANDATORY for FLUX RANDOM (reproducibility is
+            // part of the flux contract — no entropy fallback).
+            "FLUX" => {
+                let kind = self.expect_word()?;
+                match kind.to_ascii_uppercase().as_str() {
+                    "RANDOM" => {
+                        if !self.is_keyword("SEED") {
+                            return Err(
+                                "GAUGE_FIELD INIT FLUX RANDOM requires SEED <n> — \
+                                 flux reproducibility is contractual (declare \
+                                 INIT FLUX RANDOM SEED <u64>)"
+                                    .to_string(),
+                            );
+                        }
+                        self.advance();
+                        let seed = self.expect_usize()? as u64;
+                        Ok((crate::gauge::GaugeFieldInit::FluxRandom, Some(seed), None))
+                    }
+                    "UNIFORM" => {
+                        let phi = self.expect_f64()?;
+                        Ok((crate::gauge::GaugeFieldInit::FluxUniform, None, Some(phi)))
+                    }
+                    other => Err(format!(
+                        "Expected FLUX pattern (RANDOM SEED <n> / UNIFORM <phi>), \
+                         got '{other}'"
+                    )),
+                }
             }
             other => Err(format!(
-                "Expected init clause (IDENTITY / HAAR_RANDOM / FROM), got '{other}'"
+                "Expected init clause (IDENTITY / HAAR_RANDOM / FROM / FLUX), got '{other}'"
             )),
         }
     }
@@ -11598,6 +11679,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             group,
             init,
             seed,
+            phi,
             persist,
         } => {
             use crate::gauge::{
@@ -11610,6 +11692,50 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let lat = crate::lattice::registry::get(lattice).ok_or_else(|| {
                 GaugeFieldError::LatticeNotDeclared(lattice.clone()).to_string()
             })?;
+
+            // 1b. INIT FLUX (2026-07-16) — U(1)-only theta-bundle
+            //     materialization, routed BEFORE the group-erasure
+            //     match: flux never touches DenseLinkBuffer or the
+            //     gauge registry (`gauge::u1_flux` module doc has the
+            //     full rationale + determinism contract).
+            if matches!(
+                init,
+                GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform
+            ) {
+                if *group != Group::U1 {
+                    return Err(
+                        GaugeFieldError::FluxInitRequiresU1(*group).to_string()
+                    );
+                }
+                if *persist {
+                    return Err(
+                        "gauge: PERSIST is not supported with INIT FLUX this \
+                         phase — the materialized theta bundle is already the \
+                         durable artifact (its inserts flow through the engine \
+                         WAL like INGEST)"
+                            .to_string(),
+                    );
+                }
+                let spec = match init {
+                    GaugeFieldInit::FluxRandom => {
+                        let s = seed
+                            .ok_or_else(|| GaugeFieldError::SeedRequired.to_string())?;
+                        crate::gauge::u1_flux::FluxSpec::Random { seed: s }
+                    }
+                    GaugeFieldInit::FluxUniform => {
+                        let p = phi.ok_or_else(|| {
+                            "gauge: INIT FLUX UNIFORM requires a <phi> value"
+                                .to_string()
+                        })?;
+                        crate::gauge::u1_flux::FluxSpec::Uniform { phi: p }
+                    }
+                    _ => unreachable!("guarded by the matches! above"),
+                };
+                crate::gauge::u1_flux::materialize_u1_flux_bundle(
+                    engine, name, &lat, spec,
+                )?;
+                return Ok(ExecResult::Ok);
+            }
 
             // 2. Group-erasure dispatch — SU(2) and SU(3) ship live
             //    math (the latter via Halcyon ITEM 3.1 Phase 1, read-
@@ -11747,6 +11873,10 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 crate::gauge::GaugeFieldInit::Identity => "IDENTITY",
                 crate::gauge::GaugeFieldInit::HaarRandom => "HAAR_RANDOM",
                 crate::gauge::GaugeFieldInit::FromField(_) => "FROM_FIELD",
+                // Flux fields never register a buffer handle, so SHOW
+                // cannot reach them — arms kept for exhaustiveness.
+                crate::gauge::GaugeFieldInit::FluxRandom => "FLUX_RANDOM",
+                crate::gauge::GaugeFieldInit::FluxUniform => "FLUX_UNIFORM",
             };
             let mut record: crate::types::Record = std::collections::HashMap::new();
             record.insert(
@@ -15426,6 +15556,7 @@ mod tests {
                 group,
                 init,
                 seed,
+                phi,
                 persist,
             } => {
                 assert_eq!(name, "U");
@@ -15433,6 +15564,7 @@ mod tests {
                 assert_eq!(group, crate::gauge::Group::SU2);
                 assert_eq!(init, crate::gauge::GaugeFieldInit::Identity);
                 assert_eq!(seed, None);
+                assert_eq!(phi, None);
                 assert!(!persist);
             }
             other => panic!("Expected Statement::GaugeField, got {other:?}"),
@@ -15457,6 +15589,7 @@ mod tests {
                 group,
                 init,
                 seed,
+                phi,
                 persist,
             } => {
                 assert_eq!(name, "U");
@@ -15464,6 +15597,7 @@ mod tests {
                 assert_eq!(group, crate::gauge::Group::SU2);
                 assert_eq!(init, crate::gauge::GaugeFieldInit::HaarRandom);
                 assert_eq!(seed, Some(20260616));
+                assert_eq!(phi, None);
                 assert!(persist);
             }
             other => panic!("Expected Statement::GaugeField, got {other:?}"),
@@ -15487,6 +15621,7 @@ mod tests {
                 group,
                 init,
                 seed,
+                phi,
                 persist,
             } => {
                 assert_eq!(name, "U2");
@@ -15497,6 +15632,7 @@ mod tests {
                     crate::gauge::GaugeFieldInit::FromField("other_field".into())
                 );
                 assert_eq!(seed, None);
+                assert_eq!(phi, None);
                 assert!(!persist);
             }
             other => panic!("Expected Statement::GaugeField, got {other:?}"),

@@ -13582,7 +13582,31 @@ fn execute_gql_on_store_read(
             let k = store.scalar_curvature();
             Ok(ExecResult::Scalar(k))
         }
-        Statement::Spectral { .. } => {
+        Statement::Spectral { full, limit, .. } => {
+            if *full {
+                // Phase 2 (2026-07-16): FULL returns the normalized-
+                // Laplacian spectrum (ascending, LIMIT k smallest) as
+                // a single-row envelope. Non-FULL Scalar shape frozen.
+                let heap = store.as_heap().ok_or_else(|| {
+                    "SPECTRAL FULL: bundle is not heap-resident".to_string()
+                })?;
+                let (vals, n_vertices) =
+                    gigi::spectral::spectral_full_normalized(heap, *limit)?;
+                let mut row = gigi::types::Record::new();
+                row.insert(
+                    "eigenvalues".to_string(),
+                    gigi::types::Value::Vector(vals),
+                );
+                row.insert(
+                    "n_vertices".to_string(),
+                    gigi::types::Value::Integer(n_vertices as i64),
+                );
+                row.insert(
+                    "mode_used".to_string(),
+                    gigi::types::Value::Text("dense".to_string()),
+                );
+                return Ok(ExecResult::Rows(vec![row]));
+            }
             let lambda1 = store
                 .as_heap()
                 .map(gigi::spectral::spectral_gap)
@@ -13887,7 +13911,7 @@ fn execute_gql_on_store_read(
             // Read-only engine borrow — the eigendecomposition does
             // not mutate any state.
             let eng_guard = eng.read().unwrap_or_else(std::sync::PoisonError::into_inner);
-            let result = gigi::spectral::spectral_gauge_gap(
+            let result = gigi::spectral::spectral_gauge_spectrum(
                 &eng_guard,
                 bundle,
                 fiber_fields,
@@ -13899,8 +13923,11 @@ fn execute_gql_on_store_read(
             .map_err(|e| e.to_string())?;
 
             // Single-row result envelope mirrors the SPECTRAL_FIBER
-            // pattern — gap / n_records_used / group_used. Phase 2's
-            // eigenvalues vector will add a second row block.
+            // pattern — gap / n_records_used / group_used. Phase 2:
+            // FULL additionally stamps `eigenvalues` (Vector,
+            // ascending) + `mode_used` on the SAME row — additive
+            // only, so the λ₁ shape without FULL stays byte-identical
+            // (probe S6 + the spectral_gauge_basic fence).
             let mut row = gigi::types::Record::new();
             row.insert("gap".to_string(), gigi::types::Value::Float(result.gap));
             row.insert(
@@ -13911,6 +13938,16 @@ fn execute_gql_on_store_read(
                 "group_used".to_string(),
                 gigi::types::Value::Text(result.group_used.label().to_string()),
             );
+            if let Some(vals) = result.eigenvalues {
+                row.insert(
+                    "eigenvalues".to_string(),
+                    gigi::types::Value::Vector(vals),
+                );
+                row.insert(
+                    "mode_used".to_string(),
+                    gigi::types::Value::Text(result.mode_used.label().to_string()),
+                );
+            }
             Ok(ExecResult::Rows(vec![row]))
         }
         #[cfg(not(feature = "gauge"))]

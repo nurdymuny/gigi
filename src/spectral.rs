@@ -930,26 +930,74 @@ pub fn spectral_fiber_modes(store: &BundleStore, fiber_fields: &[&str], modes: u
 // usable substrate primitive a downstream Wilson-mass-gap pipeline can
 // build on.
 //
-// Phase 1 ships the dense nalgebra::SymmetricEigen path for small graphs
-// (buckyball-scale, V ≤ ~10k vertices). Phase 2 (NOT in this commit) will
-// add the Lanczos sparse path + FULL mode (k smallest eigenvalues) — the
-// `eigenvalues: Option<Vec<f64>>` field and `PhaseNotImplemented` variant
-// pre-wire those hooks.
+// Phase 1 shipped the dense nalgebra::SymmetricEigen path for small graphs
+// (buckyball-scale). Phase 2 (2026-07-16, Hallie's confirmed ask) lights up
+// FULL [LIMIT k] on the SAME dense path up to V = 4096 (the spec §6
+// dense/sparse boundary); the sparse Lanczos arm is deferred to Phase 2.1
+// (reconciliation R2 — an honest SparseUnavailable error beats a rushed
+// eigensolver). FULL returns eigenvalues ascending ALGEBRAIC (R3 — the
+// spec's sparse path orders by |λ|; named deviation in the ship report).
+
+/// Dense/sparse boundary from SPECTRAL_GAUGE_PHASE2_SPEC.md §6: the dense
+/// SymmetricEigen path serves FULL requests up to this vertex count;
+/// beyond it the verb surfaces [`SpectralGaugeError::SparseUnavailable`]
+/// until the Phase 2.1 Lanczos arm lands. The Phase-1 λ₁-only path is
+/// NOT gated by this constant (its dense behaviour is frozen).
+#[cfg(feature = "gauge")]
+pub const SPECTRAL_DENSE_MAX_V: usize = 4096;
+
+/// Which eigensolver arm actually ran (spec §6 result extension).
+#[derive(Debug, Clone, PartialEq)]
+#[cfg(feature = "gauge")]
+pub enum SpectralGaugeMode {
+    /// Dense `nalgebra::SymmetricEigen` — the only live arm this phase.
+    Dense,
+    /// Implicitly Restarted Lanczos over CSR (Phase 2.1 — declared per
+    /// spec §6 so the result shape is forward-stable; never constructed
+    /// this phase).
+    SparseLanczos { shift: f64, k: usize },
+}
+
+#[cfg(feature = "gauge")]
+impl SpectralGaugeMode {
+    /// Stable wire label for the mode (`mode_used` envelope field).
+    pub fn label(&self) -> &'static str {
+        match self {
+            SpectralGaugeMode::Dense => "dense",
+            SpectralGaugeMode::SparseLanczos { .. } => "sparse_lanczos",
+        }
+    }
+}
+
+/// Iterative-solver convergence receipt (spec §6). Always `None` on the
+/// dense path; populated by the Phase 2.1 Lanczos arm.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg(feature = "gauge")]
+pub struct Convergence {
+    pub iterations: usize,
+    pub restarts: usize,
+    /// max over the k returned pairs of ‖L v − λ v‖ / ‖v‖.
+    pub final_residual: f64,
+}
 
 /// Result of SPECTRAL_GAUGE.
 ///
 /// Carries the gauge-weighted spectral gap, the count of records
 /// successfully decoded into the Laplacian, and which group was actually
 /// used (group inference may have promoted the parser's `None` to a
-/// specific tag). The `eigenvalues` field is `None` in Phase 1; Phase 2's
-/// FULL mode will populate it.
+/// specific tag). `eigenvalues` is `Some` exactly when FULL was
+/// requested (Phase 2); `mode_used`/`convergence` are the spec §6
+/// extensions (dense → `Dense` + `None`).
 #[derive(Debug, Clone)]
 #[cfg(feature = "gauge")]
 pub struct SpectralGaugeResult {
-    /// λ₁ — smallest nonzero eigenvalue of the fiber-weighted Laplacian.
+    /// λ₁ — smallest nonzero eigenvalue of the fiber-weighted Laplacian
+    /// (first |λ| > 1e-9 of the sorted spectrum — identical rule with
+    /// and without FULL, for Phase-1 continuity).
     pub gap: f64,
-    /// `None` in Phase 1; Phase 2 FULL mode will populate with the
-    /// first `LIMIT k` eigenvalues sorted ascending.
+    /// `None` without FULL (Phase-1 shape, frozen). With FULL: the
+    /// `LIMIT k` smallest eigenvalues (all of them when LIMIT is
+    /// omitted), sorted ascending ALGEBRAIC (R3).
     pub eigenvalues: Option<Vec<f64>>,
     /// Number of records (edges) that contributed to L_A. Each record
     /// is one edge weighted by its reconstructed group element.
@@ -957,6 +1005,10 @@ pub struct SpectralGaugeResult {
     /// The group that was actually used — either passed in or inferred
     /// from `fiber_fields.len()` at exec time.
     pub group_used: crate::gauge::Group,
+    /// Which eigensolver arm ran (spec §6). Dense this phase.
+    pub mode_used: SpectralGaugeMode,
+    /// Iterative-solver receipt (spec §6). `None` on the dense path.
+    pub convergence: Option<Convergence>,
 }
 
 /// Errors surfaced by SPECTRAL_GAUGE Phase 1.
@@ -986,8 +1038,9 @@ pub enum SpectralGaugeError {
     /// GROUP was omitted and `fiber_fields.len()` is not one of the
     /// canonical widths (1 → U(1), 4 → SU(2), 18 → SU(3)).
     AmbiguousGroupInference(usize),
-    /// FULL mode requested — Phase 1 does not implement it. Phase 2
-    /// ships the Lanczos sparse k-eigenvalue path.
+    /// Reserved for not-yet-shipped phases. Phase 1 used this for FULL
+    /// (now implemented, 2026-07-16); the variant stays for future
+    /// phase gating (e.g. SU(3) Gell-Mann tangent basis, Phase 3).
     PhaseNotImplemented {
         phase: &'static str,
         description: &'static str,
@@ -1003,6 +1056,17 @@ pub enum SpectralGaugeError {
         where_clause: String,
         message: String,
     },
+    /// FULL LIMIT 0 (or any out-of-bounds k) — the LIMIT bounds error
+    /// Hallie's generator can match on. Introduced with Phase 2 FULL
+    /// (2026-07-16).
+    InvalidLimit { got: usize },
+    /// FULL was requested on a graph above the dense eigensolver
+    /// threshold (spec §6: V = 4096) and the sparse Lanczos arm has
+    /// not shipped yet (Phase 2.1). Shaped after the spec §6
+    /// `SparseUnavailable` variant, with the vertex count + threshold
+    /// carried for the envelope. Reconciliation R2: an honest error
+    /// beats a rushed eigensolver.
+    SparseUnavailable { v_count: usize, threshold: usize },
 }
 
 #[cfg(feature = "gauge")]
@@ -1044,6 +1108,23 @@ impl std::fmt::Display for SpectralGaugeError {
                     f,
                     "SPECTRAL_GAUGE: filter WHERE {where_clause} matched zero \
                      records — empty subgraph, cannot build Laplacian ({message})"
+                )
+            }
+            SpectralGaugeError::InvalidLimit { got } => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: FULL LIMIT must be ≥ 1 (got {got}) — \
+                     omit LIMIT to return all eigenvalues"
+                )
+            }
+            SpectralGaugeError::SparseUnavailable { v_count, threshold } => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: FULL on V = {v_count} vertices exceeds the \
+                     dense eigensolver threshold (V = {threshold}, spec §6 boundary \
+                     4096) — the sparse Lanczos arm ships in Phase 2.1; until then \
+                     run FULL on a smaller (sectoral / downsampled) subgraph, or \
+                     drop FULL for the λ₁-only gap"
                 )
             }
         }
@@ -1111,21 +1192,45 @@ pub fn re_trace_over_n(fiber: &[f64], group: crate::gauge::Group) -> f64 {
     }
 }
 
-/// SPECTRAL_GAUGE Phase 1 — compute the fiber-weighted spectral gap λ₁
-/// of L_A.
+/// SPECTRAL_GAUGE — Phase-1-shaped entry point (λ₁ + optional FULL).
+///
+/// Thin wrapper over [`spectral_gauge_spectrum`] kept signature-stable
+/// so every Phase-1 caller (tests, tooling) compiles unchanged. As of
+/// Phase 2 (2026-07-16) `full = true` is IMPLEMENTED on the dense path
+/// (V ≤ [`SPECTRAL_DENSE_MAX_V`]) rather than returning the old
+/// `PhaseNotImplemented` stub.
+#[cfg(feature = "gauge")]
+pub fn spectral_gauge_gap(
+    engine: &crate::engine::Engine,
+    bundle: &str,
+    fiber_fields: &[String],
+    group: crate::gauge::Group,
+    full: bool,
+    limit: Option<usize>,
+    filter: Option<&[crate::bundle::QueryCondition]>,
+) -> Result<SpectralGaugeResult, SpectralGaugeError> {
+    spectral_gauge_spectrum(engine, bundle, fiber_fields, group, full, limit, filter)
+}
+
+/// SPECTRAL_GAUGE core — fiber-weighted graph Laplacian spectrum.
 ///
 /// Reads `bundle` records, reconstructs the per-edge group element U_e
 /// from `fiber_fields`, computes trace weights w_e = Re Tr(U_e)/N,
 /// builds the dense weighted graph Laplacian L_A, and returns its
-/// smallest nonzero eigenvalue via nalgebra::SymmetricEigen.
+/// smallest nonzero eigenvalue via nalgebra::SymmetricEigen — plus,
+/// when `full` is set, the `LIMIT k` smallest eigenvalues sorted
+/// ascending ALGEBRAIC (R3; all of them when `limit` is `None`).
 ///
 /// HONEST FRAMING: L_A's spectrum is globally gauge-invariant, but the
 /// per-edge weight Re Tr(U_e)/N is only locally gauge-covariant. This
 /// returns the fiber-weighted spectral gap — NOT the strict Yang-Mills
 /// mass gap. See HALCYON_BRIDGE_TRILOGY notes (cfeb5c5).
 ///
-/// `full = true` returns `SpectralGaugeError::PhaseNotImplemented`
-/// (Phase 2 ships the Lanczos sparse k-eigenvalue path).
+/// FULL is dense-only this phase: `full = true` on a graph with more
+/// than [`SPECTRAL_DENSE_MAX_V`] vertices returns
+/// [`SpectralGaugeError::SparseUnavailable`] naming the Phase 2.1
+/// Lanczos deferral (R2). `limit = Some(0)` returns
+/// [`SpectralGaugeError::InvalidLimit`]; `limit > V` clamps to V.
 ///
 /// Negative-weight edges are physically meaningful (anti-aligned
 /// holonomy → negative `Re Tr`); the resulting symmetric Laplacian is
@@ -1134,25 +1239,21 @@ pub fn re_trace_over_n(fiber: &[f64], group: crate::gauge::Group) -> f64 {
 /// be negative in heavily anti-correlated regimes — this is the honest
 /// physics, surfaced verbatim rather than clamped.
 #[cfg(feature = "gauge")]
-pub fn spectral_gauge_gap(
+pub fn spectral_gauge_spectrum(
     engine: &crate::engine::Engine,
     bundle: &str,
     fiber_fields: &[String],
     group: crate::gauge::Group,
     full: bool,
-    _limit: Option<usize>,
+    limit: Option<usize>,
     filter: Option<&[crate::bundle::QueryCondition]>,
 ) -> Result<SpectralGaugeResult, SpectralGaugeError> {
-    // ── Step 0: FULL mode → Phase 2 stub. Surface the typed error so
-    //   callers get an exact phase tag plus what they get today (the
-    //   gap-only return value). _limit is intentionally unused in
-    //   Phase 1; Phase 2 reads it for the Lanczos k-eigenvalue path.
+    // ── Step 0: LIMIT bounds. k = 0 is meaningless (an empty FULL
+    //   request) — surface the typed bounds error before any work.
     if full {
-        return Err(SpectralGaugeError::PhaseNotImplemented {
-            phase: "Phase 2",
-            description: "FULL mode (k eigenvalues + Lanczos sparse) ships in Phase 2 \
-                          — Phase 1 dense path returns only the gap λ₁",
-        });
+        if let Some(0) = limit {
+            return Err(SpectralGaugeError::InvalidLimit { got: 0 });
+        }
     }
 
     // ── Step 1: Resolve the bundle. Use the typed BundleNotFound
@@ -1255,6 +1356,19 @@ pub fn spectral_gauge_gap(
         });
     }
 
+    // ── Step 4b: Dense/sparse boundary (spec §6: V = 4096). FULL on a
+    //   graph past the boundary would O(V²)-allocate + O(V³)-decompose;
+    //   the Lanczos arm that serves that regime is Phase 2.1, so the
+    //   honest move is the typed SparseUnavailable error (R2). The
+    //   Phase-1 λ₁-only path is NOT gated here — its behaviour is
+    //   frozen for backwards compatibility.
+    if full && v_count > SPECTRAL_DENSE_MAX_V {
+        return Err(SpectralGaugeError::SparseUnavailable {
+            v_count,
+            threshold: SPECTRAL_DENSE_MAX_V,
+        });
+    }
+
     // ── Step 5: Assemble dense Laplacian L_A as nalgebra DMatrix<f64>.
     //   Standard combinatorial Laplacian on the weighted graph:
     //     L[i,i] = Σ_e∋i w_e
@@ -1289,12 +1403,103 @@ pub fn spectral_gauge_gap(
         .copied()
         .unwrap_or(0.0);
 
+    // ── Step 8: FULL → populate eigenvalues (ascending algebraic,
+    //   truncated to the k smallest when LIMIT is present; LIMIT > V
+    //   clamps). Without FULL the field stays None — the Phase-1
+    //   result shape, byte-compatible for every existing consumer.
+    let eigenvalues = if full {
+        let k = limit.map(|k| k.min(vals.len())).unwrap_or(vals.len());
+        Some(vals[..k].to_vec())
+    } else {
+        None
+    };
+
     Ok(SpectralGaugeResult {
         gap,
-        eigenvalues: None, // Phase 1: gap only. Phase 2 fills this.
+        eigenvalues,
         n_records_used,
         group_used: group,
+        mode_used: SpectralGaugeMode::Dense,
+        convergence: None, // dense path — no iterative receipt (spec §6)
     })
+}
+
+/// Plain `SPECTRAL <bundle> FULL [LIMIT k]` — full spectrum of the
+/// NORMALIZED graph Laplacian (Def 3.10: L = I − D^{−1/2} W D^{−1/2})
+/// of the field index graph, dense, ascending algebraic.
+///
+/// Returns `(eigenvalues, n_vertices)`. This is the unweighted sibling
+/// of [`spectral_gauge_spectrum`]: same FULL semantics (LIMIT k = the k
+/// smallest; LIMIT 0 errors; V > [`SPECTRAL_DENSE_MAX_V`] errors naming
+/// the Phase 2.1 sparse deferral) on the L0 SPECTRAL verb's graph.
+/// Isolated vertices contribute a 0 row (normalized-Laplacian
+/// convention: L_ii = 0 when deg = 0).
+///
+/// String-typed errors because the plain SPECTRAL verb predates the
+/// typed SpectralGaugeError surface and its executor arms speak
+/// `Result<_, String>`.
+pub fn spectral_full_normalized(
+    store: &BundleStore,
+    limit: Option<usize>,
+) -> Result<(Vec<f64>, usize), String> {
+    if let Some(0) = limit {
+        return Err(
+            "SPECTRAL: FULL LIMIT must be ≥ 1 (got 0) — omit LIMIT to return \
+             all eigenvalues"
+                .to_string(),
+        );
+    }
+    let adj = field_index_graph(store);
+    let mut bps: Vec<BasePoint> = adj.keys().copied().collect();
+    bps.sort();
+    let n = bps.len();
+    if n == 0 {
+        return Ok((Vec::new(), 0));
+    }
+    #[cfg(feature = "gauge")]
+    let threshold = SPECTRAL_DENSE_MAX_V;
+    #[cfg(not(feature = "gauge"))]
+    let threshold = 4096usize;
+    if n > threshold {
+        return Err(format!(
+            "SPECTRAL: FULL on V = {n} vertices exceeds the dense eigensolver \
+             threshold (V = {threshold}, spec §6 boundary 4096) — the sparse \
+             Lanczos arm ships in Phase 2.1; until then run FULL on a smaller \
+             bundle or drop FULL for the λ₁-only scalar"
+        ));
+    }
+    let bp_to_idx: HashMap<BasePoint, usize> =
+        bps.iter().enumerate().map(|(i, &bp)| (bp, i)).collect();
+    let degrees: Vec<f64> = bps
+        .iter()
+        .map(|bp| adj.get(bp).map_or(0, |v| v.len()) as f64)
+        .collect();
+    let d_inv_sqrt: Vec<f64> = degrees
+        .iter()
+        .map(|&d| if d > 0.0 { 1.0 / d.sqrt() } else { 0.0 })
+        .collect();
+
+    // L = I' − D^{−1/2} W D^{−1/2}, where I'_ii = 1 iff deg(i) > 0.
+    let mut l = nalgebra::DMatrix::<f64>::zeros(n, n);
+    for (i, bp) in bps.iter().enumerate() {
+        if degrees[i] > 0.0 {
+            l[(i, i)] = 1.0;
+        }
+        if let Some(neighbors) = adj.get(bp) {
+            for nbp in neighbors {
+                if let Some(&j) = bp_to_idx.get(nbp) {
+                    l[(i, j)] -= d_inv_sqrt[i] * d_inv_sqrt[j];
+                }
+            }
+        }
+    }
+
+    let eigen = nalgebra::SymmetricEigen::new(l);
+    let mut vals: Vec<f64> = eigen.eigenvalues.iter().copied().collect();
+    vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let k = limit.map(|k| k.min(n)).unwrap_or(n);
+    vals.truncate(k);
+    Ok((vals, n))
 }
 
 #[cfg(test)]

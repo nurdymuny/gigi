@@ -368,9 +368,15 @@ pub enum Statement {
         fields: Vec<String>,
         by_field: Option<String>,
     },
+    /// `SPECTRAL bundle [FULL [LIMIT k]]` — λ₁ of the normalized
+    /// field-index-graph Laplacian (Scalar), or with FULL the whole
+    /// normalized spectrum ascending (Rows; Phase 2, 2026-07-16).
     Spectral {
         bundle: String,
         full: bool,
+        /// `LIMIT k` after FULL — the k smallest eigenvalues. `None`
+        /// (with FULL) returns all of them.
+        limit: Option<usize>,
     },
     Consistency {
         bundle: String,
@@ -655,10 +661,11 @@ pub enum Statement {
         /// the feature, so this stays `None` for no-feature builds.
         #[cfg(not(feature = "gauge"))]
         group: Option<()>,
-        /// Phase 1: FULL mode returns PhaseNotImplemented stub.
+        /// FULL — populate `eigenvalues` (Phase 2, 2026-07-16: dense
+        /// implementation up to V = 4096; sparse Lanczos is Phase 2.1).
         full: bool,
-        /// LIMIT k after FULL — Phase 2 will use this to size the
-        /// Lanczos k-eigenvalue request.
+        /// LIMIT k after FULL — the k smallest eigenvalues (`None`
+        /// with FULL = all of them; k > V clamps; k = 0 errors).
         limit: Option<usize>,
         /// Optional WHERE clause for sectoral filtering (Ask 4).
         /// Empty vec = no filter (backwards compatible with every
@@ -4729,13 +4736,19 @@ impl Parser {
             let modes = self.expect_usize()?;
             return Ok(Statement::SpectralFiber { bundle: name, fiber_fields, modes });
         }
-        let full = if self.is_keyword("FULL") {
+        let (full, limit) = if self.is_keyword("FULL") {
             self.advance();
-            true
+            let k = if self.is_keyword("LIMIT") {
+                self.advance();
+                Some(self.expect_usize()?)
+            } else {
+                None
+            };
+            (true, k)
         } else {
-            false
+            (false, None)
         };
-        Ok(Statement::Spectral { bundle: name, full })
+        Ok(Statement::Spectral { bundle: name, full, limit })
     }
 
     /// Halcyon SPECTRAL_GAUGE — fiber-weighted spectral gap λ₁.
@@ -4749,9 +4762,10 @@ impl Parser {
     /// The ON FIBER clause is mandatory — without it the verb cannot
     /// weight edges. GROUP is optional: when omitted, the executor
     /// infers it from `fiber_fields.len()` (1 → U(1), 4 → SU(2),
-    /// 18 → SU(3); else error). FULL [LIMIT k] is parsed today;
-    /// Phase 1 returns a typed PhaseNotImplemented error pointing at
-    /// the Phase 2 Lanczos sparse path.
+    /// 18 → SU(3); else error). FULL [LIMIT k] is implemented as of
+    /// Phase 2 (2026-07-16): the dense path populates the k smallest
+    /// eigenvalues (all of them without LIMIT), ascending algebraic,
+    /// up to the V = 4096 dense threshold.
     fn parse_spectral_gauge(&mut self) -> Result<Statement, String> {
         let bundle = self.expect_word()?;
 
@@ -10430,10 +10444,35 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             Ok(ExecResult::Scalar(k))
         }
 
-        Statement::Spectral { bundle, .. } => {
+        Statement::Spectral { bundle, full, limit } => {
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
+            if *full {
+                // Phase 2 (2026-07-16): FULL returns the whole
+                // normalized-Laplacian spectrum (ascending, LIMIT k
+                // smallest) as a single-row envelope. The non-FULL
+                // Scalar shape below is frozen.
+                let heap = store.as_heap().ok_or_else(|| {
+                    format!("SPECTRAL FULL: bundle '{bundle}' is not heap-resident")
+                })?;
+                let (vals, n_vertices) =
+                    crate::spectral::spectral_full_normalized(heap, *limit)?;
+                let mut row = crate::types::Record::new();
+                row.insert(
+                    "eigenvalues".to_string(),
+                    crate::types::Value::Vector(vals),
+                );
+                row.insert(
+                    "n_vertices".to_string(),
+                    crate::types::Value::Integer(n_vertices as i64),
+                );
+                row.insert(
+                    "mode_used".to_string(),
+                    crate::types::Value::Text("dense".to_string()),
+                );
+                return Ok(ExecResult::Rows(vec![row]));
+            }
             let lambda1 = store.as_heap()
                 .map(|s| crate::spectral::spectral_gap(s))
                 .unwrap_or(0.0);
@@ -11030,7 +11069,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     Some(query_conditions.as_slice())
                 };
 
-                let result = crate::spectral::spectral_gauge_gap(
+                let result = crate::spectral::spectral_gauge_spectrum(
                     engine,
                     bundle,
                     fiber_fields,
@@ -11044,8 +11083,11 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 // Return structured rows so the HTTP envelope can
                 // serialize gap / group_used / n_records_used. Matches
                 // the SPECTRAL_FIBER pattern (Marcella's existing
-                // calling convention). When Phase 2 fills the
-                // eigenvalues vector, additional rows will follow.
+                // calling convention). Phase 2: when FULL was
+                // requested, the SAME single row additionally carries
+                // `eigenvalues` (Vector, ascending) + `mode_used` —
+                // additive-only, so the λ₁ shape without FULL stays
+                // byte-identical (probe S6).
                 let mut row = crate::types::Record::new();
                 row.insert(
                     "gap".to_string(),
@@ -11059,6 +11101,16 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     "group_used".to_string(),
                     crate::types::Value::Text(result.group_used.label().to_string()),
                 );
+                if let Some(vals) = result.eigenvalues {
+                    row.insert(
+                        "eigenvalues".to_string(),
+                        crate::types::Value::Vector(vals),
+                    );
+                    row.insert(
+                        "mode_used".to_string(),
+                        crate::types::Value::Text(result.mode_used.label().to_string()),
+                    );
+                }
                 Ok(ExecResult::Rows(vec![row]))
             }
             #[cfg(not(feature = "gauge"))]
@@ -13733,9 +13785,23 @@ mod tests {
     fn gql_spectral_full() {
         let stmt = parse("SPECTRAL sensors FULL").unwrap();
         match stmt {
-            Statement::Spectral { bundle, full } => {
+            Statement::Spectral { bundle, full, limit } => {
                 assert_eq!(bundle, "sensors");
                 assert!(full);
+                assert_eq!(limit, None);
+            }
+            _ => panic!("Expected Spectral"),
+        }
+    }
+
+    #[test]
+    fn gql_spectral_full_limit() {
+        let stmt = parse("SPECTRAL sensors FULL LIMIT 5").unwrap();
+        match stmt {
+            Statement::Spectral { bundle, full, limit } => {
+                assert_eq!(bundle, "sensors");
+                assert!(full);
+                assert_eq!(limit, Some(5));
             }
             _ => panic!("Expected Spectral"),
         }

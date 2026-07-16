@@ -5,8 +5,13 @@
 //! These tests pin the Phase 1 dense path's behaviour on the
 //! fiber-weighted Laplacian L_A, the group inference table at exec
 //! time, and the typed-error surface (BundleNotFound /
-//! MissingEndpointFields / FiberArityMismatch / AmbiguousGroupInference
-//! / PhaseNotImplemented). They also pin the parser's ergonomics #4
+//! MissingEndpointFields / FiberArityMismatch /
+//! AmbiguousGroupInference). Tests 11-12 originally pinned the FULL
+//! PhaseNotImplemented stub; Phase 2 (2026-07-16) replaced the stub
+//! with the dense FULL implementation, so they now pin the FULL
+//! contract instead (same count, updated behaviour — deviation named
+//! in SPECTRAL_PHASE2_MAGNETIC_SHIPPED_2026-07-16.md).
+//! They also pin the parser's ergonomics #4
 //! SU2/SU3/U1 synonyms — both bare and parenthesized forms must hit
 //! the same `Group` enum value.
 //!
@@ -261,10 +266,14 @@ fn test_missing_endpoint_fields_returns_typed_error() {
     }
 }
 
-/// (11) FULL mode returns PhaseNotImplemented with phase="Phase 2"
-/// and a description mentioning Lanczos sparse.
+/// (11) FULL mode is IMPLEMENTED as of Phase 2 (2026-07-16): the ring4
+/// call returns all 4 eigenvalues of the unit-weight C_4 Laplacian
+/// (2 − 2cos(2πk/4) = {0, 2, 2, 4}) ascending, with the gap unchanged.
+/// (Phase 1 pinned a PhaseNotImplemented stub here; the Phase-2 tranche
+/// replaces the stub with the dense implementation by design — see
+/// theory/halcyon/SPECTRAL_PHASE2_MAGNETIC_SHIPPED_2026-07-16.md.)
 #[test]
-fn test_full_mode_returns_phase_not_implemented_stub() {
+fn test_full_mode_returns_eigenvalues_dense() {
     let mut engine = Engine::open_memory().expect("memory engine");
     make_edge_bundle(&mut engine, "ring4", su2_field_names());
     let id = su2_identity_fiber();
@@ -274,24 +283,24 @@ fn test_full_mode_returns_phase_not_implemented_stub() {
     }
 
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let err = spectral_gauge_gap(&engine, "ring4", &fiber_fields, Group::SU2, true, None, None)
-        .expect_err("FULL mode should not be implemented");
-    match err {
-        SpectralGaugeError::PhaseNotImplemented { phase, description } => {
-            assert_eq!(phase, "Phase 2");
-            assert!(
-                description.contains("Lanczos"),
-                "description missing Lanczos: {description}"
-            );
-        }
-        other => panic!("expected PhaseNotImplemented, got {other:?}"),
+    let result = spectral_gauge_gap(&engine, "ring4", &fiber_fields, Group::SU2, true, None, None)
+        .expect("FULL mode is implemented in Phase 2");
+    let vals = result.eigenvalues.expect("FULL populates eigenvalues");
+    let expected = [0.0, 2.0, 2.0, 4.0];
+    assert_eq!(vals.len(), 4);
+    for (i, (got, want)) in vals.iter().zip(expected.iter()).enumerate() {
+        assert!(
+            (got - want).abs() < 1e-9,
+            "C_4 eigenvalue {i}: got {got}, want {want}"
+        );
     }
+    assert!((result.gap - 2.0).abs() < 1e-9, "gap stays λ₁ = 2.0");
 }
 
-/// (12) FULL LIMIT 5 also returns PhaseNotImplemented (LIMIT parsed
-/// but ignored in Phase 1).
+/// (12) FULL LIMIT 5 on a 4-vertex ring clamps to V = 4 eigenvalues
+/// (LIMIT k > V is not an error; LIMIT 0 is — see spectral_full_basic).
 #[test]
-fn test_full_mode_with_limit_still_returns_phase_not_implemented() {
+fn test_full_mode_with_limit_clamps_to_vertex_count() {
     let mut engine = Engine::open_memory().expect("memory engine");
     make_edge_bundle(&mut engine, "ring4_limit", su2_field_names());
     let id = su2_identity_fiber();
@@ -301,9 +310,10 @@ fn test_full_mode_with_limit_still_returns_phase_not_implemented() {
     }
 
     let fiber_fields: Vec<String> = su2_field_names().iter().map(|s| s.to_string()).collect();
-    let err = spectral_gauge_gap(&engine, "ring4_limit", &fiber_fields, Group::SU2, true, Some(5), None)
-        .expect_err("FULL LIMIT should still error in Phase 1");
-    assert!(matches!(err, SpectralGaugeError::PhaseNotImplemented { .. }));
+    let result = spectral_gauge_gap(&engine, "ring4_limit", &fiber_fields, Group::SU2, true, Some(5), None)
+        .expect("FULL LIMIT is implemented in Phase 2");
+    let vals = result.eigenvalues.expect("FULL populates eigenvalues");
+    assert_eq!(vals.len(), 4, "LIMIT 5 on V=4 clamps to 4");
 }
 
 /// (13) Parser ergonomics #4: SU3 (bare) parses to the same Group as

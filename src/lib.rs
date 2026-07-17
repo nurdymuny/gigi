@@ -67,6 +67,16 @@ pub mod mlkem_delegation;
 // transport is PQ-safe under MLWE.
 pub mod lattice_delegation;
 pub mod dhoom;
+// Marcella dials wave 2 (GEODESIC_LOOM_PLAN asks #3 + #4, 2026-07-16):
+// report builders for the HORIZON / CAPACITY dial endpoints with the
+// opt-in `fields=` / `locus=` / `k=` scoping params (statistics over a
+// named vector family and/or a k-NN locus neighborhood, recomputed
+// through the SAME public formula fns the whole-bundle path uses), and
+// the WINDOWED_COHERENCE one-shot (server-side TRANSPORT_ROTATION ∘
+// local_holonomy over a record path). The HTTP handlers in
+// gigi_stream.rs are thin glue over this module; defaults are
+// byte-fenced in tests/locus_dials.rs.
+pub mod dials;
 pub mod edge;
 pub mod engine;
 // EXPLAIN SECTION … AT — shared executor (embedded + server read

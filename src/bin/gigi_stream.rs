@@ -957,59 +957,12 @@ struct PullbackCurvatureReport {
     right_unmatched: usize,
 }
 
-/// Response for `GET /v1/bundles/{name}/capacity` and `CAPACITY` GQL verb.
-/// Davis capacity C = τ/K (Theorem 8.1 — Cognitive Geometry Correspondence).
-#[derive(Serialize)]
-struct CapacityReport {
-    /// Davis capacity C = τ/K. How many distinct interpretations the
-    /// system can maintain simultaneously at this curvature level.
-    capacity: f64,
-    /// Local scalar curvature K.
-    k: f64,
-    /// Tolerance budget τ used to compute C.
-    tau: f64,
-    /// Confidence ∈ (0,1]: 1/(1+K).
-    confidence: f64,
-    /// Qualitative regime: "flat" (K≈0), "low" (C>10), "moderate",
-    /// "high" (C<1, overloaded), or "critical" (C≈0, K→∞).
-    regime: &'static str,
-    /// Human-readable interpretation for builders.
-    interpretation: String,
-}
-
-/// Response for `GET /v1/bundles/{name}/horizon` and `HORIZON` GQL verb.
-/// Holonomy horizon s_max = τ/(K·ℓ_c) (Definition 5.1 — Cognitive
-/// Geometry Correspondence). The maximum coherent context depth.
-///
-/// `estimator_used` and `fallback_engaged` report which length-scale
-/// estimator actually produced `l_c`. The default config tries
-/// SpectralGap first and falls back to WelfordRadius when λ₁ is
-/// degenerate — sensor-style bundles always hit the fallback because
-/// their connectivity isn't graph-structured.
-#[derive(Serialize)]
-struct HorizonReport {
-    /// s_max = τ/(K·ℓ_c). Beyond this many positions, individual
-    /// contributions to the accumulated frame rotation are irrecoverable.
-    s_max: f64,
-    /// Local scalar curvature K.
-    k: f64,
-    /// Tolerance budget τ.
-    tau: f64,
-    /// Correlation length ℓ_c actually used (from the estimator that won).
-    l_c: f64,
-    /// Spectral gap λ₁ (always reported, even when the fallback fires).
-    lambda1: f64,
-    /// Which estimator produced `l_c`. Either the primary
-    /// (`config.estimator`) or the fallback when the primary was
-    /// degenerate. Strings: "spectral_gap" | "welford_radius" | {"fixed":N}.
-    estimator_used: gigi::curvature::LengthScaleEstimator,
-    /// True iff the primary estimator was degenerate and the fallback
-    /// fired. Convenience flag — equivalent to
-    /// `estimator_used != config.estimator`.
-    fallback_engaged: bool,
-    /// Human-readable interpretation.
-    interpretation: String,
-}
+// `GET /v1/bundles/{name}/capacity` and `/horizon` response shapes live
+// in `gigi::dials` (`CapacityReport` / `HorizonReport`) since the wave-2
+// Marcella dials: the report-building moved into the lib so the opt-in
+// `fields=` / `locus=` / `k=` scoping params and their byte-identical
+// absent-params fence are testable at lib level (tests/locus_dials.rs).
+// The handlers below are thin glue.
 
 /// Response for `GET /v1/bundles/{name}/depth` and `DEPTH` GQL verb.
 /// Encoding depth classification (Theorem 8.14 — Cognitive Geometry
@@ -2918,42 +2871,45 @@ async fn spectral_report(
 
 // ── Cognitive Geometry Verbs (Branch VII — Davis 2026-05-29) ────────────────
 
-/// `GET /v1/bundles/{name}/capacity[?tau=n]`
+/// Map a typed dial error onto the flat HTTP error envelope.
+fn dial_error_to_http(e: gigi::dials::DialError) -> (StatusCode, Json<ErrorResponse>) {
+    match e {
+        gigi::dials::DialError::BadRequest(msg) => {
+            (StatusCode::BAD_REQUEST, Json(ErrorResponse { error: msg }))
+        }
+        gigi::dials::DialError::NotFound(msg) => {
+            (StatusCode::NOT_FOUND, Json(ErrorResponse { error: msg }))
+        }
+    }
+}
+
+/// `GET /v1/bundles/{name}/capacity[?tau=n][&fields=…][&locus=<f>=<v>][&k=n]`
 ///
 /// Davis capacity C = τ/K. Returns how many distinct interpretations the
 /// bundle can support simultaneously at its current curvature level.
 /// τ defaults to 1.0 (C = 1/K in natural units).
+///
+/// Wave-2 Marcella dials: opt-in `fields=` (vector-family scoping,
+/// wave-1 `..` range sugar or one Value::Vector fiber) and
+/// `locus=<field>=<value>[&k=<n>]` (k-NN neighborhood statistics)
+/// recompute C / confidence / regime / λ-budget from the scoped
+/// statistics through the same formula fns. Absent params →
+/// byte-identical pre-change behavior. See `gigi::dials`.
 async fn bundle_capacity_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
-) -> Result<Json<CapacityReport>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<gigi::dials::CapacityReport>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
     })?;
-
-    let tau: f64 = params.get("tau").and_then(|s| s.parse().ok()).unwrap_or(1.0);
-    let k = store.scalar_curvature();
-    let c = curvature::capacity(tau, k);
-    let conf = curvature::confidence(k);
-
-    let (regime, interpretation) = if k < f64::EPSILON {
-        ("flat", format!("K ≈ 0: flat space, infinite capacity. No curvature barriers — every query resolves cleanly."))
-    } else if c > 10.0 {
-        ("low", format!("C = {c:.2}: low-curvature region. Room for {c:.0} distinct interpretations per unit τ. Synthesis is reliable."))
-    } else if c >= 1.0 {
-        ("moderate", format!("C = {c:.2}: moderate curvature. The system can hold {c:.1} interpretations simultaneously. Watch for ambiguity."))
-    } else if c > 0.1 {
-        ("high", format!("C = {c:.3}: high curvature — fewer than one interpretation per unit τ. Ambiguity detection recommended before synthesis."))
-    } else {
-        ("critical", format!("C = {c:.4}: near-critical curvature. The system cannot reliably distinguish interpretations. Query is at a topological fork."))
-    };
-
-    Ok(Json(CapacityReport { capacity: c, k, tau, confidence: conf, regime, interpretation }))
+    gigi::dials::capacity_report(&store, &params)
+        .map(Json)
+        .map_err(dial_error_to_http)
 }
 
-/// `GET /v1/bundles/{name}/horizon[?tau=n&estimator=spectral_gap|welford_radius|fixed&fixed_value=N]`
+/// `GET /v1/bundles/{name}/horizon[?tau=n&estimator=spectral_gap|welford_radius|fixed&fixed_value=N][&fields=…][&locus=<f>=<v>][&k=n]`
 ///
 /// Holonomy horizon s_max = τ/(K·ℓ_c). Returns the maximum coherent
 /// context depth — beyond s_max positions, individual contributions to
@@ -2964,83 +2920,24 @@ async fn bundle_capacity_report(
 /// the heat-kernel estimator, NaN for Welford on flat bundles), the
 /// fallback (default: `welford_radius`) fires. The response echoes
 /// `estimator_used` so the caller can audit which path produced ℓ_c.
+///
+/// Wave-2 Marcella dials: opt-in `fields=` / `locus=` / `k=` scope the
+/// statistics population (see `gigi::dials`); precedence is
+/// `estimator=fixed` (the escape hatch, wins over everything) >
+/// `locus`/`fields` > default whole-bundle. Absent params →
+/// byte-identical pre-change behavior.
 async fn bundle_horizon_report(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
-) -> Result<Json<HorizonReport>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<gigi::dials::HorizonReport>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
         (StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }))
     })?;
-
-    let tau: f64 = params.get("tau").and_then(|s| s.parse().ok()).unwrap_or(1.0);
-    let k = store.scalar_curvature();
-    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
-
-    // Build HorizonConfig from query params. Default: SpectralGap +
-    // WelfordRadius fallback (which is HorizonConfig::default()).
-    let estimator = match params.get("estimator").map(|s| s.as_str()) {
-        Some("welford_radius") => curvature::LengthScaleEstimator::WelfordRadius,
-        Some("fixed") => {
-            let v: f64 = params.get("fixed_value")
-                .and_then(|s| s.parse().ok())
-                .ok_or_else(|| (
-                    StatusCode::BAD_REQUEST,
-                    Json(ErrorResponse { error: "estimator=fixed requires &fixed_value=<f64>".into() }),
-                ))?;
-            curvature::LengthScaleEstimator::Fixed(v)
-        }
-        Some("spectral_gap") | None => curvature::LengthScaleEstimator::SpectralGap,
-        Some(other) => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    error: format!(
-                        "estimator must be one of: spectral_gap, welford_radius, fixed; got {other}"
-                    ),
-                }),
-            ));
-        }
-    };
-    let cfg = curvature::HorizonConfig {
-        estimator,
-        ..curvature::HorizonConfig::default()
-    };
-
-    // The calibrated path needs a heap store for the Welford radius
-    // pass. If we only have mmap+overlay, fall back to the scalar
-    // shim (same behavior as before the calibrated path existed —
-    // documented as a "degenerate when λ₁=0" limitation).
-    let (s_max, l_c, estimator_used, fallback_engaged) = if let Some(heap) = store.as_heap() {
-        let res = curvature::horizon_with(tau, k, heap, lambda1, &cfg);
-        (res.s_max, res.l_c, res.estimator_used, res.fallback_engaged)
-    } else {
-        let l_c_shim = if lambda1 > f64::EPSILON { 1.0 / lambda1.sqrt() } else { 1.0 };
-        let s = curvature::horizon(tau, k, lambda1);
-        (s, l_c_shim, curvature::LengthScaleEstimator::SpectralGap, lambda1 < f64::EPSILON)
-    };
-
-    let interpretation = if s_max.is_infinite() {
-        "K ≈ 0: infinite horizon. Flat geometry — all positions remain \
-         individually attributable indefinitely.".to_string()
-    } else {
-        let fallback_note = if fallback_engaged {
-            " [fallback estimator engaged; primary was degenerate]"
-        } else {
-            ""
-        };
-        format!(
-            "s_max = {s_max:.1}: coherent attribution extends {s_max:.0} positions. \
-             Beyond this, accumulated frame rotation cannot be decomposed into \
-             individual contributions. (K={k:.4}, ℓ_c={l_c:.4}, τ={tau}){fallback_note}"
-        )
-    };
-
-    Ok(Json(HorizonReport {
-        s_max, k, tau, l_c, lambda1,
-        estimator_used, fallback_engaged, interpretation,
-    }))
+    gigi::dials::horizon_report(&store, &params)
+        .map(Json)
+        .map_err(dial_error_to_http)
 }
 
 /// `GET /v1/bundles/{name}/depth[?k_metric=…&k_connection=…&lambda1_topological=…&lambda1_connection=…]`

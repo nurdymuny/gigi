@@ -675,8 +675,9 @@ fn a4_3_locus_alone_uses_all_numeric_fibers() {
 }
 
 /// k larger than the bundle takes everything: locus+fields with k=20
-/// equals the fields-only report bit-for-bit (same population, same
-/// formulas).
+/// covers the same POPULATION as the fields-only report, so the
+/// statistics agree — to fp jitter, not bits, because the k-NN sort
+/// re-sequences the Welford insertion order (measured: 1 ULP on K).
 #[test]
 fn a4_3_locus_with_k_covering_bundle_equals_fields_only() {
     let dir = tempfile::tempdir().unwrap();
@@ -691,9 +692,15 @@ fn a4_3_locus_with_k_covering_bundle_equals_fields_only() {
         &qp(&[("fields", "a0..a1"), ("locus", "id=A0"), ("k", "20")]),
     )
     .expect("covering locus");
-    assert_eq!(covering.k.to_bits(), fields_only.k.to_bits(), "same population → same K bits");
-    assert_eq!(covering.l_c.to_bits(), fields_only.l_c.to_bits());
-    assert_eq!(covering.s_max.to_bits(), fields_only.s_max.to_bits());
+    let close = |a: f64, b: f64| (a - b).abs() <= 1e-12 * a.abs().max(b.abs());
+    assert!(
+        close(covering.k, fields_only.k),
+        "same population → same K (mod Welford order): {} vs {}",
+        covering.k,
+        fields_only.k
+    );
+    assert!(close(covering.l_c, fields_only.l_c));
+    assert!(close(covering.s_max, fields_only.s_max));
     assert_eq!(covering.scope.as_ref().unwrap().n_records, 20);
 }
 

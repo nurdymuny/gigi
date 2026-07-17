@@ -122,7 +122,7 @@ pub enum SampleTransportError {
 ///
 /// Returns `1.0` (maximum distance) when either vector is degenerate
 /// so degenerate records are never admitted unless budget = 1.
-fn fiber_d_sq(p_src: &[f64], p: &[f64]) -> f64 {
+pub(crate) fn fiber_d_sq(p_src: &[f64], p: &[f64]) -> f64 {
     let n = p_src.len().min(p.len());
     let dot: f64 = p_src[..n].iter().zip(p[..n].iter()).map(|(a, b)| a * b).sum();
     let norm_s = p_src[..n].iter().map(|x| x * x).sum::<f64>().sqrt();

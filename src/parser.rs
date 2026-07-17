@@ -1713,7 +1713,7 @@ pub struct MeasureSpec {
 /// numeric suffix; the expansion is inclusive both ends with unpadded
 /// rendering (`v0, v1, …`). Zero-padded families (`f001..f010`) should
 /// use the explicit list form — padding is NOT preserved.
-fn expand_field_range(lo: &str, hi: &str) -> Result<Vec<String>, String> {
+pub(crate) fn expand_field_range(lo: &str, hi: &str) -> Result<Vec<String>, String> {
     fn split_suffix(name: &str) -> Option<(&str, &str)> {
         // Names are ASCII words per the tokenizer, so byte math is
         // safe: ds = first byte of the trailing digit run.

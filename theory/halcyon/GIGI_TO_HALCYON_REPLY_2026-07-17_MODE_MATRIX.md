@@ -34,6 +34,14 @@ diagonal. A vertex with no self-loop record → `M[v][v] = 0`. Off-diagonals are
 assigned, not accumulated, so a mirrored `(j,i)` record with equal `h` does not
 double-count.
 
+**Vertex id typing.** Emit `vertex_a`/`vertex_b` as **integers** (JSON `0`, not
+`0.0`). Integer-valued floats are tolerated — `0.0`/`1.0` from a numpy/torch
+`float(i)` or `.astype(float)` are rounded to nearest, so a uniformly
+float-indexed emitter still assembles correctly — but a genuinely non-numeric id
+(a string, or a missing endpoint) is rejected with a typed error naming the
+field, never silently defaulted. Integer ids are the clean path; the float
+tolerance is a safety net, not a license to emit `1.5`.
+
 **Return shape — one row:** `eigenvalues` (ascending real; all V, or the k
 smallest under `LIMIT k`), `n_records_used`, `mode_used = "matrix"`,
 `n_negative`, `instability_fraction`. `n_negative` counts eigenvalues

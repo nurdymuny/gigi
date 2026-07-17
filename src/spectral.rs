@@ -10,7 +10,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::bundle::BundleStore;
-use crate::types::{BasePoint, Value};
+use crate::types::{BasePoint, Record, Value};
 
 // ─── Error-budget partition for downstream consumers ───────────────────────
 //
@@ -1660,6 +1660,40 @@ pub struct SpectralMatrixResult {
 ///
 /// String-typed errors to match the plain SPECTRAL executor's
 /// `Result<_, String>` surface.
+/// Decode an edge-endpoint vertex id with float tolerance.
+///
+/// numpy/torch emitters routinely encode integer indices as
+/// [`Value::Float`] (`0.0`, `1.0`, …) — `float(i)`, `.astype(float)`, or a
+/// plain float ndarray. [`Value::as_i64`] rejects those, and the old
+/// `unwrap_or(0)` then silently collapsed *every* float-typed vertex to
+/// index 0: V degenerated to 1 and the verb surfaced a misleading "empty
+/// edge set" error even though edges were inserted. We accept integer-valued
+/// floats (rounded to nearest, absorbing FP noise) and reject only genuinely
+/// non-numeric / missing endpoints — with a typed error that names the
+/// offending field and observed value, so a mistyped emitter fails loudly and
+/// legibly rather than quietly wrong.
+fn decode_vertex_id(rec: &Record, field: &str) -> Result<i64, String> {
+    match rec.get(field) {
+        Some(v) => {
+            if let Some(id) = v.as_i64() {
+                Ok(id)
+            } else if let Some(f) = v.as_f64() {
+                Ok(f.round() as i64)
+            } else {
+                Err(format!(
+                    "SPECTRAL MODE MATRIX: edge-endpoint field `{field}` is \
+                     non-numeric ({v:?}) — vertex ids must be integers (or \
+                     integer-valued floats); emit them as JSON integers"
+                ))
+            }
+        }
+        None => Err(format!(
+            "SPECTRAL MODE MATRIX: record missing edge-endpoint field `{field}` \
+             — every record must carry both vertex_a and vertex_b"
+        )),
+    }
+}
+
 pub fn spectral_matrix_raw(
     store: &BundleStore,
     h_field: &str,
@@ -1696,8 +1730,8 @@ pub fn spectral_matrix_raw(
     let mut n_records_used = 0usize;
 
     for rec in store.records() {
-        let va = rec.get(endpoint_a).and_then(|v| v.as_i64()).unwrap_or(0);
-        let vb = rec.get(endpoint_b).and_then(|v| v.as_i64()).unwrap_or(0);
+        let va = decode_vertex_id(&rec, endpoint_a)?;
+        let vb = decode_vertex_id(&rec, endpoint_b)?;
         let next_a = vertex_idx.len();
         let i = *vertex_idx.entry(va).or_insert(next_a);
         let next_b = vertex_idx.len();
@@ -1855,6 +1889,43 @@ mod tests {
             .contains("LIMIT"));
         let empty = hessian_store();
         assert!(spectral_matrix_raw(&empty, "h_ij", None, None).is_err());
+    }
+
+    /// Review follow-up: float-typed vertex ids (numpy/torch `0.0`, `1.0`)
+    /// must assemble the SAME matrix as integer ids — NOT collapse to
+    /// index 0. Pins the `decode_vertex_id` float tolerance.
+    #[test]
+    fn spectral_matrix_raw_float_typed_vertex_ids() {
+        let mut s = hessian_store();
+        // The M2 edge, but with FLOAT-typed endpoints (the realistic
+        // pnp_gigi_hessian.py emission). Pre-fix these collapsed both
+        // vertices to 0 → V=1 → misleading "empty edge set" error.
+        let mut r = Record::new();
+        r.insert("vertex_a".into(), Value::Float(0.0));
+        r.insert("vertex_b".into(), Value::Float(1.0));
+        r.insert("h_ij".into(), Value::Float(1.0));
+        s.insert(&r);
+        let res = spectral_matrix_raw(&s, "h_ij", None, None).unwrap();
+        assert_eq!(res.eigenvalues.len(), 2, "V must be 2, not collapsed to 1");
+        assert!((res.eigenvalues[0] + 1.0).abs() < 1e-12);
+        assert!((res.eigenvalues[1] - 1.0).abs() < 1e-12);
+        assert_eq!(res.n_negative, 1);
+        assert!((res.instability_fraction - 0.5).abs() < 1e-12);
+    }
+
+    /// Review follow-up: a genuinely non-numeric vertex id fails LOUD with
+    /// a typed error naming the field — never a silent default-to-0.
+    #[test]
+    fn spectral_matrix_raw_nonnumeric_vertex_id_errors() {
+        let mut s = hessian_store();
+        let mut r = Record::new();
+        r.insert("vertex_a".into(), Value::Text("oops".into()));
+        r.insert("vertex_b".into(), Value::Integer(1));
+        r.insert("h_ij".into(), Value::Float(1.0));
+        s.insert(&r);
+        let err = spectral_matrix_raw(&s, "h_ij", None, None).unwrap_err();
+        assert!(err.contains("vertex_a"), "error must name the field: {err}");
+        assert!(err.contains("non-numeric"), "error must be typed: {err}");
     }
 
     /// Build a well-connected store (all same dept = complete subgraph).

@@ -33,6 +33,12 @@ pub mod curvature;
 // arithmetic. References: Lüscher 1982; Cohen Ch 3 §6.
 #[cfg(feature = "gauge")]
 pub mod chern_weil;
+// Poincaré Tier 1 — HOLONOMY AROUND CYCLE readout verb (SU(2)).
+// Builds the ordered edge list of a named lattice cycle (AXIS) or an
+// explicit edge-id list (EDGES) and hands it to the untouched
+// `gauge::holonomy::walk_loop`; no new group math.
+#[cfg(feature = "gauge")]
+pub mod holonomy_cycle;
 // GIGI Encrypt v0.3 — Sprint J (Aff(ℝ) capability delegation).
 // Composes two GaugeKeys' Affine / Isometric / Identity transforms
 // into a per-field capability the proxy applies on ciphertext, never

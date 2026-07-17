@@ -567,6 +567,18 @@ pub fn try_dispatch_topology_statement(
             }
         }
 
+        // ── HOLONOMY <field> AROUND CYCLE … (Poincaré Tier 1) ─────────
+        // Gauge-field target (not a bundle), so it routes here through
+        // the pre-resolve bypass exactly like CHERN_CLASS. Delegates to
+        // the shared executor that resolves the field + (for AXIS) its
+        // bound lattice from the process registries, gates the group to
+        // SU(2), builds the ordered edge list, and walks it with the
+        // untouched `gauge::holonomy::walk_loop`. Returns one row
+        // `{ q0..q3, re_trace, order_estimate, group_used }`.
+        Statement::HolonomyCycle { field, spec } => {
+            crate::holonomy_cycle::execute_holonomy_cycle(field, spec)
+        }
+
         // Catch-all. The route handler gates this function on a 5-arm
         // pattern match so this branch is unreachable from production —
         // it only fires when programmatic callers invoke the dispatcher

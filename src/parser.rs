@@ -172,6 +172,24 @@ pub struct GaugeFieldInterpretation {
     pub lattice_name: String,
 }
 
+/// Which cycle a `HOLONOMY <field> AROUND CYCLE …` statement names.
+///
+/// `Axis` is the named lattice loop: all links along `axis` at the two
+/// fixed transverse coordinates `(c0, c1)`, enumerated from the field's
+/// bound CUBIC lattice in +axis order (closing via the wrap edge).
+/// `Edges` is an explicit ordered edge-id list (no lattice binding
+/// required); the ordered product is taken in list order, each edge
+/// Forward. Feature-independent (only `usize` payloads) so the
+/// `Statement` enum compiles with or without the `gauge` feature.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CycleSpec {
+    /// Named lattice cycle along `axis` (0-based) at fixed transverse
+    /// coordinates `(c0, c1)`. Requires the field's bound CUBIC lattice.
+    Axis { axis: usize, c0: usize, c1: usize },
+    /// Explicit ordered edge-id list; no lattice binding required.
+    Edges(Vec<usize>),
+}
+
 /// Parsed GQL statement.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
@@ -634,6 +652,19 @@ pub enum Statement {
         near_metric: Option<String>,
         fiber_fields: Vec<String>,
         around_field: String,
+    },
+    /// HOLONOMY <field> AROUND CYCLE AXIS <ax> AT (<c0>, <c1>)
+    /// HOLONOMY <field> AROUND CYCLE EDGES (<e0>, <e1>, ...)
+    ///
+    /// Poincaré Tier 1 (Davis–Poincaré Thm 3.6): SU(2) holonomy around a
+    /// named non-contractible lattice loop + its order. `field` is a
+    /// GAUGE_FIELD (resolved through `gauge::registry`, NOT a bundle), so
+    /// the dispatcher bypasses the bundle pre-resolve like CHERN_CLASS.
+    /// Returns one row `{ q0, q1, q2, q3, re_trace, order_estimate,
+    /// group_used }`. Executed by `crate::holonomy_cycle`.
+    HolonomyCycle {
+        field: String,
+        spec: CycleSpec,
     },
     // ── KL Divergence / Cross-bundle analytics ──
     Divergence {
@@ -7342,7 +7373,75 @@ impl Parser {
                 let around_field = self.expect_word()?;
                 Ok(Statement::LocalHolonomy { bundle, near_point, near_radius, near_metric, fiber_fields, around_field })
             }
-            other => Err(format!("Expected ON or NEAR after HOLONOMY bundle, got {other}")),
+            // HOLONOMY <field> AROUND CYCLE AXIS <ax> AT (<c0>, <c1>)
+            // HOLONOMY <field> AROUND CYCLE EDGES (<e0>, <e1>, ...)
+            //
+            // Poincaré Tier 1 gauge-cycle holonomy — disambiguated from
+            // the ON / NEAR fiber-holonomy arms purely by the `AROUND`
+            // keyword here. `bundle` is the gauge-field name.
+            "AROUND" => {
+                self.expect_keyword("CYCLE")?;
+                let form = self.expect_word()?;
+                let spec = match form.to_ascii_uppercase().as_str() {
+                    "AXIS" => {
+                        let axis = self.parse_axis_token()?;
+                        self.expect_keyword("AT")?;
+                        self.expect(Token::LParen)?;
+                        let c0 = self.parse_usize()?;
+                        self.expect(Token::Comma)?;
+                        let c1 = self.parse_usize()?;
+                        self.expect(Token::RParen)?;
+                        CycleSpec::Axis { axis, c0, c1 }
+                    }
+                    "EDGES" => {
+                        self.expect(Token::LParen)?;
+                        let mut ids = Vec::new();
+                        loop {
+                            if matches!(self.peek(), Some(Token::RParen)) {
+                                self.advance();
+                                break;
+                            }
+                            if !ids.is_empty() {
+                                self.expect(Token::Comma)?;
+                            }
+                            ids.push(self.parse_usize()?);
+                        }
+                        CycleSpec::Edges(ids)
+                    }
+                    other => {
+                        return Err(format!(
+                            "Expected AXIS or EDGES after HOLONOMY {bundle} AROUND CYCLE, got {other}"
+                        ))
+                    }
+                };
+                Ok(Statement::HolonomyCycle { field: bundle, spec })
+            }
+            other => Err(format!("Expected ON, NEAR, or AROUND after HOLONOMY bundle, got {other}")),
+        }
+    }
+
+    /// Parse an axis token for HOLONOMY AROUND CYCLE AXIS. Accepts a
+    /// letter name (`x`→0, `y`→1, `z`→2, `w`/`t`→3) or a 0-based numeric
+    /// index. The lens-space z-cycle is `AXIS z` (= index 2) on a DIM=3
+    /// cubic.
+    fn parse_axis_token(&mut self) -> Result<usize, String> {
+        match self.advance() {
+            Some(Token::Number(n)) if n >= 0.0 && n.fract() == 0.0 => Ok(n as usize),
+            Some(Token::Word(w)) => match w.to_ascii_lowercase().as_str() {
+                "x" => Ok(0),
+                "y" => Ok(1),
+                "z" => Ok(2),
+                "w" | "t" => Ok(3),
+                other => Err(format!(
+                    "HOLONOMY AROUND CYCLE AXIS: unknown axis '{other}' \
+                     (use x/y/z/w or a 0-based index)"
+                )),
+            },
+            other => Err(format!(
+                "HOLONOMY AROUND CYCLE AXIS: expected an axis name (x/y/z/w) \
+                 or 0-based index, found {}",
+                token_or_end(other.as_ref())
+            )),
         }
     }
 
@@ -13016,6 +13115,19 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // the live Engine. The in-process executor here returns an
         // explicit not-supported error rather than silently producing
         // wrong results.
+        // HOLONOMY AROUND CYCLE (Poincaré Tier 1). Unlike PI_1 /
+        // OBSTRUCTION, this reads only the process-global gauge + lattice
+        // registries (no Engine), so the in-process executor CAN run it —
+        // it calls the same shared `holonomy_cycle::execute_holonomy_cycle`
+        // the production dispatcher uses, so both paths are byte-identical.
+        #[cfg(feature = "gauge")]
+        Statement::HolonomyCycle { field, spec } => {
+            crate::holonomy_cycle::execute_holonomy_cycle(field, spec)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::HolonomyCycle { .. } => Err(
+            "HOLONOMY AROUND CYCLE requires the `gauge` feature to be enabled".to_string()
+        ),
         Statement::Pi1 { lattice: _ } => Err(
             "PI_1 dispatch lives in the streaming executor (production HTTP path), \
              not the in-process execute() — call gigi::topology::pi_1_presentation \

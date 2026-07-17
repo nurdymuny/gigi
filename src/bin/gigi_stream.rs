@@ -12640,6 +12640,11 @@ async fn gql_query(
                 | gigi::parser::Statement::Pi1 { .. }
                 | gigi::parser::Statement::Obstruction { .. }
                 | gigi::parser::Statement::Betti { order: Some(_), .. }
+                // HOLONOMY AROUND CYCLE targets a GAUGE_FIELD, not a
+                // bundle, so it must bypass the bundle pre-resolve (which
+                // would 404 "No bundle") and dispatch through the
+                // topology helper like CHERN_CLASS.
+                | gigi::parser::Statement::HolonomyCycle { .. }
         );
         if is_topology_verb {
             let result = gigi::halcyon_gql_dispatch::try_dispatch_topology_statement(
@@ -13992,6 +13997,22 @@ fn execute_gql_on_store_read(
         Statement::ChernClass { .. } => {
             Err("CHERN_CLASS requires the `gauge` feature to be enabled".to_string())
         }
+        // HOLONOMY <field> AROUND CYCLE … (Poincaré Tier 1).
+        //
+        // UNREACHABLE from gql_query — production traffic routes through
+        // `try_dispatch_topology_statement` before the bundle pre-resolve
+        // (see the `is_topology_verb` gate). This parity arm keeps direct
+        // programmatic callers of `execute_gql_on_store_read` in sync with
+        // the dispatcher: both call the same shared executor, so behavior
+        // is byte-identical everywhere.
+        #[cfg(feature = "gauge")]
+        Statement::HolonomyCycle { field, spec } => {
+            gigi::holonomy_cycle::execute_holonomy_cycle(field, spec)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::HolonomyCycle { .. } => {
+            Err("HOLONOMY AROUND CYCLE requires the `gauge` feature to be enabled".to_string())
+        }
         // PONTRYAGIN bundle ORDER <k> [ON FIBER (...)] [GROUP <g>]
         //
         // Halcyon Phase 1: p_1 = 2 · c_2 for SU(N). Delegates to
@@ -14535,6 +14556,7 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         SpectralGauge { .. }  => "SPECTRAL_GAUGE",
         ChernClass { .. }     => "CHERN_CLASS",
         Pontryagin { .. }     => "PONTRYAGIN",
+        HolonomyCycle { .. }  => "HOLONOMY_CYCLE",
         CreateBundle { .. }   => "CREATE_BUNDLE",
         Collapse { .. }       => "DROP_BUNDLE",
         RotateKey { .. }      => "ROTATE_KEY",

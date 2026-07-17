@@ -74,3 +74,73 @@ No timelines from me — this is about which of the two paths we take, and that 
 build. Meanwhile: **start the two-point extrapolation now.**
 
 — GIGI
+
+---
+
+## 2026-07-17 — LIVE ON PROD (this is now shipped, not a branch)
+
+The dense BULK arm above merged to `main` (commit `6eb024d`) and deployed to
+`gigi-stream.fly.dev` — image `deployment-01KXRWB4FMWZN40DJB8JSWRABV`, version **253**. It is
+live now; the "branch only this run" caveat in the section above is superseded. Two other
+sessions' work (HOLONOMY AROUND CYCLE and MODE MATRIX) landed alongside it — all three coexist.
+
+### The receipt (live prod probe)
+
+```
+LATTICE bee_bulk FROM CUBIC L=8 DIM=3 ;                       -> V = 512
+GAUGE_FIELD bee_bulk_flux GROUP U(1) INIT FLUX RANDOM SEED 7 ON LATTICE bee_bulk ;
+SPECTRAL_GAUGE bee_bulk_flux ON FIBER (theta) GROUP U(1) MODE MAGNETIC BULK 16 ;
+```
+
+returned the 16 centermost consecutive levels, ascending:
+
+```
+eigenvalues = [5.868635413728962, 5.878448939815854, 5.8990860353589385, 5.912457298128956,
+               5.944395064116458, 5.958148134514597, 5.973348318901216, 5.9922541775962515,
+               6.007745822403766, 6.026651681098786, 6.041851865485414, 6.055604935883537,
+               6.087542701871049, 6.100913964641059, 6.121551060184151, 6.131364586271047]
+bulk              = true
+bulk_center       = 6.007745822403766
+bulk_center_index = 256          (= floor(512/2), the positional median)
+bulk_lo, bulk_hi  = 248, 264     (window length 16)
+mode_used         = "dense"
+```
+
+The same bundle with `FULL` returns all 512 levels, and `FULL[248:264]` equals this `BULK 16`
+window **byte-for-byte** (within 1e-9) — the re-centering-slice contract (no re-solve) verified
+end-to-end on prod. The V=4913 refusal path is live too: `BULK` on a cube past the ceiling
+returns the typed `SparseUnavailable` naming `GIGI_DENSE_CEIL`, the ~2–3 GB cost, and Phase 2.1.
+
+### What this unblocks for you, today
+
+- **V = 4096** — dense, no opt-in. Point one of your three 3D lattice sizes.
+- **L = 20, V = 8000** — set `GIGI_DENSE_CEIL=8192` (raise-only, clamped to 8192) and it goes
+  through. Point two. Memory caveat stands: ~1 GB matrix + ~1 GB eigenvectors (~2–3 GB peak
+  RSS, O(V³)) — run it on Fly or a ≥16 GB box; the refusal message says exactly this if the knob
+  is unset.
+
+Two of your three points are live. Start the **two-point linear-vs-quadratic extrapolation +
+the bootstrap on the number-variance** now, while the third point (L=24/L=32) comes via the
+sparse arm.
+
+### The third point — sparse interior arm (L=24 V=13824, L=32 V=32768): honest status
+
+The design spike above has since been **built** — a Chebyshev-filtered interior eigensolver,
+pure-Rust, no new dependency. It is **NOT in this drop**, and here is the honest why:
+
+- **Completeness is PROVEN** vs dense ground truth — SP1–SP6 pass, including the exact-degeneracy
+  case (two disjoint identical copies, every level doubly present), which is the hard part of
+  "no missed levels at the center" (your ask #3).
+- **But it is slow and unverified-at-scale.** ~9 min/solve at V = 8000 in `--release`; the
+  V = 32768 solve is projected ~30–60 min. SP7 (the scale-perf gate) is calibrated for release,
+  not yet a clean pass, and the whole numerics kernel wants a **dedicated pass** — fresh-seed
+  independent verification + performance tuning — before it earns a prod ship. I will not bolt a
+  30–60-min-per-solve, not-independently-verified kernel onto the live endpoint to hit a date.
+
+So **L=24 and L=32 are coming, but not in this drop.** The work is preserved intact on branch
+`worktree-wf_ecbbdaa6-0af-2` @ `d655a1a` and ships on its own once the verify+tune pass is done.
+
+Net: start the 2-point extrapolation on V=4096 + L=20 now; the 3-point version follows when the
+interior arm ships.
+
+— GIGI

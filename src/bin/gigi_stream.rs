@@ -3227,6 +3227,40 @@ async fn bundle_local_holonomy(
     }))
 }
 
+/// `POST /v1/bundles/{name}/windowed_coherence`
+///
+/// Wave-2 Marcella dials (GEODESIC_LOOM_PLAN ask #3): the one-shot
+/// server-side composition of the laminar gate. Takes an ordered
+/// record-key path + base key_field + window size + fiber scope (same
+/// grammar as the dials' `fields=`: scalar family with `..` range
+/// sugar, or one Value::Vector fiber) + optional laminar threshold
+/// (default 0.91 — Marcella's COHERENCE_CONFIDENT accept gate), and
+/// returns per-window `{start_index, keys, holonomy_defect, coherence,
+/// laminar}` plus `n_windows`, `laminar_all`, `threshold_used` and the
+/// standard lambda_budget envelope.
+///
+/// Composes the SAME two surfaces Marcella round-tripped per segment —
+/// the TRANSPORT_ROTATION construction (with the transport angle
+/// derived from the segment data) and `curvature::local_holonomy` —
+/// removing the per-segment HTTP shipping of dim×dim frames. See
+/// `gigi::dials::windowed_coherence_report`.
+async fn bundle_windowed_coherence(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<gigi::dials::WindowedCoherenceRequest>,
+) -> Result<Json<gigi::dials::WindowedCoherenceReport>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine_read();
+    let store = engine.bundle(&name).ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+        )
+    })?;
+    gigi::dials::windowed_coherence_report(&store, &req)
+        .map(Json)
+        .map_err(dial_error_to_http)
+}
+
 // ============================================================================
 // IMAGINE_COHERENCE — predictive gain gate surface
 // (IMAGINE_AND_WALK.md §5; Marcella feedback round 1 #2)
@@ -14166,33 +14200,12 @@ fn execute_gql_on_store_read(
             // Rodrigues in the plane (u, v) by the supplied angle.
             // R = I + (cos θ − 1)(e1 e1^T + e2 e2^T) + sin θ (e2 e1^T − e1 e2^T)
             // where e1 = u/‖u‖, e2 = (v − ⟨v,e1⟩ e1) / ‖…‖.
-            let nu: f64 = u.iter().map(|x| x*x).sum::<f64>().sqrt();
-            let mut matrix = vec![0.0f64; n * n];
-            // Identity by default
-            for i in 0..n { matrix[i * n + i] = 1.0; }
-
-            if nu >= 1e-12 && angle.abs() >= 1e-12 {
-                let e1: Vec<f64> = u.iter().map(|x| x / nu).collect();
-                let dot_v_e1: f64 = v.iter().zip(&e1).map(|(a, b)| a * b).sum();
-                let e2_unnorm: Vec<f64> = v.iter().zip(&e1)
-                    .map(|(vi, ei)| vi - dot_v_e1 * ei)
-                    .collect();
-                let ne: f64 = e2_unnorm.iter().map(|x| x*x).sum::<f64>().sqrt();
-                if ne >= 1e-12 {
-                    let e2: Vec<f64> = e2_unnorm.iter().map(|x| x / ne).collect();
-                    let cos_t = angle.cos();
-                    let sin_t = angle.sin();
-                    let coef_p = cos_t - 1.0;
-                    // R = I + coef_p · (e1 e1^T + e2 e2^T) + sin_t · (e2 e1^T − e1 e2^T)
-                    for i in 0..n {
-                        for j in 0..n {
-                            let p_ij = e1[i] * e1[j] + e2[i] * e2[j];
-                            let a_ij = e2[i] * e1[j] - e1[i] * e2[j];
-                            matrix[i * n + j] += coef_p * p_ij + sin_t * a_ij;
-                        }
-                    }
-                }
-            }
+            //
+            // The construction moved VERBATIM to
+            // `gigi::dials::transport_rotation_matrix` (wave-2 Marcella
+            // dials) so the WINDOWED_COHERENCE one-shot composes the
+            // SAME fn body this verb executes (parity anchor A3-4).
+            let matrix = gigi::dials::transport_rotation_matrix(&u, &v, *angle);
 
             let mut result = gigi::types::Record::new();
             result.insert("dim".to_string(),
@@ -15847,7 +15860,14 @@ async fn main() {
         .route("/v1/bundles/{name}/horizon",  get(bundle_horizon_report))
         .route("/v1/bundles/{name}/depth",    get(bundle_depth_report))
         .route("/v1/bundles/{name}/perceive", post(bundle_perceive))
-        .route("/v1/bundles/{name}/local_holonomy", post(bundle_local_holonomy));
+        .route("/v1/bundles/{name}/local_holonomy", post(bundle_local_holonomy))
+        // Wave-2 Marcella dials (ask #3): server-side windowed laminar
+        // verdicts over a record path — one call instead of per-segment
+        // TRANSPORT_ROTATION + local_holonomy round-trips.
+        .route(
+            "/v1/bundles/{name}/windowed_coherence",
+            post(bundle_windowed_coherence),
+        );
 
     // IMAGINE_COHERENCE: predictive coherence trajectory along an
     // imagined geodesic. Marcella's predictive gain gate surface per

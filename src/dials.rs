@@ -264,7 +264,7 @@ impl DialScope {
         }
 
         let fields = match fields_raw {
-            Some(spec) => Some((spec.clone(), parse_fields_spec(spec, schema)?)),
+            Some(spec) => Some((spec.clone(), parse_fields_spec(spec, schema, "fields")?)),
             None => None,
         };
 
@@ -320,21 +320,23 @@ impl DialScope {
     }
 }
 
-/// Parse + validate a `fields=` spec: comma-separated fiber names with
-/// wave-1 `lo..hi` range sugar, OR exactly one `Value::Vector` fiber
-/// field name. Validation mirrors wave-1's VECTOR clause: every named
-/// field must be a numeric/timestamp scalar fiber field, typos are
-/// loud.
+/// Parse + validate a fields/fiber spec: comma-separated fiber names
+/// with wave-1 `lo..hi` range sugar, OR exactly one `Value::Vector`
+/// fiber field name. Validation mirrors wave-1's VECTOR clause: every
+/// named field must be a numeric/timestamp scalar fiber field, typos
+/// are loud. `label` names the parameter in error messages ("fields"
+/// on the GET dials, "fiber" on windowed_coherence).
 fn parse_fields_spec(
     spec: &str,
     schema: &BundleSchema,
+    label: &str,
 ) -> Result<Vec<ScopedField>, DialError> {
     let mut names: Vec<String> = Vec::new();
     for token in spec.split(',') {
         let token = token.trim();
         if token.is_empty() {
             return Err(DialError::BadRequest(format!(
-                "fields: empty entry in '{spec}' — expected comma-separated fiber \
+                "{label}: empty entry in '{spec}' — expected comma-separated fiber \
                  fields with optional lo..hi range sugar"
             )));
         }
@@ -347,9 +349,9 @@ fn parse_fields_spec(
         }
     }
     if names.is_empty() {
-        return Err(DialError::BadRequest(
-            "fields: at least one fiber field is required".to_string(),
-        ));
+        return Err(DialError::BadRequest(format!(
+            "{label}: at least one fiber field is required"
+        )));
     }
 
     // A single named Value::Vector fiber field scopes per-component.
@@ -369,17 +371,17 @@ fn parse_fields_spec(
         .map(|f| {
             let Some(fd) = schema.fiber_fields.iter().find(|fd| fd.name == f) else {
                 return Err(DialError::BadRequest(format!(
-                    "fields: '{f}' is not a fiber field of this bundle"
+                    "{label}: '{f}' is not a fiber field of this bundle"
                 )));
             };
             match fd.field_type {
                 FieldType::Numeric | FieldType::Timestamp => Ok(ScopedField::Scalar(f)),
                 FieldType::Vector { .. } => Err(DialError::BadRequest(format!(
-                    "fields: '{f}' is a Vector fiber — a Vector field scopes alone \
-                     (fields={f})"
+                    "{label}: '{f}' is a Vector fiber — a Vector field scopes alone \
+                     ({label}={f})"
                 ))),
                 ref other => Err(DialError::BadRequest(format!(
-                    "fields: field '{f}' is not numeric (type {other:?}) — the scope \
+                    "{label}: field '{f}' is not numeric (type {other:?}) — the scope \
                      assembles scalar numeric fibers"
                 ))),
             }
@@ -785,6 +787,331 @@ pub fn capacity_report(
         interpretation,
         lambda_budget: None,
         scope: None,
+    })
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Ask 3 — WINDOWED_COHERENCE one-shot
+// ═════════════════════════════════════════════════════════════════════
+
+/// Default laminar threshold on the coherence signal: Marcella's
+/// `COHERENCE_CONFIDENT = 0.91` (fiber_lm/voice_math/
+/// coherence_forecast.py — the constant her loom's accept gate uses;
+/// 0.85 is her accept-with-hedge tier, and the server's older
+/// local_holonomy interpretation prose uses 0.9). Thresholds apply to
+/// COHERENCE (= 1 − defect/(2√dim), dim-independent), not to the raw
+/// defect; override per request via the `threshold` body field
+/// (valid range (0, 1]).
+pub const DEFAULT_LAMINAR_THRESHOLD: f64 = 0.91;
+
+/// The TRANSPORT_ROTATION Rodrigues construction, moved VERBATIM from
+/// the GQL executor (`Statement::TransportRotation` in gigi_stream.rs)
+/// so the verb and the windowed_coherence one-shot execute the same fn
+/// body (parity anchor A3-4):
+///
+///   R = I + (cos θ − 1)(e1 e1ᵀ + e2 e2ᵀ) + sin θ (e2 e1ᵀ − e1 e2ᵀ)
+///   e1 = u/‖u‖, e2 = (v − ⟨v,e1⟩e1)/‖…‖
+///
+/// Returns the flat row-major n×n matrix, n = min(len(u), len(v)).
+/// Identity when ‖u‖ < 1e-12, |θ| < 1e-12, or e2 degenerates (u and v
+/// collinear — including u == v exactly, which is why identity paths
+/// carry defect 0.0 exactly).
+pub fn transport_rotation_matrix(u: &[f64], v: &[f64], angle: f64) -> Vec<f64> {
+    let n = u.len().min(v.len());
+    let nu: f64 = u.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let mut matrix = vec![0.0f64; n * n];
+    // Identity by default
+    for i in 0..n {
+        matrix[i * n + i] = 1.0;
+    }
+
+    if nu >= 1e-12 && angle.abs() >= 1e-12 {
+        let e1: Vec<f64> = u.iter().map(|x| x / nu).collect();
+        let dot_v_e1: f64 = v.iter().zip(&e1).map(|(a, b)| a * b).sum();
+        let e2_unnorm: Vec<f64> = v
+            .iter()
+            .zip(&e1)
+            .map(|(vi, ei)| vi - dot_v_e1 * ei)
+            .collect();
+        let ne: f64 = e2_unnorm.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if ne >= 1e-12 {
+            let e2: Vec<f64> = e2_unnorm.iter().map(|x| x / ne).collect();
+            let cos_t = angle.cos();
+            let sin_t = angle.sin();
+            let coef_p = cos_t - 1.0;
+            // R = I + coef_p · (e1 e1^T + e2 e2^T) + sin_t · (e2 e1^T − e1 e2^T)
+            for i in 0..n {
+                for j in 0..n {
+                    let p_ij = e1[i] * e1[j] + e2[i] * e2[j];
+                    let a_ij = e2[i] * e1[j] - e1[i] * e2[j];
+                    matrix[i * n + j] += coef_p * p_ij + sin_t * a_ij;
+                }
+            }
+        }
+    }
+    matrix
+}
+
+/// The data-derived per-segment transport angle:
+/// θ = arccos(clamp(cos_sim(u, v), −1, 1)) — the minimal rotation
+/// carrying u to v in their spanned plane. This is the pinned
+/// DEVIATION from the GQL TRANSPORT_ROTATION verb, whose angle is
+/// CALLER-supplied: the one-shot has no caller angle, so it reads the
+/// angle off the segment data itself. Degenerate (near-zero-norm)
+/// endpoints → 0.0 (identity transport — the verb's own guard
+/// behavior).
+fn derived_transport_angle(u: &[f64], v: &[f64]) -> f64 {
+    let n = u.len().min(v.len());
+    let dot: f64 = u[..n].iter().zip(v[..n].iter()).map(|(a, b)| a * b).sum();
+    let nu: f64 = u[..n].iter().map(|x| x * x).sum::<f64>().sqrt();
+    let nv: f64 = v[..n].iter().map(|x| x * x).sum::<f64>().sqrt();
+    if nu < 1e-12 || nv < 1e-12 {
+        return 0.0;
+    }
+    (dot / (nu * nv)).clamp(-1.0, 1.0).acos()
+}
+
+/// Row-major dim×dim matrix product `a · b`.
+fn matmul(a: &[f64], b: &[f64], dim: usize) -> Vec<f64> {
+    let mut out = vec![0.0_f64; dim * dim];
+    for i in 0..dim {
+        for j in 0..dim {
+            let mut acc = 0.0_f64;
+            for k in 0..dim {
+                acc += a[i * dim + k] * b[k * dim + j];
+            }
+            out[i * dim + j] = acc;
+        }
+    }
+    out
+}
+
+/// The whole-bundle Davis-Conjecture λ-budget ride-along, matching the
+/// convention every lambda_budget-carrying response uses (mirrors the
+/// binary's `lambda_budget_for_bundle_ref`): heap bundles go through
+/// [`curvature::lambda_budget_for_bundle`]; overlay bundles fall back
+/// to the CurvatureStats mean-K with D = 1.0, NaN-coalesced to the
+/// saturated default 1.0.
+fn lambda_budget_envelope(store: &BundleRef) -> f64 {
+    match store.as_heap() {
+        Some(heap) => curvature::lambda_budget_for_bundle(heap),
+        None => {
+            let k = store.curvature_stats().mean();
+            let raw = curvature::lambda_budget(k, 1.0, 1.0);
+            if raw.is_nan() {
+                1.0
+            } else {
+                raw
+            }
+        }
+    }
+}
+
+/// Request body for `POST /v1/bundles/{name}/windowed_coherence`.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct WindowedCoherenceRequest {
+    /// Ordered record key values (strings for text keys, numbers for
+    /// numeric keys) — the path to transport along.
+    pub path: Vec<serde_json::Value>,
+    /// The base field the path keys address.
+    pub key_field: String,
+    /// Window size in RECORDS (a window composes window−1 segment
+    /// rotations). Valid range: [2, len(path)].
+    pub window: usize,
+    /// Fiber scope — same grammar as ask 4's `fields=`: scalar family
+    /// entries with `lo..hi` range sugar, or exactly one Value::Vector
+    /// fiber field name.
+    pub fiber: Vec<String>,
+    /// Laminar threshold on coherence, in (0, 1]. Default
+    /// [`DEFAULT_LAMINAR_THRESHOLD`] (0.91, Marcella's
+    /// COHERENCE_CONFIDENT accept gate).
+    #[serde(default)]
+    pub threshold: Option<f64>,
+}
+
+/// One sliding window's verdict.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CoherenceWindow {
+    /// Index into `path` where this window starts.
+    pub start_index: usize,
+    /// The window's key values, echoed (`path[start..start+window]`).
+    pub keys: Vec<serde_json::Value>,
+    /// `‖R_window − I‖_F` where R_window composes the window's
+    /// window−1 segment transport rotations. Range [0, 2√dim].
+    pub holonomy_defect: f64,
+    /// `1 − holonomy_defect/(2√dim)`, clamped to [0, 1] — the
+    /// normalized coherence signal A_t the threshold applies to.
+    pub coherence: f64,
+    /// `coherence >= threshold_used`.
+    pub laminar: bool,
+}
+
+/// Response for `POST /v1/bundles/{name}/windowed_coherence`.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct WindowedCoherenceReport {
+    /// One row per sliding window (stride 1).
+    pub windows: Vec<CoherenceWindow>,
+    /// `len(path) − window + 1`.
+    pub n_windows: usize,
+    /// True iff every window is laminar.
+    pub laminar_all: bool,
+    /// The threshold the verdicts were computed against.
+    pub threshold_used: f64,
+    /// Dimension of the scoped fiber space (rotation matrices are
+    /// dim×dim server-side — the round-trip the one-shot removes).
+    pub dim: usize,
+    /// Window size echoed.
+    pub window: usize,
+    /// Bundle name echoed.
+    pub bundle: String,
+    /// Standard whole-bundle Davis-Conjecture λ-budget ride-along.
+    pub lambda_budget: f64,
+}
+
+/// Does this record match one path key value? Text keys compare as
+/// text, numeric-family values through `as_f64`.
+fn path_key_matches(rec: &Record, field: &str, key: &serde_json::Value) -> bool {
+    let Some(v) = rec.get(field) else {
+        return false;
+    };
+    match (v, key) {
+        (Value::Text(t), serde_json::Value::String(s)) => t == s,
+        (other, serde_json::Value::Number(n)) => {
+            match (other.as_f64(), n.as_f64()) {
+                (Some(a), Some(b)) => a == b,
+                _ => false,
+            }
+        }
+        _ => false,
+    }
+}
+
+/// WINDOWED_COHERENCE — one server-side call composing the SAME two
+/// surfaces Marcella's laminar gate previously round-tripped per
+/// segment (GQL TRANSPORT_ROTATION for the segment rotation, then
+/// POST /local_holonomy for the windowed defect):
+///
+/// 1. project each path record onto the scoped fiber space,
+/// 2. per segment i: θᵢ = [`derived_transport_angle`], R_seg(i) =
+///    [`transport_rotation_matrix`] (the verb's exact fn body),
+/// 3. cumulative frames R_acc[0] = I, R_acc[i+1] = R_seg(i)·R_acc[i],
+/// 4. per window starting at s:
+///    [`curvature::local_holonomy`](R_acc[s+w−1], R_acc[s]) →
+///    R_window = R_acc[s+w−1]·R_acc[s]ᵀ = R_seg(s+w−2)···R_seg(s),
+///    holonomy_defect = ‖R_window − I‖_F,
+///    coherence = 1 − defect/(2√dim),
+/// 5. laminar = coherence ≥ threshold (default 0.91).
+///
+/// n_windows = len(path) − window + 1, sliding by 1.
+///
+/// Memory note: the cumulative frames held at once are O(len(path))
+/// dim×dim matrices — for Marcella's 384-dim embeddings that is ~1.2MB
+/// per path position, the exact frames she previously shipped over
+/// HTTP per segment; keep paths to loom scale (tens of records).
+pub fn windowed_coherence_report(
+    store: &BundleRef,
+    req: &WindowedCoherenceRequest,
+) -> Result<WindowedCoherenceReport, DialError> {
+    let schema = store.schema();
+    let bundle = schema.name.clone();
+
+    // ── validation (typed, loud) ────────────────────────────────────
+    let threshold = match req.threshold {
+        Some(t) => {
+            if !(t.is_finite() && t > 0.0 && t <= 1.0) {
+                return Err(DialError::BadRequest(format!(
+                    "windowed_coherence: threshold must be a finite value in (0, 1]; got {t}"
+                )));
+            }
+            t
+        }
+        None => DEFAULT_LAMINAR_THRESHOLD,
+    };
+    if req.window < 2 || req.window > req.path.len() {
+        return Err(DialError::BadRequest(format!(
+            "windowed_coherence: window must be in [2, len(path)] (got window={}, len(path)={})",
+            req.window,
+            req.path.len()
+        )));
+    }
+    if !schema.base_fields.iter().any(|fd| fd.name == req.key_field) {
+        return Err(DialError::NotFound(format!(
+            "windowed_coherence: key_field '{}' is not a base field of bundle '{bundle}'",
+            req.key_field
+        )));
+    }
+    for key in &req.path {
+        if !(key.is_string() || key.is_number()) {
+            return Err(DialError::BadRequest(format!(
+                "windowed_coherence: path values must be strings or numbers; got {key}"
+            )));
+        }
+    }
+    let scoped = parse_fields_spec(&req.fiber.join(","), schema, "fiber")?;
+    let dim: usize = scoped.iter().map(|sf| sf.n_columns()).sum();
+
+    // ── resolve the path records (first match per key value) ───────
+    let records: Vec<Record> = store.records().collect();
+    let mut vectors: Vec<Vec<f64>> = Vec::with_capacity(req.path.len());
+    for key in &req.path {
+        let rec = records
+            .iter()
+            .find(|r| path_key_matches(r, &req.key_field, key))
+            .ok_or_else(|| {
+                DialError::NotFound(format!(
+                    "windowed_coherence: no record at {}={} in '{bundle}'",
+                    req.key_field, key
+                ))
+            })?;
+        vectors.push(scope_projection(rec, &scoped));
+    }
+
+    // ── cumulative transport frames ─────────────────────────────────
+    let mut identity = vec![0.0_f64; dim * dim];
+    for i in 0..dim {
+        identity[i * dim + i] = 1.0;
+    }
+    let mut r_acc: Vec<Vec<f64>> = Vec::with_capacity(vectors.len());
+    r_acc.push(identity);
+    for s in 0..vectors.len() - 1 {
+        let theta = derived_transport_angle(&vectors[s], &vectors[s + 1]);
+        let r_seg = transport_rotation_matrix(&vectors[s], &vectors[s + 1], theta);
+        let next = matmul(&r_seg, &r_acc[s], dim);
+        r_acc.push(next);
+    }
+
+    // ── sliding windows through local_holonomy (the same fn the HTTP
+    //    /local_holonomy surface calls) ────────────────────────────
+    let n_windows = req.path.len() - req.window + 1;
+    let mut windows = Vec::with_capacity(n_windows);
+    let mut laminar_all = true;
+    for start in 0..n_windows {
+        let res = curvature::local_holonomy(
+            &r_acc[start + req.window - 1],
+            &r_acc[start],
+            dim,
+        )
+        .map_err(|e| DialError::BadRequest(format!("windowed_coherence: {e}")))?;
+        let laminar = res.coherence >= threshold;
+        laminar_all &= laminar;
+        windows.push(CoherenceWindow {
+            start_index: start,
+            keys: req.path[start..start + req.window].to_vec(),
+            holonomy_defect: res.defect,
+            coherence: res.coherence,
+            laminar,
+        });
+    }
+
+    Ok(WindowedCoherenceReport {
+        windows,
+        n_windows,
+        laminar_all,
+        threshold_used: threshold,
+        dim,
+        window: req.window,
+        bundle,
+        lambda_budget: lambda_budget_envelope(store),
     })
 }
 

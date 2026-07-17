@@ -13522,7 +13522,48 @@ fn execute_gql_on_store_read(
             let k = store.scalar_curvature();
             Ok(ExecResult::Scalar(k))
         }
-        Statement::Spectral { full, limit, .. } => {
+        Statement::Spectral { full, limit, fiber_field, matrix, diagonal, .. } => {
+            if *matrix {
+                // MODE MATRIX (2026-07-17, P-vs-NP): raw signed
+                // symmetric spectrum of the edge-endpoint matrix — NOT
+                // the D−W Laplacian. Reads the pre-resolved heap store
+                // (no re-resolve, per the routing_path guard). One-row
+                // envelope carrying n_negative / instability_fraction.
+                let heap = store.as_heap().ok_or_else(|| {
+                    "SPECTRAL MODE MATRIX: bundle is not heap-resident".to_string()
+                })?;
+                let h_field = fiber_field.as_deref().ok_or_else(|| {
+                    "SPECTRAL MODE MATRIX: missing ON FIBER (<h>) field".to_string()
+                })?;
+                let res = gigi::spectral::spectral_matrix_raw(
+                    heap,
+                    h_field,
+                    diagonal.as_deref(),
+                    *limit,
+                )?;
+                let mut row = gigi::types::Record::new();
+                row.insert(
+                    "eigenvalues".to_string(),
+                    gigi::types::Value::Vector(res.eigenvalues),
+                );
+                row.insert(
+                    "n_records_used".to_string(),
+                    gigi::types::Value::Integer(res.n_records_used as i64),
+                );
+                row.insert(
+                    "mode_used".to_string(),
+                    gigi::types::Value::Text(res.mode_used.to_string()),
+                );
+                row.insert(
+                    "n_negative".to_string(),
+                    gigi::types::Value::Integer(res.n_negative as i64),
+                );
+                row.insert(
+                    "instability_fraction".to_string(),
+                    gigi::types::Value::Float(res.instability_fraction),
+                );
+                return Ok(ExecResult::Rows(vec![row]));
+            }
             if *full {
                 // Phase 2 (2026-07-16): FULL returns the normalized-
                 // Laplacian spectrum (ascending, LIMIT k smallest) as

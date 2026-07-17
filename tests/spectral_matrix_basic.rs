@@ -34,7 +34,7 @@
 
 use gigi::engine::Engine;
 use gigi::gauge::Group;
-use gigi::parser::{execute, parse, ExecResult, Statement};
+use gigi::parser::{execute, parse, ExecResult};
 use gigi::spectral::spectral_gauge_gap;
 use gigi::types::{BundleSchema, FieldDef, Record, Value};
 

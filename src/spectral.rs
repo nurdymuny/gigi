@@ -1581,11 +1581,281 @@ pub fn spectral_full_normalized(
     Ok((vals, n))
 }
 
+// ─── SPECTRAL … MODE MATRIX — raw signed-symmetric spectrum (P-vs-NP) ────────
+//
+// Bee's P-vs-NP signature is the fraction of NEGATIVE eigenvalues of the
+// SAT Hessian H_ij = ∂²E/∂s_i∂s_j — a SIGNED SYMMETRIC matrix on the
+// variable-interaction graph whose off-diagonals live where variables
+// co-occur and whose diagonal is a real per-vertex term (NOT the degree).
+// The negatives are the whole signal: NP (3-SAT) solution manifolds are
+// ~2.4× more curvature-unstable than P (2-SAT).
+//
+// SPECTRAL's normalized Laplacian (L = I − D^{−1/2}WD^{−1/2}, PSD) and
+// MODE MAGNETIC's Hermitian Laplacian (degree diagonal + U(1) phases)
+// both LOSE the negatives, so PNP needs the RAW matrix. MODE MATRIX
+// assembles M directly from edge-endpoint records and eigendecomposes it
+// with the same dense real `SymmetricEigen<f64>` FULL path the gauge verb
+// uses — but on the raw signed adjacency, not a Laplacian.
+
+/// Negative-eigenvalue threshold for MODE MATRIX. An eigenvalue λ counts
+/// as negative iff `λ < −SPECTRAL_MATRIX_NEG_TOL`, so the FP-noise band
+/// ±1e-9 around a null mode is NOT counted. Pinned to the same 1e-9 the
+/// gauge gap-extraction uses (`spectral_gauge_spectrum`) so the whole
+/// spectral surface shares one zero-threshold.
+pub const SPECTRAL_MATRIX_NEG_TOL: f64 = 1e-9;
+
+/// Dense eigensolver ceiling for MODE MATRIX. Mirrors the gauge
+/// `SPECTRAL_DENSE_MAX_V` (spec §6 boundary 4096) but is UNGATED so the
+/// plain-SPECTRAL path compiles without the `gauge` feature. SAT Hessian
+/// sizes are dense-side, so this is just the honest ceiling — above it
+/// the verb surfaces the Phase 2.1 sparse-deferral error.
+pub const SPECTRAL_MATRIX_DENSE_MAX_V: usize = 4096;
+
+/// Result of `SPECTRAL <b> ON FIBER (h) MODE MATRIX` — the raw signed
+/// symmetric-matrix spectrum plus the P-vs-NP instability accounting.
+#[derive(Debug, Clone)]
+pub struct SpectralMatrixResult {
+    /// Ascending real spectrum: all V eigenvalues with no `LIMIT`, the
+    /// k smallest with `LIMIT k`.
+    pub eigenvalues: Vec<f64>,
+    /// Number of records (off-diagonal edges + self-loop diagonals) that
+    /// contributed to M.
+    pub n_records_used: usize,
+    /// Solver/mode label — `"matrix"` (self-documenting; the dense real
+    /// `SymmetricEigen` arm on the raw adjacency).
+    pub mode_used: &'static str,
+    /// #{ λ < −[`SPECTRAL_MATRIX_NEG_TOL`] } over the FULL spectrum —
+    /// NEVER windowed by `LIMIT` (it is the P-vs-NP signal, so it must
+    /// not depend on how many eigenvalues the caller chose to display).
+    pub n_negative: usize,
+    /// `n_negative / V` (V = matrix dimension = number of vertices) — the
+    /// solution-manifold instability fraction, over the full spectrum.
+    pub instability_fraction: f64,
+}
+
+/// `SPECTRAL <bundle> ON FIBER (<h>) MODE MATRIX [DIAGONAL <d>] [FULL
+/// [LIMIT k]]` — spectrum of the RAW signed symmetric matrix M built
+/// from edge-endpoint records.
+///
+/// Assembly (dense 0..V first-seen vertex indexing, same
+/// `HashMap<i64,usize>` the gauge FULL path uses):
+///   * off-diagonal record (`vertex_a = i`, `vertex_b = j`, i ≠ j):
+///     `M[i][j] = M[j][i] = h` (ASSIGN, not accumulate — a mirrored or
+///     duplicate (j,i) record does NOT double-count; last writer wins).
+///   * self-loop record (`vertex_a == vertex_b == v`): `M[v][v] = h`
+///     (Option S). When `diag_field` is `Some`, the self-loop reads that
+///     override column instead of `h_field`.
+///   * missing diagonal (no self-loop for v, no override) → `M[v][v] = 0`.
+///
+/// This is NOT the Laplacian: no degree diagonal, no `−w` off-diagonals,
+/// self-loops routed to the diagonal rather than skipped. Negatives are
+/// preserved verbatim — that is the point.
+///
+/// Groupless by construction (the plain SPECTRAL grammar has no GROUP
+/// clause; a stray GROUP token is swallowed by the parser). Dense only:
+/// `V > `[`SPECTRAL_MATRIX_DENSE_MAX_V`] returns a typed error naming the
+/// Phase 2.1 sparse deferral. `limit = Some(0)` is a typed LIMIT-bounds
+/// error; `limit > V` clamps. An empty / single-vertex edge set is a
+/// typed error rather than a silent 0-length spectrum.
+///
+/// String-typed errors to match the plain SPECTRAL executor's
+/// `Result<_, String>` surface.
+pub fn spectral_matrix_raw(
+    store: &BundleStore,
+    h_field: &str,
+    diag_field: Option<&str>,
+    limit: Option<usize>,
+) -> Result<SpectralMatrixResult, String> {
+    // ── Step 0: LIMIT bounds. k = 0 is an empty FULL request.
+    if let Some(0) = limit {
+        return Err(
+            "SPECTRAL MODE MATRIX: FULL LIMIT must be ≥ 1 (got 0) — omit LIMIT to \
+             return all eigenvalues"
+                .to_string(),
+        );
+    }
+
+    // ── Step 1: Confirm the edge-endpoint columns exist.
+    let endpoint_a = "vertex_a";
+    let endpoint_b = "vertex_b";
+    let has_a = store.schema.base_fields.iter().any(|f| f.name == endpoint_a);
+    let has_b = store.schema.base_fields.iter().any(|f| f.name == endpoint_b);
+    if !has_a || !has_b {
+        return Err(format!(
+            "SPECTRAL MODE MATRIX: bundle missing edge endpoint fields \
+             {endpoint_a}/{endpoint_b} — the raw-Hessian schema requires explicit \
+             vertex_a/vertex_b in base_fields"
+        ));
+    }
+
+    // ── Step 2: Single pass. First-seen dense vertex indexing; split
+    //   self-loop (diagonal) from off-diagonal records.
+    let mut vertex_idx: HashMap<i64, usize> = HashMap::new();
+    let mut offdiag: Vec<(usize, usize, f64)> = Vec::new();
+    let mut diag: Vec<(usize, f64)> = Vec::new();
+    let mut n_records_used = 0usize;
+
+    for rec in store.records() {
+        let va = rec.get(endpoint_a).and_then(|v| v.as_i64()).unwrap_or(0);
+        let vb = rec.get(endpoint_b).and_then(|v| v.as_i64()).unwrap_or(0);
+        let next_a = vertex_idx.len();
+        let i = *vertex_idx.entry(va).or_insert(next_a);
+        let next_b = vertex_idx.len();
+        let j = *vertex_idx.entry(vb).or_insert(next_b);
+
+        if i == j {
+            // Self-loop → diagonal. DIAGONAL override column takes
+            // precedence; else the diagonal rides the same h_field
+            // (Option S).
+            let d = match diag_field {
+                Some(df) => rec.get(df).and_then(|v| v.as_f64()).unwrap_or(0.0),
+                None => rec.get(h_field).and_then(|v| v.as_f64()).unwrap_or(0.0),
+            };
+            diag.push((i, d));
+        } else {
+            let w = rec.get(h_field).and_then(|v| v.as_f64()).unwrap_or(0.0);
+            offdiag.push((i, j, w));
+        }
+        n_records_used += 1;
+    }
+
+    let v_count = vertex_idx.len();
+    if v_count < 2 {
+        return Err(
+            "SPECTRAL MODE MATRIX: fewer than 2 vertices — the edge set is empty or \
+             degenerate (need at least one off-diagonal edge to form a matrix)"
+                .to_string(),
+        );
+    }
+
+    // ── Step 3: Dense ceiling (spec §6 boundary 4096). Checked BEFORE
+    //   the O(V²) allocation, so a too-large probe fails cheaply.
+    if v_count > SPECTRAL_MATRIX_DENSE_MAX_V {
+        return Err(format!(
+            "SPECTRAL MODE MATRIX: V = {v_count} exceeds the dense eigensolver \
+             threshold (V = {SPECTRAL_MATRIX_DENSE_MAX_V}, spec §6 boundary 4096) — \
+             the sparse Lanczos arm ships in Phase 2.1; until then run MODE MATRIX \
+             on a smaller Hessian"
+        ));
+    }
+
+    // ── Step 4: Assemble the RAW signed symmetric matrix M. Off-diagonals
+    //   ASSIGN (mirror + no double-count); diagonals ASSIGN (last-writer
+    //   wins on duplicate self-loops).
+    let mut m = nalgebra::DMatrix::<f64>::zeros(v_count, v_count);
+    for &(i, j, w) in &offdiag {
+        m[(i, j)] = w;
+        m[(j, i)] = w;
+    }
+    for &(i, d) in &diag {
+        m[(i, i)] = d;
+    }
+
+    // ── Step 5: Dense real symmetric eigendecomposition — the ORIGINAL
+    //   pre-magnetic FULL path, applied to the raw matrix (not a
+    //   Laplacian). Ascending algebraic.
+    let eigen = nalgebra::SymmetricEigen::new(m);
+    let mut vals: Vec<f64> = eigen.eigenvalues.iter().copied().collect();
+    vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    // ── Step 6: n_negative over the FULL spectrum, BEFORE any LIMIT
+    //   truncation (it is the signal — never windowed).
+    let n_negative = vals
+        .iter()
+        .filter(|&&l| l < -SPECTRAL_MATRIX_NEG_TOL)
+        .count();
+    let instability_fraction = n_negative as f64 / v_count as f64;
+
+    // ── Step 7: LIMIT window on the RETURNED eigenvalues only.
+    let k = limit.map(|k| k.min(vals.len())).unwrap_or(vals.len());
+    let eigenvalues = vals[..k].to_vec();
+
+    Ok(SpectralMatrixResult {
+        eigenvalues,
+        n_records_used,
+        mode_used: "matrix",
+        n_negative,
+        instability_fraction,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::bundle::BundleStore;
     use crate::types::*;
+
+    // ── MODE MATRIX raw-symmetric spectrum (ungated — runs under
+    //    `cargo test --no-default-features --lib`) ──────────────────────
+
+    fn hessian_store() -> BundleStore {
+        let schema = BundleSchema::new("h")
+            .base(FieldDef::numeric("vertex_a"))
+            .base(FieldDef::numeric("vertex_b"))
+            .fiber(FieldDef::numeric("h_ij"));
+        BundleStore::new(schema)
+    }
+
+    fn medge(store: &mut BundleStore, a: i64, b: i64, h: f64) {
+        let mut r = Record::new();
+        r.insert("vertex_a".into(), Value::Integer(a));
+        r.insert("vertex_b".into(), Value::Integer(b));
+        r.insert("h_ij".into(), Value::Float(h));
+        store.insert(&r);
+    }
+
+    /// M1: [[2,−1],[−1,2]] → {1, 3}, n_negative 0.
+    #[test]
+    fn spectral_matrix_raw_m1_positive_definite() {
+        let mut s = hessian_store();
+        medge(&mut s, 0, 1, -1.0);
+        medge(&mut s, 0, 0, 2.0);
+        medge(&mut s, 1, 1, 2.0);
+        let res = spectral_matrix_raw(&s, "h_ij", None, None).unwrap();
+        assert_eq!(res.eigenvalues.len(), 2);
+        assert!((res.eigenvalues[0] - 1.0).abs() < 1e-12);
+        assert!((res.eigenvalues[1] - 3.0).abs() < 1e-12);
+        assert_eq!(res.n_negative, 0);
+        assert_eq!(res.mode_used, "matrix");
+        assert_eq!(res.n_records_used, 3);
+    }
+
+    /// M2: [[0,1],[1,0]] → {−1, +1}, n_negative 1, instability 0.5.
+    #[test]
+    fn spectral_matrix_raw_m2_negatives_survive() {
+        let mut s = hessian_store();
+        medge(&mut s, 0, 1, 1.0);
+        let res = spectral_matrix_raw(&s, "h_ij", None, None).unwrap();
+        assert_eq!(res.eigenvalues.len(), 2);
+        assert!((res.eigenvalues[0] + 1.0).abs() < 1e-12);
+        assert!((res.eigenvalues[1] - 1.0).abs() < 1e-12);
+        assert_eq!(res.n_negative, 1);
+        assert!((res.instability_fraction - 0.5).abs() < 1e-12);
+    }
+
+    /// A mirrored (j,i) edge with equal weight does NOT double-count.
+    #[test]
+    fn spectral_matrix_raw_no_double_count() {
+        let mut s = hessian_store();
+        medge(&mut s, 0, 1, 3.0);
+        medge(&mut s, 1, 0, 3.0);
+        let res = spectral_matrix_raw(&s, "h_ij", None, None).unwrap();
+        // [[0,3],[3,0]] → {−3, 3}, NOT [[0,6],[6,0]] → {−6, 6}.
+        assert!((res.eigenvalues[0] + 3.0).abs() < 1e-12);
+        assert!((res.eigenvalues[1] - 3.0).abs() < 1e-12);
+    }
+
+    /// LIMIT 0 is a typed error; empty edge set is a typed error.
+    #[test]
+    fn spectral_matrix_raw_typed_errors() {
+        let mut s = hessian_store();
+        medge(&mut s, 0, 1, 1.0);
+        assert!(spectral_matrix_raw(&s, "h_ij", None, Some(0))
+            .unwrap_err()
+            .contains("LIMIT"));
+        let empty = hessian_store();
+        assert!(spectral_matrix_raw(&empty, "h_ij", None, None).is_err());
+    }
 
     /// Build a well-connected store (all same dept = complete subgraph).
     fn make_connected_store() -> BundleStore {

@@ -389,12 +389,34 @@ pub enum Statement {
     /// `SPECTRAL bundle [FULL [LIMIT k]]` — λ₁ of the normalized
     /// field-index-graph Laplacian (Scalar), or with FULL the whole
     /// normalized spectrum ascending (Rows; Phase 2, 2026-07-16).
+    ///
+    /// MODE MATRIX extension (2026-07-17, P-vs-NP): with
+    /// `matrix = true` the verb instead reads the edge-endpoint
+    /// (vertex_a/vertex_b) records under `fiber_field` and returns the
+    /// spectrum of the RAW signed symmetric matrix M (NOT the D−W
+    /// Laplacian — negatives are the whole signal). `diagonal` names an
+    /// optional override column that self-loop records read for M[v][v].
     Spectral {
         bundle: String,
         full: bool,
         /// `LIMIT k` after FULL — the k smallest eigenvalues. `None`
         /// (with FULL) returns all of them.
         limit: Option<usize>,
+        /// MODE MATRIX only: the single signed scalar fiber column
+        /// (`ON FIBER (<h>)`) whose per-edge value becomes M[i][j].
+        /// `None` for the plain / FULL Laplacian shapes.
+        fiber_field: Option<String>,
+        /// `true` when the `MODE MATRIX` clause is present — routes to
+        /// the raw signed-symmetric spectrum instead of the normalized
+        /// Laplacian. Additive: `false` keeps every existing SPECTRAL /
+        /// SPECTRAL FULL call byte-identical.
+        matrix: bool,
+        /// MODE MATRIX only: optional `DIAGONAL <field>` override — the
+        /// column self-loop records read for the diagonal when it lives
+        /// in a different column than `fiber_field`. `None` → self-loops
+        /// carry the diagonal in `fiber_field` (Option S), absent
+        /// self-loops → M[v][v] = 0.
+        diagonal: Option<String>,
     },
     Consistency {
         bundle: String,
@@ -4905,12 +4927,87 @@ impl Parser {
 
     fn parse_spectral(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
-        // Check for ON FIBER variant: SPECTRAL bundle ON FIBER (f1, f2) MODES k
+        // ON FIBER variants:
+        //   SPECTRAL b ON FIBER (f1, f2) MODES k             → SpectralFiber (PCA)
+        //   SPECTRAL b ON FIBER (h) MODE MATRIX [DIAGONAL d] [FULL [LIMIT k]]
+        //                                                    → Spectral{matrix:true}
+        // MODE (singular) vs MODES (plural) disambiguates the two.
         if self.is_keyword("ON") {
             self.advance(); // ON
             self.expect_word()?; // FIBER
             self.expect(Token::LParen)?;
             let fiber_fields = self.parse_inner_word_list()?;
+
+            // Soft GROUP before MODE — MODE MATRIX is groupless (scalar
+            // real weights). SpectralFiber has no GROUP clause, so a
+            // GROUP token here only makes sense ahead of MODE MATRIX; it
+            // is consumed and ignored (the key difference from
+            // SPECTRAL_GAUGE MODE MAGNETIC, which requires the group).
+            let group_before = self.is_keyword("GROUP");
+            self.skip_optional_group_ignored();
+
+            if self.is_keyword("MODE") {
+                self.advance(); // MODE
+                let word = self.expect_word()?;
+                if !word.eq_ignore_ascii_case("MATRIX") {
+                    return Err(format!(
+                        "SPECTRAL MODE: only MATRIX is a mode on the plain SPECTRAL \
+                         verb (got '{word}') — MODE MAGNETIC lives on SPECTRAL_GAUGE"
+                    ));
+                }
+                if fiber_fields.len() != 1 {
+                    return Err(format!(
+                        "SPECTRAL ... MODE MATRIX requires exactly one fiber field \
+                         (the signed Hessian weight h); got {}",
+                        fiber_fields.len()
+                    ));
+                }
+                let h_field = fiber_fields[0].clone();
+
+                // Soft GROUP after MODE MATRIX — also ignored.
+                self.skip_optional_group_ignored();
+
+                // Optional DIAGONAL <field> override column.
+                let diagonal = if self.is_keyword("DIAGONAL") {
+                    self.advance();
+                    Some(self.expect_word()?)
+                } else {
+                    None
+                };
+
+                // Optional FULL [LIMIT k].
+                let (full, limit) = if self.is_keyword("FULL") {
+                    self.advance();
+                    let k = if self.is_keyword("LIMIT") {
+                        self.advance();
+                        Some(self.expect_usize()?)
+                    } else {
+                        None
+                    };
+                    (true, k)
+                } else {
+                    (false, None)
+                };
+
+                return Ok(Statement::Spectral {
+                    bundle: name,
+                    full,
+                    limit,
+                    fiber_field: Some(h_field),
+                    matrix: true,
+                    diagonal,
+                });
+            }
+
+            if group_before {
+                return Err(
+                    "SPECTRAL <bundle> ON FIBER (..) GROUP is only valid ahead of \
+                     MODE MATRIX (a groupless raw-Hessian spectrum) — did you mean \
+                     SPECTRAL_GAUGE?"
+                        .to_string(),
+                );
+            }
+
             self.expect_word()?; // MODES
             let modes = self.expect_usize()?;
             return Ok(Statement::SpectralFiber { bundle: name, fiber_fields, modes });
@@ -4927,7 +5024,34 @@ impl Parser {
         } else {
             (false, None)
         };
-        Ok(Statement::Spectral { bundle: name, full, limit })
+        Ok(Statement::Spectral {
+            bundle: name,
+            full,
+            limit,
+            fiber_field: None,
+            matrix: false,
+            diagonal: None,
+        })
+    }
+
+    /// Consume-and-discard an optional `GROUP <label>` clause. MODE
+    /// MATRIX is groupless (scalar real weights on the raw Hessian); a
+    /// stray GROUP token is tolerated with no effect so callers
+    /// migrating from SPECTRAL_GAUGE don't trip. The label is a word
+    /// (U1/SU2/SU3/U/SU/Z…) optionally followed by a parenthesized
+    /// modulus, e.g. U(1), SU(2), Z(5).
+    fn skip_optional_group_ignored(&mut self) {
+        if self.is_keyword("GROUP") {
+            self.advance(); // GROUP
+            let _ = self.advance(); // label head word
+            if matches!(self.peek(), Some(Token::LParen)) {
+                while let Some(tok) = self.advance() {
+                    if matches!(tok, Token::RParen) {
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     /// Halcyon SPECTRAL_GAUGE — fiber-weighted spectral gap λ₁ /
@@ -10815,10 +10939,51 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             Ok(ExecResult::Scalar(k))
         }
 
-        Statement::Spectral { bundle, full, limit } => {
+        Statement::Spectral { bundle, full, limit, fiber_field, matrix, diagonal } => {
             let store = engine
                 .bundle(bundle)
                 .ok_or_else(|| format!("No bundle: {bundle}"))?;
+            if *matrix {
+                // MODE MATRIX (2026-07-17, P-vs-NP): raw signed
+                // symmetric spectrum of the edge-endpoint matrix — NOT
+                // the D−W Laplacian. Reads the pre-resolved heap store
+                // (no re-resolve). Returns the one-row envelope with
+                // n_negative / instability_fraction.
+                let heap = store.as_heap().ok_or_else(|| {
+                    format!("SPECTRAL MODE MATRIX: bundle '{bundle}' is not heap-resident")
+                })?;
+                let h_field = fiber_field.as_deref().ok_or_else(|| {
+                    "SPECTRAL MODE MATRIX: missing ON FIBER (<h>) field".to_string()
+                })?;
+                let res = crate::spectral::spectral_matrix_raw(
+                    heap,
+                    h_field,
+                    diagonal.as_deref(),
+                    *limit,
+                )?;
+                let mut row = crate::types::Record::new();
+                row.insert(
+                    "eigenvalues".to_string(),
+                    crate::types::Value::Vector(res.eigenvalues),
+                );
+                row.insert(
+                    "n_records_used".to_string(),
+                    crate::types::Value::Integer(res.n_records_used as i64),
+                );
+                row.insert(
+                    "mode_used".to_string(),
+                    crate::types::Value::Text(res.mode_used.to_string()),
+                );
+                row.insert(
+                    "n_negative".to_string(),
+                    crate::types::Value::Integer(res.n_negative as i64),
+                );
+                row.insert(
+                    "instability_fraction".to_string(),
+                    crate::types::Value::Float(res.instability_fraction),
+                );
+                return Ok(ExecResult::Rows(vec![row]));
+            }
             if *full {
                 // Phase 2 (2026-07-16): FULL returns the whole
                 // normalized-Laplacian spectrum (ascending, LIMIT k
@@ -14223,10 +14388,11 @@ mod tests {
     fn gql_spectral_full() {
         let stmt = parse("SPECTRAL sensors FULL").unwrap();
         match stmt {
-            Statement::Spectral { bundle, full, limit } => {
+            Statement::Spectral { bundle, full, limit, matrix, .. } => {
                 assert_eq!(bundle, "sensors");
                 assert!(full);
                 assert_eq!(limit, None);
+                assert!(!matrix);
             }
             _ => panic!("Expected Spectral"),
         }
@@ -14236,10 +14402,11 @@ mod tests {
     fn gql_spectral_full_limit() {
         let stmt = parse("SPECTRAL sensors FULL LIMIT 5").unwrap();
         match stmt {
-            Statement::Spectral { bundle, full, limit } => {
+            Statement::Spectral { bundle, full, limit, matrix, .. } => {
                 assert_eq!(bundle, "sensors");
                 assert!(full);
                 assert_eq!(limit, Some(5));
+                assert!(!matrix);
             }
             _ => panic!("Expected Spectral"),
         }

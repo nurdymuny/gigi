@@ -252,6 +252,13 @@ pub mod spectral;
 // (Navier-Stokes Tier 1). Scalar contraction of edge 1-forms; ungated
 // (only std + bundle/types), like spectral.rs.
 pub mod helicity;
+// Chebyshev-filtered interior eigensolver for the magnetic Laplacian BULK
+// arm (Hallie's 2026-07-17 RH ask, Part 2). Sparse complex CSR + Jackson-
+// damped Chebyshev bandpass + block Rayleigh-Ritz; routes past the dense
+// ceiling. Gated on `gauge` (reuses the gauge magnetic-Laplacian
+// convention + SpectralGaugeError).
+#[cfg(feature = "gauge")]
+pub mod spectral_interior;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),
 // framed as Čech reconstruction on the share-holder cover. Each share carries

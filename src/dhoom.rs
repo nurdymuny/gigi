@@ -983,6 +983,17 @@ pub fn encode(value: &Value) -> Result<String> {
     Ok(out)
 }
 
+/// Upper bound on the number of remaining candidate keys for which
+/// `encode_bundle` runs computed-field detection (Phase 2). Above this,
+/// detection is skipped: its op×field×field enumeration is cubic in the
+/// candidate count, so at embedding widths (hundreds of separate numeric
+/// fibers) it is the snapshot-encoder wedge, while such bundles never carry
+/// an inter-field `#a*b` relationship to detect. 64 covers any realistic
+/// analytics/OLAP table while excluding vector-embedding bundles. See the
+/// 2026-07-16 durability diagnosis. (Detection cost is bounded further by
+/// caching each column once — see `detect_computed_expr_cached`.)
+const MAX_COMPUTED_FIELD_CANDIDATES: usize = 64;
+
 fn encode_bundle(name: &str, records: &[Value], out: &mut String, indent: usize) -> Result<()> {
     if records.is_empty() {
         let _ = write!(out, "{}{}{{}}:\n", " ".repeat(indent), name);
@@ -1049,14 +1060,57 @@ fn encode_bundle(name: &str, records: &[Value], out: &mut String, indent: usize)
         remaining_keys.push(key.clone());
     }
 
-    // Phase 2: detect computed fields among remaining keys
-    for key in remaining_keys.clone() {
-        if let Some(expr) = detect_computed_field(&key, records, &remaining_keys) {
-            computed_fields.push((key.clone(), expr));
+    // Phase 2: detect computed fields among remaining keys.
+    //
+    // ── 2026-07-16 DURABILITY ENCODER-HANG FIX ────────────────────────────
+    // The pre-fix `detect_computed_field` re-collected an O(N) `Vec<f64>`
+    // from the record maps for every (op, a, b) triple, so Phase 2 was
+    // O(F³·N) *map-lookups* — each a ~570ns BTreeMap probe + alloc, not a
+    // 1ns array read. At F≈385 numeric candidate fields (Marcella's
+    // `marcella_source_embeddings_bge_v2`, stored as 384 SEPARATE scalar
+    // fibers `v0..v383` — NOT one Vector fiber) that is ~days of compute
+    // inside a single `StreamEncoder::new` call. It runs during one
+    // `finish()`/`flush_chunk`, so the between-records timeout in
+    // `snapshot_with_chunk_size_report` can never interrupt it: that is the
+    // 2026-06-26 boot-snapshot wedge.
+    //
+    // TWO changes, both format-neutral (identical detected fields ⇒ identical
+    // `.dhoom` bytes; the WAL format is untouched):
+    //
+    //   1. Hoist column extraction OUT of the F² loop (`detect_computed_expr_cached`
+    //      over pre-extracted columns): O(F³·N) → O(F·N + F³). This alone
+    //      fixes the common moderate-width case (a control bundle of 8
+    //      numeric fibers dropped from 11.0s to 0.07s).
+    //
+    //   2. For WIDE candidate sets, SKIP detection entirely. Even with cached
+    //      columns the residual O(F³) op×a×b *enumeration* is ~14s at F≈385
+    //      (385³ triples), and an embedding-style bundle of hundreds of
+    //      numeric fibers has no `#a*b` inter-field relationship to find
+    //      anyway. Skipped fields are emitted as plain variable columns —
+    //      a shape the decoder already reads — so no on-disk format changes.
+    //      The cap is far below the engine-level `should_bypass_sort` count
+    //      (1000) because THIS work is cubic in field count, not linear.
+    //
+    // See theory/gigi/DURABILITY_ENCODER_HANG_DIAGNOSIS_2026-07-16.md.
+    if remaining_keys.len() <= MAX_COMPUTED_FIELD_CANDIDATES {
+        let numeric_cols: Vec<(&str, Vec<f64>)> = remaining_keys
+            .iter()
+            .filter_map(|k| {
+                let vals: Vec<f64> = records
+                    .iter()
+                    .filter_map(|r| r.as_object()?.get(k)?.as_f64())
+                    .collect();
+                (vals.len() == records.len()).then_some((k.as_str(), vals))
+            })
+            .collect();
+        for target_idx in 0..numeric_cols.len() {
+            if let Some(expr) = detect_computed_expr_cached(target_idx, &numeric_cols) {
+                computed_fields.push((numeric_cols[target_idx].0.to_string(), expr));
+            }
         }
-    }
-    for (k, _) in &computed_fields {
-        remaining_keys.retain(|r| r != k);
+        for (k, _) in &computed_fields {
+            remaining_keys.retain(|r| r != k);
+        }
     }
 
     // Phase 3: categorize remaining as delta, interned, default, or variable
@@ -1544,6 +1598,67 @@ fn detect_computed_field(
                 }
                 if all_match {
                     return Some(format!("{}{}{}", a, op, b));
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Cached core of computed-field detection (2026-07-16 durability fix).
+///
+/// `numeric_cols` holds every fully-numeric candidate column, in
+/// `candidate_keys` order; `target_idx` selects the column being tested.
+///
+/// Byte-for-byte equivalent of the pre-fix `detect_computed_field` inner
+/// logic — same `['*','+','-']` order, same `a`/`b` order, same 1e-9
+/// tolerance, same first-match short-circuit — with two changes that alter
+/// only *speed*, never *output*:
+///   1. every O(N) column read is hoisted OUT of the F² loop into a single
+///      up-front extraction by the caller (`encode_bundle` Phase 2), turning
+///      Phase 2 from O(F³·N) into O(F·N + F³);
+///   2. the `a == key` / `b == a` skips compare column INDICES (usize, ~1ns)
+///      instead of field-name strings (~30ns each, and there are ~F³ of
+///      them). Column names are unique, so index identity is equivalent to
+///      name identity — the detected field and expression are unchanged.
+///
+/// Every entry in `numeric_cols` has length equal to the record count, so the
+/// per-index reads below are always in bounds.
+fn detect_computed_expr_cached(
+    target_idx: usize,
+    numeric_cols: &[(&str, Vec<f64>)],
+) -> Option<String> {
+    let target = &numeric_cols[target_idx].1;
+    let n = target.len();
+    if n < 2 {
+        return None;
+    }
+    for op in &['*', '+', '-'] {
+        for ai in 0..numeric_cols.len() {
+            if ai == target_idx {
+                continue;
+            }
+            let a_vals = &numeric_cols[ai].1;
+            for bi in 0..numeric_cols.len() {
+                if bi == target_idx || bi == ai {
+                    continue;
+                }
+                let b_vals = &numeric_cols[bi].1;
+                let mut all_match = true;
+                for i in 0..n {
+                    let result = match op {
+                        '*' => a_vals[i] * b_vals[i],
+                        '+' => a_vals[i] + b_vals[i],
+                        '-' => a_vals[i] - b_vals[i],
+                        _ => 0.0,
+                    };
+                    if (result - target[i]).abs() > 1e-9 {
+                        all_match = false;
+                        break;
+                    }
+                }
+                if all_match {
+                    return Some(format!("{}{}{}", numeric_cols[ai].0, op, numeric_cols[bi].0));
                 }
             }
         }

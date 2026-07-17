@@ -36,6 +36,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use gigi::engine::Engine;
+use gigi::parser::{execute, parse, ExecResult};
 use gigi::types::{BundleSchema, FieldDef, Record, Value};
 
 /// Wall-clock ceiling that separates "fixed" (completes) from "wedged"
@@ -253,4 +254,90 @@ fn low_field_count_snapshot_is_fast() {
         ),
         SnapOutcome::Failed(e) => panic!("snapshot errored: {e}"),
     }
+}
+
+fn cover(engine: &mut Engine, bundle: &str) -> Vec<Record> {
+    let stmt = parse(&format!("COVER {bundle}")).expect("parse COVER");
+    match execute(engine, &stmt).expect("execute COVER") {
+        ExecResult::Rows(r) => r,
+        other => panic!("expected Rows from COVER, got {other:?}"),
+    }
+}
+
+/// **ROUND-TRIP INTEGRITY (GREEN half of task 6).**
+///
+/// A fix that completes but corrupts the snapshot is worse than the hang. This
+/// writes a wide-numeric bundle through the same boot path (`snapshot_with_report`),
+/// then reopens the `.dhoom` in the fast-mmap mode the boot upgrades to and
+/// asserts the SAME record count AND the SAME field set come back — proving the
+/// Phase-2 skip (fields emitted as plain variable columns) is read-compatible
+/// and loses no data.
+#[test]
+fn roundtrip_wide_bundle_reopens_in_mmap_with_same_count_and_fields() {
+    let n = 2_000usize;
+    let td = tempfile::tempdir().expect("tempdir");
+    let dir = td.path().to_path_buf();
+
+    let mut engine = Engine::open(&dir).expect("open");
+    engine
+        .create_bundle(wide_scalar_schema("rt_v2", 384))
+        .expect("create_bundle");
+    for id in 0..n as i64 {
+        engine.insert("rt_v2", &wide_record(id, 384)).expect("insert");
+    }
+
+    // Snapshot through the boot path, guarded so a regression fails loudly
+    // instead of hanging the whole suite.
+    let engine = match snapshot_guarded(engine, Duration::from_secs(WEDGE_GUARD_SECS)) {
+        SnapOutcome::Done {
+            engine,
+            records,
+            elapsed,
+        } => {
+            assert_eq!(records, n, "snapshot must persist all {n} records");
+            eprintln!("rt_v2 snapshot completed in {elapsed:?}");
+            engine
+        }
+        SnapOutcome::Wedged => panic!("round-trip snapshot wedged before writing .dhoom"),
+        SnapOutcome::Failed(e) => panic!("round-trip snapshot errored: {e}"),
+    };
+    drop(engine); // flush the WAL writer on the main thread before reopening
+
+    // Reopen in the fast-mmap mode the boot path upgrades to after a clean snapshot.
+    let mut mmap = Engine::open_mmap(&dir).expect("open_mmap");
+    let rows = cover(&mut mmap, "rt_v2");
+
+    // (1) Record-count integrity.
+    assert_eq!(
+        rows.len(),
+        n,
+        "mmap reopen must expose the same record count the snapshot wrote"
+    );
+
+    // (2) Field-set integrity: every field survives the .dhoom round-trip.
+    let sample = &rows[0];
+    assert!(
+        sample.contains_key("id"),
+        "base field `id` missing after round-trip"
+    );
+    assert!(
+        sample.contains_key("ts"),
+        "fiber `ts` missing after round-trip"
+    );
+    for i in 0..384 {
+        let f = format!("v{i}");
+        assert!(
+            sample.contains_key(&f),
+            "fiber `{f}` missing after mmap round-trip — the Phase-2 skip dropped a field"
+        );
+    }
+    assert_eq!(
+        sample.len(),
+        386,
+        "round-tripped record has {} fields, expected 386 (id + ts + v0..v383)",
+        sample.len()
+    );
+
+    drop(mmap);
+    drop(td);
 }

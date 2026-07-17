@@ -43,6 +43,13 @@
 //! identical, so a clean lens wrap `Ω = (cos 2πq/p, 0, 0, sin 2πq/p)`
 //! yields `order = p/gcd(p, q) = p` when `gcd(q, p) = 1`. The client can
 //! re-derive this from `re_trace`; the field is a convenience.
+//!
+//! Only meaningful on a clean lens wrap (a pure σ-twist). A *generic*
+//! SU(2) holonomy still returns a bounded integer (`≤ Q_MAX`) rather than
+//! a distinguished sentinel — there is no in-row flag separating an
+//! order-`p` element from a generic one beyond `re_trace` itself, so read
+//! `order_estimate` only alongside a `re_trace` you already expect to be
+//! `cos(2πq/p)`.
 
 #![cfg(feature = "gauge")]
 

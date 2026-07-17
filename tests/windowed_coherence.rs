@@ -623,3 +623,197 @@ fn a3_lambda_envelope_is_whole_bundle_ride_along() {
         "the envelope mirrors curvature::lambda_budget_for_bundle"
     );
 }
+
+// ═════════════════════════════════════════════════════════════════════
+// Review follow-ups (2026-07-16 ship lens) — edges pinned, convention
+// anchored
+// ═════════════════════════════════════════════════════════════════════
+
+/// EXACTLY-antipodal consecutive vectors (v_{i+1} = −v_i) derive
+/// θ = arccos(−1) = π, but v is collinear with e1 so the Rodrigues e2
+/// degenerates and the segment transports as IDENTITY: defect exactly
+/// 0.0, coherence 1.0, laminar. This is the verb's inherited collinear
+/// guard, now PINNED: an exact 180° semantic reversal reads perfectly
+/// laminar, and the signal is discontinuous vs near-antipodal (defect
+/// → 2√2). Measure-zero on real float embeddings; callers needing
+/// exact-reversal detection gate on the segment cosine instead.
+#[test]
+fn review_exact_antipodal_transports_as_identity_pinned() {
+    let schema = BundleSchema::new("wc_anti")
+        .base(FieldDef::categorical("id"))
+        .fiber(FieldDef::numeric("f0"))
+        .fiber(FieldDef::numeric("f1"));
+    let mut store = BundleStore::new(schema);
+    let near = std::f64::consts::PI - 0.01;
+    for (id, (x, y)) in [
+        ("r0", (1.0, 0.0)),
+        ("r1", (-1.0, 0.0)),        // exact antipode of r0
+        ("r2", (near.cos(), near.sin())), // NEAR-antipodal to r0
+    ] {
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Text(id.to_string()));
+        r.insert("f0".into(), Value::Float(x));
+        r.insert("f1".into(), Value::Float(y));
+        store.insert(&r);
+    }
+    let bref = BundleRef::Heap(&store);
+
+    // Exact antipode: identity transport, defect EXACTLY 0.0.
+    let exact = dials::windowed_coherence_report(
+        &bref,
+        &req(&["r0", "r1"], "id", 2, &["f0", "f1"], None),
+    )
+    .expect("exact-antipodal path");
+    assert_eq!(
+        exact.windows[0].holonomy_defect, 0.0,
+        "v→−v is collinear ⇒ e2 degenerate ⇒ identity transport ⇒ defect exactly 0.0"
+    );
+    assert!((exact.windows[0].coherence - 1.0).abs() < 1e-15);
+    assert!(exact.windows[0].laminar, "the pinned (surprising) verdict");
+
+    // Near-antipodal: defect ≈ 2√2·sin((π−0.01)/2) — pins the
+    // documented discontinuity right next to the exact case.
+    let near_rep = dials::windowed_coherence_report(
+        &bref,
+        &req(&["r0", "r2"], "id", 2, &["f0", "f1"], None),
+    )
+    .expect("near-antipodal path");
+    let expected = defect_2d(near);
+    assert!(
+        (near_rep.windows[0].holonomy_defect - expected).abs() < 1e-9,
+        "near-antipodal defect: expected {expected}, got {}",
+        near_rep.windows[0].holonomy_defect
+    );
+    assert!(
+        near_rep.windows[0].holonomy_defect > 2.8,
+        "…which sits at the 2√2 cap — the discontinuity receipt"
+    );
+    assert!(!near_rep.windows[0].laminar, "near-antipodal is loudly non-laminar (dim 2)");
+}
+
+/// Zero-norm endpoints transport as identity through BOTH guards
+/// (derived_transport_angle → θ=0; transport_rotation_matrix → ‖u‖
+/// guard): a zero vector anywhere in the path yields defect exactly
+/// 0.0 on every segment touching it. Pinned (was previously only
+/// asserted in prose).
+#[test]
+fn review_zero_norm_endpoint_transports_as_identity_pinned() {
+    let schema = BundleSchema::new("wc_zero")
+        .base(FieldDef::categorical("id"))
+        .fiber(FieldDef::numeric("f0"))
+        .fiber(FieldDef::numeric("f1"));
+    let mut store = BundleStore::new(schema);
+    for (id, (x, y)) in [("r0", (1.0, 0.0)), ("rz", (0.0, 0.0)), ("r1", (0.0, 1.0))] {
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Text(id.to_string()));
+        r.insert("f0".into(), Value::Float(x));
+        r.insert("f1".into(), Value::Float(y));
+        store.insert(&r);
+    }
+    let bref = BundleRef::Heap(&store);
+    let report = dials::windowed_coherence_report(
+        &bref,
+        &req(&["r0", "rz", "r1"], "id", 2, &["f0", "f1"], None),
+    )
+    .expect("zero-norm path");
+    assert_eq!(report.n_windows, 2);
+    for w in &report.windows {
+        assert_eq!(
+            w.holonomy_defect, 0.0,
+            "segments into/out of the zero vector transport as identity \
+             (start_index {})",
+            w.start_index
+        );
+        assert!((w.coherence - 1.0).abs() < 1e-15);
+    }
+}
+
+/// Row-major 3×3 product for the composition-order anchor below.
+fn matmul3(a: &[f64], b: &[f64]) -> Vec<f64> {
+    let mut out = vec![0.0_f64; 9];
+    for i in 0..3 {
+        for j in 0..3 {
+            out[i * 3 + j] = (0..3).map(|k| a[i * 3 + k] * b[k * 3 + j]).sum();
+        }
+    }
+    out
+}
+
+/// Composition-order anchor (review follow-up): the 2-dim fixtures
+/// cannot distinguish R_seg(s+w−2)···R_seg(s) from its reversal (plane
+/// rotations commute), and for TWO segments the defect never can
+/// (defect² = 2n − 2·tr is a class function and AB ~ BA). THREE
+/// non-coplanar segments at dim 3 break the symmetry: tr(C·B·A) ≠
+/// tr(A·B·C) in general.
+///
+/// Path x → y → z → x in R³: three π/2 segment rotations in the xy,
+/// yz, zx planes. Documented order W = C·B·A has tr = 1 → defect = 2;
+/// the REVERSED order A·B·C has tr = −1 → defect = 2√2 ≈ 2.828. The
+/// one-shot must land on 2 — pinning the left-accumulation convention
+/// through the wire observable.
+#[test]
+fn review_composition_order_pinned_by_3d_non_coplanar_anchor() {
+    let schema = BundleSchema::new("wc_order")
+        .base(FieldDef::categorical("id"))
+        .fiber(FieldDef::numeric("f0"))
+        .fiber(FieldDef::numeric("f1"))
+        .fiber(FieldDef::numeric("f2"));
+    let mut store = BundleStore::new(schema);
+    let pts: [(&str, [f64; 3]); 4] = [
+        ("r0", [1.0, 0.0, 0.0]), // x
+        ("r1", [0.0, 1.0, 0.0]), // y
+        ("r2", [0.0, 0.0, 1.0]), // z
+        ("r3", [1.0, 0.0, 0.0]), // x again
+    ];
+    for (id, p) in pts {
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Text(id.to_string()));
+        r.insert("f0".into(), Value::Float(p[0]));
+        r.insert("f1".into(), Value::Float(p[1]));
+        r.insert("f2".into(), Value::Float(p[2]));
+        store.insert(&r);
+    }
+    let bref = BundleRef::Heap(&store);
+    let report = dials::windowed_coherence_report(
+        &bref,
+        &req(&["r0", "r1", "r2", "r3"], "id", 4, &["f0", "f1", "f2"], None),
+    )
+    .expect("3-dim non-coplanar path");
+    assert_eq!(report.n_windows, 1);
+    assert_eq!(report.dim, 3);
+    let one_shot_defect = report.windows[0].holonomy_defect;
+
+    // Independent receipt: build the three segment rotations through
+    // the SAME public construction, compose both orders explicitly.
+    let x = [1.0, 0.0, 0.0];
+    let y = [0.0, 1.0, 0.0];
+    let z = [0.0, 0.0, 1.0];
+    let half_pi = std::f64::consts::FRAC_PI_2;
+    let a = dials::transport_rotation_matrix(&x, &y, half_pi); // segment 0
+    let b = dials::transport_rotation_matrix(&y, &z, half_pi); // segment 1
+    let c = dials::transport_rotation_matrix(&z, &x, half_pi); // segment 2
+
+    let identity = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+    let forward = matmul3(&c, &matmul3(&b, &a)); // documented: C·B·A
+    let reversed = matmul3(&a, &matmul3(&b, &c)); // the wrong order
+    let fwd = curvature::local_holonomy(&forward, &identity, 3).expect("fwd");
+    let rev = curvature::local_holonomy(&reversed, &identity, 3).expect("rev");
+
+    // Hand values: tr(C·B·A) = 1 → defect √(2·3 − 2·1) = 2;
+    // tr(A·B·C) = −1 → defect √(6+2) = 2√2.
+    assert!((fwd.defect - 2.0).abs() < 1e-9, "hand: C·B·A defect 2, got {}", fwd.defect);
+    assert!(
+        (rev.defect - 2.0 * 2.0_f64.sqrt()).abs() < 1e-9,
+        "hand: A·B·C defect 2√2, got {}",
+        rev.defect
+    );
+    assert!(
+        (fwd.defect - rev.defect).abs() > 0.5,
+        "the anchor genuinely discriminates the two orders"
+    );
+    assert!(
+        (one_shot_defect - fwd.defect).abs() < 1e-9,
+        "one-shot follows the DOCUMENTED order C·B·A: expected {}, got {one_shot_defect}",
+        fwd.defect
+    );
+}

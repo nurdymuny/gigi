@@ -559,6 +559,11 @@ fn scoped_population(
             let locus_p = scope_projection(locus_rec, &scoped_fields);
             // Deterministic k-NN: ascending squared chord distance in
             // the scoped space, ties broken by record iteration order.
+            // (In-process deterministic; on heap Hashed-storage bundles
+            // records() iterates HashMap keys, process-seeded, so
+            // EXACT-distance ties may resolve differently across
+            // restarts — measure-zero on real embedding data; mmap
+            // iteration order is stable.)
             let mut scored: Vec<(f64, usize)> = records
                 .iter()
                 .enumerate()
@@ -802,6 +807,16 @@ pub fn capacity_report(
 /// COHERENCE (= 1 − defect/(2√dim), dim-independent), not to the raw
 /// defect; override per request via the `threshold` body field
 /// (valid range (0, 1]).
+///
+/// **Dim-dependent floor (review follow-up):** a single segment
+/// (window=2) is one plane rotation, capping the defect at 2√2, so a
+/// w=2 window can be non-laminar at threshold t only when
+/// dim ≤ 2/(1−t)² (≈247 at t=0.91). At dim=384 the w=2 coherence
+/// floor is 1 − 2√2/(2√384) ≈ 0.9278 — unconditionally laminar at the
+/// default no matter how violent the segment turn. w−1 segments cap
+/// the defect at 2√(2(w−1)) (w=3 floor at dim=384 ≈ 0.898). For
+/// per-segment discrimination at high dim: use w ≥ 3, raise the
+/// threshold, or gate on the raw `holonomy_defect` in the response.
 pub const DEFAULT_LAMINAR_THRESHOLD: f64 = 0.91;
 
 /// The TRANSPORT_ROTATION Rodrigues construction, moved VERBATIM from
@@ -860,6 +875,13 @@ pub fn transport_rotation_matrix(u: &[f64], v: &[f64], angle: f64) -> Vec<f64> {
 /// angle off the segment data itself. Degenerate (near-zero-norm)
 /// endpoints → 0.0 (identity transport — the verb's own guard
 /// behavior).
+///
+/// **Exactly-antipodal endpoints (v = −u)** derive θ = π but transport
+/// as identity anyway: v is collinear with e1 so the Rodrigues e2
+/// degenerates — defect 0, coherence 1.0, DISCONTINUOUS vs
+/// near-antipodal (defect → 2√2). Inherited verb convention, pinned by
+/// test; measure-zero on real float embeddings. Gate on the segment
+/// cosine if exact-reversal detection matters.
 fn derived_transport_angle(u: &[f64], v: &[f64]) -> f64 {
     let n = u.len().min(v.len());
     let dot: f64 = u[..n].iter().zip(v[..n].iter()).map(|(a, b)| a * b).sum();

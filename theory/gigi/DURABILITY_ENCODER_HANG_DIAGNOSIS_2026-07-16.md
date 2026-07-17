@@ -318,3 +318,92 @@ gates) stay green — the fix does not regress the admin snapshot path.
 - (this doc) — report
 
 **NOT merged. NOT pushed. NOT deployed.** Follow-up ship reads this diagnosis first.
+
+---
+
+## 8. SHIPPED — 2026-07-16
+
+The header's "NOT merged / NOT pushed / NOT deployed / GATED" is now **superseded**:
+merged, pushed, deployed, and live-proven on the real wedge bundle. Staged posture —
+escape valve still ON, boot path still not trusted.
+
+### Merge + gates
+Cherry-picked onto `main` (base `fdf1af3`, **zero drift** — the branch was already based
+on current main; the cherry-picked tree is byte-identical to `131efa0`):
+
+- `1f21665` test(durability): RED
+- `4dd8630` fix(durability): GREEN
+- `a43be20` test(durability): defense
+- `ee0356b` docs(durability): diagnosis (this file, pre-SHIPPED)
+
+- **GREP GATE:** 0 `Co-Authored-By` footers on `fdf1af3..HEAD`.
+- **FULL GATES:** all 14 LOCKED suites green, **first attempt, no DLL flakes, no
+  assertion failures.** `--no-default-features --lib` 916 passed; `snapshot_high_field_wedge`
+  5 passed / 1 ignored; spectral suite green (incl. `spectral_magnetic_basic` 285.65 s);
+  halcyon-l24 / ingest-gauge / topology / imagine-coherence / halcyon-iv+aurora / lattice /
+  davis-conj-ridealong / pattern-hunt / default-verbs-batch all green.
+- **Push:** `origin/main == HEAD == ee0356b`, verified both directions.
+
+### Deploy
+- `flyctl deploy -a gigi-stream`. **NO secret changes** (no `flyctl secrets set/unset`).
+  Depot build, release binary with the production feature set, image size 63 MB.
+- **Image:** `registry.fly.io/gigi-stream:deployment-01KXQ3MB474GKFDW6MFS9GSG6H`
+  (was `deployment-01KXPW3B3QVBF2X1PMKEGTHK3C`). Machine `683961dbe9ee38` version 250,
+  confirmed on the new tag via `flyctl status`, 1/1 health check passing.
+- Post-deploy `/v1/health`: `status ok`. Restart confirmed (uptime reset to 134 s). Boot
+  skipped the snapshot as expected.
+
+### Escape valve — UNTOUCHED
+`GIGI_SKIP_BOOT_SNAPSHOT` was not read, set, or removed. Boot behavior this deploy is
+unchanged: boot still skips the snapshot. The fix was validated via the **encode path**,
+not the boot path.
+
+### Controlled live proof — single-bundle, via the fixed encode path
+The admin verb `POST /v1/admin/snapshot` is **WHOLE-ENGINE**, not single-bundle — it
+snapshots all ~5 000 bundles and compacts the WAL under `engine_write()`, and its first
+post-fix run would also touch the never-reproduced `stacks_passages`. Auth: the workflow's
+`X-API-Key` is owner = admin (**no separate admin token needed**) — but a whole-engine
+snapshot was **NOT fired autonomously** (LOCKED: prefer to recommend Bee run it when
+uncertain; the `stacks_passages` unknown makes it uncertain, and it holds the global write
+lock on 13 M records).
+
+Instead the fix was proven on the wedge bundle through `GET /v1/bundles/{name}/dhoom`,
+which reaches the **identical** fixed `encode_bundle` Phase 2 under a shared **read** lock:
+
+| Bundle | Result |
+|---|---|
+| `claude_substrate_v0` (smoke, 20 rec) | HTTP 200, **0.27 s**, 44,337 B — fixed encode path works on the new binary |
+| `marcella_source_embeddings_bge_v2` (THE wedge, 9,964 × 384 numeric fibers) | HTTP 200, **16.85 s**, 89,153,447 B of well-formed DHOOM |
+
+**Was days (O(F³·N) cube) → now ~17 s.** It beat the ~60–120 s prod estimate because the
+64-cap skips detection entirely at this width. Health during the proof: uptime **monotonic
+468 s → 486 s** across the call (no crash, no restart); the server stayed responsive
+(`health` uses `try_read`, concurrent reads unaffected by the shared read lock).
+
+Marcella IMAGINE sanity post-proof: `POST .../imagine_coherence` `dim=4` → HTTP 200,
+`endpoint_coherence 1.0`, `refused false`.
+
+### RSS observation
+RSS is **not exposed** by `/v1/metrics` (no memory field) or `flyctl status`. Indirect
+bound: uptime advanced monotonically (134 → 425 → 468 → 486 → 530 s) with no restart across
+the ~17 s / 85 MB encode, so the fixed encode **did not OOM** the machine. RSS-unobservable
+via the app API; absence of a restart = absence of an OOM kill.
+
+### Substrate drill
+`claude_substrate_v0` exported pre-deploy (20 records, backed up to
+`.deploy-backups/2026-07-16-durability/`). Wiped by the restart (boot skips snapshot), as
+predicted. Restored via `CREATE BUNDLE (keys=[thought_id])` + import: **20 records, 20
+distinct thought_ids, WAL-logged.** Post-count 20 == pre-count 20. (First restore attempt
+with an empty key set collapsed all records onto a Null identity → 1 record; recreated with
+`thought_id` as the base key, which the export shows is unique 20/20.)
+
+### Remaining path to boot-path trust
+Escape valve **stays ON**; boot path **still not trusted**. To drop
+`GIGI_SKIP_BOOT_SNAPSHOT` later: (1) reproduce `stacks_passages` (70 849 records) and clear
+it, or admin-snapshot it live once and confirm it writes; (2) run the whole-engine admin
+snapshot and confirm every bundle writes `.dhoom` + the WAL compacts (watch health); (3)
+drop the valve and confirm one boot heap-replays → snapshots → reopens fast-mmap. Until all
+three hold, the valve is the recovery lever, unchanged.
+
+Marcella handoff: `theory/marcella/GIGI_TO_MARCELLA_REPLY_2026-07-16_DURABILITY.md` (ask #6
+closed — her six asks complete).

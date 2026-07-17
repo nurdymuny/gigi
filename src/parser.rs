@@ -11836,17 +11836,45 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                         "bulk_center".to_string(),
                         crate::types::Value::Float(bw.center),
                     );
+                    // The dense path exposes exact global locators; the
+                    // sparse interior arm never sorts the full spectrum, so
+                    // it emits only the center + the convergence receipt.
+                    if !matches!(
+                        result.mode_used,
+                        crate::spectral::SpectralGaugeMode::SparseInterior
+                    ) {
+                        row.insert(
+                            "bulk_center_index".to_string(),
+                            crate::types::Value::Integer(bw.center_index as i64),
+                        );
+                        row.insert(
+                            "bulk_lo".to_string(),
+                            crate::types::Value::Integer(bw.lo as i64),
+                        );
+                        row.insert(
+                            "bulk_hi".to_string(),
+                            crate::types::Value::Integer(bw.hi as i64),
+                        );
+                    }
+                }
+                // Sparse interior convergence receipt (Hallie's ask #3):
+                // converged count + max_residual + iterations. The caller
+                // gates completeness on `converged == k` and `max_residual
+                // < RES_TOL`. Absent on the dense path (exact).
+                if let Some(c) = result.converged {
                     row.insert(
-                        "bulk_center_index".to_string(),
-                        crate::types::Value::Integer(bw.center_index as i64),
+                        "converged".to_string(),
+                        crate::types::Value::Integer(c as i64),
+                    );
+                }
+                if let Some(conv) = result.convergence {
+                    row.insert(
+                        "max_residual".to_string(),
+                        crate::types::Value::Float(conv.final_residual),
                     );
                     row.insert(
-                        "bulk_lo".to_string(),
-                        crate::types::Value::Integer(bw.lo as i64),
-                    );
-                    row.insert(
-                        "bulk_hi".to_string(),
-                        crate::types::Value::Integer(bw.hi as i64),
+                        "iterations".to_string(),
+                        crate::types::Value::Integer(conv.iterations as i64),
                     );
                 }
                 Ok(ExecResult::Rows(vec![row]))

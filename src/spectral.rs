@@ -1045,6 +1045,11 @@ pub enum SpectralGaugeMode {
     /// spec §6 so the result shape is forward-stable; never constructed
     /// this phase).
     SparseLanczos { shift: f64, k: usize },
+    /// Chebyshev-filtered interior subspace — the sparse BULK arm past the
+    /// dense ceiling (Hallie's 2026-07-17 RH ask, Part 2). Constructed by
+    /// [`crate::spectral_interior`] when `magnetic && bulk.is_some() &&
+    /// dense_full_allowed(v).is_err()`. Wire label `"sparse_interior"`.
+    SparseInterior,
 }
 
 #[cfg(feature = "gauge")]
@@ -1054,6 +1059,7 @@ impl SpectralGaugeMode {
         match self {
             SpectralGaugeMode::Dense => "dense",
             SpectralGaugeMode::SparseLanczos { .. } => "sparse_lanczos",
+            SpectralGaugeMode::SparseInterior => "sparse_interior",
         }
     }
 }
@@ -1102,6 +1108,13 @@ pub struct SpectralGaugeResult {
     /// center + `[lo,hi)` window range the returned `eigenvalues` were
     /// sliced from. `None` for the λ₁-only and FULL shapes.
     pub bulk: Option<BulkWindow>,
+    /// Number of residual-gated converged pairs in the returned window —
+    /// `Some` only on the sparse interior arm (`mode_used = SparseInterior`).
+    /// Equals the requested k when fully converged; `< k` (with
+    /// `convergence.final_residual` the achieved gate) signals a possible
+    /// missed bulk level — the honest completeness surface Hallie asked
+    /// for. `None` on the dense path (dense is exact, no count needed).
+    pub converged: Option<usize>,
 }
 
 /// Errors surfaced by SPECTRAL_GAUGE Phase 1.
@@ -1556,8 +1569,22 @@ pub fn spectral_gauge_spectrum(
     //   SparseUnavailable error naming the memory cost + the sparse
     //   Phase 2.1 arm (R2). The Phase-1 λ₁-only path is NOT gated here —
     //   its behaviour is frozen for backwards compatibility.
-    if full || bulk.is_some() {
+    // FULL always requires the dense path (no sparse FULL arm this phase):
+    // past the ceiling it surfaces the typed SparseUnavailable error.
+    if full {
         dense_full_allowed(v_count)?;
+    }
+    // BULK past the dense ceiling routes to the Chebyshev-filtered INTERIOR
+    // solver (Hallie's RH ask, Part 2) instead of erroring. BULK is
+    // magnetic-only (guaranteed by step 0a), so the interior arm — which
+    // assembles the SAME complex-Hermitian magnetic Laplacian as a sparse
+    // CSR (byte-identical convention, anchors SP4/SP5) — is always
+    // applicable here. Below the ceiling BULK falls through to the dense
+    // center-slice.
+    if let Some(req) = bulk {
+        if dense_full_allowed(v_count).is_err() {
+            return spectral_interior_route(&edges, v_count, req, group, n_records_used);
+        }
     }
 
     // ── Step 5 + 6: Assemble the Laplacian and eigendecompose.
@@ -1653,6 +1680,61 @@ pub fn spectral_gauge_spectrum(
         mode_used: SpectralGaugeMode::Dense,
         convergence: None, // dense path — no iterative receipt (spec §6)
         bulk: bulk_window,
+        converged: None, // dense is exact — no residual-gated count
+    })
+}
+
+/// Route a BULK request past the dense ceiling to the Chebyshev-filtered
+/// interior solver ([`crate::spectral_interior`]) and adapt its result to
+/// the SAME [`SpectralGaugeResult`] envelope the dense BULK path returns,
+/// plus the sparse convergence receipt (`converged`, `convergence` =
+/// iterations + max_residual, `mode_used = SparseInterior`).
+///
+/// `edges` carries `(i, j, θ)` (the magnetic payload is the raw phase), so
+/// the interior CSR reproduces the dense magnetic Laplacian exactly. The
+/// bulk locator carries only the target `center` value on this path — the
+/// sparse arm never sorts the full spectrum, so the exact global
+/// `center_index` / `[lo,hi)` indices the dense path reports are not
+/// available (the serializers omit them for `SparseInterior`). `gap` on
+/// this path is the window's lower edge (the smallest returned bulk
+/// eigenvalue), NOT λ₁ — the interior arm deliberately never touches the
+/// spectrum bottom (that is the σ = 0 YM-mass-gap arm, a different solver).
+#[cfg(feature = "gauge")]
+fn spectral_interior_route(
+    edges: &[(usize, usize, f64)],
+    v_count: usize,
+    req: &BulkSpec,
+    group: crate::gauge::Group,
+    n_records_used: usize,
+) -> Result<SpectralGaugeResult, SpectralGaugeError> {
+    use crate::spectral_interior::{spectral_interior_bulk, InteriorConfig};
+    let cfg = InteriorConfig::default();
+    let res = spectral_interior_bulk(edges, v_count, req, &cfg)?;
+    // `gap` on the interior path = window lower edge (a genuine eigenvalue),
+    // documented above as NOT λ₁.
+    let gap = res.eigenvalues.first().copied().unwrap_or(0.0);
+    let window_len = res.eigenvalues.len();
+    Ok(SpectralGaugeResult {
+        gap,
+        eigenvalues: Some(res.eigenvalues),
+        n_records_used,
+        group_used: group,
+        mode_used: SpectralGaugeMode::SparseInterior,
+        convergence: Some(Convergence {
+            iterations: res.iterations,
+            restarts: res.restarts,
+            final_residual: res.max_residual,
+        }),
+        bulk: Some(BulkWindow {
+            center: res.bulk_center,
+            // The sparse arm cannot cheaply produce exact global indices;
+            // these are placeholders the serializers do NOT emit for
+            // SparseInterior (only `bulk_center` + the convergence receipt).
+            center_index: 0,
+            lo: 0,
+            hi: window_len,
+        }),
+        converged: Some(res.converged),
     })
 }
 

@@ -1,0 +1,1 @@
+{"s_max":4.245935560153709,"k":0.23551935394040657,"tau":1.0,"l_c":1.0,"lambda1":0.0,"estimator_used":{"fixed":1.0},"fallback_engaged":false,"interpretation":"s_max = 4.2: coherent attribution extends 4 positions. Beyond this, accumulated frame rotation cannot be decomposed into individual contributions. (K=0.2355, ℓ_c=1.0000, τ=1)"}

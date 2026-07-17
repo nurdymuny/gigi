@@ -58,8 +58,13 @@ MAGNETIC, which requires U(1).
 assembles `[[0,1],[1,0]]` → eigenvalues `{−1, +1}`, `n_negative 1`,
 `instability_fraction 0.5`. The D−W Laplacian on the same edge returns `{0, 2}`
 and loses the negative — which is exactly why PNP needs raw-matrix mode. This is
-the M2 anchor, green in `tests/spectral_matrix_basic.rs`; the live `Q2`
-acceptance against `gigi-stream` runs on the coordinated deploy.
+the M2 anchor, green in `tests/spectral_matrix_basic.rs`; and it is now **live** —
+against `gigi-stream` (v252, image `deployment-01KXRQJZJ57HHT4DBVXXSR58NS`) the call
+returned `eigenvalues [−1, 1]`, `n_negative 1`, `instability_fraction 0.5`,
+`mode_used "matrix"`. The same run confirmed a 3-SAT-like `K4` Hessian at
+`instability_fraction 0.75` against a 2-SAT-like one at `0.25` (ratio 3), and the
+plain-`SPECTRAL` Laplacian on the same bundle returning a non-negative `[0.0]` —
+the raw negative is only visible in MODE MATRIX.
 
 **Honest scope.** This restages Bee's documented geometric-complexity signature
 — the negative-eigenvalue fraction of the SAT Hessian as solution-manifold

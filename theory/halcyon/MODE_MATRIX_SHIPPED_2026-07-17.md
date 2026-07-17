@@ -28,6 +28,13 @@ One row out: `eigenvalues` (ascending), `n_records_used`, `mode_used` =
   `MODE MATRIX`: *"Expected positive integer, got 'MATRIX'"*).
 - GREEN `81eef3f` — `impl(spectral-matrix): GREEN`. 8/8 integration + 4 lib unit
   tests pass.
+- DOCS `3e9bbe0` — reply letter + this report.
+- REVIEW `c377d68` — `fix(review): lens follow-ups`. Float-tolerant vertex decode
+  (`decode_vertex_id`): numpy/torch float-typed ids (`0.0`/`1.0`) previously fell
+  through `as_i64().unwrap_or(0)` and collapsed every vertex to index 0 (V=1,
+  misleading "empty edge set" error); now integer-valued floats round to nearest
+  and genuinely non-numeric/missing endpoints raise a typed error naming the
+  field. Two regression lib tests added; letter pins the vertex-id typing contract.
 
 ## Math anchors (all green)
 
@@ -77,13 +84,23 @@ Plus a `DIAGONAL <field>` override-column test.
 
 ## Gates (green)
 
+Re-run on **merged main** (`c377d68`, HOLONOMY + spectral-matrix + review fix):
+
 - `cargo check --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --bin gigi-stream` — OK
-- `cargo test --no-default-features --lib` — 920 passed
+- `cargo test --no-default-features --lib` — **922 passed** (+2 review-fix regression tests)
 - `cargo test --features halcyon --test spectral_matrix_basic` — 8 passed
-- RH fences (must stay green): `spectral_gauge_basic`, `spectral_gauge_where_basic`,
-  `spectral_full_basic`, `spectral_magnetic_basic`, `u1_flux_basic`
-- topology / ingest / imagine / part-iv / aurora / lattice / davis-conjecture /
-  patterns / default-feature suites per the worktree gate subset
+- RH fences (must stay green): `spectral_gauge_basic` 21, `spectral_gauge_where_basic` 7,
+  `spectral_full_basic` 12, `spectral_magnetic_basic` 9 (572 s), `u1_flux_basic` 12 — **all green**
+- topology (chern 6/11, betti 8, obstruction 5, topo-gql 9) / ingest (as_gauge 18,
+  gauge_vertex 8, npz 4/4, gql_bypass 5, l24 1) / imagine 10 / part-iv 4 / aurora 12 /
+  lattice (cubic 7, obc 10) / davis-conjecture 25 / patterns 15 / default-feature group — all green
+
+**Harness note:** the canonical grouped halcyon-ingest command exhibits a cross-binary
+lattice-registry isolation artifact — `ingest_gauge_vertex_basic` fails 4/8 with
+`LatticeNotFound` when it runs in the same `cargo test` invocation immediately after
+`ingest_as_gauge_field_basic` (shared on-disk lattice registry), but passes 8/8 in
+isolation. Reproducibly green isolated; orthogonal to the spectral-matrix diff (which
+touches nothing lattice-related). Gates were run per-binary isolated to get clean signal.
 
 MODE MAGNETIC / FULL complex path in `spectral.rs` was read-for-reuse only and is
 not regressed — the branch is a new sibling function, not an edit to the gauge
@@ -94,11 +111,36 @@ solver.
 Restages Bee's documented geometric-complexity signature; the evidence lives in
 her framework. **Not** a P≠NP separation — the verb computes a spectrum.
 
-## Ship handoff
+## Shipped — landed on main + deployed
 
-Implementation, tests, letter, and report are committed on the worktree branch
-`spectral-matrix-pnp` with all gates green. Merge onto main, deploy
-(`flyctl deploy -a gigi-stream`, honoring any held deploy lease), the substrate
-drill, and the live `Q1`–`Q6` probe are the coordinated ship step — the branch
-is not yet on merged main, and production deploy is lease-coordinated across the
-concurrent sessions on/around main.
+The three worktree commits (`294482f` → `81eef3f` → `3e9bbe0`) were cherry-picked
+onto **merged main** on top of the concurrently-landed HOLONOMY-cycle ship
+(`c0c0276`…`cb07bc9`); the additive parser / `gigi_stream` arms of both verbs
+auto-merged with no conflict (MODE MATRIX rides `Statement::Spectral`; HOLONOMY
+rides a distinct `Statement::Holonomy` arm). The review follow-up (`c377d68`)
+landed on top. Merged main = `c377d68`, pushed to `origin/main`; grep gate clean
+(zero AI co-author trailers across `c0370e3..HEAD`, author = Bee only).
+
+**Deploy.** `flyctl deploy -a gigi-stream` → release **v252**, image
+`gigi-stream:deployment-01KXRQJZJ57HHT4DBVXXSR58NS` (live status image matches;
+no held lease — a concurrent v251 deploy had already cleared). `/v1/health` ok.
+
+**Live probe (v252) — the true acceptance, Q1–Q6 all pass:**
+
+| # | call | result |
+|---|------|--------|
+| Q1 | `CREATE BUNDLE pnp_hessian_probe` (edge-endpoint) + insert `{0,1,h=1}` | 201 / 200, 1 record |
+| **Q2** | `SPECTRAL pnp_hessian_probe ON FIBER (h_ij) MODE MATRIX FULL` | **eigenvalues [−1, 1], n_negative 1, instability_fraction 0.5, mode_used "matrix", n_records_used 1** — the negative survives |
+| Q3 | 2-SAT-like vs 3-SAT-like | frac **0.25** (eig [−1,1,2,3], n_neg 1) vs **0.75** (K4 adjacency {3,−1,−1,−1}, n_neg 3); 3-SAT > 2-SAT, ratio 3 |
+| Q4 | MODE MATRIX no GROUP / GROUP present | both HTTP 200 — groupless succeeds, stray `GROUP SU(2)` swallowed |
+| Q5 | plain `SPECTRAL pnp_hessian_probe FULL` (Laplacian) | eigenvalues **[0.0]**, `mode_used "dense"` — non-negative field-index Laplacian, **≠** the raw MODE MATRIX spectrum (proves MATRIX ≠ Laplacian live) |
+| Q6 | Marcella `imagine_coherence` dim=4 | HTTP 200, `endpoint_coherence 1.0`, `max_imagined_curvature 4.0`, `refused false` |
+
+Q2 is the receipt `pnp_gigi_hessian.py` reproduces: the raw indefinite Hessian's
+negative eigenvalues survive where the Laplacian (Q5) zeroes them out.
+
+**Substrate drill.** `claude_substrate_v0` (20 records, `t001`–`t020`) was momentarily
+404 during the concurrent v251 restart window (in-memory tier, pre-snapshot); the
+freshest on-disk backup (20 records) was carried into `.deploy-backups/2026-07-17-pnp/`.
+Post-deploy on v252 the bundle booted intact at the full **20 records** — no restore
+needed (import appends, would have duplicated). Verified count 20.

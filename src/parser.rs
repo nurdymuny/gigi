@@ -749,6 +749,12 @@ pub enum Statement {
         /// QueryCondition at exec time via
         /// `filter_to_query_conditions`.
         where_conditions: Vec<FilterCondition>,
+        /// `MODE MAGNETIC BULK k [AROUND σ] [IN [a,b]]` (2026-07-17) —
+        /// the interior center-window request. `None` = no BULK.
+        /// Mutually exclusive with `full` (rejected at parse time). The
+        /// window is a re-centering slice on the already-sorted dense
+        /// magnetic spectrum — see `crate::spectral::BulkSpec`.
+        bulk: Option<crate::spectral::BulkSpec>,
     },
     /// CHERN_CLASS bundle ORDER <k> [ON FIBER (...)] [GROUP <label>]
     ///
@@ -3858,8 +3864,9 @@ impl Parser {
 
     /// Consume a numeric token (integer or float) and return it as
     /// `f64`. The expect_usize helper rejects fractional inputs; BETA
-    /// at GIBBS_SAMPLE accepts any non-negative real.
-    #[cfg(any(feature = "gauge", feature = "imagine"))]
+    /// at GIBBS_SAMPLE accepts any non-negative real, and BULK AROUND σ /
+    /// IN [a,b] accept any real (always compiled — SPECTRAL_GAUGE parses
+    /// on every build, its executor is what the `gauge` feature gates).
     fn expect_f64(&mut self) -> Result<f64, String> {
         match self.advance() {
             Some(Token::Number(n)) => Ok(n),
@@ -5132,19 +5139,57 @@ impl Parser {
             false
         };
 
-        // Optional FULL [LIMIT k] clause.
-        let (full, limit) = if self.is_keyword("FULL") {
+        // Optional FULL [LIMIT k]  OR  BULK k [AROUND σ] [IN [a,b]] —
+        // mutually exclusive (FULL = the k smallest ascending; BULK =
+        // the k centermost interior window). BULK takes its own count
+        // token (no LIMIT reuse) and an optional centering sub-clause;
+        // plain `BULK k` auto-centers on the positional median.
+        let mut full = false;
+        let mut limit: Option<usize> = None;
+        let mut bulk: Option<crate::spectral::BulkSpec> = None;
+
+        if self.is_keyword("FULL") {
             self.advance();
-            let k = if self.is_keyword("LIMIT") {
+            full = true;
+            limit = if self.is_keyword("LIMIT") {
                 self.advance();
                 Some(self.expect_usize()?)
             } else {
                 None
             };
-            (true, k)
-        } else {
-            (false, None)
-        };
+        } else if self.is_keyword("BULK") {
+            self.advance();
+            let k = self.expect_usize()?;
+            // Optional centering: AROUND σ | IN [a,b] (exclusive; a
+            // trailing second sub-clause is caught by the top-level
+            // trailing-token check).
+            let center = if self.is_keyword("AROUND") {
+                self.advance();
+                crate::spectral::BulkCenter::Around(self.expect_f64()?)
+            } else if self.is_keyword("IN") {
+                self.advance();
+                self.expect(Token::LBracket)?;
+                let a = self.expect_f64()?;
+                self.expect(Token::Comma)?;
+                let b = self.expect_f64()?;
+                self.expect(Token::RBracket)?;
+                crate::spectral::BulkCenter::Interval { lo: a, hi: b }
+            } else {
+                crate::spectral::BulkCenter::Auto
+            };
+            bulk = Some(crate::spectral::BulkSpec { k, center });
+        }
+
+        // FULL and BULK are mutually exclusive — reject the other
+        // keyword trailing in either order.
+        if self.is_keyword("FULL") || self.is_keyword("BULK") {
+            return Err(
+                "SPECTRAL_GAUGE: FULL and BULK are mutually exclusive — FULL returns \
+                 the k smallest eigenvalues ascending, BULK returns the k centermost \
+                 window; pick one"
+                    .to_string(),
+            );
+        }
 
         Ok(Statement::SpectralGauge {
             bundle,
@@ -5154,6 +5199,7 @@ impl Parser {
             limit,
             magnetic,
             where_conditions,
+            bulk,
         })
     }
 
@@ -11585,6 +11631,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             limit,
             magnetic,
             where_conditions,
+            bulk,
         } => {
             #[cfg(feature = "gauge")]
             {
@@ -11618,6 +11665,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     *limit,
                     *magnetic,
                     filter_opt,
+                    bulk.as_ref(),
                 )
                 .map_err(|e| e.to_string())?;
 
@@ -11628,7 +11676,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 // requested, the SAME single row additionally carries
                 // `eigenvalues` (Vector, ascending) + `mode_used` —
                 // additive-only, so the λ₁ shape without FULL stays
-                // byte-identical (probe S6).
+                // byte-identical (probe S6). BULK (2026-07-17) reuses
+                // the same eigenvalues+mode_used stamp for its window
+                // and adds the bulk center / [lo,hi) locator fields.
                 let mut row = crate::types::Record::new();
                 row.insert(
                     "gap".to_string(),
@@ -11652,12 +11702,31 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                         crate::types::Value::Text(result.mode_used.label().to_string()),
                     );
                 }
+                if let Some(bw) = result.bulk {
+                    row.insert("bulk".to_string(), crate::types::Value::Bool(true));
+                    row.insert(
+                        "bulk_center".to_string(),
+                        crate::types::Value::Float(bw.center),
+                    );
+                    row.insert(
+                        "bulk_center_index".to_string(),
+                        crate::types::Value::Integer(bw.center_index as i64),
+                    );
+                    row.insert(
+                        "bulk_lo".to_string(),
+                        crate::types::Value::Integer(bw.lo as i64),
+                    );
+                    row.insert(
+                        "bulk_hi".to_string(),
+                        crate::types::Value::Integer(bw.hi as i64),
+                    );
+                }
                 Ok(ExecResult::Rows(vec![row]))
             }
             #[cfg(not(feature = "gauge"))]
             {
                 // Suppress unused-variable warnings when gauge is off.
-                let _ = (bundle, fiber_fields, group, full, limit, magnetic, where_conditions, engine);
+                let _ = (bundle, fiber_fields, group, full, limit, magnetic, where_conditions, bulk, engine);
                 Err(
                     "SPECTRAL_GAUGE requires the `gauge` feature to be enabled"
                         .to_string()

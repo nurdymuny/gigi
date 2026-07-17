@@ -521,29 +521,37 @@ fn test_bulk_envelope_carries_center_window_and_tag() {
 
 // ═══ Opt-in 8192 — refused by default, names the cost + env knob ════
 
-/// (O) A graph in (4096, 8192] is refused by default; the refusal names
-/// the `GIGI_DENSE_CEIL` opt-in AND the memory cost (so an operator
-/// knows both how to raise the ceiling and why it is off by default).
-/// The 4096 boundary and the Phase-2.1 sparse deferral stay named too.
-/// (Cheap: the ceiling gate fires before any eigendecomposition. No env
-/// var is set here — the raised-ceiling resolution is unit-tested
-/// white-box in src/spectral.rs to avoid a V≈8000 dense solve.)
+/// (O) The dense ceiling stays 4096 by default; a graph in (4096, 8192]
+/// is REFUSED unless `GIGI_DENSE_CEIL` opts in, and the refusal names
+/// both the env knob and the memory cost (so an operator knows how to
+/// raise the ceiling AND why it is off by default). Opting in to 8192
+/// then UNBLOCKS L=20 (V=8000 < 8192) — proved via the public ceiling
+/// resolver without an expensive V≈8000 solve. GIGI_DENSE_CEIL clamps to
+/// the safe band [4096, 8192] (raises only, never lowers the floor,
+/// never past 8192). All env mutation is serial in this ONE test so no
+/// sibling test in this binary races on the var.
 #[test]
-fn test_optin_8192_refused_by_default_names_memory_and_env() {
+fn test_optin_8192_ceiling_refusal_and_allow() {
+    use gigi::spectral::{dense_ceiling, dense_full_allowed};
+
+    // Start from a clean environment (no ambient opt-in).
+    std::env::remove_var("GIGI_DENSE_CEIL");
+
+    // ── Refused by default: the gate fires before assembly (cheap), and
+    //   the message names 4096, Phase 2.1, the env knob, the memory cost,
+    //   and the actual vertex count.
     let mut engine = Engine::open_memory().expect("memory engine");
     make_theta_bundle(&mut engine, "big_path");
     let batch: Vec<Record> = (0..4200)
         .map(|i| theta_edge(i as i64, i as i64 + 1, 0.0))
         .collect();
     engine.batch_insert("big_path", &batch).expect("batch_insert");
-
     let stmt = parse(
         "SPECTRAL_GAUGE big_path ON FIBER (theta) GROUP U(1) MODE MAGNETIC FULL LIMIT 4;",
     )
     .expect("FULL grammar parses");
     let err = execute(&mut engine, &stmt)
         .expect_err("V=4201 above the default 4096 ceiling must be refused");
-
     assert!(err.contains("4096"), "refusal must name the 4096 boundary: {err}");
     assert!(err.contains("Phase 2.1"), "refusal must name the sparse deferral: {err}");
     assert!(
@@ -555,4 +563,36 @@ fn test_optin_8192_refused_by_default_names_memory_and_env() {
         "refusal must name the memory cost: {err}"
     );
     assert!(err.contains("4201"), "refusal must name the actual vertex count: {err}");
+
+    // Default ceiling resolves to 4096.
+    assert_eq!(dense_ceiling(), 4096, "default dense ceiling is 4096");
+    assert!(dense_full_allowed(4096).is_ok(), "V=4096 is at the default ceiling");
+    assert!(dense_full_allowed(4097).is_err(), "V=4097 refused by default");
+
+    // ── Opt in to 8192 — this is the L=20 unblock (V=8000 < 8192).
+    std::env::set_var("GIGI_DENSE_CEIL", "8192");
+    assert_eq!(dense_ceiling(), 8192, "GIGI_DENSE_CEIL=8192 raises the ceiling");
+    assert!(
+        dense_full_allowed(8000).is_ok(),
+        "opt-in must UNBLOCK L=20 (V=8000)"
+    );
+    assert!(dense_full_allowed(8192).is_ok(), "V=8192 is at the opt-in ceiling");
+    assert!(dense_full_allowed(8193).is_err(), "V=8193 exceeds the 8192 opt-in max");
+
+    // A mid-band opt-in is honored verbatim.
+    std::env::set_var("GIGI_DENSE_CEIL", "6000");
+    assert_eq!(dense_ceiling(), 6000);
+    assert!(dense_full_allowed(6000).is_ok());
+    assert!(dense_full_allowed(6001).is_err());
+
+    // Clamps: below the floor snaps up to 4096; above the opt-in max
+    // snaps down to 8192; unparseable falls back to the 4096 default.
+    std::env::set_var("GIGI_DENSE_CEIL", "100");
+    assert_eq!(dense_ceiling(), 4096, "opt-in can only RAISE, never lower the floor");
+    std::env::set_var("GIGI_DENSE_CEIL", "999999");
+    assert_eq!(dense_ceiling(), 8192, "opt-in can never exceed 8192");
+    std::env::set_var("GIGI_DENSE_CEIL", "not-a-number");
+    assert_eq!(dense_ceiling(), 4096, "unparseable falls back to the default");
+
+    std::env::remove_var("GIGI_DENSE_CEIL");
 }

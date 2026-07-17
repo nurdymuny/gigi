@@ -13851,7 +13851,7 @@ fn execute_gql_on_store_read(
         // locally gauge-covariant. This is NOT the strict Yang-Mills
         // mass gap. Halcyon understands the distinction.
         #[cfg(feature = "gauge")]
-        Statement::SpectralGauge { bundle, fiber_fields, group, full, limit, magnetic, where_conditions } => {
+        Statement::SpectralGauge { bundle, fiber_fields, group, full, limit, magnetic, where_conditions, bulk } => {
             let eng = engine.ok_or_else(|| {
                 "SPECTRAL_GAUGE requires an Engine handle in the executor context".to_string()
             })?;
@@ -13901,6 +13901,7 @@ fn execute_gql_on_store_read(
                 *limit,
                 *magnetic,
                 filter_opt,
+                bulk.as_ref(),
             )
             .map_err(|e| e.to_string())?;
 
@@ -13909,7 +13910,9 @@ fn execute_gql_on_store_read(
             // FULL additionally stamps `eigenvalues` (Vector,
             // ascending) + `mode_used` on the SAME row — additive
             // only, so the λ₁ shape without FULL stays byte-identical
-            // (probe S6 + the spectral_gauge_basic fence).
+            // (probe S6 + the spectral_gauge_basic fence). BULK
+            // (2026-07-17) reuses the eigenvalues+mode_used stamp for
+            // its window and adds the bulk center / [lo,hi) locators.
             let mut row = gigi::types::Record::new();
             row.insert("gap".to_string(), gigi::types::Value::Float(result.gap));
             row.insert(
@@ -13928,6 +13931,25 @@ fn execute_gql_on_store_read(
                 row.insert(
                     "mode_used".to_string(),
                     gigi::types::Value::Text(result.mode_used.label().to_string()),
+                );
+            }
+            if let Some(bw) = result.bulk {
+                row.insert("bulk".to_string(), gigi::types::Value::Bool(true));
+                row.insert(
+                    "bulk_center".to_string(),
+                    gigi::types::Value::Float(bw.center),
+                );
+                row.insert(
+                    "bulk_center_index".to_string(),
+                    gigi::types::Value::Integer(bw.center_index as i64),
+                );
+                row.insert(
+                    "bulk_lo".to_string(),
+                    gigi::types::Value::Integer(bw.lo as i64),
+                );
+                row.insert(
+                    "bulk_hi".to_string(),
+                    gigi::types::Value::Integer(bw.hi as i64),
                 );
             }
             Ok(ExecResult::Rows(vec![row]))

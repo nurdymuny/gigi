@@ -946,6 +946,95 @@ pub fn spectral_fiber_modes(store: &BundleStore, fiber_fields: &[&str], modes: u
 #[cfg(feature = "gauge")]
 pub const SPECTRAL_DENSE_MAX_V: usize = 4096;
 
+/// Hard upper bound of the OPT-IN dense ceiling (Hallie's 2026-07-17
+/// hardware-gated bump). `GIGI_DENSE_CEIL` can raise the dense FULL/BULK
+/// ceiling above the default 4096 up to this value — enough to reach
+/// L = 20 (V = 8000 < 8192) — but never higher, because a V ≈ 8000
+/// complex-Hermitian dense Laplacian is already ~1 GB for the matrix
+/// plus ~1 GB for the eigenvectors (2–3 GB peak, O(V³) work) and will
+/// OOM a laptop past that. The default stays 4096; the bump is refused
+/// unless explicitly requested.
+#[cfg(feature = "gauge")]
+pub const DENSE_CEIL_OPTIN_MAX: usize = 8192;
+
+/// Resolve the effective dense eigensolver ceiling.
+///
+/// Default is [`SPECTRAL_DENSE_MAX_V`] (4096). An operator opts into a
+/// higher ceiling by setting `GIGI_DENSE_CEIL=<n>`; the requested value
+/// is clamped to the safe band `[SPECTRAL_DENSE_MAX_V, DENSE_CEIL_OPTIN_MAX]`
+/// so the opt-in can only ever RAISE the ceiling (never lower the 4096
+/// safety floor) and can never exceed 8192. A missing / unparseable
+/// value falls back to the 4096 default. This is a machine-safety knob
+/// (laptop vs Fly), so it lives in the environment, not the query.
+#[cfg(feature = "gauge")]
+pub fn dense_ceiling() -> usize {
+    match std::env::var("GIGI_DENSE_CEIL")
+        .ok()
+        .and_then(|s| s.trim().parse::<usize>().ok())
+    {
+        Some(req) => req.clamp(SPECTRAL_DENSE_MAX_V, DENSE_CEIL_OPTIN_MAX),
+        None => SPECTRAL_DENSE_MAX_V,
+    }
+}
+
+/// The dense/opt-in gate for FULL and BULK: `Ok(())` when a dense
+/// eigendecomposition of a `v_count`-vertex Laplacian is permitted under
+/// the current ceiling, else the typed [`SpectralGaugeError::SparseUnavailable`]
+/// carrying the ceiling actually in force. Extracted as a pure function
+/// so the opt-in resolution is unit-testable without an expensive solve.
+#[cfg(feature = "gauge")]
+pub fn dense_full_allowed(v_count: usize) -> Result<(), SpectralGaugeError> {
+    let threshold = dense_ceiling();
+    if v_count > threshold {
+        return Err(SpectralGaugeError::SparseUnavailable { v_count, threshold });
+    }
+    Ok(())
+}
+
+/// How the BULK center window is placed on the sorted spectrum.
+///
+/// Grammar-level companion of `SPECTRAL_GAUGE ... MODE MAGNETIC BULK k
+/// [AROUND σ] [IN [a,b]]`. Defined here (unconditionally, so the parser
+/// AST can carry it in no-`gauge` builds) and consumed by
+/// [`spectral_gauge_spectrum`] on the `gauge` path.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BulkCenter {
+    /// `BULK k` — auto-center on the POSITIONAL MEDIAN (index ⌊V/2⌋).
+    Auto,
+    /// `BULK k AROUND σ` — the k eigenvalues nearest σ by value.
+    Around(f64),
+    /// `BULK k IN [a,b]` — all eigenvalues in the closed interval, k as
+    /// a safety clamp.
+    Interval { lo: f64, hi: f64 },
+}
+
+/// A parsed BULK request: the window size `k` plus its centering.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BulkSpec {
+    pub k: usize,
+    pub center: BulkCenter,
+}
+
+/// The window BULK actually returned — the center it used plus the
+/// `[lo, hi)` index range of the window inside the full ascending
+/// spectrum (window length = `hi − lo`). Carried on
+/// [`SpectralGaugeResult::bulk`] so the caller can locate the window in
+/// the full spectrum without re-deriving it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BulkWindow {
+    /// The spectral center the window was built around. Auto → the
+    /// positional-median eigenvalue `vals[⌊V/2⌋]`; AROUND σ → σ; IN
+    /// [a,b] → the interval midpoint `(a+b)/2`.
+    pub center: f64,
+    /// Index in the full ascending spectrum of the center eigenvalue
+    /// (Auto → ⌊V/2⌋; AROUND / IN → argmin over the window of |λ−center|).
+    pub center_index: usize,
+    /// Inclusive low index of the window in the full spectrum.
+    pub lo: usize,
+    /// Exclusive high index (window length = `hi − lo`).
+    pub hi: usize,
+}
+
 /// Which eigensolver arm actually ran (spec §6 result extension).
 #[derive(Debug, Clone, PartialEq)]
 #[cfg(feature = "gauge")]
@@ -1009,6 +1098,10 @@ pub struct SpectralGaugeResult {
     pub mode_used: SpectralGaugeMode,
     /// Iterative-solver receipt (spec §6). `None` on the dense path.
     pub convergence: Option<Convergence>,
+    /// `Some` exactly when a BULK request was served (2026-07-17): the
+    /// center + `[lo,hi)` window range the returned `eigenvalues` were
+    /// sliced from. `None` for the λ₁-only and FULL shapes.
+    pub bulk: Option<BulkWindow>,
 }
 
 /// Errors surfaced by SPECTRAL_GAUGE Phase 1.
@@ -1073,6 +1166,14 @@ pub enum SpectralGaugeError {
     /// matrix-valued (vector-bundle) magnetic Laplacians — a later
     /// phase. Introduced with Concept B (2026-07-16).
     MagneticRequiresU1 { group: &'static str },
+    /// BULK was requested without MODE MAGNETIC. Part-1 BULK operates on
+    /// the magnetic complex-Hermitian spectrum (the RH / number-variance
+    /// object); the real cos-weight bulk is out of scope this phase.
+    /// Introduced with the dense BULK arm (2026-07-17).
+    BulkRequiresMagnetic,
+    /// `BULK k IN [a, b]` with `a > b` — an empty/reversed interval.
+    /// Introduced with the dense BULK arm (2026-07-17).
+    InvalidInterval { lo: f64, hi: f64 },
 }
 
 #[cfg(feature = "gauge")]
@@ -1126,11 +1227,17 @@ impl std::fmt::Display for SpectralGaugeError {
             SpectralGaugeError::SparseUnavailable { v_count, threshold } => {
                 write!(
                     f,
-                    "SPECTRAL_GAUGE: FULL on V = {v_count} vertices exceeds the \
-                     dense eigensolver threshold (V = {threshold}, spec §6 boundary \
-                     4096) — the sparse Lanczos arm ships in Phase 2.1; until then \
-                     run FULL on a smaller (sectoral / downsampled) subgraph, or \
-                     drop FULL for the λ₁-only gap"
+                    "SPECTRAL_GAUGE: FULL/BULK on V = {v_count} vertices exceeds the \
+                     dense eigensolver ceiling (in force: V = {threshold}, spec §6 \
+                     boundary 4096). Opt in to a higher dense ceiling up to {optin} by \
+                     setting GIGI_DENSE_CEIL — but note the memory cost: a V ≈ 8000 \
+                     complex-Hermitian Laplacian is ~1 GB for the matrix plus ~1 GB \
+                     for eigenvectors (~2–3 GB peak RSS, O(V³) work) and can OOM a \
+                     laptop, which is why the default stays 4096. For V beyond {optin} \
+                     the sparse interior Lanczos arm ships in Phase 2.1; until then run \
+                     FULL/BULK on a smaller (sectoral / downsampled) subgraph, or drop \
+                     FULL/BULK for the λ₁-only gap",
+                    optin = DENSE_CEIL_OPTIN_MAX
                 )
             }
             SpectralGaugeError::MagneticRequiresU1 { group } => {
@@ -1139,6 +1246,23 @@ impl std::fmt::Display for SpectralGaugeError {
                     "SPECTRAL_GAUGE: MODE MAGNETIC requires GROUP U(1) in this \
                      phase (matrix-valued magnetic Laplacians are a later phase); \
                      got GROUP {group}"
+                )
+            }
+            SpectralGaugeError::BulkRequiresMagnetic => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: BULK requires MODE MAGNETIC in this phase — the \
+                     interior center-window (RH / number-variance) statistics live in \
+                     the magnetic complex-Hermitian spectrum; add MODE MAGNETIC before \
+                     BULK, or use FULL for the cos-weight spectrum"
+                )
+            }
+            SpectralGaugeError::InvalidInterval { lo, hi } => {
+                write!(
+                    f,
+                    "SPECTRAL_GAUGE: BULK IN [{lo}, {hi}] is an empty/reversed interval \
+                     (need a ≤ b) — the closed interval [a, b] selects all eigenvalues \
+                     with a ≤ λ ≤ b"
                 )
             }
         }
@@ -1223,7 +1347,7 @@ pub fn spectral_gauge_gap(
     limit: Option<usize>,
     filter: Option<&[crate::bundle::QueryCondition]>,
 ) -> Result<SpectralGaugeResult, SpectralGaugeError> {
-    spectral_gauge_spectrum(engine, bundle, fiber_fields, group, full, limit, false, filter)
+    spectral_gauge_spectrum(engine, bundle, fiber_fields, group, full, limit, false, filter, None)
 }
 
 /// SPECTRAL_GAUGE core — fiber-weighted graph Laplacian spectrum.
@@ -1280,12 +1404,31 @@ pub fn spectral_gauge_spectrum(
     limit: Option<usize>,
     magnetic: bool,
     filter: Option<&[crate::bundle::QueryCondition]>,
+    bulk: Option<&BulkSpec>,
 ) -> Result<SpectralGaugeResult, SpectralGaugeError> {
     // ── Step 0: LIMIT bounds. k = 0 is meaningless (an empty FULL
     //   request) — surface the typed bounds error before any work.
     if full {
         if let Some(0) = limit {
             return Err(SpectralGaugeError::InvalidLimit { got: 0 });
+        }
+    }
+
+    // ── Step 0a: BULK bounds + prerequisites. k = 0 is the same empty
+    //   request as FULL LIMIT 0. BULK is magnetic-only this phase (the
+    //   interior window is the RH object on the complex spectrum). A
+    //   reversed IN [a,b] is rejected up front, before any assembly.
+    if let Some(b) = bulk {
+        if b.k == 0 {
+            return Err(SpectralGaugeError::InvalidLimit { got: 0 });
+        }
+        if !magnetic {
+            return Err(SpectralGaugeError::BulkRequiresMagnetic);
+        }
+        if let BulkCenter::Interval { lo, hi } = b.center {
+            if lo > hi {
+                return Err(SpectralGaugeError::InvalidInterval { lo, hi });
+            }
         }
     }
 
@@ -1405,17 +1548,16 @@ pub fn spectral_gauge_spectrum(
         });
     }
 
-    // ── Step 4b: Dense/sparse boundary (spec §6: V = 4096). FULL on a
-    //   graph past the boundary would O(V²)-allocate + O(V³)-decompose;
-    //   the Lanczos arm that serves that regime is Phase 2.1, so the
-    //   honest move is the typed SparseUnavailable error (R2). The
-    //   Phase-1 λ₁-only path is NOT gated here — its behaviour is
-    //   frozen for backwards compatibility.
-    if full && v_count > SPECTRAL_DENSE_MAX_V {
-        return Err(SpectralGaugeError::SparseUnavailable {
-            v_count,
-            threshold: SPECTRAL_DENSE_MAX_V,
-        });
+    // ── Step 4b: Dense/opt-in boundary. Both FULL and BULK materialize
+    //   the whole dense spectrum (BULK is a re-centering slice on it),
+    //   so both are gated by the same ceiling: default 4096, opt-in up
+    //   to 8192 via GIGI_DENSE_CEIL (Hallie's 2026-07-17 L=20 bump —
+    //   V=8000 < 8192). Past the ceiling the honest move is the typed
+    //   SparseUnavailable error naming the memory cost + the sparse
+    //   Phase 2.1 arm (R2). The Phase-1 λ₁-only path is NOT gated here —
+    //   its behaviour is frozen for backwards compatibility.
+    if full || bulk.is_some() {
+        dense_full_allowed(v_count)?;
     }
 
     // ── Step 5 + 6: Assemble the Laplacian and eigendecompose.
@@ -1482,15 +1624,25 @@ pub fn spectral_gauge_spectrum(
         .copied()
         .unwrap_or(0.0);
 
-    // ── Step 8: FULL → populate eigenvalues (ascending algebraic,
-    //   truncated to the k smallest when LIMIT is present; LIMIT > V
-    //   clamps). Without FULL the field stays None — the Phase-1
-    //   result shape, byte-compatible for every existing consumer.
-    let eigenvalues = if full {
+    // ── Step 8: populate eigenvalues.
+    //
+    //   BULK (2026-07-17) — a re-centering SLICE on the already-sorted
+    //   `vals`, no re-solve: the k contiguous eigenvalues at the chosen
+    //   center (positional median / AROUND σ / IN [a,b]), ascending,
+    //   plus the [lo,hi) window range for the envelope.
+    //
+    //   FULL — the k smallest ascending algebraic (LIMIT clamps to V);
+    //   without either the field stays None (Phase-1 shape, byte-
+    //   compatible for every existing consumer). BULK and FULL are
+    //   mutually exclusive at parse time; BULK wins here defensively.
+    let (eigenvalues, bulk_window) = if let Some(req) = bulk {
+        let (window, meta) = compute_bulk_window(&vals, req);
+        (Some(window), Some(meta))
+    } else if full {
         let k = limit.map(|k| k.min(vals.len())).unwrap_or(vals.len());
-        Some(vals[..k].to_vec())
+        (Some(vals[..k].to_vec()), None)
     } else {
-        None
+        (None, None)
     };
 
     Ok(SpectralGaugeResult {
@@ -1500,7 +1652,125 @@ pub fn spectral_gauge_spectrum(
         group_used: group,
         mode_used: SpectralGaugeMode::Dense,
         convergence: None, // dense path — no iterative receipt (spec §6)
+        bulk: bulk_window,
     })
+}
+
+/// Slice the k-eigenvalue BULK window out of the ascending-sorted
+/// spectrum `vals`, per the pinned centering rules. Pure post-processing
+/// on the already-solved spectrum — no eigensolve. Preconditions
+/// (checked by the caller): `vals` is ascending, `vals.len() ≥ 2`,
+/// `req.k ≥ 1`, and any `IN [a,b]` has `a ≤ b`.
+///
+/// Returns the window (ascending) + its [`BulkWindow`] metadata.
+///
+/// - `Auto`  → center := POSITIONAL MEDIAN index `c = ⌊V/2⌋`; the window
+///   is the k consecutive levels straddling `c` (`lo = clamp(c − ⌊k/2⌋)`,
+///   `hi = lo + k`). Index-based, so the window is exactly the k
+///   consecutive levels at the middle-by-count — the object number
+///   variance / level-spacing statistics require — and robust to an
+///   asymmetric DOS (unlike the midrange, which a single extreme λ drags
+///   into a low-density tail).
+/// - `Around(σ)` → the k eigenvalues nearest σ by value, grown outward
+///   from σ's insertion point (contiguous because `vals` is sorted).
+/// - `Interval[a,b]` → ALL eigenvalues in the closed interval; if that
+///   is more than k, the k nearest the interval midpoint are kept
+///   (safety clamp), still contiguous and still inside [a,b].
+#[cfg(feature = "gauge")]
+fn compute_bulk_window(vals: &[f64], req: &BulkSpec) -> (Vec<f64>, BulkWindow) {
+    let v = vals.len();
+    let k = req.k.min(v); // k > V clamps to V
+    match req.center {
+        BulkCenter::Auto => {
+            let c = v / 2; // positional median (floor)
+            let half = k / 2;
+            let lo = c.saturating_sub(half).min(v - k);
+            let hi = lo + k;
+            (
+                vals[lo..hi].to_vec(),
+                BulkWindow { center: vals[c], center_index: c, lo, hi },
+            )
+        }
+        BulkCenter::Around(sigma) => {
+            let p = vals.partition_point(|&x| x < sigma);
+            let (lo, hi) = grow_window(vals, sigma, p, p, 0, v, k);
+            let center_index = nearest_index(vals, sigma, lo, hi);
+            (
+                vals[lo..hi].to_vec(),
+                BulkWindow { center: sigma, center_index, lo, hi },
+            )
+        }
+        BulkCenter::Interval { lo: a, hi: b } => {
+            // Closed interval [a, b]: lo_i = first ≥ a, hi_i = first > b.
+            let lo_i = vals.partition_point(|&x| x < a);
+            let hi_i = vals.partition_point(|&x| x <= b);
+            let mid = (a + b) / 2.0;
+            let (lo, hi) = if hi_i - lo_i <= k {
+                (lo_i, hi_i) // all levels in the band fit under k
+            } else {
+                // Over-full interval: keep the k nearest the midpoint,
+                // grown outward but never past the band bounds.
+                let seed = vals[lo_i..hi_i].partition_point(|&x| x < mid) + lo_i;
+                grow_window(vals, mid, seed, seed, lo_i, hi_i, k)
+            };
+            let center_index = if hi > lo { nearest_index(vals, mid, lo, hi) } else { lo };
+            (
+                vals[lo..hi].to_vec(),
+                BulkWindow { center: mid, center_index, lo, hi },
+            )
+        }
+    }
+}
+
+/// Grow `[lo, hi)` outward from a seed toward `target`, taking the nearer
+/// neighbour at each step (left on ties for determinism), until it holds
+/// `k` elements or hits the bounds `[bound_lo, bound_hi)`. The result is
+/// contiguous by construction.
+#[cfg(feature = "gauge")]
+fn grow_window(
+    vals: &[f64],
+    target: f64,
+    mut lo: usize,
+    mut hi: usize,
+    bound_lo: usize,
+    bound_hi: usize,
+    k: usize,
+) -> (usize, usize) {
+    while hi - lo < k {
+        let can_left = lo > bound_lo;
+        let can_right = hi < bound_hi;
+        match (can_left, can_right) {
+            (true, true) => {
+                let dl = (target - vals[lo - 1]).abs();
+                let dr = (vals[hi] - target).abs();
+                if dl <= dr {
+                    lo -= 1;
+                } else {
+                    hi += 1;
+                }
+            }
+            (true, false) => lo -= 1,
+            (false, true) => hi += 1,
+            (false, false) => break,
+        }
+    }
+    (lo, hi)
+}
+
+/// Index in `vals[lo..hi]` of the element nearest `target` (first on
+/// ties). `lo < hi` required.
+#[cfg(feature = "gauge")]
+fn nearest_index(vals: &[f64], target: f64, lo: usize, hi: usize) -> usize {
+    let mut best = lo;
+    let mut best_d = f64::INFINITY;
+    for (i, &x) in vals.iter().enumerate().take(hi).skip(lo) {
+        let d = (x - target).abs();
+        if d < best_d {
+            best_d = d;
+            best = i;
+        }
+    }
+    best
 }
 
 /// Plain `SPECTRAL <bundle> FULL [LIMIT k]` — full spectrum of the

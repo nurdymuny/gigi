@@ -417,6 +417,7 @@ fn test_spectral_gauge_where_q_rounded_sector_matches_halcyon_workflow() {
             limit,
             magnetic,
             where_conditions,
+            bulk,
         } => {
             assert_eq!(bundle, "su2_L24_seed702");
             assert_eq!(fiber_fields, vec!["q0", "q1", "q2", "q3"]);
@@ -424,6 +425,7 @@ fn test_spectral_gauge_where_q_rounded_sector_matches_halcyon_workflow() {
             assert!(!full);
             assert_eq!(limit, None);
             assert!(!magnetic, "no MODE clause parses with magnetic = false");
+            assert_eq!(bulk, None, "no BULK clause parses with bulk = None");
             assert_eq!(where_conditions.len(), 1, "one WHERE predicate expected");
             match where_conditions[0].clone() {
                 FilterCondition::Eq(field, Literal::Integer(v)) => {

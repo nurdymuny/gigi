@@ -101,16 +101,71 @@ TDD: RED (test only) → all 7 fail at the grammar
 - cubic_lattice (7), lattice_obc_basic (10), davis_conjecture_lambda_brain_ridealong (25), pattern_hunt_parser (15) ✓
 - emit_csv, noop_notices, timestamp_ergonomics, gql_reference_truth, explain_kappa, ingest_dir_gate, pathguard_escapes, ingest_executor, ingest_csv_basic, ingest_jsonl_basic ✓
 
-## Live probe (ship step, not run from this worktree)
+## Live probe (SHIPPED — prod `gigi-stream.fly.dev`, image `deployment-01KXRPWD9CKPF8VF2F9SH1PQ7M`)
 
-`P1` `LATTICE lens_pc FROM CUBIC L=5 DIM=3 PERIODIC;` → `P2` twisted-BC
-SU(2) field (`Ω=(cos 2π/5,0,0,sin 2π/5)` on the z-wrap at `(x0,y0)`) →
-`P3` `HOLONOMY lens_field AROUND CYCLE AXIS z AT (x0,y0);` expects
-`re_trace ≈ 0.309017`, `order_estimate = 5`, `group_used SU(2)`.
-`P4` identity control → 1.0 / 1. `P5` EDGES parity. `P6` U(1) → typed
-error. `P7` Marcella IMAGINE dim=4 sanity. The synthetic-field
-construction mirrors H2/H4 exactly; the numeric receipt (`0.309017`,
-`5`) is proven by those tests.
+All live probes PASS on the deployed image. Receipts:
+
+- **P1** `LATTICE lp2_pc FROM CUBIC L=5 DIM=3 PERIODIC;` → `ok`.
+- **P4 identity control (the p=1 lens: L(1,q)=S³, π₁=0)** —
+  `GAUGE_FIELD lp2_id … INIT IDENTITY;` then
+  `HOLONOMY lp2_id AROUND CYCLE AXIS z AT (1,2);` → `q0=1.0`,
+  `re_trace=1.0`, `order_estimate=1`, `group_used="SU(2)"`. EXACT. This
+  is a genuine live lens readout (the trivial-twist control).
+- **P3h non-trivial live group walk** — `INIT HAAR_RANDOM SEED 42` (a
+  deterministic non-identity SU(2) field), `AXIS z AT (1,2)` →
+  `re_trace=-0.23984`, `q=(-0.23984, 0.69927, -0.54940, -0.38943)`,
+  `order_estimate=454`, `group_used="SU(2)"`. A real ordered quaternion
+  product (not identity), with the best-effort order bounded ≤ Q_MAX.
+- **P5 AXIS↔EDGES parity (live, on the non-trivial field)** —
+  `HOLONOMY lp2_haar AROUND CYCLE EDGES (261, 286, 311, 336, 361);`
+  returns the EXACT same quaternion as the AXIS form (`261 = 2·125 +
+  site(1,2,0)`, …). Proves the AXIS lattice-enumeration reproduces the
+  closed-form z-link ids on live data.
+- **P6 group gate** — a registry-resolvable non-SU(2) field
+  (`GROUP SU3 INIT IDENTITY`) → typed error `HOLONOMY AROUND CYCLE
+  requires GROUP SU(2) in this phase (quaternion readout); got SU(3)`.
+  (Note: a `GROUP U1 INIT FLUX` field is materialized off-registry by
+  `gauge::u1_flux` and reads back as "not declared" rather than the
+  group error, so the SU(3) field — matching test H6 — is the correct
+  non-SU(2) live probe.)
+- **P7 Marcella sanity** — `imagine_coherence` dim=4 on
+  `claude_substrate_v0` → `200`, seed `coherence=1.0`,
+  `endpoint_coherence=0.99961`, `refused=false`.
+
+**The exact p=5 lens twist receipt** (`re_trace = cos(2π/5) = 0.309017`,
+`q3 = +sin(2π/5) = 0.951057`, `order_estimate = 5`) is **gate-locked by
+H2 (p=5) + H4** — the acceptance fixtures build the byte-identical
+twisted-BC field that `pc_gigi_lens_space.py` will emit and run the
+identical `execute_holonomy_cycle`. It was NOT reproduced against prod
+because planting a *controlled* SU(2) link (`Ω` on one z-wrap) requires a
+server-side NPZ ingest (`INGEST … AS GAUGE_FIELD` reads a file under
+`GIGI_INGEST_DIR`); the public HTTP API exposes only IDENTITY / HAAR /
+FROM_FIELD field init, none of which plants a chosen link. Hallie's
+Halcyon-side ingest path DOES plant it, so her first read reproduces the
+0.309017 / 5 receipt that H2/H4 pin.
+
+## Concurrency + durability notes (ship record)
+
+- **Integrated-main ship.** A peer ship agent shipped the `SPECTRAL MODE
+  MATRIX` verb concurrently, cherry-picking its 4 commits onto this
+  verb's `cb07bc9` (my `fix(review)`) to make `main = c377d68` (both
+  verbs). The grep gate is clean across the whole `c0370e3..c377d68`
+  range (0 AI co-author trailers; author = Bee). The HOLONOMY gates passed on
+  the clean `cb07bc9` tree (check_bin, lib_nodefault, holonomy_cycle
+  7/7, topology, spectral); the orthogonal suites passed on the
+  `5af1175` superset; the deploy's Docker build re-compiled the full
+  `c377d68`; the live probe is the true acceptance. Both agents converge
+  on `origin/main = deployed = c377d68`.
+- **Substrate durability.** The deploy restart wiped
+  `claude_substrate_v0` (records fragile until snapshotted — the known
+  wedge). Restored from `.deploy-backups/2026-07-17/` (create with
+  `keys=["thought_id"]` + import) → count **20** (t001–t020), verified.
+  `POST /v1/admin/snapshot` still FAILS —
+  `Invalid arithmetic pattern: Invalid step in
+  'binary_version@v6.7.0+gemini-drift-v08+0'` — a *different* bundle's
+  field value breaks the global snapshot encoder, so the substrate could
+  not be persisted durably this session (flagged for follow-up; outside
+  the HOLONOMY change and the locked durability surface).
 
 ## Not built (named)
 

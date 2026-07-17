@@ -672,9 +672,25 @@ points in field space. POST because the path may be long.
 
 **What it does:** Branch VII cognitive-geometry capacity `C = τ / K`.
 
+**Optional scoping query params** (same on `/horizon`): compute the
+statistics over a named vector family and/or a k-NN neighborhood instead
+of the whole bundle, through the **same formulas** — this fixes
+whole-bundle-Welford pollution (e.g. `l_c` `4.7e6` → `0.03` when scoped).
+
+| Param    | Form                | Effect                                        |
+|----------|---------------------|-----------------------------------------------|
+| `fields` | `fields=<spec>`     | scope stats to a named vector family (range sugar `v0..v383` or explicit list) |
+| `locus`  | `locus=<field>=<v>` | scope to a k-NN neighborhood anchored at the record where `<field>=<v>` |
+| `k`      | `k=<n>`             | neighborhood size for `locus`                 |
+
+With no params the response is **byte-identical** to before.
+Precedence: `estimator=fixed` > `fields`/`locus` > default.
+
 ## `GET /v1/bundles/{name}/horizon` `[read]`
 
-**What it does:** Branch VII horizon report.
+**What it does:** Branch VII horizon report. Accepts the same optional
+`fields=` / `locus=` / `k=` scoping params as `/capacity` above, through
+the same formulas; the default (no-param) response is byte-identical.
 
 ## `GET /v1/bundles/{name}/depth` `[read]`
 
@@ -687,6 +703,53 @@ points in field space. POST because the path may be long.
 ## `POST /v1/bundles/{name}/local_holonomy` `[read]`
 
 **What it does:** local holonomy at a base point.
+
+## `POST /v1/bundles/{name}/windowed_coherence` `[read]`
+
+**What it does:** slides a fixed window along an ordered path and emits a
+per-window laminar verdict, computed server-side (composes
+transport ∘ holonomy). Replaces the client-side transport/holonomy round
+trips.
+
+**Request body:**
+
+```json
+{
+  "path":      ["k0", "k1", "k2", "…"],
+  "key_field": "id",
+  "window":    8,
+  "fiber":     ["v0", "v1", "…"],
+  "threshold": 0.91
+}
+```
+
+`threshold` is optional; it defaults to `0.91`.
+
+**Response (200):**
+
+```json
+{
+  "windows": [
+    {
+      "start_index":     0,
+      "keys":            ["k0", "k1", "…"],
+      "holonomy_defect": 0.03,
+      "coherence":       0.97,
+      "laminar":         true
+    }
+  ],
+  "n_windows":     41,
+  "laminar_all":   true,
+  "threshold_used": 0.91,
+  "dim":           384,
+  "window":        8,
+  "bundle":        "marcella_source",
+  "lambda_budget": 1.0
+}
+```
+
+A window is `laminar` when its `coherence` is at or above
+`threshold_used`; `laminar_all` is the AND over every window.
 
 ## `POST /v1/bundles/{name}/explain` `[read]`
 
@@ -1142,9 +1205,10 @@ EMIT path '<path>' must be relative, without '..' — files land
 inside GIGI_EMIT_DIR
 ```
 
-Known residual: EMIT wrapping a bundle-less statement (e.g.
-`SHOW BUNDLES … EMIT CSV TO 'x.csv'`) still returns ok without
-emitting; fix queued.
+EMIT wrapping a bundle-less statement (e.g.
+`SHOW BUNDLES … EMIT CSV TO 'x.csv'`) now dispatches through the parser
+executor instead of silently returning ok — with `GIGI_EMIT_DIR` unset
+it returns the gate error above rather than a bare `{"status":"ok"}`.
 
 ## GQL: cubic / OBC lattices and topology verbs
 
@@ -1152,6 +1216,8 @@ emitting; fix queued.
 LATTICE l24 FROM CUBIC L=24 DIM=3 OBC AXIS 2;
 CHERN_CLASS U ORDER 2 ON LATTICE l24 GROUP SU(3);
 SPECTRAL_GAUGE U WHERE sector = 1 ON FIBER (q0, q1, q2, q3) GROUP SU(2);
+SPECTRAL_GAUGE b ON FIBER (theta) GROUP U(1) MODE MAGNETIC FULL LIMIT 64;
+SPECTRAL_GAUGE b ON FIBER (theta) GROUP U(1) MODE MAGNETIC BULK 50 AROUND 0.0;
 ALTER BUNDLE U ADD BASE q_rounded INT;
 ```
 
@@ -1167,9 +1233,79 @@ ALTER BUNDLE U ADD BASE q_rounded INT;
   writes the per-record result back into a base column (declare it
   first with ALTER BUNDLE).
 - `SPECTRAL_GAUGE <bundle> [WHERE <conditions>] ON FIBER (<fields>)
-  [GROUP <g>] [FULL [LIMIT k]];` — the optional WHERE clause
-  stratifies the spectrum to a sector; conditions use the same
-  grammar as COVER WHERE.
+  [GROUP <g>] [MODE MAGNETIC] [ FULL [LIMIT k] | BULK k [AROUND σ |
+  IN [a,b]] ];` — the optional WHERE clause stratifies the spectrum to
+  a sector; conditions use the same grammar as COVER WHERE. The trailing
+  `FULL` / `BULK` selectors are **mutually exclusive** (a second one
+  errors). Clause order is strict: bundle → WHERE → `ON FIBER (…)` →
+  GROUP → MODE → the FULL/BULK selector.
+  - Default (no `MODE`): the real cos-weight Laplacian (SU(2) path,
+    unchanged). Its nearest-neighbour spacing-ratio sits in the GOE
+    symmetry class (measured `r̃ ≈ 0.527`, GOE anchor 0.5307, Atas
+    et al.).
+  - `MODE MAGNETIC` (requires `GROUP U(1)`): the complex Hermitian
+    magnetic Laplacian — off-diagonal `−e^{iθ}` with conjugate pairs.
+    Its spectrum sits in the GUE class (measured `r̃ ≈ 0.605`, GUE
+    anchor 0.5996). This is the
+    **RIEMANN line**: a gauge-native observable that reads/restages
+    Bee's documented spectral signature — it is **evidence in the Davis
+    framework, not a proof of the Riemann Hypothesis**.
+  - `FULL` populates the full ascending real spectrum (dense solver,
+    `V ≤` the dense ceiling); `FULL LIMIT k` keeps the `k` smallest.
+  - `BULK k` returns the `k` eigenvalues nearest the spectral **center**
+    (interior window, contiguous, ascending) — a re-centering slice on
+    the sorted dense spectrum. Plain `BULK` auto-centers on the
+    positional median; `AROUND σ` recenters on scalar `σ`; `IN [a,b]`
+    centers on the midpoint of the bracketed real interval. `BULK`
+    requires `MODE MAGNETIC` this phase.
+  - **Dense-solver ceiling.** `FULL`/`BULK` run a dense eigensolver
+    capped at `V = 4096` by default. `GIGI_DENSE_CEIL` opts a higher
+    ceiling in, clamped to the safe band `[4096, 8192]` (raise-only;
+    values below 4096 or above 8192 clamp into the band; missing or
+    unparseable → 4096). A `FULL`/`BULK` request on `V` above the
+    in-force ceiling returns a typed `SparseUnavailable`:
+
+    ```
+    SPECTRAL_GAUGE: FULL/BULK on V = <n> vertices exceeds the dense
+    eigensolver ceiling (in force: V = <threshold>, spec §6 boundary
+    4096). Opt in to a higher dense ceiling up to 8192 by setting
+    GIGI_DENSE_CEIL — but note the memory cost: a V ≈ 8000
+    complex-Hermitian Laplacian is ~1 GB for the matrix plus ~1 GB for
+    eigenvectors (~2–3 GB peak RSS, O(V³) work) and can OOM a laptop,
+    which is why the default stays 4096. For V beyond 8192 the sparse
+    interior Lanczos arm ships in Phase 2.1; until then run FULL/BULK on
+    a smaller (sectoral / downsampled) subgraph, or drop FULL/BULK for
+    the λ₁-only gap
+    ```
+
+    The sparse interior arm (Phase 2.1) is **not shipped** — deferred.
+  - Mode-guard errors (verbatim):
+
+    ```
+    SPECTRAL_GAUGE MODE: only MAGNETIC is a user-facing mode this phase
+    (got '<word>') — the dense/sparse solver choice is internal per the
+    Phase-2 reconciliation
+    ```
+
+    ```
+    SPECTRAL_GAUGE: MODE MAGNETIC requires GROUP U(1) in this phase
+    (matrix-valued magnetic Laplacians are a later phase); got GROUP <g>
+    ```
+
+    ```
+    SPECTRAL_GAUGE: BULK requires MODE MAGNETIC in this phase — the
+    interior center-window (RH / number-variance) statistics live in the
+    magnetic complex-Hermitian spectrum; add MODE MAGNETIC before BULK,
+    or use FULL for the cos-weight spectrum
+    ```
+
+    ```
+    SPECTRAL_GAUGE: FULL and BULK are mutually exclusive — FULL returns
+    the k smallest eigenvalues ascending, BULK returns the k centermost
+    window; pick one
+    ```
+  - A `BULK` response adds `bulk: true`, `bulk_center`,
+    `bulk_center_index`, `bulk_lo`, `bulk_hi` to the spectrum row.
 - `ALTER BUNDLE <bundle> ADD BASE <field> <type>;` — append-only
   schema evolution. Phase 1 is ADD BASE only (no DROP, no ALTER
   FIBER, no rename); heap bundles only. Type names map exactly as in
@@ -1178,6 +1314,126 @@ ALTER BUNDLE U ADD BASE q_rounded INT;
   categorical, `TIMESTAMP`/`DATETIME`/`DATE` → timestamp; unrecognized
   names fall back to categorical. Existing records carry the new
   field as null.
+
+## GQL: gauge fields — GAUGE_FIELD INIT FLUX
+
+```
+GAUGE_FIELD phi GROUP U(1) ON LATTICE l24 INIT FLUX RANDOM SEED 42;
+GAUGE_FIELD phi GROUP U(1) ON LATTICE l24 INIT FLUX UNIFORM 0.1;
+```
+
+- `GAUGE_FIELD <name> <clause>*;` — the `ON LATTICE <l>`, `GROUP <g>`,
+  and `INIT <init>` clauses are each required exactly once and may
+  appear in any order (order relaxed 2026-07-16).
+- `INIT` is one of `IDENTITY` | `HAAR_RANDOM [SEED <n>]` |
+  `FROM <src>` | `FLUX (RANDOM SEED <n> | UNIFORM <φ>)`. `INIT FLUX`
+  materializes a `theta` bundle of seeded deterministic per-edge U(1)
+  phases (U(1)-only at the executor).
+- `FLUX RANDOM` **requires** `SEED` — flux reproducibility is
+  contractual. Omitting it errors:
+
+  ```
+  GAUGE_FIELD INIT FLUX RANDOM requires SEED <n> — flux
+  reproducibility is contractual (declare INIT FLUX RANDOM SEED <u64>)
+  ```
+
+  `FLUX UNIFORM <φ>` takes one scalar phase applied to every edge.
+
+## GQL: raw-symmetric spectrum — SPECTRAL MODE MATRIX
+
+```
+SPECTRAL b ON FIBER (h) MODE MATRIX;
+SPECTRAL b ON FIBER (h) MODE MATRIX DIAGONAL d FULL LIMIT 32;
+```
+
+**What it does:** builds the raw signed symmetric matrix
+`M[a][b] = M[b][a] = h` directly from the fiber weight (**not** the
+Laplacian — negative weights are preserved) and returns its
+eigenvalues. This is the **P-vs-NP line**: a gauge-native observable
+that reads/restages Bee's documented instability signature — it is
+**evidence in the Davis framework, not a proof that P ≠ NP**.
+
+- `SPECTRAL <bundle> ON FIBER (<h>) [GROUP g] MODE MATRIX [GROUP g]
+  [DIAGONAL <field>] [FULL [LIMIT k]];` — exactly one fiber field is
+  required (the signed weight `h`). Any `GROUP` clause is consumed and
+  ignored (raw signed real weights need no group). The diagonal comes
+  from self-loop records (`vertex_a == vertex_b`), or from the
+  `DIAGONAL <field>` override. `MODE` (singular) `= MATRIX`; note
+  `MODES` (plural) `k` is the separate PCA `SpectralFiber` statement.
+- Requiring more or fewer than one fiber errors:
+
+  ```
+  SPECTRAL ... MODE MATRIX requires exactly one fiber field (the
+  signed Hessian weight h); got <n>
+  ```
+
+  A non-MATRIX mode word on the plain `SPECTRAL` verb errors:
+
+  ```
+  SPECTRAL MODE: only MATRIX is a mode on the plain SPECTRAL verb (got
+  '<word>') — MODE MAGNETIC lives on SPECTRAL_GAUGE
+  ```
+- **Response (200):**
+
+  ```json
+  {
+    "eigenvalues":          [-2.13, -0.44, 0.91, "…"],
+    "n_records_used":       512,
+    "mode_used":            "matrix",
+    "n_negative":           37,
+    "instability_fraction": 0.072
+  }
+  ```
+
+  `instability_fraction = n_negative / V`.
+
+## GQL: gauge holonomy — HOLONOMY AROUND CYCLE
+
+```
+HOLONOMY phi AROUND CYCLE AXIS z AT (0, 12);
+HOLONOMY phi AROUND CYCLE EDGES (3, 7, 11, 4);
+```
+
+**What it does:** walks a closed loop through a `GAUGE_FIELD` and
+returns the ordered product of edge transports. This is the
+**Poincaré line**: `order_estimate` reads the lens-space
+`π₁ = ℤ/p` class — a gauge-native observable that reads/restages Bee's
+documented holonomy signature, **evidence in the Davis framework, not a
+proof of the Poincaré conjecture**.
+
+- `HOLONOMY <gauge_field> AROUND CYCLE ( AXIS <ax> AT (<c0>,<c1>) |
+  EDGES (<e0>,<e1>,…) );` — the operand is a `GAUGE_FIELD` name (from
+  the gauge registry), not a bundle. The `AROUND` keyword disambiguates
+  this from `HOLONOMY ON FIBER` / `HOLONOMY NEAR`.
+  - `AXIS <ax>` takes a letter (`x`→0, `y`→1, `z`→2, `w`/`t`→3) or a
+    0-based numeric index, then `AT (<c0>,<c1>)` (two `usize`
+    coordinates).
+  - `EDGES (…)` takes a comma-separated list of `usize` edge ids.
+- **Direction convention:** a `+axis` walk (or an edge matching its
+  stored direction) applies `U`; the reverse applies `U†`.
+- SU(2)-only this phase (quaternion readout). A non-SU(2) gauge field
+  errors:
+
+  ```
+  HOLONOMY AROUND CYCLE requires GROUP SU(2) in this phase (quaternion
+  readout); got <group>
+  ```
+- `order_estimate` is meaningful only on clean lens-space wraps.
+- **Response (200):**
+
+  ```json
+  {
+    "q0":             0.5,
+    "q1":             0.0,
+    "q2":             0.0,
+    "q3":             0.866,
+    "re_trace":       0.5,
+    "order_estimate": 3,
+    "group_used":     "SU(2)"
+  }
+  ```
+
+  `re_trace = ½·Tr = q0`; `order_estimate` reads the `π₁ = ℤ/p` order.
 
 ## GQL: evidence-grade error bars — WITH JACKKNIFE
 
@@ -1472,8 +1728,14 @@ along an imagined geodesic. Marcella's predictive-gain gate.
 Phase 1 ships the parser-only surface; the in-memory registry executes
 DEFINE / DROP / SHOW. Executor phases (HUNT, EXCLUDING IN) follow.
 
-Known limitation: the `OR` combinator in `DEFINE PATTERN … OR …` does
-not parse (pre-existing; fix queued). `AND` combinators work.
+`DEFINE [OR REPLACE] PATTERN <name> AS <pred> [OR <pred>]* [WEIGHT (…)]
+[USING (…)];` — the pattern body now consumes an `AND`/`OR` combinator
+chain (COVER-parity; the pre-existing `OR` gap is closed). The base
+predicate is `AND`-chained; each trailing `OR` opens a new
+`AND`-chained alternative (an *or-group*). A row matches when the base
+predicate matches **and** at least one or-group matches —
+base-AND-(groups-ORed), not a flat boolean OR. `HUNT` desugars to
+`COVER` and passes the or-groups through untouched.
 
 ## `GET /v1/patterns` `[read]`
 

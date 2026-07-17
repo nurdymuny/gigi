@@ -33,6 +33,21 @@ Full grammar and exact error strings are in llms-full.txt §2–3.
 - Query surface: `WITH JACKKNIFE ALONG <field> [SKIP FIRST n]` autocorrelation-honest error bars, `EXPLAIN SECTION` per-field κ rows carrying `record_kappa`, `SHOW FIELDS ON b`, TIMESTAMP fields with ISO-8601 literals and `NOW`
 - Ergonomics: human parse errors (token names, near-context, did-you-mean), trailing-token rejection, notice responses for no-op statements, poison-proof locks, and a `gigi` CLI (rustyline REPL, `doctor` health report, `-f script.gql`)
 
+## Engine surface shipped 2026-07-05 → 2026-07-17
+
+Full grammar and exact error strings are in llms-full.txt §2–3. The
+Millennium-line verbs below are **gigi-native observables** that read /
+restage geometric signatures documented in Davis Geometric — evidence in
+that framework, not proofs of the Clay problems.
+
+- Millennium observables (evidence, not proofs): `SPECTRAL_GAUGE ... MODE MAGNETIC` builds a complex Hermitian magnetic Laplacian whose level-spacing statistics sit in the GUE class (measured spacing-ratio r̃ ≈ 0.605, GUE anchor 0.5996) vs the real cos-weight Laplacian's GOE (measured r̃ ≈ 0.527, GOE anchor 0.5307) — a gauge-native readout that restages a Riemann-line signature; `SPECTRAL ... MODE MATRIX` returns the raw signed symmetric spectrum with an `instability_fraction` (P-vs-NP observable); `HOLONOMY ... AROUND CYCLE` walks a closed loop and returns a quaternion + `order_estimate` reading the lens-space π₁=ℤ/p class (Poincaré observable)
+- Dense spectrum controls: `SPECTRAL_GAUGE ... FULL [LIMIT k]` (ascending real spectrum, dense, V ≤ 4096 default), `... MODE MAGNETIC BULK k [AROUND σ | IN [a,b]]` (the k centermost interior eigenvalues); `GIGI_DENSE_CEIL` env opts the dense ceiling up into the clamped band [4096, 8192] (raise-only, machine-safety knob). Beyond the ceiling a typed `SparseUnavailable` names Phase 2.1 — the sparse interior arm is **not shipped** (deferred)
+- Gauge-field flux init: `GAUGE_FIELD f GROUP U(1) INIT FLUX RANDOM SEED n ON LATTICE l` / `INIT FLUX UNIFORM φ` — seeded deterministic per-edge U(1) phases (materializes a theta bundle); clauses in any order
+- Marcella EXPLAIN family: `EXPLAIN SECTION b AT id VECTOR (v0..v383)` (per-vector κ_v = |1−cos(v,μ)|/R_cos rows, additive, excluded from record_kappa), `EXPLAIN SECTION b AT <field> IN (v1,…,vn)` (grouped batch, one read-lock), typed 404 on a missing key, and on-demand Welford stats over mmap-backed bundles
+- Marcella dials: `GET .../horizon` and `.../capacity` accept opt-in `fields=`, `locus=<field>=<value>`, `k=` scoping (statistics through the same formulas, over a named vector family and/or k-NN neighborhood — default responses byte-identical); `POST .../windowed_coherence` returns a per-window laminar verdict (default threshold 0.91)
+- Query fixes + demo bundles: `DEFINE PATTERN p AS a=1 OR b=2` now parses the AND/OR combinator chain (base-AND-(groups-ORed), COVER parity); bundle-less `EMIT` (e.g. `SHOW BUNDLES ... EMIT CSV`) now dispatches through the executor and returns the `GIGI_EMIT_DIR` gate error instead of a silent ok; `examples/seed_demo_bundles.py` seeds the public demo bundles (`stations`, `chembl`, `tetmesh_demo`) served through `/v1/public/gql` behind the `GIGI_PUBLIC_BUNDLES` allowlist
+- Durability: the DHOOM snapshot encoder's computed-field detection was O(F³·N) — days of compute on wide numeric bundles (384 scalar fibers), wedging the boot snapshot. Now cached and capped at 64 candidate fields (O(F·N + F³)); high-field bundles snapshot in seconds. `.dhoom` + WAL formats are byte-unchanged, so old snapshots still open. This is a durability **fix**; heap-only bundles are still ephemeral until a whole-engine `/v1/admin/snapshot`
+
 ## Interactive demos (web extras, not in the printed book)
 
 - [The Mesh That Audits Itself](https://www.davisgeometric.com/gigi/gigi-builds/the-mesh-that-audits-itself): a tetrahedral mesh stored as GIGI fibers — certified dihedral-angle data per tet, adaptive refinement with a queryable audit trail, obtuse-class coloring (Castillo classification), live queries against the public instance

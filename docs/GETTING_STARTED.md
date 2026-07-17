@@ -365,7 +365,12 @@ GQL file I/O: `GIGI_INGEST_DIR` (server-side
 files must live under this directory) and `GIGI_EMIT_DIR`
 (`... EMIT CSV TO '<file>'` refuses unless this is set; exports land
 inside this directory). Leave both unset if you don't need server-side
-file I/O — that is the safe default. The S3 sync block
+file I/O — that is the safe default. `GIGI_DENSE_CEIL` is an opt-in
+dense-eigensolver ceiling for large `SPECTRAL_GAUGE ... FULL/BULK`
+queries (default `4096`, clamped raise-only into the band
+`[4096, 8192]`); raise it only if you run those verbs on big lattices
+and can spare the memory (a `V ≈ 8000` solve is ~2–3 GB peak RSS). The
+S3 sync block
 (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`,
 `AWS_REGION`, `BUCKET_NAME`) is only needed for Fly.io-style Tigris
 snapshot sync at startup. Skip it for local runs.

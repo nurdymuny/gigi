@@ -72,7 +72,14 @@ Key quantities (these appear all over the site):
 
 Storage: WAL (append-only log) + mmap snapshots with copy-on-write pages.
 The geometric accumulator state is *in* the snapshot, so a reopened engine
-answers curvature queries immediately with no warmup.
+answers curvature queries immediately with no warmup. (Durability fix,
+2026-07-16: the DHOOM snapshot encoder's computed-field detection was
+O(F³·N) — days of compute on wide numeric bundles with hundreds of scalar
+fibers, wedging the boot snapshot. It is now cached and capped at 64
+candidate fields (O(F·N + F³)), so high-field bundles snapshot in seconds;
+`.dhoom` and WAL formats are byte-unchanged, so existing snapshots still
+open. This is a durability fix only — heap-only bundles remain ephemeral
+until a whole-engine `/v1/admin/snapshot`.)
 
 ## 2. GQL — the query language
 
@@ -104,6 +111,15 @@ Statements end with `;`. Working verbs (each enforced by an automated
     EXPLAIN SECTION sensors AT id='s1';            -- per-field kappa rows, loudest first (why this price);
     --   each row also carries record_kappa — the record's total κ, constant
     --   across its rows (the mean of the per-field kappas equals it)
+    EXPLAIN SECTION emb AT id='m1' VECTOR (v0..v383);   -- Marcella vector κ_v rows
+    --   κ_v = |1−cos(v,μ)|/R_cos over an assembled scalar-family vector
+    --   (range sugar v0..v383 or an explicit list); auto row for true
+    --   Value::Vector fibers; κ_v is ADDITIVE and EXCLUDED from record_kappa
+    EXPLAIN SECTION emb AT tag IN ('a','b','c') VECTOR (v0..v383);  -- grouped batch
+    --   one read-lock; per-record record_kappa preserved; a missing key in
+    --   the list becomes a typed miss entry (a missing single key → 404:
+    --   "EXPLAIN: no section at id='ghost' in bundle 'emb'"). EXPLAIN on
+    --   mmap-backed bundles computes on-demand single-scan Welford stats
     CURVATURE sensors;  SPECTRAL sensors;  HEALTH sensors;
     INGEST sensors FROM 'rows.csv' FORMAT CSV;     -- also NPZ; JSONL (KEY required, vectors ride)
     COVER sensors ALL EMIT CSV TO 'out.csv';       -- export; gated on GIGI_EMIT_DIR; works over HTTP too
@@ -135,6 +151,66 @@ under the Yang-Mills work):
     ALTER BUNDLE links ADD BASE tag TEXT;                 -- append-only schema
     -- evolution: old records remain valid sections under the wider base
 
+Riemann-line and Poincaré readouts (2026-07-16/17). These are gigi-native
+**observables** that read/restage geometric signatures documented in Davis
+Geometric — evidence in that framework, NOT proofs of the Clay problems.
+The engine does not prove Riemann, Poincaré, or P≠NP; it exposes gauge-
+native quantities whose statistics restage those signatures.
+
+    GAUGE_FIELD b GROUP U(1) INIT FLUX RANDOM SEED 7 ON LATTICE hyp;
+    -- seeded deterministic per-edge U(1) phases (materializes a theta
+    -- bundle). Clauses ON LATTICE / GROUP / INIT are each required once,
+    -- ANY ORDER. INIT is one of IDENTITY | HAAR_RANDOM [SEED n] |
+    -- FROM <src> | FLUX (RANDOM SEED <n> | UNIFORM <phi>). FLUX RANDOM
+    -- requires SEED (reproducibility is contractual); FLUX is U(1)-only.
+    SPECTRAL_GAUGE b ON FIBER (theta) GROUP U(1) MODE MAGNETIC FULL;
+    -- complex Hermitian magnetic Laplacian (off-diagonal −e^{iθ},
+    -- conjugate pairs). Its level spacings sit in the GUE symmetry class
+    -- (measured spacing-ratio r̃ ≈ 0.605, GUE anchor 0.5996) vs the
+    -- real cos-weight Laplacian's GOE (measured r̃ ≈ 0.527, GOE anchor
+    -- 0.5307, Atas et al.) — a gauge-native
+    -- readout that restages a Riemann-line signature. The SU(2) cos-weight
+    -- path is unchanged. MODE MAGNETIC requires GROUP U(1) this phase.
+    SPECTRAL_GAUGE b ON FIBER (theta) GROUP U(1) MODE MAGNETIC FULL LIMIT 32;
+    -- FULL populates the full ascending real spectrum (dense, V ≤ 4096
+    -- by default); LIMIT k returns the k smallest.
+    SPECTRAL_GAUGE b ON FIBER (theta) GROUP U(1) MODE MAGNETIC BULK 64 AROUND 0.0;
+    -- BULK k = the k eigenvalues nearest the spectral CENTER (interior
+    -- window, contiguous, ascending), a re-centering slice on the sorted
+    -- dense spectrum; plain BULK auto-centers on the positional median,
+    -- AROUND σ centers on σ, IN [a,b] takes a bracketed interior window.
+    -- Response adds bulk / bulk_center / bulk_lo / bulk_hi. FULL and BULK
+    -- are mutually exclusive; BULK requires MODE MAGNETIC.
+    SPECTRAL graph ON FIBER (h) MODE MATRIX FULL;
+    -- raw signed symmetric matrix M[a][b]=M[b][a]=h (NOT the Laplacian —
+    -- negatives preserved); diagonal via self-loop records (vertex_a==
+    -- vertex_b) or an optional DIAGONAL <field> override; NO GROUP
+    -- required. Returns { eigenvalues, n_records_used, mode_used,
+    -- n_negative, instability_fraction } — a P-vs-NP observable, evidence
+    -- not proof. Exactly one fiber field is required.
+    HOLONOMY b AROUND CYCLE AXIS z AT (0, 1);
+    HOLONOMY b AROUND CYCLE EDGES (4, 9, 12, 7);
+    -- walk a closed loop over a GAUGE_FIELD (not a bundle) and return
+    -- { q0, q1, q2, q3, re_trace, order_estimate, group_used } — SU(2)
+    -- only this phase (quaternion readout; non-SU(2) errors by name).
+    -- re_trace = ½Tr; order_estimate reads the lens-space π₁=ℤ/p class
+    -- (meaningful only on clean lens wraps) — a Poincaré observable,
+    -- evidence not proof. Direction convention: +axis walk / an edge
+    -- matching its stored direction → U, else U†.
+
+`GIGI_DENSE_CEIL` opts the dense-eigensolver ceiling for
+SPECTRAL_GAUGE FULL/BULK up into the clamped band [4096, 8192]
+(raise-only from the 4096 floor; a machine-safety knob, since a
+V ≈ 8000 complex-Hermitian dense solve is ~2–3 GB peak RSS). A
+FULL/BULK request on V above the in-force ceiling returns a typed
+`SparseUnavailable`: "SPECTRAL_GAUGE: FULL/BULK on V = <n> vertices
+exceeds the dense eigensolver ceiling ... Opt in to a higher dense
+ceiling up to 8192 by setting GIGI_DENSE_CEIL ... For V beyond 8192
+the sparse interior Lanczos arm ships in Phase 2.1; until then run
+FULL/BULK on a smaller (sectoral / downsampled) subgraph, or drop
+FULL/BULK for the λ₁-only gap". The sparse interior arm (Phase 2.1)
+is **not shipped** — deferred.
+
 Server-side file I/O is fail-closed. INGEST from a file requires
 `GIGI_INGEST_DIR` (unset → "INGEST from a server-side file requires
 GIGI_INGEST_DIR to be set; set it to the directory that ingest sources
@@ -147,6 +223,16 @@ no drive/UNC prefixes, no `..` components — and the resolved path is
 canonically compared against the root, so symlinks and junctions cannot
 escape it. The public instance sets `GIGI_INGEST_DIR=/data/ingest`.
 
+`GIGI_DENSE_CEIL` is a separate, compute-side knob (not a filesystem
+gate): it opts the dense-eigensolver ceiling for SPECTRAL_GAUGE FULL/BULK
+up into the clamped band [4096, 8192], raise-only from the 4096 default
+floor. It is a machine-safety knob rather than a query knob, because a
+V ≈ 8000 complex-Hermitian dense solve is ~2–3 GB peak RSS. Missing or
+unparseable → 4096. `GIGI_SKIP_BOOT_SNAPSHOT`, when set, lets WAL replay
+complete but skips the post-replay DHOOM snapshot/mmap-upgrade so the
+engine stays heap-only for that boot (the escape hatch behind the
+durability path).
+
 Parse errors are written for humans: token names, the text near the
 failure, and a did-you-mean when a known verb is close (multibyte text
 is truncated safely). Statements that turn out to be no-ops answer
@@ -157,11 +243,14 @@ Honestly NOT implemented (the engine refuses these loudly rather than
 silently no-op): HAVING, FIBER RANK (window functions), PRODUCT, UNION /
 INTERSECT / SUBTRACT set operations. Unknown field names error with the
 bundle's field list. Trailing unparsed clauses are rejected, never
-silently discarded. Known residuals with fixes queued: DEFINE PATTERN's
-OR combinator does not parse, and EMIT wrapped around a bundle-less
-statement (e.g. `SHOW BUNDLES ... EMIT CSV`) still returns ok without
-writing a file. See GQL_REFERENCE.md in the repo for the enforced
-status table.
+silently discarded. Two previously-named residuals are now fixed
+(2026-07-05): `DEFINE PATTERN p AS a=1 OR b=2` parses the AND/OR
+combinator chain — the body is base-AND-(OR-groups-ORed), COVER parity
+(a row matches when the base predicate matches AND at least one OR group
+matches, not a flat boolean OR); and EMIT wrapped around a bundle-less
+statement (e.g. `SHOW BUNDLES ... EMIT CSV`) now dispatches through the
+executor and returns the `GIGI_EMIT_DIR` gate error instead of a silent
+ok. See GQL_REFERENCE.md in the repo for the enforced status table.
 
 ## 3. The live public instance (agents may call this)
 
@@ -180,7 +269,12 @@ Observed response shape (flat JSON object for HEALTH/DESCRIBE):
 
 Public bundles: `tetmesh_demo` is populated (5,760 tetrahedra from the
 mesh demo, 7 fiber fields of certified shape data). `stations`,
-`sensors`, `chembl` are allowlisted names that may be empty. Useful
+`sensors`, `chembl` are allowlisted names that may be empty. The
+`examples/seed_demo_bundles.py` script (2026-07-05) seeds bit-exact demo
+bundles (`stations`, `chembl`, `tetmesh_demo`); the anonymous read-only
+`/v1/public/gql` route is mounted only when the `GIGI_PUBLIC_BUNDLES`
+allowlist names bundles to expose (empty/unset → the route is not
+mounted). Useful
 statements to try: `SHOW BUNDLES;`, `HEALTH tetmesh_demo;`,
 `DESCRIBE tetmesh_demo;`, `CURVATURE tetmesh_demo;`,
 `SPECTRAL tetmesh_demo;`, and INTEGRATE/COVER against tetmesh_demo.
@@ -188,6 +282,21 @@ statements to try: `SHOW BUNDLES;`, `HEALTH tetmesh_demo;`,
 To run a private engine: build from the repo, start the `gigi-stream`
 binary, POST to /v1/gql (same body shape). Browser access to a local
 engine needs `GIGI_CORS_ORIGIN=*` (dev only).
+
+Marcella dial routes (per-bundle geometry, 2026-07-16). On a running
+engine, `GET /v1/bundles/{b}/horizon` and `GET /v1/bundles/{b}/capacity`
+accept opt-in query params `fields=<spec>`, `locus=<field>=<value>`, and
+`k=<n>` — the same statistics scoped to a named vector family and/or a
+k-NN neighborhood, through the same formulas (this fixes whole-bundle
+Welford pollution: e.g. a coherence length l_c of 4.7e6 collapses to 0.03
+when scoped). With no params the responses are byte-identical to before;
+precedence is `estimator=fixed` > `fields`/`locus` > default.
+`POST /v1/bundles/{b}/windowed_coherence` with body `{path, key_field,
+window, fiber, threshold?}` (default threshold 0.91) computes a per-window
+laminar verdict server-side (composing transport ∘ holonomy) and returns
+`{windows[{start_index, keys, holonomy_defect, coherence, laminar}],
+n_windows, laminar_all, threshold_used, dim, window, bundle,
+lambda_budget}`.
 
 There is also a local CLI: the `gigi` binary opens an interactive REPL
 (rustyline — arrow-key editing, per-database history, Ctrl-C clears the

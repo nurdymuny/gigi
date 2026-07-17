@@ -341,3 +341,106 @@ fn roundtrip_wide_bundle_reopens_in_mmap_with_same_count_and_fields() {
     drop(mmap);
     drop(td);
 }
+
+/// **DEFENSE-IN-DEPTH (task 7): timeout degrades to skip, not wedge.**
+///
+/// The between-records budget check in `snapshot_with_chunk_size_report` must
+/// degrade a distributed-cost overrun to a timeout+skip (bundle preserved in
+/// the WAL for the next attempt) rather than an unbounded wedge. We force the
+/// interruptible shape with a zero-second budget: the first per-record elapsed
+/// check trips, the bundle is recorded as timed-out, no `.dhoom` is written,
+/// and WAL compaction is skipped so the records stay durable.
+///
+/// NOTE — the residual this does NOT cover: a hang INSIDE a single
+/// `push_record`/`finish()` (the original wedge's shape) is still not
+/// interruptible by a between-records check. The correct fix for that is to
+/// remove the unbounded per-record cost (the GREEN commit), not to make
+/// `finish()` interruptible — which would need thread-level cancellation.
+/// Simulating a true single-record encoder hang would require a poison-pill
+/// branch in production encoder code, which we deliberately do NOT add; the
+/// residual is documented in the diagnosis.
+#[test]
+fn snapshot_timeout_degrades_to_skip_not_wedge() {
+    let td = tempfile::tempdir().expect("tempdir");
+    let dir = td.path().to_path_buf();
+    let mut engine = Engine::open(&dir).expect("open");
+    engine
+        .create_bundle(wide_scalar_schema("timeout_bundle", 2))
+        .expect("create");
+    for id in 0..50i64 {
+        engine
+            .insert("timeout_bundle", &wide_record(id, 2))
+            .expect("insert");
+    }
+    // Zero budget: the very first between-records elapsed check trips.
+    engine.compaction_policy_mut().per_bundle_timeout_secs = Some(0);
+
+    let report = engine
+        .snapshot_with_report()
+        .expect("snapshot_with_report");
+
+    assert!(
+        report
+            .timed_out_bundles
+            .iter()
+            .any(|b| b == "timeout_bundle"),
+        "zero-budget snapshot must record the bundle as timed-out, got {:?}",
+        report.timed_out_bundles
+    );
+    assert_eq!(
+        report.total_records_written, 0,
+        "a timed-out bundle writes 0 records"
+    );
+    let snap = dir.join("snapshots").join("timeout_bundle.dhoom");
+    assert!(
+        !snap.exists(),
+        "timed-out bundle must not leave a .dhoom (partial .tmp is removed)"
+    );
+
+    // WAL compaction was skipped -> the records survive on reopen.
+    drop(engine);
+    let mut e2 = Engine::open(&dir).expect("reopen");
+    let rows = cover(&mut e2, "timeout_bundle");
+    assert_eq!(
+        rows.len(),
+        50,
+        "records must survive a timed-out snapshot (WAL not compacted)"
+    );
+
+    drop(e2);
+    drop(td);
+}
+
+/// Manual bisection harness — NOT part of the default suite. Measures the
+/// post-fix snapshot wall time for env-driven field/record counts; used to
+/// build the diagnosis's bisection table. Example:
+///
+///   WEDGE_FIELDS=384 WEDGE_RECORDS=2000 cargo test --no-default-features \
+///     --test snapshot_high_field_wedge bisect_measure -- --ignored --nocapture
+#[test]
+#[ignore = "manual bisection harness; set WEDGE_FIELDS / WEDGE_RECORDS and run with --ignored"]
+fn bisect_measure() {
+    let env = |k: &str, d: usize| {
+        std::env::var(k)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(d)
+    };
+    let fields = env("WEDGE_FIELDS", 384);
+    let records = env("WEDGE_RECORDS", 2_000);
+    let guard = env("WEDGE_GUARD_SECS", 120) as u64;
+    let engine = build_engine("bisect", fields, records);
+    match snapshot_guarded(engine, Duration::from_secs(guard)) {
+        SnapOutcome::Done {
+            records: w,
+            elapsed,
+            ..
+        } => println!("BISECT fields={fields} records={records} -> {elapsed:?} ({w} written)"),
+        SnapOutcome::Wedged => {
+            println!("BISECT fields={fields} records={records} -> WEDGE (>{guard}s)")
+        }
+        SnapOutcome::Failed(e) => {
+            println!("BISECT fields={fields} records={records} -> ERROR {e}")
+        }
+    }
+}

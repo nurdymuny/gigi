@@ -9488,6 +9488,74 @@ async fn bundle_scan(
         }
     }
 
+    // ── relational lens: auto-foreign-key join → attribute mismatch ──
+    // For any categorical fiber that equals ANOTHER bundle's base key, join to
+    // that bundle and flag records whose attribute disagrees with the joined
+    // entity's corresponding attribute (fields matched automatically by value-
+    // domain overlap, e.g. txn.region vs account.home_region → impossible travel),
+    // weighted by the record's amount percentile.
+    {
+        let amt_field = num_defs.iter()
+            .find(|f| { let l = f.name.to_lowercase(); l.contains("amount") || l.contains("amt") })
+            .or_else(|| num_defs.first()).map(|f| f.name.clone());
+        let amt_sorted: Vec<f64> = amt_field.as_ref().map(|af| {
+            let mut v: Vec<f64> = records.iter().filter_map(|r| r.get(af).and_then(|x| x.as_f64())).collect();
+            v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            v
+        }).unwrap_or_default();
+        let amt_pct = |a: f64| if amt_sorted.is_empty() { 1.0 }
+            else { amt_sorted.partition_point(|&x| x < a) as f64 / amt_sorted.len() as f64 };
+        let other_names: Vec<String> = engine.bundle_names().iter()
+            .filter(|b| **b != name.as_str() && !b.starts_with("_gigi"))
+            .map(|s| s.to_string()).collect();
+        for cf in &cats {
+            // find a bundle whose base key == cf (the foreign-key target)
+            let Some(ob) = other_names.iter().find(|ob| engine.bundle(ob)
+                .and_then(|os| os.schema().base_fields.first().map(|f| f.name == *cf))
+                .unwrap_or(false)) else { continue };
+            let Some(ostore) = engine.bundle(ob) else { continue };
+            let obase = ostore.schema().base_fields[0].name.clone();
+            let ocats: Vec<String> = ostore.schema().fiber_fields.iter()
+                .filter(|f| matches!(f.field_type, FieldType::Categorical | FieldType::OrderedCat { .. }))
+                .map(|f| f.name.clone()).collect();
+            let orecs: Vec<gigi::types::Record> = ostore.records().collect();
+            let right: HashMap<String, &gigi::types::Record> = orecs.iter()
+                .filter_map(|r| r.get(&obase).map(|v| (format!("{}", v), r))).collect();
+            // match left↔right categorical fields by shared value universe
+            let domain = |recs: &[gigi::types::Record], field: &str| -> std::collections::HashSet<String> {
+                recs.iter().filter_map(|r| r.get(field).map(|v| format!("{}", v))).collect() };
+            let mut pairs: Vec<(String, String)> = Vec::new();
+            for lc in cats.iter().filter(|c| *c != cf) {
+                let ld = domain(&records, lc);
+                for rc in &ocats {
+                    let rd = domain(&orecs, rc);
+                    let inter = ld.intersection(&rd).count();
+                    let uni = ld.union(&rd).count();
+                    if inter >= 2 && uni > 0 && (inter as f64 / uni as f64) > 0.5 {
+                        pairs.push((lc.clone(), rc.clone()));
+                    }
+                }
+            }
+            if pairs.is_empty() { continue; }
+            let mut m: HashMap<String, f64> = ids.iter().map(|i| (i.clone(), 0.0)).collect();
+            for r in &records {
+                let fk = r.get(cf).map(|v| format!("{}", v)).unwrap_or_default();
+                let Some(rr) = right.get(&fk) else { continue };
+                let mut best = 0.0f64;
+                for (lc, rc) in &pairs {
+                    if let (Some(lv), Some(rv)) = (r.get(lc).map(|v| format!("{}", v)), rr.get(rc).map(|v| format!("{}", v))) {
+                        if lv != rv {
+                            let a = amt_field.as_ref().and_then(|af| r.get(af)).and_then(|x| x.as_f64()).unwrap_or(0.0);
+                            best = best.max(0.4 + 0.6 * amt_pct(a));
+                        }
+                    }
+                }
+                if best > 0.0 { *m.get_mut(&idof(r)).unwrap() = best; }
+            }
+            lenses.push((format!("relational:{}~{}", cf, ob), m));
+        }
+    }
+
     if lenses.is_empty() {
         return Err((StatusCode::UNPROCESSABLE_ENTITY,
             Json(ErrorResponse { error: "SCAN found no usable numeric or categorical fibers".into() })));

@@ -290,17 +290,33 @@ mod tests {
     /// Non-implemented constructors return the typed error (not a
     /// panic) so the GAUGE_FIELD declaration path can surface it to
     /// the user. Bee's locked decision 5. Halcyon ITEM 3.1 lifts the
-    /// SU(3) gate — only U(1) and Z(N) still error.
+    /// SU(3) gate; the U(1) linking ship (2026-07-18) lifts U(1) —
+    /// only Z(N) still errors for `new_identity`.
     #[test]
     fn tdd_hal_ii_1_identity_rejects_unimplemented_groups() {
-        assert_eq!(
-            DenseLinkBuffer::new_identity(Group::U1, 10).unwrap_err(),
-            GaugeFieldError::UnsupportedGroup(Group::U1)
-        );
         assert_eq!(
             DenseLinkBuffer::new_identity(Group::ZN { n: 5 }, 10).unwrap_err(),
             GaugeFieldError::UnsupportedGroup(Group::ZN { n: 5 })
         );
+    }
+
+    /// U(1) linking ship (2026-07-18): the U(1) identity buffer now
+    /// constructs — `repr_dim = 1`, every edge θ = 0 (the U(1) identity
+    /// `e^{i·0} = 1`), and each row decodes to `GroupElement::U1 { theta:
+    /// 0.0 }`. All-zeros IS identity for U(1), so it is even simpler than
+    /// the SU(2)/SU(3) diagonal writes.
+    #[test]
+    fn u1_identity_buffer_constructs() {
+        let buf = DenseLinkBuffer::new_identity(Group::U1, 12)
+            .expect("U(1) identity buffer must succeed");
+        assert_eq!(buf.group, Group::U1);
+        assert_eq!(buf.n_edges, 12);
+        assert_eq!(buf.repr_dim, 1);
+        assert_eq!(buf.data.len(), 12);
+        for e in 0..12 {
+            assert_eq!(buf.data[e], 0.0, "edge {e} θ must be 0");
+            assert_eq!(buf.read_element(e), GroupElement::U1 { theta: 0.0 });
+        }
     }
 
     /// Halcyon ITEM 3.1: SU(3) identity buffer now constructs cleanly

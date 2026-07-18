@@ -266,12 +266,62 @@ mod tests {
         }
     }
 
+    /// U(1) group math (2026-07-18): the abelian phase group. Converted
+    /// from the old `#[should_panic(expected = "U1")]` stub now that the
+    /// `U1` arms of compose / inverse / re_trace_half carry real math.
+    ///
+    /// - compose adds phases (abelian) and normalizes to the principal
+    ///   branch `(-π, π]`: `compose(0.1, 0.2) = 0.3`.
+    /// - inverse negates the phase (same branch): `inverse(0.3) = -0.3`.
+    /// - re_trace_half is `cos θ` (= Re Tr(U)/N with N = 1, the U(1)
+    ///   analog of SU(2)'s `q0 = ½ Tr`).
+    /// - round-trip: `compose(θ, -θ) = identity (0)`.
     #[test]
-    #[should_panic(expected = "U1")]
-    fn u1_compose_panics() {
+    fn u1_group_math_compose_inverse_re_trace() {
+        fn theta_of(g: GroupElement) -> f64 {
+            match g {
+                GroupElement::U1 { theta } => theta,
+                other => panic!("expected U1, got {other:?}"),
+            }
+        }
+
+        // compose adds phases: 0.1 + 0.2 = 0.3 (in-branch, no wrap).
         let a = GroupElement::U1 { theta: 0.1 };
         let b = GroupElement::U1 { theta: 0.2 };
-        let _ = a.compose(&b);
+        assert!((theta_of(a.compose(&b)) - 0.3).abs() < 1e-12, "compose(0.1,0.2)=0.3");
+
+        // inverse negates the phase.
+        let c = GroupElement::U1 { theta: 0.3 };
+        assert!((theta_of(c.inverse()) - (-0.3)).abs() < 1e-12, "inverse(0.3)=-0.3");
+
+        // re_trace_half = cos θ.
+        for &t in &[0.0_f64, 0.3, 1.0, std::f64::consts::PI, -0.7] {
+            let g = GroupElement::U1 { theta: t };
+            assert!((g.re_trace_half() - t.cos()).abs() < 1e-12, "re_trace(θ)=cos θ for θ={t}");
+        }
+
+        // round-trip: compose(θ, -θ) = identity (θ = 0).
+        let g = GroupElement::U1 { theta: 0.3 };
+        assert!(theta_of(g.compose(&g.inverse())).abs() < 1e-12, "compose(θ,-θ)=0");
+
+        // normalization pins the (-π, π] principal branch: a compose that
+        // overshoots +π wraps to the negative side (κ and 2π−κ are NOT
+        // conflated — κ and −κ are antipodal, the signed-circulation
+        // convention the U(1) holonomy reading wants).
+        let hi = GroupElement::U1 { theta: std::f64::consts::PI - 0.1 };
+        let step = GroupElement::U1 { theta: 0.2 };
+        let wrapped = theta_of(hi.compose(&step)); // (π-0.1)+0.2 = π+0.1 → −(π−0.1)
+        assert!(
+            (wrapped - (-(std::f64::consts::PI - 0.1))).abs() < 1e-12,
+            "compose wraps to (-π, π]: got {wrapped}"
+        );
+        // −π and +π both land on the retained upper boundary +π.
+        let neg_pi = GroupElement::U1 { theta: -std::f64::consts::PI };
+        assert!(
+            (theta_of(neg_pi.compose(&GroupElement::U1 { theta: 0.0 })) - std::f64::consts::PI).abs()
+                < 1e-12,
+            "−π normalizes to +π (half-open upper edge)"
+        );
     }
 
     #[test]

@@ -20,8 +20,12 @@
 //!   - Ω           when `resolve_edge(va, vb) == Forward`  (edges[eid]=(va,vb))
 //!   - Ω.inverse() when `resolve_edge(va, vb) == Reverse`  (edges[eid]=(vb,va))
 //! so that `edge_element(eid, resolve_orient)` recovers Ω exactly. Pinned
-//! by the round-trip + reverse-orientation unit tests below and the live
-//! lens p-sweep in `tests/gauge_inject_basic.rs`.
+//! by the round-trip + reverse-orientation unit tests below (byte-exact
+//! forward and reverse reads). NOTE: the live lens p-sweep is orientation-
+//! *blind* — `order_estimate` and `re_trace` are functions of the holonomy
+//! scalar `q0` alone, identical under Ω ↔ Ω†, so it validates the p → order
+//! map, not orientation; orientation faithfulness rests on the round-trip
+//! and reverse-orientation tests, not the p-sweep receipt.
 //!
 //! GROUP SUPPORT: SU(2) this phase (the Poincaré need). U(1) — the
 //! Navier–Stokes linking-number reading `∮_C A·dl` via HOLONOMY on a
@@ -60,7 +64,16 @@ const UNIT_NORM_TOL: f64 = 1e-6;
 /// the four canonical SU(2) fiber columns `q0..q3` (the same schema INIT
 /// FLUX / INGEST AS GAUGE_FIELD emit). Each record plants its chosen
 /// quaternion on the directed edge `vertex_a → vertex_b`, orientation
-/// handled per the module docstring. Edges with no record stay identity.
+/// handled per the module docstring.
+///
+/// COMPLETENESS CONTRACT: the caller owns edge coverage. Edges with no
+/// record stay identity by design (the buffer starts at `new_identity`);
+/// this function does NOT require a record per lattice edge, so a partial
+/// emit silently leaves the un-recorded edges identity. An emitter that
+/// drops a chosen (e.g. z-wrap) link would read back a *trivial* holonomy
+/// there with no error, so emitters must plant every non-identity edge.
+/// The shipped `build_su2_bundle` emits one record per lattice edge, so
+/// completeness holds for the p-sweep receipt.
 ///
 /// Errors (all typed, never panics — mapped to 4xx at the executor):
 /// - [`GaugeFieldError::FiberArityMismatch`] — the schema does not carry

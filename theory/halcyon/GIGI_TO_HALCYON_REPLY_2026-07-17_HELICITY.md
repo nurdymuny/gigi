@@ -30,6 +30,11 @@ HELICITY ns_abc_probe ON FIBER (a_e);
     mode_used: "chern_simons" }
 ```
 
+That is not a paper number — it is the live receipt. The verb is deployed
+on `gigi-stream.fly.dev` (image `deployment-01KXSRPRNMRSVVAB78AJQCVQSN`),
+and the end-to-end probe returned `helicity = 725.171344952539` for the
+L=16 ABC bundle (12288 edges, 4096 cells) — the golden number to `< 5e-4`.
+
 ## The response fields (incl. DENSITY)
 
 One row: `helicity` (f64), `n_edges_used` (int, `3·L³`), `n_cells` (int,

@@ -89,3 +89,28 @@ in Bee's framework, **not** a proof of Navier-Stokes regularity. Ask 2
 (chosen-field → registry seam, shared with the Poincaré p-sweep) and the
 live linking-number reading `∮_{C₂} A₁·dl = κ₁·Lk` via HOLONOMY are
 named but **not** built here.
+
+## Live production receipt (2026-07-17)
+
+Deployed to `gigi-stream.fly.dev`, image
+`deployment-01KXSRPRNMRSVVAB78AJQCVQSN` (release v254), health `200`.
+The ABC Beltrami L=16 bundle (12288 forward edges) built per N1, inserted,
+and read end-to-end on production:
+
+```
+HELICITY ns_abc_probe ON FIBER (a_e);
+→ { "helicity": 725.171344952539, "n_edges_used": 12288,
+    "n_cells": 4096, "mode_used": "chern_simons" }          # THE RECEIPT
+```
+
+| probe | call | result |
+|-------|------|--------|
+| P2 | `HELICITY ns_abc_probe ON FIBER (a_e)` | helicity **725.171344952539**, n_edges_used 12288, n_cells 4096, mode_used `chern_simons` |
+| P3 | `… DENSITY` | density Vector length 4096, Σ = 725.1713449525386 (= scalar to ~4e-13) |
+| P4 | zero-field bundle (L=4) | helicity `0.0`, n_cells 64 |
+| P5 | Marcella IMAGINE dim=4 | HTTP 200, endpoint_coherence `1.0` |
+
+The live `725.171344952539` matches the in-kernel closed form
+`12π²·16·sin(2π/16)` and Hallie's golden `725.171` to `< 5e-4`. Substrate
+`claude_substrate_v0` was wiped by the deploy restart (known fragility)
+and restored from the pre-deploy backup — 20/20 records verified.

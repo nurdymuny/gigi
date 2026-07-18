@@ -79,7 +79,7 @@ the engine implements, not an aspirational future.
 | You want to… | Conventional DB | GIGI |
 |---|---|---|
 | **Insert one row** | Append to table, update indexes | Append + bump Welford field stats + mutation_counter + curvature; the bundle's geometry incrementally evolves |
-| **Look up by primary key** | B-tree (O(log N)) or hash (O(1)) | `SECTION bundle AT (id='X');` — GIGI hash G(K₁,…,Kₘ) → ℝ¤₂⁶⁴, **always O(1)**; response also carries κ + confidence |
+| **Look up by primary key** | B-tree (O(log N)) or hash (O(1)) | `SECTION bundle AT id='X';` — GIGI hash G(K₁,…,Kₘ) → ℝ¤₂⁶⁴, **always O(1)**; response also carries κ + confidence |
 | **`WHERE x = 5`** | Index scan or full table scan | Same O(1) GIGI hash on the addressed key; with geometric annotation per result |
 | **`WHERE x BETWEEN 10 AND 20`** | Range scan over a sorted index | `filtered_query` over the bundle; returns hits + per-hit position in the fiber |
 | **`GROUP BY region`** | Hash-grouped aggregation | `INTEGRATE field OVER bundle COVER ALL;` — aggregation = integration over a base-space cover (geometric, not relational) |
@@ -267,7 +267,7 @@ cargo run --release --bin gigi-stream
 # 2. Create a bundle (HTTP, GQL passthrough)
 curl -X POST http://localhost:3142/v1/gql \
   -H "Content-Type: application/json" \
-  -d '{"query": "CREATE BUNDLE sensors FIBER (sensor_id CATEGORICAL, temp NUMERIC, humidity NUMERIC) KEYS (sensor_id);"}'
+  -d '{"query": "CREATE BUNDLE sensors (sensor_id CATEGORICAL BASE, temp NUMERIC FIBER, humidity NUMERIC FIBER);"}'
 
 # 3. Insert two records
 curl -X POST http://localhost:3142/v1/bundles/sensors/insert \
@@ -279,7 +279,7 @@ curl -X POST http://localhost:3142/v1/bundles/sensors/insert \
 # 4. Point query — O(1) via the GIGI hash. Response carries κ and confidence.
 curl -X POST http://localhost:3142/v1/gql \
   -H "Content-Type: application/json" \
-  -d '{"query":"SECTION sensors AT (sensor_id='\''S-001'\'');"}'
+  -d '{"query":"SECTION sensors AT sensor_id='\''S-001'\'';"}'
 
 # 5. Read the bundle's scalar curvature
 curl http://localhost:3142/v1/bundles/sensors/curvature
@@ -388,7 +388,7 @@ Two operational knobs live outside the fail-closed filesystem gates:
 
 ```gql
 -- Point query — O(1) via the GIGI hash
-SECTION sensors AT (sensor_id='S-001');
+SECTION sensors AT sensor_id='S-001';
 
 -- Aggregate over a base-space cover — O(|r|)
 INTEGRATE temp OVER sensors COVER ALL;
@@ -488,9 +488,10 @@ DEPTH corpus;       -- erasure-energy classifier I/II/III/IV
 PERCEIVE corpus ROTATION (r00, r01, r10, r11) VECTOR (v0, v1) DIM 2;
 
 -- Encrypted-at-rest fiber, gauge-preserving
-CREATE BUNDLE finance FIBER (
-  amount NUMERIC ENCRYPTED,
-  account TEXT ENCRYPTED INDEXED
+CREATE BUNDLE finance (
+  id TEXT BASE,
+  amount NUMERIC FIBER ENCRYPTED,
+  account TEXT FIBER ENCRYPTED INDEXED
 );
 ```
 

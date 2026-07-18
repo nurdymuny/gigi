@@ -9282,6 +9282,21 @@ async fn bundle_anomalies(
     })))
 }
 
+/// Character-trigram set of a string (lowercased), for the SCAN text lens.
+fn scan_trigrams(s: &str) -> std::collections::HashSet<String> {
+    let chars: Vec<char> = s.to_lowercase().chars().collect();
+    if chars.len() < 3 {
+        return std::iter::once(chars.iter().collect::<String>()).collect();
+    }
+    (0..=chars.len() - 3).map(|i| chars[i..i + 3].iter().collect::<String>()).collect()
+}
+/// Jaccard similarity of two trigram sets ∈ [0,1].
+fn scan_jaccard(a: &std::collections::HashSet<String>, b: &std::collections::HashSet<String>) -> f64 {
+    let inter = a.intersection(b).count() as f64;
+    let uni = a.union(b).count() as f64;
+    if uni == 0.0 { 0.0 } else { inter / uni }
+}
+
 /// Request for `POST /v1/bundles/{name}/scan`.
 #[derive(Deserialize)]
 struct ScanRequest {
@@ -9420,6 +9435,57 @@ async fn bundle_scan(
         for r in &records { *counts.entry(bucket(r)).or_insert(0) += 1; }
         let m = records.iter().map(|r| (idof(r), *counts.get(&bucket(r)).unwrap_or(&1) as f64)).collect();
         lenses.push(("velocity".to_string(), m));
+    }
+
+    // ── text lens: typo-squat (near-duplicate to a known value) + rare value ──
+    // Runs on text-like categorical fields (≥30% of distinct values contain a
+    // space or a dot — names/memos, not ID codes). Catches entity/description
+    // fraud that the numeric-curvature lenses are blind to.
+    {
+        let is_text = |f: &str| {
+            let vals: std::collections::HashSet<String> =
+                records.iter().filter_map(|r| r.get(f).map(|v| format!("{}", v))).collect();
+            if vals.is_empty() { return false; }
+            let hit = vals.iter().filter(|v| v.contains(' ') || v.contains('.')).count();
+            (hit as f64) / (vals.len() as f64) >= 0.30
+        };
+        let text_fields: Vec<String> = cats.iter().filter(|c| is_text(c)).cloned().collect();
+        if !text_fields.is_empty() {
+            let mut m: HashMap<String, f64> = ids.iter().map(|i| (i.clone(), 0.0)).collect();
+            for tf in &text_fields {
+                let mut freq: HashMap<String, usize> = HashMap::new();
+                for r in &records {
+                    if let Some(v) = r.get(tf) { *freq.entry(format!("{}", v)).or_insert(0) += 1; }
+                }
+                let maxf = *freq.values().max().unwrap_or(&1) as f64;
+                let low_card = freq.len() <= 25;   // memo-like: rarity is a clean signal
+                let tris: HashMap<String, std::collections::HashSet<String>> =
+                    freq.keys().map(|v| (v.clone(), scan_trigrams(v))).collect();
+                let frequent: Vec<&String> = freq.iter().filter(|(_, c)| **c >= 8).map(|(v, _)| v).collect();
+                // score per distinct value, then broadcast to records
+                let mut vscore: HashMap<String, f64> = HashMap::new();
+                for (v, c) in &freq {
+                    // near-duplicate to a DIFFERENT frequent value, in the "near but
+                    // not exact" band → typo-squat (Amazon.com vs Arnaz0n)
+                    let nd = if *c < 8 {
+                        let best = frequent.iter().filter(|fv| **fv != v)
+                            .map(|fv| scan_jaccard(&tris[v], &tris[*fv]))
+                            .fold(0.0_f64, f64::max);
+                        if (0.45..=0.97).contains(&best) { best } else { 0.0 }
+                    } else { 0.0 };
+                    let rare = 1.0 - (*c as f64) / maxf;
+                    vscore.insert(v.clone(), nd.max(if low_card { 0.85 * rare } else { 0.4 * rare }));
+                }
+                for r in &records {
+                    if let Some(v) = r.get(tf) {
+                        let s = *vscore.get(&format!("{}", v)).unwrap_or(&0.0);
+                        let e = m.get_mut(&idof(r)).unwrap();
+                        if s > *e { *e = s; }
+                    }
+                }
+            }
+            lenses.push(("text".to_string(), m));
+        }
     }
 
     if lenses.is_empty() {

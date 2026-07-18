@@ -12606,6 +12606,46 @@ async fn gql_query(
         }
     }
 
+    // ── PULLBACK dispatch ─────────────────────────────────────────────
+    //
+    // PULLBACK <left> ALONG <f> ONTO <right> is a TWO-bundle verb. The
+    // single-store read path (`execute_gql_on_store_read`) only sees the
+    // left bundle (`get_bundle_name` returns `left`), so PULLBACK used to
+    // fall through to the "verb performs no work on this server path yet"
+    // notice. Dispatch it here — BEFORE the single-bundle pre-resolve —
+    // where one read guard resolves BOTH bundles (no nested lock) and
+    // runs `join::pullback_join`, the same kernel the REST /join route
+    // (POST /v1/bundles/{name}/join) uses, so the two surfaces agree.
+    if matches!(&stmt, gigi::parser::Statement::Pullback { .. }) {
+        let result = execute_pullback(&state.engine, &stmt);
+        let dur = t0.elapsed().as_micros() as u64;
+        let stmt_type = gql_stmt_type_name(&stmt);
+        let (status, resp) = match result {
+            Ok(r) => exec_result_to_response(r),
+            Err(e) => {
+                let (class, status, body) = exec_error_to_response(&e);
+                let ev = state.logger.query_error(&req_id, query, dur, class, &e, status.as_u16());
+                state.logger.emit(ev);
+                state.metrics.record_query(dur, stmt_type, false, true);
+                return (status, body);
+            }
+        };
+        let slow = dur >= state.logger.slow_threshold_us();
+        let ev = state.logger.query_complete(
+            &req_id, "gql", stmt_type, query, dur, 0, dur,
+            &[], 0, 0, 0, 0, false, None, None,
+        );
+        state.logger.emit(ev);
+        if slow {
+            let ev2 = state.logger.query_slow(
+                &req_id, stmt_type, query, dur, false, false, "pullback dispatch",
+            );
+            state.logger.emit(ev2);
+        }
+        state.metrics.record_query(dur, stmt_type, slow, false);
+        return (status, resp);
+    }
+
     // Halcyon Bridge Trilogy follow-up — topology-verb route-handler bypass.
     //
     // Hallie's smoke chain (2026-06-28, gigi-stream a1c9c57) caught
@@ -13109,6 +13149,67 @@ fn execute_gql_on_engine(
     }
 }
 
+/// Execute `PULLBACK <left> ALONG <f> ONTO <right> [PRESERVE LEFT]` — the
+/// geometric join of two bundles along a shared base key. Resolves both
+/// bundles under a SINGLE read guard (no nested lock) and flattens each
+/// matched `(left, right)` pair into one row. Mirrors the REST
+/// `POST /v1/bundles/{name}/join` handler, which calls the same
+/// [`gigi::join::pullback_join`] kernel, so the GQL and REST surfaces agree.
+///
+/// The right-side join key defaults to the `along` field name when the
+/// optional `ONTO <right> ALONG <rfield>` clause is omitted. `PRESERVE LEFT`
+/// keeps left rows with no right match (a left/outer join); the default drops
+/// them (inner join). On a field-name collision the left value wins — the
+/// shared join key is identical on both sides, and right-only fields are added
+/// alongside.
+fn execute_pullback(
+    engine_lock: &std::sync::RwLock<gigi::engine::Engine>,
+    stmt: &gigi::parser::Statement,
+) -> Result<gigi::parser::ExecResult, String> {
+    use gigi::parser::{ExecResult, Statement};
+
+    let (left, along, right, right_field, preserve_left) = match stmt {
+        Statement::Pullback { left, along, right, right_field, preserve_left } => {
+            (left, along, right, right_field, *preserve_left)
+        }
+        _ => return Err("execute_pullback: not a PULLBACK statement".to_string()),
+    };
+    let rfield = right_field.clone().unwrap_or_else(|| along.clone());
+
+    let engine = engine_lock
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let left_ref = engine
+        .bundle(left)
+        .ok_or_else(|| format!("PULLBACK: left bundle '{left}' not found"))?;
+    let right_ref = engine
+        .bundle(right)
+        .ok_or_else(|| format!("PULLBACK: right bundle '{right}' not found"))?;
+    let left_heap = left_ref
+        .as_heap()
+        .ok_or_else(|| format!("PULLBACK: left bundle '{left}' is not a heap bundle"))?;
+    let right_heap = right_ref
+        .as_heap()
+        .ok_or_else(|| format!("PULLBACK: right bundle '{right}' is not a heap bundle"))?;
+
+    let pairs = gigi::join::pullback_join(left_heap, right_heap, along, &rfield);
+    let mut rows: Vec<gigi::types::Record> = Vec::with_capacity(pairs.len());
+    for (lrec, rrec) in pairs {
+        match rrec {
+            Some(rr) => {
+                let mut row = lrec;
+                for (k, v) in rr {
+                    row.entry(k).or_insert(v);
+                }
+                rows.push(row);
+            }
+            None if preserve_left => rows.push(lrec),
+            None => {}
+        }
+    }
+    Ok(ExecResult::Rows(rows))
+}
+
 /// Execute a GQL statement that only needs read access.
 /// Wraps execute_gql_on_store_read but handles EXISTS subquery conditions
 /// in COVER WHERE clauses by pre-computing allowed base-point sets.
@@ -13193,7 +13294,9 @@ fn compute_fiber_holonomy(
     let mut groups: BTreeMap<String, (f64, f64, usize)> = BTreeMap::new();
     for rec in records {
         let key = match rec.get(around_field) {
-            Some(v) => format!("{v:?}"),
+            // Display (not Debug) so a categorical renders as `coffee`,
+            // not `Text("coffee")` — the label rides into the response row.
+            Some(v) => format!("{v}"),
             None => continue,
         };
         let v0 = rec.get(f0).and_then(|v| v.as_f64()).unwrap_or(0.0);

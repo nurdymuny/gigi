@@ -9358,6 +9358,20 @@ async fn bundle_scan(
     let idof = |r: &gigi::types::Record| r.get(&base).map(|v| format!("{}", v)).unwrap_or_default();
     let ids: Vec<String> = records.iter().map(&idof).collect();
 
+    // Text-like fields (names/memos — ≥30% of distinct values contain a space or
+    // dot, i.e. not ID codes) route to the TEXT lens. They are excluded from the
+    // contextual-curvature lens below, where per-cohort curvature over free text
+    // is noise (the amount-context signal is covered by the true code fields).
+    let is_text_field = |f: &str| {
+        let vals: std::collections::HashSet<String> =
+            records.iter().filter_map(|r| r.get(f).map(|v| format!("{}", v))).collect();
+        !vals.is_empty() && {
+            let hit = vals.iter().filter(|v| v.contains(' ') || v.contains('.')).count();
+            (hit as f64) / (vals.len() as f64) >= 0.30
+        }
+    };
+    let text_fields: Vec<String> = cats.iter().filter(|c| is_text_field(c)).cloned().collect();
+
     // lens-name → (record-id → raw signal)
     let mut lenses: Vec<(String, HashMap<String, f64>)> = Vec::new();
 
@@ -9372,6 +9386,7 @@ async fn bundle_scan(
 
     // ── contextual curvature: cohort-local field stats per categorical field ──
     for cf in &cats {
+        if text_fields.contains(cf) { continue; }   // text fields → text lens, not curvature
         let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
         for (ix, r) in records.iter().enumerate() {
             if let Some(v) = r.get(cf) { groups.entry(format!("{}", v)).or_default().push(ix); }
@@ -9442,14 +9457,6 @@ async fn bundle_scan(
     // space or a dot — names/memos, not ID codes). Catches entity/description
     // fraud that the numeric-curvature lenses are blind to.
     {
-        let is_text = |f: &str| {
-            let vals: std::collections::HashSet<String> =
-                records.iter().filter_map(|r| r.get(f).map(|v| format!("{}", v))).collect();
-            if vals.is_empty() { return false; }
-            let hit = vals.iter().filter(|v| v.contains(' ') || v.contains('.')).count();
-            (hit as f64) / (vals.len() as f64) >= 0.30
-        };
-        let text_fields: Vec<String> = cats.iter().filter(|c| is_text(c)).cloned().collect();
         if !text_fields.is_empty() {
             let mut m: HashMap<String, f64> = ids.iter().map(|i| (i.clone(), 0.0)).collect();
             for tf in &text_fields {

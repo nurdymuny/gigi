@@ -418,6 +418,22 @@ pub enum Statement {
         /// self-loops → M[v][v] = 0.
         diagonal: Option<String>,
     },
+    /// `HELICITY <bundle> ON FIBER (<a_field>) [ON LATTICE <l>]
+    /// [DENSITY]` — discrete Chern-Simons / fluid helicity
+    /// `H = Σ A∧dA` of an edge-endpoint velocity 1-form (Navier-Stokes
+    /// Tier 1, Ask 1; 2026-07-17). Reads a periodic cubic L³ forward-edge
+    /// bundle (`vertex_a`, `vertex_b`, `<a_field>`), infers `L` from the
+    /// vertex ids, and returns one row
+    /// `{ helicity, n_edges_used, n_cells, mode_used = "chern_simons" }`;
+    /// with `DENSITY` also the per-cell density Vector (sums to helicity).
+    /// Read-only, dense/O(V). `lattice` is an optional informational tag
+    /// (Ask 1 infers the side length from the bundle itself).
+    Helicity {
+        bundle: String,
+        a_field: String,
+        lattice: Option<String>,
+        density: bool,
+    },
     Consistency {
         bundle: String,
         repair: bool,
@@ -2442,6 +2458,9 @@ impl Parser {
             "TRANSPORT_ROTATION" => self.parse_transport_rotation(),
             "SAMPLE_TRANSPORT" => self.parse_sample_transport(),
             "HOLONOMY" => self.parse_holonomy(),
+            // Navier-Stokes Tier 1 (2026-07-17): discrete Chern-Simons /
+            // fluid helicity of an edge-endpoint velocity 1-form bundle.
+            "HELICITY" => self.parse_helicity(),
             "DIVERGENCE" => {
                 // DIVERGENCE bundle_a VS bundle_b
                 let bundle_a = self.expect_word()?;
@@ -5038,6 +5057,66 @@ impl Parser {
             fiber_field: None,
             matrix: false,
             diagonal: None,
+        })
+    }
+
+    /// HELICITY — discrete Chern-Simons / fluid helicity (Navier-Stokes
+    /// Tier 1, 2026-07-17).
+    ///
+    /// Grammar:
+    ///   `HELICITY <bundle> ON FIBER (<a_field>) [ON LATTICE <l>] [DENSITY]`
+    ///
+    /// Exactly one fiber field (the signed velocity 1-form `a_e`). The
+    /// optional-clause loop mirrors CHERN_CLASS's `ON LATTICE` handling;
+    /// `DENSITY` is a bare flag modeled on SPECTRAL's `FULL`.
+    fn parse_helicity(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        self.expect_keyword("FIBER")?;
+        self.expect(Token::LParen)?;
+        let fields = self.parse_inner_word_list()?;
+        if fields.len() != 1 {
+            return Err(format!(
+                "HELICITY ... ON FIBER requires exactly one edge fiber field (the signed \
+                 velocity 1-form a_e); got {}",
+                fields.len()
+            ));
+        }
+        let a_field = fields[0].clone();
+
+        let mut lattice: Option<String> = None;
+        let mut density = false;
+        loop {
+            if self.is_keyword("ON") {
+                self.advance();
+                if self.is_keyword("LATTICE") {
+                    self.advance();
+                    if lattice.is_some() {
+                        return Err("HELICITY: duplicate ON LATTICE clause".into());
+                    }
+                    lattice = Some(self.expect_word()?);
+                } else {
+                    return Err(
+                        "HELICITY: expected LATTICE after ON (the fiber list is already \
+                         parsed)"
+                            .into(),
+                    );
+                }
+                continue;
+            }
+            if self.is_keyword("DENSITY") {
+                self.advance();
+                density = true;
+                continue;
+            }
+            break;
+        }
+
+        Ok(Statement::Helicity {
+            bundle,
+            a_field,
+            lattice,
+            density,
         })
     }
 
@@ -8180,7 +8259,7 @@ const SUGGESTABLE_VERBS: &[&str] = &[
     "REDEFINE", "RETRACT", "EXISTS", "SHOW", "DESCRIBE", "EXPLAIN",
     "CURVATURE", "SPECTRAL", "HEALTH", "CONSISTENCY", "BETTI", "ENTROPY",
     "GEODESIC", "METRIC", "COMPLETE", "PROPAGATE", "DIVERGENCE",
-    "HOLONOMY", "TRANSPORT", "GAUGE", "GRANT", "REVOKE", "POLICY",
+    "HOLONOMY", "HELICITY", "TRANSPORT", "GAUGE", "GRANT", "REVOKE", "POLICY",
     "DROP", "AUDIT", "COMPACT", "ANALYZE", "VACUUM", "REBUILD", "CHECK",
     "REPAIR", "STORAGE", "SET", "RESET", "INGEST", "TRANSPLANT",
     "GENERATE", "FILL", "PREPARE", "EXECUTE", "DEALLOCATE", "BACKUP",
@@ -11059,6 +11138,43 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .map(|s| crate::spectral::spectral_gap(s))
                 .unwrap_or(0.0);
             Ok(ExecResult::Scalar(lambda1))
+        }
+
+        Statement::Helicity { bundle, a_field, lattice: _, density } => {
+            // HELICITY (2026-07-17, Navier-Stokes Tier 1): discrete
+            // Chern-Simons / fluid helicity H = Σ A∧dA of the
+            // edge-endpoint velocity 1-form. Reads the heap store like
+            // MODE MATRIX; L is inferred from the bundle's vertex ids.
+            // One-row envelope, plus the per-cell density Vector with
+            // DENSITY.
+            let store = engine
+                .bundle(bundle)
+                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+            let heap = store.as_heap().ok_or_else(|| {
+                format!("HELICITY: bundle '{bundle}' is not heap-resident")
+            })?;
+            let res = crate::helicity::helicity_chern_simons(heap, a_field, *density)?;
+            let mut row = crate::types::Record::new();
+            row.insert(
+                "helicity".to_string(),
+                crate::types::Value::Float(res.helicity),
+            );
+            row.insert(
+                "n_edges_used".to_string(),
+                crate::types::Value::Integer(res.n_edges_used as i64),
+            );
+            row.insert(
+                "n_cells".to_string(),
+                crate::types::Value::Integer(res.n_cells as i64),
+            );
+            row.insert(
+                "mode_used".to_string(),
+                crate::types::Value::Text(res.mode_used.to_string()),
+            );
+            if let Some(d) = res.density {
+                row.insert("density".to_string(), crate::types::Value::Vector(d));
+            }
+            Ok(ExecResult::Rows(vec![row]))
         }
 
         Statement::Consistency { bundle, repair: _ } => {

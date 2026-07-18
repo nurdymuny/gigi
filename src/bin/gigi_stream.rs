@@ -13594,6 +13594,39 @@ fn execute_gql_on_store_read(
                 .unwrap_or(0.0);
             Ok(ExecResult::Scalar(lambda1))
         }
+        Statement::Helicity { a_field, density, .. } => {
+            // HELICITY (2026-07-17, Navier-Stokes Tier 1): discrete
+            // Chern-Simons / fluid helicity of the pre-resolved
+            // edge-endpoint bundle. Mirrors the SPECTRAL MODE MATRIX arm
+            // (heap read → kernel → one-row envelope). Typed String
+            // errors (non-cubic / non-3D / missing a_field) propagate via
+            // `?` and map to HTTP 4xx through exec_error_to_response.
+            let heap = store.as_heap().ok_or_else(|| {
+                "HELICITY: bundle is not heap-resident".to_string()
+            })?;
+            let res = gigi::helicity::helicity_chern_simons(heap, a_field, *density)?;
+            let mut row = gigi::types::Record::new();
+            row.insert(
+                "helicity".to_string(),
+                gigi::types::Value::Float(res.helicity),
+            );
+            row.insert(
+                "n_edges_used".to_string(),
+                gigi::types::Value::Integer(res.n_edges_used as i64),
+            );
+            row.insert(
+                "n_cells".to_string(),
+                gigi::types::Value::Integer(res.n_cells as i64),
+            );
+            row.insert(
+                "mode_used".to_string(),
+                gigi::types::Value::Text(res.mode_used.to_string()),
+            );
+            if let Some(d) = res.density {
+                row.insert("density".to_string(), gigi::types::Value::Vector(d));
+            }
+            Ok(ExecResult::Rows(vec![row]))
+        }
         Statement::Consistency { .. } => {
             let k = store.scalar_curvature();
             Ok(ExecResult::Scalar(if k.abs() < 1e-10 { 0.0 } else { k }))
@@ -14572,6 +14605,12 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         SpectralGauge { bundle, .. } => Some(bundle.clone()),
         ChernClass { bundle, .. } => Some(bundle.clone()),
         Pontryagin { bundle, .. } => Some(bundle.clone()),
+        // Navier-Stokes Tier 1 (2026-07-17): HELICITY reads a plain
+        // registered edge-endpoint bundle — expose its name so the read
+        // pre-resolve attaches the store (a MISSING arm here would fall
+        // to `_ => None` and silently return HTTP 200 ok with nothing
+        // executed — success theater — since it is not an Emit).
+        Helicity { bundle, .. } => Some(bundle.clone()),
         Transport { bundle, .. } => Some(bundle.clone()),
         TransportRotation { bundle, .. } => Some(bundle.clone()),
         SampleTransport { bundle, .. } => Some(bundle.clone()),
@@ -14616,6 +14655,7 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Ricci { .. }          => "RICCI",
         Curvature { .. }      => "CURVATURE",
         Spectral { .. }       => "SPECTRAL",
+        Helicity { .. }       => "HELICITY",
         SpectralGauge { .. }  => "SPECTRAL_GAUGE",
         ChernClass { .. }     => "CHERN_CLASS",
         Pontryagin { .. }     => "PONTRYAGIN",

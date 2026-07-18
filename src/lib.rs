@@ -248,6 +248,10 @@ pub mod lattice;
 #[cfg(feature = "lattice")]
 pub mod topology;
 pub mod spectral;
+// HELICITY — discrete Chern-Simons / fluid-helicity observable
+// (Navier-Stokes Tier 1). Scalar contraction of edge 1-forms; ungated
+// (only std + bundle/types), like spectral.rs.
+pub mod helicity;
 // GIGI Encrypt v0.3 — Sprint L (Čech threshold sharing).
 // Shamir secret sharing over secp256k1 base field F_p (p = 2^256 - 2^32 - 977),
 // framed as Čech reconstruction on the share-holder cover. Each share carries

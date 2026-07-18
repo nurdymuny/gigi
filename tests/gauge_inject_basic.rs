@@ -363,17 +363,19 @@ fn i3_p1_identity_control() {
     assert_eq!(int(&row, "order_estimate"), 1, "identity → order 1");
 }
 
-// ── I4 — U(1) deferral (documents the fast-follow boundary) ──────────
+// ── I4 — U(1) now live (the NS linking fast-follow landed) ───────────
 
-/// GROUP U(1) INIT FROM BUNDLE is a clean typed error this phase — SU(2)
-/// ships now; U(1) (the NS linking-number reading) is a named fast-follow
-/// blocked on live U(1) group math (compose/inverse/re_trace all panic
-/// today). The declaration must refuse, not panic.
+/// GROUP U(1) INIT FROM BUNDLE now round-trips (2026-07-18 linking ship):
+/// live U(1) group math + a U(1) DenseLinkBuffer arm landed, so a chosen
+/// theta field injects and reads back its θ exactly. Full U(1) coverage
+/// (round-trip / holonomy phase / the κ·Lk linking receipt / typed errors)
+/// lives in `tests/u1_linking_basic.rs`; this fence just confirms the SU(2)
+/// inject path is unregressed while U(1) went live alongside it.
 #[test]
-fn i4_u1_from_bundle_typed_error_this_phase() {
+fn i4_u1_from_bundle_now_live() {
     let (mut eng, _dir, _g) = open_engine();
     let lat = declare_cubic(&mut eng, "u1_lat", 3, 3);
-    // A theta bundle (the U(1) shape).
+    // A theta bundle (the U(1) shape), θ = 0.3 everywhere except edge 0.
     eng.create_bundle(
         BundleSchema::new("u1_bundle")
             .base(FieldDef::numeric("config_id"))
@@ -393,21 +395,25 @@ fn i4_u1_from_bundle_typed_error_this_phase() {
             r.insert("edge_id".to_string(), Value::Integer(eid as i64));
             r.insert("vertex_a".to_string(), Value::Integer(u as i64));
             r.insert("vertex_b".to_string(), Value::Integer(v as i64));
-            r.insert("theta".to_string(), Value::Float(0.3));
+            r.insert("theta".to_string(), Value::Float(if eid == 0 { 1.25 } else { 0.3 }));
             r
         })
         .collect();
     eng.batch_insert("u1_bundle", &recs).expect("batch_insert");
 
-    let err = run_err(
+    run_ok(
         &mut eng,
         "GAUGE_FIELD u1_field GROUP U(1) INIT FROM BUNDLE u1_bundle ON LATTICE u1_lat;",
     );
-    let up = err.to_uppercase();
-    assert!(
-        up.contains("SU(2)") || up.contains("U(1)") || up.contains("NOT IMPLEMENTED"),
-        "U(1) INIT FROM BUNDLE must name the group boundary: {err}"
-    );
+
+    // The field registers as GROUP U(1) and reads back the chosen θ.
+    let handle = gauge_registry::get("u1_field").expect("U(1) field registered");
+    assert_eq!(handle.group().label(), "U(1)");
+    let g0 = handle.edge_element(0, EdgeOrientation::Forward);
+    match g0 {
+        GroupElement::U1 { theta } => assert!((theta - 1.25).abs() < 1e-12, "edge 0 θ round-trip"),
+        other => panic!("expected U1, got {other:?}"),
+    }
 }
 
 // ── I5 — typed errors (no panics) ────────────────────────────────────

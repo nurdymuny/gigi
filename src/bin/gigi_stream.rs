@@ -9282,6 +9282,217 @@ async fn bundle_anomalies(
     })))
 }
 
+/// Request for `POST /v1/bundles/{name}/scan`.
+#[derive(Deserialize)]
+struct ScanRequest {
+    /// Review budget: flag the top `budget` fraction of records. Default 0.05.
+    #[serde(default = "default_scan_budget")]
+    budget: f64,
+    /// Optional per-lens weights for a supervised linear combiner
+    /// (lens-name → weight). When present, the fused score is
+    /// `Σ wₗ · normalized_lensₗ` instead of the default max-fusion — supply
+    /// weights learned from confirmed frauds to lift recall past the
+    /// unsupervised plateau. When absent, lenses fuse by max (OR-semantics).
+    #[serde(default)]
+    weights: Option<std::collections::HashMap<String, f64>>,
+    /// Cap on returned rows (0 = all, already sorted most-anomalous first).
+    #[serde(default)]
+    limit: usize,
+}
+fn default_scan_budget() -> f64 { 0.05 }
+
+/// POST /v1/bundles/{name}/scan
+///
+/// GIGI's one-call, zero-config anomaly detector. Auto-introspects the schema
+/// and fuses a battery of geometric lenses — **global** curvature, **contextual**
+/// curvature computed with cohort-local field statistics for every suitable
+/// categorical field, and **velocity** over (highest-cardinality entity × time) —
+/// into a per-record score WITH lens attribution. The only input is the bundle
+/// name; no feature engineering. Returns records sorted most-anomalous first,
+/// each with the lens that fired and the per-lens breakdown.
+async fn bundle_scan(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<ScanRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::types::{FieldType, Value};
+    use std::collections::HashMap;
+    let engine = state.engine_read();
+    let store = engine.bundle(&name).ok_or_else(|| (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+    ))?;
+    let schema = store.schema();
+    if schema.base_fields.is_empty() {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY,
+            Json(ErrorResponse { error: "SCAN requires a single base-key field".into() })));
+    }
+    let base = schema.base_fields[0].name.clone();
+    let cats: Vec<String> = schema.fiber_fields.iter()
+        .filter(|f| matches!(f.field_type, FieldType::Categorical | FieldType::OrderedCat { .. }))
+        .map(|f| f.name.clone()).collect();
+    let num_defs: Vec<gigi::types::FieldDef> = schema.fiber_fields.iter()
+        .filter(|f| matches!(f.field_type, FieldType::Numeric))
+        .cloned().collect();
+
+    let records: Vec<gigi::types::Record> = store.records().collect();
+    let n = records.len();
+    if n == 0 {
+        return Ok(Json(serde_json::json!({"bundle": name, "n": 0, "lenses": [], "results": []})));
+    }
+    let idof = |r: &gigi::types::Record| r.get(&base).map(|v| format!("{}", v)).unwrap_or_default();
+    let ids: Vec<String> = records.iter().map(&idof).collect();
+
+    // lens-name → (record-id → raw signal)
+    let mut lenses: Vec<(String, HashMap<String, f64>)> = Vec::new();
+
+    // ── global curvature anomaly (uses the bundle's own field stats) ──
+    if !num_defs.is_empty() {
+        let a = store.compute_anomalies(0.0, None, usize::MAX);
+        let m = a.iter()
+            .map(|ar| (ar.record.get(&base).map(|v| format!("{}", v)).unwrap_or_default(), ar.z_score))
+            .collect();
+        lenses.push(("global".to_string(), m));
+    }
+
+    // ── contextual curvature: cohort-local field stats per categorical field ──
+    for cf in &cats {
+        let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
+        for (ix, r) in records.iter().enumerate() {
+            if let Some(v) = r.get(cf) { groups.entry(format!("{}", v)).or_default().push(ix); }
+        }
+        let d = groups.len();
+        if d < 4 || (d as f64) > (n as f64) / 5.0 { continue; }        // skip binary / near-unique fields
+        let mut sizes: Vec<usize> = groups.values().map(|v| v.len()).collect();
+        sizes.sort_unstable();
+        if sizes[sizes.len() / 2] < 3 { continue; }                    // cohorts too small for geometry
+        if num_defs.is_empty() { break; }
+        let mut m: HashMap<String, f64> = HashMap::new();
+        for idxs in groups.values() {
+            if idxs.len() < 3 { for &ix in idxs { m.insert(ids[ix].clone(), 0.0); } continue; }
+            // cohort-local Welford field stats
+            let mut stats: HashMap<String, gigi::bundle::FieldStats> = HashMap::new();
+            for &ix in idxs {
+                for fd in &num_defs {
+                    if let Some(x) = records[ix].get(&fd.name).and_then(|v| v.as_f64()) {
+                        stats.entry(fd.name.clone()).or_default().update(x);
+                    }
+                }
+            }
+            // cohort-local K per record, then z within the cohort
+            let ks: Vec<(usize, f64)> = idxs.iter().map(|&ix| {
+                let vals: Vec<Value> = num_defs.iter()
+                    .map(|fd| records[ix].get(&fd.name).cloned().unwrap_or(Value::Null)).collect();
+                (ix, gigi::bundle::compute_record_k(&stats, &vals, &num_defs))
+            }).collect();
+            let cn = ks.len() as f64;
+            let mu = ks.iter().map(|(_, k)| k).sum::<f64>() / cn;
+            let sd = (ks.iter().map(|(_, k)| (k - mu).powi(2)).sum::<f64>() / cn).sqrt();
+            for (ix, k) in ks {
+                let z = if sd < f64::EPSILON { 0.0 } else { (k - mu) / sd };
+                m.insert(ids[ix].clone(), z.max(0.0));
+            }
+        }
+        lenses.push((format!("context:{}", cf), m));
+    }
+
+    // ── velocity: (highest-cardinality entity × most-granular TIME) burst count ──
+    // Pick the time axis by NAME (day/date/time/hour/…), not by distinct-count —
+    // otherwise `amount` (thousands of distinct values) would masquerade as time.
+    let time_named = |nm: &str| {
+        let l = nm.to_lowercase();
+        ["day", "date", "time", "hour", "ts", "week", "month"].iter().any(|k| l.contains(k))
+    };
+    let time_field = num_defs.iter().filter(|f| time_named(&f.name))
+        .max_by_key(|f| records.iter()
+            .filter_map(|r| r.get(&f.name).and_then(|v| v.as_f64()).map(|x| x as i64))
+            .collect::<std::collections::HashSet<_>>().len())
+        .map(|f| f.name.clone());
+    if let (false, Some(time_f)) = (cats.is_empty(), time_field) {
+        let entity = cats.iter().max_by_key(|c| records.iter()
+            .filter_map(|r| r.get(*c).map(|v| format!("{}", v)))
+            .collect::<std::collections::HashSet<_>>().len()).unwrap().clone();
+        let bucket = |r: &gigi::types::Record| (
+            r.get(&entity).map(|v| format!("{}", v)).unwrap_or_default(),
+            r.get(&time_f).and_then(|v| v.as_f64()).unwrap_or(0.0) as i64,
+        );
+        let mut counts: HashMap<(String, i64), usize> = HashMap::new();
+        for r in &records { *counts.entry(bucket(r)).or_insert(0) += 1; }
+        let m = records.iter().map(|r| (idof(r), *counts.get(&bucket(r)).unwrap_or(&1) as f64)).collect();
+        lenses.push(("velocity".to_string(), m));
+    }
+
+    if lenses.is_empty() {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY,
+            Json(ErrorResponse { error: "SCAN found no usable numeric or categorical fibers".into() })));
+    }
+
+    // ── rank-normalize each lens to [0,1] over all records ──
+    let lens_names: Vec<String> = lenses.iter().map(|(nm, _)| nm.clone()).collect();
+    let norm: Vec<HashMap<String, f64>> = lenses.iter().map(|(_, m)| {
+        let mut distinct: Vec<f64> = ids.iter().map(|i| *m.get(i).unwrap_or(&0.0)).collect();
+        distinct.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        distinct.dedup();
+        let denom = (distinct.len().saturating_sub(1)).max(1) as f64;
+        let rankmap: HashMap<u64, f64> = distinct.iter().enumerate()
+            .map(|(k, v)| (v.to_bits(), k as f64 / denom)).collect();
+        ids.iter().map(|i| {
+            let raw = *m.get(i).unwrap_or(&0.0);
+            (i.clone(), *rankmap.get(&raw.to_bits()).unwrap_or(&0.0))
+        }).collect()
+    }).collect();
+
+    // ── fuse: weighted linear if weights supplied, else max (with attribution) ──
+    let weights = req.weights.as_ref();
+    let mut scored: Vec<(usize, f64, String)> = ids.iter().enumerate().map(|(ri, _)| {
+        let per: Vec<f64> = norm.iter().map(|nm| *nm.get(&ids[ri]).unwrap_or(&0.0)).collect();
+        if let Some(w) = weights {
+            let s: f64 = lens_names.iter().zip(&per).map(|(ln, v)| w.get(ln).copied().unwrap_or(0.0) * v).sum();
+            let top = lens_names.iter().zip(&per)
+                .max_by(|a, b| (w.get(a.0).copied().unwrap_or(0.0) * a.1)
+                    .partial_cmp(&(w.get(b.0).copied().unwrap_or(0.0) * b.1)).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(ln, _)| ln.clone()).unwrap_or_default();
+            (ri, s, top)
+        } else {
+            let mut best = (0.0f64, String::new());
+            let mut tot = 0.0;
+            for (ln, v) in lens_names.iter().zip(&per) {
+                tot += *v;
+                if *v > best.0 { best = (*v, ln.clone()); }
+            }
+            (ri, best.0 + 1e-4 * tot, best.1)   // tiny tiebreak by corroborating evidence
+        }
+    }).collect();
+    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    let k_flag = ((req.budget.clamp(0.0, 1.0)) * n as f64).round() as usize;
+    let cap = if req.limit == 0 { scored.len() } else { req.limit.min(scored.len()) };
+    let results: Vec<serde_json::Value> = scored.iter().take(cap).enumerate().map(|(rank, (ri, score, top))| {
+        let mut lm = serde_json::Map::new();
+        for (ln, nm) in lens_names.iter().zip(&norm) {
+            let v = *nm.get(&ids[*ri]).unwrap_or(&0.0);
+            lm.insert(ln.clone(), serde_json::json!((v * 1000.0).round() / 1000.0));
+        }
+        serde_json::json!({
+            base.clone(): ids[*ri],
+            "score": (score * 10000.0).round() / 10000.0,
+            "top_lens": top,
+            "flagged": rank < k_flag,
+            "lenses": lm,
+        })
+    }).collect();
+
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "n": n,
+        "lenses": lens_names,
+        "budget": req.budget,
+        "n_flagged": k_flag.min(n),
+        "fusion": if weights.is_some() { "weighted" } else { "max" },
+        "results": results,
+    })))
+}
+
 /// GET /v1/bundles/{name}/health
 /// Bundle health snapshot: record count, curvature stats, confidence.
 async fn bundle_health(
@@ -16023,6 +16234,7 @@ async fn main() {
         .route("/v1/bundles/{name}/metric", get(metric_tensor_report))
         // Anomaly Detection + Health
         .route("/v1/bundles/{name}/anomalies", post(bundle_anomalies))
+        .route("/v1/bundles/{name}/scan", post(bundle_scan))
         .route("/v1/bundles/{name}/health", get(bundle_health))
         .route("/v1/bundles/{name}/predict", post(predict_volatility))
         .route("/v1/bundles/{name}/anomalies/field", post(field_anomalies))

@@ -9325,35 +9325,37 @@ fn default_scan_budget() -> f64 { 0.05 }
 /// into a per-record score WITH lens attribution. The only input is the bundle
 /// name; no feature engineering. Returns records sorted most-anomalous first,
 /// each with the lens that fired and the per-lens breakdown.
-async fn bundle_scan(
-    State(state): State<Arc<StreamState>>,
-    Path(name): Path<String>,
-    Json(req): Json<ScanRequest>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+/// Shared SCAN engine: introspect the schema, build every geometric lens, and
+/// rank-normalize each to [0,1]. Returns (lens_names, per-lens normalized maps,
+/// record ids, base-key name, n). Used by both /scan (fusion) and /scan/fit
+/// (supervised weight learning).
+fn scan_compute_lenses(
+    engine: &Engine,
+    name: &str,
+    exclude: &[String],
+) -> Result<(Vec<String>, Vec<std::collections::HashMap<String, f64>>, Vec<String>, String, usize), (StatusCode, String)> {
     use gigi::types::{FieldType, Value};
     use std::collections::HashMap;
-    let engine = state.engine_read();
-    let store = engine.bundle(&name).ok_or_else(|| (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
-    ))?;
+    let store = engine.bundle(name).ok_or_else(|| (
+        StatusCode::NOT_FOUND, format!("Bundle '{}' not found", name)))?;
     let schema = store.schema();
     if schema.base_fields.is_empty() {
-        return Err((StatusCode::UNPROCESSABLE_ENTITY,
-            Json(ErrorResponse { error: "SCAN requires a single base-key field".into() })));
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, "SCAN requires a single base-key field".into()));
     }
     let base = schema.base_fields[0].name.clone();
+    // excluded fields (e.g. the fit label) never enter the geometry
+    let usable = |f: &gigi::types::FieldDef| !exclude.iter().any(|e| e == &f.name);
     let cats: Vec<String> = schema.fiber_fields.iter()
-        .filter(|f| matches!(f.field_type, FieldType::Categorical | FieldType::OrderedCat { .. }))
+        .filter(|f| usable(f) && matches!(f.field_type, FieldType::Categorical | FieldType::OrderedCat { .. }))
         .map(|f| f.name.clone()).collect();
     let num_defs: Vec<gigi::types::FieldDef> = schema.fiber_fields.iter()
-        .filter(|f| matches!(f.field_type, FieldType::Numeric))
+        .filter(|f| usable(f) && matches!(f.field_type, FieldType::Numeric))
         .cloned().collect();
 
     let records: Vec<gigi::types::Record> = store.records().collect();
     let n = records.len();
     if n == 0 {
-        return Ok(Json(serde_json::json!({"bundle": name, "n": 0, "lenses": [], "results": []})));
+        return Ok((Vec::new(), Vec::new(), Vec::new(), base, 0));
     }
     let idof = |r: &gigi::types::Record| r.get(&base).map(|v| format!("{}", v)).unwrap_or_default();
     let ids: Vec<String> = records.iter().map(&idof).collect();
@@ -9375,12 +9377,31 @@ async fn bundle_scan(
     // lens-name → (record-id → raw signal)
     let mut lenses: Vec<(String, HashMap<String, f64>)> = Vec::new();
 
-    // ── global curvature anomaly (uses the bundle's own field stats) ──
+    // ── global curvature anomaly ──
+    // Computed over `num_defs` (which honors `exclude`) rather than
+    // store.compute_anomalies, so an excluded field (e.g. the fit label) can
+    // never leak into the geometry through the bundle's own field stats.
     if !num_defs.is_empty() {
-        let a = store.compute_anomalies(0.0, None, usize::MAX);
-        let m = a.iter()
-            .map(|ar| (ar.record.get(&base).map(|v| format!("{}", v)).unwrap_or_default(), ar.z_score))
-            .collect();
+        let mut stats: HashMap<String, gigi::bundle::FieldStats> = HashMap::new();
+        for r in &records {
+            for fd in &num_defs {
+                if let Some(x) = r.get(&fd.name).and_then(|v| v.as_f64()) {
+                    stats.entry(fd.name.clone()).or_default().update(x);
+                }
+            }
+        }
+        let ks: Vec<f64> = records.iter().map(|r| {
+            let vals: Vec<Value> = num_defs.iter()
+                .map(|fd| r.get(&fd.name).cloned().unwrap_or(Value::Null)).collect();
+            gigi::bundle::compute_record_k(&stats, &vals, &num_defs)
+        }).collect();
+        let cn = ks.len() as f64;
+        let mu = ks.iter().sum::<f64>() / cn;
+        let sd = (ks.iter().map(|k| (k - mu).powi(2)).sum::<f64>() / cn).sqrt();
+        let m = records.iter().zip(&ks).map(|(r, k)| {
+            let z = if sd < f64::EPSILON { 0.0 } else { (k - mu) / sd };
+            (idof(r), z.max(0.0))
+        }).collect();
         lenses.push(("global".to_string(), m));
     }
 
@@ -9513,7 +9534,7 @@ async fn bundle_scan(
         let amt_pct = |a: f64| if amt_sorted.is_empty() { 1.0 }
             else { amt_sorted.partition_point(|&x| x < a) as f64 / amt_sorted.len() as f64 };
         let other_names: Vec<String> = engine.bundle_names().iter()
-            .filter(|b| **b != name.as_str() && !b.starts_with("_gigi"))
+            .filter(|b| **b != name && !b.starts_with("_gigi"))
             .map(|s| s.to_string()).collect();
         for cf in &cats {
             // find a bundle whose base key == cf (the foreign-key target)
@@ -9564,8 +9585,7 @@ async fn bundle_scan(
     }
 
     if lenses.is_empty() {
-        return Err((StatusCode::UNPROCESSABLE_ENTITY,
-            Json(ErrorResponse { error: "SCAN found no usable numeric or categorical fibers".into() })));
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, "SCAN found no usable numeric or categorical fibers".into()));
     }
 
     // ── rank-normalize each lens to [0,1] over all records ──
@@ -9583,6 +9603,22 @@ async fn bundle_scan(
         }).collect()
     }).collect();
 
+    Ok((lens_names, norm, ids, base, n))
+}
+
+async fn bundle_scan(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<ScanRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine_read();
+    let (lens_names, norm, ids, base, n) = match scan_compute_lenses(&engine, &name, &[]) {
+        Ok(v) => v,
+        Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
+    };
+    if n == 0 {
+        return Ok(Json(serde_json::json!({"bundle": name, "n": 0, "lenses": [], "results": []})));
+    }
     // ── fuse: weighted linear if weights supplied, else max (with attribution) ──
     let weights = req.weights.as_ref();
     let mut scored: Vec<(usize, f64, String)> = ids.iter().enumerate().map(|(ri, _)| {
@@ -9631,6 +9667,127 @@ async fn bundle_scan(
         "n_flagged": k_flag.min(n),
         "fusion": if weights.is_some() { "weighted" } else { "max" },
         "results": results,
+    })))
+}
+
+/// Request for `POST /v1/bundles/{name}/scan/fit`.
+#[derive(Deserialize)]
+struct ScanFitRequest {
+    /// Name of a 0/1 or boolean fiber marking confirmed frauds.
+    label_field: String,
+    /// Cross-validation folds for the held-out estimate. Default 5.
+    #[serde(default = "default_fit_folds")]
+    folds: usize,
+    /// Gradient-descent epochs. Default 400.
+    #[serde(default = "default_fit_epochs")]
+    epochs: usize,
+}
+fn default_fit_folds() -> usize { 5 }
+fn default_fit_epochs() -> usize { 400 }
+
+/// POST /v1/bundles/{name}/scan/fit
+///
+/// Learn supervised lens weights from a labeled fraud field. Trains a
+/// class-weighted logistic regression over SCAN's per-record lens features and
+/// returns the weights (feed them to `POST /scan {"weights": …}` for weighted
+/// fusion) alongside the held-out k-fold PR-AUC vs the unsupervised max-fusion
+/// baseline. Entirely in-engine — no external tooling.
+async fn bundle_scan_fit(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<ScanFitRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    use std::collections::HashMap;
+    let engine = state.engine_read();
+    let (lens_names, norm, ids, base, _n) = match scan_compute_lenses(&engine, &name, std::slice::from_ref(&req.label_field)) {
+        Ok(v) => v,
+        Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
+    };
+    if ids.is_empty() {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: "empty bundle".into() })));
+    }
+    // labels from the field
+    let store = engine.bundle(&name).ok_or_else(|| (
+        StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) })))?;
+    let mut label: HashMap<String, f64> = HashMap::new();
+    for r in store.records() {
+        let id = r.get(&base).map(|v| format!("{}", v)).unwrap_or_default();
+        let yv = match r.get(&req.label_field) {
+            Some(gigi::types::Value::Bool(b)) => if *b { 1.0 } else { 0.0 },
+            Some(v) => if v.as_f64().unwrap_or(0.0) != 0.0 { 1.0 } else { 0.0 },
+            None => 0.0,
+        };
+        label.insert(id, yv);
+    }
+    let d = lens_names.len();
+    let n = ids.len();
+    // precompute feature matrix (rows aligned to ids) + labels
+    let x: Vec<Vec<f64>> = ids.iter().map(|i| norm.iter().map(|m| *m.get(i).unwrap_or(&0.0)).collect()).collect();
+    let y: Vec<f64> = ids.iter().map(|i| *label.get(i).unwrap_or(&0.0)).collect();
+    let p_count: f64 = y.iter().sum();
+    if p_count < 1.0 || (p_count as usize) >= n {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error:
+            format!("field '{}' must contain both fraud and non-fraud labels (got {} positive of {})",
+                req.label_field, p_count as usize, n) })));
+    }
+    let epochs = req.epochs.clamp(1, 5000);
+    // class-weighted logistic regression over the lens features
+    let train = |idx: &[usize]| -> (Vec<f64>, f64) {
+        let (mut w, mut b, lr) = (vec![0.0f64; d], 0.0f64, 0.5);
+        let pos: f64 = idx.iter().map(|&i| y[i]).sum();
+        let wpos = (idx.len() as f64 - pos) / pos.max(1.0);
+        let m = idx.len() as f64;
+        for _ in 0..epochs {
+            for &i in idx {
+                let z = b + (0..d).map(|k| w[k] * x[i][k]).sum::<f64>();
+                let p = 1.0 / (1.0 + (-z.clamp(-30.0, 30.0)).exp());
+                let g = (p - y[i]) * if y[i] > 0.5 { wpos } else { 1.0 };
+                b -= lr * g / m;
+                for k in 0..d { w[k] -= lr * g * x[i][k] / m; }
+            }
+        }
+        (w, b)
+    };
+    // average precision (PR-AUC) from a score vector aligned to ids
+    let ap = |scores: &[f64]| -> f64 {
+        let mut order: Vec<usize> = (0..n).collect();
+        order.sort_by(|&a, &b| scores[b].partial_cmp(&scores[a]).unwrap_or(std::cmp::Ordering::Equal));
+        let tot: f64 = y.iter().sum();
+        let (mut tp, mut fp, mut s, mut pr) = (0.0, 0.0, 0.0, 0.0);
+        for &i in &order {
+            if y[i] > 0.5 { tp += 1.0; } else { fp += 1.0; }
+            let (r, pp) = (tp / tot, tp / (tp + fp));
+            if r > pr { s += (r - pr) * pp; pr = r; }
+        }
+        s
+    };
+    let maxf: Vec<f64> = (0..n).map(|i| x[i].iter().cloned().fold(0.0, f64::max)).collect();
+    let base_auc = ap(&maxf);   // unsupervised baseline
+    // k-fold held-out estimate
+    let folds = req.folds.clamp(2, 20);
+    let mut held = vec![0.0f64; n];
+    for f in 0..folds {
+        let te: Vec<usize> = (0..n).filter(|i| i % folds == f).collect();
+        let tr: Vec<usize> = (0..n).filter(|i| i % folds != f).collect();
+        if tr.iter().map(|&i| y[i]).sum::<f64>() < 1.0 { continue; }
+        let (w, b) = train(&tr);
+        for &i in &te { held[i] = b + (0..d).map(|k| w[k] * x[i][k]).sum::<f64>(); }
+    }
+    let cv_auc = ap(&held);
+    // final model on all data
+    let (w, b) = train(&(0..n).collect::<Vec<_>>());
+    let weights: serde_json::Map<String, serde_json::Value> = lens_names.iter().enumerate()
+        .map(|(k, ln)| (ln.clone(), serde_json::json!((w[k] * 10000.0).round() / 10000.0))).collect();
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "n": n,
+        "n_fraud": p_count as usize,
+        "lenses": lens_names,
+        "folds": folds,
+        "pr_auc_unsupervised": (base_auc * 1000.0).round() / 1000.0,
+        "pr_auc_supervised_heldout": (cv_auc * 1000.0).round() / 1000.0,
+        "bias": (b * 10000.0).round() / 10000.0,
+        "weights": weights,
     })))
 }
 
@@ -16376,6 +16533,7 @@ async fn main() {
         // Anomaly Detection + Health
         .route("/v1/bundles/{name}/anomalies", post(bundle_anomalies))
         .route("/v1/bundles/{name}/scan", post(bundle_scan))
+        .route("/v1/bundles/{name}/scan/fit", post(bundle_scan_fit))
         .route("/v1/bundles/{name}/health", get(bundle_health))
         .route("/v1/bundles/{name}/predict", post(predict_volatility))
         .route("/v1/bundles/{name}/anomalies/field", post(field_anomalies))

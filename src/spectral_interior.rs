@@ -87,6 +87,29 @@ pub const RES_TOL: f64 = 1e-8;
 /// exact-arithmetic identity up to floating-point summation order.
 pub const MATVEC_PARITY_TOL: f64 = 1e-12;
 
+/// Base coefficient `α` in the Chebyshev filter-degree estimate
+/// `m ≈ α·(λmax−λmin)/Δλ` (see the driver). The dominant cost of a solve
+/// is `b_dim × degree` complex CSR matvecs per subspace iteration, so this
+/// coefficient is the primary performance dial.
+///
+/// Calibrated 2026-07-18 (finish-pass perf tune): lowered `10.0 → 6.0`.
+/// At `10.0` the V = 8000 / L = 20 completeness solve over-converged — the
+/// achieved `max_residual` was ~4.5e-14, ~5.6 orders of magnitude below the
+/// `1e-8` [`RES_TOL`] gate, with `restarts = 0` and only 6 subspace
+/// iterations (of a 30–40 cap). That head-room means the filter was far
+/// sharper than the residual gate needs. `6.0` still keeps `degree` at
+/// ≈ 3.8× the Jackson resolution floor `π·span/(2·Δλ)`, so the passband is
+/// resolved with margin, while cutting matvecs-per-iteration ~40%. The cut
+/// is re-verified EXACTLY vs dense ground truth by the fresh-seed
+/// completeness suite (V ∈ {384,640,1024,1600}, AUTO + AROUND, near- and
+/// exact-degeneracy) and by SP7's residual gate + `converged == k` at
+/// V = 8000 — a perf change that weakened completeness would fail those.
+/// The adaptive retry (`degree_mult ×1.4`) remains the safety net: if a
+/// harder fixture needs a sharper filter, the first attempt reports
+/// `converged < k` and the degree grows, so the floor never silently
+/// drops a bulk level.
+const FILTER_DEGREE_COEFF: f64 = 6.0;
+
 /// Tunables for the interior solver. `Default` gives the pinned
 /// production values; tests override `seed` / iteration bounds.
 #[derive(Debug, Clone)]
@@ -838,8 +861,9 @@ pub fn spectral_interior_bulk(
 
         // Filter degree from the passband width relation
         // m ≈ α·(λmax−λmin)/Δλ, ×1.4 Jackson widening, degree_mult on retry.
+        // α = FILTER_DEGREE_COEFF (perf dial; see its calibration note).
         let delta = (pass_hi - pass_lo).max(span * 1e-9);
-        let est = (10.0 * span / delta) * degree_mult;
+        let est = (FILTER_DEGREE_COEFF * span / delta) * degree_mult;
         let degree = (est.ceil() as usize)
             .max(config.min_filter_degree)
             .min(config.max_filter_degree)

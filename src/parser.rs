@@ -12570,7 +12570,94 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     }
                     Ok(ExecResult::Ok)
                 }
-                Group::U1 | Group::ZN { .. } => {
+                Group::U1 => {
+                    // U(1) linking ship (2026-07-18) — the Navier–Stokes
+                    // vortex linking-number reading. INIT FROM BUNDLE reads
+                    // a chosen theta field into a U(1) DenseLinkBuffer and
+                    // registers a `U1GaugeField` behind the plain dyn handle
+                    // (no mutable-escape sibling — U(1) runs no GIBBS_SAMPLE
+                    // this phase; the dyn `register` + `get` surface is what
+                    // HOLONOMY reads through). INIT FLUX (RANDOM/UNIFORM) was
+                    // already intercepted before this group match (theta
+                    // bundle materialization), so it cannot reach here.
+                    if *persist {
+                        return Err(
+                            "gauge: PERSIST is not supported for GROUP U(1) this phase — \
+                             the chosen per-edge theta buffer is resolved from the source \
+                             bundle at declaration (the source bundle is the durable \
+                             artifact, like INIT FLUX); re-run INIT FROM BUNDLE after reopen"
+                                .to_string(),
+                        );
+                    }
+                    let field = match init {
+                        GaugeFieldInit::FromBundle(bundle_name) => {
+                            let (schema, records) = {
+                                let bundle_ref =
+                                    engine.bundle(bundle_name).ok_or_else(|| {
+                                        GaugeFieldError::BundleNotFound(bundle_name.clone())
+                                            .to_string()
+                                    })?;
+                                (
+                                    bundle_ref.schema().clone(),
+                                    bundle_ref
+                                        .records()
+                                        .collect::<Vec<crate::types::Record>>(),
+                                )
+                            };
+                            let buffer = crate::gauge::inject::u1_buffer_from_bundle(
+                                bundle_name,
+                                &schema,
+                                records.into_iter(),
+                                &lat,
+                            )
+                            .map_err(|e| e.to_string())?;
+                            crate::gauge::U1GaugeField::from_buffer(
+                                name.clone(),
+                                lat.name.clone(),
+                                buffer,
+                                GaugeFieldInit::FromBundle(bundle_name.clone()),
+                                None,
+                            )
+                        }
+                        GaugeFieldInit::Identity => crate::gauge::U1GaugeField::new(
+                            name.clone(),
+                            &lat,
+                            GaugeFieldInit::Identity,
+                            None,
+                        )
+                        .map_err(|e| e.to_string())?,
+                        GaugeFieldInit::HaarRandom => {
+                            return Err(
+                                "gauge: GROUP U(1) has no HAAR_RANDOM link init this phase — \
+                                 materialize random phases with INIT FLUX RANDOM SEED <n> \
+                                 (a theta bundle), then INIT FROM BUNDLE it"
+                                    .to_string(),
+                            );
+                        }
+                        GaugeFieldInit::FromField(_) => {
+                            return Err(
+                                "gauge: INIT FROM_FIELD for GROUP U(1) is not supported this \
+                                 phase — use INIT FROM BUNDLE to plant a chosen theta field"
+                                    .to_string(),
+                            );
+                        }
+                        GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform => {
+                            // Intercepted before the group match; unreachable
+                            // in practice — surface a typed error, not a panic.
+                            return Err(
+                                "gauge: internal — INIT FLUX for GROUP U(1) is handled before \
+                                 group dispatch (theta bundle materialization)"
+                                    .to_string(),
+                            );
+                        }
+                    };
+                    let handle: std::sync::Arc<
+                        dyn crate::gauge::registry::GaugeFieldHandle,
+                    > = std::sync::Arc::new(field);
+                    crate::gauge::registry::register(handle);
+                    Ok(ExecResult::Ok)
+                }
+                Group::ZN { .. } => {
                     Err(GaugeFieldError::UnsupportedGroup(*group).to_string())
                 }
             }

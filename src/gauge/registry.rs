@@ -31,6 +31,7 @@ use super::edge_connection::EdgeConnection;
 use super::group::Group;
 use super::su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
 use super::su3_gauge_field::SU3GaugeField;
+use super::u1_gauge_field::U1GaugeField;
 
 /// Object-safe handle the registry stores. Extends `EdgeConnection`
 /// so the walker can read through it directly; the metadata accessors
@@ -79,6 +80,30 @@ impl GaugeFieldHandle for SU2GaugeField {
 /// observable-reduction layer (e.g. plaquette dispatching on
 /// `handle.group()`).
 impl GaugeFieldHandle for SU3GaugeField {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn lattice_name(&self) -> &str {
+        &self.lattice_name
+    }
+    fn group(&self) -> Group {
+        self.buffer.group
+    }
+    fn init_metadata(&self) -> (GaugeFieldInit, Option<u64>) {
+        (self.init_kind.clone(), self.init_seed)
+    }
+    fn as_dense_buffer(&self) -> &DenseLinkBuffer {
+        &self.buffer
+    }
+}
+
+/// U(1) linking ship (2026-07-18): `U1GaugeField` impls the same
+/// object-safe handle so the registry, SHOW GAUGE_FIELD path, and HTTP
+/// routes treat it identically to SU(2)/SU(3). It registers through the
+/// plain `register` / `get` dyn surface (no mutable-escape sibling — U(1)
+/// runs no GIBBS_SAMPLE / heatbath this phase), which is exactly the
+/// surface HOLONOMY reads through.
+impl GaugeFieldHandle for U1GaugeField {
     fn name(&self) -> &str {
         &self.name
     }

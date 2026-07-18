@@ -27,17 +27,21 @@
 //! map, not orientation; orientation faithfulness rests on the round-trip
 //! and reverse-orientation tests, not the p-sweep receipt.
 //!
-//! GROUP SUPPORT: SU(2) this phase (the Poincaré need). U(1) — the
-//! Navier–Stokes linking-number reading `∮_C A·dl` via HOLONOMY on a
-//! chosen U(1) field — is a named fast-follow blocked on live U(1) group
-//! math (`GroupElement::U1` compose/inverse/re_trace all panic today) and
-//! a U(1) `DenseLinkBuffer` arm; INIT FROM BUNDLE U(1) is trivial once
-//! those land.
+//! GROUP SUPPORT: SU(2) (the Poincaré need) and U(1) (the Navier–Stokes
+//! linking-number reading `∮_C A·dl = κ·Lk` via HOLONOMY on a chosen U(1)
+//! vortex field) both ship. The U(1) arm (`u1_buffer_from_bundle`) lit up
+//! once live U(1) group math (`GroupElement::U1` compose/inverse/re_trace)
+//! and a U(1) `DenseLinkBuffer` arm landed (2026-07-18). SU(3) chosen-field
+//! injection is the remaining fast-follow.
 //!
 //! NORMALIZATION: a non-unit SU(2) quaternion is REJECTED with a typed
 //! error, not silently renormalized — `inverse == conjugate` (hence the
 //! round-trip and the order estimate) only holds for `|q| = 1`, so a
 //! silent renorm would hide emitter bugs and flip the reverse-edge read.
+//! U(1) carries a single unconstrained phase θ (no unit-norm gate): the
+//! injector stores the emitter's chosen θ raw so the round-trip is
+//! byte-exact and the HOLONOMY circulation sum stays unwrapped (a linking
+//! multiplicity `n·κ` must survive, not fold into `(-π, π]`).
 
 use crate::lattice::{EdgeOrientation, Lattice};
 use crate::types::{BundleSchema, Record};
@@ -49,6 +53,10 @@ use super::group::Group;
 /// Canonical scalar-first SU(2) fiber columns — the same frozen
 /// convention `ingest::SU2_FIBER_NAMES` and `su2_gauge_field` pin.
 const SU2_FIBER_NAMES: [&str; 4] = ["q0", "q1", "q2", "q3"];
+
+/// Canonical U(1) fiber column — the single phase `theta`, the same
+/// convention `ingest::U1_FIBER_NAMES` and `u1_flux` (INIT FLUX) pin.
+const U1_FIBER_NAMES: [&str; 1] = ["theta"];
 
 /// Tolerance on `|q|² - 1` for the SU(2) unit-norm gate. `1e-6` is safe:
 /// the lens golden Ω = (cos, 0, 0, sin) is unit to f64 (passes), a
@@ -171,6 +179,126 @@ pub fn su2_buffer_from_bundle(
             EdgeOrientation::Reverse => [q[0], -q[1], -q[2], -q[3]],
         };
         buf.write_su2_row(eid, stored);
+    }
+
+    if seen == 0 {
+        return Err(GaugeFieldError::BundleEmpty(bundle_name.to_string()));
+    }
+
+    Ok(buf)
+}
+
+/// Build a registry `DenseLinkBuffer` for a U(1) field on `lattice` from
+/// the records of an edge-endpoint bundle — the Navier–Stokes vortex
+/// linking seam (2026-07-18).
+///
+/// The bundle schema must carry base endpoints `vertex_a` / `vertex_b` and
+/// the single canonical U(1) fiber column `theta` (the same schema INIT
+/// FLUX / INGEST AS GAUGE_FIELD emit). Each record plants its chosen phase
+/// on the directed edge `vertex_a → vertex_b`.
+///
+/// ORIENTATION (load-bearing, mirrors the SU(2) arm): the buffer slot for
+/// edge `eid` holds the canonical phase on the lattice's stored direction
+/// `edges[eid] = (u, v)`, and `U1GaugeField::edge_element(eid, Forward)`
+/// returns it as-is while `edge_element(eid, Reverse)` returns its inverse
+/// `−θ`. So to make HOLONOMY read back the *intended* circulation on the
+/// directed edge `va → vb` a record declares, we store:
+///   -  θ  when `resolve_edge(va, vb) == Forward`  (edges[eid]=(va,vb))
+///   - −θ  when `resolve_edge(va, vb) == Reverse`  (edges[eid]=(vb,va))
+/// so `edge_element(eid, resolve_orient)` recovers θ exactly. A Forward
+/// record round-trips to +θ (the intended +circulation sign).
+///
+/// COMPLETENESS CONTRACT (same as the SU(2) arm): edges with no record
+/// stay identity (θ = 0) by design — the buffer starts at `new_identity`;
+/// emitters must plant every non-identity edge.
+///
+/// NO unit-norm gate: U(1) carries a single unconstrained phase (θ = κ can
+/// be any real circulation), stored raw so the round-trip is byte-exact
+/// and the holonomy circulation sum stays unwrapped.
+///
+/// Errors (all typed, never panics — mapped to 4xx at the executor):
+/// - [`GaugeFieldError::FiberArityMismatch`] — the schema does not carry
+///   the `theta` fiber column (e.g. a `q0..q3` bundle → GROUP U(1): got=0).
+/// - [`GaugeFieldError::BundleFieldMissing`] — `vertex_a` / `vertex_b` or
+///   the `theta` value is absent on a record.
+/// - [`GaugeFieldError::NonLatticeEdge`] — a record's `(vertex_a,
+///   vertex_b)` is not an edge of the bound lattice in either orientation.
+/// - [`GaugeFieldError::BundleEmpty`] — the bundle has zero records.
+pub fn u1_buffer_from_bundle(
+    bundle_name: &str,
+    schema: &BundleSchema,
+    records: impl Iterator<Item = Record>,
+    lattice: &Lattice,
+) -> Result<DenseLinkBuffer, GaugeFieldError> {
+    // 1. Schema arity — the single canonical U(1) fiber column `theta`
+    //    must be present (checked over base ∪ fiber). Catches a q0..q3
+    //    (SU(2)-shaped) bundle pointed at GROUP U(1) (got = 0).
+    let field_names: std::collections::HashSet<&str> = schema
+        .base_fields
+        .iter()
+        .chain(schema.fiber_fields.iter())
+        .map(|fd| fd.name.as_str())
+        .collect();
+    let present = U1_FIBER_NAMES
+        .iter()
+        .filter(|n| field_names.contains(**n))
+        .count();
+    if present != U1_FIBER_NAMES.len() {
+        return Err(GaugeFieldError::FiberArityMismatch {
+            bundle: bundle_name.to_string(),
+            expected: U1_FIBER_NAMES.len(),
+            got: present,
+        });
+    }
+    for col in ["vertex_a", "vertex_b"] {
+        if !field_names.contains(col) {
+            return Err(GaugeFieldError::BundleFieldMissing {
+                bundle: bundle_name.to_string(),
+                column: col.to_string(),
+            });
+        }
+    }
+
+    // 2. Identity everywhere (θ = 0); overwrite only the chosen edges.
+    let n_edges = lattice.n_edges();
+    let mut buf = DenseLinkBuffer::new_identity(Group::U1, n_edges)?;
+
+    let mut seen = 0usize;
+    for rec in records {
+        seen += 1;
+        let va = rec
+            .get("vertex_a")
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| GaugeFieldError::BundleFieldMissing {
+                bundle: bundle_name.to_string(),
+                column: "vertex_a".to_string(),
+            })?;
+        let vb = rec
+            .get("vertex_b")
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| GaugeFieldError::BundleFieldMissing {
+                bundle: bundle_name.to_string(),
+                column: "vertex_b".to_string(),
+            })?;
+        let theta = rec
+            .get("theta")
+            .and_then(|v| v.as_f64())
+            .ok_or_else(|| GaugeFieldError::BundleFieldMissing {
+                bundle: bundle_name.to_string(),
+                column: "theta".to_string(),
+            })?;
+
+        // Resolve the DECLARED directed edge (va → vb).
+        let (eid, orient) = resolve_directed(lattice, va, vb)?;
+
+        // Orientation (load-bearing): store θ on the canonical slot so the
+        // DECLARED-direction read returns θ, not −θ. Forward = θ, Reverse
+        // = −θ (the U(1) inverse).
+        let stored = match orient {
+            EdgeOrientation::Forward => theta,
+            EdgeOrientation::Reverse => -theta,
+        };
+        buf.write_u1_row(eid, stored);
     }
 
     if seen == 0 {
@@ -350,5 +478,73 @@ mod tests {
         matches!(err, GaugeFieldError::BundleEmpty(_))
             .then_some(())
             .expect("BundleEmpty");
+    }
+
+    // ── U(1) inject arm ──────────────────────────────────────────────
+
+    fn u1_schema() -> BundleSchema {
+        BundleSchema::new("t")
+            .base(FieldDef::numeric("vertex_a"))
+            .base(FieldDef::numeric("vertex_b"))
+            .fiber(FieldDef::numeric("theta"))
+    }
+
+    fn u1_rec(va: usize, vb: usize, theta: f64) -> Record {
+        let mut r = Record::new();
+        r.insert("vertex_a".into(), Value::Integer(va as i64));
+        r.insert("vertex_b".into(), Value::Integer(vb as i64));
+        r.insert("theta".into(), Value::Float(theta));
+        r
+    }
+
+    fn theta_of(g: GroupElement) -> f64 {
+        match g {
+            GroupElement::U1 { theta } => theta,
+            other => panic!("expected U1, got {other:?}"),
+        }
+    }
+
+    /// A U(1) record in the lattice's canonical (u → v) direction stores θ
+    /// verbatim; read_element(Forward) reads it back exactly.
+    #[test]
+    fn u1_forward_record_stores_as_is() {
+        let lat = buckyball();
+        let (u, v) = lat.edges[0];
+        let buf = u1_buffer_from_bundle("t", &u1_schema(), vec![u1_rec(u, v, 0.73)].into_iter(), &lat)
+            .expect("inject");
+        let (eid, orient) = lat.resolve_edge(u, v).expect("edge");
+        assert_eq!(orient, EdgeOrientation::Forward);
+        assert!((theta_of(buf.read_element(eid)) - 0.73).abs() < 1e-12);
+    }
+
+    /// A U(1) record in the REVERSED (v → u) direction stores −θ in the
+    /// canonical slot, so reading in the DECLARED (Reverse) direction
+    /// recovers +θ.
+    #[test]
+    fn u1_reverse_record_stores_minus_theta() {
+        let lat = buckyball();
+        let (u, v) = lat.edges[0];
+        let buf = u1_buffer_from_bundle("t", &u1_schema(), vec![u1_rec(v, u, 0.73)].into_iter(), &lat)
+            .expect("inject");
+        let (eid, orient) = lat.resolve_edge(v, u).expect("edge");
+        assert_eq!(orient, EdgeOrientation::Reverse);
+        // Canonical Forward slot holds −θ.
+        assert!((theta_of(buf.read_element(eid)) + 0.73).abs() < 1e-12);
+    }
+
+    /// A q0..q3 (SU(2)-shaped) schema pointed at the U(1) arm → arity
+    /// mismatch, expected 1 (theta), got 0.
+    #[test]
+    fn u1_q_schema_is_arity_mismatch() {
+        let lat = buckyball();
+        let err = u1_buffer_from_bundle("q", &su2_schema(), std::iter::empty(), &lat)
+            .expect_err("q0..q3 schema must reject for U(1)");
+        match err {
+            GaugeFieldError::FiberArityMismatch { expected, got, .. } => {
+                assert_eq!(expected, 1);
+                assert_eq!(got, 0);
+            }
+            other => panic!("expected FiberArityMismatch, got {other:?}"),
+        }
     }
 }

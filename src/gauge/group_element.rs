@@ -77,6 +77,17 @@ impl GroupElement {
     ///
     /// (Hamilton convention with the `-a × b` sign — `c = a*b`, not
     /// `b*a`.)
+    ///
+    /// U(1) is the abelian phase group `U = e^{iθ}`: `compose(U1{a},
+    /// U1{b}) = U1{a + b}` normalized to the principal branch `(-π, π]`
+    /// (see [`normalize_phase`]). Order-independent (abelian), but the
+    /// walker still composes left-to-right — the accumulated *sum* is
+    /// what matters. NOTE the U(1) HOLONOMY reader deliberately does NOT
+    /// route the circulation through this method: normalizing at every
+    /// step would collapse a linking multiplicity `n·κ` back into
+    /// `(-π, π]` and destroy `Lk > 1`. It sums raw per-edge phases
+    /// instead (see `holonomy_cycle`); this branch normalization is the
+    /// single-element group law only.
     pub fn compose(&self, other: &GroupElement) -> GroupElement {
         match (self, other) {
             (
@@ -101,8 +112,11 @@ impl GroupElement {
             (GroupElement::SU3(a), GroupElement::SU3(b)) => {
                 GroupElement::SU3(su3_matmul(a, b))
             }
-            (GroupElement::U1 { .. }, GroupElement::U1 { .. }) => {
-                unimplemented_for_group("U1")
+            (GroupElement::U1 { theta: a }, GroupElement::U1 { theta: b }) => {
+                // Abelian phase add on the principal branch (-π, π].
+                GroupElement::U1 {
+                    theta: normalize_phase(a + b),
+                }
             }
             (GroupElement::ZN { .. }, GroupElement::ZN { .. }) => {
                 unimplemented_for_group("ZN")
@@ -117,7 +131,9 @@ impl GroupElement {
     /// `(q0, -q1, -q2, -q3)` (the determinant constraint
     /// `q0² + …² = 1` makes the conjugate the inverse). For SU(3):
     /// conjugate transpose `U^† = (conj U)^T` (unitarity makes the
-    /// conjugate transpose the inverse).
+    /// conjugate transpose the inverse). For U(1): negate the phase
+    /// `U1{-θ}` (the inverse of `e^{iθ}` is `e^{-iθ}`), normalized to
+    /// the same `(-π, π]` branch — so `θ = π` is its own inverse.
     pub fn inverse(&self) -> GroupElement {
         match self {
             GroupElement::SU2 { q0, q1, q2, q3 } => GroupElement::SU2 {
@@ -127,7 +143,9 @@ impl GroupElement {
                 q3: -*q3,
             },
             GroupElement::SU3(m) => GroupElement::SU3(su3_conjugate_transpose(m)),
-            GroupElement::U1 { .. } => unimplemented_for_group("U1"),
+            GroupElement::U1 { theta } => GroupElement::U1 {
+                theta: normalize_phase(-*theta),
+            },
             GroupElement::ZN { .. } => unimplemented_for_group("ZN"),
         }
     }
@@ -135,17 +153,41 @@ impl GroupElement {
     /// Real part of the trace, normalized to the `[-1, 1]` plaquette
     /// range. For SU(2): `Re tr(U) / 2 = q0`. For SU(3):
     /// `Re tr(U) / 3` (sum of diagonal real parts at indices 0, 8, 16
-    /// divided by 3). This is the per-face plaquette value Halcyon's
-    /// reference implementation publishes in
+    /// divided by 3). For U(1): `Re Tr(U) / N = cos θ` with `N = 1`
+    /// (the U(1) analog of SU(2)'s `q0 = ½ Tr`; `U = e^{iθ}` so
+    /// `Re Tr(U) = cos θ`). This is the per-face plaquette value
+    /// Halcyon's reference implementation publishes in
     /// `inertia_damping/buckyball_observables.py`.
     pub fn re_trace_half(&self) -> f64 {
         match self {
             GroupElement::SU2 { q0, .. } => *q0,
             GroupElement::SU3(m) => su3_re_trace_third(m),
-            GroupElement::U1 { .. } => unimplemented_for_group("U1"),
+            GroupElement::U1 { theta } => theta.cos(),
             GroupElement::ZN { .. } => unimplemented_for_group("ZN"),
         }
     }
+}
+
+/// Normalize a U(1) phase to the principal branch `(-π, π]`.
+///
+/// The signed-circulation convention the Navier–Stokes linking-number
+/// reading wants: `κ` and `−κ` are antipodal (not `κ` and `2π − κ`), and
+/// the single self-conjugate boundary `θ = π` is matched by the half-open
+/// upper edge (`−π` maps to `+π`). Used by the U(1) `compose` / `inverse`
+/// single-element group law only — the HOLONOMY circulation reader keeps
+/// the accumulated sum UNWRAPPED so a linking multiplicity `n·κ` survives
+/// (`n = 2` must stay `2κ`, not fold back into the branch).
+#[inline]
+pub(crate) fn normalize_phase(theta: f64) -> f64 {
+    use std::f64::consts::PI;
+    let two_pi = 2.0 * PI;
+    // rem_euclid keeps the result in [0, 2π); shift the upper half down
+    // so the range is (-π, π] with +π retained (θ = π stays π, −π → +π).
+    let mut t = theta.rem_euclid(two_pi); // [0, 2π)
+    if t > PI {
+        t -= two_pi;
+    }
+    t
 }
 
 // ─────────────────────────── SU(3) helpers ───────────────────────────

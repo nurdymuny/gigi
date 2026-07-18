@@ -35,11 +35,24 @@ impl DenseLinkBuffer {
     /// quaternion identity). For `Group::SU3`: every row is the
     /// interleaved-pairs encoding of `I_3 = diag(1, 1, 1)` — real
     /// diagonal entries at row-offsets 0, 8, 16 are 1.0, every other
-    /// slot is 0.0 (Halcyon ITEM 3.1 §3.1 representation). For every
-    /// other group: returns `Err(GaugeFieldError::UnsupportedGroup(_))`.
+    /// slot is 0.0 (Halcyon ITEM 3.1 §3.1 representation). For
+    /// `Group::U1` (2026-07-18 linking ship): every row is a single
+    /// `θ = 0.0` (`e^{i·0} = 1` is the U(1) identity — all-zeros IS
+    /// identity, so no diagonal write is needed). For every other group
+    /// (`Z(N)`): returns `Err(GaugeFieldError::UnsupportedGroup(_))`.
     pub fn new_identity(group: Group, n_edges: usize) -> Result<Self, GaugeFieldError> {
         let repr_dim = group.repr_dim();
         match group {
+            Group::U1 => {
+                // repr_dim == 1; the all-zero θ buffer already IS the
+                // U(1) identity everywhere (no per-edge write needed).
+                Ok(Self {
+                    group,
+                    n_edges,
+                    repr_dim,
+                    data: vec![0.0_f64; n_edges * repr_dim],
+                })
+            }
             Group::SU2 => {
                 let mut data = vec![0.0_f64; n_edges * repr_dim];
                 for i in 0..n_edges {
@@ -194,6 +207,21 @@ impl DenseLinkBuffer {
         self.data[base + 3] = q[3];
     }
 
+    /// Write a chosen U(1) *group* phase `θ` into the row for `edge`
+    /// (`repr_dim == 1`, so the slot is `data[edge]`), verbatim.
+    ///
+    /// The U(1) analog of `write_su2_row`: `INIT FROM BUNDLE` uses it to
+    /// plant a chosen per-edge phase into the canonical buffer slot
+    /// (companion to `read_element`, which decodes the same layout). No
+    /// normalization at the storage boundary — the injector stores the
+    /// emitter's chosen θ raw so the round-trip is byte-exact and the
+    /// HOLONOMY circulation sum stays unwrapped (a linking multiplicity
+    /// `n·κ` must survive, not fold into `(-π, π]`).
+    pub fn write_u1_row(&mut self, edge: usize, theta: f64) {
+        let base = self.repr_dim * edge;
+        self.data[base] = theta;
+    }
+
     /// Read a Lie-algebra row as a 4-tuple `(0, q1, q2, q3)`.
     /// Companion to `write_lie_row`; the q0 slot is guaranteed zero
     /// by the write-side invariant (no defensive zeroing here).
@@ -232,10 +260,11 @@ impl DenseLinkBuffer {
                 m.copy_from_slice(&self.data[base..base + 18]);
                 GroupElement::SU3(m)
             }
-            Group::U1 => panic!(
-                "read_element not implemented for Group::U1 - Part II ships SU(2) math only; \
-                 future groups ship as separate EdgeConnection impls per group-erasure plan"
-            ),
+            Group::U1 => GroupElement::U1 {
+                // repr_dim == 1: the single f64 at `base = edge` is the
+                // per-edge phase θ (2026-07-18 linking ship).
+                theta: self.data[base],
+            },
             Group::ZN { .. } => panic!(
                 "read_element not implemented for Group::ZN - Part II ships SU(2) math only; \
                  future groups ship as separate EdgeConnection impls per group-erasure plan"
@@ -317,6 +346,29 @@ mod tests {
             assert_eq!(buf.data[e], 0.0, "edge {e} θ must be 0");
             assert_eq!(buf.read_element(e), GroupElement::U1 { theta: 0.0 });
         }
+    }
+
+    /// U(1) linking ship (2026-07-18): `write_u1_row` plants a chosen
+    /// per-edge phase at `data[edge]` (repr_dim = 1) and `read_element`
+    /// decodes it back exactly; untouched edges stay identity.
+    #[test]
+    fn u1_write_read_row_round_trip() {
+        let mut buf = DenseLinkBuffer::new_identity(Group::U1, 4).unwrap();
+        buf.write_u1_row(2, 1.2345);
+        assert_eq!(buf.data[2], 1.2345);
+        assert_eq!(buf.read_element(2), GroupElement::U1 { theta: 1.2345 });
+        assert_eq!(buf.read_element(0), GroupElement::U1 { theta: 0.0 });
+    }
+
+    /// U(1) linking ship (2026-07-18): `new_haar` stays SU(2)/SU(3)-only
+    /// — U(1) random phases are materialized as a theta bundle by INIT
+    /// FLUX RANDOM, not a Haar link buffer. Guards the intentional gap.
+    #[test]
+    fn u1_haar_still_unsupported() {
+        assert_eq!(
+            DenseLinkBuffer::new_haar(Group::U1, 10, 0).unwrap_err(),
+            GaugeFieldError::UnsupportedGroup(Group::U1)
+        );
     }
 
     /// Halcyon ITEM 3.1: SU(3) identity buffer now constructs cleanly

@@ -9329,11 +9329,23 @@ fn default_scan_budget() -> f64 { 0.05 }
 /// rank-normalize each to [0,1]. Returns (lens_names, per-lens normalized maps,
 /// record ids, base-key name, n). Used by both /scan (fusion) and /scan/fit
 /// (supervised weight learning).
+/// Result of SCAN's lens computation — shared by /scan and /scan/fit.
+#[derive(Debug)]
+struct ScanLenses {
+    lens_names: Vec<String>,
+    norm: Vec<std::collections::HashMap<String, f64>>,
+    ids: Vec<String>,
+    base: String,
+    n: usize,
+    /// Human-readable diagnostics: which lenses were built and why others were skipped.
+    notes: Vec<String>,
+}
+
 fn scan_compute_lenses(
     engine: &Engine,
     name: &str,
     exclude: &[String],
-) -> Result<(Vec<String>, Vec<std::collections::HashMap<String, f64>>, Vec<String>, String, usize), (StatusCode, String)> {
+) -> Result<ScanLenses, (StatusCode, String)> {
     use gigi::types::{FieldType, Value};
     use std::collections::HashMap;
     let store = engine.bundle(name).ok_or_else(|| (
@@ -9343,6 +9355,7 @@ fn scan_compute_lenses(
         return Err((StatusCode::UNPROCESSABLE_ENTITY, "SCAN requires a single base-key field".into()));
     }
     let base = schema.base_fields[0].name.clone();
+    let mut notes: Vec<String> = Vec::new();
     // excluded fields (e.g. the fit label) never enter the geometry
     let usable = |f: &gigi::types::FieldDef| !exclude.iter().any(|e| e == &f.name);
     let cats: Vec<String> = schema.fiber_fields.iter()
@@ -9351,11 +9364,14 @@ fn scan_compute_lenses(
     let num_defs: Vec<gigi::types::FieldDef> = schema.fiber_fields.iter()
         .filter(|f| usable(f) && matches!(f.field_type, FieldType::Numeric))
         .cloned().collect();
+    if num_defs.is_empty() {
+        notes.push("no numeric fibers: the global/contextual/velocity lenses are unavailable — add a NUMERIC fiber to enable them".into());
+    }
 
     let records: Vec<gigi::types::Record> = store.records().collect();
     let n = records.len();
     if n == 0 {
-        return Ok((Vec::new(), Vec::new(), Vec::new(), base, 0));
+        return Ok(ScanLenses { lens_names: Vec::new(), norm: Vec::new(), ids: Vec::new(), base, n: 0, notes });
     }
     let idof = |r: &gigi::types::Record| r.get(&base).map(|v| format!("{}", v)).unwrap_or_default();
     let ids: Vec<String> = records.iter().map(&idof).collect();
@@ -9373,6 +9389,11 @@ fn scan_compute_lenses(
         }
     };
     let text_fields: Vec<String> = cats.iter().filter(|c| is_text_field(c)).cloned().collect();
+    if text_fields.is_empty() {
+        notes.push("text lens skipped: no text-like categorical fields (values are mostly short codes, not names/memos)".into());
+    } else {
+        notes.push(format!("text lens on: {}", text_fields.join(", ")));
+    }
 
     // lens-name → (record-id → raw signal)
     let mut lenses: Vec<(String, HashMap<String, f64>)> = Vec::new();
@@ -9413,10 +9434,20 @@ fn scan_compute_lenses(
             if let Some(v) = r.get(cf) { groups.entry(format!("{}", v)).or_default().push(ix); }
         }
         let d = groups.len();
-        if d < 4 || (d as f64) > (n as f64) / 5.0 { continue; }        // skip binary / near-unique fields
+        if d < 4 {
+            notes.push(format!("context:{cf} skipped: only {d} distinct value(s) (need >= 4)"));
+            continue;
+        }
+        if (d as f64) > (n as f64) / 5.0 {
+            notes.push(format!("context:{cf} skipped: {d} distinct values, too unique to form cohorts"));
+            continue;
+        }
         let mut sizes: Vec<usize> = groups.values().map(|v| v.len()).collect();
         sizes.sort_unstable();
-        if sizes[sizes.len() / 2] < 3 { continue; }                    // cohorts too small for geometry
+        if sizes[sizes.len() / 2] < 3 {
+            notes.push(format!("context:{cf} skipped: cohorts too small (median < 3 records)"));
+            continue;
+        }
         if num_defs.is_empty() { break; }
         let mut m: HashMap<String, f64> = HashMap::new();
         for idxs in groups.values() {
@@ -9459,6 +9490,9 @@ fn scan_compute_lenses(
             .filter_map(|r| r.get(&f.name).and_then(|v| v.as_f64()).map(|x| x as i64))
             .collect::<std::collections::HashSet<_>>().len())
         .map(|f| f.name.clone());
+    if !num_defs.is_empty() && (cats.is_empty() || time_field.is_none()) {
+        notes.push("velocity skipped: needs a categorical entity field and a time-like numeric field (name containing day/date/time/hour/...)".into());
+    }
     if let (false, Some(time_f)) = (cats.is_empty(), time_field) {
         let entity = cats.iter().max_by_key(|c| records.iter()
             .filter_map(|r| r.get(*c).map(|v| format!("{}", v)))
@@ -9585,7 +9619,11 @@ fn scan_compute_lenses(
     }
 
     if lenses.is_empty() {
-        return Err((StatusCode::UNPROCESSABLE_ENTITY, "SCAN found no usable numeric or categorical fibers".into()));
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
+            "SCAN built no lenses for bundle '{}'. It needs at least one NUMERIC fiber (for curvature/velocity) or a text-like CATEGORICAL fiber (names/memos). Present: base='{}', categorical=[{}], numeric=[{}]. Diagnostics: {}",
+            name, base, cats.join(", "),
+            num_defs.iter().map(|f| f.name.clone()).collect::<Vec<_>>().join(", "),
+            if notes.is_empty() { "none".to_string() } else { notes.join("; ") })));
     }
 
     // ── rank-normalize each lens to [0,1] over all records ──
@@ -9603,7 +9641,7 @@ fn scan_compute_lenses(
         }).collect()
     }).collect();
 
-    Ok((lens_names, norm, ids, base, n))
+    Ok(ScanLenses { lens_names, norm, ids, base, n, notes })
 }
 
 async fn bundle_scan(
@@ -9612,12 +9650,19 @@ async fn bundle_scan(
     Json(req): Json<ScanRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
-    let (lens_names, norm, ids, base, n) = match scan_compute_lenses(&engine, &name, &[]) {
+    let ScanLenses { lens_names, norm, ids, base, n, notes } = match scan_compute_lenses(&engine, &name, &[]) {
         Ok(v) => v,
         Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
     };
     if n == 0 {
-        return Ok(Json(serde_json::json!({"bundle": name, "n": 0, "lenses": [], "results": []})));
+        return Ok(Json(serde_json::json!({"bundle": name, "n": 0, "lenses": [], "results": [],
+            "message": "bundle is empty — insert records before scanning", "notes": notes})));
+    }
+    if let Some(w) = req.weights.as_ref() {
+        if !w.keys().any(|k| lens_names.contains(k)) {
+            return Err((StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: format!(
+                "none of the supplied weight keys match this bundle's lenses {:?}", lens_names) })));
+        }
     }
     // ── fuse: weighted linear if weights supplied, else max (with attribution) ──
     let weights = req.weights.as_ref();
@@ -9666,6 +9711,10 @@ async fn bundle_scan(
         "budget": req.budget,
         "n_flagged": k_flag.min(n),
         "fusion": if weights.is_some() { "weighted" } else { "max" },
+        "notes": notes,
+        "message": if scored.first().map(|(_, sc, _)| *sc <= 1e-9).unwrap_or(true) {
+            Some("no anomalies stood out — all lens signals are flat; check that numeric fibers actually vary across records")
+        } else { None::<&str> },
         "results": results,
     })))
 }
@@ -9699,7 +9748,7 @@ async fn bundle_scan_fit(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     use std::collections::HashMap;
     let engine = state.engine_read();
-    let (lens_names, norm, ids, base, _n) = match scan_compute_lenses(&engine, &name, std::slice::from_ref(&req.label_field)) {
+    let ScanLenses { lens_names, norm, ids, base, .. } = match scan_compute_lenses(&engine, &name, std::slice::from_ref(&req.label_field)) {
         Ok(v) => v,
         Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
     };
@@ -9709,11 +9758,21 @@ async fn bundle_scan_fit(
     // labels from the field
     let store = engine.bundle(&name).ok_or_else(|| (
         StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Bundle '{}' not found", name) })))?;
+    let has_label = store.schema().base_fields.iter().chain(store.schema().fiber_fields.iter())
+        .any(|fd| fd.name == req.label_field);
+    if !has_label {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: format!(
+            "label_field '{}' is not a field of bundle '{}'", req.label_field, name) })));
+    }
     let mut label: HashMap<String, f64> = HashMap::new();
     for r in store.records() {
         let id = r.get(&base).map(|v| format!("{}", v)).unwrap_or_default();
         let yv = match r.get(&req.label_field) {
             Some(gigi::types::Value::Bool(b)) => if *b { 1.0 } else { 0.0 },
+            Some(gigi::types::Value::Text(t)) => {
+                let t = t.trim().to_lowercase();
+                if matches!(t.as_str(), "1" | "true" | "yes" | "y" | "fraud" | "positive") { 1.0 } else { 0.0 }
+            }
             Some(v) => if v.as_f64().unwrap_or(0.0) != 0.0 { 1.0 } else { 0.0 },
             None => 0.0,
         };
@@ -9786,6 +9845,9 @@ async fn bundle_scan_fit(
         "folds": folds,
         "pr_auc_unsupervised": (base_auc * 1000.0).round() / 1000.0,
         "pr_auc_supervised_heldout": (cv_auc * 1000.0).round() / 1000.0,
+        "note": if (p_count as usize) < folds * 3 {
+            format!("only {} confirmed frauds for {}-fold CV — the held-out estimate is noisy; gather more labels for a firmer number", p_count as usize, folds)
+        } else { format!("held-out estimate over {} frauds", p_count as usize) },
         "bias": (b * 10000.0).round() / 10000.0,
         "weights": weights,
     })))
@@ -17992,6 +18054,155 @@ mod tests {
 
     fn cleanup(dir: &Path) {
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    // ── SCAN endpoint edge-case coverage ─────────────────────────────
+    fn scan_rec(pairs: &[(&str, gigi::types::Value)]) -> gigi::types::Record {
+        pairs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect()
+    }
+    fn scan_env(tag: &str, name: &str, schema: BundleSchema, rows: Vec<gigi::types::Record>) -> (std::path::PathBuf, Engine) {
+        let dir = tmp_dir(tag); cleanup(&dir);
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(schema).unwrap();
+        if !rows.is_empty() { engine.batch_insert(name, &rows).unwrap(); }
+        (dir, engine)
+    }
+    fn scan_lens<'a>(sl: &'a ScanLenses, n: &str) -> Option<&'a std::collections::HashMap<String, f64>> {
+        sl.lens_names.iter().position(|l| l == n).map(|i| &sl.norm[i])
+    }
+    use gigi::types::Value as V;
+
+    /// A mixed bundle builds the expected lens battery; every record scored on every lens.
+    #[test]
+    fn scan_mixed_bundle_builds_lenses() {
+        let rows: Vec<_> = (0..25).map(|i| scan_rec(&[
+            ("id", V::Text(format!("t{i}"))),
+            ("acct", V::Text(format!("A{}", i % 5))),
+            ("amount", V::Float(if i == 24 { 9999.0 } else { 10.0 + i as f64 })),
+            ("day", V::Float((i % 7) as f64)),
+        ])).collect();
+        let schema = BundleSchema::new("tx")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::categorical("acct"))
+            .fiber(FieldDef::numeric("amount"))
+            .fiber(FieldDef::numeric("day"));
+        let (dir, engine) = scan_env("scan_mixed", "tx", schema, rows);
+        let sl = scan_compute_lenses(&engine, "tx", &[]).unwrap();
+        assert_eq!(sl.n, 25);
+        assert!(sl.lens_names.contains(&"global".to_string()), "expected global lens");
+        assert!(sl.lens_names.iter().any(|l| l == "context:acct"), "expected per-account contextual lens");
+        assert!(sl.lens_names.iter().any(|l| l == "velocity"), "expected velocity lens (day is time-like)");
+        for m in &sl.norm { assert_eq!(m.len(), 25, "each lens scores every record"); }
+        // the planted outlier (id=t24, amount=9999) tops the global lens
+        let g = scan_lens(&sl, "global").unwrap();
+        assert!(g["t24"] >= 0.99, "outlier should rank at top of global lens, got {}", g["t24"]);
+        cleanup(&dir);
+    }
+
+    /// All-numeric bundle: only the global lens, with notes explaining the skips. (general-purpose)
+    #[test]
+    fn scan_all_numeric_only_global() {
+        let rows: Vec<_> = (0..8).map(|i| scan_rec(&[
+            ("id", V::Text(format!("m{i}"))),
+            ("cpu", V::Float(if i == 7 { 99.0 } else { 10.0 })),
+            ("mem", V::Float(20.0 + i as f64)),
+        ])).collect();
+        let schema = BundleSchema::new("metrics")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("cpu"))
+            .fiber(FieldDef::numeric("mem"));
+        let (dir, engine) = scan_env("scan_numonly", "metrics", schema, rows);
+        let sl = scan_compute_lenses(&engine, "metrics", &[]).unwrap();
+        assert_eq!(sl.lens_names, vec!["global".to_string()]);
+        assert!(sl.notes.iter().any(|nt| nt.contains("text lens skipped")), "notes should explain no text lens");
+        assert!(sl.notes.iter().any(|nt| nt.contains("velocity skipped")), "notes should explain no velocity lens");
+        cleanup(&dir);
+    }
+
+    /// No numeric fibers and only a low-cardinality categorical → an actionable error, not a panic/blank.
+    #[test]
+    fn scan_no_usable_fibers_errors() {
+        let rows = vec![
+            scan_rec(&[("id", V::Text("a".into())), ("color", V::Text("red".into()))]),
+            scan_rec(&[("id", V::Text("b".into())), ("color", V::Text("blue".into()))]),
+            scan_rec(&[("id", V::Text("c".into())), ("color", V::Text("red".into()))]),
+        ];
+        let schema = BundleSchema::new("tags")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::categorical("color"));
+        let (dir, engine) = scan_env("scan_nofib", "tags", schema, rows);
+        let err = scan_compute_lenses(&engine, "tags", &[]).unwrap_err();
+        assert_eq!(err.0, StatusCode::UNPROCESSABLE_ENTITY);
+        assert!(err.1.contains("no lenses") && err.1.contains("NUMERIC"), "error must be actionable: {}", err.1);
+        cleanup(&dir);
+    }
+
+    /// Empty bundle → Ok with n == 0 and no lenses (caller emits a friendly message).
+    #[test]
+    fn scan_empty_bundle_ok_zero() {
+        let schema = BundleSchema::new("empty")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("x"));
+        let (dir, engine) = scan_env("scan_empty", "empty", schema, vec![]);
+        let sl = scan_compute_lenses(&engine, "empty", &[]).unwrap();
+        assert_eq!(sl.n, 0);
+        assert!(sl.lens_names.is_empty());
+        cleanup(&dir);
+    }
+
+    /// Missing bundle → NOT_FOUND, not a panic.
+    #[test]
+    fn scan_missing_bundle_not_found() {
+        let (dir, engine) = scan_env("scan_missing", "real",
+            BundleSchema::new("real").base(FieldDef::categorical("id")).fiber(FieldDef::numeric("x")), vec![]);
+        let err = scan_compute_lenses(&engine, "ghost", &[]).unwrap_err();
+        assert_eq!(err.0, StatusCode::NOT_FOUND);
+        cleanup(&dir);
+    }
+
+    /// An excluded field never influences the geometry (guards fit against label leakage).
+    #[test]
+    fn scan_exclude_keeps_field_out_of_geometry() {
+        // `label` is 0 everywhere except one record where it is huge; amount is uniform.
+        let rows: Vec<_> = (0..10).map(|i| scan_rec(&[
+            ("id", V::Text(format!("r{i}"))),
+            ("amount", V::Float(50.0)),
+            ("label", V::Float(if i == 3 { 1000.0 } else { 0.0 })),
+        ])).collect();
+        let schema = BundleSchema::new("lk")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("amount"))
+            .fiber(FieldDef::numeric("label"));
+        let (dir, engine) = scan_env("scan_excl", "lk", schema, rows);
+        let with = scan_compute_lenses(&engine, "lk", &[]).unwrap();
+        let without = scan_compute_lenses(&engine, "lk", &["label".to_string()]).unwrap();
+        let g_with = scan_lens(&with, "global").unwrap()["r3"];
+        let g_without = scan_lens(&without, "global").unwrap()["r3"];
+        assert!(g_with >= 0.99, "label should dominate global when included");
+        assert!(g_without <= 0.01, "excluded label must not drive global; got {}", g_without);
+        cleanup(&dir);
+    }
+
+    /// Degenerate data (single record, and constant numeric) must not panic or emit NaN.
+    #[test]
+    fn scan_degenerate_inputs_no_panic() {
+        // single record
+        let s1 = BundleSchema::new("one").base(FieldDef::categorical("id")).fiber(FieldDef::numeric("x"));
+        let (d1, e1) = scan_env("scan_one", "one", s1, vec![scan_rec(&[("id", V::Text("a".into())), ("x", V::Float(1.0))])]);
+        let sl1 = scan_compute_lenses(&e1, "one", &[]).unwrap();
+        assert_eq!(sl1.n, 1);
+        for m in &sl1.norm { for v in m.values() { assert!(v.is_finite(), "no NaN/Inf on single record"); } }
+        cleanup(&d1);
+        // constant numeric across many records (zero variance)
+        let rows: Vec<_> = (0..12).map(|i| scan_rec(&[
+            ("id", V::Text(format!("c{i}"))), ("acct", V::Text(format!("A{}", i % 4))), ("x", V::Float(7.0)),
+        ])).collect();
+        let s2 = BundleSchema::new("flat")
+            .base(FieldDef::categorical("id")).fiber(FieldDef::categorical("acct")).fiber(FieldDef::numeric("x"));
+        let (d2, e2) = scan_env("scan_flat", "flat", s2, rows);
+        let sl2 = scan_compute_lenses(&e2, "flat", &[]).unwrap();
+        for m in &sl2.norm { for v in m.values() { assert!(v.is_finite(), "no NaN/Inf on constant field"); } }
+        cleanup(&d2);
     }
 
     fn stream_env_lock() -> &'static Mutex<()> {

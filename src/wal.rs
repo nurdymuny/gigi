@@ -545,6 +545,19 @@ impl WalWriter {
                      materialized theta bundle is the durable artifact)",
                 ));
             }
+            // INIT FROM BUNDLE (2026-07-18): the chosen per-edge buffer is
+            // the real state and PERSIST is rejected at declaration, so a
+            // FROM_BUNDLE init can never legitimately reach the WAL
+            // declaration encoder. No byte tag is allocated (the WAL format
+            // is unchanged); surface a typed refusal like INIT FLUX does.
+            crate::gauge::GaugeFieldInit::FromBundle(_) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "INIT FROM BUNDLE gauge fields are not WAL-persistable via \
+                     the declaration tuple (the chosen per-edge buffer is the \
+                     state; PERSIST is rejected at declaration)",
+                ));
+            }
         }
         self.write_entry(OP_GAUGE_FIELD_DECLARE, &payload)
     }

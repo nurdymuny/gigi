@@ -66,6 +66,18 @@ pub fn materialize_field(
              declaration tuple alone — the source field must be \
              resolved at executor time. This is a P1 follow-up.",
         )),
+        // INIT FROM BUNDLE (2026-07-18): like FROM_FIELD, the chosen
+        // per-edge buffer is the real state — the recipe name alone
+        // cannot rebuild it (the source bundle may not exist at replay).
+        // PERSIST is rejected at declaration, so no WAL declaration tuple
+        // can legitimately carry a FROM_BUNDLE init.
+        (Group::SU2, GaugeFieldInit::FromBundle(_)) => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "FROM_BUNDLE gauge fields cannot be replayed through the WAL \
+             declaration tuple alone — the chosen per-edge buffer must be \
+             resolved from the source bundle at executor time (PERSIST is \
+             rejected at declaration).",
+        )),
         // Halcyon ITEM 3.1 Phase 1: SU(3) replay through the same
         // metadata-only path SU(2) uses. Same byte-identity contract
         // (intra-binding bit-identity per Bee's locked decision 1) —
@@ -81,6 +93,13 @@ pub fn materialize_field(
             "FROM_FIELD SU(3) gauge fields cannot be replayed through the WAL \
              declaration tuple alone — the source field must be \
              resolved at executor time (same constraint as SU(2)).",
+        )),
+        (Group::SU3, GaugeFieldInit::FromBundle(_)) => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "FROM_BUNDLE SU(3) gauge fields cannot be replayed through the WAL \
+             declaration tuple alone — the chosen per-edge buffer must be \
+             resolved from the source bundle at executor time (same constraint \
+             as SU(2); INIT FROM BUNDLE ships GROUP SU(2) this phase anyway).",
         )),
         // INIT FLUX (2026-07-16) is a U(1)-only bundle materialization;
         // PERSIST is rejected at declaration, so no WAL declaration

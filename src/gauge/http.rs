@@ -288,6 +288,7 @@ fn init_kind_label(kind: &GaugeFieldInit) -> &'static str {
         GaugeFieldInit::FromField(_) => "FROM_FIELD",
         GaugeFieldInit::FluxRandom => "FLUX_RANDOM",
         GaugeFieldInit::FluxUniform => "FLUX_UNIFORM",
+        GaugeFieldInit::FromBundle(_) => "FROM_BUNDLE",
     }
 }
 

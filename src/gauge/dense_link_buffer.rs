@@ -173,6 +173,27 @@ impl DenseLinkBuffer {
         self.data[base + 3] = q[3];
     }
 
+    /// Write a chosen SU(2) *group* element `(q0, q1, q2, q3)` into the
+    /// row for `edge` — scalar-first, verbatim, with NO `q0` zeroing.
+    ///
+    /// This is the group-element writer `INIT FROM BUNDLE` uses to plant
+    /// a chosen per-edge SU(2) quaternion into the canonical buffer slot
+    /// (companion to `read_element`, which decodes the same layout). It
+    /// deliberately does NOT force `q0 = 0` the way `write_lie_row` does:
+    /// that invariant is for the E-field Lie-algebra path, and applying
+    /// it here would destroy the group element's scalar part (a rotation
+    /// by angle θ has `q0 = cos(θ/2) ≠ 0`). The caller is responsible for
+    /// unit-normalization (`inverse == conjugate` only holds for
+    /// `|q| = 1`); the injection executor rejects non-unit quaternions
+    /// with a typed error before reaching this writer.
+    pub fn write_su2_row(&mut self, edge: usize, q: [f64; 4]) {
+        let base = self.repr_dim * edge;
+        self.data[base] = q[0];
+        self.data[base + 1] = q[1];
+        self.data[base + 2] = q[2];
+        self.data[base + 3] = q[3];
+    }
+
     /// Read a Lie-algebra row as a 4-tuple `(0, q1, q2, q3)`.
     /// Companion to `write_lie_row`; the q0 slot is guaranteed zero
     /// by the write-side invariant (no defensive zeroing here).

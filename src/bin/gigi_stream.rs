@@ -9349,9 +9349,10 @@ fn default_scan_budget() -> f64 { 0.05 }
 /// and fuses a battery of geometric lenses — **global** curvature, **contextual**
 /// curvature (cohort-local field stats per categorical field), **velocity** over
 /// (highest-cardinality entity × time), **text** (typo-squat/rare values on
-/// name-like fields), **relational** (auto-foreign-key attribute mismatch), and
-/// **completion** (local tangent-plane residual — records that sit off the
-/// manifold their neighbors define, a class axis-wise lenses are blind to) —
+/// name-like fields), **relational** (auto-foreign-key attribute mismatch),
+/// **completion** (local tangent-plane residual — records off the manifold their
+/// neighbors define), and **density** (Local Outlier Factor — records on the
+/// manifold and in-range but in a locally sparse pocket) —
 /// into a per-record score WITH lens attribution. The only input is the bundle
 /// name; no feature engineering. Returns records sorted most-anomalous first,
 /// each with the lens that fired and the per-lens breakdown.
@@ -9648,16 +9649,17 @@ fn scan_compute_lenses(
         }
     }
 
-    // ── completion lens: local manifold reconstruction residual ──
-    // Anomaly = LOCAL COMPLETION FAILURE. For each record, fit the local tangent
-    // hyperplane from its k nearest neighbors (in standardized numeric space) and
-    // measure the record's orthogonal distance OFF that hyperplane — how far it
-    // sits off the manifold its neighbors define. This catches records that are
-    // globally ordinary on every axis but locally inconsistent, a class the
-    // axis-wise global/contextual curvature lenses (and flat detectors like
-    // Isolation Forest) are structurally blind to. The local normal is the
-    // least-variance direction of the neighbor covariance, found by inverse-power
-    // iteration; the residual is |(x − μ_local) · n̂|.
+    // ── completion + density lenses: two signals off a shared local k-NN ──
+    // Both read the SAME exact k nearest neighbors (in standardized numeric space):
+    //   • completion — orthogonal residual OFF the local tangent hyperplane (the
+    //     least-variance direction of the neighbor covariance, via inverse-power
+    //     iteration): catches records that sit off the manifold their neighbors
+    //     define, i.e. globally ordinary on every axis but locally inconsistent.
+    //   • density — Local Outlier Factor: a record's local reachability density
+    //     relative to its neighbors', catching records that are ON the manifold and
+    //     in-range yet sit in a locally SPARSE pocket.
+    // Both are blind spots of the axis-wise global/contextual lenses (and of flat
+    // detectors like Isolation Forest).
     {
         const COMPLETION_MAX_N: usize = 8000;   // exact-neighbor cost cap
         const COMPLETION_MIN_N: usize = 20;      // need enough records for stable local fits
@@ -9672,12 +9674,12 @@ fn scan_compute_lenses(
         let dim = cols.len();
         if dim < 2 {
             if !num_defs.is_empty() {
-                notes.push("completion lens skipped: needs >= 2 numeric fibers with non-zero variance to define a local manifold".into());
+                notes.push("completion & density lenses skipped: need >= 2 numeric fibers with non-zero variance to define a local manifold".into());
             }
         } else if n < COMPLETION_MIN_N {
-            notes.push(format!("completion lens skipped: {n} records is too few for stable local fits (need >= {COMPLETION_MIN_N})"));
+            notes.push(format!("completion & density lenses skipped: {n} records is too few for stable local fits (need >= {COMPLETION_MIN_N})"));
         } else if n > COMPLETION_MAX_N {
-            notes.push(format!("completion lens skipped: {n} records exceeds the exact-neighbor limit ({COMPLETION_MAX_N}) in this version"));
+            notes.push(format!("completion & density lenses skipped: {n} records exceeds the exact-neighbor limit ({COMPLETION_MAX_N}) in this version"));
         } else {
             let x: Vec<Vec<f64>> = records.iter().map(|r| cols.iter()
                 .map(|(f, mu, sd)| (r.get(f).and_then(|v| v.as_f64()).unwrap_or(*mu) - mu) / sd)
@@ -9685,21 +9687,29 @@ fn scan_compute_lenses(
             let k = (2 * dim + 1).max(10).min(n - 1);
             let dist2 = |a: &[f64], b: &[f64]| a.iter().zip(b)
                 .map(|(p, q)| (p - q) * (p - q)).sum::<f64>();
-            let mut m: HashMap<String, f64> = HashMap::new();
+            // shared exact k-NN: neighbor indices + euclidean distances, per record
+            let mut nbr: Vec<Vec<usize>> = Vec::with_capacity(n);
+            let mut ndist: Vec<Vec<f64>> = Vec::with_capacity(n);
             for i in 0..n {
-                // k nearest neighbors of i (exact)
                 let mut d: Vec<(f64, usize)> = (0..n).filter(|&j| j != i)
                     .map(|j| (dist2(&x[i], &x[j]), j)).collect();
                 d.select_nth_unstable_by(k - 1, |a, b| a.0
                     .partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-                let nbrs: Vec<usize> = d[..k].iter().map(|(_, j)| *j).collect();
+                let top = &d[..k];
+                nbr.push(top.iter().map(|(_, j)| *j).collect());
+                ndist.push(top.iter().map(|(dd, _)| dd.sqrt()).collect());
+            }
+            // ── completion: orthogonal residual off the local tangent hyperplane ──
+            let mut comp: HashMap<String, f64> = HashMap::new();
+            for i in 0..n {
+                let nbrs = &nbr[i];
                 // neighbor mean (leave-one-out: excludes i) and covariance
                 let mut mu = vec![0.0; dim];
-                for &j in &nbrs { for t in 0..dim { mu[t] += x[j][t]; } }
+                for &j in nbrs { for t in 0..dim { mu[t] += x[j][t]; } }
                 for t in 0..dim { mu[t] /= k as f64; }
                 let mut c = vec![vec![0.0f64; dim]; dim];
                 let mut trace = 0.0;
-                for &j in &nbrs {
+                for &j in nbrs {
                     for a in 0..dim { for b in 0..dim {
                         c[a][b] += (x[j][a] - mu[a]) * (x[j][b] - mu[b]);
                     }}
@@ -9728,10 +9738,26 @@ fn scan_compute_lenses(
                 let residual = if ok {
                     (0..dim).map(|t| (x[i][t] - mu[t]) * v[t]).sum::<f64>().abs()
                 } else { 0.0 };
-                m.insert(ids[i].clone(), residual);
+                comp.insert(ids[i].clone(), residual);
             }
-            lenses.push(("completion".to_string(), m));
-            notes.push(format!("completion lens on {dim} numeric fibers (k={k} neighbors; local tangent-plane residual)"));
+            lenses.push(("completion".to_string(), comp));
+            // ── density: Local Outlier Factor over the same k-NN ──
+            // kdist(o) = distance to o's k-th neighbor; reach(i,o) = max(kdist(o), d(i,o));
+            // lrd(i) = k / Σ_o reach(i,o); LOF(i) = mean_o lrd(o) / lrd(i)  (>1 ⇒ sparse).
+            let kdist: Vec<f64> = ndist.iter()
+                .map(|v| v.iter().cloned().fold(0.0_f64, f64::max)).collect();
+            let lrd: Vec<f64> = (0..n).map(|i| {
+                let s: f64 = nbr[i].iter().zip(&ndist[i]).map(|(&o, &d)| kdist[o].max(d)).sum();
+                if s < f64::EPSILON { f64::MAX.sqrt() } else { k as f64 / s }
+            }).collect();
+            let mut dens: HashMap<String, f64> = HashMap::new();
+            for i in 0..n {
+                let mean_nbr_lrd = nbr[i].iter().map(|&o| lrd[o]).sum::<f64>() / k as f64;
+                let lof = if lrd[i] < f64::EPSILON { 1.0 } else { mean_nbr_lrd / lrd[i] };
+                dens.insert(ids[i].clone(), lof);
+            }
+            lenses.push(("density".to_string(), dens));
+            notes.push(format!("completion + density lenses on {dim} numeric fibers (k={k} neighbors; shared exact k-NN)"));
         }
     }
 
@@ -18362,6 +18388,50 @@ mod tests {
         assert!(g["anom"] < comp["anom"],
             "global curvature should rank the off-manifold point below completion (global={}, completion={})",
             g["anom"], comp["anom"]);
+        cleanup(&dir);
+    }
+
+    /// The density lens catches records that are ON the manifold and IN-RANGE on
+    /// every axis but sit in a locally SPARSE pocket — the LOF class that both the
+    /// completion (off-manifold) and global (axis-wise) lenses are blind to. Two
+    /// dense blobs with a pair of records marooned in the sparse middle.
+    #[test]
+    fn scan_density_catches_sparse_pocket() {
+        let mut rows: Vec<gigi::types::Record> = Vec::new();
+        // two tight 5x5 blobs, one near (0,0), one near (10,10)
+        for (ox, oy, tag) in [(0.0, 0.0, "a"), (10.0, 10.0, "b")] {
+            for xi in 0..5 {
+                for yi in 0..5 {
+                    rows.push(scan_rec(&[
+                        ("id", V::Text(format!("{tag}{xi}{yi}"))),
+                        ("x", V::Float(ox + 0.3 * xi as f64)),
+                        ("y", V::Float(oy + 0.3 * yi as f64)),
+                    ]));
+                }
+            }
+        }
+        // two anomalies stranded in the sparse middle — x,y both mid-range (near the
+        // global mean), so no single axis is extreme; only local density flags them.
+        for (i, (ax, ay)) in [(5.5, 5.0), (5.0, 6.0)].iter().enumerate() {
+            rows.push(scan_rec(&[
+                ("id", V::Text(format!("mid{i}"))),
+                ("x", V::Float(*ax)), ("y", V::Float(*ay)),
+            ]));
+        }
+        let schema = BundleSchema::new("blobs")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("x"))
+            .fiber(FieldDef::numeric("y"));
+        let (dir, engine) = scan_env("scan_density", "blobs", schema, rows);
+        let sl = scan_compute_lenses(&engine, "blobs", &[]).unwrap();
+        let dens = scan_lens(&sl, "density").expect("density lens should be built");
+        let g = scan_lens(&sl, "global").unwrap();
+        for a in ["mid0", "mid1"] {
+            // the sparse-pocket records top the density lens...
+            assert!(dens[a] >= 0.95, "sparse-pocket record {a} should top density lens, got {}", dens[a]);
+            // ...but the axis-wise global lens (they sit near the mean) does not flag them
+            assert!(g[a] < dens[a], "global should rank sparse record {a} below density (global={}, density={})", g[a], dens[a]);
+        }
         cleanup(&dir);
     }
 

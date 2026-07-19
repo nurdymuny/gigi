@@ -9313,6 +9313,11 @@ struct ScanRequest {
     /// Cap on returned rows (0 = all, already sorted most-anomalous first).
     #[serde(default)]
     limit: usize,
+    /// Fields to keep OUT of the geometry — e.g. an outcome/label column, or
+    /// any field that would leak. Unsupervised /scan cannot know a column is
+    /// "leaky"; name it here and it is excluded from every lens.
+    #[serde(default)]
+    exclude: Vec<String>,
 }
 fn default_scan_budget() -> f64 { 0.05 }
 
@@ -9650,7 +9655,7 @@ async fn bundle_scan(
     Json(req): Json<ScanRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
-    let ScanLenses { lens_names, norm, ids, base, n, notes } = match scan_compute_lenses(&engine, &name, &[]) {
+    let ScanLenses { lens_names, norm, ids, base, n, notes } = match scan_compute_lenses(&engine, &name, &req.exclude) {
         Ok(v) => v,
         Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
     };

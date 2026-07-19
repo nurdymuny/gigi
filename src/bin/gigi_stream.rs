@@ -10027,10 +10027,19 @@ struct ClusterRequest {
     /// Spectral: use the symmetric-normalized Laplacian (often cleaner clusters).
     #[serde(default)]
     normalized: bool,
+    /// Spectral: number of eigenvectors to embed with (default k). A richer eigenmap
+    /// sharpens the clustering — fitting a GMM head in a 20-D Laplacian eigenspace
+    /// separates manifold-tangled clusters far better than in the raw features.
+    #[serde(default)]
+    embed_dim: Option<usize>,
+    /// Spectral head over the eigenmap: "kmeans" (default) or "gmm".
+    #[serde(default = "default_spectral_head")]
+    head: String,
     /// Fields to keep out of the geometry (e.g. an id or label column).
     #[serde(default)]
     exclude: Vec<String>,
 }
+fn default_spectral_head() -> String { "kmeans".to_string() }
 fn default_cluster_method() -> String { "spectral".to_string() }
 fn default_cluster_k() -> usize { 3 }
 fn default_cluster_neighbors() -> usize { 10 }
@@ -10046,9 +10055,67 @@ struct ClusterOpts {
     max_iters: usize,          // gmm EM cap
     restarts: Option<usize>,   // kmeans / gmm-init restarts (None = adaptive)
     normalized: bool,          // spectral: symmetric-normalized Laplacian
+    embed_dim: Option<usize>,  // spectral: eigenvectors to embed with (None = k)
+    head: String,              // spectral head over the embedding: "kmeans" | "gmm"
 }
 impl Default for ClusterOpts {
-    fn default() -> Self { Self { covariance: "full".into(), max_iters: 100, restarts: None, normalized: false } }
+    fn default() -> Self { Self { covariance: "full".into(), max_iters: 100, restarts: None,
+        normalized: false, embed_dim: None, head: "kmeans".into() } }
+}
+
+/// Full-covariance GMM (EM, k-means init) returning hard labels — a compact head
+/// for spectral clustering, where fitting Gaussians in the Laplacian eigenspace
+/// (rather than the ambient features) separates manifold-tangled clusters cleanly.
+fn gmm_labels(pts: &[Vec<f64>], k: usize) -> Vec<usize> {
+    let n = pts.len();
+    let d = pts.first().map(|p| p.len()).unwrap_or(0);
+    if d == 0 || n < k { return vec![0; n]; }
+    let init = kmeans_lloyd(pts, k, None);
+    let mut mu = vec![vec![0.0f64; d]; k];
+    let mut cnt = vec![0usize; k];
+    for i in 0..n { cnt[init[i]] += 1; for t in 0..d { mu[init[i]][t] += pts[i][t]; } }
+    for c in 0..k { if cnt[c] > 0 { for t in 0..d { mu[c][t] /= cnt[c] as f64; } } }
+    let gmean: Vec<f64> = (0..d).map(|t| pts.iter().map(|p| p[t]).sum::<f64>() / n as f64).collect();
+    let mut gcov = vec![vec![0.0f64; d]; d];
+    for p in pts { for a in 0..d { for b in 0..d { gcov[a][b] += (p[a] - gmean[a]) * (p[b] - gmean[b]); } } }
+    for a in 0..d { for b in 0..d { gcov[a][b] /= n as f64; } }
+    let mut sig = vec![gcov; k];
+    let mut pi = vec![1.0 / k as f64; k];
+    let mut resp = vec![vec![0.0f64; k]; n];
+    let ln2pi = (2.0 * std::f64::consts::PI).ln();
+    let reg = 1e-4;
+    for _ in 0..60 {
+        let mut inv = Vec::with_capacity(k);
+        let mut logdet = vec![0.0f64; k];
+        for c in 0..k {
+            let mut s = sig[c].clone();
+            for a in 0..d { s[a][a] += reg; }
+            match mat_inv_logdet(&s) {
+                Some((iv, ld)) => { inv.push(iv); logdet[c] = ld; }
+                None => { inv.push((0..d).map(|i| (0..d).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect()); logdet[c] = 0.0; }
+            }
+        }
+        for i in 0..n {
+            let mut lp = vec![0.0f64; k];
+            for c in 0..k {
+                let dv: Vec<f64> = (0..d).map(|t| pts[i][t] - mu[c][t]).collect();
+                let maha: f64 = (0..d).map(|a| (0..d).map(|b| dv[a] * inv[c][a][b] * dv[b]).sum::<f64>()).sum();
+                lp[c] = pi[c].max(1e-12).ln() - 0.5 * (d as f64 * ln2pi + logdet[c] + maha);
+            }
+            let mx = lp.iter().cloned().fold(f64::MIN, f64::max);
+            let s = mx + lp.iter().map(|l| (l - mx).exp()).sum::<f64>().ln();
+            for c in 0..k { resp[i][c] = (lp[c] - s).exp(); }
+        }
+        for c in 0..k {
+            let nc: f64 = (0..n).map(|i| resp[i][c]).sum::<f64>().max(1e-9);
+            pi[c] = nc / n as f64;
+            for t in 0..d { mu[c][t] = (0..n).map(|i| resp[i][c] * pts[i][t]).sum::<f64>() / nc; }
+            for a in 0..d { for b in 0..d {
+                sig[c][a][b] = (0..n).map(|i| resp[i][c] * (pts[i][a] - mu[c][a]) * (pts[i][b] - mu[c][b])).sum::<f64>() / nc;
+            } }
+        }
+    }
+    (0..n).map(|i| (0..k).max_by(|&a, &b| resp[i][a].partial_cmp(&resp[i][b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap()).collect()
 }
 
 /// Result of spectral clustering — shared by the handler and tests.
@@ -10455,9 +10522,12 @@ fn cluster_records(
         let mut lcg = || { seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
             (seed >> 33) as f64 / (1u64 << 31) as f64 - 1.0 };
         let iters = 300;
-        let mut vecs: Vec<Vec<f64>> = Vec::with_capacity(k);
-        let mut eigenvalues: Vec<f64> = Vec::with_capacity(k);
-        for _ in 0..k {
+        // embed with `embed_dim` eigenvectors (default k). A richer eigenmap gives a
+        // GMM/k-means head more room and often sharpens the clustering.
+        let ed = opts.embed_dim.unwrap_or(k).clamp(k, (n - 1).min(64));
+        let mut vecs: Vec<Vec<f64>> = Vec::with_capacity(ed);
+        let mut eigenvalues: Vec<f64> = Vec::with_capacity(ed);
+        for _ in 0..ed {
             let mut v: Vec<f64> = (0..n).map(|_| lcg()).collect();
             for _ in 0..iters {
                 let bv: Vec<f64> = (0..n).map(|i| shift * v[i] - matvec_l(&v, i)).collect();
@@ -10474,16 +10544,18 @@ fn cluster_records(
             vecs.push(v);
             eigenvalues.push((lam * 10000.0).round() / 10000.0);
         }
-        let mut coords: Vec<Vec<f64>> = (0..n).map(|i| (0..k).map(|c| vecs[c][i]).collect()).collect();
+        let mut coords: Vec<Vec<f64>> = (0..n).map(|i| (0..ed).map(|c| vecs[c][i]).collect()).collect();
         if opts.normalized {   // row-normalize the embedding (Ng-Jordan-Weiss)
             for row in &mut coords {
                 let nrm = row.iter().map(|z| z * z).sum::<f64>().sqrt();
                 if nrm > 1e-12 { for z in row.iter_mut() { *z /= nrm; } }
             }
         }
-        let labels = kmeans_lloyd(&coords, k, opts.restarts);   // k-means head on the eigenmap
-        notes.push(format!("spectral clustering on {dim} numeric fibers: symmetric {deg_k}-NN graph (1 connected component), bottom-{k} {}Laplacian eigenmaps + k-means",
-            if opts.normalized { "normalized " } else { "" }));
+        // head over the eigenmap: k-means (default) or a full-covariance GMM
+        let gmm_head = opts.head == "gmm";
+        let labels = if gmm_head { gmm_labels(&coords, k) } else { kmeans_lloyd(&coords, k, opts.restarts) };
+        notes.push(format!("spectral clustering on {dim} numeric fibers: symmetric {deg_k}-NN graph, bottom-{ed} {}Laplacian eigenmaps + {} head",
+            if opts.normalized { "normalized " } else { "" }, if gmm_head { "GMM" } else { "k-means" }));
         (labels, coords, eigenvalues)
     };
     let labels: Vec<i64> = labels.into_iter().map(|l| l as i64).collect();
@@ -10510,6 +10582,7 @@ async fn bundle_cluster(
     let opts = ClusterOpts {
         covariance: req.covariance.clone(), max_iters: req.max_iters,
         restarts: req.restarts, normalized: req.normalized,
+        embed_dim: req.embed_dim, head: req.head.clone(),
     };
     let ClusterResult { base, ids, labels, coords, eigenvalues, sizes, n_noise, method, notes } =
         match cluster_records(&engine, &name, &req.method, req.k, req.neighbors, req.eps, req.min_pts, &opts, &req.exclude) {
@@ -20113,6 +20186,11 @@ mod tests {
         let nopts = ClusterOpts { normalized: true, ..Default::default() };
         let sc = cluster_records(&engine, "ell", "spectral", 2, 10, None, 4, &nopts, &[]).unwrap();
         assert_eq!(sc.sizes.iter().sum::<usize>(), 80);
+        // spectral with a GMM head over a richer (embed_dim) eigenmap also runs cleanly
+        let hopts = ClusterOpts { head: "gmm".into(), embed_dim: Some(4), ..Default::default() };
+        let hc = cluster_records(&engine, "ell", "spectral", 2, 10, None, 4, &hopts, &[]).unwrap();
+        assert_eq!(hc.sizes.iter().sum::<usize>(), 80);
+        assert!(hc.coords.iter().all(|r| r.iter().all(|v| v.is_finite())), "GMM head: finite embedding");
         cleanup(&dir);
     }
 

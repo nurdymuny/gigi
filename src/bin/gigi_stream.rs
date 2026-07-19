@@ -10065,37 +10065,55 @@ fn mat_inv_logdet(m: &[Vec<f64>]) -> Option<(Vec<Vec<f64>>, f64)> {
     Some((inv, logdet))
 }
 
-/// Deterministic k-means (k-means++ init: point 0, then farthest-from-chosen;
-/// then Lloyd). Returns a cluster label per point. Shared by the `kmeans` method
-/// and the spectral eigenmap head.
+/// k-means with proper k-means++ (D²-weighted) initialization and multiple
+/// restarts, keeping the lowest-inertia solution — matching the quality of a
+/// standard library on hard (many-cluster / high-dim) problems, where single-shot
+/// farthest-point init lands in bad local optima. Deterministic via a fixed LCG.
+/// Shared by the `kmeans` method, the spectral eigenmap head, and GMM init.
 fn kmeans_lloyd(pts: &[Vec<f64>], k: usize) -> Vec<usize> {
     let n = pts.len();
     let d = pts.first().map(|p| p.len()).unwrap_or(0);
     let dist2 = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(p, q)| (p - q) * (p - q)).sum::<f64>();
-    let mut cen: Vec<Vec<f64>> = vec![pts[0].clone()];
-    while cen.len() < k {
-        let far = (0..n).max_by(|&a, &b| {
-            let da = cen.iter().map(|c| dist2(&pts[a], c)).fold(f64::MAX, f64::min);
-            let db = cen.iter().map(|c| dist2(&pts[b], c)).fold(f64::MAX, f64::min);
-            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-        }).unwrap();
-        cen.push(pts[far].clone());
-    }
-    let mut labels = vec![0usize; n];
-    for _ in 0..50 {
-        let mut changed = false;
-        for i in 0..n {
-            let c = (0..k).min_by(|&a, &b| dist2(&pts[i], &cen[a])
-                .partial_cmp(&dist2(&pts[i], &cen[b])).unwrap_or(std::cmp::Ordering::Equal)).unwrap();
-            if c != labels[i] { labels[i] = c; changed = true; }
+    let mut seed: u64 = 0x9E3779B97F4A7C15;
+    let mut unif = move || { seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        (seed >> 11) as f64 / (1u64 << 53) as f64 };   // in [0,1)
+    // bound total work: fewer restarts on large problems (still capped at n<=8000 upstream)
+    let restarts = if n * k > 10_000 { 3 } else { 6 };
+    let mut best_labels = vec![0usize; n];
+    let mut best_inertia = f64::MAX;
+    for _ in 0..restarts {
+        // ── k-means++ init: first center uniform, rest sampled ∝ D²(x) ──
+        let mut cen: Vec<Vec<f64>> = vec![pts[(unif() * n as f64) as usize % n].clone()];
+        while cen.len() < k {
+            let d2: Vec<f64> = pts.iter().map(|p| cen.iter().map(|c| dist2(p, c)).fold(f64::MAX, f64::min)).collect();
+            let sum: f64 = d2.iter().sum();
+            let pick = if sum <= 0.0 { (unif() * n as f64) as usize % n } else {
+                let mut r = unif() * sum;
+                let mut idx = n - 1;
+                for (i, &w) in d2.iter().enumerate() { r -= w; if r <= 0.0 { idx = i; break; } }
+                idx
+            };
+            cen.push(pts[pick].clone());
         }
-        let mut sum = vec![vec![0.0; d]; k];
-        let mut cnt = vec![0usize; k];
-        for i in 0..n { cnt[labels[i]] += 1; for t in 0..d { sum[labels[i]][t] += pts[i][t]; } }
-        for c in 0..k { if cnt[c] > 0 { for t in 0..d { cen[c][t] = sum[c][t] / cnt[c] as f64; } } }
-        if !changed { break; }
+        // ── Lloyd ──
+        let mut labels = vec![0usize; n];
+        for _ in 0..50 {
+            let mut changed = false;
+            for i in 0..n {
+                let c = (0..k).min_by(|&a, &b| dist2(&pts[i], &cen[a])
+                    .partial_cmp(&dist2(&pts[i], &cen[b])).unwrap_or(std::cmp::Ordering::Equal)).unwrap();
+                if c != labels[i] { labels[i] = c; changed = true; }
+            }
+            let mut sum = vec![vec![0.0; d]; k];
+            let mut cnt = vec![0usize; k];
+            for i in 0..n { cnt[labels[i]] += 1; for t in 0..d { sum[labels[i]][t] += pts[i][t]; } }
+            for c in 0..k { if cnt[c] > 0 { for t in 0..d { cen[c][t] = sum[c][t] / cnt[c] as f64; } } }
+            if !changed { break; }
+        }
+        let inertia: f64 = (0..n).map(|i| dist2(&pts[i], &cen[labels[i]])).sum();
+        if inertia < best_inertia { best_inertia = inertia; best_labels = labels; }
     }
-    labels
+    best_labels
 }
 
 /// Cluster records by one of three geometric methods:
@@ -10206,7 +10224,10 @@ fn cluster_records(
         let mut resp = vec![vec![0.0f64; k]; n];
         let ln2pi = (2.0 * std::f64::consts::PI).ln();
         let reg = 1e-6;
-        for _ in 0..80 {
+        let mut prev_ll = f64::NEG_INFINITY;
+        let mut iters_run = 0;
+        for _ in 0..100 {
+            iters_run += 1;
             // precompute Σ⁻¹ and ln|Σ| per component (regularized)
             let mut inv: Vec<Vec<Vec<f64>>> = Vec::with_capacity(k);
             let mut logdet = vec![0.0f64; k];
@@ -10218,7 +10239,8 @@ fn cluster_records(
                     None => { inv.push((0..d).map(|i| (0..d).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect()); logdet[c] = 0.0; }
                 }
             }
-            // E-step: responsibilities via log-sum-exp
+            // E-step: responsibilities via log-sum-exp; accumulate total log-likelihood
+            let mut ll = 0.0;
             for i in 0..n {
                 let mut lp = vec![0.0f64; k];
                 for c in 0..k {
@@ -10228,8 +10250,12 @@ fn cluster_records(
                 }
                 let mx = lp.iter().cloned().fold(f64::MIN, f64::max);
                 let s = mx + lp.iter().map(|l| (l - mx).exp()).sum::<f64>().ln();
+                ll += s;
                 for c in 0..k { resp[i][c] = (lp[c] - s).exp(); }
             }
+            // converged? (relative improvement in total log-likelihood is tiny)
+            if (ll - prev_ll).abs() < 1e-7 * ll.abs().max(1.0) { break; }
+            prev_ll = ll;
             // M-step
             for c in 0..k {
                 let nc: f64 = (0..n).map(|i| resp[i][c]).sum::<f64>().max(1e-9);
@@ -10244,7 +10270,7 @@ fn cluster_records(
             .partial_cmp(&resp[i][b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap() as i64).collect();
         let mut sizes = vec![0usize; k];
         for &l in &labels { sizes[l as usize] += 1; }
-        notes.push(format!("GMM (full-covariance EM, {k} components) on {dim} numeric fibers; coords = soft responsibilities"));
+        notes.push(format!("GMM (full-covariance EM, {k} components, converged in {iters_run} iterations) on {dim} numeric fibers; coords = soft responsibilities"));
         return Ok(ClusterResult { base, ids, labels, coords: resp, eigenvalues: Vec::new(),
             sizes, n_noise: 0, method: method.to_string(), notes });
     }

@@ -11715,18 +11715,25 @@ async fn bundle_changepoints(
 /// can find the methods without reading the source.
 async fn ml_catalog() -> Json<serde_json::Value> {
     Json(serde_json::json!({
-        "about": "GIGI's geometric ML endpoints. Model your data as a bundle, then POST to any of these. All standardize numeric fibers automatically; all return a `notes` array explaining what they did.",
+        "about": "GIGI's ML endpoints. Model your data as a bundle, then POST to any of these. All standardize numeric fibers automatically; all return a `notes` array explaining what they did.",
+        "positioning": {
+            "geometric": "The methods that use the substrate — curvature/completion/density anomaly lenses (/scan), spectral clustering in the Laplacian eigenspace (/cluster method=spectral, head=gmm), and diffusion prediction on the graph Laplacian (/infer method=diffusion). These are where the geometry buys something you can't get from flat, Euclidean methods.",
+            "baselines": "The classical flat methods — k-means, PCA, ridge/OLS, Pegasos SVM, Funk-SVD, flat kNN. Correct and co-located with your data (no export), but they are the CONTROL ARM: the yardstick the geometric methods are measured against, not the headline.",
+            "evidence": "On data where geometry exists, geometric beats flat: digits label-propagation 0.973 vs flat kNN 0.944; GMM in the spectral eigenspace 0.708 vs raw-pixel GMM 0.594. On flat data they tie — which is the honest point."
+        },
         "endpoints": [
-            {"route": "POST /v1/bundles/{name}/scan", "does": "unsupervised anomaly detection — fuses 7 geometric lenses (global/contextual curvature, velocity, text, relational, completion, density)",
+            {"route": "POST /v1/bundles/{name}/scan", "kind": "geometric", "does": "unsupervised anomaly detection — fuses 7 geometric lenses (global/contextual curvature, velocity, text, relational, completion, density)",
              "params": {"budget": "review fraction (0.05)", "weights": "optional per-lens weights", "exclude": "fields to keep out of the geometry"}},
-            {"route": "POST /v1/bundles/{name}/scan/fit", "does": "learn supervised lens weights from a labeled fraud field (held-out PR-AUC)",
+            {"route": "POST /v1/bundles/{name}/scan/fit", "kind": "geometric", "does": "learn supervised lens weights from a labeled fraud field (held-out PR-AUC)",
              "params": {"label_field": "0/1 or bool field", "folds": "5", "epochs": "400"}},
-            {"route": "POST /v1/bundles/{name}/cluster", "does": "clustering + manifold embedding",
+            {"route": "POST /v1/bundles/{name}/cluster", "kind": "geometric (spectral) + baseline (kmeans/gmm/dbscan)", "does": "clustering + manifold embedding",
              "params": {"method": "spectral | kmeans | gmm | dbscan", "k": "clusters (3)", "neighbors": "kNN graph degree (10)",
+                        "head": "spectral: kmeans | gmm (fit the head IN the eigenspace)", "embed_dim": "spectral: eigenvectors to embed with",
                         "covariance": "gmm: full | diagonal | spherical", "normalized": "spectral: normalized Laplacian",
                         "eps/min_pts": "dbscan", "restarts": "kmeans/gmm-init", "exclude": "fields to drop"}},
-            {"route": "POST /v1/bundles/{name}/infer", "does": "supervised prediction — regression or classification, fills a missing target",
-             "params": {"target": "field to predict", "method": "regression: local_linear | knn | ols | gp; classification: knn | svm",
+            {"route": "POST /v1/bundles/{name}/infer", "kind": "geometric (diffusion) + baselines (the rest)", "does": "supervised prediction — regression or classification, fills a missing target",
+             "params": {"target": "field to predict",
+                        "method": "regression: diffusion (geometric) | local_linear | knn | ols | gp; classification: diffusion (geometric) | knn | svm",
                         "k": "neighbors (20)", "ridge": "local_linear shrinkage (0.5)", "folds": "5", "exclude": "extra fields to drop"}},
             {"route": "POST /v1/bundles/{name}/reduce", "does": "PCA dimensionality reduction (components, coords, explained variance, reconstruction)",
              "params": {"k": "components (2)", "whiten": "unit-variance coords", "exclude": "fields to drop"}},

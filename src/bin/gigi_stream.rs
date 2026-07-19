@@ -9999,40 +9999,93 @@ async fn bundle_scan_fit(
 /// Request for `POST /v1/bundles/{name}/cluster`.
 #[derive(Deserialize)]
 struct ClusterRequest {
-    /// Number of clusters (= embedding dimension). Default 3.
+    /// "spectral" (default), "kmeans", or "dbscan".
+    #[serde(default = "default_cluster_method")]
+    method: String,
+    /// Number of clusters (spectral/kmeans; = embedding dim). Default 3.
     #[serde(default = "default_cluster_k")]
     k: usize,
-    /// k-NN graph degree — how many neighbors each record links to. Default 10.
+    /// k-NN graph degree for spectral. Default 10.
     #[serde(default = "default_cluster_neighbors")]
     neighbors: usize,
+    /// DBSCAN neighborhood radius. Omitted → auto-estimated from the data.
+    #[serde(default)]
+    eps: Option<f64>,
+    /// DBSCAN core-point threshold (min points in an ε-neighborhood). Default 4.
+    #[serde(default = "default_cluster_min_pts")]
+    min_pts: usize,
     /// Fields to keep out of the geometry (e.g. an id or label column).
     #[serde(default)]
     exclude: Vec<String>,
 }
+fn default_cluster_method() -> String { "spectral".to_string() }
 fn default_cluster_k() -> usize { 3 }
 fn default_cluster_neighbors() -> usize { 10 }
+fn default_cluster_min_pts() -> usize { 4 }
 
 /// Result of spectral clustering — shared by the handler and tests.
 #[derive(Debug)]
 struct ClusterResult {
     base: String,
     ids: Vec<String>,
-    labels: Vec<usize>,
-    coords: Vec<Vec<f64>>,   // Laplacian-eigenmap embedding, n × k
+    labels: Vec<i64>,        // cluster index, or -1 for noise (dbscan)
+    coords: Vec<Vec<f64>>,   // embedding (spectral) / feature coords (kmeans/dbscan)
     eigenvalues: Vec<f64>,
-    sizes: Vec<usize>,
+    sizes: Vec<usize>,       // size of each non-noise cluster
+    n_noise: usize,
+    method: String,
     notes: Vec<String>,
 }
 
-/// Spectral clustering via bottom-k eigenvectors of the k-NN graph Laplacian
-/// L = D − A (shifted power iteration + Gram-Schmidt deflation) → R^k embedding →
-/// k-means head. The embedding is itself the Laplacian-Eigenmaps manifold layout.
-/// Deterministic (fixed LCG init) so results are reproducible.
-fn spectral_cluster(
+/// Deterministic k-means (k-means++ init: point 0, then farthest-from-chosen;
+/// then Lloyd). Returns a cluster label per point. Shared by the `kmeans` method
+/// and the spectral eigenmap head.
+fn kmeans_lloyd(pts: &[Vec<f64>], k: usize) -> Vec<usize> {
+    let n = pts.len();
+    let d = pts.first().map(|p| p.len()).unwrap_or(0);
+    let dist2 = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(p, q)| (p - q) * (p - q)).sum::<f64>();
+    let mut cen: Vec<Vec<f64>> = vec![pts[0].clone()];
+    while cen.len() < k {
+        let far = (0..n).max_by(|&a, &b| {
+            let da = cen.iter().map(|c| dist2(&pts[a], c)).fold(f64::MAX, f64::min);
+            let db = cen.iter().map(|c| dist2(&pts[b], c)).fold(f64::MAX, f64::min);
+            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+        }).unwrap();
+        cen.push(pts[far].clone());
+    }
+    let mut labels = vec![0usize; n];
+    for _ in 0..50 {
+        let mut changed = false;
+        for i in 0..n {
+            let c = (0..k).min_by(|&a, &b| dist2(&pts[i], &cen[a])
+                .partial_cmp(&dist2(&pts[i], &cen[b])).unwrap_or(std::cmp::Ordering::Equal)).unwrap();
+            if c != labels[i] { labels[i] = c; changed = true; }
+        }
+        let mut sum = vec![vec![0.0; d]; k];
+        let mut cnt = vec![0usize; k];
+        for i in 0..n { cnt[labels[i]] += 1; for t in 0..d { sum[labels[i]][t] += pts[i][t]; } }
+        for c in 0..k { if cnt[c] > 0 { for t in 0..d { cen[c][t] = sum[c][t] / cnt[c] as f64; } } }
+        if !changed { break; }
+    }
+    labels
+}
+
+/// Cluster records by one of three geometric methods:
+///   • `spectral` — bottom-k eigenvectors of the k-NN graph Laplacian L = D − A
+///     (shifted power iteration + Gram-Schmidt deflation) → R^k embedding →
+///     k-means head; the embedding is the Laplacian-Eigenmaps manifold layout.
+///   • `kmeans`   — k-means directly on the standardized numeric fibers.
+///   • `dbscan`   — density clusters over an ε-neighborhood graph, with noise
+///     (label −1); ε auto-estimated from the minPts-NN distance if not given.
+/// Deterministic (fixed init) so results are reproducible.
+fn cluster_records(
     engine: &Engine,
     name: &str,
+    method: &str,
     k: usize,
     neighbors: usize,
+    eps: Option<f64>,
+    min_pts: usize,
     exclude: &[String],
 ) -> Result<ClusterResult, (StatusCode, String)> {
     use gigi::types::FieldType;
@@ -10044,8 +10097,12 @@ fn spectral_cluster(
         return Err((StatusCode::UNPROCESSABLE_ENTITY, "cluster requires a single base-key field".into()));
     }
     let base = schema.base_fields[0].name.clone();
-    if k < 2 {
-        return Err((StatusCode::UNPROCESSABLE_ENTITY, "k must be >= 2".into()));
+    if !matches!(method, "spectral" | "kmeans" | "dbscan") {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
+            "unknown cluster method '{}' (expected 'spectral', 'kmeans', or 'dbscan')", method)));
+    }
+    if method != "dbscan" && k < 2 {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, "k must be >= 2 for spectral/kmeans".into()));
     }
     let usable = |f: &gigi::types::FieldDef| !exclude.iter().any(|e| e == &f.name);
     let num_defs: Vec<gigi::types::FieldDef> = schema.fiber_fields.iter()
@@ -10068,7 +10125,7 @@ fn spectral_cluster(
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
             "cluster needs >= 1 numeric fiber with non-zero variance to build the neighbor graph (bundle '{}' has none usable)", name)));
     }
-    if n < 2 * k {
+    if method != "dbscan" && n < 2 * k {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
             "cluster needs at least 2·k = {} records to form {} clusters (bundle has {})", 2 * k, k, n)));
     }
@@ -10076,13 +10133,74 @@ fn spectral_cluster(
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
             "cluster: {n} records exceeds the exact-neighbor limit ({CLUSTER_MAX_N}) in this version")));
     }
+    let x: Vec<Vec<f64>> = records.iter().map(|r| cols.iter()
+        .map(|(f, mu, sd)| (r.get(f).and_then(|v| v.as_f64()).unwrap_or(*mu) - mu) / sd).collect()).collect();
+    let dist2 = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(p, q)| (p - q) * (p - q)).sum::<f64>();
+
+    // ── k-means: partition the standardized features directly (no graph) ──
+    if method == "kmeans" {
+        let labels: Vec<i64> = kmeans_lloyd(&x, k).into_iter().map(|l| l as i64).collect();
+        let mut sizes = vec![0usize; k];
+        for &l in &labels { sizes[l as usize] += 1; }
+        let kd = k.min(dim);
+        let coords: Vec<Vec<f64>> = x.iter().map(|xi| xi[..kd].to_vec()).collect();
+        notes.push(format!("k-means on {dim} numeric fibers into k={k} clusters (deterministic k-means++ init, Lloyd)"));
+        return Ok(ClusterResult { base, ids, labels, coords, eigenvalues: Vec::new(),
+            sizes, n_noise: 0, method: method.to_string(), notes });
+    }
+
+    // ── DBSCAN: density clusters + noise over an ε-neighborhood graph ──
+    if method == "dbscan" {
+        let mp = min_pts.max(2);
+        // auto-ε: 75th percentile of each point's distance to its mp-th neighbor
+        let epsv = if let Some(e) = eps { e } else {
+            let mut kd: Vec<f64> = (0..n).map(|i| {
+                let mut ds: Vec<f64> = (0..n).filter(|&j| j != i).map(|j| dist2(&x[i], &x[j])).collect();
+                let idx = (mp - 1).min(ds.len().saturating_sub(1));
+                ds.select_nth_unstable_by(idx, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                ds[idx].sqrt()
+            }).collect();
+            kd.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let e = kd[((0.75 * (n - 1) as f64) as usize).min(n - 1)];
+            notes.push(format!("ε auto-estimated at {:.4} (75th pct of {mp}-NN distance)", e));
+            e.max(f64::EPSILON)
+        };
+        let eps2 = epsv * epsv;
+        let nbhd: Vec<Vec<usize>> = (0..n).map(|i|
+            (0..n).filter(|&j| dist2(&x[i], &x[j]) <= eps2).collect()).collect();
+        let mut labels = vec![-2i64; n];   // -2 unvisited, -1 noise, >=0 cluster
+        let mut cid: i64 = 0;
+        for p in 0..n {
+            if labels[p] != -2 { continue; }
+            if nbhd[p].len() < mp { labels[p] = -1; continue; }   // not core → provisional noise
+            labels[p] = cid;
+            let mut seeds = nbhd[p].clone();
+            let mut qi = 0;
+            while qi < seeds.len() {
+                let q = seeds[qi]; qi += 1;
+                if labels[q] == -1 { labels[q] = cid; }           // border: absorb former noise
+                if labels[q] != -2 { continue; }
+                labels[q] = cid;
+                if nbhd[q].len() >= mp { seeds.extend_from_slice(&nbhd[q]); }  // core → expand
+            }
+            cid += 1;
+        }
+        let n_clusters = cid as usize;
+        let mut sizes = vec![0usize; n_clusters];
+        let mut n_noise = 0;
+        for &l in &labels { if l < 0 { n_noise += 1; } else { sizes[l as usize] += 1; } }
+        let kd = 3.min(dim);
+        let coords: Vec<Vec<f64>> = x.iter().map(|xi| xi[..kd].to_vec()).collect();
+        notes.push(format!("DBSCAN on {dim} numeric fibers: ε={epsv:.4}, minPts={mp} → {n_clusters} cluster(s), {n_noise} noise"));
+        return Ok(ClusterResult { base, ids, labels, coords, eigenvalues: Vec::new(),
+            sizes, n_noise, method: method.to_string(), notes });
+    }
+
+    // ── spectral (default): needs the k-NN graph ──
     let deg_k = neighbors.clamp(2, n - 1);
     if deg_k != neighbors {
         notes.push(format!("neighbors clamped to {deg_k} (must be in [2, n-1])"));
     }
-    let x: Vec<Vec<f64>> = records.iter().map(|r| cols.iter()
-        .map(|(f, mu, sd)| (r.get(f).and_then(|v| v.as_f64()).unwrap_or(*mu) - mu) / sd).collect()).collect();
-    let dist2 = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(p, q)| (p - q) * (p - q)).sum::<f64>();
     // ── symmetric k-NN adjacency: edge if j∈kNN(i) OR i∈kNN(j) ──
     let mut adj: Vec<std::collections::BTreeSet<usize>> = vec![std::collections::BTreeSet::new(); n];
     for i in 0..n {
@@ -10163,66 +10281,48 @@ fn spectral_cluster(
             eigenvalues.push((lam * 10000.0).round() / 10000.0);
         }
         let coords: Vec<Vec<f64>> = (0..n).map(|i| (0..k).map(|c| vecs[c][i]).collect()).collect();
-        // k-means head (deterministic k-means++ init, Lloyd)
-        let mut cen: Vec<Vec<f64>> = vec![coords[0].clone()];
-        while cen.len() < k {
-            let far = (0..n).max_by(|&a, &b| {
-                let da = cen.iter().map(|c| dist2c(&coords[a], c)).fold(f64::MAX, f64::min);
-                let db = cen.iter().map(|c| dist2c(&coords[b], c)).fold(f64::MAX, f64::min);
-                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-            }).unwrap();
-            cen.push(coords[far].clone());
-        }
-        let mut labels = vec![0usize; n];
-        for _ in 0..50 {
-            let mut changed = false;
-            for i in 0..n {
-                let c = (0..k).min_by(|&a, &b| dist2c(&coords[i], &cen[a])
-                    .partial_cmp(&dist2c(&coords[i], &cen[b])).unwrap_or(std::cmp::Ordering::Equal)).unwrap();
-                if c != labels[i] { labels[i] = c; changed = true; }
-            }
-            let mut sum = vec![vec![0.0; k]; k];
-            let mut cnt = vec![0usize; k];
-            for i in 0..n { cnt[labels[i]] += 1; for t in 0..k { sum[labels[i]][t] += coords[i][t]; } }
-            for c in 0..k { if cnt[c] > 0 { for t in 0..k { cen[c][t] = sum[c][t] / cnt[c] as f64; } } }
-            if !changed { break; }
-        }
+        let labels = kmeans_lloyd(&coords, k);   // k-means head on the eigenmap
         notes.push(format!("spectral clustering on {dim} numeric fibers: symmetric {deg_k}-NN graph (1 connected component), bottom-{k} Laplacian eigenmaps + k-means"));
         (labels, coords, eigenvalues)
     };
+    let labels: Vec<i64> = labels.into_iter().map(|l| l as i64).collect();
     let mut sizes = vec![0usize; k];
-    for &l in &labels { sizes[l] += 1; }
-    Ok(ClusterResult { base, ids, labels, coords, eigenvalues, sizes, notes })
+    for &l in &labels { sizes[l as usize] += 1; }
+    Ok(ClusterResult { base, ids, labels, coords, eigenvalues, sizes,
+        n_noise: 0, method: method.to_string(), notes })
 }
 
 /// POST /v1/bundles/{name}/cluster
 ///
-/// Spectral clustering + manifold embedding in one call. Builds a k-NN graph over
-/// the numeric fibers, computes the bottom-k eigenvectors of its Laplacian
-/// (Laplacian Eigenmaps), and runs a k-means head on that embedding. Returns each
-/// record's cluster label AND its low-dimensional coordinates — the embedding is
-/// the manifold layout, the labels are the clustering. No feature engineering.
+/// Cluster records by `method`: **spectral** (bottom-k Laplacian eigenmaps of the
+/// k-NN graph + k-means — also returns the manifold embedding coords), **kmeans**
+/// (k-means on the standardized fibers), or **dbscan** (density clusters + noise,
+/// ε auto-estimated). Returns each record's cluster label (null = DBSCAN noise)
+/// plus its coordinates. No feature engineering.
 async fn bundle_cluster(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<ClusterRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
-    let ClusterResult { base, ids, labels, coords, eigenvalues, sizes, notes } =
-        match spectral_cluster(&engine, &name, req.k, req.neighbors, &req.exclude) {
+    let ClusterResult { base, ids, labels, coords, eigenvalues, sizes, n_noise, method, notes } =
+        match cluster_records(&engine, &name, &req.method, req.k, req.neighbors, req.eps, req.min_pts, &req.exclude) {
             Ok(v) => v,
             Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
         };
     let results: Vec<serde_json::Value> = (0..ids.len()).map(|i| {
         let rc: Vec<f64> = coords[i].iter().map(|v| (v * 100000.0).round() / 100000.0).collect();
-        serde_json::json!({ base.clone(): ids[i], "cluster": labels[i], "coords": rc })
+        // -1 → JSON null so a noise point reads as "no cluster", not cluster #−1
+        let cl = if labels[i] < 0 { serde_json::Value::Null } else { serde_json::json!(labels[i]) };
+        serde_json::json!({ base.clone(): ids[i], "cluster": cl, "coords": rc })
     }).collect();
     Ok(Json(serde_json::json!({
         "bundle": name,
         "n": ids.len(),
-        "k": req.k,
-        "method": "spectral",
+        "method": method,
+        "n_clusters": sizes.len(),
         "sizes": sizes,
+        "n_noise": n_noise,
         "eigenvalues": eigenvalues,
         "notes": notes,
         "results": results,
@@ -18690,20 +18790,56 @@ mod tests {
             .fiber(FieldDef::numeric("x"))
             .fiber(FieldDef::numeric("y"));
         let (dir, engine) = scan_env("cluster_blobs", "blob3", schema, rows);
-        let cr = spectral_cluster(&engine, "blob3", 3, 6, &[]).expect("cluster should build");
-        assert_eq!(cr.labels.len(), 60);
-        assert_eq!(cr.sizes.iter().sum::<usize>(), 60);
-        // records() need not preserve insertion order, so map each result back to its
-        // true blob via the returned id ("b{blob}_{j}"). Every blob's members must
-        // share one cluster, and the three blobs must occupy three distinct clusters.
-        let mut blob_cluster = [usize::MAX; 3];
-        for (pos, id) in cr.ids.iter().enumerate() {
-            let b: usize = id[1..id.find('_').unwrap()].parse().unwrap();
-            if blob_cluster[b] == usize::MAX { blob_cluster[b] = cr.labels[pos]; }
-            else { assert_eq!(cr.labels[pos], blob_cluster[b], "blob {b} split across clusters"); }
+        // all three partitioning methods must recover the three blobs
+        for method in ["spectral", "kmeans"] {
+            let cr = cluster_records(&engine, "blob3", method, 3, 6, None, 4, &[]).expect("cluster should build");
+            assert_eq!(cr.labels.len(), 60, "{method}");
+            assert_eq!(cr.sizes.iter().sum::<usize>(), 60, "{method}");
+            // records() need not preserve insertion order, so map each result back to
+            // its true blob via the returned id ("b{blob}_{j}"). Every blob's members
+            // must share one cluster, and the three blobs occupy three distinct clusters.
+            let mut blob_cluster = [-999i64; 3];
+            for (pos, id) in cr.ids.iter().enumerate() {
+                let b: usize = id[1..id.find('_').unwrap()].parse().unwrap();
+                if blob_cluster[b] == -999 { blob_cluster[b] = cr.labels[pos]; }
+                else { assert_eq!(cr.labels[pos], blob_cluster[b], "{method}: blob {b} split across clusters"); }
+            }
+            let distinct: std::collections::HashSet<i64> = blob_cluster.iter().copied().collect();
+            assert_eq!(distinct.len(), 3, "{method}: three blobs should occupy three distinct clusters, got {:?}", blob_cluster);
         }
-        let distinct: std::collections::HashSet<usize> = blob_cluster.iter().copied().collect();
-        assert_eq!(distinct.len(), 3, "the three blobs should occupy three distinct clusters, got {:?}", blob_cluster);
+        cleanup(&dir);
+    }
+
+    /// DBSCAN recovers two dense blobs and marks a lone point as NOISE. Blobs are
+    /// balanced 5×5 grids separated on the diagonal (so standardization doesn't
+    /// distort them); ε is auto-estimated.
+    #[test]
+    fn cluster_dbscan_finds_noise() {
+        let mut rows: Vec<gigi::types::Record> = Vec::new();
+        for (b, (ox, oy)) in [(0.0, 0.0), (2.0, 2.0)].iter().enumerate() {
+            for xi in 0..5 {
+                for yi in 0..5 {
+                    rows.push(scan_rec(&[
+                        ("id", V::Text(format!("d{b}_{xi}{yi}"))),
+                        ("x", V::Float(ox + 0.1 * xi as f64)),
+                        ("y", V::Float(oy + 0.1 * yi as f64)),
+                    ]));
+                }
+            }
+        }
+        // a lone point in the empty middle → density noise
+        rows.push(scan_rec(&[("id", V::Text("noise".into())), ("x", V::Float(1.0)), ("y", V::Float(1.0))]));
+        let schema = BundleSchema::new("db2")
+            .base(FieldDef::categorical("id")).fiber(FieldDef::numeric("x")).fiber(FieldDef::numeric("y"));
+        let (dir, engine) = scan_env("cluster_db", "db2", schema, rows);
+        let cr = cluster_records(&engine, "db2", "dbscan", 3, 10, None, 3, &[]).expect("dbscan should build");
+        let pos = cr.ids.iter().position(|i| i == "noise").unwrap();
+        assert_eq!(cr.labels[pos], -1, "the lone middle point should be labeled noise (-1), got {}", cr.labels[pos]);
+        // the two blobs land in two distinct non-noise clusters
+        let blob_labels: std::collections::HashSet<i64> = cr.ids.iter().enumerate()
+            .filter(|(_, id)| id.starts_with('d'))
+            .map(|(p, _)| cr.labels[p]).filter(|&l| l >= 0).collect();
+        assert_eq!(blob_labels.len(), 2, "two dense blobs should form two clusters, got {:?}", blob_labels);
         cleanup(&dir);
     }
 
@@ -18717,13 +18853,16 @@ mod tests {
             .base(FieldDef::categorical("id")).fiber(FieldDef::numeric("v"));
         let (dir, engine) = scan_env("cluster_tiny", "tiny", schema, rows);
         // k too large for the record count → clear error
-        let err = spectral_cluster(&engine, "tiny", 5, 4, &[]).unwrap_err();
+        let err = cluster_records(&engine, "tiny", "spectral", 5, 4, None, 4, &[]).unwrap_err();
         assert_eq!(err.0, StatusCode::UNPROCESSABLE_ENTITY);
         assert!(err.1.contains("clusters"), "error should explain the k-vs-n constraint, got: {}", err.1);
         // k < 2 → clear error
-        assert!(spectral_cluster(&engine, "tiny", 1, 4, &[]).is_err());
+        assert!(cluster_records(&engine, "tiny", "spectral", 1, 4, None, 4, &[]).is_err());
+        // unknown method → clear error
+        let m = cluster_records(&engine, "tiny", "banana", 2, 4, None, 4, &[]).unwrap_err();
+        assert!(m.1.contains("unknown cluster method"), "got: {}", m.1);
         // missing bundle → 404
-        assert_eq!(spectral_cluster(&engine, "nope", 2, 4, &[]).unwrap_err().0, StatusCode::NOT_FOUND);
+        assert_eq!(cluster_records(&engine, "nope", "spectral", 2, 4, None, 4, &[]).unwrap_err().0, StatusCode::NOT_FOUND);
         cleanup(&dir);
     }
 

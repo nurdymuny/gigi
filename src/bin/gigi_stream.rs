@@ -10467,8 +10467,12 @@ struct PredictResult {
 
 /// Weighted least-squares intercept at the query point: fit y ≈ β₀ + β·(x − x_q)
 /// over the (distance, index) neighbors with tricube weights; return β₀ (the value
-/// at x_q). Falls back to the weighted mean if the system is singular.
+/// at x_q). A ridge penalty shrinks the SLOPE terms (not the intercept) toward 0,
+/// so when the local neighborhood is too sparse to support a linear fit (high dim /
+/// few neighbors) the estimate degrades gracefully to the weighted mean instead of
+/// extrapolating wildly. Falls back to the weighted mean if the system is singular.
 fn local_linear_at(xq: &[f64], nbrs: &[(f64, usize)], x: &[Vec<f64>], y: &[f64], dim: usize) -> f64 {
+    const RIDGE: f64 = 0.5;   // slope shrinkage (features are standardized)
     let dmax = nbrs.last().map(|(d, _)| *d).unwrap_or(1.0).max(1e-9);
     let m = dim + 1;
     let mut a = vec![vec![0.0f64; m]; m];
@@ -10483,6 +10487,8 @@ fn local_linear_at(xq: &[f64], nbrs: &[(f64, usize)], x: &[Vec<f64>], y: &[f64],
         for t in 0..dim { basis.push(x[j][t] - xq[t]); }
         for r in 0..m { for c in 0..m { a[r][c] += w * basis[r] * basis[c]; } b[r] += w * basis[r] * y[j]; }
     }
+    let ridge = RIDGE * a[0][0];   // a[0][0] = Σ w (intercept diagonal)
+    for t in 1..m { a[t][t] += ridge; }
     match scan_solve(&mut a, &b) {
         Some(beta) if beta[0].is_finite() => beta[0],
         _ => if wsum > 0.0 { wy / wsum } else { 0.0 },

@@ -10713,6 +10713,65 @@ fn local_linear_scaled(xq: &[f64], nbrs: &[(f64, usize)], x: &[Vec<f64>], y: &[f
     (mean, s + 1e-6)
 }
 
+/// Build a symmetric Gaussian-weighted k-NN graph over standardized points for
+/// diffusion: edge weight exp(−‖xᵢ−xⱼ‖² / σ²) with σ² the median k-th-neighbor
+/// squared distance. Returns per-node (neighbor, weight) lists.
+fn build_diffusion_graph(x: &[Vec<f64>], k: usize, n: usize,
+    dist2: &dyn Fn(&[f64], &[f64]) -> f64) -> Vec<Vec<(usize, f64)>> {
+    let mut kth: Vec<f64> = (0..n).map(|i| {
+        let mut d: Vec<f64> = (0..n).filter(|&j| j != i).map(|j| dist2(&x[i], &x[j])).collect();
+        if d.is_empty() { return 1.0; }
+        let idx = (k - 1).min(d.len() - 1);
+        d.select_nth_unstable_by(idx, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        d[idx]
+    }).collect();
+    kth.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let sigma2 = kth[kth.len() / 2].max(1e-9);
+    let mut seen: Vec<std::collections::HashMap<usize, f64>> = vec![std::collections::HashMap::new(); n];
+    for i in 0..n {
+        let mut d: Vec<(f64, usize)> = (0..n).filter(|&j| j != i).map(|j| (dist2(&x[i], &x[j]), j)).collect();
+        let kc = k.min(d.len());
+        if kc == 0 { continue; }
+        d.select_nth_unstable_by(kc - 1, |a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        for &(dd, j) in &d[..kc] {
+            let w = (-dd / sigma2).exp();
+            let e = seen[i].entry(j).or_insert(0.0); if w > *e { *e = w; }   // symmetrize (keep max)
+            let e2 = seen[j].entry(i).or_insert(0.0); if w > *e2 { *e2 = w; }
+        }
+    }
+    seen.into_iter().map(|m| m.into_iter().collect()).collect()
+}
+
+/// Harmonic label-propagation (diffusion) on a weighted graph: clamp the labeled
+/// nodes and iterate each unlabeled node to the weighted average of its neighbors.
+/// This is the discrete heat flow / Dirichlet-energy minimizer — the target diffuses
+/// across the manifold instead of being averaged in flat feature space.
+///
+/// The method is the classical harmonic-function / Gaussian-field predictor
+/// (Zhu–Ghahramani–Lafferty 2003), kin to Laplacian Eigenmaps (Belkin–Niyogi) and
+/// diffusion maps (Coifman–Lafon) — GIGI does not claim to invent it. What is
+/// GIGI-native is that the operator is *already the substrate*: this graph Laplacian
+/// is the same one whose spectral gap is the mass gap, and `COMPLETE` is already its
+/// Schur-complement harmonic fill — so geometric prediction is the bundle's own verb,
+/// not a bolt-on. The flat methods are the baseline it is measured against.
+fn diffuse(wadj: &[Vec<(usize, f64)>], clamp: &[Option<f64>], iters: usize) -> Vec<f64> {
+    let n = clamp.len();
+    let (sum, cnt) = clamp.iter().filter_map(|c| *c).fold((0.0, 0usize), |(s, c), v| (s + v, c + 1));
+    let init = if cnt > 0 { sum / cnt as f64 } else { 0.0 };
+    let mut f: Vec<f64> = clamp.iter().map(|c| c.unwrap_or(init)).collect();
+    for _ in 0..iters {
+        let mut nf = f.clone();
+        for i in 0..n {
+            if clamp[i].is_some() { continue; }   // labeled nodes stay clamped
+            let (mut num, mut den) = (0.0, 0.0);
+            for &(j, w) in &wadj[i] { num += w * f[j]; den += w; }
+            if den > 1e-12 { nf[i] = num / den; }
+        }
+        f = nf;
+    }
+    f
+}
+
 /// POST /v1/bundles/{name}/infer
 ///
 /// Supervised prediction over the numeric fibers. Numeric target → regression
@@ -10742,9 +10801,9 @@ fn predict_field(
     let tf = schema.fiber_fields.iter().find(|f| f.name == target).ok_or_else(|| (
         StatusCode::UNPROCESSABLE_ENTITY, format!("target field '{}' not found among the bundle's fibers", target)))?;
     let is_reg = matches!(tf.field_type, FieldType::Numeric);
-    if is_reg && !matches!(method, "local_linear" | "knn" | "ols" | "gp") {
+    if is_reg && !matches!(method, "local_linear" | "knn" | "ols" | "gp" | "diffusion") {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
-            "unknown regression method '{}' (expected 'local_linear', 'knn', 'ols', or 'gp')", method)));
+            "unknown regression method '{}' (expected 'local_linear', 'knn', 'ols', 'gp', or 'diffusion')", method)));
     }
     // features: numeric fibers other than the target, honoring exclude
     let feat_defs: Vec<gigi::types::FieldDef> = schema.fiber_fields.iter()
@@ -10863,6 +10922,43 @@ fn predict_field(
                             "mean_interval_width": (width*100.0).round()/100.0, "rmse": (rmse*100.0).round()/100.0}),
          serde_json::json!({"method": "fixed_normal_interval", "coverage_90": (base_cov*1000.0).round()/1000.0}),
          preds)
+    } else if is_reg && method == "diffusion" {
+        // ── GEOMETRIC predictor: diffuse the target across the manifold graph
+        // (harmonic extension on the Laplacian) instead of averaging in flat space. ──
+        let y: Vec<f64> = records.iter().map(|r| r.get(target).and_then(|v| v.as_f64()).unwrap_or(0.0)).collect();
+        let ybar = train.iter().map(|&i| y[i]).sum::<f64>() / train.len() as f64;
+        let tss: f64 = train.iter().map(|&i| (y[i] - ybar).powi(2)).sum();
+        let wadj = build_diffusion_graph(&x, kk, n, &dist2);
+        let train_set: std::collections::HashSet<usize> = train.iter().copied().collect();
+        let fld = folds.max(2);
+        // held-out R² + flat-kNN baseline (same neighbors)
+        let (mut se, mut se_base) = (0.0, 0.0);
+        for f in 0..fld {
+            let te: std::collections::HashSet<usize> = train.iter().enumerate()
+                .filter(|(ix, _)| ix % fld == f).map(|(_, &i)| i).collect();
+            let clamp: Vec<Option<f64>> = (0..n).map(|i| if train_set.contains(&i) && !te.contains(&i) { Some(y[i]) } else { None }).collect();
+            let f_diff = diffuse(&wadj, &clamp, 80);
+            let pool: Vec<usize> = train.iter().copied().filter(|i| !te.contains(i)).collect();
+            for &q in &te {
+                se += (f_diff[q] - y[q]).powi(2);
+                let nb = knn_of(q, &pool);
+                let base = if nb.is_empty() { ybar } else { nb.iter().map(|(_, j)| y[*j]).sum::<f64>() / nb.len() as f64 };
+                se_base += (base - y[q]).powi(2);
+            }
+        }
+        let nt = train.len() as f64;
+        let r2 = 1.0 - se / tss.max(f64::EPSILON);
+        let r2_base = 1.0 - se_base / tss.max(f64::EPSILON);
+        // fill missing targets by diffusing from all labeled
+        let clamp: Vec<Option<f64>> = (0..n).map(|i| if train_set.contains(&i) { Some(y[i]) } else { None }).collect();
+        let f_all = diffuse(&wadj, &clamp, 100);
+        let preds: Vec<(String, serde_json::Value)> = query.iter()
+            .map(|&q| (base_of(&records[q]), serde_json::json!((f_all[q] * 100000.0).round() / 100000.0))).collect();
+        notes.push(format!("diffusion regression: harmonic label-propagation on the {kk}-NN graph Laplacian (geometric), {fld}-fold held-out; the flat kNN baseline is reported alongside"));
+        ("regression".to_string(),
+         serde_json::json!({"r2": (r2*10000.0).round()/10000.0, "rmse": ((se/nt).sqrt()*100.0).round()/100.0}),
+         serde_json::json!({"method": "flat_knn", "r2": (r2_base*10000.0).round()/10000.0}),
+         preds)
     } else if is_reg {
         let y: Vec<f64> = records.iter().map(|r| r.get(target).and_then(|v| v.as_f64()).unwrap_or(0.0)).collect();
         let ybar = train.iter().map(|&i| y[i]).sum::<f64>() / train.len() as f64;
@@ -10966,19 +11062,37 @@ fn predict_field(
                 da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
             }).unwrap_or(0)
         };
+        // GEOMETRIC classifier: label propagation (diffusion) on the manifold graph
+        let use_diffusion = method == "diffusion";
+        let wadj = if use_diffusion { build_diffusion_graph(&x, kk, n, &dist2) } else { Vec::new() };
+        let labelprop = |labeled: &std::collections::HashSet<usize>| -> Vec<usize> {
+            let mut scores = vec![vec![0.0f64; ncl]; n];
+            for c in 0..ncl {
+                let clamp: Vec<Option<f64>> = (0..n).map(|i|
+                    if labeled.contains(&i) && yc[i] != usize::MAX { Some(if yc[i] == c { 1.0 } else { 0.0 }) } else { None }).collect();
+                let f = diffuse(&wadj, &clamp, 60);
+                for i in 0..n { scores[i][c] = f[i]; }
+            }
+            (0..n).map(|i| (0..ncl).max_by(|&a, &b| scores[i][a]
+                .partial_cmp(&scores[i][b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap_or(0)).collect()
+        };
         let fld = folds.max(2);
         let (mut correct, mut total) = (0usize, 0usize);
         for f in 0..fld {
             let te: std::collections::HashSet<usize> = train.iter().enumerate()
                 .filter(|(ix, _)| ix % fld == f).map(|(_, &i)| i).collect();
-            let pool: Vec<usize> = train.iter().copied().filter(|i| !te.contains(i)).collect();
+            let pool_set: std::collections::HashSet<usize> = train.iter().copied().filter(|i| !te.contains(i)).collect();
+            let pool: Vec<usize> = pool_set.iter().copied().collect();
             let w = if use_svm { pegasos(&pool) } else { Vec::new() };
+            let dpred = if use_diffusion { labelprop(&pool_set) } else { Vec::new() };
             for &q in &te {
-                let pred = if use_svm { svm_pred(&w, q) } else {
-                    let nb = knn_of(q, &pool);
-                    if nb.is_empty() { continue; }
-                    vote(&nb)
-                };
+                let pred = if use_svm { svm_pred(&w, q) }
+                    else if use_diffusion { dpred[q] }
+                    else {
+                        let nb = knn_of(q, &pool);
+                        if nb.is_empty() { continue; }
+                        vote(&nb)
+                    };
                 total += 1; if pred == yc[q] { correct += 1; }
             }
         }
@@ -10986,17 +11100,21 @@ fn predict_field(
         for &i in &train { if yc[i] != usize::MAX { cnt[yc[i]] += 1; } }
         let maj = *cnt.iter().max().unwrap_or(&0) as f64 / train.len() as f64;
         let acc = if total > 0 { correct as f64 / total as f64 } else { 0.0 };
+        let train_set: std::collections::HashSet<usize> = train.iter().copied().collect();
         let w_all = if use_svm { pegasos(&train) } else { Vec::new() };
+        let dpred_all = if use_diffusion { labelprop(&train_set) } else { Vec::new() };
         let preds: Vec<(String, serde_json::Value)> = query.iter().filter_map(|&q| {
-            let c = if use_svm { svm_pred(&w_all, q) } else {
-                let nb = knn_of(q, &train);
-                if nb.is_empty() { return None; }
-                vote(&nb)
-            };
+            let c = if use_svm { svm_pred(&w_all, q) }
+                else if use_diffusion { dpred_all[q] }
+                else {
+                    let nb = knn_of(q, &train);
+                    if nb.is_empty() { return None; }
+                    vote(&nb)
+                };
             Some((base_of(&records[q]), serde_json::json!(classes[c])))
         }).collect();
         notes.push(format!("classification ({}) on {dim} feature fibers, target '{target}', {ncl} classes, {fld}-fold held-out",
-            if use_svm { "linear SVM, one-vs-rest hinge" } else { "distance-weighted kNN vote" }));
+            if use_svm { "linear SVM, one-vs-rest hinge" } else if use_diffusion { "label-propagation diffusion on the graph Laplacian" } else { "distance-weighted kNN vote" }));
         ("classification".to_string(),
          serde_json::json!({"accuracy": (acc*10000.0).round()/10000.0}),
          serde_json::json!({"method": "majority_class", "accuracy": (maj*10000.0).round()/10000.0}),
@@ -11004,7 +11122,8 @@ fn predict_field(
     };
     if !query.is_empty() { notes.push(format!("filled target for {} record(s) with a missing '{}'", query.len(), target)); }
     Ok(PredictResult { base, task,
-        method: if is_reg { method.to_string() } else if method == "svm" { "svm".to_string() } else { "knn_vote".to_string() },
+        method: if is_reg { method.to_string() } else if method == "svm" { "svm".to_string() }
+            else if method == "diffusion" { "diffusion".to_string() } else { "knn_vote".to_string() },
         metric, baseline, n_train: train.len(), predictions, notes })
 }
 
@@ -20309,6 +20428,36 @@ mod tests {
         let q = pr.predictions.iter().find(|(id, _)| id == "q").expect("q predicted");
         let (lo, mean, hi) = (q.1["lower"].as_f64().unwrap(), q.1["mean"].as_f64().unwrap(), q.1["upper"].as_f64().unwrap());
         assert!(lo < mean && mean < hi, "interval should bracket the mean: {lo} < {mean} < {hi}");
+        cleanup(&dir);
+    }
+
+    /// The GEOMETRIC predictor (diffusion on the graph Laplacian) fits a target that
+    /// varies along a curved manifold, and matches or beats the flat kNN baseline it
+    /// reports — geometry buying something where geometry exists.
+    #[test]
+    fn predict_diffusion_beats_flat_on_manifold() {
+        let mut s: u64 = 20260719;
+        let mut rnd = || { s = s.wrapping_mul(6364136223846793005).wrapping_add(1); (s >> 11) as f64 / (1u64 << 53) as f64 };
+        // swiss-roll: (x1,x2,x3) on a rolled sheet; target varies along the roll param t
+        let mut rows: Vec<gigi::types::Record> = Vec::new();
+        for i in 0..400 {
+            let (t, u, noise) = (rnd() * 3.0, rnd() * 3.0, (rnd() - 0.5) * 0.1);
+            let tgt = (t * 2.0).sin() + 0.3 * u + noise;
+            rows.push(scan_rec(&[
+                ("id", V::Text(format!("r{i}"))),
+                ("x1", V::Float(t * (t * 2.0).cos())), ("x2", V::Float(u)), ("x3", V::Float(t * (t * 2.0).sin())),
+                ("y", V::Float(tgt)),
+            ]));
+        }
+        let schema = BundleSchema::new("roll")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("x1")).fiber(FieldDef::numeric("x2")).fiber(FieldDef::numeric("x3")).fiber(FieldDef::numeric("y"));
+        let (dir, engine) = scan_env("diffusion", "roll", schema, rows);
+        let pr = predict_field(&engine, "roll", "y", "diffusion", 12, 0.5, 5, &[]).expect("diffusion");
+        let r2 = pr.metric["r2"].as_f64().unwrap();
+        let flat = pr.baseline["r2"].as_f64().unwrap();   // reported flat-kNN baseline
+        assert!(r2 > 0.75, "diffusion should fit the manifold target well, R²={r2}");
+        assert!(r2 >= flat - 0.03, "diffusion ({r2}) should match or beat flat kNN ({flat}) on the manifold");
         cleanup(&dir);
     }
 

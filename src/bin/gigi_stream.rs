@@ -10014,6 +10014,19 @@ struct ClusterRequest {
     /// DBSCAN core-point threshold (min points in an ε-neighborhood). Default 4.
     #[serde(default = "default_cluster_min_pts")]
     min_pts: usize,
+    /// GMM covariance: "full" (default), "diagonal", or "spherical". Diagonal/
+    /// spherical are much faster on high-dimensional data.
+    #[serde(default = "default_covariance")]
+    covariance: String,
+    /// Max EM iterations (gmm) / restarts hint. Default 100 for gmm.
+    #[serde(default = "default_max_iters")]
+    max_iters: usize,
+    /// k-means / gmm-init restarts (keep the lowest-inertia). Omitted → adaptive.
+    #[serde(default)]
+    restarts: Option<usize>,
+    /// Spectral: use the symmetric-normalized Laplacian (often cleaner clusters).
+    #[serde(default)]
+    normalized: bool,
     /// Fields to keep out of the geometry (e.g. an id or label column).
     #[serde(default)]
     exclude: Vec<String>,
@@ -10022,6 +10035,21 @@ fn default_cluster_method() -> String { "spectral".to_string() }
 fn default_cluster_k() -> usize { 3 }
 fn default_cluster_neighbors() -> usize { 10 }
 fn default_cluster_min_pts() -> usize { 4 }
+fn default_covariance() -> String { "full".to_string() }
+fn default_max_iters() -> usize { 100 }
+
+/// Advanced clustering knobs — carried together so casual callers pass one value
+/// and power users tune it. `Default` reproduces the plain, sensible behavior.
+#[derive(Clone)]
+struct ClusterOpts {
+    covariance: String,        // gmm: "full" | "diagonal" | "spherical"
+    max_iters: usize,          // gmm EM cap
+    restarts: Option<usize>,   // kmeans / gmm-init restarts (None = adaptive)
+    normalized: bool,          // spectral: symmetric-normalized Laplacian
+}
+impl Default for ClusterOpts {
+    fn default() -> Self { Self { covariance: "full".into(), max_iters: 100, restarts: None, normalized: false } }
+}
 
 /// Result of spectral clustering — shared by the handler and tests.
 #[derive(Debug)]
@@ -10070,7 +10098,7 @@ fn mat_inv_logdet(m: &[Vec<f64>]) -> Option<(Vec<Vec<f64>>, f64)> {
 /// standard library on hard (many-cluster / high-dim) problems, where single-shot
 /// farthest-point init lands in bad local optima. Deterministic via a fixed LCG.
 /// Shared by the `kmeans` method, the spectral eigenmap head, and GMM init.
-fn kmeans_lloyd(pts: &[Vec<f64>], k: usize) -> Vec<usize> {
+fn kmeans_lloyd(pts: &[Vec<f64>], k: usize, restarts_opt: Option<usize>) -> Vec<usize> {
     let n = pts.len();
     let d = pts.first().map(|p| p.len()).unwrap_or(0);
     let dist2 = |a: &[f64], b: &[f64]| a.iter().zip(b).map(|(p, q)| (p - q) * (p - q)).sum::<f64>();
@@ -10078,7 +10106,8 @@ fn kmeans_lloyd(pts: &[Vec<f64>], k: usize) -> Vec<usize> {
     let mut unif = move || { seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
         (seed >> 11) as f64 / (1u64 << 53) as f64 };   // in [0,1)
     // bound total work: fewer restarts on large problems (still capped at n<=8000 upstream)
-    let restarts = if n * k > 10_000 { 3 } else { 6 };
+    let restarts = restarts_opt.map(|r| r.clamp(1, 50))
+        .unwrap_or(if n * k > 10_000 { 3 } else { 6 });
     let mut best_labels = vec![0usize; n];
     let mut best_inertia = f64::MAX;
     for _ in 0..restarts {
@@ -10132,6 +10161,7 @@ fn cluster_records(
     neighbors: usize,
     eps: Option<f64>,
     min_pts: usize,
+    opts: &ClusterOpts,
     exclude: &[String],
 ) -> Result<ClusterResult, (StatusCode, String)> {
     use gigi::types::FieldType;
@@ -10185,7 +10215,7 @@ fn cluster_records(
 
     // ── k-means: partition the standardized features directly (no graph) ──
     if method == "kmeans" {
-        let labels: Vec<i64> = kmeans_lloyd(&x, k).into_iter().map(|l| l as i64).collect();
+        let labels: Vec<i64> = kmeans_lloyd(&x, k, opts.restarts).into_iter().map(|l| l as i64).collect();
         let mut sizes = vec![0usize; k];
         for &l in &labels { sizes[l as usize] += 1; }
         let kd = k.min(dim);
@@ -10200,7 +10230,14 @@ fn cluster_records(
         let d = dim;
         // init from k-means (robust — avoids EM local optima on elongated clusters):
         // component means, per-component covariance, and mixing weights
-        let init = kmeans_lloyd(&x, k);
+        let init = kmeans_lloyd(&x, k, opts.restarts);
+        let cov_diag = opts.covariance == "diagonal" || opts.covariance == "spherical";
+        let spherical = opts.covariance == "spherical";
+        if !matches!(opts.covariance.as_str(), "full" | "diagonal" | "spherical") {
+            return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
+                "unknown covariance '{}' (expected 'full', 'diagonal', or 'spherical')", opts.covariance)));
+        }
+        let em_iters = opts.max_iters.clamp(1, 1000);
         let mut mu = vec![vec![0.0f64; d]; k];
         let mut cnt = vec![0usize; k];
         for i in 0..n { cnt[init[i]] += 1; for t in 0..d { mu[init[i]][t] += x[i][t]; } }
@@ -10220,23 +10257,36 @@ fn cluster_records(
                 sig[c] = sc;
             }
         }
+        // diagonal-variance representation (used for "diagonal"/"spherical")
+        let mut var: Vec<Vec<f64>> = if cov_diag {
+            (0..k).map(|c| {
+                let mut v: Vec<f64> = (0..d).map(|t| sig[c][t][t].max(1e-6)).collect();
+                if spherical { let m = v.iter().sum::<f64>() / d as f64; v = vec![m.max(1e-6); d]; }
+                v
+            }).collect()
+        } else { Vec::new() };
         let mut pi: Vec<f64> = (0..k).map(|c| cnt[c].max(1) as f64 / n as f64).collect();
         let mut resp = vec![vec![0.0f64; k]; n];
         let ln2pi = (2.0 * std::f64::consts::PI).ln();
         let reg = 1e-6;
         let mut prev_ll = f64::NEG_INFINITY;
         let mut iters_run = 0;
-        for _ in 0..100 {
+        for _ in 0..em_iters {
             iters_run += 1;
-            // precompute Σ⁻¹ and ln|Σ| per component (regularized)
-            let mut inv: Vec<Vec<Vec<f64>>> = Vec::with_capacity(k);
+            // precompute per-component ln|Σ| (+ Σ⁻¹ for the full path)
+            let mut inv: Vec<Vec<Vec<f64>>> = Vec::new();
             let mut logdet = vec![0.0f64; k];
-            for c in 0..k {
-                let mut s = sig[c].clone();
-                for a in 0..d { s[a][a] += reg; }
-                match mat_inv_logdet(&s) {
-                    Some((iv, ld)) => { inv.push(iv); logdet[c] = ld; }
-                    None => { inv.push((0..d).map(|i| (0..d).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect()); logdet[c] = 0.0; }
+            if cov_diag {
+                for c in 0..k { logdet[c] = (0..d).map(|t| (var[c][t] + reg).ln()).sum(); }
+            } else {
+                inv.reserve(k);
+                for c in 0..k {
+                    let mut s = sig[c].clone();
+                    for a in 0..d { s[a][a] += reg; }
+                    match mat_inv_logdet(&s) {
+                        Some((iv, ld)) => { inv.push(iv); logdet[c] = ld; }
+                        None => { inv.push((0..d).map(|i| (0..d).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect()); logdet[c] = 0.0; }
+                    }
                 }
             }
             // E-step: responsibilities via log-sum-exp; accumulate total log-likelihood
@@ -10245,7 +10295,11 @@ fn cluster_records(
                 let mut lp = vec![0.0f64; k];
                 for c in 0..k {
                     let dv: Vec<f64> = (0..d).map(|t| x[i][t] - mu[c][t]).collect();
-                    let maha: f64 = (0..d).map(|a| (0..d).map(|b| dv[a] * inv[c][a][b] * dv[b]).sum::<f64>()).sum();
+                    let maha: f64 = if cov_diag {
+                        (0..d).map(|t| dv[t] * dv[t] / (var[c][t] + reg)).sum()
+                    } else {
+                        (0..d).map(|a| (0..d).map(|b| dv[a] * inv[c][a][b] * dv[b]).sum::<f64>()).sum()
+                    };
                     lp[c] = pi[c].max(1e-12).ln() - 0.5 * (d as f64 * ln2pi + logdet[c] + maha);
                 }
                 let mx = lp.iter().cloned().fold(f64::MIN, f64::max);
@@ -10261,16 +10315,21 @@ fn cluster_records(
                 let nc: f64 = (0..n).map(|i| resp[i][c]).sum::<f64>().max(1e-9);
                 pi[c] = nc / n as f64;
                 for t in 0..d { mu[c][t] = (0..n).map(|i| resp[i][c] * x[i][t]).sum::<f64>() / nc; }
-                for a in 0..d { for b in 0..d {
-                    sig[c][a][b] = (0..n).map(|i| resp[i][c] * (x[i][a] - mu[c][a]) * (x[i][b] - mu[c][b])).sum::<f64>() / nc;
-                } }
+                if cov_diag {
+                    for t in 0..d { var[c][t] = (0..n).map(|i| resp[i][c] * (x[i][t] - mu[c][t]).powi(2)).sum::<f64>() / nc; }
+                    if spherical { let m = var[c].iter().sum::<f64>() / d as f64; for t in 0..d { var[c][t] = m; } }
+                } else {
+                    for a in 0..d { for b in 0..d {
+                        sig[c][a][b] = (0..n).map(|i| resp[i][c] * (x[i][a] - mu[c][a]) * (x[i][b] - mu[c][b])).sum::<f64>() / nc;
+                    } }
+                }
             }
         }
         let labels: Vec<i64> = (0..n).map(|i| (0..k).max_by(|&a, &b| resp[i][a]
             .partial_cmp(&resp[i][b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap() as i64).collect();
         let mut sizes = vec![0usize; k];
         for &l in &labels { sizes[l as usize] += 1; }
-        notes.push(format!("GMM (full-covariance EM, {k} components, converged in {iters_run} iterations) on {dim} numeric fibers; coords = soft responsibilities"));
+        notes.push(format!("GMM ({} covariance, {k} components, EM converged in {iters_run} iterations) on {dim} numeric fibers; coords = soft responsibilities", opts.covariance));
         return Ok(ClusterResult { base, ids, labels, coords: resp, eigenvalues: Vec::new(),
             sizes, n_noise: 0, method: method.to_string(), notes });
     }
@@ -10381,8 +10440,17 @@ fn cluster_records(
     } else {
         // ── connected graph: spectral cut via bottom-k Laplacian eigenmaps ──
         // B = cI − L so L's smallest eigenpairs are B's largest (power iteration).
-        let shift = 2.0 * deg.iter().cloned().fold(0.0, f64::max) + 1.0;
-        let matvec_l = |v: &[f64], i: usize| deg[i] * v[i] - adjv[i].iter().map(|&j| v[j]).sum::<f64>();
+        // `normalized` uses the symmetric-normalized Laplacian L_sym = I − D^{-½}AD^{-½}
+        // (eigenvalues in [0,2]; often cleaner clusters, per Ng-Jordan-Weiss).
+        let dsqrt: Vec<f64> = deg.iter().map(|d| if *d > 0.0 { d.sqrt() } else { 1.0 }).collect();
+        let matvec_l = |v: &[f64], i: usize| -> f64 {
+            if opts.normalized {
+                v[i] - adjv[i].iter().map(|&j| v[j] / (dsqrt[i] * dsqrt[j])).sum::<f64>()
+            } else {
+                deg[i] * v[i] - adjv[i].iter().map(|&j| v[j]).sum::<f64>()
+            }
+        };
+        let shift = if opts.normalized { 2.0 } else { 2.0 * deg.iter().cloned().fold(0.0, f64::max) + 1.0 };
         let mut seed: u64 = 0x9E3779B97F4A7C15;
         let mut lcg = || { seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
             (seed >> 33) as f64 / (1u64 << 31) as f64 - 1.0 };
@@ -10406,9 +10474,16 @@ fn cluster_records(
             vecs.push(v);
             eigenvalues.push((lam * 10000.0).round() / 10000.0);
         }
-        let coords: Vec<Vec<f64>> = (0..n).map(|i| (0..k).map(|c| vecs[c][i]).collect()).collect();
-        let labels = kmeans_lloyd(&coords, k);   // k-means head on the eigenmap
-        notes.push(format!("spectral clustering on {dim} numeric fibers: symmetric {deg_k}-NN graph (1 connected component), bottom-{k} Laplacian eigenmaps + k-means"));
+        let mut coords: Vec<Vec<f64>> = (0..n).map(|i| (0..k).map(|c| vecs[c][i]).collect()).collect();
+        if opts.normalized {   // row-normalize the embedding (Ng-Jordan-Weiss)
+            for row in &mut coords {
+                let nrm = row.iter().map(|z| z * z).sum::<f64>().sqrt();
+                if nrm > 1e-12 { for z in row.iter_mut() { *z /= nrm; } }
+            }
+        }
+        let labels = kmeans_lloyd(&coords, k, opts.restarts);   // k-means head on the eigenmap
+        notes.push(format!("spectral clustering on {dim} numeric fibers: symmetric {deg_k}-NN graph (1 connected component), bottom-{k} {}Laplacian eigenmaps + k-means",
+            if opts.normalized { "normalized " } else { "" }));
         (labels, coords, eigenvalues)
     };
     let labels: Vec<i64> = labels.into_iter().map(|l| l as i64).collect();
@@ -10432,8 +10507,12 @@ async fn bundle_cluster(
     Json(req): Json<ClusterRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
+    let opts = ClusterOpts {
+        covariance: req.covariance.clone(), max_iters: req.max_iters,
+        restarts: req.restarts, normalized: req.normalized,
+    };
     let ClusterResult { base, ids, labels, coords, eigenvalues, sizes, n_noise, method, notes } =
-        match cluster_records(&engine, &name, &req.method, req.k, req.neighbors, req.eps, req.min_pts, &req.exclude) {
+        match cluster_records(&engine, &name, &req.method, req.k, req.neighbors, req.eps, req.min_pts, &opts, &req.exclude) {
             Ok(v) => v,
             Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
         };
@@ -10468,6 +10547,10 @@ struct SupervisedPredictRequest {
     /// Neighbors for the local methods. Default 20.
     #[serde(default = "default_predict_k")]
     k: usize,
+    /// local_linear slope-shrinkage ridge. Higher → smoother (toward kNN-mean);
+    /// lower → more local slope. Default 0.5.
+    #[serde(default = "default_predict_ridge")]
+    ridge: f64,
     /// Cross-validation folds for the held-out score. Default 5.
     #[serde(default = "default_fit_folds")]
     folds: usize,
@@ -10477,6 +10560,7 @@ struct SupervisedPredictRequest {
 }
 fn default_predict_method() -> String { "local_linear".to_string() }
 fn default_predict_k() -> usize { 20 }
+fn default_predict_ridge() -> f64 { 0.5 }
 
 /// Result of supervised prediction — shared by the handler and tests.
 #[derive(Debug)]
@@ -10497,8 +10581,7 @@ struct PredictResult {
 /// so when the local neighborhood is too sparse to support a linear fit (high dim /
 /// few neighbors) the estimate degrades gracefully to the weighted mean instead of
 /// extrapolating wildly. Falls back to the weighted mean if the system is singular.
-fn local_linear_at(xq: &[f64], nbrs: &[(f64, usize)], x: &[Vec<f64>], y: &[f64], dim: usize) -> f64 {
-    const RIDGE: f64 = 0.5;   // slope shrinkage (features are standardized)
+fn local_linear_at(xq: &[f64], nbrs: &[(f64, usize)], x: &[Vec<f64>], y: &[f64], dim: usize, ridge_frac: f64) -> f64 {
     let dmax = nbrs.last().map(|(d, _)| *d).unwrap_or(1.0).max(1e-9);
     let m = dim + 1;
     let mut a = vec![vec![0.0f64; m]; m];
@@ -10513,7 +10596,7 @@ fn local_linear_at(xq: &[f64], nbrs: &[(f64, usize)], x: &[Vec<f64>], y: &[f64],
         for t in 0..dim { basis.push(x[j][t] - xq[t]); }
         for r in 0..m { for c in 0..m { a[r][c] += w * basis[r] * basis[c]; } b[r] += w * basis[r] * y[j]; }
     }
-    let ridge = RIDGE * a[0][0];   // a[0][0] = Σ w (intercept diagonal)
+    let ridge = ridge_frac.max(0.0) * a[0][0];   // a[0][0] = Σ w (intercept diagonal)
     for t in 1..m { a[t][t] += ridge; }
     match scan_solve(&mut a, &b) {
         Some(beta) if beta[0].is_finite() => beta[0],
@@ -10534,6 +10617,7 @@ fn predict_field(
     target: &str,
     method: &str,
     k: usize,
+    ridge: f64,
     folds: usize,
     exclude: &[String],
 ) -> Result<PredictResult, (StatusCode, String)> {
@@ -10627,7 +10711,7 @@ fn predict_field(
             let main = match method {
                 "knn" => knn_mean,
                 "ols" => w.first().copied().unwrap_or(ybar) + (0..dim).map(|t| w[t + 1] * x[q][t]).sum::<f64>(),
-                _ => if nb.is_empty() { ybar } else { local_linear_at(&x[q], &nb, &x, &y, dim) },
+                _ => if nb.is_empty() { ybar } else { local_linear_at(&x[q], &nb, &x, &y, dim, ridge) },
             };
             (main, knn_mean)
         };
@@ -10712,7 +10796,7 @@ async fn bundle_predict(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
     let PredictResult { base, task, method, metric, baseline, n_train, predictions, notes } =
-        match predict_field(&engine, &name, &req.target, &req.method, req.k, req.folds, &req.exclude) {
+        match predict_field(&engine, &name, &req.target, &req.method, req.k, req.ridge, req.folds, &req.exclude) {
             Ok(v) => v,
             Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
         };
@@ -10737,6 +10821,10 @@ struct ReduceRequest {
     /// Target dimensionality (number of principal components). Default 2.
     #[serde(default = "default_reduce_k")]
     k: usize,
+    /// Whiten: rescale each component to unit variance (decorrelated, equal-scale
+    /// coords — useful as a preprocessing step). Default false.
+    #[serde(default)]
+    whiten: bool,
     /// Fields to exclude from the feature set.
     #[serde(default)]
     exclude: Vec<String>,
@@ -10767,6 +10855,7 @@ fn pca_reduce(
     engine: &Engine,
     name: &str,
     k: usize,
+    whiten: bool,
     exclude: &[String],
 ) -> Result<ReduceResult, (StatusCode, String)> {
     use gigi::types::FieldType;
@@ -10831,8 +10920,8 @@ fn pca_reduce(
         components.push(v);
         explained.push(if total_var > 0.0 { lam / total_var } else { 0.0 });
     }
-    // reduced coords + reconstruction error
-    let coords: Vec<Vec<f64>> = x.iter().map(|xi|
+    // reduced coords + reconstruction error (from the un-whitened projection)
+    let mut coords: Vec<Vec<f64>> = x.iter().map(|xi|
         components.iter().map(|comp| (0..dim).map(|t| xi[t] * comp[t]).sum()).collect()).collect();
     let (mut sse, mut sst) = (0.0f64, 0.0f64);
     for (i, xi) in x.iter().enumerate() {
@@ -10842,8 +10931,12 @@ fn pca_reduce(
             sst += xi[t] * xi[t];
         }
     }
+    if whiten {   // rescale each component to unit variance (divide by √eigenvalue)
+        let scale: Vec<f64> = (0..kk).map(|pc| (explained[pc] * total_var).max(1e-12).sqrt()).collect();
+        for row in &mut coords { for pc in 0..kk { row[pc] /= scale[pc]; } }
+    }
     let cumulative = explained.iter().sum();
-    let mut notes = vec![format!("PCA on {dim} standardized numeric fibers → {kk} component(s)")];
+    let mut notes = vec![format!("PCA on {dim} standardized numeric fibers → {kk} component(s){}", if whiten { ", whitened" } else { "" })];
     if k > dim { notes.push(format!("k clamped to {kk} (can't exceed the {dim} available features)")); }
     Ok(ReduceResult {
         base, ids, coords, components, explained, cumulative,
@@ -10866,7 +10959,7 @@ async fn bundle_reduce(
     let engine = state.engine_read();
     let ReduceResult { base, ids, coords, components, explained, cumulative,
         reconstruction_rmse, variance_retained, feature_names, notes } =
-        match pca_reduce(&engine, &name, req.k, &req.exclude) {
+        match pca_reduce(&engine, &name, req.k, req.whiten, &req.exclude) {
             Ok(v) => v,
             Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
         };
@@ -19358,7 +19451,7 @@ mod tests {
         let (dir, engine) = scan_env("cluster_blobs", "blob3", schema, rows);
         // all three partitioning methods must recover the three blobs
         for method in ["spectral", "kmeans"] {
-            let cr = cluster_records(&engine, "blob3", method, 3, 6, None, 4, &[]).expect("cluster should build");
+            let cr = cluster_records(&engine, "blob3", method, 3, 6, None, 4, &ClusterOpts::default(), &[]).expect("cluster should build");
             assert_eq!(cr.labels.len(), 60, "{method}");
             assert_eq!(cr.sizes.iter().sum::<usize>(), 60, "{method}");
             // records() need not preserve insertion order, so map each result back to
@@ -19396,7 +19489,7 @@ mod tests {
         let schema = BundleSchema::new("ell")
             .base(FieldDef::categorical("id")).fiber(FieldDef::numeric("x")).fiber(FieldDef::numeric("y"));
         let (dir, engine) = scan_env("cluster_gmm", "ell", schema, rows);
-        let cr = cluster_records(&engine, "ell", "gmm", 2, 10, None, 4, &[]).expect("gmm should build");
+        let cr = cluster_records(&engine, "ell", "gmm", 2, 10, None, 4, &ClusterOpts::default(), &[]).expect("gmm should build");
         assert_eq!(cr.sizes.iter().sum::<usize>(), 80);
         // soft responsibilities (coords) sum to ~1 per record
         for row in &cr.coords {
@@ -19411,6 +19504,20 @@ mod tests {
             else { assert_eq!(cr.labels[pos], cl[c], "cluster {c} split across GMM components"); }
         }
         assert_ne!(cl[0], cl[1], "the two clusters should map to two distinct components");
+        // all three covariance types recover the two blobs without NaN
+        for cov in ["full", "diagonal", "spherical"] {
+            let opts = ClusterOpts { covariance: cov.to_string(), ..Default::default() };
+            let c = cluster_records(&engine, "ell", "gmm", 2, 10, None, 4, &opts, &[]).unwrap();
+            assert_eq!(c.sizes.iter().filter(|&&s| s > 0).count(), 2, "{cov}: should find 2 non-empty clusters");
+            for row in &c.coords { assert!(row.iter().all(|v| v.is_finite()), "{cov}: no NaN in responsibilities"); }
+        }
+        // an unknown covariance type is a clean error
+        let badopts = ClusterOpts { covariance: "banana".to_string(), ..Default::default() };
+        assert!(cluster_records(&engine, "ell", "gmm", 2, 10, None, 4, &badopts, &[]).is_err());
+        // spectral with the normalized Laplacian also runs and clusters cleanly
+        let nopts = ClusterOpts { normalized: true, ..Default::default() };
+        let sc = cluster_records(&engine, "ell", "spectral", 2, 10, None, 4, &nopts, &[]).unwrap();
+        assert_eq!(sc.sizes.iter().sum::<usize>(), 80);
         cleanup(&dir);
     }
 
@@ -19436,7 +19543,7 @@ mod tests {
         let schema = BundleSchema::new("db2")
             .base(FieldDef::categorical("id")).fiber(FieldDef::numeric("x")).fiber(FieldDef::numeric("y"));
         let (dir, engine) = scan_env("cluster_db", "db2", schema, rows);
-        let cr = cluster_records(&engine, "db2", "dbscan", 3, 10, None, 3, &[]).expect("dbscan should build");
+        let cr = cluster_records(&engine, "db2", "dbscan", 3, 10, None, 3, &ClusterOpts::default(), &[]).expect("dbscan should build");
         let pos = cr.ids.iter().position(|i| i == "noise").unwrap();
         assert_eq!(cr.labels[pos], -1, "the lone middle point should be labeled noise (-1), got {}", cr.labels[pos]);
         // the two blobs land in two distinct non-noise clusters
@@ -19457,16 +19564,16 @@ mod tests {
             .base(FieldDef::categorical("id")).fiber(FieldDef::numeric("v"));
         let (dir, engine) = scan_env("cluster_tiny", "tiny", schema, rows);
         // k too large for the record count → clear error
-        let err = cluster_records(&engine, "tiny", "spectral", 5, 4, None, 4, &[]).unwrap_err();
+        let err = cluster_records(&engine, "tiny", "spectral", 5, 4, None, 4, &ClusterOpts::default(), &[]).unwrap_err();
         assert_eq!(err.0, StatusCode::UNPROCESSABLE_ENTITY);
         assert!(err.1.contains("clusters"), "error should explain the k-vs-n constraint, got: {}", err.1);
         // k < 2 → clear error
-        assert!(cluster_records(&engine, "tiny", "spectral", 1, 4, None, 4, &[]).is_err());
+        assert!(cluster_records(&engine, "tiny", "spectral", 1, 4, None, 4, &ClusterOpts::default(), &[]).is_err());
         // unknown method → clear error
-        let m = cluster_records(&engine, "tiny", "banana", 2, 4, None, 4, &[]).unwrap_err();
+        let m = cluster_records(&engine, "tiny", "banana", 2, 4, None, 4, &ClusterOpts::default(), &[]).unwrap_err();
         assert!(m.1.contains("unknown cluster method"), "got: {}", m.1);
         // missing bundle → 404
-        assert_eq!(cluster_records(&engine, "nope", "spectral", 2, 4, None, 4, &[]).unwrap_err().0, StatusCode::NOT_FOUND);
+        assert_eq!(cluster_records(&engine, "nope", "spectral", 2, 4, None, 4, &ClusterOpts::default(), &[]).unwrap_err().0, StatusCode::NOT_FOUND);
         cleanup(&dir);
     }
 
@@ -19490,7 +19597,7 @@ mod tests {
             .fiber(FieldDef::numeric("x1")).fiber(FieldDef::numeric("x2")).fiber(FieldDef::numeric("y"));
         let (dir, engine) = scan_env("predict_reg", "reg", schema, rows);
         let r2 = |m: &str| {
-            let pr = predict_field(&engine, "reg", "y", m, 20, 5, &[]).expect("predict");
+            let pr = predict_field(&engine, "reg", "y", m, 20, 0.5, 5, &[]).expect("predict");
             assert_eq!(pr.task, "regression");
             pr.metric["r2"].as_f64().unwrap()
         };
@@ -19522,7 +19629,7 @@ mod tests {
             .base(FieldDef::categorical("id"))
             .fiber(FieldDef::numeric("x")).fiber(FieldDef::numeric("y")).fiber(FieldDef::categorical("label"));
         let (dir, engine) = scan_env("predict_cls", "cls", schema, rows);
-        let pr = predict_field(&engine, "cls", "label", "knn", 7, 5, &[]).expect("predict");
+        let pr = predict_field(&engine, "cls", "label", "knn", 7, 0.5, 5, &[]).expect("predict");
         assert_eq!(pr.task, "classification");
         let acc = pr.metric["accuracy"].as_f64().unwrap();
         let maj = pr.baseline["accuracy"].as_f64().unwrap();
@@ -19544,13 +19651,13 @@ mod tests {
             .base(FieldDef::categorical("id")).fiber(FieldDef::numeric("a")).fiber(FieldDef::numeric("b"));
         let (dir, engine) = scan_env("predict_guard", "pg", schema, rows);
         // unknown target → clear error
-        let e = predict_field(&engine, "pg", "nope", "local_linear", 5, 5, &[]).unwrap_err();
+        let e = predict_field(&engine, "pg", "nope", "local_linear", 5, 0.5, 5, &[]).unwrap_err();
         assert_eq!(e.0, StatusCode::UNPROCESSABLE_ENTITY);
         assert!(e.1.contains("not found"), "got: {}", e.1);
         // unknown regression method → clear error
-        assert!(predict_field(&engine, "pg", "b", "banana", 5, 5, &[]).unwrap_err().1.contains("unknown regression method"));
+        assert!(predict_field(&engine, "pg", "b", "banana", 5, 0.5, 5, &[]).unwrap_err().1.contains("unknown regression method"));
         // missing bundle → 404
-        assert_eq!(predict_field(&engine, "no", "b", "knn", 5, 5, &[]).unwrap_err().0, StatusCode::NOT_FOUND);
+        assert_eq!(predict_field(&engine, "no", "b", "knn", 5, 0.5, 5, &[]).unwrap_err().0, StatusCode::NOT_FOUND);
         cleanup(&dir);
     }
 
@@ -19577,7 +19684,7 @@ mod tests {
             .fiber(FieldDef::numeric("f1")).fiber(FieldDef::numeric("f2"))
             .fiber(FieldDef::numeric("f3")).fiber(FieldDef::numeric("f4"));
         let (dir, engine) = scan_env("reduce_pca", "lr", schema, rows);
-        let rr = pca_reduce(&engine, "lr", 2, &[]).expect("pca should build");
+        let rr = pca_reduce(&engine, "lr", 2, false, &[]).expect("pca should build");
         assert_eq!(rr.coords.len(), 400);
         assert_eq!(rr.coords[0].len(), 2, "reduced to 2 dims");
         assert_eq!(rr.components.len(), 2);
@@ -19599,11 +19706,11 @@ mod tests {
             .base(FieldDef::categorical("id")).fiber(FieldDef::numeric("only"));
         let (dir, engine) = scan_env("reduce_guard", "one", schema, rows);
         // only 1 numeric fiber → can't reduce
-        let e = pca_reduce(&engine, "one", 2, &[]).unwrap_err();
+        let e = pca_reduce(&engine, "one", 2, false, &[]).unwrap_err();
         assert_eq!(e.0, StatusCode::UNPROCESSABLE_ENTITY);
         assert!(e.1.contains(">= 2 numeric"), "got: {}", e.1);
         // missing bundle → 404
-        assert_eq!(pca_reduce(&engine, "nope", 2, &[]).unwrap_err().0, StatusCode::NOT_FOUND);
+        assert_eq!(pca_reduce(&engine, "nope", 2, false, &[]).unwrap_err().0, StatusCode::NOT_FOUND);
         cleanup(&dir);
     }
 

@@ -16241,17 +16241,44 @@ fn execute_gql_on_store_read(
                     "bulk_center".to_string(),
                     gigi::types::Value::Float(bw.center),
                 );
+                // Dense exposes exact global locators; the sparse interior
+                // arm emits only the center + convergence receipt (it never
+                // sorts the full spectrum).
+                if !matches!(
+                    result.mode_used,
+                    gigi::spectral::SpectralGaugeMode::SparseInterior
+                ) {
+                    row.insert(
+                        "bulk_center_index".to_string(),
+                        gigi::types::Value::Integer(bw.center_index as i64),
+                    );
+                    row.insert(
+                        "bulk_lo".to_string(),
+                        gigi::types::Value::Integer(bw.lo as i64),
+                    );
+                    row.insert(
+                        "bulk_hi".to_string(),
+                        gigi::types::Value::Integer(bw.hi as i64),
+                    );
+                }
+            }
+            // Sparse interior convergence receipt (Hallie's ask #3):
+            // converged + max_residual + iterations — the honest
+            // completeness surface at V past the dense ceiling.
+            if let Some(c) = result.converged {
                 row.insert(
-                    "bulk_center_index".to_string(),
-                    gigi::types::Value::Integer(bw.center_index as i64),
+                    "converged".to_string(),
+                    gigi::types::Value::Integer(c as i64),
+                );
+            }
+            if let Some(conv) = result.convergence {
+                row.insert(
+                    "max_residual".to_string(),
+                    gigi::types::Value::Float(conv.final_residual),
                 );
                 row.insert(
-                    "bulk_lo".to_string(),
-                    gigi::types::Value::Integer(bw.lo as i64),
-                );
-                row.insert(
-                    "bulk_hi".to_string(),
-                    gigi::types::Value::Integer(bw.hi as i64),
+                    "iterations".to_string(),
+                    gigi::types::Value::Integer(conv.iterations as i64),
                 );
             }
             Ok(ExecResult::Rows(vec![row]))

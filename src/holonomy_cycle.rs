@@ -126,6 +126,32 @@ pub fn order_estimate(q0: f64) -> i64 {
     nearest_rational_denominator(x, ORDER_TOL, ORDER_Q_MAX) as i64
 }
 
+/// Best-effort integer order of a U(1) element from its phase θ.
+///
+/// `e^{iθ}` has finite order `q` iff `θ = 2π·p/q` for coprime `p, q`
+/// (`gcd(p, q) = 1`), and then the order is that denominator `q`.
+/// Computed directly on `x = (θ mod 2π)/(2π) ∈ [0, 1)` — NOT via the SU(2)
+/// `arccos(q0)` fold, which loses the branch/sign for θ > π. Identity
+/// (`θ ≡ 0 mod 2π`) → 1. A *continuous* winding (an arbitrary circulation
+/// κ, the Navier–Stokes case) is not a rational multiple of 2π, so it
+/// returns the sentinel `0`: for continuous U(1) the load-bearing field is
+/// `phase` (= ∮_C A·dl), NOT `order_estimate`. Returns `i64` for
+/// wire-compat with the SU(2) row's `order_estimate`.
+pub fn order_estimate_u1(theta: f64) -> i64 {
+    let two_pi = 2.0 * std::f64::consts::PI;
+    // Map to [0, 1): the fractional winding.
+    let x = theta.rem_euclid(two_pi) / two_pi;
+    let q = nearest_rational_denominator(x, ORDER_TOL, ORDER_Q_MAX);
+    // `nearest_rational_denominator` always returns *some* denominator;
+    // only a genuinely-clean rational within tol is an actual order.
+    let p = (x * q as f64).round();
+    if q >= 1 && (x - p / q as f64).abs() < ORDER_TOL {
+        q as i64
+    } else {
+        0 // continuous / irrational winding → sentinel: read `phase`
+    }
+}
+
 /// Denominator of the best rational approximation of `x` via the
 /// continued-fraction (convergent) expansion, stopping at the first
 /// convergent within `tol` or when the denominator would exceed
@@ -299,15 +325,18 @@ pub fn execute_holonomy_cycle(
         )
     })?;
 
-    // 2. Group gate — SU(2)-only this phase. MUST precede walk_loop: a
-    //    non-SU(2) buffer panics inside compose / read_element, so the
-    //    gate turns that programming-error path into a clean typed error
-    //    (H6 + live probe P6).
+    // 2. Group gate — SU(2) (quaternion readout) and U(1) (circulation
+    //    readout) this phase. MUST precede the walk: an SU(3)/Z(N) buffer
+    //    panics inside compose / read_element, so the gate turns that
+    //    programming-error path into a clean typed error (H6 + live probe
+    //    P6). U(1) is routed through the abelian phase-sum arm below, NOT
+    //    walk_loop (whose `su2_identity()` seed would panic on the first
+    //    mixed-variant compose SU2 ∘ U1 — the walker body is locked).
     let group = handle.group();
-    if group != Group::SU2 {
+    if group != Group::SU2 && group != Group::U1 {
         return Err(format!(
-            "HOLONOMY AROUND CYCLE requires GROUP SU(2) in this phase \
-             (quaternion readout); got {}",
+            "HOLONOMY AROUND CYCLE requires GROUP SU(2) or U(1) in this phase \
+             (SU(2) quaternion readout / U(1) circulation readout); got {}",
             group.label()
         ));
     }
@@ -343,12 +372,65 @@ pub fn execute_holonomy_cycle(
         }
     };
 
-    // 4. Walk the ordered loop through the UNTOUCHED group-erased walker.
-    //    `walk_loop` ignores its `_lattice` argument (present only for
-    //    API symmetry with `face_edges`), so a throwaway lattice is safe
-    //    and avoids re-resolving one for the EDGES form.
-    let throwaway = Lattice::new("", 0, Vec::new(), Vec::new(), None);
     let conn: &dyn EdgeConnection = handle.as_ref();
+
+    // 4a. U(1) circulation readout (the Navier–Stokes linking-number
+    //     reading). U(1) is abelian, so the holonomy `∮_C A·dl` is the
+    //     raw signed sum of per-edge phases `Σ ±θ` (Forward +θ, Reverse
+    //     −θ). Read the canonical Forward element and apply the
+    //     orientation sign so the accumulated `phase` is the EXACT
+    //     UNWRAPPED circulation — a linking multiplicity `n·κ` survives
+    //     (normalizing per step would fold it back into (-π, π] and
+    //     destroy `Lk > 1`). walk_loop is deliberately NOT used: its
+    //     `su2_identity()` seed panics on the first SU2 ∘ U1 compose, and
+    //     the walker body is on the locked/read list.
+    if group == Group::U1 {
+        let mut phase = 0.0_f64;
+        for &(eid, orient) in &edges {
+            let theta = match conn.edge_element(eid, EdgeOrientation::Forward) {
+                GroupElement::U1 { theta } => theta,
+                other => {
+                    return Err(format!(
+                        "HOLONOMY AROUND CYCLE: U(1) field read a non-U(1) element \
+                         ({other:?}) — internal invariant violated (the group gate \
+                         should have rejected this)"
+                    ))
+                }
+            };
+            phase += match orient {
+                EdgeOrientation::Forward => theta,
+                EdgeOrientation::Reverse => -theta,
+            };
+        }
+        // Embed on the σ₃ axis U(1) ⊂ SU(2) so the row stays shape-
+        // compatible with the SU(2) reader: q = (cos θ, 0, 0, sin θ) is
+        // the SU(2) rotation of angle 2θ about z (q0 = cos θ = re_trace,
+        // physically exact). The load-bearing NS field is the extra
+        // `phase` = ∮_C A·dl (raw, unwrapped); Lk = phase / κ client-side.
+        let re_trace = phase.cos();
+        let order = order_estimate_u1(phase);
+        let mut row = Record::new();
+        row.insert("q0".to_string(), Value::Float(phase.cos()));
+        row.insert("q1".to_string(), Value::Float(0.0));
+        row.insert("q2".to_string(), Value::Float(0.0));
+        row.insert("q3".to_string(), Value::Float(phase.sin()));
+        row.insert("re_trace".to_string(), Value::Float(re_trace));
+        row.insert("order_estimate".to_string(), Value::Integer(order));
+        row.insert(
+            "group_used".to_string(),
+            Value::Text(group.label().to_string()),
+        );
+        // U(1)-only extra column — SU(2) rows omit it, so the SU(2)
+        // holonomy golden fence (holonomy_cycle_basic) is untouched.
+        row.insert("phase".to_string(), Value::Float(phase));
+        return Ok(ExecResult::Rows(vec![row]));
+    }
+
+    // 4b. SU(2): walk the ordered loop through the UNTOUCHED group-erased
+    //     walker. `walk_loop` ignores its `_lattice` argument (present
+    //     only for API symmetry with `face_edges`), so a throwaway lattice
+    //     is safe and avoids re-resolving one for the EDGES form.
+    let throwaway = Lattice::new("", 0, Vec::new(), Vec::new(), None);
     let holonomy = walk_loop(&throwaway, &edges, conn);
 
     // 5. Extract the SU(2) quaternion row. re_trace = ½·Tr(U) = q0.
@@ -402,6 +484,22 @@ mod tests {
                 "order for (p={p}, q={q}) with q0={q0}"
             );
         }
+    }
+
+    #[test]
+    fn order_estimate_u1_rational_vs_continuous() {
+        use std::f64::consts::PI;
+        // Identity (θ ≡ 0 mod 2π) → order 1.
+        assert_eq!(order_estimate_u1(0.0), 1);
+        assert_eq!(order_estimate_u1(2.0 * PI), 1);
+        // Clean rational multiples of 2π → their reduced denominator.
+        assert_eq!(order_estimate_u1(PI), 2, "e^{{iπ}} = −1 has order 2");
+        assert_eq!(order_estimate_u1(2.0 * PI / 3.0), 3);
+        assert_eq!(order_estimate_u1(2.0 * PI * 2.0 / 5.0), 5);
+        // Continuous circulation (an arbitrary κ) → sentinel 0.
+        assert_eq!(order_estimate_u1(0.37), 0);
+        assert_eq!(order_estimate_u1(1.5), 0);
+        assert_eq!(order_estimate_u1(2.0 * 0.37), 0, "2κ is still continuous");
     }
 
     #[test]

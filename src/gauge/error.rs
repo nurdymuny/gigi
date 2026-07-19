@@ -86,6 +86,38 @@ pub enum GaugeFieldError {
     /// (2026-07-16). Flux is a per-edge U(1) phase materialized as a
     /// theta bundle; SU(2)/SU(3)/Z(N) links are not scalar phases.
     FluxInitRequiresU1(Group),
+    /// `INIT FROM BUNDLE <b>` referenced a bundle the engine does not
+    /// know (2026-07-18). Distinct from `FieldNotDeclared` (a gauge
+    /// field) so the executor surfaces a bundle-shaped error.
+    BundleNotFound(String),
+    /// `INIT FROM BUNDLE <b>` found a bundle with zero edge records —
+    /// an injection needs at least one edge to write. Almost always an
+    /// emitter bug, so it refuses rather than silently registering an
+    /// all-identity field.
+    BundleEmpty(String),
+    /// `INIT FROM BUNDLE <b>` bundle is missing a required column: a
+    /// base endpoint (`vertex_a` / `vertex_b`) or a fiber component the
+    /// target group's representation needs.
+    BundleFieldMissing { bundle: String, column: String },
+    /// `INIT FROM BUNDLE <b>`: the bundle's fiber columns do not carry
+    /// the target group's representation dimension (SU(2) needs the four
+    /// canonical `q0..q3` columns). `got` is how many of the group's
+    /// canonical fiber columns were actually present.
+    FiberArityMismatch {
+        bundle: String,
+        expected: usize,
+        got: usize,
+    },
+    /// `INIT FROM BUNDLE`: a record's `(vertex_a, vertex_b)` pair is not
+    /// an edge of the bound lattice in either orientation.
+    NonLatticeEdge { vertex_a: i64, vertex_b: i64 },
+    /// `INIT FROM BUNDLE`: a chosen SU(2) quaternion is not unit-norm
+    /// (`|q|²` deviates from 1 by more than 1e-6). Rejected rather than
+    /// silently normalized — `inverse == conjugate` (hence the
+    /// round-trip and the order estimate) only holds for `|q| = 1`, so a
+    /// silent renorm would hide emitter bugs and flip the reverse-edge
+    /// read.
+    NonNormalizedQuaternion { edge: usize, norm: f64 },
 }
 
 impl From<BracketPhysicsError> for GaugeFieldError {
@@ -166,6 +198,44 @@ impl std::fmt::Display for GaugeFieldError {
                  flux is a per-edge U(1) phase materialized as a theta bundle; \
                  SU(2)/SU(3)/Z(N) links are not scalar phases",
                 g.label()
+            ),
+            GaugeFieldError::BundleNotFound(name) => write!(
+                f,
+                "gauge: INIT FROM BUNDLE bundle '{name}' is not found \
+                 (materialize the bundle — INGEST / INIT FLUX / CREATE BUNDLE — \
+                 before injecting it into a GAUGE_FIELD)"
+            ),
+            GaugeFieldError::BundleEmpty(name) => write!(
+                f,
+                "gauge: INIT FROM BUNDLE bundle '{name}' has no edge records \
+                 (an injection needs at least one edge to write — check the emitter)"
+            ),
+            GaugeFieldError::BundleFieldMissing { bundle, column } => write!(
+                f,
+                "gauge: INIT FROM BUNDLE bundle '{bundle}' is missing the required \
+                 column '{column}' (edge records need base 'vertex_a'/'vertex_b' \
+                 plus the group's canonical fiber columns)"
+            ),
+            GaugeFieldError::FiberArityMismatch {
+                bundle,
+                expected,
+                got,
+            } => write!(
+                f,
+                "gauge: INIT FROM BUNDLE bundle '{bundle}' fiber arity mismatch \
+                 (target group needs {expected} canonical fiber columns, found {got}) \
+                 — an SU(2) injection needs q0, q1, q2, q3"
+            ),
+            GaugeFieldError::NonLatticeEdge { vertex_a, vertex_b } => write!(
+                f,
+                "gauge: INIT FROM BUNDLE record edge ({vertex_a} -> {vertex_b}) is not \
+                 an edge of the bound lattice in either orientation"
+            ),
+            GaugeFieldError::NonNormalizedQuaternion { edge, norm } => write!(
+                f,
+                "gauge: INIT FROM BUNDLE edge {edge} carries a non-normalized SU(2) \
+                 quaternion (|q| = {norm:.6}, must be 1 to within 1e-6) — rejected \
+                 rather than auto-normalized so the round-trip and order estimate stay honest"
             ),
         }
     }

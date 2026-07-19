@@ -55,6 +55,8 @@ pub mod su2_gauge_field;
 #[cfg(feature = "gauge")]
 pub mod su3_gauge_field;
 #[cfg(feature = "gauge")]
+pub mod u1_gauge_field;
+#[cfg(feature = "gauge")]
 pub mod registry;
 #[cfg(feature = "gauge")]
 pub mod persistence;
@@ -96,6 +98,8 @@ pub mod action;
 pub mod hamiltonian_registry;
 #[cfg(feature = "gauge")]
 pub mod u1_flux;
+#[cfg(feature = "gauge")]
+pub mod inject;
 
 #[cfg(feature = "gauge")]
 pub use dense_link_buffer::DenseLinkBuffer;
@@ -109,6 +113,8 @@ pub use marsaglia_haar::haar_random_su2;
 pub use su2_gauge_field::{GaugeFieldInit, SU2GaugeField};
 #[cfg(feature = "gauge")]
 pub use su3_gauge_field::SU3GaugeField;
+#[cfg(feature = "gauge")]
+pub use u1_gauge_field::U1GaugeField;
 #[cfg(feature = "gauge")]
 pub use marsaglia_haar::haar_random_su3;
 // SHOW GAUGE_FIELD introspection surface — the executor

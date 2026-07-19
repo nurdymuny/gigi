@@ -85,6 +85,13 @@ impl SU3GaugeField {
             GaugeFieldInit::FromField(src) => {
                 return Err(GaugeFieldError::FieldNotDeclared(src.clone()));
             }
+            GaugeFieldInit::FromBundle(bundle) => {
+                // INIT FROM BUNDLE ships GROUP SU(2) this phase; the
+                // SU(3) executor arm refuses it before reaching here.
+                // Exhaustiveness arm — surface a typed bundle error, not
+                // a panic, if it is ever reached directly.
+                return Err(GaugeFieldError::BundleNotFound(bundle.clone()));
+            }
             GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform => {
                 // INIT FLUX is a U(1) bundle materialization
                 // (gauge::u1_flux) — never an SU(3) link buffer.

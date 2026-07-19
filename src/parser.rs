@@ -3707,8 +3707,20 @@ impl Parser {
                 Ok((crate::gauge::GaugeFieldInit::HaarRandom, seed, None))
             }
             "FROM" => {
-                let src = self.expect_word()?;
-                Ok((crate::gauge::GaugeFieldInit::FromField(src), None, None))
+                // INIT FROM BUNDLE <bundle> — chosen-field → registry seam
+                // (2026-07-18). Disambiguated from INIT FROM <field>
+                // (FromField, clone another registered field's buffer) by
+                // peeking for the BUNDLE keyword right after FROM. GROUP +
+                // ON LATTICE are outer clauses in `parse_gauge_field`, so
+                // this init clause parses only `FROM BUNDLE <bundle>`.
+                if self.is_keyword("BUNDLE") {
+                    self.advance();
+                    let bundle = self.expect_word()?;
+                    Ok((crate::gauge::GaugeFieldInit::FromBundle(bundle), None, None))
+                } else {
+                    let src = self.expect_word()?;
+                    Ok((crate::gauge::GaugeFieldInit::FromField(src), None, None))
+                }
             }
             // INIT FLUX (2026-07-16, U(1)-only at the executor):
             //   FLUX RANDOM SEED <n>  — seeded i.i.d. θ ~ U[0, 2π)
@@ -11824,17 +11836,45 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                         "bulk_center".to_string(),
                         crate::types::Value::Float(bw.center),
                     );
+                    // The dense path exposes exact global locators; the
+                    // sparse interior arm never sorts the full spectrum, so
+                    // it emits only the center + the convergence receipt.
+                    if !matches!(
+                        result.mode_used,
+                        crate::spectral::SpectralGaugeMode::SparseInterior
+                    ) {
+                        row.insert(
+                            "bulk_center_index".to_string(),
+                            crate::types::Value::Integer(bw.center_index as i64),
+                        );
+                        row.insert(
+                            "bulk_lo".to_string(),
+                            crate::types::Value::Integer(bw.lo as i64),
+                        );
+                        row.insert(
+                            "bulk_hi".to_string(),
+                            crate::types::Value::Integer(bw.hi as i64),
+                        );
+                    }
+                }
+                // Sparse interior convergence receipt (Hallie's ask #3):
+                // converged count + max_residual + iterations. The caller
+                // gates completeness on `converged == k` and `max_residual
+                // < RES_TOL`. Absent on the dense path (exact).
+                if let Some(c) = result.converged {
                     row.insert(
-                        "bulk_center_index".to_string(),
-                        crate::types::Value::Integer(bw.center_index as i64),
+                        "converged".to_string(),
+                        crate::types::Value::Integer(c as i64),
+                    );
+                }
+                if let Some(conv) = result.convergence {
+                    row.insert(
+                        "max_residual".to_string(),
+                        crate::types::Value::Float(conv.final_residual),
                     );
                     row.insert(
-                        "bulk_lo".to_string(),
-                        crate::types::Value::Integer(bw.lo as i64),
-                    );
-                    row.insert(
-                        "bulk_hi".to_string(),
-                        crate::types::Value::Integer(bw.hi as i64),
+                        "iterations".to_string(),
+                        crate::types::Value::Integer(conv.iterations as i64),
                     );
                 }
                 Ok(ExecResult::Rows(vec![row]))
@@ -12387,6 +12427,61 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                                 init_seed: None,
                             }
                         }
+                        GaugeFieldInit::FromBundle(bundle_name) => {
+                            // INIT FROM BUNDLE (2026-07-18) — read a chosen
+                            // per-edge SU(2) field from an engine bundle into
+                            // a registry DenseLinkBuffer. Mirrors the
+                            // HAAR/IDENTITY registration path (buffer →
+                            // register_su2), NOT the FLUX theta-bundle path
+                            // (`gauge::inject` reads records bundle → buffer,
+                            // the opposite direction of `gauge::u1_flux`).
+                            //
+                            // PERSIST is rejected: the chosen buffer is
+                            // resolved from the source bundle at declaration
+                            // (the source bundle is the durable artifact, like
+                            // INIT FLUX), so there is no reproducible recipe
+                            // to WAL-declare.
+                            if *persist {
+                                return Err(
+                                    "gauge: PERSIST is not supported with INIT FROM BUNDLE \
+                                     this phase — the chosen per-edge buffer is resolved from \
+                                     the source bundle at declaration (the source bundle is the \
+                                     durable artifact, like INIT FLUX); re-run INIT FROM BUNDLE \
+                                     after reopen"
+                                        .to_string(),
+                                );
+                            }
+                            // Read schema + records under a scoped immutable
+                            // borrow so the engine borrow is released before
+                            // registration.
+                            let (schema, records) = {
+                                let bundle_ref =
+                                    engine.bundle(bundle_name).ok_or_else(|| {
+                                        GaugeFieldError::BundleNotFound(bundle_name.clone())
+                                            .to_string()
+                                    })?;
+                                (
+                                    bundle_ref.schema().clone(),
+                                    bundle_ref
+                                        .records()
+                                        .collect::<Vec<crate::types::Record>>(),
+                                )
+                            };
+                            let buffer = crate::gauge::inject::su2_buffer_from_bundle(
+                                bundle_name,
+                                &schema,
+                                records.into_iter(),
+                                &lat,
+                            )
+                            .map_err(|e| e.to_string())?;
+                            SU2GaugeField::from_buffer(
+                                name.clone(),
+                                lat.name.clone(),
+                                buffer,
+                                GaugeFieldInit::FromBundle(bundle_name.clone()),
+                                None,
+                            )
+                        }
                         _ => SU2GaugeField::new(name.clone(), &lat, init.clone(), *seed)
                             .map_err(|e| e.to_string())?,
                     };
@@ -12444,6 +12539,20 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                                 None,
                             )
                         }
+                        GaugeFieldInit::FromBundle(_) => {
+                            // INIT FROM BUNDLE ships GROUP SU(2) this phase.
+                            // SU(3) chosen-field injection is a fast-follow
+                            // (the buffer writer + orientation are group-
+                            // agnostic, but the SU(3) fiber decode/normalize
+                            // gate is not wired yet). Refuse cleanly here so
+                            // it never reaches SU3GaugeField::new.
+                            return Err(
+                                "gauge: INIT FROM BUNDLE ships GROUP SU(2) this phase \
+                                 (SU(3) chosen-field injection is a fast-follow) — \
+                                 declare GROUP SU(2)"
+                                    .to_string(),
+                            );
+                        }
                         _ => SU3GaugeField::new(name.clone(), &lat, init.clone(), *seed)
                             .map_err(|e| e.to_string())?,
                     };
@@ -12461,7 +12570,94 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     }
                     Ok(ExecResult::Ok)
                 }
-                Group::U1 | Group::ZN { .. } => {
+                Group::U1 => {
+                    // U(1) linking ship (2026-07-18) — the Navier–Stokes
+                    // vortex linking-number reading. INIT FROM BUNDLE reads
+                    // a chosen theta field into a U(1) DenseLinkBuffer and
+                    // registers a `U1GaugeField` behind the plain dyn handle
+                    // (no mutable-escape sibling — U(1) runs no GIBBS_SAMPLE
+                    // this phase; the dyn `register` + `get` surface is what
+                    // HOLONOMY reads through). INIT FLUX (RANDOM/UNIFORM) was
+                    // already intercepted before this group match (theta
+                    // bundle materialization), so it cannot reach here.
+                    if *persist {
+                        return Err(
+                            "gauge: PERSIST is not supported for GROUP U(1) this phase — \
+                             the chosen per-edge theta buffer is resolved from the source \
+                             bundle at declaration (the source bundle is the durable \
+                             artifact, like INIT FLUX); re-run INIT FROM BUNDLE after reopen"
+                                .to_string(),
+                        );
+                    }
+                    let field = match init {
+                        GaugeFieldInit::FromBundle(bundle_name) => {
+                            let (schema, records) = {
+                                let bundle_ref =
+                                    engine.bundle(bundle_name).ok_or_else(|| {
+                                        GaugeFieldError::BundleNotFound(bundle_name.clone())
+                                            .to_string()
+                                    })?;
+                                (
+                                    bundle_ref.schema().clone(),
+                                    bundle_ref
+                                        .records()
+                                        .collect::<Vec<crate::types::Record>>(),
+                                )
+                            };
+                            let buffer = crate::gauge::inject::u1_buffer_from_bundle(
+                                bundle_name,
+                                &schema,
+                                records.into_iter(),
+                                &lat,
+                            )
+                            .map_err(|e| e.to_string())?;
+                            crate::gauge::U1GaugeField::from_buffer(
+                                name.clone(),
+                                lat.name.clone(),
+                                buffer,
+                                GaugeFieldInit::FromBundle(bundle_name.clone()),
+                                None,
+                            )
+                        }
+                        GaugeFieldInit::Identity => crate::gauge::U1GaugeField::new(
+                            name.clone(),
+                            &lat,
+                            GaugeFieldInit::Identity,
+                            None,
+                        )
+                        .map_err(|e| e.to_string())?,
+                        GaugeFieldInit::HaarRandom => {
+                            return Err(
+                                "gauge: GROUP U(1) has no HAAR_RANDOM link init this phase — \
+                                 materialize random phases with INIT FLUX RANDOM SEED <n> \
+                                 (a theta bundle), then INIT FROM BUNDLE it"
+                                    .to_string(),
+                            );
+                        }
+                        GaugeFieldInit::FromField(_) => {
+                            return Err(
+                                "gauge: INIT FROM_FIELD for GROUP U(1) is not supported this \
+                                 phase — use INIT FROM BUNDLE to plant a chosen theta field"
+                                    .to_string(),
+                            );
+                        }
+                        GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform => {
+                            // Intercepted before the group match; unreachable
+                            // in practice — surface a typed error, not a panic.
+                            return Err(
+                                "gauge: internal — INIT FLUX for GROUP U(1) is handled before \
+                                 group dispatch (theta bundle materialization)"
+                                    .to_string(),
+                            );
+                        }
+                    };
+                    let handle: std::sync::Arc<
+                        dyn crate::gauge::registry::GaugeFieldHandle,
+                    > = std::sync::Arc::new(field);
+                    crate::gauge::registry::register(handle);
+                    Ok(ExecResult::Ok)
+                }
+                Group::ZN { .. } => {
                     Err(GaugeFieldError::UnsupportedGroup(*group).to_string())
                 }
             }
@@ -12487,6 +12683,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 // cannot reach them — arms kept for exhaustiveness.
                 crate::gauge::GaugeFieldInit::FluxRandom => "FLUX_RANDOM",
                 crate::gauge::GaugeFieldInit::FluxUniform => "FLUX_UNIFORM",
+                // INIT FROM BUNDLE registers a normal buffer handle, so
+                // SHOW GAUGE_FIELD round-trips the injected field's recipe.
+                crate::gauge::GaugeFieldInit::FromBundle(_) => "FROM_BUNDLE",
             };
             let mut record: crate::types::Record = std::collections::HashMap::new();
             record.insert(

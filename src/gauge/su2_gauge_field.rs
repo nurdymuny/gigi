@@ -53,6 +53,17 @@ pub enum GaugeFieldInit {
     /// the enum keeps its `Eq` derive. Same bundle-materialization
     /// path as `FluxRandom`.
     FluxUniform,
+    /// `INIT FROM BUNDLE <bundle>` — load a *chosen* per-edge field from
+    /// an engine bundle into the gauge registry (2026-07-18). Mirrors
+    /// the HAAR/IDENTITY registration path (DenseLinkBuffer → register),
+    /// NOT the FLUX theta-bundle path: it reads records the OPPOSITE
+    /// direction (bundle → registry buffer). The bundle name is resolved
+    /// by the executor (which holds the engine handle), not this
+    /// enum-carrying constructor — the `new` constructors surface a typed
+    /// error if reached with it, exactly like `FromField`. This is the
+    /// seam that makes the lens-space p-sweep receipt live (chosen
+    /// twisted-BC SU(2) field → HOLONOMY reads order = p).
+    FromBundle(String),
 }
 
 /// SU(2) gauge field bound to a declared lattice.
@@ -101,6 +112,15 @@ impl SU2GaugeField {
             }
             GaugeFieldInit::FromField(src) => {
                 return Err(GaugeFieldError::FieldNotDeclared(src.clone()));
+            }
+            GaugeFieldInit::FromBundle(bundle) => {
+                // INIT FROM BUNDLE is resolved by the executor (which
+                // holds the engine handle to read the bundle records).
+                // Reaching this bare constructor means the executor's
+                // FromBundle interception was bypassed — surface a typed
+                // bundle-not-found so it is never a panic. Mirrors the
+                // FromField arm above.
+                return Err(GaugeFieldError::BundleNotFound(bundle.clone()));
             }
             GaugeFieldInit::FluxRandom | GaugeFieldInit::FluxUniform => {
                 // INIT FLUX is a U(1) bundle materialization

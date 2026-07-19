@@ -9297,6 +9297,28 @@ fn scan_jaccard(a: &std::collections::HashSet<String>, b: &std::collections::Has
     if uni == 0.0 { 0.0 } else { inter / uni }
 }
 
+/// Solve the linear system `a · x = b` in place by Gaussian elimination with
+/// partial pivoting (`a` is consumed). Returns `None` if the matrix is singular.
+/// Used by the completion lens' inverse-power iteration.
+fn scan_solve(a: &mut [Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
+    let n = a.len();
+    let mut b = b.to_vec();
+    for c in 0..n {
+        let piv = (c..n).max_by(|&r1, &r2| a[r1][c].abs()
+            .partial_cmp(&a[r2][c].abs()).unwrap_or(std::cmp::Ordering::Equal))?;
+        if a[piv][c].abs() < 1e-12 { return None; }
+        a.swap(c, piv); b.swap(c, piv);
+        for r in 0..n {
+            if r != c {
+                let f = a[r][c] / a[c][c];
+                for k in c..n { a[r][k] -= f * a[c][k]; }
+                b[r] -= f * b[c];
+            }
+        }
+    }
+    Some((0..n).map(|i| b[i] / a[i][i]).collect())
+}
+
 /// Request for `POST /v1/bundles/{name}/scan`.
 #[derive(Deserialize)]
 struct ScanRequest {
@@ -9325,8 +9347,11 @@ fn default_scan_budget() -> f64 { 0.05 }
 ///
 /// GIGI's one-call, zero-config anomaly detector. Auto-introspects the schema
 /// and fuses a battery of geometric lenses — **global** curvature, **contextual**
-/// curvature computed with cohort-local field statistics for every suitable
-/// categorical field, and **velocity** over (highest-cardinality entity × time) —
+/// curvature (cohort-local field stats per categorical field), **velocity** over
+/// (highest-cardinality entity × time), **text** (typo-squat/rare values on
+/// name-like fields), **relational** (auto-foreign-key attribute mismatch), and
+/// **completion** (local tangent-plane residual — records that sit off the
+/// manifold their neighbors define, a class axis-wise lenses are blind to) —
 /// into a per-record score WITH lens attribution. The only input is the bundle
 /// name; no feature engineering. Returns records sorted most-anomalous first,
 /// each with the lens that fired and the per-lens breakdown.
@@ -9620,6 +9645,93 @@ fn scan_compute_lenses(
                 if best > 0.0 { *m.get_mut(&idof(r)).unwrap() = best; }
             }
             lenses.push((format!("relational:{}~{}", cf, ob), m));
+        }
+    }
+
+    // ── completion lens: local manifold reconstruction residual ──
+    // Anomaly = LOCAL COMPLETION FAILURE. For each record, fit the local tangent
+    // hyperplane from its k nearest neighbors (in standardized numeric space) and
+    // measure the record's orthogonal distance OFF that hyperplane — how far it
+    // sits off the manifold its neighbors define. This catches records that are
+    // globally ordinary on every axis but locally inconsistent, a class the
+    // axis-wise global/contextual curvature lenses (and flat detectors like
+    // Isolation Forest) are structurally blind to. The local normal is the
+    // least-variance direction of the neighbor covariance, found by inverse-power
+    // iteration; the residual is |(x − μ_local) · n̂|.
+    {
+        const COMPLETION_MAX_N: usize = 8000;   // exact-neighbor cost cap
+        const COMPLETION_MIN_N: usize = 20;      // need enough records for stable local fits
+        // standardize numeric fibers (global z-score); drop zero-variance fields
+        let cols: Vec<(String, f64, f64)> = num_defs.iter().filter_map(|fd| {
+            let xs: Vec<f64> = records.iter()
+                .map(|r| r.get(&fd.name).and_then(|v| v.as_f64()).unwrap_or(0.0)).collect();
+            let mu = xs.iter().sum::<f64>() / n as f64;
+            let sd = (xs.iter().map(|x| (x - mu).powi(2)).sum::<f64>() / n as f64).sqrt();
+            (sd > f64::EPSILON).then_some((fd.name.clone(), mu, sd))
+        }).collect();
+        let dim = cols.len();
+        if dim < 2 {
+            if !num_defs.is_empty() {
+                notes.push("completion lens skipped: needs >= 2 numeric fibers with non-zero variance to define a local manifold".into());
+            }
+        } else if n < COMPLETION_MIN_N {
+            notes.push(format!("completion lens skipped: {n} records is too few for stable local fits (need >= {COMPLETION_MIN_N})"));
+        } else if n > COMPLETION_MAX_N {
+            notes.push(format!("completion lens skipped: {n} records exceeds the exact-neighbor limit ({COMPLETION_MAX_N}) in this version"));
+        } else {
+            let x: Vec<Vec<f64>> = records.iter().map(|r| cols.iter()
+                .map(|(f, mu, sd)| (r.get(f).and_then(|v| v.as_f64()).unwrap_or(*mu) - mu) / sd)
+                .collect()).collect();
+            let k = (2 * dim + 1).max(10).min(n - 1);
+            let dist2 = |a: &[f64], b: &[f64]| a.iter().zip(b)
+                .map(|(p, q)| (p - q) * (p - q)).sum::<f64>();
+            let mut m: HashMap<String, f64> = HashMap::new();
+            for i in 0..n {
+                // k nearest neighbors of i (exact)
+                let mut d: Vec<(f64, usize)> = (0..n).filter(|&j| j != i)
+                    .map(|j| (dist2(&x[i], &x[j]), j)).collect();
+                d.select_nth_unstable_by(k - 1, |a, b| a.0
+                    .partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+                let nbrs: Vec<usize> = d[..k].iter().map(|(_, j)| *j).collect();
+                // neighbor mean (leave-one-out: excludes i) and covariance
+                let mut mu = vec![0.0; dim];
+                for &j in &nbrs { for t in 0..dim { mu[t] += x[j][t]; } }
+                for t in 0..dim { mu[t] /= k as f64; }
+                let mut c = vec![vec![0.0f64; dim]; dim];
+                let mut trace = 0.0;
+                for &j in &nbrs {
+                    for a in 0..dim { for b in 0..dim {
+                        c[a][b] += (x[j][a] - mu[a]) * (x[j][b] - mu[b]);
+                    }}
+                }
+                for a in 0..dim { for b in 0..dim { c[a][b] /= k as f64; } trace += c[a][a]; }
+                // regularize so the covariance is invertible even when rank-deficient
+                let reg = 1e-6 * (trace / dim as f64).max(f64::EPSILON);
+                for a in 0..dim { c[a][a] += reg; }
+                // inverse-power iteration → eigenvector of the SMALLEST eigenvalue
+                // of C (the local normal / least-variance direction)
+                let mut v: Vec<f64> = (0..dim).map(|t| 1.0 / (t as f64 + 1.0)).collect();
+                let vn = v.iter().map(|z| z * z).sum::<f64>().sqrt();
+                for z in &mut v { *z /= vn; }
+                let mut ok = true;
+                for _ in 0..16 {
+                    match scan_solve(&mut c.clone(), &v) {
+                        Some(u) => {
+                            let un = u.iter().map(|z| z * z).sum::<f64>().sqrt();
+                            if un < f64::EPSILON { ok = false; break; }
+                            v = u.into_iter().map(|z| z / un).collect();
+                        }
+                        None => { ok = false; break; }
+                    }
+                }
+                // orthogonal residual: distance of x[i] off the local tangent plane
+                let residual = if ok {
+                    (0..dim).map(|t| (x[i][t] - mu[t]) * v[t]).sum::<f64>().abs()
+                } else { 0.0 };
+                m.insert(ids[i].clone(), residual);
+            }
+            lenses.push(("completion".to_string(), m));
+            notes.push(format!("completion lens on {dim} numeric fibers (k={k} neighbors; local tangent-plane residual)"));
         }
     }
 
@@ -18208,6 +18320,49 @@ mod tests {
         let sl2 = scan_compute_lenses(&e2, "flat", &[]).unwrap();
         for m in &sl2.norm { for v in m.values() { assert!(v.is_finite(), "no NaN/Inf on constant field"); } }
         cleanup(&d2);
+    }
+
+    /// The completion lens catches an OFF-MANIFOLD record that is ordinary on every
+    /// axis — the class the axis-wise global curvature lens is blind to. Records lie
+    /// on the plane z = x + y; one record sits off it while keeping x, y, z each
+    /// in-range, so no single-axis view flags it, but the local tangent-plane
+    /// residual does.
+    #[test]
+    fn scan_completion_catches_off_manifold() {
+        let mut rows: Vec<gigi::types::Record> = Vec::new();
+        for xi in 0..6 {
+            for yi in 0..5 {
+                rows.push(scan_rec(&[
+                    ("id", V::Text(format!("g{xi}_{yi}"))),
+                    ("x", V::Float(xi as f64)),
+                    ("y", V::Float(yi as f64)),
+                    ("z", V::Float((xi + yi) as f64)), // on the plane z = x + y
+                ]));
+            }
+        }
+        // anomaly: x=2, y=2 (both ordinary), z=8 off the plane (plane would give 4).
+        // z=8 is still inside the global z-range [0, 9], so no single axis is extreme.
+        rows.push(scan_rec(&[
+            ("id", V::Text("anom".into())),
+            ("x", V::Float(2.0)), ("y", V::Float(2.0)), ("z", V::Float(8.0)),
+        ]));
+        let schema = BundleSchema::new("surf")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("x"))
+            .fiber(FieldDef::numeric("y"))
+            .fiber(FieldDef::numeric("z"));
+        let (dir, engine) = scan_env("scan_completion", "surf", schema, rows);
+        let sl = scan_compute_lenses(&engine, "surf", &[]).unwrap();
+        let comp = scan_lens(&sl, "completion").expect("completion lens should be built");
+        // the off-manifold record tops the completion lens
+        assert!(comp["anom"] >= 0.99, "off-manifold record should top completion lens, got {}", comp["anom"]);
+        // ...but it does NOT top the axis-wise global curvature lens (grid corners
+        // deviate more on individual axes), proving the two lenses see different things
+        let g = scan_lens(&sl, "global").unwrap();
+        assert!(g["anom"] < comp["anom"],
+            "global curvature should rank the off-manifold point below completion (global={}, completion={})",
+            g["anom"], comp["anom"]);
+        cleanup(&dir);
     }
 
     fn stream_env_lock() -> &'static Mutex<()> {

@@ -10037,6 +10037,34 @@ struct ClusterResult {
     notes: Vec<String>,
 }
 
+/// Invert a square matrix and return (inverse, ln|det|) via Gauss-Jordan with
+/// partial pivoting on [M | I]. None if singular. Used by the GMM density scorer.
+fn mat_inv_logdet(m: &[Vec<f64>]) -> Option<(Vec<Vec<f64>>, f64)> {
+    let n = m.len();
+    let mut a: Vec<Vec<f64>> = (0..n).map(|i| {
+        let mut row = m[i].clone();
+        row.extend((0..n).map(|j| if i == j { 1.0 } else { 0.0 }));
+        row
+    }).collect();
+    let mut logdet = 0.0;
+    for c in 0..n {
+        let piv = (c..n).max_by(|&r1, &r2| a[r1][c].abs()
+            .partial_cmp(&a[r2][c].abs()).unwrap_or(std::cmp::Ordering::Equal))?;
+        if a[piv][c].abs() < 1e-12 { return None; }
+        a.swap(c, piv);
+        logdet += a[c][c].abs().ln();
+        let piv_val = a[c][c];
+        for r in 0..n {
+            if r != c {
+                let f = a[r][c] / piv_val;
+                for k in c..2 * n { a[r][k] -= f * a[c][k]; }
+            }
+        }
+    }
+    let inv: Vec<Vec<f64>> = (0..n).map(|i| (0..n).map(|j| a[i][n + j] / a[i][i]).collect()).collect();
+    Some((inv, logdet))
+}
+
 /// Deterministic k-means (k-means++ init: point 0, then farthest-from-chosen;
 /// then Lloyd). Returns a cluster label per point. Shared by the `kmeans` method
 /// and the spectral eigenmap head.
@@ -10097,9 +10125,9 @@ fn cluster_records(
         return Err((StatusCode::UNPROCESSABLE_ENTITY, "cluster requires a single base-key field".into()));
     }
     let base = schema.base_fields[0].name.clone();
-    if !matches!(method, "spectral" | "kmeans" | "dbscan") {
+    if !matches!(method, "spectral" | "kmeans" | "dbscan" | "gmm") {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
-            "unknown cluster method '{}' (expected 'spectral', 'kmeans', or 'dbscan')", method)));
+            "unknown cluster method '{}' (expected 'spectral', 'kmeans', 'dbscan', or 'gmm')", method)));
     }
     if method != "dbscan" && k < 2 {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, "k must be >= 2 for spectral/kmeans".into()));
@@ -10146,6 +10174,78 @@ fn cluster_records(
         let coords: Vec<Vec<f64>> = x.iter().map(|xi| xi[..kd].to_vec()).collect();
         notes.push(format!("k-means on {dim} numeric fibers into k={k} clusters (deterministic k-means++ init, Lloyd)"));
         return Ok(ClusterResult { base, ids, labels, coords, eigenvalues: Vec::new(),
+            sizes, n_noise: 0, method: method.to_string(), notes });
+    }
+
+    // ── GMM: full-covariance Gaussian mixture, fit by EM (soft clustering) ──
+    if method == "gmm" {
+        let d = dim;
+        // init from k-means (robust — avoids EM local optima on elongated clusters):
+        // component means, per-component covariance, and mixing weights
+        let init = kmeans_lloyd(&x, k);
+        let mut mu = vec![vec![0.0f64; d]; k];
+        let mut cnt = vec![0usize; k];
+        for i in 0..n { cnt[init[i]] += 1; for t in 0..d { mu[init[i]][t] += x[i][t]; } }
+        for c in 0..k { if cnt[c] > 0 { for t in 0..d { mu[c][t] /= cnt[c] as f64; } } }
+        let gmean: Vec<f64> = (0..d).map(|t| x.iter().map(|xi| xi[t]).sum::<f64>() / n as f64).collect();
+        let mut gcov = vec![vec![0.0f64; d]; d];
+        for xi in &x { for a in 0..d { for b in 0..d { gcov[a][b] += (xi[a] - gmean[a]) * (xi[b] - gmean[b]); } } }
+        for a in 0..d { for b in 0..d { gcov[a][b] /= n as f64; } }
+        let mut sig: Vec<Vec<Vec<f64>>> = vec![gcov.clone(); k];
+        for c in 0..k {
+            if cnt[c] > d {  // enough points to estimate a component covariance
+                let mut sc = vec![vec![0.0f64; d]; d];
+                for i in 0..n { if init[i] == c {
+                    for a in 0..d { for b in 0..d { sc[a][b] += (x[i][a] - mu[c][a]) * (x[i][b] - mu[c][b]); } }
+                } }
+                for a in 0..d { for b in 0..d { sc[a][b] /= cnt[c] as f64; } }
+                sig[c] = sc;
+            }
+        }
+        let mut pi: Vec<f64> = (0..k).map(|c| cnt[c].max(1) as f64 / n as f64).collect();
+        let mut resp = vec![vec![0.0f64; k]; n];
+        let ln2pi = (2.0 * std::f64::consts::PI).ln();
+        let reg = 1e-6;
+        for _ in 0..80 {
+            // precompute Σ⁻¹ and ln|Σ| per component (regularized)
+            let mut inv: Vec<Vec<Vec<f64>>> = Vec::with_capacity(k);
+            let mut logdet = vec![0.0f64; k];
+            for c in 0..k {
+                let mut s = sig[c].clone();
+                for a in 0..d { s[a][a] += reg; }
+                match mat_inv_logdet(&s) {
+                    Some((iv, ld)) => { inv.push(iv); logdet[c] = ld; }
+                    None => { inv.push((0..d).map(|i| (0..d).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect()); logdet[c] = 0.0; }
+                }
+            }
+            // E-step: responsibilities via log-sum-exp
+            for i in 0..n {
+                let mut lp = vec![0.0f64; k];
+                for c in 0..k {
+                    let dv: Vec<f64> = (0..d).map(|t| x[i][t] - mu[c][t]).collect();
+                    let maha: f64 = (0..d).map(|a| (0..d).map(|b| dv[a] * inv[c][a][b] * dv[b]).sum::<f64>()).sum();
+                    lp[c] = pi[c].max(1e-12).ln() - 0.5 * (d as f64 * ln2pi + logdet[c] + maha);
+                }
+                let mx = lp.iter().cloned().fold(f64::MIN, f64::max);
+                let s = mx + lp.iter().map(|l| (l - mx).exp()).sum::<f64>().ln();
+                for c in 0..k { resp[i][c] = (lp[c] - s).exp(); }
+            }
+            // M-step
+            for c in 0..k {
+                let nc: f64 = (0..n).map(|i| resp[i][c]).sum::<f64>().max(1e-9);
+                pi[c] = nc / n as f64;
+                for t in 0..d { mu[c][t] = (0..n).map(|i| resp[i][c] * x[i][t]).sum::<f64>() / nc; }
+                for a in 0..d { for b in 0..d {
+                    sig[c][a][b] = (0..n).map(|i| resp[i][c] * (x[i][a] - mu[c][a]) * (x[i][b] - mu[c][b])).sum::<f64>() / nc;
+                } }
+            }
+        }
+        let labels: Vec<i64> = (0..n).map(|i| (0..k).max_by(|&a, &b| resp[i][a]
+            .partial_cmp(&resp[i][b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap() as i64).collect();
+        let mut sizes = vec![0usize; k];
+        for &l in &labels { sizes[l as usize] += 1; }
+        notes.push(format!("GMM (full-covariance EM, {k} components) on {dim} numeric fibers; coords = soft responsibilities"));
+        return Ok(ClusterResult { base, ids, labels, coords: resp, eigenvalues: Vec::new(),
             sizes, n_noise: 0, method: method.to_string(), notes });
     }
 
@@ -10296,9 +10396,10 @@ fn cluster_records(
 ///
 /// Cluster records by `method`: **spectral** (bottom-k Laplacian eigenmaps of the
 /// k-NN graph + k-means — also returns the manifold embedding coords), **kmeans**
-/// (k-means on the standardized fibers), or **dbscan** (density clusters + noise,
-/// ε auto-estimated). Returns each record's cluster label (null = DBSCAN noise)
-/// plus its coordinates. No feature engineering.
+/// (k-means on the standardized fibers), **gmm** (full-covariance Gaussian mixture
+/// by EM — captures elliptical clusters spherical k-means can't; coords = soft
+/// responsibilities), or **dbscan** (density clusters + noise, ε auto-estimated).
+/// Returns each record's cluster label (null = DBSCAN noise) plus its coordinates.
 async fn bundle_cluster(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
@@ -19240,6 +19341,44 @@ mod tests {
             let distinct: std::collections::HashSet<i64> = blob_cluster.iter().copied().collect();
             assert_eq!(distinct.len(), 3, "{method}: three blobs should occupy three distinct clusters, got {:?}", blob_cluster);
         }
+        cleanup(&dir);
+    }
+
+    /// GMM (full-covariance EM) recovers two well-separated clusters — each true
+    /// cluster lands in one component, and the soft responsibilities per record
+    /// sum to ~1 (exercising the E-step's log-sum-exp normalization).
+    #[test]
+    fn cluster_gmm_recovers_and_normalizes() {
+        let mut rows: Vec<gigi::types::Record> = Vec::new();
+        let mut s: u64 = 77;
+        let mut rnd = || { s = s.wrapping_mul(6364136223846793005).wrapping_add(1); (s >> 33) as f64 / (1u64 << 31) as f64 - 0.5 };
+        for (c, (ox, oy)) in [(0usize, (0.0, 0.0)), (1usize, (7.0, 7.0))] {
+            for _ in 0..40 {
+                rows.push(scan_rec(&[
+                    ("id", V::Text(format!("g{c}_{}", rows.len()))),
+                    ("x", V::Float(ox + rnd() * 1.2)),
+                    ("y", V::Float(oy + rnd() * 1.2)),
+                ]));
+            }
+        }
+        let schema = BundleSchema::new("ell")
+            .base(FieldDef::categorical("id")).fiber(FieldDef::numeric("x")).fiber(FieldDef::numeric("y"));
+        let (dir, engine) = scan_env("cluster_gmm", "ell", schema, rows);
+        let cr = cluster_records(&engine, "ell", "gmm", 2, 10, None, 4, &[]).expect("gmm should build");
+        assert_eq!(cr.sizes.iter().sum::<usize>(), 80);
+        // soft responsibilities (coords) sum to ~1 per record
+        for row in &cr.coords {
+            let tot: f64 = row.iter().sum();
+            assert!((tot - 1.0).abs() < 1e-6, "responsibilities should sum to 1, got {tot}");
+        }
+        // each true cluster (id prefix "g0"/"g1") lands in a single component
+        let mut cl = [-1i64; 2];
+        for (pos, id) in cr.ids.iter().enumerate() {
+            let c: usize = id[1..2].parse().unwrap();
+            if cl[c] == -1 { cl[c] = cr.labels[pos]; }
+            else { assert_eq!(cr.labels[pos], cl[c], "cluster {c} split across GMM components"); }
+        }
+        assert_ne!(cl[0], cl[1], "the two clusters should map to two distinct components");
         cleanup(&dir);
     }
 

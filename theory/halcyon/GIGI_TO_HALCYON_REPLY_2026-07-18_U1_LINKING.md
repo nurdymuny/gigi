@@ -98,26 +98,54 @@ is the intended `+`.
 
 ---
 
-## The linking receipt (verified)
+## The linking receipt (verified) — genuine enclosed flux
 
-Anchor `U1-LINK` in `tests/u1_linking_basic.rs`. A chosen U(1) field
-encoding a vortex of circulation `κ` threading a linking column `n` times →
-`HOLONOMY AROUND CYCLE AXIS z` returns:
+Anchor `U1-LINK` in `tests/u1_linking_basic.rs`. This is a **genuine
+linking** of two distinct curves, not a loop summing flux painted on its
+own edges.
+
+- **C1 (the vortex):** a `+κ` flux tube along `z` through plaquette
+  `(1,1)–(2,2)`, with a `−κ` anti-tube through `(3,1)–(4,2)` (total flux 0
+  on the torus, as it must be). Realized by a branch cut of `κ`-carrying
+  transverse (`y`) edges. Every plaquette curl is 0 except the two cores —
+  the field is **curl-free (pure gauge) away from the cores**, a real
+  vortex.
+- **C2 (the measurement loop):** a **disjoint planar `xy`-loop** that
+  *encircles* a core. Its holonomy is the flux it **encloses** (discrete
+  Stokes) `= κ·Lk(C1, C2)` — read via the `EDGES` form
+  (`HOLONOMY … AROUND CYCLE EDGES (…)`).
 
 ```
-phase = n·κ     (n=0 → 0, n=1 → κ, n=2 → 2κ)   exact to 1e-12
-re_trace = cos(n·κ)
-group_used = "U(1)"
+encircle +κ core (Lk=1)                → phase = κ
+same core, a DIFFERENT loop (Lk=1)     → phase = κ   (κ arrives through a
+                                                      disjoint edge ⇒ it is
+                                                      the enclosed flux, not
+                                                      a painted edge)
+encircle NEITHER core (Lk=0)           → phase = 0   (move the loop off the
+                                                      core — topology, not
+                                                      absence of paint)
+encircle BOTH +κ and −κ                → phase = 0   (linked to both;
+                                                      enclosed flux cancels)
+wind the +κ core twice (Lk=2)          → phase = 2κ
+wind twenty times (Lk=20)              → phase = 20κ (7.4 > 2π, UNWRAPPED)
+reverse the circulation (−κ core)      → phase = −κ  (linking-sign
+                                                      antisymmetry)
 ```
 
-A control loop (a column the vortex does **not** thread) reads `phase = 0`,
-`re_trace = 1`. The reading is `∮_C A·dl = κ·Lk(C1, C2)` — the vortex
-linking number read as U(1) holonomy. `Lk = phase / κ`.
+`re_trace = cos(phase)`, `group_used = "U(1)"`, all exact to 1e-12. The
+reading is `∮_C A·dl = κ·Lk(C1, C2)`; `Lk = phase / κ`.
 
-Verified through the full live GQL path (`CREATE BUNDLE` → insert chosen
-theta records → `GAUGE_FIELD … GROUP U(1) INIT FROM BUNDLE …` → `HOLONOMY
-… AROUND CYCLE AXIS z`) — the same statements the live probe N1–N5 walk.
-Sign and magnitude both confirmed; the phase sign is **not** flipped.
+Verified through the full live GQL path (`CREATE BUNDLE` → insert the chosen
+vortex theta records → `GAUGE_FIELD … GROUP U(1) INIT FROM BUNDLE …` →
+`HOLONOMY … AROUND CYCLE EDGES …`). Sign and magnitude both confirmed.
+
+**Note on the cycle form.** The `AXIS z` form walks a *straight*
+non-contractible `z`-cycle — that is the SU(2) lens-order readout (and, for
+U(1), the Polyakov/circulation reading *along* the core direction). A
+vortex *linking* needs the measurement loop to **encircle** the core, which
+is a planar `xy`-loop — the `EDGES` form. (A `z`-cycle at the vortex column
+would just sum that column's own `z`-edges, which is why an earlier draft's
+`AXIS z`-on-the-core fixture was a tautology, not a linking; it is retired.)
 
 ---
 
@@ -143,11 +171,13 @@ number off the same chosen U(1) vortex field.
 - It is **not** a proof of Navier–Stokes regularity, and it does not claim
   one. The linking observable is a diagnostic on a field you supply; the
   substrate does not certify that field is a genuine NS solution.
-- The linking fixture is the **minimal** encoding — a flux of `κ` threading
-  the loop's column, so the loop's holonomy equals the enclosed circulation
-  `κ·Lk` by discrete Stokes. It is a faithful reading of the circulation a
-  loop encloses; it is not a claim that this specific field is the unique
-  divergence-free vortex, only that its holonomy reports the linking exactly.
+- The linking fixture is a genuine `+κ/−κ` vortex–antivortex pair (curl-free
+  away from the two cores), and the loop's holonomy equals the flux it
+  **encloses** = `κ·Lk` by discrete Stokes — verified by moving the loop off
+  the core (reads 0) and by two disjoint loops around the same core (both
+  read κ). It is a faithful reading of the linking a loop encloses; it is
+  not a claim that this specific field is the unique divergence-free vortex,
+  only that its holonomy reports the linking number exactly.
 
 ---
 

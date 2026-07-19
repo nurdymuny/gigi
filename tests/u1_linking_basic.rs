@@ -15,10 +15,22 @@
 //!                         phase = Θ (raw, unwrapped), re_trace = cos Θ,
 //!                         q = (cosΘ, 0, 0, sinΘ), group_used "U(1)".
 //!                         Identity field → phase 0, re_trace 1.
-//!   U1-LINK THE RECEIPT   a chosen U(1) field encoding a vortex of
-//!                         circulation κ threading a linking column n
-//!                         times → phase = n·κ (n=0→0, 1→κ, 2→2κ). A
-//!                         control loop that does NOT link → phase 0.
+//!   U1-LINK THE RECEIPT   a GENUINE U(1) vortex–antivortex field (a +κ
+//!                         flux tube along z through plaquette (1,1)–
+//!                         (2,2), a −κ tube through (3,1)–(4,2); every
+//!                         plaquette curl is 0 except the two cores, so
+//!                         the field is curl-free — pure gauge — away
+//!                         from them). HOLONOMY of a DISJOINT planar
+//!                         xy-loop reads the flux it ENCLOSES = κ·Lk(C1,
+//!                         C2) by discrete Stokes, NOT a sum of flux
+//!                         painted on the loop's own edges. Encircle the
+//!                         +κ core → κ (via two DIFFERENT loops whose
+//!                         load-bearing edges are disjoint, so it is the
+//!                         enclosed flux, not a painted edge); encircle
+//!                         neither → 0; encircle BOTH cores → 0 (fluxes
+//!                         cancel); wind twice → 2κ; wind 20× → 20κ
+//!                         (unwrapped past 2π); reverse the circulation
+//!                         (−κ core) → −κ (linking-sign antisymmetry).
 //!   U1-ERR  TYPED ERRORS  fiber arity != 1 (a q0..q3 bundle → GROUP U(1)),
 //!                         bundle-not-found, non-lattice edge, empty
 //!                         bundle — all typed, no panics.
@@ -317,64 +329,231 @@ fn u1_h_axis_equals_edges() {
     }
 }
 
-// ── U1-LINK — the NS vortex-linking receipt ──────────────────────────
+// ── U1-LINK — the NS vortex-linking receipt (GENUINE enclosed flux) ───
+//
+// The load-bearing distinction from a tautology: the measurement loop is a
+// DISJOINT curve that ENCIRCLES the vortex core; its holonomy is the flux
+// it ENCLOSES (discrete Stokes) = κ·Lk, NOT a sum of flux painted on the
+// loop's own edges. Move the loop off the core and it reads 0; two
+// different loops around the same core both read κ through disjoint
+// load-bearing edges — the reading is the topology, not any one edge.
 
-/// THE RECEIPT: a chosen U(1) field encoding a vortex of circulation κ
-/// threading a linking column n times → HOLONOMY phase = n·κ exactly
-/// (n=0→0, 1→κ, 2→2κ), re_trace = cos(n·κ). A control loop that does not
-/// link the vortex reads phase 0. This is `∮_C A·dl = κ·Lk(C1, C2)` — the
-/// vortex linking number read as U(1) holonomy. Lk = phase/κ, client-side.
+/// Branch-cut y-edges of a +κ/−κ vortex–antivortex pair: κ on the y-edges
+/// at x ∈ {2, 3}, row y:1→2, at EVERY z. This gives plaquette (1,1)–(2,2)
+/// curl +κ (right y-edge κ, left 0), plaquette (2,1)–(3,2) curl 0 (both
+/// κ, cancel), plaquette (3,1)–(4,2) curl −κ (left y-edge κ), every other
+/// plaquette 0 — total flux 0 on the torus, curl-free away from the two
+/// z-line cores. A real vortex field, NOT flux painted along a loop.
+fn vortex_pair_overrides(lat: &Lattice, l: usize, kappa: f64) -> Vec<(usize, f64)> {
+    let mut ov = Vec::new();
+    for z in 0..l {
+        for &x in &[2usize, 3usize] {
+            let (eid, orient) = lat
+                .resolve_edge(site(x, 1, z, l), site(x, 2, z, l))
+                .expect("branch-cut y-edge exists");
+            assert_eq!(orient, EdgeOrientation::Forward, "cut y-edge is +y (Forward)");
+            ov.push((eid, kappa));
+        }
+    }
+    ov
+}
+
+/// Ordered boundary edge-ids of a CCW rectangular xy-loop in z-plane `z0`,
+/// corners (x_lo,y_lo)→(x_hi,y_hi): bottom(+x) right(+y) top(−x) left(−y).
+/// Ids come from `resolve_edge` (layout-agnostic). The EDGES form reads
+/// each Forward; that equals the true oriented holonomy `Σ ±θ` because in
+/// this branch-cut gauge every reverse-traversed leg of these loops (top
+/// x-edges, left y-edges at x=x_lo≤1) carries θ = 0, so the only nonzero
+/// contribution is the +y (Forward) cut edge on the right side.
+fn rect_loop_edges(
+    lat: &Lattice,
+    l: usize,
+    z0: usize,
+    x_lo: usize,
+    y_lo: usize,
+    x_hi: usize,
+    y_hi: usize,
+) -> Vec<usize> {
+    let s = |x: usize, y: usize| site(x, y, z0, l);
+    let mut verts: Vec<usize> = Vec::new();
+    for x in x_lo..=x_hi {
+        verts.push(s(x, y_lo)); // bottom, +x
+    }
+    for y in (y_lo + 1)..=y_hi {
+        verts.push(s(x_hi, y)); // right, +y
+    }
+    for x in (x_lo..x_hi).rev() {
+        verts.push(s(x, y_hi)); // top, −x
+    }
+    for y in ((y_lo + 1)..y_hi).rev() {
+        verts.push(s(x_lo, y)); // left, −y (closes to verts[0])
+    }
+    let mut eids = Vec::with_capacity(verts.len());
+    for i in 0..verts.len() {
+        let (eid, _o) = lat
+            .resolve_edge(verts[i], verts[(i + 1) % verts.len()])
+            .expect("rectangle boundary edge exists");
+        eids.push(eid);
+    }
+    eids
+}
+
+/// Run `HOLONOMY <field> AROUND CYCLE EDGES (…)` over an explicit ordered
+/// edge list (the live GQL path — same grammar as holonomy_cycle_basic H4).
+fn run_edges(eng: &mut Engine, field: &str, eids: &[usize]) -> Record {
+    let ids: Vec<String> = eids.iter().map(|e| e.to_string()).collect();
+    run_cycle(
+        eng,
+        &format!("HOLONOMY {field} AROUND CYCLE EDGES ({});", ids.join(", ")),
+    )
+}
+
+/// THE RECEIPT (genuine linking): `∮_C A·dl = κ·Lk(C1, C2)`.
+///
+/// C1 = the +κ vortex core (a z-line flux tube through plaquette (1,1)–
+/// (2,2)); C2 = a DISJOINT planar xy-loop. C2's holonomy is the flux it
+/// ENCLOSES (discrete Stokes) = `κ` × its linking number with the core —
+/// NOT a sum of flux painted on C2's own edges (the retired fixture's
+/// tautology, where the "vortex" edges were a subset of the z-cycle being
+/// measured). Cases:
+///
+///   Lk=1   encircle the +κ core                 → κ
+///   Lk=1   a DIFFERENT loop, same core          → κ    (κ arrives through
+///                                                       the x=3 cut edge,
+///                                                       not L1's x=2 edge
+///                                                       ⇒ enclosed flux,
+///                                                       not a painted edge)
+///   Lk=0   encircle NEITHER core                → 0    (topology, not an
+///                                                       absence of paint:
+///                                                       move L1 left of the
+///                                                       core)
+///   net 0  encircle BOTH +κ and −κ              → 0    (linked to both;
+///                                                       enclosed flux
+///                                                       cancels)
+///   Lk=2   wind the +κ core twice               → 2κ
+///   Lk=20  wind the +κ core twenty times        → 20κ  (7.4 > 2π: the raw
+///                                                       phase stays
+///                                                       UNWRAPPED — a
+///                                                       per-step-normalized
+///                                                       reading would fold
+///                                                       it and destroy Lk)
+///   sign   reverse the circulation (−κ core)    → −κ   (reversing one
+///                                                       linked curve flips
+///                                                       Lk: a genuine
+///                                                       linking sign)
+///
+/// `Lk = phase / κ`, client-side. All exact to 1e-12, through the live GQL
+/// path (`GAUGE_FIELD … GROUP U(1) INIT FROM BUNDLE …` → `HOLONOMY …
+/// AROUND CYCLE EDGES …`).
 #[test]
 fn u1_link_phase_is_kappa_times_lk() {
     let (mut eng, _dir, _g) = open_engine();
     let l = 5usize;
-    let v = l * l * l;
     let kappa = 0.37_f64; // continuous circulation quantum
-    // Linking column at (2, 2); control column at (0, 0).
-    let (lx, ly) = (2usize, 2usize);
-    let (cx, cy) = (0usize, 0usize);
-    let z_edge = |z: usize, x: usize, y: usize| 2 * v + site(x, y, z, l);
     let lat = declare_cubic(&mut eng, "link_u1_lat", l, 3);
 
-    for n in [0usize, 1, 2] {
-        // n flux quanta of κ thread the linking column (z-edges 0..n).
-        let overrides: Vec<(usize, f64)> =
-            (0..n).map(|z| (z_edge(z, lx, ly), kappa)).collect();
-        let bname = format!("link_u1_bundle_n{n}");
-        build_u1_bundle(&mut eng, &bname, &lat, &overrides);
-        gauge_registry::remove("link_u1_field");
-        run_ok(
-            &mut eng,
-            &format!(
-                "GAUGE_FIELD link_u1_field GROUP U(1) INIT FROM BUNDLE {bname} ON LATTICE link_u1_lat;"
-            ),
-        );
+    // A genuine +κ/−κ vortex–antivortex field (curl-free away from the two
+    // z-line cores). No z-edge carries flux; the circulation lives on the
+    // transverse (y) branch-cut edges THROUGH which encircling loops link.
+    build_u1_bundle(
+        &mut eng,
+        "link_u1_bundle",
+        &lat,
+        &vortex_pair_overrides(&lat, l, kappa),
+    );
+    run_ok(
+        &mut eng,
+        "GAUGE_FIELD link_u1_field GROUP U(1) INIT FROM BUNDLE link_u1_bundle ON LATTICE link_u1_lat;",
+    );
 
-        // The linking loop: z-cycle at (lx, ly) → phase = n·κ.
-        let row = run_cycle(
-            &mut eng,
-            &format!("HOLONOMY link_u1_field AROUND CYCLE AXIS z AT ({lx}, {ly});"),
-        );
-        let want = n as f64 * kappa;
-        assert!(
-            (f(&row, "phase") - want).abs() < 1e-12,
-            "n={n}: phase must be n·κ = {want}, got {}",
-            f(&row, "phase")
-        );
-        assert!(
-            (f(&row, "re_trace") - want.cos()).abs() < 1e-12,
-            "n={n}: re_trace = cos(n·κ)"
-        );
-        assert_eq!(text(&row, "group_used"), "U(1)");
+    // Lk=1 — a disjoint xy-loop (z=0 plane) encircling the +κ core.
+    let l1 = rect_loop_edges(&lat, l, 0, 0, 0, 2, 3);
+    let r1 = run_edges(&mut eng, "link_u1_field", &l1);
+    assert!(
+        (f(&r1, "phase") - kappa).abs() < 1e-12,
+        "Lk=1: enclosed flux = κ = {kappa}, got {}",
+        f(&r1, "phase")
+    );
+    assert!((f(&r1, "re_trace") - kappa.cos()).abs() < 1e-12, "re_trace = cos κ");
+    assert_eq!(text(&r1, "group_used"), "U(1)");
 
-        // The control loop at (cx, cy) does NOT link the vortex → phase 0.
-        let ctrl = run_cycle(
-            &mut eng,
-            &format!("HOLONOMY link_u1_field AROUND CYCLE AXIS z AT ({cx}, {cy});"),
-        );
-        assert_eq!(f(&ctrl, "phase"), 0.0, "n={n}: control column links 0 → phase 0");
-        assert_eq!(f(&ctrl, "re_trace"), 1.0, "n={n}: control re_trace 1");
-    }
+    // Lk=1 via a DIFFERENT encircling loop (right side at x=3, so κ arrives
+    // through the x=3 cut edge — disjoint from L1's x=2 edge) → still κ.
+    // Anti-tautology: same core, disjoint load-bearing edge, same reading
+    // ⇒ the holonomy is the ENCLOSED FLUX (topology), not any painted edge.
+    let l1b = rect_loop_edges(&lat, l, 0, 0, 0, 3, 3);
+    let r1b = run_edges(&mut eng, "link_u1_field", &l1b);
+    assert!(
+        (f(&r1b, "phase") - kappa).abs() < 1e-12,
+        "Lk=1 (alternate loop, different load-bearing edge): κ, got {}",
+        f(&r1b, "phase")
+    );
+
+    // Lk=0 — control loop LEFT of the core, encircles neither. Reads 0
+    // because it does not enclose the flux, not because paint is absent.
+    let l0 = rect_loop_edges(&lat, l, 0, 0, 0, 1, 3);
+    let r0 = run_edges(&mut eng, "link_u1_field", &l0);
+    assert_eq!(f(&r0, "phase"), 0.0, "Lk=0: no core enclosed → phase 0");
+    assert_eq!(f(&r0, "re_trace"), 1.0, "Lk=0: re_trace 1");
+
+    // net 0 — a loop encircling BOTH the +κ and −κ cores; enclosed flux
+    // cancels. L1 is a strict sub-loop of this one and reads κ, so this 0
+    // is a topological cancellation, not an empty boundary.
+    let lboth = rect_loop_edges(&lat, l, 0, 0, 0, 4, 3);
+    let rboth = run_edges(&mut eng, "link_u1_field", &lboth);
+    assert_eq!(f(&rboth, "phase"), 0.0, "encircle +κ and −κ → net enclosed flux 0");
+
+    // Lk=2 — the loop wound twice around the +κ core (winding number 2).
+    let l2: Vec<usize> = l1.iter().chain(l1.iter()).copied().collect();
+    let r2 = run_edges(&mut eng, "link_u1_field", &l2);
+    assert!(
+        (f(&r2, "phase") - 2.0 * kappa).abs() < 1e-12,
+        "Lk=2: 2κ = {}, got {}",
+        2.0 * kappa,
+        f(&r2, "phase")
+    );
+    assert!((f(&r2, "re_trace") - (2.0 * kappa).cos()).abs() < 1e-12, "re_trace = cos 2κ");
+
+    // Lk=20 — wound twenty times → 20κ = 7.4 > 2π, kept UNWRAPPED. A
+    // per-step-normalized (walk_loop/compose) reading would fold this into
+    // (−π, π] and destroy the multiplicity; the raw signed sum keeps it.
+    let two_pi = 2.0 * std::f64::consts::PI;
+    assert!(20.0 * kappa > two_pi, "20κ must exceed 2π for the unwrap test to bite");
+    let l20: Vec<usize> = (0..20).flat_map(|_| l1.iter().copied()).collect();
+    let r20 = run_edges(&mut eng, "link_u1_field", &l20);
+    assert!(
+        (f(&r20, "phase") - 20.0 * kappa).abs() < 1e-12,
+        "Lk=20: 20κ unwrapped = {}, got {}",
+        20.0 * kappa,
+        f(&r20, "phase")
+    );
+
+    // sign — reverse the core circulation (−κ): the SAME loop reads −κ.
+    // Reversing one of the two linked curves' orientation flips Lk
+    // (antisymmetry), so the holonomy sign flips — a genuine LINKING sign,
+    // not merely a per-edge circulation sign.
+    gauge_registry::remove("link_u1_field");
+    build_u1_bundle(
+        &mut eng,
+        "link_u1_neg",
+        &lat,
+        &vortex_pair_overrides(&lat, l, -kappa),
+    );
+    run_ok(
+        &mut eng,
+        "GAUGE_FIELD link_u1_field GROUP U(1) INIT FROM BUNDLE link_u1_neg ON LATTICE link_u1_lat;",
+    );
+    let rn = run_edges(&mut eng, "link_u1_field", &l1);
+    assert!(
+        (f(&rn, "phase") + kappa).abs() < 1e-12,
+        "−κ core: phase = −κ = {}, got {}",
+        -kappa,
+        f(&rn, "phase")
+    );
+    assert!(
+        (f(&rn, "re_trace") - kappa.cos()).abs() < 1e-12,
+        "re_trace = cos(−κ) = cos κ"
+    );
 }
 
 // ── U1-ERR — typed errors (no panics) ────────────────────────────────

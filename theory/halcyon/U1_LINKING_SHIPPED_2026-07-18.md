@@ -13,14 +13,26 @@ Hallie's one open ask: the Navier–Stokes vortex linking-number reading
 | C — INIT FROM BUNDLE U(1) | `src/gauge/inject.rs`, `src/gauge/u1_gauge_field.rs`, `src/gauge/registry.rs`, `src/parser.rs` | `u1_buffer_from_bundle` (theta arity gate, θ/−θ orientation store, typed errors) → `U1GaugeField` (new struct, `GaugeFieldHandle`, plain dyn register) → executor `GROUP U(1)` arm. |
 | D — HOLONOMY U(1) | `src/holonomy_cycle.rs` | Group gate admits U(1); circulation arm sums raw `Σ±θ` (unwrapped) — NOT `walk_loop` (its `su2_identity` seed panics on `SU2∘U1`). Row adds `phase`; `order_estimate_u1` sentinel. |
 
-## The receipt (verified)
+## The receipt (verified) — genuine enclosed flux
 
-`tests/u1_linking_basic.rs` — anchor `U1-LINK`: a vortex of circulation κ
-threading a linking column n times → `HOLONOMY AROUND CYCLE AXIS z` returns
-`phase = n·κ` exactly (n=0→0, 1→κ, 2→2κ), `re_trace = cos(n·κ)`,
-`group_used = "U(1)"`. Control loop (no linking) → `phase = 0`. Verified
-through the full live GQL path (bundle → `INIT FROM BUNDLE` → `HOLONOMY`).
-Phase sign correct (not flipped); round-trip exact to 1e-12.
+`tests/u1_linking_basic.rs` — anchor `U1-LINK`. A **genuine** vortex
+linking of two distinct curves (not a loop summing flux on its own edges):
+a `+κ` flux tube along z through plaquette `(1,1)–(2,2)` and a `−κ` tube
+through `(3,1)–(4,2)` (curl-free away from the two cores, total flux 0 on
+the torus). HOLONOMY of a **disjoint planar `xy`-loop** (the `EDGES` form)
+reads the flux it **encloses** = `κ·Lk` by discrete Stokes:
+
+- encircle +κ core (Lk=1) → `κ`; a *different* loop around the same core →
+  `κ` through a disjoint edge (⇒ enclosed flux, not a painted edge);
+- encircle neither (Lk=0) → `0`; encircle both cores → `0` (fluxes cancel);
+- wind twice → `2κ`; wind 20× → `20κ` (7.4 > 2π, kept unwrapped);
+- reverse the circulation (−κ core) → `−κ` (linking-sign antisymmetry).
+
+All exact to 1e-12, through the live GQL path (bundle → `INIT FROM BUNDLE`
+→ `HOLONOMY … AROUND CYCLE EDGES …`). The `AXIS z` form walks the straight
+core direction (the SU(2) lens-order readout / U(1) circulation *along* the
+core), not an encircling loop — a vortex *linking* is the planar `EDGES`
+loop. Phase sign correct (not flipped); round-trip exact to 1e-12.
 
 ## Commits (TDD, no Co-Authored-By)
 
@@ -30,7 +42,20 @@ impl(u1-group): GREEN — U(1) abelian phase math + DenseLinkBuffer U(1) arm
 tests(u1-inject+holonomy): RED — INIT FROM BUNDLE U(1) + HOLONOMY U(1) + κ·Lk
 impl(u1-inject+holonomy): GREEN — INIT FROM BUNDLE U(1) + HOLONOMY U(1) live
 docs(halcyon): U(1) group math + INIT FROM BUNDLE U(1) + HOLONOMY U(1) — NS vortex linking live
+fix(u1-linking): genuine enclosed-flux vortex linking receipt — retire tautological collinear-flux fixture
 ```
+
+## Repair (skeptic follow-up)
+
+The first `U1-LINK` fixture painted κ on the z-edges of column `(2,2)` and
+then measured the z-cycle at that **same** column — the "vortex" edges were
+a subset of the measurement loop's own edges, so `phase = Σ(own edges) =
+n·κ` was the *definition* of holonomy, tautologically true regardless of
+any linking (no second, disjoint curve; net transverse flux 0). The U(1)
+arithmetic and the raw signed-sum circulation code were **correct** and
+unchanged; only the fixture was rebuilt into the genuine enclosed-flux
+vortex–antivortex pair above (loop disjoint from and encircling the core,
+Stokes-enclosed `κ·Lk`, sign + magnitude + Lk=0/1/2/20 + both-cores cases).
 
 ## Return shape (HOLONOMY U(1))
 

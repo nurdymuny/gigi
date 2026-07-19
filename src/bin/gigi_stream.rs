@@ -10604,6 +10604,42 @@ fn local_linear_at(xq: &[f64], nbrs: &[(f64, usize)], x: &[Vec<f64>], y: &[f64],
     }
 }
 
+/// Local-linear prediction plus a difficulty scale s(x): the tricube-weighted RMS
+/// residual of the neighbors around the local fit. Larger s ⇒ the target is noisier
+/// / less linear locally ⇒ a wider predictive interval (the `gp` method scales
+/// conformal intervals by s). Returns (mean, s).
+fn local_linear_scaled(xq: &[f64], nbrs: &[(f64, usize)], x: &[Vec<f64>], y: &[f64], dim: usize, ridge_frac: f64) -> (f64, f64) {
+    let dmax = nbrs.last().map(|(d, _)| *d).unwrap_or(1.0).max(1e-9);
+    let m = dim + 1;
+    let mut a = vec![vec![0.0f64; m]; m];
+    let mut b = vec![0.0f64; m];
+    let mut ws: Vec<(f64, usize)> = Vec::with_capacity(nbrs.len());
+    let (mut wsum, mut wy) = (0.0, 0.0);
+    for &(d, j) in nbrs {
+        let u = d / dmax;
+        let w = if u < 1.0 { (1.0 - u.powi(3)).powi(3) } else { 0.0 };
+        ws.push((w, j)); wsum += w; wy += w * y[j];
+        let mut basis = vec![1.0];
+        for t in 0..dim { basis.push(x[j][t] - xq[t]); }
+        for r in 0..m { for c in 0..m { a[r][c] += w * basis[r] * basis[c]; } b[r] += w * basis[r] * y[j]; }
+    }
+    let ridge = ridge_frac.max(0.0) * a[0][0];
+    for t in 1..m { a[t][t] += ridge; }
+    let beta = scan_solve(&mut a, &b).filter(|bt| bt[0].is_finite());
+    let mean = match &beta { Some(bt) => bt[0], None => if wsum > 0.0 { wy / wsum } else { 0.0 } };
+    // weighted RMS residual of neighbors around the fit
+    let mut num = 0.0;
+    for &(w, j) in &ws {
+        let pred_j = match &beta {
+            Some(bt) => bt[0] + (0..dim).map(|t| bt[t + 1] * (x[j][t] - xq[t])).sum::<f64>(),
+            None => mean,
+        };
+        num += w * (y[j] - pred_j).powi(2);
+    }
+    let s = if wsum > 0.0 { (num / wsum).sqrt() } else { 0.0 };
+    (mean, s + 1e-6)
+}
+
 /// POST /v1/bundles/{name}/infer
 ///
 /// Supervised prediction over the numeric fibers. Numeric target → regression
@@ -10633,9 +10669,9 @@ fn predict_field(
     let tf = schema.fiber_fields.iter().find(|f| f.name == target).ok_or_else(|| (
         StatusCode::UNPROCESSABLE_ENTITY, format!("target field '{}' not found among the bundle's fibers", target)))?;
     let is_reg = matches!(tf.field_type, FieldType::Numeric);
-    if is_reg && !matches!(method, "local_linear" | "knn" | "ols") {
+    if is_reg && !matches!(method, "local_linear" | "knn" | "ols" | "gp") {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
-            "unknown regression method '{}' (expected 'local_linear', 'knn', or 'ols')", method)));
+            "unknown regression method '{}' (expected 'local_linear', 'knn', 'ols', or 'gp')", method)));
     }
     // features: numeric fibers other than the target, honoring exclude
     let feat_defs: Vec<gigi::types::FieldDef> = schema.fiber_fields.iter()
@@ -10690,7 +10726,71 @@ fn predict_field(
         top.iter().map(|(dd, j)| (dd.sqrt(), *j)).collect()
     };
 
-    let (task, metric, baseline, predictions) = if is_reg {
+    let (task, metric, baseline, predictions) = if is_reg && method == "gp" {
+        // ── Gaussian-process answer: local-linear MEAN + conformalized adaptive
+        // uncertainty. Interval half-width = Q · s(x), where s(x) is the local
+        // difficulty scale and Q is the conformal quantile — coverage is guaranteed
+        // (exchangeability), width adapts to local noise. ──
+        let y: Vec<f64> = records.iter().map(|r| r.get(target).and_then(|v| v.as_f64()).unwrap_or(0.0)).collect();
+        let ybar = train.iter().map(|&i| y[i]).sum::<f64>() / train.len() as f64;
+        let tss: f64 = train.iter().map(|&i| (y[i] - ybar).powi(2)).sum();
+        let fld = folds.max(2);
+        // held-out mean + difficulty scale per labeled record
+        let mut hp: std::collections::HashMap<usize, (f64, f64)> = std::collections::HashMap::new();
+        for f in 0..fld {
+            let te: std::collections::HashSet<usize> = train.iter().enumerate()
+                .filter(|(ix, _)| ix % fld == f).map(|(_, &i)| i).collect();
+            let pool: Vec<usize> = train.iter().copied().filter(|i| !te.contains(i)).collect();
+            if pool.is_empty() { continue; }
+            for &q in &te {
+                let nb = knn_of(q, &pool);
+                let (m, s) = if nb.is_empty() { (ybar, (tss / train.len() as f64).sqrt()) }
+                    else { local_linear_scaled(&x[q], &nb, &x, &y, dim, ridge) };
+                hp.insert(q, (m, s));
+            }
+        }
+        let se: f64 = train.iter().map(|&i| { let (m, _) = hp[&i]; (m - y[i]).powi(2) }).sum();
+        let rmse = (se / train.len() as f64).sqrt();
+        let r2 = 1.0 - se / tss.max(f64::EPSILON);
+        // conformal calibration split: 2/3 to set Q, 1/3 to measure honest coverage
+        let (mut cal, mut val) = (Vec::new(), Vec::new());
+        for (pos, &i) in train.iter().enumerate() {
+            let (m, s) = hp[&i];
+            let rho = (y[i] - m).abs() / s;
+            if pos % 3 == 0 { val.push((rho, s, (y[i] - m).abs())); } else { cal.push(rho); }
+        }
+        // split-conformal quantile with the finite-sample correction: the
+        // ⌈(m+1)(1−α)⌉-th smallest score guarantees ≥ 1−α coverage on exchangeable data
+        let conf_q = |mut v: Vec<f64>| -> f64 {
+            if v.is_empty() { return 0.0; }
+            v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let m = v.len();
+            let rank = (((m + 1) as f64) * 0.90).ceil() as usize;
+            if rank > m { f64::INFINITY } else { v[rank - 1] }
+        };
+        let q90 = conf_q(cal);
+        let nval = val.len().max(1) as f64;
+        let coverage = val.iter().filter(|(rho, _, _)| *rho <= q90).count() as f64 / nval;
+        let width = val.iter().map(|(_, s, _)| 2.0 * q90 * s).sum::<f64>() / nval;
+        // non-adaptive normal-theory baseline (fixed ±1.645·rmse) on the same split
+        let base_cov = val.iter().filter(|(_, _, ar)| *ar <= 1.645 * rmse).count() as f64 / nval;
+        // deploy quantile from ALL labeled residuals
+        let q_final = conf_q(train.iter().map(|&i| { let (m, s) = hp[&i]; (y[i] - m).abs() / s }).collect());
+        let rnd = |v: f64| (v * 1000.0).round() / 1000.0;
+        let preds: Vec<(String, serde_json::Value)> = query.iter().map(|&q| {
+            let nb = knn_of(q, &train);
+            let (m, s) = if nb.is_empty() { (ybar, rmse) } else { local_linear_scaled(&x[q], &nb, &x, &y, dim, ridge) };
+            let half = q_final * s;
+            (base_of(&records[q]), serde_json::json!({
+                "mean": rnd(m), "std": rnd(half / 1.645), "lower": rnd(m - half), "upper": rnd(m + half) }))
+        }).collect();
+        notes.push(format!("GP: local-linear mean + conformal adaptive intervals (difficulty s(x) × conformal quantile), {}-fold held-out", fld));
+        ("regression".to_string(),
+         serde_json::json!({"r2": (r2*10000.0).round()/10000.0, "coverage_90": (coverage*1000.0).round()/1000.0,
+                            "mean_interval_width": (width*100.0).round()/100.0, "rmse": (rmse*100.0).round()/100.0}),
+         serde_json::json!({"method": "fixed_normal_interval", "coverage_90": (base_cov*1000.0).round()/1000.0}),
+         preds)
+    } else if is_reg {
         let y: Vec<f64> = records.iter().map(|r| r.get(target).and_then(|v| v.as_f64()).unwrap_or(0.0)).collect();
         let ybar = train.iter().map(|&i| y[i]).sum::<f64>() / train.len() as f64;
         let tss: f64 = train.iter().map(|&i| (y[i] - ybar).powi(2)).sum();
@@ -19605,6 +19705,37 @@ mod tests {
         assert!(ll > knn, "local_linear R² ({ll}) should beat flat kNN ({knn})");
         assert!(ll > ols + 0.2, "local_linear R² ({ll}) should crush global OLS ({ols}) on a curved target");
         assert!(ll > 0.9, "local_linear should fit the curve well, R²={ll}");
+        cleanup(&dir);
+    }
+
+    /// GP: the conformal adaptive intervals are calibrated — held-out 90% coverage
+    /// lands near 0.90 — and a missing target is filled with mean + lower/upper.
+    #[test]
+    fn predict_gp_intervals_are_calibrated() {
+        let mut rows: Vec<gigi::types::Record> = Vec::new();
+        let mut s: u64 = 424242;
+        let mut rnd = || { s = s.wrapping_mul(6364136223846793005).wrapping_add(1); (s >> 33) as f64 / (1u64 << 31) as f64 };
+        // noisy target: y = 2·x1 − x2 + heteroscedastic noise
+        for i in 0..400 {
+            let (x1, x2) = (rnd() * 4.0, rnd() * 4.0);
+            let noise = (rnd() - 0.5) * (1.0 + x1);   // noise grows with x1
+            rows.push(scan_rec(&[
+                ("id", V::Text(format!("r{i}"))),
+                ("x1", V::Float(x1)), ("x2", V::Float(x2)), ("y", V::Float(2.0 * x1 - x2 + noise)),
+            ]));
+        }
+        rows.push(scan_rec(&[("id", V::Text("q".into())), ("x1", V::Float(2.0)), ("x2", V::Float(2.0))]));
+        let schema = BundleSchema::new("gp")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("x1")).fiber(FieldDef::numeric("x2")).fiber(FieldDef::numeric("y"));
+        let (dir, engine) = scan_env("predict_gp", "gp", schema, rows);
+        let pr = predict_field(&engine, "gp", "y", "gp", 25, 0.5, 5, &[]).expect("gp");
+        let cov = pr.metric["coverage_90"].as_f64().unwrap();
+        assert!((0.80..=1.0).contains(&cov), "90% conformal coverage should be near nominal, got {cov}");
+        // the fill has a mean and an ordered interval
+        let q = pr.predictions.iter().find(|(id, _)| id == "q").expect("q predicted");
+        let (lo, mean, hi) = (q.1["lower"].as_f64().unwrap(), q.1["mean"].as_f64().unwrap(), q.1["upper"].as_f64().unwrap());
+        assert!(lo < mean && mean < hi, "interval should bracket the mean: {lo} < {mean} < {hi}");
         cleanup(&dir);
     }
 

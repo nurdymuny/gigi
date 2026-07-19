@@ -10844,48 +10844,94 @@ fn predict_field(
          serde_json::json!({"method": "knn_mean", "rmse": (rmse_b*100000.0).round()/100000.0, "r2": (r2_b*10000.0).round()/10000.0}),
          preds)
     } else {
-        // classification: distance-weighted k-NN vote
+        // classification: distance-weighted k-NN vote (default) or linear SVM
+        let use_svm = method == "svm";
         let classes: Vec<String> = {
             let mut s: Vec<String> = train.iter().map(|&i| format!("{}", records[i].get(target).unwrap())).collect();
             s.sort(); s.dedup(); s
         };
         let cidx: std::collections::HashMap<String, usize> = classes.iter().enumerate().map(|(i, c)| (c.clone(), i)).collect();
         let yc: Vec<usize> = records.iter().map(|r| r.get(target).map(|v| *cidx.get(&format!("{}", v)).unwrap_or(&usize::MAX)).unwrap_or(usize::MAX)).collect();
+        let ncl = classes.len();
         let vote = |nb: &[(f64, usize)]| -> usize {
-            let mut w = vec![0.0f64; classes.len()];
+            let mut w = vec![0.0f64; ncl];
             for &(d, j) in nb { if yc[j] != usize::MAX { w[yc[j]] += 1.0 / (d * d + 1e-6); } }
-            (0..classes.len()).max_by(|&a, &b| w[a].partial_cmp(&w[b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap_or(0)
+            (0..ncl).max_by(|&a, &b| w[a].partial_cmp(&w[b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap_or(0)
+        };
+        // linear SVM: one-vs-rest Pegasos SGD (hinge). Returns weights [class][dim+bias].
+        let pegasos = |pool: &[usize]| -> Vec<Vec<f64>> {
+            let lam = 0.01;
+            let mut w = vec![vec![0.0f64; dim + 1]; ncl];
+            let mut seed: u64 = 0x9E3779B97F4A7C15;
+            let mut t = 1.0f64;
+            for _ in 0..50 {
+                let mut order: Vec<usize> = pool.iter().copied().filter(|&i| yc[i] != usize::MAX).collect();
+                for a in (1..order.len()).rev() {
+                    seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                    order.swap(a, (seed >> 11) as usize % (a + 1));
+                }
+                for &i in &order {
+                    t += 1.0; let eta = 1.0 / (lam * t);
+                    for c in 0..ncl {
+                        let yb = if yc[i] == c { 1.0 } else { -1.0 };
+                        let dot = (0..dim).map(|d| w[c][d] * x[i][d]).sum::<f64>() + w[c][dim];
+                        for d in 0..dim { w[c][d] *= 1.0 - eta * lam; }
+                        w[c][dim] *= 1.0 - eta * lam;
+                        if yb * dot < 1.0 {
+                            for d in 0..dim { w[c][d] += eta * yb * x[i][d]; }
+                            w[c][dim] += eta * yb;
+                        }
+                    }
+                }
+            }
+            w
+        };
+        let svm_pred = |w: &[Vec<f64>], q: usize| -> usize {
+            (0..ncl).max_by(|&a, &b| {
+                let da = (0..dim).map(|d| w[a][d] * x[q][d]).sum::<f64>() + w[a][dim];
+                let db = (0..dim).map(|d| w[b][d] * x[q][d]).sum::<f64>() + w[b][dim];
+                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+            }).unwrap_or(0)
         };
         let fld = folds.max(2);
-        let mut correct = 0usize; let mut total = 0usize;
+        let (mut correct, mut total) = (0usize, 0usize);
         for f in 0..fld {
             let te: std::collections::HashSet<usize> = train.iter().enumerate()
                 .filter(|(ix, _)| ix % fld == f).map(|(_, &i)| i).collect();
             let pool: Vec<usize> = train.iter().copied().filter(|i| !te.contains(i)).collect();
+            let w = if use_svm { pegasos(&pool) } else { Vec::new() };
             for &q in &te {
-                let nb = knn_of(q, &pool);
-                if nb.is_empty() { continue; }
-                total += 1; if vote(&nb) == yc[q] { correct += 1; }
+                let pred = if use_svm { svm_pred(&w, q) } else {
+                    let nb = knn_of(q, &pool);
+                    if nb.is_empty() { continue; }
+                    vote(&nb)
+                };
+                total += 1; if pred == yc[q] { correct += 1; }
             }
         }
-        // majority-class baseline
-        let mut cnt = vec![0usize; classes.len()];
+        let mut cnt = vec![0usize; ncl];
         for &i in &train { if yc[i] != usize::MAX { cnt[yc[i]] += 1; } }
         let maj = *cnt.iter().max().unwrap_or(&0) as f64 / train.len() as f64;
         let acc = if total > 0 { correct as f64 / total as f64 } else { 0.0 };
+        let w_all = if use_svm { pegasos(&train) } else { Vec::new() };
         let preds: Vec<(String, serde_json::Value)> = query.iter().filter_map(|&q| {
-            let nb = knn_of(q, &train);
-            if nb.is_empty() { return None; }
-            Some((base_of(&records[q]), serde_json::json!(classes[vote(&nb)])))
+            let c = if use_svm { svm_pred(&w_all, q) } else {
+                let nb = knn_of(q, &train);
+                if nb.is_empty() { return None; }
+                vote(&nb)
+            };
+            Some((base_of(&records[q]), serde_json::json!(classes[c])))
         }).collect();
-        notes.push(format!("classification on {dim} feature fibers, target '{target}', {} classes, {}-fold held-out", classes.len(), fld));
+        notes.push(format!("classification ({}) on {dim} feature fibers, target '{target}', {ncl} classes, {fld}-fold held-out",
+            if use_svm { "linear SVM, one-vs-rest hinge" } else { "distance-weighted kNN vote" }));
         ("classification".to_string(),
          serde_json::json!({"accuracy": (acc*10000.0).round()/10000.0}),
          serde_json::json!({"method": "majority_class", "accuracy": (maj*10000.0).round()/10000.0}),
          preds)
     };
     if !query.is_empty() { notes.push(format!("filled target for {} record(s) with a missing '{}'", query.len(), target)); }
-    Ok(PredictResult { base, task, method: if is_reg { method.to_string() } else { "knn_vote".to_string() },
+    Ok(PredictResult { base, task,
+        method: if is_reg { method.to_string() } else if method == "svm" { "svm".to_string() } else { "knn_vote".to_string() },
         metric, baseline, n_train: train.len(), predictions, notes })
 }
 
@@ -20146,15 +20192,18 @@ mod tests {
             .base(FieldDef::categorical("id"))
             .fiber(FieldDef::numeric("x")).fiber(FieldDef::numeric("y")).fiber(FieldDef::categorical("label"));
         let (dir, engine) = scan_env("predict_cls", "cls", schema, rows);
-        let pr = predict_field(&engine, "cls", "label", "knn", 7, 0.5, 5, &[]).expect("predict");
-        assert_eq!(pr.task, "classification");
-        let acc = pr.metric["accuracy"].as_f64().unwrap();
-        let maj = pr.baseline["accuracy"].as_f64().unwrap();
-        assert!(acc > 0.95, "kNN should separate the two classes, accuracy={acc}");
-        assert!(acc > maj, "accuracy ({acc}) should beat majority-class baseline ({maj})");
-        // the missing label was filled, as class1
-        let filled = pr.predictions.iter().find(|(id, _)| id == "mystery").expect("mystery should be predicted");
-        assert_eq!(filled.1.as_str().unwrap(), "class1", "mystery point sits in cluster 1");
+        // both kNN and the linear SVM separate the classes and fill the missing label
+        for method in ["knn", "svm"] {
+            let pr = predict_field(&engine, "cls", "label", method, 7, 0.5, 5, &[]).expect("predict");
+            assert_eq!(pr.task, "classification");
+            let acc = pr.metric["accuracy"].as_f64().unwrap();
+            let maj = pr.baseline["accuracy"].as_f64().unwrap();
+            assert!(acc > 0.95, "{method} should separate the two classes, accuracy={acc}");
+            assert!(acc > maj, "{method} accuracy ({acc}) should beat majority-class baseline ({maj})");
+            let filled = pr.predictions.iter().find(|(id, _)| id == "mystery").expect("mystery should be predicted");
+            assert_eq!(filled.1.as_str().unwrap(), "class1", "{method}: mystery point sits in cluster 1");
+            assert_eq!(pr.method, if method == "svm" { "svm" } else { "knn_vote" });
+        }
         cleanup(&dir);
     }
 

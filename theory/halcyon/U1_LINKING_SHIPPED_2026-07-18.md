@@ -78,6 +78,32 @@ HOLONOMY circulation is kept UNWRAPPED so `Lk > 1` survives.
   u1_flux, helicity, ingest, chern/betti/obstruction/topology, aurora,
   workflow e2e — all green. SU(2)/SU(3) math untouched.
 
+## Deployed (live)
+
+Merged to `main` @ `20793bd` (fast-forward, additive; the concurrent Poincaré
+session's untouched files left staged in the working tree). Full gate suite
+re-run green on merged main. Deployed to `gigi-stream.fly.dev` — release
+**v258**, image `deployment-01KXVXSV60HWDNJC8YZZ5DCX60`, engine ready at
+13,092,306 records (fast path).
+
+Live probe (production GQL, `κ = 0.37`, periodic cubic `L=5 D=3`, `HOLONOMY …
+AROUND CYCLE EDGES`):
+
+| probe | loop | `phase` |
+|-------|------|---------|
+| **N4 (receipt)** | encircle +κ core (Lk=1) | **`0.37 = κ`** |
+| N5 | control, encircle neither (Lk=0) | `0.0` |
+| — | different loop, same core (disjoint edge) | `0.37` |
+| — | encircle both cores | `0.0` |
+| — | wind twice (Lk=2) | `0.74 = 2κ` |
+
+N4: `re_trace = 0.9323273456060345 = cos κ`, `q = (cos κ, 0, 0, sin κ)`,
+`order_estimate = 0`, `group_used = "U(1)"`. SU(2) regression N6:
+`HOLONOMY AXIS z` on a `p=5` σ₃-lens field → `order_estimate = 5 = p`
+(unregressed). Marcella `imagine_coherence` dim=4 → seed coherence `1.0`.
+Substrate `claude_substrate_v0` re-imported post-deploy (fragile-until-snapshot):
+20 records, dedup on `thought_id`.
+
 ## Scope (honest)
 
 A gigi query reading the circulation / linking number of a **chosen** U(1)

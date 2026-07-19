@@ -3,7 +3,9 @@
 **Date:** 2026-07-18
 **Re:** Hallie's one open ask — the Navier–Stokes vortex linking-number
 reading `∮_C A·dl = κ·Lk(C1, C2)` via HOLONOMY on a chosen U(1) field.
-**Status:** shipped (worktree, gated green). Scope note at the end — read it.
+**Status:** LIVE on production (`gigi-stream.fly.dev`, release v258, image
+`deployment-01KXVXSV60HWDNJC8YZZ5DCX60`). Merged to `main` @ `20793bd`, full
+gate suite green, live probe confirmed below. Scope note at the end — read it.
 
 ---
 
@@ -146,6 +148,34 @@ vortex *linking* needs the measurement loop to **encircle** the core, which
 is a planar `xy`-loop — the `EDGES` form. (A `z`-cycle at the vortex column
 would just sum that column's own `z`-edges, which is why an earlier draft's
 `AXIS z`-on-the-core fixture was a tautology, not a linking; it is retired.)
+
+---
+
+## Live on production — the receipt end-to-end
+
+Run against `gigi-stream.fly.dev` (release v258) through the same GQL path a
+client uses. A genuine `+κ/−κ` vortex–antivortex field (`κ = 0.37`) on a
+periodic cubic `L=5, D=3`, encircling loops read via `HOLONOMY … AROUND CYCLE
+EDGES (…)`:
+
+| probe | loop (relative to the +κ core) | `phase` | reading |
+|-------|--------------------------------|---------|---------|
+| **N4** | encircles the +κ core (Lk=1) | **`0.37`** | `= κ` — **the linking receipt** |
+| N5 | encircles neither core (Lk=0) | `0.0` | control |
+| — | a *different* loop, same core (κ through a disjoint edge) | `0.37` | enclosed flux, not a painted edge |
+| — | encircles BOTH +κ and −κ | `0.0` | fluxes cancel |
+| — | wound twice (Lk=2) | `0.74` | `= 2κ`, unwrapped |
+
+N4 verbatim: `phase = 0.37`, `re_trace = 0.9323273456060345` (`= cos κ`),
+`q = (0.9323273456060345, 0, 0, 0.361615431964962)` (`= (cos κ, 0, 0, sin κ)`),
+`order_estimate = 0` (continuous-κ sentinel), `group_used = "U(1)"`.
+`Lk = phase / κ = 0.37 / 0.37 = 1`.
+
+SU(2) is unregressed: a chosen σ₃-twist lens field (`p = 5`) via `INIT FROM
+BUNDLE` → `HOLONOMY … AROUND CYCLE AXIS z` returns `order_estimate = 5 = p`,
+`group_used = "SU(2)"`, `q0 = cos(2π/5)` — the same path the Poincaré p-sweep
+rides, untouched by the U(1) arm. Marcella `imagine_coherence` (dim=4) still
+returns seed coherence `1.0`.
 
 ---
 

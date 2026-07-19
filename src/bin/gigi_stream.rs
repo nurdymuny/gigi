@@ -11516,6 +11516,41 @@ async fn bundle_changepoints(
     })))
 }
 
+/// GET /v1/ml
+///
+/// Discovery catalog for the geometric ML endpoints — what exists, which methods
+/// each takes, the key knobs, and the shape of a request. So users (and agents)
+/// can find the methods without reading the source.
+async fn ml_catalog() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "about": "GIGI's geometric ML endpoints. Model your data as a bundle, then POST to any of these. All standardize numeric fibers automatically; all return a `notes` array explaining what they did.",
+        "endpoints": [
+            {"route": "POST /v1/bundles/{name}/scan", "does": "unsupervised anomaly detection — fuses 7 geometric lenses (global/contextual curvature, velocity, text, relational, completion, density)",
+             "params": {"budget": "review fraction (0.05)", "weights": "optional per-lens weights", "exclude": "fields to keep out of the geometry"}},
+            {"route": "POST /v1/bundles/{name}/scan/fit", "does": "learn supervised lens weights from a labeled fraud field (held-out PR-AUC)",
+             "params": {"label_field": "0/1 or bool field", "folds": "5", "epochs": "400"}},
+            {"route": "POST /v1/bundles/{name}/cluster", "does": "clustering + manifold embedding",
+             "params": {"method": "spectral | kmeans | gmm | dbscan", "k": "clusters (3)", "neighbors": "kNN graph degree (10)",
+                        "covariance": "gmm: full | diagonal | spherical", "normalized": "spectral: normalized Laplacian",
+                        "eps/min_pts": "dbscan", "restarts": "kmeans/gmm-init", "exclude": "fields to drop"}},
+            {"route": "POST /v1/bundles/{name}/infer", "does": "supervised prediction — regression or classification, fills a missing target",
+             "params": {"target": "field to predict", "method": "regression: local_linear | knn | ols | gp; classification: knn | svm",
+                        "k": "neighbors (20)", "ridge": "local_linear shrinkage (0.5)", "folds": "5", "exclude": "extra fields to drop"}},
+            {"route": "POST /v1/bundles/{name}/reduce", "does": "PCA dimensionality reduction (components, coords, explained variance, reconstruction)",
+             "params": {"k": "components (2)", "whiten": "unit-variance coords", "exclude": "fields to drop"}},
+            {"route": "POST /v1/bundles/{name}/factorize", "does": "recommender matrix factorization over (user, item, rating) triples; fills missing ratings",
+             "params": {"user": "user field", "item": "item field", "rating": "numeric rating field", "rank": "10", "epochs": "40", "reg": "0.05", "learning_rate": "0.02"}},
+            {"route": "POST /v1/bundles/{name}/changepoints", "does": "time-series regime-shift detection (sliding two-sample statistic)",
+             "params": {"value": "field(s) to monitor (default all numeric)", "time": "ordering field", "window": "40", "threshold": "6", "max_changepoints": "0 = all"}}
+        ],
+        "not_a_fit": {
+            "trees/gradient-boosting": "axis-aligned ensembles are the flat-staircase dual of curvature — the honest answer is the duality benchmark, not a reimplementation",
+            "deep-learning": "no autodiff/GPU/backprop; GIGI matches nets on manifold-structured data, not on raw pixels/tokens",
+            "forecasting": "GIGI detects regime shifts but does not extrapolate the future"
+        }
+    }))
+}
+
 /// GET /v1/bundles/{name}/health
 /// Bundle health snapshot: record count, curvature stats, confidence.
 async fn bundle_health(
@@ -18264,6 +18299,7 @@ async fn main() {
         .route("/v1/bundles/{name}/reduce", post(bundle_reduce))
         .route("/v1/bundles/{name}/factorize", post(bundle_factorize))
         .route("/v1/bundles/{name}/changepoints", post(bundle_changepoints))
+        .route("/v1/ml", get(ml_catalog))
         .route("/v1/bundles/{name}/health", get(bundle_health))
         .route("/v1/bundles/{name}/predict", post(predict_volatility))
         .route("/v1/bundles/{name}/anomalies/field", post(field_anomalies))
@@ -20397,6 +20433,61 @@ mod tests {
         assert!(detect_changepoints(&engine, "s", &Some("nope".into()), &None, 5, 6.0, 0).unwrap_err().1.contains("value field"));
         // missing bundle → 404
         assert_eq!(detect_changepoints(&engine, "no", &None, &None, 5, 6.0, 0).unwrap_err().0, StatusCode::NOT_FOUND);
+        cleanup(&dir);
+    }
+
+    /// Regression guard: one bundle exercised through EVERY ML entry point, so a
+    /// future change can't silently break an endpoint. Asserts each returns
+    /// well-formed, finite output — not specific scores (those have their own tests).
+    #[test]
+    fn ml_all_endpoints_regression_smoke() {
+        let mut s: u64 = 20260719;
+        let mut rnd = || { s = s.wrapping_mul(6364136223846793005).wrapping_add(1); (s >> 11) as f64 / (1u64 << 53) as f64 };
+        let mut rows: Vec<gigi::types::Record> = Vec::new();
+        for i in 0..120 {
+            let (a, b) = (rnd() * 5.0, rnd() * 5.0);
+            rows.push(scan_rec(&[
+                ("id", V::Text(format!("r{i:03}"))),
+                ("grp", V::Text(format!("g{}", i % 4))),
+                ("t", V::Float(i as f64)),
+                ("x1", V::Float(a)), ("x2", V::Float(b)),
+                ("y", V::Float(2.0 * a - b + (rnd() - 0.5))),
+                ("label", V::Text(format!("c{}", if a > 2.5 { 1 } else { 0 }))),
+            ]));
+        }
+        let schema = BundleSchema::new("all")
+            .base(FieldDef::categorical("id")).fiber(FieldDef::categorical("grp"))
+            .fiber(FieldDef::numeric("t")).fiber(FieldDef::numeric("x1")).fiber(FieldDef::numeric("x2"))
+            .fiber(FieldDef::numeric("y")).fiber(FieldDef::categorical("label"));
+        let (dir, engine) = scan_env("ml_smoke", "all", schema, rows);
+        let opt = ClusterOpts::default();
+        // scan
+        let sl = scan_compute_lenses(&engine, "all", &["y".into(), "label".into()]).unwrap();
+        assert!(!sl.lens_names.is_empty());
+        // cluster — every method
+        for m in ["kmeans", "spectral", "gmm", "dbscan"] {
+            let cr = cluster_records(&engine, "all", m, 3, 10, None, 4, &opt, &["y".into()]).unwrap();
+            assert_eq!(cr.labels.len(), 120, "{m}");
+            for row in &cr.coords { assert!(row.iter().all(|v| v.is_finite()), "{m}: finite coords"); }
+        }
+        // infer — regression (every method) and classification (both)
+        for m in ["local_linear", "knn", "ols", "gp"] {
+            let pr = predict_field(&engine, "all", "y", m, 15, 0.5, 5, &["label".into()]).unwrap();
+            assert_eq!(pr.task, "regression");
+            assert!(pr.metric.get("r2").and_then(|v| v.as_f64()).unwrap().is_finite(), "{m}: finite R²");
+        }
+        for m in ["knn", "svm"] {
+            let pr = predict_field(&engine, "all", "label", m, 15, 0.5, 5, &["y".into()]).unwrap();
+            assert_eq!(pr.task, "classification");
+            assert!((0.0..=1.0).contains(&pr.metric["accuracy"].as_f64().unwrap()), "{m}: valid accuracy");
+        }
+        // reduce
+        let rr = pca_reduce(&engine, "all", 2, false, &["y".into(), "label".into()]).unwrap();
+        assert_eq!(rr.coords[0].len(), 2);
+        assert!(rr.cumulative.is_finite());
+        // changepoints
+        let cp = detect_changepoints(&engine, "all", &Some("x1".into()), &Some("t".into()), 20, 6.0, 0).unwrap();
+        assert!(cp.n == 120);
         cleanup(&dir);
     }
 

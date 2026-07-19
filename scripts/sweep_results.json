@@ -1,0 +1,227 @@
+[
+ {
+  "dataset": "iris",
+  "task": "cluster",
+  "method": "kmeans",
+  "metric": "ARI",
+  "gigi": 0.62,
+  "ref": 0.62,
+  "ref_name": "sklearn KMeans"
+ },
+ {
+  "dataset": "iris",
+  "task": "cluster",
+  "method": "gmm",
+  "metric": "ARI",
+  "gigi": 0.904,
+  "ref": 0.904,
+  "ref_name": "sklearn GMM"
+ },
+ {
+  "dataset": "iris",
+  "task": "cluster",
+  "method": "spectral",
+  "metric": "ARI",
+  "gigi": 0.62,
+  "ref": 0.602,
+  "ref_name": "sklearn Spectral"
+ },
+ {
+  "dataset": "wine",
+  "task": "cluster",
+  "method": "kmeans",
+  "metric": "ARI",
+  "gigi": 0.897,
+  "ref": 0.915,
+  "ref_name": "sklearn KMeans"
+ },
+ {
+  "dataset": "wine",
+  "task": "cluster",
+  "method": "gmm",
+  "metric": "ARI",
+  "gigi": 0.946,
+  "ref": 0.88,
+  "ref_name": "sklearn GMM"
+ },
+ {
+  "dataset": "wine",
+  "task": "cluster",
+  "method": "spectral",
+  "metric": "ARI",
+  "gigi": 0.833,
+  "ref": 0.88,
+  "ref_name": "sklearn Spectral"
+ },
+ {
+  "dataset": "digits",
+  "task": "cluster",
+  "method": "kmeans",
+  "metric": "ARI",
+  "gigi": 0.4,
+  "ref": 0.465,
+  "ref_name": "sklearn KMeans"
+ },
+ {
+  "dataset": "digits",
+  "task": "cluster",
+  "method": "gmm",
+  "metric": "ARI",
+  "gigi": 0.39,
+  "ref": 0.594,
+  "ref_name": "sklearn GMM"
+ },
+ {
+  "dataset": "digits",
+  "task": "cluster",
+  "method": "spectral",
+  "metric": "ARI",
+  "gigi": 0.679,
+  "ref": 0.665,
+  "ref_name": "sklearn Spectral"
+ },
+ {
+  "dataset": "iris",
+  "task": "classify",
+  "method": "knn",
+  "metric": "accuracy",
+  "gigi": 0.96,
+  "ref": 0.953,
+  "ref_name": "sklearn KNN"
+ },
+ {
+  "dataset": "iris",
+  "task": "classify",
+  "method": "svm",
+  "metric": "accuracy",
+  "gigi": 0.913,
+  "ref": 0.967,
+  "ref_name": "sklearn SVC(rbf)"
+ },
+ {
+  "dataset": "wine",
+  "task": "classify",
+  "method": "knn",
+  "metric": "accuracy",
+  "gigi": 0.978,
+  "ref": 0.967,
+  "ref_name": "sklearn KNN"
+ },
+ {
+  "dataset": "wine",
+  "task": "classify",
+  "method": "svm",
+  "metric": "accuracy",
+  "gigi": 0.983,
+  "ref": 0.983,
+  "ref_name": "sklearn SVC(rbf)"
+ },
+ {
+  "dataset": "bcancer",
+  "task": "classify",
+  "method": "knn",
+  "metric": "accuracy",
+  "gigi": 0.968,
+  "ref": 0.968,
+  "ref_name": "sklearn KNN"
+ },
+ {
+  "dataset": "bcancer",
+  "task": "classify",
+  "method": "svm",
+  "metric": "accuracy",
+  "gigi": 0.979,
+  "ref": 0.974,
+  "ref_name": "sklearn SVC(rbf)"
+ },
+ {
+  "dataset": "digits",
+  "task": "classify",
+  "method": "knn",
+  "metric": "accuracy",
+  "gigi": 0.975,
+  "ref": 0.944,
+  "ref_name": "sklearn KNN"
+ },
+ {
+  "dataset": "digits",
+  "task": "classify",
+  "method": "svm",
+  "metric": "accuracy",
+  "gigi": 0.957,
+  "ref": 0.949,
+  "ref_name": "sklearn SVC(rbf)"
+ },
+ {
+  "dataset": "diabetes",
+  "task": "regress",
+  "method": "local_linear",
+  "metric": "R\u00b2",
+  "gigi": 0.366,
+  "ref": 0.449,
+  "ref_name": "sklearn KNN-reg"
+ },
+ {
+  "dataset": "diabetes",
+  "task": "regress",
+  "method": "ols",
+  "metric": "R\u00b2",
+  "gigi": 0.484,
+  "ref": 0.482,
+  "ref_name": "sklearn LinReg"
+ },
+ {
+  "dataset": "diabetes",
+  "task": "regress",
+  "method": "gp (90% coverage)",
+  "metric": "coverage",
+  "gigi": 0.919,
+  "ref": 0.902,
+  "ref_name": "sklearn GP"
+ },
+ {
+  "dataset": "wine",
+  "task": "pca",
+  "method": "top-2",
+  "metric": "expl.var",
+  "gigi": 0.554,
+  "ref": 0.554,
+  "ref_name": "sklearn PCA"
+ },
+ {
+  "dataset": "bcancer",
+  "task": "pca",
+  "method": "top-2",
+  "metric": "expl.var",
+  "gigi": 0.632,
+  "ref": 0.632,
+  "ref_name": "sklearn PCA"
+ },
+ {
+  "dataset": "digits",
+  "task": "pca",
+  "method": "top-2",
+  "metric": "expl.var",
+  "gigi": 0.216,
+  "ref": 0.216,
+  "ref_name": "sklearn PCA"
+ },
+ {
+  "dataset": "bcancer-rare",
+  "task": "anomaly",
+  "method": "/scan",
+  "metric": "PR-AUC",
+  "gigi": 0.559,
+  "ref": 0.552,
+  "ref_name": "sklearn IsolationForest"
+ },
+ {
+  "dataset": "MovieLens 100k",
+  "task": "recommend",
+  "method": "matrix factorization",
+  "metric": "RMSE (lower=better)",
+  "gigi": 0.915,
+  "ref": 0.941,
+  "ref_name": "numpy Funk-SVD"
+ }
+]

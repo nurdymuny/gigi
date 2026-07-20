@@ -4568,7 +4568,7 @@ async fn flat_transport_endpoint(
 fn extract_field_samples(
     store: &gigi::BundleStore,
     fields: &[String],
-) -> Result<Vec<Vec<f64>>, String> {
+) -> Result<(Vec<Vec<f64>>, Vec<usize>), String> {
     if fields.is_empty() {
         return Err("at least one fiber field required".into());
     }
@@ -4614,28 +4614,56 @@ fn extract_field_samples(
             })?;
         field_idx.push(i);
     }
+    // Skip-and-log (engine hardening, Hallie's ask #7): a single record with a
+    // non-numeric or missing fiber value must NOT fail the whole brain endpoint
+    // (intent_gate / confidence / attend / explain). One poisoned row today took
+    // down live Marcella's confidence gate — fail-open on every query. Drop the
+    // offending record, count it, and continue on the valid rows, reporting once.
+    // `kept` carries each surviving row's original section index so callers that
+    // map results back to records (attend) stay correct; with no corruption it is
+    // simply `0..n`, identical to the old behaviour.
     let mut samples = Vec::new();
-    for (_bp, record) in store.sections() {
+    let mut kept: Vec<usize> = Vec::new();
+    let mut skipped = 0usize;
+    let mut skip_field: Option<String> = None;
+    for (orig_idx, (_bp, record)) in store.sections().enumerate() {
         let mut row = Vec::with_capacity(fields.len());
+        let mut bad = false;
         for &i in &field_idx {
-            let val = record.get(i).ok_or_else(|| {
-                format!("record missing fiber position {}", i)
-            })?;
-            let v = match val {
-                gigi::types::Value::Float(x) => *x,
-                gigi::types::Value::Integer(j) => *j as f64,
+            let v = match record.get(i) {
+                Some(gigi::types::Value::Float(x)) => *x,
+                Some(gigi::types::Value::Integer(j)) => *j as f64,
                 _ => {
-                    return Err(format!(
-                        "field '{}' has non-numeric value in a record",
-                        fields[field_idx.iter().position(|&x| x == i).unwrap_or(0)]
-                    ));
+                    if skip_field.is_none() {
+                        skip_field = Some(
+                            fields[field_idx.iter().position(|&x| x == i).unwrap_or(0)]
+                                .clone(),
+                        );
+                    }
+                    bad = true;
+                    break;
                 }
             };
             row.push(v);
         }
+        if bad {
+            skipped += 1;
+            continue;
+        }
         samples.push(row);
+        kept.push(orig_idx);
     }
-    Ok(samples)
+    if skipped > 0 {
+        eprintln!(
+            "[extract_field_samples] skip-and-log: dropped {} malformed record(s) \
+             (non-numeric/missing value, first offending field '{}'); continuing on {} \
+             valid record(s). Repair the bundle — one bad row no longer fails the brain.",
+            skipped,
+            skip_field.as_deref().unwrap_or("?"),
+            samples.len()
+        );
+    }
+    Ok((samples, kept))
 }
 
 /// Materialize a `(N, D)` matrix from a bundle, served from cache when
@@ -4690,7 +4718,7 @@ fn materialize_matrix_cached(
     // (base-vs-fiber error messages, non-numeric handling, etc), then
     // flatten into a contiguous Vec<f64> for the matrix.
     let samples = match extract_field_samples(heap, fields) {
-        Ok(s) => s,
+        Ok((s, _kept)) => s,
         Err(e) => {
             state.vector_cache.release_compute_lock(&key);
             return Err(bad_request(&e));
@@ -5901,7 +5929,7 @@ async fn brain_distance_to_fit_mean_endpoint(
     let fit_mean = ctx.mu.clone();
 
     // Build distance distribution across all records.
-    let samples = extract_field_samples(heap, &req.fields)
+    let (samples, _kept) = extract_field_samples(heap, &req.fields)
         .map_err(|e| bad_request(&e))?;
     let mut distances: Vec<f64> = samples
         .iter()
@@ -7397,7 +7425,7 @@ async fn brain_attend_endpoint(
             req.fields.len()
         )));
     }
-    let samples = extract_field_samples(heap, &req.fields)
+    let (samples, kept) = extract_field_samples(heap, &req.fields)
         .map_err(|e| bad_request(&e))?;
     let bandwidth = match req.bandwidth {
         Some(b) if b > 0.0 => b,
@@ -7411,12 +7439,13 @@ async fn brain_attend_endpoint(
         Some(k) if k < samples.len() => {
             let top = gigi::geometry::focus(&samples, &req.query, bandwidth, k);
             let weights: Vec<f64> = top.iter().map(|(_, w)| *w).collect();
-            let indices: Vec<usize> = top.iter().map(|(i, _)| *i).collect();
+            // map sample-row index -> original record index (skip-and-log safe)
+            let indices: Vec<usize> = top.iter().map(|(i, _)| kept[*i]).collect();
             (weights, indices)
         }
         _ => {
             let weights = gigi::geometry::attend(&samples, &req.query, bandwidth);
-            let indices: Vec<usize> = (0..samples.len()).collect();
+            let indices: Vec<usize> = kept.clone();
             (weights, indices)
         }
     };
@@ -7738,7 +7767,7 @@ async fn brain_explain_endpoint(
             req.fields.len()
         )));
     }
-    let samples = extract_field_samples(heap, &req.fields)
+    let (samples, _kept) = extract_field_samples(heap, &req.fields)
         .map_err(|e| bad_request(&e))?;
     let exp = gigi::geometry::explain(&samples, &req.query, req.n_steps);
     let lambda_budget = lambda_budget_for_bundle_ref(&store);
@@ -20793,6 +20822,56 @@ mod tests {
         sl.lens_names.iter().position(|l| l == n).map(|i| &sl.norm[i])
     }
     use gigi::types::Value as V;
+
+    /// **Skip-and-log (Hallie's ask #7).** One poisoned record — a non-numeric
+    /// value in a numeric fiber field, exactly what landed in
+    /// `marcella_source_embeddings_bge_v2` and took down `intent_gate` (and with
+    /// it live Marcella's confidence gate) — must NOT fail the whole brain
+    /// endpoint. `extract_field_samples` drops the bad row, keeps the rest, and
+    /// returns each survivor's original section index so `attend` still maps
+    /// results back to the right records.
+    #[test]
+    fn extract_field_samples_skips_poisoned_record() {
+        use gigi::types::{BundleSchema, FieldDef, Record, Value};
+        let schema = BundleSchema::new("poisoned_bge")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("v0").with_range(5.0))
+            .fiber(FieldDef::numeric("v1").with_range(5.0));
+        let mut store = gigi::BundleStore::new(schema);
+        for i in 0..5 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("v0".into(), Value::Float(i as f64));
+            r.insert("v1".into(), Value::Float(i as f64 + 0.5));
+            // one record gets a non-numeric v0 — the exact corruption shape.
+            if i == 2 {
+                r.insert("v0".into(), Value::Text("corrupt".into()));
+            }
+            store.insert(&r);
+        }
+        let fields = vec!["v0".to_string(), "v1".to_string()];
+        let (samples, kept) = extract_field_samples(&store, &fields)
+            .expect("one bad row must not fail the endpoint");
+
+        // exactly the four clean records survive; the poisoned v0 (=2.0) is gone.
+        assert_eq!(samples.len(), 4, "four clean records survive");
+        assert_eq!(kept.len(), samples.len(), "one kept index per surviving row");
+        let mut v0s: Vec<f64> = samples.iter().map(|r| r[0]).collect();
+        assert!(!v0s.contains(&2.0), "poisoned record's row is absent");
+        v0s.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        assert_eq!(v0s, vec![0.0, 1.0, 3.0, 4.0]);
+
+        // `kept` maps each surviving row back to its true record (attend-correct).
+        let secs: Vec<_> = store.sections().collect();
+        for (j, &orig) in kept.iter().enumerate() {
+            match secs[orig].1.get(0) {
+                Some(Value::Float(x)) => {
+                    assert_eq!(*x, samples[j][0], "kept[{j}] maps row to its record")
+                }
+                other => panic!("kept index {orig} points at non-numeric {other:?}"),
+            }
+        }
+    }
 
     /// A mixed bundle builds the expected lens battery; every record scored on every lens.
     #[test]

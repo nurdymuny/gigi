@@ -12568,6 +12568,346 @@ async fn ml_catalog() -> Json<serde_json::Value> {
     }))
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Post-Kähler Phase 1 (PK-1..4) — Sasaki/contact, Fisher information,
+// Wasserstein OT, persistent homology. Gated on `post_kahler_phase1`.
+// The math lives in gigi::geometry::{contact,fisher,wasserstein} and
+// gigi::discrete::persistent_homology, each tied exactly to
+// theory/post_kahler_directions/validation_tests.py. These handlers are
+// the thin bundle-binding + JSON layer.
+// ═══════════════════════════════════════════════════════════════════
+
+/// PK-2 — GET /v1/bundles/{name}/fisher_metric[?fields=f1,f2,…]
+///
+/// The Fisher information metric of each numeric fiber, read for free
+/// from the bundle's L4 Welford variance: for a field modeled as
+/// `N(μ,σ²)` the metric in the `(μ,σ)` chart is `g = diag(1/σ², 2/σ²)`,
+/// `g_μσ = 0`. Fields with zero/undefined variance are omitted.
+#[cfg(feature = "post_kahler_phase1")]
+async fn bundle_fisher_metric(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine_read();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
+    let stats = heap.field_stats();
+
+    let fields: Vec<String> = match params.get("fields") {
+        Some(s) => s
+            .split(',')
+            .map(|x| x.trim().to_string())
+            .filter(|x| !x.is_empty())
+            .collect(),
+        None => heap.schema.fiber_fields.iter().map(|fd| fd.name.clone()).collect(),
+    };
+    if fields.is_empty() {
+        return Err(bad_request("no numeric fiber fields to read a Fisher metric from"));
+    }
+
+    let mut metrics = Vec::new();
+    let mut skipped: Vec<String> = Vec::new();
+    for f in &fields {
+        let s = match stats.get(f) {
+            Some(s) if s.count > 0 => s,
+            _ => {
+                skipped.push(f.clone());
+                continue;
+            }
+        };
+        let var = s.variance();
+        match gigi::geometry::FisherGaussian::from_variance(var) {
+            Ok(g) => metrics.push(serde_json::json!({
+                "field": f,
+                "mean": s.mean,
+                "variance": var,
+                "g_mu_mu": g.g_mu_mu,
+                "g_sigma_sigma": g.g_sigma_sigma,
+                "g_mu_sigma": g.g_mu_sigma,
+                "det": g.determinant(),
+            })),
+            Err(_) => skipped.push(f.clone()),
+        }
+    }
+    if metrics.is_empty() {
+        return Err(bad_request(
+            "no requested field had positive Welford variance (Fisher metric undefined)",
+        ));
+    }
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "chart": "(mu, sigma)",
+        "closed_form": "g = diag(1/sigma^2, 2/sigma^2), g_mu_sigma = 0",
+        "metrics": metrics,
+        "skipped": skipped,
+        "notes": [
+            "Fisher metric of the univariate Gaussian family, read from L4 Welford variance — no extra pass.",
+            "Fields with zero observations or zero variance are omitted (the metric diverges as sigma -> 0)."
+        ],
+    })))
+}
+
+/// PK-3 request. Either supply two raw distributions (`sample_a`,
+/// `sample_b`) or split one bundle by a cohort fiber.
+#[cfg(feature = "post_kahler_phase1")]
+#[derive(Deserialize)]
+struct WassersteinRequest {
+    /// Fiber whose distribution is compared (cohort mode).
+    #[serde(default)]
+    field: Option<String>,
+    /// Fiber whose value defines the two cohorts.
+    #[serde(default)]
+    cohort_field: Option<String>,
+    /// Cohort A / B selector values on `cohort_field`.
+    #[serde(default)]
+    a: Option<f64>,
+    #[serde(default)]
+    b: Option<f64>,
+    /// Direct mode: W₂ between these two raw samples (bypasses the bundle).
+    #[serde(default)]
+    sample_a: Option<Vec<f64>>,
+    #[serde(default)]
+    sample_b: Option<Vec<f64>>,
+}
+
+/// PK-3 — POST /v1/bundles/{name}/ml/wasserstein
+///
+/// Exact 1D 2-Wasserstein distance `W₂` between two empirical
+/// distributions via the monotone rearrangement (Hoeffding). Closed
+/// form for Gaussians: `W₂² = μ_d² + σ_d²`.
+#[cfg(feature = "post_kahler_phase1")]
+async fn bundle_wasserstein(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<WassersteinRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    // Direct mode: two raw samples supplied.
+    let (a_vals, b_vals, mode): (Vec<f64>, Vec<f64>, serde_json::Value) =
+        if let (Some(a), Some(b)) = (req.sample_a.clone(), req.sample_b.clone()) {
+            (a, b, serde_json::json!({"mode": "direct"}))
+        } else {
+            // Cohort mode: split the bundle by cohort_field into a / b.
+            let field = req
+                .field
+                .clone()
+                .ok_or_else(|| bad_request("cohort mode needs `field` (the fiber to compare)"))?;
+            let cohort_field = req.cohort_field.clone().ok_or_else(|| {
+                bad_request("cohort mode needs `cohort_field`, `a`, `b` (or supply sample_a/sample_b)")
+            })?;
+            let (av, bv) = (
+                req.a
+                    .ok_or_else(|| bad_request("cohort mode needs cohort selector `a`"))?,
+                req.b
+                    .ok_or_else(|| bad_request("cohort mode needs cohort selector `b`"))?,
+            );
+            let engine = state.engine_read();
+            let store = engine
+                .bundle(&name)
+                .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+            let mut _promoted: Option<gigi::BundleStore> = None;
+            let heap = heap_or_promote(&store, &mut _promoted);
+            let (rows, _) = extract_field_samples(heap, &[field.clone(), cohort_field.clone()])
+                .map_err(|e| bad_request(&e))?;
+            let mut ga = Vec::new();
+            let mut gb = Vec::new();
+            for r in &rows {
+                if r.len() != 2 {
+                    continue;
+                }
+                if (r[1] - av).abs() < 1e-9 {
+                    ga.push(r[0]);
+                } else if (r[1] - bv).abs() < 1e-9 {
+                    gb.push(r[0]);
+                }
+            }
+            (
+                ga,
+                gb,
+                serde_json::json!({"mode": "cohort", "field": field, "cohort_field": cohort_field, "a": av, "b": bv}),
+            )
+        };
+
+    if a_vals.is_empty() || b_vals.is_empty() {
+        return Err(bad_request(
+            "both cohorts must be non-empty (check the field/cohort selectors or the supplied samples)",
+        ));
+    }
+    let w2_sq = gigi::geometry::Wasserstein1D::compute_sq(&a_vals, &b_vals)
+        .map_err(|e| bad_request(&e.to_string()))?;
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "w2_distance": w2_sq.sqrt(),
+        "w2_squared": w2_sq,
+        "n_a": a_vals.len(),
+        "n_b": b_vals.len(),
+        "selection": mode,
+        "notes": [
+            "Exact 1D W2 via monotone rearrangement (Hoeffding). For Gaussians W2^2 = (mu_a-mu_b)^2 + (sigma_a-sigma_b)^2.",
+            "Unequal sample sizes are handled by an exact quantile-function integral, not a fixed grid."
+        ],
+    })))
+}
+
+/// PK-4 — GET /v1/bundles/{name}/topology/persistence[?fields=x,y&gap_factor=2]
+///
+/// H₀ persistent homology of the point cloud (records × chosen fibers)
+/// via the Euclidean MST + elder rule: the `n−1` MST edge weights are
+/// the finite death times, one bar survives forever. The persistence
+/// gap (a `gap_factor×` drop off a genuine inter-cluster bridge) yields
+/// the cluster count.
+#[cfg(feature = "post_kahler_phase1")]
+async fn bundle_persistence(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine_read();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
+    let fields: Vec<String> = match params.get("fields") {
+        Some(s) => s
+            .split(',')
+            .map(|x| x.trim().to_string())
+            .filter(|x| !x.is_empty())
+            .collect(),
+        None => heap.schema.fiber_fields.iter().map(|fd| fd.name.clone()).collect(),
+    };
+    if fields.is_empty() {
+        return Err(bad_request("persistence needs at least one numeric fiber field"));
+    }
+    let gap_factor: f64 = params
+        .get("gap_factor")
+        .and_then(|s| s.parse().ok())
+        .filter(|g: &f64| *g > 1.0)
+        .unwrap_or(2.0);
+
+    let (points, _) = extract_field_samples(heap, &fields).map_err(|e| bad_request(&e))?;
+    // Bound the O(n²) MST for a live endpoint.
+    const MAX_POINTS: usize = 4000;
+    if points.len() > MAX_POINTS {
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(ErrorResponse {
+                error: format!(
+                    "persistence caps at {MAX_POINTS} points (got {}); filter the bundle first",
+                    points.len()
+                ),
+            }),
+        ));
+    }
+    let intervals = gigi::discrete::h0_persistence(&points).map_err(|e| bad_request(&e.to_string()))?;
+    let edges = gigi::discrete::mst_merge_edges(&points).map_err(|e| bad_request(&e.to_string()))?;
+    let k = gigi::discrete::cluster_count(&points, gap_factor).unwrap_or(1);
+    let bars: Vec<serde_json::Value> = intervals
+        .iter()
+        .map(|iv| {
+            serde_json::json!({
+                "birth": iv.birth,
+                "death": if iv.death.is_infinite() { serde_json::Value::Null } else { serde_json::json!(iv.death) },
+            })
+        })
+        .collect();
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "fields": fields,
+        "n_points": points.len(),
+        "dims": fields.len(),
+        "estimated_clusters": k,
+        "gap_factor": gap_factor,
+        "mst_merge_edges": edges,
+        "h0_intervals": bars,
+        "notes": [
+            "H0 persistence via Euclidean MST + elder rule; n-1 finite bars (MST edges) + 1 infinite bar (null death).",
+            "estimated_clusters = 1 + (bridges above the first gap_factor-drop off an above-mean-length edge)."
+        ],
+    })))
+}
+
+/// PK-1 request — three numeric fibers read as the contact-ℝ³ (x,y,z).
+#[cfg(feature = "post_kahler_phase1")]
+#[derive(Deserialize)]
+struct ReebFlowRequest {
+    /// Exactly three numeric fiber fields, mapped to (x, y, z).
+    fields: Vec<String>,
+}
+
+/// PK-1 — POST /v1/bundles/{name}/brain/reeb_flow
+///
+/// Surfaces the standard contact structure `α = dz − y·dx` on three
+/// chosen numeric fibers and its Reeb field `R = ∂_z`, verifying the two
+/// defining conditions (`α(R)=1`, `ι_R dα=0`) and non-degeneracy
+/// (`α ∧ dα ≠ 0`) on the bundle's own points. `α(R) ≡ 1` along the flow
+/// is the invariant the Reeb field preserves. (Honest-minimal binding:
+/// the validated contact primitive on the selected coordinates — not a
+/// learned sequence-flow integrator.)
+#[cfg(feature = "post_kahler_phase1")]
+async fn bundle_reeb_flow(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<ReebFlowRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    if req.fields.len() != 3 {
+        return Err(bad_request(
+            "reeb_flow needs exactly 3 numeric fiber fields, read as contact coordinates (x, y, z)",
+        ));
+    }
+    let engine = state.engine_read();
+    let store = engine
+        .bundle(&name)
+        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
+    let mut _promoted: Option<gigi::BundleStore> = None;
+    let heap = heap_or_promote(&store, &mut _promoted);
+    let (rows, _) = extract_field_samples(heap, &req.fields).map_err(|e| bad_request(&e))?;
+    let points: Vec<[f64; 3]> = rows
+        .iter()
+        .filter(|p| p.len() == 3)
+        .map(|p| [p[0], p[1], p[2]])
+        .collect();
+    if points.is_empty() {
+        return Err(bad_request("no records with all three coordinate fibers present"));
+    }
+    let reeb = gigi::geometry::ContactOneForm::reeb();
+    let alpha_defect = reeb.alpha_defect(&points); // max |α(R) − 1| over the data
+    let probes = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [3.0, -2.0, 5.0]];
+    let dalpha_defect = reeb.dalpha_defect(&probes); // max |ι_R dα|
+    // contact volume at the data mean
+    let n = points.len() as f64;
+    let mean = [
+        points.iter().map(|p| p[0]).sum::<f64>() / n,
+        points.iter().map(|p| p[1]).sum::<f64>() / n,
+        points.iter().map(|p| p[2]).sum::<f64>() / n,
+    ];
+    let vol = gigi::geometry::ContactOneForm::contact_volume(
+        mean,
+        reeb.vector,
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+    );
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "fields": req.fields,
+        "coordinates": "alpha = dz - y dx on (x, y, z) = the three fields, in order",
+        "reeb_field": reeb.vector,
+        "n_points": points.len(),
+        "alpha_of_reeb_defect": alpha_defect,   // ~0: α(R) ≡ 1 (Reeb condition I)
+        "iota_r_dalpha_defect": dalpha_defect,  // ~0: ι_R dα ≡ 0 (Reeb condition II)
+        "contact_volume_at_mean": vol,          // != 0: α ∧ dα is a volume form
+        "is_contact": vol.abs() > 1e-12,
+        "flow_invariant": "alpha(R) = 1 is preserved along the Reeb flow (translation in +z)",
+        "notes": [
+            "Standard contact R^3 primitive surfaced on the three chosen fibers; verifications hold structurally and on the data.",
+            "Honest-minimal binding: not a learned token-sequence flow integrator."
+        ],
+    })))
+}
+
 /// GET /v1/bundles/{name}/health
 /// Bundle health snapshot: record count, curvature stats, confidence.
 async fn bundle_health(
@@ -19347,6 +19687,18 @@ async fn main() {
         .route("/v1/bundles/{name}/circulation", post(bundle_circulation))
         .route("/v1/bundles/{name}/solve", post(bundle_solve))
         .route("/v1/ml", get(ml_catalog))
+        ;
+
+    // Post-Kähler Phase 1 (PK-1..4) — feature-gated; only registered
+    // when `post_kahler_phase1` is on. The no-feature build is unchanged.
+    #[cfg(feature = "post_kahler_phase1")]
+    let app = app
+        .route("/v1/bundles/{name}/fisher_metric", get(bundle_fisher_metric))
+        .route("/v1/bundles/{name}/topology/persistence", get(bundle_persistence))
+        .route("/v1/bundles/{name}/ml/wasserstein", post(bundle_wasserstein))
+        .route("/v1/bundles/{name}/brain/reeb_flow", post(bundle_reeb_flow));
+
+    let app = app
         .route("/v1/bundles/{name}/health", get(bundle_health))
         .route("/v1/bundles/{name}/predict", post(predict_volatility))
         .route("/v1/bundles/{name}/anomalies/field", post(field_anomalies))
@@ -21974,6 +22326,174 @@ mod tests {
         .await
         .into_response()
         .status()
+    }
+
+    // ── Post-Kähler Phase 1 endpoint integration (PK-1..4) ──────────
+    // Exercise the four handlers end-to-end against a live StreamState:
+    // bundle binding, field extraction, and the JSON contract. The math
+    // itself is pinned in the geometry/discrete module unit tests.
+
+    #[cfg(feature = "post_kahler_phase1")]
+    #[tokio::test(flavor = "current_thread")]
+    async fn pk_endpoints_end_to_end() {
+        use std::collections::HashMap;
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("pk_endpoints");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "pk-endpoints-test");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        state.ready.store(true, Ordering::Release);
+
+        // A bundle with three numeric fibers (x,y,z) + a cohort field g.
+        assert_eq!(
+            post_gql_for_test(
+                Arc::clone(&state),
+                "CREATE BUNDLE pk (id INT BASE, x FLOAT FIBER, y FLOAT FIBER, z FLOAT FIBER, g FLOAT FIBER);",
+            )
+            .await,
+            StatusCode::OK
+        );
+        // Two tight clusters in (x,y): cohort g=0 near (0,0), g=1 near (10,0).
+        let mut vals: Vec<(f64, f64, f64, f64)> = Vec::new();
+        for i in 0..8 {
+            let s = i as f64 * 0.05;
+            vals.push((0.0 + s, 0.0 - s, 1.0 + s, 0.0)); // cohort 0
+        }
+        for i in 0..8 {
+            let s = i as f64 * 0.05;
+            vals.push((10.0 + s, 0.0 + s, 5.0 - s, 1.0)); // cohort 1
+        }
+        for (k, (x, y, z, g)) in vals.iter().enumerate() {
+            assert_eq!(
+                post_gql_for_test(
+                    Arc::clone(&state),
+                    &format!(
+                        "INSERT INTO pk (id, x, y, z, g) VALUES ({k}, {x}, {y}, {z}, {g});"
+                    ),
+                )
+                .await,
+                StatusCode::OK
+            );
+        }
+
+        // PK-2 Fisher — g_mu_mu = 1/var, g_sigma_sigma = 2/var, off-diag 0.
+        let fisher = bundle_fisher_metric(
+            State(Arc::clone(&state)),
+            Path("pk".into()),
+            axum::extract::Query(HashMap::from([("fields".to_string(), "x".to_string())])),
+        )
+        .await
+        .map_err(|(c, _)| c)
+        .expect("fisher ok")
+        .0;
+        let m = &fisher["metrics"][0];
+        let (var, gmm, gss, gms) = (
+            m["variance"].as_f64().unwrap(),
+            m["g_mu_mu"].as_f64().unwrap(),
+            m["g_sigma_sigma"].as_f64().unwrap(),
+            m["g_mu_sigma"].as_f64().unwrap(),
+        );
+        assert!((gmm - 1.0 / var).abs() < 1e-9, "g_mu_mu must be 1/var");
+        assert!((gss - 2.0 / var).abs() < 1e-9, "g_sigma_sigma must be 2/var");
+        assert_eq!(gms, 0.0);
+
+        // PK-3 Wasserstein — direct mode (bundle untouched): shift by 1 → W2 = 1.
+        let w = bundle_wasserstein(
+            State(Arc::clone(&state)),
+            Path("pk".into()),
+            Json(WassersteinRequest {
+                field: None,
+                cohort_field: None,
+                a: None,
+                b: None,
+                sample_a: Some(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
+                sample_b: Some(vec![2.0, 3.0, 4.0, 5.0, 6.0]),
+            }),
+        )
+        .await
+        .map_err(|(c, _)| c)
+        .expect("wasserstein ok")
+        .0;
+        assert!((w["w2_distance"].as_f64().unwrap() - 1.0).abs() < 1e-9);
+
+        // PK-3 Wasserstein — cohort mode splits the bundle by g.
+        let wc = bundle_wasserstein(
+            State(Arc::clone(&state)),
+            Path("pk".into()),
+            Json(WassersteinRequest {
+                field: Some("x".into()),
+                cohort_field: Some("g".into()),
+                a: Some(0.0),
+                b: Some(1.0),
+                sample_a: None,
+                sample_b: None,
+            }),
+        )
+        .await
+        .map_err(|(c, _)| c)
+        .expect("wasserstein cohort ok")
+        .0;
+        assert_eq!(wc["n_a"].as_u64().unwrap(), 8);
+        assert_eq!(wc["n_b"].as_u64().unwrap(), 8);
+        // cohorts are ~10 apart in x → W2 ≈ 10.
+        assert!(wc["w2_distance"].as_f64().unwrap() > 8.0);
+
+        // PK-4 persistence — the (x,y) cloud is two clusters.
+        let persist = bundle_persistence(
+            State(Arc::clone(&state)),
+            Path("pk".into()),
+            axum::extract::Query(HashMap::from([("fields".to_string(), "x,y".to_string())])),
+        )
+        .await
+        .map_err(|(c, _)| c)
+        .expect("persistence ok")
+        .0;
+        assert_eq!(persist["n_points"].as_u64().unwrap(), 16);
+        assert_eq!(persist["estimated_clusters"].as_u64().unwrap(), 2);
+        // n points → n bars, exactly one infinite (null death).
+        let bars = persist["h0_intervals"].as_array().unwrap();
+        assert_eq!(bars.len(), 16);
+        assert_eq!(bars.iter().filter(|b| b["death"].is_null()).count(), 1);
+
+        // PK-1 Reeb — standard contact structure on (x,y,z).
+        let reeb = bundle_reeb_flow(
+            State(Arc::clone(&state)),
+            Path("pk".into()),
+            Json(ReebFlowRequest { fields: vec!["x".into(), "y".into(), "z".into()] }),
+        )
+        .await
+        .map_err(|(c, _)| c)
+        .expect("reeb ok")
+        .0;
+        assert_eq!(reeb["reeb_field"], serde_json::json!([0.0, 0.0, 1.0]));
+        assert!(reeb["alpha_of_reeb_defect"].as_f64().unwrap() < 1e-12);
+        assert!(reeb["iota_r_dalpha_defect"].as_f64().unwrap() < 1e-12);
+        assert_eq!(reeb["is_contact"], serde_json::json!(true));
+
+        cleanup(&dir);
+    }
+
+    #[cfg(feature = "post_kahler_phase1")]
+    #[tokio::test(flavor = "current_thread")]
+    async fn pk_reeb_rejects_wrong_arity() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("pk_reeb_arity");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "pk-reeb-arity-test");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        state.ready.store(true, Ordering::Release);
+        let err = bundle_reeb_flow(
+            State(Arc::clone(&state)),
+            Path("nope".into()),
+            Json(ReebFlowRequest { fields: vec!["x".into(), "y".into()] }),
+        )
+        .await
+        .err()
+        .expect("2 fields must be rejected");
+        assert_eq!(err.0, StatusCode::BAD_REQUEST);
+        cleanup(&dir);
     }
 
     // ── BundleFlowCache contract tests (S1 wave 1 §A) ──────────

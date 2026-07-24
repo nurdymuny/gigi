@@ -26,6 +26,7 @@ autobenches = false
 [features]
 default = []
 kahler = []
+post_kahler_phase1 = ["kahler"]
 
 # `sharded` — opt-in atlas-cover sharding model. When ON, the new
 # `gigi::sharded` module is compiled, providing ChartId, ShardId,

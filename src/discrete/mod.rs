@@ -38,7 +38,13 @@ pub mod f2_rank;
 pub mod hodge_complex;
 pub mod hodge_laplacian;
 pub mod morse;
+#[cfg(feature = "post_kahler_phase1")]
+pub mod persistent_homology;
 
 pub use hodge_complex::{HodgeComplex, HodgeComplexError};
 pub use hodge_laplacian::{betti, BettiNumbers};
 pub use morse::{morse_compress, MorseComplex};
+#[cfg(feature = "post_kahler_phase1")]
+pub use persistent_homology::{
+    cluster_count, h0_persistence, mst_merge_edges, PersistenceError, PersistenceInterval,
+};

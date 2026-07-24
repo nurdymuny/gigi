@@ -63,6 +63,13 @@ pub mod sudoku;
 pub mod toeplitz;
 pub mod transport;
 
+#[cfg(feature = "post_kahler_phase1")]
+pub mod contact;
+#[cfg(feature = "post_kahler_phase1")]
+pub mod fisher;
+#[cfg(feature = "post_kahler_phase1")]
+pub mod wasserstein;
+
 pub use complex_structure::{ComplexStructure, ComplexStructureError};
 pub use forms::{ClosedTwoForm, ClosednessError, TwoForm};
 pub use generative_flow::{
@@ -99,6 +106,13 @@ pub use sudoku::{
     FieldOp, GammaTrichotomy, NearMiss, SudokuConfig, SudokuError, SudokuRequest,
     SudokuResponse, SudokuVerdict, TrichotomyRegime, ViolationDetail,
 };
+
+#[cfg(feature = "post_kahler_phase1")]
+pub use contact::{ContactError, ContactOneForm, ReebField};
+#[cfg(feature = "post_kahler_phase1")]
+pub use fisher::{FisherError, FisherGaussian};
+#[cfg(feature = "post_kahler_phase1")]
+pub use wasserstein::{Wasserstein1D, WassersteinError};
 pub use toeplitz::{toeplitz_operator, ToeplitzOperator, ToeplitzError, ToeplitzSafetyGate};
 pub use transport::{
     flat_transport, BSource, TransportError, TransportResult, TransportSegment,

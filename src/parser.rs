@@ -470,6 +470,33 @@ pub enum Statement {
         /// underlying lattice via `crate::topology::betti_topological`.
         order: Option<usize>,
     },
+    // ── Post-Kähler Phase 1 (PK-1..4). Gated on `post_kahler_phase1`. ──
+    /// PK-1 `REEB <bundle> ON (x, y, z)` — the standard contact structure
+    /// α = dz − y·dx and its Reeb field on three chosen fibers.
+    #[cfg(feature = "post_kahler_phase1")]
+    ReebFlow { bundle: String, fields: Vec<String> },
+    /// PK-2 `FISHER <bundle> [ON (f1, …)]` — the Fisher metric of each
+    /// numeric fiber, read from L4 Welford variance.
+    #[cfg(feature = "post_kahler_phase1")]
+    FisherMetric { bundle: String, fields: Vec<String> },
+    /// PK-3 `WASSERSTEIN <bundle> ON <field> BETWEEN <cohort_field> = <a> AND <b>`
+    /// — exact 1D W₂ of `field` between two cohorts split on `cohort_field`.
+    #[cfg(feature = "post_kahler_phase1")]
+    Wasserstein {
+        bundle: String,
+        field: String,
+        cohort_field: String,
+        a: f64,
+        b: f64,
+    },
+    /// PK-4 `PERSISTENCE <bundle> [ON (x, y, …)] [GAP <factor>]` — H₀
+    /// persistence (MST + elder rule) and the cluster count.
+    #[cfg(feature = "post_kahler_phase1")]
+    Persistence {
+        bundle: String,
+        fields: Vec<String>,
+        gap_factor: f64,
+    },
     /// PI_1 lattice_name;
     ///
     /// Returns the rank of the fundamental group π_1 of the named lattice's
@@ -2435,6 +2462,15 @@ impl Parser {
             "HORIZON"    => self.parse_horizon_stmt(),
             "DEPTH"      => self.parse_depth_stmt(),
             "PERCEIVE"   => self.parse_perceive_stmt(),
+            // Post-Kähler Phase 1 (PK-1..4). Ergonomic verb-first forms.
+            #[cfg(feature = "post_kahler_phase1")]
+            "REEB" => self.parse_reeb(),
+            #[cfg(feature = "post_kahler_phase1")]
+            "FISHER" => self.parse_fisher(),
+            #[cfg(feature = "post_kahler_phase1")]
+            "WASSERSTEIN" => self.parse_wasserstein(),
+            #[cfg(feature = "post_kahler_phase1")]
+            "PERSISTENCE" => self.parse_persistence(),
             "GEODESIC" => self.parse_geodesic(),
             "METRIC" => self.parse_metric_tensor(),
             "COMPLETE" => self.parse_complete(),
@@ -4934,6 +4970,88 @@ impl Parser {
     }
 
     // ── GQL: CURVATURE / SPECTRAL / CONSISTENCY ──
+
+    // ── Post-Kähler Phase 1 verbs (PK-1..4) ──────────────────────────
+
+    /// `REEB <bundle> ON (x, y, z)` — PK-1. Exactly three fibers → the
+    /// contact-ℝ³ coordinates.
+    #[cfg(feature = "post_kahler_phase1")]
+    fn parse_reeb(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        self.expect(Token::LParen)?;
+        let fields = self.parse_inner_word_list()?;
+        if fields.len() != 3 {
+            return Err(format!(
+                "REEB needs exactly 3 fibers as contact coordinates: REEB {} ON (x, y, z) — got {}",
+                bundle,
+                fields.len()
+            ));
+        }
+        Ok(Statement::ReebFlow { bundle, fields })
+    }
+
+    /// `FISHER <bundle> [ON (f1, f2, …)]` — PK-2. No `ON` clause → every
+    /// numeric fiber.
+    #[cfg(feature = "post_kahler_phase1")]
+    fn parse_fisher(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let mut fields = Vec::new();
+        if self.is_keyword("ON") {
+            self.advance();
+            self.expect(Token::LParen)?;
+            fields = self.parse_inner_word_list()?;
+        }
+        Ok(Statement::FisherMetric { bundle, fields })
+    }
+
+    /// `WASSERSTEIN <bundle> ON <field> BETWEEN <cohort_field> = <a> AND <b>`
+    /// — PK-3.
+    #[cfg(feature = "post_kahler_phase1")]
+    fn parse_wasserstein(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let field = self.expect_word()?;
+        self.expect_keyword("BETWEEN")?;
+        let cohort_field = self.expect_word()?;
+        self.expect(Token::Eq)?;
+        let a = self.expect_f64()?;
+        self.expect_keyword("AND")?;
+        let b = self.expect_f64()?;
+        Ok(Statement::Wasserstein {
+            bundle,
+            field,
+            cohort_field,
+            a,
+            b,
+        })
+    }
+
+    /// `PERSISTENCE <bundle> [ON (x, y, …)] [GAP <factor>]` — PK-4. No
+    /// `ON` clause → every numeric fiber; default gap factor 2.
+    #[cfg(feature = "post_kahler_phase1")]
+    fn parse_persistence(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        let mut fields = Vec::new();
+        if self.is_keyword("ON") {
+            self.advance();
+            self.expect(Token::LParen)?;
+            fields = self.parse_inner_word_list()?;
+        }
+        let mut gap_factor = 2.0;
+        if self.is_keyword("GAP") {
+            self.advance();
+            gap_factor = self.expect_f64()?;
+            if gap_factor <= 1.0 {
+                return Err("PERSISTENCE GAP factor must be > 1.0".to_string());
+            }
+        }
+        Ok(Statement::Persistence {
+            bundle,
+            fields,
+            gap_factor,
+        })
+    }
 
     fn parse_curvature(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
@@ -10203,6 +10321,22 @@ fn emit_target(path: &str) -> Result<std::path::PathBuf, String> {
 
 pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<ExecResult, String> {
     match stmt {
+        // ── Post-Kähler Phase 1 (PK-1..4) ──
+        // Read-only geometry analytics served through the mmap store-read
+        // executor (`execute_gql_on_store_read`), which the HTTP /v1/gql
+        // read path always uses (they bind a bundle via `get_bundle_name`).
+        // This in-memory engine executor is not on their runtime path;
+        // the arm exists for match exhaustiveness and returns an honest
+        // error rather than success theater if reached out of band.
+        #[cfg(feature = "post_kahler_phase1")]
+        Statement::ReebFlow { .. }
+        | Statement::FisherMetric { .. }
+        | Statement::Wasserstein { .. }
+        | Statement::Persistence { .. } => Err(
+            "post-Kähler verbs (REEB / FISHER / WASSERSTEIN / PERSISTENCE) are \
+             served through the store-read executor; run them via /v1/gql"
+                .to_string(),
+        ),
         // ── Export ──
         Statement::Emit { inner, format: _, path } => {
             let target = emit_target(path)?;
@@ -13896,6 +14030,62 @@ mod tests {
                 assert_eq!(group_by, Some("dept".into()));
             }
             _ => panic!("Expected Select"),
+        }
+    }
+
+    #[cfg(feature = "post_kahler_phase1")]
+    #[test]
+    fn parse_post_kahler_verbs() {
+        // PK-1 REEB — exactly three coordinate fibers.
+        match parse("REEB pts ON (x, y, z)").unwrap() {
+            Statement::ReebFlow { bundle, fields } => {
+                assert_eq!(bundle, "pts");
+                assert_eq!(fields, ["x", "y", "z"].map(String::from).to_vec());
+            }
+            other => panic!("expected ReebFlow, got {other:?}"),
+        }
+        assert!(parse("REEB pts ON (x, y)").is_err(), "REEB requires 3 fibers");
+
+        // PK-2 FISHER — with and without an ON clause.
+        match parse("FISHER demo ON (age, income)").unwrap() {
+            Statement::FisherMetric { bundle, fields } => {
+                assert_eq!(bundle, "demo");
+                assert_eq!(fields, ["age", "income"].map(String::from).to_vec());
+            }
+            other => panic!("expected FisherMetric, got {other:?}"),
+        }
+        match parse("FISHER demo").unwrap() {
+            Statement::FisherMetric { fields, .. } => assert!(fields.is_empty()),
+            other => panic!("expected FisherMetric, got {other:?}"),
+        }
+
+        // PK-3 WASSERSTEIN — cohort split.
+        match parse("WASSERSTEIN pop ON income BETWEEN cohort = 0 AND 1").unwrap() {
+            Statement::Wasserstein { bundle, field, cohort_field, a, b } => {
+                assert_eq!(bundle, "pop");
+                assert_eq!(field, "income");
+                assert_eq!(cohort_field, "cohort");
+                assert_eq!(a, 0.0);
+                assert_eq!(b, 1.0);
+            }
+            other => panic!("expected Wasserstein, got {other:?}"),
+        }
+
+        // PK-4 PERSISTENCE — explicit fields + GAP, and the defaults.
+        match parse("PERSISTENCE cloud ON (x, y) GAP 3").unwrap() {
+            Statement::Persistence { bundle, fields, gap_factor } => {
+                assert_eq!(bundle, "cloud");
+                assert_eq!(fields, ["x", "y"].map(String::from).to_vec());
+                assert_eq!(gap_factor, 3.0);
+            }
+            other => panic!("expected Persistence, got {other:?}"),
+        }
+        match parse("PERSISTENCE cloud").unwrap() {
+            Statement::Persistence { fields, gap_factor, .. } => {
+                assert!(fields.is_empty());
+                assert_eq!(gap_factor, 2.0);
+            }
+            other => panic!("expected Persistence, got {other:?}"),
         }
     }
 

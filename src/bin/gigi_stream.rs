@@ -16918,6 +16918,13 @@ fn canonical_fiber_fields(group: gigi::gauge::Group) -> Vec<String> {
     }
 }
 
+/// Build a single-row `ExecResult::Rows` from labeled values — the PK
+/// verbs return one summary row (or one row per field for FISHER).
+#[cfg(feature = "post_kahler_phase1")]
+fn pk_row(pairs: Vec<(&str, gigi::types::Value)>) -> gigi::types::Record {
+    pairs.into_iter().map(|(k, v)| (k.to_string(), v)).collect()
+}
+
 fn execute_gql_on_store_read(
     store: &gigi::mmap_bundle::BundleRef<'_>,
     stmt: &gigi::parser::Statement,
@@ -16925,6 +16932,8 @@ fn execute_gql_on_store_read(
 ) -> Result<gigi::parser::ExecResult, String> {
     use gigi::bundle::QueryCondition as QC;
     use gigi::parser::{literal_to_value, ExecResult, Statement};
+    #[cfg(feature = "post_kahler_phase1")]
+    use gigi::types::Value as PkVal;
 
     match stmt {
         Statement::PointQuery { key, project, .. } => {
@@ -17762,6 +17771,149 @@ fn execute_gql_on_store_read(
         Statement::HolonomyCycle { .. } => {
             Err("HOLONOMY AROUND CYCLE requires the `gauge` feature to be enabled".to_string())
         }
+
+        // ── Post-Kähler Phase 1 (PK-1..4) executor arms. Same math as the
+        //    REST endpoints (gigi::geometry / gigi::discrete), returned as
+        //    GQL rows. ──────────────────────────────────────────────────
+        #[cfg(feature = "post_kahler_phase1")]
+        Statement::FisherMetric { bundle: _, fields } => {
+            let heap = store
+                .as_heap()
+                .ok_or_else(|| "FISHER requires a heap-resolved bundle".to_string())?;
+            let stats = heap.field_stats();
+            let names: Vec<String> = if fields.is_empty() {
+                heap.schema.fiber_fields.iter().map(|fd| fd.name.clone()).collect()
+            } else {
+                fields.clone()
+            };
+            let mut rows = Vec::new();
+            for f in &names {
+                let s = match stats.get(f) {
+                    Some(s) if s.count > 0 => s,
+                    _ => continue,
+                };
+                let var = s.variance();
+                if let Ok(g) = gigi::geometry::FisherGaussian::from_variance(var) {
+                    rows.push(pk_row(vec![
+                        ("field", PkVal::Text(f.clone())),
+                        ("mean", PkVal::Float(s.mean)),
+                        ("variance", PkVal::Float(var)),
+                        ("g_mu_mu", PkVal::Float(g.g_mu_mu)),
+                        ("g_sigma_sigma", PkVal::Float(g.g_sigma_sigma)),
+                        ("det", PkVal::Float(g.determinant())),
+                    ]));
+                }
+            }
+            if rows.is_empty() {
+                return Err("FISHER: no requested field had positive Welford variance".to_string());
+            }
+            Ok(ExecResult::Rows(rows))
+        }
+        #[cfg(feature = "post_kahler_phase1")]
+        Statement::Wasserstein { bundle: _, field, cohort_field, a, b } => {
+            let heap = store
+                .as_heap()
+                .ok_or_else(|| "WASSERSTEIN requires a heap-resolved bundle".to_string())?;
+            let (data, _) = extract_field_samples(heap, &[field.clone(), cohort_field.clone()])?;
+            let (mut ga, mut gb) = (Vec::new(), Vec::new());
+            for r in &data {
+                if r.len() != 2 {
+                    continue;
+                }
+                if (r[1] - a).abs() < 1e-9 {
+                    ga.push(r[0]);
+                } else if (r[1] - b).abs() < 1e-9 {
+                    gb.push(r[0]);
+                }
+            }
+            if ga.is_empty() || gb.is_empty() {
+                return Err(format!(
+                    "WASSERSTEIN: a cohort was empty (n_a={}, n_b={}) — check {}={} / {}={}",
+                    ga.len(), gb.len(), cohort_field, a, cohort_field, b
+                ));
+            }
+            let w2sq = gigi::geometry::Wasserstein1D::compute_sq(&ga, &gb)
+                .map_err(|e| e.to_string())?;
+            Ok(ExecResult::Rows(vec![pk_row(vec![
+                ("field", PkVal::Text(field.clone())),
+                ("cohort_field", PkVal::Text(cohort_field.clone())),
+                ("a", PkVal::Float(*a)),
+                ("b", PkVal::Float(*b)),
+                ("n_a", PkVal::Float(ga.len() as f64)),
+                ("n_b", PkVal::Float(gb.len() as f64)),
+                ("w2_distance", PkVal::Float(w2sq.sqrt())),
+                ("w2_squared", PkVal::Float(w2sq)),
+            ])]))
+        }
+        #[cfg(feature = "post_kahler_phase1")]
+        Statement::Persistence { bundle: _, fields, gap_factor } => {
+            let heap = store
+                .as_heap()
+                .ok_or_else(|| "PERSISTENCE requires a heap-resolved bundle".to_string())?;
+            let names: Vec<String> = if fields.is_empty() {
+                heap.schema.fiber_fields.iter().map(|fd| fd.name.clone()).collect()
+            } else {
+                fields.clone()
+            };
+            let (points, _) = extract_field_samples(heap, &names)?;
+            const MAXP: usize = 4000;
+            if points.len() > MAXP {
+                return Err(format!(
+                    "PERSISTENCE caps at {MAXP} points (got {}); filter the bundle first",
+                    points.len()
+                ));
+            }
+            let edges = gigi::discrete::mst_merge_edges(&points).map_err(|e| e.to_string())?;
+            let k = gigi::discrete::cluster_count(&points, *gap_factor).unwrap_or(1);
+            Ok(ExecResult::Rows(vec![pk_row(vec![
+                ("n_points", PkVal::Float(points.len() as f64)),
+                ("dims", PkVal::Float(names.len() as f64)),
+                ("estimated_clusters", PkVal::Float(k as f64)),
+                ("gap_factor", PkVal::Float(*gap_factor)),
+                ("longest_mst_edge", PkVal::Float(edges.first().copied().unwrap_or(0.0))),
+                ("second_mst_edge", PkVal::Float(edges.get(1).copied().unwrap_or(0.0))),
+            ])]))
+        }
+        #[cfg(feature = "post_kahler_phase1")]
+        Statement::ReebFlow { bundle: _, fields } => {
+            let heap = store
+                .as_heap()
+                .ok_or_else(|| "REEB requires a heap-resolved bundle".to_string())?;
+            let (data, _) = extract_field_samples(heap, fields)?;
+            let points: Vec<[f64; 3]> = data
+                .iter()
+                .filter(|p| p.len() == 3)
+                .map(|p| [p[0], p[1], p[2]])
+                .collect();
+            if points.is_empty() {
+                return Err("REEB: no records with all three coordinate fibers present".to_string());
+            }
+            let reeb = gigi::geometry::ContactOneForm::reeb();
+            let alpha_defect = reeb.alpha_defect(&points);
+            let dalpha_defect = reeb.dalpha_defect(&[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [3.0, -2.0, 5.0]]);
+            let n = points.len() as f64;
+            let mean = [
+                points.iter().map(|p| p[0]).sum::<f64>() / n,
+                points.iter().map(|p| p[1]).sum::<f64>() / n,
+                points.iter().map(|p| p[2]).sum::<f64>() / n,
+            ];
+            let vol = gigi::geometry::ContactOneForm::contact_volume(
+                mean,
+                reeb.vector,
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            );
+            Ok(ExecResult::Rows(vec![pk_row(vec![
+                ("reeb_x", PkVal::Float(reeb.vector[0])),
+                ("reeb_y", PkVal::Float(reeb.vector[1])),
+                ("reeb_z", PkVal::Float(reeb.vector[2])),
+                ("alpha_of_reeb_defect", PkVal::Float(alpha_defect)),
+                ("iota_r_dalpha_defect", PkVal::Float(dalpha_defect)),
+                ("contact_volume", PkVal::Float(vol)),
+                ("is_contact", PkVal::Bool(vol.abs() > 1e-12)),
+                ("n_points", PkVal::Float(n)),
+            ])]))
+        }
         // PONTRYAGIN bundle ORDER <k> [ON FIBER (...)] [GROUP <g>]
         //
         // Halcyon Phase 1: p_1 = 2 · c_2 for SU(N). Delegates to
@@ -18264,6 +18416,13 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         // to `_ => None` and silently return HTTP 200 ok with nothing
         // executed — success theater — since it is not an Emit).
         Helicity { bundle, .. } => Some(bundle.clone()),
+        // Post-Kähler Phase 1 (PK-1..4) — single-bundle reads; expose the
+        // name so the read pre-resolve attaches the store.
+        #[cfg(feature = "post_kahler_phase1")]
+        ReebFlow { bundle, .. }
+        | FisherMetric { bundle, .. }
+        | Wasserstein { bundle, .. }
+        | Persistence { bundle, .. } => Some(bundle.clone()),
         Transport { bundle, .. } => Some(bundle.clone()),
         TransportRotation { bundle, .. } => Some(bundle.clone()),
         SampleTransport { bundle, .. } => Some(bundle.clone()),
@@ -22470,6 +22629,77 @@ mod tests {
         assert!(reeb["alpha_of_reeb_defect"].as_f64().unwrap() < 1e-12);
         assert!(reeb["iota_r_dalpha_defect"].as_f64().unwrap() < 1e-12);
         assert_eq!(reeb["is_contact"], serde_json::json!(true));
+
+        cleanup(&dir);
+    }
+
+    #[cfg(feature = "post_kahler_phase1")]
+    #[tokio::test(flavor = "current_thread")]
+    async fn pk_gql_verbs_end_to_end() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("pk_gql");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "pk-gql-test");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        state.ready.store(true, Ordering::Release);
+
+        assert_eq!(
+            post_gql_for_test(
+                Arc::clone(&state),
+                "CREATE BUNDLE pkg (id INT BASE, x FLOAT FIBER, y FLOAT FIBER, z FLOAT FIBER, g FLOAT FIBER);",
+            )
+            .await,
+            StatusCode::OK
+        );
+        // two (x,y) clusters, cohort g in {0,1}
+        for i in 0..8 {
+            let s = i as f64 * 0.05;
+            for (k, x, y, z, g) in [
+                (i, 0.0 + s, 0.0 - s, 1.0 + s, 0.0),
+                (i + 100, 10.0 + s, 0.0 + s, 5.0 - s, 1.0),
+            ] {
+                assert_eq!(
+                    post_gql_for_test(
+                        Arc::clone(&state),
+                        &format!("INSERT INTO pkg (id, x, y, z, g) VALUES ({k}, {x}, {y}, {z}, {g});"),
+                    )
+                    .await,
+                    StatusCode::OK
+                );
+            }
+        }
+
+        // PK-4 PERSISTENCE — two clusters in (x,y).
+        let (st, body) =
+            post_gql_body_for_test(Arc::clone(&state), "PERSISTENCE pkg ON (x, y) GAP 2;").await;
+        assert_eq!(st, StatusCode::OK, "PERSISTENCE body {body}");
+        assert_eq!(body["rows"][0]["estimated_clusters"].as_f64().unwrap(), 2.0);
+        assert_eq!(body["rows"][0]["n_points"].as_f64().unwrap(), 16.0);
+
+        // PK-2 FISHER — g_mu_mu = 1/variance on x.
+        let (st, body) = post_gql_body_for_test(Arc::clone(&state), "FISHER pkg ON (x);").await;
+        assert_eq!(st, StatusCode::OK, "FISHER body {body}");
+        let row = &body["rows"][0];
+        let (var, gmm) = (row["variance"].as_f64().unwrap(), row["g_mu_mu"].as_f64().unwrap());
+        assert!((gmm - 1.0 / var).abs() < 1e-9);
+
+        // PK-3 WASSERSTEIN — cohorts ~10 apart in x.
+        let (st, body) = post_gql_body_for_test(
+            Arc::clone(&state),
+            "WASSERSTEIN pkg ON x BETWEEN g = 0 AND 1;",
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK, "WASSERSTEIN body {body}");
+        assert_eq!(body["rows"][0]["n_a"].as_f64().unwrap(), 8.0);
+        assert!(body["rows"][0]["w2_distance"].as_f64().unwrap() > 8.0);
+
+        // PK-1 REEB — contact structure on (x,y,z).
+        let (st, body) =
+            post_gql_body_for_test(Arc::clone(&state), "REEB pkg ON (x, y, z);").await;
+        assert_eq!(st, StatusCode::OK, "REEB body {body}");
+        assert_eq!(body["rows"][0]["is_contact"], serde_json::json!(true));
+        assert!(body["rows"][0]["alpha_of_reeb_defect"].as_f64().unwrap() < 1e-12);
 
         cleanup(&dir);
     }

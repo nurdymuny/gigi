@@ -1,0 +1,49 @@
+# Docker build context excludes.
+#
+# The Dockerfile COPYs only: Cargo.toml, Cargo.lock, openapi.json, src/,
+# benches/, examples/, dashboard/. Everything below is irrelevant to the
+# build and was bloating the context to ~233 GB (uploaded on every deploy).
+# Keeping it out drops the context to a few hundred MB.
+
+# Rust build output — rebuilt inside the image
+target/
+
+# Claude Code agent + session data (the 166 GB offender)
+.claude/
+
+# Git history
+.git/
+.gitignore
+.gitattributes
+
+# Local runtime data, WAL, snapshots, backups
+gigi_data/
+gigi_data_*/
+.deploy-backups/
+*.wal
+*.dhoom
+*.snapshot
+
+# Docs / theory / research / books — not compiled into the binary
+theory/
+docs/
+*.md
+GQL_REFERENCE.md
+GQL_SPECIFICATION.md
+
+# Python tooling + scratch
+scripts/
+*.py
+__pycache__/
+.venv/
+venv/
+*.ipynb
+
+# Editor / OS cruft
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Fly config (read by flyctl directly, not needed inside the context)
+fly.toml

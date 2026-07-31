@@ -14408,6 +14408,20 @@ fn execute_gql_on_store_read(
                         gigi::parser::AggFunc::Max if agg.max.is_finite() => {
                             gigi::types::Value::Float(agg.max)
                         }
+                        // stddev/variance are POPULATION (divisor n),
+                        // single-pass sum-of-squares, zero-clamped. Same
+                        // sentinel gate as min/max: count is presence, so
+                        // a presence-only (non-numeric) accumulator must
+                        // surface Null, not a fake 0.0. This arm is
+                        // load-bearing — without it the `_ => Null`
+                        // catch-all silently swallows the variant over
+                        // HTTP while the library path works.
+                        gigi::parser::AggFunc::Stddev if agg.min.is_finite() => {
+                            gigi::types::Value::Float(agg.stddev())
+                        }
+                        gigi::parser::AggFunc::Variance if agg.min.is_finite() => {
+                            gigi::types::Value::Float(agg.variance())
+                        }
                         _ => gigi::types::Value::Null,
                     }
                 };
@@ -18646,6 +18660,97 @@ mod tests {
             .fiber(FieldDef::categorical("cat"))
             .index("cat");
         scan_env(tag, "cons", schema, rows)
+    }
+
+    /// STDDEV/VARIANCE through the HTTP executor's OWN measure_value
+    /// closure. The library executor (parser.rs) and this one are
+    /// separate closures, and this one ends in `_ => Null` — a new
+    /// AggFunc variant that misses an arm here compiles fine and
+    /// silently returns null over HTTP while the library path works.
+    /// This test pins the production arm with the same population
+    /// ground truth as the library test:
+    ///   100 salaries 40000..89500 step 500 → σ² = 500²·9999/12 =
+    ///   208_312_500; per-dept (i % 5) step 2500, n=20 → σ² = 207_812_500.
+    #[test]
+    fn gql_integrate_stddev_http_executor_arm() {
+        let recs: Vec<_> = (0..100)
+            .map(|i| {
+                scan_rec(&[
+                    ("id", V::Integer(i)),
+                    ("dept", V::Text(format!("d{}", i % 5))),
+                    ("salary", V::Float(40000.0 + i as f64 * 500.0)),
+                ])
+            })
+            .collect();
+        let schema = BundleSchema::new("emp_sd")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("dept"))
+            .fiber(FieldDef::numeric("salary").with_range(100000.0))
+            .index("dept");
+        let (dir, engine) = scan_env("gql_stddev_http_arm", "emp_sd", schema, recs);
+        let store = engine.bundle("emp_sd").unwrap();
+
+        // Global: population stddev + variance in one server-side pass.
+        let stmt = gigi::parser::parse(
+            "INTEGRATE emp_sd MEASURE stddev(salary), variance(salary);",
+        )
+        .unwrap();
+        let rows = match execute_gql_on_store_read(&store, &stmt, None).unwrap() {
+            gigi::parser::ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1);
+        let expected_var = 208_312_500.0f64;
+        let expected_sd = expected_var.sqrt();
+        match rows[0].get("stddev_salary") {
+            Some(V::Float(sd)) => assert!(
+                ((*sd - expected_sd) / expected_sd).abs() < 1e-6,
+                "stddev_salary = {sd}, expected ≈ {expected_sd}"
+            ),
+            other => panic!(
+                "stddev_salary must be Float over the HTTP path, got {other:?} \
+                 — the `_ => Null` catch-all swallowed the variant"
+            ),
+        }
+        match rows[0].get("variance_salary") {
+            Some(V::Float(v)) => assert!(
+                ((*v - expected_var) / expected_var).abs() < 1e-6,
+                "variance_salary = {v}, expected {expected_var}"
+            ),
+            other => panic!("variance_salary must be Float, got {other:?}"),
+        }
+
+        // Per-group over the indexed field: 5 rows, identical σ per dept.
+        let stmt = gigi::parser::parse(
+            "INTEGRATE emp_sd OVER dept MEASURE stddev(salary);",
+        )
+        .unwrap();
+        let rows = match execute_gql_on_store_read(&store, &stmt, None).unwrap() {
+            gigi::parser::ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 5);
+        let group_sd = 207_812_500.0f64.sqrt();
+        for row in &rows {
+            match row.get("stddev_salary") {
+                Some(V::Float(sd)) => assert!(
+                    ((*sd - group_sd) / group_sd).abs() < 1e-6,
+                    "group stddev = {sd}, expected ≈ {group_sd}"
+                ),
+                other => panic!("stddev_salary missing in group row: {other:?}"),
+            }
+        }
+
+        // Non-numeric field surfaces Null (honest), not a fake 0.0.
+        let stmt =
+            gigi::parser::parse("INTEGRATE emp_sd MEASURE stddev(dept);").unwrap();
+        let rows = match execute_gql_on_store_read(&store, &stmt, None).unwrap() {
+            gigi::parser::ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows[0].get("stddev_dept"), Some(&V::Null));
+
+        cleanup(&dir);
     }
 
     /// The perf-doc defect (GIGI_PERF_ANALYSIS.md:37 — "h¹ = 0.0234, same as

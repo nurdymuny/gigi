@@ -524,6 +524,57 @@ mod tests {
         assert_eq!(above_50k.len(), 5, "all dept avgs should exceed 50000");
     }
 
+    /// Population stddev/variance ground truth — divisor n (STDDEV_POP,
+    /// the convention the sqlite/duckdb benchmark arms use), single-pass
+    /// sum-of-squares, zero-clamped (see `AggResult::variance`).
+    /// Salaries 40000..89500 step 500 (arithmetic sequence):
+    ///   σ² = d²·(n²−1)/12 = 500²·9999/12 = 208_312_500 exactly.
+    /// Per-dept (every 5th record): step 2500, n = 20 →
+    ///   σ² = 2500²·(20²−1)/12 = 207_812_500.
+    #[test]
+    fn test_stddev_population_ground_truth() {
+        let store = make_store();
+        let agg = fiber_integral(&store, "salary");
+        let expected_var = 208_312_500.0f64;
+        assert!(
+            ((agg.variance() - expected_var) / expected_var).abs() < 1e-12,
+            "variance = {}, expected {expected_var}",
+            agg.variance()
+        );
+        let expected_sd = expected_var.sqrt();
+        assert!(
+            ((agg.stddev() - expected_sd) / expected_sd).abs() < 1e-12,
+            "stddev = {}, expected ≈ 14433.0350",
+            agg.stddev()
+        );
+
+        // Per-group accumulators carry the same ground truth.
+        let groups = group_by_measures(store.records(), "dept", &["salary"]);
+        let dept_var = 207_812_500.0f64;
+        for aggs in groups.values() {
+            assert!(
+                ((aggs[0].variance() - dept_var) / dept_var).abs() < 1e-12,
+                "group variance = {}, expected {dept_var}",
+                aggs[0].variance()
+            );
+        }
+
+        // Non-numeric accumulator: presence-count only — sum/sum_sq stay
+        // 0 and the min sentinel stays infinite. variance() degenerates
+        // to 0.0 there, so executors MUST gate stddev/variance on the
+        // sentinel (min.is_finite()) and surface Null, exactly as they
+        // already do for min/max.
+        let aggs = integrate_measures(store.records(), &["dept"]);
+        assert_eq!(aggs[0].count, 100, "presence count on a text field");
+        assert!(aggs[0].min.is_infinite(), "no numeric ever accumulated");
+        assert_eq!(aggs[0].variance(), 0.0);
+
+        // Empty input: count 0, sentinel intact — same gate applies.
+        let empty = integrate_measures(Vec::<crate::types::Record>::new(), &["salary"]);
+        assert_eq!(empty[0].count, 0);
+        assert!(empty[0].min.is_infinite());
+    }
+
     /// Multi-measure GROUP BY: each measure aggregates its OWN field.
     /// Regression for GQL `INTEGRATE ... MEASURE min(a), min(b)` returning
     /// min(a) for both columns.

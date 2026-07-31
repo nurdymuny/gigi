@@ -166,6 +166,12 @@ Detailed gate-by-gate ledgers live under [`theory/halcyon/`](theory/halcyon/), [
 
 ## Measured: geometric vs flat
 
+> **Store-vs-store benchmark:** GIGI vs SQLite vs DuckDB on ingest / point
+> query / aggregate / anomaly — losses unsoftened (GIGI loses its own thesis
+> anomaly task 8.5x on PR-AUC to 15 lines of SQL) — lives in
+> [`BENCHMARKS_VS_STORES.md`](BENCHMARKS_VS_STORES.md), harness committed under
+> [`benchmarks/vs_stores/`](benchmarks/vs_stores/).
+
 Same data, same split, same metric on both sides. The first four rows are artifact-grade:
 captured in [`scripts/sweep_results.json`](scripts/sweep_results.json), a snapshot written by
 [`scripts/full_sweep.py`](scripts/full_sweep.py) driving a live GIGI release server against

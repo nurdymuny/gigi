@@ -1,0 +1,5 @@
+# Bulk benchmark data is regenerated deterministically by gen_dataset.py (seed 20260731).
+# The generator is committed; the data is not.
+*.csv
+__pycache__/
+labels.json

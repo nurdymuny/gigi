@@ -1,0 +1,395 @@
+{
+  "benchmark": "gigi vs sqlite vs duckdb \u2014 vs_stores LOCKED PROTOCOL",
+  "date_utc": "2026-07-31",
+  "protocol": {
+    "seed": 20260731,
+    "n_rows": 100000,
+    "n_subset": 20000,
+    "n_anomalies": 100,
+    "n_point_queries": 2000,
+    "gigi_insert_batch": 1000,
+    "hour_bucket_hours": 2.0,
+    "scan_budget": 0.05,
+    "reps_per_cell": 3,
+    "warmups_per_cell": 1,
+    "cell_statistic": "median of reps",
+    "pr_auc": "average precision, step interpolation, shared eval_common.average_precision",
+    "timing_shape": "gigi over HTTP at 127.0.0.1 (its real deployment shape); sqlite/duckdb in-process (their real shape) \u2014 asymmetry disclosed, not hidden"
+  },
+  "environment": {
+    "host": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "ram_bytes": 68328595456,
+    "machine": "AMD64",
+    "single_node": true,
+    "python": "3.12.10",
+    "sqlite": "3.49.1",
+    "duckdb": "1.5.5",
+    "gigi_version": "0.1.0",
+    "gigi_git_sha": "4f9c2a448a227f89689d9e22df8465a4ff72afeb",
+    "gigi_binary": "target/release/gigi-stream.exe (release build, built 2026-07-31, same-day as HEAD)",
+    "gigi_server_env": "GIGI_DATA_DIR=<local scratch, non-OneDrive>, GIGI_SKIP_BOOT_SNAPSHOT=1, PORT=3143, no API key",
+    "run_shape": "strictly serial: gigi (server up, HTTP 127.0.0.1:3143) -> server killed & verified down -> sqlite in-process -> duckdb in-process; nothing else running concurrently at any point",
+    "timestamp_utc": "2026-07-31T21:41:18Z"
+  },
+  "scan_subset_decision": {
+    "chosen_subset_size": 20000,
+    "candidates": [
+      20000,
+      10000,
+      5000
+    ],
+    "smoke": {
+      "slice_rows": 5000,
+      "scan_wall_s_first": 0.263,
+      "scan_wall_s_second": 0.283
+    },
+    "reasoning": "Protocol step 2 sizing probe: /scan on a 5k slice took ~0.28 s. Even under a worst-case quadratic extrapolation (16x -> ~4.5 s/scan, ~18 s for 1 warmup + 3 reps) the cell stays far under the ~10-minute cap, so the full 20,000-row labeled subset is used. Measured 20k /scan came in at ~317 ms median \u2014 near-linear, confirming the choice. SQL baselines therefore also use the full 20k subset (same files)."
+  },
+  "headline": {
+    "gigi": {
+      "ingest_rows_per_sec_median": 78775.2,
+      "point_query_p50_ms_median": 0.3537,
+      "point_query_p95_ms_median": 0.4749,
+      "aggregate_wall_ms_median": 2167.34,
+      "anomaly_wall_ms_median": 317.4,
+      "anomaly_pr_auc": 0.0848,
+      "anomaly_client_loc": 5
+    },
+    "sqlite": {
+      "ingest_rows_per_sec_median": 617285.1,
+      "point_query_p50_ms_median": 0.0555,
+      "point_query_p95_ms_median": 0.0975,
+      "aggregate_wall_ms_median": 50.61,
+      "anomaly_wall_ms_median": 33.55,
+      "anomaly_pr_auc": 0.7189,
+      "anomaly_client_loc": 15
+    },
+    "duckdb": {
+      "ingest_rows_per_sec_median": 390428.3,
+      "point_query_p50_ms_median": 0.4165,
+      "point_query_p95_ms_median": 0.732,
+      "aggregate_wall_ms_median": 7.4,
+      "anomaly_wall_ms_median": 14.17,
+      "anomaly_pr_auc": 0.7189,
+      "anomaly_client_loc": 15
+    }
+  },
+  "honest_summary": [
+    "INGEST: gigi loses to both stores \u2014 78,775 rows/s over HTTP vs sqlite 617,285 (7.8x) and duckdb 390,428 (5.0x). HTTP batching is gigi's real deployment shape; asymmetry disclosed.",
+    "POINT QUERY: sqlite wins outright (p50 0.0555 ms). gigi over HTTP (p50 0.3537 ms / p95 0.4749 ms) LOSES to in-process sqlite by ~6.4x but BEATS in-process duckdb (p50 0.4165 ms / p95 0.7320 ms) despite paying an HTTP round trip per lookup.",
+    "AGGREGATE: duckdb wins by a wide margin as predicted \u2014 7.40 ms vs sqlite 50.61 ms vs gigi 2,167.34 ms. gigi's cell is the disclosed honest fallback: the GQL parser rejected stddev() in INTEGRATE (COUNT/SUM/AVG/MIN/MAX only, despite GQL_REFERENCE.md \u00a7V), so the measured cell pulls ~100k rows over HTTP with client-side stddev. gigi loses this cell 293x to duckdb.",
+    "ANOMALY (thesis task): the expert SQL z-score baseline BEATS /scan on PR-AUC decisively \u2014 0.7189 (both sqlite and duckdb, identical scores by construction) vs gigi /scan 0.0848. Reported as measured, per rule 4. The baseline required hand-chosen grouping (merchant x 2h-bucket) and 15 SQL lines; /scan got only the bundle name and 5 client lines, but its zero-config scores rank the planted combination anomalies far worse on this dataset. gigi also loses anomaly wall time: 317.40 ms vs sqlite 33.55 ms and duckdb 14.17 ms."
+  ],
+  "systems": {
+    "gigi": {
+      "system": "gigi",
+      "protocol": {
+        "seed": 20260731,
+        "n_rows": 100000,
+        "n_subset": 20000,
+        "n_anomalies": 100,
+        "n_point_queries": 2000,
+        "gigi_insert_batch": 1000,
+        "hour_bucket_hours": 2.0,
+        "scan_budget": 0.05,
+        "reps_per_cell": 3,
+        "warmups_per_cell": 1,
+        "cell_statistic": "median of reps",
+        "pr_auc": "average precision, step interpolation, shared eval_common.average_precision",
+        "timing_shape": "gigi over HTTP at 127.0.0.1 (its real deployment shape); sqlite/duckdb in-process (their real shape) \u2014 asymmetry disclosed, not hidden"
+      },
+      "environment": {
+        "hostname": "LAPTOP-5ECOBNCR",
+        "os": "Windows 11 (10.0.26200)",
+        "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+        "machine": "AMD64",
+        "python": "3.12.10",
+        "gigi_git_sha": "4f9c2a448a227f89689d9e22df8465a4ff72afeb",
+        "timestamp_utc": "2026-07-31T21:38:26Z",
+        "single_node": true,
+        "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+      },
+      "versions": {
+        "gigi_server_health": {
+          "status": "ok",
+          "engine": "gigi-stream",
+          "version": "0.1.0",
+          "bundles": 10,
+          "total_records": 3,
+          "uptime_secs": 38
+        },
+        "gigi_version": "0.1.0",
+        "transport": "HTTP/1.1 keep-alive to http://127.0.0.1:3143"
+      },
+      "cells": {
+        "ingest": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            78384.2,
+            78775.2,
+            78946.1
+          ],
+          "median": 78775.2
+        },
+        "point_query": {
+          "n_queries": 2000,
+          "unit": "ms",
+          "reps": [
+            {
+              "p50_ms": 0.3537,
+              "p95_ms": 0.4749
+            },
+            {
+              "p50_ms": 0.3617,
+              "p95_ms": 0.4798
+            },
+            {
+              "p50_ms": 0.3291,
+              "p95_ms": 0.4691
+            }
+          ],
+          "p50_ms_median": 0.3537,
+          "p95_ms_median": 0.4749
+        },
+        "aggregate": {
+          "unit": "ms",
+          "n_groups": 12,
+          "method": "fallback: GQL INTEGRATE OVER merchant MEASURE avg(amount), count(*) (server-side) + 12x GQL COVER ON merchant + client-side population stddev over the pulled rows",
+          "reps_wall_ms": [
+            2167.34,
+            2338.89,
+            2161.42
+          ],
+          "wall_ms_median": 2167.34
+        },
+        "anomaly": {
+          "unit": "ms",
+          "method": "POST /v1/bundles/bench_anom/scan {budget: 0.05, limit: 0} \u2014 zero-config",
+          "reps_wall_ms": [
+            336.7,
+            317.4,
+            305.85
+          ],
+          "wall_ms_median": 317.4,
+          "pr_auc": 0.0848,
+          "client_lines_of_code": 5,
+          "loc_basis": "python: gigi_scan() function source, non-blank non-comment lines",
+          "n_scored": 20000,
+          "n_positive": 100
+        }
+      },
+      "disclosures": [
+        "All gigi cells are measured over HTTP at 127.0.0.1 (persistent keep-alive connection) \u2014 gigi's real deployment shape. sqlite/duckdb run in-process. Point-lookup and per-call numbers therefore include an HTTP round trip that the embedded stores do not pay; expected honest loss on point queries.",
+        "Ingest timed window includes client-side json.dumps of each 1,000-row batch (part of the wire path). CSV parsing to Python rows happens before the timed window, identical to the sqlite runner.",
+        "Point-query timing includes response read + JSON deserialization (the counterpart of the embedded stores' row materialization).",
+        "ANOMALY: /scan is zero-config \u2014 the only inputs are the bundle name and the review budget. The labels file is never sent to gigi. The timed window includes downloading and parsing the full 20k-row scored response.",
+        "ANOMALY LOC counts the actual python client function (source-counted at run time, shared counting rule in eval_common.count_loc).",
+        "AGGREGATE: the server rejected stddev() in INTEGRATE (GQL parser supports COUNT/SUM/AVG/MIN/MAX only, though GQL_REFERENCE.md \u00a7V lists stddev). The measured cell is the honest fallback: one INTEGRATE for avg+count plus one COVER per merchant pulling all ~100k rows over HTTP with stddev computed client-side. This is the real cost of getting mean+stddev out of gigi today, and it is expected to lose to duckdb/sqlite by a wide margin."
+      ]
+    },
+    "sqlite": {
+      "system": "sqlite",
+      "protocol": {
+        "seed": 20260731,
+        "n_rows": 100000,
+        "n_subset": 20000,
+        "n_anomalies": 100,
+        "n_point_queries": 2000,
+        "gigi_insert_batch": 1000,
+        "hour_bucket_hours": 2.0,
+        "scan_budget": 0.05,
+        "reps_per_cell": 3,
+        "warmups_per_cell": 1,
+        "cell_statistic": "median of reps",
+        "pr_auc": "average precision, step interpolation, shared eval_common.average_precision",
+        "timing_shape": "gigi over HTTP at 127.0.0.1 (its real deployment shape); sqlite/duckdb in-process (their real shape) \u2014 asymmetry disclosed, not hidden"
+      },
+      "environment": {
+        "hostname": "LAPTOP-5ECOBNCR",
+        "os": "Windows 11 (10.0.26200)",
+        "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+        "machine": "AMD64",
+        "python": "3.12.10",
+        "gigi_git_sha": "4f9c2a448a227f89689d9e22df8465a4ff72afeb",
+        "timestamp_utc": "2026-07-31T21:39:09Z",
+        "single_node": true,
+        "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+      },
+      "versions": {
+        "sqlite": "3.49.1",
+        "storage": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores\\bench_sqlite.db"
+      },
+      "cells": {
+        "ingest": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            634487.2,
+            617285.1,
+            617038.7
+          ],
+          "median": 617285.1
+        },
+        "point_query": {
+          "n_queries": 2000,
+          "unit": "ms",
+          "reps": [
+            {
+              "p50_ms": 0.0526,
+              "p95_ms": 0.0873
+            },
+            {
+              "p50_ms": 0.0567,
+              "p95_ms": 0.1004
+            },
+            {
+              "p50_ms": 0.0555,
+              "p95_ms": 0.0975
+            }
+          ],
+          "p50_ms_median": 0.0555,
+          "p95_ms_median": 0.0975
+        },
+        "aggregate": {
+          "unit": "ms",
+          "n_groups": 12,
+          "method": "SELECT merchant, AVG(amount), sqrt-form population stddev GROUP BY merchant \u2014 in-process",
+          "reps_wall_ms": [
+            52.45,
+            50.61,
+            49.93
+          ],
+          "wall_ms_median": 50.61
+        },
+        "anomaly": {
+          "unit": "ms",
+          "method": "expert SQL flat baseline: per-(merchant, 2h-bucket) |z| of amount",
+          "reps_wall_ms": [
+            33.74,
+            32.37,
+            33.55
+          ],
+          "wall_ms_median": 33.55,
+          "pr_auc": 0.7189,
+          "client_lines_of_code": 15,
+          "loc_basis": "SQL: ANOM_SQL text, non-blank non-comment lines (shared counting rule)",
+          "n_scored": 20000,
+          "n_positive": 100
+        }
+      },
+      "disclosures": [
+        "sqlite runs in-process (its real shape); gigi is measured over HTTP \u2014 asymmetry disclosed in the shared protocol block.",
+        "Database is file-backed on local disk (%TEMP%/gigi_vs_stores), outside the OneDrive-synced repo folder, default pragmas (journal_mode=delete, synchronous=full). Ingest is one transaction, so one commit fsync.",
+        "txn_id PRIMARY KEY is declared in the DDL, so the key index is maintained during ingest \u2014 matching gigi, whose base key is indexed at insert. No system defers its key index out of the ingest cell.",
+        "sqlite has no STDDEV aggregate; population stddev computed in SQL as sqrt(max(E[x^2]-E[x]^2, 0)). Same population convention as duckdb's STDDEV_POP. The E[x^2]-E[x]^2 form can lose precision vs Welford; at these magnitudes (amounts < 2000, 64-bit floats) the error is far below the reported precision.",
+        "ANOMALY baseline required hand-chosen grouping (merchant x 2h-bucket) and domain judgment that gigi's /scan did not get \u2014 that expert input is the point of the comparison and is priced in the SQL-lines metric.",
+        "ANOMALY: zero-variance cohorts score 0.0 via COALESCE (a row alone in its cohort cannot be flagged by a z-score baseline)."
+      ]
+    },
+    "duckdb": {
+      "system": "duckdb",
+      "protocol": {
+        "seed": 20260731,
+        "n_rows": 100000,
+        "n_subset": 20000,
+        "n_anomalies": 100,
+        "n_point_queries": 2000,
+        "gigi_insert_batch": 1000,
+        "hour_bucket_hours": 2.0,
+        "scan_budget": 0.05,
+        "reps_per_cell": 3,
+        "warmups_per_cell": 1,
+        "cell_statistic": "median of reps",
+        "pr_auc": "average precision, step interpolation, shared eval_common.average_precision",
+        "timing_shape": "gigi over HTTP at 127.0.0.1 (its real deployment shape); sqlite/duckdb in-process (their real shape) \u2014 asymmetry disclosed, not hidden"
+      },
+      "environment": {
+        "hostname": "LAPTOP-5ECOBNCR",
+        "os": "Windows 11 (10.0.26200)",
+        "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+        "machine": "AMD64",
+        "python": "3.12.10",
+        "gigi_git_sha": "4f9c2a448a227f89689d9e22df8465a4ff72afeb",
+        "timestamp_utc": "2026-07-31T21:40:24Z",
+        "single_node": true,
+        "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+      },
+      "versions": {
+        "duckdb": "1.5.5",
+        "threads": "16",
+        "storage": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores\\bench_duckdb.db"
+      },
+      "cells": {
+        "ingest": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            392138.3,
+            280508.4,
+            390428.3
+          ],
+          "median": 390428.3
+        },
+        "point_query": {
+          "n_queries": 2000,
+          "unit": "ms",
+          "reps": [
+            {
+              "p50_ms": 0.4084,
+              "p95_ms": 0.713
+            },
+            {
+              "p50_ms": 0.4233,
+              "p95_ms": 0.7328
+            },
+            {
+              "p50_ms": 0.4165,
+              "p95_ms": 0.732
+            }
+          ],
+          "p50_ms_median": 0.4165,
+          "p95_ms_median": 0.732
+        },
+        "aggregate": {
+          "unit": "ms",
+          "n_groups": 12,
+          "method": "SELECT merchant, AVG(amount), STDDEV_POP(amount) GROUP BY merchant \u2014 in-process",
+          "reps_wall_ms": [
+            7.4,
+            9.38,
+            7.3
+          ],
+          "wall_ms_median": 7.4
+        },
+        "anomaly": {
+          "unit": "ms",
+          "method": "expert SQL flat baseline: per-(merchant, 2h-bucket) |z| of amount",
+          "reps_wall_ms": [
+            14.17,
+            13.91,
+            17.04
+          ],
+          "wall_ms_median": 14.17,
+          "pr_auc": 0.7189,
+          "client_lines_of_code": 15,
+          "loc_basis": "SQL: ANOM_SQL text, non-blank non-comment lines (shared counting rule)",
+          "n_scored": 20000,
+          "n_positive": 100
+        }
+      },
+      "disclosures": [
+        "duckdb runs in-process (its real shape); gigi is measured over HTTP \u2014 asymmetry disclosed in the shared protocol block.",
+        "Database is file-backed on local disk (%TEMP%/gigi_vs_stores), outside the OneDrive-synced repo folder, default settings including duckdb's default multi-threading (threads=16); gigi and sqlite cells use whatever parallelism their default shapes provide.",
+        "INGEST timed window includes duckdb's own CSV parse (read_csv is its idiomatic bulk path); gigi/sqlite parse the CSV to Python rows outside their timed windows. duckdb does strictly more work inside the clock here, via its own fastest honest path.",
+        "txn_id PRIMARY KEY declared in the DDL, so the ART key index is maintained during ingest \u2014 matching gigi and sqlite. No system defers its key index out of the ingest cell.",
+        "AGGREGATE/ANOMALY use STDDEV_POP \u2014 same population-stddev convention as the sqlite runner's sqrt-form.",
+        "ANOMALY bucket uses floor(hour/2) explicitly because duckdb CAST rounds while sqlite CAST truncates \u2014 buckets are identical across the two SQL baselines.",
+        "ANOMALY baseline required hand-chosen grouping (merchant x 2h-bucket) and domain judgment that gigi's /scan did not get \u2014 that expert input is the point of the comparison and is priced in the SQL-lines metric.",
+        "ANOMALY: zero-variance cohorts score 0.0 via COALESCE."
+      ]
+    }
+  }
+}

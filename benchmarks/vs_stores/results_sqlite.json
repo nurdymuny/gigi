@@ -1,0 +1,99 @@
+{
+  "system": "sqlite",
+  "protocol": {
+    "seed": 20260731,
+    "n_rows": 100000,
+    "n_subset": 20000,
+    "n_anomalies": 100,
+    "n_point_queries": 2000,
+    "gigi_insert_batch": 1000,
+    "hour_bucket_hours": 2.0,
+    "scan_budget": 0.05,
+    "reps_per_cell": 3,
+    "warmups_per_cell": 1,
+    "cell_statistic": "median of reps",
+    "pr_auc": "average precision, step interpolation, shared eval_common.average_precision",
+    "timing_shape": "gigi over HTTP at 127.0.0.1 (its real deployment shape); sqlite/duckdb in-process (their real shape) \u2014 asymmetry disclosed, not hidden"
+  },
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "4f9c2a448a227f89689d9e22df8465a4ff72afeb",
+    "timestamp_utc": "2026-07-31T21:39:09Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "versions": {
+    "sqlite": "3.49.1",
+    "storage": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores\\bench_sqlite.db"
+  },
+  "cells": {
+    "ingest": {
+      "rows": 100000,
+      "unit": "rows_per_sec",
+      "reps": [
+        634487.2,
+        617285.1,
+        617038.7
+      ],
+      "median": 617285.1
+    },
+    "point_query": {
+      "n_queries": 2000,
+      "unit": "ms",
+      "reps": [
+        {
+          "p50_ms": 0.0526,
+          "p95_ms": 0.0873
+        },
+        {
+          "p50_ms": 0.0567,
+          "p95_ms": 0.1004
+        },
+        {
+          "p50_ms": 0.0555,
+          "p95_ms": 0.0975
+        }
+      ],
+      "p50_ms_median": 0.0555,
+      "p95_ms_median": 0.0975
+    },
+    "aggregate": {
+      "unit": "ms",
+      "n_groups": 12,
+      "method": "SELECT merchant, AVG(amount), sqrt-form population stddev GROUP BY merchant \u2014 in-process",
+      "reps_wall_ms": [
+        52.45,
+        50.61,
+        49.93
+      ],
+      "wall_ms_median": 50.61
+    },
+    "anomaly": {
+      "unit": "ms",
+      "method": "expert SQL flat baseline: per-(merchant, 2h-bucket) |z| of amount",
+      "reps_wall_ms": [
+        33.74,
+        32.37,
+        33.55
+      ],
+      "wall_ms_median": 33.55,
+      "pr_auc": 0.7189,
+      "client_lines_of_code": 15,
+      "loc_basis": "SQL: ANOM_SQL text, non-blank non-comment lines (shared counting rule)",
+      "n_scored": 20000,
+      "n_positive": 100
+    }
+  },
+  "disclosures": [
+    "sqlite runs in-process (its real shape); gigi is measured over HTTP \u2014 asymmetry disclosed in the shared protocol block.",
+    "Database is file-backed on local disk (%TEMP%/gigi_vs_stores), outside the OneDrive-synced repo folder, default pragmas (journal_mode=delete, synchronous=full). Ingest is one transaction, so one commit fsync.",
+    "txn_id PRIMARY KEY is declared in the DDL, so the key index is maintained during ingest \u2014 matching gigi, whose base key is indexed at insert. No system defers its key index out of the ingest cell.",
+    "sqlite has no STDDEV aggregate; population stddev computed in SQL as sqrt(max(E[x^2]-E[x]^2, 0)). Same population convention as duckdb's STDDEV_POP. The E[x^2]-E[x]^2 form can lose precision vs Welford; at these magnitudes (amounts < 2000, 64-bit floats) the error is far below the reported precision.",
+    "ANOMALY baseline required hand-chosen grouping (merchant x 2h-bucket) and domain judgment that gigi's /scan did not get \u2014 that expert input is the point of the comparison and is priced in the SQL-lines metric.",
+    "ANOMALY: zero-variance cohorts score 0.0 via COALESCE (a row alone in its cohort cannot be flagged by a z-score baseline)."
+  ]
+}

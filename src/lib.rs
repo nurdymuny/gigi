@@ -168,6 +168,11 @@ pub mod join;
 // per spec §3.8. See `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` §5.
 pub mod ledger;
 pub mod metric;
+// Geometric ML suite (scan / cluster / infer / reduce / prescribe / solve /
+// circulation / factorize / changepoints) — extracted from the gigi-stream
+// binary in stream-extraction phase 1 (see EXTRACTION_MAP.md). The REST
+// handlers stay in src/bin/gigi_stream.rs as thin wrappers over gigi::ml::*.
+pub mod ml;
 pub mod mmap_bundle;
 // OBSTRUCTION verb — Phase 1 (RED stub, 2026-06-29).
 // Decides whether a principal G-bundle on a closed base manifold

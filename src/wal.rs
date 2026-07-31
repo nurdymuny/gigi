@@ -2091,4 +2091,178 @@ mod tests {
         let again = GaugeFieldSnapshotPayload::compute_buffer_sha256(&buffer);
         assert_eq!(again, payload.sha256);
     }
+
+    // ── Ingest write-path optimization: durability pins ──────────────────
+    //
+    // These tests were written BEFORE the CRC table rewrite and the
+    // zero-alloc append refactor, against the original bitwise-CRC /
+    // concat-Vec implementation. They pin the durability contract so the
+    // optimization cannot silently change on-disk bytes, CRC values, or
+    // crash-replay behavior.
+
+    /// Bit-serial CRC-32C (Castagnoli, reflected, poly 0x82F63B78) — the
+    /// original implementation, kept verbatim as a test oracle. Any faster
+    /// production implementation must agree with this on every input.
+    fn crc32_bitwise_oracle(data: &[u8]) -> u32 {
+        let mut crc: u32 = 0xFFFF_FFFF;
+        for &byte in data {
+            crc ^= byte as u32;
+            for _ in 0..8 {
+                if crc & 1 != 0 {
+                    crc = (crc >> 1) ^ 0x82F6_3B78;
+                } else {
+                    crc >>= 1;
+                }
+            }
+        }
+        !crc
+    }
+
+    /// CRC-32C known-answer vectors from the public literature (RFC 3720
+    /// appendix / the standard Castagnoli check values). Pins the exact
+    /// polynomial + reflection + init/xorout across any reimplementation.
+    #[test]
+    fn crc32c_known_answer_vectors() {
+        assert_eq!(crc32(b""), 0x0000_0000);
+        assert_eq!(crc32(b"123456789"), 0xE306_9283, "standard CRC-32C check value");
+        assert_eq!(
+            crc32(b"The quick brown fox jumps over the lazy dog"),
+            0x2262_0404
+        );
+        // Oracle agrees with itself on the same vectors.
+        assert_eq!(crc32_bitwise_oracle(b"123456789"), 0xE306_9283);
+    }
+
+    /// Production crc32 must be byte-identical to the bitwise oracle on
+    /// pseudorandom payloads across the length spectrum (0 / 1 / sub-word /
+    /// word-boundary / typical-entry ~126B / large).
+    #[test]
+    fn crc32_matches_bitwise_oracle_on_random_payloads() {
+        let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
+        let mut next = move || {
+            // xorshift* — deterministic, dependency-free
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            state.wrapping_mul(0x2545_F491_4F6C_DD1D)
+        };
+        for &len in &[0usize, 1, 3, 7, 8, 9, 15, 126, 127, 1000, 4096, 65536] {
+            let mut data = Vec::with_capacity(len);
+            while data.len() < len {
+                data.extend_from_slice(&next().to_le_bytes());
+            }
+            data.truncate(len);
+            assert_eq!(
+                crc32(&data),
+                crc32_bitwise_oracle(&data),
+                "crc mismatch at len={len}"
+            );
+        }
+    }
+
+    /// Pins the exact on-disk WAL entry layout:
+    ///   [u32 LE total_len = 1 + payload.len()] [u8 op] [payload] [u32 LE crc32c(op || payload)]
+    /// with the CRC computed by the independent bitwise oracle. Any append-path
+    /// refactor must keep the file bytes identical.
+    #[test]
+    fn wal_entry_on_disk_layout_pinned() {
+        let dir = std::env::temp_dir().join("gigi_wal_layout_pin");
+        let _ = fs::create_dir_all(&dir);
+        let wal_path = dir.join("layout.wal");
+        let _ = fs::remove_file(&wal_path);
+
+        let rec = test_record();
+        {
+            let mut wal = WalWriter::open(&wal_path).unwrap();
+            wal.log_insert("users", &rec).unwrap();
+            wal.sync().unwrap();
+        }
+        let file_bytes = fs::read(&wal_path).unwrap();
+
+        // Reconstruct the expected bytes independently.
+        let payload = encode_insert("users", &rec);
+        let mut entry = Vec::with_capacity(1 + payload.len());
+        entry.push(OP_INSERT);
+        entry.extend_from_slice(&payload);
+        let mut expected = Vec::new();
+        expected.extend_from_slice(&((entry.len()) as u32).to_le_bytes());
+        expected.extend_from_slice(&entry);
+        expected.extend_from_slice(&crc32_bitwise_oracle(&entry).to_le_bytes());
+
+        assert_eq!(
+            file_bytes, expected,
+            "WAL on-disk entry bytes must be [len][op][payload][crc32c] with \
+             the oracle CRC — byte-identical across append-path refactors"
+        );
+
+        let _ = fs::remove_file(&wal_path);
+        let _ = fs::remove_dir(&dir);
+    }
+
+    /// Crash-replay durability pin: log a schema + many inserts covering
+    /// every Value variant, sync, then drop the writer with NO checkpoint
+    /// (simulated crash after fsync). A fresh reader must reproduce every
+    /// record with full value fidelity, in order.
+    #[test]
+    fn wal_crash_replay_reproduces_all_records() {
+        let dir = std::env::temp_dir().join("gigi_wal_crash_replay");
+        let _ = fs::create_dir_all(&dir);
+        let wal_path = dir.join("crash.wal");
+        let _ = fs::remove_file(&wal_path);
+
+        let n = 250usize;
+        let make_record = |i: usize| -> Record {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i as i64));
+            r.insert("name".into(), Value::Text(format!("user_{i} 🌍")));
+            r.insert("score".into(), Value::Float(i as f64 * 0.25 - 3.0));
+            r.insert("active".into(), Value::Bool(i % 2 == 0));
+            r.insert("seen_at".into(), Value::Timestamp(1_710_000_000_000 + i as i64));
+            r.insert(
+                "embedding".into(),
+                Value::Vector(vec![i as f64, -(i as f64), 0.5]),
+            );
+            r.insert("blob".into(), Value::Binary(vec![i as u8, 0xFF, 0x00]));
+            r.insert("hole".into(), Value::Null);
+            r
+        };
+
+        {
+            let mut wal = WalWriter::open(&wal_path).unwrap();
+            wal.log_create_bundle(&test_schema()).unwrap();
+            for i in 0..n {
+                wal.log_insert("users", &make_record(i)).unwrap();
+            }
+            wal.sync().unwrap();
+            // NO checkpoint — the writer is dropped as-if the process died
+            // right after the fsync returned.
+        }
+
+        let mut reader = WalReader::open(&wal_path).unwrap();
+        let entries = reader.read_all().unwrap();
+        assert_eq!(entries.len(), n + 1, "schema + every insert must replay");
+        match &entries[0] {
+            WalEntry::CreateBundle(s) => assert_eq!(s.name, "users"),
+            other => panic!("entry 0 should be CreateBundle, got {other:?}"),
+        }
+        for i in 0..n {
+            match &entries[i + 1] {
+                WalEntry::Insert {
+                    bundle_name,
+                    record,
+                } => {
+                    assert_eq!(bundle_name, "users");
+                    assert_eq!(
+                        record,
+                        &make_record(i),
+                        "record {i} must replay with full value fidelity"
+                    );
+                }
+                other => panic!("entry {} should be Insert, got {other:?}", i + 1),
+            }
+        }
+
+        let _ = fs::remove_file(&wal_path);
+        let _ = fs::remove_dir(&dir);
+    }
 }

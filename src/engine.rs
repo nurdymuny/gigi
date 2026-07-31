@@ -3791,6 +3791,76 @@ mod tests {
         cleanup(&dir);
     }
 
+    /// Ingest write-path durability pin (written BEFORE the WAL append
+    /// optimization): batch_insert on the benchmark-shaped schema
+    /// (categorical text base + mixed fibers, secondary index), then the
+    /// engine is dropped with NO checkpoint and NO snapshot — a simulated
+    /// crash right after batch_insert's internal fsync. Reopen must
+    /// reproduce every record with full value fidelity via WAL replay,
+    /// and per-record point queries must hit.
+    #[test]
+    fn batch_insert_crash_replay_value_fidelity() {
+        let dir = test_dir("batch_crash_fidelity");
+        cleanup(&dir);
+
+        let n = 300i64;
+        let make_record = |i: i64| -> Record {
+            let mut r = Record::new();
+            r.insert("txn_id".into(), Value::Text(format!("T{i:06}")));
+            r.insert("merchant".into(), Value::Text(format!("m_{}", i % 40)));
+            r.insert("customer".into(), Value::Text(format!("c_{}", i % 97)));
+            r.insert("hour".into(), Value::Float((i % 24) as f64));
+            r.insert("amount".into(), Value::Float(i as f64 * 1.75 + 0.01));
+            r
+        };
+
+        {
+            let mut engine = Engine::open(&dir).unwrap();
+            let schema = BundleSchema::new("bench")
+                .base(FieldDef::categorical("txn_id"))
+                .fiber(FieldDef::categorical("merchant"))
+                .fiber(FieldDef::categorical("customer"))
+                .fiber(FieldDef::numeric("hour"))
+                .fiber(FieldDef::numeric("amount"))
+                .index("txn_id");
+            engine.create_bundle(schema).unwrap();
+
+            let records: Vec<Record> = (0..n).map(make_record).collect();
+            let inserted = engine.batch_insert("bench", &records).unwrap();
+            assert_eq!(inserted, n as usize);
+            // NO checkpoint, NO snapshot — drop as-if the process died
+            // right after batch_insert returned (its fsync already ran).
+        }
+
+        {
+            let engine = Engine::open(&dir).unwrap();
+            assert_eq!(
+                engine.total_records(),
+                n as usize,
+                "every batch_insert record must survive a post-fsync crash"
+            );
+            for i in 0..n {
+                let expected = make_record(i);
+                let mut key = Record::new();
+                key.insert("txn_id".into(), Value::Text(format!("T{i:06}")));
+                let got = engine
+                    .point_query("bench", &key)
+                    .unwrap()
+                    .unwrap_or_else(|| panic!("record T{i:06} lost in crash replay"));
+                for field in ["txn_id", "merchant", "customer", "hour", "amount"] {
+                    assert_eq!(
+                        got.get(field),
+                        expected.get(field),
+                        "field '{field}' of record {i} must replay with full \
+                         value fidelity"
+                    );
+                }
+            }
+        }
+
+        cleanup(&dir);
+    }
+
     /// Streaming WAL replay handles large entry counts without buffering the whole file.
     ///
     /// Not directly observable, but we can verify the replay() closure

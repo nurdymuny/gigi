@@ -45,6 +45,82 @@ pub fn scan_solve(a: &mut [Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
     Some((0..n).map(|i| b[i] / a[i][i]).collect())
 }
 
+/// Cap on interaction context lenses kept per scan (chosen by descending median
+/// cohort size; every pair dropped for budget is named in `notes`).
+const SCAN_MAX_INTERACTION_LENSES: usize = 4;
+/// Robust-z clip for lens normalization: `norm = min(zraw, CAP)/CAP`. Below the
+/// cap norm is LINEAR in robust-sigma — the discrimination band where rank
+/// normalization used to flatten a noise lens's ~2-3σ top into a tie with a
+/// ≥5σ true cohort deviation under max fusion.
+const SCAN_NORM_Z_CAP: f64 = 6.0;
+
+/// Normalize one lens's raw scores to [0,1] while PRESERVING magnitude.
+///
+/// Returns `(norm, zraw)`: `zraw_i = max(0, (x_i - center)/scale)` with
+/// center = median and scale = 1.4826·MAD (falls back to (mean, sd) when the
+/// MAD is degenerate; all-zeros when both scales are), and
+/// `norm_i = min(zraw_i, SCAN_NORM_Z_CAP)/SCAN_NORM_Z_CAP`. `norm` keeps the
+/// JSON lens-breakdown contract ([0,1]); `zraw` is the unclipped magnitude
+/// channel the fusion tiebreak uses so records clipped at 1.0 stay strictly
+/// ordered by how far out they actually are.
+pub(crate) fn scan_normalize(vals: &[f64]) -> (Vec<f64>, Vec<f64>) {
+    let n = vals.len();
+    if n == 0 {
+        return (Vec::new(), Vec::new());
+    }
+    let med = |xs: &mut Vec<f64>| -> f64 {
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        if xs.len() % 2 == 1 { xs[xs.len() / 2] } else { (xs[xs.len() / 2 - 1] + xs[xs.len() / 2]) / 2.0 }
+    };
+    let median = med(&mut vals.to_vec());
+    let mad = med(&mut vals.iter().map(|x| (x - median).abs()).collect());
+    let (center, scale) = if mad >= f64::EPSILON {
+        (median, 1.4826 * mad)
+    } else {
+        let mu = vals.iter().sum::<f64>() / n as f64;
+        let sd = (vals.iter().map(|x| (x - mu).powi(2)).sum::<f64>() / n as f64).sqrt();
+        if sd >= f64::EPSILON { (mu, sd) } else { return (vec![0.0; n], vec![0.0; n]); }
+    };
+    let zraw: Vec<f64> = vals.iter().map(|x| ((x - center) / scale).max(0.0)).collect();
+    let norm: Vec<f64> = zraw.iter().map(|z| z.min(SCAN_NORM_Z_CAP) / SCAN_NORM_Z_CAP).collect();
+    (norm, zraw)
+}
+
+/// Shared context-lens statistic: per-cohort per-field POPULATION z.
+///
+/// For each record in the cohort, `raw = max_f |x_f − μ_f| / σ_f` with μ/σ
+/// cohort-local over `fields`. A zero-variance field (σ < EPSILON) contributes
+/// 0 — the SQL arm's COALESCE convention. Cohorts smaller than 3 score 0.
+/// This replaces z-of-κ: κ AVERAGES |v−μ|/range over all numeric fibers, so a
+/// single-field deviation is diluted by the ordinary fields, and z-of-|dev| is
+/// an affine map of the expert |z| only under per-cohort Gaussianity — max
+/// over per-field |z| is calibrated in noise units across cohorts regardless
+/// of distribution shape.
+pub(crate) fn scan_cohort_field_z(
+    records: &[crate::types::Record],
+    idxs: &[usize],
+    fields: &[crate::types::FieldDef],
+) -> Vec<(usize, f64)> {
+    if idxs.len() < 3 {
+        return idxs.iter().map(|&ix| (ix, 0.0)).collect();
+    }
+    let stats: Vec<(&str, f64, f64)> = fields.iter().filter_map(|fd| {
+        let xs: Vec<f64> = idxs.iter()
+            .filter_map(|&ix| records[ix].get(&fd.name).and_then(|v| v.as_f64())).collect();
+        if xs.len() < 2 { return None; }
+        let cn = xs.len() as f64;
+        let mu = xs.iter().sum::<f64>() / cn;
+        let sd = (xs.iter().map(|x| (x - mu).powi(2)).sum::<f64>() / cn).sqrt();
+        (sd >= f64::EPSILON).then_some((fd.name.as_str(), mu, sd))
+    }).collect();
+    idxs.iter().map(|&ix| {
+        let raw = stats.iter().filter_map(|(f, mu, sd)| {
+            records[ix].get(*f).and_then(|v| v.as_f64()).map(|x| (x - mu).abs() / sd)
+        }).fold(0.0_f64, f64::max);
+        (ix, raw)
+    }).collect()
+}
+
 /// Request for `POST /v1/bundles/{name}/scan`.
 #[derive(Deserialize)]
 pub struct ScanRequest {
@@ -91,6 +167,11 @@ pub fn default_scan_budget() -> f64 { 0.05 }
 pub struct ScanLenses {
     pub lens_names: Vec<String>,
     pub norm: Vec<std::collections::HashMap<String, f64>>,
+    /// Unclipped robust-z per lens (same keys as `norm`) — the magnitude
+    /// channel. `norm` clips at 6 robust-sigma to keep its [0,1] contract;
+    /// fusion adds a tiny `zraw` term so records clipped to 1.0 keep strict
+    /// magnitude ordering.
+    pub zraw: Vec<std::collections::HashMap<String, f64>>,
     pub ids: Vec<String>,
     pub base: String,
     pub n: usize,
@@ -128,7 +209,7 @@ pub fn scan_compute_lenses(
     let records: Vec<crate::types::Record> = store.records().collect();
     let n = records.len();
     if n == 0 {
-        return Ok(ScanLenses { lens_names: Vec::new(), norm: Vec::new(), ids: Vec::new(), base, n: 0, notes });
+        return Ok(ScanLenses { lens_names: Vec::new(), norm: Vec::new(), zraw: Vec::new(), ids: Vec::new(), base, n: 0, notes });
     }
     let idof = |r: &crate::types::Record| r.get(&base).map(|v| format!("{}", v)).unwrap_or_default();
     let ids: Vec<String> = records.iter().map(&idof).collect();
@@ -183,6 +264,14 @@ pub fn scan_compute_lenses(
         lenses.push(("global".to_string(), m));
     }
 
+    // Time-like numeric fields are picked by NAME (day/date/time/hour/…), not by
+    // distinct-count — otherwise `amount` (thousands of distinct values) would
+    // masquerade as time. Used by the interaction-lens bucket axes and velocity.
+    let time_named = |nm: &str| {
+        let l = nm.to_lowercase();
+        ["day", "date", "time", "hour", "ts", "week", "month"].iter().any(|k| l.contains(k))
+    };
+
     // ── contextual curvature: cohort-local field stats per categorical field ──
     for cf in &cats {
         if text_fields.contains(cf) { continue; }   // text fields → text lens, not curvature
@@ -208,40 +297,149 @@ pub fn scan_compute_lenses(
         if num_defs.is_empty() { break; }
         let mut m: HashMap<String, f64> = HashMap::new();
         for idxs in groups.values() {
-            if idxs.len() < 3 { for &ix in idxs { m.insert(ids[ix].clone(), 0.0); } continue; }
-            // cohort-local Welford field stats
-            let mut stats: HashMap<String, crate::bundle::FieldStats> = HashMap::new();
-            for &ix in idxs {
-                for fd in &num_defs {
-                    if let Some(x) = records[ix].get(&fd.name).and_then(|v| v.as_f64()) {
-                        stats.entry(fd.name.clone()).or_default().update(x);
-                    }
-                }
-            }
-            // cohort-local K per record, then z within the cohort
-            let ks: Vec<(usize, f64)> = idxs.iter().map(|&ix| {
-                let vals: Vec<Value> = num_defs.iter()
-                    .map(|fd| records[ix].get(&fd.name).cloned().unwrap_or(Value::Null)).collect();
-                (ix, crate::bundle::compute_record_k(&stats, &vals, &num_defs))
-            }).collect();
-            let cn = ks.len() as f64;
-            let mu = ks.iter().map(|(_, k)| k).sum::<f64>() / cn;
-            let sd = (ks.iter().map(|(_, k)| (k - mu).powi(2)).sum::<f64>() / cn).sqrt();
-            for (ix, k) in ks {
-                let z = if sd < f64::EPSILON { 0.0 } else { (k - mu) / sd };
-                m.insert(ids[ix].clone(), z.max(0.0));
+            for (ix, raw) in scan_cohort_field_z(&records, idxs, &num_defs) {
+                m.insert(ids[ix].clone(), raw);
             }
         }
         lenses.push((format!("context:{}", cf), m));
     }
 
+    // ── interaction contextual curvature: (categorical × binned-numeric) and
+    // (categorical × categorical) cohorts. A COMBINATION anomaly — every field
+    // in-distribution on its own marginal, the combination impossible — is
+    // invisible to every single-field cohort above; the crossed cohort is the
+    // smallest space where it stands out. ──
+    if !num_defs.is_empty() {
+        // Binned axes from numeric fields: time-named → 12 equal-width bins over
+        // the observed range; small-integer-valued → the rounded value itself.
+        struct BucketAxis { axis: String, src: String, bins: Vec<Option<i64>>, desc: String }
+        let mut axes: Vec<BucketAxis> = Vec::new();
+        for fd in &num_defs {
+            let xs: Vec<Option<f64>> = records.iter()
+                .map(|r| r.get(&fd.name).and_then(|v| v.as_f64())).collect();
+            if time_named(&fd.name) {
+                let present: Vec<f64> = xs.iter().flatten().cloned().collect();
+                if present.is_empty() { continue; }
+                let (mn, mx) = present.iter()
+                    .fold((f64::MAX, f64::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+                if mx - mn < f64::EPSILON { continue; }
+                let w = (mx - mn) / 12.0;
+                axes.push(BucketAxis {
+                    axis: format!("{}_bucket", fd.name),
+                    src: fd.name.clone(),
+                    bins: xs.iter().map(|x| x.map(|x| (((x - mn) / w).floor() as i64).clamp(0, 11))).collect(),
+                    desc: format!("12 equal-width {} bins [{mn:.1},{mx:.1}]", fd.name),
+                });
+            } else {
+                let distinct: std::collections::HashSet<i64> =
+                    xs.iter().flatten().map(|x| x.round() as i64).collect();
+                if (2..=24).contains(&distinct.len()) {
+                    axes.push(BucketAxis {
+                        axis: format!("{}_bucket", fd.name),
+                        src: fd.name.clone(),
+                        bins: xs.iter().map(|x| x.map(|x| x.round() as i64)).collect(),
+                        desc: format!("{} integer-valued buckets of {}", distinct.len(), fd.name),
+                    });
+                }
+            }
+        }
+        // Pair sides: non-text categoricals with 2..=64 distinct values (a
+        // higher-cardinality side cannot form cohorts once crossed — the
+        // single-field guard fires at n/5; crossing only makes it worse).
+        let mut sides: Vec<&String> = Vec::new();
+        for cf in cats.iter().filter(|c| !text_fields.contains(*c)) {
+            let d = records.iter().filter_map(|r| r.get(cf).map(|v| format!("{}", v)))
+                .collect::<std::collections::HashSet<_>>().len();
+            if d > 64 {
+                notes.push(format!("context:{cf}* skipped: {d} distinct values, too unique to form cohorts (interaction side limit 64)"));
+            } else if d >= 2 {
+                sides.push(cf);
+            }
+        }
+        // Candidates: (lens name, per-record composite key, excluded numeric, axis desc)
+        let mut candidates: Vec<(String, Vec<Option<String>>, Option<String>, Option<String>)> = Vec::new();
+        for cf in &sides {
+            let cvals: Vec<Option<String>> = records.iter()
+                .map(|r| r.get(cf.as_str()).map(|v| format!("{}", v))).collect();
+            for ax in &axes {
+                let keys = cvals.iter().zip(&ax.bins).map(|(c, b)| match (c, b) {
+                    (Some(c), Some(b)) => Some(format!("{c}\u{1f}{b}")),
+                    _ => None,
+                }).collect();
+                candidates.push((format!("context:{}*{}", cf, ax.axis), keys,
+                    Some(ax.src.clone()), Some(ax.desc.clone())));
+            }
+        }
+        for i in 0..sides.len() {
+            for j in (i + 1)..sides.len() {
+                let (a, b) = (sides[i], sides[j]);
+                let keys = records.iter().map(|r| match (r.get(a.as_str()), r.get(b.as_str())) {
+                    (Some(x), Some(y)) => Some(format!("{x}\u{1f}{y}")),
+                    _ => None,
+                }).collect();
+                candidates.push((format!("context:{a}*{b}"), keys, None, None));
+            }
+        }
+        // Guards (same thresholds + phrasing as the single-field lens), then a
+        // hard budget: keep at most SCAN_MAX_INTERACTION_LENSES by descending
+        // median cohort size. Per kept lens the cost is O(n·|num_defs|) — the
+        // same as one single-field context lens.
+        let mut kept: Vec<(String, HashMap<String, Vec<usize>>, Option<String>, usize, Option<String>)> = Vec::new();
+        for (nm, keys, excl, desc) in candidates {
+            let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
+            for (ix, k) in keys.iter().enumerate() {
+                if let Some(k) = k { groups.entry(k.clone()).or_default().push(ix); }
+            }
+            let d = groups.len();
+            if d < 4 {
+                notes.push(format!("{nm} skipped: only {d} distinct value(s) (need >= 4)"));
+                continue;
+            }
+            if (d as f64) > (n as f64) / 5.0 {
+                notes.push(format!("{nm} skipped: {d} distinct values, too unique to form cohorts"));
+                continue;
+            }
+            let mut sizes: Vec<usize> = groups.values().map(|v| v.len()).collect();
+            sizes.sort_unstable();
+            let median = sizes[sizes.len() / 2];
+            if median < 3 {
+                notes.push(format!("{nm} skipped: cohorts too small (median < 3 records)"));
+                continue;
+            }
+            if let Some(ex) = excl.as_deref() {
+                // within a bucket, residual variation of the binned field must not
+                // dilute the partner-field z — it is excluded from scoring
+                if !num_defs.iter().any(|fd| fd.name != ex) {
+                    notes.push(format!("{nm} skipped: no numeric field left to score once {ex} is the bucket axis"));
+                    continue;
+                }
+            }
+            kept.push((nm, groups, excl, median, desc));
+        }
+        kept.sort_by(|a, b| b.3.cmp(&a.3).then(a.0.cmp(&b.0)));
+        if kept.len() > SCAN_MAX_INTERACTION_LENSES {
+            let dropped: Vec<String> = kept[SCAN_MAX_INTERACTION_LENSES..].iter()
+                .map(|c| c.0.clone()).collect();
+            notes.push(format!(
+                "interaction lens budget: kept {SCAN_MAX_INTERACTION_LENSES} of {} candidate pairs by median cohort size; dropped {}",
+                kept.len(), dropped.join(", ")));
+            kept.truncate(SCAN_MAX_INTERACTION_LENSES);
+        }
+        for (nm, groups, excl, _, desc) in kept {
+            let flds: Vec<crate::types::FieldDef> = num_defs.iter()
+                .filter(|fd| excl.as_deref() != Some(fd.name.as_str())).cloned().collect();
+            let mut m: HashMap<String, f64> = HashMap::new();
+            for idxs in groups.values() {
+                for (ix, raw) in scan_cohort_field_z(&records, idxs, &flds) {
+                    m.insert(ids[ix].clone(), raw);
+                }
+            }
+            if let Some(d) = desc { notes.push(format!("{nm}: {d}")); }
+            lenses.push((nm, m));
+        }
+    }
+
     // ── velocity: (highest-cardinality entity × most-granular TIME) burst count ──
-    // Pick the time axis by NAME (day/date/time/hour/…), not by distinct-count —
-    // otherwise `amount` (thousands of distinct values) would masquerade as time.
-    let time_named = |nm: &str| {
-        let l = nm.to_lowercase();
-        ["day", "date", "time", "hour", "ts", "week", "month"].iter().any(|k| l.contains(k))
-    };
     let time_field = num_defs.iter().filter(|f| time_named(&f.name))
         .max_by_key(|f| records.iter()
             .filter_map(|r| r.get(&f.name).and_then(|v| v.as_f64()).map(|x| x as i64))
@@ -495,22 +693,22 @@ pub fn scan_compute_lenses(
             if notes.is_empty() { "none".to_string() } else { notes.join("; ") })));
     }
 
-    // ── rank-normalize each lens to [0,1] over all records ──
+    // ── normalize each lens to [0,1]: clipped robust z (median/MAD, sd
+    // fallback) + an unclipped magnitude channel for fusion tiebreaks. Rank
+    // normalization destroyed cross-lens magnitude under max fusion: every
+    // lens's top tail mapped to ~1.0, so a pure-noise lens's top tied an 8σ
+    // cohort deviation and the lens-OR flooded the review budget with noise. ──
     let lens_names: Vec<String> = lenses.iter().map(|(nm, _)| nm.clone()).collect();
-    let norm: Vec<HashMap<String, f64>> = lenses.iter().map(|(_, m)| {
-        let mut distinct: Vec<f64> = ids.iter().map(|i| *m.get(i).unwrap_or(&0.0)).collect();
-        distinct.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        distinct.dedup();
-        let denom = (distinct.len().saturating_sub(1)).max(1) as f64;
-        let rankmap: HashMap<u64, f64> = distinct.iter().enumerate()
-            .map(|(k, v)| (v.to_bits(), k as f64 / denom)).collect();
-        ids.iter().map(|i| {
-            let raw = *m.get(i).unwrap_or(&0.0);
-            (i.clone(), *rankmap.get(&raw.to_bits()).unwrap_or(&0.0))
-        }).collect()
-    }).collect();
+    let mut norm: Vec<HashMap<String, f64>> = Vec::with_capacity(lenses.len());
+    let mut zraw: Vec<HashMap<String, f64>> = Vec::with_capacity(lenses.len());
+    for (_, m) in &lenses {
+        let vals: Vec<f64> = ids.iter().map(|i| *m.get(i).unwrap_or(&0.0)).collect();
+        let (nv, zv) = scan_normalize(&vals);
+        norm.push(ids.iter().cloned().zip(nv).collect());
+        zraw.push(ids.iter().cloned().zip(zv).collect());
+    }
 
-    Ok(ScanLenses { lens_names, norm, ids, base, n, notes })
+    Ok(ScanLenses { lens_names, norm, zraw, ids, base, n, notes })
 }
 
 /// Request for `POST /v1/bundles/{name}/scan/fit`.
@@ -559,7 +757,10 @@ mod tests {
         for m in &sl.norm { assert_eq!(m.len(), 25, "each lens scores every record"); }
         // the planted outlier (id=t24, amount=9999) tops the global lens
         let g = scan_lens(&sl, "global").unwrap();
-        assert!(g["t24"] >= 0.99, "outlier should rank at top of global lens, got {}", g["t24"]);
+        assert!(g["t24"] >= 0.5, "outlier should carry real global magnitude, got {}", g["t24"]);
+        for (id, v) in g {
+            if id != "t24" { assert!(*v < g["t24"], "outlier must be strict argmax of global; {id} has {v}"); }
+        }
         cleanup(&dir);
     }
 
@@ -640,9 +841,13 @@ mod tests {
         let (dir, engine) = scan_env("scan_excl", "lk", schema, rows);
         let with = scan_compute_lenses(&engine, "lk", &[]).unwrap();
         let without = scan_compute_lenses(&engine, "lk", &["label".to_string()]).unwrap();
-        let g_with = scan_lens(&with, "global").unwrap()["r3"];
+        let gw = scan_lens(&with, "global").unwrap();
+        let g_with = gw["r3"];
         let g_without = scan_lens(&without, "global").unwrap()["r3"];
-        assert!(g_with >= 0.99, "label should dominate global when included");
+        assert!(g_with > 0.0, "label should register on global when included, got {}", g_with);
+        for (id, v) in gw {
+            if id != "r3" { assert!(*v < g_with, "r3 must be strict argmax of global when label included; {id} has {v}"); }
+        }
         assert!(g_without <= 0.01, "excluded label must not drive global; got {}", g_without);
         cleanup(&dir);
     }
@@ -701,14 +906,305 @@ mod tests {
         let (dir, engine) = scan_env("scan_completion", "surf", schema, rows);
         let sl = scan_compute_lenses(&engine, "surf", &[]).unwrap();
         let comp = scan_lens(&sl, "completion").expect("completion lens should be built");
-        // the off-manifold record tops the completion lens
-        assert!(comp["anom"] >= 0.99, "off-manifold record should top completion lens, got {}", comp["anom"]);
+        // the off-manifold record tops the completion lens (strict argmax)
+        assert!(comp["anom"] >= 0.5, "off-manifold record should carry real completion magnitude, got {}", comp["anom"]);
+        for (id, v) in comp {
+            if id != "anom" { assert!(*v < comp["anom"], "anom must be strict argmax of completion; {id} has {v}"); }
+        }
         // ...but it does NOT top the axis-wise global curvature lens (grid corners
         // deviate more on individual axes), proving the two lenses see different things
         let g = scan_lens(&sl, "global").unwrap();
         assert!(g["anom"] < comp["anom"],
             "global curvature should rank the off-manifold point below completion (global={}, completion={})",
             g["anom"], comp["anom"]);
+        cleanup(&dir);
+    }
+
+    /// Deterministic LCG uniform in [-half, half] — noise for cohort fixtures.
+    fn lcg_noise(seed: &mut u64, half: f64) -> f64 {
+        *seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let u = ((*seed >> 11) as f64) / ((1u64 << 53) as f64);
+        (u - 0.5) * 2.0 * half
+    }
+
+    /// RED→GREEN for the interaction lens: a COMBINATION anomaly — amount ordinary
+    /// for its merchant marginal AND for its hour marginal AND globally, but far
+    /// off its (merchant × 2h-bucket) cohort — must top the crossed-cohort lens,
+    /// while the single-field context:merchant lens stays blind to it (the
+    /// merchant-marginal amount distribution absorbs the hour modulation).
+    #[test]
+    fn scan_interaction_lens_catches_cohort_amount_plant() {
+        let mut seed: u64 = 20260731;
+        let mut rows: Vec<crate::types::Record> = Vec::new();
+        // 4 merchants × 24 hours × 15 reps; amount = merchant base + hour-bucket
+        // modulation (+50 on odd 12-bins) + uniform noise ±3.
+        for m in 0..4u32 {
+            for h in 0..24u32 {
+                let b = ((h as f64) * 12.0 / 23.0).floor().min(11.0) as u32; // the 12-bin bucket the lens will build
+                for rep in 0..15u32 {
+                    rows.push(scan_rec(&[
+                        ("id", V::Text(format!("r{m}_{h}_{rep}"))),
+                        ("merchant", V::Text(format!("M{m}"))),
+                        ("hour", V::Float(h as f64)),
+                        ("amount", V::Float(100.0 * (m + 1) as f64 + 50.0 * (b % 2) as f64 + lcg_noise(&mut seed, 3.0))),
+                    ]));
+                }
+            }
+        }
+        // Plant: merchant M0 at hour 2 (odd bucket → cohort amounts ≈150) with
+        // amount 100 — ordinary for M0's marginal {100,150}, ordinary globally,
+        // ~29σ off its (M0, bucket-of-hour-2) cohort.
+        rows.push(scan_rec(&[
+            ("id", V::Text("plant".into())),
+            ("merchant", V::Text("M0".into())),
+            ("hour", V::Float(2.0)),
+            ("amount", V::Float(100.0)),
+        ]));
+        let schema = BundleSchema::new("tx")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::categorical("merchant"))
+            .fiber(FieldDef::numeric("hour"))
+            .fiber(FieldDef::numeric("amount"));
+        let (dir, engine) = scan_env("scan_interaction", "tx", schema, rows);
+        let sl = scan_compute_lenses(&engine, "tx", &[]).unwrap();
+        let il = scan_lens(&sl, "context:merchant*hour_bucket")
+            .expect("interaction lens context:merchant*hour_bucket should be built");
+        // the plant tops the interaction lens…
+        assert!(il["plant"] >= 0.99, "combination anomaly should top the interaction lens, got {}", il["plant"]);
+        for (id, v) in il {
+            if id != "plant" { assert!(*v < il["plant"], "plant must be strict argmax; {id} has {v}"); }
+        }
+        // …while the single-field merchant lens is blind to it (blindness proof)
+        let sm = scan_lens(&sl, "context:merchant").expect("single-field merchant lens");
+        assert!(sm["plant"] < il["plant"],
+            "context:merchant should be blind to the combination anomaly (merchant={}, interaction={})",
+            sm["plant"], il["plant"]);
+        cleanup(&dir);
+    }
+
+    /// Interaction-lens guards: (a) a high-cardinality side is skipped with a
+    /// "too unique" note and builds no lens; (b) the lens budget keeps exactly
+    /// SCAN_MAX_INTERACTION_LENSES pairs and names the dropped ones in a note.
+    #[test]
+    fn scan_interaction_lens_guards() {
+        // (a) 300-distinct customer side → side-limit note, no customer lens
+        let mut seed: u64 = 7;
+        let rows: Vec<_> = (0..300).map(|i| scan_rec(&[
+            ("id", V::Text(format!("t{i}"))),
+            ("customer", V::Text(format!("C{i}"))),
+            ("hour", V::Float((i % 24) as f64)),
+            ("amount", V::Float(100.0 + lcg_noise(&mut seed, 3.0))),
+        ])).collect();
+        let schema = BundleSchema::new("hc")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::categorical("customer"))
+            .fiber(FieldDef::numeric("hour"))
+            .fiber(FieldDef::numeric("amount"));
+        let (dir, engine) = scan_env("scan_iguard_a", "hc", schema, rows);
+        let sl = scan_compute_lenses(&engine, "hc", &[]).unwrap();
+        assert!(!sl.lens_names.iter().any(|l| l.starts_with("context:customer*")),
+            "300-distinct customer must not form an interaction side: {:?}", sl.lens_names);
+        assert!(sl.notes.iter().any(|nt| nt.contains("context:customer*") && nt.contains("too unique")),
+            "expected a side-limit note, got {:?}", sl.notes);
+        cleanup(&dir);
+
+        // (b) 6 low-card cats × 1 time axis → many candidates, exactly 4 kept + budget note
+        let mut seed: u64 = 11;
+        let rows: Vec<_> = (0..400).map(|i| {
+            let mut fields: Vec<(&str, V)> = vec![("id", V::Text(format!("t{i}")))];
+            let names = ["c0", "c1", "c2", "c3", "c4", "c5"];
+            for (j, nm) in names.iter().enumerate() {
+                fields.push((nm, V::Text(format!("v{}", (i + j) % 4))));
+            }
+            fields.push(("hour", V::Float((i % 24) as f64)));
+            fields.push(("amount", V::Float(100.0 + lcg_noise(&mut seed, 3.0))));
+            scan_rec(&fields)
+        }).collect();
+        let mut schema = BundleSchema::new("bud").base(FieldDef::categorical("id"));
+        for nm in ["c0", "c1", "c2", "c3", "c4", "c5"] { schema = schema.fiber(FieldDef::categorical(nm)); }
+        schema = schema.fiber(FieldDef::numeric("hour")).fiber(FieldDef::numeric("amount"));
+        let (dir, engine) = scan_env("scan_iguard_b", "bud", schema, rows);
+        let sl = scan_compute_lenses(&engine, "bud", &[]).unwrap();
+        let inter: Vec<&String> = sl.lens_names.iter().filter(|l| l.contains('*')).collect();
+        assert_eq!(inter.len(), 4, "budget must keep exactly 4 interaction lenses, got {inter:?}");
+        assert!(sl.notes.iter().any(|nt| nt.contains("interaction lens budget") && nt.contains("dropped")),
+            "expected a budget note naming dropped pairs, got {:?}", sl.notes);
+        cleanup(&dir);
+    }
+
+    /// The binned partner field is EXCLUDED from interaction-cohort scoring:
+    /// residual within-bin variation of the binned field must not score. A
+    /// pure-hour deviation inside a bin stays low; a same-size amount plant
+    /// tops the lens.
+    #[test]
+    fn scan_interaction_excludes_partner_numeric() {
+        let mut seed: u64 = 20260731;
+        let mut rows: Vec<crate::types::Record> = Vec::new();
+        // 4 merchants × hours 0..11 (each 12-bin holds exactly one integer hour)
+        for m in 0..4u32 {
+            for h in 0..12u32 {
+                for rep in 0..30u32 {
+                    rows.push(scan_rec(&[
+                        ("id", V::Text(format!("r{m}_{h}_{rep}"))),
+                        ("merchant", V::Text(format!("M{m}"))),
+                        ("hour", V::Float(h as f64)),
+                        ("amount", V::Float(100.0 + lcg_noise(&mut seed, 3.0))),
+                    ]));
+                }
+            }
+        }
+        // hp: hour 10.55 lands in the hour-11 bin — a large hour deviation
+        // INSIDE the bin, amount ordinary. Must NOT top the interaction lens.
+        rows.push(scan_rec(&[
+            ("id", V::Text("hp".into())),
+            ("merchant", V::Text("M0".into())),
+            ("hour", V::Float(10.55)),
+            ("amount", V::Float(100.0)),
+        ]));
+        // ap: amount 40 off its cohort — the real combination anomaly.
+        rows.push(scan_rec(&[
+            ("id", V::Text("ap".into())),
+            ("merchant", V::Text("M1".into())),
+            ("hour", V::Float(5.0)),
+            ("amount", V::Float(140.0)),
+        ]));
+        let schema = BundleSchema::new("tx")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::categorical("merchant"))
+            .fiber(FieldDef::numeric("hour"))
+            .fiber(FieldDef::numeric("amount"));
+        let (dir, engine) = scan_env("scan_ipartner", "tx", schema, rows);
+        let sl = scan_compute_lenses(&engine, "tx", &[]).unwrap();
+        let il = scan_lens(&sl, "context:merchant*hour_bucket")
+            .expect("interaction lens should be built");
+        for (id, v) in il {
+            if id != "ap" { assert!(*v < il["ap"], "amount plant must be strict argmax; {id} has {v}"); }
+        }
+        assert!(il["hp"] < 0.5,
+            "pure-hour deviation inside a bin must not score on the interaction lens (hour is the bucket axis), got {}", il["hp"]);
+        cleanup(&dir);
+    }
+
+    /// scan_normalize: monotone, [0,1] range, degenerate handling, sd fallback,
+    /// LINEAR magnitude below the cap, clip above it, zraw unclipped.
+    #[test]
+    fn scan_normalize_unit() {
+        // median 0, MAD 1 → scale = 1.4826
+        let vals = vec![0.0, 0.0, 0.0, 0.0, 1.0, -1.0, 2.0, -2.0, 4.0, 8.0, 20.0];
+        let (norm, zraw) = scan_normalize(&vals);
+        assert_eq!(norm.len(), vals.len());
+        for v in &norm { assert!((0.0..=1.0).contains(v), "norm in [0,1], got {v}"); }
+        let at = |x: f64| vals.iter().position(|&v| v == x).unwrap();
+        // linear below the cap: norm(8)/norm(4) = 2
+        let ratio = norm[at(8.0)] / norm[at(4.0)];
+        assert!((ratio - 2.0).abs() < 1e-9, "norm linear below cap: ratio {ratio}");
+        // monotone
+        assert!(norm[at(20.0)] >= norm[at(8.0)] && norm[at(8.0)] > norm[at(4.0)] && norm[at(4.0)] > norm[at(1.0)]);
+        // clip above cap; zraw unclipped
+        assert_eq!(norm[at(20.0)], 1.0, "above-cap value clips to 1.0");
+        assert!(zraw[at(20.0)] > SCAN_NORM_Z_CAP, "zraw stays unclipped, got {}", zraw[at(20.0)]);
+        assert!((zraw[at(20.0)] - 20.0 / 1.4826).abs() < 1e-9, "zraw = (x - median)/(1.4826*MAD)");
+        // negatives floor at 0
+        assert_eq!(norm[at(-2.0)], 0.0);
+        // all-equal input → all zeros
+        let (n0, z0) = scan_normalize(&[7.0; 9]);
+        assert!(n0.iter().chain(z0.iter()).all(|v| *v == 0.0), "degenerate input scores 0");
+        // MAD=0 with sd>0 → (mean, sd) fallback
+        let mut v = vec![0.0; 9];
+        v.push(3.0);
+        let (nf, zf) = scan_normalize(&v);
+        // mean 0.3, population sd 0.9 → z(3.0) = 3.0 → norm 0.5
+        assert!((zf[9] - 3.0).abs() < 1e-9, "sd-fallback zraw, got {}", zf[9]);
+        assert!((nf[9] - 0.5).abs() < 1e-9, "sd-fallback norm, got {}", nf[9]);
+        assert_eq!(nf[0], 0.0, "below-center floors at 0");
+        // empty input
+        let (ne, ze) = scan_normalize(&[]);
+        assert!(ne.is_empty() && ze.is_empty());
+    }
+
+    /// Cross-cohort magnitude is PRESERVED: plants at ~4σ and ~12σ in cohorts
+    /// with different sigma order by true magnitude, and the 4σ plant scores
+    /// materially below 1.0 — impossible under rank normalization, which put
+    /// them at adjacent ranks ≈ 1.0.
+    #[test]
+    fn scan_context_z_preserves_magnitude() {
+        let mut seed: u64 = 20260731;
+        let mut rows: Vec<crate::types::Record> = Vec::new();
+        // 4 groups × 300 records, per-group sigma differs (uniform half-widths)
+        let half = [2.0, 20.0, 5.0, 8.0];
+        let base = [1000.0, 500.0, 100.0, 2000.0];
+        for g in 0..4usize {
+            for i in 0..300 {
+                rows.push(scan_rec(&[
+                    ("id", V::Text(format!("g{g}_{i}"))),
+                    ("grp", V::Text(format!("G{g}"))),
+                    ("amount", V::Float(base[g] + lcg_noise(&mut seed, half[g]))),
+                ]));
+            }
+        }
+        // uniform half-width h → sigma = h/sqrt(3)
+        let s1 = 20.0 / 3.0_f64.sqrt();  // G1 sigma ≈ 11.55
+        let s0 = 2.0 / 3.0_f64.sqrt();   // G0 sigma ≈ 1.155
+        rows.push(scan_rec(&[  // ~4σ plant in the WIDE cohort
+            ("id", V::Text("p4".into())), ("grp", V::Text("G1".into())),
+            ("amount", V::Float(500.0 + 4.0 * s1)),
+        ]));
+        rows.push(scan_rec(&[  // ~12σ plant in the TIGHT cohort
+            ("id", V::Text("p12".into())), ("grp", V::Text("G0".into())),
+            ("amount", V::Float(1000.0 + 12.0 * s0)),
+        ]));
+        let schema = BundleSchema::new("mag")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::categorical("grp"))
+            .fiber(FieldDef::numeric("amount"));
+        let (dir, engine) = scan_env("scan_mag", "mag", schema, rows);
+        let sl = scan_compute_lenses(&engine, "mag", &[]).unwrap();
+        let c = scan_lens(&sl, "context:grp").expect("context:grp lens");
+        assert!(c["p12"] >= 0.999, "12σ plant clips to 1.0, got {}", c["p12"]);
+        assert!(c["p4"] < c["p12"], "true magnitude must order the plants ({} vs {})", c["p4"], c["p12"]);
+        assert!(c["p4"] <= 0.95, "4σ plant must stay materially below 1.0 (rank-norm would tie it), got {}", c["p4"]);
+        assert!(c["p4"] >= 0.3, "4σ plant still carries real magnitude, got {}", c["p4"]);
+        cleanup(&dir);
+    }
+
+    /// No-regression pin on a NON-interaction fixture (no categoricals → no
+    /// context/interaction lenses can build): the global and density lenses
+    /// keep their behavior under the new normalization.
+    #[test]
+    fn scan_non_interaction_fixture_pins_global_density() {
+        let mut rows: Vec<crate::types::Record> = Vec::new();
+        for (ox, oy, tag) in [(0.0, 0.0, "a"), (10.0, 10.0, "b")] {
+            for xi in 0..5 {
+                for yi in 0..5 {
+                    rows.push(scan_rec(&[
+                        ("id", V::Text(format!("{tag}{xi}{yi}"))),
+                        ("x", V::Float(ox + 0.3 * xi as f64)),
+                        ("y", V::Float(oy + 0.3 * yi as f64)),
+                    ]));
+                }
+            }
+        }
+        // sparse-middle record (density) + a global extreme (global)
+        rows.push(scan_rec(&[("id", V::Text("mid".into())), ("x", V::Float(5.5)), ("y", V::Float(5.0))]));
+        rows.push(scan_rec(&[("id", V::Text("ext".into())), ("x", V::Float(40.0)), ("y", V::Float(40.0))]));
+        let schema = BundleSchema::new("pin")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("x"))
+            .fiber(FieldDef::numeric("y"));
+        let (dir, engine) = scan_env("scan_pin", "pin", schema, rows);
+        let sl = scan_compute_lenses(&engine, "pin", &[]).unwrap();
+        assert!(!sl.lens_names.iter().any(|l| l.contains('*')),
+            "no interaction lens can build without categoricals: {:?}", sl.lens_names);
+        let g = scan_lens(&sl, "global").unwrap();
+        for (id, v) in g {
+            if id != "ext" { assert!(*v < g["ext"], "global extreme must be strict argmax of global; {id} has {v}"); }
+        }
+        let d = scan_lens(&sl, "density").expect("density lens");
+        for (id, v) in d {
+            if id != "mid" && id != "ext" {
+                assert!(*v < d["mid"], "sparse-middle record must outrank every blob record on density; {id} has {v}");
+            }
+        }
         cleanup(&dir);
     }
 

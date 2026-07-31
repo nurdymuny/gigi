@@ -9332,7 +9332,7 @@ async fn bundle_scan(
     Json(req): Json<ScanRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
-    let ScanLenses { lens_names, norm, ids, base, n, notes } = match scan_compute_lenses(&engine, &name, &req.exclude) {
+    let ScanLenses { lens_names, norm, zraw, ids, base, n, notes } = match scan_compute_lenses(&engine, &name, &req.exclude) {
         Ok(v) => v,
         Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
     };
@@ -9346,17 +9346,21 @@ async fn bundle_scan(
                 "none of the supplied weight keys match this bundle's lenses {:?}", lens_names) })));
         }
     }
-    // ── fuse: weighted linear if weights supplied, else max (with attribution) ──
+    // ── fuse: weighted linear if weights supplied, else max (with attribution).
+    // A tiny unclipped-robust-z (zraw) term restores strict magnitude ordering
+    // among records whose norm clipped at 1.0 (≥6 robust-sigma). ──
     let weights = req.weights.as_ref();
     let mut scored: Vec<(usize, f64, String)> = ids.iter().enumerate().map(|(ri, _)| {
         let per: Vec<f64> = norm.iter().map(|nm| *nm.get(&ids[ri]).unwrap_or(&0.0)).collect();
+        let perz: Vec<f64> = zraw.iter().map(|zm| *zm.get(&ids[ri]).unwrap_or(&0.0)).collect();
         if let Some(w) = weights {
             let s: f64 = lens_names.iter().zip(&per).map(|(ln, v)| w.get(ln).copied().unwrap_or(0.0) * v).sum();
+            let zt: f64 = lens_names.iter().zip(&perz).map(|(ln, z)| w.get(ln).copied().unwrap_or(0.0) * z).sum();
             let top = lens_names.iter().zip(&per)
                 .max_by(|a, b| (w.get(a.0).copied().unwrap_or(0.0) * a.1)
                     .partial_cmp(&(w.get(b.0).copied().unwrap_or(0.0) * b.1)).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(ln, _)| ln.clone()).unwrap_or_default();
-            (ri, s, top)
+            (ri, s + 1e-6 * zt, top)
         } else {
             let mut best = (0.0f64, String::new());
             let mut tot = 0.0;
@@ -9364,7 +9368,9 @@ async fn bundle_scan(
                 tot += *v;
                 if *v > best.0 { best = (*v, ln.clone()); }
             }
-            (ri, best.0 + 1e-4 * tot, best.1)   // tiny tiebreak by corroborating evidence
+            let ztot: f64 = perz.iter().sum();
+            // tiny tiebreaks: corroborating evidence, then raw magnitude
+            (ri, best.0 + 1e-4 * tot + 1e-6 * ztot, best.1)
         }
     }).collect();
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -18800,6 +18806,70 @@ mod tests {
         // changepoints
         let cp = detect_changepoints(&engine, "all", &Some("x1".into()), &Some("t".into()), 20, 6.0, 0).unwrap();
         assert!(cp.n == 120);
+        cleanup(&dir);
+    }
+
+    /// Max fusion under the magnitude-preserving normalization: a pure-noise
+    /// lens's top can no longer tie a deep cohort deviation (rank-norm mapped
+    /// every lens's top tail to ~1.0, flooding the review budget). The ~10σ
+    /// context plant must head the fused ranking.
+    #[tokio::test(flavor = "current_thread")]
+    async fn scan_max_fusion_noise_lens_cannot_flood() {
+        let _guard = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tmp_dir("scan_fusion_flood");
+        cleanup(&dir);
+        std::env::set_var("GIGI_DATA_DIR", &dir);
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "scan-fusion-test");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        state.ready.store(true, Ordering::Release);
+        {
+            let mut eng = state.engine_write();
+            let schema = BundleSchema::new("ff")
+                .base(FieldDef::categorical("id"))
+                .fiber(FieldDef::categorical("grp"))
+                .fiber(FieldDef::numeric("amount"))
+                .fiber(FieldDef::numeric("noise"));
+            eng.create_bundle(schema).unwrap();
+            let mut s: u64 = 20260731;
+            let mut rnd = || {
+                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                ((s >> 11) as f64) / ((1u64 << 53) as f64)
+            };
+            let mut rows: Vec<gigi::types::Record> = Vec::new();
+            for g in 0..4u32 {
+                for i in 0..60u32 {
+                    rows.push(scan_rec(&[
+                        ("id", V::Text(format!("g{g}_{i}"))),
+                        ("grp", V::Text(format!("G{g}"))),
+                        ("amount", V::Float(100.0 + (rnd() - 0.5) * 6.0)),
+                        ("noise", V::Float(rnd() * 100.0)),   // pure noise: its lens signal is meaningless
+                    ]));
+                }
+            }
+            // plant: ~10σ off its G0 cohort on amount, in-range globally, noise ordinary
+            rows.push(scan_rec(&[
+                ("id", V::Text("plant".into())),
+                ("grp", V::Text("G0".into())),
+                ("amount", V::Float(117.3)),
+                ("noise", V::Float(50.0)),
+            ]));
+            eng.batch_insert("ff", &rows).unwrap();
+        }
+        let resp = bundle_scan(
+            State(Arc::clone(&state)),
+            Path("ff".into()),
+            Json(ScanRequest { budget: 0.05, weights: None, limit: 0, exclude: vec![] }),
+        )
+        .await
+        .map_err(|(c, _)| c)
+        .expect("scan ok")
+        .0;
+        assert_eq!(
+            resp["results"][0]["id"].as_str(),
+            Some("plant"),
+            "deep cohort deviation must head the fused ranking, got {}",
+            resp["results"][0]
+        );
         cleanup(&dir);
     }
 

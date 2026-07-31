@@ -338,26 +338,88 @@ impl From<WalError> for io::Error {
     }
 }
 
-/// CRC32 (Castagnoli) — simple polynomial checksum for integrity.
-fn crc32(data: &[u8]) -> u32 {
-    let mut crc: u32 = 0xFFFF_FFFF;
-    for &byte in data {
-        crc ^= byte as u32;
-        for _ in 0..8 {
-            if crc & 1 != 0 {
-                crc = (crc >> 1) ^ 0x82F6_3B78;
+/// Reflected CRC-32C (Castagnoli) polynomial — the same constant the
+/// original bit-serial loop used. The table rewrite below changes speed
+/// only: output is byte-identical (pinned by `crc32c_known_answer_vectors`
+/// and `crc32_matches_bitwise_oracle_on_random_payloads`).
+const CRC32C_POLY: u32 = 0x82F6_3B78;
+
+/// Slice-by-8 lookup tables, generated at compile time. `tables[0]` is the
+/// classic single-byte table; `tables[t][b]` is the CRC contribution of a
+/// byte `b` that sits `t` positions ahead in the 8-byte block.
+const fn crc32c_tables() -> [[u32; 256]; 8] {
+    let mut tables = [[0u32; 256]; 8];
+    let mut i = 0usize;
+    while i < 256 {
+        let mut crc = i as u32;
+        let mut j = 0;
+        while j < 8 {
+            crc = if crc & 1 != 0 {
+                (crc >> 1) ^ CRC32C_POLY
             } else {
-                crc >>= 1;
-            }
+                crc >> 1
+            };
+            j += 1;
         }
+        tables[0][i] = crc;
+        i += 1;
     }
-    !crc
+    let mut t = 1usize;
+    while t < 8 {
+        let mut i = 0usize;
+        while i < 256 {
+            let prev = tables[t - 1][i];
+            tables[t][i] = (prev >> 8) ^ tables[0][(prev & 0xFF) as usize];
+            i += 1;
+        }
+        t += 1;
+    }
+    tables
+}
+
+static CRC32C_TABLES: [[u32; 256]; 8] = crc32c_tables();
+
+/// Streaming CRC-32C update on the RAW (pre-inversion) state. Callers seed
+/// with `0xFFFF_FFFF`, feed slices in order, and finish with `!state` —
+/// exactly equivalent to `crc32` over the concatenation, which is what lets
+/// `write_entry` checksum `op || payload` without building a concat buffer.
+fn crc32_update(mut crc: u32, data: &[u8]) -> u32 {
+    let t = &CRC32C_TABLES;
+    let mut chunks = data.chunks_exact(8);
+    for chunk in &mut chunks {
+        let lo = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) ^ crc;
+        let hi = u32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+        crc = t[7][(lo & 0xFF) as usize]
+            ^ t[6][((lo >> 8) & 0xFF) as usize]
+            ^ t[5][((lo >> 16) & 0xFF) as usize]
+            ^ t[4][(lo >> 24) as usize]
+            ^ t[3][(hi & 0xFF) as usize]
+            ^ t[2][((hi >> 8) & 0xFF) as usize]
+            ^ t[1][((hi >> 16) & 0xFF) as usize]
+            ^ t[0][(hi >> 24) as usize];
+    }
+    for &byte in chunks.remainder() {
+        crc = (crc >> 8) ^ t[0][((crc ^ byte as u32) & 0xFF) as usize];
+    }
+    crc
+}
+
+/// CRC32 (Castagnoli) — integrity checksum over a whole buffer. Same
+/// polynomial, init, and final inversion as the original bit-serial
+/// implementation; table-driven for speed.
+fn crc32(data: &[u8]) -> u32 {
+    !crc32_update(0xFFFF_FFFF, data)
 }
 
 /// WAL writer — appends entries to the log file.
 pub struct WalWriter {
     writer: BufWriter<File>,
     entry_count: u64,
+    /// Reusable payload encode buffer for the hot ops (insert/update/
+    /// delete). Cleared (capacity retained) per record — kills the
+    /// per-record Vec allocation churn on the batch-ingest path without
+    /// changing a single on-disk byte.
+    scratch: Vec<u8>,
 }
 
 impl WalWriter {
@@ -368,6 +430,7 @@ impl WalWriter {
         Ok(Self {
             writer: BufWriter::new(file),
             entry_count,
+            scratch: Vec::new(),
         })
     }
 
@@ -379,8 +442,12 @@ impl WalWriter {
 
     /// Log an INSERT operation.
     pub fn log_insert(&mut self, bundle_name: &str, record: &Record) -> io::Result<()> {
-        let payload = encode_insert(bundle_name, record);
-        self.write_entry(OP_INSERT, &payload)
+        let mut buf = std::mem::take(&mut self.scratch);
+        buf.clear();
+        encode_insert_into(&mut buf, bundle_name, record);
+        let res = self.write_entry(OP_INSERT, &buf);
+        self.scratch = buf;
+        res
     }
 
     /// Log an UPDATE operation (partial field update).
@@ -390,14 +457,24 @@ impl WalWriter {
         key: &Record,
         patches: &Record,
     ) -> io::Result<()> {
-        let payload = encode_update(bundle_name, key, patches);
-        self.write_entry(OP_UPDATE, &payload)
+        let mut buf = std::mem::take(&mut self.scratch);
+        buf.clear();
+        write_string(&mut buf, bundle_name);
+        encode_record_into(&mut buf, key);
+        encode_record_into(&mut buf, patches);
+        let res = self.write_entry(OP_UPDATE, &buf);
+        self.scratch = buf;
+        res
     }
 
     /// Log a DELETE operation.
     pub fn log_delete(&mut self, bundle_name: &str, key: &Record) -> io::Result<()> {
-        let payload = encode_insert(bundle_name, key); // reuse insert encoding for key
-        self.write_entry(OP_DELETE, &payload)
+        let mut buf = std::mem::take(&mut self.scratch);
+        buf.clear();
+        encode_insert_into(&mut buf, bundle_name, key); // reuse insert encoding for key
+        let res = self.write_entry(OP_DELETE, &buf);
+        self.scratch = buf;
+        res
     }
 
     /// Log a DROP_BUNDLE operation.
@@ -672,14 +749,15 @@ impl WalWriter {
         let total_len = 1 + payload.len(); // op + payload
         let len_bytes = (total_len as u32).to_le_bytes();
 
-        // Build entry for CRC: op + payload
-        let mut entry = Vec::with_capacity(total_len);
-        entry.push(op);
-        entry.extend_from_slice(payload);
-        let checksum = crc32(&entry);
+        // Stream the CRC over op then payload — equivalent to crc32 of the
+        // concatenation, with no intermediate entry buffer. On-disk bytes
+        // are identical: [len][op][payload][crc].
+        let state = crc32_update(0xFFFF_FFFF, &[op]);
+        let checksum = !crc32_update(state, payload);
 
         self.writer.write_all(&len_bytes)?;
-        self.writer.write_all(&entry)?;
+        self.writer.write_all(&[op])?;
+        self.writer.write_all(payload)?;
         self.writer.write_all(&checksum.to_le_bytes())?;
         self.entry_count += 1;
         Ok(())
@@ -1123,8 +1201,9 @@ fn read_string(data: &[u8], offset: &mut usize) -> io::Result<String> {
     Ok(s)
 }
 
-fn encode_value(v: &Value) -> Vec<u8> {
-    let mut buf = Vec::new();
+/// Append the wire encoding of a Value to `buf` — same bytes as the old
+/// `encode_value(v) -> Vec<u8>`, minus the per-field allocation.
+fn encode_value_into(buf: &mut Vec<u8>, v: &Value) {
     match v {
         Value::Integer(i) => {
             buf.push(0x01);
@@ -1136,7 +1215,7 @@ fn encode_value(v: &Value) -> Vec<u8> {
         }
         Value::Text(s) => {
             buf.push(0x03);
-            write_string(&mut buf, s);
+            write_string(buf, s);
         }
         Value::Bool(b) => {
             buf.push(0x04);
@@ -1162,6 +1241,14 @@ fn encode_value(v: &Value) -> Vec<u8> {
             buf.extend_from_slice(b);
         }
     }
+}
+
+/// Whole-buffer convenience wrapper (test use only — production paths
+/// append via `encode_value_into`).
+#[cfg(test)]
+fn encode_value(v: &Value) -> Vec<u8> {
+    let mut buf = Vec::new();
+    encode_value_into(&mut buf, v);
     buf
 }
 
@@ -1277,7 +1364,7 @@ fn encode_field_def(fd: &FieldDef) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string(&mut buf, &fd.name);
     buf.extend_from_slice(&encode_field_type(&fd.field_type));
-    buf.extend_from_slice(&encode_value(&fd.default));
+    encode_value_into(&mut buf, &fd.default);
     // range: Option<f64> as tag + f64
     match fd.range {
         Some(r) => {
@@ -1581,10 +1668,19 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     Ok(schema)
 }
 
+/// Append an INSERT payload (bundle name + record) to `buf` — same bytes
+/// as the old `encode_insert(..) -> Vec<u8>`, into a caller-owned buffer.
+fn encode_insert_into(buf: &mut Vec<u8>, bundle_name: &str, record: &Record) {
+    write_string(buf, bundle_name);
+    encode_record_into(buf, record);
+}
+
+/// Whole-buffer convenience wrapper (test use only — production paths
+/// reuse the WalWriter scratch buffer via `encode_insert_into`).
+#[cfg(test)]
 fn encode_insert(bundle_name: &str, record: &Record) -> Vec<u8> {
     let mut buf = Vec::new();
-    write_string(&mut buf, bundle_name);
-    encode_record_into(&mut buf, record);
+    encode_insert_into(&mut buf, bundle_name, record);
     buf
 }
 
@@ -1595,7 +1691,7 @@ fn encode_record_into(buf: &mut Vec<u8>, record: &Record) {
     keys.sort();
     for key in keys {
         write_string(buf, key);
-        buf.extend_from_slice(&encode_value(&record[key]));
+        encode_value_into(buf, &record[key]);
     }
 }
 
@@ -1619,6 +1715,9 @@ fn decode_insert(data: &[u8]) -> io::Result<(String, Record)> {
     Ok((bundle_name, record))
 }
 
+/// Whole-buffer convenience wrapper (test use only — `log_update` encodes
+/// directly into the WalWriter scratch buffer with the same byte layout).
+#[cfg(test)]
 fn encode_update(bundle_name: &str, key: &Record, patches: &Record) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string(&mut buf, bundle_name);

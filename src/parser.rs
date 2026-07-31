@@ -1749,6 +1749,15 @@ pub enum AggFunc {
     Avg,
     Min,
     Max,
+    /// POPULATION standard deviation (divisor n — the STDDEV_POP
+    /// convention), computed in the same single pass as the other
+    /// aggregates from the zero-clamped sum-of-squares accumulator
+    /// (`AggResult::stddev`). Executors surface Null when no numeric
+    /// value was accumulated (empty group / non-numeric field).
+    Stddev,
+    /// POPULATION variance (divisor n — VAR_POP); same accumulator and
+    /// Null convention as [`AggFunc::Stddev`].
+    Variance,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -4774,6 +4783,8 @@ impl Parser {
                     "AVG" => AggFunc::Avg,
                     "MIN" => AggFunc::Min,
                     "MAX" => AggFunc::Max,
+                    "STDDEV" => AggFunc::Stddev,
+                    "VARIANCE" => AggFunc::Variance,
                     _ => return Err(format!("Unknown aggregate: {func_name}")),
                 };
                 self.expect(Token::LParen)?;
@@ -6597,6 +6608,8 @@ impl Parser {
             "AVG" => Some(AggFunc::Avg),
             "MIN" => Some(AggFunc::Min),
             "MAX" => Some(AggFunc::Max),
+            "STDDEV" => Some(AggFunc::Stddev),
+            "VARIANCE" => Some(AggFunc::Variance),
             _ => None,
         };
 
@@ -11011,6 +11024,17 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     // null instead of serializing an infinity.
                     AggFunc::Min if agg.min.is_finite() => crate::types::Value::Float(agg.min),
                     AggFunc::Max if agg.max.is_finite() => crate::types::Value::Float(agg.max),
+                    // stddev/variance are POPULATION (divisor n),
+                    // single-pass sum-of-squares, zero-clamped. Gate on
+                    // the same sentinel as min/max: count alone is
+                    // presence (a text field counts too), and a
+                    // presence-only accumulator would report a fake 0.0.
+                    AggFunc::Stddev if agg.min.is_finite() => {
+                        crate::types::Value::Float(agg.stddev())
+                    }
+                    AggFunc::Variance if agg.min.is_finite() => {
+                        crate::types::Value::Float(agg.variance())
+                    }
                     _ => crate::types::Value::Null,
                 };
             let measure_name = |m: &MeasureSpec| {
@@ -11107,6 +11131,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                             AggFunc::Avg => agg_result.avg(),
                             AggFunc::Min => agg_result.min,
                             AggFunc::Max => agg_result.max,
+                            // population forms (divisor n) — see AggResult
+                            AggFunc::Stddev => agg_result.stddev(),
+                            AggFunc::Variance => agg_result.variance(),
                         };
                         row.insert(field.clone(), crate::types::Value::Float(val));
                         rows.push(row);
@@ -13832,6 +13859,8 @@ impl MeasureSpec {
             AggFunc::Avg => "avg",
             AggFunc::Min => "min",
             AggFunc::Max => "max",
+            AggFunc::Stddev => "stddev",
+            AggFunc::Variance => "variance",
         }
     }
 }
@@ -14609,6 +14638,162 @@ mod tests {
             }
             _ => panic!("Expected Integrate"),
         }
+    }
+
+    /// STDDEV/VARIANCE parse as first-class aggregates in both INTEGRATE
+    /// MEASURE and SELECT. Regression for the vs-stores benchmark probe:
+    /// `stddev(amount)` was rejected as "Unknown aggregate", forcing the
+    /// harness to pull ~100k rows over HTTP and compute stddev
+    /// client-side (the 2,167ms aggregate cell in BENCHMARKS_VS_STORES).
+    #[test]
+    fn gql_integrate_stddev_variance_parse() {
+        let stmt = parse(
+            "INTEGRATE bench OVER merchant \
+             MEASURE avg(amount), stddev(amount), variance(amount);",
+        )
+        .unwrap();
+        match stmt {
+            Statement::Integrate { measures, .. } => {
+                assert_eq!(measures.len(), 3);
+                assert_eq!(measures[1].field, "amount");
+                assert!(matches!(measures[1].func, AggFunc::Stddev));
+                assert_eq!(measures[1].func_name(), "stddev");
+                assert_eq!(measures[2].field, "amount");
+                assert!(matches!(measures[2].func, AggFunc::Variance));
+                assert_eq!(measures[2].func_name(), "variance");
+            }
+            _ => panic!("Expected Integrate"),
+        }
+
+        // SELECT shares the aggregate lookup.
+        let stmt =
+            parse("SELECT dept, STDDEV(salary) FROM employees GROUP BY dept").unwrap();
+        match stmt {
+            Statement::Select { columns, .. } => {
+                assert_eq!(
+                    columns[1],
+                    SelectCol::Agg(AggFunc::Stddev, "salary".into())
+                );
+            }
+            _ => panic!("Expected Select"),
+        }
+
+        // WITH JACKKNIFE stays avg-only: an error bar is an estimate of
+        // the uncertainty of a mean, so stddev measures are refused.
+        let stmt = parse(
+            "INTEGRATE runs MEASURE stddev(x) WITH JACKKNIFE ALONG sweep;",
+        )
+        .unwrap();
+        match stmt {
+            Statement::Integrate { measures, .. } => {
+                let specs = jackknife_measure_specs(&measures);
+                assert!(specs.unwrap_err().contains("avg"));
+            }
+            _ => panic!("Expected Integrate"),
+        }
+    }
+
+    /// STDDEV/VARIANCE end-to-end ground truth — POPULATION convention
+    /// (divisor n, the STDDEV_POP/VAR_POP the sqlite/duckdb benchmark
+    /// arms use), computed in the same single pass as the other
+    /// aggregates from the zero-clamped sum-of-squares accumulator.
+    ///
+    /// 100 salaries 40000..89500 step 500 (arithmetic sequence):
+    ///   σ² = d²·(n²−1)/12 = 500²·9999/12 = 208_312_500 exactly,
+    ///   σ  = √208_312_500 ≈ 14_433.0350.
+    /// Per-dept (i % 5): each dept is step 2500, n = 20 →
+    ///   σ² = 2500²·(20²−1)/12 = 207_812_500 for every dept.
+    #[test]
+    fn gql_integrate_stddev_ground_truth() {
+        use crate::engine::Engine;
+        use crate::types::{BundleSchema, FieldDef, Record, Value};
+
+        let dir = std::env::temp_dir().join("gigi_integrate_stddev_ground_truth");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut engine = Engine::open(&dir).unwrap();
+        engine
+            .create_bundle(
+                BundleSchema::new("employees")
+                    .base(FieldDef::numeric("id"))
+                    .fiber(FieldDef::categorical("dept"))
+                    .fiber(FieldDef::numeric("salary").with_range(100000.0)),
+            )
+            .unwrap();
+        let depts = ["Eng", "Sales", "HR", "Mkt", "Ops"];
+        for i in 0..100i64 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("dept".into(), Value::Text(depts[i as usize % 5].into()));
+            r.insert("salary".into(), Value::Float(40000.0 + i as f64 * 500.0));
+            engine.insert("employees", &r).unwrap();
+        }
+
+        // Global: one row, population stddev + variance of the column.
+        let stmt =
+            parse("INTEGRATE employees MEASURE stddev(salary), variance(salary);")
+                .unwrap();
+        let rows = match execute(&mut engine, &stmt).unwrap() {
+            ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1);
+        let expected_var = 208_312_500.0f64;
+        let expected_sd = expected_var.sqrt();
+        let sd = match rows[0].get("stddev_salary") {
+            Some(Value::Float(v)) => *v,
+            other => panic!("stddev_salary missing or wrong type: {other:?}"),
+        };
+        assert!(
+            ((sd - expected_sd) / expected_sd).abs() < 1e-6,
+            "stddev_salary = {sd}, expected ≈ {expected_sd}"
+        );
+        // hand-check against the decimal form, not just the sqrt call
+        assert!((sd - 14_433.0350).abs() < 0.01, "hand-check failed: {sd}");
+        let var = match rows[0].get("variance_salary") {
+            Some(Value::Float(v)) => *v,
+            other => panic!("variance_salary missing or wrong type: {other:?}"),
+        };
+        assert!(
+            ((var - expected_var) / expected_var).abs() < 1e-6,
+            "variance_salary = {var}, expected {expected_var}"
+        );
+
+        // Per-group: every dept is an arithmetic sequence step 2500, n=20.
+        let stmt =
+            parse("INTEGRATE employees OVER dept MEASURE stddev(salary);").unwrap();
+        let rows = match execute(&mut engine, &stmt).unwrap() {
+            ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 5);
+        let group_sd = 207_812_500.0f64.sqrt();
+        for row in &rows {
+            let sd = match row.get("stddev_salary") {
+                Some(Value::Float(v)) => *v,
+                other => panic!("stddev_salary missing in group row: {other:?}"),
+            };
+            assert!(
+                ((sd - group_sd) / group_sd).abs() < 1e-6,
+                "group stddev = {sd}, expected ≈ {group_sd}"
+            );
+        }
+
+        // Non-numeric field: stddev(dept) surfaces Null like min/max — a
+        // presence-only count with no numeric accumulation must not
+        // report a fake 0.0.
+        let stmt = parse("INTEGRATE employees MEASURE stddev(dept);").unwrap();
+        let rows = match execute(&mut engine, &stmt).unwrap() {
+            ExecResult::Rows(rs) => rs,
+            other => panic!("expected Rows, got {other:?}"),
+        };
+        assert_eq!(
+            rows[0].get("stddev_dept"),
+            Some(&Value::Null),
+            "non-numeric field must surface Null, not 0.0"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Trailing input after a complete statement must be rejected, not

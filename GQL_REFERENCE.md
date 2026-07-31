@@ -715,7 +715,13 @@ INTEGRATE sensors OVER city
   RANK BY avg_t ASC FIRST 5;
 ```
 
-**Aggregate Functions:** avg, sum, count, min, max, stddev, variance, median, percentile(f, p), mode
+**Aggregate Functions:** avg, sum, count, min, max, stddev, variance
+
+stddev/variance are the **population** forms (divisor n — what SQL calls
+STDDEV_POP / VAR_POP), computed in the same single pass as the other
+aggregates from a zero-clamped sum-of-squares accumulator. Empty groups
+and non-numeric fields return null, matching min/max. median, percentile,
+and mode are **not implemented** — the parser rejects them.
 
 ### Conditional Aggregation — FILTER clause ✅
 

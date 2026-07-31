@@ -9008,6 +9008,45 @@ async fn brain_predict_endpoint(
 }
 
 
+/// Sample cap for the shared CONSISTENCY kernel — same envelope the old
+/// REST sampler used (`records().take(100)`).
+const CONSISTENCY_SAMPLE_RECORDS: usize = 100;
+
+/// Shared CONSISTENCY kernel — REST `/v1/bundles/{name}/consistency`, the
+/// GQL `CONSISTENCY <bundle>` arm, and the WS text verb all route here.
+///
+/// Delegates to `gigi::sheaf::consistency_check_sampled` — the genuine
+/// contradiction scan (per-record neighborhood MAD-z outlier check on every
+/// fiber field, gated by `schema.h1_threshold`) — over at most
+/// [`CONSISTENCY_SAMPLE_RECORDS`] records. This replaced two defects flagged
+/// in GIGI_PERF_ANALYSIS.md: the GQL arm returned `scalar_curvature()`
+/// verbatim (h¹ was κ under another name), and the REST sampler measured
+/// holonomy on loops whose first and last key were the same record, so its
+/// h1 was structurally always 0.
+///
+/// Honesty caveat (name by formal home): the returned `h1` is a **sampled
+/// neighborhood-contradiction count** — the number of (record, field) pairs
+/// whose local section disagrees with its neighborhood — NOT a true Čech H¹
+/// rank. It is decoupled from scalar curvature κ by construction: clean data
+/// with spread fiber values has κ > 0 and h1 = 0, while an injected
+/// neighborhood conflict raises h1 above 0.
+fn consistency_h1_sampled(
+    store: &gigi::mmap_bundle::BundleRef<'_>,
+) -> (usize, Vec<serde_json::Value>) {
+    let rows = store
+        .as_heap()
+        .map(|s| gigi::sheaf::consistency_check_sampled(s, CONSISTENCY_SAMPLE_RECORDS))
+        .unwrap_or_default();
+    let contradictions: Vec<serde_json::Value> = rows
+        .iter()
+        // consistency_check_sampled prepends a sampling-estimate summary row
+        // when it sampled; that row is metadata, not a contradiction.
+        .filter(|r| !r.contains_key("_summary"))
+        .map(record_to_json)
+        .collect();
+    (contradictions.len(), contradictions)
+}
+
 async fn consistency_check(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
@@ -9022,52 +9061,20 @@ async fn consistency_check(
         )
     })?;
 
-    // Čech cohomology H¹ — measure holonomy to detect inconsistencies
-    // H¹ = 0 means fully consistent (flat connection, path-independent)
+    // Sampled neighborhood-contradiction scan — shared kernel with the GQL
+    // CONSISTENCY arm and the WS text verb. NOT a true Čech H¹ rank; see
+    // `consistency_h1_sampled` for the honest definition. The old sampler
+    // here measured `store.holonomy` on loops [rec_i, rec_j, rec_m, rec_i],
+    // which compared only the first and last key — the same record, two
+    // deterministic identical lookups — so h1 was structurally always 0.
+    // κ is reported separately below; the two are distinct computations.
     let k = store.scalar_curvature();
-
-    // Sample random loops and measure holonomy deviation
-    let records: Vec<Record> = store.records().take(100).collect();
-    let mut cocycles = Vec::new();
-    let threshold = 1e-6;
-
-    if records.len() >= 3 {
-        // Check holonomy around triangles formed by record triples
-        let n = records.len().min(20); // sample up to 20 records for triangles
-        for i in 0..n {
-            for j in (i + 1)..n.min(i + 5) {
-                for m in (j + 1)..n.min(j + 3) {
-                    // Build key records for the loop: i → j → m → i
-                    let keys: Vec<Record> = [&records[i], &records[j], &records[m], &records[i]]
-                        .iter()
-                        .map(|r| {
-                            let mut key = Record::new();
-                            for f in &store.schema().base_fields {
-                                if let Some(v) = r.get(&f.name) {
-                                    key.insert(f.name.clone(), v.clone());
-                                }
-                            }
-                            key
-                        })
-                        .collect();
-
-                    let hol = store.holonomy(&keys);
-                    if hol.is_finite() && hol > threshold {
-                        cocycles.push(serde_json::json!({
-                            "loop": [i, j, m],
-                            "holonomy": hol,
-                        }));
-                    }
-                }
-            }
-        }
-    }
-
-    let h1 = cocycles.len();
+    let (h1, cocycles) = consistency_h1_sampled(&store);
 
     Ok(Json(serde_json::json!({
         "h1": h1,
         "cocycles": cocycles,
+        "method": "sampled_neighborhood_contradictions",
         "status": if h1 == 0 { "consistent" } else { "conflicts_detected" },
         "curvature": k
     })))
@@ -15462,8 +15469,12 @@ async fn handle_ws_command(
             }
             let bundle_name = parts[1].trim();
             let engine = state.engine_read();
-            if engine.bundle(bundle_name).is_some() {
-                "CONSISTENCY h1=0 cocycles=0".to_string()
+            if let Some(store) = engine.bundle(bundle_name) {
+                // Was a hardcoded "h1=0 cocycles=0" stub; now routes
+                // through the same sampled contradiction kernel as the
+                // REST endpoint and the GQL arm.
+                let (h1, cocycles) = consistency_h1_sampled(&store);
+                format!("CONSISTENCY h1={} cocycles={}", h1, cocycles.len())
             } else {
                 format!("ERROR: Bundle '{}' not found", bundle_name)
             }
@@ -17263,8 +17274,14 @@ fn execute_gql_on_store_read(
             Ok(ExecResult::Rows(vec![row]))
         }
         Statement::Consistency { .. } => {
-            let k = store.scalar_curvature();
-            Ok(ExecResult::Scalar(if k.abs() < 1e-10 { 0.0 } else { k }))
+            // Perf-doc flag closed (GIGI_PERF_ANALYSIS.md, 2026-07-30):
+            // this arm used to return `store.scalar_curvature()` verbatim,
+            // so the GQL h¹ was κ under another name (the observed
+            // h¹ = 0.0234 == K). It now delegates to the shared sampled
+            // contradiction kernel — see `consistency_h1_sampled` for what
+            // the count actually is (and is not).
+            let (h1, _) = consistency_h1_sampled(store);
+            Ok(ExecResult::Scalar(h1 as f64))
         }
         // ── BETTI / PI_1 / OBSTRUCTION: UNREACHABLE from gql_query ─────
         //
@@ -21334,6 +21351,82 @@ mod tests {
     }
     use gigi::types::Value as V;
 
+    // ── CONSISTENCY h1-vs-κ (GIGI_PERF_ANALYSIS.md flag, closed 2026-07-30) ──
+
+    /// Shared fixture: 7 records in one indexed neighborhood (`cat = "X"`),
+    /// fiber `val` spread 10..22 so κ > 0. `outlier: true` plants one wildly
+    /// conflicting value (1000.0) — the genuine neighborhood contradiction
+    /// CONSISTENCY must detect.
+    fn consistency_env(tag: &str, outlier: bool) -> (std::path::PathBuf, Engine) {
+        let rows: Vec<_> = (0..7)
+            .map(|i| {
+                let v = if outlier && i == 6 { 1000.0 } else { 10.0 + 2.0 * i as f64 };
+                scan_rec(&[
+                    ("id", V::Integer(i)),
+                    ("val", V::Float(v)),
+                    ("cat", V::Text("X".into())),
+                ])
+            })
+            .collect();
+        let schema = BundleSchema::new("cons")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("val").with_range(100.0))
+            .fiber(FieldDef::categorical("cat"))
+            .index("cat");
+        scan_env(tag, "cons", schema, rows)
+    }
+
+    /// The perf-doc defect (GIGI_PERF_ANALYSIS.md:37 — "h¹ = 0.0234, same as
+    /// K"): the GQL `CONSISTENCY <bundle>` arm returned `scalar_curvature()`
+    /// verbatim, so h¹ was κ under another name. Clean data with spread
+    /// fibers has κ > 0 but zero contradictions — CONSISTENCY must report 0,
+    /// not κ.
+    #[test]
+    fn gql_consistency_is_not_kappa() {
+        let (dir, engine) = consistency_env("gql_cons_not_kappa", false);
+        let store = engine.bundle("cons").unwrap();
+        let kappa = store.scalar_curvature();
+        assert!(kappa > 1e-6, "fixture must have κ > 0, got {kappa}");
+        let stmt = gigi::parser::Statement::Consistency {
+            bundle: "cons".into(),
+            repair: false,
+        };
+        let res = execute_gql_on_store_read(&store, &stmt, None).unwrap();
+        match res {
+            gigi::parser::ExecResult::Scalar(h1) => {
+                assert!(
+                    (h1 - kappa).abs() > 1e-12,
+                    "CONSISTENCY is piggybacking κ: h1 = κ = {kappa}"
+                );
+                assert_eq!(h1, 0.0, "clean fixture must report zero contradictions");
+            }
+            other => panic!("expected Scalar, got {other:?}"),
+        }
+        cleanup(&dir);
+    }
+
+    /// The REST-side defect: `store.holonomy` on loops keyed
+    /// `[rec_i, rec_j, rec_m, rec_i]` compares only first-vs-last —
+    /// identical deterministic lookups — so the old h1 was structurally 0
+    /// regardless of data. The shared kernel must actually read the data:
+    /// an injected fiber conflict raises h1 above 0; the clean fixture
+    /// stays at 0.
+    #[test]
+    fn consistency_h1_detects_injected_conflict() {
+        let (dir, engine) = consistency_env("cons_conflict", true);
+        let store = engine.bundle("cons").unwrap();
+        let (h1, cocycles) = consistency_h1_sampled(&store);
+        assert!(h1 > 0, "planted neighborhood conflict must be detected");
+        assert_eq!(h1, cocycles.len(), "h1 is exactly the contradiction count");
+
+        let (dir2, engine2) = consistency_env("cons_conflict_clean", false);
+        let store2 = engine2.bundle("cons").unwrap();
+        let (h1_clean, _) = consistency_h1_sampled(&store2);
+        assert_eq!(h1_clean, 0, "clean fixture stays consistent");
+        cleanup(&dir);
+        cleanup(&dir2);
+    }
+
     /// **Skip-and-log (Hallie's ask #7).** One poisoned record — a non-numeric
     /// value in a numeric fiber field, exactly what landed in
     /// `marcella_source_embeddings_bge_v2` and took down `intent_gate` (and with
@@ -21341,6 +21434,11 @@ mod tests {
     /// endpoint. `extract_field_samples` drops the bad row, keeps the rest, and
     /// returns each survivor's original section index so `attend` still maps
     /// results back to the right records.
+    ///
+    /// Gated on `kahler` because `extract_field_samples` itself is — without
+    /// the gate the whole no-feature `--bin gigi-stream` test build fails to
+    /// compile (found while closing the h1-vs-κ perf-doc flag, 2026-07-30).
+    #[cfg(feature = "kahler")]
     #[test]
     fn extract_field_samples_skips_poisoned_record() {
         use gigi::types::{BundleSchema, FieldDef, Record, Value};

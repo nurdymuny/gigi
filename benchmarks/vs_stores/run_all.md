@@ -130,3 +130,118 @@ files (default `%TEMP%\gigi_vs_stores`).
   a ~100k-row HTTP pull and will lose badly; reported as measured.
 - if the expert z-score baseline ties or beats /scan on PR-AUC, it is reported,
   alongside what it required (hand-chosen grouping) vs /scan's zero-config.
+
+---
+
+# Round 2 — LOCKED PROTOCOL ADDENDUM (2026-07-31)
+
+Round-1 protocol still binds where not amended. Round 2 adds three arms:
+
+| arm | what | files |
+|---|---|---|
+| 1 embedded lane | gigi as an in-process Rust library, no HTTP: ingest rows/sec + 2,000 point queries in **microseconds** at 100k, same ids as round 1 | release-built example binary (see the embedded-lane prep) |
+| 2 scaling sweep | point-query p50/p95 curve at N = 10k / 100k / 1M for gigi-embedded, gigi-HTTP, sqlite in-process; ratio latency(1M)/latency(10k) per system | `gen_scale.py`, `run_scale_sqlite.py`, `run_scale_gigi_http.py` (+ the embedded example's sweep leg) |
+| 3 expert-parity anomaly | gigi granted the SAME domain knowledge the SQL author had (cohort = merchant × 2h-bucket, amount = value channel) and NOTHING more; top TWO candidate plays both measured, both PR-AUCs reported | see the expert-parity prep; round-1 zero-config cell (0.0848) stands as the zero-config row |
+
+## Scaling-sweep rules (clause 2)
+
+- Datasets `data_10k.csv` / `data_100k.csv` / `data_1m.csv` live in
+  `%TEMP%\gigi_vs_stores_scale` — **never** in the repo or OneDrive
+  (`gen_scale.py` refuses to write inside either; `VS_STORES_WORKDIR`
+  relocates the parent). `data_100k.csv` is a verified byte-copy of round-1
+  `data.csv`; `data_10k.csv` is its byte-exact first-10,000-row prefix
+  (txn_ids T000000..T009999); `data_1m.csv` extends the same generative
+  model, same seed 20260731, no anomaly plant. `scale_manifest.json` holds
+  row counts + SHA-256 per file.
+- Per-N id sets are shared across all three systems:
+  `random.Random(20260731+1).sample(range(N), 2000)` — at N=100k this IS the
+  round-1 id list (asserted in `gen_scale.py`). Id files
+  `point_ids_{10k,100k,1m}.txt` are written to the scale dir as the
+  cross-language determinism receipt: the Rust embedded example re-derives
+  the ids in-code (bit-exact MT19937/`sample()` reimplementation) and the
+  `--ids-check` output is verified equal to these files at every N.
+- Only point queries are timed in the sweep; ingest is untimed setup. Warm,
+  sequential, 1 warmup pass + 3 timed passes, median — round-1 rule.
+  Latencies in **microseconds** (round-2 unit, matching the embedded lane).
+- Ratio latency(1M)/latency(10k) per system: flat ~1.0× supports O(1); growth
+  is reported as measured — for **gigi embedded** any clear growth is flagged
+  as a **REGRESSION finding**, not smoothed.
+
+## Round 2 exact serial command order
+
+Timing purity (clause 4): strictly serial, one agent, nothing concurrent;
+**all cargo builds complete before any timed phase**; the gigi server is up
+ONLY for HTTP legs and **verified dead** before in-process legs
+(`run_scale_sqlite.py` additionally refuses to run while port 3143 answers).
+
+From `benchmarks/vs_stores/` (PowerShell):
+
+```powershell
+# R2-0. builds FIRST — nothing compiles after this point
+cargo build --release --bin gigi_stream
+cargo build --release --example vs_stores_embedded   # embedded lane (adjust if that prep named it differently)
+
+# R2-1. datasets (untimed)
+python gen_dataset.py   # only if data.csv / labels.json are missing
+python gen_scale.py     # -> %TEMP%\gigi_vs_stores_scale (+ scale_manifest.json, id files)
+
+# R2-2. HTTP legs — start gigi in a SECOND terminal, data dir on LOCAL DISK
+#       (not OneDrive), wait for /v1/health:
+#           $env:PORT = "3143"; cargo run --release --bin gigi_stream
+python run_scale_gigi_http.py   # sweep HTTP leg (ingest untimed; the 1M ingest is the long pole)
+# (expert-parity arm HTTP runs also go here, per its prep)
+
+# R2-3. STOP the gigi server, then verify it is dead:
+Test-NetConnection 127.0.0.1 -Port 3143 -InformationLevel Quiet   # must print False
+
+# R2-4. in-process legs — server dead, nothing else running:
+cargo run --release --example vs_stores_embedded   # embedded lane + its sweep leg
+python run_scale_sqlite.py                         # sweep sqlite leg (aborts if 3143 answers)
+```
+
+Outputs (this prep): `results_scale_gigi_http.json`,
+`results_scale_sqlite.json` — identical schema (per-N cells with p50/p95 µs
+reps + medians, and a `scaling` block with `p50_ratio_1m_over_10k`), both
+built by the ONE shared `gen_scale.scale_point_cell` /
+`gen_scale.write_scale_results`. The embedded lane writes its own results
+file per its prep.
+
+Env knobs: `VS_STORES_WORKDIR=<dir>` relocates the scale data dir parent
+(default `%TEMP%`); `VS_STORES_SCALE_FRESH=1` forces `run_scale_gigi_http.py`
+to drop + re-ingest the scale bundles instead of reusing a bundle whose
+record count already matches N.
+
+## Round 2 post-audit amendments (2026-07-31, before the report was written)
+
+The round-2 run was adversarially audited (schema equivalence, expert-arm
+knowledge grant, label hygiene, arithmetic, sweep hygiene) plus an independent
+O(1)-curve verification. The curve check PASSED outright. The fairness audit
+FAILED the artifact as first published — every measured number reproduced
+exactly, but two gigi-favoring defects survived — and the following was fixed
+**before** `BENCHMARKS_VS_STORES.md` §Round 2 was written:
+
+1. **FAIL-1 (schema parity):** `examples/vs_stores_embedded.rs` originally
+   omitted the secondary `txn_id` index that round 1's HTTP `create_bundle`
+   adds for every key field, so the embedded ingest clock skipped index
+   maintenance the other systems paid (fairness self-review row 2). Fixed:
+   `bench_schema()` now declares `.index("txn_id")` and the 100k embedded
+   INGEST cell was re-run at schema parity (134,381 → 116,526 rows/s median,
+   ~13%; the audit's instrumented estimate was ~11%). No verdict flips.
+   Point-query cells carried unchanged — `BundleStore::point_query` never
+   touches `field_index` (audit-verified), and the parity re-run reproduced
+   them.
+2. **FAIL-2 (pro-gigi summary error):** PLAY 1's wall deficit is **8.6x vs
+   the SQL baseline** (287.9 vs 33.6 ms); "~5x" was vs gigi's own PLAY 2.
+   Corrected in `honest_summary`.
+3. **FINDING-3 (anti-gigi arithmetic):** "35-45x faster than sqlite at every
+   N" corrected to **45-63x** (62.9x at 10k); the native-Rust-loop vs
+   Python-`sqlite3`-wrapper timing shape is now disclosed next to it.
+4. **MINOR (doc/code mismatch):** this file and `gen_scale.py` claimed the
+   Rust example READS `point_ids_*.txt`; it re-derives the ids in-code
+   (bit-exact MT19937 reimplementation, verified equal at all Ns). Docs
+   corrected above; the id files are the receipt, not an input.
+
+The amendment record, superseded no-index ingest reps, and re-run provenance
+(`git diff 4f9c2a4 -- src/` empty; `Cargo.toml` delta = the `[[example]]`
+registration only; port 3143 verified dead) live in
+`results_round2.json.post_audit_amendments`.

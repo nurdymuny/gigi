@@ -1,0 +1,513 @@
+{
+  "benchmark": "gigi vs sqlite \u2014 vs_stores ROUND 2 (LOCKED PROTOCOL ADDENDUM)",
+  "date_utc": "2026-07-31",
+  "round1_reference": "results_all.json (sha 4f9c2a4) \u2014 round-1 cells carried, not re-run",
+  "protocol_addendum": {
+    "arm_1_embedded": "gigi as an in-process Rust library (gigi::engine::Engine, release build), fresh Engine in fresh temp dir, engine.batch_insert in 1000-row batches (timed, rows/sec), 2000 point queries via store.point_query on the SAME txn_ids as round 1 (seed 20260731+1 stream, CPython sample() replicated bit-for-bit in Rust, verified equal at all three Ns), p50/p95 in MICROSECONDS, warmup(1)+reps(3)/median",
+    "arm_2_scaling": "point-query p50 at N=10k/100k/1M for gigi-embedded, gigi-HTTP, sqlite in-process; per-N shared id sets; only point queries timed; ratio latency(1M)/latency(10k) per system; embedded growth flagged as REGRESSION, not smoothed",
+    "arm_3_expert_parity": "gigi granted exactly the SQL author's domain knowledge (cohort = merchant x 2h-bucket, amount = value channel), nothing more; top TWO plays implemented and BOTH reported; labels never sent; PR-AUC via shared eval_common.average_precision; round-1 zero-config cell stands as the zero-config row",
+    "timing_purity": "strictly serial; builds before any timed phase; server up only for HTTP legs and verified dead before in-process legs"
+  },
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "5d1f7a6905aca6b7af713f2e6742a47b99f2221f",
+    "timestamp_utc": "2026-07-31T22:18:39Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)",
+    "gigi_binary": "target/release/gigi-stream.exe \u2014 the ROUND-1 RECORDED binary (built 2026-07-31 at sha 4f9c2a4, per results_all.json), NOT rebuilt; verified: `git diff 4f9c2a4..HEAD -- src/ Cargo.toml Cargo.lock` is empty, so the binary is source-identical to HEAD",
+    "gigi_server_env": "PORT=3143, GIGI_DATA_DIR=%TEMP%\\gigi_vs_stores_server_r2 (fresh scratch, local disk, non-OneDrive), GIGI_SKIP_BOOT_SNAPSHOT=1",
+    "run_shape": "strictly serial, one agent, nothing concurrent: all cargo builds completed first (example already up-to-date, 0.59s no-op) -> gen_scale.py (untimed) -> id cross-check Rust vs CPython (PASS at all three Ns) -> embedded lane 100k -> embedded sweep 10k, 1M (server verified dead before all in-process legs) -> sqlite sweep (runner self-enforces port 3143 dead) -> server started -> gigi HTTP sweep -> expert-parity arm -> server killed, port verified dead -> this merge"
+  },
+  "scale_data_manifest": {
+    "round": 2,
+    "arm": "scaling_sweep",
+    "seed": 20260731,
+    "generated_at_utc": "2026-07-31T22:13:32Z",
+    "prefix_rule": "data_10k.csv = byte-exact first 10,000 data rows of data_100k.csv (txn_ids T000000..T009999 in file order)",
+    "data_100k_rule": "byte-for-byte copy of round-1 data.csv (row count verified)",
+    "data_1m_rule": "same generative model + per-row draw order as gen_dataset.py, fresh random.Random(seed), 1,000,000 rows, NO anomaly plant / labels; rows 0..99,999 == data.csv except the 100 round-1 planted amounts (verified)",
+    "files": {
+      "10k": {
+        "path": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\data_10k.csv",
+        "rows": 10000,
+        "sha256": "e0728d39904a6b2fa772e9fd4805ddb0cff0cb9dfa567c18675d29b7cd4dbab1"
+      },
+      "100k": {
+        "path": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\data_100k.csv",
+        "rows": 100000,
+        "sha256": "10a88810e8327ae05f73ac20b9c2c85251ac5c3c09c014312cc815079f99c800"
+      },
+      "1m": {
+        "path": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\data_1m.csv",
+        "rows": 1000000,
+        "sha256": "d4496e2cba9fe3c1f532100151cf79da8c2e8442754f9e0257a7f3fe29ef309f"
+      }
+    },
+    "point_ids": {
+      "10k": {
+        "path": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\point_ids_10k.txt",
+        "n": 2000,
+        "sha256": "4adf7b7bb9be1af686106cdab3af7adc5c83106345803036d68409e7f7bacd07",
+        "rule": "random.Random(20260731+1).sample(range(10000), 2000)"
+      },
+      "100k": {
+        "path": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\point_ids_100k.txt",
+        "n": 2000,
+        "sha256": "91bb8fc74cbf11df80f96bb71e5f215cadaaabd9fd41ff7c7d0a716aad74fae8",
+        "rule": "random.Random(20260731+1).sample(range(100000), 2000)"
+      },
+      "1m": {
+        "path": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\point_ids_1m.txt",
+        "n": 2000,
+        "sha256": "7b5ddb9cb3ed8675a3614a93fb828653d1278453fb1c4da8244d7f17cfa9a4e3",
+        "rule": "random.Random(20260731+1).sample(range(1000000), 2000)"
+      }
+    }
+  },
+  "embedded_lane_100k": {
+    "system": "gigi_embedded",
+    "transport": "in-process \u2014 gigi::engine::Engine linked as a Rust library, release build, no HTTP",
+    "cells": {
+      "ingest": {
+        "rows": 100000,
+        "unit": "rows_per_sec",
+        "reps": [
+          116526.3,
+          121502.5,
+          109554.2
+        ],
+        "median": 116526.3,
+        "schema_parity_rerun": true,
+        "note": "re-measured post-audit with .index('txn_id') in the embedded schema, matching round 1's HTTP create_bundle path (which indexes every key field) so secondary-index maintenance is inside the ingest clock per round-1 fairness rule #2; server verified dead (port 3143 refusing) before the run; ids_first10 verified identical to the audited stream"
+      },
+      "point_query": {
+        "n_queries": 2000,
+        "unit": "us",
+        "reps": [
+          {
+            "p50_us": 1.4,
+            "p95_us": 2.4
+          },
+          {
+            "p50_us": 1.5,
+            "p95_us": 2.4
+          },
+          {
+            "p50_us": 1.9,
+            "p95_us": 2.5
+          }
+        ],
+        "p50_us_median": 1.5,
+        "p95_us_median": 2.4,
+        "note": "cells of record from the original run \u2014 audit-verified index-independent (BundleStore::point_query uses the base hash, never field_index; src/bundle.rs:2123); the schema-parity re-run reproduced them (p50 1.3 / p95 1.7 us) under audit-session load"
+      }
+    },
+    "protocol": {
+      "seed_ids": 20260732,
+      "id_derivation": "CPython random.Random(20260732).sample(range(n_rows), n_lookups) replicated bit-for-bit (MT19937 init_by_array + _randbelow + Lib/random.py sample)",
+      "insert_batch": 1000,
+      "n_point_queries": 2000,
+      "warmups_per_cell": 1,
+      "reps_per_cell": 3,
+      "cell_statistic": "median of reps",
+      "percentile": "linear interpolation, same convention as eval_common.percentile"
+    },
+    "disclosures": [
+      "Embedded lane: all cells in-process via the gigi Rust library \u2014 no HTTP round trip, no JSON wire. This is the apples-to-apples counterpart of round 1's in-process sqlite/duckdb cells.",
+      "INGEST timed window = the engine.batch_insert loop only (1,000-row batches), including gigi's WAL append + any checkpoint the engine triggers \u2014 its real embedded write path. Record structs are built from the CSV before the timed window, mirroring round 1 where python rows were parsed pre-window.",
+      "INGEST runs on a fresh Engine in a fresh temp dir per rep (fresh-bundle-per-rep rule from round 1).",
+      "POINT QUERY timed window = BundleStore::point_query per lookup only; key Records are prebuilt untimed (the embedded analogue of round 1 pre-quoting URL ids). No response deserialization exists in-process \u2014 disclosed as inherent to the embedded shape, not hidden.",
+      "Point-query ids are the SAME ids in the SAME order as round 1 (seed 20260732 stream) when n_rows=100000 and n_lookups=2000; cross-check with --ids-check against eval_common.point_query_ids.",
+      "SCHEMA PARITY (post-audit fix, FAIL-1): the embedded bundle now declares .index('txn_id'), matching round 1's HTTP create_bundle path \u2014 the ingest cell of record is the schema-parity re-run (116,526 rows/s median). The original no-index measurement (134,381 rows/s) is retained as superseded context, not as a cell.",
+      "The embedded point-query timing loop is native Rust (std::time::Instant per lookup) while the sqlite comparison numbers come from Python's sqlite3 wrapper timed in Python \u2014 the protocol-prescribed shape carried from round 1, disclosed here because the gigi side moved to Rust in this lane."
+    ],
+    "embedded_ingest_at_other_ns_untimed_context": {
+      "note": "sweep ingest is untimed setup, but the binary measures it anyway; recorded for context only (rows/sec median); measured BEFORE the schema-parity fix (no txn_id index), so ~11% optimistic: ",
+      "10k": 143319.5,
+      "1m": 118604.4
+    },
+    "superseded_ingest_no_txn_id_index": {
+      "reps": [
+        134381.2,
+        134943.7,
+        125193.7
+      ],
+      "median": 134381.2,
+      "superseded_by": "cells.ingest (schema-parity re-run)",
+      "reason": "audit FAIL-1: original embedded schema omitted the secondary txn_id index that round 1's HTTP create_bundle added, skipping index maintenance the other systems paid inside their ingest clocks; audit measured the omission at ~11% of throughput"
+    }
+  },
+  "scaling_sweep": {
+    "unit": "us (p50 median of 3 reps, 2000 warm sequential lookups, shared per-N id sets)",
+    "gigi_embedded": {
+      "cells": {
+        "10k": {
+          "n_rows": 10000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 1.0,
+              "p95_us": 1.4
+            },
+            {
+              "p50_us": 0.9,
+              "p95_us": 1.2
+            },
+            {
+              "p50_us": 0.8,
+              "p95_us": 1.0
+            }
+          ],
+          "p50_us_median": 0.9,
+          "p95_us_median": 1.2
+        },
+        "100k": {
+          "n_rows": 100000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 1.4,
+              "p95_us": 2.4
+            },
+            {
+              "p50_us": 1.5,
+              "p95_us": 2.4
+            },
+            {
+              "p50_us": 1.9,
+              "p95_us": 2.5
+            }
+          ],
+          "p50_us_median": 1.5,
+          "p95_us_median": 2.4
+        },
+        "1m": {
+          "n_rows": 1000000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 1.6,
+              "p95_us": 2.6
+            },
+            {
+              "p50_us": 1.5,
+              "p95_us": 2.1
+            },
+            {
+              "p50_us": 2.1,
+              "p95_us": 3.2
+            }
+          ],
+          "p50_us_median": 1.6,
+          "p95_us_median": 2.6
+        }
+      },
+      "p50_curve": [
+        0.9,
+        1.5,
+        1.6
+      ],
+      "p50_ratio_1m_over_10k": 1.778,
+      "p95_ratio_1m_over_10k": 2.167,
+      "regression_flag": {
+        "flagged": true,
+        "p50_ratio_1m_over_10k": 1.778,
+        "p95_ratio_1m_over_10k": 2.167,
+        "p50_ratio_100k_over_10k": 1.667,
+        "p50_ratio_1m_over_100k": 1.067,
+        "finding": "REGRESSION FLAG (per round-2 locked protocol clause 2): gigi-embedded p50 grows 0.9 us -> 1.5 us -> 1.6 us across 10k -> 100k -> 1M (1M/10k ratio 1.78x; p95 1.2 -> 2.4 -> 2.6 us, 2.17x). Not flat, therefore flagged, not smoothed. Decomposition as measured: nearly all growth is in the 10k->100k decade (1.67x); the 100k->1M decade is 1.07x (near-flat over 10x more rows, within rep-to-rep spread: 100k reps p50 1.4/1.5/1.9, 1M reps 1.6/1.5/2.1). The absolute delta is ~0.7 us at sub-2 us latencies \u2014 a shape consistent with working-set/cache-hierarchy effects rather than an O(log N) or O(N) index \u2014 but the protocol requires the growth be reported as a regression finding, and it is."
+      }
+    },
+    "gigi_http": {
+      "cells": {
+        "10k": {
+          "n_rows": 10000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 315.05,
+              "p95_us": 449.47
+            },
+            {
+              "p50_us": 381.25,
+              "p95_us": 536.11
+            },
+            {
+              "p50_us": 390.9,
+              "p95_us": 541.9
+            }
+          ],
+          "p50_us_median": 381.25,
+          "p95_us_median": 536.11
+        },
+        "100k": {
+          "n_rows": 100000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 461.95,
+              "p95_us": 723.59
+            },
+            {
+              "p50_us": 409.7,
+              "p95_us": 568.75
+            },
+            {
+              "p50_us": 394.5,
+              "p95_us": 549.72
+            }
+          ],
+          "p50_us_median": 409.7,
+          "p95_us_median": 568.75
+        },
+        "1m": {
+          "n_rows": 1000000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 441.6,
+              "p95_us": 725.11
+            },
+            {
+              "p50_us": 426.9,
+              "p95_us": 567.52
+            },
+            {
+              "p50_us": 394.05,
+              "p95_us": 544.3
+            }
+          ],
+          "p50_us_median": 426.9,
+          "p95_us_median": 567.52
+        }
+      },
+      "p50_curve": [
+        381.25,
+        409.7,
+        426.9
+      ],
+      "p50_ratio_1m_over_10k": 1.12,
+      "p95_ratio_1m_over_10k": 1.059
+    },
+    "sqlite": {
+      "cells": {
+        "10k": {
+          "n_rows": 10000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 56.6,
+              "p95_us": 93.02
+            },
+            {
+              "p50_us": 56.0,
+              "p95_us": 91.9
+            },
+            {
+              "p50_us": 58.3,
+              "p95_us": 94.72
+            }
+          ],
+          "p50_us_median": 56.6,
+          "p95_us_median": 93.02
+        },
+        "100k": {
+          "n_rows": 100000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 68.2,
+              "p95_us": 177.66
+            },
+            {
+              "p50_us": 69.9,
+              "p95_us": 197.1
+            },
+            {
+              "p50_us": 68.8,
+              "p95_us": 173.35
+            }
+          ],
+          "p50_us_median": 68.8,
+          "p95_us_median": 177.66
+        },
+        "1m": {
+          "n_rows": 1000000,
+          "n_queries": 2000,
+          "unit": "us",
+          "reps": [
+            {
+              "p50_us": 68.7,
+              "p95_us": 195.05
+            },
+            {
+              "p50_us": 72.5,
+              "p95_us": 209.14
+            },
+            {
+              "p50_us": 75.95,
+              "p95_us": 219.22
+            }
+          ],
+          "p50_us_median": 72.5,
+          "p95_us_median": 209.14
+        }
+      },
+      "p50_curve": [
+        56.6,
+        68.8,
+        72.5
+      ],
+      "p50_ratio_1m_over_10k": 1.281,
+      "p95_ratio_1m_over_10k": 2.248
+    }
+  },
+  "expert_parity_anomaly": {
+    "granted_knowledge": [
+      "cohort structure is (merchant x 2h-hour-bucket)",
+      "amount is the value channel",
+      "NOTHING more: no labels sent, no donor mechanics"
+    ],
+    "cells": {
+      "anomaly_zero_config_round1": {
+        "unit": "ms",
+        "method": "POST /v1/bundles/bench_anom/scan {budget: 0.05, limit: 0} \u2014 zero-config",
+        "reps_wall_ms": [
+          336.7,
+          317.4,
+          305.85
+        ],
+        "wall_ms_median": 317.4,
+        "pr_auc": 0.0848,
+        "client_lines_of_code": 5,
+        "loc_basis": "python: gigi_scan() function source, non-blank non-comment lines",
+        "n_scored": 20000,
+        "n_positive": 100
+      },
+      "anomaly_expert_scan_weighted": {
+        "unit": "ms",
+        "method": "PLAY 1: POST /scan, geometry scoped to (cohort, amount) via exclude, all fusion weight on context:cohort (a-priori weights, no labels)",
+        "reps_wall_ms": [
+          287.86,
+          286.84,
+          313.8
+        ],
+        "wall_ms_median": 287.86,
+        "pr_auc": 0.7003,
+        "client_lines_of_code": 14,
+        "loc_basis": "python: play function source + expert_record derivation source, non-blank non-comment lines (shared counting rule)",
+        "n_scored": 20000,
+        "n_positive": 100
+      },
+      "anomaly_expert_gql_cohort_z": {
+        "unit": "ms",
+        "method": "PLAY 2: GQL INTEGRATE OVER cohort MEASURE avg(amount), avg(amount_sq), count(*) server-side + per-row |z| client-side (population stddev, SQL-arm convention)",
+        "reps_wall_ms": [
+          48.02,
+          54.39,
+          53.49
+        ],
+        "wall_ms_median": 53.49,
+        "pr_auc": 0.7189,
+        "client_lines_of_code": 21,
+        "loc_basis": "python: play function source + expert_record derivation source, non-blank non-comment lines (shared counting rule)",
+        "n_scored": 20000,
+        "n_positive": 100
+      }
+    },
+    "best_expert_play": {
+      "cell": "anomaly_expert_gql_cohort_z",
+      "pr_auc": 0.7189,
+      "note": "both plays reported; best labeled, none dropped"
+    },
+    "sql_expert_baseline_pr_auc_round1": 0.7189,
+    "disclosures": [
+      "EXPERT PARITY: gigi was granted exactly the SQL author's domain knowledge \u2014 cohort = (merchant x 2h bucket), amount = value channel \u2014 and nothing else. Labels were never sent to gigi.",
+      "Both candidate plays are reported with their measured PR-AUCs; the best is labeled best. No cherry-picking.",
+      "The expert bundle carries two client-derived fields (cohort, amount_sq) computed during UNTIMED ingest prep; the SQL arm computes its bucket inside the timed query. The wall-time asymmetry favors gigi and is disclosed; the derivation's LOC is priced into every play's LOC (as the SQL arm's CAST was inside ANOM_SQL).",
+      "PLAY 1 weights ({context:cohort: 1.0}) are fixed a priori from the granted knowledge, not fitted \u2014 /scan/fit was NOT used (it needs labels, which the protocol withholds).",
+      "PLAY 1's context:cohort lens is gigi's cohort-local curvature kappa=|amount-mu|/range z-scored within cohort then rank-normalized globally \u2014 the granted knowledge in gigi's idiom, not a verbatim z-score reimplementation.",
+      "PLAY 2 computes the per-row |z| client-side from server-side INTEGRATE moments (GQL has no stddev aggregate \u2014 round-1 finding stands); population-stddev convention identical to the SQL arm; zero-variance cohorts score 0 like the SQL arm's COALESCE.",
+      "The round-1 zero-config /scan cell is carried verbatim as anomaly_zero_config_round1 (PR-AUC 0.0848 as measured in round 1).",
+      "All expert cells measured over HTTP at 127.0.0.1:3143 (gigi's real deployment shape), persistent keep-alive, strictly serial."
+    ]
+  },
+  "headline": {
+    "embedded_ingest_rows_per_sec_median_100k": 116526.3,
+    "embedded_point_p50_us_median_100k": 1.5,
+    "embedded_point_p95_us_median_100k": 2.4,
+    "round1_sqlite_ingest_rows_per_sec": 617285.1,
+    "round1_sqlite_point_p50_us": 55.5,
+    "expert_play1_scan_weighted_pr_auc": 0.7003,
+    "expert_play2_gql_cohort_z_pr_auc": 0.7189,
+    "zero_config_round1_pr_auc": 0.0848,
+    "sql_expert_pr_auc": 0.7189,
+    "embedded_ingest_no_index_superseded": 134381.2
+  },
+  "honest_summary": [
+    "EMBEDDED INGEST (schema-parity re-run, post-audit): gigi in-process ingests 116,526 rows/s median at 100k (reps 116,526/121,503/109,554, .index('txn_id') maintained inside the clock like every other system) \u2014 1.5x faster than its own HTTP shape (78,775) but still LOSES to in-process sqlite (617,285, 5.3x) and duckdb (390,428, 3.4x). Removing HTTP closes part of the gap, not the gap. The pre-fix no-index figure (134,381) is retained as superseded context only.",
+    "EMBEDDED POINT QUERY: p50 1.5 us / p95 2.4 us at 100k \u2014 37x faster than in-process sqlite (55.5 us round-1 / 68.8 us this sweep) and 236x faster than gigi's own HTTP shape (353.7 us round-1). Round 1's point-query loss was the transport, not the engine.",
+    "SCALING p50 10k->100k->1M: gigi-embedded 0.9 -> 1.5 -> 1.6 us (1.78x, REGRESSION-FLAGGED per protocol \u2014 growth concentrated in 10k->100k at 1.67x, 100k->1M near-flat at 1.07x; sub-us absolute deltas, shape consistent with cache effects, flagged anyway); gigi-HTTP 381 -> 410 -> 427 us (1.12x, near-flat \u2014 transport floor dominates, supports O(1) within jitter); sqlite 56.6 -> 68.8 -> 72.5 us (1.28x p50; p95 grows 2.25x, 93 -> 209 us \u2014 B-tree log-N visible). No system's curve is perfectly flat; embedded gigi is 45-63x faster than in-process sqlite at every N measured (62.9x at 10k, 45.9x at 100k, 45.3x at 1M) \u2014 noting the embedded side is a native-Rust timing loop vs Python's sqlite3 wrapper (protocol shape, disclosed).",
+    "EXPERT-PARITY ANOMALY (same domain knowledge as the SQL author, labels never sent): PLAY 2 (GQL INTEGRATE cohort moments + client |z|) PR-AUC 0.7189 \u2014 EXACTLY TIES expert SQL 0.7189, in 53.5 ms vs sqlite 33.6 ms, 21 LOC vs 15. PLAY 1 (weighted cohort-lens /scan, gigi's own idiom) PR-AUC 0.7003 \u2014 close but BELOW expert SQL (-0.0186), in 287.9 ms. Both reported; best is PLAY 2. The round-1 gap (0.0848 vs 0.7189) was the knowledge, not the engine: granted the same cohort structure, gigi reaches parity via GQL and near-parity via its native lens. The native /scan idiom still gives up 1.9 pts of PR-AUC and 8.6x wall time vs the SQL baseline (287.9 vs 33.6 ms; 5.4x vs gigi's own PLAY 2 at 53.5 ms) \u2014 the interaction-lens roadmap gap from round 1 stands, narrowed but real.",
+    "PLAY 2 ties SQL by construction to the extent the math is the same statistic (population z per cohort); the honest reading is that GQL can EXPRESS the expert's statistic at comparable line-count, not that gigi found something SQL could not."
+  ],
+  "carried_round1_cells": {
+    "note": "round-1 cells of record, carried verbatim from results_all.json, not re-run",
+    "headline": {
+      "gigi": {
+        "ingest_rows_per_sec_median": 78775.2,
+        "point_query_p50_ms_median": 0.3537,
+        "point_query_p95_ms_median": 0.4749,
+        "aggregate_wall_ms_median": 2167.34,
+        "anomaly_wall_ms_median": 317.4,
+        "anomaly_pr_auc": 0.0848,
+        "anomaly_client_loc": 5
+      },
+      "sqlite": {
+        "ingest_rows_per_sec_median": 617285.1,
+        "point_query_p50_ms_median": 0.0555,
+        "point_query_p95_ms_median": 0.0975,
+        "aggregate_wall_ms_median": 50.61,
+        "anomaly_wall_ms_median": 33.55,
+        "anomaly_pr_auc": 0.7189,
+        "anomaly_client_loc": 15
+      },
+      "duckdb": {
+        "ingest_rows_per_sec_median": 390428.3,
+        "point_query_p50_ms_median": 0.4165,
+        "point_query_p95_ms_median": 0.732,
+        "aggregate_wall_ms_median": 7.4,
+        "anomaly_wall_ms_median": 14.17,
+        "anomaly_pr_auc": 0.7189,
+        "anomaly_client_loc": 15
+      }
+    }
+  },
+  "post_audit_amendments": {
+    "date_utc": "2026-07-31",
+    "trigger": "independent adversarial fairness audit returned FAIL with two gigi-favoring defects; both fixed before the round-2 report was written",
+    "amendments": [
+      "FAIL-1 (schema equivalence): examples/vs_stores_embedded.rs bench_schema() gained .index('txn_id') to match the HTTP create_bundle key-index rule; the 100k embedded INGEST cell was re-run at schema parity (median 134,381 -> 116,526 rows/s, ~13% lower; audit's instrumented estimate was ~11%). No verdict flips: embedded still loses ingest to sqlite (5.3x) and duckdb (3.4x). Point-query cells carried unchanged \u2014 audit-verified index-independent, and the parity re-run reproduced them.",
+      "FAIL-2 (summary accuracy, pro-gigi): honest_summary corrected \u2014 PLAY 1's wall-time deficit is 8.6x vs the SQL baseline (287.9 vs 33.6 ms), not '~5x' (5.4x is vs gigi's own PLAY 2).",
+      "FINDING-3 (summary arithmetic, anti-gigi): '35-45x faster than sqlite at every N' corrected to 45-63x (62.9x at 10k, 45.9x at 100k, 45.3x at 1M); the Rust-native-loop vs Python-sqlite3-wrapper timing shape is now disclosed alongside it.",
+      "MINOR (doc/code mismatch): gen_scale.py and run_all.md claimed the Rust embedded lane READS the point_ids_*.txt files; it actually re-derives the ids via an in-file bit-exact MT19937 reimplementation (audit verified equal at all three Ns). Docs corrected; the id files remain the cross-language determinism receipt."
+    ],
+    "rerun_provenance": "schema-parity ingest re-run built from the same library source as the recorded run: git diff 4f9c2a4 -- src/ Cargo.lock is empty; Cargo.toml delta is the [[example]] target registration only; port 3143 verified refusing before the run",
+    "verifier_verdicts": {
+      "adversarial_fairness_audit": "FAIL as published -> both FAILs remediated above; every measured number otherwise reproduced exactly (medians, ratios, id streams, SHA-256s, PR-AUCs to 4+ decimals, live re-run of both expert plays)",
+      "o1_curve_verification": "PASS \u2014 all six stated ratios recomputed exactly; sqlite growth independently reproduced (1.274x vs 1.281x recorded); no bug-grade regression signal in the embedded step"
+    }
+  }
+}

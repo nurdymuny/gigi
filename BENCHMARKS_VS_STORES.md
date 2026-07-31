@@ -239,3 +239,193 @@ whatever it says, it ships.
    and it's real (audit-reproduced).
 4. Next-run hygiene from the auditors: persist per-row scores for all
    systems, script the `results_all.json` assembly, start the server empty.
+
+---
+
+# Round 2 — embedded lane, scaling curves, expert parity (2026-07-31)
+
+Round 1's three sharpest design critiques came from the benchmark's own
+subject, and each one became an arm of round 2. (1) *Server-vs-in-process
+asymmetry:* round 1 timed GIGI over HTTP against in-process sqlite/duckdb —
+disclosed, but never isolated; round 2 adds an **embedded lane** with GIGI
+linked as an in-process Rust library, the true apples-to-apples shape. (2)
+*Single-N cannot test complexity:* one 100k point-query cell says nothing
+about O(1) claims; round 2 sweeps **10k / 100k / 1M** with shared per-N id
+sets and a locked rule that any embedded growth is flagged as a regression,
+not smoothed. (3) *Expert-vs-novice arm asymmetry:* round 1 pitted
+hand-tuned SQL against zero-config `/scan`; round 2 grants GIGI **exactly
+the SQL author's domain knowledge** (cohort = merchant × 2h-bucket, amount =
+value channel, nothing more, labels never sent) and reports both candidate
+plays. The benchmark got better because the thing being measured pushed
+back — that is how it should work.
+
+Round 2 was independently verified before this section was written: an
+**adversarial fairness audit** (which FAILED the artifact as first published
+— every measured number reproduced exactly, but two gigi-favoring defects
+survived; both were fixed and the affected cell re-run before these final
+numbers — see `run_all.md` §post-audit amendments and
+`results_round2.json.post_audit_amendments`) and an **O(1)-curve
+verification** (PASS: all six stated ratios recomputed exactly from raw
+reps; sqlite's growth independently reproduced with fresh DBs).
+
+## R2.1 Embedded lane — the transport tax, isolated
+
+100k rows, same dataset, same 2,000 point-query ids as round 1 (the Rust
+example re-derives the CPython id stream bit-exactly — verified against the
+committed id files at every N). Post-audit schema parity: the embedded
+bundle declares the same secondary `txn_id` index the HTTP path creates, so
+index maintenance is inside the ingest clock for every system.
+
+| Task | GIGI embedded (in-proc Rust lib) | GIGI (HTTP, round 1) | SQLite (in-proc, round 1) | DuckDB (in-proc, round 1) |
+|---|---:|---:|---:|---:|
+| Ingest, rows/sec | 116,526 | 78,775 | **617,285** | 390,428 |
+| Point query p50 | **1.5 µs** | 353.7 µs | 55.5 µs | 416.5 µs |
+| Point query p95 | **2.4 µs** | 474.9 µs | 97.5 µs | 732.0 µs |
+
+- **The round-1 point-query loss was the transport, not the engine.**
+  Embedded p50 is 1.5 µs — a **236x** HTTP tax removed, flipping the cell
+  from a 6.4x loss to sqlite into a **37x win** at matched (in-process)
+  shape. Disclosed: the embedded loop is native Rust timing; the sqlite
+  numbers time Python's `sqlite3` wrapper — the protocol shape carried from
+  round 1.
+- **The ingest loss is real either way.** At schema parity embedded ingest
+  is 116,526 rows/s — 1.5x faster than GIGI's own HTTP shape, still a
+  **5.3x loss to sqlite** (3.4x to duckdb). The wire was never the ingest
+  bottleneck; the engine's write path (WAL + index maintenance) is.
+- **Audit correction, at full volume:** the first published embedded ingest
+  figure (134,381 rows/s) came from a schema missing the secondary
+  `txn_id` index the other systems paid for — a gigi-favoring ~13% that the
+  fairness audit caught (FAIL-1). The cell of record above is the
+  schema-parity re-run; the superseded reps stay in `results_round2.json`.
+
+## R2.2 Scaling curves — 10k / 100k / 1M
+
+Point-query p50 (µs, median of 3 reps, 2,000 warm lookups, shared per-N id
+sets, server verified dead for in-process legs):
+
+| System (shape) | 10k | 100k | 1M | p50 ratio 1M/10k | p95 ratio 1M/10k |
+|---|---:|---:|---:|---:|---:|
+| GIGI embedded (in-proc) | 0.9 | 1.5 | 1.6 | 1.78x ⚑ | 2.17x |
+| GIGI (HTTP) | 381.3 | 409.7 | 426.9 | 1.12x | 1.06x |
+| SQLite (in-proc) | 56.6 | 68.8 | 72.5 | 1.28x | 2.25x |
+
+⚑ = REGRESSION-FLAGGED per the locked protocol (any embedded growth is
+flagged, not smoothed).
+
+**Per-system verdicts, as the independent curve verifier stated them:**
+
+- **GIGI embedded — not flat, but the growth is a single step, not a
+  curve.** The 10k→100k step (0.9→1.5 µs, 1.67x) is outside 3-rep noise
+  (rep ranges cleanly separated); the 100k→1M step (1.07x) is within noise
+  over 10x more rows. "Inconclusive-at-this-N-range between
+  O(1)-plus-cache-hierarchy-step and very weak log N"; the per-decade
+  multipliers (1.67x then 1.07x) are inconsistent with a uniform O(log N)
+  or O(N) index walk. **"No action-worthy regression signal"** — the flag
+  is honest bookkeeping on a ~0.7 µs absolute delta, and 1M-row embedded
+  p50 is still ~45x faster than sqlite at the same N. What would upgrade
+  it: a 10M-row point, or 1M/100k exceeding ~1.3x with more reps.
+- **GIGI HTTP — consistent-with-O(1) within noise.** 1.12x over two decades
+  against a ~400 µs transport floor; the apparent growth is not
+  distinguishable from jitter (p95 1M/100k is actually 0.998). The
+  transport supports O(1) but also masks the engine — which is what the
+  embedded lane is for.
+- **SQLite — growing, outside noise, independently reproduced.** p50 1.28x,
+  p95 **2.25x** (93→209 µs); the verifier's fresh re-run confirmed 1.274x /
+  2.22x. The log-N cost lives in the tail, and it is first-decade-heavy on
+  p50 but keeps growing at p95 in the second decade — the B-tree showing.
+- **Statistical honesty at 3 reps:** rep-extreme bounds put the embedded
+  1M/10k ratio anywhere in [1.50, 2.63]; the direction calls above all
+  survive the range-separation test, fine-ratio claims would not. A 10M
+  point with 5+ reps is the natural next cell.
+
+Embedded GIGI is **45–63x faster than in-process sqlite at every N
+measured** (62.9x at 10k, 45.9x at 100k, 45.3x at 1M).
+
+## R2.3 Expert parity — the anomaly task with knowledge equalized
+
+GIGI was granted exactly what the round-1 SQL author knew — cohort =
+(merchant × 2h-bucket), amount = value channel — and nothing else. Labels
+never sent; both candidate plays reported, no cherry-picking; PR-AUC via
+the one shared scorer.
+
+| Arm | PR-AUC | Wall (median) | Client LOC | Knowledge |
+|---|---:|---:|---:|---|
+| GIGI `/scan` zero-config (round 1, stands) | 0.0848 | 317.4 ms | 5 | bundle name only |
+| GIGI PLAY 1: weighted cohort-lens `/scan` (native idiom) | 0.7003 | 287.9 ms | 14 | granted cohort |
+| GIGI PLAY 2: GQL `INTEGRATE` cohort moments + client \|z\| — **best** | **0.7189** | 53.5 ms | 21 | granted cohort |
+| Expert SQL (sqlite, round 1) | **0.7189** | 33.6 ms | 15 | hand-chosen cohort |
+
+- **PLAY 2 exactly ties expert SQL: 0.7189 = 0.7189.** The tie is genuine
+  and audit-reproduced to six decimals (0.718946, live and offline) — and
+  it is a tie *by construction to the extent the math is the same
+  statistic*: GQL can express the expert's cohort z-score at comparable
+  line count (21 vs 15 LOC), in 53.5 ms vs sqlite's 33.6 ms. The honest
+  reading is expressiveness parity, not discovery.
+- **The round-1 gap was the knowledge, not the engine.** Zero-config 0.0848
+  → knowledge-granted 0.7189 on the same engine, same data, same scorer.
+  Round 1's 8.5x PR-AUC loss decomposes almost entirely into the missing
+  cohort grant.
+- **The native-idiom gap stands, narrowed but real.** PLAY 1 — GIGI's own
+  `/scan` machinery with a-priori cohort weights, zero tuning — reached
+  0.7003: 1.9 pts below expert SQL and **8.6x** its wall time (287.9 vs
+  33.6 ms; 5.4x vs GIGI's own PLAY 2). The `/scan` rank-normalization step
+  appears to cost the last ~2 pts. The interaction-lens roadmap item from
+  round 1 survives round 2.
+
+## R2.4 Surprises, as measured
+
+1. The **236x transport tax** on point queries — far larger than expected;
+   removing it flips the round-1 point-query loss into a 37x win over
+   in-process sqlite.
+2. Embedded ingest is only ~1.5x HTTP ingest — the ingest bottleneck is
+   the engine's write path, not the wire; sqlite wins ingest 5.3x even
+   with HTTP removed.
+3. PLAY 1's cohort lens hit 0.7003 with a-priori weights and zero tuning —
+   `/scan` can *nearly* express the expert statistic natively.
+4. sqlite's p95 more than doubled 10k→1M while its p50 grew only 1.28x —
+   the log-N cost hides in the tail.
+
+## R2.5 Reproduce round 2
+
+```powershell
+cd benchmarks\vs_stores
+
+# R2-0. builds FIRST — nothing compiles after this point
+cargo build --release --bin gigi_stream
+cargo build --release --example vs_stores_embedded
+
+# R2-1. datasets (untimed; scale data lands OUTSIDE the repo/OneDrive)
+python gen_dataset.py   # only if data.csv / labels.json are missing
+python gen_scale.py     # -> %TEMP%\gigi_vs_stores_scale + manifest + id files
+
+# R2-2. HTTP legs — gigi server in a SECOND terminal, data dir on local disk:
+#   $env:PORT = "3143"; $env:GIGI_DATA_DIR = "$env:TEMP\gigi_vs_stores_server_r2"
+#   $env:GIGI_SKIP_BOOT_SNAPSHOT = "1"; cargo run --release --bin gigi_stream
+python run_scale_gigi_http.py
+python run_gigi_expert.py
+
+# R2-3. STOP the server, verify dead (must print False):
+Test-NetConnection 127.0.0.1 -Port 3143 -InformationLevel Quiet
+
+# R2-4. in-process legs — server dead, nothing else running:
+cargo run --release --example vs_stores_embedded -- "$env:TEMP\gigi_vs_stores_scale\data_100k.csv"
+python run_scale_sqlite.py   # self-enforces port-3143-dead in code
+```
+
+All raw reps, id-file SHA-256s, the superseded pre-parity ingest reps, both
+verifier verdicts, and the amendment record are in
+[`results_round2.json`](benchmarks/vs_stores/results_round2.json); the
+per-leg raws are in `results_scale_gigi_http.json`,
+`results_scale_sqlite.json`, and `results_gigi_expert.json`.
+
+## R2.6 The updated fix list
+
+1. **Ship the interaction lens.** PLAY 1 shows `/scan` is ~2 pts of PR-AUC
+   and one rank-normalization decision away from the expert statistic with
+   zero tuning — the highest-leverage item, unchanged from round 1.
+2. **The write path is the ingest story now.** 5.3x behind sqlite with HTTP
+   fully removed; WAL + index maintenance own the gap.
+3. **Cache-step or log-N?** A 10M-row point with 5+ reps closes the
+   embedded scaling question the 3-rep protocol honestly cannot.
+4. GQL stddev is still missing (`INTEGRATE` moments + client |z| is the
+   workaround PLAY 2 used); the round-1 docs-vs-parser gap stands.

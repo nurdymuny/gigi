@@ -341,6 +341,14 @@ name = "gnss_geodesic"
 path = "examples/gnss_geodesic.rs"
 required-features = ["lattice"]
 
+# vs_stores round-2 EMBEDDED lane — gigi as an in-process Rust library
+# (no HTTP): ingest rows/sec + point-query p50/p95 in microseconds, same
+# dataset/ids/warmup+reps protocol as benchmarks/vs_stores. Run with:
+#   cargo run --release --example vs_stores_embedded -- %TEMP%\gigi_vs_stores_scale\data_100k.csv
+[[example]]
+name = "vs_stores_embedded"
+path = "examples/vs_stores_embedded.rs"
+
 [dev-dependencies]
 rand = "0.8"
 # `tempfile` is declared under `[dependencies]` (see comment there);

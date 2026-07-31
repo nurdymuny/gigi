@@ -1,0 +1,119 @@
+{
+  "system": "sqlite",
+  "protocol": {
+    "round": 2,
+    "arm": "scaling_sweep",
+    "seed": 20260731,
+    "scale_ns": [
+      10000,
+      100000,
+      1000000
+    ],
+    "n_point_queries": 2000,
+    "reps_per_cell": 3,
+    "warmups_per_cell": 1,
+    "cell_statistic": "median of reps",
+    "unit": "microseconds",
+    "id_rule": "per-N ids = random.Random(seed+1).sample(range(N), 2000) \u2014 same stream rule as round 1; the N=100k list equals round 1's point_query_ids (asserted in gen_scale.py); id files written to the scale dir for the Rust embedded lane",
+    "timing": "only point queries are timed in the sweep; ingest is untimed setup (round-2 addendum clause 2 / 3). warm + sequential + strictly serial (clause 4).",
+    "interpretation": "ratio latency(1M)/latency(10k) per system: flat ~1.0x supports O(1); growth is reported as measured, never smoothed; for gigi embedded any clear growth is a REGRESSION finding (flagged in the embedded lane's runner)",
+    "data_dir": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale"
+  },
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "5d1f7a6905aca6b7af713f2e6742a47b99f2221f",
+    "timestamp_utc": "2026-07-31T22:15:36Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "versions": {
+    "sqlite": "3.49.1",
+    "storage": {
+      "10k": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\bench_scale_sqlite_10k.db",
+      "100k": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\bench_scale_sqlite_100k.db",
+      "1m": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores_scale\\bench_scale_sqlite_1m.db"
+    }
+  },
+  "cells": {
+    "10k": {
+      "n_rows": 10000,
+      "n_queries": 2000,
+      "unit": "us",
+      "reps": [
+        {
+          "p50_us": 56.6,
+          "p95_us": 93.02
+        },
+        {
+          "p50_us": 56.0,
+          "p95_us": 91.9
+        },
+        {
+          "p50_us": 58.3,
+          "p95_us": 94.72
+        }
+      ],
+      "p50_us_median": 56.6,
+      "p95_us_median": 93.02
+    },
+    "100k": {
+      "n_rows": 100000,
+      "n_queries": 2000,
+      "unit": "us",
+      "reps": [
+        {
+          "p50_us": 68.2,
+          "p95_us": 177.66
+        },
+        {
+          "p50_us": 69.9,
+          "p95_us": 197.1
+        },
+        {
+          "p50_us": 68.8,
+          "p95_us": 173.35
+        }
+      ],
+      "p50_us_median": 68.8,
+      "p95_us_median": 177.66
+    },
+    "1m": {
+      "n_rows": 1000000,
+      "n_queries": 2000,
+      "unit": "us",
+      "reps": [
+        {
+          "p50_us": 68.7,
+          "p95_us": 195.05
+        },
+        {
+          "p50_us": 72.5,
+          "p95_us": 209.14
+        },
+        {
+          "p50_us": 75.95,
+          "p95_us": 219.22
+        }
+      ],
+      "p50_us_median": 72.5,
+      "p95_us_median": 209.14
+    }
+  },
+  "scaling": {
+    "p50_ratio_1m_over_10k": 1.281,
+    "p95_ratio_1m_over_10k": 2.248,
+    "note": "flat ~1.0x supports O(1); growth reported as measured, not smoothed"
+  },
+  "disclosures": [
+    "sqlite runs in-process (its real shape); the gigi HTTP leg pays an HTTP round trip per lookup and the gigi embedded leg is in-process Rust \u2014 shape differences disclosed in each leg's own results file.",
+    "Sweep times ONLY point queries (round-2 clause 2); ingest is untimed setup \u2014 chunked executemany in one transaction, fresh file DB per N. Round-1 results_sqlite.json remains the ingest-throughput cell of record at 100k.",
+    "txn_id PRIMARY KEY declared in the DDL, so the PK index exists before any timed lookup (same best-foot-forward rule as round 1).",
+    "Database files live under the scale dir in %TEMP% (local disk, outside the OneDrive-synced repo).",
+    "In-process purity enforced in code: this runner aborts if anything answers on 127.0.0.1:3143 (round-2 clause 4).",
+    "Per-N latency ratio reported as measured \u2014 flat ~1.0x supports O(1) for sqlite's B-tree only in the observed range; B-tree lookups are O(log N) in principle and any visible growth is reported, not smoothed."
+  ]
+}

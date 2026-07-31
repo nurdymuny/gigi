@@ -173,7 +173,7 @@ sklearn — "an honest snapshot, **not a re-runnable gate**"
 ([`theory/reviews/ML_SUITE_REVIEW_2026-07-18.md`](theory/reviews/ML_SUITE_REVIEW_2026-07-18.md) §3).
 The last two rows are claim-grade (†): their flat sides are corroborated by the sweep, but no
 artifact file in the repo captures the geometric-side runs — they are attested only in the
-`/v1/ml` catalog evidence string (`src/bin/gigi_stream.rs:12531`) and commit messages `9a17360` / `912f450`.
+`/v1/ml` catalog evidence string (`src/bin/gigi_stream.rs`, `positioning.evidence` in `ml_catalog`) and commit messages `9a17360` / `912f450`.
 
 | Task · dataset | Metric | Geometric | Flat baseline |
 |---|---|---|---|
@@ -194,14 +194,16 @@ gmm, ols, PCA) against sklearn as a control arm — implementation-parity eviden
 **Sources:** `scripts/sweep_results.json` :25–26, :79–80, :214–215, :178–179 (table rows 1–4);
 :143 and :71 (flat sides of the †rows); losses and ties at :7–8, :16–17, :34–35, :52–53, :61–62,
 :70–71, :97–98, :115–116, :124–125, :160–161, :187–188, :196–197, :205–206. Claim text:
-`src/bin/gigi_stream.rs:12531`. Review: `theory/reviews/ML_SUITE_REVIEW_2026-07-18.md` (findings 4–5).
+`src/bin/gigi_stream.rs` (`ml_catalog`). Review: `theory/reviews/ML_SUITE_REVIEW_2026-07-18.md` (findings 4–5).
 
 **Cost footnote.** On a 5,000-record × 17-dimension bundle with no indexed fiber fields,
 `SPECTRAL` timed out at 30 s and passed at 180 s; the warm second run completed in ~120 s
 ([`GIGI_PERF_ANALYSIS.md`](GIGI_PERF_ANALYSIS.md), 2026-04-15). The O(n²) part is the proximity
 adjacency build — 25M pairwise comparisons at n=5,000; the eigensolve itself is tabulated
-O(n·k) Lanczos. Same run: `CONSISTENCY` ~120 s (O(n²) Čech complex), `HOLONOMY` >180 s, fail
-(O(n²) + no loops). The dense eigensolver is capped at 4,096 vertices (`SPECTRAL_DENSE_MAX_V`,
+O(n·k) Lanczos. Same run: `HOLONOMY` >180 s, fail (O(n²) + no loops). (`CONSISTENCY` also
+logged ~120 s in that 2026-04-15 run, but that measured the pre-fix code path — since `f912c22`
+it is a bounded ≤100-record sampled contradiction scan, and the old O(n²) Čech attribution no
+longer applies; see the closed flag in `GIGI_PERF_ANALYSIS.md`.) The dense eigensolver is capped at 4,096 vertices (`SPECTRAL_DENSE_MAX_V`,
 [`src/spectral.rs`](src/spectral.rs)); `GIGI_DENSE_CEIL` raises it, clamped to [4096, 8192] —
 raise-only, because a V ≈ 8000 complex-Hermitian dense solve is ~2–3 GB peak RSS. Past the
 ceiling, `FULL` returns a typed `SparseUnavailable`; `BULK` routes to the sparse interior arm —

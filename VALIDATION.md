@@ -20,7 +20,7 @@ rel_err > 0.00029 or a mid-Δ deviation ≠ 0.4472 falsifies it.
 
 Source artifact: [`theory/kahler_upgrade/validation/results_v5.txt`](theory/kahler_upgrade/validation/results_v5.txt)
 
-**Test 15: BLG prequantization integrality (catalog L7.1 / §2.1)** — loop radius = 5.00e+07 m⁻¹, kinetic energy ε = 2.7085 meV, BLG effective mass m* = 3.2040e-32 kg (verbatim from `theory/kahler_upgrade/validation/results_v5.txt`, lines 14–22)
+**Test 15: BLG prequantization integrality (catalog L7.1 / §2.1)** — loop radius = 5.00e+07 m⁻¹, kinetic energy ε = 2.7085 meV, BLG effective mass m* = 3.2040e-32 kg (verbatim from `theory/kahler_upgrade/validation/results_v5.txt`)
 
 | Δ/ε | analytic \|γ\| | Wilson \|γ\| | rel_err | \|γ\|/(2π) | int_dev |
 |-------:|---------:|---------:|--------:|--------:|-------:|
@@ -57,7 +57,7 @@ endpoints-~0 / middle-~0.45 signature).
   (`run_all.py` + `README.md` + t1–t10, tfp\*, tfh\*) — a TDD gate suite where every test
   computes ground truth by an independent textbook method (SymPy chain homology, closed-form
   curvature, independent eigendecomposition) with explicit circular-logic guards and
-  non-triviality witnesses; the README documents three honest red-first failures (T2
+  non-triviality witnesses; the gate README logs honest red-first failures (T2
   extreme-value cap, T5 expander counterexample forcing an honest non-universal-bound
   disclosure, T6 spurious precondition) fixed before green; ~10 s total wall-clock.
 - [`theory/encryption/validation/results_v0_3.txt`](theory/encryption/validation/results_v0_3.txt) —

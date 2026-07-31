@@ -122,7 +122,7 @@ field directions.
 | BETTI | ~5s | O(n·α) — union-find | None |
 | ENTROPY | ~5s | O(n) — single pass | None |
 | SPECTRAL | ~120s | O(n·k) — Lanczos + cold start | Cold start + no RANGE hints |
-| CONSISTENCY | ~120s | O(n²) — Čech complex | Cold start + no RANGE hints |
+| CONSISTENCY | ~120s (2026-04-15, pre-fix path) | superseded — was κ verbatim; now ≤100-record sampled scan (`f912c22`) | Cold start (see closed flag above) |
 | HOLONOMY | >180s (fail) | O(n²) + no loops | No INDEX + bimodal distribution |
 
 ---

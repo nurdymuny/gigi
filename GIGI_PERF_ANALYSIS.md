@@ -34,15 +34,31 @@ Without RANGE, the Laplacian edge weights are unnormalized, making convergence s
 ---
 
 ### CONSISTENCY — timeout at 30s, passed at 180s ✅
-**Returned:** h¹ = 0.0234 (same as K, which is suspicious — may be piggybacking curvature)  
-**Why slow:** Čech cohomology H¹ requires building a Čech complex from pairwise overlaps.
-The 1-skeleton (edges) is O(n²), the 2-skeleton (triangles) is O(n³) in the worst case,
-though implementations prune aggressively.
+**Returned:** h¹ = 0.0234 (same as K)  
+**Flag CLOSED 2026-07-30 — suspicion confirmed and fixed in commit `f912c22`.**
+The GQL `CONSISTENCY` arm was returning `scalar_curvature()` verbatim — the h¹ float
+above literally *was* κ under another name (that's why they matched). Two more surfaces
+were degenerate: the REST endpoint's triangle sampler measured holonomy on loops whose
+first and last key were the same record (identical deterministic lookups), so its h1 was
+structurally always 0; the WS text verb was a hardcoded `h1=0` stub.
 
-Same cold-start issue as SPECTRAL. Warm run passed. The `h1` value returning the same
-number as `K` suggests the REST endpoint may be reusing the curvature result as the
-consistency metric under the hood — worth confirming with the GIGI team whether these are
-actually distinct computations.
+All three now route through one shared kernel (`consistency_h1_sampled` in
+`src/bin/gigi_stream.rs`), which delegates to `sheaf::consistency_check_sampled` — the
+genuine per-record neighborhood MAD-z contradiction scan (gated by the schema's
+`h1_threshold`) over ≤100 sampled records. This was already the engine-side parser's
+CONSISTENCY computation; it was just unreachable from the HTTP path.
+
+**What h1 means now (honest naming):** a sampled neighborhood-contradiction *count* —
+integer number of (record, field) pairs whose local section disagrees with its
+neighborhood — not a true Čech H¹ rank. The REST response says so explicitly
+(`"method": "sampled_neighborhood_contradictions"`). κ is still reported separately as
+`curvature`; the two are distinct by construction (clean data with spread fibers:
+κ > 0, h1 = 0). Regression tests: `gql_consistency_is_not_kappa`,
+`consistency_h1_detects_injected_conflict`.
+
+The original slow-run note (Čech-complex cost speculation) no longer applies: the fixed
+path is a bounded ≤100-record scan. The 180s run's cost was the same cold-start issue as
+SPECTRAL plus the (then-)curvature read.
 
 ---
 

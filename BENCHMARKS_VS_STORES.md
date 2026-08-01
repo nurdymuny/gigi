@@ -660,3 +660,222 @@ expert statistic with nothing specified but the bundle name. Raw reps in
 Fix-list status: item 1 RESOLVED (normalization, the true cause); item 2
 (bin-count sweep) stands; item 3 (ingest gap 3.3x) stands; item 4 partially
 recovered (501 → 435 ms).
+
+---
+
+# Round 4 — contract-matched ingest + bin-count robustness (2026-07-31)
+
+## R4.1 The correction this round exists for
+
+**Rounds 1–3 compared 100 durability acknowledgments against 1, and reported
+the ratio as an ingest gap.** GIGI's embedded ingest cell ran 1,000-row
+batches — 100 `batch_insert` calls, each returning only after its own WAL
+fsync — while sqlite's cell ran one `BEGIN … COMMIT` around all 100,000 rows:
+one fsync-backed acknowledgment for the whole load. Those are different
+durability contracts, and the "5.3x / 3.3x behind sqlite" headline numbers
+were partly measuring that contract difference, not the engines. This is a
+benchmark-design correction, and the credit belongs to the founder, who
+pushed on the ingest number until the asymmetry surfaced: *why is gigi paying
+100 durability acks while sqlite pays one?*
+
+Round 4 re-runs ingest under **matched contracts, both directions**: a
+**one-ack lane** (every system loads 100k rows under a single durability
+acknowledgment) and a **many-ack lane** (every system commits durably every
+1,000 rows — 100 acknowledgments). Same 100k `data.csv` (SHA-256 pinned to
+the round-2 manifest), same row order in every lane, engine at main
+(`dc22e42`, the round-3b write path). Both lanes were passed by an
+independent adversarial ingest audit **before** this section was written
+(receipts inline below); the bin sweep in R4.4 was separately verified by
+re-running all five cells.
+
+## R4.2 Both lanes, side by side
+
+Rows/sec, median of 3 timed reps (1 untimed warmup), raws in
+[`results_round4.json`](benchmarks/vs_stores/results_round4.json) and
+[`results_round4_ingest_contracts.json`](benchmarks/vs_stores/results_round4_ingest_contracts.json):
+
+| Contract | GIGI embedded | SQLite (in-proc) | DuckDB (in-proc) | Verdict |
+|---|---:|---:|---:|---|
+| **One ack** — 100k rows, single durable acknowledgment | 431,697 | **515,531** | 276,543 | **GIGI LOSES to sqlite, 1.19x** — reported as measured; beats duckdb 1.56x |
+| **Many ack** — durable commit every 1,000 rows (100 acks) | **197,525** | 83,785 | 4,187 | **GIGI WINS over sqlite, 2.36x** |
+| *Round-3b cell of record (reference)* | *184,349 (many-ack shape)* | *617,285 (one-ack shape, round 1)* | — | *the asymmetric pair rounds 1–3 compared* |
+
+Lane mechanics, disclosed at full volume:
+
+- **GIGI one-ack** is the identical public `batch_insert` API with a bigger
+  slice — the documented contract ("single WAL flush + single checkpoint
+  check for N records") is per-call and size-independent; no internal
+  chunking, no large-batch special case, and no payload/serialization limit
+  was hit at 100k rows in one call (audit clause: nothing to work around).
+  Acknowledgment still means return-after-fsync covering every record in the
+  call. The one call performs **1 data fsync + 1 checkpoint-marker fsync**
+  (checkpoint_interval=10,000).
+- **SQLite many-ack** is 100 genuine transactions: `isolation_level=None`
+  (true autocommit, no implicit txns) + explicit `BEGIN` +
+  `executemany`(1,000 rows) + `COMMIT`, 100 times, journal=delete +
+  synchronous=full defaults untouched (no PRAGMAs anywhere). Not
+  autocommit-per-row, not one transaction.
+- **DuckDB many-ack** uses row-wise prepared statements inside 100
+  transactions — disclosed as a non-idiomatic shape *of that contract* for
+  duckdb; its one-ack lane is its round-1 `read_csv` bulk shape
+  (parse inside the clock, disclosed).
+- **Fsync counts audit-confirmed empirically, not just by code reading:** the
+  ingest auditor placed a temporary atomic counter in `Wal::sync` and
+  measured exactly 2 fsyncs per one-ack ingest (1 data + 1 checkpoint
+  marker) and exactly 110 per many-ack ingest (100 data + 10 checkpoint) —
+  matching the published disclosures to the sync. Counter removed, `wal.rs`
+  restored byte-identical, pristine binary rebuilt and sanity-run.
+  Auto-compact provably cannot fire in-window, so the disclosed counts are
+  complete.
+- **Row identity verified across all six cells:** one `data.csv`,
+  order-preserving parses, identical 1,000-row chunking; every median
+  recomputed from raw reps by the auditor with zero mismatches.
+- **Cell-of-record naming, precisely:** the many-ack GIGI reference is the
+  round-3 *embedded* cell (`embedded_round3.json`, 184,349 rows/s), not the
+  similarly-named `results_round3b_gigi.json` (84,043 — that file is the
+  HTTP lane). The round-4 re-time came in at 197,525 (+7% — same binary
+  contract, quieter machine; ordinary session drift, both numbers preserved
+  in the JSON).
+
+**Honest verdicts.** Under a matched one-ack contract, sqlite still wins
+ingest — but the gap is **1.19x, not 7.8x/5.3x/3.3x**. Under a matched
+many-ack contract — the shape every round-1–3 GIGI cell actually ran —
+**GIGI beats sqlite 2.36x** and duckdb collapses to ~4.2k rows/s (a ~66x
+drop from its own one-ack rate; ~20x behind sqlite): duckdb is not built for
+many small durable transactions. The asymmetric-contract complaint was
+load-bearing: the rounds-1–3 ingest headline inverts when the contracts are
+matched.
+
+## R4.3 Where the remaining gap lives (post-fix profile)
+
+Scratch-instrumented round-3b engine, 1,000-row batches (many-ack contract),
+nanosecond accumulators around the phases of `batch_insert`, 3 timed reps
+aggregated (warmup rep excluded; percentages recomputed exactly from
+`reps_raw_ns` by the auditor):
+
+| Phase | % of batch_insert time |
+|---|---:|
+| fsync (100 data syncs + 10 checkpoint-marker syncs) | **54.53** |
+| in-memory store insert (excl. index) | 19.81 |
+| txn_id secondary-index maintenance | 12.88 |
+| WAL append: serialize + CRC + buffered write | 12.19 |
+| schema coercion | 0.26 |
+| other (cache invalidation + checkpoint bookkeeping) | 0.33 |
+
+- **Observer overhead disclosed:** the instrumented binary ran ~6% slower
+  than pristine (185,511 vs 197,525 rows/s). Sources were restored
+  byte-identical and verified; the instrumentation was never committed.
+- **The read of the split:** under the many-ack contract, over half the
+  ingest clock is the contract itself — fsync is mandated durability, not
+  engine overhead. With fsync amortized out (the one-ack lane), GIGI's
+  remaining 1.19x gap to sqlite is **pure per-record CPU**: in-memory insert
+  + index upkeep + WAL serialization, ~45% of batch_insert time combined.
+  That trio is the whole remaining ingest fix list.
+
+## R4.4 Bin-count robustness — the R3.3 caveat, measured
+
+The round-3 fairness audit flagged that the interaction lens's 12 equal-width
+hour bins land within ~2% of the expert arm's 2h partition, and that
+bin-count sensitivity was never measured. The locked claim for this sweep,
+stated before running: the 0.6531 zero-config number is **STABLE** if
+PR-AUC at {8, 12, 16} bins stays within 0.05 of the 12-bin value.
+
+Five binaries were built, one per bin count (each binary's lens note verified
+to name its own count — "N equal-width hour bins"), run strictly one server
+at a time on port 3143, verified dead between runs; only the 12-bin build
+remains as the product, and `src/ml/scan.rs` ended byte-clean at HEAD.
+
+| Bins | 6 | 8 | **12 (product)** | 16 | 24 |
+|---|---:|---:|---:|---:|---:|
+| Zero-config `/scan` PR-AUC | 0.6735 | 0.6647 | **0.6531** | 0.6346 | 0.6271 |
+
+The independent sweep verifier re-ran **all five cells** (raw per-row scores
+were not persisted, so it refused to trust recorded fields and re-measured):
+every PR-AUC reproduced byte-equal, every lens note named its claimed count,
+all five binary hashes distinct. Its stability finding, verbatim:
+
+> |PR-AUC(8)−PR-AUC(12)| = 0.0116, |PR-AUC(16)−PR-AUC(12)| = 0.0185, both
+> <= 0.05 -> verdict STABLE, matching the recorded stability_claim; context
+> bins 6 (+0.0204) and 24 (−0.0260) also within 0.05; 12 is not a
+> cherry-picked peak (6 and 8 score higher)
+
+Two more receipts from the sweep:
+
+- **Determinism:** the 12-bin sweep cell ran against the product binary
+  (`target/release/gigi-stream.exe`, sha256-identical to the recorded scratch
+  copy) and reproduced the committed round-3b PR-AUC **0.6531 exactly** —
+  `/scan` is deterministic per binary+dataset, so exact equality is the
+  expected "within noise."
+- **The curve is monotone decreasing in bin count** — 6 and 8 bins score
+  *higher* than 12. So 12 is not a tuned peak sitting on the expert's 2h
+  partition; the fairness concern dissolves in the honest direction.
+  (Corollary held at arm's length: coarser bins score better *on this
+  dataset*, but changing the product default on that evidence would be
+  exactly the benchmark-overfit the sweep exists to guard against. 12
+  stands.)
+
+**Protocol note, disclosed:** the round-4 timing cells are all
+embedded/in-process, but the bin sweep necessarily boots a gigi server per
+binary because `/scan` is HTTP-shaped by its round-1/3 cell definition. It is
+an untimed quality cell (deterministic, 1 run, no wall time reported),
+servers ran serially with port-dead verification, and
+`results_round4.json`'s protocol_note discloses it. Both auditors reviewed
+this and called it non-failing: timing purity is not violated.
+
+## R4.5 Surprises, as measured
+
+1. **The rounds-1–3 headline inverts under matched contracts.** Sqlite's
+   ingest edge shrinks to 1.19x at one-ack and GIGI leads 2.36x at 100-ack —
+   the asymmetric-contract complaint was load-bearing.
+2. With fsync amortized out, GIGI's remaining gap to sqlite is pure
+   per-record CPU (~45% of batch_insert time: in-memory insert + index +
+   WAL serialization).
+3. **DuckDB collapses to ~4.2k rows/s under the 100-commit contract** — a
+   ~66x drop from its own one-ack rate — it is not built for many small
+   durable transactions.
+4. The bin sweep is monotone decreasing: 6 and 8 bins score *higher* than
+   12, so 12 is not a tuned peak near the expert 2h partition.
+5. The 12-bin sweep run reproduced the committed round-3b PR-AUC 0.6531
+   exactly — a determinism receipt for free.
+6. GIGI many-ack re-timed ~7% faster than the round-3 cell of record
+   (197.5k vs 184.3k rows/s) — same binary contract, quieter machine; both
+   preserved in the JSON.
+
+## R4.6 Fix-list status (R3.7 open items, flipped or narrowed)
+
+1. *(R3.6 item 2)* **Bin-count sweep — RESOLVED.** Verdict STABLE under the
+   locked 0.05 criterion; 0.6531 may now be quoted as a robust zero-config
+   number with the sweep as its receipt.
+2. *(R3.6 item 3)* **"Ingest 3.3x behind sqlite" — RETIRED AS STATED,
+   still open in narrower form.** The 3.3x was a contract artifact. What
+   remains, precisely named by the profile: per-record CPU — in-memory
+   insert (19.81%) + txn_id index maintenance (12.88%) + WAL
+   serialize/CRC/write (12.19%) — is the honest 1.19x one-ack gap. Fsync
+   (54.5% under many-ack) is the contract, not the engine, and is not a
+   target.
+3. *(R3.6 item 4)* Zero-config scan wall buyback (435 ms) — stands,
+   untouched this round.
+
+## R4.7 Reproduce round 4
+
+```powershell
+cd benchmarks\vs_stores
+
+# R4-0. build (the example gained a --batch-rows flag; same ingest path)
+cargo build --release --bin gigi_stream
+cargo build --release --example vs_stores_embedded
+
+# R4-1. contract-matched lanes — server DEAD (in-process only), serial:
+python run_ingest_contracts.py   # both lanes, all three stores
+#   gigi lanes call the example directly:
+#     one-ack:  vs_stores_embedded -- data.csv --batch-rows 100000
+#     many-ack: vs_stores_embedded -- data.csv --batch-rows 1000
+
+# R4-2. bin sweep (builds 5 binaries, boots one server at a time on 3143,
+#        verifies the port dead between runs, restores the 12-bin product):
+python run_bin_sweep.py
+```
+
+Outputs: `results_round4_ingest_contracts.json`, `results_bin_sweep.json`,
+and the assembled `results_round4.json` (protocol block, per-rep raws,
+per-lane disclosures, both stability claims).

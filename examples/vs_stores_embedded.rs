@@ -7,10 +7,17 @@
 //! sockets, no JSON wire.
 //!
 //! Usage:
-//!   vs_stores_embedded <data.csv> [n_lookups=2000] [reps=3]
+//!   vs_stores_embedded <data.csv> [n_lookups=2000] [reps=3] [--batch-rows N]
 //!   vs_stores_embedded --ids-check <n> <k>     # print the derived id sample
 //!                                              # (for cross-checking against
 //!                                              # eval_common.point_query_ids)
+//!
+//! --batch-rows N (round 4, contract-matched lanes): rows per batch_insert
+//! call inside the timed ingest window. Default 1000 = the round-3b many-ack
+//! cell of record (one WAL fsync per 1,000 rows). N = n_rows = the one-ack
+//! lane: a single batch_insert call, one WAL fsync for the whole dataset —
+//! the durability contract sqlite's single-transaction cell runs under.
+//! Timing shape is otherwise unchanged.
 //!
 //! Cells (mirrors benchmarks/vs_stores/run_gigi.py + eval_common.py):
 //!   INGEST       fresh Engine in a fresh temp dir per rep; timed window =
@@ -313,14 +320,14 @@ fn fresh_dir(tag: &str) -> PathBuf {
 /// One ingest rep: fresh Engine in a fresh temp dir, timed window = the
 /// batched batch_insert loop. Returns (rows_per_sec, dir, engine) — the
 /// caller keeps the last rep's engine for the point-query phase.
-fn ingest_once(records: &[Record], tag: &str) -> (f64, PathBuf, Engine) {
+fn ingest_once(records: &[Record], batch_rows: usize, tag: &str) -> (f64, PathBuf, Engine) {
     let dir = fresh_dir(tag);
     let mut engine = Engine::open(&dir).expect("Engine::open");
     engine.create_bundle(bench_schema()).expect("create_bundle");
 
     let t0 = Instant::now();
     let mut inserted = 0usize;
-    for chunk in records.chunks(INSERT_BATCH) {
+    for chunk in records.chunks(batch_rows) {
         inserted += engine.batch_insert(BUNDLE, chunk).expect("batch_insert");
     }
     let dur = t0.elapsed().as_secs_f64();
@@ -333,7 +340,19 @@ fn ingest_once(records: &[Record], tag: &str) -> (f64, PathBuf, Engine) {
 // ─── main ───────────────────────────────────────────────────────────────────
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let mut args: Vec<String> = std::env::args().collect();
+
+    // --batch-rows N (round 4): rows per batch_insert call in the ingest
+    // window. Extracted before positional parsing; default = INSERT_BATCH.
+    let mut batch_rows: usize = INSERT_BATCH;
+    if let Some(pos) = args.iter().position(|a| a == "--batch-rows") {
+        batch_rows = args
+            .get(pos + 1)
+            .and_then(|s| s.parse().ok())
+            .expect("--batch-rows requires a positive integer");
+        assert!(batch_rows >= 1, "--batch-rows must be >= 1");
+        args.drain(pos..=pos + 1);
+    }
 
     // --ids-check <n> <k>: print the derived sample for cross-validation
     // against python eval_common.point_query_ids (no dataset needed).
@@ -356,7 +375,7 @@ fn main() {
     }
 
     if args.len() < 2 {
-        eprintln!("usage: vs_stores_embedded <data.csv> [n_lookups=2000] [reps=3]");
+        eprintln!("usage: vs_stores_embedded <data.csv> [n_lookups=2000] [reps=3] [--batch-rows N]");
         eprintln!("       vs_stores_embedded --ids-check <n> <k>");
         std::process::exit(2);
     }
@@ -377,11 +396,13 @@ fn main() {
     eprintln!("{n_rows} rows");
 
     // ── A. INGEST — 1 untimed warmup + `reps` timed, fresh engine each ──
-    eprintln!("A. ingest (1 warmup + {reps} reps, {n_rows} rows each) ...");
+    eprintln!(
+        "A. ingest (1 warmup + {reps} reps, {n_rows} rows each, {batch_rows} rows/batch_insert) ..."
+    );
     let mut ingest_reps: Vec<f64> = Vec::new();
     let mut keep: Option<(PathBuf, Engine)> = None;
     for i in 0..=reps {
-        let (rps, dir, engine) = ingest_once(&records, &format!("rep{i}"));
+        let (rps, dir, engine) = ingest_once(&records, batch_rows, &format!("rep{i}"));
         if i == 0 {
             // warmup: result discarded, engine dropped, dir removed
             drop(engine);
@@ -465,7 +486,7 @@ fn main() {
         "protocol": {
             "seed_ids": SEED_IDS,
             "id_derivation": "CPython random.Random(20260732).sample(range(n_rows), n_lookups) replicated bit-for-bit (MT19937 init_by_array + _randbelow + Lib/random.py sample)",
-            "insert_batch": INSERT_BATCH,
+            "insert_batch": batch_rows,
             "n_point_queries": n_lookups,
             "warmups_per_cell": 1,
             "reps_per_cell": reps,
@@ -491,7 +512,7 @@ fn main() {
         },
         "disclosures": [
             "Embedded lane: all cells in-process via the gigi Rust library — no HTTP round trip, no JSON wire. This is the apples-to-apples counterpart of round 1's in-process sqlite/duckdb cells.",
-            "INGEST timed window = the engine.batch_insert loop only (1,000-row batches), including gigi's WAL append + any checkpoint the engine triggers — its real embedded write path. Record structs are built from the CSV before the timed window, mirroring round 1 where python rows were parsed pre-window.",
+            format!("INGEST timed window = the engine.batch_insert loop only ({batch_rows}-row batches; one WAL fsync per batch_insert call), including gigi's WAL append + any checkpoint the engine triggers — its real embedded write path. Record structs are built from the CSV before the timed window, mirroring round 1 where python rows were parsed pre-window."),
             "SCHEMA PARITY (post-audit fix): the bundle declares .index(\"txn_id\"), matching round 1's HTTP create_bundle path which indexes every key field — secondary-index maintenance is inside the embedded ingest clock, same as every other system (round-1 fairness rule #2). The audit measured the earlier omission at ~11% of ingest throughput; point queries never touch field_index and are unaffected.",
             "INGEST runs on a fresh Engine in a fresh temp dir per rep (fresh-bundle-per-rep rule from round 1).",
             "POINT QUERY timed window = BundleStore::point_query per lookup only; key Records are prebuilt untimed (the embedded analogue of round 1 pre-quoting URL ids). No response deserialization exists in-process — disclosed as inherent to the embedded shape, not hidden.",

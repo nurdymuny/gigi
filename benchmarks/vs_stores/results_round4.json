@@ -1,0 +1,282 @@
+{
+  "benchmark": "gigi vs stores \u2014 ROUND 4 (contract-matched ingest, post-fix profile, bin-count robustness)",
+  "date_utc": "2026-07-31",
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "dc22e426a96ccfed5893c88b9b87b9f9245af911",
+    "timestamp_utc": "2026-08-01T03:14:57Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "protocol_note": "same 100k data.csv (sha256 10a88810e8327ae05f73ac20b9c2c85251ac5c3c09c014312cc815079f99c800, = round-2 manifest data_100k), warmup(1)+reps(3)/median for every timed cell, strictly serial, all builds completed before timed phases, port 3143 verified dead for all in-process cells (no HTTP cell exists in round 4 except the untimed bin-sweep quality runs)",
+  "contract_matched_ingest": {
+    "definition": "Rounds 1-3 compared gigi under a 100-durability-ack contract (1,000-row batches, one WAL fsync per batch) against sqlite under a 1-ack contract (one transaction). Round 4 runs BOTH matched pairs on the same 100k dataset, same records, same order.",
+    "lanes": {
+      "one_ack": {
+        "gigi_embedded": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            434417.7,
+            426676.9,
+            431697.3
+          ],
+          "median": 431697.3,
+          "durability_acks": 1,
+          "mechanism": "single engine.batch_insert(100k records) \u2014 one WAL append pass + one fsync (+1 checkpoint-marker fsync at end of the same call, disclosed)",
+          "insert_batch_rows": 100000
+        },
+        "sqlite": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            509281.9,
+            515530.6,
+            519461.1
+          ],
+          "median": 515530.6,
+          "durability_acks": 1,
+          "mechanism": "one BEGIN + executemany + COMMIT (round-1 cell, re-timed)"
+        },
+        "duckdb": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            259440.4,
+            287778.1,
+            276543.4
+          ],
+          "median": 276543.4,
+          "durability_acks": 1,
+          "mechanism": "INSERT INTO txns SELECT FROM read_csv(...) \u2014 round-1 shape, CSV parse inside the clock (disclosed)"
+        }
+      },
+      "many_ack": {
+        "gigi_embedded": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            197524.6,
+            200116.5,
+            192006.7
+          ],
+          "median": 197524.6,
+          "durability_acks": 100,
+          "mechanism": "engine.batch_insert in 1,000-row batches \u2014 100 calls, one WAL fsync per call (the round-3b embedded cell of record, re-timed)",
+          "insert_batch_rows": 1000
+        },
+        "sqlite": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            83785.3,
+            82457.5,
+            84447.6
+          ],
+          "median": 83785.3,
+          "durability_acks": 100,
+          "mechanism": "BEGIN + executemany(1000) + COMMIT per chunk \u2014 100 transactions, journal defaults"
+        },
+        "duckdb": {
+          "rows": 100000,
+          "unit": "rows_per_sec",
+          "reps": [
+            4209.0,
+            4186.6,
+            4141.4
+          ],
+          "median": 4186.6,
+          "durability_acks": 100,
+          "mechanism": "BEGIN + executemany(1000) + COMMIT per chunk \u2014 100 transactions, row-wise prepared statements"
+        }
+      }
+    },
+    "store_lane_disclosures": [
+      "CONTRACT MATCHING (round-4 clause 1): rounds 1-3 timed gigi under a 100-durability-ack contract against sqlite under a 1-ack contract. This file carries both matched pairs for the stores; the two gigi lanes come from the vs_stores_embedded binary (--batch-rows 100000 for one-ack; default 1000 for many-ack) and are reported side by side with these, never mixed across contracts.",
+      "MANY-ACK 'ack' definitions per system, honestly different in kind: sqlite COMMIT under journal_mode=delete + synchronous=full (fsync-backed rollback-journal commit per chunk); duckdb COMMIT of its WAL per chunk (durability semantics per duckdb defaults, version recorded); gigi batch_insert = WAL append + one fsync per call. Each system pays its own real per-ack cost; none is normalized to another's.",
+      "duckdb MANY-ACK uses row-wise prepared-statement executemany per chunk \u2014 NOT duckdb's idiomatic columnar bulk path. That is the honest shape of a 100-transaction contract from pre-parsed Python rows; the ONE-ACK lane shows duckdb's idiomatic path (read_csv, CSV parse inside the clock, as in round 1).",
+      "sqlite lanes reuse run_sqlite.py's DDL/INSERT/fresh_connection verbatim (txn_id PRIMARY KEY maintained during ingest, fresh file DB per rep, %TEMP% local disk outside the OneDrive-synced tree); duckdb lanes reuse run_duckdb.py's likewise.",
+      "All lanes in-process, strictly serial, GC handled uniformly by eval_common.warmup_plus_reps; this runner aborts if anything answers on 127.0.0.1:3143."
+    ],
+    "versions": {
+      "sqlite": "3.49.1",
+      "sqlite_storage": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores\\bench_sqlite.db",
+      "duckdb": "1.5.5",
+      "storage": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores\\bench_duckdb.db"
+    }
+  },
+  "post_fix_ingest_profile": {
+    "cell": "post-fix ingest phase profile (round 4 addendum, clause 2)",
+    "engine": "round-3b write path (current main), embedded, 1,000-row batch_insert (many-ack contract)",
+    "method": "scratch instrumented build: nanosecond accumulators around the four phases of Engine::batch_insert (schema coercion; WAL append loop = serialize + CRC + buffered write; Wal::sync = BufWriter flush + fsync, all call sites incl. checkpoint markers; in-memory store.batch_insert with the field_index/bp_reverse maintenance sub-timed). 1 untimed warmup + 3 timed reps; split aggregated over the 3 timed reps. Sources restored byte-identical after the build (verified); never committed.",
+    "reps_raw_ns": [
+      {
+        "tag": "rep0",
+        "wall_ns": 531610999,
+        "total_ns": 531552400,
+        "coerce_ns": 1453700,
+        "wal_append_ns": 61134700,
+        "fsync_ns": 299653300,
+        "mem_ns": 167705400,
+        "index_ns": 66569700
+      },
+      {
+        "tag": "rep1",
+        "wall_ns": 544891200,
+        "total_ns": 544829900,
+        "coerce_ns": 1401600,
+        "wal_append_ns": 68118000,
+        "fsync_ns": 297805700,
+        "mem_ns": 175823700,
+        "index_ns": 68150900
+      },
+      {
+        "tag": "rep2",
+        "wall_ns": 530144700,
+        "total_ns": 530083800,
+        "coerce_ns": 1484500,
+        "wal_append_ns": 62931400,
+        "fsync_ns": 285549700,
+        "mem_ns": 178286500,
+        "index_ns": 68849200
+      },
+      {
+        "tag": "rep3",
+        "wall_ns": 539052100,
+        "total_ns": 538992000,
+        "coerce_ns": 1346000,
+        "wal_append_ns": 65760500,
+        "fsync_ns": 296646900,
+        "mem_ns": 173497700,
+        "index_ns": 70884400
+      }
+    ],
+    "timed_reps_rows_per_sec": [
+      183522.9,
+      188627.7,
+      185510.8
+    ],
+    "split_pct_of_batch_insert_time": {
+      "fsync": 54.53,
+      "in_memory_excl_index": 19.81,
+      "index_maintenance": 12.88,
+      "wal_append_serialize_write": 12.19,
+      "schema_coercion": 0.26,
+      "other_cache_invalidation_checkpoint_bookkeeping": 0.33
+    },
+    "split_ns_sum_over_3_reps": {
+      "total": 1613905700,
+      "fsync": 880002300,
+      "in_memory_excl_index": 319723400,
+      "index_maintenance": 207884500,
+      "wal_append": 196809900,
+      "coerce": 4232100,
+      "other": 5253500
+    },
+    "disclosures": [
+      "Instrumented binary ingests at 185,511 rows/s median vs 197,525 pristine (same session) \u2014 ~6% observer overhead, mostly the two per-record Instant reads around the index-maintenance window; the split is read against the instrumented total.",
+      "fsync bucket = every Wal::sync call inside the timed window: 100 per-batch data syncs + 10 checkpoint-marker syncs (checkpoint_interval=10,000).",
+      "index_maintenance is a sub-bucket of the in-memory store phase (bp_reverse + field_index upkeep for the txn_id secondary index)."
+    ]
+  },
+  "bin_count_robustness": {
+    "cell": "bin_count_robustness_sweep (round 4 addendum, clause 3)",
+    "cell_kind": "quality (1 run per bin count \u2014 /scan is deterministic per binary+dataset; not a timing cell)",
+    "environment": {
+      "hostname": "LAPTOP-5ECOBNCR",
+      "os": "Windows 11 (10.0.26200)",
+      "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+      "machine": "AMD64",
+      "python": "3.12.10",
+      "gigi_git_sha": "dc22e426a96ccfed5893c88b9b87b9f9245af911",
+      "timestamp_utc": "2026-08-01T03:14:36Z",
+      "single_node": true,
+      "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+    },
+    "bin_constant_site": "src/ml/scan.rs interaction-lens time-named bucket axis (12 equal-width bins; three coupled literals patched together)",
+    "stability_claim": {
+      "set": [
+        8,
+        12,
+        16
+      ],
+      "tolerance_abs": 0.05,
+      "reference_bins": 12,
+      "verdict": "STABLE",
+      "deltas_abs": {
+        "8": 0.0116,
+        "12": 0.0,
+        "16": 0.0185
+      }
+    },
+    "cells": [
+      {
+        "bins": 6,
+        "pr_auc": 0.6735,
+        "n_scored": 20000,
+        "lens_note": "context:merchant*hour_bucket: 6 equal-width hour bins [0.0,24.0]",
+        "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_6\\gigi-stream.exe",
+        "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_6.log",
+        "runs": 1
+      },
+      {
+        "bins": 8,
+        "pr_auc": 0.6647,
+        "n_scored": 20000,
+        "lens_note": "context:merchant*hour_bucket: 8 equal-width hour bins [0.0,24.0]",
+        "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_8\\gigi-stream.exe",
+        "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_8.log",
+        "runs": 1
+      },
+      {
+        "bins": 12,
+        "pr_auc": 0.6531,
+        "n_scored": 20000,
+        "lens_note": "context:merchant*hour_bucket: 12 equal-width hour bins [0.0,24.0]",
+        "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_12\\gigi-stream.exe",
+        "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_12.log",
+        "runs": 1
+      },
+      {
+        "bins": 16,
+        "pr_auc": 0.6346,
+        "n_scored": 20000,
+        "lens_note": "context:merchant*hour_bucket: 16 equal-width hour bins [0.0,24.0]",
+        "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_16\\gigi-stream.exe",
+        "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_16.log",
+        "runs": 1
+      },
+      {
+        "bins": 24,
+        "pr_auc": 0.6271,
+        "n_scored": 20000,
+        "lens_note": "context:merchant*hour_bucket: 24 equal-width hour bins [0.0,24.0]",
+        "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_24\\gigi-stream.exe",
+        "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_24.log",
+        "runs": 1
+      }
+    ],
+    "disclosures": [
+      "Only the 12-bin binary is a committed product; 6/8/16/24 builds are scratch binaries from a patched working tree, restored byte-clean after each build (verified against a pre-run snapshot).",
+      "Quality cell: one /scan per bin count, no warmup/reps, wall time not reported. Labels never sent to the server; PR-AUC via the one shared eval_common.average_precision.",
+      "Runs strictly serial; all builds completed before the first server boot; one server at a time on port 3143, verified dead between runs."
+    ]
+  },
+  "artifact_provenance": {
+    "gigi_lanes": "target/release/examples/vs_stores_embedded.exe (pristine build of the working tree)",
+    "store_lanes": "benchmarks/vs_stores/run_ingest_contracts.py",
+    "profile": "scratch instrumented build (never committed); sources restored byte-identical and verified",
+    "sweep": "benchmarks/vs_stores/run_bin_sweep.py (scratch binaries; only the 12-bin build is the product)"
+  },
+  "honest_summary": {
+    "one_ack_lane": "Contract-matched gigi LOSES the one-ack lane to sqlite: 431,697 vs 515,531 rows/s median (1.19x behind; both a single durability ack on the same pre-parsed 100k rows). With fsync amortized to ~zero in this lane, the remaining gap is gigi's per-record CPU work \u2014 the profile names it: in-memory store insert 19.8% + txn_id secondary-index maintenance 12.9% + WAL serialize/CRC/buffered-write 12.2% of batch_insert time (measured under the many-ack profile; the same CPU phases run per record in both lanes). gigi one-ack beats duckdb one-ack (276,543, CSV parse in-clock as disclosed since round 1).",
+    "many_ack_lane": "Contract-matched gigi WINS the many-ack lane: 197,525 vs sqlite 83,785 (2.36x) vs duckdb 4,187 rows/s (100 fsync-backed commits each; per-system ack semantics disclosed \u2014 sqlite journal_mode=delete/synchronous=full, duckdb WAL commit, gigi WAL append + fsync per call).",
+    "asymmetry_resolved": "Rounds 1-3 compared gigi's 100-ack cell against sqlite's 1-ack cell. Matched both ways: sqlite's round-1 headline (previously ~5.3x, then 3.3x over gigi) becomes 1.19x at equal 1-ack contracts, and inverts to 0.42x (gigi 2.36x ahead) at equal 100-ack contracts.",
+    "one_ack_payload_note": "No payload/serialization limit was hit: a single engine.batch_insert call with all 100k records succeeded (finding clause satisfied \u2014 nothing to work around). Disclosed: the one-ack call performs 1 data fsync + 1 checkpoint-marker fsync at end of call (checkpoint_interval=10,000).",
+    "bin_sweep": "STABLE per the locked claim (max |delta| within {8,12,16} = 0.0185 <= 0.05). Context values: PR-AUC decreases monotonically with bin count (6: 0.6735 ... 24: 0.6271); 12 is not a cherry-picked peak \u2014 6 and 8 both score higher. The 12-bin run reproduced the round-3b committed cell PR-AUC 0.6531 exactly."
+  }
+}

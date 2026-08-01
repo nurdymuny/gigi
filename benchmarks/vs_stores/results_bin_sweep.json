@@ -1,0 +1,83 @@
+{
+  "cell": "bin_count_robustness_sweep (round 4 addendum, clause 3)",
+  "cell_kind": "quality (1 run per bin count \u2014 /scan is deterministic per binary+dataset; not a timing cell)",
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "dc22e426a96ccfed5893c88b9b87b9f9245af911",
+    "timestamp_utc": "2026-08-01T03:14:36Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "bin_constant_site": "src/ml/scan.rs interaction-lens time-named bucket axis (12 equal-width bins; three coupled literals patched together)",
+  "stability_claim": {
+    "set": [
+      8,
+      12,
+      16
+    ],
+    "tolerance_abs": 0.05,
+    "reference_bins": 12,
+    "verdict": "STABLE",
+    "deltas_abs": {
+      "8": 0.0116,
+      "12": 0.0,
+      "16": 0.0185
+    }
+  },
+  "cells": [
+    {
+      "bins": 6,
+      "pr_auc": 0.6735,
+      "n_scored": 20000,
+      "lens_note": "context:merchant*hour_bucket: 6 equal-width hour bins [0.0,24.0]",
+      "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_6\\gigi-stream.exe",
+      "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_6.log",
+      "runs": 1
+    },
+    {
+      "bins": 8,
+      "pr_auc": 0.6647,
+      "n_scored": 20000,
+      "lens_note": "context:merchant*hour_bucket: 8 equal-width hour bins [0.0,24.0]",
+      "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_8\\gigi-stream.exe",
+      "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_8.log",
+      "runs": 1
+    },
+    {
+      "bins": 12,
+      "pr_auc": 0.6531,
+      "n_scored": 20000,
+      "lens_note": "context:merchant*hour_bucket: 12 equal-width hour bins [0.0,24.0]",
+      "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_12\\gigi-stream.exe",
+      "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_12.log",
+      "runs": 1
+    },
+    {
+      "bins": 16,
+      "pr_auc": 0.6346,
+      "n_scored": 20000,
+      "lens_note": "context:merchant*hour_bucket: 16 equal-width hour bins [0.0,24.0]",
+      "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_16\\gigi-stream.exe",
+      "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_16.log",
+      "runs": 1
+    },
+    {
+      "bins": 24,
+      "pr_auc": 0.6271,
+      "n_scored": 20000,
+      "lens_note": "context:merchant*hour_bucket: 24 equal-width hour bins [0.0,24.0]",
+      "binary": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\bins_24\\gigi-stream.exe",
+      "server_log": "C:\\Users\\nurdm\\AppData\\Local\\gigi_bin_sweep\\server_bins_24.log",
+      "runs": 1
+    }
+  ],
+  "disclosures": [
+    "Only the 12-bin binary is a committed product; 6/8/16/24 builds are scratch binaries from a patched working tree, restored byte-clean after each build (verified against a pre-run snapshot).",
+    "Quality cell: one /scan per bin count, no warmup/reps, wall time not reported. Labels never sent to the server; PR-AUC via the one shared eval_common.average_precision.",
+    "Runs strictly serial; all builds completed before the first server boot; one server at a time on port 3143, verified dead between runs."
+  ]
+}

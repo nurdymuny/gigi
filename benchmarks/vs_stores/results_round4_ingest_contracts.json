@@ -1,0 +1,90 @@
+{
+  "round": 4,
+  "purpose": "contract-matched ingest \u2014 store lanes (gigi lanes: vs_stores_embedded --batch-rows)",
+  "protocol": {
+    "n_rows": 100000,
+    "chunk_rows_many_ack": 1000,
+    "warmups_per_cell": 1,
+    "reps_per_cell": 3,
+    "cell_statistic": "median of reps",
+    "rows_source": "data.csv parsed pre-window (except duckdb one-ack: read_csv in-clock)"
+  },
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "dc22e426a96ccfed5893c88b9b87b9f9245af911",
+    "timestamp_utc": "2026-08-01T03:13:26Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "versions": {
+    "sqlite": "3.49.1",
+    "sqlite_storage": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores\\bench_sqlite.db",
+    "duckdb": "1.5.5",
+    "storage": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_vs_stores\\bench_duckdb.db"
+  },
+  "lanes": {
+    "one_ack": {
+      "sqlite": {
+        "rows": 100000,
+        "unit": "rows_per_sec",
+        "reps": [
+          509281.9,
+          515530.6,
+          519461.1
+        ],
+        "median": 515530.6,
+        "durability_acks": 1,
+        "mechanism": "one BEGIN + executemany + COMMIT (round-1 cell, re-timed)"
+      },
+      "duckdb": {
+        "rows": 100000,
+        "unit": "rows_per_sec",
+        "reps": [
+          259440.4,
+          287778.1,
+          276543.4
+        ],
+        "median": 276543.4,
+        "durability_acks": 1,
+        "mechanism": "INSERT INTO txns SELECT FROM read_csv(...) \u2014 round-1 shape, CSV parse inside the clock (disclosed)"
+      }
+    },
+    "many_ack": {
+      "sqlite": {
+        "rows": 100000,
+        "unit": "rows_per_sec",
+        "reps": [
+          83785.3,
+          82457.5,
+          84447.6
+        ],
+        "median": 83785.3,
+        "durability_acks": 100,
+        "mechanism": "BEGIN + executemany(1000) + COMMIT per chunk \u2014 100 transactions, journal defaults"
+      },
+      "duckdb": {
+        "rows": 100000,
+        "unit": "rows_per_sec",
+        "reps": [
+          4209.0,
+          4186.6,
+          4141.4
+        ],
+        "median": 4186.6,
+        "durability_acks": 100,
+        "mechanism": "BEGIN + executemany(1000) + COMMIT per chunk \u2014 100 transactions, row-wise prepared statements"
+      }
+    }
+  },
+  "disclosures": [
+    "CONTRACT MATCHING (round-4 clause 1): rounds 1-3 timed gigi under a 100-durability-ack contract against sqlite under a 1-ack contract. This file carries both matched pairs for the stores; the two gigi lanes come from the vs_stores_embedded binary (--batch-rows 100000 for one-ack; default 1000 for many-ack) and are reported side by side with these, never mixed across contracts.",
+    "MANY-ACK 'ack' definitions per system, honestly different in kind: sqlite COMMIT under journal_mode=delete + synchronous=full (fsync-backed rollback-journal commit per chunk); duckdb COMMIT of its WAL per chunk (durability semantics per duckdb defaults, version recorded); gigi batch_insert = WAL append + one fsync per call. Each system pays its own real per-ack cost; none is normalized to another's.",
+    "duckdb MANY-ACK uses row-wise prepared-statement executemany per chunk \u2014 NOT duckdb's idiomatic columnar bulk path. That is the honest shape of a 100-transaction contract from pre-parsed Python rows; the ONE-ACK lane shows duckdb's idiomatic path (read_csv, CSV parse inside the clock, as in round 1).",
+    "sqlite lanes reuse run_sqlite.py's DDL/INSERT/fresh_connection verbatim (txn_id PRIMARY KEY maintained during ingest, fresh file DB per rep, %TEMP% local disk outside the OneDrive-synced tree); duckdb lanes reuse run_duckdb.py's likewise.",
+    "All lanes in-process, strictly serial, GC handled uniformly by eval_common.warmup_plus_reps; this runner aborts if anything answers on 127.0.0.1:3143."
+  ]
+}

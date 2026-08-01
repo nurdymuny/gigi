@@ -6,8 +6,8 @@ extracted so far, and the recommended order + risks for the rest, so any
 future session can continue mechanically.
 
 **Line numbers below are anchored to commit `1bdcff0` (pre-extraction) unless
-marked otherwise.** After phase 1, everything past old line 9313 has shifted;
-use the symbol names (grep) as the durable anchors.
+marked otherwise.** After phases 1–2, everything past old line 4548 has
+shifted; use the symbol names (grep) as the durable anchors.
 
 ## Method (proven in phase 1)
 
@@ -39,9 +39,9 @@ File practicalities: the binary is UTF-8 **with BOM**, working tree is CRLF
 | # | Family | Routes | ~Lines | Risk | Status |
 |---|--------|--------|--------|------|--------|
 | 1 | ML suite (scan/scan_fit/cluster/infer/reduce/prescribe/solve/circulation/factorize/changepoints + ml_catalog) | 11 | 4,410 | LOW | **DONE — phase 1** (`e4fdc8b`) |
-| 2 | Post-Kähler PK-1..4 REST (fisher_metric/persistence/wasserstein/reeb_flow) | 4 | 600 | LOW-MEDIUM | pending |
-| 3 | Patterns / hunt (Ask G surface) | 4 | 400 | LOW | pending |
-| 4 | Transactions Phase-A (tx_begin/write/commit/rollback/status) | 5 | 390 | LOW-MEDIUM | pending |
+| 2 | Post-Kähler PK-1..4 REST (fisher_metric/persistence/wasserstein/reeb_flow) | 4 | 600 | LOW-MEDIUM | **DONE — phase 2** (`7f6d7a8`) |
+| 3 | Patterns / hunt (Ask G surface) | 4 | 400 | LOW | **DONE — phase 2** (`8c9fb04`) |
+| 4 | Transactions Phase-A (tx_begin/write/commit/rollback/status) | 5 | 390 | LOW-MEDIUM | **DONE — phase 2** (`c2e20d3`; wire types + helpers only, handler bodies stay in root — see record) |
 | 5 | WebSockets + dashboard | 4 | 700 | MEDIUM | pending |
 | 6 | Brain primitives (`/brain/*` ×17) | 17 | 5,320 | MEDIUM-HIGH | pending |
 | 7 | Halcyon / Kähler gauge verbs (perceive … wish) | 16 | 2,230 | MEDIUM | pending |
@@ -102,52 +102,87 @@ there are zero references to `extract_field_samples`, `heap_or_promote`,
 `Arc<StreamState>::engine_read()`, `ErrorResponse`, axum/serde, and the
 gigi crate. The GQL executor does not dispatch into ML functions.
 
+## Phase 2 — PK REST + patterns/hunt + tx wire types (DONE)
+
+Branch `refactor/stream-extraction-phase2`, base `554ab62` (binary at
+22,429 lines — post-phase-1 fixes on main had grown it from 22,157).
+Three commits, one per family:
+
+- `7f6d7a8` — family 2: PK-1..4 REST + the shared-helper-island hoist.
+- `8c9fb04` — family 3: patterns/hunt + the `value_to_json` hoist.
+- `c2e20d3` — family 4: transactions Phase-A wire types + helpers.
+
+The hoists (two rows of the cross-family shared-modules table landed):
+
+- `src/stream_shared.rs` (`gigi::stream_shared`) — `ErrorResponse`
+  (ungated, `error` field now pub; required by ungated consumers) + the
+  cfg(kahler) island `not_found` / `bad_request` / `heap_or_promote` +
+  the triple-shared `extract_field_samples` (single definition now at
+  `src/stream_shared.rs:21`) with its poisoned-record regression test
+  (line 199). The binary re-imports all of them under the same cfg the
+  removed items had, so every former call site (brain endpoints,
+  `materialize_matrix_cached`, GQL verb arms, PK REST via the lib)
+  resolves to the shared copy.
+- `src/wire.rs` (`gigi::wire`) — `value_to_json` only (family 3's one
+  cross-family touch). The rest of the wire-converter set stays in the
+  binary and hoists with family 9.
+
+What moved:
+
+| Module | Contents |
+|--------|----------|
+| `src/geometry/pk_http.rs` | `fisher_metric`, `wasserstein` + `WassersteinRequest`, `reeb_flow` + `ReebFlowRequest` (cfg `post_kahler_phase1`) |
+| `src/discrete/pk_http.rs` | `persistence` (cfg `post_kahler_phase1`) |
+| `src/patterns/http.rs` | `PatternListEntry`, `DefinePatternRequest`, `HuntRequest` + `uses_v02_envelope`, the four handler bodies (list/define/drop/hunt), `envelope_to_json`, `hunt_row_to_json` + its two tests (cfg `patterns`) |
+| `src/transactions/http.rs` | The seven Phase-A wire structs (`TxBeginRequest`/`Response`, `TxWriteRequest`/`Response`, `TxCommitResponse`, `TxRollbackResponse`, `TxStatusResponse`) + `parse_tx_id` + `sys_time_to_iso` (doubly gated: lib.rs cfg + inner `#![cfg]` at `src/transactions/mod.rs:66`) |
+
+What stayed in the binary:
+
+- All handlers as thin wrappers (lock acquisition + one call into the lib
+  fn taking `&Engine` / `&mut Engine`) and all route registrations —
+  sorted `.route(` diff vs main is empty, 120 route lines both sides.
+- Family 4's five handler bodies (`tx_begin` … `tx_status`) **whole**, by
+  design: they ARE the shared-state seam the map warned about (`OpenTx`,
+  `StreamState.tx_registry`, `tx_snap_counter`, tx_commit's interleaved
+  engine-write/registry lock discipline, `json_to_value` in tx_write).
+  They now import their wire types from the lib; no state-abstraction
+  layer was invented. They leave with family 11's root or a later pass.
+- PK GQL verb arms + `pk_gql_verbs_end_to_end` (GQL family, as planned);
+  `stream_env_lock` / `post_gql_for_test` helpers stay shared in the
+  binary.
+
+The wrapper seam (declared in the commits, verifier-confirmed
+outcome-identical, no client-visible change): moving bodies behind the
+lock-then-call wrapper shape widens lock scope marginally — wrappers now
+take the engine lock before request validation/parse that previously ran
+pre-lock (`list_patterns`, `define_pattern`, `drop_pattern`, `hunt`,
+`reeb_flow`'s arity check), and `bundle_wasserstein` direct
+(sample_a/sample_b) mode now takes the read lock it previously never
+touched. Fine for these read-mostly families; see the family 6/9 notes
+below before reusing the shape where lock order feeds caches or events.
+
+Verified 2026-07-31 by two independent passes: (a) mechanical — all 31
+moved items diffed body-for-body against main (not sampled); every delta
+is `gigi::` → `crate::`, `pub`, the declared lock-line wrapper seam, or
+`execute(&mut engine, ..)` → `execute(engine, ..)` where `engine` is the
+`&mut` param; full 2,411-line src diff read, no smuggled behavior edits;
+gating preserved exactly (`post_kahler_phase1 = ["kahler"]` in Cargo.toml
+makes pk_http's use of kahler-gated helpers sound); cargo check under the
+production feature combo clean with a warning set byte-identical to main.
+(b) suites — all gates green, counts below observed directly.
+
+Counts (before → after): no features lib 977 → 977, bin 72 → 72; with
+`post_kahler_phase1` lib 1277 → 1278, bin 94 → 93 (total 1371 = 1371 —
+the ±1 is `extract_field_samples_skips_poisoned_record` relocating
+bin → lib, confirmed by sorted `cargo test -- --list` diff: that one name
+is the only difference); with `patterns` lib 977 → 979, bin 74 → 72 (the
+two `hunt_row_to_json` tests moved); lib with
+`kahler patterns transactions` 1328. Zero failures everywhere.
+`src/bin/gigi_stream.rs`: 22,429 → 21,524 lines.
+
 ## Remaining families — recommended order + seams
 
-### 2. Post-Kähler PK-1..4 REST (next)
-
-- Code (old lines): 12571–12912 — `bundle_fisher_metric` 12587,
-  `WassersteinRequest`/`bundle_wasserstein` 12658/12683,
-  `bundle_persistence` 12763, `ReebFlowRequest`/`bundle_reeb_flow`
-  12836/12851. Route regs 19853–19858 (own cfg-gated statement, clean
-  splice). Tests 22490–22735 (`pk_endpoints_end_to_end`,
-  `pk_gql_verbs_end_to_end`, `pk_reeb_rejects_wrong_arity`).
-- Shared helpers: `not_found` (7916), `bad_request` (7926),
-  `heap_or_promote` (7957) — all cfg(kahler), shared with brain;
-  `extract_field_samples` (4568) — triple-shared (brain + PK + GQL verb
-  arms). **Hoist the 7913–7992 helper island to a shared `pub(crate)`
-  module first**; `extract_field_samples` goes to shared, never into a
-  family module.
-- Risk LOW-MEDIUM: feature-gated (`post_kahler_phase1`), but the error/
-  store helpers are cfg(kahler), so the extracted module inherits an
-  implicit kahler dependency. The PK **GQL verb arms** (`pk_row` 16924,
-  arms ~17790–17910 inside `execute_gql_on_store_read`) belong to the GQL
-  family and must stay. `pk_gql_verbs_end_to_end` exercises the GQL side —
-  keep it with the GQL tests or split it. PK tests share
-  `stream_env_lock` / `post_gql_for_test` / `post_gql_body_for_test` with
-  GQL tests — leave those helpers shared in the binary.
-
-### 3. Patterns / hunt
-
-- Code 19264–19625 (`PatternListEntry`, `DefinePatternRequest`,
-  `HuntRequest`, `list_patterns`, `define_pattern_http`,
-  `drop_pattern_http`, `hunt_http`, `envelope_to_json`,
-  `hunt_row_to_json`). Route regs 19650–19655 (own cfg `patterns`
-  statement). Tests: `hunt_row_to_json` tests 23056–23095.
-- Only cross-family touch: `value_to_json` (1082, wire-converter module).
-- Risk LOW.
-
-### 4. Transactions Phase-A
-
-- Code 20443–20834 (`TxBeginRequest` … `tx_status`; `sys_time_to_iso`
-  20518 is local). Route regs 19721–19727 (own cfg `transactions`
-  statement).
-- Seam: `OpenTx` / `StreamState.open_txs` (256–267) live on the shared
-  state — the module needs visibility into state internals; also
-  `json_to_value`/schema coercion in `tx_write`.
-- Risk LOW-MEDIUM.
-
-### 5. WebSockets + dashboard
+### 5. WebSockets + dashboard (next)
 
 - Code 14874–15529 (`Subscription`, `now_ms`, `build_dashboard_event`, ws
   handlers, `serve_dashboard`). Route regs 19869–19876.
@@ -165,14 +200,21 @@ gigi crate. The GQL executor does not dispatch into ML functions.
   EXCEPT the shared island 7913–7992 (`not_found`/`bad_request`/
   `heap_or_promote`). Route regs 19920–20022 (three cfg kahler
   statements). Tests: 22736–22866 (flow cache), 24741–25119 (sudoku wire),
-  25120–25258 (sample_transport), 25259–25496 (intent_gate) — plus the
-  poisoned-record test wherever `extract_field_samples` lands.
-- Seams: the helper island must be hoisted BEFORE this and PK move (PK at
-  order 2 should do the hoist). `extract_field_samples` → shared.
+  25120–25258 (sample_transport), 25259–25496 (intent_gate). The
+  poisoned-record test already landed with `extract_field_samples` in
+  `src/stream_shared.rs` (`7f6d7a8`).
+- Seams: the helper-island hoist is **DONE** (`7f6d7a8`,
+  `gigi::stream_shared` — `not_found`/`bad_request`/`heap_or_promote` +
+  `extract_field_samples` at `src/stream_shared.rs:21`); brain callers
+  already resolve to the shared copies via the binary re-imports, so this
+  family no longer carries a hoist step. Remaining seams:
   `lambda_budget_for_bundle` (845) also serves analytics + CRUD query
   meta. `BundleFlowCache` invalidation is keyed by the per-bundle write
   counter (`bundle_counter_header` 4927) — it must keep observing CRUD
-  writes.
+  writes. Phase-2 caution: the thin-wrapper shape takes the lock before
+  request parse (harmless for phase 2's read-mostly families) — brain
+  handlers that read the write counter / flow cache must preserve their
+  existing lock-vs-cache-check order, not blanket-adopt lock-first.
 - Risk MEDIUM-HIGH; all cfg(kahler).
 
 ### 7. Halcyon / Kähler gauge verbs
@@ -205,12 +247,16 @@ gigi crate. The GQL executor does not dispatch into ML functions.
 
 - Code: 448–708, 1027–1250, 1860–2751, 13076–14873, 18565–18640. Route
   regs 19657–19709. Tests: 22867–23055, 23096–23153, 23427–24038.
-- Seams: owns the wire-converter set (`json_to_value`, `value_to_json`,
-  `schema_coerce`, `record_to_json`, `str_to_field_type`, …, 1042–1250)
-  used by GQL, websockets, tx_write, patterns, log_bundle_writer — hoist
-  to a wire module FIRST. Write paths publish subscription events (WS
-  channels) and bump the brain flow-cache write counter — preserve call
-  order.
+- Seams: owns the wire-converter set (`json_to_value`, `schema_coerce`,
+  `record_to_json`, `str_to_field_type`, …, 1042–1250) used by GQL,
+  websockets, tx_write, log_bundle_writer — hoist the remainder into
+  `gigi::wire` FIRST (`value_to_json` is already there, `8c9fb04`).
+  Aside (out of this map's scope): `src/edge.rs:463` and
+  `src/bin/gigi_edge.rs:142` carry their own pre-existing `value_to_json`
+  copies on main — optional later dedup into `gigi::wire`. Write paths
+  publish subscription events (WS channels) and bump the brain flow-cache
+  write counter — preserve call order; do NOT let the phase-2 lock-first
+  wrapper shape reorder event publish vs counter bump.
 - Risk HIGH-MEDIUM. Extract late, after the shared-module boundary is
   proven by the smaller families.
 
@@ -223,11 +269,12 @@ gigi crate. The GQL executor does not dispatch into ML functions.
   `exec_result_to_response`). Route regs 19776–19789 (public route
   conditionally mounted on `state.public_bundles`). Tests: 23154–23426,
   25633–25922, shared `stream_env_lock` + `post_gql_for_test`.
-- Seams: reaches into three other families — `extract_field_samples`
-  (brain-shared), `kahler_transport_dispatch` (halcyon), the CRUD wire
-  converters. Extract second-to-last, after all its dependencies are
-  already lib/shared modules. Its env-mutating tests (`GIGI_DATA_DIR`
-  under `stream_env_lock`) are order-sensitive.
+- Seams: reached into three other families; one is resolved —
+  `extract_field_samples` is now lib-shared (`gigi::stream_shared`,
+  `7f6d7a8`). Still binary-bound: `kahler_transport_dispatch` (halcyon)
+  and the CRUD wire converters. Extract second-to-last, after all its
+  dependencies are already lib/shared modules. Its env-mutating tests
+  (`GIGI_DATA_DIR` under `stream_env_lock`) are order-sensitive.
 - Risk HIGH.
 
 ### 11. Admin / durability / infra root
@@ -243,16 +290,19 @@ gigi crate. The GQL executor does not dispatch into ML functions.
   edits `main()`'s router assembly — splice one family per commit and
   re-run the gates. **`admin_snapshot` is the durability wedge the
   substrate records depend on: do not reorder its handler relative to the
-  engine lock discipline.**
+  engine lock discipline.** The tx Phase-A handler bodies
+  (`tx_begin` … `tx_status`) now live here too by phase-2 decision
+  (`c2e20d3`): they are shared-state logic (`OpenTx`, `tx_registry`,
+  interleaved lock discipline), not family code.
 
 ## Cross-family shared modules to create along the way
 
 | Shared item | Old lines | Consumers | Hoist before |
 |---|---|---|---|
-| `not_found` / `bad_request` / `heap_or_promote` (cfg kahler) | 7913–7992 | brain, PK REST | family 2 |
-| `extract_field_samples` (cfg kahler) | 4568–4687 | brain, PK REST, GQL verb arms | family 2 |
+| `not_found` / `bad_request` / `heap_or_promote` (cfg kahler) | 7913–7992 | brain, PK REST | **DONE — `7f6d7a8` → `src/stream_shared.rs`** |
+| `extract_field_samples` (cfg kahler) | 4568–4687 | brain, PK REST, GQL verb arms | **DONE — `7f6d7a8` → `src/stream_shared.rs:21`** |
 | `lambda_budget_for_bundle` / `ResponseWithLambda` | 821–886 | analytics, brain, CRUD query meta | family 6/8 |
-| Wire converters (`json_to_value`, `value_to_json`, `record_to_json`, `schema_coerce`, …) | 1042–1250 | CRUD, GQL, WS, tx, patterns, log writer | family 9 |
+| Wire converters (`json_to_value`, `record_to_json`, `schema_coerce`, …; `value_to_json` already hoisted, `8c9fb04` → `src/wire.rs`) | 1042–1250 | CRUD, GQL, WS, tx, log writer | family 9 |
 | `SubscriptionEvent` / `DashboardEvent` / channel accessors | 268–447 | WS (consumer), CRUD writes (producer) | family 5 |
 | `kahler_transport_dispatch` | 20328–20442 | halcyon REST + GQL executor | family 7 |
 | `dial_error_to_http` | 2875 | analytics capacity/horizon/depth + sharded handlers | family 7/8 |

@@ -1,0 +1,19 @@
+{
+  "fallback_reps_wall_ms": [
+    2503.3,
+    2568.56,
+    2572.82
+  ],
+  "fallback_wall_ms_median": 2568.56,
+  "match_server_vs_fallback": true,
+  "max_abs_diff": {
+    "mean": 1.7621459846850485e-12,
+    "stddev": 4.362732397567015e-12
+  },
+  "max_rel_diff": {
+    "mean": 7.599488188743499e-15,
+    "stddev": 1.4333691555858272e-13
+  },
+  "n_merchants": 12,
+  "convention": "population stddev both sides (divisor n)"
+}

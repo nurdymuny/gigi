@@ -1,0 +1,107 @@
+{
+  "system": "gigi",
+  "protocol": {
+    "seed": 20260731,
+    "n_rows": 100000,
+    "n_subset": 20000,
+    "n_anomalies": 100,
+    "n_point_queries": 2000,
+    "gigi_insert_batch": 1000,
+    "hour_bucket_hours": 2.0,
+    "scan_budget": 0.05,
+    "reps_per_cell": 3,
+    "warmups_per_cell": 1,
+    "cell_statistic": "median of reps",
+    "pr_auc": "average precision, step interpolation, shared eval_common.average_precision",
+    "timing_shape": "gigi over HTTP at 127.0.0.1 (its real deployment shape); sqlite/duckdb in-process (their real shape) \u2014 asymmetry disclosed, not hidden"
+  },
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "4f9c2a448a227f89689d9e22df8465a4ff72afeb",
+    "timestamp_utc": "2026-07-31T21:38:26Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "versions": {
+    "gigi_server_health": {
+      "status": "ok",
+      "engine": "gigi-stream",
+      "version": "0.1.0",
+      "bundles": 10,
+      "total_records": 3,
+      "uptime_secs": 38
+    },
+    "gigi_version": "0.1.0",
+    "transport": "HTTP/1.1 keep-alive to http://127.0.0.1:3143"
+  },
+  "cells": {
+    "ingest": {
+      "rows": 100000,
+      "unit": "rows_per_sec",
+      "reps": [
+        78384.2,
+        78775.2,
+        78946.1
+      ],
+      "median": 78775.2
+    },
+    "point_query": {
+      "n_queries": 2000,
+      "unit": "ms",
+      "reps": [
+        {
+          "p50_ms": 0.3537,
+          "p95_ms": 0.4749
+        },
+        {
+          "p50_ms": 0.3617,
+          "p95_ms": 0.4798
+        },
+        {
+          "p50_ms": 0.3291,
+          "p95_ms": 0.4691
+        }
+      ],
+      "p50_ms_median": 0.3537,
+      "p95_ms_median": 0.4749
+    },
+    "aggregate": {
+      "unit": "ms",
+      "n_groups": 12,
+      "method": "fallback: GQL INTEGRATE OVER merchant MEASURE avg(amount), count(*) (server-side) + 12x GQL COVER ON merchant + client-side population stddev over the pulled rows",
+      "reps_wall_ms": [
+        2167.34,
+        2338.89,
+        2161.42
+      ],
+      "wall_ms_median": 2167.34
+    },
+    "anomaly": {
+      "unit": "ms",
+      "method": "POST /v1/bundles/bench_anom/scan {budget: 0.05, limit: 0} \u2014 zero-config",
+      "reps_wall_ms": [
+        336.7,
+        317.4,
+        305.85
+      ],
+      "wall_ms_median": 317.4,
+      "pr_auc": 0.0848,
+      "client_lines_of_code": 5,
+      "loc_basis": "python: gigi_scan() function source, non-blank non-comment lines",
+      "n_scored": 20000,
+      "n_positive": 100
+    }
+  },
+  "disclosures": [
+    "All gigi cells are measured over HTTP at 127.0.0.1 (persistent keep-alive connection) \u2014 gigi's real deployment shape. sqlite/duckdb run in-process. Point-lookup and per-call numbers therefore include an HTTP round trip that the embedded stores do not pay; expected honest loss on point queries.",
+    "Ingest timed window includes client-side json.dumps of each 1,000-row batch (part of the wire path). CSV parsing to Python rows happens before the timed window, identical to the sqlite runner.",
+    "Point-query timing includes response read + JSON deserialization (the counterpart of the embedded stores' row materialization).",
+    "ANOMALY: /scan is zero-config \u2014 the only inputs are the bundle name and the review budget. The labels file is never sent to gigi. The timed window includes downloading and parsing the full 20k-row scored response.",
+    "ANOMALY LOC counts the actual python client function (source-counted at run time, shared counting rule in eval_common.count_loc).",
+    "AGGREGATE: the server rejected stddev() in INTEGRATE (GQL parser supports COUNT/SUM/AVG/MIN/MAX only, though GQL_REFERENCE.md \u00a7V lists stddev). The measured cell is the honest fallback: one INTEGRATE for avg+count plus one COVER per merchant pulling all ~100k rows over HTTP with stddev computed client-side. This is the real cost of getting mean+stddev out of gigi today, and it is expected to lose to duckdb/sqlite by a wide margin."
+  ]
+}

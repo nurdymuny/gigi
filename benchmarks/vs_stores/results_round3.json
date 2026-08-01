@@ -1,0 +1,211 @@
+{
+  "benchmark": "gigi vs stores \u2014 ROUND 3 (fix-lane integration re-run)",
+  "date_utc": "2026-07-31",
+  "integration": {
+    "branch": "fix/round3-integration",
+    "head": "19f58c0",
+    "merged_lanes": {
+      "fix/ingest-write-path": [
+        "4853a3b",
+        "c67b557"
+      ],
+      "fix/scan-interaction-lens": [
+        "b239dc0"
+      ],
+      "fix/gql-stddev": [
+        "b124d42 (fix/gql-stddev-attempt4 tip, merged as fix/gql-stddev lane)"
+      ]
+    },
+    "ancestor_check": "git merge-base --is-ancestor PASS for b124d42, c67b557, b239dc0",
+    "dataset_check": "data.csv sha256 10a88810e8327ae05f73ac20b9c2c85251ac5c3c09c014312cc815079f99c800 == round-2 manifest data_100k"
+  },
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "19f58c05dfeccc01edd002a4085d18040e9f7673",
+    "timestamp_utc": "2026-08-01T00:36:38Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "protocol_note": "same datasets (data.csv sha256 verified identical to round-2 manifest data_100k), same seeds (20260731 dataset, +1 point ids, +2 embedded ids), same warmup(1)+reps(3)/median rule, strictly serial, committed harness unmodified; server: release build of the INTEGRATED branch, PORT=3143, fresh scratch dir, GIGI_SKIP_BOOT_SNAPSHOT=1",
+  "cells_of_record": {
+    "embedded_ingest_100k": {
+      "unit": "rows_per_sec",
+      "reps": [
+        192518.4,
+        183726.1,
+        184349.5
+      ],
+      "median": 184349.5,
+      "round2": 116526.3,
+      "delta": 67823.2,
+      "delta_pct": 58.2
+    },
+    "zero_config_scan_anomaly": {
+      "unit": "ms",
+      "reps_wall_ms": [
+        487.63,
+        514.69,
+        501.36
+      ],
+      "wall_ms_median": 501.36,
+      "pr_auc": 0.4579,
+      "round2_pr_auc": 0.0848,
+      "delta_pr_auc": 0.3731,
+      "round2_wall_ms": 317.4,
+      "delta_wall_ms": 183.96
+    },
+    "expert_play1_scan_weighted": {
+      "unit": "ms",
+      "reps_wall_ms": [
+        274.04,
+        255.65,
+        266.24
+      ],
+      "wall_ms_median": 266.24,
+      "pr_auc": 0.4924,
+      "round2_pr_auc": 0.7003,
+      "delta_pr_auc": -0.2079,
+      "round2_wall_ms": 287.86,
+      "delta_wall_ms": -21.62
+    },
+    "expert_play2_gql_cohort_z": {
+      "unit": "ms",
+      "reps_wall_ms": [
+        48.99,
+        52.91,
+        51.59
+      ],
+      "wall_ms_median": 51.59,
+      "pr_auc": 0.7189,
+      "round2_pr_auc": 0.7189,
+      "delta_pr_auc": 0.0,
+      "round2_wall_ms": 53.49,
+      "delta_wall_ms": -1.9
+    },
+    "aggregate_server_side_stddev": {
+      "unit": "ms",
+      "method": "GQL INTEGRATE OVER merchant MEASURE avg(amount), stddev(amount) \u2014 single server-side call",
+      "reps_wall_ms": [
+        171.94,
+        167.54,
+        166.9
+      ],
+      "wall_ms_median": 167.54,
+      "round1_fallback_wall_ms": 2167.34,
+      "delta_wall_ms": -1999.8,
+      "fallback_recheck": {
+        "fallback_reps_wall_ms": [
+          2503.3,
+          2568.56,
+          2572.82
+        ],
+        "fallback_wall_ms_median": 2568.56,
+        "match_server_vs_fallback": true,
+        "max_abs_diff": {
+          "mean": 1.7621459846850485e-12,
+          "stddev": 4.362732397567015e-12
+        },
+        "max_rel_diff": {
+          "mean": 7.599488188743499e-15,
+          "stddev": 1.4333691555858272e-13
+        },
+        "n_merchants": 12,
+        "convention": "population stddev both sides (divisor n)"
+      }
+    }
+  },
+  "honest_regressions": [
+    {
+      "cell": "expert_play1_scan_weighted",
+      "metric": "pr_auc",
+      "round2": 0.7003,
+      "round3": 0.4924,
+      "delta": -0.2079,
+      "cause": "the interaction context lens skips context:cohort (129 distinct values exceeds the 64-value interaction side limit); cohort was the field play 1 put all fusion weight on, so the play collapses toward zero-config behavior"
+    },
+    {
+      "cell": "zero_config_scan_anomaly",
+      "metric": "wall_ms",
+      "round2": 317.4,
+      "round3": 501.36,
+      "delta": 183.96,
+      "cause": "the interaction lens does more geometry per scan; the same cell's PR-AUC gain is the trade"
+    }
+  ],
+  "context_cells_not_of_record": {
+    "http_ingest": {
+      "rows": 100000,
+      "unit": "rows_per_sec",
+      "reps": [
+        83881.2,
+        83359.8,
+        84088.2
+      ],
+      "median": 83881.2
+    },
+    "http_point_query": {
+      "n_queries": 2000,
+      "unit": "ms",
+      "reps": [
+        {
+          "p50_ms": 0.3306,
+          "p95_ms": 0.5703
+        },
+        {
+          "p50_ms": 0.2926,
+          "p95_ms": 0.5278
+        },
+        {
+          "p50_ms": 0.2592,
+          "p95_ms": 0.4202
+        }
+      ],
+      "p50_ms_median": 0.2926,
+      "p95_ms_median": 0.5278
+    },
+    "note": "run_gigi.py measures all four round-1 cells; ingest/point are recorded as context, not round-3 cells of record"
+  },
+  "regression_guard": {
+    "note": "bcancer-rare-style check is not in this harness; guard = ML smoke + /scan unit suite per round-3 protocol",
+    "ml_all_endpoints_regression_smoke": "1 passed, 0 failed",
+    "scan_unit_suite": "cargo test --lib scan: 24 passed, 0 failed"
+  },
+  "gates": {
+    "lib": {
+      "integration": 977,
+      "main": 963,
+      "result": "ok, 0 failed"
+    },
+    "bin_gigi_stream": {
+      "integration": 72,
+      "main": 70,
+      "result": "ok, 0 failed"
+    },
+    "lib_post_kahler_phase1": {
+      "integration": 1277,
+      "main": 1263,
+      "result": "ok, 0 failed"
+    },
+    "bin_post_kahler_phase1": {
+      "integration": 94,
+      "main": 92,
+      "result": "ok, 0 failed"
+    },
+    "totals_vs_main": "all four suites >= main (main counts via cargo test -- --list at 0eafad3)"
+  },
+  "reference": {
+    "embedded_ingest_rows_per_sec": 116526.3,
+    "zero_config_scan_pr_auc": 0.0848,
+    "zero_config_scan_wall_ms": 317.4,
+    "expert_play1_scan_weighted_pr_auc": 0.7003,
+    "expert_play1_wall_ms": 287.86,
+    "expert_play2_gql_cohort_z_pr_auc": 0.7189,
+    "expert_play2_wall_ms": 53.49,
+    "aggregate_fallback_wall_ms_round1": 2167.34,
+    "sql_expert_pr_auc": 0.7189
+  }
+}

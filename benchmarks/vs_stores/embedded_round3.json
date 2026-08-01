@@ -1,0 +1,69 @@
+{
+  "system": "gigi_embedded",
+  "transport": "in-process — gigi::engine::Engine linked as a Rust library, release build, no HTTP",
+  "csv": "benchmarks/vs_stores/data.csv",
+  "n_rows": 100000,
+  "protocol": {
+    "seed_ids": 20260732,
+    "id_derivation": "CPython random.Random(20260732).sample(range(n_rows), n_lookups) replicated bit-for-bit (MT19937 init_by_array + _randbelow + Lib/random.py sample)",
+    "insert_batch": 1000,
+    "n_point_queries": 2000,
+    "warmups_per_cell": 1,
+    "reps_per_cell": 3,
+    "cell_statistic": "median of reps",
+    "percentile": "linear interpolation, same convention as eval_common.percentile"
+  },
+  "ids_first10": [
+    "T059758",
+    "T072042",
+    "T062313",
+    "T064479",
+    "T061232",
+    "T084786",
+    "T089220",
+    "T063153",
+    "T083238",
+    "T015132"
+  ],
+  "ids_index_sum": 99039545,
+  "cells": {
+    "ingest": {
+      "rows": 100000,
+      "unit": "rows_per_sec",
+      "reps": [
+        192518.4,
+        183726.1,
+        184349.5
+      ],
+      "median": 184349.5
+    },
+    "point_query": {
+      "n_queries": 2000,
+      "unit": "us",
+      "reps": [
+        {
+          "p50_us": 1.2,
+          "p95_us": 1.6
+        },
+        {
+          "p50_us": 0.9,
+          "p95_us": 1.2
+        },
+        {
+          "p50_us": 0.9,
+          "p95_us": 1.3
+        }
+      ],
+      "p50_us_median": 0.9,
+      "p95_us_median": 1.3
+    }
+  },
+  "disclosures": [
+    "Embedded lane: all cells in-process via the gigi Rust library — no HTTP round trip, no JSON wire. This is the apples-to-apples counterpart of round 1's in-process sqlite/duckdb cells.",
+    "INGEST timed window = the engine.batch_insert loop only (1,000-row batches), including gigi's WAL append + any checkpoint the engine triggers — its real embedded write path. Record structs are built from the CSV before the timed window, mirroring round 1 where python rows were parsed pre-window.",
+    "SCHEMA PARITY (post-audit fix): the bundle declares .index(\"txn_id\"), matching round 1's HTTP create_bundle path which indexes every key field — secondary-index maintenance is inside the embedded ingest clock, same as every other system (round-1 fairness rule #2). The audit measured the earlier omission at ~11% of ingest throughput; point queries never touch field_index and are unaffected.",
+    "INGEST runs on a fresh Engine in a fresh temp dir per rep (fresh-bundle-per-rep rule from round 1).",
+    "POINT QUERY timed window = BundleStore::point_query per lookup only; key Records are prebuilt untimed (the embedded analogue of round 1 pre-quoting URL ids). No response deserialization exists in-process — disclosed as inherent to the embedded shape, not hidden.",
+    "Point-query ids are the SAME ids in the SAME order as round 1 (seed 20260732 stream) when n_rows=100000 and n_lookups=2000; cross-check with --ids-check against eval_common.point_query_ids."
+  ]
+}

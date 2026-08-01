@@ -1,0 +1,109 @@
+{
+  "system": "gigi_expert",
+  "arm": "ROUND 2 addendum arm 3 \u2014 expert-parity anomaly",
+  "granted_knowledge": [
+    "cohort structure is (merchant x 2h-hour-bucket)",
+    "amount is the value channel",
+    "NOTHING more: no labels sent, no donor mechanics"
+  ],
+  "protocol": {
+    "seed": 20260731,
+    "n_rows": 100000,
+    "n_subset": 20000,
+    "n_anomalies": 100,
+    "n_point_queries": 2000,
+    "gigi_insert_batch": 1000,
+    "hour_bucket_hours": 2.0,
+    "scan_budget": 0.05,
+    "reps_per_cell": 3,
+    "warmups_per_cell": 1,
+    "cell_statistic": "median of reps",
+    "pr_auc": "average precision, step interpolation, shared eval_common.average_precision",
+    "timing_shape": "gigi over HTTP at 127.0.0.1 (its real deployment shape); sqlite/duckdb in-process (their real shape) \u2014 asymmetry disclosed, not hidden"
+  },
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "5d1f7a6905aca6b7af713f2e6742a47b99f2221f",
+    "timestamp_utc": "2026-07-31T22:16:58Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "versions": {
+    "gigi_server_health": {
+      "status": "ok",
+      "engine": "gigi-stream",
+      "version": "0.1.0",
+      "bundles": 13,
+      "total_records": 1110002,
+      "uptime_secs": 52
+    },
+    "gigi_version": "0.1.0",
+    "transport": "HTTP/1.1 keep-alive to http://127.0.0.1:3143"
+  },
+  "cells": {
+    "anomaly_zero_config_round1": {
+      "unit": "ms",
+      "method": "POST /v1/bundles/bench_anom/scan {budget: 0.05, limit: 0} \u2014 zero-config",
+      "reps_wall_ms": [
+        336.7,
+        317.4,
+        305.85
+      ],
+      "wall_ms_median": 317.4,
+      "pr_auc": 0.0848,
+      "client_lines_of_code": 5,
+      "loc_basis": "python: gigi_scan() function source, non-blank non-comment lines",
+      "n_scored": 20000,
+      "n_positive": 100
+    },
+    "anomaly_expert_scan_weighted": {
+      "unit": "ms",
+      "method": "PLAY 1: POST /scan, geometry scoped to (cohort, amount) via exclude, all fusion weight on context:cohort (a-priori weights, no labels)",
+      "reps_wall_ms": [
+        287.86,
+        286.84,
+        313.8
+      ],
+      "wall_ms_median": 287.86,
+      "pr_auc": 0.7003,
+      "client_lines_of_code": 14,
+      "loc_basis": "python: play function source + expert_record derivation source, non-blank non-comment lines (shared counting rule)",
+      "n_scored": 20000,
+      "n_positive": 100
+    },
+    "anomaly_expert_gql_cohort_z": {
+      "unit": "ms",
+      "method": "PLAY 2: GQL INTEGRATE OVER cohort MEASURE avg(amount), avg(amount_sq), count(*) server-side + per-row |z| client-side (population stddev, SQL-arm convention)",
+      "reps_wall_ms": [
+        48.02,
+        54.39,
+        53.49
+      ],
+      "wall_ms_median": 53.49,
+      "pr_auc": 0.7189,
+      "client_lines_of_code": 21,
+      "loc_basis": "python: play function source + expert_record derivation source, non-blank non-comment lines (shared counting rule)",
+      "n_scored": 20000,
+      "n_positive": 100
+    }
+  },
+  "best_expert_play": {
+    "cell": "anomaly_expert_gql_cohort_z",
+    "pr_auc": 0.7189,
+    "note": "both plays reported; best labeled, none dropped"
+  },
+  "disclosures": [
+    "EXPERT PARITY: gigi was granted exactly the SQL author's domain knowledge \u2014 cohort = (merchant x 2h bucket), amount = value channel \u2014 and nothing else. Labels were never sent to gigi.",
+    "Both candidate plays are reported with their measured PR-AUCs; the best is labeled best. No cherry-picking.",
+    "The expert bundle carries two client-derived fields (cohort, amount_sq) computed during UNTIMED ingest prep; the SQL arm computes its bucket inside the timed query. The wall-time asymmetry favors gigi and is disclosed; the derivation's LOC is priced into every play's LOC (as the SQL arm's CAST was inside ANOM_SQL).",
+    "PLAY 1 weights ({context:cohort: 1.0}) are fixed a priori from the granted knowledge, not fitted \u2014 /scan/fit was NOT used (it needs labels, which the protocol withholds).",
+    "PLAY 1's context:cohort lens is gigi's cohort-local curvature kappa=|amount-mu|/range z-scored within cohort then rank-normalized globally \u2014 the granted knowledge in gigi's idiom, not a verbatim z-score reimplementation.",
+    "PLAY 2 computes the per-row |z| client-side from server-side INTEGRATE moments (GQL has no stddev aggregate \u2014 round-1 finding stands); population-stddev convention identical to the SQL arm; zero-variance cohorts score 0 like the SQL arm's COALESCE.",
+    "The round-1 zero-config /scan cell is carried verbatim as anomaly_zero_config_round1 (PR-AUC 0.0848 as measured in round 1).",
+    "All expert cells measured over HTTP at 127.0.0.1:3143 (gigi's real deployment shape), persistent keep-alive, strictly serial."
+  ]
+}

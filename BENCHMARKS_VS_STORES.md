@@ -429,3 +429,196 @@ per-leg raws are in `results_scale_gigi_http.json`,
    embedded scaling question the 3-rep protocol honestly cannot.
 4. GQL stddev is still missing (`INTEGRATE` moments + client |z| is the
    workaround PLAY 2 used); the round-1 docs-vs-parser gap stands.
+
+---
+
+# Round 3 — the fixes, measured (2026-07-31)
+
+Rounds 1–2 ended with a fix list. Round 3 is that list turned into three fix
+lanes, merged onto the main tip (`0eafad3`) as `fix/round3-integration`
+(`19f58c0`), and re-run under the identical locked protocol: same dataset
+(`data.csv` SHA-256 verified byte-identical to the round-2 manifest
+`data_100k`), same seeds, same warmup(1)+3-reps/median rule, strictly serial,
+committed harness byte-identical to main (`git diff main...HEAD --
+benchmarks/` is empty — every round-3 number came from unmodified round-1/2
+runner code against the fixed engine). All four test suites are green and
+at-or-above main (lib 977 vs 963, bin 72 vs 70, lib+post_kahler_phase1 1277
+vs 1263, bin+post_kahler_phase1 94 vs 92; 0 failures everywhere), and the
+regression guard passed (ML endpoints smoke 1/1, `/scan` unit suite 24/24).
+
+Two independent verifiers ran **before** this section was written, and both
+passed: a **durability audit** on the ingest write path (§R3.2 — the
+anti-cheating receipt for the ingest gain) and an **adversarial fairness +
+no-regression audit** (§R3.3 — the anti-overfit receipt for the scan gain).
+
+## R3.1 Three losses, three fixes, three deltas
+
+| Loss (from rounds 1–2) | The fix, honestly named | Round 2 → Round 3 |
+|---|---|---|
+| Embedded ingest 5.3x behind sqlite — "WAL + index maintenance own the gap" | `perf(wal)`: bit-serial CRC-32C → compile-time slice-by-8 tables + zero-alloc append (reused scratch buffer, streaming CRC) — same bytes on disk, same fsync contract | **116,526 → 184,349 rows/s (+58.2%)**; sqlite gap 5.3x → 3.3x |
+| Zero-config `/scan` PR-AUC 0.0848 — "missed cohort-conditional anomalies" | `fix(scan)`: generic interaction context lens (categorical side × binned axis cohort z) + magnitude-preserving normalization | **PR-AUC 0.0848 → 0.4579 (+0.3731)**; wall 317.4 → 501.4 ms (worse — §R3.4) |
+| GQL stddev "a documented lie" — 2,167 ms fallback pulling ~100k rows over HTTP | `feat(gql)`: `INTEGRATE`/`SELECT` learn `stddev` + `variance` (population, single-pass); docs and parser finally agree | **2,167.3 → 167.5 ms (−1,999.8 ms, ~12.9x)** — probe accepted stddev, server-side path taken |
+
+Cell-by-cell, round 2 → round 3, all medians of 3 reps (raws in
+[`results_round3.json`](benchmarks/vs_stores/results_round3.json)):
+
+| Cell | Metric | Round 2 | Round 3 | Delta |
+|---|---|---:|---:|---|
+| Embedded ingest 100k | rows/s | 116,526.3 | **184,349.5** | +58.2% |
+| Zero-config `/scan` | PR-AUC | 0.0848 | **0.4579** | +0.3731 |
+| Zero-config `/scan` | wall ms | 317.4 | 501.36 | **+183.96 (worse)** |
+| Expert play 1 (`/scan` weighted) | PR-AUC | 0.7003 | 0.4924 | **−0.2079 (worse)** |
+| Expert play 1 | wall ms | 287.86 | 266.24 | −21.62 |
+| Expert play 2 (GQL cohort-z) | PR-AUC | 0.7189 | **0.7189** | exact reproduction |
+| Expert play 2 | wall ms | 53.49 | 51.59 | −1.90 |
+| Aggregate mean+stddev by merchant | wall ms | 2,167.34 (round-1 fallback) | **167.54** | −1,999.8 (~12.9x) |
+
+- **The aggregate fix was cross-checked, not just timed.** The old fallback
+  path (INTEGRATE avg+count + 12x COVER + client-side stddev) was re-timed
+  live at 2,568.56 ms and its per-merchant numbers **numerically match** the
+  server-side stddev (max rel diff: mean 7.6e-15, stddev 1.4e-13; population
+  convention both sides) — the ~12.9x is the same answer, computed where it
+  should be ([`aggcheck_round3.json`](benchmarks/vs_stores/aggcheck_round3.json)).
+- **Zero-config `/scan` moved from ~17x above the random-AP floor to ~92x** —
+  still 0.26 below the expert statistic, but round 1's "sharpest number in
+  this file" (0.0848 vs 0.7189) is now 0.4579 vs 0.7189 with no knowledge
+  granted.
+- **Play 2 reproduced exactly** (0.7189, six-decimal match), so the round-2
+  headline — GIGI ties the expert SQL baseline at knowledge parity — holds
+  through the integration.
+- Context, not of record: HTTP ingest ~83.9k rows/s, HTTP point query p50
+  0.29 ms / p95 0.53 ms — consistent with rounds 1–2.
+
+## R3.2 The durability receipt (why the ingest gain is real)
+
+A +58% ingest gain from touching the WAL invites one suspicion: *the speedup
+was bought with durability.* An independent durability audit read the
+write-path diff line by line and ran the full crash/replay surface.
+**Verdict: PASS.**
+
+- **Byte-equivalent, fsync-identical.** Quoting the audit: "WAL append
+  ordering, sync() (flush + sync_all), the batch_insert
+  log-all-then-fsync-then-ack contract, and the entire read/replay/decode
+  path are untouched. No durability/speed tradeoff flag exists because no
+  tradeoff was made — nothing to opt into, nothing silent." The CRC-32C
+  rewrite keeps the same polynomial/init/xorout, pinned by RFC 3720
+  known-answer vectors, a verbatim copy of the old bit-serial loop kept as a
+  test oracle over random payloads, and an on-disk-bytes layout test.
+- **Tests before optimization.** The durability pins (crash-after-fsync
+  replay at 250 and 300 records, all 8 value variants, engine-level point
+  queries after reopen) were committed **before** the perf commit —
+  `4853a3b` is a confirmed ancestor of `c67b557` — so they were written
+  against the original implementation, not tuned to the new one. The
+  pre-existing corrupt-CRC-tail test (torn-write recovery) also passes.
+- **Full surface green.** The wal/replay/snapshot/durability/crash/
+  checkpoint/recover suites pass on default features and `--features gauge`
+  (including the 95 Halcyon TDD-HAL gates). One pre-existing failure was
+  found and correctly attributed: `tdd_hal_ii_5_gauge_field_executor_unsupported_group`
+  fails **identically on main** (stale U(1) expectation in the parser's
+  gauge executor, pure line-shift) — unrelated to this branch, flagged for a
+  separate fix.
+
+## R3.3 The generic-lens receipt (why the scan gain is not overfit)
+
+A +0.3731 PR-AUC gain on a benchmark the lens author could see invites the
+other suspicion: *the lens hardcodes the benchmark.* An adversarial fairness
+audit re-derived every median from raws, re-ran all three PR-AUCs live
+against a fresh release build of `19f58c0` (all three exact matches:
+0.4579 / 0.4924 / 0.7189), and read the lens source. **Verdict: PASS, one
+caveat flagged.**
+
+- **Genericity.** Quoting the audit: "the interaction lens in
+  `src/ml/scan.rs` is fully generic — sides are ANY non-text categorical
+  with 2-64 distinct values, axes are ANY time-NAMED numeric … or ANY
+  small-integer numeric; cat-x-cat pairs are also built (beyond what the
+  bench needs) … Zero occurrences of merchant/amount/txn_id/cohort or a
+  literal 2h constant in production src." The dataset generator's ground
+  truth is a **continuous** cosine modulation over hour-of-day — the 2h
+  bucket exists only in the expert arm's discretization, so the lens's
+  12-bin rule is not copying a generative constant.
+- **The flagged caveat, at full volume.** 12 equal-width bins over a [0,24)
+  hour field lands within ~2% of the expert's 2h partition, so the 0.4579
+  is partly sensitive to that lucky-but-defensible constant. The constant is
+  range-adaptive, not field- or width-hardcoded — but **bin-count
+  sensitivity was never measured**. That sweep is on the round-4 list before
+  0.4579 gets quoted as a robust zero-config number.
+- **Harness integrity.** Committed harness byte-identical to main; the two
+  new untracked helper scripts (fallback re-timer, results assembler) were
+  reviewed line by line and are faithful; dataset SHA-256 re-verified;
+  tracked round-1/2 results files are clean per git.
+
+## R3.4 What regressed, plainly
+
+Two cells got worse, and they are cells of record, not footnotes (both are
+also recorded in `results_round3.json` under `honest_regressions`):
+
+1. **Expert play 1 (`/scan` weighted) PR-AUC 0.7003 → 0.4924 (−0.2079).**
+   Cause, precisely: the new interaction lens skips `context:cohort` because
+   its 129 distinct values exceed the 64-value interaction side limit — and
+   `context:cohort` was the field play 1 put all its fusion weight on, so
+   the play collapses toward zero-config behavior. The round-2 claim that
+   `/scan` can *nearly* express the expert statistic natively (0.7003) is
+   **not true on this branch**. Headline expert parity survives only because
+   play 2 (GQL cohort-z, the round-2 best play) still ties expert SQL at
+   0.7189 — but the `/scan`-native expert play is genuinely worse and this
+   report says so.
+2. **Zero-config `/scan` wall 317.4 → 501.36 ms (+58%).** The interaction
+   lens does more geometry per scan; the +0.3731 PR-AUC is the trade. On
+   this dataset the trade is obviously right; the cost is still reported at
+   full price.
+
+## R3.5 Reproduce round 3
+
+```powershell
+cd benchmarks\vs_stores
+
+# R3-0. build the integration branch (fix/round3-integration) first
+cargo build --release --bin gigi_stream
+cargo build --release --example vs_stores_embedded
+
+# R3-1. dataset (only if data.csv / labels.json are missing; sha256 must
+#        match the round-2 manifest data_100k)
+python gen_dataset.py
+
+# R3-2. HTTP legs — server in a SECOND terminal, fresh scratch data dir:
+#   $env:PORT="3143"; $env:GIGI_DATA_DIR="$env:TEMP\gigi_vs_stores_server_r3"
+#   $env:GIGI_SKIP_BOOT_SNAPSHOT="1"; cargo run --release --bin gigi_stream
+python run_gigi.py                 # round-1 cells on the fixed engine; the
+                                   # stddev probe now takes the server-side path
+python run_round3_aggcheck.py > aggcheck_round3.json   # re-time fallback +
+                                   # numeric cross-check vs server-side stddev
+python run_gigi_expert.py          # plays 1 and 2
+
+# the round-1/2 runners overwrite their committed outputs — copy the round-3
+# numbers to their round-3 names, then restore the committed receipts:
+copy results_gigi.json results_round3_gigi.json
+copy results_gigi_expert.json results_round3_expert.json
+git checkout -- results_gigi.json results_gigi_expert.json
+
+# R3-3. STOP the server, verify dead (must print False):
+Test-NetConnection 127.0.0.1 -Port 3143 -InformationLevel Quiet
+
+# R3-4. embedded lane, then assemble the cross-cell file:
+cargo run --release --example vs_stores_embedded -- data.csv > embedded_round3.json
+python build_results_round3.py     # -> results_round3.json
+
+# R3-5. gates + regression guard (all green, totals >= main required):
+cargo test --release --lib
+cargo test --release --bin gigi-stream
+cargo test --release --bin gigi-stream ml_all_endpoints_regression_smoke
+cargo test --lib scan
+```
+
+## R3.6 The updated fix list
+
+1. **Raise or restructure the 64-value interaction side limit** (or fall
+   back to honoring explicit fusion weights when a weighted field is
+   skipped) — it silently gutted play 1; a user who *grants* cohort
+   knowledge should never do worse than round 2's 0.7003.
+2. **Sweep the bin count.** The fairness audit's caveat: 12 bins lands
+   within ~2% of the expert's 2h partition on this dataset. Measure
+   zero-config PR-AUC at other bin counts before quoting 0.4579 as robust.
+3. **Ingest is now 3.3x behind sqlite** (was 5.3x). The CRC + allocation
+   lane is spent; what remains is index maintenance and WAL entry framing.
+4. Buy back the +184 ms zero-config scan wall time — lens candidate pruning
+   or memoized cohort stats — without giving back the +0.3731 PR-AUC.

@@ -16998,87 +16998,19 @@ fn kahler_transport_dispatch(
 // already applied — same semantics as a sequential batch insert today,
 // just with an explicit lifecycle. Full atomicity rides the follow-up.
 
+// The Phase-A wire structs (TxBeginRequest … TxStatusResponse) and the
+// free helpers parse_tx_id / sys_time_to_iso moved to
+// gigi::transactions::http (stream-extraction phase 2, family 4; see
+// EXTRACTION_MAP.md). The five handlers below stay whole in the binary:
+// their bodies ARE the shared-state logic (OpenTx / StreamState
+// .tx_registry / .tx_snap_counter / the interleaved engine-lock
+// discipline in tx_commit) — the state seam the map flags for this
+// family, kept at the binary root (family 11).
 #[cfg(feature = "transactions")]
-#[derive(Debug, Deserialize)]
-struct TxBeginRequest {
-    #[serde(default)]
-    isolation: Option<String>,
-}
-
-#[cfg(feature = "transactions")]
-#[derive(Debug, Serialize)]
-struct TxBeginResponse {
-    tx_id: String,
-    snap_id: u64,
-    opened_at: String,
-    isolation: String,
-}
-
-#[cfg(feature = "transactions")]
-#[derive(Debug, Deserialize)]
-struct TxWriteRequest {
-    bundle: String,
-    records: Vec<serde_json::Value>,
-}
-
-#[cfg(feature = "transactions")]
-#[derive(Debug, Serialize)]
-struct TxWriteResponse {
-    staged: usize,
-    total_in_tx: usize,
-    touched_bundles: Vec<String>,
-}
-
-#[cfg(feature = "transactions")]
-#[derive(Debug, Serialize)]
-struct TxCommitResponse {
-    committed_at: String,
-    new_snap_id: u64,
-    bundles_committed: Vec<String>,
-    records_committed: usize,
-}
-
-#[cfg(feature = "transactions")]
-#[derive(Debug, Serialize)]
-struct TxRollbackResponse {
-    aborted: bool,
-    discarded_records: usize,
-}
-
-#[cfg(feature = "transactions")]
-#[derive(Debug, Serialize)]
-struct TxStatusResponse {
-    tx_id: String,
-    snap_id: u64,
-    state: String,
-    isolation: String,
-    opened_at: String,
-    age_secs: u64,
-    touched_bundles: Vec<String>,
-    pending_writes: usize,
-}
-
-#[cfg(feature = "transactions")]
-fn parse_tx_id(
-    s: &str,
-) -> Result<gigi::transactions::TransactionId, (StatusCode, Json<ErrorResponse>)> {
-    let stripped = s.strip_prefix("tx_").unwrap_or(s);
-    let uuid = uuid::Uuid::parse_str(stripped).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                error: format!("invalid tx_id '{}': expected 'tx_<uuid>'", s),
-            }),
-        )
-    })?;
-    Ok(gigi::transactions::TransactionId(uuid))
-}
-
-#[cfg(feature = "transactions")]
-fn sys_time_to_iso(t: std::time::SystemTime) -> String {
-    let dur = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
-    format!("epoch:{}", dur.as_secs())
-}
+use gigi::transactions::http::{
+    parse_tx_id, sys_time_to_iso, TxBeginRequest, TxBeginResponse, TxCommitResponse,
+    TxRollbackResponse, TxStatusResponse, TxWriteRequest, TxWriteResponse,
+};
 
 #[cfg(feature = "transactions")]
 async fn tx_begin(

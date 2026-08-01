@@ -69,6 +69,9 @@ pub mod coherence;
 pub mod coordinator;
 pub mod deadlock;
 pub mod global_log;
+// Phase-A HTTP wire types + free helpers moved out of the gigi-stream
+// binary (stream-extraction phase 2, family 4; see EXTRACTION_MAP.md).
+pub mod http;
 pub mod mvcc;
 pub mod participant;
 pub mod types;

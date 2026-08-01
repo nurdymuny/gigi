@@ -622,3 +622,41 @@ cargo test --lib scan
    lane is spent; what remains is index maintenance and WAL entry framing.
 4. Buy back the +184 ms zero-config scan wall time — lens candidate pruning
    or memoized cohort stats — without giving back the +0.3731 PR-AUC.
+
+## R3.7 Round 3b — the tie-plateau fix (same day)
+
+Follow-up to R3.6 item 1. The play-1 regression's root cause was **not** the
+64-value interaction side limit (that note applies only to interaction-pair
+sides; the single-field `context:cohort` lens built fine — the R3 attribution
+is corrected here). The true mechanism: `scan_normalize` hard-clipped at
+6 MAD-units (`min(z,6)/6`), so **every record above the cap tied at exactly
+1.0**. On heavy-tailed amounts, hundreds of ordinary-extreme records tied with
+the planted anomalies at the top of the ranking and average precision
+collapsed — a tie plateau, invisible in round 2 because rank-normalization
+produces unique ranks.
+
+**Fix:** the hard clip is now a strictly monotone squash `z/(z+6)` — bounded,
+calibrated in MAD units, injective (no ties, ever). Unit test
+`scan_normalize_unit` now asserts injectivity above the cap; magnitude
+thresholds in the lens tests were translated to squash units
+(`t → t/(t+1)`).
+
+**Cells of record, round 3 → round 3b** (same harness, same data, same seeds,
+fixed release binary, warmup+3 reps/median):
+
+| Cell | Round 1 | Round 3 | **Round 3b** | Expert SQL bar |
+|---|---|---|---|---|
+| zero-config `/scan` PR-AUC | 0.0848 | 0.4579 | **0.6531** | 0.7189 |
+| expert play 1 (native `/scan` weighted) | — | 0.4924 | **0.7190** | 0.7189 |
+| expert play 2 (GQL cohort-z) | — | 0.7189 | **0.7189** | 0.7189 |
+| zero-config wall (ms) | 317.4 | 501.4 | **434.7** | — |
+
+The native `/scan` play now **edges the hand-written expert SQL** (0.7190 vs
+0.7189) at equal granted knowledge, and zero-config sits within 0.066 of the
+expert statistic with nothing specified but the bundle name. Raw reps in
+`benchmarks/vs_stores/results_round3b_gigi.json` /
+`results_round3b_expert.json`; committed round-1/2 artifacts untouched.
+
+Fix-list status: item 1 RESOLVED (normalization, the true cause); item 2
+(bin-count sweep) stands; item 3 (ingest gap 3.3x) stands; item 4 partially
+recovered (501 → 435 ms).

@@ -82,7 +82,13 @@ pub(crate) fn scan_normalize(vals: &[f64]) -> (Vec<f64>, Vec<f64>) {
         if sd >= f64::EPSILON { (mu, sd) } else { return (vec![0.0; n], vec![0.0; n]); }
     };
     let zraw: Vec<f64> = vals.iter().map(|x| ((x - center) / scale).max(0.0)).collect();
-    let norm: Vec<f64> = zraw.iter().map(|z| z.min(SCAN_NORM_Z_CAP) / SCAN_NORM_Z_CAP).collect();
+    // Strictly monotone squash z/(z+cap): bounded [0,1), calibrated in MAD
+    // units, and INJECTIVE — a hard clip (min(z,cap)/cap) tied every value
+    // above the cap at exactly 1.0, collapsing the ranking among the most
+    // extreme records (measured: expert weighted-lens PR-AUC 0.70 -> 0.49 on
+    // heavy-tailed amounts). The squash keeps cross-lens magnitude comparable
+    // while never creating ties.
+    let norm: Vec<f64> = zraw.iter().map(|z| z / (z + SCAN_NORM_Z_CAP)).collect();
     (norm, zraw)
 }
 
@@ -757,7 +763,7 @@ mod tests {
         for m in &sl.norm { assert_eq!(m.len(), 25, "each lens scores every record"); }
         // the planted outlier (id=t24, amount=9999) tops the global lens
         let g = scan_lens(&sl, "global").unwrap();
-        assert!(g["t24"] >= 0.5, "outlier should carry real global magnitude, got {}", g["t24"]);
+        assert!(g["t24"] >= 0.35, "outlier should carry real global magnitude (squash units), got {}", g["t24"]);
         for (id, v) in g {
             if id != "t24" { assert!(*v < g["t24"], "outlier must be strict argmax of global; {id} has {v}"); }
         }
@@ -907,7 +913,7 @@ mod tests {
         let sl = scan_compute_lenses(&engine, "surf", &[]).unwrap();
         let comp = scan_lens(&sl, "completion").expect("completion lens should be built");
         // the off-manifold record tops the completion lens (strict argmax)
-        assert!(comp["anom"] >= 0.5, "off-manifold record should carry real completion magnitude, got {}", comp["anom"]);
+        assert!(comp["anom"] >= 0.4, "off-manifold record should carry real completion magnitude (squash units), got {}", comp["anom"]);
         for (id, v) in comp {
             if id != "anom" { assert!(*v < comp["anom"], "anom must be strict argmax of completion; {id} has {v}"); }
         }
@@ -970,7 +976,7 @@ mod tests {
         let il = scan_lens(&sl, "context:merchant*hour_bucket")
             .expect("interaction lens context:merchant*hour_bucket should be built");
         // the plant tops the interaction lens…
-        assert!(il["plant"] >= 0.99, "combination anomaly should top the interaction lens, got {}", il["plant"]);
+        assert!(il["plant"] >= 0.5, "combination anomaly should top the interaction lens (squash units), got {}", il["plant"]);
         for (id, v) in il {
             if id != "plant" { assert!(*v < il["plant"], "plant must be strict argmax; {id} has {v}"); }
         }
@@ -1095,13 +1101,15 @@ mod tests {
         assert_eq!(norm.len(), vals.len());
         for v in &norm { assert!((0.0..=1.0).contains(v), "norm in [0,1], got {v}"); }
         let at = |x: f64| vals.iter().position(|&v| v == x).unwrap();
-        // linear below the cap: norm(8)/norm(4) = 2
-        let ratio = norm[at(8.0)] / norm[at(4.0)];
-        assert!((ratio - 2.0).abs() < 1e-9, "norm linear below cap: ratio {ratio}");
-        // monotone
-        assert!(norm[at(20.0)] >= norm[at(8.0)] && norm[at(8.0)] > norm[at(4.0)] && norm[at(4.0)] > norm[at(1.0)]);
-        // clip above cap; zraw unclipped
-        assert_eq!(norm[at(20.0)], 1.0, "above-cap value clips to 1.0");
+        // strictly monotone everywhere — INCLUDING far above the cap. The old
+        // hard clip tied 20 and 8 at 1.0; the squash must order them.
+        assert!(norm[at(20.0)] > norm[at(8.0)] && norm[at(8.0)] > norm[at(4.0)] && norm[at(4.0)] > norm[at(1.0)],
+            "squash must be injective above the cap: n20={} n8={}", norm[at(20.0)], norm[at(8.0)]);
+        // squash form: norm = z/(z+cap)
+        let z8 = zraw[at(8.0)];
+        assert!((norm[at(8.0)] - z8 / (z8 + SCAN_NORM_Z_CAP)).abs() < 1e-12, "norm = z/(z+cap)");
+        // bounded strictly below 1
+        assert!(norm[at(20.0)] < 1.0, "squash never saturates to exactly 1.0");
         assert!(zraw[at(20.0)] > SCAN_NORM_Z_CAP, "zraw stays unclipped, got {}", zraw[at(20.0)]);
         assert!((zraw[at(20.0)] - 20.0 / 1.4826).abs() < 1e-9, "zraw = (x - median)/(1.4826*MAD)");
         // negatives floor at 0
@@ -1113,9 +1121,9 @@ mod tests {
         let mut v = vec![0.0; 9];
         v.push(3.0);
         let (nf, zf) = scan_normalize(&v);
-        // mean 0.3, population sd 0.9 → z(3.0) = 3.0 → norm 0.5
+        // mean 0.3, population sd 0.9 → z(3.0) = 3.0 → squash 3/(3+6) = 1/3
         assert!((zf[9] - 3.0).abs() < 1e-9, "sd-fallback zraw, got {}", zf[9]);
-        assert!((nf[9] - 0.5).abs() < 1e-9, "sd-fallback norm, got {}", nf[9]);
+        assert!((nf[9] - 1.0/3.0).abs() < 1e-9, "sd-fallback norm, got {}", nf[9]);
         assert_eq!(nf[0], 0.0, "below-center floors at 0");
         // empty input
         let (ne, ze) = scan_normalize(&[]);
@@ -1160,7 +1168,7 @@ mod tests {
         let (dir, engine) = scan_env("scan_mag", "mag", schema, rows);
         let sl = scan_compute_lenses(&engine, "mag", &[]).unwrap();
         let c = scan_lens(&sl, "context:grp").expect("context:grp lens");
-        assert!(c["p12"] >= 0.999, "12σ plant clips to 1.0, got {}", c["p12"]);
+        assert!(c["p12"] >= 0.65, "12σ plant lands deep in the squash tail, got {}", c["p12"]);
         assert!(c["p4"] < c["p12"], "true magnitude must order the plants ({} vs {})", c["p4"], c["p12"]);
         assert!(c["p4"] <= 0.95, "4σ plant must stay materially below 1.0 (rank-norm would tie it), got {}", c["p4"]);
         assert!(c["p4"] >= 0.3, "4σ plant still carries real magnitude, got {}", c["p4"]);

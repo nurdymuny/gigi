@@ -16988,13 +16988,27 @@ mod tests {
         let stmt = parse(lat_decl).expect("parse LATTICE");
         execute(&mut engine, &stmt).expect("exec LATTICE");
 
+        // U(1) shipped (NS vortex-linking work): declaration now SUCCEEDS —
+        // this leg pins the ship instead of expecting the old error.
         let g_decl = "GAUGE_FIELD U_tdd_ii_5_d ON LATTICE tdd_hal_ii_5_d \
                       GROUP U(1) INIT IDENTITY;";
         let stmt = parse(g_decl).expect("parse U(1)");
+        execute(&mut engine, &stmt).expect("U(1) INIT IDENTITY must succeed post-ship");
+        assert!(
+            crate::gauge::registry::get("U_tdd_ii_5_d").is_some(),
+            "U(1) field registered"
+        );
+
+        // Z(N) remains genuinely unsupported in the executor: the typed
+        // error must still fire, and its Display must keep the literal
+        // "SU(2)" (Halcyon G2.D regex anchor).
+        let z_decl = "GAUGE_FIELD U_tdd_ii_5_z ON LATTICE tdd_hal_ii_5_d \
+                      GROUP Z(4) INIT IDENTITY;";
+        let stmt = parse(z_decl).expect("parse Z(4)");
         let err = execute(&mut engine, &stmt).expect_err("expected unsupported-group error");
         assert!(
-            err.contains("SU(2)"),
-            "Display must contain 'SU(2)', got: {err}"
+            err.contains("SU(2)") && err.contains("not implemented"),
+            "Display must contain 'SU(2)' and 'not implemented', got: {err}"
         );
     }
 

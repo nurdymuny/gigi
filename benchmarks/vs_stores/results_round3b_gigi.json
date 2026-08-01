@@ -1,0 +1,106 @@
+{
+  "system": "gigi",
+  "protocol": {
+    "seed": 20260731,
+    "n_rows": 100000,
+    "n_subset": 20000,
+    "n_anomalies": 100,
+    "n_point_queries": 2000,
+    "gigi_insert_batch": 1000,
+    "hour_bucket_hours": 2.0,
+    "scan_budget": 0.05,
+    "reps_per_cell": 3,
+    "warmups_per_cell": 1,
+    "cell_statistic": "median of reps",
+    "pr_auc": "average precision, step interpolation, shared eval_common.average_precision",
+    "timing_shape": "gigi over HTTP at 127.0.0.1 (its real deployment shape); sqlite/duckdb in-process (their real shape) \u2014 asymmetry disclosed, not hidden"
+  },
+  "environment": {
+    "hostname": "LAPTOP-5ECOBNCR",
+    "os": "Windows 11 (10.0.26200)",
+    "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "gigi_git_sha": "67741a5c99028756ea01d4d0f061e1f368966261",
+    "timestamp_utc": "2026-08-01T01:19:48Z",
+    "single_node": true,
+    "note": "single Windows laptop, serial runs, nothing else running (operator-attested)"
+  },
+  "versions": {
+    "gigi_server_health": {
+      "status": "ok",
+      "engine": "gigi-stream",
+      "version": "0.1.0",
+      "bundles": 10,
+      "total_records": 0,
+      "uptime_secs": 30
+    },
+    "gigi_version": "0.1.0",
+    "transport": "HTTP/1.1 keep-alive to http://127.0.0.1:3143"
+  },
+  "cells": {
+    "ingest": {
+      "rows": 100000,
+      "unit": "rows_per_sec",
+      "reps": [
+        84043.2,
+        88581.4,
+        80080.8
+      ],
+      "median": 84043.2
+    },
+    "point_query": {
+      "n_queries": 2000,
+      "unit": "ms",
+      "reps": [
+        {
+          "p50_ms": 0.3561,
+          "p95_ms": 0.4932
+        },
+        {
+          "p50_ms": 0.3684,
+          "p95_ms": 0.4992
+        },
+        {
+          "p50_ms": 0.3692,
+          "p95_ms": 0.5197
+        }
+      ],
+      "p50_ms_median": 0.3684,
+      "p95_ms_median": 0.4992
+    },
+    "aggregate": {
+      "unit": "ms",
+      "n_groups": 12,
+      "method": "GQL INTEGRATE OVER merchant MEASURE avg(amount), stddev(amount) \u2014 single server-side call",
+      "reps_wall_ms": [
+        154.41,
+        158.92,
+        159.71
+      ],
+      "wall_ms_median": 158.92
+    },
+    "anomaly": {
+      "unit": "ms",
+      "method": "POST /v1/bundles/bench_anom/scan {budget: 0.05, limit: 0} \u2014 zero-config",
+      "reps_wall_ms": [
+        457.81,
+        434.69,
+        421.72
+      ],
+      "wall_ms_median": 434.69,
+      "pr_auc": 0.6531,
+      "client_lines_of_code": 5,
+      "loc_basis": "python: gigi_scan() function source, non-blank non-comment lines",
+      "n_scored": 20000,
+      "n_positive": 100
+    }
+  },
+  "disclosures": [
+    "All gigi cells are measured over HTTP at 127.0.0.1 (persistent keep-alive connection) \u2014 gigi's real deployment shape. sqlite/duckdb run in-process. Point-lookup and per-call numbers therefore include an HTTP round trip that the embedded stores do not pay; expected honest loss on point queries.",
+    "Ingest timed window includes client-side json.dumps of each 1,000-row batch (part of the wire path). CSV parsing to Python rows happens before the timed window, identical to the sqlite runner.",
+    "Point-query timing includes response read + JSON deserialization (the counterpart of the embedded stores' row materialization).",
+    "ANOMALY: /scan is zero-config \u2014 the only inputs are the bundle name and the review budget. The labels file is never sent to gigi. The timed window includes downloading and parsing the full 20k-row scored response.",
+    "ANOMALY LOC counts the actual python client function (source-counted at run time, shared counting rule in eval_common.count_loc)."
+  ]
+}

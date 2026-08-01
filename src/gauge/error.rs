@@ -137,8 +137,8 @@ impl std::fmt::Display for GaugeFieldError {
             ),
             GaugeFieldError::UnsupportedGroup(g) => write!(
                 f,
-                "gauge: group {} is not implemented (Part II ships SU(2) math only; \
-                 future groups land as separate EdgeConnection impls per the group-erasure plan)",
+                "gauge: group {} is not implemented (live math ships for SU(2), SU(3), and U(1); \
+                 further groups land as separate EdgeConnection impls per the group-erasure plan)",
                 g.label()
             ),
             GaugeFieldError::LatticeNotDeclared(name) => write!(

@@ -1,0 +1,1239 @@
+{
+ "meta": {
+  "artifact": "multi-seed GIGI-vs-sklearn sweep (evidence rules 07/08)",
+  "mode": "full",
+  "generated": "2026-08-01T10:55:55",
+  "finished": "2026-08-01T11:03:36",
+  "seeds": [
+   20260801,
+   20260802,
+   20260803,
+   20260804,
+   20260805
+  ],
+  "git_commit": "d5ceb6f499c815efd318e80c6b2cf9daea22b5a1",
+  "server": {
+   "binary": "C:\\Users\\nurdm\\OneDrive\\Documents\\gigi\\target\\release\\gigi-stream.exe",
+   "binary_mtime": "2026-08-01T10:55:23",
+   "port": 3143,
+   "data_dir": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_msweep_data_2zpwmolp",
+   "log": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_msweep_data_2zpwmolp.server.log",
+   "exit_code": 1,
+   "lifecycle": "started fresh by this script on a scratch data dir; health-polled; verified alive post-run; terminated; scratch dir removed"
+  },
+  "versions": {
+   "python": "3.12.10",
+   "sklearn": "1.9.0",
+   "numpy": "2.4.0"
+  },
+  "std": "sample std, ddof=1, across seeds; 0.0 reported as such for deterministic cells",
+  "verdict_rule": "gigi-perspective signed delta vs threshold = max(sqrt(std_gigi^2+std_ref^2), 0.005); WIN if > threshold, LOSS if < -threshold, else PARITY; 0.005 floor = the single-run artifact's tie threshold, needed because deterministic cells have combined_std 0",
+  "determinism_notes": [
+   "gigi /cluster and /infer expose no seed parameter (fixed LCG constants in src/ml/cluster.rs and src/ml/infer.rs); the gigi arm is re-called once per seed and its returned value recorded, so std 0 is measured not assumed",
+   "record order is stable across restarts: Bundle::records() yields base-point-sorted records (src/bundle.rs). Before 2026-08-01 it iterated a per-process-random HashMap, so fixed-LCG results reproduced only within one server process \u2014 caught by artifact verification, fixed same day; cross-process reproducibility is re-verified by scripts/multiseed_repro_probe.py",
+   "embargoed eigenspace cell: BOTH arms run the shared gmm_em (src/ml/cluster.rs) with identical covariance=diagonal settings \u2014 the spectral head=gmm calls the same EM as method=gmm since 2026-08-01 (previously a separate compact GMM, a flagged confound)",
+   "cross_val_score(cv=5) uses unshuffled folds \u2014 deterministic by protocol, identical to the single-run artifact scripts/sweep_results.json",
+   "seed enters via sklearn random_state (KMeans/GMM/Spectral/IsolationForest/GP/train_test_split), the numpy Funk-SVD reference, and the bcancer-rare malignant subsample (which varies BOTH arms)",
+   "strictly serial: one process, one request in flight at a time"
+  ],
+  "run_error": null
+ },
+ "cells": [
+  {
+   "dataset": "iris",
+   "task": "cluster",
+   "method": "kmeans",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 3
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.620135,
+      0.620135,
+      0.620135,
+      0.620135,
+      0.620135
+     ],
+     "mean": 0.620135,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn KMeans",
+     "values": [
+      0.620135,
+      0.620135,
+      0.610073,
+      0.620135,
+      0.620135
+     ],
+     "mean": 0.6181226,
+     "std": 0.004499863197920583
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.0020124000000000253,
+   "signed_delta_gigi_better": 0.0020124000000000253,
+   "combined_std": 0.004499863197920583,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "iris",
+   "task": "cluster",
+   "method": "gmm",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 3,
+    "covariance": "full"
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.903874,
+      0.903874,
+      0.903874,
+      0.903874,
+      0.903874
+     ],
+     "mean": 0.9038739999999998,
+     "std": 1.2412670766236366e-16
+    },
+    "ref": {
+     "name": "sklearn GMM",
+     "values": [
+      0.903874,
+      0.516459,
+      0.903874,
+      0.903874,
+      0.903874
+     ],
+     "mean": 0.8263909999999999,
+     "std": 0.17325725510061618
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.07748299999999997,
+   "signed_delta_gigi_better": 0.07748299999999997,
+   "combined_std": 0.17325725510061618,
+   "threshold": 0.17325725510061618,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "iris",
+   "task": "cluster",
+   "method": "spectral",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 3,
+    "neighbors": 15,
+    "normalized": true
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.620135,
+      0.620135,
+      0.620135,
+      0.620135,
+      0.620135
+     ],
+     "mean": 0.620135,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn Spectral",
+     "values": [
+      0.601791,
+      0.601791,
+      0.601791,
+      0.601791,
+      0.601791
+     ],
+     "mean": 0.601791,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.018344000000000027,
+   "signed_delta_gigi_better": 0.018344000000000027,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "wine",
+   "task": "cluster",
+   "method": "kmeans",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 3
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.91488,
+      0.91488,
+      0.91488,
+      0.91488,
+      0.91488
+     ],
+     "mean": 0.9148799999999999,
+     "std": 1.2412670766236366e-16
+    },
+    "ref": {
+     "name": "sklearn KMeans",
+     "values": [
+      0.897495,
+      0.897495,
+      0.897495,
+      0.897495,
+      0.897495
+     ],
+     "mean": 0.8974949999999999,
+     "std": 1.2412670766236366e-16
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.017384999999999984,
+   "signed_delta_gigi_better": 0.017384999999999984,
+   "combined_std": 1.7554167342883506e-16,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "wine",
+   "task": "cluster",
+   "method": "gmm",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 3,
+    "covariance": "full"
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.947132,
+      0.947132,
+      0.947132,
+      0.947132,
+      0.947132
+     ],
+     "mean": 0.9471320000000001,
+     "std": 1.2412670766236366e-16
+    },
+    "ref": {
+     "name": "sklearn GMM",
+     "values": [
+      0.897495,
+      0.845268,
+      0.897495,
+      0.8804,
+      0.897495
+     ],
+     "mean": 0.8836306,
+     "std": 0.022686948986146212
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.06350140000000004,
+   "signed_delta_gigi_better": 0.06350140000000004,
+   "combined_std": 0.022686948986146212,
+   "threshold": 0.022686948986146212,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "wine",
+   "task": "cluster",
+   "method": "spectral",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 3,
+    "neighbors": 15,
+    "normalized": true
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.833291,
+      0.833291,
+      0.833291,
+      0.833291,
+      0.833291
+     ],
+     "mean": 0.833291,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn Spectral",
+     "values": [
+      0.8804,
+      0.8804,
+      0.8804,
+      0.8804,
+      0.8804
+     ],
+     "mean": 0.8804000000000001,
+     "std": 1.2412670766236366e-16
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.04710900000000007,
+   "signed_delta_gigi_better": -0.04710900000000007,
+   "combined_std": 1.2412670766236366e-16,
+   "threshold": 0.005,
+   "verdict": "LOSS"
+  },
+  {
+   "dataset": "digits",
+   "task": "cluster",
+   "method": "kmeans",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 10
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.453753,
+      0.453753,
+      0.453753,
+      0.453753,
+      0.453753
+     ],
+     "mean": 0.453753,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn KMeans",
+     "values": [
+      0.570356,
+      0.464394,
+      0.476645,
+      0.470353,
+      0.546516
+     ],
+     "mean": 0.5056528,
+     "std": 0.049107336831679234
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.051899799999999996,
+   "signed_delta_gigi_better": -0.051899799999999996,
+   "combined_std": 0.049107336831679234,
+   "threshold": 0.049107336831679234,
+   "verdict": "LOSS"
+  },
+  {
+   "dataset": "digits",
+   "task": "cluster",
+   "method": "gmm",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 10,
+    "covariance": "diagonal"
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.255649,
+      0.255649,
+      0.255649,
+      0.255649,
+      0.255649
+     ],
+     "mean": 0.255649,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn GMM",
+     "values": [
+      0.442042,
+      0.429443,
+      0.587919,
+      0.508524,
+      0.486084
+     ],
+     "mean": 0.4908024,
+     "std": 0.06306842509766673
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.2351534,
+   "signed_delta_gigi_better": -0.2351534,
+   "combined_std": 0.06306842509766673,
+   "threshold": 0.06306842509766673,
+   "verdict": "LOSS"
+  },
+  {
+   "dataset": "digits",
+   "task": "cluster",
+   "method": "spectral",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 10,
+    "neighbors": 15,
+    "normalized": true
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.676098,
+      0.676098,
+      0.676098,
+      0.676098,
+      0.676098
+     ],
+     "mean": 0.676098,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn Spectral",
+     "values": [
+      0.665785,
+      0.665384,
+      0.665384,
+      0.665384,
+      0.663325
+     ],
+     "mean": 0.6650524,
+     "std": 0.0009811331713890459
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.011045599999999989,
+   "signed_delta_gigi_better": 0.011045599999999989,
+   "combined_std": 0.0009811331713890459,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "iris",
+   "task": "classify",
+   "method": "knn",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {
+    "k": 7
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.96,
+      0.96,
+      0.96,
+      0.96,
+      0.96
+     ],
+     "mean": 0.96,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn KNN",
+     "values": [
+      0.953333,
+      0.953333,
+      0.953333,
+      0.953333,
+      0.953333
+     ],
+     "mean": 0.953333,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.0066669999999999785,
+   "signed_delta_gigi_better": 0.0066669999999999785,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "iris",
+   "task": "classify",
+   "method": "svm",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {},
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9133,
+      0.9133,
+      0.9133,
+      0.9133,
+      0.9133
+     ],
+     "mean": 0.9132999999999999,
+     "std": 1.2412670766236366e-16
+    },
+    "ref": {
+     "name": "sklearn SVC(rbf)",
+     "values": [
+      0.966667,
+      0.966667,
+      0.966667,
+      0.966667,
+      0.966667
+     ],
+     "mean": 0.9666669999999999,
+     "std": 1.2412670766236366e-16
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.05336700000000005,
+   "signed_delta_gigi_better": -0.05336700000000005,
+   "combined_std": 1.7554167342883506e-16,
+   "threshold": 0.005,
+   "verdict": "LOSS"
+  },
+  {
+   "dataset": "wine",
+   "task": "classify",
+   "method": "knn",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {
+    "k": 7
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9719,
+      0.9719,
+      0.9719,
+      0.9719,
+      0.9719
+     ],
+     "mean": 0.9719,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn KNN",
+     "values": [
+      0.966508,
+      0.966508,
+      0.966508,
+      0.966508,
+      0.966508
+     ],
+     "mean": 0.9665079999999999,
+     "std": 1.2412670766236366e-16
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.005392000000000063,
+   "signed_delta_gigi_better": 0.005392000000000063,
+   "combined_std": 1.2412670766236366e-16,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "wine",
+   "task": "classify",
+   "method": "svm",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {},
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9831,
+      0.9831,
+      0.9831,
+      0.9831,
+      0.9831
+     ],
+     "mean": 0.9831,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn SVC(rbf)",
+     "values": [
+      0.983333,
+      0.983333,
+      0.983333,
+      0.983333,
+      0.983333
+     ],
+     "mean": 0.983333,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.00023300000000003873,
+   "signed_delta_gigi_better": -0.00023300000000003873,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "bcancer",
+   "task": "classify",
+   "method": "knn",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {
+    "k": 7
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9649,
+      0.9649,
+      0.9649,
+      0.9649,
+      0.9649
+     ],
+     "mean": 0.9648999999999999,
+     "std": 1.2412670766236366e-16
+    },
+    "ref": {
+     "name": "sklearn KNN",
+     "values": [
+      0.968359,
+      0.968359,
+      0.968359,
+      0.968359,
+      0.968359
+     ],
+     "mean": 0.9683589999999999,
+     "std": 1.2412670766236366e-16
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.00345899999999999,
+   "signed_delta_gigi_better": -0.00345899999999999,
+   "combined_std": 1.7554167342883506e-16,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "bcancer",
+   "task": "classify",
+   "method": "svm",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {},
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9754,
+      0.9754,
+      0.9754,
+      0.9754,
+      0.9754
+     ],
+     "mean": 0.9754000000000002,
+     "std": 1.2412670766236366e-16
+    },
+    "ref": {
+     "name": "sklearn SVC(rbf)",
+     "values": [
+      0.973638,
+      0.973638,
+      0.973638,
+      0.973638,
+      0.973638
+     ],
+     "mean": 0.973638,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.0017620000000001523,
+   "signed_delta_gigi_better": 0.0017620000000001523,
+   "combined_std": 1.2412670766236366e-16,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "digits",
+   "task": "classify",
+   "method": "knn",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {
+    "k": 7
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9744,
+      0.9744,
+      0.9744,
+      0.9744,
+      0.9744
+     ],
+     "mean": 0.9743999999999999,
+     "std": 1.2412670766236366e-16
+    },
+    "ref": {
+     "name": "sklearn KNN",
+     "values": [
+      0.944367,
+      0.944367,
+      0.944367,
+      0.944367,
+      0.944367
+     ],
+     "mean": 0.944367,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.030032999999999976,
+   "signed_delta_gigi_better": 0.030032999999999976,
+   "combined_std": 1.2412670766236366e-16,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "digits",
+   "task": "classify",
+   "method": "svm",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {},
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9583,
+      0.9583,
+      0.9583,
+      0.9583,
+      0.9583
+     ],
+     "mean": 0.9583,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn SVC(rbf)",
+     "values": [
+      0.949362,
+      0.949362,
+      0.949362,
+      0.949362,
+      0.949362
+     ],
+     "mean": 0.949362,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.008938000000000001,
+   "signed_delta_gigi_better": 0.008938000000000001,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "diabetes",
+   "task": "regress",
+   "method": "local_linear",
+   "metric": "R\u00b2",
+   "direction": "higher",
+   "config": {
+    "k": 20
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.4079,
+      0.4079,
+      0.4079,
+      0.4079,
+      0.4079
+     ],
+     "mean": 0.4079,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn KNN-reg",
+     "values": [
+      0.448991,
+      0.448991,
+      0.448991,
+      0.448991,
+      0.448991
+     ],
+     "mean": 0.44899100000000003,
+     "std": 6.206335383118183e-17
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.041091000000000044,
+   "signed_delta_gigi_better": -0.041091000000000044,
+   "combined_std": 6.206335383118183e-17,
+   "threshold": 0.005,
+   "verdict": "LOSS"
+  },
+  {
+   "dataset": "diabetes",
+   "task": "regress",
+   "method": "ols",
+   "metric": "R\u00b2",
+   "direction": "higher",
+   "config": {
+    "k": 20
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.4862,
+      0.4862,
+      0.4862,
+      0.4862,
+      0.4862
+     ],
+     "mean": 0.4862,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn LinReg",
+     "values": [
+      0.482316,
+      0.482316,
+      0.482316,
+      0.482316,
+      0.482316
+     ],
+     "mean": 0.4823160000000001,
+     "std": 6.206335383118183e-17
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.003883999999999943,
+   "signed_delta_gigi_better": 0.003883999999999943,
+   "combined_std": 6.206335383118183e-17,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "diabetes",
+   "task": "regress",
+   "method": "gp (90% coverage)",
+   "metric": "coverage",
+   "direction": "higher",
+   "config": {
+    "k": 30,
+    "test_size": 0.3
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.878,
+      0.878,
+      0.878,
+      0.878,
+      0.878
+     ],
+     "mean": 0.8779999999999999,
+     "std": 1.2412670766236366e-16
+    },
+    "ref": {
+     "name": "sklearn GP",
+     "values": [
+      0.924812,
+      0.909774,
+      0.87218,
+      0.894737,
+      0.932331
+     ],
+     "mean": 0.9067668000000001,
+     "std": 0.024130704707902767
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.028766800000000203,
+   "signed_delta_gigi_better": -0.028766800000000203,
+   "combined_std": 0.024130704707902767,
+   "threshold": 0.024130704707902767,
+   "verdict": "LOSS"
+  },
+  {
+   "dataset": "wine",
+   "task": "pca",
+   "method": "top-2",
+   "metric": "expl.var",
+   "direction": "higher",
+   "config": {
+    "k": 2
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.55406,
+      0.55406,
+      0.55406,
+      0.55406,
+      0.55406
+     ],
+     "mean": 0.55406,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn PCA",
+     "values": [
+      0.554063,
+      0.554063,
+      0.554063,
+      0.554063,
+      0.554063
+     ],
+     "mean": 0.554063,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -2.9999999999752447e-06,
+   "signed_delta_gigi_better": -2.9999999999752447e-06,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "bcancer",
+   "task": "pca",
+   "method": "top-2",
+   "metric": "expl.var",
+   "direction": "higher",
+   "config": {
+    "k": 2
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.63243,
+      0.63243,
+      0.63243,
+      0.63243,
+      0.63243
+     ],
+     "mean": 0.63243,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn PCA",
+     "values": [
+      0.632432,
+      0.632432,
+      0.632432,
+      0.632432,
+      0.632432
+     ],
+     "mean": 0.632432,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -1.999999999946489e-06,
+   "signed_delta_gigi_better": -1.999999999946489e-06,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "digits",
+   "task": "pca",
+   "method": "top-2",
+   "metric": "expl.var",
+   "direction": "higher",
+   "config": {
+    "k": 2
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.21595,
+      0.21595,
+      0.21595,
+      0.21595,
+      0.21595
+     ],
+     "mean": 0.21595,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn PCA",
+     "values": [
+      0.21595,
+      0.21595,
+      0.21595,
+      0.21595,
+      0.21595
+     ],
+     "mean": 0.21595,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.0,
+   "signed_delta_gigi_better": 0.0,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "bcancer-rare",
+   "task": "anomaly",
+   "method": "/scan",
+   "metric": "PR-AUC",
+   "direction": "higher",
+   "config": {
+    "budget": 0.1,
+    "n_malignant": 22,
+    "note": "malignant subsample drawn with RandomState(seed) \u2014 both arms vary"
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.634734,
+      0.555734,
+      0.559258,
+      0.371935,
+      0.575017
+     ],
+     "mean": 0.5393356,
+     "std": 0.09882154048232601
+    },
+    "ref": {
+     "name": "sklearn IsolationForest",
+     "values": [
+      0.593641,
+      0.587465,
+      0.559632,
+      0.403938,
+      0.563683
+     ],
+     "mean": 0.5416718,
+     "std": 0.07838283658875837
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.0023362000000000105,
+   "signed_delta_gigi_better": -0.0023362000000000105,
+   "combined_std": 0.12613312782532587,
+   "threshold": 0.12613312782532587,
+   "verdict": "PARITY"
+  },
+  {
+   "dataset": "MovieLens 100k",
+   "task": "recommend",
+   "method": "matrix factorization",
+   "metric": "RMSE (lower=better)",
+   "direction": "lower",
+   "config": {
+    "rank": 10,
+    "epochs": 20,
+    "ref_lr": 0.02,
+    "ref_reg": 0.05,
+    "data_source": "cache"
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9111,
+      0.9111,
+      0.9111,
+      0.9111,
+      0.9111
+     ],
+     "mean": 0.9111,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "numpy Funk-SVD",
+     "values": [
+      0.926624,
+      0.927967,
+      0.923844,
+      0.940056,
+      0.926508
+     ],
+     "mean": 0.9289998,
+     "std": 0.006358891428543188
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": -0.01789980000000002,
+   "signed_delta_gigi_better": 0.01789980000000002,
+   "combined_std": 0.006358891428543188,
+   "threshold": 0.006358891428543188,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "digits",
+   "task": "cluster-representation",
+   "method": "gmm: eigenspace vs raw",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 10,
+    "eigenspace": {
+     "method": "spectral",
+     "head": "gmm",
+     "embed_dim": 20,
+     "neighbors": 15,
+     "normalized": true,
+     "covariance": "diagonal"
+    },
+    "raw": {
+     "method": "gmm",
+     "covariance": "diagonal"
+    },
+    "note": "arms.gigi = GMM in the spectral eigenspace; arms.ref = the SAME GMM (shared gmm_em code path, identical covariance/init/convergence) on raw pixels. Only the representation differs. Verdict measures the representation effect, not gigi-vs-sklearn."
+   },
+   "embargoed": true,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.611942,
+      0.611942,
+      0.611942,
+      0.611942,
+      0.611942
+     ],
+     "mean": 0.611942,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "GIGI GMM on raw pixels (same algorithm)",
+     "values": [
+      0.255649,
+      0.255649,
+      0.255649,
+      0.255649,
+      0.255649
+     ],
+     "mean": 0.255649,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {
+    "sklearn_gmm_raw": {
+     "name": "sklearn GMM raw pixels (random_state=seed)",
+     "values": [
+      0.442042,
+      0.429443,
+      0.587919,
+      0.508524,
+      0.486084
+     ],
+     "mean": 0.4908024,
+     "std": 0.06306842509766673
+    }
+   },
+   "delta_mean": 0.35629299999999997,
+   "signed_delta_gigi_better": 0.35629299999999997,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  },
+  {
+   "dataset": "digits",
+   "task": "classify",
+   "method": "diffusion (label-prop) vs flat knn",
+   "metric": "accuracy",
+   "direction": "higher",
+   "config": {
+    "k": 7,
+    "gigi_method": "diffusion"
+   },
+   "embargoed": true,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.9733,
+      0.9733,
+      0.9733,
+      0.9733,
+      0.9733
+     ],
+     "mean": 0.9733,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn KNN (flat)",
+     "values": [
+      0.944367,
+      0.944367,
+      0.944367,
+      0.944367,
+      0.944367
+     ],
+     "mean": 0.944367,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.028933000000000098,
+   "signed_delta_gigi_better": 0.028933000000000098,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "WIN"
+  }
+ ]
+}

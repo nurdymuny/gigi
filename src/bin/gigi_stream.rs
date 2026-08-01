@@ -9638,7 +9638,7 @@ async fn ml_catalog() -> Json<serde_json::Value> {
         "positioning": {
             "geometric": "The methods that use the substrate — curvature/completion/density anomaly lenses (/scan), spectral clustering in the Laplacian eigenspace (/cluster method=spectral, head=gmm), and diffusion prediction on the graph Laplacian (/infer method=diffusion). These are where the geometry buys something you can't get from flat, Euclidean methods.",
             "baselines": "The classical flat methods — k-means, PCA, ridge/OLS, Pegasos SVM, Funk-SVD, flat kNN. Correct and co-located with your data (no export), but they are the CONTROL ARM: the yardstick the geometric methods are measured against, not the headline.",
-            "evidence": "On data where geometry exists, geometric beats flat: digits label-propagation 0.973 vs flat kNN 0.944; GMM in the spectral eigenspace 0.708 vs raw-pixel GMM 0.594. On flat data they tie — which is the honest point."
+            "evidence": "On data where geometry exists, geometric beats flat: digits label-propagation 0.973 vs flat kNN 0.944; the same GMM (one shared EM code path) scores ARI 0.612 in the spectral eigenspace vs 0.256 on raw pixels — only the representation changed. On flat data they tie — which is the honest point. Artifact: scripts/sweep_results_multiseed.json (5 seeds, mean±std)."
         },
         "endpoints": [
             {"route": "POST /v1/bundles/{name}/scan", "kind": "geometric", "does": "unsupervised anomaly detection — fuses 7 geometric lenses (global/contextual curvature, velocity, text, relational, completion, density)",

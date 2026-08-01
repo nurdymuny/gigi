@@ -75,59 +75,126 @@ impl Default for ClusterOpts {
         normalized: false, embed_dim: None, head: "kmeans".into() } }
 }
 
-/// Full-covariance GMM (EM, k-means init) returning hard labels — a compact head
-/// for spectral clustering, where fitting Gaussians in the Laplacian eigenspace
-/// (rather than the ambient features) separates manifold-tangled clusters cleanly.
-pub fn gmm_labels(pts: &[Vec<f64>], k: usize) -> Vec<usize> {
-    let n = pts.len();
-    let d = pts.first().map(|p| p.len()).unwrap_or(0);
-    if d == 0 || n < k { return vec![0; n]; }
-    let init = kmeans_lloyd(pts, k, None);
+/// Gaussian-mixture EM over arbitrary points — k-means++ init from component
+/// assignments, full/diagonal/spherical covariance, log-sum-exp E-step, and a
+/// relative log-likelihood convergence check (reg 1e-6, cap `opts.max_iters`).
+///
+/// This is THE one GMM in the engine: `/cluster method=gmm` runs it on the
+/// standardized fibers and the spectral `head=gmm` runs it on the Laplacian
+/// eigenmap — so an "eigenspace vs raw pixels, same algorithm" comparison is
+/// literally the same code path fed a different point set. (Before 2026-08-01
+/// the spectral head had its own compact GMM with different covariance,
+/// regularization, and no convergence check — a confound the multiseed-sweep
+/// verification flagged.)
+///
+/// Returns (hard labels, soft responsibilities, EM iterations run);
+/// Err on an unknown covariance name.
+pub fn gmm_em(x: &[Vec<f64>], k: usize, opts: &ClusterOpts)
+    -> Result<(Vec<usize>, Vec<Vec<f64>>, usize), String>
+{
+    let n = x.len();
+    let d = x.first().map(|p| p.len()).unwrap_or(0);
+    if !matches!(opts.covariance.as_str(), "full" | "diagonal" | "spherical") {
+        return Err(format!(
+            "unknown covariance '{}' (expected 'full', 'diagonal', or 'spherical')", opts.covariance));
+    }
+    if d == 0 || n < k { return Ok((vec![0; n], vec![vec![0.0; k]; n], 0)); }
+    // init from k-means (robust — avoids EM local optima on elongated clusters):
+    // component means, per-component covariance, and mixing weights
+    let init = kmeans_lloyd(x, k, opts.restarts);
+    let cov_diag = opts.covariance == "diagonal" || opts.covariance == "spherical";
+    let spherical = opts.covariance == "spherical";
+    let em_iters = opts.max_iters.clamp(1, 1000);
     let mut mu = vec![vec![0.0f64; d]; k];
     let mut cnt = vec![0usize; k];
-    for i in 0..n { cnt[init[i]] += 1; for t in 0..d { mu[init[i]][t] += pts[i][t]; } }
+    for i in 0..n { cnt[init[i]] += 1; for t in 0..d { mu[init[i]][t] += x[i][t]; } }
     for c in 0..k { if cnt[c] > 0 { for t in 0..d { mu[c][t] /= cnt[c] as f64; } } }
-    let gmean: Vec<f64> = (0..d).map(|t| pts.iter().map(|p| p[t]).sum::<f64>() / n as f64).collect();
+    let gmean: Vec<f64> = (0..d).map(|t| x.iter().map(|xi| xi[t]).sum::<f64>() / n as f64).collect();
     let mut gcov = vec![vec![0.0f64; d]; d];
-    for p in pts { for a in 0..d { for b in 0..d { gcov[a][b] += (p[a] - gmean[a]) * (p[b] - gmean[b]); } } }
+    for xi in x { for a in 0..d { for b in 0..d { gcov[a][b] += (xi[a] - gmean[a]) * (xi[b] - gmean[b]); } } }
     for a in 0..d { for b in 0..d { gcov[a][b] /= n as f64; } }
-    let mut sig = vec![gcov; k];
-    let mut pi = vec![1.0 / k as f64; k];
+    let mut sig: Vec<Vec<Vec<f64>>> = vec![gcov.clone(); k];
+    for c in 0..k {
+        if cnt[c] > d {  // enough points to estimate a component covariance
+            let mut sc = vec![vec![0.0f64; d]; d];
+            for i in 0..n { if init[i] == c {
+                for a in 0..d { for b in 0..d { sc[a][b] += (x[i][a] - mu[c][a]) * (x[i][b] - mu[c][b]); } }
+            } }
+            for a in 0..d { for b in 0..d { sc[a][b] /= cnt[c] as f64; } }
+            sig[c] = sc;
+        }
+    }
+    // diagonal-variance representation (used for "diagonal"/"spherical")
+    let mut var: Vec<Vec<f64>> = if cov_diag {
+        (0..k).map(|c| {
+            let mut v: Vec<f64> = (0..d).map(|t| sig[c][t][t].max(1e-6)).collect();
+            if spherical { let m = v.iter().sum::<f64>() / d as f64; v = vec![m.max(1e-6); d]; }
+            v
+        }).collect()
+    } else { Vec::new() };
+    let mut pi: Vec<f64> = (0..k).map(|c| cnt[c].max(1) as f64 / n as f64).collect();
     let mut resp = vec![vec![0.0f64; k]; n];
     let ln2pi = (2.0 * std::f64::consts::PI).ln();
-    let reg = 1e-4;
-    for _ in 0..60 {
-        let mut inv = Vec::with_capacity(k);
+    let reg = 1e-6;
+    let mut prev_ll = f64::NEG_INFINITY;
+    let mut iters_run = 0;
+    for _ in 0..em_iters {
+        iters_run += 1;
+        // precompute per-component ln|Σ| (+ Σ⁻¹ for the full path)
+        let mut inv: Vec<Vec<Vec<f64>>> = Vec::new();
         let mut logdet = vec![0.0f64; k];
-        for c in 0..k {
-            let mut s = sig[c].clone();
-            for a in 0..d { s[a][a] += reg; }
-            match mat_inv_logdet(&s) {
-                Some((iv, ld)) => { inv.push(iv); logdet[c] = ld; }
-                None => { inv.push((0..d).map(|i| (0..d).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect()); logdet[c] = 0.0; }
+        if cov_diag {
+            for c in 0..k { logdet[c] = (0..d).map(|t| (var[c][t] + reg).ln()).sum(); }
+        } else {
+            inv.reserve(k);
+            for c in 0..k {
+                let mut s = sig[c].clone();
+                for a in 0..d { s[a][a] += reg; }
+                match mat_inv_logdet(&s) {
+                    Some((iv, ld)) => { inv.push(iv); logdet[c] = ld; }
+                    None => { inv.push((0..d).map(|i| (0..d).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect()); logdet[c] = 0.0; }
+                }
             }
         }
+        // E-step: responsibilities via log-sum-exp; accumulate total log-likelihood
+        let mut ll = 0.0;
         for i in 0..n {
             let mut lp = vec![0.0f64; k];
             for c in 0..k {
-                let dv: Vec<f64> = (0..d).map(|t| pts[i][t] - mu[c][t]).collect();
-                let maha: f64 = (0..d).map(|a| (0..d).map(|b| dv[a] * inv[c][a][b] * dv[b]).sum::<f64>()).sum();
+                let dv: Vec<f64> = (0..d).map(|t| x[i][t] - mu[c][t]).collect();
+                let maha: f64 = if cov_diag {
+                    (0..d).map(|t| dv[t] * dv[t] / (var[c][t] + reg)).sum()
+                } else {
+                    (0..d).map(|a| (0..d).map(|b| dv[a] * inv[c][a][b] * dv[b]).sum::<f64>()).sum()
+                };
                 lp[c] = pi[c].max(1e-12).ln() - 0.5 * (d as f64 * ln2pi + logdet[c] + maha);
             }
             let mx = lp.iter().cloned().fold(f64::MIN, f64::max);
             let s = mx + lp.iter().map(|l| (l - mx).exp()).sum::<f64>().ln();
+            ll += s;
             for c in 0..k { resp[i][c] = (lp[c] - s).exp(); }
         }
+        // converged? (relative improvement in total log-likelihood is tiny)
+        if (ll - prev_ll).abs() < 1e-7 * ll.abs().max(1.0) { break; }
+        prev_ll = ll;
+        // M-step
         for c in 0..k {
             let nc: f64 = (0..n).map(|i| resp[i][c]).sum::<f64>().max(1e-9);
             pi[c] = nc / n as f64;
-            for t in 0..d { mu[c][t] = (0..n).map(|i| resp[i][c] * pts[i][t]).sum::<f64>() / nc; }
-            for a in 0..d { for b in 0..d {
-                sig[c][a][b] = (0..n).map(|i| resp[i][c] * (pts[i][a] - mu[c][a]) * (pts[i][b] - mu[c][b])).sum::<f64>() / nc;
-            } }
+            for t in 0..d { mu[c][t] = (0..n).map(|i| resp[i][c] * x[i][t]).sum::<f64>() / nc; }
+            if cov_diag {
+                for t in 0..d { var[c][t] = (0..n).map(|i| resp[i][c] * (x[i][t] - mu[c][t]).powi(2)).sum::<f64>() / nc; }
+                if spherical { let m = var[c].iter().sum::<f64>() / d as f64; for t in 0..d { var[c][t] = m; } }
+            } else {
+                for a in 0..d { for b in 0..d {
+                    sig[c][a][b] = (0..n).map(|i| resp[i][c] * (x[i][a] - mu[c][a]) * (x[i][b] - mu[c][b])).sum::<f64>() / nc;
+                } }
+            }
         }
     }
-    (0..n).map(|i| (0..k).max_by(|&a, &b| resp[i][a].partial_cmp(&resp[i][b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap()).collect()
+    let labels: Vec<usize> = (0..n).map(|i| (0..k).max_by(|&a, &b| resp[i][a]
+        .partial_cmp(&resp[i][b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap()).collect();
+    Ok((labels, resp, iters_run))
 }
 
 /// Result of spectral clustering — shared by the handler and tests.
@@ -231,7 +298,9 @@ pub fn kmeans_lloyd(pts: &[Vec<f64>], k: usize, restarts_opt: Option<usize>) -> 
 ///   • `kmeans`   — k-means directly on the standardized numeric fibers.
 ///   • `dbscan`   — density clusters over an ε-neighborhood graph, with noise
 ///     (label −1); ε auto-estimated from the minPts-NN distance if not given.
-/// Deterministic (fixed init) so results are reproducible.
+/// Deterministic: fixed-LCG init AND a stable record order — `records()` yields
+/// base-point-sorted records (src/bundle.rs), so results reproduce across
+/// server restarts, not merely within one process.
 pub fn cluster_records(
     engine: &Engine,
     name: &str,
@@ -304,108 +373,11 @@ pub fn cluster_records(
             sizes, n_noise: 0, method: method.to_string(), notes });
     }
 
-    // ── GMM: full-covariance Gaussian mixture, fit by EM (soft clustering) ──
+    // ── GMM: Gaussian mixture fit by shared EM (soft clustering) ──
     if method == "gmm" {
-        let d = dim;
-        // init from k-means (robust — avoids EM local optima on elongated clusters):
-        // component means, per-component covariance, and mixing weights
-        let init = kmeans_lloyd(&x, k, opts.restarts);
-        let cov_diag = opts.covariance == "diagonal" || opts.covariance == "spherical";
-        let spherical = opts.covariance == "spherical";
-        if !matches!(opts.covariance.as_str(), "full" | "diagonal" | "spherical") {
-            return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
-                "unknown covariance '{}' (expected 'full', 'diagonal', or 'spherical')", opts.covariance)));
-        }
-        let em_iters = opts.max_iters.clamp(1, 1000);
-        let mut mu = vec![vec![0.0f64; d]; k];
-        let mut cnt = vec![0usize; k];
-        for i in 0..n { cnt[init[i]] += 1; for t in 0..d { mu[init[i]][t] += x[i][t]; } }
-        for c in 0..k { if cnt[c] > 0 { for t in 0..d { mu[c][t] /= cnt[c] as f64; } } }
-        let gmean: Vec<f64> = (0..d).map(|t| x.iter().map(|xi| xi[t]).sum::<f64>() / n as f64).collect();
-        let mut gcov = vec![vec![0.0f64; d]; d];
-        for xi in &x { for a in 0..d { for b in 0..d { gcov[a][b] += (xi[a] - gmean[a]) * (xi[b] - gmean[b]); } } }
-        for a in 0..d { for b in 0..d { gcov[a][b] /= n as f64; } }
-        let mut sig: Vec<Vec<Vec<f64>>> = vec![gcov.clone(); k];
-        for c in 0..k {
-            if cnt[c] > d {  // enough points to estimate a component covariance
-                let mut sc = vec![vec![0.0f64; d]; d];
-                for i in 0..n { if init[i] == c {
-                    for a in 0..d { for b in 0..d { sc[a][b] += (x[i][a] - mu[c][a]) * (x[i][b] - mu[c][b]); } }
-                } }
-                for a in 0..d { for b in 0..d { sc[a][b] /= cnt[c] as f64; } }
-                sig[c] = sc;
-            }
-        }
-        // diagonal-variance representation (used for "diagonal"/"spherical")
-        let mut var: Vec<Vec<f64>> = if cov_diag {
-            (0..k).map(|c| {
-                let mut v: Vec<f64> = (0..d).map(|t| sig[c][t][t].max(1e-6)).collect();
-                if spherical { let m = v.iter().sum::<f64>() / d as f64; v = vec![m.max(1e-6); d]; }
-                v
-            }).collect()
-        } else { Vec::new() };
-        let mut pi: Vec<f64> = (0..k).map(|c| cnt[c].max(1) as f64 / n as f64).collect();
-        let mut resp = vec![vec![0.0f64; k]; n];
-        let ln2pi = (2.0 * std::f64::consts::PI).ln();
-        let reg = 1e-6;
-        let mut prev_ll = f64::NEG_INFINITY;
-        let mut iters_run = 0;
-        for _ in 0..em_iters {
-            iters_run += 1;
-            // precompute per-component ln|Σ| (+ Σ⁻¹ for the full path)
-            let mut inv: Vec<Vec<Vec<f64>>> = Vec::new();
-            let mut logdet = vec![0.0f64; k];
-            if cov_diag {
-                for c in 0..k { logdet[c] = (0..d).map(|t| (var[c][t] + reg).ln()).sum(); }
-            } else {
-                inv.reserve(k);
-                for c in 0..k {
-                    let mut s = sig[c].clone();
-                    for a in 0..d { s[a][a] += reg; }
-                    match mat_inv_logdet(&s) {
-                        Some((iv, ld)) => { inv.push(iv); logdet[c] = ld; }
-                        None => { inv.push((0..d).map(|i| (0..d).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect()); logdet[c] = 0.0; }
-                    }
-                }
-            }
-            // E-step: responsibilities via log-sum-exp; accumulate total log-likelihood
-            let mut ll = 0.0;
-            for i in 0..n {
-                let mut lp = vec![0.0f64; k];
-                for c in 0..k {
-                    let dv: Vec<f64> = (0..d).map(|t| x[i][t] - mu[c][t]).collect();
-                    let maha: f64 = if cov_diag {
-                        (0..d).map(|t| dv[t] * dv[t] / (var[c][t] + reg)).sum()
-                    } else {
-                        (0..d).map(|a| (0..d).map(|b| dv[a] * inv[c][a][b] * dv[b]).sum::<f64>()).sum()
-                    };
-                    lp[c] = pi[c].max(1e-12).ln() - 0.5 * (d as f64 * ln2pi + logdet[c] + maha);
-                }
-                let mx = lp.iter().cloned().fold(f64::MIN, f64::max);
-                let s = mx + lp.iter().map(|l| (l - mx).exp()).sum::<f64>().ln();
-                ll += s;
-                for c in 0..k { resp[i][c] = (lp[c] - s).exp(); }
-            }
-            // converged? (relative improvement in total log-likelihood is tiny)
-            if (ll - prev_ll).abs() < 1e-7 * ll.abs().max(1.0) { break; }
-            prev_ll = ll;
-            // M-step
-            for c in 0..k {
-                let nc: f64 = (0..n).map(|i| resp[i][c]).sum::<f64>().max(1e-9);
-                pi[c] = nc / n as f64;
-                for t in 0..d { mu[c][t] = (0..n).map(|i| resp[i][c] * x[i][t]).sum::<f64>() / nc; }
-                if cov_diag {
-                    for t in 0..d { var[c][t] = (0..n).map(|i| resp[i][c] * (x[i][t] - mu[c][t]).powi(2)).sum::<f64>() / nc; }
-                    if spherical { let m = var[c].iter().sum::<f64>() / d as f64; for t in 0..d { var[c][t] = m; } }
-                } else {
-                    for a in 0..d { for b in 0..d {
-                        sig[c][a][b] = (0..n).map(|i| resp[i][c] * (x[i][a] - mu[c][a]) * (x[i][b] - mu[c][b])).sum::<f64>() / nc;
-                    } }
-                }
-            }
-        }
-        let labels: Vec<i64> = (0..n).map(|i| (0..k).max_by(|&a, &b| resp[i][a]
-            .partial_cmp(&resp[i][b]).unwrap_or(std::cmp::Ordering::Equal)).unwrap() as i64).collect();
+        let (labels_u, resp, iters_run) = gmm_em(&x, k, opts)
+            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e))?;
+        let labels: Vec<i64> = labels_u.into_iter().map(|l| l as i64).collect();
         let mut sizes = vec![0usize; k];
         for &l in &labels { sizes[l as usize] += 1; }
         notes.push(format!("GMM ({} covariance, {k} components, EM converged in {iters_run} iterations) on {dim} numeric fibers; coords = soft responsibilities", opts.covariance));
@@ -563,11 +535,16 @@ pub fn cluster_records(
                 if nrm > 1e-12 { for z in row.iter_mut() { *z /= nrm; } }
             }
         }
-        // head over the eigenmap: k-means (default) or a full-covariance GMM
+        // head over the eigenmap: k-means (default) or the SAME `gmm_em` that
+        // `/cluster method=gmm` runs — same covariance option, same init, same
+        // convergence — so eigenspace-vs-raw comparisons isolate representation
         let gmm_head = opts.head == "gmm";
-        let labels = if gmm_head { gmm_labels(&coords, k) } else { kmeans_lloyd(&coords, k, opts.restarts) };
+        let labels = if gmm_head {
+            gmm_em(&coords, k, opts).map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e))?.0
+        } else { kmeans_lloyd(&coords, k, opts.restarts) };
         notes.push(format!("spectral clustering on {dim} numeric fibers: symmetric {deg_k}-NN graph, bottom-{ed} {}Laplacian eigenmaps + {} head",
-            if opts.normalized { "normalized " } else { "" }, if gmm_head { "GMM" } else { "k-means" }));
+            if opts.normalized { "normalized " } else { "" },
+            if gmm_head { format!("GMM ({} covariance)", opts.covariance) } else { "k-means".to_string() }));
         (labels, coords, eigenvalues)
     };
     let labels: Vec<i64> = labels.into_iter().map(|l| l as i64).collect();
@@ -681,6 +658,53 @@ mod tests {
         assert_eq!(hc.sizes.iter().sum::<usize>(), 80);
         assert!(hc.coords.iter().all(|r| r.iter().all(|v| v.is_finite())), "GMM head: finite embedding");
         cleanup(&dir);
+    }
+
+    /// Regression (2026-08-01 multiseed-sweep verification): clustering must
+    /// reproduce ACROSS stores/processes, not just within one. Two stores hold
+    /// the same rows inserted in opposite orders — their section HashMaps have
+    /// independent random SipHash states, so pre-fix `records()` fed the
+    /// fixed-LCG inits a different point order per store and labels drifted.
+    /// Post-fix (base-point-sorted `records()`), every method returns identical
+    /// ids AND labels on both stores.
+    #[test]
+    fn cluster_reproducible_across_store_orders() {
+        let mut rows: Vec<crate::types::Record> = Vec::new();
+        for (b, (ox, oy)) in [(0.0, 0.0), (10.0, 0.0), (5.0, 9.0)].iter().enumerate() {
+            for j in 0..20 {
+                let a = j as f64 * 0.31;
+                rows.push(scan_rec(&[
+                    ("id", V::Text(format!("b{b}_{j}"))),
+                    ("x", V::Float(ox + 0.4 * a.cos())),
+                    ("y", V::Float(oy + 0.4 * a.sin())),
+                ]));
+            }
+        }
+        let mut rev = rows.clone();
+        rev.reverse();
+        let mk = || BundleSchema::new("rord")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("x"))
+            .fiber(FieldDef::numeric("y"));
+        let (dir_a, eng_a) = scan_env("cluster_repro_a", "rord", mk(), rows);
+        let (dir_b, eng_b) = scan_env("cluster_repro_b", "rord", mk(), rev);
+        let cases: Vec<(&str, ClusterOpts)> = vec![
+            ("kmeans", ClusterOpts::default()),
+            ("gmm", ClusterOpts { covariance: "diagonal".into(), ..Default::default() }),
+            // neighbors=25 connects the blobs → exercises the power-iteration
+            // eigenmap + the shared gmm_em head (the multiseed sweep's cell)
+            ("spectral", ClusterOpts { head: "gmm".into(), embed_dim: Some(4),
+                normalized: true, ..Default::default() }),
+        ];
+        for (method, opts) in &cases {
+            let nb = if *method == "spectral" { 25 } else { 6 };
+            let a = cluster_records(&eng_a, "rord", method, 3, nb, None, 4, opts, &[]).unwrap();
+            let b = cluster_records(&eng_b, "rord", method, 3, nb, None, 4, opts, &[]).unwrap();
+            assert_eq!(a.ids, b.ids, "{method}: record order must not depend on insertion/HashMap order");
+            assert_eq!(a.labels, b.labels, "{method}: labels must be identical across stores");
+        }
+        cleanup(&dir_a);
+        cleanup(&dir_b);
     }
 
     /// DBSCAN recovers two dense blobs and marks a lone point as NOISE. Blobs are

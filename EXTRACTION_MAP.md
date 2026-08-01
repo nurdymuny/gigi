@@ -68,7 +68,7 @@ What moved (old lines 9314–12569, minus the handlers) → `src/ml/`:
 | Module | Contents |
 |--------|----------|
 | `src/ml/scan.rs` | `scan_trigrams`, `scan_jaccard`, `scan_solve`, `ScanRequest`, `ScanLenses`, `scan_compute_lenses`, `ScanFitRequest`, fold/epoch defaults |
-| `src/ml/cluster.rs` | `ClusterRequest`, `ClusterOpts`, `ClusterResult`, `gmm_labels`, `mat_inv_logdet`, `kmeans_lloyd`, `cluster_records` |
+| `src/ml/cluster.rs` | `ClusterRequest`, `ClusterOpts`, `ClusterResult`, `gmm_em`, `mat_inv_logdet`, `kmeans_lloyd`, `cluster_records` |
 | `src/ml/infer.rs` | `SupervisedPredictRequest`, `PredictResult`, `local_linear_at`, `local_linear_scaled`, `build_diffusion_graph`, `diffuse`, `predict_field` |
 | `src/ml/reduce.rs` | `ReduceRequest`, `ReduceResult`, `pca_reduce` |
 | `src/ml/prescribe.rs` | `prescribe_top_eigs`, `PrescribeRequest`, `PrescribeResult`, `prescribe_fingerprint` |

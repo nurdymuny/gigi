@@ -2842,10 +2842,20 @@ impl BundleStore {
     }
 
     /// Iterate over all reconstructed records.
+    ///
+    /// Order is DETERMINISTIC across server restarts: `HashMap` iteration order
+    /// is per-process random (SipHash `RandomState`), but each `BasePoint` is a
+    /// schema-seeded wyhash of the base key — stable for fixed data — so the
+    /// hashed branches sort base points before yielding. Fixed-seed ML paths
+    /// (`/cluster` k-means++/EM init, `/factorize` SGD) consume this order;
+    /// without the sort their results were reproducible only within one process
+    /// (caught by the 2026-08-01 multiseed-sweep verification).
     pub fn records(&self) -> Box<dyn Iterator<Item = Record> + '_> {
         match &self.storage {
             BaseStorage::Hashed { sections, .. } => {
-                Box::new(sections.keys().filter_map(move |&bp| self.reconstruct(bp)))
+                let mut bps: Vec<BasePoint> = sections.keys().copied().collect();
+                bps.sort_unstable();
+                Box::new(bps.into_iter().filter_map(move |bp| self.reconstruct(bp)))
             }
             BaseStorage::Sequential {
                 sections,
@@ -2905,7 +2915,11 @@ impl BundleStore {
                 overflow_sections, ..
             } => {
                 let mut bps: Vec<BasePoint> = self.seq_bp_list.clone();
-                bps.extend(overflow_sections.keys());
+                // sequential run keeps insertion order; overflow keys sorted for
+                // the same cross-restart determinism as the Hashed branch
+                let mut overflow: Vec<BasePoint> = overflow_sections.keys().copied().collect();
+                overflow.sort_unstable();
+                bps.extend(overflow);
                 Box::new(bps.into_iter().filter_map(move |bp| self.reconstruct(bp)))
             }
         }

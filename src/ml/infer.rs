@@ -483,7 +483,12 @@ pub fn predict_field(
             let te: std::collections::HashSet<usize> = train.iter().enumerate()
                 .filter(|(ix, _)| ix % fld == f).map(|(_, &i)| i).collect();
             let pool_set: std::collections::HashSet<usize> = train.iter().copied().filter(|i| !te.contains(i)).collect();
-            let pool: Vec<usize> = pool_set.iter().copied().collect();
+            // sort: HashSet iteration order is per-instance random, and Pegasos
+            // SGD consumes pool order (its fixed-LCG shuffle only permutes the
+            // order it is given) — unsorted, /infer method=svm returned a
+            // different accuracy on every call (2026-08-01 multiseed sweep)
+            let mut pool: Vec<usize> = pool_set.iter().copied().collect();
+            pool.sort_unstable();
             let w = if use_svm { pegasos(&pool) } else { Vec::new() };
             let dpred = if use_diffusion { labelprop(&pool_set) } else { Vec::new() };
             for &q in &te {
@@ -662,6 +667,47 @@ mod tests {
             assert_eq!(pr.method, if method == "svm" { "svm" } else { "knn_vote" });
         }
         cleanup(&dir);
+    }
+
+    /// Regression (2026-08-01 multiseed-sweep verification): /infer method=svm
+    /// must return the SAME accuracy on every call. Pegasos SGD consumes the
+    /// training-pool order; the pool was collected from a HashSet (per-instance
+    /// random iteration order), so repeated identical calls returned different
+    /// accuracies on non-separable data. Post-fix (sorted pool) the fixed-LCG
+    /// shuffle is the only permutation and results are call-stable — here
+    /// checked on overlapping classes, twice on one store and once on a store
+    /// built in reverse insertion order.
+    #[test]
+    fn predict_svm_is_deterministic_across_calls_and_stores() {
+        let mut rows: Vec<crate::types::Record> = Vec::new();
+        let mut s: u64 = 41;
+        let mut rnd = || { s = s.wrapping_mul(6364136223846793005).wrapping_add(1); (s >> 33) as f64 / (1u64 << 31) as f64 };
+        for (c, (ox, oy)) in [(0usize, (0.0, 0.0)), (1usize, (1.2, 1.2))] {
+            for j in 0..60 {
+                rows.push(scan_rec(&[
+                    ("id", V::Text(format!("s{c}_{j}"))),
+                    // heavy overlap: offset 1.2 vs noise 2.0 → SGD-order-sensitive fit
+                    ("x", V::Float(ox + rnd() * 2.0)), ("y", V::Float(oy + rnd() * 2.0)),
+                    ("label", V::Text(format!("class{c}"))),
+                ]));
+            }
+        }
+        let mut rev = rows.clone();
+        rev.reverse();
+        let mk = || BundleSchema::new("svmdet")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("x")).fiber(FieldDef::numeric("y")).fiber(FieldDef::categorical("label"));
+        let (dir_a, eng_a) = scan_env("svm_det_a", "svmdet", mk(), rows);
+        let (dir_b, eng_b) = scan_env("svm_det_b", "svmdet", mk(), rev);
+        let acc = |eng: &Engine| predict_field(eng, "svmdet", "label", "svm", 7, 0.5, 5, &[])
+            .expect("svm").metric["accuracy"].as_f64().unwrap();
+        let a1 = acc(&eng_a);
+        let a2 = acc(&eng_a);
+        let b1 = acc(&eng_b);
+        assert_eq!(a1, a2, "svm accuracy must be identical across repeated calls");
+        assert_eq!(a1, b1, "svm accuracy must not depend on insertion/HashMap order");
+        cleanup(&dir_a);
+        cleanup(&dir_b);
     }
 
     /// Predict endpoint gives actionable errors, not panics, on bad input.

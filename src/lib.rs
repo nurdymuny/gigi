@@ -198,6 +198,12 @@ pub mod query;
 // See `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` §7.
 pub mod ratchet;
 pub mod sheaf;
+// Shared HTTP-layer helpers hoisted from the gigi-stream binary
+// (stream-extraction phase 2, EXTRACTION_MAP.md "Cross-family shared
+// modules"): ErrorResponse + not_found / bad_request / heap_or_promote
+// (cfg kahler) + the triple-shared extract_field_samples (brain + PK
+// REST + GQL verb arms).
+pub mod stream_shared;
 // Atlas-cover sharding model. Opt-in via the `sharded` feature flag.
 // Phase A: types + skeleton; execution bodies are `todo!()` /
 // NotImplementedYet errors until Phase B integrates with BundleStore.

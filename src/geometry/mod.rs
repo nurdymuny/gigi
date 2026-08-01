@@ -69,6 +69,10 @@ pub mod contact;
 pub mod fisher;
 #[cfg(feature = "post_kahler_phase1")]
 pub mod wasserstein;
+// PK-1..3 REST logic moved out of the gigi-stream binary
+// (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
+#[cfg(feature = "post_kahler_phase1")]
+pub mod pk_http;
 
 pub use complex_structure::{ComplexStructure, ComplexStructureError};
 pub use forms::{ClosedTwoForm, ClosednessError, TwoForm};

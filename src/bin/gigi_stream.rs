@@ -689,10 +689,10 @@ struct MetaInfo {
     count: Option<usize>,
 }
 
-#[derive(Serialize)]
-struct ErrorResponse {
-    error: String,
-}
+// `ErrorResponse` hoisted to gigi::stream_shared (stream-extraction
+// phase 2, EXTRACTION_MAP.md) so the shared error helpers and the
+// extracted route-family lib modules can name it.
+use gigi::stream_shared::ErrorResponse;
 
 #[derive(Serialize)]
 struct HealthResponse {
@@ -4572,107 +4572,11 @@ async fn flat_transport_endpoint(
 // Wire shapes pinned by tests/kahler_brain_endpoints_contract.rs.
 // Catalog: theory/brain_primitives/catalog.md.
 
+// `extract_field_samples` hoisted to gigi::stream_shared
+// (stream-extraction phase 2, EXTRACTION_MAP.md): triple-shared by the
+// brain endpoints here, the PK REST lib modules, and the GQL verb arms.
 #[cfg(feature = "kahler")]
-fn extract_field_samples(
-    store: &gigi::BundleStore,
-    fields: &[String],
-) -> Result<(Vec<Vec<f64>>, Vec<usize>), String> {
-    if fields.is_empty() {
-        return Err("at least one fiber field required".into());
-    }
-    // Records are slices indexed by fiber-field position. Resolve
-    // each requested name to its index in the schema. We give a
-    // detailed error message if the field is in base_fields rather
-    // than fiber_fields (per Marcella's 2026-05-25 probe report —
-    // her `token_id` is a base_field and the original "not in
-    // schema" message was confusing).
-    let mut field_idx = Vec::with_capacity(fields.len());
-    for f in fields {
-        let i = store
-            .schema
-            .fiber_fields
-            .iter()
-            .position(|fd| fd.name == *f)
-            .ok_or_else(|| {
-                let in_base = store
-                    .schema
-                    .base_fields
-                    .iter()
-                    .any(|fd| fd.name == *f);
-                let available_fiber: Vec<&str> = store
-                    .schema
-                    .fiber_fields
-                    .iter()
-                    .map(|fd| fd.name.as_str())
-                    .collect();
-                if in_base {
-                    format!(
-                        "field '{}' is a base_field (query key), not a fiber_field. \
-                         Brain endpoints only operate on fiber dimensions. \
-                         Available fiber_fields: {:?}",
-                        f, available_fiber
-                    )
-                } else {
-                    format!(
-                        "field '{}' not found in schema. \
-                         Available fiber_fields: {:?}",
-                        f, available_fiber
-                    )
-                }
-            })?;
-        field_idx.push(i);
-    }
-    // Skip-and-log (engine hardening, Hallie's ask #7): a single record with a
-    // non-numeric or missing fiber value must NOT fail the whole brain endpoint
-    // (intent_gate / confidence / attend / explain). One poisoned row today took
-    // down live Marcella's confidence gate — fail-open on every query. Drop the
-    // offending record, count it, and continue on the valid rows, reporting once.
-    // `kept` carries each surviving row's original section index so callers that
-    // map results back to records (attend) stay correct; with no corruption it is
-    // simply `0..n`, identical to the old behaviour.
-    let mut samples = Vec::new();
-    let mut kept: Vec<usize> = Vec::new();
-    let mut skipped = 0usize;
-    let mut skip_field: Option<String> = None;
-    for (orig_idx, (_bp, record)) in store.sections().enumerate() {
-        let mut row = Vec::with_capacity(fields.len());
-        let mut bad = false;
-        for &i in &field_idx {
-            let v = match record.get(i) {
-                Some(gigi::types::Value::Float(x)) => *x,
-                Some(gigi::types::Value::Integer(j)) => *j as f64,
-                _ => {
-                    if skip_field.is_none() {
-                        skip_field = Some(
-                            fields[field_idx.iter().position(|&x| x == i).unwrap_or(0)]
-                                .clone(),
-                        );
-                    }
-                    bad = true;
-                    break;
-                }
-            };
-            row.push(v);
-        }
-        if bad {
-            skipped += 1;
-            continue;
-        }
-        samples.push(row);
-        kept.push(orig_idx);
-    }
-    if skipped > 0 {
-        eprintln!(
-            "[extract_field_samples] skip-and-log: dropped {} malformed record(s) \
-             (non-numeric/missing value, first offending field '{}'); continuing on {} \
-             valid record(s). Repair the bundle — one bad row no longer fails the brain.",
-            skipped,
-            skip_field.as_deref().unwrap_or("?"),
-            samples.len()
-        );
-    }
-    Ok((samples, kept))
-}
+use gigi::stream_shared::extract_field_samples;
 
 /// Materialize a `(N, D)` matrix from a bundle, served from cache when
 /// possible. Per Marcella's 2026-05-29 `GIGI_BUG_REPORT_onfields_latency.md`:
@@ -7919,63 +7823,11 @@ async fn brain_semantic_endpoint(
 }
 
 // ─── helpers for the 5 brain endpoints ─────────────────────
-
+// not_found / bad_request / heap_or_promote hoisted to
+// gigi::stream_shared (stream-extraction phase 2, EXTRACTION_MAP.md);
+// shared with the PK REST lib modules.
 #[cfg(feature = "kahler")]
-fn not_found(msg: &str) -> (StatusCode, Json<ErrorResponse>) {
-    (
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse {
-            error: msg.to_string(),
-        }),
-    )
-}
-
-#[cfg(feature = "kahler")]
-fn bad_request(msg: &str) -> (StatusCode, Json<ErrorResponse>) {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(ErrorResponse {
-            error: msg.to_string(),
-        }),
-    )
-}
-
-/// **#107 fix.** Adapter that lets brain endpoints handle both
-/// heap-resident and mmap+overlay bundles. Heap path is zero-cost
-/// (returns the existing &BundleStore reference). Overlay path
-/// materializes the merged view into a temporary heap store
-/// (O(N) walk, ~10ms for 10k records) and returns a reference
-/// into the caller's stack-allocated `Option<BundleStore>`.
-///
-/// Usage pattern (3 lines per endpoint):
-///
-/// ```ignore
-/// let store_ref = engine.bundle(&name).ok_or_else(|| not_found(...))?;
-/// let mut _promoted: Option<gigi::BundleStore> = None;
-/// let heap = heap_or_promote(&store_ref, &mut _promoted);
-/// // ... `heap: &BundleStore` works identically for both variants ...
-/// ```
-///
-/// This is a deliberately surgical fix: it preserves the existing
-/// helper signatures (`extract_field_samples`, `fit_*_gaussian`,
-/// `flow_from_bundle_cached`, etc.) that all take `&BundleStore`,
-/// instead of refactoring them to be polymorphic. The one-time
-/// materialize cost is dominated by the existing per-call fit work.
-#[cfg(feature = "kahler")]
-fn heap_or_promote<'a>(
-    store: &'a gigi::BundleRef<'a>,
-    promoted: &'a mut Option<gigi::BundleStore>,
-) -> &'a gigi::BundleStore {
-    match store {
-        gigi::BundleRef::Heap(h) => *h,
-        gigi::BundleRef::Overlay(o) => {
-            *promoted = Some(o.to_temp_heap_store());
-            promoted
-                .as_ref()
-                .expect("promoted was just set in this branch")
-        }
-    }
-}
+use gigi::stream_shared::{bad_request, heap_or_promote, not_found};
 
 /// Build a canonical block-form symplectic 2-form `[[0, -I], [I, 0]]`
 /// in even dimension `n`. Returns None for odd or zero dimension.
@@ -9861,10 +9713,8 @@ async fn ml_catalog() -> Json<serde_json::Value> {
 
 /// PK-2 — GET /v1/bundles/{name}/fisher_metric[?fields=f1,f2,…]
 ///
-/// The Fisher information metric of each numeric fiber, read for free
-/// from the bundle's L4 Welford variance: for a field modeled as
-/// `N(μ,σ²)` the metric in the `(μ,σ)` chart is `g = diag(1/σ², 2/σ²)`,
-/// `g_μσ = 0`. Fields with zero/undefined variance are omitted.
+/// Thin wrapper over [`gigi::geometry::pk_http::fisher_metric`]
+/// (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
 #[cfg(feature = "post_kahler_phase1")]
 async fn bundle_fisher_metric(
     State(state): State<Arc<StreamState>>,
@@ -9872,175 +9722,32 @@ async fn bundle_fisher_metric(
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
-    let store = engine
-        .bundle(&name)
-        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let mut _promoted: Option<gigi::BundleStore> = None;
-    let heap = heap_or_promote(&store, &mut _promoted);
-    let stats = heap.field_stats();
-
-    let fields: Vec<String> = match params.get("fields") {
-        Some(s) => s
-            .split(',')
-            .map(|x| x.trim().to_string())
-            .filter(|x| !x.is_empty())
-            .collect(),
-        None => heap.schema.fiber_fields.iter().map(|fd| fd.name.clone()).collect(),
-    };
-    if fields.is_empty() {
-        return Err(bad_request("no numeric fiber fields to read a Fisher metric from"));
-    }
-
-    let mut metrics = Vec::new();
-    let mut skipped: Vec<String> = Vec::new();
-    for f in &fields {
-        let s = match stats.get(f) {
-            Some(s) if s.count > 0 => s,
-            _ => {
-                skipped.push(f.clone());
-                continue;
-            }
-        };
-        let var = s.variance();
-        match gigi::geometry::FisherGaussian::from_variance(var) {
-            Ok(g) => metrics.push(serde_json::json!({
-                "field": f,
-                "mean": s.mean,
-                "variance": var,
-                "g_mu_mu": g.g_mu_mu,
-                "g_sigma_sigma": g.g_sigma_sigma,
-                "g_mu_sigma": g.g_mu_sigma,
-                "det": g.determinant(),
-            })),
-            Err(_) => skipped.push(f.clone()),
-        }
-    }
-    if metrics.is_empty() {
-        return Err(bad_request(
-            "no requested field had positive Welford variance (Fisher metric undefined)",
-        ));
-    }
-    Ok(Json(serde_json::json!({
-        "bundle": name,
-        "chart": "(mu, sigma)",
-        "closed_form": "g = diag(1/sigma^2, 2/sigma^2), g_mu_sigma = 0",
-        "metrics": metrics,
-        "skipped": skipped,
-        "notes": [
-            "Fisher metric of the univariate Gaussian family, read from L4 Welford variance — no extra pass.",
-            "Fields with zero observations or zero variance are omitted (the metric diverges as sigma -> 0)."
-        ],
-    })))
+    gigi::geometry::pk_http::fisher_metric(&engine, &name, &params)
 }
 
-/// PK-3 request. Either supply two raw distributions (`sample_a`,
-/// `sample_b`) or split one bundle by a cohort fiber.
+// PK-3 request struct moved to gigi::geometry::pk_http
+// (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
 #[cfg(feature = "post_kahler_phase1")]
-#[derive(Deserialize)]
-struct WassersteinRequest {
-    /// Fiber whose distribution is compared (cohort mode).
-    #[serde(default)]
-    field: Option<String>,
-    /// Fiber whose value defines the two cohorts.
-    #[serde(default)]
-    cohort_field: Option<String>,
-    /// Cohort A / B selector values on `cohort_field`.
-    #[serde(default)]
-    a: Option<f64>,
-    #[serde(default)]
-    b: Option<f64>,
-    /// Direct mode: W₂ between these two raw samples (bypasses the bundle).
-    #[serde(default)]
-    sample_a: Option<Vec<f64>>,
-    #[serde(default)]
-    sample_b: Option<Vec<f64>>,
-}
+use gigi::geometry::pk_http::WassersteinRequest;
 
 /// PK-3 — POST /v1/bundles/{name}/ml/wasserstein
 ///
-/// Exact 1D 2-Wasserstein distance `W₂` between two empirical
-/// distributions via the monotone rearrangement (Hoeffding). Closed
-/// form for Gaussians: `W₂² = μ_d² + σ_d²`.
+/// Thin wrapper over [`gigi::geometry::pk_http::wasserstein`]
+/// (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
 #[cfg(feature = "post_kahler_phase1")]
 async fn bundle_wasserstein(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<WassersteinRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // Direct mode: two raw samples supplied.
-    let (a_vals, b_vals, mode): (Vec<f64>, Vec<f64>, serde_json::Value) =
-        if let (Some(a), Some(b)) = (req.sample_a.clone(), req.sample_b.clone()) {
-            (a, b, serde_json::json!({"mode": "direct"}))
-        } else {
-            // Cohort mode: split the bundle by cohort_field into a / b.
-            let field = req
-                .field
-                .clone()
-                .ok_or_else(|| bad_request("cohort mode needs `field` (the fiber to compare)"))?;
-            let cohort_field = req.cohort_field.clone().ok_or_else(|| {
-                bad_request("cohort mode needs `cohort_field`, `a`, `b` (or supply sample_a/sample_b)")
-            })?;
-            let (av, bv) = (
-                req.a
-                    .ok_or_else(|| bad_request("cohort mode needs cohort selector `a`"))?,
-                req.b
-                    .ok_or_else(|| bad_request("cohort mode needs cohort selector `b`"))?,
-            );
-            let engine = state.engine_read();
-            let store = engine
-                .bundle(&name)
-                .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-            let mut _promoted: Option<gigi::BundleStore> = None;
-            let heap = heap_or_promote(&store, &mut _promoted);
-            let (rows, _) = extract_field_samples(heap, &[field.clone(), cohort_field.clone()])
-                .map_err(|e| bad_request(&e))?;
-            let mut ga = Vec::new();
-            let mut gb = Vec::new();
-            for r in &rows {
-                if r.len() != 2 {
-                    continue;
-                }
-                if (r[1] - av).abs() < 1e-9 {
-                    ga.push(r[0]);
-                } else if (r[1] - bv).abs() < 1e-9 {
-                    gb.push(r[0]);
-                }
-            }
-            (
-                ga,
-                gb,
-                serde_json::json!({"mode": "cohort", "field": field, "cohort_field": cohort_field, "a": av, "b": bv}),
-            )
-        };
-
-    if a_vals.is_empty() || b_vals.is_empty() {
-        return Err(bad_request(
-            "both cohorts must be non-empty (check the field/cohort selectors or the supplied samples)",
-        ));
-    }
-    let w2_sq = gigi::geometry::Wasserstein1D::compute_sq(&a_vals, &b_vals)
-        .map_err(|e| bad_request(&e.to_string()))?;
-    Ok(Json(serde_json::json!({
-        "bundle": name,
-        "w2_distance": w2_sq.sqrt(),
-        "w2_squared": w2_sq,
-        "n_a": a_vals.len(),
-        "n_b": b_vals.len(),
-        "selection": mode,
-        "notes": [
-            "Exact 1D W2 via monotone rearrangement (Hoeffding). For Gaussians W2^2 = (mu_a-mu_b)^2 + (sigma_a-sigma_b)^2.",
-            "Unequal sample sizes are handled by an exact quantile-function integral, not a fixed grid."
-        ],
-    })))
+    let engine = state.engine_read();
+    gigi::geometry::pk_http::wasserstein(&engine, &name, &req)
 }
 
 /// PK-4 — GET /v1/bundles/{name}/topology/persistence[?fields=x,y&gap_factor=2]
 ///
-/// H₀ persistent homology of the point cloud (records × chosen fibers)
-/// via the Euclidean MST + elder rule: the `n−1` MST edge weights are
-/// the finite death times, one bar survives forever. The persistence
-/// gap (a `gap_factor×` drop off a genuine inter-cluster bridge) yields
-/// the cluster count.
+/// Thin wrapper over [`gigi::discrete::pk_http::persistence`]
+/// (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
 #[cfg(feature = "post_kahler_phase1")]
 async fn bundle_persistence(
     State(state): State<Arc<StreamState>>,
@@ -10048,146 +9755,26 @@ async fn bundle_persistence(
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
-    let store = engine
-        .bundle(&name)
-        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let mut _promoted: Option<gigi::BundleStore> = None;
-    let heap = heap_or_promote(&store, &mut _promoted);
-    let fields: Vec<String> = match params.get("fields") {
-        Some(s) => s
-            .split(',')
-            .map(|x| x.trim().to_string())
-            .filter(|x| !x.is_empty())
-            .collect(),
-        None => heap.schema.fiber_fields.iter().map(|fd| fd.name.clone()).collect(),
-    };
-    if fields.is_empty() {
-        return Err(bad_request("persistence needs at least one numeric fiber field"));
-    }
-    let gap_factor: f64 = params
-        .get("gap_factor")
-        .and_then(|s| s.parse().ok())
-        .filter(|g: &f64| *g > 1.0)
-        .unwrap_or(2.0);
-
-    let (points, _) = extract_field_samples(heap, &fields).map_err(|e| bad_request(&e))?;
-    // Bound the O(n²) MST for a live endpoint.
-    const MAX_POINTS: usize = 4000;
-    if points.len() > MAX_POINTS {
-        return Err((
-            StatusCode::UNPROCESSABLE_ENTITY,
-            Json(ErrorResponse {
-                error: format!(
-                    "persistence caps at {MAX_POINTS} points (got {}); filter the bundle first",
-                    points.len()
-                ),
-            }),
-        ));
-    }
-    let intervals = gigi::discrete::h0_persistence(&points).map_err(|e| bad_request(&e.to_string()))?;
-    let edges = gigi::discrete::mst_merge_edges(&points).map_err(|e| bad_request(&e.to_string()))?;
-    let k = gigi::discrete::cluster_count(&points, gap_factor).unwrap_or(1);
-    let bars: Vec<serde_json::Value> = intervals
-        .iter()
-        .map(|iv| {
-            serde_json::json!({
-                "birth": iv.birth,
-                "death": if iv.death.is_infinite() { serde_json::Value::Null } else { serde_json::json!(iv.death) },
-            })
-        })
-        .collect();
-    Ok(Json(serde_json::json!({
-        "bundle": name,
-        "fields": fields,
-        "n_points": points.len(),
-        "dims": fields.len(),
-        "estimated_clusters": k,
-        "gap_factor": gap_factor,
-        "mst_merge_edges": edges,
-        "h0_intervals": bars,
-        "notes": [
-            "H0 persistence via Euclidean MST + elder rule; n-1 finite bars (MST edges) + 1 infinite bar (null death).",
-            "estimated_clusters = 1 + (bridges above the first gap_factor-drop off an above-mean-length edge)."
-        ],
-    })))
+    gigi::discrete::pk_http::persistence(&engine, &name, &params)
 }
 
-/// PK-1 request — three numeric fibers read as the contact-ℝ³ (x,y,z).
+// PK-1 request struct moved to gigi::geometry::pk_http
+// (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
 #[cfg(feature = "post_kahler_phase1")]
-#[derive(Deserialize)]
-struct ReebFlowRequest {
-    /// Exactly three numeric fiber fields, mapped to (x, y, z).
-    fields: Vec<String>,
-}
+use gigi::geometry::pk_http::ReebFlowRequest;
 
 /// PK-1 — POST /v1/bundles/{name}/brain/reeb_flow
 ///
-/// Surfaces the standard contact structure `α = dz − y·dx` on three
-/// chosen numeric fibers and its Reeb field `R = ∂_z`, verifying the two
-/// defining conditions (`α(R)=1`, `ι_R dα=0`) and non-degeneracy
-/// (`α ∧ dα ≠ 0`) on the bundle's own points. `α(R) ≡ 1` along the flow
-/// is the invariant the Reeb field preserves. (Honest-minimal binding:
-/// the validated contact primitive on the selected coordinates — not a
-/// learned sequence-flow integrator.)
+/// Thin wrapper over [`gigi::geometry::pk_http::reeb_flow`]
+/// (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
 #[cfg(feature = "post_kahler_phase1")]
 async fn bundle_reeb_flow(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
     Json(req): Json<ReebFlowRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    if req.fields.len() != 3 {
-        return Err(bad_request(
-            "reeb_flow needs exactly 3 numeric fiber fields, read as contact coordinates (x, y, z)",
-        ));
-    }
     let engine = state.engine_read();
-    let store = engine
-        .bundle(&name)
-        .ok_or_else(|| not_found(&format!("Bundle '{}' not found", name)))?;
-    let mut _promoted: Option<gigi::BundleStore> = None;
-    let heap = heap_or_promote(&store, &mut _promoted);
-    let (rows, _) = extract_field_samples(heap, &req.fields).map_err(|e| bad_request(&e))?;
-    let points: Vec<[f64; 3]> = rows
-        .iter()
-        .filter(|p| p.len() == 3)
-        .map(|p| [p[0], p[1], p[2]])
-        .collect();
-    if points.is_empty() {
-        return Err(bad_request("no records with all three coordinate fibers present"));
-    }
-    let reeb = gigi::geometry::ContactOneForm::reeb();
-    let alpha_defect = reeb.alpha_defect(&points); // max |α(R) − 1| over the data
-    let probes = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [3.0, -2.0, 5.0]];
-    let dalpha_defect = reeb.dalpha_defect(&probes); // max |ι_R dα|
-    // contact volume at the data mean
-    let n = points.len() as f64;
-    let mean = [
-        points.iter().map(|p| p[0]).sum::<f64>() / n,
-        points.iter().map(|p| p[1]).sum::<f64>() / n,
-        points.iter().map(|p| p[2]).sum::<f64>() / n,
-    ];
-    let vol = gigi::geometry::ContactOneForm::contact_volume(
-        mean,
-        reeb.vector,
-        [1.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0],
-    );
-    Ok(Json(serde_json::json!({
-        "bundle": name,
-        "fields": req.fields,
-        "coordinates": "alpha = dz - y dx on (x, y, z) = the three fields, in order",
-        "reeb_field": reeb.vector,
-        "n_points": points.len(),
-        "alpha_of_reeb_defect": alpha_defect,   // ~0: α(R) ≡ 1 (Reeb condition I)
-        "iota_r_dalpha_defect": dalpha_defect,  // ~0: ι_R dα ≡ 0 (Reeb condition II)
-        "contact_volume_at_mean": vol,          // != 0: α ∧ dα is a volume form
-        "is_contact": vol.abs() > 1e-12,
-        "flow_invariant": "alpha(R) = 1 is preserved along the Reeb flow (translation in +z)",
-        "notes": [
-            "Standard contact R^3 primitive surfaced on the three chosen fibers; verifications hold structurally and on the data.",
-            "Honest-minimal binding: not a learned token-sequence flow integrator."
-        ],
-    })))
+    gigi::geometry::pk_http::reeb_flow(&engine, &name, &req)
 }
 
 /// GET /v1/bundles/{name}/health
@@ -18804,60 +18391,9 @@ mod tests {
         cleanup(&dir2);
     }
 
-    /// **Skip-and-log (Hallie's ask #7).** One poisoned record — a non-numeric
-    /// value in a numeric fiber field, exactly what landed in
-    /// `marcella_source_embeddings_bge_v2` and took down `intent_gate` (and with
-    /// it live Marcella's confidence gate) — must NOT fail the whole brain
-    /// endpoint. `extract_field_samples` drops the bad row, keeps the rest, and
-    /// returns each survivor's original section index so `attend` still maps
-    /// results back to the right records.
-    ///
-    /// Gated on `kahler` because `extract_field_samples` itself is — without
-    /// the gate the whole no-feature `--bin gigi-stream` test build fails to
-    /// compile (found while closing the h1-vs-κ perf-doc flag, 2026-07-30).
-    #[cfg(feature = "kahler")]
-    #[test]
-    fn extract_field_samples_skips_poisoned_record() {
-        use gigi::types::{BundleSchema, FieldDef, Record, Value};
-        let schema = BundleSchema::new("poisoned_bge")
-            .base(FieldDef::numeric("id"))
-            .fiber(FieldDef::numeric("v0").with_range(5.0))
-            .fiber(FieldDef::numeric("v1").with_range(5.0));
-        let mut store = gigi::BundleStore::new(schema);
-        for i in 0..5 {
-            let mut r = Record::new();
-            r.insert("id".into(), Value::Integer(i));
-            r.insert("v0".into(), Value::Float(i as f64));
-            r.insert("v1".into(), Value::Float(i as f64 + 0.5));
-            // one record gets a non-numeric v0 — the exact corruption shape.
-            if i == 2 {
-                r.insert("v0".into(), Value::Text("corrupt".into()));
-            }
-            store.insert(&r);
-        }
-        let fields = vec!["v0".to_string(), "v1".to_string()];
-        let (samples, kept) = extract_field_samples(&store, &fields)
-            .expect("one bad row must not fail the endpoint");
-
-        // exactly the four clean records survive; the poisoned v0 (=2.0) is gone.
-        assert_eq!(samples.len(), 4, "four clean records survive");
-        assert_eq!(kept.len(), samples.len(), "one kept index per surviving row");
-        let mut v0s: Vec<f64> = samples.iter().map(|r| r[0]).collect();
-        assert!(!v0s.contains(&2.0), "poisoned record's row is absent");
-        v0s.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        assert_eq!(v0s, vec![0.0, 1.0, 3.0, 4.0]);
-
-        // `kept` maps each surviving row back to its true record (attend-correct).
-        let secs: Vec<_> = store.sections().collect();
-        for (j, &orig) in kept.iter().enumerate() {
-            match secs[orig].1.get(0) {
-                Some(Value::Float(x)) => {
-                    assert_eq!(*x, samples[j][0], "kept[{j}] maps row to its record")
-                }
-                other => panic!("kept index {orig} points at non-numeric {other:?}"),
-            }
-        }
-    }
+    // `extract_field_samples_skips_poisoned_record` moved to
+    // gigi::stream_shared with the hoisted helper it exercises
+    // (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
 
     /// Regression guard: one bundle exercised through EVERY ML entry point, so a
     /// future change can't silently break an endpoint. Asserts each returns

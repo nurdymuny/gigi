@@ -40,6 +40,10 @@ pub mod hodge_laplacian;
 pub mod morse;
 #[cfg(feature = "post_kahler_phase1")]
 pub mod persistent_homology;
+// PK-4 REST logic moved out of the gigi-stream binary
+// (stream-extraction phase 2, family 2; see EXTRACTION_MAP.md).
+#[cfg(feature = "post_kahler_phase1")]
+pub mod pk_http;
 
 pub use hodge_complex::{HodgeComplex, HodgeComplexError};
 pub use hodge_laplacian::{betti, BettiNumbers};

@@ -198,6 +198,15 @@ pub mod query;
 // See `GIGI_ENCRYPT_v0.3_SPRINT_SPEC.md` §7.
 pub mod ratchet;
 pub mod sheaf;
+// Ask G — Patterns HTTP-surface free logic (stream-extraction phase 2,
+// family 3; see EXTRACTION_MAP.md). Same `patterns` feature gate as the
+// parser verbs it translates to.
+#[cfg(feature = "patterns")]
+pub mod patterns;
+// Wire converters shared between the binary and extracted route
+// families (EXTRACTION_MAP.md cross-family table; hoisted in stages
+// ahead of family 9 — `value_to_json` first, for patterns::http).
+pub mod wire;
 // Shared HTTP-layer helpers hoisted from the gigi-stream binary
 // (stream-extraction phase 2, EXTRACTION_MAP.md "Cross-family shared
 // modules"): ErrorResponse + not_found / bad_request / heap_or_promote

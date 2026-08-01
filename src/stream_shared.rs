@@ -6,6 +6,9 @@
 //! from the binary — the only edits are `gigi::` → `crate::` paths and
 //! `pub` visibility.
 
+// Only the cfg(kahler) error helpers touch axum types; keep the import
+// under the same gate so the no-feature build stays warning-free.
+#[cfg(feature = "kahler")]
 use axum::{http::StatusCode, Json};
 use serde::Serialize;
 

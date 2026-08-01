@@ -8,7 +8,7 @@ COPY src/ ./src/
 COPY benches/ ./benches/
 COPY examples/ ./examples/
 COPY dashboard/ ./dashboard/
-RUN cargo build --release --features "kahler imagine sharded transactions patterns causal_states wish halcyon post_kahler_phase1" --bin gigi-stream
+RUN cargo build --release --features "kahler imagine sharded transactions patterns causal_states wish halcyon post_kahler_phase1" --bin gigi-stream --bin gigi-convert --bin gigi-edge
 
 # Stage 2: Runtime
 FROM debian:trixie-slim
@@ -20,6 +20,8 @@ FROM debian:trixie-slim
 # copy of production data is the local fly volume.
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates awscli && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /build/target/release/gigi-stream /usr/local/bin/
+COPY --from=builder /build/target/release/gigi-convert /usr/local/bin/
+COPY --from=builder /build/target/release/gigi-edge /usr/local/bin/
 RUN useradd -m gigi
 WORKDIR /home/gigi
 USER gigi

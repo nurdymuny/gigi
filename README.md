@@ -172,35 +172,69 @@ Detailed gate-by-gate ledgers live under [`theory/halcyon/`](theory/halcyon/), [
 > [`BENCHMARKS_VS_STORES.md`](BENCHMARKS_VS_STORES.md), harness committed under
 > [`benchmarks/vs_stores/`](benchmarks/vs_stores/).
 
-Same data, same split, same metric on both sides. The first four rows are artifact-grade:
-captured in [`scripts/sweep_results.json`](scripts/sweep_results.json), a snapshot written by
-[`scripts/full_sweep.py`](scripts/full_sweep.py) driving a live GIGI release server against
-sklearn — "an honest snapshot, **not a re-runnable gate**"
-([`theory/reviews/ML_SUITE_REVIEW_2026-07-18.md`](theory/reviews/ML_SUITE_REVIEW_2026-07-18.md) §3).
-The last two rows are claim-grade (†): their flat sides are corroborated by the sweep, but no
-artifact file in the repo captures the geometric-side runs — they are attested only in the
-`/v1/ml` catalog evidence string (`src/bin/gigi_stream.rs`, `positioning.evidence` in `ml_catalog`) and commit messages `9a17360` / `912f450`.
+Same data, same split, same metric on both sides. Every number below is **mean ± sample std
+across 5 fixed seeds** (20260801–20260805), captured in
+[`scripts/sweep_results_multiseed.json`](scripts/sweep_results_multiseed.json), written by
+[`scripts/multiseed_sweep.py`](scripts/multiseed_sweep.py) driving a live GIGI release server
+against sklearn. Verdicts use the artifact's rule: WIN/LOSS only when the signed delta clears
+max(combined std, 0.005), else PARITY. The GIGI arm exposes no seed parameter and is
+deterministic for fixed data **across server restarts and repeated calls** (base-point-sorted
+`records()` + fixed-LCG inits + sorted SVM training pool — fixes `df4997c` / `d5ceb6f`, after
+artifact verification caught reproducibility holding only within one server process, and for
+SVM not even that); its std 0.0 is measured per seed, not assumed, and
+re-verified by [`scripts/multiseed_repro_probe.py`](scripts/multiseed_repro_probe.py) (two
+fresh server processes, values identical to the artifact). **Tally over all 27 cells: 11 WIN /
+10 PARITY / 6 LOSS.**
+
+Where the geometric method wins:
 
 | Task · dataset | Metric | Geometric | Flat baseline |
 |---|---|---|---|
-| cluster · iris | ARI | GIGI spectral (Laplacian eigenmap) — 0.62 | sklearn Spectral — 0.602 |
-| cluster · digits | ARI | GIGI spectral (Laplacian eigenmap) — 0.679 | sklearn Spectral — 0.665 |
-| anomaly · bcancer-rare | PR-AUC | GIGI `/scan` (7 geometric lenses) — 0.559 | sklearn IsolationForest — 0.552 |
-| regress · diabetes | coverage (90% target) | GIGI gp split-conformal (`/infer method=gp`) — 0.919 | sklearn GP (1.645·sd intervals) — 0.902 |
-| classify · digits † | accuracy | label-propagation (diffusion on graph Laplacian, `/infer method=diffusion`) — 0.973 | flat kNN — 0.944 |
-| cluster · digits † | ARI | spectral + GMM head in the Laplacian eigenspace (`/cluster method=spectral, head=gmm`) — 0.708 | raw-pixel GMM (sklearn) — 0.594 |
+| cluster · iris | ARI | GIGI spectral (Laplacian eigenmap) — 0.620 ± 0.000 | sklearn Spectral — 0.602 ± 0.000 |
+| cluster · digits | ARI | GIGI spectral (Laplacian eigenmap) — 0.676 ± 0.000 | sklearn Spectral — 0.665 ± 0.001 |
+| classify · digits | accuracy | label-propagation (diffusion on graph Laplacian, `/infer method=diffusion`) — 0.973 ± 0.000 | flat kNN — 0.944 ± 0.000 |
+| representation · digits | ARI | the **same GMM** in the spectral eigenspace (`/cluster method=spectral, head=gmm, covariance=diagonal`) — 0.612 ± 0.000 | the same GMM on raw pixels — 0.256 ± 0.000 |
 
-Caveats: the diabetes row is over-coverage on *both* arms (both land above the 90% target), and
-the review flags the "guaranteed coverage" code comment as overstated (cross-conformal,
-empirically calibrated). The sweep also runs GIGI's own flat implementations (knn, svm, kmeans,
-gmm, ols, PCA) against sklearn as a control arm — implementation-parity evidence, not geometric wins.
+The representation row is a controlled experiment, not a benchmark comparison: both arms run
+one shared EM implementation (`gmm_em`, `src/ml/cluster.rs`) with identical covariance, init,
+and convergence — only the representation changes, so the +0.356 ARI is the isolated
+representation effect. (sklearn GMM on the same raw pixels rides along in the artifact at
+0.491 ± 0.063.) Earlier single-run figures for this row (0.594 → 0.708) predate two fixes the
+2026-08-01 artifact verification forced — the spectral head previously ran a *different* GMM
+implementation than the raw arm, and record order was process-dependent — and are superseded;
+the diffusion row's earlier figures survived the re-run unchanged.
 
-**Where flat wins:** digits GMM ARI 0.39 vs sklearn 0.594 (the largest loss in the sweep; the claimed eigenspace recovery to 0.708 is the †row above), diabetes local_linear R² 0.366 vs KNN-reg 0.449, iris SVM accuracy 0.913 vs SVC(rbf) 0.967, wine spectral ARI 0.833 vs 0.88 (a geometric method losing, not a control arm), wine kmeans ARI 0.897 vs 0.915, digits kmeans ARI 0.4 vs 0.465 — plus exact ties on iris kmeans (0.62), iris gmm (0.904), wine svm (0.983), bcancer knn (0.968), and all three PCA rows (0.554 / 0.632 / 0.216); the catalog's own positioning text concedes "On flat data they tie."
+**Parity with zero configuration** (10 cells): iris kmeans (0.620 vs 0.618 ± 0.005), iris gmm
+(0.904 vs 0.826 ± 0.173), wine svm (0.983 vs 0.983), bcancer knn (0.965 vs 0.968),
+bcancer svm (0.975 vs 0.974), diabetes ols R² (0.486 vs 0.482), all three PCA rows
+(equal to ≤ 3·10⁻⁶), and anomaly · bcancer-rare PR-AUC (GIGI `/scan` 0.539 ± 0.099 vs
+IsolationForest 0.542 ± 0.078 — the seeded malignant subsample varies both arms; formerly
+presented as a single-run win at 0.559 vs 0.552, which the multiseed variance dissolves).
+GIGI's own flat implementations also post WINs against sklearn on wine kmeans
+(0.915 vs 0.897), wine gmm (0.947 vs 0.884 ± 0.023), iris/wine/digits knn, digits svm, and
+MovieLens matrix factorization RMSE (0.911 vs 0.929 ± 0.006) — implementation-quality
+evidence, not geometric wins.
 
-**Sources:** `scripts/sweep_results.json` :25–26, :79–80, :214–215, :178–179 (table rows 1–4);
-:143 and :71 (flat sides of the †rows); losses and ties at :7–8, :16–17, :34–35, :52–53, :61–62,
-:70–71, :97–98, :115–116, :124–125, :160–161, :187–188, :196–197, :205–206. Claim text:
-`src/bin/gigi_stream.rs` (`ml_catalog`). Review: `theory/reviews/ML_SUITE_REVIEW_2026-07-18.md` (findings 4–5).
+**Where flat wins** (6 cells): digits gmm ARI 0.256 vs sklearn 0.491 ± 0.063 (the largest
+loss in the sweep; the eigenspace recovery of that same GMM to 0.612 is the representation row
+above), digits kmeans ARI 0.454 vs 0.506 ± 0.049, wine spectral ARI 0.833 vs 0.880 (a
+geometric method losing, not a control arm), iris SVM accuracy 0.913 vs SVC(rbf)
+0.967, diabetes local_linear R² 0.408 vs KNN-reg 0.449, and diabetes gp 90%-coverage 0.878 vs
+0.907 ± 0.024 (the sklearn intervals land nearer the target; the prior single-run snapshot had
+this as a GIGI win at 0.919 vs 0.902 — the multiseed re-run flips it, reported as the loss it
+now is). The catalog's own positioning text concedes "On flat data they tie."
+
+**Sources:** [`scripts/sweep_results_multiseed.json`](scripts/sweep_results_multiseed.json)
+(per-seed raws, means, stds, thresholds, verdicts for all 27 cells; `meta` records seeds,
+server lifecycle, binary, and commit). Harness:
+[`scripts/multiseed_sweep.py`](scripts/multiseed_sweep.py); standing reproducibility gate:
+[`scripts/multiseed_repro_probe.py`](scripts/multiseed_repro_probe.py). The older single-run
+snapshot [`scripts/sweep_results.json`](scripts/sweep_results.json) is retained for
+provenance ("an honest snapshot, **not a re-runnable gate**" —
+[`theory/reviews/ML_SUITE_REVIEW_2026-07-18.md`](theory/reviews/ML_SUITE_REVIEW_2026-07-18.md)
+§3); where the two disagree, the multiseed artifact supersedes it. Claim text:
+`src/bin/gigi_stream.rs` (`ml_catalog`). The review's "guaranteed coverage" flag on the gp
+code comment still stands (cross-conformal, empirically calibrated).
 
 **Cost footnote.** On a 5,000-record × 17-dimension bundle with no indexed fiber fields,
 `SPECTRAL` timed out at 30 s and passed at 180 s; the warm second run completed in ~120 s

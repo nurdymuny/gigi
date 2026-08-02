@@ -1680,7 +1680,11 @@ INGEST chembl   FROM 'molecules.csv' FORMAT CSV KEY chembl_id;
 
 -- JSONL / NDJSON: one object per line; KEY is required (JSON objects
 -- have no column order). Numeric arrays become Vector fibers, so
--- embeddings ingest as first-class vectors.
+-- embeddings ingest as first-class vectors. Brain endpoints expand a
+-- vector(d) fiber into d sample columns per record (since 2026-08-02;
+-- earlier builds skipped Vector fibers in /brain/* — symptom was a
+-- 200 with n_samples: 0). Exploded scalar fields v0..vN remain fully
+-- supported; the VECTOR (v0..vN) range sugar assembles them.
 INGEST docs FROM 'embeddings.jsonl' FORMAT JSONL KEY doc_id;
 ```
 

@@ -533,6 +533,7 @@ preserves event-vs-noise ordering but stays a finite number.
 | Sample values blow up to 1e96+ | Rank-deficient axis with diagonal fit and no floor | Default floor (`sigma_floor_epsilon: 1e-3`) prevents this; if you explicitly disabled it, re-enable |
 | `persistence_ratio` overflows to 1e288+ | Clustered timestamps with `gap_floor_epsilon: 0` | Default `1e-6` prevents this; re-enable |
 | `"Bundle '...' is not heap-resident"` | Bundle only on mmap, brain endpoints need heap | Brain primitives all require heap; touch a record to bring it into heap or wait for next checkpoint |
+| `"all N record(s) were skipped — values in field '...' do not match its schema type"` | Every record's value for a requested field is unusable (wrong type, or a vector whose length ≠ its declared dims) | Fix the stored representation; the extractor refuses to answer over an empty sample set rather than return a confident 200 with `n_samples: 0`. On builds before 2026-08-02, `vector(d)` fibers themselves triggered this silently — upgrade, or store embeddings as scalar fields `v0..vN` |
 | Empty `events` from EPISODIC on data with obvious change-points | Threshold `min_persistence_ratio` too high | Default 50× is conservative; try 20× or 10× for shorter sequences |
 | ATTEND with all-equal weights | Bandwidth too large relative to inter-sample distance | Try `bandwidth: 0.1` or use the auto-derived default (omit field) |
 

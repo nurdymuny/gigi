@@ -31,7 +31,14 @@ pub fn extract_field_samples(
     // than fiber_fields (per Marcella's 2026-05-25 probe report —
     // her `token_id` is a base_field and the original "not in
     // schema" message was confusing).
+    // Each requested field contributes 1 sample column (scalar) or
+    // `dims` columns (a `vector(dims)` fiber, expanded per-component —
+    // the same expansion the dial surface's `ScopedField::Vector` arm
+    // does). Before 2026-08-02 a `Value::Vector` fell to the skip arm
+    // below and a fully-vector bundle answered every brain endpoint
+    // over zero samples (Art's vec_probe report).
     let mut field_idx = Vec::with_capacity(fields.len());
+    let mut field_cols = Vec::with_capacity(fields.len());
     for f in fields {
         let i = store
             .schema
@@ -66,7 +73,14 @@ pub fn extract_field_samples(
                 }
             })?;
         field_idx.push(i);
+        field_cols.push(
+            match store.schema.fiber_fields[i].field_type {
+                crate::types::FieldType::Vector { dims } => dims,
+                _ => 1,
+            },
+        );
     }
+    let width: usize = field_cols.iter().sum();
     // Skip-and-log (engine hardening, Hallie's ask #7): a single record with a
     // non-numeric or missing fiber value must NOT fail the whole brain endpoint
     // (intent_gate / confidence / attend / explain). One poisoned row today took
@@ -80,24 +94,28 @@ pub fn extract_field_samples(
     let mut skipped = 0usize;
     let mut skip_field: Option<String> = None;
     for (orig_idx, (_bp, record)) in store.sections().enumerate() {
-        let mut row = Vec::with_capacity(fields.len());
+        let mut row = Vec::with_capacity(width);
         let mut bad = false;
-        for &i in &field_idx {
-            let v = match record.get(i) {
-                Some(crate::types::Value::Float(x)) => *x,
-                Some(crate::types::Value::Integer(j)) => *j as f64,
+        for (slot, &i) in field_idx.iter().enumerate() {
+            match record.get(i) {
+                Some(crate::types::Value::Float(x)) if field_cols[slot] == 1 => row.push(*x),
+                Some(crate::types::Value::Integer(j)) if field_cols[slot] == 1 => {
+                    row.push(*j as f64)
+                }
+                // vector(dims) fiber: expand per-component. A value whose
+                // length disagrees with the schema dims is corruption —
+                // skip the record (never zero-pad statistics).
+                Some(crate::types::Value::Vector(v)) if v.len() == field_cols[slot] => {
+                    row.extend_from_slice(v)
+                }
                 _ => {
                     if skip_field.is_none() {
-                        skip_field = Some(
-                            fields[field_idx.iter().position(|&x| x == i).unwrap_or(0)]
-                                .clone(),
-                        );
+                        skip_field = Some(fields[slot].clone());
                     }
                     bad = true;
                     break;
                 }
-            };
-            row.push(v);
+            }
         }
         if bad {
             skipped += 1;
@@ -105,6 +123,23 @@ pub fn extract_field_samples(
         }
         samples.push(row);
         kept.push(orig_idx);
+    }
+    // Total-blindness refusal (Art's acceptance criterion, 2026-08-02): if
+    // EVERY record was skipped, the caller's representation is wholly
+    // unsupported or wholly corrupt — returning Ok(empty) would let a brain
+    // endpoint answer confidently over zero samples with HTTP 200, which is
+    // the exact failure mode the refusal architecture exists to prevent.
+    // An empty bundle (skipped == 0) stays Ok: zero records is an honest
+    // zero, not blindness. Partial corruption keeps the fail-open contract.
+    if samples.is_empty() && skipped > 0 {
+        return Err(format!(
+            "all {} record(s) were skipped — values in field '{}' do not match its \
+             schema type. Refusing to answer over an empty sample set; check the \
+             stored representation (scalar fields need Float/Integer, vector(d) \
+             fields need a d-component Vector).",
+            skipped,
+            skip_field.as_deref().unwrap_or("?"),
+        ));
     }
     if skipped > 0 {
         eprintln!(
@@ -236,5 +271,120 @@ mod tests {
                 other => panic!("kept index {orig} points at non-numeric {other:?}"),
             }
         }
+    }
+
+    /// **Vector fibers are brain-visible (Art's vec_probe, 2026-08-02).**
+    /// `INGEST … FORMAT JSONL` stores embeddings as `Value::Vector` and the
+    /// reference calls that first-class — so `extract_field_samples` must
+    /// expand a `vector(dims)` fiber into `dims` sample columns, exactly as
+    /// the dial surface's `ScopedField::Vector` arm already does. Before this
+    /// test, every Vector record fell to the skip-and-log `_` arm and the
+    /// brain answered over zero samples with HTTP 200.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn extract_field_samples_expands_vector_fibers() {
+        use crate::types::{BundleSchema, FieldDef, FieldType, Record, Value};
+        let mut emb = FieldDef::numeric("emb");
+        emb.field_type = FieldType::Vector { dims: 4 };
+        let schema = BundleSchema::new("vec_probe")
+            .base(FieldDef::categorical("doc_id"))
+            .fiber(emb)
+            .fiber(FieldDef::numeric("score"));
+        let mut store = crate::BundleStore::new(schema);
+        for (id, v, s) in [
+            ("a", vec![1.0, 0.0, 0.0, 0.0], 0.9),
+            ("b", vec![0.0, 1.0, 0.0, 0.0], 0.7),
+        ] {
+            let mut r = Record::new();
+            r.insert("doc_id".into(), Value::Text(id.into()));
+            r.insert("emb".into(), Value::Vector(v));
+            r.insert("score".into(), Value::Float(s));
+            store.insert(&r);
+        }
+
+        // vector-only: 2 samples, width dims=4
+        let (samples, kept) =
+            extract_field_samples(&store, &["emb".to_string()]).expect("vector fiber is supported");
+        assert_eq!(samples.len(), 2, "both records visible to the brain");
+        assert!(samples.iter().all(|r| r.len() == 4), "one column per component");
+        assert_eq!(kept.len(), 2);
+        let mut firsts: Vec<f64> = samples.iter().map(|r| r[0]).collect();
+        firsts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        assert_eq!(firsts, vec![0.0, 1.0], "real components, not padding");
+
+        // mixed scalar + vector: width = 1 + 4, scalar first per request order
+        let (samples, _) =
+            extract_field_samples(&store, &["score".to_string(), "emb".to_string()])
+                .expect("mixed scalar+vector row");
+        assert!(samples.iter().all(|r| r.len() == 5), "1 scalar + 4 vector columns");
+        assert!(samples.iter().any(|r| (r[0] - 0.9).abs() < 1e-12));
+    }
+
+    /// **Wrong-length vectors are poisoned rows, not padded ones.** A
+    /// `vector(4)` fiber carrying a 3-component value is corruption; the
+    /// skip-and-log contract drops that record and keeps the clean rest —
+    /// it must never silently zero-pad statistics.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn extract_field_samples_skips_wrong_length_vector() {
+        use crate::types::{BundleSchema, FieldDef, FieldType, Record, Value};
+        let mut emb = FieldDef::numeric("emb");
+        emb.field_type = FieldType::Vector { dims: 4 };
+        let schema = BundleSchema::new("vec_len")
+            .base(FieldDef::categorical("doc_id"))
+            .fiber(emb);
+        let mut store = crate::BundleStore::new(schema);
+        for (id, v) in [
+            ("a", vec![1.0, 0.0, 0.0, 0.0]),
+            ("short", vec![1.0, 0.0]),
+            ("c", vec![0.0, 0.0, 1.0, 0.0]),
+        ] {
+            let mut r = Record::new();
+            r.insert("doc_id".into(), Value::Text(id.into()));
+            r.insert("emb".into(), Value::Vector(v));
+            store.insert(&r);
+        }
+        let (samples, kept) =
+            extract_field_samples(&store, &["emb".to_string()]).expect("clean rows survive");
+        assert_eq!(samples.len(), 2, "the short vector's record is dropped");
+        assert_eq!(kept.len(), 2);
+        assert!(samples.iter().all(|r| r.len() == 4));
+    }
+
+    /// **Total blindness is a refusal, not a 200 (Art's acceptance criterion).**
+    /// When every record is skipped — the caller's representation is wholly
+    /// unsupported or wholly corrupt — returning `Ok(empty)` lets a brain
+    /// endpoint answer confidently over nothing. That is the exact failure
+    /// mode the refusal architecture exists to prevent, so the extractor
+    /// must return `Err` naming the offending field. An EMPTY bundle stays
+    /// `Ok(empty)` — zero records is an honest zero, not blindness.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn extract_field_samples_refuses_when_all_records_skipped() {
+        use crate::types::{BundleSchema, FieldDef, Record, Value};
+        let schema = BundleSchema::new("all_bad")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("x"));
+        let mut store = crate::BundleStore::new(schema);
+        for i in 0..3 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(i));
+            r.insert("x".into(), Value::Text("not a number".into()));
+            store.insert(&r);
+        }
+        let err = extract_field_samples(&store, &["x".to_string()])
+            .expect_err("all-skipped must refuse, not answer over zero samples");
+        assert!(err.contains("all 3"), "error names the count: {err}");
+        assert!(err.contains("'x'"), "error names the field: {err}");
+
+        // empty bundle: honest zero, not an error
+        let empty = crate::BundleStore::new(
+            BundleSchema::new("empty")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::numeric("x")),
+        );
+        let (samples, kept) =
+            extract_field_samples(&empty, &["x".to_string()]).expect("empty bundle is Ok");
+        assert!(samples.is_empty() && kept.is_empty());
     }
 }

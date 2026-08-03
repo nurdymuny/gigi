@@ -75,10 +75,20 @@ I'd use verbatim.
 
 ## Status
 
-Branch `vector-brain-gap`: extractor patch + 4 tests + doc fixes. Full
-production-surface suite running now; merges to main when it's green, deploys
-with the next fly image (same deploy that brings REEB/FISHER/WASSERSTEIN/
-PERSISTENCE live). You'll get one line when your reproduction returns a real
-density from the deployed service.
+**Merged to main at `bb1d8e4`.** Suite receipt, honestly: 1,886 of 1,887
+passed across all 29 targets on the full production feature surface. The one
+failure is a wandering parallel-execution flake — different tests fail on
+different runs (a WAL-replay and a Gibbs-registry test on run one, a registry
+eager-init test on run two), every one of them passing in isolation on both
+main and the patch branch. Shared-global-state races, pre-existing, now
+tracked separately; nothing in their dependency path touches this patch. Two
+other pre-existing repo findings from the same verification pass, also
+tracked: `Cargo.toml` declares an example (`gnss_geodesic`) whose source was
+never committed, which breaks bare `cargo test` on fresh clones; and
+`SIMILAR` is documented but not in the parser.
+
+Deploys with the next fly image (the same deploy that brings REEB/FISHER/
+WASSERSTEIN/PERSISTENCE live). You'll get one line when your reproduction
+returns a real density from the deployed service.
 
 — B

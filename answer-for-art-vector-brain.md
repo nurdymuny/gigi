@@ -37,12 +37,32 @@ same commit: `GQL_REFERENCE.md` INGEST note now states the expansion behavior
 and dates the old symptom; the consumer-guide failure table has the row you
 drafted, adjusted to the new behavior.
 
-**For your ingestion decision:** both representations are now first-class.
-`emb: vector(384)` in one field, or exploded `v0..v383` — the brain sees the
-same matrix either way. If you want zero dependency on this branch landing in
-the deployed image before your sprint, exploded scalars work on every build
-that exists; if you take the 1-field schema, wait for the deploy note. Either
-way your ~790 records do not need a migration later — INGEST accepts both.
+**For your ingestion decision — corrected 2026-08-02, read this over the
+paragraph it replaces.** Build on **exploded scalars** (`v0..v383`). Your
+default was right and my first answer over-promised.
+
+An internal audit run immediately after this fix found the patch reached the
+extractor but not the whole path. Two more layers assumed one column per field
+NAME: the matrix builder computed width as `fields.len()`, so a `vector(384)`
+fiber built an n×1 matrix over an n×384 buffer — KDE and nearest-record
+results computed over reinterpreted memory, with a healthy `n_samples`. That
+one was mine, introduced by the fix itself; it is now fixed (`77a81b8`) with
+the width taken from the data and a ragged-row guard, and the four brain
+handlers now validate `query` against a schema-aware width (1 per scalar,
+`dims` per vector) instead of the field-name count.
+
+The third layer is the honest boundary and it is **not** closed: bundle
+Welford statistics do not track vector fibers, so an end-to-end probe of
+`/brain/confidence` on a `vector(4)` bundle returns
+
+    {"error":"no Welford stats for field 'emb'. Available stats: [] ..."}
+
+A named refusal rather than a confident number — your acceptance criterion
+holds — but vector fibers do **not** reach the brain endpoints yet, and I am
+not going to call that first-class. Exploded scalars are the supported
+representation today, on every build. When the statistics layer learns vector
+fibers, the 1-field schema becomes real and you can migrate if you want to;
+`INGEST` accepts both shapes, so nothing you write now is wasted.
 
 ## Your smaller questions, verified answers
 

@@ -368,6 +368,7 @@ mod tests {
 
     /// TDD-5a.1: ADD COLUMN with default → K unchanged.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_5a1_add_column_k_unchanged() {
         let store = make_store();
         let k_before = scalar_curvature(&store);
@@ -392,6 +393,7 @@ mod tests {
 
     /// TDD-5a.2: DROP COLUMN → K on remaining fields unchanged.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_5a2_drop_column_k_unchanged() {
         let store = make_store();
         let k_before = scalar_curvature(&store);
@@ -414,6 +416,7 @@ mod tests {
 
     /// TDD-5a.3: RENAME COLUMN → all query results identical.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_5a3_rename_column() {
         let store = make_store();
 
@@ -440,6 +443,7 @@ mod tests {
 
     /// TDD-5a.4: RESCALE → Fisher-metric K unchanged (isometric gauge).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_5a4_rescale_k_unchanged() {
         let store = make_store();
         let k_before = scalar_curvature(&store);
@@ -469,6 +473,7 @@ mod tests {
 
     /// Gauge: rename is pure gauge — deviation norm preserved.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn gauge_rename_preserves_deviation() {
         let schema = BundleSchema::new("test")
             .base(FieldDef::numeric("id"))

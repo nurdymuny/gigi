@@ -541,6 +541,7 @@ mod tests {
     /// non-identity (Haar buffer at seed 20260616 is essentially never
     /// identity-on-a-face).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4_register_and_get_round_trip() {
         clear();
         lattice_registry::clear();
@@ -583,6 +584,7 @@ mod tests {
     /// never holds two fields with the same name. Different seeds
     /// produce different buffers; the second registration wins.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4_double_register_overwrites() {
         clear();
         lattice_registry::clear();
@@ -617,6 +619,7 @@ mod tests {
 
     /// TDD-HAL-II.4: getting an undeclared name returns None.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4_get_unknown_returns_none() {
         clear();
         assert!(get("never_declared").is_none());
@@ -625,6 +628,7 @@ mod tests {
     /// TDD-HAL-II.4: after `clear()` every subsequent `get` returns
     /// None.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4_clear_empties_registry() {
         lattice_registry::clear();
         let bb = buckyball();
@@ -648,6 +652,7 @@ mod tests {
     /// `DenseLinkBuffer` whose shape matches the SU2GaugeField's
     /// `buffer` field.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4_introspect_returns_buffer_view() {
         clear();
         lattice_registry::clear();

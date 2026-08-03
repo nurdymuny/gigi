@@ -30,6 +30,7 @@ use gigi::lattice::topology::cubed_sphere;
 /// Smallest non-degenerate face count: C=1 → 6 quadrilateral faces
 /// (the inscribed cube).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_c1_face_count_is_6() {
     let lwm = cubed_sphere::build(1).expect("C=1 build");
     assert_eq!(lwm.lattice().n_faces(), 6, "C=1 face count = 6·1² = 6");
@@ -37,6 +38,7 @@ fn test_cubed_sphere_c1_face_count_is_6() {
 
 /// C=2 → 24 faces (6 panels × 2×2 grid).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_c2_face_count_is_24() {
     let lwm = cubed_sphere::build(2).expect("C=2 build");
     assert_eq!(lwm.lattice().n_faces(), 24, "C=2 face count = 6·2² = 24");
@@ -45,6 +47,7 @@ fn test_cubed_sphere_c2_face_count_is_24() {
 /// C=4 → 96 faces. This is the Phase-1 reference resolution for the
 /// 4π surface-area test below.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_c4_face_count_is_96() {
     let lwm = cubed_sphere::build(4).expect("C=4 build");
     assert_eq!(lwm.lattice().n_faces(), 96, "C=4 face count = 6·4² = 96");
@@ -54,6 +57,7 @@ fn test_cubed_sphere_c4_face_count_is_96() {
 /// Anchors the combinatorial contract — if V, E, F drift,
 /// V − E + F = 2 is the canary.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_euler_characteristic_is_2() {
     for c in [1usize, 2, 3, 4] {
         let lwm = cubed_sphere::build(c).expect("build");
@@ -73,6 +77,7 @@ fn test_cubed_sphere_euler_characteristic_is_2() {
 /// construction. C=3 is the smallest C with both edge-shared and
 /// fully-interior cells per panel.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_all_faces_are_quads() {
     let lwm = cubed_sphere::build(3).expect("C=3 build");
     let lat = lwm.lattice();
@@ -92,6 +97,7 @@ fn test_cubed_sphere_all_faces_are_quads() {
 /// that surface end-to-end: outer length = n_faces, every cycle has
 /// length 4 (quad).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_signed_face_orientations_round_trip() {
     let lwm = cubed_sphere::build(2).expect("C=2 build");
     let lat = lwm.lattice();
@@ -110,6 +116,7 @@ fn test_cubed_sphere_signed_face_orientations_round_trip() {
 /// This is the metadata half of the A1 surface contract — every
 /// cubed-sphere lattice is an S² triangulation (well, quadrangulation).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_topology_hint_is_s2() {
     let lwm = cubed_sphere::build(2).expect("C=2 build");
     assert_eq!(
@@ -125,6 +132,7 @@ fn test_cubed_sphere_topology_hint_is_s2() {
 /// the AURORA "documented f64 tolerance" rule for accumulation of
 /// spherical-excess arithmetic.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_metric_cell_areas_sum_to_4pi() {
     let lwm = cubed_sphere::build(4).expect("C=4 build");
     let sum: f64 = lwm.cell_areas().iter().sum();

@@ -136,6 +136,7 @@ mod tests {
 
     /// Identity U(1) field materializes: repr_dim = 1, every edge θ = 0.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_identity_init_on_buckyball() {
         let lat = buckyball();
         let field =
@@ -152,6 +153,7 @@ mod tests {
     /// EdgeConnection: Forward returns the stored phase; Reverse returns
     /// its inverse (−θ). Plant a phase and check both arms.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_edge_connection_forward_vs_reverse() {
         let lat = buckyball();
         let mut field =
@@ -171,6 +173,7 @@ mod tests {
     /// typed errors (never panics) — the executor intercepts the real
     /// paths.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_new_non_identity_inits_are_typed_errors() {
         let lat = buckyball();
         assert!(matches!(

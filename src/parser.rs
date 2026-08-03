@@ -16774,6 +16774,7 @@ mod tests {
   }
 
   #[test]
+  #[serial_test::serial(gauge_registry)]
   fn test_parse_mixed_modes_in_one_bundle() {
         // The realistic case: jg_account-style schema with a mix of opaque text
         // fields, indexed text fields, and a numeric field. Every per-field
@@ -16939,6 +16940,7 @@ mod tests {
     /// it in `gauge::registry`, where `get(name)` returns Some.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_5_gauge_field_executor_registers() {
         crate::lattice::registry::clear();
         crate::gauge::registry::clear();
@@ -16972,6 +16974,7 @@ mod tests {
     /// Halcyon's G2.B regex anchor `not declared`.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_5_gauge_field_executor_lattice_not_declared() {
         crate::lattice::registry::clear();
         crate::gauge::registry::clear();
@@ -16995,6 +16998,7 @@ mod tests {
     /// literal "SEED" (Halcyon's `match="SEED"` anchor).
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_5_gauge_field_executor_seed_required() {
         crate::lattice::registry::clear();
         crate::gauge::registry::clear();
@@ -17021,6 +17025,7 @@ mod tests {
     /// the literal `SU(2)` — Halcyon's G2.D regex anchor `SU\(2\)`.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_5_gauge_field_executor_unsupported_group() {
         crate::lattice::registry::clear();
         crate::gauge::registry::clear();
@@ -17063,6 +17068,7 @@ mod tests {
     /// the `data` column.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_5_show_gauge_field() {
         crate::lattice::registry::clear();
         crate::gauge::registry::clear();
@@ -17261,6 +17267,7 @@ mod tests {
     /// under `MeanPlaquette` plus the seed echo in diagnostics.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_6_execute_gibbs_sample_smoke() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -17338,6 +17345,7 @@ mod tests {
     /// bit-identity).
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_6_execute_gibbs_sample_no_seed_errors() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -17585,6 +17593,7 @@ mod tests {
     /// 5-entry chains for each requested observable.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iv_7_executor_e_field_then_sympflow() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -17682,6 +17691,7 @@ mod tests {
     /// PartIvObservableNotReady error.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iv_7_executor_select_h_total_now_works() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -17798,6 +17808,7 @@ mod tests {
     /// the post-write WAL offset.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_v_2_executor_snapshot_succeeds() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -17872,6 +17883,7 @@ mod tests {
     /// "is not declared" matches.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_v_2_executor_snapshot_undeclared_field() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -17896,6 +17908,7 @@ mod tests {
     /// content-addressed: equal buffer bytes → equal SHA-256.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_v_2_executor_snapshot_sha256_deterministic() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();

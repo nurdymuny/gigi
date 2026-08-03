@@ -89,6 +89,7 @@ fn stub_factory(kind: &'static str, group: &'static str) -> Box<dyn HamiltonianF
 
 /// register() then with_factory() round-trips a stub.
 #[test]
+#[serial_test::serial(hamiltonian_registry)]
 fn test_registry_register_then_lookup() {
     hamiltonian_registry::clear();
     hamiltonian_registry::register("rrl_alpha", stub_factory("STUB_A", "R"), None, 1)
@@ -101,6 +102,7 @@ fn test_registry_register_then_lookup() {
 
 /// Unknown name returns None — never a silent default.
 #[test]
+#[serial_test::serial(hamiltonian_registry)]
 fn test_registry_unknown_name_returns_none() {
     hamiltonian_registry::clear();
     let got = hamiltonian_registry::with_factory("does_not_exist", |f| f.kind_tag().to_string());
@@ -112,6 +114,7 @@ fn test_registry_unknown_name_returns_none() {
 /// RegistryError::DuplicateName — last-write-wins is a footgun the
 /// substrate explicitly refuses.
 #[test]
+#[serial_test::serial(hamiltonian_registry)]
 fn test_registry_duplicate_name_rejects() {
     hamiltonian_registry::clear();
     hamiltonian_registry::register("dup", stub_factory("FIRST", "R"), None, 1)
@@ -132,6 +135,7 @@ fn test_registry_duplicate_name_rejects() {
 
 /// get_factory("foo").kind_tag() round-trips the registered tag.
 #[test]
+#[serial_test::serial(hamiltonian_registry)]
 fn test_registry_factory_kind_tag_round_trip() {
     hamiltonian_registry::clear();
     hamiltonian_registry::register("foo", stub_factory("STUB", "R"), None, 1)
@@ -145,6 +149,7 @@ fn test_registry_factory_kind_tag_round_trip() {
 /// register() with a WalWriter emits a HamiltonianDeclare entry with
 /// the correct (name, kind_tag, group_tag, registered_at) tuple.
 #[test]
+#[serial_test::serial(hamiltonian_registry)]
 fn test_wal_hamiltonian_declare_event_emitted() {
     hamiltonian_registry::clear();
 
@@ -187,6 +192,7 @@ fn test_wal_hamiltonian_declare_event_emitted() {
 /// for any name. No lazy auto-population, no first-use hook, no
 /// thread-local magic.
 #[test]
+#[serial_test::serial(hamiltonian_registry)]
 fn test_registry_eager_init_no_auto_populate() {
     hamiltonian_registry::clear();
     assert!(hamiltonian_registry::with_factory("anything", |_| ()).is_none());
@@ -199,6 +205,7 @@ fn test_registry_eager_init_no_auto_populate() {
 /// every active registration — useful for introspection HTTP endpoints
 /// and debug dumps.
 #[test]
+#[serial_test::serial(hamiltonian_registry)]
 fn test_registry_list_registered_after_register() {
     hamiltonian_registry::clear();
     hamiltonian_registry::register("ham_a", stub_factory("KIND_A", "R"), None, 1).unwrap();

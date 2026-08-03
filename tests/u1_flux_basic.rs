@@ -115,6 +115,7 @@ fn collect_thetas(engine: &Engine, bundle: &str) -> Vec<(i64, f64)> {
 /// (Named a pin: this was already green; Concept C must not regress
 /// it.)
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_u1_theta_ingest_end_to_end_pin() {
     let dir = tempfile::tempdir().expect("tempdir");
     let mut engine = Engine::open(dir.path()).expect("engine open");
@@ -176,6 +177,7 @@ fn test_u1_theta_ingest_end_to_end_pin() {
 /// tail. RED until the GAUGE_FIELD grammar goes clause-order-flexible
 /// and INIT FLUX lands.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_init_flux_random_probe_s2_clause_order() {
     parse("GAUGE_FIELD rh_flux GROUP U(1) INIT FLUX RANDOM SEED 42 ON LATTICE l4_rh;")
         .expect("S2 clause order must parse");
@@ -183,6 +185,7 @@ fn test_parse_init_flux_random_probe_s2_clause_order() {
 
 /// Canonical Part-II clause order with INIT FLUX UNIFORM.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_init_flux_uniform_canonical_order() {
     parse("GAUGE_FIELD f ON LATTICE l GROUP U(1) INIT FLUX UNIFORM 0.7;")
         .expect("canonical order + FLUX UNIFORM must parse");
@@ -191,6 +194,7 @@ fn test_parse_init_flux_uniform_canonical_order() {
 /// FLUX RANDOM without SEED is a parse error naming SEED —
 /// reproducibility is part of the contract, so the seed is mandatory.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_init_flux_random_requires_seed() {
     let err = parse("GAUGE_FIELD f ON LATTICE l GROUP U(1) INIT FLUX RANDOM;")
         .expect_err("FLUX RANDOM without SEED must be rejected");
@@ -200,6 +204,7 @@ fn test_parse_init_flux_random_requires_seed() {
 /// The Part-II canonical grammar (ON LATTICE first) keeps parsing for
 /// every existing init — pin against the clause-order relaxation.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_old_gauge_field_grammar_still_parses_pin() {
     parse("GAUGE_FIELD U ON LATTICE buckyball GROUP SU(2) INIT IDENTITY;")
         .expect("Part-II canonical order must keep parsing (pin)");
@@ -210,6 +215,7 @@ fn test_old_gauge_field_grammar_still_parses_pin() {
 /// A GAUGE_FIELD missing a required clause errors naming the missing
 /// clause (flexible order must not weaken required-clause checking).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_gauge_field_missing_init_clause_errors() {
     let err = parse("GAUGE_FIELD f ON LATTICE l GROUP U(1);")
         .expect_err("missing INIT must be rejected");
@@ -223,6 +229,7 @@ fn test_gauge_field_missing_init_clause_errors() {
 /// Also pins the draw contract: θ_k = 2π · uniform_k from the house
 /// SmallRng (xorshift64*), edge order 0..n_edges.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_init_flux_random_seed_deterministic() {
     let mut e1 = Engine::open_memory().expect("engine 1");
     run_ok(&mut e1, "LATTICE u1fluxdet_lat FROM CUBIC L=4 DIM=2 PERIODIC;");
@@ -273,6 +280,7 @@ fn test_init_flux_random_seed_deterministic() {
 /// UNIFORM phi stamps every edge with exactly phi, one record per
 /// lattice edge, endpoints = the lattice's own oriented edges.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_init_flux_uniform_sets_every_edge_phi() {
     let mut engine = Engine::open_memory().expect("engine");
     run_ok(&mut engine, "LATTICE u1fluxuni_lat FROM CUBIC L=4 DIM=2 PERIODIC;");
@@ -301,6 +309,7 @@ fn test_init_flux_uniform_sets_every_edge_phi() {
 
 /// Non-U(1) INIT FLUX is a clear executor error naming U(1).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_init_flux_non_u1_errors() {
     let mut engine = Engine::open_memory().expect("engine");
     run_ok(&mut engine, "LATTICE u1fluxsu2_lat FROM CUBIC L=4 DIM=2 PERIODIC;");
@@ -318,6 +327,7 @@ fn test_init_flux_non_u1_errors() {
 /// PERSIST composes with FLUX only as an explicit error this phase —
 /// the materialized bundle is the durable artifact.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_init_flux_persist_rejected() {
     let mut engine = Engine::open_memory().expect("engine");
     run_ok(&mut engine, "LATTICE u1fluxper_lat FROM CUBIC L=4 DIM=2 PERIODIC;");
@@ -335,6 +345,7 @@ fn test_init_flux_persist_rejected() {
 /// Re-running INIT FLUX into an existing bundle name is an error (an
 /// init is a materialization, not an append).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_init_flux_existing_bundle_errors() {
     let mut engine = Engine::open_memory().expect("engine");
     run_ok(&mut engine, "LATTICE u1fluxdup_lat FROM CUBIC L=4 DIM=2 PERIODIC;");
@@ -360,6 +371,7 @@ fn test_init_flux_existing_bundle_errors() {
 /// ascending reals, with n_records_used = the lattice's edge count
 /// (L=4 D=2 OBC AXIS 0: 2·16 − 4 = 28 links).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_flux_to_magnetic_spectrum_s1_s2_s3_loop() {
     let mut engine = Engine::open_memory().expect("engine");
     run_ok(&mut engine, "LATTICE u1fluxloop_lat FROM CUBIC L=4 DIM=2 OBC AXIS 0;");

@@ -167,6 +167,7 @@ fn chain_envelope(chain: &[f64]) -> serde_json::Value {
 /// Gate IV.10 reads this fixture to write its energy-drift acceptance
 /// + byte-identity regression assertions.
 #[test]
+#[serial_test::serial(gauge_registry)]
 #[ignore]
 fn tdd_hal_iv_9_harvest_canonical() {
     // Clean every Part-IV-relevant singleton so the harvest is

@@ -176,6 +176,7 @@ fn flyvbjerg_petersen_sem(chain: &[f64]) -> f64 {
 /// `tests/fixtures/halcyon/part_iii/p_canonical.json`. Gate III.8b
 /// reads this fixture to write its envelope assertion.
 #[test]
+#[serial_test::serial(gauge_registry)]
 #[ignore]
 fn tdd_hal_iii_8a_harvest_p_canonical() {
     // Clean registries so the harvest is reproducible against any

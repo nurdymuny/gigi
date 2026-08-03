@@ -129,6 +129,7 @@ fn scalar(r: ExecResult) -> f64 {
 /// In the RED state the stub returns `Err`, so the `.expect(...)`
 /// panic fires and the test fails.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_2d_su3_identity_returns_zero() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_lattice_and_gauge_field(&eng);
@@ -147,6 +148,7 @@ fn test_chern_class_2d_su3_identity_returns_zero() {
 /// p_1 = -2·c_2 (Lüscher 1982 §2) and c_2 = 0 by the same dim-guard
 /// reasoning.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_pontryagin_2d_su3_identity_returns_zero() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_lattice_and_gauge_field(&eng);
@@ -169,6 +171,7 @@ fn test_pontryagin_2d_su3_identity_returns_zero() {
 /// requires `BETTI ORDER k>=1` to prefer the lattice registry over
 /// the bundle store, with the bundle fallback only for `k ∈ {0, 1}`.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_betti_order_2_t2_lattice_returns_one() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_lattice_and_gauge_field(&eng);
@@ -190,6 +193,7 @@ fn test_betti_order_2_t2_lattice_returns_one() {
 /// This pins the PI_1 dispatch to the lattice registry only (no
 /// bundle fallback path — PI_1 has no concept of a bundle store).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_pi_1_t2_lattice_returns_rank_two() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_lattice_and_gauge_field(&eng);
@@ -217,6 +221,7 @@ fn test_pi_1_t2_lattice_returns_rank_two() {
 /// (GAUGE_FIELD-declared). Phase 1 dispatch may route through either
 /// path; the GREEN gate accepts any finite scalar value.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_obstruction_2d_su3_identity_returns_finite_scalar() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_lattice_and_gauge_field(&eng);
@@ -243,6 +248,7 @@ fn test_obstruction_2d_su3_identity_returns_finite_scalar() {
 /// GAUGE_FIELD X ON LATTICE ... first)" shape the executor arm at
 /// `src/bin/gigi_stream.rs:13384` already uses.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_against_nonexistent_gauge_field_returns_clear_error() {
     let (eng, _dir) = fresh_engine_and_registries();
     // Note: deliberately do NOT declare the lattice or gauge field.
@@ -272,6 +278,7 @@ fn test_chern_class_against_nonexistent_gauge_field_returns_clear_error() {
 /// nor "PI_1", so the test fails. The GREEN commit will produce a
 /// shape like "PI_1: lattice 'X' not declared".
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_pi_1_against_nonexistent_lattice_returns_clear_error() {
     let (eng, _dir) = fresh_engine_and_registries();
     let stmt = parse("PI_1 totally_does_not_exist;").expect("parse PI_1");
@@ -319,6 +326,7 @@ fn test_pi_1_against_nonexistent_lattice_returns_clear_error() {
 /// for the name, the dispatcher MUST still resolve through the
 /// gauge / lattice registry and reach the kernel.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_dispatcher_succeeds_when_engine_bundle_lookup_would_fail() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_lattice_and_gauge_field(&eng);
@@ -379,6 +387,7 @@ fn test_dispatcher_succeeds_when_engine_bundle_lookup_would_fail() {
 /// sector class). The assertion below is `(v - v.round()).abs() < 1e-12`
 /// which holds bit-exactly on identity but pins the contract.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_obstruction_returns_quantized_integer_sector() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_lattice_and_gauge_field(&eng);

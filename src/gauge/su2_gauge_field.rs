@@ -232,6 +232,7 @@ mod tests {
     /// EdgeConnection — the architectural payoff (walker is
     /// group-erased, reads through trait, not concrete type).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_3_field_walks_face_holonomy_identity() {
         let lat = buckyball();
         let field = SU2GaugeField::new(
@@ -262,6 +263,7 @@ mod tests {
     /// typed `SeedRequired` error (not a panic). Display must contain
     /// the substring "SEED" so Halcyon's `match="SEED"` check hits.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_3_seed_required_typed_error() {
         let lat = buckyball();
         let err = SU2GaugeField::new(
@@ -286,6 +288,7 @@ mod tests {
     /// Display contains "SU(2)" — that's the Halcyon G2.D regex
     /// anchor (Bee's locked decision 5).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_3_unsupported_group_typed_error() {
         assert!(
             format!("{}", GaugeFieldError::UnsupportedGroup(Group::U1))
@@ -303,6 +306,7 @@ mod tests {
     /// (Bee's locked decision 1) lifted from the storage layer to
     /// the field layer.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_3_haar_init_round_trip() {
         let lat = buckyball();
         let field = SU2GaugeField::new(
@@ -323,6 +327,7 @@ mod tests {
     /// Identity init records the right metadata (init_kind = Identity,
     /// init_seed unused).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn identity_init_metadata() {
         let lat = buckyball();
         let field = SU2GaugeField::new(
@@ -343,6 +348,7 @@ mod tests {
     /// executor knows to do source-field resolution itself (the
     /// constructor doesn't have a registry handle).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn from_field_returns_field_not_declared() {
         let lat = buckyball();
         let err = SU2GaugeField::new(
@@ -362,6 +368,7 @@ mod tests {
     /// element; reverse orientation returns its inverse. Plant a
     /// non-trivial quaternion in the buffer and check both arms.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn edge_connection_forward_vs_reverse() {
         let lat = buckyball();
         let mut field = SU2GaugeField::new(
@@ -404,6 +411,7 @@ mod tests {
     /// the walker, the HTTP routes, the registry never name the
     /// concrete type.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su2_field_is_object_safe_edge_connection() {
         let lat = buckyball();
         let field = SU2GaugeField::new(

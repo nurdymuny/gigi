@@ -216,6 +216,7 @@ mod tests {
     /// `tests/gauge_lie_exp_unit.rs`; the in-lib version guards the
     /// `TAYLOR_THETA_CUTOFF` branch from regression.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iv_5_unit_exp_zero_is_identity() {
         let q = matrix_exp_su2_q([0.0, 0.0, 0.0, 0.0]);
         assert_eq!(q, [1.0, 0.0, 0.0, 0.0]);
@@ -224,6 +225,7 @@ mod tests {
     /// TDD-HAL-IV.5 unit: small-angle Taylor path lands on a unit-
     /// norm quaternion within 2 ULP. Picks `θ = 1e-9 < cutoff`.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iv_5_unit_exp_small_angle_taylor_unit_norm() {
         let q = matrix_exp_su2_q([0.0, 1e-9, 0.0, 0.0]);
         let n2 = q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3];
@@ -233,6 +235,7 @@ mod tests {
     /// TDD-HAL-IV.5 unit: shape mismatch surfaces as typed error
     /// before any buffer mutation.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iv_5_unit_drift_shape_mismatch() {
         let _serial = gauge_registry::test_serial_lock();
         gauge_registry::clear();

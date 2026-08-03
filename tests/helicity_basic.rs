@@ -194,6 +194,7 @@ fn density(row: &Record) -> Vec<f64> {
 
 /// L=16 → 725.171 (ratio 0.9745 of the 24π³ continuum), full envelope.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n1_abc_beltrami_l16() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "abc16", 16, abc(16));
@@ -225,6 +226,7 @@ fn n1_abc_beltrami_l16() {
 
 /// L=24 → 735.679 (ratio 0.9886).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n1_abc_beltrami_l24() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "abc24", 24, abc(24));
@@ -239,6 +241,7 @@ fn n1_abc_beltrami_l24() {
 
 /// L=32 → 739.378 (ratio 0.9936).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n1_abc_beltrami_l32() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "abc32", 32, abc(32));
@@ -253,6 +256,7 @@ fn n1_abc_beltrami_l32() {
 /// L=48 → 742.027 (ratio 0.9971). Optional/release gate — heavier
 /// (331776 edges); run with `--ignored`.
 #[test]
+#[serial_test::serial(gauge_registry)]
 #[ignore = "L=48 release gate — 331776 edges, slow in debug"]
 fn n1_abc_beltrami_l48() {
     let mut engine = Engine::open_memory().expect("memory engine");
@@ -277,6 +281,7 @@ fn n1_abc_beltrami_l48() {
 /// Right-handed helical mode (∇×A = +A, positive linking) ⇒ H = +4π²L
 /// sin(2π/L) > 0. Exact at L=4: +16π².
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n2_right_handed_positive_helicity() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "rh4", 4, helical_right(4));
@@ -296,6 +301,7 @@ fn n2_right_handed_positive_helicity() {
 /// EXACT mirror of the right-handed value: H = −4π²L sin(2π/L) < 0.
 /// This is the sign pin: a flipped Ω convention would swap these.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n2_left_handed_mirror_negative() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "rh4", 4, helical_right(4));
@@ -316,6 +322,7 @@ fn n2_left_handed_mirror_negative() {
 
 /// Unlinked (non-helical) field ⇒ H = 0 exactly, despite nonzero A.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n2_unlinked_zero() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "ul4", 4, unlinked(4));
@@ -328,6 +335,7 @@ fn n2_unlinked_zero() {
 // ══════════════════════════════════════════════════════════════════════
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n3_zero_field_exact_zero() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "z4", 4, |_i, _j, _k| (0.0, 0.0, 0.0));
@@ -343,6 +351,7 @@ fn n3_zero_field_exact_zero() {
 
 /// max_vid+1 not a perfect cube ⇒ typed error (⌊∛V⌉³ ≠ V).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n4_non_cubic_v_typed_error() {
     let mut engine = Engine::open_memory().expect("memory engine");
     make_edge_bundle(&mut engine, "nc");
@@ -361,6 +370,7 @@ fn n4_non_cubic_v_typed_error() {
 /// A cubic V but a partial (2D-like) bundle missing the +z edges ⇒
 /// typed error (incomplete forward-edge bundle).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n4_partial_2d_bundle_typed_error() {
     let mut engine = Engine::open_memory().expect("memory engine");
     make_edge_bundle(&mut engine, "flat");
@@ -384,6 +394,7 @@ fn n4_partial_2d_bundle_typed_error() {
 
 /// An edge that is not a unit forward step along one axis ⇒ typed error.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n4_non_unit_edge_typed_error() {
     let mut engine = Engine::open_memory().expect("memory engine");
     make_edge_bundle(&mut engine, "bad");
@@ -414,6 +425,7 @@ fn n4_non_unit_edge_typed_error() {
 // ══════════════════════════════════════════════════════════════════════
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n5_density_sums_to_scalar() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "abc8", 8, abc(8));
@@ -436,6 +448,7 @@ fn n5_density_sums_to_scalar() {
 // ══════════════════════════════════════════════════════════════════════
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn n6_negation_invariance() {
     let mut engine = Engine::open_memory().expect("memory engine");
     build_cubic_bundle(&mut engine, "abc8", 8, abc(8));

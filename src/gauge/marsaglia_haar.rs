@@ -349,6 +349,7 @@ mod tests {
     /// byte-identical Haar quaternion streams. This is the
     /// intra-binding bit-identity contract (Bee's locked decision 1).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_2_haar_same_seed_byte_equal() {
         let mut a = SmallRng::seed_from_u64(20260616);
         let mut b = SmallRng::seed_from_u64(20260616);
@@ -363,6 +364,7 @@ mod tests {
     /// 1e-12 — f64 rounding only; the algorithm is exact in real
     /// arithmetic).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_2_haar_unit_norm() {
         let mut rng = SmallRng::seed_from_u64(20260616);
         for _ in 0..1000 {
@@ -383,6 +385,7 @@ mod tests {
     /// byte-identical Haar SU(3) streams (intra-binding bit-identity
     /// — same contract as `tdd_hal_ii_2_haar_same_seed_byte_equal`).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn haar_su3_same_seed_byte_equal() {
         let mut a = SmallRng::seed_from_u64(20260626);
         let mut b = SmallRng::seed_from_u64(20260626);
@@ -396,6 +399,7 @@ mod tests {
     /// Halcyon ITEM 3.1: every Haar SU(3) draw is unitary
     /// (`U U† = I` to FP64 tolerance ~1e-12).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn haar_su3_unitary() {
         let mut rng = SmallRng::seed_from_u64(20260626);
         for sample in 0..100 {
@@ -429,6 +433,7 @@ mod tests {
     /// Det normalization via the Mezzadri column-0 rotation must land
     /// in this tolerance; cube-root would not (branch ambiguity).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn haar_su3_special_unitary() {
         let mut rng = SmallRng::seed_from_u64(20260626);
         for sample in 0..100 {
@@ -477,6 +482,7 @@ mod tests {
     /// Loose bounds because the test is a "did you implement the
     /// right distribution" guard, not a precision PRNG audit.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_2_haar_marginal_stats() {
         let mut q0_sum = 0.0_f64;
         let mut q0_sq_sum = 0.0_f64;

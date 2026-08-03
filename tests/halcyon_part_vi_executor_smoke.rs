@@ -101,6 +101,7 @@ fn small_n_source() -> &'static str {
 /// buckyball + closed pentagonal loop, returning a fully-populated
 /// `LoopTransportDiagnostics`.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_smoke_loop_transport_runs_end_to_end() {
     let (_engine, _dir) = setup_halcyon_canonical_buckyball();
     let stmt = parse(small_n_source()).expect("small-N LOOP_TRANSPORT parses");
@@ -157,6 +158,7 @@ fn halcyon_vi_2_smoke_loop_transport_runs_end_to_end() {
 /// VI.2 smoke — all 8 RETURN fields of the diagnostics surface are
 /// populated. This locks the public contract VI.3/4/5 will index into.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_smoke_diagnostics_has_all_eight_return_fields() {
     let (_engine, _dir) = setup_halcyon_canonical_buckyball();
     let stmt = parse(small_n_source()).expect("parses");
@@ -182,6 +184,7 @@ fn halcyon_vi_2_smoke_diagnostics_has_all_eight_return_fields() {
 /// v3.1.3 §4.2 threshold (ratio < 0.1 → Acceptable; ≥ 0.1 → forced).
 /// Pure-function gate; no executor needed.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_adiabaticity_threshold_at_0_1() {
     let acc = AdiabaticityCheck::from_ratio(0.05);
     let amb_eq = AdiabaticityCheck::from_ratio(0.1);

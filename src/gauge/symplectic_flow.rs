@@ -757,6 +757,7 @@ mod tests {
 
     /// `p99_usize` on the empty slice returns 0.0.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn p99_empty_is_zero() {
         let v: Vec<usize> = vec![];
         assert_eq!(p99_usize(&v), 0.0);
@@ -764,6 +765,7 @@ mod tests {
 
     /// `p99_usize` on a flat slice returns the value.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn p99_constant_is_constant() {
         let v: Vec<usize> = vec![7; 100];
         assert_eq!(p99_usize(&v), 7.0);

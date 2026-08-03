@@ -33,6 +33,7 @@ const UNIT_SPHERE_TOL: f64 = 1e-12;
 /// C=1 cubed-sphere: 8 cube corners. The vertex_positions slice
 /// must have length 8.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_c1_vertex_positions_length_8() {
     let lwm = cubed_sphere("cs1", 1);
     let pos = lwm.vertex_positions();
@@ -51,6 +52,7 @@ fn test_cubed_sphere_c1_vertex_positions_length_8() {
 
 /// C=1 cubed-sphere: every vertex position is a unit-sphere point.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_c1_vertex_positions_on_unit_sphere() {
     let lwm = cubed_sphere("cs1", 1);
     for (id, &(x, y, z)) in lwm.vertex_positions().iter().enumerate() {
@@ -64,6 +66,7 @@ fn test_cubed_sphere_c1_vertex_positions_on_unit_sphere() {
 
 /// C=4 cubed-sphere: V = 6·C² + 2 = 98 vertices.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubed_sphere_c4_vertex_positions_length_98() {
     let lwm = cubed_sphere("cs4", 4);
     let pos = lwm.vertex_positions();
@@ -86,6 +89,7 @@ fn test_cubed_sphere_c4_vertex_positions_length_98() {
 /// Buckyball: 60 fullerene-cage vertices. The registry-dispatched
 /// truncated-icosahedron LatticeWithMetric must carry all 60.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_truncated_icosahedron_vertex_positions_length_60() {
     let ctor = registry::get_constructor("TRUNCATED_ICOSAHEDRON")
         .expect("TRUNCATED_ICOSAHEDRON must be registered");
@@ -103,6 +107,7 @@ fn test_truncated_icosahedron_vertex_positions_length_60() {
 
 /// Buckyball: every cage vertex normalizes onto the unit sphere.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_truncated_icosahedron_vertex_positions_on_unit_sphere() {
     let ctor = registry::get_constructor("TRUNCATED_ICOSAHEDRON")
         .expect("TRUNCATED_ICOSAHEDRON must be registered");
@@ -124,6 +129,7 @@ fn test_truncated_icosahedron_vertex_positions_on_unit_sphere() {
 /// vertex_positions slice so consumers can check `.is_empty()` and
 /// refuse gracefully.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_vertex_positions_empty_for_constructors_without_positions() {
     // Hand-built non-spherical lattice with no 3D position table.
     let lat = Lattice::new(
@@ -151,6 +157,7 @@ fn test_vertex_positions_empty_for_constructors_without_positions() {
 /// actually arcsin(1/sqrt(3)) since corners are diagonal — the
 /// point is that the consumer can call the formula at all).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_vertex_positions_supports_latlon_derivation() {
     let lwm = cubed_sphere("cs1", 1);
     let pos = lwm.vertex_positions();

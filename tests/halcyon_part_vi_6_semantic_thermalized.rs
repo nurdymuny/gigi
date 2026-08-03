@@ -192,6 +192,7 @@ fn get_vec_f64<'a>(rec: &'a gigi::types::Record, key: &str) -> &'a Vec<f64> {
 /// Closes Finding #1 (Option A coordinated workflow: Fix #1 + GC₁-GC₄
 /// recalibration + VI.5 fixture regen + projection convention doc).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn vi_6_finding_1_forward_reverse_differ_at_thermalized() {
     let (mut engine, _dir) = setup_thermalized_canonical();
 
@@ -260,6 +261,7 @@ fn vi_6_finding_1_forward_reverse_differ_at_thermalized() {
 /// shape (bit-identical per-seed h_scalar) that the diagnostic
 /// recipe still calls "Finding #2" — keep it ignored to avoid noise.
 #[test]
+            #[serial_test::serial(gauge_registry)]
 #[ignore = "Orchestrator responsibility per Halcyon disposition \
             2026-06-21. The substrate is deterministic per (U, E) \
             input; per-seed variance comes from per-seed state \
@@ -337,6 +339,7 @@ fn vi_6_finding_2_seeds_produce_variance() {
 /// somewhere in (0, 1) — the ratio is tau_pin / T_segment, NOT a
 /// constant.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn vi_6_finding_3_tau_pin_is_measured_not_placeholder() {
     let (mut engine, _dir) = setup_thermalized_canonical();
 
@@ -388,6 +391,7 @@ fn vi_6_finding_3_tau_pin_is_measured_not_placeholder() {
 /// accumulated max over the loop traversal would be strictly > 0
 /// against the v3.1.3 EPS_Q=0.05 / EPS_BETA_W=0.05 thresholds.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn vi_6_finding_4_tracking_error_is_measured_not_placeholder() {
     let (mut engine, _dir) = setup_thermalized_canonical();
 
@@ -438,6 +442,7 @@ fn vi_6_finding_4_tracking_error_is_measured_not_placeholder() {
 /// so the canonical γ_unit's max β_W reached during traversal is
 /// near beta_start, not the open-chain extrapolation endpoint.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn vi_6_finding_5_alpha_1000_parses_cleanly() {
     let (mut engine, _dir) = setup_thermalized_canonical();
 

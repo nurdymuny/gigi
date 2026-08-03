@@ -159,6 +159,7 @@ mod tests {
     /// the wrapper and the four accessors hand back exactly what we
     /// put in.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn wrapper_round_trip_accessors() {
         let lat = Lattice::new(
             "smoke",
@@ -189,6 +190,7 @@ mod tests {
     /// truncated-icosahedron registry entry returns from its Phase 1
     /// wrapper (Phase 2 owns assigning a real metric to the buckyball).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn zero_metric_placeholder_is_expressible() {
         let lat = Lattice::new(
             "empty_metric",
@@ -219,6 +221,7 @@ mod tests {
     /// inherent method on `LatticeWithMetric` should trigger a Phase
     /// 1/2 boundary discussion before landing.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn phase1_surface_documented() {
         // Compile-time check: the four accessors exist with the
         // exact signatures Phase 2's free DEC operators will consume.

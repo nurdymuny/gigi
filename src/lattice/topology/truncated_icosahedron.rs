@@ -397,6 +397,7 @@ mod tests {
     /// pentagons, 20 hexagons}; every edge is shared by exactly 2
     /// faces.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_2_buckyball_topology() {
         let lat = buckyball();
 
@@ -446,6 +447,7 @@ mod tests {
     /// vertex-cycle face table (each face has the same length,
     /// each edge appears in exactly 2 faces, edge-sign sum is 0).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn signed_face_table_consistency() {
         let bb = buckyball_with_signed_faces();
         assert_eq!(bb.signed_faces.len(), 32);

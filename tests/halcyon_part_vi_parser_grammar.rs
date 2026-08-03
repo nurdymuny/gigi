@@ -60,6 +60,7 @@ LOOP_TRANSPORT lattice
 /// VI.2 grammar acceptance — full v3.1.3 §4.4 source parses and every
 /// frozen field lands at the value the spec specifies.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_grammar_accepts_full_v3_1_3_source() {
     let stmt = parse(FULL_V3_1_3_SOURCE).expect("LOOP_TRANSPORT full v3.1.3 source parses");
 
@@ -146,6 +147,7 @@ fn halcyon_vi_2_grammar_accepts_full_v3_1_3_source() {
 /// VI.2 grammar acceptance — the spec freezes (Q, BETA_WILSON) as the
 /// control manifold; the parser must capture that exactly.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_grammar_control_manifold_is_q_beta_wilson() {
     let stmt = parse(FULL_V3_1_3_SOURCE).expect("parses");
     if let Statement::LoopTransport { control_manifold, .. } = stmt {
@@ -158,6 +160,7 @@ fn halcyon_vi_2_grammar_control_manifold_is_q_beta_wilson() {
 /// VI.2 grammar acceptance — single-seed bracket `[s..s]` collapses to
 /// SeedRange { lo: s, hi: s } (inclusive both ends).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_grammar_single_seed_bracket() {
     let src = r#"
         LOOP_TRANSPORT lat
@@ -187,6 +190,7 @@ fn halcyon_vi_2_grammar_single_seed_bracket() {
 /// handling deferred to VI.4; an EMPTY SHAM block carries no flags so
 /// VI.2 accepts it).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_grammar_empty_sham_block_parses() {
     let src = r#"
         LOOP_TRANSPORT lat
@@ -217,6 +221,7 @@ fn halcyon_vi_2_grammar_empty_sham_block_parses() {
 /// VI.2 grammar acceptance — ADIABATIC FALSE round-trips as the bool
 /// `false` (the verdict path branches on this; see v3.1.3 §4.2).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_grammar_adiabatic_false() {
     let src = r#"
         LOOP_TRANSPORT lat

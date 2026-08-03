@@ -333,13 +333,35 @@ required-features = ["halcyon"]
 # Parallel-transports an SU(2) frame around the great-circle triangle
 # formed by IGS stations PIE1 / KOKB / ALGO on a cubed-sphere (C=32) and
 # compares the holonomy rotation angle against Girard's analytic excess
-# A/R². Writes papers/perfect_identity/empirical/gnss_geodesic_results.json.
-# Run with:
-#   cargo run --release --features lattice --example gnss_geodesic
-[[example]]
-name = "gnss_geodesic"
-path = "examples/gnss_geodesic.rs"
-required-features = ["lattice"]
+# A/R².
+#
+# DECLARATION REMOVED 2026-08-02. The [[example]] block below pointed at
+# examples/gnss_geodesic.rs, which was declared in 732b7b1 but never
+# committed and no longer exists in any branch, worktree, or working tree.
+# Cargo resolves example targets before running anything, so the dangling
+# path failed `cargo test` (exit 101, "couldn't read ...") on every fresh
+# checkout of main — the whole suite, not just the example.
+#
+# The RESULTS it produced are safe and committed in the paper repo:
+#   davis-wilson-lattice/papers/perfect_identity/empirical/
+#     gnss_geodesic_results.json  (rotation 0.12168955674933414 rad,
+#                                  Girard 0.12168955674933768, residual
+#                                  -3.539e-15, area 4.9504e12 m², R=6378137)
+#     gnss_geodesic_README.md     (full spec: the three stations with
+#                                  coordinates, both quantities compared)
+#     gnss_geodesic_plot.png, gnss_geodesic_run.log
+#
+# Deliberately NOT reimplemented here: the README specifies the test
+# completely enough to rebuild, but a fresh implementation would mint a
+# second source of truth for a number already published in a paper. That
+# is a paper decision (reproducibility), not a build fix. To restore:
+# write the example, verify it reproduces the committed JSON to machine
+# precision, then re-add the block below.
+#
+# [[example]]
+# name = "gnss_geodesic"
+# path = "examples/gnss_geodesic.rs"
+# required-features = ["lattice"]
 
 # vs_stores round-2 EMBEDDED lane — gigi as an in-process Rust library
 # (no HTTP): ingest rows/sec + point-query p50/p95 in microseconds, same
@@ -361,3 +383,12 @@ rand = "0.8"
 # listener.
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
+# The gauge/lattice registries are process-global (OnceLock<Mutex<HashMap>>)
+# by design — they mirror the production singleton. Tests that call the
+# destructive global `registry::clear()` therefore race every sibling test
+# holding a registration, in the same process, under cargo's parallel test
+# threads. That produced WANDERING failures: a different test failed on each
+# full-suite run while every one of them passed in isolation (2026-08-02).
+# `#[serial(gauge_registry)]` puts exactly those tests in one lane; unrelated
+# serial groups still run concurrently with each other and with the rest.
+serial_test = "3"

@@ -170,6 +170,7 @@ mod tests {
     /// TDD-HAL-III.4: when `|V_eff| < EPS_K`, `sample_su2_link` falls
     /// through to the Haar branch and returns a unit quaternion.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_4_kp_xi_zero_falls_to_haar() {
         let mut rng = SmallRng::seed_from_u64(20260616);
         // V_eff with norm well below EPS_K (1e-12).
@@ -194,6 +195,7 @@ mod tests {
     /// Under that choice the lab-frame q0 IS the KP-sampled y0, so
     /// concentration of y0 near +1 shows directly.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_4_kp_xi_large_concentrates_near_v_hat() {
         let mut rng = SmallRng::seed_from_u64(20260617);
         let v_eff = [1.0, 0.0, 0.0, 0.0];
@@ -222,6 +224,7 @@ mod tests {
     /// the ground-truth attempt count. The two must agree at
     /// `draws == 4 · attempts`.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_4_kp_consumes_4_rngs_per_attempt() {
         let xi = 1.0_f64;
         let mut rng_a = SmallRng::seed_from_u64(20260618);
@@ -259,6 +262,7 @@ mod tests {
     /// Drifting either constant breaks intra-binding bit-identity
     /// against the mock and is a SHIP-BLOCKER per the sprint spec.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_4_kp_constants_match_halcyon() {
         assert_eq!(EPS_K, 1e-12, "EPS_K must match Halcyon Python verbatim");
         assert_eq!(

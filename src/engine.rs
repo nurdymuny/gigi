@@ -6319,6 +6319,7 @@ mod tests {
     /// handle's buffer must be byte-identical to the pre-close state.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_v_3_replay_snapshot_byte_identity() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -6424,6 +6425,7 @@ mod tests {
     /// would have forced fall-back to full heap replay (~15GB RSS → OOM).
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_v_3_replay_orphan_snapshot() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -6476,6 +6478,7 @@ mod tests {
     /// handle's group disagrees with the payload's group tag.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_v_3_replay_group_mismatch() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -6563,6 +6566,7 @@ mod tests {
     /// `WalError::SnapshotChecksumMismatch`.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_v_3_replay_checksum_mismatch() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();
@@ -6670,6 +6674,7 @@ mod tests {
     /// errors) still hard-rejects upstream.
     #[cfg(feature = "gauge")]
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_v_3_replay_orphan_gauge_field_declare_graceful_skip() {
         let _g = crate::gauge::registry::test_serial_lock();
         crate::lattice::registry::clear();

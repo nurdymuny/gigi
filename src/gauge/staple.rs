@@ -194,6 +194,7 @@ mod tests {
     /// vertex-cycle pair at `pos_in_face` resolves to the recorded
     /// edge).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_3_incidence_buckyball_shape() {
         let bb = buckyball();
         let inc = build_edge_face_incidence(&bb);
@@ -229,6 +230,7 @@ mod tests {
     /// `V_eff(e) = Σ_f A_f` with `A_f = I` when every link is
     /// identity.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_3_staple_at_identity_is_face_count() {
         gauge_registry::clear();
         lattice_registry::clear();
@@ -274,6 +276,7 @@ mod tests {
     /// Rust scalar-accumulator path (a handful of FMA-friendly
     /// reorderings; the algorithms are mathematically identical).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_3_staple_matches_halcyon_at_seed() {
         // Harvested once from `davis-wilson-lattice/inertia_damping/
         // buckyball_action.py::staple_sum_q(U, 0, graph)` against
@@ -344,6 +347,7 @@ mod tests {
     /// self edge (a pre-bug version that included the self edge would
     /// pick up the planted half-turn and return a non-identity sum).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_3_staple_skips_self_edge() {
         gauge_registry::clear();
         lattice_registry::clear();

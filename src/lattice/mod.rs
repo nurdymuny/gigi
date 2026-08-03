@@ -433,6 +433,7 @@ mod tests {
     /// to its GQL re-emit form, parse back, assert structural
     /// equality.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_1_lattice_round_trip() {
         // Tiny tetrahedron-ish: 4 vertices, 3 edges, 1 face.
         let lat = Lattice::new(
@@ -457,6 +458,7 @@ mod tests {
     /// each yields the correct Statement variant + a re-parse of
     /// the canonical re-emit form is bit-identical.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_7_lattice_parse() {
         use crate::parser;
 
@@ -502,6 +504,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn euler_chi_on_tetrahedron_face_count_check() {
         // 4 vertices, 6 edges, 4 faces → χ = 2 (S² topology).
         let lat = Lattice::new(

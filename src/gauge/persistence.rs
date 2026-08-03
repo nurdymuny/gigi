@@ -132,6 +132,7 @@ mod tests {
     /// with the same recipe. This is the contract that lets the WAL
     /// variant be metadata-only.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4b_materialize_haar_byte_identical() {
         let bb = buckyball();
         let seed: u64 = 20260616;
@@ -166,6 +167,7 @@ mod tests {
 
     /// TDD-HAL-II.4b: identity recipe round-trips through materialize.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4b_materialize_identity() {
         let bb = buckyball();
         let handle = materialize_field(
@@ -189,6 +191,7 @@ mod tests {
     /// The error message names the group — anchored to Group::label so
     /// the test survives label changes.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4b_materialize_non_su2_errors() {
         let bb = buckyball();
         let result = materialize_field(
@@ -209,6 +212,7 @@ mod tests {
     /// required. This is a documented P1 follow-up; the helper
     /// surfaces it as a clean error rather than degrading silently.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_4b_materialize_from_field_errors() {
         let bb = buckyball();
         let result = materialize_field(

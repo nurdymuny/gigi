@@ -250,6 +250,7 @@ mod tests {
     /// `SeedRequired` Display contains the literal "SEED" so Halcyon's
     /// `match="SEED"` substring check hits.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn seed_required_display_contains_seed() {
         let err = GaugeFieldError::SeedRequired;
         assert!(err.to_string().contains("SEED"));
@@ -258,6 +259,7 @@ mod tests {
     /// `UnsupportedGroup(Group::U1)` Display contains the literal
     /// "SU(2)" so Halcyon's `match="SU\\(2\\)"` regex anchor hits.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn unsupported_group_display_contains_su2() {
         let err = GaugeFieldError::UnsupportedGroup(Group::U1);
         assert!(err.to_string().contains("SU(2)"));
@@ -265,6 +267,7 @@ mod tests {
 
     /// Every variant has a non-empty Display.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn every_variant_displays() {
         let variants = [
             GaugeFieldError::SeedRequired,

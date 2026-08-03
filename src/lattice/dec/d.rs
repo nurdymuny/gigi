@@ -66,6 +66,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn d_0_zero_input_yields_zero_output() {
         let lwm = tiny_quad();
         let out = d_0(&lwm, &[0.0, 0.0, 0.0, 0.0]).expect("ok");
@@ -73,6 +74,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn d_0_length_mismatch_carries_surface_label() {
         let lwm = tiny_quad();
         let err = d_0(&lwm, &[0.0, 0.0]).unwrap_err();
@@ -87,6 +89,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn d_0_sign_is_head_minus_tail() {
         let lwm = tiny_quad();
         // phi[0]=10, phi[1]=20; edge (0,1) ⇒ out[0] = 20-10 = 10.

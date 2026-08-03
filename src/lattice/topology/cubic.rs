@@ -247,6 +247,7 @@ mod tests {
     /// generalization; flat_torus_2d(n) is `cubic("name", n, 2, true, None)`
     /// modulo edge-ordering convention.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn test_d2_l4_matches_flat_torus_combinatorics() {
         let lwm = cubic("c2_4", 4, 2, true, None);
         let lat = lwm.lattice();
@@ -287,6 +288,7 @@ mod tests {
     /// D=3, L=4 combinatorics: V=64, E=192, F=192. Each vertex has
     /// degree 2·D=6 (six nearest neighbours on the cubic 3-torus).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn test_d3_l4_combinatorics() {
         let lwm = cubic("c3_4", 4, 3, true, None);
         let lat = lwm.lattice();
@@ -318,6 +320,7 @@ mod tests {
     /// F = 12^4 · C(4,2) = 12^4 · 6 = 124_416
     /// Every vertex has degree 2·D=8.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn test_d4_l12_combinatorics() {
         let lwm = cubic("c4_12", 12, 4, true, None);
         let lat = lwm.lattice();
@@ -352,6 +355,7 @@ mod tests {
     /// or `D` (modulo `L=1` degeneracies that self-loop, which we
     /// exclude with `L >= 2`).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn test_vertex_degree_uniform_for_periodic() {
         for &(l, d) in &[(2usize, 2usize), (3, 2), (4, 3), (3, 4), (5, 3)] {
             let lwm = cubic("c", l, d, true, None);
@@ -379,6 +383,7 @@ mod tests {
     /// SHIPS (Phase 1 addition for Hallie's sectoral SPECTRAL_GAUGE
     /// workflow) — see `tests/lattice_obc_basic.rs` for that path.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     #[should_panic(expected = "OPEN boundary deferred to Phase 2")]
     fn test_open_boundary_not_yet_supported() {
         let _ = cubic("open_cube", 4, 3, false, None);

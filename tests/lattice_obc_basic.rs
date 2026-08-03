@@ -39,6 +39,7 @@ use gigi::parser;
 /// OBC AXIS 0 drops L^(D-1) = 4 wrap edges on axis 0.
 /// Expect E = 28.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubic_obc_axis_0_l4_d2_edge_count() {
     let lwm = cubic("l4_obc0", 4, 2, true, Some(0));
     let lat = lwm.lattice();
@@ -58,6 +59,7 @@ fn test_cubic_obc_axis_0_l4_d2_edge_count() {
 /// that would wrap through the axis-0 boundary.
 /// Expect F = 12.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubic_obc_axis_0_l4_d2_face_count() {
     let lwm = cubic("l4_obc0", 4, 2, true, Some(0));
     let lat = lwm.lattice();
@@ -81,6 +83,7 @@ fn test_cubic_obc_axis_0_l4_d2_face_count() {
 ///                                       (drops boundary plaquettes on
 ///                                        every axis pair touching k)
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubic_obc_axis_0_l24_d4_counts_match_letter() {
     let l = 24usize;
     let d = 4usize;
@@ -116,6 +119,7 @@ fn test_cubic_obc_axis_0_l24_d4_counts_match_letter() {
 /// PERIODIC (obc_axis = None) still produces the historical Halcyon
 /// §3.3 counts. This is the byte-identical backwards-compat guard.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubic_default_still_periodic() {
     let lwm = cubic("l12_periodic", 12, 4, true, None);
     let lat = lwm.lattice();
@@ -139,6 +143,7 @@ fn test_cubic_default_still_periodic() {
 /// caught here — those numbers are L^(D-1) accounting where L^D was
 /// intended, and cannot survive this assertion.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubic_obc_axis_0_l24_d4_absolute_counts() {
     let lwm = cubic("l24_obc0_absolute", 24, 4, true, Some(0));
     let lat = lwm.lattice();
@@ -161,6 +166,7 @@ fn test_cubic_obc_axis_0_l24_d4_absolute_counts() {
 
 /// OBC AXIS >= DIM must error (out-of-range axis index).
 #[test]
+#[serial_test::serial(gauge_registry)]
 #[should_panic(expected = "OBC AXIS")]
 fn test_cubic_obc_axis_out_of_bounds_errors() {
     // D=3 so valid axes are 0, 1, 2. Axis 3 is out of range.
@@ -170,6 +176,7 @@ fn test_cubic_obc_axis_out_of_bounds_errors() {
 /// The OBC topology hint carries the axis index so downstream verbs
 /// (BETTI, CHERN_CLASS, SPECTRAL_GAUGE) can dispatch on it.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_cubic_obc_axis_topology_hint_carries_axis() {
     let lwm = cubic("l4_obc0", 4, 2, true, Some(0));
     let lat = lwm.lattice();
@@ -187,6 +194,7 @@ fn test_cubic_obc_axis_topology_hint_carries_axis() {
 /// `LatticeFromCanonical` statement whose `params` contains an
 /// `"OBC_AXIS"` entry with `Literal::Integer(0)`.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_lattice_parse_obc_axis_0() {
     let src = "LATTICE l24 FROM CUBIC L=24 DIM=4 OBC AXIS 0;";
     let stmt = parser::parse(src).expect("parse OBC AXIS 0");
@@ -221,6 +229,7 @@ fn test_lattice_parse_obc_axis_0() {
 /// Backwards-compat: the historical `LATTICE ... FROM CUBIC L=12 DIM=4
 /// PERIODIC;` grammar still parses with no `OBC_AXIS` entry.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_lattice_parse_periodic_still_works() {
     let src = "LATTICE my4d FROM CUBIC L=12 DIM=4 PERIODIC;";
     let stmt = parser::parse(src).expect("parse PERIODIC");
@@ -248,6 +257,7 @@ fn test_lattice_parse_periodic_still_works() {
 /// — the executor's `resolve_constructor_args` must reject the combo
 /// so users pick one clear form.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_lattice_parse_obc_and_open_together_errors() {
     let src = "LATTICE bad FROM CUBIC L=4 DIM=2 OPEN OBC AXIS 0;";
 

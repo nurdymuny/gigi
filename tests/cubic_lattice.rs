@@ -53,6 +53,7 @@ fn declare_and_round_trip(decl: &str, name: &str) -> Lattice {
 /// V = 20_736, E = 82_944, F = 124_416 (the numbers named in
 /// `GIGI_TO_HALCYON_REPLY_2026-06-26_BRIDGE_REVISED.md` §3.3).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_lattice_cubic_l12_d4_periodic() {
     let decl = "LATTICE my4d FROM CUBIC L=12 DIM=4 PERIODIC;";
     let lat = declare_and_round_trip(decl, "my4d");
@@ -68,6 +69,7 @@ fn test_parse_lattice_cubic_l12_d4_periodic() {
 /// the lattice-physics convention. The substrate produced is
 /// bit-equivalent to the explicit-PERIODIC declaration above.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_lattice_cubic_default_periodic() {
     let decl = "LATTICE my4d_default FROM CUBIC L=4 DIM=3;";
     let lat = declare_and_round_trip(decl, "my4d_default");
@@ -95,6 +97,7 @@ fn test_parse_lattice_cubic_default_periodic() {
 /// periodic grid. Regression anchor against the cubic constructor
 /// drifting from its D=2 specialization.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_lattice_cubic_d2_matches_flat_torus() {
     let decl = "LATTICE square FROM CUBIC L=4 DIM=2 PERIODIC;";
     let lat = declare_and_round_trip(decl, "square");
@@ -125,6 +128,7 @@ fn test_parse_lattice_cubic_d2_matches_flat_torus() {
 /// Missing required parameter `L` surfaces with a clear error, not a
 /// silent default-to-1.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_lattice_cubic_missing_l_errors() {
     gigi::lattice::registry::clear();
     let dir = tempfile::tempdir().expect("tempdir");
@@ -143,6 +147,7 @@ fn test_parse_lattice_cubic_missing_l_errors() {
 
 /// Missing required parameter `DIM` surfaces with a clear error.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_lattice_cubic_missing_dim_errors() {
     gigi::lattice::registry::clear();
     let dir = tempfile::tempdir().expect("tempdir");
@@ -163,6 +168,7 @@ fn test_parse_lattice_cubic_missing_dim_errors() {
 /// assertion in the underlying constructor. Verifies the parser accepts
 /// the keyword and the assertion fires (Phase 2 will lift this).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_lattice_cubic_open_panics() {
     gigi::lattice::registry::clear();
     let dir = tempfile::tempdir().expect("tempdir");
@@ -188,6 +194,7 @@ fn test_parse_lattice_cubic_open_panics() {
 /// accept KEY=VALUE parameters. The TI path takes no parameters so
 /// the empty-params branch of the new grammar is the path exercised.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_parse_lattice_truncated_icosahedron_unchanged() {
     let decl = "LATTICE phase33_bb FROM TRUNCATED_ICOSAHEDRON TOPOLOGY 'S2';";
     let lat = declare_and_round_trip(decl, "phase33_bb");

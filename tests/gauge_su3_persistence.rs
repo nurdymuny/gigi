@@ -33,6 +33,7 @@ use gigi::lattice::topology::truncated_icosahedron::buckyball;
 /// re-materializes byte-identically through `materialize_field` (the
 /// helper the engine's WAL replay path uses).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_su3_field_round_trips_through_wal_replay() {
     let bb = buckyball();
     let seed: u64 = 20260626;
@@ -75,6 +76,7 @@ fn test_su3_field_round_trips_through_wal_replay() {
 
 /// Identity recipe round-trips through materialize_field.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_su3_identity_round_trips_through_wal_replay() {
     let bb = buckyball();
     let handle = materialize_field(
@@ -105,6 +107,7 @@ fn test_su3_identity_round_trips_through_wal_replay() {
 /// declare → snapshot → restore via `replace_buffer` → byte-identity
 /// against the snapshot bytes.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_su3_replace_buffer_restores_snapshot() {
     let bb = buckyball();
 
@@ -133,6 +136,7 @@ fn test_su3_replace_buffer_restores_snapshot() {
 /// `replace_buffer` rejects shape-mismatched payloads — the wire-
 /// format defense the persistence layer relies on.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_su3_replace_buffer_rejects_shape_mismatch() {
     let bb = buckyball();
     let mut field = SU3GaugeField::new(

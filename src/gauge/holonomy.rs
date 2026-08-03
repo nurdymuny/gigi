@@ -77,6 +77,7 @@ mod tests {
     /// TDD-HAL-I.4 — identity connection on every edge of the
     /// buckyball → walker returns identity on every face.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_4_walker_identity_on_every_face() {
         let lat = buckyball();
         let conn = FixedEdgeConnection::identity_everywhere();
@@ -101,6 +102,7 @@ mod tests {
     /// that always returns the canonical U_e (ignoring orientation)
     /// would pass TDD-HAL-I.4 and the gold gate, but fail here.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_5_orientation_sensitivity() {
         let lat = buckyball();
 

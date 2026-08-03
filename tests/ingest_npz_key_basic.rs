@@ -124,6 +124,7 @@ fn open_engine() -> (Engine, tempfile::TempDir) {
 /// dimension matching `U`'s inner shape (3). The other members do not
 /// contribute records and do not appear in the emitted schema.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_npz_key_selects_named_array() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -223,6 +224,7 @@ fn test_ingest_npz_key_selects_named_array() {
 /// without the feature (clear error) instead of discarding it.
 #[cfg(feature = "gauge")]
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_npz_key_absent_multi_array_errors() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -266,6 +268,7 @@ fn test_ingest_npz_key_absent_multi_array_errors() {
 /// preserving today's behavior. This is the regression fence against
 /// a GREEN patch that accidentally makes KEY mandatory.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_npz_key_absent_single_array_works() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -311,6 +314,7 @@ fn test_ingest_npz_key_absent_single_array_works() {
 /// members so the fix is a one-shot correction, not a round trip to
 /// re-inspect the NPZ.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_npz_key_unknown_array_name_errors() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");

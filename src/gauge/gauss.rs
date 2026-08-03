@@ -251,6 +251,7 @@ mod tests {
     /// `ad_action_su2` at U = identity reduces to the identity map
     /// on the Lie algebra: `Ad(I) v = v`.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn ad_identity_is_identity() {
         let v = [0.3, -0.7, 1.2];
         let r = ad_action_su2([1.0, 0.0, 0.0, 0.0], v);
@@ -262,6 +263,7 @@ mod tests {
     /// `ad_action_su2` for a unit quaternion preserves the Lie-algebra
     /// L2 norm (Ad is an SO(3) rotation).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn ad_preserves_norm() {
         // Rotation by θ = π/3 about z-axis: u = (cos π/6, 0, 0, sin π/6).
         let c = (std::f64::consts::PI / 6.0).cos();
@@ -280,6 +282,7 @@ mod tests {
     /// `max_inf_norm` smoke test (the dedicated integration-test
     /// path lives in `tests/gauge_gauss_unit.rs`).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn max_inf_norm_smoke() {
         let r = [[0.0, 0.0, 0.0], [3.5, -1.0, 0.25], [0.0, 2.7, 0.0]];
         assert_eq!(max_inf_norm(&r), 3.5);

@@ -30,6 +30,7 @@ use gigi::lattice::topology::truncated_icosahedron::buckyball;
 /// call returns Ok with a LatticeWithMetric whose lattice half has
 /// the canonical buckyball counts (V=60, E=90, F=32, χ=2).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_registry_get_constructor_truncated_icosahedron() {
     let ctor = registry::get_constructor("TRUNCATED_ICOSAHEDRON")
         .expect("TRUNCATED_ICOSAHEDRON must be registered in the constructor table");
@@ -49,6 +50,7 @@ fn test_registry_get_constructor_truncated_icosahedron() {
 /// regression anchor that proves the CC-2 refactor preserves the
 /// existing Halcyon contract surface.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_registry_dispatched_buckyball_bit_identical_to_direct() {
     let direct = buckyball();
 
@@ -79,6 +81,7 @@ fn test_registry_dispatched_buckyball_bit_identical_to_direct() {
 /// CUBED_SPHERE is registered alongside TRUNCATED_ICOSAHEDRON. The
 /// constructor accepts a `panel_size` parameter via ConstructorArgs.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_registry_get_constructor_cubed_sphere() {
     let ctor = registry::get_constructor("CUBED_SPHERE")
         .expect("CUBED_SPHERE must be registered in the constructor table");
@@ -101,6 +104,7 @@ fn test_registry_get_constructor_cubed_sphere() {
 /// never a panic. The executor's error message ("unknown canonical
 /// lattice identifier") should propagate from a None return here.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_registry_get_constructor_unknown_returns_none() {
     let ctor = registry::get_constructor("NONEXISTENT_TOPOLOGY");
     assert!(

@@ -155,6 +155,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn star_0_length_mismatch() {
         let lwm = quad_with_full_metric();
         let err = hodge_star_0(&lwm, &[0.0]).unwrap_err();
@@ -162,6 +163,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn star_1_length_mismatch() {
         let lwm = quad_with_full_metric();
         let err = hodge_star_1(&lwm, &[0.0]).unwrap_err();
@@ -169,6 +171,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn star_2_length_mismatch() {
         let lwm = quad_with_full_metric();
         let err = hodge_star_2(&lwm, &[0.0, 0.0]).unwrap_err();
@@ -176,6 +179,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn star_2_happy_path_divides_by_area() {
         let lwm = quad_with_full_metric();
         let out = hodge_star_2(&lwm, &[4.0]).expect("ok");

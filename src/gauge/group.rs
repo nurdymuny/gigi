@@ -86,6 +86,7 @@ mod tests {
     /// 3×3 complex matrix as interleaved real/imag f64 pairs (Bee's
     /// `inertia_damping/gauge_heatbath_gpu.py` representation).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_1_group_repr_dim() {
         assert_eq!(Group::SU2.repr_dim(), 4);
         assert_eq!(Group::SU3.repr_dim(), 18);
@@ -96,6 +97,7 @@ mod tests {
     /// Labels are stable string constants — Halcyon's `SU\(2\)` regex
     /// anchor and the JSON `"group"` field both rely on them.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn group_labels_are_stable() {
         assert_eq!(Group::SU2.label(), "SU(2)");
         assert_eq!(Group::SU3.label(), "SU(3)");
@@ -106,6 +108,7 @@ mod tests {
     /// `ZN` discriminates on `n` (different moduli are different
     /// groups under `Eq`).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn zn_eq_discriminates_on_modulus() {
         assert_ne!(Group::ZN { n: 3 }, Group::ZN { n: 5 });
         assert_eq!(Group::ZN { n: 4 }, Group::ZN { n: 4 });

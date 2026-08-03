@@ -287,6 +287,7 @@ mod tests {
     /// pin against (Bee's locked decision 1: gold is harvested from
     /// GIGI itself, not from NumPy).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_1_identity_round_trip_byte_equal() {
         let buffer = DenseLinkBuffer::new_identity(Group::SU2, 90)
             .expect("SU(2) identity buffer must succeed");
@@ -322,6 +323,7 @@ mod tests {
     /// SU(3) gate; the U(1) linking ship (2026-07-18) lifts U(1) —
     /// only Z(N) still errors for `new_identity`.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_1_identity_rejects_unimplemented_groups() {
         assert_eq!(
             DenseLinkBuffer::new_identity(Group::ZN { n: 5 }, 10).unwrap_err(),
@@ -335,6 +337,7 @@ mod tests {
     /// 0.0 }`. All-zeros IS identity for U(1), so it is even simpler than
     /// the SU(2)/SU(3) diagonal writes.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_identity_buffer_constructs() {
         let buf = DenseLinkBuffer::new_identity(Group::U1, 12)
             .expect("U(1) identity buffer must succeed");
@@ -352,6 +355,7 @@ mod tests {
     /// per-edge phase at `data[edge]` (repr_dim = 1) and `read_element`
     /// decodes it back exactly; untouched edges stay identity.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_write_read_row_round_trip() {
         let mut buf = DenseLinkBuffer::new_identity(Group::U1, 4).unwrap();
         buf.write_u1_row(2, 1.2345);
@@ -364,6 +368,7 @@ mod tests {
     /// — U(1) random phases are materialized as a theta bundle by INIT
     /// FLUX RANDOM, not a Haar link buffer. Guards the intentional gap.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_haar_still_unsupported() {
         assert_eq!(
             DenseLinkBuffer::new_haar(Group::U1, 10, 0).unwrap_err(),
@@ -374,6 +379,7 @@ mod tests {
     /// Halcyon ITEM 3.1: SU(3) identity buffer now constructs cleanly
     /// — gate lifted from "unsupported" to live math.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_identity_buffer_constructs() {
         let buf = DenseLinkBuffer::new_identity(Group::SU3, 10).unwrap();
         assert_eq!(buf.group, Group::SU3);
@@ -397,6 +403,7 @@ mod tests {
     /// Display impl must contain the group's stable label so the
     /// Halcyon G2.D `SU\(2\)` regex anchor can match.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn unsupported_group_display_contains_label() {
         let err = GaugeFieldError::UnsupportedGroup(Group::SU3);
         assert!(err.to_string().contains("SU(3)"));
@@ -404,6 +411,7 @@ mod tests {
 
     /// Empty buffer is well-formed (n_edges = 0, data empty).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn identity_zero_edges_is_empty() {
         let buf = DenseLinkBuffer::new_identity(Group::SU2, 0).unwrap();
         assert_eq!(buf.data.len(), 0);
@@ -415,6 +423,7 @@ mod tests {
     /// `data`). This is the intra-binding bit-identity contract
     /// lifted up from the per-draw equality to the full buffer.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_2_dense_buffer_haar_reproducible() {
         let a = DenseLinkBuffer::new_haar(Group::SU2, 90, 20260616).unwrap();
         let b = DenseLinkBuffer::new_haar(Group::SU2, 90, 20260616).unwrap();
@@ -430,6 +439,7 @@ mod tests {
     /// against an accidental identity-seeding bug (e.g. seeding from
     /// `0` and the RNG state never advancing).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_2_dense_buffer_haar_different_seeds() {
         let a = DenseLinkBuffer::new_haar(Group::SU2, 90, 20260616).unwrap();
         let b = DenseLinkBuffer::new_haar(Group::SU2, 90, 20260617).unwrap();
@@ -443,6 +453,7 @@ mod tests {
     /// the typed error. Halcyon ITEM 3.1 lifts the SU(3) gate — only
     /// U(1) and Z(N) still error here.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_2_dense_buffer_haar_unsupported_group() {
         assert_eq!(
             DenseLinkBuffer::new_haar(Group::U1, 90, 0).unwrap_err(),
@@ -457,6 +468,7 @@ mod tests {
     /// Halcyon ITEM 3.1: SU(3) Haar buffer constructs deterministically
     /// — same seed → byte-identical buffer (Mezzadri 2007).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_haar_buffer_constructs_reproducibly() {
         let a = DenseLinkBuffer::new_haar(Group::SU3, 90, 20260626).unwrap();
         let b = DenseLinkBuffer::new_haar(Group::SU3, 90, 20260626).unwrap();
@@ -472,6 +484,7 @@ mod tests {
     /// surface (the marsaglia_haar tests already check the sampler
     /// directly; this guards the row-write path in `new_haar`).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_2_dense_buffer_haar_rows_unit_norm() {
         let buf = DenseLinkBuffer::new_haar(Group::SU2, 90, 20260616).unwrap();
         for edge in 0..90 {

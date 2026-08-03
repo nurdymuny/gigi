@@ -195,6 +195,7 @@ mod tests {
     /// `EFieldInit::Zero` round-trips: q0=0 everywhere AND every other
     /// component is zero too.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn zero_init_buffer_is_all_zeros() {
         let bb = buckyball();
         let u = SU2GaugeField::new(
@@ -212,6 +213,7 @@ mod tests {
     /// `EFieldInit::MaxwellBoltzmann` without a seed errors with
     /// `SeedRequired`.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn mb_init_without_seed_errors() {
         let bb = buckyball();
         let u = SU2GaugeField::new(
@@ -233,6 +235,7 @@ mod tests {
 
     /// `write_element_q` zeroes q0 regardless of input.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn write_element_q_enforces_q0_zero() {
         let bb = buckyball();
         let u = SU2GaugeField::new(

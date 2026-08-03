@@ -438,6 +438,7 @@ mod tests {
     /// load-bearing integration check lives in
     /// `tests/gauge_project_gauss_unit.rs`.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn default_config_is_halcyon_production() {
         let cfg = ProjectGaussConfig::default();
         assert_eq!(cfg.tikhonov, 1e-14);
@@ -447,6 +448,7 @@ mod tests {
 
     /// `flatten` / `unflatten` round-trip is the identity.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn flatten_unflatten_round_trip() {
         let v: Vec<[f64; 3]> = vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
         let f = flatten(&v);

@@ -191,6 +191,7 @@ mod tests {
     /// materializes through the `new` constructor (gate lifted from
     /// the SU(2)-only era).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_identity_init_on_buckyball() {
         let lat = buckyball();
         let field = SU3GaugeField::new(
@@ -216,6 +217,7 @@ mod tests {
     /// error (mirrors SU(2) contract; same SEED-keyword check Halcyon's
     /// regex anchor matches).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_haar_seed_required() {
         let lat = buckyball();
         let err = SU3GaugeField::new(
@@ -233,6 +235,7 @@ mod tests {
     /// `DenseLinkBuffer::new_haar(SU3, …, seed)`. Bit-identity
     /// contract lifted from the storage layer to the field layer.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_haar_init_round_trip() {
         let lat = buckyball();
         let field = SU3GaugeField::new(
@@ -252,6 +255,7 @@ mod tests {
     /// EdgeConnection: forward returns canonical element; reverse
     /// returns its inverse (conjugate transpose for SU(3)).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_edge_connection_forward_vs_reverse() {
         let lat = buckyball();
         let field = SU3GaugeField::new(
@@ -283,6 +287,7 @@ mod tests {
     /// `replace_buffer` succeeds when shape matches and rejects on
     /// shape mismatch.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_replace_buffer_shape_check() {
         let lat = buckyball();
         let mut field = SU3GaugeField::new(

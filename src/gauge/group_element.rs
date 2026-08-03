@@ -269,6 +269,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su2_identity_compose_is_identity() {
         let i = GroupElement::su2_identity();
         let r = i.compose(&i);
@@ -284,12 +285,14 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su2_inverse_of_identity_is_identity() {
         let i = GroupElement::su2_identity();
         assert_eq!(i.inverse(), i);
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su2_compose_with_inverse_is_identity() {
         // Some non-trivial element: rotation by θ=π/3 about z-axis.
         let q0 = (std::f64::consts::PI / 6.0).cos(); // cos(θ/2) with θ=π/3
@@ -319,6 +322,7 @@ mod tests {
     ///   analog of SU(2)'s `q0 = ½ Tr`).
     /// - round-trip: `compose(θ, -θ) = identity (0)`.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_group_math_compose_inverse_re_trace() {
         fn theta_of(g: GroupElement) -> f64 {
             match g {
@@ -367,6 +371,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     #[should_panic(expected = "ZN")]
     fn zn_inverse_panics() {
         let g = GroupElement::ZN { k: 1, n: 4 };
@@ -378,6 +383,7 @@ mod tests {
     /// Halcyon ITEM 3.1: SU(3) identity composes with itself to give
     /// identity, byte-identical (FP64 exact: 1·1 = 1, 0·* = 0).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_identity_compose_is_identity() {
         let i = GroupElement::su3_identity();
         let r = i.compose(&i);
@@ -386,6 +392,7 @@ mod tests {
 
     /// Halcyon ITEM 3.1: SU(3) inverse of identity is identity.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_inverse_of_identity_is_identity() {
         let i = GroupElement::su3_identity();
         assert_eq!(i.inverse(), i);
@@ -396,6 +403,7 @@ mod tests {
     /// rotation in the (0,1) block: U = exp(i·θ·σ_x) on the upper-left
     /// 2×2 with the (2,2) diagonal carrying e^{-2iθ} for det = 1.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_compose_with_inverse_is_identity() {
         // Build a non-trivial SU(3) element: rotation by θ=π/3 in the
         // (0,1) plane with phase compensation on (2,2).
@@ -435,6 +443,7 @@ mod tests {
     /// Halcyon ITEM 3.1: SU(3) plaquette reduction on identity is 1.0
     /// exactly (sum of three 1.0 real diagonals divided by 3.0).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn su3_re_trace_third_on_identity_is_one() {
         let i = GroupElement::su3_identity();
         assert_eq!(i.re_trace_half(), 1.0);
@@ -442,6 +451,7 @@ mod tests {
 
     /// Mixed-variant compose panics (architectural contract).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     #[should_panic(expected = "different group variants")]
     fn su3_compose_mixed_variants_panics() {
         let a = GroupElement::su3_identity();

@@ -81,6 +81,7 @@ mod tests {
     /// (the Haar measure on SU(2) is symmetric under q → -q, so q0 has
     /// mean 0; this asserts we are sampling the right distribution).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_4_haar_sqrt_rejection_distribution() {
         let mut rng = SmallRng::seed_from_u64(20260616);
         let mut sum_q0 = 0.0_f64;

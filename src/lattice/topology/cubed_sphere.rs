@@ -477,6 +477,7 @@ mod tests {
 
     /// Combinatorial counts for C=1 (degenerate cube).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn combinatorics_c1() {
         let lwm = cubed_sphere("cs1", 1);
         let lat = lwm.lattice();
@@ -489,6 +490,7 @@ mod tests {
 
     /// Combinatorial counts for C=2.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn combinatorics_c2() {
         let lwm = cubed_sphere("cs2", 2);
         let lat = lwm.lattice();
@@ -500,6 +502,7 @@ mod tests {
 
     /// Combinatorial counts for C=3.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn combinatorics_c3() {
         let lwm = cubed_sphere("cs3", 3);
         let lat = lwm.lattice();
@@ -511,6 +514,7 @@ mod tests {
 
     /// Every face is a quadrilateral (4-cycle).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn all_faces_are_quads() {
         let lwm = cubed_sphere("cs4", 4);
         for face in &lwm.lattice().faces {
@@ -523,6 +527,7 @@ mod tests {
     /// a closed S² surface appears in exactly two faces, with one
     /// Forward and one Reverse traversal — verify this directly.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn signed_face_orientations_consume_clean() {
         let lwm = cubed_sphere("cs3o", 3);
         let lat = lwm.lattice();
@@ -554,6 +559,7 @@ mod tests {
     /// Metric stub presence: cell_areas and edge_lengths populated to
     /// the right cardinalities; dual_face_areas left None.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn metric_present_and_sized() {
         let lwm = cubed_sphere("cs2m", 2);
         let lat = lwm.lattice();
@@ -570,6 +576,7 @@ mod tests {
 
     /// Total spherical area on the unit sphere equals 4π (to f64 tol).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn total_cell_area_equals_four_pi() {
         let lwm = cubed_sphere("csarea", 4);
         let total: f64 = lwm.cell_areas().iter().sum();
@@ -582,6 +589,7 @@ mod tests {
 
     /// Topology hint round-trips as "S2".
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn topology_hint_is_s2() {
         let lwm = cubed_sphere("cshint", 2);
         assert_eq!(lwm.lattice().topology.as_deref(), Some("S2"));
@@ -590,6 +598,7 @@ mod tests {
     /// First eight vertex coordinates are the cube corners (after
     /// normalization, ±1/√3 in each axis) in the frozen order.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn first_eight_vertices_are_cube_corners_in_frozen_order() {
         // We rebuild the coord table internally to verify ordering;
         // since the constructor doesn't expose coords, we re-derive

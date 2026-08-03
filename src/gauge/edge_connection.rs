@@ -87,6 +87,7 @@ mod tests {
     /// TDD-HAL-I.3 — identity FixedConnection returns SU(2) identity
     /// for any edge in both orientations.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_3_identity_connection_is_identity() {
         let conn = FixedEdgeConnection::identity_everywhere();
         let id = GroupElement::su2_identity();
@@ -98,6 +99,7 @@ mod tests {
 
     /// Compose(identity, identity) == identity.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_3_identity_compose_identity() {
         let id = GroupElement::su2_identity();
         assert_eq!(id.compose(&id), id);
@@ -105,6 +107,7 @@ mod tests {
 
     /// Inverse(identity) == identity.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_3_identity_inverse_is_identity() {
         let id = GroupElement::su2_identity();
         assert_eq!(id.inverse(), id);
@@ -112,6 +115,7 @@ mod tests {
 
     /// Trait is object-safe — we can store `Box<dyn EdgeConnection>`.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn edge_connection_is_object_safe() {
         let conn: Box<dyn EdgeConnection> =
             Box::new(FixedEdgeConnection::identity_everywhere());

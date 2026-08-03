@@ -156,6 +156,7 @@ fn write_su2_identity_npz(path: &Path, array_name: &str, n_configs: usize, d: us
 /// A full INGEST with the GAUGE_FIELD interpretation tail parses to a
 /// Statement::Ingest with a `Some(GaugeFieldInterpretation { .. })`.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gauge_field_parser_accepts_full_tail() {
     let src = "INGEST b FROM '/tmp/x.npz' FORMAT NPZ AS GAUGE_FIELD GROUP SU2 ON LATTICE l4;";
     let stmt = parser::parse(src).unwrap_or_else(|e| panic!("parse failed: {e}"));
@@ -182,6 +183,7 @@ fn test_ingest_gauge_field_parser_accepts_full_tail() {
 /// Without the AS clause the interpretation is None — backwards compat
 /// with every existing INGEST test at the 889/0 lib floor.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gauge_field_parser_defaults_to_none_without_as() {
     let src = "INGEST b FROM '/tmp/x.npz' FORMAT NPZ;";
     let stmt = parser::parse(src).unwrap_or_else(|e| panic!("parse failed: {e}"));
@@ -200,6 +202,7 @@ fn test_ingest_gauge_field_parser_defaults_to_none_without_as() {
 /// not a silent no-op. The error message names the missing keyword so
 /// the user sees the surface, not a mystery statement-termination error.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gauge_field_parser_errors_on_partial_tail() {
     let src = "INGEST b FROM '/tmp/x.npz' FORMAT NPZ AS GAUGE_FIELD;";
     let err = parser::parse(src).expect_err("partial tail must fail");
@@ -216,6 +219,7 @@ fn test_ingest_gauge_field_parser_errors_on_partial_tail() {
 /// (n_configs, D, L, L, fiber) so:
 ///   records = n_configs * D * L^D = 2 * 2 * 16 = 64 total.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_su2_synthetic_l4_records_correct_count() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -249,6 +253,7 @@ fn test_ingest_su2_synthetic_l4_records_correct_count() {
 ///   base = [config_id, mu, site_x, site_y]
 ///   fiber = [q0, q1, q2, q3]
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_su2_synthetic_l4_canonical_field_names() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -327,6 +332,7 @@ fn test_ingest_su2_synthetic_l4_canonical_field_names() {
 
 /// SU(3) L=4 D=2 → 18 canonical fiber fields.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_su3_synthetic_l4_records_field_names() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -375,6 +381,7 @@ fn test_ingest_su3_synthetic_l4_records_field_names() {
 
 /// U(1) L=4 D=2 → single `theta` fiber field.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_u1_synthetic_l4_theta_field() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -408,6 +415,7 @@ fn test_ingest_u1_synthetic_l4_theta_field() {
 
 /// Z(N) L=4 D=2 → single `index` fiber field.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_zn_synthetic_l4_index_field() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -443,6 +451,7 @@ fn test_ingest_zn_synthetic_l4_index_field() {
 /// Wrong fiber width for the declared group → clear error naming
 /// expected vs got + the group label.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_fiber_width_mismatch_errors_clearly() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -474,6 +483,7 @@ fn test_ingest_fiber_width_mismatch_errors_clearly() {
 
 /// Lattice name not found in registry → LatticeNotFound with the name.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_lattice_not_found_errors() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -501,6 +511,7 @@ fn test_ingest_lattice_not_found_errors() {
 /// Array ndim ≠ 1 + 1 + D + 1 → AxisCountMismatch with the expected/got
 /// ndim and lattice.dim.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_axis_count_mismatch_errors() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -533,6 +544,7 @@ fn test_ingest_axis_count_mismatch_errors() {
 
 /// mu-axis extent ≠ lattice.dim → DirectionAxisMismatch.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_direction_axis_mismatch_errors() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -565,6 +577,7 @@ fn test_ingest_direction_axis_mismatch_errors() {
 /// (Concept 1 lattices are L-uniform; a non-uniform site axis is the
 /// clearest error to surface.)
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_site_axis_extent_mismatch_errors() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -594,6 +607,7 @@ fn test_ingest_site_axis_extent_mismatch_errors() {
 /// A parse of the plain form + execute_ingest still emits one record
 /// per outer slice — the 889/0 lib floor stays green.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_generic_still_works_without_as_clause() {
     use gigi::ingest::execute_ingest;
     let (mut engine, _dir) = open_engine();
@@ -618,6 +632,7 @@ fn test_ingest_generic_still_works_without_as_clause() {
 /// — Halcyon's harvest convention is one array per file, and silently
 /// accepting multiple arrays would drop or double-count links.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gauge_field_multi_array_rejected() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -654,6 +669,7 @@ fn test_ingest_gauge_field_multi_array_rejected() {
 /// A fresh bundle name is auto-created with the canonical GAUGE_FIELD
 /// schema (base = config_id/mu/site_*; fiber = per-group canonical names).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gauge_field_auto_creates_bundle_with_canonical_schema() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -687,6 +703,7 @@ fn test_ingest_gauge_field_auto_creates_bundle_with_canonical_schema() {
 /// A pre-existing bundle whose schema matches the canonical GAUGE_FIELD
 /// schema is accepted (bundle_created = false), and records land.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gauge_field_existing_bundle_compat_check() {
     use gigi::types::{BundleSchema, FieldDef};
     let (mut engine, _dir) = open_engine();
@@ -732,6 +749,7 @@ fn test_ingest_gauge_field_existing_bundle_compat_check() {
 /// The four canonical fiber-name tables and the dispatcher agree with
 /// `Group::repr_dim()`.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_canonical_fiber_names_lengths_match_repr_dim() {
     assert_eq!(SU2_FIBER_NAMES.len(), Group::SU2.repr_dim());
     assert_eq!(SU3_FIBER_NAMES.len(), Group::SU3.repr_dim());

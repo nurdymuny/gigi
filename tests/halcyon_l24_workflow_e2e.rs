@@ -104,6 +104,7 @@ fn write_su2_identity_npz(path: &Path, n_configs: usize, d: usize, l: usize) {
 ///     (identity fiber ⇒ standard graph Laplacian on the surviving
 ///     edges), and n_records_used matches the sector-0 record count
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_halcyon_l24_workflow_e2e_all_four_concepts() {
     // ── Setup ────────────────────────────────────────────────────────
     gigi::gauge::registry::clear();

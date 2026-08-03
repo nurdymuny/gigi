@@ -64,7 +64,13 @@ mod helpers {
     /// Register a C=1 cubed sphere as `"cs"`. Topology-agnostic stand-in
     /// for GC₁ / GC₄ / GC₆.
     pub fn register_small_cubed_sphere(env: &mut Env) {
-        let src = "LATTICE cs FROM CUBED_SPHERE PANEL_SIZE 1 TOPOLOGY 'S2';";
+        // Grammar note (2026-08-02): the parser takes CUBED_SPHERE params as
+        // `KEY=<int>` pairs (src/parser.rs:10281 — `PANEL_SIZE=<int>` or
+        // `C=<int>`). This gate carried the space-separated spelling
+        // `PANEL_SIZE 1`, which the parser has never accepted; it went unseen
+        // because a dangling `[[example]]` path in Cargo.toml failed target
+        // resolution before this binary could run.
+        let src = "LATTICE cs FROM CUBED_SPHERE PANEL_SIZE=1 TOPOLOGY 'S2';";
         let stmt = parse(src).expect("parse cubed sphere");
         execute(&mut env.engine, &stmt).expect("exec cubed sphere");
     }
@@ -333,6 +339,7 @@ mod helpers {
 /// The assertion target therefore changes from `q0 = 1` to
 /// `h_scalar = 0` and the tolerance tightens to machine ε (1e-14).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn gc1_flat_connection_returns_zero() {
     helpers::cleanup();
     let mut env = helpers::fresh_env();
@@ -402,6 +409,7 @@ fn gc1_flat_connection_returns_zero() {
 /// recovery step). Matches Halcyon Python ref sign(Im tr)·arccos(Re tr)
 /// where GIGI's q0 is already cos(θ/2) (no factor of 2 normalization).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn gc2_abelian_area_law() {
     helpers::cleanup();
     let mut env = helpers::fresh_env();
@@ -508,6 +516,7 @@ fn gc2_abelian_area_law() {
 /// We now assert |h_fwd + h_rev| / |h_fwd| < 1% across 3 random
 /// connections.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn gc3_reversed_loop_antisymmetrizes() {
     let seeds: [u64; 3] = [20_260_616, 20_260_617, 20_260_618];
     for seed in seeds {
@@ -570,6 +579,7 @@ fn gc3_reversed_loop_antisymmetrizes() {
 /// (axis-sum-zero boundary convention). The assertion target is
 /// therefore h_scalar = 0 (not q0 = 1) to machine ε.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn gc4_zero_size_loop_returns_zero() {
     helpers::cleanup();
     let mut env = helpers::fresh_env();
@@ -611,6 +621,7 @@ fn gc4_zero_size_loop_returns_zero() {
 /// read confirmation — if convergence fails, extend the bracket or
 /// patch the integrator (do NOT relax the threshold).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn gc5_discretization_convergence() {
     helpers::cleanup();
     let mut env = helpers::fresh_env();
@@ -657,6 +668,7 @@ fn gc5_discretization_convergence() {
 /// then republishes), we adopt a 1e-12 tolerance to accommodate
 /// integrator round-off accumulation over N=100 substeps.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn gc6_gauge_invariance() {
     helpers::cleanup();
     let mut env = helpers::fresh_env();

@@ -120,6 +120,7 @@ mod tests {
     /// Install a stub engine + read it back via `with_engine_mut`.
     /// Verifies the OnceLock plumbing actually wires the handle through.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_6b_install_round_trips() {
         let dir = tempfile::tempdir().expect("tempdir");
         let engine = Arc::new(RwLock::new(Engine::open(dir.path()).expect("engine open")));
@@ -135,6 +136,7 @@ mod tests {
 
     /// Durable-lattice tracker: mark + look up.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_ii_6b_durable_lattice_tracker() {
         clear_for_test();
         assert!(!is_lattice_durable("nope"));

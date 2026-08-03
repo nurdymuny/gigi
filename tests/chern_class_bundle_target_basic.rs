@@ -215,6 +215,7 @@ fn scalar(r: ExecResult) -> f64 {
 /// message pointing the caller at the missing cell complex. This
 /// pins the executor's bundle-path guard.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_bundle_no_lattice_errors_clearly() {
     let (eng, _dir) = fresh_engine_and_registries();
     create_su2_identity_bundle(&eng, "b_no_lattice", 1);
@@ -249,6 +250,7 @@ fn test_chern_class_bundle_no_lattice_errors_clearly() {
 /// returns `Rows` with a single row containing `chern_class_2 ≈ 0.0`
 /// and `q_rounded = 0`. 2D dim-guard makes c_2 vanish.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_bundle_with_lattice_2d_su2_identity_returns_zero_row() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_l4_obc_lattice(&eng);
@@ -286,6 +288,7 @@ fn test_chern_class_bundle_with_lattice_2d_su2_identity_returns_zero_row() {
 /// conflict — the gauge field already carries a lattice binding via
 /// `handle.lattice_name()`. Executor must reject.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_gauge_field_with_lattice_clause_errors_conflict() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_periodic_lattice_and_gauge_field(&eng);
@@ -306,6 +309,7 @@ fn test_chern_class_gauge_field_with_lattice_clause_errors_conflict() {
 /// (4) Bundle target + PER config_id on a 2-config identity SU(2)
 /// bundle returns exactly 2 rows in ascending config_id order.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_per_config_id_returns_multiple_rows_stable_order() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_l4_obc_lattice(&eng);
@@ -354,6 +358,7 @@ fn test_chern_class_per_config_id_returns_multiple_rows_stable_order() {
 /// (5) INTO_COLUMN writes q_rounded back into the source bundle.
 /// After execute, a COVER scan reads back the new BASE column value.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_into_column_writes_q_rounded_field_back() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_l4_obc_lattice(&eng);
@@ -406,6 +411,7 @@ fn test_chern_class_into_column_writes_q_rounded_field_back() {
 /// (6) Parser rejects INTO_COLUMN without PER — nothing to write to
 /// otherwise.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_into_column_without_per_parse_error() {
     let err = parse(
         "CHERN_CLASS b ORDER 2 ON LATTICE l4_obc \
@@ -422,6 +428,7 @@ fn test_chern_class_into_column_without_per_parse_error() {
 /// declared BASE field on the bundle schema. Phase 1 policy: explicit
 /// schema evolution; the error message points at ALTER BUNDLE.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_into_column_undeclared_column_errors() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_l4_obc_lattice(&eng);
@@ -450,6 +457,7 @@ fn test_chern_class_into_column_undeclared_column_errors() {
 /// grammar returns `Scalar(f64)`, NOT `Rows`. Pins the two-path
 /// resolver at the executor boundary.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_gauge_field_target_unchanged_backwards_compat() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_periodic_lattice_and_gauge_field(&eng);
@@ -470,6 +478,7 @@ fn test_chern_class_gauge_field_target_unchanged_backwards_compat() {
 /// (9) Neither a gauge field nor a bundle by that name — error must
 /// list both possible sources so the caller knows what to declare.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_bundle_missing_target_errors_clearly() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_l4_obc_lattice(&eng);
@@ -495,6 +504,7 @@ fn test_chern_class_bundle_missing_target_errors_clearly() {
 /// (10) PER on a field the records do not carry → clear error naming
 /// the missing field.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_per_missing_field_errors_clearly() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_l4_obc_lattice(&eng);
@@ -521,6 +531,7 @@ fn test_chern_class_per_missing_field_errors_clearly() {
 /// the L=24 workflow is unblocked end-to-end (modulo Hallie's Modal
 /// data being fresh on her side).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_chern_class_bundle_su2_l4_obc_identity_zero_end_to_end() {
     let (eng, _dir) = fresh_engine_and_registries();
     declare_l4_obc_lattice(&eng);

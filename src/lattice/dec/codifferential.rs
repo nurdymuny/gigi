@@ -129,6 +129,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn delta_1_length_mismatch() {
         let lwm = full_metric_quad();
         let err = delta_1(&lwm, &[0.0]).unwrap_err();
@@ -136,6 +137,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn delta_1_missing_dual() {
         let lat = Lattice::new(
             "q",
@@ -150,6 +152,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn delta_1_missing_edge_lengths() {
         let lat = Lattice::new(
             "q",

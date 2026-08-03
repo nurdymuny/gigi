@@ -82,6 +82,7 @@ fn lt_src(loop_id: &str, beta_start: f64, ramp_beta_w: f64, sham_body: &str) -> 
 /// VI.2 parser-rejection — β_W = 2.0 falls below v3.1.3 §2 validated
 /// regime [2.5, 3.0]; the parser refuses to lower before executor.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_rejects_beta_w_below_validated_regime() {
     let (mut engine, _dir) = engine_with_buckyball_and_closed_loop();
     let src = lt_src("face0", /* beta_start = */ 2.0, /* ramp = */ 0.0, "");
@@ -101,6 +102,7 @@ fn halcyon_vi_2_rejects_beta_w_below_validated_regime() {
 /// VI.2 parser-rejection — β_W = 3.5 above v3.1.3 §2 validated regime
 /// [2.5, 3.0]; symmetric to the below-regime case.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_rejects_beta_w_above_validated_regime() {
     let (mut engine, _dir) = engine_with_buckyball_and_closed_loop();
     let src = lt_src("face0", /* beta_start = */ 3.5, /* ramp = */ 0.0, "");
@@ -120,6 +122,7 @@ fn halcyon_vi_2_rejects_beta_w_above_validated_regime() {
 /// last vertex ≠ first vertex is rejected with `LoopNotClosed` before
 /// the integrator starts (gate doc §SHAM table).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_rejects_open_loop() {
     let dir = tempfile::tempdir().expect("tempdir");
     let mut engine = Engine::open(dir.path()).expect("engine open");
@@ -154,6 +157,7 @@ fn halcyon_vi_2_rejects_open_loop() {
 /// N_DISCRETIZATION; the parser returns a structured failure rather
 /// than silently defaulting.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_rejects_missing_required_clause() {
     let src = r#"
         LOOP_TRANSPORT buckyball
@@ -183,6 +187,7 @@ fn halcyon_vi_2_rejects_missing_required_clause() {
 /// PARSES the SHAM block (forward-compat for VI.4) but rejects any
 /// flag with `UnrecognizedShamFlag`.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_rejects_unrecognized_sham_flag() {
     let (mut engine, _dir) = engine_with_buckyball_and_closed_loop();
     let sham_body = "SHAM { not_a_real_vi4_flag = TRUE }";
@@ -207,6 +212,7 @@ fn halcyon_vi_2_rejects_unrecognized_sham_flag() {
 /// will pattern-match against. Asserted via a constructor smoke so the
 /// `pub enum LoopTransportError` surface is reachable.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_2_error_enum_variants_are_constructible() {
     let _below = LoopTransportError::BetaWilsonOutOfValidatedRegime {
         got: 2.0,

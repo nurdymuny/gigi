@@ -62,6 +62,7 @@ fn registry_lock() -> &'static Mutex<()> {
 /// 1's intra-binding bit-identity invariant makes the metadata
 /// sufficient.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn tdd_hal_ii_4b_gauge_field_survives_wal_replay() {
     // Use a unique name per registry to avoid the singleton registry
     // races other Part-II tests have. Tempdir scopes the on-disk WAL
@@ -158,6 +159,7 @@ fn tdd_hal_ii_4b_gauge_field_survives_wal_replay() {
 /// the field is absent. This is the opt-in contract: durability is
 /// explicit, the default stays in-memory.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn tdd_hal_ii_4b_in_memory_field_does_not_persist() {
     let _guard = registry_lock().lock().unwrap_or_else(|p| p.into_inner());
     let dir = tempfile::tempdir().expect("tempdir");
@@ -197,6 +199,7 @@ fn tdd_hal_ii_4b_in_memory_field_does_not_persist() {
 /// (Bee's spec D). Without this gate, gauge fields would be silently
 /// erased on the first auto-checkpoint.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn tdd_hal_ii_4b_wal_compact_preserves_gauge_field() {
     let _guard = registry_lock().lock().unwrap_or_else(|p| p.into_inner());
     let dir = tempfile::tempdir().expect("tempdir");
@@ -260,6 +263,7 @@ fn tdd_hal_ii_4b_wal_compact_preserves_gauge_field() {
 /// restart. Their init metadata is `(Identity, None)` — no seed —
 /// and reconstruction must handle the seed=None path correctly.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn tdd_hal_ii_4b_identity_init_survives_restart() {
     let _guard = registry_lock().lock().unwrap_or_else(|p| p.into_inner());
     let dir = tempfile::tempdir().expect("tempdir");

@@ -372,6 +372,7 @@ mod tests {
     /// A record in the lattice's canonical (u → v) direction stores Ω
     /// verbatim, and edge_element(Forward) reads it back exactly.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn forward_record_stores_as_is() {
         let lat = buckyball();
         let (u, v) = lat.edges[0];
@@ -390,6 +391,7 @@ mod tests {
     /// A record in the REVERSED (v → u) direction stores Ω† in the canonical
     /// slot, so reading in the DECLARED direction (Reverse) returns Ω.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn reverse_record_returns_omega_not_dagger() {
         let lat = buckyball();
         let (u, v) = lat.edges[0];
@@ -415,6 +417,7 @@ mod tests {
 
     /// A non-unit quaternion is rejected, not renormalized.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn non_normalized_is_rejected() {
         let lat = buckyball();
         let (u, v) = lat.edges[0];
@@ -432,6 +435,7 @@ mod tests {
 
     /// A theta-shaped schema (no q columns) → arity mismatch, got = 0.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn theta_schema_is_arity_mismatch() {
         let lat = buckyball();
         let schema = BundleSchema::new("t")
@@ -451,6 +455,7 @@ mod tests {
 
     /// A non-edge (va, vb) pair → typed NonLatticeEdge, not a panic.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn non_lattice_edge_is_typed() {
         let lat = buckyball();
         let err = su2_buffer_from_bundle(
@@ -471,6 +476,7 @@ mod tests {
 
     /// An empty bundle → typed BundleEmpty.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn empty_bundle_is_typed() {
         let lat = buckyball();
         let err = su2_buffer_from_bundle("b", &su2_schema(), std::iter::empty(), &lat)
@@ -507,6 +513,7 @@ mod tests {
     /// A U(1) record in the lattice's canonical (u → v) direction stores θ
     /// verbatim; read_element(Forward) reads it back exactly.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_forward_record_stores_as_is() {
         let lat = buckyball();
         let (u, v) = lat.edges[0];
@@ -521,6 +528,7 @@ mod tests {
     /// canonical slot, so reading in the DECLARED (Reverse) direction
     /// recovers +θ.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_reverse_record_stores_minus_theta() {
         let lat = buckyball();
         let (u, v) = lat.edges[0];
@@ -535,6 +543,7 @@ mod tests {
     /// A q0..q3 (SU(2)-shaped) schema pointed at the U(1) arm → arity
     /// mismatch, expected 1 (theta), got 0.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn u1_q_schema_is_arity_mismatch() {
         let lat = buckyball();
         let err = u1_buffer_from_bundle("q", &su2_schema(), std::iter::empty(), &lat)

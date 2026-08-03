@@ -33,6 +33,7 @@ fn setup_engine() -> (Engine, tempfile::TempDir) {
 /// dispatcher (return Some), not the bundle-aware path (would return
 /// None and drop on the floor).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn vi_2b_loop_decl_routes_through_gauge_dispatcher() {
     let (engine, _dir) = setup_engine();
     let engine_lock = RwLock::new(engine);
@@ -74,6 +75,7 @@ fn vi_2b_loop_decl_routes_through_gauge_dispatcher() {
 /// Halcyon hit when running run_holonomy_battery.py at the live
 /// binding on 2026-06-21.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn vi_2b_loop_transport_routes_through_gauge_dispatcher() {
     let (engine, _dir) = setup_engine();
     let engine_lock = RwLock::new(engine);

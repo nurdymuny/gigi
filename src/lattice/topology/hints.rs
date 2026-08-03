@@ -71,16 +71,19 @@ mod tests {
     use super::*;
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn cubed_sphere_resolves_to_s2() {
         assert_eq!(lookup("CUBED_SPHERE"), Some("S2"));
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn truncated_icosahedron_resolves_to_s2() {
         assert_eq!(lookup("TRUNCATED_ICOSAHEDRON"), Some("S2"));
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn lookup_is_case_insensitive() {
         assert_eq!(lookup("cubed_sphere"), Some("S2"));
         assert_eq!(lookup("Cubed_Sphere"), Some("S2"));
@@ -88,6 +91,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn unknown_returns_none() {
         assert_eq!(lookup("Z3/SOMETHING_WEIRD"), None);
         assert_eq!(lookup(""), None);
@@ -95,6 +99,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn topology_hint_for_alias_matches_lookup() {
         assert_eq!(
             topology_hint_for("CUBED_SPHERE"),

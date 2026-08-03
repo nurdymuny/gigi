@@ -282,6 +282,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn register_and_get_round_trip() {
         clear();
         let bb = buckyball();
@@ -295,6 +296,7 @@ mod tests {
     /// name; re-parse the SHOW output's `gql` column; assert
     /// structural equality with the original.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_8_lattice_register_and_show() {
         use crate::engine::Engine;
         use crate::parser;
@@ -358,6 +360,7 @@ mod tests {
     /// declaration through SHOW LATTICE produces the same canonical
     /// re-emit body twice in a row.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_i_8_explicit_form_round_trip() {
         use crate::engine::Engine;
         use crate::parser;
@@ -416,6 +419,7 @@ mod tests {
     /// TRUNCATED_ICOSAHEDRON constructor produces a `Lattice` byte-equal
     /// to the legacy `buckyball()` direct path.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn cc2_truncated_icosahedron_via_registry_matches_direct() {
         let ctor = get_constructor("TRUNCATED_ICOSAHEDRON")
             .expect("TRUNCATED_ICOSAHEDRON registered");
@@ -433,6 +437,7 @@ mod tests {
     /// panel size (C = 1, the degenerate cube). 6 faces, 8 vertices,
     /// 12 edges; Euler χ = 2.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn cc2_cubed_sphere_via_registry_default_panel_size() {
         let ctor = get_constructor("CUBED_SPHERE")
             .expect("CUBED_SPHERE registered");
@@ -449,6 +454,7 @@ mod tests {
     /// `C = 3` produces the locked combinatorial counts F = 54, V = 56,
     /// E = 108.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn cc2_cubed_sphere_via_registry_panel_size_three() {
         let ctor = get_constructor("CUBED_SPHERE")
             .expect("CUBED_SPHERE registered");
@@ -462,6 +468,7 @@ mod tests {
 
     /// CC-2: lookup is case-insensitive on the canonical id.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn cc2_get_constructor_is_case_insensitive() {
         assert!(get_constructor("truncated_icosahedron").is_some());
         assert!(get_constructor("Truncated_Icosahedron").is_some());
@@ -474,6 +481,7 @@ mod tests {
     /// CC-2: unknown canonical ids return `None`, never a silent
     /// default.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn cc2_get_constructor_unknown_returns_none() {
         assert!(get_constructor("NOPE").is_none());
         assert!(get_constructor("").is_none());
@@ -482,6 +490,7 @@ mod tests {
 
     /// CC-2: CUBED_SPHERE rejects out-of-range panel sizes.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn cc2_cubed_sphere_rejects_out_of_range_panel_size() {
         let ctor = get_constructor("CUBED_SPHERE").unwrap();
         let too_big = ConstructorArgs { panel_size: Some(257), ..Default::default() };
@@ -499,6 +508,7 @@ mod tests {
     /// CC-2: `init_builtin_constructors` is idempotent in shape — every
     /// successful materialization contains exactly the Phase 1 keys.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn cc2_init_builtin_constructors_lists_phase1_keys() {
         let t = init_builtin_constructors();
         assert_eq!(t.len(), 3);

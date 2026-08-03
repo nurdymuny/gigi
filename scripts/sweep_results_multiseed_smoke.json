@@ -1,0 +1,75 @@
+{
+ "meta": {
+  "artifact": "multi-seed GIGI-vs-sklearn sweep (evidence rules 07/08)",
+  "mode": "smoke",
+  "generated": "2026-08-01T09:54:16",
+  "finished": "2026-08-01T09:54:26",
+  "seeds": [
+   20260801,
+   20260802
+  ],
+  "git_commit": "cc4a8968eb344dbb2b7f3978274fe9af8850c1d1",
+  "server": {
+   "binary": "C:\\Users\\nurdm\\OneDrive\\Documents\\gigi\\target\\release\\gigi-stream.exe",
+   "binary_mtime": "2026-07-31T20:10:47",
+   "port": 3143,
+   "data_dir": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_msweep_data_wo2sjlch",
+   "log": "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi_msweep_data_wo2sjlch.server.log",
+   "exit_code": 1,
+   "lifecycle": "started fresh by this script on a scratch data dir; health-polled; verified alive post-run; terminated; scratch dir removed"
+  },
+  "versions": {
+   "python": "3.12.10",
+   "sklearn": "1.9.0",
+   "numpy": "2.4.0"
+  },
+  "std": "sample std, ddof=1, across seeds; 0.0 reported as such for deterministic cells",
+  "verdict_rule": "gigi-perspective signed delta vs threshold = max(sqrt(std_gigi^2+std_ref^2), 0.005); WIN if > threshold, LOSS if < -threshold, else PARITY; 0.005 floor = the single-run artifact's tie threshold, needed because deterministic cells have combined_std 0",
+  "determinism_notes": [
+   "gigi /cluster and /infer expose no seed parameter (fixed LCG constants in src/ml/cluster.rs and src/ml/infer.rs); the gigi arm is re-called once per seed and its returned value recorded, so std 0 is measured not assumed",
+   "cross_val_score(cv=5) uses unshuffled folds \u2014 deterministic by protocol, identical to the single-run artifact scripts/sweep_results.json",
+   "seed enters via sklearn random_state (KMeans/GMM/Spectral/IsolationForest/GP/train_test_split), the numpy Funk-SVD reference, and the bcancer-rare malignant subsample (which varies BOTH arms)",
+   "strictly serial: one process, one request in flight at a time"
+  ],
+  "run_error": null
+ },
+ "cells": [
+  {
+   "dataset": "iris",
+   "task": "cluster",
+   "method": "kmeans",
+   "metric": "ARI",
+   "direction": "higher",
+   "config": {
+    "k": 3
+   },
+   "embargoed": false,
+   "arms": {
+    "gigi": {
+     "name": "gigi",
+     "values": [
+      0.620135,
+      0.620135
+     ],
+     "mean": 0.620135,
+     "std": 0.0
+    },
+    "ref": {
+     "name": "sklearn KMeans",
+     "values": [
+      0.620135,
+      0.620135
+     ],
+     "mean": 0.620135,
+     "std": 0.0
+    }
+   },
+   "extra_arms": {},
+   "delta_mean": 0.0,
+   "signed_delta_gigi_better": 0.0,
+   "combined_std": 0.0,
+   "threshold": 0.005,
+   "verdict": "PARITY"
+  }
+ ]
+}

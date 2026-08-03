@@ -355,6 +355,7 @@ mod tests {
     /// the literal "SEED" so the upstream parser / HTTP layer can
     /// substring-match).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_5_gibbs_sample_requires_seed() {
         let _g = registry_guard();
         setup_identity_field("U_iii_5_seed");
@@ -379,6 +380,7 @@ mod tests {
     /// with byte-identical buffer.data. Intra-binding reproducibility
     /// (Bee's locked decision 1).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_5_gibbs_sample_in_process_reproducible() {
         let _g = registry_guard();
         let bb = buckyball();
@@ -443,6 +445,7 @@ mod tests {
     /// sweep actually mutated state" guard — a noop sweep would leave
     /// the field at identity and the assertion would fire.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_5_gibbs_sample_off_identity_after_one_sweep() {
         let _g = registry_guard();
         setup_identity_field("U_iii_5_off_id");
@@ -487,6 +490,7 @@ mod tests {
     /// reference that walks edges 0..n_edges via the same primitives.
     /// Both must agree on the post-sweep RNG draw count.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_5_gibbs_sample_sequential_edge_order() {
         let _g = registry_guard();
         setup_identity_field("U_iii_5_seq");
@@ -546,6 +550,7 @@ mod tests {
     /// exactly 3 measurements (sweeps 3, 6, 9). The history vector
     /// length is the receipt.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_5_gibbs_sample_measure_every_semantics() {
         let _g = registry_guard();
         setup_identity_field("U_iii_5_me");
@@ -589,6 +594,7 @@ mod tests {
     /// hoist mutated the algorithm somewhere — STOP and investigate;
     /// do not paper over with a tolerance.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_perf_face_edges_hoist_byte_identical() {
         // ── Gold: 20-sweep MeanPlaquette chain (f64::to_bits) ──
         const EXPECTED_MEAN_PLAQUETTE_CHAIN_BITS: [u64; 20] = [
@@ -781,6 +787,7 @@ mod tests {
     /// The regex `(?i)part iv|e field` is the contract anchor; we
     /// check both substrings literally here.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_5_gibbs_sample_rejects_pre_part_iv_observables() {
         let _g = registry_guard();
         setup_identity_field("U_iii_5_p4");

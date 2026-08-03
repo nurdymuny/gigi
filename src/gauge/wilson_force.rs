@@ -203,6 +203,7 @@ mod tests {
     /// the private `qmul` + `project_lie` helpers from regression
     /// without round-tripping through the registry.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iv_4_unit_identity_force_is_zero() {
         let _serial = gauge_registry::test_serial_lock();
         gauge_registry::clear();
@@ -238,6 +239,7 @@ mod tests {
     /// invariant — kick on zero E with arbitrary force yields
     /// `dt_half · F` exactly, q0 stays 0.0.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iv_4_unit_kick_writes_dt_times_force() {
         let _serial = gauge_registry::test_serial_lock();
         gauge_registry::clear();
@@ -276,6 +278,7 @@ mod tests {
     /// TDD-HAL-IV.4 unit: shape mismatch surfaces as typed error
     /// before any buffer mutation.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iv_4_unit_kick_shape_mismatch() {
         let _serial = gauge_registry::test_serial_lock();
         gauge_registry::clear();

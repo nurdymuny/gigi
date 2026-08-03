@@ -152,6 +152,7 @@ fn h_forward(rec: &gigi::types::Record) -> f64 {
 /// fix needs. Pre-ASK 5 this errored with `UFieldNotDeclared(U_lt)`
 /// regardless of what GQL named.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_loop_transport_accepts_uuid_suffixed_scratch_field() {
     let (mut engine, _dir) =
         setup_with_named_fields("U_seed_a3f9b2c1", "E_seed_a3f9b2c1");
@@ -173,6 +174,7 @@ fn test_loop_transport_accepts_uuid_suffixed_scratch_field() {
 /// `GAUGE_FIELD`/`E_FIELD` clauses) defaults to (`U_lt`, `E_lt`) and
 /// the loop runs unchanged.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_loop_transport_u_lt_still_works() {
     let (mut engine, _dir) = setup_with_named_fields("U_lt", "E_lt");
     let src = lt_source("", compute_h_only());
@@ -187,6 +189,7 @@ fn test_loop_transport_u_lt_still_works() {
 /// clear error that mentions the literal name so the
 /// orchestrator-side handler can pattern-match on it.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_loop_transport_unknown_gauge_field_clear_error() {
     // Set up the canonical (U_lt, E_lt) so the lattice / loop exist
     // but the requested gauge name does NOT.
@@ -208,6 +211,7 @@ fn test_loop_transport_unknown_gauge_field_clear_error() {
 /// identical to the short form — the sugar is exact equivalence, not
 /// a separate code path.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_loop_transport_explicit_u_lt_named_equivalent() {
     // First pass: short form.
     let (mut engine, _dir) = setup_with_named_fields("U_lt", "E_lt");

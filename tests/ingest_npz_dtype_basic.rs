@@ -119,6 +119,7 @@ fn open_engine() -> (Engine, tempfile::TempDir) {
 /// Values are all exactly representable in f32 (small integers), so
 /// f32 → f64 cast is bit-exact.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_npz_f32_upconverts_to_f64() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -179,6 +180,7 @@ fn test_ingest_npz_f32_upconverts_to_f64() {
 /// the existing `into_vec::<f64>()` branch; under GREEN it exercises the
 /// f64 arm of the dtype match.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_npz_f64_unchanged() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -229,6 +231,7 @@ fn test_ingest_npz_f64_unchanged() {
 /// the message references the actual dtype string (e.g. "int32" or "<i4")
 /// rather than the generic `npyz` decode error the RED path surfaces.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_npz_int32_errors_with_dtype_name() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -272,6 +275,7 @@ fn test_ingest_npz_int32_errors_with_dtype_name() {
 /// branch, lattice adjacency lookup, and OBC record omission.
 #[cfg(feature = "lattice")]
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_npz_f32_gauge_field_su2_full_chain() {
     use gigi::gauge::Group;
     use gigi::ingest::execute_ingest_as_gauge_field;

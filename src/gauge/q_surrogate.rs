@@ -89,6 +89,7 @@ mod tests {
     /// TDD-HAL-III.2: identity gauge field → `Q_surrogate = 0` exactly
     /// (every face holonomy is `q0 = 1`, `arccos(1) = 0`).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_2_q_surrogate_at_identity_is_zero() {
         gauge_registry::clear();
         lattice_registry::clear();
@@ -117,6 +118,7 @@ mod tests {
     /// (`arccos(q0_f) ∈ [0, π]` per face, normalized by `1/(2π)`,
     /// summed over `F = 32` faces).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_2_q_surrogate_within_range() {
         gauge_registry::clear();
         lattice_registry::clear();
@@ -150,6 +152,7 @@ mod tests {
     /// the clamp ordering so a future refactor can't silently
     /// regress it.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_2_q_surrogate_clamp_idempotent() {
         gauge_registry::clear();
         lattice_registry::clear();

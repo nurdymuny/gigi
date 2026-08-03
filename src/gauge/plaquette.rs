@@ -141,6 +141,7 @@ mod tests {
     /// TDD-HAL-III.1: identity gauge field → every face plaquette is
     /// FP64-exact 1.0; mean and sum are exact (32 and 1.0).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_1_plaquette_identity_is_unity() {
         gauge_registry::clear();
         lattice_registry::clear();
@@ -176,6 +177,7 @@ mod tests {
     /// `q0 ∈ [-1, 1]` (the quaternion scalar lives on the unit
     /// 3-sphere, so |q0| ≤ 1 by construction).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_1_plaquette_haar_within_unit_ball() {
         gauge_registry::clear();
         lattice_registry::clear();
@@ -207,6 +209,7 @@ mod tests {
     /// summation order in `plaquette_mean` is the same `iter().sum()`
     /// the test recomputes here.
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_1_plaquette_mean_equals_per_face_mean() {
         gauge_registry::clear();
         lattice_registry::clear();

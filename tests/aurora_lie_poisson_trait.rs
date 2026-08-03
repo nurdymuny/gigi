@@ -75,6 +75,7 @@ impl HamiltonianPoissonBracket for StubHandle {
 // ─────────────────────────────────────────────────────────────────────
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_hamiltonian_poisson_bracket_trait_can_be_implemented() {
     // Object-safe: must be boxable as dyn.
     let handle: Box<dyn HamiltonianPoissonBracket> = Box::new(StubHandle);
@@ -87,6 +88,7 @@ fn test_hamiltonian_poisson_bracket_trait_can_be_implemented() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_bracket_physics_error_constructs_three_variants() {
     let neg = BracketPhysicsError::NegativeDepth {
         i: 3,
@@ -138,6 +140,7 @@ fn test_bracket_physics_error_constructs_three_variants() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_bracket_physics_error_implements_std_error_pattern() {
     // Coerces into Box<dyn std::error::Error>.
     let err = BracketPhysicsError::NegativeDepth {
@@ -242,6 +245,7 @@ impl HamiltonianFactory for DualPathStubFactory {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_capabilities_default_for_existing_factories() {
     // The default impl is the backwards-compat contract for every
     // pre-Phase-3 factory (KogutSusskindFactory etc.): force_drift only.
@@ -281,6 +285,7 @@ fn test_capabilities_default_for_existing_factories() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_capabilities_can_be_overridden_to_both_true() {
     // Models AURORA's ShallowWaterFactory contract post-Phase-3:
     // keeps force_drift: true (A17/A18 KDK gates stay live) and adds
@@ -512,6 +517,7 @@ impl HamiltonianFactory for NoPathFactory {
 // ── Tests ──
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_symplectic_flow_dispatches_to_kdk_for_kogut_susskind_factory() {
     let _g = SERIAL.lock().unwrap();
     ham_registry::clear();
@@ -555,6 +561,7 @@ fn test_symplectic_flow_dispatches_to_kdk_for_kogut_susskind_factory() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_symplectic_flow_dispatches_to_bracket_step_for_stub_bracket_factory() {
     let _g = SERIAL.lock().unwrap();
     ham_registry::clear();
@@ -597,6 +604,7 @@ fn test_symplectic_flow_dispatches_to_bracket_step_for_stub_bracket_factory() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_symplectic_flow_projection_runs_after_bracket_step() {
     let _g = SERIAL.lock().unwrap();
     ham_registry::clear();
@@ -640,6 +648,7 @@ fn test_symplectic_flow_projection_runs_after_bracket_step() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_symplectic_flow_projection_runs_after_kdk() {
     let _g = SERIAL.lock().unwrap();
     ham_registry::clear();
@@ -683,6 +692,7 @@ fn test_symplectic_flow_projection_runs_after_kdk() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_symplectic_flow_receipt_check_holds_for_both_paths() {
     // Both stubs publish constant htotal -> drift == 0.0 from either
     // path. This is the receipt-contract regression: the substrate's
@@ -727,6 +737,7 @@ fn test_symplectic_flow_receipt_check_holds_for_both_paths() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_no_integration_path_clear_error() {
     let _g = SERIAL.lock().unwrap();
     ham_registry::clear();
@@ -776,6 +787,7 @@ fn test_no_integration_path_clear_error() {
 }
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_pick_integrator_path_capability_lies_fall_back_to_kdk() {
     // A factory that LIES — declares poisson_bracket=true, but the
     // handle's as_poisson_bracket() returns None. The dispatcher must

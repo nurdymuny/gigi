@@ -491,23 +491,34 @@ fn tdd_hal_v_3_snapshot_orphan_rejection() {
     spliced.extend_from_slice(&bytes[splice_end..]);
     std::fs::write(&wal_path, &spliced).expect("write spliced WAL");
 
-    // 4. Reopen — the snapshot replay pass must find no registered
-    //    handle for "U" and surface `WalError::OrphanedSnapshot("U")`
-    //    through the `From<WalError> for io::Error` lowering. The
-    //    Display impl carries the field name and the word "orphan",
-    //    which is the integration-level match surface.
-    let err = match Engine::open(&data_path) {
-        Ok(_) => panic!(
-            "missing gauge-field declare with a surviving snapshot must \
-             surface WalError::OrphanedSnapshot — Engine::open returned Ok"
-        ),
-        Err(e) => e,
-    };
-    let msg = err.to_string();
+    // 4. Reopen — AMENDED CONTRACT (d592313, 2026-06-26). This gate
+    //    originally asserted a hard `WalError::OrphanedSnapshot`. The
+    //    amendment deliberately replaced that with skip-and-warn after a
+    //    production incident: the hard error propagated out of
+    //    `Engine::open_mmap`, `gigi_stream.rs` caught it and fell back to
+    //    FULL HEAP REPLAY of 12.1M records, and the box OOM-killed at
+    //    ~14 min — the orphan itself being residue of the previous wedged
+    //    boot. An orphan is not corruption: the snapshot's bytes simply
+    //    cannot be installed because no handle was ever registered.
+    //    Skipping the install keeps boot on the low-memory mmap fast
+    //    path, and the safety property is preserved by the field staying
+    //    UNREGISTERED rather than half-installed.
+    //
+    //    That amendment changed src/engine.rs only and never updated this
+    //    gate, so it asserted the superseded contract from 2026-06-26
+    //    until 2026-08-02 — invisible the whole time because a dangling
+    //    `[[example]]` path in Cargo.toml failed target resolution before
+    //    this test binary could run at all.
+    //
+    //    What this gate pins now: boot SUCCEEDS, and the orphaned field
+    //    is genuinely absent (no silent half-install).
+    let engine = Engine::open(&data_path)
+        .expect("orphan snapshot must be skipped, not fatal (d592313) — boot stays on mmap");
+    drop(engine);
     assert!(
-        msg.contains("'U'") && msg.contains("orphan"),
-        "Engine::open error must name field 'U' and the orphan \
-         rejection category, got: {msg}"
+        gauge_registry::get("U").is_none(),
+        "the orphaned field must stay UNREGISTERED — skipping the install is the \
+         safety property; a half-installed field would be silent corruption"
     );
 
     // Cleanup.

@@ -38,6 +38,7 @@ use gigi::types::Value;
 
 /// Phase 1b core: `LATTICE foo FROM CUBED_SPHERE TOPOLOGY 'S2';` succeeds.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn phase_1b_lattice_verb_cubed_sphere_succeeds() {
     gigi::lattice::registry::clear();
     let name = "phase_1b_cs_minimal";
@@ -88,6 +89,7 @@ fn phase_1b_lattice_verb_cubed_sphere_succeeds() {
 /// still produces the canonical buckyball (V=60, E=90, F=32). The switch
 /// to registry dispatch must not change the existing buckyball path.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn phase_1b_lattice_verb_truncated_icosahedron_unchanged() {
     gigi::lattice::registry::clear();
     let name = "phase_1b_bb_via_registry";
@@ -119,6 +121,7 @@ fn phase_1b_lattice_verb_truncated_icosahedron_unchanged() {
 /// error, and the error now reflects the actually-available constructors
 /// (not the stale "Part I ships only TRUNCATED_ICOSAHEDRON" message).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn phase_1b_lattice_verb_unknown_canonical_returns_error() {
     gigi::lattice::registry::clear();
     let dir = tempfile::tempdir().expect("tempdir");

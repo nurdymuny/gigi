@@ -230,6 +230,7 @@ mod helpers {
 /// (must stay 4/0 + 1 ignored) and the VI.3 GC battery (6 tests must
 /// stay green) regardless of how VI.4 wires the dispatch internally.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_empty_is_byte_identical_to_no_sham() {
     // Run 1: no SHAM clause (None).
     let mut env = helpers::setup_canonical();
@@ -334,6 +335,7 @@ fn halcyon_vi_4_sham_empty_is_byte_identical_to_no_sham() {
 /// dispatcher. This guards the contract VI.2 set up at
 /// `tests/halcyon_part_vi_parser_rejections.rs::halcyon_vi_2_rejects_unrecognized_sham_flag`.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_unrecognized_flag_still_rejected() {
     let _env = helpers::setup_canonical();
     let stmt = helpers::build_lt_stmt_with_sham(
@@ -363,6 +365,7 @@ fn halcyon_vi_4_sham_unrecognized_flag_still_rejected() {
 /// no parameter coupling driving the holonomy, |H_S₁| must vanish to
 /// machine ε per v3.1.3 §5 S₁ AND satisfy the 2σ_S₁ sanity gate.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_flat_field_drives_h_to_zero() {
     let _env = helpers::setup_canonical();
     let stmt = helpers::build_lt_stmt_with_sham(
@@ -395,6 +398,7 @@ fn halcyon_vi_4_sham_flat_field_drives_h_to_zero() {
 /// |H_S₂| < 1e-10 as the LOAD-BEARING half of the gate (the 2σ check
 /// is sanity only).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_alpha_zero_drives_h_to_zero() {
     let _env = helpers::setup_canonical();
     let stmt = helpers::build_lt_stmt_with_sham(
@@ -420,6 +424,7 @@ fn halcyon_vi_4_sham_alpha_zero_drives_h_to_zero() {
 /// the substrate's — so this test only asserts dispatch + per-μ run
 /// completion, not the 10% subtraction invariant.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_mass_baseline_scaled_accepts_canonical_mu_values() {
     for &mu in &[0.1_f64, 1.0_f64, 10.0_f64] {
         let _env = helpers::setup_canonical();
@@ -447,6 +452,7 @@ fn halcyon_vi_4_sham_mass_baseline_scaled_accepts_canonical_mu_values() {
 /// three canonical baselines. (This will materialize as a new
 /// `LoopTransportError::InvalidShamArg` variant per design.)
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_mass_baseline_scaled_rejects_off_grid_mu() {
     let _env = helpers::setup_canonical();
     let stmt = helpers::build_lt_stmt_with_sham(
@@ -473,6 +479,7 @@ fn halcyon_vi_4_sham_mass_baseline_scaled_rejects_off_grid_mu() {
 /// SU(2) identity; H_geom must vanish to machine ε AND pass the 2σ_S₅
 /// gate per v3.1.3 §5 S₅.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_degenerate_loop_drives_h_to_zero() {
     let _env = helpers::setup_canonical();
     let stmt = helpers::build_lt_stmt_with_sham(
@@ -501,6 +508,7 @@ fn halcyon_vi_4_sham_degenerate_loop_drives_h_to_zero() {
 /// H = 0; H_geom must vanish to machine ε AND pass the 2σ_S₆ gate per
 /// v3.1.3 §5 S₆.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_frozen_field_drives_h_to_zero() {
     let _env = helpers::setup_canonical();
     let stmt = helpers::build_lt_stmt_with_sham(
@@ -533,6 +541,7 @@ fn halcyon_vi_4_sham_frozen_field_drives_h_to_zero() {
 /// h_forward = h_reversed = 0. ALL f64 values must be the literal
 /// floating-point zero (to_bits() == 0u64).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn halcyon_vi_4_sham_empty_loop_returns_zero_byte_for_byte() {
     let _env = helpers::setup_canonical();
     let stmt = helpers::build_lt_stmt_with_sham(

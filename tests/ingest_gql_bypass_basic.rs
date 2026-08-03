@@ -152,6 +152,7 @@ fn gql_path_lit(p: &Path) -> String {
 /// `Err("...not implemented (RED phase)")`, so the `.expect(...)`
 /// panic fires and the test fails.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gql_fresh_bundle_name_bypasses_pre_resolve() {
     let (eng, _dir) = fresh_engine_and_registries();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -223,6 +224,7 @@ fn test_ingest_gql_fresh_bundle_name_bypasses_pre_resolve() {
 ///
 /// Under the RED stub, dispatch returns Err — the test fails.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gql_existing_bundle_name_still_works() {
     let (eng, _dir) = fresh_engine_and_registries();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");
@@ -298,6 +300,7 @@ fn test_ingest_gql_existing_bundle_name_still_works() {
 /// This is the most load-bearing test — even if tests 1, 2, 5 flake on
 /// fixture setup, THIS test pins the exact bug Hallie hit.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gql_missing_file_returns_executor_error_not_no_bundle() {
     let (eng, _dir) = fresh_engine_and_registries();
 
@@ -347,6 +350,7 @@ fn test_ingest_gql_missing_file_returns_executor_error_not_no_bundle() {
 /// If a refactor accidentally breaks the topology bypass while wiring
 /// the INGEST bypass, this test catches it.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_topology_verbs_still_route_correctly() {
     let (eng, _dir) = fresh_engine_and_registries();
 
@@ -388,6 +392,7 @@ fn test_topology_verbs_still_route_correctly() {
 /// Under the RED stub this test fails because the dispatcher returns
 /// Err before any records land.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_gql_returns_row_count_on_success() {
     let (eng, _dir) = fresh_engine_and_registries();
     let tmp = tempfile::tempdir().expect("tempdir for fixture");

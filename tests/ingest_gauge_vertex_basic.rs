@@ -163,6 +163,7 @@ fn shift_plus(coords: &[usize], a: usize, l: usize) -> Vec<usize> {
 /// fields, and the record count is unaffected — every (config, mu, site)
 /// point contributes one record.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_periodic_l4_d2_su2_emits_vertex_ab() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("fixture tempdir");
@@ -232,6 +233,7 @@ fn test_ingest_periodic_l4_d2_su2_emits_vertex_ab() {
 /// OBC axis 0 drops the L^(D-1) records whose mu = 0 and site_x = L-1
 /// (the ones that would wrap across the open boundary).
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_obc_l4_d2_su2_axis0_omits_boundary_records() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("fixture tempdir");
@@ -290,6 +292,7 @@ fn test_ingest_obc_l4_d2_su2_axis0_omits_boundary_records() {
 /// OBC AXIS 0 on the L=4 D=4 fixture drops exactly L^(D-1) = 64
 /// wrap-edge records per config → 1024 - 64 = 960 records per config.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_obc_l4_d4_su2_axis0_absolute_record_count() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("fixture tempdir");
@@ -328,6 +331,7 @@ fn test_ingest_obc_l4_d4_su2_axis0_absolute_record_count() {
 /// site_of(site_coords) that the lattice uses. The ingest executor and
 /// the lattice must agree on the same coord ↔ site encoding.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_vertex_a_matches_site_of_coords() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("fixture tempdir");
@@ -385,6 +389,7 @@ fn test_vertex_a_matches_site_of_coords() {
 
 /// vertex_b matches the shift-by-+1 along the record's own mu.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_vertex_b_matches_shift_plus() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("fixture tempdir");
@@ -450,6 +455,7 @@ fn test_vertex_b_matches_shift_plus() {
 /// encoding. This is the wrap edge that OBC would omit; PERIODIC keeps
 /// it and wraps.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_periodic_wraps_via_vertex_b() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("fixture tempdir");
@@ -516,6 +522,7 @@ fn test_ingest_periodic_wraps_via_vertex_b() {
 /// a property of the lattice adjacency, not the gauge group. Confirm
 /// SU(3) records carry them too.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_ingest_su3_also_emits_vertex_ab() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("fixture tempdir");
@@ -568,6 +575,7 @@ fn test_ingest_su3_also_emits_vertex_ab() {
 /// spectral / edge / vertex kernel surface — never a schema-shape
 /// error that would prove the base fields are still missing.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_spectral_gauge_reads_vertex_ab_directly() {
     let (mut engine, _dir) = open_engine();
     let tmp = tempfile::tempdir().expect("fixture tempdir");

@@ -66,6 +66,7 @@ fn run_integrate(engine: &mut Engine, src: &str) -> f64 {
 /// · ||direction||₂`. We verify the answer is finite, positive, and
 /// scales with `direction` magnitude.
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_constant_observable_integrates_to_arc_length() {
     let (mut engine, _dir) = fresh_engine();
     run_let_imagine(
@@ -93,6 +94,7 @@ fn test_constant_observable_integrates_to_arc_length() {
 // ── Test 2: INTEGRATE on an IMAGINE path returns canonical fields ──
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_integrate_along_imagine_path_works() {
     let (mut engine, _dir) = fresh_engine();
     run_let_imagine(
@@ -126,6 +128,7 @@ fn test_integrate_along_imagine_path_works() {
 // ── Test 3: handle reuse — two INTEGRATE calls, no IMAGINE re-run ──
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_two_integrates_same_path_handle_no_rerun() {
     let (mut engine, _dir) = fresh_engine();
     run_let_imagine(
@@ -177,6 +180,7 @@ fn test_two_integrates_same_path_handle_no_rerun() {
 // ── Test 4: unknown observable returns clear error ───────────────
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_unknown_observable_returns_clear_error() {
     let (mut engine, _dir) = fresh_engine();
     run_let_imagine(
@@ -204,6 +208,7 @@ fn test_unknown_observable_returns_clear_error() {
 // ── Test 5: unknown path identifier returns clear error ──────────
 
 #[test]
+#[serial_test::serial(gauge_registry)]
 fn test_unknown_path_ident_returns_clear_error() {
     let (mut engine, _dir) = fresh_engine();
     let stmt = parse("INTEGRATE OBSERVABLE arc_length_unit ALONG ghost_path;")

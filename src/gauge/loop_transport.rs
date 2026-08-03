@@ -1484,6 +1484,7 @@ mod tests {
     /// `AdiabaticityCheck::from_ratio` agrees with the v3.1.3 §4.2
     /// threshold (ratio < 0.1 → Acceptable; ≥ 0.1 → forced).
     #[test]
+    #[serial_test::serial(gauge_registry)]
     fn adiabaticity_threshold_at_0_1() {
         assert!(matches!(
             AdiabaticityCheck::from_ratio(0.05),

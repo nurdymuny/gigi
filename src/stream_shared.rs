@@ -154,6 +154,26 @@ pub fn extract_field_samples(
     Ok((samples, kept))
 }
 
+/// Number of sample columns the requested `fields` expand to on this
+/// bundle: 1 per scalar fiber, `dims` per `vector(dims)` fiber. This is
+/// the width `extract_field_samples` returns, and therefore the length a
+/// caller's `query` vector must have — NOT `fields.len()`, which is only
+/// equal when every requested field is a scalar (Art's ask, 2026-08-02:
+/// "one name per vector, dims columns each"). Unknown names return `None`
+/// so callers keep using the extractor's richer not-found error.
+#[cfg(feature = "kahler")]
+pub fn expected_sample_width(store: &crate::BundleStore, fields: &[String]) -> Option<usize> {
+    let mut w = 0usize;
+    for f in fields {
+        let fd = store.schema.fiber_fields.iter().find(|fd| fd.name == *f)?;
+        w += match fd.field_type {
+            crate::types::FieldType::Vector { dims } => dims,
+            _ => 1,
+        };
+    }
+    Some(w)
+}
+
 // ─── helpers for the 5 brain endpoints ─────────────────────
 
 #[cfg(feature = "kahler")]
@@ -349,6 +369,47 @@ mod tests {
         assert_eq!(samples.len(), 2, "the short vector's record is dropped");
         assert_eq!(kept.len(), 2);
         assert!(samples.iter().all(|r| r.len() == 4));
+    }
+
+    /// **Query width is schema-aware, not `fields.len()`.** The brain
+    /// handlers validate a caller's `query` against this; before
+    /// `expected_sample_width` they compared against the number of field
+    /// NAMES, so a correct 4-component query against one `vector(4)` fiber
+    /// was rejected — and the matrix builder reinterpreted the buffer as
+    /// n×1, serving KDE garbage with a healthy-looking `n_samples`
+    /// (caught by the type-seam audit, 2026-08-02).
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn expected_sample_width_counts_vector_components() {
+        use crate::types::{BundleSchema, FieldDef, FieldType, Record, Value};
+        let mut emb = FieldDef::numeric("emb");
+        emb.field_type = FieldType::Vector { dims: 4 };
+        let schema = BundleSchema::new("w")
+            .base(FieldDef::categorical("doc_id"))
+            .fiber(emb)
+            .fiber(FieldDef::numeric("score"));
+        let mut store = crate::BundleStore::new(schema);
+        let mut r = Record::new();
+        r.insert("doc_id".into(), Value::Text("a".into()));
+        r.insert("emb".into(), Value::Vector(vec![1.0, 0.0, 0.0, 0.0]));
+        r.insert("score".into(), Value::Float(0.5));
+        store.insert(&r);
+
+        assert_eq!(expected_sample_width(&store, &["emb".into()]), Some(4));
+        assert_eq!(expected_sample_width(&store, &["score".into()]), Some(1));
+        assert_eq!(
+            expected_sample_width(&store, &["score".into(), "emb".into()]),
+            Some(5)
+        );
+        assert_eq!(expected_sample_width(&store, &["nope".into()]), None);
+
+        // the contract that binds them: width == the extractor's row width
+        let (samples, _) = extract_field_samples(&store, &["score".into(), "emb".into()]).unwrap();
+        assert_eq!(
+            samples[0].len(),
+            expected_sample_width(&store, &["score".into(), "emb".into()]).unwrap(),
+            "matrix builders derive d from row width; the validator must agree"
+        );
     }
 
     /// **Total blindness is a refusal, not a 200 (Art's acceptance criterion).**

@@ -4613,7 +4613,21 @@ fn materialize_matrix_cached(
         }
     };
     let n = samples.len();
-    let d = fields.len();
+    // Row width is NOT `fields.len()`: since bb1d8e4 a `vector(k)` fiber
+    // expands to k sample columns, so one requested name can contribute
+    // many. Take the width from the data itself and assert the rows agree —
+    // a mismatch here would silently reinterpret an n×k buffer as n×d and
+    // hand the KDE/nearest paths garbage with a healthy-looking n_samples.
+    let d = samples.first().map_or(fields.len(), |r| r.len());
+    if let Some(bad) = samples.iter().find(|r| r.len() != d) {
+        state.vector_cache.release_compute_lock(&key);
+        return Err(bad_request(&format!(
+            "internal: ragged sample rows for fields {:?} — expected width {}, found {}",
+            fields,
+            d,
+            bad.len()
+        )));
+    }
     let mut data = Vec::with_capacity(n * d);
     for row in samples {
         data.extend(row);
@@ -7022,12 +7036,19 @@ async fn brain_confidence_endpoint(
     // is zero-cost; overlay path materializes once (~10ms/10k records).
     let mut _promoted: Option<gigi::BundleStore> = None;
     let heap = heap_or_promote(&store, &mut _promoted);
-    if req.query.len() != req.fields.len() {
-        return Err(bad_request(&format!(
-            "query length {} ≠ fields length {}",
-            req.query.len(),
-            req.fields.len()
-        )));
+    // Expected width is schema-aware: a vector(k) fiber contributes k
+    // columns, so `fields.len()` is only right when every field is a
+    // scalar (bb1d8e4). Unknown names fall through to the extractor's
+    // richer not-found error rather than a width complaint.
+    if let Some(w) = gigi::stream_shared::expected_sample_width(heap, &req.fields) {
+        if req.query.len() != w {
+            return Err(bad_request(&format!(
+                "query length {} ≠ expected sample width {} for fields {:?}                  (a vector(k) fiber contributes k columns, not 1)",
+                req.query.len(),
+                w,
+                req.fields
+            )));
+        }
     }
     // Cached matrix path — see materialize_matrix_cached docstring
     // for the Marcella 2026-05-29 latency bug context. Same response
@@ -7155,12 +7176,19 @@ async fn brain_confidence_with_explain_endpoint(
     // is zero-cost; overlay path materializes once (~10ms/10k records).
     let mut _promoted: Option<gigi::BundleStore> = None;
     let heap = heap_or_promote(&store, &mut _promoted);
-    if req.query.len() != req.fields.len() {
-        return Err(bad_request(&format!(
-            "query length {} ≠ fields length {}",
-            req.query.len(),
-            req.fields.len()
-        )));
+    // Expected width is schema-aware: a vector(k) fiber contributes k
+    // columns, so `fields.len()` is only right when every field is a
+    // scalar (bb1d8e4). Unknown names fall through to the extractor's
+    // richer not-found error rather than a width complaint.
+    if let Some(w) = gigi::stream_shared::expected_sample_width(heap, &req.fields) {
+        if req.query.len() != w {
+            return Err(bad_request(&format!(
+                "query length {} ≠ expected sample width {} for fields {:?}                  (a vector(k) fiber contributes k columns, not 1)",
+                req.query.len(),
+                w,
+                req.fields
+            )));
+        }
     }
 
     // Cached matrix path — see materialize_matrix_cached docstring
@@ -7306,12 +7334,19 @@ async fn brain_attend_endpoint(
     // is zero-cost; overlay path materializes once (~10ms/10k records).
     let mut _promoted: Option<gigi::BundleStore> = None;
     let heap = heap_or_promote(&store, &mut _promoted);
-    if req.query.len() != req.fields.len() {
-        return Err(bad_request(&format!(
-            "query length {} ≠ fields length {}",
-            req.query.len(),
-            req.fields.len()
-        )));
+    // Expected width is schema-aware: a vector(k) fiber contributes k
+    // columns, so `fields.len()` is only right when every field is a
+    // scalar (bb1d8e4). Unknown names fall through to the extractor's
+    // richer not-found error rather than a width complaint.
+    if let Some(w) = gigi::stream_shared::expected_sample_width(heap, &req.fields) {
+        if req.query.len() != w {
+            return Err(bad_request(&format!(
+                "query length {} ≠ expected sample width {} for fields {:?}                  (a vector(k) fiber contributes k columns, not 1)",
+                req.query.len(),
+                w,
+                req.fields
+            )));
+        }
     }
     let (samples, kept) = extract_field_samples(heap, &req.fields)
         .map_err(|e| bad_request(&e))?;
@@ -7648,12 +7683,19 @@ async fn brain_explain_endpoint(
     // is zero-cost; overlay path materializes once (~10ms/10k records).
     let mut _promoted: Option<gigi::BundleStore> = None;
     let heap = heap_or_promote(&store, &mut _promoted);
-    if req.query.len() != req.fields.len() {
-        return Err(bad_request(&format!(
-            "query length {} ≠ fields length {}",
-            req.query.len(),
-            req.fields.len()
-        )));
+    // Expected width is schema-aware: a vector(k) fiber contributes k
+    // columns, so `fields.len()` is only right when every field is a
+    // scalar (bb1d8e4). Unknown names fall through to the extractor's
+    // richer not-found error rather than a width complaint.
+    if let Some(w) = gigi::stream_shared::expected_sample_width(heap, &req.fields) {
+        if req.query.len() != w {
+            return Err(bad_request(&format!(
+                "query length {} ≠ expected sample width {} for fields {:?}                  (a vector(k) fiber contributes k columns, not 1)",
+                req.query.len(),
+                w,
+                req.fields
+            )));
+        }
     }
     let (samples, _kept) = extract_field_samples(heap, &req.fields)
         .map_err(|e| bad_request(&e))?;

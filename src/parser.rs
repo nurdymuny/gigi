@@ -2195,14 +2195,52 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
 
 // ── Parser ──
 
+/// Maximum nesting depth for any recursive production. Real queries do
+/// not approach this: the deepest shipped example nests 3 levels. The
+/// bound exists because the parser runs BEFORE the public endpoint's verb
+/// allowlist, so the entire grammar is reachable pre-auth — and a Rust
+/// stack overflow calls `abort()`, which no panic handler can catch and
+/// which takes the whole single-node process with it (SECURITY_REVIEW_SELF.md
+/// H2: ~60 KB of nested parens, anonymous, one request).
+pub const MAX_PARSE_DEPTH: usize = 64;
+
+fn too_deep() -> String {
+    format!(
+        "query nests deeper than {} levels — refusing to parse. \
+         Deep nesting is a stack-exhaustion vector, not a supported query shape.",
+        MAX_PARSE_DEPTH
+    )
+}
+
 struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    /// Current recursion depth across every self-recursive or
+    /// mutually-recursive production. Incremented by [`Parser::recurse`]
+    /// only — never touched directly.
+    depth: usize,
 }
 
 impl Parser {
     fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, pos: 0 }
+        Self { tokens, pos: 0, depth: 0 }
+    }
+
+    /// Run one recursive production one level deeper, refusing past
+    /// [`MAX_PARSE_DEPTH`]. Depth is decremented on both the success and
+    /// error paths so sibling productions in a loop (long AND-chains,
+    /// repeated terms) do not accumulate depth — only genuine nesting does.
+    fn recurse<T>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<T, String>,
+    ) -> Result<T, String> {
+        if self.depth >= MAX_PARSE_DEPTH {
+            return Err(too_deep());
+        }
+        self.depth += 1;
+        let out = f(self);
+        self.depth -= 1;
+        out
     }
 
     fn peek(&self) -> Option<&Token> {
@@ -5711,7 +5749,8 @@ impl Parser {
         // Parenthesized sub-expression.
         if matches!(self.peek(), Some(Token::LParen)) {
             self.advance();
-            let inner = self.parse_invariant_expr()?;
+            // Recursive back-edge: parens nest arbitrarily.
+            let inner = self.recurse(|p| p.parse_invariant_expr())?;
             self.expect(Token::RParen)?;
             return Ok(inner);
         }
@@ -6142,7 +6181,8 @@ impl Parser {
                 return self.parse_explain_section();
             }
         }
-        let inner = self.parse()?;
+        // Recursive back-edge: EXPLAIN EXPLAIN … nests statements.
+        let inner = self.recurse(|p| p.parse())?;
         Ok(Statement::Explain {
             inner: Box::new(inner),
             vector: None,
@@ -6740,7 +6780,8 @@ impl Parser {
                 let cover_bundle = self.expect_word()?;
                 let where_conds = if self.is_keyword("WHERE") {
                     self.advance();
-                    self.parse_filter_condition_list()?
+                    // Recursive back-edge: EXISTS may nest EXISTS.
+                    self.recurse(|p| p.parse_filter_condition_list())?
                 } else {
                     vec![]
                 };
@@ -8693,7 +8734,7 @@ fn parse_weight_expr(tokens: &[String]) -> Result<WeightExpr, String> {
         return Err("Empty WEIGHT expression".to_string());
     }
     let mut pos: usize = 0;
-    let expr = parse_weight_add_sub(tokens, &mut pos)?;
+    let expr = parse_weight_add_sub(tokens, &mut pos, 0)?;
     if pos != tokens.len() {
         // These tokens are already plain strings (Phase 1 stashes the raw
         // `Vec<String>` on `PatternDef.weight`), not `Token`s — quote and
@@ -8711,15 +8752,18 @@ fn parse_weight_expr(tokens: &[String]) -> Result<WeightExpr, String> {
 }
 
 #[cfg(feature = "patterns")]
-fn parse_weight_add_sub(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, String> {
-    let mut left = parse_weight_mul_div(tokens, pos)?;
+fn parse_weight_add_sub(tokens: &[String], pos: &mut usize, depth: usize) -> Result<WeightExpr, String> {
+    if depth >= MAX_PARSE_DEPTH {
+        return Err(too_deep());
+    }
+    let mut left = parse_weight_mul_div(tokens, pos, depth)?;
     while *pos < tokens.len() {
         let op = tokens[*pos].as_str();
         if op != "+" && op != "-" {
             break;
         }
         *pos += 1;
-        let right = parse_weight_mul_div(tokens, pos)?;
+        let right = parse_weight_mul_div(tokens, pos, depth)?;
         left = match op {
             "+" => WeightExpr::Add(Box::new(left), Box::new(right)),
             "-" => WeightExpr::Sub(Box::new(left), Box::new(right)),
@@ -8730,15 +8774,15 @@ fn parse_weight_add_sub(tokens: &[String], pos: &mut usize) -> Result<WeightExpr
 }
 
 #[cfg(feature = "patterns")]
-fn parse_weight_mul_div(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, String> {
-    let mut left = parse_weight_atom(tokens, pos)?;
+fn parse_weight_mul_div(tokens: &[String], pos: &mut usize, depth: usize) -> Result<WeightExpr, String> {
+    let mut left = parse_weight_atom(tokens, pos, depth)?;
     while *pos < tokens.len() {
         let op = tokens[*pos].as_str();
         if op != "*" && op != "/" {
             break;
         }
         *pos += 1;
-        let right = parse_weight_atom(tokens, pos)?;
+        let right = parse_weight_atom(tokens, pos, depth)?;
         left = match op {
             "*" => WeightExpr::Mul(Box::new(left), Box::new(right)),
             "/" => WeightExpr::Div(Box::new(left), Box::new(right)),
@@ -8749,14 +8793,14 @@ fn parse_weight_mul_div(tokens: &[String], pos: &mut usize) -> Result<WeightExpr
 }
 
 #[cfg(feature = "patterns")]
-fn parse_weight_atom(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, String> {
+fn parse_weight_atom(tokens: &[String], pos: &mut usize, depth: usize) -> Result<WeightExpr, String> {
     if *pos >= tokens.len() {
         return Err("WEIGHT: unexpected end of expression".to_string());
     }
     let tok = tokens[*pos].clone();
     if tok == "(" {
         *pos += 1;
-        let inner = parse_weight_add_sub(tokens, pos)?;
+        let inner = parse_weight_add_sub(tokens, pos, depth + 1)?;
         if *pos >= tokens.len() || tokens[*pos] != ")" {
             return Err("WEIGHT: expected ')'".to_string());
         }
@@ -8774,14 +8818,14 @@ fn parse_weight_atom(tokens: &[String], pos: &mut usize) -> Result<WeightExpr, S
         if *pos < tokens.len() && tokens[*pos] == "(" {
             let fname = tok.to_ascii_lowercase();
             *pos += 1; // consume '('
-            let arg1 = parse_weight_add_sub(tokens, pos)?;
+            let arg1 = parse_weight_add_sub(tokens, pos, depth + 1)?;
             if *pos >= tokens.len() || tokens[*pos] != "," {
                 return Err(format!(
                     "WEIGHT: `{fname}(` expects two comma-separated args"
                 ));
             }
             *pos += 1; // consume ','
-            let arg2 = parse_weight_add_sub(tokens, pos)?;
+            let arg2 = parse_weight_add_sub(tokens, pos, depth + 1)?;
             if *pos >= tokens.len() || tokens[*pos] != ")" {
                 return Err(format!("WEIGHT: `{fname}(` expects closing ')'"));
             }
@@ -17907,5 +17951,91 @@ mod tests {
             off_b > off_a,
             "second SNAPSHOT must land at a higher WAL offset; got {off_a} → {off_b}"
         );
+    }
+
+    // ── SECURITY_REVIEW_SELF.md H2 — parser recursion depth guard ──────
+    //
+    // The parser runs BEFORE the public endpoint's verb allowlist, so the
+    // entire grammar is reachable by an anonymous caller. A Rust stack
+    // overflow calls abort(): no panic handler catches it, and the whole
+    // single-node process dies. Each test below is one of the recursion
+    // cycles found by a call-graph sweep of every parse_* production.
+    // Depths are far past MAX_PARSE_DEPTH but far below what overflowed
+    // the stack pre-fix (~10k), so the suite stays fast.
+
+    /// Cycle 1: `parse_filter_condition_list` → itself, via nested EXISTS.
+    /// This is the shape that killed the release binary in the review.
+    #[test]
+    fn h2_nested_exists_is_refused_not_overflowed() {
+        let q = format!(
+            "COVER demo WHERE {}x = 1{};",
+            "EXISTS (COVER demo WHERE ".repeat(500),
+            ")".repeat(500)
+        );
+        let err = parse(&q).expect_err("deep EXISTS nesting must be refused");
+        assert!(err.contains("nests deeper"), "got: {err}");
+    }
+
+    /// Cycle 2: `parse_invariant_term` → `parse_invariant_expr`, via parens.
+    /// PROJECT INVARIANT is not on the public verb allowlist — which is
+    /// exactly why the guard must sit before verb dispatch, not inside it.
+    #[test]
+    fn h2_nested_invariant_parens_are_refused() {
+        let q = format!(
+            "PROJECT INVARIANT ({}curvature{}) FROM demo;",
+            "(".repeat(500),
+            ")".repeat(500)
+        );
+        let err = parse(&q).expect_err("deep paren nesting must be refused");
+        assert!(err.contains("nests deeper"), "got: {err}");
+    }
+
+    /// Cycle 3: `parse` → `parse_explain` → `parse`. Found by the call-graph
+    /// sweep, NOT named in the security review — a reminder that the guard
+    /// belongs on every cycle, not only the reported ones.
+    #[test]
+    fn h2_nested_explain_is_refused() {
+        let q = format!("{}SHOW BUNDLES;", "EXPLAIN ".repeat(500));
+        let err = parse(&q).expect_err("deep EXPLAIN nesting must be refused");
+        assert!(err.contains("nests deeper"), "got: {err}");
+    }
+
+    /// Cycle 4: the WEIGHT expression family — free functions, so they
+    /// carry their own threaded depth rather than the Parser field.
+    ///
+    /// Note the reachability difference, found while writing this test:
+    /// `parse()` only STASHES the weight tokens on the statement, so this
+    /// family is a SECOND-stage parse (`parse_weight_expr`, called when a
+    /// pattern is compiled at `:9803` / `:12295`) rather than part of the
+    /// pre-auth grammar the other three cycles sit in. Guarded anyway —
+    /// depth bounds belong on every recursive descent, not only the
+    /// anonymously-reachable ones.
+    #[cfg(feature = "patterns")]
+    #[test]
+    fn h2_nested_weight_parens_are_refused() {
+        let q = format!(
+            "DEFINE PATTERN p AS x > 1 WEIGHT ({}x{});",
+            "(".repeat(500),
+            ")".repeat(500)
+        );
+        let err = parse_weight_expr_for_test(&q)
+            .expect_err("deep WEIGHT paren nesting must be refused");
+        assert!(err.contains("nests deeper"), "got: {err}");
+    }
+
+    /// The guard must not break real queries: legitimate nesting is shallow,
+    /// and sibling terms in a loop must not accumulate depth (a long AND
+    /// chain is 60 siblings at depth 1, not depth 60).
+    #[test]
+    fn h2_depth_guard_does_not_break_real_queries() {
+        parse("COVER demo WHERE EXISTS (COVER other WHERE x = 1);")
+            .expect("one level of EXISTS is a real query");
+        let long_and = (0..60)
+            .map(|i| format!("f{i} = {i}"))
+            .collect::<Vec<_>>()
+            .join(" AND ");
+        parse(&format!("COVER demo WHERE {long_and};"))
+            .expect("60 sibling AND terms are depth 1, not depth 60");
+        parse("EXPLAIN SHOW BUNDLES;").expect("single EXPLAIN is a real query");
     }
 }

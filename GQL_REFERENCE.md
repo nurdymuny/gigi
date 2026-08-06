@@ -49,7 +49,7 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | FIBER / TRANSPORT (window) | ❌ | Not implemented — rejected loudly (was listed ✅) |
 | PULLBACK | ✅ | Joins |
 | PRODUCT / UNION / INTERSECT / SUBTRACT | ❌ | Not implemented — rejected loudly (were listed ✅) |
-| ATLAS (transactions) | ✅ | BEGIN / COMMIT / ROLLBACK |
+| ATLAS (transactions) | ❌ | BEGIN / COMMIT / ROLLBACK parse but open no transaction — 501 on `/v1/gql`, NOTICE in the embedded executor. ATLAS SAVEPOINT / ROLLBACK TO / ISOLATION are parse errors. Staged writes live at `/v1/transactions/*` (`--features transactions`) |
 | SHOW BUNDLES / DESCRIBE | ✅ | |
 | CURVATURE / RICCI / SPECTRAL | ✅ | |
 | DIVERGENCE FROM bundle_a TO bundle_b (or VS) | ✅ | Gaussian KL + Jensen-Shannon between two bundles |
@@ -136,8 +136,8 @@ SQL thinks in tables and rows. GQL thinks in bundles, sections, and fibers. Ever
 | WHERE f IN (SELECT ...) | ON f IN (COVER ... PROJECT f) | Nested sheaf evaluation |
 | WITH cte AS (...) SELECT ... | WITH name AS (...) ... | Named intermediate bundle |
 | **Transactions** | | |
-| BEGIN / COMMIT / ROLLBACK | ATLAS BEGIN / COMMIT / ROLLBACK | Atlas transition (coordinate change) |
-| SAVEPOINT name | ATLAS SAVEPOINT name | Atlas checkpoint |
+| BEGIN / COMMIT / ROLLBACK | ATLAS BEGIN / COMMIT / ROLLBACK | ❌ not implemented — parses, opens nothing (see §VIII) |
+| SAVEPOINT name | ATLAS SAVEPOINT name | ❌ not implemented — parse error |
 | **Admin** | | |
 | EXPLAIN SELECT ... | EXPLAIN (any statement) | Geometric query plan |
 | SHOW TABLES | SHOW BUNDLES | Bundle catalog |
@@ -905,30 +905,65 @@ ITERATE friends
 
 ---
 
-## VIII. Transactions — ATLAS ✅
+## VIII. Transactions — ATLAS ❌ NOT IMPLEMENTED
 
-An atlas is a collection of coordinate charts. A transaction is an atomic chart transition.
+An atlas is a collection of coordinate charts, and the design intent is
+that a transaction is an atomic chart transition. **That design is not
+built on the GQL surface.** This section previously read ✅ and showed
+the syntax below as working. It does not work. What actually happens
+today, measured:
+
+| Statement | Actual behavior |
+|---|---|
+| `BEGIN;` / `ATLAS BEGIN;` | parses; opens no transaction. `501` on `/v1/gql`, `NOTICE` in the embedded executor |
+| `COMMIT;` / `ATLAS COMMIT;` | same — there is nothing to commit; writes were already applied when you issued them |
+| `ROLLBACK;` / `ATLAS ROLLBACK;` | same — **undoes nothing**. There is no undo log behind this verb |
+| `ATLAS SAVEPOINT <n>;` | parse error: `Unknown ATLAS action: SAVEPOINT` |
+| `ATLAS ROLLBACK TO <n>;` | parse error: trailing input `TO <n>` rejected |
+| `ATLAS BEGIN ISOLATION FLAT/CURVED;` | parse error: trailing input `ISOLATION …` rejected |
+
+Concretely: `BEGIN; INSERT INTO b (id, val) VALUES (1, 42.0); ROLLBACK;`
+leaves the row in `b`. Do not wrap writes in these verbs expecting
+atomicity.
 
 ```sql
-ATLAS BEGIN;
+-- ❌ NONE of the following is implemented. Kept for shape only.
+ATLAS BEGIN;                             -- opens nothing
   SECTION sensors (id: 9001, city: 'Test', ...);
-  REDEFINE sensors AT id=42 SET (temp: -28.0);
-  RETRACT sensors AT id=43;
-ATLAS COMMIT;
-
-ATLAS ROLLBACK;                          -- undo all
-ATLAS SAVEPOINT checkpoint1;             -- partial rollback target
-ATLAS ROLLBACK TO checkpoint1;
-
--- Isolation levels
-ATLAS BEGIN ISOLATION FLAT;              -- serializable (K=0 in transaction space)
-ATLAS BEGIN ISOLATION CURVED;            -- read committed (some K allowed)
-
--- Bare spellings are accepted as aliases (ATOMIC_SHEAF_COMMIT_SPEC §7.2):
-BEGIN;            -- same as ATLAS BEGIN (optional TRANSACTION keyword: BEGIN TRANSACTION)
-COMMIT;           -- same as ATLAS COMMIT
-ROLLBACK;         -- same as ATLAS ROLLBACK
+ATLAS COMMIT;                            -- commits nothing
+ATLAS ROLLBACK;                          -- undoes nothing
+ATLAS SAVEPOINT checkpoint1;             -- parse error
+ATLAS ROLLBACK TO checkpoint1;           -- parse error
+ATLAS BEGIN ISOLATION FLAT;              -- parse error
+ATLAS BEGIN ISOLATION CURVED;            -- parse error
 ```
+
+### What IS built
+
+Two real things, neither of them the syntax above:
+
+1. **`POST /v1/bundles/{name}/transaction`** (always compiled). A
+   single-bundle op list (`insert` / `update` / `delete` / `increment`)
+   applied together, with rollback on failure. The rollback works by
+   snapshotting **every record in the bundle** before the first op and
+   re-inserting them on error — so it costs O(bundle size) in time and
+   memory per call regardless of how many ops you send. Fine for small
+   bundles; do not put it on a hot path.
+
+2. **`POST /v1/transactions/{begin,write,commit,rollback}`** — requires
+   `--features transactions`, off by default. Phase-A: writes are staged
+   in memory and applied via `batch_insert` at commit, bundle by bundle.
+   Per the handler's own comment, *"if any insert fails, the prior
+   bundles' writes are already applied"* — so this is a write lifecycle,
+   **not cross-bundle atomicity**. The 2PC coordinator, MVCC snapshot
+   isolation, deadlock detector, and geometric-coherence engine in
+   `src/transactions/` (3,146 lines, TX1–TX18 gates green) are validated
+   against their own gates but are **not wired to live bundles** — no
+   file outside `src/transactions/` references `MvccStore`,
+   `Coordinator`, or `GeometricCoherenceEngine`.
+
+See `theory/transactions/ATOMIC_SHEAF_COMMIT_SPEC.md` for the intended
+design.
 
 ### Error handling in transactions
 

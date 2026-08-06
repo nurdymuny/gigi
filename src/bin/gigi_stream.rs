@@ -12964,11 +12964,29 @@ async fn gql_query(
                 }
             }
         }
+        // Transaction control over /v1/gql used to return 200 {"status":
+        // "ok"} for all three verbs. Nothing was behind them: a client
+        // could send BEGIN; INSERT …; ROLLBACK; get three 200s, and find
+        // the row still there. That is the one place on this surface
+        // where a caller was told a write was undone when it was not, so
+        // it now joins the 501 list with every other parsed-but-unbuilt
+        // v2.1 verb. Staged writes live at /v1/transactions/* under the
+        // `transactions` feature.
         gigi::parser::Statement::AtlasBegin
         | gigi::parser::Statement::AtlasCommit
         | gigi::parser::Statement::AtlasRollback => {
             emit_quick("OTHER", t0.elapsed().as_micros() as u64, false);
-            return (StatusCode::OK, Json(serde_json::json!({"status": "ok"})));
+            return (
+                StatusCode::NOT_IMPLEMENTED,
+                Json(serde_json::json!({
+                    "error": "Transaction control is not implemented on /v1/gql. \
+                              BEGIN / COMMIT / ROLLBACK (and the ATLAS spellings) \
+                              parse but open no transaction and undo nothing — \
+                              writes issued between them are already applied. \
+                              Use the /v1/transactions/* endpoints (requires the \
+                              `transactions` build feature) for staged writes."
+                })),
+            );
         }
         // v2.1: statements parsed but not yet implemented — return 501
         gigi::parser::Statement::ShowRoles

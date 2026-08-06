@@ -1687,11 +1687,34 @@ fn encode_insert(bundle_name: &str, record: &Record) -> Vec<u8> {
 /// Encode a record (field count + sorted key-value pairs) into a buffer.
 fn encode_record_into(buf: &mut Vec<u8>, record: &Record) {
     buf.extend_from_slice(&(record.len() as u32).to_le_bytes());
-    let mut keys: Vec<&String> = record.keys().collect();
-    keys.sort();
-    for key in keys {
-        write_string(buf, key);
-        encode_value_into(buf, &record[key]);
+
+    // Key sort for canonical field order. The `Vec<&String>` this used to
+    // allocate was one malloc/free pair per record on the WAL append path —
+    // 100k of them per 100k-row batch_insert. Records with <= INLINE_KEYS
+    // fields (every schema-shaped record in practice) now sort in a stack
+    // array instead. Same comparator, same resulting order, same bytes on
+    // disk; `encode_record_field_order_is_canonical_both_branches` and
+    // `wal_entry_on_disk_layout_pinned` pin that.
+    const INLINE_KEYS: usize = 16;
+    if record.len() <= INLINE_KEYS {
+        let mut inline: [Option<&String>; INLINE_KEYS] = [None; INLINE_KEYS];
+        for (slot, key) in inline.iter_mut().zip(record.keys()) {
+            *slot = Some(key);
+        }
+        let keys = &mut inline[..record.len()];
+        keys.sort_unstable();
+        for key in keys.iter() {
+            let key = key.expect("inline key slot filled above");
+            write_string(buf, key);
+            encode_value_into(buf, &record[key]);
+        }
+    } else {
+        let mut keys: Vec<&String> = record.keys().collect();
+        keys.sort();
+        for key in keys {
+            write_string(buf, key);
+            encode_value_into(buf, &record[key]);
+        }
     }
 }
 
@@ -2296,6 +2319,73 @@ mod tests {
 
         let _ = fs::remove_file(&wal_path);
         let _ = fs::remove_dir(&dir);
+    }
+
+    /// Canonical field order pin for `encode_record_into`, checked against an
+    /// oracle that does not share a line of code with it: a `BTreeMap`, whose
+    /// iteration order IS sorted-by-key by construction. Exercises both
+    /// branches — the inline stack-array sort (<= 16 fields, the bulk-load
+    /// shape) and the heap `Vec` fallback (> 16 fields) — and asserts the two
+    /// branches agree with each other and with the oracle, byte for byte.
+    #[test]
+    fn encode_record_field_order_is_canonical_both_branches() {
+        use std::collections::BTreeMap;
+
+        fn oracle(record: &Record) -> Vec<u8> {
+            let sorted: BTreeMap<&String, &Value> = record.iter().collect();
+            let mut buf = Vec::new();
+            buf.extend_from_slice(&(record.len() as u32).to_le_bytes());
+            for (k, v) in sorted {
+                write_string(&mut buf, k);
+                encode_value_into(&mut buf, v);
+            }
+            buf
+        }
+
+        // Keys deliberately inserted in non-sorted order and chosen so that
+        // byte-order and any "natural" order disagree (z before a, digits,
+        // unicode, empty key).
+        let mut small = Record::new();
+        for (k, v) in [
+            ("zeta", Value::Integer(-9)),
+            ("alpha", Value::Text("T000000".into())),
+            ("", Value::Null),
+            ("m10", Value::Float(2.5)),
+            ("m2", Value::Bool(true)),
+            ("Ω", Value::Binary(vec![1, 2, 3])),
+            ("amount", Value::Float(-0.0)),
+        ] {
+            small.insert(k.to_string(), v);
+        }
+        assert!(small.len() <= 16, "small record must take the inline branch");
+
+        let mut big = small.clone();
+        for i in 0..20 {
+            big.insert(format!("extra_{i:02}"), Value::Integer(i as i64));
+        }
+        assert!(big.len() > 16, "big record must take the Vec fallback branch");
+
+        for rec in [&small, &big] {
+            let mut got = Vec::new();
+            encode_record_into(&mut got, rec);
+            assert_eq!(
+                got,
+                oracle(rec),
+                "encode_record_into diverged from the BTreeMap key-order oracle \
+                 ({} fields) — WAL bytes would no longer be canonical",
+                rec.len()
+            );
+        }
+
+        // The two branches must also agree with each other on the SAME record:
+        // encode `small` through the fallback by padding to > 16 and back is not
+        // possible, so instead assert the shared prefix contract — both produce
+        // the oracle, which is the transitive proof.
+        let mut a = Vec::new();
+        encode_record_into(&mut a, &small);
+        let mut b = Vec::new();
+        encode_record_into(&mut b, &small);
+        assert_eq!(a, b, "encode_record_into must be deterministic");
     }
 
     /// Crash-replay durability pin: log a schema + many inserts covering

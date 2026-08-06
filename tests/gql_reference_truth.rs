@@ -164,3 +164,94 @@ fn emit_without_gate_refused_loudly() {
         .expect_err("EMIT without GIGI_EMIT_DIR must error");
     assert!(err.contains("GIGI_EMIT_DIR"), "error should name the knob: {err}");
 }
+
+/// Section VIII: transaction control is NOT implemented, and must not
+/// pretend otherwise.
+///
+/// `ExecResult::Notice` exists because (per its own doc comment, audit
+/// 2026-07-02) "plain `Ok` here would be success theater." That audit
+/// caught COMPACT/VACUUM/ANALYZE and missed BEGIN/COMMIT/ROLLBACK,
+/// which kept returning a bare `Ok` — and on `/v1/gql`, a bare
+/// HTTP 200 `{"status":"ok"}`. A caller could send
+/// `BEGIN; INSERT …; ROLLBACK;`, receive three successes, and find the
+/// row still there.
+///
+/// This test pins both halves of the truth:
+///   1. all three verbs return `Notice`, never a bare `Ok`;
+///   2. ROLLBACK genuinely does not undo the write.
+///
+/// When transaction control is actually implemented, THIS TEST MUST
+/// FAIL — that is the point. Fixing it means flipping GQL_REFERENCE.md
+/// §VIII back to ✅ in the same commit.
+#[test]
+fn transaction_control_does_not_pretend_to_work() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut e = seeded_engine(dir.path());
+
+    for stmt in [
+        "BEGIN;",
+        "BEGIN TRANSACTION;",
+        "COMMIT;",
+        "ROLLBACK;",
+        "ATLAS BEGIN;",
+        "ATLAS COMMIT;",
+        "ATLAS ROLLBACK;",
+    ] {
+        match run(&mut e, stmt).unwrap_or_else(|err| panic!("'{stmt}' should parse: {err}")) {
+            ExecResult::Notice(msg) => {
+                assert!(
+                    msg.contains("NOT implemented"),
+                    "'{stmt}' notice must say it did nothing, got: {msg}"
+                );
+            }
+            other => panic!(
+                "'{stmt}' returned {other:?} — a bare Ok is success theater for a \
+                 verb that opens no transaction. Either return Notice, or \
+                 implement transactions and update GQL_REFERENCE.md §VIII."
+            ),
+        }
+    }
+
+    // The behavioral half: ROLLBACK does not roll back.
+    run(&mut e, "BEGIN;").unwrap();
+    run(
+        &mut e,
+        "SECTION sensors (id='tx_probe', city='Nowhere', temp=1.0, wind=1.0);",
+    )
+    .unwrap();
+    run(&mut e, "ROLLBACK;").unwrap();
+
+    let after = run(&mut e, "SECTION sensors AT id='tx_probe';")
+        .expect("point read after rollback");
+    match after {
+        ExecResult::Rows(rows) => assert_eq!(
+            rows.len(),
+            1,
+            "documented behavior: ROLLBACK does NOT undo the write. If this now \
+             reads 0 rows, transactions were implemented — update \
+             GQL_REFERENCE.md §VIII and this test together."
+        ),
+        other => panic!("expected Rows from the point read, got {other:?}"),
+    }
+}
+
+/// Section VIII: the ATLAS sub-forms the reference used to show as
+/// working are parse errors. Kept loud so the reference cannot quietly
+/// re-promise them.
+#[test]
+fn atlas_subforms_are_parse_errors() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut e = seeded_engine(dir.path());
+    for stmt in [
+        "ATLAS SAVEPOINT cp1;",
+        "ATLAS ROLLBACK TO cp1;",
+        "ATLAS BEGIN ISOLATION FLAT;",
+        "ATLAS BEGIN ISOLATION CURVED;",
+    ] {
+        assert!(
+            run(&mut e, stmt).is_err(),
+            "'{stmt}' is documented in GQL_REFERENCE.md §VIII but must refuse \
+             loudly until it is built"
+        );
+    }
+}

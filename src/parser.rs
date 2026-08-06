@@ -11535,8 +11535,30 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         }
 
         Statement::AtlasBegin | Statement::AtlasCommit | Statement::AtlasRollback => {
-            // Transaction control is handled at the transport layer
-            Ok(ExecResult::Ok)
+            // These three parse, but the embedded executor has no
+            // transaction manager behind them: there is no undo log, so
+            // ROLLBACK cannot undo anything and COMMIT has nothing to
+            // make durable that INSERT did not already do. Returning a
+            // bare `Ok` here read as "your transaction worked" to every
+            // caller — a silent success for a no-op. It is now a Notice,
+            // which is this codebase's contract for "parsed, did
+            // nothing, and said so" (same treatment as COMPACT/VACUUM).
+            //
+            // The real cross-bundle surface is the `transactions`
+            // feature: `POST /v1/transactions/{begin,write,commit,
+            // rollback}`. That surface is Phase-A (staged writes applied
+            // via batch_insert at commit); the 2PC/MVCC machinery in
+            // `crate::transactions` is validated but not yet wired to
+            // live bundles.
+            Ok(ExecResult::Notice(
+                "transaction control (BEGIN / COMMIT / ROLLBACK, and the \
+                 ATLAS spellings) parses but is NOT implemented on this \
+                 path — no transaction was opened, nothing was rolled \
+                 back, and any writes you issued are already applied. \
+                 Build with `--features transactions` and use the \
+                 /v1/transactions/* HTTP surface for staged writes."
+                    .to_string(),
+            ))
         }
 
         // ── v2.1: Access Control (stubs) ──

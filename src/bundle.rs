@@ -1046,6 +1046,61 @@ fn effective_range(field_def: &crate::types::FieldDef, fs: &FieldStats) -> f64 {
     }
 }
 
+/// Secondary-index upkeep for one (field, value, base point).
+///
+/// Semantically identical to the `entry(field.clone()).or_default()
+/// .entry(value.clone()).or_default().insert(bp32)` chain it replaces —
+/// same map, same bitmap, same bit. The difference is allocation: `entry`
+/// demands an *owned* key up front, so the old chain cloned the field-name
+/// `String` on **every record** even though the field name is already a key
+/// after the first one, and cloned the `Value` on every record even when its
+/// bitmap already existed. On a 100k-row bulk load that was 100k wasted
+/// `String` allocations per indexed field. Look up first, clone only to
+/// create.
+///
+/// Honest trade-off on the inner map: probing with `get_mut` first costs one
+/// extra hash of `val` when the value is genuinely new. For a UNIQUE indexed
+/// field (every insert is a miss) that is a small net loss on the inner map;
+/// for any field with repeats it saves a whole `Value` clone. The outer map
+/// is a pure win either way — the field name is always present after the
+/// first record. Measured net on the 100k unique-`txn_id` bulk-load lane:
+/// positive (see the round-5 ingest A/B).
+#[inline]
+fn index_upkeep(
+    field_index: &mut HashMap<String, HashMap<Value, RoaringBitmap>>,
+    idx_field: &str,
+    val: &Value,
+    bp32: u32,
+) {
+    if let Some(by_val) = field_index.get_mut(idx_field) {
+        if let Some(bitmap) = by_val.get_mut(val) {
+            bitmap.insert(bp32);
+        } else {
+            by_val.entry(val.clone()).or_default().insert(bp32);
+        }
+    } else {
+        field_index
+            .entry(idx_field.to_string())
+            .or_default()
+            .entry(val.clone())
+            .or_default()
+            .insert(bp32);
+    }
+}
+
+/// Welford upkeep for one (field, value). Same reasoning as [`index_upkeep`]:
+/// `entry(name.clone())` allocated a `String` per numeric fiber field per
+/// record purely to satisfy `entry`'s owned-key signature. The stats object
+/// and the update are unchanged.
+#[inline]
+fn stats_upkeep(field_stats: &mut HashMap<String, FieldStats>, name: &str, v: f64) {
+    if let Some(fs) = field_stats.get_mut(name) {
+        fs.update(v);
+    } else {
+        field_stats.entry(name.to_string()).or_default().update(v);
+    }
+}
+
 /// Compute per-record scalar curvature K_record(p) in O(1) at insert time.
 ///
 /// Uses the field_stats that existed **before** this record's contribution
@@ -1332,12 +1387,7 @@ impl BundleStore {
         self.bp_reverse.insert(bp32, bp);
         for idx_field in &self.schema.indexed_fields {
             if let Some(val) = record.get(idx_field) {
-                self.field_index
-                    .entry(idx_field.clone())
-                    .or_default()
-                    .entry(val.clone())
-                    .or_default()
-                    .insert(bp32);
+                index_upkeep(&mut self.field_index, idx_field, val, bp32);
             }
         }
 
@@ -1350,10 +1400,7 @@ impl BundleStore {
         // Update field stats for curvature tracking
         for (i, field_def) in self.schema.fiber_fields.iter().enumerate() {
             if let Some(v) = fiber_vals[i].as_f64() {
-                self.field_stats
-                    .entry(field_def.name.clone())
-                    .or_default()
-                    .update(v);
+                stats_upkeep(&mut self.field_stats, &field_def.name, v);
             }
         }
 
@@ -1421,6 +1468,41 @@ impl BundleStore {
         }
 
         // ── General path (indexed fields or composite keys) ─────────
+        //
+        // Pre-reserve exactly like the turbo path already does. Without this
+        // a 100k-row batch grows the storage maps and `bp_reverse` from empty,
+        // paying a full rehash + table copy at every power-of-two boundary
+        // (~17 reallocations, the last several copying tens of thousands of
+        // entries). `reserve` is a capacity hint only — no key, value or
+        // iteration-order semantics change.
+        let n = records.len();
+        match &mut self.storage {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => {
+                sections.reserve(n);
+                base_values.reserve(n);
+            }
+            BaseStorage::Sequential {
+                sections,
+                base_values,
+                ..
+            } => {
+                sections.reserve(n);
+                base_values.reserve(n);
+            }
+            BaseStorage::Hybrid {
+                sections,
+                base_values,
+                ..
+            } => {
+                sections.reserve(n);
+                base_values.reserve(n);
+            }
+        }
+        self.bp_reverse.reserve(n);
+
         let mut count = 0usize;
 
         for record in records {
@@ -1456,12 +1538,7 @@ impl BundleStore {
             self.bp_reverse.insert(bp32, bp);
             for idx_field in &self.schema.indexed_fields {
                 if let Some(val) = record.get(idx_field) {
-                    self.field_index
-                        .entry(idx_field.clone())
-                        .or_default()
-                        .entry(val.clone())
-                        .or_default()
-                        .insert(bp32);
+                    index_upkeep(&mut self.field_index, idx_field, val, bp32);
                 }
             }
 
@@ -1472,10 +1549,7 @@ impl BundleStore {
 
             for (i, field_def) in self.schema.fiber_fields.iter().enumerate() {
                 if let Some(v) = fiber_vals[i].as_f64() {
-                    self.field_stats
-                        .entry(field_def.name.clone())
-                        .or_default()
-                        .update(v);
+                    stats_upkeep(&mut self.field_stats, &field_def.name, v);
                 }
             }
 

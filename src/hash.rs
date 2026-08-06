@@ -87,14 +87,45 @@ impl HashConfig {
         let mut combined: u64 = 0;
         for (i, field_def) in schema.base_fields.iter().enumerate() {
             let val = record.get(&field_def.name).unwrap_or(&Value::Null);
-            let encoded = encode_value(val);
-            let h_i = wy(&encoded, self.seeds[i]);
+            let h_i = hash_value(val, self.seeds[i]);
             // Rotation-based composition (Def 1.6c)
             let rotation = (i as u32 * 17) % 64;
             combined ^= h_i.rotate_left(rotation);
         }
         // Finalizer: one more round to ensure full avalanche
         wy(&combined.to_le_bytes(), 0xa0761d6478bd642f)
+    }
+}
+
+/// `wy(&encode_value(val), seed)` with no intermediate heap buffer.
+///
+/// Every arm hashes exactly the byte string [`encode_value`] would have
+/// produced — the `Vec<u8>` it allocated was write-once, read-once, and then
+/// dropped, i.e. one malloc/free pair per base field per record on the
+/// bulk-load path. `Vector` keeps the owned encoder because its byte string
+/// is genuinely built, not borrowed. Byte-for-byte parity with the old path
+/// is pinned by `hash_value_matches_encode_value_oracle`.
+#[inline]
+fn hash_value(val: &Value, seed: u64) -> u64 {
+    match val {
+        Value::Integer(v) | Value::Timestamp(v) => {
+            let bits = (*v as u64) ^ (1u64 << 63);
+            wy(&bits.to_be_bytes(), seed)
+        }
+        Value::Float(v) => {
+            let mut bits = v.to_bits();
+            if *v >= 0.0 {
+                bits ^= 1u64 << 63;
+            } else {
+                bits = !bits;
+            }
+            wy(&bits.to_be_bytes(), seed)
+        }
+        Value::Text(s) => wy(s.as_bytes(), seed),
+        Value::Bool(b) => wy(&[*b as u8], seed),
+        Value::Null => wy(&[0xFF], seed),
+        Value::Binary(b) => wy(b, seed),
+        Value::Vector(_) => wy(&encode_value(val), seed),
     }
 }
 
@@ -227,5 +258,50 @@ mod tests {
         rec.insert("b".into(), Value::Text("world".into()));
         let h2 = config.hash(&rec, &schema);
         assert_ne!(h1, h2);
+    }
+
+    /// The zero-alloc `hash_value` must agree with `wy(&encode_value(v), seed)`
+    /// on EVERY `Value` variant, for several seeds. This is the pin that makes
+    /// the allocation removal a pure speed change: if any arm ever drifts from
+    /// the owned encoder, every `BasePoint` in every bundle would move and
+    /// on-disk data would stop resolving. Written against the pre-optimization
+    /// definition (`encode_value`), which is retained verbatim.
+    #[test]
+    fn hash_value_matches_encode_value_oracle() {
+        let vals = vec![
+            Value::Integer(0),
+            Value::Integer(-1),
+            Value::Integer(i64::MIN),
+            Value::Integer(i64::MAX),
+            Value::Float(0.0),
+            Value::Float(-0.0),
+            Value::Float(3.25),
+            Value::Float(-3.25),
+            Value::Float(f64::INFINITY),
+            Value::Float(f64::NEG_INFINITY),
+            Value::Text(String::new()),
+            Value::Text("a".into()),
+            Value::Text("T000000".into()),
+            Value::Text("a longer categorical key value \u{1F600}".into()),
+            Value::Bool(true),
+            Value::Bool(false),
+            Value::Timestamp(0),
+            Value::Timestamp(-1),
+            Value::Timestamp(1_700_000_000_000),
+            Value::Null,
+            Value::Binary(vec![]),
+            Value::Binary(vec![0, 1, 2, 255]),
+            Value::Vector(vec![]),
+            Value::Vector(vec![1.5, -2.5, 0.0]),
+        ];
+        for seed in [0u64, 1, 0xa0761d6478bd642f, u64::MAX] {
+            for v in &vals {
+                assert_eq!(
+                    hash_value(v, seed),
+                    wy(&encode_value(v), seed),
+                    "hash_value diverged from encode_value oracle for {v:?} @ seed {seed}"
+                );
+            }
+        }
     }
 }

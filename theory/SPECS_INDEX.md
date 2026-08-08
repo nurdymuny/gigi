@@ -18,6 +18,7 @@ When you write a new spec, add a row here. When you ship a spec to a feature fla
 | [PHASE_2_DIM_LIFT_SPEC](imagine/PHASE_2_DIM_LIFT_SPEC.md) | IMAGINE Phase 2 — dim lift beyond n=2 | **Spec only**, implementation pending | `imagine/` |
 | [GIGI_ENCRYPT_v0.4_SPRINT_SPEC](encryption/GIGI_ENCRYPT_v0.4_SPRINT_SPEC.md) | Per-field encryption — OPAQUE / INDEXED gauges | **Live** (always-on) | `encryption/`, `encryption/paper_geometric_encryption_v0.1.tex` |
 | [SPEC_FLOOR_TUNABLE_S1_WAVE2](kahler_upgrade/SPEC_FLOOR_TUNABLE_S1_WAVE2.md) | SUDOKU σ² floor tunability | **Live** | `kahler_upgrade/IMPLEMENTATION_PLAN.md` |
+| [TDD-SBF_spectral_betti_lockfix](gigi/TDD-SBF_spectral_betti_lockfix.md) | SPECTRAL/BETTI — implicit clique operator (inclusion–exclusion over index buckets), lock-release snapshot, mutation-counter cache, overlay honesty | **Scoped**, gates SBF-1..8, implementation pending | measured 180 s + engine wedge on 43 k trades bundle, 2026-08-07 |
 
 ---
 

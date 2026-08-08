@@ -707,7 +707,30 @@ pub struct BundleStore {
     /// Running statistics for curvature computation.
     pub field_stats: HashMap<String, FieldStats>,
     /// Reverse map from truncated u32 bitmap key → full u64 base point.
+    /// Ordinal → base point.  Roaring bitmaps are u32-only, so the field
+    /// index addresses records by a 32-bit id and this maps it back.
+    ///
+    /// That id used to be `bp as u32` — the low half of the 64-bit base
+    /// point. Two records whose base points collided in their low 32 bits
+    /// therefore shared one bitmap entry, and the second `bp_reverse.insert`
+    /// overwrote the first: one of the two vanished from *every* indexed
+    /// query while remaining perfectly present in `sections()`, so `len()`
+    /// looked right and nothing complained. By the birthday bound that is a
+    /// ~4.5% chance at 20k records, 25% at 50k, ~69% at 100k, and a near
+    /// certainty past 500k.
+    ///
+    /// The id is now a **dense ordinal** assigned on first sight
+    /// ([`BundleStore::intern_bp`]), so distinct base points always get
+    /// distinct ids and the only remaining ceiling is 2³² records per
+    /// bundle — which is roaring's own limit, not ours.
     bp_reverse: HashMap<u32, BasePoint>,
+    /// Base point → ordinal.  The inverse of `bp_reverse`; the two are
+    /// maintained together and must never disagree.
+    bp_forward: HashMap<BasePoint, u32>,
+    /// Next unused ordinal.  Monotone; ordinals of deleted records are not
+    /// recycled (recycling would let a stale bitmap entry resolve to a
+    /// different record).
+    next_bp_ordinal: u32,
     /// For Sequential/Hybrid: map from sequential index → BasePoint.
     seq_bp_list: Vec<BasePoint>,
     /// For Sequential/Hybrid: map from BasePoint → sequential index.
@@ -1230,6 +1253,8 @@ impl BundleStore {
             field_index,
             field_stats: HashMap::new(),
             bp_reverse: HashMap::new(),
+            bp_forward: HashMap::new(),
+            next_bp_ordinal: 0,
             seq_bp_list: Vec::new(),
             bp_to_idx: HashMap::new(),
             detect_keys: Vec::new(),
@@ -1287,6 +1312,8 @@ impl BundleStore {
             field_index,
             field_stats: HashMap::new(),
             bp_reverse: HashMap::new(),
+            bp_forward: HashMap::new(),
+            next_bp_ordinal: 0,
             seq_bp_list: Vec::new(),
             bp_to_idx: HashMap::new(),
             detect_keys: Vec::new(),
@@ -1383,8 +1410,7 @@ impl BundleStore {
         };
 
         // Update field index (bitmap per indexed-field value)
-        let bp32 = bp as u32;
-        self.bp_reverse.insert(bp32, bp);
+        let bp32 = self.intern_bp(bp);
         for idx_field in &self.schema.indexed_fields {
             if let Some(val) = record.get(idx_field) {
                 index_upkeep(&mut self.field_index, idx_field, val, bp32);
@@ -1534,8 +1560,7 @@ impl BundleStore {
                 continue;
             }
 
-            let bp32 = bp as u32;
-            self.bp_reverse.insert(bp32, bp);
+            let bp32 = self.intern_bp(bp);
             for idx_field in &self.schema.indexed_fields {
                 if let Some(val) = record.get(idx_field) {
                     index_upkeep(&mut self.field_index, idx_field, val, bp32);
@@ -1686,22 +1711,28 @@ impl BundleStore {
 
             // Rebuild maps (bp_reverse, bp_to_idx, seq_bp_list) for sequential turbo path
             // so that update/delete/range_query work correctly after batch insert.
-            if let BaseStorage::Sequential {
+            let rebuilt: Option<Vec<BasePoint>> = if let BaseStorage::Sequential {
                 sections,
                 start,
                 step,
                 ..
             } = &self.storage
             {
+                Some(
+                    (0..sections.len())
+                        .map(|i| self.hash_config.hash_int_fast(*start + (*step * i as i64)))
+                        .collect(),
+                )
+            } else {
+                None
+            };
+            if let Some(bps) = rebuilt {
                 self.seq_bp_list.clear();
                 self.bp_to_idx.clear();
-                for i in 0..sections.len() {
-                    let key_val = *start + (*step * i as i64);
-                    let bp = self.hash_config.hash_int_fast(key_val);
-                    let bp32 = bp as u32;
+                for (i, bp) in bps.into_iter().enumerate() {
+                    self.intern_bp(bp);
                     self.seq_bp_list.push(bp);
                     self.bp_to_idx.insert(bp, i);
-                    self.bp_reverse.insert(bp32, bp);
                 }
             }
         } else {
@@ -1809,8 +1840,9 @@ impl BundleStore {
         // caches.
         self.mark_mutated();
 
-        // Remove old field_index entries BEFORE merging patches
-        let bp32 = bp as u32;
+        // Remove old field_index entries BEFORE merging patches.
+        // No ordinal means the record was never indexed — nothing to remove.
+        let bp32 = self.lookup_bp32(bp).unwrap_or(u32::MAX);
         for idx_field in &self.schema.indexed_fields {
             if let Some(old_val) = existing.get(idx_field) {
                 if let Some(field_map) = self.field_index.get_mut(idx_field) {
@@ -1898,7 +1930,7 @@ impl BundleStore {
     /// Delete a record by key. Returns true if the record existed and was removed.
     pub fn delete(&mut self, key: &Record) -> bool {
         let bp = self.hash_config.hash(key, &self.schema);
-        let bp32 = bp as u32;
+        let bp32 = self.lookup_bp32(bp).unwrap_or(u32::MAX);
 
         // Remove field_index entries
         if let Some(existing) = self.reconstruct(bp) {
@@ -1921,7 +1953,7 @@ impl BundleStore {
 
         // Remove from storage
         self.remove_from_storage(bp);
-        self.bp_reverse.remove(&bp32);
+        self.forget_bp(bp);
         true
     }
 
@@ -3207,7 +3239,10 @@ impl BundleStore {
 
     /// Get all geometric neighbors of a base point across all indexed fields.
     pub fn geometric_neighbors(&self, bp: BasePoint) -> Vec<BasePoint> {
-        let bp32 = bp as u32;
+        let bp32 = match self.lookup_bp32(bp) {
+            Some(o) => o,
+            None => return Vec::new(), // never indexed ⇒ no neighbours
+        };
         let mut neighbors = std::collections::HashSet::new();
 
         for (_field_name, field_map) in &self.field_index {
@@ -3247,6 +3282,43 @@ impl BundleStore {
     /// Resolve a u32 bitmap key back to a BasePoint.
     pub fn resolve_bp(&self, bp32: u32) -> BasePoint {
         self.bp_reverse.get(&bp32).copied().unwrap_or(bp32 as u64)
+    }
+
+    /// Ordinal for `bp`, assigning one if this is the first sighting.
+    ///
+    /// Every value that reaches a field-index bitmap comes from here, which
+    /// is what makes the index collision-free: distinct base points always
+    /// get distinct ordinals. Idempotent — re-interning a known base point
+    /// returns its existing ordinal, so rebuild paths can call it freely.
+    ///
+    /// Saturates at `u32::MAX` (4.29 billion records in one bundle), which
+    /// is roaring's own addressing limit. A bundle that large would have
+    /// been unable to use the index under any scheme.
+    fn intern_bp(&mut self, bp: BasePoint) -> u32 {
+        if let Some(&ord) = self.bp_forward.get(&bp) {
+            return ord;
+        }
+        let ord = self.next_bp_ordinal;
+        self.next_bp_ordinal = self.next_bp_ordinal.saturating_add(1);
+        self.bp_forward.insert(bp, ord);
+        self.bp_reverse.insert(ord, bp);
+        ord
+    }
+
+    /// Ordinal for `bp` if it has one — read-only counterpart of
+    /// [`Self::intern_bp`], for delete/lookup paths that must not mint a new
+    /// ordinal just by asking. `None` means the record was never indexed,
+    /// so there is nothing in any bitmap to remove.
+    fn lookup_bp32(&self, bp: BasePoint) -> Option<u32> {
+        self.bp_forward.get(&bp).copied()
+    }
+
+    /// Drop a base point's ordinal from both directions. The ordinal itself
+    /// is retired, never reissued.
+    fn forget_bp(&mut self, bp: BasePoint) {
+        if let Some(ord) = self.bp_forward.remove(&bp) {
+            self.bp_reverse.remove(&ord);
+        }
     }
 
     /// Expire records with a `_ttl` field whose timestamp has passed.
@@ -3291,7 +3363,7 @@ impl BundleStore {
 
         let count = expired.len();
         for bp in expired {
-            let bp32 = bp as u32;
+            let bp32 = self.lookup_bp32(bp).unwrap_or(u32::MAX);
             // Remove field index entries
             if let Some(record) = self.reconstruct(bp) {
                 for idx_field in &self.schema.indexed_fields {
@@ -3305,7 +3377,7 @@ impl BundleStore {
                 }
             }
             self.remove_from_storage(bp);
-            self.bp_reverse.remove(&bp32);
+            self.forget_bp(bp);
         }
         count
     }
@@ -3380,6 +3452,8 @@ impl BundleStore {
         self.field_stats.clear();
         self.curvature_stats = CurvatureStats::default();
         self.bp_reverse.clear();
+        self.bp_forward.clear();
+        self.next_bp_ordinal = 0;
         self.bp_to_idx.clear();
         self.seq_bp_list.clear();
         count
@@ -3716,7 +3790,7 @@ impl BundleStore {
                     base_values.push(base_vals.clone());
                 }
             }
-            dest.bp_reverse.insert(new_bp as u32, new_bp);
+            dest.intern_bp(new_bp);
             count += 1;
         }
         Ok(count)
@@ -4106,11 +4180,12 @@ impl BundleStore {
         self.schema.indexed_fields.push(field_name.to_string());
 
         // Build index from existing records
-        let mut new_index: HashMap<Value, RoaringBitmap> = HashMap::new();
-        for record in self.records() {
-            if let Some(val) = record.get(field_name) {
+        let pending: Vec<(Value, BasePoint)> = self
+            .records()
+            .filter_map(|record| {
+                let val = record.get(field_name)?;
                 if matches!(val, Value::Null) {
-                    continue;
+                    return None;
                 }
                 let key: Record = self
                     .schema
@@ -4123,10 +4198,13 @@ impl BundleStore {
                         )
                     })
                     .collect();
-                let bp = self.hash_config.hash(&key, &self.schema);
-                let bp32 = bp as u32;
-                new_index.entry(val.clone()).or_default().insert(bp32);
-            }
+                Some((val.clone(), self.hash_config.hash(&key, &self.schema)))
+            })
+            .collect();
+        let mut new_index: HashMap<Value, RoaringBitmap> = HashMap::new();
+        for (val, bp) in pending {
+            let bp32 = self.intern_bp(bp);
+            new_index.entry(val).or_default().insert(bp32);
         }
 
         self.field_index.insert(field_name.to_string(), new_index);

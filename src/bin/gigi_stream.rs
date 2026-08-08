@@ -13417,6 +13417,104 @@ async fn gql_query(
         }
         state.metrics.record_query(dur, stmt_type, slow, false);
         (status, resp)
+    } else if matches!(
+        stmt,
+        // Plain scalar λ₁ only — NOT `SPECTRAL FULL` (dense, V≤4096 capped),
+        // NOT `MODE MATRIX`, NOT `MODE DIAGONAL`, NOT the fiber form. Those
+        // keep the existing read-guard path; only the union-of-cliques
+        // Laplacian gap is served from a snapshot.
+        gigi::parser::Statement::Spectral {
+            full: false,
+            matrix: false,
+            fiber_field: None,
+            diagonal: None,
+            ..
+        } | gigi::parser::Statement::Betti { order: None, .. }
+    ) {
+        // ── TDD-SBF: the two graph verbs never hold the engine lock ──
+        //
+        // Both used to run to completion under the read guard, which on a
+        // large bundle meant ingest blocked for the whole computation and —
+        // because a queued writer blocks new readers on both futex and
+        // SRWLOCK — everything else queued behind it too. One slow verb, one
+        // frozen engine.
+        //
+        // Now: build a self-contained snapshot under the guard (cheap — no
+        // eigensolve, no adjacency), drop the guard, and run the iteration on
+        // a blocking worker. Same numbers, same snapshot semantics (the
+        // result describes the bundle as of acquisition, exactly as the
+        // guard-held version did), no wedge.
+        let snapshot = {
+            let engine = state.engine_read();
+            let bundle_ref = match engine.bundle(&bundle_name) {
+                Some(b) => b,
+                None => {
+                    let dur = t0.elapsed().as_micros() as u64;
+                    let ev = state.logger.query_error(&req_id, query, dur, "BundleNotFound", &format!("No bundle: {bundle_name}"), 404);
+                    state.logger.emit(ev);
+                    state.metrics.record_query(dur, stmt_type, false, true);
+                    return (
+                        StatusCode::NOT_FOUND,
+                        Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")})),
+                    );
+                }
+            };
+            // TDD-SBF §5: an mmap-resident bundle used to answer (0,0) / 0.0
+            // here — a wrong number wearing a plausible one's clothes,
+            // because the overlay arm has no field index to walk. Say so
+            // instead.
+            match bundle_ref.as_heap() {
+                Some(store) => gigi::spectral::graph_snapshot(store),
+                None => {
+                    let dur = t0.elapsed().as_micros() as u64;
+                    let msg = format!(
+                        "SPECTRAL/BETTI unavailable on mmap-resident bundle '{bundle_name}': \
+                         the field index needed for the Def 3.9 graph is not materialized"
+                    );
+                    let ev = state.logger.query_error(&req_id, query, dur, "OverlayUnsupported", &msg, 400);
+                    state.logger.emit(ev);
+                    state.metrics.record_query(dur, stmt_type, false, true);
+                    return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": msg})));
+                }
+            }
+        }; // ← guard dropped here, before any iteration happens
+
+        let want_spectral = matches!(stmt, gigi::parser::Statement::Spectral { .. });
+        let computed = tokio::task::spawn_blocking(move || {
+            if want_spectral {
+                serde_json::json!({ "value": snapshot.spectral_gap() })
+            } else {
+                let (b0, b1) = snapshot.betti_numbers();
+                serde_json::json!({ "value": (b0 + b1) as f64, "betti_0": b0, "betti_1": b1 })
+            }
+        })
+        .await;
+
+        let dur = t0.elapsed().as_micros() as u64;
+        let resp = match computed {
+            Ok(v) => v,
+            Err(e) => {
+                let ev = state.logger.query_error(&req_id, query, dur, "JoinError", &e.to_string(), 500);
+                state.logger.emit(ev);
+                state.metrics.record_query(dur, stmt_type, false, true);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "graph verb worker failed"})),
+                );
+            }
+        };
+        let slow = dur >= state.logger.slow_threshold_us();
+        let ev = state.logger.query_complete(
+            &req_id, "gql", stmt_type, query, dur, 0, dur,
+            &[bundle_name.clone()], 0, 0, 0, 0, false, None, None,
+        );
+        state.logger.emit(ev);
+        if slow {
+            let ev2 = state.logger.query_slow(&req_id, stmt_type, query, dur, false, false, "graph verb (lock-free)");
+            state.logger.emit(ev2);
+        }
+        state.metrics.record_query(dur, stmt_type, slow, false);
+        (StatusCode::OK, Json(resp))
     } else if gigi::virtual_bundles::is_virtual(&bundle_name) {
         // Virtual-bundle short-circuit (`__bundles__` etc): the registry
         // is materialized fresh per call by `parser::execute`, which has

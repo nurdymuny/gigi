@@ -303,37 +303,415 @@ pub fn field_index_graph(store: &BundleStore) -> HashMap<BasePoint, Vec<BasePoin
         .collect()
 }
 
-/// Compute the spectral gap λ₁ (smallest nonzero eigenvalue of normalized Laplacian).
+// ─── TDD-SBF: implicit clique operator ─────────────────────────────────────
+//
+// The Def 3.9 graph is a *union of cliques* — one complete graph per
+// (field, value) index bucket.  `field_index_graph` above makes every one of
+// those edges explicit, which costs Θ(Σ g²) time AND resident memory over
+// bucket sizes g.  On a 43k-record bundle indexed by two low-cardinality
+// fields that is ~1.4×10⁹ hash-set inserts and a multi-GB adjacency, and it
+// is what made SPECTRAL/BETTI take >180 s while holding the engine lock.
+//
+// None of it is necessary.  For p ≠ q, "share at least one bucket" expands by
+// inclusion–exclusion over the set of fields on which they agree:
+//
+//     1[∃f: same bucket] = Σ_{∅≠S⊆F} (−1)^{|S|+1} · 1[p,q in the same S-group]
+//
+// (with A = {f : p,q agree}, the right side is 1 − (1−1)^{|A|}).  So the 0/1
+// adjacency is a signed sum of block-diagonal all-ones-minus-identity
+// operators, one block per value-*tuple* group:
+//
+//     W = Σ_{∅≠S⊆F} (−1)^{|S|+1} C_S ,     C_S = ⊕_groups (1 1ᵀ − I)
+//
+// Degrees, |E| and a Laplacian mat-vec all follow in O(N · (2^{|F|}−1))
+// with no edge ever materialised.  Same graph, same numbers — see the
+// SBF-1..4 parity gates in tests/spectral_implicit_parity.rs.
+
+/// Internals the TDD-SBF parity gates reach into.  The gates exist to prove
+/// the implicit operator returns exactly what the explicit adjacency walk
+/// returned, so they need both paths and the operator's intermediate
+/// quantities — which are otherwise private.
+pub mod test_hooks {
+    use super::*;
+
+    pub struct Graph(pub(super) ImplicitGraph);
+
+    pub fn implicit_graph(store: &BundleStore) -> Option<Graph> {
+        super::implicit_graph(store).map(Graph)
+    }
+    pub fn vertices(g: &Graph) -> &[BasePoint] {
+        &g.0.bps
+    }
+    pub fn degrees(g: &Graph) -> Vec<f64> {
+        g.0.degrees()
+    }
+    pub fn edge_count(g: &Graph) -> usize {
+        g.0.edge_count()
+    }
+
+    /// The pre-TDD-SBF code path, kept solely so SBF-2 can compare against it.
+    pub fn spectral_gap_explicit(store: &BundleStore) -> f64 {
+        let n = store.len();
+        if n < 2 {
+            return 0.0;
+        }
+        if super::components_from_index(store).len() > 1 {
+            return 0.0;
+        }
+        let adj = super::field_index_graph(store);
+        if adj.values().all(|nbrs| nbrs.len() == n - 1) {
+            return n as f64 / (n as f64 - 1.0);
+        }
+        super::sparse_spectral_gap(&adj)
+    }
+
+    /// Explicit-path edge count, for cross-checking BETTI.
+    pub fn edge_count_explicit(store: &BundleStore) -> usize {
+        super::field_index_graph(store)
+            .values()
+            .map(|v| v.len())
+            .sum::<usize>()
+            / 2
+    }
+}
+
+/// Sentinel for "this vertex is not in any group of this subset".
+const NO_GROUP: u32 = u32::MAX;
+
+/// Guard: 2^{|F|} passes stops being a joke somewhere past a dozen fields.
+/// No real schema is near this; above it we fall back to the explicit path.
+pub(crate) const MAX_IMPLICIT_FIELDS: usize = 12;
+
+/// The Def 3.9 graph in implicit form: per-subset group assignments over a
+/// dense vertex indexing, plus the signs of the inclusion–exclusion terms.
+pub(crate) struct ImplicitGraph {
+    /// Vertices in ascending BasePoint order (deterministic, unlike the
+    /// HashMap key order the explicit path used).
+    pub bps: Vec<BasePoint>,
+    /// One entry per non-empty field subset: (sign, group-id per vertex,
+    /// size of each group).
+    terms: Vec<(f64, Vec<u32>, Vec<u32>)>,
+}
+
+impl ImplicitGraph {
+    pub fn len(&self) -> usize {
+        self.bps.len()
+    }
+
+    /// d(p) for every vertex, in vertex order.
+    pub fn degrees(&self) -> Vec<f64> {
+        let mut d = vec![0.0f64; self.bps.len()];
+        for (sign, gid, sizes) in &self.terms {
+            for (i, &g) in gid.iter().enumerate() {
+                if g != NO_GROUP {
+                    d[i] += sign * (sizes[g as usize] as f64 - 1.0);
+                }
+            }
+        }
+        // Signed sums are exact on integers well inside f64's mantissa;
+        // round to kill any -0.0 / 1e-16 dust before comparisons.
+        for x in d.iter_mut() {
+            *x = x.round();
+        }
+        d
+    }
+
+    /// |E| of the deduplicated graph — what BETTI needs, without a graph.
+    pub fn edge_count(&self) -> usize {
+        let mut total = 0i128;
+        for (sign, _, sizes) in &self.terms {
+            let sub: i128 = sizes
+                .iter()
+                .map(|&s| {
+                    let s = s as i128;
+                    s * (s - 1) / 2
+                })
+                .sum();
+            total += if *sign > 0.0 { sub } else { -sub };
+        }
+        total.max(0) as usize
+    }
+
+    /// y = W · x, without materialising W.
+    fn mul_w(&self, x: &[f64], out: &mut [f64]) {
+        out.iter_mut().for_each(|v| *v = 0.0);
+        let mut acc: Vec<f64> = Vec::new();
+        for (sign, gid, sizes) in &self.terms {
+            acc.clear();
+            acc.resize(sizes.len(), 0.0);
+            for (i, &g) in gid.iter().enumerate() {
+                if g != NO_GROUP {
+                    acc[g as usize] += x[i];
+                }
+            }
+            for (i, &g) in gid.iter().enumerate() {
+                if g != NO_GROUP {
+                    // (1 1ᵀ − I) x  restricted to this group
+                    out[i] += sign * (acc[g as usize] - x[i]);
+                }
+            }
+        }
+    }
+}
+
+/// Build the implicit graph from the field index bitmaps.
 ///
-/// Strategy:
-///   1. Find connected components from field index — O(n × fields)
-///   2. If disconnected (k > 1 components): λ₁ = 0 immediately
-///   3. If connected: check for clique structure (analytic formula)
-///   4. Fallback: sparse power iteration for general graphs
+/// Returns `None` when the schema has no indexed fields or more than
+/// [`MAX_IMPLICIT_FIELDS`] of them (caller falls back to the explicit path).
+pub(crate) fn implicit_graph(store: &BundleStore) -> Option<ImplicitGraph> {
+    let fields: Vec<&String> = store
+        .schema
+        .indexed_fields
+        .iter()
+        .filter(|f| store.field_index_maps().contains_key(*f))
+        .collect();
+    if fields.is_empty() || fields.len() > MAX_IMPLICIT_FIELDS {
+        return None;
+    }
+
+    // Per-field bucket id for every base point that carries that field.
+    // Bucket ids are assigned in a deterministic order (sorted by the
+    // bitmap's minimum member) so a rebuild is reproducible.
+    let mut per_field: Vec<HashMap<BasePoint, u32>> = Vec::with_capacity(fields.len());
+    let mut vertex_set: HashSet<BasePoint> = HashSet::new();
+    for f in &fields {
+        let map = &store.field_index_maps()[*f];
+        let mut buckets: Vec<Vec<BasePoint>> = map
+            .values()
+            .map(|bm| bm.iter().map(|bp32| store.resolve_bp(bp32)).collect())
+            .collect();
+        buckets.sort_by_key(|b: &Vec<BasePoint>| b.first().copied().unwrap_or(u64::MAX));
+        let mut assign: HashMap<BasePoint, u32> = HashMap::new();
+        for (gid, members) in buckets.iter().enumerate() {
+            for &bp in members {
+                assign.insert(bp, gid as u32);
+                vertex_set.insert(bp);
+            }
+        }
+        per_field.push(assign);
+    }
+
+    let mut bps: Vec<BasePoint> = vertex_set.into_iter().collect();
+    bps.sort_unstable();
+    let n = bps.len();
+    if n == 0 {
+        return None;
+    }
+
+    // One term per non-empty subset of the indexed fields.
+    let nf = fields.len();
+    let mut terms = Vec::with_capacity((1usize << nf) - 1);
+    let mut key_to_gid: HashMap<Vec<u32>, u32> = HashMap::new();
+    for mask in 1u32..(1u32 << nf) {
+        let members: Vec<usize> = (0..nf).filter(|k| mask >> k & 1 == 1).collect();
+        let sign = if members.len() % 2 == 1 { 1.0 } else { -1.0 };
+        key_to_gid.clear();
+        let mut gid_of = vec![NO_GROUP; n];
+        let mut sizes: Vec<u32> = Vec::new();
+        let mut key: Vec<u32> = Vec::with_capacity(members.len());
+        for (i, bp) in bps.iter().enumerate() {
+            key.clear();
+            let mut present = true;
+            for &k in &members {
+                match per_field[k].get(bp) {
+                    Some(&b) => key.push(b),
+                    None => {
+                        present = false;
+                        break;
+                    }
+                }
+            }
+            if !present {
+                continue;
+            }
+            let gid = match key_to_gid.get(&key) {
+                Some(&g) => g,
+                None => {
+                    let g = sizes.len() as u32;
+                    key_to_gid.insert(key.clone(), g);
+                    sizes.push(0);
+                    g
+                }
+            };
+            gid_of[i] = gid;
+            sizes[gid as usize] += 1;
+        }
+        terms.push((sign, gid_of, sizes));
+    }
+
+    Some(ImplicitGraph { bps, terms })
+}
+
+/// Everything SPECTRAL and BETTI need, detached from the `BundleStore`.
+///
+/// TDD-SBF: the HTTP layer builds one of these while holding the engine read
+/// guard, **drops the guard**, and only then runs the eigensolver — so a slow
+/// verb can no longer block ingest or queue every later read behind itself.
+/// The snapshot is self-contained (`'static`), which is what makes it legal
+/// to move into `spawn_blocking`.
+///
+/// Snapshot semantics: the result describes the bundle as of guard
+/// acquisition, exactly as the old guard-held computation did for its caller.
+pub struct GraphSnapshot {
+    n: usize,
+    n_components: usize,
+    graph: Option<ImplicitGraph>,
+    degrees: Vec<f64>,
+    /// Edge count for the no-index / too-many-fields fallback, where the
+    /// explicit walk is trivial anyway.
+    fallback_edges: usize,
+}
+
+/// Build the snapshot.  This is the only part that touches the store, and it
+/// is O(N · (2^{|F|}−1)) with no eigensolve — cheap enough to sit under a
+/// lock; the expensive iteration happens afterwards on the snapshot.
+pub fn graph_snapshot(store: &BundleStore) -> GraphSnapshot {
+    let n = store.len();
+    let n_components = if n == 0 {
+        0
+    } else {
+        components_from_index(store).len()
+    };
+    match implicit_graph(store) {
+        Some(g) => {
+            let degrees = g.degrees();
+            GraphSnapshot { n, n_components, graph: Some(g), degrees, fallback_edges: 0 }
+        }
+        None => {
+            let adj = field_index_graph(store);
+            let fallback_edges = adj.values().map(|v| v.len()).sum::<usize>() / 2;
+            GraphSnapshot {
+                n,
+                n_components,
+                graph: None,
+                degrees: Vec::new(),
+                fallback_edges,
+            }
+        }
+    }
+}
+
+impl GraphSnapshot {
+    /// λ₁ of the normalized Laplacian (Def 3.10: L = I − D^{−1/2} W D^{−1/2}).
+    ///
+    ///   1. n < 2 ⇒ 0
+    ///   2. disconnected ⇒ 0
+    ///   3. perfect clique K_n ⇒ n/(n−1) analytically
+    ///   4. otherwise power iteration over the implicit operator
+    pub fn spectral_gap(&self) -> f64 {
+        if self.n < 2 || self.n_components > 1 {
+            return 0.0;
+        }
+        match &self.graph {
+            Some(g) => {
+                if self
+                    .degrees
+                    .iter()
+                    .all(|&d| d == (self.n - 1) as f64)
+                {
+                    return self.n as f64 / (self.n as f64 - 1.0);
+                }
+                implicit_spectral_gap(g, &self.degrees)
+            }
+            // No indexed fields: unreachable for n ≥ 2 (every record is its
+            // own component, so the check above already returned 0), kept
+            // for total-function honesty.
+            None => 0.0,
+        }
+    }
+
+    /// (β₀, β₁) of the field-index graph's 1-skeleton.
+    pub fn betti_numbers(&self) -> (usize, usize) {
+        if self.n == 0 {
+            return (0, 0);
+        }
+        let beta_0 = self.n_components;
+        let edges = match &self.graph {
+            Some(g) => g.edge_count(),
+            None => self.fallback_edges,
+        };
+        (beta_0, (edges + beta_0).saturating_sub(self.n))
+    }
+}
+
+/// Compute the spectral gap λ₁ (smallest nonzero eigenvalue of normalized Laplacian).
 ///
 /// Def 3.10: L = I - D⁻¹/² W D⁻¹/²
 pub fn spectral_gap(store: &BundleStore) -> f64 {
-    let n = store.len();
+    graph_snapshot(store).spectral_gap()
+}
+
+/// Power iteration for λ₁ over the implicit operator.
+///
+/// Identical scheme to [`sparse_spectral_gap`] — deflation against
+/// u = D^{1/2}·1 normalised, the same seed, the same 300-iteration cap —
+/// with the mat-vec served by [`ImplicitGraph::mul_w`] instead of an edge
+/// walk, plus a residual early-exit the explicit path never had.
+fn implicit_spectral_gap(g: &ImplicitGraph, degrees: &[f64]) -> f64 {
+    let n = g.len();
     if n < 2 {
         return 0.0;
     }
+    let d_inv_sqrt: Vec<f64> = degrees
+        .iter()
+        .map(|&d| if d > 0.0 { 1.0 / d.sqrt() } else { 0.0 })
+        .collect();
 
-    // Step 1: Connected components via field index BFS — no adjacency list
-    let components = components_from_index(store);
-    if components.len() > 1 {
-        return 0.0;
+    let u: Vec<f64> = {
+        let raw: Vec<f64> = degrees.iter().map(|d| d.sqrt()).collect();
+        let norm = raw.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if norm == 0.0 {
+            return 0.0;
+        }
+        raw.into_iter().map(|x| x / norm).collect()
+    };
+
+    // M·v = D^{-1/2} W D^{-1/2} v
+    let mut scratch = vec![0.0f64; n];
+    let mut wbuf = vec![0.0f64; n];
+    let mul_m = |src: &[f64], scratch: &mut Vec<f64>, wbuf: &mut Vec<f64>| -> Vec<f64> {
+        for i in 0..n {
+            scratch[i] = src[i] * d_inv_sqrt[i];
+        }
+        g.mul_w(scratch, wbuf);
+        (0..n).map(|i| wbuf[i] * d_inv_sqrt[i]).collect()
+    };
+
+    let mut v: Vec<f64> = (0..n).map(|i| ((i as f64 + 1.0) * 2.654).sin()).collect();
+    let mut prev_mu2 = f64::NAN;
+
+    for _ in 0..300 {
+        let dot: f64 = v.iter().zip(u.iter()).map(|(a, b)| a * b).sum();
+        for i in 0..n {
+            v[i] -= dot * u[i];
+        }
+        let norm = v.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if norm < 1e-14 {
+            return 1.0;
+        }
+        for x in v.iter_mut() {
+            *x /= norm;
+        }
+        let mv = mul_m(&v, &mut scratch, &mut wbuf);
+        // Residual exit: μ₂ is the Rayleigh quotient of the current iterate.
+        let mu2: f64 = v.iter().zip(mv.iter()).map(|(a, b)| a * b).sum();
+        if prev_mu2.is_finite() && (mu2 - prev_mu2).abs() < 1e-13 * prev_mu2.abs().max(1.0) {
+            return (1.0 - mu2).max(0.0);
+        }
+        prev_mu2 = mu2;
+        v = mv;
     }
 
-    // Step 2: Check if graph is a single clique (all share same indexed values)
-    // For a complete graph K_n: λ₁ = n/(n-1)
-    let adj = field_index_graph(store);
-    let is_clique = adj.values().all(|nbrs| nbrs.len() == n - 1);
-    if is_clique {
-        return n as f64 / (n as f64 - 1.0);
+    let norm = v.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if norm < 1e-14 {
+        return 1.0;
     }
-
-    // Step 3: Sparse power iteration for general connected graphs
-    sparse_spectral_gap(&adj)
+    for x in v.iter_mut() {
+        *x /= norm;
+    }
+    let mv = mul_m(&v, &mut scratch, &mut wbuf);
+    let mu2: f64 = v.iter().zip(mv.iter()).map(|(a, b)| a * b).sum();
+    (1.0 - mu2).max(0.0)
 }
 
 /// Sparse power iteration for λ₁ on a connected graph.
@@ -535,22 +913,12 @@ pub use crate::topology::{
     betti_topological as higher_betti, pi_1_presentation, Pi1Presentation, TopologyError,
 };
 
+/// β₁ needs |E| and nothing else, so the graph is never built: the implicit
+/// operator sums C(g,2) per value-tuple group with inclusion–exclusion signs
+/// (TDD-SBF).  The explicit walk survives only as the fallback for schemas
+/// with no indexed fields (where it is trivially empty) or absurdly many.
 pub fn betti_numbers(store: &BundleStore) -> (usize, usize) {
-    let n = store.len();
-    if n == 0 {
-        return (0, 0);
-    }
-    let components = components_from_index(store);
-    let beta_0 = components.len();
-
-    // Count edges: each adjacency list entry is a directed edge; divide by 2
-    let adj = field_index_graph(store);
-    let edge_count: usize = adj.values().map(|nbrs| nbrs.len()).sum::<usize>() / 2;
-
-    // β₁ = |E| - |V| + β₀  (Euler formula for graphs)
-    let beta_1 = (edge_count + beta_0).saturating_sub(n);
-
-    (beta_0, beta_1)
+    graph_snapshot(store).betti_numbers()
 }
 
 /// Standalone entropy from field index groupings (in nats, using natural log).

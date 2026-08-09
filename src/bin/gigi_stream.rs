@@ -46,11 +46,12 @@ use gigi::spectral;
 use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 use gigi::ml::{
     circulation_flow, cluster_records, detect_changepoints, factorize_matrix,
-    fit_store_solve, pca_reduce, predict_field, prescribe_fingerprint,
-    scan_compute_lenses, ChangepointRequest, ChangepointResult, CirculationRequest,
-    ClusterOpts, ClusterRequest, ClusterResult, FactorizeRequest, FactorizeResult,
-    PredictResult, PrescribeRequest, ReduceRequest, ReduceResult, ScanFitRequest,
-    ScanLenses, ScanRequest, SolveRequest, SupervisedPredictRequest,
+    fit_store_solve, pca_reduce, precedence, predict_field, prescribe_fingerprint,
+    scan_compute_lenses, texture, ChangepointRequest, ChangepointResult,
+    CirculationRequest, ClusterOpts, ClusterRequest, ClusterResult,
+    FactorizeRequest, FactorizeResult, PrecedenceRequest, PredictResult,
+    PrescribeRequest, ReduceRequest, ReduceResult, ScanFitRequest, ScanLenses,
+    ScanRequest, SolveRequest, SupervisedPredictRequest, TextureRequest,
 };
 
 // ── Shared State ──
@@ -9576,6 +9577,59 @@ async fn bundle_solve(
 /// Directed-flow circulation analysis (rung two). Splits a directed flow into the
 /// ranking a global potential explains and the circulation no ranking can — the
 /// holonomy/flux signal undirected methods are blind to.
+/// TEXTURE — self-similarity (Hurst) exponent of one ordered numeric field.
+/// Thin wrapper; the kernel and its gates live in `gigi::ml::texture`.
+async fn bundle_texture(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<TextureRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine_read();
+    let t = match texture(&engine, &name, &req.field, req.order.clone(),
+                          req.q, req.min_lag, req.max_lag) {
+        Ok(v) => v,
+        Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
+    };
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "field": t.field,
+        "n": t.n,
+        "exponent": t.exponent,
+        "r_squared": t.r_squared,
+        "n_lags": t.n_lags,
+        "verdict": t.verdict,
+        "order_field": t.order_field,
+        "reads": t.reads,
+        "notes": t.notes,
+    })))
+}
+
+/// PRECEDENCE — which of two ordered numeric fields moves first.
+/// Thin wrapper; the kernel and its gates live in `gigi::ml::precedence`.
+async fn bundle_precedence(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<PrecedenceRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine_read();
+    let p = match precedence(&engine, &name, &req.x, &req.y, req.order.clone()) {
+        Ok(v) => v,
+        Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
+    };
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "x": p.x,
+        "y": p.y,
+        "n": p.n,
+        "area": p.area,
+        "leads": p.leads,
+        "magnitude": p.magnitude,
+        "order_field": p.order_field,
+        "reads": p.reads,
+        "notes": p.notes,
+    })))
+}
+
 async fn bundle_circulation(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
@@ -16562,6 +16616,8 @@ async fn main() {
         .route("/v1/bundles/{name}/changepoints", post(bundle_changepoints))
         .route("/v1/bundles/{name}/prescribe", post(bundle_prescribe))
         .route("/v1/bundles/{name}/circulation", post(bundle_circulation))
+        .route("/v1/bundles/{name}/texture", post(bundle_texture))
+        .route("/v1/bundles/{name}/precedence", post(bundle_precedence))
         .route("/v1/bundles/{name}/solve", post(bundle_solve))
         .route("/v1/ml", get(ml_catalog))
         ;

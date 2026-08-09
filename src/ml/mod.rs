@@ -12,10 +12,12 @@ pub mod circulation;
 pub mod cluster;
 pub mod factorize;
 pub mod infer;
+pub mod precedence;
 pub mod prescribe;
 pub mod reduce;
 pub mod scan;
 pub mod solve;
+pub mod texture;
 
 #[cfg(test)]
 pub mod test_support;
@@ -25,7 +27,9 @@ pub use circulation::*;
 pub use cluster::*;
 pub use factorize::*;
 pub use infer::*;
+pub use precedence::*;
 pub use prescribe::*;
 pub use reduce::*;
 pub use scan::*;
+pub use texture::*;
 pub use solve::*;

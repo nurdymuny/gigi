@@ -8,6 +8,64 @@ For a compact summary of the most recent ships, see
 
 ---
 
+## 2026-08-09 — TEXTURE + PRECEDENCE: grid-free shape verbs on ordered data
+
+**The question both answer.** "What shape is this data in?" — without first
+resampling it onto a grid whose bin width the caller guessed. That guess is not
+free: measured on live asynchronous tape, 3 of 6 channel pairs reported a
+*different* lead-lag under a time warp that preserved event order, and one pair
+reversed direction outright. Both verbs are stated over **ordered numeric
+sequences** with no domain vocabulary in the API — `field`, `x`, `y`, `order`.
+
+**`POST /v1/bundles/{name}/texture` — how rough is this signal?** Returns the
+self-similarity (Hurst) exponent of one numeric field, from the scaling of
+`E|X(i+d) − X(i)|^q` with the gap `d`. `H > ½` persistent (moves continue),
+`H = ½` a random walk, `H < ½` anti-persistent (moves reverse). One required
+parameter, `field`. The response carries `exponent`, `verdict`
+(`ROUGH` / `RANDOM_WALK` / `SMOOTH`), **`r_squared`**, `n_lags`, and a `reads`
+array of plain-English sentences. `r_squared` is load-bearing, not decoration:
+it is how a caller sees that a signal is *not* self-similar and that `H` should
+not be read as a single number. Ships in [`src/ml/texture.rs`](src/ml/texture.rs).
+
+**`POST /v1/bundles/{name}/precedence` — which of these two moved first?**
+Returns the normalised signed area enclosed by the joint path of two fields —
+the Lévy area, i.e. the level-2 antisymmetric part of the path signature
+(Chen 1957; Lyons rough-path theory), which is circulation exactly. It reads
+**record order and never a timestamp**, so there is no bin width to choose and
+none to get wrong. `area > 0` means `x` leads `y`; swapping the arguments
+negates it exactly. Normalisation by `sqrt(QV_x · QV_y)` is not cosmetic — the
+raw area scales bilinearly and lands near 1e-6 on small-magnitude fields, where
+comparing two readings is comparing noise. Ships in
+[`src/ml/precedence.rs`](src/ml/precedence.rs).
+
+**Sixteen blocking gates (TXP-1..15).** Recovery of a planted roughness
+ordering and a planted lead; invariance to rescaling either channel and to the
+*spacing* of the order field (the clock-invariance claim, asserted bit-for-bit);
+six refusal paths each naming its own reason — missing bundle (404), missing
+field, non-numeric field, too few records, zero variance, a field compared
+against itself; skipped rows disclosed in `notes` rather than coerced to 0.0;
+determinism; and hard record caps that error rather than return `null`.
+Suite **1001 passing**, 985 pre-existing untouched.
+
+**Two refusal decisions worth stating.** TXP-13 exists because
+`TYPE_SEAM_AUDIT.md:473` files a defect against `circulation.rs:96-101`, where
+`unwrap_or(1.0)` turns a missing weight into a confident 1.0 — that behaviour is
+deliberately *not* inherited here. TXP-15 exists because a `MAX_N` overrun on
+`/circulation` returned `null` for every field instead of erroring.
+
+**Two defects the gates caught, both in the port rather than the kernels.** The
+PRECEDENCE sign convention was written inverted — the module doc warns that this
+sign had already been got wrong once by assertion during validation, and it was
+then got wrong again in the port; TXP-4 failed against a planted lead and settled
+it. Separately, the live-engine worked example exposed a **stale binary** that a
+green `cargo test` could not see: `cargo test` rebuilds the lib, and the running
+`gigi-stream` was still serving pre-fix logic on data with a known answer. Both
+are recorded in the spec header rather than quietly fixed.
+
+Spec: [`theory/gigi/TDD-TXP_texture_precedence.md`](theory/gigi/TDD-TXP_texture_precedence.md).
+Runnable walkthrough against a live engine, with planted answers and deliberate
+refusals: [`examples/texture_precedence_walkthrough.py`](examples/texture_precedence_walkthrough.py).
+
 ## 2026-07-17 — Millennium line, part II: HOLONOMY AROUND CYCLE + SPECTRAL MODE MATRIX + SPECTRAL_GAUGE dense BULK
 
 **Framing first (load-bearing).** The verbs in this entry — `HOLONOMY AROUND CYCLE`, `SPECTRAL MODE MATRIX`, and the `BULK` interior window on `SPECTRAL_GAUGE` — expose gauge-native **observables** that read/restage the geometric signatures Bee documents in her framework (lens-space π₁ order, spectral-matrix instability, GUE bulk statistics). They are **evidence inside that framework, not proofs of the Clay problems**. GIGI does not prove Poincaré, P vs NP, or Riemann; it exposes an observable that restages the relevant signature.

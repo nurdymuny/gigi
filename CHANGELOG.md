@@ -8,6 +8,111 @@ For a compact summary of the most recent ships, see
 
 ---
 
+## 2026-08-09 — CADENCE: the arrival process, and why it ships two numbers
+
+**The question.** TEXTURE asks how rough a signal is. PRECEDENCE asks which of
+two moves first. Both read **record order** and deliberately discard the
+timestamps — that is the property they sell. CADENCE reads exactly what they
+throw away: the spacing between events. `POST /v1/bundles/{name}/cadence`.
+
+Not finance-specific. Anything with arrival times: log lines, sensor pings,
+request traces, seismic events, neuron spikes, trades.
+
+**`index` — how uneven the spacing is.** With `tau_1..tau_n` the gaps,
+
+```
+R_n     = sum(tau^2) / (sum tau)^2                 (Greenwood 1946)
+index^2 = (n+1)/(n-1) * (n * R_n - 1)
+```
+
+Under memoryless arrivals the normalised gaps are Dirichlet(1,…,1) **for every
+rate, exactly, at finite n**, so `E[R_n] = 2/(n+1)` and `E[index²] = 1` are
+closed-form. No Monte Carlo, and the null does not move when the stream speeds
+up. Verified across six orders of magnitude in rate at n = 64/512/2048, with
+variance matching `4(n-1)/[(n+1)²(n+2)(n+3)]`.
+
+**Why one number was not enough — the finding that shaped the verb.** `R_n` is a
+**symmetric function of the gaps**. Permuting them cannot change it. Self-
+excitation is an *ordering* property, so `index` has **provably zero power**
+against it. Measured: a Hawkes process and the same gaps shuffled both read
+1.448, difference 0.000. And an independent renewal process with no memory at
+all — iid lognormal gaps at σ = 1.0 — reads 1.305, where live BTC tape reads
+1.332. A verb shipping the dispersion number alone could not tell those apart,
+and would have been sold as a clustering detector.
+
+**`memory` — whether the unevenness persists.** Lag-1 autocorrelation of
+`ln tau`, null sd `1/sqrt(n)`. Because `index` cannot see order and `memory`
+cannot see spread, the two are **orthogonal by construction** rather than by a
+correlation measured on one dataset. Both are always returned, so the conflation
+is not reachable through the API. They separate three streams `index` calls
+identical:
+
+| stream | `index` | `memory` |
+|---|---|---|
+| heavy-tailed, independent gaps | BURSTY | MEMORYLESS |
+| strictly periodic burst rhythm | BURSTY | ALTERNATING |
+| mode-switching (stays fast, then stays slow) | BURSTY | PERSISTENT |
+
+**Verdict bands are derived, not chosen.** `null_sd = n/sqrt((n-1)(n+2)(n+3))`
+by the delta method, bands at ±2 sd — checked against simulation at n = 64
+(0.12126 vs 0.11663 measured) through n = 8192 (0.01105 vs 0.01116). Nothing in
+the verdict layer is a number anyone picked.
+
+**Eighteen blocking gates (CAD-1..18).** Highlights rather than the full list:
+CAD-2 asserts two streams differing by 1000× in rate give the *same* `index` to
+1e-9, not merely a close one. CAD-6 pins the order-blindness deliberately —
+shuffling the gaps must leave `index` unmoved while destroying `memory` — so
+nobody can later re-sell dispersion as clustering. CAD-10 refuses a row index
+passed where a clock belongs, which would otherwise return a mathematically
+exact `index = 0`, i.e. a confident "your feed is metered" verdict on a healthy
+stream; the error names TEXTURE and PRECEDENCE as the verbs that caller wanted.
+CAD-9 refuses a clock too coarse to measure, keying on granularity rather than
+tie fraction. Non-finite stamps are skipped and disclosed, never coerced to 0.0.
+
+**Three gates came from adversarial review after the first fifteen were green,
+and one of them found a defect that would have gutted the product.** CAD-17: the
+granularity refusal, written without a quantisation guard, made the `THROTTLED`
+verdict **structurally unreachable** — and `THROTTLED` is the commercially useful
+half of this verb, the feed-quality alarm. `median/q` is a property of the gap
+*distribution*, not of clock resolution, so any metered stream — a poll interval,
+a rate limiter, a fixed flush — has a small ratio no matter how fine its clock
+is. A 100 ms poller with ±5% jitter, stamped in f64 seconds with a 1e-17 ULP,
+was refused as *"too coarsely stamped"*, a false statement about its clock,
+suppressing a true reading of `index = 0.029`. The refusal now requires evidence
+of quantisation. CAD-7 is why it survived: as first written it accepted *either*
+a refusal or a `THROTTLED` verdict, so the suite could not tell "refused because
+the clock is coarse" from "reported because the stream is regular" — **a gate
+with two acceptable outcomes tests neither.** CAD-16 turns the gcd criticism made
+upstream back on our own estimator (the smallest gap is one record's opinion; a
+single off-grid stamp took `median/q` from 2.0 to 2000 on a feed reading 0.912
+against a truth of 3.611) and keys on lattice structure instead. CAD-18 rebases
+integer stamps in `i64` before the `f64` cast, because `Value::Timestamp` is
+nanosecond epoch and a 2026 value sits where the f64 ULP is 256 ns — bursts below
+that were being deleted and reported as *the caller's* duplicate stamps.
+
+**The blocked form is a filter, not a cleanup.** `index_blocked` removes rate
+drift and, by the same mechanism, any structure longer than one block —
+attenuation measured at 97.6% retained for bursts of 4 gaps down to 32.4% for
+bursts of 256, at block 64. So `block` is exposed as a **length in gaps**, not a
+count: the corner frequency *is* the block length, and fixing the count would
+let the corner drift with `n` and silently change what is being measured between
+two calls on the same stream.
+
+Suite **1019 passing**, 1001 pre-existing untouched. Spec:
+`theory/gigi/TDD-CAD_cadence.md`. Runnable example against a live engine with
+planted answers and deliberate refusals: `examples/cadence_walkthrough.py`.
+
+**Provenance.** Ported from HELICITY's GUST proposal after an adversarial review
+(`helicity/docs/GUST_REVIEW_RESPONSE.md`). The Dirichlet argument survived every
+attack. The framing did not: the symmetry finding above meant the original
+"clustering sensitivity" gate would pass on shuffled data, and four things
+changed on the way in — two statistics instead of one, block length instead of
+block count, the quantum estimated from the smallest positive gap rather than a
+float gcd (which fails permissively on a single non-multiple stamp), and the
+parameter named `time` rather than `order`.
+
+---
+
 ## 2026-08-09 — TEXTURE + PRECEDENCE: grid-free shape verbs on ordered data
 
 **The question both answer.** "What shape is this data in?" — without first

@@ -45,9 +45,9 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use gigi::spectral;
 use gigi::types::{BundleSchema, FieldDef, FieldType, Value};
 use gigi::ml::{
-    circulation_flow, cluster_records, detect_changepoints, factorize_matrix,
+    cadence, circulation_flow, cluster_records, detect_changepoints, factorize_matrix,
     fit_store_solve, pca_reduce, precedence, predict_field, prescribe_fingerprint,
-    scan_compute_lenses, texture, ChangepointRequest, ChangepointResult,
+    scan_compute_lenses, texture, CadenceRequest, ChangepointRequest, ChangepointResult,
     CirculationRequest, ClusterOpts, ClusterRequest, ClusterResult,
     FactorizeRequest, FactorizeResult, PrecedenceRequest, PredictResult,
     PrescribeRequest, ReduceRequest, ReduceResult, ScanFitRequest, ScanLenses,
@@ -9630,6 +9630,48 @@ async fn bundle_precedence(
     })))
 }
 
+/// CADENCE — is a stream of timestamped events arriving steadily or in bursts,
+/// and does the unevenness have memory?
+/// Thin wrapper; the kernel and its gates live in `gigi::ml::cadence`.
+async fn bundle_cadence(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    Json(req): Json<CadenceRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine_read();
+    let c = match cadence(&engine, &name, &req.time, req.block) {
+        Ok(v) => v,
+        Err((code, msg)) => return Err((code, Json(ErrorResponse { error: msg }))),
+    };
+    // The blocked form is genuinely absent when there are under two blocks, and
+    // is emitted as an explicit `null` rather than a placeholder number. A
+    // fabricated 0.0 here would read as "no structure at any scale", which is
+    // the opposite of "not enough data to look".
+    let blocked = if c.index_blocked.is_finite() {
+        serde_json::json!(c.index_blocked)
+    } else {
+        serde_json::Value::Null
+    };
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "time_field": c.time_field,
+        "n_events": c.n_events,
+        "n_gaps": c.n_gaps,
+        "index": c.index,
+        "index_z": c.index_z,
+        "null_sd": c.null_sd,
+        "index_blocked": blocked,
+        "block_len": c.block_len,
+        "n_blocks": c.n_blocks,
+        "memory": c.memory,
+        "memory_z": c.memory_z,
+        "verdict": c.verdict,
+        "memory_verdict": c.memory_verdict,
+        "reads": c.reads,
+        "notes": c.notes,
+    })))
+}
+
 async fn bundle_circulation(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
@@ -16618,6 +16660,7 @@ async fn main() {
         .route("/v1/bundles/{name}/circulation", post(bundle_circulation))
         .route("/v1/bundles/{name}/texture", post(bundle_texture))
         .route("/v1/bundles/{name}/precedence", post(bundle_precedence))
+        .route("/v1/bundles/{name}/cadence", post(bundle_cadence))
         .route("/v1/bundles/{name}/solve", post(bundle_solve))
         .route("/v1/ml", get(ml_catalog))
         ;

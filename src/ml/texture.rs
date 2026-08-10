@@ -39,7 +39,12 @@ pub const MAX_TEXTURE_N: usize = 2_000_000;
 pub const MIN_TEXTURE_N: usize = 64;
 
 /// Request for `POST /v1/bundles/{name}/texture`.
+// `deny_unknown_fields`: a misspelled key used to be IGNORED, so the verb
+// silently fell back to the default and returned a different number with
+// HTTP 200. Measured: `maxLag` gave exponent 0.505802 where `max_lag` gave
+// 0.495073. A typo must be an error, not a quiet change of answer.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TextureRequest {
     /// Numeric field to measure. Base or fiber — callers should not have to
     /// care which side of the schema a column landed on.

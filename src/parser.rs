@@ -10863,7 +10863,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::Describe { bundle, verbose: _ } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let stats = store.curvature_stats();
             let k = stats.mean();
             Ok(ExecResult::Stats(GqlStats {
@@ -11045,7 +11045,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let key_rec: crate::types::Record = key
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
@@ -11064,7 +11064,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::ExistsSection { bundle, key } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let key_rec: crate::types::Record = key
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
@@ -11130,7 +11130,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
 
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
 
             // Validate referenced fields against the schema — parity with
             // the gigi-stream executor. A typo'd field must error with the
@@ -11284,7 +11284,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
 
             if let Some(order_field) = jackknife_along {
                 let specs = jackknife_measure_specs(measures)?;
@@ -11398,7 +11398,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
 
             if let Some(gb_field) = group_by {
                 let agg_col = columns.iter().find_map(|c| match c {
@@ -11531,7 +11531,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::Curvature { bundle, .. } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let k = store.as_heap()
                 .map(|s| crate::curvature::scalar_curvature(s))
                 .unwrap_or_else(|| store.curvature_stats().mean());
@@ -11541,7 +11541,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::Spectral { bundle, full, limit, fiber_field, matrix, diagonal } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             if *matrix {
                 // MODE MATRIX (2026-07-17, P-vs-NP): raw signed
                 // symmetric spectrum of the edge-endpoint matrix — NOT
@@ -11623,7 +11623,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             // DENSITY.
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let heap = store.as_heap().ok_or_else(|| {
                 format!("HELICITY: bundle '{bundle}' is not heap-resident")
             })?;
@@ -11654,7 +11654,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::Consistency { bundle, repair: _ } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let contradictions = store.as_heap()
                 .map(|s| crate::sheaf::consistency_check(s))
                 .unwrap_or_default();
@@ -11671,7 +11671,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let min_conf = min_confidence.unwrap_or(0.30);
             let results = match store.as_heap() {
                 Some(s) => crate::sheaf::complete(
@@ -11692,7 +11692,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let assumption_record = assumptions
                 .iter()
                 .map(|(k, v)| (k.clone(), literal_to_value(v)))
@@ -11712,7 +11712,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let results = store.as_heap()
                 .map(|s| crate::sheaf::suggest_adjacency(s, fields, *sample_size, *candidates))
                 .unwrap_or_default();
@@ -11722,7 +11722,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::Health { bundle } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let k = store.as_heap()
                 .map(|s| crate::curvature::scalar_curvature(s))
                 .unwrap_or_else(|| store.curvature_stats().mean());
@@ -11757,7 +11757,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             {
                 let store = engine
                     .bundle(bundle)
-                    .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                    .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
                 if let Some((field, lits)) = batch {
                     let values: Vec<crate::types::Value> =
                         lits.iter().map(literal_to_value).collect();
@@ -11850,7 +11850,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             crate::virtual_bundles::reject_virtual_write(bundle, "MAINTENANCE")?;
             let _store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let verb = match stmt {
                 Statement::Compact { .. } => "COMPACT",
                 Statement::Analyze { .. } => "ANALYZE",
@@ -11869,7 +11869,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::StorageInfo { bundle } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let k = store.as_heap()
                 .map(|s| crate::curvature::scalar_curvature(s))
                 .unwrap_or_else(|| store.curvature_stats().mean());
@@ -11968,7 +11968,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::ShowFields { bundle } => {
             let store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             let schema = store.schema();
             let mut rows = Vec::new();
             let mut push = |fd: &crate::types::FieldDef, kind: &str| {
@@ -12006,7 +12006,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         | Statement::ShowComments { bundle } => {
             let _store = engine
                 .bundle(bundle)
-                .ok_or_else(|| format!("No bundle: {bundle}"))?;
+                .ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
             Ok(ExecResult::Notice(
                 "this SHOW variant is not implemented yet — the bundle \
                  exists, but no rows were produced. SHOW FIELDS ON <bundle> \

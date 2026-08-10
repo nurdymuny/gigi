@@ -71,7 +71,12 @@ pub const PRECEDENCE_NULL_ROTATIONS: usize = 199;
 pub const PRECEDENCE_NULL_MAX_N: usize = 65_536;
 
 /// Request for `POST /v1/bundles/{name}/precedence`.
+// `deny_unknown_fields`: a misspelled key used to be IGNORED, so the verb
+// silently fell back to the default and returned a different number with
+// HTTP 200. Measured: `maxLag` gave exponent 0.505802 where `max_lag` gave
+// 0.495073. A typo must be an error, not a quiet change of answer.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PrecedenceRequest {
     /// First numeric field. Base or fiber.
     pub x: String,

@@ -1489,7 +1489,27 @@ impl BundleStore {
             && matches!(self.schema.base_fields[0].field_type, FieldType::Numeric);
         let no_indexed = self.schema.indexed_fields.is_empty();
 
-        if single_int_base && no_indexed {
+        // The fast path keys on `as_i64()` and SILENTLY `continue`s on anything
+        // else. `FieldType::Numeric` covers floats as well as integers, so a
+        // bundle declared `(value NUMERIC BASE, ...)` or `FLOAT BASE` routed
+        // here and every record was dropped: ingest returned HTTP 200 with
+        // count 0, parse_errors 0, and no error anywhere. Silent data loss
+        // under a success envelope — found by customer acceptance testing
+        // 2026-08-10, where 1024 valid rows vanished.
+        //
+        // Route on what the DATA is, not what the schema type permits. Integer
+        // keys keep the fast path; anything else falls through to the general
+        // path below, which stores an arbitrary `Value` base key correctly.
+        // The scan is O(n) of cheap lookups against an insert that is already
+        // O(n) of allocation and hashing.
+        let all_keys_are_ints = single_int_base
+            && records.iter().all(|r| {
+                r.get(&self.schema.base_fields[0].name)
+                    .and_then(|v| v.as_i64())
+                    .is_some()
+            });
+
+        if all_keys_are_ints && no_indexed {
             return self.batch_insert_fast(records);
         }
 
@@ -4840,6 +4860,73 @@ pub enum TransactionResult {
 mod tests {
     use super::*;
     use crate::types::FieldDef;
+
+    /// A FLOAT-valued base key must not be silently dropped.
+    ///
+    /// The turbo path keys on `as_i64()` and `continue`s on anything else, and
+    /// it was selected by `FieldType::Numeric` — which covers floats. So a
+    /// bundle declared `(value NUMERIC BASE, ...)` routed there and EVERY
+    /// record vanished: ingest returned HTTP 200 with count 0, parse_errors 0,
+    /// and no error anywhere. Found by customer acceptance testing 2026-08-10,
+    /// where 1024 valid rows disappeared under a success envelope.
+    ///
+    /// Silent data loss is the worst failure this engine can have, so this gate
+    /// asserts the count directly rather than trusting the absence of an error.
+    #[test]
+    fn float_base_keys_are_not_silently_dropped() {
+        let schema = BundleSchema::new("fb")
+            .base(FieldDef::numeric("value"))
+            .fiber(FieldDef::numeric("v"));
+        let mut store = BundleStore::new(schema);
+
+        // Non-integral float keys — the case that was lost entirely.
+        let recs: Vec<Record> = (0..64)
+            .map(|i| {
+                let mut r = Record::new();
+                r.insert("value".into(), Value::Float(i as f64 + 0.5));
+                r.insert("v".into(), Value::Float(i as f64));
+                r
+            })
+            .collect();
+
+        let inserted = store.batch_insert(&recs);
+        assert_eq!(inserted, 64, "float base keys were dropped: {inserted} of 64");
+        assert_eq!(store.len(), 64, "store holds {} of 64", store.len());
+        assert_eq!(store.records().count(), 64, "records() must see them all");
+
+        // Integer keys must still take the fast path and still work.
+        let schema2 = BundleSchema::new("ib")
+            .base(FieldDef::numeric("value"))
+            .fiber(FieldDef::numeric("v"));
+        let mut s2 = BundleStore::new(schema2);
+        let ints: Vec<Record> = (0..64)
+            .map(|i| {
+                let mut r = Record::new();
+                r.insert("value".into(), Value::Integer(i));
+                r.insert("v".into(), Value::Float(i as f64));
+                r
+            })
+            .collect();
+        assert_eq!(s2.batch_insert(&ints), 64, "integer base keys regressed");
+
+        // A MIXED batch must not lose the float half either.
+        let schema3 = BundleSchema::new("mb")
+            .base(FieldDef::numeric("value"))
+            .fiber(FieldDef::numeric("v"));
+        let mut s3 = BundleStore::new(schema3);
+        let mixed: Vec<Record> = (0..64)
+            .map(|i| {
+                let mut r = Record::new();
+                r.insert(
+                    "value".into(),
+                    if i % 2 == 0 { Value::Integer(i) } else { Value::Float(i as f64 + 0.25) },
+                );
+                r.insert("v".into(), Value::Float(i as f64));
+                r
+            })
+            .collect();
+        assert_eq!(s3.batch_insert(&mixed), 64, "mixed int/float batch lost rows");
+    }
 
     fn make_store() -> BundleStore {
         let schema = BundleSchema::new("users")

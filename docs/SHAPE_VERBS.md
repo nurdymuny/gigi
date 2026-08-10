@@ -115,6 +115,8 @@ Anything you can do to a bundle in GQL — filtering, `COVER`, sectioning — yo
 do before measuring. The shape verbs read whatever the bundle holds at the moment
 you call them.
 
+**Unknown request keys are rejected.** A misspelled parameter (`maxLag` for `max_lag`) returns 422 naming the field rather than silently falling back to the default — which used to change the answer with no complaint.
+
 **One wart worth knowing:** a refusal raised while executing a GQL statement
 comes back as HTTP **500**, not 422, because that is how `/v1/gql` maps execution
 errors for every verb. The message is the same one REST would give you and it
@@ -229,11 +231,17 @@ within ±0.03 across H = 0.1 to 0.9.
 flat `0.45 / 0.55`. They are `0.5 ± 2·h_sd`, where `h_sd` is this estimator's
 own measured sampling spread at your `n`, and it is returned in the response:
 
-| n | `h_sd` | verdict band half-width |
-|---|---|---|
-| 64 | 0.096 | ±0.193 |
-| 1,024 | 0.043 | ±0.087 |
-| 16,384 | 0.022 | ±0.044 |
+| n | `h_sd` returned | verdict band half-width | simulated sd |
+|---|---|---|---|
+| 64 | 0.0955 | ±0.191 | 0.0964 |
+| 256 | 0.0660 | ±0.132 | 0.0615 |
+| 1,024 | 0.0456 | ±0.091 | 0.0433 |
+| 4,096 | 0.0315 | ±0.063 | 0.0296 |
+| 16,384 | 0.0217 | ±0.043 | 0.0220 |
+
+The last column is the raw simulation the law was fitted to; `h_sd` is the law
+evaluated at your `n`, and that is the number the service returns. They agree to
+about 7%, which is the fit error and is why the law is labelled empirical.
 
 The old flat ±0.05 was *narrower than the estimator's own noise* for any series
 under about 16,000 points, so a true random walk was being called ROUGH or
@@ -402,6 +410,8 @@ curl -s -XPOST https://your-gigi-host/v1/bundles/btc_trades/cadence \
 | ≈ 0 | **MEMORYLESS** — the unevenness is in the *distribution* of gaps, not their order |
 | **< 0** | **ALTERNATING** — a long gap tends to be followed by a short one. Often a queue draining in batches |
 
+**`index_blocked` is `null` when there are fewer than two blocks of data** (under ~128 gaps at the default block of 64). It is deliberately absent rather than a placeholder `0.0`, which would read as "no structure at any scale" instead of "not enough data to look". `n_blocks` is 0 in that case.
+
 `index_z` and `memory_z` are standard deviations from the memoryless null, and
 the verdict bands are the null ±2 sd — computed from a closed form at your actual
 `n`, not thresholds anyone picked. `null_sd` is reported so you can see the ruler.
@@ -543,7 +553,7 @@ something that was never really measured.
 | **PRECEDENCE:** `x` and `y` are the same field | **422** — a signal cannot precede itself |
 | **CADENCE:** a row index as `time` | **422** — "that is a counter, not a clock", pointing at TEXTURE/PRECEDENCE |
 | **CADENCE:** timestamps too coarse | **422**, telling you the ratio measured and the ratio needed |
-| **CADENCE:** timestamps on a lattice | **422** — rounded feeds read as *regular* when they're actually bursty |
+| **CADENCE:** timestamps on a **coarse** lattice | **422** — fires when the median gap is under 10x the quantum, or when over 10% of gaps are bit-identical. A *fine* lattice is measured normally: 1 ms stamps with ~50 ms gaps are fine, 100 ms stamps are not |
 
 Rows with missing or non-finite values are **skipped and counted in `notes`**,
 never coerced to zero. Check `notes` and `n` if a result surprises you — you may

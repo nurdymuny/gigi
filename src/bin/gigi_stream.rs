@@ -13004,7 +13004,7 @@ async fn gql_query(
                 emit_quick("DROP_BUNDLE", t0.elapsed().as_micros() as u64, true);
                 return (
                     StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({"error": format!("No bundle: {bundle}")})),
+                    Json(serde_json::json!({"error": format!("Bundle '{bundle}' not found")})),
                 );
             }
         }
@@ -13504,7 +13504,7 @@ async fn gql_query(
             state.metrics.record_query(dur, stmt_type, false, true);
             return (
                 StatusCode::NOT_FOUND,
-                Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")})),
+                Json(serde_json::json!({"error": format!("Bundle '{bundle_name}' not found")})),
             );
         }
         let result = execute_gql_on_engine(&mut engine, &stmt);
@@ -13569,7 +13569,7 @@ async fn gql_query(
                     state.metrics.record_query(dur, stmt_type, false, true);
                     return (
                         StatusCode::NOT_FOUND,
-                        Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")})),
+                        Json(serde_json::json!({"error": format!("Bundle '{bundle_name}' not found")})),
                     );
                 }
             };
@@ -13677,7 +13677,7 @@ async fn gql_query(
                 state.metrics.record_query(dur, stmt_type, false, true);
                 return (
                     StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({"error": format!("No bundle: {bundle_name}")})),
+                    Json(serde_json::json!({"error": format!("Bundle '{bundle_name}' not found")})),
                 )
             }
         };

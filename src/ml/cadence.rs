@@ -98,7 +98,12 @@ pub const CADENCE_MIN_GRANULARITY: f64 = 10.0;
 pub const CADENCE_MAX_LATTICE_FRAC: f64 = 0.10;
 
 /// Request for `POST /v1/bundles/{name}/cadence`.
+// `deny_unknown_fields`: a misspelled key used to be IGNORED, so the verb
+// silently fell back to the default and returned a different number with
+// HTTP 200. Measured: `maxLag` gave exponent 0.505802 where `max_lag` gave
+// 0.495073. A typo must be an error, not a quiet change of answer.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CadenceRequest {
     /// Numeric timestamp field. **Required, and deliberately not named
     /// `order`.** TEXTURE and PRECEDENCE take an *ordinal* sort key whose

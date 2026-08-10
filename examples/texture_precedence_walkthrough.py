@@ -80,25 +80,38 @@ print("=" * 74)
 print("\n" + "-" * 74)
 print("1 · TEXTURE — three signals whose roughness we CHOSE in advance")
 print("-" * 74)
-print("  Increments built as an MA(1): d_t = e_t + phi * e_{t-1}.")
-print("    phi < 0  moves reverse   -> should read ROUGH")
-print("    phi = 0  random walk     -> should read RANDOM_WALK")
-print("    phi > 0  moves continue  -> should read SMOOTH")
+print("  Increments are a moving average of the last w shocks:")
+print("    w = 1 with a NEGATIVE weight -> moves reverse   -> ROUGH")
+print("    w = 1, no weight             -> random walk     -> RANDOM_WALK")
+print("    w = 32                       -> moves continue  -> SMOOTH")
+print()
+print("  The smooth case averages 32 shocks rather than 2. An MA(1) at phi=0.9")
+print("  reads H = 0.51 — genuinely inside the RANDOM_WALK band once the band is")
+print("  derived from the estimator's own noise (+-0.063 at n=4096), so it is not")
+print("  a fixture that demonstrates SMOOTH. This one reads ~0.75.")
 
-for label, phi in (("jagged", -0.9), ("random_walk", 0.0), ("trending", 0.9)):
-    prev, acc, rows = gauss(), 0.0, []
+W = 32
+for label, w, phi in (("jagged", 1, -0.9), ("random_walk", 1, 0.0), ("trending", W, 0.0)):
+    hist, acc, rows = [gauss() for _ in range(w)], 0.0, []
+    prev = hist[-1]
     for i in range(4096):
         e = gauss()
-        acc += e + phi * prev
-        prev = e
+        if w == 1:
+            inc = e + phi * prev
+            prev = e
+        else:
+            hist.append(e)
+            hist.pop(0)
+            inc = sum(hist) / w
+        acc += inc
         rows.append({"row_id": i, "seq": float(i), "value": round(acc, 8)})
     nm = f"tex_{label}"
     make(nm, ["seq NUMERIC FIBER", "value NUMERIC FIBER"])
     load(nm, rows)
     code, out = call("POST", f"/v1/bundles/{nm}/texture",
                      {"field": "value", "order": "seq"})
-    show(f"{label}  (phi = {phi:+.1f})", code, out,
-         ["exponent", "verdict", "r_squared", "n_lags", "n"])
+    show(f"{label}  (w = {w}, phi = {phi:+.1f})", code, out,
+         ["exponent", "h_sd", "verdict", "r_squared", "n_lags", "n"])
 
 # ─────────────────────────────────────────────────────────────────────────
 # 2 · PRECEDENCE, with a planted lead

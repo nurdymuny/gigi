@@ -9808,13 +9808,13 @@ async fn ml_catalog() -> Json<serde_json::Value> {
              "does": "SVD fit store — one decomposition, then the whole ridge path with EXACT leave-one-out (Golub-Heath-Wahba 1979); the model as a live geometric view of the bundle. Exact for the quadratic class (OLS/ridge/multi-target/LDA); preconditioner for GLMs",
              "params": {"target": "numeric field to predict", "alphas": "[] ridge path (auto if empty)", "exclude": "[] fibers to skip"}},
             {"route": "POST /v1/bundles/{name}/texture", "kind": "shape verb (grid-free diagnostic)",
-             "does": "how ROUGH is one ordered signal — the self-similarity (Hurst) exponent. H>0.5 persistent (moves continue), H=0.5 random walk, H<0.5 anti-persistent (moves reverse). Reads RECORD ORDER, never a timestamp, so there is no bin width to choose. Check `r_squared`: a low fit means the signal is not self-similar and H should not be read as one number",
+             "gql": "TEXTURE <bundle> ON <field> [ALONG <order>] [WITH Q = f, MIN_LAG = n, MAX_LAG = n]", "does": "how ROUGH is one ordered signal — the self-similarity (Hurst) exponent. H>0.5 persistent (moves continue), H=0.5 random walk, H<0.5 anti-persistent (moves reverse). Reads RECORD ORDER, never a timestamp, so there is no bin width to choose. Check `r_squared`: a low fit means the signal is not self-similar and H should not be read as one number",
              "params": {"field": "REQUIRED numeric field", "order": "optional ordering field (default record order)", "q": "moment order (2)", "min_lag": "1", "max_lag": "n/8"}},
             {"route": "POST /v1/bundles/{name}/precedence", "kind": "shape verb (grid-free diagnostic)",
-             "does": "which of TWO ordered fields moves first — the normalised Levy area (level-2 antisymmetric signature term). area>0 means x leads y; swapping the arguments negates it exactly. Reads RECORD ORDER, so the answer is invariant to any order-preserving change of clock",
+             "gql": "PRECEDENCE <bundle> ON <x>, <y> [ALONG <order>]", "does": "which of TWO ordered fields moves first — the normalised Levy area (level-2 antisymmetric signature term). area>0 means x leads y; swapping the arguments negates it exactly. Reads RECORD ORDER, so the answer is invariant to any order-preserving change of clock",
              "params": {"x": "REQUIRED numeric field", "y": "REQUIRED numeric field", "order": "optional ordering field (default record order)"}},
             {"route": "POST /v1/bundles/{name}/cadence", "kind": "shape verb (arrival process)",
-             "does": "is a timestamped stream arriving STEADILY or in BURSTS, and does the unevenness have MEMORY. Returns two numbers: `index` (Greenwood dispersion; <1 = THROTTLED, i.e. more regular than random — suspect something metering the feed) and `memory` (lag-1 autocorrelation of log gaps). Both always, because `index` is symmetric in the gaps and provably cannot see ordering — a high index alone is NOT clustering. Verdict bands are the memoryless null +-2sd, derived from a closed form at your n",
+             "gql": "CADENCE <bundle> ON <time> [WITH BLOCK = n]", "does": "is a timestamped stream arriving STEADILY or in BURSTS, and does the unevenness have MEMORY. Returns two numbers: `index` (Greenwood dispersion; <1 = THROTTLED, i.e. more regular than random — suspect something metering the feed) and `memory` (lag-1 autocorrelation of log gaps). Both always, because `index` is symmetric in the gaps and provably cannot see ordering — a high index alone is NOT clustering. Verdict bands are the memoryless null +-2sd, derived from a closed form at your n",
              "params": {"time": "REQUIRED numeric timestamp field — CARDINAL, not an ordinal sort key like `order` elsewhere; a row index here is refused by name", "block": "gaps per block for the drift-filtered form (64)"}}
         ],
         "not_a_fit": {
@@ -15483,6 +15483,30 @@ fn execute_gql_on_store_read(
             }
             Ok(ExecResult::Rows(rows))
         }
+        // ── Shape verbs on the read path ──
+        //
+        // These MUST be handled here, not left to the `_` arm below. That arm
+        // returns a Notice saying nothing was executed — which for a verb a
+        // customer is actually calling would mean GQL works on a heap-resident
+        // bundle and silently no-ops on an mmap-resident one. The answer would
+        // depend on storage residency, which is invisible from the query.
+        //
+        // Delegating to `gigi::parser::execute` keeps ONE implementation: same
+        // kernels, same refusals, same row shape as the heap path and as REST.
+        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. } => {
+            let eng_lock = engine.ok_or_else(|| {
+                "shape verbs require engine context (not available in this \
+                 dispatch path)".to_string()
+            })?;
+            // A READ lock, not a write one. This path is reached with the
+            // engine already read-locked, so acquiring a write lock here
+            // deadlocks the request — measured: the first live GQL call hung
+            // until the client timed out. These verbs only measure, so a shared
+            // borrow is also the honest signature.
+            let eng = eng_lock.read().map_err(|e| format!("engine lock: {}", e))?;
+            gigi::parser::shape_verb_exec(&eng, stmt)
+                .expect("shape verb arm must be handled by shape_verb_exec")
+        }
         // Anything unmatched parsed fine but has no handler on this path.
         // A bare "ok" here is success theater — say what didn't happen.
         _ => Ok(ExecResult::Notice(
@@ -15503,6 +15527,12 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         | Cover { bundle, .. } | Integrate { bundle, .. }
         | Select { bundle, .. }
         | Curvature { bundle, .. } | Spectral { bundle, .. }
+        // Shape verbs. Omitting these here does NOT produce an error — it
+        // makes `gql_query` fall through to its "no bundle binding" path and
+        // return `{"status":"ok"}` having executed nothing, which is the worst
+        // possible outcome for a verb a customer is calling: a success envelope
+        // over a measurement that never happened.
+        | Texture { bundle, .. } | Precedence { bundle, .. } | Cadence { bundle, .. }
         | Consistency { bundle, .. } | Health { bundle, .. }
         | Describe { bundle, .. }
         | Betti { bundle, .. } | Entropy { bundle, .. }

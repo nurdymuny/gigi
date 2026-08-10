@@ -2,6 +2,9 @@
 
 **A guide for people using GIGI against HELICITY data.**
 
+Callable two ways — as GQL verbs and as REST endpoints. Both return the same
+numbers; see §2.
+
 Three verbs that answer *"what shape is this data in?"* — each without making you
 pick a bar size first.
 
@@ -36,34 +39,87 @@ None of them predicts anything. They describe the data in front of them.
 
 ---
 
-## 2 · How you call them: REST, not GQL
+## 2 · Two ways to call them: GQL and REST
 
-**All three are REST endpoints. There is no GQL verb for any of them** — you
-will not find `TEXTURE`, `PRECEDENCE` or `CADENCE` in the GQL grammar, and
-`POST /v1/gql` will not dispatch them. That is deliberate, not an omission:
-they take typed parameters and return structured diagnostics rather than rows,
-so they sit in the ML family alongside `/scan`, `/cluster` and `/circulation`.
+**Both surfaces work, and they return the same numbers.** Pick whichever fits
+how you already talk to GIGI — there is no "real" one and no second-class one.
+Both bottom out in the same kernels, so they cannot drift apart in what they
+compute; only in how the answer is shaped on the way back.
 
-In practice you use both surfaces together — GQL to shape and load the bundle,
-REST to measure it:
+### GQL
+
+```sql
+TEXTURE     btc_l2 ON mid ALONG seq;
+PRECEDENCE  btc_l2 ON signed_volume, log_mid ALONG seq;
+CADENCE     btc_l2 ON ts_exch;
+```
+
+`ON` names the field or fields being measured — the same `ON` you already use on
+`CURVATURE btc_l2 ON mid`.
+
+`ALONG` names the **ordering field** for TEXTURE and PRECEDENCE. Omit it and
+record order is used. It is its own word rather than `BY` or `ORDER` on purpose:
+`BY` already means *group by* on CURVATURE, and `ORDER` already means *homology
+degree* on `BETTI b ORDER 1`. Reusing either would give one word two meanings in
+the same language.
+
+**CADENCE takes no `ALONG`** — `ON` there is the clock itself, and its values are
+the whole measurement, so there is nothing to re-order it by. Writing one is an
+error that says so rather than being quietly ignored.
+
+Options ride on a `WITH` clause:
+
+```sql
+TEXTURE btc_l2 ON mid ALONG seq WITH Q = 2.0, MIN_LAG = 1, MAX_LAG = 512;
+CADENCE btc_l2 ON ts_exch WITH BLOCK = 128;
+```
+
+Each returns a **single row** carrying the measurement and the context needed to
+read it honestly — an exponent arrives with its `r_squared`, a dispersion index
+with its `memory`. That pairing is deliberate; see §6.
+
+### REST
 
 ```bash
-# 1. GQL: create the bundle
+curl -s -XPOST $GIGI/v1/bundles/btc_l2/texture \
+     -H 'Content-Type: application/json' \
+     -d '{"field":"mid","order":"seq"}'
+```
+
+Same three verbs at `/v1/bundles/{name}/{texture,precedence,cadence}`. Use this
+when you want the full response — REST additionally returns the `reads` array
+and the `notes` array, which GQL's row envelope does not carry.
+
+### Which to use
+
+| | |
+|---|---|
+| You already drive GIGI through `POST /v1/gql` | **GQL** — one surface, one round trip |
+| You want the plain-English `reads` and the `notes` | **REST** — those fields are REST-only |
+| You are scripting a pipeline that also creates and filters bundles | **GQL**, so the whole job is one language |
+
+A typical mixed session — GQL to shape and load, either one to measure:
+
+```bash
 curl -s -XPOST $GIGI/v1/gql -H 'Content-Type: application/json' \
      -d '{"query":"CREATE BUNDLE btc_l2 (row_id INT BASE, ts_exch NUMERIC FIBER, mid NUMERIC FIBER, signed_volume NUMERIC FIBER);"}'
 
-# 2. Load it (NDJSON, one record per line)
 curl -s -XPOST $GIGI/v1/bundles/btc_l2/ingest \
      -H 'Content-Type: application/x-ndjson' --data-binary @trades.ndjson
 
-# 3. REST: measure the shape
-curl -s -XPOST $GIGI/v1/bundles/btc_l2/texture \
-     -H 'Content-Type: application/json' -d '{"field":"mid"}'
+curl -s -XPOST $GIGI/v1/gql -H 'Content-Type: application/json' \
+     -d '{"query":"CADENCE btc_l2 ON ts_exch;"}'
 ```
 
-Anything you can do to a bundle in GQL — filtering, `COVER`, sectioning — you
-can do before measuring. The shape verbs read whatever the bundle holds at the
-moment you call them.
+Anything you can do to a bundle in GQL — filtering, `COVER`, sectioning — you can
+do before measuring. The shape verbs read whatever the bundle holds at the moment
+you call them.
+
+**One wart worth knowing:** a refusal raised while executing a GQL statement
+comes back as HTTP **500**, not 422, because that is how `/v1/gql` maps execution
+errors for every verb. The message is the same one REST would give you and it
+still names the field and the requirement — but don't read the status code as
+"the server broke". On REST the same refusal is a 422.
 
 **Discovery:** `GET /v1/ml` lists every ML endpoint including these three, with
 their parameters and a one-line description of what each does. That is the
@@ -105,6 +161,9 @@ Returns the self-similarity (Hurst) exponent `H` of one field.
 
 ### Call it
 
+```sql
+TEXTURE btc_l2 ON mid ALONG seq;
+```
 ```bash
 curl -s -XPOST https://your-gigi-host/v1/bundles/btc_l2/texture \
      -H 'Content-Type: application/json' \
@@ -154,6 +213,9 @@ open work.
 
 Returns the normalised signed area enclosed by the joint path of two fields.
 
+```sql
+PRECEDENCE btc_l2 ON signed_volume, log_mid ALONG seq;
+```
 ```bash
 curl -s -XPOST https://your-gigi-host/v1/bundles/btc_l2/precedence \
      -H 'Content-Type: application/json' \
@@ -210,6 +272,9 @@ in the feed.
 
 This one reads your timestamps, and it returns **two** numbers. Always both.
 
+```sql
+CADENCE btc_trades ON ts_exch;
+```
 ```bash
 curl -s -XPOST https://your-gigi-host/v1/bundles/btc_trades/cadence \
      -H 'Content-Type: application/json' \
@@ -417,9 +482,10 @@ as a stable constant.
 
 | | TEXTURE | PRECEDENCE | CADENCE |
 |---|---|---|---|
-| route | `POST /v1/bundles/{name}/texture` | `.../precedence` | `.../cadence` |
+| GQL | `TEXTURE b ON f [ALONG o]` | `PRECEDENCE b ON x, y [ALONG o]` | `CADENCE b ON t` |
+| REST | `POST /v1/bundles/{name}/texture` | `.../precedence` | `.../cadence` |
 | required | `field` | `x`, `y` | `time` |
-| optional | `order`, `q`, `min_lag`, `max_lag` | `order` | `block` |
+| optional | `order`/`ALONG`, `q`, `min_lag`, `max_lag` | `order`/`ALONG` | `block` |
 | min rows | 64 | 32 | 64 distinct stamps |
 | verdicts | `ROUGH` `RANDOM_WALK` `SMOOTH` | `leads`: `x` `y` `neither` | `BURSTY` `STEADY` `THROTTLED` + `PERSISTENT` `MEMORYLESS` `ALTERNATING` |
 

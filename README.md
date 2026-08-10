@@ -160,7 +160,7 @@ GIGI is the substrate. As of this README, end-to-end:
 
 Test counts, dated to their last full run:
 
-- `cargo test --lib` → **1019 passed / 0 failed** (2026-08-09, CADENCE ship gate; 1001 pre-existing untouched).
+- `cargo test --lib` → **1020 passed / 0 failed** (2026-08-09, CADENCE + GQL surface; 1001 pre-existing untouched).
 - `cargo test --no-default-features --lib` → **911 passed / 0 failed** (2026-07-03 pre-deploy gate). The byte-identical no-feature build.
 - `cargo test --features halcyon --lib --test-threads=1` → **965 passed / 0 failed** (2026-06-28). Halcyon Parts I–IV on the substrate.
 - `cargo test --features "kahler imagine sharded transactions patterns causal_states wish halcyon" --lib --test-threads=1` → **1488 passed / 0 failed** (2026-06-28). The full production feature surface.
@@ -634,8 +634,10 @@ GQL verb), and the shape verbs `/v1/bundles/{name}/texture` (self-similarity
 exponent of one ordered field), `/v1/bundles/{name}/precedence` (which of
 two fields moves first, read from record order rather than any clock), and
 `/v1/bundles/{name}/cadence` (whether a timestamped event stream arrives
-steadily or in bursts, and whether the unevenness has memory). User-facing
-guide for all three: [`docs/SHAPE_VERBS.md`](docs/SHAPE_VERBS.md).
+steadily or in bursts, and whether the unevenness has memory). All three are also GQL verbs —
+`TEXTURE b ON f ALONG o`, `PRECEDENCE b ON x, y ALONG o`, `CADENCE b ON t` —
+returning a one-row envelope from the same kernels, so the two surfaces cannot
+disagree. User-facing guide: [`docs/SHAPE_VERBS.md`](docs/SHAPE_VERBS.md).
 For the full route catalog
 hit `GET /v1/openapi.json` against any running `gigi-stream` instance —
 the OpenAPI document is the source of truth for shapes, parameters, and

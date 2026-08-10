@@ -386,6 +386,48 @@ pub enum Statement {
         fields: Vec<String>,
         by_field: Option<String>,
     },
+
+    // ── Shape verbs (2026-08-09) ──
+    //
+    // GQL twins of `POST /v1/bundles/{name}/{texture,precedence,cadence}`.
+    // Additive: the REST routes are unchanged and both surfaces call the same
+    // kernels in `crate::ml`, so the two can never drift apart in what they
+    // compute. Each returns a ONE-ROW envelope rather than a bare scalar,
+    // because every one of these verbs reports a measurement *and* the context
+    // needed to read it honestly — an exponent without its `r_squared`, or a
+    // dispersion index without its `memory`, is the exact misreading the REST
+    // responses were shaped to prevent.
+    //
+    // `ALONG` names the ordering field. Deliberately not `BY` (which means
+    // group-by on CURVATURE) and not `ORDER` (which means homology degree on
+    // BETTI) — reusing either would give one word two meanings in one grammar.
+    /// `TEXTURE bundle ON field [ALONG order] [WITH Q = f, MIN_LAG = n, MAX_LAG = n]`
+    Texture {
+        bundle: String,
+        field: String,
+        along: Option<String>,
+        q: Option<f64>,
+        min_lag: Option<usize>,
+        max_lag: Option<usize>,
+    },
+    /// `PRECEDENCE bundle ON x, y [ALONG order]` — exactly two fields.
+    Precedence {
+        bundle: String,
+        x: String,
+        y: String,
+        along: Option<String>,
+    },
+    /// `CADENCE bundle ON time [WITH BLOCK = n]`
+    ///
+    /// `ON` here names a CARDINAL clock, not an ordinal sort key — the values
+    /// are the whole measurement. There is deliberately no `ALONG`: a stream's
+    /// arrival times cannot be re-ordered by something else without destroying
+    /// what is being measured.
+    Cadence {
+        bundle: String,
+        time: String,
+        block: Option<usize>,
+    },
     /// `SPECTRAL bundle [FULL [LIMIT k]]` — λ₁ of the normalized
     /// field-index-graph Laplacian (Scalar), or with FULL the whole
     /// normalized spectrum ascending (Rows; Phase 2, 2026-07-16).
@@ -2484,6 +2526,10 @@ impl Parser {
 
             // Analytics
             "CURVATURE" => self.parse_curvature(),
+            // Shape verbs (2026-08-09) — GQL twins of the REST routes.
+            "TEXTURE" => self.parse_texture(),
+            "PRECEDENCE" => self.parse_precedence(),
+            "CADENCE" => self.parse_cadence(),
             "SPECTRAL" => self.parse_spectral(),
             // Halcyon Phase 1 (2026-06-28): SPECTRAL_GAUGE is its own
             // top-level verb, distinct from SPECTRAL ON FIBER. Same
@@ -5633,6 +5679,113 @@ impl Parser {
         })
     }
 
+    /// `TEXTURE bundle ON field [ALONG order] [WITH Q = f, MIN_LAG = n, MAX_LAG = n]`
+    fn parse_texture(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let field = self.expect_word()?;
+        let along = self.parse_along()?;
+        let (mut q, mut min_lag, mut max_lag) = (None, None, None);
+        if self.is_keyword("WITH") {
+            self.advance();
+            loop {
+                let kw = self.expect_word()?;
+                // `=` is its own token, not a keyword — consume it directly.
+                // Optional, so `WITH Q 2.0` reads the same as `WITH Q = 2.0`.
+                if matches!(self.peek(), Some(Token::Eq)) {
+                    self.advance();
+                }
+                match kw.to_ascii_uppercase().as_str() {
+                    "Q" => q = Some(self.expect_f64()?),
+                    "MIN_LAG" => min_lag = Some(self.expect_usize()?),
+                    "MAX_LAG" => max_lag = Some(self.expect_usize()?),
+                    _ => return Err(format!(
+                        "Unknown TEXTURE option '{kw}' (expected Q, MIN_LAG or MAX_LAG)")),
+                }
+                if !matches!(self.peek(), Some(Token::Comma)) {
+                    break;
+                }
+                self.advance();
+            }
+        }
+        Ok(Statement::Texture { bundle, field, along, q, min_lag, max_lag })
+    }
+
+    /// `PRECEDENCE bundle ON x, y [ALONG order]` — exactly two fields, because
+    /// the measurement is the signed area between a PAIR. One field or three is
+    /// a caller error worth naming rather than silently truncating.
+    fn parse_precedence(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let mut fields = vec![self.expect_word()?];
+        while matches!(self.peek(), Some(Token::Comma)) {
+            self.advance();
+            fields.push(self.expect_word()?);
+        }
+        if fields.len() != 2 {
+            return Err(format!(
+                "PRECEDENCE compares exactly two fields, got {} ({}). \
+                 Write: PRECEDENCE {bundle} ON <x>, <y>",
+                fields.len(), fields.join(", ")));
+        }
+        let along = self.parse_along()?;
+        let mut it = fields.into_iter();
+        Ok(Statement::Precedence {
+            bundle,
+            x: it.next().unwrap(),
+            y: it.next().unwrap(),
+            along,
+        })
+    }
+
+    /// `CADENCE bundle ON time [WITH BLOCK = n]`
+    fn parse_cadence(&mut self) -> Result<Statement, String> {
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let time = self.expect_word()?;
+        // No ALONG. `ON` here is the clock itself; there is nothing to
+        // re-order it by. Catch the mistake rather than ignoring the clause.
+        if self.is_keyword("ALONG") {
+            return Err(
+                "CADENCE takes no ALONG clause — `ON <field>` already names the \
+                 clock, and its VALUES are the measurement. If you meant to \
+                 measure a signal in record order, you want TEXTURE or \
+                 PRECEDENCE."
+                    .to_string());
+        }
+        let mut block = None;
+        if self.is_keyword("WITH") {
+            self.advance();
+            loop {
+                let kw = self.expect_word()?;
+                if matches!(self.peek(), Some(Token::Eq)) {
+                    self.advance();
+                }
+                match kw.to_ascii_uppercase().as_str() {
+                    "BLOCK" => block = Some(self.expect_usize()?),
+                    _ => return Err(format!(
+                        "Unknown CADENCE option '{kw}' (expected BLOCK)")),
+                }
+                if !matches!(self.peek(), Some(Token::Comma)) {
+                    break;
+                }
+                self.advance();
+            }
+        }
+        Ok(Statement::Cadence { bundle, time, block })
+    }
+
+    /// The shared `ALONG <field>` clause — the ordering field for the shape
+    /// verbs that read record order.
+    fn parse_along(&mut self) -> Result<Option<String>, String> {
+        if self.is_keyword("ALONG") {
+            self.advance();
+            Ok(Some(self.expect_word()?))
+        } else {
+            Ok(None)
+        }
+    }
+
     fn parse_betti(&mut self) -> Result<Statement, String> {
         let name = self.expect_word()?;
         let order = if self.is_keyword("ORDER") {
@@ -8441,7 +8594,8 @@ pub fn jackknife_measure_specs(
 const SUGGESTABLE_VERBS: &[&str] = &[
     "BUNDLE", "SECTION", "SECTIONS", "COVER", "INTEGRATE", "PULLBACK",
     "REDEFINE", "RETRACT", "EXISTS", "SHOW", "DESCRIBE", "EXPLAIN",
-    "CURVATURE", "SPECTRAL", "HEALTH", "CONSISTENCY", "BETTI", "ENTROPY",
+    "CURVATURE", "TEXTURE", "PRECEDENCE", "CADENCE",
+    "SPECTRAL", "HEALTH", "CONSISTENCY", "BETTI", "ENTROPY",
     "GEODESIC", "METRIC", "COMPLETE", "PROPAGATE", "DIVERGENCE",
     "HOLONOMY", "HELICITY", "TRANSPORT", "GAUGE", "GRANT", "REVOKE", "POLICY",
     "DROP", "AUDIT", "COMPACT", "ANALYZE", "VACUUM", "REBUILD", "CHECK",
@@ -10376,6 +10530,90 @@ fn emit_target(path: &str) -> Result<std::path::PathBuf, String> {
     })
 }
 
+/// The shape verbs — TEXTURE / PRECEDENCE / CADENCE — over an immutable
+/// engine borrow.
+///
+/// Returns `None` for any other statement, so a caller can use it as a probe.
+/// These are pure measurements: nothing here mutates the engine, and taking
+/// only `&Engine` is what lets the server's mmap read path (which already holds
+/// a read lock) dispatch them without deadlocking.
+///
+/// Both GQL surfaces and the REST routes bottom out in the same `crate::ml`
+/// kernels, so the three can never disagree about what a number means.
+pub fn shape_verb_exec(
+    engine: &crate::engine::Engine,
+    stmt: &Statement,
+) -> Option<Result<ExecResult, String>> {
+    use crate::types::Value as V;
+    // The kernels speak HTTP status codes; GQL has no use for those, so the
+    // code is dropped and the message — which already names the field, the
+    // count and the requirement — is kept.
+    match stmt {
+        Statement::Texture { bundle, field, along, q, min_lag, max_lag } => {
+            Some((|| {
+                let t = crate::ml::texture(
+                    engine, bundle, field, along.clone(),
+                    q.unwrap_or_else(crate::ml::default_texture_q),
+                    min_lag.unwrap_or_else(crate::ml::default_texture_min_lag),
+                    *max_lag,
+                )
+                .map_err(|(_, msg)| msg)?;
+                let mut row = crate::types::Record::new();
+                row.insert("field".into(), V::Text(t.field));
+                row.insert("n".into(), V::Float(t.n as f64));
+                row.insert("exponent".into(), V::Float(t.exponent));
+                row.insert("r_squared".into(), V::Float(t.r_squared));
+                row.insert("n_lags".into(), V::Float(t.n_lags as f64));
+                row.insert("verdict".into(), V::Text(t.verdict));
+                Ok(ExecResult::Rows(vec![row]))
+            })())
+        }
+        Statement::Precedence { bundle, x, y, along } => {
+            Some((|| {
+                let p = crate::ml::precedence(engine, bundle, x, y, along.clone())
+                    .map_err(|(_, msg)| msg)?;
+                let mut row = crate::types::Record::new();
+                row.insert("x".into(), V::Text(p.x));
+                row.insert("y".into(), V::Text(p.y));
+                row.insert("n".into(), V::Float(p.n as f64));
+                row.insert("area".into(), V::Float(p.area));
+                row.insert("leads".into(), V::Text(p.leads));
+                row.insert("magnitude".into(), V::Float(p.magnitude));
+                Ok(ExecResult::Rows(vec![row]))
+            })())
+        }
+        Statement::Cadence { bundle, time, block } => {
+            Some((|| {
+                let c = crate::ml::cadence(engine, bundle, time, *block)
+                    .map_err(|(_, msg)| msg)?;
+                let mut row = crate::types::Record::new();
+                row.insert("time_field".into(), V::Text(c.time_field));
+                row.insert("n_events".into(), V::Float(c.n_events as f64));
+                row.insert("n_gaps".into(), V::Float(c.n_gaps as f64));
+                row.insert("index".into(), V::Float(c.index));
+                row.insert("index_z".into(), V::Float(c.index_z));
+                row.insert("null_sd".into(), V::Float(c.null_sd));
+                // Genuinely absent under two blocks — Null, never a placeholder
+                // 0.0, which would read as "no structure at any scale" rather
+                // than "not enough data to look".
+                row.insert("index_blocked".into(), if c.index_blocked.is_finite() {
+                    V::Float(c.index_blocked)
+                } else {
+                    V::Null
+                });
+                row.insert("block_len".into(), V::Float(c.block_len as f64));
+                row.insert("n_blocks".into(), V::Float(c.n_blocks as f64));
+                row.insert("memory".into(), V::Float(c.memory));
+                row.insert("memory_z".into(), V::Float(c.memory_z));
+                row.insert("verdict".into(), V::Text(c.verdict));
+                row.insert("memory_verdict".into(), V::Text(c.memory_verdict));
+                Ok(ExecResult::Rows(vec![row]))
+            })())
+        }
+        _ => None,
+    }
+}
+
 pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<ExecResult, String> {
     match stmt {
         // ── Post-Kähler Phase 1 (PK-1..4) ──
@@ -11268,6 +11506,18 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 })
                 .collect();
             Ok(ExecResult::Rows(rows))
+        }
+
+        // ── Shape verbs ──
+        //
+        // Read-only measurements, so the body lives in `shape_verb_exec` which
+        // takes `&Engine`. That matters: the mmap read path in the server holds
+        // a READ lock on the engine when it dispatches, so anything needing
+        // `&mut` there deadlocks. Sharing one `&Engine` helper keeps a single
+        // implementation and makes the lock discipline impossible to get wrong.
+        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. } => {
+            shape_verb_exec(engine, stmt)
+                .expect("shape verb matched here must be handled by shape_verb_exec")
         }
 
         // ── Analytics ──

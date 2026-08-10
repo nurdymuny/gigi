@@ -846,6 +846,64 @@ mod tests {
         cleanup(&dir);
     }
 
+    /// CAD-19: the GQL surface parses to the same request the REST surface
+    /// takes, and produces the SAME numbers. Both call this kernel, so what is
+    /// gated here is the parse and the plumbing, not the maths twice.
+    #[test]
+    fn cad_19_gql_surface_matches_rest() {
+        use crate::parser::{execute, parse, ExecResult, Statement};
+
+        let stamps = modulated_stamps(4096, 107);
+        let (dir, mut engine) = scan_env(
+            "cad_gql", "s", schema_for("s"), rows(&stamps));
+
+        // Parse: the shape the grammar produces.
+        let stmt = parse("CADENCE s ON ts;").expect("parse CADENCE");
+        match &stmt {
+            Statement::Cadence { bundle, time, block } => {
+                assert_eq!(bundle, "s");
+                assert_eq!(time, "ts");
+                assert_eq!(*block, None, "block must default, not be invented");
+            }
+            other => panic!("CADENCE parsed to the wrong statement: {other:?}"),
+        }
+
+        // Execute: identical numbers to calling the kernel directly.
+        let direct = cadence(&engine, "s", "ts", None).expect("direct");
+        let rows = match execute(&mut engine, &stmt).expect("execute CADENCE") {
+            ExecResult::Rows(r) => r,
+            other => panic!("CADENCE must return rows, got {other:?}"),
+        };
+        assert_eq!(rows.len(), 1, "one-row envelope");
+        let got = |k: &str| rows[0].get(k).and_then(|v| v.as_f64()).unwrap();
+        assert_eq!(got("index").to_bits(), direct.index.to_bits(),
+                   "GQL and the kernel must not differ by a bit");
+        assert_eq!(got("memory").to_bits(), direct.memory.to_bits());
+        assert_eq!(
+            rows[0].get("verdict").map(|v| format!("{v}")),
+            Some(direct.verdict.clone()),
+            "verdict must match the REST surface");
+
+        // WITH BLOCK is honoured, not parsed and dropped.
+        let blocked = parse("CADENCE s ON ts WITH BLOCK = 128;").expect("parse WITH");
+        match &blocked {
+            Statement::Cadence { block, .. } => assert_eq!(*block, Some(128)),
+            other => panic!("{other:?}"),
+        }
+
+        // ALONG is refused by name — CADENCE has no ordering field.
+        let err = parse("CADENCE s ON ts ALONG seq;").unwrap_err();
+        assert!(err.contains("no ALONG"), "must explain why: {err}");
+        assert!(err.contains("TEXTURE"), "must point at the right verb: {err}");
+
+        // Refusals survive the GQL surface rather than becoming empty rows.
+        let ghost = parse("CADENCE s ON not_a_column;").expect("parses fine");
+        let e = execute(&mut engine, &ghost).unwrap_err();
+        assert!(e.contains("not_a_column"), "must name the field: {e}");
+
+        cleanup(&dir);
+    }
+
     /// CAD-11 / CAD-12: refusals name what is wrong.
     #[test]
     fn cad_11_12_refusals_name_the_problem() {

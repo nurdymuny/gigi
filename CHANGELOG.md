@@ -8,6 +8,59 @@ For a compact summary of the most recent ships, see
 
 ---
 
+## 2026-08-09 — The shape verbs get a GQL surface, alongside REST
+
+TEXTURE, PRECEDENCE and CADENCE are now callable two ways. The REST routes are
+unchanged; this is purely additive.
+
+```sql
+TEXTURE     btc_l2 ON mid ALONG seq [WITH Q = 2.0, MIN_LAG = 1, MAX_LAG = 512];
+PRECEDENCE  btc_l2 ON signed_volume, log_mid ALONG seq;
+CADENCE     btc_l2 ON ts_exch [WITH BLOCK = 128];
+```
+
+Each returns a **one-row envelope** rather than a bare scalar, because each of
+these verbs reports a measurement *and* the context needed to read it honestly:
+an exponent with its `r_squared`, a dispersion index with its `memory`.
+
+**`ALONG` names the ordering field**, and it is its own word on purpose. `BY`
+already means group-by on CURVATURE and `ORDER` already means homology degree on
+`BETTI b ORDER 1`; reusing either would give one word two meanings in one
+grammar. CADENCE deliberately takes no `ALONG` — its `ON` is the clock itself
+and the values are the whole measurement, so writing one is an error that says so
+rather than a clause silently ignored.
+
+Both surfaces bottom out in the same `crate::ml` kernels via a shared
+`parser::shape_verb_exec(&Engine, &Statement)`, so they cannot drift in what they
+compute. Verified live over HTTP: GQL and REST agree bit-for-bit on every field
+of all three verbs.
+
+**Three wiring defects found and fixed while building it, all the same shape —
+success returned where nothing had run:**
+
+- `get_bundle_name` did not know the new statements, so `/v1/gql` fell through
+  to its no-bundle-binding path and returned `{"status":"ok"}` having executed
+  nothing. A success envelope over a measurement that never happened.
+- The mmap read path's `_` arm returns a Notice reading "parsed and validated,
+  but nothing was executed". Left alone, GQL would have worked on heap-resident
+  bundles and silently no-opped on mmap-resident ones — the answer depending on
+  storage residency, which is invisible from the query.
+- The first fix took a **write** lock on a path that already holds a read lock,
+  and the first live call hung until the client timed out. These verbs only
+  measure, so the shared helper takes `&Engine` and the read path takes a read
+  lock — the honest signature and the one that cannot deadlock.
+
+Gated by CAD-19: parses to the expected statement, executes to bit-identical
+numbers against the kernel, honours `WITH BLOCK`, refuses `ALONG` by name, and
+carries kernel refusals through as errors rather than empty rows. Suite **1020**.
+
+Known wart: a refusal raised during GQL execution surfaces as HTTP 500, not 422,
+because that is how `/v1/gql` maps execution errors for every verb. The message
+is unchanged and still names the field and the requirement. Documented rather
+than papered over.
+
+---
+
 ## 2026-08-09 — CADENCE: the arrival process, and why it ships two numbers
 
 **The question.** TEXTURE asks how rough a signal is. PRECEDENCE asks which of

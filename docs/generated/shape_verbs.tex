@@ -1,0 +1,528 @@
+%% ============================================================
+%% GENERATED FILE - DO NOT EDIT.
+%%
+%% Produced from docs/SHAPE_VERBS.md by scripts/shape_verbs_to_tex.py.
+%% Edit the markdown and regenerate; hand edits here are overwritten.
+%%
+%% source-sha256: 7ecc2feed0f491a4fca4b60bf4ea863751b2dcdf4078564088caf6f7408cf995
+%% ============================================================
+
+\section{Which one do I want?}\label{sec:gigi-which-one-do-i-want}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.6cm}p{4.6cm}p{5.0cm}@{}}
+\toprule
+\textbf{Your question} & \textbf{Verb} & \textbf{What it reads} \\
+\midrule
+Is this tape smooth enough to ride, or am I about to trade chop? & \textbf{TEXTURE} & one field, in record order \\
+Which of these two moved first --- is flow leading price, or chasing it? & \textbf{PRECEDENCE} & two fields, in record order \\
+Is my data arriving steadily or in gulps --- and is my feed even healthy? & \textbf{CADENCE} & the timestamps themselves \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{TEXTURE and PRECEDENCE deliberately ignore your timestamps.} They read the \emph{order} records arrived in and nothing else. That is what makes them immune to your choice of clock.
+
+\textbf{CADENCE reads only the timestamps.} It is the complement --- it measures exactly what the other two throw away. The three don't overlap, and that is structural, not a coincidence of one dataset.
+
+None of them predicts anything. They describe the data in front of them.
+
+\section{Two ways to call them: GQL and REST}\label{sec:gigi-two-ways-to-call-them-gql-and-rest}
+
+\textbf{Both surfaces work, and they return the same numbers.} Pick whichever fits how you already talk to GIGI --- there is no "real" one and no second-class one. Both bottom out in the same kernels, so they cannot drift apart in what they compute; only in how the answer is shaped on the way back.
+
+\subsection{GQL}
+
+\begin{lstlisting}[language=SQL]
+TEXTURE     btc_l2 ON mid ALONG seq;
+PRECEDENCE  btc_l2 ON signed_volume, log_mid ALONG seq;
+CADENCE     btc_l2 ON ts_exch;
+\end{lstlisting}
+
+\texttt{ON} names the field or fields being measured --- the same \texttt{ON} you already use on \texttt{CURVATURE btc\_l2 ON mid}.
+
+\texttt{ALONG} names the \textbf{ordering field} for TEXTURE and PRECEDENCE. Omit it and record order is used. It is its own word rather than \texttt{BY} or \texttt{ORDER} on purpose: \texttt{BY} already means \emph{group by} on CURVATURE, and \texttt{ORDER} already means \emph{homology degree} on \texttt{BETTI b ORDER 1}. Reusing either would give one word two meanings in the same language.
+
+**CADENCE takes no \texttt{ALONG}** --- \texttt{ON} there is the clock itself, and its values are the whole measurement, so there is nothing to re-order it by. Writing one is an error that says so rather than being quietly ignored.
+
+Options ride on a \texttt{WITH} clause:
+
+\begin{lstlisting}[language=SQL]
+TEXTURE btc_l2 ON mid ALONG seq WITH Q = 2.0, MIN_LAG = 1, MAX_LAG = 512;
+CADENCE btc_l2 ON ts_exch WITH BLOCK = 128;
+\end{lstlisting}
+
+Each returns a \textbf{single row} carrying the measurement and the context needed to read it honestly --- an exponent arrives with its \texttt{r\_squared}, a dispersion index with its \texttt{memory}. That pairing is deliberate; see \S{}6.
+
+\subsection{REST}
+
+\begin{lstlisting}[language=Shell]
+curl -s -XPOST $GIGI/v1/bundles/btc_l2/texture \
+     -H 'Content-Type: application/json' \
+     -d '{"field":"mid","order":"seq"}'
+\end{lstlisting}
+
+Same three verbs at \texttt{/v1/bundles/\{name\}/\{texture,precedence,cadence\}}. Use this when you want the full response --- REST additionally returns the \texttt{reads} array and the \texttt{notes} array, which GQL's row envelope does not carry.
+
+\subsection{Which to use}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{5.4cm}p{8.0cm}@{}}
+\toprule
+\textbf{} & \textbf{} \\
+\midrule
+You already drive GIGI through \texttt{POST /v1/gql} & \textbf{GQL} --- one surface, one round trip \\
+You want the plain-English \texttt{reads} and the \texttt{notes} & \textbf{REST} --- those fields are REST-only \\
+You are scripting a pipeline that also creates and filters bundles & \textbf{GQL}, so the whole job is one language \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A typical mixed session --- GQL to shape and load, either one to measure:
+
+\begin{lstlisting}[language=Shell]
+curl -s -XPOST $GIGI/v1/gql -H 'Content-Type: application/json' \
+     -d '{"query":"CREATE BUNDLE btc_l2 (row_id INT BASE, ts_exch NUMERIC FIBER, mid NUMERIC FIBER, signed_volume NUMERIC FIBER);"}'
+
+curl -s -XPOST $GIGI/v1/bundles/btc_l2/ingest \
+     -H 'Content-Type: application/x-ndjson' --data-binary @trades.ndjson
+
+curl -s -XPOST $GIGI/v1/gql -H 'Content-Type: application/json' \
+     -d '{"query":"CADENCE btc_l2 ON ts_exch;"}'
+\end{lstlisting}
+
+Anything you can do to a bundle in GQL --- filtering, \texttt{COVER}, sectioning --- you can do before measuring. The shape verbs read whatever the bundle holds at the moment you call them.
+
+\textbf{Unknown request keys are rejected.} A misspelled parameter (\texttt{maxLag} for \texttt{max\_lag}) returns 422 naming the field rather than silently falling back to the default --- which used to change the answer with no complaint.
+
+\textbf{One wart worth knowing:} a refusal raised while executing a GQL statement comes back as HTTP \textbf{500}, not 422, because that is how \texttt{/v1/gql} maps execution errors for every verb. The message is the same one REST would give you and it still names the field and the requirement --- but don't read the status code as "the server broke". On REST the same refusal is a 422.
+
+\textbf{Discovery:} \texttt{GET /v1/ml} lists every ML endpoint including these three, with their parameters and a one-line description of what each does. That is the machine-readable index to use. \texttt{GET /v1/openapi.json} now carries the ML family too --- all three shape verbs, with full request and response schemas --- so either index will find them.
+
+\section{Before you start}\label{sec:gigi-before-you-start}
+
+All three run against a bundle you have already loaded. Minimum shapes:
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{verb} & \textbf{needs} & \textbf{minimum rows} & \textbf{maximum} \\
+\midrule
+TEXTURE & one numeric field & 64 & 2,000,000 \\
+PRECEDENCE & two numeric fields & 32 & 2,000,000 \\
+CADENCE & one numeric \textbf{timestamp} field & 64 distinct stamps & 2,000,000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Base fields and fiber fields both work --- you don't have to care which side of the schema a column landed on.
+
+\begin{infobox}[{Name an ordering field}]
+TEXTURE and PRECEDENCE read \textbf{record order}. If you omit \texttt{order} / \texttt{ALONG} they read the order the bundle iterates in, and that equals the order you inserted rows \textbf{only on sequentially stored bundles}. A bundle with a \textbf{TEXT base field} is stored \emph{hashed} and iterates arbitrarily.
+
+Measured on one hashed bundle, same data, same call:
+
+| | \texttt{area} | |---|---| | ordered \texttt{ALONG seq} | \textbf{+0.7536} | | \texttt{order} omitted | \textbf{+0.0017} |
+
+A real signal flattened to nothing. \textbf{This is now refused rather than answered:} an order-less call on a hash-stored bundle returns 422 naming the bundle, its storage mode, and the fix. You will not get a wrong number here --- but you will get an error, so name the field and move on.
+
+A related trap, handled: an ordering field whose values are \textbf{numeric text} (\texttt{"9"}, \texttt{"10"}) sorts numerically. If it is genuinely non-numeric it sorts lexicographically --- correct for ISO-8601 timestamps, wrong for unpadded numbers --- and \texttt{notes} says so explicitly. Read \texttt{notes}.
+
+\end{infobox}
+
+Every response carries a **\texttt{reads}** array: plain-English sentences interpreting the numbers. You should not need this document open to act on a result. If a \texttt{reads} line ever contradicts what you expected, trust it over your assumption --- it is generated from the same numbers the verdict is.
+
+\section{TEXTURE --- how rough is this signal?}\label{sec:texture}
+
+Returns the self-similarity (Hurst) exponent \texttt{H} of one field.
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+\item \texttt{H > $\tfrac12$} --- \textbf{persistent.} Moves tend to continue. A move is evidence of more of
+\end{itemize}
+
+the same.
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+\item \texttt{H = $\tfrac12$} --- a random walk. Past movement carries no directional information.
+\item \texttt{H < $\tfrac12$} --- \textbf{anti-persistent.} Moves tend to reverse. Choppy; trend-following
+\end{itemize}
+
+on this signal fights itself.
+
+\subsection{Call it}
+
+\begin{lstlisting}[language=SQL]
+TEXTURE btc_l2 ON mid ALONG seq;
+\end{lstlisting}
+
+\begin{lstlisting}[language=Shell]
+curl -s -XPOST https://your-gigi-host/v1/bundles/btc_l2/texture \
+     -H 'Content-Type: application/json' \
+     -d '{"field":"mid","order":"seq"}'
+\end{lstlisting}
+
+Only \texttt{field} is required. \texttt{order} is optional --- omit it and record order is used. \texttt{q} (moment order, default 2), \texttt{min\_lag} (default 1), and \texttt{max\_lag} (default \texttt{n/8}) are available and rarely need touching.
+
+\subsection{Read it}
+
+\begin{lstlisting}
+{ "field": "mid", "n": 4096,
+  "exponent": 0.312, "r_squared": 0.994, "n_lags": 10,
+  "verdict": "ROUGH",
+  "reads": ["H = 0.312: anti-persistent -- movements tend to REVERSE. Choppy; ..."] }
+\end{lstlisting}
+
+\texttt{verdict} is \texttt{ROUGH} $\cdot$ \texttt{RANDOM\_WALK} $\cdot$ \texttt{SMOOTH}, split at \texttt{0.5 $\pm$ 2$\cdot$h\_sd} --- a band that adapts to your sample size rather than a fixed cutoff. See below.
+
+**Watch \texttt{r\_squared}.** It is not decoration. The exponent is a straight-line fit in log-log; a low \texttt{r\_squared} means the signal is \textbf{not self-similar} and \texttt{H} should not be read as a single number at all. A confident-looking exponent with \texttt{r\_squared} of 0.4 is telling you the model doesn't fit, not that the tape is rough. Anything above \textasciitilde{}0.9 is a clean fit.
+
+\subsection{What it looks like on real books}
+
+Measured on live L2 tape: BTC and ETH land 0.43--0.71, LTC 0.26--0.39. The thin book reads rougher, consistently --- which is the separation you want, since thin books are where the losses live.
+
+For calibration: it recovers a known \texttt{H} from exact fractional Brownian motion to within $\pm$0.03 across H = 0.1 to 0.9.
+
+\textbf{The verdict band adapts to your sample size.} The cutoffs are no longer a flat \texttt{0.45 / 0.55}. They are \texttt{0.5 $\pm$ 2$\cdot$h\_sd}, where \texttt{h\_sd} is this estimator's own measured sampling spread at your \texttt{n}, and it is returned in the response:
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{n} & \textbf{\texttt{h\_sd} returned} & \textbf{verdict band half-width} & \textbf{simulated sd} \\
+\midrule
+64 & 0.0955 & $\pm$0.191 & 0.0964 \\
+256 & 0.0660 & $\pm$0.132 & 0.0615 \\
+1,024 & 0.0456 & $\pm$0.091 & 0.0433 \\
+4,096 & 0.0315 & $\pm$0.063 & 0.0296 \\
+16,384 & 0.0217 & $\pm$0.043 & 0.0220 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The last column is the raw simulation the law was fitted to; \texttt{h\_sd} is the law evaluated at your \texttt{n}, and that is the number the service returns. They agree to about 7\%, which is the fit error and is why the law is labelled empirical.
+
+The old flat $\pm$0.05 was \emph{narrower than the estimator's own noise} for any series under about 16,000 points, so a true random walk was being called ROUGH or SMOOTH roughly a third of the time. The band now widens on short series instead of claiming a precision the fit does not have. \texttt{h\_sd} comes from an empirical law fitted to simulation (\texttt{0.29$\cdot$n\textasciicircum{}$-$0.267}), not a closed form --- stated plainly so you know what it rests on.
+
+\section{PRECEDENCE --- which of these two moved first?}\label{sec:precedence}
+
+Returns the normalised signed area enclosed by the joint path of two fields.
+
+\begin{lstlisting}[language=SQL]
+PRECEDENCE btc_l2 ON signed_volume, log_mid ALONG seq;
+\end{lstlisting}
+
+\begin{lstlisting}[language=Shell]
+curl -s -XPOST https://your-gigi-host/v1/bundles/btc_l2/precedence \
+     -H 'Content-Type: application/json' \
+     -d '{"x":"signed_volume","y":"log_mid","order":"seq"}'
+\end{lstlisting}
+
+\subsection{Read it}
+
+\begin{lstlisting}
+{ "x": "signed_volume", "y": "log_mid", "n": 4096,
+  "area": -0.768, "leads": "y", "magnitude": 0.768,
+  "reads": ["'log_mid' leads 'signed_volume' ..."] }
+\end{lstlisting}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{\texttt{area}} & \textbf{meaning} \\
+\midrule
+\textbf{> 0} & **\texttt{x} leads \texttt{y}** --- x moves first, y follows \\
+\textbf{< 0} & **\texttt{y} leads \texttt{x}** \\
+$\approx$ 0 & simultaneous \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Swapping the arguments negates the area exactly. \texttt{magnitude} is how pronounced the lead is, not how confident you should be.
+
+\begin{infobox}[{PRECEDENCE now ships a significance test --- read \texttt{p\_value}, not \texttt{area}}]
+\texttt{area} alone \textbf{cannot} separate a real lead from noise, and you cannot judge it by eye, because the L\'evy area does not behave like a correlation: it does not concentrate as you add data. On independent series with no relationship, \texttt{|area|} has a spread near 0.5 at n = 512 and \emph{the same} spread at n = 32,768.
+
+Worse, that noise floor is \textbf{not a constant.} It tracks how rough your data is --- precisely what TEXTURE measures:
+
+| increments | TEXTURE reads | true noise floor | |---|---|---| | strongly mean-reverting | ROUGH | \textbf{0.006} | | random walk | RANDOM\_WALK | 0.458 | | strongly trending | SMOOTH | \textbf{1.046} |
+
+A factor of 160. So the response now carries a **\texttt{p\_value}\textbf{ from a rotation test built on \emph{your} data: one channel's increments are circularly rotated, which destroys any lead relationship while preserving that channel's own autocorrelation exactly, and the observed area is ranked against 199 such surrogates. Measured false-positive rate across that whole roughness range: }4.3\% / 4.0\% / 3.3\% / 6.3\% / 6.7\%** against a nominal 5\%.
+
+| field | meaning | |---|---| | \texttt{p\_value} | probability of an area this large with no lead relationship | | \texttt{null\_sd} | the noise floor for \emph{this} pair --- expect it to vary a lot | | \texttt{significant} | \texttt{p\_value <= 0.05} | | \texttt{null\_n} | records the null was built from |
+
+**\texttt{significant: false} does not mean "no lead."** It means this window cannot establish one. That is the common case, and it is not a defect --- it is what honest lead-lag measurement looks like on a single window.
+
+\#\#\# How to actually use it: aggregate
+
+A single window detects a genuine planted lead only about \textbf{20\%} of the time. But the \emph{sign} is right \textbf{99.5\%} of the time when a lead exists, and the estimate is tightly clustered (sd 0.14 with a real lead, against 0.48 under the null). So the power is in repetition:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+\item Measure the same pair across many independent windows or sessions.
+\item Average the \textbf{signed} \texttt{area} and test that mean against zero.
+\item Measured: twenty windows separate from the null at \textbf{z = 14.5}.
+\end{itemize}
+
+This is not a workaround. Lead-lag is a persistent structural property, so measuring it repeatedly is what you should want to do anyway. Do not rank instruments on a single window's \texttt{|area|}.
+
+\end{infobox}
+
+\subsection{The property you're paying for}
+
+Under time warps that preserve event order (\texttt{u$^2$}, \texttt{$\sqrt{}$u}, \texttt{u$^3$}), \textbf{0 of 6 instrument pairs moved} --- identical to six decimal places. The grid-based method on the same data moved on \textbf{3 of 6}, and one pair (\texttt{sol-ltc}) flipped from $-$1 to +2: it reversed which instrument leads, from the clock alone.
+
+There is no bin width to choose, and therefore none to get wrong.
+
+\subsection{On real tape}
+
+BTC $-$0.768, ETH $-$0.444, SOL $-$0.034 --- flow leading price on the liquid books. LTC \textbf{+0.408} --- price leading, flow chasing. LTC is the same instrument TEXTURE reads as roughest. Two independent measurements, same verdict, neither built to agree with the other.
+
+\textbf{Honest limit.} Grid-free is not the same as robust to missing data. Thin the events and the answer moves, because deleting vertices genuinely changes the path. What you are immune to is \emph{your own arbitrary choice of clock} --- not gaps in the feed.
+
+\section{CADENCE --- is this arriving steadily, or in gulps?}\label{sec:gigi-cadence}
+
+This one reads your timestamps, and it returns \textbf{two} numbers. Always both.
+
+\begin{lstlisting}[language=SQL]
+CADENCE btc_trades ON ts_exch;
+\end{lstlisting}
+
+\begin{lstlisting}[language=Shell]
+curl -s -XPOST https://your-gigi-host/v1/bundles/btc_trades/cadence \
+     -H 'Content-Type: application/json' \
+     -d '{"time":"ts_exch"}'
+\end{lstlisting}
+
+\begin{warningbox}[{The parameter is \texttt{time}, not \texttt{order}}]
+TEXTURE and PRECEDENCE take an \textbf{ordinal} sort key --- any increasing field works and the values are ignored. CADENCE needs a \textbf{cardinal} clock, where the values \emph{are} the measurement.
+
+If you copy a working TEXTURE call and pass a row index, every gap is identical, and the statistic is then exactly zero --- a maximally damning "your feed is metered" verdict on a perfectly healthy stream. CADENCE refuses that input by name and points you back at the verb you actually wanted.
+
+Write timestamps as \textbf{epoch seconds or milliseconds}. Epoch \emph{nanoseconds} exceed the range where a float holds every integer, so a 2026 nanosecond stamp is only precise to \textasciitilde{}256 ns. CADENCE handles integer stamps correctly by rebasing them before conversion, but seconds or millis are less to think about.
+
+\end{warningbox}
+
+\subsection{Read it}
+
+\begin{lstlisting}
+{ "time_field": "ts_exch", "n_events": 4096, "n_gaps": 4095,
+  "index": 1.510, "index_z": 32.6, "null_sd": 0.0156,
+  "index_blocked": 1.431, "block_len": 64, "n_blocks": 63,
+  "memory": 0.5635, "memory_z": 36.1,
+  "verdict": "BURSTY", "memory_verdict": "PERSISTENT",
+  "reads": ["index = 1.510 (+32.6 sd): arrivals are UNEVEN ...", "..."] }
+\end{lstlisting}
+
+**\texttt{index} --- how uneven the spacing is.**
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{5.4cm}p{8.0cm}@{}}
+\toprule
+\textbf{} & \textbf{} \\
+\midrule
+$\approx$ 1 & memoryless arrivals --- the ordinary, healthy state \\
+\textbf{> 1} & \textbf{BURSTY} --- the stream comes in gulps rather than a steady drip \\
+\textbf{< 1} & \textbf{THROTTLED} --- \emph{more regular than random}. See below; this is the one to wire to a pager \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+**\texttt{memory} --- whether the unevenness persists.**
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{5.4cm}p{8.0cm}@{}}
+\toprule
+\textbf{} & \textbf{} \\
+\midrule
+\textbf{> 0} & \textbf{PERSISTENT} --- quiet follows quiet, busy follows busy. The stream has a state and stays in it \\
+$\approx$ 0 & \textbf{MEMORYLESS} --- the unevenness is in the \emph{distribution} of gaps, not their order \\
+\textbf{< 0} & \textbf{ALTERNATING} --- a long gap tends to be followed by a short one. Often a queue draining in batches \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+**\texttt{index\_blocked} is \texttt{null} when there are fewer than two blocks of data** (under \textasciitilde{}128 gaps at the default block of 64). It is deliberately absent rather than a placeholder \texttt{0.0}, which would read as "no structure at any scale" instead of "not enough data to look". \texttt{n\_blocks} is 0 in that case.
+
+\texttt{index\_z} and \texttt{memory\_z} are standard deviations from the memoryless null, and the verdict bands are the null $\pm$2 sd --- computed from a closed form at your actual \texttt{n}, not thresholds anyone picked. \texttt{null\_sd} is reported so you can see the ruler.
+
+\subsection{Why two numbers and not one}
+
+Because one cannot be honest on its own.
+
+\texttt{index} sums over the gaps, and \textbf{addition does not care about order}. So it \emph{provably cannot} distinguish a self-exciting stream from the same gaps in scrambled order --- measured, a clustering process and its own shuffle both read 1.448, a difference of 0.000. That is arithmetic, not a small-sample weakness.
+
+Which means a high \texttt{index} alone does \textbf{not} mean clustering. An independent process with a heavy-tailed gap distribution and \emph{zero} memory reads 1.305, where live BTC tape reads 1.332. You could not tell them apart from that number.
+
+Three streams \texttt{index} calls identically bursty, separated by \texttt{memory}:
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.6cm}p{4.6cm}p{5.0cm}@{}}
+\toprule
+\textbf{stream} & \textbf{\texttt{index}} & \textbf{\texttt{memory}} \\
+\midrule
+long-tailed but independent gaps & BURSTY & MEMORYLESS \\
+a batch job on a fixed rhythm & BURSTY & ALTERNATING \\
+genuine load waves --- busy, then quiet, staying in each & BURSTY & PERSISTENT \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Only the third is a stream where \emph{being busy now tells you anything about next}.
+
+The two are non-overlapping by construction: \texttt{index} cannot see order, \texttt{memory} cannot see spread. That's a stronger guarantee than a correlation measured once on one dataset.
+
+\subsection{The reading a desk can use tomorrow}
+
+**\texttt{index} below 1 is a feed-quality alarm.** Real sources are not more regular than random. If you see \texttt{THROTTLED}, something is metering the stream between the source and you --- a poll interval, a rate limiter, a fixed flush --- and every number computed downstream is describing your own plumbing rather than the market.
+
+It is not subtle. Releasing BTC events on a fixed shared hold collapses the reading exactly as you'd predict:
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{hold} & \textbf{\texttt{index}} \\
+\midrule
+0.5 s & 0.835 \\
+1 s & 0.588 \\
+5 s & 0.076 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A per-bar count statistic cannot do this job: the Fano factor of SOL reads 5.2 / 17.6 / 82.2 / 446.5 at 0.25 / 1 / 5 / 30 s bars --- entirely an artefact of the bar you chose. CADENCE's worst parameter sensitivity is 1.73$\times$ across a 32$\times$ range of window size.
+
+\subsection{\texttt{index\_blocked} --- read this before using it}
+
+\texttt{index\_blocked} averages the statistic over contiguous blocks. It removes drift in the arrival rate --- and, by the same mechanism, \textbf{any structure longer than one block.} It is a high-pass filter whose corner is the block length:
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{burst length} & \textbf{retained} \\
+\midrule
+4 gaps (well inside a block) & 97.6\% \\
+64 gaps (one block) & 62.8\% \\
+256 gaps (spanning blocks) & 32.4\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+So \texttt{index / index\_blocked} separates \emph{structure shorter than a block} from \emph{structure longer than a block}. It does \textbf{not} separate clustering from rate drift --- to this statistic, slow clustering and drift are the same object, and no reading of the ratio can tell them apart.
+
+\texttt{block} is therefore specified in \textbf{gaps per block} (default 64), not as a block count. Fixing the count would let the filter corner drift with your sample size and silently change what you're measuring between two calls on the same stream.
+
+\section{Using all three together}\label{sec:together}
+
+They read different things, so they can corroborate each other:
+
+\begin{lstlisting}[language=Shell]
+# Same bundle, three questions.
+curl -s -XPOST $GIGI/v1/bundles/ltc_l2/texture \
+     -H 'Content-Type: application/json' -d '{"field":"mid","order":"seq"}'
+
+curl -s -XPOST $GIGI/v1/bundles/ltc_l2/precedence \
+     -H 'Content-Type: application/json' \
+     -d '{"x":"signed_volume","y":"log_mid","order":"seq"}'
+
+curl -s -XPOST $GIGI/v1/bundles/ltc_l2/cadence \
+     -H 'Content-Type: application/json' -d '{"time":"ts_exch"}'
+\end{lstlisting}
+
+A sensible order of operations:
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+\item \textbf{CADENCE first.} If it reads \texttt{THROTTLED}, stop --- you are measuring your own
+\end{enumerate}
+
+pipe, and the other two verbs will faithfully describe an artefact.
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+\item \textbf{TEXTURE next.} Rough tape means chop; size accordingly or stand aside.
+\item \textbf{PRECEDENCE last}, once you trust the feed and know the regime, to ask what
+\end{enumerate}
+
+is actually leading --- and \textbf{across several windows, not one}. Check \texttt{significant}; if it is false, that window cannot establish a lead. Collect the signed \texttt{area} per window and test the mean against zero. One window detects a genuine lead only about 20\% of the time; twenty separate at z = 14.5.
+
+A worked aggregation, in the shape a session-close job would run it:
+
+\begin{lstlisting}[language=Shell]
+# One reading per session window, collected over N sessions.
+for b in sess_2026_08_01 sess_2026_08_04 sess_2026_08_05 ... ; do
+  curl -s -XPOST $GIGI/v1/bundles/$b/precedence        -H 'Content-Type: application/json'        -d '{"x":"signed_volume","y":"log_mid","order":"seq"}'     | python -c "import json,sys; r=json.load(sys.stdin); print(r['area'])"
+done
+# Then: mean(areas) / (sd(areas)/sqrt(N)).  |z| > 2 is your lead.
+\end{lstlisting}
+
+Note you are testing the mean of the \textbf{signed} area. Averaging \texttt{|area|} throws away the direction, which is the part that is right 99.5\% of the time.
+
+On LTC, TEXTURE reads roughest and PRECEDENCE reads price-leads-flow --- two independent measurements agreeing about the same instrument without being designed to.
+
+\section{When they refuse}\label{sec:gigi-when-they-refuse}
+
+All three refuse rather than return a number they can't stand behind. \textbf{This is a feature.} The failure mode being avoided is a confident value computed from something that was never really measured.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{5.4cm}p{8.0cm}@{}}
+\toprule
+\textbf{you sent} & \textbf{you get} \\
+\midrule
+a bundle that doesn't exist & \textbf{404}, naming the bundle \\
+a field that doesn't exist & \textbf{422}, naming \emph{that specific field} \\
+a text field & \textbf{422} --- never a silent coercion to 0.0 \\
+too few rows & \textbf{422}, stating the requirement \emph{and your actual count} \\
+a field that never moves & \textbf{422} --- no fabricated exponent \\
+more rows than the cap & \textbf{422}, stating the cap --- never an OOM or a silent \texttt{null} \\
+\textbf{TEXTURE / PRECEDENCE:} no ordering field on a hash-stored bundle & \textbf{422}, naming the bundle and its storage mode \\
+\textbf{PRECEDENCE:} \texttt{x} and \texttt{y} are the same field & \textbf{422} --- a signal cannot precede itself \\
+\textbf{CADENCE:} a row index as \texttt{time} & \textbf{422} --- "that is a counter, not a clock", pointing at TEXTURE/PRECEDENCE \\
+\textbf{CADENCE:} timestamps too coarse & \textbf{422}, telling you the ratio measured and the ratio needed \\
+\textbf{CADENCE:} timestamps on a \textbf{coarse} lattice & \textbf{422} --- fires when the median gap is under 10x the quantum, or when over 10\% of gaps are bit-identical. A \emph{fine} lattice is measured normally: 1 ms stamps with \textasciitilde{}50 ms gaps are fine, 100 ms stamps are not \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Rows with missing or non-finite values are **skipped and counted in \texttt{notes}**, never coerced to zero. Check \texttt{notes} and \texttt{n} if a result surprises you --- you may be measuring fewer records than you loaded.
+
+\section{What we do not claim}\label{sec:gigi-what-we-do-not-claim}
+
+\textbf{Every one of the three now returns its own uncertainty.} TEXTURE gives \texttt{h\_sd} and the band derived from it, PRECEDENCE gives \texttt{p\_value} and \texttt{null\_sd} from a null built on your data, CADENCE gives \texttt{null\_sd} and z-scores from a closed form. If a number arrives without a way to judge it, that is a bug --- tell us.
+
+\textbf{None of these predicts anything, and none of them is an edge.} They are measurement instruments with stated noise floors, gates that refuse rather than guess, and receipts you can reproduce in an afternoon.
+
+\textbf{The mathematics is not new and we don't pretend otherwise.} TEXTURE is the classical scaling estimator in the Mandelbrot--Van Ness lineage. PRECEDENCE is the L\'evy area --- the level-2 antisymmetric signature term (Chen 1957; Lyons' rough-path theory). CADENCE uses the Greenwood statistic (1946) with the standard exponential-spacings null. What is ours is that all three are queryable on a live bundle, in one call, with derived bands and honest refusal paths.
+
+\textbf{CADENCE in a trading context is diagnostics-only.} Its economic value is unproven --- the test that would establish whether it saves anything on execution has not been run. Use it to judge your feed and describe your session. Do not gate entries on it.
+
+\textbf{One session is one sample.} Every measured number quoted here comes from specific tape on specific days and is offered as a receipt you can reproduce, not as a stable constant.
+
+\section{Reference}\label{sec:gigi-reference}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{} & \textbf{TEXTURE} & \textbf{PRECEDENCE} & \textbf{CADENCE} \\
+\midrule
+GQL & \texttt{TEXTURE b ON f [ALONG o]} & \texttt{PRECEDENCE b ON x, y [ALONG o]} & \texttt{CADENCE b ON t} \\
+REST & \texttt{POST /v1/bundles/\{name\}/texture} & \texttt{.../precedence} & \texttt{.../cadence} \\
+required & \texttt{field} & \texttt{x}, \texttt{y} & \texttt{time} \\
+optional & \texttt{order}/\texttt{ALONG}, \texttt{q}, \texttt{min\_lag}, \texttt{max\_lag} & \texttt{order}/\texttt{ALONG} & \texttt{block} \\
+significance & \texttt{h\_sd} (band = 0.5 $\pm$ 2$\cdot$h\_sd) & \texttt{p\_value}, \texttt{null\_sd}, \texttt{significant} & \texttt{index\_z}, \texttt{memory\_z}, \texttt{null\_sd} \\
+min rows & 64 & 32 & 64 distinct stamps \\
+verdicts & \texttt{ROUGH} \texttt{RANDOM\_WALK} \texttt{SMOOTH} & \texttt{leads}: \texttt{x} \texttt{y} \texttt{neither} & \texttt{BURSTY} \texttt{STEADY} \texttt{THROTTLED} + \texttt{PERSISTENT} \texttt{MEMORYLESS} \texttt{ALTERNATING} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Runnable examples with planted answers and deliberate refusals: [\texttt{examples/texture\_precedence\_walkthrough.py}](../examples/texture\_precedence\_walkthrough.py) $\cdot$ [\texttt{examples/cadence\_walkthrough.py}](../examples/cadence\_walkthrough.py)
+
+Machine-readable index of every ML endpoint, these three included: \texttt{GET /v1/ml} against any running instance.

@@ -20,6 +20,11 @@
 # load-bearing source, not scratch.
 !theory/**/*.tex
 !GIGI_Provisional_Patent.tex
+# Exception: a COMMITTED artifact, not build noise. The HELICITY customer
+# manual \inputs it, and tests/generated_tex_is_current.rs gates it against
+# docs/SHAPE_VERBS.md so the two cannot drift. Regenerate with
+# scripts/shape_verbs_to_tex.py -- never hand-edit it.
+!docs/generated/shape_verbs.tex
 
 # Test output
 test_output*.txt

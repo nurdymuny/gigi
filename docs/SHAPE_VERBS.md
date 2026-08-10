@@ -142,12 +142,12 @@ All three run against a bundle you have already loaded. Minimum shapes:
 Base fields and fiber fields both work — you don't have to care which side of the
 schema a column landed on.
 
-> ### ⚠ Name an ordering field. Do not rely on the default.
+> ### Name an ordering field
 >
-> TEXTURE and PRECEDENCE read **record order**, and if you omit `order` /
-> `ALONG` they read the order the bundle iterates in. That equals the order you
-> inserted rows **only on sequentially stored bundles.** A bundle with a **TEXT
-> base field** is stored *hashed* and iterates in an arbitrary order.
+> TEXTURE and PRECEDENCE read **record order**. If you omit `order` / `ALONG`
+> they read the order the bundle iterates in, and that equals the order you
+> inserted rows **only on sequentially stored bundles**. A bundle with a **TEXT
+> base field** is stored *hashed* and iterates arbitrarily.
 >
 > Measured on one hashed bundle, same data, same call:
 >
@@ -156,15 +156,15 @@ schema a column landed on.
 > | ordered `ALONG seq` | **+0.7536** |
 > | `order` omitted | **+0.0017** |
 >
-> A real signal flattened to nothing, with no error and no warning. **Always
-> name an ordering field** unless you know the bundle is sequential and you
-> control the insert order.
+> A real signal flattened to nothing. **This is now refused rather than
+> answered:** an order-less call on a hash-stored bundle returns 422 naming the
+> bundle, its storage mode, and the fix. You will not get a wrong number here —
+> but you will get an error, so name the field and move on.
 >
-> A related trap, now handled but worth knowing: an ordering field whose values
-> are **numeric text** (`"9"`, `"10"`) sorts numerically as of this build. If it
-> is genuinely non-numeric, it sorts lexicographically — correct for ISO-8601
-> timestamps, wrong for unpadded numbers — and `notes` says so explicitly. Read
-> `notes`.
+> A related trap, handled: an ordering field whose values are **numeric text**
+> (`"9"`, `"10"`) sorts numerically. If it is genuinely non-numeric it sorts
+> lexicographically — correct for ISO-8601 timestamps, wrong for unpadded
+> numbers — and `notes` says so explicitly. Read `notes`.
 
 Every response carries a **`reads`** array: plain-English sentences interpreting
 the numbers. You should not need this document open to act on a result. If a
@@ -207,7 +207,8 @@ Only `field` is required. `order` is optional — omit it and record order is us
   "reads": ["H = 0.312: anti-persistent — movements tend to REVERSE. Choppy; ..."] }
 ```
 
-`verdict` is `ROUGH` (H < 0.45) · `RANDOM_WALK` · `SMOOTH` (H > 0.55).
+`verdict` is `ROUGH` · `RANDOM_WALK` · `SMOOTH`, split at `0.5 ± 2·h_sd` — a
+band that adapts to your sample size rather than a fixed cutoff. See below.
 
 **Watch `r_squared`.** It is not decoration. The exponent is a straight-line fit
 in log-log; a low `r_squared` means the signal is **not self-similar** and `H`
@@ -499,7 +500,24 @@ A sensible order of operations:
    pipe, and the other two verbs will faithfully describe an artefact.
 2. **TEXTURE next.** Rough tape means chop; size accordingly or stand aside.
 3. **PRECEDENCE last**, once you trust the feed and know the regime, to ask what
-   is actually leading.
+   is actually leading — and **across several windows, not one**. Check
+   `significant`; if it is false, that window cannot establish a lead. Collect
+   the signed `area` per window and test the mean against zero. One window
+   detects a genuine lead only about 20% of the time; twenty separate at
+   z = 14.5.
+
+A worked aggregation, in the shape a session-close job would run it:
+
+```bash
+# One reading per session window, collected over N sessions.
+for b in sess_2026_08_01 sess_2026_08_04 sess_2026_08_05 ... ; do
+  curl -s -XPOST $GIGI/v1/bundles/$b/precedence        -H 'Content-Type: application/json'        -d '{"x":"signed_volume","y":"log_mid","order":"seq"}'     | python -c "import json,sys; r=json.load(sys.stdin); print(r['area'])"
+done
+# Then: mean(areas) / (sd(areas)/sqrt(N)).  |z| > 2 is your lead.
+```
+
+Note you are testing the mean of the **signed** area. Averaging `|area|` throws
+away the direction, which is the part that is right 99.5% of the time.
 
 On LTC, TEXTURE reads roughest and PRECEDENCE reads price-leads-flow — two
 independent measurements agreeing about the same instrument without being
@@ -521,6 +539,8 @@ something that was never really measured.
 | too few rows | **422**, stating the requirement *and your actual count* |
 | a field that never moves | **422** — no fabricated exponent |
 | more rows than the cap | **422**, stating the cap — never an OOM or a silent `null` |
+| **TEXTURE / PRECEDENCE:** no ordering field on a hash-stored bundle | **422**, naming the bundle and its storage mode |
+| **PRECEDENCE:** `x` and `y` are the same field | **422** — a signal cannot precede itself |
 | **CADENCE:** a row index as `time` | **422** — "that is a counter, not a clock", pointing at TEXTURE/PRECEDENCE |
 | **CADENCE:** timestamps too coarse | **422**, telling you the ratio measured and the ratio needed |
 | **CADENCE:** timestamps on a lattice | **422** — rounded feeds read as *regular* when they're actually bursty |
@@ -532,6 +552,12 @@ be measuring fewer records than you loaded.
 ---
 
 ## 9 · What we do not claim
+
+**Every one of the three now returns its own uncertainty.** TEXTURE gives
+`h_sd` and the band derived from it, PRECEDENCE gives `p_value` and `null_sd`
+from a null built on your data, CADENCE gives `null_sd` and z-scores from a
+closed form. If a number arrives without a way to judge it, that is a bug —
+tell us.
 
 **None of these predicts anything, and none of them is an edge.** They are
 measurement instruments with stated noise floors, gates that refuse rather than

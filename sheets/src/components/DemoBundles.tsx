@@ -17,6 +17,13 @@ export interface DemoBundlesProps {
    * bundle in-place instead of reloading the page.
    */
   onPickBundle?: (name: string) => void;
+  /**
+   * Ask the visitor to sign in instead of loading. Loading a demo is an
+   * engine WRITE (createBundle + insert), so a signed-out visitor got the
+   * engine's raw refusal — "HTTP 401" — printed into the card. When this
+   * is set the card never touches the engine.
+   */
+  onRequireSignIn?: () => void;
 }
 
 type EngineFieldType = "text" | "numeric" | "boolean" | "categorical" | "timestamp";
@@ -41,10 +48,17 @@ export function DemoBundles({
   existing,
   onImported,
   onPickBundle,
+  onRequireSignIn,
 }: DemoBundlesProps) {
   const [state, setState] = useState<LoadingState>({ kind: "idle" });
 
   const load = async (demo: DemoDataset) => {
+    // Signed out: this needs an engine write it cannot make. Ask for a
+    // sign-in rather than firing the request and rendering the 401.
+    if (onRequireSignIn) {
+      onRequireSignIn();
+      return;
+    }
     setState({ kind: "loading", id: demo.id, done: 0, total: demo.records });
     try {
       const parsed = parseCsv(demo.csv);

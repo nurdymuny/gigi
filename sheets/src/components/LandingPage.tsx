@@ -538,9 +538,13 @@ export function LandingPage({
           day one.
         </p>
         <div className="landing-workflows-wrap">
+          {/* LandingPage renders only for signed-out visitors, so every
+              engine write on it is guaranteed to 401. Send them to sign-in
+              instead of to the engine. */}
           <WorkflowPicker
             client={client}
             onApplied={(bundleName) => onPickBundle?.(bundleName)}
+            onRequireSignIn={onSignInClick}
           />
         </div>
       </section>
@@ -557,6 +561,7 @@ export function LandingPage({
             client={client}
             existing={new Set()}
             onPickBundle={onPickBundle}
+            onRequireSignIn={onSignInClick}
           />
         </div>
       </section>

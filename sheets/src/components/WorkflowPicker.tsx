@@ -11,6 +11,12 @@ export interface WorkflowPickerProps {
   client: SheetsClient;
   /** Called once the workflow is applied — passes the bundle name to open. */
   onApplied: (bundleName: string, template: WorkflowTemplate) => void;
+  /**
+   * Ask the visitor to sign in instead of applying. Applying a template
+   * creates and seeds bundles — engine writes — so a signed-out visitor
+   * got the raw refusal text in the card. When set, nothing is sent.
+   */
+  onRequireSignIn?: () => void;
 }
 
 type PickerState =
@@ -28,10 +34,20 @@ type PickerState =
  * reconcile workflows over bundles; we use it here for bundle-shaping
  * templates. Both run on the same engine substrate.
  */
-export function WorkflowPicker({ client, onApplied }: WorkflowPickerProps) {
+export function WorkflowPicker({
+  client,
+  onApplied,
+  onRequireSignIn,
+}: WorkflowPickerProps) {
   const [state, setState] = useState<PickerState>({ kind: "idle" });
 
   const apply = async (template: WorkflowTemplate) => {
+    // Signed out: creating and seeding bundles needs credentials we do
+    // not have. Prompt instead of surfacing the engine's 401.
+    if (onRequireSignIn) {
+      onRequireSignIn();
+      return;
+    }
     setState({ kind: "applying", id: template.id, progress: null });
     try {
       const result = await applyWorkflow(template, client, (p) =>

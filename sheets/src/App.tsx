@@ -223,7 +223,15 @@ export function App() {
 
   return (
     <>
-      {!route.bundle ? (
+      {/* A signed-out visitor goes to PickerShell even with a bundle in the
+          URL. The engine-access gate above only covers `state === "user"`,
+          so a guest following a link like /gigi/sheets/#sensors used to
+          fall straight into <BundleApp>, which fires schema() + section()
+          and — its fallback catching only 404 — painted the full
+          spreadsheet chrome around "Couldn't load bundle. HTTP 401". Every
+          bundle read needs credentials, so there is no signed-out version
+          of that screen worth rendering. */}
+      {!route.bundle || gateAccount.state === "guest" ? (
         <PickerShell
           client={client}
           requestedBundle={null}
@@ -3083,12 +3091,38 @@ function PickerShell({
   const [signInOpen, setSignInOpen] = useState<boolean>(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState<boolean>(false);
 
-  // Public landing: shown when an unauthenticated visitor hits the root
-  // path (no requested bundle, no load error). Signed-in users — and
-  // anyone who explicitly typed a bundle name — skip straight to the
-  // dashboard / not-found fallback below.
-  const showLanding =
-    account.state === "guest" && !requestedBundle && !loadError;
+  // Wait for the session before rendering anything that talks to the
+  // engine.
+  //
+  // This hook is a SECOND, independent useAccount instance — the gate in
+  // App() has its own (which is also why a page load makes two
+  // /api/auth/session calls). This one starts in "loading" regardless of
+  // what the gate already resolved, so on the first render `showLanding`
+  // below was false for a signed-out visitor, the dashboard branch ran,
+  // and <BundlePicker> mounted and immediately fired listBundles() —
+  // GET /v1/bundles against the engine with no credentials, 401. The
+  // session then resolved to "guest" and the landing page swapped in, so
+  // nothing looked wrong on screen while every signed-out visitor logged
+  // a 401 to the console.
+  //
+  // Returning the same loading panel the App-level gate uses keeps the
+  // engine untouched until we know who is asking.
+  if (account.state === "loading") {
+    return <EngineLockedPanel reason="loading" />;
+  }
+
+  // Public landing: everything a signed-out visitor gets. Signed-in users
+  // go to the dashboard / not-found fallback below.
+  //
+  // This used to be `guest && !requestedBundle && !loadError`, so a guest
+  // who followed a link to a specific bundle — or whose bundle load had
+  // already failed — fell through to the dashboard, mounted
+  // <BundlePicker>, and was shown the engine's raw refusal: "Couldn't
+  // reach the engine. Invalid or missing API key. status 401". The engine
+  // requires credentials for every bundle read, so there was never a
+  // version of that path where a guest saw data; the only thing the extra
+  // conditions bought was which error they hit first.
+  const showLanding = account.state === "guest";
 
   if (showLanding) {
     return (
@@ -3142,19 +3176,16 @@ function PickerShell({
                 ? `Signed in as ${account.email}`
                 : "Sign in"
             }
+            /* No "loading" arm below: this shell returns the loading panel
+               before it gets here, so the only states that reach the topbar
+               are "user" and "guest". */
             title={
               account.state === "user"
                 ? `${account.email} · click for account menu`
-                : account.state === "loading"
-                  ? "Checking session…"
-                  : "Sign in (optional) — save views to the cloud"
+                : "Sign in (optional) — save views to the cloud"
             }
           >
-            {account.state === "user"
-              ? account.initials
-              : account.state === "loading"
-                ? "…"
-                : "↪"}
+            {account.state === "user" ? account.initials : "↪"}
           </button>
         </div>
       </header>

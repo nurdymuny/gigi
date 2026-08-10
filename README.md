@@ -1,5 +1,11 @@
 # GIGI
 
+> **Using a coding agent on this repo?** Read **[`AGENTS.md`](AGENTS.md)** first.
+> It documents the traps that make agents report GIGI as broken when it is not —
+> a refusal mistaken for a bug, a stale binary, a `{"status":"ok"}` that executed
+> nothing. Every one of them actually happened.
+
+
 **Geometric Intrinsic Global Index** — a fiber-bundle database engine.
 
 > Records are sections of a fiber bundle. Keys live on the base space; values

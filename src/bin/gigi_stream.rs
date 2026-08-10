@@ -1201,10 +1201,54 @@ fn coerce_record_against_schema(
     Ok(out)
 }
 
+/// A record as JSON, with keys in a DETERMINISTIC order.
+///
+/// `Record` is a `HashMap`, so iterating it yields a different order per process
+/// — two identical GQL calls returned semantically equal but byte-different
+/// bodies. That breaks response hashing, cache keys, golden-file tests and diffs
+/// on the client side, all for no benefit. Sorting costs one `sort` per row and
+/// makes identical requests produce identical bytes, which is what the REST
+/// handlers already do (they build their objects in a fixed literal order).
+/// `Json<T>`, but a rejection comes back as `{"error": "..."}` like every other
+/// refusal in this API.
+///
+/// Axum's own `Json` extractor rejects with PLAIN TEXT. So a customer who sent a
+/// missing required field or a malformed body got a 422/400 whose body was not
+/// JSON, while every domain refusal from the same endpoint was
+/// `{"error": ...}`. An SDK then has to special-case the parse by status code
+/// and content type, and a generated client that assumes one envelope simply
+/// breaks. Flagged by customer acceptance testing 2026-08-10.
+///
+/// The status code axum chose is preserved — only the body shape changes.
+pub struct ApiJson<T>(pub T);
+
+impl<S, T> axum::extract::FromRequest<S> for ApiJson<T>
+where
+    T: serde::de::DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, Json<ErrorResponse>);
+
+    async fn from_request(
+        req: axum::extract::Request,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        match Json::<T>::from_request(req, state).await {
+            Ok(Json(value)) => Ok(ApiJson(value)),
+            Err(rejection) => Err((
+                rejection.status(),
+                Json(ErrorResponse { error: rejection.body_text() }),
+            )),
+        }
+    }
+}
+
 fn record_to_json(record: &Record) -> serde_json::Value {
-    let mut map = serde_json::Map::new();
-    for (k, v) in record {
-        map.insert(k.clone(), value_to_json(v));
+    let mut keys: Vec<&String> = record.keys().collect();
+    keys.sort_unstable();
+    let mut map = serde_json::Map::with_capacity(keys.len());
+    for k in keys {
+        map.insert(k.clone(), value_to_json(&record[k]));
     }
     serde_json::Value::Object(map)
 }
@@ -9582,7 +9626,7 @@ async fn bundle_solve(
 async fn bundle_texture(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
-    Json(req): Json<TextureRequest>,
+    ApiJson(req): ApiJson<TextureRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
     let t = match texture(&engine, &name, &req.field, req.order.clone(),
@@ -9611,7 +9655,7 @@ async fn bundle_texture(
 async fn bundle_precedence(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
-    Json(req): Json<PrecedenceRequest>,
+    ApiJson(req): ApiJson<PrecedenceRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
     let p = match precedence(&engine, &name, &req.x, &req.y, req.order.clone()) {
@@ -9645,7 +9689,7 @@ async fn bundle_precedence(
 async fn bundle_cadence(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
-    Json(req): Json<CadenceRequest>,
+    ApiJson(req): ApiJson<CadenceRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
     let c = match cadence(&engine, &name, &req.time, req.block) {

@@ -1567,6 +1567,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "required": ["bundle", "field", "n", "exponent", "r_squared", "n_lags", "h_sd", "verdict", "reads", "notes"],
                   "properties": {
                     "bundle": {"type": "string"},
                     "field": {"type": "string"},
@@ -1635,6 +1636,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "required": ["bundle", "x", "y", "n", "area", "leads", "magnitude", "p_value", "null_sd", "significant", "null_n", "reads", "notes"],
                   "properties": {
                     "bundle": {"type": "string"},
                     "x": {"type": "string"},
@@ -1712,6 +1714,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "required": ["bundle", "time_field", "n_events", "n_gaps", "index", "index_z", "null_sd", "index_blocked", "block_len", "n_blocks", "memory", "memory_z", "verdict", "memory_verdict", "reads", "notes"],
                   "properties": {
                     "bundle": {"type": "string"},
                     "time_field": {"type": "string"},

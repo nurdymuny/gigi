@@ -239,6 +239,20 @@ pub fn cadence(
     let n_events = stamps.len();
 
     if n_events < MIN_CADENCE_N {
+        // Name the TYPE problem when that is what it is. "got 0 usable
+        // timestamps from 4096 records" is technically true for a TEXT column
+        // but reads as thin data, sending the caller to look at their row count
+        // instead of their schema.
+        if total > 0 && stamps.is_empty() {
+            let declared = schema.base_fields.iter()
+                .chain(schema.fiber_fields.iter())
+                .find(|d| d.name == time)
+                .map(|d| format!("{:?}", d.field_type))
+                .unwrap_or_else(|| "of unknown type".to_string());
+            return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
+                "time field '{}' is {} — cadence needs a NUMERIC clock, and not one of the {} records carried a numeric value for it. `time` is a cardinal timestamp (epoch seconds or milliseconds), not a label or a sort key.",
+                time, declared, total)));
+        }
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
             "cadence needs at least {} distinct usable timestamps in '{}' \
              (got {} from {} records)",

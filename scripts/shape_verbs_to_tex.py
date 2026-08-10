@@ -83,29 +83,68 @@ def esc_code(t: str) -> str:
     return t
 
 
-def inline(s: str) -> str:
-    """Markdown inline -> LaTeX, protecting code spans from prose escaping."""
-    out, i = [], 0
-    # `code` first so its contents never see bold/italic handling.
-    for m in re.finditer(r"`([^`]+)`", s):
-        out.append(("text", s[i:m.start()]))
-        out.append(("code", m.group(1)))
-        i = m.end()
-    out.append(("text", s[i:]))
+# A long path inside \texttt is one unbreakable token, so TeX must either set it
+# whole or move the entire thing to the next line -- and when the preceding prose
+# already fills most of the measure it does neither well. That is how
+# `examples/texture_precedence_walkthrough.py` ended up 88 pt past the margin
+# even after the link markup was fixed. Offering breaks after `/` and `_` lets
+# TeX split a path the way a reader would. Zero-width, so nothing moves unless a
+# break is actually taken, and short spans are left alone: `min_lag` wrapping
+# mid-word would be worse than the problem.
+BREAK_AFTER = ("/", r"\_", "-", ".")
+MIN_BREAKABLE = 24
 
-    parts = []
-    for kind, chunk in out:
-        if kind == "code":
-            parts.append(r"\texttt{" + esc_code(chunk) + "}")
-            continue
-        # **bold** then *italic*, on escaped prose, using placeholders so the
-        # escaping below cannot mangle the markers.
-        chunk = re.sub(r"\*\*(.+?)\*\*", lambda m: "\x01" + m.group(1) + "\x02", chunk)
-        chunk = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", lambda m: "\x03" + m.group(1) + "\x02", chunk)
-        chunk = esc_text(chunk)
-        chunk = chunk.replace("\x01", r"\textbf{").replace("\x03", r"\emph{").replace("\x02", "}")
-        parts.append(chunk)
-    return "".join(parts)
+
+def breakable(escaped: str) -> str:
+    """Allow line breaks inside a long escaped code span."""
+    if len(escaped) < MIN_BREAKABLE:
+        return escaped
+    for sep in BREAK_AFTER:
+        escaped = escaped.replace(sep, sep + r"\allowbreak{}")
+    return escaped
+
+
+# Markdown links. Every target in SHAPE_VERBS.md is a repository-relative path
+# and every label already spells that path out, so a PDF reader gains nothing
+# from the target -- while an unconverted `[label](target)` both prints the
+# brackets literally and pushed one line 334 pt past the margin. The `](` is
+# what makes this safe against code spans like `[ALONG o]`, which never have it.
+LINK = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
+
+
+def inline(s: str) -> str:
+    """Markdown inline -> LaTeX, protecting code spans from prose escaping.
+
+    Code spans are lifted out to opaque placeholders rather than converted in
+    place, because emphasis is allowed to span them. Converting them in place
+    chopped the string into fragments and left `**skipped and counted in
+    `notes`**` with its markers in two different fragments, so the bold regex
+    matched neither -- and four literal asterisks reached the customer PDF.
+    A placeholder keeps the run whole while still shielding the code from the
+    prose escaper.
+    """
+    s = LINK.sub(lambda m: m.group(1), s)
+
+    spans: list[str] = []
+
+    def stash(m: re.Match) -> str:
+        spans.append(m.group(1))
+        return "\x00%d\x00" % (len(spans) - 1)
+
+    s = re.sub(r"`([^`]+)`", stash, s)
+
+    # **bold** then *italic*, via placeholders so the escaper cannot mangle the
+    # markers. `\x00` digits survive both passes untouched.
+    s = re.sub(r"\*\*(.+?)\*\*", lambda m: "\x01" + m.group(1) + "\x02", s)
+    s = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", lambda m: "\x03" + m.group(1) + "\x02", s)
+    s = esc_text(s)
+    s = s.replace("\x01", r"\textbf{").replace("\x03", r"\emph{").replace("\x02", "}")
+
+    return re.sub(
+        r"\x00(\d+)\x00",
+        lambda m: r"\texttt{" + breakable(esc_code(spans[int(m.group(1))])) + "}",
+        s,
+    )
 
 
 # Sections the customer manual cross-references by name. Slugs are derived from
@@ -147,17 +186,71 @@ def ascii_listing(line: str) -> str:
     return "".join(c if ord(c) < 128 else "?" for c in line)
 
 
-def emit_table(rows: list[str]) -> list[str]:
-    """A markdown pipe table -> booktabs tabular."""
+# The manual's text block is 16.0 cm (A4, 2.5 cm margins). A tabular wider than
+# that runs off the page, and LaTeX only mutters `Overfull \hbox` and carries on
+# -- so the PDF ships with a truncated table and nothing fails. The Reference
+# table did exactly that: four columns, 251 pt over, the CADENCE column sheared
+# off at the paper's edge in the customer PDF.
+TEXT_WIDTH_CM = 16.0
+# Inside a tcolorbox the measure is narrower by the box's own left and right
+# padding plus its rule, about 6 mm a side in the manual's house style.
+BOX_WIDTH_CM = 14.8
+COLSEP_CM = 0.4218                  # 2 x \tabcolsep at the default 6 pt
+SAFETY_CM = 0.15
+CHAR_CM = 5.0 / 28.4527             # conservative width of one \small tt char
+
+# Widths already checked by eye for the two- and three-column shapes; the
+# allocator below handles every other shape, which is where the bug was.
+TUNED = {2: [5.4, 8.0], 3: [3.6, 4.6, 5.0]}
+
+
+def column_widths(cols: list[list[str]],
+                  width_cm: float = TEXT_WIDTH_CM) -> list[float]:
+    """Widths in cm that fit the text block and never split a single token.
+
+    Allocating purely in proportion to content puts the 12-character header
+    `significance` in a 0.9 cm column, which overflows just as badly in the
+    other direction. So each column first claims enough room for its longest
+    unbreakable token -- `\\texttt` does not hyphenate -- and only the slack
+    left over is shared out in proportion to how much text each column holds.
+    """
+    n = len(cols)
+    budget = width_cm - (n - 1) * COLSEP_CM - SAFETY_CM
+
+    floors = [max((len(tok) for cell in col for tok in cell.split()), default=1)
+              * CHAR_CM for col in cols]
+    demand = [max((len(cell) for cell in col), default=1) for col in cols]
+
+    slack = budget - sum(floors)
+    if slack <= 0:
+        # Even the longest tokens do not fit. Nothing can be laid out without
+        # some overflow, so share the shortfall rather than pick a victim.
+        scale = budget / sum(floors)
+        return [f * scale for f in floors]
+
+    return [f + slack * d / sum(demand) for f, d in zip(floors, demand)]
+
+
+def emit_table(rows: list[str], width_cm: float = TEXT_WIDTH_CM) -> list[str]:
+    """A markdown pipe table -> booktabs tabular.
+
+    `width_cm` is the measure the table has to fit. Inside a tcolorbox that is
+    narrower than the text block by the box's own padding, so callers there
+    pass BOX_WIDTH_CM.
+    """
     cells = [[c.strip() for c in r.strip().strip("|").split("|")] for r in rows]
     header, body = cells[0], cells[2:]          # cells[1] is the --- separator
     n = len(header)
     body = [r + [""] * (n - len(r)) if len(r) < n else r[:n] for r in body]
 
-    widest = max((len(c) for r in [header] + body for c in r), default=0)
-    if widest > 44 and n <= 3:
-        widths = {2: ["5.4cm", "8.0cm"], 3: ["3.6cm", "4.6cm", "5.0cm"]}[n]
-        spec = "".join("p{%s}" % w for w in widths)
+    cols = [[r[i] for r in [header] + body] for i in range(n)]
+    widest = max((len(c) for col in cols for c in col), default=0)
+    if widest > 44:
+        widths = TUNED.get(n) or column_widths(cols, width_cm)
+        # raggedright: justified p-columns full of \texttt stretch interword
+        # space into gaps, because monospace tokens will not compress.
+        spec = "".join(r">{\raggedright\arraybackslash}p{%.2fcm}" % w
+                       for w in widths)
     else:
         spec = "l" * n
 
@@ -269,25 +362,62 @@ def convert(md: str) -> str:
     return banner(source_sha) + "\n" + text.strip() + "\n"
 
 
+ITEM = re.compile(r"^(\s*)([-*]|\d+\.)\s+(.*)$")
+
+
+def collect_list(chunk: list[str], i: int) -> tuple[list[str], int]:
+    """Gather one list, folding wrapped continuation lines into their item.
+
+    Markdown wraps a long item by indenting the rest of it. Matching only
+    lines that *start* with a marker ended the list at the first wrap: the
+    remainder of the item became a stray unindented paragraph, and the next
+    item opened a brand new list -- which is why "1. CADENCE / 2. TEXTURE /
+    3. PRECEDENCE" printed as 1, 1, 2 with prose falling out between them.
+    """
+    items: list[str] = []
+    while i < len(chunk):
+        m = ITEM.match(chunk[i])
+        if m:
+            items.append(m.group(3).strip())
+            i += 1
+            continue
+        # Indented and non-blank directly under an item: that item continues.
+        # A blank line ends the list, which is what markdown means by it.
+        if items and chunk[i].strip() and chunk[i][:1].isspace():
+            items[-1] += " " + chunk[i].strip()
+            i += 1
+            continue
+        break
+    return items, i
+
+
 def render_body(chunk: list[str]) -> list[str]:
     """Paragraphs, bullet lists and numbered lists."""
     out: list[str] = []
     i = 0
     while i < len(chunk):
         line = chunk[i]
-        if re.match(r"^\s*[-*] ", line):
-            out.append(r"\begin{itemize}[leftmargin=*, itemsep=2pt]")
-            while i < len(chunk) and re.match(r"^\s*[-*] ", chunk[i]):
-                out.append(r"\item " + inline(re.sub(r"^\s*[-*] ", "", chunk[i])))
-                i += 1
-            out += [r"\end{itemize}", ""]
+        m = ITEM.match(line)
+        if m:
+            env = "enumerate" if m.group(2).endswith(".") else "itemize"
+            items, i = collect_list(chunk, i)
+            out.append(r"\begin{%s}[leftmargin=*, itemsep=2pt]" % env)
+            out += [r"\item " + inline(it) for it in items]
+            out += [r"\end{%s}" % env, ""]
             continue
-        if re.match(r"^\s*\d+\. ", line):
-            out.append(r"\begin{enumerate}[leftmargin=*, itemsep=2pt]")
-            while i < len(chunk) and re.match(r"^\s*\d+\. ", chunk[i]):
-                out.append(r"\item " + inline(re.sub(r"^\s*\d+\.\s*", "", chunk[i])))
+
+        # Tables. `convert` handles these at top level but this function renders
+        # the inside of every blockquote box, and it used to have no table case
+        # at all -- so a table in a warningbox fell through to the paragraph
+        # collector, which joined its rows into one line. Three of them reached
+        # the customer PDF as literal `| ordered ALONG seq | +0.7536 |` pipes.
+        if line.lstrip().startswith("|"):
+            rows = []
+            while i < len(chunk) and chunk[i].lstrip().startswith("|"):
+                rows.append(chunk[i].strip())
                 i += 1
-            out += [r"\end{enumerate}", ""]
+            if len(rows) >= 2:
+                out += emit_table(rows, BOX_WIDTH_CM) + [""]
             continue
         if line.strip() == "" or set(line.strip()) == {"-"}:
             i += 1

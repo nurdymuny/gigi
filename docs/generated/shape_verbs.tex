@@ -11,7 +11,7 @@
 
 \begin{center}
 \small
-\begin{tabular}{@{}p{3.6cm}p{4.6cm}p{5.0cm}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.60cm}>{\raggedright\arraybackslash}p{4.60cm}>{\raggedright\arraybackslash}p{5.00cm}@{}}
 \toprule
 \textbf{Your question} & \textbf{Verb} & \textbf{What it reads} \\
 \midrule
@@ -40,11 +40,11 @@ PRECEDENCE  btc_l2 ON signed_volume, log_mid ALONG seq;
 CADENCE     btc_l2 ON ts_exch;
 \end{lstlisting}
 
-\texttt{ON} names the field or fields being measured --- the same \texttt{ON} you already use on \texttt{CURVATURE btc\_l2 ON mid}.
+\texttt{ON} names the field or fields being measured --- the same \texttt{ON} you already use on \texttt{CURVATURE btc\_\allowbreak{}l2 ON mid}.
 
 \texttt{ALONG} names the \textbf{ordering field} for TEXTURE and PRECEDENCE. Omit it and record order is used. It is its own word rather than \texttt{BY} or \texttt{ORDER} on purpose: \texttt{BY} already means \emph{group by} on CURVATURE, and \texttt{ORDER} already means \emph{homology degree} on \texttt{BETTI b ORDER 1}. Reusing either would give one word two meanings in the same language.
 
-**CADENCE takes no \texttt{ALONG}** --- \texttt{ON} there is the clock itself, and its values are the whole measurement, so there is nothing to re-order it by. Writing one is an error that says so rather than being quietly ignored.
+\textbf{CADENCE takes no \texttt{ALONG}} --- \texttt{ON} there is the clock itself, and its values are the whole measurement, so there is nothing to re-order it by. Writing one is an error that says so rather than being quietly ignored.
 
 Options ride on a \texttt{WITH} clause:
 
@@ -63,13 +63,13 @@ curl -s -XPOST $GIGI/v1/bundles/btc_l2/texture \
      -d '{"field":"mid","order":"seq"}'
 \end{lstlisting}
 
-Same three verbs at \texttt{/v1/bundles/\{name\}/\{texture,precedence,cadence\}}. Use this when you want the full response --- REST additionally returns the \texttt{reads} array and the \texttt{notes} array, which GQL's row envelope does not carry.
+Same three verbs at \texttt{/\allowbreak{}v1/\allowbreak{}bundles/\allowbreak{}\{name\}/\allowbreak{}\{texture,precedence,cadence\}}. Use this when you want the full response --- REST additionally returns the \texttt{reads} array and the \texttt{notes} array, which GQL's row envelope does not carry.
 
 \subsection{Which to use}
 
 \begin{center}
 \small
-\begin{tabular}{@{}p{5.4cm}p{8.0cm}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.40cm}>{\raggedright\arraybackslash}p{8.00cm}@{}}
 \toprule
 \textbf{} & \textbf{} \\
 \midrule
@@ -125,7 +125,17 @@ TEXTURE and PRECEDENCE read \textbf{record order}. If you omit \texttt{order} / 
 
 Measured on one hashed bundle, same data, same call:
 
-| | \texttt{area} | |---|---| | ordered \texttt{ALONG seq} | \textbf{+0.7536} | | \texttt{order} omitted | \textbf{+0.0017} |
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{} & \textbf{\texttt{area}} \\
+\midrule
+ordered \texttt{ALONG seq} & \textbf{+0.7536} \\
+\texttt{order} omitted & \textbf{+0.0017} \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 A real signal flattened to nothing. \textbf{This is now refused rather than answered:} an order-less call on a hash-stored bundle returns 422 naming the bundle, its storage mode, and the fix. You will not get a wrong number here --- but you will get an error, so name the field and move on.
 
@@ -133,24 +143,17 @@ A related trap, handled: an ordering field whose values are \textbf{numeric text
 
 \end{infobox}
 
-Every response carries a **\texttt{reads}** array: plain-English sentences interpreting the numbers. You should not need this document open to act on a result. If a \texttt{reads} line ever contradicts what you expected, trust it over your assumption --- it is generated from the same numbers the verdict is.
+Every response carries a \textbf{\texttt{reads}} array: plain-English sentences interpreting the numbers. You should not need this document open to act on a result. If a \texttt{reads} line ever contradicts what you expected, trust it over your assumption --- it is generated from the same numbers the verdict is.
 
 \section{TEXTURE --- how rough is this signal?}\label{sec:texture}
 
 Returns the self-similarity (Hurst) exponent \texttt{H} of one field.
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-\item \texttt{H > $\tfrac12$} --- \textbf{persistent.} Moves tend to continue. A move is evidence of more of
-\end{itemize}
-
-the same.
-
-\begin{itemize}[leftmargin=*, itemsep=2pt]
+\item \texttt{H > $\tfrac12$} --- \textbf{persistent.} Moves tend to continue. A move is evidence of more of the same.
 \item \texttt{H = $\tfrac12$} --- a random walk. Past movement carries no directional information.
-\item \texttt{H < $\tfrac12$} --- \textbf{anti-persistent.} Moves tend to reverse. Choppy; trend-following
+\item \texttt{H < $\tfrac12$} --- \textbf{anti-persistent.} Moves tend to reverse. Choppy; trend-following on this signal fights itself.
 \end{itemize}
-
-on this signal fights itself.
 
 \subsection{Call it}
 
@@ -177,7 +180,7 @@ Only \texttt{field} is required. \texttt{order} is optional --- omit it and reco
 
 \texttt{verdict} is \texttt{ROUGH} $\cdot$ \texttt{RANDOM\_WALK} $\cdot$ \texttt{SMOOTH}, split at \texttt{0.5 $\pm$ 2$\cdot$h\_sd} --- a band that adapts to your sample size rather than a fixed cutoff. See below.
 
-**Watch \texttt{r\_squared}.** It is not decoration. The exponent is a straight-line fit in log-log; a low \texttt{r\_squared} means the signal is \textbf{not self-similar} and \texttt{H} should not be read as a single number at all. A confident-looking exponent with \texttt{r\_squared} of 0.4 is telling you the model doesn't fit, not that the tape is rough. Anything above \textasciitilde{}0.9 is a clean fit.
+\textbf{Watch \texttt{r\_squared}.} It is not decoration. The exponent is a straight-line fit in log-log; a low \texttt{r\_squared} means the signal is \textbf{not self-similar} and \texttt{H} should not be read as a single number at all. A confident-looking exponent with \texttt{r\_squared} of 0.4 is telling you the model doesn't fit, not that the tape is rough. Anything above \textasciitilde{}0.9 is a clean fit.
 
 \subsection{What it looks like on real books}
 
@@ -204,7 +207,7 @@ For calibration: it recovers a known \texttt{H} from exact fractional Brownian m
 
 The last column is the raw simulation the law was fitted to; \texttt{h\_sd} is the law evaluated at your \texttt{n}, and that is the number the service returns. They agree to about 7\%, which is the fit error and is why the law is labelled empirical.
 
-The old flat $\pm$0.05 was \emph{narrower than the estimator's own noise} for any series under about 16,000 points, so a true random walk was being called ROUGH or SMOOTH roughly a third of the time. The band now widens on short series instead of claiming a precision the fit does not have. \texttt{h\_sd} comes from an empirical law fitted to simulation (\texttt{0.29$\cdot$n\textasciicircum{}$-$0.267}), not a closed form --- stated plainly so you know what it rests on.
+The old flat $\pm$0.05 was \emph{narrower than the estimator's own noise} for any series under about 16,000 points, so a true random walk was being called ROUGH or SMOOTH roughly a third of the time. The band now widens on short series instead of claiming a precision the fit does not have. \texttt{h\_sd} comes from an empirical law fitted to simulation (\texttt{0.\allowbreak{}29$\cdot$n\textasciicircum{}$-\allowbreak{}$0.\allowbreak{}267}), not a closed form --- stated plainly so you know what it rests on.
 
 \section{PRECEDENCE --- which of these two moved first?}\label{sec:precedence}
 
@@ -234,8 +237,8 @@ curl -s -XPOST https://your-gigi-host/v1/bundles/btc_l2/precedence \
 \toprule
 \textbf{\texttt{area}} & \textbf{meaning} \\
 \midrule
-\textbf{> 0} & **\texttt{x} leads \texttt{y}** --- x moves first, y follows \\
-\textbf{< 0} & **\texttt{y} leads \texttt{x}** \\
+\textbf{> 0} & \textbf{\texttt{x} leads \texttt{y}} --- x moves first, y follows \\
+\textbf{< 0} & \textbf{\texttt{y} leads \texttt{x}} \\
 $\approx$ 0 & simultaneous \\
 \bottomrule
 \end{tabular}
@@ -248,13 +251,36 @@ Swapping the arguments negates the area exactly. \texttt{magnitude} is how prono
 
 Worse, that noise floor is \textbf{not a constant.} It tracks how rough your data is --- precisely what TEXTURE measures:
 
-| increments | TEXTURE reads | true noise floor | |---|---|---| | strongly mean-reverting | ROUGH | \textbf{0.006} | | random walk | RANDOM\_WALK | 0.458 | | strongly trending | SMOOTH | \textbf{1.046} |
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{increments} & \textbf{TEXTURE reads} & \textbf{true noise floor} \\
+\midrule
+strongly mean-reverting & ROUGH & \textbf{0.006} \\
+random walk & RANDOM\_WALK & 0.458 \\
+strongly trending & SMOOTH & \textbf{1.046} \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-A factor of 160. So the response now carries a **\texttt{p\_value}\textbf{ from a rotation test built on \emph{your} data: one channel's increments are circularly rotated, which destroys any lead relationship while preserving that channel's own autocorrelation exactly, and the observed area is ranked against 199 such surrogates. Measured false-positive rate across that whole roughness range: }4.3\% / 4.0\% / 3.3\% / 6.3\% / 6.7\%** against a nominal 5\%.
+A factor of 160. So the response now carries a \textbf{\texttt{p\_value}} from a rotation test built on \emph{your} data: one channel's increments are circularly rotated, which destroys any lead relationship while preserving that channel's own autocorrelation exactly, and the observed area is ranked against 199 such surrogates. Measured false-positive rate across that whole roughness range: \textbf{4.3\% / 4.0\% / 3.3\% / 6.3\% / 6.7\%} against a nominal 5\%.
 
-| field | meaning | |---|---| | \texttt{p\_value} | probability of an area this large with no lead relationship | | \texttt{null\_sd} | the noise floor for \emph{this} pair --- expect it to vary a lot | | \texttt{significant} | \texttt{p\_value <= 0.05} | | \texttt{null\_n} | records the null was built from |
+\begin{center}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.40cm}>{\raggedright\arraybackslash}p{8.00cm}@{}}
+\toprule
+\textbf{field} & \textbf{meaning} \\
+\midrule
+\texttt{p\_value} & probability of an area this large with no lead relationship \\
+\texttt{null\_sd} & the noise floor for \emph{this} pair --- expect it to vary a lot \\
+\texttt{significant} & \texttt{p\_value <= 0.05} \\
+\texttt{null\_n} & records the null was built from \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-**\texttt{significant: false} does not mean "no lead."** It means this window cannot establish one. That is the common case, and it is not a defect --- it is what honest lead-lag measurement looks like on a single window.
+\textbf{\texttt{significant: false} does not mean "no lead."} It means this window cannot establish one. That is the common case, and it is not a defect --- it is what honest lead-lag measurement looks like on a single window.
 
 \#\#\# How to actually use it: aggregate
 
@@ -316,11 +342,11 @@ Write timestamps as \textbf{epoch seconds or milliseconds}. Epoch \emph{nanoseco
   "reads": ["index = 1.510 (+32.6 sd): arrivals are UNEVEN ...", "..."] }
 \end{lstlisting}
 
-**\texttt{index} --- how uneven the spacing is.**
+\textbf{\texttt{index} --- how uneven the spacing is.}
 
 \begin{center}
 \small
-\begin{tabular}{@{}p{5.4cm}p{8.0cm}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.40cm}>{\raggedright\arraybackslash}p{8.00cm}@{}}
 \toprule
 \textbf{} & \textbf{} \\
 \midrule
@@ -331,11 +357,11 @@ $\approx$ 1 & memoryless arrivals --- the ordinary, healthy state \\
 \end{tabular}
 \end{center}
 
-**\texttt{memory} --- whether the unevenness persists.**
+\textbf{\texttt{memory} --- whether the unevenness persists.}
 
 \begin{center}
 \small
-\begin{tabular}{@{}p{5.4cm}p{8.0cm}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.40cm}>{\raggedright\arraybackslash}p{8.00cm}@{}}
 \toprule
 \textbf{} & \textbf{} \\
 \midrule
@@ -346,7 +372,7 @@ $\approx$ 0 & \textbf{MEMORYLESS} --- the unevenness is in the \emph{distributio
 \end{tabular}
 \end{center}
 
-**\texttt{index\_blocked} is \texttt{null} when there are fewer than two blocks of data** (under \textasciitilde{}128 gaps at the default block of 64). It is deliberately absent rather than a placeholder \texttt{0.0}, which would read as "no structure at any scale" instead of "not enough data to look". \texttt{n\_blocks} is 0 in that case.
+\textbf{\texttt{index\_blocked} is \texttt{null} when there are fewer than two blocks of data} (under \textasciitilde{}128 gaps at the default block of 64). It is deliberately absent rather than a placeholder \texttt{0.0}, which would read as "no structure at any scale" instead of "not enough data to look". \texttt{n\_blocks} is 0 in that case.
 
 \texttt{index\_z} and \texttt{memory\_z} are standard deviations from the memoryless null, and the verdict bands are the null $\pm$2 sd --- computed from a closed form at your actual \texttt{n}, not thresholds anyone picked. \texttt{null\_sd} is reported so you can see the ruler.
 
@@ -362,7 +388,7 @@ Three streams \texttt{index} calls identically bursty, separated by \texttt{memo
 
 \begin{center}
 \small
-\begin{tabular}{@{}p{3.6cm}p{4.6cm}p{5.0cm}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.60cm}>{\raggedright\arraybackslash}p{4.60cm}>{\raggedright\arraybackslash}p{5.00cm}@{}}
 \toprule
 \textbf{stream} & \textbf{\texttt{index}} & \textbf{\texttt{memory}} \\
 \midrule
@@ -379,7 +405,7 @@ The two are non-overlapping by construction: \texttt{index} cannot see order, \t
 
 \subsection{The reading a desk can use tomorrow}
 
-**\texttt{index} below 1 is a feed-quality alarm.** Real sources are not more regular than random. If you see \texttt{THROTTLED}, something is metering the stream between the source and you --- a poll interval, a rate limiter, a fixed flush --- and every number computed downstream is describing your own plumbing rather than the market.
+\textbf{\texttt{index} below 1 is a feed-quality alarm.} Real sources are not more regular than random. If you see \texttt{THROTTLED}, something is metering the stream between the source and you --- a poll interval, a rate limiter, a fixed flush --- and every number computed downstream is describing your own plumbing rather than the market.
 
 It is not subtle. Releasing BTC events on a fixed shared hold collapses the reading exactly as you'd predict:
 
@@ -439,17 +465,10 @@ curl -s -XPOST $GIGI/v1/bundles/ltc_l2/cadence \
 A sensible order of operations:
 
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-\item \textbf{CADENCE first.} If it reads \texttt{THROTTLED}, stop --- you are measuring your own
-\end{enumerate}
-
-pipe, and the other two verbs will faithfully describe an artefact.
-
-\begin{enumerate}[leftmargin=*, itemsep=2pt]
+\item \textbf{CADENCE first.} If it reads \texttt{THROTTLED}, stop --- you are measuring your own pipe, and the other two verbs will faithfully describe an artefact.
 \item \textbf{TEXTURE next.} Rough tape means chop; size accordingly or stand aside.
-\item \textbf{PRECEDENCE last}, once you trust the feed and know the regime, to ask what
+\item \textbf{PRECEDENCE last}, once you trust the feed and know the regime, to ask what is actually leading --- and \textbf{across several windows, not one}. Check \texttt{significant}; if it is false, that window cannot establish a lead. Collect the signed \texttt{area} per window and test the mean against zero. One window detects a genuine lead only about 20\% of the time; twenty separate at z = 14.5.
 \end{enumerate}
-
-is actually leading --- and \textbf{across several windows, not one}. Check \texttt{significant}; if it is false, that window cannot establish a lead. Collect the signed \texttt{area} per window and test the mean against zero. One window detects a genuine lead only about 20\% of the time; twenty separate at z = 14.5.
 
 A worked aggregation, in the shape a session-close job would run it:
 
@@ -471,7 +490,7 @@ All three refuse rather than return a number they can't stand behind. \textbf{Th
 
 \begin{center}
 \small
-\begin{tabular}{@{}p{5.4cm}p{8.0cm}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.40cm}>{\raggedright\arraybackslash}p{8.00cm}@{}}
 \toprule
 \textbf{you sent} & \textbf{you get} \\
 \midrule
@@ -490,7 +509,7 @@ more rows than the cap & \textbf{422}, stating the cap --- never an OOM or a sil
 \end{tabular}
 \end{center}
 
-Rows with missing or non-finite values are **skipped and counted in \texttt{notes}**, never coerced to zero. Check \texttt{notes} and \texttt{n} if a result surprises you --- you may be measuring fewer records than you loaded.
+Rows with missing or non-finite values are \textbf{skipped and counted in \texttt{notes}}, never coerced to zero. Check \texttt{notes} and \texttt{n} if a result surprises you --- you may be measuring fewer records than you loaded.
 
 \section{What we do not claim}\label{sec:gigi-what-we-do-not-claim}
 
@@ -508,12 +527,12 @@ Rows with missing or non-finite values are **skipped and counted in \texttt{note
 
 \begin{center}
 \small
-\begin{tabular}{@{}llll@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.31cm}>{\raggedright\arraybackslash}p{5.44cm}>{\raggedright\arraybackslash}p{3.39cm}>{\raggedright\arraybackslash}p{3.45cm}@{}}
 \toprule
 \textbf{} & \textbf{TEXTURE} & \textbf{PRECEDENCE} & \textbf{CADENCE} \\
 \midrule
 GQL & \texttt{TEXTURE b ON f [ALONG o]} & \texttt{PRECEDENCE b ON x, y [ALONG o]} & \texttt{CADENCE b ON t} \\
-REST & \texttt{POST /v1/bundles/\{name\}/texture} & \texttt{.../precedence} & \texttt{.../cadence} \\
+REST & \texttt{POST /\allowbreak{}v1/\allowbreak{}bundles/\allowbreak{}\{name\}/\allowbreak{}texture} & \texttt{.../precedence} & \texttt{.../cadence} \\
 required & \texttt{field} & \texttt{x}, \texttt{y} & \texttt{time} \\
 optional & \texttt{order}/\texttt{ALONG}, \texttt{q}, \texttt{min\_lag}, \texttt{max\_lag} & \texttt{order}/\texttt{ALONG} & \texttt{block} \\
 significance & \texttt{h\_sd} (band = 0.5 $\pm$ 2$\cdot$h\_sd) & \texttt{p\_value}, \texttt{null\_sd}, \texttt{significant} & \texttt{index\_z}, \texttt{memory\_z}, \texttt{null\_sd} \\
@@ -523,6 +542,6 @@ verdicts & \texttt{ROUGH} \texttt{RANDOM\_WALK} \texttt{SMOOTH} & \texttt{leads}
 \end{tabular}
 \end{center}
 
-Runnable examples with planted answers and deliberate refusals: [\texttt{examples/texture\_precedence\_walkthrough.py}](../examples/texture\_precedence\_walkthrough.py) $\cdot$ [\texttt{examples/cadence\_walkthrough.py}](../examples/cadence\_walkthrough.py)
+Runnable examples with planted answers and deliberate refusals: \texttt{examples/\allowbreak{}texture\_\allowbreak{}precedence\_\allowbreak{}walkthrough.\allowbreak{}py} $\cdot$ \texttt{examples/\allowbreak{}cadence\_\allowbreak{}walkthrough.\allowbreak{}py}
 
 Machine-readable index of every ML endpoint, these three included: \texttt{GET /v1/ml} against any running instance.

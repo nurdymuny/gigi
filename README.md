@@ -634,7 +634,8 @@ GQL verb), and the shape verbs `/v1/bundles/{name}/texture` (self-similarity
 exponent of one ordered field), `/v1/bundles/{name}/precedence` (which of
 two fields moves first, read from record order rather than any clock), and
 `/v1/bundles/{name}/cadence` (whether a timestamped event stream arrives
-steadily or in bursts, and whether the unevenness has memory).
+steadily or in bursts, and whether the unevenness has memory). User-facing
+guide for all three: [`docs/SHAPE_VERBS.md`](docs/SHAPE_VERBS.md).
 For the full route catalog
 hit `GET /v1/openapi.json` against any running `gigi-stream` instance —
 the OpenAPI document is the source of truth for shapes, parameters, and

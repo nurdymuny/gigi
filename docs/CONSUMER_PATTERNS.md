@@ -848,6 +848,7 @@ gets a new section. The patterns themselves don't change.
 | `docs/HTTP_API_REFERENCE.md` | Raw endpoint shapes (auto-generated) |
 | `docs/STABILITY_GUARANTEES.md` | Feature-flag tier table |
 | `docs/GETTING_STARTED.md` | First-bundle walkthrough for new consumers |
+| `docs/SHAPE_VERBS.md` | TEXTURE / PRECEDENCE / CADENCE — "what shape is this data in", without picking a bar size |
 | `BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` | Per-primitive deep dive (math, defaults, pitfalls) |
 | `theory/brain_primitives/catalog.md` | The 12-primitive catalog and master equation |
 | `project_marcella.md` (user memory) | Marcella's full design context — voice contract, multi-tenancy, daughter framing |

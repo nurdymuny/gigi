@@ -142,6 +142,30 @@ All three run against a bundle you have already loaded. Minimum shapes:
 Base fields and fiber fields both work — you don't have to care which side of the
 schema a column landed on.
 
+> ### ⚠ Name an ordering field. Do not rely on the default.
+>
+> TEXTURE and PRECEDENCE read **record order**, and if you omit `order` /
+> `ALONG` they read the order the bundle iterates in. That equals the order you
+> inserted rows **only on sequentially stored bundles.** A bundle with a **TEXT
+> base field** is stored *hashed* and iterates in an arbitrary order.
+>
+> Measured on one hashed bundle, same data, same call:
+>
+> | | `area` |
+> |---|---|
+> | ordered `ALONG seq` | **+0.7536** |
+> | `order` omitted | **+0.0017** |
+>
+> A real signal flattened to nothing, with no error and no warning. **Always
+> name an ordering field** unless you know the bundle is sequential and you
+> control the insert order.
+>
+> A related trap, now handled but worth knowing: an ordering field whose values
+> are **numeric text** (`"9"`, `"10"`) sorts numerically as of this build. If it
+> is genuinely non-numeric, it sorts lexicographically — correct for ISO-8601
+> timestamps, wrong for unpadded numbers — and `notes` says so explicitly. Read
+> `notes`.
+
 Every response carries a **`reads`** array: plain-English sentences interpreting
 the numbers. You should not need this document open to act on a result. If a
 `reads` line ever contradicts what you expected, trust it over your assumption —
@@ -238,6 +262,40 @@ curl -s -XPOST https://your-gigi-host/v1/bundles/btc_l2/precedence \
 
 Swapping the arguments negates the area exactly. `magnitude` is how pronounced
 the lead is, not how confident you should be.
+
+> ### ⚠ PRECEDENCE ships no significance figure — read this before ranking anything
+>
+> TEXTURE gives you `r_squared`. CADENCE gives you `null_sd`, `index_z` and
+> derived bands. **PRECEDENCE gives you neither, and you cannot supply one by
+> intuition**, because the Lévy area does not behave like a correlation.
+>
+> It does **not concentrate with more data.** Measured on independent random
+> walks with no relationship whatsoever:
+>
+> | n | sd(area) | mean \|area\| | P(\|area\| > 0.52) |
+> |---|---|---|---|
+> | 512 | 0.494 | 0.382 | 27.8% |
+> | 2,048 | 0.471 | 0.352 | 22.2% |
+> | 8,192 | 0.510 | 0.377 | 27.5% |
+> | 32,768 | 0.477 | 0.360 | 24.5% |
+>
+> Sixty-four times the data, same spread. So a single pair reading **under about
+> 1.0 in absolute value is inside the range pure noise produces**, and `leads`
+> will still name a direction — the `neither` band is a float-equality guard at
+> 1e-6, not a statistical one, and it will effectively never fire on real data.
+>
+> **What this means for you.** Point PRECEDENCE at fifty pairs overnight and you
+> get fifty confident directions, most of which would have appeared if the pairs
+> were unrelated. Treat one reading as a **hypothesis**, not a finding:
+>
+> - Build your own null: shuffle or rotate one channel, re-measure, repeat, and
+>   compare your real reading against that spread.
+> - Or require the same sign across several independent sessions.
+> - Do **not** rank instruments by `|area|` alone.
+>
+> The `reads` array now carries this warning on every response. A proper null —
+> `area_z` and `null_sd`, the shape CADENCE already uses — is the fix, and it is
+> open work rather than something already shipped.
 
 > **On that sign convention.** It was asserted the wrong way round twice during
 > development — once in validation, once again in the port — and caught both

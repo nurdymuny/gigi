@@ -107,21 +107,14 @@ pub fn precedence(
     }
 
     let mut records: Vec<crate::types::Record> = store.records().collect();
+    let mut lexicographic_order = false;
     if records.len() > MAX_PRECEDENCE_N {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
             "precedence caps at {} records (got {}); filter the bundle first",
             MAX_PRECEDENCE_N, records.len())));
     }
     if let Some(o) = &order {
-        records.sort_by(|a, b| {
-            let av = a.get(o).and_then(|v| v.as_f64());
-            let bv = b.get(o).and_then(|v| v.as_f64());
-            match (av, bv) {
-                (Some(p), Some(q)) => p.partial_cmp(&q).unwrap_or(std::cmp::Ordering::Equal),
-                _ => a.get(o).map(|v| format!("{}", v))
-                      .cmp(&b.get(o).map(|v| format!("{}", v))),
-            }
-        });
+        lexicographic_order = crate::ml::sort_by_order(&mut records, o);
     }
 
     // TXP-13: a record contributes only if BOTH channels are numeric and
@@ -177,21 +170,46 @@ pub fn precedence(
                 else if a > 0.0 { "x" } else { "y" };
     let reads = vec![
         match leads {
-            "x" => format!("'{}' leads '{}' (area {:+.4}): {} moves first and {} follows.",
-                           x, y, a, x, y),
-            "y" => format!("'{}' leads '{}' (area {:+.4}): {} moves first and {} follows.",
-                           y, x, a, y, x),
+            "x" => format!("'{}' leads '{}' (area {:+.4}).", x, y, a),
+            "y" => format!("'{}' leads '{}' (area {:+.4}).", y, x, a),
             _ => format!("Neither leads (area {:+.4}, inside the {:.0e} deadband): \
-                          these two move together.", a, PRECEDENCE_DEADBAND),
+                          these two are identical at zero lag.", a, PRECEDENCE_DEADBAND),
         },
+        // The honest health warning. PRECEDENCE ships NO significance measure,
+        // and the reader cannot supply one by intuition because the Levy area
+        // does not behave like a correlation: it does NOT concentrate with more
+        // data. Measured on independent random walks, sd(area) is 0.48-0.51 and
+        // is the SAME at n = 512 and n = 32768. Twenty independent pairs all
+        // returned a confident direction and `neither` never fired.
+        format!(
+            "CONFIDENCE: this verb returns no significance figure, and |area| = \
+             {:.4} on its own does NOT establish a lead. On INDEPENDENT series \
+             with no relationship, |area| has a standard deviation near 0.5 and \
+             that does not shrink as you add data — so a single pair reading \
+             under about 1.0 is inside the range pure noise produces. Treat one \
+             reading as a hypothesis: confirm it against a null you build \
+             yourself (shuffle or rotate one channel and re-measure), or across \
+             independent sessions. Do not rank instruments by |area| alone.",
+            a.abs()),
         "Read the SIGN as direction. Magnitude peaks at a moderate lead and \
          decays as the two series decorrelate, so it is a strength-within-band \
          reading, not a lag in units of records.".to_string(),
     ];
     let mut notes = vec![
         match &order {
+            Some(o) if lexicographic_order => format!(
+                "ordered by '{}' LEXICOGRAPHICALLY — its values are not all                  numeric, so '10' sorts before '9'. Correct for ISO-8601                  timestamps; WRONG for unpadded numeric ids, where it scrambles                  the record order this verb reads. Zero-pad them, or order by a                  numeric field.", o),
             Some(o) => format!("ordered by '{}'", o),
-            None => "no order field given — records left in insertion order".to_string(),
+            // NOT a guarantee of insertion order. Record iteration follows the
+            // bundle's STORAGE MODE: sequential bundles preserve insertion
+            // order, hashed ones (any TEXT base field) do not. Measured on a
+            // hashed bundle, omitting the order field gave area +0.0017 where
+            // the same data ordered by its sequence field gave +0.7536 — a real
+            // signal flattened to nothing, with the old note asserting the
+            // opposite. These verbs read record order, so on a hashed bundle
+            // the caller MUST name an ordering field.
+            None => "no order field given — records read in the bundle's STORAGE                      order. That equals insertion order only on sequentially                      stored bundles; a bundle with a TEXT base field is stored                      hashed and will iterate in an arbitrary order, which                      silently scrambles what this verb measures. If in doubt,                      name an ordering field."
+                .to_string(),
         },
         "area normalised by sqrt(QV_x * QV_y): dimensionless, so units and \
          scaling of either channel do not affect it".to_string(),

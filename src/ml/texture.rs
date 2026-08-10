@@ -104,21 +104,14 @@ pub fn texture(
     }
 
     let mut records: Vec<crate::types::Record> = store.records().collect();
+    let mut lexicographic_order = false;
     if records.len() > MAX_TEXTURE_N {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
             "texture caps at {} records (got {}); filter the bundle first",
             MAX_TEXTURE_N, records.len())));
     }
     if let Some(o) = &order {
-        records.sort_by(|a, b| {
-            let av = a.get(o).and_then(|v| v.as_f64());
-            let bv = b.get(o).and_then(|v| v.as_f64());
-            match (av, bv) {
-                (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal),
-                _ => a.get(o).map(|v| format!("{}", v))
-                      .cmp(&b.get(o).map(|v| format!("{}", v))),
-            }
-        });
+        lexicographic_order = crate::ml::sort_by_order(&mut records, o);
     }
 
     // TXP-13: non-finite and non-numeric values are SKIPPED and counted,
@@ -221,8 +214,19 @@ pub fn texture(
     ];
     let mut notes = vec![
         match &order {
+            Some(o) if lexicographic_order => format!(
+                "ordered by '{}' LEXICOGRAPHICALLY — its values are not all                  numeric, so '10' sorts before '9'. Correct for ISO-8601                  timestamps; WRONG for unpadded numeric ids, where it scrambles                  the record order this verb reads. Zero-pad them, or order by a                  numeric field.", o),
             Some(o) => format!("ordered by '{}'", o),
-            None => "no order field given — records left in insertion order".to_string(),
+            // NOT a guarantee of insertion order. Record iteration follows the
+            // bundle's STORAGE MODE: sequential bundles preserve insertion
+            // order, hashed ones (any TEXT base field) do not. Measured on a
+            // hashed bundle, omitting the order field gave area +0.0017 where
+            // the same data ordered by its sequence field gave +0.7536 — a real
+            // signal flattened to nothing, with the old note asserting the
+            // opposite. These verbs read record order, so on a hashed bundle
+            // the caller MUST name an ordering field.
+            None => "no order field given — records read in the bundle's STORAGE                      order. That equals insertion order only on sequentially                      stored bundles; a bundle with a TEXT base field is stored                      hashed and will iterate in an arbitrary order, which                      silently scrambles what this verb measures. If in doubt,                      name an ordering field."
+                .to_string(),
         },
         format!("{} log-spaced lags from {} to {}, q = {}", k, lo, hi, q),
     ];
@@ -331,6 +335,55 @@ mod tests {
         }
         assert!(got[0] < got[1] && got[1] < got[2],
                 "roughness ordering not recovered: {got:?}");
+    }
+
+    /// TXP-16: a numeric-TEXT order field must sort NUMERICALLY, and a
+    /// genuinely non-numeric one must DISCLOSE that it sorted as text.
+    ///
+    /// Found by customer-readiness review. Before the fix, one trending series
+    /// read exponent 0.5307 / RANDOM_WALK ordered by a numeric field and
+    /// 0.0882 / ROUGH ordered by its own text id — same data, same verb, a
+    /// flipped verdict, and `notes` said only "ordered by 'sid'". Worse, a
+    /// ZERO-PADDED text id gave the right answer, so the defect appeared only
+    /// on some customers' data. A trade id exported as text is the ordinary
+    /// case, not an exotic one.
+    #[test]
+    fn txp_16_numeric_text_order_sorts_numerically_and_text_is_disclosed() {
+        let vals = ma1_path(4096, 0.9, 4);
+        let schema = BundleSchema::new("s")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("i"))
+            .fiber(FieldDef::numeric("v"))
+            .fiber(FieldDef::categorical("sid"))
+            .fiber(FieldDef::categorical("iso"))
+            .fiber(FieldDef::categorical("label"));
+        let rows: Vec<Record> = vals.iter().enumerate().map(|(i, v)| scan_rec(&[
+            ("id", V::Text(format!("r{i:05}"))),
+            ("i", V::Float(i as f64)),
+            ("v", V::Float(*v)),
+            // Unpadded numeric text — the trap.
+            ("sid", V::Text(format!("{i}"))),
+            // Genuinely non-numeric but correctly lexicographic.
+            ("iso", V::Text(format!("2026-08-09T{:02}:{:02}:{:02}Z",
+                                    i / 3600 % 24, i / 60 % 60, i % 60))),
+            ("label", V::Text("x".into())),
+        ])).collect();
+        let (dir, engine) = scan_env("txp_lex", "s", schema, rows);
+
+        let by_num = texture(&engine, "s", "v", Some("i".into()), 2.0, 1, None).unwrap();
+        let by_txt = texture(&engine, "s", "v", Some("sid".into()), 2.0, 1, None).unwrap();
+        assert!((by_num.exponent - by_txt.exponent).abs() < 1e-9,
+                "numeric text must sort numerically: {} (by 'i') vs {} (by 'sid')",
+                by_num.exponent, by_txt.exponent);
+        assert!(!by_txt.notes.iter().any(|n| n.contains("LEXICOGRAPHICALLY")),
+                "a numeric-text order field sorted numerically — do not warn: {:?}",
+                by_txt.notes);
+
+        // Non-numeric values still sort as text, and that is DISCLOSED.
+        let by_iso = texture(&engine, "s", "v", Some("iso".into()), 2.0, 1, None).unwrap();
+        assert!(by_iso.notes.iter().any(|n| n.contains("LEXICOGRAPHICALLY")),
+                "a text sort must be disclosed: {:?}", by_iso.notes);
+        cleanup(&dir);
     }
 
     /// TXP-7: H is a shape property. An affine rescale must not move it.

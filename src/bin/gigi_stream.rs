@@ -9806,7 +9806,16 @@ async fn ml_catalog() -> Json<serde_json::Value> {
              "params": {"source": "edge source field", "target": "edge target field", "weight": "flow field (default 1.0)", "charge": "1.0 (magnetic flux sensitivity)", "max_cycles": "10"}},
             {"route": "POST /v1/bundles/{name}/solve", "kind": "geometric (flat sector: Aθ=b, the third face of the operator)",
              "does": "SVD fit store — one decomposition, then the whole ridge path with EXACT leave-one-out (Golub-Heath-Wahba 1979); the model as a live geometric view of the bundle. Exact for the quadratic class (OLS/ridge/multi-target/LDA); preconditioner for GLMs",
-             "params": {"target": "numeric field to predict", "alphas": "[] ridge path (auto if empty)", "exclude": "[] fibers to skip"}}
+             "params": {"target": "numeric field to predict", "alphas": "[] ridge path (auto if empty)", "exclude": "[] fibers to skip"}},
+            {"route": "POST /v1/bundles/{name}/texture", "kind": "shape verb (grid-free diagnostic)",
+             "does": "how ROUGH is one ordered signal — the self-similarity (Hurst) exponent. H>0.5 persistent (moves continue), H=0.5 random walk, H<0.5 anti-persistent (moves reverse). Reads RECORD ORDER, never a timestamp, so there is no bin width to choose. Check `r_squared`: a low fit means the signal is not self-similar and H should not be read as one number",
+             "params": {"field": "REQUIRED numeric field", "order": "optional ordering field (default record order)", "q": "moment order (2)", "min_lag": "1", "max_lag": "n/8"}},
+            {"route": "POST /v1/bundles/{name}/precedence", "kind": "shape verb (grid-free diagnostic)",
+             "does": "which of TWO ordered fields moves first — the normalised Levy area (level-2 antisymmetric signature term). area>0 means x leads y; swapping the arguments negates it exactly. Reads RECORD ORDER, so the answer is invariant to any order-preserving change of clock",
+             "params": {"x": "REQUIRED numeric field", "y": "REQUIRED numeric field", "order": "optional ordering field (default record order)"}},
+            {"route": "POST /v1/bundles/{name}/cadence", "kind": "shape verb (arrival process)",
+             "does": "is a timestamped stream arriving STEADILY or in BURSTS, and does the unevenness have MEMORY. Returns two numbers: `index` (Greenwood dispersion; <1 = THROTTLED, i.e. more regular than random — suspect something metering the feed) and `memory` (lag-1 autocorrelation of log gaps). Both always, because `index` is symmetric in the gaps and provably cannot see ordering — a high index alone is NOT clustering. Verdict bands are the memoryless null +-2sd, derived from a closed form at your n",
+             "params": {"time": "REQUIRED numeric timestamp field — CARDINAL, not an ordinal sort key like `order` elsewhere; a row index here is refused by name", "block": "gaps per block for the drift-filtered form (64)"}}
         ],
         "not_a_fit": {
             "trees/gradient-boosting": "axis-aligned ensembles are the flat-staircase dual of curvature — the honest answer is the duality benchmark, not a reimplementation",

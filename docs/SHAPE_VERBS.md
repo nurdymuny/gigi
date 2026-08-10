@@ -36,7 +36,44 @@ None of them predicts anything. They describe the data in front of them.
 
 ---
 
-## 2 · Before you start
+## 2 · How you call them: REST, not GQL
+
+**All three are REST endpoints. There is no GQL verb for any of them** — you
+will not find `TEXTURE`, `PRECEDENCE` or `CADENCE` in the GQL grammar, and
+`POST /v1/gql` will not dispatch them. That is deliberate, not an omission:
+they take typed parameters and return structured diagnostics rather than rows,
+so they sit in the ML family alongside `/scan`, `/cluster` and `/circulation`.
+
+In practice you use both surfaces together — GQL to shape and load the bundle,
+REST to measure it:
+
+```bash
+# 1. GQL: create the bundle
+curl -s -XPOST $GIGI/v1/gql -H 'Content-Type: application/json' \
+     -d '{"query":"CREATE BUNDLE btc_l2 (row_id INT BASE, ts_exch NUMERIC FIBER, mid NUMERIC FIBER, signed_volume NUMERIC FIBER);"}'
+
+# 2. Load it (NDJSON, one record per line)
+curl -s -XPOST $GIGI/v1/bundles/btc_l2/ingest \
+     -H 'Content-Type: application/x-ndjson' --data-binary @trades.ndjson
+
+# 3. REST: measure the shape
+curl -s -XPOST $GIGI/v1/bundles/btc_l2/texture \
+     -H 'Content-Type: application/json' -d '{"field":"mid"}'
+```
+
+Anything you can do to a bundle in GQL — filtering, `COVER`, sectioning — you
+can do before measuring. The shape verbs read whatever the bundle holds at the
+moment you call them.
+
+**Discovery:** `GET /v1/ml` lists every ML endpoint including these three, with
+their parameters and a one-line description of what each does. That is the
+machine-readable index to use. Note that `GET /v1/openapi.json` covers the core
+bundle, query and GQL surface but **does not currently include the ML family** —
+don't treat its absence there as meaning a route doesn't exist.
+
+---
+
+## 3 · Before you start
 
 All three run against a bundle you have already loaded. Minimum shapes:
 
@@ -56,7 +93,7 @@ it is generated from the same numbers the verdict is.
 
 ---
 
-## 3 · TEXTURE — how rough is this signal?
+## 4 · TEXTURE — how rough is this signal?
 
 Returns the self-similarity (Hurst) exponent `H` of one field.
 
@@ -113,7 +150,7 @@ open work.
 
 ---
 
-## 4 · PRECEDENCE — which of these two moved first?
+## 5 · PRECEDENCE — which of these two moved first?
 
 Returns the normalised signed area enclosed by the joint path of two fields.
 
@@ -169,7 +206,7 @@ in the feed.
 
 ---
 
-## 5 · CADENCE — is this arriving steadily, or in gulps?
+## 6 · CADENCE — is this arriving steadily, or in gulps?
 
 This one reads your timestamps, and it returns **two** numbers. Always both.
 
@@ -297,7 +334,7 @@ and silently change what you're measuring between two calls on the same stream.
 
 ---
 
-## 6 · Using all three together
+## 7 · Using all three together
 
 They read different things, so they can corroborate each other:
 
@@ -328,7 +365,7 @@ designed to.
 
 ---
 
-## 7 · When they refuse
+## 8 · When they refuse
 
 All three refuse rather than return a number they can't stand behind. **This is
 a feature.** The failure mode being avoided is a confident value computed from
@@ -352,7 +389,7 @@ be measuring fewer records than you loaded.
 
 ---
 
-## 8 · What we do not claim
+## 9 · What we do not claim
 
 **None of these predicts anything, and none of them is an edge.** They are
 measurement instruments with stated noise floors, gates that refuse rather than
@@ -376,7 +413,7 @@ as a stable constant.
 
 ---
 
-## 9 · Reference
+## 10 · Reference
 
 | | TEXTURE | PRECEDENCE | CADENCE |
 |---|---|---|---|
@@ -390,4 +427,5 @@ Runnable examples with planted answers and deliberate refusals:
 [`examples/texture_precedence_walkthrough.py`](../examples/texture_precedence_walkthrough.py) ·
 [`examples/cadence_walkthrough.py`](../examples/cadence_walkthrough.py)
 
-Full route catalog: `GET /v1/openapi.json` against any running instance.
+Machine-readable index of every ML endpoint, these three included:
+`GET /v1/ml` against any running instance.

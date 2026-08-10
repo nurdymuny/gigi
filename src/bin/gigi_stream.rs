@@ -9597,6 +9597,8 @@ async fn bundle_texture(
         "exponent": t.exponent,
         "r_squared": t.r_squared,
         "n_lags": t.n_lags,
+        // The estimator's own sd at this n -- the ruler the verdict band uses.
+        "h_sd": t.h_sd,
         "verdict": t.verdict,
         "order_field": t.order_field,
         "reads": t.reads,
@@ -9624,6 +9626,13 @@ async fn bundle_precedence(
         "area": p.area,
         "leads": p.leads,
         "magnitude": p.magnitude,
+        // Significance. `area` alone cannot separate a real lead from noise,
+        // and the noise floor is not a constant -- it swings ~160x with the
+        // data's own roughness. See ml::precedence::rotation_null.
+        "p_value": p.p_value,
+        "null_sd": if p.null_sd.is_finite() { serde_json::json!(p.null_sd) } else { serde_json::Value::Null },
+        "significant": p.significant,
+        "null_n": p.null_n,
         "order_field": p.order_field,
         "reads": p.reads,
         "notes": p.notes,

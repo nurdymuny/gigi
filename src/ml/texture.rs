@@ -67,10 +67,40 @@ pub struct TextureResult {
     pub exponent: f64,
     pub r_squared: f64,
     pub n_lags: usize,
+    /// Sampling sd of `exponent` at this `n` — the ruler the verdict band uses.
+    pub h_sd: f64,
     pub verdict: String,
     pub order_field: Option<String>,
     pub reads: Vec<String>,
     pub notes: Vec<String>,
+}
+
+/// Sampling standard deviation of the exponent, as a function of `n`.
+///
+/// MEASURED, not chosen. On a true random walk (H = 0.5) this estimator's own
+/// spread is:
+///
+/// ```text
+/// n     mean H    sd(H)    2*sd
+///     64     0.4790   0.0964   0.1929
+///    256     0.4889   0.0615   0.1230
+///   1024     0.4916   0.0433   0.0866
+///   4096     0.4947   0.0296   0.0591
+///  16384     0.4971   0.0220   0.0441
+/// ```
+///
+/// A log-log fit gives `sd ~ 0.29 * n^-0.267`, reproduced above to within about
+/// 7%. This is an EMPIRICAL law fitted to simulation, not a closed form — said
+/// plainly because the alternative was worse: the shipped bands were a flat
+/// `H < 0.45` / `H > 0.55`, a half-width of 0.05 that is NARROWER THAN THIS
+/// ESTIMATOR'S OWN NOISE for every n below about 16000. At n = 1024 that band
+/// is barely one standard deviation, so a true random walk was being called
+/// ROUGH or SMOOTH roughly a third of the time.
+///
+/// The verdict band is now `0.5 +- 2*sd(n)`, so it widens on short series
+/// instead of pretending to a precision the fit does not have.
+fn exponent_sd(n: usize) -> f64 {
+    0.29 * (n as f64).powf(-0.267)
 }
 
 /// Estimate the self-similarity exponent of `field`.
@@ -101,6 +131,21 @@ pub fn texture(
     if !(q > 0.0) || !q.is_finite() {
         return Err((StatusCode::UNPROCESSABLE_ENTITY,
                     format!("q must be finite and > 0 (got {})", q)));
+    }
+
+    // TXP-17: these verbs read RECORD ORDER. Iteration equals insertion order
+    // only for sequentially stored bundles; a bundle with a TEXT base field is
+    // hash-stored and iterates arbitrarily. Measured on one hashed bundle:
+    // area +0.7536 ordered by its sequence field, +0.0017 with `order` omitted
+    // — a real signal flattened to nothing, HTTP 200, no warning. Refuse rather
+    // than answer from an order that means nothing.
+    if order.is_none() {
+        let mode = store.storage_mode();
+        if mode == "hashed" || mode == "hybrid" {
+            return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
+                "bundle '{}' is {}-stored, so its records do not iterate in insertion order — and this verb reads record order. Name an ordering field. (A bundle gets this storage from a TEXT base field; there is nothing wrong with the bundle, but the order you inserted rows in is not recoverable from it.)",
+                name, mode)));
+        }
     }
 
     let mut records: Vec<crate::types::Record> = store.records().collect();
@@ -196,7 +241,13 @@ pub fn texture(
     let r2 = if ss_tot > 0.0 { 1.0 - ss_res / ss_tot } else { 0.0 };
     let h = slope / q;
 
-    let verdict = if h < 0.45 { "ROUGH" } else if h > 0.55 { "SMOOTH" } else { "RANDOM_WALK" };
+    // Bands derived from the estimator's measured noise at THIS n, not from a
+    // flat convention. See `exponent_sd`.
+    let h_sd = exponent_sd(n);
+    let half = 2.0 * h_sd;
+    let verdict = if h < 0.5 - half { "ROUGH" }
+                  else if h > 0.5 + half { "SMOOTH" }
+                  else { "RANDOM_WALK" };
     let reads = vec![
         match verdict {
             "ROUGH" => format!(
@@ -215,7 +266,7 @@ pub fn texture(
     let mut notes = vec![
         match &order {
             Some(o) if lexicographic_order => format!(
-                "ordered by '{}' LEXICOGRAPHICALLY — its values are not all                  numeric, so '10' sorts before '9'. Correct for ISO-8601                  timestamps; WRONG for unpadded numeric ids, where it scrambles                  the record order this verb reads. Zero-pad them, or order by a                  numeric field.", o),
+                "ordered by '{}' LEXICOGRAPHICALLY — its values are not all numeric, so '10' sorts before '9'. Correct for ISO-8601 timestamps; WRONG for unpadded numeric ids, where it scrambles the record order this verb reads. Zero-pad them, or order by a numeric field.", o),
             Some(o) => format!("ordered by '{}'", o),
             // NOT a guarantee of insertion order. Record iteration follows the
             // bundle's STORAGE MODE: sequential bundles preserve insertion
@@ -225,10 +276,11 @@ pub fn texture(
             // signal flattened to nothing, with the old note asserting the
             // opposite. These verbs read record order, so on a hashed bundle
             // the caller MUST name an ordering field.
-            None => "no order field given — records read in the bundle's STORAGE                      order. That equals insertion order only on sequentially                      stored bundles; a bundle with a TEXT base field is stored                      hashed and will iterate in an arbitrary order, which                      silently scrambles what this verb measures. If in doubt,                      name an ordering field."
+            None => "no order field given — records read in the bundle's STORAGE order. That equals insertion order only on sequentially stored bundles; a bundle with a TEXT base field is stored hashed and will iterate in an arbitrary order, which silently scrambles what this verb measures. If in doubt, name an ordering field."
                 .to_string(),
         },
         format!("{} log-spaced lags from {} to {}, q = {}", k, lo, hi, q),
+        format!("verdict band is 0.5 +- {:.3} (2 x the estimator's sd of {:.3} at n = {}), derived from measured noise rather than a fixed cutoff; it widens on shorter series", half, h_sd, n),
     ];
     if skipped > 0 {
         notes.push(format!(
@@ -237,7 +289,7 @@ pub fn texture(
     }
 
     Ok(TextureResult {
-        field: field.to_string(), n, exponent: h, r_squared: r2, n_lags: k,
+        field: field.to_string(), n, exponent: h, r_squared: r2, n_lags: k, h_sd,
         verdict: verdict.to_string(), order_field: order, reads, notes,
     })
 }
@@ -265,8 +317,8 @@ mod tests {
     /// Paths with a KNOWN roughness ordering, built from the autocorrelation
     /// of the increments — the property H actually measures.
     ///   phi < 0  increments anti-correlated  -> moves reverse   -> H < 1/2
-    ///   phi = 0  iid increments              -> random walk     -> H = 1/2
-    ///   phi > 0  increments correlated       -> moves continue  -> H > 1/2
+    ///   phi = 0  iid increments -> random walk     -> H = 1/2
+    ///   phi > 0  increments correlated -> moves continue  -> H > 1/2
     /// An MA(1) on the increments is the cleanest generator with that property
     /// and needs no FFT. Exact-H recovery to +-0.03 against true Davies-Harte
     /// fBm was validated pre-port; what this gate pins is the CONTRACT, that
@@ -425,19 +477,48 @@ mod tests {
         cleanup(&dir);
     }
 
+    /// TXP-17: on a bundle whose records do not iterate in insertion order,
+    /// an order-less call must REFUSE rather than measure a meaningless order.
+    ///
+    /// These verbs read record order. A bundle with a TEXT base field is
+    /// hash-stored, and iteration is then arbitrary. Measured before this guard,
+    /// on one hashed bundle: PRECEDENCE returned area +0.7536 ordered by its
+    /// sequence field and +0.0017 with `order` omitted — a real signal flattened
+    /// to nothing, HTTP 200, no warning, and a `notes` line that claimed
+    /// "records left in insertion order".
+    #[test]
+    fn txp_17_refuses_order_less_call_on_unordered_storage() {
+        let vals = ma1_path(1024, 0.5, 77);
+        let (dir, engine) = scan_env("txp_hash", "s", schema_for("s"), rows_with_id(&vals));
+
+        let err = texture(&engine, "s", "v", None, 2.0, 1, None).unwrap_err();
+        assert_eq!(err.0, StatusCode::UNPROCESSABLE_ENTITY);
+        assert!(err.1.contains("insertion order"), "must explain why: {}", err.1);
+        assert!(err.1.contains("ordering field"), "must say what to do: {}", err.1);
+
+        // Naming the ordering field is accepted and answers.
+        let ok = texture(&engine, "s", "v", Some("i".into()), 2.0, 1, None)
+            .expect("naming an ordering field must work");
+        assert!(ok.exponent.is_finite());
+        cleanup(&dir);
+    }
+
     /// TXP-11 / TXP-12: too little data, or no variance at all.
     #[test]
     fn txp_11_12_insufficient_and_flat_refuse() {
         let short: Vec<f64> = (0..10).map(|i| i as f64).collect();
+        // These fixtures have a TEXT base field, so they are hash-stored and
+        // TXP-17 refuses an order-less call. Name the ordering field — that is
+        // now the correct way to use the verb on such a bundle.
         let (d1, e1) = scan_env("txp_thin", "s", schema_for("s"), rows_with_id(&short));
-        let err = texture(&e1, "s", "v", None, 2.0, 1, None).unwrap_err();
+        let err = texture(&e1, "s", "v", Some("i".into()), 2.0, 1, None).unwrap_err();
         assert_eq!(err.0, StatusCode::UNPROCESSABLE_ENTITY);
         assert!(err.1.contains("10"), "must report the actual count: {}", err.1);
         cleanup(&d1);
 
         let flat = vec![5.0f64; 512];
         let (d2, e2) = scan_env("txp_flat", "s", schema_for("s"), rows_with_id(&flat));
-        let err2 = texture(&e2, "s", "v", None, 2.0, 1, None).unwrap_err();
+        let err2 = texture(&e2, "s", "v", Some("i".into()), 2.0, 1, None).unwrap_err();
         assert_eq!(err2.0, StatusCode::UNPROCESSABLE_ENTITY);
         assert!(err2.1.contains("variance"), "{}", err2.1);
         cleanup(&d2);

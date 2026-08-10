@@ -1,12 +1,18 @@
 # GIGI HTTP API Reference
 
 This is the canonical reference for every `/v1/*` endpoint exposed by
-`gigi_stream`, the HTTP front-end of the GIGI engine. It is generated
-to mirror the in-tree OpenAPI spec at `openapi.json` (served live at
-[`GET /v1/openapi.json`](#get-v1openapijson)) and supplements it with
+`gigi_stream`, the HTTP front-end of the GIGI engine. It is written and
+maintained by hand — no script generates it — to mirror the in-tree
+OpenAPI spec at `openapi.json` (served live at
+[`GET /v1/openapi.json`](#get-v1openapijson)) and to supplement it with
 the feature-gated endpoints that the OpenAPI document does not yet
 enumerate (Brain primitives, WISH, Causal States, GQL, Lattice / Gauge
 Field).
+
+Because both files are hand-maintained, they can drift from the router.
+`tests/openapi_route_coverage.rs` is the gate that stops that for
+`openapi.json`: it scans every `.route("…")` in `src/bin/gigi_stream.rs`
+and fails when a registered route has no entry in the spec.
 
 For a hands-on walkthrough see `docs/GETTING_STARTED.md`; for the
 production-stable vs research-stage matrix see

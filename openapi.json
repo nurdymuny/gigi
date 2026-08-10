@@ -621,6 +621,1195 @@
         "responses": { "200": { "description": "Consistency result", "content": { "application/json": { "schema": { "type": "object", "properties": { "consistent": { "type": "boolean" }, "total_sections": { "type": "integer" }, "violations": { "type": "integer" } } } } } } }
       }
     },
+    "/v1/bundles/{name}/scan": {
+      "post": {
+        "summary": "SCAN — unsupervised anomaly detection over fused geometric lenses",
+        "description": "Zero-config anomaly detection. Auto-introspects the schema and fuses up to seven geometric lenses (global curvature, contextual curvature, velocity, text, relational, completion, density) into a per-record score with per-lens attribution. Records come back sorted most-anomalous first.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "budget": {
+                    "type": "number",
+                    "default": 0.05,
+                    "description": "Review fraction — the top `budget` share of records is marked `flagged`."
+                  },
+                  "weights": {
+                    "type": "object",
+                    "additionalProperties": {"type": "number"},
+                    "nullable": true,
+                    "description": "Optional lens-name -> weight map for supervised linear fusion (see /scan/fit). Absent -> lenses fuse by max."
+                  },
+                  "limit": {"type": "integer", "default": 0, "description": "Cap on returned rows. 0 = all."},
+                  "exclude": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Fields to keep out of the geometry — e.g. an outcome column that would leak."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Scored records, most anomalous first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "n": {"type": "integer"},
+                    "lenses": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Lens names actually built for this bundle."
+                    },
+                    "budget": {"type": "number"},
+                    "n_flagged": {"type": "integer"},
+                    "fusion": {"type": "string", "enum": ["max", "weighted"]},
+                    "notes": {"type": "array", "items": {"type": "string"}},
+                    "message": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Present when the scan had nothing to say (empty bundle, or every lens flat)."
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "The bundle's base-key field appears under its own name (e.g. `txn_id`), alongside these keys.",
+                        "properties": {
+                          "score": {"type": "number"},
+                          "top_lens": {"type": "string"},
+                          "flagged": {"type": "boolean"},
+                          "lenses": {
+                            "type": "object",
+                            "additionalProperties": {"type": "number"},
+                            "description": "Per-lens normalized score in [0,1]."
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/scan/fit": {
+      "post": {
+        "summary": "SCAN/FIT — learn supervised lens weights from a labeled field",
+        "description": "Trains a class-weighted logistic regression over SCAN's per-record lens features. Returns the weights (feed them back to `POST /scan` as `weights`) alongside a held-out k-fold PR-AUC and the unsupervised max-fusion baseline it has to beat.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label_field": {
+                    "type": "string",
+                    "description": "A 0/1, boolean, or yes/no field marking confirmed positives."
+                  },
+                  "folds": {
+                    "type": "integer",
+                    "default": 5,
+                    "description": "Cross-validation folds; clamped to [2,20]."
+                  },
+                  "epochs": {
+                    "type": "integer",
+                    "default": 400,
+                    "description": "Gradient-descent epochs; clamped to [1,5000]."
+                  }
+                },
+                "required": ["label_field"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Learned weights and the held-out comparison",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "n": {"type": "integer"},
+                    "n_fraud": {"type": "integer", "description": "Positive labels found."},
+                    "lenses": {"type": "array", "items": {"type": "string"}},
+                    "folds": {"type": "integer"},
+                    "pr_auc_unsupervised": {"type": "number", "description": "Baseline: max-fusion, no labels."},
+                    "pr_auc_supervised_heldout": {"type": "number", "description": "k-fold held-out PR-AUC of the learned weights."},
+                    "note": {
+                      "type": "string",
+                      "description": "Warns when there are too few positives for the fold count to mean much."
+                    },
+                    "bias": {"type": "number"},
+                    "weights": {
+                      "type": "object",
+                      "additionalProperties": {"type": "number"},
+                      "description": "Lens-name -> weight. Pass this object straight to `POST /scan`."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/cluster": {
+      "post": {
+        "summary": "CLUSTER — spectral / k-means / GMM / DBSCAN clustering plus embedding",
+        "description": "Clusters records over the standardized numeric fibers. `spectral` embeds in the bottom-k Laplacian eigenspace of the kNN graph before fitting the head — that is the geometric arm. `kmeans`, `gmm`, and `dbscan` are the flat control arm.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {"type": "string", "default": "spectral", "enum": ["spectral", "kmeans", "gmm", "dbscan"]},
+                  "k": {
+                    "type": "integer",
+                    "default": 3,
+                    "description": "Number of clusters (spectral/kmeans/gmm)."
+                  },
+                  "neighbors": {"type": "integer", "default": 10, "description": "kNN graph degree for spectral."},
+                  "eps": {
+                    "type": "number",
+                    "nullable": true,
+                    "description": "DBSCAN neighborhood radius. Omitted -> auto-estimated from the data."
+                  },
+                  "min_pts": {"type": "integer", "default": 4, "description": "DBSCAN core-point threshold."},
+                  "covariance": {
+                    "type": "string",
+                    "default": "full",
+                    "enum": ["full", "diagonal", "spherical"],
+                    "description": "GMM covariance form."
+                  },
+                  "max_iters": {"type": "integer", "default": 100, "description": "Max EM iterations (gmm)."},
+                  "restarts": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "k-means / gmm-init restarts, lowest-inertia wins. Omitted -> adaptive."
+                  },
+                  "normalized": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Spectral: use the symmetric-normalized Laplacian."
+                  },
+                  "embed_dim": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Spectral: eigenvectors to embed with. Omitted -> k."
+                  },
+                  "head": {
+                    "type": "string",
+                    "default": "kmeans",
+                    "enum": ["kmeans", "gmm"],
+                    "description": "Spectral: which head to fit IN the eigenspace."
+                  },
+                  "exclude": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Fields to drop from the geometry (id or label columns)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cluster labels, sizes, and per-record coordinates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "n": {"type": "integer"},
+                    "method": {"type": "string"},
+                    "n_clusters": {"type": "integer"},
+                    "sizes": {"type": "array", "items": {"type": "integer"}},
+                    "n_noise": {"type": "integer", "description": "DBSCAN points assigned to no cluster."},
+                    "eigenvalues": {
+                      "type": "array",
+                      "items": {"type": "number"},
+                      "description": "Spectral: the Laplacian eigenvalues used for the embedding."
+                    },
+                    "notes": {"type": "array", "items": {"type": "string"}},
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "The bundle's base-key field appears under its own name, alongside these keys.",
+                        "properties": {
+                          "cluster": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "null = DBSCAN noise, i.e. no cluster — not cluster -1."
+                          },
+                          "coords": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "description": "Embedding coordinates (spectral eigenmap, or soft responsibilities for gmm)."
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/infer": {
+      "post": {
+        "summary": "INFER — supervised prediction, filling a missing target",
+        "description": "Regression when `target` is numeric, classification when it is categorical. Scores on held-out folds against a flat baseline, then fills `target` for the records that are missing it.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "type": "string",
+                    "description": "Field to predict. Numeric -> regression, categorical -> classification."
+                  },
+                  "method": {
+                    "type": "string",
+                    "default": "local_linear",
+                    "description": "Regression: diffusion | local_linear | knn | ols | gp. Classification: diffusion | knn | svm."
+                  },
+                  "k": {"type": "integer", "default": 20, "description": "Neighbors for the local methods."},
+                  "ridge": {
+                    "type": "number",
+                    "default": 0.5,
+                    "description": "local_linear slope shrinkage. Higher -> smoother."
+                  },
+                  "folds": {
+                    "type": "integer",
+                    "default": 5,
+                    "description": "Cross-validation folds for the held-out score."
+                  },
+                  "exclude": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Extra fields to drop from the feature set."
+                  }
+                },
+                "required": ["target"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Held-out score, baseline, and the filled predictions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "target": {"type": "string"},
+                    "task": {"type": "string", "enum": ["regression", "classification"]},
+                    "method": {"type": "string"},
+                    "n_train": {"type": "integer"},
+                    "metric": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "`{rmse, r2}` for regression, `{accuracy}` for classification."
+                    },
+                    "baseline": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "Same shape as `metric`, for the flat kNN-mean / majority-class control."
+                    },
+                    "predictions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "One object per record that was missing `target`: the base-key field under its own name, and the predicted value under the `target` field's name.",
+                        "properties": {},
+                        "additionalProperties": true
+                      }
+                    },
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/reduce": {
+      "post": {
+        "summary": "REDUCE — PCA dimensionality reduction",
+        "description": "Top-k eigenvectors of the standardized-feature covariance. Returns the loadings, each record's reduced coordinates, the explained-variance ratios, and the reconstruction error.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "k": {"type": "integer", "default": 2, "description": "Number of principal components."},
+                  "whiten": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Rescale each component to unit variance."
+                  },
+                  "exclude": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Fields to drop from the feature set."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Components, coordinates, and reconstruction error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "n": {"type": "integer"},
+                    "k": {"type": "integer"},
+                    "components": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "pc": {"type": "integer", "description": "1-based component index."},
+                          "explained_variance_ratio": {"type": "number"},
+                          "loadings": {
+                            "type": "object",
+                            "additionalProperties": {"type": "number"},
+                            "description": "Feature name -> loading on this component."
+                          }
+                        }
+                      }
+                    },
+                    "cumulative_explained_variance": {"type": "number"},
+                    "reconstruction_rmse": {"type": "number"},
+                    "variance_retained": {"type": "number"},
+                    "notes": {"type": "array", "items": {"type": "string"}},
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "The bundle's base-key field appears under its own name, alongside `coords`.",
+                        "properties": {
+                          "coords": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "description": "The record's k reduced coordinates."
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/factorize": {
+      "post": {
+        "summary": "FACTORIZE — recommender matrix factorization over (user, item, rating)",
+        "description": "Learns rank-k latent user/item factors plus global mean and per-user/item biases by regularized SGD, then fills the ratings that are missing. Reports held-out RMSE against the global-mean baseline.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user": {"type": "string", "description": "Categorical field naming the user (row)."},
+                  "item": {"type": "string", "description": "Categorical field naming the item (column)."},
+                  "rating": {"type": "string", "description": "Numeric field with the observed rating."},
+                  "rank": {"type": "integer", "default": 10, "description": "Latent-factor rank."},
+                  "epochs": {"type": "integer", "default": 40, "description": "SGD epochs."},
+                  "reg": {
+                    "type": "number",
+                    "default": 0.05,
+                    "description": "L2 regularization on factors and biases."
+                  },
+                  "learning_rate": {"type": "number", "default": 0.02, "description": "SGD learning rate."}
+                },
+                "required": ["user", "item", "rating"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fit quality and the filled ratings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "rank": {"type": "integer"},
+                    "n_users": {"type": "integer"},
+                    "n_items": {"type": "integer"},
+                    "n_ratings": {
+                      "type": "integer",
+                      "description": "Observed (user, item, rating) triples used for the fit."
+                    },
+                    "rmse": {"type": "number"},
+                    "baseline_rmse": {"type": "number", "description": "Global-mean baseline — the number `rmse` has to beat."},
+                    "predictions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "One object per record with a missing rating: the base-key field under its own name, and the predicted value under the `rating` field's name.",
+                        "properties": {},
+                        "additionalProperties": true
+                      }
+                    },
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/changepoints": {
+      "post": {
+        "summary": "CHANGEPOINTS — time-series regime-shift detection",
+        "description": "Orders the records into a series and slides a two-window two-sample t-statistic across it; non-max-suppressed peaks above `threshold` are regime shifts. Detection only — GIGI does not forecast.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Numeric field to monitor. Omitted -> all numeric fibers except the time field."
+                  },
+                  "time": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Field to order the series by. Omitted -> a time-named numeric fiber, else record order."
+                  },
+                  "window": {
+                    "type": "integer",
+                    "default": 40,
+                    "description": "Sliding-window half-width, and the minimum segment length."
+                  },
+                  "threshold": {
+                    "type": "number",
+                    "default": 6.0,
+                    "description": "Detection threshold on the t-statistic. Lower = more sensitive."
+                  },
+                  "max_changepoints": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "Cap on returned changepoints, strongest first. 0 = all."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Detected regime shifts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "n": {"type": "integer"},
+                    "window": {"type": "integer"},
+                    "threshold": {"type": "number"},
+                    "time_field": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "null when the series fell back to record order."
+                    },
+                    "value_fields": {"type": "array", "items": {"type": "string"}},
+                    "n_changepoints": {"type": "integer"},
+                    "changepoints": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "index": {"type": "integer", "description": "Position in the ordered series."},
+                          "time": {
+                            "type": "string",
+                            "description": "The `time_field` value at that position, rendered as a string."
+                          },
+                          "statistic": {"type": "number", "description": "The two-sample t-statistic at the peak."},
+                          "field": {"type": "string", "description": "The field that moved most at this changepoint."},
+                          "mean_before": {"type": "number"},
+                          "mean_after": {"type": "number"}
+                        }
+                      }
+                    },
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/prescribe": {
+      "post": {
+        "summary": "PRESCRIBE — read the data's geometric shape and suggest what to try",
+        "description": "A diagnostic, not a prediction. Measures curvature, the intrinsic/ambient dimension ratio, and spectral clarity, then names the methods worth trying. Makes no performance claim.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "neighbors": {
+                    "type": "integer",
+                    "default": 10,
+                    "description": "Neighbors for the local-geometry probes."
+                  },
+                  "sample": {
+                    "type": "integer",
+                    "default": 500,
+                    "description": "Stride cap on points used for the O(n^2) probes."
+                  },
+                  "exclude": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Numeric fibers to leave out of the fingerprint."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The geometric fingerprint, with plain-English reads",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "n": {"type": "integer"},
+                    "features": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Fibers that went into the fingerprint."
+                    },
+                    "fingerprint": {
+                      "type": "object",
+                      "properties": {
+                        "curvature": {"type": "number"},
+                        "dim_ratio": {"type": "number", "description": "intrinsic_dim / ambient_dim."},
+                        "intrinsic_dim": {"type": "integer"},
+                        "ambient_dim": {"type": "integer"},
+                        "spectral_clarity": {"type": "number"}
+                      }
+                    },
+                    "reads": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Plain-English statements about the shape."
+                    },
+                    "recommendations": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Methods worth trying — suggestions, not scores."
+                    },
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/circulation": {
+      "post": {
+        "summary": "CIRCULATION — split a directed flow into ranking plus irreducible loops",
+        "description": "Hodge-decomposes a directed weighted flow into the part a global potential (a ranking) explains and the circulation no ranking can — loops, rings. `magnetic_gap` is the Hermitian-Laplacian flux witness that undirected diffusion is blind to.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "source": {"type": "string", "description": "Categorical field naming each edge's source node."},
+                  "target": {"type": "string", "description": "Categorical field naming each edge's target node."},
+                  "weight": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Numeric field for the directed flow value. Omitted -> 1.0 per edge."
+                  },
+                  "charge": {
+                    "type": "number",
+                    "default": 1.0,
+                    "description": "Magnetic charge — flux sensitivity of the Hermitian Laplacian."
+                  },
+                  "max_cycles": {"type": "integer", "default": 10, "description": "How many top cyclic edges to return."}
+                },
+                "required": ["source", "target"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The ranking, the circulation ratio, and the top cyclic edges",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "n_nodes": {"type": "integer"},
+                    "n_edges": {"type": "integer"},
+                    "circulation_ratio": {
+                      "type": "number",
+                      "description": "Fraction of flow energy no ranking explains. 0 = perfectly rankable, 1 = pure circulation."
+                    },
+                    "magnetic_gap": {
+                      "type": "number",
+                      "description": "Smallest eigenvalue of the normalized magnetic Laplacian at `charge`."
+                    },
+                    "charge": {"type": "number"},
+                    "ranking": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "node": {"type": "string"},
+                          "potential": {
+                            "type": "number",
+                            "description": "The node's score in the gradient part. Sorted high to low."
+                          }
+                        }
+                      }
+                    },
+                    "cyclic_edges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "source": {"type": "string"},
+                          "target": {"type": "string"},
+                          "flow": {"type": "number"},
+                          "residual": {
+                            "type": "number",
+                            "description": "Flow left unexplained by the ranking — the cyclic part."
+                          }
+                        }
+                      }
+                    },
+                    "reads": {"type": "array", "items": {"type": "string"}},
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/solve": {
+      "post": {
+        "summary": "SOLVE — SVD fit store: the whole ridge path with exact leave-one-out",
+        "description": "One thin SVD of the standardized design matrix, then every ridge fit on the path is a spectral filter on that cached frame — no descent, no refit. Leave-one-out is exact via the hat diagonal (Golub-Heath-Wahba 1979). Exact for the quadratic class; a preconditioner for GLMs.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target": {"type": "string", "description": "Numeric field to predict."},
+                  "alphas": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "description": "Explicit ridge path. Empty -> a log-spaced path is auto-generated."
+                  },
+                  "exclude": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Numeric fibers to leave out of the design matrix."
+                  }
+                },
+                "required": ["target"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The ridge path, the selected alpha, and the coefficients",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "n": {"type": "integer"},
+                    "d": {"type": "integer", "description": "Design-matrix columns."},
+                    "rank": {"type": "integer", "description": "Numerical rank of the design matrix."},
+                    "features": {"type": "array", "items": {"type": "string"}},
+                    "ridge_path": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "alpha": {"type": "number"},
+                          "loo_rmse": {"type": "number", "description": "Exact leave-one-out RMSE at this alpha."},
+                          "train_r2": {"type": "number"},
+                          "effective_df": {"type": "number", "description": "Trace of the hat matrix."}
+                        }
+                      }
+                    },
+                    "best_alpha": {"type": "number"},
+                    "best_loo_rmse": {"type": "number"},
+                    "coefficients": {
+                      "type": "object",
+                      "additionalProperties": {"type": "number"},
+                      "description": "Feature name -> coefficient at `best_alpha`, on standardized features."
+                    },
+                    "reads": {"type": "array", "items": {"type": "string"}},
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/texture": {
+      "post": {
+        "summary": "TEXTURE — how rough is one ordered signal (self-similarity exponent)",
+        "description": "Shape verb, grid-free. Fits the structure function across lags to get the self-similarity (Hurst) exponent: >0.5 persistent, 0.5 random walk, <0.5 anti-persistent. Reads RECORD ORDER, never a timestamp, so there is no bin width to choose. Check `r_squared` — a low fit means the signal is not self-similar and `exponent` should not be read as one number. Needs at least 64 records.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field": {"type": "string", "description": "Numeric field to measure. Base or fiber."},
+                  "order": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Field to order the series by. Omitted -> record order. Ordinal: only the sort matters, values are ignored."
+                  },
+                  "q": {
+                    "type": "number",
+                    "default": 2.0,
+                    "description": "Moment order for the structure function."
+                  },
+                  "min_lag": {"type": "integer", "default": 1, "description": "Smallest gap to fit over."},
+                  "max_lag": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Largest gap. Omitted -> n/8, which keeps every lag well-sampled."
+                  }
+                },
+                "required": ["field"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The exponent, its fit quality, and the verdict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "field": {"type": "string"},
+                    "n": {"type": "integer", "description": "Records that contributed a finite value."},
+                    "exponent": {"type": "number", "description": "The self-similarity (Hurst) exponent."},
+                    "r_squared": {
+                      "type": "number",
+                      "description": "Fit quality of the log-log structure function. Read this before reading `exponent`."
+                    },
+                    "n_lags": {"type": "integer"},
+                    "h_sd": {"type": "number", "description": "Sampling sd of `exponent` at this n. The verdict band is 0.5 +/- 2*h_sd, so it widens on shorter series. Empirical law 0.29*n^-0.267, fitted to simulation."},
+                    "verdict": {"type": "string", "enum": ["ROUGH", "RANDOM_WALK", "SMOOTH"]},
+                    "order_field": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "null when the series used record order."
+                    },
+                    "reads": {"type": "array", "items": {"type": "string"}},
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/precedence": {
+      "post": {
+        "summary": "PRECEDENCE — which of two ordered fields moves first",
+        "description": "Shape verb, grid-free. The normalised Levy area (the level-2 antisymmetric signature term) of the joint path: `area` > 0 means x leads y, and swapping the arguments negates it exactly. Reads RECORD ORDER, so the answer is invariant to any order-preserving change of clock. Needs at least 32 records.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "x": {"type": "string", "description": "First numeric field. Base or fiber."},
+                  "y": {"type": "string", "description": "Second numeric field. Must differ from `x`."},
+                  "order": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Field to order the records by. Omitted -> record order."
+                  }
+                },
+                "required": ["x", "y"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The signed area and which field leads",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "x": {"type": "string"},
+                    "y": {"type": "string"},
+                    "n": {"type": "integer"},
+                    "area": {
+                      "type": "number",
+                      "description": "Normalised Levy area. Sign carries the direction; swapping x and y negates it."
+                    },
+                    "leads": {
+                      "type": "string",
+                      "enum": ["x", "y", "neither"],
+                      "description": "\"neither\" when |area| is inside the deadband."
+                    },
+                    "magnitude": {"type": "number", "description": "|area|."},
+                    "p_value": {"type": "number", "description": "Permutation p-value from a rotation null built on this data. `area` alone cannot separate a real lead from noise."},
+                    "null_sd": {"type": "number", "nullable": true, "description": "Spread of that null. NOT a constant: it swings ~160x with how rough the data is."},
+                    "significant": {"type": "boolean", "description": "p_value <= 0.05. False means this window cannot establish a lead; it does not mean there is none."},
+                    "null_n": {"type": "integer", "description": "Records the null was built from."},
+                    "order_field": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "null when the series used record order."
+                    },
+                    "reads": {"type": "array", "items": {"type": "string"}},
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/bundles/{name}/cadence": {
+      "post": {
+        "summary": "CADENCE — is a timestamped stream arriving steadily or in bursts",
+        "description": "Shape verb over an arrival process. Returns two numbers, always: `index` (Greenwood dispersion) and `memory` (lag-1 autocorrelation of log gaps). Both, because `index` is symmetric in the gaps and provably cannot see ordering — a high `index` alone is NOT clustering. Verdict bands are the memoryless null plus or minus 2sd, from a closed form at your n. Needs at least 64 distinct timestamps.",
+        "tags": ["ML"],
+        "parameters": [{"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "string",
+                    "description": "Numeric timestamp field. CARDINAL — the values are the entire content, not a sort key. A row index is refused by name."
+                  },
+                  "block": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Gaps per block for the drift-filtered form. Omitted -> 64."
+                  }
+                },
+                "required": ["time"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dispersion and memory, each with its verdict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bundle": {"type": "string"},
+                    "time_field": {"type": "string"},
+                    "n_events": {"type": "integer", "description": "Usable events after coalescing duplicate stamps."},
+                    "n_gaps": {"type": "integer", "description": "n_events - 1. The `n` in every formula."},
+                    "index": {"type": "number", "description": "Greenwood dispersion. <1 = more regular than random."},
+                    "index_z": {"type": "number", "description": "Standard deviations from the memoryless null."},
+                    "null_sd": {
+                      "type": "number",
+                      "description": "Closed-form null sd of `index`: n/sqrt((n-1)(n+2)(n+3))."
+                    },
+                    "index_blocked": {
+                      "type": "number",
+                      "nullable": true,
+                      "description": "Mean per-block `index`, filtering out structure longer than one block. NULL when there were under two blocks — genuinely absent, not 0.0."
+                    },
+                    "block_len": {"type": "integer"},
+                    "n_blocks": {"type": "integer", "description": "0 when `index_blocked` is null."},
+                    "memory": {"type": "number", "description": "Lag-1 autocorrelation of log gaps."},
+                    "memory_z": {"type": "number"},
+                    "verdict": {
+                      "type": "string",
+                      "enum": ["BURSTY", "STEADY", "THROTTLED"],
+                      "description": "THROTTLED means more regular than random — suspect something metering the feed."
+                    },
+                    "memory_verdict": {"type": "string", "enum": ["PERSISTENT", "MEMORYLESS", "ALTERNATING"]},
+                    "reads": {"type": "array", "items": {"type": "string"}},
+                    "notes": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bundle not found",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          },
+          "422": {
+            "description": "Refused — `error` names the field and the requirement it missed",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+          }
+        }
+      }
+    },
+    "/v1/ml": {
+      "get": {
+        "summary": "ML catalog — every ML endpoint, its knobs, and what it does",
+        "description": "Discovery index for the ML family. Lists each route with its parameters and a one-line description, plus which methods are geometric and which are the flat control arm. Machine-readable; no bundle required.",
+        "tags": ["ML"],
+        "responses": {
+          "200": {
+            "description": "The ML catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "about": {"type": "string"},
+                    "positioning": {
+                      "type": "object",
+                      "properties": {
+                        "geometric": {"type": "string"},
+                        "baselines": {"type": "string"},
+                        "evidence": {"type": "string"}
+                      }
+                    },
+                    "endpoints": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "route": {
+                            "type": "string",
+                            "description": "Method and path, e.g. `POST /v1/bundles/{name}/scan`."
+                          },
+                          "kind": {
+                            "type": "string",
+                            "description": "Whether the method is geometric, a flat baseline, or both."
+                          },
+                          "gql": {"type": "string", "description": "The equivalent GQL statement, where one exists."},
+                          "does": {"type": "string"},
+                          "params": {"type": "object", "additionalProperties": {"type": "string"}}
+                        }
+                      }
+                    },
+                    "not_a_fit": {
+                      "type": "object",
+                      "additionalProperties": {"type": "string"},
+                      "description": "Problem classes GIGI deliberately does not address, and why."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/openapi.json": {
       "get": {
         "summary": "OpenAPI specification",
@@ -640,6 +1829,7 @@
     { "name": "Analytics", "description": "Curvature, spectral, stats, explain" },
     { "name": "Schema", "description": "Schema evolution (add fields, indexes)" },
     { "name": "Import/Export", "description": "Bulk data import/export" },
-    { "name": "Transactions", "description": "Atomic multi-operation transactions" }
+    { "name": "Transactions", "description": "Atomic multi-operation transactions" },
+    { "name": "ML", "description": "Geometric ML: anomaly scan, clustering, inference, reduction, factorization, changepoints, prescribe, circulation, solve, and the shape verbs (texture, precedence, cadence)" }
   ]
 }

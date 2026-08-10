@@ -607,8 +607,8 @@ mod tests {
         // Three streams that `index` sees as the same KIND of thing — all
         // bursty — and that `memory` must tell apart three ways.
         //   heavy: independent gaps, heavy-tailed marginal  -> no memory
-        //   burst: strictly periodic burst rhythm           -> alternating
-        //   mod:   mode-switching, stays in a mode          -> persistent
+        //   burst: strictly periodic burst rhythm -> alternating
+        //   mod:   mode-switching, stays in a mode -> persistent
         let (d1, heavy) = run("cad_m_heavy", &lognormal_stamps(4096, 1.0, 23));
         let (d2, burst) = run("cad_m_burst", &clustered_stamps(4096, 8, 29));
         let (d3, moded) = run("cad_m_mod", &modulated_stamps(4096, 83));
@@ -815,7 +815,7 @@ mod tests {
         let mut t_ns: i64 = 0;
         let mut ns: Vec<i64> = Vec::new();
         for i in 0..3000 {
-            t_ns += (-u().ln() * 300_000.0) as i64;      // ~300 us mean
+            t_ns += (-u().ln() * 300_000.0) as i64; // ~300 us mean
             ns.push(BASE + t_ns);
             // A sweep at ~50 ns spacing, JITTERED. The first draft used exactly
             // 50 ns and CAD-16 refused it at an 11.1% lattice fraction — the

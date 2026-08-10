@@ -32,9 +32,10 @@ Inventory of consumers currently wired this way:
 
 Cross-references for the surface this doc rides on:
 
-- `docs/HTTP_API_REFERENCE.md` — auto-generated raw endpoint shapes
-  (from `/v1/openapi.json`). Use it when a wire shape isn't reproduced
-  in this doc.
+- `docs/HTTP_API_REFERENCE.md` — hand-maintained raw endpoint shapes,
+  written to mirror `/v1/openapi.json` and to cover the feature-gated
+  routes the spec does not yet enumerate. Use it when a wire shape
+  isn't reproduced in this doc.
 - `BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` — per-primitive deep dive
   (what the math is, when to use it, common pitfalls).
 - `docs/STABILITY_GUARANTEES.md` — feature-flag tier table; tells you
@@ -801,9 +802,12 @@ consumer perspectives.
 Three escape valves:
 
 1. **Raw HTTP shapes.** For an endpoint not covered here, see
-   `docs/HTTP_API_REFERENCE.md` (auto-generated from
-   `/v1/openapi.json`). It carries every request and response
-   shape the engine exposes.
+   `docs/HTTP_API_REFERENCE.md` (hand-maintained, mirroring
+   `/v1/openapi.json` and adding the feature-gated routes the
+   spec does not yet enumerate). Between the two, every request
+   and response shape the engine exposes is written down; the
+   route catalog itself is gated by
+   `tests/openapi_route_coverage.rs`.
 
 2. **Math behind a primitive.** For the math behind a primitive
    (why `attend` is a kernel-density estimate, why `intent_gate`'s
@@ -845,7 +849,7 @@ gets a new section. The patterns themselves don't change.
 | `docs/CREATE_SESSION.md` | The `CREATE SESSION` verb — full syntax, errors, schema extension rules |
 | `docs/DAVIS_CONJECTURE_LAMBDA_RIDEALONG.md` | The λ contract — formula, helpers, edge cases |
 | `docs/GIGI_HOSTING_ITSELF.md` | The `__bundles__` virtual bundle for engine introspection |
-| `docs/HTTP_API_REFERENCE.md` | Raw endpoint shapes (auto-generated) |
+| `docs/HTTP_API_REFERENCE.md` | Raw endpoint shapes (hand-maintained) |
 | `docs/STABILITY_GUARANTEES.md` | Feature-flag tier table |
 | `docs/GETTING_STARTED.md` | First-bundle walkthrough for new consumers |
 | `docs/SHAPE_VERBS.md` | TEXTURE / PRECEDENCE / CADENCE — "what shape is this data in", without picking a bar size |

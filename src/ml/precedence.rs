@@ -3,7 +3,7 @@
 //! Returns the normalised signed area enclosed by the 2-D path `(x, y)`:
 //!
 //! ```text
-//! A = 1/2 * sum_i ( x_i * y_{i+1} - y_i * x_{i+1} )        (about the start)
+//! A = 1/2 * sum_i ( x_i * y_{i+1} - y_i * x_{i+1} ) (about the start)
 //! normalised by sqrt( QV_x * QV_y )
 //! ```
 //!
@@ -49,7 +49,26 @@ pub const MAX_PRECEDENCE_N: usize = 2_000_000;
 /// Below this a signed area is not meaningfully estimable.
 pub const MIN_PRECEDENCE_N: usize = 32;
 /// |A| below this reads as "neither leads" rather than a spurious direction.
+/// A float-equality guard only — it fires on identical or exactly-zero series.
+/// It is NOT a significance band; `p_value` below is the significance instrument.
 pub const PRECEDENCE_DEADBAND: f64 = 1e-6;
+
+/// Rotations used to build the null distribution of `area`.
+///
+/// 199 gives clean 5% and 1% quantiles for a permutation test (the p-value is
+/// `(1 + #{|a_k| >= |a_obs|}) / (1 + K)`, so K+1 = 200 divides evenly).
+pub const PRECEDENCE_NULL_ROTATIONS: usize = 199;
+
+/// Cap on the sample the null is built from.
+///
+/// The null is computed on a CONTIGUOUS block so the increments keep their own
+/// autocorrelation — which is the whole point, see [`precedence`]. Measured, the
+/// null sd is n-independent for every increment structure except the very
+/// roughest, where it narrows with n (sd 0.0119 at n=1024 down to 0.0034 at
+/// n=65536 for MA(1) phi = -0.9). Capping therefore errs WIDE on rough data:
+/// conservative, costing power rather than manufacturing false leads. Disclosed
+/// in `notes` whenever it bites.
+pub const PRECEDENCE_NULL_MAX_N: usize = 65_536;
 
 /// Request for `POST /v1/bundles/{name}/precedence`.
 #[derive(Deserialize)]
@@ -71,9 +90,102 @@ pub struct PrecedenceResult {
     pub area: f64,
     pub leads: String,
     pub magnitude: f64,
+    /// Permutation p-value against a rotation null — the probability of seeing
+    /// an area at least this large with NO lead relationship, given these two
+    /// series' own increment structure.
+    pub p_value: f64,
+    /// Spread of that null. This is what makes the reading interpretable: it
+    /// swings by a factor of ~160 with how rough the data is.
+    pub null_sd: f64,
+    /// `p_value <= 0.05`. False means the direction below is not distinguishable
+    /// from no relationship *in this window*.
+    pub significant: bool,
+    /// Records the null was built from (capped at `PRECEDENCE_NULL_MAX_N`).
+    pub null_n: usize,
     pub order_field: Option<String>,
     pub reads: Vec<String>,
     pub notes: Vec<String>,
+}
+
+/// Normalised signed area from two increment series, about the path start.
+fn area_from_increments(dx: &[f64], dy: &[f64]) -> Option<f64> {
+    let n = dx.len();
+    if n == 0 || dy.len() != n { return None; }
+    let (mut xi, mut yi) = (0.0f64, 0.0f64);
+    let (mut acc, mut qx, mut qy) = (0.0f64, 0.0f64, 0.0f64);
+    for i in 0..n {
+        let (xn, yn) = (xi + dx[i], yi + dy[i]);
+        acc += xi * yn - yi * xn;
+        qx += dx[i] * dx[i];
+        qy += dy[i] * dy[i];
+        xi = xn;
+        yi = yn;
+    }
+    let qv = (qx * qy).sqrt();
+    if !(qv > 0.0) || !qv.is_finite() { return None; }
+    let a = 0.5 * acc / qv;
+    if a.is_finite() { Some(a) } else { None }
+}
+
+/// The null distribution of `area` for these two series, by circular rotation.
+///
+/// Returns `(p_value, null_sd)`.
+///
+/// **Why a rotation surrogate and not a formula.** For INDEPENDENT paths with
+/// iid increments the normalised area is Levy's stochastic area, whose
+/// characteristic function `sech(l/2)` inverts to density `sech(pi*a)` — so
+/// `sd = 1/2` exactly, at every `n`. Verified: 0.494 / 0.510 / 0.488 at
+/// n = 512 / 4096 / 32768.
+///
+/// That constant is useless on real data. With MA(1) increments the true null
+/// sd runs 0.006 (rough) → 0.458 (walk) → 1.046 (smooth) — a factor of 160,
+/// tracking exactly what TEXTURE measures. Shipping `1/2` would be ~80x too
+/// WIDE on rough tape (never detects a real lead) and ~2x too NARROW on smooth
+/// tape (calls noise a lead). Real books are never a pure random walk.
+///
+/// Rotating ONE channel's increments destroys any lead relationship while
+/// preserving that channel's own autocorrelation exactly, so the null adapts to
+/// the data instead of assuming its shape. Increments are rotated rather than
+/// levels: rotating levels would splice in an artificial jump at the wrap.
+/// Measured false-positive rate at the 5% level, independent pairs:
+/// 4.3% / 4.0% / 3.3% / 6.3% / 6.7% across MA(1) phi = -0.9 .. +0.9 — nominal
+/// everywhere the closed form is wrong.
+///
+/// Deterministic: the offsets come from a fixed-seed xorshift, so the same
+/// bundle and parameters return the same p-value every time (TXP-14).
+fn rotation_null(dx: &[f64], dy: &[f64], observed: f64) -> (f64, f64, usize) {
+    let n = dx.len().min(PRECEDENCE_NULL_MAX_N);
+    if n < 8 { return (1.0, f64::NAN, n); }
+    let (dxs, dys) = (&dx[..n], &dy[..n]);
+    let mut state: u64 = 0x9E37_79B9_7F4A_7C15 ^ (n as u64);
+    let mut next = move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        state
+    };
+    let mut rotated = vec![0.0f64; n];
+    let mut at_least = 1usize; // the observed value counts itself
+    let mut draws: Vec<f64> = Vec::with_capacity(PRECEDENCE_NULL_ROTATIONS);
+    for _ in 0..PRECEDENCE_NULL_ROTATIONS {
+        // Offset in 1..n-1: 0 would reproduce the observed pairing exactly.
+        let k = 1 + (next() as usize) % (n - 1);
+        for i in 0..n {
+            rotated[i] = dys[(i + k) % n];
+        }
+        if let Some(a) = area_from_increments(dxs, &rotated) {
+            if a.abs() >= observed.abs() { at_least += 1; }
+            draws.push(a);
+        }
+    }
+    let p = at_least as f64 / (PRECEDENCE_NULL_ROTATIONS + 1) as f64;
+    let sd = if draws.len() > 1 {
+        let m = draws.iter().sum::<f64>() / draws.len() as f64;
+        (draws.iter().map(|v| (v - m) * (v - m)).sum::<f64>() / (draws.len() - 1) as f64).sqrt()
+    } else {
+        f64::NAN
+    };
+    (p, sd, n)
 }
 
 /// Signed, normalised area enclosed by the joint path of `x` and `y`.
@@ -103,6 +215,21 @@ pub fn precedence(
         if !has_field(o) {
             return Err((StatusCode::UNPROCESSABLE_ENTITY,
                         format!("order field '{}' not found", o)));
+        }
+    }
+
+    // TXP-17: these verbs read RECORD ORDER. Iteration equals insertion order
+    // only for sequentially stored bundles; a bundle with a TEXT base field is
+    // hash-stored and iterates arbitrarily. Measured on one hashed bundle:
+    // area +0.7536 ordered by its sequence field, +0.0017 with `order` omitted
+    // — a real signal flattened to nothing, HTTP 200, no warning. Refuse rather
+    // than answer from an order that means nothing.
+    if order.is_none() {
+        let mode = store.storage_mode();
+        if mode == "hashed" || mode == "hybrid" {
+            return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
+                "bundle '{}' is {}-stored, so its records do not iterate in insertion order — and this verb reads record order. Name an ordering field. (A bundle gets this storage from a TEXT base field; there is nothing wrong with the bundle, but the order you inserted rows in is not recoverable from it.)",
+                name, mode)));
         }
     }
 
@@ -166,6 +293,13 @@ pub fn precedence(
                     "area is not finite; the path is degenerate".to_string()));
     }
 
+    // The significance instrument. `area` alone cannot separate a real lead
+    // from noise — see `rotation_null`.
+    let dx: Vec<f64> = xs.windows(2).map(|w| w[1] - w[0]).collect();
+    let dy: Vec<f64> = ys.windows(2).map(|w| w[1] - w[0]).collect();
+    let (p_value, null_sd, null_n) = rotation_null(&dx, &dy, a);
+    let significant = p_value <= 0.05;
+
     let leads = if a.abs() < PRECEDENCE_DEADBAND { "neither" }
                 else if a > 0.0 { "x" } else { "y" };
     let reads = vec![
@@ -175,22 +309,14 @@ pub fn precedence(
             _ => format!("Neither leads (area {:+.4}, inside the {:.0e} deadband): \
                           these two are identical at zero lag.", a, PRECEDENCE_DEADBAND),
         },
-        // The honest health warning. PRECEDENCE ships NO significance measure,
-        // and the reader cannot supply one by intuition because the Levy area
-        // does not behave like a correlation: it does NOT concentrate with more
-        // data. Measured on independent random walks, sd(area) is 0.48-0.51 and
-        // is the SAME at n = 512 and n = 32768. Twenty independent pairs all
-        // returned a confident direction and `neither` never fired.
-        format!(
-            "CONFIDENCE: this verb returns no significance figure, and |area| = \
-             {:.4} on its own does NOT establish a lead. On INDEPENDENT series \
-             with no relationship, |area| has a standard deviation near 0.5 and \
-             that does not shrink as you add data — so a single pair reading \
-             under about 1.0 is inside the range pure noise produces. Treat one \
-             reading as a hypothesis: confirm it against a null you build \
-             yourself (shuffle or rotate one channel and re-measure), or across \
-             independent sessions. Do not rank instruments by |area| alone.",
-            a.abs()),
+        // Significance, from the measured null rather than from prose.
+        if significant {
+            format!(
+                "SIGNIFICANT: p = {:.3} against a rotation null (sd {:.3}). An area this large is unlikely with no lead relationship, given these two series' own increment structure.", p_value, null_sd)
+        } else {
+            format!(
+                "NOT SIGNIFICANT: p = {:.3} against a rotation null (sd {:.3}). The direction above is the best estimate, but in THIS window it is not distinguishable from no relationship. Do not rank pairs on it. Lead-lag is a persistent property — aggregate the signed area across independent windows and test the mean, which is where this verb has its power (measured: a planted lead gives the correct sign 99.5% of the time and 20 windows separate from the null at z = 14.5, while a single window detects only about 20% of the time).", p_value, null_sd)
+        },
         "Read the SIGN as direction. Magnitude peaks at a moderate lead and \
          decays as the two series decorrelate, so it is a strength-within-band \
          reading, not a lag in units of records.".to_string(),
@@ -198,7 +324,7 @@ pub fn precedence(
     let mut notes = vec![
         match &order {
             Some(o) if lexicographic_order => format!(
-                "ordered by '{}' LEXICOGRAPHICALLY — its values are not all                  numeric, so '10' sorts before '9'. Correct for ISO-8601                  timestamps; WRONG for unpadded numeric ids, where it scrambles                  the record order this verb reads. Zero-pad them, or order by a                  numeric field.", o),
+                "ordered by '{}' LEXICOGRAPHICALLY — its values are not all numeric, so '10' sorts before '9'. Correct for ISO-8601 timestamps; WRONG for unpadded numeric ids, where it scrambles the record order this verb reads. Zero-pad them, or order by a numeric field.", o),
             Some(o) => format!("ordered by '{}'", o),
             // NOT a guarantee of insertion order. Record iteration follows the
             // bundle's STORAGE MODE: sequential bundles preserve insertion
@@ -208,7 +334,7 @@ pub fn precedence(
             // signal flattened to nothing, with the old note asserting the
             // opposite. These verbs read record order, so on a hashed bundle
             // the caller MUST name an ordering field.
-            None => "no order field given — records read in the bundle's STORAGE                      order. That equals insertion order only on sequentially                      stored bundles; a bundle with a TEXT base field is stored                      hashed and will iterate in an arbitrary order, which                      silently scrambles what this verb measures. If in doubt,                      name an ordering field."
+            None => "no order field given — records read in the bundle's STORAGE order. That equals insertion order only on sequentially stored bundles; a bundle with a TEXT base field is stored hashed and will iterate in an arbitrary order, which silently scrambles what this verb measures. If in doubt, name an ordering field."
                 .to_string(),
         },
         "area normalised by sqrt(QV_x * QV_y): dimensionless, so units and \
@@ -222,9 +348,15 @@ pub fn precedence(
              non-finite (skipped, never coerced to 0)", skipped, total, x, y));
     }
 
+    if null_n < dx.len() {
+        notes.push(format!(
+            "null built from the first {} of {} gaps (cap {}); on very rough data the null narrows with sample size, so a capped null errs WIDE — conservative, costing power rather than inventing leads",
+            null_n, dx.len(), PRECEDENCE_NULL_MAX_N));
+    }
     Ok(PrecedenceResult {
         x: x.to_string(), y: y.to_string(), n, area: a,
         leads: leads.to_string(), magnitude: a.abs(),
+        p_value, null_sd, significant, null_n,
         order_field: order, reads, notes,
     })
 }
@@ -234,6 +366,90 @@ mod tests {
     use super::*;
     use crate::ml::test_support::{cleanup, scan_env, scan_rec};
     use crate::types::{BundleSchema, FieldDef, Record, Value as V};
+
+    /// TXP-18 — THE NULL MUST TRACK THE DATA'S OWN ROUGHNESS.
+    ///
+    /// `area` alone cannot separate a real lead from noise, and the noise floor
+    /// is not a constant: with MA(1) increments the true null sd runs 0.006
+    /// (rough) through 0.458 (random walk) to 1.046 (smooth) — a factor of 160,
+    /// tracking exactly what TEXTURE measures.
+    ///
+    /// This gate is the reason a closed form was NOT shipped. For independent
+    /// paths with iid increments the normalised area is Levy's stochastic area
+    /// and `sd = 1/2` exactly, which is seductive and verified — and wrong on
+    /// real tape in BOTH directions: ~80x too wide on rough data (never fires)
+    /// and ~2x too narrow on smooth data (fires on noise). Replace
+    /// `rotation_null` with the constant 1/2 and the rough and smooth rows below
+    /// both fail.
+    #[test]
+    fn txp_18_null_tracks_roughness_not_a_constant() {
+        // MA(1) increments: phi < 0 rough, phi > 0 smooth.
+        fn ma1_inc(n: usize, phi: f64, seed: u64) -> Vec<f64> {
+            let mut g = gauss_stream(seed);
+            let mut prev = g();
+            (0..n).map(|_| { let e = g(); let v = e + phi * prev; prev = e; v }).collect()
+        }
+        let n = 2048;
+        let mut sds = Vec::new();
+        for (k, phi) in [(-0.9f64), 0.0, 0.9].iter().enumerate() {
+            let dx = ma1_inc(n, *phi, 11 + k as u64);
+            let dy = ma1_inc(n, *phi, 97 + k as u64);
+            let obs = area_from_increments(&dx, &dy).expect("area");
+            let (p, sd, _) = rotation_null(&dx, &dy, obs);
+            assert!(sd.is_finite() && sd > 0.0, "null sd must exist: {sd}");
+            assert!((0.0..=1.0).contains(&p), "p must be a probability: {p}");
+            sds.push(sd);
+        }
+        // The whole point: the null is NOT the same width at every roughness.
+        assert!(sds[0] < sds[1] && sds[1] < sds[2],
+                "null must widen from rough to smooth, got {sds:?}");
+        assert!(sds[2] / sds[0] > 5.0,
+                "rough and smooth nulls must differ by a large factor, got {sds:?} \
+                 (a constant null would give a ratio of exactly 1)");
+    }
+
+    /// TXP-19: the significance instrument is wired into the response, is
+    /// deterministic, and a planted lead is not called insignificant *for the
+    /// wrong reason* — the p-value must be a real probability tied to the data.
+    #[test]
+    fn txp_19_p_value_is_reported_and_deterministic() {
+        let lag = 6usize;
+        let mut g = gauss_stream(31);
+        let src: Vec<f64> = (0..(2048 + lag + 2)).map(|_| g()).collect();
+        let (mut a, mut b) = (0.0f64, 0.0f64);
+        let rows: Vec<Record> = (0..2048).map(|i| {
+            a += src[i + lag];
+            b += src[i];
+            scan_rec(&[
+                ("id", V::Text(format!("r{i:05}"))),
+                ("i", V::Float(i as f64)),
+                ("x", V::Float(a)),
+                ("y", V::Float(b)),
+                ("label", V::Text("p".into())),
+            ])
+        }).collect();
+        let schema = BundleSchema::new("s")
+            .base(FieldDef::categorical("id"))
+            .fiber(FieldDef::numeric("i"))
+            .fiber(FieldDef::numeric("x"))
+            .fiber(FieldDef::numeric("y"))
+            .fiber(FieldDef::categorical("label"));
+        let (dir, engine) = scan_env("txp_pval", "s", schema, rows);
+
+        let r1 = precedence(&engine, "s", "x", "y", Some("i".into())).expect("p1");
+        let r2 = precedence(&engine, "s", "x", "y", Some("i".into())).expect("p2");
+        assert_eq!(r1.p_value.to_bits(), r2.p_value.to_bits(),
+                   "p-value must be deterministic (TXP-14)");
+        assert_eq!(r1.null_sd.to_bits(), r2.null_sd.to_bits());
+        assert!((0.0..=1.0).contains(&r1.p_value), "p={}", r1.p_value);
+        assert!(r1.null_sd.is_finite() && r1.null_sd > 0.0, "sd={}", r1.null_sd);
+        assert_eq!(r1.significant, r1.p_value <= 0.05);
+        // Every response must carry the significance reading, whichever way it
+        // came out — this is the field whose absence was the blocker.
+        assert!(r1.reads.iter().any(|s| s.contains("SIGNIFICANT")),
+                "significance must be in reads: {:?}", r1.reads);
+        cleanup(&dir);
+    }
 
     fn gauss_stream(seed: u64) -> impl FnMut() -> f64 {
         let mut s = seed | 1;

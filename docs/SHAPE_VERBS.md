@@ -123,9 +123,9 @@ still names the field and the requirement — but don't read the status code as
 
 **Discovery:** `GET /v1/ml` lists every ML endpoint including these three, with
 their parameters and a one-line description of what each does. That is the
-machine-readable index to use. Note that `GET /v1/openapi.json` covers the core
-bundle, query and GQL surface but **does not currently include the ML family** —
-don't treat its absence there as meaning a route doesn't exist.
+machine-readable index to use. `GET /v1/openapi.json` now carries the ML family
+too — all three shape verbs, with full request and response schemas — so either
+index will find them.
 
 ---
 
@@ -224,12 +224,22 @@ books are where the losses live.
 For calibration: it recovers a known `H` from exact fractional Brownian motion to
 within ±0.03 across H = 0.1 to 0.9.
 
-**A limit worth knowing.** The `ROUGH`/`SMOOTH` cutoffs at 0.45 and 0.55 are
-conventional, not derived from a noise budget, and the estimator's own sampling
-spread is comparable to the band width at modest `n`. Treat a verdict near the
-boundary as "inconclusive" rather than as a call, and read `exponent` and
-`r_squared` directly when the decision matters. Deriving those bands properly is
-open work.
+**The verdict band adapts to your sample size.** The cutoffs are no longer a
+flat `0.45 / 0.55`. They are `0.5 ± 2·h_sd`, where `h_sd` is this estimator's
+own measured sampling spread at your `n`, and it is returned in the response:
+
+| n | `h_sd` | verdict band half-width |
+|---|---|---|
+| 64 | 0.096 | ±0.193 |
+| 1,024 | 0.043 | ±0.087 |
+| 16,384 | 0.022 | ±0.044 |
+
+The old flat ±0.05 was *narrower than the estimator's own noise* for any series
+under about 16,000 points, so a true random walk was being called ROUGH or
+SMOOTH roughly a third of the time. The band now widens on short series instead
+of claiming a precision the fit does not have. `h_sd` comes from an empirical
+law fitted to simulation (`0.29·n^−0.267`), not a closed form — stated plainly
+so you know what it rests on.
 
 ---
 
@@ -263,45 +273,54 @@ curl -s -XPOST https://your-gigi-host/v1/bundles/btc_l2/precedence \
 Swapping the arguments negates the area exactly. `magnitude` is how pronounced
 the lead is, not how confident you should be.
 
-> ### ⚠ PRECEDENCE ships no significance figure — read this before ranking anything
+> ### PRECEDENCE now ships a significance test — read `p_value`, not `area`
 >
-> TEXTURE gives you `r_squared`. CADENCE gives you `null_sd`, `index_z` and
-> derived bands. **PRECEDENCE gives you neither, and you cannot supply one by
-> intuition**, because the Lévy area does not behave like a correlation.
+> `area` alone **cannot** separate a real lead from noise, and you cannot judge
+> it by eye, because the Lévy area does not behave like a correlation: it does
+> not concentrate as you add data. On independent series with no relationship,
+> `|area|` has a spread near 0.5 at n = 512 and *the same* spread at n = 32,768.
 >
-> It does **not concentrate with more data.** Measured on independent random
-> walks with no relationship whatsoever:
+> Worse, that noise floor is **not a constant.** It tracks how rough your data
+> is — precisely what TEXTURE measures:
 >
-> | n | sd(area) | mean \|area\| | P(\|area\| > 0.52) |
-> |---|---|---|---|
-> | 512 | 0.494 | 0.382 | 27.8% |
-> | 2,048 | 0.471 | 0.352 | 22.2% |
-> | 8,192 | 0.510 | 0.377 | 27.5% |
-> | 32,768 | 0.477 | 0.360 | 24.5% |
+> | increments | TEXTURE reads | true noise floor |
+> |---|---|---|
+> | strongly mean-reverting | ROUGH | **0.006** |
+> | random walk | RANDOM_WALK | 0.458 |
+> | strongly trending | SMOOTH | **1.046** |
 >
-> Sixty-four times the data, same spread. So a single pair reading **under about
-> 1.0 in absolute value is inside the range pure noise produces**, and `leads`
-> will still name a direction — the `neither` band is a float-equality guard at
-> 1e-6, not a statistical one, and it will effectively never fire on real data.
+> A factor of 160. So the response now carries a **`p_value`** from a rotation
+> test built on *your* data: one channel's increments are circularly rotated,
+> which destroys any lead relationship while preserving that channel's own
+> autocorrelation exactly, and the observed area is ranked against 199 such
+> surrogates. Measured false-positive rate across that whole roughness range:
+> **4.3% / 4.0% / 3.3% / 6.3% / 6.7%** against a nominal 5%.
 >
-> **What this means for you.** Point PRECEDENCE at fifty pairs overnight and you
-> get fifty confident directions, most of which would have appeared if the pairs
-> were unrelated. Treat one reading as a **hypothesis**, not a finding:
+> | field | meaning |
+> |---|---|
+> | `p_value` | probability of an area this large with no lead relationship |
+> | `null_sd` | the noise floor for *this* pair — expect it to vary a lot |
+> | `significant` | `p_value <= 0.05` |
+> | `null_n` | records the null was built from |
 >
-> - Build your own null: shuffle or rotate one channel, re-measure, repeat, and
->   compare your real reading against that spread.
-> - Or require the same sign across several independent sessions.
-> - Do **not** rank instruments by `|area|` alone.
+> **`significant: false` does not mean "no lead."** It means this window cannot
+> establish one. That is the common case, and it is not a defect — it is what
+> honest lead-lag measurement looks like on a single window.
 >
-> The `reads` array now carries this warning on every response. A proper null —
-> `area_z` and `null_sd`, the shape CADENCE already uses — is the fix, and it is
-> open work rather than something already shipped.
-
-> **On that sign convention.** It was asserted the wrong way round twice during
-> development — once in validation, once again in the port — and caught both
-> times by a fixture with a *planted* lead. The estimator was right on both
-> occasions. If you are ever unsure which way it reads on your data, don't reason
-> about it: construct a series with a lead you chose, and measure.
+> ### How to actually use it: aggregate
+>
+> A single window detects a genuine planted lead only about **20%** of the time.
+> But the *sign* is right **99.5%** of the time when a lead exists, and the
+> estimate is tightly clustered (sd 0.14 with a real lead, against 0.48 under the
+> null). So the power is in repetition:
+>
+> - Measure the same pair across many independent windows or sessions.
+> - Average the **signed** `area` and test that mean against zero.
+> - Measured: twenty windows separate from the null at **z = 14.5**.
+>
+> This is not a workaround. Lead-lag is a persistent structural property, so
+> measuring it repeatedly is what you should want to do anyway. Do not rank
+> instruments on a single window's `|area|`.
 
 ### The property you're paying for
 
@@ -544,6 +563,7 @@ as a stable constant.
 | REST | `POST /v1/bundles/{name}/texture` | `.../precedence` | `.../cadence` |
 | required | `field` | `x`, `y` | `time` |
 | optional | `order`/`ALONG`, `q`, `min_lag`, `max_lag` | `order`/`ALONG` | `block` |
+| significance | `h_sd` (band = 0.5 ± 2·h_sd) | `p_value`, `null_sd`, `significant` | `index_z`, `memory_z`, `null_sd` |
 | min rows | 64 | 32 | 64 distinct stamps |
 | verdicts | `ROUGH` `RANDOM_WALK` `SMOOTH` | `leads`: `x` `y` `neither` | `BURSTY` `STEADY` `THROTTLED` + `PERSISTENT` `MEMORYLESS` `ALTERNATING` |
 

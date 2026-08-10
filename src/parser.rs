@@ -10564,6 +10564,7 @@ pub fn shape_verb_exec(
                 row.insert("exponent".into(), V::Float(t.exponent));
                 row.insert("r_squared".into(), V::Float(t.r_squared));
                 row.insert("n_lags".into(), V::Float(t.n_lags as f64));
+                row.insert("h_sd".into(), V::Float(t.h_sd));
                 row.insert("verdict".into(), V::Text(t.verdict));
                 Ok(ExecResult::Rows(vec![row]))
             })())
@@ -10579,6 +10580,12 @@ pub fn shape_verb_exec(
                 row.insert("area".into(), V::Float(p.area));
                 row.insert("leads".into(), V::Text(p.leads));
                 row.insert("magnitude".into(), V::Float(p.magnitude));
+                row.insert("p_value".into(), V::Float(p.p_value));
+                row.insert("null_sd".into(), if p.null_sd.is_finite() {
+                    V::Float(p.null_sd)
+                } else { V::Null });
+                row.insert("significant".into(), V::Bool(p.significant));
+                row.insert("null_n".into(), V::Float(p.null_n as f64));
                 Ok(ExecResult::Rows(vec![row]))
             })())
         }

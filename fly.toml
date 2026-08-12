@@ -52,6 +52,32 @@ primary_region = "iad"
   # access instantly).
   GIGI_PUBLIC_BUNDLES = "stations,sensors,chembl,tetmesh_demo"
 
+  # Per-IP sliding window. Unset means state.rate_limit == 0 and
+  # rate_limit_middleware returns on its first line — no limit on ANY route,
+  # authenticated or anonymous, which is how it has been until now. Both
+  # anonymous findings that cost real money (H1's extraction oracle, H3's
+  # regex-cache exhaustion) are volume attacks, and volume is exactly what
+  # was unmetered.
+  #
+  # 1200/60s = 20 req/s per IP. Deliberately generous: davisgeometric.com's
+  # session + magic-link store is the `jg_kv` bundle on this engine, and
+  # those calls arrive from Vercel's egress addresses, so an entire login
+  # burst can share one bucket. Throttling that would take the website's
+  # sign-in down, which is a worse outcome than the thing being defended.
+  #
+  # Honest about what this does NOT do: H3 parks ~162 MB per distinct regex
+  # and needs only ~200 requests to exhaust the 32 GB VM. At 20/s that is
+  # ten seconds instead of instant. Metering buys time; the fix is bounding
+  # the cache in src/bundle.rs.
+  GIGI_RATE_LIMIT = "1200"
+  GIGI_RATE_WINDOW = "60"
+
+  # NOTE: read with std::env::var(...).is_ok() — presence alone enables it.
+  # Setting this to "0" or "false" would still turn it ON. To disable, remove
+  # the line. Without it the limiter keys on the Fly proxy's own address, so
+  # every visitor shares one bucket and the first abuser 429s the customer.
+  GIGI_TRUST_PROXY = "1"
+
 [http_service]
   internal_port = 3142
   force_https = true

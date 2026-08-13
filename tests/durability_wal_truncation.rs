@@ -245,6 +245,74 @@ fn wal_replay_recovers_records_after_a_mid_file_corruption() {
     cleanup(&dir);
 }
 
+// ---------------------------------------------------------------- T10
+
+/// T10 — a snapshotted record must reload when inserts follow in the SAME
+/// session.
+///
+/// Found by T9's control phase. `snapshot()` writes the `.dhoom` correctly —
+/// verified on disk — but on reopen the snapshotted record is absent while
+/// every post-snapshot WAL insert is present.
+///
+/// `snapshot_then_new_inserts_survive_reopen` (engine.rs:3845) covers the same
+/// shape and passes, because it closes the engine and reopens between the
+/// snapshot and the inserts. Staying in one session is the untested path — and
+/// it is the one production takes, since the admin snapshot route runs against
+/// a live engine that keeps serving writes afterwards.
+#[test]
+#[ignore = "OPEN BUG (found 2026-08-12 by T9's control phase). snapshot() \
+writes a .dhoom whose body is empty: for a 1-record bundle the file is \
+`b{id|100, tag|tag_100}:` — the field dictionary was written, the rows were \
+not. load_dhoom_snapshot therefore decodes successfully and returns ZERO \
+records, and the boot log says `Loaded snapshot b: 0 records from DHOOM` \
+while reporting success. So a snapshotted record is silently absent after \
+restart. snapshot_then_new_inserts_survive_reopen (engine.rs:3845) passes \
+only because it closes and reopens between the snapshot and the inserts. \
+This is in the DHOOM encoder/decoder pair, not the WAL. Run with \
+`cargo test -- --ignored`."]
+fn snapshotted_record_reloads_when_inserts_follow_in_same_session() {
+    let dir = test_dir("t10_dhoom_reload_same_session");
+    cleanup(&dir);
+
+    {
+        let mut e = Engine::open(&dir).unwrap();
+        e.compaction_policy_mut().disabled = true;
+        e.create_bundle(schema("b")).unwrap();
+        e.insert("b", &rec(100)).unwrap();
+        e.snapshot().unwrap();
+        // Same session — no close/reopen between the snapshot and these.
+        for i in 1..=10 {
+            e.insert("b", &rec(i)).unwrap();
+        }
+        assert_eq!(e.total_records(), 11, "all 11 visible in RAM before restart");
+    }
+
+    // The snapshot really did capture it.
+    let dhoom = dir.join("snapshots").join("b.dhoom");
+    assert!(dhoom.exists(), "snapshot file must exist");
+    let body = fs::read_to_string(&dhoom).unwrap();
+    assert!(
+        body.contains("100"),
+        "the .dhoom must contain the pre-snapshot record; got {body:?}"
+    );
+
+    {
+        let e = Engine::open(&dir).unwrap();
+        let present: Vec<i64> = (1..=10)
+            .chain(std::iter::once(100))
+            .filter(|i| e.point_query("b", &key(*i)).unwrap().is_some())
+            .collect();
+        assert!(
+            present.contains(&100),
+            "the snapshotted record was not reloaded from its .dhoom even \
+             though the file on disk contains it. present={present:?}"
+        );
+        assert_eq!(present.len(), 11, "present={present:?}");
+    }
+
+    cleanup(&dir);
+}
+
 // ---------------------------------------------------------------- T7
 
 /// T7 — the backstop. A compaction must not rename over the only copy of the

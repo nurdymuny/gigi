@@ -1857,9 +1857,16 @@ impl Engine {
     /// Number of records across all bundles (heap + mmap base + overlay).
     pub fn total_records(&self) -> usize {
         let heap: usize = self.bundles.values().map(|b| b.len()).sum();
-        let mmap: usize = self.mmap_bundles.values().map(|ob| {
-            ob.base().len() + ob.overlay_len()
-        }).sum();
+        // TDD-DUR W7 — delegate to OverlayBundle::len rather than recomputing.
+        //
+        // This used to be `ob.base().len() + ob.overlay_len()`, which never
+        // subtracted tombstones: after deleting a base record, point_query
+        // correctly reported it gone while total_records still counted it.
+        // Two read paths disagreeing about whether a row exists, in the same
+        // engine. OverlayBundle::len already does this correctly, including
+        // the case where a tombstone names a key that is not in the base and
+        // so must not be subtracted twice (mmap_bundle.rs:545-560).
+        let mmap: usize = self.mmap_bundles.values().map(|ob| ob.len()).sum();
         heap + mmap
     }
 
@@ -2465,9 +2472,17 @@ impl Engine {
             let tmp_path = snapshots_dir.join(format!("{name}.dhoom.tmp"));
 
             let count = store.len();
-            if count == 0 {
-                continue;
-            }
+            // TDD-DUR W2 — deliberately NOT skipped when empty.
+            //
+            // Skipping left the previous `.dhoom` in place holding rows the
+            // WAL Deletes had removed, while compaction dropped those Deletes
+            // (compact_wal_to_schemas re-emits CreateBundle and friends, never
+            // a Delete). On the next boot the stale file was reloaded and the
+            // deleted records came back. For id_verification-shaped data a
+            // silent un-delete is a security defect, not just a durability one.
+            //
+            // Writing a zero-record snapshot makes emptiness a positive
+            // assertion on disk rather than an absence of evidence.
 
             eprintln!(
                 "  Snapshot streaming: {name} ({count} records, chunk_size={chunk_size}{})...",
@@ -2975,9 +2990,17 @@ impl Engine {
             let tmp_path = snapshots_dir.join(format!("{name}.dhoom.tmp"));
 
             let count = store.len();
-            if count == 0 {
-                continue;
-            }
+            // TDD-DUR W2 — deliberately NOT skipped when empty.
+            //
+            // Skipping left the previous `.dhoom` in place holding rows the
+            // WAL Deletes had removed, while compaction dropped those Deletes
+            // (compact_wal_to_schemas re-emits CreateBundle and friends, never
+            // a Delete). On the next boot the stale file was reloaded and the
+            // deleted records came back. For id_verification-shaped data a
+            // silent un-delete is a security defect, not just a durability one.
+            //
+            // Writing a zero-record snapshot makes emptiness a positive
+            // assertion on disk rather than an absence of evidence.
 
             eprintln!("  Snapshot streaming: {name} ({count} records, chunk_size={chunk_size})…");
             {

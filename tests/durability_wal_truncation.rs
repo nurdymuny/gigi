@@ -118,6 +118,64 @@ fn admin_snapshot_does_not_erase_mmap_overlay_records() {
     cleanup(&dir);
 }
 
+// ---------------------------------------------------------------- T7
+
+/// T7 — the backstop. A compaction must not rename over the only copy of the
+/// WAL; the outgoing generation has to be retained.
+///
+/// This requires no correctness reasoning about mmap vs heap and changes
+/// nothing on the success path. It does not prevent a violation — it makes any
+/// violation that slips through recoverable. That is the difference between
+/// 2026-08-12 being a ten-minute restore and being permanent: the forensics
+/// that read 2,341,314 records had to work from a WAL that no longer contained
+/// the lost ops.
+#[test]
+fn wal_generation_is_retained_across_compaction() {
+    let dir = test_dir("t7_wal_retention");
+    cleanup(&dir);
+
+    {
+        let mut e = Engine::open(&dir).unwrap();
+        e.compaction_policy_mut().disabled = true;
+        e.create_bundle(schema("b")).unwrap();
+        for i in 0..200 {
+            e.insert("b", &rec(i)).unwrap();
+        }
+        // Compaction happens inside snapshot(): the WAL is rewritten to
+        // schemas only, so the 200 insert entries are dropped from it.
+        e.snapshot().unwrap();
+    }
+
+    let live_wal = dir.join("gigi.wal").metadata().unwrap().len();
+
+    let retained: Vec<PathBuf> = fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| {
+            p.file_name()
+                .and_then(|s| s.to_str())
+                .is_some_and(|s| s.starts_with("gigi.wal.") && s.ends_with(".compacted"))
+        })
+        .collect();
+
+    assert!(
+        !retained.is_empty(),
+        "compaction renamed over the only copy of the WAL — nothing was \
+         retained, so any data that lived only in it is gone permanently. \
+         Expected a gigi.wal.<ts>.compacted alongside the live WAL."
+    );
+
+    let retained_len = retained[0].metadata().unwrap().len();
+    assert!(
+        retained_len > live_wal,
+        "the retained generation ({retained_len} B) should be larger than the \
+         schema-only WAL that replaced it ({live_wal} B) — it holds the insert \
+         entries that were compacted away"
+    );
+
+    cleanup(&dir);
+}
+
 // ---------------------------------------------------------------- T2
 
 /// T2 — deleted records must not come back.

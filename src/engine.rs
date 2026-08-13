@@ -16,6 +16,13 @@ use crate::mmap_bundle::{BundleMut, BundleRef, MmapBundle, OverlayBundle};
 use crate::types::{BundleSchema, Record, Value};
 use crate::wal::{WalEntry, WalReader, WalWriter};
 
+// ── WAL generation retention (TDD-DUR W0) ────────────────────────────────
+/// How many compacted WAL generations to keep beside the live one.
+const WAL_RETAIN_GENERATIONS: usize = 3;
+/// Ceiling on what those generations may occupy. Whichever of the two limits
+/// binds first wins. 8 GiB against a 50 GiB volume holding a 1.35 GiB WAL.
+const WAL_RETAIN_MAX_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+
 // ── Feature #6: Query Cache with TTL (Definitions 6.1–6.3, Theorems 6.1–6.2) ──
 
 /// Compute a deterministic fingerprint for a query (Definition 6.1).
@@ -2168,6 +2175,93 @@ impl Engine {
         Ok(())
     }
 
+    /// Keep the outgoing WAL when a compaction replaces it.
+    ///
+    /// Every physical WAL truncation in this engine is one `fs::rename` of
+    /// `gigi.wal.tmp` over `gigi.wal`, at three sites. That rename is the last
+    /// instant the outgoing generation exists. On 2026-08-12 it took ten
+    /// bundles and 180 `jg_kv` records with it — a creator account and an
+    /// approved id_verification among them — and the only reason 2,341,314
+    /// records could be read back afterwards is that someone had pulled a copy
+    /// off the machine by hand hours earlier.
+    ///
+    /// This does not prevent a bad compaction. It makes one recoverable, which
+    /// is the difference between a ten-minute restore and a permanent loss. It
+    /// needs no correctness reasoning about which bundle collection a snapshot
+    /// enumerated, so it also covers instances of the class nobody has thought
+    /// of yet.
+    ///
+    /// Returns the retained path so callers can report it.
+    fn retain_wal_generation(&self) -> io::Result<Option<PathBuf>> {
+        let wal_path = self.data_dir.join("gigi.wal");
+        if !wal_path.exists() {
+            return Ok(None);
+        }
+
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let mut retained = self.data_dir.join(format!("gigi.wal.{ts}.compacted"));
+        // Two compactions inside the same second must not clobber each other.
+        let mut n = 0u32;
+        while retained.exists() {
+            n += 1;
+            retained = self.data_dir.join(format!("gigi.wal.{ts}-{n}.compacted"));
+        }
+
+        // Link rather than rename. A rename would leave a window in which no
+        // `gigi.wal` exists at all, and a crash inside that window boots the
+        // engine onto an empty WAL — trading one loss mode for another. A hard
+        // link is O(1) and keeps the live path populated the whole time.
+        // Rename is the fallback for filesystems without link support; it
+        // reintroduces the window, which is still better than no retention.
+        if fs::hard_link(&wal_path, &retained).is_err() {
+            fs::rename(&wal_path, &retained)?;
+        }
+
+        self.prune_retained_wals();
+        Ok(Some(retained))
+    }
+
+    /// Bound what retention costs: newest `WAL_RETAIN_GENERATIONS` first, and
+    /// stop early if they already occupy `WAL_RETAIN_MAX_BYTES`. Whichever
+    /// binds first wins. Best-effort — a failure to prune must never fail a
+    /// compaction, because a disk with too many WALs is recoverable and a
+    /// compaction that refuses to finish is an outage.
+    fn prune_retained_wals(&self) {
+        let mut gens: Vec<(std::time::SystemTime, u64, PathBuf)> = match fs::read_dir(&self.data_dir)
+        {
+            Ok(rd) => rd
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    e.file_name()
+                        .to_str()
+                        .is_some_and(|s| s.starts_with("gigi.wal.") && s.ends_with(".compacted"))
+                })
+                .filter_map(|e| {
+                    let m = e.metadata().ok()?;
+                    Some((m.modified().ok()?, m.len(), e.path()))
+                })
+                .collect(),
+            Err(_) => return,
+        };
+
+        gens.sort_by(|a, b| b.0.cmp(&a.0)); // newest first
+
+        let mut kept = 0usize;
+        let mut bytes = 0u64;
+        for (_, len, path) in gens {
+            let keep = kept < WAL_RETAIN_GENERATIONS && bytes + len <= WAL_RETAIN_MAX_BYTES;
+            if keep {
+                kept += 1;
+                bytes += len;
+            } else {
+                let _ = fs::remove_file(&path);
+            }
+        }
+    }
+
     /// Compact the WAL: write a fresh WAL from current state (full WAL replay format).
     /// For large datasets prefer `snapshot()` which uses DHOOM encoding.
     pub fn compact(&mut self) -> io::Result<()> {
@@ -2188,6 +2282,9 @@ impl Engine {
             new_wal.log_checkpoint()?;
             new_wal.sync()?;
         }
+
+        // Keep the outgoing generation before it is replaced (TDD-DUR W0).
+        self.retain_wal_generation()?;
 
         // Atomic rename
         fs::rename(&tmp_path, &wal_path)?;
@@ -2218,7 +2315,25 @@ impl Engine {
     /// Unlike `cow_snapshot_with_report`, this keeps the heap-mode snapshot
     /// path streaming and avoids cloning every record before encoding. WAL
     /// compaction only runs after every non-empty heap bundle snapshots cleanly.
+    ///
+    /// **TDD-DUR W1.** Dispatches on storage mode exactly as `maybe_auto_compact`
+    /// does. `snapshot_with_chunk_size_report` iterates `self.bundles` only and
+    /// never touches `self.mmap_bundles`, then compacts the WAL — so calling it
+    /// on an engine with mmap-backed bundles deletes the WAL that was holding
+    /// their overlays, which are those overlays' only durable form. That is the
+    /// 2026-08-12 incident: ten bundles and 180 `jg_kv` records, reported
+    /// `{"status":"ok"}` because RAM was still intact, discovered one restart
+    /// later. `mmap_rebase_snapshot` has always handled both collections.
     pub fn snapshot_with_report(&mut self) -> io::Result<SnapshotReport> {
+        if !self.mmap_bundles.is_empty() {
+            let before = self.total_records();
+            self.mmap_rebase_snapshot()?;
+            return Ok(SnapshotReport {
+                bundles: Vec::new(),
+                total_records_written: before,
+                timed_out_bundles: Vec::new(),
+            });
+        }
         self.snapshot_with_chunk_size_report(
             50_000,
             self.compaction_policy.per_bundle_timeout_secs,
@@ -2750,6 +2865,8 @@ impl Engine {
             new_wal.log_checkpoint()?;
             new_wal.sync()?;
         }
+        // Keep the outgoing generation before it is replaced (TDD-DUR W0).
+        self.retain_wal_generation()?;
         fs::rename(&tmp_path, &wal_path)?;
         self.wal = WalWriter::open(&wal_path)?;
         self.ops_since_checkpoint = 0;
@@ -2832,6 +2949,16 @@ impl Engine {
     /// Streaming snapshot — encodes bundles to DHOOM in constant memory.
     /// `chunk_size` controls how many records are buffered before flushing.
     pub fn snapshot_with_chunk_size(&mut self, chunk_size: usize) -> io::Result<usize> {
+        // TDD-DUR W1 — same dispatch as maybe_auto_compact. This body walks
+        // `self.bundles` only and then compacts the WAL; on an engine with
+        // mmap-backed bundles that erases their overlays. See
+        // `snapshot_with_report` for the full note.
+        if !self.mmap_bundles.is_empty() {
+            let before = self.total_records();
+            self.mmap_rebase_snapshot()?;
+            return Ok(before);
+        }
+
         let snapshots_dir = self.data_dir.join("snapshots");
         fs::create_dir_all(&snapshots_dir)?;
 
@@ -2994,6 +3121,8 @@ impl Engine {
             new_wal.log_checkpoint()?;
             new_wal.sync()?;
         }
+        // Keep the outgoing generation before it is replaced (TDD-DUR W0).
+        self.retain_wal_generation()?;
         fs::rename(&tmp_path, &wal_path)?;
         self.wal = WalWriter::open(&wal_path)?;
         self.ops_since_checkpoint = 0;

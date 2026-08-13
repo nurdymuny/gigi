@@ -118,6 +118,133 @@ fn admin_snapshot_does_not_erase_mmap_overlay_records() {
     cleanup(&dir);
 }
 
+// ---------------------------------------------------------------- T9
+
+/// CRC-32C over `op || payload`, matching `wal.rs`'s `crc32` (Castagnoli,
+/// reflected, poly 0x82F63B78). Used only to locate record boundaries.
+fn crc32c(buf: &[u8]) -> u32 {
+    let mut table = [0u32; 256];
+    for (i, e) in table.iter_mut().enumerate() {
+        let mut c = i as u32;
+        for _ in 0..8 {
+            c = if c & 1 != 0 { (c >> 1) ^ 0x82F6_3B78 } else { c >> 1 };
+        }
+        *e = c;
+    }
+    let mut crc = 0xFFFF_FFFFu32;
+    for &b in buf {
+        crc = (crc >> 8) ^ table[((crc ^ b as u32) & 0xFF) as usize];
+    }
+    crc ^ 0xFFFF_FFFF
+}
+
+/// Byte offsets of every record in a WAL, framing `[u32 len][u8 op][payload][u32 crc]`.
+fn wal_record_offsets(path: &Path) -> Vec<usize> {
+    let d = fs::read(path).unwrap();
+    let mut offs = Vec::new();
+    let mut off = 0usize;
+    while off + 8 <= d.len() {
+        let ln = u32::from_le_bytes(d[off..off + 4].try_into().unwrap()) as usize;
+        if ln == 0 || off + 4 + ln + 4 > d.len() {
+            break;
+        }
+        let want = u32::from_le_bytes(d[off + 4 + ln..off + 8 + ln].try_into().unwrap());
+        if crc32c(&d[off + 4..off + 4 + ln]) != want {
+            break;
+        }
+        offs.push(off);
+        off += 4 + ln + 4;
+    }
+    offs
+}
+
+/// T9 — one corrupt record in the middle of the WAL must not discard every
+/// record after it.
+///
+/// This is the defect that lost eleven live records during the 2026-08-12
+/// remediation deploy — a force-verified id_verification, four Stripe
+/// webhook-dedup rows, three chat conversations, an onboarding token and an
+/// audit row. None had expired; four had no expiry at all. They sat after a
+/// corrupt entry roughly 90% of the way through a 1.35 GB WAL, and every
+/// restart discarded them again.
+///
+/// `finish_wal_replay_prefix` turns a CRC mismatch *anywhere* into `Ok(())`
+/// and keeps only the prefix. That is correct for a torn final write from a
+/// crash. It is wrong for corruption in the middle of a file that has
+/// perfectly good records after it — and nothing distinguishes the two cases.
+#[test]
+fn wal_replay_recovers_records_after_a_mid_file_corruption() {
+    let dir = test_dir("t9_wal_midfile_corruption");
+    cleanup(&dir);
+
+    // Eleven inserts straight into the WAL, no snapshot. The .dhoom load
+    // path is deliberately kept out of this fixture: it has its own defect
+    // (a snapshotted record is not reloaded when inserts follow in the same
+    // session) and mixing the two would mean a failure here could not be
+    // attributed to either.
+    {
+        let mut e = Engine::open(&dir).unwrap();
+        e.compaction_policy_mut().disabled = true;
+        e.create_bundle(schema("b")).unwrap();
+        for i in 0..11 {
+            e.insert("b", &rec(i)).unwrap();
+        }
+        assert_eq!(e.total_records(), 11);
+    }
+
+    // CONTROL — reopen with the WAL untouched. If this does not see all 11,
+    // the fixture is wrong and any conclusion drawn after corrupting it would
+    // be measuring the wrong thing.
+    {
+        let e = Engine::open(&dir).unwrap();
+        let present: Vec<i64> = (0..11)
+            .filter(|i| e.point_query("b", &key(*i)).unwrap().is_some())
+            .collect();
+        assert_eq!(
+            present.len(),
+            11,
+            "control failed before any corruption was applied: present={present:?}"
+        );
+    }
+
+    // Corrupt one record in the middle, leaving several valid ones after it.
+    let wal = dir.join("gigi.wal");
+    let offs = wal_record_offsets(&wal);
+    assert!(
+        offs.len() >= 8,
+        "need a WAL with several records to corrupt the middle of, got {}",
+        offs.len()
+    );
+    let victim = offs[offs.len() - 4]; // 3 good records follow it
+    let mut bytes = fs::read(&wal).unwrap();
+    let ln = u32::from_le_bytes(bytes[victim..victim + 4].try_into().unwrap()) as usize;
+    bytes[victim + 4 + ln] ^= 0xFF; // flip a CRC byte
+    fs::write(&wal, &bytes).unwrap();
+
+    // Reopen from disk alone.
+    {
+        let e = Engine::open(&dir).unwrap();
+        let present: Vec<i64> = (0..11)
+            .filter(|i| e.point_query("b", &key(*i)).unwrap().is_some())
+            .collect();
+        let missing: Vec<i64> = (0..11).filter(|i| !present.contains(i)).collect();
+
+        // Exactly one record was damaged, so exactly one may be missing.
+        // Asserting the whole surviving set — not a count — means a future
+        // regression names which record it dropped.
+        assert_eq!(
+            missing.len(),
+            1,
+            "one record was corrupted, so exactly one should be missing. \
+             missing={missing:?} present={present:?}. More than one means \
+             replay is still discarding records after the damage; zero would \
+             mean the corruption was not actually applied."
+        );
+    }
+
+    cleanup(&dir);
+}
+
 // ---------------------------------------------------------------- T7
 
 /// T7 — the backstop. A compaction must not rename over the only copy of the

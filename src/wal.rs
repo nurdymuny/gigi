@@ -765,6 +765,18 @@ impl WalWriter {
 }
 
 /// WAL reader — replays entries from a log file.
+/// How far past a corrupt record to look for a real boundary before
+/// concluding the tail is genuinely torn. 64 MiB is far more than any
+/// plausible single-write tear; the 2026-08-12 gap was 4 bytes.
+const RESYNC_SCAN_LIMIT: u64 = 64 * 1024 * 1024;
+/// Consecutive clean records required to accept a candidate offset. Eight
+/// makes a coincidental CRC-32C match at a false boundary vanishingly
+/// unlikely, so resync cannot invent structure out of damaged bytes.
+const RESYNC_CONFIRM_RECORDS: usize = 8;
+/// Upper bound on a single entry's declared length while resynchronising —
+/// a corrupt length field must not send the scanner off the end.
+const MAX_WAL_ENTRY_LEN: usize = 512 * 1024 * 1024;
+
 pub struct WalReader {
     file: File,
 }
@@ -920,7 +932,101 @@ impl WalReader {
         Ok(())
     }
 
+    /// Read the next entry, stepping over corrupt records when — and only
+    /// when — intact records follow.
+    ///
+    /// **TDD-DUR W5.** A CRC mismatch used to abort replay, and the caller
+    /// (`Engine::finish_wal_replay_prefix`) turned that abort into `Ok(())`
+    /// and kept only the prefix. That is right for a torn final write from a
+    /// crash and wrong for corruption in the middle of a file, and nothing
+    /// distinguished the two.
+    ///
+    /// On 2026-08-12 a 1.35 GB production WAL had one bad record about 90%
+    /// through. Every restart silently discarded the 390 records after it —
+    /// including a force-verified id_verification, four Stripe webhook-dedup
+    /// rows, three chat conversations, an onboarding token and an audit row.
+    /// None had expired. Four had no expiry at all.
+    ///
+    /// Now a mismatch triggers a bounded forward scan for a real record
+    /// boundary, confirmed by `RESYNC_CONFIRM_RECORDS` consecutive clean
+    /// records so a chance CRC hit cannot fake one. Found: skip the damaged
+    /// span, log it loudly, keep reading. Not found: the tail really is torn,
+    /// and the error propagates exactly as before.
     fn read_one(&mut self) -> io::Result<Option<WalEntry>> {
+        loop {
+            let start = self.file.stream_position()?;
+            match self.read_one_raw() {
+                Err(e)
+                    if e.kind() == io::ErrorKind::InvalidData
+                        && e.to_string().contains("WAL CRC mismatch") =>
+                {
+                    match self.resync_after(start)? {
+                        Some(next) => {
+                            eprintln!(
+                                "  WARNING: corrupt WAL record at byte {start}; \
+                                 resynchronised at {next} ({} bytes skipped) — \
+                                 records after the damage are being replayed, \
+                                 not discarded",
+                                next - start
+                            );
+                            self.file.seek(SeekFrom::Start(next))?;
+                            continue;
+                        }
+                        None => return Err(e),
+                    }
+                }
+                other => return other,
+            }
+        }
+    }
+
+    /// Scan forward from just after a corrupt record for a byte offset where
+    /// `RESYNC_CONFIRM_RECORDS` consecutive records parse and checksum
+    /// cleanly. Returns `None` if no such point exists within
+    /// `RESYNC_SCAN_LIMIT` — which is the genuine torn-tail case.
+    fn resync_after(&mut self, bad_start: u64) -> io::Result<Option<u64>> {
+        let file_len = self.file.metadata()?.len();
+        let scan_end = file_len.min(bad_start.saturating_add(RESYNC_SCAN_LIMIT));
+        if bad_start + 1 >= scan_end {
+            return Ok(None);
+        }
+
+        let window_len = (scan_end - (bad_start + 1)) as usize;
+        let mut window = vec![0u8; window_len];
+        self.file.seek(SeekFrom::Start(bad_start + 1))?;
+        self.file.read_exact(&mut window)?;
+
+        for cand in 0..window_len.saturating_sub(8) {
+            if Self::records_parse_at(&window, cand, RESYNC_CONFIRM_RECORDS) {
+                return Ok(Some(bad_start + 1 + cand as u64));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Do `want` consecutive well-formed, correctly-checksummed records start
+    /// at `buf[at]`? Accepts a short run that reaches the end of the buffer,
+    /// so a resync point near EOF is still recognised.
+    fn records_parse_at(buf: &[u8], at: usize, want: usize) -> bool {
+        let mut off = at;
+        for i in 0..want {
+            if off + 8 > buf.len() {
+                return i > 0;
+            }
+            let ln = u32::from_le_bytes(buf[off..off + 4].try_into().unwrap()) as usize;
+            if ln == 0 || ln > MAX_WAL_ENTRY_LEN || off + 4 + ln + 4 > buf.len() {
+                return i > 0 && off + 4 + ln + 4 > buf.len();
+            }
+            let stored = u32::from_le_bytes(buf[off + 4 + ln..off + 8 + ln].try_into().unwrap());
+            if crc32(&buf[off + 4..off + 4 + ln]) != stored {
+                return false;
+            }
+            off += 4 + ln + 4;
+        }
+        true
+    }
+
+    fn read_one_raw(&mut self) -> io::Result<Option<WalEntry>> {
         // Read length
         let mut len_buf = [0u8; 4];
         match self.file.read_exact(&mut len_buf) {

@@ -416,6 +416,23 @@ W0-W2 are the fast, low-risk half and remove the production trigger. W3-W5 close
 
 ## 5. WHAT THIS DOES NOT FIX
 
+> **RETRACTED 2026-08-13.** The paragraph below is wrong, and wrong in the
+> way it was most confident about. "A CRC-validated parse of all 2,341,314
+> valid WAL records" was a parse of every record *up to the first bad CRC* at
+> byte 1,227,604,458 — about 90% into a 1.35 GB file. Everything after that
+> point was never examined. The forensics tool had the same blind spot as the
+> engine, and I read its silence as evidence of absence.
+>
+> After the resync fix, nothing was lost. Production went 5046 → 5095 bundles
+> and 12,616,387 → 12,725,513 records on one boot; all ten bundles written off
+> here came back at their exact original counts. Six corrupt records, four
+> bytes each — twenty-four bytes were withholding everything written after
+> them, on every boot.
+>
+> The two hypotheses the next paragraph builds on (H4 truncation, `DropBundle`)
+> were answers to a question that had no subject. Read both paragraphs as a
+> record of how the mistake was made, not as findings.
+
 **The already-lost records: nothing.** The forensics are conclusive — a CRC-validated parse of all 2,341,314 valid WAL records found zero create/insert ops for them. The pre-compaction WAL was renamed over at `engine.rs:2753` and the offsite copy was overwritten by `aws s3 sync` (`gigi_stream.rs:15871`) on the next boot's push (`gigi_stream.rs:17034`). Two things are worth ten minutes before you call it closed, and only two: (1) `.dhoom.prev` is **not** excluded from the sync, so the pre-compaction generation of every *rewritten* snapshot may still be in the bucket — that does not help `jg_kv`'s post-June records or the ten (they were never rewritten), but it may help others; `aws s3 ls` will tell you. (2) Fly volume snapshots, if retention reaches back to 2026-06-26.
 
 **The ten-bundle root cause is a hypothesis, not a conclusion.** On my model those bundles should have survived as *empty*: `compact_wal_to_schemas` re-emits a `CreateBundle` for every entry in `self.schemas` (`engine.rs:2711-2713`) and `open_mmap` reconstructs an empty heap store for any schema lacking a `.dhoom` (`engine.rs:759-770`). Their total disappearance requires `self.schemas` to have been *already incomplete* when compaction ran. Exactly two code-supported routes exist: (i) a CRC prefix truncation upstream (H4 / `engine.rs:584-590`), or (ii) `DropBundle`. The discriminating probe, ~1 minute: `ls /data/snapshots/ | grep <name>` — a `.dhoom` present with no schema is the truncation/orphan signature; and `grep "stopped at corrupted WAL tail"` (`engine.rs:586`) plus `grep "Heap-only (no snapshot):"` (`engine.rs:768`) and `"ITEM-3-MMAP-SKIP"` (`engine.rs:737/752`) across the boot logs on either side of 2026-06-26. Which route it is decides whether W5 or W1 is the load-bearing fix. **If neither route matches, there is a third bug and INV-D does not cover it** — INV-D quantifies over schemas and assumes the schema set is itself durable, which is exactly the assumption W5 exists to make true.
@@ -431,3 +448,60 @@ W0-W2 are the fast, low-risk half and remove the production trigger. W3-W5 close
 **Concurrency, read but not proven.** Every mutator is `&mut self` and `admin_snapshot` holds `state.engine_write()` across the whole blocking call (`gigi_stream.rs:12580-12583`), so verify-then-rename is exclusive under the outer lock. `OverlayBundle` mutates through `&self` (`mmap_bundle.rs:298, 311, 320`) and `Engine::mmap_bundle(&self)` hands out `&OverlayBundle` (`engine.rs:1785`), but that `&self` still comes from the outer `RwLock`. I did not audit for an `Arc<OverlayBundle>` escape. If one exists, the O(1) clean-clause has a TOCTOU window and needs a generation counter inside `OverlayBundle` rather than a length read.
 
 **Not audited at all:** `import_bundle` / `ingest_dhoom` handler bodies (routes at `gigi_stream.rs:16606-16607`) for direct writes into `snapshots/`; `concurrent.rs:100`'s own `checkpoint()` and whether it shares the Engine WAL.
+
+---
+
+## 6. DISPOSITION — what shipped, 2026-08-12 → 08-14
+
+| item | state | commit | gate |
+|---|---|---|---|
+| W0 retention | shipped, deployed v262 | `05dd729` | T7 |
+| W1 storage-mode dispatch | shipped, deployed v262 | `05dd729` | T1 |
+| W2 empty-skip + tombstone accounting | shipped, deployed v262 | `ee00af5` | T2 |
+| WAL mid-file resync | shipped, deployed v262 | `19f876a` | T9 |
+| `.dhoom` empty body | shipped | `59d4aa3` | T10 |
+| W7 tombstone key unification | shipped | `cf7ccb9` | T3 |
+| W3 choke point (`src/durability.rs`) | **not started** | — | T8 |
+| W4 GATE A + GATE C | **not started** | — | T4 |
+| W5 schema durability | **not started** | — | T6 |
+| W6 gauge re-emit | **not started** | — | T5 |
+| W8 Tigris ordering | **not started** | — | — |
+
+Every shipped row was verified by reverting its source files with the test
+kept, confirming red, and restoring. A gate that stays green without its fix
+is not evidence of anything.
+
+### The resync fix was not in the plan, and it was the one that mattered
+
+Nothing above W3 predicted it. This spec was written on the belief that data
+had been destroyed by truncation, and the entire design — the coverage
+predicate, the receipt, the 409 — protects against *writing* over good data.
+The actual production loss was a **read** that gave up early and a caller that
+reported success anyway. INV-D never mentions the read path, because a spec
+about who is allowed to shorten the WAL cannot see a bug in who is allowed to
+stop reading it.
+
+Worth keeping as the general shape: the invariant was correct, and it was
+aimed at the wrong half of the system.
+
+### The recurring defect, stated once
+
+Six distinct instances turned up across this incident, all the same shape —
+**an operation reports success having done nothing**:
+
+- `{"status":"ok"}` from `admin_snapshot` over a heap-only loop that never
+  touched `mmap_bundles`
+- `Ok(())` from WAL replay over a discarded remainder
+- `Loaded snapshot b: 0 records` printed as a success line
+- a `.dhoom` written with the correct record count in the log and no rows in
+  the file
+- a delete confirmed by the one read path that shared its key encoding
+- `200 "Check your email"` over a refused Resend send
+
+Each was individually plausible and locally correct. The pattern is that the
+success signal was computed from the *attempt*, never from the *result*. W3's
+read-back verify is the structural answer for the write path; the read path
+now has T9's eight-record confirmation. Neither generalises to the other five.
+Adding a new operation to this engine means asking what its success value is
+computed from — and if the answer is "we got to the end of the function",
+that is this bug again.

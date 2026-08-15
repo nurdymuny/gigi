@@ -1140,6 +1140,59 @@ fn encode_bundle(name: &str, records: &[Value], out: &mut String, indent: usize)
         variable_fields.push(key.clone());
     }
 
+    // ── 2026-08-13 SILENT SNAPSHOT LOSS ──────────────────────────────────
+    // `variable_fields` is what forms the record body. If every column got
+    // folded into the header — arithmetic, delta, interned or modal-default
+    // — the body is empty and the ROW COUNT goes with it. The file then
+    // looks like `b{tag|tag_0, id|0}:` plus N blank lines, decodes to zero
+    // records, and `load_dhoom_snapshot` returns an empty Vec while boot
+    // logs "Loaded snapshot b: 0 records from DHOOM" and reports success.
+    // Every record in that bundle is silently gone after a restart.
+    //
+    // Measured before this guard, with a two-field bundle: 1, 2, 3, 5 and 10
+    // records all round-tripped to ZERO; 50 survived only because `tag`
+    // happened to stay variable at that size. Small bundles are the
+    // dangerous case — creator profiles, rails config, verification records.
+    //
+    // A single record is the worst of them: `find_modal_default` matches on
+    // count 1 > 0, so BOTH columns fold as defaults. That is why the guard
+    // sits here, after every classifier has run, rather than next to any one
+    // of them.
+    //
+    // Keep one column in the body and the row count is always recoverable,
+    // whatever the detectors decide. Read-side is untouched, so existing
+    // .dhoom files decode exactly as before.
+    if variable_fields.is_empty() && !records.is_empty() {
+        let demoted = default_fields
+            .pop()
+            .map(|(n, _)| n)
+            .or_else(|| delta_fields.pop())
+            .or_else(|| interned_fields.pop().map(|(n, _)| n))
+            .or_else(|| {
+                // Last resort: give up an arithmetic column. Not all of them
+                // cost the same. `mmap_arithmetic_lookup` resolves an integer
+                // key straight to a row index, so the *numeric* arithmetic
+                // column is a live O(1) index, while a text one (`v0, v1, …`)
+                // is only compression. Spend the text column first, and only
+                // touch a numeric one when it is the sole candidate — the
+                // alternative is losing the whole bundle.
+                let pick = |numeric: bool| {
+                    field_decls.iter().position(|fd| {
+                        matches!(
+                            fd.modifier,
+                            Some(Modifier::Arithmetic { start: Value::Number(_), .. })
+                        ) == numeric
+                            && matches!(fd.modifier, Some(Modifier::Arithmetic { .. }))
+                    })
+                };
+                let idx = pick(false).or_else(|| pick(true))?;
+                Some(field_decls.remove(idx).name)
+            });
+        if let Some(name) = demoted {
+            variable_fields.push(name);
+        }
+    }
+
     let mut ordered_fields: Vec<FieldDecl> = Vec::new();
 
     for fd in &field_decls {

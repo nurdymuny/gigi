@@ -260,16 +260,6 @@ fn wal_replay_recovers_records_after_a_mid_file_corruption() {
 /// it is the one production takes, since the admin snapshot route runs against
 /// a live engine that keeps serving writes afterwards.
 #[test]
-#[ignore = "OPEN BUG (found 2026-08-12 by T9's control phase). snapshot() \
-writes a .dhoom whose body is empty: for a 1-record bundle the file is \
-`b{id|100, tag|tag_100}:` — the field dictionary was written, the rows were \
-not. load_dhoom_snapshot therefore decodes successfully and returns ZERO \
-records, and the boot log says `Loaded snapshot b: 0 records from DHOOM` \
-while reporting success. So a snapshotted record is silently absent after \
-restart. snapshot_then_new_inserts_survive_reopen (engine.rs:3845) passes \
-only because it closes and reopens between the snapshot and the inserts. \
-This is in the DHOOM encoder/decoder pair, not the WAL. Run with \
-`cargo test -- --ignored`."]
 fn snapshotted_record_reloads_when_inserts_follow_in_same_session() {
     let dir = test_dir("t10_dhoom_reload_same_session");
     cleanup(&dir);

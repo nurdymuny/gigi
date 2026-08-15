@@ -73,3 +73,8 @@ src/sheaf_old_backup.bak
 
 # Local deploy backups — large tarballs, never commit
 .deploy-backups/
+
+# Pre-deploy/pre-flight captures. These hold live production exports —
+# jg_kv carries customer account data in plaintext. Never commit them.
+predeploy_*/
+preflight_*/

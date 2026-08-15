@@ -317,9 +317,28 @@ impl OverlayBundle {
     }
 
     /// Mark a key as deleted (tombstone hides base record).
+    ///
+    /// **2026-08-13 tombstone key unification.** The tombstone set is read
+    /// through `tombstone_key` / `base_pk_set`, both of which key on the PK
+    /// field's value alone — `Integer(1)`. Callers were passing
+    /// `Engine::pk_string`, which renders every base field as a sorted debug
+    /// list — `[("id", Integer(1))]`. The two never matched, so a delete
+    /// against an mmap-backed bundle filed a tombstone under a name nothing
+    /// looked it up by: the row stayed hidden only while the overlay's own
+    /// `delete` held it, and came back on the next restart even with a
+    /// perfectly intact WAL. `point_query` appeared correct throughout
+    /// because it consults the overlay separately.
+    ///
+    /// So the key is now derived here, from the record, whenever one is
+    /// supplied — the type that owns the set decides how the set is keyed,
+    /// and no call site can disagree with it. The `key` string remains the
+    /// fallback for callers that have no record to offer.
     pub fn delete(&self, key: &str, key_record: Option<&Record>) {
+        let canonical = key_record
+            .and_then(|r| self.tombstone_key(r))
+            .unwrap_or_else(|| key.to_string());
         if let Ok(mut ts) = self.tombstones.write() {
-            ts.insert(key.to_string());
+            ts.insert(canonical);
         }
         // Also remove from overlay if present
         if let Some(kr) = key_record {
@@ -339,8 +358,30 @@ impl OverlayBundle {
     }
 
     /// Check if a key is tombstoned.
+    ///
+    /// Takes the *already-encoded* key. Prefer [`Self::is_record_tombstoned`]
+    /// when you hold the record — it cannot disagree with the encoding the
+    /// set is actually keyed by.
     pub fn is_tombstoned(&self, key: &str) -> bool {
         self.tombstones.read().map_or(false, |ts| ts.contains(key))
+    }
+
+    /// Is this record hidden by a tombstone?
+    ///
+    /// The canonical read. Callers outside this type used to encode the key
+    /// themselves — `Engine` reached for `pk_string`, which renders every base
+    /// field as a sorted debug list, while the set has always been keyed by
+    /// the PK value alone. Both sides were internally consistent, so a delete
+    /// looked correct through `Engine::point_query` and was invisible to
+    /// `is_visible`, `len()`, `records()` and the snapshot merge — which is
+    /// how a deleted row got written back into a fresh `.dhoom` and returned
+    /// after restart.
+    ///
+    /// Deriving the key here means no caller can hold a different opinion
+    /// about it.
+    pub fn is_record_tombstoned(&self, record: &Record) -> bool {
+        self.tombstone_key(record)
+            .map_or(false, |k| self.is_tombstoned(&k))
     }
 
     /// Get the mmap base bundle.

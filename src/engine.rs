@@ -1670,9 +1670,9 @@ impl Engine {
             if let Some(rec) = ob.point_query_overlay(key) {
                 return Ok(Some(rec));
             }
-            // Check tombstones — if key was deleted, stop here
-            let key_str = self.pk_string(bundle_name, key);
-            if ob.is_tombstoned(&key_str) {
+            // Check tombstones — if key was deleted, stop here.
+            // Keyed by the overlay itself; see OverlayBundle::is_record_tombstoned.
+            if ob.is_record_tombstoned(key) {
                 return Ok(None);
             }
             // Arithmetic fast path: O(1) key → index resolution
@@ -1734,7 +1734,7 @@ impl Engine {
                     if let serde_json::Value::Object(map) = &val {
                         let rec = serde_map_to_record(&map);
                         let rec_pk = self.pk_string(bundle_name, &rec);
-                        if ob.is_tombstoned(&rec_pk) { continue; }
+                        if ob.is_record_tombstoned(&rec) { continue; }
                         if overlay_pks.contains(&rec_pk) { continue; }
                         if let Some(fv) = rec.get(field) {
                             if values.contains(fv) {
@@ -2070,7 +2070,7 @@ impl Engine {
                     if let serde_json::Value::Object(map) = &val {
                         let rec = serde_map_to_record(&map);
                         let rec_pk = self.pk_string(bundle_name, &rec);
-                        if ob.is_tombstoned(&rec_pk) { continue; }
+                        if ob.is_record_tombstoned(&rec) { continue; }
                         if overlay_keys.contains(&rec_pk) { continue; }
                         if crate::bundle::matches_filter(&rec, conditions, or_conditions) {
                             base_results.push(rec);
@@ -2655,7 +2655,7 @@ impl Engine {
                     if let serde_json::Value::Object(ref map) = val {
                         let rec = serde_map_to_record(map);
                         let pk = self.pk_string(name, &rec);
-                        if ob.is_tombstoned(&pk) { continue; }
+                        if ob.is_record_tombstoned(&rec) { continue; }
                         if overlay_pks.contains(&pk) { continue; }
                         merged.push(record_to_serde_json(&rec));
                     }
@@ -3222,7 +3222,7 @@ impl Engine {
                     if let serde_json::Value::Object(ref map) = val {
                         let rec = serde_map_to_record(map);
                         let pk = self.pk_string(name, &rec);
-                        if ob.is_tombstoned(&pk) { continue; }
+                        if ob.is_record_tombstoned(&rec) { continue; }
                         if overlay_pks.contains(&pk) { continue; }
                         merged.push(record_to_serde_json(&rec));
                     }

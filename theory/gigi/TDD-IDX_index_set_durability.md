@@ -1480,7 +1480,38 @@ and exactly what a field-count gate would wave through.
 **Original scope:** Ships with T-IDX-11 + T-IDX-12 + V-4.
 Independent of W-IDX-1; can run in parallel.
 
-**W-IDX-4 — F-5 and the schema-ownership fix. Now sized: SMALL.**
+**W-IDX-4 — F-5, `bundle_version`. ✅ SHIPPED 2026-08-15.**
+`BundleStore::content_version()` → `Engine::bundle_version(name)`. SHA-256 over
+the sorted index set, the fiber field sequence (order is semantic — layout is
+positional), and the records in canonical order.
+
+**Cost is on the read, never on the write.** O(n) when asked, memoised against
+`mutation_counter`, so repeat reads within a session are free and any mutation
+invalidates it through the same signal F-1 installed. Nothing hashes on insert.
+Geometry endpoints are not hot paths; inserts are.
+
+**Two properties, and only one of them was gated by the obvious tests.** The
+mechanism-removal pass found that mixing `mutation_counter` into the hash — the
+exact defect the design exists to avoid — left every test green, because replay
+applies the same mutations in the same order, so the counter lands on the same
+value after a restart and *looks* content-derived. The discriminating fixture is
+two engines reaching identical content by **different mutation paths** (one
+inserts and deletes a scratch record). That now fails when session state enters
+the hash. Third time the removal pass has caught an untested mechanism in this
+spec.
+
+**Not implemented for mmap-resident bundles**, which is all of production.
+Folding the base in without materialising every record belongs with W-IDX-5;
+`bundle_version` returns `None` there rather than a version computed from the
+overlay alone, since a partial version that looks like an answer is worse than
+no answer — the F-6 lesson, applied.
+
+**The schema-ownership half is dropped**, not deferred: W-IDX-2 established the
+store/engine schema divergence has one remaining source (`rotate_key`,
+disposition (c)), so F-3's write-both-and-assert is proportionate and
+single-ownership would be a refactor in search of a defect.
+
+**Original framing:**
 W-IDX-2 answered the question this item was waiting on. Divergence between the
 store's schema clone and `Engine::schemas` has exactly one remaining source
 (`rotate_key`, disposition (c)), not a dozen — so F-3's interim approach (write
@@ -1575,6 +1606,27 @@ versus a post-rotation snapshot leaving new-key ciphertext against an old-key
 schema — differ enormously in severity. It is INV-S disposition (c) and it wants
 its own investigation before anyone touches that path. Guessing at encryption
 semantics from inside an indexing spec is not a saving.
+
+**DEPTH's refusal is a wire-visible compatibility break, and it is deliberate.**
+Before W-IDX-3, `DEPTH` on an mmap-resident bundle returned the scalar `4.0`.
+It now returns an error. Every production bundle is mmap-resident, so this
+changes the response for every real caller of that verb. The old value was not a
+measurement — it came from `.unwrap_or(0.0)` standing in for "cannot compute" —
+so the change is from a confident wrong answer to an honest refusal, which is
+what the E17 audit asked for in as many words. But it is a break, it is not
+signalled by any version marker on the wire, and anyone consuming `DEPTH` should
+be told before this deploys rather than after. The refusal names the condition,
+so a client can distinguish "degenerate graph" from "not measurable here".
+
+**The integrity tag collapses `Undefined` to `0.0`.** `IntegrityTag::compute`
+(`integrity.rs:198`) is one of the 24 `or_zero()` sites, and it is the one where
+the collapse has a consequence beyond a wrong reading: the tag is a *signature*,
+so two bundles whose λ₁ differs only in being undefined versus genuinely zero
+sign identically. That is a narrowing of what the tag distinguishes, not a
+forgery risk — but it is a decision, it was made by a mechanical migration, and
+it should be made deliberately by whoever owns the invariant ring. Listed here
+because "grep `or_zero()`" is the worklist and this is the first entry on it
+that is not merely undecided.
 
 **Refusal batteries beyond this spec.** The E22 review's recommendation — build
 the broken input, assert the guard fires, then delete the guard and assert the

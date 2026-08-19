@@ -1455,6 +1455,22 @@ impl Engine {
         self.schemas.get(name)
     }
 
+    /// Content version of a bundle — `H(records, index_set)`.
+    ///
+    /// TDD-IDX F-5. Stamp this beside any λ value that outlives the process
+    /// (a receipt, a report, a cached attribution); comparing it later answers
+    /// "is this still the bundle that number was computed on?", which no
+    /// timestamp and no mutation counter can.
+    ///
+    /// Heap-backed bundles only for now. An mmap-resident bundle would need the
+    /// base's contribution folded in without materialising every record, which
+    /// belongs with W-IDX-5 — and returning a version computed from the overlay
+    /// alone would be worse than returning none, since it would look like an
+    /// answer.
+    pub fn bundle_version(&self, name: &str) -> Option<String> {
+        self.bundle(name)?.as_heap().map(|s| s.content_version())
+    }
+
     // ── TDD-IDX W-IDX-1: schema mutations, journalled and ordered ──────────
     //
     // Every method below follows F-0's order, and the order is not symmetric:

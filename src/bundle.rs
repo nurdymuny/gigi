@@ -768,6 +768,11 @@ pub struct BundleStore {
     /// cache read or invalidation — never across a recomputation.
     #[cfg(feature = "kahler")]
     pub(crate) spectral_gap_cache: std::sync::Mutex<Option<SpectralGapSnapshot>>,
+    /// Memoised `content_version()`, keyed on the mutation counter it was
+    /// computed at. TDD-IDX F-5: the hash is O(n), so it is paid on demand and
+    /// never on the write path; any mutation moves the counter and the next
+    /// read recomputes.
+    pub(crate) content_version_cache: std::sync::Mutex<Option<(u64, String)>>,
     /// Monotonically-increasing counter incremented on every mutation
     /// (`insert`, `update`, `delete`, and their variants). Used by
     /// downstream cache layers (e.g. `BundleFlowCache` in
@@ -1267,6 +1272,7 @@ impl BundleStore {
             provenance: None,
             #[cfg(feature = "kahler")]
             spectral_gap_cache: std::sync::Mutex::new(None),
+            content_version_cache: std::sync::Mutex::new(None),
             mutation_counter: std::sync::atomic::AtomicU64::new(0),
         }
     }
@@ -1326,6 +1332,7 @@ impl BundleStore {
             provenance: None,
             #[cfg(feature = "kahler")]
             spectral_gap_cache: std::sync::Mutex::new(None),
+            content_version_cache: std::sync::Mutex::new(None),
             mutation_counter: std::sync::atomic::AtomicU64::new(0),
         }
     }
@@ -1375,6 +1382,107 @@ impl BundleStore {
     pub fn mutation_counter(&self) -> u64 {
         self.mutation_counter
             .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Content version of this bundle: `H(records, index_set)`.
+    ///
+    /// TDD-IDX F-5. F-1 through F-3 stop a stale geometry answer from
+    /// happening; this makes one **detectable**, which is a different job and
+    /// the one a diagnosis product needs. A λ quoted in a report is only
+    /// trustworthy if you can ask whether the bundle it came from is still the
+    /// same bundle.
+    ///
+    /// **Why it hashes the index set and not only the records.** `index_set`
+    /// defines the graph the λ-verbs measure (§2.2): indexing a field changes
+    /// the answer without changing one record. A version keyed on `H(records)`
+    /// alone would call the before and after equal, which is exactly the
+    /// comparison a report needs to fail.
+    ///
+    /// **Why it is a content hash and not `mutation_counter`.** The counter
+    /// restarts at zero, so a counter-derived version would report "changed"
+    /// after every reboot and could report "unchanged" for two engines holding
+    /// different data. The question this answers spans restarts by
+    /// construction, so the answer has to be derived from content.
+    ///
+    /// **Cost.** O(n) in records, and it is paid only when asked. Nothing on
+    /// the write path hashes anything: the result is memoised against
+    /// `mutation_counter`, so repeated reads within a session are free, and any
+    /// mutation invalidates it through the same `mark_mutated` signal F-1
+    /// installed. Geometry endpoints are not hot paths; inserts are.
+    ///
+    /// Records are hashed in `PartialOrd` order of their base-field values so
+    /// two engines that ingested the same records in different orders agree —
+    /// without that, the value could not be compared between a report and a
+    /// live system, which is its only use.
+    pub fn content_version(&self) -> String {
+        use sha2::{Digest, Sha256};
+
+        let gen = self.mutation_counter();
+        if let Ok(cache) = self.content_version_cache.lock() {
+            if let Some((cached_gen, ref v)) = *cache {
+                if cached_gen == gen {
+                    return v.clone();
+                }
+            }
+        }
+
+        let mut h = Sha256::new();
+        h.update(b"gigi-bundle-v1\x00");
+
+        // index set, sorted: declaration order is not semantic
+        let mut idx: Vec<&str> = self
+            .schema
+            .indexed_fields
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
+        idx.sort_unstable();
+        h.update(b"idx\x00");
+        for f in idx {
+            h.update(f.as_bytes());
+            h.update(b"\x00");
+        }
+
+        // fiber field sequence: ORDER is semantic here, because fiber layout is
+        // positional (§F-2b). Two bundles with the same fields in a different
+        // order are not the same bundle.
+        h.update(b"fib\x00");
+        for f in &self.schema.fiber_fields {
+            h.update(f.name.as_bytes());
+            h.update(b"\x00");
+        }
+
+        // records, in a canonical order
+        let mut rows: Vec<Vec<(String, String)>> = self
+            .records()
+            .map(|r| {
+                let mut kv: Vec<(String, String)> = r
+                    .iter()
+                    .map(|(k, v)| (k.clone(), format!("{v:?}")))
+                    .collect();
+                kv.sort();
+                kv
+            })
+            .collect();
+        rows.sort();
+
+        h.update(b"rec\x00");
+        h.update((rows.len() as u64).to_le_bytes());
+        for row in &rows {
+            for (k, v) in row {
+                h.update(k.as_bytes());
+                h.update(b"=");
+                h.update(v.as_bytes());
+                h.update(b"\x00");
+            }
+            h.update(b"\x01");
+        }
+
+        let out = format!("{:x}", h.finalize());
+        if let Ok(mut cache) = self.content_version_cache.lock() {
+            *cache = Some((gen, out.clone()));
+        }
+        out
     }
 
     /// Insert = define section value at base point (Thm 1.3).

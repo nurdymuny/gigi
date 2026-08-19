@@ -236,7 +236,7 @@ specified as a refusal that **names the component count** rather than as a
 boolean guard: the fix is to stop returning "undefined" in the same channel as
 "measured," not merely to check more carefully before returning it.
 
-### 2.7 Nulls and NaNs are isolated vertices, and NaN is worse than that
+### 2.7 Nulls and NaNs are isolated vertices — and `Value` has two disagreeing definitions of equality
 
 §2.1 requires both endpoints non-null. v1 stated that and then ignored its
 consequence in the §2.3 table (Hallie). The consequence is that the gate's
@@ -247,43 +247,70 @@ record joins no bucket and is an isolated vertex. One indexed field with a
 single distinct value over `n` records of which `m` are null gives `K_{n−m}`
 plus `m` singletons — `components = 1 + m`, so F-6 refuses for any `m ≥ 1`.
 
-**NaN is a different and worse case.** Buckets are keyed by `Value` in
-`HashMap<String, HashMap<Value, RoaringBitmap>>` (`bundle.rs:3298`), so the
-bucketing depends on `Value`'s `Hash` and `Eq`. Those disagree on NaN:
+**The bucket-keying defect, restated after review 2.** v2 wrote this up as "NaN
+breaks `Eq`" and concluded that "every `HashMap<Value, _>` inherits the defect
+and every `BTreeMap<Value, _>` does not." The first half is right, the second is
+**false**, and the generalisation was wrong in a way that would have sent the
+follow-up fix in one direction when the defect points in two.
 
-| relation | implementation | `NaN` vs `NaN` |
-|---|---|---|
-| `Hash` | `v.to_bits().hash()` (`types.rs:93`) | same hash |
-| `PartialEq` | `#[derive(PartialEq)]` (`types.rs:24`) → IEEE | **not equal** |
-| `Eq` | `impl Eq for Value {}` (`types.rs:38`) | asserts reflexivity that does not hold |
-| `Ord` | `a.total_cmp(b)` (`types.rs:67`) | **Equal** |
+The actual defect: **`Ord` and `PartialEq` are two independent, disagreeing
+definitions of equality on `Value`.**
 
-`Ord` and `Hash` treat NaN as an ordinary value; `Eq` does not. Measured
+- `PartialEq` is derived (`types.rs:24`), so it is IEEE on floats and
+  false across variants.
+- `Hash` (`types.rs:88-107`) hashes the discriminant, then `to_bits()` for floats.
+- `Ord` (`types.rs:46-86`) is hand-written: `total_cmp` for floats, cross-type
+  numeric arms at 68-69, and a `_ => type_order(self).cmp(&type_order(other))`
+  fallthrough at 82 that catches every pair with no explicit arm.
+- `impl Eq for Value {}` (`types.rs:38`) asserts that `PartialEq` is an
+  equivalence relation. It is not reflexive on `Float(NaN)`.
+
+Three known instances, pointing in **two** directions. All measured
 (`tests/tmp_nan_value_contract.rs`):
 
+| case | `PartialEq` | `Ord` | broken container | symptom |
+|---|---|---|---|---|
+| `Float(NaN)` vs itself | not equal | `Equal` | `HashMap` | leaks an unreachable entry per insert |
+| `Integer(1)` vs `Float(1.0)` | not equal | `Equal` | `BTreeMap` | silently **overwrites** |
+| `Binary(a)` vs `Binary(b)` | by content | **always `Equal`** | `BTreeMap` | **all** `Binary` keys collapse to one |
+
 ```
-PartialEq: a == b   -> false
-Ord:       a.cmp(b) -> Equal
-HashMap: insert 1 NaN key, len=1, get(NaN) -> None
-HashMap: insert a 2nd NaN key, len=2
-BTreeMap: 2 NaN keys, len=1
+Float(NaN)  vs itself : cmp=Equal eq=false
+  HashMap  1 NaN key  -> len=1, get(NaN) -> None
+  HashMap  2 NaN keys -> len=2
+  BTreeMap 2 NaN keys -> len=1
+
+Integer(1) vs Float(1.0) : cmp=Equal eq=false
+  BTreeMap both -> len=1, surviving value "float"
+  HashMap  both -> len=2
+
+Binary([1,2,3]) vs Binary([9,9,9]) : cmp=Equal eq=false
+  BTreeMap 2 distinct Binary keys -> len=1
 ```
 
-So a `HashMap<Value, _>` **grows a new unreachable bucket on every NaN insert**,
-while a `BTreeMap<Value, _>` behaves correctly. For the field index that means
-each NaN-valued record becomes its own singleton bucket, hence an isolated
-vertex, hence `components = n` for a NaN-heavy field — and the index leaks an
-entry per record.
+The `Binary` row is the worst of the three and has nothing to do with floats:
+there is no `(Binary, Binary)` arm, so the fallthrough compares `7` against `7`
+and every pair of `Binary` values is `Equal` under `Ord` regardless of content.
+Any `BTreeMap` keyed on `Binary`, and any sort over `Binary`, treats them all as
+one.
 
-This is broader than indexing: `impl Eq for Value {}` asserts to the compiler
-that `PartialEq` is an equivalence relation, and for `Value::Float(NaN)` it is
-not reflexive. Every `HashMap<Value, _>` in the tree inherits the defect and
-every `BTreeMap<Value, _>` does not, which is precisely the profile of a bug
-that works in one code path and not another. **It is out of scope for this spec
-and wants its own defect record** — the day-shape bundle is float-heavy, which
-is what makes it live rather than theoretical.
+**For the field index specifically.** `field_index` is
+`HashMap<String, HashMap<Value, RoaringBitmap>>` (`bundle.rs:3298`), so it is on
+the `HashMap` side: each NaN-valued record becomes its own singleton bucket,
+hence an isolated vertex, hence `components = n` for a NaN-heavy field, and the
+index leaks an entry per record. Cross-type numerics bucket *separately* there
+(`HashMap` keeps them apart), which is probably the intended semantics — but it
+is the opposite of what a `BTreeMap`-backed range index would do, and
+`types.rs:417` documents `indexed_fields` as "indexed for **range queries**."
+V-8's sibling fixture pins which semantics the index actually has, because the
+doc comment and the container disagree about it.
 
-Fixtures required: `V-7` (null) and `V-8` (NaN) in §6.
+**Out of scope for this spec, and the defect record must carry the general form,
+not the NaN row.** The NaN case is the least likely of the three to occur; the
+cross-type and `Binary` cases need no special float values at all. V-7 and V-8
+in §6 pin the indexing symptoms so the numbers are on record; they do not repair
+the cause.
+
 
 ---
 
@@ -292,11 +319,22 @@ Fixtures required: `V-7` (null) and `V-8` (NaN) in §6.
 Five defects. Each was verified today; D-2 and D-4 were verified by execution,
 not by reading.
 
-### D-1 · `add_index` writes no WAL entry
-`POST /v1/bundles/{name}/add-index` (route `gigi_stream.rs:16603`, handler
-`gigi_stream.rs:11051-11073`) calls `store.add_index(&req.field)` and returns
-`{"status":"index_added"}`. No `wal.log_*` call on any path. The index exists
-only in RAM.
+### D-1 · **No schema mutation writes a WAL entry**
+**Rescoped after Hallie's second review; v1 and v2 both titled this
+"`add_index` writes no WAL entry," which is true and under-scoped.** All three
+schema mutators journal nothing:
+
+| handler | lines | logs? |
+|---|---|---|
+| `add_index` | `gigi_stream.rs:11051-11073` | no |
+| `add_field` | `gigi_stream.rs:11010-11048` | no |
+| `drop_field` | `gigi_stream.rs:10978-11007` | no |
+
+Measured: `grep -c 'wal\.'` over `gigi_stream.rs:10970-11075` returns **0**.
+Each takes `engine_write()`, mutates the store, and returns success.
+
+The under-scoping was not cosmetic — it put a permanently-red test in §5. See
+F-2's "every schema mutation logs" note and T-IDX-15.
 
 `indexed_fields` **is** serialised — but only as a member of a schema payload
 (`wal.rs:1529-1530` encode, `wal.rs:1639` decode), which is written by
@@ -422,11 +460,28 @@ not, and the invariant should not depend on which way the race falls. The HTTP
 handler already takes `state.engine_write()` (`gigi_stream.rs:11056`), so this
 is a constraint to preserve rather than to add, and `T-IDX-13` pins it.
 
+**The one non-crash failure.** Step 4 (`store.add_index`) can fail on its own —
+an allocation failure during the index build, say — after step 2 has already
+synced. That leaves disk ahead of RAM, which is the survivable direction: the
+next restart replays the entry and builds the index. The call should still
+return an error to its caller, so the declaration is unacknowledged and INV-I's
+scope covers the discrepancy until the next boot resolves it.
+
 **Crash-window statement.** After F-0 the only window is between 1 and 2, and it
 loses an unacknowledged index declaration — which is why INV-I is scoped to
 acknowledged state in §1.
 
-### F-1 · `mark_mutated()` in the five mutators
+### F-1 · `mark_mutated()` in the five mutators — but they are two classes
+
+All five need the invalidation call. Only three of them need journalling, and v2
+obscured that by treating the five as one group for F-1 and then naming only
+`add_index` in F-2 (Hallie):
+
+| class | mutators | needs |
+|---|---|---|
+| **schema** | `add_index`, `add_field`, `drop_field` | F-1 **+ F-2 journalling + F-0 ordering** |
+| **record** | `truncate`, `bulk_delete` | F-1 only; their WAL story is `TDD_DUR` §5's WAL-bypass item, not this spec's |
+
 One line each, at `bundle.rs` 4196, 4110, 4143, 3465, 3437, matching the
 `batch_insert` precedent, whose call sits at `bundle.rs:1485` inside the
 function beginning at 1470. (v1 cited 1470 here and 1485 in D-3's list of
@@ -459,6 +514,21 @@ WalEntry::CreateBundle(schema) => {
 records, so a second `CreateBundle` cannot wipe data. It is also what makes the
 re-emit insufficient as-is: the existing store's schema is never updated, so the
 index would not be rebuilt on replay.
+
+**Every schema mutation logs, not just `add_index` (Hallie, review 2).** v2
+specified journalling for `add_index` alone while simultaneously adding
+T-IDX-15 ("an index removed through `drop_field` stays removed across a
+restart"). Those two cannot both hold. `drop_field` journals nothing (D-1), so
+the newest `CreateBundle` on disk still carries the dropped index; replay
+computes `new − old` against that stale payload, sees the index present, and
+**restores it**. T-IDX-15 would have been red with F-2 applied *and* red with
+the mechanism removed — permanently red, for a reason F-2 did not address,
+which is precisely the "passes/fails for the wrong reason" failure §5's preamble
+is written against. It was caught in review rather than in implementation only
+because someone read the test against the fix.
+
+So F-2 covers `add_index`, `add_field` and `drop_field`, each emitting the
+updated schema, and F-0's ordering applies to all three.
 
 **The delta must be symmetric, not add-only (Hallie).** v1 specified "call
 `add_index` for each field in the new `indexed_fields` not already present,"
@@ -611,7 +681,7 @@ fix tests nothing, and this is the discipline that caught the two live gates in
 
 | **T-IDX-13** | `add_index` holds the engine write lock across WAL append, `schemas` write, and store mutation — a compaction cannot interleave | F-0 | release the lock between steps 2 and 4 → red under a concurrent compaction |
 | **T-IDX-14** | killing the process between the WAL append and the store mutation yields, on restart, an engine **with** the index — disk ahead of RAM is survivable | F-0 | reorder to apply-before-log → red |
-| **T-IDX-15** | an index **removed** through `drop_field` stays removed across a restart | F-2 (symmetric delta) | implement the replay delta as add-only → red |
+| **T-IDX-15** | an index **removed** through `drop_field` stays removed across a restart | F-2 **journalling for `drop_field`** + symmetric delta | implement the replay delta as add-only → red |
 | **T-IDX-16** | a repeated `add_index` for an already-indexed field appends **no** WAL entry | F-2 | log unconditionally → red (WAL grows without a state change) |
 
 **Notes on three of these.**
@@ -633,6 +703,16 @@ section's preamble warns about. Checked rather than assumed, on review.
 T-IDX-11 and T-IDX-12 are a matched pair and must be written together. T-IDX-12
 is the one that catches the plausible-but-wrong implementation of F-6, and it is
 the reason §2.3 exists.
+
+T-IDX-15 was **permanently red as written in v2** and the review caught it
+before implementation did. v2 paired it with the symmetric-delta fix alone,
+while F-2 journalled only `add_index` — so `drop_field` would log nothing, the
+newest `CreateBundle` on disk would still carry the dropped index, and replay
+would restore it no matter how the delta was computed. Red with the fix, red
+without it: not a mechanism-removal pair, just a broken test. It passes only
+once F-2 covers all three schema mutators. The general lesson is worth keeping
+alongside the preamble: a test can fail the two-sided check by being red on
+both sides as easily as by being green on both.
 
 T-IDX-14 is the only test here that requires killing a process mid-operation. If
 that is impractical in the harness, the fallback is a seam: a test hook that
@@ -762,7 +842,10 @@ attacks. The correct statement uses the symmetric perturbation bound:
 > eigenvalue, `r` must be less than half the gap to the nearest other
 > **distinct** eigenvalue.
 
-So the test asserts two things:
+Stated as a chain rather than a pair, since v2's phrasing read circularly
+(Hallie): measure `μ` and `r`; the bound puts **some** eigenvalue within `r` of
+`μ`; if `r < gap/2` that eigenvalue is the unique one in reach, hence
+identified; therefore `|μ − λ_closed| ≤ r` confirms it is the intended one.
 
 ```
 1.  r < gap/2                          precondition, gap from the table
@@ -880,24 +963,47 @@ index mechanism, both regular, both verified numerically:
 
 | graph | construction | `k` | true λ₁ | multiplicity |
 |---|---|---|---|---|
-| `Q₃` (3-cube) | 3 edge-disjoint perfect matchings on 8 records | 3 | `2/3` | 3 |
+| `Q₃` (3-cube) | 3 edge-disjoint perfect matchings on 8 records | 3 | `2/3` | **3** |
+| **prism `K₃ □ K₂`** | 3 edge-disjoint perfect matchings on 6 records | 3 | `2/3` | **1** |
 | `K₃,₃` | 3 edge-disjoint perfect matchings on 6 records | 3 | `1.0` | 4 |
 | `K₄,₄` | 4 edge-disjoint perfect matchings on 8 records | 4 | `1.0` | 6 |
 
-Each decomposes into perfect matchings by König's edge-colouring theorem (every
-`k`-regular bipartite graph is a disjoint union of `k` perfect matchings), so
-§2.4's Lemma applies with hypothesis (iii) satisfied by construction, and each
-matching is one indexed field.
+The bipartite three decompose by König's edge-colouring theorem (every
+`k`-regular bipartite graph is a disjoint union of `k` perfect matchings). The
+prism is not bipartite and needs its decomposition exhibited; Hallie supplied it
+and it verifies — with vertices `a₀a₁a₂` (triangle), `b₀b₁b₂` (triangle), rungs
+`aᵢbᵢ`:
 
-**Correcting the review on one point.** Hallie proposes `Q₃` "specifically
-because its λ₁ is simple, unlike `C_n`'s." Measured, `Q₃`'s λ₁ has multiplicity
-**3**: `Q_d`'s normalized eigenvalues are `2k/d` with multiplicity `C(d,k)`, so
-`k = 1` gives `C(3,1) = 3`. `K_{m,m}` is worse at `2m−2`. None of the regular
-fixtures reachable here has a simple λ₁, which is unsurprising — they are all
-vertex-transitive, and vertex-transitivity forces multiplicity. `Q₃` is still
-worth adding (different degree, different value, bipartite, and it exercises a
-3-field construction) — just not for that reason, and per V-3's degeneracy note
-the value is assertable regardless.
+```
+M1 = {a0a1, b0b1, a2b2}
+M2 = {a1a2, b1b2, a0b0}
+M3 = {a2a0, b2b0, a1b1}
+```
+
+Each is perfect (covers all 6), the three are edge-disjoint, and their union is
+exactly the prism's 9 edges. Three indexed fields, three buckets of two.
+
+**`{Q₃, prism}` is the sharpest pair in the battery.** They share λ₁ = `2/3` and
+differ only in eigenspace dimension — 3 against 1. A solver that reported
+something about the eigenspace rather than the eigenvalue would separate them;
+one that reports the eigenvalue cannot. No other pair here isolates that.
+
+**Retracting a generalisation (Hallie, review 2).** v2 closed this section with
+"they are all vertex-transitive, and vertex-transitivity forces multiplicity."
+That is **false**, and the prism is the counterexample: 3-regular,
+vertex-transitive (`|orbit(v₀)| = 6` of 6, verified by brute-force automorphism
+search), λ₁ = `2/3` with multiplicity **1**. The claim came from noticing that
+the three fixtures v2 happened to list were all degenerate and inventing a
+reason. Vertex-transitivity constrains the *eigenspaces* to be modules over the
+automorphism group; it does not force any of them to have dimension above one.
+
+The half of v2's note that survives is the half that was actually argued:
+multiplicity does not threaten the asserted **value** — power iteration converges
+to the correct eigenvalue regardless, only the eigenvector is ambiguous — and
+Hallie's original reason for proposing `Q₃` ("its λ₁ is simple") was itself
+wrong, since `Q_d`'s eigenvalues are `2k/d` with multiplicity `C(d,k)`, giving
+`C(3,1) = 3`. Both of us were wrong about `Q₃`, in opposite directions, and the
+prism is what settles it.
 
 ## 7. ORDER OF WORK
 
@@ -965,14 +1071,21 @@ verbs should *decide* — refuse, degrade, or report separately — which is a
 product question per verb and not one this document can answer. The compiler
 will produce the list; someone has to walk it.
 
-**The `Value` `Eq` / `Hash` / `Ord` contract.** §2.7 measures three mutually
-inconsistent relations on `Value::Float(NaN)`: `Eq` says not-equal, `Ord` says
-Equal, `Hash` agrees with `Ord`. `HashMap<Value, _>` therefore leaks an
-unreachable entry per NaN key while `BTreeMap<Value, _>` behaves correctly. That
-is a soundness defect wider than indexing — `impl Eq for Value {}` asserts a
-reflexivity that does not hold — and it wants its own defect record and its own
-fix. V-8 pins the indexing symptom so the number is on record; it does not
-repair the cause, and the fixture is expected red until someone does.
+**The `Value` equality contract.** §2.7 measures the general defect: `Ord` and
+`PartialEq` are two independent, disagreeing definitions of equality, with three
+known instances pointing in **two** directions — `Float(NaN)` breaks `HashMap`,
+while `Integer(1)` vs `Float(1.0)` and *any two* `Binary` values break
+`BTreeMap`. v2 scoped this as "NaN breaks `Eq`" and asserted that `BTreeMap`
+behaves correctly; both halves were wrong, and the second would have aimed the
+follow-up fix at one container when the defect spans both.
+
+It wants its own defect record carrying the general form. Two notes for whoever
+takes it: the `Binary` case needs no unusual values at all — there is simply no
+`(Binary, Binary)` arm — and `types.rs:417` documents `indexed_fields` as
+"indexed for **range queries**," which is the ordered path, so the container the
+index uses and the semantics its doc comment promises are not the same thing.
+V-7 and V-8 pin the indexing symptoms; they do not repair the cause, and those
+fixtures are expected red until someone does.
 
 **Refusal batteries beyond this spec.** The E22 review's recommendation — build
 the broken input, assert the guard fires, then delete the guard and assert the

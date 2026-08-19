@@ -36,3 +36,39 @@ fn nan_value_contracts_are_consistent() {
     assert_eq!(a, b, "Eq is implemented for Value, so NaN must equal itself");
     assert_eq!(h.len(), 1, "a HashMap must not grow an unreachable NaN bucket");
 }
+
+/// Hallie's second review: the defect is not "NaN breaks Eq". Ord and PartialEq
+/// are two independent, disagreeing definitions of equality, and they break
+/// different containers in different directions.
+#[ignore = "OPEN BUG (found 2026-08-15, Hallie review 2 of TDD-IDX). Ord and PartialEq are two independent, disagreeing definitions of equality on Value. Integer(1).cmp(Float(1.0)) is Equal while == is false, so a BTreeMap OVERWRITES across numeric types while a HashMap keeps them separate. Worse: there is no (Binary, Binary) arm in Ord::cmp (types.rs:82 fallthrough), so ALL Binary values compare Equal and a BTreeMap collapses every Binary key into one entry. This is the general form of the NaN defect and points the opposite way. See TDD-IDX section 2.7. Run with `cargo test -- --ignored`."]
+#[test]
+fn ord_and_partialeq_agree_on_equality() {
+    use std::cmp::Ordering;
+    use gigi::types::Value;
+
+    // 1. cross-type numeric: Ord says Equal, PartialEq says not-equal
+    let i = Value::Integer(1);
+    let f = Value::Float(1.0);
+    println!("  Integer(1) vs Float(1.0): cmp={:?} eq={}", i.cmp(&f), i == f);
+    let mut t: BTreeMap<Value, &str> = BTreeMap::new();
+    t.insert(i.clone(), "int");
+    t.insert(f.clone(), "float");
+    println!("  BTreeMap after both: len={} -> {:?}", t.len(), t.values().collect::<Vec<_>>());
+    let mut h: HashMap<Value, &str> = HashMap::new();
+    h.insert(i.clone(), "int");
+    h.insert(f.clone(), "float");
+    println!("  HashMap  after both: len={}", h.len());
+
+    // 2. Binary has no (Binary, Binary) arm -> falls through to type_order
+    let b1 = Value::Binary(vec![1, 2, 3]);
+    let b2 = Value::Binary(vec![9, 9, 9]);
+    println!("  Binary([1,2,3]) vs Binary([9,9,9]): cmp={:?} eq={}", b1.cmp(&b2), b1 == b2);
+    let mut tb: BTreeMap<Value, &str> = BTreeMap::new();
+    tb.insert(b1.clone(), "first");
+    tb.insert(b2.clone(), "second");
+    println!("  BTreeMap with 2 distinct Binary keys: len={}", tb.len());
+
+    assert_ne!(i.cmp(&f), Ordering::Equal, "Ord must not equate Integer and Float");
+    assert_ne!(b1.cmp(&b2), Ordering::Equal, "Ord must not equate distinct Binary values");
+    assert_eq!(tb.len(), 2, "BTreeMap must keep distinct Binary keys distinct");
+}

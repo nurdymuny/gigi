@@ -207,7 +207,16 @@ mod budget_partition_tests {
 /// Find connected components directly from the field index bitmaps.
 ///
 /// Two base points are in the same component if they share any indexed
-/// field value.  Uses union-find over bitmap buckets — O(buckets × α(n)).
+/// field value.  Uses union-find, unioning each bucket's members to that
+/// bucket's first member — so it never materialises the bucket's clique.
+///
+/// Cost is **O(Σ bucket sizes × α(n)) = O(n · |F| · α(n))**, not
+/// `O(buckets × α(n))` as this comment previously said: the inner loop walks
+/// every member of every bitmap, not one entry per bucket. The distinction
+/// matters because `TDD-IDX` F-6 cites this function to argue that a
+/// connectivity precondition on the λ-verbs costs nothing asymptotically —
+/// which is true of the linear form and would not be true of the clique form
+/// (`field_index_graph`, Θ(Σ g²); see the TDD-SBF note below it).
 fn components_from_index(store: &BundleStore) -> Vec<Vec<BasePoint>> {
     let all_bps: Vec<BasePoint> = store.sections().map(|(bp, _)| bp).collect();
     if all_bps.is_empty() {

@@ -139,6 +139,20 @@ def hypercube(d):
     return A
 
 
+def prism():
+    """Triangular prism K3 box K2 — 3-regular, vertex-transitive, lambda1 SIMPLE.
+
+    Hallie's counterexample to v2's claim that vertex-transitivity forces
+    multiplicity. Decomposes into 3 edge-disjoint perfect matchings, so it is
+    Lemma-constructible: a0a1a2 = 0,1,2 triangle; b0b1b2 = 3,4,5 triangle;
+    rungs i--i+3.
+    """
+    M1 = [[0, 1], [3, 4], [2, 5]]
+    M2 = [[1, 2], [4, 5], [0, 3]]
+    M3 = [[2, 0], [5, 3], [1, 4]]
+    return graph_from_buckets(6, [M1, M2, M3])
+
+
 def k_mm(m):
     n = 2 * m
     A = np.zeros((n, n))
@@ -233,6 +247,7 @@ print("      see tests/tmp_nan_value_contract.rs — expected red until Value's 
 # ── V-9 ──────────────────────────────────────────────────────────────────────
 print("\nV-9  additional exact fixtures (Konig: k-regular bipartite = k matchings)")
 for name, A, closed in (("Q_3", hypercube(3), 2 / 3),
+                        ("prism", prism(), 2 / 3),
                         ("K_{3,3}", k_mm(3), 1.0),
                         ("K_{4,4}", k_mm(4), 1.0)):
     ev, ker = norm_lap(A)
@@ -242,11 +257,16 @@ for name, A, closed in (("Q_3", hypercube(3), 2 / 3),
     check(f"{name:<8} lambda1={lam1:.12f}",
           abs(lam1 - closed) < 1e-10 and ker == 1,
           f"closed={closed:.12f} k={int(deg[0])} mult={mult}")
-print("     NOTE: none of these has a SIMPLE lambda1 — Q_3 is multiplicity 3, not 1.")
-print("     Q_d eigenvalues are 2k/d with multiplicity C(d,k), so k=1 gives C(3,1)=3.")
-print("     All are vertex-transitive, and vertex-transitivity forces multiplicity.")
-print("     Multiplicity does not threaten the asserted VALUE; only an eigenvector")
-print("     assertion would care, and this battery makes none.")
+print("     Q_3 is multiplicity 3, not 1: Q_d eigenvalues are 2k/d with multiplicity")
+print("     C(d,k), so k=1 gives C(3,1)=3. Hallie's original reason for proposing")
+print("     Q_3 ('its lambda1 is simple') was wrong.")
+print("     RETRACTED from v2: 'vertex-transitivity forces multiplicity' is FALSE.")
+print("     The prism is 3-regular AND vertex-transitive AND has a simple lambda1.")
+print("     Q_3 and prism share lambda1 = 2/3 at multiplicity 3 vs 1, so the PAIR")
+print("     separates 'reports an eigenvalue' from 'reports something about the")
+print("     eigenspace'. No other pair in this battery does that.")
+print("     Multiplicity does not threaten the asserted VALUE either way; only an")
+print("     eigenvector assertion would care, and this battery makes none.")
 
 print("\n" + ("ALL CHECKS PASSED" if not FAILURES
              else f"FAILURES: {len(FAILURES)} -> {FAILURES}"))

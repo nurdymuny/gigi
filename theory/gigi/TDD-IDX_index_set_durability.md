@@ -589,6 +589,149 @@ persistence for mmap-resident bundles is unspecified in this document**; it is
 `W-IDX-5`, it is the case that covers all of production, and it should not be
 described as fixed by F-2.
 
+### F-2b · The delta must range over the whole schema, and this is the third round it hasn't
+
+**Blocking regression introduced by v3 (Hallie, review 3).** v2 broadened the
+*replay* side to handle removals while the write side still journalled only
+`add_index`. v3 fixed that by broadening the *write* side to three handlers —
+and left the replay delta ranging over `indexed_fields` alone. Same defect, sign
+flipped, one round apart.
+
+`add_field` and `drop_field` mutate `fiber_fields`. Verified chain for
+`drop_field("x")` after v3:
+
+1. **Live.** Store removes `x` from `fiber_fields`, removes position `pos` from
+   every fiber vector (`bundle.rs:4155-4175`), cascades to `indexed_fields` and
+   `field_index`. `Engine::schemas` updated. WAL gets
+   `CreateBundle(schema_without_x)`. Consistent.
+2. **Replay.** The earlier `CreateBundle(with x)` creates the store with `x`;
+   inserts lay fibers out with `x` at `pos`. The later
+   `CreateBundle(without x)` hits `or_insert_with`, which no-ops for an existing
+   bundle, and the delta diffs only `indexed_fields` — but
+   `schemas.insert(...)` fires **unconditionally** (`engine.rs:915`).
+3. **After replay.** `Engine::schemas[B]` has no `x`; `store.schema` still has
+   `x`; every fiber vector still carries `x`'s value at `pos`.
+
+Two failures, and the second is the serious one:
+
+- The dropped field returns after restart — the D-2 mirror, for fields.
+- `Engine::schemas` and `store.schema` **diverge** — D-2 proper, reintroduced by
+  the fix for D-2. And fiber access is positional
+  (`for (i, field_def) in self.schema.fiber_fields.iter().enumerate()`,
+  `bundle.rs:1427`, `1595`; name→position at `1572`, `1699`, `1781`), so a
+  consumer resolving a field through the engine map and indexing into the
+  store's fibers is off by one for every field after `pos`. That is a silent
+  misread, not staleness.
+
+**Before the broadening this could not happen.** `drop_field` journalled
+nothing, so the newest `CreateBundle` still carried `x` and schema and storage
+agreed — wrong, but consistent. Journalling without the matching delta
+manufactures the divergence. **F-2's broadening is a regression unless the delta
+grows in the same commit.**
+
+### INV-S · Schema-delta coverage
+
+Stating the rule that would have caught all three rounds, rather than a fourth
+enumeration:
+
+> **INV-S.** For every field of `BundleSchema`, exactly one of the following
+> must hold, and which one must be written down:
+> **(a)** the replay delta applies it; **(b)** no mutator exists for it after
+> construction, so the creating `CreateBundle` is authoritative; or **(c)** it is
+> declared out of scope with its consequence named.
+
+The enumerate-what-we-remembered approach has now been wrong twice, and would be
+wrong a third time: `BundleSchema` has **eight** fields (`types.rs:411-427`),
+and `schemas.insert` replaces all eight in `Engine::schemas` while the delta
+applies only what it ranges over.
+
+| field | mutators found | disposition |
+|---|---|---|
+| `name` | none | (b) |
+| `base_fields` | none | (b) |
+| `fiber_fields` | `add_field` 4110, `drop_field` 4143 | **(a)** — new in v4 |
+| `indexed_fields` | `add_index` 4196, plus `drop_field`'s cascade | (a) |
+| `gauge_key` | **`rotate_gauge_key_only` 3833** | **(c)** — see below |
+| `adjacencies` | none | (b) |
+| `h1_threshold` | none | (b) |
+| `invariants` | none | (b) |
+
+`grep` for in-place mutation of each field outside construction returns zero for
+`name`, `base_fields`, `adjacencies`, `h1_threshold` and `invariants` — that is
+what earns them (b), and the grep is the evidence, not an assumption.
+
+**T-IDX-17 makes (b) enforceable.** A test that destructures a `BundleSchema`
+with an exhaustive pattern and no `..`, so adding a ninth field is a **compile
+error** in a test whose body says "assign this field a disposition in TDD-IDX
+§F-2b." Without it, (b) is a claim about today that silently expires.
+
+### The fourth schema mutator, which no enumeration had
+
+`rotate_gauge_key_only` (`bundle.rs:3822-3839`) sets `self.schema.gauge_key`,
+then truncates and re-inserts every record to re-encrypt it. Its HTTP caller
+(`gigi_stream.rs:13094-13115`) journals nothing — `grep -c 'wal\.'` over that
+range returns **0** — and the re-inserts go through `store.insert`, not
+`Engine::insert`, so they produce no WAL entries either.
+
+What is verified: it is a schema mutation, it journals nothing, and it rewrites
+every record without journalling. What is **not** established here is the
+consequence, which depends on whether `gauge_key` reaches the `.dhoom` and how
+decryption resolves it. Two readings are open — the rotation is silently lost on
+restart (benign-ish), or a post-rotation snapshot leaves new-key ciphertext
+against an old-key schema (not benign at all). **That wants its own
+investigation before anyone touches this path**, and it is disposition (c) here
+rather than (a) because guessing at encryption semantics inside an indexing spec
+is how the last three rounds started.
+
+### The delta, extended
+
+```
+old = store.schema()          new = journalled payload
+
+1.  drop_index   f in old.indexed_fields − new.indexed_fields,  f NOT in dropped_fields
+2.  drop_field   f in old.fiber_fields   − new.fiber_fields
+3.  add_field    f in new.fiber_fields   − old.fiber_fields      (in new's order)
+4.  add_index    f in new.indexed_fields − old.indexed_fields
+```
+
+Both ordering constraints fail **silently** rather than loudly, which is why
+they are specified rather than left to the implementer:
+
+- **1 before 2, and 1 must exclude fields being dropped.** `drop_field` already
+  cascades to `indexed_fields` (`bundle.rs:4156`), so an index on a
+  simultaneously-dropped field is removed twice. Benign only if `drop_index`
+  tolerates absence; specify that it does, or exclude the overlap.
+- **4 strictly after 3.** `add_index` pushes to `indexed_fields`
+  (`bundle.rs:4200`) *before* the `filter_map` whose `record.get(field_name)?`
+  (4206) skips records lacking the field. Run it on a field step 3 has not added
+  yet and it returns no error and produces a **declared-but-empty index**.
+  `components_from_index` then reports `n` components, F-6 refuses, and `DEPTH`
+  refuses on a bundle that is fine. A silently-empty index is worse here than a
+  panic.
+
+**Sequence, not set.** Fiber layout is positional, so the delta must reproduce
+the payload's field **order**, not merely its membership. Drop-then-add does
+this whenever `new` is `old` minus removals plus appends, which is what the
+mutators produce — but nothing enforces that the payload was produced that way.
+So the delta ends with an assertion:
+
+```
+store.schema().fiber_fields.map(|f| &f.name) == new.fiber_fields.map(|f| &f.name)
+```
+
+as an ordered sequence comparison. Set equality would pass while every fiber
+read after the first reordered field returned the wrong column.
+
+**`add_field` has no idempotence guard, and that is load-bearing.**
+`self.schema.fiber_fields.push(field_def.clone())` is unconditional
+(`bundle.rs:4111`), followed by a default pushed onto every fiber vector across
+all four storage arms. F-2's idempotence argument rested on `add_index`'s early
+return (`bundle.rs:4197`), which does not extend to `add_field`. So replay
+safety for fields comes **entirely** from computing the delta against the
+store's current schema. The obvious alternative implementation — "replay applies
+the journalled payload" — duplicates the field and shifts every position after
+it. T-IDX-7 covers only the `add_index` case; T-IDX-18 covers this one.
+
 ### F-3 · Keep `Engine::schemas` coherent
 `add_index` must write the updated schema into `Engine::schemas`, not only the
 store's clone. Without this, F-2's re-emit reads a stale schema and compaction
@@ -703,6 +846,27 @@ section's preamble warns about. Checked rather than assumed, on review.
 T-IDX-11 and T-IDX-12 are a matched pair and must be written together. T-IDX-12
 is the one that catches the plausible-but-wrong implementation of F-6, and it is
 the reason §2.3 exists.
+
+| **T-IDX-17** | exhaustive destructure of `BundleSchema` with no `..` — adding a ninth field is a **compile error** until it gets an INV-S disposition | INV-S | add a field to `BundleSchema` → the test stops compiling |
+| **T-IDX-18** | a field **added** through `add_field` survives a restart exactly once — not duplicated, and every fiber vector keeps its length | F-2b | replay the payload instead of the delta → red (field duplicated, positions shifted) |
+| **T-IDX-19** | a field **removed** through `drop_field` stays removed, and `Engine::schemas[B].fiber_fields == store.schema().fiber_fields` as an **ordered sequence** | F-2b | keep the delta indexes-only → red |
+| **T-IDX-20** | applying the delta with `add_index` before `add_field` yields a declared-but-**empty** index, so the ordering is pinned | F-2b | reorder steps 3 and 4 → red |
+
+**The pattern, named because it has now recurred three times.** Every round, one
+side of the write/replay pair moved and the other did not:
+
+| round | write side | replay side | result |
+|---|---|---|---|
+| v1 | `add_index` logs | add-only delta | a dropped index returns |
+| v2 | `add_index` logs | symmetric delta | T-IDX-15 permanently red |
+| v3 | 3 handlers log | delta still indexes-only | fields diverge, positional misreads |
+
+The invariant that catches all three is INV-S: the journalled payload and the
+replay delta must range over the same fields of `BundleSchema`. Stating it as a
+per-field disposition table with a compile-time check (T-IDX-17) is what makes
+the fourth round impossible rather than merely unlikely — which is the same move
+`TDD_DUR` W3 makes for the record path, and the same reason it was worth making
+there.
 
 T-IDX-15 was **permanently red as written in v2** and the review caught it
 before implementation did. v2 paired it with the symmetric-delta fix alone,
@@ -1012,9 +1176,22 @@ Five lines, no behaviour change on any correct path, ships with T-IDX-1/2/3. It
 is what unblocks the E17 indexing work, and it is the only item here that has to
 land before that work starts rather than alongside it.
 
-**W-IDX-1 — F-2 + F-3, index durability.** The `do_replay` arm, the
-`Engine::schemas` write, the `CreateBundle` re-emit. Ships with T-IDX-4 through
-T-IDX-8 and V-5. This is the item that makes INV-I true.
+**W-IDX-1 — F-2 + F-2b + F-3, schema durability.** Renamed from "index
+durability": three rounds of review established that indexes cannot be made
+durable in isolation, because the payload that carries them carries the whole
+schema. INV-S and its disposition table are part of this item, not a follow-up;
+so is T-IDX-17, since (b) dispositions expire silently without it.
+
+Contents: the `do_replay` arm, the `Engine::schemas` write, the `CreateBundle`
+re-emit from all three schema handlers, the extended delta with its ordering,
+the sequence assertion, and the INV-S disposition table. Ships with T-IDX-4
+through T-IDX-8 and T-IDX-15 and T-IDX-17 through T-IDX-20, plus V-5.
+
+This is the item that makes INV-I true, and it is now the largest item in the
+spec — it has grown in every round, which is the honest signal that "journal the
+index" was never a self-contained change. The four sub-parts **must land in one
+commit**: journalling without the delta is the v3 regression, and the delta
+without journalling is the v2 one.
 
 **W-IDX-2 — audit the metadata door.** The 17 `bundle_mut` sites, against
 **three** questions: is the mutation journalled, does it invalidate, and does it
@@ -1086,6 +1263,18 @@ takes it: the `Binary` case needs no unusual values at all — there is simply n
 index uses and the semantics its doc comment promises are not the same thing.
 V-7 and V-8 pin the indexing symptoms; they do not repair the cause, and those
 fixtures are expected red until someone does.
+
+**The `gauge_key` rotation path.** `rotate_gauge_key_only` (`bundle.rs:3822`) is
+a fourth schema mutator that journals nothing and rewrites every record through
+`store.insert` rather than `Engine::insert`, so neither the schema change nor
+the re-encrypted records reach the WAL (`grep -c 'wal\.'` over
+`gigi_stream.rs:13060-13140` → 0). That much is verified. The consequence is
+**not** established: it turns on whether `gauge_key` reaches the `.dhoom` and
+how decryption resolves it, and the two open readings — rotation silently lost,
+versus a post-rotation snapshot leaving new-key ciphertext against an old-key
+schema — differ enormously in severity. It is INV-S disposition (c) and it wants
+its own investigation before anyone touches that path. Guessing at encryption
+semantics from inside an indexing spec is not a saving.
 
 **Refusal batteries beyond this spec.** The E22 review's recommendation — build
 the broken input, assert the guard fires, then delete the guard and assert the

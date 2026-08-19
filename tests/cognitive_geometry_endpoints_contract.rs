@@ -102,7 +102,7 @@ fn capacity_api_returns_f64() {
 fn horizon_result_has_expected_field_set() {
     let store = contract_bundle();
     let k = scalar_curvature(&store);
-    let lambda1 = spectral_gap(&store);
+    let lambda1 = spectral_gap(&store).or_zero();
     let res: HorizonResult = horizon_with(1.0, k, &store, lambda1, &HorizonConfig::default());
 
     // Compile-time pinning of every wire-relevant field. Marcella's

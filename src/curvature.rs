@@ -769,7 +769,7 @@ impl DepthConfig {
     /// `for_continuous_substrate()` or `for_graph_substrate()` based
     /// on a `spectral_gap` check.
     pub fn auto_for(store: &crate::bundle::BundleStore, epsilon: f64) -> Self {
-        let lambda1 = crate::spectral::spectral_gap(store);
+        let lambda1 = crate::spectral::spectral_gap(store).or_zero();
         if lambda1 < epsilon {
             Self::for_continuous_substrate()
         } else {
@@ -1946,7 +1946,7 @@ mod tests {
     #[test]
     fn depth_auto_for_branches_on_epsilon() {
         let store = make_store_with_data();
-        let lambda1 = crate::spectral::spectral_gap(&store);
+        let lambda1 = crate::spectral::spectral_gap(&store).or_zero();
         assert!(
             lambda1.is_finite(),
             "fixture λ₁ must be finite for this test; got {lambda1}"

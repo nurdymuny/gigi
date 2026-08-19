@@ -195,7 +195,7 @@ impl InvariantTuple {
     /// Welford-streaming field stats are populated.
     pub fn compute(store: &BundleStore) -> Self {
         let k = crate::curvature::scalar_curvature(store);
-        let lambda_1 = crate::spectral::spectral_gap(store);
+        let lambda_1 = crate::spectral::spectral_gap(store).or_zero();
         let (b0, b1) = crate::spectral::betti_numbers(store);
         let holonomy_mean =
             crate::invariant::evaluate(store, &InvariantExpr::Op(InvariantOp::HolonomyAvg));

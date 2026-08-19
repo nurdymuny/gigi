@@ -198,7 +198,7 @@ fn sbf2_lambda1_matches_explicit_path() {
     for (ci, (n, cards, miss)) in cases.iter().enumerate() {
         for seed in 0..12u64 {
             let store = make_store(*n, cards, *miss, seed * 104_729 + ci as u64);
-            let implicit = gigi::spectral::spectral_gap(&store);
+            let implicit = gigi::spectral::spectral_gap(&store).or_zero();
             let explicit = gigi::spectral::test_hooks::spectral_gap_explicit(&store);
             assert!(
                 (implicit - explicit).abs() <= 1e-9,
@@ -216,7 +216,7 @@ fn sbf2_lambda1_matches_explicit_path() {
 fn sbf3_disconnected_returns_zero() {
     // Every record its own bucket value ⇒ no edges ⇒ many components.
     let store = make_store(40, &[40], 0, 11);
-    assert_eq!(gigi::spectral::spectral_gap(&store), 0.0);
+    assert_eq!(gigi::spectral::spectral_gap(&store).or_zero(), 0.0);
 }
 
 #[test]
@@ -224,7 +224,7 @@ fn sbf3_perfect_clique_uses_analytic_formula() {
     // One bucket holding everything ⇒ K_n ⇒ λ₁ = n/(n−1).
     let store = make_store(30, &[1], 0, 12);
     let n = 30.0;
-    let got = gigi::spectral::spectral_gap(&store);
+    let got = gigi::spectral::spectral_gap(&store).or_zero();
     assert!(
         (got - n / (n - 1.0)).abs() < 1e-12,
         "clique λ₁ = {got}, want {}",
@@ -272,7 +272,7 @@ fn sbf5_fifty_thousand_records_is_fast() {
     let betti_ms = t0.elapsed().as_millis();
 
     let t1 = Instant::now();
-    let lambda1 = gigi::spectral::spectral_gap(&store);
+    let lambda1 = gigi::spectral::spectral_gap(&store).or_zero();
     let spectral_ms = t1.elapsed().as_millis();
 
     println!(
@@ -311,7 +311,7 @@ fn sbf5b_eigensolver_runs_at_scale() {
     assert_eq!(b0, 1, "fixture must be connected for this gate to mean anything");
 
     let t = Instant::now();
-    let lambda1 = gigi::spectral::spectral_gap(&store);
+    let lambda1 = gigi::spectral::spectral_gap(&store).or_zero();
     let ms = t.elapsed().as_millis();
     println!(
         "SBF-5b: N=20000 fields=[6,3] connected · SPECTRAL {ms} ms \

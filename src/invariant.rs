@@ -112,7 +112,7 @@ fn evaluate_op(store: &BundleStore, op: &InvariantOp) -> f64 {
             // (no fiber decryption); tau is a schema-supplied scalar.
             crate::curvature::capacity(*tau, crate::curvature::scalar_curvature(store))
         }
-        InvariantOp::SpectralGap => crate::spectral::spectral_gap(store),
+        InvariantOp::SpectralGap => crate::spectral::spectral_gap(store).or_zero(),
         InvariantOp::Beta0 => crate::spectral::betti_numbers(store).0 as f64,
         InvariantOp::Beta1 => crate::spectral::betti_numbers(store).1 as f64,
         InvariantOp::HolonomyAvg => holonomy_avg_base_only(store),

@@ -1450,7 +1450,34 @@ routes. It wants its own spec, its own invariant, and its own order of work.
 Folding it into TDD-IDX would repeat the mistake W-IDX-1 spent four rounds
 correcting: broadening one side of a fix without the other.
 
-**W-IDX-3 — F-6, the refusal gate.** Ships with T-IDX-11 + T-IDX-12 + V-4.
+**W-IDX-3 — F-6, the refusal gate. ✅ SHIPPED 2026-08-15.**
+`SpectralGap::{Measured, Undefined{components, records}}` in `spectral.rs`;
+`spectral_gap` returns it. The compiler enumerated ~24 consumers, which was the
+point of choosing a type over a lint.
+
+**A third sentinel path nobody had named.** The spec described two ways to a
+false level IV — no edges, and disconnected. The DEPTH executor had a third:
+`store.as_heap().map(spectral_gap).unwrap_or(0.0)` turned *"this bundle is
+mmap-resident so λ₁ cannot be computed"* into *"λ₁ = 0"*, and every production
+bundle is mmap-resident. So DEPTH reported "the manifold topology has changed"
+for all of them. It now refuses and says which of the three conditions applies.
+
+**The escape hatch is deliberate.** `or_zero()` collapses `Undefined` to `0.0`
+for the ~20 consumers that predate the split, because what each verb *should* do
+on a degenerate graph is a per-verb product decision §8 says this spec cannot
+make. The gain is not that nobody may collapse it — it is that the list of
+undecided consumers is now `grep -rn 'or_zero()'`, finite and visible, rather
+than unbounded and invisible. **24 call sites carry it today**; that is the
+worklist §8 refers to.
+
+**One existing test was encoding the defect.** `execute_cognitive_geometry_verbs`
+asserted DEPTH returns a level in 1.0..=4.0 on a bundle with no indexed fields.
+It passed because the wrong answer, 4.0, is in range. It now asserts the refusal
+— and asserts it *twice*, because indexing that fixture's all-distinct `y` field
+gives `n` singleton buckets and leaves the graph edgeless, which is §2.3 row 3
+and exactly what a field-count gate would wave through.
+
+**Original scope:** Ships with T-IDX-11 + T-IDX-12 + V-4.
 Independent of W-IDX-1; can run in parallel.
 
 **W-IDX-4 — F-5 and the schema-ownership fix. Now sized: SMALL.**

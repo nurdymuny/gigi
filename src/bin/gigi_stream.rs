@@ -2887,7 +2887,7 @@ async fn spectral_report(
         )
     })?;
 
-    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).map(|g| g.or_zero()).unwrap_or(0.0);
     let diameter = store.as_heap().map(spectral::graph_diameter).unwrap_or(0);
     let spectral_cap = store.as_heap().map(spectral::spectral_capacity).unwrap_or(0.0);
 
@@ -2991,7 +2991,7 @@ async fn bundle_depth_report(
     })?;
 
     let k = store.scalar_curvature();
-    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).map(|g| g.or_zero()).unwrap_or(0.0);
 
     // Build DepthConfig, applying per-field overrides from query params.
     // Unspecified params fall through to DepthConfig::default().
@@ -14420,9 +14420,12 @@ fn execute_gql_on_store_read(
                 );
                 return Ok(ExecResult::Rows(vec![row]));
             }
+            // TDD-IDX F-6: or_zero() preserves pre-split behaviour. What this
+            // verb should do on a degenerate graph is a per-verb decision the
+            // spec does not make — grep or_zero() for the list still to walk.
             let lambda1 = store
                 .as_heap()
-                .map(gigi::spectral::spectral_gap)
+                .map(|s| gigi::spectral::spectral_gap(s).or_zero())
                 .unwrap_or(0.0);
             Ok(ExecResult::Scalar(lambda1))
         }
@@ -14576,14 +14579,14 @@ fn execute_gql_on_store_read(
         Statement::Horizon { tau, .. } => {
             // s_max = τ/(K·ℓ_c). Returns the holonomy horizon as a scalar.
             let k = store.scalar_curvature();
-            let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+            let lambda1 = store.as_heap().map(spectral::spectral_gap).map(|g| g.or_zero()).unwrap_or(0.0);
             Ok(ExecResult::Scalar(curvature::horizon(*tau, k, lambda1)))
         }
         Statement::Depth { .. } => {
             // Returns encoding depth as a scalar: I=1, II=2, III=3, IV=4.
             // For the full classification use GET /v1/bundles/{name}/depth.
             let k = store.scalar_curvature();
-            let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+            let lambda1 = store.as_heap().map(spectral::spectral_gap).map(|g| g.or_zero()).unwrap_or(0.0);
             let depth = curvature::encoding_depth(k, lambda1);
             let level: f64 = match depth {
                 curvature::EncodingDepth::Tangent     => 1.0,

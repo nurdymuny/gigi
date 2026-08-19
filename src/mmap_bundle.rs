@@ -1750,7 +1750,7 @@ impl<'a> BundleRef<'a> {
 
     pub fn spectral_gap(&self) -> f64 {
         match self {
-            BundleRef::Heap(s) => spectral::spectral_gap(s),
+            BundleRef::Heap(s) => spectral::spectral_gap(s).or_zero(),
             BundleRef::Overlay(_) => 0.0,
         }
     }
@@ -2082,7 +2082,7 @@ impl<'a> BundleMut<'a> {
 
     pub fn spectral_gap(&self) -> f64 {
         match self {
-            BundleMut::Heap(s) => spectral::spectral_gap(s),
+            BundleMut::Heap(s) => spectral::spectral_gap(s).or_zero(),
             BundleMut::Overlay(_) => 0.0,
         }
     }

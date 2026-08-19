@@ -129,7 +129,7 @@ fn capacity_on_real_sensor_bundle_is_well_defined() {
 fn horizon_on_real_sensor_bundle_is_well_defined() {
     let store = build_bundle();
     let k = scalar_curvature(&store);
-    let lambda1 = spectral_gap(&store);
+    let lambda1 = spectral_gap(&store).or_zero();
 
     assert!(lambda1.is_finite(), "λ₁ must be finite, got {}", lambda1);
     assert!(lambda1 >= 0.0, "λ₁ must be non-negative, got {}", lambda1);
@@ -167,7 +167,7 @@ fn horizon_on_real_sensor_bundle_is_well_defined() {
 fn depth_on_real_sensor_bundle_classifies_to_valid_variant() {
     let store = build_bundle();
     let k = scalar_curvature(&store);
-    let lambda1 = spectral_gap(&store);
+    let lambda1 = spectral_gap(&store).or_zero();
     let depth = encoding_depth(k, lambda1);
 
     // The classifier reaches a definite verdict on real data — not
@@ -198,7 +198,7 @@ fn horizon_with_on_sensor_bundle_fires_welford_fallback() {
     // fallback. This test pins that contract on real data.
     let store = build_bundle();
     let k = scalar_curvature(&store);
-    let lambda1 = spectral_gap(&store);
+    let lambda1 = spectral_gap(&store).or_zero();
     // Sanity: sensor data exhibits the degenerate-λ₁ case.
     assert!(
         lambda1 < 1e-9,
@@ -247,8 +247,8 @@ fn capacity_horizon_depth_read_consistent_k_and_lambda1() {
     let store = build_bundle();
     let k1 = scalar_curvature(&store);
     let k2 = scalar_curvature(&store);
-    let lambda1_a = spectral_gap(&store);
-    let lambda1_b = spectral_gap(&store);
+    let lambda1_a = spectral_gap(&store).or_zero();
+    let lambda1_b = spectral_gap(&store).or_zero();
 
     assert_eq!(k1, k2, "scalar_curvature is deterministic on same store");
     assert_eq!(

@@ -140,7 +140,7 @@ fn build_volatile_bundle() -> BundleStore {
 fn report_bundle(label: &str, store: &BundleStore) -> (f64, f64, EncodingDepth) {
     header(label);
     let k = scalar_curvature(store);
-    let lambda1 = spectral_gap(store);
+    let lambda1 = spectral_gap(store).or_zero();
     line("records", store.records().count());
     line("scalar curvature K", format!("{:.6}", k));
     line("spectral gap λ₁", format!("{:.6}", lambda1));
@@ -211,7 +211,7 @@ fn report_bundle(label: &str, store: &BundleStore) -> (f64, f64, EncodingDepth) 
     println!();
     // Use the substrate-aware constructor so the JTBD demo shows the
     // out-of-the-box correct behavior on sensor bundles. `auto_for`
-    // inspects `spectral_gap(store)` and picks the continuous-substrate
+    // inspects `spectral_gap(store).or_zero()` and picks the continuous-substrate
     // defaults (λ₁ cuts zeroed) when the graph estimator is degenerate
     // — exactly the case the original demo flagged. Same surface call
     // works for graph substrates too, where it falls through to the
@@ -426,7 +426,7 @@ fn main() {
   The published defaults are not wrong — they're calibrated for
   graph-Laplacian substrates where λ₁ is a non-degenerate signal.
   `auto_for` picks the right substrate-type defaults by
-  introspecting `spectral_gap(store)`, so DEPTH works out of the
+  introspecting `spectral_gap(store).or_zero()`, so DEPTH works out of the
   box on both substrate types. Per-bundle calibration (fitting
   thresholds from the joint (K, λ₁) distribution at bundle-load
   time) is the v2 follow-up — same move as the δ recalibration

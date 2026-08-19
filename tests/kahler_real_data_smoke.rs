@@ -14,7 +14,7 @@
 //!   - `store.len()` (record count)
 //!   - bundle-wide `scalar_curvature(&store)` from
 //!     `src/curvature.rs`
-//!   - `spectral_gap(&store)` from `src/spectral.rs`
+//!   - `spectral_gap(&store).or_zero()` from `src/spectral.rs`
 //!   - section query result on a known sensor_id
 //!
 //! All four must be byte-identical between the two stores. Any
@@ -149,8 +149,8 @@ fn real_sensor_data_kahler_optionality_holds() {
     );
 
     // 3. Spectral gap (catalog §3.6 / src/spectral.rs::spectral_gap)
-    let gap_plain = spectral_gap(&plain);
-    let gap_kahler = spectral_gap(&kahler);
+    let gap_plain = spectral_gap(&plain).or_zero();
+    let gap_kahler = spectral_gap(&kahler).or_zero();
     assert!(
         (gap_plain - gap_kahler).abs() < 1e-12,
         "spectral_gap differs: plain={}, kahler={} (delta {})",

@@ -448,7 +448,7 @@ async fn spectral_report(
         }
     };
 
-    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).map(|g| g.or_zero()).unwrap_or(0.0);
     let diameter = store.as_heap().map(spectral::graph_diameter).unwrap_or(0);
     let cap = store.as_heap().map(spectral::spectral_capacity).unwrap_or(0.0);
 

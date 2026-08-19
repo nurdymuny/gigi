@@ -406,7 +406,7 @@ fn analyze_spectral(store: &BundleStore) {
     println!("╠══════════════════════════════════════════════════════════════════╣");
 
     let t0 = Instant::now();
-    let lambda1 = spectral::spectral_gap(store);
+    let lambda1 = spectral::spectral_gap(store).or_zero();
     // Skip expensive diameter computation when disconnected (λ₁ = 0)
     let diam = if lambda1 < f64::EPSILON {
         1
@@ -1393,7 +1393,7 @@ fn generate_html_report(store: &BundleStore) {
     let conf_global = curvature::confidence(k_global);
 
     let t0 = Instant::now();
-    let _lambda1 = spectral::spectral_gap(store);
+    let _lambda1 = spectral::spectral_gap(store).or_zero();
     let spectral_ms = t0.elapsed().as_secs_f64() * 1000.0;
 
     let mut key = Record::new();

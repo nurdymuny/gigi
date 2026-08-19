@@ -689,7 +689,7 @@ pub fn horizon_report(
         // ── scoped path: same formulas, scoped inputs ───────────────
         let (mini, echo) = scoped_population(store, &scope)?;
         let k = curvature::scalar_curvature(&mini);
-        let lambda1 = spectral::spectral_gap(&mini);
+        let lambda1 = spectral::spectral_gap(&mini).or_zero();
         let cfg = curvature::HorizonConfig {
             estimator,
             ..curvature::HorizonConfig::default()
@@ -714,7 +714,7 @@ pub fn horizon_report(
 
     // ── default path — pre-change behavior, byte-fenced ─────────────
     let k = store.scalar_curvature();
-    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let lambda1 = store.as_heap().map(spectral::spectral_gap).map(|g| g.or_zero()).unwrap_or(0.0);
     let cfg = curvature::HorizonConfig {
         estimator,
         ..curvature::HorizonConfig::default()

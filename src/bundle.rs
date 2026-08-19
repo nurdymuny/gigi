@@ -4771,7 +4771,7 @@ impl BundleStore {
         // Compute fresh. spectral_gap() is the existing implementation
         // (catalog §2.5 / src/spectral.rs); we just wrap it with the
         // Cheeger / mixing-time conversion + cache the answer.
-        let lambda_2 = crate::spectral::spectral_gap(self);
+        let lambda_2 = crate::spectral::spectral_gap(self).or_zero();
 
         // Mix time bound: τ ≈ (1/λ₂) · log(1/ε), ε = 1e-3.
         let mix_time = if lambda_2 > 0.0 {
@@ -6915,8 +6915,8 @@ mod tests {
 
         // Spectral analysis uses only bitmap topology, not fiber values
         // So it should be identical regardless of encryption
-        let spectrum_enc = crate::spectral::spectral_gap(&enc_store);
-        let spectrum_plain = crate::spectral::spectral_gap(&plain_store);
+        let spectrum_enc = crate::spectral::spectral_gap(&enc_store).or_zero();
+        let spectrum_plain = crate::spectral::spectral_gap(&plain_store).or_zero();
 
         assert!(
             (spectrum_enc - spectrum_plain).abs() < 1e-10,

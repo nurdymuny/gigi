@@ -643,11 +643,99 @@ impl GraphSnapshot {
     }
 }
 
+/// The result of asking for a spectral gap.
+///
+/// TDD-IDX F-6. `spectral_gap` used to return `f64`, and returned `0.0` for
+/// three situations that are not the same thing plus one where it is a real
+/// answer:
+///
+/// | situation | old return | is it a measurement? |
+/// |---|---|---|
+/// | graph has no edges (nothing indexed) | `0.0` | no — `L` is the zero matrix and has no non-zero eigenvalue |
+/// | graph is disconnected | `0.0` | no — the guard fires before any solve |
+/// | connected, genuinely small gap | `0.0`-ish | **yes** |
+///
+/// `DEPTH` classifies `lambda1 < lambda1_topological` as level IV —
+/// "topological encoding, infinite erasure energy, the manifold topology has
+/// changed" — with full confidence. So every non-measurement produced the most
+/// alarming answer the verb has, and no caller could tell them apart, because
+/// "undefined" was travelling in the same channel and the same type as
+/// "measured".
+///
+/// This type is the channel split. It is not a lint: the compiler enumerates
+/// every consumer, and each one has to say what it does.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SpectralGap {
+    /// λ₁ of the normalized Laplacian on a connected graph with ≥ 2 vertices.
+    Measured(f64),
+    /// The gap is not defined on this graph. Carries the counts that make the
+    /// answer diagnosable rather than merely absent.
+    Undefined {
+        /// Connected components of the field-index graph, counting isolated
+        /// vertices. `> 1` means disconnected; `== records` means no edges.
+        components: usize,
+        /// Vertices — i.e. records in the bundle.
+        records: usize,
+    },
+}
+
+impl SpectralGap {
+    /// Collapse to the pre-F-6 `f64`, mapping `Undefined` to `0.0`.
+    ///
+    /// **This is the escape hatch, and using it is a decision.** Deciding what
+    /// each verb should do on a degenerate graph is a per-verb product question
+    /// (see TDD-IDX §8), and this spec does not answer it for the ~20 consumers
+    /// that predate the split. Every one of them calls this, which means the
+    /// list of undecided consumers is `grep -rn 'or_zero()'` — visible and
+    /// finite — rather than invisible and unbounded, which is what it was.
+    pub fn or_zero(self) -> f64 {
+        match self {
+            SpectralGap::Measured(v) => v,
+            SpectralGap::Undefined { .. } => 0.0,
+        }
+    }
+
+    /// The measured value, if there is one.
+    pub fn measured(self) -> Option<f64> {
+        match self {
+            SpectralGap::Measured(v) => Some(v),
+            SpectralGap::Undefined { .. } => None,
+        }
+    }
+
+    /// Human-readable refusal naming the condition. Used by verbs that decline
+    /// rather than collapse — see `Statement::Depth`.
+    pub fn refusal(self) -> Option<String> {
+        match self {
+            SpectralGap::Measured(_) => None,
+            SpectralGap::Undefined { components, records } => Some(format!(
+                "insufficient structure: the field-index graph has {components} components over {records} records, so λ₁ is identically 0 and is not a measurement of this bundle. Index at least one field whose buckets connect the records (TDD-IDX §2.3)."
+            )),
+        }
+    }
+}
+
 /// Compute the spectral gap λ₁ (smallest nonzero eigenvalue of normalized Laplacian).
 ///
 /// Def 3.10: L = I - D⁻¹/² W D⁻¹/²
-pub fn spectral_gap(store: &BundleStore) -> f64 {
-    graph_snapshot(store).spectral_gap()
+///
+/// Returns [`SpectralGap`] rather than `f64` so that "undefined" cannot be
+/// mistaken for a small measurement. Callers that genuinely want the old
+/// behaviour say so with [`SpectralGap::or_zero`].
+pub fn spectral_gap(store: &BundleStore) -> SpectralGap {
+    let snap = graph_snapshot(store);
+    let n = snap.n;
+    let comps = snap.n_components.max(if n == 0 { 0 } else { 1 });
+    if n < 2 || snap.n_components > 1 {
+        return SpectralGap::Undefined { components: comps, records: n };
+    }
+    let v = snap.spectral_gap();
+    if v <= 0.0 {
+        // A connected graph with >= 2 vertices whose solver produced 0 is not a
+        // measurement either — it means the graph had no edges after all.
+        return SpectralGap::Undefined { components: comps, records: n };
+    }
+    SpectralGap::Measured(v)
 }
 
 /// Power iteration for λ₁ over the implicit operator.
@@ -889,9 +977,15 @@ fn component_diameter(adj: &HashMap<BasePoint, Vec<BasePoint>>) -> usize {
 
 /// Spectral capacity C_sp = λ₁ · D² (Thm 3.4).
 pub fn spectral_capacity(store: &BundleStore) -> f64 {
-    let lambda1 = spectral_gap(store);
+    // TDD-IDX F-6: this one reads better after the split, not worse. The old
+    // `lambda1 < f64::EPSILON` was testing for "disconnected" by inspecting a
+    // magnitude — inferring the condition from the sentinel. Now it asks.
+    let lambda1 = match spectral_gap(store) {
+        SpectralGap::Measured(v) => v,
+        SpectralGap::Undefined { .. } => return 0.0, // skip the O(n²) diameter
+    };
     if lambda1 < f64::EPSILON {
-        return 0.0; // Disconnected → skip expensive diameter computation
+        return 0.0;
     }
     let diam = graph_diameter(store);
     lambda1 * (diam as f64) * (diam as f64)
@@ -2707,7 +2801,7 @@ mod tests {
     #[test]
     fn tdd_3_18_connected_large_gap() {
         let store = make_connected_store();
-        let lambda1 = spectral_gap(&store);
+        let lambda1 = spectral_gap(&store).or_zero();
         // For a complete graph on n vertices, λ₁ = n/(n-1 ≈ 1.05
         assert!(
             lambda1 > 0.5,
@@ -2719,7 +2813,7 @@ mod tests {
     #[test]
     fn tdd_3_19_clustered_small_gap() {
         let store = make_clustered_store();
-        let lambda1 = spectral_gap(&store);
+        let lambda1 = spectral_gap(&store).or_zero();
         // Two disconnected components → λ₁ should be ≈ 0
         // (Power iteration may not converge perfectly, but should be small)
         assert!(

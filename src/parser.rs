@@ -11609,7 +11609,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 return Ok(ExecResult::Rows(vec![row]));
             }
             let lambda1 = store.as_heap()
-                .map(|s| crate::spectral::spectral_gap(s))
+                .map(|s| crate::spectral::spectral_gap(s).or_zero())
                 .unwrap_or(0.0);
             Ok(ExecResult::Scalar(lambda1))
         }
@@ -12105,7 +12105,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 .map(|s| crate::curvature::scalar_curvature(s))
                 .unwrap_or_else(|| store.curvature_stats().mean());
             let lambda1 = heap
-                .map(|s| crate::spectral::spectral_gap(s))
+                .map(|s| crate::spectral::spectral_gap(s).or_zero())
                 .unwrap_or(0.0);
             // The calibrated path needs a BundleStore. If we only have
             // a mmap-overlay view (no heap), fall back to the legacy
@@ -12124,9 +12124,40 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             let k = store.as_heap()
                 .map(|s| crate::curvature::scalar_curvature(s))
                 .unwrap_or_else(|| store.curvature_stats().mean());
-            let lambda1 = store.as_heap()
-                .map(|s| crate::spectral::spectral_gap(s))
-                .unwrap_or(0.0);
+
+            // TDD-IDX F-6. DEPTH is the verb the E17 verb audit caught answering
+            // from nothing: `encoding_depth_with` classifies
+            // `lambda1 < lambda1_topological` as level IV — "topological
+            // encoding, infinite erasure energy, the manifold topology has
+            // changed" — so every path that produced a 0 produced the single
+            // most alarming answer the verb has, with full confidence.
+            //
+            // There were THREE such paths and only one was a measurement:
+            //   1. no indexed fields          -> no edges, guard returns 0
+            //   2. disconnected graph          -> guard returns 0
+            //   3. mmap-resident bundle        -> as_heap() is None, and the old
+            //      `.unwrap_or(0.0)` turned "cannot measure" into "measured 0"
+            //
+            // (3) is every bundle in production. A diagnosis product cannot
+            // answer confidently from any of them, so DEPTH now declines and
+            // names the condition.
+            let heap = store.as_heap().ok_or_else(|| format!(
+                "DEPTH cannot measure '{}': the bundle is mmap-resident and λ₁ is \
+                 heap-only pending the polymorphic-BundleRef follow-up. Refusing \
+                 rather than reporting level IV from an unmeasured λ₁ \
+                 (TDD-IDX F-6).",
+                bundle
+            ))?;
+            let lambda1 = match crate::spectral::spectral_gap(heap) {
+                crate::spectral::SpectralGap::Measured(v) => v,
+                gap @ crate::spectral::SpectralGap::Undefined { .. } => {
+                    return Err(format!(
+                        "DEPTH cannot classify '{}': {}",
+                        bundle,
+                        gap.refusal().unwrap_or_default()
+                    ));
+                }
+            };
             let cfg = config.unwrap_or_default();
             let depth = crate::curvature::encoding_depth_with(k, lambda1, &cfg);
             let level: f64 = match depth {
@@ -14598,12 +14629,37 @@ mod tests {
         let hor = execute(&mut engine, &parse("HORIZON cog").unwrap()).unwrap();
         assert!(matches!(hor, ExecResult::Scalar(_)), "HORIZON returned non-scalar");
 
-        // DEPTH should return 1.0–4.0
-        if let ExecResult::Scalar(level) = execute(&mut engine, &parse("DEPTH cog").unwrap()).unwrap() {
-            assert!(level >= 1.0 && level <= 4.0, "DEPTH level out of range: {level}");
-        } else {
-            panic!("DEPTH returned non-scalar");
-        }
+        // TDD-IDX F-6. This test used to assert that DEPTH returns a level on
+        // `cog`, which has NO indexed fields — so the field-index graph has no
+        // edges, one component per record, and lambda1 is undefined. The old
+        // code returned 0.0 there and the classifier read it as level IV,
+        // "topological encoding, infinite erasure energy". The assertion passed
+        // because 4.0 is in 1.0..=4.0, so the test was encoding the defect.
+        //
+        // DEPTH now refuses on a degenerate graph. Pin BOTH sides: the refusal
+        // names the condition, and once a field is indexed so the graph
+        // connects, the verb answers normally.
+        let refused = execute(&mut engine, &parse("DEPTH cog").unwrap());
+        let msg = refused.expect_err("DEPTH must refuse on a graph with no edges");
+        assert!(
+            msg.contains("insufficient structure") && msg.contains("components"),
+            "the refusal must name the condition, got: {msg}"
+        );
+
+        // Indexing does not rescue THIS fixture, and the reason is the point:
+        // `cog`'s x and y are both all-distinct, so one indexed field gives one
+        // singleton bucket per record — v = n components, still no edges
+        // (TDD-IDX §2.3, row 3). The measured case needs a field whose values
+        // repeat, and it is covered by
+        // tests/spectral_refusal.rs::one_indexed_field_with_one_value_is_measured,
+        // which asserts K_n's exact λ₁ = n/(n−1).
+        engine.add_index("cog", "y").unwrap();
+        let still_refused = execute(&mut engine, &parse("DEPTH cog").unwrap());
+        assert!(
+            still_refused.is_err(),
+             "indexing an all-distinct field yields n singleton buckets, so the graph is still edgeless"
+        );
+
     }
 
     #[test]

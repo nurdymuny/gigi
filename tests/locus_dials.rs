@@ -155,7 +155,7 @@ struct PreChangeHorizonReport {
 fn prechange_horizon_json(store: &BundleRef, params: &HashMap<String, String>) -> String {
     let tau: f64 = params.get("tau").and_then(|s| s.parse().ok()).unwrap_or(1.0);
     let k = store.scalar_curvature();
-    let lambda1 = store.as_heap().map(spectral::spectral_gap).unwrap_or(0.0);
+    let lambda1 = store.as_heap().map(|s| spectral::spectral_gap(s).or_zero()).unwrap_or(0.0);
 
     let estimator = match params.get("estimator").map(|s| s.as_str()) {
         Some("welford_radius") => curvature::LengthScaleEstimator::WelfordRadius,

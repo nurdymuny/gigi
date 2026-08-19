@@ -480,7 +480,8 @@ obscured that by treating the five as one group for F-1 and then naming only
 | class | mutators | needs |
 |---|---|---|
 | **schema** | `add_index`, `add_field`, `drop_field` | F-1 **+ F-2 journalling + F-0 ordering** |
-| **record** | `truncate`, `bulk_delete` | F-1 only; their WAL story is `TDD_DUR` §5's WAL-bypass item, not this spec's |
+| **record** | `truncate` | F-1 only; its WAL story is `TDD_DUR` §5's WAL-bypass item, not this spec's |
+| **already correct** | `bulk_delete` | nothing — it delegates to `delete`, which invalidates (see W-IDX-0) |
 
 One line each, at `bundle.rs` 4196, 4110, 4143, 3465, 3437, matching the
 `batch_insert` precedent, whose call sits at `bundle.rs:1485` inside the
@@ -1244,10 +1245,54 @@ prism is what settles it.
 
 ## 7. ORDER OF WORK
 
-**W-IDX-0 — F-1, the five `mark_mutated()` calls. Land alone, first.**
-Five lines, no behaviour change on any correct path, ships with T-IDX-1/2/3. It
-is what unblocks the E17 indexing work, and it is the only item here that has to
-land before that work starts rather than alongside it.
+**W-IDX-0 — F-1. ✅ SHIPPED 2026-08-15 — as FOUR calls, not five.**
+Landed alone, first, as specified: `bundle.rs` 3487 (`truncate`), 4149
+(`add_field`), 4206 (`drop_field`), 4248 (`add_index`). Ships with T-IDX-2a,
+T-IDX-2b and T-IDX-3, written before the fix and observed red — the `add_index`
+failure printed the audit's exact symptom, a surviving
+`SpectralGapSnapshot { lambda_2: 0.0, mix_time: 18446744073709551615 }`, where
+`u64::MAX` is the mixing time for a zero gap.
+
+**The fifth call was redundant, and only the mechanism-removal pass found it.**
+Run per site rather than per group — each call deleted individually, suite
+re-run, restored:
+
+| site | on removal |
+|---|---|
+| `truncate` | red |
+| `add_field` | red |
+| `drop_field` | red |
+| `add_index` | red |
+| **`bulk_delete`** | **still green** |
+
+`bulk_delete` delegates to `self.delete()` per record (`bundle.rs:3457`) and
+`delete` already calls `mark_mutated` (`bundle.rs:1972`), so it invalidated
+transitively all along. A direct call there is dead weight whose removal no test
+can detect — the "passes with and without the mechanism" case this spec's §5
+preamble is written against, arriving in the fix rather than in a gate. It was
+dropped; the behaviour assertion stays, so a refactor that stops `bulk_delete`
+delegating still fails.
+
+**What that corrects upstream.** The E17 audit's finding — *"five mutators do
+not call `mark_mutated()`"* — is accurate as written and was read by everyone
+downstream, this spec included, as *five mutators do not invalidate*. Those are
+different claims, and for `bulk_delete` only the first is true. The audit's own
+§6 hedge ("four of the five are latent hazards in source, not present defects")
+was pointing at this and was more right than it knew: one of the four is not a
+hazard at all.
+
+This unblocks the E17 indexing work and was the only item that had to land
+before that work starts rather than alongside it.
+
+**One thing this shipped that the spec did not anticipate.** T-IDX-2b asserts
+`λ₁ = n/(n−1)` after indexing a single-valued field — the `K_n` closed form from
+V-1. It passes against the **engine**, at `n = 5`, giving `1.25`. That is the
+first time a §6 closed form has been checked against the real implementation
+rather than against numpy, and it is the check §6's own V-2 correction says the
+battery was missing: numpy validates the mathematics, and only the engine
+validates that the engine computes it. Every remaining V-item should acquire an
+engine-side counterpart as its fix lands, rather than the battery staying a
+parallel artefact.
 
 **W-IDX-1 — F-2 + F-2b + F-3, schema durability.** Renamed from "index
 durability": three rounds of review established that indexes cannot be made

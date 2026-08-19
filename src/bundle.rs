@@ -3458,6 +3458,12 @@ impl BundleStore {
                 count += 1;
             }
         }
+        // TDD-IDX F-1: deliberately NO mark_mutated() here. bulk_delete
+        // delegates to self.delete() per record (above), and delete()
+        // already invalidates — so a direct call is redundant, and the
+        // mechanism-removal pass proved it: deleting it leaves every test
+        // green. The behaviour is still gated, one level up, by
+        // every_schema_and_bulk_mutator_invalidates_the_spectral_cache.
         count
     }
 
@@ -3476,6 +3482,9 @@ impl BundleStore {
         self.next_bp_ordinal = 0;
         self.bp_to_idx.clear();
         self.seq_bp_list.clear();
+        // TDD-IDX F-1: this mutation changes what the derived-value caches
+        // were computed on. See theory/gigi/TDD-IDX_index_set_durability.md.
+        self.mark_mutated();
         count
     }
 
@@ -4135,6 +4144,9 @@ impl BundleStore {
                 }
             }
         }
+        // TDD-IDX F-1: this mutation changes what the derived-value caches
+        // were computed on. See theory/gigi/TDD-IDX_index_set_durability.md.
+        self.mark_mutated();
     }
 
     /// Remove a fiber field from the schema and all existing records.
@@ -4189,6 +4201,9 @@ impl BundleStore {
                 }
             }
         }
+        // TDD-IDX F-1: this mutation changes what the derived-value caches
+        // were computed on. See theory/gigi/TDD-IDX_index_set_durability.md.
+        self.mark_mutated();
         true
     }
 
@@ -4228,6 +4243,9 @@ impl BundleStore {
         }
 
         self.field_index.insert(field_name.to_string(), new_index);
+        // TDD-IDX F-1: this mutation changes what the derived-value caches
+        // were computed on. See theory/gigi/TDD-IDX_index_set_durability.md.
+        self.mark_mutated();
     }
 
     // ── Sprint 3: Engine Methods ──────────────────────────────
@@ -9154,6 +9172,150 @@ mod tests {
     /// Negative: bundles with fewer than 2 records return None
     /// (the spectral graph is degenerate). Defends against the
     /// "spectral gap on a 1-record bundle" silent-zero footgun.
+
+    // ── TDD-IDX W-IDX-0 / F-1: the five mutators that skip mark_mutated ──
+    //
+    // Found by the E17 verb audit (integration/daily/VERB_AUDIT.md §6) and
+    // spec'd in theory/gigi/TDD-IDX_index_set_durability.md F-1. Five mutators
+    // do not call mark_mutated(), so the memoised spectral gap survives a
+    // mutation that changes the graph it was computed on.
+    //
+    // add_index is the live one: it rewrites the field-index graph, which is
+    // exactly what λ is computed on. The audit observed /depth reporting
+    // λ₁ = 0.0342 while /spectral_gap reported λ₂ = 0.0 at one unchanged
+    // cached_at. The other four are latent in source.
+
+    /// A store with NO indexed fields — the field-index graph has no edges,
+    /// so every record is its own component and the guard returns 0.0
+    /// (TDD-IDX §2.3, row 1). Indexing a single-valued field afterwards makes
+    /// it K_n, whose λ₁ is n/(n−1) — so the value provably moves.
+    #[cfg(feature = "kahler")]
+    fn make_unindexed_store() -> BundleStore {
+        let schema = BundleSchema::new("unindexed")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::categorical("cohort"));
+        let mut s = BundleStore::new(schema);
+        for i in 0..5 {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Float(i as f64));
+            // one distinct value across every record -> K_n once indexed
+            r.insert("cohort".into(), Value::Text("only".into()));
+            s.insert(&r);
+        }
+        s
+    }
+
+    /// T-IDX-2a — `add_index` must invalidate. Asserts the mechanism
+    /// (cache cleared, counter advanced), not a value, so it cannot pass
+    /// for the wrong reason on a fixture where λ happens not to move.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn add_index_invalidates_the_spectral_cache() {
+        let mut s = make_unindexed_store();
+        let _ = s.spectral_gap_cached().expect("≥ 2 records");
+        let counter_before = s.mutation_counter();
+
+        s.add_index("cohort");
+
+        let guard = s.spectral_gap_cache.lock().unwrap();
+        assert!(
+            guard.is_none(),
+            "add_index rewrites the field-index graph, which is what λ is \
+             computed on — it must clear the memo; got {:?}",
+            *guard
+        );
+        drop(guard);
+        assert!(
+            s.mutation_counter() > counter_before,
+            "add_index must advance the mutation counter that derived-value \
+             caches stamp themselves against"
+        );
+    }
+
+    /// T-IDX-2b — the value itself moves on a fixture where TDD-IDX §2.3
+    /// proves it must: 0 indexed fields (no edges, guard returns 0.0) to one
+    /// indexed field with a single distinct value (K_n, λ₁ = n/(n−1)).
+    ///
+    /// Split from T-IDX-2a deliberately. Asserting only "the value differs"
+    /// is fixture-dependent: going from 0 fields to a field with ≥ 2 distinct
+    /// values takes λ from 0.0 (no edges) to 0.0 (disjoint cliques) — same
+    /// number, changed graph — so that test would pass or fail on the fixture
+    /// rather than on the mechanism.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn add_index_changes_the_gap_when_the_graph_becomes_connected() {
+        let mut s = make_unindexed_store();
+        let before = s.spectral_gap_cached().expect("≥ 2 records").lambda_2;
+        assert_eq!(
+            before, 0.0,
+            "no indexed fields means no edges, so the component guard returns 0.0"
+        );
+
+        s.add_index("cohort");
+
+        let after = s.spectral_gap_cached().expect("≥ 2 records").lambda_2;
+        let n = 5.0_f64;
+        let expected = n / (n - 1.0);
+        assert!(
+            (after - expected).abs() < 1e-9,
+            "one indexed field with a single distinct value is K_n, so \
+             λ₁ = n/(n−1) = {expected}; got {after}"
+        );
+    }
+
+    /// T-IDX-3 — the other four mutators. Each is asserted separately so a
+    /// failure names one mutator rather than the group.
+    #[cfg(feature = "kahler")]
+    #[test]
+    fn every_schema_and_bulk_mutator_invalidates_the_spectral_cache() {
+        fn assert_clears(label: &str, mutate: impl FnOnce(&mut BundleStore)) {
+            let mut s = make_spectral_test_store();
+            let _ = s.spectral_gap_cached().expect("≥ 2 records");
+            {
+                let g = s.spectral_gap_cache.lock().unwrap();
+                assert!(g.is_some(), "{label}: precondition — cache must be warm");
+            }
+            let counter_before = s.mutation_counter();
+
+            mutate(&mut s);
+
+            let g = s.spectral_gap_cache.lock().unwrap();
+            assert!(
+                g.is_none(),
+                "{label} must clear the spectral cache; got {:?}",
+                *g
+            );
+            drop(g);
+            assert!(
+                s.mutation_counter() > counter_before,
+                "{label} must advance the mutation counter"
+            );
+        }
+
+        assert_clears("add_field", |s| {
+            s.add_field(FieldDef::categorical("region"))
+        });
+        assert_clears("drop_field", |s| {
+            assert!(s.drop_field("topic"), "fixture has a `topic` field");
+        });
+        assert_clears("truncate", |s| {
+            s.truncate();
+        });
+        // bulk_delete is a BEHAVIOUR gate, not a mechanism-removal pair. It
+        // carries no direct mark_mutated() call and does not need one: it
+        // delegates to self.delete() per record, and delete() invalidates. The
+        // mechanism-removal pass proved the direct call was redundant — with it
+        // deleted, every test here stayed green, which is the "passes with and
+        // without the mechanism" failure this module's discipline exists to
+        // catch. So the call was dropped and this assertion kept: it fails if a
+        // future refactor stops bulk_delete delegating.
+        assert_clears("bulk_delete", |s| {
+            s.bulk_delete(&[QueryCondition::Eq(
+                "tier".into(),
+                Value::Text("A".into()),
+            )]);
+        });
+    }
     #[cfg(feature = "kahler")]
     #[test]
     fn spectral_gap_cached_returns_none_when_too_small() {

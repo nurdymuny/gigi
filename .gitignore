@@ -78,3 +78,7 @@ src/sheaf_old_backup.bak
 # jg_kv carries customer account data in plaintext. Never commit them.
 predeploy_*/
 preflight_*/
+
+# Unpublished research spec — untracked deliberately. Was swept into a public
+# commit once by a broad `git add -A`; ignored so that cannot recur.
+theory/gigi/TDD-GAUGE_market_bundle_instrument.md

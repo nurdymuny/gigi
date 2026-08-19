@@ -291,7 +291,7 @@ impl Default for EncryptionSeedSource {
 }
 
 /// Field definition in the schema.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FieldDef {
     pub name: String,
     pub field_type: FieldType,

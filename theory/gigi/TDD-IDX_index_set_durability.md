@@ -649,7 +649,7 @@ applies only what it ranges over.
 |---|---|---|
 | `name` | none | (b) |
 | `base_fields` | none | (b) |
-| `fiber_fields` | `add_field` 4110, `drop_field` 4143 | **(a)** — new in v4 |
+| `fiber_fields` | `add_field` 4110, `drop_field` 4143 | **(a)** — new in v4; whole-`FieldDef` comparison in v5 |
 | `indexed_fields` | `add_index` 4196, plus `drop_field`'s cascade | (a) |
 | `gauge_key` | **`rotate_gauge_key_only` 3833** | **(c)** — see below |
 | `adjacencies` | none | (b) |
@@ -659,6 +659,29 @@ applies only what it ranges over.
 `grep` for in-place mutation of each field outside construction returns zero for
 `name`, `base_fields`, `adjacencies`, `h1_threshold` and `invariants` — that is
 what earns them (b), and the grep is the evidence, not an assumption.
+
+**Two (b) dispositions were challenged independently and held (Hallie, review
+4).** INV-S rests entirely on those greps, so they were worth attacking rather
+than accepting:
+
+- `wal.rs:1770` pushes onto `schema.invariants`, but inside the WAL schema
+  *decoder*, reading `InvariantDef`s out of a byte buffer and returning
+  `Ok(schema)`. Construction, not post-construction mutation. (b) holds.
+- `parser.rs:10834` pushes onto `new_schema.base_fields` — `ALTER BUNDLE … ADD
+  BASE`, which looked like the worst case, since a base-field change alters key
+  layout and `base_fields` is dispositioned (b). It does not mutate a live
+  schema: it clones, pushes onto the clone, then goes `drop_bundle` →
+  `create_bundle` → re-insert. That is safe **only if the drop journals**, and
+  it does — `Engine::drop_bundle` calls `self.wal.log_drop_bundle(name)?` as
+  its first statement, before any in-memory removal (`engine.rs:1591`), and
+  `WalEntry::DropBundle` is a real variant (`wal.rs:801`). On replay the store
+  is removed, the following `CreateBundle` finds the bundle absent,
+  `or_insert_with` constructs fresh from the new payload, and the delta is
+  never consulted. (b) holds.
+
+The second one incidentally supplies a precedent: `drop_bundle` is already
+log-before-apply, so F-0's ordering is the tree's existing convention on the
+one destructive schema path that does journal, not a new rule invented here.
 
 **T-IDX-17 makes (b) enforceable.** A test that destructures a `BundleSchema`
 with an exhaustive pattern and no `..`, so adding a ninth field is a **compile
@@ -713,14 +736,64 @@ they are specified rather than left to the implementer:
 the payload's field **order**, not merely its membership. Drop-then-add does
 this whenever `new` is `old` minus removals plus appends, which is what the
 mutators produce — but nothing enforces that the payload was produced that way.
-So the delta ends with an assertion:
+So the delta ends with an ordered comparison. Set equality would pass while
+every fiber read after the first reordered field returned the wrong column.
+
+**Whole defs, not names (Hallie, review 4).** v4 wrote that assertion over
+`f.name`, because `FieldDef` derived only `Debug, Clone` (`types.rs:294`) and a
+name comparison was the only one available. That made disposition (a) for
+`fiber_fields` mean, precisely, *"the delta applies additions and removals by
+name"* — not *"the delta applies `fiber_fields`"*. `FieldDef` has seven fields:
 
 ```
-store.schema().fiber_fields.map(|f| &f.name) == new.fiber_fields.map(|f| &f.name)
+name, field_type, default, range, weight, encryption, encryption_group
 ```
 
-as an ordered sequence comparison. Set equality would pass while every fiber
-read after the first reordered field returned the wrong column.
+Six of the seven were invisible to both the delta and the assertion, and any
+future in-place change to one of them lands in that gap silently, in the exact
+v3 shape: the store keeps the old def, `Engine::schemas` takes the new one
+through the unconditional `schemas.insert`, and a name-only assertion passes.
+T-IDX-17 does not catch this — it enforces one axis, a ninth field of
+`BundleSchema`, not a finer-grained change inside a field already dispositioned
+(a).
+
+`encryption` and `encryption_group` are what make this worth closing now rather
+than noting: per-field encryption mode is a live concept the parser already sets
+(`parser.rs:10829`), so "change a field's encryption mode" is a plausible
+operation, and it would diverge silently in the same way the `gauge_key` path
+does.
+
+**Fix, applied:** `FieldDef` now derives `PartialEq` (`types.rs:294`). Every
+component type already had it — `FieldType` (`types.rs:7`), `Value` (24),
+`EncryptionMode` (227), and `String` / `f64` / `Option<_>` — so it compiles
+unchanged; suite stays at 1449 passing. The assertion compares whole defs:
+
+```
+store.schema().fiber_fields == new.fiber_fields     ordered, full FieldDef
+```
+
+An in-place `FieldDef` change is then either applied by the delta or fails
+loudly at replay, which is the same move F-6 makes for the sentinel: convert a
+future silent divergence into a present loud one, structurally, rather than by
+remembering to check.
+
+**One interaction to know before implementing, because it will look like a
+mystery failure.** `FieldDef.default` is a `Value`, and per §2.7 `Value`'s
+`PartialEq` is the derived, NaN-broken one. So a field whose default is
+`Float(NaN)` **is not equal to itself**, and the closing assertion fires on
+every replay of that bundle. Measured
+(`tests/tmp_nan_value_contract.rs::fielddef_equality_is_reflexive`):
+
+```
+ordinary FieldDef    == itself : true
+NaN-default FieldDef == itself : false
+```
+
+The direction is safe — loud, not silent — but it is a false alarm, and the fix
+belongs with the `Value` equality contract (§8), **not** with weakening this
+assertion back to names. Anyone implementing F-2b before that defect is repaired
+should expect this failure on a float bundle with a NaN default and recognise it
+rather than "fix" it by narrowing the comparison.
 
 **`add_field` has no idempotence guard, and that is load-bearing.**
 `self.schema.fiber_fields.push(field_def.clone())` is unconditional
@@ -1263,6 +1336,16 @@ takes it: the `Binary` case needs no unusual values at all — there is simply n
 index uses and the semantics its doc comment promises are not the same thing.
 V-7 and V-8 pin the indexing symptoms; they do not repair the cause, and those
 fixtures are expected red until someone does.
+
+**Encryption-schema durability, at both granularities.** The `gauge_key`
+paragraph below is one half of a single question. The other half is
+`FieldDef.encryption` / `FieldDef.encryption_group`, which the parser already
+sets per field (`parser.rs:10829`) and which no mutator currently changes
+in place — so it is (b) today and (a)-shaped the moment one does. The two should
+be investigated together rather than separately: they are the same question at
+bundle and field granularity, and the `PartialEq` derive in F-2b is what makes
+the per-field half **detectable** at all. Without it a per-field encryption
+change diverges exactly as silently as `gauge_key` does now.
 
 **The `gauge_key` rotation path.** `rotate_gauge_key_only` (`bundle.rs:3822`) is
 a fourth schema mutator that journals nothing and rewrites every record through

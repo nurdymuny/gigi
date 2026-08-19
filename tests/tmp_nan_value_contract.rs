@@ -72,3 +72,28 @@ fn ord_and_partialeq_agree_on_equality() {
     assert_ne!(b1.cmp(&b2), Ordering::Equal, "Ord must not equate distinct Binary values");
     assert_eq!(tb.len(), 2, "BTreeMap must keep distinct Binary keys distinct");
 }
+
+/// TDD-IDX v5 hardening: FieldDef now derives PartialEq so the replay delta's
+/// closing assertion can compare whole defs, not names. But FieldDef.default is
+/// a Value, whose PartialEq is the derived (NaN-broken) one — so a field with a
+/// NaN default is not equal to ITSELF. The assertion would then fire on every
+/// replay of such a bundle: loud rather than silent, but wrong.
+#[ignore = "OPEN BUG, downstream of the Value equality defect above. FieldDef now derives PartialEq (TDD-IDX v5) so the replay delta can compare whole defs rather than names. FieldDef.default is a Value, whose PartialEq is the derived NaN-broken one, so a field with a NaN default is not equal to ITSELF and the delta's closing sequence assertion fires on every replay of that bundle. Loud rather than silent, so it is the safe direction, but it is a false alarm. Fix belongs with the Value equality contract, not by weakening the assertion. See TDD-IDX section F-2b."]
+#[test]
+fn fielddef_equality_is_reflexive() {
+    use gigi::types::{FieldDef, Value};
+
+    let ordinary = FieldDef::numeric("price");
+    println!("  ordinary FieldDef == itself : {}", ordinary == ordinary.clone());
+
+    let mut nan_default = FieldDef::numeric("ratio");
+    nan_default.default = Value::Float(f64::NAN);
+    println!("  NaN-default FieldDef == itself : {}", nan_default == nan_default.clone());
+
+    assert!(ordinary == ordinary.clone(), "an ordinary FieldDef must equal itself");
+    assert!(
+        nan_default == nan_default.clone(),
+        "a FieldDef with a NaN default must equal itself — otherwise the replay \
+         delta's sequence assertion fires on every replay of that bundle"
+    );
+}

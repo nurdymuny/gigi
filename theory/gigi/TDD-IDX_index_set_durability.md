@@ -1312,7 +1312,8 @@ validates that the engine computes it. Every remaining V-item should acquire an
 engine-side counterpart as its fix lands, rather than the battery staying a
 parallel artefact.
 
-**W-IDX-1 — F-2 + F-2b + F-3, schema durability.** Renamed from "index
+**W-IDX-1 — F-0 + F-2 + F-2b + F-3, schema durability. ✅ SHIPPED 2026-08-15.**
+Renamed from "index
 durability": three rounds of review established that indexes cannot be made
 durable in isolation, because the payload that carries them carries the whole
 schema. INV-S and its disposition table are part of this item, not a follow-up;
@@ -1368,7 +1369,7 @@ index" was never a self-contained change. The four sub-parts **must land in one
 commit**: journalling without the delta is the v3 regression, and the delta
 without journalling is the v2 one.
 
-**W-IDX-2 — audit the metadata door.** The 17 `bundle_mut` sites, against
+**W-IDX-2 — audit the metadata door. ✅ DONE 2026-08-15 — result below.** The 17 `bundle_mut` sites, against
 **three** questions: is the mutation journalled, does it invalidate, and does it
 diverge from `Engine::schemas`. v1 asked only the first two, which omits the
 failure D-2 actually was — the store's schema clone drifting from the engine's
@@ -1378,10 +1379,88 @@ is a table, not a fix — the point is to learn whether `add_index` was one bug 
 a dozen before deciding how much machinery §4 deserves. Cheap, and it is the
 input to W-IDX-4.
 
+
+### W-IDX-2 result — the audit, run 2026-08-15
+
+Three questions per site, as INV-S requires. Fourteen `bundle_mut` /
+`heap_bundle_mut` sites in `gigi_stream.rs` (down from seventeen: the three
+schema handlers now route through `Engine`).
+
+| handler | route | journals | invalidates | diverges from `Engine::schemas` |
+|---|---|---|---|---|
+| `insert_records` | `POST …/records` | yes | yes | no |
+| `patch_by_path` | `PATCH …/{path}` | **no** | yes | no |
+| `delete_by_path` | `DELETE …/{path}` | **no** | yes | no |
+| `bulk_update_records` | `PATCH …/records` | **no** | yes | no |
+| `upsert_records` | `POST …/upsert` | **no** | yes | no |
+| `bulk_delete_records` | `POST …/bulk-delete` | **no** | yes | no |
+| `truncate_bundle` | `POST …/truncate` | **no** | yes | no |
+| `increment_field` | `POST …/increment` | **no** | yes | no |
+| `update_records_v2` | `POST …/update` | **no** | yes | no |
+| `delete_records_v2` | `POST …/delete` | **no** | yes | no |
+| `execute_transaction` | GQL transaction | mixed | yes | no |
+| `handle_ws_command` | WebSocket | mixed | yes | no |
+| `gql_query` | `POST /v1/gql` | partial | yes | **yes** — `rotate_key`, §8 |
+| `ttl_eviction_task` | background | **no** | yes | no |
+
+**Answer to the question this item existed to ask.** "Was `add_index` one bug or
+a dozen?" — for the two questions this spec is about, one:
+
+- **Divergence from `Engine::schemas`:** only the three schema handlers, all
+  fixed in W-IDX-1, plus `rotate_key` which is disposition (c). W-IDX-4's
+  schema-ownership work is therefore **small**, and the interim F-3 approach
+  (write both copies, assert they agree) is proportionate. It does not need
+  single-ownership.
+- **Invalidation:** clean everywhere. `BundleStore`'s mutators all call
+  `mark_mutated`, so the F-1 gap was specific to the five the audit named and
+  is now closed.
+
+**And an answer to a question it did not ask.** Nine live HTTP mutation routes
+write **nothing to the WAL**. They take `bundle_mut` and call a store method
+directly rather than the journalling `Engine::update` / `Engine::delete`, so the
+mutation exists in RAM and in a later `.dhoom` — but there is no journal entry
+to replay. Verified by execution
+(`tests/wal_bypass_mutations.rs`, ignored):
+
+```
+live      : tag = Some(Text("after"))
+restarted : tag = Some(Text("before"))
+WAL replay complete: 2 entries      <- CreateBundle + the original Insert only
+```
+
+**Severity, stated precisely.** This is a **loss window**, not guaranteed loss:
+`snapshot()` writes live RAM state to the `.dhoom`, so a mutation through these
+routes survives any restart that a snapshot precedes. What is lost is anything
+mutated since the last snapshot when the process dies. On a machine whose WAL
+has never been compacted, that window is as old as the last snapshot, which is
+not a quantity anyone is currently tracking.
+
+**Production exposure is NOT established here.** It depends entirely on the
+traffic mix — whether real writes go through these REST routes or through
+GQL/ingest, which do journal. The retained Fly log buffer was empty when checked,
+which tells us nothing; reading that as "no traffic" would repeat the WAL-forensics
+mistake of this week exactly. Sizing it needs either request logs over a real
+window or an audit of what the clients actually call.
+
+**Disposition: not this spec's.** This is `TDD_DUR` §5's "WAL-bypass mutations"
+item, which named `truncate_bundle` and `ttl_eviction_task` and said ~15 other
+`bundle_mut` sites wanted the same audit. This is that audit, and the class is
+larger than the two it named — it includes the primary `update` and `delete`
+routes. It wants its own spec, its own invariant, and its own order of work.
+Folding it into TDD-IDX would repeat the mistake W-IDX-1 spent four rounds
+correcting: broadening one side of a fix without the other.
+
 **W-IDX-3 — F-6, the refusal gate.** Ships with T-IDX-11 + T-IDX-12 + V-4.
 Independent of W-IDX-1; can run in parallel.
 
-**W-IDX-4 — F-5 and the schema-ownership fix.** `bundle_version`, plus removing
+**W-IDX-4 — F-5 and the schema-ownership fix. Now sized: SMALL.**
+W-IDX-2 answered the question this item was waiting on. Divergence between the
+store's schema clone and `Engine::schemas` has exactly one remaining source
+(`rotate_key`, disposition (c)), not a dozen — so F-3's interim approach (write
+both, assert they agree) is proportionate and single-ownership is **not**
+required. `bundle_version` remains worth doing on its own merits.
+
+**Original framing:** `bundle_version`, plus removing
 the store/engine schema divergence that F-3 works around rather than removes.
 Sequenced last because W-IDX-2 determines its scope: if the divergence has one
 victim, F-3 is the fix; if it has a dozen, single-ownership is.

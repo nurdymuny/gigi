@@ -4248,6 +4248,27 @@ impl BundleStore {
         self.mark_mutated();
     }
 
+    /// Remove a field from the index set WITHOUT removing the field itself.
+    ///
+    /// TDD-IDX F-2b. `drop_field` already un-indexes as a side effect of
+    /// removing the field, but the replay delta needs the index-only case:
+    /// a schema whose `indexed_fields` shrank while `fiber_fields` did not.
+    /// Before this existed the delta could only add, so a removed index came
+    /// back on the next restart.
+    ///
+    /// Tolerant of absence by design — the delta computes set differences and
+    /// should not have to care whether a field was already un-indexed.
+    pub fn drop_index(&mut self, field_name: &str) {
+        if !self.schema.indexed_fields.iter().any(|f| f == field_name) {
+            return;
+        }
+        self.schema.indexed_fields.retain(|f| f != field_name);
+        self.field_index.remove(field_name);
+        // TDD-IDX F-1: this mutation changes what the derived-value caches
+        // were computed on. See theory/gigi/TDD-IDX_index_set_durability.md.
+        self.mark_mutated();
+    }
+
     // ── Sprint 3: Engine Methods ──────────────────────────────
 
     /// Update with optimistic concurrency — only succeeds if record's _version
@@ -9173,17 +9194,21 @@ mod tests {
     /// (the spectral graph is degenerate). Defends against the
     /// "spectral gap on a 1-record bundle" silent-zero footgun.
 
-    // ── TDD-IDX W-IDX-0 / F-1: the five mutators that skip mark_mutated ──
+    // ── TDD-IDX W-IDX-0 / F-1: mutators that skipped mark_mutated ──
     //
     // Found by the E17 verb audit (integration/daily/VERB_AUDIT.md §6) and
-    // spec'd in theory/gigi/TDD-IDX_index_set_durability.md F-1. Five mutators
-    // do not call mark_mutated(), so the memoised spectral gap survives a
-    // mutation that changes the graph it was computed on.
+    // spec'd in theory/gigi/TDD-IDX_index_set_durability.md F-1. The memoised
+    // spectral gap survived mutations that rewrote the graph it was computed on.
     //
     // add_index is the live one: it rewrites the field-index graph, which is
     // exactly what λ is computed on. The audit observed /depth reporting
     // λ₁ = 0.0342 while /spectral_gap reported λ₂ = 0.0 at one unchanged
-    // cached_at. The other four are latent in source.
+    // cached_at.
+    //
+    // The audit named FIVE mutators lacking a direct mark_mutated() call, which
+    // is accurate — but four of them lacked invalidation and bulk_delete did
+    // not, since it delegates to delete(). The fix is four calls; bulk_delete
+    // keeps only the behaviour assertion below. See W-IDX-0 in the spec.
 
     /// A store with NO indexed fields — the field-index graph has no edges,
     /// so every record is its own component and the guard returns 0.0

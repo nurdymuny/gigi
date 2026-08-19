@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 use crate::bundle::{BundleStore, QueryCondition};
 use crate::mmap_bundle::{BundleMut, BundleRef, MmapBundle, OverlayBundle};
-use crate::types::{BundleSchema, Record, Value};
+use crate::types::{BundleSchema, FieldDef, Record, Value};
 use crate::wal::{WalEntry, WalReader, WalWriter};
 
 // ── WAL generation retention (TDD-DUR W0) ────────────────────────────────
@@ -458,6 +458,111 @@ fn hex_encode(bytes: &[u8; 32]) -> String {
     out
 }
 
+
+/// Apply a journalled schema to a store that already exists, as a delta.
+///
+/// TDD-IDX F-2b. Replay sees `CreateBundle` twice for any bundle whose schema
+/// was ever mutated: once at creation, once per mutation. `or_insert_with`
+/// keeps the existing store and its records — which is what makes re-emitting
+/// `CreateBundle` safe rather than destructive — but it also means the store's
+/// schema is never updated, so the change has to be applied here.
+///
+/// **Delta, not payload.** `BundleStore::add_field` pushes unconditionally with
+/// no idempotence guard, so applying the payload directly would duplicate every
+/// field on every replay and shift every fiber position after it. Computing the
+/// difference against the store's *current* schema is the only thing preventing
+/// that; it is not a stylistic choice.
+///
+/// **Order matters, and both constraints fail silently:**
+///
+/// 1. `drop_index` before `drop_field`, excluding fields that are themselves
+///    being dropped — `drop_field` already cascades to `indexed_fields`, so
+///    doing both would remove twice. (`drop_index` tolerates absence, so this
+///    is belt and braces rather than load-bearing, but the exclusion keeps the
+///    intent legible.)
+/// 2. `add_field` strictly before `add_index`. `add_index` pushes to
+///    `indexed_fields` *before* the pass that reads each record's value for
+///    that field, and that pass skips records lacking the field — so indexing a
+///    not-yet-added field produces a **declared-but-empty index**, with no
+///    error. `components_from_index` then reports one component per record,
+///    the λ-verbs' connectivity precondition refuses, and a perfectly good
+///    bundle looks degenerate.
+fn apply_schema_delta(store: &mut BundleStore, new_schema: &BundleSchema) {
+    let old_indexed: Vec<String> = store.schema.indexed_fields.clone();
+    let old_fibers: Vec<String> = store
+        .schema
+        .fiber_fields
+        .iter()
+        .map(|f| f.name.clone())
+        .collect();
+
+    let dropped_fields: Vec<String> = old_fibers
+        .iter()
+        .filter(|n| !new_schema.fiber_fields.iter().any(|f| &f.name == *n))
+        .cloned()
+        .collect();
+
+    // 1. indexes removed WITHOUT their field being removed
+    for f in &old_indexed {
+        if !new_schema.indexed_fields.contains(f) && !dropped_fields.contains(f) {
+            store.drop_index(f);
+        }
+    }
+
+    // 2. fields removed (cascades to their indexes)
+    for f in &dropped_fields {
+        store.drop_field(f);
+    }
+
+    // 3. fields added, in the payload's order
+    for fd in &new_schema.fiber_fields {
+        if !old_fibers.contains(&fd.name) {
+            store.add_field(fd.clone());
+        }
+    }
+
+    // 4. indexes added — strictly after step 3
+    for f in &new_schema.indexed_fields {
+        if !store.schema.indexed_fields.contains(f) {
+            store.add_index(f);
+        }
+    }
+
+    // Sequence, not set. Fiber layout is positional, so a delta that produced
+    // the right field *set* in the wrong *order* would leave every read after
+    // the first divergence returning the wrong column — silently. Whole
+    // `FieldDef` comparison, not names: six of FieldDef's seven fields are
+    // invisible to a name check, and `encryption` / `encryption_group` are live
+    // concepts the parser already sets.
+    if store.schema.fiber_fields != new_schema.fiber_fields {
+        // Loud in every build, fatal in none.
+        //
+        // `debug_assert!` was the obvious choice and is the wrong one: it
+        // compiles out in release, so the check would be absent exactly where
+        // a divergence costs something. A hard `assert!` is also wrong — this
+        // runs during WAL replay, so a panic here is an engine that will not
+        // boot, and TDD_DUR's operational corollary is that these guards fail
+        // toward availability. So: warn unconditionally, keep the debug
+        // assertion so tests still fail hard, and carry on with the store's
+        // schema, which at least matches the fiber layout the records on disk
+        // actually have.
+        eprintln!(
+            "  WARNING: TDD-IDX-DELTA-MISMATCH bundle={} store={:?} journalled={:?} \
+             — the replay delta did not reproduce the journalled fiber sequence. \
+             Fiber access is positional, so reads resolved through Engine::schemas \
+             may be off by one. See theory/gigi/TDD-IDX_index_set_durability.md F-2b.",
+            new_schema.name,
+            store.schema.fiber_fields.iter().map(|f| &f.name).collect::<Vec<_>>(),
+            new_schema.fiber_fields.iter().map(|f| &f.name).collect::<Vec<_>>(),
+        );
+        debug_assert_eq!(
+            store.schema.fiber_fields, new_schema.fiber_fields,
+            "schema delta did not reproduce the journalled fiber sequence for \
+             bundle '{}' — see TDD-IDX F-2b",
+            new_schema.name
+        );
+    }
+}
 impl Engine {
     /// Open or create a database at the given directory.
     ///
@@ -909,9 +1014,18 @@ impl Engine {
             }
             match entry {
                 WalEntry::CreateBundle(schema) => {
-                    bundles
-                        .entry(schema.name.clone())
-                        .or_insert_with(|| BundleStore::new(schema.clone()));
+                    // TDD-IDX F-2b. or_insert_with keeps an existing store and
+                    // its records, which is what makes re-emitting CreateBundle
+                    // safe. It also means the store's schema is never updated,
+                    // so a schema change has to be applied as a delta here.
+                    match bundles.entry(schema.name.clone()) {
+                        std::collections::hash_map::Entry::Occupied(mut e) => {
+                            apply_schema_delta(e.get_mut(), &schema);
+                        }
+                        std::collections::hash_map::Entry::Vacant(e) => {
+                            e.insert(BundleStore::new(schema.clone()));
+                        }
+                    }
                     schemas.insert(schema.name.clone(), schema);
                 }
                 WalEntry::Checkpoint if !snapshots_loaded => {
@@ -1327,6 +1441,129 @@ impl Engine {
         self.schemas.insert(schema.name.clone(), schema);
         self.maybe_checkpoint()?;
         Ok(())
+    }
+
+    /// The engine's own copy of a bundle's schema.
+    ///
+    /// TDD-IDX F-3. `Engine::schemas` and the store's schema are two
+    /// independently owned values (`create_bundle` hands the store a clone), and
+    /// `compact_wal_to_schemas` re-emits from *this* map — so a mutation that
+    /// reaches only the store is buried by the next compaction. Exposing the
+    /// map makes that divergence observable from outside the engine, which is
+    /// what T-IDX-5 asserts.
+    pub fn bundle_schema(&self, name: &str) -> Option<&BundleSchema> {
+        self.schemas.get(name)
+    }
+
+    // ── TDD-IDX W-IDX-1: schema mutations, journalled and ordered ──────────
+    //
+    // Every method below follows F-0's order, and the order is not symmetric:
+    //
+    //   1. append the updated schema to the WAL
+    //   2. fsync
+    //   3. write Engine::schemas
+    //   4. mutate the store
+    //
+    // A crash between 2 and 4 leaves disk ahead of RAM — replay rebuilds the
+    // change, which is correct. Applying first would leave RAM ahead of disk:
+    // an engine that served a geometry whose index no longer exists. That is
+    // the direction INV-I forbids, and it is what the obvious implementation
+    // produces, because the store mutation is the line that already exists and
+    // the WAL call is the line being added.
+    //
+    // The payload is a full `CreateBundle`. Replay is last-write-wins into
+    // `schemas` and `or_insert_with` for the store, so no new op code and no
+    // format bump — see F-2. The cost is that `CreateBundle` now means "assert
+    // this schema" rather than "a bundle was created".
+
+    /// Fetch the engine's schema for `name`, or a NotFound error.
+    fn schema_for(&self, name: &str) -> io::Result<BundleSchema> {
+        self.schemas.get(name).cloned().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Bundle '{}' not found", name),
+            )
+        })
+    }
+
+    /// Steps 1-3 of F-0: journal the schema, sync, and update the engine map.
+    ///
+    /// Syncs unconditionally rather than waiting for `maybe_checkpoint`.
+    /// Schema changes are rare and their loss window should not be
+    /// `checkpoint_interval` records wide; the cost is one fsync on a route no
+    /// production traffic currently exercises.
+    fn journal_schema(&mut self, schema: &BundleSchema) -> io::Result<()> {
+        self.wal.log_create_bundle(schema)?;
+        self.wal.sync()?;
+        self.schemas.insert(schema.name.clone(), schema.clone());
+        Ok(())
+    }
+
+    /// Declare an index on `field`, durably.
+    ///
+    /// No-op — and, importantly, no WAL entry — if the field is already
+    /// indexed. Unconditional logging would grow the log without changing
+    /// state (T-IDX-16).
+    pub fn add_index(&mut self, bundle_name: &str, field: &str) -> io::Result<()> {
+        let mut schema = self.schema_for(bundle_name)?;
+        if schema.indexed_fields.iter().any(|f| f == field) {
+            return Ok(());
+        }
+        schema.indexed_fields.push(field.to_string());
+        self.journal_schema(&schema)?;
+        if let Some(mut store) = self.bundle_mut(bundle_name) {
+            store.add_index(field);
+        }
+        self.query_cache.on_write(bundle_name);
+        Ok(())
+    }
+
+    /// Remove an index without removing the field.
+    pub fn drop_index(&mut self, bundle_name: &str, field: &str) -> io::Result<()> {
+        let mut schema = self.schema_for(bundle_name)?;
+        if !schema.indexed_fields.iter().any(|f| f == field) {
+            return Ok(());
+        }
+        schema.indexed_fields.retain(|f| f != field);
+        self.journal_schema(&schema)?;
+        if let Some(BundleMut::Heap(store)) = self.bundle_mut(bundle_name) {
+            store.drop_index(field);
+        }
+        self.query_cache.on_write(bundle_name);
+        Ok(())
+    }
+
+    /// Add a fiber field, durably.
+    pub fn add_field(&mut self, bundle_name: &str, field_def: FieldDef) -> io::Result<()> {
+        let mut schema = self.schema_for(bundle_name)?;
+        if schema.fiber_fields.iter().any(|f| f.name == field_def.name) {
+            return Ok(());
+        }
+        schema.fiber_fields.push(field_def.clone());
+        self.journal_schema(&schema)?;
+        if let Some(BundleMut::Heap(store)) = self.bundle_mut(bundle_name) {
+            store.add_field(field_def);
+        }
+        self.query_cache.on_write(bundle_name);
+        Ok(())
+    }
+
+    /// Drop a fiber field, durably. Cascades to `indexed_fields`, matching
+    /// `BundleStore::drop_field`.
+    pub fn drop_field(&mut self, bundle_name: &str, field: &str) -> io::Result<bool> {
+        let mut schema = self.schema_for(bundle_name)?;
+        if !schema.fiber_fields.iter().any(|f| f.name == field) {
+            return Ok(false);
+        }
+        schema.fiber_fields.retain(|f| f.name != field);
+        schema.indexed_fields.retain(|f| f != field);
+        self.journal_schema(&schema)?;
+        let removed = match self.bundle_mut(bundle_name) {
+            Some(BundleMut::Heap(store)) => store.drop_field(field),
+            _ => false,
+        };
+        self.query_cache.on_write(bundle_name);
+        Ok(removed)
     }
 
     /// Insert a record into a named bundle.

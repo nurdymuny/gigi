@@ -656,6 +656,24 @@ applies only what it ranges over.
 | `adjacencies` | none | (b) |
 | `h1_threshold` | none | (b) |
 | `invariants` | none | (b) |
+| `kahler` *(feature-gated)* | `with_kahler`, a **consuming builder** — construction only | **(c)** — see below |
+
+**The table had eight rows and `BundleSchema` has nine.** `kahler`
+(`types.rs:437`) exists only under `--features kahler`, so every grep run
+against the default build missed it — including the one that produced this
+table. T-IDX-17 caught it on its first run under that feature, as a compile
+error, which is exactly the job it was added for and sooner than expected.
+
+Its disposition is (c) rather than (b) for a reason worth recording:
+`with_kahler` is a consuming builder, so there genuinely is no
+post-construction mutator and (b) would hold — **but `kahler` does not appear
+in the WAL schema payload at all** (`grep kahler src/wal.rs` → nothing). It is
+therefore not journalled, and a bundle's Kähler structure does not survive a
+restart. Every caller of `with_kahler` in the tree today is a test fixture, so
+this may never have been reachable in production; that is a claim about callers,
+not about the mechanism, and it wants checking rather than assuming. A
+durability gap in the Kähler feature, not an indexing one — out of scope here,
+carried in §8.
 
 `grep` for in-place mutation of each field outside construction returns zero for
 `name`, `base_fields`, `adjacencies`, `h1_threshold` and `invariants` — that is
@@ -1305,6 +1323,45 @@ re-emit from all three schema handlers, the extended delta with its ordering,
 the sequence assertion, and the INV-S disposition table. Ships with T-IDX-4
 through T-IDX-8 and T-IDX-15 and T-IDX-17 through T-IDX-20, plus V-5.
 
+### A snapshot before the restart makes these tests test nothing
+
+The single most useful thing the mechanism-removal pass produced, and it applies
+to anyone writing tests in this area afterwards.
+
+**A `snapshot()` between the mutation and the restart defeats both F-2 and
+F-2b.** `compact_wal_to_schemas` re-emits one `CreateBundle` per schema, from
+`Engine::schemas`, and truncates everything before it. So after a snapshot the
+WAL holds exactly **one** `CreateBundle` per bundle, carrying the final schema.
+On replay that hits the `Vacant` branch, the store is constructed from the
+finished schema, and:
+
+- the journalled mutation was never needed — the compaction persisted the
+  schema by a different route, so **F-2's WAL append is untested**;
+- replay never sees a second `CreateBundle` for an existing bundle, so
+  `apply_schema_delta` is **never called at all** — **F-2b is untested**.
+
+Measured. First removal pass, against a suite where every restart test
+snapshotted:
+
+| mechanism removed | result |
+|---|---|
+| F-2 · the WAL append | **7 passed** — gap |
+| F-3 · the `Engine::schemas` write | 5 failed ✓ |
+| F-2b · `drop_field` in the delta (the v2 bug) | **7 passed** — gap |
+| F-2b · the `add_field` delta guard | 2 failed ✓ |
+
+Two of four mechanisms had no gate. The suite was green and so was review; only
+deleting the code found it.
+
+**The rule that follows:** a test of F-2 or F-2b must not snapshot or compact
+between the mutation and the restart. That is also the realistic scenario — a
+crash does not run a compaction first. `T-IDX-6` is the one test that *should*
+compact, because compaction is what it is about.
+
+This is the second time the per-site pass has found a mechanism no test could
+detect; `bulk_delete` in W-IDX-0 was the first. Neither was visible to a green
+suite, and neither was visible to four rounds of review.
+
 This is the item that makes INV-I true, and it is now the largest item in the
 spec — it has grown in every round, which is the honest signal that "journal the
 index" was never a self-contained change. The four sub-parts **must land in one
@@ -1381,6 +1438,15 @@ takes it: the `Binary` case needs no unusual values at all — there is simply n
 index uses and the semantics its doc comment promises are not the same thing.
 V-7 and V-8 pin the indexing symptoms; they do not repair the cause, and those
 fixtures are expected red until someone does.
+
+**Kähler-structure durability.** `BundleSchema.kahler` is not in the WAL schema
+payload, so it is not journalled and does not survive a restart. Found by
+T-IDX-17 under `--features kahler`; see the INV-S table. Every current caller of
+`with_kahler` is a test fixture, which is why this has not been observed — but
+that is a fact about callers, not about the mechanism, and the Kähler feature is
+shipped in production builds. Wants its own check: does any production path
+construct a bundle with a Kähler structure, and if so, what does it do after the
+next restart.
 
 **Encryption-schema durability, at both granularities.** The `gauge_key`
 paragraph below is one half of a single question. The other half is

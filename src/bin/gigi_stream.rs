@@ -10981,16 +10981,20 @@ async fn drop_field(
     Json(req): Json<DropFieldRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine_write();
-    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: format!("Bundle '{}' not found", name),
-            }),
-        )
+
+    // TDD-IDX F-0/F-2/F-3 — see the note on add_index. This one is the case
+    // that made the delta symmetric: a removal journalled but not applied on
+    // replay resurrects the field, which is the mirror of losing an addition.
+    let dropped = engine.drop_field(&name, &req.field).map_err(|e| {
+        let code = if e.kind() == std::io::ErrorKind::NotFound {
+            StatusCode::NOT_FOUND
+        } else {
+            StatusCode::INTERNAL_SERVER_ERROR
+        };
+        (code, Json(ErrorResponse { error: e.to_string() }))
     })?;
 
-    if !store.drop_field(&req.field) {
+    if !dropped {
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
@@ -10999,10 +11003,12 @@ async fn drop_field(
         ));
     }
 
+    let records = engine.bundle(&name).map(|b| b.len()).unwrap_or(0);
+
     Ok(Json(serde_json::json!({
         "status": "field_dropped",
         "field": req.field,
-        "records": store.len()
+        "records": records
     })))
 }
 
@@ -11029,21 +11035,24 @@ async fn add_field(
     };
 
     let mut engine = state.engine_write();
-    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: format!("Bundle '{}' not found", name),
-            }),
-        )
+
+    // TDD-IDX F-0/F-2/F-3 — see the note on add_index. fiber_fields is a
+    // journalled part of the schema too, and the replay delta ranges over it.
+    engine.add_field(&name, fd).map_err(|e| {
+        let code = if e.kind() == std::io::ErrorKind::NotFound {
+            StatusCode::NOT_FOUND
+        } else {
+            StatusCode::INTERNAL_SERVER_ERROR
+        };
+        (code, Json(ErrorResponse { error: e.to_string() }))
     })?;
 
-    store.add_field(fd);
+    let records = engine.bundle(&name).map(|b| b.len()).unwrap_or(0);
 
     Ok(Json(serde_json::json!({
         "status": "field_added",
         "field": req.name,
-        "records": store.len()
+        "records": records
     })))
 }
 
@@ -11054,21 +11063,30 @@ async fn add_index(
     Json(req): Json<AddIndexRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let mut engine = state.engine_write();
-    let mut store = engine.bundle_mut(&name).ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: format!("Bundle '{}' not found", name),
-            }),
-        )
+
+    // TDD-IDX F-0/F-2/F-3. Routed through Engine::add_index rather than
+    // mutating the store directly: the engine method journals the updated
+    // schema, fsyncs, and updates Engine::schemas before touching the store.
+    // The previous form wrote only the store's schema clone, so the index was
+    // lost on the next restart and buried by the next compaction.
+    engine.add_index(&name, &req.field).map_err(|e| {
+        let code = if e.kind() == std::io::ErrorKind::NotFound {
+            StatusCode::NOT_FOUND
+        } else {
+            StatusCode::INTERNAL_SERVER_ERROR
+        };
+        (code, Json(ErrorResponse { error: e.to_string() }))
     })?;
 
-    store.add_index(&req.field);
+    let indexed_fields = engine
+        .bundle_schema(&name)
+        .map(|s| s.indexed_fields.clone())
+        .unwrap_or_default();
 
     Ok(Json(serde_json::json!({
         "status": "index_added",
         "field": req.field,
-        "indexed_fields": store.schema().indexed_fields
+        "indexed_fields": indexed_fields
     })))
 }
 

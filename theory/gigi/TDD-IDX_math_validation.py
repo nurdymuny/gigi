@@ -21,7 +21,13 @@ It has now earned its keep twice.
 
     python theory/gigi/TDD-IDX_math_validation.py
 
-Verified 2026-08-15 against numpy on main @ dd92ef8. No engine involved.
+Verified 2026-08-15 against numpy on main @ dd92ef8. No engine involved — which
+is the limitation, not the design. V-1's closed form now also has an engine-side
+counterpart (bundle.rs, add_index_changes_the_gap_when_the_graph_becomes_connected,
+asserting n/(n-1) = 1.25 at n=5), and every remaining V-item should acquire one
+as its fix lands. numpy validates the mathematics; only the engine validates
+that the engine computes it, and conflating those two is exactly what the v2
+correction above was about.
 """
 import numpy as np
 

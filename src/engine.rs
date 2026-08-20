@@ -1838,6 +1838,116 @@ impl Engine {
         Ok(deleted)
     }
 
+    // ── Journalled variants of the two mutations the Sheets UI performs ────
+    //
+    // `POST /v1/bundles/{name}/update` and `POST /v1/bundles/{name}/delete`
+    // took `bundle_mut` and called `store.update_versioned` /
+    // `store.delete_returning` directly. Both apply, both return success, and
+    // neither writes to the WAL — so a cell edit or a row deletion was durable
+    // only if a snapshot happened to run before the next restart.
+    //
+    // Found by TDD-IDX W-IDX-2 and sized by reading the client:
+    // `sheets/src/lib/gigi-client.ts` lines 462 and 730.
+    //
+    // Ordering follows TDD-IDX F-0 — log, then apply — for the same asymmetry:
+    // a crash between the journal write and the store mutation replays into the
+    // right state, while applying first leaves a change that was acknowledged
+    // and cannot be recovered.
+
+    /// Optimistic-concurrency update. Journals, then applies.
+    ///
+    /// Returns the new version, which the caller hands to the client as its
+    /// next `expected_version`. That number must survive a restart or the
+    /// client gets a spurious conflict on its following write — which is why
+    /// the WAL entry is not optional here even though the patch is small.
+    pub fn update_versioned(
+        &mut self,
+        bundle_name: &str,
+        key: &Record,
+        patches: &Record,
+        expected_version: i64,
+    ) -> io::Result<i64> {
+        // `BundleStore::update_versioned` adds a `_version` fiber field to the
+        // schema on first use — a SCHEMA mutation induced by a RECORD update,
+        // one call deep, and previously unjournalled. TDD-IDX's INV-S grep
+        // looked for direct writes to `schema.<field>` and could not see
+        // through a call, which is a real limit of that evidence and is now
+        // noted in the spec.
+        //
+        // Pre-empting it here keeps F-0's ordering intact: declare the field
+        // through the journalling path FIRST, so the store's own check is a
+        // no-op and there is never an applied-but-unjournalled schema change.
+        // Reconciling afterwards would have been more general but would have
+        // meant apply-then-log for the induced part, and a crash in that window
+        // replays an `_version` patch against a schema that lacks the field.
+        if self
+            .schemas
+            .get(bundle_name)
+            .is_some_and(|s| !s.fiber_fields.iter().any(|f| f.name == "_version"))
+        {
+            self.add_field(
+                bundle_name,
+                FieldDef::numeric("_version").with_default(Value::Integer(0)),
+            )?;
+        }
+
+        // The version check has to run against live state, so it happens on the
+        // store; the resulting patch is journalled below. A failed check is not
+        // a mutation and must not journal anything.
+        let store = self.bundles.get_mut(bundle_name).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Bundle '{}' not found", bundle_name),
+            )
+        })?;
+        let new_version = store
+            .update_versioned(key, patches, expected_version)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+
+        // The store has applied the patch and stamped `_version`. Journal the
+        // same effect, including the version, so replay reconstructs it exactly
+        // rather than re-running the optimistic check against a state that has
+        // moved on.
+        let mut journalled = patches.clone();
+        journalled.insert("_version".into(), Value::Integer(new_version));
+        self.wal.log_update(bundle_name, key, &journalled)?;
+
+        self.query_cache.on_write(bundle_name);
+        let notifs = self
+            .trigger_manager
+            .evaluate_mutation(bundle_name, &MutationOp::Update, key);
+        self.pending_notifications.extend(notifs);
+        self.maybe_checkpoint()?;
+        Ok(new_version)
+    }
+
+    /// Delete a record and return what was removed. Journals, then applies.
+    ///
+    /// `Ok(None)` means the key was absent, which is not a mutation and
+    /// therefore writes nothing to the WAL.
+    pub fn delete_returning(
+        &mut self,
+        bundle_name: &str,
+        key: &Record,
+    ) -> io::Result<Option<Record>> {
+        if !self.bundles.contains_key(bundle_name) && !self.mmap_bundles.contains_key(bundle_name) {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Bundle '{}' not found", bundle_name),
+            ));
+        }
+        // Read the record before removing it, so a caller that wants the old
+        // value does not need a second, racy lookup.
+        let existing = self.point_query(bundle_name, key)?;
+        if existing.is_none() {
+            return Ok(None);
+        }
+        // Delegates to the journalling delete — log first, then apply, plus the
+        // tombstone-key handling the mmap path needs.
+        self.delete(bundle_name, key)?;
+        Ok(existing)
+    }
+
     /// Bulk delete all matching records through one WAL delete per record.
     pub fn bulk_delete(
         &mut self,

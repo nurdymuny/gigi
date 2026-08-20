@@ -10,6 +10,19 @@
 //! wanted the same audit. This is that audit, and the class is larger than the
 //! two it named: it covers the primary update and delete routes.
 //!
+//! **UPDATE 2026-08-16 — two of the nine are fixed.** The class was sized by
+//! reading the clients rather than guessing: `sheets/src/lib/gigi-client.ts`
+//! calls `POST .../update` (line 462) and `POST .../delete` (line 730), so the
+//! GIGI Sheets UI's edit and delete paths were both in it. Those two handlers
+//! now route through `Engine::update_versioned` / `Engine::delete_returning`,
+//! which journal before applying, and are gated by
+//! `tests/sheets_write_durability.rs`.
+//!
+//! **Seven remain**: PATCH and DELETE `{name}/{path}`, PATCH `{name}/records`,
+//! and POST `{name}/upsert`, `/bulk-delete`, `/truncate`, `/increment`. No
+//! client on disk references them, which is why they were not done first — but
+//! "no client on disk" is not "no caller", and this test stays as their gate.
+//!
 //! Belongs to its own spec, not TDD-IDX. Recorded here so the finding carries a
 //! reproduction rather than a claim.
 use gigi::engine::Engine;

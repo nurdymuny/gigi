@@ -702,6 +702,29 @@ The second one incidentally supplies a precedent: `drop_bundle` is already
 log-before-apply, so F-0's ordering is the tree's existing convention on the
 one destructive schema path that does journal, not a new rule invented here.
 
+**A limit of the grep, found 2026-08-16 and worth stating plainly.** The (b)
+dispositions above rest on grepping each field for direct post-construction
+mutation. That evidence **cannot see through a call**. `update_versioned`
+(`bundle.rs:4385`) calls `self.add_field(FieldDef::numeric("_version"))` on
+first use — a *schema* mutation induced by a *record* update, one level of
+indirection down, on the live Sheets edit path. No grep for `schema.<field> =`
+or `.add_field(` **in a schema handler** finds it, because it is neither.
+
+It was found by a test failing for a reason the test was not about: a versioned
+update replayed at the wrong version because the induced `_version` field was
+never journalled. So the disposition table is sound for what it surveyed and its
+survey was narrower than it looked. Two consequences:
+
+1. `fiber_fields`' (a) disposition now has a **fifth** mutator, reached
+   indirectly. It is handled by pre-empting the field through the journalling
+   path before delegating, which keeps F-0's ordering intact.
+2. The general form is unsolved here: any store method may induce a schema
+   change, and enumeration by grep will keep missing them. The durable answer is
+   a post-mutation reconciliation — compare the store's schema to
+   `Engine::schemas` after every mutation and journal the drift — which is
+   general but inverts F-0's ordering for the induced part. That trade is not
+   made in this spec; it is named so the next person does not re-derive it.
+
 **T-IDX-17 makes (b) enforceable.** A test that destructures a `BundleSchema`
 with an exhaustive pattern and no `..`, so adding a ninth field is a **compile
 error** in a test whose body says "assign this field a disposition in TDD-IDX

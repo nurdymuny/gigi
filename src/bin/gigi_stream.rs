@@ -11473,9 +11473,22 @@ async fn update_records_v2(
     }
 
     // Optimistic concurrency check
+    //
+    // Routed through Engine::update_versioned, which journals before applying.
+    // The old form called store.update_versioned via bundle_mut and wrote
+    // NOTHING to the WAL, so every cell edit made in the Sheets UI was durable
+    // only if a snapshot happened to run before the next restart. Found by
+    // TDD-IDX W-IDX-2 and sized by reading sheets/src/lib/gigi-client.ts:462.
     if let Some(expected) = req.expected_version {
-        match store.update_versioned(&key, &patches, expected) {
+        drop(store);
+        match engine.update_versioned(&name, &key, &patches, expected) {
             Ok(new_version) => {
+                let store = engine.bundle(&name).ok_or_else(|| {
+                    (
+                        StatusCode::NOT_FOUND,
+                        Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+                    )
+                })?;
                 let k = store.scalar_curvature();
                 let mut resp = serde_json::json!({
                     "status": "updated",
@@ -11492,7 +11505,10 @@ async fn update_records_v2(
                 }
                 return Ok(Json(resp));
             }
-            Err("version_conflict") => {
+            // Engine::update_versioned wraps the store's &'static str errors in
+            // io::Error, so the discriminator is the message. Kept exact so the
+            // wire contract (409 vs 404) does not shift under the rewiring.
+            Err(e) if e.to_string().contains("version_conflict") => {
                 return Err((
                     StatusCode::CONFLICT,
                     Json(ErrorResponse {
@@ -11594,9 +11610,23 @@ async fn delete_records_v2(
         )
     })?;
 
+    // Routed through Engine::delete_returning / Engine::delete, which journal
+    // before applying. The old form called the store directly via bundle_mut
+    // and wrote NOTHING to the WAL, so a row deleted in the Sheets UI came back
+    // on the next restart unless a snapshot intervened. Found by TDD-IDX
+    // W-IDX-2, sized from sheets/src/lib/gigi-client.ts:730.
+    drop(store);
     if req.returning {
-        match store.delete_returning(&key) {
+        let deleted = engine.delete_returning(&name, &key).map_err(|e| (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse { error: e.to_string() }),
+        ))?;
+        match deleted {
             Some(record) => {
+                let store = engine.bundle(&name).ok_or_else(|| (
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+                ))?;
                 let k = store.scalar_curvature();
                 let total = store.len();
                 let rec_json = serde_json::to_string(&record_to_json(&record)).unwrap_or_default();
@@ -11624,7 +11654,10 @@ async fn delete_records_v2(
             )),
         }
     } else {
-        if !store.delete(&key) {
+        if !engine.delete(&name, &key).map_err(|e| (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse { error: e.to_string() }),
+        ))? {
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse {
@@ -11632,6 +11665,10 @@ async fn delete_records_v2(
                 }),
             ));
         }
+        let store = engine.bundle(&name).ok_or_else(|| (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse { error: format!("Bundle '{}' not found", name) }),
+        ))?;
         let k = store.scalar_curvature();
         let total = store.len();
         let key_json = serde_json::to_string(&record_to_json(&key)).unwrap_or_default();

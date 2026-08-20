@@ -1523,7 +1523,45 @@ the store/engine schema divergence that F-3 works around rather than removes.
 Sequenced last because W-IDX-2 determines its scope: if the divergence has one
 victim, F-3 is the fix; if it has a dozen, single-ownership is.
 
-**W-IDX-5 — F-4, mmap base coverage.** Sequenced with, or after, the
+**W-IDX-5 — F-4, mmap base coverage. ✅ SHIPPED 2026-08-15 — and deliberately
+NOT as written.**
+
+F-4 said "make `add_index` cover the mmap base". That was not built, and the
+reason is worth more than the feature would have been: **the index on an
+mmap-backed bundle is currently read by nothing.**
+
+- `field_index_graph` (the λ path) takes `&BundleStore` — heap only.
+- `OverlayBundle::indexed_values` says so in its own doc comment: *"from
+  overlay; base has no index"*.
+- `/spectral_gap` returns `501` for mmap-resident bundles.
+- `DEPTH` refuses for them as of W-IDX-3.
+
+So a partial index cannot produce a wrong geometry answer today, because no
+geometry answer is produced at all on that path. Building an overlay-level index
+addressing both mmap rows and overlay records would be real machinery
+constructed for a consumer that does not exist — and D-4 was only ever
+*latent* for exactly this reason.
+
+What ships instead is the part that survives the wait. `add_index` returns
+`#[must_use] IndexCoverage::{Complete, OverlayOnly { base_records }}`, so the
+day someone lifts the λ-verbs onto `BundleRef` — the follow-up this item has
+always been sequenced behind — they cannot wire the index through without the
+compiler making them confront the gap. `Engine::add_index` returns it rather
+than swallowing it, and `POST …/add-index` now answers with `coverage`,
+`records_not_indexed`, and a note. Reporting a bare `index_added` is how the
+assumption gets made.
+
+That is F-6's move applied to F-4: a future silent divergence converted into a
+present loud one, structurally, instead of a comment somebody is meant to
+remember. It is also the honest scope — the alternative was speculative work
+whose correctness nobody could check, since there is no consumer to check it
+against.
+
+**Still true and still not fixed:** `bundle_version` returns `None` for
+mmap-resident bundles, and the λ-verbs remain unavailable there. Both wait on
+the same `BundleRef` lift.
+
+**Original framing:** Sequenced with, or after, the
 polymorphic-`BundleRef` follow-up, since that is what turns D-4 from an index
 correctness hole into a geometry path.
 

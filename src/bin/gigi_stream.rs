@@ -11069,7 +11069,7 @@ async fn add_index(
     // schema, fsyncs, and updates Engine::schemas before touching the store.
     // The previous form wrote only the store's schema clone, so the index was
     // lost on the next restart and buried by the next compaction.
-    engine.add_index(&name, &req.field).map_err(|e| {
+    let coverage = engine.add_index(&name, &req.field).map_err(|e| {
         let code = if e.kind() == std::io::ErrorKind::NotFound {
             StatusCode::NOT_FOUND
         } else {
@@ -11083,10 +11083,27 @@ async fn add_index(
         .map(|s| s.indexed_fields.clone())
         .unwrap_or_default();
 
+    // TDD-IDX F-4: say on the wire how much of the bundle the index covers. On
+    // an mmap-resident bundle it covers the overlay only, and a client that
+    // assumes otherwise is wrong about every record written before the last
+    // snapshot. Reporting `index_added` with no qualifier is how that
+    // assumption gets made.
+    let uncovered = coverage.uncovered();
     Ok(Json(serde_json::json!({
         "status": "index_added",
         "field": req.field,
-        "indexed_fields": indexed_fields
+        "indexed_fields": indexed_fields,
+        "coverage": if coverage.is_complete() { "complete" } else { "overlay_only" },
+        "records_not_indexed": uncovered,
+        "note": if coverage.is_complete() {
+            serde_json::Value::Null
+        } else {
+            serde_json::Value::String(format!(
+                "{uncovered} records live in the mmap base and are not covered by \
+                 this index. λ-verbs are unavailable on mmap-resident bundles, so \
+                 nothing reads it today — see TDD-IDX F-4."
+            ))
+        }
     })))
 }
 

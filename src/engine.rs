@@ -1520,18 +1520,46 @@ impl Engine {
     /// No-op — and, importantly, no WAL entry — if the field is already
     /// indexed. Unconditional logging would grow the log without changing
     /// state (T-IDX-16).
-    pub fn add_index(&mut self, bundle_name: &str, field: &str) -> io::Result<()> {
+    /// Declare an index on `field`, durably, reporting how much of the bundle
+    /// it covers.
+    ///
+    /// No-op — and, importantly, no WAL entry — if the field is already
+    /// indexed. Unconditional logging would grow the log without changing
+    /// state (T-IDX-16).
+    ///
+    /// TDD-IDX F-4: the coverage is returned rather than swallowed. On an
+    /// mmap-resident bundle the index is built from the overlay only, so a
+    /// caller that treats the result as complete is wrong about every record
+    /// written before the last snapshot. The `#[must_use]` on
+    /// [`IndexCoverage`] makes that a compile-time conversation.
+    pub fn add_index(
+        &mut self,
+        bundle_name: &str,
+        field: &str,
+    ) -> io::Result<crate::mmap_bundle::IndexCoverage> {
         let mut schema = self.schema_for(bundle_name)?;
         if schema.indexed_fields.iter().any(|f| f == field) {
-            return Ok(());
+            // Already indexed. Report the coverage the existing index has, not
+            // Complete — the answer to "is this index total?" does not change
+            // just because the declaration is a repeat.
+            let covered = match self.mmap_bundles.get(bundle_name) {
+                Some(ob) if ob.base().len() > 0 => {
+                    crate::mmap_bundle::IndexCoverage::OverlayOnly {
+                        base_records: ob.base().len(),
+                    }
+                }
+                _ => crate::mmap_bundle::IndexCoverage::Complete,
+            };
+            return Ok(covered);
         }
         schema.indexed_fields.push(field.to_string());
         self.journal_schema(&schema)?;
-        if let Some(mut store) = self.bundle_mut(bundle_name) {
-            store.add_index(field);
-        }
+        let coverage = match self.bundle_mut(bundle_name) {
+            Some(mut store) => store.add_index(field),
+            None => crate::mmap_bundle::IndexCoverage::Complete,
+        };
         self.query_cache.on_write(bundle_name);
-        Ok(())
+        Ok(coverage)
     }
 
     /// Remove an index without removing the field.

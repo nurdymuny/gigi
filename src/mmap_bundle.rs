@@ -1345,9 +1345,35 @@ impl OverlayBundle {
         }
     }
 
-    pub fn add_index(&self, field_name: &str) {
+    /// Declare an index on this overlay bundle.
+    ///
+    /// **The index covers the overlay only.** The mmap base contributes no
+    /// entries — `indexed_values` says as much in its own doc comment — so on
+    /// any bundle whose records have been snapshotted, this builds a *partial*
+    /// index and returns [`IndexCoverage::OverlayOnly`] saying how many records
+    /// it missed.
+    ///
+    /// TDD-IDX F-4. The full fix — an overlay-level index addressing both mmap
+    /// rows and overlay records — is deliberately **not** built, because it has
+    /// no consumer: `field_index_graph` takes `&BundleStore`, `/spectral_gap`
+    /// returns 501 for mmap-resident bundles, and `DEPTH` refuses for them as
+    /// of W-IDX-3. A partial index therefore cannot produce a wrong geometry
+    /// answer today, because no geometry answer is produced at all.
+    ///
+    /// What it *can* do is become wrong silently the day someone lifts the
+    /// λ-verbs onto `BundleRef`. Hence the `#[must_use]` return: that lift
+    /// cannot wire the index through without the compiler making them look at
+    /// the gap. Same move as F-6 — a future silent divergence turned into a
+    /// present loud one, rather than a note somebody is supposed to remember.
+    pub fn add_index(&self, field_name: &str) -> IndexCoverage {
         if let Ok(mut store) = self.overlay.write() {
             store.add_index(field_name);
+        }
+        let base_records = self.base.len();
+        if base_records == 0 {
+            IndexCoverage::Complete
+        } else {
+            IndexCoverage::OverlayOnly { base_records }
         }
     }
 
@@ -1832,6 +1858,45 @@ impl<'a> BundleRef<'a> {
 
 /// Enum dispatch for mutable bundle access.
 /// Returned by `Engine::bundle_mut()`.
+/// How much of a bundle an index actually covers.
+///
+/// TDD-IDX F-4. On a heap bundle an index covers every record, so this is
+/// always `Complete` and the type is invisible. On an mmap-backed bundle the
+/// index is built from the overlay only — the mmap base contributes no entries
+/// — so it covers whatever has been written since the last snapshot and
+/// nothing before it.
+///
+/// `#[must_use]` on purpose: the gap is harmless while nothing reads the index
+/// on that path, and becomes a silently-wrong geometry answer the moment the
+/// λ-verbs are lifted onto `BundleRef`. Forcing the caller to look is cheaper
+/// than an overlay-level merged index built for a consumer that does not exist
+/// yet, and safer than a comment.
+#[must_use = "an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4."]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IndexCoverage {
+    /// Every record in the bundle is indexed.
+    Complete,
+    /// Only the overlay is indexed; `base_records` records in the mmap base
+    /// contribute nothing to the field index.
+    OverlayOnly { base_records: usize },
+}
+
+impl IndexCoverage {
+    /// True when the index covers every record.
+    pub fn is_complete(self) -> bool {
+        matches!(self, IndexCoverage::Complete)
+    }
+
+    /// Records the index does not cover.
+    pub fn uncovered(self) -> usize {
+        match self {
+            IndexCoverage::Complete => 0,
+            IndexCoverage::OverlayOnly { base_records } => base_records,
+        }
+    }
+}
+
+
 pub enum BundleMut<'a> {
     Heap(&'a mut BundleStore),
     Overlay(&'a OverlayBundle),
@@ -2271,9 +2336,17 @@ impl<'a> BundleMut<'a> {
         }
     }
 
-    pub fn add_index(&mut self, field_name: &str) {
+    /// Declare an index, reporting how much of the bundle it covers.
+    ///
+    /// TDD-IDX F-4. A heap store indexes every record it holds, so that arm is
+    /// always `Complete`. The overlay arm is not — see
+    /// [`OverlayBundle::add_index`].
+    pub fn add_index(&mut self, field_name: &str) -> IndexCoverage {
         match self {
-            BundleMut::Heap(s) => s.add_index(field_name),
+            BundleMut::Heap(s) => {
+                s.add_index(field_name);
+                IndexCoverage::Complete
+            }
             BundleMut::Overlay(o) => o.add_index(field_name),
         }
     }

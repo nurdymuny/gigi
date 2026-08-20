@@ -1455,6 +1455,86 @@ impl Engine {
         self.schemas.get(name)
     }
 
+
+    /// Assert schema coherence after a mutation, per INV-S.
+    ///
+    /// Loud in every build, fatal in none — the same compromise
+    /// `apply_schema_delta` makes, for the same reason. `debug_assert` alone
+    /// compiles out in release, where drift actually costs something; a hard
+    /// panic on a live mutation path would take the engine down over a
+    /// bookkeeping bug, and TDD_DUR's operational corollary is that these
+    /// guards fail toward availability.
+    fn assert_schema_coherent(&self, bundle_name: &str) {
+        if let Some(drift) = self.schema_drift(bundle_name) {
+            eprintln!("  WARNING: TDD-IDX-SCHEMA-DRIFT {drift}");
+            debug_assert!(false, "{drift}");
+        }
+    }
+
+    /// Detect divergence between a store's schema and `Engine::schemas`.
+    ///
+    /// TDD-IDX INV-S. `create_bundle` hands the store a *clone* of the schema,
+    /// so the two are independently owned and can drift. Every schema mutation
+    /// that goes through `Engine` writes both. What cannot be enumerated is the
+    /// mutation that does not: `BundleStore::update_versioned` adds a
+    /// `_version` field one call deep, induced by a *record* update, and INV-S's
+    /// evidence — a grep for direct writes to `schema.<field>` — cannot see
+    /// through a call.
+    ///
+    /// **Reconcile and assert, not reconcile and journal.** Journalling drift
+    /// after the fact would generalise, but it inverts F-0's log-before-apply
+    /// for the induced part, and a crash in that window replays a patch against
+    /// a schema that lacks the field. Drift is a *bug*, not a state worth
+    /// persisting: detecting it at the call site costs nothing, leaves the
+    /// ordering intact, and turns each future induced mutator into something
+    /// found immediately and then pre-declared individually, the way `_version`
+    /// was.
+    ///
+    /// Returns `None` when coherent, or a description naming the diverging
+    /// fields so the inducing call can be located.
+    pub fn schema_drift(&self, name: &str) -> Option<String> {
+        let engine_schema = self.schemas.get(name)?;
+        let store_schema = self.bundle(name)?.schema().clone();
+
+        let fields_of = |s: &BundleSchema| -> Vec<String> {
+            s.fiber_fields.iter().map(|f| f.name.clone()).collect()
+        };
+        let e_fib = fields_of(engine_schema);
+        let s_fib = fields_of(&store_schema);
+        let mut e_idx = engine_schema.indexed_fields.clone();
+        let mut s_idx = store_schema.indexed_fields.clone();
+        e_idx.sort();
+        s_idx.sort();
+
+        if e_fib == s_fib && e_idx == s_idx {
+            return None;
+        }
+
+        let only_in = |a: &[String], b: &[String]| -> Vec<String> {
+            a.iter().filter(|x| !b.contains(x)).cloned().collect()
+        };
+        let mut parts = Vec::new();
+        let store_only = only_in(&s_fib, &e_fib);
+        let engine_only = only_in(&e_fib, &s_fib);
+        if !store_only.is_empty() {
+            parts.push(format!("fiber fields in the store but not Engine::schemas: {store_only:?}"));
+        }
+        if !engine_only.is_empty() {
+            parts.push(format!("fiber fields in Engine::schemas but not the store: {engine_only:?}"));
+        }
+        if e_fib != s_fib && store_only.is_empty() && engine_only.is_empty() {
+            parts.push(format!("fiber field ORDER differs: store {s_fib:?} vs engine {e_fib:?}"));
+        }
+        if e_idx != s_idx {
+            parts.push(format!("indexed fields differ: store {s_idx:?} vs engine {e_idx:?}"));
+        }
+        Some(format!(
+            "schema drift on bundle '{name}': {}. A schema mutation reached the \
+             store without going through Engine — see TDD-IDX INV-S.",
+            parts.join("; ")
+        ))
+    }
+
     /// Content version of a bundle — `H(records, index_set)`.
     ///
     /// TDD-IDX F-5. Stamp this beside any λ value that outlives the process
@@ -1918,6 +1998,11 @@ impl Engine {
             .evaluate_mutation(bundle_name, &MutationOp::Update, key);
         self.pending_notifications.extend(notifs);
         self.maybe_checkpoint()?;
+        // INV-S: update_versioned is the path that induced a schema change one
+        // call deep. Pre-declaring `_version` above should have kept the two
+        // copies in step; this is what proves it, and what catches the next
+        // store method that does the same thing.
+        self.assert_schema_coherent(bundle_name);
         Ok(new_version)
     }
 

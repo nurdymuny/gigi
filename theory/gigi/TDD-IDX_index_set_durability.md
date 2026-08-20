@@ -718,12 +718,27 @@ survey was narrower than it looked. Two consequences:
 1. `fiber_fields`' (a) disposition now has a **fifth** mutator, reached
    indirectly. It is handled by pre-empting the field through the journalling
    path before delegating, which keeps F-0's ordering intact.
-2. The general form is unsolved here: any store method may induce a schema
-   change, and enumeration by grep will keep missing them. The durable answer is
-   a post-mutation reconciliation — compare the store's schema to
-   `Engine::schemas` after every mutation and journal the drift — which is
-   general but inverts F-0's ordering for the induced part. That trade is not
-   made in this spec; it is named so the next person does not re-derive it.
+2. The general form: **reconcile and assert, not reconcile and journal**
+   (Hallie). v5 framed this as a binary — pre-declare, which keeps F-0 and
+   generalises to nothing, versus journal the drift after the fact, which
+   generalises and inverts F-0. There is a third that keeps both. Drift between
+   the store's schema and `Engine::schemas` is a **bug**, not a state worth
+   persisting. `Engine::schema_drift` compares them and names the diverging
+   fields; `assert_schema_coherent` fires it after a mutation. Nothing is
+   journalled after the fact, so F-0's ordering is untouched, and each future
+   induced mutator is found at its call site and then pre-declared individually
+   the way `_version` was.
+
+   That is the third instance of a move already committed to twice — F-6 turning
+   a sentinel into an unrepresentable state, and `FieldDef: PartialEq` turning a
+   future silent divergence into a present loud one. A third instance of an
+   established pattern is a much easier call than a new mechanism with a real
+   trade in it.
+
+   Whether the induced-mutator class needs more than detection stays parked
+   behind W-IDX-2, for the reason W-IDX-4 was: the audit says whether it has one
+   member or a dozen, and that answer changes which fix is right. Today it has
+   exactly one.
 
 **T-IDX-17 makes (b) enforceable.** A test that destructures a `BundleSchema`
 with an exhaustive pattern and no `..`, so adding a ninth field is a **compile

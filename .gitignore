@@ -82,3 +82,6 @@ preflight_*/
 # Unpublished research spec — untracked deliberately. Was swept into a public
 # commit once by a broad `git add -A`; ignored so that cannot recur.
 theory/gigi/TDD-GAUGE_market_bundle_instrument.md
+
+# Real production data used by encode_real_cfs_incident.rs — never commit.
+tests/fixtures_cfs_psp_incident.json

@@ -229,7 +229,15 @@ use serde_json::Value as JsonValue;
 
 #[test]
 fn encode_the_real_cfs_psp_records() {
-    let raw = std::fs::read_to_string("tests/fixtures_cfs_psp_incident.json").unwrap();
+    // The fixture is REAL production data and is deliberately not committed —
+    // this repo is public, and it went out once by mistake (f597329; removed
+    // from the tip, history left per standing decision). The synthetic tests
+    // above carry the same mechanisms in CI; this one runs wherever the
+    // fixture exists locally.
+    let Ok(raw) = std::fs::read_to_string("tests/fixtures_cfs_psp_incident.json") else {
+        eprintln!("fixture absent (real production data, not committed) - skipping");
+        return;
+    };
     let doc: JsonValue = serde_json::from_str(&raw).unwrap();
     let recs = doc.get("records").cloned().unwrap_or(doc);
     let mut wrapped = serde_json::Map::new();
@@ -246,4 +254,68 @@ fn encode_the_real_cfs_psp_records() {
         }
         Err(e) => panic!("encode failed outright: {e}"),
     }
+}
+
+// ───────────────────────────── Bug 3: body newline shatter
+
+/// A text value containing embedded newlines must survive snapshot + reload
+/// as ONE record.
+///
+/// This is Bee's authored genealogy record in miniature. DHOOM body rows are
+/// line-delimited; the writer quoted newline-containing values CSV-style but
+/// left the newline LITERAL inside the quotes, and every reader iterates
+/// `body.lines()` — so the first time `marcella_genealogy_records` was ever
+/// encoded to disk (the 2026-08-20 rebase), the record containing her
+/// grandmother's story shattered into a dozen fragment-records: "the cedar
+/// chest", "found the name on my grandmother's nursing degree", each line a
+/// counterfeit record. The WAL held the intact original, which is what the
+/// restore recovered.
+#[test]
+fn multiline_text_survives_snapshot_as_one_record() {
+    let d = dir("newline");
+    let _ = fs::remove_dir_all(&d);
+
+    let story = "I was named for my grandmother.\nMy grandmother was a nurse,\n\
+                 who kept her middle name hidden her whole life.\nYears later,\n\
+                 she gave that runtime the reclaimed name.";
+
+    {
+        let mut e = Engine::open(&d).unwrap();
+        e.compaction_policy_mut().disabled = true;
+        e.create_bundle(
+            BundleSchema::new("g")
+                .base(FieldDef::numeric("id"))
+                .fiber(FieldDef::categorical("content")),
+        )
+        .unwrap();
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Integer(1));
+        r.insert("content".into(), Value::Text(story.into()));
+        e.insert("g", &r).unwrap();
+        // a second, single-line record so a shatter changes the count
+        let mut r2 = Record::new();
+        r2.insert("id".into(), Value::Integer(2));
+        r2.insert("content".into(), Value::Text("single line".into()));
+        e.insert("g", &r2).unwrap();
+        e.snapshot().unwrap();
+    }
+
+    {
+        let e = Engine::open_mmap(&d).expect("reopen");
+        assert_eq!(
+            e.total_records(),
+            2,
+            "a newline-containing record shattered into fragment-records"
+        );
+        let mut key = Record::new();
+        key.insert("id".into(), Value::Integer(1));
+        let got = e.point_query("g", &key).unwrap().expect("record 1");
+        assert_eq!(
+            got.get("content"),
+            Some(&Value::Text(story.into())),
+            "the multi-line content must round-trip byte-identically"
+        );
+    }
+
+    let _ = fs::remove_dir_all(&d);
 }

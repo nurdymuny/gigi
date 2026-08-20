@@ -219,10 +219,13 @@ pub fn coerce(s: &str) -> Value {
         "null" => Value::Null,
         "" => Value::String(String::new()),
         _ => {
-            // Primitive-array sentinel: \x1F prefix + JSON body.
+            // Sentinel: \x1F prefix + JSON body. Arrays of primitives, and —
+            // since the 2026-08-20 incident — strings containing newlines,
+            // which JSON escapes so the body row stays on one line. A string
+            // that decodes here round-trips the shattered-genealogy case.
             if let Some(rest) = s.strip_prefix(PRIMITIVE_ARRAY_SENTINEL) {
                 if let Ok(parsed) = serde_json::from_str::<Value>(rest) {
-                    if parsed.is_array() {
+                    if parsed.is_array() || parsed.is_string() {
                         return parsed;
                     }
                 }
@@ -250,7 +253,29 @@ fn value_to_dhoom(v: &Value) -> String {
         Value::Bool(false) => "F".into(),
         Value::Null => "null".into(),
         Value::String(s) => {
-            if s.contains(',') || s.contains(':') || s.contains('\n') || s.contains('"') {
+            // 2026-08-20 incident, bug 3. DHOOM body rows are line-delimited
+            // and every reader iterates `body.lines()`, so a newline inside a
+            // value cannot be quoted — it has to be *escaped out of existence*.
+            // The old writer quoted CSV-style and left the newline literal,
+            // which split one record into a counterfeit record per line: the
+            // first .dhoom encode of marcella_genealogy_records shattered an
+            // authored multi-line record into a dozen fragments.
+            //
+            // Encoding: the 0x1F sentinel the format already uses for
+            // primitive arrays, followed by the JSON string form — JSON
+            // escapes newlines, so the row stays on one line, and the mmap
+            // row index (one record per line) is preserved. Old files never
+            // contain 0x1F-prefixed strings, so this collides with nothing.
+            if s.contains('\n') || s.contains('\r') {
+                // Same route the array branch takes: build sentinel + JSON,
+                // then RECURSE so the plain-quoting arm below CSV-wraps it —
+                // the splitter strips that quoting symmetrically, and coerce
+                // receives the sentinel + intact JSON. (JSON contains no
+                // literal newlines, so the recursion cannot re-enter here.)
+                let json = serde_json::to_string(s).unwrap_or_else(|_| format!("{s:?}"));
+                let wrapped = Value::String(format!("{}{}", PRIMITIVE_ARRAY_SENTINEL, json));
+                return value_to_dhoom(&wrapped);
+            } else if s.contains(',') || s.contains(':') || s.contains('"') {
                 let escaped = s.replace('"', "\"\"");
                 format!("\"{}\"", escaped)
             } else {

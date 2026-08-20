@@ -1482,6 +1482,29 @@ fn detect_delta(_values: &[&Value]) -> bool {
 
 /// Detect if a sequence of values forms an arithmetic progression.
 /// Returns (start_value, step) if so.
+/// Is this text value safe to place inside a DHOOM header?
+///
+/// 2026-08-20 incident. The header grammar is structural characters all the
+/// way down — `{ } , @ | > ^ & #` plus the `+` that separates an arithmetic
+/// start from its step and the `:` that ends the header. A folded TEXT value
+/// containing any of them produces a header the decoder cannot re-read (or,
+/// worse, reads differently). Production wrote
+/// `binary_version@v6.7.0+gemini-drift-v08+0` — the value contained `+`, the
+/// decoder split on the first `+`, and the snapshot of every bundle after
+/// cfs_psp_v01 was aborted: 198 seconds in, HTTP 500, five bundles left
+/// duplicated on disk by the unrelated bug that failed alongside it.
+///
+/// The guard is here, in one place, rather than at each fold site: every
+/// classifier that can put a text value into a header consults it, so a new
+/// fold added later inherits the check instead of re-deriving the incident.
+/// Numeric folds are untouched — numbers cannot contain delimiters.
+fn header_safe_text(s: &str) -> bool {
+    !s.chars().any(|c| matches!(
+        c,
+        ',' | '{' | '}' | '@' | '|' | '>' | '^' | '&' | '#' | '+' | ':' | '"' | '\n' | '\r'
+    ))
+}
+
 fn detect_arithmetic(values: &[&Value]) -> Option<(Value, i64)> {
     if values.len() < 2 {
         return None;
@@ -1499,6 +1522,11 @@ fn detect_arithmetic(values: &[&Value]) -> Option<(Value, i64)> {
     // Try string-pattern arithmetic
     let strings: Option<Vec<&str>> = values.iter().map(|v| v.as_str()).collect();
     if let Some(strings) = strings {
+        // Header safety (2026-08-20): a text start value with a structural
+        // character writes `@start+step` the decoder cannot split correctly.
+        if strings.iter().any(|s| !header_safe_text(s)) {
+            return None;
+        }
         let patterns: Option<Vec<(String, i64, usize)>> =
             strings.iter().map(|s| parse_string_pattern(s)).collect();
         if let Some(patterns) = patterns {
@@ -1530,7 +1558,16 @@ fn find_modal_default(values: &[&Value]) -> Option<(Value, usize)> {
             .and_modify(|e| e.1 += 1)
             .or_insert_with(|| ((*v).clone(), 1));
     }
-    counts.into_values().max_by_key(|&(_, c)| c)
+    counts
+        .into_values()
+        .filter(|(v, _)| match v {
+            // Header safety (2026-08-20): the modal value is written raw into
+            // the header as `field|value`; a structural character in it
+            // truncates or reshapes the header. Such values stay in the body.
+            Value::String(s) => header_safe_text(s),
+            _ => true,
+        })
+        .max_by_key(|&(_, c)| c)
 }
 
 /// Detect if a field's string values should use string interning.
@@ -1539,6 +1576,11 @@ fn detect_interned(values: &[&Value]) -> Option<Vec<String>> {
         return None;
     }
     let strings: Vec<&str> = values.iter().filter_map(|v| v.as_str()).collect();
+    // Header safety (2026-08-20): the intern pool is serialised into the
+    // header, so every pooled string must be header-safe.
+    if strings.iter().any(|s| !header_safe_text(s)) {
+        return None;
+    }
     if strings.len() != values.len() {
         return None;
     }

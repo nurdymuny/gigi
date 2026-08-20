@@ -1805,7 +1805,15 @@ impl Engine {
                 .filter_map(|f| rec.get(&f.name).map(|v| (f.name.as_str(), v)))
                 .collect();
             parts.sort_by_key(|(k, _)| *k);
-            format!("{parts:?}")
+            // 2026-08-20: elements keyed by Value::key_repr, not Debug. A base
+            // record read back from JSON carries Integer where the overlay
+            // carries Timestamp; Debug-formatting the pair made the same
+            // record two different keys, and the rebase merge wrote both.
+            parts
+                .iter()
+                .map(|(k, v)| format!("{k}={}", v.key_repr()))
+                .collect::<Vec<_>>()
+                .join(";")
         } else {
             format!("{rec:?}")
         }

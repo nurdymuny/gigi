@@ -85,6 +85,43 @@ impl Ord for Value {
     }
 }
 
+impl Value {
+    /// Canonical KEY representation — the one encoding every key comparison
+    /// in the engine uses.
+    ///
+    /// 2026-08-20 incident. Records reach key comparisons through two routes:
+    /// native `Value`s (WAL replay, live inserts) and a JSON round-trip (the
+    /// mmap base, `serde_json_to_value`), and JSON cannot represent every
+    /// variant: `Timestamp(t)` comes back `Integer(t)`, `Binary(b)` comes back
+    /// `Text("b64:…")`. Any comparison built on `format!("{v:?}")` therefore
+    /// sees two different keys for the same record, and the rebase merge wrote
+    /// BOTH copies — `marcella_source_sections` went 155,610 → 325,227 records
+    /// on disk, and the same asymmetry made live counts double (openssl_crypto
+    /// reported 18,288 over a 9,145-record base) on every boot since June.
+    ///
+    /// This is the W7 tombstone-key lesson one layer deeper: the fix is not to
+    /// patch the sites into agreement, it is ONE encoding, owned in one place,
+    /// that collapses the JSON aliases:
+    ///
+    ///   Timestamp(t)  keys as  Integer(t)
+    ///   Binary(b)     keys as  Text("b64:…")   (its JSON wire form)
+    ///
+    /// Everything else keeps its debug form, which round-trips stably.
+    pub fn key_repr(&self) -> String {
+        match self {
+            Value::Timestamp(t) => format!("Integer({t})"),
+            Value::Binary(b) => {
+                use base64::Engine as _;
+                format!(
+                    "Text({:?})",
+                    format!("b64:{}", base64::engine::general_purpose::STANDARD.encode(b))
+                )
+            }
+            other => format!("{other:?}"),
+        }
+    }
+}
+
 impl std::hash::Hash for Value {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         std::mem::discriminant(self).hash(state);

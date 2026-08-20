@@ -272,7 +272,7 @@ impl OverlayBundle {
                     // build time, then never again.
                     let rec = Self::json_to_record(&jv);
                     if let Some(pk) = rec.get(pk_field.as_str()) {
-                        set.insert(format!("{pk:?}"));
+                        set.insert(pk.key_repr());
                     }
                 }
             }
@@ -481,7 +481,7 @@ impl OverlayBundle {
     fn tombstone_key(&self, record: &Record) -> Option<String> {
         self.pk_field()
             .and_then(|f| record.get(f))
-            .map(|v| format!("{v:?}"))
+            .map(|v| v.key_repr())
     }
 
     /// All PK strings currently in the overlay (for dedup during base scan).
@@ -492,7 +492,7 @@ impl OverlayBundle {
         };
         self.overlay.read().map_or(HashSet::new(), |s| {
             s.records()
-                .filter_map(|r| r.get(&pk).map(|v| format!("{v:?}")))
+                .filter_map(|r| r.get(&pk).map(|v| v.key_repr()))
                 .collect()
         })
     }
@@ -549,7 +549,7 @@ impl OverlayBundle {
         overlay_keys: &HashSet<String>,
     ) -> bool {
         if let Some(pk) = pk_field.and_then(|f| record.get(f)) {
-            let key_str = format!("{pk:?}");
+            let key_str = pk.key_repr();
             if let Some(ref ts) = tombstones {
                 if ts.contains(&key_str) {
                     return false;
@@ -620,7 +620,7 @@ impl OverlayBundle {
         if !base_keys.is_empty() {
             if let Ok(store) = self.overlay.read() {
                 for r in store.records() {
-                    if let Some(k) = r.get(pk_field.as_str()).map(|v| format!("{v:?}")) {
+                    if let Some(k) = r.get(pk_field.as_str()).map(|v| v.key_repr()) {
                         if base_keys.contains(&k) {
                             hidden_base.insert(k);
                         }
@@ -766,7 +766,7 @@ impl OverlayBundle {
 
         let overlay_keys: HashSet<String> = overlay_results
             .iter()
-            .filter_map(|r| pk_field.and_then(|f| r.get(f)).map(|v| format!("{v:?}")))
+            .filter_map(|r| pk_field.and_then(|f| r.get(f)).map(|v| v.key_repr()))
             .collect();
 
         let tombstones = self.tombstones.read().ok();
@@ -893,7 +893,7 @@ impl OverlayBundle {
 
         let overlay_keys: HashSet<String> = overlay_all
             .iter()
-            .filter_map(|r| pk_field.and_then(|f| r.get(f)).map(|v| format!("{v:?}")))
+            .filter_map(|r| pk_field.and_then(|f| r.get(f)).map(|v| v.key_repr()))
             .collect();
 
         let tombstones = self.tombstones.read().ok();
@@ -974,7 +974,7 @@ impl OverlayBundle {
                 let pk = pk_field.unwrap_or("");
                 let keys: HashSet<String> = s
                     .records()
-                    .filter_map(|r| r.get(pk).map(|v| format!("{v:?}")))
+                    .filter_map(|r| r.get(pk).map(|v| v.key_repr()))
                     .collect();
                 (count, keys)
             },
@@ -1045,7 +1045,7 @@ impl OverlayBundle {
         // Check tombstones.
         let pk_field = self.pk_field()?;
         let key_val = key.get(pk_field)?;
-        let key_str = format!("{key_val:?}");
+        let key_str = key_val.key_repr();
         if self.is_tombstoned(&key_str) {
             return None;
         }
@@ -1072,7 +1072,7 @@ impl OverlayBundle {
             .map_or(Vec::new(), |s| s.range_query(field, values));
         let overlay_keys: HashSet<String> = overlay_results
             .iter()
-            .filter_map(|r| pk_field.and_then(|f| r.get(f)).map(|v| format!("{v:?}")))
+            .filter_map(|r| pk_field.and_then(|f| r.get(f)).map(|v| v.key_repr()))
             .collect();
 
         let tombstones = self.tombstones.read().ok();
@@ -1109,7 +1109,7 @@ impl OverlayBundle {
                 pk_field
                     .as_deref()
                     .and_then(|f| r.get(f))
-                    .map(|v| format!("{v:?}"))
+                    .map(|v| v.key_repr())
             })
             .collect();
 
@@ -1126,7 +1126,7 @@ impl OverlayBundle {
             let record = Self::json_to_record(&jv);
             if let Some(ref pk_f) = pk_field {
                 if let Some(pk) = record.get(pk_f.as_str()) {
-                    let key_str = format!("{pk:?}");
+                    let key_str = pk.key_repr();
                     if tombstones.contains(&key_str) || overlay_keys.contains(&key_str) {
                         return None;
                     }
@@ -1209,7 +1209,7 @@ impl OverlayBundle {
             if let Ok(mut ts) = self.tombstones.write() {
                 let pk = self.pk_field();
                 for r in records {
-                    if let Some(key_str) = pk.and_then(|f| r.get(f)).map(|v| format!("{v:?}")) {
+                    if let Some(key_str) = pk.and_then(|f| r.get(f)).map(|v| v.key_repr()) {
                         ts.remove(&key_str);
                     }
                 }
@@ -1281,7 +1281,7 @@ impl OverlayBundle {
                 if conditions.iter().all(|c: &QueryCondition| c.matches(&record)) {
                     if let Some(key_str) = pk_field
                         .and_then(|f| record.get(f))
-                        .map(|v| format!("{v:?}"))
+                        .map(|v| v.key_repr())
                     {
                         new_tombstones.push(key_str);
                         base_deleted += 1;
@@ -1312,7 +1312,7 @@ impl OverlayBundle {
         // Tombstone in base + return the record.
         let pk_field = self.pk_field()?;
         let key_val = key.get(pk_field)?;
-        let key_str = format!("{key_val:?}");
+        let key_str = key_val.key_repr();
         if self.is_tombstoned(&key_str) {
             return None;
         }
@@ -1387,7 +1387,7 @@ impl OverlayBundle {
                     let record = Self::json_to_record(&jv);
                     if let Some(pk_field) = self.pk_field() {
                         if let Some(pk) = record.get(pk_field) {
-                            ts.insert(format!("{pk:?}"));
+                            ts.insert(pk.key_repr());
                         }
                     }
                 }
@@ -2627,7 +2627,7 @@ mod tests {
         // Logical count: 3 - 1 (tombstoned base[1]) + 1 (new[99]) = 3.
         //
         // Note: `OverlayBundle::delete` takes a tombstone key string in
-        // the format `records()` filters by, i.e. `format!("{pk:?}")`
+        // the format `records()` filters by, i.e. `pk.key_repr()`
         // on the extracted `Value`. For `Value::Integer(2)` that's
         // `"Integer(2)"`. Callers passing the raw "2" produce a
         // tombstone that won't filter the base record (separate API-

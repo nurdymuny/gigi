@@ -20,16 +20,33 @@ Registered 2026-09-03. B. R. Davis, Davis Geometric.
 
 ---
 
-## P2. The decagon is locked to System III, with the hexagon's drift
+## P2. Is the decagon locked to System III? A four-way test
 
-This is the one I would stake the paper on.
+**Retraction first.** The first version of this file stated as a finding that
+the decagon drifts at −0.014°/day, "the hexagon's rate", and that the smaller
+aliases were excluded. A brute-force sweep of the residual against assumed
+drift (`stress_p2.py`) shows that is false. Three annual snapshots against a
+36° period cannot pin a drift; the hexagon's rate was measured with Voyager
+and Cassini sampling days apart. Four drifts fit within the noise floor, and
+two fit better than the one I claimed:
 
-**Method.** The complex zonal coefficient z = Σ(x−x̄)e^(−imφ) gives the longitude
-of a brightness maximum, φ₀ = −arg(z)/m, modulo 36°. Calibrated on the hexagon
-in 2018–19, when the north was well presented: same-day (a/b) scatter 1.5°,
-year-over-year drift −0.0045°/day — i.e. stationary, as the literature says.
+| drift (°/day) | residual | 2026 φ₀ it predicts |
+|---|---|---|
+| +0.4635 | 0.18° | 2.7° |
+| −0.1225 | 0.67° | 7.2° |
+| **−0.0140** | 1.21° | **10.3°** |
+| +0.3550 | 1.72° | 35.6° |
 
-**Measured, decagon.** Circular mean of φ₀ over 5 filters × 2 visits:
+All four are physically plausible — at 63°S even +0.46°/day is 2.75 m/s.
+"Locked to System III" is one of four hypotheses the data allows, not a result.
+
+**Method (unchanged, and it is sound).** The complex zonal coefficient
+z = Σ(x−x̄)e^(−imφ) gives the longitude of a brightness maximum,
+φ₀ = −arg(z)/m, mod 36°. Calibrated on the hexagon in 2018–19: same-day scatter
+1.5°, year-over-year change −1.7° — consistent with its published near-zero
+drift, though the same alias caveat applies to that calibration.
+
+**Measured.** Circular mean of φ₀ over 5 filters × 2 visits:
 
 | epoch | MJD | φ₀ (deg, mod 36) | n |
 |---|---|---|---|
@@ -37,20 +54,20 @@ year-over-year drift −0.0045°/day — i.e. stationary, as the literature says
 | 2024 | 60544 | 23.4 | 9 |
 | 2025 | 60916 | 15.4 | 10 |
 
-Same-day noise floor 1.09° rms (11 a/b pairs). Least-squares drift
-**−0.0141°/day**; residual 1.21° rms — a single linear drift fits to the noise.
-Aliases at ±0.118 and ±0.097°/day are excluded because the two inter-epoch
-gaps are incommensurate and only the smallest alias fits both.
+Same-day noise floor 1.09° rms (11 a/b pairs). Leave-one-out shows the two
+segments differ (−0.008 then −0.022°/day, a 2.6σ difference), so the honest
+error on any branch is about ±0.007°/day, not the ±0.003 a within-epoch
+bootstrap gives. Over 361 days that is ±2.5°, so **±3° on each prediction**.
 
-The hexagon's published drift is about −0.013°/day (Sánchez-Lavega et al.
-2014). The decagon matches it.
+**Predict.** The four aliases send the 2026 phase to four different places,
+each ±3°: 2.7°, 7.2°, 10.3°, 35.6° (mod 36). The 2026 epoch discriminates.
+The locked-to-System-III hypothesis specifically predicts **10.3° ± 3°**.
 
-**Predict.** φ₀(t) = 15.4° − 0.0141°/day × (t − MJD 60916), mod 36°, ± 1.5°.
-For an epoch at MJD 61277 (≈ 2026-08-25): **φ₀ = 10.3° ± 1.5°**, in the OPAL
-map longitude frame.
-
-**Falsified if** the 2026 phase misses by > 4° (the 36° period makes a freely
-drifting wave land anywhere; hitting a 3° window by chance is ~8%).
+**Falsified if** — for the lock hypothesis — the 2026 phase lands outside
+10.3 ± 4°. A 6° window on a 36° circle is hit by chance 17% of the time; with
+the three competitors predicting elsewhere, a hit at 10.3 favors the lock but
+does not prove it. Four epochs will cut the alias set sharply; five will
+likely close it. This is a multi-year measurement and the ledger should say so.
 
 ---
 
@@ -133,7 +150,13 @@ hexagon's seasonal template, and P5 becomes the most interesting result here.
 
 ## What would make this a paper
 
-P2 alone is publishable: a second polar polygon locked to the deep rotation at
-the same rate as the first is a constraint on the interior, not just the
-atmosphere. P3 + P1 together are a measured barotropization. P4 is the story
-nobody has told. P5 is a clean binary with a date.
+P3 + P1 together are a measured barotropization, on three independent
+observables, and they stand. P4 is the story nobody has told, with its limb
+caveat carried. P5 is a clean binary with a date.
+
+P2 is not yet a result. It is the most valuable *question* here — a second
+polar polygon locked to the deep rotation would constrain the interior, not
+just the atmosphere — but three annual snapshots cannot answer it, and the
+first draft of this ledger said they could. The alias sweep in `stress_p2.py`
+is the check that caught it. Each further OPAL epoch removes aliases; the
+question likely closes at five.

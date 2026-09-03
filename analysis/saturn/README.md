@@ -30,9 +30,11 @@ criteria, in [`PREDICTIONS.md`](PREDICTIONS.md).
 - decagon at **-63.3 deg**, n=29 independent measurements, sd 0.65 deg
   (published value: 63 deg south)
 - m=10 mean amplitude 3.6x higher at the jet ring than at a -45 deg control ring
-- **locked to System III**: drift -0.0141 deg/day, residual 1.2 deg rms against
-  a 1.1 deg same-day noise floor; the hexagon's published value is about
-  -0.013 deg/day. Method calibrated on the hexagon itself in 2018-19.
+- **System III drift: under-determined.** Phase is known mod 36 deg and three
+  annual epochs admit four drifts within noise (+0.46, -0.12, -0.014, +0.36
+  deg/day; `stress_p2.py`). "Locked, at the hexagon's rate" is one of the
+  four, not a finding. An earlier version of this file claimed it was; the
+  alias sweep retracted it. Each new epoch removes aliases.
 - **the southern jet is narrowing and becoming vertically coherent**:
   FWHM 2.80 deg (2024) -> 1.70 deg (2025); scatter across bandpasses in width
   (sd 0.65 -> 0.16), peak latitude (0.45 -> 0.15) and phase (0.62 -> 0.51,

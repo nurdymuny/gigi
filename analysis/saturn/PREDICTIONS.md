@@ -156,22 +156,49 @@ supports a precursor elsewhere.
 
 ## P5. No stratospheric expression yet (and when to expect one)
 
-**Correction first.** Earlier notes in this directory said the wave was
-"absent" in FQ889N and had a "ceiling". That overstated it. FQ889N shows m=10
-fractional amplitude, but its phase relative to the wave filters is random —
-rms 12.1° against 10.4° expected for pure noise (n=5 epochs; two of five
-agree, three do not). The honest statement is **not detected above noise**.
+**Stress-tested (`stress_p5.py`) and it stands — on better evidence than it
+was first given.** The original argument was that FQ889N's m=10 phase is
+random relative to the wave filters (rms 12.1° vs 10.4° for noise). After P4
+that argument is not enough on its own: a filter too noisy to measure any
+phase would also read "random". So two further tests.
+
+*Can FQ889N measure a phase?* Same-day a-vs-b at −63.3°: **5.3° rms**
+(F631N: 1.1°; random: 10.4°). Noisier than the deep filters, but not blind.
+The null is informative.
+
+*Is there a spectral peak?* This is the wave test, and it is the one that
+should have carried P5 from the start.
+
+| epoch | F631N m10/flat | FQ889N m10/flat | FQ889N peak mode |
+|---|---|---|---|
+| 2023a | 2.41× | 0.55× | m=6 |
+| 2024a | 2.74× | 0.93× | m=7 |
+| 2024b | 2.31× | 1.79× | m=7 |
+| 2025a | 3.13× | 0.81× | m=11 |
+| 2025b | 3.26× | 0.42× | m=7 |
+
+A latitude scan of FQ889N over −70…−56 finds no m=10 above 2× flat at any
+latitude, any epoch, either visit (best: 1.8× at −62, 2024b). The "position
+shifts with wavelength" possibility does not rescue a detection. **Not
+detected above noise** is confirmed by the spectrum, not just the phase.
+
+**The one epoch that came close.** 2024b: 1.79× flat, phase locked to the
+wave filters within 3.3°, self-consistent with 2024a to 1.7°. Then 2025
+returned to 0.4–0.8× with phase off by 11–18°. Below threshold and not
+monotonic — either a fluctuation or a transient stratospheric touch. Noted,
+not claimed.
 
 **Context.** The hexagon developed its stratospheric expression only as
 northern summer approached (Fletcher et al. 2018, Cassini CIRS). Southern
 insolation at 60°S peaks in 2032.
 
-**Predict.** 2026 FQ889N phase remains random relative to the wave filters:
-rms phase difference > 6°.
+**Predict.** 2026 FQ889N shows no m=10 spectral peak: m10/flat < 2.0× at
+every latitude in −70…−56, in both visits.
 
-**Falsified if** FQ889N phase locks to within 3° rms across both visits — in
-which case the wave has reached the stratosphere seven years ahead of the
-hexagon's seasonal template, and P5 becomes the most interesting result here.
+**Falsified if** m10/flat ≥ 2.0× in both visits at a common latitude, with
+a-vs-b phase agreement < 3° and phase within 4° of the wave filters — in which
+case the wave has reached the stratosphere six years ahead of the hexagon's
+seasonal template, and P5 becomes the most interesting result here.
 
 ---
 
@@ -202,13 +229,13 @@ P1 stands: the jet narrowed 2.9°→1.7° on contrast-matched filters, and its
 cross-filter width scatter fell beyond what SNR explains. P3 does not stand;
 it was one observable dressed as three. P4 does not stand; the "second lobe"
 was red noise in a limb ring, and the decagon was born where the discovery
-team said it was. P5 is a clean binary with a date, and has not yet been
-stress-tested.
+team said it was. P5 stands, restated on the spectral criterion after its
+original phase-only argument proved insufficient.
 
-Of five predictions registered on 2026-09-03, two survive a same-day attempt
-to break them, one is demoted to a multi-year test, two are withdrawn. The
-stress-test scripts are in this directory so the failures are reproducible
-alongside the survivors.
+Of five predictions registered on 2026-09-03, all five were attacked the same
+day. Two survive (P1, P5), one is demoted to a multi-year test (P2), two are
+withdrawn (P3, P4). The stress-test scripts are in this directory so the
+failures are reproducible alongside the survivors.
 
 P2 is not yet a result. It is the most valuable *question* here — a second
 polar polygon locked to the deep rotation would constrain the interior, not

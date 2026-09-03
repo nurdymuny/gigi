@@ -46,10 +46,12 @@ criteria, in [`PREDICTIONS.md`](PREDICTIONS.md).
   1/f slope with m=10 below the flat level (`stress_p4.py`); it was red noise
   in a limb ring at 84 deg emission angle, inflated by the fractional-amplitude
   estimator's small denominator. The decagon was born at 63S as published.
-- FQ889N (strong methane, stratosphere): m=10 **not detected above noise** -
-  its phase is random relative to the wave filters (rms 12.1 deg vs 10.4
-  expected for noise). An earlier note here said "absent" and "ceiling"; that
-  overstated it.
+- FQ889N (strong methane, stratosphere): m=10 **not detected above noise**,
+  on the spectral criterion - m10/flat never exceeds 1.8x at any latitude in
+  -70..-56, any epoch, either visit, while F631N shows 2.4-3.3x at -63
+  (`stress_p5.py`). The filter is not blind (a-vs-b phase repeats to 5.3 deg),
+  so the null is informative. An earlier note said "absent" and "ceiling";
+  that overstated it.
 
 ## Two nulls, recorded as nulls
 

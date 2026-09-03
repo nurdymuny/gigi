@@ -396,3 +396,7 @@ serial_test = "3"
 [[example]]
 name = "saturn_decagon"
 path = "examples/saturn_decagon.rs"
+
+[[example]]
+name = "saturn_mode_bundle"
+path = "examples/saturn_mode_bundle.rs"

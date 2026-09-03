@@ -71,22 +71,36 @@ likely close it. This is a multi-year measurement and the ledger should say so.
 
 ---
 
-## P3. Vertical coherence — the wave has become barotropic and stays so
+## P3. Vertical coherence — RETRACTED, folded into P1
 
-Three independent measures of agreement across the five filters (≈ five
-altitudes) all tightened between 2024 and 2025:
+The first version of this file claimed "three independent measures of
+cross-filter agreement all tightened 2024→2025" and called it a measured
+barotropization. `stress_p3.py` tested each word. The table it was built on
+mixed in low-contrast filters whose envelope fits were unreliable. Gated to
+filters whose m=10 peak is at least 6× the local background:
 
-| measure | 2023 | 2024 | 2025 |
+| measure (m=10, gated) | 2024 | 2025 | change |
 |---|---|---|---|
-| FWHM scatter across filters, sd | — | 0.65° | 0.16° |
-| peak-latitude scatter (tilt), sd | 0.41° | 0.45° | 0.15° |
-| phase scatter within a visit, sd | 2.9° / 1.5° | 0.62° / 0.43° | 0.71° / 0.51° |
+| FWHM scatter across filters, sd | 0.33° | 0.13° | ×0.40 — tightened |
+| peak-latitude scatter (tilt), sd | 0.14° | 0.17° | ×1.21 — flat |
+| phase scatter within a visit, sd | 0.31° | 0.58° | ×1.83 — **loosened** |
 
-Every altitude the wave occupies now shares one width, one latitude, one phase.
+Tilt never tightened; the 0.45° I reported for 2024 was two low-contrast blue
+filters. Phase went the other way. 2023 has fewer than three filters that pass
+the gate at all, so the 2.9°→0.6° phase "tightening" I reported for 2023→2024
+is not assessable and should not have been in the table.
 
-**Predict.** 2026: tilt sd ≤ 0.25°, phase sd ≤ 0.8°, FWHM sd ≤ 0.25°.
+Nor were the measures independent: within 2024, per-filter FWHM and per-filter
+peak latitude correlate at r = −0.75 (n=6). And the ride-along m=11 mode does
+the same thing as m=10 on every measure, so the width tightening is not
+specific to the decagon.
 
-**Falsified if** any one of the three re-broadens past twice its 2025 value.
+**What survives.** Cross-filter width scatter genuinely tightened, and it
+survives SNR-normalisation (scatter × amplitude falls to 0.44 of its 2024
+value while amplitude rose only 1.10×). That is one observable, and it is the
+second clause of P1. No separate P3 claim remains.
+
+**Predict.** Nothing beyond P1.
 
 ---
 
@@ -150,9 +164,11 @@ hexagon's seasonal template, and P5 becomes the most interesting result here.
 
 ## What would make this a paper
 
-P3 + P1 together are a measured barotropization, on three independent
-observables, and they stand. P4 is the story nobody has told, with its limb
-caveat carried. P5 is a clean binary with a date.
+P1 stands: the jet narrowed 2.9°→1.7° on contrast-matched filters, and its
+cross-filter width scatter fell beyond what SNR explains. P3 does not stand;
+it was one observable dressed as three. P4 is the story nobody has told, with
+its limb caveat carried and not yet stress-tested. P5 is a clean binary with
+a date.
 
 P2 is not yet a result. It is the most valuable *question* here — a second
 polar polygon locked to the deep rotation would constrain the interior, not

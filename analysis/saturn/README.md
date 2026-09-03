@@ -35,10 +35,12 @@ criteria, in [`PREDICTIONS.md`](PREDICTIONS.md).
   deg/day; `stress_p2.py`). "Locked, at the hexagon's rate" is one of the
   four, not a finding. An earlier version of this file claimed it was; the
   alias sweep retracted it. Each new epoch removes aliases.
-- **the southern jet is narrowing and becoming vertically coherent**:
-  FWHM 2.80 deg (2024) -> 1.70 deg (2025); scatter across bandpasses in width
-  (sd 0.65 -> 0.16), peak latitude (0.45 -> 0.15) and phase (0.62 -> 0.51,
-  from 2.9 in 2023) all collapse together
+- **the southern jet is narrowing**: FWHM 2.9 deg (2024) -> 1.7 deg (2025) on
+  contrast-matched filters, and its cross-filter width scatter fell 0.33 -> 0.13
+  deg, beyond what the 1.1x amplitude rise explains. An earlier version of this
+  line added peak-latitude and phase scatter "collapsing together"; gated to
+  reliable filters, tilt was flat and phase loosened (`stress_p3.py`). One
+  observable, not three.
 - **two lobes in 2023, one by 2024**: a stronger m=10 at -69 deg and a weaker
   one at -63 deg, separated by an amplitude node at -65; the poleward lobe
   collapsed >10x within a year and the equatorward one won

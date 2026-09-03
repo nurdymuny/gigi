@@ -392,3 +392,7 @@ http-body-util = "0.1"
 # `#[serial(gauge_registry)]` puts exactly those tests in one lane; unrelated
 # serial groups still run concurrently with each other and with the rest.
 serial_test = "3"
+
+[[example]]
+name = "saturn_decagon"
+path = "examples/saturn_decagon.rs"

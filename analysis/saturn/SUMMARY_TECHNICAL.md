@@ -33,13 +33,16 @@ same-day noise floor.
 Six filters: F467M, F502N, F631N, F763M (continuum, deep), FQ727N (weak CH₄,
 upper troposphere), FQ889N (strong CH₄, tropopause/lower stratosphere).
 
-**Viewing geometry.** Sub-Earth planetographic latitude B derived from each
-map's own coverage boundary (the pole tilted away is cut off at 90−|B|):
-+15.1° (2023), +8.5° (2024), −7.3° (2025). **These have not been checked
-against JPL Horizons** and may be biased by the 50%-coverage threshold on a
-mosaic. Emission angle at latitude φ taken as |φ − B|, valid at the central
-meridian; since each map longitude was imaged near its own CM passage this
-approximates the whole ring.
+**Viewing geometry.** Sub-Earth planetodetic latitude B from JPL Horizons
+(quantity 14, geocentric observer): **+12.79° (2023-10-22), +3.83°
+(2024-08-22), −3.26° (2025-08-29)**. The first draft used values derived from
+each map's coverage boundary (+15.1, +8.5, −7.3), biased by +2.3, +4.7, −4.0
+by the 50% threshold on a mosaic. Emission angle at latitude φ taken as
+|φ − B| at the central meridian; OPAL projects each input over sub-Earth
+longitude ±90° and mosaics six, so the nearest CM is within ~30° and the
+true per-pixel emission angle is a range (e.g. −63°: 75.8–79.3° in 2023,
+59.7–63.7° in 2025). The released FITS carry no per-pixel emission or weight
+plane.
 
 ## 2. Methods
 
@@ -200,9 +203,14 @@ filters.
   confirmatory (published latitude and wavenumber), not a search.
 - **North** unmeasurable after ~2023.
 - **2021b** limb artifact (A₆ = 0.113).
-- **Literature values quoted from memory, unverified against the papers:**
-  hexagon drift ≈ −0.013°/day (Sánchez-Lavega et al. 2014); stratospheric
-  hexagon onset with northern summer (Fletcher et al. 2018).
+- **Literature values, corrected after review.** Hexagon drift: reviewer
+  reports +0.0129 ± 0.0020°/day in *west*-positive System III (Sánchez-Lavega
+  et al. 2014, GRL; paywalled here) with period 10 h 39 m 23.01 ± 0.01 s; my
+  "−0.013" was a sign misquote across conventions. Fletcher et al. 2018
+  detected a stratospheric hexagonal thermal boundary in 2014–2017 during
+  late northern spring and state earlier data could not tell whether it had
+  always been present; "only grew a stratospheric layer as summer approached"
+  overstated it.
 
 ## 7. GIGI's role, precisely
 
@@ -252,3 +260,40 @@ python phase.py       # §5 P2 baseline
 python stress_p2.py … stress_p5.py
 cargo run --release --example saturn_mode_bundle -- mode_amplitudes.json
 ```
+
+## 10. After outside review — dispositions (2026-09-03, same day)
+
+An outside model was given §1–9 and `REVIEW_PROMPT.md`. Its claims were
+checked against Horizons and the paper's abstract (Europe PMC, PMID
+42685223); everything reachable confirmed. Full paper and 2014 GRL paywalled
+here; those specifics are *as reported by reviewer*.
+
+| item | before | after |
+|---|---|---|
+| P1 | jet narrowed 2.8→1.7°, sd 0.13° | **withdrawn as jet claim.** `jetwidth.py` measures the m=10 photometric envelope, not u(φ). Paper: wind jet ≈2.8° FWHM, 116 m/s, unchanged since 1981. 0.13° is sub-pixel, not reportable. −45° control narrows too (few samples). Envelope narrowing kept as an uncalibrated observation. |
+| P2 | four aliases, lock predicts 10.3° | **settled by literature; lock falsified.** Paper: eastward 2.5 m/s = +0.39…+0.42°/day in map convention. Corrected sweep (±1°/day, endpoints, 1.5° crit): five solutions; +0.4634 (rms 0.167) is nearest to published *and the best fit*; −0.0141 (rms 1.203) is the worst. +0.355 fails at 1.71°. Vertices oscillate 4.6–8.4°, 32 d; ±3° windows meaningless. Hexagon drift sign misquoted (+0.0129 west-positive). |
+| P3 | withdrawn | unchanged |
+| P4 | withdrawn | holds under Horizons B (−69° at 81.8° emission in 2023; 2024 limb artifacts at ~82–84°). |
+| P5 | no m=10 in FQ889N | **withdrawn — demonstrated false negative.** Paper (per reviewer): decagon in FQ889N near 58.8–60.5°S, layered ~10 mbar–2 bar. Pipeline gives 0.4–0.6× flat at −59° in 2025. Detector missed a known positive; fixed-latitude spectral statistic is insensitive to a latitude-displaced meander. Red refit m^−0.778 scales m=10 by 1.1565 (baselines only). Illustrative red-Rayleigh null: 90-trial FPR ≈ 0.95 for ≥1.79×. |
+| B | +15.1, +8.5, −7.3 (coverage) | +12.79, +3.83, −3.26 (Horizons) |
+| a/b +0.9° | rotation period | not (needs 92–109 s error); navigation/registration |
+| λ/W | test of mode selection | not standard theory; paper's sims seeded with m=10; Antuñano et al. 2015: both polar jets meet similar criteria |
+| Fletcher 2018 | "only grew … as summer approached" | detected 2014–2017; earlier data inconclusive |
+
+**Zero of five stand.** Surviving as observations: continuum detection at
+63.3°S; 2021 null at 0.99 coverage vs 2023+ presence; continuum m=10 growth
+2023→2025; annual phases consistent with the published drift on the correct
+branch; GIGI curvature as outlier QA in the restructured bundle.
+
+**Root cause.** The paper was flagged as a ten-minute check at the start and
+not read. Five of fifteen review findings (P2 drift, P5 latitude, jet FWHM,
+32-day oscillation, northern vortex) were in it.
+
+**Additional data (reviewer):** PVOL/ALPO vertex tracking Jun–Oct 2025;
+Calar Alto PlanetCam 29 Aug–1 Sep 2025; **HST GO-18102, 16–17 Sep 2025**
+(non-annual epoch, possibly in MAST); VLT/VISIR 115.283U.001 (thermal, no
+vertex resolution); HST Cycle 33 OPAL GO-17995 next.
+
+**Next (not started; see `PREDICTIONS.md` § Next):** ridge tracker →
+injection/recovery → raw-exposure fit → wind profile → vertex-motion fit with
+vortex coupling → Rayleigh–Kuo eigenanalysis → GIGI bundle for QA/CADENCE.

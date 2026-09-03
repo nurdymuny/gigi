@@ -30,28 +30,34 @@ criteria, in [`PREDICTIONS.md`](PREDICTIONS.md).
 - decagon at **-63.3 deg**, n=29 independent measurements, sd 0.65 deg
   (published value: 63 deg south)
 - m=10 mean amplitude 3.6x higher at the jet ring than at a -45 deg control ring
-- **System III drift: under-determined.** Phase is known mod 36 deg and three
-  annual epochs admit four drifts within noise (+0.46, -0.12, -0.014, +0.36
-  deg/day; `stress_p2.py`). "Locked, at the hexagon's rate" is one of the
-  four, not a finding. An earlier version of this file claimed it was; the
-  alias sweep retracted it. Each new epoch removes aliases.
-- **the southern jet is narrowing**: FWHM 2.9 deg (2024) -> 1.7 deg (2025) on
-  contrast-matched filters, and its cross-filter width scatter fell 0.33 -> 0.13
-  deg, beyond what the 1.1x amplitude rise explains. An earlier version of this
-  line added peak-latitude and phase scatter "collapsing together"; gated to
-  reliable filters, tilt was flat and phase loosened (`stress_p3.py`). One
-  observable, not three.
+- **System III drift: settled by the literature, and it is not locked.** The
+  discovery paper reports eastward motion at 2.5 m/s = +0.39..+0.42 deg/day
+  in this map's convention. The corrected alias sweep (`stress_p2.py`, +-1
+  deg/day, endpoints, 1.5 deg criterion) gives five solutions; +0.4634 (rms
+  0.167) is nearest the published value and the best fit, while the "locked"
+  -0.014 branch an earlier version of this file claimed is the worst (rms
+  1.203). Vertices also oscillate 4.6-8.4 deg on a 32-day period.
+- **the photometric m=10 envelope narrowed** 2.9 deg (2024) -> 1.7 deg (2025)
+  on contrast-matched filters. This is NOT a jet width - `jetwidth.py`
+  measures the brightness-amplitude envelope, and the discovery paper's wind
+  jet is ~2.8 deg FWHM at 116 m/s, unchanged since 1981. The 0.13 deg
+  cross-filter scatter reported earlier is below the 0.2 deg pixel and is not
+  reportable; a -45 deg control ring narrows in the same direction (few
+  samples). Uncalibrated observation with an unexcluded SNR/morphology
+  confound; no prediction rests on it.
 - **no second lobe.** An earlier version of this line reported a stronger m=10
   at -69 deg in 2023 that "collapsed" by 2024. The spectrum at -69 is a smooth
   1/f slope with m=10 below the flat level (`stress_p4.py`); it was red noise
   in a limb ring at 84 deg emission angle, inflated by the fractional-amplitude
   estimator's small denominator. The decagon was born at 63S as published.
-- FQ889N (strong methane, stratosphere): m=10 **not detected above noise**,
-  on the spectral criterion - m10/flat never exceeds 1.8x at any latitude in
-  -70..-56, any epoch, either visit, while F631N shows 2.4-3.3x at -63
-  (`stress_p5.py`). The filter is not blind (a-vs-b phase repeats to 5.3 deg),
-  so the null is informative. An earlier note said "absent" and "ceiling";
-  that overstated it.
+- FQ889N (strong methane): **the pipeline's "not detected" is a demonstrated
+  false negative.** The discovery paper identifies the decagon in FQ889N near
+  58.8-60.5 deg S in 2025 (reported by outside review; abstract confirms the
+  58-63 S range and a vertically layered structure). The fixed-latitude
+  spectral statistic here returns 0.4-0.6x flat at -59 in both 2025 maps
+  (`stress_p5.py`). It missed a known positive, so it cannot support absence
+  anywhere. Two earlier versions of this line said "absent"/"ceiling" and
+  then "not detected above noise"; both were statements about the detector.
 
 ## Two nulls, recorded as nulls
 

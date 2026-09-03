@@ -85,19 +85,30 @@ ys = sorted(em)
 t0, p0 = em[ys[0]][1], em[ys[0]][0]
 dts = np.array([em[y][1] - t0 for y in ys])
 dps = np.array([em[y][0] for y in ys])
-grid = np.arange(-0.60, 0.60, 0.0005)
+# Outside review (2026-09-03) found two faults in the first version of this
+# block: the sweep stopped at +-0.6 deg/day and could not see a minimum at the
+# grid edge (there is one at -0.5999), and the printed verdict used a 2.0 deg
+# cut while the text claimed 1.5, letting +0.355 (1.71 deg) through. Fixed:
+# +-1 deg/day, endpoints included, criterion = 1.5 deg = the a/b noise floor
+# plus margin.
+CRIT = 1.5
+grid = np.arange(-1.00, 1.00 + 1e-9, 0.0001)
 land = np.array([np.sqrt(np.mean([wrap(dps[i] - (p0 + d * dts[i]), PER) ** 2
                                   for i in range(len(ys))])) for d in grid])
-# local minima
-mins = [(grid[i], land[i]) for i in range(1, len(grid) - 1)
-        if land[i] < land[i - 1] and land[i] < land[i + 1]]
-mins.sort(key=lambda x: x[1])
+idx = [i for i in range(1, len(grid) - 1) if land[i] < land[i - 1] and land[i] < land[i + 1]]
+if land[0] < land[1]:
+    idx.append(0)
+if land[-1] < land[-2]:
+    idx.append(len(grid) - 1)
+mins = sorted(((grid[i], land[i]) for i in idx), key=lambda x: x[1])
 print(f"  {'drift deg/day':>14} {'residual deg':>13}   verdict")
 for d, r in mins[:12]:
-    tag = "  <-- fits to noise" if r < 2.0 else ""
-    print(f"  {d:+14.4f} {r:13.2f}{tag}")
-n_fit = sum(1 for _, r in mins if r < 2.0)
-print(f"  aliases fitting within 2 deg: {n_fit}  over |d| < 0.6 deg/day")
+    tag = f"  <-- fits within {CRIT} deg" if r <= CRIT else ""
+    if abs(d - 0.42) < 0.06:
+        tag += "   [published 2.5 m/s eastward = +0.39..+0.42 in this convention]"
+    print(f"  {d:+14.4f} {r:13.3f}{tag}")
+n_fit = sum(1 for _, r in mins if r <= CRIT)
+print(f"  aliases fitting within {CRIT} deg: {n_fit}  over |d| <= 1.0 deg/day")
 print(f"  (at 63S the latitude circle is ~184,000 km, so 0.46 deg/day is only 2.7 m/s;\n"
       f"   Rossby phase speeds of several m/s are ordinary. Every alias above is\n"
       f"   physically allowed, and a wider sweep would find more. The data cannot\n"

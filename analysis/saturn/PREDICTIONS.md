@@ -7,6 +7,13 @@ that produce them are in this directory. Anyone with `curl` can check them.
 
 Registered 2026-09-03. B. R. Davis, Davis Geometric.
 
+> **Status after outside review, same day — see the final section.** None of
+> the five survives as registered. The review's decisive input was the
+> discovery paper itself (Sánchez-Lavega et al., *Sci. Adv.*, Sept 2026, PMID
+> 42685223), which I had flagged as a ten-minute check at the start of the day
+> and never read. The sections below are left as written so the record shows
+> what was claimed and when; the dispositions are at the end.
+
 ---
 
 ## P1. The jet is still narrowing, or has settled narrow
@@ -223,19 +230,156 @@ seasonal template, and P5 becomes the most interesting result here.
   level, never fractional amplitude alone, and never cross-filter phase
   coherence alone.
 
-## What would make this a paper
+## After outside review — 2026-09-03, same day
 
-P1 stands: the jet narrowed 2.9°→1.7° on contrast-matched filters, and its
-cross-filter width scatter fell beyond what SNR explains. P3 does not stand;
-it was one observable dressed as three. P4 does not stand; the "second lobe"
-was red noise in a limb ring, and the decagon was born where the discovery
-team said it was. P5 stands, restated on the spectral criterion after its
-original phase-only argument proved insufficient.
+An outside model was given `SUMMARY_TECHNICAL.md` and `REVIEW_PROMPT.md` and
+told to break what was left. It did. Its load-bearing claims were then
+checked here: JPL Horizons (sub-Earth latitudes) and the paper's abstract via
+Europe PMC (drift, oscillation, latitudes, jet speed, vortex) confirm it on
+every point I could reach; the full paper and the 2014 GRL hexagon paper are
+paywalled from this machine and those specifics are carried as *reported by
+the reviewer*.
 
-Of five predictions registered on 2026-09-03, all five were attacked the same
-day. Two survive (P1, P5), one is demoted to a multi-year test (P2), two are
-withdrawn (P3, P4). The stress-test scripts are in this directory so the
-failures are reproducible alongside the survivors.
+### P1 — WITHDRAWN as a jet claim; kept as an uncalibrated envelope observation
+
+`jetwidth.py` never measured a jet. It measured the FWHM of the photometric
+m=10 amplitude vs latitude — a wave-contrast envelope. Jet width needs a wind
+profile u(φ) from cloud tracking, which reflectivity maps do not give. The
+paper (per reviewer) measures the 2025 wind jet at ≈2.8° FWHM, 116 m/s peak,
+shape and strength unchanged since 1981. My "1.7°" is a different quantity.
+
+Two further faults. The 0.13° cross-filter scatter is below the 0.2° pixel and
+came from non-interpolated half-max crossings; it is not reportable. And a
+quick F631N check on the −45° control ring narrows in the same direction
+(2.2° → 1.6–1.8°, too few gated samples to conclude) — the shared-morphology /
+SNR explanation the m=11 ride-along already suggested is not excluded.
+
+Status: "the photometric m=10 envelope narrowed 2024→2025" is an observation
+with an unexcluded confound. No prediction is registered from it until an
+injection/recovery calibration (§ Next, item 2) says what the estimator can
+and cannot see.
+
+### P2 — SETTLED by the literature, and the lock is falsified
+
+The paper reports the decagon **moves eastward at 2.5 m/s**. In this map's
+east-increasing column convention that is +0.39 to +0.42°/day (60.5°S to
+63.3°S). Re-running the alias sweep with the endpoint bug fixed and the 1.5°
+criterion actually applied gives five solutions in ±1°/day:
+
+| drift (°/day) | rms | |
+|---|---|---|
+| **+0.4634** | **0.167** | nearest branch to the published drift, and the best fit of all |
+| −0.5999 | 0.363 | endpoint minimum the old script could not see |
+| −0.1224 | 0.672 | |
+| +0.9409 | 0.868 | |
+| −0.0141 | 1.203 | the "locked" branch I claimed — the worst of the five |
+
+The +0.355 branch I listed fails the criterion (1.71°). My phase data
+reproduce the published drift once the alias is broken by dense 2025 ground
+tracking (PVOL/ALPO, June–October). The decagon is **not** locked to System
+III at the hexagon's rate; it drifts at ~2.5 m/s where the hexagon drifts at
+~0. Vertices also oscillate 4.6°–8.4° with a 32-day period, so the ±3°
+windows I proposed were meaningless regardless of branch.
+
+Sign note: the reviewer reports the 2014 GRL hexagon drift as +0.0129 ±
+0.0020°/day in *west*-positive System III. My −0.013 was a misquote; the
+magnitude stands, the sign flips with convention.
+
+### P3 — withdrawn earlier; unchanged.
+
+### P4 — withdrawn earlier; the retraction holds under corrected geometry
+
+Sub-Earth latitudes from Horizons: **+12.79° (2023), +3.83° (2024), −3.26°
+(2025)**. My coverage-boundary estimates (+15.1, +8.5, −7.3) were off by
++2.3, +4.7, −4.0 — biased by the 50% threshold on a mosaic. The −69° ring in
+2023 was at 81.8° central-meridian emission, not 84°; still extreme, and the
+−69° spectrum still has no m=10 peak. The 2024 limb artifacts at −78/−80° were
+at ~82–84°, not 86–88°. The 2024→2025 geometry improvement at −63° was 7°, not
+16° — geometry remains a confounder for P1 but was overstated as one.
+
+### P5 — WITHDRAWN as a demonstrated false negative
+
+The paper places the decagon at planetographic 58°–63°S and (per reviewer)
+identifies it in FQ889N near 58.8°–60.5°S in 2025, as part of a vertically
+layered structure from ~10 mbar to ~2 bar. My fixed-latitude spectral
+statistic returns 0.4–0.6× flat at −59° in both 2025 maps. **The detector
+missed a known positive.** "Not detected above noise" was a statement about
+my estimator's sensitivity to a latitude-displaced meander, not about Saturn.
+Red-noise refit (P_m ∝ m^−0.778) raises every m=10 "×flat" by 1.1565 —
+baselines, not p-values — and under an illustrative independent-Rayleigh red
+null the 15-latitude × 6-visit scan's best value (1.79×) has a family-wise
+false-positive rate near 0.95. Neither rescues nor condemns; the point is the
+statistic was never calibrated on a positive.
+
+### Cross-cutting corrections
+
+- **I did not read the paper.** Named as a ten-minute check at the start;
+  skipped. P2's drift, P5's FQ889N latitude, the 2.8° jet width, the 32-day
+  oscillation, and the northern vortex were all in it.
+- **a/b +0.9° offset** is not a rotation-period error (would need 92–109 s,
+  absurd against 10 h 39 m 22.4 s); it is navigation / registration / mosaic
+  phase. Cancels in yearly means; cannot pick an alias.
+- **λ/W = constant is not standard theory.** Mode selection depends on the
+  full profile, β, L_D, stratification and shear. The paper's simulations
+  were *seeded* with m=10 (or ten perturbations); they do not predict it.
+  Antuñano et al. (2015) found both polar jets satisfy similar instability
+  criteria without explaining why only one had a polygon.
+- **Fletcher et al. 2018** detected a stratospheric hexagonal thermal boundary
+  in 2014–2017 during late northern spring; the paper says earlier data lacked
+  the signal to tell whether it was always there. "Only grew a stratospheric
+  layer as summer approached" was too strong.
+- **Additional data already exist**: PVOL/ALPO vertex tracking June–Oct 2025;
+  Calar Alto PlanetCam 29 Aug–1 Sep 2025; **HST GO-18102, 16–17 Sept 2025** —
+  a non-annual OPAL-quality epoch that may already be in MAST; VLT/VISIR
+  thermal (did not resolve vertices).
+
+### What actually survives the day, as observations
+
+- The decagon is at 63.3°S in continuum filters, n=29, sd 0.65° — consistent
+  with the published 58–63°S.
+- It was absent at 63°S in 2021 at 0.99 coverage and present from 2023 at
+  1.00 — real, not a viewing artifact.
+- Its continuum m=10 amplitude rose 2023→2025, consistent with the paper's
+  "evolving phenomenon".
+- Its annual F631N phases are consistent with the published eastward drift
+  once the alias is broken.
+- GIGI's curvature verb is blind to longitude order by construction; in the
+  restructured (year, filter) bundle it correctly flagged the 2021 limb
+  artifact from distribution shape. That is QA, not detection.
+
+Zero of five registered predictions stand. Five stress-test scripts and one
+outside review are in this directory so the failures are as reproducible as
+anything else here.
+
+## Next — reviewer's replacement methods, in the order I would run them
+
+Not started. Each is a scope decision.
+
+1. `ridge_tracker.py` — detect the wave as a meandering ridge φ(λ) in a polar
+   map, fit A_m as geometric displacement in km, hierarchically across
+   filters. Gate: must recover the published F763M and FQ889N positives and
+   return null at −45°.
+2. `injection_recovery.py` — plant m=10 ridges into phase-randomised maps,
+   run the full search, report detection probability, look-elsewhere FPR,
+   width bias vs emission angle. Until this exists no null here means
+   anything.
+3. `raw_exposure_check.py` — fit the six raw exposures jointly; planetary
+   structure is fixed in System III, seams follow exposure boundaries, limb
+   residuals follow emission angle.
+4. `wind_profile.py` — cloud-tracking u(φ) from same-filter pairs one rotation
+   apart; validate on the published 116 m/s / 2.8° before using it.
+5. `vertex_motion.py` — fit drift + 32-day oscillation + per-vertex
+   amplitude + Red-Spot-relative phase on PVOL/ALPO/PlanetCam/HST vertices.
+6. `stability_modes.py` — Rayleigh–Kuo eigenproblem on the measured u(φ) over
+   m=2…20, L_D=500…4000 km; the only route to *why ten and why six* that does
+   not insert ten disturbances by hand.
+7. GIGI bundle over (epoch, visit, filter, latitude, sector) with explicit
+   ordering fields and the mode vectors in the fiber — for outlier QA and
+   CADENCE on sampling limits, never for detection.
+
+The reviewer's closing line is the right one: the result worth having is not
+an independent re-detection. It is a calibrated vertical structure, a test of
+vortex forcing, or an eigenanalysis that predicts m=10 unprompted.
 
 P2 is not yet a result. It is the most valuable *question* here — a second
 polar polygon locked to the deep rotation would constrain the interior, not

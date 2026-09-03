@@ -122,3 +122,51 @@ falsify it had been run. Every one that survived had been run through that
 test first, or came back from it changed.
 
 That's the whole method. Nothing else in this folder matters as much.
+
+---
+
+## Addendum, same evening: the outside review
+
+We then handed the technical summary to an outside model with instructions
+to break whatever was left. It broke both survivors, and the way it did so
+is the real lesson of the day.
+
+**It read the paper. I hadn't.** At the very start I wrote that checking the
+*Science Advances* paper itself was "worth ten minutes before anything gets
+written," then spent the day not doing it. Here is what was in it:
+
+- **The decagon drifts.** It moves eastward at 2.5 metres per second. My
+  phase measurements couldn't tell that apart from "stationary" with one
+  photo a year — but when the ambiguity is broken by the paper's dense
+  ground-based tracking, the branch that matches is the *best* fit in my own
+  data, and the "locked like the hexagon" branch I'd chosen is the *worst*.
+  The answer was in my numbers. I picked the one I liked.
+- **The wave is in the stratosphere filter.** The paper finds it there, a
+  few degrees closer to the equator than in the deep filters. My detector
+  looked at one fixed latitude and reported "nothing." It missed a known
+  positive. So "not in the stratosphere" was a statement about my detector,
+  not about Saturn.
+- **"Jet width" wasn't jet width.** The paper measures the actual wind jet
+  at 2.8° across, unchanged since 1981. What I measured was the width of the
+  wave's *brightness pattern* — a different thing that happens to share the
+  word. It did narrow, but a control ring with no wave narrowed too, so
+  even that may be the images getting better rather than the wave changing.
+
+The viewing angles I'd derived from the images themselves were also off by
+two to five degrees against the JPL ephemeris, and the alias-checking script
+had a bug that hid one solution and let another through.
+
+So the honest count is **zero of five.** What survives are observations: the
+decagon is where they said, it wasn't there in 2021 and was from 2023, it
+strengthened, and its yearly positions agree with the published drift once
+you know which branch to take.
+
+The reviewer also handed back a list of replacement methods — a ridge
+tracker that follows the wave's latitude instead of fixing it, an
+injection-recovery calibration so a null actually means something, a real
+wind profile from cloud tracking, and a stability calculation that might
+predict ten sides without being told ten. Those are the next things to
+build, and they're listed at the end of the technical summary.
+
+The lesson stands, sharpened: the check you name and skip is the one that
+gets you.

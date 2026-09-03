@@ -1,14 +1,28 @@
-"""Jet width at both of Saturn's polygonal poles, and the test lambda/W = const.
+"""Photometric m-mode ENVELOPE width at both of Saturn's polygonal poles.
 
-The standard GFD picture says the wavenumber a jet selects is set by its
-circumference divided by some multiple of a characteristic width. If that is
-right, then measuring the wave's latitudinal envelope at each pole should give
+CORRECTION AFTER OUTSIDE REVIEW (2026-09-03). This script does NOT measure jet
+width, and its first docstring said it did. It measures the FWHM of the m=10
+(or m=6) brightness-amplitude envelope as a function of latitude - a
+wave-contrast width. Jet width requires a zonal wind profile u(phi) from cloud
+tracking, which reflectivity maps cannot give. The discovery paper measures
+the 2025 wind jet at about 2.8 deg FWHM and 116 m/s, unchanged in shape since
+1981; the "1.7 deg" this script returns for 2025 is a different quantity.
+
+Two further limits. Half-max crossings are taken on 0.2 deg rows without
+interpolation, so any cross-filter scatter below ~0.2 deg is quantisation and
+must not be reported. And the lambda/W = constant test this script was built
+to run is not standard theory - mode selection depends on the full profile,
+beta, L_D, stratification and shear - so its output should be read as a
+description of the envelope, not a test of anything.
+
+Original rationale, kept for the record: the idea was that if the wavenumber
+a jet selects were set by circumference over some multiple of a
+characteristic width, then
 
     lambda / W  =  the same constant, north and south
 
-where lambda = C(phi) / m is the along-jet wavelength. That is a real
-falsifiable test and it needs no pre-transition data - only both poles at once,
-which OPAL gives us in the same maps.
+with lambda = C(phi) / m. Even had W been a jet width, the south was not in
+steady state across the epochs used, so the test had no fixed quantity.
 
 Method: scan latitude finely, compute the UNNORMALISED fractional amplitude of
 the pole's dominant mode at each latitude, and take the full width at half

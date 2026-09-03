@@ -41,9 +41,11 @@ criteria, in [`PREDICTIONS.md`](PREDICTIONS.md).
   line added peak-latitude and phase scatter "collapsing together"; gated to
   reliable filters, tilt was flat and phase loosened (`stress_p3.py`). One
   observable, not three.
-- **two lobes in 2023, one by 2024**: a stronger m=10 at -69 deg and a weaker
-  one at -63 deg, separated by an amplitude node at -65; the poleward lobe
-  collapsed >10x within a year and the equatorward one won
+- **no second lobe.** An earlier version of this line reported a stronger m=10
+  at -69 deg in 2023 that "collapsed" by 2024. The spectrum at -69 is a smooth
+  1/f slope with m=10 below the flat level (`stress_p4.py`); it was red noise
+  in a limb ring at 84 deg emission angle, inflated by the fractional-amplitude
+  estimator's small denominator. The decagon was born at 63S as published.
 - FQ889N (strong methane, stratosphere): m=10 **not detected above noise** -
   its phase is random relative to the wave filters (rms 12.1 deg vs 10.4
   expected for noise). An earlier note here said "absent" and "ceiling"; that

@@ -104,28 +104,53 @@ second clause of P1. No separate P3 claim remains.
 
 ---
 
-## P4. The poleward lobe stays dead
+## P4. The poleward lobe — RETRACTED. There was no lobe.
 
-**Measured.** In Oct 2023 the m=10 signal had two lobes with an amplitude node
-at −65°: a strong one at −69/−70° (F631N amp 21×10⁻³) and a weaker one at
-−62/−63° (8×10⁻³). Their phases differ by ~5° (mod 36) and each is coherent
-across filters. By Aug 2024 the −69° lobe had collapsed > 10× (amp < 2×10⁻³)
-and gone phase-incoherent across filters; the −63° lobe grew and won.
+The first version of this file said the m=10 signal had two lobes in Oct 2023,
+a strong one at −69° and a weak one at −63°, and that the decagon was
+therefore *selected* at 63°S from a two-lobe precursor. `stress_p4.py` ran
+three geometric tests. The third killed it outright.
 
-This reframes the discovery. The decagon did not appear at 63°S; it was
-*selected* there from a two-lobe precursor. Whether the −69° lobe was a second
-wave or the poleward half of one meridionally-tilted wave is open — but either
-way, it lost.
+**Spectrum at −69°, 2023b F631N** (flat noise = 0.111):
 
-**Caveat, stated plainly.** In Oct 2023 the sub-Earth latitude was about +9°,
-so −69° sat near the limb at high emission angle. A limb artifact would be
-low-m (one bright edge), not a phase-coherent m=10 across five bandpasses — but
-I have not ruled out the OPAL limb-darkening correction imprinting structure.
-Confidence: medium.
+| m | 5 | 6 | 7 | 8 | 9 | **10** | 11 | 12 | 13 |
+|---|---|---|---|---|---|---|---|---|---|
+| −69° | 0.15 | 0.14 | 0.13 | 0.12 | 0.11 | **0.10** | 0.09 | 0.08 | 0.07 |
+| −63° | 0.09 | 0.10 | 0.08 | 0.05 | 0.07 | **0.29** | 0.23 | 0.08 | 0.01 |
 
-**Predict.** 2026 m=10 amplitude at −69° < 3×10⁻³ with cross-filter phase sd > 5°.
+At −69° the spectrum is a smooth 1/f slope; m=10 sits *below* the flat level.
+There is no wave there. At −63° m=10 stands 2.6× above flat. One ring has a
+decagon; the other has red noise.
 
-**Falsified if** a coherent m=10 (phase sd < 2°) reappears at −69°.
+**Why it fooled me.** Two compounding errors:
+
+1. The sub-Earth latitude in Oct 2023, derived from the maps' own coverage
+   boundary, was **+15°**, not the +9° I had assumed. That put −69° at **84°
+   emission angle** — essentially the limb — and even the real decagon at −63°
+   was at 78°.
+2. The fractional-amplitude estimator A = |z|/(n·x̄) divides by the ring's
+   mean brightness. In a dark limb ring every mode's fractional amplitude is
+   inflated. The "21×10⁻³ at −69°" was large because x̄ was small, not because
+   m=10 was.
+
+The emission-angle scan confirms the mechanism: in 2024 the same large,
+marginally coherent m=10 (18–29×10⁻³, phase sd 4–5°) appears at −78° and −80°,
+where the emission angle is 86–88°. It tracks the limb across years, not a
+fixed latitude. In 2025, with the south tilted toward Earth, it is gone from
+the cap entirely and only the −63° decagon remains.
+
+**A method error to carry forward.** I used cross-filter phase coherence as a
+fingerprint for "wave". It is not. It proves only that the same longitudinal
+structure is present in every filter, which any real image feature satisfies —
+haze banding, a limb-darkening residual, a seam. The wave test is the
+*spectrum*: a peak at one m standing well above the flat level. Every claim in
+this directory that rested on coherence alone has been re-checked against that
+criterion; P5 survives because its reference ring (−63°) has a spectral peak.
+
+**The decagon was born at 63°S, as reported.** Nothing in the 2023 maps
+supports a precursor elsewhere.
+
+**Predict.** Nothing. P4 is withdrawn.
 
 ---
 
@@ -160,15 +185,30 @@ hexagon's seasonal template, and P5 becomes the most interesting result here.
 - **The north cannot be tracked.** Its mode spectrum is flat noise by 2025 as
   the hemisphere goes into shadow. Every hexagon number here is 2018–19 or
   2023, not a trend.
-- **The 2023 epoch had poor southern geometry.** P4 inherits that.
+- **The 2023 epoch had worse southern geometry than I assumed.** Sub-Earth
+  latitude derived from the maps' coverage boundaries: +15.1° (2023), +8.5°
+  (2024), −7.3° (2025). I had guessed +9, +4, −2. Every emission-angle
+  statement in the first draft was too optimistic by about 6°.
+- **Fractional amplitude is unreliable in dark rings.** A = |z|/(n·x̄) inflates
+  every mode when x̄ is small — at the limb, and in the strong-methane band
+  FQ889N. Two "signals" in the first draft (the −69° lobe; FQ889N's "high"
+  amplitude) were this. The wave criterion is the spectral peak over the flat
+  level, never fractional amplitude alone, and never cross-filter phase
+  coherence alone.
 
 ## What would make this a paper
 
 P1 stands: the jet narrowed 2.9°→1.7° on contrast-matched filters, and its
 cross-filter width scatter fell beyond what SNR explains. P3 does not stand;
-it was one observable dressed as three. P4 is the story nobody has told, with
-its limb caveat carried and not yet stress-tested. P5 is a clean binary with
-a date.
+it was one observable dressed as three. P4 does not stand; the "second lobe"
+was red noise in a limb ring, and the decagon was born where the discovery
+team said it was. P5 is a clean binary with a date, and has not yet been
+stress-tested.
+
+Of five predictions registered on 2026-09-03, two survive a same-day attempt
+to break them, one is demoted to a multi-year test, two are withdrawn. The
+stress-test scripts are in this directory so the failures are reproducible
+alongside the survivors.
 
 P2 is not yet a result. It is the most valuable *question* here — a second
 polar polygon locked to the deep rotation would constrain the interior, not

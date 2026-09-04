@@ -22,8 +22,19 @@ ASCII in 2880-byte blocks — astropy is not required.
 
 Then `cargo run --release --example saturn_mode_bundle -- mode_amplitudes.json`.
 
-The five forward predictions these support are registered, with falsification
-criteria, in [`PREDICTIONS.md`](PREDICTIONS.md).
+Round 2, after the outside review retired the scripts above as detectors:
+
+| script | what it does | gate / calibration |
+|---|---|---|
+| `ridge_tracker.py`       | follows the band's latitude vs longitude; geometric A_m in degrees | recovers F763M and FQ889N positives; 0 false on 33 controls |
+| `injection_recovery.py`  | blocked-resampling null, planted meanders, removal test | FPR 3/96 at 2x; 100% completeness at A>=0.20 deg; unbiased |
+| `wind_profile.py`        | cloud-tracking u(phi) from a/b visit pairs | partial: jet at 108-137 m/s near -61; FWHM not recoverable from mosaics |
+| `stability_modes.py`     | barotropic beta-plane eigenanalysis, both poles, L_D sweep | parametric published jet; north -> m=6; south -> m=10-11 only for L_D<=1500 |
+| `ridge_amplitudes.json`  | ridge A5..A13 for the GIGI bundle example | K=0.040, no bimodality; QA |
+
+Round-1 predictions (all retired) are in [`PREDICTIONS.md`](PREDICTIONS.md);
+round-2 predictions, each with its calibration, in
+[`PREDICTIONS_ROUND2.md`](PREDICTIONS_ROUND2.md).
 
 ## Measured
 

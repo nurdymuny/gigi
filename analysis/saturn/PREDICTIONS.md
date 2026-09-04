@@ -13,6 +13,10 @@ Registered 2026-09-03. B. R. Davis, Davis Geometric.
 > 42685223), which I had flagged as a ten-minute check at the start of the day
 > and never read. The sections below are left as written so the record shows
 > what was claimed and when; the dispositions are at the end.
+>
+> **Round 2**, built from the reviewer's replacement methods and calibrated
+> by injection before registering anything, is in
+> [PREDICTIONS_ROUND2.md](PREDICTIONS_ROUND2.md).
 
 ---
 

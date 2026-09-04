@@ -1,0 +1,50 @@
+=== F763M deep   real map: A10 0.200 deg, P10/flat 3.54, peak m=10, phi0 34.0 ===
+  NULL   (24 realisations): false m=10 detections 0/24 = 0.00   max P10/flat 1.93
+  INJECT   A in   det A out/A in phase err rms  P10/flat
+          0.00  0.04        nan           nan      1.04
+          0.10  0.38       0.98           3.0      1.80
+          0.15  0.83       0.96           1.5      2.49
+          0.20  1.00       0.92           1.3      2.99
+          0.30  1.00       1.01           0.8      4.02
+          0.50  1.00       0.96           0.5      5.16
+          0.80  1.00       0.98           0.3      6.33
+          1.20  1.00       0.99           0.1      6.94
+  REMOVE  after subtracting recovered m=10 meander: P10/flat 0.00, peak m=11  ->  PASS (detection dies)
+=== FQ889N strat   real map: A10 0.178 deg, P10/flat 2.27, peak m=10, phi0 32.9 ===
+  NULL   (24 realisations): false m=10 detections 1/24 = 0.04   max P10/flat 2.11
+  INJECT   A in   det A out/A in phase err rms  P10/flat
+          0.00  0.04        nan           nan      0.98
+          0.10  0.21       1.06           2.5      1.61
+          0.15  0.54       0.91           1.9      1.97
+          0.20  0.75       0.89           1.5      2.29
+          0.30  1.00       0.92           0.9      3.28
+          0.50  1.00       0.94           0.7      4.61
+          0.80  1.00       0.96           0.4      5.59
+          1.20  1.00       1.00           0.2      6.26
+  REMOVE  after subtracting recovered m=10 meander: P10/flat 0.02, peak m=11  ->  PASS (detection dies)
+=== F467M blue   real map: A10 0.181 deg, P10/flat 2.77, peak m=10, phi0 33.0 ===
+  NULL   (24 realisations): false m=10 detections 1/24 = 0.04   max P10/flat 2.05
+  INJECT   A in   det A out/A in phase err rms  P10/flat
+          0.00  0.12        nan           nan      1.28
+          0.10  0.46       1.05           2.5      1.93
+          0.15  0.67       0.97           1.5      2.43
+          0.20  0.96       0.97           1.2      2.98
+          0.30  1.00       0.98           0.8      3.76
+          0.50  1.00       0.99           0.4      5.11
+          0.80  1.00       0.97           0.3      6.07
+          1.20  1.00       0.98           0.2      6.94
+  REMOVE  after subtracting recovered m=10 meander: P10/flat 0.00, peak m=11  ->  PASS (detection dies)
+=== F631N 2024   real map: A10 0.193 deg, P10/flat 3.23, peak m=10, phi0 5.6 ===
+  NULL   (24 realisations): false m=10 detections 1/24 = 0.04   max P10/flat 2.02
+  INJECT   A in   det A out/A in phase err rms  P10/flat
+          0.00  0.04        nan           nan      1.14
+          0.10  0.50       1.04           1.8      1.87
+          0.15  0.88       1.04           1.2      2.61
+          0.20  1.00       0.98           1.1      3.05
+          0.30  1.00       0.98           0.7      3.91
+          0.50  1.00       0.98           0.3      5.11
+          0.80  1.00       1.00           0.3      6.24
+          1.20  1.00       0.98           0.2      7.00
+  REMOVE  after subtracting recovered m=10 meander: P10/flat 0.00, peak m=11  ->  PASS (detection dies)
+
+[exited with code 0]

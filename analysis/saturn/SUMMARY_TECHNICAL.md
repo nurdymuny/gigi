@@ -297,3 +297,62 @@ vertex resolution); HST Cycle 33 OPAL GO-17995 next.
 **Next (not started; see `PREDICTIONS.md` § Next):** ridge tracker →
 injection/recovery → raw-exposure fit → wind profile → vertex-motion fit with
 vortex coupling → Rayleigh–Kuo eigenanalysis → GIGI bundle for QA/CADENCE.
+
+## 11. Round 2 — methods built, calibrated, and fired (same evening)
+
+Full ledger: `PREDICTIONS_ROUND2.md`. Outputs: `ridge_output.txt`,
+`injection_output.txt`, `wind_output.txt`, `stability_output.txt`, and the
+JSON files.
+
+**Ridge tracker** (`ridge_tracker.py`). Window −70…−52°. Per-column gain
+normalisation; template = zonal-mean latitude profile; per-column
+cross-correlation against the template over ±3° with parabolic sub-pixel
+refinement gives δφ(λ); A_m = 2|Σ δφ e^(−imλ)|/n in degrees; P_m over m=5–13
+vs 1/9. Gates: F763M 2025 3.54×; **FQ889N 2025 2.53/2.27× at ridge −58.7°**
+(the round-1 false negative, recovered at the paper's latitude); 33 control
+maps at −45°: max 1.94×, zero false m=10.
+
+**Injection/recovery** (`injection_recovery.py`). Null = blocked longitude
+resampling (9° blocks, one permutation for all rows). First version
+phase-randomised rows independently, which preserves per-row m=10 power;
+the tracker summed a random-walk meander and "fired" 25–54% — not a null.
+Corrected: FPR 3/96 at 2.0× (null max 1.93–2.11); completeness 50% at
+A≈0.10–0.15° deep / ≈0.15° FQ889N, 100% at ≥0.20° deep / ≥0.30° FQ889N;
+recovered/injected 0.89–1.06; phase rms 1.1–1.5° at 0.20°; removal of the
+recovered m=10 meander kills every real detection (0.00–0.02×).
+
+**Geometric amplitude is flat.** A₁₀ ≈ 0.20 ± 0.02° (~200 km) in every deep
+filter, 2023–2025. The round-1 "+47%" was albedo contrast at fixed latitude.
+
+**Wind profile** (`wind_profile.py`). a/b pairs (9.4–11.1 h ≈ 0.9 rotation),
+high-pass m<15 plus a comb notch at multiples of 10 (the stationary
+polygon's harmonics pulled the first run to zero shift in the wave band),
+8 overlapping Hanning-windowed longitude segments, circular cross-correlation
+with parabolic sub-pixel. Result: jet at 108–137 m/s near −61° in 3 of 6
+2024–25 pairs, errors 10–60 m/s, FWHM 1.0–4.0°. Partial recovery of the
+published 116 m/s / 60.5°S; unusable for U″. Raw frames required.
+
+**Stability** (`stability_modes.py`). Barotropic β-plane, Dirichlet ends at
+±9°, 0.1° grid, k = m/r(φ₀), K² = k² + L_D⁻², β = 2Ω cos φ₀ / M(φ₀),
+(U−c)(ψ″−K²ψ) + (β−U″)ψ = 0 → [diag(U)L + diag(q)]ψ = cLψ, growth = k·Im(c).
+First run had the PV term with the wrong sign (growth ~0.002/day); fixed.
+Second run thrashed BLAS threads on 180×180 matrices (6.5 cores, 40 min,
+15% done); pinned to one thread, 60 sensitivity draws.
+
+South (116 m/s, 2.8°, −60.5°): fastest m=17/17/16/15/14 for L_D = ∞/4000/
+3000/2000/1500 km (0.96→0.38 /day); L_D=1000: m=5 at 0.02/day; ≤700 stable.
+Sensitivity mode at L_D=1500: **m=11**; at 1000: m=11 (m=10 18%).
+North (120 m/s, 2.8°, +77.5°): fastest m=7/7/7/6/6 for L_D = ∞/4000/3000/
+2000/1500 (0.97→0.32 /day); ≤1000 stable. Sensitivity mode **m=6** at
+L_D=1500–3000 (35–42%). Width sweep at 77.5°N: FWHM 2.0°→m=10, 2.4→8,
+2.8→7, 3.2→6, 3.6→5–6, 4.0→5. r_south/r_north = 2.23; β_north = 0.44 β_south.
+
+**GIGI over ridge amplitudes** (`ridge_amplitudes.json` →
+`saturn_mode_bundle`): 31 sections, K=0.040; m=10 mean 0.189°, var/range²
+0.026 (tight cluster + outlier); no bimodality. QA only.
+
+**Predictions registered:** P-R2-1 A₁₀(2026) = 0.20 ± 0.05°; P-R2-2 FQ889N
+P₁₀/flat ≥ 2.0 in ≥1 visit; P-R2-3 GO-18102 (2025-09-16) ridge phase 6.1°
+(published branch) vs 33.2° (locked), ±6°, conditional on a raw-frame
+pipeline; P-R2-4 northern jet FWHM 2.6–3.4°; P-R2-5 L_D ≤ 1500 km at the
+wave level or the decagon is forced.

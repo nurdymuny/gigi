@@ -170,3 +170,55 @@ build, and they're listed at the end of the technical summary.
 
 The lesson stands, sharpened: the check you name and skip is the one that
 gets you.
+
+---
+
+## Round 2, same night: building the reviewer's methods
+
+Four of the reviewer's seven replacement methods were built and run the
+same evening. Two more need data that isn't on this machine.
+
+**The ridge tracker works, and it sees what the old detector couldn't.**
+Instead of reading brightness along one fixed latitude, it follows the band
+itself — how far north or south it wanders at each longitude. It recovers
+the decagon in the deep filters *and* in the stratosphere filter, at the
+latitude the paper gives, with zero false alarms on 33 control maps. Then it
+was calibrated by planting fake waves of known size in scrambled real maps:
+it recovers them unbiased, sees anything wider than about 0.2° of wander with
+certainty, and fires by mistake about 3% of the time. It had one bug — the
+first version of the scramble wasn't actually scrambling the thing it needed
+to — and that got fixed before any number went in the ledger.
+
+**What it measured that nobody had a number for:** the decagon's meander is
+about **200 km** peak — and it has been 200 km since 2023. The wave didn't get
+bigger. It got *darker and brighter at its corners*. Same wave, more contrast.
+
+**The wind profile half-worked.** Cloud tracking between the two same-day
+Hubble visits finds the jet at roughly the right speed and place, but the
+processed maps don't carry enough small detail to pin its width. That needs
+the raw frames.
+
+**The stability calculation is the one that speaks to "why."** Take the
+published jet — 116 m/s, 2.8° wide — and ask which wavenumber a free
+instability of that jet grows fastest. The same calculation for the north,
+with the same width, picks **six**. The south picks **ten or eleven only if
+the atmosphere's deformation radius is about 1000–1500 km**; for larger
+values it picks fifteen. So one set of physics gets the hexagon right and
+the decagon to within one — but only in a narrow window, on a growth curve
+so flat it barely chooses at all. That's consistent with the discovery
+team's own suspicion that the decagon may be *forced* by a nearby dark
+vortex rather than growing on its own.
+
+The calculation had a sign error on its first run that made every jet look
+stable for years. Caught by the answer being physically impossible, fixed,
+rerun.
+
+**Five new predictions** are registered in `PREDICTIONS_ROUND2.md`. The two
+firm ones: the meander stays at 0.20 ± 0.05° in 2026, and the stratospheric
+signal persists. Two are model claims other people can already check
+against measured jet widths and deformation radii. One waits on a Hubble
+program from last September that would split the drift question in a
+single frame.
+
+Zero of five went into round 1 and survived. Five went into round 2 with
+their calibration attached. That is the difference the review made.

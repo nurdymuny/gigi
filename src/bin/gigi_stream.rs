@@ -12746,14 +12746,38 @@ async fn admin_snapshot(State(state): State<Arc<StreamState>>) -> impl IntoRespo
     .await;
 
     match snapshot {
-        Ok(Ok(report)) if report.timed_out_bundles.is_empty() => (
-            StatusCode::OK,
-            Json(serde_json::json!({
+        Ok(Ok(report)) if report.timed_out_bundles.is_empty() => {
+            // A snapshot whose header drops declared columns is the 2026-09-13
+            // Halcyon failure, and it was silent for six weeks. Surface it on
+            // the response that reports the snapshot as having succeeded --
+            // because by every other measure it did.
+            let incomplete: Vec<serde_json::Value> = report
+                .header_incomplete
+                .iter()
+                .map(|(b, missing)| {
+                    serde_json::json!({
+                        "bundle": b,
+                        "missing_count": missing.len(),
+                        "missing": missing.iter().take(16).collect::<Vec<_>>(),
+                    })
+                })
+                .collect();
+            let mut body = serde_json::json!({
                 "status": "ok",
                 "total_records_snapshotted": report.total_records_written,
                 "message": "DHOOM snapshots written; WAL compacted to schema-only."
-            })),
-        ),
+            });
+            if !incomplete.is_empty() {
+                body["header_incomplete"] = serde_json::json!(incomplete);
+                body["warning"] = serde_json::json!(format!(
+                    "{} bundle(s) wrote a DHOOM header that does not name every declared field. \
+                     Those fields read back ABSENT while /schema still advertises them, and a \
+                     re-snapshot preserves the loss.",
+                    incomplete.len()
+                ));
+            }
+            (StatusCode::OK, Json(body))
+        }
         Ok(Ok(report)) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({

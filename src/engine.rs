@@ -238,6 +238,15 @@ pub struct SnapshotReport {
     pub bundles: Vec<SnapshotBundleOutcome>,
     pub total_records_written: usize,
     pub timed_out_bundles: Vec<String>,
+    /// Bundles whose written DHOOM header did not name every field the schema
+    /// declares, as `(bundle, missing_field_names)`.
+    ///
+    /// A short header is the 2026-09-13 Halcyon failure: the reader is
+    /// faithful to the header, so every column it omits is a declared field
+    /// that reads back ABSENT while `/schema` still advertises it. The damage
+    /// then survives every later snapshot, because a re-snapshot reads from
+    /// the base that already lost the columns.
+    pub header_incomplete: Vec<(String, Vec<String>)>,
 }
 
 // ── Feature #9: Pub/Sub with Sheaf Triggers (Definitions 9.1–9.3, Theorem 9.1) ──
@@ -2823,6 +2832,7 @@ impl Engine {
                 bundles: Vec::new(),
                 total_records_written: before,
                 timed_out_bundles: Vec::new(),
+                header_incomplete: Vec::new(),
             });
         }
         self.snapshot_with_chunk_size_report(
@@ -2949,6 +2959,7 @@ impl Engine {
             bundles: Vec::new(),
             total_records_written: 0,
             timed_out_bundles: Vec::new(),
+            header_incomplete: Vec::new(),
         };
 
         for (name, store) in &self.bundles {
@@ -2975,6 +2986,9 @@ impl Engine {
 
             let start = std::time::Instant::now();
             let mut timed_out = false;
+            // Cloned before the closure: the closure borrows `self`, and the
+            // post-write header verification below needs the schema after it.
+            let schema_for_check = self.schemas.get(name.as_str()).cloned();
             let inner = (|| -> io::Result<usize> {
                 // ── 2026-06-26 INCIDENT — high-dim sort bypass ────────────────────
                 // Identical motivation as the non-report variant below
@@ -3087,6 +3101,41 @@ impl Engine {
 
             match inner {
                 Ok(n) => {
+                    // Verify the header names every declared field BEFORE this
+                    // .tmp replaces the previous generation. Report, do not
+                    // refuse: a bundle whose base is already short would fail
+                    // this forever and wedge all future snapshots, stranding
+                    // new records in the WAL.
+                    if let Some(ref sch) = schema_for_check {
+                        match Self::header_missing_fields(&tmp_path, sch) {
+                            Ok(missing) if !missing.is_empty() => {
+                                let shown: Vec<&str> =
+                                    missing.iter().take(8).map(|s| s.as_str()).collect();
+                                eprintln!(
+                                    "  WARNING: snapshot header for '{name}' names {} of {} \
+                                     declared fields. Missing: {}{}. These read back ABSENT \
+                                     while /schema still advertises them, and a re-snapshot \
+                                     preserves the loss.",
+                                    sch.base_fields.len() + sch.fiber_fields.len()
+                                        - missing.len(),
+                                    sch.base_fields.len() + sch.fiber_fields.len(),
+                                    shown.join(", "),
+                                    if missing.len() > shown.len() {
+                                        format!(", +{} more", missing.len() - shown.len())
+                                    } else {
+                                        String::new()
+                                    }
+                                );
+                                report
+                                    .header_incomplete
+                                    .push((name.clone(), missing));
+                            }
+                            Ok(_) => {}
+                            Err(e) => eprintln!(
+                                "  NOTE: could not verify snapshot header for '{name}': {e}"
+                            ),
+                        }
+                    }
                     Self::rotate_snapshot(&snapshots_dir, &snap_path, &tmp_path)?;
                     report.total_records_written += n;
                     report.bundles.push(SnapshotBundleOutcome {
@@ -3110,6 +3159,45 @@ impl Engine {
     }
 
     // ── CoW Snapshot (Feature #3) ─────────────────────────────────────────
+
+    /// Field names the schema declares but the written DHOOM header does not
+    /// name. Empty is the healthy case.
+    ///
+    /// Reads only the first line of the file. The header grammar is
+    /// `name{decl, decl, ...}:` where each decl is a field name optionally
+    /// followed by a modifier (`@start+step`, `|default`, `&`, `>`, `^`,
+    /// `#expr`), so the name is the leading run of identifier characters.
+    fn header_missing_fields(
+        path: &std::path::Path,
+        schema: &BundleSchema,
+    ) -> io::Result<Vec<String>> {
+        use std::io::BufRead;
+        let f = fs::File::open(path)?;
+        let mut line = String::new();
+        io::BufReader::new(f).read_line(&mut line)?;
+
+        let inner = match line.trim_end().trim_end_matches(':').split_once('{') {
+            Some((_, rest)) => rest.trim_end_matches('}'),
+            None => return Ok(Vec::new()),
+        };
+        let named: std::collections::HashSet<&str> = inner
+            .split(", ")
+            .map(|d| {
+                let end = d
+                    .find(|c: char| !(c.is_alphanumeric() || c == '_'))
+                    .unwrap_or(d.len());
+                &d[..end]
+            })
+            .collect();
+
+        Ok(schema
+            .base_fields
+            .iter()
+            .chain(schema.fiber_fields.iter())
+            .map(|f| f.name.clone())
+            .filter(|n| !named.contains(n.as_str()))
+            .collect())
+    }
 
     /// Clone all bundle data into owned vecs. The caller holds `&self` (read
     /// lock) only for the duration of this call. The returned data can then
@@ -3226,6 +3314,7 @@ impl Engine {
             bundles: Vec::with_capacity(bundles.len()),
             total_records_written: 0,
             timed_out_bundles: Vec::new(),
+            header_incomplete: Vec::new(),
         };
 
         let budget = per_bundle_timeout_secs.map(std::time::Duration::from_secs);

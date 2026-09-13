@@ -1417,6 +1417,35 @@ impl OverlayBundle {
 
 /// Enum dispatch for read-only bundle access.
 /// Returned by `Engine::bundle()`.
+/// Non-null coverage of one declared field over the sampled records.
+#[derive(Debug, Clone)]
+pub struct FieldCoverage {
+    pub field: String,
+    /// `"base"` or `"fiber"`.
+    pub role: &'static str,
+    /// Records in the sample carrying a present, non-`Null` value.
+    pub non_null: usize,
+    /// `non_null / sampled`. A LOWER BOUND on the bundle when
+    /// `complete_scan` is false.
+    pub coverage_in_sample: f64,
+}
+
+/// Result of [`BundleRef::field_coverage`].
+#[derive(Debug, Clone)]
+pub struct FieldCoverageReport {
+    pub records: usize,
+    pub sampled: usize,
+    /// True when every record was read, so a zero coverage is established
+    /// rather than merely unobserved.
+    pub complete_scan: bool,
+    pub fields_declared: usize,
+    pub fields_non_empty: usize,
+    /// Declared fields carrying no value in the sample. On a `complete_scan`
+    /// these are empty in the bundle; otherwise they are empty in the window.
+    pub fields_empty_in_sample: Vec<String>,
+    pub per_field: Vec<FieldCoverage>,
+}
+
 pub enum BundleRef<'a> {
     Heap(&'a BundleStore),
     Overlay(&'a OverlayBundle),
@@ -1483,6 +1512,90 @@ impl<'a> BundleRef<'a> {
         match self {
             BundleRef::Heap(s) => s.field_stats().clone(),
             BundleRef::Overlay(o) => o.field_stats(),
+        }
+    }
+
+    /// Per-field non-null coverage over a bounded sample of records.
+    ///
+    /// Motivated by the 2026-09-13 Halcyon report: `marcella_source_embeddings_bge_v2`
+    /// served 30,356 records whose entire 384-field vector space read back
+    /// `Null`, and `/health` reported `curvature 0.0, confidence 1.0` for weeks
+    /// because a bundle with no measurable variance is indistinguishable, at
+    /// that surface, from a bundle with no data in it. Coverage is the
+    /// distinguishing measurement: it asks whether a declared field carries a
+    /// value at all, before anything tries to compute over it.
+    ///
+    /// `max_sample == 0` scans every record. Otherwise the first `max_sample`
+    /// records are read and `complete_scan` is false — in which case a zero
+    /// coverage is a statement about the SAMPLE, not about the bundle. The
+    /// field names say so, deliberately: a field populated only beyond the
+    /// sample window would read as empty here, and reporting that as an
+    /// established zero would be the same class of mistake this check exists
+    /// to catch.
+    pub fn field_coverage(&self, max_sample: usize) -> FieldCoverageReport {
+        let schema = self.schema();
+        let declared: Vec<(String, &'static str)> = schema
+            .base_fields
+            .iter()
+            .map(|f| (f.name.clone(), "base"))
+            .chain(schema.fiber_fields.iter().map(|f| (f.name.clone(), "fiber")))
+            .collect();
+
+        let total = self.len();
+        let mut non_null: std::collections::HashMap<String, usize> =
+            declared.iter().map(|(n, _)| (n.clone(), 0usize)).collect();
+
+        let mut sampled = 0usize;
+        for rec in self.records() {
+            if max_sample > 0 && sampled >= max_sample {
+                break;
+            }
+            sampled += 1;
+            for (name, _) in &declared {
+                if matches!(rec.get(name), Some(v) if !matches!(v, Value::Null)) {
+                    if let Some(c) = non_null.get_mut(name) {
+                        *c += 1;
+                    }
+                }
+            }
+        }
+
+        let per_field: Vec<FieldCoverage> = declared
+            .iter()
+            .map(|(name, role)| {
+                let n = non_null.get(name).copied().unwrap_or(0);
+                FieldCoverage {
+                    field: name.clone(),
+                    role,
+                    non_null: n,
+                    coverage_in_sample: if sampled == 0 {
+                        0.0
+                    } else {
+                        n as f64 / sampled as f64
+                    },
+                }
+            })
+            .collect();
+
+        // Sorted so the list is deterministic and readable. Schema field order
+        // is not reliable here: a bundle created over HTTP has its `fields`
+        // object parsed into a HashMap, so declaration order is already lost
+        // before this sees it.
+        let mut empty: Vec<String> = per_field
+            .iter()
+            .filter(|f| f.non_null == 0)
+            .map(|f| f.field.clone())
+            .collect();
+        empty.sort();
+
+        FieldCoverageReport {
+            records: total,
+            sampled,
+            complete_scan: max_sample == 0 || sampled >= total,
+            fields_declared: declared.len(),
+            fields_non_empty: declared.len() - empty.len(),
+            fields_empty_in_sample: empty,
+            per_field,
         }
     }
 

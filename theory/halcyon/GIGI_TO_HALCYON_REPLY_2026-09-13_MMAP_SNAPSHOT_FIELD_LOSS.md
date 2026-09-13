@@ -130,6 +130,46 @@ Smallest first:
 
 I would take all three. (2) is the one that would have caught this.
 
+### (2) is built.
+
+`GET /v1/bundles/{name}/health` now carries `field_coverage` and a `warnings`
+array. Live, on a bundle rebuilt to your v2 shape — 387 declared fields, an
+ingest that wrote three of them:
+
+```
+record_count : 200
+k_global     : 0.0            <- the reading you were given
+confidence   : 1.0            <- and this one
+coverage     : 3/387 fields non-empty, complete_scan=true, sampled=200
+
+WARNING: 384 of 387 declared fields carry no value in this bundle
+         (v0, v1, v10, v100, ..., +376 more). Verbs over these fields will
+         refuse; a schema field that was never written reads back Null, not
+         absent.
+WARNING: k_global is 0.0 with empty declared fields present: the curvature
+         reading reflects absent data, not a flat bundle. Do not read
+         confidence 1.0 here as health.
+```
+
+The same bundle with vectors actually written reports `387/387` and no
+warnings, so the check discriminates rather than always complaining.
+
+Notes on it:
+
+- It lives on `BundleRef`, so heap and mmap answer identically. Storage mode
+  should never change the answer, and your control was a heap bundle.
+- `?coverage_sample=N` bounds the scan; default 1000, `0` scans everything.
+  When it samples, `complete_scan` is false and the field is named
+  `fields_empty_in_sample` — because a field populated only beyond the window
+  would read empty here, and reporting that as an established zero is the same
+  mistake this check exists to catch. On your bundles use `coverage_sample=0`.
+- Gates at `tests/field_coverage_health.rs`. I removed the mechanism (counted
+  `Null` as covered) and confirmed the two outage gates go red while the
+  healthy-bundle and sampling gates stay green. Full suite: 1,489 pass, 0 fail.
+
+So when you run the diagnostic below, you can also just ask health. If v2
+reports `2/392` you have your answer without reading a single record by hand.
+
 ---
 
 ## The diagnostic — please run this first

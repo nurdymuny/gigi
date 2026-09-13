@@ -9958,6 +9958,7 @@ async fn bundle_reeb_flow(
 async fn bundle_health(
     State(state): State<Arc<StreamState>>,
     Path(name): Path<String>,
+    axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let engine = state.engine_read();
     let store = engine.bundle(&name).ok_or_else(|| {
@@ -9999,6 +10000,71 @@ async fn bundle_health(
     let anomaly_rate =
         store.compute_anomalies(2.0, None, usize::MAX).len() as f64 / record_count.max(1) as f64;
 
+    // ── Field coverage (2026-09-13 Halcyon) ────────────────────────────
+    //
+    // The gap this closes: v2 served 30,356 records whose entire 384-field
+    // vector space read back Null, and this endpoint reported
+    // `k_global 0.0, confidence 1.0` for weeks. Both numbers were correct.
+    // A bundle with no variance to measure and a bundle with nothing IN it
+    // are indistinguishable by curvature alone — so curvature was never the
+    // measurement that could have caught it. Coverage is.
+    //
+    // `?coverage_sample=N` bounds the scan (default 1000); `0` scans all.
+    let coverage_sample = params
+        .get("coverage_sample")
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(1000);
+    let cov = store.field_coverage(coverage_sample);
+
+    let cov_fields: Vec<serde_json::Value> = cov
+        .per_field
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "field": f.field,
+                "role": f.role,
+                "non_null": f.non_null,
+                "coverage_in_sample": f.coverage_in_sample,
+            })
+        })
+        .collect();
+
+    // Surface the failure as a warning rather than leaving it to be inferred
+    // from a number that reads as healthy. Wording distinguishes an
+    // established zero (complete scan) from an unobserved one (sampled).
+    let mut warnings: Vec<String> = Vec::new();
+    if !cov.fields_empty_in_sample.is_empty() {
+        let shown: Vec<&str> = cov
+            .fields_empty_in_sample
+            .iter()
+            .take(8)
+            .map(|s| s.as_str())
+            .collect();
+        let more = cov.fields_empty_in_sample.len().saturating_sub(shown.len());
+        warnings.push(format!(
+            "{} of {} declared fields carry no value{} ({}{}). Verbs over these fields will refuse; a schema field that was never written reads back Null, not absent.",
+            cov.fields_empty_in_sample.len(),
+            cov.fields_declared,
+            if cov.complete_scan {
+                " in this bundle".to_string()
+            } else {
+                format!(" in the first {} of {} records", cov.sampled, cov.records)
+            },
+            shown.join(", "),
+            if more > 0 {
+                format!(", +{more} more")
+            } else {
+                String::new()
+            }
+        ));
+    }
+    if record_count > 0 && k_global == 0.0 && cov.fields_non_empty < cov.fields_declared {
+        warnings.push(
+            "k_global is 0.0 with empty declared fields present: the curvature reading reflects absent data, not a flat bundle. Do not read confidence 1.0 here as health."
+                .to_string(),
+        );
+    }
+
     Ok(Json(serde_json::json!({
         "bundle": name,
         "record_count": record_count,
@@ -10010,6 +10076,16 @@ async fn bundle_health(
         "confidence": curvature::confidence(k_global),
         "anomaly_rate_2s": anomaly_rate,
         "per_field": per_field,
+        "field_coverage": {
+            "records": cov.records,
+            "sampled": cov.sampled,
+            "complete_scan": cov.complete_scan,
+            "fields_declared": cov.fields_declared,
+            "fields_non_empty": cov.fields_non_empty,
+            "fields_empty_in_sample": cov.fields_empty_in_sample,
+            "per_field": cov_fields,
+        },
+        "warnings": warnings,
     })))
 }
 

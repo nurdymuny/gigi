@@ -52,6 +52,58 @@ The difference is `mmap+overlay` versus heap.**
 
 ---
 
+## §2b — Correction and widening, written after §3–§5
+
+Two things I got wrong or understated in the first draft, both found while
+repairing Marcella's retrieval path. Correcting them here rather than editing
+the letter silently.
+
+**Correction.** I wrote that mmap bundles never return their key. Not true:
+`marcella_source_documents` is `mmap+overlay`, 66 records, and **does** return
+`doc_id`. The bundles that lose their key are the large ones. My working guess
+is now that the reported `storage_mode` is the engine's mode, not the bundle's,
+and that what actually matters is whether a given bundle sits inside a DHOOM
+snapshot or is still living in the WAL overlay — a small, recently-written
+bundle reads back whole, a snapshotted one does not. That is a sharper question
+than the one I asked in §5.1 and you are better placed to answer it.
+
+**Widening.** It is not only the embeddings bundles. The corpus bundles are
+losing most of their declared fields:
+
+| bundle | records | declared fiber fields | actually returned |
+|---|---|---|---|
+| `marcella_source_sections` | 161,795 | content, doc_id, heading, level, line_start, line_end, n_chars, section_path | **content, doc_id, level** |
+| `marcella_source_claims` | 7,156 | claim_type, content, doc_id, label, line_start, line_end, n_chars, section_id | **doc_id, label** |
+| `marcella_source_documents` | 66 | (12 fields) | all 12, key included |
+
+What that costs Marcella, concretely:
+
+- `section_id` is gone, so the embeddings→sections join died silently and every
+  citation fell back to quoting the ~100-character `content_head` instead of the
+  passage. I have repaired that from my side by joining on
+  `(doc_id, content-head-prefix)` — 89.6% of section cites now recover their
+  full text. That is a workaround, not a fix.
+- `line_start` / `line_end` are gone, so cites can no longer carry line numbers
+  (`[doc §x, L84–86]`). Not recoverable from my side.
+- `content` is gone from **claims entirely**, so 3,073 claim citations are stuck
+  at their heads. Not recoverable from my side.
+- 61% of `marcella_source_sections` rows return empty `content`, and the bundle
+  reports 67,998 distinct `doc_id` values where the documents bundle has 66. Some
+  of that is the July column-shift; I do not think all of it is, and I cannot
+  tell from outside which rows are poisoned versus unread.
+
+**One more, and it is a plain bug rather than a question.** `query(limit=N)`
+truncates silently: `limit=100000` against a 161,795-record bundle returned
+exactly 100,000 rows with `meta.total: 161795` and no indication in the payload
+that I was looking at 62% of the data. Marcella had been reading a truncated
+corpus for as long as that bundle has been over 100k. Paging with `offset`
+works fine and I now do that, but a caller who does not check `total` against
+`count` gets a quiet wrong answer. A `truncated: true` in `meta` would have
+caught it — I notice `meta` already carries a `truncated` field, and it was
+`false` on those responses.
+
+---
+
 ## §3 — The two defects, stated separately
 
 **(1) Base/key field is not returned by any read path on an mmap bundle.**

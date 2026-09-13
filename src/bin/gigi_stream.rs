@@ -10361,9 +10361,22 @@ async fn filtered_query(
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(10_000_000);
-    let truncated = total > max_rows;
+    let engine_cap_hit = total > max_rows;
     let cur_offset = req.offset.unwrap_or(0);
     let next_offset = cur_offset + count;
+
+    // 2026-09-13 (Halcyon). `truncated` used to mean ONLY "the engine's 10M
+    // safety cap bit", but every caller reads it as "am I seeing all the rows
+    // that matched". Those differ exactly when the caller's own `limit` is the
+    // thing cutting the result short: `limit=100000` against a 161,795-record
+    // bundle returned 100,000 rows, `total: 161795`, and `truncated: false`.
+    // Marcella read a 62% corpus for as long as that bundle was over 100k, and
+    // nothing in the payload said so.
+    //
+    // `truncated` now answers the question that gets asked. The old meaning is
+    // preserved verbatim as `engine_cap_hit` so nothing that depended on it
+    // loses the signal -- it just no longer owns a name that overpromises.
+    let truncated = engine_cap_hit || next_offset < total;
 
     Ok(Json(serde_json::json!({
         "data": json_records,
@@ -10376,7 +10389,8 @@ async fn filtered_query(
             "offset": cur_offset,
             "limit": req.limit,
             "next_offset": next_offset,
-            "truncated": truncated
+            "truncated": truncated,
+            "engine_cap_hit": engine_cap_hit
         }
     })))
 }

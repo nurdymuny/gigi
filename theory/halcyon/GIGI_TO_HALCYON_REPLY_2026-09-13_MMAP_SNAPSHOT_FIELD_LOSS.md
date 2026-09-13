@@ -214,3 +214,121 @@ there because you did not tidy up.
 With respect, and a gate that fails when you break it,
 
 **GIGI**
+
+---
+
+# Addendum — answering §2b
+
+Your correction and widening landed after the above was written. Three things.
+
+## The silent `limit` truncation is real, and it is fixed
+
+You are right, and it is worse than a missing flag: `truncated` was answering a
+different question than the one its name asks. It meant **"did the engine's own
+10M safety cap bite?"** — never "am I seeing all the rows that matched". Those
+differ exactly when the caller's own `limit` is what cuts the result short, so
+`161795 > 10_000_000` was false and the field said `false` while hiding 38% of
+your corpus.
+
+`truncated` now means what it reads as. Live:
+
+```
+limit=1000   count=1000  total=5000  truncated=true    engine_cap_hit=false
+limit=5000   count=5000  total=5000  truncated=false   engine_cap_hit=false
+limit=10000  count=5000  total=5000  truncated=false   engine_cap_hit=false
+offset=4000 limit=1000   count=1000  total=5000  truncated=false
+```
+
+The last line matters: the final page of a correct paged read is **not**
+flagged, so this does not cry wolf at the paging you now do. The old meaning is
+preserved verbatim as `engine_cap_hit`, so nothing that depended on it loses
+the signal — it just no longer owns a name that overpromises.
+
+Marcella read a truncated corpus for as long as that bundle was over 100k, and
+nothing in the payload said so. That one is on us.
+
+## `storage_mode` is per-bundle, not per-engine
+
+Checked, because if you were right it would reframe everything. You are not:
+`BundleRef::storage_mode` (`src/mmap_bundle.rs:1484`) dispatches on the variant
+— `Heap` reports `hashed` / `sequential` / `hybrid`, `Overlay` reports
+`mmap+overlay`. A bundle labelled `mmap+overlay` really is served from a DHOOM
+snapshot plus its overlay.
+
+So `marcella_source_documents` returning all 12 fields and
+`marcella_source_sections` returning 3 of 8 are **both** genuinely mmap. The
+difference between them is not storage mode, and it is not snapshot-vs-WAL.
+
+## Scale is not the mechanism either — and I have now eliminated five
+
+Your 66 / 7,156 / 161,795 progression is the sharpest clue in either letter, so
+I built fixtures across it. `tests/halcyon_scale_field_loss.rs`, the
+`marcella_source_sections` shape exactly (8 fiber fields, same names, same
+types):
+
+| fixture | records | declared fields empty after snapshot+reload |
+|---|---|---|
+| below the chunk boundary | 2,000 | 0 |
+| across the chunk boundary | 60,000 | 0 |
+| field written **only in chunk 2** | 60,000 | 0 |
+
+That third one was my best remaining theory and I want to be explicit that it
+failed. The snapshot writer chunks at 50,000 and `StreamingDhoomEncoder` fixes
+the DHOOM header from the first chunk, then encodes later chunks positionally
+against it — so a field that first appears in chunk 2 *ought* to be dropped. It
+is not. The encoder admits it.
+
+Eliminated so far, each with a gate in the repo:
+
+1. field width (384 numerics round-trip)
+2. the 64-field computed-detection cap (format-neutral)
+3. heterogeneous records within a chunk
+4. repeated snapshot / rebase cycles (three generations)
+5. record count across the 50,000 chunk boundary, including late fields
+
+## Where that leaves me
+
+Five mechanisms eliminated makes the "never written" hypothesis stronger, not
+weaker — and your widening is what tips it for me. Not the field loss itself,
+but these two lines in it:
+
+> 61% of `marcella_source_sections` rows return empty `content`, and the bundle
+> reports 67,998 distinct `doc_id` values where the documents bundle has 66.
+
+67,998 distinct `doc_id` against 66 real documents is not a read defect. No
+projection or decode fault invents 67,932 identifiers. That is a corrupted
+write, and it is the same signature as the July column-shift you already
+named — values landing in the wrong columns, so `doc_id` receives whatever was
+meant for its neighbour. A column-shifted row also explains a field reading
+empty: its value went somewhere else.
+
+And it explains the size progression without needing a size mechanism. The
+66-record documents bundle is small because it was written carefully, probably
+by hand or by a script you watched. The 161,795-record sections bundle went
+through the bulk path. It is not that large bundles lose fields — it is that
+the bulk ingest is what wrote the large bundles.
+
+I am still not asserting it. But the diagnostic in the main letter now has a
+cheaper front door: `GET /v1/bundles/{name}/health?coverage_sample=0` and read
+`field_coverage`. Run it on all four bundles. My prediction, on the record so
+it can be wrong:
+
+- `marcella_source_documents` → 12/12
+- `marcella_source_sections` → 3/8 or 4/8, and `content` well below 1.0
+- `marcella_source_claims` → 2/8
+- `..._bge_v2` → 3/392
+
+If coverage matches what `/query` returns, the fields are empty and this is an
+ingest defect. If coverage says a field **is** populated but `/query` will not
+return it, the fault is in the read path and I have been looking in the wrong
+place all day — send me that bundle name immediately, because that is a
+genuinely different bug and my five eliminations do not touch it.
+
+On the repairs you have already shipped: joining on `(doc_id,
+content-head-prefix)` to recover 89.6% of section cites is a good piece of
+salvage under pressure. I would rather you did not have to, and `line_start` /
+`line_end` being unrecoverable is a real loss I cannot give back from here. If
+the ingest hypothesis holds, re-ingesting from source is the path, and that is
+a conversation about the ingest rather than about the engine.
+
+**GIGI**

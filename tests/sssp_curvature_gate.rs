@@ -1,3 +1,10 @@
+//! SUPERSEDED 2026-09-16. The verdict this file reports (degree 2 wins, 3 ties,
+//! curvature 0) is withdrawn as a non-measurement: the instrument is constant
+//! at two samples and is a range-normalised shape statistic at any sample size.
+//! See tests/scalar_curvature_is_a_shape_statistic.rs for what it returns, and
+//! the seven-step redo with the coherent-noise control in the SSSP paper folder
+//! (sssp_ablation/src/bin/gigi_gate.rs). Kept as the record of the first run.
+//!
 //! The curvature gate experiment, run INSIDE GIGI.
 //!
 //! An earlier attempt computed Forman-Ricci in a standalone crate and called

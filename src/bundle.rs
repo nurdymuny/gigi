@@ -3159,6 +3159,182 @@ impl BundleStore {
         }
     }
 
+    /// The base points of every stored record, in the order `records()` yields
+    /// them. Factored out so a column read cannot drift from a record read: both
+    /// walk this sequence.
+    fn record_order(&self) -> Vec<BasePoint> {
+        match &self.storage {
+            BaseStorage::Hashed { sections, .. } => {
+                let mut bps: Vec<BasePoint> = sections.keys().copied().collect();
+                bps.sort_unstable();
+                bps
+            }
+            BaseStorage::Sequential { .. } => self.seq_bp_list.clone(),
+            BaseStorage::Hybrid {
+                overflow_sections, ..
+            } => {
+                let mut bps: Vec<BasePoint> = self.seq_bp_list.clone();
+                let mut overflow: Vec<BasePoint> = overflow_sections.keys().copied().collect();
+                overflow.sort_unstable();
+                bps.extend(overflow);
+                bps
+            }
+        }
+    }
+
+    /// The stored (fiber, base) slices for one base point, without building a
+    /// `Record`. Mirrors the lookup in `reconstruct`.
+    fn row_slices(&self, bp: BasePoint) -> Option<(&[Value], &[Value])> {
+        match &self.storage {
+            BaseStorage::Hashed {
+                sections,
+                base_values,
+            } => Some((sections.get(&bp)?.as_slice(), base_values.get(&bp)?.as_slice())),
+            BaseStorage::Sequential { .. } | BaseStorage::Hybrid { .. } => {
+                if let Some(&idx) = self.bp_to_idx.get(&bp) {
+                    self.storage.get_by_index(idx)
+                } else {
+                    match &self.storage {
+                        BaseStorage::Hybrid {
+                            overflow_sections,
+                            overflow_base,
+                            ..
+                        } => Some((
+                            overflow_sections.get(&bp)?.as_slice(),
+                            overflow_base.get(&bp)?.as_slice(),
+                        )),
+                        _ => None,
+                    }
+                }
+            }
+        }
+    }
+
+    /// One field's values in record order, without materialising a `Record` per
+    /// row.
+    ///
+    /// `records()` rebuilds a `HashMap<String, Value>` for every stored record,
+    /// which dominates any scan that wants a single field: a derived pass over an
+    /// edge bundle spends its time allocating and hashing field names it already
+    /// knows. A column read resolves the field's slot once and walks the stored
+    /// rows.
+    ///
+    /// The order is exactly `records()`' order, and is the same for every field
+    /// of a bundle, so two columns of the same bundle can be zipped row-wise.
+    ///
+    /// Returns `None` if the field is not in the schema. Rows that do not carry
+    /// the field yield `Value::Null` rather than being skipped, because dropping
+    /// them would break alignment between columns.
+    ///
+    /// Fiber fields of a bundle with geometric encryption are decrypted per row,
+    /// so the saving there is smaller than on a plaintext bundle; base fields are
+    /// never encrypted and are unaffected.
+    pub fn column(&self, field: &str) -> Option<Vec<Value>> {
+        let base_slot = self.schema.base_fields.iter().position(|f| f.name == field);
+        let fiber_slot = self
+            .schema
+            .fiber_fields
+            .iter()
+            .position(|f| f.name == field);
+        if base_slot.is_none() && fiber_slot.is_none() {
+            return None;
+        }
+        let order = self.record_order();
+        let mut out = Vec::with_capacity(order.len());
+        for bp in order {
+            let Some((fiber, base)) = self.row_slices(bp) else {
+                continue;
+            };
+            let v = if let Some(i) = base_slot {
+                base.get(i).cloned().unwrap_or(Value::Null)
+            } else {
+                let i = fiber_slot.expect("checked above");
+                match self.schema.gauge_key.as_ref() {
+                    Some(gk) => gk
+                        .decrypt_fiber(fiber, &self.schema.name, &self.schema.fiber_fields)
+                        .get(i)
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    None => fiber.get(i).cloned().unwrap_or(Value::Null),
+                }
+            };
+            out.push(v);
+        }
+        Some(out)
+    }
+
+    /// `column`, restricted to numeric values.
+    ///
+    /// Returns `None` if the field is absent from the schema, or if any stored
+    /// value in it is not numeric — including `Null`. It does not substitute a
+    /// placeholder for a value it could not read, so a `Some` result is a column
+    /// every row actually carried.
+    pub fn numeric_column(&self, field: &str) -> Option<Vec<f64>> {
+        let vals = self.column(field)?;
+        let mut out = Vec::with_capacity(vals.len());
+        for v in vals {
+            out.push(v.as_f64()?);
+        }
+        Some(out)
+    }
+
+    /// Several fields at once, each in record order and row-aligned with the
+    /// others. One walk of the stored rows regardless of how many fields are
+    /// asked for, so this is the form to use when a caller needs more than one.
+    ///
+    /// Returns `None` if any requested field is absent from the schema.
+    pub fn columns(&self, fields: &[&str]) -> Option<Vec<Vec<Value>>> {
+        let mut slots: Vec<(bool, usize)> = Vec::with_capacity(fields.len());
+        for f in fields {
+            if let Some(i) = self.schema.base_fields.iter().position(|d| d.name == *f) {
+                slots.push((true, i));
+            } else if let Some(i) = self.schema.fiber_fields.iter().position(|d| d.name == *f) {
+                slots.push((false, i));
+            } else {
+                return None;
+            }
+        }
+        let order = self.record_order();
+        let mut out: Vec<Vec<Value>> = fields
+            .iter()
+            .map(|_| Vec::with_capacity(order.len()))
+            .collect();
+        for bp in order {
+            let Some((fiber, base)) = self.row_slices(bp) else {
+                continue;
+            };
+            let decrypted = self.schema.gauge_key.as_ref().map(|gk| {
+                gk.decrypt_fiber(fiber, &self.schema.name, &self.schema.fiber_fields)
+            });
+            for (c, (is_base, i)) in slots.iter().enumerate() {
+                let v = if *is_base {
+                    base.get(*i).cloned().unwrap_or(Value::Null)
+                } else {
+                    match decrypted.as_ref() {
+                        Some(d) => d.get(*i).cloned().unwrap_or(Value::Null),
+                        None => fiber.get(*i).cloned().unwrap_or(Value::Null),
+                    }
+                };
+                out[c].push(v);
+            }
+        }
+        Some(out)
+    }
+
+    /// `columns`, restricted to numeric values.
+    pub fn numeric_columns(&self, fields: &[&str]) -> Option<Vec<Vec<f64>>> {
+        let cols = self.columns(fields)?;
+        let mut out = Vec::with_capacity(cols.len());
+        for col in cols {
+            let mut c = Vec::with_capacity(col.len());
+            for v in col {
+                c.push(v.as_f64()?);
+            }
+            out.push(c);
+        }
+        Some(out)
+    }
+
     /// Get field stats for curvature computation.
     pub fn field_stats(&self) -> &HashMap<String, FieldStats> {
         &self.field_stats

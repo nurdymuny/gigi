@@ -1138,6 +1138,183 @@ impl OverlayBundle {
         Box::new(overlay_iter.chain(base_iter))
     }
 
+    /// One field's values in `records()` order, without building a `Record` per
+    /// row.
+    ///
+    /// `records()` on an overlay pays twice per stored row: `decode_line` yields
+    /// a `serde_json` map, and `json_to_record` copies that into a
+    /// `HashMap<String, Value>` whose keys are freshly allocated strings. A scan
+    /// that wants one field pays both taxes for every field it is going to throw
+    /// away. This reads the decoded line and takes only the requested field, plus
+    /// the primary key when one is needed to honour tombstones and overlay
+    /// shadowing.
+    ///
+    /// Order, shadowing and tombstones match `records()` exactly — overlay rows
+    /// first, then base rows that are neither deleted nor superseded — so two
+    /// columns of the same bundle can be zipped row-wise.
+    ///
+    /// Returns `None` if the field is not in the schema.
+    pub fn column(&self, field: &str) -> Option<Vec<Value>> {
+        let in_schema = self
+            .bundle_schema
+            .base_fields
+            .iter()
+            .chain(self.bundle_schema.fiber_fields.iter())
+            .any(|f| f.name == field);
+        if !in_schema {
+            return None;
+        }
+
+        let pk_field = self.pk_field().map(|s| s.to_string());
+        let overlay_records: Vec<Record> = self
+            .overlay
+            .read()
+            .map_or(Vec::new(), |s| s.records().collect());
+        let overlay_keys: HashSet<String> = overlay_records
+            .iter()
+            .filter_map(|r| {
+                pk_field
+                    .as_deref()
+                    .and_then(|f| r.get(f))
+                    .map(|v| v.key_repr())
+            })
+            .collect();
+        let tombstones: HashSet<String> = self
+            .tombstones
+            .read()
+            .map_or(HashSet::new(), |ts| ts.clone());
+
+        let mut out: Vec<Value> = Vec::with_capacity(overlay_records.len() + self.base.len());
+        for r in &overlay_records {
+            out.push(r.get(field).cloned().unwrap_or(Value::Null));
+        }
+
+        // A base row is only skipped on the strength of its primary key, so when
+        // nothing can shadow it the key never has to be materialised.
+        let needs_key = pk_field.is_some() && !(overlay_keys.is_empty() && tombstones.is_empty());
+        for i in 0..self.base.len() {
+            let Some(jv) = self.base.get(i) else { continue };
+            let serde_json::Value::Object(map) = &jv else {
+                continue;
+            };
+            if needs_key {
+                if let Some(pk_f) = pk_field.as_deref() {
+                    if let Some(pk) = map.get(pk_f).map(Self::json_val) {
+                        let key_str = pk.key_repr();
+                        if tombstones.contains(&key_str) || overlay_keys.contains(&key_str) {
+                            continue;
+                        }
+                    }
+                }
+            }
+            out.push(map.get(field).map(Self::json_val).unwrap_or(Value::Null));
+        }
+        Some(out)
+    }
+
+    /// `column`, restricted to numeric values.
+    ///
+    /// Returns `None` if the field is absent from the schema, or if any stored
+    /// value in it is not numeric — including `Null`. It does not substitute a
+    /// placeholder for a value it could not read.
+    pub fn numeric_column(&self, field: &str) -> Option<Vec<f64>> {
+        let vals = self.column(field)?;
+        let mut out = Vec::with_capacity(vals.len());
+        for v in vals {
+            out.push(v.as_f64()?);
+        }
+        Some(out)
+    }
+
+    /// Several fields at once, each returned in `records()` order.
+    ///
+    /// Prefer this over calling `column` per field. The stored rows are
+    /// line-oriented, so every read decodes a line; asking for `k` fields one at
+    /// a time decodes the whole bundle `k` times. This decodes each line once and
+    /// takes every requested field from it, which is what makes a column read
+    /// cheaper than `records()` rather than more expensive.
+    ///
+    /// Returns `None` if any requested field is absent from the schema. The
+    /// returned vectors are parallel and row-aligned with each other.
+    pub fn columns(&self, fields: &[&str]) -> Option<Vec<Vec<Value>>> {
+        for f in fields {
+            let known = self
+                .bundle_schema
+                .base_fields
+                .iter()
+                .chain(self.bundle_schema.fiber_fields.iter())
+                .any(|d| d.name == *f);
+            if !known {
+                return None;
+            }
+        }
+
+        let pk_field = self.pk_field().map(|s| s.to_string());
+        let overlay_records: Vec<Record> = self
+            .overlay
+            .read()
+            .map_or(Vec::new(), |s| s.records().collect());
+        let overlay_keys: HashSet<String> = overlay_records
+            .iter()
+            .filter_map(|r| {
+                pk_field
+                    .as_deref()
+                    .and_then(|f| r.get(f))
+                    .map(|v| v.key_repr())
+            })
+            .collect();
+        let tombstones: HashSet<String> = self
+            .tombstones
+            .read()
+            .map_or(HashSet::new(), |ts| ts.clone());
+
+        let cap = overlay_records.len() + self.base.len();
+        let mut out: Vec<Vec<Value>> = fields.iter().map(|_| Vec::with_capacity(cap)).collect();
+
+        for r in &overlay_records {
+            for (c, f) in fields.iter().enumerate() {
+                out[c].push(r.get(*f).cloned().unwrap_or(Value::Null));
+            }
+        }
+
+        let needs_key = pk_field.is_some() && !(overlay_keys.is_empty() && tombstones.is_empty());
+        for i in 0..self.base.len() {
+            let Some(jv) = self.base.get(i) else { continue };
+            let serde_json::Value::Object(map) = &jv else {
+                continue;
+            };
+            if needs_key {
+                if let Some(pk_f) = pk_field.as_deref() {
+                    if let Some(pk) = map.get(pk_f).map(Self::json_val) {
+                        let key_str = pk.key_repr();
+                        if tombstones.contains(&key_str) || overlay_keys.contains(&key_str) {
+                            continue;
+                        }
+                    }
+                }
+            }
+            for (c, f) in fields.iter().enumerate() {
+                out[c].push(map.get(*f).map(Self::json_val).unwrap_or(Value::Null));
+            }
+        }
+        Some(out)
+    }
+
+    /// `columns`, restricted to numeric values; `None` if any field is absent or
+    /// carries a value that is not numeric.
+    pub fn numeric_columns(&self, fields: &[&str]) -> Option<Vec<Vec<f64>>> {
+        let cols = self.columns(fields)?;
+        let mut out = Vec::with_capacity(cols.len());
+        for col in cols {
+            let mut c = Vec::with_capacity(col.len());
+            for v in col {
+                c.push(v.as_f64()?);
+            }
+            out.push(c);
+        }
+        Some(out)
+    }
+
     /// Distinct values for a field (merged).
     pub fn distinct(&self, field: &str) -> Vec<Value> {
         let mut seen: HashSet<Value> = HashSet::new();
@@ -1761,6 +1938,44 @@ impl<'a> BundleRef<'a> {
         match self {
             BundleRef::Heap(s) => s.records(),
             BundleRef::Overlay(o) => o.records(),
+        }
+    }
+
+    /// One field's values in `records()` order, without building a `Record` per
+    /// row. Available whether the bundle is heap-resident or memory-mapped, so a
+    /// caller does not have to know which it holds. Two columns of the same
+    /// bundle are row-aligned and can be zipped.
+    pub fn column(&self, field: &str) -> Option<Vec<Value>> {
+        match self {
+            BundleRef::Heap(s) => s.column(field),
+            BundleRef::Overlay(o) => o.column(field),
+        }
+    }
+
+    /// `column`, restricted to numeric values; `None` if the field is absent or
+    /// any stored value in it is not numeric.
+    pub fn numeric_column(&self, field: &str) -> Option<Vec<f64>> {
+        match self {
+            BundleRef::Heap(s) => s.numeric_column(field),
+            BundleRef::Overlay(o) => o.numeric_column(field),
+        }
+    }
+
+    /// Several fields at once, row-aligned, in `records()` order. Prefer this to
+    /// repeated `column` calls: stored rows are decoded once per read, so asking
+    /// for fields one at a time decodes the bundle once per field.
+    pub fn columns(&self, fields: &[&str]) -> Option<Vec<Vec<Value>>> {
+        match self {
+            BundleRef::Heap(s) => s.columns(fields),
+            BundleRef::Overlay(o) => o.columns(fields),
+        }
+    }
+
+    /// `columns`, restricted to numeric values.
+    pub fn numeric_columns(&self, fields: &[&str]) -> Option<Vec<Vec<f64>>> {
+        match self {
+            BundleRef::Heap(s) => s.numeric_columns(fields),
+            BundleRef::Overlay(o) => o.numeric_columns(fields),
         }
     }
 

@@ -13202,9 +13202,20 @@ async fn gql_query(
                 };
                 let gk = gigi::crypto::GaugeKey::derive(&seed, &schema.fiber_fields);
                 schema.gauge_key = Some(gk);
+                // Recorded so the key is re-derived at load, not journalled.
+                schema.seed_source = seed_source.clone();
             }
             let mut engine = state.engine_write();
-            engine.create_bundle(schema).unwrap();
+            // Not unwrap: create_bundle refuses an encrypted bundle whose seed
+            // it could not resolve again, and a refusal is an answer to the
+            // caller, not a reason to take the server down.
+            if let Err(e) = engine.create_bundle(schema) {
+                emit_quick("CREATE_BUNDLE", t0.elapsed().as_micros() as u64, true);
+                return (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(serde_json::json!({"error": e.to_string()})),
+                );
+            }
             emit_quick("CREATE_BUNDLE", t0.elapsed().as_micros() as u64, false);
             return (StatusCode::OK, Json(serde_json::json!({"status": "ok"})));
         }
@@ -13240,58 +13251,11 @@ async fn gql_query(
         }
         // Sprint G: forward-secret key rotation.
         gigi::parser::Statement::RotateKey { bundle, new_seed_source } => {
-            let new_seed = match new_seed_source {
-                gigi::types::EncryptionSeedSource::Random => {
-                    gigi::crypto::GaugeKey::random_seed()
-                }
-                gigi::types::EncryptionSeedSource::Hex(hex) => {
-                    match gigi::crypto::seed_from_hex(hex) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
-                            return (
-                                StatusCode::BAD_REQUEST,
-                                Json(serde_json::json!({"error": format!("invalid encryption seed: {e}")})),
-                            );
-                        }
-                    }
-                }
-                gigi::types::EncryptionSeedSource::Env(name) => match std::env::var(name) {
-                    Ok(hex) => match gigi::crypto::seed_from_hex(&hex) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
-                            return (
-                                StatusCode::BAD_REQUEST,
-                                Json(serde_json::json!({"error": format!("invalid seed in env {name}: {e}")})),
-                            );
-                        }
-                    },
-                    Err(_) => {
-                        emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
-                        return (
-                            StatusCode::BAD_REQUEST,
-                            Json(serde_json::json!({"error": format!("env var {name} not set")})),
-                        );
-                    }
-                },
-            };
+            // Engine::rotate_key applies the seed rule, updates the recorded
+            // seed source and journals the rotation. The seed is resolved in
+            // there so this surface cannot resolve one the engine would refuse.
             let mut engine = state.engine_write();
-            let store = match engine.heap_bundle_mut(bundle) {
-                Some(s) => s,
-                None => {
-                    emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
-                    return (
-                        StatusCode::NOT_FOUND,
-                        Json(serde_json::json!({"error": format!("bundle {bundle} not in heap mode")})),
-                    );
-                }
-            };
-            // Sprint G-ext: rotate_key takes the 32-byte master and
-            // drives both gauge-key and base-hash-seed rotation. The
-            // gauge_key is derived inside the bundle method so the
-            // caller doesn't need to keep them coordinated.
-            match store.rotate_key(&new_seed) {
+            match engine.rotate_key(bundle, new_seed_source) {
                 Ok(count) => {
                     emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, false);
                     return (
@@ -13301,21 +13265,14 @@ async fn gql_query(
                 }
                 Err(e) => {
                     emit_quick("ROTATE_KEY", t0.elapsed().as_micros() as u64, true);
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(serde_json::json!({"error": e})),
-                    );
+                    let code = match e.kind() {
+                        std::io::ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                        _ => StatusCode::UNPROCESSABLE_ENTITY,
+                    };
+                    return (code, Json(serde_json::json!({"error": e.to_string()})));
                 }
             }
         }
-        // Transaction control over /v1/gql used to return 200 {"status":
-        // "ok"} for all three verbs. Nothing was behind them: a client
-        // could send BEGIN; INSERT …; ROLLBACK; get three 200s, and find
-        // the row still there. That is the one place on this surface
-        // where a caller was told a write was undone when it was not, so
-        // it now joins the 501 list with every other parsed-but-unbuilt
-        // v2.1 verb. Staged writes live at /v1/transactions/* under the
-        // `transactions` feature.
         gigi::parser::Statement::AtlasBegin
         | gigi::parser::Statement::AtlasCommit
         | gigi::parser::Statement::AtlasRollback => {

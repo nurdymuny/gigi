@@ -12190,17 +12190,12 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             Ok(ExecResult::Scalar(res.bias))
         }
         Statement::RotateKey { bundle, new_seed_source } => {
-            let new_seed = resolve_seed(new_seed_source)?;
-            let store = engine
-                .heap_bundle_mut(bundle)
-                .ok_or_else(|| format!(
-                    "ROTATE_KEY requires bundle '{}' to be in heap mode",
-                    bundle
-                ))?;
-            // Sprint G-ext: rotate_key now drives BOTH the gauge key (g)
-            // and the base-space hash seed (s) from a single 32-byte
-            // master. One call rotates (s, g) → (s', g') atomically.
-            let count = store.rotate_key(&new_seed)?;
+            // Engine::rotate_key applies the seed rule, updates the recorded
+            // seed source and journals the rotation. Calling the store method
+            // directly leaves the rotation in memory only.
+            let count = engine
+                .rotate_key(bundle, new_seed_source)
+                .map_err(|e| e.to_string())?;
             Ok(ExecResult::Count(count))
         }
         Statement::ProjectInvariant { bundle, expressions, where_clause } => {

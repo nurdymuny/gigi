@@ -321,6 +321,19 @@ pub enum EncryptionSeedSource {
     Env(String),
 }
 
+impl EncryptionSeedSource {
+    /// True when this source can be resolved again after a restart without the
+    /// key having been written down.
+    ///
+    /// Only an environment variable can. A random seed or an inline literal is
+    /// known to the process that generated it and to nothing else, so making
+    /// such a bundle durable would mean journalling its key beside the
+    /// ciphertext. That is the disclosure the engine refuses to create.
+    pub fn is_rederivable(&self) -> bool {
+        matches!(self, EncryptionSeedSource::Env(_))
+    }
+}
+
 impl Default for EncryptionSeedSource {
     fn default() -> Self {
         EncryptionSeedSource::Random

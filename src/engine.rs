@@ -1461,7 +1461,7 @@ impl Engine {
             return Ok(());
         }
         match &schema.seed_source {
-            crate::types::EncryptionSeedSource::Env(_) => Ok(()),
+            s if s.is_rederivable() => Ok(()),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 format!(
@@ -1470,6 +1470,75 @@ impl Engine {
                 ),
             )),
         }
+    }
+
+    /// Resolve an env-sourced seed, naming what is missing.
+    fn resolve_env_seed(bundle: &str, var: &str) -> io::Result<[u8; 32]> {
+        let hex = std::env::var(var).map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("bundle '{bundle}': env var {var} is not set on this engine"),
+            )
+        })?;
+        crate::crypto::seed_from_hex(&hex).map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("bundle '{bundle}': env var {var} is not a valid 64-char hex seed: {e}"),
+            )
+        })
+    }
+
+    /// Rotate a bundle's encryption key, and record the rotation.
+    ///
+    /// `BundleStore::rotate_key` rebuilds the store around a new key but knows
+    /// nothing about the log, and both callers used to stop there. Two things
+    /// went wrong as a result. The rotation was never journalled, so a restart
+    /// restored the pre-rotation schema. And the schema kept the seed source it
+    /// was created with, so after the key-material fix a restart would
+    /// re-derive the OLD key and hand it to records encrypted under the new
+    /// one.
+    ///
+    /// This is the door both callers now use: it applies the same seed rule as
+    /// creation, updates the source, and journals the result.
+    pub fn rotate_key(
+        &mut self,
+        bundle: &str,
+        new_seed_source: &crate::types::EncryptionSeedSource,
+    ) -> io::Result<usize> {
+        if !new_seed_source.is_rederivable() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "rotating the key of bundle '{bundle}' requires WITH ENCRYPTION SEED FROM ENV <VAR>, for the same reason creating it does: a seed the engine cannot resolve again is one whose key it would have to write down."
+                ),
+            ));
+        }
+        let var = match new_seed_source {
+            crate::types::EncryptionSeedSource::Env(v) => v.clone(),
+            _ => unreachable!("is_rederivable admits only Env"),
+        };
+        let seed = Self::resolve_env_seed(bundle, &var)?;
+
+        let (schema, count) = {
+            let store = self.heap_bundle_mut(bundle).ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::NotFound,
+                    format!("ROTATE_KEY requires bundle '{bundle}' to be in heap mode"),
+                )
+            })?;
+            let count = store
+                .rotate_key(&seed)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            store.schema.seed_source = new_seed_source.clone();
+            (store.schema.clone(), count)
+        };
+
+        // Both copies, then the log. `compact_wal_to_schemas` re-emits from
+        // `self.schemas`, so a rotation that reached only the store would be
+        // buried by the next compaction.
+        self.schemas.insert(bundle.to_string(), schema.clone());
+        self.journal_schema(&schema)?;
+        Ok(count)
     }
 
     pub fn create_bundle(&mut self, schema: BundleSchema) -> io::Result<()> {

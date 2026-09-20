@@ -1479,6 +1479,42 @@ impl Engine {
     }
 
     /// Create a new bundle (table).
+    /// Refuse a record that does not carry every declared base field.
+    ///
+    /// A base field missing from a record is stored as `Value::Null`, so every
+    /// such record lands on the SAME base point and each one overwrites the
+    /// last. Twenty-five inserts leave one row. Nothing said so: the call
+    /// returned success and a count of what it was handed.
+    ///
+    /// Reported 2026-09-20 by the Marcella corpus repair, which read it as the
+    /// engine losing writes and stopped before running a delete-then-insert
+    /// over 161,795 records. They were right to stop. The compounding detail is
+    /// that the bundle in question has an unreadable key -- a short snapshot
+    /// header hides `section_id` -- so a caller working from what queries
+    /// return cannot supply the field that makes their insert land.
+    ///
+    /// A record with no key is not a record, and this is the engine's own
+    /// contract: refuse rather than answer from something that was never
+    /// really there.
+    fn require_base_fields(schema: &BundleSchema, record: &Record) -> io::Result<()> {
+        let missing: Vec<&str> = schema
+            .base_fields
+            .iter()
+            .filter(|f| record.get(&f.name).is_none())
+            .map(|f| f.name.as_str())
+            .collect();
+        if missing.is_empty() {
+            return Ok(());
+        }
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!(
+                "bundle '{}': record is missing base field(s) {:?}, which identify it. Every record missing them lands on the same base point and overwrites the previous one, so a batch of N would store 1.",
+                schema.name, missing
+            ),
+        ))
+    }
+
     /// Seal a record's fiber values for the log.
     ///
     /// `Engine::insert` used to journal the caller's record and let the store
@@ -1965,6 +2001,9 @@ impl Engine {
             None => None,
         };
         let record = coerced.as_ref().unwrap_or(record);
+        if let Some(schema) = self.schemas.get(bundle_name) {
+            Self::require_base_fields(schema, record)?;
+        }
         let sealed = self
             .schemas
             .get(bundle_name)
@@ -2378,6 +2417,13 @@ impl Engine {
             None => None,
         };
         let records: &[Record] = coerced_batch.as_deref().unwrap_or(records);
+        // Refuse the whole batch before writing any of it: a partial batch is
+        // harder to reason about than a refused one.
+        if let Some(schema) = self.schemas.get(bundle_name) {
+            for r in records {
+                Self::require_base_fields(schema, r)?;
+            }
+        }
         // WAL: log all records first (sequential writes, single flush)
         for record in records {
             let sealed = self

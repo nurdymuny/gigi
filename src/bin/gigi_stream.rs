@@ -1987,6 +1987,7 @@ async fn create_bundle(
             weight: 1.0,
             encryption: gigi::types::EncryptionMode::None,
             encryption_group: None,
+            unit: None,
         };
         if req.schema.keys.contains(field_name) {
             schema = schema.base(fd);
@@ -11122,6 +11123,7 @@ async fn add_field(
         weight: 1.0,
         encryption: gigi::types::EncryptionMode::None,
             encryption_group: None,
+            unit: None,
     };
 
     let mut engine = state.engine_write();
@@ -13131,8 +13133,14 @@ async fn gql_query(
             adjacencies,
             invariants,
             seed_source,
+            order_field,
+            retention,
+            row_semantics,
         } => {
             let mut schema = gigi::types::BundleSchema::new(name);
+            schema.order_field = order_field.clone();
+            schema.retention = *retention;
+            schema.row_semantics = *row_semantics;
             for f in base_fields {
                 schema = schema.base(gigi::parser::spec_to_field_def(f));
             }

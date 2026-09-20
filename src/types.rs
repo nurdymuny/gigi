@@ -340,6 +340,54 @@ impl Default for EncryptionSeedSource {
     }
 }
 
+/// How long a bundle's rows are meant to be kept.
+///
+/// **Declared, never enforced.** The engine carries this so it is visible and
+/// auditable and does nothing with it. Enforcing it here would create a second,
+/// implicit deletion path that a tenant-scoped deletion audit does not know
+/// about, and it would age out correction history that a reconciling account is
+/// obliged to keep. Expiry belongs beside the thing that knows why a record
+/// exists.
+///
+/// `Undeclared` and `Indefinite` are deliberately different: "nobody said" and
+/// "we decided to keep it" are not the same answer to an auditor.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Retention {
+    Undeclared,
+    Days(u32),
+    Indefinite,
+}
+
+impl Default for Retention {
+    fn default() -> Self {
+        Retention::Undeclared
+    }
+}
+
+/// What a row of this bundle IS, which decides how equal timestamps are read.
+///
+/// CADENCE measures the arrival pattern of a clock, so for it two rows sharing a
+/// stamp are one observation and it coalesces them. For a bundle of discrete
+/// events that is wrong: two fills sharing a stamp are two fills, and coalescing
+/// them makes every downstream count wrong by an amount nothing reports. A
+/// bundle that declares `DiscreteEvents` gets a refusal instead.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum RowSemantics {
+    /// Not declared. Verbs behave as they always have.
+    Unspecified,
+    /// Rows are observations of a clock. Equal stamps are one observation.
+    ClockSamples,
+    /// Rows are discrete events. Equal stamps are distinct rows, and a verb
+    /// that would coalesce them refuses instead.
+    DiscreteEvents,
+}
+
+impl Default for RowSemantics {
+    fn default() -> Self {
+        RowSemantics::Unspecified
+    }
+}
+
 /// Field definition in the schema.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldDef {
@@ -362,6 +410,10 @@ pub struct FieldDef {
     /// solo Isometric field with no group declaration ends up in a
     /// singleton group (k=1) which is the trivial sign-flip case.
     pub encryption_group: Option<String>,
+    /// The unit this field's values are in, e.g. "USD", "bps", "microseconds".
+    /// Declared and carried; the engine never converts or checks it. It exists
+    /// so a reader of the schema does not have to infer it from a field name.
+    pub unit: Option<String>,
 }
 
 impl FieldDef {
@@ -374,6 +426,7 @@ impl FieldDef {
             weight: 1.0,
             encryption: EncryptionMode::None,
             encryption_group: None,
+            unit: None,
         }
     }
 
@@ -386,6 +439,7 @@ impl FieldDef {
             weight: 1.0,
             encryption: EncryptionMode::None,
             encryption_group: None,
+            unit: None,
         }
     }
 
@@ -398,6 +452,7 @@ impl FieldDef {
             weight: 1.0,
             encryption: EncryptionMode::None,
             encryption_group: None,
+            unit: None,
         }
     }
 
@@ -410,6 +465,7 @@ impl FieldDef {
             weight: 1.0,
             encryption: EncryptionMode::None,
             encryption_group: None,
+            unit: None,
         }
     }
 
@@ -438,6 +494,12 @@ impl FieldDef {
     /// v0.2 (Sprint E): assign this field to a named ISOMETRIC group. All fields
     /// sharing a group_id are encrypted jointly with one shared O(k) matrix.
     /// Group has no effect on non-Isometric modes.
+    /// Declare the unit this field's values are in. Carried, never checked.
+    pub fn with_unit(mut self, unit: impl Into<String>) -> Self {
+        self.unit = Some(unit.into());
+        self
+    }
+
     pub fn with_encryption_group(mut self, group: impl Into<String>) -> Self {
         self.encryption_group = Some(group.into());
         self
@@ -478,6 +540,18 @@ pub struct BundleSchema {
     /// `Hex` are not: nothing outside the process knows the seed, so a bundle
     /// built from them still has its key journalled. See `src/wal.rs`.
     pub seed_source: crate::types::EncryptionSeedSource,
+    /// The field that gives this bundle's rows their canonical order.
+    ///
+    /// Order-sensitive verbs use it when a call names no override. It is
+    /// declared on the bundle so it cannot be forgotten per call, and a verb
+    /// may override it explicitly -- reading `desk_events` for reconciliation
+    /// and reading them for replay are different questions. An override naming
+    /// a field the bundle does not declare is a refusal, never a fallback.
+    pub order_field: Option<String>,
+    /// Declared retention. Carried, never enforced. See [`Retention`].
+    pub retention: crate::types::Retention,
+    /// What a row of this bundle is. See [`RowSemantics`].
+    pub row_semantics: crate::types::RowSemantics,
     /// Schema-declared adjacency functions for COMPLETE.
     pub adjacencies: Vec<AdjacencyDef>,
     /// H¹ z-score threshold for consistency checks (default 3.0).
@@ -523,6 +597,9 @@ impl BundleSchema {
             indexed_fields: Vec::new(),
             gauge_key: None,
             seed_source: EncryptionSeedSource::Random,
+            order_field: None,
+            retention: Retention::Undeclared,
+            row_semantics: RowSemantics::Unspecified,
             adjacencies: Vec::new(),
             h1_threshold: 3.0,
             invariants: Vec::new(),
@@ -547,6 +624,24 @@ impl BundleSchema {
             k.b.dim()
         );
         self.kahler = Some(k);
+        self
+    }
+
+    /// Declare the field giving this bundle's rows their canonical order.
+    pub fn with_order_field(mut self, field: impl Into<String>) -> Self {
+        self.order_field = Some(field.into());
+        self
+    }
+
+    /// Declare how long these rows are meant to be kept. Carried, not enforced.
+    pub fn with_retention(mut self, r: Retention) -> Self {
+        self.retention = r;
+        self
+    }
+
+    /// Declare what a row of this bundle is.
+    pub fn with_row_semantics(mut self, s: RowSemantics) -> Self {
+        self.row_semantics = s;
         self
     }
 

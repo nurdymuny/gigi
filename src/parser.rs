@@ -206,6 +206,13 @@ pub enum Statement {
         /// Defaults to `Random` (server CSPRNG); `WITH ENCRYPTION SEED 'hex'`
         /// or `WITH ENCRYPTION SEED FROM ENV $NAME` overrides.
         seed_source: crate::types::EncryptionSeedSource,
+        /// `ORDER BY <field>` -- the field giving these rows their canonical
+        /// order. Order-sensitive verbs use it when a call names no override.
+        order_field: Option<String>,
+        /// `RETENTION <n> DAYS` or `RETENTION INDEFINITE`. Carried, not enforced.
+        retention: crate::types::Retention,
+        /// `ROWS ARE EVENTS` or `ROWS ARE SAMPLES`.
+        row_semantics: crate::types::RowSemantics,
     },
     /// CREATE SESSION first-class verb (personal-list #2, 2026-06-22).
     /// Creates a bundle with the canonical 6-field session schema
@@ -1734,6 +1741,9 @@ pub struct FieldSpec {
     /// `ENCRYPTED ISOMETRIC GROUP <name>`. Fields sharing a group are encrypted
     /// jointly with one shared O(k) matrix.
     pub encryption_group: Option<String>,
+    /// `UNIT '<text>'` -- the unit this field's values are in. Declared and
+    /// carried; the engine never converts or checks it.
+    pub unit: Option<String>,
 }
 
 /// Parsed invariant constraint: INVARIANT field = value +/- tol
@@ -2727,6 +2737,8 @@ impl Parser {
         }
 
         let invariants = self.parse_invariant_specs();
+        let (order_field, retention, row_semantics) =
+            self.parse_optional_bundle_declarations()?;
         let seed_source = self.parse_optional_encryption_seed_clause()?;
 
         Ok(Statement::CreateBundle {
@@ -2738,6 +2750,9 @@ impl Parser {
             adjacencies,
             invariants,
             seed_source,
+            order_field,
+            retention,
+            row_semantics,
         })
     }
 
@@ -2769,6 +2784,94 @@ impl Parser {
     /// Parse `WITH ENCRYPTION SEED 'hex'` or `WITH ENCRYPTION SEED FROM ENV $NAME`
     /// if present after the field list. Returns the chosen source, defaulting to
     /// `Random` when no clause appears (v0.1 backwards-compat).
+    /// Optional bundle declarations, in any order, before `WITH ENCRYPTION SEED`:
+    ///
+    /// ```text
+    /// ORDER BY <field>
+    /// RETENTION <n> DAYS | RETENTION INDEFINITE
+    /// ROWS ARE EVENTS | ROWS ARE SAMPLES
+    /// ```
+    ///
+    /// Order-independent because a schema author should not have to remember a
+    /// sequence, and each may appear at most once so a contradictory schema is
+    /// a parse error rather than a last-one-wins surprise.
+    fn parse_optional_bundle_declarations(
+        &mut self,
+    ) -> Result<
+        (
+            Option<String>,
+            crate::types::Retention,
+            crate::types::RowSemantics,
+        ),
+        String,
+    > {
+        let mut order_field: Option<String> = None;
+        let mut retention = crate::types::Retention::Undeclared;
+        let mut row_semantics = crate::types::RowSemantics::Unspecified;
+        loop {
+            if self.is_keyword("ORDER") {
+                if order_field.is_some() {
+                    return Err("ORDER BY declared twice on one bundle".into());
+                }
+                self.advance();
+                if !self.is_keyword("BY") {
+                    return Err("Expected BY after ORDER".into());
+                }
+                self.advance();
+                order_field = Some(self.expect_word()?);
+                continue;
+            }
+            if self.is_keyword("RETENTION") {
+                if retention != crate::types::Retention::Undeclared {
+                    return Err("RETENTION declared twice on one bundle".into());
+                }
+                self.advance();
+                if self.is_keyword("INDEFINITE") {
+                    self.advance();
+                    retention = crate::types::Retention::Indefinite;
+                    continue;
+                }
+                match self.advance() {
+                    Some(Token::Number(n)) if n >= 0.0 && n.fract() == 0.0 => {
+                        if !self.is_keyword("DAYS") {
+                            return Err("Expected DAYS after RETENTION <n>".into());
+                        }
+                        self.advance();
+                        retention = crate::types::Retention::Days(n as u32);
+                    }
+                    other => {
+                        return Err(format!(
+                            "Expected INDEFINITE or a whole number of DAYS after RETENTION, got {other:?}"
+                        ))
+                    }
+                }
+                continue;
+            }
+            if self.is_keyword("ROWS") {
+                if row_semantics != crate::types::RowSemantics::Unspecified {
+                    return Err("ROWS ARE declared twice on one bundle".into());
+                }
+                self.advance();
+                if !self.is_keyword("ARE") {
+                    return Err("Expected ARE after ROWS".into());
+                }
+                self.advance();
+                if self.is_keyword("EVENTS") {
+                    self.advance();
+                    row_semantics = crate::types::RowSemantics::DiscreteEvents;
+                } else if self.is_keyword("SAMPLES") {
+                    self.advance();
+                    row_semantics = crate::types::RowSemantics::ClockSamples;
+                } else {
+                    return Err("Expected EVENTS or SAMPLES after ROWS ARE".into());
+                }
+                continue;
+            }
+            break;
+        }
+        Ok((order_field, retention, row_semantics))
+    }
+
     fn parse_optional_encryption_seed_clause(
         &mut self,
     ) -> Result<crate::types::EncryptionSeedSource, String> {
@@ -2899,6 +3002,7 @@ impl Parser {
         let mut encryption = crate::types::EncryptionMode::None;
         // v0.2 (Sprint E): isometric group name (Some only when ISOMETRIC GROUP <name>).
         let mut encryption_group: Option<String> = None;
+        let mut unit: Option<String> = None;
 
         loop {
             if self.is_keyword("RANGE") {
@@ -2940,6 +3044,16 @@ impl Parser {
                 let (mode, group) = self.parse_encryption_mode_and_group(&ftype)?;
                 encryption = mode;
                 encryption_group = group;
+            } else if self.is_keyword("UNIT") {
+                self.advance();
+                match self.advance() {
+                    Some(Token::Str(u)) => unit = Some(u),
+                    other => {
+                        return Err(format!(
+                            "Expected a quoted unit after UNIT, got {other:?}"
+                        ))
+                    }
+                }
             } else {
                 break;
             }
@@ -2955,6 +3069,7 @@ impl Parser {
             required,
             encryption,
             encryption_group,
+            unit,
         })
     }
 
@@ -6532,6 +6647,40 @@ impl Parser {
         })
     }
 
+    /// Modifiers that may follow BASE / FIBER in the SQL-compat field syntax.
+    ///
+    /// Factored out because the same trailer is legal after each role keyword
+    /// and there are four branches; adding `UNIT` to one and not the others is
+    /// exactly the kind of gap that makes a declaration mean something
+    /// different depending on where it is written.
+    fn parse_field_trailers(
+        &mut self,
+        ftype: &str,
+        spec: &mut FieldSpec,
+    ) -> Result<(), String> {
+        loop {
+            if self.is_keyword("ENCRYPTED") {
+                self.advance();
+                let (mode, group) = self.parse_encryption_mode_and_group(ftype)?;
+                spec.encryption = mode;
+                spec.encryption_group = group;
+            } else if self.is_keyword("UNIT") {
+                self.advance();
+                match self.advance() {
+                    Some(Token::Str(u)) => spec.unit = Some(u),
+                    other => {
+                        return Err(format!(
+                            "Expected a quoted unit after UNIT, got {other:?}"
+                        ))
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+        Ok(())
+    }
+
     fn parse_bundle_fields_paren(&mut self, name: String) -> Result<Statement, String> {
         self.expect(Token::LParen)?;
 
@@ -6574,6 +6723,7 @@ impl Parser {
                 required: false,
                 encryption: crate::types::EncryptionMode::None,
                 encryption_group: None,
+                unit: None,
             };
 
             if self.is_keyword("BASE") {
@@ -6581,37 +6731,17 @@ impl Parser {
                 // v0.2: per-field ENCRYPTED [MODE] may appear AFTER the
                 // BASE/FIBER keyword in the SQL-compat syntax. Parse it now
                 // so the mode rides on the spec when we push.
-                if self.is_keyword("ENCRYPTED") {
-                    self.advance();
-                    let (mode, group) = self.parse_encryption_mode_and_group(&ftype)?;
-                    spec.encryption = mode;
-                    spec.encryption_group = group;
-                }
+                self.parse_field_trailers(&ftype, &mut spec)?;
                 base_fields.push(spec);
             } else if self.is_keyword("FIBER") {
                 self.advance();
-                if self.is_keyword("ENCRYPTED") {
-                    self.advance();
-                    let (mode, group) = self.parse_encryption_mode_and_group(&ftype)?;
-                    spec.encryption = mode;
-                    spec.encryption_group = group;
-                }
+                self.parse_field_trailers(&ftype, &mut spec)?;
                 fiber_fields.push(spec);
             } else if base_fields.is_empty() {
-                if self.is_keyword("ENCRYPTED") {
-                    self.advance();
-                    let (mode, group) = self.parse_encryption_mode_and_group(&ftype)?;
-                    spec.encryption = mode;
-                    spec.encryption_group = group;
-                }
+                self.parse_field_trailers(&ftype, &mut spec)?;
                 base_fields.push(spec);
             } else {
-                if self.is_keyword("ENCRYPTED") {
-                    self.advance();
-                    let (mode, group) = self.parse_encryption_mode_and_group(&ftype)?;
-                    spec.encryption = mode;
-                    spec.encryption_group = group;
-                }
+                self.parse_field_trailers(&ftype, &mut spec)?;
                 fiber_fields.push(spec);
             }
 
@@ -6642,6 +6772,8 @@ impl Parser {
         // INVARIANT field = value +/- tol
         let invariants = self.parse_invariant_specs();
 
+        let (order_field, retention, row_semantics) =
+            self.parse_optional_bundle_declarations()?;
         // v0.2: WITH ENCRYPTION SEED clause may follow.
         let seed_source = self.parse_optional_encryption_seed_clause()?;
 
@@ -6654,6 +6786,9 @@ impl Parser {
             adjacencies,
             invariants,
             seed_source,
+            order_field,
+            retention,
+            row_semantics,
         })
     }
 
@@ -8747,6 +8882,7 @@ pub fn spec_to_field_def(spec: &FieldSpec) -> crate::types::FieldDef {
         fd = fd.with_default(literal_to_value(d));
     }
     fd = fd.with_encryption(spec.encryption);
+    fd.unit = spec.unit.clone();
     if let Some(ref g) = spec.encryption_group {
         fd = fd.with_encryption_group(g);
     }
@@ -10676,9 +10812,15 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
             adjacencies,
             invariants,
             seed_source,
+            order_field,
+            retention,
+            row_semantics,
         } => {
             crate::virtual_bundles::reject_virtual_write(name, "CREATE BUNDLE")?;
             let mut schema = crate::types::BundleSchema::new(name);
+            schema.order_field = order_field.clone();
+            schema.retention = *retention;
+            schema.row_semantics = *row_semantics;
             for f in base_fields {
                 schema = schema.base(spec_to_field_def(f));
             }
@@ -10763,6 +10905,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                         required: false,
                         encryption: crate::types::EncryptionMode::None,
                         encryption_group: None,
+                        unit: None,
                     };
                     schema = schema.fiber(spec_to_field_def(&spec));
                     if *indexed {
@@ -10834,6 +10977,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                     required: false,
                     encryption: crate::types::EncryptionMode::None,
                     encryption_group: None,
+                    unit: None,
                 };
                 spec_to_field_def(&spec)
             };

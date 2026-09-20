@@ -7615,6 +7615,7 @@ mod tests {
                 weight: 1.0,
                 encryption: EncryptionMode::None,
             encryption_group: None,
+            unit: None,
             })
             .fiber(FieldDef {
                 name: "emb".into(),
@@ -7624,6 +7625,7 @@ mod tests {
                 weight: 1.0,
                 encryption: EncryptionMode::None,
             encryption_group: None,
+            unit: None,
             })
             .fiber(FieldDef {
                 name: "cat".into(),
@@ -7633,6 +7635,7 @@ mod tests {
                 weight: 1.0,
                 encryption: EncryptionMode::None,
             encryption_group: None,
+            unit: None,
             });
         let mut store = BundleStore::new(schema);
         // Insert 5 vectors at known positions in 2D

@@ -51,6 +51,7 @@ fn vector_field_def(name: &str, dims: usize) -> FieldDef {
         weight: 1.0,
         encryption: EncryptionMode::None,
         encryption_group: None,
+            unit: None,
     }
 }
 

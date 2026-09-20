@@ -127,31 +127,17 @@ pub fn texture(
         return Err((StatusCode::UNPROCESSABLE_ENTITY,
                     format!("field '{}' not found", field)));
     }
-    if let Some(o) = &order {
-        if !has_field(o) {
-            return Err((StatusCode::UNPROCESSABLE_ENTITY,
-                        format!("order field '{}' not found", o)));
-        }
-    }
     if !(q > 0.0) || !q.is_finite() {
         return Err((StatusCode::UNPROCESSABLE_ENTITY,
                     format!("q must be finite and > 0 (got {})", q)));
     }
 
-    // TXP-17: these verbs read RECORD ORDER. Iteration equals insertion order
-    // only for sequentially stored bundles; a bundle with a TEXT base field is
-    // hash-stored and iterates arbitrarily. Measured on one hashed bundle:
-    // area +0.7536 ordered by its sequence field, +0.0017 with `order` omitted
-    // — a real signal flattened to nothing, HTTP 200, no warning. Refuse rather
-    // than answer from an order that means nothing.
-    if order.is_none() {
-        let mode = store.storage_mode();
-        if mode == "hashed" || mode == "hybrid" {
-            return Err((StatusCode::UNPROCESSABLE_ENTITY, format!(
-                "bundle '{}' is {}-stored, so its records do not iterate in insertion order — and this verb reads record order. Name an ordering field. (A bundle gets this storage from a TEXT base field; there is nothing wrong with the bundle, but the order you inserted rows in is not recoverable from it.)",
-                name, mode)));
-        }
-    }
+    // Order comes from the call, then the bundle's declaration, then record
+    // order where record order means something. `resolve_order` owns that
+    // precedence and the refusal; see its comment for why the old storage-mode
+    // check let memory-mapped bundles through.
+    let order = crate::ml::resolve_order(name, schema, store.storage_mode(), order.as_deref())?;
+
 
     let mut records: Vec<crate::types::Record> = store.records().collect();
     let mut lexicographic_order = false;
@@ -162,6 +148,7 @@ pub fn texture(
     }
     if let Some(o) = &order {
         lexicographic_order = crate::ml::sort_by_order(&mut records, o);
+        crate::ml::refuse_on_ties(&records, o, name)?;
     }
 
     // TXP-13: non-finite and non-numeric values are SKIPPED and counted,

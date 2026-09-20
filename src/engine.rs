@@ -1626,8 +1626,46 @@ impl Engine {
         Ok(count)
     }
 
+    /// Refuse a schema whose declarations do not mean what they say.
+    ///
+    /// Both of these were silent before. A declaration the engine ignores is
+    /// worse than one it rejects, because the reader of the schema believes it.
+    fn validate_declarations(schema: &BundleSchema) -> io::Result<()> {
+        if let Some(f) = schema
+            .base_fields
+            .iter()
+            .find(|f| f.encryption.is_encrypted())
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "bundle '{}': base field '{}' declares encryption {:?}, but base fields are never encrypted -- they stay plaintext so a base point stays hashable. The declaration would have been ignored and the field shipped in the clear.",
+                    schema.name, f.name, f.encryption
+                ),
+            ));
+        }
+        if let Some(order) = &schema.order_field {
+            let declared = schema
+                .base_fields
+                .iter()
+                .chain(schema.fiber_fields.iter())
+                .any(|f| &f.name == order);
+            if !declared {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!(
+                        "bundle '{}' declares order field '{}', which it does not define",
+                        schema.name, order
+                    ),
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub fn create_bundle(&mut self, schema: BundleSchema) -> io::Result<()> {
         Self::require_rederivable_seed(&schema)?;
+        Self::validate_declarations(&schema)?;
         self.wal.log_create_bundle(&schema)?;
         let store = BundleStore::new(schema.clone());
         self.bundles.insert(schema.name.clone(), store);

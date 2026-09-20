@@ -1505,6 +1505,93 @@ const SCHEMA_SENTINEL: u32 = u32::MAX;
 /// v2 adds: per-field encryption mode and group, the encryption seed SOURCE,
 /// and gauge-key marker 3 (re-derivable, no key material written).
 const SCHEMA_V2: u32 = 2;
+/// v3 adds: a declared unit per field, and on the bundle a declared order
+/// field, retention and row semantics.
+const SCHEMA_V3: u32 = 3;
+
+fn encode_opt_string(buf: &mut Vec<u8>, s: &Option<String>) {
+    match s {
+        Some(v) => {
+            buf.push(1);
+            write_string(buf, v);
+        }
+        None => buf.push(0),
+    }
+}
+
+fn decode_opt_string(data: &[u8], offset: &mut usize) -> io::Result<Option<String>> {
+    if *offset >= data.len() {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "truncated optional string"));
+    }
+    let tag = data[*offset];
+    *offset += 1;
+    Ok(if tag == 1 { Some(read_string(data, offset)?) } else { None })
+}
+
+fn encode_retention(buf: &mut Vec<u8>, r: &crate::types::Retention) {
+    use crate::types::Retention as R;
+    match r {
+        R::Undeclared => buf.push(0),
+        R::Days(d) => {
+            buf.push(1);
+            buf.extend_from_slice(&d.to_le_bytes());
+        }
+        R::Indefinite => buf.push(2),
+    }
+}
+
+fn decode_retention(data: &[u8], offset: &mut usize) -> io::Result<crate::types::Retention> {
+    use crate::types::Retention as R;
+    if *offset >= data.len() {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "truncated retention"));
+    }
+    let tag = data[*offset];
+    *offset += 1;
+    Ok(match tag {
+        0 => R::Undeclared,
+        1 => {
+            let d = u32::from_le_bytes(data[*offset..*offset + 4].try_into().unwrap());
+            *offset += 4;
+            R::Days(d)
+        }
+        2 => R::Indefinite,
+        other => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("unknown retention tag {other}"),
+            ))
+        }
+    })
+}
+
+fn encode_row_semantics(buf: &mut Vec<u8>, s: &crate::types::RowSemantics) {
+    use crate::types::RowSemantics as S;
+    buf.push(match s {
+        S::Unspecified => 0,
+        S::ClockSamples => 1,
+        S::DiscreteEvents => 2,
+    });
+}
+
+fn decode_row_semantics(data: &[u8], offset: &mut usize) -> io::Result<crate::types::RowSemantics> {
+    use crate::types::RowSemantics as S;
+    if *offset >= data.len() {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "truncated row semantics"));
+    }
+    let tag = data[*offset];
+    *offset += 1;
+    Ok(match tag {
+        0 => S::Unspecified,
+        1 => S::ClockSamples,
+        2 => S::DiscreteEvents,
+        other => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("unknown row semantics tag {other}"),
+            ))
+        }
+    })
+}
 
 fn encode_encryption_mode(buf: &mut Vec<u8>, m: &crate::types::EncryptionMode) {
     use crate::types::EncryptionMode as M;
@@ -1642,10 +1729,12 @@ fn encode_field_def(fd: &FieldDef) -> Vec<u8> {
         }
         None => buf.push(0),
     }
+    // v3 tail.
+    encode_opt_string(&mut buf, &fd.unit);
     buf
 }
 
-fn decode_field_def(data: &[u8], offset: &mut usize, v2: bool) -> io::Result<FieldDef> {
+fn decode_field_def(data: &[u8], offset: &mut usize, version: u32) -> io::Result<FieldDef> {
     let name = read_string(data, offset)?;
     let field_type = decode_field_type(data, offset)?;
     let default = decode_value(data, offset)?;
@@ -1664,7 +1753,7 @@ fn decode_field_def(data: &[u8], offset: &mut usize, v2: bool) -> io::Result<Fie
     // decode as plaintext, which is what they were. v2 records carry the real
     // mode, so a restored schema no longer claims plaintext for a field the
     // gauge key is transforming.
-    let (encryption, encryption_group) = if v2 {
+    let (encryption, encryption_group) = if version >= 2 {
         let mode = decode_encryption_mode(data, offset)?;
         let has_group = data[*offset] == 1;
         *offset += 1;
@@ -1677,6 +1766,11 @@ fn decode_field_def(data: &[u8], offset: &mut usize, v2: bool) -> io::Result<Fie
     } else {
         (crate::types::EncryptionMode::None, None)
     };
+    let unit = if version >= 3 {
+        decode_opt_string(data, offset)?
+    } else {
+        None
+    };
     Ok(FieldDef {
         name,
         field_type,
@@ -1685,13 +1779,14 @@ fn decode_field_def(data: &[u8], offset: &mut usize, v2: bool) -> io::Result<Fie
         weight,
         encryption,
         encryption_group,
+        unit,
     })
 }
 
 fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
     let mut buf = Vec::new();
     buf.extend_from_slice(&SCHEMA_SENTINEL.to_le_bytes());
-    buf.extend_from_slice(&SCHEMA_V2.to_le_bytes());
+    buf.extend_from_slice(&SCHEMA_V3.to_le_bytes());
     write_string(&mut buf, &schema.name);
     buf.extend_from_slice(&(schema.base_fields.len() as u32).to_le_bytes());
     for f in &schema.base_fields {
@@ -1716,6 +1811,11 @@ fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
     //        No key material is written. This is the only marker that does not
     //        put the key beside the ciphertext it protects.
     encode_seed_source(&mut buf, &schema.seed_source);
+    // v3: declared, and for retention and units that is all -- the engine
+    // carries them and does not act on them.
+    encode_opt_string(&mut buf, &schema.order_field);
+    encode_retention(&mut buf, &schema.retention);
+    encode_row_semantics(&mut buf, &schema.row_semantics);
     let rederivable = matches!(
         schema.seed_source,
         crate::types::EncryptionSeedSource::Env(_)
@@ -1801,11 +1901,12 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     let mut offset = 0usize;
     // A v2 record opens with the sentinel and a version. A v1 record opens with
     // the u32 byte-length of the bundle name, which is never u32::MAX.
-    let v2 = data.len() >= 8
-        && u32::from_le_bytes(data[0..4].try_into().unwrap()) == SCHEMA_SENTINEL;
-    if v2 {
-        let version = u32::from_le_bytes(data[4..8].try_into().unwrap());
-        if version != SCHEMA_V2 {
+    let mut version = 1u32;
+    if data.len() >= 8
+        && u32::from_le_bytes(data[0..4].try_into().unwrap()) == SCHEMA_SENTINEL
+    {
+        version = u32::from_le_bytes(data[4..8].try_into().unwrap());
+        if version != SCHEMA_V2 && version != SCHEMA_V3 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("unsupported schema record version {version}"),
@@ -1821,7 +1922,7 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     for _ in 0..base_count {
         schema
             .base_fields
-            .push(decode_field_def(data, &mut offset, v2)?);
+            .push(decode_field_def(data, &mut offset, version)?);
     }
 
     let fiber_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
@@ -1829,7 +1930,7 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     for _ in 0..fiber_count {
         schema
             .fiber_fields
-            .push(decode_field_def(data, &mut offset, v2)?);
+            .push(decode_field_def(data, &mut offset, version)?);
     }
 
     let idx_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
@@ -1838,8 +1939,13 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
         schema.indexed_fields.push(read_string(data, &mut offset)?);
     }
 
-    if v2 {
+    if version >= 2 {
         schema.seed_source = decode_seed_source(data, &mut offset)?;
+    }
+    if version >= 3 {
+        schema.order_field = decode_opt_string(data, &mut offset)?;
+        schema.retention = decode_retention(data, &mut offset)?;
+        schema.row_semantics = decode_row_semantics(data, &mut offset)?;
     }
 
     // ── Gauge key (encryption) — may be absent in old WAL entries ──

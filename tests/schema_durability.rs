@@ -313,6 +313,16 @@ fn every_bundle_schema_field_has_an_inv_s_disposition() {
         // instead of written beside the ciphertext. Gated by
         // tests/wal_key_material.rs.
         seed_source: _,
+        // (a) — journalled in the v3 schema record (2026-09-20), the
+        // declarative surface KITT's fixtures are written against. Two of the
+        // three are carried and never acted on by design: `retention` because
+        // enforcing it here would be a second, implicit deletion path, and the
+        // per-field `unit` for the same reason. `order_field` and
+        // `row_semantics` DO change verb behaviour and are gated by
+        // tests/schema_declarations.rs.
+        order_field: _,
+        retention: _,
+        row_semantics: _,
         // (c) — feature-gated NINTH field, found by this very test on its
         // first run under `--features kahler`. `with_kahler` is a consuming
         // builder, so there is no post-construction mutator and (b) would

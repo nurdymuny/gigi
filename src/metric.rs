@@ -446,6 +446,7 @@ mod tests {
             weight: 1.0,
             encryption: EncryptionMode::None,
             encryption_group: None,
+            unit: None,
         };
         let d_full = FiberMetric::component_distance(
             &f,

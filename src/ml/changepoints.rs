@@ -61,22 +61,30 @@ pub fn detect_changepoints(
     let base = schema.base_fields[0].name.clone();
     let numeric: Vec<String> = schema.fiber_fields.iter()
         .filter(|f| matches!(f.field_type, FieldType::Numeric)).map(|f| f.name.clone()).collect();
-    // choose the time-ordering field
-    let time_named = |nm: &str| { let l = nm.to_lowercase();
-        ["day", "date", "time", "hour", "ts", "week", "month", "order", "seq", "index", "step"].iter().any(|k| l.contains(k)) };
-    let time_field = match time {
-        Some(t) => {
-            if schema.fiber_fields.iter().any(|f| &f.name == t) { Some(t.clone()) }
-            else { return Err((StatusCode::UNPROCESSABLE_ENTITY, format!("time field '{t}' not found"))); }
+    // Choose the time-ordering field.
+    //
+    // This used to guess, by testing every numeric fiber's NAME against a list
+    // of substrings -- day, ts, seq, index, step -- and falling back to raw
+    // storage order when nothing matched, mentioning that only in a note. A
+    // field called `stepwise_return` would have been read as a clock. The verb
+    // now takes the order from the call or from the bundle's declaration, in
+    // that precedence, and refuses when it has neither. Nothing is inferred
+    // from a name.
+    // The caller's own argument is validated first, so a typo in it is reported
+    // as a typo rather than as a missing order.
+    if let Some(v) = value {
+        if !numeric.contains(v) {
+            return Err((
+                StatusCode::UNPROCESSABLE_ENTITY,
+                format!("value field '{v}' must be a NUMERIC fiber"),
+            ));
         }
-        None => numeric.iter().find(|f| time_named(f)).cloned(),
-    };
+    }
+    let time_field =
+        crate::ml::resolve_order(name, schema, store.storage_mode(), time.as_deref())?;
     // value fields
     let value_fields: Vec<String> = match value {
-        Some(v) => {
-            if !numeric.contains(v) { return Err((StatusCode::UNPROCESSABLE_ENTITY, format!("value field '{v}' must be a NUMERIC fiber"))); }
-            vec![v.clone()]
-        }
+        Some(v) => vec![v.clone()],
         None => numeric.iter().filter(|f| Some(*f) != time_field.as_ref()).cloned().collect(),
     };
     if value_fields.is_empty() {
@@ -93,6 +101,9 @@ pub fn detect_changepoints(
                 _ => a.get(tf).map(|v| format!("{}", v)).cmp(&b.get(tf).map(|v| format!("{}", v))),
             }
         });
+    }
+    if let Some(tf) = &time_field {
+        crate::ml::refuse_on_ties(&records, tf, name)?;
     }
     let n = records.len();
     let w = window.max(2);

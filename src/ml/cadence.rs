@@ -233,6 +233,20 @@ pub fn cadence(
     // Coalescing is mandatory, not an option. Events sharing a stamp are one
     // observation of the clock; treating them as separate manufactures zero
     // gaps that drag `index` upward without any burst having occurred.
+    //
+    // Which is right only if a row IS an observation of the clock. For a bundle
+    // of discrete events it is wrong: two fills sharing a stamp are two fills,
+    // and coalescing them makes every count downstream wrong by an amount
+    // nothing reports. A bundle that declares its rows discrete gets a refusal
+    // rather than something reasonable-looking.
+    if schema.row_semantics == crate::types::RowSemantics::DiscreteEvents {
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            format!(
+                "bundle '{name}' declares its rows as discrete events, and CADENCE measures a clock. It coalesces rows sharing a stamp into one observation, which would silently merge two of your events. Measure arrival timing on a bundle whose rows are clock samples, or drop the declaration if these rows really are samples."
+            ),
+        ));
+    }
     let before = stamps.len();
     stamps.dedup();
     let coalesced = before - stamps.len();

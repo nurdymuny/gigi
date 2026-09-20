@@ -122,3 +122,65 @@ fn short_header_is_detected_against_the_schema() {
 
     let _ = fs::remove_dir_all(&d);
 }
+
+/// Write-time verification does nothing for a snapshot already written short,
+/// and one was. A bundle opened from it must be able to say which declared
+/// fields it cannot see.
+///
+/// This is the 2026-09-20 ask from the Marcella corpus repair: a bundle
+/// declaring nine fields answered with three, HEALTH reported
+/// `confidence: 1.0`, and nothing in any response named the gap. That is the
+/// second time a healthy-looking HEALTH hid a broken bundle.
+#[test]
+fn a_reopened_short_header_names_the_fields_it_cannot_see() {
+    let d = dir("readgap");
+    let _ = fs::remove_dir_all(&d);
+
+    let mut e = build(&d, 32, 200);
+    e.snapshot_with_chunk_size_report(50_000, None)
+        .expect("snapshot must succeed");
+    drop(e);
+
+    let p = d.join("snapshots").join("emb.dhoom");
+    let txt = fs::read_to_string(&p).unwrap();
+    let mut lines: Vec<&str> = txt.split('\n').collect();
+    let hdr = lines[0].to_string();
+    let (name, rest) = hdr.split_once('{').unwrap();
+    let inner = rest.trim_end_matches(':').trim_end_matches('}');
+    let kept: Vec<&str> = inner
+        .split(", ")
+        .filter(|c| c.contains('@') || c.ends_with('&') || c.contains('|'))
+        .collect();
+    let damaged = format!("{}{{{}}}:", name, kept.join(", "));
+    lines[0] = &damaged;
+    fs::write(&p, lines.join("\n")).unwrap();
+
+    let e = Engine::open_mmap(&d).expect("must reopen");
+    let missing = e.unreadable_declared_fields("emb");
+    let _ = fs::remove_dir_all(&d);
+
+    assert!(
+        !missing.is_empty(),
+        "a reopened short header must name what it cannot see"
+    );
+    assert!(
+        missing.iter().any(|f| f == "record_id"),
+        "the dropped key must be named -- it is what a repair needs and cannot get; got: {missing:?}"
+    );
+}
+
+/// A healthy bundle names nothing, so the signal is usable as a gate.
+#[test]
+fn a_healthy_bundle_reports_no_unreadable_fields() {
+    let d = dir("readgap_ok");
+    let _ = fs::remove_dir_all(&d);
+    let mut e = build(&d, 8, 50);
+    e.snapshot_with_chunk_size_report(50_000, None)
+        .expect("snapshot must succeed");
+    drop(e);
+
+    let e = Engine::open_mmap(&d).expect("must reopen");
+    let missing = e.unreadable_declared_fields("emb");
+    let _ = fs::remove_dir_all(&d);
+    assert!(missing.is_empty(), "healthy bundle flagged: {missing:?}");
+}

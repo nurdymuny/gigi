@@ -1664,8 +1664,14 @@ impl Engine {
     }
 
     pub fn create_bundle(&mut self, schema: BundleSchema) -> io::Result<()> {
-        Self::require_rederivable_seed(&schema)?;
+        // Structure before policy. A schema that both declares encryption on a
+        // base field and uses a seed the engine cannot re-derive trips two
+        // rules; reporting the seed one first tells the author their schema is
+        // fine and their key management is not, which is the wrong half. It
+        // also makes a fixture for either rule ambiguous, which HELICITY
+        // engineering caught on their own G0 case.
         Self::validate_declarations(&schema)?;
+        Self::require_rederivable_seed(&schema)?;
         self.wal.log_create_bundle(&schema)?;
         let store = BundleStore::new(schema.clone());
         self.bundles.insert(schema.name.clone(), store);
@@ -1682,6 +1688,34 @@ impl Engine {
     /// reaches only the store is buried by the next compaction. Exposing the
     /// map makes that divergence observable from outside the engine, which is
     /// what T-IDX-5 asserts.
+    /// Declared fields this bundle's stored snapshot does not name.
+    ///
+    /// The 2026-09-13 failure was a snapshot written with a short DHOOM header:
+    /// the reader is faithful to the header, so every column it omits is a
+    /// declared field that silently reads as absent. `505292a` added
+    /// verification at WRITE time, which does nothing for a snapshot that was
+    /// already written short -- and one was. A bundle opened from it reports a
+    /// schema of nine fields, answers with three, and every statistic computed
+    /// over it is computed from a subset the caller was never told about.
+    ///
+    /// Returns an empty vec when the bundle is heap-resident, has no snapshot,
+    /// or the header is complete. Errors are swallowed to empty deliberately:
+    /// this is a disclosure aid, and failing to read the header is not itself
+    /// evidence that fields are missing.
+    pub fn unreadable_declared_fields(&self, name: &str) -> Vec<String> {
+        let Some(schema) = self.schemas.get(name) else {
+            return Vec::new();
+        };
+        if !self.mmap_bundles.contains_key(name) {
+            return Vec::new();
+        }
+        let snap = self.data_dir.join("snapshots").join(format!("{name}.dhoom"));
+        if !snap.exists() {
+            return Vec::new();
+        }
+        Self::header_missing_fields(&snap, schema).unwrap_or_default()
+    }
+
     pub fn bundle_schema(&self, name: &str) -> Option<&BundleSchema> {
         self.schemas.get(name)
     }
@@ -3408,7 +3442,7 @@ impl Engine {
     /// `name{decl, decl, ...}:` where each decl is a field name optionally
     /// followed by a modifier (`@start+step`, `|default`, `&`, `>`, `^`,
     /// `#expr`), so the name is the leading run of identifier characters.
-    fn header_missing_fields(
+    pub(crate) fn header_missing_fields(
         path: &std::path::Path,
         schema: &BundleSchema,
     ) -> io::Result<Vec<String>> {

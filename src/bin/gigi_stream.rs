@@ -789,7 +789,17 @@ struct CurvatureReport {
     k: f64,
     /// Alias for K — included for client compatibility.
     curvature: f64,
-    confidence: f64,
+    /// `null` when the bundle has declared fields its stored snapshot does not
+    /// name. A confidence computed over an unannounced subset is not a
+    /// confidence, and reporting 1.0 there is how a broken bundle looked
+    /// healthy twice. Same contract as CADENCE's `index_blocked`: genuinely
+    /// absent, deliberately not a placeholder.
+    confidence: Option<f64>,
+    /// Declared fields the stored snapshot does not name. Empty is the normal
+    /// case; non-empty means every number in this report was computed from a
+    /// subset of the bundle.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    unreadable_fields: Vec<String>,
     capacity: f64,
     /// Davis Conjecture λ-budget (Thm T8ai): the substrate's runtime
     /// introspection of its own remaining carrying capacity. Computed
@@ -2836,10 +2846,24 @@ async fn curvature_report(
         .and_then(|s| s.kahler_curvature())
         .map(KahlerCurvatureReport::from);
 
+    // A bundle whose snapshot header is short answers faithfully to that
+    // header, so its statistics cover fewer fields than the schema declares
+    // and nothing in the response said so.
+    let unreadable_fields = {
+        let e = state.engine_read();
+        e.unreadable_declared_fields(&name)
+    };
+    let confidence = if unreadable_fields.is_empty() {
+        Some(conf)
+    } else {
+        None
+    };
+
     Ok(Json(CurvatureReport {
         k,
         curvature: k,
-        confidence: conf,
+        confidence,
+        unreadable_fields,
         capacity: cap,
         lambda_budget,
         per_field,
@@ -21621,7 +21645,8 @@ mod tests {
         let report = CurvatureReport {
             k: 0.05,
             curvature: 0.05,
-            confidence: 1.0 / (1.0 + 0.05),
+            confidence: Some(1.0 / (1.0 + 0.05)),
+            unreadable_fields: Vec::new(),
             capacity: 1.0 / 0.05,
             lambda_budget: gigi::curvature::lambda_budget(0.05, 2.0, 1.0),
             per_field: Vec::new(),

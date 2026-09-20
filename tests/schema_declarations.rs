@@ -289,3 +289,52 @@ fn a_field_unit_can_be_written_in_the_query_language() {
     assert_eq!(unit_of("px").as_deref(), Some("USD"));
     assert_eq!(unit_of("lat").as_deref(), Some("microseconds"));
 }
+
+/// A schema that trips both creation rules must report the structural one.
+///
+/// HELICITY engineering found this from the other side: their G0 fixture
+/// accepted any refusal as proof the base-field rule worked, so once the seed
+/// rule existed it would have passed for either reason and reported G0
+/// satisfied when G0 was untested. The two rules are now ordered so the
+/// structural fault wins, and this pins that.
+#[test]
+fn a_schema_tripping_both_creation_rules_reports_the_structural_one() {
+    let d = dir("bothrules");
+    let mut e = Engine::open(&d).unwrap();
+    // Base field declares encryption (structural fault) AND a fiber field is
+    // encrypted under a random seed (policy fault). Both would refuse.
+    let schema = BundleSchema::new("events")
+        .base(FieldDef::categorical("id").with_encryption(EncryptionMode::Opaque))
+        .fiber(FieldDef::numeric("px").with_encryption(EncryptionMode::Opaque));
+    let got = e.create_bundle(schema);
+    drop(e);
+    let _ = fs::remove_dir_all(&d);
+    let msg = got.expect_err("both rules refuse this").to_string();
+    assert!(
+        msg.contains("base field"),
+        "the structural fault must be reported, not the seed policy; got: {msg}"
+    );
+    assert!(
+        !msg.contains("SEED FROM ENV"),
+        "reporting the seed rule here makes a base-field fixture ambiguous; got: {msg}"
+    );
+}
+
+/// There is no fixed environment variable name: the schema author chooses it.
+///
+/// HELICITY asked us to name "the" variable. There is not one, which is better
+/// for them than an answer would have been.
+#[test]
+fn the_seed_variable_name_is_chosen_by_the_schema() {
+    std::env::set_var("ANY_NAME_WE_LIKE_9931", "07".repeat(32));
+    let d = dir("seedname");
+    let mut e = Engine::open(&d).unwrap();
+    let stmt = "CREATE BUNDLE vault (id TEXT BASE, px NUMERIC FIBER ENCRYPTED OPAQUE)                 WITH ENCRYPTION SEED FROM ENV ANY_NAME_WE_LIKE_9931;";
+    let ast = gigi::parser::parse(stmt).expect("should parse");
+    let out = gigi::parser::execute(&mut e, &ast);
+    let created = e.bundle_schema("vault").is_some();
+    drop(e);
+    let _ = fs::remove_dir_all(&d);
+    assert!(out.is_ok(), "an author-chosen variable must work: {out:?}");
+    assert!(created, "bundle should exist");
+}

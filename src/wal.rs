@@ -103,6 +103,10 @@ const OP_INTEGRATOR_CHOICE: u8 = 0x0D;
 // right behavior for an unknown opcode (matches the gauge ops policy).
 #[cfg(feature = "imagine")]
 const OP_IMAGINE_FALLBACK: u8 = 0x0E;
+/// An insert whose fiber values were sealed with the bundle's gauge key before
+/// being written here. `OP_INSERT` means the opposite and still does: entries
+/// written before 2026-09-20 carry plaintext and replay has to seal nothing.
+const OP_INSERT_SEALED: u8 = 0x0F;
 const OP_CHECKPOINT: u8 = 0xFF;
 
 /// TDD-HAL-V.1: payload of a `OP_GAUGE_FIELD_SNAPSHOT` (0x0B) WAL
@@ -450,6 +454,19 @@ impl WalWriter {
         res
     }
 
+    /// Log an INSERT whose fiber values are already sealed.
+    ///
+    /// The caller is responsible for having sealed them; `Engine::seal_for_log`
+    /// is the only thing that should be producing the record passed here.
+    pub fn log_insert_sealed(&mut self, bundle_name: &str, record: &Record) -> io::Result<()> {
+        let mut buf = std::mem::take(&mut self.scratch);
+        buf.clear();
+        encode_insert_into(&mut buf, bundle_name, record);
+        let res = self.write_entry(OP_INSERT_SEALED, &buf);
+        self.scratch = buf;
+        res
+    }
+
     /// Log an UPDATE operation (partial field update).
     pub fn log_update(
         &mut self,
@@ -789,6 +806,14 @@ pub enum WalEntry {
         bundle_name: String,
         record: Record,
     },
+    /// Same as `Insert`, but the record's fiber values are sealed with the
+    /// bundle's gauge key. Replay must unseal before handing it to the store.
+    /// A separate variant rather than a flag so the compiler names every site
+    /// that has to decide what to do about it.
+    InsertSealed {
+        bundle_name: String,
+        record: Record,
+    },
     Update {
         bundle_name: String,
         key: Record,
@@ -1064,6 +1089,13 @@ impl WalReader {
             OP_INSERT => {
                 let (bundle_name, record) = decode_insert(payload)?;
                 Ok(Some(WalEntry::Insert {
+                    bundle_name,
+                    record,
+                }))
+            }
+            OP_INSERT_SEALED => {
+                let (bundle_name, record) = decode_insert(payload)?;
+                Ok(Some(WalEntry::InsertSealed {
                     bundle_name,
                     record,
                 }))

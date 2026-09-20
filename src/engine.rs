@@ -896,6 +896,22 @@ impl Engine {
         // only store created above. Either target catches the insert.
         for entry in &wal_entries {
             match entry {
+                WalEntry::InsertSealed { bundle_name, record } => {
+                    let plain = match schemas.get(bundle_name) {
+                        Some(s) => Self::unseal_from_log(s, record),
+                        None => record.clone(),
+                    };
+                    if let Some(ob) = mmap_bundles.get(bundle_name) {
+                        ob.insert(&plain);
+                    } else if let Some(store) = heap_bundles.get_mut(bundle_name) {
+                        store.insert(&plain);
+                    } else {
+                        eprintln!(
+                            "WARNING: mmap-open WAL sealed Insert targets unknown bundle '{}' - skipping orphan record.",
+                            bundle_name
+                        );
+                    }
+                }
                 WalEntry::Insert { bundle_name, record } => {
                     if let Some(ob) = mmap_bundles.get(bundle_name) {
                         ob.insert(record);
@@ -1062,6 +1078,26 @@ impl Engine {
                     }
                 }
                 WalEntry::Checkpoint => {}
+                WalEntry::InsertSealed {
+                    bundle_name,
+                    record,
+                } => {
+                    // Written sealed, so unseal before the store sees it. A
+                    // bundle whose key could not be re-derived never gets here:
+                    // decode_schema refuses the CreateBundle entry first.
+                    let plain = match schemas.get(&bundle_name) {
+                        Some(s) => Self::unseal_from_log(s, &record),
+                        None => record.clone(),
+                    };
+                    if let Some(store) = bundles.get_mut(&bundle_name) {
+                        store.insert(&plain);
+                    } else {
+                        eprintln!(
+                            "WARNING: WAL sealed Insert targets unknown bundle '{}' (no preceding OP_CREATE_BUNDLE) - skipping orphan record.",
+                            bundle_name
+                        );
+                    }
+                }
                 WalEntry::Insert {
                     bundle_name,
                     record,
@@ -1443,6 +1479,55 @@ impl Engine {
     }
 
     /// Create a new bundle (table).
+    /// Seal a record's fiber values for the log.
+    ///
+    /// `Engine::insert` used to journal the caller's record and let the store
+    /// apply the gauge transform afterwards, which put the plaintext of an
+    /// encrypted bundle in the log beside the ciphertext. The log now carries
+    /// the sealed form instead.
+    ///
+    /// The STORE still receives the plaintext, so nothing about indexing or
+    /// query behaviour changes. The sealed copy and the stored copy are
+    /// independent -- an Opaque field draws a fresh nonce each time -- because
+    /// the log is a recipe for reconstructing the record, not a mirror of how
+    /// it happens to be stored.
+    ///
+    /// Returns None when the bundle does not encrypt, in which case there is
+    /// nothing to seal and the record is logged as it stands.
+    fn seal_for_log(schema: &BundleSchema, record: &Record) -> Option<Record> {
+        let key = schema.gauge_key.as_ref()?;
+        let raw: Vec<crate::types::Value> = schema
+            .fiber_fields
+            .iter()
+            .map(|f| record.get(&f.name).cloned().unwrap_or_else(|| f.default.clone()))
+            .collect();
+        let sealed = key.encrypt_fiber(&raw, &schema.name, &schema.fiber_fields);
+        let mut out = record.clone();
+        for (f, v) in schema.fiber_fields.iter().zip(sealed) {
+            out.insert(f.name.clone(), v);
+        }
+        Some(out)
+    }
+
+    /// Inverse of `seal_for_log`, applied on replay before the record reaches
+    /// the store. A bundle with no key is returned untouched.
+    fn unseal_from_log(schema: &BundleSchema, record: &Record) -> Record {
+        let Some(key) = schema.gauge_key.as_ref() else {
+            return record.clone();
+        };
+        let sealed: Vec<crate::types::Value> = schema
+            .fiber_fields
+            .iter()
+            .map(|f| record.get(&f.name).cloned().unwrap_or(crate::types::Value::Null))
+            .collect();
+        let plain = key.decrypt_fiber(&sealed, &schema.name, &schema.fiber_fields);
+        let mut out = record.clone();
+        for (f, v) in schema.fiber_fields.iter().zip(plain) {
+            out.insert(f.name.clone(), v);
+        }
+        out
+    }
+
     /// An encrypted bundle's key must be re-derivable at load without any key
     /// material on disk, and only an env-sourced seed can be: a random seed or
     /// an inline literal is known to the process that generated it and to
@@ -1808,7 +1893,14 @@ impl Engine {
             None => None,
         };
         let record = coerced.as_ref().unwrap_or(record);
-        self.wal.log_insert(bundle_name, record)?;
+        let sealed = self
+            .schemas
+            .get(bundle_name)
+            .and_then(|s| Self::seal_for_log(s, record));
+        match &sealed {
+            Some(r) => self.wal.log_insert_sealed(bundle_name, r)?,
+            None => self.wal.log_insert(bundle_name, record)?,
+        }
         if let Some(store) = self.bundles.get_mut(bundle_name) {
             store.insert(record);
         } else if let Some(ob) = self.mmap_bundles.get(bundle_name) {
@@ -2216,7 +2308,14 @@ impl Engine {
         let records: &[Record] = coerced_batch.as_deref().unwrap_or(records);
         // WAL: log all records first (sequential writes, single flush)
         for record in records {
-            self.wal.log_insert(bundle_name, record)?;
+            let sealed = self
+                .schemas
+                .get(bundle_name)
+                .and_then(|s| Self::seal_for_log(s, record));
+            match &sealed {
+                Some(r) => self.wal.log_insert_sealed(bundle_name, r)?,
+                None => self.wal.log_insert(bundle_name, record)?,
+            }
         }
         self.wal.sync()?;
 
@@ -2873,8 +2972,13 @@ impl Engine {
             for (name, schema) in &self.schemas {
                 new_wal.log_create_bundle(schema)?;
                 if let Some(store) = self.bundles.get(name) {
+                    // `records()` yields decrypted rows, so compaction would
+                    // otherwise write plaintext back into a fresh log.
                     for record in store.records() {
-                        new_wal.log_insert(name, &record)?;
+                        match Self::seal_for_log(schema, &record) {
+                            Some(r) => new_wal.log_insert_sealed(name, &r)?,
+                            None => new_wal.log_insert(name, &record)?,
+                        }
                     }
                 }
             }

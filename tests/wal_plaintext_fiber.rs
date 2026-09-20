@@ -1,27 +1,21 @@
-//! The write-ahead log holds the PLAINTEXT fiber values of an encrypted bundle.
+//! The log must not carry the plaintext of an encrypted bundle.
 //!
-//! `Engine::insert` journals the caller's record and then hands it to
-//! `BundleStore::insert`, which is where the gauge transform is applied. The log
-//! entry is written first and is written from the pre-transform record, so for
-//! an encrypted bundle the log carries exactly the values the ciphertext was
-//! meant to conceal.
+//! It used to. `Engine::insert` journalled the caller's record and then handed
+//! it to the store, which is where the gauge transform is applied, so the log
+//! entry was written from the untransformed record. An observer holding the
+//! data directory did not need the key, because there was nothing they needed
+//! to decrypt.
 //!
-//! This is larger than the key material that used to sit beside it, which was
-//! fixed on 2026-09-20. An observer holding the data directory does not need the
-//! key, because they do not need to decrypt anything.
+//! Fixed 2026-09-20 by sealing before journalling: the log carries the
+//! transformed values and replay unseals them before the store sees them. The
+//! stored copy and the logged copy are independent, since an Opaque field draws
+//! a fresh nonce each time -- the log is a recipe for reconstructing the
+//! record, not a mirror of how it is stored.
 //!
-//! Not fixed here because the fix is a design decision, not a patch. The log has
-//! to carry something replay can use. Either it carries ciphertext and replay
-//! stops re-encrypting, which changes what a replayed insert means and
-//! interacts with rekeying, or the log payload is itself encrypted, which puts
-//! key handling on the durability path. Both are choices about the engine's
-//! contract.
-//!
-//! Found 2026-09-20 while fixing the rekey path, by probing the whole data
-//! directory for a canary value rather than reading the code. An earlier probe
-//! of `gigi.wal` alone reported clean and was wrong: it compared a 20-byte
-//! window against a 21-byte needle, which can never match. The reproduction
-//! below searches every file under the data root.
+//! Found by probing the whole data directory for a canary rather than reading
+//! the code. An earlier probe of `gigi.wal` alone reported clean and was wrong:
+//! it compared a 20-byte window against a 21-byte needle, which can never
+//! match. These walk every file under the data root.
 use gigi::crypto::GaugeKey;
 use gigi::engine::Engine;
 use gigi::types::{BundleSchema, EncryptionMode, EncryptionSeedSource, FieldDef, Record, Value};
@@ -51,7 +45,6 @@ fn files_containing_canary(dir: &std::path::Path) -> Vec<String> {
     hits
 }
 
-#[ignore = "OPEN BUG (found 2026-09-20). Engine::insert journals the caller's record BEFORE BundleStore::insert applies the gauge transform, so gigi.wal carries the plaintext fiber values of an encrypted bundle. An observer with the data directory does not need the key. Not a patch: the log must carry something replay can use, so the choice is between journalling ciphertext (and stopping replay from re-encrypting, which interacts with rekey) or encrypting the log payload (which puts key handling on the durability path). Needs a decision before it needs code. Run with `cargo test -- --ignored`."]
 #[test]
 fn wal_does_not_carry_plaintext_fiber_values() {
     std::env::set_var("GIGI_PLAINTEXT_PROBE_SEED", SEED_HEX);
@@ -79,4 +72,82 @@ fn wal_does_not_carry_plaintext_fiber_values() {
         hits.is_empty(),
         "the plaintext fiber value of an encrypted bundle is on disk in: {hits:?}"
     );
+}
+
+/// Sealing is only correct if replay can undo it.
+///
+/// Without this, the test above passes just as well when replay is broken and
+/// the records come back as ciphertext or not at all.
+#[test]
+fn a_sealed_record_survives_a_restart() {
+    std::env::set_var("GIGI_ROUNDTRIP_SEED", SEED_HEX);
+    let dir = std::env::temp_dir().join("gigi_wal_sealed_roundtrip");
+    let _ = fs::remove_dir_all(&dir);
+
+    let mut schema = BundleSchema::new("vault")
+        .base(FieldDef::numeric("id"))
+        .fiber(FieldDef::categorical("secret").with_encryption(EncryptionMode::Opaque))
+        .with_seed_source(EncryptionSeedSource::Env("GIGI_ROUNDTRIP_SEED".into()));
+    schema.gauge_key = Some(GaugeKey::derive(&[7u8; 32], &schema.fiber_fields));
+
+    {
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(schema).unwrap();
+        for (id, secret) in [(1i64, "tuna"), (2, "marlin")] {
+            let mut r = Record::new();
+            r.insert("id".into(), Value::Integer(id));
+            r.insert("secret".into(), Value::Text(secret.into()));
+            engine.insert("vault", &r).unwrap();
+        }
+    }
+
+    let engine = Engine::open(&dir).unwrap();
+    let mut secrets: Vec<String> = engine
+        .bundle("vault")
+        .unwrap()
+        .records()
+        .filter_map(|r| r.get("secret").and_then(|v| v.as_str().map(String::from)))
+        .collect();
+    drop(engine);
+    let _ = fs::remove_dir_all(&dir);
+    secrets.sort();
+    assert_eq!(
+        secrets,
+        vec!["marlin".to_string(), "tuna".to_string()],
+        "replay must unseal what insert sealed"
+    );
+}
+
+/// The update path writes its patch fields to the log too.
+#[ignore = "OPEN BUG (found 2026-09-20, same family as the insert leak fixed that day). Engine::update journals the patch record before the store applies the gauge transform, so a patch that touches an encrypted fiber field puts that value in the log in the clear. Not fixed with the insert path because a patch is partial, and a field in an Isometric group cannot be sealed on its own -- the group's members are transformed together, so sealing one member of a partial patch needs the others, which the patch does not carry. Wants a decision about partial groups before it wants code. Run with `cargo test -- --ignored`."]
+#[test]
+fn an_update_does_not_carry_plaintext_either() {
+    std::env::set_var("GIGI_UPDATE_PROBE_SEED", SEED_HEX);
+    let dir = std::env::temp_dir().join("gigi_wal_update_plaintext");
+    let _ = fs::remove_dir_all(&dir);
+
+    let mut schema = BundleSchema::new("vault")
+        .base(FieldDef::numeric("id"))
+        .fiber(FieldDef::categorical("secret").with_encryption(EncryptionMode::Opaque))
+        .with_seed_source(EncryptionSeedSource::Env("GIGI_UPDATE_PROBE_SEED".into()));
+    schema.gauge_key = Some(GaugeKey::derive(&[7u8; 32], &schema.fiber_fields));
+
+    {
+        let mut engine = Engine::open(&dir).unwrap();
+        engine.create_bundle(schema).unwrap();
+        let mut r = Record::new();
+        r.insert("id".into(), Value::Integer(1));
+        r.insert("secret".into(), Value::Text("placeholder".into()));
+        engine.insert("vault", &r).unwrap();
+
+        let mut key = Record::new();
+        key.insert("id".into(), Value::Integer(1));
+        let mut patch = Record::new();
+        patch.insert("secret".into(), Value::Text(String::from_utf8_lossy(CANARY).into_owned()));
+        let _ = engine.update("vault", &key, &patch);
+    }
+
+    let hits = files_containing_canary(&dir);
+    let _ = fs::remove_dir_all(&dir);
+    assert!(hits.is_empty(), "an updated plaintext value is on disk in: {hits:?}");
 }

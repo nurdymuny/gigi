@@ -10713,6 +10713,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 let seed = resolve_seed(seed_source)?;
                 let gk = crate::crypto::GaugeKey::derive(&seed, &schema.fiber_fields);
                 schema.gauge_key = Some(gk);
+                // Recorded so the key can be re-derived on load. Only an
+                // env-sourced seed is re-derivable; see BundleSchema::seed_source.
+                schema.seed_source = seed_source.clone();
             } else if schema.fiber_fields.iter().any(|fd| fd.encryption.is_encrypted()) {
                 // Per-field encryption declared without bundle-level shorthand.
                 // Generate a seed and derive the GaugeKey so the engine has
@@ -10720,6 +10723,9 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
                 let seed = resolve_seed(seed_source)?;
                 let gk = crate::crypto::GaugeKey::derive(&seed, &schema.fiber_fields);
                 schema.gauge_key = Some(gk);
+                // Recorded so the key can be re-derived on load. Only an
+                // env-sourced seed is re-derivable; see BundleSchema::seed_source.
+                schema.seed_source = seed_source.clone();
             }
             engine.create_bundle(schema).map_err(|e| format!("{e}"))?;
             Ok(ExecResult::Ok)

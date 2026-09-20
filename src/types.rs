@@ -455,6 +455,16 @@ pub struct BundleSchema {
     pub indexed_fields: Vec<String>,
     /// Optional geometric encryption key (gauge transform on fibers).
     pub gauge_key: Option<crate::crypto::GaugeKey>,
+    /// How this bundle's encryption seed is obtained. Recorded so the gauge
+    /// key can be RE-DERIVED at load rather than persisted: `GaugeKey::derive`
+    /// is deterministic in (seed, fiber field definitions), so a durable
+    /// record of the source plus the field definitions is sufficient, and
+    /// writing the derived key beside the ciphertext is not.
+    ///
+    /// Only `Env` is re-derivable without holding key material. `Random` and
+    /// `Hex` are not: nothing outside the process knows the seed, so a bundle
+    /// built from them still has its key journalled. See `src/wal.rs`.
+    pub seed_source: crate::types::EncryptionSeedSource,
     /// Schema-declared adjacency functions for COMPLETE.
     pub adjacencies: Vec<AdjacencyDef>,
     /// H¹ z-score threshold for consistency checks (default 3.0).
@@ -499,6 +509,7 @@ impl BundleSchema {
             fiber_fields: Vec::new(),
             indexed_fields: Vec::new(),
             gauge_key: None,
+            seed_source: EncryptionSeedSource::Random,
             adjacencies: Vec::new(),
             h1_threshold: 3.0,
             invariants: Vec::new(),
@@ -523,6 +534,13 @@ impl BundleSchema {
             k.b.dim()
         );
         self.kahler = Some(k);
+        self
+    }
+
+    /// Record how this bundle's encryption seed is obtained, so the gauge key
+    /// can be re-derived on load instead of journalled.
+    pub fn with_seed_source(mut self, src: EncryptionSeedSource) -> Self {
+        self.seed_source = src;
         self
     }
 

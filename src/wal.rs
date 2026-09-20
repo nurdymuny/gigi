@@ -1466,6 +1466,124 @@ fn decode_field_type(data: &[u8], offset: &mut usize) -> io::Result<FieldType> {
     }
 }
 
+/// Schema-record version sentinel. A v1 record begins with the u32 byte-length
+/// of the bundle name, which can never be `u32::MAX`, so this value is an
+/// unambiguous "a version number follows" marker.
+const SCHEMA_SENTINEL: u32 = u32::MAX;
+/// v2 adds: per-field encryption mode and group, the encryption seed SOURCE,
+/// and gauge-key marker 3 (re-derivable, no key material written).
+const SCHEMA_V2: u32 = 2;
+
+fn encode_encryption_mode(buf: &mut Vec<u8>, m: &crate::types::EncryptionMode) {
+    use crate::types::EncryptionMode as M;
+    match m {
+        M::None => buf.push(0),
+        M::Affine => buf.push(1),
+        M::Opaque => buf.push(2),
+        M::Indexed => buf.push(3),
+        M::Probabilistic { sigma } => {
+            buf.push(4);
+            buf.extend_from_slice(&sigma.to_le_bytes());
+        }
+        M::Isometric => buf.push(5),
+    }
+}
+
+fn decode_encryption_mode(
+    data: &[u8],
+    offset: &mut usize,
+) -> io::Result<crate::types::EncryptionMode> {
+    use crate::types::EncryptionMode as M;
+    if *offset >= data.len() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "truncated encryption mode",
+        ));
+    }
+    let tag = data[*offset];
+    *offset += 1;
+    Ok(match tag {
+        0 => M::None,
+        1 => M::Affine,
+        2 => M::Opaque,
+        3 => M::Indexed,
+        4 => {
+            let sigma = f64::from_le_bytes(data[*offset..*offset + 8].try_into().unwrap());
+            *offset += 8;
+            M::Probabilistic { sigma }
+        }
+        5 => M::Isometric,
+        other => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("unknown encryption mode tag {other}"),
+            ))
+        }
+    })
+}
+
+/// The seed SOURCE, never the seed. `Hex` deliberately stores only the fact
+/// that a literal was used: writing the literal would put the seed in the log,
+/// which is the defect this encoding exists to remove.
+fn encode_seed_source(buf: &mut Vec<u8>, s: &crate::types::EncryptionSeedSource) {
+    use crate::types::EncryptionSeedSource as S;
+    match s {
+        S::Random => buf.push(0),
+        S::Hex(_) => buf.push(1),
+        S::Env(name) => {
+            buf.push(2);
+            write_string(buf, name);
+        }
+    }
+}
+
+fn decode_seed_source(
+    data: &[u8],
+    offset: &mut usize,
+) -> io::Result<crate::types::EncryptionSeedSource> {
+    use crate::types::EncryptionSeedSource as S;
+    if *offset >= data.len() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "truncated seed source",
+        ));
+    }
+    let tag = data[*offset];
+    *offset += 1;
+    Ok(match tag {
+        0 => S::Random,
+        1 => S::Hex(String::new()),
+        2 => S::Env(read_string(data, offset)?),
+        other => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("unknown seed source tag {other}"),
+            ))
+        }
+    })
+}
+
+/// Resolve an env-sourced seed at load time. Mirrors `parser::resolve_seed`,
+/// restricted to the one source that can be resolved without holding key
+/// material. The error names the bundle and the variable, because the operator
+/// action is to set it and restart.
+fn seed_from_env(bundle: &str, var: &str) -> io::Result<[u8; 32]> {
+    let value = std::env::var(var).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            format!(
+                "bundle '{bundle}' derives its encryption key from env var {var}, which is not set on this engine. The key is deliberately not stored in the log, so the bundle cannot be opened until the variable is restored."
+            ),
+        )
+    })?;
+    crate::crypto::seed_from_hex(&value).map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("bundle '{bundle}': env var {var} is not a valid 64-char hex seed: {e}"),
+        )
+    })
+}
+
 fn encode_field_def(fd: &FieldDef) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string(&mut buf, &fd.name);
@@ -1482,10 +1600,20 @@ fn encode_field_def(fd: &FieldDef) -> Vec<u8> {
         }
     }
     buf.extend_from_slice(&fd.weight.to_le_bytes());
+    // v2 tail. A v1 decoder never reads past `weight`, and a v1 record is
+    // identified by the absence of the sentinel, so this is additive.
+    encode_encryption_mode(&mut buf, &fd.encryption);
+    match &fd.encryption_group {
+        Some(g) => {
+            buf.push(1);
+            write_string(&mut buf, g);
+        }
+        None => buf.push(0),
+    }
     buf
 }
 
-fn decode_field_def(data: &[u8], offset: &mut usize) -> io::Result<FieldDef> {
+fn decode_field_def(data: &[u8], offset: &mut usize, v2: bool) -> io::Result<FieldDef> {
     let name = read_string(data, offset)?;
     let field_type = decode_field_type(data, offset)?;
     let default = decode_value(data, offset)?;
@@ -1500,23 +1628,38 @@ fn decode_field_def(data: &[u8], offset: &mut usize) -> io::Result<FieldDef> {
     };
     let weight = f64::from_le_bytes(data[*offset..*offset + 8].try_into().unwrap());
     *offset += 8;
+    // v1 records predate the per-field encryption mode and carry no tail. They
+    // decode as plaintext, which is what they were. v2 records carry the real
+    // mode, so a restored schema no longer claims plaintext for a field the
+    // gauge key is transforming.
+    let (encryption, encryption_group) = if v2 {
+        let mode = decode_encryption_mode(data, offset)?;
+        let has_group = data[*offset] == 1;
+        *offset += 1;
+        let group = if has_group {
+            Some(read_string(data, offset)?)
+        } else {
+            None
+        };
+        (mode, group)
+    } else {
+        (crate::types::EncryptionMode::None, None)
+    };
     Ok(FieldDef {
         name,
         field_type,
         default,
         range,
         weight,
-        // WAL records were written before the v0.2 encryption-mode field
-        // existed; on load we default to None (plaintext). Bundles created
-        // pre-v0.2 honor the bundle-level gauge_key path independently of
-        // this field, so backwards-compat is preserved.
-        encryption: crate::types::EncryptionMode::None,
-        encryption_group: None,
+        encryption,
+        encryption_group,
     })
 }
 
 fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
     let mut buf = Vec::new();
+    buf.extend_from_slice(&SCHEMA_SENTINEL.to_le_bytes());
+    buf.extend_from_slice(&SCHEMA_V2.to_le_bytes());
     write_string(&mut buf, &schema.name);
     buf.extend_from_slice(&(schema.base_fields.len() as u32).to_le_bytes());
     for f in &schema.base_fields {
@@ -1537,7 +1680,17 @@ fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
     //   2  = v0.2 tagged: each transform has a u8 variant tag followed by
     //        variant-specific payload (Affine: 16 B scale+offset; Opaque/
     //        Indexed: 32 B key)
-    if let Some(ref gk) = schema.gauge_key {
+    //   3  = v2: key is RE-DERIVABLE from (env-sourced seed, fiber fields).
+    //        No key material is written. This is the only marker that does not
+    //        put the key beside the ciphertext it protects.
+    encode_seed_source(&mut buf, &schema.seed_source);
+    let rederivable = matches!(
+        schema.seed_source,
+        crate::types::EncryptionSeedSource::Env(_)
+    );
+    if schema.gauge_key.is_some() && rederivable {
+        buf.push(3u8);
+    } else if let Some(ref gk) = schema.gauge_key {
         buf.push(2u8);
         buf.extend_from_slice(&(gk.transforms.len() as u32).to_le_bytes());
         for t in &gk.transforms {
@@ -1614,6 +1767,20 @@ fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
 
 fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     let mut offset = 0usize;
+    // A v2 record opens with the sentinel and a version. A v1 record opens with
+    // the u32 byte-length of the bundle name, which is never u32::MAX.
+    let v2 = data.len() >= 8
+        && u32::from_le_bytes(data[0..4].try_into().unwrap()) == SCHEMA_SENTINEL;
+    if v2 {
+        let version = u32::from_le_bytes(data[4..8].try_into().unwrap());
+        if version != SCHEMA_V2 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("unsupported schema record version {version}"),
+            ));
+        }
+        offset = 8;
+    }
     let name = read_string(data, &mut offset)?;
     let mut schema = BundleSchema::new(&name);
 
@@ -1622,7 +1789,7 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     for _ in 0..base_count {
         schema
             .base_fields
-            .push(decode_field_def(data, &mut offset)?);
+            .push(decode_field_def(data, &mut offset, v2)?);
     }
 
     let fiber_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
@@ -1630,13 +1797,17 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
     for _ in 0..fiber_count {
         schema
             .fiber_fields
-            .push(decode_field_def(data, &mut offset)?);
+            .push(decode_field_def(data, &mut offset, v2)?);
     }
 
     let idx_count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
     offset += 4;
     for _ in 0..idx_count {
         schema.indexed_fields.push(read_string(data, &mut offset)?);
+    }
+
+    if v2 {
+        schema.seed_source = decode_seed_source(data, &mut offset)?;
     }
 
     // ── Gauge key (encryption) — may be absent in old WAL entries ──
@@ -1753,6 +1924,27 @@ fn decode_schema(data: &[u8]) -> io::Result<BundleSchema> {
                 }
             }
             schema.gauge_key = Some(crate::crypto::GaugeKey { transforms });
+        } else if marker == 3 {
+            // Re-derive rather than read. `GaugeKey::derive` is deterministic in
+            // (seed, fiber field definitions); the fields come from this record
+            // and the seed from the environment, so nothing about the key itself
+            // needed to be written.
+            match &schema.seed_source {
+                crate::types::EncryptionSeedSource::Env(var) => {
+                    let seed = seed_from_env(&schema.name, var)?;
+                    schema.gauge_key =
+                        Some(crate::crypto::GaugeKey::derive(&seed, &schema.fiber_fields));
+                }
+                other => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!(
+                            "bundle '{}' is marked re-derivable but its seed source is {:?}, which cannot be resolved without key material",
+                            schema.name, other
+                        ),
+                    ));
+                }
+            }
         }
         // marker == 0 → no key, fall through
     }
@@ -1882,6 +2074,105 @@ mod tests {
         r.insert("name".into(), Value::Text("Alice".into()));
         r.insert("salary".into(), Value::Float(75000.0));
         r
+    }
+
+    /// Reproduces the pre-2026-09-20 schema record byte for byte: no version
+    /// sentinel, no per-field encryption tail, no seed source. Data directories
+    /// written before the key-material fix hold records in this shape, so the
+    /// decoder has to keep reading them.
+    fn encode_schema_v1(schema: &BundleSchema) -> Vec<u8> {
+        fn field_v1(fd: &FieldDef) -> Vec<u8> {
+            let mut buf = Vec::new();
+            write_string(&mut buf, &fd.name);
+            buf.extend_from_slice(&encode_field_type(&fd.field_type));
+            encode_value_into(&mut buf, &fd.default);
+            match fd.range {
+                Some(r) => {
+                    buf.push(0x01);
+                    buf.extend_from_slice(&r.to_le_bytes());
+                }
+                None => buf.push(0x00),
+            }
+            buf.extend_from_slice(&fd.weight.to_le_bytes());
+            buf
+        }
+        let mut buf = Vec::new();
+        write_string(&mut buf, &schema.name);
+        buf.extend_from_slice(&(schema.base_fields.len() as u32).to_le_bytes());
+        for f in &schema.base_fields {
+            buf.extend_from_slice(&field_v1(f));
+        }
+        buf.extend_from_slice(&(schema.fiber_fields.len() as u32).to_le_bytes());
+        for f in &schema.fiber_fields {
+            buf.extend_from_slice(&field_v1(f));
+        }
+        buf.extend_from_slice(&(schema.indexed_fields.len() as u32).to_le_bytes());
+        for idx in &schema.indexed_fields {
+            write_string(&mut buf, idx);
+        }
+        match &schema.gauge_key {
+            Some(gk) => {
+                buf.push(2u8);
+                buf.extend_from_slice(&(gk.transforms.len() as u32).to_le_bytes());
+                for tr in &gk.transforms {
+                    match tr {
+                        crate::crypto::FieldTransform::Identity => buf.push(0x00),
+                        crate::crypto::FieldTransform::Affine { scale, offset } => {
+                            buf.push(0x01);
+                            buf.extend_from_slice(&scale.to_le_bytes());
+                            buf.extend_from_slice(&offset.to_le_bytes());
+                        }
+                        crate::crypto::FieldTransform::Opaque { key } => {
+                            buf.push(0x02);
+                            buf.extend_from_slice(key);
+                        }
+                        crate::crypto::FieldTransform::Indexed { key } => {
+                            buf.push(0x03);
+                            buf.extend_from_slice(key);
+                        }
+                        _ => panic!("fixture covers the v0.1/v0.2 transforms only"),
+                    }
+                }
+            }
+            None => buf.push(0u8),
+        }
+        buf.extend_from_slice(&0u32.to_le_bytes());
+        buf
+    }
+
+    /// An engine opened on a directory written before the fix must still read
+    /// its schemas, including the key those records carry. The fix stops
+    /// WRITING key material; it cannot retroactively remove what is already on
+    /// disk, and refusing to read it would take the data with it.
+    #[test]
+    fn v1_schema_records_still_decode_including_their_key() {
+        let mut schema = BundleSchema::new("legacy")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("amount"))
+            .fiber(FieldDef::categorical("who"));
+        let key = crate::crypto::GaugeKey::derive(&[3u8; 32], &schema.fiber_fields);
+        schema.gauge_key = Some(key.clone());
+
+        let v1 = encode_schema_v1(&schema);
+        assert_ne!(
+            u32::from_le_bytes(v1[0..4].try_into().unwrap()),
+            SCHEMA_SENTINEL,
+            "a v1 record must not be mistaken for a versioned one"
+        );
+
+        let decoded = decode_schema(&v1).expect("v1 record must still decode");
+        assert_eq!(decoded.name, "legacy");
+        assert_eq!(decoded.fiber_fields.len(), 2);
+        assert_eq!(
+            format!("{:?}", decoded.gauge_key.unwrap().transforms),
+            format!("{:?}", key.transforms),
+            "the key stored in an old record is still the key"
+        );
+        // v1 carried no per-field mode. Plaintext is what those records said.
+        assert!(decoded
+            .fiber_fields
+            .iter()
+            .all(|f| f.encryption == crate::types::EncryptionMode::None));
     }
 
     /// Schema round-trip through encode/decode.

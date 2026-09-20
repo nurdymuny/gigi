@@ -308,6 +308,11 @@ fn every_bundle_schema_field_has_an_inv_s_disposition() {
         indexed_fields: _,
         // (c) — out of scope, consequence named in TDD-IDX §8
         gauge_key: _,
+        // (a) — journalled as of the WAL key-material fix (2026-09-20). Carried
+        // in the v2 schema record so the gauge key can be RE-DERIVED on load
+        // instead of written beside the ciphertext. Gated by
+        // tests/wal_key_material.rs.
+        seed_source: _,
         // (c) — feature-gated NINTH field, found by this very test on its
         // first run under `--features kahler`. `with_kahler` is a consuming
         // builder, so there is no post-construction mutator and (b) would

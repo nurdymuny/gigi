@@ -1443,7 +1443,37 @@ impl Engine {
     }
 
     /// Create a new bundle (table).
+    /// An encrypted bundle's key must be re-derivable at load without any key
+    /// material on disk, and only an env-sourced seed can be: a random seed or
+    /// an inline literal is known to the process that generated it and to
+    /// nothing else, so surviving a restart would mean journalling the key
+    /// beside the ciphertext it protects.
+    ///
+    /// Checked here rather than at each caller so no creation path can forget
+    /// it. Replay does not pass through `create_bundle`, so this constrains new
+    /// bundles only and never locks an existing one out of its own data.
+    fn require_rederivable_seed(schema: &BundleSchema) -> io::Result<()> {
+        let encrypts = schema
+            .fiber_fields
+            .iter()
+            .any(|f| f.encryption.is_encrypted());
+        if !encrypts {
+            return Ok(());
+        }
+        match &schema.seed_source {
+            crate::types::EncryptionSeedSource::Env(_) => Ok(()),
+            other => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "bundle '{}' encrypts fiber fields but its encryption seed source is {:?}. A durable encrypted bundle requires WITH ENCRYPTION SEED FROM ENV <VAR>: only an env-sourced seed can be re-derived at load, and the alternative is writing the key into the log next to the ciphertext.",
+                    schema.name, other
+                ),
+            )),
+        }
+    }
+
     pub fn create_bundle(&mut self, schema: BundleSchema) -> io::Result<()> {
+        Self::require_rederivable_seed(&schema)?;
         self.wal.log_create_bundle(&schema)?;
         let store = BundleStore::new(schema.clone());
         self.bundles.insert(schema.name.clone(), store);

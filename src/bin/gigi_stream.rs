@@ -16380,7 +16380,13 @@ fn init_app_bundles(engine: &mut Engine) {
             let seed = match entry.get("seed_env").and_then(|v| v.as_str()) {
                 Some(env_name) => match std::env::var(env_name) {
                     Ok(hex) => match gigi::crypto::seed_from_hex(&hex) {
-                        Ok(s) => s,
+                        Ok(s) => {
+                            // Record the source, so the key is re-derived from
+                            // this variable at load rather than journalled.
+                            schema.seed_source =
+                                gigi::types::EncryptionSeedSource::Env(env_name.to_string());
+                            s
+                        }
                         Err(e) => {
                             eprintln!(
                                 "[app-bundles] {name}: seed_env `{env_name}` is set but invalid hex: {e}. \
@@ -20727,7 +20733,19 @@ mod tests {
     /// sets the secret. The bundle is still created and is encrypted;
     /// it just won't survive a redeploy.
     #[test]
-    fn init_app_bundles_missing_seed_env_falls_back() {
+    /// When `seed_env` points to a missing env var, the bundle is NOT created.
+    ///
+    /// It used to be created with a random seed instead, on the reasoning that
+    /// starting was better than refusing. That substituted a key the operator
+    /// did not choose and could not reproduce, journalled it beside the
+    /// ciphertext, and said so only on stderr — a bundle declared as
+    /// encrypted-from-a-secret silently became encrypted-with-a-throwaway.
+    ///
+    /// Changed 2026-09-20 with the WAL key-material fix: a durable encrypted
+    /// bundle requires an env-sourced seed, because that is the only seed the
+    /// engine can re-derive at load without writing the key down. Startup still
+    /// does not crash; the bundle is simply absent and the reason is printed.
+    fn init_app_bundles_missing_seed_env_refuses_the_bundle() {
         let dir = tmp_dir("init_app_bundles_missing_seed");
         cleanup(&dir);
         let mut engine = Engine::open(&dir).unwrap();
@@ -20749,12 +20767,11 @@ mod tests {
 
         init_app_bundles(&mut engine);
 
-        // Bundle was still created with a random seed — better than
-        // crashing on startup. The schema has a gauge_key.
-        let store = engine
-            .heap_bundle("jg_unset_seed")
-            .expect("bundle present in heap");
-        assert!(store.schema.gauge_key.is_some());
+        // Refused: no key the engine cannot re-derive is ever committed.
+        assert!(
+            engine.heap_bundle("jg_unset_seed").is_none(),
+            "a bundle whose declared seed secret is unset must not be created              with a substituted random key"
+        );
 
         unsafe { std::env::remove_var("GIGI_APP_BUNDLES"); }
         drop(lock);

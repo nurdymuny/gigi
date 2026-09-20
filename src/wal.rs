@@ -1593,6 +1593,39 @@ fn decode_row_semantics(data: &[u8], offset: &mut usize) -> io::Result<crate::ty
     })
 }
 
+/// The OLDEST record version that represents this schema without losing
+/// anything.
+///
+/// Rollback is the reason. A binary predating a version cannot read it: the
+/// one in production as of 2026-09-20 has no sentinel handling at all and
+/// would misread the marker as a bundle-name length. Compaction re-emits every
+/// schema, so writing v3 unconditionally would make every bundle unreadable to
+/// the previous binary within one compaction of a deploy -- closing the
+/// rollback door for bundles that never used a single new feature.
+///
+/// So a schema that uses nothing new is still written v1, and one that uses
+/// only encryption and a seed source is still written v2. You pay the
+/// compatibility cost only for what you actually declared.
+fn schema_record_version(schema: &BundleSchema) -> u32 {
+    let fields = || schema.base_fields.iter().chain(schema.fiber_fields.iter());
+    let uses_v3 = schema.order_field.is_some()
+        || schema.retention != crate::types::Retention::Undeclared
+        || schema.row_semantics != crate::types::RowSemantics::Unspecified
+        || fields().any(|f| f.unit.is_some());
+    if uses_v3 {
+        return SCHEMA_V3;
+    }
+    let uses_v2 = schema.seed_source != crate::types::EncryptionSeedSource::Random
+        || fields().any(|f| {
+            f.encryption != crate::types::EncryptionMode::None || f.encryption_group.is_some()
+        });
+    if uses_v2 {
+        SCHEMA_V2
+    } else {
+        1
+    }
+}
+
 fn encode_encryption_mode(buf: &mut Vec<u8>, m: &crate::types::EncryptionMode) {
     use crate::types::EncryptionMode as M;
     match m {
@@ -1703,7 +1736,7 @@ fn seed_from_env(bundle: &str, var: &str) -> io::Result<[u8; 32]> {
     })
 }
 
-fn encode_field_def(fd: &FieldDef) -> Vec<u8> {
+fn encode_field_def(fd: &FieldDef, version: u32) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string(&mut buf, &fd.name);
     buf.extend_from_slice(&encode_field_type(&fd.field_type));
@@ -1719,6 +1752,9 @@ fn encode_field_def(fd: &FieldDef) -> Vec<u8> {
         }
     }
     buf.extend_from_slice(&fd.weight.to_le_bytes());
+    if version < SCHEMA_V2 {
+        return buf;
+    }
     // v2 tail. A v1 decoder never reads past `weight`, and a v1 record is
     // identified by the absence of the sentinel, so this is additive.
     encode_encryption_mode(&mut buf, &fd.encryption);
@@ -1728,6 +1764,9 @@ fn encode_field_def(fd: &FieldDef) -> Vec<u8> {
             write_string(&mut buf, g);
         }
         None => buf.push(0),
+    }
+    if version < SCHEMA_V3 {
+        return buf;
     }
     // v3 tail.
     encode_opt_string(&mut buf, &fd.unit);
@@ -1785,16 +1824,20 @@ fn decode_field_def(data: &[u8], offset: &mut usize, version: u32) -> io::Result
 
 fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
     let mut buf = Vec::new();
-    buf.extend_from_slice(&SCHEMA_SENTINEL.to_le_bytes());
-    buf.extend_from_slice(&SCHEMA_V3.to_le_bytes());
+    // Oldest version that loses nothing -- see `schema_record_version`.
+    let version = schema_record_version(schema);
+    if version >= SCHEMA_V2 {
+        buf.extend_from_slice(&SCHEMA_SENTINEL.to_le_bytes());
+        buf.extend_from_slice(&version.to_le_bytes());
+    }
     write_string(&mut buf, &schema.name);
     buf.extend_from_slice(&(schema.base_fields.len() as u32).to_le_bytes());
     for f in &schema.base_fields {
-        buf.extend_from_slice(&encode_field_def(f));
+        buf.extend_from_slice(&encode_field_def(f, version));
     }
     buf.extend_from_slice(&(schema.fiber_fields.len() as u32).to_le_bytes());
     for f in &schema.fiber_fields {
-        buf.extend_from_slice(&encode_field_def(f));
+        buf.extend_from_slice(&encode_field_def(f, version));
     }
     buf.extend_from_slice(&(schema.indexed_fields.len() as u32).to_le_bytes());
     for idx in &schema.indexed_fields {
@@ -1810,17 +1853,21 @@ fn encode_schema(schema: &BundleSchema) -> Vec<u8> {
     //   3  = v2: key is RE-DERIVABLE from (env-sourced seed, fiber fields).
     //        No key material is written. This is the only marker that does not
     //        put the key beside the ciphertext it protects.
-    encode_seed_source(&mut buf, &schema.seed_source);
+    if version >= SCHEMA_V2 {
+        encode_seed_source(&mut buf, &schema.seed_source);
+    }
     // v3: declared, and for retention and units that is all -- the engine
     // carries them and does not act on them.
-    encode_opt_string(&mut buf, &schema.order_field);
-    encode_retention(&mut buf, &schema.retention);
-    encode_row_semantics(&mut buf, &schema.row_semantics);
+    if version >= SCHEMA_V3 {
+        encode_opt_string(&mut buf, &schema.order_field);
+        encode_retention(&mut buf, &schema.retention);
+        encode_row_semantics(&mut buf, &schema.row_semantics);
+    }
     let rederivable = matches!(
         schema.seed_source,
         crate::types::EncryptionSeedSource::Env(_)
     );
-    if schema.gauge_key.is_some() && rederivable {
+    if schema.gauge_key.is_some() && rederivable && version >= SCHEMA_V2 {
         buf.push(3u8);
     } else if let Some(ref gk) = schema.gauge_key {
         buf.push(2u8);
@@ -2311,6 +2358,58 @@ mod tests {
             .fiber_fields
             .iter()
             .all(|f| f.encryption == crate::types::EncryptionMode::None));
+    }
+
+    /// A schema is written in the OLDEST version that represents it.
+    ///
+    /// This is the rollback guarantee. A binary predating a version cannot read
+    /// it, and compaction re-emits every schema — so writing the newest version
+    /// unconditionally would make every bundle unreadable to the previous
+    /// binary within one compaction of a deploy, including bundles that never
+    /// used a single new feature.
+    #[test]
+    fn a_schema_is_written_in_the_oldest_version_that_represents_it() {
+        let sentinel = |b: &[u8]| {
+            b.len() >= 8 && u32::from_le_bytes(b[0..4].try_into().unwrap()) == SCHEMA_SENTINEL
+        };
+        let version_of = |b: &[u8]| u32::from_le_bytes(b[4..8].try_into().unwrap());
+
+        // Nothing new used: no sentinel at all, so a pre-sentinel binary reads it.
+        let plain = BundleSchema::new("plain")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("v"));
+        let enc = encode_schema(&plain);
+        assert!(
+            !sentinel(&enc),
+            "a schema using nothing new must still be written v1"
+        );
+        assert_eq!(decode_schema(&enc).unwrap().name, "plain");
+
+        // Encryption + a seed source needs v2, and no more than v2.
+        let mut v2 = BundleSchema::new("v2")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("v").with_encryption(crate::types::EncryptionMode::Opaque))
+            .with_seed_source(crate::types::EncryptionSeedSource::Env("X".into()));
+        v2.gauge_key = Some(crate::crypto::GaugeKey::derive(&[1u8; 32], &v2.fiber_fields));
+        let enc = encode_schema(&v2);
+        assert!(sentinel(&enc), "encryption needs a versioned record");
+        assert_eq!(version_of(&enc), SCHEMA_V2, "and needs no more than v2");
+
+        // A declaration pushes it to v3, and only then.
+        let v3 = BundleSchema::new("v3")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("v"))
+            .with_order_field("id");
+        let enc = encode_schema(&v3);
+        assert_eq!(version_of(&enc), SCHEMA_V3);
+        let back = decode_schema(&enc).unwrap();
+        assert_eq!(back.order_field.as_deref(), Some("id"));
+
+        // A unit alone is enough to need v3.
+        let unit_only = BundleSchema::new("u")
+            .base(FieldDef::numeric("id"))
+            .fiber(FieldDef::numeric("v").with_unit("USD"));
+        assert_eq!(version_of(&encode_schema(&unit_only)), SCHEMA_V3);
     }
 
     /// Schema round-trip through encode/decode.

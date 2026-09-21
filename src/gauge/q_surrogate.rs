@@ -91,6 +91,12 @@ mod tests {
     #[test]
     #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_2_q_surrogate_at_identity_is_zero() {
+        // Serialised: these mutate the process-global gauge/lattice
+        // registry, which other tests in this binary read. Without the
+        // lock they raced TDD-HAL-V.3's byte-identity test, which failed
+        // in roughly two runs in five and made a green suite unreliable
+        // for gating deploys.
+        let _serial = crate::gauge::registry::test_serial_lock();
         gauge_registry::clear();
         lattice_registry::clear();
         let bb = buckyball();
@@ -120,6 +126,12 @@ mod tests {
     #[test]
     #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_2_q_surrogate_within_range() {
+        // Serialised: these mutate the process-global gauge/lattice
+        // registry, which other tests in this binary read. Without the
+        // lock they raced TDD-HAL-V.3's byte-identity test, which failed
+        // in roughly two runs in five and made a green suite unreliable
+        // for gating deploys.
+        let _serial = crate::gauge::registry::test_serial_lock();
         gauge_registry::clear();
         lattice_registry::clear();
         let bb = buckyball();
@@ -154,6 +166,12 @@ mod tests {
     #[test]
     #[serial_test::serial(gauge_registry)]
     fn tdd_hal_iii_2_q_surrogate_clamp_idempotent() {
+        // Serialised: these mutate the process-global gauge/lattice
+        // registry, which other tests in this binary read. Without the
+        // lock they raced TDD-HAL-V.3's byte-identity test, which failed
+        // in roughly two runs in five and made a green suite unreliable
+        // for gating deploys.
+        let _serial = crate::gauge::registry::test_serial_lock();
         gauge_registry::clear();
         lattice_registry::clear();
         let bb = buckyball();

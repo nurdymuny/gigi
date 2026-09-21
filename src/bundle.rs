@@ -2085,6 +2085,34 @@ impl BundleStore {
         true
     }
 
+    /// Delete the record AT a base point, rather than at the point a key
+    /// hashes to.
+    ///
+    /// `delete` takes a key and hashes it, which is right when the caller holds
+    /// the key and impossible when the key column is unreadable. The row is
+    /// there, a predicate matches it, and the key it would be addressed by
+    /// comes back `Null`.
+    fn delete_at(&mut self, bp: BasePoint) -> bool {
+        let bp32 = self.lookup_bp32(bp).unwrap_or(u32::MAX);
+        if let Some(existing) = self.reconstruct(bp) {
+            for idx_field in &self.schema.indexed_fields {
+                if let Some(val) = existing.get(idx_field) {
+                    if let Some(field_map) = self.field_index.get_mut(idx_field) {
+                        if let Some(bitmap) = field_map.get_mut(val) {
+                            bitmap.remove(bp32);
+                        }
+                    }
+                }
+            }
+        } else {
+            return false;
+        }
+        self.mark_mutated();
+        self.remove_from_storage(bp);
+        self.forget_bp(bp);
+        true
+    }
+
     /// Overwrite fiber+base at an existing base point.
     fn overwrite_storage(&mut self, bp: BasePoint, fiber_vals: Vec<Value>, base_vals: Vec<Value>) {
         match &mut self.storage {
@@ -3719,26 +3747,29 @@ impl BundleStore {
     /// Bulk delete — remove all records matching conditions.
     /// Returns number of records deleted.
     pub fn bulk_delete(&mut self, conditions: &[QueryCondition]) -> usize {
-        let matching_keys: Vec<Record> = self
-            .records()
-            .filter(|record| matches_filter(record, conditions, None))
-            .map(|record| {
-                self.schema
-                    .base_fields
-                    .iter()
-                    .map(|f| {
-                        (
-                            f.name.clone(),
-                            record.get(&f.name).cloned().unwrap_or(Value::Null),
-                        )
-                    })
-                    .collect()
+        // Match by predicate, then delete AT the matched row's own base point.
+        //
+        // This used to rebuild a key from the record's fields and hash it. That
+        // is correct only when the key columns are readable: a bundle whose
+        // snapshot header omits its key column yields `Null` for it, every
+        // matched row rebuilds the same key, and it hashes to a point where no
+        // record lives — so the predicate matched rows that the delete then
+        // could not address. Found 2026-09-20 by the Marcella corpus repair,
+        // where a delete-then-insert over a short-header bundle deleted the
+        // rows it had just written and left every original in place.
+        let targets: Vec<BasePoint> = self
+            .record_order()
+            .into_iter()
+            .filter(|bp| {
+                self.reconstruct(*bp)
+                    .map(|r| matches_filter(&r, conditions, None))
+                    .unwrap_or(false)
             })
             .collect();
 
         let mut count = 0;
-        for key in &matching_keys {
-            if self.delete(key) {
+        for bp in targets {
+            if self.delete_at(bp) {
                 count += 1;
             }
         }

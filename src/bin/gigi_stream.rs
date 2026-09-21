@@ -10949,6 +10949,10 @@ async fn bulk_delete_records(
     })?;
 
     let deleted = store.bulk_delete(&conditions);
+    // Rows the predicate matched and the engine could not address. Non-zero
+    // means this call did less than it was asked, which used to come back as a
+    // bare success and a count describing a different set of rows.
+    let unaddressable = store.unaddressable_last_bulk_delete();
     let k = store.scalar_curvature();
     let total = store.len();
     drop(engine);
@@ -10960,13 +10964,21 @@ async fn bulk_delete_records(
         curvature: k,
     });
 
-    Ok(Json(serde_json::json!({
+    let mut body = serde_json::json!({
         "status": "deleted",
         "deleted": deleted,
         "total": total,
         "curvature": k,
         "confidence": curvature::confidence(k)
-    })))
+    });
+    if unaddressable > 0 {
+        body["unaddressable"] = serde_json::json!(unaddressable);
+        body["status"] = serde_json::json!("partially_deleted");
+        body["note"] = serde_json::json!(format!(
+            "{unaddressable} record(s) matched the filter and could not be deleted: their primary-key column is not readable on this bundle, and a tombstone is a primary key. They are still present."
+        ));
+    }
+    Ok(Json(body))
 }
 
 /// POST /v1/bundles/{name}/truncate — delete all records

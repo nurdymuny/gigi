@@ -219,6 +219,10 @@ pub struct OverlayBundle {
     tombstones: RwLock<HashSet<String>>,
     /// Schema cached outside the RwLock for lock-free access.
     bundle_schema: BundleSchema,
+    /// Rows the last `bulk_delete` matched and could not address, because a
+    /// tombstone IS a primary key and theirs is unreadable. Kept so the caller
+    /// can report doing less than it was asked rather than a bare success.
+    unaddressable_last_bulk_delete: std::sync::atomic::AtomicUsize,
     /// Lazily-computed per-field statistics for the mmap base.
     /// `None` means not yet computed; populated on first access of `field_stats()`.
     base_stats: RwLock<Option<std::collections::HashMap<String, crate::bundle::FieldStats>>>,
@@ -239,6 +243,7 @@ impl OverlayBundle {
             overlay: RwLock::new(BundleStore::new(schema.clone())),
             tombstones: RwLock::new(HashSet::new()),
             bundle_schema: schema,
+            unaddressable_last_bulk_delete: std::sync::atomic::AtomicUsize::new(0),
             base_stats: RwLock::new(None),
             base_pk_set: OnceLock::new(),
         }
@@ -1447,6 +1452,7 @@ impl OverlayBundle {
         let tombstones_guard = self.tombstones.read().ok();
         let overlay_keys = self.overlay_pk_set();
         let mut base_deleted = 0usize;
+        let mut unaddressable = 0usize;
         let mut new_tombstones: Vec<String> = Vec::new();
 
         for i in 0..self.base.len() {
@@ -1456,12 +1462,21 @@ impl OverlayBundle {
                     continue;
                 }
                 if conditions.iter().all(|c: &QueryCondition| c.matches(&record)) {
-                    if let Some(key_str) = pk_field
-                        .and_then(|f| record.get(f))
-                        .map(|v| v.key_repr())
-                    {
-                        new_tombstones.push(key_str);
-                        base_deleted += 1;
+                    match pk_field.and_then(|f| record.get(f)).map(|v| v.key_repr()) {
+                        Some(key_str) => {
+                            new_tombstones.push(key_str);
+                            base_deleted += 1;
+                        }
+                        // A tombstone IS the primary key, so a base row whose
+                        // key column is unreadable cannot be tombstoned at all.
+                        // It used to be dropped here silently and not even
+                        // counted: the caller got a success and a number that
+                        // described a different set of rows than the one its
+                        // predicate matched. Counted now, and surfaced by the
+                        // caller, so a repair can see it did less than it
+                        // asked. Found 2026-09-20 by the Marcella corpus
+                        // repair against a short-header bundle.
+                        None => unaddressable += 1,
                     }
                 }
             }
@@ -1476,7 +1491,16 @@ impl OverlayBundle {
             }
         }
 
+        self.unaddressable_last_bulk_delete
+            .store(unaddressable, std::sync::atomic::Ordering::Relaxed);
         overlay_deleted + base_deleted
+    }
+
+    /// Rows the last `bulk_delete` matched and could not address, because their
+    /// primary-key column is not readable. Zero on a healthy bundle.
+    pub fn unaddressable_last_bulk_delete(&self) -> usize {
+        self.unaddressable_last_bulk_delete
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     pub fn delete_returning(&self, key: &Record) -> Option<Record> {
@@ -2626,6 +2650,15 @@ impl<'a> BundleMut<'a> {
         match self {
             BundleMut::Heap(s) => s.bulk_delete(conditions),
             BundleMut::Overlay(o) => o.bulk_delete(conditions),
+        }
+    }
+
+    /// Rows the last `bulk_delete` matched and could not address. Always zero
+    /// on the heap path, where a matched row is deleted at its own base point.
+    pub fn unaddressable_last_bulk_delete(&self) -> usize {
+        match self {
+            BundleMut::Heap(_) => 0,
+            BundleMut::Overlay(o) => o.unaddressable_last_bulk_delete(),
         }
     }
 

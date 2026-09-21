@@ -1754,14 +1754,38 @@ impl Engine {
         let Some(schema) = self.schemas.get(name) else {
             return Vec::new();
         };
-        if !self.mmap_bundles.contains_key(name) {
-            return Vec::new();
-        }
         let snap = self.data_dir.join("snapshots").join(format!("{name}.dhoom"));
         if !snap.exists() {
             return Vec::new();
         }
-        Self::header_missing_fields(&snap, schema).unwrap_or_default()
+        let omitted = Self::header_missing_fields(&snap, schema).unwrap_or_default();
+        if omitted.is_empty() {
+            return Vec::new();
+        }
+        // The header is evidence, not proof: a bundle replayed from the log
+        // rather than loaded from the snapshot can be complete despite a short
+        // header on disk. Confirm against the rows themselves, so this names
+        // only fields that are genuinely not coming back.
+        //
+        // First scoping was mmap-resident bundles only, which was wrong: the
+        // records came from that snapshot whichever map they now live in, and
+        // the Marcella repair hit exactly that -- `confidence: 1.0` on 0.4.1
+        // over three of nine fields.
+        let Some(store) = self.bundle(name) else {
+            return omitted;
+        };
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for rec in store.records().take(64) {
+            for f in &omitted {
+                if rec.get(f).is_some() {
+                    seen.insert(f.clone());
+                }
+            }
+            if seen.len() == omitted.len() {
+                return Vec::new();
+            }
+        }
+        omitted.into_iter().filter(|f| !seen.contains(f)).collect()
     }
 
     pub fn bundle_schema(&self, name: &str) -> Option<&BundleSchema> {

@@ -2424,8 +2424,35 @@ impl Engine {
             || self.mmap_bundles.remove(name).is_some();
         self.schemas.remove(name);
         self.query_cache.invalidate_bundle(name);
+        self.retire_snapshot_files(name);
         self.maybe_checkpoint()?;
         Ok(existed)
+    }
+
+    /// Move a dropped bundle's snapshot files aside so boot cannot load them.
+    ///
+    /// Boot walks the replayed schemas and opens `snapshots/{name}.dhoom` for
+    /// each one. Dropping a bundle removed it from memory and left that file in
+    /// place, so recreating a bundle under the same name and restarting
+    /// resurrected the OLD rows as its base -- looking clean until the restart,
+    /// which is the worst shape for it to take. Found 2026-09-21 while checking
+    /// whether the Marcella corpus could be rebuilt by drop-and-recreate. It
+    /// could not have been.
+    ///
+    /// Renamed rather than deleted: the file stops being loadable because boot
+    /// looks for an exact name, and a dropped bundle's last snapshot is still
+    /// the only copy of whatever was in it. Errors are ignored -- a bundle that
+    /// never had a snapshot is the normal case, and a drop must not fail
+    /// because a file could not be moved.
+    fn retire_snapshot_files(&self, name: &str) {
+        let dir = self.data_dir.join("snapshots");
+        for suffix in ["dhoom", "dhoom.prev"] {
+            let live = dir.join(format!("{name}.{suffix}"));
+            if live.exists() {
+                let aside = dir.join(format!("{name}.{suffix}.dropped"));
+                let _ = fs::rename(&live, &aside);
+            }
+        }
     }
 
     /// Batch insert — single WAL flush + single checkpoint check for N records.

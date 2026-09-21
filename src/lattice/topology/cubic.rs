@@ -26,10 +26,12 @@
 //! Locked combinatorics from `GIGI_TO_HALCYON_REPLY_2026-06-26_BRIDGE_REVISED.md`
 //! §3.3:
 //!
+//! ```text
 //!     L = 12, D = 4, PERIODIC
 //!     V = 12^4 = 20_736
 //!     E = 12^4 · 4 = 82_944
 //!     F = 12^4 · C(4,2) = 12^4 · 6 = 124_416
+//! ```
 //!
 //! Metric: unit-cube cells. Every edge length is `1.0`; every face
 //! area is `1.0`. Dual face areas are left `None` (Phase 1 — Phase 2

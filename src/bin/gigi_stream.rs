@@ -1687,7 +1687,7 @@ async fn health(State(state): State<Arc<StreamState>>) -> (StatusCode, Json<Heal
         return (StatusCode::SERVICE_UNAVAILABLE, Json(HealthResponse {
             status: "loading",
             engine: "gigi-stream",
-            version: "0.1.0",
+            version: gigi::observability::GIGI_VERSION,
             bundles: 0,
             total_records: 0,
             uptime_secs: state.start_time.elapsed().as_secs(),
@@ -1699,7 +1699,7 @@ async fn health(State(state): State<Arc<StreamState>>) -> (StatusCode, Json<Heal
         Ok(engine) => (StatusCode::OK, Json(HealthResponse {
             status: "ok",
             engine: "gigi-stream",
-            version: "0.1.0",
+            version: gigi::observability::GIGI_VERSION,
             bundles: engine.bundle_names().len(),
             total_records: engine.total_records(),
             uptime_secs: state.start_time.elapsed().as_secs(),
@@ -1708,7 +1708,7 @@ async fn health(State(state): State<Arc<StreamState>>) -> (StatusCode, Json<Heal
         Err(_) => (StatusCode::OK, Json(HealthResponse {
             status: "ok",
             engine: "gigi-stream",
-            version: "0.1.0",
+            version: gigi::observability::GIGI_VERSION,
             bundles: 0,
             total_records: 0,
             uptime_secs: state.start_time.elapsed().as_secs(),

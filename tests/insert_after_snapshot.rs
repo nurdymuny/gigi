@@ -159,3 +159,36 @@ fn a_batch_containing_a_keyless_record_is_refused_whole() {
     assert!(got.is_err(), "one keyless record must refuse the batch");
     assert_eq!(n, 0, "a refused batch must store nothing, stored {n}");
 }
+
+/// A record missing SOME base fields is not the same as one missing all of
+/// them, and the engine must not conflate them.
+///
+/// `ALTER BUNDLE ADD BASE` produces exactly the first case: every existing
+/// record predates the new field. The first version of the keyless-insert
+/// refusal rejected that, which broke adding a base field to a live bundle.
+#[test]
+fn a_partial_key_is_still_a_key() {
+    let d = dir("partial_key");
+    let mut e = Engine::open(&d).unwrap();
+    let s = BundleSchema::new("two")
+        .base(FieldDef::categorical("a"))
+        .base(FieldDef::categorical("b"))
+        .fiber(FieldDef::categorical("v"));
+    e.create_bundle(s).unwrap();
+
+    // carries `a` but not `b` -- degraded, but still distinguishable
+    let mut r = Record::new();
+    r.insert("a".into(), Value::Text("k1".into()));
+    r.insert("v".into(), Value::Text("x".into()));
+    let partial = e.insert("two", &r);
+
+    // carries neither -- no key at all
+    let mut none = Record::new();
+    none.insert("v".into(), Value::Text("y".into()));
+    let keyless = e.insert("two", &none);
+    drop(e);
+    let _ = fs::remove_dir_all(&d);
+
+    assert!(partial.is_ok(), "a partial key must be accepted: {partial:?}");
+    assert!(keyless.is_err(), "a record with no key at all must be refused");
+}

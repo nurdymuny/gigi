@@ -1496,21 +1496,33 @@ impl Engine {
     /// A record with no key is not a record, and this is the engine's own
     /// contract: refuse rather than answer from something that was never
     /// really there.
+    ///
+    /// Scoped to records carrying NO base field at all, not to any record
+    /// missing one. `ALTER BUNDLE ADD BASE` legitimately produces the second
+    /// case — every existing record predates the new field — and the first
+    /// version of this check refused that, which the Chern-class suite caught.
+    /// A partial key still distinguishes records; an absent one cannot.
     fn require_base_fields(schema: &BundleSchema, record: &Record) -> io::Result<()> {
-        let missing: Vec<&str> = schema
-            .base_fields
-            .iter()
-            .filter(|f| record.get(&f.name).is_none())
-            .map(|f| f.name.as_str())
-            .collect();
-        if missing.is_empty() {
+        if schema.base_fields.is_empty() {
             return Ok(());
         }
+        let present = schema
+            .base_fields
+            .iter()
+            .any(|f| record.get(&f.name).is_some());
+        if present {
+            return Ok(());
+        }
+        let declared: Vec<&str> = schema
+            .base_fields
+            .iter()
+            .map(|f| f.name.as_str())
+            .collect();
         Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             format!(
-                "bundle '{}': record is missing base field(s) {:?}, which identify it. Every record missing them lands on the same base point and overwrites the previous one, so a batch of N would store 1.",
-                schema.name, missing
+                "bundle '{}': record carries none of its base field(s) {:?}, which identify it. Every such record lands on the same base point and overwrites the previous one, so a batch of N would store 1.",
+                schema.name, declared
             ),
         ))
     }

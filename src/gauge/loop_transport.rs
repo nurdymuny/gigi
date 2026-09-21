@@ -586,7 +586,9 @@ fn dt_substep(cfg: &LtConfig<'_>) -> f64 {
 /// relevant max-β_W during traversal is bounded by the canonical
 /// half-amplitude
 ///
+/// ```text
 ///     amp = |RAMP_RATE_BETA_W| · TAU_0 / 4
+/// ```
 ///
 /// (α-independent, N-independent — the loop period is the Halcyon
 /// timescale TAU_0, NOT the integrator's α·τ_0 horizon). At canonical

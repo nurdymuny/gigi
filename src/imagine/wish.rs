@@ -523,9 +523,11 @@ impl WishMetric2D for T2Flat {
 /// manifold has no topological obstruction, so the barrier must be
 /// constructed in the metric itself).
 ///
+/// ```text
 ///     phi(x, y) = amplitude * exp( -((x - x_center) / sigma)^2 )
 ///     exp(2*phi(x, y)) = exp(2 * phi(x, y))
 ///     K(x, y) = -exp(-2*phi(x, y)) * Laplacian(phi(x, y))
+/// ```
 ///
 /// Tuning: with `amplitude = 0.1, sigma = 0.15, x_center = 0.5` the
 /// peak curvature is ~7.3 — well above the default ceiling 4.0 — and

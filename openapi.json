@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "GIGI — Geometric Intelligence Database",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "description": "REST API for GIGI, a geometry-aware database engine with fiber bundles, curvature analytics, and O(1) operations."
   },
   "servers": [

@@ -3,7 +3,9 @@
 //!
 //! The verb does a trapezoidal line integral
 //!
+//! ```text
 //!     ∫_γ O(γ) ds ≈ Σ_i 0.5 · Δs_i · (O(γ_i) + O(γ_{i+1}))
+//! ```
 //!
 //! and this module wires `<name> → O(record) -> f64` for the small
 //! set of canonical names the v1 verb knows about. Bundle-specific

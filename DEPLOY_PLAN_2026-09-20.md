@@ -21,6 +21,8 @@ Five commits from today, plus everything already merged and never deployed.
 | `64fa97f` | bundles declare order, retention, row semantics, units |
 | `a96a3d8` | health reports `null` over fields it cannot see |
 | `8ef4dd4` | a record with no key is refused, not collapsed |
+| `e67719a` | schema records written in the oldest version that fits, keeping rollback open |
+| _pending_ | one version, reported from the crate, so the deploy is verifiable |
 
 ---
 
@@ -102,7 +104,13 @@ heap-replay boot is inside the window but not by much.
 
 ## 5 · Verify
 
-1. `GET /v1/health` returns and reports a version that is **not** 0.1.0.
+1. `GET /v1/health` reports **`"version":"0.4.1"`**.
+
+   This works only because it was fixed as part of this deploy. Health served a
+   hardcoded `"0.1.0"` literal, metrics served the crate version which was also
+   0.1.0, and the API document said 0.4.0 — three strings, none tied to the
+   binary, so a deploy had no way to prove itself live. All three now come from
+   the crate and a test asserts they agree.
 2. Bundle count is 5,096 and total records match §3.1 — no bundle lost rows.
 3. `marcella_source_sections` still holds 161,795.
 4. The new behaviour is actually live, which the version string alone does not

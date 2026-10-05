@@ -3,9 +3,9 @@
 # Runtime data
 /gigi_data/
 
-# Biochar analysis scratch: local engine data, logs, receipts and downloads.
-# The publication lives in the separate gigi-biochar repository.
-/outputs/biochar-phosphorus/
+# Generated local outputs: research scratch, diagrams, archives and engine logs.
+# Publish intended deliverables from their dedicated repositories.
+/outputs/
 
 # Local scratch: pre-encryption backups, ad-hoc dumps, anything sensitive.
 # Never push this directory.

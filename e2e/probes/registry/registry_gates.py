@@ -7,7 +7,7 @@ tried to change it -- and an earlier version of gate 2 made exactly that mistake
 
 import sys
 
-from registry_bootstrap import eq, query, call
+from registry_bootstrap import eq, query, write_verified
 from registry_paths import (UNCHECKED, contradictions, possible_conflicts,
                             record_composition_review, traverse)
 from registry_review import promote, relation, requirement_met, view
@@ -44,8 +44,11 @@ def gate2():
     # The control. If promote() simply always refused, G2a would pass while
     # testing nothing. A relation that HAS the evidence must go through.
     good = "DG-REL-DAVISMANIFOLD-PULLBACK-001"
+    before_good = relation(good)["established_altitude"]
     ok2, reason2 = promote(good, "RESONANCE")
-    check("G2b promotion of a supported relation SUCCEEDS", ok2,
+    after_good = relation(good)["established_altitude"]
+    check("G2b promotion changes stored NONE to RESONANCE",
+          before_good == "NONE" and ok2 and after_good == "RESONANCE",
           f"accepted: {reason2}")
 
     # And the next rung up must still refuse, so success is not unconditional.
@@ -72,23 +75,26 @@ def gate4():
           "no flags raised")
 
     src = dict(query("research_sources", [eq("id", sid)])[0])
-    call("/v1/bundles/research_sources/insert",
-         {"records": [dict(src, availability="retracted")]})
+    write_verified("research_sources", dict(src, availability="retracted"))
 
     after = view(rid)
     named = any("RETRACTED" in f for f in after["flags"])
     check("G4b reader sees the retraction", after["needs_review"] and named,
           after["flags"][0] if after["flags"] else "no flags")
+    paths = traverse("classical-polar-coordinate-map", 1)
+    check("G4d path readers see the same retraction", len(paths) == 1
+          and paths[0]["needs_review"] and paths[0]["edges"][0]["needs_review"]
+          and paths[0]["edges"][0]["flags"] == after["flags"],
+          "path and direct lookup carry identical warnings")
 
     # Unavailable is not retracted: access changed, validity did not.
-    call("/v1/bundles/research_sources/insert",
-         {"records": [dict(src, availability="unavailable")]})
+    write_verified("research_sources", dict(src, availability="unavailable"))
     unav = view(rid)
     check("G4c unavailable does NOT trigger review",
           not unav["needs_review"] and any("unavailable" in f for f in unav["flags"]),
           "flagged as unreachable, altitude unchanged")
 
-    call("/v1/bundles/research_sources/insert", {"records": [src]})
+    write_verified("research_sources", src)
 
 
 # ── Gate 9: paths stay paths ─────────────────────────────────────────────────
@@ -151,8 +157,8 @@ def gate10():
     found = contradictions()
     ids = {tuple(c["claim_ids"]) for c in found}
 
-    check("G10a same coordinates, different value IS flagged",
-          ("CLM-001", "CLM-002") in ids and ("CLM-004", "CLM-005") in ids,
+    check("G10a incompatible typed assertions ARE flagged",
+          ids == {("CLM-007", "CLM-008"), ("CLM-004", "CLM-005")},
           f"{len(found)} conflict group(s): {sorted(ids)}")
 
     flagged_claims = {c for grp in ids for c in grp}
@@ -169,9 +175,14 @@ def gate10():
     check("G10d non-contradictions surface for review instead",
           {"det J", "induced arc length"} <= pc,
           f"routed for review: {sorted(pc)}")
+    pending = {tuple(c["claim_ids"]) for c in possible_conflicts()}
+    check("G10e symbolic expressions require review",
+          ("CLM-001", "CLM-002") in pending and "CLM-001" not in flagged_claims,
+          "r versus 1 is not proved contradictory by comparing text")
 
 
 def main():
+    FAILS.clear()
     print("=" * 78)
     print("Registry acceptance gates (live engine)")
     print("=" * 78)
@@ -180,7 +191,7 @@ def main():
     print()
     print("NOT IMPLEMENTED, stated rather than omitted:")
     print("  G8  executable map layer -- later phase by design")
-    print("  G5  restart persistence  -- run the probe again after a restart")
+    print("Restart persistence is checked read-only by verify_registry_live.py.")
     print()
     if FAILS:
         print("FAILED:", ", ".join(FAILS))

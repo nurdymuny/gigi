@@ -12,11 +12,12 @@ type (unknown types fall back to Categorical), so flags are stored as text.
 """
 
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
 
-BASE = "http://127.0.0.1:3143"
+BASE = os.environ.get("GIGI_REGISTRY_URL", "http://127.0.0.1:3143").rstrip("/")
 
 
 def call(path, payload=None, method=None):
@@ -55,7 +56,21 @@ def query(name, conditions=None, limit=1000):
     status, body = call(f"/v1/bundles/{name}/query", payload)
     if status != 200:
         raise SystemExit(f"query {name} failed: {status} {body}")
-    return body.get("data", [])
+    if not isinstance(body.get("data"), list):
+        raise RuntimeError(f"query {name} returned no data array: {body}")
+    if len(body["data"]) >= limit:
+        raise RuntimeError(f"query {name} reached limit {limit}; completeness is unknown")
+    return body["data"]
+
+
+def write_verified(name, record):
+    """A successful HTTP response alone does not establish a stored update."""
+    status, body = call(f"/v1/bundles/{name}/insert", {"records": [record]})
+    if status not in (200, 201):
+        raise RuntimeError(f"write {name}/{record['id']} refused: {status} {body}")
+    rows = query(name, [eq("id", record["id"])])
+    if len(rows) != 1 or any(rows[0].get(k) != v for k, v in record.items()):
+        raise RuntimeError(f"write {name}/{record['id']} did not match readback")
 
 
 def eq(field, value):
@@ -116,11 +131,12 @@ SCHEMAS = {
          "reviewed_by_is_agent": "text"},
         ["id"],
     ),
-    # Structured claims. Contradiction detection in version one compares these
-    # four coordinates and nothing else; prose is never auto-labelled.
+    # Structured claims. Coordinates must match and value_kind must name a
+    # supported exact comparison. Untyped/symbolic values require review.
     "research_claims": (
         {"id": "text", "quantity": "text", "object_id": "text", "domain": "text",
-         "conditions": "text", "value": "text", "source_id": "text"},
+         "conditions": "text", "value": "text", "value_kind": "text",
+         "source_id": "text"},
         ["id"],
     ),
 }
@@ -192,7 +208,7 @@ RELATIONS = [
      "claimed_relation": "uses_definition", "direction": "directed",
      "statement": "The Davis Manifold metric construction uses the classical pullback metric J^T h J.",
      "scope": "The shared construction only. Not a claim about the manuscript's detection or error-budget results.",
-     "established_altitude": "RESONANCE",
+     "established_altitude": "NONE",
      "altitude_basis": "Mechanism named and located on both sides.",
      "altitude_scope": "Holds for the metric construction as written in that passage. No numerical or proof check performed.",
      "lifecycle": "proposed",
@@ -264,18 +280,18 @@ RELATIONS = [
      "reviewed_by": "", "reviewed_by_is_agent": "", "reviewer_decision": "unreviewed"},
 ]
 
-# Gate 10 fixtures. Real arithmetic, not invented: det J = r for the polar map,
-# which is r on r > 0 and 0 at the origin. Same quantity and object; the r = 0
-# row differs only by DOMAIN and so is not a contradiction.
+# Gate 10 fixtures. The symbolic r versus 1 pair requires interpretation;
+# this implementation does not prove their incompatibility. The r = 0 row has
+# a different domain. Exact numeric assertions at r = 2 supply a bounded control.
 CLAIMS = [
     {"id": "CLM-001", "quantity": "det J", "object_id": "classical-polar-coordinate-map",
-     "domain": "r > 0", "conditions": "standard chart", "value": "r",
+     "domain": "r > 0", "conditions": "standard chart", "value": "r", "value_kind": "expression",
      "source_id": "SRC-MIT-JACOBIANS"},
     {"id": "CLM-002", "quantity": "det J", "object_id": "classical-polar-coordinate-map",
-     "domain": "r > 0", "conditions": "standard chart", "value": "1",
+     "domain": "r > 0", "conditions": "standard chart", "value": "1", "value_kind": "expression",
      "source_id": "DG-REF-COORDINATE-SAMENESS-001"},
     {"id": "CLM-003", "quantity": "det J", "object_id": "classical-polar-coordinate-map",
-     "domain": "r = 0", "conditions": "standard chart", "value": "0",
+     "domain": "r = 0", "conditions": "standard chart", "value": "0", "value_kind": "numeric",
      "source_id": "SRC-MIT-JACOBIANS"},
 
     # Second contradiction fixture: a property rather than a value, and again
@@ -285,13 +301,19 @@ CLAIMS = [
     # so it must not be flagged.
     {"id": "CLM-004", "quantity": "induced arc length", "object_id": "classical-polar-coordinate-map",
      "domain": "r > 0", "conditions": "rotation about the origin",
-     "value": "invariant", "source_id": "SRC-MIT-JACOBIANS"},
+     "value": "invariant", "value_kind": "invariance", "source_id": "SRC-MIT-JACOBIANS"},
     {"id": "CLM-005", "quantity": "induced arc length", "object_id": "classical-polar-coordinate-map",
      "domain": "r > 0", "conditions": "rotation about the origin",
-     "value": "changes", "source_id": "DG-REF-COORDINATE-SAMENESS-001"},
+     "value": "changes", "value_kind": "invariance", "source_id": "DG-REF-COORDINATE-SAMENESS-001"},
     {"id": "CLM-006", "quantity": "induced arc length", "object_id": "classical-polar-coordinate-map",
      "domain": "r > 0", "conditions": "dilation by k != 1",
-     "value": "changes", "source_id": "SRC-MIT-JACOBIANS"},
+     "value": "changes", "value_kind": "invariance", "source_id": "SRC-MIT-JACOBIANS"},
+    {"id": "CLM-007", "quantity": "det J", "object_id": "classical-polar-coordinate-map",
+     "domain": "r = 2", "conditions": "standard chart", "value": "2", "value_kind": "numeric",
+     "source_id": "SRC-MIT-JACOBIANS"},
+    {"id": "CLM-008", "quantity": "det J", "object_id": "classical-polar-coordinate-map",
+     "domain": "r = 2", "conditions": "standard chart", "value": "1", "value_kind": "numeric",
+     "source_id": "DG-REF-COORDINATE-SAMENESS-001"},
 ]
 
 EVIDENCE = [

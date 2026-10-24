@@ -195,11 +195,9 @@ impl DhoomRecordParser {
 // Value coercion
 // ---------------------------------------------------------------------------
 
-/// Sentinel prefix for arrays of primitives encoded as JSON inside a
-/// single DHOOM field. ASCII Unit Separator (0x1F) — never appears in
-/// human text, so we can use prefix detection as the discriminator
-/// between "string that happens to start with [" and "JSON-encoded
-/// primitive array".
+/// Sentinel prefix for primitive arrays and escaped strings encoded as JSON
+/// inside one DHOOM field. Authored text beginning with this ASCII Unit
+/// Separator (0x1F) must itself be escaped to keep it distinct from a payload.
 const PRIMITIVE_ARRAY_SENTINEL: char = '\u{001F}';
 
 /// True if every element of an array is a primitive (not an object or
@@ -246,6 +244,25 @@ pub fn coerce(s: &str) -> Value {
     }
 }
 
+/// Strings which raw-token coercion or line splitting would reinterpret.
+/// Escaping the sentinel itself keeps authored text distinct from encoded data.
+fn string_needs_escape(s: &str) -> bool {
+    s.contains('\n')
+        || s.contains('\r')
+        || s.starts_with(PRIMITIVE_ARRAY_SENTINEL)
+        || matches!(s, "T" | "F" | "null")
+        || s.parse::<f64>().is_ok()
+}
+
+/// Quote a body token without interpreting it as another authored string.
+fn quote_body_token(s: &str) -> String {
+    if s.contains(',') || s.contains(':') || s.contains('"') {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s.to_string()
+    }
+}
+
 /// Format a JSON Value back to its DHOOM record representation.
 fn value_to_dhoom(v: &Value) -> String {
     match v {
@@ -253,44 +270,23 @@ fn value_to_dhoom(v: &Value) -> String {
         Value::Bool(false) => "F".into(),
         Value::Null => "null".into(),
         Value::String(s) => {
-            // 2026-08-20 incident, bug 3. DHOOM body rows are line-delimited
-            // and every reader iterates `body.lines()`, so a newline inside a
-            // value cannot be quoted — it has to be *escaped out of existence*.
-            // The old writer quoted CSV-style and left the newline literal,
-            // which split one record into a counterfeit record per line: the
-            // first .dhoom encode of marcella_genealogy_records shattered an
-            // authored multi-line record into a dozen fragments.
-            //
-            // Encoding: the 0x1F sentinel the format already uses for
-            // primitive arrays, followed by the JSON string form — JSON
-            // escapes newlines, so the row stays on one line, and the mmap
-            // row index (one record per line) is preserved. Old files never
-            // contain 0x1F-prefixed strings, so this collides with nothing.
-            if s.contains('\n') || s.contains('\r') {
-                // Same route the array branch takes: build sentinel + JSON,
-                // then RECURSE so the plain-quoting arm below CSV-wraps it —
-                // the splitter strips that quoting symmetrically, and coerce
-                // receives the sentinel + intact JSON. (JSON contains no
-                // literal newlines, so the recursion cannot re-enter here.)
+            // Use the existing JSON-string sentinel for both multiline text
+            // and type-ambiguous text. CSV quoting alone does not prevent
+            // coerce("1.0") from changing text into a number during reload.
+            if string_needs_escape(s) {
                 let json = serde_json::to_string(s).unwrap_or_else(|_| format!("{s:?}"));
-                let wrapped = Value::String(format!("{}{}", PRIMITIVE_ARRAY_SENTINEL, json));
-                return value_to_dhoom(&wrapped);
-            } else if s.contains(',') || s.contains(':') || s.contains('"') {
-                let escaped = s.replace('"', "\"\"");
-                format!("\"{}\"", escaped)
+                quote_body_token(&format!("{}{}", PRIMITIVE_ARRAY_SENTINEL, json))
             } else {
-                s.clone()
+                quote_body_token(s)
             }
         }
         Value::Number(n) => n.to_string(),
         Value::Array(arr) if is_primitive_array(arr) => {
             // Encode arrays of primitives inline as `\x1F` + JSON.
-            // The string-formatting branch above will quote-wrap and
-            // `""`-escape the JSON's embedded double-quotes so commas
-            // inside the array don't fragment record-field splitting.
+            // Quote the encoded token directly, so it is not escaped again
+            // as authored sentinel-prefixed text by the string branch.
             let json = serde_json::to_string(v).unwrap_or_else(|_| "[]".into());
-            let wrapped = Value::String(format!("{}{}", PRIMITIVE_ARRAY_SENTINEL, json));
-            value_to_dhoom(&wrapped)
+            quote_body_token(&format!("{}{}", PRIMITIVE_ARRAY_SENTINEL, json))
         }
         Value::Array(_) | Value::Object(_) => String::new(),
     }
@@ -1524,7 +1520,9 @@ fn detect_delta(_values: &[&Value]) -> bool {
 /// fold added later inherits the check instead of re-deriving the incident.
 /// Numeric folds are untouched — numbers cannot contain delimiters.
 fn header_safe_text(s: &str) -> bool {
-    !s.chars().any(|c| matches!(
+    // Header defaults/arithmetic do not use the body token unquoter. Keep
+    // type-ambiguous strings in escaped body fields instead of folding them.
+    !string_needs_escape(s) && !s.chars().any(|c| matches!(
         c,
         ',' | '{' | '}' | '@' | '|' | '>' | '^' | '&' | '#' | '+' | ':' | '"' | '\n' | '\r'
     ))

@@ -325,4 +325,11 @@ Executable nonlinear translators remain a later phase and are not a dependency.
 
 ## Rollout
 
+The executable fixture and its current limits are documented in
+[`e2e/probes/registry/README.md`](../e2e/probes/registry/README.md). Its regression
+checks include failed writes, missing evidence, stable replacement rulings,
+retraction-aware paths, bounded typed comparisons, and a read-only restart check.
+This fixture implementation does not yet satisfy every proposed capability above,
+including requester-specific access control and the executable-map layer.
+
 First review the schema and source-to-claim distinctions with the GIGI maintainers. Next verify storage/query/restart behavior against a freshly built isolated live engine, following AGENTS.md. Only then ingest approved records and expose retrieval to consuming agents. No new theorem-proving or general relationship-discovery capability is implied by this proposal.

@@ -90,11 +90,37 @@ SCHEMAS = {
     # relation resting on a source, which a substring search cannot do honestly.
     "research_relation_evidence": (
         {"id": "text", "relation_id": "text", "source_id": "text",
-         "evidence_kind": "text"},
+         "evidence_kind": "text", "locator": "text",
+         # "subject", "object" or "" -- which side of the relation this evidence
+         # locates the shared mechanism on. RESONANCE needs both sides.
+         "locates_mechanism_for": "text"},
+        ["id"],
+    ),
+    "research_checks": (
+        {"id": "text", "relation_id": "text", "method": "text",
+         "expected": "text", "actual": "text", "result": "text",
+         "evidence_kind": "text", "control_ran": "text",
+         "control_failed_as_required": "text", "environment": "text",
+         "date": "text"},
         ["id"],
     ),
     "research_relation_assumptions": (
         {"id": "text", "relation_id": "text", "assumption": "text"},
+        ["id"],
+    ),
+    # A reviewer's composition ruling on one ordered chain of edges. Keyed by the
+    # path signature so the ruling is found again on the next traversal.
+    "research_path_reviews": (
+        {"id": "text", "path_signature": "text", "composition_state": "text",
+         "reason": "text", "conditions": "text", "reviewed_by": "text",
+         "reviewed_by_is_agent": "text"},
+        ["id"],
+    ),
+    # Structured claims. Contradiction detection in version one compares these
+    # four coordinates and nothing else; prose is never auto-labelled.
+    "research_claims": (
+        {"id": "text", "quantity": "text", "object_id": "text", "domain": "text",
+         "conditions": "text", "value": "text", "source_id": "text"},
         ["id"],
     ),
 }
@@ -138,6 +164,25 @@ CONCEPTS = [
     {"id": "differential-geometric-pullback-metric", "name": "Differential-geometric pullback metric",
      "definition": "Precomposition along a map, f*h = J^T h J.",
      "domain": "differential geometry"},
+    # Gate 9 fixture. The blocked step is the double cover S^1 -> RP^1: the 2:1
+    # map admits no continuous section, so the orientation is absent, not merely
+    # degraded. "Invertible then lossy" would NOT work here -- that composes
+    # fine and only fails to be invertible.
+    {"id": "principal-axis-extraction", "name": "Principal axis extraction",
+     "definition": "Returns the dominant axis of a symmetric form.",
+     "domain": "estimation"},
+    {"id": "unoriented-axis-RP1", "name": "Unoriented axis (element of RP^1)",
+     "definition": "A line through the origin. Determined up to sign; carries no orientation.",
+     "domain": "estimation"},
+    {"id": "oriented-heading-S1", "name": "Oriented heading (element of S^1)",
+     "definition": "A uniquely determined directed arrow.",
+     "domain": "estimation"},
+    # Gives the graph a SECOND multi-edge path, one that is genuinely composable.
+    # Without it the "machine never self-assigns a ruling" control is vacuous:
+    # all() over an empty list is true.
+    {"id": "jacobian-of-a-differentiable-map", "name": "Jacobian of a differentiable map",
+     "definition": "The matrix of first partial derivatives; the local linear part of the map.",
+     "domain": "differential geometry"},
 ]
 
 RELATIONS = [
@@ -178,17 +223,93 @@ RELATIONS = [
      "lifecycle": "proposed", "lifecycle_note": "",
      "asserted_by": "fixture", "asserted_by_is_agent": "true",
      "reviewed_by": "", "reviewed_by_is_agent": "", "reviewer_decision": "unreviewed"},
+
+    # The composable counterpart: the pullback metric is built from the Jacobian.
+    # Chains with the Davis Manifold edge to give a second two-edge path.
+    {"id": "DG-REL-PULLBACK-JACOBIAN-001",
+     "subject": "classical-pullback-metric-JtJ",
+     "object": "jacobian-of-a-differentiable-map",
+     "claimed_relation": "uses_definition", "direction": "directed",
+     "statement": "The pullback metric J^T h J is built from the Jacobian of the map.",
+     "scope": "Definitional.",
+     "established_altitude": "INCIDENCE",
+     "altitude_basis": "Standard construction, located in the cited reference.",
+     "altitude_scope": "Differentiable maps of full column rank.",
+     "lifecycle": "proposed", "lifecycle_note": "",
+     "asserted_by": "fixture", "asserted_by_is_agent": "true",
+     "reviewed_by": "", "reviewed_by_is_agent": "", "reviewer_decision": "unreviewed"},
+
+    # Gate 9: a two-edge chain whose composition cannot be formed.
+    {"id": "DG-REL-AXIS-FROM-EXTRACTION-001",
+     "subject": "unoriented-axis-RP1", "object": "principal-axis-extraction",
+     "claimed_relation": "derived_from", "direction": "directed",
+     "statement": "The unoriented axis is the output of principal axis extraction.",
+     "scope": "Output type only.",
+     "established_altitude": "INCIDENCE",
+     "altitude_basis": "Definitional, stated by the estimator.",
+     "altitude_scope": "The estimator as defined.",
+     "lifecycle": "proposed", "lifecycle_note": "",
+     "asserted_by": "fixture", "asserted_by_is_agent": "true",
+     "reviewed_by": "", "reviewed_by_is_agent": "", "reviewer_decision": "unreviewed"},
+    {"id": "DG-REL-HEADING-FROM-AXIS-001",
+     "subject": "oriented-heading-S1", "object": "unoriented-axis-RP1",
+     "claimed_relation": "derived_from", "direction": "directed",
+     "statement": "ASSERTED, NOT ESTABLISHED. An oriented heading is obtained from the unoriented axis.",
+     "scope": "Blocked step. Recovering S^1 from RP^1 needs orientation information the axis does not carry.",
+     "established_altitude": "NONE",
+     "altitude_basis": "No evidence. The 2:1 cover S^1 -> RP^1 admits no continuous section.",
+     "altitude_scope": "",
+     "lifecycle": "proposed", "lifecycle_note": "",
+     "asserted_by": "fixture", "asserted_by_is_agent": "true",
+     "reviewed_by": "", "reviewed_by_is_agent": "", "reviewer_decision": "unreviewed"},
+]
+
+# Gate 10 fixtures. Real arithmetic, not invented: det J = r for the polar map,
+# which is r on r > 0 and 0 at the origin. Same quantity and object; the r = 0
+# row differs only by DOMAIN and so is not a contradiction.
+CLAIMS = [
+    {"id": "CLM-001", "quantity": "det J", "object_id": "classical-polar-coordinate-map",
+     "domain": "r > 0", "conditions": "standard chart", "value": "r",
+     "source_id": "SRC-MIT-JACOBIANS"},
+    {"id": "CLM-002", "quantity": "det J", "object_id": "classical-polar-coordinate-map",
+     "domain": "r > 0", "conditions": "standard chart", "value": "1",
+     "source_id": "DG-REF-COORDINATE-SAMENESS-001"},
+    {"id": "CLM-003", "quantity": "det J", "object_id": "classical-polar-coordinate-map",
+     "domain": "r = 0", "conditions": "standard chart", "value": "0",
+     "source_id": "SRC-MIT-JACOBIANS"},
+
+    # Second contradiction fixture: a property rather than a value, and again
+    # real. Arc length ds^2 = dr^2 + r^2 dtheta^2 is invariant under rotation of
+    # the plane; a claim that a rotation changes it conflicts directly. The third
+    # row is about a NON-rotation (a dilation), which genuinely does change it,
+    # so it must not be flagged.
+    {"id": "CLM-004", "quantity": "induced arc length", "object_id": "classical-polar-coordinate-map",
+     "domain": "r > 0", "conditions": "rotation about the origin",
+     "value": "invariant", "source_id": "SRC-MIT-JACOBIANS"},
+    {"id": "CLM-005", "quantity": "induced arc length", "object_id": "classical-polar-coordinate-map",
+     "domain": "r > 0", "conditions": "rotation about the origin",
+     "value": "changes", "source_id": "DG-REF-COORDINATE-SAMENESS-001"},
+    {"id": "CLM-006", "quantity": "induced arc length", "object_id": "classical-polar-coordinate-map",
+     "domain": "r > 0", "conditions": "dilation by k != 1",
+     "value": "changes", "source_id": "SRC-MIT-JACOBIANS"},
 ]
 
 EVIDENCE = [
+    # Mechanism located on BOTH sides, which is what RESONANCE requires.
     {"id": "EV-001", "relation_id": "DG-REL-DAVISMANIFOLD-PULLBACK-001",
-     "source_id": "DG-REF-COORDINATE-SAMENESS-001", "evidence_kind": "source"},
+     "source_id": "DG-REF-COORDINATE-SAMENESS-001", "evidence_kind": "source",
+     "locator": "manuscript near line 445", "locates_mechanism_for": "subject"},
     {"id": "EV-002", "relation_id": "DG-REL-DAVISMANIFOLD-PULLBACK-001",
-     "source_id": "SRC-MIT-JACOBIANS", "evidence_kind": "source"},
+     "source_id": "SRC-MIT-JACOBIANS", "evidence_kind": "source",
+     "locator": "lecture 14, pullback metric", "locates_mechanism_for": "object"},
+    # One side only: enough for INCIDENCE, not for RESONANCE.
     {"id": "EV-003", "relation_id": "DG-REL-POLAR-SAMENESS-001",
-     "source_id": "DG-REF-COORDINATE-SAMENESS-001", "evidence_kind": "source"},
+     "source_id": "DG-REF-COORDINATE-SAMENESS-001", "evidence_kind": "source",
+     "locator": "worked mathematical anchor", "locates_mechanism_for": "subject"},
     # DG-REL-PULLBACK-HOMONYM-001 deliberately has none.
 ]
+
+CHECKS = []
 
 ASSUMPTIONS = [
     {"id": "AS-001", "relation_id": "DG-REL-DAVISMANIFOLD-PULLBACK-001", "assumption": "full column rank J"},
@@ -196,6 +317,12 @@ ASSUMPTIONS = [
     {"id": "AS-003", "relation_id": "DG-REL-POLAR-SAMENESS-001", "assumption": "r > 0"},
     {"id": "AS-004", "relation_id": "DG-REL-POLAR-SAMENESS-001", "assumption": "local injective angular chart"},
     {"id": "AS-005", "relation_id": "DG-REL-POLAR-SAMENESS-001", "assumption": "Euclidean target metric"},
+    {"id": "AS-006", "relation_id": "DG-REL-AXIS-FROM-EXTRACTION-001",
+     "assumption": "output is determined only up to sign"},
+    {"id": "AS-007", "relation_id": "DG-REL-HEADING-FROM-AXIS-001",
+     "assumption": "requires a uniquely determined orientation"},
+    {"id": "AS-008", "relation_id": "DG-REL-HEADING-FROM-AXIS-001",
+     "assumption": "no further orientation information is supplied"},
 ]
 
 
@@ -211,7 +338,12 @@ def main():
     for name, rows in [("research_sources", SOURCES), ("research_concepts", CONCEPTS),
                        ("research_relations", RELATIONS),
                        ("research_relation_evidence", EVIDENCE),
-                       ("research_relation_assumptions", ASSUMPTIONS)]:
+                       ("research_relation_assumptions", ASSUMPTIONS),
+                       ("research_claims", CLAIMS),
+                       ("research_checks", CHECKS)]:
+        if not rows:
+            print(f"  {name}: 0 rows (empty by design)")
+            continue
         insert(name, rows)
         back = query(name)
         if len(back) != len(rows):

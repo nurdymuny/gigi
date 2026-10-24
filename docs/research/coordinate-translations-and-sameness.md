@@ -19,7 +19,7 @@ Neither is `equivalent_to` or `proves`. Altitude is earned from the evidence rec
 
 ## Source and attribution
 
-- Mathematical reference: [MIT, Jacobians and curvilinear coordinates](https://web.mit.edu/8.Math/www/lectures/lec14/lec14.pdf). The Jacobian of a polar-to-Cartesian map is standard material; this note claims no originality for it and attributes it to no individual.
+- Mathematical reference: [MIT, Jacobians and curvilinear coordinates](https://web.mit.edu/8.Math/www/lectures/lec14/lec14.pdf). The Jacobian of a polar-to-Cartesian map is standard material and this note claims no originality for it.
 - Bee's manuscript: *The Geometry of Sameness: An epsilon-Equivalence of Translation and Distance*, abstract and sections on semantic sameness structures and smooth chartability. Local source: `C:/Users/nurdm/OneDrive/Documents/curvature aware gpu/the_geometry_of _sameness.tex`.
 - Bee's manuscript: *The Davis Manifold: Geometry-First Detection with Compositional Error Budgets*, metric definition and pullback construction. Local source: `C:/Users/nurdm/OneDrive/Documents/curvature aware gpu/the_davis_manifold.tex`, near line 445 at review time.
 

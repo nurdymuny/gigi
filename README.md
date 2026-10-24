@@ -8,6 +8,8 @@
 
 **Geometric Intrinsic Global Index** — a fiber-bundle database engine.
 
+**Shared research references:** [Coordinate translations, Jacobians, and the Geometry of Sameness](docs/research/coordinate-translations-and-sameness.md). Includes source evidence, scope, and a [proposal for typed research relationships](docs/RESEARCH_RELATIONSHIP_REGISTRY_PROPOSAL.md).
+
 > Records are sections of a fiber bundle. Keys live on the base space; values
 > live on the fiber. Curvature, spectral connectivity, holonomy, and confidence
 > are **properties of the bundle** — they update incrementally with every

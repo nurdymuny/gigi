@@ -11,6 +11,28 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'e2e/probes'))
 import settling_diagnosis as diagnostic
 
 class DiagnosisTests(unittest.TestCase):
+    def test_native_batches_carry_only_predicted_state(self):
+        class ScalarEngine:
+            def __init__(self):
+                self.state = None
+            def ok(self, path, body):
+                if path.endswith('/insert'):
+                    self.state = body['records'][0]
+                elif path.endswith('/physics/conduct'):
+                    value = self.state['v']
+                    samples = []
+                    for time, phase in zip(body['sample_times_s'], body['phases']):
+                        port = phase['configuration']['ports'][0]
+                        a = math.exp(-phase['duration_s'] * port['conductance_s'] / self.state['c'])
+                        value = a * value + (1-a) * port['voltage_v']
+                        samples.append(dict(time_s=time, voltages_v=[value]))
+                    return dict(node_order=['cap'], samples=samples)
+                return {}
+        t = np.cumsum(np.linspace(.001, .02, 151))
+        u = np.sin(17*t) + .2
+        result = diagnostic.native_left(ScalarEngine(), 'planted', t, u, .37, 2., .3)
+        np.testing.assert_allclose(result, diagnostic.propagate(t, u, .37, .6, 'left'), atol=1e-13)
+
     def test_constant_source_analytic(self):
         t=np.linspace(0,3,21)
         for mode in ['linear','left','right']:
@@ -59,7 +81,8 @@ def audit(path):
     try:
         for name,before,after,test in [
             ('source_forcing','value=result[-1]+gain*(source_value-result[-1])','value=result[-1]','test_constant_source_analytic'),
-            ('tolerance_widening','-math.expm1(-dt/tau_high)','-math.expm1(-dt/tau_low)','test_tau_bounds_cover_extremes')]:
+            ('tolerance_widening','-math.expm1(-dt/tau_high)','-math.expm1(-dt/tau_low)','test_tau_bounds_cover_extremes'),
+            ('batch_state_carry','c=c,v=values[-1]','c=c,v=float(initial)','test_native_batches_carry_only_predicted_state')]:
             assert before in source
             module=types.ModuleType('diagnostic_mutant');module.__file__=original.__file__
             exec(compile(source.replace(before,after,1),original.__file__,'exec'),module.__dict__)

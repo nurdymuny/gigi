@@ -1,0 +1,79 @@
+test_sa00_missing_evidence_preserves_native_result (__main__.ApplicabilityTests.test_sa00_missing_evidence_preserves_native_result) ... ok
+test_sa00_schedule_must_cover_entire_horizon (__main__.ApplicabilityTests.test_sa00_schedule_must_cover_entire_horizon) ... ok
+test_sa00_schedule_must_support_declared_fixed_source (__main__.ApplicabilityTests.test_sa00_schedule_must_support_declared_fixed_source) ... ok
+test_sa00_wrong_target_refuses (__main__.ApplicabilityTests.test_sa00_wrong_target_refuses) ... ok
+test_sa01_constant_control_is_scoped_not_certified (__main__.ApplicabilityTests.test_sa01_constant_control_is_scoped_not_certified) ... ok
+test_sa02_small_forcing_invalidates_old_deadline (__main__.ApplicabilityTests.test_sa02_small_forcing_invalidates_old_deadline) ... ok
+test_sa03_crossing_then_departure (__main__.ApplicabilityTests.test_sa03_crossing_then_departure) ... ok
+test_sa04_nonzero_bound_is_not_fixed_source_evidence (__main__.ApplicabilityTests.test_sa04_nonzero_bound_is_not_fixed_source_evidence) ... ok
+test_sa04_observed_prefix_cannot_prove_future (__main__.ApplicabilityTests.test_sa04_observed_prefix_cannot_prove_future) ... ok
+test_sa04_short_certificate_cannot_cover_future (__main__.ApplicabilityTests.test_sa04_short_certificate_cannot_cover_future) ... ok
+test_sa05_boundary_sample_with_uncertain_clock_is_not_contradiction (__main__.ApplicabilityTests.test_sa05_boundary_sample_with_uncertain_clock_is_not_contradiction) ... ok
+test_sa05_calibration_for_another_source_is_unresolved (__main__.ApplicabilityTests.test_sa05_calibration_for_another_source_is_unresolved) ... ok
+test_sa05_expired_calibration_is_unresolved (__main__.ApplicabilityTests.test_sa05_expired_calibration_is_unresolved) ... ok
+test_sa05_missing_calibration_does_not_mean_zero_uncertainty (__main__.ApplicabilityTests.test_sa05_missing_calibration_does_not_mean_zero_uncertainty) ... ok
+test_sa05_uncertainty_interval_can_include_target (__main__.ApplicabilityTests.test_sa05_uncertainty_interval_can_include_target) ... ok
+test_sa06_four_samples_insufficient (__main__.ApplicabilityTests.test_sa06_four_samples_insufficient) ... ok
+test_sa06_no_samples_after_bound (__main__.ApplicabilityTests.test_sa06_no_samples_after_bound) ... ok
+test_sa07_replay_uses_declared_first_state_not_measured_resets (__main__.ApplicabilityTests.test_sa07_replay_uses_declared_first_state_not_measured_resets) ... ok
+test_sa08_enclosure_discloses_identifiability (__main__.ApplicabilityTests.test_sa08_enclosure_discloses_identifiability) ... ok
+test_sa08_enclosure_refuses_unknown_initial_state (__main__.ApplicabilityTests.test_sa08_enclosure_refuses_unknown_initial_state) ... ok
+test_sa08_enclosure_refuses_wrong_units (__main__.ApplicabilityTests.test_sa08_enclosure_refuses_wrong_units) ... ok
+test_sa09_components_must_match_native_model (__main__.ApplicabilityTests.test_sa09_components_must_match_native_model) ... FAIL
+test_sa09_duplicate_times_refuse (__main__.ApplicabilityTests.test_sa09_duplicate_times_refuse) ... ok
+test_sa09_evidence_bytes_must_match_digest (__main__.ApplicabilityTests.test_sa09_evidence_bytes_must_match_digest) ... ok
+test_sa09_evidence_revision_changes_identity (__main__.ApplicabilityTests.test_sa09_evidence_revision_changes_identity) ... ok
+test_sa09_hardware_flags_are_not_accepted (__main__.ApplicabilityTests.test_sa09_hardware_flags_are_not_accepted) ... ok
+test_sa09_initial_origin_must_match_measurement (__main__.ApplicabilityTests.test_sa09_initial_origin_must_match_measurement) ... FAIL
+test_sa09_modified_native_result_refuses (__main__.ApplicabilityTests.test_sa09_modified_native_result_refuses) ... ok
+test_sa09_multinode_is_not_scalar_applicability (__main__.ApplicabilityTests.test_sa09_multinode_is_not_scalar_applicability) ... FAIL
+test_sa09_native_tolerance_cannot_be_relabelled (__main__.ApplicabilityTests.test_sa09_native_tolerance_cannot_be_relabelled) ... FAIL
+test_sa09_nonfinite_refuses (__main__.ApplicabilityTests.test_sa09_nonfinite_refuses) ... ok
+test_sa09_read_only_and_deterministic (__main__.ApplicabilityTests.test_sa09_read_only_and_deterministic) ... ok
+test_sa09_reversed_times_refuse (__main__.ApplicabilityTests.test_sa09_reversed_times_refuse) ... ok
+test_sa09_schedule_changes_identity (__main__.ApplicabilityTests.test_sa09_schedule_changes_identity) ... ok
+test_sa09_source_bytes_must_match_digest (__main__.ApplicabilityTests.test_sa09_source_bytes_must_match_digest) ... ok
+test_sa09_source_revision_changes_identity (__main__.ApplicabilityTests.test_sa09_source_revision_changes_identity) ... ok
+test_sa09_units_required (__main__.ApplicabilityTests.test_sa09_units_required) ... ok
+test_sa11_published_contract_names_three_scopes (__main__.ApplicabilityTests.test_sa11_published_contract_names_three_scopes) ... ok
+
+======================================================================
+FAIL: test_sa09_components_must_match_native_model (__main__.ApplicabilityTests.test_sa09_components_must_match_native_model)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_applicability.py", line 319, in test_sa09_components_must_match_native_model
+    with self.assertRaisesRegex(ValueError, 'circuit.*native'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_sa09_initial_origin_must_match_measurement (__main__.ApplicabilityTests.test_sa09_initial_origin_must_match_measurement)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_applicability.py", line 332, in test_sa09_initial_origin_must_match_measurement
+    with self.assertRaisesRegex(ValueError, 'initial.*first'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_sa09_multinode_is_not_scalar_applicability (__main__.ApplicabilityTests.test_sa09_multinode_is_not_scalar_applicability)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_applicability.py", line 326, in test_sa09_multinode_is_not_scalar_applicability
+    with self.assertRaisesRegex(ValueError, 'one-node'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_sa09_native_tolerance_cannot_be_relabelled (__main__.ApplicabilityTests.test_sa09_native_tolerance_cannot_be_relabelled)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_applicability.py", line 313, in test_sa09_native_tolerance_cannot_be_relabelled
+    with self.assertRaisesRegex(ValueError, 'tolerance_v.*native'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 38 tests in 0.789s
+
+FAILED (failures=4)

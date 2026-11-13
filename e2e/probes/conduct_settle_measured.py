@@ -16,6 +16,7 @@ import urllib.request
 import numpy as np
 
 from conduct_settle_live import Engine, ROOT, bundle, conduct, settle
+from settling_applicability import assess, canonical_bytes, digest, SI
 
 REQUIRED_EVIDENCE = ("voltage_calibration", "timebase_calibration", "component_measurements",
                      "switch_characterization", "uncertainty_budget", "held_out_protocol")
@@ -91,7 +92,8 @@ def observed_settling(times, errors, tolerance, minimum_followup=5):
     return None
 
 def hardware_qualified(metadata, numerical_pass):
-    return bool(numerical_pass and all(metadata.get(k) is True for k in REQUIRED_EVIDENCE))
+    """Legacy compatibility only; Booleans cannot constitute hardware evidence."""
+    return False
 
 
 DATASETS = [
@@ -121,7 +123,7 @@ def independent_values(times, phases, initial, tau):
     return np.asarray(result)
 
 
-def compare_trace(engine, out, name, resistance, capacitance, t, u, v):
+def compare_trace(engine, out, name, resistance, capacitance, t, u, v, *, source_bytes, source_identity):
     raw_name = name+'_observations'
     engine.ok('/v1/bundles', dict(name=raw_name, schema=dict(
         fields={k:'numeric' for k in ('seq', 'time_s', 'source_v', 'capacitor_v')}, keys=['seq'])))
@@ -175,13 +177,25 @@ def compare_trace(engine, out, name, resistance, capacitance, t, u, v):
         count = int(np.count_nonzero(after))
         status = ('insufficient_followup' if count < 5 else
                   'within_tolerance' if np.all(np.abs(errors[after]) <= tol) else 'observed_departure')
+        request = dict(source=source_identity, units=SI,
+            circuit=dict(resistance_ohm=resistance, capacitance_f=capacitance),
+            initial=dict(voltage_v=float(v[0]), origin='first_measured_output'),
+            schedule=[dict(start_s=q['start']+float(t[0]), end_s=q['end']+float(t[0]), source_v=q['source']) for q in shifted],
+            horizon_s=[p['start']+float(t[0]), p['end']+float(t[0])], target_v=p['source'], tolerance_v=tol,
+            times_s=t.tolist(), source_v=u.tolist(), output_v=v.tolist(),
+            model=dict(native_result=result, receipt=dict(id=f'{name}/settle/{len(events)}',
+                revision=str(result['source']['revision']), sha256=digest(canonical_bytes(result)))), evidence={})
+        assessment = assess(request, source_bytes)
+        assert assessment['observed_window']['status'] == status, 'adapter must preserve frozen observation rule'
+        assert assessment['observed_window']['samples_after_bound'] == count
+        assert assessment['model_calculation']['native_result'] == result
         events.append(dict(source_v=p['source'], switch_time_s=p['start']+float(t[0]),
             event_uncertainty_s=p['event_uncertainty'], predicted_initial_v=initial,
             tolerance_v=tol, model_bound_s=result['settling_bound_s'], oracle_bound_s=oracle_bound,
             observed_suffix_settling_s=observed_settling(elapsed, errors, tol),
             samples_after_bound=count, observation_status=status,
             max_observed_error_after_bound_v=float(np.max(np.abs(errors[after]))) if count else None,
-            meets_model_deadline=result['meets_deadline']))
+            meets_model_deadline=result['meets_deadline'], assessment=assessment))
     with (out/f'{name}-comparison.csv').open('w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['time_s','source_v','measured_capacitor_v','gigi_capacitor_v','residual_v'])
@@ -190,7 +204,7 @@ def compare_trace(engine, out, name, resistance, capacitance, t, u, v):
         rmse_v=rmse, max_error_v=max_error, normalized_rmse=rmse/swing,
         normalized_max_error=max_error/swing, diagnostic_screen_pass=diagnostic_pass,
         engine_oracle_max_error_v=oracle_error, events=events,
-        hardware_qualified=hardware_qualified({}, diagnostic_pass), missing_evidence=list(REQUIRED_EVIDENCE))
+        hardware_qualification='not_qualified', missing_evidence=list(REQUIRED_EVIDENCE))
 
 
 def source_hashes():
@@ -230,7 +244,9 @@ def main():
                                else ('time (s)','square wave (V)','Vcapacitor (V)'))
                     entry['declared_header_mapping'] = headers
                     t, u, v = parse_scope(raw.decode('utf-8-sig'), resistance, capacitance, headers=headers)
-                    entry.update(compare_trace(engine, out, name, resistance, capacitance, t, u, v))
+                    entry.update(compare_trace(engine, out, name, resistance, capacitance, t, u, v,
+                        source_bytes=raw, source_identity=dict(id=url, revision=entry['sha256'],
+                            sha256=entry['sha256'], parser='parse_scope-v1:' + '|'.join(headers))))
                     entry['status'] = 'COMPARED'
                 except Exception as error:
                     entry.update(status='REFUSED_OR_FAILED', error=f'{type(error).__name__}: {error}')

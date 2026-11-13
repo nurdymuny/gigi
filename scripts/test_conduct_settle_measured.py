@@ -54,6 +54,8 @@ class MeasuredTests(unittest.TestCase):
         self.assertFalse(measured.hardware_qualified({},True))
     def test_failed_prediction_is_not_qualified(self):
         self.assertFalse(measured.hardware_qualified({k:True for k in measured.REQUIRED_EVIDENCE},False))
+    def test_booleans_cannot_qualify_hardware(self):
+        self.assertFalse(measured.hardware_qualified({k:True for k in measured.REQUIRED_EVIDENCE},True))
 
 def audit(output):
     global measured
@@ -67,6 +69,9 @@ def audit(output):
         ('time_order', 'if np.any(np.diff(t) <= 0):', 'if False:', 'test_duplicate_time_refuses_by_name'),
         ('settling_suffix', 'suffix = np.logical_and.accumulate(good[::-1])[::-1]', 'suffix = good',
          'test_false_crossing_uses_entire_remaining_suffix'),
+        ('boolean_qualification', '    return False',
+         '    return bool(numerical_pass and all(metadata.get(k) is True for k in REQUIRED_EVIDENCE))',
+         'test_booleans_cannot_qualify_hardware'),
     ]
     receipts = []
     try:

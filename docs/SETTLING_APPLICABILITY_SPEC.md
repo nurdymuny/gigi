@@ -1,6 +1,8 @@
 # Settling applicability: smallest justified fix
 
-Version 0.1, 2026-11-13. **SPECIFIED, NOT IMPLEMENTED. Gates below not run.**
+Version 0.2, 2026-11-13. **IMPLEMENTED in the application adapter.**
+Release status is recorded separately in `SETTLING_APPLICABILITY_RESULTS.md`;
+implementation alone does not close a gate. CS08 hardware qualification is OPEN.
 Diagnosis: `docs/research/settling-diagnosis-results-2026-11-13.md`.
 
 ## Decision and non-goals
@@ -80,10 +82,59 @@ are part of identity; no cross-revision reuse.
 
 ## Strict gated TDD
 
-Each gate requires a behavioral RED against the old adapter, a GREEN against the
-new adapter, then a deliberate mechanism removal causing an assertion failure.
+New adapter behavior requires a behavioral RED against a schema-compatible
+bridge to the old Boolean shortcut, a GREEN against the new adapter, then a
+deliberate mechanism removal causing an assertion failure. Existing mathematical
+controls are regression tests, not retrospectively claimed RED-first tests.
+Release and real-data gates require their actual receipts, not fabricated REDs.
 Import errors and missing fixtures do not count. No gate accepts two alternative
 verdicts for one fixture. Freeze numerical thresholds before implementation.
+
+### Evidence and interpretation details frozen before coding
+
+- The pure adapter accepts source bytes, a declared parsing recipe, aligned
+  observations, and content-addressed evidence documents supplied by the caller.
+  It checks digests and binds its identity to the complete request, including
+  evidence revisions. The ingesting application is responsible for applying the
+  declared parser to the source; a digest alone does not prove that mapping.
+- Calibration documents must name the source, quantity, SI unit, finite
+  nonnegative absolute uncertainty, and coverage interval. Validity means the
+  document covers this analysis interval, not merely that a filename exists.
+  SHA256 verifies integrity, not the truth or independence of a certificate.
+- Positive forcing applicability is conditional on an explicitly supplied
+  independent-characterization document bounding departure from the exact
+  requested target by zero throughout the entire declared horizon, plus usable
+  voltage and timebase uncertainty documents. A nonzero bound does not establish
+  the fixed-source assumption, even if below the voltage tolerance. Actual
+  samples whose uncertainty intervals exclude the target contradict it.
+- Unknown calibration prevents a physical contradiction claim based solely on
+  recorded voltages. Report their raw spread separately, with the uncertainty
+  unresolved. A positive status is horizon-scoped, never a future extrapolation.
+- `observed_window` describes recorded samples only, at nominal timestamps, not
+  a continuous-time certificate. Its count/duration, comparison policy and
+  unresolved calibration remain explicit. This preserves the frozen 12 verdicts.
+- No caller-supplied Boolean or evidence document can enable hardware
+  qualification in this version. That requires a separate approved protocol,
+  outside this adapter. Every response remains `not_qualified`.
+- Native response content must match its declared digest; target and native
+  equilibrium must agree within the existing 1e-12 absolute/relative numerical
+  check. This check does not alter the observation tolerance. The declared
+  schedule must cover the full horizon without any different source value for
+  a positive applicability assessment. A conflicting schedule is a declared
+  model contradiction, not proof of a physical voltage error.
+- This adapter is restricted to a one-node, one-port SI RC model with unit
+  readout. Its components must match the native response (1e-12 relative check,
+  no absolute slack at small capacitances), and observation tolerance must equal
+  the native request exactly. Multi-node native CONDUCT/SETTLE remains available,
+  but this scalar applicability layer cannot certify its forcing assumptions.
+  A `first_measured_output` initial-state declaration must match that reading.
+- Diagnostic replay/enclosure is opt-in, requires explicit SI units and initial
+  state origin, and returns its interpolation/uncertainty assumptions. It never
+  changes the native result. Enclosures are numerical diagnostic bounds, not
+  outward-rounded interval certificates.
+- No website deployment or REST response change is part of this adapter gate.
+  SA11 tests the published assessment JSON consumed by applications, with the
+  three scopes present; the website retains its separately verified labels.
 
 | Gate | Planted answer and required control |
 |---|---|
@@ -110,3 +161,26 @@ clock, independent R/C and source/switch/probe characterization, and instrument
 channel settings. Those observations distinguish missing dynamics from channel
 measurement effects; current files cannot. Do not select a circuit fix until
 that evidence identifies one.
+
+## Implemented surfaces and reproduction
+
+- `e2e/probes/settling_applicability.py`: pure assessment and opt-in diagnostic
+  reconstruction. Neither is a new REST route or GQL verb.
+- `e2e/probes/conduct_settle_measured.py`: includes the structured assessment
+  alongside each unchanged native SETTLE result. The old Boolean helper is
+  compatibility-only and cannot qualify hardware.
+- `e2e/probes/settling_applicability_live.py`: rebuilds an isolated engine,
+  preserves original observations and verdicts, rechecks native batching and
+  two independent oracles, and records source/binary/evidence identities.
+
+```powershell
+python scripts/audit_settling_applicability.py --output output/settling-applicability-tests.json
+python scripts/test_conduct_settle_measured.py --audit output/settling-applicability-measured-tests.json
+python scripts/test_settling_diagnosis.py --audit output/settling-applicability-diagnosis-tests.json
+python e2e/probes/settling_applicability_live.py --input output/conduct-settle/measured-20261113/live-02 --output output/conduct-settle/applicability-repeat
+```
+
+The frozen CSVs are local source artifacts, not republished data. The original
+measured protocol records their public origins and hashes. `--output` must name
+a new directory. Assessment documents refer to a source parser; the live harness
+actually applies that parser and verifies the stored measurements round-trip.

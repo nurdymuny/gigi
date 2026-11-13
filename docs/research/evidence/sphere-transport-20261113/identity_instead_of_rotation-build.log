@@ -1,0 +1,30 @@
+warning: unused import: `gigi::dials::transport_rotation_matrix`
+ --> C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\audit.rs:3:23
+  |
+3 | mod adapter { pub use gigi::dials::transport_rotation_matrix;
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `to_unit`, `angle_radians`, `tangency_relative_residual`, and `norm_relative_residual` are never read
+  --> C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\checked.rs:14:9
+   |
+11 | pub struct SphereTransport {
+   |            --------------- fields in this struct
+...
+14 |     pub to_unit: [f64; 3],
+   |         ^^^^^^^
+15 |     pub endpoint_input_norms: [f64; 2],
+16 |     pub angle_radians: f64,
+   |         ^^^^^^^^^^^^^
+...
+21 |     pub tangency_relative_residual: f64,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 |     pub norm_relative_residual: f64,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `SphereTransport` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 2 warnings emitted
+

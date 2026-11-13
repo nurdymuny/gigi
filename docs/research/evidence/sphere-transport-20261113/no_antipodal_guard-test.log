@@ -1,0 +1,29 @@
+
+running 9 tests
+test contract::sphere_refuses_dimensions_nonfinite_and_magnitude ... ok
+test contract::sphere_record_adapter_never_invents_components ... ok
+test adapter::checked::tests::sphere_output_guard_rejects_bad_kernel_results ... ok
+test contract::sphere_refuses_nonunit_nontangent_and_antipodal ... FAILED
+test contract::sphere_quarter_loop_basis_positions_reverse_and_backtrack ... ok
+test contract::sphere_identity_small_angle_roundoff_normalization_and_zero ... ok
+test contract::sphere_legacy_antipodal_and_small_angle_behavior_unchanged ... ok
+test contract::sphere_nonaxis_oracle_inverse_and_frame_covariance ... ok
+octant_0: actual=[0.0, 1.232595164407831e-32, 1.0] independent=[0.0, 0.0, 1.0]
+octant_1: actual=[1.1102230246251565e-16, -1.0, 1.232595164407831e-32] independent=[0.0, -1.0, 0.0]
+oblique_0: actual=[0.09173612215383764, 0.8141580841153078, -0.5733507634614845] independent=[0.09173612215383742, 0.8141580841153082, -0.5733507634614847]
+oblique_1: actual=[-0.959247576209398, 0.22678696689934646, 0.16855788080356832] independent=[-0.9592475762093984, 0.22678696689934652, 0.16855788080356823]
+test contract::sphere_embedded_gigi_showcase_persists_derived_transport_and_reopens ... ok
+
+failures:
+
+failures:
+    contract::sphere_refuses_nonunit_nontangent_and_antipodal
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+thread 'contract::sphere_refuses_nonunit_nontangent_and_antipodal' (29872) panicked at C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\audit.rs:33:42:
+numerically unresolved sphere transport: residuals [2.0, 0.0, 0.0, 0.0] must be finite and <= 1e-10; use better-resolved intermediate waypoints
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+  WAL replay starting...
+  WAL replay complete: 15 entries, 12 records in 0.1s

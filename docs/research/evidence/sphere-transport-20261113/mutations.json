@@ -1,0 +1,81 @@
+{
+  "passed": true,
+  "scope": "Isolated source mutations against actual GIGI library, no worktree edits",
+  "pinned_files": {
+    "src\\dials\\sphere_transport.rs": "1b827b5fe23c214e58ed16b5b7649002f7b85e25fcd2d38f87a481e1c77ff86a",
+    "tests\\sphere_transport.rs": "dd0e415b2fa2c92e35cd3f3a9a954d77a95b6d38eef9476030a19c48dd9a05ed",
+    "target\\debug\\deps\\libgigi-d1800bbf7db81122.rlib": "aabf41c3834e95e7846ddb3bb79d9524cd07ff1ff124cf3d29e59fceea546c0f"
+  },
+  "cases": [
+    {
+      "name": "baseline",
+      "compiled": true,
+      "test_exit": 0,
+      "assertion_failure": false,
+      "source_sha256": "1b827b5fe23c214e58ed16b5b7649002f7b85e25fcd2d38f87a481e1c77ff86a"
+    },
+    {
+      "name": "identity_instead_of_rotation",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "581ccb446bbeeba748a270cab316d9e772f3f6b98d7c27156313d217cfc3a37e"
+    },
+    {
+      "name": "reverse_rotation",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "db3ec54da11ec40e6f303f074acc26b645c0e712af2d4d540caff3183168cc4c"
+    },
+    {
+      "name": "no_unit_guard",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "5b3e0693ebbe4aa510c381c5ed60cad4be40b0cb0aaa62ca21c37f86f8468a1f"
+    },
+    {
+      "name": "no_tangency_guard",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "a378304b6b58ee6d954a4011702e4ac55f9718004f0e9b079292b09f4a2b7b57"
+    },
+    {
+      "name": "no_antipodal_guard",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "46e8e0ec604c9c24d3adba0409a140c570eabae1e45c0d7d208a34a5cf27a6ff"
+    },
+    {
+      "name": "no_magnitude_guard",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "5a329acfaa67db93dfc1145c17452ee39e873f032b35039c46c12bd4e9183d0f"
+    },
+    {
+      "name": "no_roundoff_normalization",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "46f4a129e4313a4474488cd585db15204bfda6d48f852bcc0f7d3fd278526c6c"
+    },
+    {
+      "name": "missing_measurements_become_zero",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "95b3d50f441adbce36d8644114cf544ca16300522f8df842bd90c2f78a36b1f9"
+    },
+    {
+      "name": "no_postcondition_check",
+      "compiled": true,
+      "test_exit": 101,
+      "assertion_failure": true,
+      "source_sha256": "42be0bee799e41b58704d6d0e8857e21050622fe23e435d01e25bb3152dfb99c"
+    }
+  ]
+}

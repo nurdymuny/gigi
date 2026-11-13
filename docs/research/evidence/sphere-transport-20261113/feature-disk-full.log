@@ -1,0 +1,130 @@
+   Compiling gigi v0.4.1 (C:\Users\nurdm\OneDrive\Documents\gigi)
+warning: unused import: `FieldType`
+    --> src\bundle.rs:8797:38
+     |
+8797 |         use crate::types::{FieldDef, FieldType};
+     |                                      ^^^^^^^^^
+     |
+     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `FieldDef`
+ --> src\join.rs:8:34
+  |
+8 | use crate::types::{BundleSchema, FieldDef, Record, Value};
+  |                                  ^^^^^^^^
+
+warning: unused import: `Group`
+   --> src\pairing_delegation.rs:159:20
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                    ^^^^^
+
+warning: unused import: `GroupEncoding`
+   --> src\pairing_delegation.rs:159:27
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                           ^^^^^^^^^^^^^
+
+warning: unused variable: `v`
+   --> src\aggregate_helpers.rs:835:13
+    |
+835 |         let v = [10.0_f64, 20.0, 30.0, 40.0, 50.0];
+    |             ^ help: if this is intentional, prefix it with an underscore: `_v`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `v`
+   --> src\aggregate_helpers.rs:854:13
+    |
+854 |         let v = [10.0_f64, 20.0, 30.0, 40.0, 50.0];
+    |             ^ help: if this is intentional, prefix it with an underscore: `_v`
+
+warning: variable does not need to be mutable
+    --> src\bundle.rs:8822:13
+     |
+8822 |         let mut test_vals = vec![Value::Float(1.0), Value::Float(0.0)];
+     |             ----^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `alice_pk`
+   --> src\pairing_delegation.rs:428:24
+    |
+428 |         let (alice_sk, alice_pk) = keygen();
+    |                        ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_alice_pk`
+
+warning: variable does not need to be mutable
+  --> src\ml\circulation.rs:90:9
+   |
+90 |     let mut node_of = |labels: &mut Vec<String>, idx: &mut std::collections::HashMap<String, usize>, s: String| -> usize {
+   |         ----^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\ml\circulation.rs:303:13
+    |
+303 |         let mut push = |rows: &mut Vec<crate::types::Record>, k: &mut usize, s: &str, d: &str| {
+    |             ----^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `p99`
+    --> src\observability.rs:1548:24
+     |
+1548 |         let (p50, p95, p99) = m.percentiles();
+     |                        ^^^ help: if this is intentional, prefix it with an underscore: `_p99`
+
+warning: unused variable: `k`
+   --> src\topology.rs:353:10
+    |
+353 |     for (k, &ck) in c.iter().enumerate() {
+    |          ^ help: if this is intentional, prefix it with an underscore: `_k`
+
+warning: fields `pin_lambda_q` and `pin_lambda_beta_w` are never read
+   --> src\gauge\loop_transport.rs:474:5
+    |
+460 | struct LtConfig<'a> {
+    |        -------- fields in this struct
+...
+474 |     pin_lambda_q: f64,
+    |     ^^^^^^^^^^^^
+475 |     pin_lambda_beta_w: f64,
+    |     ^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `rows_from` is never used
+   --> src\ml\texture.rs:332:8
+    |
+332 |     fn rows_from(vals: &[f64]) -> Vec<Record> {
+    |        ^^^^^^^^^
+
+warning: method `parse_encryption_mode_after_keyword` is never used
+    --> src\parser.rs:3089:8
+     |
+2276 | impl Parser {
+     | ----------- method in this implementation
+...
+3089 |     fn parse_encryption_mode_after_keyword(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused `IndexCoverage` that must be used
+     --> src\parser.rs:14801:9
+      |
+14801 |         engine.add_index("cog", "y").unwrap();
+      |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |
+      = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+      = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+      |
+14801 |         let _ = engine.add_index("cog", "y").unwrap();
+      |         +++++++
+
+error: failed to write file \\?\C:\Users\nurdm\OneDrive\Documents\gigi\target\debug\incremental\gigi-2l8k3mn4xr06q\s-ho4wtb1ecz-1y1s7op-working\dep-graph.part.bin: There is not enough space on the disk. (os error 112)"
+
+warning: `gigi` (lib test) generated 16 warnings
+error: could not compile `gigi` (lib test) due to 1 previous error; 16 warnings emitted

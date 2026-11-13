@@ -1,0 +1,3459 @@
+warning: unused import: `GroupEncoding`
+   --> src\pairing_delegation.rs:159:27
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                           ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `FieldDef`
+ --> src\join.rs:8:34
+  |
+8 | use crate::types::{BundleSchema, FieldDef, Record, Value};
+  |                                  ^^^^^^^^
+
+warning: unreachable statement
+    --> src\parser.rs:5698:17
+     |
+5694 | /                     return Err(
+5695 | |                         "CHERN_CLASS GROUP clause requires the `gauge` feature".into(),
+5696 | |                     );
+     | |_____________________- any code following this expression is unreachable
+5697 |                   }
+5698 |                   continue;
+     |                   ^^^^^^^^^ unreachable statement
+     |
+     = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Group`
+   --> src\pairing_delegation.rs:159:20
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                    ^^^^^
+
+warning: variable does not need to be mutable
+  --> src\ml\circulation.rs:90:9
+   |
+90 |     let mut node_of = |labels: &mut Vec<String>, idx: &mut std::collections::HashMap<String, usize>, s: String| -> usize {
+   |         ----^^^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> src\parser.rs:5658:13
+     |
+5658 |         let mut group: Option<()> = None;
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: multiple methods are never used
+    --> src\parser.rs:3089:8
+     |
+2276 | impl Parser {
+     | ----------- methods in this implementation
+...
+3089 |     fn parse_encryption_mode_after_keyword(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4657 |     fn parse_seed_bracket(&mut self) -> Result<SeedRange, String> {
+     |        ^^^^^^^^^^^^^^^^^^
+...
+4667 |     fn parse_loop_transport_output_id(&mut self) -> Result<LoopTransportOutputId, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4680 |     fn parse_loop_transport_return_id(&mut self) -> Result<LoopTransportReturnId, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4696 |     fn parse_loop_transport_return_list(&mut self) -> Result<Vec<LoopTransportReturnId>, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4713 |     fn parse_sham_block(&mut self) -> Result<ShamBlock, String> {
+     |        ^^^^^^^^^^^^^^^^
+...
+4755 |     fn expect_bool_word(&mut self) -> Result<bool, String> {
+     |        ^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (lib) generated 7 warnings (run `cargo fix --lib -p gigi` to apply 4 suggestions)
+warning: method `gen_range` is never used
+  --> tests\k_preserving_v0_4.rs:47:8
+   |
+33 | impl DetRng {
+   | ----------- method in this implementation
+...
+47 |     fn gen_range(&mut self, lo: f64, hi: f64) -> f64 {
+   |        ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::path::PathBuf`
+  --> tests\scj_atlas_contract.rs:45:5
+   |
+45 | use std::path::PathBuf;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (test "k_preserving_v0_4") generated 1 warning
+warning: `gigi` (test "scj_atlas_contract") generated 1 warning (run `cargo fix --test "scj_atlas_contract" -p gigi` to apply 1 suggestion)
+warning: function `bench_point_queries` is never used
+   --> benches\ingest_bench.rs:128:4
+    |
+128 | fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, f64) {
+    |    ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (bin "bench_ingest" test) generated 1 warning
+warning: unused import: `GeometricFields`
+  --> src\bin\gigi_stream.rs:55:27
+   |
+55 | use gigi::observability::{GeometricFields, LogCategory, LogConfig, LogEvent, LogLevel, Logger, Metrics, new_request_id};
+   |                           ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:11619:9
+      |
+11619 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+      |         ----^^^^^
+      |         |
+      |         help: remove this `mut`
+      |
+      = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:11793:9
+      |
+11793 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+      |         ----^^^^^
+      |         |
+      |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:12328:9
+      |
+12328 |     let mut anomalies_sent: u64 = 0;
+      |         ----^^^^^^^^^^^^^^
+      |         |
+      |         help: remove this `mut`
+
+warning: unused variable: `row`
+     --> src\bin\gigi_stream.rs:14192:79
+      |
+14192 |             let filtered: Vec<gigi::types::Record> = rows.into_iter().filter(|row| {
+      |                                                                               ^^^ help: if this is intentional, prefix it with an underscore: `_row`
+      |
+      = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `email` is never read
+  --> src\bin\gigi_stream.rs:94:5
+   |
+92 | struct GigiClaims {
+   |        ---------- field in this struct
+93 |     #[serde(default)]
+94 |     email: String,
+   |     ^^^^^
+   |
+   = note: `GigiClaims` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `PullbackCurvatureReport` is never constructed
+   --> src\bin\gigi_stream.rs:981:8
+    |
+981 | struct PullbackCurvatureReport {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `FieldType`
+    --> src\bundle.rs:8797:38
+     |
+8797 |         use crate::types::{FieldDef, FieldType};
+     |                                      ^^^^^^^^^
+     |
+     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `GroupEncoding`
+   --> src\pairing_delegation.rs:159:27
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                           ^^^^^^^^^^^^^
+
+warning: unused variable: `v`
+   --> src\aggregate_helpers.rs:835:13
+    |
+835 |         let v = [10.0_f64, 20.0, 30.0, 40.0, 50.0];
+    |             ^ help: if this is intentional, prefix it with an underscore: `_v`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `v`
+   --> src\aggregate_helpers.rs:854:13
+    |
+854 |         let v = [10.0_f64, 20.0, 30.0, 40.0, 50.0];
+    |             ^ help: if this is intentional, prefix it with an underscore: `_v`
+
+warning: variable does not need to be mutable
+    --> src\bundle.rs:8822:13
+     |
+8822 |         let mut test_vals = vec![Value::Float(1.0), Value::Float(0.0)];
+     |             ----^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `alice_pk`
+   --> src\pairing_delegation.rs:428:24
+    |
+428 |         let (alice_sk, alice_pk) = keygen();
+    |                        ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_alice_pk`
+
+warning: variable does not need to be mutable
+  --> src\ml\circulation.rs:90:9
+   |
+90 |     let mut node_of = |labels: &mut Vec<String>, idx: &mut std::collections::HashMap<String, usize>, s: String| -> usize {
+   |         ----^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\ml\circulation.rs:303:13
+    |
+303 |         let mut push = |rows: &mut Vec<crate::types::Record>, k: &mut usize, s: &str, d: &str| {
+    |             ----^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `p99`
+    --> src\observability.rs:1548:24
+     |
+1548 |         let (p50, p95, p99) = m.percentiles();
+     |                        ^^^ help: if this is intentional, prefix it with an underscore: `_p99`
+
+warning: function `rows_from` is never used
+   --> src\ml\texture.rs:332:8
+    |
+332 |     fn rows_from(vals: &[f64]) -> Vec<Record> {
+    |        ^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: multiple methods are never used
+    --> src\parser.rs:3089:8
+     |
+2276 | impl Parser {
+     | ----------- methods in this implementation
+...
+3089 |     fn parse_encryption_mode_after_keyword(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4657 |     fn parse_seed_bracket(&mut self) -> Result<SeedRange, String> {
+     |        ^^^^^^^^^^^^^^^^^^
+...
+4667 |     fn parse_loop_transport_output_id(&mut self) -> Result<LoopTransportOutputId, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4680 |     fn parse_loop_transport_return_id(&mut self) -> Result<LoopTransportReturnId, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4696 |     fn parse_loop_transport_return_list(&mut self) -> Result<Vec<LoopTransportReturnId>, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4713 |     fn parse_sham_block(&mut self) -> Result<ShamBlock, String> {
+     |        ^^^^^^^^^^^^^^^^
+...
+4755 |     fn expect_bool_word(&mut self) -> Result<bool, String> {
+     |        ^^^^^^^^^^^^^^^^
+
+warning: unused `IndexCoverage` that must be used
+     --> src\parser.rs:14801:9
+      |
+14801 |         engine.add_index("cog", "y").unwrap();
+      |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |
+      = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+      = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+      |
+14801 |         let _ = engine.add_index("cog", "y").unwrap();
+      |         +++++++
+
+warning: `gigi` (bin "gigi-stream" test) generated 7 warnings (run `cargo fix --bin "gigi-stream" -p gigi --tests` to apply 5 suggestions)
+warning: `gigi` (lib test) generated 16 warnings (4 duplicates) (run `cargo fix --lib -p gigi --tests` to apply 8 suggestions)
+warning: unused imports: `CapacityReport` and `HorizonReport`
+  --> tests\locus_dials.rs:51:25
+   |
+51 | use gigi::dials::{self, CapacityReport, HorizonReport};
+   |                         ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (bin "bench_ingest") generated 1 warning (1 duplicate)
+warning: `gigi` (test "locus_dials") generated 1 warning (run `cargo fix --test "locus_dials" -p gigi` to apply 1 suggestion)
+warning: unused imports: `IntegrityTag` and `sign`
+  --> tests\integrity_v0_3.rs:20:23
+   |
+20 | use gigi::integrity::{sign, sign_bundle, verify, verify_bundle, IntegrityKey, IntegrityTag, InvariantTuple};
+   |                       ^^^^                                                    ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `MembershipResult`
+  --> tests\membership_index_v0_4.rs:28:49
+   |
+28 | use gigi::membership_index::{GeodesicBallIndex, MembershipResult};
+   |                                                 ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (test "integrity_v0_3") generated 1 warning (run `cargo fix --test "integrity_v0_3" -p gigi` to apply 1 suggestion)
+warning: `gigi` (test "membership_index_v0_4") generated 1 warning (run `cargo fix --test "membership_index_v0_4" -p gigi` to apply 1 suggestion)
+warning: unused `IndexCoverage` that must be used
+  --> tests\schema_durability.rs:75:9
+   |
+75 |         e.add_index("b", "tag").unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+   |
+75 |         let _ = e.add_index("b", "tag").unwrap();
+   |         +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\schema_durability.rs:113:9
+    |
+113 |         e.add_index("b", "tag").unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+113 |         let _ = e.add_index("b", "tag").unwrap();
+    |         +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\schema_durability.rs:147:9
+    |
+147 |         e.add_index("b", "tag").unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+147 |         let _ = e.add_index("b", "tag").unwrap();
+    |         +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\schema_durability.rs:242:9
+    |
+242 |         e.add_index("b", "tag").unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+242 |         let _ = e.add_index("b", "tag").unwrap();
+    |         +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\schema_durability.rs:246:13
+    |
+246 |             e.add_index("b", "tag").unwrap();
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+246 |             let _ = e.add_index("b", "tag").unwrap();
+    |             +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\schema_durability.rs:274:9
+    |
+274 |         e.add_index("b", "tag").unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+274 |         let _ = e.add_index("b", "tag").unwrap();
+    |         +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\schema_durability.rs:275:9
+    |
+275 |         e.add_index("b", "topic").unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+275 |         let _ = e.add_index("b", "topic").unwrap();
+    |         +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\schema_durability.rs:363:9
+    |
+363 |         e.add_index("b", "tag").unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+363 |         let _ = e.add_index("b", "tag").unwrap();
+    |         +++++++
+
+warning: `gigi` (test "schema_durability") generated 8 warnings
+warning: `gigi` (bin "gigi-stream") generated 7 warnings (7 duplicates)
+warning: unused `IndexCoverage` that must be used
+  --> tests\bundle_version.rs:58:5
+   |
+58 |     e.add_index("b", "tag").unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+   |
+58 |     let _ = e.add_index("b", "tag").unwrap();
+   |     +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\bundle_version.rs:116:9
+    |
+116 |         e.add_index("b", "tag").unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+116 |         let _ = e.add_index("b", "tag").unwrap();
+    |         +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\bundle_version.rs:145:5
+    |
+145 |     e1.add_index("b", "tag").unwrap();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+145 |     let _ = e1.add_index("b", "tag").unwrap();
+    |     +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\bundle_version.rs:160:5
+    |
+160 |     e2.add_index("b", "tag").unwrap();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+160 |     let _ = e2.add_index("b", "tag").unwrap();
+    |     +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\sssp_graph_as_bundle.rs:124:9
+    |
+124 |         e.add_index("road", "vertex_a").expect("index vertex_a");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+    = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+    |
+124 |         let _ = e.add_index("road", "vertex_a").expect("index vertex_a");
+    |         +++++++
+
+warning: `gigi` (test "bundle_version") generated 4 warnings
+warning: `gigi` (test "sssp_graph_as_bundle") generated 1 warning
+warning: unused import: `ShamirShare`
+ --> tests\threshold_v0_3.rs:7:51
+  |
+7 | use gigi::threshold::{reconstruct, split, Holder, ShamirShare, ThresholdError, ThresholdScheme};
+  |                                                   ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (test "threshold_v0_3") generated 1 warning (run `cargo fix --test "threshold_v0_3" -p gigi` to apply 1 suggestion)
+warning: unused variable: `n`
+  --> tests\spectral_refusal.rs:34:24
+   |
+34 | fn single_value_bundle(n: i64) -> BundleSchema {
+   |                        ^ help: if this is intentional, prefix it with an underscore: `_n`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused `IndexCoverage` that must be used
+  --> tests\spectral_refusal.rs:94:5
+   |
+94 |     e.add_index("b", "cohort").unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+   |
+94 |     let _ = e.add_index("b", "cohort").unwrap();
+   |     +++++++
+
+warning: unused `IndexCoverage` that must be used
+   --> tests\spectral_refusal.rs:130:5
+    |
+130 |     e.add_index("b", "cohort").unwrap();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: an index on an mmap-backed bundle covers the overlay only; the               mmap base contributes no entries. Handle OverlayOnly explicitly               before treating this index as complete — see TDD-IDX F-4.
+help: use `let _ = ...` to ignore the resulting value
+    |
+130 |     let _ = e.add_index("b", "cohort").unwrap();
+    |     +++++++
+
+warning: unused import: `LedgerError`
+ --> tests\ledger_v0_3.rs:9:55
+  |
+9 | use gigi::ledger::{hash_record_bytes, HolonomyLedger, LedgerError, LedgerLeaf, OpKind};
+  |                                                       ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (test "spectral_refusal") generated 3 warnings (run `cargo fix --test "spectral_refusal" -p gigi` to apply 1 suggestion)
+warning: `gigi` (test "ledger_v0_3") generated 1 warning (run `cargo fix --test "ledger_v0_3" -p gigi` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.23s
+     Running unittests src\lib.rs (target\debug\deps\gigi-5db64e36f243d779.exe)
+
+running 1030 tests
+test aggregate_helpers::tests::identity_passes_aggregates_through ... ok
+test aggregate_helpers::tests::count_is_gauge_invariant ... ok
+test aggregate_helpers::tests::median_quantile_unchecked_bypass_refusal ... ok
+test aggregate_helpers::tests::indexed_field_returns_unsupported_mode ... ok
+test aggregate_helpers::tests::min_max_range_accept_probabilistic_with_zero_sigma ... ok
+test aggregate_helpers::tests::min_max_range_refuse_probabilistic_with_positive_sigma ... ok
+test aggregate_helpers::tests::argmin_argmax_auto_swap_under_negative_affine ... ok
+test aggregate_helpers::tests::median_is_sign_symmetric_under_negative_affine ... ok
+test aggregate_helpers::tests::aggregates_under_negative_scale ... ok
+test aggregate_helpers::tests::median_quantile_refuse_probabilistic_with_positive_sigma ... ok
+test aggregate_helpers::tests::min_max_roundtrip_under_positive_affine ... ok
+test aggregate_helpers::tests::probabilistic_sum_within_noise_bound ... ok
+test aggregate_helpers::tests::median_quantile_roundtrip_under_positive_affine ... ok
+test aggregate_helpers::tests::opaque_field_returns_unsupported_mode ... ok
+test aggregate_helpers::tests::variance_and_stddev_still_supported_under_probabilistic ... ok
+test aggregate_helpers::tests::variance_roundtrip_under_affine ... ok
+test aggregation::tests::tdd_5_2_group_by_partition ... ok
+test aggregation::tests::test_filtered_group_by_with_condition ... ok
+test aggregation::tests::tdd_5_1_fiber_integral ... ok
+test aggregation::tests::gap_f_min_max ... ok
+test aggregation::tests::test_having_avg_gt ... ok
+test aggregation::tests::gap_f3_group_min_max ... ok
+test aggregation::tests::test_integrate_measures_global ... ok
+test aggregation::tests::test_having_count_gt ... ok
+test aggregation::tests::test_group_by_measures_count_star_and_text ... ok
+test aggregation::tests::test_jackknife_too_few_samples ... ok
+test aggregation::tests::test_group_by_measures_distinct_fields ... ok
+test aggregation::tests::test_stddev_population_ground_truth ... ok
+test aggregate_helpers::tests::argmin_argmax_refuses_probabilistic_with_positive_sigma ... ok
+test aggregate_helpers::tests::argmin_argmax_roundtrip_under_positive_affine ... ok
+test aggregate_helpers::tests::argmin_argmax_unchecked_bypass_refusal_and_applies_swap ... ok
+test aggregate_helpers::tests::avg_roundtrip_under_affine ... ok
+test aggregate_helpers::tests::range_roundtrip_under_affine ... ok
+test aggregate_helpers::tests::stddev_roundtrip_under_affine ... ok
+test aggregate_helpers::tests::sum_roundtrip_under_affine ... ok
+test aggregate_helpers::tests::unchecked_min_max_range_bypass_refusal ... ok
+test aggregation::tests::test_jackknife_skip_first_all_is_error ... ok
+test aggregation::tests::test_jackknife_iid ... ok
+test aggregation::tests::test_jackknife_skip_first_cuts_burn_in ... ok
+test aggregation::tests::test_jackknife_ar1_known_tau ... ok
+test bundle::tests::ad_1_1_curvature_stats_populated_after_bulk_insert ... ok
+test bundle::tests::ad_2_1_threshold_shifts_with_sigma ... ok
+test bundle::tests::ad_2_4_threshold_formula ... ok
+test bundle::tests::ad_2_3_extreme_sigma_returns_zero ... ok
+test bundle::tests::ad_1_3_confidence_formula ... ok
+test bundle::tests::ad_1_2_injected_anomalies_exceed_2sigma ... ok
+test bundle::tests::ad_1_4_normal_records_below_threshold ... ok
+test bundle::tests::add_field_extends_records ... ok
+test bundle::tests::add_index_builds_from_existing ... ok
+test bundle::tests::add_index_idempotent ... ok
+test bundle::tests::auto_id_counter ... ok
+test bundle::tests::ad_3_1_moscow_cold_anomaly_contributing_field ... ok
+test bundle::tests::batch_insert_basic ... ok
+test bundle::tests::batch_insert_empty ... ok
+test bundle::tests::batch_insert_triggers_auto_detect ... ok
+test bundle::tests::batch_insert_matches_single_insert ... ok
+test bundle::tests::ad_3_2_reykjavik_storm_contributing_field ... ok
+test bundle::tests::ad_1_5_deviation_distance_non_negative ... ok
+test bundle::tests::bulk_delete_no_match ... ok
+test bundle::tests::bulk_update_matching_records ... ok
+test bundle::tests::bulk_delete_by_filter ... ok
+test bundle::tests::bundle_stats_correct ... ok
+test bundle::tests::combined_in_and_gt_operators ... ok
+test bundle::tests::count_where_all ... ok
+test bundle::tests::bulk_update_no_matches ... ok
+test bundle::tests::count_where_basic ... ok
+test bundle::tests::ad_2_2_higher_sigma_fewer_anomalies ... ok
+test bundle::tests::delete_existing_record ... ok
+test bundle::tests::ad_5_2_results_sorted_by_z_score ... ok
+test bundle::tests::count_where_no_match ... ok
+test bundle::tests::curved_base_stays_hashed ... ok
+test bundle::tests::delete_nonexistent_returns_false ... ok
+test bundle::tests::delete_returning_gives_removed_record ... ok
+test bundle::tests::detect_geometry_arithmetic ... ok
+test bundle::tests::detect_geometry_curved ... ok
+test bundle::tests::ad_4_1_prefilter_by_city ... ok
+test bundle::tests::explain_index_scan ... ok
+test bundle::tests::filtered_query_contains ... ok
+test bundle::tests::filtered_query_eq ... ok
+test bundle::tests::exists_false ... ok
+test bundle::tests::exists_true ... ok
+test bundle::tests::explain_full_scan ... ok
+test bundle::tests::filtered_query_gt_sorted_limited ... ok
+test bundle::tests::filtered_query_projected_offset ... ok
+test bundle::tests::filtered_query_projected_total_count_with_pagination ... ok
+test bundle::tests::filtered_query_offset ... ok
+test bundle::tests::flat_base_auto_detect_sequential ... ok
+test bundle::tests::filtered_query_projected_fields ... ok
+test bundle::tests::distinct_no_field ... ok
+test bundle::tests::ad_5_4_truncate_resets_curvature_stats ... ok
+test bundle::tests::distinct_values ... ok
+test bundle::tests::gap_b2_single_section ... ok
+test bundle::tests::geo_enc_10_batch_insert ... ok
+test bundle::tests::geo_enc_11_batch_curvature_invariant ... ok
+test bundle::tests::ad_6_1_record_k_for_anomaly_gt_normal ... ok
+test bundle::tests::gap_b1_overwrite ... ok
+test bundle::tests::geo_enc_12_different_seeds ... ok
+test bundle::tests::flat_base_sections_iter ... ok
+test bundle::tests::geo_enc_15_no_encryption_default ... ok
+test bundle::tests::geo_enc_1_insert_stored_differs ... ok
+test bundle::tests::flat_base_explicit_geometry ... ok
+test bundle::tests::float_base_keys_are_not_silently_dropped ... ok
+test bundle::tests::flat_base_overwrite ... ok
+test bundle::tests::flat_base_point_query ... ok
+test bundle::tests::flat_base_records_iter ... ok
+test bundle::tests::geo_enc_14_gql_encrypted_syntax ... ok
+test bundle::tests::geo_enc_13_known_plaintext_resistance ... ok
+test bundle::tests::geo_enc_2_curvature_invariant ... ok
+test bundle::tests::geo_enc_3_confidence_invariant ... ok
+test bundle::tests::geo_enc_4_spectral_gap_invariant ... ok
+test bundle::tests::geo_enc_5_point_query_decrypts ... ok
+test bundle::tests::geo_enc_6_raw_storage_encrypted ... ok
+test bundle::tests::increment_integer_preserves_type ... ok
+test bundle::tests::ad_5_1_mean_in_unit_interval ... ok
+test bundle::tests::increment_missing_record ... ok
+test bundle::tests::increment_integer_field ... ok
+test bundle::tests::ad_6_2_all_four_anomalies_detected ... ok
+test bundle::tests::math_increment_accumulates ... ok
+test bundle::tests::math_transaction_preserves_count ... ok
+test bundle::tests::math_or_conditions_partition ... ok
+test bundle::tests::geo_enc_7_records_decrypted ... ok
+test bundle::tests::geo_enc_9_metric_invariant ... ok
+test bundle::tests::increment_by_negative ... ok
+test bundle::tests::math_add_field_preserves_count ... ok
+test bundle::tests::math_count_equals_len_for_empty_filter ... ok
+test bundle::tests::math_bulk_delete_count_consistency ... ok
+test bundle::tests::math_truncate_returns_len ... ok
+test bundle::tests::math_versioned_update_monotone ... ok
+test bundle::tests::or_conditions_exists ... ok
+test bundle::tests::or_conditions_projected ... ok
+test bundle::tests::or_conditions_with_and ... ok
+test bundle::tests::query_is_null ... ok
+test bundle::tests::query_not_in_operator ... ok
+test bundle::tests::query_regex ... ok
+test bundle::tests::multi_field_sort ... ok
+test bundle::tests::mutation_counter_bumps_on_batch_insert ... ok
+test bundle::tests::query_regex_invalid_pattern_matches_nothing ... ok
+test bundle::tests::tdd_1_10_insert_then_query ... ok
+test bundle::tests::tdd_1_1_insert_retrieve ... ok
+test bundle::tests::ad_4_2_prefilter_dubai_finds_humidity_anomaly ... ok
+test bundle::tests::tdd_1_11_miss_query ... ok
+test bundle::tests::tdd_2_4_gluing ... ok
+test bundle::tests::mutation_counter_contract ... ok
+test bundle::tests::ad_7_1_anomaly_scan_timing ... ok
+test bundle::tests::or_conditions_basic ... ok
+test bundle::tests::tdd_4_10_or_bitmap_fallback ... ok
+test bundle::tests::or_conditions_count_where ... ok
+test bundle::tests::query_ends_with ... ok
+test bundle::tests::query_in_operator ... ok
+test bundle::tests::query_is_not_null ... ok
+test bundle::tests::tdd_1_2_zero_deviation ... ok
+test bundle::tests::tdd_1_3_deviation_norm ... ok
+test bundle::tests::tdd_4_5_index_maintenance_insert ... ok
+test bundle::tests::tdd_4_6_index_maintenance_delete ... ok
+test bundle::tests::test_between_no_matches ... ok
+test bundle::tests::test_between_numeric_inclusive_bounds ... ok
+test bundle::tests::test_cosine_identical_unit_vectors ... ok
+test bundle::tests::tdd_2_1_restriction ... ok
+test bundle::tests::tdd_4_7_index_maintenance_update ... ok
+test bundle::tests::tdd_4_11_or_bitmap_with_and_conditions ... ok
+test bundle::tests::tdd_r1_declared_range_used_for_normalisation ... ok
+test bundle::tests::tdd_r2_observed_range_used_when_no_declaration ... ok
+test bundle::tests::tdd_r3_declared_range_stable_across_density ... ok
+test bundle::tests::test_between_boundary_values_included ... ok
+test bundle::tests::test_cosine_opposite_vectors ... ok
+test bundle::tests::test_drop_field_does_not_affect_other_fields ... ok
+test bundle::tests::test_drop_field_records_no_longer_have_field ... ok
+test bundle::tests::test_drop_field_removes_from_schema ... ok
+test bundle::tests::tdd_4_4_mixed_indexed_residual ... ok
+test bundle::tests::tdd_4_3_selectivity_ordering ... ok
+test bundle::tests::test_cosine_orthogonal_vectors ... ok
+test bundle::tests::test_dot_product ... ok
+test bundle::tests::test_drop_field_returns_false_for_unknown ... ok
+test bundle::tests::tdd_4_1_equality_index_acceleration ... ok
+test bundle::tests::ad_7_2_stats_access_is_o1 ... ok
+test bundle::tests::test_rotate_key_atomicity_via_wal_in_process ... ok
+test bundle::tests::test_drop_field_store_still_queryable ... ok
+test bundle::tests::test_euclidean_same_point ... ok
+test bundle::tests::test_drop_indexed_field_removes_index ... ok
+test bundle::tests::test_rotate_key_affine_closure_rejects_non_affine ... ok
+test bundle::tests::test_euclidean_known_distance ... ok
+test bundle::tests::tdd_4_8_in_predicate_index ... ok
+test bundle::tests::test_rotate_key_bundle_remains_queryable ... ok
+test bundle::tests::test_rotate_key_gql_rejects_missing_forward_secret ... ok
+test bundle::tests::test_rotate_key_changes_gauge_key ... ok
+test bundle::tests::test_rotate_key_affine_closure_zero_decrypt_calls ... ok
+test bundle::tests::tdd_4_9_or_bitmap_acceleration ... ok
+test bundle::tests::test_rotate_key_old_gauge_cannot_decrypt_post_rotation ... ok
+test bundle::tests::test_vector_search_top_k_clamped_to_n ... ok
+test bundle::tests::test_rotate_key_rejects_unencrypted_bundle ... ok
+test bundle::tests::test_vector_search_dimension_mismatch_skips ... ok
+test bundle::tests::test_vector_search_with_prefilter ... ok
+test bundle::tests::timestamp_value_ordering ... ok
+test bundle::tests::truncate_then_insert ... ok
+test bundle::tests::ttl_expire_removes_records ... ok
+test bundle::tests::update_existing_record ... ok
+test bundle::tests::tdd_4_2_conjunction_intersection ... ok
+test bundle::tests::test_rotate_key_gql_parses ... ok
+test bundle::tests::test_vector_search_euclidean_ranking ... ok
+test bundle::tests::test_vector_search_top3_cosine ... ok
+test bundle::tests::test_vector_search_top1_cosine ... ok
+test bundle::tests::transaction_all_succeed ... ok
+test bundle::tests::transaction_rollback_on_failure ... ok
+test bundle::tests::truncate_clears_all ... ok
+test caches::single_flight::tests::capacity_zero_is_clamped_to_one ... ok
+test caches::single_flight::tests::clear_drops_all ... ok
+test caches::single_flight::tests::compute_lock_distinct_keys_distinct_arcs ... ok
+test bundle::tests::test_rotate_key_curvature_after_rg_step_increases_or_equal ... ok
+test caches::single_flight::tests::get_misses_when_counter_advances ... ok
+test bundle::tests::test_rotate_key_two_consecutive_rotations ... ok
+test bundle::tests::upsert_update_existing ... ok
+test bundle::tests::versioned_update_conflict ... ok
+test bundle::tests::versioned_update_succeeds ... ok
+test bundle::tests::test_rotate_key_record_count_invariant ... ok
+test caches::single_flight::tests::compute_lock_same_key_shares_arc ... ok
+test caches::single_flight::tests::get_misses_on_unknown_key ... ok
+test bundle::tests::update_nonexistent_returns_false ... ok
+test bundle::tests::update_returning_gives_patched_record ... ok
+test bundle::tests::upsert_insert_new ... ok
+test bundle::tests::test_rotate_key_old_seed_cannot_lookup_post_rotation ... ok
+test caches::single_flight::tests::insert_then_get_hits_when_counter_matches ... ok
+test caches::single_flight::tests::invalidate_drops_one_entry ... ok
+test caches::single_flight::tests::new_cache_is_empty ... ok
+test caches::single_flight::tests::insert_at_capacity_evicts_one ... ok
+test caches::single_flight::tests::insert_overwrite_same_key_does_not_evict ... ok
+test caches::single_flight::tests::release_compute_lock_removes_entry ... ok
+test coherence::tests::tdd_ricci_1_upper_bound ... ok
+test coherence::tests::tdd_ricci_2_symmetry ... ok
+test coherence::tests::tdd_ricci_3_negative_bridge ... ok
+test coherence::tests::tdd_ricci_4_positive_cluster_interior ... ok
+test convert::tests::test_full_roundtrip_json ... ok
+test caches::single_flight::tests::get_or_compute_error_does_not_poison ... ok
+test convert::tests::test_csv_encode ... ok
+test caches::single_flight::tests::get_or_compute_hit_skips_compute ... ok
+test caches::single_flight::tests::get_or_compute_miss_runs_and_inserts ... ok
+test coherence::tests::tdd_ricci_5_identical_neighborhoods_kappa_one ... ok
+test coherence::tests::tdd_ricci_6_distance_is_l2_of_centroids ... ok
+test coherence::tests::tdd_ricci_8_empty_atlas ... ok
+test coherence::tests::tdd_ricci_7_invalid_id_returns_none ... ok
+test convert::tests::test_profile_sensor_data ... ok
+test caches::single_flight::tests::get_or_compute_single_flight_under_contention ... ok
+test bundle::tests::test_rotate_key_concurrent_writes_block_during_rotation ... ok
+test concurrent::tests::concurrent_reads_and_writes ... ok
+test concurrent::tests::concurrent_readers_dont_block ... ok
+test credentials::tests::wrong_bundle_id_rejected ... ok
+test caches::single_flight::tests::get_or_compute_panic_in_compute_releases_lock ... ok
+test credentials::tests::wrong_issuing_key_rejected ... ok
+test credentials::tests::wrong_query_class_rejected ... ok
+test crypto::tests::test_affine_encrypt_decrypt_roundtrip ... ok
+test crypto::tests::test_affine_encrypted_values_differ_from_plain ... ok
+test crypto::tests::test_derive_deterministic ... ok
+test credentials::tests::deterministic_issuance ... ok
+test credentials::tests::issued_credential_verifies_under_correct_inputs ... ok
+test credentials::tests::polynomial_class_distinguished_by_content_hash ... ok
+test crypto::tests::test_indexed_ciphertext_is_16_bytes ... ok
+test crypto::tests::test_indexed_different_keys_different_ciphertexts ... ok
+test crypto::tests::test_indexed_encrypt_literal_for_equality_search ... ok
+test crypto::tests::test_indexed_decrypt_is_identity ... ok
+test crypto::tests::test_indexed_equal_plaintexts_equal_ciphertexts ... ok
+test crypto::tests::test_isometric_determinism_same_seed_same_matrix ... ok
+test crypto::tests::test_indexed_deterministic ... ok
+test crypto::tests::test_indexed_distinct_plaintexts_distinct_ciphertexts ... ok
+test crypto::tests::test_isometric_different_seeds_different_matrix ... ok
+test crypto::tests::test_isometric_group_members_share_matrix_k2 ... ok
+test crypto::tests::test_isometric_matrix_is_orthogonal_k3 ... ok
+test crypto::tests::test_isometric_mixed_with_affine_round_trip ... ok
+test crypto::tests::test_isometric_preserves_pairwise_distance_k3 ... ok
+test crypto::tests::test_opaque_aad_binds_to_bundle_name ... ok
+test crypto::tests::test_isometric_round_trip_k2 ... ok
+test crypto::tests::test_opaque_aad_binds_to_field_position ... ok
+test crypto::tests::test_isometric_round_trip_k3 ... ok
+test crypto::tests::test_isometric_two_groups_have_independent_matrices ... ok
+test crypto::tests::test_mixed_mode_bundle_roundtrip ... ok
+test caches::single_flight::tests::concurrent_distinct_keys_do_not_serialize ... ok
+test crypto::tests::test_opaque_ciphertext_size_includes_nonce_and_tag ... ok
+test crypto::tests::test_opaque_encrypt_decrypt_roundtrip_binary ... ok
+test crypto::tests::test_opaque_ciphertext_is_binary_value ... ok
+test crypto::tests::test_opaque_encrypt_decrypt_roundtrip_text ... ok
+test crypto::tests::test_probabilistic_bucket_hash_distinguishes_distant_plaintexts ... ok
+test crypto::tests::test_probabilistic_bucket_hash_is_deterministic ... ok
+test crypto::tests::test_probabilistic_curvature_invariance_holds_within_noise ... ok
+test curvature::tests::depth_auto_for_branches_on_epsilon ... ok
+test curvature::tests::depth_continuous_substrate_classifies_sensor_case_on_k_alone ... ok
+test curvature::tests::depth_config_roundtrips_serde_json ... ok
+test crypto::tests::test_seed_from_hex_bad_length ... ok
+test crypto::tests::test_opaque_same_plaintext_different_ciphertext ... ok
+test crypto::tests::test_opaque_tamper_detection ... ok
+test crypto::tests::test_probabilistic_distinct_ciphertexts_for_same_plaintext ... ok
+test crypto::tests::test_probabilistic_does_not_match_unrelated_plaintexts ... ok
+test crypto::tests::test_probabilistic_encrypt_literal_for_equality_search ... ok
+test crypto::tests::test_probabilistic_recall_at_sigma_window ... ok
+test curvature::tests::depth_default_matches_explicit_default_config ... ok
+test curvature::tests::depth_override_fixes_sensor_lambda1_zero_topological_collapse ... ok
+test crypto::tests::test_probabilistic_round_trip_within_sigma_tolerance ... ok
+test curvature::tests::depth_override_raises_metric_threshold ... ok
+test curvature::tests::depth_for_graph_substrate_equals_default ... ok
+test crypto::tests::test_seed_from_hex ... ok
+test curvature::tests::depth_default_thresholds_classify_canonical_cases ... ok
+test curvature::tests::depth_for_continuous_substrate_zeroes_lambda1_cuts ... ok
+test curvature::tests::gap_c5_davis_law ... ok
+test curvature::tests::horizon_config_roundtrips_serde_json ... ok
+test curvature::tests::horizon_with_falls_back_to_welford_when_lambda1_zero ... ok
+test curvature::tests::horizon_with_fixed_estimator_uses_provided_value ... ok
+test curvature::tests::local_holonomy_compose_rotations_matches_hand_calculation ... ok
+test curvature::tests::local_holonomy_identical_rotations_yields_perfect_coherence ... ok
+test curvature::tests::local_holonomy_is_gauge_invariant_under_orthogonal_conjugation ... ok
+test curvature::tests::perceive_2d_90deg_rotation_matches_hand_computation ... ok
+test curvature::tests::perceive_identity_is_passthrough_with_zero_bias ... ok
+test curvature::tests::perceive_negative_identity_hits_upper_bias_bound ... ok
+test curvature::tests::horizon_with_returns_infinity_when_k_is_zero ... ok
+test curvature::tests::tdd_3_15_z_large_tau ... ok
+test curvature::tests::local_holonomy_result_roundtrips_through_json ... ok
+test curvature::tests::horizon_with_scalar_shim_agrees_when_lambda1_healthy ... ok
+test curvature::tests::horizon_with_uses_spectral_gap_when_lambda1_healthy ... ok
+test curvature::tests::local_holonomy_maximum_defect_yields_zero_coherence ... ok
+test curvature::tests::local_holonomy_rejects_bad_inputs ... ok
+test curvature::tests::perception_result_roundtrips_through_json ... ok
+test curvature::tests::tdd_3_10_confidence_ordering ... ok
+test curvature::tests::tdd_3_14_z_zero_tau ... ok
+test curvature::tests::perceive_rejects_non_square_rotation ... ok
+test curvature::tests::tdd_3_16_free_energy_monotone ... ok
+test curvature::tests::perceive_rejects_vector_dim_mismatch ... ok
+test curvature::tests::perceive_rejects_zero_dim ... ok
+test curvature::tests::perception_bias_matches_perceive_bias_field ... ok
+test curvature::tests::tdd_3_4_uniform_low_curvature ... ok
+test curvature::tests::tdd_3_5_variable_curvature ... ok
+test curvature::tests::tdd_3_9_confidence_bounds ... ok
+test curvature::tests::tdd_3_18b_free_energy_empty ... ok
+test curvature::tests::tdd_3_1_flat_transport ... ok
+test curvature::tests::welford_radius_zero_on_uniform_data ... ok
+test delegation::tests::capability_alone_does_not_reveal_alice_key ... ok
+test delegation::tests::closure_summary_counts_correctly ... ok
+test delegation::tests::collusion_attack_recovers_alice_key_explicitly_documented ... ok
+test delegation::tests::isometric_capability_built_but_apply_defers ... ok
+test delegation::tests::opaque_field_returns_typed_refusal_on_apply ... ok
+test delegation::tests::affine_capability_round_trip_on_scalar ... ok
+test delegation::tests::schema_mismatch_on_unequal_field_counts ... ok
+test curvature::tests::tdd_3_2_zero_holonomy ... ok
+test dhoom::tests::coerce_falls_back_on_malformed_sentinel_payload ... ok
+test dhoom::tests::coerce_handles_sentinel_prefix_directly ... ok
+test dhoom::tests::issue_112_push_record_matches_push_via_helper ... ok
+test dhoom::tests::nested_object_arrays_still_use_nested_bundles ... ok
+test dhoom::tests::streaming_single_record ... ok
+test curvature::tests::tdd_3_17_thermo_profile_shape ... ok
+test dhoom::tests::parse_string_pattern_handles_multibyte_prefix ... ok
+test dhoom::tests::streaming_memory_bound ... ok
+test dhoom::tests::primitive_array_mixed_types_round_trip ... ok
+test dhoom::tests::streaming_roundtrip_fidelity ... ok
+test dhoom::tests::test_arithmetic_numeric ... ok
+test dhoom::tests::primitive_array_numeric_round_trip ... ok
+test crypto::tests::test_opaque_round_trip_many_records ... ok
+test dhoom::tests::primitive_array_string_round_trip ... ok
+test dhoom::tests::streaming_empty_bundle ... ok
+test dhoom::tests::streaming_chunk_boundary_correctness ... ok
+test dhoom::tests::streaming_equivalence_with_batch_encoder ... ok
+test dhoom::tests::test_boolean_shorthand ... ok
+test dhoom::tests::test_coerce_types ... ok
+test dhoom::tests::test_decode_computed_fields ... ok
+test dhoom::tests::test_detect_arithmetic_sequence ... ok
+test dhoom::tests::test_arithmetic_numeric_step ... ok
+test dhoom::tests::test_arithmetic_string_pattern ... ok
+test dhoom::tests::test_decode_constraint_as_variable ... ok
+test dhoom::tests::test_decode_delta_values ... ok
+test dhoom::tests::test_decode_interned_fields ... ok
+test dhoom::tests::test_empty_collection ... ok
+test dhoom::tests::test_encode_delta_when_beneficial ... ok
+test dhoom::tests::test_encode_sparse_when_mostly_null ... ok
+test dhoom::tests::test_decode_sensors_example ... ok
+test dhoom::tests::test_decode_reviews_example ... ok
+test dhoom::tests::test_decode_morphism_as_regular_values ... ok
+test dhoom::tests::test_decode_sparse_records ... ok
+test dhoom::tests::test_ingest_decode_numeric_precision ... ok
+test dhoom::tests::test_ingest_decode_sensors ... ok
+test dhoom::tests::test_detect_arithmetic_step ... ok
+test dhoom::tests::test_fiber_parse_anonymous ... ok
+test dhoom::tests::test_deviation_marking ... ok
+test dhoom::tests::test_fiber_parse_simple ... ok
+test dhoom::tests::test_find_modal_default_majority ... ok
+test dhoom::tests::test_parse_computed_modifier ... ok
+test dhoom::tests::test_parse_constraint_modifier ... ok
+test dhoom::tests::test_ingest_decode_deviation_override ... ok
+test dhoom::tests::test_profile_basic ... ok
+test dhoom::tests::test_profile_curvature_high_variance ... ok
+test dhoom::tests::test_profile_curvature_low_variance ... ok
+test dhoom::tests::test_profile_empty_dataset ... ok
+test dhoom::tests::test_quoted_strings ... ok
+test dhoom::tests::test_roundtrip_computed ... ok
+test dhoom::tests::test_parse_delta_modifier ... ok
+test dhoom::tests::test_parse_interned_modifier ... ok
+test dhoom::tests::test_roundtrip_delta ... ok
+test dhoom::tests::test_roundtrip_reviews ... ok
+test dhoom::tests::test_roundtrip_sensors ... ok
+test dhoom::tests::test_parse_morphism_modifier ... ok
+test dhoom::tests::test_parse_sparse_prefix ... ok
+test dhoom::tests::test_roundtrip_interned ... ok
+test dhoom::tests::test_profile_arithmetic_field ... ok
+test dhoom::tests::test_profile_default_field ... ok
+test dhoom::tests::test_profile_display ... ok
+test dhoom::tests::test_trailing_elision ... ok
+test dhoom::tests::test_profile_elided_pct ... ok
+test dials::sphere_transport::tests::sphere_output_guard_rejects_bad_kernel_results ... ok
+test dials::tests::scoped_store_reproduces_main_path_welford ... ok
+test edge::tests::edge_curvature ... ok
+test edge::tests::edge_local_insert_query ... ok
+test edge::tests::edge_sync_queue_tracks_ops ... ok
+test engine::tests::autocompact_absolute_limit_overrides_cooldown ... ok
+test edge::tests::edge_offline_persistence ... ok
+test engine::tests::batch_insert_is_wal_logged ... ok
+test engine::tests::autocompact_disabled_never_fires ... ok
+test engine::tests::autocompact_cooldown_prevents_refire ... ok
+test engine::tests::cow_snapshot_reads_unblocked ... ok
+test engine::tests::autocompact_wal_file_size_trigger ... ok
+test engine::tests::engine_basic_ops ... ok
+test engine::tests::autocompact_amplification_trigger ... ok
+test engine::tests::engine_missing_bundle ... ok
+test engine::tests::autocompact_amplification_monotone_inserts ... ok
+test engine::tests::autocompact_amplification_increases_under_updates ... ok
+test engine::tests::engine_delete ... ok
+test engine::tests::durable_upsert_and_bulk_helpers_replay ... ok
+test engine::tests::engine_update ... ok
+test engine::tests::engine_wal_replay_preserves_valid_prefix_on_crc_tail ... ok
+test engine::tests::cow_snapshot_point_in_time ... ok
+test engine::tests::engine_compaction ... ok
+test engine::tests::clone_bundle_data_includes_mmap ... ok
+test engine::tests::cow_disjoint_write_commutativity ... ok
+test engine::tests::cow_snapshot_roundtrip ... ok
+test engine::tests::autocompact_data_survives_cycle ... ok
+test engine::tests::issue_105_none_timeout_matches_legacy_path ... ok
+test engine::tests::mmap_batch_insert ... ok
+test engine::tests::mmap_arithmetic_lookup_tombstoned ... ok
+test engine::tests::engine_wal_replay ... ok
+test engine::tests::mmap_arithmetic_out_of_bounds ... ok
+test engine::tests::mmap_range_query_base_data ... ok
+test engine::tests::batch_insert_crash_replay_value_fidelity ... ok
+test engine::tests::mmap_range_query_dedup ... ok
+test engine::tests::mmap_filtered_query_base_plus_overlay ... ok
+test engine::tests::issue_105_zero_timeout_records_all_bundles_as_timed_out ... ok
+test engine::tests::mmap_rebase_also_snapshots_heap_only_bundles ... ok
+test engine::tests::streaming_snapshot_multiple_bundles ... ok
+test engine::tests::autocompact_post_compaction_wal_invariant ... ok
+test engine::tests::mmap_rebase_snapshot_roundtrip ... ok
+test engine::tests::test_6_1_cache_hit_returns_correct_result ... ok
+test engine::tests::test_6_2_cache_miss_on_ttl_expiry ... ok
+test engine::tests::test_6_3_write_invalidation_via_generation ... ok
+test engine::tests::test_6_4_explicit_invalidation_per_bundle ... ok
+test engine::tests::test_6_5_invalidate_all_clears_everything ... ok
+test engine::tests::test_6_6_fingerprint_equivalence ... ok
+test engine::tests::streaming_snapshot_then_new_inserts ... ok
+test engine::tests::test_6_7_lru_eviction ... ok
+test engine::tests::test_9_6_mutation_trigger_with_filter ... ok
+test engine::tests::test_6_8_staleness_bound ... ok
+test engine::tests::test_9_7_multiple_triggers_same_bundle ... ok
+test engine::tests::snapshot_survives_wal_compact ... ok
+test engine::tests::test_cache_gql_invalidate_parse ... ok
+test engine::tests::test_cache_gql_invalidate_execute ... ok
+test engine::tests::test_trigger_drop ... ok
+test engine::tests::test_trigger_mutation_op_types ... ok
+test engine::tests::test_trigger_gql_create_and_drop ... ok
+test engine::tests::wal_orphan_ops_heap_delete_without_create_bundle_warns_and_skips ... ok
+test engine::tests::test_9_8_trigger_survives_restart ... ok
+test engine::tests::wal_orphan_ops_heap_insert_without_create_bundle_warns_and_skips ... ok
+test engine::tests::wal_orphan_ops_heap_orphan_insert_does_not_block_valid_create_bundle ... ok
+test engine::tests::wal_orphan_ops_heap_measurement_override_without_create_bundle_warns_and_skips ... ok
+test engine::tests::wal_orphan_ops_heap_update_without_create_bundle_warns_and_skips ... ok
+test gauge::tests::gauge_rename_preserves_deviation ... ok
+test gauge::tests::tdd_5a1_add_column_k_unchanged ... ok
+test gauge::tests::tdd_5a2_drop_column_k_unchanged ... ok
+test hash::tests::hash_value_matches_encode_value_oracle ... ok
+test gauge::tests::tdd_5a3_rename_column ... ok
+test gauge::tests::tdd_5a4_rescale_k_unchanged ... ok
+test engine::tests::streaming_snapshot_chunk_size_one ... ok
+test engine::tests::mmap_filtered_overlay_precedence ... ok
+test hash::tests::tdd_1_6_composite_key ... ok
+test hash::tests::tdd_1_7_determinism ... ok
+test engine::tests::snapshot_then_new_inserts_survive_reopen ... ok
+test engine::tests::mmap_rebase_preserves_arithmetic_lookup ... ok
+test engine::tests::mmap_rebase_arithmetic_o1_proven ... ok
+test helicity::tests::ut_non_cubic_errors ... ok
+test ingest::tests::format_from_name_known_set ... ok
+test helicity::tests::ut_zero_field ... ok
+test hash::tests::tdd_1_5_uniformity ... ok
+test engine::tests::open_mmap_overlay_ops ... ok
+test helicity::tests::ut_chirality_sign_exact_mirror ... ok
+test integrity::tests::derive_with_different_seeds_produces_different_keys ... ok
+test hash::tests::tdd_1_4_collision_freedom ... ok
+test ingest::tests::types_compatible_vector_dims_must_match ... ok
+test integrity::tests::canonical_bytes_is_52_bytes_with_magic_at_front ... ok
+test integrity::tests::hex_roundtrip ... ok
+test integrity::tests::derive_then_sign_then_verify_roundtrip ... ok
+test invariant::tests::test_project_invariant_arithmetic_on_invariants ... ok
+test invariant::tests::test_project_invariant_capacity_davis_law ... ok
+test invariant::tests::test_project_invariant_capacity_invariant_under_encryption ... ok
+test integrity::tests::canonical_bytes_normalizes_negative_zero_and_nan ... ok
+test invariant::tests::test_project_invariant_capacity_parses ... ok
+test invariant::tests::test_project_invariant_rejects_non_invariant_ops ... ok
+test invariant::tests::test_project_invariant_returns_curvature_value ... ok
+test invariant::tests::test_project_invariant_returns_multiple_invariants ... ok
+test invariant::tests::test_project_invariant_holonomy_avg_parses ... ok
+test invariant::tests::test_project_invariant_parses_full_syntax ... ok
+test invariant::tests::test_project_invariant_holonomy_avg_invariant ... ok
+test invariant_ring::tests::compute_k_is_zero_for_constant_bundle ... ok
+test invariant_ring::tests::compute_tau_returns_record_count ... ok
+test invariant_ring::tests::k_passes_harness_under_random_gauges ... ok
+test invariant_ring::tests::mean_fails_harness ... ok
+test invariant_verify::tests::bundle_mismatch_caught_before_tuple_check ... ok
+test invariant_verify::tests::honest_claim_verifies ... ok
+test invariant_verify::tests::tampered_k_is_rejected ... ok
+test helicity::tests::ut_density_sums_to_scalar ... ok
+test invariant_verify::tests::tampered_record_count_is_rejected ... ok
+test join::tests::tdd_4_3_null_fiber ... ok
+test engine::tests::small_bundle_arithmetic_snapshot ... ok
+test join::tests::tdd_4_1_correctness ... ok
+test join::tests::tdd_4_2_cardinality ... ok
+test helicity::tests::ut_abc_l8_closed_form ... ok
+test join::tests::tdd_4_4_faithful_join_curvature ... ok
+test invariant::tests::test_project_invariant_with_where_clause ... ok
+test invariant_ring::tests::compute_k_is_positive_for_varying_bundle ... ok
+test engine::tests::open_mmap_basic ... ok
+test invariant::tests::test_project_invariant_zero_decrypt_calls_in_execution_path ... ok
+test join::tests::tdd_4_5_no_match_curvature ... ok
+test invariant::tests::test_project_invariant_works_on_encrypted_bundle ... ok
+test join::tests::tdd_4_6_report_consistency ... ok
+test lattice_delegation::tests::holder_count_mismatch_at_delegate_time ... ok
+test ledger::tests::empty_ledger_has_no_root ... ok
+test ledger::tests::inclusion_proof_rejects_tampered_leaf ... ok
+test ledger::tests::canonical_bytes_is_57_bytes_with_op_kind_last ... ok
+test ledger::tests::leaf_hash_is_sha256_with_leaf_prefix ... ok
+test ledger::tests::inclusion_proof_verifies_for_each_leaf ... ok
+test ledger::tests::root_changes_on_appended_leaf ... ok
+test ledger::tests::telescope_sum_matches_for_unchanged_bundle ... ok
+test membership_index::tests::chi2_quantile_falls_back_to_wilson_hilferty_for_uncommon_inputs ... ok
+test ledger::tests::root_is_deterministic_across_runs ... ok
+test lattice_delegation::tests::insufficient_envelopes_below_threshold_rejected ... ok
+test membership_index::tests::geodesic_ball_uses_exact_threshold_for_alpha_0_05 ... ok
+test membership_index::tests::index_construction_smoke ... ok
+test membership_index::tests::normal_quantile_known_values ... ok
+test metric::tests::gap_a1_identity ... ok
+test metric::tests::gap_a2_symmetry ... ok
+test metric::tests::gap_a4_ordered_cat ... ok
+test metric::tests::gap_a5_timestamp ... ok
+test metric::tests::gap_a6_weighted ... ok
+test metric::tests::tdd_1_13_categorical_metric ... ok
+test metric::tests::tdd_b10_diagonal_ones ... ok
+test metric::tests::tdd_b11_matrix_symmetry ... ok
+test lattice_delegation::tests::wrong_recipient_key_fails_envelope_decap ... ok
+test lattice_delegation::tests::delegation_roundtrip_3_of_5 ... ok
+test membership_index::tests::chi2_quantile_matches_table_within_3_percent ... ok
+test lattice_delegation::tests::tampered_envelope_aead_fails_authentication ... ok
+test membership_index::tests::chi2_quantile_table_exact_for_common_cases ... ok
+test metric::tests::tdd_1_12_numeric_metric ... ok
+test metric::tests::tdd_b13_eigenvalues_2x2 ... ok
+test metric::tests::tdd_b12_empty_store ... ok
+test metric::tests::tdd_b8_effective_dimension_bounds ... ok
+test ml::cadence::tests::cad_13_refuses_thin_data ... ok
+test metric::tests::tdd_b9_eigenvalues_non_negative ... ok
+test engine::tests::streaming_snapshot_roundtrip ... ok
+test ml::cadence::tests::cad_11_12_refusals_name_the_problem ... ok
+test metric::tests::tdd_b6_metric_tensor_shape ... ok
+test metric::tests::tdd_b7_condition_number_bound ... ok
+test lattice_delegation::tests::delegation_roundtrip_from_arbitrary_k_subset ... ok
+test lattice_delegation::tests::k_minus_1_envelopes_information_theoretically_safe ... ok
+test ml::cadence::tests::cad_14_deterministic ... ok
+test ml::cadence::tests::cad_10_refuses_a_counter_masquerading_as_a_clock ... ok
+test ml::cadence::tests::cad_18_nanosecond_epoch_stamps_survive_the_f64_cast ... ok
+test ml::cadence::tests::cad_1_null_is_calibrated ... ok
+test ml::cadence::tests::cad_19_gql_surface_matches_rest ... ok
+test engine::tests::streaming_wal_replay_correct_count ... ok
+test ml::cadence::tests::cad_9_refuses_a_coarse_clock ... ok
+test ml::changepoints::tests::changepoints_guards_are_actionable ... ok
+test ml::cadence::tests::cad_reads_are_populated_and_explain_orthogonality ... ok
+test ml::circulation::tests::circulation_detects_directed_cycle ... ok
+test ml::changepoints::tests::changepoints_recover_regime_shifts ... ok
+test ml::circulation::tests::circulation_localizes_fraud_ring ... ok
+test ml::circulation::tests::circulation_guards_are_actionable ... ok
+test ml::circulation::tests::circulation_pure_gradient_is_rankable ... ok
+test ml::cadence::tests::cad_3_affine_invariant ... ok
+test ml::cluster::tests::cluster_dbscan_finds_noise ... ok
+test ml::cadence::tests::cad_7_detects_a_metered_stream ... ok
+test bundle::tests::ad_5_3_limit_respected ... ok
+test ml::cadence::tests::cad_17_a_metered_stream_on_a_fine_clock_reads_throttled ... ok
+test ml::cadence::tests::cad_15_blocking_attenuates_long_structure ... ok
+test engine::tests::mmap_point_query_10k_arithmetic ... ok
+test ml::cluster::tests::cluster_guards_are_actionable ... ok
+test ml::factorize::tests::factorize_guards_are_actionable ... ok
+test ml::cadence::tests::cad_8_coalesces_duplicate_stamps ... ok
+test ml::cadence::tests::cad_2_rate_invariant ... ok
+test ml::cluster::tests::cluster_spectral_recovers_blobs ... ok
+test ml::infer::tests::predict_guards_are_actionable ... ok
+test ml::cadence::tests::cad_6_index_is_blind_to_order_memory_is_not ... ok
+test ml::precedence::tests::txp_13_skips_and_discloses ... ok
+test ml::infer::tests::predict_knn_classifies_and_fills ... ok
+test ml::precedence::tests::txp_11_12_thin_and_static_refuse ... ok
+test ml::cluster::tests::cluster_gmm_recovers_and_normalizes ... ok
+test ml::infer::tests::predict_gp_intervals_are_calibrated ... ok
+test ml::precedence::tests::txp_14_deterministic ... ok
+test ml::precedence::tests::txp_18_null_tracks_roughness_not_a_constant ... ok
+test ml::cadence::tests::cad_16_one_fine_record_cannot_open_a_coarse_feed ... ok
+test ml::precedence::tests::txp_8_9_refusals_name_the_problem ... ok
+test ml::precedence::tests::txp_3_identical_series_give_zero_area ... ok
+test ml::prescribe::tests::prescribe_guards_are_actionable ... ok
+test ml::precedence::tests::txp_reads_are_populated ... ok
+test ml::precedence::tests::txp_4_sign_correct_and_antisymmetric ... ok
+test ml::reduce::tests::reduce_guards_are_actionable ... ok
+test ml::scan::tests::scan_all_numeric_only_global ... ok
+test ml::scan::tests::scan_completion_catches_off_manifold ... ok
+test ml::factorize::tests::factorize_beats_mean_baseline ... ok
+test ml::reduce::tests::reduce_pca_recovers_low_rank ... ok
+test ml::infer::tests::predict_svm_is_deterministic_across_calls_and_stores ... ok
+test ml::scan::tests::scan_context_z_preserves_magnitude ... ok
+test ml::scan::tests::scan_degenerate_inputs_no_panic ... ok
+test ml::precedence::tests::txp_6_invariant_to_order_field_spacing ... ok
+test ml::scan::tests::scan_density_catches_sparse_pocket ... ok
+test ml::cluster::tests::cluster_reproducible_across_store_orders ... ok
+test ml::scan::tests::scan_missing_bundle_not_found ... ok
+test ml::scan::tests::scan_exclude_keeps_field_out_of_geometry ... ok
+test ml::scan::tests::scan_no_usable_fibers_errors ... ok
+test ml::scan::tests::scan_mixed_bundle_builds_lenses ... ok
+test ml::scan::tests::scan_empty_bundle_ok_zero ... ok
+test ml::precedence::tests::txp_19_p_value_is_reported_and_deterministic ... ok
+test ml::scan::tests::scan_normalize_unit ... ok
+test ml::cadence::tests::cad_4_detects_burstiness ... ok
+test ml::solve::tests::solve_guards_are_actionable ... ok
+test ml::solve::tests::solve_exact_loo_matches_bruteforce ... ok
+test ml::solve::tests::solve_recovers_ols_at_alpha_zero ... ok
+test ml::infer::tests::predict_diffusion_beats_flat_on_manifold ... ok
+test ml::solve::tests::solve_ridge_path_prefers_positive_alpha ... ok
+test ml::scan::tests::scan_non_interaction_fixture_pins_global_density ... ok
+test ml::precedence::tests::txp_5_invariant_to_rescaling_either_channel ... ok
+test ml::texture::tests::txp_11_12_insufficient_and_flat_refuse ... ok
+test ml::infer::tests::predict_local_linear_beats_baselines ... ok
+test ml::texture::tests::txp_13_skips_and_discloses_bad_values ... ok
+test ml::texture::tests::txp_17_refuses_order_less_call_on_unordered_storage ... ok
+test ml::texture::tests::txp_14_deterministic ... ok
+test ml::texture::tests::txp_8_9_10_refusals_name_the_problem ... ok
+test mlkem_delegation::tests::delegation_is_distinct_under_repeated_encapsulation ... ok
+test ml::texture::tests::txp_reads_are_populated ... ok
+test mlkem_delegation::tests::keygen_produces_keypair_with_expected_sizes ... ok
+test mlkem_delegation::tests::tampered_kem_ciphertext_fails_decapsulation ... ok
+test mlkem_delegation::tests::tampered_aead_ciphertext_fails_authentication ... ok
+test mlkem_delegation::tests::encap_decap_roundtrip_long_payload ... ok
+test mlkem_delegation::tests::wrong_recipient_key_fails_decap ... ok
+test ml::cadence::tests::cad_5_memory_separates_what_index_cannot ... ok
+test mlkem_delegation::tests::encap_decap_roundtrip_short_payload ... ok
+test mmap_bundle::tests::issue_106_len_matches_records_count_under_arbitrary_ops ... ok
+test mmap_bundle::tests::issue_107_bundle_ref_polymorphic_mutation_counter ... ok
+test mmap_bundle::tests::tdd_11_10_mmap_survives_reopen ... ok
+test mmap_bundle::tests::tdd_11_2_point_query ... ok
+test mmap_bundle::tests::issue_107_overlay_mutation_counter_bumps_on_insert ... ok
+test mmap_bundle::tests::tdd_11_3_sequential_scan ... ok
+test mmap_bundle::tests::issue_106_len_does_not_double_count_overlay_shadowing_base ... ok
+test mmap_bundle::tests::tdd_11_4_overlay_masks_updates ... ok
+test mmap_bundle::tests::issue_165_insert_lifts_tombstone_by_pk_not_first_value ... ok
+test mmap_bundle::tests::tdd_11_1_mmap_reads_correct_data ... ok
+test mmap_bundle::tests::tdd_11_8_default_fields ... ok
+test mmap_bundle::tests::tdd_11_6_scan_base_still_works ... ok
+test mmap_bundle::tests::tdd_11_5_tombstones_hide_records ... ok
+test mmap_bundle::tests::tdd_11_7_compact_clears_overlay ... ok
+test mmap_bundle::tests::tdd_11_9_concurrent_reads ... ok
+test observability::tests::test_audit_always_enabled_even_when_off ... ok
+test observability::tests::test_audit_bundle_drop_shape ... ok
+test observability::tests::test_all_log_levels_serialize_uppercase ... ok
+test observability::tests::test_anomaly_sigma_level_2 ... ok
+test observability::tests::test_anomaly_sigma_level_3 ... ok
+test observability::tests::test_all_categories_serialize_snake_case ... ok
+test observability::tests::test_base_fields_present ... ok
+test observability::tests::test_bundle_stats_cache_warm_shape ... ok
+test observability::tests::test_connection_category_disabled_by_default ... ok
+test observability::tests::test_audit_log_level_change_shape ... ok
+test observability::tests::test_disabled_category_silently_dropped ... ok
+test observability::tests::test_duration_us_absent_when_not_set ... ok
+test observability::tests::test_duration_us_present_when_set ... ok
+test observability::tests::test_duration_window_empty ... ok
+test observability::tests::test_duration_window_known_distribution ... ok
+test observability::tests::test_duration_window_single ... ok
+test observability::tests::test_duration_window_wraps ... ok
+test observability::tests::test_geometric_null_fields_serialize_as_null_not_absent ... ok
+test observability::tests::test_geometric_values_round_trip ... ok
+test observability::tests::test_ingest_k_delta_computed ... ok
+test observability::tests::test_is_leap_year ... ok
+test observability::tests::test_get_config_returns_defaults ... ok
+test observability::tests::test_ingest_k_delta_null_when_no_k ... ok
+test observability::tests::test_logger_emit_does_not_panic ... ok
+test observability::tests::test_log_config_defaults ... ok
+test observability::tests::test_metrics_record_ingest ... ok
+test observability::tests::test_metrics_record_query ... ok
+test observability::tests::test_metrics_by_type ... ok
+test observability::tests::test_metrics_counters_start_at_zero ... ok
+test observability::tests::test_metrics_percentiles_from_queries ... ok
+test observability::tests::test_now_iso8601_format ... ok
+test observability::tests::test_now_iso8601_monotonic ... ok
+test observability::tests::test_metrics_anomaly ... ok
+test observability::tests::test_payload_fields_flatten_no_nesting ... ok
+test observability::tests::test_query_complete_no_geo_has_null_geometric_block ... ok
+test observability::tests::test_query_complete_shape ... ok
+test observability::tests::test_query_error_shape ... ok
+test observability::tests::test_query_slow_shape ... ok
+test observability::tests::test_query_start_different_request_ids ... ok
+test observability::tests::test_request_id_length ... ok
+test observability::tests::test_request_id_present_when_set ... ok
+test observability::tests::test_request_id_unique ... ok
+test observability::tests::test_query_start_shape ... ok
+test observability::tests::test_request_id_absent_when_not_set ... ok
+test observability::tests::test_request_id_hex_only ... ok
+test ml::scan::tests::scan_interaction_lens_guards ... ok
+test observability::tests::test_retention_defaults ... ok
+test observability::tests::test_retention_custom_override ... ok
+test observability::tests::test_slow_threshold_us_reflects_update ... ok
+test observability::tests::test_slow_flag_above_threshold ... ok
+test observability::tests::test_stream_anomaly_push_shape ... ok
+test observability::tests::test_slow_flag_at_exact_threshold ... ok
+test observability::tests::test_slow_flag_below_threshold ... ok
+test observability::tests::test_stream_disconnect_shape ... ok
+test observability::tests::test_stream_subscribe_shape ... ok
+test observability::tests::test_stream_push_shape ... ok
+test observability::tests::test_wal_checkpoint_shape ... ok
+test obstruction::unit_tests::infer_base_dim_buckyball_prefix ... ok
+test obstruction::unit_tests::infer_base_dim_cubic_prefix ... ok
+test obstruction::unit_tests::infer_base_dim_default_is_4d ... ok
+test obstruction::unit_tests::infer_base_dim_torus_prefix ... ok
+test obstruction::unit_tests::round_with_tolerance_basic ... ok
+test observability::tests::test_system_startup_shape ... ok
+test observability::tests::test_update_config_applies_new_values ... ok
+test observability::tests::test_update_config_cannot_disable_audit ... ok
+test parser::tests::edit_distance_basics ... ok
+test parser::tests::execute_cognitive_geometry_verbs ... ok
+test pairing_delegation::tests::keygen_produces_distinct_keypairs ... ok
+test parser::tests::execute_full_workflow ... ok
+test parser::tests::filter_condition_field_name_accessor ... ok
+test parser::tests::gql_analyze ... ok
+test parser::tests::gql_analyze_field ... ok
+test parser::tests::gql_atlas_begin_commit ... ok
+test pairing_delegation::tests::encapsulate_then_decapsulate_roundtrip ... ok
+test pairing_delegation::tests::capability_alone_does_not_yield_alice_sk ... ok
+test parser::tests::gql_audit_off ... ok
+test parser::tests::gql_audit_on ... ok
+test parser::tests::gql_audit_show ... ok
+test parser::tests::gql_backup ... ok
+test parser::tests::gql_bundle_keyword_style ... ok
+test parser::tests::gql_check_integrity ... ok
+test parser::tests::gql_collapse ... ok
+test parser::tests::gql_backup_all ... ok
+test parser::tests::gql_backup_incremental ... ok
+test parser::tests::gql_bare_transaction_verbs ... ok
+test parser::tests::gql_comment_on_bundle ... ok
+test parser::tests::gql_consistency_repair ... ok
+test parser::tests::gql_cover_all ... ok
+test pairing_delegation::tests::alice_decap_matches_self_encap ... ok
+test parser::tests::gql_cover_between ... ok
+test parser::tests::gql_comment_on_field ... ok
+test parser::tests::gql_compact ... ok
+test parser::tests::gql_cover_on ... ok
+test parser::tests::gql_cover_distinct ... ok
+test parser::tests::gql_cover_in ... ok
+test parser::tests::gql_cover_matches ... ok
+test parser::tests::gql_cover_not_in ... ok
+test parser::tests::gql_cover_rank_first_skip ... ok
+test parser::tests::gql_cover_void_defined ... ok
+test parser::tests::gql_cover_where_lt ... ok
+test pairing_delegation::tests::collusion_attack_yields_group_element_not_scalar ... ok
+test dhoom::tests::issue_104_detect_interned_no_quadratic_blowup_on_high_cardinality ... ok
+test parser::tests::gql_cover_on_where_combined ... ok
+test parser::tests::gql_cover_project ... ok
+test parser::tests::gql_curvature_fields_by ... ok
+test parser::tests::gql_deallocate ... ok
+test parser::tests::gql_describe ... ok
+test parser::tests::gql_drop_policy ... ok
+test parser::tests::gql_drop_trigger ... ok
+test parser::tests::gql_execute_params ... ok
+test parser::tests::gql_explain_section_vector_clause ... ok
+test parser::tests::gql_explain_vector_range_rejects_mismatched_prefixes ... ok
+test parser::tests::gql_exists_section ... ok
+test parser::tests::gql_explain_section_batch_in_list ... ok
+test parser::tests::gql_explain ... ok
+test parser::tests::gql_gauge_unconstrain ... ok
+test parser::tests::gql_gauge_constrain ... ok
+test parser::tests::gql_generate_base ... ok
+test parser::tests::gql_ingest_stdin ... ok
+test parser::tests::gql_integrate_global ... ok
+test ml::prescribe::tests::prescribe_reads_clear_clusters ... ok
+test parser::tests::gql_execute_full_workflow ... ok
+test parser::tests::gql_grant ... ok
+test parser::tests::gql_fill ... ok
+test parser::tests::gql_health ... ok
+test parser::tests::gql_ingest ... ok
+test pairing_delegation::tests::delegation_alice_to_bob_shares_same_session_key ... ok
+test parser::tests::gql_iterate_no_depth ... ok
+test parser::tests::gql_line_comment_ignored ... ok
+test parser::tests::gql_on_trigger ... ok
+test parser::tests::gql_integrate_over_measure ... ok
+test parser::tests::gql_integrate_stddev_variance_parse ... ok
+test ml::texture::tests::txp_7_invariant_to_affine_rescale ... ok
+test parser::tests::gql_perceive_missing_rotation_is_an_error ... ok
+test parser::tests::gql_integrate_count_star_returns_record_count ... ok
+test parser::tests::gql_perceive_missing_vector_is_an_error ... ok
+test parser::tests::gql_perceive_non_integer_dim_rejected ... ok
+test parser::tests::gql_iterate ... ok
+test parser::tests::gql_iterate_depth_only ... ok
+test parser::tests::gql_on_trigger_with_condition ... ok
+test parser::tests::gql_perceive_clause_order_flexible ... ok
+test parser::tests::gql_perceive_identity_2d ... ok
+test parser::tests::gql_perceive_with_explicit_dim ... ok
+test parser::tests::gql_prepare ... ok
+test parser::tests::gql_integrate_with_jackknife ... ok
+test parser::tests::gql_reset ... ok
+test parser::tests::gql_restore ... ok
+test parser::tests::gql_restore_snapshot ... ok
+test parser::tests::gql_pullback ... ok
+test parser::tests::gql_pullback_preserve_left ... ok
+test parser::tests::gql_integrate_stddev_ground_truth ... ok
+test parser::tests::gql_redefine_point ... ok
+test parser::tests::gql_rebuild_index ... ok
+test parser::tests::gql_repair ... ok
+test parser::tests::gql_retract ... ok
+test parser::tests::gql_section_point_query ... ok
+test parser::tests::gql_section_projected ... ok
+test parser::tests::gql_revoke ... ok
+test parser::tests::gql_section_insert ... ok
+test parser::tests::gql_section_upsert ... ok
+test parser::tests::gql_show_current_role ... ok
+test parser::tests::gql_show_fields ... ok
+test parser::tests::gql_show_geometry ... ok
+test parser::tests::gql_sections_column_list_single_tuple ... ok
+test parser::tests::gql_sections_column_list_tuples ... ok
+test parser::tests::gql_set ... ok
+test parser::tests::gql_show_backups ... ok
+test parser::tests::gql_show_prepared ... ok
+test parser::tests::gql_show_roles ... ok
+test parser::tests::gql_show_session ... ok
+test parser::tests::gql_show_settings ... ok
+test parser::tests::gql_show_statistics ... ok
+test parser::tests::gql_show_triggers ... ok
+test ml::texture::tests::txp_16_numeric_text_order_sorts_numerically_and_text_is_disclosed ... ok
+test parser::tests::gql_show_bundles ... ok
+test parser::tests::gql_show_comments ... ok
+test parser::tests::gql_show_constraints ... ok
+test parser::tests::gql_show_indexes ... ok
+test parser::tests::gql_show_morphisms ... ok
+test parser::tests::gql_show_policies ... ok
+test parser::tests::gql_spectral_full ... ok
+test parser::tests::gql_spectral_full_limit ... ok
+test parser::tests::gql_storage ... ok
+test parser::tests::gql_suggest_adjacency_full ... ok
+test parser::tests::gql_transplant ... ok
+test parser::tests::gql_trailing_tokens_rejected ... ok
+test parser::tests::gql_weave_role ... ok
+test parser::tests::gql_weave_role_superweave ... ok
+test parser::tests::h2_depth_guard_does_not_break_real_queries ... ok
+test parser::tests::h2_nested_invariant_parens_are_refused ... ok
+test parser::tests::h2_nested_explain_is_refused ... ok
+test parser::tests::hopeless_verb_points_at_reference ... ok
+test parser::tests::h2_nested_exists_is_refused_not_overflowed ... ok
+test parser::tests::gql_unweave_role ... ok
+test parser::tests::gql_vacuum ... ok
+test parser::tests::gql_verify_backup ... ok
+test parser::tests::gql_suggest_adjacency_basic ... ok
+test parser::tests::misspelled_verb_suggests ... ok
+test parser::tests::no_debug_internals_in_parse_errors ... ok
+test parser::tests::parse_cognitive_geometry_verbs ... ok
+test parser::tests::parse_curvature_spectral ... ok
+test parser::tests::parse_create_bundle ... ok
+test parser::tests::parse_errors_carry_near_context ... ok
+test parser::tests::parse_select_group_by ... ok
+test parser::tests::parse_select_point_query ... ok
+test parser::tests::parse_select_range ... ok
+test parser::tests::test_parse_create_bundle_default_mode_for_numeric_is_affine ... ok
+test parser::tests::test_parse_create_bundle_default_mode_for_text_is_opaque ... ok
+test parser::tests::test_parse_create_bundle_field_level_affine ... ok
+test parser::tests::suggestable_verbs_all_dispatch ... ok
+test parser::tests::parse_insert ... ok
+test parser::tests::parse_invariant_clause ... ok
+test parser::tests::parse_join ... ok
+test parser::tests::test_parse_create_bundle_field_level_indexed ... ok
+test parser::tests::test_parse_create_bundle_field_level_isometric_numeric ... ok
+test parser::tests::test_parse_create_bundle_field_level_opaque ... ok
+test parser::tests::test_parse_create_bundle_field_level_probabilistic_with_sigma ... ok
+test parser::tests::test_parse_create_bundle_v01_compat_no_mode ... ok
+test parser::tests::test_parse_mixed_modes_in_one_bundle ... ok
+test parser::tests::test_parse_rejects_probabilistic_on_text ... ok
+test parser::tests::gql_integrate_over_count_star_returns_records_per_group ... ok
+test parser::tests::test_parse_no_seed_clause_defaults_to_random ... ok
+test parser::tests::test_parse_rejects_affine_on_text ... ok
+test parser::tests::test_parse_rejects_indexed_on_numeric ... ok
+test parser::tests::test_parse_seed_clause_with_per_field_modes ... ok
+test parser::tests::test_parse_seed_from_env ... ok
+test query::tests::tdd_10_1_full_scan_cost ... ok
+test query::tests::tdd_10_2_index_beats_scan ... ok
+test query::tests::tdd_10_3_index_intersection ... ok
+test parser::tests::test_parse_transport_rotation ... ok
+test parser::tests::test_parse_unencrypted_field_is_none ... ok
+test parser::tests::test_parse_with_encryption_seed_hex ... ok
+test parser::tests::test_parse_seed_hex_must_be_64_chars ... ok
+test parser::tests::test_parse_seed_hex_rejects_non_hex_chars ... ok
+test parser::tests::test_parse_sigma_must_be_positive ... ok
+test parser::tests::test_parse_sigma_value_required_with_probabilistic ... ok
+test query::tests::tdd_10_7_conjunction_selectivity ... ok
+test query::tests::tdd_10_8_explain_output ... ok
+test query::tests::tdd_10_9_planner_determinism ... ok
+test ratchet::tests::forget_history_drops_checkpoints_explicitly ... ok
+test query::tests::tdd_10_4_scan_when_non_selective ... ok
+test query::tests::tdd_10_5_selectivity_equality ... ok
+test query::tests::tdd_10_6_selectivity_range ... ok
+test query::tests::tdd_6_3_double_cover ... ok
+test query::tests::tdd_6_5_deviation_identity ... ok
+test ratchet::tests::advance_changes_key_each_step ... ok
+test ratchet::tests::checkpoints_persist_at_period_boundary ... ok
+test query::tests::tdd_6_1_exact_recall ... ok
+test ratchet::tests::future_index_rejected ... ok
+test ratchet::tests::beyond_retention_horizon_rejected ... ok
+test ratchet::tests::key_at_index_replays_from_checkpoint ... ok
+test sheaf::laplacian::tests::sheaf_2_single_completion_path ... ok
+test sheaf::laplacian::tests::sheaf_3_weighted_completion ... ok
+test sheaf::laplacian::tests::sheaf_4_confidence_increases_with_neighbors ... ok
+test sheaf::laplacian::tests::sheaf_5_zero_valued_completion ... ok
+test sheaf::laplacian::tests::sheaf_6_disconnected_missing ... ok
+test ratchet::tests::retention_horizon_drops_old_checkpoints ... ok
+test sheaf::laplacian::tests::sheaf_10_laplacian_diagonal ... ok
+test sheaf::laplacian::tests::sheaf_1_laplacian_symmetric_psd ... ok
+test sheaf::tests::complete_uses_laplacian_method ... ok
+test sheaf::tests::complete_with_constraint_graph ... ok
+test sheaf::tests::confidence_formula_bounds ... ok
+test sheaf::tests::consistency_sampled_produces_summary ... ok
+test sheaf::tests::federated_complete_counts_cross_bundle_neighbors ... ok
+test sheaf::tests::federated_complete_missing_bundle_returns_empty ... ok
+test ratchet::tests::chain_is_deterministic_given_seed_and_records ... ok
+test sheaf::laplacian::tests::sheaf_7_transform_restriction_map ... ok
+test sheaf::laplacian::tests::sheaf_9_multiple_missing ... ok
+test sheaf::tests::confidence_sheaf_zero_value ... ok
+test sheaf::laplacian::tests::sheaf_8_coherence_interval ... ok
+test sheaf::tests::complete_fills_null_cells ... ok
+test sheaf::tests::complete_skips_orphan ... ok
+test sheaf::tests::federated_complete_uses_cross_bundle ... ok
+test sheaf::tests::federated_complete_provenance_shows_sources ... ok
+test sheaf::tests::consistency_finds_contradiction ... ok
+test sheaf::tests::federated_complete_no_morphisms_falls_back ... ok
+test sheaf::tests::consistency_full_no_sampling_summary ... ok
+test spectral::budget_partition_tests::delta_indep_partition_sums_to_target ... ok
+test sheaf::tests::suggest_adjacency_ranks_by_delta ... ok
+test sheaf::tests::laplacian_completion_value_matches_schur ... ok
+test sheaf::tests::suggest_adjacency_returns_candidates ... ok
+test sheaf::tests::laplacian_confidence_from_inv_diag ... ok
+test sheaf::tests::propagate_finds_cascade ... ok
+test spectral::budget_partition_tests::r_backend_slack_dominates_e_backend_bound ... ok
+test spectral::tests::spectral_matrix_raw_float_typed_vertex_ids ... ok
+test spectral::tests::spectral_matrix_raw_m1_positive_definite ... ok
+test spectral::tests::spectral_matrix_raw_m2_negatives_survive ... ok
+test spectral::tests::spectral_matrix_raw_no_double_count ... ok
+test spectral::tests::spectral_matrix_raw_nonnumeric_vertex_id_errors ... ok
+test sheaf::tests::suggest_adjacency_field_filter ... ok
+test spectral::tests::tdd_3_25_betti_connected ... ok
+test spectral::tests::tdd_3_26_betti_disconnected ... ok
+test spectral::tests::tdd_3_27_betti_cycle_rank ... ok
+test spectral::tests::tdd_3_31_entropy_non_negative ... ok
+test spectral::tests::spectral_matrix_raw_typed_errors ... ok
+test spectral::tests::tdd_3_18_connected_large_gap ... ok
+test spectral::tests::tdd_3_19_clustered_small_gap ... ok
+test spectral::tests::tdd_3_20_spectral_capacity_bound ... ok
+test spectral::tests::tdd_b1_geodesic_same_point ... ok
+test spectral::tests::tdd_b2_geodesic_connected_pair ... ok
+test spectral::tests::tdd_3_23_c_theorem ... ok
+test spectral::tests::tdd_3_24_group_by_equals_coarsening ... ok
+test spectral::tests::tdd_3_28_betti_empty ... ok
+test spectral::tests::tdd_3_29_entropy_single_group ... ok
+test spectral::tests::tdd_3_30_entropy_uniform_groups ... ok
+test spectral::tests::tdd_b3_geodesic_disconnected ... ok
+test statistics::tests::centered_moments_keep_large_offset_variation_and_skip_missing_rows ... ok
+test spectral::tests::tdd_b5_geodesic_symmetry ... ok
+test spectral::tests::tdd_3_22_rg_flow_monotone ... ok
+test spectral::tests::tdd_b4_geodesic_triangle_inequality ... ok
+test statistics::tests::nonfinite_measurement_is_an_actionable_refusal ... ok
+test threshold::tests::cross_bundle_share_rejected ... ok
+test threshold::tests::invalid_scheme_rejected ... ok
+test threshold::tests::modular_inverse_correct_for_known_values ... ok
+test threshold::tests::insufficient_shares_below_threshold_rejected ... ok
+test timefmt::tests::accepted_forms ... ok
+test timefmt::tests::known_anchors ... ok
+test timefmt::tests::multibyte_time_parts_are_refused_not_panics ... ok
+test timefmt::tests::refused_forms ... ok
+test timefmt::tests::round_trip ... ok
+test vector_cache::tests::cache_clear_drops_all_entries ... ok
+test vector_cache::tests::cache_compute_lock_is_per_key ... ok
+test threshold::tests::share_substitution_with_different_pubkey_fails ... ok
+test threshold::tests::forged_share_fails_authentication ... ok
+test vector_cache::tests::cache_miss_then_hit_then_invalidate ... ok
+test vector_cache::tests::kde_normalized_at_corpus_point_is_one ... ok
+test vector_cache::tests::kde_normalized_far_from_corpus_is_small ... ok
+test vector_cache::tests::matrix_bytes_reports_data_plus_norms ... ok
+test vector_cache::tests::matrix_clamps_tiny_negative_d_sq_to_zero ... ok
+test vector_cache::tests::matrix_d_sq_matches_naive_on_random_64d ... ok
+test vector_cache::tests::matrix_d_sq_matches_naive_on_small_grid ... ok
+test vector_cache::tests::matrix_handles_zero_vec_query_without_nan ... ok
+test vector_cache::tests::matrix_nearest_matches_argmin_of_d_sq ... ok
+test vector_cache::tests::matrix_nearest_returns_zero_zero_on_empty_matrix ... ok
+test threshold::tests::split_then_reconstruct_3_of_5 ... ok
+test vector_cache::tests::cache_evicts_at_capacity ... ok
+test threshold::tests::split_then_reconstruct_with_different_share_subsets ... ok
+test vector_cache::tests::cache_key_disambiguates_field_order ... ok
+test vector_cache::tests::cache_key_disambiguates_bundle_name ... ok
+test vector_cache::tests::kde_raw_empty_matrix_returns_zero ... ok
+test vector_cache::tests::kde_raw_matches_naive ... ok
+test vector_cache::tests::kde_raw_zero_bandwidth_returns_zero ... ok
+test vector_cache::tests::max_density_cached_returns_same_on_second_call ... ok
+test vector_cache::tests::max_density_cached_separates_bandwidths ... ok
+test vector_cache::tests::max_density_matches_naive_over_corpus ... ok
+test virtual_bundles::tests::test_bundles_schema_has_expected_shape ... ok
+test virtual_bundles::tests::test_is_virtual_recognizes_bundles_name ... ok
+test virtual_bundles::tests::test_reject_virtual_write_passes_real_names ... ok
+test wal::tests::crc32c_known_answer_vectors ... ok
+test wal::tests::crc_integrity ... ok
+test wal::tests::encode_record_field_order_is_canonical_both_branches ... ok
+test wal::tests::insert_roundtrip ... ok
+test wal::tests::measurement_override_roundtrip ... ok
+test wal::tests::crc32_matches_bitwise_oracle_on_random_payloads ... ok
+test virtual_bundles::tests::test_reject_virtual_write_rejects_virtual_names ... ok
+test virtual_bundles::tests::test_reserved_names_includes_bundles ... ok
+test wal::tests::a_schema_is_written_in_the_oldest_version_that_represents_it ... ok
+test wal::tests::schema_roundtrip ... ok
+test wal::tests::schema_roundtrip_with_gauge_key ... ok
+test wal::tests::v1_schema_records_still_decode_including_their_key ... ok
+test wal::tests::schema_roundtrip_with_invariants ... ok
+test wal::tests::update_roundtrip ... ok
+test ml::prescribe::tests::prescribe_reads_highdim_fullrank ... ok
+test wal::tests::value_all_types ... ok
+test wal::tests::wal_update_delete_cycle ... ok
+test wal::tests::wal_write_read_cycle ... ok
+test wal::tests::wal_entry_on_disk_layout_pinned ... ok
+test wal::tests::wal_crash_replay_reproduces_all_records ... ok
+test ml::texture::tests::txp_1_2_orders_known_roughness ... ok
+test ml::scan::tests::scan_interaction_excludes_partner_numeric ... ok
+test ml::scan::tests::scan_interaction_lens_catches_cohort_amount_plant ... ok
+test ml::prescribe::tests::prescribe_reads_linear_lowrank ... ok
+
+test result: ok. 1030 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.95s
+
+     Running unittests benches\ingest_bench.rs (target\debug\deps\bench_ingest-e8efd006bc162bdd.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests benches\o1_proof.rs (target\debug\deps\bench_o1-58ef467cf6de38ab.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests benches\tpch_bench.rs (target\debug\deps\bench_tpch-fa56866018d7299e.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\main.rs (target\debug\deps\gigi-7db47a2f0e00e789.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gigi_convert.rs (target\debug\deps\gigi_convert-20b446c066011c19.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gigi_edge.rs (target\debug\deps\gigi_edge-592cd8ddaffe568d.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gigi_server.rs (target\debug\deps\gigi_server-2ee924b1c9f3033e.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\bin\gigi_stream.rs (target\debug\deps\gigi_stream-94f0fb4d52538b1a.exe)
+
+running 72 tests
+test tests::init_app_bundles_skips_malformed_entries ... ok
+test tests::init_app_bundles_creates_missing_bundle ... ok
+test tests::init_app_bundles_no_env_is_noop ... ok
+test tests::curvature_report_serializes_lambda_budget_field ... ok
+test tests::filtered_query_meta_serializes_lambda_budget ... ok
+test tests::gigi_welford_radius_finite_on_real_bundle ... ok
+test tests::init_app_bundles_invalid_json_is_safe ... ok
+test tests::init_app_bundles_with_per_field_encryption ... ok
+test tests::http_gql_emit_dispatches_through_parser_executor ... ok
+test tests::gql_consistency_is_not_kappa ... ok
+test tests::init_app_bundles_missing_seed_env_refuses_the_bundle ... ok
+test tests::init_app_bundles_never_wipes_existing_bundle_with_data ... ok
+test tests::consistency_h1_detects_injected_conflict ... ok
+test tests::public_bundles_parse_from_env_trims_and_splits ... ok
+test tests::public_validate_showbundles_always_ok ... ok
+test tests::public_validate_write_verbs_rejected_even_on_allowlisted_bundle ... ok
+test tests::test_b64_escape_full_roundtrip_text ... ok
+test tests::test_b64_escape_triple_prefix_roundtrip ... ok
+test tests::test_binary_roundtrip_via_json ... ok
+test tests::public_validate_allowlisted_reads_pass ... ok
+test tests::public_validate_analytics_rejected_when_bundle_not_allowlisted ... ok
+test tests::public_validate_non_allowlisted_bundle_rejected ... ok
+test tests::stream_query_meta_serializes_lambda_budget ... ok
+test tests::test_b64_escape_decoded_as_text ... ok
+test tests::gql_integrate_stddev_http_executor_arm ... ok
+test tests::http_gql_insert_and_batch_insert_are_wal_logged ... ok
+test tests::public_validate_admin_verbs_rejected ... ok
+test tests::http_gql_emit_bundleless_inner_dispatches_through_parser_executor ... ok
+test tests::test_b64_escape_does_not_affect_normal_binary ... ok
+test tests::test_binary_size_enforcement_allows_exactly_1mib ... ok
+test tests::test_chat_reaction_ingest ... ok
+test tests::test_chat_reaction_schema_fields ... ok
+test tests::test_chat_signal_ingest ... ok
+test tests::test_chat_ack_ingest ... ok
+test tests::test_chat_dm_encrypted_body_roundtrip ... ok
+test tests::test_chat_dm_ingest_plain_body ... ok
+test tests::test_chat_typing_ingest ... ok
+test tests::test_chat_voice_note_media_bytes_is_binary_type ... ok
+test tests::test_binary_size_enforcement_passes_non_binary_records ... ok
+test tests::test_binary_size_enforcement_rejects_oversized_payload ... ok
+test tests::test_field_def_binary_constructor ... ok
+test tests::test_dhoom_ingest_pipeline_curvature ... ok
+test tests::test_prometheus_text_contains_required_metric_names ... ok
+test tests::test_prometheus_text_has_help_and_type_lines ... ok
+test tests::test_prometheus_text_values_correct ... ok
+test tests::test_obs_wal_compaction_builder ... ok
+test tests::test_obs_wal_replay_builder ... ok
+test tests::test_dhoom_arithmetic_ids_become_integer_values ... ok
+test tests::test_plain_string_stays_text ... ok
+test tests::test_binary_wal_roundtrip ... ok
+test tests::test_ephemeral_records_not_persisted ... ok
+test tests::test_schema_coerce_binary_accepts_binary ... ok
+test tests::test_schema_coerce_binary_rejects_unescaped_text ... ok
+test tests::test_schema_coerce_null_always_accepted ... ok
+test tests::scan_max_fusion_noise_lens_cannot_flood ... ok
+test tests::test_s85_point_query_by_message_id ... ok
+test tests::test_s85_ndjson_ingest_stores_binary ... ok
+test tests::public_gql_rejects_compound_query ... ok
+test tests::test_schema_coerce_unknown_field_passthrough ... ok
+test tests::test_value_to_json_escapes_text_starting_with_b64 ... ok
+test tests::test_s85_dhoom_export_reimport_byte_fidelity ... ok
+test tests::public_gql_showbundles_lists_only_allowlisted ... ok
+test tests::public_gql_rejects_write_on_allowlisted_bundle ... ok
+test tests::test_obs_connection_open_builder ... ok
+test tests::test_obs_connection_close_builder ... ok
+test tests::test_obs_ingest_bulk_builder ... ok
+test tests::test_obs_log_routing_all_categories ... ok
+test tests::test_schema_coerce_numeric_rejects_text ... ok
+test tests::test_schema_coerce_timestamp_accepts_integer ... ok
+test tests::test_schema_coerce_timestamp_rejects_string ... ok
+test tests::test_schema_coerce_numeric_accepts_numbers ... ok
+test tests::ml_all_endpoints_regression_smoke ... ok
+
+test result: ok. 72 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+
+     Running unittests src\bin\gigi_stress.rs (target\debug\deps\gigi_stress-ff280b7669976243.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples\nasa_atmosphere.rs (target\debug\deps\nasa_atmo-030883c4e2443084.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\analytic_objects.rs (target\debug\deps\analytic_objects-8077b809ead82919.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\analytic_objects_allocation.rs (target\debug\deps\analytic_objects_allocation-dfd636164e9036c3.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\analytic_objects_concurrency.rs (target\debug\deps\analytic_objects_concurrency-17b299b843d462c5.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\analytic_objects_registry.rs (target\debug\deps\analytic_objects_registry-e6b687febee3bf16.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\analytic_objects_storage.rs (target\debug\deps\analytic_objects_storage-b1729ceb752c36a6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_cubed_sphere_construction.rs (target\debug\deps\aurora_cubed_sphere_construction-f924750a664367da.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_dec_operators.rs (target\debug\deps\aurora_dec_operators-538b9dee52e20d6e.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_lattice_registry_dispatch.rs (target\debug\deps\aurora_lattice_registry_dispatch-dca45ccbfc7fac86.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_lie_poisson_trait.rs (target\debug\deps\aurora_lie_poisson_trait-8c8d6c8a12b805d4.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_phase_1b_lattice_verb_cubed_sphere.rs (target\debug\deps\aurora_phase_1b_lattice_verb_cubed_sphere-89497a3507cfe63f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_phase_2_hamiltonian_registry.rs (target\debug\deps\aurora_phase_2_hamiltonian_registry-d4ac26c06e63f1f5.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_phase_2_trait_surface.rs (target\debug\deps\aurora_phase_2_trait_surface-01efb4c73f25563e.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_signed_face_orientations.rs (target\debug\deps\aurora_signed_face_orientations-6c2d5154fe813aa2.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_topology_hint_table.rs (target\debug\deps\aurora_topology_hint_table-f0db6996f72fdd0c.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\aurora_vertex_positions.rs (target\debug\deps\aurora_vertex_positions-35c7f3334314313e.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\base_point_index_collisions.rs (target\debug\deps\base_point_index_collisions-4d70fc19cd7623d1.exe)
+
+running 5 tests
+test delete_then_reinsert_does_not_resurrect_a_stale_ordinal ... ok
+test truncate_resets_ordinals_without_stranding_bitmap_entries ... ok
+test colliding_low_words_stay_separately_visible_in_the_index ... ok
+test colliding_records_are_both_reachable_by_graph_verbs ... ok
+test scale_every_record_reaches_the_index ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.43s
+
+     Running tests\betti_pi1_basic.rs (target\debug\deps\betti_pi1_basic-7468504dd10065f8.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\bounded_holomorphic.rs (target\debug\deps\bounded_holomorphic-5818eca93eb3ae56.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\bulk_delete_addressability.rs (target\debug\deps\bulk_delete_addressability-8a6631105fb82246.exe)
+
+running 4 tests
+test a_filtered_delete_removes_every_matched_row ... ok
+test a_healthy_bundle_reports_nothing_unaddressable ... ok
+test rows_that_rebuild_the_same_key_are_all_removed ... ok
+test rows_whose_key_column_is_unreadable_are_reported_not_silently_skipped ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests\bundle_version.rs (target\debug\deps\bundle_version-98859526fcb5375a.exe)
+
+running 5 tests
+test version_is_stable_when_nothing_changes ... ok
+test version_changes_when_records_change ... ok
+test version_changes_when_only_the_index_set_changes ... ok
+test version_survives_a_restart_unchanged ... ok
+test identical_content_versions_identically_across_engines ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests\causal_states_cv1_diagnostics.rs (target\debug\deps\causal_states_cv1_diagnostics-34a64860801e3fde.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\causal_states_cv2_operators.rs (target\debug\deps\causal_states_cv2_operators-0987fd3eeaacf10a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\causal_states_cv3_commutator.rs (target\debug\deps\causal_states_cv3_commutator-6da509fd28cb8fcb.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\causal_states_cv4_regime.rs (target\debug\deps\causal_states_cv4_regime-edb836a1016434d6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\causal_states_p4_1_invariants.rs (target\debug\deps\causal_states_p4_1_invariants-1c468fbbeb231b8b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\causal_states_p4_2_convergence.rs (target\debug\deps\causal_states_p4_2_convergence-f0a300511d65c13c.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\causal_states_p4_3_orthogonality.rs (target\debug\deps\causal_states_p4_3_orthogonality-cd2a4ac2c9c48b42.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\causal_states_p4_4_classifier.rs (target\debug\deps\causal_states_p4_4_classifier-f5d067eb78ad17a6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\causal_states_wire.rs (target\debug\deps\causal_states_wire-23a4fce56840af0d.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\chern_class_basic.rs (target\debug\deps\chern_class_basic-6caf2ef7b23f0788.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\chern_class_bundle_target_basic.rs (target\debug\deps\chern_class_bundle_target_basic-797627e0ca83386c.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\cognitive_geometry_endpoints_contract.rs (target\debug\deps\cognitive_geometry_endpoints_contract-b41ab71dfbe3fae0.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\cognitive_geometry_real_data_smoke.rs (target\debug\deps\cognitive_geometry_real_data_smoke-d17c188f7c7e4681.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\column_scan.rs (target\debug\deps\column_scan-a40e251a86678c47.exe)
+
+running 13 tests
+test empty_bundle_yields_empty_columns ... ok
+test absent_field_is_none ... ok
+test columns_refuses_when_any_field_is_absent ... ok
+test numeric_column_refuses_a_non_numeric_field ... ok
+test column_reflects_updates ... ok
+test two_columns_zip_row_aligned_hashed ... ok
+test sequential_storage_with_step_column_matches_records ... ok
+test hashed_storage_column_matches_records ... ok
+test two_columns_zip_row_aligned ... ok
+test columns_match_repeated_column_calls ... ok
+test sequential_storage_column_matches_records ... ok
+test multi_base_field_storage_column_matches_records ... ok
+test hybrid_storage_column_matches_records ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\column_scan_overlay.rs (target\debug\deps\column_scan_overlay-47eab8ebce6d24fa.exe)
+
+running 6 tests
+test numeric_column_refuses_non_numeric_on_mmap ... ok
+test columns_match_repeated_column_calls_on_mmap ... ok
+test overlay_writes_shadow_the_base_in_column_order ... ok
+test absent_field_is_none_on_mmap ... ok
+test two_columns_zip_row_aligned_on_mmap ... ok
+test mmap_base_column_matches_records ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests\composition_v0_3.rs (target\debug\deps\composition_v0_3-1c1037cb34a089a6.exe)
+
+running 7 tests
+test test_composition_capability_stale_after_ratchet_advance ... ok
+test test_composition_ledger_root_and_ratchet_checkpoints_advance_together ... ok
+test test_composition_integrity_invariant_under_gauge_basis_change ... ok
+test test_composition_ledger_x_rotation_event ... ok
+test test_composition_integrity_invariant_under_ratchet_steps ... ok
+test test_composition_integrity_tag_invariant_under_gauge_rotation ... ok
+test test_composition_integrity_x_ledger_full_coverage ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\conduct_settle.rs (target\debug\deps\conduct_settle-46584fec5916049e.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\conduct_settle_wire.rs (target\debug\deps\conduct_settle_wire-cc022a453f011f58.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\create_session_verb.rs (target\debug\deps\create_session_verb-da0add10d5e42dce.exe)
+
+running 6 tests
+test test_insert_into_session_works ... ok
+test test_cover_all_order_by_thought_id_works ... ok
+test test_create_session_base_extra_rejected ... ok
+test test_create_session_collision_rejected ... ok
+test test_create_session_with_extra_schema ... ok
+test test_create_session_canonical_schema ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\credentials_v0_4.rs (target\debug\deps\credentials_v0_4-438649a11ea455a4.exe)
+
+running 6 tests
+test o4_credential_tag_is_32_bytes ... ok
+test o1_invariance_harness_mathematical_not_lookup ... ok
+test o3_gauge_rerandomization_5_distinct_ciphertexts_same_k ... ok
+test o4_credential_binding_rejects_wrong_bundle_class_or_key ... ok
+test o2_adversarial_k_fake_caught_by_harness ... ok
+test o4_credential_issuance_is_deterministic ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\cubic_lattice.rs (target\debug\deps\cubic_lattice-57febbeb0986b192.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\curvature_api.rs (target\debug\deps\curvature_api-68007cac40981be9.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\davis_conjecture_lambda.rs (target\debug\deps\davis_conjecture_lambda-9cb2c5b418a9b062.exe)
+
+running 9 tests
+test horizon_closed_threshold_semantics ... ok
+test lambda_budget_flat_manifold_returns_one ... ok
+test lambda_budget_nan_propagates ... ok
+test lambda_budget_matches_verbatim_equation ... ok
+test lambda_budget_negative_inputs_use_magnitudes ... ok
+test lambda_budget_zero_diameter_returns_one ... ok
+test horizon_closure_threshold_is_documented_constant ... ok
+test lambda_budget_zero_tau_returns_one ... ok
+test lambda_budget_ride_along_is_finite_on_real_bundle ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\davis_conjecture_lambda_brain_ridealong.rs (target\debug\deps\davis_conjecture_lambda_brain_ridealong-478cb7ad845da0c5.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\delegation_v0_3.rs (target\debug\deps\delegation_v0_3-2c87bac5b4aabd2b.exe)
+
+running 11 tests
+test test_capability_probabilistic_returns_typed_error ... ok
+test test_capability_opaque_returns_typed_error ... ok
+test test_capability_proxy_alone_cannot_recover_alice_key ... ok
+test test_capability_proxy_alone_cannot_recover_bob_key ... ok
+test test_capability_proxy_cannot_decrypt_alone ... ok
+test test_capability_affine_alice_to_bob_roundtrip ... ok
+test test_capability_revoked_after_rotation ... ok
+test test_capability_isometric_closure ... ok
+test test_capability_collusion_recovers_alice_key_explicit ... ok
+test test_capability_affine_zero_decrypt_calls ... ok
+test test_capability_indexed_returns_typed_error ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\dhoom_explicit_evidence.rs (target\debug\deps\dhoom_explicit_evidence-60f7bfe576c8dde5.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\dhoom_wire_savings.rs (target\debug\deps\dhoom_wire_savings-6becd90004215569.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\durability_wal_truncation.rs (target\debug\deps\durability_wal_truncation-b09b2e0f7081953f.exe)
+
+running 6 tests
+test wal_generation_is_retained_across_compaction ... ok
+test deleted_records_do_not_resurrect_across_restart ... ok
+test admin_snapshot_does_not_erase_mmap_overlay_records ... ok
+test wal_replay_recovers_records_after_a_mid_file_corruption ... ok
+test mmap_delete_survives_restart_with_intact_wal ... ok
+test snapshotted_record_reloads_when_inserts_follow_in_same_session ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests\emit_csv.rs (target\debug\deps\emit_csv-383061e7c8053c3a.exe)
+
+running 1 test
+test emit_csv_gate_export_and_traversal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\encoder_high_dim_smoke.rs (target\debug\deps\encoder_high_dim_smoke-cbdd30a76862bf23.exe)
+
+running 3 tests
+test smoke_small_arith_bundle_uses_sort_path ... ok
+test smoke_many_record_count_alone_triggers_bypass ... ok
+test smoke_bge_high_dim_completes_within_budget ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.93s
+
+     Running tests\engine_open_memory.rs (target\debug\deps\engine_open_memory-fcb41d1475f989e4.exe)
+
+running 6 tests
+test test_open_memory_succeeds ... ok
+test test_open_memory_tempdir_cleaned_up_on_drop ... ok
+test test_open_memory_drop_safe_with_open_wal_handle ... ok
+test test_open_memory_basic_operations_work ... ok
+test test_open_memory_concurrent_instances_isolated ... ok
+test test_open_memory_no_persistence_between_instances ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\engine_open_mmap_orphan.rs (target\debug\deps\engine_open_mmap_orphan-025a159f8f2e46f4.exe)
+
+running 2 tests
+test clean_mmap_reopen_stays_in_mmap_mode ... ok
+test reopens_with_corrupt_dhoom_via_heap_fallback ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\explain_batch.rs (target\debug\deps\explain_batch-1247a7ccaff53671.exe)
+
+running 6 tests
+test batch_all_missing_is_still_ok_rows_of_misses ... ok
+test batch_single_key_form_unchanged ... ok
+test batch_missing_key_emits_typed_miss_row_not_failure ... ok
+test batch_with_vector_clause_adds_kappa_v_row_per_group ... ok
+test batch_integer_keys_work ... ok
+test batch_groups_in_input_order_with_discriminator_on_every_row ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\explain_errors.rs (target\debug\deps\explain_errors-10d8e2b04a3908d1.exe)
+
+running 6 tests
+test plain_section_at_miss_stays_silent_empty_rows ... ok
+test explain_missing_key_is_typed_not_found_naming_key_and_bundle ... ok
+test explain_missing_integer_key_renders_bare_value ... ok
+test explain_wrong_key_field_name_is_also_typed_not_found ... ok
+test wide_bundle_missing_key_is_typed_not_found ... ok
+test wide_393_field_bundle_explains_with_correct_key ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\explain_kappa.rs (target\debug\deps\explain_kappa-5691cbe53f52984f.exe)
+
+running 3 tests
+test explain_non_point_reads_notice_the_alternative ... ok
+test explain_missing_record_is_loud ... ok
+test explain_names_the_guilty_field ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\explain_mmap.rs (target\debug\deps\explain_mmap-6f73891065a1afc6.exe)
+
+running 4 tests
+test mmap_backed_bundle_returns_real_rows_via_on_demand_stats ... ok
+test mmap_missing_key_is_still_typed_not_found ... ok
+test mmap_batch_with_miss_entry_works ... ok
+test mmap_vector_clause_gets_kappa_v_from_record_scan ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\explain_vector.rs (target\debug\deps\explain_vector-1def6db12e68954a.exe)
+
+running 8 tests
+test vector_clause_unknown_field_is_loud ... ok
+test vector_field_gets_automatic_kappa_v_row ... ok
+test vector_rows_are_additive_and_excluded_from_record_kappa_invariant ... ok
+test vector_clause_miss_still_typed_not_found ... ok
+test kappa_v_is_direction_only_scale_invariant ... ok
+test record_equal_to_mean_vector_has_kappa_v_zero_exactly ... ok
+test vector_clause_assembles_scalar_family_one_kappa_v_row ... ok
+test range_sugar_and_explicit_list_agree ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\fhe_pq_parity_rigor.rs (target\debug\deps\fhe_pq_parity_rigor-06e7b8bf9f3a1f11.exe)
+
+running 25 tests
+test a1_count_is_gauge_invariant_under_any_mode ... ok
+test a1_affine_avg_exact_random_gauges ... ok
+test a1_affine_minmax_range_exact_random_gauges ... ok
+test a4_probabilistic_max_refuses_under_noise ... ok
+test a1_affine_stddev_exact_random_gauges ... ok
+test a4_probabilistic_min_max_range_accept_zero_sigma ... ok
+test a1_affine_sum_exact_random_gauges ... ok
+test a1_affine_variance_exact_random_gauges ... ok
+test a4_probabilistic_range_refuses_under_noise ... ok
+test a5_sum_of_squares_recoverable_from_sum_and_sum_of_squares ... ok
+test a4_probabilistic_min_refuses_under_noise ... ok
+test a7_field_index_out_of_bounds_returns_typed_error ... ok
+test a2_probabilistic_sum_matches_theoretical_noise ... ok
+test a4_probabilistic_range_is_biased_above_plain ... ok
+test a2_probabilistic_avg_matches_theoretical_noise ... ok
+test a7_indexed_mode_refuses_aggregate_inversion ... ok
+test b1_mlkem_unit_tests_exist_and_cover_tamper_paths ... ok
+test a7_opaque_mode_refuses_aggregate_inversion ... ok
+test a7_zero_scale_returns_zero_scale_error ... ok
+test a4_probabilistic_max_is_biased_above_plain ... ok
+test a4_probabilistic_min_is_biased_below_plain ... ok
+test b2_lattice_threshold_recovery_requires_k_envelopes ... ok
+test a3_probabilistic_variance_bias_correction_converges ... ok
+test b2_lattice_threshold_collusion_subset_exhaustive ... ok
+test b2_lattice_threshold_any_k_subset_recovers ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.36s
+
+     Running tests\field_coverage_health.rs (target\debug\deps\field_coverage_health-69a87f4a5313c434.exe)
+
+running 4 tests
+test coverage_works_on_heap_bundles_too ... ok
+test bounded_sample_reports_itself_as_partial ... ok
+test coverage_names_declared_fields_that_were_never_written ... ok
+test coverage_reports_a_fully_written_bundle_as_complete ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.37s
+
+     Running tests\gauge_e_field_unit.rs (target\debug\deps\gauge_e_field_unit-9b18ef2d150913a4.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gauge_gauss_unit.rs (target\debug\deps\gauge_gauss_unit-af1fcb9a48c60460.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gauge_inject_basic.rs (target\debug\deps\gauge_inject_basic-ba2d411eacacc261.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gauge_lie_exp_unit.rs (target\debug\deps\gauge_lie_exp_unit-5ee1a8660ab310b1.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gauge_project_gauss_unit.rs (target\debug\deps\gauge_project_gauss_unit-6458d6347b621c58.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gauge_su3_basic.rs (target\debug\deps\gauge_su3_basic-03a1c71b245ed828.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gauge_su3_persistence.rs (target\debug\deps\gauge_su3_persistence-1b62c8d41c0f13db.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gauge_symplectic_flow_unit.rs (target\debug\deps\gauge_symplectic_flow_unit-eafa7ccebb3180e0.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gauge_wilson_force_unit.rs (target\debug\deps\gauge_wilson_force_unit-1c2e74e2743ca39c.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\generated_tex_is_current.rs (target\debug\deps\generated_tex_is_current-e132c4f918fd0d0d.exe)
+
+running 2 tests
+test generated_shape_verbs_tex_matches_the_markdown ... ok
+test generated_fragment_has_no_preamble ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gigi_hosting_itself.rs (target\debug\deps\gigi_hosting_itself-06f9d36aa837d7da.exe)
+
+running 8 tests
+test test_collapse_virtual_bundle_rejected ... ok
+test test_create_bundle_with_virtual_name_rejected ... ok
+test test_insert_into_virtual_bundle_rejected ... ok
+test test_cover_virtual_bundles_returns_live_registry ... ok
+test test_cover_virtual_bundles_with_where_filters_self_row ... ok
+test test_cover_virtual_bundles_after_create_bundle_includes_new ... ok
+test test_cover_virtual_bundles_project_subset ... ok
+test test_cover_virtual_bundles_rank_by_n_records_first ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\gql_reference_truth.rs (target\debug\deps\gql_reference_truth-f063c50941dc4603.exe)
+
+running 5 tests
+test emit_without_gate_refused_loudly ... ok
+test transaction_control_does_not_pretend_to_work ... ok
+test atlas_subforms_are_parse_errors ... ok
+test known_gaps_error_loudly ... ok
+test documented_features_execute ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\hadamard_propagate.rs (target\debug\deps\hadamard_propagate-21647325f673a2d7.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_header_is_the_loss.rs (target\debug\deps\halcyon_header_is_the_loss-b453d2d2b9641e6c.exe)
+
+running 2 tests
+test snapshot_header_names_every_declared_field ... ok
+test reloaded_records_carry_every_declared_field ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests\halcyon_l24_workflow_e2e.rs (target\debug\deps\halcyon_l24_workflow_e2e-85392264b8ab8db4.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_mmap_field_loss_20260913.rs (target\debug\deps\halcyon_mmap_field_loss_20260913-8bafce77bb124264.exe)
+
+running 4 tests
+test heap_bundle_returns_all_numeric_fibers_at_embedding_width ... ok
+test mmap_bundle_returns_its_key_field_at_analytics_width ... ok
+test fields_absent_from_the_first_chunk_survive_snapshot ... ok
+test mmap_bundle_returns_all_numeric_fibers_at_embedding_width ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.90s
+
+     Running tests\halcyon_null_probe.rs (target\debug\deps\halcyon_null_probe-78630cd433a0818f.exe)
+
+running 1 test
+test unwritten_fields_reload_as_null_not_absent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\halcyon_part_i_bit_identity.rs (target\debug\deps\halcyon_part_i_bit_identity-aac1ea4ca9aef83b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_ii_gauge_field_walker.rs (target\debug\deps\halcyon_part_ii_gauge_field_walker-3199454de6ce77b8.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_ii_haar_gold.rs (target\debug\deps\halcyon_part_ii_haar_gold-1593fefc7d634faa.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_ii_http.rs (target\debug\deps\halcyon_part_ii_http-411cc9ca81c7871f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_ii_http_persist.rs (target\debug\deps\halcyon_part_ii_http_persist-acc0a3c2fc336844.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_ii_persistence.rs (target\debug\deps\halcyon_part_ii_persistence-176e31e6da2509ce.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_iii_gold.rs (target\debug\deps\halcyon_part_iii_gold-215fb4f132a9c733.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_iii_http.rs (target\debug\deps\halcyon_part_iii_http-dfa4b43b53e70141.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_iv_a2_matrix.rs (target\debug\deps\halcyon_part_iv_a2_matrix-3c21128a8e0c4785.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_iv_gold.rs (target\debug\deps\halcyon_part_iv_gold-0b7beebaa000b775.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_iv_http.rs (target\debug\deps\halcyon_part_iv_http-a5dd1ace5d56c2e2.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_v_p1_gql_dispatch.rs (target\debug\deps\halcyon_part_v_p1_gql_dispatch-b3a077d1fa016853.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_v_snapshot.rs (target\debug\deps\halcyon_part_v_snapshot-e095c214610f09fa.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_vi_6_semantic_thermalized.rs (target\debug\deps\halcyon_part_vi_6_semantic_thermalized-e0a1686271097fe3.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_vi_b_http_dispatch.rs (target\debug\deps\halcyon_part_vi_b_http_dispatch-ec9fedb2b035bfcd.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_vi_bit_identity_gold.rs (target\debug\deps\halcyon_part_vi_bit_identity_gold-a83405af68a5d04c.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_vi_executor_smoke.rs (target\debug\deps\halcyon_part_vi_executor_smoke-75f6bd8a44844e83.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_vi_gc_acceptance.rs (target\debug\deps\halcyon_part_vi_gc_acceptance-f484ea9a6442480b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_vi_parser_grammar.rs (target\debug\deps\halcyon_part_vi_parser_grammar-fb939af6d91e45d0.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_vi_parser_rejections.rs (target\debug\deps\halcyon_part_vi_parser_rejections-25311b1897c12fa3.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_part_vi_sham_dispatch.rs (target\debug\deps\halcyon_part_vi_sham_dispatch-998f8e59bff46ac3.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\halcyon_scale_field_loss.rs (target\debug\deps\halcyon_scale_field_loss-dcb69c38973f6a28.exe)
+
+running 3 tests
+test sections_shape_survives_below_the_chunk_boundary ... ok
+test field_appearing_only_after_the_first_chunk_survives ... ok
+test sections_shape_survives_across_the_chunk_boundary ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.84s
+
+     Running tests\harmonic_conjugate.rs (target\debug\deps\harmonic_conjugate-91ef72059049b844.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\harvest_part_iii_canonical.rs (target\debug\deps\harvest_part_iii_canonical-7d3b00f7688627bd.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\harvest_part_iv_canonical.rs (target\debug\deps\harvest_part_iv_canonical-5ada6f840ef46ae4.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\helicity_basic.rs (target\debug\deps\helicity_basic-a09b0096f49e23c1.exe)
+
+running 13 tests
+test n1_abc_beltrami_l48 ... ignored, L=48 release gate — 331776 edges, slow in debug
+test n1_abc_beltrami_l16 ... ok
+test n4_non_unit_edge_typed_error ... ok
+test n4_non_cubic_v_typed_error ... ok
+test n4_partial_2d_bundle_typed_error ... ok
+test n5_density_sums_to_scalar ... ok
+test n3_zero_field_exact_zero ... ok
+test n6_negation_invariance ... ok
+test n2_unlinked_zero ... ok
+test n1_abc_beltrami_l24 ... ok
+test n2_left_handed_mirror_negative ... ok
+test n1_abc_beltrami_l32 ... ok
+test n2_right_handed_positive_helicity ... ok
+
+test result: ok. 12 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 6.39s
+
+     Running tests\hodge_compression.rs (target\debug\deps\hodge_compression-d494e82031e3ce45.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\holonomy_cycle_basic.rs (target\debug\deps\holonomy_cycle_basic-8a75bd25ac08b19f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\holonomy_gauge_invariance_v0_3.rs (target\debug\deps\holonomy_gauge_invariance_v0_3-f52f4b611a6d770b.exe)
+
+running 5 tests
+test test_holonomy_invariant_magnitude_under_per_axis_reflection ... ok
+test test_holonomy_invariant_across_random_affine_gauges ... ok
+test test_holonomy_invariant_under_uniform_positive_scale ... ok
+test test_holonomy_invariant_under_per_axis_positive_scale ... ok
+test test_holonomy_invariant_under_translation ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\imagine_coherence_phase2.rs (target\debug\deps\imagine_coherence_phase2-e2cdd892c88e03ad.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\ingest_as_gauge_field_basic.rs (target\debug\deps\ingest_as_gauge_field_basic-a1bf70943ac2ec12.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\ingest_csv_basic.rs (target\debug\deps\ingest_csv_basic-e86c1210d3040141.exe)
+
+running 6 tests
+test csv_header_only_is_loud ... ok
+test csv_bad_key_lists_columns ... ok
+test csv_empty_base_cell_is_loud ... ok
+test csv_key_clause_overrides_base_column ... ok
+test csv_mixed_column_goes_categorical ... ok
+test csv_ingest_autocreates_and_loads ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\ingest_dir_gate.rs (target\debug\deps\ingest_dir_gate-cde94417adce6f8c.exe)
+
+running 1 test
+Junction created for D:\gigi-verification\sphere-transport-20261113\default-tests-temp\.tmpakB2CN\sneak <<===>> D:\gigi-verification\sphere-transport-20261113\default-tests-temp\.tmp8NFq6p
+test ingest_dir_gate_unset_containment_traversal_and_links ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\ingest_executor.rs (target\debug\deps\ingest_executor-e2dddb099af35705.exe)
+
+running 11 tests
+test test_ingest_npz_unsupported_format ... ok
+test test_ingest_nonexistent_bundle_clear_error ... ok
+test test_ingest_npz_file_not_found ... ok
+test test_ingest_npz_virtual_bundle_rejected ... ok
+test test_ingest_npz_small_float64_array_creates_bundle ... ok
+test test_ingest_npz_with_existing_compatible_bundle ... ok
+test test_ingest_multi_array_npz ... ok
+test test_ingest_multi_array_without_key_errors ... ok
+test test_ingest_npz_with_existing_conflicting_bundle ... ok
+test test_ingest_parser_end_to_end ... ok
+test test_ingest_npz_4d_array_record_count ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\ingest_gauge_vertex_basic.rs (target\debug\deps\ingest_gauge_vertex_basic-09f27665b178e0a2.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\ingest_gql_bypass_basic.rs (target\debug\deps\ingest_gql_bypass_basic-f6e503e2750b1a00.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\ingest_jsonl_basic.rs (target\debug\deps\ingest_jsonl_basic-b9ea07bc3b052ae8.exe)
+
+running 3 tests
+test jsonl_requires_key ... ok
+test jsonl_ingests_with_vectors ... ok
+test jsonl_loud_failures ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests\ingest_npz_dtype_basic.rs (target\debug\deps\ingest_npz_dtype_basic-77e869b099732ba9.exe)
+
+running 3 tests
+test test_ingest_npz_f32_upconverts_to_f64 ... ok
+test test_ingest_npz_f64_unchanged ... ok
+test test_ingest_npz_int32_errors_with_dtype_name ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests\ingest_npz_key_basic.rs (target\debug\deps\ingest_npz_key_basic-152e95d82e4f73bb.exe)
+
+running 3 tests
+test test_ingest_npz_key_absent_single_array_works ... ok
+test test_ingest_npz_key_selects_named_array ... ok
+test test_ingest_npz_key_unknown_array_name_errors ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running tests\insert_after_snapshot.rs (target\debug\deps\insert_after_snapshot-25d4d99d1238f027.exe)
+
+running 6 tests
+test a_partial_key_is_still_a_key ... ok
+test inserts_append_on_a_fresh_bundle ... ok
+test a_batch_containing_a_keyless_record_is_refused_whole ... ok
+test a_record_with_no_key_is_refused_rather_than_silently_collapsing ... ok
+test inserts_append_after_a_snapshot_and_reload ... ok
+test a_batch_after_a_snapshot_stores_every_record ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests\integrity_v0_3.rs (target\debug\deps\integrity_v0_3-a6f522550cf5a320.exe)
+
+running 15 tests
+test test_v02_bundle_loads_on_v03_engine ... ignored, blocked on BundleSchema::version + version-2 deserialization shim
+test test_v02_to_v03_migration_via_alter_bundle ... ignored, blocked on ALTER BUNDLE parser + schema-mutation engine path
+test test_v03_bundle_downgrade_to_v02_rejected_without_force ... ignored, blocked on DOWNGRADE schema command
+test test_v03_schema_serialization_roundtrip ... ignored, blocked on v0.3 schema serialization extension
+test test_integrity_tag_constant_32_bytes ... ok
+test test_integrity_tag_invariant_under_capability_delegation ... ok
+test test_integrity_tag_changes_on_record_insertion ... ok
+test test_integrity_tag_invariant_under_gauge_rotation ... ok
+test test_integrity_signing_key_separate_from_gauge_key ... ok
+test test_integrity_tag_preserves_unindexed_population_permutation ... ok
+test test_integrity_tag_changes_on_single_record_tamper ... ok
+test test_integrity_tag_changes_on_record_deletion ... ok
+test test_integrity_tag_changes_on_planted_index_graph_swap ... ok
+test test_integrity_tag_deterministic_under_unchanged_bundle ... ok
+test test_integrity_tag_verify_o1_in_record_count ... ok
+
+test result: ok. 11 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests\invariant_verify_v0_4.rs (target\debug\deps\invariant_verify_v0_4-055815e7316edcd3.exe)
+
+running 12 tests
+test n5b_matching_bundle_id_does_not_block_verified ... ok
+test n5_bundle_mismatch_caught_before_tuple_check ... ok
+test n2_soundness_wrong_k_caught ... ok
+test n2_soundness_each_field_independently_detected ... ok
+test n7_end_to_end_via_production_encryption_pipeline_seed_a ... ok
+test n7_end_to_end_via_production_encryption_pipeline_seed_b ... ok
+test n1_verifier_needs_no_gauge_key ... ok
+test n4_full_tuple_required_to_catch_gameable_k ... ok
+test n6_same_k_different_topology_caught_by_full_tuple ... ok
+test n4_indexed_field_lambda1_differs_seed_a ... ok
+test n4_indexed_field_lambda1_differs_seed_b ... ok
+test n3_completeness_random_bundles ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.04s
+
+     Running tests\k_preserving_v0_4.rs (target\debug\deps\k_preserving_v0_4-3d21ce33f354a317.exe)
+
+running 5 tests
+test q1_general_gl_shear_breaks_per_field_k ... ok
+test q2_diagonal_affine_preserves_per_field_k ... ok
+test q4_scalar_isotropic_preserves_k_and_euclidean_ball ... ok
+test q3_rotation_preserves_trcov_but_not_range_sq ... ok
+test q5_lwe_samples_look_more_like_random_than_secret_in_k ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_adjacency_real_data_smoke.rs (target\debug\deps\kahler_adjacency_real_data_smoke-8804d991e3426a27.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_brain_endpoints_contract.rs (target\debug\deps\kahler_brain_endpoints_contract-cf814d95d1091560.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_curvature_marcella_contract.rs (target\debug\deps\kahler_curvature_marcella_contract-1ddeede07c7c12bc.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_curvature_real_data_smoke.rs (target\debug\deps\kahler_curvature_real_data_smoke-4d353a94cbb6c19e.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_hadamard_marcella_contract.rs (target\debug\deps\kahler_hadamard_marcella_contract-a5ed3424090ae25a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_hadamard_real_data_smoke.rs (target\debug\deps\kahler_hadamard_real_data_smoke-5ac32356bd331723.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_hodge_marcella_contract.rs (target\debug\deps\kahler_hodge_marcella_contract-475a3b84c8f02431.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_hodge_real_data_smoke.rs (target\debug\deps\kahler_hodge_real_data_smoke-bee25bf1df620fb6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_l7_marcella_contract.rs (target\debug\deps\kahler_l7_marcella_contract-35af84dcb9b71335.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_l7_real_data_smoke.rs (target\debug\deps\kahler_l7_real_data_smoke-a508e991ce5f8d01.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_optionality.rs (target\debug\deps\kahler_optionality-0212b14e1280f36b.exe)
+
+running 2 tests
+test schema_without_kahler_is_default_none_when_feature_on ... ok
+test insert_read_roundtrip_unaffected_by_kahler_feature ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_pr_window_marcella_contract.rs (target\debug\deps\kahler_pr_window_marcella_contract-2300aa36b6f4881f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_real_data_smoke.rs (target\debug\deps\kahler_real_data_smoke-26aeb0ddae4c4f75.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_spectral_marcella_contract.rs (target\debug\deps\kahler_spectral_marcella_contract-b9ce8999dd5a5df4.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_spectral_real_data_smoke.rs (target\debug\deps\kahler_spectral_real_data_smoke-ac6958689d351e66.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_transport_marcella_contract.rs (target\debug\deps\kahler_transport_marcella_contract-f045d111a62ea849.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kahler_transport_real_data_smoke.rs (target\debug\deps\kahler_transport_real_data_smoke-50015d582e98d419.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\lattice_obc_basic.rs (target\debug\deps\lattice_obc_basic-bd1a7fdde2c845da.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\ledger_v0_3.rs (target\debug\deps\ledger_v0_3-f48181bdd3f0565b.exe)
+
+running 9 tests
+test test_holonomy_ledger_concurrent_appends_serialize ... ignored, deferred to bundle/WAL integration commit (Sprint K follow-up)
+test test_holonomy_ledger_append_only ... ok
+test test_holonomy_ledger_record_hash_walk_detects_byte_tamper ... ok
+test test_holonomy_ledger_recompute_and_compare_detects_holonomy_tamper ... ok
+test test_holonomy_ledger_root_changes_on_new_write ... ok
+test test_holonomy_ledger_rotation_compatible ... ok
+test test_holonomy_ledger_inclusion_proof_fails_on_tampered_leaf ... ok
+test test_holonomy_ledger_merkle_root_deterministic ... ok
+test test_holonomy_ledger_inclusion_proof_verifies ... ok
+
+test result: ok. 8 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests\locus_dials.rs (target\debug\deps\locus_dials-c9dd956773bd37ef.exe)
+
+running 25 tests
+test a4_1_vector_fiber_field_scopes_per_component ... ok
+test a4_3_locus_alone_uses_all_numeric_fibers ... ok
+test a4_3_locus_with_k_covering_bundle_equals_fields_only ... ok
+test a4_3_locus_scopes_statistics_to_cluster_a ... ok
+test a4_3_locus_default_k_is_64 ... ok
+test a4_2_defaults_fence_horizon_byte_identical_in_process ... ok
+test a4_2_defaults_fence_capacity_byte_identical_in_process ... ok
+test a4_2_tau_only_stays_on_default_path ... ok
+test a4_2_defaults_fence_capacity_matches_prechange_binary_golden ... ok
+test a4_2_defaults_fence_horizon_matches_prechange_binary_golden ... ok
+test a4_err_vector_field_in_multi_field_list_is_loud ... ok
+test a4_2_fixed_escape_hatch_matches_prechange_binary_golden ... ok
+test a4_err_empty_fields_is_loud ... ok
+test a4_4_fixed_precedence_over_locus_and_fields ... ok
+test a4_1_capacity_scoped_through_same_formulas ... ok
+test a4_err_non_numeric_field_is_loud ... ok
+test a4_err_capacity_shares_the_validation ... ok
+test a4_1_census_pollution_reproduced_then_cured_by_fields_scope ... ok
+test a4_1_estimator_welford_composes_with_fields_scope ... ok
+test a4_err_locus_unknown_field_is_loud ... ok
+test a4_err_k_zero_is_loud ... ok
+test a4_err_unknown_field_in_fields_is_loud ... ok
+test a4_err_locus_malformed_is_loud ... ok
+test a4_err_k_without_locus_is_loud ... ok
+test a4_err_locus_record_missing_is_404_class_naming_the_key ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\loop_transport_first_arg_flex.rs (target\debug\deps\loop_transport_first_arg_flex-6300c1d072f7aeb4.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\membership_index_v0_4.rs (target\debug\deps\membership_index_v0_4-066ed71c97394e69.exe)
+
+running 6 tests
+test p1_threshold_is_dimension_aware ... ok
+test p2_tpr_matches_one_minus_alpha_tail_bound ... ok
+test smoke_non_member_far_from_centroid_rejected ... ok
+test p4_scalar_gauge_preserves_ball_membership ... ok
+test p3_adversarial_boundary_false_admit_documented ... ok
+test p5_dynamic_centroid_drift_single_vs_batch ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\mmap_index_coverage.rs (target\debug\deps\mmap_index_coverage-1e4444711fe3e91f.exe)
+
+running 2 tests
+test an_empty_base_is_completely_covered ... ok
+test indexing_an_mmap_backed_bundle_reports_partial_coverage ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\noop_notices.rs (target\debug\deps\noop_notices-ee651e5654238e80.exe)
+
+running 4 tests
+test maintenance_on_missing_bundle_still_errors ... ok
+test maintenance_verbs_return_notice_not_bare_ok ... ok
+test show_fields_returns_real_rows ... ok
+test session_stubs_return_notice ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\obstruction_basic.rs (target\debug\deps\obstruction_basic-78a1cd461b8bfbf2.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\one_version.rs (target\debug\deps\one_version-17b12814c59f4d50.exe)
+
+running 2 tests
+test health_metrics_and_the_api_document_report_the_same_version ... ok
+test no_hardcoded_version_literal_remains_in_the_health_response ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\openapi_route_coverage.rs (target\debug\deps\openapi_route_coverage-e0ed3c49ac4874f8.exe)
+
+running 7 tests
+test undocumented_backlog_matches_real_routes ... ok
+test cadence_index_blocked_is_documented_nullable ... ok
+test undocumented_backlog_has_no_stale_entries ... ok
+test the_ml_family_is_documented ... ok
+test every_router_route_is_documented ... ok
+test every_openapi_path_exists_in_the_router ... ok
+test internal_routes_are_real_and_undocumented ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\parallel_read_scaling.rs (target\debug\deps\parallel_read_scaling-43f8f4b6fb38b7f0.exe)
+
+running 2 tests
+test optimizer_index_vs_scan ... ignored, timing measurement, not a correctness gate
+test parallel_point_query_scaling ... ignored, timing measurement, not a correctness gate
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\parser_error_ux.rs (target\debug\deps\parser_error_ux-0c1ae713dacd9541.exe)
+
+running 3 tests
+test long_ascii_string_literal_truncates_at_24_chars ... ok
+test short_multibyte_string_literal_renders_whole ... ok
+test long_multibyte_string_literal_in_error_path_returns_err_not_panic ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pathguard_escapes.rs (target\debug\deps\pathguard_escapes-a29991b117f2c4ad.exe)
+
+running 14 tests
+test root_unset_fails_closed_both_modes ... ok
+test root_set_but_empty_fails_closed ... ok
+test escape_error_names_path_and_root ... ok
+test missing_file_read_reports_notfound_io ... ok
+test windows_rooted_backslash_rejected ... ok
+test parent_traversal_rejected ... ok
+test rooted_paths_rejected ... ok
+test windows_drive_prefix_rejected ... ok
+test windows_unc_rejected ... ok
+test root_pointing_at_missing_dir_is_unresolvable_for_reads ... ok
+test legit_relative_write_accepted_and_parent_created ... ok
+test curdir_stripped_empty_and_dot_rejected ... ok
+test legit_relative_read_accepted_canonical ... ok
+Junction created for D:\gigi-verification\sphere-transport-20261113\default-tests-temp\.tmpLd9lvR\sneak <<===>> D:\gigi-verification\sphere-transport-20261113\default-tests-temp\.tmp94OfVc
+test junction_inside_root_pointing_outside_rejected ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests\pattern_hunt_cover_excluding.rs (target\debug\deps\pattern_hunt_cover_excluding-96ae0a3bf4df5830.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_hunt_excluding.rs (target\debug\deps\pattern_hunt_excluding-3f061277e1bc1bab.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_hunt_executor.rs (target\debug\deps\pattern_hunt_executor-f295ec27c594e99a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_hunt_parser.rs (target\debug\deps\pattern_hunt_parser-610fbdb1446159b5.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_hunt_registry.rs (target\debug\deps\pattern_hunt_registry-37795453ee6b7903.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_hunt_weight_minmax.rs (target\debug\deps\pattern_hunt_weight_minmax-7bf4bfacda833ca8.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_v02_curvature.rs (target\debug\deps\pattern_v02_curvature-c786c7c878c5cc1f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_v02_explain.rs (target\debug\deps\pattern_v02_explain-c42842619ea3941a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_v02_preflight.rs (target\debug\deps\pattern_v02_preflight-5fb0ed1f991fa77a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_v02_repair.rs (target\debug\deps\pattern_v02_repair-2f8ac776ca5ac0a6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_v02_verdict.rs (target\debug\deps\pattern_v02_verdict-3c7b1582bc2b0167.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pattern_v02_wire.rs (target\debug\deps\pattern_v02_wire-a28619d75abe2162.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\quantized_holonomy.rs (target\debug\deps\quantized_holonomy-4f9b33b03528d4c7.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\ratchet_v0_3.rs (target\debug\deps\ratchet_v0_3-9fd09bacc6cba780.exe)
+
+running 10 tests
+test test_ratchet_concurrent_writes_serialize_via_wal ... ignored, deferred to bundle/WAL integration (Sprint M follow-up)
+test test_ratchet_integrity_tag_invariant_under_ratchet ... ok
+test test_ratchet_checkpoint_skip_o_n ... ok
+test test_ratchet_forward_secrecy_past_retention ... ok
+test test_ratchet_advances_per_write ... ok
+test test_ratchet_replay_from_seed_matches_current_state ... ok
+test test_ratchet_curvature_invariant_under_ratchet ... ok
+test test_ratchet_hkdf_one_wayness_indistinguishability ... ok
+test test_ratchet_kdf_chain_deterministic ... ok
+test test_ratchet_proxy_capability_pins_to_checkpoint ... ok
+
+test result: ok. 9 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests\rebuild_by_drop_and_recreate.rs (target\debug\deps\rebuild_by_drop_and_recreate-154b89a9ce09ecd8.exe)
+
+running 2 tests
+test the_dropped_snapshot_is_kept_aside_rather_than_deleted ... ok
+test a_rebuilt_bundle_does_not_resurrect_its_old_rows_on_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests\record_vector_endpoint.rs (target\debug\deps\record_vector_endpoint-a3e28803caa9fa8c.exe)
+
+running 6 tests
+test composite_key_bundles_are_rejected_by_arity_check ... ok
+test first_vector_field_returns_none_when_no_vector_present ... ok
+test response_wire_shape_has_exact_four_keys ... ok
+test point_query_round_trips_vector_value ... ok
+test first_vector_field_returns_embedding_in_schema_order ... ok
+test point_query_returns_none_for_missing_record ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\rekey_durability.rs (target\debug\deps\rekey_durability-4be3b5807868045c.exe)
+
+running 3 tests
+test rotation_names_a_missing_secret ... ok
+test rotation_to_a_non_env_seed_is_refused ... ok
+test rotation_survives_a_restart_and_rebinds_the_seed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\scalar_curvature_is_a_shape_statistic.rs (target\debug\deps\scalar_curvature_is_a_shape_statistic-3c187ff9d8d5a891.exe)
+
+running 3 tests
+test two_records_are_always_one_quarter ... ok
+test range_normalised_so_shape_not_spread ... ok
+test uniform_noise_reads_one_twelfth ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests\schema_declarations.rs (target\debug\deps\schema_declarations-bdf3c64c13289bb2.exe)
+
+running 14 tests
+test undeclared_retention_is_not_indefinite ... ok
+test declaration_clauses_are_order_free_and_reject_duplicates ... ok
+test encryption_declared_on_a_base_field_is_refused_at_creation ... ok
+test a_field_unit_can_be_written_in_the_query_language ... ok
+test a_schema_tripping_both_creation_rules_reports_the_structural_one ... ok
+test the_declarations_can_be_written_in_the_query_language ... ok
+test an_order_field_the_bundle_does_not_define_is_refused_at_creation ... ok
+test an_order_field_that_does_not_order_the_rows_refuses ... ok
+test the_seed_variable_name_is_chosen_by_the_schema ... ok
+test cadence_refuses_a_bundle_that_declares_discrete_events ... ok
+test an_override_naming_an_undeclared_field_refuses_rather_than_falling_back ... ok
+test every_declaration_survives_a_restart ... ok
+test without_a_declaration_or_an_override_a_hash_stored_bundle_refuses ... ok
+test a_declared_order_field_is_used_without_being_named_on_the_call ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\schema_drift_detection.rs (target\debug\deps\schema_drift_detection-124b5cc104540700.exe)
+
+running 3 tests
+test a_coherent_engine_reports_no_drift ... ok
+test a_schema_mutation_that_bypasses_the_engine_is_detected ... ok
+test the_versioned_update_path_stays_coherent ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\schema_durability.rs (target\debug\deps\schema_durability-07284a959e22615a.exe)
+
+running 8 tests
+test every_bundle_schema_field_has_an_inv_s_disposition ... ok
+test repeated_add_index_appends_no_wal_entry ... ok
+test added_field_survives_restart_exactly_once ... ok
+test index_survives_restart_with_no_compaction_in_between ... ok
+test reemitted_create_bundle_does_not_drop_records ... ok
+test dropped_field_and_its_index_stay_dropped_across_restart ... ok
+test index_survives_compaction_not_merely_restart ... ok
+test index_survives_restart_and_the_two_schema_copies_agree ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\scj_atlas_contract.rs (target\debug\deps\scj_atlas_contract-535b3730b43b0d44.exe)
+
+running 1 test
+test instant_distance_version_pin_is_stable ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\shape_verb_wire_contract.rs (target\debug\deps\shape_verb_wire_contract-53dff9e6db034833.exe)
+
+running 1 test
+test shape_verbs_hold_their_wire_contract ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s
+
+     Running tests\sheets_write_durability.rs (target\debug\deps\sheets_write_durability-8357f7fdcad79f3a.exe)
+
+running 3 tests
+test a_sheet_delete_survives_restart_without_a_snapshot ... ok
+test the_version_returned_to_the_client_survives_restart ... ok
+test a_sheet_edit_survives_restart_without_a_snapshot ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\single_flight_cache_byte_identity.rs (target\debug\deps\single_flight_cache_byte_identity-330851b1fb0605d6.exe)
+
+running 10 tests
+test get_or_compute_propagates_compute_error ... ok
+test flow_cache_shape_miss_hit_invalidate_sequence ... ok
+test acquire_compute_lock_per_key_arcs_shared ... ok
+test morse_cache_shape_copy_value_round_trips ... ok
+test vector_cache_shape_arc_clone_is_refcount_only ... ok
+test capacity_clamped_to_one_when_zero_requested ... ok
+test flow_cache_shape_key_disambiguates_mode_and_eps ... ok
+test flow_cache_shape_evicts_at_capacity_fifo_on_iteration ... ok
+test clear_drops_all_entries_across_shapes ... ok
+test vector_cache_shape_get_or_compute_single_flight ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\snapshot_header_verification.rs (target\debug\deps\snapshot_header_verification-e72fc07e4d8a4a44.exe)
+
+running 4 tests
+test a_healthy_bundle_reports_no_unreadable_fields ... ok
+test healthy_snapshot_reports_no_incomplete_headers ... ok
+test a_reopened_short_header_names_the_fields_it_cannot_see ... ok
+test short_header_is_detected_against_the_schema ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running tests\snapshot_high_field_wedge.rs (target\debug\deps\snapshot_high_field_wedge-b45ecd5cd62cb423.exe)
+
+running 6 tests
+test bisect_measure ... ignored, manual bisection harness; set WEDGE_FIELDS / WEDGE_RECORDS and run with --ignored
+test snapshot_timeout_degrades_to_skip_not_wedge ... ok
+test wide_bundle_encode_is_not_cubic_in_field_count ... ok
+test low_field_count_snapshot_is_fast ... ok
+test high_field_count_snapshot_completes_within_budget ... ok
+test roundtrip_wide_bundle_reopens_in_mmap_with_same_count_and_fields ... ok
+
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 24.98s
+
+     Running tests\snapshot_incident_20260820.rs (target\debug\deps\snapshot_incident_20260820-7f59bd3c7505290d.exe)
+
+running 6 tests
+test plus_in_text_value_survives_snapshot_roundtrip ... ok
+test float_keyed_bundle_does_not_duplicate_across_snapshots ... ok
+test multiline_text_survives_snapshot_as_one_record ... ok
+test timestamp_keyed_bundle_does_not_duplicate_across_snapshots ... ok
+test every_header_delimiter_survives_snapshot_roundtrip ... ok
+test encode_the_real_cfs_psp_records ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests\snapshot_registry_values.rs (target\debug\deps\snapshot_registry_values-6c10b13afdb62ce6.exe)
+
+running 2 tests
+test escaped_strings_and_real_typed_values_remain_distinct ... ok
+test registry_numeric_text_survives_snapshot_and_mmap ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\snapshot_rotation.rs (target\debug\deps\snapshot_rotation-8ecccd0656c333cb.exe)
+
+running 9 tests
+test no_prev_fallback_when_no_snapshot_present ... ok
+test multiple_bundles_rotate_independently ... ok
+test rotation_writes_both_files ... ok
+test prev_only_kept_if_write_succeeded ... ok
+test read_falls_back_to_prev_when_current_corrupt ... ok
+test rotation_overwrites_existing_prev ... ok
+test read_falls_back_to_prev_on_invalid_data ... ok
+test read_falls_back_to_heap_when_both_corrupt ... ok
+test read_falls_back_to_prev_under_multiple_generations ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests\spectral_bulk_basic.rs (target\debug\deps\spectral_bulk_basic-a8a096914468fd82.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\spectral_full_basic.rs (target\debug\deps\spectral_full_basic-948eedbbb1a86a9b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\spectral_gauge_basic.rs (target\debug\deps\spectral_gauge_basic-8f0090e4f9719243.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\spectral_gauge_where_basic.rs (target\debug\deps\spectral_gauge_where_basic-9f9245bdeddd919f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\spectral_implicit_parity.rs (target\debug\deps\spectral_implicit_parity-9f8672174db9a55f.exe)
+
+running 7 tests
+test sbf3_perfect_clique_uses_analytic_formula ... ok
+test sbf3_disconnected_returns_zero ... ok
+test sbf4_betti_matches_brute_force ... ok
+test sbf1_edges_and_degrees_match_brute_force ... ok
+test sbf5_fifty_thousand_records_is_fast ... ok
+test sbf5b_eigensolver_runs_at_scale ... ok
+test sbf2_lambda1_matches_explicit_path ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.58s
+
+     Running tests\spectral_interior_basic.rs (target\debug\deps\spectral_interior_basic-fe23c1c9075af6e9.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\spectral_magnetic_basic.rs (target\debug\deps\spectral_magnetic_basic-d5234bd6850e18d3.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\spectral_matrix_basic.rs (target\debug\deps\spectral_matrix_basic-f41f841c610dc191.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\spectral_no_wedge.rs (target\debug\deps\spectral_no_wedge-fe5deb4f5a7d33d0.exe)
+
+running 2 tests
+test sbf6_slow_verb_does_not_block_reads_or_ingest ... ignored, boots a server; run with --ignored
+test sbf6b_betti_returns_same_numbers_over_http ... ignored, boots a server; run with --ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\spectral_refusal.rs (target\debug\deps\spectral_refusal-4449c6655e4637f0.exe)
+
+running 4 tests
+test or_zero_preserves_the_old_behaviour_explicitly ... ok
+test no_indexed_fields_is_undefined_not_zero ... ok
+test disjoint_cliques_are_undefined_with_the_right_component_count ... ok
+test one_indexed_field_with_one_value_is_measured ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\sphere_transport.rs (target\debug\deps\sphere_transport-d9e7d8b5f220b0d9.exe)
+
+running 8 tests
+test sphere_identity_small_angle_roundoff_normalization_and_zero ... ok
+test sphere_legacy_antipodal_and_small_angle_behavior_unchanged ... ok
+test sphere_quarter_loop_basis_positions_reverse_and_backtrack ... ok
+test sphere_refuses_dimensions_nonfinite_and_magnitude ... ok
+test sphere_refuses_nonunit_nontangent_and_antipodal ... ok
+test sphere_record_adapter_never_invents_components ... ok
+test sphere_nonaxis_oracle_inverse_and_frame_covariance ... ok
+test sphere_embedded_gigi_showcase_persists_derived_transport_and_reopens ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\sssp_curvature_gate.rs (target\debug\deps\sssp_curvature_gate-2f4c3ebabfc558b6.exe)
+
+running 1 test
+test gigi_curvature_gate_vs_degree_gate has been running for over 60 seconds
+test gigi_curvature_gate_vs_degree_gate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 327.58s
+
+     Running tests\sssp_graph_as_bundle.rs (target\debug\deps\sssp_graph_as_bundle-256f2c8d28a0c6cc.exe)
+
+running 1 test
+test an_sssp_weighted_graph_is_a_gigi_bundle ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.22s
+
+     Running tests\statistical_summaries.rs (target\debug\deps\statistical_summaries-2c32f25ef3db061b.exe)
+
+running 13 tests
+test complete_moment_cache_evicts_old_field_sets_and_rebuilds ... ok
+test noncontiguous_batch_keys_stay_addressable_in_sequential_storage ... ok
+test schema_defaults_and_drops_refresh_live_field_summaries ... ok
+test warm_moments_handle_missing_appends_overwrites_and_truncate ... ok
+test replacement_changes_the_population_not_the_observation_count ... ok
+test wide_moments_are_correct_but_not_retained ... ok
+test sparse_patches_and_duplicate_writes_match_the_live_rows ... ok
+test deletions_remove_extrema_and_last_observation ... ok
+test warm_complete_moments_append_without_scanning_old_records ... ok
+test diagnostic_objects_and_arrays_roundtrip_in_dhoom ... ok
+test promoted_mmap_fit_keeps_source_revision_instead_of_row_count ... ok
+test heap_and_mmap_statistics_follow_updates_deletes_and_restart ... ok
+test long_mutation_sequence_agrees_with_fresh_recomputation ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests\threshold_v0_3.rs (target\debug\deps\threshold_v0_3-24a06280dacfeb7f.exe)
+
+running 9 tests
+test test_cech_threshold_gql_reconstruct ... ignored, deferred to parser commit (GAUGE bundle RECONSTRUCT GQL surface)
+test test_cech_threshold_gql_split ... ignored, deferred to parser commit (GAUGE bundle SPLIT GQL surface)
+test test_cech_cocycle_validation ... ok
+test test_cech_share_authentication ... ok
+test test_cech_split_k_minus_1_information_theoretic_security ... ok
+test test_cech_share_size_32_bytes_plus_tag ... ok
+test test_cech_revocation_requires_resplit ... ok
+test test_cech_lagrange_correctness ... ok
+test test_cech_split_n_recoverable_from_k ... ok
+
+test result: ok. 7 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests\timestamp_ergonomics.rs (target\debug\deps\timestamp_ergonomics-a1c4bdc7d9060b59.exe)
+
+running 6 tests
+test iso_and_epoch_inserts_normalize_to_timestamp ... ok
+test now_literal_is_current_epoch_ms ... ok
+test garbage_dates_are_loud_not_stored ... ok
+test where_compares_dates_as_time_not_type_tags ... ok
+test update_coerces_iso_string_to_timestamp_not_text ... ok
+test survives_wal_replay ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\topology_verbs_gql_integration.rs (target\debug\deps\topology_verbs_gql_integration-a42cf948e9462b2d.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\u1_flux_basic.rs (target\debug\deps\u1_flux_basic-a88b95b6f71167c6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\u1_linking_basic.rs (target\debug\deps\u1_linking_basic-f3cdeee9b9c8308b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\value_equality_contract.rs (target\debug\deps\value_equality_contract-870ed621292c5e52.exe)
+
+running 3 tests
+test fielddef_equality_is_reflexive ... ignored, OPEN BUG, downstream of the Value equality defect above. FieldDef now derives PartialEq (TDD-IDX v5) so the replay delta can compare whole defs rather than names. FieldDef.default is a Value, whose PartialEq is the derived NaN-broken one, so a field with a NaN default is not equal to ITSELF and the delta's closing sequence assertion fires on every replay of that bundle. Loud rather than silent, so it is the safe direction, but it is a false alarm. Fix belongs with the Value equality contract, not by weakening the assertion. See TDD-IDX section F-2b.
+test nan_value_contracts_are_consistent ... ignored, OPEN BUG (found 2026-08-15 while revising TDD-IDX). Value's Eq, Hash and Ord disagree on NaN. PartialEq is derived, so Float(NaN) != Float(NaN) by IEEE; Hash uses to_bits() so both hash alike; Ord uses total_cmp() so both compare Equal. `impl Eq for Value {}` (types.rs:38) therefore asserts a reflexivity that does not hold. Consequence: HashMap<Value, _> grows a new UNREACHABLE entry per NaN key (get returns None immediately after insert), while BTreeMap<Value, _> is fine. field_index is a HashMap<Value, RoaringBitmap> (bundle.rs:3298), so every NaN-valued record becomes its own singleton bucket and leaks an index entry. Wider than indexing; see theory/gigi/TDD-IDX_index_set_durability.md section 2.7 and V-8. Run with `cargo test -- --ignored` to see it fail.
+test ord_and_partialeq_agree_on_equality ... ignored, OPEN BUG (found 2026-08-15, Hallie review 2 of TDD-IDX). Ord and PartialEq are two independent, disagreeing definitions of equality on Value. Integer(1).cmp(Float(1.0)) is Equal while == is false, so a BTreeMap OVERWRITES across numeric types while a HashMap keeps them separate. Worse: there is no (Binary, Binary) arm in Ord::cmp (types.rs:82 fallthrough), so ALL Binary values compare Equal and a BTreeMap collapses every Binary key into one entry. This is the general form of the NaN defect and points the opposite way. See TDD-IDX section 2.7. Run with `cargo test -- --ignored`.
+
+test result: ok. 0 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\wal_bypass_mutations.rs (target\debug\deps\wal_bypass_mutations-8b0e62764d3155cb.exe)
+
+running 1 test
+test store_level_update_survives_restart ... ignored, OPEN BUG (found 2026-08-15 by TDD-IDX W-IDX-2). Nine live HTTP mutation routes bypass the WAL: PATCH/DELETE {name}/{path}, PATCH {name}/records, POST {name}/upsert, /bulk-delete, /truncate, /increment, /update, /delete. Each takes bundle_mut and calls a store method directly instead of the journalling Engine::update / Engine::delete, so the mutation is durable only via a subsequent snapshot. Verified by execution: the value reads `after` live and `before` after a restart with no snapshot in between. Invalidation is fine on all of them; journalling is what is missing. Wants its own spec - this is TDD_DUR section 5 WAL-bypass, now sized. Run with `cargo test -- --ignored`.
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\wal_key_material.rs (target\debug\deps\wal_key_material-97b597e04b5d6e41.exe)
+
+running 5 tests
+test plaintext_bundle_is_not_subject_to_the_seed_rule ... ok
+test encrypted_bundle_with_a_non_env_seed_is_refused ... ok
+test env_sourced_key_is_rederived_on_reopen ... ok
+test reopen_without_the_seed_refuses_loudly ... ok
+test wal_does_not_carry_derived_key_material ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\wal_plaintext_fiber.rs (target\debug\deps\wal_plaintext_fiber-97a4935a22b30d5a.exe)
+
+running 3 tests
+test an_update_does_not_carry_plaintext_either ... ignored, OPEN BUG (found 2026-09-20, same family as the insert leak fixed that day). Engine::update journals the patch record before the store applies the gauge transform, so a patch that touches an encrypted fiber field puts that value in the log in the clear. Not fixed with the insert path because a patch is partial, and a field in an Isometric group cannot be sealed on its own -- the group's members are transformed together, so sealing one member of a partial patch needs the others, which the patch does not carry. Wants a decision about partial groups before it wants code. Run with `cargo test -- --ignored`.
+test a_sealed_record_survives_a_restart ... ok
+test wal_does_not_carry_plaintext_fiber_values ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\weighted_walk_counts.rs (target\debug\deps\weighted_walk_counts-9f4329557581b94f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\windowed_coherence.rs (target\debug\deps\windowed_coherence-91c7137855cadbe0.exe)
+
+running 21 tests
+test a3_1_default_threshold_is_marcellas_confident_gate ... ok
+test a3_4_transport_rotation_matrix_carries_u_to_v ... ok
+test a3_err_unknown_key_field_is_404_class_naming_it ... ok
+test a3_err_fiber_validation_as_wave_1 ... ok
+test a3_3_window_arithmetic_and_start_indices ... ok
+test a3_2_threshold_override_moves_the_verdict ... ok
+test a3_lambda_envelope_is_whole_bundle_ride_along ... ok
+test a3_4_one_shot_matches_two_call_surface_to_1e12 ... ok
+test a3_err_threshold_out_of_range_is_loud ... ok
+test a3_err_missing_key_is_404_class_naming_which_key ... ok
+test a3_2_vector_fiber_scoping_matches_scalar_family ... ok
+test a3_2_known_rotation_defects_pinned_window_2 ... ok
+test a3_2_known_rotation_defects_pinned_window_3 ... ok
+test a3_wire_shape_and_lambda_envelope ... ok
+test a3_1_identity_transport_defect_exactly_zero ... ok
+test a3_2_duplicate_consecutive_keys_are_identity_segments ... ok
+test a3_1_identity_transport_window_covering_whole_path ... ok
+test a3_2_fiber_range_sugar_works ... ok
+test review_composition_order_pinned_by_3d_non_coplanar_anchor ... ok
+test review_exact_antipodal_transports_as_identity_pinned ... ok
+test review_zero_norm_endpoint_transports_as_identity_pinned ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\wish_extensions_halcyon_asks.rs (target\debug\deps\wish_extensions_halcyon_asks-e51afa998907dbdf.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\wish_integrate_along_path.rs (target\debug\deps\wish_integrate_along_path-3554c6f328ae269c.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\wish_wire.rs (target\debug\deps\wish_wire-4c3921d25a8aac34.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests gigi
+
+running 4 tests
+test src\dhoom.rs - dhoom (line 7) ... ignored
+test src\dhoom.rs - dhoom::StreamingDhoomEncoder (line 3516) ... ignored
+test src\dhoom.rs - dhoom::profile (line 1920) ... ignored
+test src\curvature.rs - curvature::lambda_budget_for_bundle (line 391) ... ok
+
+test result: ok. 1 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 4.29s
+

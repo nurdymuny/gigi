@@ -1,7 +1,13 @@
 //! HOLONOMY AROUND CYCLE — Poincaré Tier 1 readout verb (SU(2)).
 //!
-//! Davis–Poincaré Thm 3.6: holonomy-trivial ⟺ π₁ = 0. On a lens space
-//! `L(p, q) = S³/ℤ_p` realized as a periodic cubic lattice with a
+//! Restricted lens/lattice readout, not a test of simple connectivity for an
+//! arbitrary connection. A curved connection can have nontrivial holonomy on a
+//! simply connected space (for example, Levi-Civita transport on the sphere).
+//! For a flat connection holonomy factors through the fundamental group; trivial
+//! holonomy still does not imply a trivial fundamental group without additional
+//! assumptions such as faithfulness of that representation.
+//!
+//! In the lens-space model `L(p, q) = S³/ℤ_p`, represented here by a periodic cubic lattice with a
 //! twisted boundary condition `Ω = exp(2πi·q·σ₃/p)` on the z-wrap links,
 //! `π₁ = ℤ/p` lives in the SU(2) holonomy around the non-contractible
 //! z-cycle. This module is the readout: it builds the ordered edge list

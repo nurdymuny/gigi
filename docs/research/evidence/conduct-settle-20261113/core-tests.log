@@ -1,0 +1,252 @@
+warning: unused import: `GroupEncoding`
+   --> src\pairing_delegation.rs:159:27
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                           ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Value`
+  --> src\geometry\sample_transport.rs:35:28
+   |
+35 | use crate::types::{Record, Value};
+   |                            ^^^^^
+
+warning: unused import: `FieldDef`
+ --> src\join.rs:8:34
+  |
+8 | use crate::types::{BundleSchema, FieldDef, Record, Value};
+  |                                  ^^^^^^^^
+
+warning: unreachable statement
+    --> src\parser.rs:5698:17
+     |
+5694 | /                     return Err(
+5695 | |                         "CHERN_CLASS GROUP clause requires the `gauge` feature".into(),
+5696 | |                     );
+     | |_____________________- any code following this expression is unreachable
+5697 |                   }
+5698 |                   continue;
+     |                   ^^^^^^^^^ unreachable statement
+     |
+     = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Group`
+   --> src\pairing_delegation.rs:159:20
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                    ^^^^^
+
+warning: variable does not need to be mutable
+  --> src\ml\circulation.rs:90:9
+   |
+90 |     let mut node_of = |labels: &mut Vec<String>, idx: &mut std::collections::HashMap<String, usize>, s: String| -> usize {
+   |         ----^^^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> src\parser.rs:5658:13
+     |
+5658 |         let mut group: Option<()> = None;
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: method `b_inv` is never used
+   --> src\geometry\generative_flow.rs:187:19
+    |
+152 | / impl<F> GenerativeFlow<F>
+153 | | where
+154 | |     F: Fn(&[f64]) -> Vec<f64>,
+    | |______________________________- method in this implementation
+...
+187 |       pub(crate) fn b_inv(&self) -> &[f64] {
+    |                     ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `xor_into` is never used
+   --> src\discrete\f2_rank.rs:396:4
+    |
+396 | fn xor_into(dst: &mut [u64], src: &[u64], len: usize) {
+    |    ^^^^^^^^
+
+warning: function `count_zeros` is never used
+   --> src\discrete\hodge_laplacian.rs:147:4
+    |
+147 | fn count_zeros(m: &nalgebra::DMatrix<f64>, tol: f64) -> usize {
+    |    ^^^^^^^^^^^
+
+warning: multiple methods are never used
+    --> src\parser.rs:3089:8
+     |
+2276 | impl Parser {
+     | ----------- methods in this implementation
+...
+3089 |     fn parse_encryption_mode_after_keyword(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4657 |     fn parse_seed_bracket(&mut self) -> Result<SeedRange, String> {
+     |        ^^^^^^^^^^^^^^^^^^
+...
+4667 |     fn parse_loop_transport_output_id(&mut self) -> Result<LoopTransportOutputId, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4680 |     fn parse_loop_transport_return_id(&mut self) -> Result<LoopTransportReturnId, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4696 |     fn parse_loop_transport_return_list(&mut self) -> Result<Vec<LoopTransportReturnId>, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4713 |     fn parse_sham_block(&mut self) -> Result<ShamBlock, String> {
+     |        ^^^^^^^^^^^^^^^^
+...
+4755 |     fn expect_bool_word(&mut self) -> Result<bool, String> {
+     |        ^^^^^^^^^^^^^^^^
+
+warning: `gigi` (lib) generated 11 warnings (run `cargo fix --lib -p gigi` to apply 5 suggestions)
+warning: unused import: `GeometricFields`
+  --> src\bin\gigi_stream.rs:55:27
+   |
+55 | use gigi::observability::{GeometricFields, LogCategory, LogConfig, LogEvent, LogLevel, Logger, Metrics, new_request_id};
+   |                           ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:11619:9
+      |
+11619 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+      |         ----^^^^^
+      |         |
+      |         help: remove this `mut`
+      |
+      = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:11793:9
+      |
+11793 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+      |         ----^^^^^
+      |         |
+      |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:12328:9
+      |
+12328 |     let mut anomalies_sent: u64 = 0;
+      |         ----^^^^^^^^^^^^^^
+      |         |
+      |         help: remove this `mut`
+
+warning: unused variable: `row`
+     --> src\bin\gigi_stream.rs:14192:79
+      |
+14192 |             let filtered: Vec<gigi::types::Record> = rows.into_iter().filter(|row| {
+      |                                                                               ^^^ help: if this is intentional, prefix it with an underscore: `_row`
+      |
+      = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `email` is never read
+  --> src\bin\gigi_stream.rs:94:5
+   |
+92 | struct GigiClaims {
+   |        ---------- field in this struct
+93 |     #[serde(default)]
+94 |     email: String,
+   |     ^^^^^
+   |
+   = note: `GigiClaims` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `lambda_budget_for_bundle` is never used
+   --> src\bin\gigi_stream.rs:876:4
+    |
+876 | fn lambda_budget_for_bundle(state: &Arc<StreamState>, bundle_name: &str) -> f64 {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `PullbackCurvatureReport` is never constructed
+   --> src\bin\gigi_stream.rs:981:8
+    |
+981 | struct PullbackCurvatureReport {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `insert` is never used
+    --> src\bin\gigi_stream.rs:4890:8
+     |
+4863 | impl BundleFlowCache {
+     | -------------------- method in this implementation
+...
+4890 |     fn insert(&self, key: CacheKey, fit: CachedFit) {
+     |        ^^^^^^
+
+warning: function `bundle_counter_header` is never used
+    --> src\bin\gigi_stream.rs:4919:4
+     |
+4919 | fn bundle_counter_header(counter: u64) -> [(axum::http::HeaderName, String); 1] {
+     |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `flow_from_bundle` is never used
+    --> src\bin\gigi_stream.rs:8308:4
+     |
+8308 | fn flow_from_bundle(
+     |    ^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> examples\attention_memory_demo.rs:114:9
+    |
+114 |     let mut next_u = |s: &mut u64| -> f64 {
+    |         ----^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `bench_point_queries` is never used
+   --> benches\ingest_bench.rs:128:4
+    |
+128 | fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, f64) {
+    |    ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (bin "gigi-stream") generated 11 warnings (run `cargo fix --bin "gigi-stream" -p gigi` to apply 5 suggestions)
+warning: `gigi` (bin "attention_memory_demo") generated 1 warning (run `cargo fix --bin "attention_memory_demo" -p gigi` to apply 1 suggestion)
+warning: `gigi` (bin "bench_ingest") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.45s
+     Running tests\conduct_settle.rs (target\debug\deps\conduct_settle-2880091cd20451c4.exe)
+
+running 17 tests
+test refuses_invalid_physical_inputs_and_times ... ok
+test source_can_absorb_energy ... ok
+test resource_and_readout_limits_are_explicit ... ok
+test open_network_is_already_at_its_own_equilibrium ... ok
+test permutation_invariance ... ok
+test crossing_is_not_settling ... ok
+test switches_are_exact_not_rounded_to_output_grid ... ok
+test settling_bound_and_deadline_have_fixed_answers ... ok
+test conductance_refusal_names_the_actual_requirement ... ok
+test strict_serialization_rejects_guessed_keys ... ok
+test picofarad_energy_uses_a_relative_not_one_joule_gate ... ok
+test two_store_oracle_charge_energy_and_current ... ok
+test time_and_capacitance_scaling_preserve_the_trajectory ... ok
+test unequal_storage_and_disconnected_equilibria ... ok
+test source_power_includes_port_loss ... ok
+test tiny_positive_mode_is_not_declared_conserved ... ok
+test very_early_charging_does_not_lose_the_transient_to_cancellation ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\dhoom_explicit_evidence.rs (target\debug\deps\dhoom_explicit_evidence-b53d872be9bb21ca.exe)
+
+running 4 tests
+test unsupported_root_unsigned_scalar_refuses_instead_of_rounding ... ok
+test independent_ledger_fields_and_empty_arrays_survive_exactly ... ok
+test explicit_encoder_rejects_ambiguous_header_names ... ok
+test finite_float_bits_survive_explicit_composite_cells ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

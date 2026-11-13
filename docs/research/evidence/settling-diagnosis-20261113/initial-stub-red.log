@@ -1,0 +1,113 @@
+EEEEEEEEEE
+======================================================================
+ERROR: test_constant_source_analytic (__main__.DiagnosisTests.test_constant_source_analytic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 13, in test_constant_source_analytic
+    np.testing.assert_allclose(diagnostic.propagate(t,2+0*t,0,.7,mode),2*(1-np.exp(-t/.7)),atol=1e-13)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 3, in propagate
+    raise NotImplementedError('input-aware diagnostic recurrence missing')
+NotImplementedError: input-aware diagnostic recurrence missing
+
+======================================================================
+ERROR: test_duplicate_clock_refuses (__main__.DiagnosisTests.test_duplicate_clock_refuses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 27, in test_duplicate_clock_refuses
+    diagnostic.propagate([0,0],[1,1],0,1)
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 3, in propagate
+    raise NotImplementedError('input-aware diagnostic recurrence missing')
+NotImplementedError: input-aware diagnostic recurrence missing
+
+======================================================================
+ERROR: test_hold_sides_are_not_interchangeable (__main__.DiagnosisTests.test_hold_sides_are_not_interchangeable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 18, in test_hold_sides_are_not_interchangeable
+    self.assertEqual(diagnostic.propagate([0,1],[0,2],0,1,'left')[-1],0)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 3, in propagate
+    raise NotImplementedError('input-aware diagnostic recurrence missing')
+NotImplementedError: input-aware diagnostic recurrence missing
+
+======================================================================
+ERROR: test_input_bounds_cover_ramp_and_both_holds (__main__.DiagnosisTests.test_input_bounds_cover_ramp_and_both_holds)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 37, in test_input_bounds_cover_ramp_and_both_holds
+    lo,hi=diagnostic.tolerance_enclosure(t,u,.5,.2,.7)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 6, in tolerance_enclosure
+    raise NotImplementedError('interval diagnostic missing')
+NotImplementedError: interval diagnostic missing
+
+======================================================================
+ERROR: test_nonfinite_refuses (__main__.DiagnosisTests.test_nonfinite_refuses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 30, in test_nonfinite_refuses
+    diagnostic.propagate([0,1],[1,float('nan')],0,1)
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 3, in propagate
+    raise NotImplementedError('input-aware diagnostic recurrence missing')
+NotImplementedError: input-aware diagnostic recurrence missing
+
+======================================================================
+ERROR: test_origin_shift (__main__.DiagnosisTests.test_origin_shift)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 21, in test_origin_shift
+    np.testing.assert_allclose(diagnostic.propagate([0,.5,1],[1,0,-1],.2,.3),
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 3, in propagate
+    raise NotImplementedError('input-aware diagnostic recurrence missing')
+NotImplementedError: input-aware diagnostic recurrence missing
+
+======================================================================
+ERROR: test_ramp_analytic (__main__.DiagnosisTests.test_ramp_analytic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 16, in test_ramp_analytic
+    np.testing.assert_allclose(diagnostic.propagate(t,t,0,.4),t-.4*(1-np.exp(-t/.4)),atol=1e-13)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 3, in propagate
+    raise NotImplementedError('input-aware diagnostic recurrence missing')
+NotImplementedError: input-aware diagnostic recurrence missing
+
+======================================================================
+ERROR: test_signed_decomposition (__main__.DiagnosisTests.test_signed_decomposition)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 43, in test_signed_decomposition
+    forcing,residual=diagnostic.decompose(np.array([2.,-3.]),np.array([1.,1.]),np.array([3.,-1.]))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 9, in decompose
+    raise NotImplementedError('signed error decomposition missing')
+NotImplementedError: signed error decomposition missing
+
+======================================================================
+ERROR: test_tau_bounds_cover_extremes (__main__.DiagnosisTests.test_tau_bounds_cover_extremes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 32, in test_tau_bounds_cover_extremes
+    lo,hi=diagnostic.tolerance_enclosure([0,1],[1,1],0,.5,2)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 6, in tolerance_enclosure
+    raise NotImplementedError('interval diagnostic missing')
+NotImplementedError: interval diagnostic missing
+
+======================================================================
+ERROR: test_tiny_ramp_does_not_cancel (__main__.DiagnosisTests.test_tiny_ramp_does_not_cancel)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_settling_diagnosis.py", line 24, in test_tiny_ramp_does_not_cancel
+    self.assertAlmostEqual(diagnostic.propagate([0,1e-10],[0,1e-10],0,1)[-1]/5e-21,1,places=9)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\settling_diagnosis.py", line 3, in propagate
+    raise NotImplementedError('input-aware diagnostic recurrence missing')
+NotImplementedError: input-aware diagnostic recurrence missing
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.052s
+
+FAILED (errors=10)

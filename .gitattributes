@@ -1,5 +1,6 @@
 # Preserve exact bytes of hash-pinned research sources and checkpoint artifacts.
 /research/ricci-checkpoint-20261117/** -text
+/research/ricci-claude-20261117/** -text
 /scripts/*ricci*.py -text
 /scripts/monodromy*.py -text
 /e2e/probes/*ricci*.py -text

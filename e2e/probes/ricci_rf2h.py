@@ -115,29 +115,46 @@ def frame(x0):
     return E
 
 
-def local_directions(x0, h, step=1e-5):
-    """(26, 11) combinations of ambient forms whose gnomonic-chart vector proxies at x0 are
-    the 11 unit affine closed jets: 3 constants and 8 traceless linear (scaled by 1/h)."""
+CLEAN_JETS = True
+
+
+def local_directions(x0, h, step=1e-3):
+    """(26, 11) ambient combinations whose gnomonic-chart vector proxies at x0 have the 11 unit
+    affine closed 1-jets AND (if CLEAN_JETS) zero 2-jet, i.e. chart-affine to second order.
+    Zeroing the 2-jet keeps the family 'locally affine in the chart' and prevents it from
+    preferring any particular global (e.g. left-invariant) form."""
     E = frame(x0)
     def proxy(xi):
         z = x0+E@xi; nz = np.linalg.norm(z); x = z/nz
-        J = (E-np.outer(x, x@E))/nz                                                # dx/dxi (4,3)
-        F = np.einsum('ia,nij,jb->nab', J, omega(x), J)                           # (26,3,3)
-        return np.stack([F[:, 1, 2], F[:, 2, 0], F[:, 0, 1]], axis=1)              # (26,3)
+        J = (E-np.outer(x, x@E))/nz
+        F = np.einsum('ia,nij,jb->nab', J, omega(x), J)
+        return np.stack([F[:, 1, 2], F[:, 2, 0], F[:, 0, 1]], axis=1)
+    s = step*h
     V0 = proxy(np.zeros(3))
-    grad = np.stack([(proxy(step*e)-proxy(-step*e))/(2*step) for e in np.eye(3)], axis=2)  # (26,3,3)
-    jet = np.concatenate([V0, h*grad.reshape(26, 9)], axis=1)                     # (26,12)
-    targets = np.zeros((11, 12))
-    targets[:3, :3] = np.eye(3)
+    grad = np.stack([(proxy(s*e)-proxy(-s*e))/(2*s) for e in np.eye(3)], axis=2)        # (26,3,3)
+    hess = []
+    for a, b in [(0, 0), (1, 1), (2, 2), (0, 1), (0, 2), (1, 2)]:
+        ea, eb = np.eye(3)[a]*s, np.eye(3)[b]*s
+        hess.append((proxy(ea+eb)-proxy(ea-eb)-proxy(-ea+eb)+proxy(-ea-eb))/(4*s*s))
+    hess = np.stack(hess, axis=2)                                                        # (26,3,6)
+    jet = np.concatenate([V0, h*grad.reshape(26, 9)], axis=1)                            # (26,12)
+    targets = np.zeros((11, 12)); targets[:3, :3] = np.eye(3)
     lin = []
     for (i, j) in [(0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1)]:
         m = np.zeros((3, 3)); m[i, j] = 1; lin.append(m)
     lin += [np.diag([1., -1., 0.]), np.diag([0., 1., -1.])]
     for k, m in enumerate(lin):
         targets[3+k, 3:] = m.ravel()
-    K, *_ = np.linalg.lstsq(jet.T, targets.T, rcond=None)                           # (26, 11)
-    if np.max(abs(jet.T@K-targets.T)) > 1e-6:
+    if CLEAN_JETS:
+        lhs = np.concatenate([jet, h*h*hess.reshape(26, 18)], axis=1)                    # (26,30)
+        rhs = np.concatenate([targets, np.zeros((11, 18))], axis=1)
+    else:
+        lhs, rhs = jet, targets
+    K, *_ = np.linalg.lstsq(lhs.T, rhs.T, rcond=None)
+    if np.max(abs(jet.T@K-targets.T)) > 1e-5:
         raise ValueError('local affine jets not spanned')
+    if CLEAN_JETS and np.max(abs((h*h*hess.reshape(26, 18)).T@K)) > 1e-4:
+        raise ValueError('second jet could not be cleared (residual %g)' % np.max(abs((h*h*hess.reshape(26, 18)).T@K)))
     return K
 
 
@@ -365,7 +382,11 @@ def solve_kkt(A, b):
     return sol[:n], {'method': 'kkt_splu', 'kkt_size': int(m+n)}
 
 
-def solve_constraints(A, b, acc_rows, offsets, nf, method='kkt'):
+SOLVER = 'dense'
+
+
+def solve_constraints(A, b, acc_rows, offsets, nf, method=None):
+    method = method or SOLVER
     if method == 'kkt':
         return solve_kkt(A, b)
     """Minimum-norm solution: (Acc) eliminated exactly per face (block-diagonal), then the
@@ -394,6 +415,17 @@ def solve_constraints(A, b, acc_rows, offsets, nf, method='kkt'):
     if Aadj.shape[0] == 0:
         return x0, info
     G = (Aadj@N).tocsr(); r = -(Aadj@x0)
+    if method == 'dense':
+        from scipy.linalg import cho_factor, cho_solve
+        GGd = (G@G.T).toarray()
+        ridge = 1e-12*float(np.max(np.diag(GGd)))
+        fac = cho_factor(GGd+ridge*np.eye(len(GGd)), lower=False, check_finite=False)
+        theta = G.T@cho_solve(fac, r)
+        for _ in range(3):
+            theta = theta+G.T@cho_solve(fac, r-G@theta)
+        info.update({'method': 'dense_cholesky', 'reduced_rows': int(G.shape[0]),
+                     'reduced_residual': float(np.linalg.norm(G@theta-r)/max(np.linalg.norm(r), 1e-300))})
+        return x0+N@theta, info
     GG = (G@G.T).tocsr()
     print(f'  GG {GG.shape} nnz {GG.nnz}', flush=True)
     from scipy.sparse.linalg import cg, LinearOperator

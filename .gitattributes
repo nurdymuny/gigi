@@ -1,0 +1,15 @@
+# Preserve exact bytes of hash-pinned research sources and checkpoint artifacts.
+/research/ricci-checkpoint-20261117/** -text
+/scripts/*ricci*.py -text
+/scripts/monodromy*.py -text
+/e2e/probes/*ricci*.py -text
+/e2e/probes/*monodromy*.py -text
+/src/ricci*.rs -text
+/src/monodromy.rs -text
+/src/gauge/ricci*.rs -text
+/examples/ricci*.rs -text
+/tests/ricci*.rs -text
+/tests/monodromy_group_order.rs -text
+/docs/RICCI*.md -text
+/docs/MONODROMY*.md -text
+/docs/CLAUDE_RICCI_HANDOFF_2026_11_17.md -text

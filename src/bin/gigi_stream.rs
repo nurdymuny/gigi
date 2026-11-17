@@ -13511,6 +13511,23 @@ async fn gql_query(
     // `BETTI` with `order = None` is NOT routed here — it falls
     // through to the legacy bundle path which returns `β_0 + β_1`
     // from the field-index graph.
+    #[cfg(not(feature = "gauge"))]
+    if matches!(&stmt, gigi::parser::Statement::RicciWilsonAudit { .. }) {
+        return (StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "RICCI_WILSON_AUDIT requires the `gauge` feature"})));
+    }
+    #[cfg(not(feature = "gauge"))]
+    if matches!(&stmt, gigi::parser::Statement::RicciFlow { .. }) {
+        return (StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "RICCI_FLOW requires the `gauge` feature"})));
+    }
+    #[cfg(not(feature = "gauge"))]
+    if matches!(&stmt, gigi::parser::Statement::MonodromyGroupOrder { .. }) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "MONODROMY_GROUP_ORDER requires the `gauge` feature"})),
+        );
+    }
     #[cfg(feature = "gauge")]
     {
         let is_topology_verb = matches!(
@@ -13525,6 +13542,9 @@ async fn gql_query(
                 // would 404 "No bundle") and dispatch through the
                 // topology helper like CHERN_CLASS.
                 | gigi::parser::Statement::HolonomyCycle { .. }
+                | gigi::parser::Statement::MonodromyGroupOrder { .. }
+                | gigi::parser::Statement::RicciFlow { .. }
+                | gigi::parser::Statement::RicciWilsonAudit { .. }
         );
         if is_topology_verb {
             let result = gigi::halcyon_gql_dispatch::try_dispatch_topology_statement(
@@ -15142,6 +15162,22 @@ fn execute_gql_on_store_read(
         Statement::HolonomyCycle { field, spec } => {
             gigi::holonomy_cycle::execute_holonomy_cycle(field, spec)
         }
+        #[cfg(feature = "gauge")]
+        Statement::MonodromyGroupOrder { field, edges, commutator, cap, tolerance } => {
+            gigi::monodromy::execute_monodromy_group_order(field, edges, *commutator, *cap, *tolerance)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::MonodromyGroupOrder { .. } => Err("MONODROMY_GROUP_ORDER requires the `gauge` feature".into()),
+        #[cfg(feature = "gauge")]
+        Statement::RicciFlow { metric, time, steps, normalized, tolerance } => {
+            gigi::ricci_flow::execute_ricci_flow(*metric, *time, *steps, *normalized, *tolerance)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::RicciFlow { .. } => Err("RICCI_FLOW requires the `gauge` feature".into()),
+        #[cfg(feature = "gauge")]
+        Statement::RicciWilsonAudit { metric, normalized } => gigi::ricci_wilson::execute_ricci_wilson_audit(*metric, *normalized),
+        #[cfg(not(feature = "gauge"))]
+        Statement::RicciWilsonAudit { .. } => Err("RICCI_WILSON_AUDIT requires the `gauge` feature".into()),
         #[cfg(not(feature = "gauge"))]
         Statement::HolonomyCycle { .. } => {
             Err("HOLONOMY AROUND CYCLE requires the `gauge` feature to be enabled".to_string())
@@ -15877,6 +15913,9 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         ChernClass { .. }     => "CHERN_CLASS",
         Pontryagin { .. }     => "PONTRYAGIN",
         HolonomyCycle { .. }  => "HOLONOMY_CYCLE",
+        MonodromyGroupOrder { .. } => "MONODROMY_GROUP_ORDER",
+        RicciFlow { .. } => "RICCI_FLOW",
+        RicciWilsonAudit { .. } => "RICCI_WILSON_AUDIT",
         CreateBundle { .. }   => "CREATE_BUNDLE",
         Collapse { .. }       => "DROP_BUNDLE",
         RotateKey { .. }      => "ROTATE_KEY",
@@ -18672,6 +18711,111 @@ mod tests {
         .await
         .into_response()
         .status()
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn monodromy_wire_gate() {
+        let _env = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let previous = std::env::var_os("GIGI_DATA_DIR");
+        std::env::set_var("GIGI_DATA_DIR", dir.path());
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "monodromy-wire");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        match previous { Some(p) => std::env::set_var("GIGI_DATA_DIR", p), None => std::env::remove_var("GIGI_DATA_DIR") }
+        state.ready.store(true, Ordering::Release);
+        #[cfg(feature = "gauge")]
+        let _gauge = gigi::gauge::registry::test_serial_lock();
+        #[cfg(feature = "gauge")]
+        {
+            use gigi::gauge::{DenseLinkBuffer, Group, GaugeFieldInit, SU2GaugeField};
+            let b = DenseLinkBuffer::new_identity(Group::SU2, 1).unwrap();
+            gigi::gauge::registry::register(Arc::new(SU2GaugeField::from_buffer(
+                "mg_wire".into(), "supplied".into(), b, GaugeFieldInit::Identity, None,
+            )));
+        }
+        let response = gql_query(State(state), axum::http::HeaderMap::new(),
+            Json(serde_json::json!({"query":"MONODROMY_GROUP_ORDER mg_wire FROM EDGES (0) COMMUTATOR;"})))
+            .await.into_response();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 1 << 20).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        #[cfg(feature = "gauge")]
+        {
+            assert_eq!(status, StatusCode::OK);
+            assert_eq!(body["rows"][0]["group_order"], 1);
+            assert_eq!(body["rows"][0]["commutator_subgroup_order"], 1);
+            assert_eq!(body["rows"][0]["table_verified"], true);
+            assert_eq!(body["rows"][0]["exact_subgroup_certified"], false);
+        }
+        #[cfg(not(feature = "gauge"))]
+        {
+            assert_ne!(status, StatusCode::OK, "feature-off must not silently return status:ok: {body}");
+            assert!(body["error"].as_str().unwrap().contains("gauge"));
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn ricci_flow_wire_gate() {
+        let _env = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let previous = std::env::var_os("GIGI_DATA_DIR");
+        std::env::set_var("GIGI_DATA_DIR", dir.path());
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "ricci-wire");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        match previous { Some(p) => std::env::set_var("GIGI_DATA_DIR", p), None => std::env::remove_var("GIGI_DATA_DIR") }
+        state.ready.store(true, Ordering::Release);
+        let response = gql_query(State(state), axum::http::HeaderMap::new(),
+            Json(serde_json::json!({"query":"RICCI_FLOW SU2 METRIC (1,1,1) TIME 0.125 STEPS 4;"})))
+            .await.into_response();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 1 << 20).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        #[cfg(feature = "gauge")]
+        {
+            assert_eq!(status, StatusCode::OK);
+            assert_eq!(body["rows"].as_array().unwrap().len(), 5);
+            assert!((body["rows"][4]["a"].as_f64().unwrap()-0.5).abs()<1e-14);
+            assert!((body["rows"][4]["scalar_curvature"].as_f64().unwrap()-12.).abs()<1e-12);
+            assert_eq!(body["rows"][4]["topology_inferred"], false);
+        }
+        #[cfg(not(feature = "gauge"))]
+        {
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+            assert!(body["error"].as_str().unwrap().contains("gauge"));
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn ricci_wilson_wire_gate() {
+        let _env = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let previous = std::env::var_os("GIGI_DATA_DIR");
+        std::env::set_var("GIGI_DATA_DIR", dir.path());
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "ricci-wilson-wire");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        match previous { Some(p) => std::env::set_var("GIGI_DATA_DIR", p), None => std::env::remove_var("GIGI_DATA_DIR") }
+        state.ready.store(true, Ordering::Release);
+        let response = gql_query(State(state), axum::http::HeaderMap::new(),
+            Json(serde_json::json!({"query":"RICCI_WILSON_AUDIT SU2 METRIC (3,1,1);"})))
+            .await.into_response();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 1 << 20).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        #[cfg(feature = "gauge")]
+        {
+            assert_eq!(status, StatusCode::OK);
+            let rows = body["rows"].as_array().unwrap();
+            assert_eq!(rows.len(),1);
+            assert_eq!(rows[0]["connection"][0],-1.);
+            assert!((rows[0]["mapped_ricci_velocity"][0].as_f64().unwrap()-48.).abs()<1e-12);
+            assert!((rows[0]["yang_mills_velocity"][0].as_f64().unwrap()-48.).abs()<1e-12);
+            assert_eq!(rows[0]["lattice_correspondence_tested"],false);
+        }
+        #[cfg(not(feature = "gauge"))]
+        {
+            assert_eq!(status,StatusCode::BAD_REQUEST);
+            assert!(body["error"].as_str().unwrap().contains("gauge"));
+        }
     }
 
     // ── Post-Kähler Phase 1 endpoint integration (PK-1..4) ──────────

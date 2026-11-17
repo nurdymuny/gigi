@@ -780,6 +780,23 @@ pub enum Statement {
         field: String,
         spec: CycleSpec,
     },
+    /// Bounded numerical subgroup closure of supplied SU(2) generator edges.
+    MonodromyGroupOrder {
+        field: String,
+        edges: Vec<usize>,
+        commutator: bool,
+        cap: usize,
+        tolerance: f64,
+    },
+    RicciWilsonAudit { metric: [f64; 3], normalized: bool },
+    /// Smooth homogeneous three-sphere Ricci flow in a declared Milnor frame.
+    RicciFlow {
+        metric: [f64; 3],
+        time: f64,
+        steps: usize,
+        normalized: bool,
+        tolerance: f64,
+    },
     // ── KL Divergence / Cross-bundle analytics ──
     Divergence {
         bundle_a: String,
@@ -2558,6 +2575,9 @@ impl Parser {
             // Lattice, not BundleStore); OBSTRUCTION operates on a bundle's
             // gauge field via the Chern_2 / c_1 sign per src/obstruction.rs.
             "PI_1" => self.parse_pi_1(),
+            "MONODROMY_GROUP_ORDER" => self.parse_monodromy_group_order(),
+            "RICCI_FLOW" => self.parse_ricci_flow(),
+            "RICCI_WILSON_AUDIT" => self.parse_ricci_wilson_audit(),
             "OBSTRUCTION" => self.parse_obstruction(),
             "ENTROPY" => self.parse_entropy(),
             "FREEENERGY" => self.parse_free_energy(),
@@ -3532,6 +3552,90 @@ impl Parser {
             all,
             #[cfg(feature = "patterns")]
             excluding,
+        })
+    }
+
+    fn parse_ricci_wilson_audit(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("SU2")?;
+        self.expect_keyword("METRIC")?;
+        self.expect(Token::LParen)?;
+        let a = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let b = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let c = self.expect_f64()?;
+        self.expect(Token::RParen)?;
+        let normalized = !self.at_end();
+        if normalized { self.expect_keyword("NORMALIZED")?; }
+        if !self.at_end() { return Err("RICCI_WILSON_AUDIT: unexpected or repeated option; only NORMALIZED is supported".into()); }
+        Ok(Statement::RicciWilsonAudit { metric: [a,b,c], normalized })
+    }
+
+    fn parse_ricci_flow(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("SU2")?;
+        self.expect_keyword("METRIC")?;
+        self.expect(Token::LParen)?;
+        let a = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let b = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let c = self.expect_f64()?;
+        self.expect(Token::RParen)?;
+        self.expect_keyword("TIME")?;
+        let time = self.expect_f64()?;
+        self.expect_keyword("STEPS")?;
+        let steps = self.expect_usize()?;
+        let (mut normalized, mut tolerance, mut seen_tol) = (false, 1e-8, false);
+        while !self.at_end() {
+            let option = self.expect_word()?.to_ascii_uppercase();
+            match option.as_str() {
+                "NORMALIZED" if !normalized => normalized = true,
+                "TOLERANCE" if !seen_tol => { tolerance = self.expect_f64()?; seen_tol = true; }
+                _ => return Err(format!("RICCI_FLOW: unknown/repeated option {option}; use NORMALIZED and TOLERANCE once each")),
+            }
+        }
+        Ok(Statement::RicciFlow { metric: [a,b,c], time, steps, normalized, tolerance })
+    }
+
+    fn parse_monodromy_group_order(&mut self) -> Result<Statement, String> {
+        let field = self.expect_word()?;
+        self.expect_keyword("FROM")?;
+        self.expect_keyword("EDGES")?;
+        self.expect(Token::LParen)?;
+        let mut edges = vec![self.expect_usize()?];
+        while matches!(self.peek(), Some(Token::Comma)) {
+            self.advance();
+            edges.push(self.expect_usize()?);
+            if edges.len() > 32 {
+                return Err("MONODROMY_GROUP_ORDER: at most 32 generator edges".into());
+            }
+        }
+        self.expect(Token::RParen)?;
+        let (mut commutator, mut cap, mut tolerance) = (false, 256, 1e-8);
+        let (mut cap_seen, mut tolerance_seen) = (false, false);
+        while !self.at_end() {
+            let option = self.expect_word()?.to_ascii_uppercase();
+            match option.as_str() {
+                "COMMUTATOR" if !commutator => commutator = true,
+                "CAP" if !cap_seen => {
+                    cap = self.expect_usize()?;
+                    cap_seen = true;
+                    if !(1..=256).contains(&cap) {
+                        return Err("MONODROMY_GROUP_ORDER: CAP must be in 1..256".into());
+                    }
+                }
+                "TOLERANCE" if !tolerance_seen => {
+                    tolerance = self.expect_f64()?;
+                    tolerance_seen = true;
+                    if !tolerance.is_finite() || !(1e-12..=1e-6).contains(&tolerance) {
+                        return Err("MONODROMY_GROUP_ORDER: TOLERANCE must be finite in [1e-12,1e-6]".into());
+                    }
+                }
+                _ => return Err(format!("MONODROMY_GROUP_ORDER: unknown or repeated option {option}; use COMMUTATOR, CAP, TOLERANCE once each")),
+            }
+        }
+        Ok(Statement::MonodromyGroupOrder {
+            field, edges, commutator, cap, tolerance,
         })
     }
 
@@ -14333,6 +14437,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::HolonomyCycle { field, spec } => {
             crate::holonomy_cycle::execute_holonomy_cycle(field, spec)
         }
+        #[cfg(feature = "gauge")]
+        Statement::MonodromyGroupOrder { field, edges, commutator, cap, tolerance } => {
+            crate::monodromy::execute_monodromy_group_order(field, edges, *commutator, *cap, *tolerance)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::MonodromyGroupOrder { .. } => Err("MONODROMY_GROUP_ORDER requires the `gauge` feature".into()),
+        #[cfg(feature = "gauge")]
+        Statement::RicciFlow { metric, time, steps, normalized, tolerance } => {
+            crate::ricci_flow::execute_ricci_flow(*metric, *time, *steps, *normalized, *tolerance)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::RicciFlow { .. } => Err("RICCI_FLOW requires the `gauge` feature".into()),
+        #[cfg(feature = "gauge")]
+        Statement::RicciWilsonAudit { metric, normalized } => crate::ricci_wilson::execute_ricci_wilson_audit(*metric, *normalized),
+        #[cfg(not(feature = "gauge"))]
+        Statement::RicciWilsonAudit { .. } => Err("RICCI_WILSON_AUDIT requires the `gauge` feature".into()),
         #[cfg(not(feature = "gauge"))]
         Statement::HolonomyCycle { .. } => Err(
             "HOLONOMY AROUND CYCLE requires the `gauge` feature to be enabled".to_string()

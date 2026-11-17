@@ -13,6 +13,16 @@ default-run = "gigi"
 autoexamples = false
 autobenches = false
 
+[[example]]
+name = "ricci_lattice_probe"
+path = "examples/ricci_lattice_probe.rs"
+required-features = ["gauge"]
+
+[[example]]
+name = "ricci_operator_probe"
+path = "examples/ricci_operator_probe.rs"
+required-features = ["gauge"]
+
 # ── Feature flags ──
 #
 # `kahler` — opt-in Kähler-geometry substrate (catalog.md §1, the

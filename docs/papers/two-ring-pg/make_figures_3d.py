@@ -96,10 +96,11 @@ def neighbourhood(ci=0):
 
 
 # --------------------------------------------------------------------------- four direct views of the same cells
-def _proj_basis(d):
+def _proj_basis(d, up=np.array([0, 0, 1.0])):
     d = d/np.linalg.norm(d)
-    a = np.array([0, 0, 1.0]) if abs(d[2]) < 0.9 else np.array([1.0, 0, 0])
-    u = np.cross(a, d); u /= np.linalg.norm(u)
+    if abs(up@d) > 0.95:
+        up = np.array([1.0, 0, 0])
+    u = np.cross(up, d); u /= np.linalg.norm(u)
     return u, np.cross(d, u), d
 
 
@@ -110,9 +111,10 @@ def _angle(p, q, r):
 
 
 def cell_views(ci=0):
-    """Orthographic views of cell K and its two rings: three looking straight down an edge of K
-    (the two faces at that edge then appear as lines, so their angle is the true dihedral angle)
-    and one looking straight down a face normal (the face appears in true shape)."""
+    """A drafting sheet for cell K of Figure 1: one isometric view with every true edge length,
+    and three views straight down an edge of K, where the two faces at that edge appear as lines
+    and the angle between them is the true dihedral angle. The neighbourhood is drawn only as two
+    flat silhouettes (first ring, second ring) behind K, for context."""
     from matplotlib.collections import PolyCollection
     cells, faces, _ = mesh()
     nb = tr.neighbourhood_rings(cells, faces, ci, rings=2)
@@ -120,133 +122,130 @@ def cell_views(ci=0):
     ring2 = set(nb) - ring1 - {ci}
     to_orth, _, _ = pg.chart(nb[ci])
     O = {k: to_orth(v) for k, v in nb.items()}
-    V4 = np.asarray(nb[ci], float)                    # K's vertices in R^4 (unit S^3)
+    V4 = np.asarray(nb[ci], float)
     K = O[ci]
-    scale = np.linalg.norm(V4[0]-V4[1])/np.linalg.norm(K[0]-K[1])   # chart unit -> chordal length
-    # K sits in its own chart exactly (a similarity): check it
-    L4 = {(i, j): float(np.linalg.norm(V4[i]-V4[j])) for i in range(4) for j in range(i+1, 4)}
-    Lc = {e: float(np.linalg.norm(K[e[0]]-K[e[1]]))*scale for e in L4}
-    assert max(abs(L4[e]-Lc[e]) for e in L4) < 1e-12
+    scale = np.linalg.norm(V4[0]-V4[1])/np.linalg.norm(K[0]-K[1])
+    K = K*scale                                       # chart -> chordal units; K is exact up to this scale
+    O = {k: v*scale for k, v in O.items()}
+    EDG = [(i, j) for i in range(4) for j in range(i+1, 4)]
+    L4 = {e: float(np.linalg.norm(V4[e[0]]-V4[e[1]])) for e in EDG}
+    assert max(abs(L4[e] - np.linalg.norm(K[e[0]]-K[e[1]])) for e in EDG) < 1e-12
+    cen = K.mean(axis=0)
+
     def dihedral(i, j):
         k, l = [m for m in range(4) if m not in (i, j)]
         e = K[j]-K[i]; e /= np.linalg.norm(e)
         pk = K[k]-K[i]; pk -= pk@e*e
         pl = K[l]-K[i]; pl -= pl@e*e
         return float(np.degrees(np.arccos(pk@pl/np.linalg.norm(pk)/np.linalg.norm(pl))))
-    dih = {e: dihedral(*e) for e in L4}
+    dih = {e: dihedral(*e) for e in EDG}
     order = sorted(dih, key=dih.get)
-    edge_views = [order[0], order[len(order)//2], order[-1]]          # smallest, middle, largest dihedral
-    # face view: the face whose hidden opposite vertex projects farthest from the face's corners
-    def face_normal(fv):
-        opp = [m for m in range(4) if m not in fv][0]
-        fn = np.cross(K[fv[1]]-K[fv[0]], K[fv[2]]-K[fv[0]])
-        return (-fn if fn@(K[opp]-K[fv[0]]) > 0 else fn)/np.linalg.norm(fn), opp
-    def clearance(fv):
-        fn, opp = face_normal(fv)
-        q = K[opp] - (K[opp]-K[fv[0]])@fn*fn
-        return min(np.linalg.norm(q-K[m]) for m in fv)
-    fv = max(FACES4, key=clearance)
-    fn, opp = face_normal(fv)
-    face_angles = {fv[m]: _angle(K[fv[m-1]], K[fv[m]], K[fv[(m+1) % 3]]) for m in range(3)}
+    edge_views = [order[0], order[2], order[-1]]
 
-    fig, axs = plt.subplots(2, 2, figsize=(W2, 6.6))
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.96, bottom=0.07, wspace=0.03, hspace=0.12)
-    views = [('edge', e) for e in edge_views] + [('face', fv)]
-    # one scale for all four panels: the largest projected half-extent of K over the views
-    def basis_for(kind, item):
-        d = (K[item[1]]-K[item[0]]) if kind == 'edge' else -fn
-        return _proj_basis(d)
-    REXT = max(np.abs(np.c_[K@b[0], K@b[1]] - np.c_[K@b[0], K@b[1]].mean(axis=0)).max()
-               for b in (basis_for(*v) for v in views))
-    for ax, (kind, item) in zip(axs.ravel(), views):
-        u, w, d = basis_for(kind, item)
+    def outward_normal(f):
+        opp = [m for m in range(4) if m not in f][0]
+        n = np.cross(K[f[1]]-K[f[0]], K[f[2]]-K[f[0]])
+        return -n if n@(K[opp]-K[f[0]]) > 0 else n
+
+    LIGHT1, LIGHT2, KFILL = '#e3e1dc', '#f1f0ec', '#dbe7f6'
+    fig, axs = plt.subplots(2, 2, figsize=(W2, 6.9))
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.06, wspace=0.04, hspace=0.16)
+    def clarity(d):                                   # how well a view separates K's vertices and edges
+        u, w, _ = _proj_basis(d)
+        P = np.c_[K@u, K@w]
+        worst = np.inf
+        for m in range(4):
+            for (i, j) in EDG:
+                if m in (i, j):
+                    continue
+                t = np.clip((P[m]-P[i])@(P[j]-P[i])/((P[j]-P[i])@(P[j]-P[i])), 0, 1)
+                worst = min(worst, np.linalg.norm(P[m]-P[i]-t*(P[j]-P[i])))
+        return worst
+    rng = np.random.default_rng(0)
+    cand = rng.normal(size=(4000, 3)); cand /= np.linalg.norm(cand, axis=1)[:, None]
+    cand = cand[cand[:, 2] < -0.15]                   # look slightly from above, as a drawing would
+    iso = cen - max(cand, key=clarity)
+    views = [('iso', None)] + [('edge', e) for e in edge_views]
+    bases = {}
+    for kind, item in views:
+        d = (K[item[1]]-K[item[0]]) if kind == 'edge' else (cen - iso)
+        bases[(kind, item)] = _proj_basis(d)
+    R = 1.32*max(np.abs(np.c_[K@b[0], K@b[1]] - np.c_[K@b[0], K@b[1]].mean(axis=0)).max() for b in bases.values())
+
+    def boxed(ax, xy, text, color=INK, size=7.6, weight='normal', ha='center'):
+        ax.text(*xy, text, color=color, fontsize=size, fontweight=weight, ha=ha, va='center', zorder=12,
+                bbox=dict(boxstyle='round,pad=0.16', fc='white', ec='none', alpha=0.95))
+
+    for p_, (ax, (kind, item)) in enumerate(zip(axs.ravel(), views)):
+        u, w, d = bases[(kind, item)]
         pr = lambda X: np.c_[X@u, X@w]
-        polys, cols, alph, depth, ecs, lws = [], [], [], [], [], []
-        for ids, col, a_, lw in [(sorted(ring2), AQUA, 0.0, 0.35), (sorted(ring1), ORANGE, 0.10, 0.4)]:
-            for k in ids:
-                for f in FACES4:
-                    P = O[k][list(f)]
-                    polys.append(pr(P)); cols.append(col); alph.append(a_); depth.append(float((P@d).mean()))
-                    ecs.append('#0f8a5f' if col == AQUA else '#c9874f'); lws.append(lw)
-        idx = np.argsort(depth)[::-1]                                  # far first
-        for i in idx:
-            from matplotlib.colors import to_rgba
-            ax.add_collection(PolyCollection([polys[i]], facecolors=[to_rgba(cols[i], alph[i])],
-                                             edgecolors=[to_rgba(ecs[i], 0.3 if cols[i] == AQUA else 0.55)], linewidths=lws[i]))
-        # K on top: faces filled lightly, every edge drawn, hidden edges dashed
-        P2 = pr(K)
-        for f in FACES4:
-            ax.add_collection(PolyCollection([P2[list(f)]], facecolors=[INK], alpha=0.10, edgecolors='none'))
-        for (i, j) in L4:
-            hidden = kind == 'face' and opp in (i, j)          # edges to the vertex behind the face
-            ax.plot(*P2[[i, j]].T, color=INK, lw=1.0 if hidden else 1.5, ls=(0, (3, 2)) if hidden else '-',
-                    solid_capstyle='round', zorder=5)
-        ext = REXT
+        P2 = pr(K); c2 = P2.mean(axis=0)
+        # context: two flat silhouettes, no outlines
+        for ids, col in ((ring2, LIGHT2), (ring1, LIGHT1)):
+            ax.add_collection(PolyCollection([pr(O[k][list(f)]) for k in ids for f in FACES4],
+                                             facecolors=col, edgecolors=col, linewidths=0.6, zorder=1))
+        # K: front faces filled, edges visible/hidden by face orientation (orthographic)
+        front = [f for f in FACES4 if outward_normal(f)@d < 0]
+        ax.add_collection(PolyCollection([P2[list(f)] for f in front], facecolors=KFILL, edgecolors='none', zorder=2))
+        for (i, j) in EDG:
+            vis = any(i in f and j in f for f in front) or kind == 'edge'
+            ax.plot(*P2[[i, j]].T, color=INK, lw=1.6 if vis else 0.9, ls='-' if vis else (0, (4, 2.5)),
+                    solid_capstyle='round', zorder=4 if vis else 3)
+        # vertex labels, pushed away from K's centre; coincident ends share one label
         done = set()
         for m in range(4):
             if m in done:
                 continue
-            same = [q for q in range(4) if np.linalg.norm(P2[q]-P2[m]) < 1e-9*ext + 1e-12]
+            same = [q for q in range(4) if np.linalg.norm(P2[q]-P2[m]) < 1e-9]
             done.update(same)
-            off = P2[m] - P2.mean(axis=0); off = off/(np.linalg.norm(off)+1e-12)*0.16*ext
-            if len([q for q in range(4) if np.linalg.norm(P2[q]-P2[m]) < 1e-9*ext + 1e-12]) > 1:
-                off = off*1.7
-            ax.scatter(*P2[m], s=16, color=INK, zorder=6)
-            name = '$' + '{=}'.join(f'v_{q}' for q in same) + '$'
-            if len(same) > 1:
-                name += ' (end-on)'
-            ax.text(*(P2[m]+off), name, fontsize=8, ha='center', va='center', zorder=7,
-                    bbox=dict(boxstyle='round,pad=0.12', fc='white', ec='none', alpha=0.85))
-        if kind == 'edge':
+            off = P2[m]-c2; off = off/np.linalg.norm(off)*0.075*R
+            ax.scatter(*P2[m], s=18, color=INK, zorder=6)
+            boxed(ax, P2[m]+off, '$' + ',\\,'.join(f'v_{q}' for q in same) + '$', size=8.2)
+        if kind == 'iso':
+            for (i, j) in EDG:                       # true lengths, set off the edge on K's outside
+                mid = (P2[i]+P2[j])/2; t = P2[j]-P2[i]; nrm = np.array([-t[1], t[0]])/np.linalg.norm(t)
+                if nrm@(mid-c2) < 0:
+                    nrm = -nrm
+                vis = any(i in f and j in f for f in front)
+                boxed(ax, mid + nrm*0.07*R*(1 if vis else -0.2), f'{L4[(i, j)]:.3f}',
+                      color=INK if vis else INK2, size=7.2)
+            title = '(a) overview: true edge lengths'
+        else:
             i, j = item
             k, l = [m for m in range(4) if m not in (i, j)]
             c0 = P2[i]
-            a1 = np.degrees(np.arctan2(*(P2[k]-c0)[::-1])); a2 = np.degrees(np.arctan2(*(P2[l]-c0)[::-1]))
-            lo, hi = sorted([a1, a2])
-            if hi - lo > 180:
-                lo, hi = hi, lo + 360
-            r = 0.4*min(np.linalg.norm(P2[k]-c0), np.linalg.norm(P2[l]-c0))
-            tt = np.radians(np.linspace(lo, hi, 60))
-            ax.plot(c0[0]+r*np.cos(tt), c0[1]+r*np.sin(tt), color=BLUE, lw=1.6, zorder=7)
-            mid = np.radians((lo+hi)/2)
-            ax.text(c0[0]+2.05*r*np.cos(mid), c0[1]+2.05*r*np.sin(mid), f'{dih[item]:.1f}°', color=INK, fontsize=8.5,
-                    ha='center', va='center', zorder=8, fontweight='bold',
-                    bbox=dict(boxstyle='round,pad=0.15', fc='white', ec=BLUE, lw=0.6))
-            title = (f'({"abc"[edge_views.index(item)]}) down edge $v_{i}v_{j}$ (length {L4[item]:.3f}): '
-                     f'dihedral angle {dih[item]:.1f}°')
-        else:
-            for m in range(3):
-                a_, b_ = fv[m], fv[(m+1) % 3]
-                mid = (P2[a_]+P2[b_])/2; out = mid - P2[list(fv)].mean(axis=0); out /= np.linalg.norm(out)
-                ax.text(*(mid+out*0.09*ext), f'{L4[tuple(sorted((a_, b_)))]:.3f}', fontsize=7.4, color=INK,
-                        ha='center', va='center', zorder=8,
-                        bbox=dict(boxstyle='round,pad=0.12', fc='white', ec='none', alpha=0.9))
-                v = fv[m]; c0 = P2[v]
-                inward = P2[list(fv)].mean(axis=0) - c0; inward /= np.linalg.norm(inward)
-                ax.text(*(c0+inward*0.24*ext), f'{face_angles[v]:.1f}°', fontsize=7.4, color=BLUE, ha='center',
-                        va='center', zorder=8, fontweight='bold',
-                        bbox=dict(boxstyle='round,pad=0.1', fc='white', ec='none', alpha=0.85))
-            title = f'(d) face-on to $v_{fv[0]}v_{fv[1]}v_{fv[2]}$: true shape ($v_{opp}$ behind, dashed)'
-        ax.set_title(title, fontsize=8, loc='left', color=INK)
+            angs = [np.arctan2(*(P2[m]-c0)[::-1]) for m in (k, l)]
+            lo, hi = sorted(angs)
+            if hi - lo > np.pi:
+                lo, hi = hi, lo + 2*np.pi
+            r = 0.48*min(np.linalg.norm(P2[k]-c0), np.linalg.norm(P2[l]-c0))
+            tt = np.linspace(lo, hi, 80)
+            ax.plot(c0[0]+r*np.cos(tt), c0[1]+r*np.sin(tt), color=BLUE, lw=1.8, zorder=7)
+            mid = (lo+hi)/2
+            boxed(ax, c0 + 1.6*r*np.array([np.cos(mid), np.sin(mid)]), f'{dih[item]:.1f}°', color=BLUE,
+                  size=9.5, weight='bold')
+            title = f'({"bcd"[p_-1]}) looking down edge $v_{i}v_{j}$: dihedral angle'
+        ax.set_title(title, fontsize=8.6, loc='left', color=INK)
         ax.set_aspect('equal'); ax.axis('off')
-        c = P2.mean(axis=0); R = REXT*1.3                              # K large; the rings give context
-        ax.set_xlim(c[0]-R, c[0]+R); ax.set_ylim(c[1]-R, c[1]+R)
-        # scale bar: 0.1 chordal units
-        bar = 0.1/scale
-        x0, y0 = c[0]-R*0.95, c[1]-R*0.95
-        ax.plot([x0, x0+bar], [y0, y0], color=INK, lw=1.4, zorder=9)
-        ax.text(x0+bar/2, y0+R*0.03, '0.1 (chordal)', fontsize=7, ha='center', va='bottom', color=INK)
-    handles = [plt.Rectangle((0, 0), 1, 1, fc='#c7a99a', ec=INK), plt.Rectangle((0, 0), 1, 1, fc=ORANGE, alpha=0.3),
-               plt.Rectangle((0, 0), 1, 1, fc='none', ec='#0f8a5f')]
-    fig.legend(handles, ['cell $K$', 'first ring', 'second ring (outlines)'], loc='lower center', ncol=3,
-               bbox_to_anchor=(0.5, 0.0))
+        ax.set_xlim(c2[0]-R, c2[0]+R); ax.set_ylim(c2[1]-R, c2[1]+R)
+        x0, y0 = c2[0]-0.93*R, c2[1]-0.93*R           # scale bar, 0.05 chordal
+        ax.plot([x0, x0+0.05], [y0, y0], color=INK, lw=1.3, zorder=9)
+        for x in (x0, x0+0.05):
+            ax.plot([x, x], [y0-0.012*R, y0+0.012*R], color=INK, lw=1.0, zorder=9)
+        ax.text(x0+0.025, y0+0.045*R, '0.05', fontsize=7, ha='center', color=INK)
+    handles = [plt.Rectangle((0, 0), 1, 1, fc=KFILL, ec=INK, lw=0.8), plt.Rectangle((0, 0), 1, 1, fc=LIGHT1),
+               plt.Rectangle((0, 0), 1, 1, fc=LIGHT2)]
+    fig.legend(handles, ['cell $K$ (hidden edges dashed)', 'first ring', 'second ring'], loc='lower center',
+               ncol=3, bbox_to_anchor=(0.5, 0.0), handlelength=1.4)
     fig.savefig(FIG/'fig_cell_views.pdf'); plt.close(fig)
-    meas = {'cell': ci, 'chordal_edge_lengths': {f'v{i}v{j}': round(L4[(i, j)], 6) for (i, j) in L4},
-            'dihedral_angles_deg': {f'v{i}v{j}': round(dih[(i, j)], 3) for (i, j) in dih},
-            'face_view': 'v%dv%dv%d' % fv, 'face_view_angles_deg': {f'v{m}': round(face_angles[m], 3) for m in face_angles},
+    meas = {'cell': ci, 'units': 'chordal length on the unit three-sphere in R^4',
+            'chordal_edge_lengths': {f'v{i}v{j}': round(L4[(i, j)], 6) for (i, j) in EDG},
+            'dihedral_angles_deg': {f'v{i}v{j}': round(dih[(i, j)], 3) for (i, j) in EDG},
+            'face_angles_deg': {''.join(f'v{m}' for m in f): {f'v{f[q]}': round(_angle(K[f[q-1]], K[f[q]], K[f[(q+1) % 3]]), 3)
+                                                              for q in range(3)} for f in FACES4},
             'edge_views': [f'v{i}v{j}' for (i, j) in edge_views],
-            'volume_chordal': float(abs(np.linalg.det((K[1:]-K[0]).T))/6*scale**3),
-            'chart_scale_check_max_abs': float(max(abs(L4[e]-Lc[e]) for e in L4))}
+            'volume_chordal': float(abs(np.linalg.det((K[1:]-K[0]).T))/6),
+            'chart_scale_check_max_abs': float(max(abs(L4[e] - np.linalg.norm(K[e[0]]-K[e[1]])) for e in EDG))}
     (DATA/'cell_views.json').write_text(json.dumps(meas, indent=1) + '\n')
     return meas
 

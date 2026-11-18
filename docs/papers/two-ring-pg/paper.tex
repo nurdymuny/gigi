@@ -219,6 +219,17 @@ each failed one of two requirements:
     variants of the same recovery fail (Section~\ref{sec:removals}).
 \end{enumerate}
 
+\paragraph{A question for a companion paper.} Every face of the mesh carries a turn, its
+holonomy, and there are three honest ways to read how far it turned: straight across, by
+the chord $U-1$ that lattice gauge theory has used since Wilson; along the way it went, by
+the arc $\log U$ that the continuum uses; and out and back along the tangents, whose leg is
+the Cayley parameter. This paper reads the same faces two of those ways at once, the arc in
+the recovery and the chord in the action, and Section~\ref{sec:su2force} shows the
+difference is far too small to matter here. Why the three readings miss one another in a
+fixed ratio of two to one, why the same ratio comes back in energy and in time stepping,
+and which of them the flow should step with, is the subject of the companion paper
+\emph{Three Ways Across a Turn}~\cite{threeways}.
+
 \section{Setting}\label{sec:setting}
 
 \paragraph{The manifold.}
@@ -641,20 +652,17 @@ couples each cell to its two-ring neighbourhood rather than its one-ring star.
 \begin{figure}[p]
   \centering
   \includegraphics[width=\textwidth]{figures/fig_cell_views.pdf}
-  \caption{The cells of Figure~\ref{fig:schematic}, seen from four direct directions in
-  orthographic projection, all at one scale (bar: $0.1$ in chordal length on the unit
-  three-sphere). \textbf{(a)--(c)} Looking straight down an edge of $K$: the edge's two
-  ends coincide, its two faces appear as lines, and the angle between them is the true
-  dihedral angle, marked in blue. The three edges are those with the smallest, middle and
-  largest dihedral angle. \textbf{(d)} Looking straight down the normal of face
-  $v_0v_2v_3$: the face appears in true shape, with its true edge lengths and angles, and
-  the edges to the vertex behind it are dashed. That vertex, $v_1$, lands on the edge
-  $v_0v_2$ because the dihedral angle there is a right angle. $K$ is the chordal
-  tetrahedron itself, drawn exactly (up to scale) in its own chart; the rings are carried
-  onto $K$'s sheet and charted, so their shapes carry the chart's small distortion. All
-  of $K$'s measurements (six edges, six dihedral angles, volume) are in
-  \texttt{data/cell\_views.json}; the dihedral angles at the remaining edges are $60.0^\circ$,
-  $60.3^\circ$ and $90.0^\circ$.}
+  \caption{Cell $K$ of Figure~\ref{fig:schematic} as a drafting sheet, in orthographic
+  projection at one scale (bar: $0.05$ in chordal length on the unit three-sphere). The first
+  and second rings appear only as flat silhouettes behind $K$. \textbf{(a)} An overview from
+  the direction that best separates $K$'s vertices and edges, with every true edge length;
+  the hidden edge is dashed. \textbf{(b)--(d)} Looking straight down an edge of $K$: its two
+  ends coincide, the two faces at that edge appear as lines, and the angle between them is
+  the true dihedral angle. The three edges shown carry the smallest, a middle and the largest
+  dihedral angle; the other three are $60.0^\circ$, $88.6^\circ$ and $90.0^\circ$. $K$ is the
+  chordal tetrahedron itself, drawn exactly in its own chart; the rings are carried onto
+  $K$'s sheet and charted. Every edge length, dihedral angle, face angle and the volume are in
+  \texttt{data/cell\_views.json}.}
   \label{fig:cellviews}
 \end{figure}
 

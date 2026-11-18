@@ -48,6 +48,9 @@ imaginary while $S+d^2=1$ survives. Bertrand's paradox turns out to be the quest
 which of these quantities is taken to be uniform: the arc, $\sqrt S$, or $S$.
 A ticket game puts all of it in one room: the arc, the chord and the energy each buy one ticket at a different angle ($57.30^\circ$, $60^\circ$, $90^\circ$), and two whole tickets can only turn at the centre or at its twin.
 Every identity is checked symbolically or numerically by a script that ships with the paper.
+Because the turn is the holonomy of a gauge field, each of these choices is a choice of
+Yang--Mills action and of how a Yang--Mills field steps forward in time; a companion paper
+makes those choices on the Poincar\'e homology sphere.
 \end{abstract}
 
 \section{A picture}\label{sec:picture}
@@ -126,6 +129,17 @@ showing up again in energy, in algebra and in time stepping. It then checks how 
 this matters on a real non-Abelian mesh. The energy combination of
 Section~\ref{sec:energy} is the one statement we have not found in the sources above. A
 proper prior-art search is listed as open in Section~\ref{sec:claims}.
+
+\paragraph{Where this is going.} The turn in this paper is not only a stick on a circle. In
+a gauge theory every small loop carries one, its holonomy, and the energy of the field is
+the sum of how far those loops have turned. Choosing the chord, the arc or the outside path
+to measure a turn is choosing a lattice Yang--Mills action, and choosing how to step a turn
+forward is choosing how the field evolves in time. The companion paper \emph{Reading the
+Curve, Not Counting the Points}~\cite{davis-rtc} makes those choices on meshes of the
+Poincar\'e homology sphere, and Section~\ref{sec:mesh} measures how much they matter there.
+Behind both papers sits a larger question: whether Yang--Mills dynamics computed from coarse
+lattice data follow the continuum flow, and what the curvature of the gauge group itself has
+to say about it. Section~\ref{sec:claims} says how far this paper goes, and where it stops.
 
 \section{Lengths: who misses, and by how much}\label{sec:lengths}
 
@@ -612,7 +626,7 @@ two whole tickets.
 
 \section{How much this matters on a real mesh}\label{sec:mesh}
 
-Our curvature-recovery work measures an $SU(2)$ force on meshes of the Poincar\'e homology
+Our curvature-recovery work~\cite{davis-rtc} measures an $SU(2)$ force on meshes of the Poincar\'e homology
 sphere, at the Levi-Civita connection of a Berger metric. Its native action is the chord
 energy: each face's defect is $D=U_f-1$. Table~\ref{tab:angles} gives the face angles $a$
 on those meshes (\texttt{face\_angles.py}, from the frozen inputs), and
@@ -766,10 +780,16 @@ curvature-recovery work; Section~\ref{sec:mesh} shows it does not.
     where the energy combination could matter.
 \end{itemize}
 
-\paragraph{A future direction.} The unit sphere in one dimension is the pair $\{-1,+1\}$,
-and in four it is $SU(2)$, whose centre is again $\{-1,+1\}$. A companion note follows
-that thread toward the curvature of the gauge group and the Yang--Mills mass gap. It keeps
-exact statements apart from the open link, which this paper does not claim. The note is
+\paragraph{Toward Yang--Mills.} Three things here point past this paper. First, the
+two-to-one energy of Proposition~\ref{prop:energy} is a lattice action, and how it behaves in
+a strong-field simulation, with its barrier at the half turn, is a Yang--Mills question we
+have not asked. Second, the Cayley step is the integrator we will try first for the $SU(2)$
+Yang--Mills flow on the Poincar\'e homology sphere, whose instantaneous force passes its gate
+in the companion paper~\cite{davis-rtc}. Third, the unit sphere in one dimension is the pair
+$\{-1,+1\}$, and in four it is $SU(2)$, whose centre is again $\{-1,+1\}$: the half turn that
+breaks the outside path is the centre of the gauge group. A companion note follows that
+thread toward the curvature of the gauge group and the Yang--Mills mass gap. It keeps exact
+statements apart from the open link, which this paper does not claim. The note is
 \path{docs/research/unit-curvature-2026-11-18.md} in the \textsc{gigi} repository.
 
 \paragraph{Reproducibility.} \texttt{verify.py} and \texttt{face\_angles.py} in this
@@ -789,6 +809,9 @@ directory; the output of the first is saved as \texttt{verify\_output.txt}, of t
 \bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
 \bibitem{bertrand} J.~Bertrand, \emph{Calcul des probabilit\'es}, Gauthier-Villars, Paris, 1889.
 \bibitem{jaynes} E.~T.~Jaynes, The well-posed problem, \emph{Found.\ Phys.} 3 (1973) 477--492.
+\bibitem{davis-rtc} B.~R.~Davis, Reading the curve, not counting the points: a consistent,
+stable Petrov--Galerkin curvature force, Davis Geometric working paper, 2026,
+\path{docs/papers/two-ring-pg/} in the \textsc{gigi} repository.
 \bibitem{davis-dc} B.~R.~Davis, The Double Cover Principle, Zenodo, 2026, \url{https://doi.org/10.5281/zenodo.18895462}.
 \end{thebibliography}
 \end{document}

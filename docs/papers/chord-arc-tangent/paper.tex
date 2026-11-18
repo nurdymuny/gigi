@@ -344,6 +344,24 @@ energy error and lags in phase by $s-2\arctan(s/2)\approx s^3/12$ (dashed).}
 \label{fig:time}
 \end{figure}
 
+\paragraph{Three spirals, one of them golden.} Each explicit Euler step multiplies the
+modulus by $\sqrt{1+s^2}$ and turns by $\arctan s$, so the ratio of growth to turning never
+changes. Every point it produces therefore lies exactly on a logarithmic (equiangular)
+spiral, Jacob Bernoulli's \emph{spira mirabilis},
+\[
+r=e^{b\theta},\qquad b(s)=\frac{\ln(1+s^2)}{2\arctan s}.
+\]
+Implicit Euler lies on the mirror spiral $r=e^{-b\theta}$, its twin at the same pitch, and
+Crank--Nicolson is the member of pitch zero: the circle between them. At the step of
+Figure~\ref{fig:time}(a), $s=0.3$, the outward spiral grows by a factor $1.2614$ every quarter
+turn, at a pitch of $8.41^\circ$. The golden spiral is the member of this family that grows by
+$\varphi=(1+\sqrt5)/2$ every quarter turn, $b=2\ln\varphi/\pi\approx0.3063$, at a pitch of
+$17.03^\circ$. Fibonacci's spiral of quarter circles drawn in squares approximates it, because
+the ratios of consecutive Fibonacci numbers tend to $\varphi$. Since $b(s)$ increases with $s$,
+there is exactly one step at which explicit Euler traces the golden spiral exactly:
+$s^\ast\approx0.6515$, or $33.08^\circ$ of turn per step. The golden case belongs to that one
+step size. It is a member of the family the method draws, not a property of the method.
+
 For a general linear flow $y'=-Gy$, the Crank--Nicolson factor
 $r(z)=(1-z/2)/(1+z/2)$ satisfies $|r(z)|\le1$ exactly when $\operatorname{Re}z\ge0$. Its
 behaviour on a non-normal $G$ is controlled by the numerical range $W(G)$. By
@@ -355,7 +373,10 @@ Simulating something that spins means stepping it forward a little at a time. Th
 step walks out along the edge line and drifts outward, gaining energy it should not have.
 The backward version drifts inward and loses energy. The Cayley step, the detour's leg, stays
 exactly on the circle and only lags a little behind, by the same one-twelfth that separates
-the detour from the true path. For our next step, simulating the flow on the mesh, that is
+the detour from the true path. Drawn over many steps, the outward drift traces a logarithmic
+spiral, the same family as the golden spiral, and at one step size it is exactly golden. The
+inward drift is its mirror twin, and the Cayley step is the circle between them. For our
+next step, simulating the flow on the mesh, that is
 the natural rule to try first. The numerical range we are measuring tells us how big its
 steps may be. The engine's clock today steps along the true curve instead
 (Section~\ref{sec:gigi}).
@@ -760,7 +781,9 @@ the engine's clock is one of the open items below.
     energy break-even at the right angle, the two whole-ticket corners $O$ and $A+B$, the
     twin corner on the circle at $120^\circ$, and the tangent and twin corners meeting at $90^\circ$;
   \item the six-square grid of one-ticket angles, the Thales twin $2d^2+2S=2$, the agreement of
-    the three energy rules for small turns, and the Haar answer $\tfrac13-\sqrt3/(4\pi)$ to Bertrand.
+    the three energy rules for small turns, and the Haar answer $\tfrac13-\sqrt3/(4\pi)$ to Bertrand;
+  \item the three time-stepping spirals: explicit and implicit Euler on mirror logarithmic spirals
+    of pitch $\arctan b(s)$, Crank--Nicolson on the circle, and the unique golden step $s^\ast\approx0.6515$.
 \end{itemize}
 The face angles of Table~\ref{tab:angles} are measured from frozen data.
 

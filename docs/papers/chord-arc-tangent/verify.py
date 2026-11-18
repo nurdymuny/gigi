@@ -225,4 +225,31 @@ haar = sp.integrate(8 / sp.pi * sp.sqrt(Hs * (1 - Hs)), (Hs, 0, sp.Rational(1, 4
 check("Haar answer to Bertrand on SU(2): P(S < 1/4) = 1/3 - sqrt3/(4 pi) = 0.19550",
       sp.simplify(haar - (sp.Rational(1, 3) - sp.sqrt(3) / (4 * sp.pi))) == 0 and abs(float(haar) - 0.19550111) < 1e-8)
 
+# 17. three spirals, one of them golden
+from scipy.optimize import brentq
+PHI = (1 + 5 ** 0.5) / 2
+bsp = lambda x: np.log(1 + x * x) / (2 * np.arctan(x))          # explicit Euler's growth per radian
+kk = np.arange(60)
+ys = (1 + 0.3j) ** kk
+check("explicit Euler points lie exactly on r = exp(b theta), b = ln(1+s^2)/(2 arctan s) (s = 0.3, 60 steps)",
+      bool(np.allclose(np.log(np.abs(ys)), bsp(0.3) * np.unwrap(np.angle(ys)))))
+yi = (1 / (1 - 0.3j)) ** kk
+check("implicit Euler lies on the mirror spiral r = exp(-b theta), same pitch",
+      bool(np.allclose(np.log(np.abs(yi)), -bsp(0.3) * np.unwrap(np.angle(yi)))))
+check("Crank-Nicolson is the pitch-zero member (the circle)", bool(np.allclose(np.abs(((1 + 0.15j) / (1 - 0.15j)) ** kk), 1)))
+check("s = 0.3: growth 1.2614 per quarter turn, pitch 8.41 deg",
+      abs(np.exp(bsp(0.3) * np.pi / 2) - 1.261404596) < 1e-8 and abs(np.degrees(np.arctan(bsp(0.3))) - 8.4096679) < 1e-6)
+bg = 2 * np.log(PHI) / np.pi
+check("golden spiral: growth phi per quarter turn, b = 2 ln(phi)/pi = 0.306349, pitch 17.03 deg",
+      abs(bg - 0.30634896) < 1e-8 and abs(np.degrees(np.arctan(bg)) - 17.0323911) < 1e-6)
+s_star = brentq(lambda x: bsp(x) - bg, 0.01, 5)
+check("explicit Euler is exactly golden at s* = 0.651505 (33.08 deg per step)",
+      abs(s_star - 0.6515045062) < 1e-9 and abs(np.degrees(np.arctan(s_star)) - 33.0844247) < 1e-6)
+check("b(s) increases with s on (0, 3), so s* is the only golden step there",
+      bool(np.all(np.diff(bsp(np.linspace(1e-3, 3, 3000))) > 0)))
+fib = [1, 1]
+for _ in range(30):
+    fib.append(fib[-1] + fib[-2])
+check("consecutive Fibonacci ratios tend to phi (F31/F30 within 1e-12)", abs(fib[31] / fib[30] - PHI) < 1e-12)
+
 print(f"\n{sum(ok)}/{len(ok)} PASS")

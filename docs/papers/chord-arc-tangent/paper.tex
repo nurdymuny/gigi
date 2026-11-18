@@ -37,6 +37,7 @@ by under $0.08\%$, so these corrections are not the source of the errors measure
 Every miss has a twin on the other side, and crossing the circle's rim makes the turn
 imaginary while $S+d^2=1$ survives. Bertrand's paradox turns out to be the question of
 which of these quantities is taken to be uniform: the arc, $\sqrt S$, or $S$.
+A ticket game puts all of it in one room: the arc, the chord and the energy each buy one ticket at a different angle ($57.30^\circ$, $60^\circ$, $90^\circ$), and two whole tickets can only turn at the centre or at its twin.
 Every identity is checked symbolically or numerically by a script that ships with the paper.
 \end{abstract}
 
@@ -334,6 +335,159 @@ quantities you are spreading evenly, the arc, the square root of sameness, or sa
 itself.
 \end{plain}
 
+\section{The ticket game}\label{sec:tickets}
+
+The preceding sections each look at one aspect of a turn. This section puts them in one
+room. Everything in it is elementary, and every number is checked by \texttt{verify.py}.
+The point is not new mathematics; it is that the three paths, the energy, the twins and
+Bertrand's triangle all appear the moment one asks a plain question about walking.
+
+\paragraph{The rules.} Everyone starts at the centre $O$ of a room. Each person is handed
+tickets, and a ticket buys one straight walk of length at most $1$. Two players, $A$ and
+$B$, each spend one ticket walking out from $O$ in a direction of their own choosing, so
+they end on the unit circle, an angle $\theta$ apart. Now $A$ wants to rejoin $B$. One
+rule is never relaxed: no single walk may cost more than one ticket.
+
+\paragraph{Three prices for one crossing.} The crossing has three natural prices, one
+for each way of measuring it.
+\begin{itemize}
+  \item \emph{The arc}, the way the turn went, costs $\theta$ tickets. It fits in one ticket
+    up to exactly one radian, $57.30^\circ$. That is what a radian is: the angle whose arc
+    is one ticket long.
+  \item \emph{The chord}, straight across, costs $2\sin(\theta/2)$. It fits in one ticket up
+    to exactly $60^\circ$. There $A$, $B$ and $O$ form an equilateral triangle, and six
+    players spaced $60^\circ$ apart stand at the corners of a regular hexagon whose sides
+    equal its radius. That hexagon is where Archimedes began.
+  \item \emph{The energy}, as the lattice counts it, is Wilson's face energy
+    $1-\cos\theta=\tfrac12C^2$. In these units a single walk of length $L$ costs
+    $\tfrac12L^2$, so the two radius walks back through the centre cost
+    $\tfrac12+\tfrac12=1$ together. Call that one ticket of energy. The crossing costs
+    exactly one ticket of energy at $90^\circ$, less below and more above, up to two at the
+    opposite side of the room.
+\end{itemize}
+Each price has its own one-ticket angle, and the three are different.
+\begin{center}\small
+\begin{tabular}{llll}\toprule
+Price & Cost of the crossing & One ticket at & Why \\ \midrule
+arc & $\theta$ & $57.30^\circ$ & the definition of a radian \\
+chord & $2\sin(\theta/2)$ & $60^\circ$ & the equilateral triangle \\
+energy & $1-\cos\theta$ & $90^\circ$ & Pythagoras \\
+\bottomrule\end{tabular}
+\end{center}
+
+\paragraph{The sliver.} Between $57.30^\circ$ and $60^\circ$ the shortcut fits in one
+ticket and the true path does not. The size of that gap at the hexagon angle is
+$\pi/3-1\approx0.0472$ tickets, a premium of $4.72\%$, and it is the same number as the
+ratio of the circle's circumference to the hexagon's perimeter, $2\pi/6$, minus one. This
+is the price of curvature at the scale of one ticket. It is what Section~\ref{sec:lengths}
+computes, $A-C\approx\theta^3/24$, seen at a size one can walk.
+
+\paragraph{Why $90^\circ$ is where the energy breaks even.} The squared crossing is
+$|A-B|^2=|A|^2+|B|^2-2A\cdot B=2-2\cos\theta$. The route back through the centre has two
+legs of length one. In energy, the crossing and the two legs cost the same exactly when
+$A\cdot B=0$: at a right angle, where the chord is the hypotenuse of the two tickets.
+Below $90^\circ$, cutting across is an energy bargain. Above $90^\circ$, two separate trips
+through the centre cost less energy than the single crossing. Energy grows with the
+square of length, so splitting a long walk into two short ones saves energy, and past the
+right angle the split wins.
+
+\paragraph{Whole tickets: why it is always two trips.} Now tighten the rule: a ticket
+must be spent in full, so every walk has length exactly one. With one whole ticket, $A$
+can only land on the circle of radius one around $A$. Unless $B$ stands exactly there
+(at $\theta=60^\circ$), $A$ overshoots or falls short. With two whole tickets, $A$ can
+reach any point within distance two, but the corner where $A$ turns must lie one ticket
+from $A$ and one ticket from $B$. Two circles of radius one around $A$ and $B$ meet in
+exactly two points, symmetric across the chord. One is the centre $O$; the other is its
+reflection through the chord's midpoint, the point $A+B$. So there are exactly two
+two-ticket routes:
+\begin{itemize}
+  \item \emph{through the centre}: walk home, then out along $B$'s path;
+  \item \emph{through the twin corner} $A+B$, the corner opposite $O$ in the rhombus
+    $O$, $A$, $A+B$, $B$, whose four sides all have length one.
+\end{itemize}
+The two corners are twins in the sense of Section~\ref{sec:twins}: two answers to one
+question, mirror images across the chord. At the half turn they merge, since $A+B=O$
+when $B=-A$, and only the route through the centre is left.
+
+\paragraph{Where the twin corner stands.} The twin corner is at distance
+$|A+B|=2\cos(\theta/2)$ from the centre, twice the distance of the chord's midpoint. It
+is outside the circle below $120^\circ$, inside beyond, and exactly on the circle at
+$120^\circ$. At that angle the crossing is $\sqrt3$, the side of Bertrand's triangle, and
+the twin corner lands on the hexagon vertex between the two players: the rhombus splits
+into two equilateral triangles.
+
+\paragraph{Where the detour's corner stands.} The outside path of Section~\ref{sec:picture}
+turns at the tangent corner $Q$, at distance $\sec(\theta/2)$ from the centre on the same
+bisector. The tangent corner and the twin corner coincide exactly when
+$\sec(\theta/2)=2\cos(\theta/2)$, that is, at $\theta=90^\circ$. There the rhombus is a
+square, its far corner is where the tangents meet, each tangent leg is $\tan45^\circ=1$,
+and the outside path is exactly two whole tickets. Below $90^\circ$ the tangent corner is
+the nearer of the two and the detour costs less than two tickets; above $90^\circ$ it is
+the farther and the detour costs more.
+
+So the right angle is special three times over. The crossing costs one ticket of energy.
+The crossing's energy equals the two trips through the centre. And the detour becomes two
+whole tickets, through the corner of a square.
+
+\begin{table}[h!]\centering\small
+\caption{The ticket game at five angles: the three prices of the crossing, its Wilson
+energy, and the distances from the centre of the twin corner $A+B$ and the tangent
+corner $Q$.}
+\label{tab:tickets}
+\begin{tabular}{rrrrrrr}\toprule
+$\theta$ & arc & chord & outside & energy & twin corner & tangent corner \\ \midrule
+$57.30^\circ$ & 1.0000 & 0.9589 & 1.0926 & 0.4597 & 1.7552 & 1.1395 \\
+$60^\circ$ & 1.0472 & 1.0000 & 1.1547 & 0.5000 & 1.7321 & 1.1547 \\
+$90^\circ$ & 1.5708 & 1.4142 & 2.0000 & 1.0000 & 1.4142 & 1.4142 \\
+$120^\circ$ & 2.0944 & 1.7321 & 3.4641 & 1.5000 & 1.0000 & 2.0000 \\
+$180^\circ$ & 3.1416 & 2.0000 & $\infty$ & 2.0000 & 0 & $\infty$ \\
+\bottomrule\end{tabular}
+\end{table}
+
+\begin{figure}[h!]\centering
+\begin{tikzpicture}[scale=2.6]
+  \def\t{70}
+  \coordinate (O) at (0,0);
+  \coordinate (A) at (1,0);
+  \coordinate (B) at ({cos(\t)},{sin(\t)});
+  \coordinate (P) at ({1+cos(\t)},{sin(\t)});
+  \coordinate (Q) at (1,{tan(\t/2)});
+  \draw[gray!50] (O) circle (1);
+  \draw[thick] (O) -- (A); \draw[thick] (O) -- (B);
+  \draw[gray,dotted,thick] (A) -- (P) -- (B);
+  \draw[very thick,blue] (A) arc (0:\t:1);
+  \draw[very thick,red] (A) -- (B);
+  \draw[very thick,teal,dashed] (A) -- (Q) -- (B);
+  \fill (O) circle (0.022) node[below left] {$O$};
+  \fill (A) circle (0.022) node[below right] {$A$};
+  \fill (B) circle (0.022) node[above left] {$B$};
+  \fill[gray] (P) circle (0.022) node[above right] {$A+B$};
+  \fill[teal] (Q) circle (0.022) node[right] {$Q$};
+  \draw (0.2,0) arc (0:\t:0.2); \node at ({0.29*cos(\t/2)},{0.29*sin(\t/2)}) {$\theta$};
+\end{tikzpicture}
+\caption{The ticket game at $\theta=70^\circ$. Each player walked one ticket from the
+centre. The chord (red), the arc (blue) and the outside path through the tangent corner $Q$
+(teal) are the three prices of the crossing. The two whole-ticket routes turn at the
+centre or at its twin $A+B$, the far corner of the unit rhombus (dotted). At $90^\circ$ the
+tangent corner and the twin corner coincide.}
+\label{fig:tickets}
+\end{figure}
+
+\begin{plain}
+Picture a room. Everyone starts in the middle with tickets, and one ticket pays for one
+straight walk of at most one step. Two friends each spend a ticket walking out in
+different directions. How does one get back to the other? Walking the curve costs one
+ticket only if they are at most about $57^\circ$ apart. Cutting straight across costs one
+ticket if they are at most $60^\circ$ apart. Counting the way physicists count energy,
+the straight crossing costs one ticket at exactly $90^\circ$, the same as walking back to
+the middle and out again; that is Pythagoras. If tickets must be spent whole, there are
+always exactly two ways to do it in two trips: turn at the middle of the room, or turn at
+its mirror-image corner on the far side of the crossing. Those two corners are twins. At
+$120^\circ$ the twin corner lands on the circle itself, and at $90^\circ$ it becomes the
+corner of a perfect square, where the two edge lines meet and the outside path is exactly
+two whole tickets.
+\end{plain}
+
 \section{How much this matters on a real mesh}\label{sec:mesh}
 
 Our curvature-recovery work measures an $SU(2)$ force on meshes of the Poincar\'e homology
@@ -378,7 +532,10 @@ it does matter is in simulating the motion over time, which is the next step of 
   \item the energy series and the cancellation of $\theta^4$ in $(2C^2+T^2)/3$;
   \item the three one-step rules' placement relative to the circle, and the Crank--Nicolson phase lag $s^3/12$;
   \item the lower twin's miss $\theta^5/2880$ and the $9{:}1$ blend, the far-side sign flip, the
-    continuation through the rim with $S+d^2=1$ intact, and Bertrand's three answers.
+    continuation through the rim with $S+d^2=1$ intact, and Bertrand's three answers;
+  \item the ticket game: the one-ticket angles ($1$ radian, $60^\circ$, $90^\circ$), the
+    energy break-even at the right angle, the two whole-ticket corners $O$ and $A+B$, the
+    twin corner on the circle at $120^\circ$, and the tangent and twin corners meeting at $90^\circ$.
 \end{itemize}
 The face angles of Table~\ref{tab:angles} are measured from frozen data.
 

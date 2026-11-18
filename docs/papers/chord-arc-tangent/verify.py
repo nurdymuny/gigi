@@ -170,4 +170,35 @@ check("Bertrand: 1/3, 1/2, 1/4 within 0.002 (2 million chords each)",
       abs(pr[0] - 1 / 3) < 2e-3 and abs(pr[1] - 1 / 2) < 2e-3 and abs(pr[2] - 1 / 4) < 2e-3)
 check("random midpoint makes S uniform: S = 1 - chord^2/4 = 1 - (1 - U) = U", True)
 
+# 15. the ticket game
+deg = np.pi / 180
+check("one ticket of arc at exactly one radian (57.2958 deg)", abs(1 / deg - 57.29577951) < 1e-7)
+check("one ticket of chord at exactly 60 deg: 2 sin(30 deg) = 1", abs(2 * np.sin(30 * deg) - 1) < 1e-15)
+check("one ticket of energy (1 - cos theta) at exactly 90 deg", abs(1 - np.cos(90 * deg) - 1) < 1e-15)
+check("energy of the crossing = energy of two radius walks (1/2 + 1/2) iff theta = 90 deg  (Pythagoras)",
+      sp.solve(sp.Eq(1 - sp.cos(th), sp.Rational(1, 2) + sp.Rational(1, 2)), th)[0] == sp.pi / 2)
+check("crossing energy < two-trip energy below 90 deg, > above (grid)",
+      bool(np.all(1 - np.cos(grid[grid < np.pi / 2]) < 1) and np.all(1 - np.cos(grid[grid > np.pi / 2 + 1e-9]) > 1)))
+check("hexagon: arc premium at 60 deg = pi/3 - 1 = circumference/hexagon perimeter - 1",
+      abs((np.pi / 3 - 1) - (2 * np.pi / 6 - 1)) < 1e-15 and abs(np.pi / 3 - 1 - 0.04719755) < 1e-8)
+# the only two turning points one ticket from both players: the centre and A + B
+worst_corner = 0.0
+for tdeg in np.linspace(1, 179, 357):
+    tt = tdeg * deg
+    Ap, Bp = np.array([1.0, 0.0]), np.array([np.cos(tt), np.sin(tt)])
+    Mp = (Ap + Bp) / 2
+    up = np.array([-(Bp - Ap)[1], (Bp - Ap)[0]]); up /= np.linalg.norm(up)
+    hp = np.sqrt(1 - np.linalg.norm(Bp - Ap) ** 2 / 4)
+    c1, c2 = Mp + hp * up, Mp - hp * up
+    got = sorted([tuple(np.round(c1, 12)), tuple(np.round(c2, 12))])
+    want = sorted([tuple(np.round(np.zeros(2), 12)), tuple(np.round(Ap + Bp, 12))])
+    worst_corner = max(worst_corner, float(np.abs(np.array(got) - np.array(want)).max()))
+check("two whole tickets: the only turning points are the centre O and its twin A + B (1..179 deg)", worst_corner < 1e-11)
+check("|A + B| = 2 cos(theta/2): twin corner on the circle exactly at 120 deg", abs(2 * np.cos(60 * deg) - 1) < 1e-15)
+check("at 120 deg the crossing is Bertrand's sqrt 3", abs(2 * np.sin(60 * deg) - np.sqrt(3)) < 1e-15)
+check("tangent corner sec(theta/2) = twin corner 2 cos(theta/2) iff theta = 90 deg",
+      [r for r in sp.solve(sp.Eq(1 / sp.cos(th / 2), 2 * sp.cos(th / 2)), th) if 0 < r < sp.pi] == [sp.pi / 2])
+check("at 90 deg the outside path is exactly two whole tickets: 2 tan(45 deg) = 2", abs(2 * np.tan(45 * deg) - 2) < 1e-15)
+check("at 180 deg the twins merge: A + B = O", float(np.linalg.norm(np.array([1.0, 0]) + np.array([-1.0, 0]))) == 0.0)
+
 print(f"\n{sum(ok)}/{len(ok)} PASS")

@@ -2020,6 +2020,59 @@ points.
 
 **What it does:** Kähler spectral gap (Marcella contract surface).
 
+## `POST /v1/bundles/{name}/recover_curvature` `[read]`
+
+**What it does:** RECOVER_CURVATURE. For every tetrahedral cell of a closed
+mesh on a quotient of S³, recovers the closed linear curvature `c + B z`
+(`tr B = 0`, eleven coefficients) from the edge integrals of a 1-cochain.
+`{name}` is the cell bundle. The cell's own four face fluxes are held exactly;
+every other face within `rings` face-steps is fitted in least squares, after
+each neighbour is carried onto the cell's sheet of the cover. Requires the
+`gauge` feature. Spec: [`RECOVER_CURVATURE_SPEC.md`](RECOVER_CURVATURE_SPEC.md);
+paper: [`papers/two-ring-pg/`](papers/two-ring-pg/).
+
+**Request body:**
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `edges` | string, required | bundle holding the 1-cochain: numeric `edge` = 0..E−1 plus the value field |
+| `field` | string, required | numeric field of the edge bundle holding the edge integrals |
+| `rings` | integer, optional | neighbourhood radius in face-steps, 1 to 3; default 2 |
+
+Unknown keys are rejected with `422`, so a misspelt parameter is never a
+silent default.
+
+**Cell bundle shape:** numeric `cell` = 0..N−1, each once; `v{i}_{k}` for
+vertex i in 0..3 and quaternion component k in 0..3, scalar first; `e0..e5`,
+the global edge ids of local edges (0,1),(0,2),(0,3),(1,2),(1,3),(2,3);
+`r0..r5`, 1 if the stored edge runs opposite to the local one.
+
+**Response `200`:** `bundle`, `edges`, `field`, `rings`, `n_cells`,
+`amplification_median`, `amplification_max`, `faces_min`, `faces_max`, plain-
+language `reads` and `notes`, and `cells`: one object per cell, in cell order,
+with `cell`, `c` (3), `b` (3×3), `coefficients` (11), `amplification`,
+`condition`, `rank`, `faces`, `cells`, `residual`, `own_residual`.
+
+Coefficients are in each cell's own chart. `amplification`, `condition` and
+the recovered fluxes do not depend on the chart's frame. `rings: 1` reads 16
+faces and is exactly determined, so it interpolates rough data; `rings: 2`
+is the paper's choice.
+
+**Refusals:** `404` if either bundle is missing. `422`, naming the cell and
+the requirement, when: a face is not shared by exactly two cells (the mesh is
+not closed); shared vertices do not coincide after transport; a neighbourhood
+vertex falls outside the cell's chart; the flux map has rank below 11 or
+condition above 1e12; the cell's own fluxes are not reproduced to 1e-12;
+`rings` is outside 1..=3; or an edge record lacks a finite numeric `field`.
+
+**GQL:** `RECOVER_CURVATURE cells FROM edges ON field [RINGS n];` returns one
+row per cell with `cell`, `c0..c2`, `b00..b22`, `amplification`, `condition`,
+`rank`, `faces`, `cells`, `residual`, `own_residual`. A refusal is an error
+over GQL (see [`AGENTS.md`](../AGENTS.md) on GQL status codes).
+
+**Does not compute:** the Petrov–Galerkin force, the mass matrices or the
+BW05 gate. Those are research scripts in the repository.
+
 ---
 
 # WebSockets

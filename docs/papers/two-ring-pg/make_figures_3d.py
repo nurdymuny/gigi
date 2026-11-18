@@ -302,25 +302,40 @@ def chip(ci=0, n_stat=300, seed=0):
         d2 = np.linalg.norm(field(rr[2][1], Xj)-field(rr[2][0], Xj), axis=1).mean()
         ratios.append(d1/max(d2, 1e-300))
     ratios = np.array(ratios)
-    fig = plt.figure(figsize=(W2, 2.6))
+    # higher-fidelity layout: two large 3-D panels at one arrow scale, plus the 300-chip statistic
+    fig = plt.figure(figsize=(W2, 3.35))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.0, 1.0, 0.82], wspace=0.22)
     nb2 = tr.neighbourhood_rings(cells, faces, ci, rings=1)
+    Vn = to_orth(nb2[nbr])
+    li = cells[nbr]['edges'].index(edge); u, v = pg.EDGES[li]
+    L = 0.42*np.ptp(VK, axis=0).max()/scale
     for p, (r, col, name) in enumerate([(1, ORANGE, 'one ring'), (2, AQUA, 'two rings')]):
-        ax = fig.add_subplot(1, 2, p+1, projection='3d')
-        ax.add_collection3d(Poly3DCollection(tetra_polys(VK), facecolor=INK, alpha=0.06, edgecolor=INK2, linewidths=0.6))
-        Vn = to_orth(nb2[nbr])
-        ax.add_collection3d(Poly3DCollection(tetra_polys(Vn), facecolor=ORANGE, alpha=0.08, edgecolor=GRID, linewidths=0.4))
-        ends = [Vn[i] for i, e in enumerate(cells[nbr]['edges']) for i in [0]][:0]
-        li = cells[nbr]['edges'].index(edge); u, v = pg.EDGES[li]
-        ax.add_collection3d(Line3DCollection([[Vn[u], Vn[v]]], colors=INK, linewidths=2.6))
+        ax = fig.add_subplot(gs[0, p], projection='3d')
+        ax.computed_zorder = False
+        ax.add_collection3d(Poly3DCollection(tetra_polys(Vn), facecolor=ORANGE, alpha=0.07, edgecolor=INK2,
+                                             linewidths=0.35, linestyles=':'))
+        ax.add_collection3d(Poly3DCollection(tetra_polys(VK), facecolor=BLUE, alpha=0.10, edgecolor=INK,
+                                             linewidths=0.9))
+        ax.scatter(VK[:, 0], VK[:, 1], VK[:, 2], color=INK, s=9, depthshade=False)
+        ax.add_collection3d(Line3DCollection([[Vn[u], Vn[v]]], colors=MAGENTA, linewidths=3.2))
         mid = (Vn[u]+Vn[v])/2
-        ax.text(mid[0], mid[1], mid[2], '  chip', color=INK, fontsize=7.5)
-        L = 0.42*np.ptp(VK, axis=0).max()/scale
-        ax.quiver(X[:, 0], X[:, 1], X[:, 2], dP[r][:, 0]*L, dP[r][:, 1]*L, dP[r][:, 2]*L, color=col, linewidth=1.0,
-                  arrow_length_ratio=0.25, normalize=False)
+        ax.text(mid[0], mid[1], mid[2], '  chipped edge', color=INK, fontsize=7.4)
+        ax.quiver(X[:, 0], X[:, 1], X[:, 2], dP[r][:, 0]*L, dP[r][:, 1]*L, dP[r][:, 2]*L, color=col, linewidth=1.35,
+                  arrow_length_ratio=0.3, normalize=False)
         rel = np.linalg.norm(dP[r], axis=1).mean()/np.linalg.norm(P0, axis=1).mean()
-        equalise(ax, np.vstack([VK, Vn])); style3d(ax, 22, -50, zoom=1.7)
-        ax.set_title(f'{name}: curvature in $K$ moves {100*rel:.1f}%', color=INK, fontsize=8.5, pad=-2)
-    fig.subplots_adjust(left=0, right=1, top=0.93, bottom=0.0, wspace=0.0)
+        equalise(ax, np.vstack([VK, Vn])); style3d(ax, 24, -46, zoom=1.85)
+        ax.set_title(f'({"ab"[p]}) {name}: curvature in $K$\nmoves {100*rel:.1f}%', color=INK, fontsize=8.5, pad=-6)
+    axh = fig.add_subplot(gs[0, 2])
+    bins = np.logspace(np.log10(max(ratios.min(), 0.5)), np.log10(ratios.max()), 26)
+    axh.hist(ratios, bins=bins, color=BLUE, alpha=0.85, edgecolor='white', linewidth=0.4)
+    axh.set_xscale('log')
+    axh.axvline(np.median(ratios), color=INK, lw=1.0, ls='--')
+    axh.text(np.median(ratios)*1.08, axh.get_ylim()[1]*0.92, f'median {np.median(ratios):.1f}x', fontsize=7.4, color=INK, va='top')
+    axh.axvline(1.0, color=INK2, lw=0.6)
+    axh.set_xlabel('one ring / two rings')
+    axh.set_ylabel('chips')
+    axh.set_title(f'(c) response ratio,\n{n_stat} random chips', color=INK, fontsize=8.5)
+    fig.subplots_adjust(left=0, right=0.97, top=0.86, bottom=0.17)
     fig.savefig(FIG/'fig_chip_3d.pdf'); plt.close(fig)
     return {'cell': ci, 'edge': int(edge), 'delta': delta, 'n_stat': n_stat,
             'ratio_median': float(np.median(ratios)), 'ratio_q25': float(np.quantile(ratios, .25)),

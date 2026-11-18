@@ -637,6 +637,16 @@ two-ring fit reads $40$ on $\T_1$ and $40$ to $44$ on $\T_2$ and $\T_3$. Each pe
 is still an $11$-coefficient constrained least-squares solve, and the assembled operator
 couples each cell to its two-ring neighbourhood rather than its one-ring star.
 
+Not all of that size is needed. Figure~\ref{fig:rings3d} draws each ring in three
+dimensions and marks the second-ring cells that a greedy selection keeps: the ones that most
+lower the amplification, added until it is within $1.25$ times the full two-ring value. A
+companion experiment rebuilds the force on those smaller stencils. With two to four of the
+roughly ten second-ring cells per cell on average, it passes \BW{} ($1.57\%$ at $n=5$) and
+S3, while the same number of cells chosen at random is unstable, with $26$ and then $48$
+runaway modes. The selection matters, not just the count. The folded stencil is smaller but
+not more accurate than two rings, and its saving shrinks under refinement, so the paper
+keeps the uniform two-ring rule (repository: \path{docs/RING_FOLD_FORCE_RESULTS.md}).
+
 \begin{figure}[t]
   \centering
   \includegraphics[width=\textwidth]{figures/fig_neighbourhood_3d.pdf}
@@ -666,6 +676,22 @@ couples each cell to its two-ring neighbourhood rather than its one-ring star.
   \label{fig:cellviews}
 \end{figure}
 
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_rings_3d.pdf}
+  \caption{The rings in three dimensions, from the real cells of $\T_2$, each drawn in its own
+  chart (cell $K$ in blue, drawn over its neighbours). \textbf{(a)--(c)} Cell $0$, the cell of
+  Figures~\ref{fig:schematic} and~\ref{fig:cellviews}, built up from one viewpoint: the one-ring
+  neighbourhood, both rings, and the folded stencil, which keeps only the second-ring cells
+  that a greedy selection needs to bring the amplification within $1.25$ times its two-ring
+  value. Each panel gives the fit amplification $\norm{\cR_K}_2$. \textbf{(d)--(f)} Every
+  neighbour pulled away from $K$ along the direction of its centroid, from a second
+  viewpoint, for cell $0$, a cell the selection serves with $2$ second-ring cells, and a cell
+  that needs $7$. The geometry is in \texttt{data/rings\_3d.json};
+  \texttt{make\_figure\_rings3d.py} regenerates it from the mesh.}
+  \label{fig:rings3d}
+\end{figure}
+
 \begin{figure}[t]
   \centering
   \includegraphics[width=\textwidth]{figures/fig_conditioning.pdf}
@@ -690,9 +716,10 @@ couples each cell to its two-ring neighbourhood rather than its one-ring star.
   \includegraphics[width=\textwidth]{figures/fig_chip_3d.pdf}
   \caption{A chip in the rim. The same small change to one neighbouring edge value
   (marked, $5\%$ of the median edge value), and the resulting change in the recovered
-  curvature at points inside $K$, drawn to the same arrow scale in both panels. Over $300$
-  random cells and chips the one-ring response is a median $14.5$ times the two-ring
-  response.}
+  curvature at points inside $K$, drawn to the same arrow scale in panels (a) and (b).
+  \textbf{(c)} The ratio of the one-ring to the two-ring response for $300$ random cells and
+  chips on $\T_2$: median $14.5$ (dashed), quartiles $5.8$ and $25.3$. The ratio is below one
+  only rarely (the smallest is $0.84$; the thin line marks one).}
   \label{fig:chip}
 \end{figure}
 

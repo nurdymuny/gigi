@@ -1,6 +1,6 @@
 # Three Ways Across a Turn: Chord, Arc and Tangent
 
-**Paper:** [`paper.pdf`](paper.pdf) (8 pages, working draft). **Author:** Bee Rosa Davis, Davis Geometric.
+**Paper:** [`paper.pdf`](paper.pdf) (17 pages, working draft). **Author:** Bee Rosa Davis, Davis Geometric.
 
 ## The idea
 
@@ -73,5 +73,11 @@ integrator and for strong fields.
 ```bash
 python docs/papers/chord-arc-tangent/verify.py
 GIGI_RICCI_DATA_ROOT=<gigi checkout with output/> python docs/papers/chord-arc-tangent/face_angles.py
-pdflatex paper.tex && pdflatex paper.tex
+GIGI_RICCI_DATA_ROOT=<gigi checkout with output/> python docs/papers/chord-arc-tangent/make_figures.py   # figures/*.pdf
+cd docs/papers/chord-arc-tangent && pdflatex paper.tex && pdflatex paper.tex
 ```
+
+Only `fig_face_angles` needs the frozen meshes; it asserts that its numbers match Table 2.
+Typesetting uses the shared house style [`../dgstyle.tex`](../dgstyle.tex) (Palatino via
+`newpx`, `titlesec`, `caption`, `fancyhdr`, `enumitem`). On a minimal TeX Live install:
+`tlmgr --usermode install titlesec newpx newtx enumitem fontaxes xstring kastrup`.

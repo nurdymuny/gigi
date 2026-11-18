@@ -1,18 +1,27 @@
 \documentclass[11pt]{article}
-\usepackage[margin=1in]{geometry}
-\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1.1in,headsep=18pt]{geometry}
+\newcommand{\dgshorttitle}{Three Ways Across a Turn}
+\newcommand{\dgauthorshort}{B. R. Davis}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath,amsthm}
+\input{../dgstyle}
 \usepackage{booktabs}
 \usepackage{tikz}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
+\usepackage{listings}
+\usepackage{array}
+\lstdefinestyle{rust}{basicstyle=\ttfamily\footnotesize, columns=fullflexible, keepspaces=true,
+  frame=lines, framesep=4pt, xleftmargin=6pt, xrightmargin=6pt, showstringspaces=false,
+  morekeywords={let,mut,for,in,fn,pub}}
 
 \newtheorem{proposition}{Proposition}
 \newtheorem{remark}{Remark}
-\newenvironment{plain}{\begin{quote}\small\noindent\textbf{In plain words.}~}{\end{quote}}
 
 \title{Three Ways Across a Turn:\\ Chord, Arc and Tangent}
-\author{Bee Rosa Davis\\ Davis Geometric}
-\date{November 2026 \quad (working draft)}
+\author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}}
+\date{November 2026 \quad\textperiodcentered\quad working draft}
 
 \begin{document}
 \maketitle
@@ -39,6 +48,9 @@ imaginary while $S+d^2=1$ survives. Bertrand's paradox turns out to be the quest
 which of these quantities is taken to be uniform: the arc, $\sqrt S$, or $S$.
 A ticket game puts all of it in one room: the arc, the chord and the energy each buy one ticket at a different angle ($57.30^\circ$, $60^\circ$, $90^\circ$), and two whole tickets can only turn at the centre or at its twin.
 Every identity is checked symbolically or numerically by a script that ships with the paper.
+Because the turn is the holonomy of a gauge field, each of these choices is a choice of
+Yang--Mills action and of how a Yang--Mills field steps forward in time; a companion paper
+makes those choices on the Poincar\'e homology sphere.
 \end{abstract}
 
 \section{A picture}\label{sec:picture}
@@ -71,16 +83,16 @@ between them. This paper is about what each of the three means, and what it cost
   \draw[->,gray] (0,-0.3) -- (0,1.25);
   \draw[thick] (0,0) -- (1,0);
   \draw[thick] (0,0) -- ({cos(\t)},{sin(\t)});
-  \draw[very thick,blue] (1,0) arc (0:\t:1);
-  \draw[very thick,red] (1,0) -- ({cos(\t)},{sin(\t)});
+  \draw[very thick,dgarc] (1,0) arc (0:\t:1);
+  \draw[very thick,dgchord] (1,0) -- ({cos(\t)},{sin(\t)});
   \coordinate (Q) at ({1/cos(\t/2)*cos(\t/2)},{1/cos(\t/2)*sin(\t/2)});
-  \draw[very thick,teal,dashed] (1,0) -- (Q) -- ({cos(\t)},{sin(\t)});
+  \draw[very thick,dgtan] (1,0) -- (Q) -- ({cos(\t)},{sin(\t)});
   \draw (0.22,0) arc (0:\t:0.22); \node at ({0.3*cos(\t/2)},{0.3*sin(\t/2)}) {$\theta$};
   \fill (1,0) circle (0.02) node[below right] {$1$};
   \fill ({cos(\t)},{sin(\t)}) circle (0.02) node[above] {$U=e^{i\theta}$};
-  \node[red] at (0.62,0.30) {chord};
-  \node[blue] at (0.80,0.47) {arc};
-  \node[teal] at (1.26,0.80) {outside};
+  \node[dgchord] at (0.62,0.30) {chord};
+  \node[dgarc] at (0.80,0.47) {arc};
+  \node[dgtan] at (1.26,0.80) {outside};
 \end{tikzpicture}
 \caption{Three ways across a turn of $\theta=70^\circ$: the chord (length $2\sin(\theta/2)$),
 the arc ($\theta$) and the outside path along the two tangents ($2\tan(\theta/2)$).}
@@ -89,7 +101,21 @@ the arc ($\theta$) and the outside path along the two tangents ($2\tan(\theta/2)
 
 Write $C=2\sin(\theta/2)$, $A=\theta$ and $T=2\tan(\theta/2)$ for the three lengths. The
 outside corner lies on the bisector at distance $\sec(\theta/2)$ from the centre, so each
-tangent segment has length $\tan(\theta/2)$.
+tangent segment has length $\tan(\theta/2)$. Figure~\ref{fig:sphere} draws the same three
+paths in space, on the sphere where the non-Abelian turns of Section~\ref{sec:su2} live.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_sphere_3d.pdf}
+\caption{The three paths in three dimensions. \textbf{(a)} A turn of $\theta=70^\circ$ in a plane
+through the centre of the unit sphere: the arc (green) runs on the surface, the chord (blue)
+cuts through the inside, and the outside path (orange) leaves along the tangent at $1$, turns at
+the corner on the bisector at distance $\sec(\theta/2)$, and comes back in along the tangent
+at $U$. \textbf{(b)} Turns of $30^\circ$, $60^\circ$, $90^\circ$ and $110^\circ$ from the same
+start. The chord and the arc stay bounded; the corner moves outward along the bisector and
+reaches infinity at the half turn, the barrier met again in Sections~\ref{sec:energy}
+and~\ref{sec:su2}. Orthographic view; computed by \texttt{make\_figures.py}.}
+\label{fig:sphere}
+\end{figure}
 
 \paragraph{What is classical, and what this paper adds.} The inequality $C<A<T$ is
 Archimedes' squeeze of the circle between inscribed and circumscribed polygons
@@ -103,6 +129,17 @@ showing up again in energy, in algebra and in time stepping. It then checks how 
 this matters on a real non-Abelian mesh. The energy combination of
 Section~\ref{sec:energy} is the one statement we have not found in the sources above. A
 proper prior-art search is listed as open in Section~\ref{sec:claims}.
+
+\paragraph{Where this is going.} The turn in this paper is not only a stick on a circle. In
+a gauge theory every small loop carries one, its holonomy, and the energy of the field is
+the sum of how far those loops have turned. Choosing the chord, the arc or the outside path
+to measure a turn is choosing a lattice Yang--Mills action, and choosing how to step a turn
+forward is choosing how the field evolves in time. The companion paper \emph{Reading the
+Curve, Not Counting the Points}~\cite{davis-rtc} makes those choices on meshes of the
+Poincar\'e homology sphere, and Section~\ref{sec:mesh} measures how much they matter there.
+Behind both papers sits a larger question: whether Yang--Mills dynamics computed from coarse
+lattice data follow the continuum flow, and what the curvature of the gauge group itself has
+to say about it. Section~\ref{sec:claims} says how far this paper goes, and where it stops.
 
 \section{Lengths: who misses, and by how much}\label{sec:lengths}
 
@@ -132,6 +169,16 @@ perfectly: the leftover error shrinks like the fifth power of the angle. Snelliu
 this in 1621 and Huygens proved it in 1654. Neither side alone tells the truth; the two
 sides together nearly do.
 \end{plain}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_lengths.pdf}
+\caption{Lengths. \textbf{(a)} The chord's short-fall $A-C$ and the outside path's overshoot
+$T-A$ both fall like $\theta^3$, at $\theta^3/24$ and $\theta^3/12$ (dashed: the leading terms of
+Proposition~\ref{prop:lengths}); the $2{:}1$ Snellius--Huygens blend falls like
+$\theta^5/320$. \textbf{(b)} The ratio of overshoot to short-fall is $2$ in the limit and
+grows with the turn; the cancellation is a small-angle statement.}
+\label{fig:lengths}
+\end{figure}
 
 \section{The turn as a number}\label{sec:number}
 
@@ -205,6 +252,18 @@ energy slightly too big, by twice as much. Mixing them two-to-one cancels the ma
 using only arithmetic on $U$.
 \end{plain}
 
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_energy.pdf}
+\caption{Energy. \textbf{(a)} Relative error of each face energy against the continuum
+energy $\theta^2$: the chord (Wilson's action) at $\theta^2/12$, the outside path at
+$\theta^2/6$, and the $2{:}1$ blend at $7\theta^4/720$ (Proposition~\ref{prop:energy}; dashed
+lines are the leading terms). The shaded band is the range of face angles on the $SU(2)$
+Berger meshes of Section~\ref{sec:mesh}, from the median at $n=5$ to the largest at $n=1$.
+\textbf{(b)} The three energies over the whole turn: the chord's is bounded by $4$, the arc's
+is $\theta^2$, and the outside path's has a barrier at $U=-1$.}
+\label{fig:energy}
+\end{figure}
+
 \begin{remark}[What this does and does not correct]
 On a lattice of spacing $a$ and a smooth field, $\theta=O(a^2)$, so the $\theta^4$ term is a
 relative correction of order $a^4$. The dominant lattice error is of order $a^2$ and comes
@@ -238,6 +297,23 @@ formulas are identical with the turning angle measured on the three-sphere. The 
 still rebuilds the turn with plain arithmetic, and it still breaks only at the half turn.
 \end{plain}
 
+The Cayley vector has a picture. Since $v=\operatorname{Im}U/(1+\operatorname{Re}U)$, it is
+the stereographic projection of $U$ from the point $-1$ onto the equatorial space
+$\operatorname{Re}U=0$. Figure~\ref{fig:cayley} draws it one dimension down, on $S^2$.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_cayley_3d.pdf}
+\caption{The Cayley vector as stereographic projection, drawn on $S^2$ in place of $S^3$.
+\textbf{(a)} The vertical axis is $\operatorname{Re}U$. Solid circles are the turns at geodesic
+angle $a=30^\circ,60^\circ,90^\circ,120^\circ$ from $1$; dashed circles, in the same shade,
+are their Cayley images in the plane $\operatorname{Re}U=0$, of radius $\tan(a/2)$. The thin
+rays run from the projection point $-1$. As $a\to\pi$ the image runs to infinity, which is
+why the Cayley map reaches everything except $U=-1$. \textbf{(b)} The three coordinates of one
+turn: chord $|U-1|=2\sin(a/2)$, arc $|\log U|=a$, and Cayley $2|v|=2\tan(a/2)$. They are the
+lengths $C$, $A$ and $T$ of Section~\ref{sec:lengths}, read on $S^3$.}
+\label{fig:cayley}
+\end{figure}
+
 \section{Time stepping}\label{sec:time}
 
 Take the simplest motion that turns: $y'=i\,y$, whose exact solution goes around the
@@ -255,6 +331,18 @@ the point in three places, and they are the three paths again.
     phase lag is $s-\varphi=\tfrac{1}{12}s^3+O(s^5)$, the same $1/12$ as $T-A$ in
     Proposition~\ref{prop:lengths}.
 \end{itemize}
+Figure~\ref{fig:time} shows the three rules over one full turn.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_time.pdf}
+\caption{Time stepping on $y'=iy$. \textbf{(a)} Twenty-one steps of size $s=0.3$ (one full
+turn, $t\approx2\pi$) from $y=1$. Explicit Euler (orange) spirals out, implicit Euler (blue)
+spirals in, and Crank--Nicolson (green) stays on the circle; the open circle marks the exact
+endpoint. \textbf{(b)} Error per step: the Euler rules gain or lose energy at order $s^2$
+(the explicit and implicit curves agree at leading order), while Crank--Nicolson makes no
+energy error and lags in phase by $s-2\arctan(s/2)\approx s^3/12$ (dashed).}
+\label{fig:time}
+\end{figure}
 
 For a general linear flow $y'=-Gy$, the Crank--Nicolson factor
 $r(z)=(1-z/2)/(1+z/2)$ satisfies $|r(z)|\le1$ exactly when $\operatorname{Re}z\ge0$. Its
@@ -269,7 +357,8 @@ The backward version drifts inward and loses energy. The Cayley step, the detour
 exactly on the circle and only lags a little behind, by the same one-twelfth that separates
 the detour from the true path. For our next step, simulating the flow on the mesh, that is
 the natural rule to try first. The numerical range we are measuring tells us how big its
-steps may be.
+steps may be. The engine's clock today steps along the true curve instead
+(Section~\ref{sec:gigi}).
 \end{plain}
 
 \section{Twins, the far side, and Bertrand}\label{sec:twins}
@@ -502,19 +591,19 @@ $180^\circ$ & 3.1416 & 2.0000 & $\infty$ & 2.0000 & 0 & $\infty$ \\
   \draw[gray!50] (O) circle (1);
   \draw[thick] (O) -- (A); \draw[thick] (O) -- (B);
   \draw[gray,dotted,thick] (A) -- (P) -- (B);
-  \draw[very thick,blue] (A) arc (0:\t:1);
-  \draw[very thick,red] (A) -- (B);
-  \draw[very thick,teal,dashed] (A) -- (Q) -- (B);
+  \draw[very thick,dgarc] (A) arc (0:\t:1);
+  \draw[very thick,dgchord] (A) -- (B);
+  \draw[very thick,dgtan] (A) -- (Q) -- (B);
   \fill (O) circle (0.022) node[below left] {$O$};
   \fill (A) circle (0.022) node[below right] {$A$};
   \fill (B) circle (0.022) node[above left] {$B$};
   \fill[gray] (P) circle (0.022) node[above right] {$A+B$};
-  \fill[teal] (Q) circle (0.022) node[right] {$Q$};
+  \fill[dgtan] (Q) circle (0.022) node[right] {$Q$};
   \draw (0.2,0) arc (0:\t:0.2); \node at ({0.29*cos(\t/2)},{0.29*sin(\t/2)}) {$\theta$};
 \end{tikzpicture}
 \caption{The ticket game at $\theta=70^\circ$. Each player walked one ticket from the
-centre. The chord (red), the arc (blue) and the outside path through the tangent corner $Q$
-(teal) are the three prices of the crossing. The two whole-ticket routes turn at the
+centre. The chord (blue), the arc (green) and the outside path through the tangent corner $Q$
+(orange) are the three prices of the crossing. The two whole-ticket routes turn at the
 centre or at its twin $A+B$, the far corner of the unit rhombus (dotted). At $90^\circ$ the
 tangent corner and the twin corner coincide.}
 \label{fig:tickets}
@@ -537,10 +626,11 @@ two whole tickets.
 
 \section{How much this matters on a real mesh}\label{sec:mesh}
 
-Our curvature-recovery work measures an $SU(2)$ force on meshes of the Poincar\'e homology
+Our curvature-recovery work~\cite{davis-rtc} measures an $SU(2)$ force on meshes of the Poincar\'e homology
 sphere, at the Levi-Civita connection of a Berger metric. Its native action is the chord
 energy: each face's defect is $D=U_f-1$. Table~\ref{tab:angles} gives the face angles $a$
-on those meshes (\texttt{face\_angles.py}, from the frozen inputs).
+on those meshes (\texttt{face\_angles.py}, from the frozen inputs), and
+Figure~\ref{fig:faces} shows their distributions.
 
 \begin{table}[h!]\centering\small
 \caption{Face holonomy angles on the $SU(2)$ Berger meshes, and the relative gap between
@@ -555,6 +645,18 @@ $n$ & faces & median $a$ & max $a$ & chord--arc energy gap at max \\ \midrule
 \bottomrule\end{tabular}
 \end{table}
 
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_face_angles.pdf}
+\caption{Face angles on the $SU(2)$ Berger meshes, from the frozen inputs (the numbers of
+Table~\ref{tab:angles}; \texttt{make\_figures.py} asserts that they agree). \textbf{(a)} The
+cumulative distribution of face holonomy angles at each level; every face turns by less than
+$0.1$ radian. \textbf{(b)} The chord--arc energy gap $a^2/12$ per face: the bar spans the
+smallest to the largest face and the tick marks the median. The shaded band is the range of
+force errors measured on the same meshes. The gap lies two to five orders of magnitude below
+it.}
+\label{fig:faces}
+\end{figure}
+
 The angles shrink roughly like the face area, and the chord--arc energy gap is below
 $0.08\%$ everywhere. The force errors measured there are $2.5\%$ to $36\%$. So the
 chord-versus-arc choice is not what limits that work, and the two readings used there
@@ -567,6 +669,80 @@ On the meshes we actually use, every face turns by less than a tenth of a radian
 shortcut and the true path differ in energy by less than a tenth of a percent, far smaller
 than the errors we measure. So this idea does not explain those errors, and we say so. Where
 it does matter is in simulating the motion over time, which is the next step of that work.
+\end{plain}
+
+\section{The computation in GIGI}\label{sec:gigi}
+
+The numbers in this paper sit in two places, and it matters which is which. Some of the
+three paths are already part of \textsc{gigi}, the open-source geometric engine our
+curvature-recovery work runs in (PolyForm Noncommercial 1.0.0,
+\url{https://github.com/nurdymuny/gigi}). Others exist so far only in this paper's
+checking script. Table~\ref{tab:gigi} says which. Paths are relative to the repository
+root at commit \texttt{f3e2c1c} of the \texttt{feat/reading-the-curve} branch.
+
+\begin{table}[h!]\centering\small
+\caption{Where each idea of the paper lives. ``Engine'' means native Rust in \textsc{gigi};
+``script'' means Python in this directory or the repository's \texttt{scripts/}.}
+\label{tab:gigi}
+\begin{tabular}{>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{6.7cm}>{\raggedright\arraybackslash}p{2.2cm}}\toprule
+Idea & Where & Kind \\ \midrule
+The turn as a number, $q_0=\cos a=\tfrac12\operatorname{Re}\operatorname{tr}U$ &
+  \texttt{PLAQUETTE} primitive, \path{src/gauge/plaquette.rs}, one $q_0$ per face & engine \\
+Half the chord and sameness, $1-S=d^2=(1-\cos\theta)/2$ &
+  \texttt{chord\_d\_sq}, \path{src/dials.rs} & engine \\
+Chord energy, $D=U_f-1$, weighted by the face mass &
+  \texttt{cell\_action}, \path{src/gauge/ricci_simplicial.rs} & engine \\
+Exact links (transport along the arc) on the Berger metric &
+  \texttt{levi\_civita\_link}, \path{src/gauge/ricci_link.rs} & engine \\
+The arc as a map, $\exp$ on $\mathfrak{su}(2)$ &
+  Rodrigues exponential, \path{src/gauge/lie_exp.rs} & engine \\
+Time stepping &
+  \texttt{SYMPLECTIC\_FLOW}: kick--drift--kick leapfrog whose drift is that exponential,
+  \path{src/gauge/symplectic_flow.rs} & engine \\
+Face angles of Table~\ref{tab:angles} &
+  \texttt{face\_angles.py}, from the outputs of \path{examples/ricci_operator_probe.rs} &
+  script on engine output \\
+Arc (Manton) energy, tangent energy, the $2{:}1$ blend &
+  \texttt{verify.py} & script \\
+Cayley map and Crank--Nicolson step & \texttt{verify.py} & script \\
+Haar sameness and Bertrand & \path{scripts/haar_sameness.py}, \texttt{verify.py} & script \\
+\bottomrule\end{tabular}
+\end{table}
+
+\paragraph{The chord, as the engine computes it.} The native $SU(2)$ action of
+Section~\ref{sec:mesh} is the chord energy, exactly. Each face's holonomy is formed from its
+three links, and one is subtracted from its scalar part:
+\begin{lstlisting}[style=rust]
+let (a, b, c) = [(0, 3, 1), (0, 4, 2), (1, 5, 2), (3, 5, 4)][face];
+let mut h = product(product(u[a], u[b]), inverse(u[c]));
+h[0] = h[0] - Jet::constant(1.);      // the chord: D = U_f - 1
+...
+energy = energy + Jet::constant(2. * mass[(i, j)]) * defects[i][k] * defects[j][k];
+\end{lstlisting}
+The variables are forward-mode jets, so the same pass returns all eighteen right-trivialised
+derivatives exactly. The face angles of Table~\ref{tab:angles} are read from what this
+code produced on the frozen meshes: the native probe \path{examples/ricci_operator_probe.rs},
+built from the source above, whose executable is pinned in the receipts of that work by its
+SHA-256 (\texttt{71fb30db\ldots}).
+
+\paragraph{The engine steps along the arc, not the tangent.} \textsc{gigi}'s integrator,
+\texttt{SYMPLECTIC\_FLOW}, moves each link by the exponential map, the arc, with a
+kick--drift--kick leapfrog driven by the Wilson force. The research flow under development
+in the curvature-recovery work uses a Runge--Kutta--Munthe-Kaas method of order four, also
+built on the exponential. Neither uses the Cayley map. The Crank--Nicolson step of
+Section~\ref{sec:time} is therefore a proposal for the engine, not a description of it.
+
+\paragraph{What is not in the engine.} The arc (Manton) energy, the tangent energy, the
+combination of Proposition~\ref{prop:energy} and the Cayley construction are computed only
+in \texttt{verify.py}. None is an engine verb, and nothing in this paper claims they have
+been tested inside a simulation.
+
+\begin{plain}
+Some of this paper is already inside the engine we use: it reads how far each face has
+turned, measures the shortcut, and builds its energy from the shortcut, exactly as
+Section~\ref{sec:mesh} assumes. Its clock moves things along the true curve. The detour and
+the two-to-one blend live only in the checking script for now. Putting the detour's step into
+the engine's clock is one of the open items below.
 \end{plain}
 
 \section{What is claimed, and what is open}\label{sec:claims}
@@ -598,15 +774,22 @@ curvature-recovery work; Section~\ref{sec:mesh} shows it does not.
   \item A prior-art search for the energy combination of Proposition~\ref{prop:energy} and
     for tangent-based lattice actions in general.
   \item A Cayley (Crank--Nicolson) time integrator for the $SU(2)$ flow, tested against
-    exact trajectories, with its step size set by the numerical range.
+    exact trajectories, with its step size set by the numerical range. \textsc{gigi}'s
+    current integrator steps with the exponential (Section~\ref{sec:gigi}).
   \item A strong-field or coarse-lattice test where $\theta$ is not small, the only regime
     where the energy combination could matter.
 \end{itemize}
 
-\paragraph{A future direction.} The unit sphere in one dimension is the pair $\{-1,+1\}$,
-and in four it is $SU(2)$, whose centre is again $\{-1,+1\}$. A companion note follows
-that thread toward the curvature of the gauge group and the Yang--Mills mass gap. It keeps
-exact statements apart from the open link, which this paper does not claim. The note is
+\paragraph{Toward Yang--Mills.} Three things here point past this paper. First, the
+two-to-one energy of Proposition~\ref{prop:energy} is a lattice action, and how it behaves in
+a strong-field simulation, with its barrier at the half turn, is a Yang--Mills question we
+have not asked. Second, the Cayley step is the integrator we will try first for the $SU(2)$
+Yang--Mills flow on the Poincar\'e homology sphere, whose instantaneous force passes its gate
+in the companion paper~\cite{davis-rtc}. Third, the unit sphere in one dimension is the pair
+$\{-1,+1\}$, and in four it is $SU(2)$, whose centre is again $\{-1,+1\}$: the half turn that
+breaks the outside path is the centre of the gauge group. A companion note follows that
+thread toward the curvature of the gauge group and the Yang--Mills mass gap. It keeps exact
+statements apart from the open link, which this paper does not claim. The note is
 \path{docs/research/unit-curvature-2026-11-18.md} in the \textsc{gigi} repository.
 
 \paragraph{Reproducibility.} \texttt{verify.py} and \texttt{face\_angles.py} in this
@@ -626,6 +809,9 @@ directory; the output of the first is saved as \texttt{verify\_output.txt}, of t
 \bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
 \bibitem{bertrand} J.~Bertrand, \emph{Calcul des probabilit\'es}, Gauthier-Villars, Paris, 1889.
 \bibitem{jaynes} E.~T.~Jaynes, The well-posed problem, \emph{Found.\ Phys.} 3 (1973) 477--492.
+\bibitem{davis-rtc} B.~R.~Davis, Reading the curve, not counting the points: a consistent,
+stable Petrov--Galerkin curvature force, Davis Geometric working paper, 2026,
+\path{docs/papers/two-ring-pg/} in the \textsc{gigi} repository.
 \bibitem{davis-dc} B.~R.~Davis, The Double Cover Principle, Zenodo, 2026, \url{https://doi.org/10.5281/zenodo.18895462}.
 \end{thebibliography}
 \end{document}

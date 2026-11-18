@@ -92,8 +92,9 @@ second. The native $SU(2)$ Whitney force stays $25.5\%$
 wrong on the Berger field. The same Petrov--Galerkin move, with native test variations and
 a covariantly recovered trial, falls to $2.51\%$ at $n=5$ and passes the
 unchanged \BW{} gate. At $n=1$ and $n=2$ its linearised spectrum has no rough modes,
-matching the native operator's, while the one-ring force has hundreds; eigenvalues alone
-do not exclude transient growth, and the $SU(2)$ numerical range is not yet computed.
+matching the native operator's, while the one-ring force has hundreds. Its numerical
+range, which bounds transient growth, has its left edge at $-4.66$ against the native
+$-4.68$ at $n=2$, so the lopsided spectrum hides no swell.
 The flow and time integration are untested.
 
 Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
@@ -1011,16 +1012,51 @@ linearisation has some directions of growth. At $n=2$, the five most negative re
 are $-4.632$, $-4.632$, $-2.503$, $-2.503$, $-1.390$ for the two-ring operator and $-4.650$,
 $-4.650$, $-2.504$, $-2.504$, $-1.366$ for the native one. The two-ring operator is strongly
 non-normal: its imaginary parts reach $150$, where the native operator's stay below $1$.
-That is the cost of a force that is not the gradient of an energy. Eigenvalues alone do
-not rule out transient non-normal growth; the numerical-range certificate of
-Proposition~\ref{prop:diss} would, and it has not been computed for $SU(2)$. Gauge directions are not exact zero modes at a field that
-is not at rest, so the count of small eigenvalues was recorded but not gated.
+That is the cost of a force that is not the gradient of an energy. Gauge directions are
+not exact zero modes at a field that is not at rest, so the count of small eigenvalues was
+recorded but not gated.
+
+\paragraph{Numerical range.} Eigenvalues alone do not rule out transient non-normal growth,
+so we also measured the numerical range $W(\hat G)$ of the force whitened by the native mass,
+$\hat G=L^{-1}KL^{-\top}$ with $B=LL^\top$. Its left edge $\min\operatorname{Re}W(\hat G)=-m$
+bounds the linearised flow, $\norm{e^{-t\hat G}}\le e^{mt}$, with constant one. The gate,
+fixed before measurement, asked for the two-ring left edge to be at least twice the native
+one and at least $-10$. Table~\ref{tab:su2numrange} gives the result.
+
+\begin{table}[t]\centering\small
+\caption{Numerical range of the linearised $SU(2)$ force, whitened by the native mass, on
+the Berger field. ``Left edge'' is $\min\operatorname{Re}W(\hat G)$; $\eta=\norm{\hat G\hat G^\top-\hat G^\top\hat G}/\norm{\hat G}^2$
+measures non-normality.}
+\label{tab:su2numrange}
+\begin{tabular}{llrrrr}\toprule
+Force & $n$ & left edge & slowest $\operatorname{Re}\lambda$ & numerical radius & $\eta$ \\ \midrule
+Native $SU(2)$ Whitney & 1 & $-4.634$ & $-4.475$ & 1{,}913 & 0.0014 \\
+\textbf{Two-ring Petrov--Galerkin} & 1 & $\mathbf{-4.563}$ & $-4.394$ & 1{,}652 & 0.134 \\
+removal: one ring & 1 & $-8{,}774$ & $-8{,}621$ & 8{,}774 & 0.116 \\ \midrule
+Native $SU(2)$ Whitney & 2 & $-4.682$ & $-4.650$ & 7{,}339 & 0.0003 \\
+\textbf{Two-ring Petrov--Galerkin} & 2 & $\mathbf{-4.664}$ & $-4.632$ & 7{,}027 & 0.142 \\
+removal: one ring & 2 & $-19{,}993$ & $-19{,}829$ & 19{,}993 & 0.176 \\
+\bottomrule\end{tabular}
+\end{table}
+
+The two-ring force passes at both levels. Its left edge lies within $0.04$ of its slowest
+eigenvalue and matches the native operator's, so the only growth is the field's own motion:
+over the window $[0,0.02]$ of the time-integration experiment, the envelope is
+$e^{4.664\times0.02}\approx1.098$ for both forces. The one ring fails, as the removal
+requires, with a left edge of $-19{,}993$ at $n=2$. The two-ring operator is non-normal
+($\eta$ about $0.14$, against $3\times10^{-4}$ native), but its numerical radius stays within
+$1\%$ of its norm, and the left edge sits on its slowest eigenvalue: the lopsidedness lives in
+fast, strongly damped modes, not where growth would begin. Because the Berger field moves,
+the symmetric part is indefinite for every operator, so the dissipativity certificate of
+Proposition~\ref{prop:diss} does not apply here, and the envelope above is the honest bound.
+For a time stepper, Crouzeix--Palencia~\cite{cp} bounds $k$ steps of any rational rule $r$ by
+$(1+\sqrt2)\sup_{W}|r(hz)|^k$; the explicit-Euler limit it implies at $n=2$,
+$h\approx2.85\times10^{-4}$, agrees with the step sizes used for the flow.
 
 \paragraph{Scope.} Both the covariant recovery and the non-Abelian force are research
 scripts, not yet engine verbs. The force result is the instantaneous \BW{} gate on one
 metric, with the spectrum of Table~\ref{tab:su2stab}. The flow and time integration are
-untested, and stability is measured only at $n\le2$; the
-numerical range is not computed. For the time integration, the companion
+untested, and stability and the numerical range are measured only at $n\le2$. For the time integration, the companion
 paper~\cite{threeways} gives the natural first rule: the Crank--Nicolson step is the
 Cayley map, the tangent reading of a turn, which keeps each update exactly on $SU(2)$, and
 the numerical range bounds how large its steps may be. A reciprocal version remains the
@@ -1129,8 +1165,8 @@ used as evidence in this paper.
   \item The force results concern a single Abelian control on a single round quotient.
     The covariant recovery of Section~\ref{sec:su2} is a research script, tested on two
     exact left-invariant fields with sampled cells. The $SU(2)$ force of
-    Section~\ref{sec:su2force} passes \BW{} on the Berger metric only, and its stability is
-    measured at $n\le2$; the flow and time integration are untested.
+    Section~\ref{sec:su2force} passes \BW{} on the Berger metric only, and its stability and
+    numerical range are measured at $n\le2$; the flow and time integration are untested.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item The observed orders $0.73$ and $0.80$ before the last refinement are only
@@ -1179,6 +1215,7 @@ Geometric working paper, 2026, \path{docs/papers/chord-arc-tangent/} in the \GIG
 \bibitem{hiptmair2002} R.~Hiptmair, Finite elements in computational electromagnetism, \emph{Acta Numerica} 11 (2002) 237--339.
 \bibitem{whitney1957} H.~Whitney, \emph{Geometric Integration Theory}, Princeton University Press, 1957.
 \bibitem{zz1992} O.~C.~Zienkiewicz, J.~Z.~Zhu, The superconvergent patch recovery and a posteriori error estimates, \emph{Int.\ J.\ Numer.\ Methods Eng.} 33 (1992) 1331--1364.
+\bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
 \end{thebibliography}
 
 \end{document}

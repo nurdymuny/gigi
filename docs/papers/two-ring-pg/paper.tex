@@ -29,7 +29,7 @@
 \newcommand{\Pone}{\mathcal{P}_1^{\mathrm{cl}}}
 
 \title{Redundancy as Stabilizer:\\[2pt]
-\large A Consistent, Coercive Petrov--Galerkin Curvature Force\\ for Discrete Yang--Mills Dynamics on the Poincar\'e Homology Sphere}
+\large A Consistent, Stable Petrov--Galerkin Curvature Force:\\ An Abelian Control for Discrete Yang--Mills Dynamics\\ on the Poincar\'e Homology Sphere}
 \author{Bee Rosa Davis\\ \small Davis Geometric}
 \date{November 2026}
 
@@ -58,18 +58,46 @@ Recovering on a \emph{two-ring} neighbourhood by equality-constrained least squa
 the recovery exact on closed linear curvature, cuts the amplification to a mesh-uniform
 $31$--$47$, and changes the operator's character completely. The relative force error
 falls to $6.22\%$, $3.83\%$, $2.79\%$ and $1.45\%$ at $n=1,2,3,5$, with observed orders
-$0.73$, $0.80$ and $1.29$. Every physical eigenvalue has positive real part, with the
-smallest at the control's true value of $4$. The symmetric part of the operator is
-positive definite on the physical space, so the semi-discrete flow is dissipative in the
-native mass norm.
+$0.73$, $0.80$ and $1.29$. At every level whose spectrum we decomposed ($n\le 3$), every
+physical eigenvalue has positive real part, with the smallest at the control's true value
+of $4$. At $n=1,2$ the symmetric part of the operator is also positive definite on the
+physical space, so there the semi-discrete flow is dissipative in the native mass norm.
 
-No parameter is fitted or tuned. Redundancy in the recovery, not added resolution or
-damping, is what stabilizes it. The force is not the gradient of an energy; we
-document, quantitatively, why every symmetrized variant we tested fails, and state
-precisely what remains open.
+No parameter is fitted. The only choice is the neighbourhood radius, and only radii one
+and two were ever run. Redundancy in the recovery, not added resolution or damping, is
+what stabilizes it. The force is not the gradient of an energy; we document,
+quantitatively, why every symmetrized variant we tested fails. All results concern a
+single Abelian control on the round quotient: the Berger metrics, the full $SU(2)$
+nonlinearity and time integration are untested.
 \end{abstract}
 
 \section{Introduction}
+
+An archaeologist who finds a single rim sherd from a broken pot can still say how wide
+the pot was. She lays the sherd's curved edge against a rim chart, a sheet of concentric
+arcs, and reads off the radius of the arc it matches. Only the edge is used; the body of
+the pot is gone.
+
+The reading is only as good as the amount of edge. Three points determine a circle, and
+a sherd short enough to offer only three trustworthy points determines its circle
+exactly, with nothing to spare. Then a chip in the rim, or a little wear, does not read
+as a chip. It reads as curvature, and on a short arc a small displacement of one point
+swings the fitted radius enormously. Nothing in the fit can tell damage from shape,
+because the fit has no information left over to check against. Give it more edge
+(a longer sherd, or neighbouring sherds that join it) and the circle is now
+\emph{overdetermined}. A best fit through many points absorbs a chip instead of obeying
+it. And if the rim really is a circle, the best fit still recovers that circle exactly:
+the extra edge costs no accuracy on true shape and buys immunity to damage.
+
+This paper is that story on a $3$-manifold. The pot is a smooth connection on the
+Poincar\'e homology sphere. The sherds are the cells of a mesh, and, as with the rim, all
+we are given are numbers on their edges. The curvature between those edges is what we
+must read. Read from each cell and its immediate neighbours, the recovery is exactly
+determined, like three points on a short arc: it is accurate on smooth data, but it reads
+every rough pattern as large curvature, and the dynamics built on it are unstable.
+Read from neighbours of neighbours, the same recovery is overdetermined. It stays exact
+on the shapes it is meant to capture, and the instability disappears. Redundancy, not
+resolution, is the stabilizer.
 
 Lattice gauge theory and geometric flows meet in a single question. Given a smooth
 connection $A$ on a closed Riemannian $3$-manifold, and only its integrals along the edges
@@ -255,12 +283,20 @@ closed linear curvature exactly. Let $\Lambda_K=\norm{\cR_K}_2$. For smooth clos
   \norm{P_K[\cR_K\Phi_F]-F}_{L^\infty(K)} \;\le\; C\,(1+\Lambda_K)\,h^2\,|F|_{W^{2,\infty}(\mathcal{N}(K))}.
 \]
 \end{lemma}
-\begin{proof}
+\begin{proof}[Proof sketch]
 Exactness: for data $X_Kx$, the residual and the constraint are both satisfied at $x$,
 and the constrained minimizer is unique under full rank. For accuracy, let $F_1$ be the
 closed linear Taylor polynomial of $F$ at $K$'s centroid. Then
 $\cR_K\Phi_F-F_1=\cR_K(\Phi_F-X_KF_1)$, and each flux defect is $O(h^2)$ relative in the
 chart scaling. The remaining $O(h^2)$ is the Taylor remainder.
+
+Two points are not tracked here. First, $\Lambda_K$ is measured in the chart's
+coordinates, which are scaled by $K$'s diameter, so it is dimensionless; the constant $C$
+absorbs that scaling and shape regularity. Second, the chart is a central projection,
+not an isometry, and the transport of $F$ into the chart introduces a metric distortion
+that we assume, but do not prove, is $O(h^2)$ relative on shape-regular cells. A complete
+proof must bound both. The second-order curvature convergence measured in
+Figure~\ref{fig:curvature} is consistent with the estimate but does not prove it.
 \end{proof}
 
 Combining Lemma~\ref{lem:acc} with~\eqref{eq:pgbound} gives a consistency error of order
@@ -282,7 +318,7 @@ Figure~\ref{fig:conditioning} shows the consequence. The one-ring amplification 
 median $252$, $125$ and $126$ on $\T_1,\T_2,\T_3$, with maxima near $250$. The rough
 end of the operator's spectrum inherits it. At $n=2$, $472$ of the $961$ physical
 directions of the symmetric part of $K_{\mathrm{PG}}$ are negative, down to
-$-2.4\times10^{4}$, almost three times the largest Whitney eigenvalue of $9248$
+$-2.4\times10^{4}$, about $2.6$ times the largest Whitney eigenvalue of $9248$
 (Figure~\ref{fig:spectra}, Table~\ref{tab:stability}).
 
 The remedy follows from approximation theory rather than from damping. Interpolation on
@@ -294,7 +330,15 @@ holds, so second-order accuracy is untouched. But the amplification drops to a m
 $30.5$, $35.2$ and $34.6$, and it is \emph{mesh-uniform}: its distribution barely moves
 between $\T_2$ and $\T_3$. In the language of superconvergent patch
 recovery~\cite{zz1992}, the patch is redundant, and the redundancy is what absorbs
-roughness.
+roughness. Recovery operators are also the building block of the recovered finite
+element methods of Georgoulis and Pryer~\cite{gp2018}, which apply recovery to
+discontinuous spaces to construct Galerkin schemes. Here the recovery acts only on the
+trial curvature of a fixed Whitney discretization, and the test space is left unchanged.
+
+The price is size. The one-ring fit reads $16$ face fluxes per cell; the two-ring fit
+reads $40$ on $\T_1$ and $40$ to $44$ on $\T_2$ and $\T_3$. The per-cell problem
+remains an $11$-coefficient constrained least-squares solve, and the assembled operator
+couples each cell to its two-ring neighbourhood rather than its one-ring star.
 
 \begin{figure}[t]
   \centering
@@ -431,12 +475,6 @@ consistency survives. Stability follows without any damping parameter, filter or
 regularization: the only change is a neighbourhood radius, and only radii one and two
 were ever run.
 
-In \DAVIS{} terms, this is the geometry-first principle applied to the discretization
-itself. A well-posed geometric statistic needs a representation whose distortion is
-controlled on the relevant path family. Here the relevant family is the space of all
-discrete variations, rough ones included, and the controlled quantity is the
-amplification $\Lambda$.
-
 \paragraph{Limitations.}
 \begin{itemize}
   \item The results concern a single Abelian control on a single round quotient; the
@@ -462,12 +500,6 @@ regenerated by \texttt{make\_data.py}, \texttt{numerical\_range.py} and
 \texttt{make\_tables.py}, all from the frozen, hash-checked inputs of the
 \GIGI{} Ricci checkpoint.
 
-\paragraph{Acknowledgements.}
-The computations, code and a first draft of this manuscript were produced with
-substantial assistance from AI research agents (Anthropic's Claude), working under the
-author's direction across several sessions. The one-ring Petrov--Galerkin recovery and
-its mechanism-removal programme came from one such session; the conditioning diagnosis
-and the two-ring recovery from another.
 
 \begin{thebibliography}{99}\small
 \bibitem{afgt2014} D.~N.~Arnold, R.~S.~Falk, J.~Guzm\'an, G.~Tsogtgerel, On the consistency of the combinatorial codifferential, \emph{Trans.\ Amer.\ Math.\ Soc.} 366 (2014) 5487--5502.
@@ -475,6 +507,7 @@ and the two-ring recovery from another.
 \bibitem{afw2010} D.~N.~Arnold, R.~S.~Falk, R.~Winther, Finite element exterior calculus: from Hodge theory to numerical stability, \emph{Bull.\ Amer.\ Math.\ Soc.} 47 (2010) 281--354.
 \bibitem{bossavit1988} A.~Bossavit, Whitney forms: a class of finite elements for three-dimensional computations in electromagnetism, \emph{IEE Proc.\ A} 135 (1988) 493--500.
 \bibitem{cdl2013} A.~Cohen, M.~A.~Davenport, D.~Leviatan, On the stability and accuracy of least squares approximations, \emph{Found.\ Comput.\ Math.} 13 (2013) 819--834.
+\bibitem{gp2018} E.~H.~Georgoulis, T.~Pryer, Recovered finite element methods, \emph{Comput.\ Methods Appl.\ Mech.\ Engrg.} 332 (2018) 303--324.
 \bibitem{hiptmair2002} R.~Hiptmair, Finite elements in computational electromagnetism, \emph{Acta Numerica} 11 (2002) 237--339.
 \bibitem{whitney1957} H.~Whitney, \emph{Geometric Integration Theory}, Princeton University Press, 1957.
 \bibitem{zz1992} O.~C.~Zienkiewicz, J.~Z.~Zhu, The superconvergent patch recovery and a posteriori error estimates, \emph{Int.\ J.\ Numer.\ Methods Eng.} 33 (1992) 1331--1364.

@@ -201,4 +201,28 @@ check("tangent corner sec(theta/2) = twin corner 2 cos(theta/2) iff theta = 90 d
 check("at 90 deg the outside path is exactly two whole tickets: 2 tan(45 deg) = 2", abs(2 * np.tan(45 * deg) - 2) < 1e-15)
 check("at 180 deg the twins merge: A + B = O", float(np.linalg.norm(np.array([1.0, 0]) + np.array([-1.0, 0]))) == 0.0)
 
+# 16. the forced squares: the full one-ticket grid, the Thales twin, the energy rule, Haar
+check("detour one ticket of length at 2 arctan(1/2) = 53.130 deg, the 3-4-5 angle (cos 3/5, sin 4/5)",
+      abs(np.degrees(2 * np.arctan(0.5)) - 53.13010235) < 1e-7
+      and abs(np.cos(2 * np.arctan(0.5)) - 0.6) < 1e-15 and abs(np.sin(2 * np.arctan(0.5)) - 0.8) < 1e-15)
+check("Cayley with rational leg t gives a rational point: ((1-t^2)/(1+t^2), 2t/(1+t^2)); t = 1/2 -> (3/5, 4/5)",
+      (sp.Rational(1, 2) ** 0, (1 - sp.Rational(1, 4)) / (1 + sp.Rational(1, 4)), 2 * sp.Rational(1, 2) / (1 + sp.Rational(1, 4)))
+      == (1, sp.Rational(3, 5), sp.Rational(4, 5)))
+check("energy rows (L^2/2 = 1): detour at 2 arctan(1/sqrt2) = arccos(1/3) = 70.529 deg",
+      abs(2 * np.arctan(1 / np.sqrt(2)) - np.arccos(1 / 3)) < 1e-15 and abs(np.degrees(np.arccos(1 / 3)) - 70.52877937) < 1e-7)
+check("energy rows: arc at sqrt 2 rad = 81.028 deg; chord at 90 deg",
+      abs(np.degrees(np.sqrt(2)) - 81.02846845) < 1e-7 and abs((1 - np.cos(np.pi / 2)) - 1) < 1e-15)
+check("order of the grid: 53.13 < 57.30 < 60 and 70.53 < 81.03 < 90",
+      np.degrees(2 * np.arctan(0.5)) < np.degrees(1.0) < 60 and np.degrees(np.arccos(1 / 3)) < np.degrees(np.sqrt(2)) < 90)
+check("Thales twin: (1 - cos t) + (1 + cos t) = 2, i.e. 2 d^2 + 2 S = 2",
+      sp.simplify((1 - sp.cos(th)) + (1 + sp.cos(th)) - 2) == 0
+      and sp.simplify(2 * sp.sin(th / 2) ** 2 - (1 - sp.cos(th))) == 0 and sp.simplify(2 * sp.cos(th / 2) ** 2 - (1 + sp.cos(th))) == 0)
+check("energy break-even at 90 deg is S = d^2 = 1/2", abs(np.cos(np.pi / 4) ** 2 - 0.5) < 1e-15)
+e5 = [1 - np.cos(5 * deg), (5 * deg) ** 2 / 2, 2 * np.tan(2.5 * deg) ** 2]
+check("small tickets: the three energy rules agree to 0.2% at 5 deg", (max(e5) - min(e5)) / min(e5) < 2.1e-3)
+Hs = sp.symbols("Hs", positive=True)
+haar = sp.integrate(8 / sp.pi * sp.sqrt(Hs * (1 - Hs)), (Hs, 0, sp.Rational(1, 4)))
+check("Haar answer to Bertrand on SU(2): P(S < 1/4) = 1/3 - sqrt3/(4 pi) = 0.19550",
+      sp.simplify(haar - (sp.Rational(1, 3) - sp.sqrt(3) / (4 * sp.pi))) == 0 and abs(float(haar) - 0.19550111) < 1e-8)
+
 print(f"\n{sum(ok)}/{len(ok)} PASS")

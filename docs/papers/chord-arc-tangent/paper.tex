@@ -319,9 +319,20 @@ random midpoint & the sameness $S$ & $1/4$ \\
 \end{center}
 The chord exceeds $\sqrt3$ exactly when $\theta>2\pi/3$, $\cos(\theta/2)<1/2$ and $S<1/4$, so
 the three answers follow at once. A simulation with two million chords per method gives
-$0.3333$, $0.5004$ and $0.2498$. The outside path offers no fourth answer: its leg runs off to
+$0.3333$, $0.5004$ and $0.2498$. The outside path offers no fourth answer of this kind: its leg runs off to
 infinity at the half turn, so it cannot be spread evenly. Jaynes argued that invariance
 under moving and rescaling the circle selects the radius method \cite{jaynes}.
+
+A group of turns does give a fourth answer, because it comes with its own fair way to
+choose a turn at random, the Haar measure, which leaves no choice to us. For a uniformly
+random unit quaternion the geodesic angle $a$ has density $(2/\pi)\sin^2a$ on $[0,\pi]$, so
+sameness $S=\cos^2(a/2)$ follows the semicircle law $(8/\pi)\sqrt{S(1-S)}$ on $[0,1]$. Bertrand's
+event is $S<1/4$, and its probability is
+\[
+\tfrac13-\tfrac{\sqrt3}{4\pi}\approx0.19550,
+\]
+none of the three classical answers. A simulation of four million random turns gives
+$0.19545$ (\path{scripts/haar_sameness.py} in the \textsc{gigi} repository).
 
 \begin{plain}
 Every estimate that misses on one side has a twin that misses on the other, and blending
@@ -375,6 +386,26 @@ energy & $1-\cos\theta$ & $90^\circ$ & Pythagoras \\
 \bottomrule\end{tabular}
 \end{center}
 
+\paragraph{The full grid.} The table above prices the crossing three ways, but each
+path has both a length and an energy, so the board has six squares, and each is forced
+once its rule is fixed. With energy measured as $\tfrac12L^2$, as above:
+\begin{center}\small
+\begin{tabular}{lccc}\toprule
+One ticket of\ldots & outside path & arc & chord \\ \midrule
+length & $53.13^\circ$ & $57.30^\circ$ & $60^\circ$ \\
+ & the $3$--$4$--$5$ triangle & one radian & the hexagon \\[2pt]
+energy & $70.53^\circ$ & $81.03^\circ$ & $90^\circ$ \\
+ & $\cos\theta=\tfrac13$ & $\sqrt2$ radians & the square \\
+\bottomrule\end{tabular}
+\end{center}
+In each row the outside path, the dearest, buys the least turn, and the chord, the
+cheapest, buys the most. Two squares are classical angles in their own right. The
+outside path buys one ticket of length when its leg is $\tan(\theta/2)=\tfrac12$, and the
+Cayley construction with that leg gives the point $(\tfrac35,\tfrac45)$. With any rational
+leg $t$ the construction gives the rational point $\bigl((1-t^2)/(1+t^2),\,2t/(1+t^2)\bigr)$,
+which is how every Pythagorean triple arises. The outside path buys one ticket of energy at
+$\cos\theta=\tfrac13$, the dihedral angle of the regular tetrahedron.
+
 \paragraph{The sliver.} Between $57.30^\circ$ and $60^\circ$ the shortcut fits in one
 ticket and the true path does not. The size of that gap at the hexagon angle is
 $\pi/3-1\approx0.0472$ tickets, a premium of $4.72\%$, and it is the same number as the
@@ -425,9 +456,25 @@ and the outside path is exactly two whole tickets. Below $90^\circ$ the tangent 
 the nearer of the two and the detour costs less than two tickets; above $90^\circ$ it is
 the farther and the detour costs more.
 
-So the right angle is special three times over. The crossing costs one ticket of energy.
-The crossing's energy equals the two trips through the centre. And the detour becomes two
-whole tickets, through the corner of a square.
+\paragraph{The twin of the right angle.} The energy of crossing to $B$ is $1-\cos\theta$;
+the energy of crossing to the point opposite $B$ is $1+\cos\theta$. They always sum to two
+tickets, because $A$, $B$ and $-B$ make a right angle at $A$ (Thales). In the notation of
+Section~\ref{sec:number} the two energies are exactly $2d^2$ and $2S$, so this is $S+d^2=1$
+once more, and the break-even at $90^\circ$ is the point where $S=d^2=\tfrac12$: the two
+positions are exactly as much the same as they are different.
+
+\paragraph{Which energy rule.} The right angle is the break-even for Wilson's rule, energy
+$\tfrac12C^2$. It is a rule, not a fact about the room. With the continuum rule, energy
+$\tfrac12\theta^2$, the break-even moves to $81.03^\circ$; with the outside path's rule,
+$\tfrac12T^2$, to $70.53^\circ$. What decides among them is the small-ticket limit, where
+the rules must agree with the continuum: at $5^\circ$ the three energies are $0.003805$,
+$0.003808$ and $0.003813$, within $0.2\%$, and they become identical as the tickets shrink.
+Large turns are where lattice rules differ, and Section~\ref{sec:energy} is about exactly
+that difference.
+
+So the right angle is special three times over. Under Wilson's rule the crossing costs one
+ticket of energy, and its energy equals the two trips through the centre. With no rule at all,
+by geometry alone, the detour becomes two whole tickets, through the corner of a square.
 
 \begin{table}[h!]\centering\small
 \caption{The ticket game at five angles: the three prices of the crossing, its Wilson
@@ -535,7 +582,9 @@ it does matter is in simulating the motion over time, which is the next step of 
     continuation through the rim with $S+d^2=1$ intact, and Bertrand's three answers;
   \item the ticket game: the one-ticket angles ($1$ radian, $60^\circ$, $90^\circ$), the
     energy break-even at the right angle, the two whole-ticket corners $O$ and $A+B$, the
-    twin corner on the circle at $120^\circ$, and the tangent and twin corners meeting at $90^\circ$.
+    twin corner on the circle at $120^\circ$, and the tangent and twin corners meeting at $90^\circ$;
+  \item the six-square grid of one-ticket angles, the Thales twin $2d^2+2S=2$, the agreement of
+    the three energy rules for small turns, and the Haar answer $\tfrac13-\sqrt3/(4\pi)$ to Bertrand.
 \end{itemize}
 The face angles of Table~\ref{tab:angles} are measured from frozen data.
 

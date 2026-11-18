@@ -40,6 +40,12 @@ and, counted as energy the way the lattice counts it, exactly one ticket at 90°
 (Pythagoras). With whole tickets it is always two trips, turning either at the middle or at
 its twin corner across the crossing. At 90° that twin corner is where the edge lines meet.
 
+Filling the board forces six one-ticket angles: in length, the detour at 53.13° (the 3-4-5
+triangle), the arc at 57.30° and the chord at 60°; in energy, 70.53° (cos θ = 1/3, the
+tetrahedron), 81.03° (√2 radians) and 90°. The energy of crossing to a friend and to the
+friend's opposite point always sum to two tickets (Thales). They are 2d² and 2S, so the
+90° break-even is where S = d² = ½.
+
 A companion research note, `docs/research/unit-curvature-2026-11-18.md`, follows ±1
 into SU(2), its curvature and the mass gap. It keeps the open link tagged as open.
 
@@ -51,7 +57,7 @@ turns to time integration.
 
 ## What is claimed
 
-Every identity is checked by [`verify.py`](verify.py) (39 checks, all passing; output in
+Every identity is checked by [`verify.py`](verify.py) (all checks passing; output in
 [`verify_output.txt`](verify_output.txt)). The classical identities are cited, and no
 priority is claimed for them. The energy blend is the one statement not found in the
 sources checked, and a proper prior-art search is listed as open.

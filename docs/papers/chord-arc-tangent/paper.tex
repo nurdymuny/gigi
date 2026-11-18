@@ -1,6 +1,11 @@
 \documentclass[11pt]{article}
-\usepackage[margin=1in]{geometry}
-\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1.1in,headsep=18pt]{geometry}
+\newcommand{\dgshorttitle}{Three Ways Across a Turn}
+\newcommand{\dgauthorshort}{B. R. Davis}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath,amsthm}
+\input{../dgstyle}
 \usepackage{booktabs}
 \usepackage{tikz}
 \usepackage[hidelinks]{hyperref}
@@ -13,11 +18,10 @@
 
 \newtheorem{proposition}{Proposition}
 \newtheorem{remark}{Remark}
-\newenvironment{plain}{\begin{quote}\small\noindent\textbf{In plain words.}~}{\end{quote}}
 
 \title{Three Ways Across a Turn:\\ Chord, Arc and Tangent}
-\author{Bee Rosa Davis\\ Davis Geometric}
-\date{November 2026 \quad (working draft)}
+\author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}}
+\date{November 2026 \quad\textperiodcentered\quad working draft}
 
 \begin{document}
 \maketitle
@@ -76,16 +80,16 @@ between them. This paper is about what each of the three means, and what it cost
   \draw[->,gray] (0,-0.3) -- (0,1.25);
   \draw[thick] (0,0) -- (1,0);
   \draw[thick] (0,0) -- ({cos(\t)},{sin(\t)});
-  \draw[very thick,blue] (1,0) arc (0:\t:1);
-  \draw[very thick,red] (1,0) -- ({cos(\t)},{sin(\t)});
+  \draw[very thick,dgarc] (1,0) arc (0:\t:1);
+  \draw[very thick,dgchord] (1,0) -- ({cos(\t)},{sin(\t)});
   \coordinate (Q) at ({1/cos(\t/2)*cos(\t/2)},{1/cos(\t/2)*sin(\t/2)});
-  \draw[very thick,teal,dashed] (1,0) -- (Q) -- ({cos(\t)},{sin(\t)});
+  \draw[very thick,dgtan] (1,0) -- (Q) -- ({cos(\t)},{sin(\t)});
   \draw (0.22,0) arc (0:\t:0.22); \node at ({0.3*cos(\t/2)},{0.3*sin(\t/2)}) {$\theta$};
   \fill (1,0) circle (0.02) node[below right] {$1$};
   \fill ({cos(\t)},{sin(\t)}) circle (0.02) node[above] {$U=e^{i\theta}$};
-  \node[red] at (0.62,0.30) {chord};
-  \node[blue] at (0.80,0.47) {arc};
-  \node[teal] at (1.26,0.80) {outside};
+  \node[dgchord] at (0.62,0.30) {chord};
+  \node[dgarc] at (0.80,0.47) {arc};
+  \node[dgtan] at (1.26,0.80) {outside};
 \end{tikzpicture}
 \caption{Three ways across a turn of $\theta=70^\circ$: the chord (length $2\sin(\theta/2)$),
 the arc ($\theta$) and the outside path along the two tangents ($2\tan(\theta/2)$).}
@@ -94,7 +98,21 @@ the arc ($\theta$) and the outside path along the two tangents ($2\tan(\theta/2)
 
 Write $C=2\sin(\theta/2)$, $A=\theta$ and $T=2\tan(\theta/2)$ for the three lengths. The
 outside corner lies on the bisector at distance $\sec(\theta/2)$ from the centre, so each
-tangent segment has length $\tan(\theta/2)$.
+tangent segment has length $\tan(\theta/2)$. Figure~\ref{fig:sphere} draws the same three
+paths in space, on the sphere where the non-Abelian turns of Section~\ref{sec:su2} live.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_sphere_3d.pdf}
+\caption{The three paths in three dimensions. \textbf{(a)} A turn of $\theta=70^\circ$ in a plane
+through the centre of the unit sphere: the arc (green) runs on the surface, the chord (blue)
+cuts through the inside, and the outside path (orange) leaves along the tangent at $1$, turns at
+the corner on the bisector at distance $\sec(\theta/2)$, and comes back in along the tangent
+at $U$. \textbf{(b)} Turns of $30^\circ$, $60^\circ$, $90^\circ$ and $110^\circ$ from the same
+start. The chord and the arc stay bounded; the corner moves outward along the bisector and
+reaches infinity at the half turn, the barrier met again in Sections~\ref{sec:energy}
+and~\ref{sec:su2}. Orthographic view; computed by \texttt{make\_figures.py}.}
+\label{fig:sphere}
+\end{figure}
 
 \paragraph{What is classical, and what this paper adds.} The inequality $C<A<T$ is
 Archimedes' squeeze of the circle between inscribed and circumscribed polygons
@@ -137,6 +155,16 @@ perfectly: the leftover error shrinks like the fifth power of the angle. Snelliu
 this in 1621 and Huygens proved it in 1654. Neither side alone tells the truth; the two
 sides together nearly do.
 \end{plain}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_lengths.pdf}
+\caption{Lengths. \textbf{(a)} The chord's short-fall $A-C$ and the outside path's overshoot
+$T-A$ both fall like $\theta^3$, at $\theta^3/24$ and $\theta^3/12$ (dashed: the leading terms of
+Proposition~\ref{prop:lengths}); the $2{:}1$ Snellius--Huygens blend falls like
+$\theta^5/320$. \textbf{(b)} The ratio of overshoot to short-fall is $2$ in the limit and
+grows with the turn; the cancellation is a small-angle statement.}
+\label{fig:lengths}
+\end{figure}
 
 \section{The turn as a number}\label{sec:number}
 
@@ -210,6 +238,18 @@ energy slightly too big, by twice as much. Mixing them two-to-one cancels the ma
 using only arithmetic on $U$.
 \end{plain}
 
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_energy.pdf}
+\caption{Energy. \textbf{(a)} Relative error of each face energy against the continuum
+energy $\theta^2$: the chord (Wilson's action) at $\theta^2/12$, the outside path at
+$\theta^2/6$, and the $2{:}1$ blend at $7\theta^4/720$ (Proposition~\ref{prop:energy}; dashed
+lines are the leading terms). The shaded band is the range of face angles on the $SU(2)$
+Berger meshes of Section~\ref{sec:mesh}, from the median at $n=5$ to the largest at $n=1$.
+\textbf{(b)} The three energies over the whole turn: the chord's is bounded by $4$, the arc's
+is $\theta^2$, and the outside path's has a barrier at $U=-1$.}
+\label{fig:energy}
+\end{figure}
+
 \begin{remark}[What this does and does not correct]
 On a lattice of spacing $a$ and a smooth field, $\theta=O(a^2)$, so the $\theta^4$ term is a
 relative correction of order $a^4$. The dominant lattice error is of order $a^2$ and comes
@@ -243,6 +283,23 @@ formulas are identical with the turning angle measured on the three-sphere. The 
 still rebuilds the turn with plain arithmetic, and it still breaks only at the half turn.
 \end{plain}
 
+The Cayley vector has a picture. Since $v=\operatorname{Im}U/(1+\operatorname{Re}U)$, it is
+the stereographic projection of $U$ from the point $-1$ onto the equatorial space
+$\operatorname{Re}U=0$. Figure~\ref{fig:cayley} draws it one dimension down, on $S^2$.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_cayley_3d.pdf}
+\caption{The Cayley vector as stereographic projection, drawn on $S^2$ in place of $S^3$.
+\textbf{(a)} The vertical axis is $\operatorname{Re}U$. Solid circles are the turns at geodesic
+angle $a=30^\circ,60^\circ,90^\circ,120^\circ$ from $1$; dashed circles, in the same shade,
+are their Cayley images in the plane $\operatorname{Re}U=0$, of radius $\tan(a/2)$. The thin
+rays run from the projection point $-1$. As $a\to\pi$ the image runs to infinity, which is
+why the Cayley map reaches everything except $U=-1$. \textbf{(b)} The three coordinates of one
+turn: chord $|U-1|=2\sin(a/2)$, arc $|\log U|=a$, and Cayley $2|v|=2\tan(a/2)$. They are the
+lengths $C$, $A$ and $T$ of Section~\ref{sec:lengths}, read on $S^3$.}
+\label{fig:cayley}
+\end{figure}
+
 \section{Time stepping}\label{sec:time}
 
 Take the simplest motion that turns: $y'=i\,y$, whose exact solution goes around the
@@ -260,6 +317,18 @@ the point in three places, and they are the three paths again.
     phase lag is $s-\varphi=\tfrac{1}{12}s^3+O(s^5)$, the same $1/12$ as $T-A$ in
     Proposition~\ref{prop:lengths}.
 \end{itemize}
+Figure~\ref{fig:time} shows the three rules over one full turn.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_time.pdf}
+\caption{Time stepping on $y'=iy$. \textbf{(a)} Twenty-one steps of size $s=0.3$ (one full
+turn, $t\approx2\pi$) from $y=1$. Explicit Euler (orange) spirals out, implicit Euler (blue)
+spirals in, and Crank--Nicolson (green) stays on the circle; the open circle marks the exact
+endpoint. \textbf{(b)} Error per step: the Euler rules gain or lose energy at order $s^2$
+(the explicit and implicit curves agree at leading order), while Crank--Nicolson makes no
+energy error and lags in phase by $s-2\arctan(s/2)\approx s^3/12$ (dashed).}
+\label{fig:time}
+\end{figure}
 
 For a general linear flow $y'=-Gy$, the Crank--Nicolson factor
 $r(z)=(1-z/2)/(1+z/2)$ satisfies $|r(z)|\le1$ exactly when $\operatorname{Re}z\ge0$. Its
@@ -508,19 +577,19 @@ $180^\circ$ & 3.1416 & 2.0000 & $\infty$ & 2.0000 & 0 & $\infty$ \\
   \draw[gray!50] (O) circle (1);
   \draw[thick] (O) -- (A); \draw[thick] (O) -- (B);
   \draw[gray,dotted,thick] (A) -- (P) -- (B);
-  \draw[very thick,blue] (A) arc (0:\t:1);
-  \draw[very thick,red] (A) -- (B);
-  \draw[very thick,teal,dashed] (A) -- (Q) -- (B);
+  \draw[very thick,dgarc] (A) arc (0:\t:1);
+  \draw[very thick,dgchord] (A) -- (B);
+  \draw[very thick,dgtan] (A) -- (Q) -- (B);
   \fill (O) circle (0.022) node[below left] {$O$};
   \fill (A) circle (0.022) node[below right] {$A$};
   \fill (B) circle (0.022) node[above left] {$B$};
   \fill[gray] (P) circle (0.022) node[above right] {$A+B$};
-  \fill[teal] (Q) circle (0.022) node[right] {$Q$};
+  \fill[dgtan] (Q) circle (0.022) node[right] {$Q$};
   \draw (0.2,0) arc (0:\t:0.2); \node at ({0.29*cos(\t/2)},{0.29*sin(\t/2)}) {$\theta$};
 \end{tikzpicture}
 \caption{The ticket game at $\theta=70^\circ$. Each player walked one ticket from the
-centre. The chord (red), the arc (blue) and the outside path through the tangent corner $Q$
-(teal) are the three prices of the crossing. The two whole-ticket routes turn at the
+centre. The chord (blue), the arc (green) and the outside path through the tangent corner $Q$
+(orange) are the three prices of the crossing. The two whole-ticket routes turn at the
 centre or at its twin $A+B$, the far corner of the unit rhombus (dotted). At $90^\circ$ the
 tangent corner and the twin corner coincide.}
 \label{fig:tickets}
@@ -546,7 +615,8 @@ two whole tickets.
 Our curvature-recovery work measures an $SU(2)$ force on meshes of the Poincar\'e homology
 sphere, at the Levi-Civita connection of a Berger metric. Its native action is the chord
 energy: each face's defect is $D=U_f-1$. Table~\ref{tab:angles} gives the face angles $a$
-on those meshes (\texttt{face\_angles.py}, from the frozen inputs).
+on those meshes (\texttt{face\_angles.py}, from the frozen inputs), and
+Figure~\ref{fig:faces} shows their distributions.
 
 \begin{table}[h!]\centering\small
 \caption{Face holonomy angles on the $SU(2)$ Berger meshes, and the relative gap between
@@ -560,6 +630,18 @@ $n$ & faces & median $a$ & max $a$ & chord--arc energy gap at max \\ \midrule
 5 & 60{,}000 & 0.0027 & 0.0041 & $1.4\times10^{-6}$ \\
 \bottomrule\end{tabular}
 \end{table}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/fig_face_angles.pdf}
+\caption{Face angles on the $SU(2)$ Berger meshes, from the frozen inputs (the numbers of
+Table~\ref{tab:angles}; \texttt{make\_figures.py} asserts that they agree). \textbf{(a)} The
+cumulative distribution of face holonomy angles at each level; every face turns by less than
+$0.1$ radian. \textbf{(b)} The chord--arc energy gap $a^2/12$ per face: the bar spans the
+smallest to the largest face and the tick marks the median. The shaded band is the range of
+force errors measured on the same meshes. The gap lies two to five orders of magnitude below
+it.}
+\label{fig:faces}
+\end{figure}
 
 The angles shrink roughly like the face area, and the chord--arc energy gap is below
 $0.08\%$ everywhere. The force errors measured there are $2.5\%$ to $36\%$. So the

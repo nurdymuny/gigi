@@ -102,3 +102,83 @@ on the levels actually run, and the report says which.
 One metric (Berger (3, 1, 1)), unnormalised flow, window [0, 0.02]. Research script, not an
 engine verb. No claim about the nonlinear flow beyond the window, other metrics, or the
 quotient gates (BW06).
+
+---
+
+## Amendment 1 (2026-11-18): correcting the two negative controls
+
+**Written after the n = 1 results were seen.** The original gates above are unchanged and
+will be reported as written, including where they failed or were uninformative. This
+amendment adds corrected controls alongside them. It does not replace them, and it does not
+relax G-traj, G-time or G-quad. The n = 1 numbers that prompted it are in
+`research/su2-flow-20261118/`.
+
+### In plain English
+
+Two of my negative controls were badly designed. A negative control is a run that is
+*supposed* to fail, so that we know the test can tell right from wrong. Both of mine were
+written as "this run must have at least 10% error". At the coarsest mesh, every run has
+more than 10% error, the right one included, so passing that bar proves nothing. A
+control only means something once the right answer's own error is smaller than the gap the
+control is meant to detect. The corrected controls say exactly that, and they say when a
+control is too weak to judge, instead of letting it pass.
+
+### What went wrong at n = 1
+
+| Run | R at t = 0.02 | E at t = 0.02 |
+| --- | ---: | ---: |
+| two-ring, moving metric | 13.81% | 0.06886 |
+| two-ring, frozen metric (control) | 14.02% | 0.06988 |
+| native Whitney force (control) | 7.01% | 0.03493 |
+| one ring (removal) | 2,541% | 12.67 |
+
+- **The frozen-metric control passed its gate (R ≥ 10%), but it measured nothing.** The
+  moving and frozen runs differ in E by only 0.0010, against a two-ring error of 0.069.
+  Freezing the metric changes the result by about 1.5% of the lattice's own error, so at
+  n = 1 the lattice cannot see the effect the control exists to detect. The original gate
+  passed only because both runs are dominated by spatial error.
+- **The native control failed its gate (R = 7.0%, not ≥ 10%).** This is not a defect of the
+  experiment. It is the pre-asymptotic behaviour already seen in S2a: native is better than
+  two rings at n = 1 (26.25% against 36.25% instantaneously), its error then stalls, and the
+  two-ring error keeps falling. A control that must fail *at every level* cannot allow for a
+  crossover the programme has already measured. The gate should ask for the crossover.
+
+### Corrected control 1: the frozen metric must be resolvable before it is judged
+
+Let E_m and E_f be the errors of the moving and frozen runs at the same level, step and
+quadrature, at t = 0.02. Their gap Δ = ‖log(U_moving⁻¹ U_frozen)‖_B / √Vol measures how
+far apart the two lattice trajectories actually are.
+
+- **Resolvability.** The control is *informative* at a level only if Δ > 2 E_m: the effect of
+  freezing the metric must be at least twice the moving run's own error. Where Δ ≤ 2 E_m,
+  the control is reported as **NOT INFORMATIVE at that level**. It is neither a pass nor a
+  fail.
+- **Gate, at informative levels.** The frozen run must stay away from the exact trajectory:
+  E_f ≥ Δ/2, and E_f must not converge (observed order of E_f below 0.25 between consecutive
+  informative levels) while E_m does.
+- **Until final states are saved,** Δ is bounded from both sides by
+  |E_f − E_m| ≤ Δ ≤ E_f + E_m. At n = 1 the lower bound is 0.0010 and the upper bound is
+  0.139, so the control cannot be declared informative there. The script now saves final
+  link states (`*.final.npy`) so that Δ can be computed exactly. The n = 2 runs started
+  before this amendment do not save them; for those, the bounds are reported, and Δ is
+  measured on a rerun if the bounds cannot decide.
+
+### Corrected control 2: the native force must be overtaken, and must stall
+
+- **Crossover.** At the finest level run, the two-ring error is below the native error:
+  E_pg < E_native.
+- **Stall.** The native error does not converge: observed order of E_native below 0.25
+  between the last two levels, matching S2a, where native stayed near 25% at every level.
+- If neither the crossover nor the stall appears by the finest level run, that is reported
+  as a finding against the two-ring force in time.
+
+### Status of each gate at n = 1, as written and as amended
+
+| Gate | As written | As amended |
+| --- | --- | --- |
+| G-traj (R < 5% at finest; order ≥ 0.5) | not judged at one level (n = 1: 13.81%) | unchanged |
+| G-time (halving h changes E by < E/10) | **PASS** (N = 16 vs 32: 1.6×10⁻⁶ relative) | unchanged |
+| G-quad (q4 vs q6 changes E by < E/10) | **PASS** (q4 vs q6 at N = 32: 4.6×10⁻⁸ relative) | unchanged |
+| Frozen metric | passed trivially (14.02% ≥ 10%) | **NOT INFORMATIVE** at n = 1 |
+| Native force | **FAIL** (7.01% < 10%) | judged at the finest level (crossover and stall) |
+| One ring (reported) | blew up as predicted | unchanged |

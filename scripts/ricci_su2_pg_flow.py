@@ -343,7 +343,7 @@ def run(level, trial, N, order=6):
             print(json.dumps(rows[-1]), flush=True)
     return {"level": level, "trial": trial, "N": N, "h": h, "order": order, "status": status,
             "rows": rows, "R_final": rows[-1]["R"] if rows and rows[-1]["t"] == T_END else None,
-            "seconds": round(time.time() - t0, 1)}
+            "seconds": round(time.time() - t0, 1), "_final": U}
 
 
 def main():
@@ -357,9 +357,11 @@ def main():
     if receipt and receipt.exists():
         raise SystemExit(f"refusing to overwrite {receipt}")
     out = run(level, trial, N, order)
+    final = out.pop("_final")
     print(json.dumps({k: v for k, v in out.items() if k != "rows"}), flush=True)
     if receipt:
         receipt.parent.mkdir(parents=True, exist_ok=True)
+        np.save(receipt.with_suffix(".final.npy"), final)   # Amendment 1: final link states, for the gap
         receipt.write_text(json.dumps(out, indent=1) + "\n")
 
 

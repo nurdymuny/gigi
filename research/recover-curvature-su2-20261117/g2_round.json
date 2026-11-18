@@ -1,0 +1,171 @@
+{
+  "variants": {
+    "full": {
+      "rows": [
+        {
+          "metric": "round",
+          "level": 0,
+          "cells_sampled": 60,
+          "cells_total": 120,
+          "triangles_per_cell": 24,
+          "relative_error": 0.17206081109036464,
+          "register": true,
+          "abelianised": false,
+          "seconds": 2.2
+        },
+        {
+          "metric": "round",
+          "level": 1,
+          "cells_sampled": 60,
+          "cells_total": 960,
+          "triangles_per_cell": 24,
+          "relative_error": 0.0074033071103570625,
+          "register": true,
+          "abelianised": false,
+          "seconds": 2.4
+        },
+        {
+          "metric": "round",
+          "level": 2,
+          "cells_sampled": 60,
+          "cells_total": 3240,
+          "triangles_per_cell": 24,
+          "relative_error": 0.0034756578757833678,
+          "register": true,
+          "abelianised": false,
+          "seconds": 3.6
+        },
+        {
+          "metric": "round",
+          "level": 3,
+          "cells_sampled": 60,
+          "cells_total": 15000,
+          "triangles_per_cell": 24,
+          "relative_error": 0.0013075588591049125,
+          "register": true,
+          "abelianised": false,
+          "seconds": 5.2
+        }
+      ],
+      "observed_orders": [
+        4.804605121471644,
+        1.9002299092613888,
+        1.9286073584262713
+      ]
+    },
+    "M1_no_register": {
+      "rows": [
+        {
+          "metric": "round",
+          "level": 0,
+          "cells_sampled": 60,
+          "cells_total": 120,
+          "triangles_per_cell": 24,
+          "relative_error": 0.17206081109036475,
+          "register": false,
+          "abelianised": false,
+          "seconds": 2.6
+        },
+        {
+          "metric": "round",
+          "level": 1,
+          "cells_sampled": 60,
+          "cells_total": 960,
+          "triangles_per_cell": 24,
+          "relative_error": 0.06179974340018547,
+          "register": false,
+          "abelianised": false,
+          "seconds": 2.5
+        },
+        {
+          "metric": "round",
+          "level": 2,
+          "cells_sampled": 60,
+          "cells_total": 3240,
+          "triangles_per_cell": 24,
+          "relative_error": 0.0382265880945771,
+          "register": false,
+          "abelianised": false,
+          "seconds": 3.2
+        },
+        {
+          "metric": "round",
+          "level": 3,
+          "cells_sampled": 60,
+          "cells_total": 15000,
+          "triangles_per_cell": 24,
+          "relative_error": 0.02040692557191746,
+          "register": false,
+          "abelianised": false,
+          "seconds": 5.3
+        }
+      ],
+      "observed_orders": [
+        1.5638247690734473,
+        1.2071915563274225,
+        1.2382127575125363
+      ]
+    },
+    "M2_abelianised": {
+      "rows": [
+        {
+          "metric": "round",
+          "level": 0,
+          "cells_sampled": 60,
+          "cells_total": 120,
+          "triangles_per_cell": 24,
+          "relative_error": 1.0319212496537602,
+          "register": true,
+          "abelianised": true,
+          "seconds": 1.8
+        },
+        {
+          "metric": "round",
+          "level": 1,
+          "cells_sampled": 60,
+          "cells_total": 960,
+          "triangles_per_cell": 24,
+          "relative_error": 1.0004474904428817,
+          "register": true,
+          "abelianised": true,
+          "seconds": 2.0
+        },
+        {
+          "metric": "round",
+          "level": 2,
+          "cells_sampled": 60,
+          "cells_total": 3240,
+          "triangles_per_cell": 24,
+          "relative_error": 0.9984073864471933,
+          "register": true,
+          "abelianised": true,
+          "seconds": 2.5
+        },
+        {
+          "metric": "round",
+          "level": 3,
+          "cells_sampled": 60,
+          "cells_total": 15000,
+          "triangles_per_cell": 24,
+          "relative_error": 0.9983741847449963,
+          "register": true,
+          "abelianised": true,
+          "seconds": 4.4
+        }
+      ],
+      "observed_orders": [
+        0.0473064865466182,
+        0.005129834871187526,
+        6.560436068845089e-05
+      ]
+    }
+  },
+  "kind": "G2 probe, research script (not an engine run)",
+  "delta": 2e-05,
+  "metric": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "cells_per_level": 60
+}

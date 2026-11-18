@@ -82,9 +82,12 @@ neighbour into register by the symmetry of the space, holds exactly only what mu
 held, lets the rest of the evidence vote, and refuses a piece that does not fit. The
 force is accurate and stable in every mode we decomposed. It is not reciprocal, in the
 sense that it is not the gradient of an energy, and we document, quantitatively, why every
-symmetrized variant we tested fails. All results concern a single Abelian control on
-the round quotient: the Berger metrics, the full $SU(2)$ nonlinearity and time
-integration are untested.
+symmetrized variant we tested fails. The force results concern a single Abelian
+control on the round quotient. The curvature recovery itself extends covariantly to
+$SU(2)$: with each neighbour's face holonomy turned into register by link transport, it
+converges at second order on the Levi-Civita fields of the round and a Berger metric
+(Section~\ref{sec:su2}). The non-Abelian force, the full nonlinearity of the flow and
+time integration are untested.
 
 Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
 Noncommercial 1.0.0): native Rust transport and mass assembly, checked against the full
@@ -333,8 +336,8 @@ to overwrite. The gate writes its own receipt. Its verdict fields read, verbatim
 "berger": "NOT_RUN",
 "release_gate": "OPEN"
 \end{lstlisting}
-The last two fields are as much a part of the result as the first: the Berger metrics
-were not run, and the programme's release gate stays open. Table~\ref{tab:evidence} maps
+The last two fields are as much a part of the result as the first: the force gate was
+not run on the Berger metrics, and the programme's release gate stays open. Table~\ref{tab:evidence} maps
 each table and figure to the script that regenerates it.
 
 \begin{table}[t]\centering\small
@@ -729,6 +732,87 @@ leave a scalable formulation open.
 
 \input{tables/removals.tex}
 
+\section{Beyond the Abelian control: covariant recovery}\label{sec:su2}
+
+The force results above are Abelian. This section takes the first step past that, for the
+recovery alone. It asks whether the same reading of curvature, seated on the cell's own
+faces with the neighbours voting, survives when the field is a genuine $SU(2)$ connection.
+
+\paragraph{What changes.} An $SU(2)$ field on the mesh is a link $U_e$ on every edge, and
+there is no edge cochain to add up. What a face carries is its holonomy
+$U_f=U_{ij}U_{jk}U_{ki}$, and its logarithm $X_f=\log U_f\in\mathfrak{su}(2)$ is the
+non-Abelian face flux, to leading order the integral of $F$ over the face. Each $X_f$ is
+expressed in the frame of the vertex where its loop starts. Fluxes from different faces
+can be compared only after each is \emph{turned into register} in the cell's frame,
+\[
+  X_f\;\mapsto\;W_fX_fW_f^{-1},
+\]
+where $W_f$ is the link transport from the face's base vertex to the cell's vertex $0$
+along a fixed breadth-first tree of the neighbourhood. In the Abelian case, register was
+only the deck transformation between sheets; here it also carries the gauge frame, as the
+covariant Bianchi identity $D_AF=0$ requires.
+
+\paragraph{Why the same fit applies.} In Fock--Schwinger gauge at the cell's centre,
+$A(0)=0$ and $dF=-[A\wedge F]$ vanishes at the centre, entering only at the next order. To
+the order of a linear model, each $\mathfrak{su}(2)$ component of $F$ is therefore a closed
+linear field. The paper's fit map $\cR_K$ depends only on geometry, so it applies unchanged
+to the three components of the registered fluxes. Amplification and conditioning are
+exactly those of Section~\ref{sec:conditioning}.
+
+\paragraph{Gates.} The prototype (\path{scripts/ricci_su2_recovery.py}) passes three
+gates.
+\begin{itemize}
+  \item \emph{Embedded U(1).} The paper's Abelian data, wrapped as $SU(2)$ links along one
+    axis, return the Abelian coefficients to $1.4\times10^{-15}$.
+  \item \emph{Gauge covariance.} A random gauge rotation at every vertex rotates the
+    recovered field exactly, to $1.3\times10^{-14}$. Without register, covariance fails
+    by $14$.
+  \item \emph{Exact non-Abelian fields.} These are the Levi-Civita spin connections of the
+    round metric and the Berger metric $(3,1,1)$, with links from the programme's exact
+    transport. The target is built from that same exact transport around small triangles
+    ($2\times10^{-5}$ in chart units) inside each cell, carried straight back to the frame
+    vertex, so it needs no frame convention of its own. The error is the relative $L^2$
+    error of the recovered flux over 24 small triangles in each of
+    60 cells per mesh, drawn with a fixed seed (Table~\ref{tab:su2}).
+\end{itemize}
+
+\begin{table}[t]\centering\small
+\caption{Covariant two-ring recovery on exact $SU(2)$ fields: relative error (\%) of the
+recovered flux. The last column gives the observed orders over the last two refinements.
+Mechanism removals: \emph{no register} uses each flux in its own base frame;
+\emph{abelianised} replaces the logarithm of the holonomy by the sum of the edge
+logarithms.}
+\label{tab:su2}
+\begin{tabular}{lrrrrl}\toprule
+Field and reading & $n=1$ & $n=2$ & $n=3$ & $n=5$ & orders \\ \midrule
+\textbf{Berger, covariant} & 28.75 & 2.51 & 1.12 & 0.40 & 2.03, 2.03 \\
+Berger, no register & 27.30 & 9.48 & 6.04 & 3.18 & 1.13, 1.27 \\
+Berger, abelianised & 51.97 & 44.87 & 43.96 & 44.21 & 0.05, -0.01 \\
+\midrule
+\textbf{Round, covariant} & 17.21 & 0.74 & 0.35 & 0.13 & 1.90, 1.93 \\
+Round, no register & 17.21 & 6.18 & 3.82 & 2.04 & 1.21, 1.24 \\
+Round, abelianised & 103.19 & 100.04 & 99.84 & 99.84 & 0.01, 0.00 \\
+\bottomrule\end{tabular}
+\end{table}
+
+Past the coarsest mesh, the covariant recovery converges at second order on both fields,
+the same order as the Abelian recovery. The non-Abelian Stokes correction does not cost an
+order here, so no midpoint correction of the face flux is needed. Without register the
+error converges at only about first order, so register buys an order. The abelianised
+flux stalls (at about $44\%$ on the Berger field and $100\%$ on the round field) because
+summing edge logarithms cannot see the commutator part of the curvature. That removal
+reproduces Abelian data exactly, which is why a non-Abelian test is needed to expose it.
+The coarsest mesh is pre-asymptotic: the two-ring stencil on $120$ cells is large relative
+to the space. On the round field at $n=1$, the covariant and no-register readings agree
+to every printed digit; at every finer level they differ widely. We record this and do not
+explain it.
+
+\paragraph{Scope.} This is the recovery only, run as a research script and not yet in
+the engine verb. No non-Abelian force, flow or spectrum is computed here. The
+consistent non-Abelian force, gated against the native $SU(2)$ Whitney force with
+\BW{} unchanged, is the next step; a reciprocal version of it remains the open problem
+of Section~\ref{sec:magnet}.
+
 \section{Discussion}
 
 The central observation is simple to state. \emph{The Petrov--Galerkin force was never
@@ -800,8 +884,10 @@ magnetic Laplacian enters the recovery.
 
 \paragraph{Limitations.}
 \begin{itemize}
-  \item The results concern a single Abelian control on a single round quotient; the
-    Berger metrics, the full $SU(2)$ nonlinearity and time integration are untested.
+  \item The force results concern a single Abelian control on a single round quotient.
+    The covariant recovery of Section~\ref{sec:su2} is a research script, tested on two
+    exact left-invariant fields with sampled cells. The non-Abelian force, the full
+    $SU(2)$ nonlinearity of the flow and time integration are untested.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item The observed orders $0.73$ and $0.80$ before the last refinement are only
@@ -814,15 +900,21 @@ magnetic Laplacian enters the recovery.
     correspondence, not an instance of one.
 \end{itemize}
 
-\paragraph{Reproducibility.}
-The recovery is \texttt{scripts/ricci\_pg\_tworing.py}; the gate and stability harness
-is \texttt{scripts/ricci\_pg\_tworing\_gate.py}; focused tests are in
-\texttt{scripts/test\_ricci\_pg\_tworing.py}. Every number and figure in this paper is
-regenerated by \texttt{make\_data.py}, \texttt{numerical\_range.py} and
-\texttt{make\_figures.py} in the paper's directory, and every table by
-\texttt{make\_tables.py}, all from the frozen, hash-checked inputs of the
-\GIGI{} Ricci checkpoint.
-
+\paragraph{Reproducibility.} Every number and figure in this paper is regenerated from
+the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
+\begin{itemize}
+  \item Two-ring recovery: \path{scripts/ricci_pg_tworing.py}; its focused tests:
+    \path{scripts/test_ricci_pg_tworing.py}.
+  \item \BW{} and stability gate: \path{scripts/ricci_pg_tworing_gate.py}.
+  \item Figures, data and tables: \path{make_data.py}, \path{numerical_range.py},
+    \path{make_figures.py} and \path{make_tables.py} in the paper's directory.
+  \item Engine verb: \path{src/gauge/curvature_recovery.rs}, with parity and live-run
+    receipts in \path{research/recover-curvature-parity-20261117/}.
+  \item Covariant $SU(2)$ recovery: \path{scripts/ricci_su2_recovery.py}; its gates:\newline
+    \path{scripts/test_ricci_su2_recovery.py} and\newline
+    \path{scripts/ricci_su2_g2_probe.py};\newline
+    receipts in \path{research/recover-curvature-su2-20261117/}.
+\end{itemize}
 
 \begin{thebibliography}{99}\small
 \bibitem{afgt2014} D.~N.~Arnold, R.~S.~Falk, J.~Guzm\'an, G.~Tsogtgerel, On the consistency of the combinatorial codifferential, \emph{Trans.\ Amer.\ Math.\ Soc.} 366 (2014) 5487--5502.

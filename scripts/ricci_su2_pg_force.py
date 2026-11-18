@@ -148,7 +148,8 @@ def run(level, order, trial, metric=(3.0, 1.0, 1.0)):
             "energy_replay_rel": abs(energy - raw["energy"]) / abs(raw["energy"]),
             "gradient_vs_native_rel": float(np.linalg.norm(grad - native_grad) / np.linalg.norm(native_grad)),
             "relative_error": m["relative_error"], "full_mass_error": m["full_mass_error"],
-            "reference_mass_norm": m["reference_mass_norm"], "solver": m["diagnostics"]}
+            "reference_mass_norm": m["reference_mass_norm"], "solver": m["diagnostics"],
+            "_grad": grad}
 
 
 def main():
@@ -161,6 +162,7 @@ def main():
     for level in levels:
         t = time.time()
         r = run(level, order, trial)
+        r.pop("_grad")
         r["seconds"] = round(time.time() - t, 1)
         rows.append(r)
         print(json.dumps({k: (round(v, 6) if isinstance(v, float) else v) for k, v in r.items() if k != "solver"}), flush=True)

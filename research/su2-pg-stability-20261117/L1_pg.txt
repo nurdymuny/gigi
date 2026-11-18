@@ -1,0 +1,9 @@
+setup 126.7 s; C-grad 3.0026990404241344e-14
+C-col 1.64046767283353e-12
+columns 0 / 1124 8.2 s
+columns 200 / 1124 1236.3 s
+columns 400 / 1124 2171.3 s
+columns 600 / 1124 3009.9 s
+columns 800 / 1124 3809.9 s
+columns 1000 / 1124 4586.2 s
+{"level": 1, "trial": "pg", "dof": 3372, "C_col": 1.64046767283353e-12, "C_grad": 3.0026990404241344e-14, "B_asymmetry": 5.551115123125783e-17, "eigen_count": 3372, "small_modulus_below_1": 481, "rough_real_below_minus10": 0, "negative_real_physical": 9, "min_real": -4.6319978997754605, "min_real_physical": -4.6319978997754605, "max_abs_imag": 150.3390628663314, "seconds": 5512.8}

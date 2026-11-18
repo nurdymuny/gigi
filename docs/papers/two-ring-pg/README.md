@@ -92,8 +92,10 @@ this repository with its receipts. In order:
    a research script so far (`docs/RECOVER_CURVATURE_SU2_RESULTS.md`).
 10. **The non-Abelian force.** With native test variations and the covariant
    trial, the SU(2) force on the Berger field falls from the native 25.5% to 2.51% at
-   n = 5 and passes BW05 (`docs/RICCI_SU2_PG_FORCE_RESULTS.md`). Its stability is the
-   next check.
+   n = 5 and passes BW05 (`docs/RICCI_SU2_PG_FORCE_RESULTS.md`).
+11. **And it is stable.** The linearised two-ring SU(2) force has no rough modes at
+   n = 1 and n = 2, matching the native operator, while one ring has 207 and then 1,451
+   (`docs/RICCI_SU2_PG_STABILITY_RESULTS.md`). The flow and time integration are next.
 
 ## What is claimed, and what is not
 

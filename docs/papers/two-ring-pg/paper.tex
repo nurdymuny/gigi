@@ -89,7 +89,9 @@ converges at second order on the Levi-Civita fields of the round and a Berger me
 (Section~\ref{sec:su2}). So does the force. The native $SU(2)$ Whitney force stays $25.5\%$
 wrong on the Berger field. The same Petrov--Galerkin move, with native test variations and
 a covariantly recovered trial, falls to $2.51\%$ at $n=5$ and passes the
-unchanged \BW{} gate. Its stability, the flow and time integration are untested.
+unchanged \BW{} gate. It is also stable: at $n=1$ and $n=2$ its linearised spectrum has
+no rough modes, matching the native operator's, while the one-ring force has hundreds.
+The flow and time integration are untested.
 
 Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
 Noncommercial 1.0.0): native Rust transport and mass assembly, checked against the full
@@ -850,13 +852,51 @@ Its $q4$ and $q6$ errors agree to within $1.4\times10^{-7}$, and solver residual
 (Table~\ref{tab:su2force}). The native force does not pass: its error
 stays at $25\%$ and its orders are negative. Register is essential. Without it the force
 stays at about $29\%$, no better than native. One ring is accurate too, as in the Abelian
-case; there, stability is what separated one ring from two, and the $SU(2)$ stability
-test is the next step. The coarsest mesh is again pre-asymptotic for every recovery.
+case; there, stability is what separated one ring from two. The coarsest mesh is again
+pre-asymptotic for every recovery.
+
+\paragraph{Stability.} As in Section~\ref{sec:conditioning}, the object is the generalized
+spectrum of $(K,B)$. Here $K$ is the linearised force at the Berger field, one column per
+right-trivialised link direction by central differences, and $B$ is the native $SU(2)$
+tangent mass. The thresholds were fixed before measurement. A rough mode is an eigenvalue
+with $\operatorname{Re}\lambda<-10$; the continuum scale is of order $4$, and the Abelian
+one-ring instability sat above $10^4$ in magnitude. As controls, the cell-by-cell gradient
+reproduces the force of Table~\ref{tab:su2force} to $3\times10^{-14}$, and a cell-local
+Jacobian column matches a full-gradient column to $7\times10^{-12}$.
+
+\begin{table}[t]\centering\small
+\caption{Linearised $SU(2)$ force on the Berger field: generalized spectrum against the native
+tangent mass. ``Rough'' counts eigenvalues with $\operatorname{Re}\lambda<-10$.}
+\label{tab:su2stab}
+\begin{tabular}{llrrrr}\toprule
+Force & $n$ & directions & rough & most negative $\operatorname{Re}\lambda$ & max $|\operatorname{Im}\lambda|$ \\ \midrule
+Native $SU(2)$ Whitney & 1 & 426 & 0 & $-4.48$ & 0.80 \\
+\textbf{Two-ring Petrov--Galerkin} & 1 & 426 & \textbf{0} & $-4.39$ & 104 \\
+removal: one ring & 1 & 426 & 207 & $-8{,}621$ & 345 \\ \midrule
+Native $SU(2)$ Whitney & 2 & 3{,}372 & 0 & $-4.65$ & 0.63 \\
+\textbf{Two-ring Petrov--Galerkin} & 2 & 3{,}372 & \textbf{0} & $-4.63$ & 150 \\
+removal: one ring & 2 & 3{,}372 & 1{,}451 & $-19{,}829$ & 663 \\
+\bottomrule\end{tabular}
+\end{table}
+
+The two-ring force has no rough modes at either level (Table~\ref{tab:su2stab}). The one-ring
+force has $207$, then $1{,}451$, and its most negative eigenvalue grows under refinement,
+the same signature as the Abelian one ring. The few negative eigenvalues of the two-ring
+operator belong to the field, not to the method. The Berger field is not at rest, so its
+linearisation has some directions of growth. At $n=2$, the five most negative real parts
+are $-4.632$, $-4.632$, $-2.503$, $-2.503$, $-1.390$ for the two-ring operator and $-4.650$,
+$-4.650$, $-2.504$, $-2.504$, $-1.366$ for the native one. The two-ring operator is strongly
+non-normal: its imaginary parts reach $150$, where the native operator's stay below $1$.
+That is the cost of a force that is not the gradient of an energy. Eigenvalues alone do
+not rule out transient non-normal growth; the numerical-range certificate of
+Proposition~\ref{prop:diss} would, and it has not been computed for $SU(2)$. Gauge directions are not exact zero modes at a field that
+is not at rest, so the count of small eigenvalues was recorded but not gated.
 
 \paragraph{Scope.} Both the covariant recovery and the non-Abelian force are research
 scripts, not yet engine verbs. The force result is the instantaneous \BW{} gate on one
-metric. Its stability (the generalized spectrum against the native mass), the flow and
-time integration are untested. A reciprocal version remains the open problem of
+metric, with the spectrum of Table~\ref{tab:su2stab}. The flow and time integration are
+untested, and stability is measured only at $n\le2$; the
+numerical range is not computed. A reciprocal version remains the open problem of
 Section~\ref{sec:magnet}.
 
 \section{Discussion}
@@ -933,8 +973,8 @@ magnetic Laplacian enters the recovery.
   \item The force results concern a single Abelian control on a single round quotient.
     The covariant recovery of Section~\ref{sec:su2} is a research script, tested on two
     exact left-invariant fields with sampled cells. The $SU(2)$ force of
-    Section~\ref{sec:su2force} passes \BW{} on the Berger metric only; its stability, the
-    flow and time integration are untested.
+    Section~\ref{sec:su2force} passes \BW{} on the Berger metric only, and its stability is
+    measured at $n\le2$; the flow and time integration are untested.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item The observed orders $0.73$ and $0.80$ before the last refinement are only
@@ -963,6 +1003,8 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     receipts in \path{research/recover-curvature-su2-20261117/}.
   \item $SU(2)$ force:\newline \path{scripts/ricci_su2_pg_force.py};\newline receipts in
     \path{research/su2-pg-force-20261117/}.
+  \item $SU(2)$ stability:\newline \path{scripts/ricci_su2_pg_stability.py};\newline receipts,
+    with every eigenvalue, in\newline \path{research/su2-pg-stability-20261117/}.
 \end{itemize}
 
 \begin{thebibliography}{99}\small

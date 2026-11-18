@@ -1,4 +1,4 @@
-# Redundancy as Stabilizer (paper)
+# Reading the Curve, Not Counting the Points (paper)
 
 `paper.pdf` is the compiled manuscript (14 pages). Every number, table and figure is regenerated from the frozen, hash-checked inputs of the GIGI Ricci checkpoint. The archives under `research/ricci-checkpoint-20261117/` must be extracted under `output/`.
 

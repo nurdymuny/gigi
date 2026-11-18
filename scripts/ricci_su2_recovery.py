@@ -104,7 +104,10 @@ def local_link(cell, links, i, j):
     return u if i < j else inverse(u)
 
 
-def recover_cell(cells, faces, vid, links, ci, rings=2, register=True, abelianised=False, fit=None):
+def recover_cell(cells, faces, vid, links, ci, rings=2, register=True, abelianised=False, fit=None,
+                 flux="log"):
+    """flux='log': X = log(holonomy) (S1). flux='defect': X = vector part of the
+    holonomy, the native action's face defect (S2a)."""
     nb = tw.neighbourhood_rings(cells, faces, ci, rings)
     if fit is None:
         fit = tw.fit_cell_rings(cells, np.zeros(1 + max(max(c["edges"]) for c in cells)), faces, ci, rings=rings)
@@ -140,6 +143,8 @@ def recover_cell(cells, faces, vid, links, ci, rings=2, register=True, abelianis
                              local_link(c, links, k, i))
             if abelianised:
                 x = qlog(uij) + qlog(ujk) + qlog(uki)
+            elif flux == "defect":
+                x = compose(compose(uij, ujk), uki)[1:]
             else:
                 x = qlog(compose(compose(uij, ujk), uki))
             Y.append(ad(W[vid[(nj, i)]], x) if register else x)

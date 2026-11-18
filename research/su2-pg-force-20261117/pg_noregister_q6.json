@@ -1,0 +1,77 @@
+{
+  "kind": "S2a research script (not an engine run)",
+  "rows": [
+    {
+      "level": 0,
+      "order": 6,
+      "trial": "pg_noregister",
+      "energy_replay_rel": 1.5207243080036733e-16,
+      "gradient_vs_native_rel": 0.19901218302233092,
+      "relative_error": 0.39016687057174415,
+      "full_mass_error": 12.705005482445266,
+      "reference_mass_norm": 32.56300429564293,
+      "solver": {
+        "iterations": 36,
+        "relative_linear_residual": 6.171538073414456e-13,
+        "absolute_linear_residual": 5.475649250411536e-12,
+        "rhs_norm": 8.872422377169404,
+        "solver": "scipy_cg_external_diagnostic"
+      },
+      "seconds": 8.0
+    },
+    {
+      "level": 1,
+      "order": 6,
+      "trial": "pg_noregister",
+      "energy_replay_rel": 7.310380189642152e-16,
+      "gradient_vs_native_rel": 0.16039179155779262,
+      "relative_error": 0.287199891662084,
+      "full_mass_error": 9.641675358916514,
+      "reference_mass_norm": 33.57130569624586,
+      "solver": {
+        "iterations": 48,
+        "relative_linear_residual": 9.434475440189587e-13,
+        "absolute_linear_residual": 7.123198603052757e-12,
+        "rhs_norm": 7.550179814670879,
+        "solver": "scipy_cg_external_diagnostic"
+      },
+      "seconds": 53.8
+    },
+    {
+      "level": 2,
+      "order": 6,
+      "trial": "pg_noregister",
+      "energy_replay_rel": 1.4546596532414476e-16,
+      "gradient_vs_native_rel": 0.14912604872471347,
+      "relative_error": 0.2894559233551575,
+      "full_mass_error": 9.776562990937341,
+      "reference_mass_norm": 33.77565356968586,
+      "solver": {
+        "iterations": 53,
+        "relative_linear_residual": 7.871734914073032e-13,
+        "absolute_linear_residual": 5.060435434174481e-12,
+        "rhs_norm": 6.428615152077175,
+        "solver": "scipy_cg_external_diagnostic"
+      },
+      "seconds": 130.1
+    },
+    {
+      "level": 3,
+      "order": 6,
+      "trial": "pg_noregister",
+      "energy_replay_rel": 4.3544036756250403e-16,
+      "gradient_vs_native_rel": 0.13673706089183427,
+      "relative_error": 0.29193450863295867,
+      "full_mass_error": 9.891212235884375,
+      "reference_mass_norm": 33.88161366123499,
+      "solver": {
+        "iterations": 58,
+        "relative_linear_residual": 9.022802550158862e-13,
+        "absolute_linear_residual": 4.626921959605344e-12,
+        "rhs_norm": 5.128031932300102,
+        "solver": "scipy_cg_external_diagnostic"
+      },
+      "seconds": 581.8
+    }
+  ]
+}

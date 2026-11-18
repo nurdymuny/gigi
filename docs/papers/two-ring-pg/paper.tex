@@ -607,6 +607,17 @@ The language of drawing and clamping names the mechanism. It does not claim that
 magnetic field enters the equations; Section~\ref{sec:magnet} returns to what a
 fully reciprocal pull would require.
 
+\paragraph{Seeing the amplification.} Figure~\ref{fig:chip} shows what an amplification
+of $125$ means for a single cell. One edge value in a neighbouring cell is changed by $5\%$
+of the median edge value, a chip in the rim, and the recovered curvature inside $K$ is
+compared before and after. The one-ring curvature swings; the two-ring curvature barely
+moves. Over 300 randomly chosen cells and chips on $\T_2$, the one-ring response is a median
+14.5 times the two-ring response (quartiles 5.8 and 25.3). That is larger than the
+ratio of amplifications, because least squares does two things at once: it bounds the
+amplification, and it dilutes a single bad value among many good ones. The ratio is not
+always above one (the smallest is 0.84), but the typical cell is far steadier.
+Figure~\ref{fig:amp3d} shows the same contrast for every cell of $\T_2$ at once.
+
 \paragraph{The price is size.} The one-ring fit reads $16$ face fluxes per cell; the
 two-ring fit reads $40$ on $\T_1$ and $40$ to $44$ on $\T_2$ and $\T_3$. Each per-cell problem
 is still an $11$-coefficient constrained least-squares solve, and the assembled operator
@@ -614,11 +625,12 @@ couples each cell to its two-ring neighbourhood rather than its one-ring star.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig_schematic.pdf}
-  \caption{Schematic, two-dimensional analogue of the recovery neighbourhoods. In three
-  dimensions the one-ring star has $16$ faces and $5$ closure relations, so the closed
-  linear fit (eleven unknowns) is exactly determined. The two-ring neighbourhood
-  oversamples it.}
+  \includegraphics[width=\textwidth]{figures/fig_neighbourhood_3d.pdf}
+  \caption{The recovery neighbourhoods of an actual cell $K$ of $\T_2$, drawn in $K$'s own
+  chart after every neighbour has been carried onto $K$'s sheet. One ring: $K$ and its four
+  face neighbours, 5 cells and 16 faces. With $5$ closure relations that leaves exactly the
+  eleven fluxes the closed linear fit needs, so the fit is exactly determined. Two rings:
+  15 cells and 44 faces, so the same eleven coefficients are overdetermined.}
   \label{fig:schematic}
 \end{figure}
 
@@ -630,6 +642,26 @@ couples each cell to its two-ring neighbourhood rather than its one-ring star.
   determined; the two-ring recovery is overdetermined and its amplification is lower and
   mesh-uniform.}
   \label{fig:conditioning}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_amplification_3d.pdf}
+  \caption{Fit amplification $\norm{\cR_K}_2$ for every cell of $\T_2$, one dot per cell at
+  its centroid, all $960$ cells carried onto one sheet of the cover and drawn in the chart
+  of one of them. Same logarithmic colour scale in both panels.}
+  \label{fig:amp3d}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_chip_3d.pdf}
+  \caption{A chip in the rim. The same small change to one neighbouring edge value
+  (marked, $5\%$ of the median edge value), and the resulting change in the recovered
+  curvature at points inside $K$, drawn to the same arrow scale in both panels. Over $300$
+  random cells and chips the one-ring response is a median $14.5$ times the two-ring
+  response.}
+  \label{fig:chip}
 \end{figure}
 
 \section{Results}\label{sec:results}
@@ -849,11 +881,22 @@ removal: no register & 39.02 & 28.72 & 28.95 & 29.19 & -0.03, -0.02 \\
 \paragraph{Result.} The two-ring Petrov--Galerkin force passes \BW{} on the Berger field.
 Its final error is $2.51\%$ and its final orders are $1.14$ and $1.23$.
 Its $q4$ and $q6$ errors agree to within $1.4\times10^{-7}$, and solver residuals are below $10^{-12}$
-(Table~\ref{tab:su2force}). The native force does not pass: its error
+(Table~\ref{tab:su2force}, Figure~\ref{fig:su2conv}). The native force does not pass: its error
 stays at $25\%$ and its orders are negative. Register is essential. Without it the force
 stays at about $29\%$, no better than native. One ring is accurate too, as in the Abelian
 case; there, stability is what separated one ring from two. The coarsest mesh is again
 pre-asymptotic for every recovery.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_su2_convergence.pdf}
+  \caption{$SU(2)$ under refinement. (a) The covariant two-ring recovery on the exact
+  Levi-Civita fields of the round and Berger metrics converges at second order; without
+  register it loses an order, and the abelianised flux stalls. (b) The force on the Berger
+  field: the native force stays near $25\%$, the two-ring Petrov--Galerkin force falls below
+  the \BW{} threshold, and without register it stalls near $29\%$.}
+  \label{fig:su2conv}
+\end{figure}
 
 \paragraph{Stability.} As in Section~\ref{sec:conditioning}, the object is the generalized
 spectrum of $(K,B)$. Here $K$ is the linearised force at the Berger field, one column per
@@ -879,7 +922,17 @@ removal: one ring & 2 & 3{,}372 & 1{,}451 & $-19{,}829$ & 663 \\
 \bottomrule\end{tabular}
 \end{table}
 
-The two-ring force has no rough modes at either level (Table~\ref{tab:su2stab}). The one-ring
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_su2_spectra.pdf}
+  \caption{Generalized spectra of the linearised $SU(2)$ force at $n=2$, against the native
+  tangent mass (signed-logarithmic real axis). The shaded band is the pre-registered
+  ``rough'' region, $\operatorname{Re}\lambda<-10$.}
+  \label{fig:su2spec}
+\end{figure}
+
+The two-ring force has no rough modes at either level (Table~\ref{tab:su2stab},
+Figure~\ref{fig:su2spec}). The one-ring
 force has $207$, then $1{,}451$, and its most negative eigenvalue grows under refinement,
 the same signature as the Abelian one ring. The few negative eigenvalues of the two-ring
 operator belong to the field, not to the method. The Berger field is not at rest, so its

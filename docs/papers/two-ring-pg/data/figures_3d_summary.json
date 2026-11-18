@@ -1,0 +1,33 @@
+{
+ "neighbourhood": {
+  "cell": 0,
+  "ring1_cells": 4,
+  "two_ring_cells": 15,
+  "faces_one_ring": 16,
+  "faces_two_ring": 44
+ },
+ "su2_convergence": {
+  "native_n5": 25.50661470291796,
+  "two_ring_n5": 2.506854289385465
+ },
+ "su2_spectra": {
+  "native": 0,
+  "pg": 0,
+  "pg_onering": 1451
+ },
+ "amplification": {
+  "cells": 960,
+  "one_ring_median": 125.40930963203402,
+  "two_ring_median": 35.17832034417175
+ },
+ "chip": {
+  "cell": 0,
+  "edge": 45,
+  "delta": 0.003111718590344436,
+  "n_stat": 300,
+  "ratio_median": 14.504519146329535,
+  "ratio_q25": 5.842722599034409,
+  "ratio_q75": 25.258001467768217,
+  "ratio_min": 0.84030824647127
+ }
+}

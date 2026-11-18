@@ -1,12 +1,12 @@
-# Ricci research: Claude's 2026-11-17 work
+# Ricci research: Petrov-Galerkin evidence, 2026-11-17
 
 Branch `feat/ricci-pg-curvature`, based on commit 99882091
-(`claude/rf2h-adjoint-consistent-recovery`, itself on the Codex checkpoint).
+(`feat/rf2h-adjoint-consistent-recovery`, itself on the Codex checkpoint).
 **Progress preservation, not a release or convergence claim. BW05 is OPEN.**
 
 ## Start here, in order
 
-1. [Independent assessment](../../docs/RICCI_CLAUDE_ASSESSMENT_2026_11_17.md):
+1. [Independent assessment](../../docs/RICCI_INDEPENDENT_ASSESSMENT_2026_11_17.md):
    the fixed-exterior refusal is structural. Whitney curvature is tangentially
    discontinuous at 1124/1124 edges; its potential agrees at 0/1124.
 2. [PG curvature spec](../../docs/RICCI_PG_CURVATURE_SPEC.md) and

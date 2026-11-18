@@ -6,7 +6,7 @@ Date: 2026-11-17. **Progress preservation, not a release or convergence claim.**
 
 ## Start here
 
-[Claude handoff](../../docs/CLAUDE_RICCI_HANDOFF_2026_11_17.md) contains the
+[Handoff](../../docs/RICCI_HANDOFF_2026_11_17.md) contains the
 current question, exact results, constraints, code/data locations and next
 steps. [Latest boundary result](../../docs/RICCI_BOUNDARY_EXTENSION_RESULTS.md)
 explains the verified incompatibility witness. [Historical handoff](../../docs/RICCI_HANDOFF.md)

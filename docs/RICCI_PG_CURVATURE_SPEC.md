@@ -1,7 +1,7 @@
 # S1–S3: Petrov-Galerkin curvature test, Abelian control
 
 2026-11-17, Claude. Spec before RED tests and implementation. Route chosen by
-Bee ("go with your intuition") after `RICCI_CLAUDE_ASSESSMENT_2026_11_17.md`.
+Bee ("go with your intuition") after `RICCI_INDEPENDENT_ASSESSMENT_2026_11_17.md`.
 Static only: one instantaneous force per mesh, Abelian control, no time
 stepping, no Berger, no native change, no full suite, no commit.
 

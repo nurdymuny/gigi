@@ -1,6 +1,6 @@
 # Independent assessment and one bounded spec
 
-2026-11-17, Claude, in response to `CLAUDE_RICCI_HANDOFF_2026_11_17.md`.
+2026-11-17, Claude, in response to `RICCI_HANDOFF_2026_11_17.md`.
 **Assessment and spec only. No reconstruction implemented, no flow run, no
 native change, no commit.** One read-only diagnostic was added and run.
 

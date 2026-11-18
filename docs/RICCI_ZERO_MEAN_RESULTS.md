@@ -10,7 +10,7 @@ research scripts; nothing ran through the GIGI engine. No commit.
 
 Before building, the sufficient condition in the assessment that motivated
 option 1 was re-derived and found wrong (correction now in
-`RICCI_CLAUDE_ASSESSMENT_2026_11_17.md`, section 4). Two independent problems:
+`RICCI_INDEPENDENT_ASSESSMENT_2026_11_17.md`, section 4). Two independent problems:
 
 1. **Accuracy.** A correction with zero mean on every cell keeps Whitney's cell
    means. Those are first-order accurate: metric-weighted mean error 3.56%,

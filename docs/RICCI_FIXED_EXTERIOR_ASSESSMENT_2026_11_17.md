@@ -1,7 +1,7 @@
 # Independent assessment: the fixed-exterior obstruction
 
 Claude, 2026-11-17. Answers the "suggested first deliverable" in
-`docs/CLAUDE_RICCI_HANDOFF_2026_11_17.md`. **Assessment only.** No construction was changed, no
+`docs/RICCI_HANDOFF_2026_11_17.md`. **Assessment only.** No construction was changed, no
 receipt was overwritten, no threshold was touched, and no global flow or test suite was run.
 
 ## How this was checked

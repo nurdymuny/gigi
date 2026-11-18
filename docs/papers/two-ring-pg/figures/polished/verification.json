@@ -1,0 +1,34 @@
+{
+  "cell_ids": [
+    0,
+    1,
+    7
+  ],
+  "max_edge_difference_from_receipt": 1.1771728573861662e-06,
+  "max_dihedral_difference_deg": 0.0005802568259127838,
+  "geometry_precision": "Saved vertex coordinates: six decimals; measurement labels use original receipt.",
+  "explosion": "Centroid translation only; all six edge lengths invariant to 1e-14.",
+  "transparency": "Every pixel sorts faces and edges by actual depth before alpha composition; shared faces deduplicated.",
+  "research_calculations_rerun": false,
+  "inputs": {
+    "rings_3d.json": "996ade3dcf64c2522d4c397aeb82e2347bbe2cf5fcf88d817ffe97c3dae6b65b",
+    "cell_views.json": "6586f0b050ab4df0622706f89af07d47b7014f77bdc88a38b904c5660f6fef50"
+  },
+  "layout": [
+    {
+      "text_elements_checked": 20,
+      "text_overlap": false,
+      "out_of_bounds": false
+    },
+    {
+      "text_elements_checked": 49,
+      "text_overlap": false,
+      "out_of_bounds": false
+    },
+    {
+      "text_elements_checked": 35,
+      "text_overlap": false,
+      "out_of_bounds": false
+    }
+  ]
+}

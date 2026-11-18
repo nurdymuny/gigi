@@ -1,6 +1,6 @@
 # Reading the Curve, Not Counting the Points
 
-**Paper:** [`paper.pdf`](paper.pdf) (24 pages). **Author:** Bee Rosa Davis, Davis Geometric.
+**Paper:** [`paper.pdf`](paper.pdf). **Author:** Bee Rosa Davis, Davis Geometric.
 
 This branch holds a paper, the GIGI code behind every number in it, and the record
 of how the result was found, including every attempt that failed. This README
@@ -131,6 +131,7 @@ python docs/papers/two-ring-pg/numerical_range.py        # numerical_range.json 
 python docs/papers/two-ring-pg/make_tables.py            # tables/*.tex (orders from absolute error, as in BW05)
 python docs/papers/two-ring-pg/make_figures.py           # figures/*.pdf
 python docs/papers/two-ring-pg/make_figures_3d.py        # 3-D figures, four direct views (data/cell_views.json)
+python docs/papers/two-ring-pg/make_polished_plates.py   # paper Figures 1-3, from saved geometry/measurement receipts
 python scripts/ricci_pg_tworing_gate.py                  # the BW05 and stability verdicts
 cd docs/papers/two-ring-pg && pdflatex paper.tex && pdflatex paper.tex
 ```
@@ -138,6 +139,12 @@ cd docs/papers/two-ring-pg && pdflatex paper.tex && pdflatex paper.tex
 Typesetting uses the shared house style [`../dgstyle.tex`](../dgstyle.tex); see the
 chord–arc–tangent README for the TeX packages. The companion paper,
 [*Three Ways Across a Turn*](../chord-arc-tangent/), is cited in Sections 9 and 10.
+
+Figures 1-3 now use the depth-composited plates in `figures/polished/`. The
+captions distinguish the unchanged measurement labels from the saved drawing
+coordinates, and the separated views from physical cell positions. Rebuilding
+these illustrations does not rerun the research calculations. Focused drawing
+checks: `python -m unittest discover -s docs/papers/two-ring-pg -p test_polished_plates.py -v`.
 
 Native checks. Build the probe, then point the tests at it:
 

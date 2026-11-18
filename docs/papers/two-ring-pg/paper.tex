@@ -649,46 +649,50 @@ keeps the uniform two-ring rule (repository: \path{docs/RING_FOLD_FORCE_RESULTS.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig_neighbourhood_3d.pdf}
-  \caption{The recovery neighbourhoods of an actual cell $K$ of $\T_2$, drawn in $K$'s own
-  chart after every neighbour has been carried onto $K$'s sheet. One ring: $K$ and its four
-  face neighbours, 5 cells and 16 faces. With $5$ closure relations that leaves exactly the
-  eleven fluxes the closed linear fit needs, so the fit is exactly determined. Two rings:
-  15 cells and 44 faces, so the same eleven coefficients are overdetermined.
-  Figure~\ref{fig:cellviews} shows the same cells from four direct views, with measurements.}
+  \includegraphics[width=\textwidth,trim=25bp 9bp 25bp 28bp,clip]{figures/polished/fig_neighbourhood_polished.pdf}
+  \caption{Recovery neighbourhoods of cell $K=0$ of $\T_2$, in $K$'s chart after every
+  neighbour has been carried onto its sheet. Both views use the same camera and scale,
+  with no displacement. Blue marks $K$, copper its face-neighbours, and teal the second
+  ring. Translucent faces and edges are composited in actual depth order, with shared
+  faces counted once; colour and opacity are drawing conventions, not measured fields.
+  \textbf{(A)} One ring: 5 cells and 16 faces. Five closure relations leave exactly the
+  eleven independent fluxes the closed linear fit needs. \textbf{(B)} Two rings: 15 cells
+  and 44 faces, overdetermining the same eleven coefficients.
+  Figure~\ref{fig:cellviews} isolates $K$ for its measurements.}
   \label{fig:schematic}
 \end{figure}
 
 \begin{figure}[p]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig_cell_views.pdf}
-  \caption{Cell $K$ of Figure~\ref{fig:schematic} as a drafting sheet, in orthographic
-  projection at one scale (bar: $0.05$ in chordal length on the unit three-sphere). The first
-  and second rings appear only as flat silhouettes behind $K$. \textbf{(a)} An overview from
-  the direction that best separates $K$'s vertices and edges, with every true edge length;
-  the hidden edge is dashed. \textbf{(b)--(d)} Looking straight down an edge of $K$: its two
-  ends coincide, the two faces at that edge appear as lines, and the angle between them is
-  the true dihedral angle. The three edges shown carry the smallest, a middle and the largest
-  dihedral angle; the other three are $60.0^\circ$, $88.6^\circ$ and $90.0^\circ$. $K$ is the
-  chordal tetrahedron itself, drawn exactly in its own chart; the rings are carried onto
-  $K$'s sheet and charted. Every edge length, dihedral angle, face angle and the volume are in
-  \texttt{data/cell\_views.json}.}
+  \includegraphics[width=\textwidth,trim=25bp 9bp 25bp 28bp,clip]{figures/polished/fig_cell_views_polished.pdf}
+  \caption{The chordal tetrahedron $K$ of Figure~\ref{fig:schematic}, isolated in four
+  orthographic views at one scale; each bar is $0.05$ in chordal length on the unit
+  three-sphere. \textbf{(A)} An oblique view with translucent faces, followed by the six
+  edge lengths keyed to the labelled vertices. These are spatial lengths, not projected
+  lengths. \textbf{(B)--(D)} Looking along edges $v_0v_1$, $v_2v_3$ and $v_1v_3$:
+  the endpoints coincide in projection, and the two incident faces appear as lines whose
+  angle is the internal dihedral, respectively $36.0^\circ$, $60.3^\circ$ and $90.0^\circ$
+  to the displayed precision. Drawing vertices use the saved six-decimal chart coordinates;
+  measurement labels come from \texttt{data/cell\_views.json}, which also retains the
+  other dihedrals, face angles and volume.}
   \label{fig:cellviews}
 \end{figure}
 
 \begin{figure}[p]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig_rings_3d.pdf}
-  \caption{The rings in three dimensions, from the real cells of $\T_2$, each drawn in its own
-  chart (cell $K$ in blue, drawn over its neighbours). \textbf{(a)--(c)} Cell $0$, the cell of
-  Figures~\ref{fig:schematic} and~\ref{fig:cellviews}, built up from one viewpoint: the one-ring
-  neighbourhood, both rings, and the folded stencil, which keeps only the second-ring cells
-  that a greedy selection needs to bring the amplification within $1.25$ times its two-ring
-  value. Each panel gives the fit amplification $\norm{\cR_K}_2$. \textbf{(d)--(f)} Every
-  neighbour pulled away from $K$ along the direction of its centroid, from a second
-  viewpoint, for cell $0$, a cell the selection serves with $2$ second-ring cells, and a cell
-  that needs $7$. The geometry is in \texttt{data/rings\_3d.json};
-  \texttt{make\_figure\_rings3d.py} regenerates it from the mesh.}
+  \includegraphics[width=\textwidth,trim=25bp 9bp 25bp 28bp,clip]{figures/polished/fig_rings_polished.pdf}
+  \caption{Full and selected neighbourhoods on $\T_2$, with depth-ordered transparency.
+  \textbf{(A)--(C)} Cell $0$ with one ring, two rings, and the folded stencil; each panel
+  reports its cell count and fit amplification $\norm{\cR_K}_2$. The greedy selection
+  retains second-ring cells until amplification is within $1.25$ times the full two-ring
+  value. Omitted cells remain as faint grey context and are excluded from the folded count.
+  \textbf{(D)--(F)} Separated views of cells $0$, $1$ and $7$, retaining respectively
+  $6$ of $10$, $2$ of $9$, and $7$ of $10$ second-ring cells. Neighbours are translated
+  along centroid rays without changing their shapes or orientations; the gaps are
+  illustrative, not physical distances. Each cell is drawn in its own chart, with a common
+  camera and scale within each row. The saved geometry is in \texttt{data/rings\_3d.json};
+  \texttt{make\_polished\_plates.py} renders Figures~\ref{fig:schematic}--\ref{fig:rings3d}
+  from the saved geometry and measurement receipts.}
   \label{fig:rings3d}
 \end{figure}
 
@@ -1146,7 +1150,10 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     \path{scripts/test_ricci_pg_tworing.py}.
   \item \BW{} and stability gate: \path{scripts/ricci_pg_tworing_gate.py}.
   \item Figures, data and tables: \path{make_data.py}, \path{numerical_range.py},
-    \path{make_figures.py} and \path{make_tables.py} in the paper's directory.
+    \path{make_figures.py} and \path{make_tables.py} in the paper's directory;
+    \path{make_polished_plates.py} renders Figures~\ref{fig:schematic}--\ref{fig:rings3d}
+    from the saved drawing coordinates and measurement receipts. Its focused rendering
+    checks are in \path{test_polished_plates.py}.
   \item Engine verb: \path{src/gauge/curvature_recovery.rs}, with parity and live-run
     receipts in \path{research/recover-curvature-parity-20261117/}.
   \item Covariant $SU(2)$ recovery: \path{scripts/ricci_su2_recovery.py}; its gates:\newline

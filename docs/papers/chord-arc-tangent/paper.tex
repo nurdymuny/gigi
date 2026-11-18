@@ -48,9 +48,10 @@ imaginary while $S+d^2=1$ survives. Bertrand's paradox turns out to be the quest
 which of these quantities is taken to be uniform: the arc, $\sqrt S$, or $S$.
 A ticket game puts all of it in one room: the arc, the chord and the energy each buy one ticket at a different angle ($57.30^\circ$, $60^\circ$, $90^\circ$), and two whole tickets can only turn at the centre or at its twin.
 Every identity is checked symbolically or numerically by a script that ships with the paper.
-Because the turn is the holonomy of a gauge field, each of these choices is a choice of
-Yang--Mills action and of how a Yang--Mills field steps forward in time; a companion paper
-makes those choices on the Poincar\'e homology sphere.
+In a gauge field every small loop carries a turn, its holonomy, and the picture reads
+directly: the turn creates the energy, a lattice pays for it along the chord, and the
+smallest unit of turn is curved simply because it exists. A companion paper computes with
+these turns on the Poincar\'e homology sphere.
 \end{abstract}
 
 \section{A picture}\label{sec:picture}
@@ -131,15 +132,17 @@ Section~\ref{sec:energy} is the one statement we have not found in the sources a
 proper prior-art search is listed as open in Section~\ref{sec:claims}.
 
 \paragraph{Where this is going.} The turn in this paper is not only a stick on a circle. In
-a gauge theory every small loop carries one, its holonomy, and the energy of the field is
-the sum of how far those loops have turned. Choosing the chord, the arc or the outside path
-to measure a turn is choosing a lattice Yang--Mills action, and choosing how to step a turn
-forward is choosing how the field evolves in time. The companion paper \emph{Reading the
-Curve, Not Counting the Points}~\cite{davis-rtc} makes those choices on meshes of the
-Poincar\'e homology sphere, and Section~\ref{sec:mesh} measures how much they matter there.
-Behind both papers sits a larger question: whether Yang--Mills dynamics computed from coarse
-lattice data follow the continuum flow, and what the curvature of the gauge group itself has
-to say about it. Section~\ref{sec:claims} says how far this paper goes, and where it stops.
+a gauge field every small loop carries one, its holonomy, and read that way the picture
+says three things. The turn creates the energy: a loop that has not turned costs nothing,
+and the energy of a loop is how far it has turned. The two ends of a turn reach each other
+through the inside: a lattice measures the chord, because the arc is the path that only
+the turning itself can travel. And the smallest unit of turn is curved because it exists:
+one unit, extending equally in every direction, is a sphere, and in four dimensions that
+sphere is $SU(2)$, the group the Yang--Mills field is made of. The companion paper
+\emph{Reading the Curve, Not Counting the Points}~\cite{davis-rtc} computes with these turns
+on meshes of the Poincar\'e homology sphere. Section~\ref{sec:mesh} measures how much the
+three paths differ there, and Section~\ref{sec:ym} returns to what they suggest about
+Yang--Mills. Section~\ref{sec:claims} says how far this paper goes, and where it stops.
 
 \section{Lengths: who misses, and by how much}\label{sec:lengths}
 
@@ -766,6 +769,58 @@ the two-to-one blend live only in the checking script for now. Putting the detou
 the engine's clock is one of the open items below.
 \end{plain}
 
+\section{What a turn costs: toward Yang--Mills}\label{sec:ym}
+
+\paragraph{Zero is not a small unit; it is no system.} One unit of anything real, with
+nothing to make it prefer a direction, extends equally in every direction and can take no
+negative space along any axis. So it is a sphere, and a sphere is curved. The curvature is
+not added to the smallest thing; it comes with existing at all. In one dimension that unit
+sphere is the two points $-1$ and $+1$. In four dimensions it is the three-sphere of unit
+quaternions, which is the gauge group $SU(2)$ itself, the group the Yang--Mills field is made
+of. Its curvature is exactly how much its turns fail to commute: with the bi-invariant
+metric, the sectional curvature of the plane of $X$ and $Y$ is $\tfrac14|[X,Y]|^2$
+\cite{milnor}, which is $1$ on the unit quaternions. The photon's circle of turns,
+$U(1)$, commutes, and it is flat. The centre of $SU(2)$, the turns that commute with every
+other, is again exactly $\{-1,+1\}$, and $-1$ is the half turn of Section~\ref{sec:number},
+where the outside path breaks.
+
+\paragraph{The angle creates the energy.} A loop of the field that has not turned carries
+no energy. One that has turned through $\theta$ carries the energy of its chord,
+$1-\cos\theta$ in Wilson's units (Section~\ref{sec:energy}). The two ends cannot meet along
+the arc for free, because the arc belongs to the turning itself. Every other way across
+costs something: the chord less, the detour more.
+
+\paragraph{Energy comes in whole tickets.} In the ticket game of Section~\ref{sec:tickets},
+there is nothing to spend between no turn and one ticket. Any crossing that does not fit in
+one ticket takes two whole trips, turning at the centre or at its twin.
+
+\paragraph{Together.} The smallest thing that exists is already curved, and the smallest
+exchange is a whole ticket. Between nothing and one unit there is nothing. That shape, a
+floor under the energy of anything that exists, is what a mass gap is. Our picture says
+where such a floor would come from: from the curvature the gauge group has simply by being a
+group of turns, not from the curvature of space, which flattens away as space grows. That is
+also why the eigenvalue $4$ measured in the companion paper is not a mass gap: it comes from
+the curvature of the space, the Poincar\'e homology sphere, and not from the field.
+
+\paragraph{Status.} The geometry above is exact and checked. That this floor \emph{is} the
+Yang--Mills mass gap in flat, infinite space is the open Clay problem \cite{jaffewitten}, and
+this paper does not claim it. Related ideas, that curvature in the space of fields keeps its
+energy above zero, go back to Feynman \cite{feynman} and Singer \cite{singer}. A companion
+note in the \textsc{gigi} repository (\path{docs/research/unit-curvature-2026-11-18.md})
+works through the exact parts in more detail, with the related literature.
+
+\begin{plain}
+Zero is not a tiny something; it is nothing at all. The smallest real thing has no reason
+to favour one direction, so it spreads the same amount every way, and that makes it round,
+and round means curved. It is curved simply because it exists. For the weak and strong nuclear forces, the turns
+themselves form that kind of round, curved space ($SU(2)$ and $SU(3)$), and its curvature is
+how much the turns refuse to commute; for light, the turns commute and the space is flat. A turn is what costs energy, and the lattice pays for it along the straight
+shortcut. In the ticket game, energy comes whole: there is nothing between no ticket and
+one. Put together, that suggests a floor under the energy of anything that exists, which is
+what physicists call a mass gap. Whether that floor is really there for these forces is one of
+the great open problems, and this paper does not claim to have solved it.
+\end{plain}
+
 \section{What is claimed, and what is open}\label{sec:claims}
 
 \textbf{Claimed}, each checked by \texttt{verify.py} (all checks passing; count in \texttt{verify\_output.txt}):
@@ -803,18 +858,6 @@ curvature-recovery work; Section~\ref{sec:mesh} shows it does not.
     where the energy combination could matter.
 \end{itemize}
 
-\paragraph{Toward Yang--Mills.} Three things here point past this paper. First, the
-two-to-one energy of Proposition~\ref{prop:energy} is a lattice action, and how it behaves in
-a strong-field simulation, with its barrier at the half turn, is a Yang--Mills question we
-have not asked. Second, the Cayley step is the integrator we will try first for the $SU(2)$
-Yang--Mills flow on the Poincar\'e homology sphere, whose instantaneous force passes its gate
-in the companion paper~\cite{davis-rtc}. Third, the unit sphere in one dimension is the pair
-$\{-1,+1\}$, and in four it is $SU(2)$, whose centre is again $\{-1,+1\}$: the half turn that
-breaks the outside path is the centre of the gauge group. A companion note follows that
-thread toward the curvature of the gauge group and the Yang--Mills mass gap. It keeps exact
-statements apart from the open link, which this paper does not claim. The note is
-\path{docs/research/unit-curvature-2026-11-18.md} in the \textsc{gigi} repository.
-
 \paragraph{Reproducibility.} \texttt{verify.py} and \texttt{face\_angles.py} in this
 directory; the output of the first is saved as \texttt{verify\_output.txt}, of the second as
 \texttt{face\_angles.json}.
@@ -829,6 +872,10 @@ directory; the output of the first is saved as \texttt{verify\_output.txt}, of t
 \bibitem{manton} N.~S.~Manton, An alternative action for lattice gauge theories, \emph{Phys.\ Lett.\ B} 96 (1980) 328--330.
 \bibitem{lw} M.~L\"uscher, P.~Weisz, On-shell improved lattice gauge theories, \emph{Commun.\ Math.\ Phys.} 97 (1985) 59--77.
 \bibitem{iserles} A.~Iserles, H.~Z.~Munthe-Kaas, S.~P.~N{\o}rsett, A.~Zanna, Lie-group methods, \emph{Acta Numerica} 9 (2000) 215--365.
+\bibitem{milnor} J.~Milnor, Curvatures of left invariant metrics on Lie groups, \emph{Adv.\ Math.} 21 (1976) 293--329.
+\bibitem{feynman} R.~P.~Feynman, The qualitative behavior of Yang--Mills theory in $2+1$ dimensions, \emph{Nucl.\ Phys.\ B} 188 (1981) 479--512.
+\bibitem{singer} I.~M.~Singer, The geometry of the orbit space for non-abelian gauge theories, \emph{Physica Scripta} 24 (1981) 817--820.
+\bibitem{jaffewitten} A.~Jaffe, E.~Witten, Quantum Yang--Mills theory, Clay Mathematics Institute Millennium Problem description, 2000.
 \bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
 \bibitem{bertrand} J.~Bertrand, \emph{Calcul des probabilit\'es}, Gauthier-Villars, Paris, 1889.
 \bibitem{jaynes} E.~T.~Jaynes, The well-posed problem, \emph{Found.\ Phys.} 3 (1973) 477--492.

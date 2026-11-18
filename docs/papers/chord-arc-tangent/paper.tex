@@ -34,6 +34,9 @@ $2{:}1$ cancel the leading error both in length and in energy: $(2C^2+T^2)/3=\th
 with sameness $S=\cos^2(\theta/2)$. On the $SU(2)$ meshes of our curvature-recovery work,
 face angles are small enough (at most $0.094$) that the chord and the arc differ in energy
 by under $0.08\%$, so these corrections are not the source of the errors measured there.
+Every miss has a twin on the other side, and crossing the circle's rim makes the turn
+imaginary while $S+d^2=1$ survives. Bertrand's paradox turns out to be the question of
+which of these quantities is taken to be uniform: the arc, $\sqrt S$, or $S$.
 Every identity is checked symbolically or numerically by a script that ships with the paper.
 \end{abstract}
 
@@ -268,6 +271,69 @@ the natural rule to try first. The numerical range we are measuring tells us how
 steps may be.
 \end{plain}
 
+\section{Twins, the far side, and Bertrand}\label{sec:twins}
+
+\paragraph{Every miss has a twin on the other side.} The Snellius--Huygens estimate
+$(2C+T)/3$ overshoots the arc. Snellius' other estimate undershoots it:
+\[
+L=\frac{6\sin(\theta/2)}{2+\cos(\theta/2)},\qquad
+\theta-L=\tfrac{1}{2880}\theta^5+O(\theta^7),\qquad L<\theta<\frac{2C+T}{3}.
+\]
+The two misses are $\theta^5/320$ above and $\theta^5/2880$ below, nine to one. So the twins
+can be blended again, $\tfrac{1}{10}\bigl(9L+\tfrac{2C+T}{3}\bigr)=\theta+O(\theta^7)$, and the
+blend leaves a smaller pair of twins. Each cancellation produces the next.
+
+\paragraph{The far-side twin.} A chord does not know which way round the turn went. The
+turns $\theta$ and $2\pi-\theta$ have the same chord. The outside path does know: its
+tangent leg changes sign, $\tan\bigl((2\pi-\theta)/2\bigr)=-\tan(\theta/2)$, because the
+corner where the tangents meet moves to the other side of the circle.
+
+\paragraph{Where the corner sits.} The chord's line lies at distance $p=\cos(\theta/2)$
+from the centre, and the corner at distance $1/p$ (pole and polar). The corner's
+position decides the regime.
+\begin{itemize}
+  \item \emph{Corner outside the circle} ($0<p<1$): everything is real.
+  \item \emph{Chord line through the centre} ($p=0$, the half turn): the tangents are
+    parallel and the corner is at infinity. Past it, the corner comes back on the far side;
+    that is the far-side twin. Crossing the centre flips to the twin, and everything stays real.
+  \item \emph{Corner inside the circle} ($p>1$; the chord's line misses the circle): the
+    two endpoints become a complex-conjugate pair, and the turn becomes imaginary,
+    $\theta=i\varphi$. Then $C=2i\sinh(\varphi/2)$, the tangent leg is $i\tanh(\varphi/2)$, and
+    $S=\cosh^2(\varphi/2)>1$. The identity $S+d^2=1$ survives, with $d=i\sinh(\varphi/2)$
+    imaginary. The circle has become a hyperbola, and the turn a boost. Crossing the rim is
+    what makes the numbers unreal.
+\end{itemize}
+
+\paragraph{Bertrand's paradox.} Bertrand asked for the probability that a ``random chord''
+is longer than the side of the inscribed equilateral triangle \cite{bertrand}. The answer
+depends on how the chord is chosen, and each classical choice makes one of this paper's
+quantities uniform:
+\begin{center}\small
+\begin{tabular}{lll}\toprule
+Chord chosen by & Uniform quantity & Probability \\ \midrule
+two random endpoints & the arc $\theta$ & $1/3$ \\
+random distance along a radius & $\sqrt S=\cos(\theta/2)$ & $1/2$ \\
+random midpoint & the sameness $S$ & $1/4$ \\
+\bottomrule\end{tabular}
+\end{center}
+The chord exceeds $\sqrt3$ exactly when $\theta>2\pi/3$, $\cos(\theta/2)<1/2$ and $S<1/4$, so
+the three answers follow at once. A simulation with two million chords per method gives
+$0.3333$, $0.5004$ and $0.2498$. The outside path offers no fourth answer: its leg runs off to
+infinity at the half turn, so it cannot be spread evenly. Jaynes argued that invariance
+under moving and rescaling the circle selects the radius method \cite{jaynes}.
+
+\begin{plain}
+Every estimate that misses on one side has a twin that misses on the other, and blending
+the twins cancels the miss, leaving a smaller pair. A chord also has a twin turn: the long
+way around gives the same chord, but the detour notices, because its corner jumps to the
+other side. Where that corner sits decides everything. Outside the circle, all is real.
+Through the centre, you flip to the twin. Inside the circle, the numbers become imaginary,
+the circle becomes a hyperbola, and still $S+d^2=1$ holds. Bertrand's famous paradox is the
+same question in disguise: ``random chord'' means nothing until you say which of these
+quantities you are spreading evenly, the arc, the square root of sameness, or sameness
+itself.
+\end{plain}
+
 \section{How much this matters on a real mesh}\label{sec:mesh}
 
 Our curvature-recovery work measures an $SU(2)$ force on meshes of the Poincar\'e homology
@@ -304,13 +370,15 @@ it does matter is in simulating the motion over time, which is the next step of 
 
 \section{What is claimed, and what is open}\label{sec:claims}
 
-\textbf{Claimed}, each checked by \texttt{verify.py} (26 checks, all passing):
+\textbf{Claimed}, each checked by \texttt{verify.py} (all checks passing; count in \texttt{verify\_output.txt}):
 \begin{itemize}
   \item the length ordering, the $1/24$ and $1/12$ misses, and the Snellius--Huygens residual $\theta^5/320$;
   \item the chord's half-angle direction, and $S+d^2=1$ with $d$ as half the chord;
   \item the Cayley construction in $\mathbb{C}$ and in the quaternions;
   \item the energy series and the cancellation of $\theta^4$ in $(2C^2+T^2)/3$;
-  \item the three one-step rules' placement relative to the circle, and the Crank--Nicolson phase lag $s^3/12$.
+  \item the three one-step rules' placement relative to the circle, and the Crank--Nicolson phase lag $s^3/12$;
+  \item the lower twin's miss $\theta^5/2880$ and the $9{:}1$ blend, the far-side sign flip, the
+    continuation through the rim with $S+d^2=1$ intact, and Bertrand's three answers.
 \end{itemize}
 The face angles of Table~\ref{tab:angles} are measured from frozen data.
 
@@ -329,6 +397,12 @@ curvature-recovery work; Section~\ref{sec:mesh} shows it does not.
     where the energy combination could matter.
 \end{itemize}
 
+\paragraph{A future direction.} The unit sphere in one dimension is the pair $\{-1,+1\}$,
+and in four it is $SU(2)$, whose centre is again $\{-1,+1\}$. A companion note follows
+that thread toward the curvature of the gauge group and the Yang--Mills mass gap. It keeps
+exact statements apart from the open link, which this paper does not claim. The note is
+\path{docs/research/unit-curvature-2026-11-18.md} in the \textsc{gigi} repository.
+
 \paragraph{Reproducibility.} \texttt{verify.py} and \texttt{face\_angles.py} in this
 directory; the output of the first is saved as \texttt{verify\_output.txt}, of the second as
 \texttt{face\_angles.json}.
@@ -344,6 +418,8 @@ directory; the output of the first is saved as \texttt{verify\_output.txt}, of t
 \bibitem{lw} M.~L\"uscher, P.~Weisz, On-shell improved lattice gauge theories, \emph{Commun.\ Math.\ Phys.} 97 (1985) 59--77.
 \bibitem{iserles} A.~Iserles, H.~Z.~Munthe-Kaas, S.~P.~N{\o}rsett, A.~Zanna, Lie-group methods, \emph{Acta Numerica} 9 (2000) 215--365.
 \bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
+\bibitem{bertrand} J.~Bertrand, \emph{Calcul des probabilit\'es}, Gauthier-Villars, Paris, 1889.
+\bibitem{jaynes} E.~T.~Jaynes, The well-posed problem, \emph{Found.\ Phys.} 3 (1973) 477--492.
 \bibitem{davis-dc} B.~R.~Davis, The Double Cover Principle, Zenodo, 2026, \url{https://doi.org/10.5281/zenodo.18895462}.
 \end{thebibliography}
 \end{document}

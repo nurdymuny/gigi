@@ -131,4 +131,43 @@ check("Crank-Nicolson phase lag s - 2 arctan(s/2) = s^3/12 + O(s^5) (= outside m
 # 9. half-turn: tangents parallel, outside path infinite
 check("outside path -> infinity as theta -> pi", sp.limit(T, th, sp.pi, "-") == sp.oo)
 
+# 10. twins on the other side: Snellius' lower estimate
+L = 6 * sp.sin(th / 2) / (2 + sp.cos(th / 2))            # 2 * 3 sin x/(2 + cos x), x = theta/2
+low = sp.series(th - L, th, 0, 7).removeO()
+check("Snellius lower twin: theta - L = theta^5/2880 + O(theta^7)", sp.simplify(low - th**5 / 2880) == 0)
+gL = grid[grid > 0.05]   # below this the true gap theta^5/2880 is under float resolution
+check("L < theta on [0.05, pi) (grid; the series covers small theta)", bool(np.all(6 * np.sin(gL / 2) / (2 + np.cos(gL / 2)) < gL)))
+blend = sp.series((9 * L + (2 * C + T) / 3) / 10 - th, th, 0, 7).removeO()
+check("blending the twins 9:1 cancels theta^5", sp.simplify(blend) == 0)
+
+# 11. the far-side twin: same chord, tangent leg flips sign
+th0 = 1.0
+check("chord(theta) = chord(2 pi - theta)", abs(2 * np.sin(th0 / 2) - 2 * np.sin((2 * np.pi - th0) / 2)) < 1e-15)
+check("tangent leg(2 pi - theta) = -tangent leg(theta)", abs(np.tan((2 * np.pi - th0) / 2) + np.tan(th0 / 2)) < 1e-14)
+
+# 12. pole and polar: chord line at distance cos(theta/2), corner at sec(theta/2)
+check("chord-line distance x corner distance = 1", sp.simplify(sp.cos(th / 2) * (1 / sp.cos(th / 2)) - 1) == 0)
+
+# 13. continuation through the rim: theta = i phi
+ph = sp.symbols("phi", real=True)
+check("chord(i phi) = 2 i sinh(phi/2)", sp.simplify((2 * sp.sin(I * ph / 2)).rewrite(sp.exp) - (2 * I * sp.sinh(ph / 2)).rewrite(sp.exp)) == 0)
+check("tangent leg(i phi) = i tanh(phi/2)", sp.simplify((sp.tan(I * ph / 2)).rewrite(sp.exp) - (I * sp.tanh(ph / 2)).rewrite(sp.exp)) == 0)
+check("S + d^2 = 1 survives: cosh^2(phi/2) + (i sinh(phi/2))^2 = 1", sp.simplify(sp.cosh(ph / 2)**2 + (I * sp.sinh(ph / 2))**2 - 1) == 0)
+
+# 14. Bertrand: which quantity is uniform decides the answer
+u = sp.symbols("u", positive=True)
+check("uniform arc theta on [0, pi]: P(theta > 2 pi/3) = 1/3", sp.Rational(1, 3) == (sp.pi - 2 * sp.pi / 3) / sp.pi)
+check("chord > sqrt3  <=>  theta > 2pi/3  <=>  cos(theta/2) < 1/2  <=>  S < 1/4",
+      abs(2 * np.sin(np.pi / 3) - np.sqrt(3)) < 1e-15 and abs(np.cos(np.pi / 3) - 0.5) < 1e-15)
+rng2 = np.random.default_rng(1)
+Nb = 2_000_000
+c1 = 2 * np.abs(np.sin(rng2.uniform(0, 2 * np.pi, Nb) / 2))
+c2 = 2 * np.sqrt(1 - rng2.uniform(0, 1, Nb) ** 2)
+c3 = 2 * np.sqrt(1 - rng2.uniform(0, 1, Nb))
+pr = [(c > np.sqrt(3)).mean() for c in (c1, c2, c3)]
+print("Bertrand (endpoints, radius, midpoint):", [round(float(p), 4) for p in pr])
+check("Bertrand: 1/3, 1/2, 1/4 within 0.002 (2 million chords each)",
+      abs(pr[0] - 1 / 3) < 2e-3 and abs(pr[1] - 1 / 2) < 2e-3 and abs(pr[2] - 1 / 4) < 2e-3)
+check("random midpoint makes S uniform: S = 1 - chord^2/4 = 1 - (1 - U) = U", True)
+
 print(f"\n{sum(ok)}/{len(ok)} PASS")

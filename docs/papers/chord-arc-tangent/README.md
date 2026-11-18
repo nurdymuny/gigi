@@ -1,6 +1,6 @@
 # Three Ways Across a Turn: Chord, Arc and Tangent
 
-**Paper:** [`paper.pdf`](paper.pdf) (6 pages, working draft). **Author:** Bee Rosa Davis, Davis Geometric.
+**Paper:** [`paper.pdf`](paper.pdf) (8 pages, working draft). **Author:** Bee Rosa Davis, Davis Geometric.
 
 ## The idea
 
@@ -28,6 +28,14 @@ so a two-to-one blend cancels the main error. The same proportion appears again:
 
 Half the shortcut is the distance *d* of the double-cover identity S + d² = 1.
 
+Every miss has a twin on the other side (Snellius' lower estimate, nine times smaller),
+and the same chord has a twin turn the long way round. Crossing the circle's rim makes
+the turn imaginary while S + d² = 1 survives. Bertrand's paradox is the question of
+which quantity is uniform: the arc (1/3), √S (1/2) or S (1/4).
+
+A companion research note, `docs/research/unit-curvature-2026-11-18.md`, follows ±1
+into SU(2), its curvature and the mass gap. It keeps the open link tagged as open.
+
 ## Where it came from
 
 The picture is Bee's (2026-11-18). It came up while working on the SU(2) force of the
@@ -36,7 +44,7 @@ turns to time integration.
 
 ## What is claimed
 
-Every identity is checked by [`verify.py`](verify.py) (26 checks, all passing; output in
+Every identity is checked by [`verify.py`](verify.py) (39 checks, all passing; output in
 [`verify_output.txt`](verify_output.txt)). The classical identities are cited, and no
 priority is claimed for them. The energy blend is the one statement not found in the
 sources checked, and a proper prior-art search is listed as open.

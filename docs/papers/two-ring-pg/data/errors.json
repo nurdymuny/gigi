@@ -1,0 +1,160 @@
+{
+ "h_max": [
+  0.388139515370189,
+  0.20166195340219167,
+  0.13545926022811192,
+  0.08159478457777686
+ ],
+ "n": [
+  1,
+  2,
+  3,
+  5
+ ],
+ "series": {
+  "whitney": [
+   {
+    "level": 0,
+    "relative_error": 0.29811121730429435,
+    "curvature_relative_error": 0.07433645607114032,
+    "seconds": 0.4
+   },
+   {
+    "level": 1,
+    "relative_error": 0.25984959890552767,
+    "curvature_relative_error": 0.0380239809993179,
+    "seconds": 2.4
+   },
+   {
+    "level": 2,
+    "relative_error": 0.25860289881375076,
+    "curvature_relative_error": 0.025442003740412826,
+    "seconds": 9.3
+   },
+   {
+    "level": 3,
+    "relative_error": 0.2613240410694715,
+    "curvature_relative_error": 0.015293021275684634,
+    "seconds": 42.3
+   }
+  ],
+  "pg_one_ring": [
+   {
+    "level": 0,
+    "relative_error": 0.04841365061198223,
+    "curvature_relative_error": 0.04124638986026645,
+    "seconds": 0.8
+   },
+   {
+    "level": 1,
+    "relative_error": 0.03552381267156292,
+    "curvature_relative_error": 0.011499584509563192,
+    "seconds": 7.1
+   },
+   {
+    "level": 2,
+    "relative_error": 0.023003216354733496,
+    "curvature_relative_error": 0.005267724230704664,
+    "seconds": 22.5
+   },
+   {
+    "level": 3,
+    "relative_error": 0.011699585484794417,
+    "curvature_relative_error": 0.0019256773974628486,
+    "seconds": 102.4
+   }
+  ],
+  "pg_two_ring": [
+   {
+    "level": 0,
+    "relative_error": 0.06222994521469973,
+    "curvature_relative_error": 0.036273260450665756,
+    "seconds": 1.7
+   },
+   {
+    "level": 1,
+    "relative_error": 0.03833696121595923,
+    "curvature_relative_error": 0.009240731961240731,
+    "seconds": 13.4
+   },
+   {
+    "level": 2,
+    "relative_error": 0.02788398784790899,
+    "curvature_relative_error": 0.004237770233992245,
+    "seconds": 47.6
+   },
+   {
+    "level": 3,
+    "relative_error": 0.01451817118378079,
+    "curvature_relative_error": 0.0015506525166245678,
+    "seconds": 220.5
+   }
+  ],
+  "variational_one_ring": [
+   {
+    "level": 0,
+    "relative_error": 0.5818440461707253,
+    "curvature_relative_error": 0.04124638986026645,
+    "seconds": 1.0
+   },
+   {
+    "level": 1,
+    "relative_error": 6.634396133125578,
+    "curvature_relative_error": 0.011499584509563192,
+    "seconds": 8.0
+   },
+   {
+    "level": 2,
+    "relative_error": 7.782500715309411,
+    "curvature_relative_error": 0.005267724230704664,
+    "seconds": 25.8
+   }
+  ],
+  "variational_two_ring": [
+   {
+    "level": 0,
+    "relative_error": 0.4540510859974848,
+    "curvature_relative_error": 0.036273260450665756,
+    "seconds": 2.3
+   },
+   {
+    "level": 1,
+    "relative_error": 2.7634020861594952,
+    "curvature_relative_error": 0.009240731961240731,
+    "seconds": 16.0
+   },
+   {
+    "level": 2,
+    "relative_error": 3.301702349812554,
+    "curvature_relative_error": 0.004237770233992245,
+    "seconds": 54.5
+   }
+  ]
+ },
+ "symmetrised": {
+  "1": [
+   {
+    "level": 0,
+    "symmetrised": 0.6483500217247216,
+    "transpose_term": 0.6115826006236921
+   },
+   {
+    "level": 1,
+    "symmetrised": 6.712661238637673,
+    "transpose_term": 6.697745592415933
+   }
+  ],
+  "2": [
+   {
+    "level": 0,
+    "symmetrised": 0.22998423917940694,
+    "transpose_term": 0.19736133428797667
+   },
+   {
+    "level": 1,
+    "symmetrised": 2.7645414460198086,
+    "transpose_term": 2.7557617685247946
+   }
+  ]
+ }
+}

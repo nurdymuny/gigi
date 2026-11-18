@@ -1,6 +1,6 @@
 # Reading the Curve, Not Counting the Points
 
-**Paper:** [`paper.pdf`](paper.pdf) (15 pages). **Author:** Bee Rosa Davis, Davis Geometric.
+**Paper:** [`paper.pdf`](paper.pdf) (16 pages). **Author:** Bee Rosa Davis, Davis Geometric.
 
 This branch holds a paper, the GIGI code behind every number in it, and the record
 of how the result was found, including every attempt that failed. This README

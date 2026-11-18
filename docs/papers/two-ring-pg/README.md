@@ -1,6 +1,6 @@
 # Redundancy as Stabilizer (paper)
 
-`paper.pdf` is the compiled manuscript (10 pages). Every number, table and figure is regenerated from the frozen, hash-checked inputs of the GIGI Ricci checkpoint. The archives under `research/ricci-checkpoint-20261117/` must be extracted under `output/`.
+`paper.pdf` is the compiled manuscript (14 pages). Every number, table and figure is regenerated from the frozen, hash-checked inputs of the GIGI Ricci checkpoint. The archives under `research/ricci-checkpoint-20261117/` must be extracted under `output/`.
 
 ```bash
 python docs/papers/two-ring-pg/make_data.py              # errors.json, spectra.npz, conditioning.json  (~15 min)

@@ -7,6 +7,14 @@
 \usepackage{microtype}
 \usepackage{xcolor}
 \usepackage{url}
+\usepackage{listings}
+\expandafter\def\expandafter\UrlBreaks\expandafter{\UrlBreaks\do\_}
+\lstdefinestyle{base}{basicstyle=\ttfamily\footnotesize, columns=fullflexible,
+  keepspaces=true, frame=lines, framesep=4pt, xleftmargin=6pt, xrightmargin=6pt,
+  showstringspaces=false, commentstyle=\color{black!55}, aboveskip=8pt, belowskip=6pt}
+\lstdefinestyle{rust}{style=base, morekeywords={let,if,return,Err,fn,mut,for,in}}
+\lstdefinestyle{py}{style=base, language=Python}
+\lstdefinestyle{json}{style=base}
 \usepackage[hidelinks]{hyperref}
 
 \newtheorem{proposition}{Proposition}
@@ -65,10 +73,18 @@ physical space, so there the semi-discrete flow is dissipative in the native mas
 
 No parameter is fitted. The only choice is the neighbourhood radius, and only radii one
 and two were ever run. Redundancy in the recovery, not added resolution or damping, is
-what stabilizes it. The force is not the gradient of an energy; we document,
-quantitatively, why every symmetrized variant we tested fails. All results concern a
-single Abelian control on the round quotient: the Berger metrics, the full $SU(2)$
-nonlinearity and time integration are untested.
+what stabilizes it. In the language of a magnetic fastener, the recovery aligns each
+neighbour by the symmetry of the space and lets it pull rather than clamp: the force is
+accurate and attracts in every mode we decomposed, but its pull is not yet reciprocal.
+It is not the gradient of an energy, and we document, quantitatively, why every
+symmetrized variant we tested fails. All results concern a single Abelian control on
+the round quotient: the Berger metrics, the full $SU(2)$ nonlinearity and time
+integration are untested.
+
+Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
+Noncommercial 1.0.0): native Rust transport and mass assembly, checked against the full
+$120$-fold cover, and a Python recovery layer, with hash-pinned receipts. We show the
+code alongside the mathematics.
 \end{abstract}
 
 \section{Introduction}
@@ -89,15 +105,34 @@ because the fit has no information left over to check against. Give it more edge
 it. And if the rim really is a circle, the best fit still recovers that circle exactly:
 the extra edge costs no accuracy on true shape and buys immunity to damage.
 
+There is a second way to say what the extra edge does, and it is the idea this paper
+grew from. Pieces that do not fit exactly cannot be made to hold by force. Clamp them
+edge to edge and every mismatch becomes stress, and the stress goes somewhere. In the
+physical world, things that must lock together without being forced are held by
+magnets. A magnet does not push a piece into a shape. It turns the piece until it is
+aligned, and once aligned it holds. The holding comes from the alignment.
+
+Three properties make a magnet a good fastener, and we will ask the same three of every
+discrete force in this paper. Its pull is \emph{reciprocal}: each piece pulls the other
+exactly as hard as it is pulled. It \emph{attracts in every orientation} the piece is
+free to take: there is no direction in which letting go makes the pieces fly apart. And
+it is \emph{accurate}: aligned pieces sit where the true shape puts them. Every earlier
+construction in this programme had at most two of the three.
+
 This paper is that story on a $3$-manifold. The pot is a smooth connection on the
 Poincar\'e homology sphere. The sherds are the cells of a mesh, and, as with the rim, all
 we are given are numbers on their edges. The curvature between those edges is what we
 must read. Read from each cell and its immediate neighbours, the recovery is exactly
-determined, like three points on a short arc: it is accurate on smooth data, but it reads
-every rough pattern as large curvature, and the dynamics built on it are unstable.
-Read from neighbours of neighbours, the same recovery is overdetermined. It stays exact
+determined, like three points on a short arc. It is clamped through every edge: accurate
+on smooth data, but it reads every rough pattern as large curvature, and the dynamics
+built on it are unstable. Read from neighbours of neighbours, the recovery works like the
+magnet. Each neighbouring cell is first turned onto the cell's own sheet of the cover, an
+exact alignment by the symmetry of the space. Then only the cell's own faces are held
+exactly, and the neighbours \emph{pull} on the fit instead of clamping it. It stays exact
 on the shapes it is meant to capture, and the instability disappears. Redundancy, not
-resolution, is the stabilizer.
+resolution, is the stabilizer, and alignment, not force, is how the redundancy is used.
+The resulting force is accurate and attracts in every mode we could decompose. It is not
+yet reciprocal; Section~\ref{sec:magnet} says exactly what is missing.
 
 Lattice gauge theory and geometric flows meet in a single question. Given a smooth
 connection $A$ on a closed Riemannian $3$-manifold, and only its integrals along the edges
@@ -201,6 +236,104 @@ velocity is $v=-B_h^{-1}g(a)$. The relative force error is
 The stability test \emph{S3} requires that the generalized spectrum of $(K,B_h)$, for
 the assembled force operator $g(a)=Ka$, have exactly as many eigenvalues of modulus
 below one as the Whitney gauge kernel, and all others with strictly positive real part.
+
+\section{The computation in GIGI}\label{sec:gigi}
+
+Every number in this paper was computed in \GIGI{}, an open-source geometric database
+and computation engine, released under the PolyForm Noncommercial License 1.0.0 at
+\url{https://github.com/nurdymuny/gigi}. The mathematics above is only half of the
+result. The other half is a code path that anyone can rebuild, rerun and check against
+pinned hashes. That path has three layers.
+
+\paragraph{Native layer (Rust).}
+\GIGI{}'s gauge library supplies the geometry: the Levi-Civita transport along each edge
+as a unit quaternion (\path{gauge::ricci_link::levi_civita_link}), the metric
+Whitney masses of each radial spherical tetrahedron (\path{gauge::ricci_whitney::tetra_mass}),
+and the cell action and tangent mass (\path{gauge::ricci_simplicial}). A small
+executable, \path{examples/ricci_operator_probe.rs}, runs them over a mesh. It checks
+every stored edge transport against the transport recomputed from the cell's own
+vertices, and it refuses the whole input if one disagrees:
+\begin{lstlisting}[style=rust]
+let expected = parts(levi_civita_link(
+    input.metric, cell.vertices[a], cell.vertices[b])?);
+if (0..4).any(|j| (local[e][j] - expected[j]).abs() > 2e-12) {
+    return Err("orbit identification disagrees with actual local transport".into());
+}
+let mass   = tetra_mass(cell.vertices, input.metric, input.order)?;
+let action = cell_action(local, mass.face_mass)?;
+\end{lstlisting}
+The binary used here is pinned by SHA-256 (\texttt{71fb30db\ldots b196ad}) in the
+checkpoint manifest, together with the hashes of the Rust sources it was built from. Two
+native tests run against that pinned binary. The first compares the cell action, masses
+and every derivative with an independent Python implementation. The second assembles the
+operator once on the quotient $M$ and once on the entire cover $S^3$ ($120$ copies), and
+requires the quotient's energy, volume, gradient and Hessian blocks to equal the cover's
+divided by $120$, to $10^{-11}$. Both pass (rerun on 17 November 2026, $7.2$\,s). This is
+the check that the deck transformations of Section~\ref{sec:setting} are handled
+correctly before any curvature is recovered.
+
+\paragraph{Research layer (Python).}
+The recovery, the force and the gates are Python in the same repository:
+\path{scripts/ricci_pg_curvature.py} (chart, transport, one-ring fit),
+\path{scripts/ricci_pg_tworing.py} (two-ring fit) and
+\path{scripts/ricci_pg_tworing_gate.py} (\BW{} and S3). The two-ring neighbourhood
+carries each new cell onto $K$'s sheet by the left multiplication fixed at the face it
+was reached through, and refuses if the shared vertices do not coincide. This is the
+alignment step of the introduction (Python excerpts here are lightly condensed from the
+source; the Rust excerpt is verbatim):
+\begin{lstlisting}[style=py]
+h = qmul(C[ck[k0]], qconj(V[cn[k0]]))      # deck transform fixed by a shared vertex
+V = np.array([qmul(h, v) for v in V])      # carry the neighbour onto K's sheet
+gap = max(abs(C[ck[k]] - V[cn[k]]).max() for k in ck)
+if gap > COINCIDE:                         # 1e-12
+    raise ValueError("cell does not coincide after transport")
+\end{lstlisting}
+The fit~\eqref{eq:fit} is then assembled as one linear map from all neighbourhood fluxes
+to the eleven coefficients, by the null-space method: $K$'s own faces are held exactly,
+and the rest pull through least squares.
+\begin{lstlisting}[style=py]
+Ap   = np.linalg.pinv(A)                   # own faces: exact
+N    = null_space(A)                       # freedom left after the own faces
+RNp  = np.linalg.pinv(R @ N)               # neighbours: least squares in that freedom
+fmap = np.hstack([Ap - N @ RNp @ R @ Ap, N @ RNp])
+\end{lstlisting}
+The code refuses a cell whose flux map has rank below eleven, whose condition number
+exceeds a fixed cap, or whose own fluxes are not reproduced to $10^{-12}$.
+
+\paragraph{Evidence layer.}
+The meshes, edge data and native outputs are frozen in the \GIGI{} Ricci checkpoint:
+zip archives whose manifest lists every file with its SHA-256, and whose receipts refuse
+to overwrite. The gate writes its own receipt. Its verdict fields read, verbatim:
+\begin{lstlisting}[style=json]
+"numerical_gate": {"pass": true,
+  "relative_errors": [0.06223, 0.03834, 0.02788, 0.01452],
+  "observed_orders": [0.7275, 0.7960, 1.2859], ...},
+"berger": "NOT_RUN",
+"release_gate": "OPEN"
+\end{lstlisting}
+The last two fields are as much a part of the result as the first: the Berger metrics
+were not run, and the programme's release gate stays open. Table~\ref{tab:evidence} maps
+each table and figure to the script that regenerates it.
+
+\begin{table}[t]\centering\small
+\caption{Where each result lives in the \GIGI{} repository.}
+\label{tab:evidence}
+\begin{tabular}{ll}\toprule
+Result & Regenerated by \\ \midrule
+Native transport and masses & \path{examples/ricci_operator_probe.rs} (pinned binary) \\
+Native checks & \path{e2e/probes/test_ricci_operator_native.py} \\
+Force errors, Table~\ref{tab:force} & \path{make_data.py}, \path{make_tables.py} \\
+\BW{} and S3 verdicts & \path{scripts/ricci_pg_tworing_gate.py} $\to$ \texttt{diagnostic.json} \\
+Numerical range, Table~\ref{tab:stability} & \path{numerical_range.py} \\
+Amplification, Figure~\ref{fig:conditioning} & \path{make_data.py} $\to$ \texttt{conditioning.json} \\
+Unit tests of the two-ring fit & \path{scripts/test_ricci_pg_tworing.py} \\
+\bottomrule\end{tabular}
+\end{table}
+
+\paragraph{Scope of the code.}
+The native layer is \GIGI{} library code. The recovery and the gate are research scripts
+in the repository, not an engine query verb: no \GIGI{} query route or HTTP endpoint was
+used, and none is claimed.
 
 \section{Where the error comes from}\label{sec:decomp}
 
@@ -474,6 +607,53 @@ averaged rather than interpolated. Exactness on the model space is untouched, so
 consistency survives. Stability follows without any damping parameter, filter or
 regularization: the only change is a neighbourhood radius, and only radii one and two
 were ever run.
+
+\subsection{Alignment, not force}\label{sec:magnet}
+
+The introduction asked three things of a fastener: a reciprocal pull, attraction in
+every orientation, and accuracy. In the language of this paper, a force is reciprocal
+when its operator is symmetric, as an energy gradient is. It attracts in every
+orientation when its symmetric part is positive on the physical space, so that no mode
+grows. It is accurate when it passes \BW{}. Table~\ref{tab:magnet} scores each
+construction.
+
+\begin{table}[h]\centering\small
+\caption{The three properties of a magnetic fastener, scored for each force law.
+``Attracts'' means no physical mode with negative real part (S3); for two rings the
+stronger certificate $\mu>0$ holds at $n=1,2$.}
+\label{tab:magnet}
+\begin{tabular}{lccc}\toprule
+Force law & Reciprocal (symmetric) & Attracts in every mode & Accurate (\BW{}) \\ \midrule
+Whitney & yes & yes & no ($26\%$ floor) \\
+Variational recovery & yes & yes & no (diverges) \\
+Petrov--Galerkin, one ring & no & no & yes \\
+\textbf{Petrov--Galerkin, two rings} & \textbf{no} & \textbf{yes} & \textbf{yes} \\
+\bottomrule\end{tabular}
+\end{table}
+
+Two of the magnet's moves are now in the method. The first is \emph{alignment before
+contact}. A neighbouring cell stored on another sheet of the cover is not compared with
+$K$ as it lies; it is first turned onto $K$'s sheet by the exact deck transformation, and
+only then are its fluxes allowed to act. The second is \emph{pull, not clamp}. In the
+one-ring fit every flux is a hard constraint, so a rough flux has nowhere to go but into
+the curvature. In the two-ring fit only $K$'s own faces are hard. The rest pull the fit
+toward agreement through least squares, and a rough flux is outvoted rather than obeyed.
+
+The third move is missing. A magnet's pull is reciprocal, and our force is not: it is not
+the gradient of an energy, and Section~\ref{sec:removals} shows why the obvious
+symmetrizations fail. In the magnet's terms, they make the pull reciprocal by letting
+every piece push on the shape of every other, which is a clamp again. The condition
+$\cR^\top Hc_F\approx j^\top Hc_F$ says what a reciprocal version must do: the pull each
+cell exerts on its neighbours must, on smooth fields, be exactly the pull it receives.
+An earlier probe in the accompanying reports took the opposite route. It placed a
+symmetric projection layer between the two sides, a pull that is reciprocal and never
+repels, and it cut the Whitney floor from $26\%$ to about $6\%$ but still floored. A
+fastener with all three properties is the open problem this paper leaves.
+
+This is an analogy that names a mechanism, not a claim that a magnetic field appears in
+the equations. No magnetic Laplacian or $U(1)$ phase enters the two-ring recovery. What
+carries over is the shape of the repair: align by the symmetry of the space, hold
+exactly only what must be held, and let everything else pull.
 
 \paragraph{Limitations.}
 \begin{itemize}

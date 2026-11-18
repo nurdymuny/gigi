@@ -1,0 +1,178 @@
+{
+ "schema": "ring_fold_force_bw05_s3_v1",
+ "mode": "fold",
+ "cases": {
+  "level0_q4": {
+   "full_mass_error": 0.2729176078252093,
+   "relative_error": 0.06898292923207298,
+   "curvature_relative_error": 0.035677732804808224,
+   "max_condition": 21.483655158410574,
+   "edges": 142,
+   "level": 0,
+   "order": 4,
+   "h_max": 0.388139515370189,
+   "linear_correction_mass_estimate": 1.0489348895187206e-13,
+   "seconds": 3.6
+  },
+  "level0_q6": {
+   "full_mass_error": 0.27291747716550097,
+   "relative_error": 0.06898289562216307,
+   "curvature_relative_error": 0.03567757740881064,
+   "max_condition": 21.483655158410574,
+   "edges": 142,
+   "level": 0,
+   "order": 6,
+   "h_max": 0.388139515370189,
+   "linear_correction_mass_estimate": 1.178753388741038e-13,
+   "seconds": 5.0
+  },
+  "level1_q4": {
+   "full_mass_error": 0.28042571991893933,
+   "relative_error": 0.07031024181058701,
+   "curvature_relative_error": 0.009695164903680855,
+   "max_condition": 30.230367014213694,
+   "edges": 1124,
+   "level": 1,
+   "order": 4,
+   "h_max": 0.20166195340219167,
+   "linear_correction_mass_estimate": 2.286461312443816e-12,
+   "seconds": 7.8
+  },
+  "level1_q6": {
+   "full_mass_error": 0.2804257129220638,
+   "relative_error": 0.07031024003232278,
+   "curvature_relative_error": 0.009695136067365873,
+   "max_condition": 30.230367014213694,
+   "edges": 1124,
+   "level": 1,
+   "order": 6,
+   "h_max": 0.20166195340219167,
+   "linear_correction_mass_estimate": 2.410446175778194e-12,
+   "seconds": 10.9
+  },
+  "level2_q4": {
+   "full_mass_error": 0.13333840313001824,
+   "relative_error": 0.0333780249770903,
+   "curvature_relative_error": 0.004163771448004712,
+   "max_condition": 32.2936850689478,
+   "edges": 3786,
+   "level": 2,
+   "order": 4,
+   "h_max": 0.13545926022811192,
+   "linear_correction_mass_estimate": 2.641263315115492e-12,
+   "seconds": 69.6
+  },
+  "level2_q6": {
+   "full_mass_error": 0.13333840237271175,
+   "relative_error": 0.03337802478639618,
+   "curvature_relative_error": 0.004163764756888629,
+   "max_condition": 32.2936850689478,
+   "edges": 3786,
+   "level": 2,
+   "order": 6,
+   "h_max": 0.13545926022811192,
+   "linear_correction_mass_estimate": 2.641166140804711e-12,
+   "seconds": 84.8
+  },
+  "level3_q4": {
+   "full_mass_error": 0.06278818090009393,
+   "relative_error": 0.015704436384399917,
+   "curvature_relative_error": 0.0013757263384074762,
+   "max_condition": 33.5289650818014,
+   "edges": 17510,
+   "level": 3,
+   "order": 4,
+   "h_max": 0.08159478457777686,
+   "linear_correction_mass_estimate": 4.132911448722493e-12,
+   "seconds": 312.5
+  },
+  "level3_q6": {
+   "full_mass_error": 0.06278818084388554,
+   "relative_error": 0.015704436370315034,
+   "curvature_relative_error": 0.0013757253301079247,
+   "max_condition": 33.5289650818014,
+   "edges": 17510,
+   "level": 3,
+   "order": 6,
+   "h_max": 0.08159478457777686,
+   "linear_correction_mass_estimate": 4.132936580678908e-12,
+   "seconds": 505.0
+  }
+ },
+ "s3": {
+  "0": {
+   "level": 0,
+   "edges": 142,
+   "gauge_dimension_whitney": 21,
+   "small_eigenvalues_pg": 21,
+   "min_real_part_physical": 4.018651278872599,
+   "max_abs_imag_physical": 269.2896034986106,
+   "negative_real_part_count": 0,
+   "stable": true,
+   "seconds": 5.0
+  },
+  "1": {
+   "level": 1,
+   "edges": 1124,
+   "gauge_dimension_whitney": 163,
+   "small_eigenvalues_pg": 163,
+   "min_real_part_physical": 3.998193416265695,
+   "max_abs_imag_physical": 1080.679681104124,
+   "negative_real_part_count": 0,
+   "stable": true,
+   "seconds": 51.6
+  }
+ },
+ "stencils": {
+  "0": {
+   "median_cells": 7.0
+  },
+  "1": {
+   "median_cells": 7.5
+  },
+  "2": {
+   "median_cells": 8.0
+  },
+  "3": {
+   "median_cells": 9.0
+  }
+ },
+ "numerical_gate": {
+  "pass": true,
+  "errors": [
+   0.27291747716550097,
+   0.2804257129220638,
+   0.13333840237271175,
+   0.06278818084388554
+  ],
+  "relative_errors": [
+   0.06898289562216307,
+   0.07031024003232278,
+   0.03337802478639618,
+   0.015704436370315034
+  ],
+  "observed_orders": [
+   -0.04144859824867076,
+   1.8682526440608207,
+   1.4857272083136155
+  ],
+  "h_max": [
+   0.388139515370189,
+   0.20166195340219167,
+   0.13545926022811192,
+   0.08159478457777686
+  ],
+  "quadrature_mass_differences": [
+   2.7772606946507574e-07,
+   1.5473246115701813e-08,
+   1.7610991936993498e-09,
+   1.3618829330739605e-10
+  ],
+  "linear_correction_mass_estimates": [
+   1.178753388741038e-13,
+   2.410446175778194e-12,
+   2.641263315115492e-12,
+   4.132936580678908e-12
+  ]
+ }
+}

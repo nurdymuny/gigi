@@ -1,6 +1,6 @@
 # Reading the Curve, Not Counting the Points
 
-**Paper:** [`paper.pdf`](paper.pdf) (14 pages). **Author:** Bee Rosa Davis, Davis Geometric.
+**Paper:** [`paper.pdf`](paper.pdf) (15 pages). **Author:** Bee Rosa Davis, Davis Geometric.
 
 This branch holds a paper, the GIGI code behind every number in it, and the record
 of how the result was found, including every attempt that failed. This README
@@ -83,6 +83,9 @@ this repository with its receipts. In order:
    pattern as a large curvature. Widening the reading to two rings makes it
    overdetermined. It stays exact on true shape, and the instability disappears
    (`docs/RICCI_PG_TWORING_RESULTS.md`). That is this paper.
+8. **Into the engine.** The two-ring recovery became a GIGI verb,
+   `RECOVER_CURVATURE`, checked cell by cell against the research code on every
+   mesh, and on a live engine.
 
 ## What is claimed, and what is not
 
@@ -100,10 +103,15 @@ and the paper states exactly what it would take.
 
 ## Don't take my word for it: run it
 
-Every number is computed in GIGI, an open-source geometric engine. Its native Rust
-transport and mass assembly are checked against the full 120-fold cover, a Python
-recovery layer sits on top, and the inputs are frozen and hash-pinned. The paper
-shows the code next to the mathematics.
+Every number is computed in GIGI, an open-source geometric engine:
+
+- the native Rust transport and mass assembly are checked against the full
+  120-fold cover;
+- the two-ring recovery is a native engine verb, `RECOVER_CURVATURE`, and it matches
+  the research code cell by cell on every mesh;
+- the inputs are frozen and hash-pinned.
+
+The paper shows the code next to the mathematics.
 
 ```bash
 # from the repository root, after extracting each archive in
@@ -123,6 +131,22 @@ cargo build --release --features gauge --example ricci_operator_probe
 GIGI_RF2B_OPERATOR_BINARY=target/release/examples/ricci_operator_probe \
   python -m unittest e2e/probes/test_ricci_operator_native.py
 ```
+
+The engine verb. Its gates, its parity with the research code, and the live
+engine run (receipts in `research/recover-curvature-parity-20261117/`):
+
+```bash
+cargo test --release --features gauge --test recover_curvature
+cargo build --release --features gauge --example recover_curvature_probe
+GIGI_RECOVER_CURVATURE_PROBE=target/release/examples/recover_curvature_probe \
+  python -m unittest e2e/probes/test_recover_curvature_parity.py
+```
+
+```sql
+RECOVER_CURVATURE cells FROM edges ON a RINGS 2;
+```
+
+Spec: [`docs/RECOVER_CURVATURE_SPEC.md`](../../RECOVER_CURVATURE_SPEC.md).
 
 `make_tables.py` also reads the gate receipt
 `research/ricci-pg-tworing-20261117/diagnostic.json`, produced by

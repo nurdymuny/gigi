@@ -6,6 +6,10 @@
 > nothing. Every one of them actually happened.
 
 
+> **New paper on this branch:** *Reading the Curve, Not Counting the Points*. A stable,
+> convergent curvature force for discrete Yang–Mills dynamics on the Poincaré homology sphere,
+> computed entirely in GIGI. Start here: [`docs/papers/two-ring-pg/`](docs/papers/two-ring-pg/README.md).
+
 **Geometric Intrinsic Global Index** — a fiber-bundle database engine.
 
 **Shared research references:** [Coordinate translations, Jacobians, and the Geometry of Sameness](docs/research/coordinate-translations-and-sameness.md). Includes source evidence, scope, and a [proposal for typed research relationships](docs/RESEARCH_RELATIONSHIP_REGISTRY_PROPOSAL.md).

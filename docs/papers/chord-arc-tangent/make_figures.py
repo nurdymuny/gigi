@@ -265,19 +265,17 @@ def time_stepping():
     ex, im = (1 + 1j*s)**k, (1/(1 - 1j*s))**k
     cn, exact = ((1 + 0.5j*s)/(1 - 0.5j*s))**k, np.exp(1j*s*k)
     fig, axs = plt.subplots(1, 2, figsize=(W2, 2.95), gridspec_kw=dict(width_ratios=[1, 1.15]))
-    fig.subplots_adjust(wspace=0.28)
+    fig.subplots_adjust(wspace=0.42)
     ax = axs[0]
     u = np.linspace(0, 2*np.pi, 300)
     ax.plot(np.cos(u), np.sin(u), color=INK2, lw=0.6)
     for z, col in ((ex, TAN), (im, CHORD), (cn, ARC)):
         ax.plot(z.real, z.imag, color=col, lw=1.5, marker='o', ms=2.8, mec='white', mew=0.4)
     ax.plot(exact[-1].real, exact[-1].imag, 'o', ms=6, mfc='none', mec=INK, mew=0.8)
-    ax.plot([0, exact[-1].real], [0, exact[-1].imag], color=INK, lw=0.6, ls=(0, (2, 2)))
-    label(ax, 1.05, 1.35, 'explicit Euler: out', TAN, fontweight='bold', ha='left', va='center')
-    label(ax, 0.0, 0.22, 'implicit:\nin', CHORD, fontweight='bold', ha='center', va='center')
-    label(ax, 1.1, -0.75, 'Crank–Nicolson:\non the circle', ARC, fontweight='bold', ha='left', va='center')
-    label(ax, 1.12, 0.13, 'exact', INK2, fontsize=7)
-    ax.set_aspect('equal'); ax.set_xlim(-2.0, 2.6); ax.set_ylim(-1.75, 1.75)
+    for k_, (txt, col) in enumerate((('explicit: out', TAN), ('Crank–Nicolson: on', ARC), ('implicit: in', CHORD))):
+        label(ax, 3.45, 1.55 - 0.32*k_, txt, col, fontweight='bold', ha='right', va='center', fontsize=7.4)
+    label(ax, 1.12, -0.17, 'exact', INK2, fontsize=7, va='center')
+    ax.set_aspect('equal'); ax.set_xlim(-2.0, 3.5); ax.set_ylim(-1.75, 1.75)
     ax.set_xlabel(r'Re $y$'); ax.set_ylabel(r'Im $y$'); ax.set_title('(a)', loc='left')
     ax = axs[1]
     ss = np.geomspace(1e-2, 1.5, 300)
@@ -285,10 +283,10 @@ def time_stepping():
     ax.loglog(ss, 1 - np.abs(1/(1 - 1j*ss))**2, color=CHORD, lw=2, ls=(0, (5, 1.5)))
     ax.loglog(ss, ss - 2*np.arctan(ss/2), color=ARC, lw=2)
     ax.loglog(ss, ss**3/12, **PRED)
-    label(ax, 0.03, 1.4e-4, r'Euler energy drift $\approx s^2$', INK, rotation=24)
-    label(ax, 0.011, 1.2, 'explicit gains (solid)', TAN, fontweight='bold')
-    label(ax, 0.011, 0.3, 'implicit loses (dashed)', CHORD, fontweight='bold')
-    label(ax, 0.02, 1.3e-7, r'Crank–Nicolson lag $\approx s^3/12$', ARC, fontweight='bold', rotation=33)
+    label(ax, 0.011, 1.2, r'explicit gains energy, $\approx s^2$', TAN, fontweight='bold', fontsize=7.2)
+    label(ax, 0.011, 0.25, r'implicit loses it, $\approx s^2$', CHORD, fontweight='bold', fontsize=7.2)
+    label(ax, 0.06, 2e-7, 'Crank–Nicolson:\nno energy error,\n' r'phase lag $\approx s^3/12$', ARC,
+          fontweight='bold', fontsize=7.2, va='center')
     ax.set_ylim(1e-8, 5)
     ax.set_xlabel('step $s$'); ax.set_ylabel('error per step'); ax.set_title('(b)', loc='left')
     fig.savefig(FIG / 'fig_time.pdf'); plt.close(fig)

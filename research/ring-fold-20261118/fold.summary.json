@@ -1,0 +1,104 @@
+{
+ "kind": "Fold-Lambda research script (not an engine run)",
+ "target": 1.25,
+ "levels": [
+  {
+   "level": 0,
+   "cells": 120,
+   "C_fit": 0.0,
+   "median_k": 2.0,
+   "max_k": 2,
+   "median_candidates": 9.0,
+   "saving_cells": 0.7777777777777778,
+   "median_faces_fold": 22.0,
+   "median_faces_two": 40.0,
+   "saving_faces": 0.75,
+   "median_a1": 251.80071894827194,
+   "median_a2": 30.501488549556264,
+   "median_a_fold": 35.0391651574502,
+   "random_meets_fraction": 0.041666666666666664,
+   "k_histogram": {
+    "2": 120
+   },
+   "seconds": 14.6
+  },
+  {
+   "level": 1,
+   "cells": 960,
+   "C_fit": 0.0,
+   "median_k": 2.5,
+   "max_k": 7,
+   "median_candidates": 10.0,
+   "saving_cells": 0.75,
+   "median_faces_fold": 23.5,
+   "median_faces_two": 44.0,
+   "saving_faces": 0.7321428571428572,
+   "median_a1": 125.40930963203394,
+   "median_a2": 35.178320344171794,
+   "median_a_fold": 40.57392176157657,
+   "random_meets_fraction": 0.17395833333333333,
+   "k_histogram": {
+    "2": 480,
+    "3": 120,
+    "4": 120,
+    "6": 180,
+    "7": 60
+   },
+   "seconds": 162.7
+  },
+  {
+   "level": 2,
+   "cells": 3240,
+   "C_fit": 0.0,
+   "median_k": 3.0,
+   "max_k": 8,
+   "median_candidates": 10.0,
+   "saving_cells": 0.7,
+   "median_faces_fold": 25.0,
+   "median_faces_two": 44.0,
+   "saving_faces": 0.6785714285714286,
+   "median_a1": 125.78462081556872,
+   "median_a2": 34.6179258576843,
+   "median_a_fold": 39.97125957988566,
+   "random_meets_fraction": 0.11944444444444445,
+   "k_histogram": {
+    "1": 240,
+    "2": 960,
+    "3": 540,
+    "4": 780,
+    "5": 360,
+    "6": 180,
+    "7": 120,
+    "8": 60
+   },
+   "seconds": 545.8
+  },
+  {
+   "level": 3,
+   "cells": 15000,
+   "C_fit": 0.0,
+   "median_k": 4.0,
+   "max_k": 8,
+   "median_candidates": 10.0,
+   "saving_cells": 0.6,
+   "median_faces_fold": 28.0,
+   "median_faces_two": 44.0,
+   "saving_faces": 0.5714285714285714,
+   "median_a1": 127.0022420851553,
+   "median_a2": 34.23247052438697,
+   "median_a_fold": 39.63756249964264,
+   "random_meets_fraction": 0.09426666666666667,
+   "k_histogram": {
+    "1": 900,
+    "2": 2820,
+    "3": 3240,
+    "4": 5160,
+    "5": 1980,
+    "6": 360,
+    "7": 360,
+    "8": 180
+   },
+   "seconds": 3017.0
+  }
+ ]
+}

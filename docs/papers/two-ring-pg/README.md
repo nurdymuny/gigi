@@ -1,6 +1,6 @@
 # Reading the Curve, Not Counting the Points
 
-**Paper:** [`paper.pdf`](paper.pdf) (18 pages). **Author:** Bee Rosa Davis, Davis Geometric.
+**Paper:** [`paper.pdf`](paper.pdf) (19 pages). **Author:** Bee Rosa Davis, Davis Geometric.
 
 This branch holds a paper, the GIGI code behind every number in it, and the record
 of how the result was found, including every attempt that failed. This README
@@ -89,8 +89,11 @@ this repository with its receipts. In order:
 9. **Past Abelian.** Turning each neighbour's face holonomy into register by link
    transport carries the same reading to SU(2). On the Levi-Civita fields of the round
    and a Berger metric it converges at second order (0.13% and 0.40% at n = 5). This is
-   a research script so far, and the non-Abelian force is next
-   (`docs/RECOVER_CURVATURE_SU2_RESULTS.md`).
+   a research script so far (`docs/RECOVER_CURVATURE_SU2_RESULTS.md`).
+10. **The non-Abelian force.** With native test variations and the covariant
+   trial, the SU(2) force on the Berger field falls from the native 25.5% to 2.51% at
+   n = 5 and passes BW05 (`docs/RICCI_SU2_PG_FORCE_RESULTS.md`). Its stability is the
+   next check.
 
 ## What is claimed, and what is not
 

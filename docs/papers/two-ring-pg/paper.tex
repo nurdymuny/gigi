@@ -86,8 +86,10 @@ symmetrized variant we tested fails. The force results concern a single Abelian
 control on the round quotient. The curvature recovery itself extends covariantly to
 $SU(2)$: with each neighbour's face holonomy turned into register by link transport, it
 converges at second order on the Levi-Civita fields of the round and a Berger metric
-(Section~\ref{sec:su2}). The non-Abelian force, the full nonlinearity of the flow and
-time integration are untested.
+(Section~\ref{sec:su2}). So does the force. The native $SU(2)$ Whitney force stays $25.5\%$
+wrong on the Berger field. The same Petrov--Galerkin move, with native test variations and
+a covariantly recovered trial, falls to $2.51\%$ at $n=5$ and passes the
+unchanged \BW{} gate. Its stability, the flow and time integration are untested.
 
 Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
 Noncommercial 1.0.0): native Rust transport and mass assembly, checked against the full
@@ -807,11 +809,55 @@ to the space. On the round field at $n=1$, the covariant and no-register reading
 to every printed digit; at every finer level they differ widely. We record this and do not
 explain it.
 
-\paragraph{Scope.} This is the recovery only, run as a research script and not yet in
-the engine verb. No non-Abelian force, flow or spectrum is computed here. The
-consistent non-Abelian force, gated against the native $SU(2)$ Whitney force with
-\BW{} unchanged, is the next step; a reciprocal version of it remains the open problem
-of Section~\ref{sec:magnet}.
+
+\subsection{The non-Abelian force}\label{sec:su2force}
+
+The recovery is only half of the paper's move; the other half is the force. Here the
+contract is the programme's own non-Abelian test, unchanged. The meshes, Berger metric
+$(3,1,1)$, exact links, native $SU(2)$ tangent mass and continuum target are those of the
+earlier shape-regular experiment, which found the native force stalled near $25\%$.
+
+\paragraph{The force.} Per cell, the native action is $E=2\sum_{ij}M_{ij}\langle D_i,D_j\rangle$.
+Here $D_i=U_i-1$ is the defect of face $i$'s holonomy registered at vertex $0$, and $M$ is the
+metric Whitney face mass. Its derivative pairs a test variation $\partial D_i/\partial\eta$
+with a trial curvature $h_i=\sum_jM_{ij}D_j$. The Petrov--Galerkin force keeps every test
+variation exactly and replaces the trial's vector part by
+$h_i=\int_K\langle P_K,W_i\rangle_g$, where $P_K$ is the covariant two-ring recovery of
+the registered defects and $W_i$ the Whitney face function.
+
+\paragraph{Controls.} Before any result was read, a Python replica reproduced the native
+energy to $1.5\times10^{-16}$ and the native gradient to $4.5\times10^{-10}$. Feeding the cell's
+own Whitney field through the new pairing reproduced the native gradient exactly, and the
+native error was recomputed to the recorded $26.2459\%$ at $n=1$.
+
+\begin{table}[t]\centering\small
+\caption{$SU(2)$ force on the Berger field: relative full-flow error (\%), $q6$. The last
+column gives the observed orders over the last two refinements, computed from the absolute
+error as in \BW{}.}
+\label{tab:su2force}
+\begin{tabular}{lrrrrl}\toprule
+Force & $n=1$ & $n=2$ & $n=3$ & $n=5$ & orders \\ \midrule
+Native $SU(2)$ Whitney & 26.25 & 24.74 & 24.96 & 25.51 & -0.04, -0.05 \\
+\textbf{Two-ring Petrov--Galerkin} & 36.25 & 7.43 & 4.69 & 2.51 & 1.14, 1.23 \\
+removal: one ring & 33.70 & 9.96 & 5.70 & 2.82 & 1.39, 1.38 \\
+removal: no register & 39.02 & 28.72 & 28.95 & 29.19 & -0.03, -0.02 \\
+\bottomrule\end{tabular}
+\end{table}
+
+\paragraph{Result.} The two-ring Petrov--Galerkin force passes \BW{} on the Berger field.
+Its final error is $2.51\%$ and its final orders are $1.14$ and $1.23$.
+Its $q4$ and $q6$ errors agree to within $1.4\times10^{-7}$, and solver residuals are below $10^{-12}$
+(Table~\ref{tab:su2force}). The native force does not pass: its error
+stays at $25\%$ and its orders are negative. Register is essential. Without it the force
+stays at about $29\%$, no better than native. One ring is accurate too, as in the Abelian
+case; there, stability is what separated one ring from two, and the $SU(2)$ stability
+test is the next step. The coarsest mesh is again pre-asymptotic for every recovery.
+
+\paragraph{Scope.} Both the covariant recovery and the non-Abelian force are research
+scripts, not yet engine verbs. The force result is the instantaneous \BW{} gate on one
+metric. Its stability (the generalized spectrum against the native mass), the flow and
+time integration are untested. A reciprocal version remains the open problem of
+Section~\ref{sec:magnet}.
 
 \section{Discussion}
 
@@ -886,8 +932,9 @@ magnetic Laplacian enters the recovery.
 \begin{itemize}
   \item The force results concern a single Abelian control on a single round quotient.
     The covariant recovery of Section~\ref{sec:su2} is a research script, tested on two
-    exact left-invariant fields with sampled cells. The non-Abelian force, the full
-    $SU(2)$ nonlinearity of the flow and time integration are untested.
+    exact left-invariant fields with sampled cells. The $SU(2)$ force of
+    Section~\ref{sec:su2force} passes \BW{} on the Berger metric only; its stability, the
+    flow and time integration are untested.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item The observed orders $0.73$ and $0.80$ before the last refinement are only
@@ -914,6 +961,8 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     \path{scripts/test_ricci_su2_recovery.py} and\newline
     \path{scripts/ricci_su2_g2_probe.py};\newline
     receipts in \path{research/recover-curvature-su2-20261117/}.
+  \item $SU(2)$ force:\newline \path{scripts/ricci_su2_pg_force.py};\newline receipts in
+    \path{research/su2-pg-force-20261117/}.
 \end{itemize}
 
 \begin{thebibliography}{99}\small

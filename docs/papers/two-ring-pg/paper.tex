@@ -75,11 +75,15 @@ Lattice gauge theory and geometric flows meet in a single question. Given a smoo
 connection $A$ on a closed Riemannian $3$-manifold, and only its integrals along the edges
 of a mesh, can a discrete force be computed from that data alone so that it converges to
 the continuum Yang--Mills force $-\delta F_A$, uniformly over all discrete variations?
-For the homogeneous $SU(2)$ backgrounds of the \DAVIS{}--Wilson programme, the continuum
-side is settled: for positive diagonal left-invariant metrics, mapping the Ricci velocity
-through the Levi-Civita connection reproduces the negative Yang--Mills gradient exactly,
-with the clock fixed to one rather than fitted. The lattice side is the subject of this
-paper.
+For the homogeneous $SU(2)$ backgrounds of the \DAVIS{}--Wilson programme, a continuum
+statement is in hand for a specific class: for positive diagonal left-invariant metrics,
+the Ricci velocity mapped through the Levi-Civita connection equals the negative
+Yang--Mills gradient exactly, with the clock fixed to one rather than fitted. That
+statement is instantaneous and homogeneous. It is not a general Ricci-flow result, and
+fixed-background trajectory equivalence fails in the tested non-round cases. Any lattice
+realisation of the programme also needs something more basic: a discrete Yang--Mills
+force that converges to its continuum counterpart. That prerequisite, for an Abelian
+control, is the subject of this paper.
 
 The difficulty is not approximation in the usual sense. The lowest-order Whitney
 discretization~\cite{whitney1957,bossavit1988} is a perfectly good finite element method:
@@ -444,6 +448,9 @@ amplification $\Lambda$.
   \item The force is not the gradient of an energy. Whether a dissipative, consistent,
     non-variational force suffices for the programme's purposes is a modelling decision,
     not a numerical one.
+  \item No Ricci-flow claim is made. The target here is the Abelian Yang--Mills force
+    $-\delta dA$; the result is a prerequisite for a lattice \DAVIS{}--Wilson
+    correspondence, not an instance of one.
 \end{itemize}
 
 \paragraph{Reproducibility.}

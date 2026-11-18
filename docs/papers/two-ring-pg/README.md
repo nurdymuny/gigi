@@ -23,7 +23,7 @@ parameter is fitted, and no data are added.
 | construction | force error at the finest mesh | stable? |
 | --- | ---: | --- |
 | Whitney (standard) | 26.1% (stuck) | yes |
-| one-ring recovery | 1.17% | **no**: thousands of growing modes |
+| one-ring recovery | 1.17% | **no**: hundreds of growing modes (489 of 961 at n = 2) |
 | **two-ring recovery (this paper)** | **1.45%** | **yes**: no growing mode at any level checked |
 
 ## A common-sense way in
@@ -70,7 +70,7 @@ this repository with its receipts. In order:
 5. **A consistent force that was unstable.** The Petrov–Galerkin recovery keeps
    the original test functions and replaces only the curvature
    (`docs/RICCI_PG_CURVATURE_*`). It reached 1.17%, but its operator had
-   thousands of growing modes.
+   hundreds of growing modes (489 of 961 at n = 2).
 6. **Ways around it that failed.** Each is documented, with its number:
    - making the force an energy gradient (variational) diverged, at 663–778%;
    - a zero-mean correction stayed at 40.5% (`docs/RICCI_ZERO_MEAN_RESULTS.md`);

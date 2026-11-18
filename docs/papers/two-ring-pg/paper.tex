@@ -60,12 +60,13 @@ data, and that it can be removed without sacrificing stability. A closed linear
 curvature recovered on each cell's face-star, tested against the original Whitney
 variations, gives a Petrov--Galerkin force that is consistent. In its minimal
 (one-ring) form, however, the recovery is exactly determined. It interpolates rough data
-as large linear fields, with a per-cell amplification of $125$--$254$, and the resulting
-operator has thousands of eigenvalues with negative real part.
+as large linear fields, with a median per-cell amplification of $125$--$252$ (at most
+$254$), and the resulting operator has hundreds of eigenvalues with negative real part
+($489$ of $961$ physical modes at $n=2$).
 
 Recovering on a \emph{two-ring} neighbourhood by equality-constrained least squares keeps
 the recovery exact on closed linear curvature, cuts the amplification to a mesh-uniform
-$31$--$47$, and changes the operator's character completely. The relative force error
+$30.5$--$35.2$ in median (at most $47$), and changes the operator's character completely. The relative force error
 falls to $6.22\%$, $3.83\%$, $2.79\%$ and $1.45\%$ at $n=1,2,3,5$, with observed orders
 $0.73$, $0.80$ and $1.29$. At every level whose spectrum we decomposed ($n\le 3$), every
 physical eigenvalue has positive real part, with the smallest at the control's true value
@@ -697,8 +698,8 @@ method's way of saying ``this piece does not belong here''.
 \paragraph{Edge to spare.} This is the one change. In the one-ring fit every flux is a
 hard constraint, so a rough flux has nowhere to go but into the curvature. In the
 two-ring fit only $K$'s own faces are hard; the rest are fitted in least squares, and a
-rough flux is outvoted rather than obeyed. The amplification falls from $125$--$254$ to
-a mesh-uniform $31$--$47$ (Figure~\ref{fig:conditioning}), and stability follows.
+rough flux is outvoted rather than obeyed. The median amplification falls from $125$--$252$
+to a mesh-uniform $30.5$--$35.2$ (Figure~\ref{fig:conditioning}), and stability follows.
 
 \paragraph{Reciprocity.} The missing property is the one a guide does not have. Our
 force is not symmetric, and Section~\ref{sec:removals} shows why the obvious
